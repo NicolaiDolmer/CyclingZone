@@ -18,6 +18,7 @@ import { supabase, authHeaders } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
 import {
   ROADMAP_ITEM_COLUMNS,
   isValidScore,
@@ -85,7 +86,7 @@ export default function RoadmapPage() {
     title: t("meta.title"),
     description: t("meta.description"),
     canonical: "https://cyclingzone.org/roadmap",
-    lang: i18n.language?.startsWith("da") ? "da" : "en",
+    lang: documentLang(i18n.language),
   });
 
   const [searchParams, setSearchParams] = useSearchParams();

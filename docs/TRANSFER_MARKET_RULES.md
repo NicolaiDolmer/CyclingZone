@@ -424,6 +424,16 @@ sket - netop formen på Seojun Choi-hændelsen 9/8.
 (`marketUtils.js:124-143`), fremtidige `race_entries` ryddes (#1906), og
 `rider_ownership_events` skrives (#3582).
 
+**Ejerskifte-loggen dækker alle udgange fra et hold (#6504).** Overgangen hold → intet hold
+(frigivelse, akademi-frigivelse, kontraktudløb, pension, graduering, beta-reset) logges af
+DB-triggeren `trg_record_rider_team_exit` (`database/2026-10-19-6504-release-ownership-trigger.sql`)
+med `reason = retirement` for en pensioneret rytter, ellers `release`, og `actor_type = system`.
+Kode, der flytter en rytter til intet hold, må **ikke** skrive sin egen række (dublet),
+heller ikke admin-flytningen: en admin-frigivelse logges derfor som `release`/`system`
+(bevidst: tilskrivning efter UPDATE'en gav race-dubletter, Codex-review #6891). Hold → hold
+og fri → hold logges fortsat
+af koden selv (auktion, handel, bytte, udskudt flush, fri agent).
+
 **Tabende budgivere får ét post-hammerslag-svar** med vinderens navn og deres eget højeste
 **realiserede** bud - aldrig deres proxy-loft (`auctionFinalization.js:46-133`, #3401).
 

@@ -1,0 +1,99 @@
+{
+  "page": {
+    "title": "Boîte de réception",
+    "subtitleMine": "{count, plural, =0 {Tout est lu} one {# non lue} other {# non lues}}",
+    "subtitleHandle": "{count, plural, =0 {Rien à traiter pour l'instant} one {# t'attend} other {# t'attendent}}",
+    "subtitleLeague": "Ce qui se passe dans la ligue",
+    "subtitleActivity": "Toutes tes actions sur le marché au même endroit",
+    "subtitleMessages": "{count, plural, =0 {Aucun message non lu} one {# conversation t'attend} other {# conversations t'attendent}}"
+  },
+  "actions": {
+    "markAllRead": "Tout marquer comme lu",
+    "markingAll": "Marquage…",
+    "deleteRead": "Supprimer les lues",
+    "deleteAria": "Supprimer",
+    "deleteAllAria": "Tout supprimer",
+    "viewAuction": "Voir l'enchère",
+    "viewDetails": "Voir les détails"
+  },
+  "tabs": {
+    "mine": "Pour moi",
+    "handle": "À traiter",
+    "league": "Ligue",
+    "activity": "Mon activité",
+    "messages": "Messages"
+  },
+  "filter": {
+    "all": "Toutes ({count})",
+    "unread": "Non lues ({count})",
+    "auctions": "Enchères",
+    "transfers": "Transferts",
+    "board": "Direction",
+    "finance": "Finances",
+    "season": "Saison",
+    "mineSelectLabel": "Filtrer les notifications",
+    "feedSelectLabel": "Filtrer le fil d'activité"
+  },
+  "empty": {
+    "noneUnread": "Aucune notification non lue",
+    "noneInCategory": "Aucune notification dans cette catégorie",
+    "noneHint": "Des notifications d'autres catégories peuvent encore t'attendre.",
+    "showAllCta": "Afficher toutes les notifications",
+    "noPending": "Rien n'attend ta décision",
+    "noPendingHint": "Les offres et échanges qui demandent ta réponse apparaîtront ici",
+    "browseMarketCta": "Parcourir le marché",
+    "noFeed": "Pas encore d'activité",
+    "noFeedHint": "Lance des enchères et des échanges pour voir l'activité ici",
+    "goToAuctionsCta": "Aller aux enchères"
+  },
+  "aggregate": {
+    "countSuffix": "(×{count})",
+    "raceResultTitle": "{race} : le résultat est tombé",
+    "firstLatest": "Première {first} · Dernière {latest}",
+    "lostLeadShare": "Dont {count} où tu as perdu la tête",
+    "expand": "Développer",
+    "collapse": "Réduire"
+  },
+  "relativeTime": {
+    "justNow": "À l'instant",
+    "minutes": "il y a {n} min",
+    "hours": "il y a {n} h",
+    "days": "il y a {n} j"
+  },
+  "pending": {
+    "role": {
+      "sellerDecide": "Accepter / refuser l'offre",
+      "buyerDecide": "Répondre à la contre-offre",
+      "sellerConfirm": "Confirmer le transfert",
+      "buyerConfirm": "Confirmer le transfert",
+      "receivingDecide": "Accepter / refuser l'échange",
+      "proposingDecide": "Répondre à la contre-offre",
+      "receivingConfirm": "Confirmer l'échange",
+      "proposingConfirm": "Confirmer l'échange",
+      "actionRequired": "Action requise"
+    },
+    "unknownTeam": "équipe inconnue",
+    "transferPrimary": "{rider}, {price} CZ$",
+    "transferUnknownPrice": "{rider}, ? CZ$",
+    "transferSecondary": "De {team} · {role}",
+    "swapPrimary": "{offered} contre {requested}",
+    "swapSecondaryWithCash": "{team} · Cash {cash} CZ$ · {role}",
+    "swapSecondaryNoCash": "{team} · {role}"
+  },
+  "feed": {
+    "auctionWon": "{team} a remporté l'enchère",
+    "auctionStarted": "{team} a lancé une enchère",
+    "transferAccepted": "Transfert conclu",
+    "riderListed": "{team} a mis un coureur en vente",
+    "seasonStarted": "La saison {number} a commencé",
+    "seasonEnded": "La saison {number} est terminée",
+    "raceResultsApproved": "Résultats validés : {race}",
+    "fallbackLabel": "{type}"
+  },
+  "error": {
+    "notifications": "Impossible de charger tes notifications. Rien n'a été perdu. Réessaie.",
+    "feed": "Impossible de charger le fil de la ligue. Rien n'a été perdu. Réessaie.",
+    "retry": "Réessayer",
+    "mutationFailed": "Impossible de mettre à jour tes notifications. Réessaie."
+  }
+}

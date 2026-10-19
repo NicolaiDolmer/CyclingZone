@@ -1,174 +1,71 @@
 # AGENTS.md
 
-_Fælles arbejdsregler. Codex starter med `CLAUDE.md` (trin 0); AGENTS.md er kontrakten for begge._
-
-> **Lean core** (#733). Hard rules, opstart og handoff står her. Rolle-/cross-PC-detaljer, session-rytme og loops læses efter behov i [AI_OPS_REFERENCE.md](docs/AI_OPS_REFERENCE.md).
-
----
+Fælles kontrakt. Codex læser **CLAUDE.md først**. [Detaljer](docs/AGENT_RULE_DETAILS.md) · [Ops](docs/AI_OPS_REFERENCE.md). Læs on-demand; ejerens seneste mandat har forrang.
 
 ## Hard rules
 
-> **Håndhævelse:** 🔒 = mekanisk håndhævet (hook/CI — kan ikke glemmes). ✍️ = honor-system (prosa; afhænger af disciplin — disse er dem der drifter, hold dem korte).
-> Pr. regel nedenfor: 1 ✍️ · 2 ✍️ · 3 ✍️ · 4 ✍️ · 5 ✍️ (patch-notes-dækning; secret-/versions-vagter: se [bevisregister](docs/GUARD_INVENTORY.md)) · 6 ✍️ · 7 ✍️ (auto-push hook hvis installeret) · 8 ✍️ · 9 ✍️ (idempotens-delen 🔒 via migration-idempotency-CI) · 10-13 + 15 ✍️ (orkestrering) · 14 🔒 (worktree-isolation, [#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)) · 16 🔒 (nightly `clock-drift-test-check.yml`, detektor på frontend + backend, ikke pr.-PR-gate) · 18 🔒 (`scripts/guard-commit-branch.sh`, blokerende) · 19-23 ✍️ (kvalitetsproces-regler, ejer-godkendt 18/8 pr. [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)) · 31-32 ✍️ (build-konventioner, [#4329](https://github.com/NicolaiDolmer/CyclingZone/issues/4329)).
-
-1. **Repo-root verification:** Brug kun den aktuelle bekræftede repo-root fra `git rev-parse --show-toplevel`. Aldrig andre lokale kopier, sync-kopier eller zip-udpakninger. Hvis repo-root ikke matcher den workspace-mappe brugeren aktuelt har angivet → stop og bed om realignment.
-
-2. **Delt context er GitHub/OneDrive — aldrig lokal-only.** Varig projekt-state, handoff, beslutninger, næste skridt og læringer skal ligge i GitHub (issues, `docs/NOW.md`, `docs/slices/`, repo-docs) eller i OneDrive-context-hardlinks. Lokale agent-filer (`.codex.local/SESSION_CONTEXT.md`, Claude transcripts, Codex memories, tool caches) er kun regenererbare caches/pointers og må aldrig være eneste sted et fremskridt findes. Hvis du opdager lokal-only context, migrér den til GitHub/OneDrive før session-slut.
-
-3. **Verificér runtime FØR du listet noget som TODO/bug/mangler.** Dokumenter (Noter-til-spiller.txt, gamle session-notater, brugerens hukommelse) kan være måneder forældede mens koden er rettet. Grep mindst én relevant fil eller tjek `git log --grep=<keyword>` før du committer påstanden til en plan. Markér eksplicit "❓ ikke runtime-verificeret" på antagede status-stempler. Etableret 2026-05-04 efter Noter-fil-stale-incidenten.
-
-4. **Undersøg teknisk tvivl; spørg ved en beslutningsgrænse** (ejer 29/9). Træf reversible tekniske valg inden for godkendt scope efter opslag/test. Spørg ved uafklaret spilleroplevelse, balance, prioritet eller manglende mandat; med bevis, anbefaling og konsekvens. Genbrug givne godkendelser. Hovedsessionen følger leverancen til verificeret afslutning, jf. [Codex-workflow](docs/CODEX_WORKFLOWS.md); øvrige ejer-gates består.
-
-5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Bølge-PR'er samler patch noten ved close-out (PR-body siger det); det er ikke et review-fund. Git-hooks er aktive efter installation: pre-commit scanner secrets, pre-push scanner secret-stier/diffs og PatchNotes-versioner. Versionskontrol beviser ikke patch-notes-dækning. Lokalt secret-lag positivt bevist 9/9; CI og øvrige vagter har separat bevisstatus i `docs/GUARD_INVENTORY.md`.
-
-6. **Slice close-out kræver:**
-   - `docs/NOW.md` opdateret + relevante GitHub-issues lukket eller opdateret med status (`gh issue comment N --body "..."` / `gh issue close N --reason completed`)
-   - `docs/FEATURE_REGISTRY.yml` afstemt (FEATURE_STATUS.md genereres: `node scripts/generate-feature-status.mjs`)
-   - PatchNotesPage opdateret
-   - Postmortem-entry i `.claude/learnings/` hvis slice fiksede en bug (loop C)
-   - Doc-drift sweep: grep for nye env vars, deploy-targets, route-navne, tabel-navne mod `ARCHITECTURE.md` og åbne issues
-
-7. **Auto-push efter commit:** Push til GitHub automatisk efter hvert commit (Vercel deployer kun ved push).
-
-8. **OneDrive-context hardlinks (siden 2026-05-07, scope reduceret 2026-05-12 per #327):** Memory og `.codex.local/SUPABASEPC_SETUP.md` + `docs/HOOKS.md`.
-
-9. **SQL/migrations-mandat (ejer 18/7, [#2642](https://github.com/NicolaiDolmer/CyclingZone/issues/2642)) — afløser "ejer applier"-reglen:** Claude kører selv SQL/migrationer mod prod (`apply_migration`/`execute_sql`) under faste rammer (merge-før-apply, idempotens, post-apply-verifikation; destruktivt fortsat ejer-gated). Fuld tekst: [`docs/AI_OPS_REFERENCE.md#sql-migrations-mandat-detaljer`](docs/AI_OPS_REFERENCE.md#sql-migrations-mandat-detaljer).
-
-### Orkestrering af parallelle agenter (ejer-godkendt 2026-08-05)
-
-Gælder når en session kører flere agenter/spor ad gangen (natbølger, dagbølger, fleets).
-
-> **Hændelserne bag reglerne 10-30 står i [`docs/NIGHT_WAVE_RUNBOOK.md`](docs/NIGHT_WAVE_RUNBOOK.md) under "Hændelserne bag hard rules 10-30".** De blev flyttet dertil 31/8 ([#4502](https://github.com/NicolaiDolmer/CyclingZone/issues/4502)) fordi denne fil brød sit token-loft. **Reglen uden hændelsen bliver til prosa der drifter** — læs dem når du skal forstå hvorfor en regel er skarp, eller når du overvejer at bøje den. Reglerne selv er låst af `agents-md-required-rules` i `scripts/check-agent-token-hygiene.ps1`: en fremtidig trim kan ikke købe tokens ved at slette et krav.
-
-10. **Enhver agent har en terminal-tilstand du har SET.** En agent er ikke færdig fordi dens arbejde er reddet — den er færdig når du har set den stoppe. Redning af et spor SKAL afsluttes med `TaskStop`.
-
-11. **Påstande om systemtilstand kræver en positiv observation.** "Jeg fandt ingen" er ikke "der er ingen". Brug det værktøj der ser den tilstand du udtaler dig om, og sig hvilket.
-
-12. **PR-loftet er fjernet (ejer-beslutning 22/9, variant B, #5510).** Bremsen på igangværende arbejde er lanerne (pr. maskine) og verifikations-semaforen (2), ikke et antal åbne PR'er.
-
-13. **Ingen påstand uden en måling. Issue-tal ældre end en uge GENMÅLES, de citeres ikke.**
-
-14. **Isolation er infrastruktur, ikke disciplin.** Et spor må ikke kunne ødelægge et andet ved et uheld. **Lukket 5/8 ([#3367](https://github.com/NicolaiDolmer/CyclingZone/issues/3367)):** worktrees junctioner nu til en lockfile-hashet cache i `%LOCALAPPDATA%`, ikke til hoved-checkoutet — der findes ingen sti fra et worktree ind i mains `node_modules`. `preflight-night-wave.ps1` advarer hvis en legacy-junction alligevel dukker op. _Delt `node_modules` ramte 4 af 20 spor og kostede verifikations-dækning på en sikkerheds-PR. `npm ci` gennem en junction tømte hoved-checkoutets install midt i bølgen._
-
-15. **Mennesket beslutter, AI'en fremskaffer beviset.** Bed aldrig om godkendelse af et gæt — mål først, præsentér så.
-
-16. **En test må aldrig læse vægur-tiden.** Injicér altid et eksplicit `now`/`today` til produktionskoden i stedet for at stole på en `now = new Date()`-default. Nightly `clock-drift-test-check.yml` kører **både frontend- og backend-testene** med klokken skubbet 6 måneder frem og fanger drift ([#3385](https://github.com/NicolaiDolmer/CyclingZone/issues/3385): main blev rød uden en commit, fordi en fast test-konstant passerede vægur-tiden). Detektoren var frontend-only indtil 25/8, hvor præcis samme klasse ramte backend uset ([#4222](https://github.com/NicolaiDolmer/CyclingZone/issues/4222): en hardkodet `firstRaceDate` lod `resolveCalendarFrom` falde tilbage på vægur-tiden og gjorde 6 tests røde på selve datoen).
-
-17. **Offentlighedspolitik for balance-tal (ejer-godkendt 6/8, jf. [#3436](https://github.com/NicolaiDolmer/CyclingZone/issues/3436)).** Repoet er offentligt. Kvalitativ omtale af mekanikker er OK overalt ("nedkørsel vægter for tungt", "lønnen skaleres med markedsværdi"). Præcise vægte, formler, eksponenter, konstanter og motor-interne tærskler må ALDRIG stå i issues, PR-bodies, kommentarer, patch notes eller Discord — de hører hjemme i private filer (`balance-internals/`, chat-sessioner, `database/proposals/`-headere er også offentlige!). En agent der skal dele et balance-tal med ejeren gør det i chatten, aldrig på GitHub.
-
-18. **Commit i hoved-checkoutet kun bag den blokerende branch-guard.** Kør `bash scripts/guard-commit-branch.sh <forventet-branch> && git commit ...`. Committer du via `git -C <dir>` (worktree-workers), så giv guarden SAMME mappe: `bash scripts/guard-commit-branch.sh <branch> <dir> && git -C <dir> commit ...`; uden `<dir>` tjekker den shell-cwd, som agent-shells nulstiller mellem kald — hændelsen bag: [`docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter`](docs/AI_OPS_REFERENCE.md#guard-commit-branch-dir-parameter). Guarden exiter 1 ved mismatch og ved detached HEAD. `git branch --show-current` er IKKE en guard: den printer branchen og exiter altid 0, så en `&&`-kæde fortsætter uanset hvad. Blokerer guarden, så gentag ALDRIG uden den; en blokeret guard er signalet om at checkoutet står forkert. Er der fremmed ucommitteret arbejde i træet, så skift ikke branch (et `checkout` bærer deres filer med) men commit via `git worktree add <tmp> <branch>`.
-
-19. **skip-logik på prod-deploy** (#6202): main følger sidste succesfulde deploy; frontend/afhængigheder eller ukendt grundlag bygger. Kontrakt: `docs/VERCEL_BUILD_RULES.md`.
-
-20. **Deploy-verify er en del af merge-handlingen.** Railway success kræves efter hver salve; Vercel READY kræves ved frontend/byggeinputs eller ukendt grundlag. Rene uafhængige ændringer kan beholde seneste frontend-deploy. `docs/VERCEL_BUILD_RULES.md`.
-
-21. **Per-agent-timeout dimensioneres efter samtidighed.** En timeout der er rimelig for én agent alene er forkert under fuldt tryk: skalér med antal samtidige agenter eller launch i forskudte chunks.
-
-22. **Dispatch-forfilter før HVER spawn.** `gh issue view N --json state,labels` + tjek om en merged PR allerede dækker scopet. Masterplan-/NOW-/promptlinjer er KILDER, ikke facts.
-
-23. **Post-merge guard-tjek af main.** Efter en salve verificeres at required checks OG de bløde vagter (warning-budget, feature-liveness, patch-note-guard) stadig er grønne på main-HEAD — en PR kan være grøn på egen base og alligevel knække main i kombination.
-
-24. **Orkestratoren ejer e2e-slottet ved parallelle workers** (ejer 18/8, KS3). Spawn-prompter tildeler verifikations-niveau eksplicit; ingen worker kører fuld lokal e2e-suite på egen hånd. **Loftet er siden 11/9 (#5142) maks 2 tunge verifikationer samtidig (var 3), håndhævet af `scripts/verify-lock.ps1`; parallelt byggearbejde startes via `.claude/workflows/wave.js` eller Codex' `scripts/codex-wave.mjs` (#5467), maks laner pr. maskine (`scripts/wave-capacity.json`, #6615) og faelles eksklusiv boelgemarkoer. Semaforen tæller kun kommandoer der faktisk wrappes i `verify-lock.ps1`; starter en kørsel udenom, er den usynlig for loftet, og disciplinen er stadig din.**
-
-25. **Design-gate før build** (ejer-mandat 13/8, [#3661](https://github.com/NicolaiDolmer/CyclingZone/issues/3661)). En ny spillervendt funktion implementeres ALDRIG uden forudgående design-blok med ejeren: problem, løsningsskitse (mockup/show_widget/artboard/preview) og et eksplicit "godkendt til build". Godkendelsen refereres i PR-body ("Design-go: dato/link"). **Skærpet 8/10 (ejer: "sådan vil jeg arbejde fast"):** gælder også rettelser, der ændrer hvad spilleren ser, læser eller oplever (tekst, tal, layout, regler) — problem + løsning godkendes FØR byg. Kun refactors, ops og rettelser uden synlig ændring er undtaget. Bølgen afviser et spillervendt spor uden registreret design-go på issuet (håndhævelse i `wave.js`, bølge 2 8/10).
-
-26. **Visuelt bevis før release** (#3661). Alt brugerrettet vises visuelt for ejeren FØR merge: rigtige screenshots (`pr-screens/`) eller preview-link, mobil OG desktop ved layoutændringer. Ingen tekst-beskrivelser som godkendelsesgrundlag — dette skærper UI-merge-reglen til også at gælde små ændringer (copy-only undtaget når teksten er citeret ordret).
-    **Dev-/preview-serveren hentes ALDRIG over HTTP** ([#3024](https://github.com/NicolaiDolmer/CyclingZone/issues/3024)): Vite injicerer `import.meta.env` — inkl. `VITE_SUPABASE_ANON_KEY` — i hvert modul den serverer, så `curl`/`fetch`/`Invoke-WebRequest` mod localhost:5173/5174 lækker nøglen til transcriptet uanset hvilket modul du henter. Screenshots og `read_page` er fine; skal du inspicere kode, læs kildefilen fra disk. Se tabel H i [`docs/SECRET_LEAK_VECTORS.md`](docs/SECRET_LEAK_VECTORS.md).
-
-27. **Spørgsmål med anbefaling FØR udarbejdelse** (#3661). Valg med spilleroplevelses-konsekvens forelægges ejeren som beslutningskort (ét ad gangen, kontekst i kortet, A/B + anbefaling) FØR der bygges — ikke efter. Rent tekniske valg uden oplevelses-konsekvens træffes selv.
-
-28. **Testplan er en del af designet** (#3661). Design-blokken afsluttes med en eksplicit verifikationsplan: test-tier (#3556), hvad ejeren skal se på preview/staging, og for store pakker en tester-runde på staging som norm (som trin 7 20/8). En funktion uden testplan er ikke "godkendt til build".
-
-29. **`docs/NOW.md` læses FØR enhver udtalelse om projektets tilstand, tidsplan eller prioritet.** Blokken "Aktiv styring" (🎯 Next action + 🤖 Working agent) er source of truth for hvad der sker hvornår — ikke DB-kolonner, ikke fil-datoer, ikke din egen udledning. Udled ALDRIG en tidsplan af data når NOW.md udtaler sig om den. Viser "Working agent" en anden aktiv session → STOP og spørg før pick-up ([#559](https://github.com/NicolaiDolmer/CyclingZone/issues/559)). Reglen gælder også når opgaven virker uafhængig af tidsplanen: en forkert tidsakse forgifter enhver anbefaling der bygges ovenpå den. _23/8: en session læste `seasons.start_date = 2026-08-24` og konkluderede at sæsonskiftet var "i morgen", mens NOW.md's første linje sagde "CUTOVER S2→S3 I AFTEN 23/8". Hele designsessionen blev bygget på den forkerte tidsakse, og der blev foreslået en implementeringsplan 70 minutter før cutover-vinduet åbnede._ **CI-håndhævet (ejer-valg 18/9, [#5093](https://github.com/NicolaiDolmer/CyclingZone/issues/5093)):** en PR der rører `docs/NOW.md` fejler i det required check `frontend-build` (`scripts/check-now-md-sidecar.mjs`), medmindre PR-titlen starter med `docs(now)`/`docs(close-out)` — close-out-commits direkte på main er upåvirkede.
-
-30. **Områdets SSOT læses, citeres og opdateres i samme PR** (ejer-mandat 25/8, [#4221](https://github.com/NicolaiDolmer/CyclingZone/issues/4221)). Rører opgaven et område med et SSOT-dokument, gælder fire ting: **(a)** dokumentet læses FØR der røres kode, data, prod eller design; **(b)** ethvert nyt design-dokument citerer sit områdes SSOT eksplicit — et design uden citat er ikke godkendt til build; **(c)** ændrer arbejdet en regel, en konstant eller en kontrakt, opdateres SSOT'en i SAMME PR som ændringen; **(d) et nyt område eller en ny kernefunktion fødes med sit SSOT-dokument** — dokumentet er en betingelse for at feature'en må lukkes, ikke et efterslæb (ejer-direktiv 25/8, [#4266](https://github.com/NicolaiDolmer/CyclingZone/issues/4266)). En regel der kun står i en spec er en parallel plan. **(e) Flag-flip, feature-luk/retire eller ny kernefunktion opdaterer `docs/FEATURE_REGISTRY.yml` i SAMME PR** ([#4921](https://github.com/NicolaiDolmer/CyclingZone/issues/4921)); `docs/FEATURE_STATUS.md` er GENERERET og redigeres aldrig i hånden (`node scripts/generate-feature-status.mjs`).
-    **Områder og deres SSOT:** kalender → [`docs/CALENDAR_RULES.md`](docs/CALENDAR_RULES.md) · race-motor, ruter og taktik → [`docs/RACE_ENGINE_RULES.md`](docs/RACE_ENGINE_RULES.md) · planlægningscenter → [`docs/PLANNING_CENTER_RULES.md`](docs/PLANNING_CENTER_RULES.md) · økonomi, værdi og løn → [`docs/ECONOMY_RULES.md`](docs/ECONOMY_RULES.md) · sponsor → [`docs/SPONSOR_RULES.md`](docs/SPONSOR_RULES.md) · bestyrelse → [`docs/BOARD_RULES.md`](docs/BOARD_RULES.md) · progression → [`docs/PROGRESSION_RULES.md`](docs/PROGRESSION_RULES.md) · rytter-generering → [`docs/RIDER_GENERATION.md`](docs/RIDER_GENERATION.md) · forum → [`docs/FORUM_RULES.md`](docs/FORUM_RULES.md) · dashboard → [`docs/DASHBOARD_RULES.md`](docs/DASHBOARD_RULES.md) · spil-invarianter → [`docs/GAME_INVARIANTS.md`](docs/GAME_INVARIANTS.md) · delte kontrakter → [`docs/GUARDRAILS_CORE.md`](docs/GUARDRAILS_CORE.md) · **assistenten → [`docs/ASSISTANT_RULES.md`](docs/ASSISTANT_RULES.md)** · **træning → [`docs/TRAINING_RULES.md`](docs/TRAINING_RULES.md)** · **transfermarked → [`docs/TRANSFER_MARKET_RULES.md`](docs/TRANSFER_MARKET_RULES.md)** · **sociale features → [`docs/SOCIAL_RULES.md`](docs/SOCIAL_RULES.md)** · **ungdom, akademi og trupper (junior/U23/senior) → [`docs/YOUTH_RULES.md`](docs/YOUTH_RULES.md)** · **vækst → [`docs/GROWTH_STACK.md`](docs/GROWTH_STACK.md)** · **måling og analytics → [`docs/ANALYTICS_STACK.md`](docs/ANALYTICS_STACK.md)** · **mail → [`docs/EMAIL_STACK.md`](docs/EMAIL_STACK.md)** · **spillerkommunikation → [`docs/COMMS_PLAYBOOK.md`](docs/COMMS_PLAYBOOK.md)**.
-    **Et gulv er aldrig en godkendelse.** Rapporteres et tal som OK, skal det stå hvilken regel det måles mod, og om det er et ejer-godkendt MÅL eller et regressions-GULV. Findes der intet godkendt mål, siges det eksplicit og spørges — det rapporteres aldrig grønt. _25/8: `CALENDAR_RULES.md` fandtes, var opdateret samme dag og indeholdt ordret advarslen "gulvene er regressionsværn, ikke kvalitetsmål". Linjen var læst. Alligevel blev "1 fritstående enkeltstart OK" rapporteret, hvor 1 kun var et gulv. Ejeren opdagede det selv — ingen gate gjorde. Samme dag blev et Z1-design tegnet med et rollesæt der ville have kollideret med `TeamOrder`-kontrakten, fordi motorens SSOT ikke fandtes endnu._
-
-### Build-konventioner ([#4329](https://github.com/NicolaiDolmer/CyclingZone/issues/4329))
-
-31. **Nye frontend-filer skrives i `.ts`/`.tsx`.** Konventionen gælder kun NYE filer; ingen big-bang-migrering af de eksisterende ca. 880 `.js`/`.jsx`. Gælder også testfiler: nye i `.ts`/`.tsx`, eksisterende `.js`-tests urørt (#5428). `check-anti-slop.mjs` advarer, blokerer ikke.
-
-Nye public-tabeller: følg [DATA_API_GRANTS.md](docs/DATA_API_GRANTS.md) og [migration-skabelonen](database/templates/new-public-table.sql); RLS erstatter ikke grants.
-
-32. **"Kan en type fange det?" — spørg FØR du foreslår en ny CI-guard.** `.github/workflows/ci.yml` har allerede ca. 15 håndbyggede ratchet-guard-jobs. Kan compileren fange fejlen (forkert felt-navn, manglende case, forkert type), tilføj typen i stedet. Guards reserveres til det compileren IKKE kan se: invarianter, RLS, paginerings-lofter, patch-notes-dækning, feature-liveness.
-
-### Backlog-disciplin (ejer-direktiv 25/8, [#4267](https://github.com/NicolaiDolmer/CyclingZone/issues/4267))
-
-33. **Dublet-tjek er obligatorisk FØR `gh issue create`.** Søg mindst to gange på nøgleord fra titlen (`gh issue list --search "<ord>" --state all` og `gh search issues --repo NicolaiDolmer/CyclingZone --match title,body "<ord>"`) og læs hits'ene før du opretter. Findes emnet allerede (åbent ELLER lukket-uden-leverance), så kommentér på det eksisterende issue i stedet — og reopen hvis det blev lukket som dublet af noget der aldrig blev leveret. Et nyt issue nævner de beslægtede numre det tjekkede mod. Ejeren 25/8: *"Der skal aldrig oprettes en opgave til github, hvis den er der i forvejen."*
-
-34. **Masterplan-ændring → artifacten opdateres i samme omgang.** Ændres `docs/MASTERPLAN.md`, republiceres Masterplan-artifacten (samme URL, aldrig en ny) FØR sessionen lukker. Fuld tekst: [`docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync`](docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync).
-
-### Merge-regler (ejer 22/9 + 24/9 + 4/10, #5508)
-
-35. **Stående merge-regler.** Merges UDEN ejerens "merge" ved grøn CI inkl. `review-gate` (#6654, CodeRabbit valgfri), rent uafhængigt diff-tjek og merget nævnt i rapporten: **(a)** brand-fejlrettelser uden ny spillertekst, hvor fejlen og effekten er målt i prod før og efter (body-sektion `## Fejlens effekt i prod` med `Før:`/`Efter:`, der måler selve fejlen, ikke en form; #6135) · **(b)** motor-PR'er bag slukket `race_engine_v4`/regel-revision, uden spillerændring/ny rød måling (ikke #5580/#5581) · **(c)** Dependabot inkl. sikkerhed, docs/CI/hooks/test/ops uden spillertekst · **(d) ejer 8/10:** tekniske PR'er uden spillervendt tekst/UI (også værktøj, migrationer uden spillervendt effekt, deploy-/overvågningsvagter) ved grøn CI + grøn `review-gate` (Codex på alt; Claude/opus-review kun på højrisiko: motor, database, penge, sikkerhed, CI; ejer 16/10), og spillervendte PR'er hvis design-go blev givet FØR byg og de er bygget, testet og reviewet som aftalt; meld bagefter (spillervendte med billede). **Ejerens fortsat:** UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning (ejer 4/10). **Ejer-go klæber:** markør på PR'en ved første ejer-go; kun ejerens "merge" løfter den. Slet aldrig markøren. Klassifikator: `scripts/merge-queue-classify.mjs`. **Codex-stop (ejer 16/10):** efter 2. Codex-runde blokerer kun fund om spillerdata, penge, sikkerhed eller prod-nedbrud; resten (også "P1" om tests/scripts/docs) → ét opfølgnings-issue, merge ved grøn CI.
-
-36. **Teknisk design + måling før byg** (ejer 12/10, #6490): DB/motor/samtidighed/ydelse kræver read-only designgennemgang + målt baseline i lokal PG17 FØR 1. PR; maks 2 stablede drafts; 4 t uden resultat → stop med status; ingen polling. `.claude/learnings/2026-10-12-codex-6490-retro.md`.
-
-### §LOKAL lokal-only-state
-
-`.codex.local/`-whitelisten og `cross-pc-forensic-audit.ps1` fanger lokal-only state en agent efterlader på tværs af PC'er. Ikke en per-session-gate, men kør auditen når du mistænker drift — fx efter ophold på en sekundær PC, eller efter en Codex-session (Codex' egen memory er lokal-only og tæller som cache, jf. hard rule 2). Detaljer: [`docs/CROSS_PC_LOCAL_STATE.md`](docs/CROSS_PC_LOCAL_STATE.md).
-
----
-
-## Start-sekvens (hver session)
-
-0. **Er du IKKE Claude Code (fx Codex): læs `CLAUDE.md` som det allerførste.** Fire bindende regel-lag står KUN der og duplikeres bevidst ikke her (denne fil har et token-loft): **page templates** T1/T2/T3 + `docs/design/TASTE.md` · **PR-preflight-tiers** (`scripts/preflight-pr.ps1`, TIER FULL, e2e-krav) · **close-out-listen** · **merge-mekanik** (merge-køen). **Codex (ejer 3/10):** `docs/OPERATING_PLAN.md` §Codex; rør aldrig NOW/MASTERPLAN/spillertekst (gælder Codex som forfatter; Claude-commits må skrive spillertekst).
-1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
-2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
-3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.
-4. Læs `docs/GUARDRAILS_CORE.md` KUN hvis issue-labels indeholder `needs-contract` eller `shared-refactor` (~80% af sessioner skipper — samme regel som CLAUDE.md "Start (eksplicit)" trin 3; alignet per #1097)
-5. Læs `docs/NOW.md`
-6. Aktivt issue: `gh issue list --label "claude:todo" --state open --limit 10` — første `#N` i NOW.md er typisk det aktive
-7. Hvis arbejde matcher en slice i `docs/slices/<slug>.md` → læs den slice-brief (komplet kontrakt på 30-50 linjer)
-8. Hvis nye loop-implementeringer → læs `docs/AI_LOOPS.md` afsnittet for den specifikke loop
-
-**Codex:** [CODEX_WORKFLOWS.md](docs/CODEX_WORKFLOWS.md) er kontrakten for resultatansvar, skills og pilot. Ingen daglig copy-paste-procedure er nødvendig.
-
-**Token-effektiv kontekst-tabel** (hvilken doc læses hvornår) + **cold-start-recipe** + anti-patterns: [`docs/AI_OPS_REFERENCE.md §Token-effektiv kontekst`](docs/AI_OPS_REFERENCE.md#token-effektiv-kontekst).
-
----
-
-## Delt handoff-format (alle agents)
-
-Varigt handoff skrives i GitHub/OneDrive, ikke lokal-only. Brug denne form i `docs/NOW.md`, en GitHub issue-kommentar eller en slice-doc ved session-slut, maks 15 linjer.
-
-```
-# Session context — [dato]
-
-Aktiv slice: [slice-navn / slug fra docs/slices/]
-Status: [in_progress | completed]
-
-Seneste handlinger:
-- [hvad der blev gjort]
-
-Næste handlinger:
-- [konkret næste skridt]
-
-Kritiske facts:
-- Economy: DEFAULT_BETA_BALANCE=800000, sponsor=240000, SALARY_RATE=0.10
-- [andet relevant for næste session]
-```
-
----
-
-## Worktree-disciplin (alle agenter)
-
-- **Hoved-checkoutet (`C:\Dev\CyclingZone`) er ejerens og Claudes.** Enhver anden agent — Codex inkluderet — arbejder ALTID i en worktree (`scripts/new-worktree.ps1`), også til trivielle docs-commits. To agenter i samme working tree betyder branch-skift under hinandens fødder, og hard rule 18 fanger det først EFTER skaden. Maskinlæsbart session-claim er sporet i [#4016](https://github.com/NicolaiDolmer/CyclingZone/issues/4016); indtil da er `🤖 Working agent` i `docs/NOW.md` den eneste lås — den skal sættes ved start, pushes, og nulstilles ved close-out.
-- Oprydning, parallel-sessioner og `permissions.deny`-gap (#684): [`docs/AI_OPS_REFERENCE.md#worktree-disciplin-detaljer`](docs/AI_OPS_REFERENCE.md#worktree-disciplin-detaljer).
-
----
-
-## On-demand reference (ikke auto-load)
-
-Resten af AI-ops-disciplinen er flyttet til **[`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md)** — læs efter behov:
-
-- Token-effektiv kontekst · rolle-fordeling (fuld: [`docs/AI_COUNCIL.md`](docs/AI_COUNCIL.md)) · AI-ejerskab · cross-PC setup · session-rytme · loops (fuld: [`docs/AI_LOOPS.md`](docs/AI_LOOPS.md)).
-
----
-
-_Sidst opdateret: 2026-09-29. Beslutningsgrænser og Codex-pilot: #605. Lean-core-split: #733._
-
-## Review guidelines (Codex-review på GitHub)
-
-P1 kun for fejl der rammer spillerdata, penge, sikkerhed, prod-drift eller spilleroplevelsen, og for brud på regel 16-17. Manglende patch note i bølge-PR, SSOT/doc-opdatering, PR-billeder og filendelser er P2.
+Stabile regelnumre; detaljer: `docs/AGENT_RULE_DETAILS.md#regel-N`. Core gælder altid. [Hændelser](docs/NIGHT_WAVE_RUNBOOK.md) · [Vagter](docs/GUARD_INVENTORY.md).
+
+1. **Repo-root:** `git rev-parse --show-toplevel` før arbejde. Matcher root ikke brugerens workspace eller den udtrykkeligt oprettede worktree, stop og bed om realignment. Ingen andre kopier.
+2. **Delt context:** varig state/beslutninger/læring/handoff i GitHub/repo eller OneDrive-hardlinks. Lokale transcripts, memories og `.codex.local/SESSION_CONTEXT.md` er regenererbare caches, aldrig eneste bevis. Migrér lokal-only fremskridt før slut.
+3. **Runtime før status:** læs relevant kode eller `git log --grep` før TODO-/bug-påstande fra noter. Ubekræftet: **❓ ikke runtime-verificeret**.
+4. **Teknisk tvivl undersøges:** reversible tekniske valg inden for mandat afgøres med opslag/test. Spilleroplevelse, balance, prioritet eller manglende mandat kræver beslutning med bevis, anbefaling og konsekvens. Genbrug godkendelser; hovedsessionen ejer afslutningen ([CODEX_WORKFLOWS](docs/CODEX_WORKFLOWS.md)); øvrige ejer-gates består.
+5. **Patch notes:** enhver brugerrettet ændring dækkes i `frontend/src/pages/PatchNotesPage.jsx`, ellers begrundes undtagelsen eksplicit. Bølge-PR samler ved close-out og siger det i body. Versionsguard beviser ikke dækning. Codex skriver aldrig spillertekst.
+6. **Slice close-out:** issue-status + NOW (Claude), FEATURE_REGISTRY afstemt + `node scripts/generate-feature-status.mjs`, patch notes, bug-postmortem i `.claude/learnings/`, doc-drift mod ARCHITECTURE/åbne issues. FEATURE_STATUS er genereret. [Detaljer](docs/AGENT_RULE_DETAILS.md#regel-6).
+7. **Auto-push efter hvert commit.** Preflight før push; aldrig efterlad kun lokal leverance.
+8. **OneDrive-hardlinks:** memory, `.codex.local/SUPABASEPC_SETUP.md`, `docs/HOOKS.md`; re-link efter manuel edit via `scripts/link-onedrive-context.ps1`.
+9. **SQL/migrationer:** Claude applier efter merge, idempotent og med post-verifikation; destruktivt ejer-gated. Codex ingen prod-skrivning uden ejerens eksplicitte go. Læs [SQL-mandatet](docs/AI_OPS_REFERENCE.md#sql-migrations-mandat-detaljer) før handling.
+10. **Terminaltilstand SET:** agent er først færdig ved observeret stop. Redning af et spor afsluttes med `TaskStop` (runtime-ækvivalent stop ved anden harness); bekræft terminaltilstand, aldrig antag den.
+11. **Systemtilstand kræver positiv observation** fra værktøjet der ser tilstanden. Sig hvilket; fravær af fund beviser ikke fravær.
+12. **PR-loftet er fjernet.** Laner pr. maskine og verify-semafor (2) begrænser arbejdet; se `scripts/wave-capacity.json`.
+13. **Ingen påstand uden måling.** Issue-tal ældre end en uge GENMÅLES.
+14. **Isolation er infrastruktur:** hoved-checkoutet `C:\Dev\CyclingZone` er ejerens/Claudes; Codex arbejder ALTID i eget worktree, også til trivielle docs-commits. `node_modules` må kun junctione til lockfile-hashet cache uden for main. Ingen `npm ci/install` gennem junction; dependency-baner bruger `-OwnNodeModules`. [WORKTREE_WORKFLOW](docs/WORKTREE_WORKFLOW.md).
+15. **Mennesket beslutter, AI fremskaffer beviset.** Bed aldrig om godkendelse af et gæt; mål først.
+16. **Tests læser aldrig vægur-tiden.** Injicér eksplicit `now`/`today` i produktionskoden; stol ikke på `new Date()`-defaults. Nightly tester frontend OG backend med forskudt ur.
+17. **Offentlighedspolitik for balance-tal:** kvalitative mekanikker må deles; præcise vægte, formler, eksponenter, konstanter og interne tærskler er private. Repoet er offentligt: aldrig på GitHub (inkl. docs, commits, kode-kommentarer), i patch notes eller Discord. Del kun i privat chat eller `balance-internals/`; `database/proposals/` er offentlig.
+18. **Commit bag blokerende guard:** `bash scripts/guard-commit-branch.sh <branch> <worktree> && git -C <worktree> commit ...`. Samme mappe til guard og commit. Branch-print er ingen guard; omgå aldrig blokering. Skift ikke branch med fremmed ucommitteret arbejde.
+19. **skip-logik på prod-deploy:** main følger sidste succesfulde deploy. Frontend, afhængigheder eller ukendt grundlag bygger. [VERCEL_BUILD_RULES](docs/VERCEL_BUILD_RULES.md).
+20. **Deploy-verify er del af merge:** Railway success efter hver salve; Vercel READY ved frontend/byggeinput eller ukendt grundlag. Uafhængigt diff kan beholde seneste frontend-deploy.
+21. **Per-agent-timeout** skaleres med samtidighed eller forskudte launches.
+22. **Dispatch-forfilter før HVER spawn:** `gh issue view N --json state,labels` og tjek merged PR'er for allerede leveret scope. NOW/masterplan/prompts er kilder, ikke facts.
+23. **Post-merge guard-tjek:** required checks OG warning-budget, feature-liveness, patch-note-guard skal observeres grønne på main-HEAD efter salven.
+24. **Orkestrator ejer e2e-slottet:** giv hver worker verify-niveau. Alt tungt wrappes i `scripts/verify-lock.ps1 -Max 2 -- <kommando>`. Byggeparallelitet kun via `wave.js`/`scripts/codex-wave.mjs`, fælles bølgelås og maskinloft. Worker starter aldrig fuld e2e selv.
+25. **Design-gate før build:** alt der ændrer hvad spilleren ser, læser eller oplever kræver problem + løsningsskitse og eksplicit ejer-"godkendt til build" FØR byg, også copy/fixes. Registrér på issue og i PR-body (`Design-go: dato/link`). Kun usynlige tekniske ændringer undtaget.
+26. **Visuelt bevis før release:** alt brugerrettet, også små ændringer, vises visuelt for ejeren; tekstbeskrivelse er aldrig godkendelsesgrundlag. Rigtige screenshots (`pr-screens/`) eller preview før merge; mobil OG desktop ved layout. Copy-only kan citeres ordret. **Hent aldrig dev-/preview-server over HTTP med curl/fetch/Invoke-WebRequest:** Vite-moduler lækker env-nøgler til transcript. Brug browser/screenshot/read_page eller kildefiler fra disk. [SECRET_LEAK_VECTORS](docs/SECRET_LEAK_VECTORS.md), tabel H.
+27. **Beslutningskort FØR udarbejdelse:** ét spilleroplevelsesvalg ad gangen, selvstændig kontekst, A/B + anbefaling. Tekniske valg afgøres selv.
+28. **Testplan er en del af designet:** test-tier, hvad ejeren ser på preview/staging og normalt tester-runde på staging ved store pakker. Uden testplan intet build-go.
+29. **Læs NOW før enhver udtalelse om projektets tilstand**, tidsplan eller prioritet, også når opgaven virker tidsuafhængig. 🎯 Next action + 🤖 Working agent er SSOT; hverken DB, fil-datoer eller egen udledning overtrumfer NOW. Anden aktiv session: stop og spørg før pick-up, medmindre ejeren udtrykkeligt har godkendt samtidigheden. NOW-PR kræver titel `docs(now)`/`docs(close-out)`.
+30. **Områdets SSOT:** læs FØR kode/data/prod/design; design uden SSOT-citat er ikke build-godkendt. Ændrede regler/konstanter/kontrakter opdateres i SAMME PR. Nyt område/ny kernefunktion fødes med SSOT som betingelse for lukning. Flag-flip/retire/kernefeature opdaterer FEATURE_REGISTRY i samme PR. **Et gulv er aldrig en godkendelse:** mål mod navngiven ejer-godkendt målsætning eller kald det regressionsgulv; uden godkendt mål spørg og rapportér aldrig grønt. Områdekort nedenfor.
+31. **Nye frontend-filer inkl. tests er `.ts`/`.tsx`.** Ingen massemigrering. Nye public-tabeller følger [DATA_API_GRANTS](docs/DATA_API_GRANTS.md) + `database/templates/new-public-table.sql`; RLS erstatter ikke grants.
+32. **Kan en type fange det?** Brug compileren før ny CI-guard. Guards kun til det compileren ikke kan se (invarianter, RLS, pagination, patch notes, liveness).
+33. **Før issue create:** søg både `gh issue list --search "ord" --state all` og `gh search issues --repo NicolaiDolmer/CyclingZone --match title,body "ord"`; læs hits. Kommentér/genåbn eksisterende uleveret emne frem for dublet. Nyt issue nævner tjekkede relaterede numre.
+34. **MASTERPLAN ændret:** samme artifact-URL republiceres før slut, aldrig ny. [Artifact-sync](docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync). Codex rører ikke MASTERPLAN.
+35. **Merge-mandat:** Altid ejer-gated, også uden for en merge: UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning. Før enhver merge eller merge-anbefaling: læs [AGENT_RULE_DETAILS.md#regel-35](docs/AGENT_RULE_DETAILS.md#regel-35) fuldt. Følg merge-kø/klassifikator, grøn CI/review-gate og uafhængigt diff-review. Ejer-go-markør slettes aldrig; kun ejerens "merge" løfter den. Efter 2. Codex-reviewrunde blokerer kun spillerdata/penge/sikkerhed/prod-nedbrud; øvrige fund i ét opfølgningsissue.
+36. **Teknisk design + målt baseline før byg:** DB/motor/samtidighed/ydelse kræver read-only gennemgang og lokal PG17-baseline før første PR; højst 2 stablede drafts; efter 4 t uden resultat stop med status, ingen polling. [Detaljer](docs/AGENT_RULE_DETAILS.md#regel-36).
+
+## Sådan deler du arbejdet op
+
+- Del læsetungt arbejde i uafhængige områder: én parallel `explorer` pr. område med afgrænset spørgsmål/filer/svarformat og kort isoleret prompt. Vent på ALLE; kontrollér beviserne og giv ét samlet svar. Delegér kun med gevinst.
+- Skrivearbejde: én opgave/claim/eget worktree via `scripts/new-worktree.ps1`; parallel byg via `node scripts/codex-wave.mjs`. Aldrig flere skrivende subagenter i samme checkout. Tildel filansvar/test-tier; respektér aktive claims/låse og fælles loft inkl. Claude.
+- Kør `reviewer` før push. Parent retter fund og ejer CI/handoff til Claude; worker/reviewer merger aldrig. `verifier` kører tildelt tier; `ui-checker` læser TASTE og leverer visuelt bevis inden for produktmandatet.
+- Roller i `.codex/agents/*.toml`; modeller/effort eksplicit pr. rolle. Standarder installeres med `scripts/codex-setup.ps1` (dry-run; `-Apply` skriver). Roller arver parent-rettigheder: "kun læsning" er instruktion, ikke separat sandbox. [Opsætning og måling](docs/CODEX_AGENT_SETUP.md).
+
+## Start-sekvens
+
+0. Ikke Claude Code: læs `CLAUDE.md` ALLERFØRST (page templates/TASTE, PR-preflight-tiers, close-out, merge-kø); dernæst [OPERATING_PLAN §Codex](docs/OPERATING_PLAN.md#codex-dag) og [CODEX_WORKFLOWS](docs/CODEX_WORKFLOWS.md). Codex forfatter aldrig NOW, MASTERPLAN eller spillertekst.
+1. Bekræft repo-root. Fetch `git fetch --prune origin`, `git status -sb`; behind → `git pull --ff-only` før edit i eget worktree. Rør aldrig ejerens/Claudes checkout. Lockfile ændret → projektets sync-deps-regler, aldrig gennem junction.
+2. Læs SESSION_CONTEXT hvis den findes som cache, så `docs/NOW.md` og aktivt issue: `gh issue list --label claude:todo --state open --limit 10`. Claim på issue med `claude:in-progress` + plan; NOW-claim/close-out ejes af Claude. Ved krævet NOW-claim beder Codex Claude sætte 🤖 Working agent før start.
+3. GUARDRAILS_CORE kun ved labels `needs-contract`/`shared-refactor`. Læs relevant SSOT, matchende `docs/slices/<slug>.md` og AI_LOOPS-afsnit ved loop-implementering. Ingen bred doc-dump.
+4. Følg CLAUDE.md + [test-tiers](docs/AI_OPS_REFERENCE.md#pr-preflight-og-verifikations-tiers): preflight i forgrunden før push; tunge tests bag semafor. To CI-fejl på samme symptom → stop og spørg.
+
+## Område → SSOT (regel 30)
+
+Alle stier er under `docs/`: kalender → `CALENDAR_RULES.md`; motor/ruter/taktik → `RACE_ENGINE_RULES.md`; planlægning → `PLANNING_CENTER_RULES.md`; økonomi/værdi/løn → `ECONOMY_RULES.md`; sponsor → `SPONSOR_RULES.md`; bestyrelse → `BOARD_RULES.md`; progression → `PROGRESSION_RULES.md`; ryttergenerering → `RIDER_GENERATION.md`; forum → `FORUM_RULES.md`; dashboard → `DASHBOARD_RULES.md`; invarianter → `GAME_INVARIANTS.md`; delte kontrakter → `GUARDRAILS_CORE.md`; assistent → `ASSISTANT_RULES.md`; træning → `TRAINING_RULES.md`; transfer → `TRANSFER_MARKET_RULES.md`; sociale features → `SOCIAL_RULES.md`; ungdom/akademi/trupper → `YOUTH_RULES.md`; vækst → `GROWTH_STACK.md`; analytics → `ANALYTICS_STACK.md`; mail → `EMAIL_STACK.md`; spillerkommunikation → `COMMS_PLAYBOOK.md`.
+
+## Handoff og oprydning
+
+Handoff på issue/repo/OneDrive, maks 15 linjer: dato, slice, status, seneste/næste handlinger, kritiske facts, PR/SHA og bevis. Ingen hemmeligheder/balance-tal eller lokal-only state. Token-hygiejne + `close-out-cleanup.ps1` dry-run; ryd kun egne processer/worktrees. Kør `scripts/cross-pc-forensic-audit.ps1` efter hver Codex-session og ved mistænkt drift ([CROSS_PC_LOCAL_STATE](docs/CROSS_PC_LOCAL_STATE.md)). Status/NOW/masterplan-close-out med Claude.
+
+## Review guidelines
+
+P1 kun spillerdata, penge, sikkerhed, prod-drift, spilleroplevelse eller brud på 16-17. Patch note i bølge-PR, SSOT/docs, PR-billeder og filendelser er P2.

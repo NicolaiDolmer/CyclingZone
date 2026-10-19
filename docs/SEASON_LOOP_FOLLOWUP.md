@@ -50,11 +50,11 @@ PostgreSQL afviser nu enhver UPDATE der prøver at sætte timestamps på racing-
 
 | Fil | Ændring |
 |---|---|
-| `backend/lib/seasonAutoTransition.js` | closed_at filter |
+| `backend/lib/seasonAutoTransition.js` (slettet i #6796) | closed_at filter |
 | `backend/lib/squadEnforcement.js` | closed_at filter |
 | `backend/lib/deadlineDayReport.js` (slettet i #6120) | early-return guard |
 | `backend/lib/seasonTransition.js` | admin_log description + null adminUserId |
-| `backend/lib/seasonAutoTransition.test.js` | 2 regressionstests + filter-presence-test |
+| seasonAutoTransition-testfilen (slettet i #6796) | 2 regressionstests + filter-presence-test |
 | `backend/lib/squadEnforcement.test.js` | 1 regressionstest + mock-not()-handler |
 | `deadlineDayReport`-testfilen (slettet med cron'en i #6120) | 1 regressionstest |
 | `database/2026-05-21-admin-log-nullable-user.sql` | Schema migration |

@@ -81,10 +81,9 @@ export const judges = Object.freeze({
     const pending = [...output.matchAll(/AFVENTER (\d+)/g)].reduce((s, m) => s + Number(m[1]), 0);
     return pending > 0 ? "yellow" : "green";
   },
-  transitionPlan: ({ exitCode, output }) => {
-    if (exitCode !== 0) return "red";
-    return /cron vil IKKE fyre/.test(output) ? "yellow" : "green";
-  },
+  // #6796: dry-runnets gamle "cron vil IKKE fyre"-linje er væk sammen med
+  // auto-skifte-cron'en; planen er grøn når dry-runnet lykkes.
+  transitionPlan: ({ exitCode }) => (exitCode !== 0 ? "red" : "green"),
   exit: exitJudge,
 });
 

@@ -1,0 +1,186 @@
+{
+  "founder_badge": {
+    "title": "Manager fondateur",
+    "description": "Là depuis la saison d'ouverture. Permanent. Survit à chaque remise à zéro."
+  },
+  "season_first_result": {
+    "title": "Premier résultat",
+    "description": "Obtiens l'enregistrement de ton premier résultat de course."
+  },
+  "team_star": {
+    "title": "Équipe de stars",
+    "description": "Aie un coureur star dans ton équipe : un coureur valant 8 000 000 CZ$ ou plus."
+  },
+  "transfer_bargain": {
+    "title": "L'affaire du siècle",
+    "description": "Achète un coureur pour moins de la moitié de sa valeur."
+  },
+  "season_top10": {
+    "title": "Top 10",
+    "description": "Termine une saison dans le top 10 de ta division."
+  },
+  "season_top5": {
+    "title": "Top 5",
+    "description": "Termine une saison dans le top 5 de ta division."
+  },
+  "season_top3": {
+    "title": "Podium",
+    "description": "Termine une saison dans le top 3 de ta division."
+  },
+  "season_winner": {
+    "title": "Vainqueur de division",
+    "description": "Remporte ta division sur une saison."
+  },
+  "season_div1_winner": {
+    "title": "Champion",
+    "description": "Remporte la division 1."
+  },
+  "season_div3_winner": {
+    "title": "Tout juste promu",
+    "description": "Remporte la division 3."
+  },
+  "season_3_top3": {
+    "title": "Régulier",
+    "description": "Termine dans le top 3 trois saisons de suite."
+  },
+  "season_2_seasons": {
+    "title": "Deux saisons au compteur",
+    "description": "Termine 2 saisons."
+  },
+  "season_5_seasons": {
+    "title": "Vétéran",
+    "description": "Termine 5 saisons."
+  },
+  "season_grand_tour_rider": {
+    "title": "Équipe de Grand Tour",
+    "description": "Fais prendre le départ d'un Grand Tour à un coureur."
+  },
+  "team_promotion": {
+    "title": "Promu",
+    "description": "Monte dans une division supérieure."
+  },
+  "team_relegation": {
+    "title": "Relégué",
+    "description": "Descends dans une division inférieure."
+  },
+  "team_survived": {
+    "title": "Sauvé",
+    "description": "Évite la relégation après avoir fini dans la zone de danger."
+  },
+  "auction_first_bid": {
+    "title": "Première enchère",
+    "description": "Place ta première enchère."
+  },
+  "auction_first_win": {
+    "title": "Première victoire",
+    "description": "Remporte ta première enchère."
+  },
+  "auction_5_wins": {
+    "title": "5 enchères remportées",
+    "description": "Remporte 5 enchères au total."
+  },
+  "auction_10_wins": {
+    "title": "10 enchères remportées",
+    "description": "Remporte 10 enchères au total."
+  },
+  "auction_25_wins": {
+    "title": "25 enchères remportées",
+    "description": "Remporte 25 enchères au total."
+  },
+  "auction_50_wins": {
+    "title": "50 enchères remportées",
+    "description": "Remporte 50 enchères au total."
+  },
+  "auction_sniper": {
+    "title": "Sniper",
+    "description": "Remporte une enchère en enchérissant le minimum."
+  },
+  "auction_last_second": {
+    "title": "À la dernière seconde",
+    "description": "Remporte une enchère pendant la prolongation."
+  },
+  "auction_high_roller": {
+    "title": "Gros joueur",
+    "description": "Place une enchère de plus de 500 000 CZ$."
+  },
+  "auction_5_streak": {
+    "title": "Domination",
+    "description": "Remporte 5 enchères d'affilée."
+  },
+  "secret_rival": {
+    "title": "Rival juré",
+    "description": "Enchéris contre le même manager dans 10 enchères."
+  },
+  "secret_heartbreak": {
+    "title": "Briseur de cœurs",
+    "description": "Perds 3 fois une enchère à la dernière seconde."
+  },
+  "secret_streak_7": {
+    "title": "Hebdo",
+    "description": "Connecte-toi 7 jours de suite."
+  },
+  "secret_streak_30": {
+    "title": "Assidu",
+    "description": "Connecte-toi 30 jours de suite."
+  },
+  "secret_watchlist_50": {
+    "title": "Recruteur",
+    "description": "Ajoute 50 coureurs à ta liste de suivi."
+  },
+  "team_15_riders": {
+    "title": "Effectif en croissance",
+    "description": "Aie 15 coureurs dans ton équipe en même temps."
+  },
+  "team_20_riders": {
+    "title": "Effectif complet",
+    "description": "Aie 20 coureurs dans ton équipe en même temps."
+  },
+  "team_25_riders": {
+    "title": "Grand effectif",
+    "description": "Aie 25 coureurs dans ton équipe en même temps."
+  },
+  "team_30_riders": {
+    "title": "Effectif maximal",
+    "description": "Atteins le nombre maximal de coureurs (30)."
+  },
+  "team_youth": {
+    "title": "Équipe jeune",
+    "description": "Aie au moins 50 % de coureurs U25 dans ton équipe."
+  },
+  "team_5_achievements": {
+    "title": "Vitrine à trophées",
+    "description": "Débloque 5 succès."
+  },
+  "season_board_100": {
+    "title": "Chouchou de la direction",
+    "description": "Atteins 100 % de satisfaction de la direction."
+  },
+  "transfer_first": {
+    "title": "Premier accord",
+    "description": "Conclus ton premier transfert."
+  },
+  "transfer_5": {
+    "title": "5 transferts",
+    "description": "Conclus 5 transferts au total."
+  },
+  "transfer_15": {
+    "title": "15 transferts",
+    "description": "Conclus 15 transferts au total."
+  },
+  "transfer_30": {
+    "title": "30 transferts",
+    "description": "Conclus 30 transferts au total."
+  },
+  "transfer_seller_10": {
+    "title": "Vendeur",
+    "description": "Vends 10 coureurs par transfert."
+  },
+  "transfer_buyer_10": {
+    "title": "Acheteur",
+    "description": "Achète 10 coureurs par transfert."
+  },
+  "transfer_negotiator": {
+    "title": "Négociateur",
+    "description": "Conclus un transfert après au moins 3 tours de contre-offres."
+  }
+}

@@ -4,7 +4,7 @@
 //
 // Tegnes i pixel-koordinater ud fra beholderens maalte bredde (ResizeObserver),
 // saa tekst aldrig straekkes. Efter etapen vises den som et smalt baand.
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../../../lib/intl.js";
 import {
@@ -23,7 +23,7 @@ export function categoryLabel(cat: string | null | undefined): string {
   return c === "HC" ? "HC" : c || "?";
 }
 
-function useMeasuredWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
+export function useMeasuredWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
   const ref = useRef<T | null>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -47,17 +47,35 @@ export interface StageProfileV2Props {
   selectedClimb: number | null;
   onSelectClimb: (index: number) => void;
   band?: boolean;
+  /** #6643: baandet faar ruteprofilens hoejde paa desktop (mobil uaendret). */
+  bandTall?: boolean;
+  /** #6570 replay: profilen daempes efter dette km (ikke koert endnu). */
+  progressKm?: number | null;
+  /** #6570 replay: eget lag oeverst i profilen (grupperne som prikker). */
+  overlay?: (geo: ProfileGeometry) => ReactNode;
 }
 
-export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false }: StageProfileV2Props) {
+export interface ProfileGeometry {
+  X: (km: number) => number;
+  Y: (h: number) => number;
+  elevation: (km: number) => number;
+  W: number;
+  H: number;
+  top: number;
+  bottom: number;
+  narrow: boolean;
+}
+
+export default function StageProfileV2({ profile, series, climbs, selectedClimb, onSelectClimb, band = false, bandTall = false, progressKm = null, overlay }: StageProfileV2Props) {
   const { t } = useTranslation("races");
   const [wrapRef, width] = useMeasuredWidth<HTMLDivElement>();
   const [hoverKm, setHoverKm] = useState<number | null>(null);
 
   const D = Number(profile.distance_km) || series.kms[series.kms.length - 1];
   const narrow = width > 0 && width < 640;
-  const H = band ? (narrow ? 130 : 170) : (narrow ? 220 : 320);
-  const TOP = band ? 34 : (narrow ? 48 : 78);
+  const short = band && (narrow || !bandTall);
+  const H = short ? (narrow ? 130 : 170) : (narrow ? 220 : 320);
+  const TOP = short ? 34 : (narrow ? 48 : 78);
   const BOT = 30;
   const W = Math.max(1, width);
 
@@ -109,6 +127,37 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
   }
 
   const kmFmt = (v: number) => formatNumber(Math.round(v * 10) / 10, { maximumFractionDigits: 1 });
+  // Stigningsnavne maa ikke overlappe hinanden eller andre stigningers/spurtens
+  // maerker. Haardeste kategori placeres foerst (HC/1 foer 2 foer 3); hver tekst
+  // proever sin normale side, saa den anden; passer ingen, vises kun maerket.
+  // Bredde anslaas til ca. 7 px pr. tegn (navn, 12 px) og 6,2 px (tal, 11 px).
+  const catRank = (c: Climb) => { const k = categoryLabel(c.category); return k === "HC" ? 0 : Number(k) || 9; };
+  const climbTextSide: Array<"left" | "right" | null> = climbs.map(() => null);
+  {
+    const markers = [
+      ...climbs.map((c) => X(Number(c.crest_km))),
+      ...sprints.map((s) => X(Number(s.km))),
+    ];
+    const placed: Array<[number, number]> = [];
+    const order = climbs.map((_, i) => i).sort((a, b) => catRank(climbs[a]) - catRank(climbs[b]) || a - b);
+    for (const i of order) {
+      const c = climbs[i];
+      const tx = X(Number(c.crest_km));
+      const stats = `${kmFmt(Number(c.length_km))} km · ${kmFmt(Number(c.avg_gradient))} % · ${formatNumber(Math.round(elevationAt(series, Number(c.crest_km))))} m`;
+      const w = Math.max(String(c.name ?? "").length * 7, stats.length * 6.2);
+      const preferred: Array<"left" | "right"> = tx > W * 0.6 ? ["left", "right"] : ["right", "left"];
+      for (const side of preferred) {
+        const box: [number, number] = side === "right" ? [tx + 16, tx + 16 + w] : [tx - 16 - w, tx - 16];
+        const inside = box[0] >= 0 && box[1] <= W;
+        const hitsMarker = markers.some((m) => m !== tx && m + 14 > box[0] && m - 14 < box[1]);
+        const hitsLabel = placed.some(([a, b]) => a < box[1] + 8 && b > box[0] - 8);
+        if (inside && !hitsMarker && !hitsLabel) { climbTextSide[i] = side; placed.push(box); break; }
+      }
+    }
+  }
+  const endLabelW =`${formatNumber(Math.round(D))} km`.length * 6;
+  // Hoejde-maerker: kun hvert andet, naar linjerne ligger under 16 px fra hinanden (mobil, smalt baand).
+  const gridLabelEvery = grid.length > 1 && Math.abs(Y(grid[0]) - Y(grid[1])) < 16 ? 2 : 1;
 
   return (
     <div ref={wrapRef} className="relative select-none">
@@ -124,12 +173,7 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
           onPointerDown={onPointer}
           onPointerLeave={() => setHoverKm(null)}
         >
-          {grid.map((v) => (
-            <g key={v}>
-              <line x1={0} x2={W} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />
-              <text x={4} y={Y(v) - 4} fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{`${formatNumber(v)} m`}</text>
-            </g>
-          ))}
+          {grid.map((v) => <line key={v} x1={0} x2={W} y1={Y(v)} y2={Y(v)} stroke="var(--border)" strokeWidth={1} />)}
           {selectedClimb !== null && climbs[selectedClimb] && !band && (
             <rect
               x={X(Math.max(0, Number(climbs[selectedClimb].crest_km) - Number(climbs[selectedClimb].length_km)))}
@@ -161,12 +205,15 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
             strokeWidth={1.6}
             strokeLinejoin="round"
           />
+          {grid.map((v, gi) => (grid.length - 1 - gi) % gridLabelEvery === 0 && (
+            // Tegnes efter profilen (#6643), med kortets baggrund som kontur, saa maerket kan laeses oven paa den.
+            <text key={`gl-${v}`} x={4} y={Y(v) - 4} fontSize={10} fill="var(--text-3)" stroke="var(--bg-card)" strokeWidth={3} paintOrder="stroke" className="font-data tabular-nums">{`${formatNumber(v)} m`}</text>
+          ))}
           <rect x={0} y={H - BOT + 6} width={W} height={3} fill="var(--bg-subtle)" />
           {climbs.map((c, i) => {
             const top = Number(c.crest_km);
             const start = Math.max(0, top - Number(c.length_km));
             const tx = X(top), ty = Y(elevationAt(series, top));
-            const rightSide = tx > W * 0.6;
             const cat = categoryLabel(c.category);
             return (
               <g key={`${c.name}-${i}`}>
@@ -183,17 +230,25 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
                     <line x1={tx} x2={tx} y1={ty} y2={ty - 26} stroke="var(--text-3)" strokeWidth={1} />
                     <rect x={tx - 11} y={ty - 48} width={22} height={20} rx={3} fill={cat === "HC" || cat === "1" ? "rgb(var(--climb-grad-4))" : "rgb(var(--climb-grad-3))"} />
                     <text x={tx} y={ty - 34} textAnchor="middle" fontSize={cat === "HC" ? 10 : 12} fontWeight={700} fill="white" className="font-data">{cat}</text>
-                    {!narrow && (
+                    {!narrow && climbTextSide[i] && (
                       <>
-                        <text x={tx + (rightSide ? -16 : 16)} y={ty - 40} textAnchor={rightSide ? "end" : "start"} fontSize={12} fontWeight={700} fill="var(--text-1)" className="font-data">{c.name}</text>
-                        <text x={tx + (rightSide ? -16 : 16)} y={ty - 26} textAnchor={rightSide ? "end" : "start"} fontSize={11} fill="var(--text-2)" className="font-data tabular-nums">
+                        <text x={tx + (climbTextSide[i] === "left" ? -16 : 16)} y={ty - 40} textAnchor={climbTextSide[i] === "left" ? "end" : "start"} fontSize={12} fontWeight={700} fill="var(--text-1)" className="font-data">{c.name}</text>
+                        <text x={tx + (climbTextSide[i] === "left" ? -16 : 16)} y={ty - 26} textAnchor={climbTextSide[i] === "left" ? "end" : "start"} fontSize={11} fill="var(--text-2)" className="font-data tabular-nums">
                           {`${kmFmt(Number(c.length_km))} km · ${kmFmt(Number(c.avg_gradient))} % · ${formatNumber(Math.round(elevationAt(series, top)))} m`}
                         </text>
                       </>
                     )}
                   </g>
                 )}
-                {D - top >= 4 && <text x={tx} y={H - BOT + 24} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-2)" className="font-data tabular-nums">{i === climbs.length - 1 && D - top >= 3 && !narrow ? `${Math.round(top)} · ${t("stagePageV2.profile.toGoAxis", { km: formatNumber(Math.round(D - top)) })}` : Math.round(top)}</text>}
+                {(() => {
+                  // Aksemaerket maa ikke loebe ind i "0 km"/"N km" i hjoernerne:
+                  // lang form -> kort form -> udeladt (bredde ca. 6 px pr. tegn ved 10 px).
+                  const long = `${Math.round(top)} · ${t("stagePageV2.profile.toGoAxis", { km: formatNumber(Math.round(D - top)) })}`;
+                  const short = String(Math.round(top));
+                  const fits = (s: string) => tx - (s.length * 6) / 2 > 34 && tx + (s.length * 6) / 2 < W - endLabelW - 6;
+                  const label = i === climbs.length - 1 && D - top >= 3 && !narrow && fits(long) ? long : fits(short) ? short : null;
+                  return label && <text x={tx} y={H - BOT + 24} textAnchor="middle" fontSize={10} fontWeight={700} fill="var(--text-2)" className="font-data tabular-nums">{label}</text>;
+                })()}
               </g>
             );
           })}
@@ -216,6 +271,10 @@ export default function StageProfileV2({ profile, series, climbs, selectedClimb,
           )}
           <text x={0} y={H - 2} fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">0 km</text>
           <text x={W} y={H - 2} textAnchor="end" fontSize={10} fill="var(--text-3)" className="font-data tabular-nums">{`${formatNumber(Math.round(D))} km`}</text>
+          {progressKm != null && progressKm < D && (
+            <rect x={X(Math.max(0, progressKm))} y={0} width={Math.max(0, W - X(Math.max(0, progressKm)))} height={H - BOT + 12} fill="var(--bg-card)" opacity={0.62} />
+          )}
+          {overlay?.({ X, Y, elevation: (km) => elevationAt(series, Math.max(0, Math.min(D, km))), W, H, top: TOP, bottom: H - BOT, narrow })}
           {tip && <line x1={X(tip.km)} x2={X(tip.km)} y1={TOP - 30} y2={H - BOT} stroke="var(--text-1)" strokeOpacity={0.5} strokeWidth={1} />}
         </svg>
       )}

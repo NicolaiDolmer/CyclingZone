@@ -1,0 +1,228 @@
+{
+  "tab": "Sponsor",
+  "page": {
+    "title": "Sponsors",
+    "subtitle": "De deal van seizoen {season} en wat die oplevert.",
+    "subtitleNoSeason": "Je deal en wat die oplevert.",
+    "chooseCta": "Kies de sponsor voor volgend seizoen",
+    "seasonMeta": "Seizoen {season} · divisie {division}",
+    "seasonMetaNoDivision": "Seizoen {season}",
+    "dealLine": "{variant} · getekend voor seizoen {season}",
+    "goToNextSeason": "Naar Volgend seizoen",
+    "howMoneyWorks": "Zo werkt sponsorgeld",
+    "perStageLine": "Per etappe {rate} CZ$, {count, plural, one {# resterende etappe is} other {# resterende etappes zijn}} {worth} CZ$ waard",
+    "nextSeasonOpen": "Volgend seizoen: {count, plural, one {# aanbieding is} other {# aanbiedingen zijn}} open, het bedrag ligt vast zodra je tekent",
+    "nextSeasonClosed": "Volgend seizoen: aanbiedingen openen wanneer seizoen {season} eindigt",
+    "errorTitle": "Je sponsors konden niet worden geladen",
+    "error": "Er is niets verloren gegaan en je deal is veilig. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "tab": {
+      "overview": "Overzicht",
+      "deal": "Deal",
+      "payments": "Betalingen",
+      "next": "Volgend seizoen"
+    },
+    "stat": {
+      "paidSoFar": "Tot nu toe betaald",
+      "guaranteed": "Gegarandeerd",
+      "earnedOnTop": "Daarbovenop verdiend",
+      "stagesRidden": "Gereden etappes",
+      "stagesOf": "{ridden} van {total}"
+    },
+    "noContract": {
+      "title": "Teken je eerste sponsordeal",
+      "description": "Aanbiedingen openen op het tabblad Volgend seizoen zodra je club kan onderhandelen.",
+      "action": "Naar Volgend seizoen"
+    },
+    "deal": {
+      "paidDayOne": "Betaald op dag één",
+      "stagesInDivision": "{count} etappes in divisie {division}",
+      "overTheSeason": "{amount} CZ$ over het seizoen",
+      "divisionAdjustment": "Divisieaanpassing",
+      "divisionAdjustmentSub": "Deal geprijsd voor divisie {signed}, jij koerst in divisie {current}",
+      "everySeason": "Elk seizoen",
+      "signingBonus": "Tekenbonus",
+      "signingBonusSub": "Betaald bij het tekenen",
+      "stageWinBonus": "Bonus voor etappezege",
+      "stageWinBonusSub": "Per etappezege",
+      "podiumBonus": "Podiumbonus",
+      "podiumBonusSub": "Per podium, 2e tot 3e",
+      "capPerSeason": "Plafond {amount} CZ$ per seizoen",
+      "seasonObjective": "Bonus voor seizoensdoel",
+      "seasonObjectiveTop40": "Eindig in de top 40% van je divisie",
+      "seasonObjectiveTopHalf": "Eindig in de bovenste helft van je divisie",
+      "runsThrough": "Loopt tot en met seizoen {season}"
+    },
+    "payments": {
+      "title": "Dit seizoen tot nu toe betaald",
+      "source": "Bron",
+      "stages": "Etappes",
+      "amount": "Bedrag",
+      "total": "Totaal",
+      "group": {
+        "guaranteed": "Gegarandeerd",
+        "stagesAt": "Etappes à {rate} CZ$",
+        "stages": "Etappes",
+        "bonuses": "Bonussen"
+      },
+      "row": {
+        "seasonBase": "Seizoensbasis",
+        "seasonBaseSub": "Contractgarantie",
+        "divisionAdjustment": "Divisieaanpassing",
+        "divisionAdjustmentSub": "Deal geprijsd voor divisie {division}",
+        "stageWin": "Etappezege",
+        "podium": "Podium",
+        "resultBonus": "Resultaatbonus"
+      },
+      "empty": {
+        "title": "Zie je eerste betaling binnenkomen",
+        "description": "Sponsorgeld verschijnt hier zodra je seizoensbasis is bijgeschreven en je team begint te koersen.",
+        "action": "Bekijk de deal"
+      }
+    },
+    "next": {
+      "title": "Volgend seizoen",
+      "meta": "{count, plural, one {# aanbieding} other {# aanbiedingen}} · divisie {division} · {stages} etappes",
+      "metaEstimated": "{count, plural, one {# aanbieding} other {# aanbiedingen}} · divisie {division} · {stages} etappes (schatting)",
+      "metaClosed": "Aanbiedingen openen wanneer seizoen {season} eindigt",
+      "dealType": "{variant} · {count, plural, one {# seizoen} other {# seizoenen}}",
+      "ifEveryStage": "{amount} CZ$ als je elke etappe rijdt",
+      "noBonuses": "Geen",
+      "pricingTitle": "Hoe de aanbiedingen worden geprijsd",
+      "column": {
+        "sponsor": "Sponsor",
+        "guaranteed": "Gegarandeerd",
+        "perStage": "Per etappe",
+        "bonuses": "Bonussen daarbovenop"
+      },
+      "empty": {
+        "title": "Aanbiedingen openen wanneer seizoen {season} eindigt",
+        "description": "Alle vijf de aanbiedingen openen op de dag dat je huidige deal afloopt.",
+        "action": "Lees de sponsorregels"
+      }
+    }
+  },
+  "cta": {
+    "title": "Kies je sponsor voor seizoen {season}",
+    "body": "Vijf sponsors zitten aan tafel, elk met een eigen manier om je te betalen. Vergelijk de deals en leg je steun vast.",
+    "button": "Aanbiedingen bekijken",
+    "pendingTitle": "Sponsor gekozen voor seizoen {season}",
+    "pendingBody": "Je hebt een deal getekend voor het komende seizoen. Je kunt nog overstappen op een andere aanbieding tot het seizoen begint.",
+    "changeButton": "Keuze wijzigen"
+  },
+  "offers": {
+    "title": "Kies je sponsor",
+    "subtitle": "Vijf sponsors, vijf manieren om te verdienen in seizoen {season}.",
+    "unitDefinition": "Je sponsor betaalt voor elke etappe waarin je team start. Trainingsdagen leveren deze betaling niet op.",
+    "unitCount": "Divisie {division} rijdt {count} etappes in seizoen {season}, en elke etappe betaalt.",
+    "unitPerDay": "Ze zijn verspreid over {days} kalenderdagen, dus de meeste dagen hebben ongeveer {perDay} etappes.",
+    "divisionNote": "De deal zelf betaalt hetzelfde maximum, welke divisie je hierboven ook kiest. De divisie bepaalt alleen over hoeveel etappes je het verdient, en dat bepaalt het tarief per etappe. De divisieaanpassing is een aparte regel en wordt hierboven getoond als die van toepassing is.",
+    "divisionPicker": "Tarief bekijken voor een divisie",
+    "divisionPill": "Divisie {division} · {count} etappes",
+    "deadline": "Het bedrag ligt vast op het moment dat je tekent, geprijsd op basis van de divisie en de resultaten die je die dag hebt, en blijft vastliggen voor het hele contract. De deal zelf begint met seizoen {season}. Als je niet kiest, tekent de club de veilige deal van 1 seizoen voor je tegen de prijs waarmee deze aanbiedingen opende.",
+    "amountFollowsClub": "Het bedrag volgt je eigen club: je reputatie, je divisie en waar je staat in je groep. Twee clubs kunnen dezelfde sponsor kiezen en verschillende aanbiedingen krijgen.",
+    "empty": "Er zijn nu geen aanbiedingen beschikbaar. Een nieuwe deal kan worden onderhandeld zodra het huidige contract aan verlenging toe is.",
+    "choose": "Kiezen",
+    "pending": "Gekozen",
+    "reviewSign": "Bekijken & tekenen",
+    "confirmBody": "Tekenen bij {sponsor} voor {count, plural, one {# seizoen} other {# seizoenen}}? Je kunt je keuze wijzigen tot seizoen {season} begint.",
+    "signDeal": "Deal tekenen",
+    "cancel": "Annuleren",
+    "acceptFailed": "De deal is niet getekend. Er is niets gewijzigd. Probeer het opnieuw.",
+    "guaranteedShare": "{pct}% van de deal is gegarandeerd",
+    "boardNote": "De tevredenheid van het bestuur past het gegarandeerde deel aan met maximaal ±20%. Het raakt het geld per etappe en de bonussen niet: die worden volledig en daarbovenop betaald, naarmate je ze verdient.",
+    "divisionAdjustmentUp": "Als je op deze deal in Divisie {division} koerst, wordt elk seizoen een divisieaanpassing van {amount} CZ$ daarbovenop betaald, omdat de deal voor Divisie {signed} is geprijsd.",
+    "divisionAdjustmentDown": "Als je op deze deal in Divisie {division} koerst, wordt elk seizoen {amount} CZ$ ingehouden, omdat de deal voor Divisie {signed} is geprijsd.",
+    "calendarEstimate": "Ik gebruik je huidige kalender om het tarief voor het eerste seizoen van de deal te schatten, tot de kalender van volgend seizoen klaar is. Het tarief wordt herberekend wanneer de deal begint en blijft vast voor de resterende seizoenen van een deal van meerdere seizoenen.",
+    "calendarUnknown": "De kalender van volgend seizoen is niet klaar, dus ik kan nog geen betrouwbaar tarief per etappe tonen. Het seizoenstotaal staat hieronder.",
+    "unitCountEstimate": "Deze schatting gebruikt de {count} etappes in je huidige divisie {division}.",
+    "rateUnknown": "Wacht op kalender"
+  },
+  "variant": {
+    "safe": "De veilige deal",
+    "loyal": "De loyale deal",
+    "racing": "De koersdeal",
+    "results": "De resultatendeal",
+    "ambition": "De ambitiedeal",
+    "predictable": "Vaste steun",
+    "activity": "Koersdag-sponsor",
+    "long": "Langetermijnpartner"
+  },
+  "clause": {
+    "signing": "{amount} CZ$ tekenbonus, vooraf betaald",
+    "stageWin": "{amount} CZ$ per etappezege",
+    "podium": "{amount} CZ$ per podium (2e–3e)",
+    "podiumCapped": "{amount} CZ$ per podium (2e–3e). Bonusplafond: {cap} CZ$ per seizoen",
+    "seasonObjective": "Eindig in de bovenste helft van je divisie: {amount} CZ$ aan het eind van het seizoen",
+    "seasonObjectiveTop40": "Eindig in de top 40% van je divisie: {amount} CZ$ aan het eind van het seizoen"
+  },
+  "field": {
+    "guaranteedBase": "Gegarandeerd bij seizoensstart",
+    "perRaceDay": "Per ingeschreven etappe",
+    "raceDayMath": "{count} etappes × {rate} CZ$",
+    "ifYouStartEveryStage": "Als je in elke etappe start",
+    "signingBonus": "Tekenbonus",
+    "bonusUpside": "Bonussen daarbovenop, indien verdiend",
+    "length": "Looptijd",
+    "seasons": "{count, plural, one {# seizoen} other {# seizoenen}}"
+  },
+  "contract": {
+    "title": "Huidige sponsor",
+    "loading": "Sponsorcontract laden",
+    "errorTitle": "Je sponsorcontract kon niet worden geladen",
+    "error": "Er is niets verloren gegaan en je contract is veilig. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "none": "Geen actief sponsorcontract.",
+    "runsThrough": "Loopt tot en met seizoen {season}",
+    "sponsorName": "Sponsor",
+    "clausesTitle": "Bonusclausules",
+    "earningsTitle": "Verdiend op dit contract",
+    "earningsBase": "Seizoensstart",
+    "earningsSigning": "Tekenbonus",
+    "earningsRaceDays": "Etappes",
+    "earningsResults": "Resultaatbonussen",
+    "earningsObjective": "Seizoensdoel",
+    "earningsTotal": "Totaal"
+  },
+  "income": {
+    "title": "Sponsorinkomsten",
+    "meta": "{sponsor} · dit seizoen",
+    "metaNoSponsor": "Dit seizoen",
+    "loading": "Sponsorinkomsten laden",
+    "errorTitle": "Je sponsorinkomsten konden niet worden geladen",
+    "error": "Er is niets verloren gegaan en je saldo is veilig. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "totalLabel": "Totaal dit seizoen",
+    "split": "Gegarandeerd {guaranteed} · daarbovenop verdiend {earned}",
+    "group": {
+      "fixed": {
+        "title": "Vast inkomen",
+        "row": "Seizoensbasis (contractgarantie)"
+      },
+      "raceDays": {
+        "title": "Etappes",
+        "row": "{raceName} · {days, plural, one {# etappe} other {# etappes}} à {rate} CZ$",
+        "unknownRace": "Koers",
+        "showAll": "Alle {count} koersen tonen",
+        "showLess": "Minder tonen"
+      },
+      "bonuses": {
+        "title": "Bonussen",
+        "stageWin": "Bonus voor etappezege · {raceName}",
+        "podium": "Podiumbonus · {raceName}",
+        "signing": "Tekenbonus",
+        "objective": "Bonus voor seizoensdoel",
+        "generic": "Resultaatbonus · {raceName}",
+        "capLine": "Plafond voor resultaatbonussen dit seizoen: {used} van {limit} gebruikt"
+      }
+    },
+    "footer": {
+      "full": "Waarom je betaald krijgt: je contract garandeert een seizoensbasis, betaalt per etappe waarin je team start en voegt bonussen toe voor etappezeges en podia.",
+      "noBonuses": "Waarom je betaald krijgt: je contract garandeert een seizoensbasis en betaalt per etappe waarin je team start."
+    },
+    "empty": {
+      "title": "Nog geen sponsorinkomsten",
+      "description": "Inkomsten verschijnen hier zodra je seizoensbasis is bijgeschreven en je team begint te koersen."
+    }
+  }
+}

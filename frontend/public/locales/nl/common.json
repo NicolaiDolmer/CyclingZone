@@ -1,0 +1,172 @@
+{
+  "nav": {
+    "group": {
+      "klubhus": "Clubhuis",
+      "planlaegning": "Planning",
+      "marked": "Markt",
+      "resultater": "Uitslagen",
+      "min": "Mijn",
+      "admin": "Admin"
+    },
+    "item": {
+      "dashboard": "Dashboard",
+      "team": "Mijn team",
+      "u23Team": "U23-team",
+      "juniorTeam": "Juniorenteam",
+      "training": "Dagelijkse training",
+      "planning": "Planning",
+      "academy": "Academie",
+      "scouting": "Scouting",
+      "board": "Bestuur",
+      "sponsors": "Sponsors",
+      "finance": "Financiën",
+      "klub": "Club",
+      "notifications": "Inbox",
+      "forum": "Forum",
+      "managerProfile": "Mijn managerprofiel",
+      "riders": "Renners",
+      "auctions": "Veilingen",
+      "transfers": "Transfers",
+      "transferList": "Transferlijst",
+      "watchlist": "Volglijst",
+      "raceCentre": "Koerscentrum",
+      "results": "Overzicht",
+      "rankings": "Ranglijsten",
+      "seasons": "Seizoensoverzicht",
+      "hallOfFame": "Hall of Fame",
+      "profile": "Instellingen",
+      "pro": "Pro",
+      "help": "Help",
+      "contact": "Contact",
+      "rules": "Regels",
+      "patchNotes": "Patch Notes",
+      "roadmap": "Roadmap",
+      "logout": "Uitloggen",
+      "admin": "Admin",
+      "growth": "Groei",
+      "fairplay": "Fair play",
+      "valueTransition": "Waardeovergang",
+      "valuePreview": "Waardevoorbeeld",
+      "survey": "Enquête"
+    }
+  },
+  "sidebar": {
+    "balance": "Saldo",
+    "balanceTooltip": "CZ$ is de valuta in het spel. Je verdient het door te spelen en het is niet met echt geld te koop.",
+    "division": "Divisie {division}",
+    "divisionTooltip": "Jouw competitieniveau. Divisie 1 is het hoogste niveau, Divisie 4 het instapniveau.",
+    "onlineNow": "{count} nu online",
+    "joinDiscord": "Join Discord"
+  },
+  "language": {
+    "label": "Taal",
+    "danish": "Dansk",
+    "english": "English",
+    "fr": "Français",
+    "es": "Español",
+    "nl": "Nederlands",
+    "switchTooltip": "Taal wijzigen"
+  },
+  "actions": {
+    "cancel": "Annuleren",
+    "save": "Opslaan",
+    "close": "Sluiten",
+    "hide": "Verbergen",
+    "clickToClose": "Klik om te sluiten",
+    "loading": "Laden…",
+    "loadingShort": "…",
+    "success": "✓",
+    "error": "Fout"
+  },
+  "time": {
+    "justNow": "Zojuist",
+    "minutesAgo": "{m}m geleden",
+    "hoursAgo": "{h}u geleden",
+    "daysAgo": "{d}d geleden",
+    "onlineNow": "Nu online",
+    "never": "Nooit"
+  },
+  "controls": {
+    "watchlistAdd": "Aan volglijst toevoegen",
+    "watchlistRemove": "Van volglijst halen",
+    "compareSelect": "Selecteren om te vergelijken",
+    "compareRemove": "Uit vergelijking halen",
+    "compareMax": "Maximaal {max} renners kunnen worden vergeleken",
+    "compareButton": "Vergelijken",
+    "compareSelectedLabel": "geselecteerd",
+    "compareMinHint": "(selecteer er minstens 2)",
+    "clear": "Wissen",
+    "noFilterResults": "Geen renners die bij je filters passen",
+    "clearFilters": "Alle filters wissen",
+    "statsToggleButton": "Statistieken tonen",
+    "statsToggleHeading": "Statistieken",
+    "statsToggleShowAll": "Alles tonen",
+    "statsToggleHideAll": "Alles verbergen"
+  },
+  "a11y": {
+    "openMenu": "Menu openen",
+    "openNotifications": "Inbox",
+    "removeFromComparison": "Uit vergelijking halen",
+    "saveNote": "Notitie opslaan",
+    "searchHelp": "Zoeken in help en FAQ",
+    "selectSeason": "Seizoen kiezen",
+    "unreadPatchNotes": "Nieuwe patch notes",
+    "unreadForum": "Nieuwe activiteit op het forum",
+    "unreadRoadmap": "Nieuwe roadmap-items",
+    "selectionReminder": "Selectie ontbreekt voor de deadline",
+    "selectionReminderUrgent": "Je team start niet"
+  },
+  "leaderBadge": "Leider",
+  "betaBadge": "Beta",
+  "amountInput": {
+    "invalid": "Vul een heel getal in, bijvoorbeeld 150000 of 150.000",
+    "parsedPreview": "= {amount} CZ$"
+  },
+  "table": {
+    "fullTable": "Volledige tabel",
+    "columnsLabel": "Kolommen kiezen",
+    "moreRight": "Meer kolommen aan de rechterkant"
+  },
+  "networkError": "De server is op dit moment niet bereikbaar. Controleer je verbinding en probeer het opnieuw.",
+  "push": {
+    "title": "Pushmeldingen",
+    "subtitle": "Ik stuur alleen een seintje als het ertoe doet. Nooit tussen 22:00 en 08:00, en hooguit 6 per dag.",
+    "enable": "Push aanzetten",
+    "disable": "Op dit apparaat uitzetten",
+    "statusOn": "Aan voor dit apparaat",
+    "denied": "Je browser blokkeert meldingen van Cycling Zone. Sta ze toe in de site-instellingen en probeer het dan opnieuw.",
+    "iosInstall": "Op iPhone en iPad werkt push zodra Cycling Zone op je beginscherm staat: tik op Deel en daarna op Zet op beginscherm.",
+    "unsupported": "Deze browser kan geen pushmeldingen ontvangen.",
+    "error": "Dat werkte niet. Probeer het opnieuw.",
+    "categoriesHeading": "Wat ik stuur",
+    "category": {
+      "auctions": {
+        "label": "Veilingen, op het laatste moment",
+        "desc": "Overboden vlak voor het einde, en gewonnen."
+      },
+      "races": {
+        "label": "Koersen",
+        "desc": "Eén samenvatting per koersdag."
+      },
+      "transfers": {
+        "label": "Transferaanbiedingen",
+        "desc": "Een aanbieding wacht op je antwoord."
+      },
+      "deadlines": {
+        "label": "Selectie en deadlines",
+        "desc": "Deadlines die je geld kosten als je ze mist."
+      },
+      "academy": {
+        "label": "Academie en training",
+        "desc": "Alleen in de ochtendsamenvatting."
+      }
+    },
+    "offer": {
+      "regionAriaLabel": "Pushmeldingen",
+      "title": "Wil je een seintje als je vlak voor het einde wordt overboden?",
+      "accept": "Ja, geef me een seintje",
+      "later": "Niet nu",
+      "done": "Klaar. Wijzig het altijd onder Profiel, Meldingen."
+    }
+  }
+}

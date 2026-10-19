@@ -15,6 +15,9 @@ import {
   monthsWithRaces,
   stepMonth,
 } from "../lib/calendarGrid.js";
+import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
+import { myRaceStatus } from "../lib/racePeek.ts"; // #6514
+import RacePeekCard from "../components/calendar/RacePeekCard.tsx"; // #6514
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -196,6 +199,20 @@ export default function CalendarPage() {
   // "alle divisioner" blander tiers i samme celle -> bredeste (D1's 5), se
   // calendarTierDensity.js.
   const dayCap = densityForDivision(activeDivision);
+
+  // #6514: bag race_library_v2 åbner et klik på et løb et lille kort i stedet
+  // for at navigere, og holdets løb uden udtagelse får en status-prik. Flag
+  // off (eller endnu ukendt) = kalenderen præcis som før.
+  const libraryV2 = useRaceLibraryV2() === true;
+  const [peekRaceId, setPeekRaceId] = useState(null);
+  const [peekStage, setPeekStage] = useState(null); // klikket etape, bevares til "Aabn loeb"
+  const entryById = useMemo(() => new Map((data?.entries || []).map((e) => [e.id, e])), [data]);
+  const statusByRace = useMemo(() => {
+    if (!libraryV2) return null;
+    const list = data?.entries || [];
+    return new Map(list.map((e) => [e.id, myRaceStatus(e, list, todayISO)]));
+  }, [libraryV2, data, todayISO]);
+  const openPeek = libraryV2 ? (raceId, stage = null) => { setExpandedDayIso(null); setPeekRaceId(raceId); setPeekStage(stage); } : null;
 
   if (loading) return <PageLoader label={t("loadingAria")} />;
 
@@ -390,6 +407,8 @@ export default function CalendarPage() {
                     t={t}
                     onExpand={setExpandedDayIso}
                     dayCap={dayCap}
+                    onPeek={openPeek}
+                    statusByRace={statusByRace}
                   />
                 ))}
               </div>
@@ -407,7 +426,22 @@ export default function CalendarPage() {
         onClose={() => setExpandedDayIso(null)}
         t={t}
         locale={i18n.language}
+        onPeek={openPeek}
+        statusByRace={statusByRace}
       />
+
+      {libraryV2 && (
+        <RacePeekCard
+          entry={peekRaceId ? entryById.get(peekRaceId) ?? null : null}
+          status={peekRaceId ? statusByRace?.get(peekRaceId) ?? null : null}
+          days={data.days}
+          seasonNumber={data.season?.number}
+          t={t}
+          locale={i18n.language}
+          stage={peekStage}
+          onClose={() => { setPeekRaceId(null); setPeekStage(null); }}
+        />
+      )}
 
       {stageEvents.length === 0 && (
         <div className="mt-4">
@@ -493,7 +527,7 @@ function CalendarControls({ t, eyebrow = null, division, onDivision, data, avail
 
 // ── day cell ─────────────────────────────────────────────────────────────────
 
-function DayCell({ cell, entries, todayISO, t, onExpand, dayCap }) {
+function DayCell({ cell, entries, todayISO, t, onExpand, dayCap, onPeek = null, statusByRace = null }) {
   if (!cell) {
     return <div className="border-b border-r border-cz-border bg-cz-subtle/40 min-h-28" aria-hidden="true" />;
   }
@@ -526,7 +560,7 @@ function DayCell({ cell, entries, todayISO, t, onExpand, dayCap }) {
       </div>
       <div className="space-y-0.5">
         {shown.map((ev, i) => (
-          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} className={i >= mobileCap ? "hidden sm:block" : undefined} />
+          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} className={i >= mobileCap ? "hidden sm:block" : undefined} onPeek={onPeek} status={statusByRace?.get(ev.raceId) ?? null} />
         ))}
         {/* #2756: "+N more" var før statisk tekst — spillere kunne ikke se resten
             af dagens program uden at være i den division/pulje selv. Nu åbner den
@@ -559,7 +593,7 @@ function DayCell({ cell, entries, todayISO, t, onExpand, dayCap }) {
 // #2756: dag-detalje-modal — genbruger DialogSurface/Modal'et fra UI-kittet
 // (PAGE_TEMPLATES.md forbyder ny modal-markup) og StageChip'en dagcellen
 // allerede renderer, så listen ser identisk ud, bare fuld i stedet for afkortet.
-function DayDetailModal({ iso, events, onClose, t, locale }) {
+function DayDetailModal({ iso, events, onClose, t, locale, onPeek = null, statusByRace = null }) {
   const list = events || [];
   return (
     <Modal
@@ -571,7 +605,7 @@ function DayDetailModal({ iso, events, onClose, t, locale }) {
     >
       <div className="space-y-1.5">
         {list.map((ev) => (
-          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} />
+          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} onPeek={onPeek} status={statusByRace?.get(ev.raceId) ?? null} />
         ))}
       </div>
     </Modal>
@@ -582,7 +616,7 @@ function DayDetailModal({ iso, events, onClose, t, locale }) {
 // Én chip pr. etape: klikbar ind på løbets planlægningsside (?stage=N), med terræn-glyf,
 // løbsnavn og en anden linje med "N. etape · HH:MM" (endagsløb: kun klokkeslæt).
 
-function StageChip({ ev, t, className = "" }) {
+function StageChip({ ev, t, className = "", onPeek = null, status = null }) {
   const mine = ev.isMine;
   const isStageRace = ev.raceType === "stage_race";
   const stageLabel = isStageRace ? t("chip.stageNum", { n: ev.stage }) : null;
@@ -590,35 +624,49 @@ function StageChip({ ev, t, className = "" }) {
 
   // Full name + meta is always the accessible name (visible name truncates hard in narrow cells).
   const a11yLabel = `${ev.name} · ${t(`terrain.${ev.terrain || "sprint"}`)}${secondLine ? ` · ${secondLine}` : ""}${ev.poolLabel ? ` · ${ev.poolLabel}` : ""}`;
-
-  return (
-    <Link
-      to={`/races/${ev.raceId}${isStageRace ? `?stage=${ev.stage}` : ""}`}
-      data-testid="calendar-race-chip"
-      aria-label={t("chip.openRace", { name: ev.name })}
-      title={a11yLabel}
-      className={`block rounded-cz border px-1.5 py-0.5 leading-tight transition-colors
+  const chipClass = `block rounded-cz border px-1.5 py-0.5 leading-tight transition-colors
         ${mine
           ? "border-cz-accent/40 bg-cz-accent/[0.07] hover:bg-cz-accent/[0.14]"
-          : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"} ${className}`}
+          : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"} ${className}`;
+
+  // #6514 (race_library_v2): et klik åbner løbskortet i stedet for at navigere,
+  // og holdets løb uden udtagelse får en lille status-prik. Samme chip, samme
+  // mål; med flaget off er onPeek null og chippen er det gamle link.
+  const missing = status === "missing";
+  const Tag = onPeek ? "button" : Link;
+  const tagProps = onPeek
+    ? { type: "button", onClick: () => onPeek(ev.raceId, isStageRace ? ev.stage : null), "aria-haspopup": "dialog" }
+    : { to: `/races/${ev.raceId}${isStageRace ? `?stage=${ev.stage}` : ""}` };
+  const openLabel = t("chip.openRace", { name: ev.name });
+
+  return (
+    <Tag
+      {...tagProps}
+      data-testid="calendar-race-chip"
+      aria-label={missing ? `${openLabel} · ${t("peek.status.missing")}` : openLabel}
+      title={a11yLabel}
+      className={onPeek ? `relative w-full text-start ${chipClass}` : chipClass}
     >
-      {/* #6728 (fund 9): navnet ombrydes ved mellemrum i stedet for at blive
-          klippet. Paa smalle skaerme staar terraen-ikonet over navnet, saa
-          navnet faar hele cellens bredde og ord ikke knaekker midt i. */}
-      <div className="flex flex-col items-start gap-0.5 sm:flex-row sm:gap-1.5">
+      {missing && (
+        <span aria-hidden="true" data-testid="calendar-missing-dot" className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-cz-warning" />
+      )}
+      {/* #6514: span i stedet for div/p, saa indholdet er gyldigt inde i en <button>.
+          #6728 (fund 9): navnet ombrydes ved mellemrum i stedet for at blive klippet;
+          paa smalle skaerme staar terraen-ikonet over navnet. */}
+      <span className="flex flex-col items-start gap-0.5 sm:flex-row sm:gap-1.5">
         {/* #4143 v2: ejeren afviste bogstavkoder (3/9) — tilbage til den
             miniature-terræn-silhuet (samme tegning som StageStripe's
             MiniSilhouette, se components/calendar/TerrainGlyph.jsx), nu delt
             med planlæggerens MasterCanvas via lib/terrainBucket.ts. */}
         <TerrainGlyph bucket={toTerrainBucket(ev.terrain)} width={18} height={10} className={`mt-0.5 shrink-0 ${mine ? "text-cz-1" : "text-cz-3"}`} />
         <span className={`min-w-0 break-words text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
-      </div>
+      </span>
       {secondLine && (
-        <p className={`mt-0.5 break-words text-3xs tabular-nums ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
+        <span className={`mt-0.5 block break-words text-3xs tabular-nums ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
           {secondLine}
-        </p>
+        </span>
       )}
-    </Link>
+    </Tag>
   );
 }
 

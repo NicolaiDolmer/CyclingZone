@@ -118,8 +118,9 @@ export function isLegacyLoadingReservation(row) {
 //   "settled"   — afregnet, "writing" eller gammelt format: alreadyRan som foer.
 //   "reclaimed" — forældet "loading": slettet betinget, kalderen reserverer forfra.
 //   kast        — frisk "loading": en anden koersel er i gang ELLER oprydningen
-//                 fejlede for nylig. Holdet er IKKE afregnet, saa sweepen skal
-//                 taelle en fejl (datoen forbliver aaben) og proeve igen; efter
+//                 fejlede for nylig. Holdet er IKKE afregnet: sweepene taeller
+//                 kastet som en fejl (datoen forbliver aaben) og proever igen, og
+//                 Train now svarer 409 (se isTrainingReservationHeldError); efter
 //                 taerskelen frigives raekken. Intet er skrevet.
 // Sletningen er compare-and-delete paa stadie + alder: to samtidige koersler kan
 // ikke begge slette (Postgres laaser raekken, den anden ser 0 raekker), og en frisk
@@ -149,11 +150,26 @@ async function resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }
 }
 
 // #6759: holdet er ikke afregnet, men en anden koersel ejer noeglen lige nu.
-// Retryable, saa sweepen taeller en fejl og tager holdet igen (datoen forbliver aaben).
+// Sweepene ser bare et kast: de taeller en fejl og tager holdet igen (datoen
+// forbliver aaben). `retryable` + `code` laeses af Train now-routen (#6798), der
+// svarer 409 "proev igen om lidt" i stedet for 500 + Sentry.
+export const TRAINING_RESERVATION_HELD = "training_reservation_held";
+
 function reservationHeldError(teamId, tickDate) {
   const err = new Error(`training_day_runs: reservation for team ${teamId} (${tickDate}) is held by an unfinished run`);
   err.retryable = true;
+  err.code = TRAINING_RESERVATION_HELD;
   return err;
+}
+
+/**
+ * #6798: en anden koersel holder holdets reservation lige nu (intet er skrevet).
+ * Kun denne retryable fejl er "traening i gang"; andre retryable fejl (fx en
+ * forbigaaende gateway-fejl i staff-konteksten) er stadig rigtige fejl.
+ * @param {unknown} err
+ */
+export function isTrainingReservationHeldError(err) {
+  return err?.retryable === true && err?.code === TRAINING_RESERVATION_HELD;
 }
 
 // ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────

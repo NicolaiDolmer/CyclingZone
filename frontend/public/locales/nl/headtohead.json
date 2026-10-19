@@ -1,0 +1,22 @@
+{
+  "title": "Head-to-Head",
+  "subtitle": "Vergelijk de geschiedenis van twee managers",
+  "searchPlaceholder": "Teams zoeken...",
+  "division": "Divisie {n}",
+  "noTeamsFound": "Geen teams gevonden voor “{q}”",
+  "teamA": "Team A",
+  "teamB": "Team B",
+  "errorLoad": "De vergelijkingsgegevens konden niet worden geladen. Probeer het opnieuw.",
+  "retry": "Probeer opnieuw",
+  "seasonStats": "Seizoensstatistieken (alle seizoenen)",
+  "statPoints": "Punten",
+  "statStageWins": "Etappezeges",
+  "statGcWins": "Klassementszeges",
+  "statSeasons": "Seizoenen",
+  "transferHistory": "Transfergeschiedenis tussen de teams",
+  "boughtFrom": "{buyer} heeft gekocht van {seller}:",
+  "topFive": "{team} · Top 5",
+  "pointsEarnedTitle": "Verdiende koerspunten (alle seizoenen)",
+  "noRiders": "Geen renners",
+  "selectOther": "Kies een ander team om de vergelijking te starten"
+}

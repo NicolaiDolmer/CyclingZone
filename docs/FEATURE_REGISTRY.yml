@@ -94,6 +94,20 @@ features:
     verified: 2026-10-04
     note: On siden 28/9 (læst i prod 4/10); kører officielle etaper.
 
+  - id: race-form-peaks
+    area: race-engine
+    title_en: Form peaks in races
+    title_da: Formtoppe i løbene
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6156
+    verified: 2026-10-19
+    note: Flaget oprettes off ved merge.
+    decision: taend
+    decide_by: 2026-10-25
+    roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
+    roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision
@@ -251,6 +265,19 @@ features:
     epic: 6570
     verified: 2026-10-15
     note: PR #6633; beta siden 15/10 efter ejer-go (læst i prod 15/10).
+
+  - id: race-library-v2
+    area: stats
+    title_en: Calendar race card and race history library
+    title_da: Kalender-løbskort og løbshistorik
+    state: building
+    ssot: docs/CALENDAR_RULES.md
+    epic: 6514
+    flag: race_library_v2
+    verified: 2026-10-18
+    note: PR #6680 merget 18/10; flaget race_library_v2 står som off i prod (læst 18/10 efter auto-migrate). Ejer flytter den til beta; #6875 rettes før "tænd beta".
+    decision: ejer-beslutning
+    decide_by: 2026-10-25
 
   - id: race-day-development
     area: race-day
@@ -645,7 +672,18 @@ features:
     title_da: Sæsonskifte
     state: live
     ssot: docs/SEASON_TRANSITION_CHECKLIST.md
-    verified: 2026-09-06
+    verified: 2026-10-17
+    note: Manuelt admin-skift efter runbooken (#1155).
+
+  - id: season-auto-transition
+    area: season
+    title_en: Automatic season transition cron
+    title_da: Automatisk sæsonskifte (cron)
+    state: retired
+    ssot: docs/SEASON_CUTOVER_RUNBOOK.md
+    epic: 1155
+    verified: 2026-10-17
+    note: Slukket siden 8/6 (fyrede fire skift i træk 21/5) og fjernet helt 17/10 (#6796); sæsonskiftet er en bevidst manuel admin-handling.
 
   - id: season-signup
     area: season
@@ -951,11 +989,13 @@ features:
     area: comms
     title_en: Push notifications
     title_da: Push-notifikationer
-    state: dormant
+    state: beta
     flag: push_enabled
     epic: 6590
-    verified: 2026-10-15
-    note: PR #6591 (14/10) bag slukket flag; off i prod (læst 15/10), kun ejeren flipper.
+    verified: 2026-10-19
+    note: push_enabled = beta i prod 19/10 (ejer-go 18/10+19/10); VAPID-nøgler i Infisical prod + Railway; ejerens Android abonnerer (19/10).
+    roadmap_en: "Push notifications on your phone: outbid in the last minute, one race summary per race day, and offers waiting for you. Never between 22:00 and 08:00, at most 6 a day."
+    roadmap_da: "Push-notifikationer på telefonen: overbudt i sidste minut, ét løbsresumé pr. løbsdag og tilbud, der venter på dig. Aldrig mellem 22 og 08, højst 6 om dagen."
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro

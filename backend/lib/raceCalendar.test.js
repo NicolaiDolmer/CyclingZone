@@ -267,7 +267,7 @@ test("toCalendarWireEntry bevarer PRÆCIS de felter kalender-fladen renderer", (
   const wire = toCalendarWireEntry(entry);
   assert.deepEqual(
     Object.keys(wire).sort(),
-    ["date", "division", "entered", "id", "isMine", "leaderSet", "name", "poolId", "poolLabel", "raceClass", "raceType", "stageSchedule", "stages", "terrain"],
+    ["date", "division", "entered", "gameDayEnd", "gameDayStart", "id", "isMine", "leaderSet", "name", "poolId", "poolLabel", "raceClass", "raceType", "stageSchedule", "stages", "terrain"],
     "wire-formatet er kontrakten mod frontend/src/lib/calendarGrid.js (expandStageEvents) + SeasonView (#1146: raceClass/entered)",
   );
   for (const key of Object.keys(wire)) {
@@ -281,9 +281,32 @@ test("toCalendarWireEntry dropper de felter ingen kalender-klient læser (#2861)
   // Felterne findes STADIG i read-modellen (peak-plans-board'et bruger dem) — de
   // sendes bare ikke til kalenderen, hvor de kostede 67-73 kB rå JSON pr. load.
   // poolId er UNDTAGET fra denne liste siden #2756 (pulje-vælgeren skal filtrere på den);
-  // raceClass + entered UNDTAGET siden #1146 (Z1 Season-visningen læser dem).
-  for (const dead of ["status", "poolIndex", "gameDayStart", "gameDayEnd", "terrainStages"]) {
+  // raceClass + entered UNDTAGET siden #1146 (Z1 Season-visningen læser dem);
+  // gameDayStart/gameDayEnd UNDTAGET siden #6514 (GT-konflikt i game_days).
+  for (const dead of ["status", "poolIndex", "terrainStages"]) {
     assert.ok(dead in entry, `${dead} skal stadig findes i den fulde read-model`);
     assert.ok(!(dead in wire), `${dead} må ikke sendes til kalender-klienten`);
   }
+});
+
+test("#6514 withdrawn: afmeldt loeb markeres, kun sendt paa wire naar true", () => {
+  const { entries } = buildCalendarModel(sampleInput({ teamWithdrawnRaceIds: new Set(["r-single"]) }));
+  const single = entries.find((e) => e.id === "r-single");
+  const stage = entries.find((e) => e.id === "r-stage");
+  assert.equal(single.withdrawn, true);
+  assert.equal(toCalendarWireEntry(single).withdrawn, true);
+  assert.ok(!("withdrawn" in toCalendarWireEntry(stage)));
+});
+
+test("#6514 lineupFrozen: afviklet eller igangvaerende loeb er laast, kun sendt paa wire naar true", () => {
+  const input = sampleInput();
+  input.races[0] = { ...input.races[0], status: "completed" };
+  input.races[1] = { ...input.races[1], stages_completed: 2 };
+  const [done, running] = buildCalendarModel(input).entries.sort((a, b) => a.id.localeCompare(b.id)).reverse();
+  assert.equal(done.lineupFrozen, true);
+  assert.equal(running.lineupFrozen, true);
+  assert.equal(toCalendarWireEntry(done).lineupFrozen, true);
+  const open = buildCalendarModel(sampleInput()).entries[0];
+  assert.equal(open.lineupFrozen, false);
+  assert.ok(!("lineupFrozen" in toCalendarWireEntry(open)), "intet felt naar udtagelsen er aaben");
 });

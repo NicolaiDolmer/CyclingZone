@@ -53,6 +53,44 @@ export function copenhagenHourToUTC(dateStr, hour) {
   return new Date(approx.getTime() - offsetMs);
 }
 
+// Copenhagens vaegur-tid for et UTC-instant, som "YYYY-MM-DD HH:MM:SS" (sv-SE).
+function copenhagenWallString(instant) {
+  return instant.toLocaleString("sv-SE", { timeZone: "Europe/Copenhagen" });
+}
+
+// Copenhagens UTC-offset (ms) i et givent UTC-instant.
+function copenhagenOffsetMs(instant) {
+  const wall = copenhagenWallString(instant);
+  return new Date(wall.replace(" ", "T") + "Z").getTime() - instant.getTime();
+}
+
+// #6858: UTC-instant for vaegur-tiden `hour:minute:00` dansk tid paa en
+// EKSPLICIT dansk kalenderdato, eller null hvis klokkeslaettet ikke findes den dag
+// (sommertidens spring, fx 02:30 sidste soendag i marts). Modsat
+// copenhagenHourToUTC ovenfor maales offsettet to gange: et offset maalt paa
+// "datoen tolket som UTC" kan ligge paa den forkerte side af skiftet (01:00 den
+// 25/10 ville ellers blive 02:00 sommertid). Andet skridt maaler offsettet i
+// selve kandidaten, og svaret godkendes kun hvis det giver det oenskede vaegur
+// tilbage. Det dobbelte klokkeslaet ved vintertid (02:00-02:59 sidste soendag i
+// oktober) giver den ene af de to forekomster.
+export function copenhagenWallTimeToUTC(dateStr, hour, minute = 0) {
+  const hh = String(hour).padStart(2, "0");
+  const mm = String(minute).padStart(2, "0");
+  const target = `${dateStr} ${hh}:${mm}:00`;
+  const approx = new Date(`${dateStr}T${hh}:${mm}:00Z`);
+  const first = new Date(approx.getTime() - copenhagenOffsetMs(approx));
+  const second = new Date(approx.getTime() - copenhagenOffsetMs(first));
+  for (const candidate of [second, first]) {
+    if (copenhagenWallString(candidate) === target) return candidate;
+  }
+  return null;
+}
+
+// "YYYY-MM-DD HH:MM" i dansk tid. Til log-linjer ("naeste koersel ...").
+export function formatCopenhagenDateTime(instant) {
+  return copenhagenWallString(instant).slice(0, 16);
+}
+
 // ISO-8601-uge ("YYYY-Www") for den danske kalenderdato afledt af `now` (#4650:
 // dedupe-nøgle for tilbagekomst-digestet, "højst 1 pr. 7 dage" via en ISO-uge-
 // noegle i stedet for en kalenderdato). Standard ISO-algoritme: ryk datoen til

@@ -956,7 +956,8 @@ export async function restampSoldGraduation(supabase, { teamId, riderId, now, st
     // det tilbage — den logges for synlighed og fanges naeste gang af
     // ownershipInvariantWatch invariant G. Samme moenster som
     // resolvePendingGraduationOnSale nedenfor.
-    console.error(`restampSoldGraduation(${status}) failed (${riderId}):`, err.message);
+    // CodeQL #376: vaerdier som argumenter, aldrig i format-strengen (%-tegn i data).
+    console.error("restampSoldGraduation(%s) failed (%s):", status, riderId, err.message);
   }
 }
 

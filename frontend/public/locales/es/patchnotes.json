@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "title": "Patch notes · Cycling Zone",
+    "description": "Todos los cambios de Cycling Zone, de más nuevo a más antiguo: funciones nuevas, mejoras y correcciones."
+  },
+  "title": "Patch notes",
+  "subtitle": "Novedades de Cycling Zone Manager",
+  "search": {
+    "ariaLabel": "Buscar actualizaciones",
+    "placeholder": "Buscar actualizaciones…"
+  },
+  "filter": {
+    "ariaLabel": "Filtrar por categoría",
+    "betaOnly": "Solo beta",
+    "category": {
+      "all": "Todo",
+      "new": "Nuevo",
+      "improved": "Mejorado",
+      "fixed": "Corregido"
+    }
+  },
+  "category": {
+    "all": "Todo",
+    "new": "Nuevo",
+    "improved": "Mejorado",
+    "fixed": "Corregido"
+  },
+  "newBadge": "Nuevo",
+  "rollout": {
+    "beta": "Beta",
+    "beta_to_live": "Ya disponible para todos",
+    "switched_on": "Activado",
+    "event": "Evento de temporada"
+  },
+  "fallbackLang": {
+    "da": "Danés",
+    "en": "Inglés"
+  },
+  "loadError": "No se pudieron cargar las actualizaciones",
+  "loadErrorBody": "No se ha perdido nada. Prueba a recargar la página.",
+  "retry": "Reintentar",
+  "loading": {
+    "label": "Cargando actualizaciones"
+  },
+  "empty": {
+    "title": "Ninguna actualización coincide",
+    "description": "Prueba con otro término de búsqueda u otra categoría."
+  },
+  "footer": {
+    "hiddenNote": "Las notas internas y técnicas no se muestran en esta página.",
+    "rolloutNote": "Beta: solo lo tiene el grupo beta. Sin etiqueta: disponible para todos."
+  }
+}

@@ -8,6 +8,7 @@ import {
   buildBonusExtraGoal,
   hasBonusGoalForOffer,
 } from "./boardBonusGoal.js";
+import { nextMandateLockToken } from "./boardBonusGoal.js";
 import { buildBoardRoomPayload } from "./boardRoom.js";
 import { countTeamStarRiders } from "./boardIdentity.js";
 
@@ -31,6 +32,10 @@ function makeQueryBuilder(rows, { mode = "select", patch = null } = {}) {
     },
     in(col, values) {
       filtered = filtered.filter((r) => values.includes(r[col]));
+      return builder;
+    },
+    is(col, value) {
+      filtered = filtered.filter((r) => (value === null ? r[col] == null : r[col] === value));
       return builder;
     },
     or() {
@@ -397,4 +402,120 @@ test("appendBonusGoalToBoardProfile: intet 1yr-board -> no-op uden kast", async 
   });
   assert.equal(result.written, false);
   assert.equal(result.reason, "no_board_profile");
+});
+
+test("#6773 (Codex P1): samtidigt skriv mellem læs og skriv taber ikke det andet mål (optimistisk lås)", async () => {
+  const tables = baseTables();
+  tables.board_mandates[0].updated_at = "2026-10-01T00:00:00Z";
+  const base = makeSupabase(tables);
+  let interfered = false;
+  let reads = 0;
+  // Efterligner reparations-scriptet: lige efter vores første læsning flytter det
+  // et bonusmål ind og bumper updated_at, FØR vores skriv rammer.
+  const supabase = {
+    from(table) {
+      const api = base.from(table);
+      if (table !== "board_mandates") return api;
+      return {
+        select: (...args) => {
+          const b = api.select(...args);
+          const orig = b.maybeSingle;
+          b.maybeSingle = async () => {
+            reads += 1;
+            const raw = await orig();
+            // Som PostgREST: kalderen får en KOPI, ikke selve rækken.
+            const res = { ...raw, data: raw.data ? structuredClone(raw.data) : raw.data };
+            if (!interfered) {
+              interfered = true;
+              const row = tables.board_mandates[0];
+              row.goals = [...row.goals, { type: "migrated_goal", bonus_offer_id: "other-offer" }];
+              row.updated_at = "2026-10-18T12:00:00Z";
+            }
+            return res;
+          };
+          return b;
+        },
+        update: (patch) => api.update(patch),
+      };
+    },
+  };
+
+  const result = await appendBonusGoalToActiveMandate({
+    supabase,
+    teamId: TEAM_ID,
+    goal: buildBonusExtraGoal({ extraGoal: EXTRA_GOAL, offerId: OFFER_ID }),
+    offerId: OFFER_ID,
+  });
+
+  assert.equal(result.written, true);
+  const goals = tables.board_mandates[0].goals;
+  assert.ok(goals.some((g) => g.type === "migrated_goal"), "det samtidigt flyttede mål må ikke forsvinde");
+  assert.ok(goals.some((g) => g.bonus_offer_id === OFFER_ID), "vores eget mål er skrevet");
+  assert.ok(reads >= 2, "kollisionen skal give en ny læsning");
+});
+
+test("#6773: tabes låsen 3 gange, kastes der med hold og tilbud i beskeden", async () => {
+  const tables = baseTables();
+  tables.board_mandates[0].updated_at = "2026-10-01T00:00:00Z";
+  const base = makeSupabase(tables);
+  let n = 0;
+  const supabase = {
+    from(table) {
+      const api = base.from(table);
+      if (table !== "board_mandates") return api;
+      return {
+        select: (...args) => {
+          const b = api.select(...args);
+          const orig = b.maybeSingle;
+          b.maybeSingle = async () => {
+            const raw = await orig();
+            const res = { ...raw, data: raw.data ? structuredClone(raw.data) : raw.data };
+            n += 1;
+            tables.board_mandates[0].updated_at = `2026-10-18T12:00:0${n}Z`; // altid en ny skriver imellem
+            return res;
+          };
+          return b;
+        },
+        update: (patch) => api.update(patch),
+      };
+    },
+  };
+  await assert.rejects(
+    appendBonusGoalToActiveMandate({
+      supabase,
+      teamId: TEAM_ID,
+      goal: buildBonusExtraGoal({ extraGoal: EXTRA_GOAL, offerId: OFFER_ID }),
+      offerId: OFFER_ID,
+    }),
+    (err) => err.message.includes(TEAM_ID) && err.message.includes(String(OFFER_ID)),
+  );
+  assert.equal(n, 3);
+});
+
+test("#6780 (Codex P2): to aktive saesoner under skiftet → bonusmaalet havner paa den NYESTE saesons mandat", async () => {
+  const tables = baseTables();
+  tables.seasons = [
+    { id: "s3", number: 3, status: "active", start_date: "2026-07-31T00:00:00Z" },
+    { id: "s4", number: 4, status: "active", start_date: "2026-09-27T00:00:00Z" },
+  ];
+  tables.board_mandates = [
+    { id: "old", team_id: TEAM_ID, season_number: 3, status: "active", signed_at: "2026-08-01T00:00:00Z", goals: [] },
+    { id: "new", team_id: TEAM_ID, season_number: 4, status: "active", signed_at: "2026-09-28T00:00:00Z", goals: [] },
+  ];
+  const supabase = makeSupabase(tables);
+  const result = await appendBonusGoalToActiveMandate({
+    supabase, teamId: TEAM_ID, goal: buildBonusExtraGoal({ extraGoal: EXTRA_GOAL, offerId: OFFER_ID }), offerId: OFFER_ID,
+  });
+  assert.equal(result.mandateId, "new");
+  assert.equal(tables.board_mandates.find((m) => m.id === "old").goals.length, 0);
+});
+
+test("#6780 (Codex P1 runde 3): laase-tokenet rykker altid frem, ogsaa i samme millisekund", () => {
+  const old = "2026-10-18T12:00:00.000Z";
+  const same = Date.parse(old);
+  assert.equal(nextMandateLockToken(old, same), "2026-10-18T12:00:00.001Z");
+  assert.equal(nextMandateLockToken(old, same - 5000), "2026-10-18T12:00:00.001Z", "uret bagud: stadig fremad");
+  assert.equal(nextMandateLockToken(old, same + 10), "2026-10-18T12:00:00.010Z");
+  assert.equal(nextMandateLockToken(null, same), old);
+  assert.notEqual(nextMandateLockToken("2026-10-18T12:00:00.000456+00:00", same), "2026-10-18T12:00:00.000456+00:00");
 });

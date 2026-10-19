@@ -396,7 +396,7 @@ export default function AdminUsersTab() {
                         <button
                           onClick={() => handleDeleteUser(u.id, u.username, isTestAccount)}
                           disabled={loading[`del_user_${u.id}`]}
-                          className="text-xs px-2 py-1 bg-cz-danger-bg text-red-600 border border-cz-danger/30 rounded hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
+                          className="text-xs px-2 py-1 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
                           {loading[`del_user_${u.id}`] ? "..." : "Slet"}
                         </button>
                       </div>

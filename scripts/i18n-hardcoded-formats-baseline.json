@@ -1,6 +1,6 @@
 {
   "$comment": "Kendte hardcodede format-fund (ratchet, maa kun skrumpe). Genereret af scripts/i18n-check-hardcoded-formats.mjs --update-baseline. Refs #6785. Nye fund maa IKKE tilfoejes her: fix dem via lib/intl.js eller lib/intlLocale.ts.",
-  "total": 27,
+  "total": 26,
   "files": {
     "frontend/src/components/race/FinalKilometrePlayback.jsx": [
       "display-toFixed|if (m >= 1000) return t(\"detail.finalKm.distanceKm\", { value: (m / 1000).toFixed(1) });"
@@ -60,9 +60,6 @@
       "percent-toFixed|<p className=\"text-cz-2 font-mono text-xs\">{(loan.interest_rate * 100).toFixed(0)}%</p>",
       "percent-toFixed|<td className=\"px-3 py-2 text-end text-cz-2\">{(c.interest_rate_pct * 100).toFixed(0)}%</td>",
       "percent-toFixed|<td className=\"px-3 py-2 text-end text-cz-2\">{(c.origination_fee_pct * 100).toFixed(0)}%</td>"
-    ],
-    "frontend/src/pages/PatchNotesPage.jsx": [
-      "locale-literal|return d.toLocaleDateString(lang === \"da\" ? \"da-DK\" : \"en-GB\", {"
     ],
     "frontend/src/pages/PrivacyPolicyPage.jsx": [
       "locale-literal|? new Date(consent.updated_at).toLocaleString(\"en-GB\")"

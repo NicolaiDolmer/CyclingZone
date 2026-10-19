@@ -1,0 +1,370 @@
+{
+  "page": {
+    "title": "Financiën",
+    "subtitle": "Saldo, leningen en transactiegeschiedenis",
+    "seasonReport": "Seizoensrapport",
+    "loadingAria": "Financiën laden"
+  },
+  "tabs": {
+    "overview": "Overzicht",
+    "loans": "Leningen",
+    "history": "Geschiedenis",
+    "sponsors": "Sponsor",
+    "seasonSwitch": "Seizoenswissel"
+  },
+  "loanSummary": {
+    "active": "{count, plural, one {1 actieve lening} other {# actieve leningen}}",
+    "owed": "{value} CZ$ resterend",
+    "none": "Geen actieve leningen",
+    "view": "Leningen beheren"
+  },
+  "history": {
+    "interestSplit": "Rente {interest} CZ$ · Hoofdsom {principal} CZ$",
+    "seasonPicker": "Seizoen",
+    "allSeasons": "Alle seizoenen",
+    "option": "Seizoen {number}",
+    "optionActive": "Seizoen {number} (lopend)",
+    "categoryFilterAria": "Transacties filteren op categorie",
+    "category": {
+      "all": "Alle",
+      "salary": "Salarissen",
+      "prizes": "Prijzen",
+      "loans": "Leningen",
+      "transfers": "Transfers & veilingen",
+      "sponsor": "Sponsor",
+      "other": "Overig"
+    },
+    "loadMore": "Meer tonen",
+    "loadingMore": "Laden...",
+    "txLoadError": "De transacties konden niet worden geladen. Probeer het opnieuw."
+  },
+  "loadError": {
+    "message": "Je financiën konden niet worden geladen. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw"
+  },
+  "balance": {
+    "label": "Saldo",
+    "division": "Divisie {division}",
+    "available": "{value} CZ$ beschikbaar",
+    "lockedInBids": "{value} CZ$ vast in biedingen"
+  },
+  "debt": {
+    "label": "Totale schuld",
+    "ceiling": "Plafond: {value} CZ$",
+    "headroom": "Ruimte onder het plafond: {value} CZ$",
+    "accruedInterest": "Incl. {value} CZ$ opgebouwde rente"
+  },
+  "prize": {
+    "label": "Prijzengeld (seizoen {season})",
+    "labelNoSeason": "Prijzengeld",
+    "raceCount": "{count, plural, one {1 koers} other {# koersen}}",
+    "allSeasons": "alle seizoenen: {amount} CZ$"
+  },
+  "prizeList": {
+    "title": "Koersprijzen",
+    "fallbackName": "Prijzengeld",
+    "viewRace": "Koers bekijken",
+    "header": {
+      "race": "Koers",
+      "date": "Datum",
+      "amount": "Prijs"
+    }
+  },
+  "loans": {
+    "types": {
+      "short": "Korte lening",
+      "long": "Lange lening",
+      "emergency": "Noodlening"
+    },
+    "active": {
+      "title": "Actieve leningen",
+      "empty": "Geen actieve leningen",
+      "createdAt": "Afgesloten {when}",
+      "remaining": "resterend",
+      "principal": "Hoofdsom",
+      "interestPerSeason": "Rente/seizoen",
+      "seasonsRemaining": "Seizoenen te gaan",
+      "accruedInterest": "Opgebouwde rente",
+      "startRepay": "Aflossing betalen",
+      "startRepayBlocked": "Er valt nu niets af te lossen: je beschikbare saldo staat vast in actieve biedingen.",
+      "startRepayMaxPlaceholder": "Max. {value}",
+      "repayPlaceholder": "0",
+      "repayBtn": "Betalen",
+      "repayingBtn": "...",
+      "cancelRepayAria": "Annuleren"
+    },
+    "take": {
+      "title": "Een lening afsluiten",
+      "noConfig": "Geen leningconfiguratie beschikbaar voor Divisie {division}",
+      "typeLabel": "Leningtype",
+      "amountLabel": "Bedrag (CZ$)",
+      "amountPlaceholder": "bijv. 500",
+      "feeLabel": "Kosten ({pct}%)",
+      "feeValue": "{value} CZ$",
+      "interestLabel": "Rente/seizoen",
+      "interestValue": "{pct}%",
+      "totalLabel": "Totale terugbetaling",
+      "totalValue": "{value} CZ$",
+      "maxBorrowable": "Maximale lening nu: {value} CZ$",
+      "maxBorrowableDetail": "De kosten van {fee} CZ$ worden bij je schuld opgeteld, zodat die {total} CZ$ van het plafond van {ceiling} CZ$ bereikt.",
+      "useMax": "Maximum gebruiken",
+      "maxZero": "Geen ruimte voor een nieuwe lening. Je schuld zit op het plafond van de divisie van {ceiling} CZ$.",
+      "exceedsMax": "Hiermee kom je boven het schuldenplafond, omdat de kosten meetellen. Maximale lening nu: {value} CZ$.",
+      "costPerSeason": "Rente volgend seizoen als je niets aflost: {interest} CZ$ -> de schuld zou {projected} CZ$ bereiken",
+      "submit": "Lening afsluiten",
+      "processing": "Verwerken..."
+    },
+    "confirmModal": {
+      "title": "Grote lening bevestigen",
+      "body": "Je staat op het punt <strong>{principal} CZ$</strong> te lenen plus <strong>{fee} CZ$</strong> kosten. Je totale schuld wordt <strong>{newTotalDebt} CZ$</strong>, {pct}% van het schuldenplafond van {ceiling} CZ$ voor jouw divisie.",
+      "interestForecast": "Als je niets aflost, komt alleen al de rente van volgend seizoen er <strong>{interest} CZ$</strong> bij, waardoor je schuld op <strong>{projected} CZ$</strong> uitkomt.",
+      "ceilingWarning": "Dat is alleen al door de rente boven het plafond van je divisie. Als je er bij de volgende seizoenswissel nog boven zit, bevriest het bestuur transfers en kan het renners van je dwangmatig verkopen om het gat te dichten.",
+      "question": "Deze lening toch afsluiten?",
+      "confirm": "Lening afsluiten"
+    },
+    "terms": {
+      "title": "Leningvoorwaarden, Divisie {division}",
+      "headers": {
+        "type": "Type",
+        "fee": "Kosten",
+        "interest": "Rente/seizoen",
+        "seasons": "Seizoenen",
+        "debtCeiling": "Schuldenplafond"
+      }
+    }
+  },
+  "transactions": {
+    "history": {
+      "title": "Transactiegeschiedenis",
+      "empty": "Nog geen transacties"
+    },
+    "type": {
+      "sponsor": "Sponsorinkomsten",
+      "salary": "Salarissen",
+      "transfer_out": "Transfer (gekocht)",
+      "transfer_in": "Transfer (verkocht)",
+      "loan_received": "Lening ontvangen",
+      "loan_repayment": "Leningaflossing",
+      "loan_interest": "Leningrente",
+      "emergency_loan": "Noodlening",
+      "prize": "Prijzengeld",
+      "bonus": "Divisiebonus",
+      "admin_adjustment": "Aanpassing door beheerder",
+      "interest": "Rente",
+      "academy_signing": "Academiecontract",
+      "academy_drift": "Academieonderhoud",
+      "facility_upkeep": "Faciliteitenonderhoud",
+      "staff_salary": "Stafsalarissen",
+      "parachute": "Degradatieparachute",
+      "sponsor_race_day": "Sponsorinkomsten per etappe",
+      "sponsor_signing_bonus": "Tekenbonus sponsor",
+      "sponsor_objective_bonus": "Doelbonus sponsor",
+      "sponsor_result_bonus": "Resultaatbonus sponsor",
+      "facility_purchase": "Faciliteit opgewaardeerd",
+      "staff_severance": "Ontslagvergoeding staf",
+      "upkeep": "Onderhoud",
+      "travel_staff": "Reis & staf",
+      "scout_travel": "Reizen van de scout",
+      "auto_squad_purchase": "Automatische selectieaankoop",
+      "auto_squad_sale": "Automatische selectieverkoop",
+      "forced_debt_sale": "Gedwongen verkoop (schuldenplafond)",
+      "squad_violation_fine": "Boete voor selectiegrootte",
+      "starting_budget": "Startbudget",
+      "division_adjustment": "Divisieaanpassing",
+      "sponsor_division_correction_clawback": "Sponsorcorrectie (terugbetaling)"
+    }
+  },
+  "timeAgo": {
+    "unknown": "Onbekend",
+    "now": "Zojuist",
+    "minutes": "{m}m geleden",
+    "hours": "{h}u geleden",
+    "days": "{d}d geleden"
+  },
+  "msg": {
+    "loanCreated": "Lening van {amount} CZ$ aangemaakt",
+    "loanRepaidFull": "Lening volledig afgelost!",
+    "loanRepaidPartial": "{paid} CZ$ betaald, {remaining} CZ$ resterend",
+    "errorPrefix": ""
+  },
+  "tour": {
+    "balance": {
+      "title": "Je saldo en cashflow",
+      "body": "Het saldo verandert door sponsor (inkomsten bij de seizoensstart), salarissen (betaald aan het begin van het volgende seizoen nadat de sponsor is binnengekomen), transfers en prijzengeld (doorlopend). Rode getallen betekenen een negatief saldo, en het noodleningmechanisme springt bij de volgende seizoensstart in als sponsor en saldo salaris en rente niet kunnen dekken."
+    },
+    "debtCeiling": {
+      "title": "Schuldenplafond per divisie",
+      "body": "Elke divisie heeft een plafond op de totale schuld (D1 1.200K · D2 900K · D3 600K). Zodra het plafond is bereikt, worden nieuwe leningen geblokkeerd, en het bestuur straft ook overbesteding af bij de seizoensevaluatie."
+    },
+    "txHistory": {
+      "title": "Volg de cashflow",
+      "body": "Sponsor en salaris zijn eenmalig per seizoen (beide bij de seizoensstart: eerst de sponsor, dan het salaris), terwijl prijzengeld en transfers doorlopend binnenkomen. Hier zie je elke transactie. Gebruik het om te volgen of de financiën de goede kant op gaan."
+    }
+  },
+  "hint": {
+    "title": "Hoe je financiën werken",
+    "subtitle": "Vier inkomsten- en uitgavenstromen bepalen je saldo. Begrijp ze, dan kun je kiezen tussen sport, groei en schuld.",
+    "dismissAria": "Verbergen",
+    "sponsor": {
+      "title": "Sponsorinkomsten",
+      "before": "Geschaald per divisie (D1 600.000 · D2 400.000 · D3 340.000 CZ$) per seizoen × je ",
+      "linkText": "bestuursmodifier",
+      "after": ". Als eenmalig bedrag betaald bij de seizoensstart."
+    },
+    "salary": {
+      "title": "Rennerssalarissen",
+      "body": "Het loon van een renner is de prijs van wat hij dit seizoen levert, niet wat hij op de markt waard is. Het is een vast aandeel van zijn huidige productiewaarde, voor elk team in elke divisie hetzelfde aandeel, dus een betere renner kost altijd meer. Lonen worden vastgezet wanneer je tekent of verlengt, dus het loon van een renner beweegt daarna niet mee met zijn marktwaarde. Als eenmalig bedrag afgeschreven aan het begin van het volgende seizoen, direct nadat de sponsor is binnengekomen."
+    },
+    "debt": {
+      "title": "Schuldenplafond per divisie",
+      "body": "D1 1.200K · D2 900K · D3 600K. Overschrijd je het plafond, dan worden nieuwe leningen geblokkeerd en straft het bestuur overbesteding af."
+    },
+    "loans": {
+      "title": "Leningen, kort tegenover lang",
+      "body": "Korte lening: lage kosten, snelle terugbetaling. Lange lening: een groter bedrag over meerdere seizoenen. Gebruik ze voor transferpieken, niet voor gaten in de exploitatie."
+    },
+    "showTour": "Laat me rondkijken",
+    "skip": "Overslaan"
+  },
+  "seasonSwitch": {
+    "loading": "De afrekening van de seizoenswissel laden…",
+    "receipt": {
+      "title": "Afrekening seizoen {current} -> {next}",
+      "subtitle": "Wat er met je saldo gebeurt wanneer de boeken sluiten en seizoen {next} begint, in dezelfde volgorde waarin het spel het echt in rekening brengt.",
+      "balanceAfter": "Saldo: {value} CZ$",
+      "step": {
+        "books_close": {
+          "label": "Boeken sluiten",
+          "detail": "Je saldo zoals het nu staat, meegenomen in de wissel."
+        },
+        "sponsor": {
+          "label": "Sponsor komt binnen",
+          "detail": "Basis {base} + prestatiebonus {variable} op basis van de plaats/punten van vorig seizoen, samen bijgeschreven als één betaling bij de seizoensstart."
+        },
+        "loan_interest": {
+          "label": "Leningrente",
+          "detail": "Rente over de openstaande schuld van je actieve leningen, berekend direct nadat de sponsorbetaling is binnengekomen. Wordt bij de lening zelf opgeteld, niet van je saldo afgeschreven."
+        },
+        "salary": {
+          "label": "Salarissen voor seizoen {next} worden in rekening gebracht",
+          "detail": "Opnieuw berekend volgens de regels van seizoen {next} op basis van de huidige productiewaarde van elke renner op de dag van de wissel, niet de vastgezette contractgetallen van vorig seizoen."
+        },
+        "academy_drift": {
+          "label": "Academieonderhoud",
+          "detail": "Onderhoudskosten bij de seizoensstart voor je academieplekken."
+        },
+        "upkeep": {
+          "label": "Divisieonderhoud",
+          "detail": "Vaste kosten bepaald door je divisie, in rekening gebracht bij de seizoensstart."
+        },
+        "facility_upkeep": {
+          "label": "Faciliteitenonderhoud",
+          "detail": "Onderhoud bij de seizoensstart voor de faciliteitssporen die je hebt gebouwd."
+        },
+        "staff_salary": {
+          "label": "Stafsalarissen",
+          "detail": "Salarissen bij de seizoensstart voor de staf die je hebt aangenomen."
+        },
+        "start_s3": {
+          "label": "Je begint volgend seizoen met",
+          "detail": "Je saldo na alle kosten bij de seizoensstart hierboven."
+        }
+      }
+    },
+    "footnote": "Voorbeeld van de afrekening, geen garantie. Prijzengeld en sponsorinkomsten per etappe zijn niet meegeteld, omdat ze afhangen van koersen die nog niet zijn gereden, en ook niets wat afhankelijk is van omstandigheden, zoals rente op noodleningen als je saldo negatief wordt, of een gedwongen verkoop als je schuld het plafond overschrijdt. Reizen van de scout, transfers, faciliteitenaankopen, stafwijzigingen en academiecontracten zijn evenmin meegeteld, want niets daarvan is vooraf bekend.",
+    "footnoteLink": "Wat is er precies bij inbegrepen?",
+    "salaryTable": {
+      "title": "Salarissen: huidig contract tegenover volgend seizoen",
+      "subtitle": "Het vastgezette contractsalaris van elke gecontracteerde renner naast wat de formule van seizoen {next} hem vandaag zou prijzen.",
+      "empty": "Geen renners onder contract.",
+      "header": {
+        "rider": "Renner",
+        "contract": "Contract (S{current})",
+        "projection": "Prognose S{next}",
+        "delta": "Verandering"
+      },
+      "total": "Totaal",
+      "viewAll": "Alle {count} renners bekijken",
+      "showLess": "Minder tonen"
+    }
+  },
+  "report": {
+    "season": "Seizoen {n}",
+    "livePreview": " · live voorbeeld",
+    "cashflowOverview": "Cashflowoverzicht",
+    "ongoing": " – lopend",
+    "netCashflow": "Netto cashflow",
+    "transactionCount": "{count} transacties",
+    "income": "Inkomsten",
+    "expense": "Uitgaven",
+    "nonCashLoanInterest": "Opgebouwde rente op schuld (niet-contant, niet in het netto meegeteld)",
+    "total": "Totaal",
+    "activeLoans": "Actieve leningen",
+    "noActiveLoans": "Geen actieve leningen.",
+    "loanType": "Type",
+    "loanRemaining": "Resterende schuld",
+    "loanInterest": "Rente",
+    "loanSeasons": "Seizoenen",
+    "loanNextInterest": "Rente volgend seizoen",
+    "loanAccruedInterest": "Opgebouwde rente",
+    "loanShort": "Korte lening",
+    "loanLong": "Lange lening",
+    "loanEmergency": "Noodlening",
+    "mustLogin": "Je moet ingelogd zijn.",
+    "errorStatus": "Fout {status}",
+    "loadError": "Het rapport kon niet worden geladen",
+    "back": "Terug",
+    "title": "Financieel rapport · seizoen {n}",
+    "adminView": " · beheerdersweergave",
+    "donutIncomeTitle": "Inkomsten per bron",
+    "donutExpenseTitle": "Uitgaven per categorie",
+    "donutIncomeEmpty": "Dit seizoen zijn geen inkomsten geregistreerd.",
+    "donutExpenseEmpty": "Dit seizoen zijn geen uitgaven geregistreerd.",
+    "topInTitle": "Top 3 inkomsten",
+    "topOutTitle": "Top 3 uitgaven",
+    "topInEmpty": "Geen inkomsten geregistreerd.",
+    "topOutEmpty": "Geen uitgaven geregistreerd.",
+    "sponsorTitle": "Curve van de sponsormodifier",
+    "sponsorBody": "Beschikbaar vanaf seizoen 2. Vereist de geschiedenis van het bestuursplan van minstens één afgesloten seizoen.",
+    "reasonCode": {
+      "season_start_sponsor": "Sponsor",
+      "season_start_upkeep": "Onderhoud",
+      "race_day_travel_staff": "Reis & staf",
+      "season_start_parachute": "Degradatieparachute",
+      "season_start_academy_drift": "Academieonderhoud",
+      "season_end_salary": "Salarissen",
+      "season_end_division_bonus": "Divisiebonus",
+      "season_end_negative_interest": "Negatieve rente",
+      "season_end_loan_interest": "Leningrente",
+      "starting_budget": "Startbudget",
+      "race_prize_payout": "Prijzengeld",
+      "auction_winner_payment": "Veilingaankoop",
+      "auction_seller_payout": "Veilingverkoop",
+      "auction_guaranteed_bank_sale": "Door de bank gegarandeerde verkoop",
+      "intake_expiry_auction_compensation": "Compensatie bij verlopen instroom",
+      "transfer_purchase": "Transferaankoop",
+      "transfer_sale": "Transferverkoop",
+      "swap_cash_delta": "Ruil (contant verschil)",
+      "sponsor_race_day": "Sponsor (per etappe)",
+      "rider_release_buyout": "Vrijgavekosten",
+      "loan_fee_paid": "Betaalde uitleenvergoeding",
+      "loan_fee_received": "Ontvangen uitleenvergoeding",
+      "loan_fee_refunded": "Terugbetaalde uitleenvergoeding",
+      "loan_principal_received": "Lening afgesloten",
+      "loan_repayment": "Leningaflossing",
+      "loan_buyout": "Koopoptie uitgeoefend",
+      "loan_origination_fee": "Afsluitkosten lening",
+      "emergency_loan_received": "Noodlening",
+      "squad_auto_purchase": "Gedwongen renneraankoop",
+      "squad_auto_sale": "Gedwongen rennersverkoop",
+      "squad_violation_fine": "Boete voor selectiesamenstelling",
+      "board_bonus_accepted": "Bestuursbonus",
+      "admin_balance_adjustment": "Aanpassing door beheerder",
+      "admin_force_prize": "Prijs toegekend door beheerder",
+      "admin_beta_reset": "Beta-reset",
+      "facility_purchase": "Faciliteitenaankopen",
+      "scout_travel": "Reizen van de scout",
+      "unknown": "Overig"
+    }
+  }
+}

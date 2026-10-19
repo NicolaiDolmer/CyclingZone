@@ -24,6 +24,18 @@ name: Deploy verify
 # Uden token bruges den nyeste GitHub-deployment-status. Smoke-test kører
 # kun efter result=success, aldrig efter en afsluttet pending-observation, uanset
 # hvilken kilde der gav grønt.
+#
+# Jobs (#6859, ejer 18/10):
+#   release        "Deploy live + smoke" — deploy-polling + smoke. Merge-køen
+#                  (scripts/merge-queue.ps1) venter KUN på dette job.
+#   cron-proof     "Cron proof (non-blocking)" — needs: release. Beviser at de
+#                  berørte cron-jobs tikker efter deployet. Rødt = alarm, ikke
+#                  et stop for køen.
+#   release-checks "Release checks" — needs: release. CDN-headers, asset-miss,
+#                  carry-forward, Sentry m.fl. Kort; et rødt resultat stopper
+#                  køen før NÆSTE merge (som før #6487).
+#   report         "Report" — samler udfaldet i én PR-kommentar og alarmerer
+#                  Discord-ops når cron-beviset eller release-tjekkene er røde.
 
 on:
   push:
@@ -49,13 +61,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify:
+  # #6859: the only job the merge queue waits for. It ends right after smoke
+  # (plus PR comments), so its job-level conclusion is the release signal; the
+  # queue never has to read step states of a still-running job.
+  release:
+    name: Deploy live + smoke
     runs-on: ubuntu-latest
-    # 40 min deployment polling + up to ~48 min short-cadence proof (Railway
-    # drain + 30 min cadence + margin) + probes. scripts/merge-queue.ps1's
-    # -DeployVerifyTimeoutMinutes must stay above this (asserted in
-    # scripts/merge-queue-deploy-pending.test.mjs, #6318).
-    timeout-minutes: 100
+    # 40 min deployment polling + smoke (<= 55 s) + comments.
+    # scripts/merge-queue.ps1's -DeployVerifyTimeoutMinutes must stay above this
+    # (asserted in scripts/merge-queue-deploy-pending.test.mjs, #6318).
+    timeout-minutes: 50
+    outputs:
+      sha: ${{ steps.pr.outputs.sha }}
+      number: ${{ steps.pr.outputs.number }}
+      need_vercel: ${{ steps.required.outputs.need_vercel }}
+      affected_slugs: ${{ steps.required.outputs.affected_slugs }}
+      result: ${{ steps.deployments.outputs.result }}
+      cron_since: ${{ steps.deployments.outputs.cron_since }}
+      vercel: ${{ steps.deployments.outputs.vercel }}
+      # #6859: the SHA whose Vercel build is live (target or a covering newer main SHA).
+      vercel_sha: ${{ steps.deployments.outputs.vercel_sha }}
+      railway: ${{ steps.deployments.outputs.railway }}
     steps:
       # #5424: flyttet hertil (var før "Wait for Vercel + Railway
       # deployments", se den bevarede begrundelse ved den næste brug af
@@ -221,8 +247,11 @@ jobs:
           # cycling-zone-marketing also posts vercel[bot] deployments for the SHA.
           VERCEL_ENV='Production – cycling-zone'
           CRON_SINCE=""
+          ROUND=0
           while [[ "$(date +%s)" -lt "$DEADLINE" ]]; do
             DEPLOYMENTS=$(gh api "repos/${{ github.repository }}/deployments?sha=$SHA&per_page=20")
+            # #6859: the SHA whose Vercel build is live (this SHA or a covering one).
+            VERCEL_SHA="$SHA"
             VERCEL_OK=false
             RAILWAY_OK=false
             # Refresh the boundary per observation round. Vercel may take much
@@ -244,7 +273,7 @@ jobs:
                 VERCEL_SEEN=true
                 if [[ "$STATE" == "success" ]]; then VERCEL_OK=true; fi
                 if [[ "$NEED_VERCEL" == "true" && ( "$STATE" == "failure" || "$STATE" == "error" ) ]]; then
-                  echo "result=failed" >> "$GITHUB_OUTPUT"
+                  { echo "result=failed"; echo "failed_target=vercel"; } >> "$GITHUB_OUTPUT"
                   echo "::error::Latest Vercel deployment failed"
                   exit 1
                 fi
@@ -253,7 +282,7 @@ jobs:
                 RAILWAY_SEEN=true
                 if [[ "$STATE" == "success" ]]; then RAILWAY_OK=true; fi
                 if [[ "$NEED_RAILWAY" == "true" && -z "${RAILWAY_TOKEN:-}" && ( "$STATE" == "failure" || "$STATE" == "error" ) ]]; then
-                  echo "result=failed" >> "$GITHUB_OUTPUT"
+                  { echo "result=failed"; echo "failed_target=railway"; } >> "$GITHUB_OUTPUT"
                   echo "::error::Latest Railway deployment failed"
                   exit 1
                 fi
@@ -281,6 +310,7 @@ jobs:
                 {
                   echo "railway=failed"
                   echo "result=failed"
+                  echo "failed_target=railway"
                   echo "vercel=$VERCEL_OK"
                 } >> "$GITHUB_OUTPUT"
                 exit 1
@@ -291,6 +321,33 @@ jobs:
                 RAILWAY_OK=false
               fi
             fi
+
+            # #6859 (ejer 18/10): Vercel/Railway bygger ikke altid hver main-SHA
+            # (18/10: Vercel sprang a9d79887 over; 20d7d5b9 indeholdt den, og
+            # verify ventede 40 min til timeout). Et READY production-deploy af en
+            # NYERE main-SHA der indeholder SHA'en (git merge-base --is-ancestor)
+            # er ogsaa bevis: scripts/ci/deploy-coverage.mjs. En fejlet build af
+            # SHA'en selv stopper stadig ovenfor. Railway med token daekkes i
+            # scripts/railway-deploy-status.mjs. Hvert 4. runde (~1 min) for at
+            # spare API-kvoten; runde 0 tjekker straks.
+            if (( ROUND % 4 == 0 )); then
+              if [[ "$NEED_VERCEL" == "true" && "$VERCEL_OK" == "false" ]]; then
+                COVER=$(node scripts/ci/deploy-coverage.mjs vercel "$SHA" || echo '{"covered":false}')
+                if [[ "$(jq -r '.covered == true' <<<"$COVER" 2>/dev/null)" == "true" ]]; then
+                  VERCEL_SHA=$(jq -r '.sha' <<<"$COVER")
+                  VERCEL_OK=true
+                  echo "  Vercel: READY production-deploy af nyere main-SHA ${VERCEL_SHA:0:7} indeholder ${SHA:0:7}"
+                fi
+              fi
+              if [[ "$NEED_RAILWAY" == "true" && -z "${RAILWAY_TOKEN:-}" && "$RAILWAY_OK" == "false" ]]; then
+                COVER=$(node scripts/ci/deploy-coverage.mjs railway "$SHA" || echo '{"covered":false}')
+                if [[ "$(jq -r '.covered == true' <<<"$COVER" 2>/dev/null)" == "true" ]]; then
+                  RAILWAY_OK=true
+                  echo "  Railway: READY deploy af nyere main-SHA $(jq -r '.sha[0:7]' <<<"$COVER") indeholder ${SHA:0:7}"
+                fi
+              fi
+            fi
+            ROUND=$((ROUND + 1))
 
             # Use a conservative UTC observation AFTER positive Railway READY,
             # never the workflow start time. The round satisfying all required
@@ -309,9 +366,12 @@ jobs:
               if [[ "$NEED_VERCEL" == "false" && "$VERCEL_OK" == "false" ]]; then
                 echo "Vercel ikke påkrævet (ingen frontend/-ændringer — Ignored Build Step skipper builden)"
                 echo "vercel=skipped (no frontend changes)" >> "$GITHUB_OUTPUT"
+              elif [[ "$VERCEL_SHA" != "$SHA" ]]; then
+                echo "vercel=success (covered by ${VERCEL_SHA:0:7})" >> "$GITHUB_OUTPUT"
               else
                 echo "vercel=success" >> "$GITHUB_OUTPUT"
               fi
+              echo "vercel_sha=$VERCEL_SHA" >> "$GITHUB_OUTPUT"
               if [[ "$NEED_RAILWAY" == "false" && "$RAILWAY_OK" == "false" ]]; then
                 echo "Railway ikke påkrævet (ingen backend/-ændringer)"
                 echo "railway=skipped (no backend changes)" >> "$GITHUB_OUTPUT"
@@ -375,26 +435,13 @@ jobs:
             exit 1
           fi
 
-      # Checkout skete tidligere frem til #5489 (kun her, "kun til cache-header-
-      # guarden") — flyttet op til før "Wait for Vercel + Railway deployments",
-      # fordi det trin nu også skal kunne køre scripts/railway-deploy-status.mjs,
-      # og siden #5424 helt op til jobbets første trin (se `Checkout` derover).
-      # Uden ARBEJDSTRÆET fejlede trinnet nedenfor med MODULE_NOT_FOUND på hvert
-      # eneste push siden 7/8 — dvs. cache-guarden fra #3484 har aldrig kørt,
-      # samtidig med at en permanent rød Deploy verify gjorde at ægte fejl
-      # druknede (#3565). Denne pointe gælder stadig — den tidligere checkout
-      # dækker den blot nu også.
-      # #6487: deploy + smoke er groenne, saa PR'en faar besked med det samme.
-      # Merge-koeen laeser samme tilstand ("released") via Jobs-API'et og
-      # frigiver koeen; cron-beviset og de oevrige release-tjek koerer videre i
-      # denne koersel, som opdaterer kommentaren (samme markoer) til sidst.
-      # Kun smoke (hoejst 55 s) og denne kommentar maa ligge mellem deploy og
-      # cron-trinnet: cron-scriptet kasserer tidsstempler fra sin foerste
-      # aflaesning, saa det skal starte foer graensen (READY + drain 150 s),
-      # ellers kan 1-min-jobs (margin 3 min) ikke naa at blive beviste.
+
+      # #6487/#6859: deploy + smoke er groenne, saa PR'en faar besked med det
+      # samme. Cron-beviset og release-tjekkene koerer videre i egne jobs;
+      # report-jobbet opdaterer kommentaren (samme markoer) til sidst.
       - name: Comment release verified, cron proof running
         if: success() && steps.deployments.outputs.result == 'success' && steps.pr.outputs.number != ''
-        # En fejlet kommentar maa aldrig koste cron-beviset.
+        # En fejlet kommentar maa aldrig koste release-signalet.
         continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -406,7 +453,7 @@ jobs:
           ## Deploy LIVE, cron-bevis koerer (${SHA:0:7})
 
           Deploy og smoke er groenne. Merge-koeen er frigivet.
-          Cron-beviset (berorte jobs tikker efter deployet) og de oevrige release-tjek koerer videre i [denne koersel]($RUN_URL), som opdaterer kommentaren her til sidst (cron-beviset tager hoejst ca. 50 min)."
+          Cron-beviset (berorte jobs tikker efter deployet) og release-tjekkene koerer videre i [denne koersel]($RUN_URL), som opdaterer kommentaren her til sidst (cron-beviset tager normalt hoejst ca. 50 min, og op til ca. 80 min hvis backend genstartede efter deployet). Et roedt cron-bevis alarmerer Discord-ops, men stopper ikke koeen."
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
           if [ -n "$COMMENT_ID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
@@ -414,43 +461,169 @@ jobs:
             gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
           fi
 
+      # #6859: explicit markers so the merge queue can name the failing deploy
+      # target through the Jobs API (step outputs are not readable there) and
+      # point out the guilty PR of a merge train.
+      - name: Failed target vercel
+        if: failure() && steps.deployments.outputs.failed_target == 'vercel'
+        run: echo "::error::Vercel deployment failed for this SHA."
+
+      - name: Failed target railway
+        if: failure() && steps.deployments.outputs.failed_target == 'railway'
+        run: echo "::error::Railway deployment failed for this SHA."
+
+      - name: Failed target smoke
+        if: failure() && steps.smoke.outputs.result == 'failure'
+        run: echo "::error::Smoke test against prod failed after a successful deployment."
+
+      - name: Comment pending on merged PR
+        if: success() && steps.deployments.outputs.result == 'pending' && steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          SHA: ${{ steps.pr.outputs.sha }}
+        run: |
+          BODY="<!-- deploy-verify:$SHA -->
+          ## Deploy afventer (${SHA:0:7})
+
+          Deployment er endnu ikke klar. Release er **ikke verificeret**; ingen smoke-kontrol eller succesmelding er lavet. Merge-koeen genkoerer samme workflow og venter paa naeste attempt."
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
+          else
+            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          fi
+
+      - name: Comment failure on merged PR
+        if: failure() && steps.pr.outputs.number != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.pr.outputs.number }}
+          SHA: ${{ steps.pr.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BACKEND_HEALTH: ${{ steps.smoke.outputs.backend_health }}
+          BACKEND_AUTH: ${{ steps.smoke.outputs.backend_auth }}
+          FRONTEND: ${{ steps.smoke.outputs.frontend }}
+          VERCEL: ${{ steps.deployments.outputs.vercel }}
+          RAILWAY: ${{ steps.deployments.outputs.railway }}
+        run: |
+          BODY="<!-- deploy-verify:$SHA -->
+          ❌ **Deploy-verify FEJLEDE** — \`${SHA:0:7}\` — [se log]($RUN_URL)
+          - Vercel: \`${VERCEL:-unknown}\`
+          - Railway: \`${RAILWAY:-unknown}\`
+          - Backend \`/health/ready\`: \`${BACKEND_HEALTH:-?}\` (forventet 200)
+          - Backend \`/api/auctions\`: \`${BACKEND_AUTH:-?}\` (forventet 401)
+          - Frontend: \`${FRONTEND:-?}\` (forventet 200)
+
+          **Deploy-/release-verifikation fejlede.** Se det konkrete fejlende trin. Pending rapporteres særskilt og bliver aldrig markeret verificeret."
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
+          if [ -n "$COMMENT_ID" ]; then
+            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
+          else
+            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          fi
+
+  # #6859 (ejer 18/10): the cron proof is its own job after the release and
+  # never gates the merge queue. A red proof alarms through the report job (PR
+  # comment + Discord ops). The first heartbeat snapshot is never proof, so the
+  # job must reach its first read soon after the boundary (READY + Railway
+  # drain): it needs no history and no install, only the target's files.
+  cron-proof:
+    name: Cron proof (non-blocking)
+    needs: release
+    if: needs.release.outputs.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    outputs:
+      state: ${{ steps.crons.outputs.state }}
+    steps:
+      - name: Checkout target SHA (shallow)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+
+      - name: Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
+
+      # Diagnostics only: a proof that starts long after READY can miss the
+      # post-boundary tick of a 1-minute job (margin 3 min) and turn red without
+      # a broken cron. Never changes the verdict.
+      - name: Cron proof start latency
+        env:
+          CRON_SINCE: ${{ needs.release.outputs.cron_since }}
+        run: |
+          SINCE=$(date -u -d "$CRON_SINCE" +%s 2>/dev/null || true)
+          if [[ -n "$SINCE" ]]; then
+            DELAY=$(( $(date -u +%s) - SINCE ))
+            echo "Cron proof starts ${DELAY}s after the READY observation."
+            echo "Cron-bevis startede ${DELAY} s efter READY-observationen." >> "$GITHUB_STEP_SUMMARY"
+            if (( DELAY > 300 )); then
+              echo "::warning::Cron proof started ${DELAY}s after READY; a red short-cadence result may come from the late start, not from a broken cron."
+            fi
+          fi
+
       - name: Verify affected cron check-ins
         id: crons
-        if: steps.deployments.outputs.result == 'success'
         # #6487: seneste deadline for et kort job (<= 30 min) er Railway-drain
-        # 2,5 + kadence 30 + margin 15 = 47,5 min; scriptet melder selv failed
-        # derefter. 50 min er kun et vaern mod et haengende kald.
-        timeout-minutes: 50
+        # 2,5 + kadence 30 + margin 15 = 47,5 min, plus hoejst 30 min hvis en
+        # boot-kohorte efter boundary flytter deadline (#6799,
+        # MAX_COHORT_SHIFT_SECONDS); scriptet melder selv failed derefter.
+        # 80 min er kun et vaern mod et haengende kald.
+        timeout-minutes: 80
         env:
-          AFFECTED_SLUGS: ${{ steps.required.outputs.affected_slugs }}
-          CRON_SINCE: ${{ steps.deployments.outputs.cron_since }}
+          AFFECTED_SLUGS: ${{ needs.release.outputs.affected_slugs }}
+          CRON_SINCE: ${{ needs.release.outputs.cron_since }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: |
           set -o pipefail
           node scripts/ci/cron-deploy-verification.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
-      # Explicit markers make successful-but-deferred runs distinguishable from
-      # verified releases through the attempt-specific Jobs API (#6318).
+      # Explicit markers make verified and deferred proofs distinguishable
+      # through the attempt-specific Jobs API (#6318).
       - name: Cron check-ins verified
-        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'verified'
+        if: steps.crons.outputs.state == 'verified'
         run: echo "Affected cron check-ins verified (or no affected monitored jobs)."
 
       - name: Cron check-ins deferred
-        if: steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'deferred'
+        if: steps.crons.outputs.state == 'deferred'
         run: echo "::notice::AFVENTER CHECK-IN for long cadences (> 30 min); short cadences verified. Non-blocking for the merge queue; see jobs and deadlines in summary."
+
+  # #6859: the release checks that used to sit after the cron proof. They are
+  # short, so they finish long before the proof; a red result stops the merge
+  # queue before its NEXT merge (scripts/merge-queue.ps1 Get-FailedHandedOffRuns).
+  release-checks:
+    name: Release checks
+    needs: release
+    if: needs.release.outputs.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout target SHA (shallow)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+
+      - name: Node 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 24
 
       # #6558: sitemap-URL'er til IndexNow efter frontend-deploy. Advisory: aldrig
       # et stop for koeen. No-op uden secret INDEXNOW_KEY.
       - name: Submit sitemap URLs to IndexNow (#6558)
-        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        if: needs.release.outputs.need_vercel == 'true'
         continue-on-error: true
         env:
           INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
         run: node scripts/seo/indexnow-submit.mjs
 
       - name: Verify CDN cache-headers (#2423 — edge-request-forbrug)
-        if: steps.deployments.outputs.result == 'success'
+        if: success()
         run: node scripts/check-cdn-cache-headers.mjs https://cyclingzone.org
 
       # #4545: enhedstesten i frontend/vercel.rewrites.test.js bevogter vores HENSIGT
@@ -459,7 +632,7 @@ jobs:
       # stå grøn mens spillerne rammer muren. Proben er kørt mod prod FØR fixet og
       # fejler dér (exit 1), så den er målt til at kunne bide.
       - name: Verify manglende asset fejler rent (#4545)
-        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        if: needs.release.outputs.need_vercel == 'true'
         run: |
           if node scripts/check-asset-miss-behaviour.mjs --base=https://cyclingzone.org; then
             echo "✅ **Asset-miss-probe: OK** — en manglende chunk giver 404, ikke en HTML-side." >> "$GITHUB_STEP_SUMMARY"
@@ -474,7 +647,7 @@ jobs:
       # rigtig type paa cyclingzone.org. 200 + text/html = SPA-rewriten = FEJL.
       # continue-on-error: et roedt trin er et signal til ejeren, ikke et stop.
       - name: Verify carry-forward af forrige releases assets (#5162)
-        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        if: needs.release.outputs.need_vercel == 'true'
         continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -506,7 +679,7 @@ jobs:
       # stopregel. Kun advisory: scriptet afslutter altid med exit 0 og skriver
       # selv til step-summary. Den haarde graense ligger i trinnet nedenfor.
       - name: Chunk-fejl pr. release, 72 t (#5162)
-        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        if: needs.release.outputs.need_vercel == 'true'
         continue-on-error: true
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
@@ -520,12 +693,13 @@ jobs:
         # at aktivere guarden mod stille source-map upload-fejl.
         # Kun relevant når Vercel faktisk byggede — backend-only commits har ingen
         # ny frontend-release, så en manglende bundle dér er forventet.
-        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        if: needs.release.outputs.need_vercel == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-          SHA: ${{ steps.pr.outputs.sha }}
+          # #6859: a covering newer deploy uploads its source maps under ITS SHA.
+          SHA: ${{ needs.release.outputs.vercel_sha || needs.release.outputs.sha }}
         run: |
           # Et skip skal kunne SES. Guarden stod "success" i tre måneder mens den i
           # virkeligheden aldrig kørte, fordi det tidlige exit 0 kun efterlod en
@@ -603,7 +777,7 @@ jobs:
       # katastrofalt galt (fx et deploy der serverer 404 paa alle chunks), og
       # DET skal stoppe koerslen.
       - name: Chunk-fejl-rate efter deploy (#4545)
-        if: steps.deployments.outputs.result == 'success' && steps.required.outputs.need_vercel == 'true'
+        if: needs.release.outputs.need_vercel == 'true'
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -654,7 +828,7 @@ jobs:
       # mod PostHog; eneste skrivning er retention.json i den private bucket.
       # Mangler secrets, springer scriptet selv over (gulvet holder listen).
       - name: Release-retention efter maalt klient-alder (#5162)
-        if: steps.deployments.outputs.result == 'success'
+        if: success()
         continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -663,48 +837,62 @@ jobs:
           POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
         run: node scripts/measure-client-release-age.mjs
 
-      - name: Comment success on merged PR
-        if: success() && steps.deployments.outputs.result == 'success' && steps.crons.outputs.state == 'verified' && steps.pr.outputs.number != ''
+
+  # #6859: one writer for the final PR comment (cron-proof and release-checks
+  # run in parallel and must not race on the same comment) plus the Discord-ops
+  # alarm for a red proof or red release checks. Not for a cancelled run.
+  report:
+    name: Report
+    needs: [release, cron-proof, release-checks]
+    if: ${{ !cancelled() && needs.release.result == 'success' && needs.release.outputs.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Comment final verdict on merged PR
+        if: needs.release.outputs.number != ''
+        # A failed comment must not turn the report job red; the alarm still runs.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ steps.pr.outputs.number }}
-          SHA: ${{ steps.pr.outputs.sha }}
-          VERCEL: ${{ steps.deployments.outputs.vercel }}
-          RAILWAY: ${{ steps.deployments.outputs.railway }}
+          PR: ${{ needs.release.outputs.number }}
+          SHA: ${{ needs.release.outputs.sha }}
+          VERCEL: ${{ needs.release.outputs.vercel }}
+          RAILWAY: ${{ needs.release.outputs.railway }}
+          CRON_SINCE: ${{ needs.release.outputs.cron_since }}
+          CRON: ${{ needs.cron-proof.result }}
+          CRON_STATE: ${{ needs.cron-proof.outputs.state }}
+          CHECKS: ${{ needs.release-checks.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          BODY="<!-- deploy-verify:$SHA -->
+          if [[ "$CRON" == "success" && "$CRON_STATE" == "verified" && "$CHECKS" == "success" ]]; then
+            BODY="<!-- deploy-verify:$SHA -->
           ✅ **Deploy verificeret LIVE** — \`${SHA:0:7}\`
           - Vercel deploy: ${VERCEL:-success}
           - Railway deploy: ${RAILWAY:-success}
           - Affected cron check-ins: verified (or no affected monitored jobs)
+          - Release checks: success
           - Backend \`/health/ready\` = 200 (DB-readiness med retry)
           - Backend \`/api/auctions\` (no auth) = 401 (auth gates virker)
           - Frontend root = 200
 
           Du kan trygt lukke telefonen — det er live."
-          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
-          if [ -n "$COMMENT_ID" ]; then
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
-          else
-            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
-          fi
-
-      - name: Comment deferred cron proof on merged PR
-        if: success() && steps.crons.outputs.state == 'deferred' && steps.pr.outputs.number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ steps.pr.outputs.number }}
-          SHA: ${{ steps.pr.outputs.sha }}
-          CRON_SINCE: ${{ steps.deployments.outputs.cron_since }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          BODY="<!-- deploy-verify:$SHA -->
+          elif [[ "$CRON" == "success" && "$CRON_STATE" == "deferred" && "$CHECKS" == "success" ]]; then
+            BODY="<!-- deploy-verify:$SHA -->
           ## AFVENTER CHECK-IN (${SHA:0:7})
 
           Railway er klar, smoke er groen, og alle berorte jobs med kort kadence (<= 30 min) har tikket efter deployet.
           Jobs med lang kadence (> 30 min) **afventer check-in** og er ikke bevist endnu.
           Boundary: $CRON_SINCE (+ Railway drain). [Jobs, sidste check-in og deadline]($RUN_URL).
           Merge-koeen fortsaetter; cron-heartbeat-vagten alarmerer hvis et langt job misser sin deadline."
+          else
+            BODY="<!-- deploy-verify:$SHA -->
+          ⚠️ **Deploy LIVE, men efterkontrollen er roed** — \`${SHA:0:7}\` — [se log]($RUN_URL)
+          - Deploy + smoke: groen (merge-koeen blev frigivet)
+          - Cron-bevis: \`${CRON:-unknown}\` (state: \`${CRON_STATE:-none}\`)
+          - Release checks: \`${CHECKS:-unknown}\`
+
+          Discord-ops er alarmeret. Et roedt cron-bevis stopper ikke koeen; roede release checks stopper koeen foer naeste merge."
+          fi
           COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
           if [ -n "$COMMENT_ID" ]; then
             gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
@@ -712,49 +900,26 @@ jobs:
             gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
           fi
 
-      - name: Comment pending on merged PR
-        if: success() && steps.deployments.outputs.result == 'pending' && steps.pr.outputs.number != ''
+      - name: Alarm Discord ops on red cron proof or release checks
+        # !cancelled(): a failed PR comment above must never suppress the alarm.
+        if: ${{ !cancelled() && (needs.cron-proof.result != 'success' || needs.release-checks.result != 'success') }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ steps.pr.outputs.number }}
-          SHA: ${{ steps.pr.outputs.sha }}
-        run: |
-          BODY="<!-- deploy-verify:$SHA -->
-          ## Deploy afventer (${SHA:0:7})
-
-          Deployment er endnu ikke klar. Release er **ikke verificeret**; ingen smoke-kontrol eller succesmelding er lavet. Merge-koeen genkoerer samme workflow og venter paa naeste attempt."
-          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
-          if [ -n "$COMMENT_ID" ]; then
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
-          else
-            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
-          fi
-
-      - name: Comment failure on merged PR
-        if: failure() && steps.pr.outputs.number != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ steps.pr.outputs.number }}
-          SHA: ${{ steps.pr.outputs.sha }}
+          DISCORD_OPS_WEBHOOK_URL: ${{ secrets.DISCORD_OPS_WEBHOOK_URL }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          PR: ${{ needs.release.outputs.number }}
+          SHA: ${{ needs.release.outputs.sha }}
+          CRON: ${{ needs.cron-proof.result }}
+          CHECKS: ${{ needs.release-checks.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          BACKEND_HEALTH: ${{ steps.smoke.outputs.backend_health }}
-          BACKEND_AUTH: ${{ steps.smoke.outputs.backend_auth }}
-          FRONTEND: ${{ steps.smoke.outputs.frontend }}
-          VERCEL: ${{ steps.deployments.outputs.vercel }}
-          RAILWAY: ${{ steps.deployments.outputs.railway }}
         run: |
-          BODY="<!-- deploy-verify:$SHA -->
-          ❌ **Deploy-verify FEJLEDE** — \`${SHA:0:7}\` — [se log]($RUN_URL)
-          - Vercel: \`${VERCEL:-unknown}\`
-          - Railway: \`${RAILWAY:-unknown}\`
-          - Backend \`/health/ready\`: \`${BACKEND_HEALTH:-?}\` (forventet 200)
-          - Backend \`/api/auctions\`: \`${BACKEND_AUTH:-?}\` (forventet 401)
-          - Frontend: \`${FRONTEND:-?}\` (forventet 200)
-
-          **Deploy-/release-verifikation fejlede.** Se det konkrete fejlende trin. Pending rapporteres særskilt og bliver aldrig markeret verificeret."
-          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/$PR/comments" --jq ".[] | select(.body | contains(\"<!-- deploy-verify:$SHA -->\")) | .id" | tail -n 1)
-          if [ -n "$COMMENT_ID" ]; then
-            gh api -X PATCH "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" -f body="$BODY"
-          else
-            gh pr comment "$PR" --repo "${{ github.repository }}" --body "$BODY"
+          WEBHOOK="${DISCORD_OPS_WEBHOOK_URL:-$DISCORD_WEBHOOK}"
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::Hverken DISCORD_OPS_WEBHOOK_URL eller DISCORD_WEBHOOK er sat; alarmen blev ikke sendt."
+            exit 0
           fi
+          REF="${SHA:0:7}"
+          [ -n "$PR" ] && REF="$REF (PR #$PR)"
+          MSG="⚠️ **Deploy verify: efterkontrol rød** for $REF. Deploy + smoke er grønne. Cron-bevis: $CRON, release checks: $CHECKS. Et rødt cron-bevis stopper ikke merge-køen; røde release checks stopper den før næste merge. $RUN_URL"
+          CODE=$(jq -n --arg content "$MSG" '{content: $content}' | curl -sS -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data @- "$WEBHOOK" || echo "000")
+          echo "Discord-alarm: HTTP $CODE"
+          [[ "$CODE" == 2* ]] || echo "::warning::Discord-alarmen kunne ikke sendes (HTTP $CODE)."

@@ -230,6 +230,10 @@ Alle puljer i en division kører stadig den samme kalender (#2276), så D4's lø
 
 ---
 
+### 1g. Dagligt etape-loft i scheduleren følger kalenderen ([#6764](https://github.com/NicolaiDolmer/CyclingZone/issues/6764), 18/10)
+
+`stageScheduler.js` kører højst `max(62, ceil(dagens planlagte etaper × 1,5))` scheduler-etaper pr. dansk døgn, for alle trupper tilsammen. 62 er gulvet (fuld seniorpyramide 41 + 50 %). "Planlagt" = `race_stage_schedule`-rækker med `scheduled_at` i døgnet [midnat, næste midnat), uden status-filter, så loftet ikke skrumper i løbet af dagen. Fejler tællingen, gælder gulvet (logget og sendt til Sentry én gang pr. døgn). Loftet er et værn mod en løbsk loop, ikke pacing: kalenderen bestemmer tempoet. Lasttesten (#6275) målte 57 planlagte etaper på de travleste dage allerede ved 1x.
+
 ## 2. Sæsonens rammer
 
 | Regel | Værdi | Låst | Kilde |
@@ -1242,6 +1246,28 @@ Det bruges på alle skrivestier (realisme-gen-trækket, dæknings-verifikationen
 > ✅ **`binding_span` er et INTERVAL `[min(game_day), max(game_day)]`, og det er TILSIGTET.** Ejer-direktiv 25/8 ([#4217](https://github.com/NicolaiDolmer/CyclingZone/issues/4217)): *"På en IRL dag, må en rytter gerne køre mere end et løb. På en løbsdag må en rytter ikke køre mere end et løb"* og *"de skal altså ikke kunne deltage i noget andet undervejs"*. Er du udtaget til et etapeløb, er du bundet indtil det er slut, også på pausedage. [#4173](https://github.com/NicolaiDolmer/CyclingZone/issues/4173) gjorde 24/8 bindingen til mængden af faktiske etape-dage; det åbnede en større fejl, hvor en rytter kunne forlade et etapeløb midt i og køre et andet løb i springet. Se `backend/lib/raceBinding.js:50-52`.
 >
 > ⚠ **Overlap-cap × startfelt er aldrig koblet til trupstørrelserne.** Kalenderen kræver i dag op til 29 ryttere på én dag i D1; kun 21 % af alle hold kan levere det. Se [#4174](https://github.com/NicolaiDolmer/CyclingZone/issues/4174).
+
+### 8b. Kalender-læsemodellens holdstatus ([#6514](https://github.com/NicolaiDolmer/CyclingZone/issues/6514))
+
+`backend/lib/raceCalendar.js` (`buildCalendarPayload`) giver hvert løb tre holdspecifikke felter, som kalender-kortet og status-prikken bruger bag flaget `race_library_v2` (registry: `race-library-v2`, flaget er off indtil ejeren flytter det):
+
+| Felt | Betydning | Kilde |
+|---|---|---|
+| `entered` | Holdet har en udtagelse til løbet | `race_entries` |
+| `withdrawn` | Holdet har meldt sig fra løbet; udtagelsen bevares, men holdet starter ikke ([#4306](https://github.com/NicolaiDolmer/CyclingZone/issues/4306)) | `race_withdrawals` |
+| `lineupFrozen` | Udtagelsen er låst: løbet er afviklet eller i gang (`status = completed` eller `stages_completed > 0`) | samme regel som `isRaceLineupFrozen` i `raceActiveGuard.js`, inlinet fordi modulet er rent |
+
+Felterne er ren visning: de ændrer hverken kalenderen, binding eller udtagelsesreglerne i §8. `lineupFrozen` må aldrig afvige fra `isRaceLineupFrozen`; ændres den ene, ændres den anden i samme PR.
+
+**Holdets egen pulje (`ownPoolId`, og dermed `isMine`) gælder den VISTE sæson ([#6875](https://github.com/NicolaiDolmer/CyclingZone/issues/6875), 18/10).** Kilden er `resolveTeamDivisionForSeason`, den samme som planlæggeren og boardet bruger:
+
+| Sæsonens status | Egen pulje | Hvorfor |
+|---|---|---|
+| `upcoming` | ingen (`divisionPending = true`) | op-/nedrykningen er ikke afgjort (#5405) |
+| `active` | holdets nuværende `league_division_id` | den nuværende pulje ER sæsonens |
+| `completed` | `season_standings.league_division_id` for holdet i den sæson | holdets nuværende division er en anden for de fleste (målt 18/10: 154/161 i S1, 201/219 i S2, 214/266 i S3) |
+
+Brug aldrig holdets nuværende division for en afsluttet sæson. Ellers viser kalenderen og løbskortet holdfit for løb, holdet aldrig kørte. `raceCalendar.routes.test.js` låser kilden.
 
 ---
 

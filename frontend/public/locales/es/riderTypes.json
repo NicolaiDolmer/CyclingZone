@@ -1,0 +1,42 @@
+{
+  "filter": {
+    "label": "Tipo de ciclista",
+    "all": "Todos los tipos"
+  },
+  "badge": {
+    "ariaLabel": "Tipo de ciclista: {primary} / {secondary}",
+    "ariaLabelSingle": "Tipo de ciclista: {primary}"
+  },
+  "natural": {
+    "label": "Natural",
+    "roleLabel": "Rol natural",
+    "filterAll": "Rol natural: todos",
+    "ariaLabel": "Rol natural: {primary} / {secondary}",
+    "ariaLabelSingle": "Rol natural: {primary}"
+  },
+  "bestRole": {
+    "label": "Mejor rol ahora",
+    "filterAll": "Mejor rol ahora: todos",
+    "title": "{role} es el rol en el que mejor puntúa ahora mismo. El número es su valoración como {role}."
+  },
+  "types": {
+    "sprinter": "Sprinter",
+    "tt": "Contrarrelojista",
+    "climber": "Escalador",
+    "puncheur": "Puncheur",
+    "brostensrytter": "Especialista en adoquines",
+    "baroudeur": "Baroudeur",
+    "rouleur": "Rouleur",
+    "gc": "Aspirante a la general"
+  },
+  "short": {
+    "sprinter": "Sprint",
+    "tt": "CRI",
+    "climber": "Monta",
+    "puncheur": "Punch",
+    "brostensrytter": "Adoq.",
+    "baroudeur": "Escap.",
+    "rouleur": "Rouleur",
+    "gc": "General"
+  }
+}

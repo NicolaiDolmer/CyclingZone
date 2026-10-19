@@ -1,0 +1,32 @@
+{
+  "title": "Contacto",
+  "subtitle": "¿Sin Discord? Envía comentarios, informa de un error o comparte una idea directamente con el desarrollador.",
+  "close": "Cerrar",
+  "field": {
+    "category": "Categoría",
+    "message": "Mensaje",
+    "messageHelper": "Te quedan {count} caracteres"
+  },
+  "category": {
+    "feedback": "Comentarios",
+    "bug": "Informe de error",
+    "idea": "Idea",
+    "fairplay": "Juego limpio / denunciar un fichaje",
+    "feedbackPlaceholder": "¿Qué tienes en mente?",
+    "bugPlaceholder": "¿Qué pasó? ¿Qué esperabas que pasara?",
+    "ideaPlaceholder": "¿Qué te gustaría ver en el juego?",
+    "fairplayPlaceholder": "¿Qué te pareció raro? Con un fichaje o un equipo me basta. Yo me encargo del resto."
+  },
+  "submit": "Enviar",
+  "sent": {
+    "text": "Gracias. Tu mensaje se ha enviado. Si necesita respuesta, la recibirás en tus notificaciones.",
+    "close": "Cerrar"
+  },
+  "error": {
+    "invalidCategory": "Elige primero una categoría.",
+    "messageRequired": "Escribe un mensaje antes de enviar.",
+    "messageTooLong": "Tu mensaje es demasiado largo. Mantenlo por debajo de 4000 caracteres.",
+    "rateLimited": "Ya has enviado varios mensajes. Inténtalo de nuevo dentro de un rato.",
+    "generic": "No se pudo enviar tu mensaje. Inténtalo de nuevo en un momento."
+  }
+}

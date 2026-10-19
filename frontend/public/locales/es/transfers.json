@@ -1,0 +1,345 @@
+{
+  "page": {
+    "title": "Fichajes",
+    "subtitle": "Negocia directamente con otros mánagers",
+    "subtitleWithBalance": "Negocia directamente con otros mánagers · Saldo {balance} CZ$",
+    "balance": "Saldo",
+    "loadingAria": "Cargando fichajes"
+  },
+  "tabs": {
+    "received": "Ofertas recibidas",
+    "sent": "Ofertas enviadas",
+    "archive": "Historial ({count})",
+    "market": "Mercado ({count})",
+    "trades": "Todas las operaciones"
+  },
+  "modes": {
+    "handle": "Por gestionar",
+    "negotiations": "Negociaciones",
+    "market": "Mercado",
+    "trades": "Todas las operaciones"
+  },
+  "tradeList": {
+    "tableLabel": "Todos los movimientos de ciclistas del juego, de más reciente a más antiguo",
+    "loadingAria": "Cargando operaciones",
+    "loadError": "No pude cargar la lista de operaciones.",
+    "errorTitle": "La lista de operaciones no se ha cargado",
+    "errorBody": "No se ha perdido nada. Inténtalo de nuevo en un momento.",
+    "retry": "Reintentar",
+    "count": "{count, plural, one {# operación mostrada} other {# operaciones mostradas}}",
+    "loadMore": "Mostrar más",
+    "loadingMore": "Cargando",
+    "depthCapNote": "Hasta aquí llega la lista. Usa los filtros para encontrar movimientos más antiguos.",
+    "emptyTitle": "Ficha a tu primer ciclista",
+    "emptyBody": "Todavía no ha cambiado de manos ningún ciclista. El mercado es donde ocurrirán los primeros.",
+    "emptyAction": "Explorar el mercado",
+    "emptyFilteredTitle": "Amplía la búsqueda",
+    "emptyFilteredBody": "Ningún movimiento coincide con estos filtros.",
+    "reportAria": "Denunciar esta operación para su revisión",
+    "freeAgent": "Agente libre",
+    "header": {
+      "rider": "Ciclista",
+      "type": "Tipo",
+      "date": "Fecha",
+      "from": "De",
+      "to": "A",
+      "amount": "Importe"
+    },
+    "filter": {
+      "typeLabel": "Filtrar por tipo",
+      "typeAll": "Todos los tipos",
+      "divisionLabel": "Filtrar por división",
+      "divisionAll": "Todas las divisiones",
+      "divisionOption": "División {n}",
+      "mineOnly": "Solo mi equipo",
+      "reset": "Borrar filtros"
+    }
+  },
+  "status": {
+    "pending": "Esperando respuesta",
+    "countered": "Contraoferta enviada",
+    "awaitingConfirmation": "Esperando confirmación",
+    "accepted": "Aceptada",
+    "rejected": "Rechazada",
+    "withdrawn": "Retirada"
+  },
+  "type": {
+    "auction": "Subasta",
+    "transfer": "Fichaje",
+    "swap": "Intercambio",
+    "academy": "Academia"
+  },
+  "direction": {
+    "in": "Compra",
+    "out": "Venta",
+    "swap": "Intercambio",
+    "noSale": "Sin venta"
+  },
+  "relativeTime": {
+    "justNow": "Ahora mismo",
+    "minutes": "hace {m} min",
+    "hours": "hace {h} h",
+    "days": "hace {day} d",
+    "dash": "—"
+  },
+  "offerCard": {
+    "from": "De",
+    "to": "A",
+    "round": "Ronda {round}",
+    "squadCriticalReceived": "Por debajo del mínimo",
+    "squadCriticalSent": "Vendedor bajo el mín.",
+    "offerLabel": "Oferta",
+    "counterLabel": "Tu contraoferta",
+    "counterAmountLabel": "Contraoferta",
+    "yourBidLabel": "Tu puja",
+    "value": "Valor",
+    "salary": "Salario",
+    "estSalary": "Salario est.",
+    "contractExpires": "Caduca tras la temporada {season}",
+    "noContract": "Agente libre",
+    "buttons": {
+      "accept": "Aceptar",
+      "counter": "Contraoferta",
+      "reject": "Rechazar",
+      "send": "Enviar",
+      "acceptCounter": "Aceptar ({amount} CZ$)",
+      "newOffer": "Nueva oferta",
+      "withdraw": "Retirar",
+      "withdrawOffer": "Retirar oferta",
+      "withdrawCounter": "Retirar contraoferta",
+      "confirmDeal": "Confirmar trato ({amount} CZ$)",
+      "cancelDeal": "Cancelar trato",
+      "archive": "Archivar"
+    },
+    "form": {
+      "counterLabel": "Tu contraoferta (CZ$)",
+      "newOfferLabel": "Nueva oferta (CZ$)",
+      "messageBuyer": "Mensaje opcional para el comprador...",
+      "messagePlaceholder": "Mensaje opcional...",
+      "offerAmountBlocked": "Introduce una oferta superior a 0 CZ$"
+    },
+    "awaiting": {
+      "sellerAccepted": "Has aceptado · a la espera de la confirmación del comprador",
+      "buyerConfirmed": "Has confirmado · a la espera de la confirmación del vendedor"
+    }
+  },
+  "swapCard": {
+    "youOffer": "Ofreces",
+    "theyOffer": "Ofrecen",
+    "youWant": "Quieres",
+    "theyWant": "Quieren",
+    "pureSwap": "Intercambio puro",
+    "cashFrom": "+{amount} CZ$ de {team}",
+    "counterTag": "(contraoferta)",
+    "buttons": {
+      "accept": "Aceptar",
+      "counter": "Contraoferta",
+      "reject": "Rechazar",
+      "acceptCounter": "Aceptar contraoferta",
+      "send": "Enviar",
+      "withdraw": "Retirar propuesta",
+      "rejectShort": "Rechazar",
+      "confirmSwap": "Confirmar intercambio",
+      "cancelSwap": "Cancelar trato",
+      "archive": "Archivar"
+    },
+    "form": {
+      "cashReceiveLabel": "Pago en efectivo (CZ$) · positivo = recibes, negativo = pagas",
+      "cashPayLabel": "Pago en efectivo (CZ$) · positivo = pagas, negativo = recibes"
+    },
+    "awaiting": {
+      "selfConfirmed": "Has confirmado · a la espera de la otra parte"
+    }
+  },
+  "transferCard": {
+    "send": "Enviar",
+    "messagePlaceholder": "Mensaje (opcional)...",
+    "removeListing": "Quitar de la lista de fichajes",
+    "removing": "Quitando...",
+    "removeAria": "Quitar a {riderName} de la lista de fichajes",
+    "removeConfirm": "¿Quitar a {riderName} de la lista de fichajes?",
+    "ridersForSale": "ciclista",
+    "editPrice": "Editar precio",
+    "editPriceAria": "Editar el precio pedido por {riderName}",
+    "editPriceLabel": "Nuevo precio pedido (CZ$)",
+    "savePrice": "Guardar",
+    "priceInvalid": "Introduce un número entero superior a 0 CZ$",
+    "cancel": "Cancelar",
+    "confirmRemoveButton": "Sí, quitar"
+  },
+  "history": {
+    "title": "Historial de fichajes",
+    "seasonFilterAll": "Todas las temporadas",
+    "seasonFilterCurrent": "Temporada {n} (esta)",
+    "seasonOption": "Temporada {n}",
+    "emptyAll": "El equipo aún no tiene historial de fichajes.",
+    "emptyFiltered": "No se han encontrado fichajes en la temporada seleccionada.",
+    "header": {
+      "date": "Fecha",
+      "type": "Tipo",
+      "direction": "Dirección",
+      "rider": "Ciclista",
+      "counterparty": "Contraparte",
+      "amount": "Importe"
+    },
+    "aiTag": "(IA)",
+    "swapZero": "0 CZ$",
+    "noBids": "Sin pujas",
+    "academySource": "Academia",
+    "aiTeamFallback": "Equipo IA",
+    "loadError": "No se pudo cargar el historial de fichajes",
+    "noSaleToggle": "Mostrar subastas sin pujas",
+    "noSaleHiddenNote": "{count, plural, one {# subasta sin pujas está oculta} other {# subastas sin pujas están ocultas}}. Ningún ciclista cambió de manos.",
+    "emptyFilteredNoSaleOnly": "No hay fichajes reales en la temporada seleccionada: solo subastas sin pujas (ocultas, mira el filtro de arriba).",
+    "reportAction": "Denunciar para su revisión",
+    "reportActionAria": "Denunciar esta operación para su revisión"
+  },
+  "report": {
+    "title": "Denunciar esta operación",
+    "subtitle": "Envíamela para que le eche un vistazo más de cerca. No es una acusación, solo una marca para que yo lo compruebe.",
+    "messageLabel": "¿Qué te pareció raro?",
+    "messagePlaceholder": "Describe lo que te llamó la atención...",
+    "messageHelper": "Te quedan {count} caracteres",
+    "cancel": "Cancelar",
+    "confirm": "Enviar denuncia",
+    "close": "Cerrar",
+    "closeAction": "Cerrar",
+    "done": "Gracias. Le echaré un vistazo.",
+    "alreadyDone": "Tu equipo ya denunció esta operación. La tengo.",
+    "error": "No se pudo enviar la denuncia. Inténtalo de nuevo en un momento.",
+    "rateLimited": "Ya has enviado varias denuncias. Inténtalo de nuevo dentro de un rato.",
+    "tooShort": "Cuéntame un poco más: al menos {min} caracteres.",
+    "tooLong": "Mantenlo por debajo de {max} caracteres."
+  },
+  "profit": {
+    "title": "Beneficio por fichaje de cada ciclista",
+    "subtitle": "Todas las temporadas. Precio de venta frente a precio de compra de los ciclistas que el equipo ha vendido.",
+    "header": {
+      "rider": "Ciclista",
+      "bought": "Comprado",
+      "sold": "Vendido",
+      "profit": "Beneficio/pérdida"
+    },
+    "unknownBuy": "Desconocido",
+    "unknownBuyHint": "No se encontró ninguna compra en el historial del equipo, p. ej. plantilla inicial o intercambio. No se puede calcular el beneficio.",
+    "unknownAcademyBuy": "Academia (coste desconocido)",
+    "unknownAcademyBuyHint": "Este ciclista se fichó desde la academia antes de que se añadiera el seguimiento de costes. No se puede calcular el beneficio.",
+    "total": "Beneficio total realizado",
+    "totalExcluded": "{count, plural, one {# venta} other {# ventas}} sin precio de compra conocido, no incluidas en el total."
+  },
+  "sections": {
+    "archivedReceived": "Ofertas recibidas archivadas",
+    "archivedSent": "Ofertas enviadas archivadas",
+    "receivedProposals": "Propuestas recibidas",
+    "sentProposals": "Propuestas enviadas",
+    "archivedReceivedProposals": "Propuestas recibidas archivadas",
+    "archivedSentProposals": "Propuestas enviadas archivadas"
+  },
+  "empty": {
+    "received": "Explora el mercado mientras esperas",
+    "receivedHint": "Otros mánagers envían ofertas por tus ciclistas desde la página del ciclista.",
+    "sent": "Envía tu primera oferta",
+    "sentHint": "Abre la página de un ciclista y haz clic en “Enviar oferta de fichaje”.",
+    "archive": "Revisa tus negociaciones abiertas",
+    "archiveHint": "Los tratos que cierres o rechaces aparecen aquí.",
+    "marketNoListings": "Pon a un ciclista a la venta",
+    "marketNoListingsHint": "Ahora mismo no hay nada en la lista de fichajes. Fija un precio pedido desde tu plantilla.",
+    "marketNoMatches": "Amplía tu filtro",
+    "marketNoMatchesHint": "Ningún ciclista de la lista coincide con el filtro actual.",
+    "ctaBrowseMarket": "Abrir el mercado",
+    "ctaSeeSent": "Ver ofertas enviadas",
+    "ctaListRider": "Abrir mi plantilla"
+  },
+  "toast": {
+    "offerSent": "¡Oferta enviada!",
+    "listingRemoved": "Ciclista quitado de la lista de fichajes",
+    "listingRemoveFailed": "No se pudo quitar el anuncio",
+    "offerAcceptedBuyer": "Aceptada · ahora el comprador debe confirmar el trato",
+    "offerAcceptedSeller": "Aceptada · ahora el vendedor debe confirmar el trato",
+    "confirmedAwaiting": "Confirmado · a la espera de la confirmación de la otra parte",
+    "dealCancelled": "Trato cancelado",
+    "transferRejected": "Fichaje rechazado",
+    "counterSent": "Contraoferta enviada",
+    "counterWithdrawn": "Contraoferta retirada",
+    "newOfferSent": "Nueva oferta enviada",
+    "offerWithdrawn": "Oferta retirada",
+    "offerArchived": "Oferta archivada",
+    "updated": "Actualizado",
+    "swapAccepted": "Aceptado · a la espera de confirmación",
+    "swapConfirmedAwaiting": "Confirmado · a la espera de la otra parte",
+    "swapCancelled": "Intercambio cancelado",
+    "swapRejected": "Intercambio rechazado",
+    "proposalWithdrawn": "Propuesta retirada",
+    "swapArchived": "Propuesta archivada",
+    "priceUpdated": "Precio pedido actualizado",
+    "priceUpdateFailed": "No se pudo actualizar el precio"
+  },
+  "celebration": {
+    "transferDone": {
+      "title": "¡Fichaje completado!",
+      "subtitle": "El ciclista ya está en tu equipo"
+    },
+    "swapDone": {
+      "title": "¡Intercambio completado!",
+      "subtitle": "Los ciclistas se han intercambiado"
+    },
+    "buyoutDone": {
+      "title": "¡Ciclista comprado!",
+      "subtitle": "La opción de compra se ha ejercido"
+    }
+  },
+  "marketSort": {
+    "label": "Ordenar por",
+    "ascAria": "Ordenar de forma ascendente",
+    "descAria": "Ordenar de forma descendente"
+  },
+  "marketRow": {
+    "nation": "País",
+    "rider": "Ciclista",
+    "seller": "Vendedor",
+    "age": "Edad",
+    "listed": "Publicado",
+    "value": "Valor",
+    "salary": "Salario",
+    "price": "Precio pedido",
+    "action": "Acción",
+    "offer": "Enviar oferta",
+    "manage": "Gestionar",
+    "close": "Cerrar",
+    "offerAria": "Enviar oferta por {riderName}",
+    "manageAria": "Gestionar el anuncio de {riderName}",
+    "selectAria": "Seleccionar a {riderName} para editar precios en bloque",
+    "countLine": "Mostrando {shown} de {total} anuncios"
+  },
+  "bulkPrice": {
+    "selected": "{count} seleccionados",
+    "selectAllVisible": "Seleccionar todos los ciclistas anunciados ({count})",
+    "clear": "Borrar selección",
+    "mode": {
+      "percent": "Porcentaje",
+      "amount": "Importe CZ$",
+      "set": "Fijar precio"
+    },
+    "valueLabel": "Valor",
+    "valuePlaceholder": {
+      "percent": "p. ej. 10 para +10 %, -10 para -10 %",
+      "amount": "p. ej. 500 o -500",
+      "set": "Nuevo precio pedido"
+    },
+    "previewTitle": "Vista previa",
+    "previewEmpty": "Introduce un valor para previsualizar los precios nuevos.",
+    "previewMore": "+ {count} más",
+    "apply": "Aplicar a {count} ciclistas",
+    "applying": "Aplicando...",
+    "toastSuccess": "{count} precios actualizados",
+    "toastPartial": "{updated} actualizados, {failed} no se pudieron actualizar",
+    "toastNoChange": "No hay cambio de precio que aplicar",
+    "toastFailed": "No se pudieron actualizar los precios"
+  },
+  "valueDelta": {
+    "under": "{pct} % por debajo del valor est.",
+    "over": "{pct} % por encima del valor est.",
+    "at": "Cerca del valor est.",
+    "title": "Valor de mercado estimado: {amount} CZ$. Es una estimación de un modelo, no un precio garantizado."
+  }
+}

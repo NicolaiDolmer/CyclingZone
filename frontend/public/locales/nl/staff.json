@@ -1,0 +1,101 @@
+{
+  "back": "Terug",
+  "gate": {
+    "title": "Nog niet beschikbaar",
+    "description": "Het staf-onderdeel is nog niet open."
+  },
+  "missing": {
+    "title": "Staflid niet gevonden",
+    "description": "Dit staflid zit niet in jouw team."
+  },
+  "roles": {
+    "training": "Sportdirecteur",
+    "scouting": "Hoofdscout",
+    "medical": "Ploegarts",
+    "academy": "Academiedirecteur",
+    "commercial": "Commercieel directeur"
+  },
+  "hero": {
+    "tierLabel": "Niveau",
+    "salaryLabel": "Salaris",
+    "salary": "{amount} CZ$/seizoen",
+    "ratingEyebrow": "Rating /99",
+    "specHeadline": "Het beste in {axis}",
+    "photoFallback": "Foto"
+  },
+  "tabs": {
+    "overview": "Overzicht",
+    "effect": "Effect",
+    "history": "Geschiedenis"
+  },
+  "columns": {
+    "dimensions": "Coaching",
+    "levels": "Focus van de coachinggroep",
+    "roleSkills": "Rolvaardigheden",
+    "levelsTooltip": "U23 omvat Academy-renners en jonge profs tot 25 jaar. Senior omvat renners van 26 jaar en ouder. De focus van de coachinggroep van een staflid laat zien welke leeftijdsgroep hij of zij het best traint, bovenop de coachingdimensies."
+  },
+  "axes": {
+    "physical": "fysieke training",
+    "mental": "mentale training",
+    "technical": "technische training",
+    "u23": "U23",
+    "senior": "senior",
+    "evaluation": "talentbeoordeling",
+    "reach": "netwerkbereik",
+    "recovery": "herstel",
+    "injuryPrevention": "blessurepreventie",
+    "intake": "instroomkwaliteit",
+    "growth": "groeisnelheid",
+    "negotiation": "onderhandelen",
+    "marketing": "marketing"
+  },
+  "effect": {
+    "body": "De totale rating van dit staflid ({rating}) bepaalt hoeveel van het effect van de faciliteit wordt gerealiseerd. Het Trainingscentrum is nu actief in het spel. De andere komen binnenkort en laten zien wat ze gaan doen zodra ze live zijn."
+  },
+  "history": {
+    "body": "Contractgeschiedenis en diensttijd verschijnen hier zodra stafcontracten er zijn.",
+    "scouting": {
+      "loading": "Scoutinggeschiedenis laden…",
+      "loadFailed": "De scoutinggeschiedenis kon niet worden geladen. Probeer het opnieuw.",
+      "empty": "Nog geen gescoute renners.",
+      "loadingRider": "Renner laden…",
+      "riderUnavailable": "Renner niet meer beschikbaar",
+      "levelValue": "Niveau {level}/{max}",
+      "table": {
+        "date": "Datum",
+        "rider": "Renner",
+        "level": "Niveau"
+      }
+    }
+  },
+  "switcher": {
+    "count": "{index} / {total}"
+  },
+  "public": {
+    "team": "In dienst bij {team}",
+    "viewTeam": "Team bekijken",
+    "limitedNote": "Dit is de staf van een andere manager, dus alleen de rating en de belangrijkste specialisatie zijn zichtbaar. De volledige uitsplitsing van vaardigheden is alleen zichtbaar voor het team zelf."
+  },
+  "release": {
+    "button": "Staflid ontslaan",
+    "title": "{name} ontslaan?",
+    "body": "Het contract eindigt direct. Je betaalt nu een ontslagvergoeding en de rol staat meteen open voor een nieuwe aanwerving.",
+    "severanceLabel": "Ontslagvergoeding ({multiplier} × {weeklyWage} CZ$)",
+    "wagesFreedLabel": "Vrijgekomen weekloon",
+    "slotLabel": "Plek voor {role}",
+    "slotValue": "Direct open",
+    "keepButton": "Behouden",
+    "confirmButton": "Ontslaan voor {amount} CZ$",
+    "confirmBusy": "Ontslaan…",
+    "errors": {
+      "staff_not_found": "Dit staflid zit niet meer in jouw team.",
+      "already_released": "Al ontslagen.",
+      "insufficient_funds": "Je kunt de ontslagvergoeding ({amount} CZ$) niet betalen.",
+      "insufficient_available_balance": "Niet genoeg beschikbaar geld: een deel van je saldo staat vast in veilingbiedingen.",
+      "facilities_disabled": "Staf beheren is nog niet beschikbaar.",
+      "auth": "Je moet ingelogd zijn om dat te doen.",
+      "network": "Verbinding mislukt. Probeer het over een moment opnieuw.",
+      "failed": "Dit staflid kon niet worden ontslagen. Probeer het over een moment opnieuw."
+    }
+  }
+}

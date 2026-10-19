@@ -1,0 +1,56 @@
+{
+  "nps": {
+    "question": "Hoe groot is de kans dat je Cycling Zone aan een vriend aanbeveelt?",
+    "scaleLow": "Niet waarschijnlijk",
+    "scaleHigh": "Zeer waarschijnlijk",
+    "reasonLabel": "Wat is de belangrijkste reden? (optioneel)",
+    "reasonPlaceholder": "Optioneel: de belangrijkste reden, in een of twee zinnen",
+    "submit": "Versturen",
+    "notNow": "Niet nu",
+    "thanks": "Bedankt. Zo weet ik waar ik als volgende aan moet werken.",
+    "regionAriaLabel": "Feedbackvraag",
+    "dismissAriaLabel": "Feedbackvraag sluiten"
+  },
+  "consent": {
+    "title": "Ik gebruik gegevens om het spel beter te maken",
+    "intro": "Jij bepaalt wat ik mag meten. Je kunt je keuzes altijd wijzigen in je profiel onder \"Privacy\".",
+    "privacyLink": "Lees het privacybeleid",
+    "closeAriaLabel": "Sluiten zonder te wijzigen",
+    "alwaysOn": "(altijd aan)",
+    "save": "Mijn keuzes opslaan",
+    "customize": "Aanpassen",
+    "rejectAll": "Alleen noodzakelijke",
+    "acceptAll": "Alles accepteren",
+    "categories": {
+      "necessary": {
+        "label": "Noodzakelijk",
+        "desc": "Inloggen, sessie en je accountinstellingen. Zonder deze werkt het spel niet."
+      },
+      "analytics": {
+        "label": "Analyse",
+        "desc": "Ik meet anoniem hoe het spel wordt gebruikt: welke knoppen spelers frustreren (Microsoft Clarity), waar spelers vandaan komen (Google Analytics) en paginaweergaven (Vercel Web Analytics), zodat ik slechte UX kan verhelpen. PostHog telt paginaweergaven en belangrijke stappen in het spel zonder cookies en koppelt ze aan je account-ID zodra je inlogt. Als je analyse weigert, gaat PostHog ook uit."
+      },
+      "marketing": {
+        "label": "Marketing",
+        "desc": "Wordt nu niet gebruikt. Als ik later advertenties toon of remarketing doe, gebeurt dat alleen als je hier ja zegt."
+      },
+      "email_marketing": {
+        "label": "E-mail",
+        "desc": "Af en toe een nieuwsbrief over belangrijke seizoensupdates of events. Transactionele e-mails (veiling gewonnen enzovoort) zijn niet afhankelijk van deze keuze."
+      }
+    }
+  },
+  "releaseUpdate": {
+    "title": "Nieuwe versie klaar",
+    "action": "Updaten",
+    "regionAriaLabel": "Update beschikbaar",
+    "unsavedTitle": "Je hebt niet-opgeslagen wijzigingen. Sla eerst op, of update toch.",
+    "saveFirst": "Eerst opslaan",
+    "updateAnyway": "Toch updaten"
+  },
+  "opsNotice": {
+    "regionAriaLabel": "Servicestatus",
+    "dismissAriaLabel": "Melding sluiten",
+    "knownIssuesLink": "Bekende problemen"
+  }
+}

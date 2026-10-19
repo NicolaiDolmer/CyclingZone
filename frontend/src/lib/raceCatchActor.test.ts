@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
-import { catchActor, catchActorCopy, findMorningCatch, timelineDistanceKm } from "./raceCatchActor.ts";
+import { catchActor, catchActorCopy, findMorningCatch, findReformationCatches, timelineDistanceKm } from "./raceCatchActor.ts";
 import { describeEvent as describeEventJs } from "./stageTimelineFilm.js";
 import { buildRaceRecap as buildRaceRecapJs } from "./raceRecap.js";
 import { buildRaceReport as buildRaceReportJs, BEAT_VARIANT_COUNTS } from "./raceReport.js";
@@ -126,4 +126,23 @@ test("findMorningCatch: startlisten gør indhentningen af feltet synlig (#6400)"
   const startlist = ["r1", "r2", "p1", "p2", "p3"];
   assert.equal(findMorningCatch(events, startlist), morning);
   assert.equal(findMorningCatch(events), null);
+});
+
+test("#6803 findReformationCatches: hvert nyt udbrud får sin egen indhentning, første udbrud er uændret", () => {
+  const events = [
+    start,
+    formed,
+    { km: 18, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["r1", "r2"], chase_group_id: "peloton-0" } },
+    { km: 23, type: "breakaway_formed", params: { group_id: "breakaway-1500", rider_ids: ["r3", "r4"], reformation: true } },
+    { km: 74, type: "breakaway_caught", params: { group_id: "breakaway-1500", rider_ids: ["r3", "r4"], chase_group_id: "peloton-0" } },
+  ];
+  assert.equal(findMorningCatch(events)?.km, 18);
+  const [second, ...rest] = findReformationCatches(events);
+  assert.equal(rest.length, 0);
+  assert.equal(second.formed.km, 23);
+  assert.equal(second.caught?.km, 74);
+  // Holdt hjem: ingen indhentning.
+  assert.equal(findReformationCatches(events.slice(0, 4))[0].caught, null);
+  // Kun ét udbrud: ingen nye udbrud.
+  assert.deepEqual(findReformationCatches(events.slice(0, 3)), []);
 });

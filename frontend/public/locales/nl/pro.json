@@ -1,0 +1,70 @@
+{
+  "metaTitle": "Upgrade naar CZ Pro",
+  "title": "Word Founder",
+  "subtitle": "Steun de ontwikkeling van het spel en leg je Founder-status vast. Het gratis spel blijft volledig competitief. Pro is een badge en een identiteit, nooit een voordeel.",
+  "monthly": "Maandelijks",
+  "semiannual": "6 maanden",
+  "monthlyPrice": "€6,49/mnd",
+  "semiannualPrice": "€34,99",
+  "semiannualNote": "≈€5,83/mnd · bespaar ~10%",
+  "vatNote": "Alle prijzen zijn inclusief 25% Deense btw.",
+  "currencyNote": "Prijzen in euro. Zet het spel op Deens om in kronen te betalen. De betaalpagina zelf is in het Deens.",
+  "prorataNote": "Je eerste betaling dekt alleen de rest van deze maand, dus die kan lager zijn dan de genoemde prijs. Vanaf de 1e geldt de volledige prijs.",
+  "cta": "Verder naar betaling",
+  "checkoutPaused": "Aankopen staan tijdelijk stil terwijl ik de verkoopvoorwaarden en zelf opzeggen afrond. Bestaande accounts en het gratis spel worden hier niet door geraakt.",
+  "error": "De afrekening kon niet worden gestart. Probeer het opnieuw.",
+  "alreadyPro": "Je bent Pro. Bedankt dat je Cycling Zone steunt.",
+  "alreadyFounder": "Je bent Founder. Bedankt dat je Cycling Zone vanaf het begin steunt.",
+  "founderHeading": "Founder-plekken",
+  "founderSeatsTaken": "{taken} van {cap} Founder-plekken bezet",
+  "founderSeatsRemaining": "Nog {remaining} plekken",
+  "founderSeatsFull": "Alle Founder-plekken zijn bezet. Nieuwe abonnees krijgen nog steeds volledig Pro.",
+  "founderExplainer": "De eerste 50 betalende abonnees worden Founder. Founders houden een permanente Founder-badge, ook als het abonnement later afloopt.",
+  "fairnessNote": "Nooit pay-to-win: geld koopt diepgang, comfort en cosmetica, nooit een competitief voordeel.",
+  "termsAccept": "Ik accepteer de <termsLink>verkoopvoorwaarden</termsLink> en geef uitdrukkelijk toestemming dat CZ Pro direct wordt geleverd. Ik erken dat mijn herroepingsrecht daarmee vervalt voor de gestarte periode.",
+  "renewalNote": "Het abonnement wordt automatisch verlengd tot je opzegt. Geen verplichting na de betaalde periode, je kunt altijd opzeggen via je accountinstellingen.",
+  "choosePlan": "Kies je abonnement",
+  "loadError": {
+    "message": "Ik kon je abonnementsgegevens niet laden. Er is niets verloren gegaan en je account is niet geraakt.",
+    "retry": "Probeer opnieuw"
+  },
+  "founderMark": {
+    "label": "Founder",
+    "aria": "Founder nr. {n} van {cap}",
+    "heroLine": "Founder nr. {n} van {cap}"
+  },
+  "gate": {
+    "note": "Pro laat dit zien over alle seizoenen, niet alleen het huidige.",
+    "cta": "Bekijk Pro"
+  },
+  "riderHistory": {
+    "title": "Seizoensgeschiedenis",
+    "cta": "Bekijk Pro",
+    "note": "Pro laat elke vaardigheid zien over alle seizoenen, niet alleen het huidige.",
+    "ceilingLegend": "Plafond van de schaal (99)",
+    "empty": "Nog geen seizoensgeschiedenis vastgelegd.",
+    "errorTitle": "De seizoensgeschiedenis kon niet worden geladen",
+    "statusErrorTitle": "Je Pro-status kon niet worden gecontroleerd",
+    "errorBody": "Er is niets verloren gegaan. De vaardigheden van de renner zijn ongewijzigd.",
+    "retry": "Probeer opnieuw",
+    "emptyTitle": "Nog geen vaardigheden vastgelegd",
+    "checkAgain": "Opnieuw controleren",
+    "now": "Nu"
+  },
+  "savedFilters": {
+    "title": "Opgeslagen filters",
+    "save": "Huidig filter opslaan",
+    "namePlaceholder": "Geef dit filter een naam",
+    "saveConfirm": "Opslaan",
+    "cancel": "Annuleren",
+    "remove": "Verwijderen",
+    "empty": "Nog geen opgeslagen filters.",
+    "note": "Met Pro sla je filters op onder een naam en spring je met één klik terug.",
+    "cta": "Bekijk Pro",
+    "removeNamed": "{name} verwijderen",
+    "duplicate": "Je hebt al een filter met die naam.",
+    "limit": "Je hebt {max} filters opgeslagen, het maximum. Verwijder er een om een nieuwe op te slaan.",
+    "statusError": "Ik kon je Pro-status niet controleren, dus opgeslagen filters zijn voorlopig verborgen.",
+    "retry": "Probeer opnieuw"
+  }
+}

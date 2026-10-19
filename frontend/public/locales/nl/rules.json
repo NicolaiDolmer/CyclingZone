@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "title": "Regels · Cycling Zone",
+    "description": "Het naslagwerk voor de limieten, tarieven en formules van Cycling Zone: selectie, financiën, training, veilingen en koersen."
+  },
+  "page": {
+    "title": "Regels",
+    "subtitle": "Het gezaghebbende naslagwerk voor de limieten, tarieven en formules van Cycling Zone.",
+    "intro": "Deze pagina is de bron van waarheid voor de getallen van het spel. De Helppagina legt uit hoe je dingen doet. Deze pagina laat zien wat de limieten en tarieven echt zijn. Waar een getal door een beheerder wordt ingesteld (veilingtijden, tarieven van noodleningen), kan het tussen seizoenen veranderen. Dat staat er dan bij.",
+    "faqLinkIntro": "Gerelateerde Help-vragen",
+    "lastVerified": "Getallen gecontroleerd aan de hand van de spelcode."
+  },
+  "sections": {
+    "navLabel": "Regelonderdelen",
+    "squad": {
+      "label": "Selectie & opstelling",
+      "blocks": {
+        "cap": {
+          "title": "Selectielimiet",
+          "text": "Je mag maximaal {squadCap} renners hebben, in elke divisie evenveel. Er is geen minimum: je kunt zonder straf tot 0 renners terugverkopen."
+        },
+        "enforcement": {
+          "title": "Harde limiet",
+          "text": "De limiet is een harde grens. Je kunt niet kopen, bieden of lenen voorbij het maximum van {squadCap} renners van je divisie. Er is geen buffer, geen boete en geen automatische verkoop: een deal waarmee je over de limiet gaat, wordt gewoon afgewezen."
+        },
+        "academyExempt": {
+          "title": "Academierenners staan los",
+          "text": "Academierenners tellen nooit mee voor de seniorenlimiet van {squadCap} renners en worden nooit automatisch verkocht door de handhaving van de selectie. Ze hebben hun eigen limieten: {u23SquadCap} in het U23-team en {juniorSquadCap} in het juniorenteam."
+        }
+      }
+    },
+    "economy": {
+      "label": "Economie",
+      "blocks": {
+        "startingBalance": {
+          "title": "Startsaldo",
+          "text": "Elk team begint met {startingBalance} CZ$. CZ$ is de valuta in het spel, verdiend door te spelen en nooit te koop voor echt geld."
+        },
+        "sponsor": {
+          "title": "Sponsorinkomsten",
+          "text": "Sponsorinkomsten schalen mee met de divisie, zodat een competent team het kan volhouden: Divisie 1 {sponsorD1} CZ$, Divisie 2 {sponsorD2} CZ$, Divisie 3 {sponsorD3} CZ$, Divisie 4 {sponsorD4} CZ$. Je getekende deal houdt zijn gegarandeerde basis voor de hele looptijd. Als je van divisie wisselt terwijl hij loopt, wordt daarbovenop elk seizoen dat het verschil duurt een aparte divisieaanpassing van {divisionAdjustmentPct} procent van het verschil tussen de twee divisies betaald."
+        },
+        "upkeep": {
+          "title": "Onderhoud",
+          "text": "Elk seizoen betaalt je team operationele kosten (onderhoud), geschaald naar divisie, zodat hogere divisies meer betalen. Het wordt in rekening gebracht ofwel eenmalig bij de seizoensstart, ofwel als Reis & staf voor elke seniorenkoersdag waarop je team start. Het seizoenstotaal is hetzelfde. Ik stem de exacte bedragen tussen seizoenen af, en je ziet elke afschrijving altijd in je Financiën-log."
+        },
+        "salary": {
+          "title": "Rennerssalaris",
+          "text": "Het salaris van een renner wordt vastgezet wanneer je hem contracteert op {salaryRatePct}% van zijn huidige productiewaarde op dat moment, en verandert daarna niet automatisch. Productiewaarde is wat het spel verwacht dat hij dit seizoen levert met zijn huidige vaardigheden, niet wat hij op de markt waard is. Het aandeel is voor elk team in elke divisie hetzelfde, en academierenners gebruiken het ook."
+        },
+        "negativeInterest": {
+          "title": "Rente bij negatief saldo",
+          "text": "Als je saldo aan het begin van het seizoen negatief is, wordt {negativeInterestPct}% rente op het tekort geteld."
+        },
+        "debtCeiling": {
+          "title": "Schuldenplafond",
+          "text": "Elke divisie heeft een maximale schuld: Divisie 1 {debtD1} CZ$, Divisie 2 {debtD2} CZ$, Divisie 3 {debtD3} CZ$, Divisie 4 {debtD4} CZ$. Nieuwe leningen worden afgewezen als de lening plus de kosten je boven het plafond zouden brengen. Automatische noodleningen kunnen het overschrijden, maar dan krijg je een waarschuwing en moet je kosten verlagen."
+        },
+        "emergencyLoan": {
+          "title": "Noodleningen",
+          "text": "Noodleningen hebben kosten en rente die in de leningconfiguratie zijn ingesteld (nu ongeveer 15% elk). Deze tarieven kan een beheerder instellen en ze kunnen veranderen. Het leningformulier op de pagina Financiën toont altijd de huidige getallen."
+        },
+        "divisionBonus": {
+          "title": "Divisiebonus (einde seizoen)",
+          "text": "Een eenmalige bonus die aan het eind van het seizoen wordt betaald. Lees hem in twee stappen: kies de rij voor de plaats waarop je in je eigen divisie eindigde, en dan de kolom voor de divisie waarin je koerste. Lege cellen betalen niets, en dat geldt ook voor elke plaats onder de laatste rij.",
+          "rows": [
+            [
+              "Waar je eindigde",
+              "In Divisie 1",
+              "In Divisie 2",
+              "In Divisie 3",
+              "In Divisie 4"
+            ],
+            [
+              "1e in je divisie",
+              "{bonusD1P1} CZ$",
+              "{bonusD2P1} CZ$",
+              "{bonusD3P1} CZ$",
+              "{bonusD4P1} CZ$"
+            ],
+            [
+              "2e in je divisie",
+              "{bonusD1P2} CZ$",
+              "{bonusD2P2} CZ$",
+              "{bonusD3P2} CZ$",
+              "{bonusD4P2} CZ$"
+            ],
+            [
+              "3e in je divisie",
+              "{bonusD1P3} CZ$",
+              "{bonusD2P3} CZ$",
+              "{bonusD3P3} CZ$",
+              "{bonusD4P3} CZ$"
+            ],
+            [
+              "4e in je divisie",
+              "{bonusD1P4} CZ$",
+              "{bonusD2P4} CZ$",
+              "—",
+              "—"
+            ]
+          ]
+        }
+      }
+    },
+    "auctions": {
+      "label": "Veilingen & bieden",
+      "blocks": {
+        "duration": {
+          "title": "Duur van een veiling",
+          "text": "Een veiling loopt {auctionActiveHours, plural, one {# actief uur} other {# actieve uren}}. Nachtelijke uren tellen niet mee: er wordt elke dag van 08:00 tot 24:00 gehandeld (gepauzeerd van 00:00 tot 08:00). Deze vensters kan een beheerder instellen."
+        },
+        "minBid": {
+          "title": "Minimumbod",
+          "text": "Je bod moet minstens {minBidStep} CZ$ boven de huidige prijs liggen. Als er nog niemand heeft geboden, kun je de vraagprijs evenaren."
+        },
+        "extension": {
+          "title": "Verlenging op het laatste moment",
+          "text": "Een bod in de laatste {auctionExtensionMinutes} minuten verlengt de veiling, zodat anderen de kans krijgen om te reageren. Geen sniping in de laatste seconde."
+        },
+        "proxy": {
+          "title": "Automatisch bieden & gereserveerd saldo",
+          "text": "Je kunt een limiet voor automatisch bieden instellen, waarna het systeem namens jou tot die limiet biedt. Actieve veilingen waarin je aan de leiding staat tellen tegelijk als gereserveerd saldo en als gereserveerde selectieplek, zodat je niet meer kunt vastleggen dan je beschikbare middelen."
+        }
+      }
+    },
+    "transfers": {
+      "label": "Transfers & deadlines",
+      "blocks": {
+        "contractInherited": {
+          "title": "Contracten gaan ongewijzigd mee",
+          "text": "Wanneer een renner van team wisselt (via transfer, ruil of veilingverkoop), neemt de koper het bestaande contract ongewijzigd over. Salaris en contractduur worden bij een deal nooit opnieuw berekend."
+        },
+        "loansCount": {
+          "title": "Uitleen telt mee voor de limiet",
+          "text": "Actieve uitleendeals tellen mee voor de grootte van je selectie, dus een volle selectie kan worden afgewezen bij uitleen, veilingen of andere binnenkomende deals."
+        }
+      }
+    },
+    "races": {
+      "label": "Koersen & punten",
+      "blocks": {
+        "prize": {
+          "title": "Prijzengeld",
+          "text": "Prijzengeld wordt per resultaat betaald: punten voor de plaats × {prizePerPoint} CZ$. Alleen koersen met een koersklasse (Grand Tour, WorldTour, ProSeries enzovoort) leveren prijzengeld op. Koersen zonder klasse geven 0."
+        },
+        "resultType": {
+          "title": "Type resultaat",
+          "text": "De uitslag van een eendagskoers telt als een resultaat in het algemeen klassement. Het type resultaat is alleen een label: het prijzengeld hangt af van de puntentabel voor de plaats, niet van het type."
+        },
+        "freeAgentPrize": {
+          "title": "Renners zonder team",
+          "text": "Prijzengeld dat renners verdienen die niet in een managersteam zitten, verhoogt hun marktwaarde, maar wordt nooit aan iemand uitbetaald. Renners zonder eigenaar worden waardevoller, maar geen enkel team krijgt het geld."
+        }
+      }
+    },
+    "season": {
+      "label": "Seizoen & promotie",
+      "blocks": {
+        "structure": {
+          "title": "Divisiestructuur",
+          "text": "Er zijn {divisions} divisies. Divisie {minDivision} is de hoogste. Divisie {maxDivision} is de laagste, en daar beginnen nieuwe teams."
+        },
+        "promotion": {
+          "title": "Promotie & degradatie",
+          "text": "Promotie en degradatie zijn actief vanaf seizoen {firstPromotionSeason}. Aan het eind van elk seizoen vanaf dan promoveren de beste teams van elke divisie en degraderen de onderste teams."
+        },
+        "transition": {
+          "title": "Handmatige seizoenswissel",
+          "text": "De overgang naar een nieuw seizoen is een bewuste handmatige beheerdersactie, nooit een automatische cron. Het sluiten van het venster, het eindsignaal en de selectiecontroles blijven automatisch."
+        }
+      }
+    },
+    "academy": {
+      "label": "Academie",
+      "blocks": {
+        "slots": {
+          "title": "Grootte van de academie",
+          "text": "Je academie heeft twee teams met elk een harde limiet: maximaal {u23SquadCap} renners in het U23-team en {juniorSquadCap} in het juniorenteam, los van je seniorenselectie."
+        },
+        "age": {
+          "title": "Leeftijdsbereik",
+          "text": "Academierenners zijn {academyMinAge}–{academyMaxAge} jaar. Jongere talenten krijgen een jeugdmultiplicator op hun ontwikkeling die afneemt richting 22 jaar."
+        },
+        "salary": {
+          "title": "Jeugdsalaris & contracten",
+          "text": "Academierenners krijgen {academySalaryPct}% van hun huidige productiewaarde betaald, hetzelfde aandeel als seniorenrenners, en tekenen jeugdcontracten van {academyContractLength} seizoen(en)."
+        },
+        "drift": {
+          "title": "Onderhoud",
+          "text": "Elke bezette academieplek kost {academyDrift} CZ$ per seizoen, in rekening gebracht bij de seizoensstart. Een kleine academie (3–4 plekken) is in elke divisie ruim betaalbaar. Een volle academie is een bewuste, zwaardere investering."
+        }
+      }
+    },
+    "fairPlay": {
+      "label": "Fair play",
+      "blocks": {
+        "onePerPerson": {
+          "title": "Eén team per persoon",
+          "text": "Elke speler mag één team op één account hebben. Meerdere teams runnen via extra accounts geldt als valsspelen en wordt gemonitord via de account- en inlogsignalen die in het privacybeleid staan beschreven."
+        },
+        "aiAutomation": {
+          "title": "AI-tools & automatisering",
+          "text": "Je mag AI-tools en spreadsheets gebruiken om renners te analyseren en je team te plannen. Biedingen, transfers, tactiek en elke andere actie in het spel moeten door jou worden gedaan. Scripts, bots of AI-agenten die namens jouw account handelen, gelden als valsspelen."
+        },
+        "starProtection": {
+          "title": "Bescherming van sterrenrenners",
+          "text": "Een renner met een marktwaarde van minstens {starValue} CZ$ geldt als ster en is beschermd tegen gedwongen verkoop. Dit is dezelfde waarde die je in het profiel van de renner ziet."
+        },
+        "noBoardForBots": {
+          "title": "AI-, bank- en bevroren teams",
+          "text": "AI-teams, de bank en bevroren teams krijgen nooit bestuursfuncties. Die zijn alleen voor managers. Ze veroorzaken ook nooit gevolgen vanuit het bestuur."
+        }
+      }
+    }
+  },
+  "academyDisabledNote": "De Academie start met de relaunch. De onderstaande limieten zijn definitief en staan ter referentie. De functie is nog niet live.",
+  "faqLinks": {
+    "minBidAmount": "Hoeveel moet ik boven de huidige prijs bieden?",
+    "debtCeiling": "Wat is het schuldenplafond en wanneer geldt het?",
+    "prizeMoneyFaq": "Wat is prijzengeld en wanneer wordt het uitbetaald?",
+    "divisionBonusFaq": "Wat is de divisiebonus en wanneer wordt hij uitbetaald?",
+    "auctionExpiry": "Wanneer verloopt een veiling?"
+  }
+}

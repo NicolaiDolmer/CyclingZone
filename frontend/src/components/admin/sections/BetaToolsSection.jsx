@@ -112,7 +112,7 @@ export default function BetaToolsSection({ getAuth, onMsg }) {
         </button>
         <button onClick={() => handleBeta("full-reset", `FULD TEST-NULSTILLING:\n• Alle åbne markedsaktiviteter annulleres\n• Al rytter-handelshistorik slettes (auktioner, transfers, swaps, leje-aftaler)\n• Hele transferarkivet slettes (listings, tilbud, swaps)\n• Alle finanslån og renter slettes\n• Indbakke ryddes for alle managers\n• Alle manager-ryttere returneres til AI-hold\n• Alle balancer sættes til 800.000 CZ$\n• Managerhold sættes i 3. division\n• Løbskalender, resultater, standings og præmiepenge-bonus ryddes\n• Sæsoner slettes\n• Board-profiler resettes til baseline\n• XP/level og achievement unlocks nulstilles${betaClearTransactions ? "\n• Finance-transaktioner for manager-hold ryddes" : ""}\n\nØnskelister bevares. Dette er en test-reset, ikke et live-reset. Handlingen kan ikke fortrydes. Fortsæt?`, { clear_transactions: betaClearTransactions, reset_mode: "test" })}
           disabled={loading["beta_full-reset"]}
-          className="w-full lg:w-auto px-3 py-2 text-xs bg-cz-danger-bg text-cz-danger border border-red-300 rounded-cz hover:bg-cz-danger-bg disabled:opacity-50 transition-all font-semibold">
+          className="w-full lg:w-auto px-3 py-2 text-xs bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz hover:bg-cz-danger-bg disabled:opacity-50 transition-all font-semibold">
           {loading["beta_full-reset"] ? "..." : "Fuld nulstilling"}
         </button>
       </div>
