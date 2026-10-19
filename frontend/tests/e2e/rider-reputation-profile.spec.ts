@@ -34,8 +34,7 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await expect(page.getByText("Hvorfor omdømmet flyttede sig")).toHaveCount(0);
 
   await page.setViewportSize({ width: 1440, height: 900 });
-  await reputation.focus();
-  await page.keyboard.press("Enter");
+  await reputation.click();
   const details = page.getByRole("dialog", { name: "Hvorfor omdømmet flyttede sig" });
   await expect(details).toBeVisible();
   await expect(details.getByText("+0,6")).toBeVisible();
@@ -43,21 +42,32 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await expect(details.getByText("+0,1")).toBeVisible();
   await expect(details.getByText("Sejre og store løb tæller mest")).toBeVisible();
   await expect(details.getByRole("link", { name: "Sådan virker omdømme" })).toHaveAttribute("href", "/help?section=riders");
+  expect(await reputation.evaluate((element) => element.matches(":focus-visible"))).toBe(false);
   await page.screenshot({ path: "test-results/rider-reputation-desktop.png" });
+  await reputation.click();
+  await expect(details).toHaveCount(0);
+  await reputation.focus();
+  await page.keyboard.press("Enter");
+  await expect(details).toBeVisible();
   await reputation.press("Escape");
   await expect(details).toHaveCount(0);
-  await reputation.press("Enter");
+  await reputation.click();
   await expect(details).toBeVisible();
 
   await page.setViewportSize({ width: 375, height: 812 });
+  await expect(details).toBeVisible();
   const mobileBounds = await details.boundingBox();
   expect(mobileBounds).not.toBeNull();
   expect(mobileBounds!.x).toBeGreaterThanOrEqual(0);
   expect(mobileBounds!.x + mobileBounds!.width).toBeLessThanOrEqual(375);
   expect(mobileBounds!.y + mobileBounds!.height).toBeLessThanOrEqual(756);
   await page.screenshot({ path: "test-results/rider-reputation-mobile.png" });
-  await expect(details).toBeVisible();
   await expect(details.getByText("+0,1")).toBeVisible();
   await details.getByRole("button", { name: "Luk" }).click();
+  await expect(details).toHaveCount(0);
+  await page.screenshot({ path: "test-results/rider-reputation-mobile-closed.png" });
+  await reputation.click();
+  await expect(details).toBeVisible();
+  await page.getByRole("heading", { name: "Ada Pedersen" }).click();
   await expect(details).toHaveCount(0);
 });

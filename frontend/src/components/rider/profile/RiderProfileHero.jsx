@@ -21,7 +21,7 @@
 // display), Inter Tight tabular til tal (font-data). Dark mode flipper
 // automatisk (alle farver er cz-tokens).
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Flag } from "../../Flag";
@@ -124,12 +124,12 @@ function StatusBanner({ banner }) {
   );
 }
 
-function ReputationEventList({ events = [], open, onClose }) {
+function ReputationEventList({ events = [], open, onClose, dialogRef }) {
   const { t } = useTranslation("rider");
   const rows = Array.isArray(events) ? events : [];
   if (!open) return null;
   return (
-    <div id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} className="fixed bottom-[76px] left-4 right-4 z-50 max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-30 sm:mt-2 sm:w-[320px] sm:max-h-none sm:overflow-visible">
+    <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} className="fixed bottom-[76px] left-4 right-4 z-50 max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-30 sm:mt-2 sm:w-[320px] sm:max-h-none sm:overflow-visible">
       <div className="flex items-center justify-between gap-3 mb-2">
         <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
         <button type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
@@ -185,6 +185,18 @@ export default function RiderProfileHero({
 }) {
   const { t } = useTranslation("rider");
   const [reputationOpen, setReputationOpen] = useState(false);
+  const reputationTriggerRef = useRef(null);
+  const reputationDetailsRef = useRef(null);
+  useEffect(() => {
+    if (!reputationOpen) return undefined;
+    const closeWhenOutside = (event) => {
+      const target = event.target;
+      if (reputationTriggerRef.current?.contains(target) || reputationDetailsRef.current?.contains(target)) return;
+      setReputationOpen(false);
+    };
+    document.addEventListener("pointerdown", closeWhenOutside);
+    return () => document.removeEventListener("pointerdown", closeWhenOutside);
+  }, [reputationOpen]);
   const bestRoleOn = useBestRoleDisplay();
   const reputationOn = useRiderReputation();
 
@@ -247,7 +259,7 @@ export default function RiderProfileHero({
           </span>
         </span>
       )}
-      {reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => setReputationOpen(false)} />}
+      {reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => setReputationOpen(false)} dialogRef={reputationDetailsRef} />}
     </>
   );
 
@@ -414,6 +426,7 @@ export default function RiderProfileHero({
           sub={reputationSub}
           interactive={reputationOn}
           valueProps={reputationOn ? {
+            ref: reputationTriggerRef,
             onClick: () => setReputationOpen((isOpen) => !isOpen),
             onKeyDown: (event) => { if (event.key === "Escape" && reputationOpen) setReputationOpen(false); },
             "aria-expanded": reputationOpen,
