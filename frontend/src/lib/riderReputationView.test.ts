@@ -27,11 +27,12 @@ test("fremdrift følger niveaugrænserne og stopper ved Legend", () => {
 });
 
 test("fremdriftsteksten runder ned lige under hver niveaugrænse", () => {
-  for (const [score, band, target, expectedCurrent] of [
+  const cases: Array<[number, string, number, number]> = [
     [19.6, "unknown", 20, 19],
     [44.8, "known", 45, 44],
     [89.7, "star", 90, 89],
-  ]) {
+  ];
+  for (const [score, band, target, expectedCurrent] of cases) {
     const progress = riderReputationProgress(score);
     assert.equal(riderReputationBand(score), band);
     assert.equal(progress?.target, target);
