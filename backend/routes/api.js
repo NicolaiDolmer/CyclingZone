@@ -83,6 +83,7 @@ import {
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import {
+  assessFinalTrainingDateSettlement,
   assessSeasonEndBlockers,
   assessTransitionReadiness,
   formatForceOverrideDescription,
@@ -11939,6 +11940,12 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       });
     }
 
+    // #6898: require durable settlement proof before any season-end writes.
+    // No force bypass and no historical replay after riders/season are reset.
+    const trainingSettlement = await assessFinalTrainingDateSettlement({ supabase, season, now: new Date() });
+    if (trainingSettlement.blocked) {
+      return res.status(400).json({ error: trainingSettlement.detail, training_settlement: trainingSettlement });
+    }
     // #2847 · DB-niveau-garanti mod concurrent dobbelt-POST. De foregående checks
     // (status/pending-results/blockers) er check-then-act uden constraint — to
     // samtidige requests kan begge bestå dem og begge nå hertil. Herfra og ned er
@@ -14439,6 +14446,7 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
     // #1346: readiness-gate FØR enhver transition-write. dryRun gates ikke
     // (ingen writes). Force er en bevidst, logget nødudgang (ejer-beslutning
     // 12/6) til resume-edge-cases og bevidst tidlig sæsonlukning.
+    let beforeTransitionWrites;
     if (!dryRun) {
       const readiness = await assessTransitionReadiness({ supabase, fromSeasonId });
       if (!readiness.ready && !force) {
@@ -14448,17 +14456,19 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
         });
       }
       if (!readiness.ready && force) {
-        const { error: forceLogError } = await supabase.from("admin_log").insert({
-          admin_user_id: req.user?.id ?? null,
-          action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
-          description: formatForceOverrideDescription(readiness.failed_critical),
-          target_team_id: null,
-          meta: { source: "season_transition_force", failed_critical: readiness.failed_critical },
-        });
-        if (forceLogError) {
-          // Fail-closed: uden audit-spor må en forced transition ikke køre.
-          return res.status(500).json({ error: `Force-log kunne ikke skrives: ${forceLogError.message}` });
-        }
+        beforeTransitionWrites = async () => {
+          const { error: forceLogError } = await supabase.from("admin_log").insert({
+            admin_user_id: req.user?.id ?? null,
+            action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
+            description: formatForceOverrideDescription(readiness.failed_critical),
+            target_team_id: null,
+            meta: { source: "season_transition_force", failed_critical: readiness.failed_critical },
+          });
+          if (forceLogError) {
+            // Fail-closed: uden audit-spor må en forced transition ikke køre.
+            throw new Error(`Force-log kunne ikke skrives: ${forceLogError.message}`);
+          }
+        };
       }
     }
 
@@ -14468,10 +14478,15 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
       transitionAt: transitionAt ? new Date(transitionAt) : new Date(),
       dryRun: Boolean(dryRun),
       adminUserId: req.user?.id ?? null,
+      deps: { beforeTransitionWrites },
     });
 
     res.json(result);
   } catch (e) {
+    // Expected guard refusal: no transition or force audit was performed.
+    if (e?.code === 'training_settlement_blocked') {
+      return res.status(400).json({ error: e.message, training_settlement: e.settlement });
+    }
     // #2921 · Et 500 herfra nåede aldrig Sentry: ruten fangede fejlen selv og
     // returnerede den kun til browseren. En transition der fejler halvvejs er
     // dermed usynlig i overvågningen. Nu rapporteres den, OG der skrives et

@@ -1,3 +1,4 @@
+import { assessFinalTrainingDateSettlement } from './seasonTransitionReadiness.js';
 /**
  * Slice 08 — Sæson-transition orchestrator
  * =========================================
@@ -562,6 +563,7 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
       id: fromSeason.id,
       number: fromSeason.number,
       start_date: fromSeason.start_date,
+      status: fromSeason.status,
     },
     to_season: {
       id: toSeasonId,
@@ -1032,6 +1034,7 @@ async function writeAdminLog(supabase, payload) {
  * @param {boolean} [args.dryRun]               — hvis true: ingen writes, returnér plan
  * @param {string|null} [args.adminUserId]      — auth.uid for admin-loggen
  * @param {object} [args.deps]                  — dependency-injection for tests
+ * @param {Function} [args.deps.beforeTransitionWrites] — audit hook after settlement, before transition writes
  * @returns {Promise<{ ok: true, dryRun: boolean, plan: object, log?: Array }>}
  */
 export async function transitionToNextSeason({
@@ -1077,9 +1080,27 @@ export async function transitionToNextSeason({
     return { ok: true, dryRun: true, plan, carryOverPreview };
   }
 
+  // #6898: force/admin/scripts all enter here. An active source must retain
+  // its final training date until settled; completed-source retries must not
+  // re-check rosters after season-end/reset has already changed them.
+  if (plan.from_season.status === 'active') {
+    const settlement = await assessFinalTrainingDateSettlement({
+      supabase, season: plan.from_season, now: new Date(transitionAtIso),
+    });
+    if (settlement.blocked) {
+      throw Object.assign(new Error(settlement.detail), {
+        code: 'training_settlement_blocked', settlement,
+      });
+    }
+  }
+
   if (plan.already_transitioned) {
     // Kan stadig være halvfærdig — fortsæt fase 2-6 (alle er idempotente).
   }
+
+  // #6900: a force override is only audited after this same settlement check
+  // passed. Do not pre-check in the route and repeat the check after its audit.
+  await deps.beforeTransitionWrites?.();
 
   const log = [];
 
