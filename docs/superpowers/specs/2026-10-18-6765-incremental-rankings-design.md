@@ -104,3 +104,8 @@ Mål for go til M2: T1-T7 grønne, og processoren under 1 s for et p95-løb på 
 | team_standings_ext | 1.056 | 0 | 0 (mod live mv) | 0 |
 
 Contrib-CTE'en gav 199.016 rækker. Youth og de resterende rider-tællere følger samme `FILTER`-mønster og dækkes af T1.
+
+## Åbne review-fund (Codex 19/10), løses før M2 (læserskiftet) bygges
+
+- **P1 Drain the queue before acknowledging the refresh version:** When one SQL statement affects more than 200 races or riders, `mark_ranking_refresh_dirty` increments `requested_version` only once, while this claim processes at most 200 log rows. The M2 coordinator is specified to call `apply_ranking_deltas` only once before completing that leased version, so the remaining rows have no pending work-state version to schedule another pass and their rankings stay stale until an unrelated later write occurs. The processor must drain all work belonging to the claimed version, or preserve/reassert dirty state while entries remain.
+- **P2 Preserve progress across per-season rebuild calls:** For a manual repair, the single `kind='rebuild'` row is deleted by the claim, but this step requires one invocation per season and neither the queue schema nor the coordinator records which seasons remain. Consequently an implementation must either rebuild every season in the same 30-second RPC, contradicting the stated per-season timeout strategy, or stop after one season with no work item to trigger the rest. Expand the marker into durable per-season work or retain a rebuild cursor before consuming it.
