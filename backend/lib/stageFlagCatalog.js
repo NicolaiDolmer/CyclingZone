@@ -88,6 +88,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
   { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalægger" },
+  { key: "ranking_shadow_enabled", area: "ops", label: "Ranglister — skyggeaggregater" },
   { key: "auto_calendar_enabled", area: "season", label: "Auto-kalender" },
   { key: "auto_entry_generator_enabled", area: "season", label: "Auto-tilmelding af felter" },
   { key: "auto_prize_enabled", area: "economy", label: "Auto-præmier" },

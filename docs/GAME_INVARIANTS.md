@@ -171,6 +171,57 @@ Sæsonskiftets særskilte [læser-/snapshot-bevis](audits/5692-season-rollover-s
 viser samme snapshots og læsning under concurrent writer-lock; begge forsøg
 rulles tilbage. Det er ikke en fuld løbsdagsmåling.
 
+**Inkrementel M1-skygge (#6765, design PR #6849, build-mandat 19/10):**
+De eksisterende matviews serverer fortsat; dette er ingen M2-aktivering.
+ranking_race_contrib aggregerer pr. løb/rytter/registreret hold. Summarierne
+bevarer alle kolonner, NULL-summer og nullable sæsonnøgler. Senior/ungdom følger
+løbets trup. Holdpoint følger fortsat rytterens nuværende hold; holdenes ekstra
+tal bruger registreret hold med nuværende hold som fallback. Igangværende løb
+med resultater tæller som før.
+
+Statement-triggere tilføjer køposter uden deduplikering eller delt rækkelås,
+kun når ranking_shadow_enabled tillader engineWrite. Riders-UPDATE bruger
+i stedet AFTER ROW WHEN (OLD.team_id IS DISTINCT FROM NEW.team_id), uden
+transition tables. Uændret hold udløser ingen M1-triggerfunktion.
+Processoren deler cz-ranking-refresh-låsen og validerer coordinatorens lease,
+erstatter berørte bidrag og genberegner gamle/nye nøgler transaktionelt.
+Transfers fordeles til løbsposter med gammelt hold; repair/backfill fordeles til
+samme begrænsede kø. En fejl ruller også claim/sletning af køposter tilbage.
+DDL-backfill køres efter migrationens commit, aldrig under trigger-installationens
+stærke tabellåse. Sletning, genkørsel, metadataændring og TRUNCATE er kø-hændelser.
+
+Coordinatoren kører M1 efter et vellykket legacy-pas og på rene cron-ticks,
+kun når ranking_shadow_enabled tillader engineWrite (on/beta). Flaget seedes
+off; manglende/ukendt værdi og læsefejl lukker apply og paritet. Off-kildeændringer
+skriver ingen deltas. Installation/off-skift kollapser køen til én rebuild-markør;
+aktivering kræver altid rebuild, så oversprungne off-ændringer dækkes.
+Kildetransaktioner holder en delt stage-advisory-lås indtil commit; flagskift
+kræver eksklusiv stage-lås og writer-lås og fejler hurtigt med 55P03 ved aktivitet.
+Source-writes/apply kræver READ COMMITTED-semantik (og PG-alias READ UNCOMMITTED);
+stærkere snapshots afvises med 40001 og eksplicit retry-kontrakt, så et gammelt
+flag-snapshot ikke kan springe ændringer over efter en aktivering.
+Normal apply rechecker flaget under stage-låsen, og SQL-paritet har også off-gate.
+Kun eksplicit service-role maintenance kan kalde RPC'erne med p_maintenance=true;
+runtime sender aldrig dette override. Ingen aktivering følger af maintenance.
+Skyggefejl rapporteres særskilt og ændrer ikke legacy-completion/heartbeat.
+Paritet bruger ét statement-snapshot og sammenligner begge EXCEPT ALL-retninger
+for alle fire outputs; pending kø eller ændret generation udsætter kontrollen.
+Produktion kontrolleres dagligt pr. backend-klient (og efter procesgenstart),
+altid uden for kl. 19 inklusive til 22 eksklusive i Europe/Copenhagen.
+Coordinatoren sender den beregnede executionNow som ISO-timestamp i p_now,
+så JS- og SQL-gaten bruger samme injicerede ur. SQL's vægur er kun fallback
+for manuelle kald uden p_now.
+p_now er den fælles admissionstid; transport/køtid efter afsendelse flytter
+ikke denne værdi. En særskilt execution-time-protokol er ikke en del af M1.
+En forfalden kontrol i vinduet udsættes til næste tilladte pas. Staging kan
+bruge RANKING_SHADOW_PARITY_EVERY_PASS=true, men det overstyrer aldrig flag
+eller aftenvinduet. Hver kørsel logger queue_length ved start, pass_ms,
+enabled og status, også mens flaget er off. Kø over 10.000 eller samlet
+pass-tid over 20 sekunder udløser Sentry med begge mål.
+Supabase-branch-bevis: audits/2026-10-19-6765-operational-readiness.md.
+M2 kræver stadig
+staging T7 og designets særskilte observations-/ejerporte.
+
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**
 `database/2026-10-05-5692-ranking-refresh.sql` tilfoejer de fem refresh-funktioners
 boolean-overloads paa den eksisterende RPC-transport. Kun service_role maa kalde

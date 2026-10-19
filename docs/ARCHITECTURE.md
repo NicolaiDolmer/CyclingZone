@@ -79,6 +79,17 @@ no full refresh; result publication schedules background work. SQL must be
 applied before the backend change. Contract and staging evidence:
 [GAME_INVARIANTS.md](GAME_INVARIANTS.md#durable-ranking-events-5692-ejer-210--prioritet-610).
 
+M1 shadow maintenance (#6765, design PR #6849) adds a race-grain contribution
+table, append-only queue and four keyed summaries alongside the legacy views.
+Successful passes and clean cron ticks process bounded shadow batches behind
+  ranking_shadow_enabled (seed off, fail closed; source triggers skip off writes,
+  with one collapsed rebuild marker and mandatory repair on later enable); the
+existing five matviews remain the reader/heartbeat contract. Quiescent parity
+checks compare both EXCEPT ALL directions and report drift to Sentry, daily per
+backend client outside 19-22 Europe/Copenhagen. The staging every-pass override
+also respects the peak window. Every invocation logs queue length/pass duration;
+queue >10,000 or pass >20s alarms in Sentry. No reader swap is included.
+
 ### Spillersynlige feature-flags (#4948, #6103)
 GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`
 i ét `app_config`-opslag. Svaret evalueres pr. viewer gennem `evaluateFlagStage`:

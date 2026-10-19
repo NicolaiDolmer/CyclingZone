@@ -116,7 +116,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). official_times_v5 var aktuel fra ejerens \"tænd\" 16/10 (#6462) til S5-tændingen 17/10 (s5_profiles_v1, se race-engine-s5-profiles); løb bundet til v2-v5 færdiggøres på deres revision (#6642)."
+    note: Frosset prototype; v2-v5 i timeModel.ts/segmentLoop.ts. v5 aktiv 16/10 (#6462) til S5 17/10 (#6642); løb beholder bundet revision.
 
   - id: race-engine-s5-profiles
     area: race-engine
@@ -878,12 +878,25 @@ features:
     note: ~55 typer, notificationTypes.js.
 
   # --- stats ---------------------------------------------------------------
+  - id: ranking-shadow
+    area: ops
+    title_en: Ranking shadow
+    title_da: Skyggeranglister
+    state: building
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 6765
+    verified: 2026-10-19
+    decision: ejer-beslutning
+    decide_by: 2026-10-23
+    note: "ranking_shadow_enabled seed off; ejer-go før tænding."
   - id: standings-and-rankings
     area: stats
     title_en: Standings and rankings
     title_da: Stillinger og ranglister
     state: live
     verified: 2026-09-06
+    ssot: docs/GAME_INVARIANTS.md
+    note: "Legacy readers; M1 shadow gated separately (#6765)."
 
   - id: results-archive
     area: stats
