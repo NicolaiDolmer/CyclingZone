@@ -96,3 +96,9 @@ Nul nye km-ankre: når udbruddet fører, er jagtgruppens egen gap til fronten = 
 2. Tests: porte 1-7 (backend `engine/v4/*6814*.test.ts`, frontend kontrakt-test ved `stageTimelineFilm.causalEvents.test.ts`).
 3. Opdatér kommentaren i `raceStory.js` og `timeline.ts` (v4-udvidelsen af `gap_update`).
 4. Ingen spillertekst, ingen patch note før `s5_profiles_v2` tændes (ejer-gated).
+
+## Åbne review-fund (Codex 19/10), løses i bygge-PR'en før første motorændring
+
+- **P2 Emit the catch sample before merging away the escape:** At an actual catch, `mechanics/breakaway.ts` first makes the escape and chase gaps equal, after which `segmentLoop.ts` calls `mergeGroupsDetailed` before this proposed gap loop; `groups.ts::mergedOrigin` then removes the breakaway origin when it joins a non-breakaway group. Consequently, no group in `mergedGroups` satisfies the escape predicate on the catch segment, so the design cannot emit the same-km `gap_update` required by test gate 4. Emit or synthesize the terminal pursuit sample from the pre-merge/catch state instead.
+- **P2 Cite the race-engine SSOT before approving the design:** This is a new race-engine design, but its metadata cites only AGENTS rules and nowhere references `docs/RACE_ENGINE_RULES.md`. The repository contract explicitly requires every new design document to cite its area's SSOT and identifies that file as the race-engine SSOT, so this document is not approved for build until the citation and contract reconciliation are added.
+- **P2 Add the required preview verification plan:** The test-gate section lists automated assertions, but it never declares the test tier or what the owner must inspect on preview/staging. Because this feature changes the player-visible race-film gap curve, the design's verification plan is incomplete and cannot serve as build approval until those explicit preview checks are documented.
