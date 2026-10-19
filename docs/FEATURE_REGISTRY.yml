@@ -975,11 +975,11 @@ features:
     area: comms
     title_en: Push notifications
     title_da: Push-notifikationer
-    state: dormant
+    state: beta
     flag: push_enabled
     epic: 6590
-    verified: 2026-10-15
-    note: PR #6591 (14/10) bag slukket flag; off i prod (læst 15/10), kun ejeren flipper.
+    verified: 2026-10-19
+    note: push_enabled = beta i prod 19/10 (ejer-go 18/10+19/10); VAPID-nøgler i Infisical prod + Railway; ejerens Android abonnerer (19/10).
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro
