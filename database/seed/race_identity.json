@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "schema": "Version 1: entries is the only applied array. Each entry requires external_id (exact race_pool key), race_identity_type (one of RACE_IDENTITY_TYPES or null), signature ({features: 1-2 kind-specific objects} or null), authored_route (complete stage-route input or null). Canonical fail-closed schema: backend/lib/raceIdentityTypes.js and validateSeed in backend/scripts/applyRaceIdentity.js. Examples are synthetic documentation, never applied. L4 supplies real entries.",
+  "examples": [
+    {
+      "external_id": "example-hilly-tour",
+      "race_identity_type": "hilly",
+      "signature": { "features": [{ "kind": "climb", "name": "Oude Kwaremberg", "category": "2", "length_km": 2.2, "avg_gradient": 9.5, "stage_hint": "queen", "summit_finish": true }] },
+      "authored_route": null
+    },
+    {
+      "external_id": "example-time-trial-tour",
+      "race_identity_type": "time_trial",
+      "signature": { "features": [{ "kind": "prologue", "stage_hint": "first", "band": "flat" }, { "kind": "itt", "stage_hint": "last", "band": "hilly" }] },
+      "authored_route": null
+    },
+    {
+      "external_id": "example-cobbled-monument",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": {
+        "profile_type": "cobbles", "finale_type": "reduced_sprint", "distance_km": 260, "elevation_gain_m": 700,
+        "climbs": [],
+        "sprints": [{ "name": "Finish", "km": 260, "kind": "finish" }],
+        "sectors": [{ "kind": "cobbles", "name": "Bospoort", "start_km": 100, "length_km": 2 }]
+      }
+    }
+  ],
+  "entries": []
+}
