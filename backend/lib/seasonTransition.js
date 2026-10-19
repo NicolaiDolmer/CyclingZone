@@ -563,7 +563,6 @@ export async function buildTransitionPlan({ supabase, fromSeasonId }) {
       id: fromSeason.id,
       number: fromSeason.number,
       start_date: fromSeason.start_date,
-      end_date: fromSeason.end_date,
       status: fromSeason.status,
     },
     to_season: {

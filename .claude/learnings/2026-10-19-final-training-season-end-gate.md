@@ -10,3 +10,9 @@
 - Patch-note-undtagelse: intern admin-readiness-vagt; ingen ny spillertekst eller spillerfunktion. Eventuel samlet spillerkommunikation forfattes af Claude.
 - Lokal SQL-fixture: 27/27 bestået med isoleret PGlite 0.3.14/PostgreSQL 17.5 og 27/27 med repoets PostgreSQL 18.3. Repoets dependencies er uændrede; PG17-pakken ligger kun i midlertidig mappe.
 - Review: uafhængig reviewer fandt force-omgåelse; regression reproduceret og kernegate tilføjet før første transition-write. Opfølgende review: ingen handlingskrævende fund. Samlet målrettet readiness/transition: 126/126 bestået.
+
+## P1-opfølgning: aktiv S4 har end_date = null
+
+- Den første fixture gav S4 en end_date, som den aktive sæson ikke har. Det skjulte en permanent blokering.
+- Sidste træningsdato afledes nu af sæsonens sidste planlagte etape i Copenhagen via et season-scoped, begrænset kalenderopslag. end_date bruges aldrig som kalenderbevis.
+- Hovedfixturen bruger end_date null; tests dækker færdig/pending/partial/manglende registrering, anden sæson, tom kalender, læsefejl, sen dato og Copenhagen-dato over UTC-midnat.

@@ -3,8 +3,12 @@
 ## Sidste dato før sæsonafslutning (#6898, ejer-go 19/10/2026)
 
 Før `POST /admin/seasons/:id/end` claimer eller skriver sæsonafslutningen, kræver
-`assessFinalTrainingDateSettlement` dokumenteret afregning af `seasons.end_date`
-(sidste civile træningsdato). Datoen skal være gyldig og må ikke ligge i fremtiden.
+`assessFinalTrainingDateSettlement` dokumenteret afregning af sæsonens sidste
+planlagte løbsdato: seneste `race_stage_schedule.scheduled_at`, scoped gennem
+`races.season_id`, konverteret til kalenderdato i Europe/Copenhagen.
+`seasons.end_date` bruges ikke: feltet kan være null for aktiv S4 og skrives ved
+sæsonskiftet. Manglende/ugyldig kalender, læsefejl eller en slutdato i fremtiden
+blokerer med en konkret årsag; der gættes aldrig ud fra dagens dato eller end_date.
 Alle registrerede hold skal være `complete` eller `needs_reconciliation`; sidstnævnte
 er den eksisterende terminaltilstand med manuel afstemning, ikke en genafregning.
 `pending`, `partial`, ukendte tilstande og læsefejl stopper afslutningen.

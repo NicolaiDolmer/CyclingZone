@@ -316,7 +316,7 @@ export function formatForceOverrideDescription(failedCritical) {
 }
 /**
  * #6898: read-only fail-closed proof before season-end removes the active season.
- * The final civil date comes from the season, never from today's sweep/index:
+ * The final civil date comes from the season's calendar, never end_date or today's index:
  * an empty training_date_work result is not evidence of completed training.
  * Existing registered work always counts, including parked/disappeared teams.
  * Unregistered population mirrors loadTrainingDateContext/currentIds.
@@ -327,13 +327,27 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error("Explicit valid now required");
   if (season.number === 0) return { blocked: false, tick_date: null, detail: null, blockers: [] };
 
-  const tickDate = typeof season.end_date === 'string' ? season.end_date.slice(0, 10) : null;
-  if (typeof tickDate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(tickDate) ||
-      !Number.isFinite(Date.parse(`${tickDate}T12:00:00Z`)) ||
-      new Date(`${tickDate}T12:00:00Z`).toISOString().slice(0, 10) !== tickDate ||
-      tickDate > copenhagenDateString(now)) {
-    return { blocked: true, tick_date: tickDate ?? null, blockers: [],
-      detail: "Sæsonen kan ikke afsluttes: sidste træningsdato mangler, er ugyldig eller ligger i fremtiden" };
+  // end_date is null while S4 is active and is also written at cutover.
+  // The scheduled season calendar is the training axis's date authority.
+  // pagination-safe: one maximum timestamp, scoped by the season through races.
+  const { data: lastStages, error: calendarError } = await supabase
+    .from('race_stage_schedule')
+    .select('scheduled_at,races!inner(season_id)')
+    .eq('races.season_id', season.id)
+    .not('scheduled_at', 'is', null)
+    .order('scheduled_at', { ascending: false })
+    .limit(1);
+  if (calendarError) throw new Error(`Kunne ikke læse sidste træningsdato fra sæsonens løbskalender: ${calendarError.message}`);
+  const scheduledAt = Array.isArray(lastStages) ? lastStages[0]?.scheduled_at : null;
+  const lastInstant = scheduledAt == null ? null : new Date(scheduledAt);
+  const tickDate = lastInstant && Number.isFinite(lastInstant.getTime()) ? copenhagenDateString(lastInstant) : null;
+  if (!tickDate) {
+    return { blocked: true, tick_date: null, blockers: [],
+      detail: "Sæsonen kan ikke afsluttes: sidste træningsdato kan ikke findes i sæsonens løbskalender (ingen gyldig planlagt etape)" };
+  }
+  if (tickDate > copenhagenDateString(now)) {
+    return { blocked: true, tick_date: tickDate, blockers: [],
+      detail: `Sæsonen kan ikke afsluttes: sidste træningsdato ${tickDate} fra løbskalenderen ligger i fremtiden` };
   }
   const [work, teams, riders] = await Promise.all([
     fetchAllRows(() => supabase.from('training_date_work').select('team_id,status')
