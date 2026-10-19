@@ -15,7 +15,7 @@ Kun det der ødelægger spillet i dag. Tomt = godt.
 
 ## 🟠 Nu · højst 5
 
-1. **S5-sæsonskifte uden fejl 25/10:** sidste træningsdato afregnet før skiftet (DST-audit #6862) · mandat-oprydning #6773 · ungdom S5 #6667 #6668 #6710 (dry-runs før 28/10) · board under skiftet #6876 · deploy-frys 23-26/10.
+1. **S5-sæsonskifte uden fejl 25/10:** sidste træningsdato afregnet før skiftet (DST-audit #6862) · mandat-oprydning #6773 · ungdom S5 #6667 #6668 #6710 (dry-runs før 28/10) · board under skiftet #6876. (Ingen deploy-frys; ejer 19/10.)
 2. **S5-profiler + løbsidentitet:** #6369 opfølgning #6748 i `s5_profiles_v2` (tænding venter ejer, #6819/#6820) · **løbsidentitet #6857: dry-run til ejeren 21/10**.
 3. **Udvikling 2.0 del 1 #6499** (#6110): prøvekørsel mod prod til ejeren 23/10, tænding kun på ordret go (effekt 25/10).
 4. **Træningens rest + lovet med dato:** #6210 maks +1 (PR #6248) · #5947 historik · #5965 · #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106.
