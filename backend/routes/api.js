@@ -9349,17 +9349,22 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // #3582: bevægelses-log — den ENESTE admin-drevne ejerskabs-mutationsvej.
   // Best-effort, kaster aldrig (se modul-header) — awaites for at holde
   // rækkefølgen deterministisk, men blokerer aldrig svaret unødigt længe.
-  await recordRiderOwnershipEvent(supabase, {
-    riderId: rider_id,
-    riderFirstname: rider.firstname,
-    riderLastname: rider.lastname,
-    fromTeamId: rider.team_id,
-    toTeamId: team_id || null,
-    reason: RIDER_OWNERSHIP_REASON.ADMIN,
-    relatedEntityType: "manual",
-    actorType: "admin",
-    actorId: req.user?.id ?? null,
-  });
+  // #6504: hold -> intet hold logges af DB-triggeren trg_record_rider_team_exit
+  // (reason release, actor system) i samme transaktion som UPDATE'en. Her skrives
+  // derfor kun hold -> hold og fri -> hold; en egen række ved frigivelse gav dubletter.
+  if (!(rider.team_id && !team_id)) {
+    await recordRiderOwnershipEvent(supabase, {
+      riderId: rider_id,
+      riderFirstname: rider.firstname,
+      riderLastname: rider.lastname,
+      fromTeamId: rider.team_id,
+      toTeamId: team_id || null,
+      reason: RIDER_OWNERSHIP_REASON.ADMIN,
+      relatedEntityType: "manual",
+      actorType: "admin",
+      actorId: req.user?.id ?? null,
+    });
+  }
   res.json({ success: true, message: `${rider.firstname} ${rider.lastname} flyttet til ${teamName}` });
 });
 
