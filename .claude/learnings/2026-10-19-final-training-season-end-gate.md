@@ -16,3 +16,9 @@
 - Den første fixture gav S4 en end_date, som den aktive sæson ikke har. Det skjulte en permanent blokering.
 - Sidste træningsdato afledes nu af sæsonens sidste planlagte etape i Copenhagen via et season-scoped, begrænset kalenderopslag. end_date bruges aldrig som kalenderbevis.
 - Hovedfixturen bruger end_date null; tests dækker færdig/pending/partial/manglende registrering, anden sæson, tom kalender, læsefejl, sen dato og Copenhagen-dato over UTC-midnat.
+
+## Review-opfølgning: ét ur for transition og settlement
+
+- Settlement brugte deps.now eller maskinuret, selv når transitionAt var givet. Det kunne afvise en deterministisk transition som fremtidig.
+- Gaten bruger nu en Date fra samme normaliserede transitionAtIso som resten af transitionen. Intet ekstra vægur-opslag eller særskilt deps.now-override.
+- Syv nye faste regressioner var røde før rettelsen: 25/10 kl. 21 Copenhagen som Date/ISO mod simulerede maskinure før/efter datoen samt et modstridende legacy deps.now. Ingen global Date-mutation eller læsning af faktisk vægur i testene.

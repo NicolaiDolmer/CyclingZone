@@ -211,14 +211,61 @@ for (const status of ['active', 'completed']) {
     const run = new AsyncFunction('buildTransitionPlan', 'assessFinalTrainingDateSettlement', 'args',
       prefix + '\nreturn { reachedFirstWrite: true };\n}\nreturn transitionToNextSeason(args);');
     const plan = { from_season: { ...season, status }, to_season: { id: 's5' } };
-    const args = { supabase: client(), fromSeasonId: 's4', transitionAt: now, deps: { now } };
+    const args = { supabase: client(), fromSeasonId: 's4', transitionAt: now };
     if (status === 'active') {
       await assert.rejects(() => run(async () => plan, readiness.assessFinalTrainingDateSettlement, args), /2026-10-25.*missing_registration/);
       const preview = await run(async () => plan, readiness.assessFinalTrainingDateSettlement,
-        { ...args, dryRun: true, deps: { now, carryOverManagerSetup: async () => ({}) } });
+        { ...args, dryRun: true, deps: { carryOverManagerSetup: async () => ({}) } });
       assert.equal(preview.dryRun, true);
     } else {
       assert.deepEqual(await run(async () => plan, readiness.assessFinalTrainingDateSettlement, args), { reachedFirstWrite: true });
     }
   });
 }
+
+// #6900: the supplied transition instant is the only settlement clock. The
+// machine clock is injected lexically into the real pre-write function body,
+// without changing global Date or reading the actual test runner's wall clock.
+for (const machineTime of ['2026-10-19T08:00:00Z', '2026-10-26T08:00:00Z', '2030-01-01T00:00:00Z']) {
+  for (const asString of [false, true]) {
+    test(`transitionAt 25/10 21:00 Copenhagen ignores machine ${machineTime} (${asString ? 'ISO' : 'Date'})`, async () => {
+      const source = readFileSync(new URL('./seasonTransition.js', import.meta.url), 'utf8');
+      const start = source.indexOf('export async function transitionToNextSeason(');
+      const end = source.indexOf('  const log = [];', start);
+      const prefix = source.slice(start, end).replace('export async function', 'async function');
+      const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+      const run = new AsyncFunction('buildTransitionPlan', 'assessFinalTrainingDateSettlement', 'args', 'Date',
+        prefix + '\nreturn { reachedFirstWrite: true };\n}\nreturn transitionToNextSeason(args);');
+      let machineClockReads = 0;
+      class MachineDate extends Date {
+        constructor(...args) {
+          if (!args.length) machineClockReads++;
+          super(...(args.length ? args : [machineTime]));
+        }
+        static [Symbol.hasInstance](value) { return value instanceof Date; }
+        static now() { throw new Error('Unexpected wall-clock read'); }
+      }
+      const plan = { from_season: { ...season, status: 'active' }, to_season: { id: 's5' } };
+      const transitionAt = asString ? '2026-10-25T21:00:00+01:00' : new Date('2026-10-25T20:00:00Z');
+      const result = await run(async () => plan, readiness.assessFinalTrainingDateSettlement,
+        { supabase: client(), fromSeasonId: 's4', transitionAt }, MachineDate);
+      assert.deepEqual(result, { reachedFirstWrite: true });
+      assert.equal(machineClockReads, 0, 'explicit transitionAt must never consult machine time');
+    });
+  }
+}
+
+test('settlement does not use a second conflicting deps.now clock', async () => {
+  const source = readFileSync(new URL('./seasonTransition.js', import.meta.url), 'utf8');
+  const start = source.indexOf('export async function transitionToNextSeason(');
+  const prefix = source.slice(start, source.indexOf('  const log = [];', start)).replace('export async function', 'async function');
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const run = new AsyncFunction('buildTransitionPlan', 'assessFinalTrainingDateSettlement', 'args',
+    prefix + '\nreturn { reachedFirstWrite: true };\n}\nreturn transitionToNextSeason(args);');
+  const plan = { from_season: { ...season, status: 'active' }, to_season: { id: 's5' } };
+  const result = await run(async () => plan, readiness.assessFinalTrainingDateSettlement, {
+    supabase: client(), fromSeasonId: 's4', transitionAt: '2026-10-25T21:00:00+01:00',
+    deps: { now: new Date('2026-10-19T08:00:00Z') },
+  });
+  assert.deepEqual(result, { reachedFirstWrite: true });
+});

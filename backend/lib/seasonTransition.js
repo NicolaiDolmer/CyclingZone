@@ -1084,7 +1084,7 @@ export async function transitionToNextSeason({
   // re-check rosters after season-end/reset has already changed them.
   if (plan.from_season.status === 'active') {
     const settlement = await assessFinalTrainingDateSettlement({
-      supabase, season: plan.from_season, now: deps.now ?? new Date(),
+      supabase, season: plan.from_season, now: new Date(transitionAtIso),
     });
     if (settlement.blocked) throw new Error(settlement.detail);
   }

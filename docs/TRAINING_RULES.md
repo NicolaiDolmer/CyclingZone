@@ -23,7 +23,10 @@ en pending/loading/writing-reservation er ikke nok. Den kvittering erstatter ald
 registreringen for et hold med division. Sæson 0 er fortsat undtaget.
 
 Samme gate håndhæves i `transitionToNextSeason` før første write når kildesæsonen
-er `active`, også for force og direkte scriptkald. Dry-run er fortsat læsende;
+er `active`, også for force og direkte scriptkald. Referenceuret er transitionens
+normaliserede `transitionAt` (Date eller ISO-streng), uden et ekstra opslag af
+maskinuret eller et separat `deps.now`-ur. Et udeladt transitionAt fastlægges af
+den eksisterende standard én gang ved funktionskaldet. Dry-run er fortsat læsende;
 genoptagelse fra en allerede completed sæson genmåler ikke den ændrede population.
 Gaten er read-only, kan ikke force-omgås og afregner aldrig historisk træning efter
 et skifte. Admin får dato, hold og årsag før første irreversible handling. Den ændrer
