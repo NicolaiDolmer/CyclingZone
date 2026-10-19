@@ -13,7 +13,7 @@ Kør `git pull --ff-only` i `C:\Dev\CyclingZone`, læs `docs/NOW.md`, `docs/MAST
 
 ## I dag (rækkefølge)
 1. **Tidspunkt for skiftet 25/10** (#6898): A afregn-nu-knap / B ca. 20:30 / C flyt sidste etape. Spørg ejeren først.
-2. **Codex-pladser** (ejerens rækkefølge, prompter i `docs/sessions/2026-10-19-6857-codex-prompts.md`): #6909 testport S5 · #6804 trin 1 (design + baseline) · L2 · L3. #6839 ("Kør nu") er i gang hos Codex; review den (motor-risk, kræver Claude-markør).
+2. **Codex-pladser** (ejerens rækkefølge, prompter i `docs/sessions/2026-10-19-6857-codex-prompts.md`): #6909 testport S5 · #6804 trin 1 (design + baseline) · L2 · L3. **#6839 ("Kør nu") er overdraget fra Codex til Claude** (tokens løb tør): start i `docs/sessions/2026-10-19-codex-6839-handoff.md`, worktree `C:\Dev\CyclingZone-worktrees839`, HEAD b18a141. P1/P2 rettet; markér klar → lad CI køre fuld e2e (de 6 lokale fund 5159/5383/signup sås også lokalt på #6911 og var miljø), Claude-review (motor-risk) → visuelt go-kort.
 3. **Beslutningskort** for #6804 trin 1, når Codex leverer.
 4. **Første løbsfilm-gennemgang** (#6914 pkt. 3): 3 tilfældige etaper side om side med rigtige løb.
 5. **Gennemtest beta-ting** (stage_page_v2, training_bulk_day, push_enabled, race_library_v2) med skærmbilleder; tænding på ejer-go.
