@@ -2,6 +2,10 @@
 
 > Verdens bedste Claude+GitHub-opsætning. Ambition: agent-loop hvor Nicolai åbner et issue, Claude implementerer, GitHub merger, alt logges automatisk.
 
+## PR klar til review
+
+`check-verification` springer drafts over og lytter derfor paa `ready_for_review`, saa markering som klar genstarter valideringen af PR-body uden et nyt push. `review-gate` lytter allerede paa samme event for baade `pull_request_target` (gaten fra main) og `pull_request` (unit-tests).
+
 ## Vision: Agent-loop
 
 Deploy-/cron-bevis (#6318) ejes af [DEPLOYMENT.md](DEPLOYMENT.md#berørte-cron-jobs-efter-railway-ready-6318).
