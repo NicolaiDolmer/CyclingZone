@@ -34,22 +34,14 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { writeFileSync, readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { dirname, join, resolve } from "node:path";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURE_PATH = join(__dirname, "..", "..", "lib", "__fixtures__", "racePoolCatalog.prod.json");
 
-const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error("Mangler SUPABASE secrets (kør via: infisical run --env=prod -- node ...)");
-  process.exit(1);
-}
-const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-async function main() {
-  const checkOnly = process.argv.includes("--check");
+export async function dumpRacePoolFixture({ sb, fixturePath = FIXTURE_PATH, checkOnly = false, today }) {
 
   // Samme forespørgsel-form som scripts/s3CalendarPackageScorecard.js'
   // loadPoolsAndCatalog() (#3546) og scripts/dryRunTierCalendarBalance.js — begge
@@ -66,7 +58,7 @@ async function main() {
   const catalogRows = await fetchAllRows(() =>
     sb
       .from("race_pool")
-      .select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text")
+      .select("id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text, race_identity_type, signature, authored_route")
       .is("retired_at", null)
       .order("id", { ascending: true })
   );
@@ -91,11 +83,14 @@ async function main() {
     race_type: r.race_type,
     stages: r.stages,
     date_text: r.date_text,
+    race_identity_type: r.race_identity_type,
+    signature: r.signature,
+    authored_route: r.authored_route,
   }));
 
   const out = {
     _note: "Snapshot af prod-kataloget, hentet read-only. Gør kalender-generatoren koerbar lokalt og i CI UDEN prod-credentials (#4103/#4121). Kilde: race_pool WHERE retired_at IS NULL + league_divisions. Opdateres naar kataloget aendres (scripts/dev/dumpRacePoolFixture.mjs).",
-    hentet: new Date().toISOString().slice(0, 10),
+    hentet: today,
     pools,
     catalog,
   };
@@ -104,29 +99,44 @@ async function main() {
   if (checkOnly) {
     let gammel;
     try {
-      gammel = readFileSync(FIXTURE_PATH, "utf8");
+      gammel = readFileSync(fixturePath, "utf8");
     } catch {
-      console.error(`[FEJL] ${FIXTURE_PATH} findes ikke.`);
-      process.exit(1);
+      console.error(`[FEJL] ${fixturePath} findes ikke.`);
+      return false;
     }
     // Sammenlign kun pools/catalog, ikke "hentet" (som altid vil afvige, dags dato).
     const gammelUdenDato = JSON.stringify({ ...JSON.parse(gammel), hentet: null });
     const nyUdenDato = JSON.stringify({ ...out, hentet: null });
     if (gammelUdenDato === nyUdenDato) {
       console.log("[ok] Fixturen matcher stadig prod-kataloget.");
-      return;
+      return true;
     }
     console.error(`[FEJL] Fixturen er drevet fra prod: ${catalog.length} løb i prod mod ${JSON.parse(gammel).catalog.length} i fixturen.`);
     console.error("Kør uden --check for at genskrive filen, og commit den i sin egen PR.");
-    process.exitCode = 1;
-    return;
+    return false;
   }
 
-  writeFileSync(FIXTURE_PATH, json, "utf8");
-  console.log(`Skrevet: ${FIXTURE_PATH} (${catalog.length} løb, ${pools.length} puljer)`);
+  writeFileSync(fixturePath, json, "utf8");
+  console.log(`Skrevet: ${fixturePath} (${catalog.length} løb, ${pools.length} puljer)`);
+  return true;
 }
 
-main().catch((err) => {
-  console.error("[fatal]", err?.message ?? err);
-  process.exit(1);
-});
+async function main() {
+  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    throw new Error("Mangler SUPABASE secrets (kør via: infisical run --env=prod -- node ...)");
+  }
+  const matches = await dumpRacePoolFixture({
+    sb: createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY),
+    checkOnly: process.argv.includes("--check"),
+    today: new Date().toISOString().slice(0, 10),
+  });
+  if (!matches) process.exitCode = 1;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch((err) => {
+    console.error("[fatal]", err?.message ?? err);
+    process.exitCode = 1;
+  });
+}
