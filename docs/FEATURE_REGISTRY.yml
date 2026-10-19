@@ -980,6 +980,8 @@ features:
     epic: 6590
     verified: 2026-10-19
     note: push_enabled = beta i prod 19/10 (ejer-go 18/10+19/10); VAPID-nøgler i Infisical prod + Railway; ejerens Android abonnerer (19/10).
+    roadmap_en: "Push notifications on your phone: outbid in the last minute, one race summary per race day, and offers waiting for you. Never between 22:00 and 08:00, at most 6 a day."
+    roadmap_da: "Push-notifikationer på telefonen: overbudt i sidste minut, ét løbsresumé pr. løbsdag og tilbud, der venter på dig. Aldrig mellem 22 og 08, højst 6 om dagen."
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro
