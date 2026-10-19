@@ -9340,8 +9340,6 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
   // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"
   // — vises i markedet men afvises af auktions-gaten (rider_is_academy).
-  // #6504: margin på tidsstemplet, så server- og DB-ur ikke skal være ens.
-  const exitSince = new Date(Date.now() - 60_000).toISOString();
   const { error } = await supabase.from("riders")
     .update({ team_id: team_id || null, pending_team_id: null, is_academy: false, acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
   if (error) return res.status(500).json({ error: error.message });
@@ -9352,18 +9350,19 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // Best-effort, kaster aldrig (se modul-header) — awaites for at holde
   // rækkefølgen deterministisk, men blokerer aldrig svaret unødigt længe.
   // #6504: hold -> intet hold logges af DB-triggeren; her tilskrives den række
-  // admin i stedet for at skrive en dublet.
-  if (rider.team_id && !team_id) {
-    await attributeTeamExitEvent(supabase, {
+  // admin i stedet for at skrive en dublet. Findes trigger-rækken ikke (deploy-
+  // vinduet før migrationen), skrives admin-rækken som før.
+  const exitAttribution = rider.team_id && !team_id
+    ? await attributeTeamExitEvent(supabase, {
       riderId: rider_id,
       fromTeamId: rider.team_id,
-      since: exitSince,
       reason: RIDER_OWNERSHIP_REASON.ADMIN,
       relatedEntityType: "manual",
       actorType: "admin",
       actorId: req.user?.id ?? null,
-    });
-  } else {
+    })
+    : null;
+  if (!exitAttribution || (exitAttribution.ok && exitAttribution.updated === 0)) {
     await recordRiderOwnershipEvent(supabase, {
       riderId: rider_id,
       riderFirstname: rider.firstname,

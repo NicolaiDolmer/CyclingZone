@@ -105,35 +105,39 @@ export async function recordRiderOwnershipEvent(supabase, event) {
  * #6504: en udgang fra et hold (team_id -> null) logges af DB-triggeren
  * trg_record_rider_team_exit som reason release/retirement, actor system. En
  * kalder, der kender den rigtige aktør (admin-flytningen), skriver IKKE en egen
- * række (det gav en dubletrække), men tilskriver triggerens række. Best-effort
- * og kaster aldrig, som recordRiderOwnershipEvent.
+ * række (det gav en dubletrække), men tilskriver triggerens række.
+ *
+ * Ingen tidsvinduer (server- og DB-ur kan afvige): kun rytterens ALLERNYESTE
+ * ejerskifte-række tilskrives, og kun hvis den er netop denne udgang
+ * (fra fromTeamId til intet hold, actor system). Ellers updated = 0, og kalderen
+ * skriver sin egen række (deploy-vinduet før triggeren findes). Best-effort og
+ * kaster aldrig, som recordRiderOwnershipEvent.
  *
  * @param {any} supabase Supabase-klient (service_role)
  * @param {object} p
  * @param {string} p.riderId
  * @param {string} p.fromTeamId holdet rytteren forlod
- * @param {string} p.since ISO-tid lige før UPDATE'en (snævrer ind til denne udgang)
  * @param {string} p.reason en af RIDER_OWNERSHIP_REASON
  * @param {string|null} [p.relatedEntityType]
  * @param {string|null} [p.actorType]
  * @param {string|null} [p.actorId]
  * @returns {Promise<{ok:boolean, updated:number}>}
  */
-export async function attributeTeamExitEvent(supabase, { riderId, fromTeamId, since, reason, relatedEntityType = null, actorType = null, actorId = null }) {
+export async function attributeTeamExitEvent(supabase, { riderId, fromTeamId, reason, relatedEntityType = null, actorType = null, actorId = null }) {
   try {
-    // Kun den nyeste udgangs-række: en ældre udgang i samme vindue må aldrig omdøbes.
     const { data: rows, error: findError } = await supabase.from("rider_ownership_events")
-      .select("id")
-      .eq("rider_id", riderId).eq("from_team_id", fromTeamId).is("to_team_id", null)
-      .eq("actor_type", "system").gte("created_at", since)
+      .select("id, from_team_id, to_team_id, actor_type")
+      .eq("rider_id", riderId)
       .order("created_at", { ascending: false }).order("id", { ascending: false })
       .limit(1);
     if (findError) throw new Error(normalizeSupabaseErrorMessage(findError.message));
-    const id = rows?.[0]?.id;
-    if (id == null) return { ok: true, updated: 0 };
+    const latest = rows?.[0];
+    if (!latest || latest.to_team_id != null || latest.from_team_id !== fromTeamId || latest.actor_type !== "system") {
+      return { ok: true, updated: 0 };
+    }
     const { data, error } = await supabase.from("rider_ownership_events")
       .update({ reason, related_entity_type: relatedEntityType, actor_type: actorType, actor_id: actorId })
-      .eq("id", id).eq("actor_type", "system")
+      .eq("id", latest.id).eq("actor_type", "system")
       .select("id");
     if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
     return { ok: true, updated: data?.length ?? 0 };

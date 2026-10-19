@@ -117,8 +117,8 @@ test("RIDER_OWNERSHIP_REASON dækker alle veje nævnt i #3582-issuet", () => {
 });
 
 // #6504: admin-flytningen til intet hold tilskriver triggerens række i stedet for
-// at skrive en dublet, og KUN den nyeste udgangs-række.
-function makeUpdateSupabase({ found = [{ id: 7 }], findError = null, data = [{ id: 7 }], error = null } = {}) {
+// at skrive en dublet, og KUN hvis rytterens nyeste række er netop denne udgang.
+function makeUpdateSupabase({ found = [{ id: 7, from_team_id: "team-a", to_team_id: null, actor_type: "system" }], findError = null, data = [{ id: 7 }], error = null } = {}) {
   const calls = { patch: null, find: [], update: [], order: [], limit: null };
   return {
     from(table) {
@@ -126,9 +126,7 @@ function makeUpdateSupabase({ found = [{ id: 7 }], findError = null, data = [{ i
       return {
         select() {
           const q = {
-            eq(c, v) { calls.find.push(["eq", c, v]); return q; },
-            is(c, v) { calls.find.push(["is", c, v]); return q; },
-            gte(c, v) { calls.find.push(["gte", c, v]); return q; },
+            eq(c, v) { calls.find.push([c, v]); return q; },
             order(c, o) { calls.order.push([c, o.ascending]); return q; },
             limit(n) { calls.limit = n; return Promise.resolve({ data: found, error: findError }); },
           };
@@ -148,35 +146,32 @@ function makeUpdateSupabase({ found = [{ id: 7 }], findError = null, data = [{ i
   };
 }
 
-test("attributeTeamExitEvent tilskriver kun den nyeste system-række for denne udgang", async () => {
+const ATTR = { riderId: "rider-1", fromTeamId: "team-a", reason: RIDER_OWNERSHIP_REASON.ADMIN, relatedEntityType: "manual", actorType: "admin", actorId: "admin-1" };
+
+test("attributeTeamExitEvent tilskriver rytterens nyeste række, når den er netop denne udgang", async () => {
   const supabase = makeUpdateSupabase();
-  const result = await attributeTeamExitEvent(supabase, {
-    riderId: "rider-1", fromTeamId: "team-a", since: "2026-10-19T10:00:00.000Z",
-    reason: RIDER_OWNERSHIP_REASON.ADMIN, relatedEntityType: "manual", actorType: "admin", actorId: "admin-1",
-  });
-  assert.deepEqual(result, { ok: true, updated: 1 });
-  assert.deepEqual(supabase._calls.find, [
-    ["eq", "rider_id", "rider-1"], ["eq", "from_team_id", "team-a"], ["is", "to_team_id", null],
-    ["eq", "actor_type", "system"], ["gte", "created_at", "2026-10-19T10:00:00.000Z"],
-  ]);
+  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 1 });
+  assert.deepEqual(supabase._calls.find, [["rider_id", "rider-1"]]);
   assert.deepEqual(supabase._calls.order, [["created_at", false], ["id", false]]);
   assert.equal(supabase._calls.limit, 1);
   assert.deepEqual(supabase._calls.update, [["id", 7], ["actor_type", "system"]]);
   assert.deepEqual(supabase._calls.patch, { reason: "admin", related_entity_type: "manual", actor_type: "admin", actor_id: "admin-1" });
 });
 
-test("attributeTeamExitEvent opdaterer intet, når ingen udgangs-række findes", async () => {
-  const supabase = makeUpdateSupabase({ found: [] });
-  assert.deepEqual(await attributeTeamExitEvent(supabase, {
-    riderId: "rider-1", fromTeamId: "team-a", since: "2026-10-19T10:00:00.000Z", reason: RIDER_OWNERSHIP_REASON.ADMIN,
-  }), { ok: true, updated: 0 });
-  assert.equal(supabase._calls.patch, null);
+test("attributeTeamExitEvent rører intet, når den nyeste række ikke er denne udgang (fx før triggeren findes)", async () => {
+  for (const found of [
+    [],
+    [{ id: 3, from_team_id: null, to_team_id: "team-a", actor_type: "cron" }],
+    [{ id: 4, from_team_id: "team-b", to_team_id: null, actor_type: "system" }],
+    [{ id: 5, from_team_id: "team-a", to_team_id: null, actor_type: "admin" }],
+  ]) {
+    const supabase = makeUpdateSupabase({ found });
+    assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 0 });
+    assert.equal(supabase._calls.patch, null);
+  }
 });
 
 test("attributeTeamExitEvent kaster aldrig ved DB-fejl", async () => {
   const supabase = makeUpdateSupabase({ found: null, findError: { message: "boom" } });
-  const result = await attributeTeamExitEvent(supabase, {
-    riderId: "rider-1", fromTeamId: "team-a", since: "2026-10-19T10:00:00.000Z", reason: RIDER_OWNERSHIP_REASON.ADMIN,
-  });
-  assert.deepEqual(result, { ok: false, updated: 0 });
+  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: false, updated: 0 });
 });
