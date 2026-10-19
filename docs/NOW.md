@@ -6,9 +6,9 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord: post 7.363-7.368 (`docs/drafts/discord-patch-7363-7368-2026-10-19.md`) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** NÆSTE CLAUDE-SESSION (DolmerPC): [`sessions/2026-10-19-eftermiddag-startprompt.md`](sessions/2026-10-19-eftermiddag-startprompt.md). Fokus (ejer): **merges** (#6906 #6902 #6839 #6900 #6899 + tænd motor v2 #6819→#6820) · **nye ruter = løbsidentitet #6857 (prøvekørsel 21/10)** · **Udvikling 2.0 #6499 (prøvekørsel 23/10)** · visuelle forslag #6904/#6905. Codex bygger (højst 4 sessioner), Claude reviewer/merger, én merge ad gangen med ejer-go.
+> **🎯 Next action:** NÆSTE CLAUDE-SESSION (DolmerPC): [`sessions/2026-10-20-startprompt.md`](sessions/2026-10-20-startprompt.md). Først: tidspunkt for skiftet 25/10 (#6898) · Codex-pladser: #6909 testport S5 · #6804 udbrudspakken trin 1 (design) · L2 · L3 (#6857) · review #6839 · første løbsfilm-gennemgang (#6914) · gennemtest beta → live. Ingen deploy-frys; færdigt før nyt.
 >
-> **19/10 (DolmerPC):** 10 merges (#6878-#6880, #6891-#6897). #6504 done (frigivelser logges + ingen falsk alarm). Push live for beta. Ny MASTERPLAN-rækkefølge. Gældsmålet viser forkert mål (#6903, PR #6906). Formtoppe får eget flag `race_form_peaks` (#6902), tændes ved skiftet 25/10.
+> **19/10 (DolmerPC):** 19 merges i alt (bl.a. #6899 ranglister M1 slukket, #6900 vagt før skiftet, #6907 løbsidentitet L1, #6910 omdømme, #6911 menu, design #6813/#6843/#6849). Testport v2 kørt (privat). Ejer-beslutninger: v2-udbrudspakken #6804, jagtafstand #6814 med i v2, #6820 tændes samlet når grøn, verdensklasse-køreplan (#6914-#6919, backend A).
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (Claude 19/10 morgen-eftermiddag på DolmerPC lukket; næste: se Next action).
+> **🤖 Working agent:** Ingen aktiv session (Claude 19/10 aften på DolmerPC lukket; Codex: #6839 i gang; næste: se Next action).
