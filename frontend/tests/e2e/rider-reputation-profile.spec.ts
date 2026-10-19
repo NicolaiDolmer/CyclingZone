@@ -40,6 +40,8 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await reputation.click();
   const details = page.getByRole("dialog", { name: "Hvorfor omdømmet flyttede sig" });
   await expect(details).toBeVisible();
+  await expect(details).toHaveAttribute("aria-modal", "true");
+  await expect(details).toHaveAttribute("aria-labelledby", "rider-reputation-dialog-title");
   expect(await details.evaluate((element) => element.parentElement === document.body)).toBe(true);
   await expect(details.getByText("+0,6")).toBeVisible();
   await expect(details.getByText("Preview Tour").first()).toBeVisible();
@@ -65,8 +67,13 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await reputation.focus();
   await page.keyboard.press("Enter");
   await expect(details).toBeVisible();
-  await reputation.press("Escape");
+  const closeButton = details.getByRole("button", { name: "Luk" });
+  await expect(closeButton).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(helpLink).toBeFocused();
+  await page.keyboard.press("Escape");
   await expect(details).toHaveCount(0);
+  await expect(reputation).toBeFocused();
   await reputation.click();
   await expect(details).toBeVisible();
 

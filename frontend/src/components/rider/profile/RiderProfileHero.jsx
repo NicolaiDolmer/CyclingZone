@@ -128,15 +128,39 @@ function StatusBanner({ banner }) {
 
 function ReputationEventList({ events = [], open, onClose, dialogRef, position }) {
   const { t } = useTranslation("rider");
+  const closeButtonRef = useRef(null);
+  const focusSetRef = useRef(false);
   const rows = Array.isArray(events) ? events : [];
   const desktop = typeof window !== "undefined" && window.innerWidth >= 640;
+  useEffect(() => {
+    if (!open) {
+      focusSetRef.current = false;
+    } else if ((!desktop || position) && !focusSetRef.current && closeButtonRef.current) {
+      closeButtonRef.current.focus();
+      focusSetRef.current = true;
+    }
+  }, [open, desktop, position]);
   if (!open || (desktop && !position)) return null;
+  const handleDialogKeyDown = (event) => {
+    if (event.key === "Escape") {
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = dialogRef.current?.querySelectorAll("button:not([disabled]), a[href]:not([aria-disabled='true'])");
+    if (!focusable?.length) return;
+    const controls = Array.from(focusable);
+    const activeIndex = controls.indexOf(document.activeElement);
+    const nextIndex = (activeIndex + (event.shiftKey ? -1 : 1) + controls.length) % controls.length;
+    event.preventDefault();
+    controls[nextIndex].focus();
+  };
   return (
     <Portal>
-      <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} style={position ? { top: position.top, left: position.left, maxHeight: position.maxHeight } : undefined} className="fixed bottom-[76px] left-4 right-4 z-overlay max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:bottom-auto sm:left-auto sm:right-auto sm:w-[320px] sm:z-dropdown">
+      <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-modal="true" aria-labelledby="rider-reputation-dialog-title" onKeyDown={handleDialogKeyDown} style={position ? { top: position.top, left: position.left, maxHeight: position.maxHeight } : undefined} className="fixed bottom-[76px] left-4 right-4 z-overlay max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:bottom-auto sm:left-auto sm:right-auto sm:w-[320px] sm:z-dropdown">
         <div className="flex items-center justify-between gap-3 mb-2">
-          <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
-          <button type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
+          <p id="rider-reputation-dialog-title" className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
+          <button ref={closeButtonRef} type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
         </div>
         {rows.length ? (
           <ul className="space-y-1.5 max-h-56 overflow-y-auto">
@@ -193,6 +217,15 @@ export default function RiderProfileHero({
   const [reputationPosition, setReputationPosition] = useState(null);
   const reputationTriggerRef = useRef(null);
   const reputationDetailsRef = useRef(null);
+  const reputationWasOpenRef = useRef(false);
+  useEffect(() => {
+    if (reputationOpen) {
+      reputationWasOpenRef.current = true;
+    } else if (reputationWasOpenRef.current) {
+      reputationWasOpenRef.current = false;
+      reputationTriggerRef.current?.focus();
+    }
+  }, [reputationOpen]);
   useEffect(() => {
     if (!reputationOpen) return undefined;
     const positionPopover = () => {
@@ -214,7 +247,7 @@ export default function RiderProfileHero({
       setReputationPosition(null);
     };
     const closeOnScroll = (event) => {
-      if (reputationDetailsRef.current?.contains(event.target)) return;
+      if (event.target instanceof Node && reputationDetailsRef.current?.contains(event.target)) return;
       setReputationOpen(false);
       setReputationPosition(null);
     };
