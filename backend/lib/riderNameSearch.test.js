@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { sanitizeNameToken, nameSearchTokens, applyNameSearch } from "./riderNameSearch.js";
+import { sanitizeNameToken, nameSearchTokens, applyNameSearch, buildAccentInsensitivePattern } from "./riderNameSearch.js";
 
 function mockQuery() {
   const calls = [];
@@ -29,8 +29,8 @@ test("sanitizeNameToken fjerner injektions-tegn + wildcards, bevarer navne-tegn"
 test("applyNameSearch bygger ét or-kald pr. token", () => {
   const q = applyNameSearch(mockQuery(), "Tadej Pog");
   assert.deepEqual(q._calls, [
-    "firstname.ilike.%Tadej%,lastname.ilike.%Tadej%",
-    "firstname.ilike.%Pog%,lastname.ilike.%Pog%",
+    `firstname.imatch.${buildAccentInsensitivePattern("Tadej", { wordStart: true })},lastname.imatch.${buildAccentInsensitivePattern("Tadej", { wordStart: true })}`,
+    `firstname.imatch.${buildAccentInsensitivePattern("Pog", { wordStart: true })},lastname.imatch.${buildAccentInsensitivePattern("Pog", { wordStart: true })}`,
   ]);
 });
 
@@ -43,6 +43,16 @@ test("applyNameSearch med tom / kun-metakarakter q tilføjer intet filter", () =
 test("injektions-token kan ikke åbne en ny or-betingelse", () => {
   const q = applyNameSearch(mockQuery(), "x,or(id.gt.0)");
   assert.equal(q._calls.length, 1);
-  assert.equal(q._calls[0], "firstname.ilike.%xorid.gt.0%,lastname.ilike.%xorid.gt.0%");
+  const p = buildAccentInsensitivePattern("xorid.gt.0", { wordStart: true });
+  assert.equal(q._calls[0], `firstname.imatch.${p},lastname.imatch.${p}`);
   assert.ok(!/[()]/.test(q._calls[0]));
+});
+
+test("#5941: backend-moenstret er ord-praefiks og accent-ufoelsomt (samme kontrakt som frontend)", () => {
+  const p = buildAccentInsensitivePattern("Lopez", { wordStart: true });
+  assert.ok(p.startsWith("\\m"), "ord-start");
+  const re = new RegExp(p.replace(/^\\m/, "(?:^|[^a-z0-9])"), "i");
+  assert.ok(re.test("L\u00f3pez"), "accent-ufoelsom");
+  const jong = new RegExp(buildAccentInsensitivePattern("ong", { wordStart: true }).replace(/^\\m/, "(?:^|[^a-z0-9])"), "i");
+  assert.ok(!jong.test("Jong"), "ikke midt i ordet");
 });

@@ -1,0 +1,101 @@
+{
+  "title": "Résultats",
+  "subtitle": {
+    "active": "Saison {number} · en cours",
+    "viewing": "Saison {number}",
+    "noSeason": "Aucune saison en cours"
+  },
+  "tabs": {
+    "latest": "Derniers",
+    "archive": "Archives",
+    "raceHistory": "Historique des courses",
+    "points": "Points et gains"
+  },
+  "latest": {
+    "empty": "Aucune course n'est encore terminée ici",
+    "emptyBody": "Les résultats apparaissent ici dès que la première course de cette sélection est terminée.",
+    "noPodium": "Aucun classement importé pour cette course pour l'instant",
+    "viewFull": "Résultat complet",
+    "stageProgress": "Étape {done} sur {total}"
+  },
+  "filters": {
+    "seasonLabel": "Saison",
+    "seasonOption": "Saison {number}",
+    "seasonOptionActive": "Saison {number} (en cours)",
+    "divisionLabel": "Division",
+    "allDivisions": "Toutes les divisions",
+    "division": "Division {n}",
+    "poolLabel": "Groupe",
+    "allPools": "Tous les groupes"
+  },
+  "hub": {
+    "moreTitle": "Plus dans Résultats",
+    "standings": {
+      "label": "Classement",
+      "desc": "Classement des équipes pour la saison en cours"
+    },
+    "riderRankings": {
+      "label": "Classement des coureurs",
+      "desc": "Résultats individuels de tous les coureurs"
+    },
+    "seasonSnapshot": {
+      "label": "Instantané de la saison",
+      "desc": "Calendrier, classement final et vainqueurs de la saison"
+    }
+  },
+  "loadingAria": "Chargement des résultats",
+  "emptyNoSeason": "Aucune saison en cours. Les résultats apparaîtront ici dès que la saison sera lancée",
+  "topTeams": "Meilleures équipes · Saison {number}",
+  "topScorers": "Meilleurs marqueurs · Saison {number}",
+  "teamMeta": "{stageWins, plural, one {# victoire d'étape} other {# victoires d'étape}} · {gcWins} CG",
+  "freeAgent": "Agent libre",
+  "riderStageWins": "{count, plural, one {# victoire d'étape} other {# victoires d'étape}}",
+  "riderGcWins": "{count} CG",
+  "points": "{count} pt",
+  "seeAllStandings": "Voir le classement complet",
+  "seeAllRiders": "Voir tous les coureurs",
+  "emptyNoResults": "Aucun résultat de course importé pour l'instant cette saison",
+  "loadError": "Impossible de charger les résultats",
+  "loadErrorBody": "Rien n'a été perdu. Essaie de recharger la page.",
+  "retry": "Réessayer",
+  "raceHistory": {
+    "tableLabel": "Historique des courses",
+    "searchPlaceholder": "Rechercher une course",
+    "poolLabel": "Division",
+    "count": "{count, plural, one {# course} other {# courses}}",
+    "showing": "{from}-{to} sur {total}",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "seasonShort": "S{number}",
+    "stages": "{count, plural, one {# étape} other {# étapes}}",
+    "oneDay": "Course d'un jour",
+    "place": "{rank, selectordinal, one {#er} two {#e} few {#e} other {#e}}",
+    "notPlaced": "Pas dans les résultats",
+    "noWinner": "Aucun vainqueur enregistré",
+    "noRoute": "Parcours non enregistré",
+    "allEditions": "Les {count} éditions",
+    "firstEdition": "Première édition",
+    "th": {
+      "race": "Course",
+      "champion": "Tenant du titre",
+      "championShort": "Champion",
+      "best": "Ton meilleur",
+      "bestShort": "Meilleur",
+      "terrain": "Terrain",
+      "winners": "Vainqueurs précédents"
+    },
+    "empty": {
+      "title": "Choisis une autre division",
+      "desc": "Aucune course n'est encore terminée dans cette division.",
+      "action": "Afficher {pool}",
+      "latest": "Voir les derniers résultats"
+    },
+    "emptySearch": {
+      "title": "Essaie une autre recherche",
+      "desc": "Aucune course terminée ne correspond à ce nom.",
+      "action": "Effacer la recherche"
+    },
+    "error": "L'historique des courses n'a pas pu se charger. Rien n'a été perdu.",
+    "retry": "Réessayer"
+  }
+}

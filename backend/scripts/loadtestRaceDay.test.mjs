@@ -21,8 +21,11 @@ import {
   createCountingSupabase,
   firstTickAtOrAfter,
   parseArgs,
+  PROD_TEAM_COUNT,
   renderMarkdown,
   simulateRaceDay,
+  trainingCloseCheck,
+  trainingCloseDurationMs,
   trainingCloseStart,
   TRAINING_DAY_CLOSE_CRON_PERIOD_MS,
   youthSlotsFor,
@@ -30,7 +33,7 @@ import {
 import { squadSlotsForDate } from "../lib/squadCalendarPacker.js";
 import { SQUAD_CALENDAR } from "../lib/calendarTierCaps.js";
 import { STAGE_TICK_PERIOD_MS, STAGE_TICK_OFFSET_MS } from "../lib/schedulerTick.js";
-import { startTrainingDayCloseAfterStages, SWEEP_FROM_HOUR } from "../lib/trainingDayCloseTrigger.js";
+import { startTrainingDayCloseAfterStages, SWEEP_FROM_HOUR, MAX_TEAM_CONCURRENCY } from "../lib/trainingDayCloseTrigger.js";
 
 const SCRIPT = fileURLToPath(new URL("./loadtestRaceDay.mjs", import.meta.url));
 const CRON_SRC = readFileSync(fileURLToPath(new URL("../cron.js", import.meta.url)), "utf8");
@@ -124,8 +127,9 @@ test("paritet: ungdomstiderne kommer fra materializerens kilde (squadSlotsForDat
 test("#6772: sæsonens sidste løbsdag består med nuværende profil (også S4's skiftedag 25/10)", async () => {
   for (const date of [DATE, "2026-10-25"]) {
     const run = await simulateRaceDay({ date, scenario: "season-last-day", profile: COST_PROFILES.current });
-    const failed = run.checks.filter((c) => !c.ok).map((c) => c.id);
-    assert.deepEqual(failed, [], date);
+    // Aftentræningens varighed (#6766) er en separat gate og fejler ærligt ved 1x serielt;
+    // her er det stage-scheduleren der testes.
+    assert.deepEqual(failedExceptTraining(run), [], date);
     assert.equal(run.metrics.ticksSkippedOverlap, 0, date);
     assert.ok(run.metrics.maxTickDurationMs <= DEFAULT_LIMITS.maxTickDurationMs, date);
   }
@@ -170,11 +174,12 @@ test("tællende fake: ukendt filter kaster (fail-closed) i stedet for at gætte"
   assert.throws(() => sb.from("races").select("id, ukendt(x)"), /ukendt indlejret ressource/);
 });
 
-test("nuværende profil: en normal S5-løbsdag består alle grænser", async () => {
+test("nuværende profil: en normal S5-løbsdag består alle grænser undtagen aftentræningens varighed", async () => {
   const run = await simulateRaceDay({ date: DATE, scenario: "normal", profile: COST_PROFILES.current });
-  const failed = run.checks.filter((c) => !c.ok).map((c) => c.id);
-  assert.deepEqual(failed, []);
-  assert.equal(run.passed, true);
+  // #6766: med den målte aftentræning (ca. 6 s pr. hold, serielt) er det kun varighedsgaten der fejler.
+  assert.deepEqual(failedExceptTraining(run), []);
+  assert.deepEqual(run.checks.filter((c) => !c.ok).map((c) => c.id), ["training_close_duration"]);
+  assert.equal(run.passed, false);
   assert.equal(run.metrics.missing, 0);
   assert.equal(run.metrics.stagesRan, run.metrics.stagesExpected);
   assert.deepEqual(run.metrics.stagesExpectedBySquad, { senior: 37, u23: 10, junior: 10 });
@@ -188,7 +193,111 @@ test("nuværende profil: en normal S5-løbsdag består alle grænser", async () 
   assert.equal(training.length, 1);
   assert.deepEqual({ at: training[0].at, trigger: training[0].trigger }, { at: "20:00", trigger: "cron" });
   assert.equal(run.metrics.trainingClose.at, "20:00");
-  assert.match(renderMarkdown({ ...run, passed: run.passed, profile: "p", date: DATE, latencyMs: 10, finalShare: 1, scenarios: [run] }), /## normal: PASS/);
+  assert.match(renderMarkdown({ ...run, passed: run.passed, profile: "p", date: DATE, latencyMs: 10, finalShare: 1, scenarios: [run] }), /## normal: FAIL[\s\S]*training_close_duration \| \*\*FAIL\*\*/);
+});
+
+// ── #6766: aftentræningens kalibrering og varighedsgate ──
+
+/** Checks der fejler, når man ser bort fra aftentræningens varighed. */
+function failedExceptTraining(run) {
+  return run.checks.filter((c) => !c.ok && c.id !== "training_close_duration").map((c) => c.id);
+}
+
+test("#6766: profilen er kalibreret fra prod-målingen (ca. 6 s pr. hold), ikke de gamle 0,4 s", () => {
+  for (const profile of Object.values(COST_PROFILES)) {
+    assert.ok(profile.trainingClosePerTeam.ms >= 5_000 && profile.trainingClosePerTeam.ms <= 8_000, "ca. 6 s pr. hold serielt");
+  }
+  // Målingen: 405-408 hold på 39,2-50,1 min -> 5,8-7,4 s pr. hold.
+  const perTeamS = COST_PROFILES.current.trainingClosePerTeam.ms / 1000;
+  assert.ok(perTeamS >= (39.2 * 60) / 408 - 0.1 && perTeamS <= (50.1 * 60) / 405 + 0.1);
+  // Kilden står ved tallet i koden.
+  const src = readFileSync(SCRIPT, "utf8");
+  assert.ok(src.includes("docs/superpowers/specs/2026-10-15-training-10x-jobqueue-direct-pg-design.md §1"));
+});
+
+test("#6766: fixturen følger prods holdantal (default ca. 410) og er et argument", () => {
+  assert.equal(PROD_TEAM_COUNT, 410);
+  const def = buildRaceDayFixture({ date: DATE });
+  assert.equal(def.teamsTotal, PROD_TEAM_COUNT);
+  assert.equal(def.state.teams.length, PROD_TEAM_COUNT);
+  // Strukturen er gulvet: et mindre argument forkorter ikke puljerne.
+  const floor = buildRaceDayFixture({ date: DATE, teams: 1 });
+  assert.ok(floor.teamsTotal > 1 && floor.teamsTotal <= PROD_TEAM_COUNT);
+  assert.equal(buildRaceDayFixture({ date: DATE, teams: 1000 }).teamsTotal, 1000);
+  // Fyld-holdene har ingen pulje og ændrer ikke dagens etaper.
+  assert.equal(buildRaceDayFixture({ date: DATE, teams: 1000 }).expected.length, def.expected.length);
+});
+
+test("#6766: varighedsgaten fejler ærligt ved 1x serielt og består kun når tallet er under 2 min", async () => {
+  const serial = await simulateRaceDay({ date: DATE, scenario: "normal" });
+  const check = serial.checks.find((c) => c.id === "training_close_duration");
+  assert.equal(check.ok, false);
+  assert.equal(check.limit, 120_000);
+  assert.equal(check.value, trainingCloseDurationMs(COST_PROFILES.current.trainingClosePerTeam.ms, PROD_TEAM_COUNT, 1) + COST_PROFILES.current.rankingRefresh.ms);
+  assert.ok(check.value > 20 * 60_000, "ca. 41 min for 410 hold serielt");
+  assert.equal(serial.metrics.trainingClose.concurrency, 1);
+  assert.equal(serial.metrics.trainingClose.teams, PROD_TEAM_COUNT);
+
+  // Concurrency er parameteren: varigheden falder lineært, men målet nås ikke blot ved at skrue op.
+  const c8 = await simulateRaceDay({ date: DATE, scenario: "normal", trainingConcurrency: 8 });
+  assert.equal(c8.checks.find((c) => c.id === "training_close_duration").value, trainingCloseDurationMs(COST_PROFILES.current.trainingClosePerTeam.ms, PROD_TEAM_COUNT, 8) + COST_PROFILES.current.rankingRefresh.ms);
+  const c16 = await simulateRaceDay({ date: DATE, scenario: "normal", trainingConcurrency: MAX_TEAM_CONCURRENCY });
+  assert.equal(c16.checks.find((c) => c.id === "training_close_duration").ok, false, "selv ved loftet består 6 s pr. hold ikke 2 min");
+
+  // Med en per-hold-pris under målet (fx efter job-kø/direkte PG) består gaten.
+  // 250 ms x 410 = 102,5 s + ranglisteopdateringen 20 s = 122,5 s: over maalet (Codex #6848).
+  const slowish = { ...COST_PROFILES.current, trainingClosePerTeam: { calls: 8, ms: 250 } };
+  const over = await simulateRaceDay({ date: DATE, scenario: "normal", profile: slowish });
+  assert.equal(over.checks.find((c) => c.id === "training_close_duration").ok, false, "refresh tæller med");
+  const fast = { ...COST_PROFILES.current, trainingClosePerTeam: { calls: 8, ms: 200 } };
+  const ok = await simulateRaceDay({ date: DATE, scenario: "normal", profile: fast });
+  const fastCheck = ok.checks.find((c) => c.id === "training_close_duration");
+  assert.equal(fastCheck.ok, true);
+  assert.equal(fastCheck.lowerBound, true, "under maalet er kun 'ikke afvist', ikke bevis");
+  assert.equal(ok.passed, true);
+});
+
+test("#6766: gaten fejler også ved 10x-fixturen, og en aldrig startet aftentræning består ikke tomt", async () => {
+  const big = await simulateRaceDay({ date: DATE, scenario: "normal", teams: 4100, trainingConcurrency: 16 });
+  const check = big.checks.find((c) => c.id === "training_close_duration");
+  assert.equal(check.ok, false);
+  assert.ok(check.value > 10 * 60_000);
+  assert.equal(big.metrics.teams, 4100);
+});
+
+test("#6766: trainingCloseCheck: aldrig startet på en dag med etaper er en fejl, uden etaper er det ikke", () => {
+  const limit = DEFAULT_LIMITS.maxTrainingCloseMs;
+  assert.deepEqual(trainingCloseCheck(null, limit, true), {
+    id: "training_close_duration", ok: false, value: "ikke startet", limit, note: "aftentræningen blev aldrig startet",
+  });
+  assert.equal(trainingCloseCheck(null, limit, false).ok, true);
+  const at = (durationMs) => trainingCloseCheck({ durationMs, teams: 410, concurrency: 1 }, limit, true).ok;
+  assert.equal(at(limit), false, "præcis 2 min er ikke under 2 min");
+  assert.equal(at(limit - 1), true);
+  assert.equal(at(limit + 1), false);
+});
+
+test("#6766: trainingCloseDurationMs: ideel lineær deling, afrundet op, ugyldig parallelitet = serielt", () => {
+  assert.equal(trainingCloseDurationMs(6_000, 410, 1), 2_460_000);
+  assert.equal(trainingCloseDurationMs(6_000, 410, 4), 618_000); // 103 hele runder
+  assert.equal(trainingCloseDurationMs(1_000, 3, 2), 2_000);
+  assert.equal(trainingCloseDurationMs(1_000, 1, 3), 1_000, "et hold deles aldrig");
+  for (const bad of [0, -1, 1.5, NaN, undefined, "4"]) assert.equal(trainingCloseDurationMs(6_000, 10, bad), 60_000, String(bad));
+});
+
+test("#6766: parseArgs: --teams og --training-concurrency (default 410 og 1; grænser 1-5000 og 1-16)", () => {
+  const def = parseArgs([]);
+  assert.equal(def.options.teams, PROD_TEAM_COUNT);
+  assert.equal(def.options.trainingConcurrency, 1);
+  const ok = parseArgs(["--teams", "4100", "--training-concurrency", "16"]);
+  assert.deepEqual(ok.errors, []);
+  assert.equal(ok.options.teams, 4100);
+  assert.equal(ok.options.trainingConcurrency, 16);
+  const bad = parseArgs(["--teams", "0", "--training-concurrency", "17"]);
+  assert.ok(bad.errors.includes("USAGE_INVALID_TEAMS"));
+  assert.ok(bad.errors.includes("USAGE_INVALID_TRAINING_CONCURRENCY"));
+  assert.ok(parseArgs(["--teams", "5001"]).errors.includes("USAGE_INVALID_TEAMS"));
+  assert.ok(parseArgs(["--training-concurrency", "x"]).errors.includes("USAGE_INVALID_TRAINING_CONCURRENCY"));
 });
 
 test("aftentræning: sæsonens sidste løbsdag (sidste etape ca. 15) starter også først kl. 20 via cron", async () => {
@@ -232,7 +341,10 @@ test("paritet: trainingCloseStart følger prod-gaten i startTrainingDayCloseAfte
 
 test("paritet: cron-kadencen for training day-close er 5 min som i cron.js", () => {
   assert.equal(TRAINING_DAY_CLOSE_CRON_PERIOD_MS, 5 * 60 * 1000);
-  assert.match(CRON_SRC, /trackedTick\("training day-close",[^\n]*\),\s*5 \* 60 \* 1000\s*\)/);
+  // #6858: registreringen ligger paa klokken (startClockAlignedInterval, default-
+  // perioden STAGE_TICK_PERIOD_MS = 5 min, eget sekund-offset), ikke et setInterval.
+  assert.equal(STAGE_TICK_PERIOD_MS, TRAINING_DAY_CLOSE_CRON_PERIOD_MS);
+  assert.match(CRON_SRC, /startClockAlignedInterval\(\s*trackedTick\("training day-close",[^\n]*\),\s*\{ offsetMs: \d+ \* 1000[^}\n]*\}\s*\)/);
 });
 
 test("#5890-klassen: ungdomspuljer ukendt for scheduleren -> coverage fejler", async () => {
@@ -262,15 +374,28 @@ test("grænserne er konfigurerbare: et for stort svar fanges af rows_per_respons
   assert.ok(rows.value > 5);
 });
 
-test("CLI: forkert brug giver exit 2, et bestået scenarie exit 0 med JSON", () => {
+test("CLI: forkert brug giver exit 2, standardkørslen exit 1 (kun aftentræningens varighed) med JSON", () => {
   const bad = spawnSync(process.execPath, [SCRIPT, "--profile", "prod"], { encoding: "utf8" });
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /USAGE_INVALID_PROFILE/);
 
+  const badConc = spawnSync(process.execPath, [SCRIPT, "--training-concurrency", "99"], { encoding: "utf8" });
+  assert.equal(badConc.status, 2);
+  assert.match(badConc.stderr, /USAGE_INVALID_TRAINING_CONCURRENCY/);
+
+  // #6766: standardkørslen (410 hold, serielt) fejler ærligt kun på aftentræningens varighed.
   const ok = spawnSync(process.execPath, [SCRIPT, "--scenarios", "normal", "--youth-groups", "2", "--json"], { encoding: "utf8" });
-  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(ok.status, 1, ok.stderr);
   const report = JSON.parse(ok.stdout);
-  assert.equal(report.passed, true);
+  assert.equal(report.passed, false);
   assert.equal(report.scenarios.length, 1);
   assert.equal(report.scenarios[0].scenario, "normal");
+  assert.deepEqual(report.scenarios[0].checks.filter((c) => !c.ok).map((c) => c.id), ["training_close_duration"]);
+  assert.equal(report.teams, PROD_TEAM_COUNT);
+  assert.equal(report.trainingConcurrency, 1);
+
+  // Parametrene når igennem: flere hold og højere parallelitet ændrer rapportens tal.
+  const tuned = spawnSync(process.execPath, [SCRIPT, "--scenarios", "normal", "--youth-groups", "2", "--teams", "1000", "--training-concurrency", "4", "--json"], { encoding: "utf8" });
+  const t = JSON.parse(tuned.stdout).scenarios[0].metrics.trainingClose;
+  assert.deepEqual({ teams: t.teams, concurrency: t.concurrency, durationMs: t.durationMs }, { teams: 1000, concurrency: 4, durationMs: 1_500_000 + 20_000 }); // 250 runder x 6 s + ranglisteopdatering
 });

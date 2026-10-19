@@ -3,11 +3,30 @@ import { resolve, posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { ALL_CRON_MONITORS } from '../../backend/lib/cronMonitorRegistry.js';
+import { wallClockPeriodSeconds, nextWallClockSlotMs } from '../../backend/lib/wallClockScheduler.js';
 import { blankStringsAndComments } from '../lib/js-source-scan.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const SOURCE_MAP = JSON.parse(readFileSync(new URL('./cron-source-map.json', import.meta.url), 'utf8'));
 const units = { minute: 60, hour: 3600, day: 86400 };
+// #6858: a fixed-time job (crontab monitor) carries its Copenhagen wall-clock
+// schedule; its cadence is the longest gap between two fixed times (1 or 7 days),
+// the same value backend/lib/cronHeartbeat.js writes as expected_cadence_seconds.
+export function registryCadenceSeconds(config) {
+  if (config?.schedule?.type === 'crontab') return config.wallClock ? wallClockPeriodSeconds(config.wallClock) : NaN;
+  return config.schedule.value * units[config.schedule.unit];
+}
+// Codex P2 (#6860): a fixed-time job is due at its NEXT Copenhagen wall-clock
+// slot after a moment, not a nominal 1/7 days later. Across the autumn DST
+// change (25/10) the real gap is 25 h / 169 h, so a nominal cadence would
+// reject a valid row an hour before its legitimate slot.
+export function dueAtMs(config, fromMs, cadence, margin) {
+  if (config?.schedule?.type === 'crontab' && config.wallClock) {
+    // Codex P2 (#6860): check-in skrives foerst naar kørslen er faerdig; giv maxRuntime med (som wallClockDeadlineMs).
+    return nextWallClockSlotMs(fromMs, config.wallClock, { primaryOnly: true }) + (margin + (config.maxRuntime ?? 0) * 60) * 1000;
+  }
+  return fromMs + (cadence + margin) * 1000;
+}
 const stamp = value => typeof value === 'string' && /^\d{4}-\d\d-\d\dT.*(?:Z|\+00:00)$/.test(value) ? Date.parse(value) : NaN;
 
 // Includes injected callback/initializer roots from the reviewed map. Loader/
@@ -127,8 +146,16 @@ export function safeReason(error, secrets = []) {
 }
 
 export const SHORT_CADENCE_SECONDS = 1800;
+// #6799 (Codex #6823): en boot-kohorte efter boundary maa hoejst flytte deadline
+// saa meget; deploy-verify.yml's step-timeout daekker det (testet).
+export const MAX_COHORT_SHIFT_SECONDS = 1800;
 
-export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_MONITORS, excluded = new Set(), accepted = new Map(), drainSeconds = 0 }) {
+// cohortAt (#6799) remembers, per job, the latest excluded (boot-cohort or
+// first-snapshot) timestamp seen AFTER the boundary on that job's row. A
+// restart after the boundary re-primes the job, so its next genuine tick is due
+// one cadence + margin after that timestamp, not after the boundary. Missing
+// the shifted deadline is still red: only a distinct tick can verify the job.
+export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_MONITORS, excluded = new Set(), accepted = new Map(), drainSeconds = 0, cohortAt = new Map() }) {
   const ready = stamp(since), clock = stamp(now);
   if (!Number.isFinite(ready) || !Number.isFinite(clock) || clock < ready || !Array.isArray(rows)
     || !Number.isSafeInteger(drainSeconds) || drainSeconds < 0) throw new Error('Invalid heartbeat evidence');
@@ -149,17 +176,20 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
   const jobs = slugs.map(slug => {
     const config = configs.get(slug);
     if (!config) throw new Error('Unknown affected cron');
-    const cadence = config.schedule.value * units[config.schedule.unit];
+    const cadence = registryCadenceSeconds(config);
     const margin = (config.checkinMargin ?? 0) * 60;
     if (!(cadence > 0) || !(margin >= 0)) throw new Error('Invalid registry cadence');
     const row = bySlug.get(slug), time = stamp(row?.last_checkin_at);
-    const deadline = boundary + (cadence + margin) * 1000;
+    if (Number.isFinite(time) && time > boundary && time <= clock && excluded.has(time)) {
+      cohortAt.set(slug, Math.max(cohortAt.get(slug) ?? 0, time));
+    }
+    const deadline = dueAtMs(config, Math.min(Math.max(boundary, cohortAt.get(slug) ?? 0), boundary + MAX_COHORT_SHIFT_SECONDS * 1000), cadence, margin);
     // A partial prime may initially look unique. Revoke cached evidence if a
     // later snapshot reveals that its timestamp belongs to a boot cohort.
     if (accepted.has(slug) && excluded.has(stamp(accepted.get(slug).lastCheckin))) accepted.delete(slug);
     let state;
     if (!row || !Number.isFinite(time) || time > clock || row.expected_cadence_seconds !== cadence
-      || clock - time > (cadence + margin) * 1000) state = 'failed';
+      || clock > dueAtMs(config, time, cadence, margin)) state = 'failed';
     else if (accepted.has(slug)) state = 'verified';
     else if (time > boundary && time <= deadline && !excluded.has(time)) state = 'verified';
     else if (clock >= deadline) state = 'failed';
@@ -167,6 +197,39 @@ export function evaluateCheckins({ slugs, rows, since, now, monitors = ALL_CRON_
     const lastCheckin = state === 'verified' && accepted.has(slug) ? accepted.get(slug).lastCheckin
       : Number.isFinite(time) ? new Date(time).toISOString() : 'missing/unreadable';
     return { slug, state, lastCheckin, deadline: new Date(deadline).toISOString() };
+  });
+  const state = jobs.some(job => job.state === 'failed') ? 'failed' : jobs.some(job => job.state === 'waiting') ? 'waiting' : jobs.some(job => job.state === 'deferred') ? 'deferred' : 'verified';
+  return { state, jobs };
+}
+
+// #6799: a heartbeat read (or its evaluation) that fails is not a verdict. Proof
+// already accepted is kept; every other job keeps waiting and is retried until
+// its own deadline, and only an error that lasts to the deadline is red. A long
+// cadence job never read successfully cannot be deferred (nothing was seen), so
+// it gets the short-cadence window before the unreadable evidence turns red.
+// Config that cannot be interpreted at all fails closed immediately.
+export function evaluateUnreadable({ slugs, since, now, monitors = ALL_CRON_MONITORS, accepted = new Map(), drainSeconds = 0, everRead = false, cohortAt = new Map() }) {
+  const unreadable = slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' });
+  const ready = stamp(since), clock = stamp(now);
+  if (!Number.isFinite(ready) || !Number.isFinite(clock) || clock < ready
+    || !Number.isSafeInteger(drainSeconds) || drainSeconds < 0) return { state: 'failed', jobs: slugs.map(unreadable) };
+  const boundary = ready + drainSeconds * 1000;
+  const configs = new Map(monitors);
+  const jobs = slugs.map(slug => {
+    const config = configs.get(slug);
+    const cadence = config ? registryCadenceSeconds(config) : NaN;
+    const margin = (config?.checkinMargin ?? 0) * 60;
+    if (!(cadence > 0) || !(margin >= 0)) return unreadable(slug);
+    const deadline = dueAtMs(config, Math.min(Math.max(boundary, cohortAt.get(slug) ?? 0), boundary + MAX_COHORT_SHIFT_SECONDS * 1000), cadence, margin);
+    const deadlineText = new Date(deadline).toISOString();
+    if (accepted.has(slug)) return { slug, state: 'verified', lastCheckin: accepted.get(slug).lastCheckin, deadline: deadlineText };
+    let state = 'waiting';
+    if (clock >= deadline) state = 'failed';
+    else if (cadence > SHORT_CADENCE_SECONDS) {
+      if (everRead) state = 'deferred';
+      else if (clock >= boundary + SHORT_CADENCE_SECONDS * 1000) state = 'failed';
+    }
+    return { slug, state, lastCheckin: 'missing/unreadable', deadline: deadlineText };
   });
   const state = jobs.some(job => job.state === 'failed') ? 'failed' : jobs.some(job => job.state === 'waiting') ? 'waiting' : jobs.some(job => job.state === 'deferred') ? 'deferred' : 'verified';
   return { state, jobs };
@@ -207,7 +270,10 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
   const excluded = new Set();
   const accepted = new Map();
   const lastLogged = new Map();
+  const cohortAt = new Map();
   let initial = true;
+  let everRead = false;
+  let readFailing = false;
   let lastSummary = '';
   for (;;) {
     let result;
@@ -219,12 +285,24 @@ export async function verifyCronCheckins({ slugs, since, url, key, now, sleep, f
       // never proves a tick; every affected row must advance after observation.
       if (initial && Array.isArray(rows)) {
         for (const row of rows) if (Number.isFinite(stamp(row?.last_checkin_at))) excluded.add(stamp(row.last_checkin_at));
-        initial = false;
       }
-      result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded, accepted, drainSeconds });
+      result = evaluateCheckins({ slugs, rows, since, now: now(), monitors, excluded, accepted, drainSeconds, cohortAt });
+      // Only a snapshot that evaluated cleanly consumes the first-snapshot
+      // guard (#6799): an invalid one is retried and the next valid snapshot
+      // is then still the first one that can never prove a tick.
+      initial = false;
       for (const job of result.jobs) if (job.state === 'verified') accepted.set(job.slug, job);
+      everRead = true;
+      readFailing = false;
     } catch {
-      result = { state: 'failed', jobs: slugs.map(slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' })) };
+      // Never echo the error: it may quote the response body or credentials.
+      if (!readFailing) log('Heartbeat read failed; retrying until each job deadline');
+      readFailing = true;
+      try {
+        result = evaluateUnreadable({ slugs, since, now: now(), monitors, accepted, drainSeconds, everRead, cohortAt });
+      } catch {
+        result = { state: 'failed', jobs: slugs.map(slug => ({ slug, state: 'failed', lastCheckin: 'unreadable' })) };
+      }
     }
     for (const job of result.jobs) {
       const line = `${job.slug}: ${job.state}; last check-in=${job.lastCheckin}; deadline=${job.deadline ?? 'unknown'}`;

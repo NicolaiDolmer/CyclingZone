@@ -38,6 +38,9 @@ backend/out/
 # Filer kan kun re-includes naar mappen selv ikke er ekskluderet -> `.codex/*`.
 .codex/*
 !.codex/hooks.json
+!.codex/agents/
+.codex/agents/*
+!.codex/agents/*.toml
 .agents/
 # supabase CLI lokal-state (repoet bruger database/*.sql til migrationer, ikke CLI-scaffold)
 supabase/

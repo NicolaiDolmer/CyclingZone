@@ -253,6 +253,36 @@
       "shadow": 0,
       "gradient": 0
     },
+    "frontend/public/locales/nl/notifications.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/nl/profile.json": {
+      "arrow": 6,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/nl/races.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/nl/rider.json": {
+      "arrow": 1,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
+    "frontend/public/locales/nl/training.json": {
+      "arrow": 4,
+      "smallpx": 0,
+      "shadow": 0,
+      "gradient": 0
+    },
     "frontend/src/components/AcademyReleaseConfirmModal.jsx": {
       "arrow": 0,
       "smallpx": 0,

@@ -1,0 +1,142 @@
+{
+  "page": {
+    "title": "Foro",
+    "subtitle": "Habla con los demás mánagers y comparte tus ideas",
+    "newPost": "Nueva publicación",
+    "markAllRead": "Marcar todo como leído",
+    "markingAllRead": "Marcando..."
+  },
+  "categories": {
+    "all": "Todo",
+    "roadmap": "Hoja de ruta",
+    "general": "General",
+    "feedback_ideas": "Comentarios e ideas",
+    "questions": "Preguntas y respuestas",
+    "tactics": "Tácticas y estrategia",
+    "transfers": "Fichajes",
+    "off_topic": "Off-topic",
+    "archive": "Archivo"
+  },
+  "adminOnly": {
+    "tag": "Oficial",
+    "description": "Hacia dónde va el juego, directamente de mí.",
+    "notice": "Aquí solo publico yo. Responde todo lo que quieras.",
+    "emptyDescription": "Aquí todavía no hay nada. Aquí publico hacia dónde va el juego."
+  },
+  "list": {
+    "pinnedHeading": "Fijadas",
+    "latestHeading": "Últimas publicaciones",
+    "archiveHeading": "Archivo",
+    "replies": "{count, plural, =0 {Sin respuestas} one {1 respuesta} other {# respuestas}}",
+    "poll": "Encuesta",
+    "loadMore": "Cargar más",
+    "emptyTitle": "Aún no hay publicaciones",
+    "emptyDescription": "Sé el primero en abrir una conversación.",
+    "archiveEmptyTitle": "Aún no hay nada archivado",
+    "archiveEmptyDescription": "Los hilos pasan aquí automáticamente tras 60 días sin actividad nueva.",
+    "by": "Por {name}",
+    "unread": "Sin leer"
+  },
+  "stats": {
+    "views": "{count, plural, =0 {Sin visitas} one {1 visita} other {# visitas}}",
+    "lastReply": "Última respuesta {name}, {time}"
+  },
+  "compose": {
+    "title": "Nueva publicación",
+    "categoryLabel": "Categoría",
+    "titleLabel": "Título",
+    "titlePlaceholder": "¿De qué trata?",
+    "bodyLabel": "Mensaje",
+    "bodyPlaceholder": "Escribe tu publicación",
+    "pollLabel": "Opciones de la encuesta (solo admin, una por línea)",
+    "pollHelp": "Añade de 2 a 10 opciones para adjuntar una encuesta a esta publicación.",
+    "submit": "Publicar",
+    "cancel": "Cancelar"
+  },
+  "post": {
+    "back": "Volver al foro",
+    "repliesHeading": "Respuestas",
+    "replyLabel": "Tu respuesta",
+    "replyPlaceholder": "Escribe una respuesta",
+    "replySubmit": "Responder",
+    "noReplies": "Aún no hay respuestas. Sé el primero en responder.",
+    "earlierReplies": "{count, plural, =1 {1 respuesta anterior} other {# respuestas anteriores}}",
+    "report": "Denunciar",
+    "delete": "Eliminar",
+    "pin": "Fijar",
+    "unpin": "Dejar de fijar",
+    "pinnedTag": "Fijada",
+    "move": "Mover",
+    "moveModalTitle": "Mover hilo",
+    "moveModalDescription": "Elige la categoría a la que debe pasar este hilo.",
+    "moveConfirm": "Mover",
+    "movedToast": "Hilo movido a {category}",
+    "notFoundTitle": "Publicación no encontrada",
+    "notFoundDescription": "Puede que esta publicación se haya eliminado."
+  },
+  "poll": {
+    "heading": "Encuesta",
+    "votes": "{count, plural, =0 {Aún no hay votos} one {1 voto} other {# votos}}",
+    "yourVote": "Tu voto"
+  },
+  "support": {
+    "ariaOn": "{count, plural, =0 {Retirar tu apoyo} one {Retirar tu apoyo (1 persona lo apoya)} other {Retirar tu apoyo (# personas lo apoyan)}}",
+    "ariaOff": "{count, plural, =0 {Apoyar esto} one {Apoyar esto (1 persona lo apoya)} other {Apoyar esto (# personas lo apoyan)}}",
+    "count": "{count, plural, =0 {Aún sin apoyos} one {1 apoyo} other {# apoyos}}"
+  },
+  "identity": {
+    "profileAria": "Abrir el perfil de mánager de {name}"
+  },
+  "mentions": {
+    "listLabel": "Mencionar a un mánager"
+  },
+  "signature": {
+    "division": "División {division}"
+  },
+  "quote": {
+    "action": "Citar",
+    "cancel": "Cancelar",
+    "replyingTo": "Respondiendo a {name}",
+    "removedNotice": "Esta respuesta se ha eliminado"
+  },
+  "report": {
+    "title": "Denunciar contenido",
+    "description": "La denuncia va directamente al administrador. Úsala para spam, abusos o cualquier cosa que no pertenezca aquí.",
+    "reasonLabel": "Motivo",
+    "reasonPlaceholder": "¿Por qué denuncias esto? (al menos 10 caracteres)",
+    "reasonMinError": "Añade al menos {count} caracteres explicando por qué.",
+    "submit": "Enviar denuncia",
+    "cancel": "Cancelar",
+    "sent": "Gracias. La denuncia se ha enviado al administrador."
+  },
+  "errors": {
+    "loadFailed": "No se pudo cargar el foro. No se ha perdido nada.",
+    "submitFailed": "No se pudo enviar. Inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "markAllReadFailed": "No se pudieron marcar todos los hilos como leídos. Inténtalo de nuevo."
+  },
+  "images": {
+    "label": "Imágenes",
+    "add": "Añadir imagen",
+    "counter": "{count} de {max}",
+    "remove": "Quitar imagen",
+    "adminRemove": "Eliminar imagen",
+    "openFull": "Abrir la imagen a tamaño completo",
+    "attachmentAlt": "Imagen de esta publicación",
+    "hint": "Hasta {max} imágenes. JPG, PNG o WebP. Las fotos grandes se reducen antes de subirlas.",
+    "errors": {
+      "type": "Ese tipo de archivo no sirve aquí. Usa JPG, PNG o WebP.",
+      "tooMany": "Puedes añadir {count} imágenes a una publicación.",
+      "tooLarge": "Esa imagen sigue siendo demasiado grande tras reducirla. Prueba con una más pequeña.",
+      "decode": "No se pudo leer la imagen. Prueba con otro archivo.",
+      "upload": "Falló la subida. Comprueba tu conexión e inténtalo de nuevo."
+    }
+  },
+  "subscription": {
+    "following": "Siguiendo",
+    "muted": "Silenciada",
+    "followingHint": "Recibes marcas de no leído y el punto del foro cuando hay algo nuevo aquí.",
+    "mutedHint": "Sin marcas de no leído ni punto del foro de esta categoría. Las respuestas a tus propios hilos te siguen llegando.",
+    "saveFailed": "No se pudo guardar tu elección. Inténtalo de nuevo."
+  }
+}

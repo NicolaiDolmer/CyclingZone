@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   runTeamTrainingDay, stageMatchesCanonicalLoad,
   LEGACY_RESERVATION_STAGE_LOADING, LEGACY_RESERVATION_STAGE_WRITING, STALE_LEGACY_RESERVATION_MS,
+  isTrainingReservationHeldError, isReclaimableLegacyReservation,
 } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
@@ -989,7 +990,9 @@ test("#6596: 502 paa team_facilities → tick kaster, reservation slettet, ingen
       supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
       executedBy: "assistant", now: NOW,
     }),
-    (err) => err.retryable === true && /502 Bad gateway/.test(err.message) && !/<html/i.test(err.message),
+    (err) => err.retryable === true && /502 Bad gateway/.test(err.message) && !/<html/i.test(err.message)
+      // #6798: en forbigaaende gateway-fejl er IKKE "traening i gang" (Train now: 500 + Sentry).
+      && !isTrainingReservationHeldError(err),
   );
   assert.equal(deleteCalls.filter((c) => c.table === "training_day_runs").length, 1, "reservationen slettes");
   assert.equal(state.training_day_runs.length, 0, "ingen run-raekke: naeste sweep tager holdet igen");
@@ -1099,8 +1102,25 @@ test("#6759: frisk 'loading'-reservation → springes over med retryable fejl, i
   const snapshot = () => structuredClone({ runs: state.training_day_runs, abilities: state.rider_derived_abilities, conditions: state.rider_condition });
   const before = snapshot();
   await assert.rejects(() => runLegacy(createMockSupabase(state), minutesAfter(NOW, 1)),
-    (err) => err.retryable === true && /held by an unfinished run/.test(err.message));
+    (err) => err.retryable === true && /held by an unfinished run/.test(err.message)
+      && isTrainingReservationHeldError(err)); // #6798: Train now svarer 409 training_in_progress
   assert.deepEqual(snapshot(), before, "intet roert: hverken reservation, evner eller condition");
+});
+
+test("#6798: isTrainingReservationHeldError kraever baade retryable og reservations-koden", () => {
+  assert.equal(isTrainingReservationHeldError(null), false);
+  assert.equal(isTrainingReservationHeldError(new Error("boom")), false);
+  assert.equal(isTrainingReservationHeldError(Object.assign(new Error("gateway"), { retryable: true })), false);
+  assert.equal(isTrainingReservationHeldError(Object.assign(new Error("x"), { code: "training_reservation_held" })), false);
+  assert.equal(isTrainingReservationHeldError(Object.assign(new Error("x"), { retryable: true, code: "training_reservation_held" })), true);
+});
+
+test("#6798: isReclaimableLegacyReservation laeser det smalle sweep-format (stage-kolonne, ingen report)", () => {
+  const old = new Date(NOW.getTime() - STALE_LEGACY_RESERVATION_MS - 1000).toISOString();
+  assert.equal(isReclaimableLegacyReservation({ stage: LEGACY_RESERVATION_STAGE_LOADING, created_at: old }, NOW), true);
+  assert.equal(isReclaimableLegacyReservation({ stage: LEGACY_RESERVATION_STAGE_LOADING, created_at: NOW.toISOString() }, NOW), false);
+  assert.equal(isReclaimableLegacyReservation({ stage: LEGACY_RESERVATION_STAGE_WRITING, created_at: old }, NOW), false);
+  assert.equal(isReclaimableLegacyReservation({ stage: null, created_at: old }, NOW), false, "afregnet raekke: report->>stage er null");
 });
 
 test("#6759: afregnet run, 'writing' og gammelt format frigives aldrig, uanset alder", async () => {

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language.jsx";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { documentLang } from "../i18n/languages.js";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
 import { Wordmark, Monogram } from "../components/Brand.jsx";
 import { CheckIcon, XIcon, ChevronDownIcon, ChevronLeftIcon, StarIcon } from "../components/ui/icons/index.jsx";
@@ -180,7 +181,7 @@ export default function FounderSupporterPage() {
     title: t("metaTitle"),
     description: t("metaDescription"),
     canonical: "https://cyclingzone.org/founder-supporter",
-    lang,
+    lang: documentLang(i18n.language),
   });
 
   // Bevar useMemo så vi ikke regenererer ved hver render; recompute ved

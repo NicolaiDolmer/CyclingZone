@@ -8,6 +8,7 @@
   "tabs": {
     "latest": "Latest",
     "archive": "Archive",
+    "raceHistory": "Race history",
     "points": "Points & prizes"
   },
   "latest": {
@@ -47,5 +48,45 @@
   "emptyNoResults": "No race results imported yet this season",
   "loadError": "Results could not be loaded",
   "loadErrorBody": "Nothing was lost. Try loading the page again.",
-  "retry": "Try again"
+  "retry": "Try again",
+  "raceHistory": {
+    "tableLabel": "Race history",
+    "searchPlaceholder": "Search races",
+    "poolLabel": "Division",
+    "count": "{count, plural, one {# race} other {# races}}",
+    "showing": "Showing {from}-{to} of {total}",
+    "prev": "Previous",
+    "next": "Next",
+    "seasonShort": "S{number}",
+    "stages": "{count, plural, one {# stage} other {# stages}}",
+    "oneDay": "One-day race",
+    "place": "{rank, selectordinal, one {#st} two {#nd} few {#rd} other {#th}}",
+    "notPlaced": "Not in the results",
+    "noWinner": "No winner recorded",
+    "noRoute": "Route not recorded",
+    "allEditions": "All {count} editions",
+    "firstEdition": "First edition",
+    "th": {
+      "race": "Race",
+      "champion": "Defending champion",
+      "championShort": "Champion",
+      "best": "Your best",
+      "bestShort": "Best",
+      "terrain": "Terrain",
+      "winners": "Earlier winners"
+    },
+    "empty": {
+      "title": "Pick another division",
+      "desc": "No races have finished in this division yet.",
+      "action": "Show {pool}",
+      "latest": "See the latest results"
+    },
+    "emptySearch": {
+      "title": "Try another search",
+      "desc": "No finished race matches that name.",
+      "action": "Clear search"
+    },
+    "error": "Race history couldn't load. Nothing was lost.",
+    "retry": "Try again"
+  }
 }

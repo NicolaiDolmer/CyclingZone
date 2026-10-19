@@ -1,0 +1,97 @@
+{
+  "page": {
+    "title": "Scouting",
+    "subtitle": "Het lopende werk van je scout, bevindingen en missiebriefings."
+  },
+  "empty": {
+    "title": "De scoutingcentrale is nog niet open",
+    "description": "Deze pagina gaat open zodra het scoutopdrachtensysteem voor jouw team live is."
+  },
+  "scoutCard": {
+    "eyebrow": "Je scout",
+    "defaultTitle": "Standaardscout",
+    "defaultBody": "Je hebt geen talentscout aangenomen. Een basisscout (rating {overall}) doet je gerichte opdrachten en missies nog steeds, alleen met een ruimere marge in wat hij vindt.",
+    "ratingLabel": "Rating",
+    "capacityLabel": "{capacity, plural, one {1 opdracht tegelijk} other {# opdrachten tegelijk}}",
+    "capacityHintLocked": "Een tweede opdracht tegelijk vraagt om een hoofdscout met een totale rating van ongeveer 80. Alleen het Scoutingnetwerk bouwen geeft dat niet.",
+    "viewProfile": "Profiel bekijken"
+  },
+  "queue": {
+    "title": "Lopende opdrachten",
+    "empty": "Er lopen nu geen opdrachten.",
+    "kindTarget": "Gerichte opdracht",
+    "kindMission": "Missie",
+    "reportIn": "Rapport over {days, plural, one {1 dag} other {# dagen}}",
+    "reportOn": "Rapport klaar op {date} rond {time}",
+    "reportToday": "Rapport klaar rond {time} vandaag",
+    "reportTomorrow": "Rapport klaar rond {time} morgen",
+    "reportDue": "Rapport klaar. Vernieuw om het te openen.",
+    "targetReportIn": "Rapport over ~{minutes} min",
+    "targetReportCountdown": "Rapport over {minutes, plural, one {1 min} other {# min}}",
+    "readyAtTitle": "Rapport klaar om {time} Deense tijd",
+    "loadingRider": "Renner laden…",
+    "cancel": "Annuleren"
+  },
+  "mission": {
+    "form": {
+      "title": "Start een missie",
+      "subtitle": "Stuur je scout een scene in om een shortlist van talenten samen te stellen.",
+      "targetPoolLabel": "Wie moet er gescout worden",
+      "recommended": "Aanbevolen",
+      "pool": {
+        "freeAgents": {
+          "title": "Transfervrije renners",
+          "subtitle": "Renners zonder contract. Je kunt ze meteen contracteren."
+        },
+        "otherTeams": {
+          "title": "Renners bij andere teams",
+          "subtitle": "Scout talent van andere managers. Ze contracteren betekent bieden of onderhandelen."
+        }
+      },
+      "existenceGuarantee": "Elk rapport bevat alleen renners die bestaan en via zoeken te vinden zijn.",
+      "scopeLabel": "Bereik",
+      "countryLabel": "Land",
+      "typeLabel": "Renner-type",
+      "submit": "Missie starten",
+      "costNote": "Je scout rapporteert ongeveer {hours} uur nadat je hem hebt gestuurd, en deze missie kost {cost, number} aan reisgeld uit je budget. Geen terugbetaling bij annuleren."
+    },
+    "scope": {
+      "u23": "U23-renners",
+      "country": "Land",
+      "nm": "Nationale kampioenschappen",
+      "division": "Mijn divisie",
+      "type": "Renner-type"
+    }
+  },
+  "shortlist": {
+    "title": "Missie-shortlists",
+    "empty": "Nog geen missie heeft gerapporteerd.",
+    "allReportedNote": "Elke renner hieronder komt met een gratis scoutingrapport van niveau 1. Open het tabblad Scouting op zijn profiel om het te zien.",
+    "topFind": "Beste match",
+    "noMatches": "Je scout heeft gezocht maar geen renners gevonden die aan je criteria voldoen.",
+    "allHidden": "De renners van deze missie kunnen nu niet worden bekeken, bijvoorbeeld door een openstaand academieaanbod of een lopende transfer.",
+    "statusFreeAgent": "Transfervrij"
+  },
+  "teamHistory": {
+    "title": "Door je team gescoute renners",
+    "subtitle": "Elk afgerond individueel onderzoek, ongeacht welke scout het uitvoerde.",
+    "empty": "Nog geen individueel onderzoek heeft gerapporteerd.",
+    "levelValue": "Niveau {level}",
+    "riderUnavailable": "Niet meer beschikbaar"
+  },
+  "error": {
+    "capacity": "Je scout zit al op volle capaciteit. Zie de lijst met lopende opdrachten: je bestaande opdracht staat nog in de wachtrij en rapporteert zoals gepland.",
+    "insufficient_funds": "Niet genoeg saldo om de reiskosten te betalen.",
+    "insufficient_available_balance": "Niet genoeg beschikbaar geld: een deel van je saldo staat vast in veilingbiedingen.",
+    "invalid_target_pool": "Ongeldige doelkeuze. Probeer het opnieuw.",
+    "no_active_season": "Er is nu geen actief seizoen.",
+    "auth": "Je moet ingelogd zijn.",
+    "network": "Netwerkfout. Probeer het opnieuw.",
+    "failed": "Er ging iets mis. Probeer het opnieuw.",
+    "load": {
+      "title": "De scoutingcentrale kon niet worden geladen",
+      "description": "Er is niets verloren gegaan. De lopende opdrachten van je scout lopen gewoon door. Probeer het opnieuw.",
+      "retry": "Probeer opnieuw"
+    }
+  }
+}

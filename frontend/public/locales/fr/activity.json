@@ -1,0 +1,76 @@
+{
+  "header": {
+    "title": "Mon activité",
+    "subtitle": "Toutes tes actions sur le marché au même endroit"
+  },
+  "lastUpdated": "Dernière mise à jour {time}",
+  "refresh": "Actualiser",
+  "refreshing": "Actualisation...",
+  "refreshTitle": "Actualiser les données",
+  "countdown": {
+    "ended": "Terminée"
+  },
+  "tabs": {
+    "action": "À traiter",
+    "transfers": "Transferts",
+    "history": "Historique"
+  },
+  "offerStatus": {
+    "pending": "En attente de réponse",
+    "countered": "Contre-offre reçue",
+    "awaiting_confirmation": "Confirmer l'accord",
+    "window_pending": "Convenu · en attente de la période",
+    "accepted": "Acceptée",
+    "rejected": "Refusée",
+    "withdrawn": "Retirée"
+  },
+  "badge": {
+    "seller": "Vendeur",
+    "winner": "Gagnant",
+    "bidder": "Enchérisseur",
+    "bought": "Acheté",
+    "sold": "Vendu",
+    "noBids": "Aucune enchère",
+    "lost": "Perdue",
+    "inAuction": "En enchère"
+  },
+  "section": {
+    "offersNeedResponse": "Offres en attente de ta réponse",
+    "auctionsEndingSoon": "Enchères qui se terminent dans l'heure",
+    "activeAuctions": "Enchères en cours",
+    "receivedOffers": "Offres reçues",
+    "sentOffers": "Offres envoyées",
+    "auctions": "Enchères",
+    "transfers": "Transferts"
+  },
+  "empty": {
+    "actionTitle": "Rien à traiter pour toi",
+    "actionSub": "Tu es à jour sur toutes les offres et tous les accords",
+    "auctionsTitle": "Aucune enchère en cours",
+    "auctionsSub": "Tu n'enchéris sur aucune enchère et tu ne vends rien",
+    "transfersTitle": "Aucun transfert en cours",
+    "transfersSub": "Les offres que tu envoies ou reçois apparaissent ici",
+    "watchlistTitle": "Ta liste de suivi est vide",
+    "watchlistSub": "Ajoute des coureurs depuis la base des coureurs avec le bouton étoile.",
+    "historyTitle": "Pas encore d'historique",
+    "historySub": "Les accords conclus apparaissent ici"
+  },
+  "detail": {
+    "to": "À : {name}",
+    "from": "De : {name}",
+    "season": "Saison {start}–{end}",
+    "highestBidder": "Meilleur enchérisseur : {name}",
+    "noBidsYet": "Aucune enchère pour l'instant",
+    "leader": "En tête : {name}",
+    "noLeaderYet": "Pas encore de leader"
+  },
+  "watchlist": {
+    "goToFull": "Voir toute la liste de suivi",
+    "freeAgent": "Agent libre",
+    "removeFailed": "Impossible de retirer le coureur de ta liste de suivi. Réessaie."
+  },
+  "loadError": {
+    "message": "Impossible de charger ton activité. Réessaie.",
+    "retry": "Réessayer"
+  }
+}

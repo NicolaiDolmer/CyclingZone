@@ -1,0 +1,154 @@
+{
+  "page": {
+    "title": "Club",
+    "subtitle": "Faciliteiten en staf",
+    "balance": "Saldo",
+    "division": "Divisie {division}"
+  },
+  "summary": {
+    "upkeep": "Onderhoud per seizoen",
+    "wages": "Lonen",
+    "balance": "Saldo"
+  },
+  "sections": {
+    "facilities": "Faciliteiten",
+    "staff": "Staf"
+  },
+  "facilities": {
+    "tier": "Niveau {tier} / {max}",
+    "notBuilt": "Niet gebouwd",
+    "maxed": "Volledig opgewaardeerd",
+    "comingSoon": "Binnenkort",
+    "upgrade": "Opwaarderen",
+    "build": "Bouwen",
+    "upkeepAt": "Onderhoud op niveau {tier}: {amount}/seizoen",
+    "upkeepNow": "Onderhoud {amount}/seizoen"
+  },
+  "roi": {
+    "trainingBuild": "Bouw het om je renners sneller te laten trainen",
+    "scoutingBuild": "Bouw het om een hoofdscout te kunnen aannemen",
+    "academyBuild": "Bouw het voor meer kandidaten per week en een profiel voor je instroom"
+  },
+  "badge": {
+    "active": "Actief"
+  },
+  "hero": {
+    "trainingSub": "elke dag sneller trainen",
+    "scouting": "Hoofdscout",
+    "scoutingSub": "Je kunt een hoofdscout tot niveau {tier} aannemen",
+    "academy": "{value} kandidaten",
+    "academySub": "per week, en jouw profiel bepaalt de instroom"
+  },
+  "ladder": {
+    "label": "Niveaus",
+    "now": "nu",
+    "scouting": "Hoofd N{tier}",
+    "academy": "{value} kand.",
+    "unlock": {
+      "origin": "regio",
+      "type": "+ type",
+      "extra": "+1 extra",
+      "stronger": "sterkere aantrekking"
+    }
+  },
+  "effect": {
+    "live": "Nu actief",
+    "target": "Binnenkort"
+  },
+  "tracks": {
+    "training": {
+      "name": "Trainingscentrum",
+      "effect": "training",
+      "soon": "Snellere rennersontwikkeling",
+      "teaser": "Je renners trainen elke dag sneller."
+    },
+    "scouting": {
+      "name": "Scoutingnetwerk",
+      "effect": "inzicht in renners",
+      "soon": "Scherper inzicht in renners",
+      "teaser": "Neem een hoofdscout aan voor scherpere beoordelingen van renners."
+    },
+    "medical": {
+      "name": "Medische afdeling",
+      "effect": "herstel",
+      "soon": "Sneller herstel",
+      "teaser": "Je renners krijgen hun vorm sneller terug na zware koersen."
+    },
+    "academy": {
+      "name": "Academie-uitbreiding",
+      "effect": "kandidaten per week",
+      "soon": "Een grotere wekelijkse instroom met je eigen profiel",
+      "teaser": "Een grotere wekelijkse instroom die neigt naar de renners die jij wilt."
+    },
+    "commercial": {
+      "name": "Commerciële afdeling",
+      "effect": "sponsor (met plafond)",
+      "soon": "Sponsorinkomsten op lange termijn",
+      "teaser": "Extra sponsorinkomsten op lange termijn."
+    }
+  },
+  "roles": {
+    "training": "Sportdirecteur",
+    "scouting": "Hoofdscout",
+    "medical": "Ploegarts",
+    "academy": "Academiedirecteur",
+    "commercial": "Commercieel directeur"
+  },
+  "staff": {
+    "none": "Geen staf aangenomen",
+    "locked": "Vergrendeld: bouw eerst niveau 1",
+    "hired": "Aangenomen",
+    "salary": "Salaris {amount} CZ$/seizoen",
+    "candidates": "Kandidaten",
+    "addAnother": "+ Nog iemand aannemen",
+    "slotsFull": "Beide posities zijn bezet. Ontsla er een om iemand nieuw aan te nemen.",
+    "candidate": "Niveau {tier} · {amount}/seizoen",
+    "hire": "Aannemen",
+    "release": "Ontslaan",
+    "severance": "Ontslagvergoeding {amount}",
+    "tierGate": "Hogere niveaus gaan open als je de faciliteit opwaardeert",
+    "billNote": "Het salaris wordt aan het begin van het seizoen in rekening gebracht"
+  },
+  "errors": {
+    "insufficient_funds": "Niet genoeg saldo voor die opwaardering.",
+    "insufficient_available_balance": "Niet genoeg beschikbaar geld: een deel van je saldo staat vast in veilingbiedingen.",
+    "max_tier": "Dit spoor is al volledig opgewaardeerd.",
+    "role_occupied": "Je hebt al staf in deze rol.",
+    "staff_tier_exceeds_facility": "Waardeer de faciliteit op voordat je een hoofd van een hoger niveau aanneemt.",
+    "invalid_candidate": "Die kandidaat is niet meer beschikbaar.",
+    "candidate_already_hired": "Die kandidaat is al aangenomen op de andere plek.",
+    "failed": "Er ging iets mis. Probeer het opnieuw.",
+    "network": "De server kon niet worden bereikt. Probeer het opnieuw."
+  },
+  "empty": {
+    "title": "De club is gesloten",
+    "description": "Faciliteiten en staf zijn nog niet beschikbaar."
+  },
+  "confirm": {
+    "upgradeTitle": "Opwaardering bevestigen",
+    "buildTitle": "Bouw bevestigen",
+    "fireTitle": "{name} ontslaan?",
+    "cost": "Kosten",
+    "newTier": "Nieuw niveau",
+    "deductNote": "Wordt nu van je saldo afgeschreven",
+    "severanceNote": "De ontslagvergoeding wordt nu afgeschreven",
+    "confirm": "Bevestigen",
+    "cancel": "Annuleren"
+  },
+  "error": {
+    "load": {
+      "title": "De club kon niet worden geladen",
+      "description": "Er is niets verloren gegaan. Je faciliteiten en staf zijn veilig. Probeer het opnieuw.",
+      "retry": "Probeer opnieuw"
+    },
+    "upgrade": {
+      "failed": "De aankoop kon niet worden voltooid. Er is niets afgeschreven.",
+      "network": "Geen verbinding met de server. Er is niets afgeschreven.",
+      "auth": "Je sessie is verlopen. Log opnieuw in en probeer het nog eens."
+    }
+  },
+  "tabs": {
+    "club": "Faciliteiten",
+    "staff": "Staf"
+  }
+}

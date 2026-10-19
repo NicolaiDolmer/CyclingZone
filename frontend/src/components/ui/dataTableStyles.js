@@ -123,9 +123,9 @@ function gutter(compact, tight) {
 // er selv en scroll-container, jf. #4747-noten ovenfor), glider de to headere fra
 // hinanden. Begge slaar den derfor fra og scroller sammen i den fælles lodrette
 // scroller. Desktop og mobil-standardtilstanden er uaendrede (default true).
-export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false, stickyHeader = true } = {}) {
+export function thClass({ numeric = false, sticky = false, compact = false, tight = false, dense = false, stickyHeader = true, wrap = false } = {}) {
   const base =
-    `whitespace-nowrap bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 ${stickyHeader ? "sticky top-0 z-table-head" : ""}`;
+    `${wrap ? "wrap-break-word" : "whitespace-nowrap"} bg-cz-card ${gutter(compact, tight)} ${dense ? "py-2" : "py-3"} font-data text-2xs font-semibold uppercase tracking-[.06em] text-cz-3 ${stickyHeader ? "sticky top-0 z-table-head" : ""}`;
   return [base, numeric ? "text-right" : "text-left", sticky ? STICKY : ""]
     .filter(Boolean)
     .join(" ");

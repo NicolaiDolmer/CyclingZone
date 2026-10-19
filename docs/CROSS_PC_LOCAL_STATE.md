@@ -38,7 +38,7 @@ De må aldrig være eneste sted en beslutning, status eller handoff findes. Hvis
 
 **Tommelfingerregel: GitHub > OneDrive > lokal.** I tvivl → GitHub.
 
-## Forensisk audit (kør automatisk session-start, og når du er i tvivl)
+## Forensisk audit (session-start, efter hver Codex-session og ved mistanke om drift)
 
 ```bash
 pwsh -File scripts/cross-pc-forensic-audit.ps1          # human-læsbar

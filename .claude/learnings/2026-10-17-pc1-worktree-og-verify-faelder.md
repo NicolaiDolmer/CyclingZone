@@ -28,3 +28,6 @@
 
 ## Læring
 En stopregel er kun så god som sandheden i det signal, den stopper på. Når en gate bliver rød, så mål prod direkte, før du konkluderer.
+
+## Tillæg 18/10: frontend-frys og UTC
+Tre locale-PR'er (#6832-#6834) blev merget 22:19Z = 00:19 dansk tid 18/10, altså 19 min inde i frontend-frysen (ejer 6/10). De indeholdt kun uregistrerede sprogfiler og ingen synlig ændring, men reglen er dato-baseret. **Fremover:** tjek dansk dato (Europe/Copenhagen) før enhver merge der rører `frontend/`. Kø-scripts i baggrunden skal stoppes, når datoen krydser en frys-grænse.

@@ -1,0 +1,172 @@
+{
+  "nav": {
+    "group": {
+      "klubhus": "Sede del club",
+      "planlaegning": "Planificación",
+      "marked": "Mercado",
+      "resultater": "Resultados",
+      "min": "Mi",
+      "admin": "Admin"
+    },
+    "item": {
+      "dashboard": "Panel",
+      "team": "Mi equipo",
+      "u23Team": "Equipo sub-23",
+      "juniorTeam": "Equipo júnior",
+      "training": "Entrenamiento diario",
+      "planning": "Planificación",
+      "academy": "Academia",
+      "scouting": "Ojeo",
+      "board": "Directiva",
+      "sponsors": "Patrocinadores",
+      "finance": "Finanzas",
+      "klub": "Club",
+      "notifications": "Bandeja de entrada",
+      "forum": "Foro",
+      "managerProfile": "Mi perfil de mánager",
+      "riders": "Ciclistas",
+      "auctions": "Subastas",
+      "transfers": "Fichajes",
+      "transferList": "Lista de fichajes",
+      "watchlist": "Lista de seguimiento",
+      "raceCentre": "Centro de carreras",
+      "results": "Vista general",
+      "rankings": "Clasificaciones",
+      "seasons": "Resumen de temporada",
+      "hallOfFame": "Salón de la Fama",
+      "profile": "Ajustes",
+      "pro": "Pro",
+      "help": "Ayuda",
+      "contact": "Contacto",
+      "rules": "Reglas",
+      "patchNotes": "Patch Notes",
+      "roadmap": "Hoja de ruta",
+      "logout": "Cerrar sesión",
+      "admin": "Admin",
+      "growth": "Crecimiento",
+      "fairplay": "Juego limpio",
+      "valueTransition": "Transición de valor",
+      "valuePreview": "Vista previa de valor",
+      "survey": "Encuesta"
+    }
+  },
+  "sidebar": {
+    "balance": "Saldo",
+    "balanceTooltip": "CZ$ es la moneda del juego. La ganas jugando y no se puede comprar con dinero real.",
+    "division": "División {division}",
+    "divisionTooltip": "Tu nivel de liga. La División 1 es el nivel más alto y la División 4 el de entrada.",
+    "onlineNow": "{count} en línea ahora",
+    "joinDiscord": "Unirse a Discord"
+  },
+  "language": {
+    "label": "Idioma",
+    "danish": "Dansk",
+    "english": "English",
+    "fr": "Français",
+    "es": "Español",
+    "nl": "Nederlands",
+    "switchTooltip": "Cambiar idioma"
+  },
+  "actions": {
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "hide": "Ocultar",
+    "clickToClose": "Haz clic para cerrar",
+    "loading": "Cargando…",
+    "loadingShort": "…",
+    "success": "OK",
+    "error": "Error"
+  },
+  "time": {
+    "justNow": "Ahora mismo",
+    "minutesAgo": "hace {m} min",
+    "hoursAgo": "hace {h} h",
+    "daysAgo": "hace {d} d",
+    "onlineNow": "En línea ahora",
+    "never": "Nunca"
+  },
+  "controls": {
+    "watchlistAdd": "Añadir a la lista de seguimiento",
+    "watchlistRemove": "Quitar de la lista de seguimiento",
+    "compareSelect": "Seleccionar para comparar",
+    "compareRemove": "Quitar de la comparación",
+    "compareMax": "Se pueden comparar como máximo {max} ciclistas",
+    "compareButton": "Comparar",
+    "compareSelectedLabel": "seleccionados",
+    "compareMinHint": "(selecciona al menos 2)",
+    "clear": "Borrar",
+    "noFilterResults": "Ningún ciclista coincide con tus filtros",
+    "clearFilters": "Borrar todos los filtros",
+    "statsToggleButton": "Mostrar estadísticas",
+    "statsToggleHeading": "Estadísticas",
+    "statsToggleShowAll": "Mostrar todo",
+    "statsToggleHideAll": "Ocultar todo"
+  },
+  "a11y": {
+    "openMenu": "Abrir menú",
+    "openNotifications": "Bandeja de entrada",
+    "removeFromComparison": "Quitar de la comparación",
+    "saveNote": "Guardar nota",
+    "searchHelp": "Buscar en la ayuda y las preguntas frecuentes",
+    "selectSeason": "Seleccionar temporada",
+    "unreadPatchNotes": "Nuevas patch notes",
+    "unreadForum": "Nueva actividad en el foro",
+    "unreadRoadmap": "Nuevos puntos de la hoja de ruta",
+    "selectionReminder": "Falta la selección de la plantilla antes del plazo",
+    "selectionReminderUrgent": "Tu equipo no saldrá"
+  },
+  "leaderBadge": "Líder",
+  "betaBadge": "Beta",
+  "amountInput": {
+    "invalid": "Introduce un número entero, p. ej. 150000 o 150.000",
+    "parsedPreview": "= {amount} CZ$"
+  },
+  "table": {
+    "fullTable": "Tabla completa",
+    "columnsLabel": "Elegir columnas",
+    "moreRight": "Más columnas a la derecha"
+  },
+  "networkError": "No se puede conectar con el servidor ahora mismo. Comprueba tu conexión e inténtalo de nuevo.",
+  "push": {
+    "title": "Notificaciones push",
+    "subtitle": "Solo te aviso cuando importa. Nunca entre las 22:00 y las 08:00, y como máximo 6 al día.",
+    "enable": "Activar push",
+    "disable": "Desactivar en este dispositivo",
+    "statusOn": "Activadas en este dispositivo",
+    "denied": "Tu navegador bloquea las notificaciones de Cycling Zone. Permítelas en los ajustes del sitio y vuelve a intentarlo.",
+    "iosInstall": "En iPhone y iPad, las notificaciones push funcionan cuando Cycling Zone está en tu pantalla de inicio: toca Compartir y luego Añadir a pantalla de inicio.",
+    "unsupported": "Este navegador no puede recibir notificaciones push.",
+    "error": "No ha funcionado. Inténtalo de nuevo.",
+    "categoriesHeading": "Lo que te envío",
+    "category": {
+      "auctions": {
+        "label": "Subastas, a última hora",
+        "desc": "Te superan la puja justo antes del final, y subastas ganadas."
+      },
+      "races": {
+        "label": "Carreras",
+        "desc": "Un resumen por día de carrera."
+      },
+      "transfers": {
+        "label": "Ofertas de fichaje",
+        "desc": "Hay una oferta esperando tu respuesta."
+      },
+      "deadlines": {
+        "label": "Plantilla y plazos",
+        "desc": "Plazos que te cuestan caro si se te pasan."
+      },
+      "academy": {
+        "label": "Academia y entrenamiento",
+        "desc": "Solo en el resumen de la mañana."
+      }
+    },
+    "offer": {
+      "regionAriaLabel": "Notificaciones push",
+      "title": "¿Quieres un aviso si te superan la puja antes del final?",
+      "accept": "Sí, avísame",
+      "later": "Ahora no",
+      "done": "Hecho. Cámbialo cuando quieras en Perfil, Notificaciones."
+    }
+  }
+}

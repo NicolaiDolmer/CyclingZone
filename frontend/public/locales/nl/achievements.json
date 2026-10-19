@@ -1,0 +1,186 @@
+{
+  "founder_badge": {
+    "title": "Founding Manager",
+    "description": "Erbij vanaf het openingsseizoen. Permanent. Overleeft elke reset."
+  },
+  "season_first_result": {
+    "title": "Eerste uitslag",
+    "description": "Laat je eerste koersresultaat registreren."
+  },
+  "team_star": {
+    "title": "Sterrenteam",
+    "description": "Heb een sterrenrenner in je team: een renner met een waarde van 8.000.000 CZ$ of meer."
+  },
+  "transfer_bargain": {
+    "title": "Het koopje",
+    "description": "Koop een renner voor minder dan de helft van zijn waarde."
+  },
+  "season_top10": {
+    "title": "Top 10",
+    "description": "Eindig een seizoen in de top 10 van je divisie."
+  },
+  "season_top5": {
+    "title": "Top 5",
+    "description": "Eindig een seizoen in de top 5 van je divisie."
+  },
+  "season_top3": {
+    "title": "Podium",
+    "description": "Eindig een seizoen in de top 3 van je divisie."
+  },
+  "season_winner": {
+    "title": "Divisiewinnaar",
+    "description": "Win je divisie in een seizoen."
+  },
+  "season_div1_winner": {
+    "title": "Kampioen",
+    "description": "Win Divisie 1."
+  },
+  "season_div3_winner": {
+    "title": "Net gepromoveerd",
+    "description": "Win Divisie 3."
+  },
+  "season_3_top3": {
+    "title": "Constant",
+    "description": "Eindig drie seizoenen op rij in de top 3."
+  },
+  "season_2_seasons": {
+    "title": "Twee seizoenen binnen",
+    "description": "Voltooi 2 seizoenen."
+  },
+  "season_5_seasons": {
+    "title": "Veteraan",
+    "description": "Voltooi 5 seizoenen."
+  },
+  "season_grand_tour_rider": {
+    "title": "Grand Tour-team",
+    "description": "Laat een renner aan de start van een Grand Tour verschijnen."
+  },
+  "team_promotion": {
+    "title": "Gepromoveerd",
+    "description": "Stijg naar een hogere divisie."
+  },
+  "team_relegation": {
+    "title": "Gedegradeerd",
+    "description": "Zak naar een lagere divisie."
+  },
+  "team_survived": {
+    "title": "Overleefd",
+    "description": "Ontsnap aan degradatie nadat je in de gevarenzone bent geëindigd."
+  },
+  "auction_first_bid": {
+    "title": "Eerste bod",
+    "description": "Doe je eerste bod in een veiling."
+  },
+  "auction_first_win": {
+    "title": "Eerste winst",
+    "description": "Win je eerste veiling."
+  },
+  "auction_5_wins": {
+    "title": "5 veilingen gewonnen",
+    "description": "Win in totaal 5 veilingen."
+  },
+  "auction_10_wins": {
+    "title": "10 veilingen gewonnen",
+    "description": "Win in totaal 10 veilingen."
+  },
+  "auction_25_wins": {
+    "title": "25 veilingen gewonnen",
+    "description": "Win in totaal 25 veilingen."
+  },
+  "auction_50_wins": {
+    "title": "50 veilingen gewonnen",
+    "description": "Win in totaal 50 veilingen."
+  },
+  "auction_sniper": {
+    "title": "Sniper",
+    "description": "Win een veiling met het minimumbod."
+  },
+  "auction_last_second": {
+    "title": "Laatste seconde",
+    "description": "Win een veiling tijdens de verlenging."
+  },
+  "auction_high_roller": {
+    "title": "High Roller",
+    "description": "Doe een bod van meer dan 500.000 CZ$."
+  },
+  "auction_5_streak": {
+    "title": "Dominantie",
+    "description": "Win 5 veilingen op rij."
+  },
+  "secret_rival": {
+    "title": "Bittere rivaal",
+    "description": "Bied in 10 veilingen tegen dezelfde manager."
+  },
+  "secret_heartbreak": {
+    "title": "Hartenbreker",
+    "description": "Verlies 3 keer een veiling in de laatste seconde."
+  },
+  "secret_streak_7": {
+    "title": "Wekelijks",
+    "description": "Log 7 dagen op rij in."
+  },
+  "secret_streak_30": {
+    "title": "Toegewijd",
+    "description": "Log 30 dagen op rij in."
+  },
+  "secret_watchlist_50": {
+    "title": "Scout",
+    "description": "Zet 50 renners op je volglijst."
+  },
+  "team_15_riders": {
+    "title": "Groeiende selectie",
+    "description": "Heb 15 renners tegelijk in je team."
+  },
+  "team_20_riders": {
+    "title": "Volle selectie",
+    "description": "Heb 20 renners tegelijk in je team."
+  },
+  "team_25_riders": {
+    "title": "Grote selectie",
+    "description": "Heb 25 renners tegelijk in je team."
+  },
+  "team_30_riders": {
+    "title": "Maximale selectie",
+    "description": "Bereik het maximumaantal renners (30)."
+  },
+  "team_youth": {
+    "title": "Jeugdteam",
+    "description": "Heb minstens 50% U25-renners in je team."
+  },
+  "team_5_achievements": {
+    "title": "Trofeeënkast",
+    "description": "Ontgrendel 5 prestaties."
+  },
+  "season_board_100": {
+    "title": "Favoriet van het bestuur",
+    "description": "Bereik 100% tevredenheid van het bestuur."
+  },
+  "transfer_first": {
+    "title": "Eerste deal",
+    "description": "Rond je eerste transfer af."
+  },
+  "transfer_5": {
+    "title": "5 transfers",
+    "description": "Rond in totaal 5 transfers af."
+  },
+  "transfer_15": {
+    "title": "15 transfers",
+    "description": "Rond in totaal 15 transfers af."
+  },
+  "transfer_30": {
+    "title": "30 transfers",
+    "description": "Rond in totaal 30 transfers af."
+  },
+  "transfer_seller_10": {
+    "title": "Verkoper",
+    "description": "Verkoop 10 renners via een transfer."
+  },
+  "transfer_buyer_10": {
+    "title": "Koper",
+    "description": "Koop 10 renners via een transfer."
+  },
+  "transfer_negotiator": {
+    "title": "Onderhandelaar",
+    "description": "Rond een transfer af na minstens 3 rondes tegenbiedingen."
+  }
+}

@@ -12,6 +12,7 @@ import {
   checkPostgrest,
   checkPostmaster,
   classifyPsqlFailure,
+  CONFIRM_DELAY_MS,
   emptyState,
   evaluate,
   main,
@@ -310,17 +311,20 @@ test("main: manglende secret fejler (exit 1) uden at sende noget", async () => {
   assert.equal(fs.existsSync(path.join(dir, "state.json")), false);
 });
 
+const noSleep = async () => {};
+
 test("main: fuldt forløb ned -> ned -> ned -> oppe giver præcis to Discord-beskeder", async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbw-"));
   const healthy = { value: true };
   const h = harness({ healthy });
   const env = makeEnv(dir);
-  const run = (min) => main({ env, fetchFn: h.fetchFn, execFn: h.execFn, now: () => new Date(t(min)), log: () => {} });
+  const run = (min) => main({ env, fetchFn: h.fetchFn, execFn: h.execFn, now: () => new Date(t(min)), log: () => {}, sleep: noSleep });
 
   assert.equal(await run(0), 0);
   healthy.value = false;
+  // #6854: fejlen bekræftes i samme kørsel, så alarmen ikke venter på næste kørsel.
   await run(5);
-  assert.equal(h.discord.length, 0);
+  assert.equal(h.discord.length, 1);
   await run(10);
   assert.equal(h.discord.length, 1);
   await run(15);
@@ -348,13 +352,39 @@ test("main: mislykket Discord-afsendelse gemmer ikke alarmen som sendt", async (
     }
     return { status: 503, ok: false };
   };
-  const run = (min) => main({ env, fetchFn, execFn, now: () => new Date(t(min)), log: () => {} });
+  const run = (min) => main({ env, fetchFn, execFn, now: () => new Date(t(min)), log: () => {}, sleep: noSleep });
   await run(0);
-  await run(5);
   assert.equal(sent.length, 1);
   discordOk = true;
-  await run(10);
+  await run(5);
   assert.equal(sent.length, 2, "alarmen prøves igen");
-  await run(15);
+  await run(10);
   assert.equal(sent.length, 2, "men ikke igen efter succes");
+});
+
+test("main (#6854): én kørsel midt i et udfald alarmerer selv, efter én pause", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbw-"));
+  const h = harness({ healthy: { value: false } });
+  const sleeps = [];
+  const code = await main({
+    env: makeEnv(dir), fetchFn: h.fetchFn, execFn: h.execFn,
+    now: () => new Date(t(0)), log: () => {}, sleep: async (ms) => { sleeps.push(ms); },
+  });
+  assert.equal(code, 0);
+  assert.equal(h.discord.length, 1);
+  assert.match(h.discord[0].embeds[0].title, /svarer ikke/);
+  assert.deepEqual(sleeps, [CONFIRM_DELAY_MS], "stopper når alarmen er sendt");
+});
+
+test("main (#6854): et kort blip der er grønt ved anden måling alarmerer ikke", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "dbw-"));
+  const healthy = { value: false };
+  const h = harness({ healthy });
+  const code = await main({
+    env: makeEnv(dir), fetchFn: h.fetchFn, execFn: h.execFn,
+    now: () => new Date(t(0)), log: () => {}, sleep: async () => { healthy.value = true; },
+  });
+  assert.equal(code, 0);
+  assert.equal(h.discord.length, 0);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, "state.json"), "utf8")).consecutiveFailures, 0);
 });

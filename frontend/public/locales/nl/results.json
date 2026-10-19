@@ -1,0 +1,101 @@
+{
+  "title": "Uitslagen",
+  "subtitle": {
+    "active": "Seizoen {number} · actief",
+    "viewing": "Seizoen {number}",
+    "noSeason": "Geen actief seizoen"
+  },
+  "tabs": {
+    "latest": "Recent",
+    "archive": "Archief",
+    "raceHistory": "Koershistorie",
+    "points": "Punten & prijzen"
+  },
+  "latest": {
+    "empty": "Hier zijn nog geen koersen afgerond",
+    "emptyBody": "Uitslagen verschijnen hier zodra de eerste koers in deze selectie klaar is.",
+    "noPodium": "Voor deze koers is nog geen klassement geïmporteerd",
+    "viewFull": "Volledige uitslag",
+    "stageProgress": "Etappe {done} van {total}"
+  },
+  "filters": {
+    "seasonLabel": "Seizoen",
+    "seasonOption": "Seizoen {number}",
+    "seasonOptionActive": "Seizoen {number} (actief)",
+    "divisionLabel": "Divisie",
+    "allDivisions": "Alle divisies",
+    "division": "Divisie {n}",
+    "poolLabel": "Poule",
+    "allPools": "Alle poules"
+  },
+  "hub": {
+    "moreTitle": "Meer bij Uitslagen",
+    "standings": {
+      "label": "Ranglijst",
+      "desc": "Teamranglijst van het actieve seizoen"
+    },
+    "riderRankings": {
+      "label": "Rennersranglijst",
+      "desc": "Individuele resultaten van alle renners"
+    },
+    "seasonSnapshot": {
+      "label": "Seizoensoverzicht",
+      "desc": "Kalender, eindstand en seizoenswinnaars"
+    }
+  },
+  "loadingAria": "Uitslagen laden",
+  "emptyNoSeason": "Geen actief seizoen. Uitslagen verschijnen hier zodra het seizoen loopt",
+  "topTeams": "Topteams · Seizoen {number}",
+  "topScorers": "Topscorers · Seizoen {number}",
+  "teamMeta": "{stageWins, plural, one {# etappezege} other {# etappezeges}} · {gcWins} klassement",
+  "freeAgent": "Transfervrij",
+  "riderStageWins": "{count, plural, one {# etappezege} other {# etappezeges}}",
+  "riderGcWins": "{count} klassement",
+  "points": "{count} pt",
+  "seeAllStandings": "Bekijk de volledige ranglijst",
+  "seeAllRiders": "Bekijk alle renners",
+  "emptyNoResults": "Dit seizoen zijn nog geen koersuitslagen geïmporteerd",
+  "loadError": "Uitslagen konden niet worden geladen",
+  "loadErrorBody": "Er is niets verloren gegaan. Probeer de pagina opnieuw te laden.",
+  "retry": "Probeer opnieuw",
+  "raceHistory": {
+    "tableLabel": "Koershistorie",
+    "searchPlaceholder": "Koersen zoeken",
+    "poolLabel": "Divisie",
+    "count": "{count, plural, one {# koers} other {# koersen}}",
+    "showing": "{from}-{to} van {total}",
+    "prev": "Vorige",
+    "next": "Volgende",
+    "seasonShort": "S{number}",
+    "stages": "{count, plural, one {# etappe} other {# etappes}}",
+    "oneDay": "Eendagskoers",
+    "place": "{rank, selectordinal, one {#e} two {#e} few {#e} other {#e}}",
+    "notPlaced": "Niet in de uitslag",
+    "noWinner": "Geen winnaar vastgelegd",
+    "noRoute": "Parcours niet vastgelegd",
+    "allEditions": "Alle {count} edities",
+    "firstEdition": "Eerste editie",
+    "th": {
+      "race": "Koers",
+      "champion": "Titelhouder",
+      "championShort": "Kampioen",
+      "best": "Jouw beste",
+      "bestShort": "Beste",
+      "terrain": "Terrein",
+      "winners": "Eerdere winnaars"
+    },
+    "empty": {
+      "title": "Kies een andere divisie",
+      "desc": "In deze divisie is nog geen koers afgelopen.",
+      "action": "{pool} tonen",
+      "latest": "Bekijk de laatste uitslagen"
+    },
+    "emptySearch": {
+      "title": "Probeer een andere zoekopdracht",
+      "desc": "Geen afgelopen koers komt overeen met die naam.",
+      "action": "Zoekopdracht wissen"
+    },
+    "error": "De koershistorie kon niet laden. Er is niets verloren gegaan.",
+    "retry": "Opnieuw proberen"
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "page": {
+    "title": {
+      "u23": "{team} Sub-23",
+      "junior": "{team} Júniors"
+    },
+    "fallbackTitle": {
+      "u23": "Equipo sub-23",
+      "junior": "Equipo júnior"
+    },
+    "subtitle": {
+      "u23": "Equipo sub-23, ciclistas de 22 años o menos",
+      "junior": "Equipo júnior, ciclistas de 18 años o menos"
+    },
+    "squadValue": "Valor de la plantilla: {value} CZ$",
+    "rosterCount": "{count}/{cap} ciclistas en la plantilla",
+    "seniorsStayHint": "Los ciclistas de tu plantilla sénior siguen siendo sénior hasta que los muevas. Abre un ciclista y usa Cambiar de plantilla."
+  },
+  "tabs": {
+    "ariaLabel": "Secciones de la plantilla",
+    "calendar": "Calendario",
+    "results": "Resultados",
+    "standings": "Clasificación"
+  },
+  "empty": {
+    "squad": {
+      "title": "Ficha a un talento en tu academia",
+      "description": {
+        "u23": "Los ciclistas de la academia de 22 años o menos pueden correr con tu equipo sub-23. También puedes subir aquí a un júnior.",
+        "junior": "Los ciclistas de la academia de 18 años o menos pueden correr con tu equipo júnior."
+      },
+      "action": "Ir a la academia"
+    },
+    "races": {
+      "title": "Mira cuándo empiezan las carreras juveniles",
+      "action": "Hoja de ruta",
+      "calendar": {
+        "u23": "Tu equipo sub-23 aún no tiene carreras en el calendario.",
+        "junior": "Tu equipo júnior aún no tiene carreras en el calendario."
+      },
+      "results": {
+        "u23": "Tu equipo sub-23 todavía no ha corrido.",
+        "junior": "Tu equipo júnior todavía no ha corrido."
+      },
+      "standings": {
+        "u23": "La clasificación sub-23 empieza con la primera carrera sub-23.",
+        "junior": "La clasificación júnior empieza con la primera carrera júnior."
+      }
+    }
+  },
+  "error": {
+    "title": "No se pudo cargar tu plantilla",
+    "description": "No se ha cambiado nada. Tus ciclistas están a salvo.",
+    "retry": "Reintentar"
+  },
+  "development": {
+    "hint": "Cómo se espera que crezca la valoración de cada ciclista con tu entrenamiento, y la valoración más alta que puede alcanzar su rol."
+  },
+  "filter": {
+    "u23": "Sub-23 · edad máx. {age} ({count})",
+    "junior": "Júniors · edad máx. {age} ({count})"
+  },
+  "standings": {
+    "headers": {
+      "team": "Equipo",
+      "races": "Carreras",
+      "wins": "Victorias",
+      "podiums": "Podios",
+      "points": "Puntos"
+    },
+    "count": "{count, plural, one {1 equipo} other {# equipos}}",
+    "group": "Grupo {letter}",
+    "ownGroup": "Tu grupo",
+    "groupLabel": "Grupo",
+    "allGroups": "Todos los grupos",
+    "noGroup": {
+      "title": "Mira los grupos juveniles",
+      "description": {
+        "u23": "Tu equipo sub-23 todavía no está en ningún grupo. Los grupos están en Carreras juveniles.",
+        "junior": "Tu equipo júnior todavía no está en ningún grupo. Los grupos están en Carreras juveniles."
+      }
+    },
+    "error": {
+      "title": "No se pudo cargar la clasificación",
+      "description": "No se ha cambiado nada. Inténtalo de nuevo en un momento."
+    }
+  },
+  "optOut": {
+    "label": "Carreras",
+    "enter": "Participar en carreras",
+    "trainOnly": "Solo entrenar",
+    "noteTitle": {
+      "u23": "Tu plantilla sub-23 entrena en lugar de correr.",
+      "junior": "Tu plantilla júnior entrena en lugar de correr."
+    },
+    "noteBody": "El asistente no la inscribirá y tú tampoco puedes inscribirla a mano.",
+    "fromDay": "Tiene efecto desde el día {day}, el primer día de carrera que aún no está bloqueado.",
+    "help": "Cómo funciona",
+    "saveError": "No se pudo guardar tu elección. No se ha cambiado nada. Inténtalo de nuevo.",
+    "unavailable": "Esta opción aún no está disponible. Inténtalo más tarde."
+  },
+  "youthRaces": {
+    "title": "Carreras juveniles",
+    "subtitle": {
+      "u23": "Clasificación sub-23, un grupo cada vez",
+      "junior": "Clasificación júnior, un grupo cada vez"
+    },
+    "squadLabel": "Plantilla",
+    "tabsLabel": "Secciones de carreras juveniles",
+    "calendarHint": "Elige a tus ciclistas para cada carrera. Puedes cambiar la plantilla hasta que empiece la primera etapa, también cuando se haya elegido automáticamente.",
+    "headers": {
+      "race": "Carrera",
+      "team": "Tu equipo",
+      "action": "Acción"
+    },
+    "status": {
+      "open": "Selección abierta",
+      "live": "En carrera",
+      "completed": "Terminada"
+    },
+    "team": {
+      "none": "Sin elegir",
+      "training": "No inscrito · entrenando",
+      "auto": "{count, plural, one {1 ciclista, elegido automáticamente} other {# ciclistas, elegidos automáticamente}}",
+      "manual": "{count, plural, one {1 ciclista elegido} other {# ciclistas elegidos}}",
+      "rode": "{count, plural, one {1 ciclista} other {# ciclistas}}",
+      "belowFloor": "Menos de {min}: añade ciclistas"
+    },
+    "action": {
+      "pick": "Elegir ciclistas",
+      "edit": "Editar plantilla",
+      "view": "Ver carrera",
+      "results": "Resultados"
+    },
+    "error": {
+      "title": "No se pudieron cargar las carreras juveniles",
+      "description": "Inténtalo de nuevo en un momento."
+    },
+    "stages": "{count, plural, one {1 etapa} other {# etapas}}",
+    "count": "{count, plural, one {1 carrera} other {# carreras}}",
+    "noPool": {
+      "title": "Tu equipo aún no tiene grupo juvenil",
+      "u23": "Tu equipo no está en un grupo sub-23 esta temporada, así que no hay carreras sub-23 para las que elegir.",
+      "junior": "Tu equipo no está en un grupo júnior esta temporada, así que no hay carreras júnior para las que elegir."
+    }
+  }
+}

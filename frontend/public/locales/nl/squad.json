@@ -1,0 +1,147 @@
+{
+  "page": {
+    "title": {
+      "u23": "{team} U23",
+      "junior": "{team} Junioren"
+    },
+    "fallbackTitle": {
+      "u23": "U23-team",
+      "junior": "Juniorenteam"
+    },
+    "subtitle": {
+      "u23": "U23-team, renners van 22 jaar of jonger",
+      "junior": "Juniorenteam, renners van 18 jaar of jonger"
+    },
+    "squadValue": "Selectiewaarde: {value} CZ$",
+    "rosterCount": "{count}/{cap} renners in de selectie",
+    "seniorsStayHint": "Renners in je seniorenselectie blijven senior tot je ze verplaatst. Open een renner en gebruik Selectie wisselen."
+  },
+  "tabs": {
+    "ariaLabel": "Selectieonderdelen",
+    "calendar": "Kalender",
+    "results": "Uitslagen",
+    "standings": "Ranglijst"
+  },
+  "empty": {
+    "squad": {
+      "title": "Contracteer een talent in je academie",
+      "description": {
+        "u23": "Academy-renners van 22 jaar of jonger kunnen rijden voor je U23-team. Je kunt hier ook een junior naar toe halen.",
+        "junior": "Academy-renners van 18 jaar of jonger kunnen rijden voor je juniorenteam."
+      },
+      "action": "Naar de academie"
+    },
+    "races": {
+      "title": "Kijk wanneer de jeugdkoersen beginnen",
+      "action": "Roadmap",
+      "calendar": {
+        "u23": "Je U23-team heeft nog geen koersen in de kalender.",
+        "junior": "Je juniorenteam heeft nog geen koersen in de kalender."
+      },
+      "results": {
+        "u23": "Je U23-team heeft nog niet gekoerst.",
+        "junior": "Je juniorenteam heeft nog niet gekoerst."
+      },
+      "standings": {
+        "u23": "De U23-ranglijst begint met de eerste U23-koers.",
+        "junior": "De juniorenranglijst begint met de eerste juniorenkoers."
+      }
+    }
+  },
+  "error": {
+    "title": "Je selectie kon niet worden geladen",
+    "description": "Er is niets gewijzigd. Je renners zijn veilig.",
+    "retry": "Probeer opnieuw"
+  },
+  "development": {
+    "hint": "Hoe de rating van elke renner naar verwachting groeit met jouw training, en de hoogste rating die zijn rol kan bereiken."
+  },
+  "filter": {
+    "u23": "U23 · max. leeftijd {age} ({count})",
+    "junior": "Junioren · max. leeftijd {age} ({count})"
+  },
+  "standings": {
+    "headers": {
+      "team": "Team",
+      "races": "Koersen",
+      "wins": "Zeges",
+      "podiums": "Podiums",
+      "points": "Punten"
+    },
+    "count": "{count, plural, one {1 team} other {# teams}}",
+    "group": "Groep {letter}",
+    "ownGroup": "Jouw groep",
+    "groupLabel": "Groep",
+    "allGroups": "Alle groepen",
+    "noGroup": {
+      "title": "Bekijk de jeugdgroepen",
+      "description": {
+        "u23": "Je U23-team zit nog niet in een groep. De groepen staan bij Jeugdkoersen.",
+        "junior": "Je juniorenteam zit nog niet in een groep. De groepen staan bij Jeugdkoersen."
+      }
+    },
+    "error": {
+      "title": "De ranglijst kon niet worden geladen",
+      "description": "Er is niets gewijzigd. Probeer het over een moment opnieuw."
+    }
+  },
+  "optOut": {
+    "label": "Koersen",
+    "enter": "Aan koersen deelnemen",
+    "trainOnly": "Alleen trainen",
+    "noteTitle": {
+      "u23": "Je U23-selectie traint in plaats van te koersen.",
+      "junior": "Je juniorenselectie traint in plaats van te koersen."
+    },
+    "noteBody": "De assistent schrijft hem niet in, en jij kunt hem ook niet met de hand inschrijven.",
+    "fromDay": "Gaat in vanaf dag {day}, de eerste koersdag die nog niet vergrendeld is.",
+    "help": "Hoe het werkt",
+    "saveError": "Je keuze kon niet worden opgeslagen. Er is niets gewijzigd. Probeer het opnieuw.",
+    "unavailable": "Deze keuze is nog niet beschikbaar. Probeer het later opnieuw."
+  },
+  "youthRaces": {
+    "title": "Jeugdkoersen",
+    "subtitle": {
+      "u23": "U23-ranglijst, één groep per keer",
+      "junior": "Juniorenranglijst, één groep per keer"
+    },
+    "squadLabel": "Selectie",
+    "tabsLabel": "Onderdelen van Jeugdkoersen",
+    "calendarHint": "Kies je renners voor elke koers. Je kunt de selectie wijzigen tot de eerste etappe start, ook als die automatisch is gekozen.",
+    "headers": {
+      "race": "Koers",
+      "team": "Jouw team",
+      "action": "Actie"
+    },
+    "status": {
+      "open": "Selectie open",
+      "live": "Bezig",
+      "completed": "Afgelopen"
+    },
+    "team": {
+      "none": "Niet gekozen",
+      "training": "Niet ingeschreven · training",
+      "auto": "{count, plural, one {1 renner, automatisch gekozen} other {# renners, automatisch gekozen}}",
+      "manual": "{count, plural, one {1 renner gekozen} other {# renners gekozen}}",
+      "rode": "{count, plural, one {1 renner} other {# renners}}",
+      "belowFloor": "Minder dan {min}: voeg renners toe"
+    },
+    "action": {
+      "pick": "Renners kiezen",
+      "edit": "Selectie aanpassen",
+      "view": "Koers bekijken",
+      "results": "Uitslagen"
+    },
+    "error": {
+      "title": "Jeugdkoersen konden niet worden geladen",
+      "description": "Probeer het over een moment opnieuw."
+    },
+    "stages": "{count, plural, one {1 etappe} other {# etappes}}",
+    "count": "{count, plural, one {1 koers} other {# koersen}}",
+    "noPool": {
+      "title": "Nog geen jeugdgroep voor je team",
+      "u23": "Je team zit dit seizoen niet in een U23-groep, dus er zijn geen U23-koersen om voor te kiezen.",
+      "junior": "Je team zit dit seizoen niet in een juniorengroep, dus er zijn geen juniorenkoersen om voor te kiezen."
+    }
+  }
+}

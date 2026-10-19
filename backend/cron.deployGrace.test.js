@@ -174,3 +174,9 @@ test("reelt død 24h-cron (debt-warnings, uændret config) alarmerer inden for f
   assert.equal(result.alarmFired, true);
   assert.equal(result.alarmTime, 24 * 60 + 180);
 });
+
+test("primeCronMonitorCheckIns — fast-tids-monitorer (crontab) primes ikke i Sentry (Codex P2 #6860)", () => {
+  const calls = [];
+  primeCronMonitorCheckIns((payload, config) => calls.push({ payload, config }));
+  assert.ok(calls.every(({ config }) => config.schedule?.type !== "crontab"));
+});

@@ -1,0 +1,32 @@
+{
+  "title": "Contact",
+  "subtitle": "Geen Discord? Stuur feedback, meld een bug of deel een idee rechtstreeks met de ontwikkelaar.",
+  "close": "Sluiten",
+  "field": {
+    "category": "Categorie",
+    "message": "Bericht",
+    "messageHelper": "Nog {count} tekens over"
+  },
+  "category": {
+    "feedback": "Feedback",
+    "bug": "Bugmelding",
+    "idea": "Idee",
+    "fairplay": "Fair play / een transfer melden",
+    "feedbackPlaceholder": "Waar zit je mee?",
+    "bugPlaceholder": "Wat is er gebeurd? Wat had je verwacht?",
+    "ideaPlaceholder": "Wat zou je graag in het spel zien?",
+    "fairplayPlaceholder": "Wat zag er vreemd uit? Een transfer of een team is genoeg. Ik zoek het verder uit."
+  },
+  "submit": "Versturen",
+  "sent": {
+    "text": "Bedankt. Je bericht is verstuurd. Als het een antwoord nodig heeft, krijg je dat in je meldingen.",
+    "close": "Sluiten"
+  },
+  "error": {
+    "invalidCategory": "Kies eerst een categorie.",
+    "messageRequired": "Schrijf een bericht voordat je verstuurt.",
+    "messageTooLong": "Je bericht is te lang. Houd het onder de 4000 tekens.",
+    "rateLimited": "Je hebt al een paar berichten gestuurd. Probeer het over even opnieuw.",
+    "generic": "Je bericht kon niet worden verstuurd. Probeer het over een moment opnieuw."
+  }
+}

@@ -30,6 +30,7 @@
 // only (gc-RANK driver points); standings/schema er uændret.
 
 import { randomUUID } from "node:crypto";
+import { invalidateNamespace } from "./responseCache.js"; // #6514
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   applyRaceResults as applyRaceResultsShared,
@@ -51,7 +52,7 @@ import {
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
-import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled } from "./raceEngineFlag.js";
+import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled, isRaceFormPeaksEnabled } from "./raceEngineFlag.js";
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -69,6 +70,7 @@ import {
   raceHasStarted,
   resolveRaceRulesRevision,
   isOrdersGcRulesRevision,
+  isS5ProfilesV2OrLater,
 } from "./raceEngineRulesRevision.ts";
 // #2410 (event-log S1): deterministisk etape-tidslinje-generator — REN funktion,
 // samme build-trin som moments/passages (data er i memory). Bag flag
@@ -277,14 +279,23 @@ export async function resolveRaceEngineV4({
   supabase, race, checkV4Enabled,
   loadEngine = loadRaceEngineV4,
   loadOrders = loadTeamOrderRows,
+  checkFormPeaksEnabled = isRaceFormPeaksEnabled,
 }) {
   const enabled = await checkV4Enabled(supabase);
   if (!enabled) return { v4Engine: null, teamOrderRows: [] };
   try {
-    const [v4Engine, teamOrderRows] = await Promise.all([
+    const [engine, teamOrderRows, formPeaks] = await Promise.all([
       loadEngine(),
       loadOrders({ supabase, raceId: race.id }),
+      // #6156 (ejer 19/10): fail closed, en fejl i flag-opslaget = ingen formtoppe.
+      Promise.resolve().then(() => checkFormPeaksEnabled(supabase)).catch(() => false),
     ]);
+    // Flaget laeses een gang pr. afvikling, som motorflaget; adapteren faar vaerdien med.
+    const v4Engine = formPeaks === true ? engine : {
+      ...engine,
+      formPeaks: false, // #6156: med i run-identiteten (input_checksum), se buildRaceResults
+      simulateStage: (args) => engine.simulateStage({ ...args, formPeaks: false }),
+    };
     return { v4Engine, teamOrderRows };
   } catch (err) {
     console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);
@@ -654,6 +665,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         // ændrer hvilken fase (peak/payback/none) etapen rammer → skal med for at
         // to identiske inputs giver identisk output (determinisme-garantien).
         ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: stage.peakDay ?? null } : {}),
+        // #6156: race_form_peaks slukket aendrer v4's input under s5_profiles_v2; kun da
+        // med i identiteten (taendt/aeldre revisioner = uaendret checksum).
+        ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
         // #5914: troejefoererne styrer hvem der kaemper om passagerne -> input.
         // Kun naar en foerer faktisk sendes videre (bagudkompatibel checksum).
         ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
@@ -2893,6 +2907,9 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
       // S5 (#2224): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: thisStage.peakDay ?? null } : {}),
+        // #6156: race_form_peaks slukket aendrer v4's input under s5_profiles_v2; kun da
+        // med i identiteten (taendt/aeldre revisioner = uaendret checksum).
+        ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
       // #5914: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
     })),
@@ -3527,6 +3544,10 @@ export async function simulateStageByIndex({
       };
     }
     applied = { rowsImported };
+    // #6514 (Codex-fund): kalenderen udleder lineupFrozen af stages_completed, saa den
+    // cachede kalender skal toemmes naar en etape er committet, ellers viser
+    // kalenderkortet en udtagelses-knap som lineup-endpointet afviser (op til 60 s).
+    invalidateNamespace("calendar");
     // #6740: etape 1 er committet (låsen vundet) — først nu er "stillede ikke op" sandt.
     await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
     // #6740 (review #6747): ved senere etaper afstemmes feltet, så en frigivelse der

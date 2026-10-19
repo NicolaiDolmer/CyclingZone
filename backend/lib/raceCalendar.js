@@ -127,6 +127,7 @@ export function splitISODate(iso) {
 //   teamDivisionId: number|null (req.team.league_division_id — holdets pulje-id)
 //   teamEntryRaceIds: Set<raceId> løb holdet har en entry i
 //   teamLeaderRaceIds: Set<raceId> løb hvor holdet har sat en leder (captain/sprint_captain)
+//   teamWithdrawnRaceIds: Set<raceId> løb holdet har meldt sig fra (race_withdrawals; entries bevares, #4306)
 //
 // Output: { entries: [...], days: [{ gameDay, date }], divisions: [{division, pools}] }
 // Hver entry repræsenterer ÉT løb (én pulje-instans) på sin startdag, beriget med
@@ -143,6 +144,7 @@ export function buildCalendarModel({
   teamDivisionId = null,
   teamEntryRaceIds = new Set(),
   teamLeaderRaceIds = new Set(),
+  teamWithdrawnRaceIds = new Set(),
 } = {}) {
   const dayDateMap = buildGameDayDateMap(scheduleRows);
 
@@ -235,6 +237,10 @@ export function buildCalendarModel({
       isMine,
       leaderSet: teamLeaderRaceIds.has(race.id),
       entered: teamEntryRaceIds.has(race.id),
+      withdrawn: teamWithdrawnRaceIds.has(race.id),
+      // #6514: udtagelsen er låst (afviklet eller i gang). Samme regel som isRaceLineupFrozen (raceActiveGuard.js), inlinet fordi
+      // dette modul er rent og ikke maa traekke sentry ind.
+      lineupFrozen: race.status === "completed" || (race.stages_completed ?? 0) > 0,
       ...(restGameDays.length ? { restGameDays } : {}), // #3470: kun til stede når ikke-tom
     });
   }
@@ -294,6 +300,11 @@ export function toCalendarWireEntry(entry) {
     stageSchedule: entry.stageSchedule,
     isMine: entry.isMine,
     leaderSet: entry.leaderSet,
+    // #6514: in-game-dag-spanet; klientens GT-bindingskonflikt (racePeek.bindsOverlap) regnes i game_days.
+    gameDayStart: entry.gameDayStart,
+    gameDayEnd: entry.gameDayEnd,
+    ...(entry.lineupFrozen ? { lineupFrozen: true } : {}), // #6514: kun når låst (wire-trimning)
+    ...(entry.withdrawn ? { withdrawn: true } : {}), // #6514: kun når holdet har meldt fra
     ...(entry.restGameDays?.length ? { restGameDays: entry.restGameDays } : {}),
   };
 }

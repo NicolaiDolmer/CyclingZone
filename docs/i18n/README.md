@@ -102,4 +102,6 @@ En sprogkaptajn ejer ét sprog (gratis Pro + badge, Hattrick-modellen).
 5. **Review:** sprogkaptajnen gennemgår og kører `--mark-reviewed` pr. namespace.
 6. **Commit** locale-filerne og `frontend/i18n-state.json` sammen.
 
+Et **beta-sprog** (`beta: true`, fx fr/es/nl fra #6836) kræver desuden: sprognavne-nøglen `language.<kode>` i `common.json` for alle sprog, en lazy bundle `frontend/src/i18n/messages.<kode>.js` (+ `LAZY_BUNDLES` i `localeBundleBackend.js` og en `i18n-messages-<kode>`-gruppe i `vite.config.js`), og et flag i `LanguageSwitcherFlag.jsx`. Beta-chunken tæller ikke mod `bundle-budget.json` (`scripts/check-bundle-budget.mjs`) og preloades aldrig; flipper sproget til `beta: false`, tæller den med.
+
 Uden en kaptajn tilføjes sproget ikke. Triggeren for et nyt sprog står i #4110.

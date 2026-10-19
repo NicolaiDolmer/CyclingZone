@@ -1,0 +1,325 @@
+{
+  "page": {
+    "fallbackTitle": "Mi equipo",
+    "managerLabel": "Mánager: {name}",
+    "ridersCount": "{count}/{cap} ciclistas sénior",
+    "youthSquadCounts": "+{u23} sub-23 · +{junior} júniors",
+    "seniorCapTooltip": "El tope de plantilla es de {cap} ciclistas sénior. Los ciclistas de la academia no cuentan para él.",
+    "youthSquadCountsTooltip": "Los ciclistas sub-23 y júnior tienen sus propios topes de plantilla (12 y 10) y no cuentan para el tope sénior.",
+    "incomingCount": "+{count} entrantes",
+    "outgoingCount": "-{count} salientes",
+    "salaryPerSeason": "Salario/temporada: {value} CZ$",
+    "salaryPerSeasonTooltip": "Salario total que gana tu plantilla por temporada",
+    "teamValue": "Valor del equipo: {value} CZ$",
+    "division": "División {n}",
+    "divisionTooltip": "Tu nivel de liga. La División 1 es el nivel más alto y la División 4 el de entrada.",
+    "balance": "{value} CZ$",
+    "balanceTooltip": "CZ$ es la moneda del juego. La ganas jugando y no se puede comprar con dinero real.",
+    "ownAuctionsBanner": "{count, plural, one {# de tus ciclistas está en subasta} other {# de tus ciclistas están en subasta}} · ver subastas"
+  },
+  "promotionPending": {
+    "title": "A la espera de ascenso",
+    "hint": "Su próxima plantilla está llena. Siguen corriendo en su plantilla actual con el mismo contrato.",
+    "waitingFor": {
+      "u23": "Esperando una plaza sub-23",
+      "senior": "Esperando una plaza sénior"
+    },
+    "promote": "Ascender",
+    "noRoom": "Aún sin plaza",
+    "promoted": "{name} ha subido.",
+    "error": {
+      "squad_full": "Esa plantilla está llena. Libera primero una plaza.",
+      "rider_on_market": "Está en subasta. Ascéndelo cuando termine la subasta.",
+      "rider_in_stage_race": "Está en una carrera por etapas. Ascéndelo cuando termine.",
+      "generic": "No se pudo ascender al ciclista. Inténtalo de nuevo."
+    }
+  },
+  "tabs": {
+    "ariaLabel": "Secciones del equipo",
+    "squad": "Plantilla ({count})",
+    "development": "Desarrollo",
+    "stats": "Estadísticas",
+    "transfers": "Historial de fichajes"
+  },
+  "development": {
+    "headers": {
+      "projected": "Proyectada",
+      "projectedTitle": "Rango de valoración proyectado para su rol principal, según tu entrenamiento. Ordenado por el límite superior.",
+      "ceiling": "Techo",
+      "ceilingTitle": "La valoración más alta teórica que podría alcanzar su rol. No se ajusta a cómo lo entrenas."
+    },
+    "noForecast": "Aún sin pronóstico"
+  },
+  "stats": {
+    "seasonLabel": "Temporada {n}",
+    "noActiveSeason": "Ahora mismo no hay temporada activa.",
+    "loadError": "No se pudieron cargar las estadísticas de la temporada. Inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "headers": {
+      "raceDays": "Días de carrera",
+      "wins": "Victorias",
+      "points": "Puntos",
+      "prize": "Premios en metálico"
+    }
+  },
+  "squad": {
+    "view": {
+      "ariaLabel": "Vista de la plantilla",
+      "current": "Plantilla actual ({count})",
+      "upcoming": "Próxima temporada ({count})",
+      "upcomingHint": "Muestra la plantilla cuando se completen los fichajes pendientes."
+    },
+    "filter": {
+      "label": "Mostrar",
+      "seniors": "Sénior ({count})",
+      "academy": "Academia ({count})"
+    },
+    "emptyState": "Tu plantilla está vacía",
+    "emptyStateBody": "Ficha a tus primeros ciclistas en el mercado para empezar a montar tu equipo.",
+    "emptyStateCta": "Explorar ciclistas",
+    "emptyStateCtaAuctions": "Ir a subastas",
+    "emptyView": "Ningún ciclista coincide con la vista actual.",
+    "headers": {
+      "nation": "País",
+      "rider": "Ciclista",
+      "rating": "Valoración",
+      "ratingTitle": "La media ponderada de las habilidades que necesita su propio rol. El mismo número significa el mismo nivel en cualquier rol.",
+      "value": "Valor",
+      "salary": "Salario",
+      "potential": "Potencial",
+      "potentialTitle": "El rango de valoración proyectado hacia el que se encamina de forma realista con tu entrenamiento. No es lo mismo que el techo del rol (el máximo teórico para su rol): pasa el cursor por el número para ver ambos.",
+      "badges": "Estado",
+      "age": "Edad",
+      "popularity": "Popularidad",
+      "popularityTitle": "Popularidad entre los aficionados (0-100). La usa el objetivo de ciclista estrella del plan a 5 años de la directiva.",
+      "reputationLabel": "Reputación",
+      "reputationTitle": "Reputación en carrera ganada. Es el número que lee la directiva para los ciclistas con perfil.",
+      "type": "Tipo",
+      "contract": "Contrato",
+      "contractUntil": "Hasta la temporada {season}",
+      "contractExpired": "Caducado",
+      "action": "Acción"
+    },
+    "reputation": {
+      "band": {
+        "unknown": "Desconocido",
+        "known": "Conocido",
+        "profile": "Con perfil",
+        "star": "Estrella",
+        "legend": "Leyenda"
+      }
+    },
+    "mode": {
+      "ariaLabel": "Columnas de la tabla",
+      "overview": "Resumen",
+      "abilities": "Habilidades"
+    },
+    "count": "{count, plural, one {1 ciclista} other {# ciclistas}}",
+    "actionButton": "Vender / Subastar",
+    "ownAuctionTooltip": "En subasta · puja más alta {price} CZ$ · termina en {timeLeft}",
+    "ownTransferListingTooltip": "En venta · precio pedido {price} CZ$"
+  },
+  "actionModal": {
+    "potentialLabel": "Potencial",
+    "tabs": {
+      "auction": "Subasta",
+      "transfer": "Lista de fichajes",
+      "release": "Liberar",
+      "extend": "Ampliar contrato",
+      "move": "Cambiar de plantilla"
+    },
+    "auction": {
+      "description": "Iniciar subasta. Otros mánagers pueden pujar.",
+      "startButton": "Iniciar",
+      "startFlashButton": "Iniciar relámpago",
+      "flashLabel": "Subasta relámpago (30 min)",
+      "flashHint": "Deadline Day: termina exactamente 30 minutos después de empezar",
+      "successMsg": "¡Subasta iniciada!",
+      "priceError": "El precio de salida debe estar entre 0 y el Valor ({amount} CZ$)",
+      "endLabel": "La subasta termina",
+      "endHint": "Entre {min} y {max} horas desde ahora, hora del juego (Copenhague).",
+      "endWindowHint": "El mercado está abierto de {open} a {close}."
+    },
+    "transfer": {
+      "description": "Poner a la venta a precio fijo.",
+      "listButton": "Poner a la venta",
+      "successMsg": "¡Puesto a la venta!"
+    },
+    "release": {
+      "description": "Rescindir el contrato de este ciclista y dejarlo marchar como agente libre.",
+      "feeLabel": "Cláusula de rescisión",
+      "balanceLabel": "Tu saldo",
+      "feeHint": "Medio salario de temporada por cada temporada de contrato restante.",
+      "freeHint": "Este ciclista no tiene salario, así que la liberación es gratuita.",
+      "confirmButton": "Liberar ciclista",
+      "cannotAfford": "No puedes pagar la cláusula de rescisión.",
+      "successMsg": "Ciclista liberado."
+    },
+    "extend": {
+      "description": "Amplía el contrato una temporada. El salario se renegocia a partir del valor actual del ciclista.",
+      "currentSalaryLabel": "Salario actual",
+      "newSalaryLabel": "Nuevo salario",
+      "newContractLabel": "Nuevo contrato",
+      "newContractValue": "Caduca tras la T{season}",
+      "confirmButton": "Ampliar contrato",
+      "loadingTermsButton": "Cargando condiciones…",
+      "workingButton": "Ampliando…",
+      "successMsg": "Contrato ampliado.",
+      "capped": "Contrato en la duración máxima (hasta la temporada {season}).",
+      "capCounterLabel": "Ampliaciones usadas"
+    },
+    "move": {
+      "description": "Mueve a este ciclista a la plantilla sénior, al equipo sub-23 o al equipo júnior. Tú eliges la plantilla y a continuación ves el efecto completo.",
+      "openButton": "Elegir plantilla"
+    },
+    "loadingShort": "...",
+    "errorPrefix": ""
+  },
+  "profile": {
+    "back": "Atrás",
+    "notFound": "Equipo no encontrado",
+    "loadError": {
+      "message": "No se pudo cargar el equipo. No se ha perdido nada. Inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "tabsAriaLabel": "Secciones del perfil del equipo",
+    "yourTeam": "Tu equipo",
+    "managerLabel": "Mánager: {name}",
+    "division": "División {n}",
+    "statRidersNow": "Ciclistas ahora",
+    "statIncoming": "Entrantes",
+    "statOutgoing": "Salientes",
+    "statTeamValue": "Valor del equipo",
+    "seasonResults": "Resultados de la temporada",
+    "seasonLabel": "Temporada {n}",
+    "seasonOngoing": "En curso",
+    "seasonFinished": "Terminada",
+    "seasonPoints": "Puntos",
+    "seasonStageWins": "Victorias de etapa",
+    "seasonGcWins": "Victorias en la general",
+    "tabSquad": "Plantilla ({count})",
+    "tabResults": "Resultados",
+    "tabPalmares": "Palmarés",
+    "tabTransfers": "Historial de fichajes",
+    "tabClub": "Personal técnico e instalaciones",
+    "squadTitle": "Plantilla ({count} ciclistas)",
+    "viewCurrent": "Plantilla actual ({count})",
+    "viewUpcoming": "Próxima temporada ({count})",
+    "viewUpcomingHint": "Muestra la plantilla cuando se completen los fichajes pendientes.",
+    "noRiders": "Sin ciclistas",
+    "thNation": "País",
+    "thRider": "Ciclista",
+    "thBadges": "Estado",
+    "thAge": "Edad",
+    "thType": "Tipo",
+    "thValue": "Valor",
+    "palmares": {
+      "totalsTitle": "Totales de la carrera",
+      "totals": {
+        "seasons": "Temporadas",
+        "wins": "Victorias",
+        "bestResult": "Mejor resultado",
+        "honours": "Salón de la Fama",
+        "bestResultValue": "División {division} · n.º {rank}"
+      },
+      "seasonHistoryTitle": "Temporada a temporada",
+      "thSeason": "Temporada",
+      "thDivision": "División",
+      "thRank": "Puesto",
+      "thPoints": "Puntos",
+      "thWins": "Victorias",
+      "movementPromoted": "Ascenso",
+      "movementRelegated": "Descenso",
+      "honoursTitle": "Salón de la Fama",
+      "honoursEmpty": "Este equipo aún no tiene entradas en el Salón de la Fama.",
+      "emptyTitle": "Aún no hay palmarés",
+      "emptyBody": "Cada temporada jugada escribe aquí una línea nueva.",
+      "loadError": "Ahora mismo no se pudo cargar el palmarés."
+    }
+  },
+  "results": {
+    "title": "Resultados de carreras",
+    "subtitle": "Todos los resultados de carreras de este equipo",
+    "seasonFilterAll": "Todas las temporadas",
+    "seasonFilterCurrent": "Temporada {n} (actual)",
+    "seasonOption": "Temporada {n}",
+    "seasonRow": "Temporada {n}",
+    "loadError": "No se pudieron cargar los resultados. Inténtalo de nuevo.",
+    "emptyAll": "Aún no hay resultados de carreras",
+    "emptyFiltered": "No hay resultados en la temporada seleccionada",
+    "thRace": "Carrera",
+    "thType": "Clasificación",
+    "thRank": "Puesto",
+    "thRider": "Ciclista",
+    "thPoints": "Puntos",
+    "thPrize": "Premio",
+    "stageN": "Etapa {n}",
+    "riderTeam": "Equipo",
+    "total": "Total · {count, plural, one {# resultado} other {# resultados}}",
+    "type": {
+      "stage": "Etapa",
+      "gc": "General (GC)",
+      "oneday": "Resultado de un día",
+      "points": "Clasificación por puntos",
+      "mountain": "Clasificación de la montaña",
+      "young": "Ciclista joven",
+      "team": "Clasificación por equipos",
+      "leader": "Maillot de líder (día)",
+      "points_day": "Maillot verde (día)",
+      "mountain_day": "Maillot de la montaña (día)",
+      "young_day": "Maillot blanco (día)"
+    }
+  },
+  "club": {
+    "facilitiesTitle": "Instalaciones",
+    "staffTitle": "Personal técnico",
+    "noStaff": "Sin personal técnico contratado",
+    "errorTitle": "No se pudo cargar esto",
+    "errorDescription": "Ahora mismo no se pudieron cargar el personal técnico y las instalaciones."
+  },
+  "manager": {
+    "back": "Atrás",
+    "notFound": "Equipo no encontrado",
+    "loadError": {
+      "message": "No se pudo cargar el perfil de este mánager. No se ha perdido nada. Inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "yourTeam": "Tu equipo",
+    "managerPrefix": "Mánager:",
+    "aiManaged": "Equipo gestionado por IA",
+    "division": "División {n}",
+    "settingsLink": "Ajustes",
+    "streak": "racha",
+    "achievements": "logros",
+    "recentlyUnlocked": "Desbloqueados recientemente",
+    "noRecentAchievements": "Aún no has desbloqueado nada. Corre, puja y monta una plantilla para empezar a coleccionar.",
+    "inProgress": "En curso",
+    "progressTowards": "{title}: {current} de {target}",
+    "tabOverview": "Resumen",
+    "tabRiders": "Equipo ({count})",
+    "tabSeason": "Historial de temporadas",
+    "tabAchievements": "Logros {unlocked}/{total}",
+    "statSeasons": "Temporadas",
+    "statTransfers": "Fichajes",
+    "statForumPosts": "Publicaciones en el foro",
+    "recentTransfers": "Fichajes recientes",
+    "noTransfers": "Aún no hay fichajes",
+    "boughtFrom": "Comprado a",
+    "soldTo": "Vendido a",
+    "noRiders": "Sin ciclistas",
+    "noSeasonHistory": "Aún no hay historial de temporadas",
+    "noAchievements": "Aún no hay logros",
+    "seasonOngoing": "En curso",
+    "thRider": "Ciclista",
+    "thValue": "Valor",
+    "thSeason": "Temporada",
+    "thDivision": "División",
+    "thPoints": "Puntos",
+    "thRank": "Puesto",
+    "seasonNumber": "Temporada {n}",
+    "divisionShort": "Div. {n}",
+    "discordOpenAria": "Abrir el perfil de Discord de {handle}",
+    "discordCopyAria": "Copiar el nombre de usuario de Discord {handle}",
+    "discordCopied": "Copiado"
+  }
+}

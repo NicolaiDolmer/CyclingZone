@@ -27,7 +27,7 @@ import { BOARD_ARCHETYPE_KEYS } from "./boardArchetypes.js";
 
 // ── Fake-supabase, samme mønster som boardMandateEngine.test.js ───────────────
 // En generisk query-builder: .eq()/.order()/.limit() filtrerer/sorterer en kopi
-// af tabellens rækker; .maybeSingle()/.single() henter første række, ellers
+// af tabellens rækker; .maybeSingle() afviser flere matches som PostgREST, ellers
 // resolver builderen selv (thenable) til en liste — samme to former routen og
 // aggregatoren rent faktisk bruger.
 function makeQueryBuilder(rows, { count = false } = {}) {
@@ -68,7 +68,9 @@ function makeQueryBuilder(rows, { count = false } = {}) {
       filtered = filtered.slice(0, n);
       return builder;
     },
-    maybeSingle: async () => ({ data: filtered[0] ?? null, error: null }),
+    maybeSingle: async () => filtered.length > 1
+      ? { data: null, error: { code: "PGRST116", message: "Multiple rows returned" } }
+      : { data: filtered[0] ?? null, error: null },
     single: async () => (filtered[0]
       ? { data: filtered[0], error: null }
       : { data: null, error: { code: "PGRST116" } }),
@@ -148,6 +150,122 @@ test("tomme skygge-tabeller: enabled:true, mandate:null, vision:null, tom minute
   assert.equal(payload.confidence.weekDelta, null);
   assert.deepEqual(payload.confidence.categories, []);
   assert.deepEqual(payload.confidence.consequence, { active: false, lineKey: null, lineParams: {} });
+});
+
+// #6876: snapshots around transitionToNextSeason's insert_next_season /
+// complete_previous_season awaits on 25/10. No wall-clock dependency.
+for (const { phase, s4Status, s5Status, expectedSeason } of [
+  { phase: "before transition: S4 active, S5 upcoming", s4Status: "active", s5Status: "upcoming", expectedSeason: 4 },
+  { phase: "transition in progress: S4 and S5 active", s4Status: "active", s5Status: "active", expectedSeason: 5 },
+  { phase: "after transition: S4 completed, S5 active", s4Status: "completed", s5Status: "active", expectedSeason: 5 },
+]) {
+  test(`#6876 ${phase}: mandate, goal context, milestones and bonus use the same active season`, async () => {
+    const goal = { type: "stage_wins", target: 1, cumulative: false, category: "results" };
+    const tables = baseTables({
+      seasons: [
+        { id: "s4", number: 4, status: s4Status, start_date: "2026-09-27" },
+        { id: "s5", number: 5, status: s5Status, start_date: "2026-10-25" },
+        { id: "s6", number: 6, status: "upcoming", start_date: "2026-11-22" },
+      ],
+      season_standings: [{ team_id: TEAM_ID, stage_wins: 0, updated_at: "2026-10-25T00:00:00Z" }],
+      // Both mandates stay active deliberately; the season lookup must decide.
+      board_mandates: [4, 5].map((number) => ({
+        id: `mand-s${number}`, team_id: TEAM_ID, season_id: `s${number}`,
+        season_number: number, status: "active", signed_at: "2026-10-25T00:00:00Z",
+        goals: [goal],
+      })),
+      board_vision_milestones: [4, 5, 6].map((number) => ({
+        id: `ms-s${number}`, team_id: TEAM_ID, milestone_key: `milestone-${number}`,
+        goal, target_season_number: number, status: "pending",
+      })),
+      // S4 is sorted first, even after cutover. A lost season id would show it.
+      board_consequences: [4, 5, 6].map((number) => ({
+        id: `offer-s${number}`, team_id: TEAM_ID, layer: 6, status: "active",
+        created_at: `2026-10-2${9 - number}T00:00:00Z`,
+        expires_at_season_id: `s${number}`, payload: { amount: 1, goal },
+      })),
+    });
+    const contextCalls = [];
+    const payload = await buildBoardRoomPayload({
+      supabase: makeSupabase(tables), teamId: TEAM_ID,
+      loadGoalContext: async ({ currentSeasonId }) => {
+        contextCalls.push(currentSeasonId);
+        return { seasonOneDayWins: 1 };
+      },
+    });
+
+    assert.equal(payload.mandate?.seasonNumber, expectedSeason);
+    assert.deepEqual(contextCalls, [`s${expectedSeason}`]);
+    assert.equal(payload.mandate.goals[0].status, "achieved");
+    assert.equal(payload.mandate.goals[0].awaitingData, false);
+    assert.deepEqual(
+      payload.vision.milestones.filter((milestone) => milestone.isCurrentSeason).map((milestone) => milestone.seasonNumber),
+      [expectedSeason],
+    );
+    assert.equal(payload.bonusOffer?.id, `offer-s${expectedSeason}`);
+  });
+}
+test("#6876 season read error preserves the existing best-effort Boardroom payload", async () => {
+  const base = makeSupabase(baseTables({
+    board_mandates: [{
+      id: "mand-s3", team_id: TEAM_ID, season_number: 3, status: "active",
+      signed_at: "2026-08-01T00:00:00Z", goals: [],
+    }],
+  }));
+  const supabase = {
+    from(table) {
+      const query = base.from(table);
+      if (table !== "seasons") return query;
+      return {
+        select(columns, options) {
+          const builder = query.select(columns, options);
+          if (columns === "id, number") {
+            builder.maybeSingle = async () => ({
+              data: null, error: { code: "57014", message: "query canceled" },
+            });
+          }
+          return builder;
+        },
+      };
+    },
+  };
+  let contextCalls = 0;
+  const payload = await buildBoardRoomPayload({
+    supabase, teamId: TEAM_ID,
+    loadGoalContext: async () => { contextCalls += 1; return {}; },
+  });
+  assert.equal(payload.mandate?.seasonNumber, 3);
+  assert.equal(contextCalls, 0, "no active season id is available on a failed read");
+});
+test("#6773 to aktive mandater (S3+S4): Boardroom viser den AKTIVE sæsons mandat, også når S3 er underskrevet senere", async () => {
+  const tables = baseTables({
+    seasons: [
+      { id: "s3", number: 3, status: "completed", start_date: "2026-07-31T00:00:00Z" },
+      { id: "s4", number: 4, status: "active", start_date: "2026-09-27T00:00:00Z" },
+    ],
+    board_mandates: [
+      { id: "mand-s3", team_id: TEAM_ID, season_id: "s3", season_number: 3, status: "active", signed_at: "2026-10-03T08:00:00Z", goals: [] },
+      { id: "mand-s4", team_id: TEAM_ID, season_id: "s4", season_number: 4, status: "active", signed_at: "2026-09-29T08:00:00Z", goals: [] },
+    ],
+  });
+  const payload = await buildBoardRoomPayload({ supabase: makeSupabase(tables), teamId: TEAM_ID });
+  assert.ok(payload.mandate);
+  assert.equal(payload.mandate.seasonNumber, 4);
+  assert.equal(payload.mandate.signedAt, "2026-09-29T08:00:00Z");
+});
+
+test("#6773 kun et gammelt S3-mandat aktivt i S4: Boardroom viser intet aktuelt mandat frem for det forældede", async () => {
+  const tables = baseTables({
+    seasons: [
+      { id: "s3", number: 3, status: "completed", start_date: "2026-07-31T00:00:00Z" },
+      { id: "s4", number: 4, status: "active", start_date: "2026-09-27T00:00:00Z" },
+    ],
+    board_mandates: [
+      { id: "mand-s3", team_id: TEAM_ID, season_id: "s3", season_number: 3, status: "active", signed_at: "2026-10-03T08:00:00Z", goals: [] },
+    ],
+  });
+  const payload = await buildBoardRoomPayload({ supabase: makeSupabase(tables), teamId: TEAM_ID });
+  assert.equal(payload.mandate, null);
 });
 
 test("mandate med mål der IKKE har owner_archetype_key persisteret falder tilbage til kategori-alignment", async () => {
@@ -548,6 +666,18 @@ test("#4579 no_outstanding_debt: reel status fra activeLoanCount", async () => {
   );
   assert.equal(goal.status, "achieved");
   assert.equal(goal.awaitingData, false);
+});
+
+// #6903 (spiller 19/10): kortet viste lønsum-bufferen (fx 311.304) som "target",
+// mens kravet og forklaringen er nettostilling >= 0.
+test("#6903 no_outstanding_debt: targetDisplay er målets 0, ikke score-kurvens lønsum-buffer", async () => {
+  const goal = await payloadForGoal(
+    { type: "no_outstanding_debt", target: 0, category: "economy" },
+    { loans: [], loadGoalContext: async () => ({ wageBillPerSeason: 311304 }) },
+  );
+  assert.doesNotMatch(String(goal.targetDisplay), /311/, "lønsum-bufferen må ikke vises som mål");
+  assert.match(String(goal.targetDisplay), /^0/);
+  assert.equal(goal.receipt.countedParams.target, goal.targetDisplay, "kvitteringen viser samme mål");
 });
 
 test("#4579 signature_rider: reel status fra riders' star-score", async () => {

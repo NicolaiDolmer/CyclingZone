@@ -32,6 +32,8 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 _Flyttet hertil fra `CLAUDE.md` 2026-08-31 per [#2682](https://github.com/NicolaiDolmer/CyclingZone/issues/2682) (token-trim). Reglerne er uændrede — CLAUDE.md holder den korte version og peger herhen._
 
+Merge-køens main-CI-status (#6081): kun observeret completed/failure er rød. queued/in_progress og midlertidigt ulæselige svar afventes. Timeout, STALL og øvrige afslutninger uden success stopper fortsat køen uden at udpege en CI-fejl; kun success frigiver næste merge.
+
 **Altid, på alle PR'er:** `pwsh -File scripts/preflight-pr.ps1` FØR push. Den spejler CI's billige vagter lokalt (i18n-keys, swallowed-catch, dropped-supabase-error, unchecked-mutation, unguarded-fetch); PR-body-kravene står i scriptets header.
 
 **Rørte du `frontend/`:** build + warning-budget + i18n-keys + `npm run lint` + frontend unit-tests (`node --test` kørt i `frontend/`). Genvej for backend+frontend-tests+build i ét: `scripts/verify-local.ps1`.

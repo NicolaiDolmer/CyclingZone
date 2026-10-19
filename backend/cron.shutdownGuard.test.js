@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { trackedTick, getCronInFlight, awaitCronsIdle, stopCronScheduling, isCronSchedulingStopped } from "./cron.js";
+import { startWallClockSchedule } from "./lib/wallClockScheduler.js";
 
 // ── #4150: nye cron-ticks må ikke starte efter SIGTERM ────────────────────────
 //
@@ -58,4 +59,34 @@ test("efter nedlukning starter der ingen nye ticks", async () => {
   })();
   assert.equal(kørt, 0, "trackedTick må ikke kalde fn efter stopCronScheduling()");
   assert.equal(getCronInFlight(), 0);
+});
+
+// #6858: de vægur-planlagte jobs (fast tidspunkt i dansk tid) bruger samme vagt.
+// Fast, injiceret ur og falske timere — ingen test læser vægur-tiden.
+test("vægur-planlagt job efter nedlukning: ingen kørsel og ingen ny timer", async () => {
+  let nowMs = Date.parse("2026-10-18T11:59:00Z"); // søndag 13:59 dansk tid
+  const timers = [];
+  let kørt = 0;
+  const handle = startWallClockSchedule(
+    trackedTick("test-wallclock", async () => {
+      kørt++;
+    }),
+    { weekdays: ["sun"], hour: 14, minute: 0 },
+    {
+      label: "test-wallclock",
+      shouldStop: isCronSchedulingStopped,
+      now: () => nowMs,
+      setTimeoutFn: (fn, delay) => timers.push({ fn, at: nowMs + delay }),
+      clearTimeoutFn: () => {},
+      log: () => {},
+    }
+  );
+  assert.equal(timers.length, 1);
+  const timer = timers.shift();
+  nowMs = timer.at; // 14:00:00 — tidspunktet er nået, men processen lukker ned
+  timer.fn();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(kørt, 0);
+  assert.equal(timers.length, 0, "en lukkende proces må ikke planlægge flere kørsler");
+  assert.equal(handle.nextRunAt(), null);
 });

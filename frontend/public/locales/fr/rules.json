@@ -1,0 +1,195 @@
+{
+  "meta": {
+    "title": "Règles · Cycling Zone",
+    "description": "La référence pour les limites, les taux et les formules de Cycling Zone : effectif, finances, entraînement, enchères et courses."
+  },
+  "page": {
+    "title": "Règles",
+    "subtitle": "La référence qui fait foi pour les limites, les taux et les formules de Cycling Zone.",
+    "intro": "Cette page est la source de vérité pour les chiffres du jeu. La page d'aide explique comment faire les choses ; cette page liste ce que sont réellement les limites et les taux. Quand un chiffre est fixé par un admin (durées d'enchère, taux d'emprunt d'urgence), il peut changer d'une saison à l'autre, et c'est indiqué.",
+    "faqLinkIntro": "Questions d'aide liées",
+    "lastVerified": "Chiffres vérifiés dans le code du jeu."
+  },
+  "sections": {
+    "navLabel": "Sections des règles",
+    "squad": {
+      "label": "Effectif et composition",
+      "blocks": {
+        "cap": {
+          "title": "Plafond d'effectif",
+          "text": "Tu peux avoir {squadCap} coureurs au maximum, le même nombre dans chaque division. Il n'y a pas de minimum : tu peux descendre à 0 coureur sans pénalité."
+        },
+        "enforcement": {
+          "title": "Plafond strict",
+          "text": "Le plafond est une limite stricte. Tu ne peux pas acheter, enchérir ni emprunter au-delà du maximum de {squadCap} coureurs de ta division. Pas de marge, pas d'amende et pas de vente automatique : un accord qui te ferait dépasser le plafond est simplement refusé."
+        },
+        "academyExempt": {
+          "title": "Les coureurs de l'académie sont à part",
+          "text": "Les coureurs de l'académie ne comptent jamais dans le plafond senior de {squadCap} coureurs et ne sont jamais vendus automatiquement par le contrôle d'effectif. Ils ont leurs propres plafonds : {u23SquadCap} dans l'équipe U23 et {juniorSquadCap} dans l'équipe juniors."
+        }
+      }
+    },
+    "economy": {
+      "label": "Économie",
+      "blocks": {
+        "startingBalance": {
+          "title": "Solde de départ",
+          "text": "Chaque équipe démarre avec {startingBalance} CZ$. Le CZ$ est la monnaie du jeu, gagnée en jouant et jamais achetée avec de l'argent réel."
+        },
+        "sponsor": {
+          "title": "Revenu de sponsor",
+          "text": "Le revenu de sponsor est échelonné par division pour qu'une équipe compétente reste viable : division 1 {sponsorD1} CZ$, division 2 {sponsorD2} CZ$, division 3 {sponsorD3} CZ$, division 4 {sponsorD4} CZ$. Ton contrat signé garde sa base garantie pendant toute sa durée. Si tu changes de division pendant sa durée, un ajustement de division distinct de {divisionAdjustmentPct} pour cent de l'écart entre les deux divisions est versé en plus, chaque saison où l'écart dure."
+        },
+        "upkeep": {
+          "title": "Entretien",
+          "text": "Chaque saison, ton équipe paie un coût de fonctionnement (entretien), échelonné par division : les divisions supérieures paient plus. Il est prélevé soit en une fois au début de la saison, soit sous forme de Déplacements et staff pour chaque jour de course senior où ton équipe prend le départ ; le total de la saison est le même. J'ajuste les chiffres exacts entre les saisons, et tu vois toujours chaque prélèvement dans ton journal des Finances."
+        },
+        "salary": {
+          "title": "Salaire des coureurs",
+          "text": "Le salaire d'un coureur est figé à la signature à {salaryRatePct} % de sa valeur de production actuelle à ce moment-là, et ne change pas automatiquement ensuite. La valeur de production est ce que le jeu attend de lui cette saison avec ses aptitudes actuelles, pas ce qu'il vaut sur le marché. La part est la même pour chaque équipe de chaque division, et les coureurs de l'académie l'utilisent aussi."
+        },
+        "negativeInterest": {
+          "title": "Intérêts sur solde négatif",
+          "text": "Si ton solde est négatif au début de la saison, {negativeInterestPct} % d'intérêts s'ajoutent au déficit."
+        },
+        "debtCeiling": {
+          "title": "Plafond de dette",
+          "text": "Chaque division a une dette maximale : division 1 {debtD1} CZ$, division 2 {debtD2} CZ$, division 3 {debtD3} CZ$, division 4 {debtD4} CZ$. Les nouveaux emprunts sont refusés si l'emprunt plus ses frais te fait dépasser le plafond. Les emprunts d'urgence automatiques peuvent le dépasser, mais tu reçois un avertissement et tu dois réduire tes coûts."
+        },
+        "emergencyLoan": {
+          "title": "Emprunts d'urgence",
+          "text": "Les emprunts d'urgence comportent des frais et des intérêts définis dans la configuration des emprunts (actuellement environ 15 % chacun). Ces taux sont configurables par l'admin et peuvent changer ; le formulaire d'emprunt de la page Finances montre toujours les chiffres actuels."
+        },
+        "divisionBonus": {
+          "title": "Prime de division (fin de saison)",
+          "text": "Une prime unique versée en fin de saison. Lis-la en deux temps : choisis la ligne de la place où tu as fini dans ta propre division, puis la colonne de la division dans laquelle tu as couru. Les cases vides ne paient rien, pas plus que toute place sous la dernière ligne.",
+          "rows": [
+            ["Ta place finale", "En division 1", "En division 2", "En division 3", "En division 4"],
+            ["1er de ta division", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$", "{bonusD4P1} CZ$"],
+            ["2e de ta division", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$", "{bonusD4P2} CZ$"],
+            ["3e de ta division", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$", "{bonusD4P3} CZ$"],
+            ["4e de ta division", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—", "—"]
+          ]
+        }
+      }
+    },
+    "auctions": {
+      "label": "Enchères",
+      "blocks": {
+        "duration": {
+          "title": "Durée d'une enchère",
+          "text": "Une enchère dure {auctionActiveHours, plural, one {# heure active} other {# heures actives}}. Les heures de nuit ne comptent pas : les échanges sont actifs de 08:00 à 24:00 tous les jours (en pause de 00:00 à 08:00). Ces plages sont configurables par l'admin."
+        },
+        "minBid": {
+          "title": "Enchère minimale",
+          "text": "Ton enchère doit être d'au moins {minBidStep} CZ$ au-dessus du prix actuel. Si personne n'a encore enchéri, tu peux égaler le prix demandé."
+        },
+        "extension": {
+          "title": "Prolongation de dernière minute",
+          "text": "Une enchère placée dans les {auctionExtensionMinutes} dernières minutes prolonge l'enchère pour que les autres aient une chance de répondre. Pas de coup de dernière seconde."
+        },
+        "proxy": {
+          "title": "Enchère automatique et solde réservé",
+          "text": "Tu peux fixer un plafond d'enchère automatique et le système enchérit à ta place jusqu'à ce plafond. Les enchères en cours où tu mènes comptent à la fois comme solde réservé et comme place d'effectif réservée, tu ne peux donc pas t'engager au-delà de tes fonds disponibles."
+        }
+      }
+    },
+    "transfers": {
+      "label": "Transferts et dates limites",
+      "blocks": {
+        "contractInherited": {
+          "title": "Les contrats suivent tels quels",
+          "text": "Quand un coureur change d'équipe (par transfert, échange ou vente aux enchères), l'acheteur reprend le contrat existant sans changement. Le salaire et la durée du contrat ne sont jamais recalculés lors d'un accord."
+        },
+        "loansCount": {
+          "title": "Les prêts comptent dans le plafond",
+          "text": "Les prêts de coureurs actifs comptent dans la taille de ton effectif, un effectif complet peut donc faire refuser des prêts, des enchères ou d'autres accords entrants."
+        }
+      }
+    },
+    "races": {
+      "label": "Courses et points",
+      "blocks": {
+        "prize": {
+          "title": "Gains",
+          "text": "Les gains sont versés par résultat : points de la place × {prizePerPoint} CZ$. Seules les courses avec une classe de course (Grand Tour, WorldTour, ProSeries, etc.) génèrent des gains ; les courses sans classe rapportent 0."
+        },
+        "resultType": {
+          "title": "Type de résultat",
+          "text": "Le résultat d'une course d'un jour compte comme un résultat de classement général (CG). Le type de résultat n'est qu'une étiquette : les gains dépendent du barème de points de la place, pas du type."
+        },
+        "freeAgentPrize": {
+          "title": "Coureurs sans équipe",
+          "text": "Les gains obtenus par des coureurs qui ne sont pas dans une équipe de manager augmentent leur valeur de marché mais ne sont jamais versés à personne. Les coureurs sans propriétaire prennent de la valeur, mais aucune équipe ne reçoit l'argent."
+        }
+      }
+    },
+    "season": {
+      "label": "Saison et promotion",
+      "blocks": {
+        "structure": {
+          "title": "Structure des divisions",
+          "text": "Il y a {divisions} divisions. La division {minDivision} est la plus haute ; la division {maxDivision} est la plus basse, et les nouvelles équipes y démarrent."
+        },
+        "promotion": {
+          "title": "Promotion et relégation",
+          "text": "La promotion et la relégation sont actives à partir de la saison {firstPromotionSeason}. À la fin de chaque saison à partir de là, les meilleures équipes de chaque division montent et les dernières descendent."
+        },
+        "transition": {
+          "title": "Changement de saison manuel",
+          "text": "Passer à une nouvelle saison est une action admin manuelle et délibérée, jamais un cron automatique. La clôture des fenêtres, le coup de sifflet final et les contrôles d'effectif restent automatiques."
+        }
+      }
+    },
+    "academy": {
+      "label": "Académie",
+      "blocks": {
+        "slots": {
+          "title": "Taille de l'académie",
+          "text": "Ton académie compte deux équipes avec un plafond strict chacune : jusqu'à {u23SquadCap} coureurs dans l'équipe U23 et {juniorSquadCap} dans l'équipe juniors, à part de ton effectif senior."
+        },
+        "age": {
+          "title": "Tranche d'âge",
+          "text": "Les coureurs de l'académie ont entre {academyMinAge} et {academyMaxAge} ans. Les plus jeunes talents reçoivent un multiplicateur de jeunesse sur la progression, qui s'estompe vers 22 ans."
+        },
+        "salary": {
+          "title": "Salaire et contrats des jeunes",
+          "text": "Les coureurs de l'académie sont payés {academySalaryPct} % de leur valeur de production actuelle, la même part que les coureurs seniors, et signent des contrats de jeunes de {academyContractLength} saison(s)."
+        },
+        "drift": {
+          "title": "Entretien",
+          "text": "Chaque place d'académie occupée coûte {academyDrift} CZ$ par saison, prélevés au début de la saison. Une petite académie (3 à 4 places) est tout à fait abordable dans chaque division ; une académie pleine est un investissement délibéré et plus lourd."
+        }
+      }
+    },
+    "fairPlay": {
+      "label": "Fair-play",
+      "blocks": {
+        "onePerPerson": {
+          "title": "Une équipe par personne",
+          "text": "Chaque joueur ne peut avoir qu'une équipe sur un compte. Gérer plusieurs équipes via des comptes supplémentaires est considéré comme de la triche et est surveillé grâce aux signaux de compte et de connexion décrits dans la politique de confidentialité."
+        },
+        "aiAutomation": {
+          "title": "Outils d'IA et automatisation",
+          "text": "Tu peux utiliser des outils d'IA et des tableurs pour analyser les coureurs et planifier ton équipe. Les enchères, les transferts, la tactique et toute autre action dans le jeu doivent être faits par toi. Les scripts, bots ou agents d'IA qui agissent sur ton compte comptent comme de la triche."
+        },
+        "starProtection": {
+          "title": "Protection des coureurs stars",
+          "text": "Un coureur dont la valeur de marché est d'au moins {starValue} CZ$ compte comme une star et est protégé des ventes forcées. C'est la même valeur que celle que tu vois dans le profil du coureur."
+        },
+        "noBoardForBots": {
+          "title": "Équipes IA, banque et équipes gelées",
+          "text": "Les équipes IA, la banque et les équipes gelées n'ont jamais accès aux fonctionnalités de la direction ; elles sont réservées aux managers. Elles ne déclenchent jamais non plus de conséquences de la direction."
+        }
+      }
+    }
+  },
+  "academyDisabledNote": "L'académie arrive avec le relancement. Les limites ci-dessous sont définitives et affichées à titre de référence ; la fonctionnalité n'est pas encore en ligne.",
+  "faqLinks": {
+    "minBidAmount": "De combien dois-je enchérir au-dessus du prix actuel ?",
+    "debtCeiling": "Qu'est-ce que le plafond de dette, et quand s'applique-t-il ?",
+    "prizeMoneyFaq": "Que sont les gains, et quand sont-ils versés ?",
+    "divisionBonusFaq": "Qu'est-ce que la prime de division, et quand est-elle versée ?",
+    "auctionExpiry": "Quand une enchère expire-t-elle ?"
+  }
+}

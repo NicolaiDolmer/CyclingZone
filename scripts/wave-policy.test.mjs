@@ -965,3 +965,13 @@ test('#6344: wave.js mirror of requiredModel/designGateHits matches wave-policy.
   assert.ok(calls.length >= 4, 'expected lane, recovery, investigate and fix calls');
   for (const c of calls) assert.match(c, /effort: track\.effort/);
 });
+
+test('#6861 (Codex P1): an expected head pins the merge even without a wave, and a changed head blocks it', t => {
+  const idle = fixture(t);
+  const io = mergeIo({ readHead: () => assert.fail('no head read without a wave'), readFiles: () => assert.fail('no file read without a wave') });
+  const verified = 'e'.repeat(40); // != HEAD
+  guardedMerge(idle, '42', 'owner/repo', io, 50, verified);
+  assert.deepEqual(io.calls, [{ pr: '42', repo: 'owner/repo', sha: verified }]);
+  const { dir } = runningWave(t);
+  assert.throws(() => guardedMerge(dir, '42', 'owner/repo', mergeIo(), 50, verified), /head changed after verification/);
+});

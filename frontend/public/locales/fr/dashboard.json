@@ -1,0 +1,532 @@
+{
+  "loadError": "Impossible de charger le tableau de bord. Réessaie.",
+  "offlineError": "Impossible de joindre le serveur du jeu. Vérifie ta connexion, puis réessaie.",
+  "retry": "Réessayer",
+  "firstRace": {
+    "eyebrow": "Ta première course",
+    "titleUpcoming": "{race} démarre {when}",
+    "titleSoon": "{race} approche",
+    "titleStarted": "{race} est en cours",
+    "titlePause": "Aucune course à composer pour l'instant",
+    "when": {
+      "today": "aujourd'hui à {time}",
+      "tomorrow": "demain à {time}",
+      "date": "le {day} à {time}"
+    },
+    "at": {
+      "today": "Aujourd'hui {time}",
+      "tomorrow": "Demain {time}",
+      "date": "{day} {time}"
+    },
+    "stages": "{count, plural, one {# étape} other {# étapes}}",
+    "oneDay": "Course d'un jour",
+    "division": "tes coureurs courent en division {division}",
+    "now": "Maintenant",
+    "nowAssistant": "Choisis tes coureurs et ton leader. Si tu passes cette étape, ton assistant choisit pour toi.",
+    "nowPick": "Choisis tes coureurs et ton leader.",
+    "nowSaved": "Ta composition est enregistrée. Tu peux la modifier jusqu'au départ de la course.",
+    "stageRaced": "L'étape {number} est courue.",
+    "oneDayRaced": "La course est lancée.",
+    "resultHere": "Ton résultat est ici.",
+    "resultMail": "Ton résultat est ici, et il t'est envoyé par e-mail.",
+    "takesAbout": "Prend environ 2 minutes",
+    "nextLabel": "Prochaine",
+    "pauseSeason": "La saison prochaine démarre le {day}. Ta première course apparaîtra ici.",
+    "pauseUnknown": "Ta première course apparaîtra ici dès qu'elle sera au calendrier.",
+    "openCalendar": "Ouvrir le calendrier des courses",
+    "viewRace": "Voir la course"
+  },
+  "todayStages": {
+    "title": "Les étapes du jour",
+    "winner": "Vainqueur : {name}",
+    "standing": "n° {rank} sur {total} au général",
+    "standingPending": "Position au général pas encore établie",
+    "entries": "{count, plural, one {# coureur engagé} other {# coureurs engagés}}"
+  },
+  "header": {
+    "subtitle": "Division {division} · {count, plural, one {# coureur} other {# coureurs}}",
+    "incoming": "+{count} entrants",
+    "outgoing": "−{count} sortants",
+    "lockedInBids": "{value} CZ$ bloqués dans des enchères"
+  },
+  "nextActions": {
+    "title": "Prochaine action",
+    "loading": "Vérification de ce qui t'attend…",
+    "allClear": "Tu es à jour. Rien ne demande ton action pour l'instant.",
+    "transferOffers": "{count, plural, one {# offre de transfert attend ta décision} other {# offres de transfert attendent ta décision}}",
+    "swapOffers": "{count, plural, one {# proposition d'échange attend ta décision} other {# propositions d'échange attendent ta décision}}",
+    "urgentAuctions": "{count, plural, one {# enchère se termine dans l'heure} other {# enchères se terminent dans l'heure}}",
+    "squadSelectionMissing": "Sélection de l'effectif manquante pour {race}",
+    "notTrainedToday": "Tu ne t'es pas encore entraîné aujourd'hui",
+    "boardPlanMissing": "Aucun plan de la direction négocié pour l'instant"
+  },
+  "seasonStart": {
+    "title": "Saison {number} : c'est parti",
+    "dismissAria": "Fermer le guide de début de saison",
+    "done": "Terminé",
+    "progress": "{done} décisions prises sur {total}",
+    "items": {
+      "squad": {
+        "title": "Constitue ton effectif",
+        "desc": "La plupart des équipes démarrent une saison avec un effectif trop court. Enchéris dans les enchères en direct pour combler les trous."
+      },
+      "training": {
+        "title": "Fixe le plan d'entraînement",
+        "desc": "Les plans d'entraînement appartiennent à une seule saison, celui de la saison dernière ne s'applique donc plus."
+      },
+      "board": {
+        "title": "Signe ton mandat",
+        "desc": "L'assemblée annuelle est ouverte. Réponds à chaque objectif et signe, sinon la direction signe pour toi quand la date limite arrive."
+      },
+      "boardLegacy": {
+        "title": "Négocie avec la direction",
+        "desc": "Ton nouveau plan t'attend. Tant que tu ne l'as pas accepté, les objectifs de la saison ne sont pas arrêtés."
+      },
+      "academy": {
+        "title": "Décide pour les diplômés de l'académie",
+        "desc": "Promeus, vends ou libère les coureurs qui ont eu 21 ans. Au bout de 7 jours, le moteur les promeut si tu as la place et l'argent, sinon il les vend."
+      }
+    }
+  },
+  "seasonWrap": {
+    "title": "Saison {number} en bref",
+    "dismissAria": "Fermer la carte de bilan de saison",
+    "movement": {
+      "promoted": "Promu",
+      "relegated": "Relégué",
+      "maintained": "Maintenu en division {division}"
+    },
+    "rankLine": "Tu as terminé n° {rank} sur {size} en division {division}",
+    "boardConfidence": "Confiance de la direction {percent} %",
+    "statsLine": "{points} points · {wins, plural, one {# victoire} other {# victoires}}",
+    "cta": "Voir le récap de ta saison",
+    "goal": {
+      "promoted": "La saison {nextNumber} démarre dans une nouvelle division. Premier objectif : rester loin de la zone de relégation.",
+      "relegated": "La saison {nextNumber} démarre maintenant. Termine dans les deux premiers pour remonter aussitôt.",
+      "heldTop": "La saison {nextNumber} démarre maintenant. Défends ta position en tête de la division {division}.",
+      "heldBottom": "La saison {nextNumber} démarre maintenant. Pas de risque de relégation ici, alors grimpe au classement.",
+      "heldMid": "La saison {nextNumber} démarre maintenant. Vise une place dans les deux premiers et la promotion."
+    }
+  },
+  "seasonSignup": {
+    "titleParked": "Ton équipe a été mise en pause",
+    "titleDormant": "Garde ta place pour la saison {number}",
+    "bodyParkedComeback": "Une absence prolongée a sorti ton équipe de la ligue. Reviens maintenant et tu cours de nouveau cette saison, placé selon ton classement mondial.",
+    "bodyDormant": "Tu es absent depuis un moment. Inscris-toi maintenant pour garder ta place pour la saison {number}.",
+    "cta": "S'inscrire pour la saison prochaine",
+    "ctaComeback": "Retourner dans la ligue",
+    "confirmed": "Tu es inscrit pour la saison {number}",
+    "comebackTitle": "Content de te revoir",
+    "comebackConfirmed": "Ton équipe est de retour en division {division} et court de nouveau cette saison.",
+    "comebackError": "Impossible de ramener ton équipe. Réessaie.",
+    "error": "Impossible de t'inscrire. Réessaie."
+  },
+  "squadWarning": {
+    "over": "Effectif trop grand. Max {limit} en division {division}. Vends {count, plural, one {# coureur} other {# coureurs}}.",
+    "under": "Effectif trop petit. Min {limit} en division {division}. Achète {count, plural, one {# coureur de plus} other {# coureurs de plus}}.",
+    "ctaMyTeam": "Mon équipe"
+  },
+  "seniorStartWarning": {
+    "message": "Effectif senior : {count} sur {min}. Il te faut {missing, plural, one {# coureur de plus} other {# coureurs de plus}} pour prendre le départ d'une course.",
+    "cta": "Trouver un coureur"
+  },
+  "contractWarning": {
+    "message": "{count, plural, one {Le contrat de # coureur expire} other {Les contrats de # coureurs expirent}} au changement de saison. Renouvelle depuis le profil du coureur pour le garder, sinon il sera libéré comme agent libre.",
+    "cta": "Revoir les contrats",
+    "letExpire": "Je comprends, laisse expirer",
+    "dismissAria": "Ignorer pour cette saison"
+  },
+  "discordNudge": {
+    "title": "Reçois des MP pour les surenchères, les offres de transfert et les signaux de la direction",
+    "subtitle": "Ajoute ton identifiant Discord dans Profil. Tu restes au courant même quand l'application n'est pas ouverte.",
+    "cta": "Ajouter",
+    "dismissAria": "Masquer"
+  },
+  "seasonBanner": {
+    "title": "Saison {number}",
+    "status": {
+      "active": "En cours",
+      "upcoming": "À venir",
+      "completed": "Terminée"
+    },
+    "ended": "La saison est terminée",
+    "daysLeftSuffix": "jours avant la fin de la saison",
+    "stages": "{completed}/{total} étapes",
+    "stagesLive": "{count} en direct",
+    "viewCalendar": "Voir le calendrier"
+  },
+  "cards": {
+    "myResult": {
+      "title": "Comment ton équipe s'en est sortie",
+      "linkFull": "Résultat complet",
+      "newBadge": "Nouveau",
+      "oneDay": "Course d'un jour",
+      "stagesCount": "{count} étapes",
+      "moreRiders": "+{count, plural, one {# coureur de plus} other {# coureurs de plus}}",
+      "points": "Points",
+      "prize": "Gains",
+      "pointsShort": "{value} pt",
+      "thisRace": "Cette course",
+      "earlier": "Courses précédentes",
+      "showAll": "Tout afficher ({count})",
+      "showLess": "Afficher moins",
+      "season": "Cette saison",
+      "seasonRaces": "{count, plural, one {# course} other {# courses}}",
+      "stageWins": "{count, plural, one {# victoire d'étape} other {# victoires d'étape}}",
+      "empty": "Tes coureurs n'ont pas encore couru. Les résultats de ton équipe arrivent ici après la première course.",
+      "emptyCta": "Ouvrir le calendrier des courses",
+      "firstRaceTitle": "Ta première course est dans les annales",
+      "firstRaceIntro": "Disputée pendant ton absence. Voici comment ça s'est passé.",
+      "firstRaceIntroAt": "Terminée {time} pendant ton absence. Voici comment ça s'est passé.",
+      "firstRaceCta": "Lire toute l'histoire de la course",
+      "firstRaceNext": "Prochaine course : {race}, {count, plural, one {dans # jour} other {dans # jours}}",
+      "confettiTitleGc": "Général remporté !",
+      "confettiTitleRace": "Course remportée !",
+      "breakdown": {
+        "show": "Voir le détail",
+        "hide": "Masquer le détail",
+        "stage": "Place à l'étape {number}",
+        "teamBonus": "Prime d'équipe",
+        "sponsor": "Versement du sponsor",
+        "sponsorRaceDay": "Revenu des jours de course",
+        "sponsorResultBonus": "Prime de résultat"
+      }
+    },
+    "maidenWin": {
+      "title": "Moments de carrière",
+      "unknownRider": "Ton coureur",
+      "viewRace": "Voir la course",
+      "headline": {
+        "maidenWin": "Première victoire",
+        "firstPodium": "Premier podium",
+        "firstJersey": "Premier maillot",
+        "clubMilestoneWin": "Étape marquante du club"
+      },
+      "body": {
+        "maidenWin": "remporte sa première course professionnelle aux couleurs du club : {race}",
+        "firstPodium": "décroche son premier podium en carrière : {race}",
+        "firstJersey": "gagne son premier maillot de classement : {race}",
+        "clubMilestoneWin": "offre à {team} sa victoire n° {count}"
+      }
+    },
+    "heroAgony": {
+      "title": "Hero & Agony",
+      "linkFull": "Ouvrir la course",
+      "eyebrow": {
+        "hero": "Héros",
+        "agony": "Calvaire",
+        "moment": "Moment"
+      },
+      "meta": "{race}, étape {stage}",
+      "metaOneDay": "{race}",
+      "exportCta": "Partager en image",
+      "exportedFilenamePrefix": "cycling-zone-hero-agony",
+      "empty": "Pas encore de moment d'étape. Ton premier jour de course apparaîtra ici.",
+      "moments": {
+        "sprint_win": "{rider} a remporté le sprint à l'arrivée.",
+        "close_win": "{rider} s'est imposé pour {seconds, plural, one {# seconde} other {# secondes}} seulement.",
+        "close_win_generic": "{rider} a tenu bon pour la victoire dans l'arrivée la plus serrée.",
+        "solo_win": "{rider} s'est détaché et a gagné en solitaire.",
+        "itt_win": "{rider} a signé le meilleur temps du jour.",
+        "ttt_win": "{rider} a mené à l'arrivée l'équipe la plus rapide du jour.",
+        "breakaway_survived": "{rider} a fait tenir l'échappée et a gagné de l'avant.",
+        "gc_takeover_won": "{rider} a pris la tête de la course à {previousLeader}.",
+        "gc_takeover_lost": "{rider} a perdu la tête de la course au profit de {newLeader}.",
+        "final_gc": "{rider} a terminé à la place n° {rank} du général.",
+        "favorite_off_day": "{rider} abordait l'étape en favori mais a terminé n° {rank} : {reason, select, jour_sans {un jour sans} incident {une chute ou un problème mécanique} helper_work {une journée passée à travailler pour un coéquipier} other {sans raison claire}}.",
+        "helper_shift": "{count, plural, one {Un coéquipier a sacrifié ses chances} other {# coéquipiers ont sacrifié leurs chances}} pour amener {captain} à l'avant.",
+        "tag_helper_sacrifice": "{rider} a sacrifié son propre résultat, en terminant n° {rank}, pour travailler pour {captain}.",
+        "form_peak": "{rider} est arrivé au pic de forme et a livré.",
+        "tag_perfect_peak": "{rider} a gagné sur l'étape exacte pour laquelle il avait préparé son pic de forme.",
+        "tag_peak_day": "{rider} avait calé son pic de forme sur cette étape.",
+        "tag_jour_sans": "{rider} n'avait tout simplement pas les jambes aujourd'hui.",
+        "tag_crash_ruined": "L'étape de {rider} a été gâchée par {kind, select, crash {une chute} mechanical {un problème mécanique} other {un incident}}.",
+        "incident_abandon": "{kind, select, crash {{rider} a abandonné l'étape après une chute.} mechanical {{rider} a abandonné l'étape après un problème mécanique.} injury {{rider} n'a pas pris le départ de l'étape : blessé.} other {{rider} a abandonné l'étape après un incident.}}",
+        "incident_time_loss": "{rider} a perdu {seconds, plural, one {# seconde} other {# secondes}} après {kind, select, crash {une chute} mechanical {un problème mécanique} other {un incident}}.",
+        "incident_time_loss_generic": "{rider} a perdu du temps après {kind, select, crash {une chute} mechanical {un problème mécanique} other {un incident}}.",
+        "tag_outsider_win": "{rider} a gagné sans être le plus fort sur le papier.",
+        "tag_aggression_no_cost": "{rider} a attaqué et s'est fait reprendre, mais ça n'a rien coûté : une tentative d'échappée ne coûte jamais de fatigue supplémentaire ni ton propre résultat.",
+        "tag_saved_effort": "{rider} a levé le pied aujourd'hui, en gardant quelque chose pour la suite.",
+        "tag_gave_everything": "{rider} n'a rien gardé, effort total jusqu'au bout.",
+        "team_day": "{team} a placé {count} coureurs dans le top 10 aujourd'hui.",
+        "breakaway_effort": "{rider} a passé l'étape dans l'échappée, repris juste avant la ligne.",
+        "plain_result": "{rider} a franchi la ligne à la place n° {rank}."
+      }
+    },
+    "auctions": {
+      "title": "Enchères en cours",
+      "linkAll": "Tout voir",
+      "empty": "Aucune enchère en cours",
+      "emptyCta": "Parcourir le marché des enchères",
+      "emptyHint": "Les enchères se terminent chaque soir à 20:00.",
+      "expired": "Expirée",
+      "winning": "En tête",
+      "selling": "En vente",
+      "timeLeftHm": "{h} h {m} min",
+      "timeLeftM": "{m} min"
+    },
+    "transfers": {
+      "title": "Transferts et offres",
+      "linkAll": "Tout voir",
+      "empty": "Aucun transfert en attente",
+      "emptyCta": "Parcourir les coureurs à vendre",
+      "emptyHint": "Le marché des transferts est ouvert toute la saison.",
+      "incomingCount": "{count, plural, one {# transfert entrant} other {# transferts entrants}}",
+      "from": "De : {name}",
+      "to": "À : {name}",
+      "needsAction": "À traiter",
+      "active": "Actif"
+    },
+    "races": {
+      "title": "Prochaines courses",
+      "linkAll": "Calendrier",
+      "empty": "Aucune course programmée",
+      "emptyCta": "Ouvrir le calendrier des courses",
+      "emptyHint": "Engage ton équipe dans une course à venir depuis le calendrier.",
+      "stages": "{count, plural, one {# étape} other {# étapes}}",
+      "oneDay": "Course d'un jour",
+      "scheduled": "Programmée",
+      "live": "En direct"
+    },
+    "standings": {
+      "title": "Division {division} · Classement",
+      "titlePool": "{label} · Classement",
+      "linkAll": "Classement complet",
+      "empty": "Pas encore de données de saison",
+      "emptyCta": "Voir le classement complet",
+      "emptyHint": "Le classement se met à jour après chaque jour de course terminé.",
+      "aiBadge": "IA",
+      "managerRank": "n° {rank} parmi les managers"
+    },
+    "board": {
+      "title": "État de la direction",
+      "linkAll": "Détails",
+      "satisfaction": "Satisfaction",
+      "focus": "Priorité",
+      "budgetMultiplier": "Multiplicateur de budget",
+      "exceeds": "Dépassé",
+      "exceedsTitle": "Cette catégorie a dépassé 100 %. Tu as dépassé les attentes de la direction ici.",
+      "meetingNudge": {
+        "title": "L'assemblée annuelle est ouverte",
+        "subtitle": "Ta direction a proposé le mandat de la saison prochaine. Ajuste, demande et signe.",
+        "daysLeft": "{count, plural, one {# jour restant avant la signature automatique} other {# jours restants avant la signature automatique}}",
+        "cta": "Aller à l'assemblée annuelle"
+      }
+    },
+    "recentResults": {
+      "title": "Résultats récents",
+      "linkAll": "Tout voir",
+      "empty": "Les résultats apparaissent ici après les premières courses",
+      "emptyCta": "Ouvrir le calendrier des courses",
+      "gc": "Vainqueur au général",
+      "winner": "Vainqueur",
+      "stage": "Vainqueur de l'étape {n}",
+      "aiBadge": "IA"
+    },
+    "riderRanking": {
+      "title": "Classement des coureurs",
+      "scopeLabel": "Ta division",
+      "linkAll": "Classement complet",
+      "empty": "Les résultats apparaissent ici après les premières courses",
+      "emptyCta": "Ouvrir le calendrier des courses",
+      "stageWins": "{count, plural, one {# victoire d'étape} other {# victoires d'étape}}",
+      "gcWins": "{count} CG",
+      "classicWins": "{count} classique",
+      "points": "{points} pts",
+      "aiBadge": "IA"
+    }
+  },
+  "customize": {
+    "button": "Personnaliser",
+    "heading": "Afficher les modules",
+    "reset": "Rétablir par défaut",
+    "modules": {
+      "nextActions": "Prochaine action",
+      "forecast": "Prévision financière",
+      "myLatestResult": "Comment ton équipe s'en est sortie",
+      "heroAgony": "Hero & Agony",
+      "auctions": "Enchères en cours",
+      "transfers": "Transferts et offres",
+      "races": "Prochaines courses",
+      "divStandings": "Classement de la division",
+      "board": "État de la direction",
+      "recentResults": "Résultats récents",
+      "riderRanking": "Classement des coureurs",
+      "globalRank": "Classement mondial",
+      "forumHighlights": "Du forum"
+    }
+  },
+  "forumHighlights": {
+    "title": "Du forum",
+    "allThreads": "Tous les fils",
+    "emptyTitle": "Rien de nouveau depuis ta dernière visite.",
+    "emptyDescription": "Repasse plus tard ou lance un nouveau fil."
+  },
+  "board": {
+    "focus": {
+      "balanced": "Équilibré",
+      "youth_development": "Formation des jeunes",
+      "star_signing": "Recrutement de stars"
+    }
+  },
+  "forecast": {
+    "loading": "Calcul de la prévision…",
+    "title": "Saison prochaine · prévision",
+    "subtitle": "Flux de trésorerie attendu selon l'effectif + les emprunts + le sponsor + les coûts de fonctionnement",
+    "tier": {
+      "green": {
+        "label": "Vert",
+        "headline": "Finances saines",
+        "summary": "Excédent attendu et dette sous contrôle. Tu peux jouer offensif."
+      },
+      "yellow": {
+        "label": "Jaune",
+        "headline": "Marge mince",
+        "summary": "Peu de marge. Une mauvaise course ou un contrat coûteux peut tout faire basculer."
+      },
+      "red": {
+        "label": "Rouge",
+        "headline": "Risque de faillite",
+        "summary": "Gros déficit ou dette proche du plafond. Agis maintenant."
+      }
+    },
+    "projectedLabel": "Net attendu la saison prochaine",
+    "rangeLine": "Fourchette : {low} à {high} (selon l'incertitude de l'estimation des gains)",
+    "columns": {
+      "s2": "Cette saison (S{number})",
+      "s3": "Saison prochaine (S{number})",
+      "toggleAria": "Choisir la colonne de saison à afficher"
+    },
+    "chip": {
+      "signedContracts": "Contrats signés"
+    },
+    "row": {
+      "sponsorBase": "Sponsor (base)",
+      "sponsorVariable": "Sponsor (variable)",
+      "sponsorInSeasonBonus": "Sponsor (primes en saison)",
+      "prize": "Gains",
+      "salary": "Salaire",
+      "upkeep": "Entretien de la division",
+      "travelStaff": "Déplacements et staff",
+      "staffFacilities": "Staff et installations",
+      "facilityUpkeep": "Entretien des installations",
+      "staffSalary": "Salaires du staff",
+      "loanInterest": "Intérêts d'emprunt",
+      "academyDrift": "Entretien de l'académie"
+    },
+    "sponsorDetail": {
+      "contract": "Sponsor de la saison prochaine : {sponsor} · base garantie {base}, revenu des jours de course en plus",
+      "variable": "Base {base} + variable {variable} selon le rang/les points de la saison dernière",
+      "intro": "Saison d'introduction : le sponsor variable démarre à la saison 2",
+      "fallback": "Solution de repli : classement de la saison précédente manquant",
+      "s2Combined": "Cette saison affiche le montant total crédité en un seul paiement, base et prime de performance réunies. La saison prochaine sépare les deux ci-dessous.",
+      "inSeasonBonus": "Primes de jours de course, de résultat, d'objectif et de signature réellement gagnées cette saison. Non prévues pour la saison prochaine, car elles dépendent de résultats pas encore courus."
+    },
+    "prizeDetail": {
+      "realizedFloor": "Mon estimation repose sur les gains obtenus par ton équipe, à plus ou moins 20 % ; ce n'est pas une fourchette mesurée",
+      "divisionInterval": "Mon estimation pour ton équipe, à plus ou moins 20 % ; ce n'est pas une fourchette mesurée"
+    },
+    "upkeepDetail": {
+      "perRaceDay": "{rate} par jour de course senior × {days} jours de course. Prélevé au règlement de chaque course, pas au début de la saison.",
+      "byDivision": "Fixé par ta division, pas par ton effectif"
+    },
+    "salaryDetail": {
+      "productionS3": "Système de salaires de la saison 3. Tes contrats actuels sont verrouillés et inchangés.",
+      "seasonSwitch": "La saison {next} recalcule chaque salaire à partir de la livraison au changement de saison. Tes contrats actuels sont déjà signés, le chiffre de cette saison reste donc verrouillé jusque-là."
+    },
+    "loanInterestDetail": "Intérêts courus sur la dette restante de tes emprunts actifs. Ajoutés à l'emprunt lui-même, pas déduits du net.",
+    "assumption": "Suppose ton effectif actuel, aucun transfert, et le système de salaires de la saison {next}.",
+    "footnote": "Prévision, pas un contrat. Les chiffres peuvent changer à cause de ventes, d'emprunts ou d'un nouveau plan de la direction.",
+    "footnoteLink": "Comment la prévision est-elle calculée ?",
+    "badge": {
+      "label": "Prévision saison prochaine"
+    },
+    "horizon": {
+      "label": "Horizon de prévision :",
+      "option": "{count, plural, one {# saison} other {# saisons}}",
+      "rangeSuffix": "({from}–{to})"
+    },
+    "multiSeason": {
+      "title": "Saison par saison (estimation à partir de la saison {from} ->)",
+      "headers": {
+        "season": "Saison",
+        "sponsor": "Sponsor",
+        "prize": "Gains",
+        "salary": "Salaire",
+        "interest": "Intérêts",
+        "net": "Net",
+        "endBalance": "Solde final",
+        "risk": "Risque"
+      },
+      "estimateMark": "~",
+      "estimateTooltip": "Estimation, suppose le statu quo",
+      "total": "Total",
+      "estimateNote": "~ = estimation fondée sur un statu quo (même effectif, même sponsor et 25 % de décroissance des emprunts par saison). Les intérêts s'ajoutent à ta dette restante, ils ne sont pas déduits du net."
+    }
+  },
+  "onboardingProgress": {
+    "header": "Pour commencer · {completed}/{total} étapes terminées",
+    "steps": {
+      "first_bid_placed": "Place ta première enchère",
+      "first_training_run": "Lance ton premier jour d'entraînement",
+      "first_squad_selected": "Sélectionne ton effectif pour une course",
+      "board_plan_set": "Négocie un plan avec la direction",
+      "board_plan_set_auto": "Ta direction a établi un plan. Jette-y un œil."
+    },
+    "ctas": {
+      "first_bid_placed": "Voir les enchères",
+      "first_training_run": "Aller à l'entraînement",
+      "first_squad_selected": "Aller aux courses",
+      "board_plan_set": "Rencontrer la direction"
+    },
+    "oneClick": {
+      "primaryCta": "Lancer l'entraînement de la semaine",
+      "secondaryCta": "Le faire moi-même",
+      "resultLine": "Semaine lancée : {count, plural, one {# coureur entraîné} other {# coureurs entraînés}}.",
+      "resultLink": "Voir l'entraînement",
+      "alreadyRun": "Cette semaine est déjà lancée.",
+      "error": "Impossible de lancer l'entraînement de cette semaine. Réessaie."
+    },
+    "tour": "Montre-moi comment",
+    "dismissAria": "Masquer"
+  },
+  "onboardingComplete": {
+    "title": "Tu es prêt. Les bases sont acquises",
+    "body": "Les quatre étapes de démarrage sont cochées. La phase suivante consiste à construire ton équipe sur plusieurs saisons. Tiens les objectifs de la direction et bats-toi pour la promotion.",
+    "nextLinks": {
+      "board": {
+        "label": "Direction",
+        "desc": "Négocie des plans à 1/3/5 ans en parallèle"
+      },
+      "help": {
+        "label": "Aide et règles",
+        "desc": "Découvre comment fonctionnent l'économie, les courses et la tactique"
+      }
+    },
+    "dismissAria": "Masquer"
+  },
+  "devTransition": {
+    "title": "La vue de progression a changé",
+    "intro": "Tes coureurs n'ont pas changé. Les aptitudes, les notes et les résultats sont exactement comme hier. Ce qui est nouveau, c'est ce que le chiffre montre : avant, le profil affichait un plafond théorique. Maintenant il affiche à la fois le plafond et le niveau où chaque coureur se situe de façon réaliste avec ton entraînement.",
+    "factAbilitiesTitle": "Aptitudes et résultats",
+    "factAbilitiesSub": "inchangés pour chaque coureur",
+    "factCeilingsTitle": "Plafonds relevés",
+    "factCeilingsSub": "pour {up} de tes {total} coureurs",
+    "factForecastTitle": "Nouveau : niveau projeté",
+    "factForecastSub": "la prévision que ton entraînement oriente",
+    "colRider": "Coureur",
+    "colRating": "Note",
+    "colCeilBefore": "Plafond avant",
+    "colCeilNow": "Plafond maintenant",
+    "colForecast": "Niveau projeté (nouveau)",
+    "loweredNote": "Certains coureurs dépassent leur nouveau plafond sur quelques aptitudes. Ils gardent tout et restent simplement là. Aucun coureur ne perd un seul point.",
+    "helpLink": "Comment fonctionne la progression",
+    "dismiss": "Compris"
+  },
+  "surveyInvite": {
+    "title": "Aide-moi à décider quoi construire ensuite",
+    "subtitle": "Note chaque idée deux fois. Ça prend environ 5 minutes.",
+    "cta": "Répondre maintenant",
+    "dismissAria": "Masquer la carte du sondage"
+  }
+}

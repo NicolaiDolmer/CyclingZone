@@ -405,6 +405,31 @@ describe("#6759 (Codex): den gamle sweep sender forældede reservationer til mot
     ];
     assert.deepEqual(teamsNeedingSweep(teams, runs, "2026-06-20", now).map((t) => t.id), ["stale"]);
   });
+
+  it("#6798: sweepen henter kun stadiet (ikke hele rapporten) og afgør stadig korrekt", async () => {
+    const now = new Date("2026-06-20T20:30:00Z");
+    // Det smalle format PostgREST leverer for `stage:report->>stage`: afregnet = null.
+    const runs = [
+      { team_id: "stale", tick_date: "2026-06-20", created_at: "2026-06-20T20:00:00Z", stage: "loading" },
+      { team_id: "fresh", tick_date: "2026-06-20", created_at: "2026-06-20T20:29:00Z", stage: "loading" },
+      { team_id: "done", tick_date: "2026-06-20", created_at: "2026-06-20T19:00:00Z", stage: null },
+    ];
+    const base = makeFullMockSupabase({ teams: [{ id: "stale" }, { id: "fresh" }, { id: "done" }, { id: "new" }], runs });
+    const selects = [];
+    const supabase = { from(table) {
+      const chain = base.from(table);
+      if (table !== "training_day_runs") return chain;
+      const select = chain.select;
+      chain.select = function (columns) { selects.push(columns); return select.call(this, columns); };
+      return chain;
+    } };
+    const called = [];
+    const result = await runTrainingSweep({ supabase, now, runDay: async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; } });
+    assert.deepEqual(selects, ["team_id, tick_date, created_at, stage:report->>stage"]);
+    assert.ok(!/(^|[ ,])report([ ,]|$)/.test(selects[0]), "hele report-kolonnen hentes ikke");
+    assert.deepEqual(called, ["stale", "new"]);
+    assert.deepEqual(result, { swept: 2 });
+  });
 });
 
 describe("#6536: parkerede hold faar intet tick i den gamle sweep", () => {

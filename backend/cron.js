@@ -45,8 +45,6 @@ import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { runSelectionWarningSweep } from "./lib/selectionWarningSweep.js"; // #2180
 import { runSeniorStartReminderSweep } from "./lib/seniorStartReminder.js"; // #5867
-import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
-import { SEASON_AUTO_TRANSITION_ENABLED } from "./lib/economyConstants.js";
 import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMandateAutoAcceptCron } from "./lib/boardMandateAutoAccept.js";
@@ -70,6 +68,7 @@ import { takeGlobalRankWeeklySnapshotSafe } from "./lib/globalRankWeeklySnapshot
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
 import { processStallWatchdog } from "./lib/stallWatchdog.js";
+import { createOutageMonitor, OUTAGE_PROBE_INTERVAL_MS } from "./lib/outageMonitor.js"; // #6854
 import { runAdminSimulateStage, buildRaceSimEmbed } from "./lib/adminSimulateRace.js";
 import { makeEnsureSeasonStandings } from "./lib/seasonStandingsBootstrap.js";
 import { updateStandings } from "./lib/economyEngine.js";
@@ -125,8 +124,15 @@ import {
   CRON_MONITOR_30MIN,
   CRON_MONITOR_60MIN,
   CRON_MONITOR_24H,
+  CRON_MONITOR_SUNDAY_VALUE,
+  CRON_MONITOR_SUNDAY_START,
+  CRON_MONITOR_EMAIL_HEALTH,
+  CRON_MONITOR_EMAIL_RACE_DIGEST,
+  CRON_MONITOR_DISCORD_RACE_DIGEST,
   ALL_CRON_MONITORS,
 } from "./lib/cronMonitorRegistry.js";
+// #6858 — job med fast tidspunkt planlaegges efter dansk vaegur, ikke fra proces-start.
+import { startWallClockSchedule, DEPLOY_OVERLAP_GRACE_MS } from "./lib/wallClockScheduler.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 // cron.js ligger i backend/-roden: ".env" er backend/.env (som server.js). "../.env" pegede
 // uden for backend/ (#6367, fanget af railway.backendOnlyFiles.test.js).
@@ -412,30 +418,6 @@ async function runMidSeasonReviewCron() {
   }
 }
 
-// ─── Season Auto-Transition ──────────────────────────────────────────────────
-// Når kildesæsonen er afsluttet (season-end kørt) og skifte-gaten er grøn,
-// fyrer transitionToNextSeason automatisk (#6784: læser ikke transfer_windows).
-// Slukket via SEASON_AUTO_TRANSITION_ENABLED=false.
-
-async function runSeasonAutoTransitionCron() {
-  try {
-    const result = await processSeasonAutoTransitionCron({
-      supabase,
-      now: new Date(),
-    });
-    if (result.transitioned) {
-      console.log(
-        `🌅 Sæson-transition: sæson ${result.fromSeason} → ${result.toSeason} udført automatisk`
-      );
-    }
-  } catch (err) {
-    // #2389 A2: sæson-transition er det mest forretningskritiske flow i denne fil
-    // (jf. incident 2026-05-21) — en fejl her var 100% usynlig i Sentry før nu.
-    console.error("Cron error (season auto-transition):", err.message);
-    sentryCapture(err, { tags: { cron: "season auto-transition" } });
-  }
-}
-
 // ─── Daily Season-Count Safety-Net ───────────────────────────────────────────
 // Forward-guard mod gentagelse af incident 2026-05-21 (cron-loop fyrede 4
 // transitions på 30 min). Hvis admin_log viser >1 sæson-transition per døgn
@@ -583,6 +565,10 @@ async function runDiscordRoleSyncCron() {
     console.log(`🎭 Discord division-roller: ${result.changed} ændret (${result.synced} synket, ${result.skipped} sprunget over)`);
   }
 }
+
+// ─── Udfalds-vagt (#6854) ────────────────────────────────────────────────────
+// Tilstand i closure; alarmvejen rører aldrig databasen (se lib/outageMonitor.js).
+const runOutageMonitorTick = createOutageMonitor();
 
 // ─── Stall-watchdog (#2077) ──────────────────────────────────────────────────
 // Fanger TAVSE stalls som exception-capture ikke ser: løb der er kørt men ikke
@@ -1172,7 +1158,8 @@ async function runMarketValueLevelCorrectionGateSweepCron() {
 // ─── Søndagens værdi-pipeline (#4419) ─────────────────────────────────────────
 // Værdi-refresh (base_value/CPV/typer følger udviklede evner; markedsblendet
 // #3448 fjernet i #6642), søndag fra SUNDAY_VALUE_FROM_HOUR dansk tid (#5842). Selv-gated (søndag +
-// vindue + persisteret dato-claim), så timelig polling + boot-run er sikre.
+// vindue + persisteret dato-claim), så vægur-planlægningen (#6858: 14:00 + hver hele
+// time til midnat) og boot-run er sikre.
 // Ejer 28/9 (#5842): én gang om ugen, søndag eftermiddag, aldrig om morgenen;
 // på skiftedagen først efter det fuldførte sæsonskifte.
 async function runSundayValueSweepCron() {
@@ -1826,6 +1813,10 @@ export async function runBootWithNetworkRetry(label, fn, {
 // gælder uændret. Matematisk verificeret i cron.deployGrace.test.js.
 export function primeCronMonitorCheckIns(captureCheckInFn = captureCheckIn) {
   for (const [monitorSlug, config] of ALL_CRON_MONITORS) {
+    // Codex P2 (#6860): et fast-tids-job (crontab) primes ikke. Et "ok" efter en
+    // overstaaet slot ville faa Sentry til at acceptere en misset kørsel og vente
+    // til naeste dags/uges slot. Monitor-configen sendes med ved foerste rigtige kørsel.
+    if (config.schedule?.type === "crontab") continue;
     try {
       captureCheckInFn({ monitorSlug, status: "ok" }, config);
     } catch (err) {
@@ -1878,6 +1869,10 @@ export function startCron() {
   // unhandled-rejection-scenarie at fange her.
   primeCronHeartbeatCheckIns({ supabase, captureExceptionFn: sentryCapture });
 
+  // Every 15 seconds: #6854 udfalds-vagt. Prober PostgREST og alarmerer ejeren
+  // i Discord-ops ved over 20 fejl paa 10 min (18/10: 2 t 40 min uden alarm).
+  setInterval(trackedTick("outage monitor", runOutageMonitorTick), OUTAGE_PROBE_INTERVAL_MS);
+
   // Every 60 seconds: finalize auctions
   setInterval(
     trackedTick("auctions", monitorCron("auctions", finalizeExpiredAuctions, CRON_MONITOR_1MIN)),
@@ -1902,17 +1897,8 @@ export function startCron() {
     5 * 60 * 1000
   );
 
-  // Season auto-transition (#1155): DEAKTIVERET — sæson-skift er nu en bevidst
-  // manuel admin-handling (ejer-beslutning 2026-06-08). Den automatiske cron
-  // fyrede 2026-05-21 fire skift i træk (0→1→2→3→4). Squad-tjek (squad
-  // enforcement-cron ovenfor) forbliver automatisk; kun selve sæson-skiftet er
-  // manuelt. (#6120: Deadline Day-cron'en er fjernet — markedet er altid åbent.)
-  // Tændes igen ved SEASON_AUTO_TRANSITION_ENABLED=true i economyConstants.js.
-  if (SEASON_AUTO_TRANSITION_ENABLED) {
-    setInterval(trackedTick("season auto-transition", runSeasonAutoTransitionCron), 5 * 60 * 1000);
-  } else {
-    console.log("  ⏸  Season auto-transition cron DEAKTIVERET (manuelt sæson-skift, #1155)");
-  }
+  // Sæson-skift er en bevidst manuel admin-handling (#1155); auto-skifte-cron'en
+  // er fjernet (#6796). Squad-tjek (squad enforcement-cron ovenfor) er automatisk.
 
   // Every 24 hours: check debt (#607 — 6h → 24h. notifyUser-dedup virker nu da
   // message er statisk; matcher cadence-pattern fra processDailySeasonCountCheck).
@@ -1981,44 +1967,58 @@ export function startCron() {
   // Every minute: web push sweep (#6590). Ingen Sentry-cron-monitor (ny monitor = ny udgift).
   setInterval(trackedTick("push sweep", runPushSweepCron), 60 * 1000);
 
+  // #6858 — de seks 5-min-sweeps med "fra kl. 20/22"-gate ligger på klokken
+  // (startClockAlignedInterval, #3624) i stedet for 5 min efter proces-start, så
+  // første tick efter gaten rammer kl. 20:00/22:00 + få sekunder i stedet for op
+  // til 5 min senere alt efter deploy-tidspunktet. Kadencen er uændret (5 min hele
+  // døgnet): pollingen ER deres genforsøg og batch-mekanik, og scout-missionerne +
+  // day-close-betingelsen ("dagens sidste finalization er færdig") skal kunne
+  // besvares hvert tick. Gate-timerne er uændrede. Offsets er spredt (15-65 s), så
+  // sweepene ikke starter i samme sekund som hinanden og etape-scheduleren (5 s).
+  // Første tick efter boot venter DEPLOY_OVERLAP_GRACE_MS (5 min), ligesom det gamle
+  // setInterval gjorde: under et deploy lever den gamle proces videre til SIGTERM
+  // (healthcheck <= 60 s) og gør sit sidste tick færdigt (drain <= 150 s), og to
+  // processer på samme klokke ville ellers sweepe i samme sekund. Den garanti er
+  // dermed uændret; sweepenes egne dags-mutexer er stadig andet lag.
+
   // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
-  setInterval(
+  startClockAlignedInterval(
     trackedTick("training sweep", monitorCron("training-sweep", runTrainingSweepCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+    { offsetMs: 15 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
   );
 
   // Samlet daglig træning når dagens løbsdage lukker (#4847, fase B4).
   // 5-min-kadence fordi betingelsen "dagens sidste finalization er færdig" først kan
   // besvares når den er det — sweepen selv er gated (kl. 20 + finalization + flag)
   // og har både overlap-guard og dags-claim, så en tæt polling er gratis.
-  setInterval(
+  startClockAlignedInterval(
     trackedTick("training day-close", monitorCron("training-day-close", runTrainingDayCloseCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+    { offsetMs: 25 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
   );
 
   // AI-rytter-restitution: dagligt recovery-tick, samme kl.22-vindue som trænings-sweepen (#3015)
-  setInterval(
+  startClockAlignedInterval(
     trackedTick("ai recovery sweep", monitorCron("ai-recovery-sweep", runAiRecoverySweepCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+    { offsetMs: 35 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
   );
 
   // Akademi-graduering: auto-resolver udløbne pending graduates efter kl. 22 (#932)
-  setInterval(
+  startClockAlignedInterval(
     trackedTick("graduation sweep", monitorCron("graduation-sweep", runGraduationSweepCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+    { offsetMs: 45 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
   );
 
   // Talentspejder: modner scout_assignments (missioner hvert tick, #3997; target-backstop efter kl. 22, #2244)
-  setInterval(
+  startClockAlignedInterval(
     trackedTick("scout sweep", monitorCron("scout-sweep", runScoutSweepCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+    { offsetMs: 55 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
   );
 
   // Dagsbaseret løntræk (#2840) efter kl. 22 dansk tid — config-gated, no-op
   // indtil wage_deduction_mode=daily er sat i app_config.
-  setInterval(
+  startClockAlignedInterval(
     trackedTick("wage deduction sweep", monitorCron("wage-deduction-sweep", runWageDeductionSweepCron, CRON_MONITOR_5MIN)),
-    5 * 60 * 1000
+    { offsetMs: 65 * 1000, minFirstDelayMs: DEPLOY_OVERLAP_GRACE_MS }
   );
 
   // Start-trup heal: reparér nye hold hvis signup-allokeringen fejlede (#1563).
@@ -2191,29 +2191,39 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
-  // Every 60 minutes: sunday-intake-drip (#2064 S0) — modulet er selv søndags-
-  // gated + claim-idempotent pr. (hold, dato), så en times cadence bare fylder
-  // søndagens vindue op uden risiko for dobbelt-kuld. IKKE wrappet i monitorCron
-  // (den forventer succes hvert vindue; denne tick er bevidst søndags-only).
-  setInterval(trackedTick("sunday-intake-drip", runSundayIntakeTickCron), 60 * 60 * 1000);
+  // #6858 — job med fast tidspunkt kører efter dansk vægur (lib/wallClockScheduler.js),
+  // ikke et times-interval fra proces-start (søndagens værdier kørte 18/10 kl.
+  // 14:17:45 fordi Railway havde deployet kl. ca. 13:17). Skemaerne bor i
+  // cronMonitorRegistry.js sammen med deres crontab-monitor. Indhentning ved boot
+  // er de eksisterende boot-runs nederst (claim-idempotente). Modulernes egne gates
+  // ("søndag", "fra kl. X") og claims er uændrede og står som andet lag.
 
-  // Every 60 minutes: niveau-korrektionens søndags-gate (#3449/#3750) — modulet
-  // er selv søndags-gated + claim-idempotent (måle-dedup pr. dato), samme
-  // begrundelse som sunday-intake-drip ovenfor. Ren måling, ingen mutation.
-  setInterval(
-    trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN)),
-    60 * 60 * 1000
+  // Søndags-drip (#2064 S0): søndag 00:00 + hver hele time søndagen ud. Claim-
+  // idempotent pr. (hold, dato). IKKE wrappet i monitorCron (se
+  // UNMONITORED_CRON_TICKS i cronMonitorRegistry.js).
+  startWallClockSchedule(
+    trackedTick("sunday-intake-drip", runSundayIntakeTickCron),
+    CRON_MONITOR_SUNDAY_START.wallClock,
+    { label: "sunday-intake-drip", shouldStop: isCronSchedulingStopped }
   );
 
-  // Every 60 minutes: søndagens værdi-pipeline (#4419): værdi-refresh
-  // (markedsblendet fjernet i #6642). Modulet er selv søndags-gated (SUNDAY_VALUE_FROM_HOUR, #5842) og
-  // claim-idempotent pr. dato, så en times cadence bare fylder søndagens vindue op.
-  // Samme monitor-begrundelse som market-value-level-correction-gate ovenfor:
-  // tikket returnerer normalt (ran:false) på ikke-søndage, så CRON_MONITOR_60MIN
-  // false-positiver ikke resten af ugen.
-  setInterval(
-    trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_60MIN)),
-    60 * 60 * 1000
+  // Niveau-korrektionens søndags-gate (#3449/#3750): søndag 00:00 + hver hele time
+  // søndagen ud. Måle-claim pr. dato (upsert/ignoreDuplicates). Ren måling.
+  startWallClockSchedule(
+    trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_SUNDAY_START)),
+    CRON_MONITOR_SUNDAY_START.wallClock,
+    { label: "market-value-level-correction-gate", shouldStop: isCronSchedulingStopped }
+  );
+
+  // Søndagens værdi-pipeline (#4419/#5842): præcis søndag kl. 14:00 dansk tid
+  // (SUNDAY_VALUE_FROM_HOUR, ejer 18/10), derefter et genforsøg hver hele time til
+  // midnat (fejlet refresh frigiver dagens claim; på skiftedagen venter den på det
+  // fuldførte sæsonskifte). rider_value_sunday_log's UNIQUE run_date-claim gør at
+  // den kun skriver én gang pr. søndag, også når to processer fyrer samtidig.
+  startWallClockSchedule(
+    trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_SUNDAY_VALUE)),
+    CRON_MONITOR_SUNDAY_VALUE.wallClock,
+    { label: "sunday-value-refresh", shouldStop: isCronSchedulingStopped }
   );
 
   // Every 60 minutes: entry-generator sweep (#2375) — fylder proaktivt løb for den
@@ -2244,9 +2254,14 @@ export function startCron() {
     trackedTick("email-day1 sweep", monitorCron("email-day1", runEmailDay1SweepCron, CRON_MONITOR_60MIN)),
     60 * 60 * 1000
   );
-  setInterval(
-    trackedTick("email-race-digest sweep", monitorCron("email-race-digest", runEmailRaceDigestSweepCron, CRON_MONITOR_60MIN)),
-    60 * 60 * 1000
+  // #6858: e-mail-digest fra kl. 19 dansk tid, vægur-planlagt (19:00 + hver hele
+  // time til midnat). Dedupen (email_log.dedupe_key) tjekkes før send, så den nye
+  // proces venter DEPLOY_OVERLAP_GRACE_MS efter boot med første kørsel: den gamle
+  // proces kan stadig fyre på samme klokkeslæt indtil SIGTERM.
+  startWallClockSchedule(
+    trackedTick("email-race-digest sweep", monitorCron("email-race-digest", runEmailRaceDigestSweepCron, CRON_MONITOR_EMAIL_RACE_DIGEST)),
+    CRON_MONITOR_EMAIL_RACE_DIGEST.wallClock,
+    { label: "email-race-digest", startupGraceMs: DEPLOY_OVERLAP_GRACE_MS, shouldStop: isCronSchedulingStopped }
   );
   // #3600 — retry-drain for fejlede sends, samme 5-min-kadence som Discords
   // DM-/webhook-outbox-drains.
@@ -2254,16 +2269,20 @@ export function startCron() {
     trackedTick("email retry-drain", monitorCron("email-retry-drain", runEmailRetryDrainCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
-  // #2853 — daglig mail-sundhedsrapport. 60-min-kadence + time-gate i selve
-  // sweepen (samme form som email-race-digest); dags-dedupen sikrer én rapport
-  // pr. døgn uanset hvor mange ticks der rammer efter kl. 08.
-  setInterval(
-    trackedTick("email health-report", monitorCron("email-health-report", runEmailHealthReportCron, CRON_MONITOR_60MIN)),
-    60 * 60 * 1000
+  // #2853 — daglig mail-sundhedsrapport kl. 08 dansk tid. #6858: vægur-planlagt
+  // (08:00 + hver hele time til midnat); dags-dedupen sikrer én rapport pr. døgn.
+  // Dags-signaturen tjekkes før posten, derfor samme opstarts-frist som digesten.
+  startWallClockSchedule(
+    trackedTick("email health-report", monitorCron("email-health-report", runEmailHealthReportCron, CRON_MONITOR_EMAIL_HEALTH)),
+    CRON_MONITOR_EMAIL_HEALTH.wallClock,
+    { label: "email-health-report", startupGraceMs: DEPLOY_OVERLAP_GRACE_MS, shouldStop: isCronSchedulingStopped }
   );
-  setInterval(
-    trackedTick("discord-race-digest sweep", monitorCron("discord-race-digest", runDiscordRaceDigestSweepCron, CRON_MONITOR_60MIN)),
-    60 * 60 * 1000
+  // #3400/#6858 — Discord-digest fra kl. 20 dansk tid, vægur-planlagt. Dedup-loggen
+  // (UNIQUE pr. bruger+dato) skrives efter DM'en, derfor opstarts-fristen.
+  startWallClockSchedule(
+    trackedTick("discord-race-digest sweep", monitorCron("discord-race-digest", runDiscordRaceDigestSweepCron, CRON_MONITOR_DISCORD_RACE_DIGEST)),
+    CRON_MONITOR_DISCORD_RACE_DIGEST.wallClock,
+    { label: "discord-race-digest", startupGraceMs: DEPLOY_OVERLAP_GRACE_MS, shouldStop: isCronSchedulingStopped }
   );
 
   // #3402 — sæsondokumentar-sweep. 60-min-kadence (samme som entry-generator/
@@ -2388,8 +2407,10 @@ export function startCron() {
   trackedTick("growth snapshot", runGrowthSnapshotCron)();
   trackedTick("global rank weekly snapshot", runGlobalRankWeeklySnapshotCron)();
   trackedTick("sunday-intake-drip", runSundayIntakeTickCron)(); // boot-run: claim-idempotent, søndags-gated
-  trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_60MIN))(); // boot-run: samme, ren måling
-  trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_60MIN))(); // boot-run: claim-idempotent, søndags- + time-gated
+  trackedTick("market-value-level-correction-gate", monitorCron("market-value-level-correction-gate", runMarketValueLevelCorrectionGateSweepCron, CRON_MONITOR_SUNDAY_START))(); // boot-run: samme, ren måling
+  // #6858: indhentning ved boot. Er søndag kl. 14:00 passeret og dagens claim ikke
+  // taget (fx processen var nede kl. 14), kører den her med det samme.
+  trackedTick("sunday-value-refresh", monitorCron("sunday-value-refresh", runSundayValueSweepCron, CRON_MONITOR_SUNDAY_VALUE))(); // boot-run: claim-idempotent, søndags- + time-gated
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────

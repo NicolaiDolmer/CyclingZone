@@ -1,0 +1,29 @@
+{
+  "page": { "title": "Staff", "subtitle": "{count} responsables dans toute la ligue" },
+  "filters": {
+    "search": "Recherche",
+    "searchPlaceholder": "Nom ou équipe",
+    "role": "Rôle",
+    "allRoles": "Tous les rôles",
+    "minTier": "Palier min.",
+    "anyTier": "Tous les paliers",
+    "includeAi": "Inclure les équipes IA"
+  },
+  "table": {
+    "name": "Nom",
+    "role": "Rôle",
+    "team": "Équipe",
+    "division": "Division",
+    "tier": "Palier",
+    "specialization": "Spécialisation",
+    "overall": "Note",
+    "salary": "Salaire",
+    "mine": "À moi",
+    "ai": "IA",
+    "actions": "Actions",
+    "count": "Affichage de {filtered} sur {total} membres du staff",
+    "emptyFiltered": "Aucun membre du staff ne correspond à tes filtres"
+  },
+  "disabled": { "title": "Pas encore disponible", "description": "L'espace staff n'est pas encore ouvert." },
+  "error": { "title": "Impossible de charger le staff", "description": "Un problème est survenu au chargement de l'annuaire du staff. Réessaie dans un instant.", "retry": "Réessayer" }
+}

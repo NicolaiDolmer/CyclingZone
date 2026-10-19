@@ -51,7 +51,7 @@ import { copenhagenHour, copenhagenDateString, copenhagenMidnightUTC } from "./c
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
-import { runTeamTrainingDay, isLegacyLoadingReservation } from "./dailyTrainingEngine.js";
+import { runTeamTrainingDay, isLegacyLoadingReservation, isReclaimableLegacyReservation } from "./dailyTrainingEngine.js";
 import { resolveCalendarRaceDayTarget } from "./trainingRaceDayTick.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -985,7 +985,7 @@ async function runTrainingDayCloseSweepGuarded({
         : Promise.resolve({ data: [], error: null }),
       supabase
         .from("training_day_runs")
-        .select("team_id")
+        .select("team_id, created_at, stage:report->>stage")
         .eq("tick_date", tickDate)
         .is("game_day", null),
     ]);
@@ -995,7 +995,12 @@ async function runTrainingDayCloseSweepGuarded({
     const alreadyRanRaceDayKeys = new Set(
       (raceDayRunsRes.data ?? []).map((r) => `${r.team_id}#${r.squad ?? DEFAULT_SQUAD}#${r.game_day}`),
     );
-    const alreadyRanLegacyTeamIds = new Set((legacyRunsRes.data ?? []).map((r) => r.team_id));
+    // #6798: en forældet "loading"-reservation er IKKE en koersel (samme regel som
+    // trainingSweep.teamsNeedingSweep): holdet planlaegges, og motoren overtager
+    // reservationen. En frisk reservation taeller stadig som koert i denne runde.
+    const alreadyRanLegacyTeamIds = new Set((legacyRunsRes.data ?? [])
+      .filter((r) => !isReclaimableLegacyReservation(r, now))
+      .map((r) => r.team_id));
 
     const plan = buildSweepPlan({
       teams,
