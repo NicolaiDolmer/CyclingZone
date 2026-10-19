@@ -16,6 +16,7 @@ test('#6765 shadow SQL equals the legacy definitions after every mutation', asyn
   await db.exec([
     'CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;',
     'GRANT USAGE ON SCHEMA public TO anon,authenticated,service_role;',
+    'CREATE TABLE app_config(key text PRIMARY KEY,value jsonb);',
     'CREATE TABLE races(id uuid PRIMARY KEY,season_id uuid,squad text,race_type text,name text);',
     'CREATE TABLE riders(id uuid PRIMARY KEY,team_id uuid);',
     'CREATE TABLE race_results(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,race_id uuid,rider_id uuid,team_id uuid,points_earned integer,prize_money bigint,rank int,result_type text);',
@@ -29,6 +30,7 @@ test('#6765 shadow SQL equals the legacy definitions after every mutation', asyn
     ...views.map((n,i)=>'CREATE MATERIALIZED VIEW public.'+n+' AS '+definitions[i]+';')
   ].join('\n'));
   await db.exec(migration);
+  assert.equal((await db.query<{value:string}>("SELECT value FROM app_config WHERE key='ranking_shadow_enabled'")).rows[0].value,'off');
   async function drain(batchSize=3) {
     for(let i=0;i<50;i++) {
       const r=await db.query<{v:{pending:boolean}}>('SELECT apply_ranking_deltas($1) v',[batchSize]);
@@ -44,6 +46,15 @@ test('#6765 shadow SQL equals the legacy definitions after every mutation', asyn
     }
   }
   await drain(); await parity('backfill');
+  await t.test('SQL parity excludes the Danish evening peak in summer and winter',async()=>{
+    for(const [instant,expected] of [
+      ['2026-07-01T16:59:59Z','equal'],['2026-07-01T17:00:00Z','deferred-peak'],
+      ['2026-07-01T19:59:59Z','deferred-peak'],['2026-07-01T20:00:00Z','equal'],
+      ['2026-12-01T17:59:59Z','equal'],['2026-12-01T18:00:00Z','deferred-peak'],
+      ['2026-12-01T20:59:59Z','deferred-peak'],['2026-12-01T21:00:00Z','equal'],
+    ]) assert.equal((await db.query<{v:{status:string}}>('SELECT check_ranking_shadow_parity(NULL,$1) v',[instant])).rows[0].v.status,expected,instant);
+    assert.equal((await db.query<{v:string|null}>("SELECT to_regprocedure('public.check_ranking_shadow_parity(bigint)')::text v")).rows[0].v,null);
+  });
   await t.test('transfer then deletion of the last contribution retains the old team key across batches',async()=>{
     await db.exec("INSERT INTO riders VALUES(fid(13),fid(123)); INSERT INTO race_results(race_id,rider_id,points_earned,prize_money,rank,result_type) VALUES(fid(1012),fid(13),10,100,1,'stage');");
     await drain();
@@ -51,14 +62,14 @@ test('#6765 shadow SQL equals the legacy definitions after every mutation', asyn
     await drain(1); await parity('transfer/delete interleaving');
   });
   await t.test('parity RPC uses a stable generation and finds real shadow drift',async()=>{
-    assert.equal((await db.query<{v:{status:string}}>('SELECT check_ranking_shadow_parity() v')).rows[0].v.status,'equal');
+    assert.equal((await db.query<{v:{status:string}}>("SELECT check_ranking_shadow_parity(NULL,'2026-10-19T08:00:00Z') v")).rows[0].v.status,'equal');
     await db.exec('UPDATE ranking_rider_season SET points=coalesce(points,0)+1;');
-    assert.equal((await db.query<{v:{status:string}}>('SELECT check_ranking_shadow_parity() v')).rows[0].v.status,'different');
+    assert.equal((await db.query<{v:{status:string}}>("SELECT check_ranking_shadow_parity(NULL,'2026-10-19T08:00:00Z') v")).rows[0].v.status,'different');
     await db.exec("INSERT INTO ranking_dirty_log(kind) VALUES('rebuild');");
-    assert.equal((await db.query<{v:{status:string}}>('SELECT check_ranking_shadow_parity() v')).rows[0].v.status,'pending');
+    assert.equal((await db.query<{v:{status:string}}>("SELECT check_ranking_shadow_parity(NULL,'2026-10-19T08:00:00Z') v")).rows[0].v.status,'pending');
     await drain(); await parity('repaired');
     await db.exec('UPDATE ranking_refresh_work_state SET requested_version=8;');
-    assert.equal((await db.query<{v:{status:string}}>('SELECT check_ranking_shadow_parity() v')).rows[0].v.status,'pending');
+    assert.equal((await db.query<{v:{status:string}}>("SELECT check_ranking_shadow_parity(NULL,'2026-10-19T08:00:00Z') v")).rows[0].v.status,'pending');
     await db.exec('UPDATE ranking_refresh_work_state SET requested_version=7;');
   });
   const mutations=[
@@ -78,8 +89,11 @@ test('#6765 shadow SQL equals the legacy definitions after every mutation', asyn
   });
   await t.test('replay preserves output and pending queue',async()=>{
     await db.exec("INSERT INTO ranking_dirty_log(kind,race_id) VALUES('race',fid(1009));");
+    await db.exec("UPDATE app_config SET value='\"beta\"'::jsonb WHERE key='ranking_shadow_enabled';");
     const before=await db.query('SELECT * FROM ranking_dirty_log ORDER BY id');
     await db.exec(migration);
+    assert.equal((await db.query<{value:string}>("SELECT value FROM app_config WHERE key='ranking_shadow_enabled'")).rows[0].value,'beta','replay never flips an existing stage');
+    await db.exec("UPDATE app_config SET value='\"off\"'::jsonb WHERE key='ranking_shadow_enabled';");
     assert.deepEqual((await db.query('SELECT * FROM ranking_dirty_log ORDER BY id')).rows,before.rows);
     await drain(); await parity('migration replay');
   });
@@ -95,6 +109,7 @@ test('#6765 shadow SQL equals the legacy definitions after every mutation', asyn
     for(const role of ['anon','authenticated']) {
       await db.exec('SET ROLE '+role);
       await assert.rejects(db.query('SELECT apply_ranking_deltas(200)'),/permission denied/);
+      await assert.rejects(db.query('SELECT get_ranking_shadow_metrics()'),/permission denied/);
       for(const table of ['ranking_race_contrib','ranking_dirty_log',...tables])
         await assert.rejects(db.query('SELECT * FROM '+table),/permission denied/);
       await db.exec('RESET ROLE');

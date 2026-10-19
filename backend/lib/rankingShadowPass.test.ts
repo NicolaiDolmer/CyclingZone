@@ -1,6 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runRankingShadowPass } from './rankingShadowPass.ts';
+import { runRankingShadowPass as rawRun } from './rankingShadowPass.ts';
+type Client=Parameters<typeof rawRun>[0];
+type Options=Omit<Parameters<typeof rawRun>[1],'clock'>;
+const adapters=new WeakMap<Client,Client>();
+function runRankingShadowPass(client:Client,options:Options){
+  let adapter=adapters.get(client);
+  if(!adapter){
+    adapter={...client,
+      from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{value:'on'},error:null})})})}),
+      rpc:(name,args)=>name==='get_ranking_shadow_metrics'
+        ?Promise.resolve({data:{queue_length:0},error:null}):client.rpc(name,args),
+    };
+    adapters.set(client,adapter);
+  }
+  return rawRun(adapter,{clock:()=>0,logger:{info(){}},...options});
+}
 
 test('shadow pass forwards lease, checks parity and throttles daily checks with an explicit clock',async()=>{
   const calls:Array<{name:string,args:unknown}>=[];
@@ -32,7 +47,7 @@ test('slow successful shadow calls renew between RPCs and before legacy acknowle
   }};
   const renewLease=async()=>{steps.push('renew');assert.ok(now<expires);expires=now+90000;return true;};
   assert.equal(await runRankingShadowPass(client,{now:0,renewLease}),true);
-  assert.deepEqual(steps,['renew','apply_ranking_deltas','renew','check_ranking_shadow_parity','renew']);
+  assert.deepEqual(steps,['renew','renew','renew','apply_ranking_deltas','renew','check_ranking_shadow_parity','renew']);
   assert.ok(now<expires,'legacy completion still owns a live lease');
 });
 test('parity mismatch and processor failure report to Sentry without failing legacy publication',async()=>{

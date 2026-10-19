@@ -187,12 +187,22 @@ samme begrænsede kø. En fejl ruller også claim/sletning af køposter tilbage.
 DDL-backfill køres efter migrationens commit, aldrig under trigger-installationens
 stærke tabellåse. Sletning, genkørsel, metadataændring og TRUNCATE er kø-hændelser.
 
-Coordinatoren kører M1 efter et vellykket legacy-pas og på rene cron-ticks.
+Coordinatoren kører M1 efter et vellykket legacy-pas og på rene cron-ticks,
+kun når ranking_shadow_enabled tillader engineWrite (on/beta). Flaget seedes
+off; manglende/ukendt værdi og læsefejl lukker apply og paritet. Triggere
+fortsætter med at enqueue, også når flaget er off.
 Skyggefejl rapporteres særskilt og ændrer ikke legacy-completion/heartbeat.
 Paritet bruger ét statement-snapshot og sammenligner begge EXCEPT ALL-retninger
 for alle fire outputs; pending kø eller ændret generation udsætter kontrollen.
 Produktion kontrolleres dagligt pr. backend-klient (og efter procesgenstart),
-staging kan bruge RANKING_SHADOW_PARITY_EVERY_PASS=true. M2 kræver stadig
+altid uden for kl. 19 inklusive til 22 eksklusive i Europe/Copenhagen.
+En forfalden kontrol i vinduet udsættes til næste tilladte pas. Staging kan
+bruge RANKING_SHADOW_PARITY_EVERY_PASS=true, men det overstyrer aldrig flag
+eller aftenvinduet. Hver kørsel logger queue_length ved start, pass_ms,
+enabled og status, også mens flaget er off. Kø over 10.000 eller samlet
+pass-tid over 20 sekunder udløser Sentry med begge mål.
+Supabase-branch-bevis: audits/2026-10-19-6765-operational-readiness.md.
+M2 kræver stadig
 staging T7 og designets særskilte observations-/ejerporte.
 
 **Concurrent RPC-overloads (#5692, separat SQL-forberedelse):**

@@ -5,6 +5,9 @@
 BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
+-- Seed only. Replaying this migration never changes an owner's existing stage.
+INSERT INTO public.app_config(key,value)
+VALUES('ranking_shadow_enabled','"off"'::jsonb) ON CONFLICT(key) DO NOTHING;
 
 -- data-api-access: {"table":"public.ranking_race_contrib","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Internal ranking shadow processor"}
 CREATE TABLE IF NOT EXISTS public.ranking_race_contrib (
@@ -312,13 +315,24 @@ $$;
 REVOKE ALL ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint) FROM PUBLIC,anon,authenticated;
 GRANT EXECUTE ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint) TO service_role;
 
+CREATE OR REPLACE FUNCTION public.get_ranking_shadow_metrics()
+RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path=public,pg_temp AS $$
+  SELECT jsonb_build_object('queue_length',count(*)) FROM public.ranking_dirty_log;
+$$;
+REVOKE ALL ON FUNCTION public.get_ranking_shadow_metrics() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.get_ranking_shadow_metrics() TO service_role;
+
 -- One statement snapshot: concurrent source changes invalidate the generation
 -- before a mismatch is reported. Backfill/active writes return pending.
-CREATE OR REPLACE FUNCTION public.check_ranking_shadow_parity(p_target_version bigint DEFAULT NULL)
+DROP FUNCTION IF EXISTS public.check_ranking_shadow_parity(bigint);
+CREATE OR REPLACE FUNCTION public.check_ranking_shadow_parity(p_target_version bigint DEFAULT NULL,p_now timestamptz DEFAULT NULL)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path=public,pg_temp SET statement_timeout='30s' AS $$
-DECLARE v_differences jsonb; v_name text; v_shadow text; v_count bigint;
+DECLARE v_differences jsonb; v_name text; v_shadow text; v_count bigint; v_hour integer;
 BEGIN
+  v_hour:=extract(hour FROM coalesce(p_now,clock_timestamp()) AT TIME ZONE 'Europe/Copenhagen');
+  IF v_hour>=19 AND v_hour<22 THEN RETURN jsonb_build_object('status','deferred-peak'); END IF;
   IF EXISTS(SELECT 1 FROM public.ranking_dirty_log) OR EXISTS(
     SELECT 1 FROM public.ranking_refresh_work_state WHERE matview_group='ranking'
       AND requested_version IS DISTINCT FROM coalesce(p_target_version,completed_version)
@@ -330,6 +344,8 @@ BEGIN
     ('team_standings_ext_mv','ranking_team_season_ext'),
     ('team_race_points_mv','ranking_team_race_points')
   ) AS pairs(legacy,shadow) LOOP
+    v_hour:=extract(hour FROM coalesce(p_now,clock_timestamp()) AT TIME ZONE 'Europe/Copenhagen');
+    IF v_hour>=19 AND v_hour<22 THEN RETURN jsonb_build_object('status','deferred-peak'); END IF;
     EXECUTE format('SELECT count(*) FROM ((SELECT * FROM public.%I EXCEPT ALL SELECT * FROM public.%I)
       UNION ALL (SELECT * FROM public.%I EXCEPT ALL SELECT * FROM public.%I)) d',
       v_name,v_shadow,v_shadow,v_name) INTO v_count;
@@ -340,7 +356,7 @@ BEGIN
       THEN 'different' ELSE 'equal' END,'differences',v_differences);
 END;
 $$;
-REVOKE ALL ON FUNCTION public.check_ranking_shadow_parity(bigint) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.check_ranking_shadow_parity(bigint) TO service_role;
+REVOKE ALL ON FUNCTION public.check_ranking_shadow_parity(bigint,timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.check_ranking_shadow_parity(bigint,timestamptz) TO service_role;
 COMMIT;
 NOTIFY pgrst,'reload schema';

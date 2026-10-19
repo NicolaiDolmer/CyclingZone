@@ -81,11 +81,13 @@ applied before the backend change. Contract and staging evidence:
 
 M1 shadow maintenance (#6765, design PR #6849) adds a race-grain contribution
 table, append-only queue and four keyed summaries alongside the legacy views.
-Successful passes and clean cron ticks process bounded shadow batches; the
+Successful passes and clean cron ticks process bounded shadow batches behind
+ranking_shadow_enabled (seed off, fail closed; triggers continue enqueueing); the
 existing five matviews remain the reader/heartbeat contract. Quiescent parity
 checks compare both EXCEPT ALL directions and report drift to Sentry, daily per
-backend client in production, every pass with
-RANKING_SHADOW_PARITY_EVERY_PASS=true on staging. No reader swap is included.
+backend client outside 19-22 Europe/Copenhagen. The staging every-pass override
+also respects the peak window. Every invocation logs queue length/pass duration;
+queue >10,000 or pass >20s alarms in Sentry. No reader swap is included.
 
 ### Spillersynlige feature-flags (#4948, #6103)
 GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`

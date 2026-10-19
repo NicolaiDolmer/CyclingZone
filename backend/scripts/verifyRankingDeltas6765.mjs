@@ -36,6 +36,7 @@ try {
   sql([
     'CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;',
     'GRANT USAGE ON SCHEMA public TO anon,authenticated,service_role;',
+    'CREATE TABLE app_config(key text PRIMARY KEY,value jsonb);',
     'CREATE TABLE races(id uuid PRIMARY KEY,season_id uuid,squad text,race_type text,name text);',
     'CREATE TABLE riders(id uuid PRIMARY KEY,team_id uuid);',
     'CREATE TABLE race_results(id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,race_id uuid,rider_id uuid,team_id uuid,points_earned integer,prize_money bigint,rank int,result_type text);',

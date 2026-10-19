@@ -864,6 +864,17 @@ features:
     note: ~55 typer, notificationTypes.js.
 
   # --- stats ---------------------------------------------------------------
+  - id: ranking-shadow
+    area: ops
+    title_en: Ranking shadow
+    title_da: Skyggeranglister
+    state: building
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 6765
+    verified: 2026-10-19
+    decision: ejer-beslutning
+    decide_by: 2026-10-23
+    note: "ranking_shadow_enabled seed off; ejer-go før tænding."
   - id: standings-and-rankings
     area: stats
     title_en: Standings and rankings
@@ -871,7 +882,7 @@ features:
     state: live
     verified: 2026-09-06
     ssot: docs/GAME_INVARIANTS.md
-    note: "#6765 M1 adds shadow aggregates; legacy readers remain authoritative. M2 is separate."
+    note: "Legacy readers; M1 shadow gated separately (#6765)."
 
   - id: results-archive
     area: stats

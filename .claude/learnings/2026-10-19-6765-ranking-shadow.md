@@ -17,3 +17,12 @@ Nullable season keys also belong to the legacy contract: UNIQUE NULLS NOT
 DISTINCT and NULL-aware matching preserve them. SQL parity uses independent
 legacy SELECTs and both EXCEPT ALL directions, rather than only row counts.
 Native PG17 baseline and measurements: docs/audits/2026-10-19-6765-local-pg17.md.
+# Operational review follow-up
+
+Metrics and flag reads consume the legacy lease even when shadow work is off.
+Renew before and between those reads and after the flag read. Reproduce with
+an injected monotonic clock and slow reads; do not rely on fast mocks.
+Peak admission must include elapsed legacy/apply work. SQL also checks its own
+execution clock so queued RPC admission cannot cross into the Danish peak.
+Database deferral remains due and is not a parity mismatch. Boundary tests use
+explicit summer/winter instants. Both review regressions are now green.

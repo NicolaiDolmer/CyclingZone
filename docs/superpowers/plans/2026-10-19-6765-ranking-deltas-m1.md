@@ -12,3 +12,11 @@ No reader swap, production writes, flag change or player-visible change.
 
 Review focus: aggregate types and NULLs; old/new attribution; transactional queue; serialization; source-row locks; short migration locks without in-transaction backfill.
 Patch notes exempt: shadow data has no player-visible behavior. Staging T7 and M2 observation gates remain separate.
+
+Operational extension, owner mandate 19 October:
+- [x] Off-seeded ranking_shadow_enabled in stage catalog and registry; gate runtime apply/parity.
+- [x] Queue/pass logs and Sentry operational budgets, including off runs.
+- [x] Daily parity outside Danish evening peak, client elapsed time plus SQL admission guard.
+- [x] Authorized Supabase-branch first rebuild and one-pass measurement; parity zero, flag off.
+- [x] Slow monitoring lease and peak-crossing regressions reproduced and fixed; independent re-review clean.
+Evidence and branch authorization: docs/audits/2026-10-19-6765-operational-readiness.md.

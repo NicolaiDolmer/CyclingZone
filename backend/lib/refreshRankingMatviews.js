@@ -82,7 +82,8 @@ export function refreshRankingMatviewsSafe(supabase, options = {}) {
     }), { ...options, force: true })) === true, 1);
 }
 
-async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now } = {}) {
+async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock=()=>performance.now(), logger=console } = {}) {
+  const legacyStarted=clock();
   const failures = [];
 
   for (const { rpc, label } of REFRESH_RPCS) {
@@ -110,7 +111,7 @@ async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewL
   }
 
   // The fenced database acknowledgement atomically updates generation + heartbeat.
-  await runRankingShadowPass(supabase, { ownerToken, targetVersion, captureExceptionFn, renewLease, now: now.getTime() });
+  await runRankingShadowPass(supabase, { ownerToken, targetVersion, captureExceptionFn, renewLease, now: now.getTime()+Math.max(0,clock()-legacyStarted), clock, logger });
   return true;
 }
 
@@ -190,13 +191,13 @@ export async function refreshRankingMatviewsGated(
   if (gateState === 'clean') {
     // Clean one-minute ticks also drain additive backfill/corrections. Shadow
     // failures are reported independently; they do not age the legacy heartbeat.
-    await runRankingShadowPass(supabase, { now: now.getTime(), captureExceptionFn });
+    await runRankingShadowPass(supabase, { now: now.getTime()+Math.max(0,clock()-requestedAt), captureExceptionFn, clock, logger });
     return true;
   }
   if (gateState === "deferred") return "deferred";
   return runRefreshQueued(supabase,
     () => runRankingRefreshWork(supabase,
-      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now }), { captureExceptionFn, testNowFn }),
+      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger }), { captureExceptionFn, testNowFn }),
     gateState === "expired" ? 1 : 0, {
       key: `gated:${copenhagenDateString(now)}:${maxDeferMs}`,
       check: async () => {
@@ -227,7 +228,7 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
     if (settling) return "deferred";
     return await runRefreshQueued(supabase,
       () => runRankingRefreshWork(supabase,
-        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now }), { captureExceptionFn, testNowFn }),
+        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger }), { captureExceptionFn, testNowFn }),
       0, {
         key: `training-close:${copenhagenDateString(now)}`,
         check: async () => {
