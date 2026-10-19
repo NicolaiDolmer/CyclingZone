@@ -179,7 +179,10 @@ løbets trup. Holdpoint følger fortsat rytterens nuværende hold; holdenes ekst
 tal bruger registreret hold med nuværende hold som fallback. Igangværende løb
 med resultater tæller som før.
 
-Statement-triggere tilføjer køposter uden deduplikering eller delt rækkelås.
+Statement-triggere tilføjer køposter uden deduplikering eller delt rækkelås,
+kun når ranking_shadow_enabled tillader engineWrite. Riders-UPDATE bruger
+i stedet AFTER ROW WHEN (OLD.team_id IS DISTINCT FROM NEW.team_id), uden
+transition tables. Uændret hold udløser ingen M1-triggerfunktion.
 Processoren deler cz-ranking-refresh-låsen og validerer coordinatorens lease,
 erstatter berørte bidrag og genberegner gamle/nye nøgler transaktionelt.
 Transfers fordeles til løbsposter med gammelt hold; repair/backfill fordeles til
@@ -189,8 +192,17 @@ stærke tabellåse. Sletning, genkørsel, metadataændring og TRUNCATE er kø-h�
 
 Coordinatoren kører M1 efter et vellykket legacy-pas og på rene cron-ticks,
 kun når ranking_shadow_enabled tillader engineWrite (on/beta). Flaget seedes
-off; manglende/ukendt værdi og læsefejl lukker apply og paritet. Triggere
-fortsætter med at enqueue, også når flaget er off.
+off; manglende/ukendt værdi og læsefejl lukker apply og paritet. Off-kildeændringer
+skriver ingen deltas. Installation/off-skift kollapser køen til én rebuild-markør;
+aktivering kræver altid rebuild, så oversprungne off-ændringer dækkes.
+Kildetransaktioner holder en delt stage-advisory-lås indtil commit; flagskift
+kræver eksklusiv stage-lås og writer-lås og fejler hurtigt med 55P03 ved aktivitet.
+Source-writes/apply kræver READ COMMITTED-semantik (og PG-alias READ UNCOMMITTED);
+stærkere snapshots afvises med 40001 og eksplicit retry-kontrakt, så et gammelt
+flag-snapshot ikke kan springe ændringer over efter en aktivering.
+Normal apply rechecker flaget under stage-låsen, og SQL-paritet har også off-gate.
+Kun eksplicit service-role maintenance kan kalde RPC'erne med p_maintenance=true;
+runtime sender aldrig dette override. Ingen aktivering følger af maintenance.
 Skyggefejl rapporteres særskilt og ændrer ikke legacy-completion/heartbeat.
 Paritet bruger ét statement-snapshot og sammenligner begge EXCEPT ALL-retninger
 for alle fire outputs; pending kø eller ændret generation udsætter kontrollen.

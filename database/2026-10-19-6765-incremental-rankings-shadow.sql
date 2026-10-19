@@ -77,14 +77,30 @@ GRANT USAGE ON SEQUENCE public.ranking_dirty_log_id_seq TO service_role;
 
 -- Seed only on first installation; replay neither resets progress nor adds work.
 DO $$ BEGIN
-  IF to_regprocedure('public.apply_ranking_deltas(integer,uuid,bigint)') IS NULL THEN
+  IF to_regprocedure('public.apply_ranking_deltas(integer,uuid,bigint)') IS NULL
+     AND to_regprocedure('public.apply_ranking_deltas(integer,uuid,bigint,boolean)') IS NULL THEN
     INSERT INTO public.ranking_dirty_log(kind) VALUES('rebuild');
   END IF;
 END $$;
 
+CREATE OR REPLACE FUNCTION public.ranking_shadow_writes_enabled() RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public,pg_temp AS $$
+  SELECT coalesce((SELECT value IN ('"on"'::jsonb,'"beta"'::jsonb,'true'::jsonb)
+    FROM public.app_config WHERE key='ranking_shadow_enabled'),false)
+$$;
+REVOKE ALL ON FUNCTION public.ranking_shadow_writes_enabled() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.ranking_shadow_writes_enabled() TO service_role;
+
 CREATE OR REPLACE FUNCTION public.enqueue_ranking_delta() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 BEGIN
+  -- Shared until source commit: enabling cannot rebuild before skipped writes
+  -- commit. Source writers remain parallel; a flag change fails fast if busy.
+  IF current_setting('transaction_isolation') NOT IN ('read committed','read uncommitted') THEN
+    RAISE EXCEPTION 'Ranking source writes require READ COMMITTED; retry transaction at READ COMMITTED' USING ERRCODE='40001';
+  END IF;
+  PERFORM pg_advisory_xact_lock_shared(hashtextextended('cz-ranking-shadow-stage',0));
+  IF NOT public.ranking_shadow_writes_enabled() THEN RETURN NULL; END IF;
   IF TG_OP='TRUNCATE' THEN
     INSERT INTO public.ranking_dirty_log(kind) VALUES('rebuild');
   ELSIF TG_TABLE_NAME='race_results' THEN
@@ -110,8 +126,7 @@ BEGIN
   ELSIF TG_TABLE_NAME='riders' THEN
     IF TG_OP='UPDATE' THEN
       INSERT INTO public.ranking_dirty_log(kind,rider_id,old_team_id)
-        SELECT 'rider',o.id,o.team_id FROM old_rows o JOIN new_rows n USING(id)
-        WHERE o.team_id IS DISTINCT FROM n.team_id;
+        VALUES('rider',OLD.id,OLD.team_id);
     ELSIF TG_OP='DELETE' THEN
       INSERT INTO public.ranking_dirty_log(kind,rider_id,old_team_id)
         SELECT 'rider',id,team_id FROM old_rows;
@@ -144,21 +159,76 @@ CREATE OR REPLACE TRIGGER ranking_delta_races_truncate AFTER TRUNCATE ON public.
 CREATE OR REPLACE TRIGGER ranking_delta_riders_insert AFTER INSERT ON public.riders
   REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.enqueue_ranking_delta();
 CREATE OR REPLACE TRIGGER ranking_delta_riders_update AFTER UPDATE ON public.riders
-  REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION public.enqueue_ranking_delta();
+  FOR EACH ROW WHEN (OLD.team_id IS DISTINCT FROM NEW.team_id)
+  EXECUTE FUNCTION public.enqueue_ranking_delta();
 CREATE OR REPLACE TRIGGER ranking_delta_riders_delete AFTER DELETE ON public.riders
   REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION public.enqueue_ranking_delta();
 CREATE OR REPLACE TRIGGER ranking_delta_riders_truncate AFTER TRUNCATE ON public.riders
   FOR EACH STATEMENT EXECUTE FUNCTION public.enqueue_ranking_delta();
 
+-- Off periods retain one repair marker, not per-mutation work. A later enable
+-- must rebuild because source changes were deliberately skipped while off.
+CREATE OR REPLACE FUNCTION public.ranking_shadow_flag_changed() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp SET lock_timeout='2s' AS $$
+DECLARE v_old boolean:=false; v_new boolean:=false;
+BEGIN
+  IF TG_OP<>'INSERT' THEN
+    v_old:=OLD.key='ranking_shadow_enabled' AND coalesce(OLD.value IN ('"on"'::jsonb,'"beta"'::jsonb,'true'::jsonb),false);
+  END IF;
+  IF TG_OP<>'DELETE' THEN
+    v_new:=NEW.key='ranking_shadow_enabled' AND coalesce(NEW.value IN ('"on"'::jsonb,'"beta"'::jsonb,'true'::jsonb),false);
+  END IF;
+  IF v_old=v_new THEN RETURN NULL; END IF;
+  IF NOT pg_try_advisory_xact_lock(hashtextextended('cz-ranking-shadow-stage',0)) THEN
+    RAISE EXCEPTION 'Ranking shadow source writer busy; retry flag change' USING ERRCODE='55P03';
+  END IF;
+  IF NOT pg_try_advisory_xact_lock(hashtextextended('cz-ranking-refresh',0)) THEN
+    RAISE EXCEPTION 'Ranking refresh writer busy; retry flag change' USING ERRCODE='55P03';
+  END IF;
+  DELETE FROM public.ranking_dirty_log;
+  INSERT INTO public.ranking_dirty_log(kind) VALUES('rebuild');
+  RETURN NULL;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.ranking_shadow_flag_changed() FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.ranking_shadow_flag_changed() TO service_role;
+CREATE OR REPLACE TRIGGER ranking_shadow_flag_insert AFTER INSERT ON public.app_config
+  FOR EACH ROW WHEN (NEW.key='ranking_shadow_enabled') EXECUTE FUNCTION public.ranking_shadow_flag_changed();
+CREATE OR REPLACE TRIGGER ranking_shadow_flag_update AFTER UPDATE ON public.app_config
+  FOR EACH ROW WHEN (OLD.key='ranking_shadow_enabled' OR NEW.key='ranking_shadow_enabled')
+  EXECUTE FUNCTION public.ranking_shadow_flag_changed();
+CREATE OR REPLACE TRIGGER ranking_shadow_flag_delete AFTER DELETE ON public.app_config
+  FOR EACH ROW WHEN (OLD.key='ranking_shadow_enabled') EXECUTE FUNCTION public.ranking_shadow_flag_changed();
+DO $$ BEGIN
+  IF NOT public.ranking_shadow_writes_enabled() THEN
+    IF NOT pg_try_advisory_xact_lock(hashtextextended('cz-ranking-shadow-stage',0)) THEN
+      RAISE EXCEPTION 'Ranking shadow source writer busy; retry migration' USING ERRCODE='55P03';
+    END IF;
+    IF NOT pg_try_advisory_xact_lock(hashtextextended('cz-ranking-refresh',0)) THEN
+      RAISE EXCEPTION 'Ranking refresh writer busy; retry migration' USING ERRCODE='55P03';
+    END IF;
+    DELETE FROM public.ranking_dirty_log;
+    INSERT INTO public.ranking_dirty_log(kind) VALUES('rebuild');
+  END IF;
+END $$;
+
+DROP FUNCTION IF EXISTS public.apply_ranking_deltas(integer,uuid,bigint);
 CREATE OR REPLACE FUNCTION public.apply_ranking_deltas(
   p_max_items integer DEFAULT 200, p_owner_token uuid DEFAULT NULL,
-  p_target_version bigint DEFAULT NULL
+  p_target_version bigint DEFAULT NULL, p_maintenance boolean DEFAULT false
 ) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER
 SET search_path=public,pg_temp SET lock_timeout='2s' SET statement_timeout='30s' AS $$
 DECLARE v_races uuid[]; v_count integer;
 BEGIN
   IF p_max_items IS NULL OR p_max_items<1 OR p_max_items>200 THEN
     RAISE EXCEPTION 'p_max_items must be 1..200' USING ERRCODE='22023';
+  END IF;
+  IF current_setting('transaction_isolation') NOT IN ('read committed','read uncommitted') THEN
+    RAISE EXCEPTION 'Ranking processor requires READ COMMITTED; retry transaction at READ COMMITTED' USING ERRCODE='40001';
+  END IF;
+  PERFORM pg_advisory_xact_lock_shared(hashtextextended('cz-ranking-shadow-stage',0));
+  IF NOT coalesce(p_maintenance,false) AND NOT public.ranking_shadow_writes_enabled() THEN
+    RETURN jsonb_build_object('status','disabled','pending',false);
   END IF;
   IF NOT pg_try_advisory_xact_lock(hashtextextended('cz-ranking-refresh',0)) THEN
     RAISE EXCEPTION 'Ranking refresh writer busy' USING ERRCODE='55P03';
@@ -312,8 +382,8 @@ BEGIN
     'pending',EXISTS(SELECT 1 FROM public.ranking_dirty_log));
 END;
 $$;
-REVOKE ALL ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint) TO service_role;
+REVOKE ALL ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint,boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint,boolean) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.get_ranking_shadow_metrics()
 RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
@@ -326,11 +396,15 @@ GRANT EXECUTE ON FUNCTION public.get_ranking_shadow_metrics() TO service_role;
 -- One statement snapshot: concurrent source changes invalidate the generation
 -- before a mismatch is reported. Backfill/active writes return pending.
 DROP FUNCTION IF EXISTS public.check_ranking_shadow_parity(bigint);
-CREATE OR REPLACE FUNCTION public.check_ranking_shadow_parity(p_target_version bigint DEFAULT NULL,p_now timestamptz DEFAULT NULL)
+DROP FUNCTION IF EXISTS public.check_ranking_shadow_parity(bigint,timestamptz);
+CREATE OR REPLACE FUNCTION public.check_ranking_shadow_parity(p_target_version bigint DEFAULT NULL,p_now timestamptz DEFAULT NULL,p_maintenance boolean DEFAULT false)
 RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path=public,pg_temp SET statement_timeout='30s' AS $$
 DECLARE v_differences jsonb; v_name text; v_shadow text; v_count bigint; v_hour integer;
 BEGIN
+  IF NOT coalesce(p_maintenance,false) AND NOT public.ranking_shadow_writes_enabled() THEN
+    RETURN jsonb_build_object('status','disabled');
+  END IF;
   v_hour:=extract(hour FROM coalesce(p_now,clock_timestamp()) AT TIME ZONE 'Europe/Copenhagen');
   IF v_hour>=19 AND v_hour<22 THEN RETURN jsonb_build_object('status','deferred-peak'); END IF;
   IF EXISTS(SELECT 1 FROM public.ranking_dirty_log) OR EXISTS(
@@ -356,7 +430,7 @@ BEGIN
       THEN 'different' ELSE 'equal' END,'differences',v_differences);
 END;
 $$;
-REVOKE ALL ON FUNCTION public.check_ranking_shadow_parity(bigint,timestamptz) FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.check_ranking_shadow_parity(bigint,timestamptz) TO service_role;
+REVOKE ALL ON FUNCTION public.check_ranking_shadow_parity(bigint,timestamptz,boolean) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.check_ranking_shadow_parity(bigint,timestamptz,boolean) TO service_role;
 COMMIT;
 NOTIFY pgrst,'reload schema';

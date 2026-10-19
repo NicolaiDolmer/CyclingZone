@@ -45,6 +45,7 @@ export async function runRankingShadowPass(client: Client, {
     // Additive migration and Node deployment can arrive in either order.
     if(error?.code==='PGRST202'||error?.code==='42883') return false;
     if(error) throw new Error(error.message);
+    if((data as {status?:string}|null)?.status==='disabled') {status='disabled';return false;}
     if(!data || (data as {pending?:boolean}).pending!==false) {status='pending';return true;}
     status='processed';
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost before shadow parity');
@@ -58,7 +59,7 @@ export async function runRankingShadowPass(client: Client, {
     if(parity.error) throw new Error(parity.error.message);
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost after shadow parity');
     const result=parity.data as {status?:string;differences?:unknown}|null;
-    if(result?.status==='pending'||result?.status==='deferred-peak') {status=result.status;return true;}
+    if(result?.status==='pending'||result?.status==='deferred-peak'||result?.status==='disabled') {status=result.status;return true;}
     if(result?.status==='equal'||result?.status==='different') lastParity.set(client,now+Math.max(0,clock()-started));
     status=result?.status??'invalid-parity-result';
     if(result?.status!=='equal') {

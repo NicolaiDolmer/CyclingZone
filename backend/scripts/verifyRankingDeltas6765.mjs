@@ -53,6 +53,7 @@ try {
   if(!process.argv.includes('--baseline')) {
     const migration=readFileSync(join(root,'database/2026-10-19-6765-incremental-rankings-shadow.sql'),'utf8');
     sql(migration);
+    sql("UPDATE app_config SET value='true'::jsonb WHERE key='ranking_shadow_enabled';");
     const tables=['ranking_rider_season','ranking_team_season_ext','ranking_team_race_points','ranking_youth_rider_season'];
     function drain() {
       const batchMs=[];
@@ -113,11 +114,23 @@ try {
         child.stdout.on('data',b=>{if(String(b).includes('HOLDING')) resolve(null);});
         child.on('exit',code=>{if(code!==0) reject(Error(errors));});
       });
+      assert.throws(()=>sql("UPDATE app_config SET value='\"off\"'::jsonb WHERE key='ranking_shadow_enabled';"),/writer busy/,'flag change cannot race a processor');
       const writeMs=timed("SET lock_timeout='100ms'; INSERT INTO race_results(race_id,rider_id,points_earned,prize_money,rank,result_type) VALUES(fid(100012),fid(3),20,100,1,'stage');");
       await finished; drain(); parity('concurrent stage insert with processor transaction held');
       const log=readFileSync(join(dir,'pg.log'),'utf8');
       assert.doesNotMatch(log,/still waiting for .*lock/,'no lock waits above 100ms');
       console.log(JSON.stringify({concurrent_stage_request_ms:writeMs,lock_timeout_ms:100,logged_lock_waits:0}));
+      sql("UPDATE app_config SET value='\"off\"'::jsonb WHERE key='ranking_shadow_enabled';");
+      writeFileSync(holder,"BEGIN; UPDATE race_results SET points_earned=coalesce(points_earned,0)+1 WHERE race_id=fid(100012); SELECT 'OFF_HOLDING'; SELECT pg_sleep(3); COMMIT;");
+      const offWriter=spawn(exe('psql'),[...args,'-f',holder],{windowsHide:true});
+      let offErrors='';offWriter.stderr.on('data',b=>{offErrors+=b;});
+      const offFinished=new Promise((resolve,reject)=>offWriter.on('exit',code=>code===0?resolve(null):reject(Error(offErrors))));
+      await new Promise(resolve=>offWriter.stdout.on('data',b=>{if(String(b).includes('OFF_HOLDING'))resolve(null);}));
+      assert.throws(()=>sql("UPDATE app_config SET value='true'::jsonb WHERE key='ranking_shadow_enabled';"),/source writer busy/,'enable waits for skipped source transactions');
+      assert.equal(sql("SELECT value #>> '{}' FROM app_config WHERE key='ranking_shadow_enabled'"),'off');
+      await offFinished;
+      sql("UPDATE app_config SET value='true'::jsonb WHERE key='ranking_shadow_enabled';");drain();parity('activation after concurrent off writer');
+      console.log('FLAG SOURCE/PROCESSOR FENCES PASSED');
       writeFileSync(holder,"BEGIN; LOCK TABLE race_results IN ROW EXCLUSIVE MODE; SELECT 'DDL_HOLDING'; SELECT pg_sleep(8); COMMIT;");
       const ddlHolder=spawn(exe('psql'),[...args,'-f',holder],{windowsHide:true});
       let ddlErrors='';
@@ -131,7 +144,8 @@ try {
       assert.throws(()=>sql(migration),/lock timeout/,'migration fails fast behind live writer');
       console.log(JSON.stringify({blocked_migration_ms:+(performance.now()-ddlStart).toFixed(2)}));
       await ddlFinished;
-      sql(migration); drain(); parity('migration retry after bounded DDL lock failure');
+      sql(migration);
+      drain(); parity('migration retry after bounded DDL lock failure');
     }
     sql('TRUNCATE race_results;'); drain(); parity('truncate/rebuild removes orphan contributions');
     console.log('ALL PARITY AND IDEMPOTENCY CHECKS PASSED');

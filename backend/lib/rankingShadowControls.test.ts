@@ -59,6 +59,20 @@ test('database peak deferral remains due without reporting a mismatch',async()=>
   assert.equal(calls.filter(c=>c.name==='check_ranking_shadow_parity').length,1);
   assert.deepEqual(failures,[]);
 });
+
+test('a database-side off gate tolerates stale runtime admission without maintenance override',async()=>{
+  for(const phase of ['apply_ranking_deltas','check_ranking_shadow_parity']){
+    const {client,calls}=fixture();const rpc=client.rpc;const failures:Error[]=[];
+    client.rpc=async(name,args)=>{
+      if(name===phase){calls.push({name,args});return {data:{status:'disabled',pending:false},error:null};}
+      return rpc(name,args);
+    };
+    await runRankingShadowPass(client,{...options,captureExceptionFn:e=>failures.push(e)});
+    assert.deepEqual(failures,[]);
+    for(const call of calls) assert.equal((call.args as Record<string,unknown>).p_maintenance,undefined);
+    if(phase==='apply_ranking_deltas') assert.equal(calls.some(c=>c.name==='check_ranking_shadow_parity'),false);
+  }
+});
 test('every run logs queue size and elapsed pass time, even when disabled',async()=>{
   const {client}=fixture({stage:'off',queue:23});const logs:Array<Record<string,unknown>>=[];let tick=0;
   await runRankingShadowPass(client,{now:MORNING,clock:()=>tick++?450:100,

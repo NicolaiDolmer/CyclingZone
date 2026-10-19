@@ -40,7 +40,7 @@ function main(){
   }
   query(guard+flagGuard);
   if(process.argv.includes('--verify-only')){
-    const verification=JSON.parse(query(guard+flagGuard+" SELECT jsonb_build_object('queue_length',(SELECT count(*) FROM public.ranking_dirty_log),'runtime_flag',(SELECT value FROM public.app_config WHERE key='ranking_shadow_enabled'),'peak_status',public.check_ranking_shadow_parity(NULL,'2026-10-19T17:00:00Z')->>'status','old_overload_removed',to_regprocedure('public.check_ranking_shadow_parity(bigint)') IS NULL,'new_overload_present',to_regprocedure('public.check_ranking_shadow_parity(bigint,timestamptz)') IS NOT NULL);"));
+    const verification=JSON.parse(query(guard+flagGuard+" SELECT jsonb_build_object('queue_length',(SELECT count(*) FROM public.ranking_dirty_log),'runtime_flag',(SELECT value FROM public.app_config WHERE key='ranking_shadow_enabled'),'peak_status',public.check_ranking_shadow_parity(NULL,'2026-10-19T17:00:00Z',true)->>'status','old_overload_removed',to_regprocedure('public.check_ranking_shadow_parity(bigint)') IS NULL,'new_overload_present',to_regprocedure('public.check_ranking_shadow_parity(bigint,timestamptz,boolean)') IS NOT NULL);"));
     if(verification.runtime_flag!=='off'||verification.peak_status!=='deferred-peak'||!verification.old_overload_removed||!verification.new_overload_present) throw Error('6765: final migration verification failed');
     const out=join(root,'docs/audits/2026-10-19-6765-supabase-branch.json');
     const report=JSON.parse(readFileSync(out,'utf8'));
@@ -53,7 +53,7 @@ function main(){
   if(state.contributions!==0||state.queued!==1) throw Error('6765: first rebuild requires untouched shadow state; refusing reset');
   function pass(){
     const output=query("SET statement_timeout='60s';"+guard+flagGuard+
-      " WITH started AS MATERIALIZED(SELECT clock_timestamp() t), applied AS MATERIALIZED(SELECT public.apply_ranking_deltas(200) result FROM started) SELECT jsonb_build_object('result',result,'server_ms',round((extract(epoch FROM(clock_timestamp()-(SELECT t FROM started)))*1000)::numeric,3)) FROM applied;");
+      " WITH started AS MATERIALIZED(SELECT clock_timestamp() t), applied AS MATERIALIZED(SELECT public.apply_ranking_deltas(200,NULL,NULL,true) result FROM started) SELECT jsonb_build_object('result',result,'server_ms',round((extract(epoch FROM(clock_timestamp()-(SELECT t FROM started)))*1000)::numeric,3)) FROM applied;");
     return JSON.parse(output);
   }
   const batches=[];const started=performance.now();

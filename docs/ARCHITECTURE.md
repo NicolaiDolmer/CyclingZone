@@ -82,7 +82,8 @@ applied before the backend change. Contract and staging evidence:
 M1 shadow maintenance (#6765, design PR #6849) adds a race-grain contribution
 table, append-only queue and four keyed summaries alongside the legacy views.
 Successful passes and clean cron ticks process bounded shadow batches behind
-ranking_shadow_enabled (seed off, fail closed; triggers continue enqueueing); the
+  ranking_shadow_enabled (seed off, fail closed; source triggers skip off writes,
+  with one collapsed rebuild marker and mandatory repair on later enable); the
 existing five matviews remain the reader/heartbeat contract. Quiescent parity
 checks compare both EXCEPT ALL directions and report drift to Sentry, daily per
 backend client outside 19-22 Europe/Copenhagen. The staging every-pass override

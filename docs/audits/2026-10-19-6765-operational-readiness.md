@@ -13,7 +13,8 @@ No production write, reader swap, feature activation or merge.
   set after normal apply (the registry guard requires actual production rows).
 - All runtime apply/parity calls share the helper gate. Missing/unknown flag
   and read failure are off. Beta uses the existing engineWrite convention.
-  Statement triggers continue to enqueue. Privileged, explicit maintenance
+  Source triggers now skip off-period writes; the queue is collapsed to one
+  rebuild marker and enabling requires a repair. Privileged, explicit maintenance
   benchmark calls do not turn on the runtime flag.
 - A service-only metrics RPC counts ranking_dirty_log. Each helper invocation
   logs queue_length at entry, pass_ms, enabled and status, including disabled
@@ -42,7 +43,7 @@ The new-branch tool returned Invalid or expired requestState and created no
 branch (verified with list_branches). No temporary branch was created or deleted;
 deletion timestamp is not applicable. The existing staging branch was retained.
 It continues to hold the measured shadow objects with the runtime flag off.
-Final migration replay was verified at 12:59:13 UTC: queue 0, flag off, SQL peak
+The earlier migration replay was verified at 12:59:13 UTC: queue 0, flag off, SQL peak
 deferral active and only the new two-argument parity overload present.
 
 The clean loadtest wrapper and assertLoadtestIsolation returned ISOLATED with
@@ -98,3 +99,7 @@ Source data are the pre-existing synthetic/anonymized loadtest fixture.
 Patch notes exempt: off-by-default operational controls do not change player
 output, text or mechanics. Claude retains merge/production apply/review-marker
 ownership. T7 distributional checks and M2 observation gates remain separate.
+
+Claude's blocking review on 7ca0b8e is addressed in
+[the trigger follow-up](2026-10-19-6765-rider-trigger.md), including the updated
+off-queue contract, concurrency checks and staging bulk-update measurements.

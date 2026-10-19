@@ -26,3 +26,12 @@ Peak admission must include elapsed legacy/apply work. SQL also checks its own
 execution clock so queued RPC admission cannot cross into the Danish peak.
 Database deferral remains due and is not a parity mismatch. Boundary tests use
 explicit summer/winter instants. Both review regressions are now green.
+# Kill-switch and hot-trigger review
+
+Gating only Node consumers lets producers accumulate unbounded off work. Skip
+source deltas while off, retain one repair marker and require rebuild on enable.
+Serialize the flag transition against both source commits and processors; test a
+source transaction held open across an attempted enable, plus stale Node admission.
+Use an AFTER ROW WHEN guard for rare team changes on the hot riders table.
+Measure the unchanged-team bulk workload with rollback on the authorized branch;
+report callback time separately from total execution and retain sample spread.
