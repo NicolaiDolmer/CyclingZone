@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runNormalizedTrainingDateSweep, dispatchTrainingDateAlarms, __resetNormalizedTrainingDateCacheForTests } from './trainingDateClose.js';
+import { runNormalizedTrainingDateSweep, dispatchTrainingDateAlarms, departTrainingDateRiders, __resetNormalizedTrainingDateCacheForTests } from './trainingDateClose.js';
 import { runTrainingDayCloseSweep, __resetTrainingDayCloseStateForTests } from './trainingDayCloseTrigger.js';
 
 test('teammates settle independently and a midnight retry cannot grant growth twice', async () => {
@@ -351,4 +351,14 @@ test('a sweep that settles today triggers one ranking refresh; a past-date retry
   __resetNormalizedTrainingDateCacheForTests();
   await runNormalizedTrainingDateSweep({ ...retryLoopOptions({ calls: [], legacyLookups: [] }), refreshRankings: async () => { refreshes.push('past'); } });
   assert.equal(refreshes.length, 1);
+});
+
+test('#6504: before auto-migrate creates the RPC nobody is departed; other errors still throw', async () => {
+  const call = error => departTrainingDateRiders({ supabase: { rpc: async () => ({ data: null, error }) },
+    teamId: 't', seasonId: 's', tickDate: '2026-10-19', riderIds: ['r'], now: new Date('2026-10-19T18:00:00Z') });
+  assert.deepEqual(await call({ code: 'PGRST202', message: 'Could not find the function' }), []);
+  assert.deepEqual(await call({ code: '42883', message: 'function does not exist' }), []);
+  await assert.rejects(call({ code: 'XX000', message: 'boom' }), /depart released riders/);
+  assert.deepEqual(await departTrainingDateRiders({ supabase: { rpc: async () => ({ data: { departed_rider_ids: ['r'] }, error: null }) },
+    teamId: 't', seasonId: 's', tickDate: '2026-10-19', riderIds: ['r'], now: new Date() }), ['r']);
 });

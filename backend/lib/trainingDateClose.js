@@ -74,11 +74,15 @@ async function loadTrainingWorkRows({ supabase, season, tickDate }) {
 // #6504: a rider who has provably left the team (team_id is null now) is taken out
 // of the date without alarm. The RPC re-checks team_id server-side and returns only
 // the riders it accepted; the rest are quarantined by the caller as before.
-async function departTrainingDateRiders({ supabase, teamId, seasonId, tickDate, riderIds, now }) {
-  const data = await checked(supabase.rpc('depart_training_date_riders', {
+// In the deploy window before auto-migrate has created the function (PGRST202),
+// nobody is departed: the caller quarantines them exactly as before #6504.
+export async function departTrainingDateRiders({ supabase, teamId, seasonId, tickDate, riderIds, now }) {
+  const { data, error } = await supabase.rpc('depart_training_date_riders', {
     p_team_id: teamId, p_season_id: seasonId, p_tick_date: tickDate,
     p_rider_ids: riderIds, p_now: now.toISOString(),
-  }), 'depart released riders from training date');
+  });
+  if (error?.code === 'PGRST202' || error?.code === '42883') return [];
+  if (error) throw new Error(`depart released riders from training date: ${error.message}`);
   return data?.departed_rider_ids ?? [];
 }
 
