@@ -1,5 +1,83 @@
 export const PATCHES = [
   {
+    "version": "7.369",
+    "date": "2026-10-19",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board shows the current mandate",
+          "body": "A mandate from a season that has ended no longer sits next to this season's mandate. A proposal for an ended season can't be signed any more."
+        },
+        "da": {
+          "title": "Bestyrelsen viser det aktuelle mandat",
+          "body": "Et mandat fra en afsluttet sæson står ikke længere ved siden af denne sæsons mandat. Et forslag for en afsluttet sæson kan ikke længere underskrives."
+        },
+        "refs": [
+          6780,
+          6773
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Calendar shows the pool you raced in",
+          "body": "When you browse an ended season, the calendar now marks the pool your team actually raced in that season."
+        },
+        "da": {
+          "title": "Kalenderen viser den pulje, I kørte i",
+          "body": "Når du bladrer i en afsluttet sæson, markerer kalenderen nu den pulje, dit hold faktisk kørte i den sæson."
+        },
+        "refs": [
+          6880,
+          6875
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "New teams start in Division 4",
+          "body": "Help texts and tooltips now say Division 4, which is where new teams start."
+        },
+        "da": {
+          "title": "Nye hold starter i Division 4",
+          "body": "Hjælpetekster og forklaringer siger nu Division 4, som er dér, nye hold starter."
+        },
+        "refs": [
+          6653,
+          6650
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No day-length tag on time trials",
+          "body": "Time trials and team time trials no longer show Long day or Short day."
+        },
+        "da": {
+          "title": "Intet dagslængde-mærke på enkeltstart",
+          "body": "Enkeltstart og holdtidskørsel viser ikke længere Long day eller Short day."
+        },
+        "refs": [
+          6660,
+          6475
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.368",
     "date": "2026-10-18",
     "changes": [
