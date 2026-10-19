@@ -4,14 +4,14 @@
 
 **Reglen:** 🔴 brand foran alt (motor + rytterudvikling er brand fra 7/10) · klare PR'er merges løbende af merge-sessionen efter arbejdsstandarden ([`GITHUB_WORKFLOW.md`](GITHUB_WORKFLOW.md), merge-tog #6861) · nyt testes på beta først, kun det vi er sikre på releases (ejer 18/10) · **gør det lovede færdigt** (dato først, ældste først, samme dato parallelt) · 💰 Forretning viger aldrig: fast torsdag. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) + [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
 
-**Ro på spillet (ejer 7/10, til S5 25/10):** kvalitet og fastholdelse foran nyt. Datolovede ting bygges stadig. **Deploy-infra frosset 23-26/10** (#6864 #6865).
+**Ro på spillet (ejer 7/10, til S5 25/10):** kvalitet og fastholdelse foran nyt. Datolovede ting bygges stadig. **Verdensklasse-sporet (ejer 19/10, efter S5-skiftet):** race engine #6914 · mobil 10x #6916 · kommandopalet #6915 (specs i `superpowers/specs/2026-10-19-*`).
 
 ## 🔴 Brand
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
 - **Stabilitet ved 10x:** aftenafregningen #6490 → job-kø #6491 + direkte Postgres #6492 (spec #6655) · ranglisten genberegner hele historikken #6765 (design #6849) · løbssiden crasher i Firefox #6698.
-- **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **formtoppe virker ikke siden v4 #6156: eget flag #6902, tændes ved sæsonskiftet (ejer 19/10); motor v2 tændes for nye løb nu (#6819/#6820)**.
+- **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **v2-pakken (ejer 19/10): udbrudspakken #6804 (design først) + jagtafstand #6814 + testport på S5-ruter #6909 → tænd v2 #6820 samlet, når den er grøn; formtoppe #6156 via flaget `race_form_peaks`**.
 
 ## 🟠 Nu · højst 5
 
