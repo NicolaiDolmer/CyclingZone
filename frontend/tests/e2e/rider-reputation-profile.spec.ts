@@ -30,10 +30,13 @@ test("rider reputation is a tappable summary with all fetched events", async ({ 
   await expect(page.getByRole("heading", { name: "Ada Pedersen" })).toBeVisible();
   const reputation = page.getByRole("button", { name: "Ukendt" });
   await expect(reputation).toBeVisible();
+  await expect(reputation.locator("svg")).toBeVisible();
   await expect(page.getByText("3 / 20 til Kendt")).toBeVisible();
   await expect(page.getByText("Hvorfor omdømmet flyttede sig")).toHaveCount(0);
 
   await page.setViewportSize({ width: 1440, height: 900 });
+  expect(await reputation.evaluate((element) => getComputedStyle(element).cursor)).toBe("pointer");
+  await page.screenshot({ path: "test-results/rider-reputation-desktop-closed.png" });
   await reputation.click();
   const details = page.getByRole("dialog", { name: "Hvorfor omdømmet flyttede sig" });
   await expect(details).toBeVisible();

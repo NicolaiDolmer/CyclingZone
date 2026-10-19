@@ -51,20 +51,22 @@ const DIVISION_CHIP = "rgb(96 165 250)";
 // ville kunne skubbe den testede VALUE-blok uden for viewport på mobil
 // (core-smoke.spec.js måler dens bounding-rect). Grid'en giver samme label/
 // value-anatomi men wrapper sikkert i stedet for at skuble bredde ud af syne.
-function HeroStat({ label, value, sub, valueClassName = "text-[20px] font-[650]", valueProps = {}, interactive = false }) {
+function HeroStat({ label, value, sub, popover, valueClassName = "text-[20px] font-[650]", valueProps = {}, interactive = false }) {
   return (
     <div className={`min-w-0 ${interactive ? "relative" : ""}`}>
       <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
       {interactive ? (
-        <button type="button" className={`block min-h-11 text-left font-data leading-tight text-cz-1 tabular-nums focus-visible:outline focus-visible:outline-2 focus-visible:outline-cz-2 ${valueClassName}`} {...valueProps}>
+        <button type="button" className={`block min-h-11 cursor-pointer rounded-cz text-left font-data leading-tight text-cz-1 tabular-nums transition-colors hover:text-cz-2 hover:underline hover:decoration-cz-border hover:underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cz-2 ${valueClassName}`} {...valueProps}>
           {value ?? "—"}
+          {sub}
         </button>
       ) : (
         <div className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`} {...valueProps}>
           {value ?? "—"}
         </div>
       )}
-      {sub}
+      {!interactive && sub}
+      {popover}
     </div>
   );
 }
@@ -129,7 +131,7 @@ function ReputationEventList({ events = [], open, onClose, dialogRef }) {
   const rows = Array.isArray(events) ? events : [];
   if (!open) return null;
   return (
-    <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} className="fixed bottom-[76px] left-4 right-4 z-50 max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-30 sm:mt-2 sm:w-[320px] sm:max-h-none sm:overflow-visible">
+    <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-label={t("profile.reputation.whyTitle")} onKeyDown={(event) => { if (event.key === "Escape") onClose(); }} className="fixed bottom-[76px] left-4 right-4 z-overlay max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:absolute sm:bottom-auto sm:left-auto sm:right-0 sm:top-full sm:z-dropdown sm:mt-2 sm:w-[320px] sm:max-h-none sm:overflow-visible">
       <div className="flex items-center justify-between gap-3 mb-2">
         <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
         <button type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
@@ -255,11 +257,13 @@ export default function RiderProfileHero({
             <span className="block h-full bg-cz-2" style={{ width: `${reputationProgress.percent}%` }} />
           </span>
           <span className="mt-1 block font-data text-2xs text-cz-3 tabular-nums">
+            <span className="inline-flex items-center gap-0.5">
             {t("profile.reputation.progressTo", { value: reputationProgress.current, target: reputationProgress.target, band: t(`profile.reputation.band.${reputationProgress.nextBand}`) })}
+              <ChevronRightIcon size={12} aria-hidden="true" className="shrink-0 text-cz-3" />
+            </span>
           </span>
         </span>
       )}
-      {reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => setReputationOpen(false)} dialogRef={reputationDetailsRef} />}
     </>
   );
 
@@ -424,6 +428,7 @@ export default function RiderProfileHero({
           value={reputationOn && reputationBand ? t(`profile.reputation.band.${reputationBand}`) : reputationValue == null ? "—" : Math.round(reputationValue)}
           valueClassName="text-[20px] font-[650]"
           sub={reputationSub}
+          popover={reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => setReputationOpen(false)} dialogRef={reputationDetailsRef} />}
           interactive={reputationOn}
           valueProps={reputationOn ? {
             ref: reputationTriggerRef,
