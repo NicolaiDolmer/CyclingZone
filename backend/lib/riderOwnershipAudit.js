@@ -108,14 +108,14 @@ export async function recordRiderOwnershipEvent(supabase, event) {
  * række (det gav en dubletrække), men tilskriver triggerens række. Best-effort
  * og kaster aldrig, som recordRiderOwnershipEvent.
  *
- * @param {object} supabase
+ * @param {any} supabase Supabase-klient (service_role)
  * @param {object} p
  * @param {string} p.riderId
  * @param {string} p.fromTeamId holdet rytteren forlod
  * @param {string} p.since ISO-tid lige før UPDATE'en (snævrer ind til denne udgang)
  * @param {string} p.reason en af RIDER_OWNERSHIP_REASON
- * @param {string} [p.relatedEntityType]
- * @param {string} [p.actorType]
+ * @param {string|null} [p.relatedEntityType]
+ * @param {string|null} [p.actorType]
  * @param {string|null} [p.actorId]
  * @returns {Promise<{ok:boolean, updated:number}>}
  */
@@ -130,7 +130,7 @@ export async function attributeTeamExitEvent(supabase, { riderId, fromTeamId, si
     return { ok: true, updated: data?.length ?? 0 };
   } catch (e) {
     // best-effort: ejerskabsændringen er allerede committet; kun tilskrivningen mangler.
-    console.error("  ⚠️  attributeTeamExitEvent fejlede for rytter %s (ikke-fatal, #6504):", riderId, e.message);
+    console.error("  ⚠️  attributeTeamExitEvent fejlede for rytter %s (ikke-fatal, #6504):", riderId, e instanceof Error ? e.message : String(e));
     return { ok: false, updated: 0 };
   }
 }
