@@ -35,3 +35,10 @@ source transaction held open across an attempted enable, plus stale Node admissi
 Use an AFTER ROW WHEN guard for rare team changes on the hot riders table.
 Measure the unchanged-team bulk workload with rollback on the authorized branch;
 report callback time separately from total execution and retain sample spread.
+
+## Preserve the clock across the RPC boundary
+
+An injected JS clock is insufficient if SQL falls back to its own wall clock.
+Forward executionNow as an ISO p_now after elapsed work and lease renewal.
+The regression fixes JS time in 2040 and simulates SQL wall time in the evening
+peak, proving both the exact RPC timestamp and completed daily throttling.

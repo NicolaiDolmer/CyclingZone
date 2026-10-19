@@ -208,6 +208,11 @@ Paritet bruger ét statement-snapshot og sammenligner begge EXCEPT ALL-retninger
 for alle fire outputs; pending kø eller ændret generation udsætter kontrollen.
 Produktion kontrolleres dagligt pr. backend-klient (og efter procesgenstart),
 altid uden for kl. 19 inklusive til 22 eksklusive i Europe/Copenhagen.
+Coordinatoren sender den beregnede executionNow som ISO-timestamp i p_now,
+så JS- og SQL-gaten bruger samme injicerede ur. SQL's vægur er kun fallback
+for manuelle kald uden p_now.
+p_now er den fælles admissionstid; transport/køtid efter afsendelse flytter
+ikke denne værdi. En særskilt execution-time-protokol er ikke en del af M1.
 En forfalden kontrol i vinduet udsættes til næste tilladte pas. Staging kan
 bruge RANKING_SHADOW_PARITY_EVERY_PASS=true, men det overstyrer aldrig flag
 eller aftenvinduet. Hver kørsel logger queue_length ved start, pass_ms,

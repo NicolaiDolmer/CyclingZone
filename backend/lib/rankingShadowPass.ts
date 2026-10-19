@@ -55,7 +55,9 @@ export async function runRankingShadowPass(client: Client, {
     // The staging cadence override never bypasses the Danish evening peak.
     const hour=copenhagenHour(new Date(executionNow));
     if(hour>=19&&hour<22) {status='parity-deferred-peak';return true;}
-    const parity=await client.rpc('check_ranking_shadow_parity',{p_target_version:targetVersion??null});
+    const parity=await client.rpc('check_ranking_shadow_parity',{
+      p_target_version:targetVersion??null,p_now:new Date(executionNow).toISOString(),
+    });
     if(parity.error) throw new Error(parity.error.message);
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost after shadow parity');
     const result=parity.data as {status?:string;differences?:unknown}|null;

@@ -22,9 +22,12 @@ No production write, reader swap, feature activation or merge.
   Equality at either limit does not alarm. Pass duration includes the helper's
   metrics, flag read, apply and any due parity.
 - Daily parity is excluded from [19:00,22:00) Europe/Copenhagen. Client admission
-  includes elapsed legacy/apply time; SQL checks its execution clock at admission
-  and before each comparison. Tests inject time and cover summer/winter offsets,
-  exact boundaries, and a pass crossing 19:00.
+  includes elapsed legacy/apply time and forwards that instant as p_now; SQL uses
+  the same injected clock at admission and before each comparison. Only manual
+  calls without p_now fall back to the database clock.
+  This shared instant is admission time; it does not advance for transport/queue
+  delays after sending. A separate execution-time clock protocol remains follow-up.
+  Tests cover summer/winter offsets, exact boundaries, and a pass crossing 19:00.
   Deferred work remains due. Staging's every-pass option cannot bypass the
   flag or peak exclusion.
 - Legacy leases are renewed before metrics, between metrics and the flag read,

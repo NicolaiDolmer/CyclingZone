@@ -109,3 +109,27 @@ test('apply crossing 19:00 rechecks execution time before parity',async()=>{
   await runRankingShadowPass(f.client,{...options,now:Date.parse('2026-10-19T16:59:59Z'),clock:()=>elapsed});
   assert.equal(f.calls.filter(c=>c.name==='check_ranking_shadow_parity').length,0);
 });
+
+test('shifted time crosses the RPC boundary even when the database wall clock is in peak hours',async()=>{
+  const f=fixture();const rpc=f.client.rpc;
+  const shiftedNow=Date.parse('2040-07-01T08:00:00Z');
+  const databaseWallClock='2026-07-01T18:00:00Z';
+  let elapsed=100,renewals=0,parityCalls=0;
+  const parityTimes:unknown[]=[];
+  f.client.rpc=async(name,args)=>{
+    if(name==='apply_ranking_deltas') elapsed+=2500;
+    if(name==='check_ranking_shadow_parity'){
+      parityCalls++;const pNow=(args as Record<string,unknown>).p_now;parityTimes.push(pNow);
+      const sqlNow=new Date(typeof pNow==='string'?pNow:databaseWallClock);
+      const hour=(sqlNow.getUTCHours()+2)%24;
+      return {data:{status:hour>=19&&hour<22?'deferred-peak':'equal'},error:null};
+    }
+    return rpc(name,args);
+  };
+  const opts={...options,now:shiftedNow,clock:()=>elapsed,
+    renewLease:async()=>{if(++renewals===4)elapsed+=750;return true;}};
+  await runRankingShadowPass(f.client,opts);
+  await runRankingShadowPass(f.client,{...opts,now:shiftedNow+60000});
+  assert.deepEqual(parityTimes,['2040-07-01T08:00:03.250Z']);
+  assert.equal(parityCalls,1,'a completed shifted-time check is throttled instead of retried against database wall time');
+});
