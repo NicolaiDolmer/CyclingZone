@@ -94,6 +94,20 @@ features:
     verified: 2026-10-04
     note: On siden 28/9 (læst i prod 4/10); kører officielle etaper.
 
+  - id: race-form-peaks
+    area: race-engine
+    title_en: Form peaks in races
+    title_da: Formtoppe i løbene
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6156
+    verified: 2026-10-19
+    note: Flaget oprettes off ved merge.
+    decision: taend
+    decide_by: 2026-10-25
+    roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
+    roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision
@@ -102,7 +116,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). official_times_v5 var aktuel fra ejerens \"tænd\" 16/10 (#6462) til S5-tændingen 17/10 (s5_profiles_v1, se race-engine-s5-profiles); løb bundet til v2-v5 færdiggøres på deres revision (#6642)."
+    note: Frosset prototype; v2-v5 i timeModel.ts/segmentLoop.ts. v5 aktiv 16/10 (#6462) til S5 17/10 (#6642); løb beholder bundet revision.
 
   - id: race-engine-s5-profiles
     area: race-engine

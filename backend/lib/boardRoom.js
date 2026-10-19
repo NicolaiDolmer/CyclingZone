@@ -139,6 +139,7 @@ import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } fr
 import { computeBonusOfferProgress, computePassiveModifierInfo } from "./boardTransparency.js";
 import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.js";
 import { captureException } from "./sentry.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 const MINUTES_LIMIT = 10;
 const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så weekDelta + mood har nok historik
@@ -507,15 +508,19 @@ export async function buildBoardRoomPayload({
   // gammelt mandat der var underskrevet efter sit eget sæsonskifte (nyere
   // signed_at end det aktuelle). Sæson-opslaget er derfor startet først, og
   // mandat-opslaget venter kun på det, resten kører stadig parallelt.
-  // Promise.resolve: en Postgrest-builder kører sin request ved HVER .then(),
-  // så den pakkes i ét rigtigt promise der deles af begge forbrugere.
-  const activeSeasonPromise = Promise.resolve(
-    supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
-  );
-  const mandatePromise = activeSeasonPromise.then((seasonResult) =>
+  // #6876 · Under sæsonskiftet kan to sæsoner være aktive. Den fælles loader
+  // vælger den nyeste og returnerer ét promise, som begge forbrugere deler.
+  const activeSeasonPromise = loadSingleActiveSeason(supabase, {
+    select: "id, number", tag: "board-room",
+  }).catch((err) => {
+    // Preserve Boardroom's best-effort payload on an actual season read error.
+    captureException(err);
+    return null;
+  });
+  const mandatePromise = activeSeasonPromise.then((season) =>
     queryCurrentSeasonActiveMandate(supabase, {
       teamId,
-      seasonNumber: seasonResult?.error ? null : (seasonResult?.data?.number ?? null),
+      seasonNumber: season?.number ?? null,
     }));
 
   const [
@@ -524,7 +529,7 @@ export async function buildBoardRoomPayload({
     mandateRes,
     milestonesRes,
     teamRes,
-    seasonRes,
+    activeSeason,
     seasonsListRes,
     standingRes,
     ridersRes,
@@ -624,8 +629,8 @@ export async function buildBoardRoomPayload({
   const mandateRow = mandateRes.data ?? null;
   const milestoneRows = milestonesRes.data ?? [];
   const dnaKey = teamRes.data?.team_dna_key ?? null;
-  const currentSeasonNumber = seasonRes?.data?.number ?? null;
-  const currentSeasonId = seasonRes?.data?.id ?? null;
+  const currentSeasonNumber = activeSeason?.number ?? null;
+  const currentSeasonId = activeSeason?.id ?? null;
   const reputationEnabled = isReputationReadEnabled(reputationStage);
   const events = eventsRes.data ?? [];
   const sinceSeason = deriveFoundingSeasonNumber({
@@ -921,7 +926,11 @@ export async function buildBoardRoomPayload({
       }
 
       const achievedDisplay = formatGoalDisplayValue(evaluation?.actual);
-      const targetDisplay = formatGoalDisplayValue(evaluation?.target ?? goal?.target);
+      // #6903: gældsmålets krav er nettostilling >= 0 (goal.target = 0). Evalueringens
+      // target er score-kurvens buffer (en sæsons lønsum) og må ikke vises som målet.
+      const targetDisplay = formatGoalDisplayValue(goal?.type === "no_outstanding_debt"
+        ? (goal?.target ?? 0)
+        : (evaluation?.target ?? goal?.target));
 
       return {
         // #4578 · goal_key (indholdsbaseret) i stedet for den tidligere

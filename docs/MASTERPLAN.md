@@ -10,8 +10,8 @@
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
-- **Stabilitet ved 10x:** aftenafregningen #6490 → job-kø #6491 + direkte Postgres #6492 (spec #6655) · daglig etape-loft #6764 (rammes ved ~1,1x) · ranglisten genberegner hele historikken #6765 (design #6849) · løbssiden crasher i Firefox #6698 · falsk afstemnings-alarm #6504 (#6891 #6894).
-- **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **formtoppe virker ikke siden v4 #6156: tændes ved sæsonskiftet (ejer 19/10)**.
+- **Stabilitet ved 10x:** aftenafregningen #6490 → job-kø #6491 + direkte Postgres #6492 (spec #6655) · ranglisten genberegner hele historikken #6765 (design #6849) · løbssiden crasher i Firefox #6698.
+- **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **formtoppe virker ikke siden v4 #6156: eget flag #6902, tændes ved sæsonskiftet (ejer 19/10); motor v2 tændes for nye løb nu (#6819/#6820)**.
 
 ## 🟠 Nu · højst 5
 

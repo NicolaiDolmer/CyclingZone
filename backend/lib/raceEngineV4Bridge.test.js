@@ -781,3 +781,17 @@ test("#6156 rigtig motor: uden toppe er s5_profiles_v2 = s5_profiles_v1; med top
   assert.equal(JSON.stringify(await run("s5_profiles_v1", true)), JSON.stringify(v1), "v1 ignorerer toppene");
   assert.notEqual(JSON.stringify((await run("s5_profiles_v2", true)).results), JSON.stringify(v1.results), "v2 med toppe: toppen virker");
 });
+
+// #6156 (ejer 19/10): race_form_peaks slukket => v2 bruger formen alene, saa v2
+// kan taendes for nye loeb uden formtoppe midt i en saeson.
+test("#6156 buildV4StageInput: s5_profiles_v2 med formPeaks=false ser ALDRIG toppen (som v1)", () => {
+  const off = buildV4StageInput({
+    modules: PEAK_STUB_MODULES, entrants: PEAK_FIELD, seedString: "race:6156:peak", stageNumber: 1,
+    stageProfile: { stage_number: 1, profile_type: "mountain", distance_km: 150, peakDay: IN_WINDOW },
+    rulesRevision: "s5_profiles_v2", formPeaks: false,
+  });
+  const v1 = peakStubInput("s5_profiles_v1");
+  assert.equal(JSON.stringify({ ...off, rules_revision: "s5_profiles_v1" }), JSON.stringify(v1));
+  const on = Object.fromEntries(peakStubInput("s5_profiles_v2").startlist.map((e) => [e.rider_id, e]));
+  assert.ok(on.peaking.form > 55, "default (flag taendt) laegger stadig toppen paa");
+});

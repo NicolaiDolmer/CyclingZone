@@ -255,8 +255,10 @@ test("loadNamedCheckValues() parser rider_ownership_events' 'IS NULL OR ... IN (
   // parseren ikke klarer den, ville tabellen se ud som om den slet ikke har et CHECK.
   const reason = loadNamedCheckValues("rider_ownership_events_reason_check");
   assert.ok(reason.source, "fandt ingen rider_ownership_events_reason_check-definition");
-  assert.equal(reason.values.size, 10, `forventede 10 reason-værdier, fandt ${reason.values.size}`);
+  // #6504: +retirement (DB-triggeren for udgang fra et hold).
+  assert.equal(reason.values.size, 11, `forventede 11 reason-værdier, fandt ${reason.values.size}`);
   assert.ok(reason.values.has("stage_race_deferred_flush"));
+  assert.ok(reason.values.has("retirement"));
 
   const actor = loadNamedCheckValues("rider_ownership_events_actor_type_check");
   assert.deepEqual([...actor.values].sort(), ["admin", "api", "cron", "migration", "system"]);

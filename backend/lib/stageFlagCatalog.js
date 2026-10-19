@@ -82,6 +82,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
   { key: "race_engine_v3_scoring", area: "race-engine", label: "Løbsmotor v3 — scoring" },
   { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4" },
+  // #6156 (ejer 19/10): formtoppe/dyk i v4 under s5_profiles_v2. Seedet off; tændes ved sæsonskiftet.
+  { key: "race_form_peaks", area: "race-engine", label: "Formtoppe i løbene" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
