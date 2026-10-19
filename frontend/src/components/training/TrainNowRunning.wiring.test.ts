@@ -34,7 +34,7 @@ test("#6839 (Codex P2): the ceiling is its own timer and calls never overlap", (
   assert.match(client, /const ceiling = setTimeout\(stop, TRAIN_NOW_RUNNING_MAX_MS\)/,
     "the ceiling does not wait for a status call");
   assert.match(client, /if \(stopped \|\| polling\) return;/, "one status call at a time");
-  assert.match(client, /Promise\.race\(\[\s*load\(\)/, "each status call is time-bounded");
+  assert.match(client, /await load\(request.signal\)/, "each status call is time-bounded");
   assert.match(client, /clearTimeout\(ceiling\)/);
 });
 

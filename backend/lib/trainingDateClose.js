@@ -1,3 +1,4 @@
+import { trainingDateRpc } from "./trainingDateRpc.js";
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
 import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
@@ -58,13 +59,13 @@ export async function loadTrainingDateIndex({ supabase, now }) {
   return { jobs: [...jobs.values()].sort((a, b) => a.tickDate.localeCompare(b.tickDate)), today, activeSeasonId: active?.id ?? null };
 }
 
-export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now }) {
-  return checked(supabase.rpc('register_training_date_work', {
+export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now, nonBlocking = false }) {
+  return checked(trainingDateRpc(supabase, 'register_training_date_work', {
     p_team_id: teamId, p_season_id: seasonId, p_tick_date: tickDate,
     p_game_days: gameDays, p_expected_rider_ids: riderIds,
     p_deadline_at: trainingDateDeadline(tickDate).toISOString(),
     p_registered_at: now.toISOString(),
-  }), 'register training date');
+  }, nonBlocking), 'register training date');
 }
 
 async function loadTrainingWorkRows({ supabase, season, tickDate }) {

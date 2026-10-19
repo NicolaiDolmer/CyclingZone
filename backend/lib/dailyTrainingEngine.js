@@ -1,3 +1,4 @@
+import { trainingDateRpc } from "./trainingDateRpc.js";
 // Daglig trænings-orchestrator (#1305) — eksekverer ÉN trænings-dag for ÉT hold.
 //
 // Idempotent via et unique-index i training_day_runs: reservation-first strategi
@@ -525,11 +526,12 @@ export async function runTeamTrainingDay({
   if(conditionPerDate && roster==null) throw new Error('Frozen training date requires a verified roster');
   let riders=roster??[];
   if(conditionPerDate) {
-    const {data:work,error}=await supabase.rpc('register_training_date_work',{
+    const {data:work,error}=await trainingDateRpc(supabase, 'register_training_date_work',{
       p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_game_days:dateDays,
       p_expected_rider_ids:dateWork?.expected_rider_ids ?? riders.map(rider=>rider.id),p_deadline_at:deadlineAt,p_registered_at:now.toISOString(),
-    });
+    }, executedBy === 'manager');
     if(error) throw new Error(`register training date: ${error.message}`);
+    if(work?.held === true) throw reservationHeldError(teamId, tickDate);
     dateWork=work;
     const unsafe=dateWork.expected_rider_ids.filter(id=>{
       const rider=riders.find(row=>row.id===id);
@@ -560,13 +562,14 @@ export async function runTeamTrainingDay({
     if (conditionPerDate) {
       emptyReport.condition_per_date = true;
       emptyReport.condition_settled = settlesCondition;
-      const { error } = await supabase.rpc('commit_training_date_tick', {
+      const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
         p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
         p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
         p_executed_by: executedBy, p_report: emptyReport, p_abilities: [], p_conditions: [],
         p_history: [], p_race_history: [], p_scores: [],
-      });
+      }, executedBy === 'manager');
       if (error) throw new Error(`daily condition commit: ${error.message}`);
+      if (data?.held === true) throw reservationHeldError(teamId, tickDate);
     } else if (useRaceDayKey) await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
     else {
       // #6759: samme ejerskabs-bevis som skiftet til "writing" (token), saa en
@@ -1434,7 +1437,7 @@ export async function runTeamTrainingDay({
     const report = { riders: reportRiders, bonus_applied: bonus, executed_by: executedBy,
       tick_date: tickDate, game_day: raceDay, date_game_days: dateDays, condition_per_date: true,
       condition_settled: settlesCondition };
-    const { data, error } = await supabase.rpc('commit_training_date_tick', {
+    const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
       p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
       p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
       p_executed_by: executedBy, p_report: report,
@@ -1442,8 +1445,9 @@ export async function runTeamTrainingDay({
       p_history: historyRows, p_race_history: raceDayHistoryRows, p_scores: scoreRows,
       p_race_loads: settlesCondition ? raceLoadRows : [],
       p_deadline_reached:deadlineReached,p_now:now.toISOString(),
-    });
+    }, executedBy === 'manager');
     if (error) throw new Error(`daily condition commit: ${error.message}`);
+    if (data?.held === true) throw reservationHeldError(teamId, tickDate);
     return { alreadyRan: data?.already_ran === true, tickDate, gameDay: raceDay, squad: squadKey, report:data?.report??report,workStatus:data?.work_status??null };
   }
   // Fra dette punkt er writes i gang: ved fejl bevares reservationen BEVIDST (blokeret dag er

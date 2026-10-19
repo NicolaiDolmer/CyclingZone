@@ -1,3 +1,5 @@
+import { runTrainNow } from "./trainNow.js";
+import { createTrainNowRouter } from "../routes/trainNow.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
@@ -199,7 +201,9 @@ function createMockSupabase(state, opts = {}) {
 
   return {
     async rpc(name, args) {
-      if(name==='register_training_date_work') {
+      if (name.startsWith('try_') && opts.missingWrapper) return {error:{code:'PGRST202',message:`Could not find the function public.${name}`}};
+      if(name==='register_training_date_work' || name==='try_register_training_date_work') {
+        if (name.startsWith('try_') && opts.heldRegistration) return {data:{held:true},error:null};
         state.training_date_work??=[];
         let work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
         if(!work){work={team_id:args.p_team_id,season_id:args.p_season_id,tick_date:args.p_tick_date,game_days:args.p_game_days,expected_rider_ids:args.p_expected_rider_ids,deadline_at:args.p_deadline_at,status:'pending',quarantined_rider_ids:[],opening_conditions:Object.fromEntries((state.rider_condition??[]).filter(row=>args.p_expected_rider_ids.includes(row.rider_id)).map(row=>[row.rider_id,structuredClone(row)]))};state.training_date_work.push(work);}
@@ -211,7 +215,8 @@ function createMockSupabase(state, opts = {}) {
         work.status='needs_reconciliation';
         return {data:{work,work_status:work.status,quarantined_rider_ids:args.p_rider_ids},error:null};
       }
-      assert.equal(name, 'commit_training_date_tick');
+      assert.ok(['commit_training_date_tick','try_commit_training_date_tick'].includes(name));
+      if (name.startsWith('try_') && opts.heldCommit) return {data:{held:true},error:null};
       if (opts.failDateCommit) { opts.failDateCommit = false; return { error: { message: 'atomic commit failed' } }; }
       for (const item of args.p_abilities) Object.assign(state.rider_derived_abilities.find(row => row.rider_id === item.riderId), item.patch);
       for (const item of args.p_conditions) Object.assign(state.rider_condition.find(row => row.rider_id === item.rider_id), item);
@@ -3192,3 +3197,40 @@ test('#5620: dagen efter en etape er kun foerste felt restitution', async () => 
   }
   assert.deepEqual(intensities, ['recovery', 'hard', 'hard', 'hard', 'hard']);
 });
+
+for (const heldAt of ['heldRegistration', 'heldCommit']) {
+  test(`#6839 normalized manager reports held at ${heldAt} without training writes`, async () => {
+    const state = seedState(); seedRaceDayTick(state, {gameDay:1});
+    state.app_config.push({key:'training_condition_per_date',value:'on'});
+    const abilities = structuredClone(state.rider_derived_abilities);
+    await assert.rejects(runDay(state, {gameDay:1,dateGameDays:[1,2,3,4,5],
+      supabase:createMockSupabase(state,{[heldAt]:true})}), error => error.code === 'training_reservation_held');
+    assert.deepEqual(state.rider_derived_abilities, abilities);
+    assert.equal(state.training_day_runs.length, 0);
+  });
+}
+
+for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper']) {
+  test(`#6839 actual Train now router + normalized engine: ${heldAt ?? 'free'}`, async () => {
+    const state=seedState();seedRaceDayTick(state,{gameDay:1});
+    state.app_config.push({key:'training_condition_per_date',value:'on'},{key:'training_train_now',value:'on'});
+    const supabase=createMockSupabase(state,heldAt ? {[heldAt]:true} : {});
+    const team={id:TEAM_ID,league_division_id:'division-1'};
+    const context={teams:[team],riders:state.riders,races:[],stages:[],runs:[],entries:[],results:[],incidents:[],loads:[],
+      candidateRiderIdsByRace:new Map(),gameDaysByDivision:new Map([['division-1',[1,2,3,4,5]]])};
+    let captured=0;
+    const router=createTrainNowRouter({supabase,requireAuth:()=>{},isViewerBetaTester:async()=>false,
+      loadActiveSeason:async()=>({id:SEASON_ID,number:SEASON_NUMBER}),loadDaySpans:async()=>new Map(),
+      captureExceptionFn:()=>{captured++;},
+      run:args=>runTrainNow({...args,now:NOW,loadContext:async()=>context,loadShortRaces:async()=>[]})});
+    const handler=router.stack.find(layer=>layer.route?.methods.post).route.stack.at(-1).handle;
+    let status=200,body;
+    const res={status(code){status=code;return res;},json(value){body=value;return res;}};
+    await handler({team,body:{}},res);
+    const held = heldAt && heldAt !== 'missingWrapper';
+    assert.equal(status,held ? 409 : 200,JSON.stringify(body));
+    assert.equal(captured,0);
+    if(held){assert.equal(body.error,'training_in_progress');assert.deepEqual(body.settledGameDays,[]);assert.equal(state.training_day_runs.length,0);}
+    else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
+  });
+}

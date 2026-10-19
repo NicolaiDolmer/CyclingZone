@@ -25,11 +25,11 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
   // #6839 (owner choice A 19/10): the evening run is training the team right now.
   const [running, setRunning] = useState(false);
 
-  const load = useCallback(async (): Promise<TrainNowStatus | null> => {
+  const load = useCallback(async (signal?: AbortSignal): Promise<TrainNowStatus | null> => {
     const headers = await authHeaders();
-    if (!headers) return null;
-    const res = await apiFetch(PATH, { headers }, { source: "training-train-now" });
-    if (!res.ok) return null;
+    if (!headers || signal?.aborted) return null;
+    const res = await apiFetch(PATH, { headers, signal }, { source: "training-train-now" });
+    if (!res.ok || signal?.aborted) return null;
     const next = parseTrainNowStatus(res.data);
     setStatus(next);
     return next;
@@ -44,9 +44,11 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
     if (!running) return undefined;
     let stopped = false;
     let polling = false;
+    let controller: AbortController | null = null;
     const stop = () => {
       if (stopped) return false;
       stopped = true;
+      controller?.abort();
       clearInterval(timer);
       clearTimeout(ceiling);
       setRunning(false);
@@ -56,19 +58,24 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
     const timer = setInterval(async () => {
       if (stopped || polling) return;
       polling = true;
+      controller = new AbortController();
+      const request = controller;
+      const timeout = setTimeout(() => request.abort(), TRAIN_NOW_STATUS_TIMEOUT_MS);
       try {
-        const next = await Promise.race([
-          load(),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), TRAIN_NOW_STATUS_TIMEOUT_MS)),
-        ]);
+        // Keep polling=true until the actual request settles, including abort.
+        const next = await load(request.signal);
         if (next?.settled === true && stop()) {
           try { await onSettled?.(); } catch { /* best-effort: the next visit shows it */ }
         }
+      } catch {
+        // Aborted/unavailable status is retried by the next poll, without a UI error.
       } finally {
+        clearTimeout(timeout);
+        controller = null;
         polling = false;
       }
     }, TRAIN_NOW_RUNNING_POLL_MS);
-    return () => { stopped = true; clearInterval(timer); clearTimeout(ceiling); };
+    return () => { stopped = true; controller?.abort(); clearInterval(timer); clearTimeout(ceiling); };
   }, [running, load, onSettled]);
 
   // Synchronous in-flight guard: a second tap while the first POST is pending

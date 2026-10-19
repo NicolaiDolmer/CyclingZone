@@ -306,8 +306,12 @@ export async function runTrainNow({
   // 1) Register the date exactly as the sweep does (frozen roster + opening
   //    condition). Before the lock, so a failed registration leaves no lock behind.
   const work = existingWork ?? await registerWork({
-    supabase, teamId: team.id, seasonId: season.id, tickDate, gameDays: days, riderIds: currentIds, now,
+    supabase, teamId: team.id, seasonId: season.id, tickDate, gameDays: days, riderIds: currentIds, now, nonBlocking: true,
   });
+
+  if (work?.held === true) {
+    return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: [] } };
+  }
 
   // 2) Lock the registered roster: from here these riders' entries on the date
   //    are frozen (#6139: per rider). Idempotent per rider + date (I2); a repeated
