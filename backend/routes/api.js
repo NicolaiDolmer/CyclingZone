@@ -281,7 +281,7 @@ import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjure
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
-import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad } from "../lib/squads.js";
+import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad, seniorSquadPatch } from "../lib/squads.js";
 import { youthSquadRoom, youthSquadRooms } from "../lib/youthSquadRoom.js"; // #5568: loft pr. ungdomstrup
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
@@ -9341,8 +9341,10 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
   // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"
   // — vises i markedet men afvises af auktions-gaten (rider_is_academy).
+  // #6920: squad med (seniorSquadPatch), ellers beholder en ungdomsrytter
+  // squad='u23'/'junior' og optager en ungdomsplads uden at være i akademiet.
   const { error } = await supabase.from("riders")
-    .update({ team_id: team_id || null, pending_team_id: null, is_academy: false, acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
+    .update({ team_id: team_id || null, pending_team_id: null, ...seniorSquadPatch(), acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
   if (error) return res.status(500).json({ error: error.message });
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";
