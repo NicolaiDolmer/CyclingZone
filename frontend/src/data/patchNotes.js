@@ -43,26 +43,6 @@ export const PATCHES = [
         "category": "fixed",
         "audience": "player",
         "rollout": "live",
-        "topic": "Training",
-        "en": {
-          "title": "Train now during the evening run",
-          "body": "If you press Train now while the evening run is handling your team, the page updates instead of showing an error."
-        },
-        "da": {
-          "title": "Træn nu under aftenkørslen",
-          "body": "Trykker du Træn nu, mens aftenkørslen er i gang med dit hold, opdateres siden i stedet for at vise en fejl."
-        },
-        "refs": [
-          6822,
-          6791,
-          6798,
-          6759
-        ]
-      },
-      {
-        "category": "fixed",
-        "audience": "player",
-        "rollout": "live",
         "topic": "Season",
         "en": {
           "title": "New teams start in Division 4",
