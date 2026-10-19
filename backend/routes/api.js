@@ -9362,7 +9362,7 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
       actorId: req.user?.id ?? null,
     })
     : null;
-  if (!exitAttribution || (exitAttribution.ok && exitAttribution.updated === 0)) {
+  if (!exitAttribution || (exitAttribution.ok && exitAttribution.updated === 0 && !exitAttribution.alreadyLogged)) {
     await recordRiderOwnershipEvent(supabase, {
       riderId: rider_id,
       riderFirstname: rider.firstname,

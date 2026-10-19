@@ -109,8 +109,9 @@ export async function recordRiderOwnershipEvent(supabase, event) {
  *
  * Ingen tidsvinduer (server- og DB-ur kan afvige): kun rytterens ALLERNYESTE
  * ejerskifte-række tilskrives, og kun hvis den er netop denne udgang
- * (fra fromTeamId til intet hold, actor system). Ellers updated = 0, og kalderen
- * skriver sin egen række (deploy-vinduet før triggeren findes). Best-effort og
+ * (fra fromTeamId til intet hold, actor system). Er den allerede tilskrevet
+ * (samtidig request), er alreadyLogged true. Ellers skriver kalderen sin egen
+ * række (deploy-vinduet før triggeren findes). Best-effort og
  * kaster aldrig, som recordRiderOwnershipEvent.
  *
  * @param {any} supabase Supabase-klient (service_role)
@@ -121,7 +122,7 @@ export async function recordRiderOwnershipEvent(supabase, event) {
  * @param {string|null} [p.relatedEntityType]
  * @param {string|null} [p.actorType]
  * @param {string|null} [p.actorId]
- * @returns {Promise<{ok:boolean, updated:number}>}
+ * @returns {Promise<{ok:boolean, updated:number, alreadyLogged:boolean}>}
  */
 export async function attributeTeamExitEvent(supabase, { riderId, fromTeamId, reason, relatedEntityType = null, actorType = null, actorId = null }) {
   try {
@@ -132,18 +133,21 @@ export async function attributeTeamExitEvent(supabase, { riderId, fromTeamId, re
       .limit(1);
     if (findError) throw new Error(normalizeSupabaseErrorMessage(findError.message));
     const latest = rows?.[0];
-    if (!latest || latest.to_team_id != null || latest.from_team_id !== fromTeamId || latest.actor_type !== "system") {
-      return { ok: true, updated: 0 };
-    }
+    const isThisExit = latest && latest.to_team_id == null && latest.from_team_id === fromTeamId;
+    // Allerede tilskrevet (fx en samtidig admin-request vandt): udgangen ER logget.
+    if (isThisExit && latest.actor_type !== "system") return { ok: true, updated: 0, alreadyLogged: true };
+    if (!isThisExit) return { ok: true, updated: 0, alreadyLogged: false };
     const { data, error } = await supabase.from("rider_ownership_events")
       .update({ reason, related_entity_type: relatedEntityType, actor_type: actorType, actor_id: actorId })
       .eq("id", latest.id).eq("actor_type", "system")
       .select("id");
     if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
-    return { ok: true, updated: data?.length ?? 0 };
+    const updated = data?.length ?? 0;
+    // 0 her = en samtidig request tog rækken mellem læs og skriv: stadig logget.
+    return { ok: true, updated, alreadyLogged: updated === 0 };
   } catch (e) {
     // best-effort: ejerskabsændringen er allerede committet; kun tilskrivningen mangler.
     console.error("  ⚠️  attributeTeamExitEvent fejlede for rytter %s (ikke-fatal, #6504):", riderId, e instanceof Error ? e.message : String(e));
-    return { ok: false, updated: 0 };
+    return { ok: false, updated: 0, alreadyLogged: false };
   }
 }

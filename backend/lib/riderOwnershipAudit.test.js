@@ -150,7 +150,7 @@ const ATTR = { riderId: "rider-1", fromTeamId: "team-a", reason: RIDER_OWNERSHIP
 
 test("attributeTeamExitEvent tilskriver rytterens nyeste række, når den er netop denne udgang", async () => {
   const supabase = makeUpdateSupabase();
-  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 1 });
+  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 1, alreadyLogged: false });
   assert.deepEqual(supabase._calls.find, [["rider_id", "rider-1"]]);
   assert.deepEqual(supabase._calls.order, [["created_at", false], ["id", false]]);
   assert.equal(supabase._calls.limit, 1);
@@ -163,15 +163,23 @@ test("attributeTeamExitEvent rører intet, når den nyeste række ikke er denne 
     [],
     [{ id: 3, from_team_id: null, to_team_id: "team-a", actor_type: "cron" }],
     [{ id: 4, from_team_id: "team-b", to_team_id: null, actor_type: "system" }],
-    [{ id: 5, from_team_id: "team-a", to_team_id: null, actor_type: "admin" }],
   ]) {
     const supabase = makeUpdateSupabase({ found });
-    assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 0 });
+    assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: true, updated: 0, alreadyLogged: false });
     assert.equal(supabase._calls.patch, null);
   }
 });
 
+test("attributeTeamExitEvent: en samtidig request har allerede tilskrevet udgangen, så ingen fallback-dublet", async () => {
+  const already = makeUpdateSupabase({ found: [{ id: 5, from_team_id: "team-a", to_team_id: null, actor_type: "admin" }] });
+  assert.deepEqual(await attributeTeamExitEvent(already, ATTR), { ok: true, updated: 0, alreadyLogged: true });
+  assert.equal(already._calls.patch, null);
+  // Mistet mellem læs og skriv (betinget update ramte 0 rækker): også logget.
+  const raced = makeUpdateSupabase({ data: [] });
+  assert.deepEqual(await attributeTeamExitEvent(raced, ATTR), { ok: true, updated: 0, alreadyLogged: true });
+});
+
 test("attributeTeamExitEvent kaster aldrig ved DB-fejl", async () => {
   const supabase = makeUpdateSupabase({ found: null, findError: { message: "boom" } });
-  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: false, updated: 0 });
+  assert.deepEqual(await attributeTeamExitEvent(supabase, ATTR), { ok: false, updated: 0, alreadyLogged: false });
 });
