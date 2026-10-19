@@ -10,16 +10,16 @@
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
-- **Stabilitet:** udfaldsalarm for PostgREST live (#6856); faste job på dansk tid (#6860). Aftenspidsen #6490: GIN-indeks droppet (#6663); 15/10-aftenen max 50 s → 1,1 s, 0 kald > 2 s, DB-tid halveret, vinduet stadig ~34 min (backend-løkken) → genmål 16/10, så job-kø #6491 + Postgres #6492 (spec #6655). Databasevagten #5878 kører, #5692 matview 0 låsefejl, chunk #5162 klar til lukning.
-- **Løbsmotoren:** v4-bjergetaper pr. division (#6456 #6464, luk kun på ejer-go) · D3-rute #6486 · udbrud vinder kuperet endagsløb #6428 · S5-udbrud #6201 merget 15/10 (bag `s5_profiles_v1`). "Long day" #6475 rettet (#6660).
+- **Stabilitet ved 10x:** aftenafregningen #6490 → job-kø #6491 + direkte Postgres #6492 (spec #6655) · daglig etape-loft #6764 (rammes ved ~1,1x) · ranglisten genberegner hele historikken #6765 (design #6849) · løbssiden crasher i Firefox #6698 · falsk afstemnings-alarm #6504 (#6891 #6894).
+- **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **formtoppe virker ikke siden v4 #6156: tændes ved sæsonskiftet (ejer 19/10)**.
 
 ## 🟠 Nu · højst 5
 
-1. **S5-etapeprofiler #6369** (kalender #5841): motorreglerne tændt 17/10 (#6699); opfølgning #6748 i `s5_profiles_v2` (tænding venter ejer, #6819/#6820). **Løbsidentitet #6857** (8 typer, signaturer, monumenter; alt i S5): dry-run til ejeren 21/10.
-2. **Udvikling 2.0 del 1 #6499** (#6110): tilbagegang D4 + ingen udvikling uden for managerhold, til 25/10.
-3. **Sæsonskifte uden fejl 25/10:** #5904 lasttest · #5864 · #5833 · bestyrelse #6130 #6122 · ungdom S5 dry-runs (før 28/10) · DST-audit #6862 (før 25/10).
-4. **Træningens rest:** #5947 historik · #5915 · #6210 maks +1 (PR #6248) · #5965 analyse.
-5. **Lovet med dato:** #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106.
+1. **S5-sæsonskifte uden fejl 25/10:** sidste træningsdato afregnet før skiftet (DST-audit #6862) · mandat-oprydning #6773 · ungdom S5 #6667 #6668 #6710 (dry-runs før 28/10) · board under skiftet #6876 · deploy-frys 23-26/10.
+2. **S5-profiler + løbsidentitet:** #6369 opfølgning #6748 i `s5_profiles_v2` (tænding venter ejer, #6819/#6820) · **løbsidentitet #6857: dry-run til ejeren 21/10**.
+3. **Udvikling 2.0 del 1 #6499** (#6110): prøvekørsel mod prod til ejeren 23/10, tænding kun på ordret go (effekt 25/10).
+4. **Træningens rest + lovet med dato:** #6210 maks +1 (PR #6248) · #5947 historik · #5965 · #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106.
+5. **Løbsbibliotek v2 til beta** (`race_library_v2`, #6680): #6514 · #6872 · #6875 (merget 19/10).
 
 ## 💰 Forretning · fast torsdag (SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 
