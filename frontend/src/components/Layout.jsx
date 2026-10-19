@@ -425,7 +425,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       )}
 
       {/* Nav groups */}
-      <nav className="flex-1 overflow-y-auto py-2">
+      <nav className="flex-1 overflow-x-hidden overflow-y-auto py-2">
         {navGroups.map(group => {
           const isOpen = openGroups[group.key];
           return (
@@ -453,6 +453,11 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
 
         {/* Bottom nav items */}
         <div className="h-px bg-cz-sidebar-border my-3 mx-4" />
+        <div className="px-4 pt-4 pb-1">
+          <span className="text-3xs font-bold uppercase tracking-[0.14em] text-cz-sidebar-3">
+            {t("nav.group.accountHelp")}
+          </span>
+        </div>
         {bottomItems.map(item => (
           <NavItem key={item.to} {...item} onClick={onNav} location={location} badgeCounts={badgeCounts} dotFlags={dotFlags} dotTones={dotTones} />
         ))}
@@ -460,16 +465,18 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {/* #2602: Contact/feedback-indgang — samme sted som Help (bottom nav),
             IKKE en flydende knap. Åbner FeedbackModal i stedet for at navigere,
             derfor et rent button-element frem for NavItem (som altid er et Link). */}
-        <button
-          type="button"
-          onClick={() => { onNav?.(); onOpenFeedback?.(); }}
-          className="group relative flex items-center w-full mx-2 px-3 py-2 rounded-cz text-[13px] text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150"
-        >
-          <span className="flex items-center gap-2.5 min-w-0">
-            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150" />
-            <span className="truncate">{contactLabel}</span>
-          </span>
-        </button>
+        <div className="mx-2">
+          <button
+            type="button"
+            onClick={() => { onNav?.(); onOpenFeedback?.(); }}
+            className="group relative flex w-full items-center px-3 py-2 rounded-cz text-[13px] text-cz-sidebar-2 hover:text-cz-sidebar-1 hover:bg-cz-sidebar-hover transition-all duration-150"
+          >
+            <span className="flex items-center gap-2.5 min-w-0">
+              <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0 bg-cz-sidebar-3 group-hover:bg-cz-sidebar-2 transition-colors duration-150" />
+              <span className="truncate">{contactLabel}</span>
+            </span>
+          </button>
+        </div>
 
         {/* #679: fast Discord-join-link mod community-serveren (ekstern). */}
         <DiscordJoinLink variant="sidebar" label={t("sidebar.joinDiscord")} onClick={onNav} className="mt-1" />
