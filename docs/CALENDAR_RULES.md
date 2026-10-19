@@ -1259,6 +1259,16 @@ Det bruges på alle skrivestier (realisme-gen-trækket, dæknings-verifikationen
 
 Felterne er ren visning: de ændrer hverken kalenderen, binding eller udtagelsesreglerne i §8. `lineupFrozen` må aldrig afvige fra `isRaceLineupFrozen`; ændres den ene, ændres den anden i samme PR.
 
+**Holdets egen pulje (`ownPoolId`, og dermed `isMine`) gælder den VISTE sæson ([#6875](https://github.com/NicolaiDolmer/CyclingZone/issues/6875), 18/10).** Kilden er `resolveTeamDivisionForSeason`, den samme som planlæggeren og boardet bruger:
+
+| Sæsonens status | Egen pulje | Hvorfor |
+|---|---|---|
+| `upcoming` | ingen (`divisionPending = true`) | op-/nedrykningen er ikke afgjort (#5405) |
+| `active` | holdets nuværende `league_division_id` | den nuværende pulje ER sæsonens |
+| `completed` | `season_standings.league_division_id` for holdet i den sæson | holdets nuværende division er en anden for de fleste (målt 18/10: 154/161 i S1, 201/219 i S2, 214/266 i S3) |
+
+Brug aldrig holdets nuværende division for en afsluttet sæson. Ellers viser kalenderen og løbskortet holdfit for løb, holdet aldrig kørte. `raceCalendar.routes.test.js` låser kilden.
+
 ---
 
 ## 9. Hvad der håndhæver hvad
