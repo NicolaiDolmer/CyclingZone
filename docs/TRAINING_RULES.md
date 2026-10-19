@@ -28,6 +28,12 @@ normaliserede `transitionAt` (Date eller ISO-streng), uden et ekstra opslag af
 maskinuret eller et separat `deps.now`-ur. Et udeladt transitionAt fastlægges af
 den eksisterende standard én gang ved funktionskaldet. Dry-run er fortsat læsende;
 genoptagelse fra en allerede completed sæson genmåler ikke den ændrede population.
+Force-auditten (`MANUAL_OVERRIDE`) skrives først via kernens `beforeTransitionWrites`
+efter samme settlement-tjek er passeret, før transitionens øvrige writes. En forventet
+settlement-afvisning (`training_settlement_blocked`) returnerer HTTP 400 med vagtens
+fejltekst og skriver hverken force-audit eller fejlaudit. Der foretages ikke et ekstra
+route-tjek, som kunne passere før auditten og afvise ved kernens gentagne læsning.
+Audit-skrivningsfejl stopper stadig transitionen før dens øvrige writes.
 Gaten er read-only, kan ikke force-omgås og afregner aldrig historisk træning efter
 et skifte. Admin får dato, hold og årsag før første irreversible handling. Den ændrer
 ikke kl. 20-reglen eller udbyttet ved manuel træning. Faste tests bruger

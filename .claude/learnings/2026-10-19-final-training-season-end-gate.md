@@ -22,3 +22,10 @@
 - Settlement brugte deps.now eller maskinuret, selv når transitionAt var givet. Det kunne afvise en deterministisk transition som fremtidig.
 - Gaten bruger nu en Date fra samme normaliserede transitionAtIso som resten af transitionen. Intet ekstra vægur-opslag eller særskilt deps.now-override.
 - Syv nye faste regressioner var røde før rettelsen: 25/10 kl. 21 Copenhagen som Date/ISO mod simulerede maskinure før/efter datoen samt et modstridende legacy deps.now. Ingen global Date-mutation eller læsning af faktisk vægur i testene.
+
+## Review-opfølgning: force-audit efter settlement
+
+- Ruten skrev MANUAL_OVERRIDE før kernens settlement-vagt. Uafregnet træning gav derfor en falsk force-audit og HTTP 500.
+- Force-auditten udføres nu via kernens beforeTransitionWrites-hook efter samme settlement-vagt, før øvrige writes. Ingen dobbelt pre-check med et nyt afvisningspunkt efter auditten.
+- Kernens forventede afvisning har fejlkoden training_settlement_blocked. Ruten svarer 400 med vagtteksten før generel exception-/fejlaudit-logning.
+- Integreret route/kerne-fixture beviser pending, partial og manglende registrering: 400 og nul audit-/transition-writes; succes har rækkefølgen settlement, force-audit, transition-write. Dry-run og audit-skrivningsfejl dækkes også.

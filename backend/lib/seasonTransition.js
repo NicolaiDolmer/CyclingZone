@@ -1034,6 +1034,7 @@ async function writeAdminLog(supabase, payload) {
  * @param {boolean} [args.dryRun]               — hvis true: ingen writes, returnér plan
  * @param {string|null} [args.adminUserId]      — auth.uid for admin-loggen
  * @param {object} [args.deps]                  — dependency-injection for tests
+ * @param {Function} [args.deps.beforeTransitionWrites] — audit hook after settlement, before transition writes
  * @returns {Promise<{ ok: true, dryRun: boolean, plan: object, log?: Array }>}
  */
 export async function transitionToNextSeason({
@@ -1086,12 +1087,20 @@ export async function transitionToNextSeason({
     const settlement = await assessFinalTrainingDateSettlement({
       supabase, season: plan.from_season, now: new Date(transitionAtIso),
     });
-    if (settlement.blocked) throw new Error(settlement.detail);
+    if (settlement.blocked) {
+      throw Object.assign(new Error(settlement.detail), {
+        code: 'training_settlement_blocked', settlement,
+      });
+    }
   }
 
   if (plan.already_transitioned) {
     // Kan stadig være halvfærdig — fortsæt fase 2-6 (alle er idempotente).
   }
+
+  // #6900: a force override is only audited after this same settlement check
+  // passed. Do not pre-check in the route and repeat the check after its audit.
+  await deps.beforeTransitionWrites?.();
 
   const log = [];
 

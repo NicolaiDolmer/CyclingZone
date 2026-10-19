@@ -269,3 +269,79 @@ test('settlement does not use a second conflicting deps.now clock', async () => 
   });
   assert.deepEqual(result, { reachedFirstWrite: true });
 });
+
+// Run the real route body and the real transition prefix together: the write
+// sentinel starts exactly where the production transition's first writes begin.
+for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 'audit_error']) {
+  test(`forced transition audit follows settlement: ${scenario}`, async () => {
+    if (scenario === 'pending' || scenario === 'partial') {
+      await db.query('UPDATE training_date_work SET status=$1 WHERE team_id=$2', [scenario, 'b']);
+    }
+    if (scenario === 'missing' || scenario === 'dry_run') await db.exec('DELETE FROM training_date_work');
+    const routeSource = readFileSync(new URL('../routes/api.js', import.meta.url), 'utf8');
+    const routeStart = routeSource.indexOf('router.post("/admin/season-transition",');
+    const bodyStart = routeSource.indexOf('async (req, res) => {', routeStart) + 'async (req, res) => {'.length;
+    const bodyEnd = routeSource.indexOf('\n});', bodyStart);
+    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+    const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessTransitionReadiness',
+      'transitionToNextSeason', 'formatForceOverrideDescription', 'TRANSITION_BLOCKED_ERROR',
+      'ADMIN_ACTION_TYPE', 'captureException', 'logTransitionPhaseSafe', 'TRANSITION_PHASE_STATUS',
+      'captureApiRouteError', routeSource.slice(bodyStart, bodyEnd));
+    const transitionSource = readFileSync(new URL('./seasonTransition.js', import.meta.url), 'utf8');
+    const transitionStart = transitionSource.indexOf('export async function transitionToNextSeason(');
+    const prefix = transitionSource.slice(transitionStart, transitionSource.indexOf('  const log = [];', transitionStart))
+      .replace('export async function', 'async function');
+    const runTransition = new AsyncFunction('buildTransitionPlan', 'assessFinalTrainingDateSettlement', 'args', 'writeSentinel',
+      prefix + '\nreturn writeSentinel();\n}\nreturn transitionToNextSeason(args);');
+    const audit = [], order = [];
+    let transitionWrites = 0, settlementReads = 0, guardDetail = null, status = 200, response;
+    const fixture = client();
+    const supabase = { from(table) {
+      if (table === 'admin_log') return { async insert(row) {
+        if (scenario === 'audit_error') return { error: { message: 'fixture audit failure' } };
+        audit.push(row); order.push('manual_override');
+        return { error: null };
+      } };
+      return fixture.from(table);
+    } };
+    const transition = args => runTransition(
+      async () => ({ from_season: { ...season, status: 'active' }, to_season: { id: 's5' } }),
+      async options => {
+        settlementReads++; order.push('settlement');
+        const result = await readiness.assessFinalTrainingDateSettlement(options);
+        guardDetail = result.detail;
+        return result;
+      },
+      { ...args, deps: { ...args.deps, carryOverManagerSetup: async () => ({}) } },
+      () => { transitionWrites++; order.push('transition_write'); return { ok: true }; });
+    class FixedDate extends Date { constructor(...args) { super(...(args.length ? args : ['2026-10-25T20:00:00Z'])); } }
+    const res = { status(value) { status = value; return res; }, json(value) { response = value; return res; } };
+    await handler({ body: { fromSeasonId: 's4', force: true, dryRun: scenario === 'dry_run', transitionAt: '2026-10-25T21:00:00+01:00' }, user: { id: 'admin' } },
+      res, supabase, FixedDate,
+      async () => ({ ready: false, failed_critical: ['season_end_completed'] }), transition,
+      readiness.formatForceOverrideDescription, readiness.TRANSITION_BLOCKED_ERROR,
+      { MANUAL_OVERRIDE: 'manual_override' }, () => {},
+      async () => { audit.push({ action_type: 'failed' }); }, { FAILED: 'failed' }, () => {});
+    if (['pending', 'partial', 'missing'].includes(scenario)) {
+      assert.equal(status, 400);
+      assert.equal(response.error, guardDetail);
+      assert.equal(audit.length, 0, 'a blocked force transition must not create any audit row');
+      assert.equal(transitionWrites, 0);
+      assert.equal(settlementReads, 1);
+    } else if (scenario === 'complete') {
+      assert.equal(status, 200);
+      assert.equal(audit.filter(row => row.action_type === 'manual_override').length, 1);
+      assert.deepEqual(order, ['settlement', 'manual_override', 'transition_write']);
+      assert.equal(transitionWrites, 1);
+    } else if (scenario === 'dry_run') {
+      assert.equal(status, 200);
+      assert.equal(audit.length, 0);
+      assert.equal(transitionWrites, 0);
+    } else {
+      assert.equal(status, 500);
+      assert.match(response.error, /fixture audit failure/);
+      assert.equal(audit.filter(row => row.action_type === 'manual_override').length, 0);
+      assert.equal(transitionWrites, 0, 'audit failure still prevents the transition');
+    }
+  });
+}
