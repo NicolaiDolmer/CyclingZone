@@ -105,7 +105,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Calendar race card and race history library (`race-library-v2`) | building | - | [CALENDAR_RULES](CALENDAR_RULES.md) | #6514 | 2026-10-15 | PR #6680; flag-nøglen race_library_v2 oprettes som off af migrationen efter merge; `flag:` tilføjes her i samme post-merge-skridt (registry-gaten kræver nøglen i prod), ejer flytter den til beta. |
+| Calendar race card and race history library (`race-library-v2`) | building | `race_library_v2` | [CALENDAR_RULES](CALENDAR_RULES.md) | #6514 | 2026-10-18 | PR #6680 merget 18/10; flaget race_library_v2 står som off i prod (læst 18/10 efter auto-migrate). Ejer flytter den til beta; #6875 rettes før "tænd beta". |
 | Hall of Fame (`hall-of-fame`) | retired | - | - | #2359 | 2026-09-06 | Redirecter til /standings. |
 
 ## onboarding
