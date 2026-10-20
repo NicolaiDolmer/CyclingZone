@@ -65,6 +65,8 @@ export const SCHEMA_VERSION = 1;
  * projektref i hosten. Peger secret'en på et andet projekt, køres intet.
  * REN; returnerer kun true/false, aldrig dele af URL'en.
  */
+const POOLER_HOST_RE = /^[a-z0-9-]+\.pooler\.supabase\.com$/;
+
 export function connectsToProject(dbUrl, ref = PROJECT_REF) {
   let u;
   try {
@@ -74,7 +76,9 @@ export function connectsToProject(dbUrl, ref = PROJECT_REF) {
   }
   if (!/^postgres(ql)?:$/.test(u.protocol)) return false;
   const user = decodeURIComponent(u.username);
-  if (user === `${EXPECTED_ROLE}.${ref}`) return true;
+  // Pooler: brugeren bærer projektref, og hosten SKAL være Supabase' pooler,
+  // så nøglen aldrig sendes til en anden server (Codex-fund, PR #6996).
+  if (user === `${EXPECTED_ROLE}.${ref}`) return POOLER_HOST_RE.test(u.hostname);
   return user === EXPECTED_ROLE && u.hostname === `db.${ref}.supabase.co`;
 }
 
@@ -533,9 +537,8 @@ export async function runChecks({ runSql, state: stateIn, mode, nowIso, limitByt
   const guardRes = await attempt(runSql, SQL.guard);
   const guard = guardRes.ok ? evaluateGuard(guardRes.data) : { ok: false, reason: guardRes.reason };
   result.guard = guard.ok ? { ok: true, role: EXPECTED_ROLE, read_only: true, read_all_stats: guard.readAllStats } : { ok: false, reason: guard.reason };
-  const allIds = ["connection_pressure", "long_sessions", "query_execution_time", "capacity_forecast"];
   if (!guard.ok) {
-    result.checks = allIds.map((id) => unable(id, `guard:${guard.reason}`));
+    result.checks = CHECK_IDS.map((id) => unable(id, `guard:${guard.reason}`));
     return { result, state, exitCode: guard.reason === "wrong_role" || guard.reason === "not_read_only" ? 2 : 3 };
   }
 
@@ -632,6 +635,22 @@ export function renderComment(result, runUrl, slimmed = false) {
 // CLI
 // ---------------------------------------------------------------------------
 
+export const CHECK_IDS = ["connection_pressure", "long_sessions", "query_execution_time", "capacity_forecast"];
+
+/** REN: rapport for en kørsel der stoppede før forbindelsen (manglende/forkert secret). */
+export function preflightFailure(reason, mode, nowIso) {
+  return {
+    schema: SCHEMA_VERSION,
+    marker: "prod-health-sql",
+    project: PROJECT_REF,
+    observed_at: nowIso,
+    mode,
+    guard: { ok: false, reason },
+    checks: CHECK_IDS.map((id) => unable(id, `guard:${reason}`)),
+    measurements: {},
+  };
+}
+
 export function parseArgs(argv) {
   const args = { mode: "report", out: null, comment: null };
   for (let i = 0; i < argv.length; i += 1) {
@@ -649,29 +668,33 @@ export async function main({ argv = process.argv.slice(2), env = process.env, ex
     log("prod-health-sql: --mode skal være snapshot eller report");
     return 1;
   }
+  const nowIso = now().toISOString();
+  const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
+  const writeOutputs = (res) => {
+    if (args.out) fs.writeFileSync(args.out, `${JSON.stringify(res, null, 2)}\n`);
+    if (args.comment) fs.writeFileSync(args.comment, `${renderComment(res, runUrl)}\n`);
+  };
+  // Forkert eller manglende secret: skriv stadig en aktuel "kan ikke vurderes"-
+  // rapport, så rutinen aldrig genbruger gårsdagens tal (Codex-fund, PR #6996).
   const dbUrl = env.CZ_MONITOR_DATABASE_URL;
-  if (!dbUrl) {
-    log("prod-health-sql: CZ_MONITOR_DATABASE_URL mangler (GitHub-secret, se #6994)");
-    return 1;
-  }
-  if (!connectsToProject(dbUrl)) {
-    log(`prod-health-sql: CZ_MONITOR_DATABASE_URL peger ikke på ${EXPECTED_ROLE} i projekt ${PROJECT_REF}; intet køres`);
-    return 2;
+  const preflight = !dbUrl ? "secret_missing" : !connectsToProject(dbUrl) ? "wrong_project" : null;
+  if (preflight) {
+    writeOutputs(preflightFailure(preflight, args.mode, nowIso));
+    log(preflight === "secret_missing"
+      ? "prod-health-sql: CZ_MONITOR_DATABASE_URL mangler (GitHub-secret, se #6994)"
+      : `prod-health-sql: CZ_MONITOR_DATABASE_URL peger ikke på ${EXPECTED_ROLE} i projekt ${PROJECT_REF} via Supabase-pooleren; intet køres`);
+    return preflight === "secret_missing" ? 1 : 2;
   }
   const stateFile = env.PROD_HEALTH_SQL_STATE || ".prod-health-sql-state/state.json";
   const { result, state, exitCode } = await runChecks({
     runSql: makePsqlRunner(dbUrl, execFn),
     state: readState(stateFile),
     mode: args.mode,
-    nowIso: now().toISOString(),
+    nowIso,
     limitBytes: env.PROD_HEALTH_SQL_DB_LIMIT_BYTES,
   });
   if (result.guard?.ok) writeState(stateFile, state);
-  if (args.out) fs.writeFileSync(args.out, `${JSON.stringify(result, null, 2)}\n`);
-  if (args.comment) {
-    const runUrl = env.GITHUB_RUN_ID ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null;
-    fs.writeFileSync(args.comment, `${renderComment(result, runUrl)}\n`);
-  }
+  writeOutputs(result);
   for (const c of result.checks) log(`${c.id}: ${c.outcome}${c.missing ? ` (${c.missing})` : ""}`);
   if (!result.guard?.ok) log(`guard: ${result.guard?.reason}`);
   return exitCode;

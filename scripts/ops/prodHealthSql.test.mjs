@@ -214,6 +214,9 @@ test("projekt-binding: kun cz_monitor i prod-projektet accepteres", () => {
   assert.equal(connectsToProject("postgresql://postgres.ghwvkxzhsbbltzfnuhhz:pw@aws-0-eu.pooler.supabase.com:5432/postgres"), false);
   assert.equal(connectsToProject("postgresql://cz_monitor:pw@localhost:5432/postgres"), false);
   assert.equal(connectsToProject("ikke en url"), false);
+  // Rigtig bruger, fremmed host: nøglen må aldrig sendes dertil.
+  assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@attacker.example/postgres"), false);
+  assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@pooler.supabase.com.attacker.example/postgres"), false);
 });
 
 test("main: forkert projekt -> exit 2 uden at køre psql", async () => {
@@ -383,11 +386,23 @@ test("psql-runner: URL gives kun som argument, stderr lækker ikke", async () =>
   assert.equal(seen[0][0], "psql");
 });
 
-test("main: mangler secret -> exit 1 uden at køre psql", async () => {
+test("main: mangler secret -> exit 1 uden psql, men aktuel unable-rapport skrives", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "phs-"));
   let called = false;
-  const code = await main({ argv: ["--mode", "report"], env: {}, execFn: async () => { called = true; }, log: () => {} });
+  const code = await main({
+    argv: ["--mode", "report", "--out", path.join(dir, "r.json"), "--comment", path.join(dir, "c.md")],
+    env: {},
+    execFn: async () => { called = true; },
+    now: () => new Date(at(4)),
+    log: () => {},
+  });
   assert.equal(code, 1);
   assert.equal(called, false);
+  const r = JSON.parse(fs.readFileSync(path.join(dir, "r.json"), "utf8"));
+  assert.equal(r.observed_at, at(4));
+  assert.deepEqual(r.guard, { ok: false, reason: "secret_missing" });
+  assert.ok(r.checks.every((c) => c.outcome === "unable_to_assess"));
+  assert.ok(fs.readFileSync(path.join(dir, "c.md"), "utf8").startsWith("<!-- prod-health-sql -->"));
 });
 
 test("main: skriver JSON, kommentar og tilstand; log indeholder ingen URL", async () => {
@@ -402,7 +417,7 @@ test("main: skriver JSON, kommentar og tilstand; log indeholder ingen URL", asyn
   ]);
   const execFn = async (_cmd, args) => ({ stdout: JSON.stringify(answers.get(args.at(-1))) });
   const logs = [];
-  const url = "postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:hemmelig@pooler:5432/postgres";
+  const url = "postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:hemmelig@aws-0-eu-central-1.pooler.supabase.com:5432/postgres";
   const code = await main({
     argv: ["--mode", "report", "--out", path.join(dir, "r.json"), "--comment", path.join(dir, "c.md")],
     env: { CZ_MONITOR_DATABASE_URL: url, PROD_HEALTH_SQL_STATE: path.join(dir, "s", "state.json") },
