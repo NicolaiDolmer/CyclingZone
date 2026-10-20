@@ -189,7 +189,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
     verified: 2026-10-15
-    note: UI live; v4 er on, men flaget race_day_intention_enabled findes ikke i prod (læst 15/10). Kalibrering + beta i #6641.
+    note: UI live; flaget findes ikke i prod endnu. Kalibrering + beta i #6641.
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -433,7 +433,7 @@ features:
     ssot: docs/RIDER_GENERATION.md
     epic: 5327
     verified: 2026-09-23
-    note: 'Kontakt rider_primary_type_from_distribution (off) koblet paa start-trup, AI-hold og relaunch; flag-feltet saettes naar raekken er verificeret i prod efter merge. Flip er ejer-gated.'
+    note: 'Kontakt (off) paa start-trup, AI-hold og relaunch. Flip er ejer-gated.'
 
   # --- training ------------------------------------------------------------
   - id: daily-training
@@ -763,6 +763,19 @@ features:
     note: "#6710 plan-PR 1. Flag-nøgle promotion_pending_enabled (oprettes off af migrationen); flyttes til flag-feltet når rækken findes i prod."
 
   # --- economy -------------------------------------------------------------
+  - id: economy-no-upkeep
+    area: economy
+    title_en: No running costs from season 5
+    title_da: Ingen driftsudgifter fra sæson 5
+    state: building
+    flag: economy_no_upkeep_v1
+    ssot: docs/ECONOMY_RULES.md
+    epic: 6936
+    verified: 2026-10-20
+    decision: taend
+    decide_by: 2026-10-25
+    note: Taendes ved skiftet 25/10 paa ejer-go.
+
   - id: sponsors
     area: economy
     title_en: Sponsors
@@ -946,7 +959,7 @@ features:
     flag: first_race_card
     epic: 1140
     verified: 2026-10-15
-    note: PR #6534 (12/10); on for alle siden 15/10 10:17 UTC efter ejer-go (nye hold er aldrig beta-testere, så beta ville vise kortet for ingen). Vises kun for hold uden første løb. Opfølgning dag 2-3-genkomst ca. 29/10 (#1140).
+    note: PR #6534; on for alle siden 15/10. Kun hold uden første løb. Opfølgning ca. 29/10 (#1140).
 
   # --- comms ---------------------------------------------------------------
   - id: email-loop

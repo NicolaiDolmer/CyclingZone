@@ -41,8 +41,8 @@
           "text": "Sponsorinkomsten schalen mee met de divisie, zodat een competent team het kan volhouden: Divisie 1 {sponsorD1} CZ$, Divisie 2 {sponsorD2} CZ$, Divisie 3 {sponsorD3} CZ$, Divisie 4 {sponsorD4} CZ$. Je getekende deal houdt zijn gegarandeerde basis voor de hele looptijd. Als je van divisie wisselt terwijl hij loopt, wordt daarbovenop elk seizoen dat het verschil duurt een aparte divisieaanpassing van {divisionAdjustmentPct} procent van het verschil tussen de twee divisies betaald."
         },
         "upkeep": {
-          "title": "Onderhoud",
-          "text": "Elk seizoen betaalt je team operationele kosten (onderhoud), geschaald naar divisie, zodat hogere divisies meer betalen. Het wordt in rekening gebracht ofwel eenmalig bij de seizoensstart, ofwel als Reis & staf voor elke seniorenkoersdag waarop je team start. Het seizoenstotaal is hetzelfde. Ik stem de exacte bedragen tussen seizoenen af, en je ziet elke afschrijving altijd in je Financiën-log."
+          "title": "Onderhoudskosten",
+          "text": "Vanaf seizoen 5 heeft je team geen onderhoudskosten: geen onderhoud, geen Reizen en staf, geen onderhoud van faciliteiten of de academie. Je belangrijkste kosten zijn salarissen van renners en staf en rente op leningen."
         },
         "salary": {
           "title": "Rennerssalaris",
@@ -187,8 +187,8 @@
           "text": "Academierenners krijgen {academySalaryPct}% van hun huidige productiewaarde betaald, hetzelfde aandeel als seniorenrenners, en tekenen jeugdcontracten van {academyContractLength} seizoen(en)."
         },
         "drift": {
-          "title": "Onderhoud",
-          "text": "Elke bezette academieplek kost {academyDrift} CZ$ per seizoen, in rekening gebracht bij de seizoensstart. Een kleine academie (3–4 plekken) is in elke divisie ruim betaalbaar. Een volle academie is een bewuste, zwaardere investering."
+          "title": "Kosten",
+          "text": "Vanaf seizoen 5 hebben plekken in de academie geen onderhoudskosten. Een volle academie is nu een kwestie van ruimte in de selectie, niet van geld."
         }
       }
     },
