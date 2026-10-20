@@ -24,6 +24,10 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
   const [pressing, setPressing] = useState(false);
   // #6839 (owner choice A 19/10): the evening run is training the team right now.
   const [running, setRunning] = useState(false);
+  // #6839 (Codex P2): did OUR press lock the date before the evening run held it?
+  // Then "locked" is not a finish line. Otherwise a lock that appears while we wait
+  // is a competing press (another tab) that completed: stop and show it.
+  const heldWhileLocked = useRef(false);
 
   const load = useCallback(async (signal?: AbortSignal): Promise<TrainNowStatus | null> => {
     const headers = await authHeaders();
@@ -64,7 +68,8 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
       try {
         // Keep polling=true until the actual request settles, including abort.
         const next = await load(request.signal);
-        if (next?.settled === true && stop()) {
+        const done = next?.settled === true || (next?.locked === true && !heldWhileLocked.current);
+        if (done && stop()) {
           try { await onSettled?.(); } catch { /* best-effort: the next visit shows it */ }
         }
       } catch {
@@ -98,11 +103,12 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
         method: "POST", headers, body: JSON.stringify({ confirmedShortRaceIds }),
       }, { source: "training-train-now" });
       const data = (res.data ?? {}) as {
-        error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
+        error?: string; locked?: boolean; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
         shortRaces?: unknown;
       };
       if (!res.ok && data.error === "training_in_progress") {
         // #6839: not an error. The page shows "Running…" and updates by itself.
+        heldWhileLocked.current = data.locked === true;
         setRunning(true);
         return { ok: false, error: "training_in_progress" };
       }

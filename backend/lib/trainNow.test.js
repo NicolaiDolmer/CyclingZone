@@ -634,6 +634,7 @@ test("#6839: a race day held by the evening run answers 409 training_in_progress
   assert.equal(result.status, 409);
   assert.equal(result.body.error, "training_in_progress");
   assert.deepEqual(result.body.settledGameDays, [31]);
+  assert.equal(result.body.locked, true, "this press locked the date before the held day");
   assert.deepEqual(calls.map((c) => c.gameDay), [31, 32], "stops at the held day");
 });
 

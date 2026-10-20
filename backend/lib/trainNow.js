@@ -310,7 +310,7 @@ export async function runTrainNow({
   });
 
   if (work?.held === true) {
-    return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: [] } };
+    return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: [], locked: false } };
   }
 
   // 2) Lock the registered roster: from here these riders' entries on the date
@@ -355,7 +355,9 @@ export async function runTrainNow({
         // fejl for spilleren: siden viser "Koerer..." og opdaterer selv, naar datoen
         // er afregnet. Senere loebsdage koeres ikke (koerslen tager dem).
         if (isTrainingReservationHeldError(err)) {
-          return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: settledDays } };
+          // locked: this press already locked the date, so the page keeps waiting for
+          // the evening run instead of treating its own lock as "done" (#6839).
+          return { status: 409, body: { error: "training_in_progress", tickDate, settledGameDays: settledDays, locked: true } };
         }
         throw err;
       }

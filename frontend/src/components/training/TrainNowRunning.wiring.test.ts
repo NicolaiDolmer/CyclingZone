@@ -26,7 +26,7 @@ test("#6839: polling stops when the date is settled, refreshes once, and has a c
   assert.match(client, /TRAIN_NOW_RUNNING_POLL_MS = 10_000/);
   assert.match(client, /TRAIN_NOW_RUNNING_MAX_MS = 15 \* 60_000/);
   assert.match(client, /TRAIN_NOW_STATUS_TIMEOUT_MS = 8_000/);
-  assert.match(client, /next\?\.settled === true && stop\(\)/, "only the call that stops refreshes");
+  assert.match(client, /if \(done && stop\(\)\)/, "only the call that stops refreshes");
   assert.match(client, /return \{ status, result, error, pressing, running, press, reload: load \}/);
 });
 
@@ -55,4 +55,11 @@ test("#6839: every language has the two new strings", () => {
 test("#6839 (Codex P2): an automatic reload is blocked while running", () => {
   const busy = page.slice(page.indexOf("RELOAD_BLOCK_REASONS.BUSY") - 400, page.indexOf("RELOAD_BLOCK_REASONS.BUSY"));
   assert.match(busy, /trainNow\.running/, "a reload would abort the only status poll");
+});
+
+test("#6839 (Codex P2): a competing press that locks the date ends the wait", () => {
+  assert.match(client, /heldWhileLocked\.current = data\.locked === true/,
+    "the 409 says whether this press had already locked the date");
+  assert.match(client, /next\?\.settled === true \|\| \(next\?\.locked === true && !heldWhileLocked\.current\)/,
+    "a lock that appears while waiting is another tab's finished press");
 });
