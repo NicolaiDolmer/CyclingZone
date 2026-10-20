@@ -177,7 +177,9 @@ function buildAttempt(route, seedKey, plateau, lastResort = false) {
   }
 
   // 2) Afslutnings-rampe.
-  const fin = (Array.isArray(route.sprints) ? route.sprints : []).find((s) => s?.kind === "finish" && Number(s.ramp_km) > 0);
+  // #6857: en signatur-helling med topmål ER rampen (ramp_in_climb); dens højdemeter ligger
+  // allerede i stigningen ovenfor og lægges ikke på igen.
+  const fin = (Array.isArray(route.sprints) ? route.sprints : []).find((s) => s?.kind === "finish" && Number(s.ramp_km) > 0 && !s.ramp_in_climb);
   if (fin) {
     const k = Math.min(n, Math.max(1, Math.round(Number(fin.ramp_km) / step)));
     const g = Math.max(0, climbGain(fin.ramp_km, fin.ramp_gradient));

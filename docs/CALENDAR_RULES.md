@@ -1061,6 +1061,13 @@ Fed = uden for ±2 pp. **6 brud.** Højbjerg er brudt i **tre** af fire division
 
 **Løbsidentitet, L1 ([#6857](https://github.com/NicolaiDolmer/CyclingZone/issues/6857)):** `race_pool.race_identity_type`, `signature` og `authored_route` er nullable kontraktfelter. Null bevarer eksisterende ruter; L1 aktiverer ingen generatoradfærd og flytter ingen løb. Ordforråd/validering: `backend/lib/raceIdentityTypes.js`; seed/apply-format og videre spor: [teknisk design §1](superpowers/specs/2026-10-18-6857-loebsidentitet-teknisk-design.md#1-datamodel). Ejerens tabel A gælder korte etapeløb, eksklusive Grand Tours.
 
+**Løbsidentitet, L2 ([#6928](https://github.com/NicolaiDolmer/CyclingZone/issues/6928), generatoren):** kun S5-modellen læser identitetsfelterne; v5 (S1-S4) og S5-løb uden type er bit-identiske med før. Kontrakten:
+- **Type:** et etapeløb med `race_identity_type` får sin types garanterede etaper, filler-fordeling og ordning (`IDENTITY_PROFILES` i `raceStageProfileGenerator.js`, inkl. ordningen "bjergene først"). Bjergfri typer får aldrig en bjergetape; divisionens kvote vælger kun blandt typens fillere.
+- **Signatur:** hver signatur (stigning, topmål, sektor, enkeltstart/prolog) låses til en etape og går igen hvert år; kun klimakset/sektoren udskiftes, resten af ruten varierer pr. sæson. Skifter signaturen etapens terræn, eller passer den ikke i etapeantallet, kastes der (fail-closed). En prolog-signatur deler kun plads med en prolog-lås.
+- **Monument:** `authored_route` gælder kun endags-monumenter (`race_type = single`, `race_class = Monuments`) og giver samme rute hvert år; alt andet afvises af generatoren.
+- **Version:** identitets-stien stemples `generator_version` 7. Kalender-garantien for bjergfri etapeløb hæves automatisk til antallet af valgte løb med en bjergfri type, og hvert typet bjergfrit løb tjekkes enkeltvis.
+- Vægtene er rute-indhold i koden (ejer-undtagelse fra regel 17, 20/10), ikke motor-/økonomi-balance.
+
 `stageOrderMetrics.js`, [#3326](https://github.com/NicolaiDolmer/CyclingZone/issues/3326) / [#3371](https://github.com/NicolaiDolmer/CyclingZone/issues/3371).
 
 | Regel | Grænse |
