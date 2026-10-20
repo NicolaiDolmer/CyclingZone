@@ -51,3 +51,8 @@ test("#6839: every language has the two new strings", () => {
     assert.ok(json.overview?.statusRunning, `${lang}: overview.statusRunning`);
   }
 });
+
+test("#6839 (Codex P2): an automatic reload is blocked while running", () => {
+  const busy = page.slice(page.indexOf("RELOAD_BLOCK_REASONS.BUSY") - 400, page.indexOf("RELOAD_BLOCK_REASONS.BUSY"));
+  assert.match(busy, /trainNow\.running/, "a reload would abort the only status poll");
+});

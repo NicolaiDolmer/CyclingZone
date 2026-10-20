@@ -578,7 +578,8 @@ export default function TrainingPage() {
     RELOAD_BLOCK_REASONS.DIRTY,
   );
   useReloadBlock(
-    Boolean(savingWeekPlan || savingRiderWeekPlanId || savingId || bulkApplying || running),
+    // #6839: "Kører…" venter på aftenkørslen; et reload ville afbryde opfølgningen.
+    Boolean(savingWeekPlan || savingRiderWeekPlanId || savingId || bulkApplying || running || trainNow.running),
     RELOAD_BLOCK_REASONS.BUSY,
   );
 
