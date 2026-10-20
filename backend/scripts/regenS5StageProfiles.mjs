@@ -262,6 +262,11 @@ export function createSupabaseRegenDb(supabase) {
       const rows = await fetchAllRowsChunkedIn(ids, (chunk) => supabase.from(table).select("id").in("id", chunk).order("id"));
       return new Set(rows.map((r) => r.id));
     },
+    async backupSlots(table, raceIds) {
+      if (!BACKUP_TABLE_PATTERN.test(table)) throw new Error(`ugyldigt backup-navn: ${table}`);
+      const rows = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from(table).select("race_id, stage_number").in("race_id", chunk).order("race_id").order("stage_number"));
+      return new Set(rows.map((r) => `${r.race_id}|${r.stage_number}`));
+    },
     async deleteProfiles(raceIds) {
       must("race_stage_profiles delete", await supabase.from("race_stage_profiles").delete().in("race_id", raceIds));
     },
@@ -552,14 +557,20 @@ notify pgrst, 'reload schema';
 `;
 }
 
-/** restore.sql: rul regen tilbage fra backuppen. Ejer-gated. */
-export function buildRestoreSql(table) {
+/**
+ * restore.sql: rul regen tilbage fra backuppen. Ejer-gated.
+ * #6929 (Codex P1): `touchedRaceIds` = de løb apply skriver. De slettes også, selvom backuppen
+ * ingen rækker har for dem (et løb der var tomt før apply), så en rollback ikke efterlader nye rækker.
+ */
+export function buildRestoreSql(table, touchedRaceIds = []) {
   if (!BACKUP_TABLE_PATTERN.test(table)) throw new Error(`ugyldigt backup-navn: ${table}`);
+  for (const id of touchedRaceIds) assertUuid(id, "race_id");
   const cols = PROFILE_COLUMNS.join(", ");
+  const touched = touchedRaceIds.length ? `\n    or race_id in (${[...touchedRaceIds].sort().map((id) => `'${id}'`).join(", ")})` : "";
   return `-- #6857/#6929 restore af S5's etapeprofiler fra ${table}. Ejer-gated.
 begin;
 delete from public.race_stage_profiles
- where race_id in (select distinct race_id from public.${table});
+ where race_id in (select distinct race_id from public.${table})${touched};
 insert into public.race_stage_profiles (${cols})
   select ${cols} from public.${table};
 commit;
@@ -579,6 +590,24 @@ export async function assertBackupCovers(db, table, ids) {
   if (missing.length) throw new Error(`backuppen mangler ${missing.length} af ${ids.length} rækker. Kør backup.sql igen. Intet skrevet.`);
 }
 
+/**
+ * #6929 (Codex P1): kast hvis backuppen ikke har en række for hver (race_id, stage_number)-plads
+ * der står i databasen LIGE NU for disse løb. Læses umiddelbart før sletningen, så en række
+ * oprettet efter dry-runnet aldrig slettes uden backup.
+ */
+export async function assertBackupCoversSlots(db, table, rows) {
+  if (!rows.length) return;
+  const raceIds = [...new Set(rows.map((r) => r.race_id))];
+  let covered;
+  try {
+    covered = await db.backupSlots(table, raceIds);
+  } catch (err) {
+    throw new Error(`backup-tabellen ${table} kan ikke læses (${err.message}). Intet slettet i denne batch.`, { cause: err });
+  }
+  const missing = rows.filter((r) => !covered.has(`${r.race_id}|${r.stage_number}`));
+  if (missing.length) throw new Error(`backuppen mangler ${missing.length} etape-pladser for løbene i batchen. Kør backup.sql igen. Intet slettet i denne batch.`);
+}
+
 /** Løbene i batches: hele løb, højst `maxRows` rækker pr. batch. */
 export function batchRaces(raceIds, rowsByRaceId, maxRows = WRITE_BATCH_ROWS) {
   const batches = [];
@@ -595,7 +624,9 @@ export function batchRaces(raceIds, rowsByRaceId, maxRows = WRITE_BATCH_ROWS) {
 }
 
 /** DELETE + INSERT pr. batch. En fejl midt i stopper; en genkørsel samler op (idempotent). */
-export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock = () => new Date() }) {
+export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock, backupTable = null }) {
+  // #6929 (Codex P1): uret injiceres altid (én kilde fra main), aldrig væguret i helperen.
+  if (typeof clock !== "function") throw new Error("applyPlan: clock skal injiceres");
   let rowsWritten = 0;
   let lastWriteAt = null;
   const batches = batchRaces(racesToWrite, plan.rowsByRaceId);
@@ -610,6 +641,7 @@ export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock 
       ];
       if (moved.length) throw new Error(`batch ${i + 1}: ${new Set(moved).size} løb er startet/bundet/claimet siden kontrollen; stoppet før sletning (tidligere batches er skrevet, rul tilbage med restore-scriptet)`);
     }
+    if (backupTable) await assertBackupCoversSlots(db, backupTable, await db.profilesOf(b.raceIds));
     await db.deleteProfiles(b.raceIds);
     await db.insertProfiles(b.rows);
     rowsWritten += b.rows.length;
@@ -683,7 +715,8 @@ export async function postVerify({ db, plan, races, divisions, runDivergenceScri
 }
 
 /** calendar-cachen er pr. proces med TTL; ingen skrivning kan rydde den udefra, så vi venter den ud. */
-export async function waitForCalendarCache({ lastWriteAt, clock = () => new Date(), sleep = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+export async function waitForCalendarCache({ lastWriteAt, clock, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) }) {
+  if (typeof clock !== "function") throw new Error("waitForCalendarCache: clock skal injiceres");
   if (!lastWriteAt) return { waitedMs: 0, emptyAt: null };
   const emptyAt = new Date(lastWriteAt.getTime() + CALENDAR_CACHE_TTL_MS + CALENDAR_CACHE_MARGIN_MS);
   const waitMs = Math.max(0, emptyAt.getTime() - clock().getTime());
@@ -1030,7 +1063,8 @@ async function main() {
   }
   const { createClient } = await import("@supabase/supabase-js");
   const raw = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
-  const now = new Date();
+  const clock = () => new Date(); // #6929: den eneste urkilde; injiceres i applyPlan/waitForCalendarCache
+  const now = clock();
   const generatedAt = now.toISOString();
   const day = copenhagenDate(now);
   const privateDir = assertPrivatePath(opts.privateDir ?? join(REPO_ROOT, "balance-internals", "6857", day), "--private-dir");
@@ -1097,7 +1131,7 @@ async function main() {
   await assertBackupCovers(db, opts.backupTable, currentIds);
   // Restore-scriptet for netop den backup-tabel apply bruger, skrevet FØR første skrivning (dry-runnet kan være fra en anden dag).
   const restorePath = join(privateDir, `restore-${opts.backupTable}.sql`);
-  writeFileSync(restorePath, buildRestoreSql(opts.backupTable), "utf8");
+  writeFileSync(restorePath, buildRestoreSql(opts.backupTable, diff.racesToWrite), "utf8");
   const stamp = generatedAt.replace(/[:.]/g, "-");
   const snapshotRows = input.profiles.slice().sort((a, b) => compareIds(a.race_id, b.race_id) || byStage(a, b));
   writeFileSync(join(privateDir, `pre-apply-snapshot-${stamp}.json`), `${JSON.stringify({ takenAt: generatedAt, rows: snapshotRows })}\n`, "utf8");
@@ -1105,7 +1139,7 @@ async function main() {
     issue: "#6929", takenAt: generatedAt, season: input.season.number, races: input.races.length, rows: snapshotRows.length,
     rowsSha256: sha256(canonicalJson(snapshotRows)), backupTable: opts.backupTable, planHash: plan.planHash, racesToWrite: diff.racesToWrite.length,
   }, null, 2)}\n`, "utf8");
-  const applied = await applyPlan({ db, plan, racesToWrite: diff.racesToWrite, log });
+  const applied = await applyPlan({ db, plan, racesToWrite: diff.racesToWrite, log, clock, backupTable: opts.backupTable });
   log(`Skrevet: ${applied.racesWritten} løb · ${applied.rowsWritten} rækker · ${applied.batches} batches`);
   const verify = await postVerify({
     db, plan, races: input.races, divisions: input.divisions,
@@ -1116,7 +1150,7 @@ async function main() {
   });
   for (const c of verify.checks) log(`${mark(c.ok)} post-verify: ${c.name} (${c.detail})`);
   if (!opts.skipCacheWait) {
-    const cache = await waitForCalendarCache({ lastWriteAt: applied.lastWriteAt });
+    const cache = await waitForCalendarCache({ lastWriteAt: applied.lastWriteAt, clock });
     log(`calendar-cachen (TTL ${CALENDAR_CACHE_TTL_MS / 1000} s) er tom${cache.emptyAt ? ` fra ${cache.emptyAt.toISOString()}` : ""}`);
   }
   if (!verify.ok) {

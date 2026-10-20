@@ -19,7 +19,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   parseArgs, copenhagenDate, canonicalJson, loadRegenInput, buildRegenPlan, checkInvariants, diffAgainstCurrent,
-  buildBackupSql, buildRestoreSql, assertBackupCovers, batchRaces, applyPlan, postVerify, crossPoolDivergence,
+  buildBackupSql, buildRestoreSql, assertBackupCovers, assertBackupCoversSlots, batchRaces, applyPlan, postVerify, crossPoolDivergence,
   parseDivergenceScriptOutput, waitForCalendarCache, buildRoutesFiles, writeRoutesDir, assertPrivatePath, buildReport,
   seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient, overlayIdentity, gtPreludes,
   CALENDAR_CACHE_TTL_MS, CALENDAR_CACHE_MARGIN_MS, WRITE_BATCH_ROWS, ROUTES_FORMAT, PROFILE_COLUMNS, CUTOVER_DATE_CPH,
@@ -97,6 +97,7 @@ function fakeDb(s) {
     async claimsOf(ids) { return s.claims.filter((x) => ids.includes(x.race_id)); },
     async scheduleOf(ids) { return s.schedule.filter((x) => ids.includes(x.race_id)); },
     async backupIds(table, ids) { return new Set((s.backup[table] ?? []).filter((id) => ids.includes(id))); },
+    async backupSlots(table, raceIds) { return new Set((s.backupSlots?.[table] ?? []).filter((k) => raceIds.includes(k.split("|")[0]))); },
     async deleteProfiles(ids) { calls.push(["delete", ids.slice()]); s.profiles = s.profiles.filter((p) => !ids.includes(p.race_id)); },
     async insertProfiles(rows) {
       calls.push(["insert", rows.length]);
@@ -358,7 +359,7 @@ test("apply: DELETE før INSERT pr. batch, post-verify grøn, genkørsel skriver
 
 test("post-verify fanger en manglende række, en afvigende rute og divergens-scriptets output", async () => {
   const { s, db, input, plan } = await setup();
-  await applyPlan({ db, plan, racesToWrite: [...plan.rowsByRaceId.keys()] });
+  await applyPlan({ db, plan, racesToWrite: [...plan.rowsByRaceId.keys()], clock: () => new Date("2026-10-21T09:00:00Z") });
   s.profiles = s.profiles.filter((p) => !(p.race_id === "r1-gt" && p.stage_number === 21));
   s.profiles.find((p) => p.race_id === "r2-pre" && p.stage_number === 1).profile_type = "flat";
   const verify = await postVerify({ db, plan, races: input.races, divisions: input.divisions, runDivergenceScript: () => "Div 1    |   2    |     27     |         1        |         0" });
@@ -385,7 +386,7 @@ test("calendar-cachen ventes ud (TTL + margin) efter sidste skrivning", async ()
   const res = await waitForCalendarCache({ lastWriteAt: last, clock: () => new Date("2026-10-21T09:00:10Z"), sleep: async (ms) => { slept = ms; } });
   assert.equal(slept, CALENDAR_CACHE_TTL_MS + CALENDAR_CACHE_MARGIN_MS - 10_000);
   assert.equal(res.emptyAt.toISOString(), "2026-10-21T09:01:05.000Z");
-  assert.deepEqual(await waitForCalendarCache({ lastWriteAt: null }), { waitedMs: 0, emptyAt: null });
+  assert.deepEqual(await waitForCalendarCache({ lastWriteAt: null, clock: () => new Date("2026-10-21T09:00:00Z") }), { waitedMs: 0, emptyAt: null });
 });
 
 test("CALENDAR_CACHE_TTL_MS matcher CACHE_TTL.calendar i routes/api.js", () => {
@@ -610,11 +611,26 @@ test("#6929 (Codex P1) applyPlan: vagterne læses igen før hver sletning; et ny
     insertProfiles: async () => {},
   };
   const plan = { rowsByRaceId: new Map([["r2", [{ race_id: "r2", stage_number: 1 }]]]) };
-  await assert.rejects(applyPlan({ db, plan, racesToWrite: ["r2"] }), /claimet/);
+  await assert.rejects(applyPlan({ db, plan, racesToWrite: ["r2"], clock: () => new Date("2026-10-21T09:00:00Z") }), /claimet/);
   assert.deepEqual(deleted, [], "intet slettet");
 });
 
 test("#6929 (Codex P2) --skip-cache-wait er ikke tilladt med --apply", async () => {
   const { parseArgs } = await import("./regenS5StageProfiles.mjs");
   assert.throws(() => parseArgs(["--apply", "--season", "5", "--confirm-season-upcoming", "--backup-table=backup_6857_race_stage_profiles_20261020", `--plan-hash=${"a".repeat(64)}`, "--skip-cache-wait"]), /skip-cache-wait/);
+});
+
+test("#6929 (Codex P1) backup dækkes pr. etape-plads lige før sletning; restore sletter også løb der var tomme", async () => {
+  const T = "backup_6857_race_stage_profiles_20261021";
+  const rows = [{ race_id: "r1", stage_number: 1 }, { race_id: "r1", stage_number: 2 }];
+  const db = { backupSlots: async () => new Set(["r1|1"]) };
+  await assert.rejects(assertBackupCoversSlots(db, T, rows), /mangler 1 etape-pladser/);
+  await assertBackupCoversSlots({ backupSlots: async () => new Set(["r1|1", "r1|2"]) }, T, rows);
+  await assertBackupCoversSlots({ backupSlots: async () => { throw new Error("må ikke kaldes"); } }, T, []);
+  const id = "11111111-1111-4111-8111-111111111111";
+  const sql = buildRestoreSql(T, [id]);
+  assert.ok(sql.includes(`or race_id in ('${id}')`), "tomme løb slettes også ved restore");
+  assert.throws(() => buildRestoreSql(T, ["ikke-et-uuid"]), /uuid/);
+  await assert.rejects(applyPlan({ db: {}, plan: { rowsByRaceId: new Map() }, racesToWrite: [] }), /clock skal injiceres/);
+  await assert.rejects(waitForCalendarCache({ lastWriteAt: null }), /clock skal injiceres/);
 });
