@@ -936,7 +936,7 @@ function squadSelectionState() {
     seasons: [{ id: ACTIVE_SEASON_ID, status: "active", number: 4 }], // referenceår 2029
     riders: [
       rider("s1", "senior"), rider("s2", "senior"),
-      rider("u1", "u23"), rider("u2", "u23"),
+      rider("u1", "u23", "2008-04-01"), rider("u2", "u23", "2008-04-01"), // #6964: sæsonalder 21
       rider("j16", "junior", "2013-04-01"), rider("j17", "junior", "2012-04-01"),
     ],
   };

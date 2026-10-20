@@ -2541,7 +2541,8 @@ function youthGeneratorState() {
   ];
   for (const t of ["t1", "t2"]) {
     seedTeamRiders(state, t, 8);
-    seedSquadRiders(state, t, "u23", 7);
+    // #6964: sæsonalder 21 i S4 (referenceår 2029) — inden for U23-grænsen.
+    seedSquadRiders(state, t, "u23", 7, { birthdate: "2008-05-01" });
   }
   return state;
 }
@@ -2598,7 +2599,7 @@ test("#5645 generator (risiko 7): en rytter med en manuel seniorentry samme løb
   state.race_entries = [
     { race_id: "S", rider_id: "t1-u23x0", team_id: "t1", race_role: "helper", is_auto_filled: false },
   ];
-  state.riders.push({ id: "t1-u23x0", team_id: "t1", squad: "u23", is_academy: true, is_retired: false });
+  state.riders.push({ id: "t1-u23x0", team_id: "t1", squad: "u23", is_academy: true, is_retired: false, birthdate: "2008-05-01" });
   state.rider_derived_abilities.push({ rider_id: "t1-u23x0", ...ab(99) });
   state.rider_condition.push({ rider_id: "t1-u23x0", fatigue: 0 });
 
