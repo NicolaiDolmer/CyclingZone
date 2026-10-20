@@ -40,7 +40,7 @@ const args = {
   team: { ...TEST_TEAM, division: 2, balance: 420_000 },
   currentSeasonNumber: 4,
   riders: [
-    { id: "r1", firstname: "A", lastname: "Rider", salary: 60_000, prize_earnings_bonus: 90_000, current_production_value: 600_000 },
+    { id: "r1", firstname: "A", lastname: "Rider", salary: 60_000, prize_earnings_bonus: 70_000, current_production_value: 600_000 },
     { id: "r2", firstname: "B", lastname: "Rider", salary: 40_000, prize_earnings_bonus: 40_000, current_production_value: 400_000 },
   ],
   debtCeiling: 900_000,
@@ -101,6 +101,13 @@ async function shoot(vp: (typeof VIEWPORTS)[number], noUpkeep: boolean) {
   const heading = page.getByRole("heading", { name: "Next season · forecast", exact: true });
   await heading.waitFor();
   await page.waitForTimeout(500);
+  // Mobilens faste bundmenu ligger ellers hen over kortet i element-billedet.
+  await page.evaluate(() => {
+    for (const el of Array.from(document.querySelectorAll("body *"))) {
+      const style = getComputedStyle(el);
+      if (style.position === "fixed" && style.bottom === "0px") (el as HTMLElement).style.display = "none";
+    }
+  });
   const card = heading.locator("xpath=../../..");
   await card.scrollIntoViewIfNeeded();
   const path = join(OUT, `${noUpkeep ? "after" : "before"}-${vp.name}.png`);
