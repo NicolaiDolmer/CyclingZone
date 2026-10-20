@@ -18,7 +18,7 @@ Kun det der ødelægger spillet i dag. Tomt = godt.
 
 1. **S5-sæsonskifte uden fejl 25/10, ca. kl. 20:30 (#6898):** D3→D4-nedrykning #6771/#6981 · alder afgør ungdomsløb #6964 · bestyrelsesbeskeder #6946 · udgifter fjernes #6936 · formtoppe tændes #6156 · mandat-oprydning #6773 · ungdom S5 #6667 #6668 #6710 (dry-runs før 28/10) · board under skiftet #6876. Afkobling af skiftet fra aftenkørslen efter 25/10 #6924.
 2. **S5-ruter → motorpakken:** løbsidentitet #6857 L2-L4 (#6928-#6930) → **prøvekørsel til ejeren 21/10** med motoren testet på de nye ruter (#6909); L4 navne/Hjælp · derefter udbrudspakken #6804 kalibreret på de nye ruter + jagtafstand #6814 → tænd v2 samlet, når testporten er grøn.
-3. **Udvikling 2.0 #6110:** del 1 #6499 prøvekørsel 23/10, tænding kun på ordret go (effekt 25/10) · del 2 en søndag i S5 med catch-up via løb #6950 og "Udviklingsscore".
+3. **Udvikling 2.0 #6110 + form/træthed 2.0 #6984:** del 1 #6499 prøvekørsel 23/10, tænding kun på ordret go (effekt 25/10) · del 2 en søndag i S5 med catch-up via løb #6950 og "Udviklingsscore" · #6984 (ejer 20/10, startet straks, langt før Giroen 1/11): målt baseline → design → byg bag flag.
 4. **Alt lovet til spillerne, dato først (#6947):** #6210 maks +1 (PR #6248) · #5947 historik · #5965 · #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106 · Discord: Træn nu = hele dagen i ét klik #6461 · taktik og trup låses samtidig #6959 · Hjælp-fejl #6979 · trøjer/udgåede/favoritter #6937-#6939 #2757.
 5. **Beta → live:** løbskort/Løbshistorik (`race_library_v2`) tændes sammen med ikoner + Kalender | Tabel #6683 · etapeside v2, træning for flere ryttere, push: gennemtest og tænd på ejer-go.
 
