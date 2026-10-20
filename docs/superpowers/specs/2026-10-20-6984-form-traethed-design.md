@@ -89,11 +89,15 @@ Konsekvens: fuld form kræver planlægning, og en hård GT tærer på formen. De
 Forklaringen til spilleren er én sætning: *"Hver etape koster træthed efter type, længde og arbejde; jo flere løbsdage i sæsonen, jo dyrere; recovery afgør, hvor hurtigt det går væk."*
 - Holdudtagelse og etapesiden viser forventet belastning som kategori (lav/middel/høj/meget høj), ikke tallet. Lidt "fog of war" er ok (friisisch 09:27).
 - Rytterens side viser sæsonens løbsdage og om sæsonbelastningen er begyndt.
-- Ugeprognosen (`trainingWeekPlanForecast.js`) bruger samme funktion som afregningen, så prognose og virkelighed aldrig divergerer.
+- Ugeprognosen (`trainingWeekPlanForecast.js`) bruger samme afregningsfunktion som aftenen. Før etapen er arbejdet ukendt (frontarbejde, hentet udbrud, indsatsen motoren kører), så prognosen antager normal indsats og intet frontarbejde og vises som et "ca."-estimat. Testen kræver paritet for kendte input (registrerede belastninger), ikke for etaper der endnu ikke er kørt.
 - help.json (EN+DA) + patch note ved tænding. Discord-opslag kun EN.
 
 ### 5.8 Stadig muligt at holde under 100
-Garanti, der testes i harness: en rytter med middel recovery, der kører en hel GT på normal indsats og hviler på alle frie pladser, slutter under skadegrænsen; en rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig, gør ikke. Spareordre og hvile på de frie pladser (især på de lette GT-datoer) skal kunne bringe en rytter tilbage under grænsen.
+To adskilte krav, der testes hver for sig i harness:
+- **Garantien (spillerkrav 6):** en rytter med middel recovery, der kører en hel GT på normal indsats og hviler på alle frie pladser, slutter under 100 i træthed.
+- **Skadeeksponering (egen gate):** andelen af rytter-datoer over skadegrænsen (70, `riderCondition.injuryFatigueFloor`, hvor trænings-skaderisikoen starter) måles og vises ejeren som G2; den er ikke selve garantien.
+
+En rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig, kan godt nå 100. Spareordre og hvile på de frie pladser (især på de lette GT-datoer) skal kunne bringe en rytter tilbage under grænsen.
 
 ## 6. Samspil
 
@@ -119,7 +123,9 @@ Garanti, der testes i harness: en rytter med middel recovery, der kører en hel 
 
 - Flaget tændes ved en dato-grænse (aftenopgørelsen), aldrig midt på en dato.
 - B5 (ejer 20/10): fra S5's første dato (sæsontælleren starter på nul, ingen GT i gang), kun på ejerens ordrette go efter harness-tallene. Er gaterne ikke grønne inden 25/10, spørges ejeren, før noget flyttes.
-- Rollback: flag off ved næste dato-grænse. Den tilstand, v2 allerede har skrevet i `rider_condition`, bliver bevidst stående og er åbning for den gamle model; den gamle model trækker den selv tilbage mod sin ligevægt over få datoer. Før tænding tages et snapshot af `rider_condition` (træthed, form) pr. rytter; skal tilstanden rulles tilbage, er det en særskilt, ejer-gated datareparation fra snapshottet med dry-run og tal først, aldrig automatisk.
+- Rollback: flag off ved næste dato-grænse, og kun på en dato hvor intet etapeløb bundet til `s5_profiles_v2` er i gang. Grunden er regel-revisionens kontrakt (RACE_ENGINE_RULES "Regel-revision pr. løb"): B2 kræver både revisionen og flaget, så et flag-off midt i en Grand Tour ville ændre løbets regler undervejs. Skal der rulles tilbage midt i et etapeløb, er det en ejer-beslutning (løbet kører færdigt under v2, eller B2 ophører fra næste etape som en bevidst undtagelse).
+- Medicin ved rollback: sporet skjules igen, og effekten slukker. Køb og ansatte bevares i databasen. Om spillerne skal kompenseres for opgraderinger eller løn i den periode, er en ejer-beslutning, der tages, før en rollback gennemføres.
+- Træthed/form ved rollback: den tilstand, v2 allerede har skrevet i `rider_condition`, bliver bevidst stående og er åbning for den gamle model; den gamle model trækker den selv tilbage mod sin ligevægt over få datoer. Før tænding tages et snapshot af `rider_condition` (træthed, form) pr. rytter; skal tilstanden rulles tilbage, er det en særskilt, ejer-gated datareparation fra snapshottet med dry-run og tal først, aldrig automatisk.
 
 ## 9. Ejer-beslutninger 20/10 (låst, kommentar på #6984)
 
