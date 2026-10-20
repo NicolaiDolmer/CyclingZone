@@ -430,7 +430,18 @@ async function defaultBaseline() {
  * test kan fastlaase begge. `defaultBaseline` kan injiceres
  * af samme grund (default: den aktuelle revision).
  */
-export async function main(argv = process.argv.slice(2), { now, clock, defaultBaseline: baselineOverride } = {}) {
+/**
+ * #6909 (Codex P1): tidsbudgettets stop-tjek. Maaler forbrugt tid paa et monotont ur
+ * (default performance.now), som kan injiceres, saa en test styrer praecist hvilke
+ * opgaver der bliver ventende. Uden budget stoppes aldrig.
+ */
+export function budgetStop(timeBudgetMin, monotonic = () => performance.now()) {
+  if (!timeBudgetMin) return () => false;
+  const stopAt = monotonic() + timeBudgetMin * 60_000;
+  return () => monotonic() >= stopAt;
+}
+
+export async function main(argv = process.argv.slice(2), { now, clock, monotonic, defaultBaseline: baselineOverride } = {}) {
   const stamp = clock ?? (now ? () => now : () => new Date());
   now ??= stamp();
   let opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
@@ -493,10 +504,10 @@ export async function main(argv = process.argv.slice(2), { now, clock, defaultBa
   const tasks = planTasks({ raceIds, opts, outDir, fromDir, prebuilt: inputs.prebuilt });
   const todo = tasks.filter((t) => !t.done);
   console.log(`${tasks.length} opgaver (${tasks.length - todo.length} allerede faerdige), ${opts.parallel} ad gangen: ${opts.baseline} -> ${opts.candidate}, ${opts.seeds} seeds`);
-  const stopAt = opts.timeBudgetMin ? Date.now() + opts.timeBudgetMin * 60_000 : null;
+  const shouldStop = budgetStop(opts.timeBudgetMin, monotonic);
   const res = await runPool(todo, opts.parallel, runChild, {
     onDone: (t, code, p) => console.log(`[${p.ok + p.failed}/${p.total}] ${t.id}: ${code === 0 ? "ok" : `FEJL (exit ${code}, se ${path.relative(REPO_ROOT, path.join(t.dir, "log.txt"))})`}`),
-    shouldStop: () => stopAt !== null && Date.now() >= stopAt,
+    shouldStop,
   });
   if (res.pending.length) console.log(`Tidsbudget naaet: ${res.pending.length} opgaver venter. Koer samme kommando igen for at genoptage.`);
   meta.failedRaces = res.failed;

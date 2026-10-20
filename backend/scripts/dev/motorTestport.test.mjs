@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, assertSameRun, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -414,4 +414,15 @@ test("#6909 main: --from-dir + --routes-from + --synthetic-field=bench bygger ca
     process.exitCode = prevExit;
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+test("#6909 (Codex P1) budgetStop: injiceret monotont ur styrer stop-tidspunktet deterministisk", () => {
+  let t = 1_000;
+  const stop = budgetStop(2, () => t);
+  assert.equal(stop(), false);
+  t += 2 * 60_000 - 1;
+  assert.equal(stop(), false, "1 ms foer budgettet");
+  t += 1;
+  assert.equal(stop(), true, "praecis ved budgettet");
+  assert.equal(budgetStop(null, () => { throw new Error("uret bruges ikke uden budget"); })(), false);
 });
