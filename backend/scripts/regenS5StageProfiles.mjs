@@ -788,6 +788,8 @@ function targetStages(hint, profiles) {
   return profiles.map((p) => p.stage_number);
 }
 
+const PIN_REASONS = Object.freeze({ missing: "featuren findes ikke med sine egenskaber", placement: "findes, men ikke på den etape stage_hint peger på" });
+
 /** Matcher etapen featuren, inkl. dens forfattede egenskaber? */
 function featureHolds(f, p) {
   if (f.kind === "climb" || f.kind === "summit_finish") {
@@ -804,8 +806,12 @@ export function signaturePins(race, signature, profiles) {
   const features = Array.isArray(signature?.features) ? signature.features : [];
   return features.map((f) => {
     const stages = targetStages(f.stage_hint, profiles);
-    const hit = profiles.find((p) => stages.includes(p.stage_number) && featureHolds(f, p));
-    return { race: race.name, kind: f.kind, name: f.name ?? null, stage_hint: f.stage_hint, pinned: Boolean(hit), stage: hit?.stage_number ?? null };
+    const holds = profiles.filter((p) => featureHolds(f, p));
+    const hit = holds.find((p) => stages.includes(p.stage_number)) ?? null;
+    // Skelner "låst et andet sted" (fx ikke på kongeetapen) fra "findes ikke", så rapporten siger hvad der skal rettes.
+    const reason = hit ? null : holds.length ? PIN_REASONS.placement : PIN_REASONS.missing;
+    const stage = (hit ?? holds[0])?.stage_number ?? null;
+    return { race: race.name, kind: f.kind, name: f.name ?? null, stage_hint: f.stage_hint, pinned: Boolean(hit), stage, reason };
   });
 }
 
@@ -940,7 +946,7 @@ function fullMarkdown(r, gateLines) {
     }
     if (d.pins.length) {
       L.push("", "### Signatur-pins", "");
-      for (const p of d.pins) L.push(`- ${mark(p.pinned)} ${p.race}: ${p.kind}${p.name ? ` "${p.name}"` : ""} (${p.stage_hint})${p.stage ? ` → etape ${p.stage}` : ""}`);
+      for (const p of d.pins) L.push(`- ${mark(p.pinned)} ${p.race}: ${p.kind}${p.name ? ` "${p.name}"` : ""} (${p.stage_hint})${p.stage ? ` → etape ${p.stage}` : ""}${p.reason ? `: ${p.reason}` : ""}`);
     }
   }
   return `${L.join("\n")}\n`;

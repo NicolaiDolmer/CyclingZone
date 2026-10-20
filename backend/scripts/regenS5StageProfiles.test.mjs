@@ -488,8 +488,12 @@ test("signaturePins: featurens egenskaber skal holde, ikke kun navnet (Codex-fun
   // climb: navn OG kategori/længde/gradient
   assert.equal(pin({ kind: "climb", stage_hint: "any", ...top, summit_finish: false }).pinned, true);
   assert.equal(pin({ kind: "climb", stage_hint: "any", ...top, category: "HC", summit_finish: false }).pinned, false);
-  // queen = løbets hårdeste etape(r)
+  // queen = løbets hårdeste etape(r); låst et andet sted siges tydeligt
   assert.equal(pin({ kind: "climb", stage_hint: "queen", ...top, summit_finish: false }).stage, 2);
+  const harder = [...profiles, { stage_number: 4, profile_type: "high_mountain", climbs: [], sectors: [] }];
+  const offQueen = signaturePins({ name: "x" }, { features: [{ kind: "climb", stage_hint: "queen", ...top, summit_finish: false }] }, harder)[0];
+  assert.deepEqual([offQueen.pinned, offQueen.stage, /ikke på den etape/.test(offQueen.reason)], [false, 2, true]);
+  assert.match(pin({ kind: "climb", stage_hint: "any", name: "Ukendt", category: "1", length_km: 9, avg_gradient: 7, summit_finish: false }).reason, /findes ikke/);
   // sektor: navn, belægning og længde
   assert.equal(pin({ kind: "sector", stage_hint: "first", surface: "cobbles", name: "Pavé A", length_km: 2 }).pinned, true);
   assert.equal(pin({ kind: "sector", stage_hint: "first", surface: "gravel", name: "Pavé A", length_km: 2 }).pinned, false);
