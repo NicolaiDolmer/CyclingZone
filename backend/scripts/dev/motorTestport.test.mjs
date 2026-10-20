@@ -323,11 +323,11 @@ test("#6909 parseArgs: --synthetic-field (default generator), --routes-from og -
   assert.equal(o.syntheticField, "generator");
   assert.equal(o.routesFrom, "balance-internals/l3");
   assert.equal(o.season, 5);
-  assert.equal(parseArgs(["--candidate=c", "--synthetic-field=bench"], { defaultBaseline: "b" }).syntheticField, "bench");
-  const plain = parseArgs(["--candidate=c"], { defaultBaseline: "b" });
+  assert.equal(parseArgs(["--candidate=c", "--synthetic-field=bench"], { defaultBaseline: "b", now: NOW }).syntheticField, "bench");
+  const plain = parseArgs(["--candidate=c"], { defaultBaseline: "b", now: NOW });
   assert.deepEqual([plain.syntheticField, plain.routesFrom, plain.season], [null, null, null]);
-  assert.throws(() => parseArgs(["--candidate=c", "--synthetic-field=giro"], { defaultBaseline: "b" }), /--synthetic-field/);
-  assert.throws(() => parseArgs(["--candidate=c", "--season=0"], { defaultBaseline: "b" }), /--season/);
+  assert.throws(() => parseArgs(["--candidate=c", "--synthetic-field=giro"], { defaultBaseline: "b", now: NOW }), /--synthetic-field/);
+  assert.throws(() => parseArgs(["--candidate=c", "--season=0"], { defaultBaseline: "b", now: NOW }), /--season/);
 });
 
 test("#6909 planTasks: en forbygget cache i loebsmappen laeses (aldrig eksporten, aldrig --save-cache)", () => {
@@ -343,8 +343,26 @@ test("#6909 runPool: tidsbudgettet starter ingen nye opgaver, de koerende goeres
   const res = await runPool(tasks, 2, async () => { started += 1; return 0; }, { shouldStop: () => started >= 2 });
   assert.deepEqual(res.ok, ["a", "b"]);
   assert.deepEqual(res.pending, ["c", "d"]);
-  assert.equal(parseArgs(["--candidate=c", "--time-budget=9"], { defaultBaseline: "b" }).timeBudgetMin, 9);
-  assert.equal(parseArgs(["--candidate=c"], { defaultBaseline: "b" }).timeBudgetMin, null);
+  assert.equal(parseArgs(["--candidate=c", "--time-budget=9"], { defaultBaseline: "b", now: NOW }).timeBudgetMin, 9);
+  assert.equal(parseArgs(["--candidate=c"], { defaultBaseline: "b", now: NOW }).timeBudgetMin, null);
+});
+
+test("#6909 (Codex): ventende opgaver (fx bench efter tidsbudget) gemmes i meta og goer kortet ufaerdigt, ogsaa i --report-only", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-pending-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    mkdirSync(out, { recursive: true });
+    writeFileSync(path.join(out, "testport-meta.json"), JSON.stringify({ candidate: "c", baseline: "b", seeds: 1, benchScope: "all", pendingTasks: ["bench:c"] }));
+    process.exitCode = 0;
+    const res = await main(["--report-only", `--out=${out}`, "--no-png"], { now: NOW });
+    assert.deepEqual(res.card.meta.pendingTasks, ["bench:c"]);
+    assert.match(readFileSync(path.join(out, "testport.md"), "utf8"), /UFAERDIG:\*\* tidsbudgettet stoppede koerslen; 1 opgaver er ikke koert: bench:c/);
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test("#6909 assertSameRun: andet syntetisk felt, rute-mappe eller saeson er en anden koersel", () => {

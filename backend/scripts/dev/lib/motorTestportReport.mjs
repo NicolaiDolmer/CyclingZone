@@ -332,6 +332,7 @@ export function renderTestportMarkdown(card) {
   if (card.sameRevision) lines.push("", "**Kandidat = baseline**: samme koersel i begge kolonner (roegtest/reference).");
   if (m.failedRaces?.length) lines.push("", `**ADVARSEL:** ${m.failedRaces.length} opgaver fejlede og er IKKE med: ${m.failedRaces.join(", ")}.`);
   if (m.missingScorecards?.length) lines.push("", `**ADVARSEL:** ${m.missingScorecards.length} forventede loeb mangler et laesbart scorecard og er IKKE med: ${m.missingScorecards.join(", ")}.`);
+  if (m.pendingTasks?.length) lines.push("", `**UFAERDIG:** tidsbudgettet stoppede koerslen; ${m.pendingTasks.length} opgaver er ikke koert: ${m.pendingTasks.join(", ")}. Koer samme kommando igen.`);
   if (b.missing || c.missing) lines.push("", `**ADVARSEL:** loeb uden koersel: baseline ${b.missing}, kandidat ${c.missing}.`);
   lines.push("", "## Dom", "");
   lines.push(`- FAIL: ${c.counts.FAIL} mod ${b.counts.FAIL} (${fmtDelta(b.counts.FAIL, c.counts.FAIL, (x) => fmtN(x, 0))}); PASS ${fmtDelta(b.counts.PASS, c.counts.PASS, (x) => fmtN(x, 0))}.`);
@@ -393,7 +394,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;pad
 <h1>Motor-testport: ${esc(card.candidate)} mod ${esc(card.baseline)}</h1>
 <p>${esc(card.generatedAt ?? "")} · ${card.races} loeb · ${esc(card.meta?.seeds ?? "-")} seeds · PRIVAT</p>
 <p>${inputLines(card.meta ?? {}).map(esc).join("<br>")}</p>
-${(card.meta?.failedRaces?.length || card.meta?.missingScorecards?.length) ? `<p class="bad">UFULDSTAENDIG: ${card.meta?.failedRaces?.length ?? 0} opgaver fejlede, ${card.meta?.missingScorecards?.length ?? 0} scorecards mangler</p>` : ""}
+${(card.meta?.failedRaces?.length || card.meta?.missingScorecards?.length || card.meta?.pendingTasks?.length) ? `<p class="bad">UFULDSTAENDIG: ${card.meta?.failedRaces?.length ?? 0} opgaver fejlede, ${card.meta?.missingScorecards?.length ?? 0} scorecards mangler, ${card.meta?.pendingTasks?.length ?? 0} opgaver venter</p>` : ""}
 <p class="${reg.length ? "bad" : "ok"}">${reg.length ? `Haarde gates vaerre: ${esc(reg.map((r) => r.label).join(", "))}` : "Ingen haard gate er vaerre under kandidaten"} · FAIL-delta ${esc(String(card.verdict.failDelta))}</p>
 <table><thead><tr><th>Maaling</th><th class="n">${esc(card.baseline)}</th><th class="n">${esc(card.candidate)}</th><th class="n">delta</th></tr></thead><tbody>${rows}</tbody></table>
 </body></html>`;

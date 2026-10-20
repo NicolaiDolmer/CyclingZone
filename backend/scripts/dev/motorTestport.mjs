@@ -496,13 +496,17 @@ export async function main(argv = process.argv.slice(2), { now, clock, defaultBa
   });
   if (res.pending.length) console.log(`Tidsbudget naaet: ${res.pending.length} opgaver venter. Koer samme kommando igen for at genoptage.`);
   meta.failedRaces = res.failed;
+  // #6909 (Codex): opgaver tidsbudgettet ikke naaede (ogsaa bench), saa kortet og
+  // --report-only ved at koerslen er ufaerdig.
+  meta.pendingTasks = res.pending;
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
   const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: stamp().toISOString() }, thresholds });
   return writeCard({ card, outDir, png: opts.png, failed: res.failed });
 }
 
-/** Skriv kortet (md + json + evt. png). Fejlede opgaver eller manglende scorecards = exit 1. */
+/** Skriv kortet (md + json + evt. png). Fejlede, ventende opgaver eller manglende scorecards = exit 1. */
 async function writeCard({ card, outDir, png, failed }) {
+  const pending = card.meta?.pendingTasks ?? [];
   writeFileSync(path.join(outDir, "testport.json"), JSON.stringify(card, null, 2));
   writeFileSync(path.join(outDir, "testport.md"), renderTestportMarkdown(card));
   if (png) {
@@ -514,8 +518,8 @@ async function writeCard({ card, outDir, png, failed }) {
     }
   }
   const missing = card.meta?.missingScorecards ?? [];
-  console.log(`Kort: ${path.join(outDir, "testport.md")} (+ .json${png ? ", .png" : ""}) · ${card.races} loeb${failed.length ? ` · ${failed.length} opgaver FEJLEDE` : ""}${missing.length ? ` · ${missing.length} scorecards mangler` : ""}`);
-  if (failed.length || missing.length) process.exitCode = 1;
+  console.log(`Kort: ${path.join(outDir, "testport.md")} (+ .json${png ? ", .png" : ""}) · ${card.races} loeb${failed.length ? ` · ${failed.length} opgaver FEJLEDE` : ""}${missing.length ? ` · ${missing.length} scorecards mangler` : ""}${pending.length ? ` · ${pending.length} opgaver venter (tidsbudget)` : ""}`);
+  if (failed.length || missing.length || pending.length) process.exitCode = 1;
   return { card, outDir, failed };
 }
 
