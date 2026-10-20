@@ -893,7 +893,8 @@ export function matchesAuthored(profile, authored) {
 }
 
 // Terrænets hårdhed til "queen": kongeetapen er en etape af løbets hårdeste terræn (spec §5).
-const TERRAIN_RANK = Object.freeze({ rolling: 1, hilly: 2, medium_mountain: 3, mountain: 4, high_mountain: 5 });
+// Samme rangering som generatoren holder queen-etapen øverst med (#6995).
+const TERRAIN_RANK = stageProfileGenerator.IDENTITY_TERRAIN_RANK;
 
 function targetStages(hint, profiles) {
   const n = profiles.length;

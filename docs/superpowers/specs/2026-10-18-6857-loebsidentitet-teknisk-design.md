@@ -31,7 +31,7 @@ Hver type har et fast garanti-sæt, filler-vægte og en ordnings-arketype. Det l
 | Type | Garantier | Filler | Ordning |
 |---|---|---|---|
 | sprinters | flat, flat, hilly | flat, rolling, hilly | sprint_finale; bjergfri |
-| climbers_gt_prelude | mountain, high_mountain, flat | hilly, mountain, medium_mountain, itt | summit_finale |
+| climbers_gt_prelude | mountain, high_mountain, flat | hilly, mountain, medium_mountain, high_mountain (#6995), itt | summit_finale |
 | hilly | hilly, hilly, rolling | hilly, rolling, medium_mountain, flat | circuit_finale; bjergfri |
 | cobbles_benelux | cobbles, flat, hilly | cobbles, flat, rolling | sprint/circuit; bjergfri |
 | time_trial | itt (prolog, etape 1), itt_hilly (sidste tredjedel), flat | flat, rolling, hilly | tt_finale |
@@ -41,7 +41,9 @@ Hver type har et fast garanti-sæt, filler-vægte og en ordnings-arketype. Det l
 
 **Signaturen fastlåses i pass 2** (`raceRouteGenerator.js`, ny `applySignature`). En `climb` erstatter klimaks-stigningen på den etape, som `stage_hint` udpeger. Terrænet læses igen med `deriveTerrainType`, og hvis det skifter, kastes der (valideres i seed-testen). `itt`/`prologue` låser etapetypen før ordningen. Variationen pr. sæson bevares (`seedKeyFor` med `season_id`).
 
-**Monumenter:** `buildSingle` returnerer `authored_route`, når den findes. `generator_version` = 7 for identitets-stien.
+**Queen (#6995):** en `stage_hint: "queen"`-signatur er løbets hårdeste etape. Ingen garanti, filler eller kvote-type må ligge over queen-etapens terræn (uafgjort er tilladt); en garanti over den kaster (fail-closed).
+
+**Monumenter:** `buildSingle` returnerer `authored_route`, når den findes. Finale-rampen (stigende spurt, mur, bakke) er et afledt felt og læses af rutens målstigning, holdt i afslutningens bånd (#6995). `generator_version` = 7 for identitets-stien.
 
 **Kvoter:** `s5StageRaceFillerSlots` læser `IDENTITY_PROFILES`, og fillerne begrænses til typens liste. Brosten 5 % og ITT ~10 % måles i tørkørslen pr. division. `TIER_MOUNTAIN_FREE_STAGE_RACE_MIN` og `tierCalendarGuarantees.test.js` opdateres i samme PR. D1's 3 `climbers_gt_prelude` tildeles de tre korte D1-etapeløb, der slutter lige før Giro (1/11), Tour (8/11) og Vuelta (22/11).
 
