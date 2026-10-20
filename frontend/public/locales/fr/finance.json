@@ -110,15 +110,12 @@
       "useMax": "Utiliser le max.",
       "maxZero": "Pas de place pour un nouvel emprunt. Ta dette est au plafond de la division, soit {ceiling} CZ$.",
       "exceedsMax": "Cela te ferait dépasser le plafond de dette, car les frais y comptent. Emprunt max. actuel : {value} CZ$.",
-      "costPerSeason": "Intérêts de la saison prochaine si tu ne rembourses rien : {interest} CZ$ -> la dette atteindrait {projected} CZ$",
       "submit": "Souscrire l'emprunt",
       "processing": "Traitement..."
     },
     "confirmModal": {
       "title": "Confirmer un gros emprunt",
       "body": "Tu es sur le point d'emprunter <strong>{principal} CZ$</strong> plus <strong>{fee} CZ$</strong> de frais. Ta dette totale devient <strong>{newTotalDebt} CZ$</strong>, soit {pct} % du plafond de dette de {ceiling} CZ$ de ta division.",
-      "interestForecast": "Si tu ne rembourses rien, les seuls intérêts de la saison prochaine ajoutent <strong>{interest} CZ$</strong>, ce qui porte ta dette à <strong>{projected} CZ$</strong>.",
-      "ceilingWarning": "Rien que par les intérêts, c'est au-dessus du plafond de ta division. Si tu es toujours au-dessus au prochain changement de saison, la direction gèle les transferts et peut forcer la vente de tes coureurs pour combler l'écart.",
       "question": "Souscrire cet emprunt quand même ?",
       "confirm": "Souscrire l'emprunt"
     },

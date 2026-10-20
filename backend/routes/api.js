@@ -2777,13 +2777,10 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
           captureException(err);
         }
       }
-      const valueGap = expected != null && rider.market_value != null
-        ? expected - rider.market_value : 0;
       verdict = buildVerdict({
         age, own, level, maxLevel: state.maxLevel,
         bestNow: best.now,
         bestCeilMid: (bestProg.progLo + bestProg.progHi) / 2,
-        valueGap,
       });
       // #3666: kalibreringen er VÆK. `types` sendes nu i visnings-opskriftens egen
       // enhed — samme enhed som evne-tallene og som alt andet i appen. Det var

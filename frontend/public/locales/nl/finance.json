@@ -110,15 +110,12 @@
       "useMax": "Maximum gebruiken",
       "maxZero": "Geen ruimte voor een nieuwe lening. Je schuld zit op het plafond van de divisie van {ceiling} CZ$.",
       "exceedsMax": "Hiermee kom je boven het schuldenplafond, omdat de kosten meetellen. Maximale lening nu: {value} CZ$.",
-      "costPerSeason": "Rente volgend seizoen als je niets aflost: {interest} CZ$ -> de schuld zou {projected} CZ$ bereiken",
       "submit": "Lening afsluiten",
       "processing": "Verwerken..."
     },
     "confirmModal": {
       "title": "Grote lening bevestigen",
       "body": "Je staat op het punt <strong>{principal} CZ$</strong> te lenen plus <strong>{fee} CZ$</strong> kosten. Je totale schuld wordt <strong>{newTotalDebt} CZ$</strong>, {pct}% van het schuldenplafond van {ceiling} CZ$ voor jouw divisie.",
-      "interestForecast": "Als je niets aflost, komt alleen al de rente van volgend seizoen er <strong>{interest} CZ$</strong> bij, waardoor je schuld op <strong>{projected} CZ$</strong> uitkomt.",
-      "ceilingWarning": "Dat is alleen al door de rente boven het plafond van je divisie. Als je er bij de volgende seizoenswissel nog boven zit, bevriest het bestuur transfers en kan het renners van je dwangmatig verkopen om het gat te dichten.",
       "question": "Deze lening toch afsluiten?",
       "confirm": "Lening afsluiten"
     },
