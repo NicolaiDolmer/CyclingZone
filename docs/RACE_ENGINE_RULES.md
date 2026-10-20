@@ -523,6 +523,11 @@ læring om at et scorecard der hænger på et absolut tal måler feltstørrelsen
 
 Etapekortets lang/kort-mærke (`routeReadKeys` i `frontend/src/lib/stageRouteProfile.js`) sammenligner distancen med profilens typiske længde. På `itt`, `itt_hilly` og `ttt` vises mærket ALDRIG: en enkeltstart på 40 km er ikke en "lang dag", og v4 lægger intet ekstra udholdenheds-slid på enkeltstarter under 150 km. Enkeltstarten afgøres af tidskørselsevnen (se afsnittet om `s5_profiles_v1` ovenfor). Kommer der senere et nyt rutemærke, skal undtagelsen stå her.
 
+### Løbsidentitet: queen-etapen og monument-rampen ([#6995](https://github.com/NicolaiDolmer/CyclingZone/issues/6995), S5-stien, `generator_version` 7)
+
+- **Queen er løbets hårdeste etape.** En signatur med `stage_hint: "queen"` sætter et loft: ingen garanti, filler eller kvote-type må have et hårdere terræn (rolling < hilly < medium_mountain < mountain < high_mountain; enkeltstart, sektor og flad har rang 0). Uafgjort er tilladt. En garanti over loftet kaster (fail-closed). Tørkørslens signatur-pin bruger samme rangering (`IDENTITY_TERRAIN_RANK`).
+- **Monument-rampen er afledt.** En håndskreven rute med stigende spurt, mur eller bakke får sin finale-rampe fra målstigningen (`ramp_in_climb`), holdt i afslutningens bånd fra S5-spec §3. Uden målstigning kaster generatoren i stedet for at opfinde en rampe.
+
 ## 2c. Incidents — hvad koster hvad (M10)
 
 To modeller lever side om side indtil v4-flippet: **v4's trappe** (den ejer-besluttede, gældende fremad) og **v3's binære model** (den spillerne møder i dag).

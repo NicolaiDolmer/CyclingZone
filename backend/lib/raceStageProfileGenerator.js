@@ -1747,7 +1747,9 @@ const terrainRank = (/** @type {string} */ t) => /** @type {Record<string, numbe
  * @returns {number | null}
  */
 function queenCeilingFor(locks) {
-  const ranks = locks.filter((l) => l.feature?.stage_hint === "queen" && terrainRank(l.type) > 0).map((l) => terrainRank(l.type));
+  // #6995 (Codex P2): en queen uden terræn-rang (enkeltstart, sektor, flad stigning) har loft 0,
+  // ikke "intet loft"; en garanti over den kaster i stedet for at lade queen ligge forkert.
+  const ranks = locks.filter((l) => l.feature?.stage_hint === "queen").map((l) => terrainRank(l.type));
   return ranks.length ? Math.min(...ranks) : null;
 }
 

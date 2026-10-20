@@ -1628,6 +1628,8 @@ test("#6995 queen: kvotens lovlige filler-typer ligger aldrig over queen-terræn
 test("#6995 queen: en garanti over queen-terrænet er en modsigelse og kaster (fail-closed)", () => {
   // climbers_gt_prelude garanterer højbjerg; en kat. 1-queen (bjerg) kan ikke være den hårdeste etape.
   assert.throws(() => generateRaceStageProfiles(idRace("climbers_gt_prelude", 5, 0, { features: [QUEEN_CAT1] }), S5), /queen signature is easier/);
+  // Codex P2: en queen uden terræn-rang (enkeltstart) har loft 0, ikke "intet loft".
+  assert.throws(() => generateRaceStageProfiles(idRace("allround", 5, 0, { features: [{ kind: "itt", stage_hint: "queen", band: "flat" }] }), S5), /queen signature is easier/);
 });
 
 const DOYENNE = Object.freeze({
