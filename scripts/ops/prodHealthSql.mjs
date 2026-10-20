@@ -42,7 +42,8 @@
  *   node scripts/ops/prodHealthSql.mjs --mode snapshot
  *   node scripts/ops/prodHealthSql.mjs --mode report --out prod-health-sql.json --comment prod-health-sql.md
  *
- * Exit: 0 = kørte (også med fund) · 1 = config-fejl · 2 = værn afvist (forkert rolle/ikke read-only).
+ * Exit: 0 = kørte (også med fund) · 1 = config-fejl · 2 = værn afvist (forkert rolle/ikke read-only)
+ *       · 3 = værnet fik intet svar (login afvist, forbindelse, timeout); kommentaren skrives stadig.
  */
 
 import { execFile } from "node:child_process";
@@ -218,7 +219,7 @@ export function evaluateGuard(guard) {
   if (!guard || typeof guard !== "object") return { ok: false, reason: "guard_no_answer" };
   if (guard.role !== EXPECTED_ROLE) return { ok: false, reason: "wrong_role" };
   if (guard.read_only !== "on") return { ok: false, reason: "not_read_only" };
-  return { ok: true, readAllStats: guard.read_all_stats === true };
+  return { ok: true, readAllStats: guard.read_all_stats === true, serverVersionNum: guard.server_version_num ?? null };
 }
 
 export function evaluateConnections(row) {
@@ -279,7 +280,7 @@ export function evaluateSessions(rows) {
 }
 
 /** REN: rå pg_stat_statements-svar -> kompakt snapshot til tilstanden. */
-export function toStatementSnapshot(raw) {
+export function toStatementSnapshot(raw, serverVersionNum = null) {
   const rows = {};
   for (const r of raw?.rows ?? []) {
     if (r.queryid === null || r.queryid === undefined) continue;
@@ -293,6 +294,7 @@ export function toStatementSnapshot(raw) {
   }
   return {
     observed_at: raw?.observed_at ?? null,
+    server_version_num: serverVersionNum,
     stats_reset: raw?.info?.stats_reset ?? null,
     dealloc: raw?.info?.dealloc ?? null,
     row_count: (raw?.rows ?? []).length,
@@ -329,6 +331,10 @@ export function evaluateStatements(snapshots) {
   if (s0.stats_reset !== s1.stats_reset || s1.stats_reset !== s2.stats_reset
       || s0.dealloc !== s1.dealloc || s1.dealloc !== s2.dealloc) {
     return unable(id, "stats_reset_or_dealloc_changed", { threshold });
+  }
+  // Guiden: "Discard comparisons after an upgrade".
+  if (s0.server_version_num !== s1.server_version_num || s1.server_version_num !== s2.server_version_num) {
+    return unable(id, "server_version_changed", { threshold });
   }
 
   let compared = 0;
@@ -479,13 +485,13 @@ export async function runChecks({ runSql, state: stateIn, mode, nowIso, limitByt
   const allIds = ["connection_pressure", "long_sessions", "query_execution_time", "capacity_forecast"];
   if (!guard.ok) {
     result.checks = allIds.map((id) => unable(id, `guard:${guard.reason}`));
-    return { result, state, exitCode: guard.reason === "wrong_role" || guard.reason === "not_read_only" ? 2 : 0 };
+    return { result, state, exitCode: guard.reason === "wrong_role" || guard.reason === "not_read_only" ? 2 : 3 };
   }
 
   const stmtRes = await attempt(runSql, SQL.statements);
   let stmtCheck;
   if (stmtRes.ok) {
-    state.pssSnapshots = pushSnapshot(state.pssSnapshots, toStatementSnapshot(stmtRes.data), nowIso);
+    state.pssSnapshots = pushSnapshot(state.pssSnapshots, toStatementSnapshot(stmtRes.data, guard.serverVersionNum), nowIso);
     stmtCheck = evaluateStatements(state.pssSnapshots);
   } else {
     stmtCheck = unable("query_execution_time", `pg_stat_statements:${stmtRes.reason}`);

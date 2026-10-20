@@ -59,7 +59,7 @@ const failing = (reason) => Object.assign(new Error("x"), { reason });
 // --- værn -------------------------------------------------------------------
 
 test("værn: kun cz_monitor i read-only slipper igennem", () => {
-  assert.deepEqual(evaluateGuard(GOOD_GUARD), { ok: true, readAllStats: true });
+  assert.deepEqual(evaluateGuard(GOOD_GUARD), { ok: true, readAllStats: true, serverVersionNum: 170006 });
   assert.equal(evaluateGuard({ ...GOOD_GUARD, role: "postgres" }).reason, "wrong_role");
   assert.equal(evaluateGuard({ ...GOOD_GUARD, read_only: "off" }).reason, "not_read_only");
   assert.equal(evaluateGuard(null).reason, "guard_no_answer");
@@ -73,10 +73,10 @@ test("forkert rolle: ingen tjek køres, alle unable, exit 2", async () => {
   assert.ok(result.checks.every((c) => c.outcome === "unable_to_assess" && c.missing === "guard:wrong_role"));
 });
 
-test("forbindelsesfejl i værnet: unable med grov årsag, exit 0", async () => {
+test("forbindelsesfejl i værnet: unable med grov årsag, exit 3 (rød workflow)", async () => {
   const runSql = fakeRunSql({ guard: failing("login_rejected") });
   const { result, exitCode } = await runChecks({ runSql, state: null, mode: "report", nowIso: at(4) });
-  assert.equal(exitCode, 0);
+  assert.equal(exitCode, 3);
   assert.equal(result.guard.reason, "login_rejected");
   assert.ok(result.checks.every((c) => c.outcome === "unable_to_assess"));
 });
@@ -170,6 +170,12 @@ test("statements: reset eller dealloc-ændring kasserer sammenligningen", () => 
   assert.equal(evaluateStatements(reset).missing, "stats_reset_or_dealloc_changed");
   const dealloc = threeSnapshots(base, { info: [undefined, { stats_reset: "2026-10-18T06:21:18Z", dealloc: 3 }, undefined] });
   assert.equal(evaluateStatements(dealloc).missing, "stats_reset_or_dealloc_changed");
+});
+
+test("statements: Postgres-opgradering mellem snapshots kasserer sammenligningen", () => {
+  const base = [[["1", 0, 0]], [["1", 100, 100]], [["1", 200, 50000]]];
+  const snaps = base.map((rows, i) => toStatementSnapshot(stmtRaw(at(2 + i), rows), i === 2 ? 170007 : 170006));
+  assert.equal(evaluateStatements(snaps).missing, "server_version_changed");
 });
 
 test("statements: ændret stats_since eller faldende tæller springes over", () => {
