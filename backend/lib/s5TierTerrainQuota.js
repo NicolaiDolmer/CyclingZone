@@ -118,7 +118,9 @@ export function tierTerrainLoss(counts, tier) {
 export function allocateS5TierFillers({ tier, counts, slots }) {
   const cur = { ...counts };
   const fillers = slots.map((s) => s.natural.slice());
-  const mountainFree = slots.map((s) => ![...s.guaranteed, ...s.natural].some((t) => MOUNTAIN_FAMILY_TYPES.has(t)));
+  // #6857: et typet løb (identityType) har sin bjergfrihed i typens filler-liste (options);
+  // mellembjerg er dér tilladt i et bjergfrit løb (design §2), så forbuddet udledes ikke her.
+  const mountainFree = slots.map((s) => !s.identityType && ![...s.guaranteed, ...s.natural].some((t) => MOUNTAIN_FAMILY_TYPES.has(t)));
   // Ordnings-arketypen må ikke blive umulig hvis det naturlige træk kunne bære den.
   const keepFeasible = slots.map((s) => Boolean(s.orderArchetype) && isOrderArchetypeFeasible(/** @type {string} */ (s.orderArchetype), [...s.guaranteed, ...s.natural]));
   const lossBefore = tierTerrainLoss(cur, tier);

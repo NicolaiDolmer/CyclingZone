@@ -2024,6 +2024,9 @@ export function s5StageRaceFillerSlots(race, { seed, archetypeProfiles = ARCHETY
       ttCap: timeTrialCap(types.slice(0, protectedCount), stages),
       stages,
       orderArchetype,
+      // Typens filler-liste ER løftet om bjergfrihed (mellembjerg er tilladt i fx "hilly",
+      // design §2), så kvoten skal ikke selv udlede et strengere bjergfri-forbud.
+      identityType: identity.type,
     };
   }
   const cfg = archetypeFor(race, archetypeProfiles);
