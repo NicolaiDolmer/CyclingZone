@@ -1,7 +1,8 @@
 // backend/lib/riderEligibility.js
 // #1800/#1742/#1823 Rod B: ÉN definition af "valgbar/løbs-berettiget rytter".
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applySeniorSquadFilter, isSeniorSquadRider, isSquad, isYouthSquad, DEFAULT_SQUAD } from "./squads.js";
+import { applySeniorSquadFilter, isSeniorSquadRider, isSquad, isYouthSquad, DEFAULT_SQUAD, SQUAD_MAX_AGE } from "./squads.js";
+import { ageForSeason, seasonReferenceYear } from "./riderSeasonAge.js";
 
 // #5645 (Y4, epic #2492): TRUP-parameteren. Hver funktion nedenfor tager en valgfri
 // `squad` (løbets trup). Default "senior", så ALLE eksisterende kald er bit-identiske:
@@ -56,10 +57,98 @@ function assertKnownSquad(squad, fn) {
 //     entries — se isEligibleRider/filterEligibleEntries, som bevidst IKKE tjekker
 //     pending_team_id, da de bruges til at validere det låste løbs EGNE entries).
 //   - #5645: `squad` (default senior) vælger truppen, se ANY_SQUAD-headeren øverst.
-//     Ejer 24/9: enhver rytter i truppen (16-18 for junior) må køre løbets trup —
-//     ingen separat aldersgate ud over trup-medlemskabet.
-export function applyRiderEligibilityFilter(query, { squad = DEFAULT_SQUAD } = {}) {
-  return applyRosterVisibilityFilter(query, { squad }).is("pending_team_id", null);
+//   - #6964: `seasonNumber` (løbets sæson, se loadRaceSeasonNumber) slår ALDERS-
+//     gaten til for et ungdomsløb: kun ryttere hvis sæsonalder er inden for løbets
+//     aldersgrænse. Se RACE AGE-blokken nedenfor. Udeladt (undefined) = ingen
+//     aldersgate (seniorløb, og kaldere der kun VISER en trup).
+export function applyRiderEligibilityFilter(query, { squad = DEFAULT_SQUAD, seasonNumber } = {}) {
+  const eligible = applyRosterVisibilityFilter(query, { squad }).is("pending_team_id", null);
+  if (seasonNumber === undefined || raceAgeLimit(squad) === null) return eligible;
+  return eligible.gte("birthdate", raceAgeBirthdateFloor({ squad, seasonNumber }));
+}
+
+// ── RACE AGE (#6964, ejer-beslutning 20/10: "alder afgør ungdomsløb") ─────────
+// Et juniorløb er kun for ryttere inden for junior-aldersgrænsen, et U23-løb kun for
+// ryttere under U23-grænsen — uanset hvilken trup rytteren står i. En rytter der er
+// vokset ud af sin trup (fx 19 år på juniorholdet mens Graduation Day-vinduet står
+// åbent, eller "afventer oprykning" fordi måltruppen er fuld) kan derfor ikke
+// udtages, auto-udtages eller autofyldes til truppens ungdomsløb. En junior der står
+// på U23-holdet er inden for U23-grænsen og må køre U23 (YOUTH_RULES §2.2: opad er
+// altid tilladt). Seniorløb har ingen aldersgrænse.
+//
+// Grænserne er truppernes aldersloft (squads.SQUAD_MAX_AGE) og alderen er SÆSON-
+// alderen (riderSeasonAge.ageForSeason) — samme to kilder som Graduation Day
+// (squads.hasOutgrownSquad), så "vokset ud af truppen" og "for gammel til truppens
+// løb" aldrig kan blive uenige.
+//
+// Fejl lukket: kendes alderen ikke (ingen fødselsdato, ukendt sæson), er rytteren
+// IKKE berettiget til et ungdomsløb. Hellere et kortere ungdomsfelt end en voksen
+// rytter i et juniorløb (samme dom som trup-leddet, se ANY_SQUAD-headeren).
+
+/** Fejlkoden når en manuel udtagelse indeholder en for gammel rytter. */
+export const RIDER_OVER_RACE_AGE_ERROR = "selection_rider_over_age";
+
+// En fødselsdato-gulv der ingen rytter kan opfylde: SQL-sidens "fejl lukket".
+const NO_RIDER_BIRTHDATE_FLOOR = "9999-12-31";
+
+/** Højeste sæsonalder et løb i `squad` tillader, eller null (ingen grænse). */
+export function raceAgeLimit(squad) {
+  return isYouthSquad(squad) ? SQUAD_MAX_AGE[squad] : null;
+}
+
+/**
+ * Er rytteren inden for løbets aldersgrænse i sæsonen? Seniorløb (og ANY_SQUAD):
+ * altid. Ungdomsløb: sæsonalder kendt og ≤ grænsen.
+ * @param {{birthdate?:string|null}|null|undefined} rider
+ * @param {{squad?:string, seasonNumber?:number|null}} args
+ */
+export function isWithinRaceAgeLimit(rider, { squad = DEFAULT_SQUAD, seasonNumber } = {}) {
+  const max = raceAgeLimit(squad);
+  if (max === null) return true;
+  const age = ageForSeason(rider?.birthdate ?? null, seasonNumber);
+  return age !== null && age <= max;
+}
+
+// SQL-siden af isWithinRaceAgeLimit. Ingen alder regnes i SQL: grænsen omsættes her
+// i JS til et fødselsdato-gulv, sæsonalder ≤ max ⇔ fødselsår ≥ referenceår − max ⇔
+// birthdate ≥ "<referenceår − max>-01-01" (riders.birthdate er en ren DATE). En
+// rytter uden fødselsdato falder ud af `gte` (NULL), præcis som i JS-prædikatet.
+export function raceAgeBirthdateFloor({ squad, seasonNumber }) {
+  const max = raceAgeLimit(squad);
+  if (max === null) return null;
+  const referenceYear = seasonReferenceYear(seasonNumber);
+  if (referenceYear === null) return NO_RIDER_BIRTHDATE_FLOOR;
+  return `${String(referenceYear - max).padStart(4, "0")}-01-01`;
+}
+
+/**
+ * Sæsonnummeret aldersgaten skal måles mod for `race`:
+ *   - seniorløb → undefined (ingen aldersgate, intet opslag)
+ *   - ungdomsløb → seasons.number for løbets sæson, eller null hvis sæsonen ikke kan
+ *     findes (aldersgaten lukker så for alle — fejl lukket).
+ * Kaster på en DB-fejl (samme kontrakt som de øvrige opslag i udtagelses-stierne).
+ * Mangler race.season_id i projektionen, slås den op på løbet.
+ */
+export async function loadRaceSeasonNumber({ supabase, race }) {
+  if (raceAgeLimit(raceSquadOf(race)) === null) return undefined;
+  let seasonId = race?.season_id ?? null;
+  if (!seasonId && race?.id) {
+    const { data, error } = await supabase.from("races").select("season_id").eq("id", race.id);
+    if (error) throw new Error(`races.season_id (race age gate): ${error.message}`);
+    seasonId = (Array.isArray(data) ? data[0] : data)?.season_id ?? null;
+  }
+  return loadSeasonNumber({ supabase, seasonId });
+}
+
+/** seasons.number for `seasonId`, null hvis den ikke findes. Kaster på DB-fejl. */
+export async function loadSeasonNumber({ supabase, seasonId }) {
+  if (!seasonId) return null;
+  // Builderen awaites direkte (ingen .maybeSingle()), så opslaget også virker mod de
+  // minimale test-mocks — samme mønster som raceRunner.loadSeasonReferenceYear.
+  const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId);
+  if (error) throw new Error(`seasons.number (race age gate): ${error.message}`);
+  const number = (Array.isArray(data) ? data[0] : data)?.number;
+  return Number.isFinite(number) ? number : null;
 }
 
 // #4119: SYNLIGHEDS-filteret — samme akademi/pensioneret-gate som ovenfor, men UDEN
@@ -97,7 +186,10 @@ export function applyRosterVisibilityFilter(query, { squad = DEFAULT_SQUAD } = {
 // svarer prædikatet stadig som i dag, men bliver ikke korrekt efter backfill'en.
 // #5645: `squad` (default senior) = løbets trup. Ungdom kræver rider.squad === trup
 // (manglende felt = ikke berettiget). ANY_SQUAD springer trup-leddet over (binding).
-export function isEligibleRider(rider, { teamId = null, squad = DEFAULT_SQUAD } = {}) {
+// #6964: `seasonNumber` givet → også aldersgaten (isWithinRaceAgeLimit; rækken skal
+// så projicere `birthdate`). Udeladt = ingen aldersgate, så SQL-paritetstesten i
+// squadEntryGate.test.js og de øvrige trup-kaldere er uændrede.
+export function isEligibleRider(rider, { teamId = null, squad = DEFAULT_SQUAD, seasonNumber } = {}) {
   if (!rider) return false;
   if (squad === DEFAULT_SQUAD) {
     if (!isSeniorSquadRider(rider)) return false;
@@ -106,6 +198,7 @@ export function isEligibleRider(rider, { teamId = null, squad = DEFAULT_SQUAD } 
   }
   if (rider.is_retired === true) return false;
   if (teamId != null && rider.team_id !== teamId) return false;
+  if (seasonNumber !== undefined && !isWithinRaceAgeLimit(rider, { squad, seasonNumber })) return false;
   return true;
 }
 
@@ -135,9 +228,9 @@ export function partitionMissingByInjury({ missing = [], injuredUntilByRider, to
   return { injured, unexplained };
 }
 
-export function filterEligibleEntries({ entries = [], ridersById, squad = DEFAULT_SQUAD }) {
+export function filterEligibleEntries({ entries = [], ridersById, squad = DEFAULT_SQUAD, seasonNumber }) {
   return entries.filter((e) =>
-    isEligibleRider(ridersById.get(e.rider_id), { teamId: e.team_id, squad }));
+    isEligibleRider(ridersById.get(e.rider_id), { teamId: e.team_id, squad, seasonNumber }));
 }
 
 // #3896: ÉN definition af "er rytteren skadet på dato X". Skadesstatus (rider_condition.
