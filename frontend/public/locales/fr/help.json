@@ -1428,7 +1428,7 @@
       },
       "weatherAndCobbles": {
         "title": "Météo et pavés",
-        "text": "Chaque étape a sa propre météo. Le soleil et le ciel couvert sont la base calme, rien ne change. La pluie ralentit toute l'étape et touche plus durement un coureur faible sous l'eau que le reste du groupe. Le vent mord surtout là où la route est dégagée ; une ascension est abritée par sa propre pente. La pluie augmente aussi le risque de chute sur les pavés, le gravel et les descentes audacieuses. Tu le verras sous forme d'une seule note sur la ligne du temps de l'étape, au kilomètre où cela commence à compter, jamais comme un nombre qui y est attaché."
+        "text": "Chaque étape a sa propre météo, et la page de l'étape l'affiche : sec, pluie ou vent. Le sec est la base calme, rien ne change. La pluie ralentit toute l'étape. Le vent mord surtout là où la route est dégagée ; une ascension est abritée par sa propre pente. Les deux pénalisent le plus les coureurs faibles en descente et en durabilité. La pluie augmente aussi le risque de chute sur les pavés, le gravel et les descentes audacieuses. Quand la pluie ou le vent ont coûté des forces aux coureurs, le récit de la course le dit en une ligne, jamais avec un nombre attaché. Un contre-la-montre par équipes se court sans météo."
       }
     }
   },

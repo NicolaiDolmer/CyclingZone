@@ -1428,7 +1428,7 @@
       },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",
-        "text": "Every stage carries its own weather. Sun and overcast are the calm baseline, nothing changes. Rain slows the whole stage down and hits a rider who is weak in the wet harder than the rest of the group. Wind mostly bites where the road is open; a climb is sheltered by its own slope. Rain also raises the risk of a crash on cobbles, gravel and daring descents. You will see it as a single note on the stage timeline, on the kilometre where it starts to matter, never as a number attached to it."
+        "text": "Every stage carries its own weather, and the stage page shows it: dry, rain or wind. Dry is the calm baseline, nothing changes. Rain slows the whole stage down. Wind mostly bites where the road is open; a climb is sheltered by its own slope. Both hit riders with weak descending and durability hardest. Rain also raises the risk of a crash on cobbles, gravel and daring descents. When rain or wind cost the riders power, the race story says so in one line, never with a number attached. A team time trial is ridden without weather."
       }
     }
   },
