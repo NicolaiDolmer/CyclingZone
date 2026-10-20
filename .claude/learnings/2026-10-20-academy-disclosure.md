@@ -18,3 +18,8 @@ foreign/senior isolation, unknown sorting and real browser surfaces. Failures
 loading training knowledge must never fall back to fully scouted information.
 Patch notes are intentionally deferred to Claude's season-change collection,
 as instructed by the owner. No feature or flag lifecycle changes.
+
+CI follow-up: the combined browser test exhausted its total deadline while
+navigating the later knowledge stages on WebKit. Each stage now has an isolated
+browser context and named surface steps, preserving every assertion and the
+existing timeout instead of increasing the deadline.

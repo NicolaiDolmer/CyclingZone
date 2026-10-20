@@ -12,65 +12,67 @@ const stages = [
   { stage: "final", daysOnTeam: 3, nextStageDays: null, band: { role: "sprinter", lo: 39, hi: 49 } },
 ];
 const shots = process.env.ACADEMY_DISCLOSURE_SHOTS;
+const before = process.env.ACADEMY_DISCLOSURE_BEFORE === "1";
 for (const width of [1440, 375]) {
-  test(`academy knowledge matches on all surfaces at ${width}px`, async ({ page }) => {
-    test.setTimeout(120000);
-    await page.setViewportSize({ width, height: 900 });
-    await installNetworkMocks(page);
-    await stabilizePage(page);
-    await page.clock.setFixedTime(fixedNow);
-    let prognosis = stages[0];
-    const before = process.env.ACADEMY_DISCLOSURE_BEFORE === "1";
-    const rider = { ...RIDERS[0], birthdate: "2010-04-12", is_academy: true, squad: "junior" };
-    await page.route("**/rest/v1/riders?**", (route) => {
-      const url = new URL(route.request().url());
-      const id = url.searchParams.get("id");
-      if (id && id !== "eq.rider-1") return route.fallback();
-      const object = route.request().headers().accept?.includes("object");
-      return json(route, object ? rider : [rider]);
-    });
-    await page.route("**/api/scouting/estimates", route => json(route, {
-      teamId: TEST_TEAM.id, maxLevel: 3,
-      estimates: { ...SEED_SCOUT_ESTIMATES, "rider-1": before ? SEED_SCOUT_ESTIMATES["rider-1"] : { academyPrognosis: prognosis } },
-    }));
-    await page.route("**/api/riders/rider-1/scouting-report", route => {
-      if (before) return route.fallback();
-      return json(route, { own: true, academyPrognosis: prognosis });
-    });
-    await page.route("**/api/academy/me**", route => json(route, {
-      ...SEED_ACADEMY, roster: [{ ...rider, prognosis }],
-    }));
-    await login(page);
-    for (const stage of (before ? [stages[0]] : stages)) {
-      prognosis = stage;
+  // Separate stages keep CI WebKit page loads within each test budget.
+  for (const stage of (before ? [stages[0]] : stages)) {
+    test(`academy ${stage.stage} knowledge matches on all surfaces at ${width}px`, async ({ page }) => {
+      test.setTimeout(120000);
+      await page.setViewportSize({ width, height: 900 });
+      await installNetworkMocks(page);
+      await stabilizePage(page);
+      await page.clock.setFixedTime(fixedNow);
+      const prognosis = stage;
+      const rider = { ...RIDERS[0], birthdate: "2010-04-12", is_academy: true, squad: "junior" };
+      await page.route("**/rest/v1/riders?**", (route) => {
+        const url = new URL(route.request().url());
+        const id = url.searchParams.get("id");
+        if (id && id !== "eq.rider-1") return route.fallback();
+        const object = route.request().headers().accept?.includes("object");
+        return json(route, object ? rider : [rider]);
+      });
+      await page.route("**/api/scouting/estimates", route => json(route, {
+        teamId: TEST_TEAM.id, maxLevel: 3,
+        estimates: { ...SEED_SCOUT_ESTIMATES, "rider-1": before ? SEED_SCOUT_ESTIMATES["rider-1"] : { academyPrognosis: prognosis } },
+      }));
+      await page.route("**/api/riders/rider-1/scouting-report", route => {
+        if (before) return route.fallback();
+        return json(route, { own: true, academyPrognosis: prognosis });
+      });
+      await page.route("**/api/academy/me**", route => json(route, {
+        ...SEED_ACADEMY, roster: [{ ...rider, prognosis }],
+      }));
+      await login(page);
       for (const [surface, path] of [["team", "/team"], ["development", "/team"], ["hero", "/riders/rider-1"], ["scouting", "/riders/rider-1?tab=scouting"], ["academy", "/academy"]]) {
-        await page.goto(path);
-        if (surface === "development") await page.getByRole("tab", { name: /^(Development|Udvikling)$/i }).click();
-        if (surface === "team" && width === 375) {
-          const chip = page.getByRole("button", { name: /^(Potential|Potentiale)$/i }).first();
-          await expect(chip).toBeVisible();
-          if (await chip.getAttribute("aria-pressed") !== "true") await chip.click();
-        }
-        if (!before || surface === "academy") {
-          const cells = page.getByTestId(stage.band ? "academy-prognosis-band" : "academy-prognosis-learning");
-          if (surface === "scouting") await expect(cells).toHaveCount(2);
-          const cell = surface === "scouting" ? cells.last() : cells.first();
-          await cell.scrollIntoViewIfNeeded();
-          await expect(cell).toBeVisible();
-          if (stage.band) await expect(cell).toContainText(`${stage.band.lo}–${stage.band.hi}`);
-          await expect(page.locator("[data-potential-band]")).toHaveCount(0);
-          if (surface === "scouting") await expect(page.locator("[data-type]")).toHaveCount(0);
-        } else if (surface === "development") {
-          await expect(page.getByText("40–48", { exact: true })).toBeVisible();
-        } else {
-          await expect(page.locator("[data-potential-band]").first()).toBeVisible();
-          if (surface === "scouting") await page.locator("[data-type]").first().scrollIntoViewIfNeeded();
-        }
-        if (shots && stage.stage === "learning") {
-          mkdirSync(resolve(shots), { recursive: true });
-          await page.screenshot({ path: resolve(shots, `${before ? "before" : "after"}-${surface}-${width}.png`), fullPage: false });
-        }
+        await test.step(surface, async () => {
+          await page.goto(path);
+          if (surface === "development") await page.getByRole("tab", { name: /^(Development|Udvikling)$/i }).click();
+          if (surface === "team" && width === 375) {
+            const chip = page.getByRole("button", { name: /^(Potential|Potentiale)$/i }).first();
+            await expect(chip).toBeVisible();
+            if (await chip.getAttribute("aria-pressed") !== "true") await chip.click();
+          }
+          if (!before || surface === "academy") {
+            const cells = page.getByTestId(stage.band ? "academy-prognosis-band" : "academy-prognosis-learning");
+            if (surface === "scouting") await expect(cells).toHaveCount(2);
+            const cell = surface === "scouting" ? cells.last() : cells.first();
+            await cell.scrollIntoViewIfNeeded();
+            await expect(cell).toBeVisible();
+            if (stage.band) await expect(cell).toContainText(`${stage.band.lo}–${stage.band.hi}`);
+            await expect(page.locator("[data-potential-band]")).toHaveCount(0);
+            if (surface === "scouting") await expect(page.locator("[data-type]")).toHaveCount(0);
+          } else if (surface === "development") {
+            await expect(page.getByText("40–48", { exact: true })).toBeVisible();
+          } else {
+            await expect(page.locator("[data-potential-band]").first()).toBeVisible();
+            if (surface === "scouting") await page.locator("[data-type]").first().scrollIntoViewIfNeeded();
+          }
+          if (shots && stage.stage === "learning") {
+            mkdirSync(resolve(shots), { recursive: true });
+            await page.screenshot({ path: resolve(shots, `${before ? "before" : "after"}-${surface}-${width}.png`), fullPage: false });
+          }
+        });
       }
-    }
-  });
+    });
+  }
 }
