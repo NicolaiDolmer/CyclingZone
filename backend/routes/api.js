@@ -277,7 +277,7 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
-import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, ANY_SQUAD } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "../lib/riderEligibility.js";
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
@@ -6086,7 +6086,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     // #2579/#2637: delt eligibility-filter + skade-udelukkelse — samme regler som
     // raceRunner.fillMissingTeamEntries og regenerate-endpointet (Spec 6.5, #1306).
     const [{ data: teamRiders, error: ridersErr }, { data: stageProfiles, error: profErr }] = await Promise.all([
-      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id), { squad: raceSquadOf(race) }),
+      // #6964: alder afgør ungdomsløb (seasonNumber slår aldersgaten til; seniorløb: undefined).
+      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id), { squad: raceSquadOf(race), seasonNumber: await loadRaceSeasonNumber({ supabase, race }) }),
       supabase.from("race_stage_profiles")
         .select("stage_number, profile_type, finale_type, demand_vector")
         .eq("race_id", race.id).order("stage_number", { ascending: true }),

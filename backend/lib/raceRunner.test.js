@@ -1549,7 +1549,8 @@ function cannedForStage(race, extra = {}) {
   return makeSupabase({
     race_stage_profiles: STAGES_3,
     ...field,
-    riders: squad ? field.riders.map((r) => ({ ...r, squad })) : field.riders,
+    // #6964: alder afgør ungdomsløb — sæson 2 (referenceår 2027): fødselsdato inden for truppens grænse.
+    riders: squad ? field.riders.map((r) => ({ ...r, squad, birthdate: squad === "junior" ? "2010-01-01" : "2006-01-01" })) : field.riders,
     race_points: [],
     races: [{ id: race.id, ...race }],
     seasons: [{ id: race.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
