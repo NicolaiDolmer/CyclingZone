@@ -50,7 +50,10 @@ export async function resolveTrackLiveFlags(flags, supabaseClient) {
   let conditionModelV2 = false;
   if (typeof flags?.conditionModelV2 === "boolean") conditionModelV2 = flags.conditionModelV2;
   else {
-    try { conditionModelV2 = await isConditionModelV2Enabled(supabaseClient); } catch { conditionModelV2 = false; }
+    try { conditionModelV2 = await isConditionModelV2Enabled(supabaseClient); } catch {
+      // best-effort: en visning viser sporet som slukket ved en flag-læsefejl i stedet for at fejle siden.
+      conditionModelV2 = false;
+    }
   }
   return { academyIntakePullEnabled, conditionModelV2 };
 }

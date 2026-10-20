@@ -34,7 +34,7 @@ test("alle sprog har alle lægens nøgler", () => {
     for (const k of season) assert.ok(doc.season?.[k], `${lang}: season.${k}`);
     for (const text of [doc.hint, ...Object.values(doc.season)]) {
       assert.ok(!text.includes("—"), `${lang}: ingen em-dash`);
-      assert.ok(!/\d/.test(text) || lang === "en" || lang === "da" ? !/\d/.test(text) : true, `${lang}: ingen tal`);
+      assert.ok(!/\d/.test(text), `${lang}: ingen tal`);
     }
   }
 });

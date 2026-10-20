@@ -64,7 +64,7 @@ export async function loadDoctorReportForSelection({ supabase, race, teamId, rid
     }
     return buildDoctorReport({ riders, tier: facilityTier, seasonRaceDaysByRider, plannedGtRaceDays });
   } catch (err) {
-    // Visning: en fejl må aldrig vælte udtagelsen. Ingen rapport = panelet viser intet.
+    // best-effort: visning; en fejl må aldrig vælte udtagelsen. Ingen rapport = panelet viser intet.
     console.error(`doctor report failed (race ${race?.id}): ${err?.message ?? err}`);
     return null;
   }
