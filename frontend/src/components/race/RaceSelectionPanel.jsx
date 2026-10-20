@@ -294,7 +294,8 @@ export default function RaceSelectionPanel({
   // visning: den går ALDRIG i clientErrors, så Gem-knappen forbliver aktiv.
   const selectedIdSet = new Set(sel.riderIds);
   // #6139: en rytter der traenede i dag (Train now) er heller ikke fri til dette loeb.
-  const freeLeft = riders.filter((r) => !r.injured && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)
+  // #6964: en for gammel rytter (ungdomsløb) er heller ikke fri.
+  const freeLeft = riders.filter((r) => !r.injured && !r.overAge && !boundByRider.has(r.id) && !selectedIdSet.has(r.id)
     && !trainNowLocked.has(r.id)).length;
   // Vises først når manageren har udtaget mindst én rytter: på et urørt panel er
   // "7 pladser står åbne" bare en gentagelse af undertekstens "udtag op til {max}".
@@ -648,10 +649,10 @@ export default function RaceSelectionPanel({
           // `rider.injured` alene checkboxen disabled UANSET checked-state, så en
           // allerede-udtaget skadet rytter sad permanent fast i truppen (Discord-bug).
           const lockedByTrainNow = trainNowLocked.has(rider.id); // #6139
-          const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy || lockedByTrainNow;
+          const disabled = ((rider.injured || rider.overAge) && !checked) || (bound && !checked) || (!checked && atMax) || busy || lockedByTrainNow;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
-            <li key={rider.id} className={rider.injured || (bound && !checked) || lockedByTrainNow ? "opacity-60" : ""}>
+            <li key={rider.id} className={rider.injured || rider.overAge || (bound && !checked) || lockedByTrainNow ? "opacity-60" : ""}>
               {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den, ikke
                   længere navnet (spillerforslag: navneklik skal åbne profil, ikke toggle). */}
               <div className="flex items-start gap-3 px-4 py-3">
@@ -681,6 +682,7 @@ export default function RaceSelectionPanel({
                         {t("selection.injured")}
                       </span>
                     )}
+                    {rider.overAge && <OverAgeBadge label={t("selection.overAge")} />}
                     {lockedByTrainNow && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
                     {bound && (
                       <span className={`text-3xs px-2 py-0.5 rounded-full border ${checked
@@ -779,9 +781,9 @@ export default function RaceSelectionPanel({
               // #2637: se mobil-listen ovenfor — fjernelse af en allerede-udtaget skadet
               // rytter skal altid være muligt, kun tilføjelse af en NY skadet rytter blokeres.
               const lockedByTrainNow = trainNowLocked.has(rider.id); // #6139
-              const disabled = (rider.injured && !checked) || (bound && !checked) || (!checked && atMax) || busy || lockedByTrainNow;
+              const disabled = ((rider.injured || rider.overAge) && !checked) || (bound && !checked) || (!checked && atMax) || busy || lockedByTrainNow;
               return (
-                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) || lockedByTrainNow ? "opacity-60" : ""}`}>
+                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || rider.overAge || (bound && !checked) || lockedByTrainNow ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
                     {/* #3520: checkboxen er den ENESTE vælger — labelen wrapper kun den. */}
                     <div className="flex items-center gap-2">
@@ -809,6 +811,7 @@ export default function RaceSelectionPanel({
                           {t("selection.injured")}
                         </span>
                       )}
+                      {rider.overAge && <OverAgeBadge label={t("selection.overAge")} />}
                       {lockedByTrainNow && <TrainNowRiderBadge label={t("selection.trainNowLock.rider")} />}
                       {bound && (
                         <span className={`text-3xs px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
@@ -1093,6 +1096,15 @@ function TrainNowRiderBadge({ label }) {
   return (
     <span className="inline-flex items-center gap-1 text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-3 border border-cz-border whitespace-nowrap">
       <LockIcon size={10} aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
+// #6964 (ejer 20/10): alder afgør ungdomsløb — rytteren er over løbets aldersgrænse.
+function OverAgeBadge({ label }) {
+  return (
+    <span className="text-3xs px-2 py-0.5 rounded-full bg-cz-subtle text-cz-3 border border-cz-border whitespace-nowrap">
       {label}
     </span>
   );

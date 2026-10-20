@@ -27,7 +27,8 @@ test("#4295 panelet fodrer reglen med ryttere der er frie til NETOP dette løb",
   assert.match(
     panel,
     // #6139: ogsaa en rytter der traenede i dag (Train now) traekkes fra.
-    /const freeLeft = riders\.filter\(\(r\) => !r\.injured && !boundByRider\.has\(r\.id\) && !selectedIdSet\.has\(r\.id\)\s*&& !trainNowLocked\.has\(r\.id\)\)\.length;/,
+    // #6964: og en rytter over ungdomsløbets aldersgrænse.
+    /const freeLeft = riders\.filter\(\(r\) => !r\.injured && !r\.overAge && !boundByRider\.has\(r\.id\) && !selectedIdSet\.has\(r\.id\)\s*&& !trainNowLocked\.has\(r\.id\)\)\.length;/,
   );
   assert.match(
     panel,
