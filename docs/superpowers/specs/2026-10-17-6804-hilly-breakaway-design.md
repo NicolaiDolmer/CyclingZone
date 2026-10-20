@@ -54,7 +54,7 @@ i benchen, før en knap drejes.
 - K2 Kuperet spurtafslutning kan være udbrudsdag, lavere chance end bakke/mur/nedkørsel,
   men ikke nær nul (ejer #2).
 - K3 Realistisk forspring (ejer #3): typisk en mellemzone, sjældent en øvre zone (kun
-  når ingen vil jage), aldrig et kvarter. Zonerne står privat i `balance-internals/6804/`.
+  når ingen vil jage), aldrig over en hård grænse. Zonerne og grænsen står privat i `balance-internals/6804/`.
 - K4 Sammensætning (ejer #4): GC- og etapefavoritter sjældent med; flere fra samme hold
   skalerer med udbruddets størrelse; ingen ulogiske udbrud.
 - K5 Størrelse på kuperet efter trappen 5-9 (ejer #6).
@@ -86,7 +86,7 @@ klassementsinteresse. Interessen læses fra BEGGE kilder i `stageWinChaseForceV3
 `Math.max(0, signal)` som i `stageWinChaseForceV3`). Et hold med kun positivt GC-signal
 tæller som interesseret, så
 et farligt udbrud aldrig vokser ind i den øvre zone mod K7's top-10-regel. Kun når INGEN hold har interesse,
-kan forspringet vokse til den sjældne øvre zone. Det kvarter, spillerne så, kræver
+kan forspringet vokse til den sjældne øvre zone. De meget store forspring, spillerne så (#6912), kræver
 dermed et felt uden jagt-interesse, og det kan forklares i filmen ("ingen hold ville
 jage"). Jagt-gulvet på flad/rullende beholdes; endagsløbets loft på bjerg (#6367)
 beholdes.
@@ -128,7 +128,7 @@ testportens S5-ruter med syntetisk startfelt; samme gates begge steder.
 - G1 Udbrudsandel pr. løbstype inden for ejerbåndet (K1); pr. kuperet afslutning inden for
   det private anker, spurt > 0 og < bakke/mur (K2).
 - G2 (ny, K3) Forspringsfordeling: median maks-forspring i mellemzonen på kuperet/bjerg i
-  etapeløb; andelen i den øvre zone under et privat loft; **nul** etaper over et kvarter, og
+  etapeløb; andelen i den øvre zone under et privat loft; **nul** etaper over den private hårde grænse, og
   enhver etape over den øvre zone skal have "ingen jagt-interesse" i sin hendelse.
 - G3 (ny, K4) Sammensætning:
   a) GC-favorit i udbruddet under privat loft; nul på 1. etape.
@@ -155,6 +155,13 @@ testportens S5-ruter med syntetisk startfelt; samme gates begge steder.
 `s5MotorBench.test.ts`, tourDryRun-tests, testportens G1-G10. Frontend (filmens linjer):
 `npm run lint`, `node --test`, build og hele `npm run test:e2e`; snapshots i alle 3
 Playwright-projekter. help.json (en+da) og patch notes ved tænding.
+
+**Hvad ejeren ser på preview (P5, før build-go til tænding):** løbsfilmen og gab-kurven for
+udvalgte S5-etaper kørt under `s5_profiles_v2` (preview-override på etapesiden), med ét
+annoteret før/efter-billede pr. PR (desktop 1440 + mobil 375, lyst og mørkt): en udbrudssejr
+med årsagslinjer, en hentet udbrud, og en etape med meget stort forspring hvor ingen jagede.
+**Tester-runde:** beta-testerne gennemgår en håndfuld v2-etaper på staging før tænding
+(pakken er stor og spillervendt); fund samles på #6804, og tænding sker kun på ejer-go.
 
 ## 7. Filer (forventet, intet bygget)
 
