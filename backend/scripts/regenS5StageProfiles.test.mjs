@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   parseArgs, copenhagenDate, canonicalJson, loadRegenInput, buildRegenPlan, checkInvariants, diffAgainstCurrent,
-  buildBackupSql, buildRestoreSql, assertBackupCovers, assertBackupCoversSlots, readTouchedRaces, batchRaces, applyPlan, postVerify, crossPoolDivergence,
+  buildBackupSql, buildRestoreSql, assertBackupCovers, assertBackupCoversSlots, readTouchedRaces, touchedStateFile, batchRaces, applyPlan, postVerify, crossPoolDivergence,
   parseDivergenceScriptOutput, waitForCalendarCache, buildRoutesFiles, writeRoutesDir, assertPrivatePath, buildReport,
   seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient, overlayIdentity, gtPreludes,
   CALENDAR_CACHE_TTL_MS, CALENDAR_CACHE_MARGIN_MS, WRITE_BATCH_ROWS, ROUTES_FORMAT, PROFILE_COLUMNS, CUTOVER_DATE_CPH,
@@ -666,4 +666,25 @@ test("#6929 (Codex P1) readTouchedRaces: tom uden fil, læser listen, fejler hø
   assert.deepEqual(readTouchedRaces(join(dir, "t.json")), ["a", "b"]);
   writeFileSync(join(dir, "bad.json"), "{");
   assert.throws(() => readTouchedRaces(join(dir, "bad.json")), /kan ikke læses/);
+});
+
+test("#6929 (Codex P1) restore-scope: kun batches der faktisk går i gang noteres; tilstanden ligger datouafhængigt", async () => {
+  // Ét løb pr. batch (200 rækker hver), så batch 2 fejler og batch 3 aldrig går i gang.
+  const rows = (id) => Array.from({ length: 200 }, (_, i) => ({ race_id: id, stage_number: i + 1 }));
+  const noted = [];
+  const calls = [];
+  const db = {
+    deleteProfiles: async (ids) => { calls.push(["delete", ids[0]]); },
+    insertProfiles: async (r) => { if (r[0].race_id === "r2") throw new Error("insert fejlede"); },
+  };
+  const plan = { rowsByRaceId: new Map([["r1", rows("r1")], ["r2", rows("r2")], ["r3", rows("r3")]]) };
+  await assert.rejects(applyPlan({
+    db, plan, racesToWrite: ["r1", "r2", "r3"], clock: () => new Date("2026-10-21T09:00:00Z"),
+    onBeforeWrite: (ids) => { noted.push(...ids); calls.push(["noted", ids[0]]); },
+  }), /insert fejlede/);
+  assert.deepEqual(noted, ["r1", "r2"], "r3's batch gik aldrig i gang og noteres ikke");
+  assert.deepEqual(calls.slice(0, 2), [["noted", "r1"], ["delete", "r1"]], "noteres før sletningen");
+  const f = touchedStateFile("backup_6857_race_stage_profiles_20261021", "C:/x");
+  const parts = f.split(/[\\/]/);
+  assert.deepEqual(parts.slice(-4), ["balance-internals", "6857", "apply-state", "touched-backup_6857_race_stage_profiles_20261021.json"], "fast sted, ingen dato");
 });

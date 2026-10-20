@@ -596,6 +596,12 @@ commit;
 `;
 }
 
+/** Fast, datouafhængig placering af apply-tilstanden pr. backup-tabel (privat, hard rule 17). */
+export function touchedStateFile(backupTable, root = REPO_ROOT) {
+  if (!BACKUP_TABLE_PATTERN.test(backupTable)) throw new Error(`ugyldigt backup-navn: ${backupTable}`);
+  return assertPrivatePath(join(root, "balance-internals", "6857", "apply-state", `touched-${backupTable}.json`), "apply-state");
+}
+
 /** Løbene en tidligere apply-kørsel har skrevet mod samme backup (tom liste hvis ingen). */
 export function readTouchedRaces(file) {
   try {
@@ -654,7 +660,7 @@ export function batchRaces(raceIds, rowsByRaceId, maxRows = WRITE_BATCH_ROWS) {
 }
 
 /** DELETE + INSERT pr. batch. En fejl midt i stopper; en genkørsel samler op (idempotent). */
-export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock, backupTable = null }) {
+export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock, backupTable = null, onBeforeWrite = null }) {
   // #6929 (Codex P1): uret injiceres altid (én kilde fra main), aldrig væguret i helperen.
   if (typeof clock !== "function") throw new Error("applyPlan: clock skal injiceres");
   let rowsWritten = 0;
@@ -676,6 +682,9 @@ export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock,
       const moved = await movedOf(b.raceIds);
       if (moved.length) throw new Error(`batch ${i + 1}: ${new Set(moved).size} løb er startet/bundet/claimet siden kontrollen; stoppet før sletning (tidligere batches er skrevet, rul tilbage med restore-scriptet)`);
     }
+    // #6929 (Codex P1): batchens løb noteres i restore-scopet LIGE før sletningen (efter vagterne),
+    // så en tilbagerulning aldrig rører et løb denne kørsel ikke har ændret.
+    if (onBeforeWrite) await onBeforeWrite(b.raceIds);
     await db.deleteProfiles(b.raceIds);
     await db.insertProfiles(b.rows);
     // #6929 (Codex P1): PostgREST har ingen transaktion over vagt + sletning + indsættelse, så et
@@ -1173,13 +1182,24 @@ async function main() {
   await assertBackupCovers(db, opts.backupTable, currentIds);
   // Restore-scriptet for netop den backup-tabel apply bruger, skrevet FØR første skrivning (dry-runnet kan være fra en anden dag).
   const restorePath = join(privateDir, `restore-${opts.backupTable}.sql`);
-  // #6929 (Codex P1): restore dækker ALLE løb regen har skrevet mod denne backup, også i en
-  // tidligere afbrudt kørsel. Sættet gemmes privat pr. backup-tabel og vokser kun.
-  const touchedFile = join(privateDir, `touched-${opts.backupTable}.json`);
+  // #6929 (Codex P1 x2): restore dækker de løb regen faktisk har skrevet mod denne backup, også i
+  // en tidligere afbrudt kørsel (en anden dag). Tilstanden ligger et FAST sted pr. backup-tabel,
+  // uafhængigt af kørselsdatoen, og et løb noteres først når dets batch går i gang (onBeforeWrite).
+  const touchedFile = touchedStateFile(opts.backupTable);
   const priorTouched = readTouchedRaces(touchedFile);
-  const cumulativeTouched = [...new Set([...priorTouched, ...diff.racesToWrite])].sort(compareIds);
-  writeFileSync(touchedFile, `${JSON.stringify({ backupTable: opts.backupTable, races: cumulativeTouched }, null, 2)}\n`, "utf8");
-  writeFileSync(restorePath, buildRestoreSql(opts.backupTable, cumulativeTouched), "utf8");
+  let cumulativeTouched = [...priorTouched].sort(compareIds);
+  const writeRestore = () => {
+    mkdirSync(dirname(touchedFile), { recursive: true });
+    writeFileSync(touchedFile, `${JSON.stringify({ backupTable: opts.backupTable, races: cumulativeTouched }, null, 2)}\n`, "utf8");
+    writeFileSync(restorePath, cumulativeTouched.length
+      ? buildRestoreSql(opts.backupTable, cumulativeTouched)
+      : `-- #6929 intet skrevet endnu mod ${opts.backupTable}; intet at rulle tilbage.\n`, "utf8");
+  };
+  writeRestore();
+  const onBeforeWrite = (raceIds) => {
+    cumulativeTouched = [...new Set([...cumulativeTouched, ...raceIds])].sort(compareIds);
+    writeRestore();
+  };
   const stamp = generatedAt.replace(/[:.]/g, "-");
   const snapshotRows = input.profiles.slice().sort((a, b) => compareIds(a.race_id, b.race_id) || byStage(a, b));
   writeFileSync(join(privateDir, `pre-apply-snapshot-${stamp}.json`), `${JSON.stringify({ takenAt: generatedAt, rows: snapshotRows })}\n`, "utf8");
@@ -1187,7 +1207,7 @@ async function main() {
     issue: "#6929", takenAt: generatedAt, season: input.season.number, races: input.races.length, rows: snapshotRows.length,
     rowsSha256: sha256(canonicalJson(snapshotRows)), backupTable: opts.backupTable, planHash: plan.planHash, racesToWrite: diff.racesToWrite.length,
   }, null, 2)}\n`, "utf8");
-  const applied = await applyPlan({ db, plan, racesToWrite: diff.racesToWrite, log, clock, backupTable: opts.backupTable });
+  const applied = await applyPlan({ db, plan, racesToWrite: diff.racesToWrite, log, clock, backupTable: opts.backupTable, onBeforeWrite });
   log(`Skrevet: ${applied.racesWritten} løb · ${applied.rowsWritten} rækker · ${applied.batches} batches`);
   const verify = await postVerify({
     db, plan, races: input.races, divisions: input.divisions,
