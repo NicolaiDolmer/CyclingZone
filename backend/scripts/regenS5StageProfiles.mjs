@@ -819,6 +819,23 @@ export function signaturePins(race, signature, profiles) {
  * Rapporten pr. division. `full` har tal og navne (privat); `public` er kvalitativ (✅/❌ og
  * antal fra ejerens tabel A), så den kan committes.
  */
+/**
+ * #6929 (Codex P1): løbsidentiteten er en del af den fail-closed apply-gate. Rød tabel A
+ * (manglende/forkert type), en signatur der ikke er pinnet eller en monument-rute der ikke
+ * følger sin authored_route = intet skrives. Returnerer listen af brud (tom = grøn).
+ */
+export function identityGateViolations(full) {
+  const out = [];
+  for (const d of full?.divisions ?? []) {
+    if (d.identity && !d.identity.ok) out.push(`D${d.tier}: identitet mod tabel A er rød (${d.identity.untyped} uden type)`);
+    const unpinned = (d.pins ?? []).filter((p) => !p.pinned);
+    if (unpinned.length) out.push(`D${d.tier}: ${unpinned.length} signatur(er) ikke pinnet`);
+    const offRoute = (d.monuments ?? []).filter((m) => m.authored && m.matchesAuthored !== true);
+    if (offRoute.length) out.push(`D${d.tier}: ${offRoute.length} monument(er) følger ikke authored_route`);
+  }
+  return out;
+}
+
 export function buildReport({ input, plan, invariants, diff, generatedAt, gateLines = [], identitySource = "race_pool (prod)" }) {
   const catalogById = new Map(input.catalog.map((c) => [c.id, c]));
   const spanByRaceId = new Map();
@@ -1023,8 +1040,10 @@ async function main() {
   mkdirSync(privateDir, { recursive: true });
   mkdirSync(publicDir, { recursive: true });
 
+  const report = buildReport({ input, plan, invariants, diff, generatedAt, gateLines, identitySource });
+  const identityViolations = identityGateViolations(report.full);
+  for (const v of identityViolations) log(`${mark(false)} ${v}`);
   if (!opts.apply) {
-    const report = buildReport({ input, plan, invariants, diff, generatedAt, gateLines, identitySource });
     const stamp = generatedAt.replace(/[:.]/g, "-");
     writeFileSync(join(privateDir, `regen-dry-run-${stamp}.md`), report.fullMarkdown, "utf8");
     writeFileSync(join(privateDir, `regen-dry-run-${stamp}.json`), `${JSON.stringify(report.full, null, 2)}\n`, "utf8");
@@ -1041,12 +1060,13 @@ async function main() {
     log(`Offentlig rapport: ${join(publicDir, `dry-run-${day}.md`)}`);
     log(`Apply (ejer-go pr. skridt; kør backup.sql først):`);
     log(`  infisical run --env=prod --silent -- node backend/scripts/regenS5StageProfiles.mjs --apply --season 5 --confirm-season-upcoming --backup-table=${table} --plan-hash=${plan.planHash}${day >= CUTOVER_DATE_CPH ? " --allow-active" : ""}`);
-    process.exitCode = invariants.ok ? 0 : 1;
+    process.exitCode = invariants.ok && !identityViolations.length ? 0 : 1;
     return;
   }
 
   // ── APPLY ──
   if (!invariants.ok) throw new Error(`invarianter brudt, intet skrevet: ${invariants.violations.join(" · ")}`);
+  if (identityViolations.length) throw new Error(`løbsidentiteten er rød, intet skrevet: ${identityViolations.join(" · ")}`);
   if (plan.planHash !== opts.planHash) throw new Error(`plan-hashen er ${plan.planHash}, ikke ${opts.planHash}: noget har flyttet sig siden dry-runnet. Kør dry-runnet igen. Intet skrevet.`);
   if (!diff.racesToWrite.length) log("Intet at skrive: alle løb har allerede planens rækker (idempotent).");
   const touched = new Set(diff.racesToWrite);

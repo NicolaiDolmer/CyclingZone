@@ -580,3 +580,15 @@ test("den rigtige S5-generator: gyldige rækker for hvert løb og samme plan-has
     assert.deepEqual(rows.map((x) => x.stage_number), Array.from({ length: r.stages }, (_, i) => i + 1));
   }
 });
+
+test("#6929 (Codex P1) identityGateViolations: rød identitet, upinnet signatur eller afvigende monument blokerer apply", async () => {
+  const { identityGateViolations } = await import("./regenS5StageProfiles.mjs");
+  const green = { divisions: [{ tier: 1, identity: { ok: true, untyped: 0 }, pins: [{ pinned: true }], monuments: [{ authored: true, matchesAuthored: true }, { authored: false, matchesAuthored: null }] }] };
+  assert.deepEqual(identityGateViolations(green), []);
+  const red = { divisions: [{ tier: 2, identity: { ok: false, untyped: 3 }, pins: [{ pinned: false }], monuments: [{ authored: true, matchesAuthored: false }] }] };
+  const v = identityGateViolations(red);
+  assert.equal(v.length, 3);
+  assert.match(v.join(" "), /tabel A er rød \(3 uden type\)/);
+  assert.match(v.join(" "), /signatur/);
+  assert.match(v.join(" "), /authored_route/);
+});
