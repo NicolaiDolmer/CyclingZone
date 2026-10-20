@@ -22,7 +22,7 @@ Spillerne har altså kunnet købe en afdeling, der intet gør. Det er det først
 
 ## 2. Besluttet indhold
 
-Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre en Grand Tour gratis igen. Alle effekter regnes fra samme tal (`effectiveBonus('medical', tier, chef)` = afdelingens niveau × chefens samlede styrke), har et samlet loft og ligger bag flaget `condition_model_v2`. Første version bruger kun det fælles tal; chefens to specialakser (`recovery`, `injuryPrevention`) indgår ikke endnu, så to chefer med samme samlede styrke giver samme effekt. En akse-afhængig vægt pr. effekt kan lægges på senere og kræver et ejer-valg. Effekterne indgår i harness-gaten (§7 i designet) med tier 5 og topchef som værste tilfælde.
+Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre en Grand Tour gratis igen. Alle effekter regnes fra samme tal (`effectiveBonus('medical', tier, chef)`, der afhænger af afdelingens niveau og chefens samlede styrke; formlen står privat), har et samlet loft og ligger bag flaget `condition_model_v2`. Første version bruger kun det fælles tal; chefens to specialakser (`recovery`, `injuryPrevention`) indgår ikke endnu, så to chefer med samme samlede styrke giver samme effekt. En akse-afhængig vægt pr. effekt kan lægges på senere og kræver et ejer-valg. Effekterne indgår i harness-gaten (§7 i designet) med tier 5 og topchef som værste tilfælde.
 
 ### M1 · Hurtigere restitution
 - **Hvad:** rytterens daglige restitution bliver lidt større.
@@ -33,7 +33,7 @@ Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre 
 ### M2 · Færre skader
 - **Hvad:** lavere trænings-skaderisiko ved høj træthed, og lidt lavere risiko for at et styrt bliver til en skade.
 - **Spillerens gevinst:** man tør presse en rytter lidt mere, når man har investeret.
-- **Kræver:** faktor på `injuryRisk` (træning). For løb: v4-motoren afgør skaden (`incidents.ts`, `descent.ts`) og forbliver ren; medicinen anvendes i ét skridt på hele etapens output lige efter simuleringen: hændelserne (`race_incidents`, og `rider_condition`-skaden der udledes af dem) og løbsfilmens tidslinje (`incident`-events) får samme skadelængde. Et seedet rul pr. rytter og etape gør en skade til et styrt uden skade med afdelingens sandsynlighed; styrtet og udfaldet bevares. Samme sti for v3 og v4. Koherens-test: hændelse og tidslinje bærer samme skadedage. Lille-mellem.
+- **Kræver:** faktor på `injuryRisk` (træning). For løb: v4-motoren afgør skaden (`incidents.ts`, `descent.ts`) og forbliver ren; medicinen anvendes i ét skridt på hele etapens output, når etapens belastnings-snapshot fryses (medicin-bonus fryses med snapshottet, så et genoptaget trin giver samme udfald, også hvis afdeling eller læge er ændret imellem): hændelserne (`race_incidents`, og `rider_condition`-skaden der udledes af dem) og løbsfilmens tidslinje (`incident`-events) får samme skadelængde. Et seedet rul pr. rytter og etape gør en skade til et styrt uden skade med afdelingens sandsynlighed; styrtet og udfaldet bevares. Samme sti for v3 og v4. Koherens-test: hændelse og tidslinje bærer samme skadedage. Lille-mellem.
 - **Bygger på:** #4854 (træthedsgrænse og skader), staff-ønskelisten 6/9 ("Lægen forkorter skader").
 
 ### M3 · Kortere skader

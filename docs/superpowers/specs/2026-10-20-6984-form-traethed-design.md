@@ -48,7 +48,7 @@ Opgørelsen pr. dato bevares (#5928). Inden for datoen:
 - Etaperne tages ud af gennemsnittet med træningen og regnes hver for sig som en løbsdag for kroppen: etapens belastning lægges til, og rytteren restituerer imellem, i etapernes rækkefølge.
 - De frie pladser regnes som i dag.
 - En dato uden etaper regner trætheden med samme formel som i dag (for en middel-rytter præcis samme tal). Træning bliver ikke dyrere. Formen følger B4 også på disse datoer.
-- B1 (ejer 20/10): en etape vejer et helt døgn. Kalibreringen står privat i `balance-internals/6984/`.
+- B1 (ejer 20/10): hver etape tæller for sig som en løbsdag for kroppen. Vægt og kalibrering står privat i `balance-internals/6984/`.
 
 Konsekvens: en dato med flere etaper føles som flere hårde dage. Det er det, spillerne kaldte "S4 virkede": hviledage skal times.
 
@@ -129,7 +129,7 @@ En rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig
 
 ## 9. Ejer-beslutninger 20/10 (låst, kommentar på #6984)
 
-- **B1** En etape vejer et helt døgn.
+- **B1** Hver etape tæller for sig som en løbsdag for kroppen (vægten privat).
 - **B2** Trætheden hober sig op mellem dagens etaper, også inde i løbet (regel-revision).
 - **B3** Sæsonbelastningen er glidende og deler løbsdagstælleren med Udvikling 2.0's løbsbremse.
 - **B4** Både inaktivitet og overbelastning koster form.
