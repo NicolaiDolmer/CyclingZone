@@ -34,13 +34,22 @@
 //   --bench-scope=<s>        default all (gate, gt, all)
 //   --report-only            koer intet, saml kortet fra --out
 //   --no-png                 spring PNG-kortet over
+//   --season=<n>             kun loeb i saeson n (prod-listen)
+//   --synthetic-field[=generator|bench]  loeb uden tilmeldinger faar et felt i hukommelsen
+//                            (generator = tilmeldingsgeneratoren som dry-run paa nuvaerende
+//                            trupper; bench = det anonymiserede Giro-felt). #6909
+//   --routes-from=<dir>      foreslaaede ruter (cz-race-routes/v1, se docs/MOTOR_TESTPORT.md)
+//                            i stedet for prod's etapeprofiler; default-udvaelgelse = mappens loeb. #6909
+//   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
+//                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //
-// Refs #6750
+// Refs #6750 #6909
 import { spawn } from "node:child_process";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { benchView, buildTestportCard, copenhagenDate, raceResultFromDryRun, renderTestportHtml, renderTestportMarkdown } from "./lib/motorTestportReport.mjs";
+import { SYNTHETIC_KINDS, assertRoutesCover, createProdSource, loadRoutesDir, prepareInputs } from "./lib/motorTestportInputs.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -70,6 +79,10 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
   const benchScope = get("bench-scope", get("scope", "all"));
   if (!["gate", "gt", "all"].includes(benchScope)) throw new Error("--bench-scope skal vaere gate, gt eller all");
   const limit = get("limit") === null ? null : int("limit", 1);
+  // #6909: --synthetic-field (= generator) eller --synthetic-field=bench|generator.
+  const syntheticRaw = flag("synthetic-field") ? "generator" : get("synthetic-field");
+  if (syntheticRaw !== null && !SYNTHETIC_KINDS.includes(syntheticRaw)) throw new Error(`--synthetic-field skal vaere ${SYNTHETIC_KINDS.join(" eller ")}`);
+  const season = get("season") === null ? null : int("season", 1);
   return {
     candidate, baseline,
     seeds: int("seeds", 8),
@@ -92,6 +105,10 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     png: !flag("no-png"),
     benchWorker,
     revision: get("revision"),
+    syntheticField: syntheticRaw,
+    routesFrom: get("routes-from"),
+    season,
+    timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
   };
 }
 
@@ -114,20 +131,35 @@ export function raceIdsFromDir(dir) {
     .sort();
 }
 
-/**
- * De kommende loeb i prod (READ-ONLY: kun SELECT). Default: ikke afsluttede og
- * ikke startede (ingen etape koert), dvs. de loeb en ny revision binder til.
- */
-export async function listUpcomingRaceIds({ includeRunning = false } = {}) {
+/** Service-role-klient til prod. Bruges KUN til SELECT (generatoren faar readOnlyDb). */
+export async function prodDb() {
   const { createClient } = await import("@supabase/supabase-js");
   const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) throw new Error("Mangler SUPABASE_URL / SUPABASE_SERVICE_KEY (infisical run --env=prod), eller brug --from-dir/--races/--ids-file");
-  const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
+}
+
+/**
+ * De kommende loeb i prod (READ-ONLY: kun SELECT). Default: ikke afsluttede og
+ * ikke startede (ingen etape koert), dvs. de loeb en ny revision binder til.
+ * #6909: `season` begraenser til én saeson (nummer); `keepNoField` beholder loeb
+ * uden startfelt (de faar et syntetisk felt), men de taelles stadig.
+ */
+export async function listUpcomingRaceIds({ includeRunning = false, season = null, keepNoField = false } = {}) {
+  const db = await prodDb();
   const ids = [];
   const PAGE = 1000;
+  let seasonId = null;
+  if (season !== null) {
+    const { data, error } = await db.from("seasons").select("id").eq("number", season).maybeSingle();
+    if (error) throw new Error(`seasons: ${error.message}`);
+    if (!data) throw new Error(`Saeson ${season} findes ikke`);
+    seasonId = data.id;
+  }
   // pagination-safe: .range() i sider af PAGE til en kort side
   for (let from = 0; ; from += PAGE) {
     let q = db.from("races").select("id, scheduled_for, stages_completed").neq("status", "completed");
+    if (seasonId) q = q.eq("season_id", seasonId);
     if (!includeRunning) q = q.or("stages_completed.is.null,stages_completed.eq.0");
     const { data, error } = await q.order("scheduled_for", { ascending: true }).order("id", { ascending: true }).range(from, from + PAGE - 1);
     if (error) throw new Error(`races: ${error.message}`);
@@ -149,7 +181,8 @@ export async function listUpcomingRaceIds({ includeRunning = false } = {}) {
       if (!data || data.length < PAGE) break;
     }
   }
-  return splitByStartField(ids, withField);
+  const split = splitByStartField(ids, withField);
+  return keepNoField ? { ...split, ids } : split;
 }
 
 /** #6805: del loebene i dem med startfelt og dem uden (rent, testbart). Raekkefoelgen bevares. */
@@ -171,15 +204,18 @@ export function tourDryRunArgs({ raceId, candidate, baseline, seeds, raceDir, ca
 }
 
 /** Opgaverne (loeb + bench) for en koersel. Opgaver med `done` er sprunget over (genoptagelse). */
-export function planTasks({ raceIds, opts, outDir, fromDir = null }) {
+export function planTasks({ raceIds, opts, outDir, fromDir = null, prebuilt = new Set() }) {
   const tasks = [];
   if (!opts.benchOnly) {
     for (const raceId of raceIds) {
       const dir = path.join(outDir, "races", raceId);
-      const exported = fromDir ? path.join(fromDir, raceId, "cache.json") : null;
+      // #6909: en forbygget cache.json (syntetisk felt / foreslaaede ruter) i loebsmappen
+      // vinder over eksporten og laeses kun.
+      const isPrebuilt = prebuilt.has(raceId);
+      const exported = fromDir && !isPrebuilt ? path.join(fromDir, raceId, "cache.json") : null;
       const fromExport = Boolean(exported && existsSync(exported));
       const cachePath = fromExport ? exported : path.join(dir, "cache.json");
-      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport }) });
+      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt }) });
     }
   }
   if (opts.bench) {
@@ -195,12 +231,13 @@ export function planTasks({ raceIds, opts, outDir, fromDir = null }) {
  * Koerer `tasks` med hoejst `parallel` ad gangen. `run(task)` -> Promise<exitkode>.
  * Returnerer {ok, failed} (id'er). En fejl stopper ikke de andre.
  */
-export async function runPool(tasks, parallel, run, { onDone = null } = {}) {
+export async function runPool(tasks, parallel, run, { onDone = null, shouldStop = () => false } = {}) {
   const queue = tasks.slice();
   const ok = [];
   const failed = [];
   const worker = async () => {
-    while (queue.length) {
+    // #6909: shouldStop (tidsbudget) starter ingen nye opgaver; de koerende goeres faerdige.
+    while (queue.length && !shouldStop()) {
       const t = queue.shift();
       let code;
       try { code = await run(t); } catch (err) { code = 1; t.error = String(err?.message ?? err); }
@@ -209,7 +246,7 @@ export async function runPool(tasks, parallel, run, { onDone = null } = {}) {
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(parallel, tasks.length)) }, worker));
-  return { ok, failed };
+  return { ok, failed, pending: queue.map((t) => t.id) };
 }
 
 /** Child-proces med log til <dir>/log.txt og `done` ved exit 0. */
@@ -301,6 +338,24 @@ export function buildReportMeta(prev, opts, thresholds, now = new Date()) {
   return { ...prev, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds, generatedAt: now.toISOString() };
 }
 
+/**
+ * En out-mappe tilhoerer én koersel: samme revisioner, seeds, bench-scope og (#6909)
+ * samme input (syntetisk felt, rute-mappe, saeson). Aeldre meta uden de felter = null.
+ */
+export function assertSameRun(prev, opts, outDir) {
+  if (!prev) return;
+  const same = prev.candidate === opts.candidate && prev.baseline === opts.baseline && prev.seeds === opts.seeds
+    && (prev.benchScope ?? "all") === opts.benchScope
+    && (prev.syntheticField ?? null) === (opts.syntheticField ?? null)
+    && (prev.routesFrom ?? null) === (opts.routesFrom ?? null)
+    && (prev.routesSignature ?? null) === (opts.routesSignature ?? null)
+    && (prev.season ?? null) === (opts.season ?? null);
+  if (!same) {
+    const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null].filter(Boolean);
+    throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds, bench ${prev.benchScope}${input.length ? `, ${input.join(", ")}` : ""}). Brug en ny --out.`);
+  }
+}
+
 export function collectCard({ outDir, baseline, candidate, meta, benchScope = meta?.benchScope ?? "all", thresholds = {} }) {
   const racesDir = path.join(outDir, "races");
   const idsFile = path.join(outDir, "ids.txt");
@@ -375,10 +430,21 @@ async function defaultBaseline() {
  * test kan fastlaase begge. `defaultBaseline` kan injiceres
  * af samme grund (default: den aktuelle revision).
  */
-export async function main(argv = process.argv.slice(2), { now, clock, defaultBaseline: baselineOverride } = {}) {
+/**
+ * #6909 (Codex P1): tidsbudgettets stop-tjek. Maaler forbrugt tid paa et monotont ur
+ * (default performance.now), som kan injiceres, saa en test styrer praecist hvilke
+ * opgaver der bliver ventende. Uden budget stoppes aldrig.
+ */
+export function budgetStop(timeBudgetMin, monotonic = () => performance.now()) {
+  if (!timeBudgetMin) return () => false;
+  const stopAt = monotonic() + timeBudgetMin * 60_000;
+  return () => monotonic() >= stopAt;
+}
+
+export async function main(argv = process.argv.slice(2), { now, clock, monotonic, defaultBaseline: baselineOverride } = {}) {
   const stamp = clock ?? (now ? () => now : () => new Date());
   now ??= stamp();
-  const opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
+  let opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
   if (opts.benchWorker) return benchWorker(opts);
   const outDir = assertPrivateOutDir(abs(opts.out));
   const metaFile = path.join(outDir, "testport-meta.json");
@@ -390,47 +456,79 @@ export async function main(argv = process.argv.slice(2), { now, clock, defaultBa
     const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: buildReportMeta(prev, opts, thresholds, stamp()), thresholds });
     return writeCard({ card, outDir, png: opts.png, failed: prev.failedRaces ?? [] });
   }
-  if (prev && (prev.candidate !== opts.candidate || prev.baseline !== opts.baseline || prev.seeds !== opts.seeds || (prev.benchScope ?? "all") !== opts.benchScope)) {
-    throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds, bench ${prev.benchScope}). Brug en ny --out.`);
-  }
+  // #6909 (Codex P2): ruterne valideres og fingeraftrykkes FOER sammenligningen med en tidligere koersel.
+  const routesEarly = !opts.benchOnly && opts.routesFrom ? loadRoutesDir(abs(opts.routesFrom)) : null;
+  if (routesEarly) opts = { ...opts, routesSignature: routesEarly.signature };
+  assertSameRun(prev, opts, outDir);
   mkdirSync(outDir, { recursive: true });
+  // #6909 (Codex P2): uret starter foer forberedelsen (prod-laesning, syntetisk felt, ruter),
+  // saa --time-budget daekker hele kaldet, ikke kun opgaverne bagefter.
+  const shouldStop = budgetStop(opts.timeBudgetMin, monotonic);
 
   let source = prev?.source ?? null;
   let raceIds = [];
+  let inputs = { prebuilt: new Set(), field: prev?.field ?? null, routes: prev?.routes ?? null };
   const fromDir = opts.fromDir ? abs(opts.fromDir) : null;
   if (!opts.benchOnly) {
+    // #6909: foreslaaede ruter valideres i sin helhed foer noget koeres.
+    const routes = routesEarly;
     if (opts.raceIds) { raceIds = opts.raceIds; source = "--races"; }
     else if (opts.idsFile) { raceIds = parseIdsText(readFileSync(abs(opts.idsFile), "utf8")); source = `--ids-file ${path.basename(opts.idsFile)}`; }
+    else if (routes) { raceIds = [...routes.byRace.keys()]; source = `--routes-from ${path.basename(routes.dir)}`; }
     else if (fromDir) { raceIds = raceIdsFromDir(fromDir); source = `--from-dir ${path.basename(fromDir)}`; }
     else {
-      const upcoming = await listUpcomingRaceIds({ includeRunning: opts.includeRunning });
+      const upcoming = await listUpcomingRaceIds({ includeRunning: opts.includeRunning, season: opts.season, keepNoField: Boolean(opts.syntheticField) });
       raceIds = upcoming.ids;
-      source = `${opts.includeRunning ? "prod (ikke afsluttede)" : "prod (ikke startede)"}${upcoming.skippedNoField ? `, ${upcoming.skippedNoField} uden startfelt sprunget over` : ""}`;
-      if (upcoming.skippedNoField) console.log(`${upcoming.skippedNoField} kommende loeb har intet startfelt endnu og koeres ikke (#6805).`);
+      const what = `${opts.includeRunning ? "prod (ikke afsluttede)" : "prod (ikke startede)"}${opts.season ? `, saeson ${opts.season}` : ""}`;
+      const noField = opts.syntheticField ? `, ${upcoming.skippedNoField} uden startfelt faar syntetisk felt` : `, ${upcoming.skippedNoField} uden startfelt sprunget over`;
+      source = `${what}${upcoming.skippedNoField ? noField : ""}`;
+      if (upcoming.skippedNoField && !opts.syntheticField) console.log(`${upcoming.skippedNoField} kommende loeb har intet startfelt endnu og koeres ikke (#6805; --synthetic-field giver dem et felt).`);
     }
     raceIds = selectRaceIds(raceIds, opts.limit);
+    if (routes) assertRoutesCover(raceIds, routes);
+    // #6909 (Codex P2): en aendret udvaelgelse afvises FOER der skrives caches/loebsmapper, saa
+    // en forkert genoptagelse ikke efterlader mapper uden scorekort i --out.
+    const selectedPath = path.join(outDir, "selected-ids.txt");
+    if (prev && existsSync(selectedPath)) assertSameRaceSelection(parseIdsText(readFileSync(selectedPath, "utf8")), raceIds, outDir);
+    writeFileSync(selectedPath, `${raceIds.join("\n")}\n`);
+    if (routes || opts.syntheticField) {
+      const offline = { benchField: async () => (await import("./s5MotorBench.mjs")).loadBenchField(), generatorField: async () => { throw new Error("--synthetic-field=generator kraever prod (infisical run --env=prod), ikke --from-dir"); } };
+      const src = fromDir ? offline : createProdSource(await prodDb());
+      inputs = await prepareInputs({ raceIds, outDir, fromDir, routes, synthetic: opts.syntheticField, source: src });
+      if (inputs.field?.skippedNoField) console.log(`${inputs.field.skippedNoField} loeb fik intet startfelt og koeres ikke.`);
+      raceIds = inputs.ids;
+    }
     const idsPath = path.join(outDir, "ids.txt");
     if (prev && existsSync(idsPath)) assertSameRaceSelection(parseIdsText(readFileSync(idsPath, "utf8")), raceIds, outDir);
     writeFileSync(idsPath, `${raceIds.join("\n")}\n`);
   }
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
-  const meta = { candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds };
+  const meta = {
+    candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
+    syntheticField: opts.syntheticField, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, field: inputs.field, routes: inputs.routes,
+  };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
-  const tasks = planTasks({ raceIds, opts, outDir, fromDir });
+  const tasks = planTasks({ raceIds, opts, outDir, fromDir, prebuilt: inputs.prebuilt });
   const todo = tasks.filter((t) => !t.done);
   console.log(`${tasks.length} opgaver (${tasks.length - todo.length} allerede faerdige), ${opts.parallel} ad gangen: ${opts.baseline} -> ${opts.candidate}, ${opts.seeds} seeds`);
   const res = await runPool(todo, opts.parallel, runChild, {
     onDone: (t, code, p) => console.log(`[${p.ok + p.failed}/${p.total}] ${t.id}: ${code === 0 ? "ok" : `FEJL (exit ${code}, se ${path.relative(REPO_ROOT, path.join(t.dir, "log.txt"))})`}`),
+    shouldStop,
   });
+  if (res.pending.length) console.log(`Tidsbudget naaet: ${res.pending.length} opgaver venter. Koer samme kommando igen for at genoptage.`);
   meta.failedRaces = res.failed;
+  // #6909 (Codex): opgaver tidsbudgettet ikke naaede (ogsaa bench), saa kortet og
+  // --report-only ved at koerslen er ufaerdig.
+  meta.pendingTasks = res.pending;
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
   const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: stamp().toISOString() }, thresholds });
   return writeCard({ card, outDir, png: opts.png, failed: res.failed });
 }
 
-/** Skriv kortet (md + json + evt. png). Fejlede opgaver eller manglende scorecards = exit 1. */
+/** Skriv kortet (md + json + evt. png). Fejlede, ventende opgaver eller manglende scorecards = exit 1. */
 async function writeCard({ card, outDir, png, failed }) {
+  const pending = card.meta?.pendingTasks ?? [];
   writeFileSync(path.join(outDir, "testport.json"), JSON.stringify(card, null, 2));
   writeFileSync(path.join(outDir, "testport.md"), renderTestportMarkdown(card));
   if (png) {
@@ -442,8 +540,8 @@ async function writeCard({ card, outDir, png, failed }) {
     }
   }
   const missing = card.meta?.missingScorecards ?? [];
-  console.log(`Kort: ${path.join(outDir, "testport.md")} (+ .json${png ? ", .png" : ""}) · ${card.races} loeb${failed.length ? ` · ${failed.length} opgaver FEJLEDE` : ""}${missing.length ? ` · ${missing.length} scorecards mangler` : ""}`);
-  if (failed.length || missing.length) process.exitCode = 1;
+  console.log(`Kort: ${path.join(outDir, "testport.md")} (+ .json${png ? ", .png" : ""}) · ${card.races} loeb${failed.length ? ` · ${failed.length} opgaver FEJLEDE` : ""}${missing.length ? ` · ${missing.length} scorecards mangler` : ""}${pending.length ? ` · ${pending.length} opgaver venter (tidsbudget)` : ""}`);
+  if (failed.length || missing.length || pending.length) process.exitCode = 1;
   return { card, outDir, failed };
 }
 
