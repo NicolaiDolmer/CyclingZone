@@ -23,7 +23,9 @@
 //
 // --apply (ejer-go pr. prod-skridt) kræver --season 5 --confirm-season-upcoming
 // --backup-table=backup_6857_race_stage_profiles_YYYYMMDD --plan-hash=<dry-runnets hash>.
-// Efter 25/10 (dansk dato) kræves også --allow-active. Apply genlæser alt, kræver samme
+// Efter 25/10 (dansk dato) kræves også --allow-active. §6b (brosten/ITT/højbjerg pr. division)
+// stopper apply, medmindre --allow-uniform-target-drift er givet på ejer-go (#6995, valg A 20/10).
+// Apply genlæser alt, kræver samme
 // plan-hash (intet har flyttet sig siden dry-runnet), at backup-tabellen dækker hver række der
 // slettes, skriver pr. løb (DELETE + INSERT, højst 200 rækker pr. batch) og post-verificerer:
 // count(profiler) = sum(stages), hver række = planen, kryds-pulje-divergens 0 (også via
@@ -147,14 +149,14 @@ export function assertPrivatePath(path, label) {
 // ── Argumenter ────────────────────────────────────────────────────────────────────────
 
 const VALUE_FLAGS = new Set(["season", "routes-out", "private-dir", "public-dir", "backup-table", "plan-hash", "motor-bench", "label", "identity-file"]);
-const BOOL_FLAGS = new Set(["apply", "confirm-season-upcoming", "allow-active", "skip-cache-wait"]);
+const BOOL_FLAGS = new Set(["apply", "confirm-season-upcoming", "allow-active", "skip-cache-wait", "allow-uniform-target-drift"]);
 
 /**
  * @param {string[]} argv  process.argv.slice(2)
  */
 export function parseArgs(argv = []) {
   const o = {
-    apply: false, season: null, confirmSeasonUpcoming: false, allowActive: false, skipCacheWait: false,
+    apply: false, season: null, confirmSeasonUpcoming: false, allowActive: false, skipCacheWait: false, allowUniformTargetDrift: false,
     routesOut: null, privateDir: null, publicDir: null, backupTable: null, planHash: null, motorBench: null, label: null, identityFile: null,
   };
   const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
@@ -480,7 +482,7 @@ export function buildRegenPlan(input, {
 /**
  * @returns {{ ok: boolean, violations: string[], checks: Array<{ name: string, ok: boolean, detail: string }> }}
  */
-export function checkInvariants({ input, plan, now, allowActive = false, seasonNumber = TARGET_SEASON_NUMBER }) {
+export function checkInvariants({ input, plan, now, allowActive = false, allowUniformTargetDrift = false, seasonNumber = TARGET_SEASON_NUMBER }) {
   const checks = [];
   const add = (name, ok, detail = "") => checks.push({ name, ok: Boolean(ok), detail });
   const { season, races, profiles, claims } = input;
@@ -517,7 +519,12 @@ export function checkInvariants({ input, plan, now, allowActive = false, seasonN
   const coverage = plan.tiers.flatMap((t) => t.after.coverage.violations);
   add("§5-gulve, bjergfrie etapeløb og rolling-bånd", coverage.length === 0, `${coverage.length} brud`);
   const uniform = plan.tiers.flatMap((t) => t.after.coverage.uniformViolations);
-  add("§6b brosten/ITT/højbjerg pr. division", uniform.length === 0, `${uniform.length} brud`);
+  // #6995 (ejer-go 20/10, valg A): §6b kan ikke holdes i D3/D4 med tabel A og S5's faste endagsløb.
+  // Som i kalender-byggeren er §6b override-bar med --allow-uniform-target-drift (ejer-go pr. kørsel);
+  // bruddene står stadig i detaljen og i rapporten.
+  const uniformOverride = allowUniformTargetDrift && uniform.length > 0;
+  add("§6b brosten/ITT/højbjerg pr. division", uniform.length === 0 || allowUniformTargetDrift,
+    `${uniform.length} brud${uniformOverride ? " (override --allow-uniform-target-drift, ejer-go)" : ""}`);
 
   const violations = checks.filter((c) => !c.ok).map((c) => `${c.name}: ${c.detail}`);
   return { ok: violations.length === 0, violations, checks };
@@ -1157,7 +1164,7 @@ async function main() {
   const benchmark = loadS5Benchmark();
   const motor = loadMotorGapFile(opts.motorBench ?? DEFAULT_MOTOR_STUB_PATH);
   const plan = buildRegenPlan(input, { evaluateGate: makeGateEvaluator({ benchmark, motor }), log });
-  const invariants = checkInvariants({ input, plan, now, allowActive: opts.allowActive, seasonNumber: opts.season });
+  const invariants = checkInvariants({ input, plan, now, allowActive: opts.allowActive, allowUniformTargetDrift: opts.allowUniformTargetDrift, seasonNumber: opts.season });
   const diff = diffAgainstCurrent(plan, input.profiles);
   const gateLines = formatS5BenchmarkReport(plan.gate.after);
   for (const line of gateLines) log(line);
@@ -1186,7 +1193,7 @@ async function main() {
     log(`Privat rapport + backup.sql/restore.sql: ${privateDir}`);
     log(`Offentlig rapport: ${join(publicDir, `dry-run-${day}.md`)}`);
     log(`Apply (ejer-go pr. skridt; kør backup.sql først):`);
-    log(`  infisical run --env=prod --silent -- node backend/scripts/regenS5StageProfiles.mjs --apply --season 5 --confirm-season-upcoming --backup-table=${table} --plan-hash=${plan.planHash}${day >= CUTOVER_DATE_CPH ? " --allow-active" : ""}`);
+    log(`  infisical run --env=prod --silent -- node backend/scripts/regenS5StageProfiles.mjs --apply --season 5 --confirm-season-upcoming --backup-table=${table} --plan-hash=${plan.planHash}${day >= CUTOVER_DATE_CPH ? " --allow-active" : ""}${opts.allowUniformTargetDrift ? " --allow-uniform-target-drift" : ""}`);
     process.exitCode = invariants.ok && !identityViolations.length ? 0 : 1;
     return;
   }

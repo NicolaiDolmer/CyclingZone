@@ -41,7 +41,7 @@ Hver type har et fast garanti-sæt, filler-vægte og en ordnings-arketype. Det l
 
 **Signaturen fastlåses i pass 2** (`raceRouteGenerator.js`, ny `applySignature`). En `climb` erstatter klimaks-stigningen på den etape, som `stage_hint` udpeger. Terrænet læses igen med `deriveTerrainType`, og hvis det skifter, kastes der (valideres i seed-testen). `itt`/`prologue` låser etapetypen før ordningen. Variationen pr. sæson bevares (`seedKeyFor` med `season_id`).
 
-**Queen (#6995):** en `stage_hint: "queen"`-signatur er løbets hårdeste etape. Ingen garanti, filler eller kvote-type må ligge over queen-etapens terræn (uafgjort er tilladt); en garanti over den kaster (fail-closed).
+**Queen (#6995):** en `stage_hint: "queen"`-signatur er løbets hårdeste etape. Ingen garanti, filler eller kvote-type må ligge over queen-etapens terræn (uafgjort er tilladt); en garanti over den kaster (fail-closed). To sektor-signaturer af samme underlag deler én etape, og en enkeltstarts-signatur overtager garantiens enkeltstart (ejer-go 20/10, valg A).
 
 **Monumenter:** `buildSingle` returnerer `authored_route`, når den findes. Finale-rampen (stigende spurt, mur, bakke) er et afledt felt og læses af rutens målstigning, holdt i afslutningens bånd (#6995). `generator_version` = 7 for identitets-stien.
 

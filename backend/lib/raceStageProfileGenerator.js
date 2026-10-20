@@ -1832,7 +1832,26 @@ function drawIdentityTypes(rng, stages, identity, label) {
       // dele plads med typens prolog-lås (den ville blive forkortet til en prolog).
       && (sig.position === null || sig.position === l.position) && Boolean(sig.prologue) === Boolean(l.prologue));
     if (shared) { shared.feature = feature; continue; }
+    // #6995 (ejer-go 20/10, valg A): to sektorer af samme underlag deler én etape (en brostens-
+    // eller grusetape har flere sektorer), så signaturen ikke lægger en ekstra sektor-etape til.
+    // Pladserne må ikke modsige hinanden; den samlede lås får den faste plads, hvis én har den.
+    if (feature.kind === "sector") {
+      const sector = locks.find((l) => l.feature?.kind === "sector" && l.type === sig.type
+        && (l.position === null || sig.position === null || l.position === sig.position));
+      if (sector) {
+        sector.features = [...(sector.features ?? [sector.feature]), feature];
+        if (sector.position === null) sector.position = sig.position;
+        continue;
+      }
+    }
     let index = claim(sig.type);
+    // #6995 (ejer-go 20/10, valg A): en enkeltstarts-signatur overtager en garanteret enkeltstart
+    // der ikke er låst (allround garanterer én flad; signaturen gør den kuperet), i stedet for at
+    // lægge en tidskørsel mere til. Garantiens prolog-lås røres aldrig (den er claimed).
+    if (index < 0 && feature.kind === "itt") {
+      index = types.findIndex((t, k) => isTimeTrial(t) && !claimed.has(k));
+      if (index >= 0) { types[index] = sig.type; claimed.add(index); }
+    }
     if (index < 0) {
       if (types.length < stages) { types.push(sig.type); index = types.length - 1; }
       else {
@@ -1931,6 +1950,15 @@ function placeIdentityLocks(ordered, locks) {
 }
 
 /**
+ * #6995: delte sektorer i rutens rækkefølge. En sektor med stage_hint "last" er finale-sektoren
+ * (står sidst); ellers bevares seedets rækkefølge.
+ * @param {any[]} features
+ */
+function sectorSignatureOrder(features) {
+  return [...features.filter((f) => f.stage_hint !== "last"), ...features.filter((f) => f.stage_hint === "last")];
+}
+
+/**
  * @param {S5Rng} rng @param {number} stages @param {any} race
  * @param {{ type: string, profile: any, features: any[] }} identity
  * @param {string[] | null} fillerTypes  divisionens kvote-fordelte filler-typer (som applyFillerTypes)
@@ -1955,7 +1983,8 @@ function buildIdentityStageRace(rng, stages, race, identity, fillerTypes = null)
       shortItt: Boolean(lock?.prologue),
       // #6857 (Codex P2): en låst almindelig enkeltstart må aldrig trækkes til prolog.
       noPrologue: lock?.type === "itt" && !lock.prologue,
-      signature: lock?.feature && ["climb", "summit_finish", "sector"].includes(lock.feature.kind) ? lock.feature : null,
+      signature: lock?.features ? sectorSignatureOrder(lock.features)
+        : lock?.feature && ["climb", "summit_finish", "sector"].includes(lock.feature.kind) ? lock.feature : null,
     });
     return { ...stage, generator_version: IDENTITY_GENERATOR_VERSION };
   });
