@@ -1490,6 +1490,9 @@ test("#6857 monument-spec: v5 ignorerer ruten, og en ugyldig rute kaster i S5", 
   assert.deepEqual(generateRaceStageProfiles(monument(1)), generateRaceStageProfiles(plain));
   assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, segments: [] }), S5), TypeError);
   assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, sprints: [{ name: "Finish", km: 250, kind: "finish" }] }), S5), TypeError);
+  // Afslutningen skal ligge i matrixen for rutens eget terræn (benchmark-gaten ville afvise den).
+  assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, finale_type: "long_climb" }), S5), /not allowed on its route terrain flat/);
+  assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, finale_type: "breakaway" }), S5), /not allowed/);
 });
 
 // ── Kvoterne (s5StageRaceFillerSlots + divisionens kvote-generator) ────────────────────

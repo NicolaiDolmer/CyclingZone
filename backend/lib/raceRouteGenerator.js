@@ -875,9 +875,15 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
   if (sigClimb) climbs[climbs.length - 1] = { ...climbs[climbs.length - 1], name: sigClimb.name };
 
   const rampSpec = S5_FINISH_RAMPS[finale_type];
-  const finishRamp = rampSpec
+  const drawnRamp = rampSpec
     ? { ramp_km: randFloat(rng, rampSpec.length[0], rampSpec.length[1], 1), ramp_gradient: randFloat(rng, rampSpec.grad[0], rampSpec.grad[1], 1) }
     : null;
+  // #6857: en signatur-helling med topmål ER afslutningen - rampen tager dens gradient,
+  // holdt inden for afslutningens bånd (spec §3). Trækket ovenfor bevares, så strømmen er stabil.
+  const clampTo = (/** @type {number} */ v, /** @type {number[]} */ [lo, hi]) => Math.min(hi, Math.max(lo, v));
+  const finishRamp = drawnRamp && sigSummit
+    ? { ramp_km: drawnRamp.ramp_km, ramp_gradient: clampTo(sigClimb.avg_gradient, rampSpec.grad) }
+    : drawnRamp;
   const sprints = buildSprints(rng, target, finale_type, distance_km, isStageRace, climbs)
     .map((s) => (s.kind === "finish" && finishRamp ? { ...s, ...finishRamp } : s));
   const drawnSectors = buildSectors(rng, target, distance_km, namer);

@@ -27,7 +27,7 @@ import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } f
 import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
-import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders } from "./stageProfileTypes.js";
+import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed } from "./stageProfileTypes.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
 import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
@@ -1932,6 +1932,11 @@ function buildIdentityStageRace(rng, stages, race, identity, fillerTypes = null)
 function buildAuthoredSingle(race) {
   const r = race.authored_route;
   validateAuthoredRoute(r);
+  // Afslutningen skal ligge i S5-matrixen for rutens eget terræn (B+), ellers afviser
+  // benchmark-gaten etapen bagefter. Tidskørsels-formater står uden for matrixen.
+  if (!isTimeTrial(r.profile_type) && !isFinishAllowed(deriveTerrainType(r.climbs), canonicalFinaleType(r.finale_type) ?? "")) {
+    throw new TypeError(`authored_route.finale_type "${r.finale_type}" is not allowed on its route terrain ${deriveTerrainType(r.climbs)} (${race.name ?? race.id}, #6857)`);
+  }
   const clone = (/** @type {any[]} */ xs) => xs.map((x) => ({ ...x }));
   const merged = {
     stage_number: 1,

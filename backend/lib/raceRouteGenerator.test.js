@@ -609,6 +609,7 @@ test("#6857 attachRouteS5: et topmål på kuperet terræn bliver den stejle opad
     assert.equal(r.terrain, "hilly");
     const finish = r.sprints.find((s) => s.kind === "finish");
     assert.ok(finish.ramp_km < 1.5 && finish.ramp_gradient >= 10, "murens rampe følger spec §3");
+    assert.equal(finish.ramp_gradient, 12, "rampen tager signatur-hellingens gradient");
   }
   assert.equal(summitFinishFor("medium_mountain", 3), "long_climb");
   assert.equal(summitFinishFor("hilly", 3), "uphill_sprint");
