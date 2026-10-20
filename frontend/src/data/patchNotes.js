@@ -1,5 +1,47 @@
 export const PATCHES = [
   {
+    "version": "7.371",
+    "date": "2026-10-20",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Train now during the evening run",
+          "body": "If you press Train now while the evening run is training your team, the button now shows Running… and the page updates by itself when training is done. Before, you got an error."
+        },
+        "da": {
+          "title": "Træn nu under aftenkørslen",
+          "body": "Trykker du på Træn nu, mens aftenkørslen træner dit hold, viser knappen nu Kører…, og siden opdaterer sig selv, når træningen er færdig. Før fik du en fejl."
+        },
+        "refs": [
+          6839,
+          6827
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squad",
+        "en": {
+          "title": "Youth riders bought at auction join the senior squad",
+          "body": "A rider released from an academy and bought at auction could get stuck as a U23 rider outside the academy. He now joins the senior squad, and the riders it happened to have been moved."
+        },
+        "da": {
+          "title": "Ungdomsryttere købt på auktion kommer på seniorholdet",
+          "body": "En rytter, der var frigivet fra et akademi og købt på auktion, kunne sidde fast som U23-rytter uden for akademiet. Han kommer nu på seniorholdet, og de ryttere, det skete for, er flyttet."
+        },
+        "refs": [
+          6922,
+          6920
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.370",
     "date": "2026-10-19",
     "changes": [
