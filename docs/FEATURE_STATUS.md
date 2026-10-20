@@ -83,7 +83,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Youth squad upkeep switch at season change (`academy-drift-kill-switch`) | dormant | `academy_drift_enabled` | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #5741 | 2026-09-28 | Off målt read-only i prod 28/9 efter S3→S4-cutover; fremtidig sats og nyt flip afventer ejerbeslutning. |
-| No running costs from season 5 (`economy-no-upkeep`) | building | - | [ECONOMY_RULES](ECONOMY_RULES.md) | #6936 | 2026-10-20 | Flag oprettes off ved merge. |
+| No running costs from season 5 (`economy-no-upkeep`) | building | `economy_no_upkeep_v1` | [ECONOMY_RULES](ECONOMY_RULES.md) | #6936 | 2026-10-20 | Off; tændes 25/10 på ejer-go. |
 
 ## club
 

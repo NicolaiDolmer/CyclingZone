@@ -774,7 +774,7 @@ features:
     verified: 2026-10-20
     decision: taend
     decide_by: 2026-10-25
-    note: Flag off i prod; tændes før skiftet 25/10 på ejer-go.
+    note: Off; tændes 25/10 på ejer-go.
 
   - id: sponsors
     area: economy
