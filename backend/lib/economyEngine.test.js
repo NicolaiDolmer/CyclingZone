@@ -2938,12 +2938,37 @@ test("#1152 · tier 4 (bund) rykker op men relegerer IKKE", async () => {
   assert.equal(supabase.updates.filter(u => u.payload.division === 5).length, 0, "ingen relegering fra tier 4");
 });
 
-test("#1152 · Div3-pulje MED AI relegerer IKKE til Div4 (udskydelse) men rykker stadig op", async () => {
+test("#6771 · Div3-pulje MED AI relegerer bund 4 til Div4 (udskydelsen er fjernet); AI i bunden flyttes ikke", async () => {
   const supabase = createDivisionEndSupabase();
-  // 24 hold, 4 AI i bunden → ikke all-real → Div4-relegering udskydes.
+  // 24 hold, 4 AI i bunden: AI flyttes ikke, så ingen af de fire bund-pladser er mennesker.
   await processDivisionEnd(buildPoolStandings({ division: 3, poolId: 4, count: 24, aiCount: 4 }), 3, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
-  assert.equal(supabase.updates.filter(u => u.payload.division === 4).length, 0, "ingen relegering til Div4 (pulje har AI)");
+  assert.equal(supabase.updates.filter(u => u.payload.division === 4).length, 0, "AI-hold i bunden flyttes ikke");
   assert.equal(supabase.updates.filter(u => u.payload.division === 2).length, 2, "top 2 rykker stadig op til Div2");
+});
+
+test("#6771 · Div3-pulje med AI MIDT i tabellen (prod 20/10) relegerer de 4 nederste menneskehold til Div4", async () => {
+  const supabase = createDivisionEndSupabase();
+  const rows = buildPoolStandings({ division: 3, poolId: 4, count: 24, aiCount: 0 });
+  for (const r of rows) if (r.rank_in_division >= 8 && r.rank_in_division <= 16) r.team.is_ai = true; // 9 AI midt i puljen
+  await processDivisionEnd(rows, 3, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  const relegated = supabase.updates.filter(u => u.payload.division === 4);
+  assert.equal(relegated.length, 4, "bund 4 rykker ned selv om puljen ikke er all-real");
+});
+
+test("#6957 · op/nedrykning flytter et hold HØJST ét divisionstrin pr. skifte", async () => {
+  for (const division of [1, 2, 3, 4]) {
+    const supabase = createDivisionEndSupabase();
+    const rows = buildPoolStandings({ division, count: 24, aiCount: 0 });
+    await processDivisionEnd(rows, division, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+    const byTeam = new Map(rows.map((r) => [r.team_id, r.division]));
+    for (const u of supabase.updates.filter((x) => x.payload.division != null)) {
+      const id = u.id ?? u.match?.id ?? u.eq?.id;
+      const from = id != null ? byTeam.get(id) : division;
+      assert.ok(Math.abs(u.payload.division - (from ?? division)) <= 1, `D${division}: ${id} flyttes ${from} -> ${u.payload.division}`);
+    }
+    const moved = supabase.updates.filter((x) => x.payload.division != null);
+    assert.ok(moved.every((u) => Math.abs(u.payload.division - division) === 1), `D${division}: alle flyt er præcis ét trin`);
+  }
 });
 
 test("#1152 · Div3-pulje ALL-REAL relegerer til Div4 (aktivering)", async () => {
