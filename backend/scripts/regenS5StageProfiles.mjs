@@ -1052,6 +1052,9 @@ async function main() {
   const touched = new Set(diff.racesToWrite);
   const currentIds = input.profiles.filter((p) => touched.has(p.race_id)).map((p) => p.id);
   await assertBackupCovers(db, opts.backupTable, currentIds);
+  // Restore-scriptet for netop den backup-tabel apply bruger, skrevet FØR første skrivning (dry-runnet kan være fra en anden dag).
+  const restorePath = join(privateDir, `restore-${opts.backupTable}.sql`);
+  writeFileSync(restorePath, buildRestoreSql(opts.backupTable), "utf8");
   const stamp = generatedAt.replace(/[:.]/g, "-");
   const snapshotRows = input.profiles.slice().sort((a, b) => compareIds(a.race_id, b.race_id) || byStage(a, b));
   writeFileSync(join(privateDir, `pre-apply-snapshot-${stamp}.json`), `${JSON.stringify({ takenAt: generatedAt, rows: snapshotRows })}\n`, "utf8");
@@ -1074,7 +1077,7 @@ async function main() {
     log(`calendar-cachen (TTL ${CALENDAR_CACHE_TTL_MS / 1000} s) er tom${cache.emptyAt ? ` fra ${cache.emptyAt.toISOString()}` : ""}`);
   }
   if (!verify.ok) {
-    console.error(`❌ post-verify fejlede. Rul tilbage med ${join(privateDir, "restore.sql")} (ejer-gated).`);
+    console.error(`❌ post-verify fejlede. Rul tilbage med ${restorePath} (ejer-gated).`);
     process.exitCode = 1;
   }
 }
