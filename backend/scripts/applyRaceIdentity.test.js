@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { parseArgs, validateSeed, applyRaceIdentity } from "./applyRaceIdentity.js";
+import { TIER_IDENTITY_DISTRIBUTION } from "../lib/raceIdentityTypes.js";
 
 const entry = (external_id = "tour") => ({ external_id, race_identity_type: "hilly", signature: null, authored_route: null });
 const seed = (entries = [entry()]) => ({ version: 1, entries });
@@ -71,10 +72,29 @@ test("authored route accepts the catalog's Monuments class and rejects other rac
   assert.equal(bad.writes.length, 0);
 });
 
-test("checked-in skeleton has valid isolated examples and applies nothing without a client", async () => {
+test("checked-in seed: valid, isolated examples, and never writes without a client", async () => {
   const doc = JSON.parse(readFileSync(new URL("../../database/seed/race_identity.json", import.meta.url), "utf8"));
-  assert.equal(validateSeed(doc).length, 0);
   assert.ok(doc.examples.length >= 2 && doc.examples.length <= 3);
   assert.equal(validateSeed({ version: 1, entries: doc.examples }).length, doc.examples.length);
-  assert.equal((await applyRaceIdentity(doc, { apply: true })).written, 0);
+  const exampleIds = new Set(doc.examples.map(row => row.external_id));
+  assert.ok(validateSeed(doc).every(row => !exampleIds.has(row.external_id)), "examples are documentation, never entries");
+  await assert.rejects(applyRaceIdentity(doc, { apply: true }), /Supabase client is required/);
+});
+
+// #6930 (L4): 65 short S5 stage races carry a type + signature, 5 monuments an authored route.
+// Per-division placement is checked against prod in the dry-run; here the totals of owner table A.
+test("checked-in seed: type totals match table A and every monument has an authored route", () => {
+  const doc = JSON.parse(readFileSync(new URL("../../database/seed/race_identity.json", import.meta.url), "utf8"));
+  const typed = doc.entries.filter(row => row.race_identity_type !== null);
+  const authored = doc.entries.filter(row => row.authored_route !== null);
+  assert.equal(typed.length, 65);
+  assert.equal(authored.length, 5);
+  assert.equal(typed.length + authored.length, doc.entries.length);
+  for (const row of typed) assert.ok(row.signature?.features.length >= 1 && row.authored_route === null, row.external_id);
+  for (const row of authored) assert.ok(row.signature === null, row.external_id);
+  const want = {};
+  for (const tier of Object.values(TIER_IDENTITY_DISTRIBUTION)) for (const [type, n] of Object.entries(tier)) want[type] = (want[type] ?? 0) + n;
+  const got = {};
+  for (const row of typed) got[row.race_identity_type] = (got[row.race_identity_type] ?? 0) + 1;
+  assert.deepEqual(got, want);
 });
