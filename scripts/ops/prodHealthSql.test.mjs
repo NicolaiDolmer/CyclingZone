@@ -27,7 +27,7 @@ import {
   toStatementSnapshot,
 } from "./prodHealthSql.mjs";
 
-const GOOD_GUARD = { role: "cz_monitor", read_only: "on", read_all_stats: true, server_version_num: 170006 };
+const GOOD_GUARD = { role: "cz_monitor", read_only: "on", monitor_api: true, server_version_num: 170006 };
 const at = (h, m = 45) => new Date(Date.UTC(2026, 9, 21, h, m)).toISOString();
 
 function stmtRaw(observedAt, rows, info = { stats_reset: "2026-10-18T06:21:18Z", dealloc: 0 }) {
@@ -61,7 +61,7 @@ const failing = (reason) => Object.assign(new Error("x"), { reason });
 // --- værn -------------------------------------------------------------------
 
 test("værn: kun cz_monitor i read-only slipper igennem", () => {
-  assert.deepEqual(evaluateGuard(GOOD_GUARD), { ok: true, readAllStats: true, serverVersionNum: 170006 });
+  assert.deepEqual(evaluateGuard(GOOD_GUARD), { ok: true, monitorApi: true, serverVersionNum: 170006 });
   assert.equal(evaluateGuard({ ...GOOD_GUARD, role: "postgres" }).reason, "wrong_role");
   assert.equal(evaluateGuard({ ...GOOD_GUARD, read_only: "off" }).reason, "not_read_only");
   assert.equal(evaluateGuard(null).reason, "guard_no_answer");
@@ -207,6 +207,21 @@ test("statements: manuel kørsel imellem fortrænger ikke den gyldige timesrækk
   assert.equal(res.value.window_start, times[0]);
 });
 
+test("statements: backtracking finder en gyldig række, når det nærmeste valg er en blindgyde", () => {
+  // 02:00, 03:30, 03:50, 04:45: 03:50 er tættest på 60 min før 04:45 men har
+  // ingen gyldig forgænger; 02:00/03:30/04:45 (90 + 75 min) er gyldig.
+  const times = [at(2, 0), at(3, 30), at(3, 50), at(4, 45)];
+  const list = times.map((iso) => ({ observed_at: iso, rows: {} }));
+  assert.deepEqual(pickHourlyTriple(list).map((x) => x.observed_at), [times[0], times[1], times[3]]);
+});
+
+test("SQL kalder kun ops_monitor-funktionerne, aldrig pg_stat_* direkte", () => {
+  for (const [k, sql] of Object.entries(SQL)) {
+    if (k === "guard") continue;
+    assert.match(sql, /^select ops_monitor\.[a-z_]+\(\)$/);
+  }
+});
+
 test("projekt-binding: kun cz_monitor i prod-projektet accepteres", () => {
   assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@aws-0-eu.pooler.supabase.com:5432/postgres"), true);
   assert.equal(connectsToProject("postgresql://cz_monitor:pw@db.ghwvkxzhsbbltzfnuhhz.supabase.co:5432/postgres"), true);
@@ -226,6 +241,7 @@ test("main: forkert projekt -> exit 2 uden at køre psql", async () => {
     argv: ["--mode", "report"],
     env: { CZ_MONITOR_DATABASE_URL: "postgresql://cz_monitor.andet:hemmelig@pooler:5432/postgres" },
     execFn: async () => { called = true; },
+    now: () => new Date(at(4)),
     log: (l) => logs.push(l),
   });
   assert.equal(code, 2);
@@ -321,9 +337,9 @@ test("report-mode: ét fejlende tjek stopper ikke de andre", async () => {
   assert.equal(result.measurements.capacity.database_bytes, 6151228563);
 });
 
-test("report-mode uden pg_read_all_stats: sessionstjek er unable, ikke clear", async () => {
+test("report-mode uden ops_monitor-adgang: sessionstjek er unable, ikke clear", async () => {
   const runSql = fakeRunSql({
-    guard: { ...GOOD_GUARD, read_all_stats: false },
+    guard: { ...GOOD_GUARD, monitor_api: false },
     statements: stmtRaw(at(4), []),
     connections: { client_connections: 1, active_connections: 1, max_connections: 120 },
     sessions: [],
@@ -332,8 +348,8 @@ test("report-mode uden pg_read_all_stats: sessionstjek er unable, ikke clear", a
   });
   const { result } = await runChecks({ runSql, state: null, mode: "report", nowIso: at(4) });
   const byId = Object.fromEntries(result.checks.map((c) => [c.id, c]));
-  assert.equal(byId.connection_pressure.missing, "pg_read_all_stats");
-  assert.equal(byId.long_sessions.missing, "pg_read_all_stats");
+  assert.equal(byId.connection_pressure.missing, "ops_monitor_api");
+  assert.equal(byId.long_sessions.missing, "ops_monitor_api");
 });
 
 // --- kommentar ----------------------------------------------------------------

@@ -1,13 +1,19 @@
 -- #6994 · Postgres-rolle cz_monitor til den daglige SQL-helbredstjek-workflow
 -- (.github/workflows/prod-health-sql.yml + scripts/ops/prodHealthSql.mjs).
 --
--- Rollen må KUN læse statistik: pg_stat_activity (alle sessioner),
--- extensions.pg_stat_statements (tal, aldrig query-tekst i output),
--- størrelsesfunktioner og pg_statio_user_tables. Den har ingen rettigheder på
--- data i public/auth/storage og ingen skrive-rettigheder nogen steder.
+-- Rollen kan KUN kalde fem funktioner i skemaet ops_monitor, som returnerer
+-- de tal tjekkene bruger (Codex-fund, PR #6996). Den er IKKE medlem af
+-- pg_read_all_stats/pg_monitor, så en lækket nøgle kan ikke læse andre
+-- sessioners query-tekst i pg_stat_activity eller pg_stat_statements.
+-- Funktionerne er SECURITY DEFINER (ejer postgres, som har pg_monitor),
+-- search_path = '' og returnerer aldrig query-tekst, kun pid, rollenavn,
+-- state, alder, wait events, queryid, tal og tabelnavne. EXECUTE er fjernet
+-- fra PUBLIC/anon/authenticated/service_role; skemaet er ikke eksponeret i
+-- Data API'et.
 --
--- Sikkerhedsgrænsen er RETTIGHEDERNE (ingen tabel-/sekvens-/funktions-grants,
--- intet medlemskab af pg_read_all_data eller app-rollerne). Rollens
+-- Sikkerhedsgrænsen er RETTIGHEDERNE (ingen tabel-/sekvens-grants, ingen
+-- andre funktioner end de fem, intet medlemskab af statistik-, data- eller
+-- app-roller). Rollens
 -- default_transaction_read_only = on er et ekstra værn: en klient kan selv slå
 -- det fra med SET, så det må aldrig være den eneste beskyttelse.
 -- Målt i prod 20/10 (katalog, ingen data): PUBLIC har 0 tabel-grants i public,
@@ -44,9 +50,9 @@ END
 $$;
 
 -- Attributter håndhæves hver gang (en manuel ændring rulles tilbage ved næste
--- kørsel af filen). INHERIT er nødvendig for at arve pg_read_all_stats.
+-- kørsel af filen). NOINHERIT: rollen skal ikke arve noget som helst.
 ALTER ROLE cz_monitor WITH
-  LOGIN INHERIT
+  LOGIN NOINHERIT
   NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
   CONNECTION LIMIT 3;
 
@@ -71,18 +77,115 @@ EXCEPTION WHEN insufficient_privilege OR invalid_parameter_value OR cant_change_
 END
 $$;
 
--- pg_read_all_stats (ikke hele pg_monitor): nok til at se alle sessioner i
--- pg_stat_activity, pg_stat_statements for alle roller og pg_database_size.
--- pg_monitor ville også give pg_stat_scan_tables (funktioner der tager låse)
--- og pg_read_all_settings, som tjekkene ikke bruger.
-GRANT pg_read_all_stats TO cz_monitor;
+-- Ingen brede statistik-roller (en tidligere udgave af PR'en gav
+-- pg_read_all_stats; REVOKE gør gen-kørsel sikker, også hvis den blev givet).
+REVOKE pg_read_all_stats FROM cz_monitor;
+REVOKE pg_monitor FROM cz_monitor;
 
--- extensions-skemaet: PUBLIC har ikke USAGE, men pg_stat_statements-viewene
--- har SELECT til PUBLIC (udvidelsens standard). USAGE alene giver ingen data.
-GRANT USAGE ON SCHEMA extensions TO cz_monitor;
+-- Snævert interface: skema ops_monitor, kun USAGE til cz_monitor.
+CREATE SCHEMA IF NOT EXISTS ops_monitor AUTHORIZATION postgres;
+REVOKE ALL ON SCHEMA ops_monitor FROM PUBLIC;
+GRANT USAGE ON SCHEMA ops_monitor TO cz_monitor;
+COMMENT ON SCHEMA ops_monitor IS
+  '#6994: statistik-funktioner til cz_monitor (prod-health-sql). Ingen data, ingen query-tekst. Ikke eksponeret i Data API.';
+
+-- Supabase detection checks: forbindelsestryk.
+CREATE OR REPLACE FUNCTION ops_monitor.connection_pressure()
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+  SELECT pg_catalog.row_to_json(t) FROM (
+    SELECT
+      count(*) FILTER (WHERE a.backend_type = 'client backend') AS client_connections,
+      count(*) FILTER (WHERE a.backend_type = 'client backend' AND a.state = 'active') AS active_connections,
+      pg_catalog.current_setting('max_connections')::int AS max_connections
+    FROM pg_catalog.pg_stat_activity a
+  ) t
+$fn$;
+
+-- Lange sessioner, idle in transaction og blokerede sessioner. Ingen query-tekst.
+CREATE OR REPLACE FUNCTION ops_monitor.long_sessions()
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+  SELECT COALESCE(pg_catalog.json_agg(t), '[]'::json) FROM (
+    SELECT a.pid, a.usename AS role, a.state,
+      pg_catalog.round(EXTRACT(epoch FROM pg_catalog.now() - a.query_start))::bigint AS query_age_s,
+      pg_catalog.round(EXTRACT(epoch FROM pg_catalog.now() - a.xact_start))::bigint AS transaction_age_s,
+      a.wait_event_type, a.wait_event,
+      pg_catalog.pg_blocking_pids(a.pid) AS blocking_pids
+    FROM pg_catalog.pg_stat_activity a
+    WHERE a.datname = pg_catalog.current_database()
+      AND a.pid <> pg_catalog.pg_backend_pid()
+      AND (
+        (a.state = 'active' AND pg_catalog.now() - a.query_start > interval '30 seconds')
+        OR (a.state LIKE 'idle in transaction%' AND pg_catalog.now() - a.xact_start > interval '30 seconds')
+        OR pg_catalog.cardinality(pg_catalog.pg_blocking_pids(a.pid)) > 0
+      )
+    ORDER BY a.query_start
+    LIMIT 20
+  ) t
+$fn$;
+
+-- pg_stat_statements: kun nøgle, kald og samlet tid; aldrig query-tekst.
+CREATE OR REPLACE FUNCTION ops_monitor.statement_stats()
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+  SELECT pg_catalog.json_build_object(
+    'observed_at', pg_catalog.now(),
+    'info', (SELECT pg_catalog.row_to_json(i) FROM (
+               SELECT si.stats_reset, si.dealloc FROM extensions.pg_stat_statements_info si) i),
+    'rows', COALESCE((SELECT pg_catalog.json_agg(t) FROM (
+      SELECT s.dbid, s.userid, pg_catalog.pg_get_userbyid(s.userid) AS role, s.queryid::text AS queryid,
+        s.toplevel, s.calls, s.total_exec_time, s.stats_since::text AS statement_stats_since
+      FROM extensions.pg_stat_statements s
+      WHERE s.dbid = (SELECT d.oid FROM pg_catalog.pg_database d WHERE d.datname = pg_catalog.current_database())
+      ORDER BY s.total_exec_time DESC
+      LIMIT 100) t), '[]'::json))
+$fn$;
+
+-- Kapacitet: databasestørrelse, top-20 tabeller, forbindelser pr. rolle/state.
+CREATE OR REPLACE FUNCTION ops_monitor.capacity()
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+  SELECT pg_catalog.json_build_object(
+    'observed_at', pg_catalog.now(),
+    'database_bytes', pg_catalog.pg_database_size(pg_catalog.current_database()),
+    'top_tables', COALESCE((SELECT pg_catalog.json_agg(t) FROM (
+      SELECT st.schemaname, st.relname AS table_name, pg_catalog.pg_total_relation_size(st.relid) AS total_bytes
+      FROM pg_catalog.pg_statio_user_tables st
+      ORDER BY total_bytes DESC
+      LIMIT 20) t), '[]'::json),
+    'connections_by_role', COALESCE((SELECT pg_catalog.json_agg(t) FROM (
+      SELECT a.usename AS role, a.state, count(*) AS connections
+      FROM pg_catalog.pg_stat_activity a
+      WHERE a.datname = pg_catalog.current_database() AND a.backend_type = 'client backend'
+      GROUP BY a.usename, a.state
+      ORDER BY connections DESC
+      LIMIT 100) t), '[]'::json))
+$fn$;
+
+-- Cache-hit (kumulativ kontekst, ingen alarm).
+CREATE OR REPLACE FUNCTION ops_monitor.cache_hit()
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+  SELECT pg_catalog.row_to_json(t) FROM (
+    SELECT
+      sum(st.heap_blks_hit) AS heap_hits,
+      sum(st.heap_blks_read) AS heap_reads,
+      pg_catalog.round(100.0 * sum(st.heap_blks_hit)
+        / NULLIF(sum(st.heap_blks_hit) + sum(st.heap_blks_read), 0), 2) AS heap_hit_percent
+    FROM pg_catalog.pg_statio_user_tables st
+  ) t
+$fn$;
+
+-- Eksplicitte grants (statisk lint-bare): kun cz_monitor kan køre funktionerne.
+REVOKE ALL ON FUNCTION ops_monitor.connection_pressure() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION ops_monitor.long_sessions() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION ops_monitor.statement_stats() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION ops_monitor.capacity() FROM PUBLIC, anon, authenticated, service_role;
+REVOKE ALL ON FUNCTION ops_monitor.cache_hit() FROM PUBLIC, anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION ops_monitor.connection_pressure() TO cz_monitor;
+GRANT EXECUTE ON FUNCTION ops_monitor.long_sessions() TO cz_monitor;
+GRANT EXECUTE ON FUNCTION ops_monitor.statement_stats() TO cz_monitor;
+GRANT EXECUTE ON FUNCTION ops_monitor.capacity() TO cz_monitor;
+GRANT EXECUTE ON FUNCTION ops_monitor.cache_hit() TO cz_monitor;
 
 COMMENT ON ROLE cz_monitor IS
-  '#6994: kun læsning af statistik til prod-health-sql.yml. Ingen data-rettigheder, read-only som standard. Password sættes kun af ejeren (Infisical + GitHub-secret CZ_MONITOR_DATABASE_URL).';
+  '#6994: kalder kun ops_monitor-funktionerne til prod-health-sql.yml. Ingen data- eller statistik-roller, read-only som standard. Password sættes kun af ejeren (Infisical + GitHub-secret CZ_MONITOR_DATABASE_URL).';
 
 -- Verify: fejl hårdt hvis rollen kan noget den ikke må.
 DO $$
@@ -143,8 +246,38 @@ BEGIN
     RAISE EXCEPTION '#6994: cz_monitor er medlem af en rolle med data- eller signal-rettigheder';
   END IF;
 
-  IF NOT pg_has_role('cz_monitor', 'pg_read_all_stats', 'USAGE') THEN
-    RAISE EXCEPTION '#6994: cz_monitor arver ikke pg_read_all_stats';
+  IF EXISTS (
+    SELECT 1 FROM pg_roles r
+    WHERE r.rolname IN ('pg_read_all_stats', 'pg_monitor', 'pg_read_all_settings', 'pg_stat_scan_tables')
+      AND pg_has_role('cz_monitor', r.oid, 'MEMBER')
+  ) THEN
+    RAISE EXCEPTION '#6994: cz_monitor må ikke være medlem af en statistik-rolle (query-tekst)';
+  END IF;
+
+  -- ops_monitor: præcis de fem funktioner, kun cz_monitor (og ejeren) kan køre dem.
+  SELECT string_agg(p.oid::regprocedure::text, ', ')
+    INTO v_bad
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'ops_monitor'
+    AND (has_function_privilege('anon', p.oid, 'EXECUTE')
+         OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
+         OR has_function_privilege('service_role', p.oid, 'EXECUTE')
+         OR has_function_privilege('public', p.oid, 'EXECUTE')
+         OR p.proname NOT IN ('connection_pressure', 'long_sessions', 'statement_stats', 'capacity', 'cache_hit'));
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION '#6994: ops_monitor har funktioner med for bred EXECUTE eller ukendte funktioner: %', v_bad;
+  END IF;
+
+  IF (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+      WHERE n.nspname = 'ops_monitor' AND has_function_privilege('cz_monitor', p.oid, 'EXECUTE')) <> 5 THEN
+    RAISE EXCEPTION '#6994: cz_monitor kan ikke køre alle fem ops_monitor-funktioner';
+  END IF;
+
+  IF has_schema_privilege('cz_monitor', 'ops_monitor', 'CREATE')
+     OR has_schema_privilege('anon', 'ops_monitor', 'USAGE')
+     OR has_schema_privilege('authenticated', 'ops_monitor', 'USAGE') THEN
+    RAISE EXCEPTION '#6994: ops_monitor-skemaet har for brede rettigheder';
   END IF;
 
   IF NOT EXISTS (

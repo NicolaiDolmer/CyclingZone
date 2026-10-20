@@ -25,7 +25,8 @@
  * Hvert tjek giver outcome finding | clear | unable_to_assess (+ manglende input).
  *
  * Sikkerhed:
- *   - Kun SELECT. Før noget tjek køres et værn: current_user skal være
+ *   - Rollen har ingen statistik-roller; den kalder kun ops_monitor-
+ *     funktionerne (SECURITY DEFINER, ingen query-tekst). Kun SELECT. Før noget tjek køres et værn: current_user skal være
  *     cz_monitor og transaction_read_only = on, ellers køres INTET (exit 2).
  *   - Ingen query-tekst, ingen rækkedata, ingen persondata i output: kun
  *     queryid, rollenavne, pid, alder i sekunder, wait events, tal og
@@ -114,72 +115,19 @@ function isMain() {
 // SQL (alle returnerer én JSON-værdi i én kolonne)
 // ---------------------------------------------------------------------------
 
+// Rollen har ingen statistik-roller; al læsning går gennem ops_monitor-
+// funktionerne i migrationen, som aldrig returnerer query-tekst (#6994).
 export const SQL = {
   guard: `select json_build_object(
   'role', current_user,
   'read_only', current_setting('transaction_read_only'),
-  'read_all_stats', pg_has_role(current_user, 'pg_read_all_stats', 'USAGE'),
+  'monitor_api', coalesce(has_function_privilege(current_user, to_regprocedure('ops_monitor.long_sessions()'), 'EXECUTE'), false),
   'server_version_num', current_setting('server_version_num')::int)`,
-
-  connections: `select row_to_json(t) from (
-select
-  count(*) filter (where backend_type = 'client backend') as client_connections,
-  count(*) filter (where backend_type = 'client backend' and state = 'active') as active_connections,
-  current_setting('max_connections')::int as max_connections
-from pg_stat_activity) t`,
-
-  sessions: `select coalesce(json_agg(t), '[]'::json) from (
-select pid, usename as role, state,
-  round(extract(epoch from now() - query_start))::bigint as query_age_s,
-  round(extract(epoch from now() - xact_start))::bigint as transaction_age_s,
-  wait_event_type, wait_event,
-  pg_blocking_pids(pid) as blocking_pids
-from pg_stat_activity
-where datname = current_database()
-  and pid <> pg_backend_pid()
-  and (
-    (state = 'active' and now() - query_start > interval '30 seconds')
-    or (state like 'idle in transaction%' and now() - xact_start > interval '30 seconds')
-    or cardinality(pg_blocking_pids(pid)) > 0
-  )
-order by query_start
-limit 20) t`,
-
-  // Ingen query-tekst: kun nøgle, kald og samlet tid.
-  statements: `select json_build_object(
-  'observed_at', now(),
-  'info', (select row_to_json(i) from (select stats_reset, dealloc from extensions.pg_stat_statements_info) i),
-  'rows', coalesce((select json_agg(t) from (
-    select s.dbid, s.userid, pg_get_userbyid(s.userid) as role, s.queryid::text as queryid,
-      s.toplevel, s.calls, s.total_exec_time,
-      to_jsonb(s) ->> 'stats_since' as statement_stats_since
-    from extensions.pg_stat_statements as s
-    where s.dbid = (select oid from pg_database where datname = current_database())
-    order by s.total_exec_time desc
-    limit 100) t), '[]'::json))`,
-
-  capacity: `select json_build_object(
-  'observed_at', now(),
-  'database_bytes', pg_database_size(current_database()),
-  'top_tables', coalesce((select json_agg(t) from (
-    select schemaname, relname as table_name, pg_total_relation_size(relid) as total_bytes
-    from pg_catalog.pg_statio_user_tables
-    order by total_bytes desc
-    limit 20) t), '[]'::json),
-  'connections_by_role', coalesce((select json_agg(t) from (
-    select usename as role, state, count(*) as connections
-    from pg_stat_activity
-    where datname = current_database() and backend_type = 'client backend'
-    group by usename, state
-    order by connections desc
-    limit 100) t), '[]'::json))`,
-
-  cache: `select row_to_json(t) from (
-select
-  sum(heap_blks_hit) as heap_hits,
-  sum(heap_blks_read) as heap_reads,
-  round(100.0 * sum(heap_blks_hit) / nullif(sum(heap_blks_hit) + sum(heap_blks_read), 0), 2) as heap_hit_percent
-from pg_statio_user_tables) t`,
+  connections: "select ops_monitor.connection_pressure()",
+  sessions: "select ops_monitor.long_sessions()",
+  statements: "select ops_monitor.statement_stats()",
+  capacity: "select ops_monitor.capacity()",
+  cache: "select ops_monitor.cache_hit()",
 };
 
 // ---------------------------------------------------------------------------
@@ -243,7 +191,7 @@ export function evaluateGuard(guard) {
   if (!guard || typeof guard !== "object") return { ok: false, reason: "guard_no_answer" };
   if (guard.role !== EXPECTED_ROLE) return { ok: false, reason: "wrong_role" };
   if (guard.read_only !== "on") return { ok: false, reason: "not_read_only" };
-  return { ok: true, readAllStats: guard.read_all_stats === true, serverVersionNum: guard.server_version_num ?? null };
+  return { ok: true, monitorApi: guard.monitor_api === true, serverVersionNum: guard.server_version_num ?? null };
 }
 
 export function evaluateConnections(row) {
@@ -346,21 +294,21 @@ const minutesBetween = (a, b) => (new Date(b.observed_at).getTime() - new Date(a
 export function pickHourlyTriple(snapshots) {
   const list = (Array.isArray(snapshots) ? snapshots : []).filter((x) => x?.observed_at);
   if (list.length < 3) return null;
-  const pickBefore = (idx) => {
-    let best = -1;
-    for (let i = idx - 1; i >= 0; i -= 1) {
-      const g = minutesBetween(list[i], list[idx]);
-      if (!Number.isFinite(g) || g < THRESHOLDS.snapshotSpacingMinMinutes || g > THRESHOLDS.snapshotSpacingMaxMinutes) continue;
-      if (best < 0 || Math.abs(g - 60) < Math.abs(minutesBetween(list[best], list[idx]) - 60)) best = i;
-    }
-    return best;
+  const okGap = (a, b) => {
+    const g = minutesBetween(list[a], list[b]);
+    return Number.isFinite(g) && g >= THRESHOLDS.snapshotSpacingMinMinutes && g <= THRESHOLDS.snapshotSpacingMaxMinutes;
   };
+  // Forgængere til idx, tættest på 60 min først. Prøver dem alle (backtracking),
+  // så et "for godt" første valg ikke skjuler en gyldig række (Codex-fund, PR #6996).
+  const candidates = (idx) => [...Array(idx).keys()]
+    .filter((i) => okGap(i, idx))
+    .sort((a, b) => Math.abs(minutesBetween(list[a], list[idx]) - 60) - Math.abs(minutesBetween(list[b], list[idx]) - 60));
   const i2 = list.length - 1;
-  const i1 = pickBefore(i2);
-  if (i1 < 0) return null;
-  const i0 = pickBefore(i1);
-  if (i0 < 0) return null;
-  return [list[i0], list[i1], list[i2]];
+  for (const i1 of candidates(i2)) {
+    const [i0] = candidates(i1);
+    if (i0 !== undefined) return [list[i0], list[i1], list[i2]];
+  }
+  return null;
 }
 
 export function evaluateStatements(snapshots) {
@@ -536,7 +484,7 @@ export async function runChecks({ runSql, state: stateIn, mode, nowIso, limitByt
 
   const guardRes = await attempt(runSql, SQL.guard);
   const guard = guardRes.ok ? evaluateGuard(guardRes.data) : { ok: false, reason: guardRes.reason };
-  result.guard = guard.ok ? { ok: true, role: EXPECTED_ROLE, read_only: true, read_all_stats: guard.readAllStats } : { ok: false, reason: guard.reason };
+  result.guard = guard.ok ? { ok: true, role: EXPECTED_ROLE, read_only: true, monitor_api: guard.monitorApi } : { ok: false, reason: guard.reason };
   if (!guard.ok) {
     result.checks = CHECK_IDS.map((id) => unable(id, `guard:${guard.reason}`));
     return { result, state, exitCode: guard.reason === "wrong_role" || guard.reason === "not_read_only" ? 2 : 3 };
@@ -555,15 +503,15 @@ export async function runChecks({ runSql, state: stateIn, mode, nowIso, limitByt
     return { result, state, exitCode: 0 };
   }
 
-  const statsMissing = guard.readAllStats ? null : "pg_read_all_stats";
+  const statsMissing = guard.monitorApi ? null : "ops_monitor_api";
 
   const conn = await attempt(runSql, SQL.connections);
   result.checks.push(statsMissing ? unable("connection_pressure", statsMissing)
-    : conn.ok ? evaluateConnections(conn.data) : unable("connection_pressure", `pg_stat_activity:${conn.reason}`));
+    : conn.ok ? evaluateConnections(conn.data) : unable("connection_pressure", `ops_monitor:${conn.reason}`));
 
   const sess = await attempt(runSql, SQL.sessions);
   result.checks.push(statsMissing ? unable("long_sessions", statsMissing)
-    : sess.ok ? evaluateSessions(sess.data) : unable("long_sessions", `pg_stat_activity:${sess.reason}`));
+    : sess.ok ? evaluateSessions(sess.data) : unable("long_sessions", `ops_monitor:${sess.reason}`));
 
   result.checks.push(stmtCheck);
 
