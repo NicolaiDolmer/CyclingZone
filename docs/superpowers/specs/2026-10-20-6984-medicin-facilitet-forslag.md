@@ -46,7 +46,7 @@ Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre 
 ### M4 · Holdlægens tjek før etapen
 - **Hvad:** holdudtagelsen og etapesiden viser lægens vurdering af hver rytter: "frisk / brugbar / træt / bør hvile", plus om sæsonbelastningen er begyndt. Med højere tier og bedre chef bliver vurderingen skarpere (to kategorier uden afdeling, fire ved højt tier). Tallet vises aldrig.
 - **Spillerens gevinst:** gør v2 forudsigelig uden at vise formlen. Det er lidt "fog of war", og investeringen kan ses.
-- **Kræver:** visning oven på samme funktion som afregningen (designets §5.7). Mellem.
+- **Kræver:** visning oven på samme funktion som afregningen (designets §5.7). Vurderingen bruger den træthed, rytteren STARTER næste etape med: i et løb med B2 (designets §5.1) lægges datoens endnu ikke afregnede belastninger oven i morgenens tal med samme helper som motoren, så lægen og motoren aldrig ser forskellige tal på etape 2+. Regressionstest for flere etaper samme dato. Mellem.
 - **Bygger på:** spillerkrav 5 i #6984 (egomadsen og friisisch 20/10: konsekvensen skal være åben, tallene ikke), staff-ønskelisten 6/9 ("fortæller om rytter starter bjergetapen på 80 procent").
 
 ### M8 · Lægens sæsonråd før hver Grand Tour
