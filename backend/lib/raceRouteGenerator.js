@@ -720,6 +720,54 @@ function placeS5Climbs(rng, set, finish, distanceKm, namer) {
   return climbs;
 }
 
+// ── #6857 Løbsidentitet: signaturen i ruten (pass 2) ────────────────────────────────
+//
+// Et løbs signatur-stigning går igen hvert år (ejer 18/10). Pass 1 har allerede givet
+// etapen det terræn stigningen selv giver efter B+ (raceStageProfileGenerator.signatureLockFor),
+// så her udskiftes kun klimakset (sættets sidste stigning) med signaturens kategori, længde
+// og gradient. Placeringen, afstanden til mål og alle andre stigninger varierer stadig pr.
+// sæson. Terrænet læses igen bagefter; skifter det, kaster vi (fail-closed, design §2) i
+// stedet for at skrive en etape hvis type og rute siger to forskellige ting.
+
+/**
+ * Udskift klimakset i et trukket stignings-sæt med signaturens stigning. Ren.
+ * @param {S5DrawnClimb[]} set  sorteret lettest først (drawS5ClimbSet)
+ * @param {{ name?: string, category: string, length_km: number, avg_gradient: number, summit_finish?: boolean }} feature
+ * @returns {Array<S5DrawnClimb & { summit_finish: boolean }>}
+ */
+export function applySignature(set, feature) {
+  const before = deriveTerrainType(set);
+  const sig = {
+    category: feature.category, length_km: feature.length_km, avg_gradient: feature.avg_gradient,
+    summit_finish: feature.summit_finish === true,
+  };
+  const out = [...set.slice(0, -1).map((c) => ({ ...c, summit_finish: false })), sig];
+  const after = deriveTerrainType(out);
+  if (after !== before) {
+    throw new Error(`signature climb "${feature.name ?? "?"}" changes the stage terrain from ${before} to ${after} (#6857)`);
+  }
+  return out;
+}
+
+/**
+ * Signatur-sektoren erstatter etapens sidste sektor (finale-sektoren på brosten/grus) med
+ * sit navn og sin længde, og ligger stadig helt inden for ruten. Ren.
+ * @param {any[]} sectors @param {{ name: string, length_km: number, surface: string }} feature @param {number} distanceKm
+ */
+export function applySectorSignature(sectors, feature, distanceKm) {
+  const length_km = feature.length_km;
+  const maxStart = Math.max(0, Math.floor(distanceKm - length_km - 2));
+  if (!sectors.length) {
+    return [{ kind: feature.surface, start_km: Math.max(0, Math.round(distanceKm - 6 - length_km)), length_km, name: feature.name }];
+  }
+  const last = sectors[sectors.length - 1];
+  if (last.kind !== feature.surface) throw new Error(`signature sector "${feature.name}" is ${feature.surface} on a ${last.kind} stage (#6857)`);
+  const prevEnd = sectors.length > 1 ? sectors[sectors.length - 2].start_km + sectors[sectors.length - 2].length_km : 0;
+  const start_km = Math.max(Math.ceil(prevEnd + 1), Math.min(last.start_km, maxStart));
+  if (start_km + length_km > distanceKm) throw new Error(`signature sector "${feature.name}" does not fit on a ${distanceKm} km stage (#6857)`);
+  return [...sectors.slice(0, -1), { ...last, start_km, length_km, name: feature.name }];
+}
+
 /**
  * Bandopslag for S5: mellembjerg har (endnu) intet eget bånd og bruger sin pladsholder-kilde.
  * @param {string} profileType
@@ -738,12 +786,14 @@ function s5BandKey(profileType) {
  * @param {{stage_number:number, profile_type:string}} stage  profile_type = terræn-målet
  * @param {any} race
  * @param {boolean} isStageRace
- * @param {{ chooseFinish: (terrain: string) => string, shortItt?: boolean }} opts
+ * @param {{ chooseFinish: (terrain: string, constraint?: { summit?: boolean | null }) => string, shortItt?: boolean, signature?: any }} opts
  *   chooseFinish  vælger afslutningen for det afledte terræn (tidskørsler: "solo_tt")
  *   shortItt      Grand Tour-ugestrukturens korte enkeltstart (spec §5): prolog-båndet
+ *   signature     #6857: løbets signatur-feature for netop denne etape (climb/summit_finish/
+ *                 sector). Udeladt = uændret rute-strøm og output.
  * @returns {{distance_km: number, elevation_gain_m: number, climbs: any[], sprints: any[], sectors: any[], terrain: string, finale_type: string}}
  */
-export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt = false } = /** @type {any} */ ({})) {
+export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt = false, signature = null } = /** @type {any} */ ({})) {
   const target = stage.profile_type;
   const rng = makeRng(stableSeed(routeSeedKey(race, stage.stage_number)));
   const namer = makeRegionNamer(rng, regionOf(race?.name));
@@ -773,12 +823,15 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
     };
   }
 
-  const set = drawS5ClimbSet(rng, target);
+  const drawn = drawS5ClimbSet(rng, target);
+  // #6857: signatur-stigningen udskifter klimakset (kaster hvis terrænet skifter).
+  const sigClimb = signature && (signature.kind === "climb" || signature.kind === "summit_finish") ? signature : null;
+  const set = sigClimb ? applySignature(drawn, sigClimb) : drawn;
   // Terrænet læses af SÆTTET før placeringen. Placeringen kan kun tilføje bjergtop-
   // tilfældet af mellembjerg-reglen, og afslutningen vælges inden for matrixen af netop
   // dette terræn, så det endelige B+ nedenfor er altid det samme (testen håndhæver det).
   const terrain = deriveTerrainType(set);
-  const finale_type = chooseFinish(terrain);
+  const finale_type = sigClimb ? chooseFinish(terrain, { summit: sigClimb.summit_finish === true }) : chooseFinish(terrain);
   assertFinishAllowed(terrain, finale_type);
   if (finale_type === "long_climb") {
     const summitCat = set.length ? set[set.length - 1].category : null;
@@ -793,6 +846,7 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
     }
   }
   const climbs = placeS5Climbs(rng, set, finale_type, distance_km, namer);
+  if (sigClimb) climbs[climbs.length - 1] = { ...climbs[climbs.length - 1], name: sigClimb.name };
 
   const rampSpec = S5_FINISH_RAMPS[finale_type];
   const finishRamp = rampSpec
@@ -800,7 +854,8 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
     : null;
   const sprints = buildSprints(rng, target, finale_type, distance_km, isStageRace, climbs)
     .map((s) => (s.kind === "finish" && finishRamp ? { ...s, ...finishRamp } : s));
-  const sectors = buildSectors(rng, target, distance_km, namer);
+  const drawnSectors = buildSectors(rng, target, distance_km, namer);
+  const sectors = signature?.kind === "sector" ? applySectorSignature(drawnSectors, signature, distance_km) : drawnSectors;
   return {
     distance_km,
     elevation_gain_m: elevationGainS5({ climbs, distanceKm: distance_km, finishRamp }),
