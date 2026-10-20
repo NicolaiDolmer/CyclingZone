@@ -348,6 +348,7 @@ export function assertSameRun(prev, opts, outDir) {
     && (prev.benchScope ?? "all") === opts.benchScope
     && (prev.syntheticField ?? null) === (opts.syntheticField ?? null)
     && (prev.routesFrom ?? null) === (opts.routesFrom ?? null)
+    && (prev.routesSignature ?? null) === (opts.routesSignature ?? null)
     && (prev.season ?? null) === (opts.season ?? null);
   if (!same) {
     const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null].filter(Boolean);
@@ -432,7 +433,7 @@ async function defaultBaseline() {
 export async function main(argv = process.argv.slice(2), { now, clock, defaultBaseline: baselineOverride } = {}) {
   const stamp = clock ?? (now ? () => now : () => new Date());
   now ??= stamp();
-  const opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
+  let opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
   if (opts.benchWorker) return benchWorker(opts);
   const outDir = assertPrivateOutDir(abs(opts.out));
   const metaFile = path.join(outDir, "testport-meta.json");
@@ -444,6 +445,9 @@ export async function main(argv = process.argv.slice(2), { now, clock, defaultBa
     const card = collectCard({ outDir, baseline: prev.baseline, candidate: prev.candidate, meta: buildReportMeta(prev, opts, thresholds, stamp()), thresholds });
     return writeCard({ card, outDir, png: opts.png, failed: prev.failedRaces ?? [] });
   }
+  // #6909 (Codex P2): ruterne valideres og fingeraftrykkes FOER sammenligningen med en tidligere koersel.
+  const routesEarly = !opts.benchOnly && opts.routesFrom ? loadRoutesDir(abs(opts.routesFrom)) : null;
+  if (routesEarly) opts = { ...opts, routesSignature: routesEarly.signature };
   assertSameRun(prev, opts, outDir);
   mkdirSync(outDir, { recursive: true });
 
@@ -453,7 +457,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, defaultBa
   const fromDir = opts.fromDir ? abs(opts.fromDir) : null;
   if (!opts.benchOnly) {
     // #6909: foreslaaede ruter valideres i sin helhed foer noget koeres.
-    const routes = opts.routesFrom ? loadRoutesDir(abs(opts.routesFrom)) : null;
+    const routes = routesEarly;
     if (opts.raceIds) { raceIds = opts.raceIds; source = "--races"; }
     else if (opts.idsFile) { raceIds = parseIdsText(readFileSync(abs(opts.idsFile), "utf8")); source = `--ids-file ${path.basename(opts.idsFile)}`; }
     else if (routes) { raceIds = [...routes.byRace.keys()]; source = `--routes-from ${path.basename(routes.dir)}`; }
@@ -482,7 +486,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, defaultBa
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
-    syntheticField: opts.syntheticField, routesFrom: opts.routesFrom, season: opts.season, field: inputs.field, routes: inputs.routes,
+    syntheticField: opts.syntheticField, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, field: inputs.field, routes: inputs.routes,
   };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 

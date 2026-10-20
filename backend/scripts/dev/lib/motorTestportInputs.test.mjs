@@ -264,7 +264,7 @@ test("#6909 (Codex P2) readOnlyDb overlay: generatoren ser de foreslaaede etaper
     { race_id: "r1", stage_number: 1, profile_type: "hilly" }, { race_id: "r1", stage_number: 2, profile_type: "flat" },
   ]]]) };
   const db = readOnlyDb(fakeDb(tables), { overlay });
-  const { data } = await db.from("race_stage_profiles").select("*").in("race_id", ["r1", "r2"]).order("race_id");
+  const { data } = await db.from("race_stage_profiles").select("*").in("race_id", ["r1", "r2"]).order("race_id"); // pagination-safe: syntetisk fake-db i test, faa raekker
   assert.deepEqual(data.map((r) => `${r.race_id}:${r.profile_type}`), ["r1:hilly", "r1:flat", "r2:flat"]);
   assert.throws(() => db.from("race_stage_profiles").insert([]), /read-only/);
 });
@@ -277,7 +277,7 @@ test("#6909 (Codex P2) generatorField med routesByRace sender overlay-klienten t
   };
   let seen = null;
   const runner = async (args) => {
-    seen = (await args.supabase.from("race_stage_profiles").select("*").in("race_id", ["r1"])).data;
+    seen = (await args.supabase.from("race_stage_profiles").select("*").in("race_id", ["r1"])).data; // pagination-safe: syntetisk fake-db i test, faa raekker
     return { races: 1, teams: 0, generated: 0, staged: [] };
   };
   const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
@@ -289,4 +289,15 @@ test("#6909 (Codex P1) generatorField: ingen planlagt start = klar fejl, aldrig 
   const tables = { races: [{ id: "r1", season_id: "s5" }], race_stage_schedule: [] };
   const src = createProdSource(fakeDb(tables), { generatorRunner: async () => ({ staged: [] }), log: () => {} });
   await assert.rejects(src.generatorField(["r1"]), /ingen planlagt start/);
+});
+
+test("#6909 (Codex P2) loadRoutesDir: fingeraftrykket skifter naar en rutefil aendres", () => {
+  const dir = tmp("sig");
+  writeFileSync(path.join(dir, "race-a.json"), JSON.stringify(routeDoc("race-a", 2)));
+  const a = loadRoutesDir(dir).signature;
+  assert.equal(loadRoutesDir(dir).signature, a, "samme indhold = samme fingeraftryk");
+  const doc = routeDoc("race-a", 2); doc.profiles[1].profile_type = "mountain";
+  writeFileSync(path.join(dir, "race-a.json"), JSON.stringify(doc));
+  assert.notEqual(loadRoutesDir(dir).signature, a);
+  rmSync(dir, { recursive: true, force: true });
 });

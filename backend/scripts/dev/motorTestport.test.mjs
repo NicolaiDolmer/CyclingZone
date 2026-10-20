@@ -373,6 +373,8 @@ test("#6909 assertSameRun: andet syntetisk felt, rute-mappe eller saeson er en a
   assert.throws(() => assertSameRun(prev, { ...opts, syntheticField: "bench" }, "OUT"), /anden koersel.*syntetisk felt generator/);
   assert.throws(() => assertSameRun(prev, { ...opts, routesFrom: null }, "OUT"), /anden koersel/);
   assert.throws(() => assertSameRun(prev, { ...opts, season: 4 }, "OUT"), /anden koersel/);
+  // #6909 (Codex P2): samme mappe, men aendret indhold = anden koersel.
+  assert.throws(() => assertSameRun({ ...prev, routesSignature: "aaa" }, { ...opts, routesSignature: "bbb" }, "OUT"), /anden koersel/);
   // Aeldre meta (foer #6909) uden felterne = koersel uden syntetisk felt og ruter.
   assertSameRun({ candidate: "c", baseline: "b", seeds: 2 }, { candidate: "c", baseline: "b", seeds: 2, benchScope: "all", syntheticField: null, routesFrom: null, season: null }, "OUT");
 });
