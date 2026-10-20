@@ -1,168 +1,187 @@
-# #6804 Kuperede udbrudssejre: design (S5, bag s5_profiles_v2)
+# #6804 v2-udbrudspakken: design (S5, bag s5_profiles_v2)
 
-Status: design, intet bygget. Refs #6804 #6748 (punkt 3) #6156.
-Hard rule 17: ingen vaegte, taerskler eller maalte andele i denne fil. Baseline og
-kalibrering ligger privat i `balance-internals/6804/`.
-Hard rule 36: baseline er maalt (s5MotorBench, scope all, s5_profiles_v1) foer foerste PR.
+Status: design, intet bygget. Refs #6804 #6748 #6912 #6818 #6909 #6156.
+SSOT: `docs/RACE_ENGINE_RULES.md` (afsnittene "Udbrudsmål", "Jagten under official_times_v3",
+"Udbrudsopfølgningen under s5_profiles_v2"). Bygge-PR'en opdaterer reglen dér i samme PR.
+Hard rule 17: ingen vægte, tærskler eller målte andele her. Baseline og kalibrering
+ligger privat i `balance-internals/6804/2026-10-20/`.
+Hard rule 36: baseline målt 20/10 før første motor-PR (se §9).
+Ejer-beslutninger 18/10 (B) og 19/10 (1-6) er låste og genåbnes ikke her.
 
-## 1. Problem
+## 1. Problem (målt 20/10, tal privat)
 
-Ejerens definition: kuperet = bakker; lange stigninger = bjerg. Paa kuperede etaper
-(bakke-, mur- og stigende-spurt-afslutninger, og flad spurt efter bakker) uden for
-Grand Tours vinder morgenudbruddet langt sjaeldnere end i virkeligheden. I virkeligheden
-er en kuperet etape i et etapeloeb eller et kuperet endagsloeb en klassisk udbrudsdag.
+1. **Kuperet vinder for sjældent fra udbruddet uden for GT**, og næsten aldrig på
+   spurt-, bakke- og murafslutninger i korte etapeløb. Nedkørselsafslutninger i
+   endagsløb vinder derimod meget ofte.
+2. **Forspring uden loft (#6912 reproduceret).** På bjerg og kuperet i etapeløb får
+   en del udbrud mere end et kvarter, op til motorens 30-min-klemme; flade endagsløb
+   lægger sig fast ved lad-gå-loftet. Udfaldet er et knivsæg: små forspring hentes
+   næsten altid, meget store holder næsten altid. Mellemzonen (3-8 min), hvor
+   virkelighedens udbrudsdage afgøres, er tynd.
+3. **Sammensætning.** Kaptajner er aldrig med (korrekt). Men en af feltets bedste på
+   dagens afslutnings-evne sidder ofte i udbruddet på bakke, mur og nedkørsel, og et
+   lille udbrud har i nogle bjergetaper to fra samme hold. Tre fra samme hold er
+   sjældent, men ikke udelukket på 1. etape.
+4. **v2 = v1 for udbrud.** #6748-rettelserne flytter ikke (1)-(3); pakken skal bygges.
 
-Maalt baseline (tal privat): problemet er bekraeftet og er staerkest i etapeloeb.
-Moenstret:
+## 2. Rod-årsager (read-only gennemgang 19/10, bekræftet af målingen)
 
-- Kuperet profil med nedkoerselsafslutning: udbruddet vinder ofte (i endagsloeb meget
-  ofte).
-- Kuperet profil med bakke-, mur-, stigende- eller flad spurt-afslutning: udbruddet
-  vinder naesten aldrig, og i etapeloeb uden for GT praktisk talt aldrig.
-- Rullende profil: udbruddet vinder aldrig (jagt-gulvet paa aabent terraen).
-- Brosten/klassiker: udbruddet vinder aldrig (uden for scope, noteret).
-- Udbruddet dannes altid; det hentes typisk sent (inden for finalens sidste del), dvs.
-  feltet koerer det jaevnt ind over hele dagen, ikke i et sent sammenbrud.
+1. Kuperet med spurt jages som en flad massespurt: `stageWinFinaleWeight` er ens på
+   tværs af profiler (S5 fjernede `breakaway`-finalen, #6368).
+2. Lineær jagt over hele dagen på kuperet: `preFinalChaseClosingScale` er neutral,
+   jagt-gulvet gælder kun flad/rullende, lad-gå-loftet er højt.
+3. Lad-gå-loftet og lukningen kender ikke et realistisk forspring: intet led får
+   feltet til at reagere før et forspring bliver uholdbart (#6912).
+4. Udbruddets sammensætning vælges uden hensyn til dagens favoritter og holdfordeling
+   i forhold til udbruddets størrelse.
+5. Kuperede udbrud er for små i forhold til trappen 5-9.
 
-## 2. Rod-aarsag (motoren, read-only gennemgang)
+Rettet fra v1-designet (review-fund): **endagsløb har en klassementsreaktion**
+(`gcReactionSetup` med `one_day` + `oneDayProtectedRider` -> `winner_ahead`). Forskellen
+mellem endags- og etapeløb forklares derfor IKKE af manglende reaktion, men af (a)
+lad-gå-loftet pr. løbstype og (b) at etapeløbets klassementshold jager ud fra
+truslen på top-10. Bygge-PR'en logger begge signaler pr. etape (endags vs. etapeløb)
+i benchen, før en knap drejes.
 
-1. **Terraen-mapping: "udbrudsdagen" findes ikke laengere i S5.** Foer S5 kunne en
-   kuperet etape vaere maerket med finaletypen `breakaway`, som gav lav jagt-interesse
-   og en egen flugt-finale (`finale.ts` `fieldFinaleTypeBehindBreakaway`). S5's
-   taksonomi har bevidst fjernet `breakaway` som afslutning (`stageProfileTypes.js`:
-   "udbrud er motoradfaerd", #6368), og `s5Profiles.ts` omdoeber en gammel
-   `breakaway`-dag til terraenets finale. Den motoradfaerd der skulle erstatte den
-   (#6368, `lateAttack.ts`) er det sene soloangreb fra feltet, ikke et morgenudbrud
-   der holder. Resultat: enhver kuperet S5-dag jages som om afslutningen med sikkerhed
-   tilfalder feltets bedste finisher.
+## 3. Krav
 
-2. **Jagt-modellen (official_times_v3-grenen, `stageWinChaseForceV3`) er terraen-blind.**
-   Etapeinteressen er jagtgruppens bedste ryttere paa afslutningens evne gange
-   afslutningens vaegt. Paa kuperet terraen med en spurt-afslutning bruges samme
-   vaegt som paa en flad massespurt, og ved bakke/mur samme vaegt som en ren
-   punch-finale. Feltet rummer altid gode spurtere og puncheurs, saa interessen er
-   naesten altid positiv og stor. Der er intet led for at:
-   - det koster mere at jage over bakker (laeet er mindre, spurternes hold
-     traettes, og spurterne selv er i tvivl om de overlever bakkerne),
-   - ingen enkelt holds interesse paa en kuperet dag er stor nok til at kontrollere
-     hele dagen alene (i virkeligheden venter holdene paa hinanden).
+- K1 Udbrudsbånd pr. løbstype (ejer 19/10 #1): Grand Tours ca. 25-40 %, korte
+  etapeløb ca. 10-25 %, endagsløb ca. 5-15 % (højere i små løb end i store).
+  Terrænbåndene i Udbrudsmål §2 gælder fortsat oveni.
+- K2 Kuperet spurtafslutning kan være udbrudsdag, lavere chance end bakke/mur/nedkørsel,
+  men ikke nær nul (ejer #2).
+- K3 Realistisk forspring (ejer #3): typisk 3-8 min, sjældent over 10-12 min (kun når
+  ingen vil jage), aldrig et kvarter.
+- K4 Sammensætning (ejer #4): GC- og etapefavoritter sjældent med; flere fra samme hold
+  skalerer med udbruddets størrelse; ingen ulogiske udbrud.
+- K5 Størrelse på kuperet efter trappen 5-9 (ejer #6).
+- K6 Ingen ren lodtrækning (ejer #5): hver udbrudssejr kan forklares i løbsfilmen.
+  Mulighed A (blind "for sent"-chance) er afvist og bruges ikke som reserve.
+- K7 Uændret: bjerg/højfjeld-ankre, vindertype-dommen, "jag" øger kun, "lad gå" skaber
+  aldrig forspring alene, et hold jager aldrig sine egne (#6187), top-10 får aldrig 5 min
+  uden jagt (#5978), skala-invarians (#4707), determinisme pr. seed.
+- K8 `s5_profiles_v1` og ældre bit-identiske; alt bag `isS5ProfilesV2OrLater`.
 
-3. **Lukningen er lineaer over hele jagt-strækningen, uden daempning paa kuperet.**
-   Under official_times_v3 er kuperet bevidst sat til at jage uden daempning foer
-   finalen (bjerg og hoejfjeld beholder den kontrollerede jagt). Naar netto-fordelen er
-   positiv, lukkes hullet med en fast rate pr. km over resten af etapen; et langt
-   jagt-stykke henter derfor ethvert realistisk forspring. Udfaldet er et knivsaeg paa
-   fortegnet af netto-fordelen, praecis den fejl #5813 fjernede paa flad/rullende med
-   jagt-gulvets eksplicitte "feltet kommer for sent"-lodtraekning. Kuperet har hverken
-   gulvet eller en tilsvarende eksplicit chance.
+## 4. Pakken (byg-rækkefølge)
 
-4. **Etapeloeb laegger klassements-jagt oveni.** I etapeloeb tilfoejer GC-reaktionen
-   (gcThreat, lad-gaa-bremsen og "jag" der bremser som en reaktion paa kuperet,
-   #6457) jagt-kraft og lofter lad-gaa-fasen. Endagsloeb har den ikke, hvilket
-   forklarer at forskellen er stoerst i etapeloeb.
+**P1 Slank B for jagten på kuperet** (ejer 18/10, B-trin 5 udgår: findes allerede som
+`letGoBrakingTeams`, testet i #6457).
+1. Profilafhængig finalevægt: `stageWinFinaleWeight` får en kuperet-faktor pr.
+   afslutning; spurt på kuperet vægtes lavere end på flad, bakke/mur lavere end ren
+   punch-finale på åbent terræn. Ordenen spurt < bakke/mur < nedkørsel i udbruddets
+   favør bevares (K2).
+2. Dæmpet jagt før finalen på kuperet: `preFinalChaseClosingScale` for kuperet under v2,
+   så lukningen koncentreres i finalen (samme knap som bjerg).
+3. Lavere lad-gå-loft på kuperet etapeløb.
 
-5. **Finale-modellen** afgoer ikke problemet: udbruddet er typisk allerede hentet foer
-   finalen. Den forstaerker det kun paa mur/bakke, hvor et lille restforspring
-   aedes af puncheurs i finalen (det er realistisk og skal bevares).
+**P2 Realistisk forspring (#6912, K3).** Ikke en klemme på uret, men feltets adfærd:
+når forspringet nærmer sig det holdene tolererer pr. profil og løbstype, går
+lad-gå-fasen over i kontrolleret jagt hos de hold der har etapeinteresse eller
+klassementsinteresse (eksisterende `interestByTeam`). Kun når INGEN hold har interesse,
+kan forspringet vokse til den sjældne øvre zone. Det kvarter, spillerne så, kræver
+dermed et felt uden jagt-interesse, og det kan forklares i filmen ("ingen hold ville
+jage"). Jagt-gulvet på flad/rullende beholdes; endagsløbets loft på bjerg (#6367)
+beholdes.
 
-## 3. Krav (kvalitative; maal og taerskler privat)
+**P3 Sammensætning (K4).** I udvælgelsen af hvem der får lov at gå (breakawayPermission /
+attempt -> formed):
+1. GC-favoritter: klassementets forreste (fra etape 2) og på 1. etape feltets bedste på
+   klassementsevne (samme mål som #6748 punkt 1) slippes sjældent; slipper en med, jager
+   klassementsholdene (eksisterende trusselsmodel).
+2. Etapefavoritter: feltets bedste på dagens afslutnings-evne får mindre plads i
+   udbruddet; feltet reagerer på dem som på en trussel mod etapen.
+3. Ryttere pr. hold skaleret med udbruddets størrelse: et lille udbrud har sjældent to
+   fra samme hold, et stort må have flere; reaktionen fra de andre hold vokser med et
+   holds overvægt i udbruddet (thelamba #6912: "3 gange 2 fra samme hold").
+4. Ingen ulogiske udbrud på 1. etape: ingen GC-favorit, aldrig tre fra samme hold.
 
-- K1 Paa kuperede etaper uden for GT vinder udbruddet inden for virkelighedens interval
-  (privat anker), maalt pr. afslutning og separat for endagsloeb og etapeloeb.
-- K2 Bjerg, hoejfjeld, flad og GT-etaper flytter sig ikke ud af deres nuvaerende
-  benchmark-dom (gatens del 4 og vindertype-dommen staar uaendret).
-- K3 Udbrudssejren er fortjent: udbruddets kollektive evne (flugt-evner) og antal skal
-  stadig paavirke chancen monotont; et farligt udbrud (klassementstrussel) faar stadig
-  mindre plads end et harmloest.
-- K4 Holdordrer bevarer deres retning: "jag" kan kun oege jagten, "lad gaa" aldrig
-  skabe et forspring alene (mor-spec §5).
-- K5 Naar udbruddet hentes, afgoeres etapen fortsat af den rigtige ryttertype
-  (puncheurs paa bakke/mur, spurtere paa stigende/flad spurt).
-- K6 Skala-invariant (#4707) og deterministisk pr. seed. Alt bag `s5_profiles_v2`;
-  `s5_profiles_v1` er bit-identisk.
+**P4 Størrelse på kuperet (K5, ejer #6).** Kuperede udbrud dannes efter trappen 5-9;
+straffen for små udbrud må ikke trække under trappen. Udbruddets antal og flugt-evne
+påvirker fortsat chancen monotont.
 
-## 4. Mulighed A: "Udbrudsdag" som eksplicit lodtraekning (jagt-gulv for kuperet)
+**P5 Fortælling (K6).** Ingen ny tilfældighed indføres. Hver udbrudssejr skal i
+løbsfilmen kunne henføres til mindst en af fire årsager, som motoren allerede kender og
+skal udsende som hendelser/params (kvalitative, ingen tal):
+- jagtkapacitet: hvilke hold jagede, og at de blev færre/trætte (`breakaway_caught` /
+  ny `chase_faded` med `chasing_team_ids`),
+- samarbejde: hold der lod være / ventede på hinanden (`own_riders_ahead`,
+  lad-gå-hold),
+- træthed: jagthold der betalte for jagten (`applyChaseCost`),
+- terræn: bakker/nedkørsel der åd jagtens lukning.
+Filmen viser en kort linje pr. årsag (EN+DA, `docs/TONE_OF_VOICE.md`), og gab-kurven
+skal vise det aktive udbrud (#6748 punkt 4 følger med). En udbrudssejr uden mindst en
+årsag er en testport-fejl (§5 G7).
 
-Udvid jagt-gulvets mekanik (#5813) til kuperet profil under s5_profiles_v2: i etapens
-sidste del overtager feltet jagten og koerer hullet ned mod et maal ved stregen; med en
-eksplicit, privat kalibreret chance pr. afslutning (og pr. endags-/etapeloeb) kommer
-feltet for sent, og et udbrud med et reelt forspring holder. Foer gulvet daempes den
-lineaere jagt paa kuperet (som bjergets kontrollerede jagt), saa hullet lever til
-gulvet tager over.
+## 5. Testport (hard gates, alle under s5_profiles_v2; #6909-ruter + S4-ruter)
 
-- Fordele: lille diff, genbruger en kendt og testet mekanik; andelen bliver direkte
-  maalbar og styrbar; ingen knivsaeg.
-- Ulemper: sejren afhaenger mest af en lodtraekning, mindre af hvem der sidder i
-  udbruddet og hvordan holdene jager (svagere K3); "gulvet" er strukturelt og ikke
-  fysisk, og et udbrud af svage ryttere kan holde lige saa ofte som et staerkt.
+Benchen køres på S5-ruter fra `s5MotorBench --scope=all` og, når #6909 er klar, på
+testportens S5-ruter med syntetisk startfelt; samme gates begge steder.
 
-## 5. Mulighed B: Terraen-bevidst jagt-interesse og jagt-omkostning (anbefalet)
+- G1 Udbrudsandel pr. løbstype inden for ejerbåndet (K1); pr. kuperet afslutning inden for
+  det private anker, spurt > 0 og < bakke/mur (K2).
+- G2 (ny, K3) Forspringsfordeling: median maks-forspring i 3-8-min-zonen på kuperet/bjerg i
+  etapeløb; andelen over 10-12 min under et privat loft; **nul** etaper over 15 min, og
+  enhver etape over den øvre zone skal have "ingen jagt-interesse" i sin hendelse.
+- G3 (ny, K4) Sammensætning:
+  a) GC-favorit i udbruddet under privat loft; nul på 1. etape.
+  b) Etapefavorit (top på dagens afslutnings-evne) i udbruddet under privat loft.
+  c) To fra samme hold i et udbrud på højst fire under privat loft; tre fra samme hold
+     på 1. etape = nul; tre fra samme hold der holder hjem = nul.
+- G4 Størrelse på kuperet inden for trappen 5-9 (median og 10-90 %).
+- G5 Uændret dom for bjerg, højfjeld, flad og vindertype; `breakawayHoldVsLegacy`
+  (Udbrudsmål §3) ikke markant under legacy på nogen profil.
+- G6 Bit-identitet: alle motortests under v1 grønne uden fixture-ændringer.
+- G7 (ny, K6) Fortælling: hver udbrudssejr har mindst en årsagshendelse; kontrakt-test
+  på hendelsernes form.
+- G8 Kontrakt: monotoni i udbruddets flugt-evne og antal; "jag" øger, "lad gå" skaber
+  aldrig forspring; skala-invarians.
+- G9 Formtoppe (Codex P2 genreview): en kombineret v2-kørsel med repræsentative
+  `peakDay`/`peakWindows` (benchen bygger i dag profiler uden `peakDay`, og Giro-fixturen
+  har ingen `peakWindows`). G1-G4 skal holde både med og uden formtoppe.
+- G10 Sammenligning mod gammel motor og virkelighed (ejer 8/10): udvalgte kuperede
+  etapeløbsetaper og endagsløb vises ejeren før "tænd".
 
-Goer jagt-modellen terraen-bevidst under s5_profiles_v2:
+## 6. Verifikations-tier
 
-1. **Etapeinteressen afhaenger af terraen + afslutning.** En spurt- eller
-   bakkeafslutning paa kuperet profil vaegtes lavere end samme afslutning paa flad
-   profil (feltets favorit er mindre sikker paa at vinde, og holdene ved det).
-2. **Jagt-omkostningen paa bakker.** Jagtens lukning pr. km skaleres med terraenet
-   (op ad bakke lukker et felt mindre pr. indsats end paa flad), og de hold der jager
-   betaler mere traethed for det (genbrug `applyChaseCost`), saa en hel dags jagt paa
-   kuperet koster spurternes/puncheurernes hold noget i finalen.
-3. **Kollektiv tilbageholdenhed.** Interessen fordeles pr. hold (den findes allerede i
-   `interestByTeam`); paa kuperet terraen kraeves at flere hold deler jagten foer den
-   virker fuldt, saa en dag hvor kun et hold har interesse ikke kontrolleres hele vejen.
-4. **Daempet jagt foer finalen paa kuperet** (samme knap som bjerg), saa lukningen
-   koncentreres i finalen og ikke er lineaer over hele dagen.
-5. Etapeloebets klassements-jagt bevares, men "jag bremser som reaktion" paa kuperet
-   (#6457) gaelder kun ved en reel klassementstrussel i udbruddet, ikke ved et harmloest
-   udbrud.
+**TIER FULL** (motor, delte libs): `scripts/verify-local.ps1`, hele backend `node --test`,
+`s5MotorBench.test.ts`, tourDryRun-tests, testportens G1-G10. Frontend (filmens linjer):
+`npm run lint`, `node --test`, build og hele `npm run test:e2e`; snapshots i alle 3
+Playwright-projekter. help.json (en+da) og patch notes ved tænding.
 
-- Fordele: udfaldet afhaenger af hvem der sidder i udbruddet, hvor mange hold der vil
-  jage og terraenet (staerk K3/K4); laver ingen lodtraekning; giver rige loebsfilm
-  ("feltet tøvede").
-- Ulemper: stoerre diff, flere knapper at kalibrere; risiko for at knivsaegget blot
-  flytter sig. Derfor kraever B en eksplicit sikkerhedsventil: hvis kalibreringen ikke
-  kan naa K1 uden at bryde K2, kombineres B med A's lodtraekning paa en lille, privat
-  restandel.
+## 7. Filer (forventet, intet bygget)
 
-## 6. Anbefaling
+- `backend/lib/engine/v4/mechanics/breakaway.ts` (P1, P2: jagt-interesse, lukning, lad-gå)
+- `backend/lib/engine/v4/mechanics/breakawayPermission.ts` (P3, P4: hvem/hvor mange)
+- `backend/lib/engine/v4/mechanics/gcThreat.ts` (P3: GC- og etapefavorit som trussel)
+- `backend/lib/engine/v4/tuning.ts`, `mechanics/timeModel.ts` (knapper bag v2, ingen tal i
+  kommentarer)
+- `backend/scripts/dev/s5MotorBench.mjs` (`--revision`, forspring/sammensætning pr. etape,
+  formtop-kørsel), `backend/scripts/dev/lib/tourScorecard.mjs`
+- `frontend/src/lib/stageTimelineFilm.js` + i18n (P5)
+- `docs/RACE_ENGINE_RULES.md` (reglen), `help.json`
 
-**B**, med A's lodtraekning som reserve-ventil. Rod-aarsagen er at kuperede dage jages
-som flade/rene finaler over hele dagen; B retter det i jagt-modellen hvor fejlen sidder,
-og holder sejren fortjent (K3). Rullende og brosten roeres ikke i denne PR (egen
-maaling, eget issue), da rullende bevidst ligger under jagt-gulvet.
+## 8. Risiko
 
-## 7. Testporte (skal bestaas foer PR er klar)
+Bag slukket revision, ingen spillerpåvirkning før ejer-go. Største risiko: knivsægget
+flytter sig i stedet for at forsvinde (G2 fanger det), og at GT-bjerg flytter sig (G5).
+P2 og P3 rører udvælgelse og jagt samtidig; byg P1 -> mål -> P2 -> mål -> P3/P4 -> mål
+-> P5, et trin pr. commit, så hver ændring kan isoleres i benchen.
 
-1. `s5MotorBench --scope=all` under s5_profiles_v2: udbrudsandel pr. kuperet afslutning
-   og pr. endags-/etapeloeb inden for det private anker (K1). Tal i balance-internals/6804/.
-2. Samme bench: gatens del 4 og vindertype-dommen uaendret for alle afslutninger (K2);
-   fixturen `s5MotorBench.json` gaelder fortsat for v1.
-3. Bit-identitet: alle eksisterende motortests under s5_profiles_v1 groenne uden
-   fixture-aendringer (K6).
-4. Kontrakt-tests: monotoni i udbruddets flugt-evne og antal; "jag" oeger, "lad gaa"
-   skaber aldrig forspring; skala-invarians (K3, K4, K6).
-5. tourDryRun paa kommende kuperede S5-loeb (read-only): vindertyper efter indhentning
-   som foer (K5), og ingen klassementsfoerer skabt af et udbrud etape efter etape.
-6. Sammenligning mod gammel motor og virkelighed (ejer 8/10): udvalgte kuperede
-   etapeloebs-etaper og endagsloeb gennemgaaet med ejeren foer flagget overvejes.
+## 9. Baseline (hard rule 36)
 
-## 8. Filer (forventet, ingen bygget)
+Målt 20/10 read-only og offline på `s5MotorBench`-ruterne (scope all, 3 sæson-træk x 3
+motor-seeds, Giro-feltet), v1 og v2 side om side, med forspring og sammensætning pr.
+etape. Tal: `balance-internals/6804/2026-10-20/`. Motoren laver ingen DB-I/O, så
+målingen er DB-uafhængig; den lokale PG17 bruges i bygge-trinnet til testportens
+S5-ruter fra #6909 (syntetisk felt på nuværende trupper) og skal køre før første
+motor-PR.
 
-- `backend/lib/engine/v4/mechanics/breakaway.ts` (jagt-interesse, lukning, gulv-reserve)
-- `backend/lib/engine/v4/tuning.ts` (nye knapper bag s5_profiles_v2, kommentarer uden tal)
-- `backend/lib/engine/v4/mechanics/timeModel.ts` (evt. daempning pr. profil)
-- tests ved siden af + `backend/scripts/dev/s5MotorBench.mjs` (`--revision` til v2)
+## 10. Kilder til båndene
 
-## 9. Risiko
-
-Motor-aendring bag slukket revision (s5_profiles_v2), saa ingen spillerpaavirkning foer
-ejer-go paa taending. Stoerste risiko: GT-kuperede etaper og bjerg flytter sig (K2), og
-at sejren skifter fra fortjent til tilfaeldig. Begge dækkes af testport 1-2 og 4.
-
-## Åbne review-fund (Codex 19/10), løses i bygge-PR'en før første motorændring
-
-- **P2 Account for one-day reactions in the root cause:** Under the S5/v3 lineage, `gcReactionSetup` explicitly handles `gcContext.status === "one_day"`, selects a `oneDayProtectedRider`, and can feed a `winner_ahead` reaction into the same chase signal used by `stageWinChaseForceV3`. Therefore one-day races do have this additional reaction path, so its alleged absence cannot explain the measured stage-race split; compare the actual one-day and standings signals before basing the design on this distinction.
-- **P2 Define a change beyond the existing threat guard:** This proposed step already describes current behavior: `letGoBrakingTeams` rejects a chase-order brake when threat severity is `none`, and the existing #6457 test explicitly verifies that an otherwise identical harmless breakaway is not braked. Unless “reel klassementstrussel” is given a narrower, testable definition, implementing this item is a no-op and cannot address the measured regression.
-- **P2 Cite the race-engine SSOT:** This is a new race-engine/tactics design, but its metadata cites only issues and never explicitly cites `docs/RACE_ENGINE_RULES.md`. The repository contract says every new design document in this area must cite that SSOT and is not approved for build without it, so add the canonical reference and clarify that the implementation PR will update the rule there.
-- **P2 Record the required local-PG17 baseline:** The stated baseline is `s5MotorBench`, whose own header documents that it runs offline with no database, so this line does not demonstrate the local-PG17 baseline required before the first motor PR. Record a read-only local-PG17 measurement (without publishing protected balance values) before treating hard rule 36 as satisfied.
-- **P2 Declare the verification tier:** Although this section lists useful test gates, it never assigns the explicit test tier required as part of the design, so the implementation has no authoritative answer about which preflight/e2e suite is mandatory. Add the tier to this verification plan before marking the design ready to build.
+ProCyclingStats skal stadig verificeres manuelt (PCS afviser automatiseret hentning).
+Sekundære kilder der støtter GT-båndet og størrelses-effekten:
+- Frontier Economics, "Tour de France: Breaking down the breakaway" (114 Tour-vejetaper,
+  ca. en fjerdedel vundet fra udbruddet; store udbrud lykkes langt oftere):
+  https://www.frontier-economics.com/uk/en/news-and-insights/articles/article-i6444-breaking-down-the-breakaway/
+- University of Stirling (udbrud lykkes oftere på kuperet og bjerg end flad):
+  https://www.stir.ac.uk/research/hub/publication/522272
