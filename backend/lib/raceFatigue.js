@@ -12,6 +12,8 @@ import { effortFatigueMultiplier } from "./raceRoles.js";
 import { nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isS5ProfilesV1OrLater } from "./raceEngineRulesRevision.ts";
+import { stageLoadV2 } from "./conditionModelV2.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
@@ -146,7 +148,26 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
 // #5928: under s5_profiles_v1 (og KUN dér) vokser etapens belastning med etapens
 // plads i løbet og med det arbejde rytteren faktisk lavede (se stageRaceConditionLoad).
 // `work` = { stageNumber, efforts?, exposure? } fra raceRunner; udeladt = kun etapens plads.
-export function raceConditionLoads(riderIds, profileType, effortByRider = null, rulesRevision = null, work = null) {
+// #6984: `conditionV2` = { distanceKm, seasonRaceDaysByRider } når condition_model_v2 er
+// on (kaldestedet læser flaget). Så gælder v2-belastningen for ALLE løb; null = uændret.
+export function raceConditionLoads(riderIds, profileType, effortByRider = null, rulesRevision = null, work = null, conditionV2 = null) {
+  if (conditionV2) {
+    return [...new Set(riderIds)].map((riderId) => ({
+      rider_id: riderId,
+      load: stageLoadV2({
+        profileType,
+        distanceKm: conditionV2.distanceKm ?? null,
+        stageNumber: work?.stageNumber ?? 1,
+        effort: work?.efforts?.get(riderId) ?? effortByRider?.get(riderId) ?? "normal",
+        exposure: work?.caught?.has(String(riderId))
+          ? { ...(work?.exposure?.get(riderId) ?? { front: 0, shelter: 0 }), caught: true }
+          : work?.exposure?.get(riderId) ?? null,
+        // Løbsdage FØR denne etape + denne etape selv.
+        seasonRaceDays: (Number(conditionV2.seasonRaceDaysByRider?.get(riderId)) || 0) + 1,
+        rulesRevision,
+      }),
+    }));
+  }
   if (isS5ProfilesV1OrLater(rulesRevision)) {
     return [...new Set(riderIds)].map((riderId) => ({
       rider_id: riderId,
@@ -274,7 +295,28 @@ export function stageConditionWork({ rulesRevision, stageNumber, profileType, v4
     stageNumber,
     efforts: v4Result.efforts instanceof Map ? v4Result.efforts : null,
     exposure: stageWorkExposure(v4Result.v4Output, profileType),
+    // #6984: kun v2 læser det (hentet udbrud koster et tillæg); v1 ignorerer feltet.
+    caught: stageCaughtBreakaway(v4Result.v4Output, profileType),
   };
+}
+
+/**
+ * #6984 REN: ryttere der lå i front (udbrud, alene, jagtgruppe) i et af etapens
+ * gruppe-snapshots, men IKKE i front i det sidste (udbruddet blev hentet).
+ * Enkeltstarter og manglende snapshots giver et tomt sæt.
+ * @returns {Set<string>}
+ */
+export function stageCaughtBreakaway(v4Output, profileType = null) {
+  const caught = new Set();
+  const snaps = Array.isArray(v4Output?.groupSnapshots) ? v4Output.groupSnapshots : [];
+  if (!snaps.length || TIME_TRIAL_PROFILES.has(profileType)) return caught;
+  const sorted = snaps.slice().sort((a, b) => Number(a.km) - Number(b.km));
+  const frontIds = (snap) => new Set((snap.groups ?? []).filter((g) => FRONT_GROUP_KINDS.has(g.kind)).flatMap((g) => (g.rider_ids ?? []).map(String)));
+  const finalFront = frontIds(sorted[sorted.length - 1]);
+  for (const snap of sorted.slice(0, -1)) {
+    for (const id of frontIds(snap)) if (!finalFront.has(id)) caught.add(id);
+  }
+  return caught;
 }
 
 /**
@@ -378,4 +420,35 @@ export async function applyGrandTourRestDayFatigue({ supabase, riderIds, restDay
   if (upErr) throw new Error(`rider_condition upsert (GT hviledags-restitution): ${upErr.message}`);
 
   return { updated: rows.length, fatigueByRider: new Map(rows.map((r) => [r.rider_id, r.fatigue])) };
+}
+
+/**
+ * #6984 (B3): løbsdage pr. rytter i sæsonen FØR denne etape, fra belastnings-ledgeren
+ * (samme kilde som Udvikling 2.0's løbsbremse). Distinkte game_days; aliaser
+ * (duplicate_of_race_id) og etapen selv (retry) tælles ikke. Paginering: et GT-felt
+ * har tusindvis af rækker.
+ * @returns {Promise<Map<string, number>>}
+ */
+export async function loadSeasonRaceDaysByRider({ supabase, seasonId, riderIds, excludeRaceId = null, excludeStageNumber = null }) {
+  const ids = [...new Set((riderIds ?? []).map(String))];
+  const out = new Map(ids.map((id) => [id, 0]));
+  if (!seasonId || !ids.length) return out;
+  const daysByRider = new Map();
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200);
+    const rows = await fetchAllRows(() => supabase.from("training_race_loads")
+      .select("rider_id, game_day, race_id, stage_number")
+      .eq("season_id", seasonId)
+      .in("rider_id", chunk)
+      .is("duplicate_of_race_id", null)
+      .order("rider_id").order("game_day").order("race_id").order("stage_number"));
+    for (const row of rows) {
+      if (excludeRaceId && row.race_id === excludeRaceId && Number(row.stage_number) === Number(excludeStageNumber)) continue;
+      const key = String(row.rider_id);
+      if (!daysByRider.has(key)) daysByRider.set(key, new Set());
+      daysByRider.get(key).add(Number(row.game_day));
+    }
+  }
+  for (const [id, days] of daysByRider) out.set(id, days.size);
+  return out;
 }

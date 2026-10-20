@@ -79,7 +79,8 @@ import {
 import { buildStageTimeline, buildStageTimelineV4 } from "./raceTimeline.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
+import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
+import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
 import {
   loadStageRoleOverrides,
   resolveStageEntrants,
@@ -1867,6 +1868,10 @@ async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageR
   const {data:saved,error}=await supabase.from('race_simulation_runs')
     .select('stage_number,entrant_snapshot,condition_load_snapshot').eq('race_id',race.id).in('stage_number',runs.map(run=>run.stage_number));
   if(error) throw new Error(`race condition snapshot: ${error.message}`);
+  // #6984: v2-belastningen (profil, længde, sæson) fryses med den samme snapshot. Flaget
+  // læses kun når der faktisk skal fryses noget nyt; en gemt snapshot genbruges uændret.
+  const needsFreeze=runs.some(run=>!(saved??[]).some(row=>row.stage_number===run.stage_number && row.condition_load_snapshot != null));
+  const conditionV2On=needsFreeze ? await isConditionModelV2Enabled(supabase) : false;
   for(const run of runs) {
     const previous=(saved??[]).find(row=>row.stage_number===run.stage_number && row.condition_load_snapshot != null);
     if(previous) {
@@ -1877,7 +1882,11 @@ async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageR
       const effortByRider=!v3?null:v4Engine
         ?resolvedEffortByRiderForStage(stageRoleOverrides,run.stage_number,orderEffortByRiderForStage(teamOrderRows,run.stage_number))
         :effortByRiderForStage(stageRoleOverrides,run.stage_number);
-      run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision,conditionWorkForRun(run));
+      const conditionV2=conditionV2On ? {
+        distanceKm: stage?.distance_km ?? null,
+        seasonRaceDaysByRider: await loadSeasonRaceDaysByRider({supabase,seasonId:race.season_id,riderIds:run.entrant_snapshot,excludeRaceId:race.id,excludeStageNumber:run.stage_number}),
+      } : null;
+      run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision,conditionWorkForRun(run),conditionV2);
     }
   }
 }
