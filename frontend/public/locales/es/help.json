@@ -670,358 +670,287 @@
         "rows": [
           [
             "Carrera",
-            "Tipo",
-            "Seña de identidad"
+            "Tipo y seña de identidad"
           ],
           [
             "Tour des Volcans d'Auvergne (Div. 1)",
-            "Carrera de escaladores",
-            "Final en alto en Puy de Chalardès"
+            "Carrera de escaladores · Final en alto en Puy de Chalardès"
           ],
           [
             "La Course au Soleil (Div. 1)",
-            "Carrera de velocistas",
-            "Subida: Côte de Vauclairon"
+            "Carrera de velocistas · Subida: Côte de Vauclairon"
           ],
           [
             "Tour of South Australia (Div. 1)",
-            "Carrera de escaladores",
-            "Final en alto en Mount Kerrawong"
+            "Carrera de escaladores · Final en alto en Mount Kerrawong"
           ],
           [
             "Tour du Hedjaz (Div. 1)",
-            "Carrera de velocistas",
-            "Subida: Aqabat Nuwayma"
+            "Carrera de velocistas · Subida: Aqabat Nuwayma"
           ],
           [
             "Giro delle Alpi Orientali (Div. 1)",
-            "Montaña primero",
-            "Final en alto en Monte Zoncolaro"
+            "Montaña primero · Final en alto en Monte Zoncolaro"
           ],
           [
             "Tour de la Haute-Savoie (Div. 1)",
-            "Polivalente",
-            "Final en alto en Plateau des Glièrettes + contrarreloj accidentada"
+            "Polivalente · Final en alto en Plateau des Glièrettes + contrarreloj accidentada"
           ],
           [
             "Volta Catalana (Div. 1)",
-            "Carrera accidentada",
-            "Final en subida en Coll de Montbrú"
+            "Carrera accidentada · Final en subida en Coll de Montbrú"
           ],
           [
             "Vuelta al Alto Aragón (Div. 1)",
-            "Polivalente",
-            "Final en alto en Puerto de Sallentiza + contrarreloj llana"
+            "Polivalente · Final en alto en Puerto de Sallentiza + contrarreloj llana"
           ],
           [
             "Tour de la Vistule (Div. 1)",
-            "Carrera de escaladores",
-            "Final en alto en Wierch Sokolnicki"
+            "Carrera de escaladores · Final en alto en Wierch Sokolnicki"
           ],
           [
             "La Corsa dei Due Mari (Div. 1)",
-            "Carrera de grava",
-            "Sector de grava: Strada Bianca di Montesorbo + sector de grava: Sterrato del Pozzaccio en la última etapa"
+            "Carrera de grava · Sector de grava: Strada Bianca di Montesorbo + sector de grava: Sterrato del Pozzaccio en la última etapa"
           ],
           [
             "Vuelta Vasca (Div. 1)",
-            "Carrera accidentada",
-            "Final en subida en Alto de Mendibeltz en la última etapa"
+            "Carrera accidentada · Final en subida en Alto de Mendibeltz en la última etapa"
           ],
           [
             "Ronde van Noord-Frankrijk (Div. 1)",
-            "Adoquines/Benelux",
-            "Sector de adoquines: Pavé du Moulin-Brûlé + sector de adoquines: Chemin des Quatre-Vents en la última etapa"
+            "Adoquines/Benelux · Sector de adoquines: Pavé du Moulin-Brûlé + sector de adoquines: Chemin des Quatre-Vents en la última etapa"
           ],
           [
             "Tour du Léman (Div. 1)",
-            "Carrera contrarreloj",
-            "Prólogo + contrarreloj accidentada en la última etapa"
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
           ],
           [
             "Tour des Émirats (Div. 2)",
-            "Polivalente",
-            "Final en alto en Jebel Hafira"
+            "Polivalente · Final en alto en Jebel Hafira"
           ],
           [
             "Vuelta a Sierra Nevada (Div. 2)",
-            "Carrera de escaladores",
-            "Final en alto en Alto de la Veletilla"
+            "Carrera de escaladores · Final en alto en Alto de la Veletilla"
           ],
           [
             "Vuelta a los Pirineos (Div. 2)",
-            "Carrera de escaladores",
-            "Final en alto en Port de Peyrafita"
+            "Carrera de escaladores · Final en alto en Port de Peyrafita"
           ],
           [
             "Giro dell'Appennino Ligure (Div. 2)",
-            "Carrera accidentada",
-            "Subida: Salita di Monte Ravàro"
+            "Carrera accidentada · Subida: Salita di Monte Ravàro"
           ],
           [
             "Tour du Massif des Vosges (Div. 2)",
-            "Montaña primero",
-            "Final en alto en Ballon des Belles-Fées"
+            "Montaña primero · Final en alto en Ballon des Belles-Fées"
           ],
           [
             "Tour des Grandes Alpes (Div. 2)",
-            "Carrera de escaladores",
-            "Final en alto en Col de la Madelonne"
+            "Carrera de escaladores · Final en alto en Col de la Madelonne"
           ],
           [
             "Tour of South China (Div. 2)",
-            "Carrera de velocistas",
-            "Subida: Qingluo Ridge"
+            "Carrera de velocistas · Subida: Qingluo Ridge"
           ],
           [
             "Giro della Sila (Div. 2)",
-            "Carrera accidentada",
-            "Subida: Salita di Monte Botterello"
+            "Carrera accidentada · Subida: Salita di Monte Botterello"
           ],
           [
             "Tour du Tyrol (Div. 2)",
-            "Montaña primero",
-            "Final en alto en Hochtaler Joch"
+            "Montaña primero · Final en alto en Hochtaler Joch"
           ],
           [
             "Tour d'Anatolie (Div. 2)",
-            "Carrera de velocistas",
-            "Subida: Karakaya Tepesi"
+            "Carrera de velocistas · Subida: Karakaya Tepesi"
           ],
           [
             "Tour du Danube (Div. 2)",
-            "Carrera contrarreloj",
-            "Prólogo + contrarreloj llana en la última etapa"
+            "Carrera contrarreloj · Prólogo + contrarreloj llana en la última etapa"
           ],
           [
             "Vuelta a Somiedo (Div. 2)",
-            "Polivalente",
-            "Final en alto en Alto de Valdecuerna + contrarreloj llana"
+            "Polivalente · Final en alto en Alto de Valdecuerna + contrarreloj llana"
           ],
           [
             "Giro dell'Irpinia (Div. 2)",
-            "Carrera accidentada",
-            "Final en subida en Muro di Montevergello en la última etapa"
+            "Carrera accidentada · Final en subida en Muro di Montevergello en la última etapa"
           ],
           [
             "Tour Wallon (Div. 2)",
-            "Adoquines/Benelux",
-            "Sector de adoquines: Pavés de Thieumont + sector de adoquines: Chemin de la Hulpière en la última etapa"
+            "Adoquines/Benelux · Sector de adoquines: Pavés de Thieumont + sector de adoquines: Chemin de la Hulpière en la última etapa"
           ],
           [
             "Giro dell'Alta Valtellina (Div. 2)",
-            "Polivalente",
-            "Final en alto en Passo della Gaviola + contrarreloj accidentada"
+            "Polivalente · Final en alto en Passo della Gaviola + contrarreloj accidentada"
           ],
           [
             "Rundfahrt der Hohen Tauern (Div. 2)",
-            "Carrera contrarreloj",
-            "Prólogo + contrarreloj accidentada en la última etapa"
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
           ],
           [
             "Tour des Hauts Plateaux (Div. 2)",
-            "Carrera de grava",
-            "Sector de grava: Piste des Yaks Noirs"
+            "Carrera de grava · Sector de grava: Piste des Yaks Noirs"
           ],
           [
             "Danmark Rundt (Div. 2)",
-            "Adoquines/Benelux",
-            "Sector de adoquines: Skovbyvej + sector de adoquines: Ryttervejen en la última etapa"
+            "Adoquines/Benelux · Sector de adoquines: Skovbyvej + sector de adoquines: Ryttervejen en la última etapa"
           ],
           [
             "Volta ao Alentejo (Div. 2)",
-            "Carrera de velocistas",
-            "Subida: Alto de Monsarrinho"
+            "Carrera de velocistas · Subida: Alto de Monsarrinho"
           ],
           [
             "Vuelta Valenciana (Div. 3)",
-            "Polivalente",
-            "Final en alto en Alto de Xorret del Pinós + contrarreloj llana"
+            "Polivalente · Final en alto en Alto de Xorret del Pinós + contrarreloj llana"
           ],
           [
             "Volta Algarvia (Div. 3)",
-            "Carrera contrarreloj",
-            "Contrarreloj llana en la última etapa"
+            "Carrera contrarreloj · Contrarreloj llana en la última etapa"
           ],
           [
             "Volta Galega (Div. 3)",
-            "Carrera accidentada",
-            "Final en subida en Monte do Castrelo en la última etapa"
+            "Carrera accidentada · Final en subida en Monte do Castrelo en la última etapa"
           ],
           [
             "Giro della Lucania (Div. 3)",
-            "Carrera de escaladores",
-            "Final en alto en Monte Sirinetto"
+            "Carrera de escaladores · Final en alto en Monte Sirinetto"
           ],
           [
             "Tour Belge (Div. 3)",
-            "Adoquines/Benelux",
-            "Sector de adoquines: Kasseiweg van Ronsbeke + sector de adoquines: Holle Kasseistraat en la última etapa"
+            "Adoquines/Benelux · Sector de adoquines: Kasseiweg van Ronsbeke + sector de adoquines: Holle Kasseistraat en la última etapa"
           ],
           [
             "Tour du Larzac (Div. 3)",
-            "Carrera de grava",
-            "Sector de grava: Piste des Brebis Grises"
+            "Carrera de grava · Sector de grava: Piste des Brebis Grises"
           ],
           [
             "Vuelta Burgalesa (Div. 3)",
-            "Carrera de escaladores",
-            "Final en alto en Lagunas de Neilón"
+            "Carrera de escaladores · Final en alto en Lagunas de Neilón"
           ],
           [
             "Turul Carpaților (Div. 3)",
-            "Montaña primero",
-            "Final en alto en Vârful Negruța"
+            "Montaña primero · Final en alto en Vârful Negruța"
           ],
           [
             "Volta Portuguesa (Div. 3)",
-            "Polivalente",
-            "Final en alto en Alto da Senhora dos Ventos + contrarreloj llana"
+            "Polivalente · Final en alto en Alto da Senhora dos Ventos + contrarreloj llana"
           ],
           [
             "Tour de l'Yonne (Div. 3)",
-            "Carrera de velocistas",
-            "Subida: Côte de Vézelière"
+            "Carrera de velocistas · Subida: Côte de Vézelière"
           ],
           [
             "Vuelta a Gredos (Div. 3)",
-            "Polivalente",
-            "Final en alto en Alto del Risco Pelado + contrarreloj accidentada"
+            "Polivalente · Final en alto en Alto del Risco Pelado + contrarreloj accidentada"
           ],
           [
             "Tour Adriatique (Div. 3)",
-            "Carrera accidentada",
-            "Subida: Uspon na Gradinu"
+            "Carrera accidentada · Subida: Uspon na Gradinu"
           ],
           [
             "Tour de Malaisie (Div. 3)",
-            "Carrera de velocistas",
-            "Subida: Bukit Selasih"
+            "Carrera de velocistas · Subida: Bukit Selasih"
           ],
           [
             "Tour des Fjords (Div. 3)",
-            "Carrera accidentada",
-            "Final en subida en Stavnesbakken en la última etapa"
+            "Carrera accidentada · Final en subida en Stavnesbakken en la última etapa"
           ],
           [
             "Ronde van Zeeland (Div. 3)",
-            "Adoquines/Benelux",
-            "Sector de adoquines: Dijkweg van Oosterhaven"
+            "Adoquines/Benelux · Sector de adoquines: Dijkweg van Oosterhaven"
           ],
           [
             "Tour de Silésie (Div. 3)",
-            "Carrera de velocistas",
-            "Subida: Wzgórze Opolskie"
+            "Carrera de velocistas · Subida: Wzgórze Opolskie"
           ],
           [
             "Vuelta a los Picos (Div. 4)",
-            "Carrera de escaladores",
-            "Final en alto en Lagos de Peñavera"
+            "Carrera de escaladores · Final en alto en Lagos de Peñavera"
           ],
           [
             "Tour de la Somme (Div. 4)",
-            "Carrera de velocistas",
-            "Subida: Côte de Bellencourt"
+            "Carrera de velocistas · Subida: Côte de Bellencourt"
           ],
           [
             "Ronde van Overijssel (Div. 4)",
-            "Carrera de velocistas",
-            "Subida: Sallandse Bult"
+            "Carrera de velocistas · Subida: Sallandse Bult"
           ],
           [
             "Giro del Piceno (Div. 4)",
-            "Carrera accidentada",
-            "Final en subida en Muro di Castelvento en la última etapa"
+            "Carrera accidentada · Final en subida en Muro di Castelvento en la última etapa"
           ],
           [
             "Giro del Monferrato (Div. 4)",
-            "Carrera de grava",
-            "Sector de grava: Sterrato delle Vigne Alte"
+            "Carrera de grava · Sector de grava: Sterrato delle Vigne Alte"
           ],
           [
             "Tour de l'Allier (Div. 4)",
-            "Polivalente",
-            "Contrarreloj llana"
+            "Polivalente · Contrarreloj llana"
           ],
           [
             "Vuelta a Navarra Nueva (Div. 4)",
-            "Polivalente",
-            "Final en alto en Alto de Erroizar + contrarreloj accidentada"
+            "Polivalente · Final en alto en Alto de Erroizar + contrarreloj accidentada"
           ],
           [
             "Étoile de Bessèges Mineure (Div. 4)",
-            "Carrera contrarreloj",
-            "Contrarreloj accidentada en la última etapa"
+            "Carrera contrarreloj · Contrarreloj accidentada en la última etapa"
           ],
           [
             "Tour de la Provence Verte (Div. 4)",
-            "Carrera accidentada",
-            "Subida: Côte des Baux-Blancs"
+            "Carrera accidentada · Subida: Côte des Baux-Blancs"
           ],
           [
             "Volta ao Ribatejo (Div. 4)",
-            "Carrera de velocistas",
-            "Subida: Alto de Almourinho"
+            "Carrera de velocistas · Subida: Alto de Almourinho"
           ],
           [
             "Giro del Trentino Nuovo (Div. 4)",
-            "Montaña primero",
-            "Final en alto en Monte Bondanello"
+            "Montaña primero · Final en alto en Monte Bondanello"
           ],
           [
             "Giro d'Abruzzo Nuovo (Div. 4)",
-            "Carrera de escaladores",
-            "Final en alto en Altopiano di Roccaserra"
+            "Carrera de escaladores · Final en alto en Altopiano di Roccaserra"
           ],
           [
             "Tour du Jura (Div. 4)",
-            "Polivalente",
-            "Contrarreloj accidentada"
+            "Polivalente · Contrarreloj accidentada"
           ],
           [
             "Giro dei Monti Sibillini (Div. 4)",
-            "Carrera accidentada",
-            "Subida: Salita di Forca Rosata"
+            "Carrera accidentada · Subida: Salita di Forca Rosata"
           ],
           [
             "Tour de Bretagne Sud (Div. 4)",
-            "Adoquines/Benelux",
-            "Sector de adoquines: Chemin de Kerlannec"
+            "Adoquines/Benelux · Sector de adoquines: Chemin de Kerlannec"
           ],
           [
             "Ronde van Vlaams-Brabant (Div. 4)",
-            "Adoquines/Benelux",
-            "Sector de adoquines: Kasseistrook van Bertembos + sector de adoquines: Holle Weg van Ottenrode en la última etapa"
+            "Adoquines/Benelux · Sector de adoquines: Kasseistrook van Bertembos + sector de adoquines: Holle Weg van Ottenrode en la última etapa"
           ],
           [
             "Tour de l'Ain Nouveau (Div. 4)",
-            "Carrera contrarreloj",
-            "Prólogo + contrarreloj accidentada en la última etapa"
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
           ],
           [
             "Milano–Riviera (Div. 1)",
-            "Monumento, recorrido fijo",
-            "Cipressina y Poggio dei Fiori antes de la meta"
+            "Monumento, recorrido fijo · Cipressina y Poggio dei Fiori antes de la meta"
           ],
           [
             "De Vlaamse Ronde (Div. 1)",
-            "Monumento, recorrido fijo",
-            "Oude Kwaremberg y Paterhelling antes de la meta, además de sectores de adoquines"
+            "Monumento, recorrido fijo · Oude Kwaremberg y Paterhelling antes de la meta, además de sectores de adoquines"
           ],
           [
             "L'Enfer du Nord (Div. 1)",
-            "Monumento, recorrido fijo",
-            "Sectores de adoquines desde la Trouée d'Arembourg hasta el Carrefour du Chêne"
+            "Monumento, recorrido fijo · Sectores de adoquines desde la Trouée d'Arembourg hasta el Carrefour du Chêne"
           ],
           [
             "La Doyenne des Ardennes (Div. 1)",
-            "Monumento, recorrido fijo",
-            "Côte de la Redoutière y Côte de la Roche-aux-Corbeaux, final en subida"
+            "Monumento, recorrido fijo · Côte de la Redoutière y Côte de la Roche-aux-Corbeaux, final en subida"
           ],
           [
             "La Classica d'Autunno (Div. 1)",
-            "Monumento, recorrido fijo",
-            "Madonna del Ghisello, luego Salita di Valtorta y un descenso hasta la meta"
+            "Monumento, recorrido fijo · Madonna del Ghisello, luego Salita di Valtorta y un descenso hasta la meta"
           ]
         ]
       },

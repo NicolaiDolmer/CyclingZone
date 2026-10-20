@@ -670,358 +670,287 @@
         "rows": [
           [
             "Course",
-            "Type",
-            "Signature"
+            "Type et signature"
           ],
           [
             "Tour des Volcans d'Auvergne (Div. 1)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Puy de Chalardès"
+            "Course de grimpeurs · Arrivée au sommet : Puy de Chalardès"
           ],
           [
             "La Course au Soleil (Div. 1)",
-            "Course de sprinteurs",
-            "Montée : Côte de Vauclairon"
+            "Course de sprinteurs · Montée : Côte de Vauclairon"
           ],
           [
             "Tour of South Australia (Div. 1)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Mount Kerrawong"
+            "Course de grimpeurs · Arrivée au sommet : Mount Kerrawong"
           ],
           [
             "Tour du Hedjaz (Div. 1)",
-            "Course de sprinteurs",
-            "Montée : Aqabat Nuwayma"
+            "Course de sprinteurs · Montée : Aqabat Nuwayma"
           ],
           [
             "Giro delle Alpi Orientali (Div. 1)",
-            "Montagne d'abord",
-            "Arrivée au sommet : Monte Zoncolaro"
+            "Montagne d'abord · Arrivée au sommet : Monte Zoncolaro"
           ],
           [
             "Tour de la Haute-Savoie (Div. 1)",
-            "Polyvalente",
-            "Arrivée au sommet : Plateau des Glièrettes + contre-la-montre vallonné"
+            "Polyvalente · Arrivée au sommet : Plateau des Glièrettes + contre-la-montre vallonné"
           ],
           [
             "Volta Catalana (Div. 1)",
-            "Course vallonnée",
-            "Arrivée en côte : Coll de Montbrú"
+            "Course vallonnée · Arrivée en côte : Coll de Montbrú"
           ],
           [
             "Vuelta al Alto Aragón (Div. 1)",
-            "Polyvalente",
-            "Arrivée au sommet : Puerto de Sallentiza + contre-la-montre plat"
+            "Polyvalente · Arrivée au sommet : Puerto de Sallentiza + contre-la-montre plat"
           ],
           [
             "Tour de la Vistule (Div. 1)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Wierch Sokolnicki"
+            "Course de grimpeurs · Arrivée au sommet : Wierch Sokolnicki"
           ],
           [
             "La Corsa dei Due Mari (Div. 1)",
-            "Course sur gravier",
-            "Secteur de gravier : Strada Bianca di Montesorbo + secteur de gravier : Sterrato del Pozzaccio lors de la dernière étape"
+            "Course sur gravier · Secteur de gravier : Strada Bianca di Montesorbo + secteur de gravier : Sterrato del Pozzaccio lors de la dernière étape"
           ],
           [
             "Vuelta Vasca (Div. 1)",
-            "Course vallonnée",
-            "Arrivée en côte : Alto de Mendibeltz lors de la dernière étape"
+            "Course vallonnée · Arrivée en côte : Alto de Mendibeltz lors de la dernière étape"
           ],
           [
             "Ronde van Noord-Frankrijk (Div. 1)",
-            "Pavés/Benelux",
-            "Secteur pavé : Pavé du Moulin-Brûlé + secteur pavé : Chemin des Quatre-Vents lors de la dernière étape"
+            "Pavés/Benelux · Secteur pavé : Pavé du Moulin-Brûlé + secteur pavé : Chemin des Quatre-Vents lors de la dernière étape"
           ],
           [
             "Tour du Léman (Div. 1)",
-            "Course contre-la-montre",
-            "Prologue + contre-la-montre vallonné lors de la dernière étape"
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
           ],
           [
             "Tour des Émirats (Div. 2)",
-            "Polyvalente",
-            "Arrivée au sommet : Jebel Hafira"
+            "Polyvalente · Arrivée au sommet : Jebel Hafira"
           ],
           [
             "Vuelta a Sierra Nevada (Div. 2)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Alto de la Veletilla"
+            "Course de grimpeurs · Arrivée au sommet : Alto de la Veletilla"
           ],
           [
             "Vuelta a los Pirineos (Div. 2)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Port de Peyrafita"
+            "Course de grimpeurs · Arrivée au sommet : Port de Peyrafita"
           ],
           [
             "Giro dell'Appennino Ligure (Div. 2)",
-            "Course vallonnée",
-            "Montée : Salita di Monte Ravàro"
+            "Course vallonnée · Montée : Salita di Monte Ravàro"
           ],
           [
             "Tour du Massif des Vosges (Div. 2)",
-            "Montagne d'abord",
-            "Arrivée au sommet : Ballon des Belles-Fées"
+            "Montagne d'abord · Arrivée au sommet : Ballon des Belles-Fées"
           ],
           [
             "Tour des Grandes Alpes (Div. 2)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Col de la Madelonne"
+            "Course de grimpeurs · Arrivée au sommet : Col de la Madelonne"
           ],
           [
             "Tour of South China (Div. 2)",
-            "Course de sprinteurs",
-            "Montée : Qingluo Ridge"
+            "Course de sprinteurs · Montée : Qingluo Ridge"
           ],
           [
             "Giro della Sila (Div. 2)",
-            "Course vallonnée",
-            "Montée : Salita di Monte Botterello"
+            "Course vallonnée · Montée : Salita di Monte Botterello"
           ],
           [
             "Tour du Tyrol (Div. 2)",
-            "Montagne d'abord",
-            "Arrivée au sommet : Hochtaler Joch"
+            "Montagne d'abord · Arrivée au sommet : Hochtaler Joch"
           ],
           [
             "Tour d'Anatolie (Div. 2)",
-            "Course de sprinteurs",
-            "Montée : Karakaya Tepesi"
+            "Course de sprinteurs · Montée : Karakaya Tepesi"
           ],
           [
             "Tour du Danube (Div. 2)",
-            "Course contre-la-montre",
-            "Prologue + contre-la-montre plat lors de la dernière étape"
+            "Course contre-la-montre · Prologue + contre-la-montre plat lors de la dernière étape"
           ],
           [
             "Vuelta a Somiedo (Div. 2)",
-            "Polyvalente",
-            "Arrivée au sommet : Alto de Valdecuerna + contre-la-montre plat"
+            "Polyvalente · Arrivée au sommet : Alto de Valdecuerna + contre-la-montre plat"
           ],
           [
             "Giro dell'Irpinia (Div. 2)",
-            "Course vallonnée",
-            "Arrivée en côte : Muro di Montevergello lors de la dernière étape"
+            "Course vallonnée · Arrivée en côte : Muro di Montevergello lors de la dernière étape"
           ],
           [
             "Tour Wallon (Div. 2)",
-            "Pavés/Benelux",
-            "Secteur pavé : Pavés de Thieumont + secteur pavé : Chemin de la Hulpière lors de la dernière étape"
+            "Pavés/Benelux · Secteur pavé : Pavés de Thieumont + secteur pavé : Chemin de la Hulpière lors de la dernière étape"
           ],
           [
             "Giro dell'Alta Valtellina (Div. 2)",
-            "Polyvalente",
-            "Arrivée au sommet : Passo della Gaviola + contre-la-montre vallonné"
+            "Polyvalente · Arrivée au sommet : Passo della Gaviola + contre-la-montre vallonné"
           ],
           [
             "Rundfahrt der Hohen Tauern (Div. 2)",
-            "Course contre-la-montre",
-            "Prologue + contre-la-montre vallonné lors de la dernière étape"
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
           ],
           [
             "Tour des Hauts Plateaux (Div. 2)",
-            "Course sur gravier",
-            "Secteur de gravier : Piste des Yaks Noirs"
+            "Course sur gravier · Secteur de gravier : Piste des Yaks Noirs"
           ],
           [
             "Danmark Rundt (Div. 2)",
-            "Pavés/Benelux",
-            "Secteur pavé : Skovbyvej + secteur pavé : Ryttervejen lors de la dernière étape"
+            "Pavés/Benelux · Secteur pavé : Skovbyvej + secteur pavé : Ryttervejen lors de la dernière étape"
           ],
           [
             "Volta ao Alentejo (Div. 2)",
-            "Course de sprinteurs",
-            "Montée : Alto de Monsarrinho"
+            "Course de sprinteurs · Montée : Alto de Monsarrinho"
           ],
           [
             "Vuelta Valenciana (Div. 3)",
-            "Polyvalente",
-            "Arrivée au sommet : Alto de Xorret del Pinós + contre-la-montre plat"
+            "Polyvalente · Arrivée au sommet : Alto de Xorret del Pinós + contre-la-montre plat"
           ],
           [
             "Volta Algarvia (Div. 3)",
-            "Course contre-la-montre",
-            "Contre-la-montre plat lors de la dernière étape"
+            "Course contre-la-montre · Contre-la-montre plat lors de la dernière étape"
           ],
           [
             "Volta Galega (Div. 3)",
-            "Course vallonnée",
-            "Arrivée en côte : Monte do Castrelo lors de la dernière étape"
+            "Course vallonnée · Arrivée en côte : Monte do Castrelo lors de la dernière étape"
           ],
           [
             "Giro della Lucania (Div. 3)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Monte Sirinetto"
+            "Course de grimpeurs · Arrivée au sommet : Monte Sirinetto"
           ],
           [
             "Tour Belge (Div. 3)",
-            "Pavés/Benelux",
-            "Secteur pavé : Kasseiweg van Ronsbeke + secteur pavé : Holle Kasseistraat lors de la dernière étape"
+            "Pavés/Benelux · Secteur pavé : Kasseiweg van Ronsbeke + secteur pavé : Holle Kasseistraat lors de la dernière étape"
           ],
           [
             "Tour du Larzac (Div. 3)",
-            "Course sur gravier",
-            "Secteur de gravier : Piste des Brebis Grises"
+            "Course sur gravier · Secteur de gravier : Piste des Brebis Grises"
           ],
           [
             "Vuelta Burgalesa (Div. 3)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Lagunas de Neilón"
+            "Course de grimpeurs · Arrivée au sommet : Lagunas de Neilón"
           ],
           [
             "Turul Carpaților (Div. 3)",
-            "Montagne d'abord",
-            "Arrivée au sommet : Vârful Negruța"
+            "Montagne d'abord · Arrivée au sommet : Vârful Negruța"
           ],
           [
             "Volta Portuguesa (Div. 3)",
-            "Polyvalente",
-            "Arrivée au sommet : Alto da Senhora dos Ventos + contre-la-montre plat"
+            "Polyvalente · Arrivée au sommet : Alto da Senhora dos Ventos + contre-la-montre plat"
           ],
           [
             "Tour de l'Yonne (Div. 3)",
-            "Course de sprinteurs",
-            "Montée : Côte de Vézelière"
+            "Course de sprinteurs · Montée : Côte de Vézelière"
           ],
           [
             "Vuelta a Gredos (Div. 3)",
-            "Polyvalente",
-            "Arrivée au sommet : Alto del Risco Pelado + contre-la-montre vallonné"
+            "Polyvalente · Arrivée au sommet : Alto del Risco Pelado + contre-la-montre vallonné"
           ],
           [
             "Tour Adriatique (Div. 3)",
-            "Course vallonnée",
-            "Montée : Uspon na Gradinu"
+            "Course vallonnée · Montée : Uspon na Gradinu"
           ],
           [
             "Tour de Malaisie (Div. 3)",
-            "Course de sprinteurs",
-            "Montée : Bukit Selasih"
+            "Course de sprinteurs · Montée : Bukit Selasih"
           ],
           [
             "Tour des Fjords (Div. 3)",
-            "Course vallonnée",
-            "Arrivée en côte : Stavnesbakken lors de la dernière étape"
+            "Course vallonnée · Arrivée en côte : Stavnesbakken lors de la dernière étape"
           ],
           [
             "Ronde van Zeeland (Div. 3)",
-            "Pavés/Benelux",
-            "Secteur pavé : Dijkweg van Oosterhaven"
+            "Pavés/Benelux · Secteur pavé : Dijkweg van Oosterhaven"
           ],
           [
             "Tour de Silésie (Div. 3)",
-            "Course de sprinteurs",
-            "Montée : Wzgórze Opolskie"
+            "Course de sprinteurs · Montée : Wzgórze Opolskie"
           ],
           [
             "Vuelta a los Picos (Div. 4)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Lagos de Peñavera"
+            "Course de grimpeurs · Arrivée au sommet : Lagos de Peñavera"
           ],
           [
             "Tour de la Somme (Div. 4)",
-            "Course de sprinteurs",
-            "Montée : Côte de Bellencourt"
+            "Course de sprinteurs · Montée : Côte de Bellencourt"
           ],
           [
             "Ronde van Overijssel (Div. 4)",
-            "Course de sprinteurs",
-            "Montée : Sallandse Bult"
+            "Course de sprinteurs · Montée : Sallandse Bult"
           ],
           [
             "Giro del Piceno (Div. 4)",
-            "Course vallonnée",
-            "Arrivée en côte : Muro di Castelvento lors de la dernière étape"
+            "Course vallonnée · Arrivée en côte : Muro di Castelvento lors de la dernière étape"
           ],
           [
             "Giro del Monferrato (Div. 4)",
-            "Course sur gravier",
-            "Secteur de gravier : Sterrato delle Vigne Alte"
+            "Course sur gravier · Secteur de gravier : Sterrato delle Vigne Alte"
           ],
           [
             "Tour de l'Allier (Div. 4)",
-            "Polyvalente",
-            "Contre-la-montre plat"
+            "Polyvalente · Contre-la-montre plat"
           ],
           [
             "Vuelta a Navarra Nueva (Div. 4)",
-            "Polyvalente",
-            "Arrivée au sommet : Alto de Erroizar + contre-la-montre vallonné"
+            "Polyvalente · Arrivée au sommet : Alto de Erroizar + contre-la-montre vallonné"
           ],
           [
             "Étoile de Bessèges Mineure (Div. 4)",
-            "Course contre-la-montre",
-            "Contre-la-montre vallonné lors de la dernière étape"
+            "Course contre-la-montre · Contre-la-montre vallonné lors de la dernière étape"
           ],
           [
             "Tour de la Provence Verte (Div. 4)",
-            "Course vallonnée",
-            "Montée : Côte des Baux-Blancs"
+            "Course vallonnée · Montée : Côte des Baux-Blancs"
           ],
           [
             "Volta ao Ribatejo (Div. 4)",
-            "Course de sprinteurs",
-            "Montée : Alto de Almourinho"
+            "Course de sprinteurs · Montée : Alto de Almourinho"
           ],
           [
             "Giro del Trentino Nuovo (Div. 4)",
-            "Montagne d'abord",
-            "Arrivée au sommet : Monte Bondanello"
+            "Montagne d'abord · Arrivée au sommet : Monte Bondanello"
           ],
           [
             "Giro d'Abruzzo Nuovo (Div. 4)",
-            "Course de grimpeurs",
-            "Arrivée au sommet : Altopiano di Roccaserra"
+            "Course de grimpeurs · Arrivée au sommet : Altopiano di Roccaserra"
           ],
           [
             "Tour du Jura (Div. 4)",
-            "Polyvalente",
-            "Contre-la-montre vallonné"
+            "Polyvalente · Contre-la-montre vallonné"
           ],
           [
             "Giro dei Monti Sibillini (Div. 4)",
-            "Course vallonnée",
-            "Montée : Salita di Forca Rosata"
+            "Course vallonnée · Montée : Salita di Forca Rosata"
           ],
           [
             "Tour de Bretagne Sud (Div. 4)",
-            "Pavés/Benelux",
-            "Secteur pavé : Chemin de Kerlannec"
+            "Pavés/Benelux · Secteur pavé : Chemin de Kerlannec"
           ],
           [
             "Ronde van Vlaams-Brabant (Div. 4)",
-            "Pavés/Benelux",
-            "Secteur pavé : Kasseistrook van Bertembos + secteur pavé : Holle Weg van Ottenrode lors de la dernière étape"
+            "Pavés/Benelux · Secteur pavé : Kasseistrook van Bertembos + secteur pavé : Holle Weg van Ottenrode lors de la dernière étape"
           ],
           [
             "Tour de l'Ain Nouveau (Div. 4)",
-            "Course contre-la-montre",
-            "Prologue + contre-la-montre vallonné lors de la dernière étape"
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
           ],
           [
             "Milano–Riviera (Div. 1)",
-            "Monument, parcours fixe",
-            "Cipressina et Poggio dei Fiori avant l'arrivée"
+            "Monument, parcours fixe · Cipressina et Poggio dei Fiori avant l'arrivée"
           ],
           [
             "De Vlaamse Ronde (Div. 1)",
-            "Monument, parcours fixe",
-            "Oude Kwaremberg et Paterhelling avant l'arrivée, plus des secteurs pavés"
+            "Monument, parcours fixe · Oude Kwaremberg et Paterhelling avant l'arrivée, plus des secteurs pavés"
           ],
           [
             "L'Enfer du Nord (Div. 1)",
-            "Monument, parcours fixe",
-            "Secteurs pavés de la Trouée d'Arembourg au Carrefour du Chêne"
+            "Monument, parcours fixe · Secteurs pavés de la Trouée d'Arembourg au Carrefour du Chêne"
           ],
           [
             "La Doyenne des Ardennes (Div. 1)",
-            "Monument, parcours fixe",
-            "Côte de la Redoutière et Côte de la Roche-aux-Corbeaux, arrivée en côte"
+            "Monument, parcours fixe · Côte de la Redoutière et Côte de la Roche-aux-Corbeaux, arrivée en côte"
           ],
           [
             "La Classica d'Autunno (Div. 1)",
-            "Monument, parcours fixe",
-            "Madonna del Ghisello, puis Salita di Valtorta et une descente vers l'arrivée"
+            "Monument, parcours fixe · Madonna del Ghisello, puis Salita di Valtorta et une descente vers l'arrivée"
           ]
         ]
       },
