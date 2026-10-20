@@ -604,7 +604,7 @@ Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`
 | B4: inaktivitet og overbelastning koster form, passende belastning bygger den; de sidste point mod toppen kommer langsommere | `conditionModelV2.nextFormV2` |
 | Ugeprognosen bruger samme v2-afregning (I5), inkl. medicin | `trainingWeekPlanForecast.js` |
 | Medicin M1 (ejer 20/10): holdets medicinske afdeling forstærker rytterens recovery-evne i restitutionen (kun evne-leddene, ikke gulvet) | `medicalEffects.medicalRecoveryMultiplier`, `conditionModelV2.recoveryV2` |
-| Medicin M2/M3 i træning: lavere trænings-skaderisiko og kortere skade (mindst én dag) | `conditionModelV2.settleTrainingDateConditionV2` |
+| Medicin M2/M3 i træning: lavere trænings-skaderisiko og kortere skade | `conditionModelV2.settleTrainingDateConditionV2` |
 | Medicin-bonus pr. hold: afdelingens niveau og chefens samlede styrke (`effectiveBonus("medical", …)`); hold uden afdeling = ingen effekt; sporet er live i klubben præcis når flaget er on | `medicalEffects.loadTeamMedicalBonus`, `facilityConstants.isTrackEffectLive` |
 
 Konstanterne står i `CONDITION_V2_CONFIG`; målinger og kalibrering kun i `balance-internals/6984/` (hard rule 17). Tænding: S5-start på ordret ejer-go efter harnessen (`backend/scripts/dev/conditionModelV2Harness6984.mjs`).
