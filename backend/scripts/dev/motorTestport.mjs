@@ -461,6 +461,9 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   if (routesEarly) opts = { ...opts, routesSignature: routesEarly.signature };
   assertSameRun(prev, opts, outDir);
   mkdirSync(outDir, { recursive: true });
+  // #6909 (Codex P2): uret starter foer forberedelsen (prod-laesning, syntetisk felt, ruter),
+  // saa --time-budget daekker hele kaldet, ikke kun opgaverne bagefter.
+  const shouldStop = budgetStop(opts.timeBudgetMin, monotonic);
 
   let source = prev?.source ?? null;
   let raceIds = [];
@@ -483,6 +486,11 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
     }
     raceIds = selectRaceIds(raceIds, opts.limit);
     if (routes) assertRoutesCover(raceIds, routes);
+    // #6909 (Codex P2): en aendret udvaelgelse afvises FOER der skrives caches/loebsmapper, saa
+    // en forkert genoptagelse ikke efterlader mapper uden scorekort i --out.
+    const selectedPath = path.join(outDir, "selected-ids.txt");
+    if (prev && existsSync(selectedPath)) assertSameRaceSelection(parseIdsText(readFileSync(selectedPath, "utf8")), raceIds, outDir);
+    writeFileSync(selectedPath, `${raceIds.join("\n")}\n`);
     if (routes || opts.syntheticField) {
       const offline = { benchField: async () => (await import("./s5MotorBench.mjs")).loadBenchField(), generatorField: async () => { throw new Error("--synthetic-field=generator kraever prod (infisical run --env=prod), ikke --from-dir"); } };
       const src = fromDir ? offline : createProdSource(await prodDb());
@@ -504,7 +512,6 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   const tasks = planTasks({ raceIds, opts, outDir, fromDir, prebuilt: inputs.prebuilt });
   const todo = tasks.filter((t) => !t.done);
   console.log(`${tasks.length} opgaver (${tasks.length - todo.length} allerede faerdige), ${opts.parallel} ad gangen: ${opts.baseline} -> ${opts.candidate}, ${opts.seeds} seeds`);
-  const shouldStop = budgetStop(opts.timeBudgetMin, monotonic);
   const res = await runPool(todo, opts.parallel, runChild, {
     onDone: (t, code, p) => console.log(`[${p.ok + p.failed}/${p.total}] ${t.id}: ${code === 0 ? "ok" : `FEJL (exit ${code}, se ${path.relative(REPO_ROOT, path.join(t.dir, "log.txt"))})`}`),
     shouldStop,

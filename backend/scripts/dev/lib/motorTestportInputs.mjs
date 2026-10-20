@@ -281,18 +281,30 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
     const fieldOk = c.fieldSource === "prod" || c.fieldSource === (synthetic ?? null);
     return (c.routesSignature ?? null) !== (routes?.signature ?? null) || !fieldOk;
   }));
-  for (const id of resumed) {
-    if (staleIds.has(id)) continue;
-    prebuilt.add(id);
-    const kind = JSON.parse(readFileSync(cacheFile(id), "utf8")).fieldSource ?? "prod";
-    if (kind === "prod") field.prod += 1; else field.synthetic += 1;
-  }
+  const kindOf = (id) => JSON.parse(readFileSync(cacheFile(id), "utf8")).fieldSource ?? "prod";
   fresh.push(...staleIds);
 
   // Hvilke loeb har allerede et felt (prod-tilmeldinger eller eksportens startliste)?
-  let hasField;
-  if (fromDir) hasField = new Set(fresh.filter((id) => (readExport(id)?.entries ?? []).length > 0));
-  else hasField = fresh.length ? await source.withField(fresh) : new Set();
+  const fieldOf = async (ids) => (fromDir
+    ? new Set(ids.filter((id) => (readExport(id)?.entries ?? []).length > 0))
+    : (ids.length ? await source.withField(ids) : new Set()));
+  let hasField = await fieldOf(fresh);
+  // #6909 (Codex P2): generatorens felter haenger sammen (bindinger paa tvaers af loeb), men de
+  // ligger kun i cache.json, ikke i prod's race_entries. Skal et generator-felt bygges nu, bygges
+  // de genoptagne generator-felter derfor med, ellers kunne et loeb udtage ryttere der allerede
+  // er bundet i et genoptaget loebs syntetiske felt.
+  const resumedOk = resumed.filter((id) => !staleIds.has(id));
+  const needsGenerator = synthetic === "generator" && fresh.some((id) => !hasField.has(id));
+  const regen = needsGenerator ? resumedOk.filter((id) => kindOf(id) === "generator") : [];
+  if (regen.length) {
+    fresh.push(...regen);
+    for (const id of await fieldOf(regen)) hasField.add(id);
+  }
+  for (const id of resumedOk) {
+    if (regen.includes(id)) continue;
+    prebuilt.add(id);
+    if (kindOf(id) === "prod") field.prod += 1; else field.synthetic += 1;
+  }
 
   // Loeb der skal bygges: alle med foreslaaede ruter, ellers kun dem der mangler felt.
   const build = routes ? fresh : fresh.filter((id) => !hasField.has(id));

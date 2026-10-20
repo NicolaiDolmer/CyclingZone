@@ -497,3 +497,18 @@ test("#6909 (Codex P2) validateRouteDoc: ukendt profile_type/finale_type og ikke
   ok.profiles[1].finale_type = null;
   assert.equal(validateRouteDoc(ok, "race-a").length, 2, "afrunding og manglende finale er tilladt");
 });
+
+test("#6909 (Codex P2) prepareInputs: genoptagne generator-felter bygges med, naar et nyt generator-felt skal bygges", async () => {
+  const outDir = tmp("regen");
+  mkdirSync(path.join(outDir, "races", "r1"), { recursive: true });
+  writeFileSync(path.join(outDir, "races", "r1", "cache.json"), JSON.stringify({ ...raceData("r1"), fieldSource: "generator", routesSignature: null }));
+  const asked = [];
+  const source = {
+    withField: async () => new Set(),
+    raceData: async (ids) => new Map(ids.map((id) => [id, raceData(id)])),
+    generatorField: async (ids) => { asked.push([...ids].sort()); return new Map(ids.map((id) => [id, field(id)])); },
+  };
+  await prepareInputs({ raceIds: ["r1", "r2"], outDir, synthetic: "generator", source });
+  assert.deepEqual(asked, [["r1", "r2"]], "r1 (genoptaget) og r2 (ny) udtages i samme koersel");
+  rmSync(outDir, { recursive: true, force: true });
+});
