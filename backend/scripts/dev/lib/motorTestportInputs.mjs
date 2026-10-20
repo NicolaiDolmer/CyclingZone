@@ -145,9 +145,11 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
   //    foreslaaede (én gang pr. noegle, ogsaa hvis et loeb deles over flere sider).
   //  - { table, key, excludeKeys: Set }: raekker med de noegler skjules (fx ryttere der
   //    allerede er bundet i et overlappende loeb), saa generatoren udtager andre.
+  //  - { table, key, dropKeys: Set }: raekker fjernes helt. KUN til ikke-paginerede laesninger
+  //    (generatorens races-select er én .eq("season_id")); en afkortet side stopper en pagineret laeser.
   const layers = [...(overlay ? [overlay] : []), ...overlays.filter(Boolean)];
   const injected = new Map(layers.map((l) => [l, new Set()]));
-  const swapFor = (table) => {
+  const swapFor = (table, state) => {
     const mine = layers.filter((l) => l.table === table);
     if (!mine.length) return null;
     return (rows) => {
@@ -155,8 +157,10 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
       let cur = rows;
       for (const l of mine) {
         const out = [];
+        const prodCount = cur.length;
         for (const r of cur) {
           const k = r?.[l.key];
+          if (l.dropKeys) { if (!l.dropKeys.has(k)) out.push(r); continue; }
           // #6909 (Codex P2): en skjult raekke fjernes IKKE (det ville afkorte siden og faa en
           // pagineret laeser til at stoppe for tidligt); den beholdes, men "frakobles" via nullField
           // (fx team_id = null), saa generatoren ikke kan udtage rytteren.
@@ -171,15 +175,37 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
           done.add(k);
           out.push(...l.rowsByKey.get(k));
         }
+        // #6909 (Codex P2): et loeb uden prod-raekker (fx et S5-loeb foer etaperne er skrevet)
+        // faar ogsaa de foreslaaede raekker, naar laeseren eksplicit bad om noeglen (.in/.eq paa
+        // key). Pagineret: kun paa sidste side (faerre prod-raekker end siden), saa intet dubleres.
+        if (l.rowsByKey) {
+          const asked = state.keys.get(l.key);
+          const lastPage = !state.range || prodCount < state.range.to - state.range.from + 1;
+          if (asked && lastPage) {
+            const done = injected.get(l);
+            for (const k of asked) {
+              if (done.has(k) || !l.rowsByKey.has(k)) continue;
+              done.add(k);
+              out.push(...l.rowsByKey.get(k));
+            }
+          }
+        }
         cur = out;
       }
       return cur;
     };
   };
-  const wrap = (builder, table) => new Proxy(builder, {
+  // Kaedens filtre paa noeglekolonner (.in/.eq) og .range() huskes, saa et lag ved hvilke noegler
+  // laeseren bad om. Én tilstand pr. db.from(...)-kaede.
+  const track = (state, p, args) => {
+    if (p === "in" && Array.isArray(args[1])) state.keys.set(args[0], new Set(args[1]));
+    else if (p === "eq") state.keys.set(args[0], new Set([args[1]]));
+    else if (p === "range") state.range = { from: args[0], to: args[1] };
+  };
+  const wrap = (builder, table, state = { keys: new Map(), range: null }) => new Proxy(builder, {
     get(b, p) {
       if (WRITES.has(p)) return () => { throw new Error(`read-only (#6909): ${String(p)} paa ${table} afvist`); };
-      const swap = p === "then" ? swapFor(table) : null;
+      const swap = p === "then" ? swapFor(table, state) : null;
       if (swap) {
         return (resolve, reject) => b.then((res) => resolve(res && !res.error ? { ...res, data: swap(res.data) } : res), reject);
       }
@@ -187,7 +213,11 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
       if (typeof v !== "function") return v;
       // #6909 (Codex P2): supabase-js returnerer et NYT builder-objekt fra fx .select(), saa
       // alt der er en builder (har .then), pakkes ind igen; ellers naar laget aldrig frem.
-      return (...args) => { const r = v.apply(b, args); return r && typeof r === "object" && typeof r.then === "function" ? wrap(r, table) : r; };
+      return (...args) => {
+        track(state, p, args);
+        const r = v.apply(b, args);
+        return r && typeof r === "object" && typeof r.then === "function" ? wrap(r, table, state) : r;
+      };
     },
   });
   return new Proxy(db, {
@@ -409,8 +439,15 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
           // generatoren, saa den selv udtager erstatninger og kaptajner (intet underbemandet felt).
           const groupWins = group.map(windowOf).filter(Boolean);
           const excludeKeys = new Set([...bookedEarly].filter(([, wins]) => groupWins.some((w) => overlapsAny(wins, w))).map(([rid]) => rid));
+          // #6909 (Codex P2): koerslen ser kun sin egen gruppe af de valgte loeb. De andre valgte
+          // loeb (tidligere grupper er nu "i fortiden" og ville ellers blive fyldt igen og
+          // forbruge erstatninger) fjernes fra races, saa tildelingen afgraenses til gruppen.
+          const otherWanted = new Set(wantedHere.filter((id) => !group.includes(id)));
           const res = await run({
-            supabase: readOnlyDb(db, { overlay, overlays: [excludeKeys.size ? { table: "riders", key: "id", excludeKeys, nullField: "team_id" } : null] }), seasonId, dryRun: true, mode: "late_fill",
+            supabase: readOnlyDb(db, { overlay, overlays: [
+              excludeKeys.size ? { table: "riders", key: "id", excludeKeys, nullField: "team_id" } : null,
+              otherWanted.size ? { table: "races", key: "id", dropKeys: otherWanted } : null,
+            ] }), seasonId, dryRun: true, mode: "late_fill",
             now: startMs, includeStaged: true, notify: async () => {},
           });
           log(`syntetisk felt (generator, dry-run): saeson ${seasonId}, start ${new Date(startMs).toISOString().slice(0, 16)}: ${group.length} loeb, ${res.generated} pladser`);

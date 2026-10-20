@@ -421,3 +421,43 @@ test("#6909 (Codex P2) prepareInputs: cache med et andet syntetisk felt bygges f
   assert.equal(cache.fieldSource, "bench");
   rmSync(outDir, { recursive: true, force: true });
 });
+
+test("#6909 (Codex P2) readOnlyDb overlay: et loeb UDEN prod-etaper faar de foreslaaede", async () => {
+  const tables = { race_stage_profiles: [{ race_id: "r2", stage_number: 1, profile_type: "flat" }] };
+  const rowsByKey = new Map([["r1", [{ race_id: "r1", stage_number: 1, profile_type: "hilly" }, { race_id: "r1", stage_number: 2, profile_type: "mountain" }]], ["r9", [{ race_id: "r9", stage_number: 1, profile_type: "flat" }]]]);
+  const db = readOnlyDb(fakeDb(tables), { overlay: { table: "race_stage_profiles", key: "race_id", rowsByKey } });
+  const { data } = await db.from("race_stage_profiles").select("*").in("race_id", ["r1", "r2"]); // pagination-safe: test-fake
+  assert.deepEqual(data.map((r) => `${r.race_id}:${r.profile_type}`), ["r2:flat", "r1:hilly", "r1:mountain"], "r9 blev ikke spurgt om");
+});
+
+test("#6909 (Codex P2) readOnlyDb overlay: pagineret laesning injicerer kun paa sidste side, aldrig dobbelt", async () => {
+  const tables = { race_stage_profiles: [{ race_id: "r2", stage_number: 1 }, { race_id: "r2", stage_number: 2 }, { race_id: "r2", stage_number: 3 }] };
+  const db = readOnlyDb(fakeDb(tables), { overlay: { table: "race_stage_profiles", key: "race_id", rowsByKey: new Map([["r1", [{ race_id: "r1", stage_number: 1 }]]]) } });
+  const all = [];
+  for (let from = 0; ; from += 2) {
+    const { data } = await db.from("race_stage_profiles").select("*").in("race_id", ["r1", "r2"]).range(from, from + 1); // pagination-safe: range-sider i test
+    all.push(...data);
+    if (data.length < 2) break;
+  }
+  assert.deepEqual(all.map((r) => `${r.race_id}:${r.stage_number}`), ["r2:1", "r2:2", "r2:3", "r1:1"]);
+});
+
+test("#6909 (Codex P2) generatorField: hver koersel ser kun sin egen gruppe af de valgte loeb", async () => {
+  const tables = {
+    races: [{ id: "r1", season_id: "s5" }, { id: "r2", season_id: "s5" }, { id: "other", season_id: "s5" }],
+    race_stage_schedule: [
+      { race_id: "r1", stage_number: 1, scheduled_at: "2026-10-28T10:00:00Z", game_day: 1 },
+      { race_id: "r2", stage_number: 1, scheduled_at: "2026-11-05T10:00:00Z", game_day: 9 },
+    ],
+    teams: [], rider_derived_abilities: [],
+  };
+  const seen = [];
+  const runner = async (args) => {
+    const { data } = await args.supabase.from("races").select("id").eq("season_id", "s5"); // pagination-safe: test-fake
+    seen.push(data.map((r) => r.id).join(","));
+    return { generated: 0, staged: [] };
+  };
+  const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
+  await src.generatorField(["r1", "r2"]);
+  assert.deepEqual(seen, ["r1,other", "r2,other"], "det andet valgte loeb er skjult; ikke-valgte loeb er urørte");
+});
