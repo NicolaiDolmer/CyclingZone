@@ -1680,6 +1680,13 @@ test("#6995 to sektor-signaturer af samme underlag deler én etape; den sidste e
   }
 });
 
+test("#6995 en queen-sektor delt med en anden sektor beholder queen-loftet (fail-closed)", () => {
+  const ANY = { kind: "sector", name: "Pavé A", surface: "cobbles", length_km: 2, stage_hint: "any" };
+  const QUEEN = { kind: "sector", name: "Pavé Q", surface: "cobbles", length_km: 2, stage_hint: "queen" };
+  // cobbles_benelux garanterer en kuperet etape; en sektor-queen (rang 0) kan ikke være den hårdeste.
+  assert.throws(() => generateRaceStageProfiles(idRace("cobbles_benelux", 5, 0, { features: [ANY, QUEEN] }), S5), /queen signature is easier/);
+});
+
 test("#6995 allround: signaturens kuperede enkeltstart overtager garantiens, så løbet har én tidskørsel", () => {
   const HILLY_ITT = { kind: "itt", stage_hint: "any", band: "hilly" };
   for (const stages of [3, 5, 8]) {
