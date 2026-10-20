@@ -47,9 +47,9 @@ import { makeS5TierProfileGenerator } from "../lib/s5TierTerrainQuota.js";
 import { resolveTierDraw } from "../lib/raceRouteRealismDraw.js";
 import {
   computeTierCoverageStats, detectCoverageViolations, detectTerrainBandViolations,
-  TIER_TERRAIN_FAMILY_MIN, TIER_TERRAIN_FAMILY_MAX, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN, TIER_ONE_DAY_SHARE_MIN,
+  TIER_TERRAIN_FAMILY_MIN, TIER_TERRAIN_FAMILY_MAX, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN, TIER_ONE_DAY_SHARE_MIN, CLASS_STAGE_LENGTH_BAND,
 } from "../lib/tierCalendarGuarantees.js";
-import { computeUniformTierStats, detectUniformTierViolations } from "../lib/calendarCompositionTargets.js";
+import { computeUniformTierStats, detectUniformTierViolations, TIER_UNIFORM_TOLERANCE_PP } from "../lib/calendarCompositionTargets.js";
 import {
   evaluateS5BenchmarkGate, formatS5BenchmarkReport, loadS5Benchmark, loadMotorGapFile, DEFAULT_MOTOR_STUB_PATH,
 } from "../lib/s5BenchmarkGate.js";
@@ -313,10 +313,12 @@ export const DEFAULT_GUARANTEES = Object.freeze({
   terrainFamilyMin: TIER_TERRAIN_FAMILY_MIN,
   terrainFamilyMax: TIER_TERRAIN_FAMILY_MAX,
   mountainFreeMin: TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
+  uniformTolerancePp: TIER_UNIFORM_TOLERANCE_PP,
+  classStageLengthBand: CLASS_STAGE_LENGTH_BAND,
 });
 
 function coverageFor(tier, raceRows, profilesByPoolRaceId, guarantees) {
-  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
+  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId, classStageLengthBand: guarantees.classStageLengthBand });
   const violations = [
     ...detectCoverageViolations({
       tier, stats, oneDayShareMin: guarantees.oneDayShareMin, terrainFamilyMin: guarantees.terrainFamilyMin,
@@ -325,7 +327,7 @@ function coverageFor(tier, raceRows, profilesByPoolRaceId, guarantees) {
     ...detectTerrainBandViolations({ tier, stats, terrainFamilyMin: guarantees.terrainFamilyMin, terrainFamilyMax: guarantees.terrainFamilyMax }),
   ];
   const uniform = computeUniformTierStats(raceRows.map((r) => ({ stages: profilesByPoolRaceId.get(r.pool_race_id) ?? [] })));
-  const uniformCheck = detectUniformTierViolations({ stats: uniform, label: `division ${tier}` });
+  const uniformCheck = detectUniformTierViolations({ stats: uniform, label: `division ${tier}`, tolerancePp: guarantees.uniformTolerancePp });
   return { stats, violations, uniform, uniformRows: uniformCheck.rows, uniformViolations: uniformCheck.violations };
 }
 
