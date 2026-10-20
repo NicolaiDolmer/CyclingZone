@@ -56,6 +56,7 @@ import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled, readConditionWriterFlag } from './trainingDateConditionFlag.js';
 import { isConditionModelV2Enabled } from './conditionModelV2Flag.js';
+import { loadTeamMedicalBonus } from './medicalEffects.js';
 import { settleTrainingDateCondition, canonicalRaceLoads } from './trainingDateCondition.js';
 import {
   TRAINING_RACE_DAY_CONFIG, resolveRaceDayBudgetDivisor, raceDaySeedKey, resolveTeamRaceDay,
@@ -821,6 +822,8 @@ export async function runTeamTrainingDay({
   // KASTER, saa catch'en nedenfor sletter reservationen og naeste sweep proever igen.
   const { facilityTier: trainingFacilityTier, staff: trainingStaff } =
     await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true });
+  // #6984 M1-M3: medicinsk afdeling, kun under condition_model_v2 (ellers ingen read).
+  const teamMedicalBonus = conditionModelV2On ? await loadTeamMedicalBonus(supabase, teamId, { retryOnTransient: true }) : 0;
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   abilityUpdates = []; // { riderId, patch }
@@ -1105,6 +1108,7 @@ export async function runTeamTrainingDay({
       recoveryAbility: recoveryBeforeDate,
       recoveryConfig: raceDayEngineOn ? RACE_DAY_ENGINE_RECOVERY_CONFIG : {},
       modelV2: conditionModelV2On,
+      medicalBonus: teamMedicalBonus,
     }) : null;
     const newFatigue = conditionPerDate ? (dailyCondition?.fatigue ?? preFatigue) : nextFatigue({
       fatigue: preFatigue,

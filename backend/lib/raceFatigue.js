@@ -462,7 +462,7 @@ export async function loadSeasonRaceDaysByRider({ supabase, seasonId, riderIds, 
  * røres ikke (neutral i motoren som i dag). Kaldes kun under v2 + regel-revision.
  * @returns {Promise<number>} antal ryttere hvis træthed blev hævet
  */
-export async function applySameDateEnteringFatigueV2({ supabase, raceId, stageNumber, entrants }) {
+export async function applySameDateEnteringFatigueV2({ supabase, raceId, stageNumber, entrants, medicalBonusByTeam = new Map() }) {
   const withCondition = (entrants ?? []).filter((e) => Number.isFinite(Number(e.fatigue)));
   if (!withCondition.length) return 0;
   const { data: sched, error: schedErr } = await supabase.from("race_stage_schedule")
@@ -495,7 +495,7 @@ export async function applySameDateEnteringFatigueV2({ supabase, raceId, stageNu
   for (const e of withCondition) {
     const prior = loadsByRider.get(String(e.rider_id));
     if (!prior?.length) continue;
-    const next = enteringFatigueV2({ openingFatigue: Number(e.fatigue), priorLoadsToday: prior, recoveryAbility: e.abilities?.recovery ?? 50 });
+    const next = enteringFatigueV2({ openingFatigue: Number(e.fatigue), priorLoadsToday: prior, recoveryAbility: e.abilities?.recovery ?? 50, medicalBonus: medicalBonusByTeam.get(e.team_id) ?? 0 });
     if (next !== Number(e.fatigue)) raised++;
     e.fatigue = next;
   }

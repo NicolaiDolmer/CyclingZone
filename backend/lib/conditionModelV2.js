@@ -15,6 +15,7 @@
 import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, injuryRisk, rollInjury } from "./riderCondition.js";
 import { effortFatigueMultiplier } from "./raceRoles.js";
+import { medicalRecoveryMultiplier, medicalTrainingInjuryRisk, medicalInjuryDays } from "./medicalEffects.js";
 
 export const CONDITION_V2_CONFIG = Object.freeze({
   // §5.2: profil-belastning (spillernes rækkefølge, større spænd end v1). Niveauet er
@@ -47,12 +48,13 @@ const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 const finiteOr = (x, fallback) => (Number.isFinite(Number(x)) ? Number(x) : fallback);
 
-/** §5.4: ét døgns restitution ved træthed f. `share` = andel af et døgn (frie pladser). */
-export function recoveryV2({ fatigue, recoveryAbility = 50, share = 1, cfg = CONDITION_V2_CONFIG }) {
+/** §5.4: ét døgns restitution ved træthed f. `share` = andel af et døgn (frie pladser).
+ * M1: `medicalBonus` (holdets medicinske afdeling, 0 = ingen) gør restitutionen større. */
+export function recoveryV2({ fatigue, recoveryAbility = 50, share = 1, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
   const rec = clamp(finiteOr(recoveryAbility, 50), 0, 99) / 99;
   const f = Math.max(0, finiteOr(fatigue, 0));
   const frac = cfg.recoveryFractionLo + (cfg.recoveryFractionHi - cfg.recoveryFractionLo) * rec;
-  return share * (cfg.recoveryBase + cfg.recoveryFromAbility * rec + frac * f);
+  return share * (cfg.recoveryBase + cfg.recoveryFromAbility * rec + frac * f) * medicalRecoveryMultiplier(medicalBonus);
 }
 
 /** §5.2: længdefaktor (1 for enkeltstarter og ukendt distance). */
@@ -115,13 +117,13 @@ export function nextFormV2({ form, fatigue, cfg = CONDITION_V2_CONFIG }) {
  * En dato uden etaper er derfor samme formel som v1 (gennemsnit + én restitution),
  * kun med §5.4's evne-afhængige andel.
  */
-export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, cfg = CONDITION_V2_CONFIG }) {
+export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
   let f = clamp(finiteOr(fatigue, 0), 0, 100);
   let trainingLoad = 0;
   let trainingSlots = 0;
   intensities.forEach((intensity, index) => {
     if (intensity === "race") {
-      f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, cfg }), 0, 100);
+      f = clamp(f + raceLoads[index] - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
     } else {
       trainingLoad += DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
       trainingSlots += 1;
@@ -129,19 +131,22 @@ export function settleDateFatigueV2({ fatigue, intensities, raceLoads, recoveryA
   });
   if (trainingSlots > 0) {
     const share = trainingSlots / intensities.length;
-    f = clamp(f + trainingLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, cfg }), 0, 100);
+    f = clamp(f + trainingLoad / intensities.length - recoveryV2({ fatigue: f, recoveryAbility, share, medicalBonus, cfg }), 0, 100);
   }
   return Math.round(f);
 }
 
 /** v2-udgaven af trainingDateCondition.settleTrainingDateCondition (samme signatur og retur). */
-export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, cfg = CONDITION_V2_CONFIG }) {
+export function settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
   const preFatigue = Number(condition.fatigue ?? 0);
-  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, cfg });
+  const fatigue = settleDateFatigueV2({ fatigue: preFatigue, intensities, raceLoads, recoveryAbility, medicalBonus, cfg });
   const form = nextFormV2({ form: Number(condition.form ?? 50), fatigue, cfg });
-  // Skaderisiko som i v1: kun hård træning over skadegrænsen, på åbningstrætheden.
-  const risk = intensities.reduce((total, intensity) => total + injuryRisk({ intensity, fatigue: preFatigue }), 0) / intensities.length;
-  return { fatigue, form, risk, injury: rollInjury({ riderId, dateStr, risk }) };
+  // Skaderisiko som i v1 (kun hård træning over skadegrænsen, på åbningstrætheden);
+  // M2 sænker risikoen, M3 forkorter en skade.
+  const baseRisk = intensities.reduce((total, intensity) => total + injuryRisk({ intensity, fatigue: preFatigue }), 0) / intensities.length;
+  const risk = medicalTrainingInjuryRisk(baseRisk, medicalBonus);
+  const injury = rollInjury({ riderId, dateStr, risk });
+  return { fatigue, form, risk, injury: injury.injured ? { ...injury, days: medicalInjuryDays(injury.days, medicalBonus) } : injury };
 }
 
 /**
@@ -149,10 +154,10 @@ export function settleTrainingDateConditionV2({ riderId, dateStr, condition, int
  * er kørt. `priorLoadsToday` = de registrerede belastninger for datoens tidligere
  * etaper i rækkefølge (ledgeren). Uden tidligere etaper = åbningstrætheden.
  */
-export function enteringFatigueV2({ openingFatigue, priorLoadsToday = [], recoveryAbility = 50, cfg = CONDITION_V2_CONFIG }) {
+export function enteringFatigueV2({ openingFatigue, priorLoadsToday = [], recoveryAbility = 50, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
   let f = clamp(finiteOr(openingFatigue, 0), 0, 100);
   for (const load of priorLoadsToday) {
-    f = clamp(f + finiteOr(load, 0) - recoveryV2({ fatigue: f, recoveryAbility, cfg }), 0, 100);
+    f = clamp(f + finiteOr(load, 0) - recoveryV2({ fatigue: f, recoveryAbility, medicalBonus, cfg }), 0, 100);
   }
   return Math.round(f);
 }

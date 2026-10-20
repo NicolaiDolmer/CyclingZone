@@ -25,7 +25,7 @@ export function canonicalRaceLoads(rows) {
   return originals;
 }
 
-export function settleTrainingDateCondition({ riderId, dateStr, condition, intensities, raceLoads = [0, 0, 0, 0, 0], recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG, modelV2 = false }) {
+export function settleTrainingDateCondition({ riderId, dateStr, condition, intensities, raceLoads = [0, 0, 0, 0, 0], recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG, modelV2 = false, medicalBonus = 0 }) {
   if (!Array.isArray(intensities) || intensities.length !== 5 || intensities.some((value) => value !== 'race' && value !== 'unknown_pending' && !DAILY_TRAINING_CONFIG.intensities.includes(value))) {
     throw new Error('Daily condition requires five valid activity intensities');
   }
@@ -33,7 +33,7 @@ export function settleTrainingDateCondition({ riderId, dateStr, condition, inten
     throw new Error('Daily condition requires one valid race load per activity slot');
   }
   // #6984: v2 (condition_model_v2) deler valideringen ovenfor og har samme retur.
-  if (modelV2) return settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility });
+  if (modelV2) return settleTrainingDateConditionV2({ riderId, dateStr, condition, intensities, raceLoads, recoveryAbility, medicalBonus });
   const preFatigue = Number(condition.fatigue ?? 0);
   const meanLoad = intensities.reduce((total, intensity, index) => total + (DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0) + raceLoads[index], 0) / intensities.length;
   // Both training and recorded stage load occupy one of the five date slots.

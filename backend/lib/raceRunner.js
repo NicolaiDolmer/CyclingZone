@@ -81,6 +81,7 @@ import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applySameDateEnteringFatigueV2, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
+import { applyMedicalToRaceIncidentsForRace, loadMedicalBonusByTeam } from "./medicalEffects.js";
 import {
   loadStageRoleOverrides,
   resolveStageEntrants,
@@ -2097,8 +2098,13 @@ async function sendDidNotStartNotices({ supabase, race, teamIds }) {
   }
 }
 
-async function persistIncidents({ supabase, race, incidents, stageNumbers, seasonNumber }) {
-  if (!incidents?.length) return;
+async function persistIncidents({ supabase, race, incidents: rawIncidents, stageNumbers, seasonNumber }) {
+  if (!rawIncidents?.length) return;
+  // #6984 M2+M3: medicinsk afdeling på motorens skadeudfald (v3 og v4), kun under
+  // condition_model_v2. Motoren er uændret; kun skaden før den gemmes.
+  const incidents = rawIncidents.some((inc) => Number(inc?.injury_days) > 0) && await isConditionModelV2Enabled(supabase)
+    ? await applyMedicalToRaceIncidentsForRace({ supabase, raceId: race.id, incidents: rawIncidents })
+    : rawIncidents;
   const rows = incidents.map((inc) => ({
     race_id: race.id,
     stage_number: inc.stage_number,
@@ -3470,7 +3476,8 @@ export async function simulateStageByIndex({
     // også inde i løbet. Ny balance = kun løb bundet til s5_profiles_v2 eller senere
     // (#5955-princippet) OG condition_model_v2 on. Flag off = ingen ekstra read.
     if (trainingOwnsRecovery && isS5ProfilesV2OrLater(rulesRevision) && await isConditionModelV2Enabled(supabase)) {
-      await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants });
+      const medicalBonusByTeam = await loadMedicalBonusByTeam(supabase, entrants.map((e) => e.team_id));
+      await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, medicalBonusByTeam });
     }
 
     if (race.race_type === "stage_race") {

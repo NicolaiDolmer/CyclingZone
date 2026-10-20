@@ -3,6 +3,8 @@
 // al route-logik ligger her så den kan unit-testes (api.js selv er ikke unit-testbar —
 // eksisterende konvention er source-contract-tests, se loanAmountValidation.routes.test.js).
 // Ingen forretningslogik: delegerer til facilityService og mapper domænefejl → HTTP-status.
+import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
+import { medicalBonus, medicalDisplayBonus } from "./medicalEffects.js";
 import {
   FACILITIES_ENABLED,
   FACILITY_TRACKS,
@@ -43,13 +45,22 @@ export async function resolveTrackLiveFlags(flags, supabaseClient) {
   const academyIntakePullEnabled = typeof flags?.academyIntakePullEnabled === "boolean"
     ? flags.academyIntakePullEnabled
     : await isAcademyIntakePullEnabled(supabaseClient);
-  return { academyIntakePullEnabled };
+  // #6984: medicin følger condition_model_v2. En visning må aldrig vælte på en
+  // flag-læsefejl: fejl = slukket (fail-safe), modsat motorens strikse læsning.
+  let conditionModelV2 = false;
+  if (typeof flags?.conditionModelV2 === "boolean") conditionModelV2 = flags.conditionModelV2;
+  else {
+    try { conditionModelV2 = await isConditionModelV2Enabled(supabaseClient); } catch { conditionModelV2 = false; }
+  }
+  return { academyIntakePullEnabled, conditionModelV2 };
 }
 
 // #6666: akademiets effekt vises som kuldstørrelse pr. uge (optag 2.0), ikke den gamle
 // slot-kurve. Øvrige spor: uændret facilityEngine.effectiveBonus.
 export function displayTrackBonus(track, tier, staff) {
   if (track === "academy") return candidatesForTier(tier);
+  // #6984 M1: klubben viser præcis den restitution motoren giver.
+  if (track === "medical") return medicalDisplayBonus(medicalBonus(tier, staff));
   return effectiveBonus(track, tier, staff);
 }
 
