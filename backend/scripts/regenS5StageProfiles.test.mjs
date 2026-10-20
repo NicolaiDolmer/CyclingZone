@@ -13,13 +13,14 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
   parseArgs, copenhagenDate, canonicalJson, loadRegenInput, buildRegenPlan, checkInvariants, diffAgainstCurrent,
-  buildBackupSql, buildRestoreSql, assertBackupCovers, assertBackupCoversSlots, batchRaces, applyPlan, postVerify, crossPoolDivergence,
+  buildBackupSql, buildRestoreSql, assertBackupCovers, assertBackupCoversSlots, readTouchedRaces, batchRaces, applyPlan, postVerify, crossPoolDivergence,
   parseDivergenceScriptOutput, waitForCalendarCache, buildRoutesFiles, writeRoutesDir, assertPrivatePath, buildReport,
   seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient, overlayIdentity, gtPreludes,
   CALENDAR_CACHE_TTL_MS, CALENDAR_CACHE_MARGIN_MS, WRITE_BATCH_ROWS, ROUTES_FORMAT, PROFILE_COLUMNS, CUTOVER_DATE_CPH,
@@ -645,4 +646,24 @@ test("#6929 (Codex P1) identitet uden L2's generator-sti fejler klart (merge L2 
   assert.throws(() => assertIdentityGeneratorAvailable(typed, {}), /kræver L2 \(#6931\)/);
   assert.doesNotThrow(() => assertIdentityGeneratorAvailable(typed, { IDENTITY_GENERATOR_VERSION: 7 }));
   assert.doesNotThrow(() => assertIdentityGeneratorAvailable([{ id: "p2" }], {}), "uden identitet: ingen krav");
+});
+
+test("#6929 (Codex P1) applyPlan: et løb claimet UNDER skrivningen stopper kørslen højlydt", async () => {
+  let reads = 0;
+  const db = {
+    guardsOf: async () => { reads += 1; return { races: [], claims: reads >= 2 ? [{ race_id: "r1", stage_index: 0 }] : [] }; },
+    deleteProfiles: async () => {}, insertProfiles: async () => {},
+  };
+  const plan = { rowsByRaceId: new Map([["r1", [{ race_id: "r1", stage_number: 1 }]]]) };
+  await assert.rejects(applyPlan({ db, plan, racesToWrite: ["r1"], clock: () => new Date("2026-10-21T09:00:00Z") }), /UNDER skrivningen/);
+  assert.equal(reads, 2, "vagterne læses før og efter skrivningen");
+});
+
+test("#6929 (Codex P1) readTouchedRaces: tom uden fil, læser listen, fejler højlydt ved ødelagt fil", () => {
+  const dir = mkdtempSync(join(tmpdir(), "touched-"));
+  assert.deepEqual(readTouchedRaces(join(dir, "findes-ikke.json")), []);
+  writeFileSync(join(dir, "t.json"), JSON.stringify({ races: ["a", "b"] }));
+  assert.deepEqual(readTouchedRaces(join(dir, "t.json")), ["a", "b"]);
+  writeFileSync(join(dir, "bad.json"), "{");
+  assert.throws(() => readTouchedRaces(join(dir, "bad.json")), /kan ikke læses/);
 });

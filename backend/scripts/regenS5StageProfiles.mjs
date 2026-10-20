@@ -596,6 +596,17 @@ commit;
 `;
 }
 
+/** Løbene en tidligere apply-kørsel har skrevet mod samme backup (tom liste hvis ingen). */
+export function readTouchedRaces(file) {
+  try {
+    const doc = JSON.parse(readFileSync(file, "utf8"));
+    return Array.isArray(doc?.races) ? doc.races : [];
+  } catch (err) {
+    if (err?.code === "ENOENT") return [];
+    throw new Error(`${file} kan ikke læses (${err.message}); slet den ikke, ret den. Intet skrevet.`, { cause: err });
+  }
+}
+
 /** Kast hvis backup-tabellen ikke dækker hver række apply sletter. */
 export async function assertBackupCovers(db, table, ids) {
   if (!ids.length) return;
@@ -649,20 +660,32 @@ export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock,
   let rowsWritten = 0;
   let lastWriteAt = null;
   const batches = batchRaces(racesToWrite, plan.rowsByRaceId);
+  const movedOf = async (raceIds) => {
+    const g = await db.guardsOf(raceIds);
+    return [
+      ...g.races.filter((r) => Number(r.stages_completed ?? Number.NaN) !== 0 || r.engine_rules_revision != null).map((r) => r.id),
+      ...g.claims.map((c) => c.race_id),
+    ];
+  };
   for (const [i, b] of batches.entries()) {
+    // Backup-dækningen først, så løbs-vagterne er det SIDSTE der læses før sletningen.
+    if (backupTable) await assertBackupCoversSlots(db, backupTable, await db.profilesOf(b.raceIds));
     // #6929 (Codex P1): løbs-vagterne læses igen LIGE før sletningen. Et løb der er startet,
     // bundet til en motor-revision eller har fået en claim siden dry-runnet røres ikke.
     if (db.guardsOf) {
-      const g = await db.guardsOf(b.raceIds);
-      const moved = [
-        ...g.races.filter((r) => Number(r.stages_completed ?? Number.NaN) !== 0 || r.engine_rules_revision != null).map((r) => r.id),
-        ...g.claims.map((c) => c.race_id),
-      ];
+      const moved = await movedOf(b.raceIds);
       if (moved.length) throw new Error(`batch ${i + 1}: ${new Set(moved).size} løb er startet/bundet/claimet siden kontrollen; stoppet før sletning (tidligere batches er skrevet, rul tilbage med restore-scriptet)`);
     }
-    if (backupTable) await assertBackupCoversSlots(db, backupTable, await db.profilesOf(b.raceIds));
     await db.deleteProfiles(b.raceIds);
     await db.insertProfiles(b.rows);
+    // #6929 (Codex P1): PostgREST har ingen transaktion over vagt + sletning + indsættelse, så et
+    // restvindue på få millisekunder findes. Det lukkes ved at læse vagterne igen EFTER skrivningen:
+    // blev et løb claimet imens, stopper kørslen højlydt med restore-stien (intet stille brud).
+    // Apply kører kun før S5's første etape (28/10) eller med --allow-active på ejer-go.
+    if (db.guardsOf) {
+      const movedAfter = await movedOf(b.raceIds);
+      if (movedAfter.length) throw new Error(`batch ${i + 1}: ${new Set(movedAfter).size} løb blev startet/claimet UNDER skrivningen; stop alt og rul batchen tilbage med restore-scriptet`);
+    }
     rowsWritten += b.rows.length;
     lastWriteAt = clock();
     log(`  batch ${i + 1}/${batches.length}: ${b.raceIds.length} løb · ${b.rows.length} rækker`);
@@ -1150,7 +1173,13 @@ async function main() {
   await assertBackupCovers(db, opts.backupTable, currentIds);
   // Restore-scriptet for netop den backup-tabel apply bruger, skrevet FØR første skrivning (dry-runnet kan være fra en anden dag).
   const restorePath = join(privateDir, `restore-${opts.backupTable}.sql`);
-  writeFileSync(restorePath, buildRestoreSql(opts.backupTable, diff.racesToWrite), "utf8");
+  // #6929 (Codex P1): restore dækker ALLE løb regen har skrevet mod denne backup, også i en
+  // tidligere afbrudt kørsel. Sættet gemmes privat pr. backup-tabel og vokser kun.
+  const touchedFile = join(privateDir, `touched-${opts.backupTable}.json`);
+  const priorTouched = readTouchedRaces(touchedFile);
+  const cumulativeTouched = [...new Set([...priorTouched, ...diff.racesToWrite])].sort(compareIds);
+  writeFileSync(touchedFile, `${JSON.stringify({ backupTable: opts.backupTable, races: cumulativeTouched }, null, 2)}\n`, "utf8");
+  writeFileSync(restorePath, buildRestoreSql(opts.backupTable, cumulativeTouched), "utf8");
   const stamp = generatedAt.replace(/[:.]/g, "-");
   const snapshotRows = input.profiles.slice().sort((a, b) => compareIds(a.race_id, b.race_id) || byStage(a, b));
   writeFileSync(join(privateDir, `pre-apply-snapshot-${stamp}.json`), `${JSON.stringify({ takenAt: generatedAt, rows: snapshotRows })}\n`, "utf8");
@@ -1169,7 +1198,10 @@ async function main() {
   });
   for (const c of verify.checks) log(`${mark(c.ok)} post-verify: ${c.name} (${c.detail})`);
   if (!opts.skipCacheWait) {
-    const cache = await waitForCalendarCache({ lastWriteAt: applied.lastWriteAt, clock });
+    // #6929 (Codex P2): en genoptaget kørsel uden nye skrivninger (en tidligere kørsel skrev og døde
+    // før cache-ventetiden) venter en fuld TTL fra nu, for der kan stadig ligge en gammel kalender.
+    const lastWriteAt = applied.lastWriteAt ?? (priorTouched.length ? clock() : null);
+    const cache = await waitForCalendarCache({ lastWriteAt, clock });
     log(`calendar-cachen (TTL ${CALENDAR_CACHE_TTL_MS / 1000} s) er tom${cache.emptyAt ? ` fra ${cache.emptyAt.toISOString()}` : ""}`);
   }
   if (!verify.ok) {
