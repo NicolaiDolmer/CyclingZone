@@ -81,7 +81,7 @@ import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applySameDateEnteringFatigueV2, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
-import { applyMedicalToRaceIncidentsForRace, loadMedicalBonusByTeam } from "./medicalEffects.js";
+import { applyMedicalToStageOutputsForRace, loadMedicalBonusByTeam } from "./medicalEffects.js";
 import {
   loadStageRoleOverrides,
   resolveStageEntrants,
@@ -2098,13 +2098,8 @@ async function sendDidNotStartNotices({ supabase, race, teamIds }) {
   }
 }
 
-async function persistIncidents({ supabase, race, incidents: rawIncidents, stageNumbers, seasonNumber }) {
-  if (!rawIncidents?.length) return;
-  // #6984 M2+M3: medicinsk afdeling på motorens skadeudfald (v3 og v4), kun under
-  // condition_model_v2. Motoren er uændret; kun skaden før den gemmes.
-  const incidents = rawIncidents.some((inc) => Number(inc?.injury_days) > 0) && await isConditionModelV2Enabled(supabase)
-    ? await applyMedicalToRaceIncidentsForRace({ supabase, raceId: race.id, incidents: rawIncidents })
-    : rawIncidents;
+async function persistIncidents({ supabase, race, incidents, stageNumbers, seasonNumber }) {
+  if (!incidents?.length) return;
   const rows = incidents.map((inc) => ({
     race_id: race.id,
     stage_number: inc.stage_number,
@@ -2463,7 +2458,11 @@ export async function simulateRace({
   // undgår begge DB-kald og buildRaceResults ser ingen peak-felter (bit-identisk).
   if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
 
-  const { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision });
+  const { resultRows, passageRows, runs, incidents: rawIncidents, moments, timelines: rawTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision });
+  // #6984 M2+M3: samme ene skridt som i stage-runneren (se dér).
+  const { incidents, timelines } = trainingOwnsRecovery && (rawIncidents ?? []).some((inc) => Number(inc?.injury_days) > 0) && await isConditionModelV2Enabled(supabase)
+    ? await applyMedicalToStageOutputsForRace({ supabase, raceId: race.id, entrants, incidents: rawIncidents, timelines: rawTimelines })
+    : { incidents: rawIncidents, timelines: rawTimelines };
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -3502,6 +3501,13 @@ export async function simulateStageByIndex({
       incidents = (allIncidents || []).filter((inc) => inc.stage_number === stageNumber);
       moments = (allMoments || []).filter((m) => m.stage_number === stageNumber);
       timelines = (allTimelines || []).filter((t) => t.stage_number === stageNumber);
+    }
+
+    // #6984 M2+M3: medicinsk afdeling på motorens skadeudfald (v3 og v4), kun under
+    // condition_model_v2. ÉT sted lige efter simuleringen, så hændelserne,
+    // rider_condition-skaden og løbsfilmens tidslinje bærer samme skadelængde.
+    if (trainingOwnsRecovery && (incidents ?? []).some((inc) => Number(inc?.injury_days) > 0) && await isConditionModelV2Enabled(supabase)) {
+      ({ incidents, timelines } = await applyMedicalToStageOutputsForRace({ supabase, raceId: race.id, entrants, incidents, timelines }));
     }
 
     if (dryRun) {

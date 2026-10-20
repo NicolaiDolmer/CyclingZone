@@ -135,19 +135,41 @@ export async function loadMedicalBonusByTeam(supabase, teamIds) {
   return out;
 }
 
+
 /**
- * M2 + M3 i løbet, IO-delen: hold pr. skadet rytter fra race_entries (holdet han
- * stillede op for), bonus pr. hold, derefter den rene applyMedicalToRaceIncidents.
- * Kun hændelser med skadedage koster opslag; uden dem returneres input uændret.
+ * M2 + M3 på HELE etapens output i ét skridt, så alle forbrugere ser samme skade:
+ * hændelserne (race_incidents og rider_condition-skaden udledes af dem) og
+ * tidslinjens "incident"-events (løbsfilmen). Et undgået skadesforløb beholder
+ * styrtet og udfaldet (stadig udgået), men uden skadedage. REN.
+ * @returns {{ incidents: Array, timelines: Array }}
  */
-export async function applyMedicalToRaceIncidentsForRace({ supabase, raceId, incidents }) {
-  const injured = [...new Set((incidents ?? []).filter((i) => Number(i?.injury_days) > 0).map((i) => String(i.rider_id)))];
-  if (!injured.length) return incidents;
-  // pagination-safe: kun et løbs skadede ryttere (en håndfuld).
-  const { data, error } = await supabase.from("race_entries").select("rider_id, team_id").eq("race_id", raceId).in("rider_id", injured);
-  if (error) throw new Error(`race_entries (medical): ${error.message}`);
-  const teamByRider = new Map((data ?? []).map((r) => [String(r.rider_id), r.team_id]));
-  const bonusByTeam = await loadMedicalBonusByTeam(supabase, [...teamByRider.values()]);
+export function applyMedicalToStageOutputs({ incidents, timelines, bonusByRider, raceId }, cfg = MEDICAL_EFFECT_CONFIG) {
+  const mitigated = applyMedicalToRaceIncidents(incidents, bonusByRider, { raceId }, cfg);
+  const daysByStageRider = new Map();
+  (incidents ?? []).forEach((inc, i) => {
+    if (Number(inc?.injury_days) > 0) daysByStageRider.set(`${inc.stage_number}:${inc.rider_id}`, mitigated[i].injury_days);
+  });
+  if (!daysByStageRider.size) return { incidents: mitigated, timelines };
+  const nextTimelines = (timelines ?? []).map((t) => {
+    let changed = false;
+    const events = (t.events ?? []).map((ev) => {
+      if (ev?.type !== "incident" || !(Number(ev.params?.injury_days) > 0)) return ev;
+      const key = `${t.stage_number}:${ev.params.rider_id}`;
+      if (!daysByStageRider.has(key)) return ev;
+      changed = true;
+      return { ...ev, params: { ...ev.params, injury_days: daysByStageRider.get(key) } };
+    });
+    return changed ? { ...t, events } : t;
+  });
+  return { incidents: mitigated, timelines: nextTimelines };
+}
+
+/** IO: bonus pr. rytter fra startfeltets hold (entrants bærer team_id). */
+export async function applyMedicalToStageOutputsForRace({ supabase, raceId, entrants, incidents, timelines }) {
+  if (!(incidents ?? []).some((i) => Number(i?.injury_days) > 0)) return { incidents, timelines };
+  const teamByRider = new Map((entrants ?? []).map((e) => [String(e.rider_id), e.team_id]));
+  const injuredTeams = [...new Set(incidents.filter((i) => Number(i?.injury_days) > 0).map((i) => teamByRider.get(String(i.rider_id))).filter(Boolean))];
+  const bonusByTeam = await loadMedicalBonusByTeam(supabase, injuredTeams);
   const bonusByRider = new Map([...teamByRider].map(([rider, team]) => [rider, bonusByTeam.get(team) ?? 0]));
-  return applyMedicalToRaceIncidents(incidents, bonusByRider, { raceId });
+  return applyMedicalToStageOutputs({ incidents, timelines, bonusByRider, raceId });
 }

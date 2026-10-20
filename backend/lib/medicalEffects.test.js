@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   medicalBonus, medicalRecoveryMultiplier, medicalDisplayBonus, medicalTrainingInjuryRisk, medicalInjuryDays,
-  applyMedicalToRaceIncidents, applyMedicalToRaceIncidentsForRace, doctorAssessment, assessmentLevels, doctorSeasonAdvice,
+  applyMedicalToRaceIncidents, applyMedicalToStageOutputs, doctorAssessment, assessmentLevels, doctorSeasonAdvice,
 } from "./medicalEffects.js";
 import { recoveryV2, settleTrainingDateConditionV2 } from "./conditionModelV2.js";
 import { isTrackEffectLive } from "./facilityConstants.js";
@@ -53,20 +53,21 @@ test("M2 + M3 i løb: skade undgås deterministisk eller forkortes; andre hænde
   assert.deepEqual(none, incidents);
 });
 
-test("M2 + M3 i løb: IO henter hold fra startfeltet og bonus pr. hold", async () => {
-  const supabase = { from(table) {
-    const q = { _t: table, _eq: {}, select() { return q; }, eq(c, v) { q._eq[c] = v; return q; }, in() { return q; },
-      then(resolve) {
-        if (table === "race_entries") return resolve({ data: [{ rider_id: "a", team_id: "T1" }, { rider_id: "b", team_id: "T0" }], error: null });
-        if (table === "team_facilities") return resolve({ data: q._eq.team_id === "T1" ? [{ track: "medical", tier: 5 }] : [], error: null });
-        return resolve({ data: [], error: null });
-      } };
-    return q; } };
-  const incidents = [{ rider_id: "a", stage_number: 1, injury_days: 10 }, { rider_id: "b", stage_number: 1, injury_days: 10 }];
-  const out = await applyMedicalToRaceIncidentsForRace({ supabase, raceId: "race", incidents });
-  assert.equal(out[1].injury_days, 10, "hold uden afdeling uændret");
-  assert.ok(out[0].injury_days == null || out[0].injury_days < 10);
-  assert.equal(await applyMedicalToRaceIncidentsForRace({ supabase, raceId: "race", incidents: [{ rider_id: "a", injury_days: null }] }).then((x) => x[0].injury_days), null);
+test("M2 + M3: hændelser og løbsfilmens tidslinje får samme skadelængde", () => {
+  const incidents = [{ rider_id: "a", stage_number: 2, kind: "crash", outcome: "abandon", injury_days: 10 }, { rider_id: "b", stage_number: 2, kind: "crash", outcome: "abandon", injury_days: 10 }];
+  const timelines = [{ stage_number: 2, events: [
+    { km: 40, type: "incident", params: { rider_id: "a", kind: "crash", outcome: "abandon", injury_days: 10 } },
+    { km: 41, type: "incident", params: { rider_id: "b", kind: "crash", outcome: "abandon", injury_days: 10 } },
+    { km: 50, type: "attack", params: { rider_id: "a" } },
+  ] }];
+  const bonus = new Map([["a", 0.33], ["b", 0]]);
+  const out = applyMedicalToStageOutputs({ incidents, timelines, bonusByRider: bonus, raceId: "race" });
+  const evA = out.timelines[0].events[0].params.injury_days;
+  assert.equal(evA, out.incidents[0].injury_days, "rytter a: tidslinje = hændelse");
+  assert.equal(out.timelines[0].events[1].params.injury_days, 10, "rytter b uden afdeling uændret");
+  assert.equal(out.timelines[0].events[2], timelines[0].events[2]);
+  assert.equal(out.incidents[0].outcome, "abandon", "udfaldet bevares");
+  assert.equal(timelines[0].events[0].params.injury_days, 10, "input muteres ikke");
 });
 
 test("M4: flere vurderings-trin med højere niveau; ord-nøgler", () => {
