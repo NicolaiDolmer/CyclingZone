@@ -42,7 +42,7 @@ import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
-import { balanceFinaleQuotas, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
+import * as stageProfileGenerator from "../lib/raceStageProfileGenerator.js";
 import { makeS5TierProfileGenerator } from "../lib/s5TierTerrainQuota.js";
 import { resolveTierDraw } from "../lib/raceRouteRealismDraw.js";
 import {
@@ -340,8 +340,21 @@ export function seedRaceFor(race, cat, seasonId, seasonVariant = 0) {
   };
 }
 
+/**
+ * #6929 (Codex P1): identitets-stien findes kun, naar L2 (#6931, IDENTITY_GENERATOR_VERSION) er
+ * paa main. Uden den ville generatoren stille give de gamle ruter, og hver identitets-gate blive
+ * roed. Fail-closed med en klar forudsaetning i stedet. Merge-raekkefoelge: L2 foer L3.
+ */
+export function assertIdentityGeneratorAvailable(seedRaces, generator = stageProfileGenerator) {
+  const typed = seedRaces.some((r) => RACE_IDENTITY_FIELDS.some((k) => r?.[k] != null));
+  if (typed && generator.IDENTITY_GENERATOR_VERSION == null) {
+    throw new Error("løbene har identitet, men rutegeneratoren har ingen identitets-sti: kræver L2 (#6931) på main før dry-run/apply. Intet skrevet.");
+  }
+}
+
 /** Standard-generatoren: divisionens S5-kvote-generator (samme som materializerens skrivesti). */
 export function defaultGeneratorFactory({ tier, seedRaces, log = () => {} }) {
+  assertIdentityGeneratorAvailable(seedRaces);
   return makeS5TierProfileGenerator({
     tier, seedRaces,
     onAllocate: (a) => { if (a.changes) log(`  division ${a.tier}: terræn-kvoten ændrede ${a.changes} filler-etaper (variant ${a.variant})`); },
@@ -427,7 +440,7 @@ export function buildRegenPlan(input, {
     if (seasonVariant > 0) log(`  division ${tier}: kanonisk træk brød realisme-båndene → gen-træk ${seasonVariant} (#3347)`);
     if (draw?.exhausted) log(`  ⚠ division ${tier}: alle gen-træk brød realisme-båndene — det kanoniske træk bruges`);
     const generated = seedRaces.map((sr) => generate({ ...sr, season_variant: seasonVariant }));
-    const balanced = balanceFinaleQuotas(generated);
+    const balanced = stageProfileGenerator.balanceFinaleQuotas(generated);
     const afterByPool = new Map(repRaces.map((r, i) => [r.pool_race_id, balanced[i]]));
     const beforeByPool = new Map(repRaces.map((r) => [r.pool_race_id, currentByRace.get(r.id) ?? []]));
 
@@ -435,7 +448,7 @@ export function buildRegenPlan(input, {
       for (const race of pools.get(pid)) {
         const planned = afterByPool.get(race.pool_race_id);
         if (!planned) { planErrors.push(`løb ${race.id}: ingen planlagt profil (division ${tier})`); continue; }
-        rowsByRaceId.set(race.id, planned.map((p) => toStageProfileRow(race.id, p)));
+        rowsByRaceId.set(race.id, planned.map((p) => stageProfileGenerator.toStageProfileRow(race.id, p)));
       }
     }
 

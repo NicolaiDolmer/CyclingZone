@@ -566,7 +566,9 @@ test("den rigtige S5-generator: gyldige rækker for hvert løb og samme plan-has
   const archetypes = Object.keys(ARCHETYPE_PROFILES);
   const pick = (want) => (archetypes.includes(want) ? want : archetypes[0]);
   const s = state();
-  s.catalog = s.catalog.map((c) => ({ ...c, terrain_archetype: pick(c.terrain_archetype) }));
+  // Uden identitetsfelter: testen gælder generatorens gyldige rækker og stabile hash. Identitets-
+  // stien kræver L2 (#6931) og testes af assertIdentityGeneratorAvailable ovenfor.
+  s.catalog = s.catalog.map(({ race_identity_type: _t, signature: _s, authored_route: _a, ...c }) => ({ ...c, terrain_archetype: pick(c.terrain_archetype) }));
   const run = async () => {
     const input = await loadRegenInput(fakeDb(structuredClone(s)), 5);
     return { input, plan: buildRegenPlan(input, { generatorFactory: defaultGeneratorFactory, evaluateGate: greenGate, guarantees: NO_GUARANTEES }) };
@@ -633,4 +635,12 @@ test("#6929 (Codex P1) backup dækkes pr. etape-plads lige før sletning; restor
   assert.throws(() => buildRestoreSql(T, ["ikke-et-uuid"]), /uuid/);
   await assert.rejects(applyPlan({ db: {}, plan: { rowsByRaceId: new Map() }, racesToWrite: [] }), /clock skal injiceres/);
   await assert.rejects(waitForCalendarCache({ lastWriteAt: null }), /clock skal injiceres/);
+});
+
+test("#6929 (Codex P1) identitet uden L2's generator-sti fejler klart (merge L2 foer L3)", async () => {
+  const { assertIdentityGeneratorAvailable } = await import("./regenS5StageProfiles.mjs");
+  const typed = [{ id: "p1", race_identity_type: "hilly" }];
+  assert.throws(() => assertIdentityGeneratorAvailable(typed, {}), /kræver L2 \(#6931\)/);
+  assert.doesNotThrow(() => assertIdentityGeneratorAvailable(typed, { IDENTITY_GENERATOR_VERSION: 7 }));
+  assert.doesNotThrow(() => assertIdentityGeneratorAvailable([{ id: "p2" }], {}), "uden identitet: ingen krav");
 });
