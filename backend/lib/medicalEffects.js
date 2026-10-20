@@ -68,7 +68,9 @@ export function applyMedicalToRaceIncidents(incidents, bonusByRider, { raceId, s
     const bonus = clamp01(bonusByRider?.get(String(inc.rider_id)));
     if (bonus <= 0) return inc;
     const roll = seededUnitMixed(`medical-crash:${raceId}:${inc.stage_number ?? stageNumber}:${inc.rider_id}`);
-    if (roll < cfg.crashInjuryAvoidShare * bonus) return { ...inc, injury_days: null };
+    // injury_avoided: skade-skriveren (raceRunner.incidentInjuryUpsertRows) giver ellers
+    // ethvert udgået styrt mindst én dag; markøren gemmes ikke, den styrer kun skrivningen.
+    if (roll < cfg.crashInjuryAvoidShare * bonus) return { ...inc, injury_days: null, injury_avoided: true };
     return { ...inc, injury_days: medicalInjuryDays(days, bonus, cfg) };
   });
 }

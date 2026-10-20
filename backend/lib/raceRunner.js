@@ -2045,9 +2045,10 @@ function addDaysToDate(dateStr, days) {
  * @returns {Array<{rider_id, injured_until, injury_cause}>}
  */
 export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayByStage = null, seasonId = null, seasonNumber = null, raceDayInjuries = false }) {
+  // #6984: et styrt hvor medicinen undgik skaden (injury_avoided) skader ikke.
   const injuring = incidents.filter(
-    (inc) => (inc.outcome === "abandon" && inc.kind === "crash")
-      || (inc.kind !== "injury" && Number.isFinite(inc.injury_days) && inc.injury_days > 0),
+    (inc) => !inc.injury_avoided && ((inc.outcome === "abandon" && inc.kind === "crash")
+      || (inc.kind !== "injury" && Number.isFinite(inc.injury_days) && inc.injury_days > 0)),
   );
   return injuring.map((inc) => {
     const days = Number.isFinite(inc.injury_days) ? inc.injury_days : 1;

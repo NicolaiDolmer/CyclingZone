@@ -22,3 +22,16 @@ test("frosset bonus giver samme udfald ved genoptagelse, og tidslinjen følger h
   assert.equal(first.timelines[0].events[0].params.injury_days, first.incidents[0].injury_days);
   assert.notEqual(first.incidents[0].injury_days, 10);
 });
+
+test("et udgået styrt hvor medicinen undgik skaden giver ingen skaderække", async () => {
+  const { incidentInjuryUpsertRows } = await import("./raceRunner.js");
+  const many = Array.from({ length: 300 }, (_, i) => ({ rider_id: `r${i}`, stage_number: 4, kind: "crash", outcome: "abandon", injury_days: 6 }));
+  const runs = [{ stage_number: 4, condition_load_snapshot: many.map((m) => ({ rider_id: m.rider_id, load: 10, medical_bonus: 0.33 })) }];
+  const { incidents: out } = applyFrozenMedical({ race: { id: "r" }, runs, incidents: many, timelines: [] });
+  const avoided = out.filter((i) => i.injury_avoided);
+  assert.ok(avoided.length > 0, "nogle skader undgås");
+  const rows = incidentInjuryUpsertRows({ incidents: out, todayStr: "2026-11-01" });
+  assert.equal(rows.length, out.length - avoided.length);
+  assert.ok(!rows.some((r) => avoided.some((a) => a.rider_id === r.rider_id)));
+  assert.equal(incidentInjuryUpsertRows({ incidents: many, todayStr: "2026-11-01" }).length, many.length, "uden medicin uændret");
+});
