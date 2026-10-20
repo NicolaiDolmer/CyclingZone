@@ -5,13 +5,22 @@
     {
       "external_id": "example-hilly-tour",
       "race_identity_type": "hilly",
-      "signature": { "features": [{ "kind": "climb", "name": "Oude Kwaremberg", "category": "2", "length_km": 2.2, "avg_gradient": 9.5, "stage_hint": "queen", "summit_finish": true }] },
+      "signature": {
+        "features": [
+          { "kind": "climb", "name": "Oude Kwaremberg", "category": "2", "length_km": 2.2, "avg_gradient": 9.5, "stage_hint": "queen", "summit_finish": true }
+        ]
+      },
       "authored_route": null
     },
     {
       "external_id": "example-time-trial-tour",
       "race_identity_type": "time_trial",
-      "signature": { "features": [{ "kind": "prologue", "stage_hint": "first", "band": "flat" }, { "kind": "itt", "stage_hint": "last", "band": "hilly" }] },
+      "signature": {
+        "features": [
+          { "kind": "prologue", "stage_hint": "first", "band": "flat" },
+          { "kind": "itt", "stage_hint": "last", "band": "hilly" }
+        ]
+      },
       "authored_route": null
     },
     {
@@ -19,12 +28,846 @@
       "race_identity_type": null,
       "signature": null,
       "authored_route": {
-        "profile_type": "cobbles", "finale_type": "reduced_sprint", "distance_km": 260, "elevation_gain_m": 700,
+        "profile_type": "cobbles",
+        "finale_type": "reduced_sprint",
+        "distance_km": 260,
+        "elevation_gain_m": 700,
         "climbs": [],
-        "sprints": [{ "name": "Finish", "km": 260, "kind": "finish" }],
-        "sectors": [{ "kind": "cobbles", "name": "Bospoort", "start_km": 100, "length_km": 2 }]
+        "sprints": [
+          { "name": "Finish", "km": 260, "kind": "finish" }
+        ],
+        "sectors": [
+          { "kind": "cobbles", "name": "Bospoort", "start_km": 100, "length_km": 2 }
+        ]
       }
     }
   ],
-  "entries": []
+  "entries": [
+    {
+      "external_id": "56e8cc25a3a554e0",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Puy de Chalardès", "category": "HC", "length_km": 13.4, "avg_gradient": 7.6, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "996943c650cdd061",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Côte de Vauclairon", "category": "3", "length_km": 3.1, "avg_gradient": 6.4, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "0ff35661f3b390f7",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Mount Kerrawong", "category": "HC", "length_km": 12.8, "avg_gradient": 7.1, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "4347a825d8394291",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Aqabat Nuwayma", "category": "3", "length_km": 4.2, "avg_gradient": 6.8, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-wta-alpi-orient",
+      "race_identity_type": "mountains_first",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Monte Zoncolaro", "category": "HC", "length_km": 10.1, "avg_gradient": 11.2, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-wta-grandes-alpes",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Plateau des Glièrettes", "category": "1", "length_km": 11.5, "avg_gradient": 6.9, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "6f1c2acd3f2c4aff",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Coll de Montbrú", "category": "2", "length_km": 3.8, "avg_gradient": 7.9, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-wtb-pirineos",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Puerto de Sallentiza", "category": "1", "length_km": 14.2, "avg_gradient": 6.1, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "flat" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "8e4697e7abdd241d",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Wierch Sokolnicki", "category": "HC", "length_km": 12.1, "avg_gradient": 7.3, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "5ba80f6e6ceda7ac",
+      "race_identity_type": "gravel",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "gravel", "name": "Strada Bianca di Montesorbo", "length_km": 11.2 },
+          { "kind": "sector", "stage_hint": "last", "surface": "gravel", "name": "Sterrato del Pozzaccio", "length_km": 8.4 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "a67745cde67181de",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "last", "name": "Alto de Mendibeltz", "category": "2", "length_km": 2.8, "avg_gradient": 9.1, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-wta-noord-fr",
+      "race_identity_type": "cobbles_benelux",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Pavé du Moulin-Brûlé", "length_km": 2.6 },
+          { "kind": "sector", "stage_hint": "last", "surface": "cobbles", "name": "Chemin des Quatre-Vents", "length_km": 1.8 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "686f5c0c685b51fd",
+      "race_identity_type": "time_trial",
+      "signature": {
+        "features": [
+          { "kind": "prologue", "stage_hint": "first", "band": "flat" },
+          { "kind": "itt", "stage_hint": "last", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "fcc2ea9002ae4abd",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Jebel Hafira", "category": "1", "length_km": 10.8, "avg_gradient": 6.6, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-wtc-sierra-nevada",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Alto de la Veletilla", "category": "HC", "length_km": 19.5, "avg_gradient": 6.4, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "a9a48734b7c0b879",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Port de Peyrafita", "category": "HC", "length_km": 15.3, "avg_gradient": 7.2, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-wtb-appen-ligure",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Salita di Monte Ravàro", "category": "3", "length_km": 4.4, "avg_gradient": 6.1, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-wtc-vosges",
+      "race_identity_type": "mountains_first",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Ballon des Belles-Fées", "category": "HC", "length_km": 7.8, "avg_gradient": 9.1, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "78e684cc50060148",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Col de la Madelonne", "category": "HC", "length_km": 18.2, "avg_gradient": 7.9, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "a806091f46365091",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Qingluo Ridge", "category": "4", "length_km": 2.4, "avg_gradient": 5.1, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-pro-sila",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Salita di Monte Botterello", "category": "3", "length_km": 4.6, "avg_gradient": 5.8, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "2c886b8569f84a4f",
+      "race_identity_type": "mountains_first",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Hochtaler Joch", "category": "HC", "length_km": 16.4, "avg_gradient": 7.8, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "1d370e35fe177998",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Karakaya Tepesi", "category": "4", "length_km": 2.6, "avg_gradient": 5.4, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "25140aef9bc0bc1e",
+      "race_identity_type": "time_trial",
+      "signature": {
+        "features": [
+          { "kind": "prologue", "stage_hint": "first", "band": "flat" },
+          { "kind": "itt", "stage_hint": "last", "band": "flat" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-pro-somiedo",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Alto de Valdecuerna", "category": "1", "length_km": 12.4, "avg_gradient": 7, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "flat" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-pro-irpinia",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "last", "name": "Muro di Montevergello", "category": "2", "length_km": 1.9, "avg_gradient": 10.4, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "252bf0b9b19b5eb9",
+      "race_identity_type": "cobbles_benelux",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Pavés de Thieumont", "length_km": 1.9 },
+          { "kind": "sector", "stage_hint": "last", "surface": "cobbles", "name": "Chemin de la Hulpière", "length_km": 1.4 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-pro-valtellina",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Passo della Gaviola", "category": "1", "length_km": 13.6, "avg_gradient": 7.8, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "3823e08096f72db9",
+      "race_identity_type": "time_trial",
+      "signature": {
+        "features": [
+          { "kind": "prologue", "stage_hint": "first", "band": "flat" },
+          { "kind": "itt", "stage_hint": "last", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "0568732971fba1ac",
+      "race_identity_type": "gravel",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "gravel", "name": "Piste des Yaks Noirs", "length_km": 9.6 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "37e566b5829adb99",
+      "race_identity_type": "cobbles_benelux",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Skovbøllevej", "length_km": 1.2 },
+          { "kind": "sector", "stage_hint": "last", "surface": "cobbles", "name": "Ryttervejen", "length_km": 1 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-pro-alentejo",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Alto de Monsarrinho", "category": "4", "length_km": 2.1, "avg_gradient": 5.7, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "c9386064c4822b13",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Alto de Xorret del Pinós", "category": "1", "length_km": 8.2, "avg_gradient": 7.4, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "flat" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "952f56dfbd8e9204",
+      "race_identity_type": "time_trial",
+      "signature": {
+        "features": [
+          { "kind": "itt", "stage_hint": "last", "band": "flat" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "4adca5fb36d7264d",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "last", "name": "Monte do Castrelo", "category": "3", "length_km": 3.6, "avg_gradient": 6.9, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-pro-lucania",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Monte Sirinetto", "category": "HC", "length_km": 12.6, "avg_gradient": 7.5, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "fcc733e30342e52e",
+      "race_identity_type": "cobbles_benelux",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Kasseiweg van Ronsbeke", "length_km": 1.8 },
+          { "kind": "sector", "stage_hint": "last", "surface": "cobbles", "name": "Holle Kasseistraat", "length_km": 2.1 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-pro-cevennes",
+      "race_identity_type": "gravel",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "gravel", "name": "Piste des Brebis Grises", "length_km": 7.4 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "622efeaa9c1a849d",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Lagunas de Neilón", "category": "HC", "length_km": 11.9, "avg_gradient": 7.9, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-pro-carpazi",
+      "race_identity_type": "mountains_first",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Vârful Negruța", "category": "HC", "length_km": 21, "avg_gradient": 6.1, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cc776090c82ec546",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Alto da Senhora dos Ventos", "category": "1", "length_km": 9.4, "avg_gradient": 7.2, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "flat" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-pro-yonne",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Côte de Vézelière", "category": "4", "length_km": 1.9, "avg_gradient": 5.6, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-pro-gredos",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Alto del Risco Pelado", "category": "1", "length_km": 13.1, "avg_gradient": 6.4, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "7a4f81aea72e5c86",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Uspon na Gradinu", "category": "3", "length_km": 3.9, "avg_gradient": 6.5, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "c5ae81bb675bff93",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Bukit Selasih", "category": "4", "length_km": 2.8, "avg_gradient": 5.9, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "8a290667f3713fd8",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "last", "name": "Stavnesbakken", "category": "3", "length_km": 2.6, "avg_gradient": 7.8, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-pro-zeeland",
+      "race_identity_type": "cobbles_benelux",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Dijkweg van Oosterhaven", "length_km": 1.4 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-pro-silesie",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Wzgórze Opolskie", "category": "4", "length_km": 2.2, "avg_gradient": 5.3, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "b5d4329a6fa8dc15",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Lagos de Peñavera", "category": "HC", "length_km": 12.4, "avg_gradient": 7.3, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-c1-somme",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Côte de Bellencourt", "category": "4", "length_km": 1.6, "avg_gradient": 5.2, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-c2-twente",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Sallandse Bult", "category": "4", "length_km": 1.8, "avg_gradient": 4.9, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-c2-marche",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "last", "name": "Muro di Castelvento", "category": "2", "length_km": 1.6, "avg_gradient": 11.4, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-c1-monferrato",
+      "race_identity_type": "gravel",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "gravel", "name": "Sterrato delle Vigne Alte", "length_km": 6.2 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-c2-allier",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "itt", "stage_hint": "any", "band": "flat" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-c1-navarra",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Alto de Erroizar", "category": "1", "length_km": 9.8, "avg_gradient": 7.1, "summit_finish": true },
+          { "kind": "itt", "stage_hint": "any", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "459b40b640ed5b1a",
+      "race_identity_type": "time_trial",
+      "signature": {
+        "features": [
+          { "kind": "itt", "stage_hint": "last", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "2c051046f358c5a5",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Côte des Baux-Blancs", "category": "3", "length_km": 3.4, "avg_gradient": 6.2, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4270-c1-ribatejo",
+      "race_identity_type": "sprinters",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Alto de Almourinho", "category": "4", "length_km": 1.9, "avg_gradient": 5, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "8b36bfed0f0557f5",
+      "race_identity_type": "mountains_first",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Monte Bondanello", "category": "HC", "length_km": 17.6, "avg_gradient": 7.4, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "8fe98b9f788c3b06",
+      "race_identity_type": "climbers_gt_prelude",
+      "signature": {
+        "features": [
+          { "kind": "summit_finish", "stage_hint": "queen", "name": "Altopiano di Roccaserra", "category": "HC", "length_km": 14.8, "avg_gradient": 7.6, "summit_finish": true }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "4e559db3ff7da746",
+      "race_identity_type": "allround",
+      "signature": {
+        "features": [
+          { "kind": "itt", "stage_hint": "any", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-c1-sibillini",
+      "race_identity_type": "hilly",
+      "signature": {
+        "features": [
+          { "kind": "climb", "stage_hint": "any", "name": "Salita di Forca Rosata", "category": "3", "length_km": 4.8, "avg_gradient": 6.3, "summit_finish": false }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "cz4215-c1-bretagne",
+      "race_identity_type": "cobbles_benelux",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Chemin de Kerlannec", "length_km": 1.3 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "7e002873eb156b00",
+      "race_identity_type": "cobbles_benelux",
+      "signature": {
+        "features": [
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Kasseistrook van Bertembos", "length_km": 1.7 },
+          { "kind": "sector", "stage_hint": "last", "surface": "cobbles", "name": "Holle Weg van Ottenrode", "length_km": 1.1 }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "8f40dfb81187fab3",
+      "race_identity_type": "time_trial",
+      "signature": {
+        "features": [
+          { "kind": "prologue", "stage_hint": "first", "band": "flat" },
+          { "kind": "itt", "stage_hint": "last", "band": "hilly" }
+        ]
+      },
+      "authored_route": null
+    },
+    {
+      "external_id": "6b92159c1f118b7d",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": {
+        "profile_type": "rolling",
+        "finale_type": "flat_sprint",
+        "distance_km": 290,
+        "elevation_gain_m": 2000,
+        "climbs": [
+          { "name": "Passo del Turchetto", "category": "4", "crest_km": 142, "length_km": 5.8, "avg_gradient": 2.9, "summit_finish": false },
+          { "name": "Capo Merlo", "category": "4", "crest_km": 240, "length_km": 1.6, "avg_gradient": 4.1, "summit_finish": false },
+          { "name": "Capo Corvo", "category": "4", "crest_km": 247, "length_km": 1.2, "avg_gradient": 4.4, "summit_finish": false },
+          { "name": "Capo Bertola", "category": "4", "crest_km": 255, "length_km": 2.1, "avg_gradient": 4.6, "summit_finish": false },
+          { "name": "Cipressina", "category": "4", "crest_km": 268, "length_km": 5.6, "avg_gradient": 4.1, "summit_finish": false },
+          { "name": "Poggio dei Fiori", "category": "4", "crest_km": 284, "length_km": 3.7, "avg_gradient": 3.7, "summit_finish": false }
+        ],
+        "sprints": [
+          { "name": "Finish", "km": 290, "kind": "finish" }
+        ],
+        "sectors": []
+      }
+    },
+    {
+      "external_id": "fb8a6a4c9762e506",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": {
+        "profile_type": "cobbles",
+        "finale_type": "flat_sprint",
+        "distance_km": 270,
+        "elevation_gain_m": 2100,
+        "climbs": [
+          { "name": "Ossenberg", "category": "4", "crest_km": 118, "length_km": 1.1, "avg_gradient": 6.8, "summit_finish": false },
+          { "name": "Kortebult", "category": "4", "crest_km": 131, "length_km": 0.9, "avg_gradient": 7.4, "summit_finish": false },
+          { "name": "Steenbergdries", "category": "4", "crest_km": 146, "length_km": 0.7, "avg_gradient": 7.9, "summit_finish": false },
+          { "name": "Hoogmolen", "category": "4", "crest_km": 158, "length_km": 1.3, "avg_gradient": 6.1, "summit_finish": false },
+          { "name": "Oude Kwaremberg", "category": "3", "crest_km": 170, "length_km": 2.2, "avg_gradient": 4.2, "summit_finish": false },
+          { "name": "Kruisheuvel", "category": "4", "crest_km": 178, "length_km": 1.8, "avg_gradient": 5.1, "summit_finish": false },
+          { "name": "Molenkouter", "category": "4", "crest_km": 187, "length_km": 1.4, "avg_gradient": 6.6, "summit_finish": false },
+          { "name": "Eikenkam", "category": "4", "crest_km": 195, "length_km": 1.2, "avg_gradient": 6.3, "summit_finish": false },
+          { "name": "Ravenshelling", "category": "4", "crest_km": 203, "length_km": 0.9, "avg_gradient": 7.6, "summit_finish": false },
+          { "name": "Mosterdberg", "category": "3", "crest_km": 211, "length_km": 1.1, "avg_gradient": 8, "summit_finish": false },
+          { "name": "Koppelberg", "category": "3", "crest_km": 218, "length_km": 0.6, "avg_gradient": 11.6, "summit_finish": false },
+          { "name": "Taaienbult", "category": "4", "crest_km": 224, "length_km": 0.8, "avg_gradient": 7.1, "summit_finish": false },
+          { "name": "Vossenkam", "category": "4", "crest_km": 232, "length_km": 1.4, "avg_gradient": 6, "summit_finish": false },
+          { "name": "Zwartemolen", "category": "4", "crest_km": 240, "length_km": 1, "avg_gradient": 6.9, "summit_finish": false },
+          { "name": "Oude Kwaremberg", "category": "3", "crest_km": 253, "length_km": 2.2, "avg_gradient": 4.2, "summit_finish": false },
+          { "name": "Paterhelling", "category": "3", "crest_km": 257, "length_km": 0.4, "avg_gradient": 12.5, "summit_finish": false }
+        ],
+        "sprints": [
+          { "name": "Finish", "km": 270, "kind": "finish" }
+        ],
+        "sectors": [
+          { "kind": "cobbles", "start_km": 100, "length_km": 1.6, "name": "Kerkhofwegel" },
+          { "kind": "cobbles", "start_km": 107, "length_km": 2.1, "name": "Paardenkouter" },
+          { "kind": "cobbles", "start_km": 122, "length_km": 1.8, "name": "Ruiterstraat" },
+          { "kind": "cobbles", "start_km": 136, "length_km": 2.3, "name": "Holle Kasseiweg" },
+          { "kind": "cobbles", "start_km": 149, "length_km": 1.5, "name": "Mollekouter" },
+          { "kind": "cobbles", "start_km": 161, "length_km": 2.4, "name": "Beukenstraat" }
+        ]
+      }
+    },
+    {
+      "external_id": "2492f98e221c8b6f",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": {
+        "profile_type": "cobbles",
+        "finale_type": "flat_sprint",
+        "distance_km": 260,
+        "elevation_gain_m": 800,
+        "climbs": [],
+        "sprints": [
+          { "name": "Finish", "km": 260, "kind": "finish" }
+        ],
+        "sectors": [
+          { "kind": "cobbles", "start_km": 96, "length_km": 2.2, "name": "Trois-Moulins" },
+          { "kind": "cobbles", "start_km": 102.5, "length_km": 1.8, "name": "Viesmont" },
+          { "kind": "cobbles", "start_km": 106, "length_km": 3.7, "name": "Quiévrette" },
+          { "kind": "cobbles", "start_km": 112.4, "length_km": 1.5, "name": "Saint-Aubry" },
+          { "kind": "cobbles", "start_km": 117, "length_km": 2.3, "name": "Vertaincourt" },
+          { "kind": "cobbles", "start_km": 124.6, "length_km": 1.6, "name": "Maingoval" },
+          { "kind": "cobbles", "start_km": 129.4, "length_km": 2.5, "name": "Quérenval" },
+          { "kind": "cobbles", "start_km": 134.8, "length_km": 1.6, "name": "Monchaux-le-Petit" },
+          { "kind": "cobbles", "start_km": 146, "length_km": 2.5, "name": "Haveloo" },
+          { "kind": "cobbles", "start_km": 161.5, "length_km": 2.3, "name": "Trouée d'Arembourg" },
+          { "kind": "cobbles", "start_km": 168.4, "length_km": 1.6, "name": "Wallerval" },
+          { "kind": "cobbles", "start_km": 176, "length_km": 3.7, "name": "Hornival" },
+          { "kind": "cobbles", "start_km": 183.2, "length_km": 2.4, "name": "Warlincourt" },
+          { "kind": "cobbles", "start_km": 187, "length_km": 2.4, "name": "Tilloy-Brûlé" },
+          { "kind": "cobbles", "start_km": 193, "length_km": 2.4, "name": "Sars-le-Moulin" },
+          { "kind": "cobbles", "start_km": 199.6, "length_km": 1.4, "name": "Beuvrelle" },
+          { "kind": "cobbles", "start_km": 203.4, "length_km": 1.7, "name": "Orchiette" },
+          { "kind": "cobbles", "start_km": 208.1, "length_km": 2.7, "name": "Auchy-la-Haie" },
+          { "kind": "cobbles", "start_km": 214.6, "length_km": 3, "name": "Mont-en-Pévelette" },
+          { "kind": "cobbles", "start_km": 222, "length_km": 0.7, "name": "Mérival" },
+          { "kind": "cobbles", "start_km": 225.3, "length_km": 1.4, "name": "Pont-Gibault" },
+          { "kind": "cobbles", "start_km": 230.8, "length_km": 0.9, "name": "Templemont" },
+          { "kind": "cobbles", "start_km": 235.6, "length_km": 1.3, "name": "Cysoval" },
+          { "kind": "cobbles", "start_km": 238.2, "length_km": 1.1, "name": "Bourghem" },
+          { "kind": "cobbles", "start_km": 240.6, "length_km": 1.8, "name": "Camphin-le-Bas" },
+          { "kind": "cobbles", "start_km": 243, "length_km": 2.1, "name": "Carrefour du Chêne" },
+          { "kind": "cobbles", "start_km": 246.4, "length_km": 1.1, "name": "Grusonnet" },
+          { "kind": "cobbles", "start_km": 251.6, "length_km": 1.4, "name": "Hemmeries" }
+        ]
+      }
+    },
+    {
+      "external_id": "b9dcaf3b7502a487",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": {
+        "profile_type": "hilly",
+        "finale_type": "uphill_sprint",
+        "distance_km": 255,
+        "elevation_gain_m": 4000,
+        "climbs": [
+          { "name": "Côte de Vielsamont", "category": "3", "crest_km": 138, "length_km": 2.2, "avg_gradient": 6.2, "summit_finish": false },
+          { "name": "Côte de Wanneval", "category": "3", "crest_km": 150, "length_km": 2.7, "avg_gradient": 7.1, "summit_finish": false },
+          { "name": "Côte du Stockay", "category": "2", "crest_km": 158, "length_km": 1, "avg_gradient": 12, "summit_finish": false },
+          { "name": "Côte de la Haute-Lanière", "category": "3", "crest_km": 168, "length_km": 3.6, "avg_gradient": 5.4, "summit_finish": false },
+          { "name": "Col du Rosenbois", "category": "3", "crest_km": 178, "length_km": 4.4, "avg_gradient": 5.9, "summit_finish": false },
+          { "name": "Côte de Desnoye", "category": "3", "crest_km": 189, "length_km": 1.6, "avg_gradient": 8.3, "summit_finish": false },
+          { "name": "Côte de Mont-la-Brume", "category": "3", "crest_km": 197, "length_km": 2.4, "avg_gradient": 6.9, "summit_finish": false },
+          { "name": "Côte de Chambrelle", "category": "3", "crest_km": 205, "length_km": 2.1, "avg_gradient": 6.4, "summit_finish": false },
+          { "name": "Côte de la Redoutière", "category": "2", "crest_km": 220, "length_km": 2, "avg_gradient": 8.9, "summit_finish": false },
+          { "name": "Côte de la Roche-aux-Corbeaux", "category": "2", "crest_km": 242, "length_km": 1.5, "avg_gradient": 9.4, "summit_finish": false }
+        ],
+        "sprints": [
+          { "name": "Finish", "km": 255, "kind": "finish" }
+        ],
+        "sectors": []
+      }
+    },
+    {
+      "external_id": "f162dd79bd523ec9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": {
+        "profile_type": "mountain",
+        "finale_type": "descent",
+        "distance_km": 250,
+        "elevation_gain_m": 4500,
+        "climbs": [
+          { "name": "Colle del Gallaccio", "category": "3", "crest_km": 70, "length_km": 5.2, "avg_gradient": 5.1, "summit_finish": false },
+          { "name": "Passo di Zamblina", "category": "2", "crest_km": 125, "length_km": 6, "avg_gradient": 6.5, "summit_finish": false },
+          { "name": "Madonna del Ghisello", "category": "1", "crest_km": 168, "length_km": 8.6, "avg_gradient": 6.2, "summit_finish": false },
+          { "name": "Muro di Sormanello", "category": "2", "crest_km": 190, "length_km": 1.9, "avg_gradient": 15.8, "summit_finish": false },
+          { "name": "Colle di San Fermino", "category": "3", "crest_km": 214, "length_km": 3.5, "avg_gradient": 6.8, "summit_finish": false },
+          { "name": "Salita di Valtorta", "category": "1", "crest_km": 240, "length_km": 9.2, "avg_gradient": 7.3, "summit_finish": false }
+        ],
+        "sprints": [
+          { "name": "Finish", "km": 250, "kind": "finish" }
+        ],
+        "sectors": []
+      }
+    }
+  ]
 }
