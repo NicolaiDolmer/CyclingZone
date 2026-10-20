@@ -18,6 +18,9 @@ import {
   S5_FINISH_RAMPS,
   S5_SUMMIT_CATEGORIES,
   S5_ROAD_UNDULATION_M_PER_KM,
+  applySignature,
+  applySectorSignature,
+  summitFinishFor,
 } from "./raceRouteGenerator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { FINISH_MATRIX, TERRAIN_TYPES } from "./stageProfileTypes.js";
@@ -553,4 +556,76 @@ test("#6366 S5-højdemeter = stigningerne + afslutnings-rampen + vejens bølgen 
   // Samme stigninger, længere rute → flere højdemeter; typen spiller ingen rolle.
   const climbs = [cl("3", 4)];
   assert.ok(elevationGainS5({ climbs, distanceKm: 200 }) > elevationGainS5({ climbs, distanceKm: 150 }));
+});
+
+// ═══ #6857 Løbsidentitet (L2 #6928): signaturen i pass 2 ══════════════════════════════
+
+const SIG_HC = Object.freeze({ kind: "climb", name: "Col de Signatur", category: "HC", length_km: 14.2, avg_gradient: 8.1, stage_hint: "last", summit_finish: true });
+
+test("#6857 applySignature: udskifter klimakset, beholder resten, og kaster når terrænet skifter", () => {
+  const set = [
+    { category: "3", length_km: 4, avg_gradient: 5 },
+    { category: "1", length_km: 10, avg_gradient: 7 },
+    { category: "HC", length_km: 12, avg_gradient: 8 },
+  ];
+  const out = applySignature(set, SIG_HC);
+  assert.equal(out.length, 3);
+  assert.deepEqual(out.slice(0, 2).map((c) => c.category), ["3", "1"]);
+  assert.deepEqual(out[2], { category: "HC", length_km: 14.2, avg_gradient: 8.1, summit_finish: true });
+  assert.deepEqual(set[2], { category: "HC", length_km: 12, avg_gradient: 8 }, "input muteres ikke");
+  // En kat. 3 som klimaks på en højbjergetape fjerner HC'en -> terrænet skifter -> kast.
+  assert.throws(() => applySignature(set, { ...SIG_HC, name: "Lille bakke", category: "3", length_km: 3 }), /changes the stage terrain from high_mountain to mountain/);
+  // Tomt sæt (flad etape uden stigninger): signaturen tilføjes og terrænet tjekkes.
+  assert.throws(() => applySignature([], SIG_HC), /changes the stage terrain from flat to high_mountain/);
+  assert.equal(applySignature([], { ...SIG_HC, category: "4", length_km: 1.5, summit_finish: false }).length, 1);
+});
+
+test("#6857 attachRouteS5 med signatur: navngivet klimaks, topmål på stregen; uden signatur er strømmen uændret", () => {
+  const race = { id: "r", external_id: "sig-6857", name: "Tour test", season_id: "s5" };
+  const choose = (terrain) => FINISH_MATRIX[terrain][0];
+  for (let stage_number = 1; stage_number <= 20; stage_number++) {
+    const plain = attachRouteS5({ stage_number, profile_type: "high_mountain" }, race, true, { chooseFinish: choose });
+    assert.deepEqual(attachRouteS5({ stage_number, profile_type: "high_mountain" }, race, true, { chooseFinish: choose, signature: null }), plain);
+    const sig = attachRouteS5({ stage_number, profile_type: "high_mountain" }, race, true, {
+      chooseFinish: (terrain, c) => (c?.summit === true ? "long_climb" : choose(terrain)), signature: SIG_HC,
+    });
+    const last = sig.climbs[sig.climbs.length - 1];
+    assert.equal(last.name, "Col de Signatur");
+    assert.equal(last.crest_km, sig.distance_km);
+    assert.equal(last.summit_finish, true);
+    assert.equal(sig.finale_type, "long_climb");
+    assert.equal(sig.terrain, "high_mountain");
+    assert.equal(deriveTerrainType(sig.climbs), "high_mountain");
+  }
+});
+
+test("#6857 attachRouteS5: et topmål på kuperet terræn bliver den stejle opad-afslutning, ikke bjergtop", () => {
+  const race = { id: "r", external_id: "sig-hilly", name: "Ronde test", season_id: "s5" };
+  const feature = { kind: "climb", name: "Muur", category: "2", length_km: 1.1, avg_gradient: 12, stage_hint: "last", summit_finish: true };
+  for (let stage_number = 1; stage_number <= 10; stage_number++) {
+    const r = attachRouteS5({ stage_number, profile_type: "hilly" }, race, true, { chooseFinish: () => { throw new Error("må ikke trække"); }, signature: feature });
+    assert.equal(r.finale_type, "wall_finish");
+    assert.equal(r.climbs.at(-1).crest_km, r.distance_km);
+    assert.equal(r.terrain, "hilly");
+    const finish = r.sprints.find((s) => s.kind === "finish");
+    assert.ok(finish.ramp_km < 1.5 && finish.ramp_gradient >= 10, "murens rampe følger spec §3");
+  }
+  assert.equal(summitFinishFor("medium_mountain", 3), "long_climb");
+  assert.equal(summitFinishFor("hilly", 3), "uphill_sprint");
+});
+
+test("#6857 applySectorSignature: navn og længde på finale-sektoren, inden for ruten, rigtigt underlag", () => {
+  const sectors = [
+    { kind: "cobbles", start_km: 80, length_km: 2, name: "A" },
+    { kind: "cobbles", start_km: 150, length_km: 2.5, name: "B" },
+  ];
+  const out = applySectorSignature(sectors, { surface: "cobbles", name: "Bospoort", length_km: 3.1 }, 160);
+  assert.equal(out.length, 2);
+  assert.deepEqual(out[0], sectors[0]);
+  assert.equal(out[1].name, "Bospoort");
+  assert.equal(out[1].length_km, 3.1);
+  assert.ok(out[1].start_km + 3.1 <= 160 - 2, "slutter før mål");
+  assert.ok(out[1].start_km > sectors[0].start_km + sectors[0].length_km, "overlapper ikke forrige sektor");
+  assert.throws(() => applySectorSignature(sectors, { surface: "gravel", name: "X", length_km: 2 }, 160), /gravel on a cobbles stage/);
+  assert.equal(applySectorSignature([], { surface: "gravel", name: "Y", length_km: 4 }, 180)[0].kind, "gravel");
 });
