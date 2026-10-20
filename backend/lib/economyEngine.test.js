@@ -2971,9 +2971,9 @@ test("#6957 · op/nedrykning flytter et hold HØJST ét divisionstrin pr. skifte
   }
 });
 
-test("#1152 · Div3-pulje ALL-REAL relegerer til Div4 (aktivering)", async () => {
+test("#1152/#6771 · Div3-pulje uden AI relegerer bund 4 til Div4", async () => {
   const supabase = createDivisionEndSupabase();
-  // 24 hold, 0 AI → all-real → Div4-børn aktiveres.
+  // 24 hold, 0 AI: bund 4 rykker ned (samme regel som med AI-fyld efter #6771).
   await processDivisionEnd(buildPoolStandings({ division: 3, poolId: 4, count: 24, aiCount: 0 }), 3, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
   const relegated = supabase.updates.filter(u => u.payload.division === 4);
   assert.equal(relegated.length, 4, "bund 4 relegeret til Div4");

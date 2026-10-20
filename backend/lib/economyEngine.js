@@ -2686,9 +2686,9 @@ export async function buildPoolTree(client, { squad = DEFAULT_SQUAD } = {}) {
  * (pulje). Kun ægte hold flyttes — AI er fyld der regenereres pr. pulje af
  * reconcileAiTeamsForPool i AI-fyld-sweepet bagefter (processSeasonEnd).
  *
- * Div4-udskydelse (ejer): en Div3-pulje relegerer KUN til sine Div4-børn når den pulje
- * udelukkende består af ægte managere (ingen AI tilbage). Indtil da er Div3 gulvet og
- * Div4-puljerne forbliver dormant. Forælder/barn udledes fra pool_index (ingen migration).
+ * #6771 (ejer 18/10): Div4-udskydelsen er fjernet. Alle puljer over bunden relegerer
+ * bund RELEGATION_SLOTS til deres børne-puljer, også D3 -> D4 når D3 har AI-fyld.
+ * Forælder/barn udledes fra pool_index (ingen migration).
  */
 export async function processDivisionEnd(standings, division, seasonId, seasonNumber, deps = {}) {
   const client = deps.supabase ?? await getDefaultSupabaseClient();
