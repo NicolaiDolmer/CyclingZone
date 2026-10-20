@@ -14,6 +14,9 @@
 // tierCalendarMaterializer.js til at (a) style selection mod målene og (b) verificere
 // EFTER generering at garantierne faktisk blev opfyldt, ellers fejle højlydt.
 
+import { TIER_IDENTITY_DISTRIBUTION } from "./raceIdentityTypes.js";
+import { IDENTITY_PROFILES } from "./raceStageProfileGenerator.js";
+
 // ── #3327: endagsløb/etapeløb-mix pr. tier (andel af RACE COUNT, ikke game-days) ──
 //
 // EJER-BESLUTNING 2026-08-07 morgen (afløser 4/8-frysningen nedenfor — se den kun som
@@ -246,7 +249,28 @@ export function detectTerrainBandViolations({
 // observeret 1 → 2 (ejer-ask #3327: "ikke alle etapeløb skal have bjerge"). D1 er en
 // GT/monument-tung division uden dette mønster i dag (0) — ikke rørt. D3/D4 floor'et til
 // nuværende observerede niveau.
+//
+// #6857 (løbsidentitet, L2 #6928): tabellen her er GULVET for en division hvis etapeløb
+// ikke har en type. Har de, hæves gulvet af sig selv til antallet af valgte etapeløb med en
+// bjergfri type (IDENTITY_PROFILES[...].mountainFree) — ejerens tabel A giver dermed langt
+// flere bjergfri etapeløb end tallene nedenfor (TIER_IDENTITY_MOUNTAIN_FREE_STAGE_RACES).
+// Tallene nedenfor er bevidst IKKE hævet: S5-kataloget har ingen typer før L4's forfatning
+// er anvendt, og et højere fast gulv ville gøre en kalender uden typer rød for noget
+// generatoren ikke kan levere. Hvert typet bjergfrit løb tjekkes desuden enkeltvis
+// (detectCoverageViolations: "bjergfri type med bjerg-etape").
 export const TIER_MOUNTAIN_FREE_STAGE_RACE_MIN = Object.freeze({ 1: 0, 2: 2, 3: 1, 4: 2 });
+
+// #6857: identitets-typerne der lover et bjergfrit etapeløb — afledt af generatorens egen
+// tabel, så generator og garanti aldrig kan være uenige.
+export const MOUNTAIN_FREE_IDENTITY_TYPES = Object.freeze(
+  Object.entries(IDENTITY_PROFILES).filter(([, p]) => p.mountainFree).map(([type]) => type),
+);
+// Antal bjergfri etapeløb pr. division efter ejerens tabel A (TIER_IDENTITY_DISTRIBUTION).
+export const TIER_IDENTITY_MOUNTAIN_FREE_STAGE_RACES = Object.freeze(Object.fromEntries(
+  Object.entries(TIER_IDENTITY_DISTRIBUTION).map(([tier, dist]) => [
+    tier, MOUNTAIN_FREE_IDENTITY_TYPES.reduce((s, t) => s + (/** @type {any} */ (dist)[t] ?? 0), 0),
+  ]),
+));
 
 // ── #3295: ARKETYPE-RESERVATIONER — dækning der SIKRES, ikke bare måles bagefter ──
 //
@@ -376,10 +400,12 @@ const MOUNTAIN_PROFILE_TYPES = new Set(["mountain", "high_mountain"]);
  *
  * @param {{ tier, raceRows: Array<{pool_race_id, race_type, stages, race_class}>,
  *   profilesByPoolRaceId: Map<string, Array<{profile_type}>>,
- *   classStageLengthBand?: object }} args
+ *   classStageLengthBand?: object, identityTypeByPoolRaceId?: Map<string, string | null> | null }} args
+ *   identityTypeByPoolRaceId  #6857: race_pool.race_identity_type pr. katalog-løb (udeladt = ingen typer)
  */
 export function computeTierCoverageStats({
   raceRows = [], profilesByPoolRaceId = new Map(), classStageLengthBand = CLASS_STAGE_LENGTH_BAND,
+  identityTypeByPoolRaceId = null,
 } = {}) {
   const oneDayRows = raceRows.filter((r) => r.race_type !== "stage_race");
   const stageRows = raceRows.filter((r) => r.race_type === "stage_race");
@@ -405,11 +431,21 @@ export function computeTierCoverageStats({
   }
 
   let mountainFreeStageRaces = 0;
+  // #6857: typede etapeløb. Et løb med en bjergfri type SKAL være bjergfrit; ellers har
+  // generatoren brudt typens løfte, og løbet listes ved navn (pool_race_id).
+  let identityTypedStageRaces = 0;
+  let identityMountainFreeExpected = 0;
+  const identityMountainFreeBroken = [];
   for (const r of stageRows) {
     const profiles = profilesByPoolRaceId.get(r.pool_race_id) || [];
-    if (profiles.length && profiles.every((p) => !MOUNTAIN_PROFILE_TYPES.has(p.profile_type))) {
-      mountainFreeStageRaces++;
-    }
+    const mountainFree = profiles.length > 0 && profiles.every((p) => !MOUNTAIN_PROFILE_TYPES.has(p.profile_type));
+    if (mountainFree) mountainFreeStageRaces++;
+    const identityType = identityTypeByPoolRaceId?.get(r.pool_race_id) ?? null;
+    if (identityType == null) continue;
+    identityTypedStageRaces++;
+    if (!MOUNTAIN_FREE_IDENTITY_TYPES.includes(identityType)) continue;
+    identityMountainFreeExpected++;
+    if (!mountainFree) identityMountainFreeBroken.push(`${r.pool_race_id} (${identityType})`);
   }
 
   const classBandViolations = [];
@@ -428,6 +464,7 @@ export function computeTierCoverageStats({
   return {
     totalRaces, oneDayRaces: oneDayRows.length, stageRaces: stageRows.length, oneDayShare,
     familyCounts, classicStages, mountainFreeStageRaces, classBandViolations,
+    identityTypedStageRaces, identityMountainFreeExpected, identityMountainFreeBroken,
   };
 }
 
@@ -465,9 +502,17 @@ export function detectCoverageViolations({
     }
   }
 
+  // #6857: gulvet hæves til antallet af valgte løb med en bjergfri type (tomt override-map
+  // slår stadig hele garantien fra, LEGACY_MIX-mønstret).
   const mfMin = mountainFreeMin?.[tier];
-  if (mfMin != null && stats.mountainFreeStageRaces < mfMin) {
-    violations.push(`tier ${tier}: kun ${stats.mountainFreeStageRaces} etapeløb uden bjerg-etape, under garanteret minimum ${mfMin} (#3327)`);
+  if (mfMin != null) {
+    const floor = Math.max(mfMin, stats.identityMountainFreeExpected ?? 0);
+    if (stats.mountainFreeStageRaces < floor) {
+      violations.push(`tier ${tier}: kun ${stats.mountainFreeStageRaces} etapeløb uden bjerg-etape, under garanteret minimum ${floor} (#3327)`);
+    }
+    for (const race of stats.identityMountainFreeBroken ?? []) {
+      violations.push(`tier ${tier}: bjergfri type med bjerg-etape — ${race} (#6857)`);
+    }
   }
 
   if (stats.classBandViolations?.length) {

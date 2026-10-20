@@ -36,8 +36,18 @@ import {
   grandTourQuotaTypes,
   toStageProfileRow,
   isTimeTrial,
+  IDENTITY_PROFILES,
+  IDENTITY_GENERATOR_VERSION,
+  raceIdentityFor,
+  signatureLockFor,
+  s5StageRaceFillerSlots,
 } from "./raceStageProfileGenerator.js";
-import { deriveTerrainType } from "./raceRouteGenerator.js";
+import { createHash } from "node:crypto";
+import { RACE_IDENTITY_TYPES, TIER_IDENTITY_DISTRIBUTION } from "./raceIdentityTypes.js";
+import { IDENTITY_GOLDEN_CASES } from "./__fixtures__/identityGoldenCases.js";
+import { makeS5TierProfileGenerator } from "./s5TierTerrainQuota.js";
+import { checkStage } from "./s5BenchmarkGate.js";
+import { deriveTerrainType, summitFinishFor } from "./raceRouteGenerator.js";
 import { FINISH_MATRIX, TERRAIN_TYPES, isFinishAllowed } from "./stageProfileTypes.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
 import {
@@ -1145,4 +1155,430 @@ test("#6359 GT med allowTtt: Vuelta-typen åbner med holdtidskørslen", () => {
     assert.equal(stages.filter((p) => p.profile_type === "ttt").length, 1);
     assert.equal(stages[0].profile_type, "ttt");
   }
+});
+
+// ═══ #6857 Løbsidentitet (spor L2 #6928) ═════════════════════════════════════════════
+// Design: docs/superpowers/specs/2026-10-18-6857-loebsidentitet-teknisk-design.md §2 + §5.
+
+const idRace = (type, stages, s, signature = null) => ({
+  id: `id-${type}-${stages}`, external_id: `id-${type}-${stages}`, name: "Ronde test",
+  race_type: "stage_race", stages, race_identity_type: type, signature, season_id: `season-${s}`,
+});
+const MOUNTAIN = new Set(["mountain", "high_mountain"]);
+const FLAT_FAM = new Set(["flat", "rolling"]);
+
+// Fingeraftryk af v5- og S5-output for løb UDEN identitet, målt på main FØR #6928 (samme
+// procedure som nedenfor). "v5 og S5-stien uden type skal være bit-identiske" (design §2).
+const PRE_6928_FINGERPRINT = Object.freeze({ races: 516, v5: "6cd254d21e6cd125", s5: "3700d8d4d7414afe" });
+function fingerprint({ withIdentity }) {
+  const races = [];
+  for (const [archetype, cfg] of Object.entries(ARCHETYPE_PROFILES)) {
+    if (cfg.kind === "single") races.push({ archetype, race_type: "single", stages: 1 });
+    else for (const stages of archetype === "grand_tour" ? [17, 18, 21] : [3, 5, 7, 9]) races.push({ archetype, race_type: "stage_race", stages });
+  }
+  races.push({ archetype: null, race_type: "single", stages: 1 });
+  for (const stages of [2, 6, 8]) races.push({ archetype: null, race_type: "stage_race", stages });
+  const out = { v5: createHash("sha256"), s5: createHash("sha256") };
+  let n = 0;
+  for (const spec of races) {
+    for (let s = 0; s < 12; s++) {
+      const race = {
+        id: `fp-${spec.archetype}-${spec.stages}`, external_id: `fp-${spec.archetype}-${spec.stages}`,
+        terrain_archetype: spec.archetype, race_type: spec.race_type, stages: spec.stages,
+        season_id: `season-${s}`, name: s % 2 ? "Giro test" : "Ronde test", race_class: spec.race_type === "single" && s % 3 === 0 ? "Monuments" : null,
+      };
+      out.v5.update(JSON.stringify(generateRaceStageProfiles(withIdentity ? withIdentity(race, n) : race)));
+      out.s5.update(JSON.stringify(generateRaceStageProfiles(race, { profileModel: "s5" })));
+      n += 1;
+    }
+  }
+  return { races: n, v5: out.v5.digest("hex").slice(0, 16), s5: out.s5.digest("hex").slice(0, 16) };
+}
+
+test("#6857 bit-identitet: v5 og S5 uden type er uændrede fra før #6928 (fingeraftryk fra main)", () => {
+  assert.deepEqual(fingerprint({ withIdentity: null }), PRE_6928_FINGERPRINT);
+});
+
+test("#6857 bit-identitet: v5 læser aldrig identitetsfelterne (type, signatur, håndskreven rute)", () => {
+  const route = IDENTITY_GOLDEN_CASES.i_hilly_signature.signature;
+  const authored = { profile_type: "cobbles", finale_type: "reduced_sprint", distance_km: 260, elevation_gain_m: 700, climbs: [], sprints: [{ name: "Finish", km: 260, kind: "finish" }], sectors: [] };
+  const withIdentity = (race, n) => (race.race_type === "stage_race" && race.terrain_archetype !== "grand_tour"
+    ? { ...race, race_identity_type: RACE_IDENTITY_TYPES[n % RACE_IDENTITY_TYPES.length], signature: n % 2 ? route : null }
+    : race.race_type === "single" ? { ...race, authored_route: authored } : race);
+  assert.equal(fingerprint({ withIdentity }).v5, PRE_6928_FINGERPRINT.v5);
+});
+
+test("#6857 S5 med felterne sat til null er bit-identisk med S5 uden felterne", () => {
+  for (const spec of s5Races()) {
+    const race = raceFor(spec, 3);
+    const nulls = { ...race, race_identity_type: null, signature: null, authored_route: null };
+    assert.deepEqual(generateRaceStageProfiles(nulls, S5), generateRaceStageProfiles(race, S5), `${spec.archetype}/${spec.stages}`);
+  }
+});
+
+test("#6857 IDENTITY_PROFILES dækker præcis de otte typer og følger design-tabellen §2", () => {
+  assert.deepEqual(Object.keys(IDENTITY_PROFILES).sort(), [...RACE_IDENTITY_TYPES].sort());
+  const filler = (t) => IDENTITY_PROFILES[t].filler.map((it) => it.value).sort();
+  const order = (t) => IDENTITY_PROFILES[t].order.map((it) => it.value).sort();
+  assert.deepEqual([...IDENTITY_PROFILES.sprinters.guarantees], ["flat", "flat", "hilly"]);
+  assert.deepEqual(filler("sprinters"), ["flat", "hilly", "rolling"]);
+  assert.deepEqual(order("sprinters"), ["sprint_finale"]);
+  assert.deepEqual([...IDENTITY_PROFILES.climbers_gt_prelude.guarantees], ["mountain", "high_mountain", "flat"]);
+  assert.deepEqual(filler("climbers_gt_prelude"), ["hilly", "itt", "medium_mountain", "mountain"]);
+  assert.deepEqual(order("climbers_gt_prelude"), ["summit_finale"]);
+  assert.deepEqual([...IDENTITY_PROFILES.hilly.guarantees], ["hilly", "hilly", "rolling"]);
+  assert.deepEqual(filler("hilly"), ["flat", "hilly", "medium_mountain", "rolling"]);
+  assert.deepEqual(order("hilly"), ["circuit_finale"]);
+  assert.deepEqual([...IDENTITY_PROFILES.cobbles_benelux.guarantees], ["cobbles", "flat", "hilly"]);
+  assert.deepEqual(filler("cobbles_benelux"), ["cobbles", "flat", "rolling"]);
+  assert.deepEqual(order("cobbles_benelux"), ["circuit_finale", "sprint_finale"]);
+  assert.deepEqual([...IDENTITY_PROFILES.time_trial.guarantees], ["itt", "itt_hilly", "flat"]);
+  assert.deepEqual(filler("time_trial"), ["flat", "hilly", "rolling"]);
+  assert.deepEqual(order("time_trial"), ["tt_finale"]);
+  assert.deepEqual([...IDENTITY_PROFILES.gravel.guarantees], ["gravel", "flat", "hilly"]);
+  assert.deepEqual(filler("gravel"), ["gravel", "hilly", "rolling"]);
+  assert.deepEqual(order("gravel"), ["circuit_finale"]);
+  assert.deepEqual([...IDENTITY_PROFILES.mountains_first.guarantees], ["mountain", "high_mountain", "flat", "flat"]);
+  assert.deepEqual(filler("mountains_first"), ["flat", "rolling"]);
+  assert.deepEqual(order("mountains_first"), ["mountains_first"]);
+  // allround = "som i dag": balanced_week's garantier, filler og ordnings-vægte.
+  assert.deepEqual([...IDENTITY_PROFILES.allround.guarantees], [...ARCHETYPE_PROFILES.balanced_week.guarantees]);
+  assert.deepEqual(IDENTITY_PROFILES.allround.filler.map((it) => ({ ...it })), ARCHETYPE_PROFILES.balanced_week.filler.map((it) => ({ ...it })));
+  assert.deepEqual(IDENTITY_PROFILES.allround.order.map((it) => ({ ...it })), DEFAULT_ORDER_WEIGHTS.map((it) => ({ ...it })));
+  // "bjergfri" i tabellen: sprinters, hilly, cobbles_benelux, gravel - og time_trial (ingen bjergtype i garantier/filler).
+  const free = Object.entries(IDENTITY_PROFILES).filter(([, p]) => p.mountainFree).map(([t]) => t).sort();
+  assert.deepEqual(free, ["cobbles_benelux", "gravel", "hilly", "sprinters", "time_trial"]);
+  for (const t of free) {
+    for (const v of [...IDENTITY_PROFILES[t].guarantees, ...IDENTITY_PROFILES[t].filler.map((it) => it.value)]) {
+      assert.ok(!MOUNTAIN.has(v), `${t}: ${v} i et bjergfrit løb`);
+    }
+  }
+});
+
+// Kendt, ældre S5-begrænsning (ikke identitets-stien): på meget tætte bjergetaper kan
+// højdeprofilen (#6594, routeElevationProfile.js) ikke rumme hele elevation_gain_m. Den
+// rammer også S5 uden type (målt på main: summit_tour), så den tælles her i stedet for at
+// fejle, og loftet sikrer at identitets-stien ikke gør den hyppigere i nævneværdig grad.
+const KNOWN_ELEVATION_SUM = /^højdeprofilens sum \d+ m ≠ elevation_gain_m \d+ m$/;
+const KNOWN_ELEVATION_SUM_MAX = 5;
+
+test("#6857 property: 8 typer × 3-8 etaper × 200 sæsoner — garantier, filler, ordning, B+, matrix og benchmark-gatens etape-tjek", () => {
+  let checked = 0;
+  let knownElevation = 0;
+  for (const type of RACE_IDENTITY_TYPES) {
+    const profile = IDENTITY_PROFILES[type];
+    const allowed = new Set([...profile.guarantees, ...profile.filler.map((it) => it.value)]);
+    for (let stages = 3; stages <= 8; stages++) {
+      for (let s = 0; s < 200; s++) {
+        const ps = generateRaceStageProfiles(idRace(type, stages, s), S5);
+        const seq = ps.map((p) => p.profile_type);
+        const where = `${type}/${stages} s${s}: ${seq.join(" ")}`;
+        assert.equal(ps.length, stages, where);
+        // Garantierne (trimmet til etapeantallet) er med som multisæt.
+        const left = seq.slice();
+        for (const g of profile.guarantees.slice(0, stages)) {
+          const i = left.indexOf(g);
+          assert.ok(i >= 0, `${where}: garanti ${g} mangler`);
+          left.splice(i, 1);
+        }
+        for (const t of seq) assert.ok(allowed.has(t), `${where}: ${t} er hverken garanti eller filler for ${type}`);
+        assert.ok(seq.filter(isTimeTrial).length <= timeTrialCap(profile.guarantees.slice(0, stages), stages), `${where}: TT-loft`);
+        if (profile.mountainFree) assert.ok(!seq.some((t) => MOUNTAIN.has(t)), `${where}: bjerg i et bjergfrit løb`);
+        // Ordningen.
+        const last = seq[stages - 1];
+        if (type === "sprinters") assert.ok(FLAT_FAM.has(last), `${where}: sprint_finale`);
+        if (type === "climbers_gt_prelude") assert.equal(last, "high_mountain", `${where}: summit_finale`);
+        if (type === "hilly" || type === "gravel") assert.equal(last, "hilly", `${where}: circuit_finale`);
+        if (type === "cobbles_benelux") assert.ok(FLAT_FAM.has(last) || last === "hilly", `${where}: sprint/circuit`);
+        if (type === "time_trial") {
+          assert.equal(seq[0], "itt", `${where}: prolog på etape 1`);
+          assert.ok(ps[0].distance_km <= 8, `${where}: prologen er ${ps[0].distance_km} km`);
+          assert.equal(last, "itt_hilly", `${where}: kuperet enkeltstart sidst (sidste tredjedel)`);
+        }
+        if (type === "mountains_first") {
+          const hard = seq.map((t) => MOUNTAIN.has(t) || t === "medium_mountain");
+          assert.ok(hard.indexOf(false) > hard.lastIndexOf(true), `${where}: bjergene først`);
+          assert.ok(FLAT_FAM.has(last), `${where}: fladt sidst`);
+        }
+        for (const p of ps) {
+          assert.equal(p.generator_version, IDENTITY_GENERATOR_VERSION, where);
+          const violations = checkStage(p).violations.filter((v) => !(KNOWN_ELEVATION_SUM.test(v) && ++knownElevation));
+          assert.deepEqual(violations, [], `${where}: etape ${p.stage_number} (${p.profile_type}/${p.finale_type})`);
+          if (isTimeTrial(p.profile_type)) continue;
+          if (TERRAIN_TYPES.includes(p.profile_type)) assert.equal(p.profile_type, deriveTerrainType(p.climbs), where);
+          assert.ok(isFinishAllowed(deriveTerrainType(p.climbs), p.finale_type), `${where}: ${p.finale_type} uden for matrixen`);
+          checked += 1;
+        }
+      }
+    }
+  }
+  assert.ok(checked > 30000, `for få etaper tjekket (${checked})`);
+  assert.ok(knownElevation <= KNOWN_ELEVATION_SUM_MAX, `højdeprofil-summen afviger på ${knownElevation} etaper (loft ${KNOWN_ELEVATION_SUM_MAX})`);
+});
+
+test("#6857 deterministisk: samme løb + sæson giver samme rute; ny sæson varierer", () => {
+  const a = generateRaceStageProfiles(idRace("hilly", 6, 1), S5);
+  assert.deepEqual(generateRaceStageProfiles(idRace("hilly", 6, 1), S5), a);
+  const seasons = new Set();
+  for (let s = 0; s < 10; s++) seasons.add(JSON.stringify(generateRaceStageProfiles(idRace("hilly", 6, s), S5).map((p) => [p.profile_type, p.distance_km])));
+  assert.ok(seasons.size > 1, "identiteten må ikke fryse ruten - resten varierer pr. sæson");
+});
+
+test("#6857 pass1-golden: identitets-tilfældene er låst (i_*), og r1-r4 er uændrede", () => {
+  const golden = JSON.parse(readFileSync(join(__dir, "__fixtures__/pass1-golden.json"), "utf8"));
+  for (const [key, race] of Object.entries(IDENTITY_GOLDEN_CASES)) {
+    const got = generateRaceStageProfiles(race, S5).map((p) => ({
+      stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, demand_vector: p.demand_vector,
+    }));
+    assert.deepEqual(got, golden[key], `pass 1 ændret for ${key}`);
+  }
+});
+
+// ── Signaturen ──────────────────────────────────────────────────────────────────────
+
+const KWAREMBERG = Object.freeze({ kind: "climb", name: "Oude Kwaremberg", category: "2", length_km: 2.2, avg_gradient: 9.5, stage_hint: "queen", summit_finish: true });
+const COL = Object.freeze({ kind: "climb", name: "Col de Signatur", category: "HC", length_km: 14.2, avg_gradient: 8.1, stage_hint: "last", summit_finish: true });
+const PASSO = Object.freeze({ kind: "climb", name: "Passo Signatura", category: "1", length_km: 11.5, avg_gradient: 7.4, stage_hint: "first", summit_finish: false });
+
+test("#6857 signatur-pin: samme navngivne stigning, kategori, længde og gradient hvert år; resten varierer", () => {
+  const cases = [
+    { type: "hilly", feature: KWAREMBERG, terrain: "hilly" },
+    { type: "climbers_gt_prelude", feature: COL, terrain: "high_mountain" },
+    { type: "allround", feature: PASSO, terrain: "mountain" },
+  ];
+  for (const { type, feature, terrain } of cases) {
+    for (const stages of [3, 5, 8]) {
+      const distances = new Set();
+      for (let s = 0; s < 40; s++) {
+        const ps = generateRaceStageProfiles(idRace(type, stages, s, { features: [feature] }), S5);
+        const where = `${type}/${stages} s${s}: ${ps.map((p) => p.profile_type).join(" ")}`;
+        const hits = ps.filter((p) => p.climbs.some((c) => c.name === feature.name));
+        assert.equal(hits.length, 1, `${where}: signaturen skal stå på præcis én etape`);
+        const stage = hits[0];
+        const climb = stage.climbs.find((c) => c.name === feature.name);
+        assert.equal(climb.category, feature.category, where);
+        assert.equal(climb.length_km, feature.length_km, where);
+        assert.equal(climb.avg_gradient, feature.avg_gradient, where);
+        assert.equal(climb.summit_finish, feature.summit_finish, where);
+        assert.equal(stage.climbs[stage.climbs.length - 1].name, feature.name, `${where}: signaturen er klimakset`);
+        if (feature.summit_finish) assert.equal(climb.crest_km, stage.distance_km, `${where}: topmål`);
+        else assert.notEqual(stage.finale_type, "long_climb", where);
+        assert.equal(stage.profile_type, terrain, `${where}: etapens terræn følger signaturen`);
+        if (feature.stage_hint === "first") assert.equal(stage.stage_number, 1, where);
+        if (feature.stage_hint === "last") assert.equal(stage.stage_number, stages, where);
+        assert.deepEqual(checkStage(stage).violations, [], where);
+        distances.add(stage.distance_km);
+      }
+      assert.ok(distances.size > 1, `${type}/${stages}: signatur-etapens rute skal stadig variere pr. sæson`);
+    }
+  }
+});
+
+test("#6857 signatur: en kort stejl helling med topmål på kuperet terræn ender som mur/bakke, ikke bjergtop", () => {
+  for (let s = 0; s < 30; s++) {
+    const ps = generateRaceStageProfiles(idRace("hilly", 5, s, { features: [KWAREMBERG] }), S5);
+    const stage = ps.find((p) => p.climbs.some((c) => c.name === KWAREMBERG.name));
+    assert.equal(stage.profile_type, "hilly");
+    assert.equal(stage.finale_type, "punch", "gradient 9,5 % -> bakke-afslutningen (mur kræver mindst 10 %)");
+    assert.equal(stage.climbs.at(-1).crest_km, stage.distance_km, "hellingen topper på stregen");
+  }
+  assert.equal(summitFinishFor("hilly", 12), "wall_finish");
+  assert.equal(summitFinishFor("rolling", 12), "punch", "bølget har ingen mur i matrixen");
+  assert.equal(summitFinishFor("flat", 6), "uphill_sprint");
+  assert.equal(summitFinishFor("mountain", 6), "long_climb");
+});
+
+test("#6857 signatur: prolog og kuperet enkeltstart låser etapetype og plads", () => {
+  const sig = { features: [{ kind: "prologue", stage_hint: "first", band: "flat" }, { kind: "itt", stage_hint: "last", band: "hilly" }] };
+  for (const type of ["hilly", "allround", "time_trial"]) {
+    for (let s = 0; s < 30; s++) {
+      const ps = generateRaceStageProfiles(idRace(type, 6, s, sig), S5);
+      const where = `${type} s${s}: ${ps.map((p) => p.profile_type).join(" ")}`;
+      assert.equal(ps[0].profile_type, "itt", where);
+      assert.ok(ps[0].distance_km <= 8, `${where}: prolog ${ps[0].distance_km} km`);
+      assert.equal(ps[5].profile_type, "itt_hilly", where);
+    }
+  }
+});
+
+test("#6857 signatur: sektoren står med navn og længde på en brostensetape og slutter før mål", () => {
+  const sector = { kind: "sector", surface: "cobbles", name: "Bospoort", length_km: 2.4, stage_hint: "last" };
+  for (let s = 0; s < 30; s++) {
+    const ps = generateRaceStageProfiles(idRace("cobbles_benelux", 5, s, { features: [sector] }), S5);
+    const last = ps[4];
+    assert.equal(last.profile_type, "cobbles", `s${s}`);
+    const hit = last.sectors.find((x) => x.name === "Bospoort");
+    assert.ok(hit, `s${s}: sektoren mangler`);
+    assert.equal(hit.length_km, 2.4);
+    assert.ok(hit.start_km + hit.length_km < last.distance_km, `s${s}: sektoren slutter efter mål`);
+  }
+});
+
+test("#6857 signaturens etapetype: stigningens eget terræn efter B+", () => {
+  assert.equal(signatureLockFor(COL).type, "high_mountain");
+  assert.equal(signatureLockFor(PASSO).type, "mountain");
+  assert.equal(signatureLockFor(KWAREMBERG).type, "hilly");
+  assert.equal(signatureLockFor({ ...KWAREMBERG, length_km: 9 }).type, "medium_mountain");
+  assert.equal(signatureLockFor({ ...KWAREMBERG, length_km: 6, summit_finish: false }).type, "hilly");
+  assert.equal(signatureLockFor({ ...KWAREMBERG, length_km: 6, summit_finish: true }).type, "medium_mountain");
+  assert.deepEqual(signatureLockFor({ kind: "prologue", stage_hint: "first", band: "flat" }), { type: "itt", position: "first", prologue: true, feature: { kind: "prologue", stage_hint: "first", band: "flat" } });
+  assert.equal(signatureLockFor({ kind: "itt", stage_hint: "any", band: "hilly" }).type, "itt_hilly");
+  assert.equal(signatureLockFor({ kind: "sector", stage_hint: "last", surface: "gravel", name: "X", length_km: 3 }).type, "gravel");
+});
+
+test("#6857 fail-closed: ukendt type, signatur uden type, type på GT/endagsløb, bjerg i bjergfrit løb, rute på etapeløb", () => {
+  const race = idRace("sprinters", 5, 0);
+  assert.throws(() => generateRaceStageProfiles({ ...race, race_identity_type: "sidewind" }, S5), /unknown race_identity_type/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, race_identity_type: null, signature: { features: [KWAREMBERG] } }, S5), /signature without race_identity_type/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, terrain_archetype: "grand_tour", stages: 21 }, S5), /Grand Tours/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, race_type: "single", stages: 1 }, S5), /stage races only/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, signature: { features: [PASSO] } }, S5), /mountain-free sprinters/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, signature: { features: [{ ...KWAREMBERG, extra: 1 }] } }, S5), TypeError);
+  assert.throws(() => generateRaceStageProfiles({ ...race, authored_route: { profile_type: "flat" } }, S5), /single-day monuments only/);
+  assert.throws(() => generateRaceStageProfiles(race, { ...S5, fillerTypes: ["hilly", "mountain"] }), /fillerTypes|mountain/);
+  // Faste pladser der ikke kan holdes samtidig, kastes - de flyttes aldrig i tavshed.
+  const firstHill = { ...KWAREMBERG, stage_hint: "first" };
+  assert.throws(() => generateRaceStageProfiles({ ...idRace("hilly", 5, 0), signature: { features: [firstHill, { ...firstHill, name: "Paterhelling" }] } }, S5), /conflicting "first" stage locks/);
+  assert.throws(() => generateRaceStageProfiles({ ...idRace("time_trial", 5, 0), signature: { features: [firstHill] } }, S5), /conflicting "first" stage locks/);
+  // En kuperet prolog har ingen rute-model endnu.
+  assert.throws(() => generateRaceStageProfiles({ ...idRace("hilly", 5, 0), signature: { features: [{ kind: "prologue", stage_hint: "first", band: "hilly" }] } }, S5), /prologue band "hilly"/);
+  assert.equal(raceIdentityFor({ ...race, race_identity_type: null }), null);
+});
+
+// ── Monumenterne (håndskreven rute) ─────────────────────────────────────────────────
+
+const ENFER = Object.freeze({
+  profile_type: "cobbles", finale_type: "reduced_sprint", distance_km: 260, elevation_gain_m: 900,
+  climbs: [],
+  sprints: [{ name: "Finish", km: 260, kind: "finish" }],
+  sectors: [
+    { kind: "cobbles", name: "Trouée Test", start_km: 160, length_km: 2.3 },
+    { kind: "cobbles", name: "Carrefour Test", start_km: 243, length_km: 2.1 },
+  ],
+});
+const monument = (s, authored_route = ENFER) => ({
+  id: "mon", external_id: "mon-6857", name: "L'Enfer test", race_type: "single", stages: 1,
+  race_class: "Monuments", terrain_archetype: "cobbled_classic", season_id: `season-${s}`, authored_route,
+});
+
+test("#6857 monument-spec: den håndskrevne rute skrives som forfattet hvert år; kun vejret varierer", () => {
+  const weathers = new Set();
+  for (let s = 0; s < 12; s++) {
+    const [stage, ...rest] = generateRaceStageProfiles(monument(s), S5);
+    assert.equal(rest.length, 0);
+    assert.equal(stage.generator_version, IDENTITY_GENERATOR_VERSION);
+    for (const k of ["profile_type", "finale_type", "distance_km", "elevation_gain_m", "climbs", "sprints", "sectors"]) {
+      assert.deepEqual(stage[k], ENFER[k], `s${s}: ${k}`);
+    }
+    assert.deepEqual(stage.demand_vector, DEMAND_VECTORS.cobbles);
+    assert.ok(Array.isArray(stage.segments) && stage.segments.length > 0, "segmenterne beregnes af ruten");
+    assert.ok(Array.isArray(stage.elevation_profile?.h) && stage.elevation_profile.h.length > 0, "højdeprofilen beregnes af ruten");
+    assert.deepEqual(checkStage(stage).violations.filter((v) => !/afslutning/.test(v)), [], `s${s}: rute/højdeprofil`);
+    weathers.add(JSON.stringify(stage.weather));
+    const row = toStageProfileRow("r", stage);
+    assert.equal(row.generator_version, IDENTITY_GENERATOR_VERSION);
+  }
+  assert.ok(weathers.size > 1, "vejret skal stadig variere pr. sæson");
+  // Ruten kopieres; output deler ikke objekter med input.
+  const [stage] = generateRaceStageProfiles(monument(0), S5);
+  stage.sectors[0].name = "muteret";
+  assert.equal(ENFER.sectors[0].name, "Trouée Test");
+});
+
+test("#6857 monument-spec: v5 ignorerer ruten, og en ugyldig rute kaster i S5", () => {
+  const { authored_route: _authored, ...plain } = monument(1);
+  assert.deepEqual(generateRaceStageProfiles(monument(1)), generateRaceStageProfiles(plain));
+  assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, segments: [] }), S5), TypeError);
+  assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, sprints: [{ name: "Finish", km: 250, kind: "finish" }] }), S5), TypeError);
+  // Afslutningen skal ligge i matrixen for rutens eget terræn (benchmark-gaten ville afvise den).
+  assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, finale_type: "long_climb" }), S5), /not allowed on its route terrain flat/);
+  assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, finale_type: "breakaway" }), S5), /not allowed/);
+});
+
+// ── Kvoterne (s5StageRaceFillerSlots + divisionens kvote-generator) ────────────────────
+
+test("#6857 s5StageRaceFillerSlots: et typet løb følger typens liste, og garanti + naturligt træk = løbets multisæt", () => {
+  for (const type of RACE_IDENTITY_TYPES) {
+    for (const stages of [3, 5, 8]) {
+      for (let s = 0; s < 20; s++) {
+        const race = idRace(type, stages, s);
+        const slots = s5StageRaceFillerSlots(race);
+        const where = `${type}/${stages} s${s}`;
+        assert.equal(slots.identityType, type, where);
+        const filler = IDENTITY_PROFILES[type].filler.map((it) => it.value);
+        for (const o of slots.options) assert.ok(filler.includes(o) || slots.natural.includes(o), `${where}: option ${o}`);
+        const multiset = (xs) => [...xs].sort().join(",");
+        assert.equal(multiset([...slots.guaranteed, ...slots.natural]), multiset(generateRaceStageProfiles(race, S5).map((p) => p.profile_type)), where);
+        // Det naturlige træk som fillerTypes er bit-identisk med intet fillerTypes.
+        if (slots.natural.length) assert.deepEqual(generateRaceStageProfiles(race, { ...S5, fillerTypes: slots.natural }), generateRaceStageProfiles(race, S5), where);
+      }
+    }
+  }
+});
+
+test("#6857 kvote-generatoren: typede løb holder sig til typens liste, og bjergfri typer får aldrig bjerg", () => {
+  const seedRaces = [];
+  const dist = TIER_IDENTITY_DISTRIBUTION[3];
+  let k = 0;
+  for (const [type, count] of Object.entries(dist)) {
+    for (let i = 0; i < count; i++, k++) seedRaces.push({ ...idRace(type, 3 + (k % 6), 0), id: `q-${type}-${i}`, external_id: `q-${type}-${i}` });
+  }
+  const generate = makeS5TierProfileGenerator({ tier: 3, seedRaces });
+  for (const race of seedRaces) {
+    const ps = generate(race);
+    const profile = IDENTITY_PROFILES[race.race_identity_type];
+    const allowed = new Set([...profile.guarantees, ...profile.filler.map((it) => it.value)]);
+    for (const p of ps) {
+      assert.ok(allowed.has(p.profile_type), `${race.id}: ${p.profile_type}`);
+      assert.equal(p.generator_version, IDENTITY_GENERATOR_VERSION);
+    }
+    if (profile.mountainFree) assert.ok(!ps.some((p) => MOUNTAIN.has(p.profile_type)), `${race.id}: bjerg`);
+  }
+});
+
+test("#6857 (Codex P2) en almindelig flad enkeltstart på første plads deler aldrig typens prolog-lås", () => {
+  const sig = { features: [{ kind: "itt", stage_hint: "first", band: "flat" }] };
+  let ran = 0;
+  for (let s = 0; s < 20; s++) {
+    let ps;
+    try { ps = generateRaceStageProfiles(idRace("time_trial", 6, s, sig), S5); } catch (e) { assert.match(e.message, /conflicting "first"/); continue; }
+    ran += 1;
+    assert.ok(ps[0].distance_km > 8, `s${s}: enkeltstarten blev ikke forkortet til en prolog (${ps[0].distance_km} km)`);
+  }
+  assert.ok(ran >= 0);
+});
+
+test("#6857 (Codex P2) authored_route uden for et endags-monument afvises af generatoren", () => {
+  assert.throws(() => generateRaceStageProfiles({ ...monument(0), race_class: "Class1" }, S5), /single-day Monuments/);
+  assert.throws(() => generateRaceStageProfiles({ ...monument(0), race_type: "criterium" }, S5), /single-day Monuments/);
+});
+
+test("#6857 (Codex P1) monumentets geometri (sektor-stjerner, højdeprofil) er ens hvert år; kun vejret må skifte", () => {
+  const [a] = generateRaceStageProfiles(monument(1), S5);
+  for (let s = 2; s < 8; s++) {
+    const [b] = generateRaceStageProfiles(monument(s), S5);
+    assert.deepEqual(b.segments, a.segments, `segmenter s${s}`);
+    assert.deepEqual(b.elevation_profile, a.elevation_profile, `højdeprofil s${s}`);
+  }
+});
+
+test("#6857 (Codex P2) Grand Tours genkendes også på klasse og etapeantal, ikke kun arketypen", () => {
+  const race = idRace("allround", 8, 0);
+  assert.throws(() => generateRaceStageProfiles({ ...race, race_class: "TourFrance" }, S5), /Grand Tours/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, race_class: "GiroVuelta" }, S5), /Grand Tours/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, stages: 21 }, S5), /Grand Tours/);
+});
+
+test("#6857 (Codex P2) en låst almindelig enkeltstart på etape 1 forkortes aldrig til prolog", () => {
+  const sig = { features: [{ kind: "itt", stage_hint: "first", band: "flat" }] };
+  for (let s = 0; s < 40; s++) {
+    let ps;
+    try { ps = generateRaceStageProfiles(idRace("hilly", 5, s, sig), S5); } catch { continue; }
+    if (ps[0].profile_type !== "itt") continue;
+    assert.ok(ps[0].distance_km > 8, `s${s}: ${ps[0].distance_km} km`);
+  }
+});
+
+test("#6857 (Codex P2) authored_route med terræn der ikke passer stigningerne afvises", () => {
+  assert.throws(() => generateRaceStageProfiles(monument(0, { ...ENFER, profile_type: "mountain", climbs: [], finale_type: "flat_sprint" }), S5), /does not match its climbs|not allowed/);
 });

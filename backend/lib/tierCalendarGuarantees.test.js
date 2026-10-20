@@ -3,9 +3,10 @@ import assert from "node:assert/strict";
 import {
   computeTierCoverageStats, detectCoverageViolations, CLASS_STAGE_LENGTH_BAND,
   TIER_TERRAIN_FAMILY_MIN, TIER_ONE_DAY_SHARE_MIN, TIER_MOUNTAIN_FREE_STAGE_RACE_MIN,
-  TIER_ARCHETYPE_RESERVATIONS,
+  TIER_ARCHETYPE_RESERVATIONS, MOUNTAIN_FREE_IDENTITY_TYPES, TIER_IDENTITY_MOUNTAIN_FREE_STAGE_RACES,
 } from "./tierCalendarGuarantees.js";
-import { ARCHETYPE_PROFILES } from "./raceStageProfileGenerator.js";
+import { ARCHETYPE_PROFILES, IDENTITY_PROFILES } from "./raceStageProfileGenerator.js";
+import { TIER_IDENTITY_DISTRIBUTION } from "./raceIdentityTypes.js";
 
 // Byg et minimalt raceRow + profil-par til testene. profileTypes = liste af profile_type
 // pr. etape (længden afgør stages for stage_race).
@@ -204,6 +205,114 @@ test("#5405 D3 beholder den ENE arketype i sit vindue der garanterer en enkeltst
       + "D3's balanced_week-reservation måske ikke længere nødvendig — mål efter, fjern den ikke blindt.",
     );
   }
+});
+
+// ── #6857 (L2 #6928): løbsidentitet og bjergfri etapeløb ─────────────────────────────
+
+test("#6857 TIER_MOUNTAIN_FREE_STAGE_RACE_MIN er gulvet uden typer; uændret og låst", () => {
+  assert.deepEqual({ ...TIER_MOUNTAIN_FREE_STAGE_RACE_MIN }, { 1: 0, 2: 2, 3: 1, 4: 2 });
+});
+
+test("#6857 de bjergfri typer følger generatoren, og tabel A giver flere bjergfri etapeløb end gulvet", () => {
+  assert.deepEqual([...MOUNTAIN_FREE_IDENTITY_TYPES].sort(), Object.entries(IDENTITY_PROFILES).filter(([, p]) => p.mountainFree).map(([t]) => t).sort());
+  // Ejerens tabel A (18/10): sprinter + kuperet + brosten + enkeltstart + grus pr. division.
+  assert.deepEqual({ ...TIER_IDENTITY_MOUNTAIN_FREE_STAGE_RACES }, { 1: 7, 2: 11, 3: 10, 4: 11 });
+  for (const tier of [1, 2, 3, 4]) {
+    assert.ok(TIER_IDENTITY_MOUNTAIN_FREE_STAGE_RACES[tier] >= TIER_MOUNTAIN_FREE_STAGE_RACE_MIN[tier], `D${tier}: typerne må aldrig sænke gulvet`);
+    const total = Object.values(TIER_IDENTITY_DISTRIBUTION[tier]).reduce((s, n) => s + n, 0);
+    assert.ok(TIER_IDENTITY_MOUNTAIN_FREE_STAGE_RACES[tier] < total, `D${tier}: ikke alle etapeløb er bjergfri`);
+  }
+});
+
+function typedFixture(entries) {
+  const races = entries.map(([id, type, profileTypes]) => ({ ...race(id, "ProSeries", "stage_race", profileTypes), type }));
+  const { raceRows, profilesByPoolRaceId } = buildFixture(races);
+  const identityTypeByPoolRaceId = new Map(races.map((r) => [r.row.pool_race_id, r.type]));
+  return computeTierCoverageStats({ raceRows, profilesByPoolRaceId, identityTypeByPoolRaceId });
+}
+
+test("#6857 computeTierCoverageStats: tæller typede etapeløb og bjergfri typer der har fået bjerg", () => {
+  const stats = typedFixture([
+    ["sp", "sprinters", ["flat", "flat", "hilly"]],
+    ["hi", "hilly", ["hilly", "medium_mountain", "rolling"]], // mellembjerg er tilladt i en bjergfri type
+    ["co", "cobbles_benelux", ["cobbles", "mountain", "flat"]], // brudt løfte
+    ["cl", "climbers_gt_prelude", ["mountain", "high_mountain", "flat"]],
+    ["un", null, ["flat", "hilly", "hilly"]],
+  ]);
+  assert.equal(stats.identityTypedStageRaces, 4);
+  assert.equal(stats.identityMountainFreeExpected, 3);
+  assert.deepEqual(stats.identityMountainFreeBroken, ["co (cobbles_benelux)"]);
+  assert.equal(stats.mountainFreeStageRaces, 3, "sp + hi + det utypede");
+});
+
+test("#6857 detectCoverageViolations: gulvet hæves til antallet af typede bjergfri løb, og et brudt løfte nævnes", () => {
+  const ok = typedFixture([
+    ["a", "sprinters", ["flat", "flat", "hilly"]],
+    ["b", "hilly", ["hilly", "hilly", "rolling"]],
+    ["c", "gravel", ["gravel", "flat", "hilly"]],
+  ]);
+  assert.deepEqual(detectCoverageViolations({ tier: 2, stats: ok, oneDayShareMin: {}, terrainFamilyMin: {} }), []);
+  const broken = typedFixture([
+    ["a", "sprinters", ["flat", "flat", "hilly"]],
+    ["b", "hilly", ["hilly", "mountain", "rolling"]],
+    ["c", "gravel", ["gravel", "high_mountain", "hilly"]],
+  ]);
+  const v = detectCoverageViolations({ tier: 2, stats: broken, oneDayShareMin: {}, terrainFamilyMin: {} });
+  assert.ok(v.some((x) => x.includes("kun 1 etapeløb uden bjerg-etape, under garanteret minimum 3")), v.join(" · "));
+  assert.ok(v.some((x) => x.includes("bjergfri type med bjerg-etape — b (hilly)")), v.join(" · "));
+  assert.ok(v.some((x) => x.includes("c (gravel)")), v.join(" · "));
+  // Tomt override-map (LEGACY_MIX) slår stadig hele garantien fra, også med typer.
+  assert.deepEqual(detectCoverageViolations({ tier: 2, stats: broken, oneDayShareMin: {}, terrainFamilyMin: {}, mountainFreeMin: {} }), []);
+});
+
+test("#6857 kalender-stien: typerne fra race_pool når generatoren, stemples v7, og hvert bjergfrit løb er bjergfrit", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { runOfflineSeasonGates } = await import("../scripts/dev/seasonCalendarGatesOffline.mjs");
+  const fixture = JSON.parse(readFileSync(new URL("./__fixtures__/racePoolCatalog.prod.json", import.meta.url), "utf8"));
+  const args = { seasonNumber: 5, firstDay: "2026-10-28", lastDay: "2026-11-28" };
+  const base = await runOfflineSeasonGates({ ...args, fixture });
+  const archetype = new Map(fixture.catalog.map((c) => [c.id, c.terrain_archetype]));
+  // Syntetisk tildeling efter tabel A (L4 forfatter den rigtige): typerne i fast rækkefølge
+  // på divisionens korte etapeløb, længste først.
+  const order = ["climbers_gt_prelude", "allround", "mountains_first", "hilly", "time_trial", "sprinters", "cobbles_benelux", "gravel"];
+  const typeById = new Map();
+  for (const t of base.plan.planTiers) {
+    const rows = t.pools[0].raceRows.filter((r) => r.race_type === "stage_race" && archetype.get(r.pool_race_id) !== "grand_tour")
+      .sort((a, b) => b.stages - a.stages || String(a.pool_race_id).localeCompare(String(b.pool_race_id)));
+    const types = order.flatMap((type) => Array(TIER_IDENTITY_DISTRIBUTION[t.tier][type]).fill(type));
+    assert.equal(rows.length, types.length, `D${t.tier}: tabel A dækker præcis divisionens korte etapeløb`);
+    rows.forEach((r, i) => typeById.set(r.pool_race_id, types[i]));
+  }
+  const typed = { ...fixture, catalog: fixture.catalog.map((c) => (typeById.has(c.id) ? { ...c, race_identity_type: typeById.get(c.id) } : c)) };
+  const r = await runOfflineSeasonGates({ ...args, fixture: typed });
+  for (const t of r.plan.planTiers) {
+    const cs = t.coverageStats;
+    assert.equal(cs.identityTypedStageRaces, Object.values(TIER_IDENTITY_DISTRIBUTION[t.tier]).reduce((s, n) => s + n, 0), `D${t.tier}`);
+    assert.equal(cs.identityMountainFreeExpected, TIER_IDENTITY_MOUNTAIN_FREE_STAGE_RACES[t.tier], `D${t.tier}`);
+    assert.deepEqual(cs.identityMountainFreeBroken, [], `D${t.tier}`);
+    for (const row of t.pools[0].raceRows) {
+      const versions = new Set((t.profilesByPoolRaceId.get(row.pool_race_id) ?? []).map((p) => p.generator_version));
+      assert.deepEqual([...versions], [typeById.has(row.pool_race_id) ? 7 : 6], `D${t.tier} ${row.pool_race_id}`);
+    }
+  }
+  assert.ok(!r.hard.some((v) => v.includes("#6857")), r.hard.join(" · "));
+
+  // v5 (S1-S4) læser aldrig typerne: samme typede katalog giver hverken identitets-tælling
+  // eller andre brud end det utypede.
+  const s4 = { seasonNumber: 4, firstDay: "2026-09-28" };
+  const v5Typed = await runOfflineSeasonGates({ ...s4, fixture: typed });
+  const v5Plain = await runOfflineSeasonGates({ ...s4, fixture });
+  assert.equal(v5Typed.plan.profileModel, "v5");
+  for (const t of v5Typed.plan.planTiers) assert.equal(t.coverageStats.identityTypedStageRaces, 0, `S4 D${t.tier}`);
+  assert.deepEqual(v5Typed.plan.planTiers.map((t) => t.calendarViolations), v5Plain.plan.planTiers.map((t) => t.calendarViolations));
+});
+
+test("#6857 uden typer er dækningen uændret (ingen identitets-felter tæller)", () => {
+  const { raceRows, profilesByPoolRaceId } = buildFixture([race("r1", "ProSeries", "stage_race", ["flat", "hilly", "hilly"])]);
+  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId });
+  assert.equal(stats.identityTypedStageRaces, 0);
+  assert.equal(stats.identityMountainFreeExpected, 0);
+  assert.deepEqual(stats.identityMountainFreeBroken, []);
 });
 
 test("#5405 D2 og D3 reserverer mere summit_tour end D1 og D4 tilsammen", () => {

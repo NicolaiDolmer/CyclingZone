@@ -767,14 +767,12 @@ features:
     area: economy
     title_en: No running costs from season 5
     title_da: Ingen driftsudgifter fra sæson 5
-    state: building
+    state: live
     flag: economy_no_upkeep_v1
     ssot: docs/ECONOMY_RULES.md
     epic: 6936
     verified: 2026-10-20
-    decision: taend
-    decide_by: 2026-10-25
-    note: Off; tændes 25/10 på ejer-go.
+    note: Tændt 20/10 (ejer-go). Rollback kun ved sæsonskifte.
 
   - id: sponsors
     area: economy
