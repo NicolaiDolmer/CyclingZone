@@ -81,7 +81,7 @@ import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applySameDateEnteringFatigueV2, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
-import { applyMedicalToStageOutputsForRace, loadMedicalBonusByTeam } from "./medicalEffects.js";
+import { applyMedicalToStageOutputs, loadMedicalBonusByTeam, loadMedicalBonusForRiders } from "./medicalEffects.js";
 import {
   loadStageRoleOverrides,
   resolveStageEntrants,
@@ -1864,6 +1864,21 @@ async function loadRacePoints(supabase, raceClass) {
 // linke race_simulation_rider_scores.run_id UDEN en select-roundtrip efter
 // insert. v3=false (langt de fleste kald i dag) rører IKKE denne sti — id
 // forbliver DB-genereret som altid, adfærd uændret.
+// #6984 M2+M3: medicinen på etapens skadeudfald læser den FROSNE bonus fra belastnings-
+// snapshottet (medical_bonus, skrevet ved første frysning under condition_model_v2).
+// Et genoptaget enrichment-trin genbruger snapshottet og giver derfor samme udfald,
+// også hvis holdet har ændret afdeling/læge imellem. Uden frosset bonus = uændret.
+export function applyFrozenMedical({ race, runs, incidents, timelines }) {
+  const bonusByRider = new Map();
+  for (const run of runs ?? []) {
+    for (const row of run.condition_load_snapshot ?? []) {
+      if (Number(row?.medical_bonus) > 0) bonusByRider.set(String(row.rider_id), Number(row.medical_bonus));
+    }
+  }
+  if (!bonusByRider.size) return { incidents, timelines };
+  return applyMedicalToStageOutputs({ incidents, timelines, bonusByRider, raceId: race.id });
+}
+
 async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision=null}) {
   // schema-columns-ok: condition_load_snapshot is added by this PR's 2026-09-29-5928-training-condition-date.sql and covered by actual SQL tests; reads are flag-gated until migration.
   const {data:saved,error}=await supabase.from('race_simulation_runs')
@@ -1888,6 +1903,11 @@ async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageR
         seasonRaceDaysByRider: await loadSeasonRaceDaysByRider({supabase,seasonId:race.season_id,riderIds:run.entrant_snapshot,excludeRaceId:race.id,excludeStageNumber:run.stage_number}),
       } : null;
       run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision,conditionWorkForRun(run),conditionV2);
+      // #6984: medicin-bonus fryses med snapshottet (RPC'en læser kun rider_id/load).
+      if(conditionV2On) {
+        const medical=await loadMedicalBonusForRiders({supabase,raceId:race.id,riderIds:run.entrant_snapshot});
+        run.condition_load_snapshot=run.condition_load_snapshot.map(row=>medical.get(String(row.rider_id))>0?{...row,medical_bonus:medical.get(String(row.rider_id))}:row);
+      }
     }
   }
 }
@@ -2458,11 +2478,8 @@ export async function simulateRace({
   // undgår begge DB-kald og buildRaceResults ser ingen peak-felter (bit-identisk).
   if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
 
-  const { resultRows, passageRows, runs, incidents: rawIncidents, moments, timelines: rawTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision });
-  // #6984 M2+M3: samme ene skridt som i stage-runneren (se dér).
-  const { incidents, timelines } = trainingOwnsRecovery && (rawIncidents ?? []).some((inc) => Number(inc?.injury_days) > 0) && await isConditionModelV2Enabled(supabase)
-    ? await applyMedicalToStageOutputsForRace({ supabase, raceId: race.id, entrants, incidents: rawIncidents, timelines: rawTimelines })
-    : { incidents: rawIncidents, timelines: rawTimelines };
+  // #6984: incidents/timelines er `let`: medicin-skridtet efter frysningen (se nedenfor) erstatter dem.
+  let { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -2494,6 +2511,7 @@ export async function simulateRace({
 
   if (trainingOwnsRecovery) {
     await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision});
+    ({ incidents, timelines } = applyFrozenMedical({ race, runs, incidents, timelines }));
     await persistRuns({supabase,race,runs});
     for(const run of runs) {
       await applyFatigue({supabase,raceId:race.id,stageNumber:run.stage_number,
@@ -3503,12 +3521,6 @@ export async function simulateStageByIndex({
       timelines = (allTimelines || []).filter((t) => t.stage_number === stageNumber);
     }
 
-    // #6984 M2+M3: medicinsk afdeling på motorens skadeudfald (v3 og v4), kun under
-    // condition_model_v2. ÉT sted lige efter simuleringen, så hændelserne,
-    // rider_condition-skaden og løbsfilmens tidslinje bærer samme skadelængde.
-    if (trainingOwnsRecovery && (incidents ?? []).some((inc) => Number(inc?.injury_days) > 0) && await isConditionModelV2Enabled(supabase)) {
-      ({ incidents, timelines } = await applyMedicalToStageOutputsForRace({ supabase, raceId: race.id, entrants, incidents, timelines }));
-    }
 
     if (dryRun) {
       const stageWinner = resultRows.find((r) => r.result_type === "stage" && r.rank === 1);
@@ -3667,7 +3679,10 @@ export async function simulateStageByIndex({
     // hele blokken er nået igennem. En afbrydelse midtvejs kører hele blokken igen, og
     // fordi simuleringen er seedet, skrives præcis de samme rækker.
     await runFinalizeStep("enrichment", async () => {
-    if(trainingOwnsRecovery) await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision});
+    if(trainingOwnsRecovery) {
+      await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision});
+      ({ incidents, timelines } = applyFrozenMedical({ race, runs, incidents, timelines }));
+    }
     await persistRuns({ supabase, race, runs, source: runSource });
     // Sub-2 (#2770): samme scoping-mønster (denne etape alene) — data-gated,
     // no-op'er ved tom liste (legacy-løb uden rutedata).

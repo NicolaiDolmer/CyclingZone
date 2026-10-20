@@ -164,12 +164,16 @@ export function applyMedicalToStageOutputs({ incidents, timelines, bonusByRider,
   return { incidents: mitigated, timelines: nextTimelines };
 }
 
-/** IO: bonus pr. rytter fra startfeltets hold (entrants bærer team_id). */
-export async function applyMedicalToStageOutputsForRace({ supabase, raceId, entrants, incidents, timelines }) {
-  if (!(incidents ?? []).some((i) => Number(i?.injury_days) > 0)) return { incidents, timelines };
-  const teamByRider = new Map((entrants ?? []).map((e) => [String(e.rider_id), e.team_id]));
-  const injuredTeams = [...new Set(incidents.filter((i) => Number(i?.injury_days) > 0).map((i) => teamByRider.get(String(i.rider_id))).filter(Boolean))];
-  const bonusByTeam = await loadMedicalBonusByTeam(supabase, injuredTeams);
-  const bonusByRider = new Map([...teamByRider].map(([rider, team]) => [rider, bonusByTeam.get(team) ?? 0]));
-  return applyMedicalToStageOutputs({ incidents, timelines, bonusByRider, raceId });
+/** IO: medicin-bonus pr. rytter i et løb (holdet han stillede op for, race_entries). */
+export async function loadMedicalBonusForRiders({ supabase, raceId, riderIds }) {
+  const ids = [...new Set((riderIds ?? []).map(String))];
+  const out = new Map();
+  if (!ids.length) return out;
+  // pagination-safe: ét løbs startfelt (under 200 ryttere).
+  const { data, error } = await supabase.from("race_entries").select("rider_id, team_id").eq("race_id", raceId);
+  if (error) throw new Error(`race_entries (medical): ${error.message}`);
+  const teamByRider = new Map((data ?? []).filter((r) => ids.includes(String(r.rider_id))).map((r) => [String(r.rider_id), r.team_id]));
+  const bonusByTeam = await loadMedicalBonusByTeam(supabase, [...teamByRider.values()]);
+  for (const [rider, team] of teamByRider) out.set(rider, bonusByTeam.get(team) ?? 0);
+  return out;
 }
