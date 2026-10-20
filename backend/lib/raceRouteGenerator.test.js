@@ -630,3 +630,18 @@ test("#6857 applySectorSignature: navn og længde på finale-sektoren, inden for
   assert.throws(() => applySectorSignature(sectors, { surface: "gravel", name: "X", length_km: 2 }, 160), /gravel on a cobbles stage/);
   assert.equal(applySectorSignature([], { surface: "gravel", name: "Y", length_km: 4 }, 180)[0].kind, "gravel");
 });
+
+test("#6857 (Codex P2) en rampe der ER signatur-stigningen (ramp_in_climb) lægges ikke på højdeprofilen igen", async () => {
+  const { buildElevationProfile } = await import("./routeElevationProfile.js");
+  const route = {
+    distance_km: 150, profile_type: "hilly",
+    climbs: [{ name: "Muur", category: "3", crest_km: 150, length_km: 1.2, avg_gradient: 11, summit_finish: true }],
+    sprints: [{ kind: "finish", km: 150, ramp_km: 1.2, ramp_gradient: 11 }],
+  };
+  route.elevation_gain_m = 900;
+  const withRamp = buildElevationProfile(route, "ramp-test").h;
+  const inClimb = buildElevationProfile({ ...route, sprints: [{ ...route.sprints[0], ramp_in_climb: true }] }, "ramp-test").h;
+  const sameRampless = buildElevationProfile({ ...route, sprints: [{ kind: "finish", km: 150 }] }, "ramp-test").h;
+  assert.notDeepEqual(inClimb, withRamp, "ramp_in_climb ændrer profilen (rampen lægges ikke oveni)");
+  assert.deepEqual(inClimb, sameRampless, "ramp_in_climb = som uden separat rampe");
+});

@@ -1749,7 +1749,11 @@ export function raceIdentityFor(race, identityProfiles = IDENTITY_PROFILES) {
   if (race?.race_type !== "stage_race") throw new Error(`race identity applies to stage races only (${label}, #6857)`);
   if (type === null) throw new Error(`signature without race_identity_type (${label}, #6857)`);
   if (!RACE_IDENTITY_TYPES.includes(type) || !identityProfiles[type]) throw new Error(`unknown race_identity_type "${type}" (${label}, #6857)`);
-  if (race?.terrain_archetype === "grand_tour") throw new Error(`race_identity_type is not defined for Grand Tours (${label}, #6857)`);
+  // #6857 (Codex P2): samme Grand Tour-kriterier som resten af repoet (arketype, klasse eller
+  // etapeantal), så en fejlkonfigureret arketype aldrig bygger en GT fra en kort-løbs-type.
+  const isGrandTour = race?.terrain_archetype === "grand_tour" || race?.race_class === "TourFrance"
+    || race?.race_class === "GiroVuelta" || Number(race?.stages) >= GRAND_TOUR_MIN_STAGES;
+  if (isGrandTour) throw new Error(`race_identity_type is not defined for Grand Tours (${label}, #6857)`);
   validateSignature(signature);
   return { type, profile: identityProfiles[type], features: signature?.features ?? [] };
 }
@@ -1956,8 +1960,12 @@ function buildAuthoredSingle(race) {
     sprints: clone(r.sprints),
     sectors: clone(r.sectors),
   };
-  const { segments, weather } = attachSegmentsAndWeather(merged, race, 1);
-  const elevation_profile = buildElevationProfile({ ...merged, segments }, elevationSeedKey(race, 1));
+  // #6857 (Codex P1): geometrien (sektorernes stjerner, højdeprofilen) seedes på rutens faste
+  // identitet uden sæson, så monumentet kører ens hvert år. Kun vejret skifter med sæsonen.
+  const fixedRace = { ...race, season_id: null, season_variant: 0 };
+  const { segments } = attachSegmentsAndWeather(merged, fixedRace, 1);
+  const { weather } = attachSegmentsAndWeather(merged, race, 1);
+  const elevation_profile = buildElevationProfile({ ...merged, segments }, elevationSeedKey(fixedRace, 1));
   return [{ ...merged, segments, weather, elevation_profile, generator_version: IDENTITY_GENERATOR_VERSION }];
 }
 

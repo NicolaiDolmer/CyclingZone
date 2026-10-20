@@ -1552,3 +1552,19 @@ test("#6857 (Codex P2) authored_route uden for et endags-monument afvises af gen
   assert.throws(() => generateRaceStageProfiles({ ...monument(0), race_class: "Class1" }, S5), /single-day Monuments/);
   assert.throws(() => generateRaceStageProfiles({ ...monument(0), race_type: "criterium" }, S5), /single-day Monuments/);
 });
+
+test("#6857 (Codex P1) monumentets geometri (sektor-stjerner, højdeprofil) er ens hvert år; kun vejret må skifte", () => {
+  const [a] = generateRaceStageProfiles(monument(1), S5);
+  for (let s = 2; s < 8; s++) {
+    const [b] = generateRaceStageProfiles(monument(s), S5);
+    assert.deepEqual(b.segments, a.segments, `segmenter s${s}`);
+    assert.deepEqual(b.elevation_profile, a.elevation_profile, `højdeprofil s${s}`);
+  }
+});
+
+test("#6857 (Codex P2) Grand Tours genkendes også på klasse og etapeantal, ikke kun arketypen", () => {
+  const race = idRace("allround", 8, 0);
+  assert.throws(() => generateRaceStageProfiles({ ...race, race_class: "TourFrance" }, S5), /Grand Tours/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, race_class: "GiroVuelta" }, S5), /Grand Tours/);
+  assert.throws(() => generateRaceStageProfiles({ ...race, stages: 21 }, S5), /Grand Tours/);
+});

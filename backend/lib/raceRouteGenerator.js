@@ -881,8 +881,10 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
   // #6857: en signatur-helling med topmål ER afslutningen - rampen tager dens gradient,
   // holdt inden for afslutningens bånd (spec §3). Trækket ovenfor bevares, så strømmen er stabil.
   const clampTo = (/** @type {number} */ v, /** @type {number[]} */ [lo, hi]) => Math.min(hi, Math.max(lo, v));
+  // #6857 (Codex P2): rampen er her selve signatur-stigningen, så dens højdemeter tælles kun én
+  // gang (i stigningen); ramp_in_climb fortæller højdeprofilen det samme.
   const finishRamp = drawnRamp && sigSummit
-    ? { ramp_km: drawnRamp.ramp_km, ramp_gradient: clampTo(sigClimb.avg_gradient, rampSpec.grad) }
+    ? { ramp_km: drawnRamp.ramp_km, ramp_gradient: clampTo(sigClimb.avg_gradient, rampSpec.grad), ramp_in_climb: true }
     : drawnRamp;
   const sprints = buildSprints(rng, target, finale_type, distance_km, isStageRace, climbs)
     .map((s) => (s.kind === "finish" && finishRamp ? { ...s, ...finishRamp } : s));
@@ -890,7 +892,7 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
   const sectors = signature?.kind === "sector" ? applySectorSignature(drawnSectors, signature, distance_km) : drawnSectors;
   return {
     distance_km,
-    elevation_gain_m: elevationGainS5({ climbs, distanceKm: distance_km, finishRamp }),
+    elevation_gain_m: elevationGainS5({ climbs, distanceKm: distance_km, finishRamp: finishRamp?.ramp_in_climb ? null : finishRamp }),
     climbs, sprints, sectors,
     terrain: deriveTerrainType(climbs),
     finale_type,
