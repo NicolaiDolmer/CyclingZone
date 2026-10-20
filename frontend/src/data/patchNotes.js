@@ -1,5 +1,119 @@
 export const PATCHES = [
   {
+    "version": "7.372",
+    "date": "2026-10-20",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Economy",
+        "en": {
+          "title": "Running costs are gone",
+          "body": "From today your team pays no Travel & staff per race day, and from season 5 there is no facility or academy upkeep either. Your forecast for next season already shows it. Old lines stay in your history."
+        },
+        "da": {
+          "title": "Driftsudgifterne er væk",
+          "body": "Fra i dag betaler dit hold ikke Rejse og stab pr. løbsdag, og fra sæson 5 er der heller ingen udgift til faciliteter eller akademi. Prognosen for næste sæson viser det allerede. Gamle linjer bliver stående i din historik."
+        },
+        "refs": [
+          6936,
+          6948
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squad",
+        "en": {
+          "title": "Age decides youth races",
+          "body": "A rider who is too old for a junior or U23 race can no longer be picked for it, by you or the assistant. He is shown greyed out with \"Over age limit\". Juniors can still ride U23 races."
+        },
+        "da": {
+          "title": "Alder afgør ungdomsløb",
+          "body": "En rytter, der er for gammel til et junior- eller U23-løb, kan ikke længere udtages til det, hverken af dig eller assistenten. Han vises gråt med \"Over aldersgrænsen\". Juniorer må stadig køre U23-løb."
+        },
+        "refs": [
+          6964,
+          6982
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Inbox",
+        "en": {
+          "title": "Deleted board messages stay deleted",
+          "body": "Messages from the board about the annual meeting no longer come back after you delete them."
+        },
+        "da": {
+          "title": "Slettede bestyrelsesbeskeder bliver væk",
+          "body": "Beskeder fra bestyrelsen om årsmødet kommer ikke længere igen, når du har slettet dem."
+        },
+        "refs": [
+          6946,
+          6983
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "A cleaner rider card",
+          "body": "The contract warning now sits in the contract field, the academy bar is a small U23 or Junior badge, and the value arrow and \"Extensions used\" are gone."
+        },
+        "da": {
+          "title": "Et ryddeligere rytterkort",
+          "body": "Kontraktvarslet står nu i kontraktfeltet, akademibjælken er blevet et lille U23- eller Junior-mærke, og værdipilen og \"Forlængelser brugt\" er væk."
+        },
+        "refs": [
+          6934,
+          6980
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Numbers that could be wrong are removed",
+          "body": "I removed numbers that were not always correct: the interest forecast on loans, the \"Bargain?\" card in scouting, the value and salary line in auction history, and a few more. They come back only when they can be right every time."
+        },
+        "da": {
+          "title": "Tal der kunne være forkerte er fjernet",
+          "body": "Jeg har fjernet tal, der ikke altid var rigtige: renteprognosen på lån, \"Røverkøb?\"-kortet i scouting, værdi- og lønlinjen i auktionshistorikken og et par til. De kommer kun tilbage, når de kan være rigtige hver gang."
+        },
+        "refs": [
+          6935,
+          6949
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Relegation from Division 3 works again",
+          "body": "At the season change the bottom teams in Division 3 are relegated to Division 4 again, at most one division per season."
+        },
+        "da": {
+          "title": "Nedrykning fra division 3 virker igen",
+          "body": "Ved sæsonskiftet rykker bunden af division 3 igen ned i division 4, højst én division pr. sæson."
+        },
+        "refs": [
+          6771,
+          6981
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.371",
     "date": "2026-10-20",
     "changes": [
