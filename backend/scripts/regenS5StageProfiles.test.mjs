@@ -631,7 +631,9 @@ test("#6929 (Codex P1) backup dækkes pr. etape-plads lige før sletning; restor
   await assertBackupCoversSlots({ backupSlots: async () => { throw new Error("må ikke kaldes"); } }, T, []);
   const id = "11111111-1111-4111-8111-111111111111";
   const sql = buildRestoreSql(T, [id]);
-  assert.ok(sql.includes(`or race_id in ('${id}')`), "tomme løb slettes også ved restore");
+  assert.ok(sql.includes(`where race_id in ('${id}');`), "apply's restore sletter kun de rørte løb (også tomme)");
+  assert.ok(sql.includes(`from public.${T}\n   where race_id in ('${id}')`), "og genindsætter kun de rørte løb");
+  assert.ok(!sql.includes("select distinct race_id"), "ingen sæson-bred sletning i apply's restore");
   assert.throws(() => buildRestoreSql(T, ["ikke-et-uuid"]), /uuid/);
   await assert.rejects(applyPlan({ db: {}, plan: { rowsByRaceId: new Map() }, racesToWrite: [] }), /clock skal injiceres/);
   await assert.rejects(waitForCalendarCache({ lastWriteAt: null }), /clock skal injiceres/);

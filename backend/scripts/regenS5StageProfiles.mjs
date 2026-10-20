@@ -579,13 +579,19 @@ export function buildRestoreSql(table, touchedRaceIds = []) {
   if (!BACKUP_TABLE_PATTERN.test(table)) throw new Error(`ugyldigt backup-navn: ${table}`);
   for (const id of touchedRaceIds) assertUuid(id, "race_id");
   const cols = PROFILE_COLUMNS.join(", ");
-  const touched = touchedRaceIds.length ? `\n    or race_id in (${[...touchedRaceIds].sort().map((id) => `'${id}'`).join(", ")})` : "";
+  // #6929 (Codex P1): apply's restore ruller KUN de løb apply skrev tilbage (sletning og
+  // genindsættelse), aldrig et urørt løb der kan være startet eller ændret siden snapshottet.
+  // Uden løbsliste (dry-runnets generelle restore.sql) gælder hele backuppen som før.
+  const scope = touchedRaceIds.length
+    ? `(${[...touchedRaceIds].sort().map((id) => `'${id}'`).join(", ")})`
+    : `(select distinct race_id from public.${table})`;
   return `-- #6857/#6929 restore af S5's etapeprofiler fra ${table}. Ejer-gated.
 begin;
 delete from public.race_stage_profiles
- where race_id in (select distinct race_id from public.${table})${touched};
+ where race_id in ${scope};
 insert into public.race_stage_profiles (${cols})
-  select ${cols} from public.${table};
+  select ${cols} from public.${table}
+   where race_id in ${scope};
 commit;
 `;
 }
