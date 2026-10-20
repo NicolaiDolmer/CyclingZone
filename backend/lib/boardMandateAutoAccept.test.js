@@ -543,14 +543,14 @@ test("#6946 backfillet stempel uden notits-række → ingen besked og intet noti
   assert.equal(supabase._state.stampUpdates.length, 0);
 });
 
-test("#6946 fejler afsendelsen, frigives stemplet, og næste kørsel prøver igen", async () => {
+test("#6946 fejler afsendelsen, sættes intet stempel, og næste kørsel prøver igen", async () => {
   const { supabase, now } = t3Fixture();
   const notified = [];
   const ok = makeInsertingNotifyUser(supabase, notified);
   const failing = async () => { throw new Error("insert failed"); };
   const r1 = await processMandateAutoAcceptCron({ supabase, notifyUser: failing, now });
   assert.equal(r1.errors, 1);
-  assert.equal(supabase._state.mandates[0].t3_notified_at ?? null, null, "stemplet frigivet");
+  assert.equal(supabase._state.mandates[0].t3_notified_at ?? null, null, "intet stempel uden levering");
 
   const later = new Date(now.getTime() + 30 * 60 * 1000);
   const r2 = await processMandateAutoAcceptCron({ supabase, notifyUser: ok, now: later });
@@ -559,27 +559,46 @@ test("#6946 fejler afsendelsen, frigives stemplet, og næste kørsel prøver ige
   assert.equal(supabase._state.mandates[0].t3_notified_at, later.toISOString());
 });
 
-test("#6946 en anden kørsel nåede at tage stemplet → denne sender ikke", async () => {
+test("#6946 (Codex P2) kørslen dør mellem afsendelse og stempel → næste kørsel stempler ud fra notitsen, ingen gensendelse og intet tab", async () => {
   const { supabase, now } = t3Fixture();
   const origFrom = supabase.from.bind(supabase);
+  let failStampOnce = true;
   supabase.from = (table) => {
     const api = origFrom(table);
     if (table !== "board_mandates") return api;
     return {
       ...api,
-      // Kørslen læste mandatet med stempel NULL; en samtidig kørsel stempler
-      // lige før vores betingede claim.
       update: (payload) => {
-        if ("t3_notified_at" in payload) supabase._state.mandates[0] = { ...supabase._state.mandates[0], t3_notified_at: "other-run" };
+        if ("t3_notified_at" in payload && failStampOnce) {
+          failStampOnce = false;
+          throw new Error("process died before stamp");
+        }
         return api.update(payload);
       },
     };
   };
   const notified = [];
-  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeInsertingNotifyUser(supabase, notified), now });
-  assert.equal(notified.length, 0);
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  const r1 = await processMandateAutoAcceptCron({ supabase, notifyUser, now });
+  assert.equal(notified.length, 1, "beskeden blev leveret");
+  assert.equal(r1.errors, 1);
+  assert.equal(supabase._state.mandates[0].t3_notified_at ?? null, null);
+
+  const later = new Date(now.getTime() + 30 * 60 * 1000);
+  const r2 = await processMandateAutoAcceptCron({ supabase, notifyUser, now: later });
+  assert.equal(notified.length, 1, "ingen gensendelse");
+  assert.equal(r2.errors, 0);
+  assert.equal(supabase._state.mandates[0].t3_notified_at, later.toISOString(), "beviset flyttet til mandatet");
+});
+
+test("#6946 notifyUser leverer ikke (fx 24t-dedup) → intet stempel; notits-beviset tager over næste kørsel", async () => {
+  const { supabase, now } = t3Fixture();
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({
+    supabase, notifyUser: async (args) => { notified.push(args); return { delivered: false, deduped: true }; }, now,
+  });
   assert.equal(result.reminders_sent, 0);
-  assert.equal(result.errors, 0);
+  assert.equal(supabase._state.mandates[0].t3_notified_at ?? null, null);
 });
 
 test("#6946 migrations-vinduet: stempel-kolonnerne findes ikke endnu → gammel notits-dedupe, ingen fejl", async () => {

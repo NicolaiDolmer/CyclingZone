@@ -287,66 +287,42 @@ async function hasMandateNotice({ supabase, userId, mandateId, type, titleCode }
   return Array.isArray(data) && data.length > 0;
 }
 
-/**
- * #6946 · Sæt stemplet KUN hvis det stadig er NULL. Returnerer true når denne
- * kørsel satte det (og dermed ejer afsendelsen); false når en anden kørsel kom
- * først.
- */
-async function claimMandateNoticeStamp({ supabase, mandateId, stamp, stampedAt }) {
-  const { data, error } = await supabase
+// #6946 · Sæt stemplet KUN hvis det stadig er NULL, så det første tidspunkt
+// bevares hvis to kørsler stempler samme mandat.
+async function stampMandateNotice({ supabase, mandateId, stamp, stampedAt }) {
+  const { error } = await supabase
     .from("board_mandates")
     .update({ [stamp]: stampedAt })
     .eq("id", mandateId)
-    .is(stamp, null)
-    .select("id");
+    .is(stamp, null);
   if (error) throw new Error(`board_mandates ${stamp} stamp failed: ${error.message}`);
-  return Array.isArray(data) && data.length > 0;
-}
-
-// Fejlede afsendelsen, frigives stemplet igen (kun vores eget), så næste kørsel
-// prøver igen. Lykkedes indsættelsen før fejlen, fanger notits-beviset det.
-async function releaseMandateNoticeStamp({ supabase, mandateId, stamp, stampedAt }) {
-  const { error } = await supabase
-    .from("board_mandates")
-    .update({ [stamp]: null })
-    .eq("id", mandateId)
-    .eq(stamp, stampedAt);
-  if (error) throw new Error(`board_mandates ${stamp} release failed: ${error.message}`);
 }
 
 /**
  * #6946 · Højst én besked af hver slags pr. mandat, også når spilleren sletter
  * den i indbakken. Rækkefølge:
  *   1. Stemplet står → sendt, færdig.
- *   2. Notits-bevis findes (sæsonskiftet / før migrationen) → stempl, send ikke.
- *   3. Ellers: tag stemplet (betinget), send, og frigiv stemplet hvis
- *      afsendelsen kaster.
+ *   2. Notits-bevis findes (sæsonskiftet / før migrationen / en kørsel der
+ *      døde mellem afsendelse og stempel) → stempl, send ikke.
+ *   3. Ellers: send, og stempl når beskeden er leveret.
+ * Stemplet skrives EFTER afsendelsen (Codex P2): et stempel før afsendelse
+ * ville tabe beskeden for altid, hvis processen døde imellem. Dør den efter
+ * afsendelsen, fanger trin 2 det i næste kørsel (notits-rækken står der).
+ * Samtidige kørsler med samme tekst fanges af notifyUser's 24t-tekst-dedup.
  * Uden stempel-kolonnerne (migrations-vinduet) kører kun trin 2 + send, som før.
  */
 async function sendMandateNoticeOnce({ supabase, mandate, userId, stamp, type, titleCode, now, stampsAvailable, send }) {
   if (stampsAvailable && mandate[stamp]) return false;
 
+  const stampedAt = now.toISOString();
   if (await hasMandateNotice({ supabase, userId, mandateId: mandate.id, type, titleCode })) {
-    if (stampsAvailable) await claimMandateNoticeStamp({ supabase, mandateId: mandate.id, stamp, stampedAt: now.toISOString() });
+    if (stampsAvailable) await stampMandateNotice({ supabase, mandateId: mandate.id, stamp, stampedAt });
     return false;
   }
 
-  if (!stampsAvailable) return send();
-
-  const stampedAt = now.toISOString();
-  if (!await claimMandateNoticeStamp({ supabase, mandateId: mandate.id, stamp, stampedAt })) return false;
-  try {
-    return await send();
-  } catch (sendError) {
-    try {
-      await releaseMandateNoticeStamp({ supabase, mandateId: mandate.id, stamp, stampedAt });
-    } catch (releaseError) {
-      // best-effort: den oprindelige afsendelsesfejl kastes lige herunder og
-      // captures af cronens per-mandat-catch; frigivelsesfejlen logges kun.
-      console.error(`  ❌ mandate notice: kunne ikke frigive ${stamp} for mandat ${mandate.id} efter fejlet afsendelse:`, releaseError.message);
-    }
-    throw sendError;
-  }
+  const delivered = await send();
+  if (delivered && stampsAvailable) await stampMandateNotice({ supabase, mandateId: mandate.id, stamp, stampedAt });
+  return delivered;
 }
 
 async function sendOpeningNotice({ supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, stampsAvailable }) {
