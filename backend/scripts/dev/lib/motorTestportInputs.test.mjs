@@ -372,7 +372,7 @@ test("#6909 (Codex P2) generatorField: bundne ryttere skjules for senere overlap
   };
   const runner = async (args) => {
     const { data } = await args.supabase.from("riders").select("id, team_id").in("team_id", ["t1"]); // pagination-safe: test-fake
-    const pick = data.map((r) => r.id)[0];
+    const pick = data.filter((r) => r.team_id === "t1").map((r) => r.id)[0];
     return { generated: 1, staged: [{ race_id: args.now === Date.parse("2026-10-28T10:00:00Z") ? "r1" : "r2", team_id: "t1", picks: [{ rider_id: pick, race_role: "captain" }] }] };
   };
   const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
@@ -382,8 +382,23 @@ test("#6909 (Codex P2) generatorField: bundne ryttere skjules for senere overlap
 });
 
 test("#6909 readOnlyDb excludeKeys: skjuler raekker og afviser stadig skrivning", async () => {
-  const db = readOnlyDb(fakeDb({ riders: [{ id: "a" }, { id: "b" }] }), { overlays: [{ table: "riders", key: "id", excludeKeys: new Set(["a"]) }] });
+  const db = readOnlyDb(fakeDb({ riders: [{ id: "a", team_id: "t" }, { id: "b", team_id: "t" }] }), { overlays: [{ table: "riders", key: "id", excludeKeys: new Set(["a"]), nullField: "team_id" }] });
   const { data } = await db.from("riders").select("id").in("id", ["a", "b"]); // pagination-safe: test-fake
-  assert.deepEqual(data, [{ id: "b" }]);
+  assert.deepEqual(data, [{ id: "a", team_id: null }, { id: "b", team_id: "t" }], "siden beholder sin laengde; den skjulte rytter er frakoblet holdet");
   assert.throws(() => db.from("riders").update({}), /read-only/);
+});
+
+test("#6909 (Codex P2) prepareInputs: en cache fra andre ruter (afbrudt koersel uden meta) bygges forfra", async () => {
+  const outDir = tmp("stale");
+  const dir = tmp("stale-routes");
+  writeFileSync(path.join(dir, "r1.json"), JSON.stringify(routeDoc("r1", 2)));
+  const routes = loadRoutesDir(dir);
+  mkdirSync(path.join(outDir, "races", "r1"), { recursive: true });
+  writeFileSync(path.join(outDir, "races", "r1", "cache.json"), JSON.stringify({ ...raceData("r1", { entries: [{ rider_id: "x", team_id: "t1" }] }), fieldSource: "prod", routesSignature: "gammel" }));
+  const source = { withField: async () => new Set(["r1"]), raceData: async () => new Map([["r1", raceData("r1", { entries: [{ rider_id: "x", team_id: "t1" }] })]]) };
+  const out = await prepareInputs({ raceIds: ["r1"], outDir, routes, source });
+  const cache = JSON.parse(readFileSync(path.join(outDir, "races", "r1", "cache.json"), "utf8"));
+  assert.equal(cache.routesSignature, routes.signature, "genbygget med de aktuelle ruter");
+  assert.deepEqual(out.ids, ["r1"]);
+  rmSync(outDir, { recursive: true, force: true }); rmSync(dir, { recursive: true, force: true });
 });

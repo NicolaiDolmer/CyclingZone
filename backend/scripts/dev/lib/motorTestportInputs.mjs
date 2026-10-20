@@ -154,7 +154,14 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
         const out = [];
         for (const r of cur) {
           const k = r?.[l.key];
-          if (l.excludeKeys) { if (!l.excludeKeys.has(k)) out.push(r); continue; }
+          // #6909 (Codex P2): en skjult raekke fjernes IKKE (det ville afkorte siden og faa en
+          // pagineret laeser til at stoppe for tidligt); den beholdes, men "frakobles" via nullField
+          // (fx team_id = null), saa generatoren ikke kan udtage rytteren.
+          if (l.excludeKeys) {
+            if (!l.excludeKeys.has(k)) out.push(r);
+            else if (l.nullField) out.push({ ...r, [l.nullField]: null });
+            continue;
+          }
           if (!l.rowsByKey.has(k)) { out.push(r); continue; }
           const done = injected.get(l);
           if (done.has(k)) continue;
@@ -214,12 +221,21 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
   if (!routes && !synthetic) return { prebuilt, ids: raceIds, field: null, routes: null };
 
   const fresh = raceIds.filter((id) => !existsSync(cacheFile(id)));
-  const resumed = raceIds.filter((id) => existsSync(cacheFile(id)));
+  const resumedAll = raceIds.filter((id) => existsSync(cacheFile(id)));
+  const resumed = resumedAll;
+  // #6909 (Codex P2): en cache skrevet med andre ruter (fx efter en afbrudt koersel, foer
+  // meta-filen fandtes) genbruges aldrig; den bygges forfra.
+  const staleIds = new Set(resumed.filter((id) => {
+    const c = JSON.parse(readFileSync(cacheFile(id), "utf8"));
+    return (c.routesSignature ?? null) !== (routes?.signature ?? null);
+  }));
   for (const id of resumed) {
+    if (staleIds.has(id)) continue;
     prebuilt.add(id);
     const kind = JSON.parse(readFileSync(cacheFile(id), "utf8")).fieldSource ?? "prod";
     if (kind === "prod") field.prod += 1; else field.synthetic += 1;
   }
+  fresh.push(...staleIds);
 
   // Hvilke loeb har allerede et felt (prod-tilmeldinger eller eksportens startliste)?
   let hasField;
@@ -262,7 +278,7 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
     }
     if (routes) data = applyRoutes(data, routes.byRace.get(id));
     mkdirSync(path.dirname(cacheFile(id)), { recursive: true });
-    writeFileSync(cacheFile(id), JSON.stringify({ ...data, fieldSource, routesFrom: routesMeta?.dir ?? null }));
+    writeFileSync(cacheFile(id), JSON.stringify({ ...data, fieldSource, routesFrom: routesMeta?.dir ?? null, routesSignature: routes?.signature ?? null }));
     prebuilt.add(id);
     ids.push(id);
     if (fieldSource === "prod") field.prod += 1; else field.synthetic += 1;
@@ -387,7 +403,7 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
           const groupWins = group.map(windowOf).filter(Boolean);
           const excludeKeys = new Set([...bookedEarly].filter(([, wins]) => groupWins.some((w) => overlapsAny(wins, w))).map(([rid]) => rid));
           const res = await run({
-            supabase: readOnlyDb(db, { overlay, overlays: [excludeKeys.size ? { table: "riders", key: "id", excludeKeys } : null] }), seasonId, dryRun: true, mode: "late_fill",
+            supabase: readOnlyDb(db, { overlay, overlays: [excludeKeys.size ? { table: "riders", key: "id", excludeKeys, nullField: "team_id" } : null] }), seasonId, dryRun: true, mode: "late_fill",
             now: startMs, includeStaged: true, notify: async () => {},
           });
           log(`syntetisk felt (generator, dry-run): saeson ${seasonId}, start ${new Date(startMs).toISOString().slice(0, 16)}: ${group.length} loeb, ${res.generated} pladser`);
