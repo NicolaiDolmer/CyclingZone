@@ -46,7 +46,9 @@ i benchen, før en knap drejes.
 ## 3. Krav
 
 - K1 Udbrudsbånd pr. løbstype (ejer 19/10 #1): ét bånd for Grand Tours, ét for korte
-  etapeløb og ét for endagsløb, faldende i den rækkefølge (højere i små løb end i store).
+  etapeløb og ét for endagsløb, faldende i den rækkefølge mellem
+  løbstyperne. Inden for hvert bånd ligger mindre løb (lavere divisioner, mindre felter)
+  i den høje ende og store løb i den lave; det ændrer ikke rækkefølgen mellem typerne.
   Båndene står privat i `balance-internals/6804/`.
   Terrænbåndene i Udbrudsmål §2 gælder fortsat oveni.
 - K2 Kuperet spurtafslutning kan være udbrudsdag, lavere chance end bakke/mur/nedkørsel,
@@ -80,7 +82,9 @@ når forspringet nærmer sig det holdene tolererer pr. profil og løbstype, går
 lad-gå-fasen over i kontrolleret jagt hos de hold der har etapeinteresse eller
 klassementsinteresse. Interessen læses fra BEGGE kilder i `stageWinChaseForceV3`:
 `interestByTeam` (etapeinteresse fra finale-rangerede ryttere) OG `teamSignals`
-(klassementsreaktioner og ordrer). Et hold med kun GC-signal tæller som interesseret, så
+(klassementsreaktioner og ordrer). Kun POSITIVE `teamSignals` tæller som interesse (`let_go` skriver et negativt signal; samme
+`Math.max(0, signal)` som i `stageWinChaseForceV3`). Et hold med kun positivt GC-signal
+tæller som interesseret, så
 et farligt udbrud aldrig vokser ind i den øvre zone mod K7's top-10-regel. Kun når INGEN hold har interesse,
 kan forspringet vokse til den sjældne øvre zone. Det kvarter, spillerne så, kræver
 dermed et felt uden jagt-interesse, og det kan forklares i filmen ("ingen hold ville
