@@ -62,8 +62,8 @@ for (const width of [1440, 375]) {
             const cells = page.getByTestId(stage.band ? "academy-prognosis-band" : "academy-prognosis-learning");
             if (surface === "scouting") await expect(cells).toHaveCount(2);
             const cell = surface === "scouting" ? cells.last() : cells.first();
-            await cell.scrollIntoViewIfNeeded();
             await expect(cell).toBeVisible();
+            await cell.scrollIntoViewIfNeeded();
             if (stage.band) await expect(cell).toContainText(`${stage.band.lo}–${stage.band.hi}`);
             await expect(page.locator("[data-potential-band]")).toHaveCount(0);
             if (surface === "scouting") await expect(page.locator("[data-type]")).toHaveCount(0);
