@@ -20,12 +20,12 @@ Målt read-only i prod 20/10 på Vuelta-feltet (første to afregnede GT-datoer),
 
 ## 3. Rod-årsag (kode)
 
-1. **En etape vejer 1/5 døgn.** `backend/lib/trainingDateCondition.js:35-38` tager gennemsnittet af datoens fem pladser (træning og etaper) og kører én restitution. Det var rigtigt for træning (fem træningspas = én dags træning, ejerens ønske 29/9), men det dividerer også etapens belastning med fem. En GT på seks datoer får dermed belastning svarende til få døgn, men seks fulde restitutioner.
+1. **En etape vejer kun en brøkdel af et døgn.** `backend/lib/trainingDateCondition.js:35-38` lægger datoens pladser (træning og etaper) i ét gennemsnit og kører én restitution. Det var rigtigt for træning (datoens træningspas er tilsammen én dags træning, ejerens ønske 29/9), men det udvander også etapens belastning. En GT på seks datoer får dermed belastning svarende til få døgn, men seks fulde restitutioner. (Den præcise vægt står privat.)
 2. **Én hvileplads udligner en etape.** Hvile har en stor negativ belastning (`backend/lib/dailyTraining.js:27`), og den indgår i samme gennemsnit som etaperne.
 3. **Inaktivitet bygger form.** `backend/lib/riderCondition.js:67-70` (`nextForm`) giver plus under formzonen og i zonen; minus kun ved høj træthed. Det strider mod ejerens formmål 29/9 (#5884): "længere inaktivitet og overbelastning svækker den".
 4. **Recovery-evnen betyder lidt.** `backend/lib/riderCondition.js:39-42`: evne-leddet er lille, og den proportionale andel er ens for alle.
 5. **Ingen ophobning mellem dagens etaper.** Under dato-modellen køres alle etaper på samme dato på åbningstrætheden (`backend/lib/raceRunner.js:963-973`, `raceFatigue.js:79/84` med `trainingOwnsRecovery`).
-6. **GT-akkumuleringen fra 15/10 drukner.** `backend/lib/raceFatigue.js:184-193` (kun `s5_profiles_v1`) gør sene etaper dyrere, men tillægget divideres med fem i punkt 1.
+6. **GT-akkumuleringen fra 15/10 drukner.** `backend/lib/raceFatigue.js:184-193` (kun `s5_profiles_v1`) gør sene etaper dyrere, men tillægget udvandes af gennemsnittet i punkt 1.
 7. **Ingen sæsonbelastning** findes.
 
 ## 4. Mål (spillernes seks krav, #6984)
@@ -108,10 +108,12 @@ En rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig
 
 ## 7. Gate før tænding (simulér-før-ship)
 
+Målbåndene for hvert punkt nedenfor står privat i `balance-internals/6984/gate-maal-2026-10-20.md` og godkendes af ejeren på tænd-kortet.
+
 1. Harness på hele populationen med S5-kalenderen og S4-programmerne: D3-gates fra #5928 (G1 median i båndet, G2 andel over skadegrænsen, G3 etapeløb kan skubbe over grænsen), nu også pr. GT og pr. sæsontredjedel.
 2. §5.8-garantien som test.
-3. Formfordeling: andelen på fuld form skal falde markant, uden store formfald pr. dato.
-4. Skaderisiko pr. 1.000 rytter-datoer må ikke eksplodere.
+3. Formfordeling: andelen på fuld form ved sæsonens slut og det største formfald pr. dato skal ligge inden for målbåndene.
+4. Skaderisiko pr. 1.000 rytter-datoer skal ligge inden for målbåndet.
 5. Regressionstest: flag off = bit-identisk med i dag. Dato uden etaper: kun træthedsberegningen er bit-identisk (middel-rytter); formen testes særskilt mod B4 (inaktivitet og overbelastning koster form).
 6. Ejer ser tallene (privat) og giver ordret go.
 
