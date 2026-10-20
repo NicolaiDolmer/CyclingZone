@@ -1,9 +1,9 @@
-# Form og træthed 2.0 (#6984): designudkast
+# Form og træthed 2.0 (#6984): design
 
-**Status:** udkast til ejeren, 20/10 2026. Intet bygget, intet tændt, ingen prod-skrivning.
+**Status:** ejer-beslutninger B1-B5 taget og låst 20/10 2026 (§9). Byg bag flaget `condition_model_v2`; intet tændt, ingen prod-skrivning.
 **Tal:** alle målinger, konstanter og simuleringer ligger privat i `balance-internals/6984/` (hard rule 17). Denne spec indeholder kun mekanik og retning.
 **Relateret:** #5928 (én opgørelse pr. dato) · #5884 (formmål 29/9) · #3413 (udbrud er gratis) · #6156 (form og formtoppe i v4 fra S5) · #6110 (Udvikling 2.0) · #6649 (dagsform).
-**SSOT:** [`docs/TRAINING_RULES.md`](../../TRAINING_RULES.md) §5 (restitution, form og skader) og [`docs/RACE_ENGINE_RULES.md`](../../RACE_ENGINE_RULES.md) (løbsmotorens input). Begge opdateres i byg-PR'en, så de beskriver v2 bag flaget; denne spec ændrer dem ikke og er ikke build-godkendt, før beslutningerne i §9 er taget.
+**SSOT:** [`docs/TRAINING_RULES.md`](../../TRAINING_RULES.md) §5 (restitution, form og skader) og [`docs/RACE_ENGINE_RULES.md`](../../RACE_ENGINE_RULES.md) (løbsmotorens input). Begge opdateres i byg-PR'en, så de beskriver v2 bag flaget; denne spec ændrer dem ikke.
 
 ## 1. Problemet
 
@@ -48,11 +48,11 @@ Opgørelsen pr. dato bevares (#5928). Inden for datoen:
 - Etaperne tages ud af gennemsnittet med træningen og regnes hver for sig som en løbsdag for kroppen: etapens belastning lægges til, og rytteren restituerer imellem, i etapernes rækkefølge.
 - De frie pladser regnes som i dag.
 - En dato uden etaper giver præcis samme resultat som i dag. Træning bliver ikke dyrere.
-- Hvor tungt en etape vejer i forhold til en træningsplads, er beslutning B1; vægtene står privat i `balance-internals/6984/`.
+- B1 (ejer 20/10): en etape vejer et helt døgn. Kalibreringen står privat i `balance-internals/6984/`.
 
 Konsekvens: en dato med flere etaper føles som flere hårde dage. Det er det, spillerne kaldte "S4 virkede": hviledage skal times.
 
-**Etapernes rækkefølge inden for datoen (§3 punkt 5)** følger med: etape 2 køres på trætheden efter etape 1. Det er en ændring i løbsmotorens input og kræver derfor en regel-revision (mønster fra #5955), ikke kun flaget. Se beslutning B2.
+**Etapernes rækkefølge inden for datoen (§3 punkt 5)** følger med: etape 2 køres på trætheden efter etape 1. B2 (ejer 20/10): med. Det er en ændring i løbsmotorens input og kræver derfor en regel-revision (mønster fra #5955) ud over flaget.
 
 ### 5.2 Profil og længde
 - Profiltabellen får større spænd mellem flad og højbjerg, i spillernes rækkefølge: flad < bølget < kuperet < klassiker/brosten/grus < mellembjerg < bjerg < højbjerg; enkeltstart lidt over flad.
@@ -118,19 +118,19 @@ Garanti, der testes i harness: en rytter med middel recovery, der kører en hel 
 ## 8. Tænding
 
 - Flaget tændes ved en dato-grænse (aftenopgørelsen), aldrig midt på en dato.
-- Anbefalet: fra S5's første dato (sæsontæller starter på nul, ingen GT i gang). Alternativ: før Giroen 1/11. Se beslutning B5.
+- B5 (ejer 20/10): fra S5's første dato (sæsontælleren starter på nul, ingen GT i gang), kun på ejerens ordrette go efter harness-tallene. Er gaterne ikke grønne inden 25/10, spørges ejeren, før noget flyttes.
 - Rollback: flag off ved næste dato-grænse. Den tilstand, v2 allerede har skrevet i `rider_condition`, bliver bevidst stående og er åbning for den gamle model; den gamle model trækker den selv tilbage mod sin ligevægt over få datoer. Før tænding tages et snapshot af `rider_condition` (træthed, form) pr. rytter; skal tilstanden rulles tilbage, er det en særskilt, ejer-gated datareparation fra snapshottet med dry-run og tal først, aldrig automatisk.
 
-## 9. Beslutninger til ejeren (én ad gangen)
+## 9. Ejer-beslutninger 20/10 (låst, kommentar på #6984)
 
-Se kommentaren på #6984. Kort:
-- **B1** Hvor tungt en etape vejer i forhold til en træningsplads: tungt (A) eller lettere (B). Vægtene står privat.
-- **B2** Ophobning mellem dagens etaper i selve løbet: med (A) eller kun i aftenopgørelsen (B).
-- **B3** Sæsonbelastning: glidende (A) eller spillernes trappe (B).
-- **B4** Form: inaktivitet koster (A) eller kun overbelastning koster (B).
-- **B5** Tænding: ved S5-start 25/10 (A) eller før Giroen 1/11 (B).
+- **B1** En etape vejer et helt døgn.
+- **B2** Trætheden hober sig op mellem dagens etaper, også inde i løbet (regel-revision).
+- **B3** Sæsonbelastningen er glidende og deler løbsdagstælleren med Udvikling 2.0's løbsbremse.
+- **B4** Både inaktivitet og overbelastning koster form.
+- **B5** Tændes ved S5-start på ordret go efter harness-tallene.
+- **Tillæg:** medicin-faciliteten bygges færdig i samme omgang og påvirker form og træthed. Forslag: [`2026-10-20-6984-medicin-facilitet-forslag.md`](2026-10-20-6984-medicin-facilitet-forslag.md).
 
-## 10. Byg-plan (efter beslutningerne)
+## 10. Byg-plan
 
 1. Ren funktion `settleTrainingDateConditionV2` + tests (etaper uden for træningsgennemsnittet, frie pladser som i dag, flag off bit-identisk).
 2. Profil/længde/sæson-belastning i `raceFatigue.js` (`stageRaceConditionLoad`), hentet-udbrud-tillæg fra v4's gruppe-snapshots.
