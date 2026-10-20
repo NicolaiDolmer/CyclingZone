@@ -40,6 +40,8 @@
 //                            trupper; bench = det anonymiserede Giro-felt). #6909
 //   --routes-from=<dir>      foreslaaede ruter (cz-race-routes/v1, se docs/MOTOR_TESTPORT.md)
 //                            i stedet for prod's etapeprofiler; default-udvaelgelse = mappens loeb. #6909
+//   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
+//                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //
 // Refs #6750 #6909
 import { spawn } from "node:child_process";
@@ -106,6 +108,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     syntheticField: syntheticRaw,
     routesFrom: get("routes-from"),
     season,
+    timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
   };
 }
 
@@ -228,12 +231,13 @@ export function planTasks({ raceIds, opts, outDir, fromDir = null, prebuilt = ne
  * Koerer `tasks` med hoejst `parallel` ad gangen. `run(task)` -> Promise<exitkode>.
  * Returnerer {ok, failed} (id'er). En fejl stopper ikke de andre.
  */
-export async function runPool(tasks, parallel, run, { onDone = null } = {}) {
+export async function runPool(tasks, parallel, run, { onDone = null, shouldStop = () => false } = {}) {
   const queue = tasks.slice();
   const ok = [];
   const failed = [];
   const worker = async () => {
-    while (queue.length) {
+    // #6909: shouldStop (tidsbudget) starter ingen nye opgaver; de koerende goeres faerdige.
+    while (queue.length && !shouldStop()) {
       const t = queue.shift();
       let code;
       try { code = await run(t); } catch (err) { code = 1; t.error = String(err?.message ?? err); }
@@ -242,7 +246,7 @@ export async function runPool(tasks, parallel, run, { onDone = null } = {}) {
     }
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(parallel, tasks.length)) }, worker));
-  return { ok, failed };
+  return { ok, failed, pending: queue.map((t) => t.id) };
 }
 
 /** Child-proces med log til <dir>/log.txt og `done` ved exit 0. */
@@ -485,9 +489,12 @@ export async function main(argv = process.argv.slice(2), { now, clock, defaultBa
   const tasks = planTasks({ raceIds, opts, outDir, fromDir, prebuilt: inputs.prebuilt });
   const todo = tasks.filter((t) => !t.done);
   console.log(`${tasks.length} opgaver (${tasks.length - todo.length} allerede faerdige), ${opts.parallel} ad gangen: ${opts.baseline} -> ${opts.candidate}, ${opts.seeds} seeds`);
+  const stopAt = opts.timeBudgetMin ? Date.now() + opts.timeBudgetMin * 60_000 : null;
   const res = await runPool(todo, opts.parallel, runChild, {
     onDone: (t, code, p) => console.log(`[${p.ok + p.failed}/${p.total}] ${t.id}: ${code === 0 ? "ok" : `FEJL (exit ${code}, se ${path.relative(REPO_ROOT, path.join(t.dir, "log.txt"))})`}`),
+    shouldStop: () => stopAt !== null && Date.now() >= stopAt,
   });
+  if (res.pending.length) console.log(`Tidsbudget naaet: ${res.pending.length} opgaver venter. Koer samme kommando igen for at genoptage.`);
   meta.failedRaces = res.failed;
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
   const card = collectCard({ outDir, baseline: opts.baseline, candidate: opts.candidate, meta: { ...meta, generatedAt: stamp().toISOString() }, thresholds });

@@ -241,7 +241,7 @@ test("runPool: hoejst `parallel` ad gangen, fejl stopper ikke de andre", async (
   assert.equal(peak, 4);
   assert.deepEqual(res.failed.sort(), ["t3", "t5"]);
   assert.equal(res.ok.length, 7);
-  assert.deepEqual(await runPool([], 4, async () => 0), { ok: [], failed: [] });
+  assert.deepEqual(await runPool([], 4, async () => 0), { ok: [], failed: [], pending: [] });
 });
 
 test("#6750: en output-mappe afviser en anden loebsudvaelgelse, men tillader genoptagelse", () => {
@@ -335,6 +335,16 @@ test("#6909 planTasks: en forbygget cache i loebsmappen laeses (aldrig eksporten
   const [t] = planTasks({ raceIds: ["r1"], opts, outDir: "OUT", fromDir: "EXP", prebuilt: new Set(["r1"]) });
   assert.ok(t.args.includes(`--cache=${path.join("OUT", "races", "r1", "cache.json")}`));
   assert.ok(!t.args.some((x) => x.startsWith("--save-cache")));
+});
+
+test("#6909 runPool: tidsbudgettet starter ingen nye opgaver, de koerende goeres faerdige, resten er pending", async () => {
+  let started = 0;
+  const tasks = ["a", "b", "c", "d"].map((id) => ({ id }));
+  const res = await runPool(tasks, 2, async () => { started += 1; return 0; }, { shouldStop: () => started >= 2 });
+  assert.deepEqual(res.ok, ["a", "b"]);
+  assert.deepEqual(res.pending, ["c", "d"]);
+  assert.equal(parseArgs(["--candidate=c", "--time-budget=9"], { defaultBaseline: "b" }).timeBudgetMin, 9);
+  assert.equal(parseArgs(["--candidate=c"], { defaultBaseline: "b" }).timeBudgetMin, null);
 });
 
 test("#6909 assertSameRun: andet syntetisk felt, rute-mappe eller saeson er en anden koersel", () => {
