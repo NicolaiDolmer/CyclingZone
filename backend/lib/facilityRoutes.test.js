@@ -293,6 +293,24 @@ test("GET facilities: seasonCost — totalUpkeep/totalPayroll/balance (#2220 A4b
   // totalPayroll = summen af aktive staff-lønninger.
   assert.equal(body.seasonCost.totalPayroll, 22_000 + 30_000);
   assert.equal(body.seasonCost.balance, 1_250_000);
+  // #6936: upkeep trækkes som standard (economy_no_upkeep_v1 off).
+  assert.equal(body.seasonCost.upkeepCharged, true);
+});
+
+test("#6936 GET facilities: noUpkeep → upkeepCharged=false og totalUpkeep 0, løn og saldo uændret", async () => {
+  const fixture = {
+    facilities: [{ track: "training", tier: 2 }, { track: "commercial", tier: 5 }],
+    staff: [{ id: "s1", name: "Sofie Lindqvist", role: "training", tier: 2, salary: 22_000 }],
+    balance: 1_250_000,
+  };
+  const off = await getClubFacilitiesHandler({ teamId: TEAM_ID }, createSupabaseMock(fixture), { flags: ENABLED });
+  const on = await getClubFacilitiesHandler({ teamId: TEAM_ID }, createSupabaseMock(fixture), { flags: { ...ENABLED, noUpkeep: true } });
+  assert.equal(on.status, 200);
+  assert.equal(on.body.seasonCost.upkeepCharged, false);
+  assert.equal(on.body.seasonCost.totalUpkeep, 0);
+  assert.ok(off.body.seasonCost.totalUpkeep > 0);
+  assert.equal(on.body.seasonCost.totalPayroll, off.body.seasonCost.totalPayroll);
+  assert.equal(on.body.seasonCost.balance, off.body.seasonCost.balance);
 });
 
 test("GET facilities: flag off → 403 facilities_disabled", async () => {

@@ -41,8 +41,8 @@
           "text": "Le revenu de sponsor est échelonné par division pour qu'une équipe compétente reste viable : division 1 {sponsorD1} CZ$, division 2 {sponsorD2} CZ$, division 3 {sponsorD3} CZ$, division 4 {sponsorD4} CZ$. Ton contrat signé garde sa base garantie pendant toute sa durée. Si tu changes de division pendant sa durée, un ajustement de division distinct de {divisionAdjustmentPct} pour cent de l'écart entre les deux divisions est versé en plus, chaque saison où l'écart dure."
         },
         "upkeep": {
-          "title": "Entretien",
-          "text": "Chaque saison, ton équipe paie un coût de fonctionnement (entretien), échelonné par division : les divisions supérieures paient plus. Il est prélevé soit en une fois au début de la saison, soit sous forme de Déplacements et staff pour chaque jour de course senior où ton équipe prend le départ ; le total de la saison est le même. J'ajuste les chiffres exacts entre les saisons, et tu vois toujours chaque prélèvement dans ton journal des Finances."
+          "title": "Frais d'entretien",
+          "text": "À partir de la saison 5, ton équipe n'a plus de frais d'entretien : ni entretien, ni Voyages et staff, ni entretien des installations ou de l'académie. Tes principaux coûts sont les salaires des coureurs et du staff et les intérêts des prêts."
         },
         "salary": {
           "title": "Salaire des coureurs",
@@ -157,8 +157,8 @@
           "text": "Les coureurs de l'académie sont payés {academySalaryPct} % de leur valeur de production actuelle, la même part que les coureurs seniors, et signent des contrats de jeunes de {academyContractLength} saison(s)."
         },
         "drift": {
-          "title": "Entretien",
-          "text": "Chaque place d'académie occupée coûte {academyDrift} CZ$ par saison, prélevés au début de la saison. Une petite académie (3 à 4 places) est tout à fait abordable dans chaque division ; une académie pleine est un investissement délibéré et plus lourd."
+          "title": "Coûts",
+          "text": "À partir de la saison 5, les places de l'académie n'ont plus de coût d'entretien. Une académie pleine est désormais une question de place dans l'effectif, pas d'argent."
         }
       }
     },

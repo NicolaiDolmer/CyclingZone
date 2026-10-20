@@ -156,6 +156,10 @@ export function computeFinanceForecast({
   // typisk ikke findes endnu.
   upkeepPerRaceDay = false,
   upkeepRaceDays = null,
+  // #6936: economy_no_upkeep_v1 (app_config). ON = upkeep (inkl. rejse og
+  // personale), facilitets-upkeep og akademi-drift opkræves ikke længere, så
+  // prognosen regner dem som 0. Caller læser flaget (fail-safe false).
+  noUpkeep = false,
 } = {}) {
   const seasonNumber = Number.isInteger(targetSeasonNumber)
     ? targetSeasonNumber
@@ -280,16 +284,18 @@ export function computeFinanceForecast({
   const resolvedUpkeepRaceDays = Number.isFinite(raceDaysInput) && raceDaysInput >= 0
     ? Math.round(raceDaysInput)
     : referenceRaceDays;
-  const projectedUpkeep = upkeepPerRaceDay
-    ? (-(upkeepRatePerRaceDay * resolvedUpkeepRaceDays) || 0)
-    : (upkeepDeferred ? 0 : (-upkeepForDivision || 0));
+  const projectedUpkeep = noUpkeep
+    ? 0
+    : upkeepPerRaceDay
+      ? (-(upkeepRatePerRaceDay * resolvedUpkeepRaceDays) || 0)
+      : (upkeepDeferred ? 0 : (-upkeepForDivision || 0));
   const projectedUpkeepAtSeasonStart = upkeepPerRaceDay ? 0 : projectedUpkeep;
 
   // #3236 · Facilitets-upkeep + staff-sæsonløn — samme runtime-gate
   // (facilitiesEnabled, app_config "facilities_enabled") som
   // economyEngine.chargeFacilityCosts. Caller læser flaget; default true her
   // så unit-tests uden eksplicit flag ikke bliver stille nul-gated.
-  const facilityUpkeepTotal = facilitiesEnabled
+  const facilityUpkeepTotal = facilitiesEnabled && !noUpkeep
     ? getFacilityUpkeepTotal(facilityTracks)
     : 0;
   const projectedFacilityUpkeep = -facilityUpkeepTotal || 0;
@@ -302,7 +308,7 @@ export function computeFinanceForecast({
   // #3236 · Akademi-drift — pr. plads, gated på count > 0 (economyEngine
   // springer helt over ved 0 akademi-ryttere, uanset flag).
   const academyCount = Math.max(0, Math.round(Number(academyRiderCount) || 0));
-  const projectedAcademyDrift = academyCount > 0
+  const projectedAcademyDrift = academyCount > 0 && !noUpkeep
     ? -(academyCount * ACADEMY.DRIFT_PER_SEASON)
     : 0;
 
@@ -432,6 +438,8 @@ export function computeFinanceForecast({
       upkeep_model: upkeepPerRaceDay ? "per_race_day" : "season_start",
       upkeep_per_race_day: upkeepRatePerRaceDay,
       upkeep_race_days: upkeepPerRaceDay ? resolvedUpkeepRaceDays : null,
+      // #6936: true = upkeep, facilitets-upkeep og akademi-drift er fjernet.
+      no_upkeep: noUpkeep,
       facilities_enabled: facilitiesEnabled,
       facility_track_count: (facilityTracks || []).length,
       facility_upkeep_total: facilityUpkeepTotal,
@@ -595,6 +603,8 @@ export function computeMultiSeasonForecast({
   facilitiesEnabled = true,
   // #4385: samme upkeep-model over hele horisonten.
   upkeepPerRaceDay = false,
+  // #6936: samme no-upkeep-tilstand over hele horisonten.
+  noUpkeep = false,
 } = {}) {
   const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
   const forecasts = [];
@@ -636,6 +646,7 @@ export function computeMultiSeasonForecast({
       academyRiderCount,
       facilitiesEnabled,
       upkeepPerRaceDay,
+      noUpkeep,
     });
 
     const endingBalance = rollingBalance + forecast.projected_net;

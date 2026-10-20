@@ -41,8 +41,8 @@
           "text": "Los ingresos de patrocinio se escalan por división para que un equipo competente sea sostenible: División 1 {sponsorD1} CZ$, División 2 {sponsorD2} CZ$, División 3 {sponsorD3} CZ$, División 4 {sponsorD4} CZ$. Tu contrato firmado mantiene su base garantizada durante toda su duración. Si cambias de división mientras está en vigor, se paga además un ajuste de división aparte del {divisionAdjustmentPct} por ciento de la diferencia entre las dos divisiones, cada temporada que dure la diferencia."
         },
         "upkeep": {
-          "title": "Mantenimiento",
-          "text": "Cada temporada tu equipo paga un coste de funcionamiento (mantenimiento), escalado por división para que las divisiones superiores paguen más. Se cobra una sola vez al inicio de la temporada o como Viajes y personal por cada día de carrera sénior en el que sale tu equipo; el total de la temporada es el mismo. Ajusto las cifras exactas entre temporadas, y siempre ves cada cargo en tu registro de Finanzas."
+          "title": "Costes de mantenimiento",
+          "text": "Desde la temporada 5 tu equipo no tiene costes de mantenimiento: ni mantenimiento, ni Viajes y personal, ni mantenimiento de instalaciones o de la academia. Tus costes principales son los salarios de corredores y personal y los intereses de préstamos."
         },
         "salary": {
           "title": "Salario del ciclista",
@@ -187,8 +187,8 @@
           "text": "A los ciclistas de la academia se les paga el {academySalaryPct} % de su valor de producción actual, la misma proporción que a los ciclistas sénior, y firman contratos juveniles de {academyContractLength} temporadas."
         },
         "drift": {
-          "title": "Mantenimiento",
-          "text": "Cada plaza ocupada de la academia cuesta {academyDrift} CZ$ por temporada, cobrados al inicio de la temporada. Una academia pequeña (3-4 plazas) es perfectamente asumible en todas las divisiones; una academia llena es una inversión deliberada y más pesada."
+          "title": "Costes",
+          "text": "Desde la temporada 5 las plazas de la academia no tienen coste de mantenimiento. Una academia llena es ahora una cuestión de espacio en la plantilla, no de dinero."
         }
       }
     },

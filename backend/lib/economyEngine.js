@@ -83,6 +83,7 @@ import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import { isAcademyDriftEnabled } from "./academyDriftFlag.ts";
 import { isUpkeepPerRaceDayEnabled } from "./upkeepPerRaceDayFlag.ts";
+import { isEconomyNoUpkeepEnabled } from "./economyNoUpkeepFlag.ts";
 import { FACILITIES_ENABLED } from "./facilityConstants.js";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { getFacilityUpkeepTotal } from "./facilityEngine.js";
@@ -690,6 +691,10 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
   // (flad sæsonstart-upkeep som før) — se upkeepPerRaceDayFlag.ts.
   const upkeepPerRaceDay = /** @type {{ upkeepPerRaceDay?: boolean }} */ (deps).upkeepPerRaceDay
     ?? await isUpkeepPerRaceDayEnabled(supabaseClient);
+  // #6936 · economy_no_upkeep_v1 læses ÉN gang for hele kørslen, fail-safe OFF
+  // (alle tre udgifter opkræves som før) — se economyNoUpkeepFlag.ts.
+  const noUpkeep = /** @type {{ noUpkeep?: boolean }} */ (deps).noUpkeep
+    ?? await isEconomyNoUpkeepEnabled(supabaseClient);
   const results = [];
   for (const teamWithRoster of teamsWithRoster) {
     const payroll = await processTeamSeasonPayroll(teamWithRoster, seasonId, {
@@ -701,6 +706,7 @@ export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {
       facilitiesEnabled,
       academyDriftEnabled,
       upkeepPerRaceDay,
+      noUpkeep,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
       // #2976 · observabilitets-seam for notifyManagerSafe. Uden den kan en
@@ -1199,6 +1205,10 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   //    opkræves INGEN drift og der skrives INGEN academy_drift-ledgerpost, uanset
   //    academyCount. Med flaget ON (default, og deps.academyDriftEnabled ikke
   //    threadet) er koden bit-identisk med før #5741.
+  //    #6936 · noUpkeep (app_config 'economy_no_upkeep_v1', fail-safe OFF) fjerner
+  //    akademi-drift sammen med upkeep og facilitets-upkeep. Med flaget OFF (default,
+  //    og deps.noUpkeep ikke threadet) er trin 4-6 bit-identiske med før #6936.
+  const noUpkeep = /** @type {{ noUpkeep?: boolean }} */ (deps).noUpkeep === true;
   const academyDriftEnabled = /** @type {{ academyDriftEnabled?: boolean }} */ (deps).academyDriftEnabled ?? true;
   const { count: academyCount, error: academyCountError } = await supabaseClient
     .from("riders")
@@ -1206,11 +1216,13 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     .eq("team_id", team.id)
     .eq("is_academy", true);
   throwIfSupabaseError(academyCountError, `Could not count academy riders for ${team.name}`);
-  const academyDriftCharged = (academyDriftEnabled && (academyCount || 0) > 0)
+  const academyDriftCharged = (academyDriftEnabled && !noUpkeep && (academyCount || 0) > 0)
     ? (academyCount || 0) * ACADEMY.DRIFT_PER_SEASON
     : 0;
   if (!academyDriftEnabled && (academyCount || 0) > 0) {
     console.log(`  🎓 ${team.name}: akademi-drift sprunget over, academy_drift_enabled=off, ${academyCount} pladser`);
+  } else if (noUpkeep && (academyCount || 0) > 0) {
+    console.log(`  🎓 ${team.name}: akademi-drift sprunget over, economy_no_upkeep_v1=on, ${academyCount} pladser`);
   }
   if (academyDriftCharged > 0) {
     await debitTeam(
@@ -1253,9 +1265,12 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   //    med før #4385.
   const upkeepPerRaceDay = /** @type {{ upkeepPerRaceDay?: boolean }} */ (deps).upkeepPerRaceDay === true;
   const deferUpkeep = !UPKEEP_BEFORE_FIRST_RACE_ENABLED && seasonNumber === 1;
-  const upkeepCharged = (deferUpkeep || upkeepPerRaceDay) ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
+  // #6936 · med economy_no_upkeep_v1 on trækkes intet upkeep ved sæsonstart.
+  const upkeepCharged = (deferUpkeep || upkeepPerRaceDay || noUpkeep) ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
   if (deferUpkeep) {
     console.log(`  ⏭️  ${team.name}: upkeep udskudt i sæson 1 (før første løb)`);
+  } else if (noUpkeep) {
+    console.log(`  ⏭️  ${team.name}: intet sæsonstart-upkeep, economy_no_upkeep_v1=on`);
   } else if (upkeepPerRaceDay) {
     console.log(`  ⏭️  ${team.name}: intet sæsonstart-upkeep, upkeep_per_race_day=on (trækkes pr. seniorløbsdag)`);
   }
@@ -1283,6 +1298,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     seasonId,
     supabaseClient,
     enabled: deps.facilitiesEnabled ?? FACILITIES_ENABLED,
+    // #6936 · facilitets-upkeep udgår med flaget on; stabslønnen trækkes uændret.
+    chargeFacilityUpkeep: !noUpkeep,
   });
 
   return {
@@ -1321,8 +1338,12 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
  * team_facilities/team_staff slet ikke. `enabled` er injektionspunkt for tests.
  * Begge debits er idempotente pr. sæson+hold (idempotencyKey).
  * Returnerer { facilityUpkeepCharged, staffSalaryCharged } (rene tal).
+ *
+ * #6936 · chargeFacilityUpkeep=false (economy_no_upkeep_v1 on) springer KUN
+ * facilitets-upkeep over — team_facilities læses slet ikke, og stabslønnen
+ * (trin 7) trækkes uændret. Default true = bit-identisk med før #6936.
  */
-export async function chargeFacilityCosts({ team, seasonId, supabaseClient, enabled = FACILITIES_ENABLED }) {
+export async function chargeFacilityCosts({ team, seasonId, supabaseClient, enabled = FACILITIES_ENABLED, chargeFacilityUpkeep = true }) {
   let facilityUpkeepCharged = 0;
   let staffSalaryCharged = 0;
   if (!enabled) {
@@ -1330,12 +1351,19 @@ export async function chargeFacilityCosts({ team, seasonId, supabaseClient, enab
   }
 
   // 6. Facilitets-upkeep — sum af tier-upkeep over holdets facility-tracks.
-  const { data: facilities, error: facError } = await supabaseClient
-    .from("team_facilities")
-    .select("track, tier")
-    .eq("team_id", team.id);
-  throwIfSupabaseError(facError, `Could not load facilities for ${team.name}`);
-  facilityUpkeepCharged = getFacilityUpkeepTotal(facilities || []);
+  /** @type {Array<{ track: string, tier: number }>} */
+  let facilities = [];
+  if (chargeFacilityUpkeep) {
+    const { data: facilityRows, error: facError } = await supabaseClient
+      .from("team_facilities")
+      .select("track, tier")
+      .eq("team_id", team.id);
+    throwIfSupabaseError(facError, `Could not load facilities for ${team.name}`);
+    facilities = facilityRows || [];
+    facilityUpkeepCharged = getFacilityUpkeepTotal(facilities);
+  } else {
+    console.log(`  🏗️ ${team.name}: facilitets-upkeep sprunget over, economy_no_upkeep_v1=on`);
+  }
   if (facilityUpkeepCharged > 0) {
     await debitTeam(team.id, facilityUpkeepCharged, "facility_upkeep", null, seasonId, supabaseClient, {
       idempotent: true,
@@ -1798,7 +1826,7 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
 // balance_after, needs_emergency_loan) bevares for kontrakt-stabilitet,
 // men balance_after og needs_emergency_loan reflekterer nu den samlede
 // transition og inkluderer sponsor-income.
-export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [], upkeepPerRaceDay = false } = {}) {
+export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [], upkeepPerRaceDay = false, noUpkeep = false } = {}) {
   return teams.map((team) => {
     const standing = standings.find(s => s.team_id === team.id);
     const riders = team.riders || [];
@@ -1864,7 +1892,8 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
     const nextSeasonSponsor = Math.round((team.sponsor_income || 0) * sponsorModifier);
     // #4385: med upkeep_per_race_day on trækkes intet fladt upkeep ved skiftet
     // (det trækkes pr. seniorløbsdag i løbet af sæsonen), så previewet viser 0.
-    const upkeep = upkeepPerRaceDay ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
+    // #6936: med economy_no_upkeep_v1 on trækkes intet upkeep overhovedet.
+    const upkeep = (upkeepPerRaceDay || noUpkeep) ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
     // Følger processSeasonStart-rækkefølgen: +sponsor → −renter → −løn → −upkeep.
     const balanceAfter = (team.balance || 0) + nextSeasonSponsor - totalInterest - totalSalary - upkeep;
 

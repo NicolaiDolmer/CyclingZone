@@ -89,6 +89,9 @@ export default function KlubPage() {
   const primaryTrack = primaryUpgradeTrack(groupedFacilities);
   const staffFacility = staffTrack ? byTrack[staffTrack] : null;
   const pendingFacility = pendingUpgrade ? byTrack[pendingUpgrade] : null;
+  // #6936: backend sender upkeepCharged=false når facilitets-upkeep er fjernet
+  // (economy_no_upkeep_v1). Mangler feltet (ældre backend), vises drift som før.
+  const showUpkeep = facs.seasonCost?.upkeepCharged !== false;
 
   // Køb/opgradering binder gold nu → åbn bekræftelses-dialog i stedet for at
   // købe direkte fra kortet (ejer-feedback #1441 A3).
@@ -145,7 +148,8 @@ export default function KlubPage() {
           {facs.seasonCost && (
             <dl className="flex flex-wrap items-baseline gap-x-6 gap-y-1 mb-4">
               {[
-                ["summary.upkeep", facs.seasonCost.totalUpkeep],
+                // #6936: ingen drift-linje når facilitets-upkeep ikke trækkes.
+                ...(showUpkeep ? [["summary.upkeep", facs.seasonCost.totalUpkeep]] : []),
                 ["summary.wages", facs.seasonCost.totalPayroll],
                 ["summary.balance", facs.seasonCost.balance],
               ].map(([key, value]) => (
@@ -171,6 +175,7 @@ export default function KlubPage() {
                   busy={busyTrack === f.track}
                   onUpgrade={setPendingUpgrade}
                   onOpenStaff={setStaffTrack}
+                  showUpkeep={showUpkeep}
                 />
               ))}
             </div>

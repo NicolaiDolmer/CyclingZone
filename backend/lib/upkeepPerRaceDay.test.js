@@ -152,6 +152,31 @@ test("chargeRaceDayTravelStaffToDate: flag off → intet læses, intet trækkes"
   assert.equal(db.rpcCalls.length, 0);
 });
 
+test("#6936 chargeRaceDayTravelStaffToDate: economy_no_upkeep_v1 on → intet trækkes, heller ikke ved genkørsel", async () => {
+  clearSettledTravelStaffRaces();
+  const db = makeFakeDb({ flag: "on", noUpkeepFlag: "on" });
+  const res = await chargeRaceDayTravelStaffToDate("season-5", db.client);
+  assert.deepEqual(res, { charged: 0, total: 0, races_settled: 0, skipped: "no_upkeep" });
+  const again = await chargeRaceDayTravelStaffToDate("season-5", db.client);
+  assert.equal(again.skipped, "no_upkeep");
+  assert.equal(db.rpcCalls.length, 0);
+});
+
+test("#6936 chargeRaceDayTravelStaffToDate: economy_no_upkeep_v1 'beta' læses som off (trækker som før)", async () => {
+  clearSettledTravelStaffRaces();
+  const db = makeFakeDb({ flag: "on", noUpkeepFlag: "beta" });
+  const res = await chargeRaceDayTravelStaffToDate("season-4", db.client);
+  assert.equal(res.charged, 5);
+});
+
+test("#6936 chargeRaceDayTravelStaffToDate: opts.noUpkeep injiceres uden app_config-læsning", async () => {
+  clearSettledTravelStaffRaces();
+  const db = makeFakeDb({ flag: "off" });
+  const res = await chargeRaceDayTravelStaffToDate("season-5", db.client, { enabled: true, noUpkeep: true });
+  assert.equal(res.skipped, "no_upkeep");
+  assert.equal(db.rpcCalls.length, 0);
+});
+
 test("chargeRaceDayTravelStaffToDate: flag on → én debitering pr. løbsdag, genkørsel trækker ikke igen", async () => {
   clearSettledTravelStaffRaces();
   const db = makeFakeDb({ flag: "on" });
@@ -223,7 +248,12 @@ function makeFlagClient(value) {
   };
 }
 
-function makeFakeDb({ flag, flatUpkeepTeams = [], duplicateAll = false, failOnCall = 0 }) {
+function makeFakeDb({ flag, noUpkeepFlag = null, flatUpkeepTeams = [], duplicateAll = false, failOnCall = 0 }) {
+  // #6936: app_config svarer pr. nøgle — upkeep_per_race_day og economy_no_upkeep_v1.
+  const appConfig = [
+    { key: "upkeep_per_race_day", value: flag },
+    { key: "economy_no_upkeep_v1", value: noUpkeepFlag },
+  ];
   let callCount = 0;
   const races = [
     { id: "r-one", name: "One Day", stages: 1, status: "completed", squad: "senior", season_id: "season-4" },
@@ -261,7 +291,10 @@ function makeFakeDb({ flag, flatUpkeepTeams = [], duplicateAll = false, failOnCa
       or(expr) { orFilter = expr; return q; },
       order() { return q; },
       maybeSingle: async () => {
-        if (table === "app_config") return { data: flag == null ? null : { value: flag }, error: null };
+        if (table === "app_config") {
+          const row = appConfig.find((r) => r.value != null && filters.every((f) => f(r)));
+          return { data: row ? { value: row.value } : null, error: null };
+        }
         return { data: null, error: null };
       },
       range: async () => ({ data: rows(), error: null }),
