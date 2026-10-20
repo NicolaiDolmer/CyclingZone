@@ -1480,7 +1480,7 @@ test("#6857 monument-spec: den håndskrevne rute skrives som forfattet hvert år
 });
 
 test("#6857 monument-spec: v5 ignorerer ruten, og en ugyldig rute kaster i S5", () => {
-  const { authored_route, ...plain } = monument(1);
+  const { authored_route: _authored, ...plain } = monument(1);
   assert.deepEqual(generateRaceStageProfiles(monument(1)), generateRaceStageProfiles(plain));
   assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, segments: [] }), S5), TypeError);
   assert.throws(() => generateRaceStageProfiles(monument(1, { ...ENFER, sprints: [{ name: "Finish", km: 250, kind: "finish" }] }), S5), TypeError);
