@@ -1207,7 +1207,7 @@
       },
       "prognosisTraining": {
         "title": "Descubrir el potencial de una promesa",
-        "text": "Cuando traes a un candidato ves su nombre, edad, nacionalidad, tipo de ciclista y habilidades actuales. Su potencial figura como Se descubre con el entrenamiento: lo averiguas teniéndolo en tu equipo. Tras unos 10 días de carrera de entrenamiento obtienes un primer pronóstico amplio, tras unos 30 uno estrecho, y tras una temporada completa el definitivo. Un Centro de entrenamiento mejor y un Director deportivo más fuerte te llevan ahí antes. Te dan más seguridad sobre el ciclista, no lo hacen mejor."
+        "text": "Tras fichar a un ciclista de la academia, conoces su pronóstico a través de los días de entrenamiento en tu equipo. Al principio no hay estimación; después llega un intervalo de valoración inicial, luego uno más preciso y por último el definitivo. La pestaña de scouting muestra la etapa actual, el intervalo revelado y los días de entrenamiento hasta la próxima etapa. Un mejor cuerpo técnico y mejores instalaciones de entrenamiento te ayudan a avanzar antes. No cambian su talento, y hasta el pronóstico final sigue siendo un intervalo."
       },
       "signingProspects": {
         "title": "Fichar promesas",

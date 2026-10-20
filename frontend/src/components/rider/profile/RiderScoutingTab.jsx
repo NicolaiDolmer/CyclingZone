@@ -1,4 +1,4 @@
-import AcademyPrognosisCell from "../AcademyPrognosisCell";
+import AcademyScoutingPrognosis from "../AcademyScoutingPrognosis";
 // RiderScoutingTab — Scouting-fanen på rytterprofilen (#1543 Fase 1).
 //
 // Viser den server-beregnede scouting-rapport (GET /api/riders/:id/scouting-report):
@@ -350,7 +350,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
   }
 
   if (report.academyPrognosis) {
-    return <SectionCard><AcademyPrognosisCell prognosis={report.academyPrognosis} /></SectionCard>;
+    return <SectionCard><AcademyScoutingPrognosis prognosis={report.academyPrognosis} /></SectionCard>;
   }
 
   // FØR: uscoutet, ikke-egen rytter — intet potentiale, kun invitationen.

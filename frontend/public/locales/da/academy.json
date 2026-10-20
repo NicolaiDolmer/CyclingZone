@@ -70,7 +70,26 @@
     "narrow": "Skarpere bud",
     "final": "Endeligt bud",
     "nextDays": "Skarpere om {days} træningsdage.",
-    "tooltip": "Prognosen snævrer ind, jo flere træningsdage han har på dit hold. En bedre træner og træningsfacilitet gør dig sikker hurtigere. De ændrer aldrig hans talent."
+    "tooltip": "Prognosen snævrer ind, jo flere træningsdage han har på dit hold. En bedre træner og træningsfacilitet gør dig sikker hurtigere. De ændrer aldrig hans talent.",
+    "report": {
+      "title": "Akademiprognose",
+      "progress": "Prognosens trin",
+      "forecast": "Prognose",
+      "nextStage": "Næste trin",
+      "stages": {
+        "learning": "Lærer",
+        "broad": "Groft",
+        "narrow": "Skarpere",
+        "final": "Endeligt"
+      },
+      "range": "{lo}–{hi} rating-point",
+      "noEstimate": "Intet bud endnu",
+      "trainingDays": "{days, plural, one {# træningsdag} other {# træningsdage}}",
+      "complete": "Alle trin nået",
+      "unavailable": "Endnu ukendt",
+      "learningContext": "Træningsdage på dit hold gør prognosen skarpere, hurtigere med bedre trænerstab.",
+      "readMore": "Læs mere"
+    }
   },
   "profile": {
     "heading": "Akademiets profil",

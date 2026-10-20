@@ -28,3 +28,11 @@ The follow-up review found two further direct estimate readers: Training
 Development and Graduation Day. Training now renders the shared academy cell;
 the graduation coach reads the academy band and stays hedged until final
 knowledge. Existing coach copy and legacy non-academy behavior are unchanged.
+
+Owner follow-up: reusing a compact table cell as the entire Scouting tab left
+the player without an explanation. The tab now gives the current disclosure
+stage in a four-step sequence, the public rating range or no estimate, and
+the server's days to the next stage. Short context links to Academy Help.
+The owner explicitly requested new EN-first copy in all five locales on
+20 October. Browser assertions cover the content, current step and help link
+at both widths, in addition to preserving the disclosure ceiling.

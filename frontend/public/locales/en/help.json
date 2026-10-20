@@ -1207,7 +1207,7 @@
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
-        "text": "When you bring in a candidate you see his name, age, nationality, rider type and current abilities. His potential reads Learned through training: you find out by having him on your team. After about 10 race days of training you get a first, wide forecast, after about 30 a narrow one, and after a full season the final one. A better Training Center and a stronger Sports Director get you there sooner. They make you surer of the rider, they don't make him better."
+        "text": "After you sign an academy rider, you learn his forecast through training days on your team. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range."
       },
       "signingProspects": {
         "title": "Signing prospects",

@@ -70,7 +70,26 @@
     "narrow": "Lectura más afinada",
     "final": "Lectura final",
     "nextDays": "Más afinada en {days} días de entrenamiento.",
-    "tooltip": "El pronóstico se afina cuantos más días de entrenamiento lleva con tu equipo. Un entrenador mejor y mejores instalaciones de entrenamiento te dan seguridad antes. Nunca cambian su talento."
+    "tooltip": "El pronóstico se afina cuantos más días de entrenamiento lleva con tu equipo. Un entrenador mejor y mejores instalaciones de entrenamiento te dan seguridad antes. Nunca cambian su talento.",
+    "report": {
+      "title": "Pronóstico de la academia",
+      "progress": "Etapas del pronóstico",
+      "forecast": "Pronóstico",
+      "nextStage": "Próxima etapa",
+      "stages": {
+        "learning": "Aprendiendo",
+        "broad": "Inicial",
+        "narrow": "Más preciso",
+        "final": "Final"
+      },
+      "range": "{lo}–{hi} puntos de valoración",
+      "noEstimate": "Aún sin estimación",
+      "trainingDays": "{days, plural, one {# día de entrenamiento} other {# días de entrenamiento}}",
+      "complete": "Todas las etapas completadas",
+      "unavailable": "Aún no se sabe",
+      "learningContext": "Los días de entrenamiento en tu equipo afinan el pronóstico, más rápido con mejores entrenadores.",
+      "readMore": "Leer más"
+    }
   },
   "profile": {
     "heading": "Perfil de la academia",
