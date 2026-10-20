@@ -91,6 +91,15 @@ dermed et felt uden jagt-interesse, og det kan forklares i filmen ("ingen hold v
 jage"). Jagt-gulvet på flad/rullende beholdes; endagsløbets loft på bjerg (#6367)
 beholdes.
 
+**Automatisk jagt skal bære arbejde (Codex-fund 20/10).** I dag giver `interestByTeam`
+lukkekraft, men fylder ikke `teamChasePlan.chaserWork`; trætheds-løkken (`applyChaseCost`)
+og `breakaway_caught.chasing_team_ids` læser kun den work-map. Under v2 vælger et hold med
+interesse (positiv `interestByTeam` eller positivt `teamSignals`) sine jagt-ryttere efter
+samme udvælgelse som en ordret jagt (ikke beskyttede ryttere; aldrig hvis holdet har egne
+i udbruddet, #6187), og skriver deres arbejde i `chaserWork` i forhold til interessen.
+Dermed betaler den automatiske jagt træthed, og løbsfilmen kan navngive jagtholdene (P5).
+Lukkekraften må ikke tælles dobbelt: work-mappen er kilden, `interestByTeam` er vægten.
+
 **P3 Sammensætning (K4).** I udvælgelsen af hvem der får lov at gå (breakawayPermission /
 attempt -> formed):
 1. GC-favoritter: klassementets forreste (fra etape 2) og på 1. etape feltets bedste på
