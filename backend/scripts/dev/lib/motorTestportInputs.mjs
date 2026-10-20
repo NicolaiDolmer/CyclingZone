@@ -145,6 +145,8 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
   //    foreslaaede (én gang pr. noegle, ogsaa hvis et loeb deles over flere sider).
   //  - { table, key, excludeKeys: Set }: raekker med de noegler skjules (fx ryttere der
   //    allerede er bundet i et overlappende loeb), saa generatoren udtager andre.
+  //  - { table, key, keepKeys: Set }: kun raekker med de noegler beholdes, resten fjernes helt.
+  //    Samme forbehold som dropKeys.
   //  - { table, key, dropKeys: Set }: raekker fjernes helt. KUN til ikke-paginerede laesninger
   //    (generatorens races-select er én .eq("season_id")); en afkortet side stopper en pagineret laeser.
   const layers = [...(overlay ? [overlay] : []), ...overlays.filter(Boolean)];
@@ -161,6 +163,7 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
         for (const r of cur) {
           const k = r?.[l.key];
           if (l.dropKeys) { if (!l.dropKeys.has(k)) out.push(r); continue; }
+          if (l.keepKeys) { if (l.keepKeys.has(k)) out.push(r); continue; }
           // #6909 (Codex P2): en skjult raekke fjernes IKKE (det ville afkorte siden og faa en
           // pagineret laeser til at stoppe for tidligt); den beholdes, men "frakobles" via nullField
           // (fx team_id = null), saa generatoren ikke kan udtage rytteren.
@@ -439,14 +442,14 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
           // generatoren, saa den selv udtager erstatninger og kaptajner (intet underbemandet felt).
           const groupWins = group.map(windowOf).filter(Boolean);
           const excludeKeys = new Set([...bookedEarly].filter(([, wins]) => groupWins.some((w) => overlapsAny(wins, w))).map(([rid]) => rid));
-          // #6909 (Codex P2): koerslen ser kun sin egen gruppe af de valgte loeb. De andre valgte
-          // loeb (tidligere grupper er nu "i fortiden" og ville ellers blive fyldt igen og
-          // forbruge erstatninger) fjernes fra races, saa tildelingen afgraenses til gruppen.
-          const otherWanted = new Set(wantedHere.filter((id) => !group.includes(id)));
+          // #6909 (Codex P2 x2): koerslen ser KUN sin egen gruppe. Alle andre saesonens loeb
+          // (andre valgte grupper og ikke-valgte loeb) fjernes fra races, saa intet loeb uden for
+          // gruppen kan forbruge ryttere. Bindinger til loeb med rigtige tilmeldinger tabes ikke:
+          // generatoren laeser dem fra race_entries (rider_id + saeson), ikke fra races-listen.
           const res = await run({
             supabase: readOnlyDb(db, { overlay, overlays: [
               excludeKeys.size ? { table: "riders", key: "id", excludeKeys, nullField: "team_id" } : null,
-              otherWanted.size ? { table: "races", key: "id", dropKeys: otherWanted } : null,
+              { table: "races", key: "id", keepKeys: new Set(group) },
             ] }), seasonId, dryRun: true, mode: "late_fill",
             now: startMs, includeStaged: true, notify: async () => {},
           });

@@ -27,7 +27,7 @@ infisical run --env=prod --silent -- node backend/scripts/dev/motorTestport.mjs 
 infisical run --env=prod --silent -- node backend/scripts/dev/motorTestport.mjs --candidate=<ny> --routes-from=<mappe> --synthetic-field
 ```
 
-- **`--synthetic-field`** (= `generator`): løb uden tilmeldinger får et startfelt i hukommelsen. Tilmeldingsgeneratoren (`raceEntryGenerator.runRaceEntryGenerator`) køres som dry-run på de nuværende trupper med en klient der afviser enhver skrivning; tilstanden er `late_fill` med "nu" sat til sæsonens sidste start, så assistenten udtager alle hold i puljen, ligesom redningen ved etape 1 gør i spillet. Holdene står i deres nuværende division (før op- og nedrykning), og ingen holdordrer er sat. Løb uden tildelt felt (fx uden tidsvindue) springes over og tælles.
+- **`--synthetic-field`** (= `generator`): løb uden tilmeldinger får et startfelt i hukommelsen. Tilmeldingsgeneratoren (`raceEntryGenerator.runRaceEntryGenerator`) køres som dry-run på de nuværende trupper med en klient der afviser enhver skrivning; tilstanden er `late_fill` med "nu" sat til hvert løbs egen start (etape 1; løb med samme start køres sammen), så assistenten udtager alle hold i puljen med den dags skader og Train now-låse, ligesom redningen ved etape 1 gør i spillet. Hver kørsel ser kun sine egne løb; ryttere der allerede er udtaget til et overlappende løb, skjules. Holdene står i deres nuværende division (før op- og nedrykning), og ingen holdordrer er sat. Løb uden tildelt felt (fx uden tidsvindue) springes over og tælles.
 - **`--synthetic-field=bench`**: det anonymiserede Giro-bench-felt (`s5MotorBench.loadBenchField`) i alle løb uden tilmeldinger. Kræver ikke prod, men er ikke de rigtige puljer; brug det kun når generatoren ikke kan køres.
 - Løb der allerede har tilmeldinger, kører på dem. Kortet viser feltets kilde ("Startfelt: ...") og ruternes kilde ("Ruter: ...").
 - **`--season=<n>`** begrænser prod-listen til én sæson. **`--time-budget=<min>`** starter ingen nye opgaver efter budgettet; samme kommando igen genoptager (de færdige løb springes over).
@@ -42,7 +42,7 @@ En mappe med én fil pr. løb, `<race_id>.json`, og en valgfri `manifest.json`:
   "race_id": "<races.id>",
   "stages": 3,
   "profiles": [
-    { "stage_number": 1, "profile_type": "...", "finale_type": "...", "demand_vector": {}, "generator_version": 7,
+    { "stage_number": 1, "profile_type": "...", "finale_type": "...", "demand_vector": { "sprint": 1 }, "generator_version": 7,
       "distance_km": 0, "elevation_gain_m": 0, "climbs": [], "sprints": [], "sectors": [], "segments": [],
       "weather": null, "elevation_profile": [] }
   ]
@@ -53,7 +53,7 @@ En mappe med én fil pr. løb, `<race_id>.json`, og en valgfri `manifest.json`:
 { "format": "cz-race-routes/v1", "label": "S5 identitet, tørkørsel 21/10", "season": 5, "generated_at": "<ISO>" }
 ```
 
-- `profiles` er præcis de rækker der ville blive skrevet til `race_stage_profiles` for løbet: kun dens kolonner (`stage_number`, `profile_type`, `finale_type`, `demand_vector`, `generator_version`, `distance_km`, `elevation_gain_m`, `climbs`, `sprints`, `sectors`, `segments`, `weather`, `elevation_profile`; `id`, `race_id`, `is_manual` og `generated_at` er også tilladt; et `race_id` skal være løbets). Alle etaper skal med. `demand_vector` er påkrævet (ikke-negative tal, mindst ét > 0), fordi generatoren udtager det syntetiske felt efter etapens krav. Det syntetiske felt udtages på hvert løbs egen startdato (etape 1), og en genoptaget kørsel afviser ruter hvis indhold er ændret (fingeraftryk i meta).
+- `profiles` er præcis de rækker der ville blive skrevet til `race_stage_profiles` for løbet: kun dens kolonner (`stage_number`, `profile_type`, `finale_type`, `demand_vector`, `generator_version`, `distance_km`, `elevation_gain_m`, `climbs`, `sprints`, `sectors`, `segments`, `weather`, `elevation_profile`; `id`, `race_id`, `is_manual` og `generated_at` er også tilladt; et `race_id` skal være løbets). Alle etaper skal med. Eksemplets `demand_vector` er skematisk (en gyldig form, ikke en rigtig vægtning). `demand_vector` er påkrævet (ikke-negative tal, mindst ét > 0), fordi generatoren udtager det syntetiske felt efter etapens krav. Det syntetiske felt udtages på hvert løbs egen startdato (etape 1), og en genoptaget kørsel afviser ruter hvis indhold er ændret (fingeraftryk i meta).
 - Fail-closed: forkert `format`, `race_id` der ikke er filnavnet, ukendte kolonner, manglende `profile_type`, `stage_number` der ikke er 1..n uden huller, `stages` forskellig fra antallet af profiler, eller et etapeantal forskelligt fra løbets `races.stages` stopper kørslen før noget køres.
 - Uden `--races`/`--ids-file` er udvælgelsen mappens løb; ellers skal hvert valgt løb have en fil. Løbet (navn, klasse, trup) og dets tilmeldinger hentes fra prod; kun etaperne udskiftes.
 

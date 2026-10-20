@@ -442,7 +442,7 @@ test("#6909 (Codex P2) readOnlyDb overlay: pagineret laesning injicerer kun paa 
   assert.deepEqual(all.map((r) => `${r.race_id}:${r.stage_number}`), ["r2:1", "r2:2", "r2:3", "r1:1"]);
 });
 
-test("#6909 (Codex P2) generatorField: hver koersel ser kun sin egen gruppe af de valgte loeb", async () => {
+test("#6909 (Codex P2) generatorField: hver koersel ser kun sin egen gruppe (ikke andre saesonloeb)", async () => {
   const tables = {
     races: [{ id: "r1", season_id: "s5" }, { id: "r2", season_id: "s5" }, { id: "other", season_id: "s5" }],
     race_stage_schedule: [
@@ -459,5 +459,5 @@ test("#6909 (Codex P2) generatorField: hver koersel ser kun sin egen gruppe af d
   };
   const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
   await src.generatorField(["r1", "r2"]);
-  assert.deepEqual(seen, ["r1,other", "r2,other"], "det andet valgte loeb er skjult; ikke-valgte loeb er urørte");
+  assert.deepEqual(seen, ["r1", "r2"], "kun gruppens loeb; baade andre valgte og ikke-valgte loeb er skjult");
 });
