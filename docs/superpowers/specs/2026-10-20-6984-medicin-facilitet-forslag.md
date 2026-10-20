@@ -15,7 +15,7 @@
 | Medicinchefens to akser: `recovery`, `injuryPrevention` | `backend/lib/staffAbilityDerivation.js:44` | Afledt, bruges ikke |
 | Mønster for at hente facilitet + chef pr. hold | `backend/lib/trainingStaffContext.js:67` (kun `training`) | Genbruges |
 | Restitution, skaderisiko, skadelængde (træning) | `backend/lib/riderCondition.js:31-101` | Medicin indgår ikke |
-| Styrtskader i løb | `backend/lib/raceIncidents.js:74-117` | Medicin indgår ikke |
+| Styrtskader i løb (v4, officielle etaper) | `backend/lib/engine/v4/mechanics/incidents.ts:687-696` (`resolveIncident`), nedkørselsstyrt `descent.ts:653-660` (`resolveCrashIncident`); persisteres via `raceIncidents.js` | Medicin indgår ikke |
 | Løfte til spillerne | `help.json` → `facilities.tracks.rows` ("Medical Department: Speeds up form and injury recovery", **Coming soon**) og `facilities.liveTracksStatus` | Ikke indfriet |
 
 Spillerne har altså kunnet købe en afdeling, der intet gør. Det er det første, der skal rettes.
@@ -33,13 +33,13 @@ Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre 
 ### M2 · Færre skader
 - **Hvad:** lavere trænings-skaderisiko ved høj træthed, og lidt lavere risiko for at et styrt bliver til en skade. Chefens `injuryPrevention`-akse vægter mest.
 - **Spillerens gevinst:** man tør presse en rytter lidt mere, når man har investeret.
-- **Kræver:** faktor på `injuryRisk` og på styrtets skadesandsynlighed i `raceIncidents.js`. Lille.
+- **Kræver:** faktor på `injuryRisk` (træning). For løb: v4-motoren afgør skaden (`incidents.ts`, `descent.ts`) og forbliver ren; medicinen anvendes på motorens skadeudfald i stage-runneren, før det persisteres: et seedet rul pr. rytter og etape gør en skade til et styrt uden skade med afdelingens sandsynlighed. Samme sti for v3 og v4. Regressionstest for både v4-almindelige styrt og nedkørselsstyrt. Lille-mellem.
 - **Bygger på:** #4854 (træthedsgrænse og skader), staff-ønskelisten 6/9 ("Lægen forkorter skader").
 
 ### M3 · Kortere skader
 - **Hvad:** skadens længde forkortes, både trænings- og styrtskader. Altid mindst én dag.
 - **Spillerens gevinst:** et uheld koster mindre, især i en GT.
-- **Kræver:** faktor på skadedagene, der hvor de sættes (`rollInjury`, `raceIncidents`). Lille.
+- **Kræver:** faktor på skadedagene, der hvor de sættes: `rollInjury` (træning) og v4's `injury_days` i stage-runneren før persistering (begge styrttyper). Regressionstest for varigheden. Lille.
 - **Bygger på:** help.json-løftet ("injury recovery"), #5865 (skader ved sæsonskiftet) og thelamba 6/9 (uheldige skader).
 
 ### M4 · Holdlægens tjek før etapen
