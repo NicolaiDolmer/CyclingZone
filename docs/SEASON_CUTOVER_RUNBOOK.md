@@ -66,7 +66,8 @@ SQL-blokke tæt på cutover-dagen, ikke ugen før.
    Verificér issuets status i preflight-scriptets output; er det stadig åbent,
    eskalér til ejeren FØR cutover, ikke bagefter.
 
-3. **D3→D4-nedrykning: data-gaten er fuldt åben.** Alle 4 D3-puljer var
+3. **D3→D4-nedrykning (opdateret 20/10, #6771):** `poolAllReal`-gaten er FJERNET; bund 4 i hver D3-pulje rykker ned uanset AI-fyld (AI i bunden flyttes ikke). Afsnittet herunder er historik fra S2.
+   **Historik:** D3→D4-nedrykning: data-gaten var fuldt åben. Alle 4 D3-puljer var
    **24/24 ægte** (0 AI) målt 4/8 — `processDivisionEnd`s `poolAllReal`-gate
    (`backend/lib/economyEngine.js`, LÆSES kun af denne PR, røres ikke) er
    derfor sand i alle fire, og bund-4-pr.-pulje relegerer for ægte til D4.

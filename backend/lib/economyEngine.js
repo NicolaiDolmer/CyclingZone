@@ -56,7 +56,6 @@ import {
   MIN_DIVISION,
   INITIAL_BALANCE,
   NEGATIVE_BALANCE_INTEREST_RATE,
-  POOL_TARGET_SIZE,
   PROMOTION_SLOTS,
   RELEGATION_SLOTS,
   SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL,
@@ -2716,9 +2715,9 @@ export async function buildPoolTree(client, { squad = DEFAULT_SQUAD } = {}) {
  * (pulje). Kun ægte hold flyttes — AI er fyld der regenereres pr. pulje af
  * reconcileAiTeamsForPool i AI-fyld-sweepet bagefter (processSeasonEnd).
  *
- * Div4-udskydelse (ejer): en Div3-pulje relegerer KUN til sine Div4-børn når den pulje
- * udelukkende består af ægte managere (ingen AI tilbage). Indtil da er Div3 gulvet og
- * Div4-puljerne forbliver dormant. Forælder/barn udledes fra pool_index (ingen migration).
+ * #6771 (ejer 18/10): Div4-udskydelsen er fjernet. Alle puljer over bunden relegerer
+ * bund RELEGATION_SLOTS til deres børne-puljer, også D3 -> D4 når D3 har AI-fyld.
+ * Forælder/barn udledes fra pool_index (ingen migration).
  */
 export async function processDivisionEnd(standings, division, seasonId, seasonNumber, deps = {}) {
   const client = deps.supabase ?? await getDefaultSupabaseClient();
@@ -2781,12 +2780,11 @@ export async function processDivisionEnd(standings, division, seasonId, seasonNu
     // ── NED: bund RELEGATION_SLOTS delt ligeligt → børne-puljer ──
     if (division < MAX_DIVISION) {
       const childPoolIds = tree.childrenOf(poolId);
-      // Div4-udskydelse: børn i tier < MAX_DIVISION er altid aktive; Div4-børn (tier ===
-      // MAX_DIVISION) aktiveres først når DENNE pulje er all-real (ingen AI tilbage).
-      const childTier = division + 1;
-      const poolAllReal = poolStandings.length >= POOL_TARGET_SIZE && poolStandings.every((s) => !s.team?.is_ai);
-      const childrenActive = childTier < MAX_DIVISION || poolAllReal;
-      if (childrenActive && childPoolIds.length) {
+      // #6771 (ejer 18/10, valg A): Div4-udskydelsen er fjernet. Under S4-formen (1/2/4/4,
+      // #5642) er D4-puljerne altid aktive og AI-fyldte, så gaten "kun når puljen er all-real"
+      // lukkede nedrykningen D3 -> D4 helt. Nu rykker bund 4 ned i alle puljer, som Hjælp lover.
+      // AI-hold i bunden flyttes stadig ikke (samme regel som i alle tiers).
+      if (childPoolIds.length) {
         const bottom = poolStandings.slice(Math.max(PROMOTION_SLOTS, poolStandings.length - RELEGATION_SLOTS));
         let realIdx = 0;
         for (const s of bottom) {
