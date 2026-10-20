@@ -34,7 +34,7 @@ Ejer-beslutninger 18/10 (B) og 19/10 (1-6) er låste og genåbnes ikke her.
    feltet til at reagere før et forspring bliver uholdbart (#6912).
 4. Udbruddets sammensætning vælges uden hensyn til dagens favoritter og holdfordeling
    i forhold til udbruddets størrelse.
-5. Kuperede udbrud er for små i forhold til trappen 5-9.
+5. Kuperede udbrud er for små i forhold til størrelsestrappen (`docs/RACE_ENGINE_RULES.md`).
 
 Rettet fra v1-designet (review-fund): **endagsløb har en klassementsreaktion**
 (`gcReactionSetup` med `one_day` + `oneDayProtectedRider` -> `winner_ahead`). Forskellen
@@ -57,7 +57,7 @@ i benchen, før en knap drejes.
   når ingen vil jage), aldrig over en hård grænse. Zonerne og grænsen står privat i `balance-internals/6804/`.
 - K4 Sammensætning (ejer #4): GC- og etapefavoritter sjældent med; flere fra samme hold
   skalerer med udbruddets størrelse; ingen ulogiske udbrud.
-- K5 Størrelse på kuperet efter trappen 5-9 (ejer #6).
+- K5 Størrelse på kuperet efter størrelsestrappen (ejer #6).
 - K6 Ingen ren lodtrækning (ejer #5): hver udbrudssejr kan forklares i løbsfilmen.
   Mulighed A (blind "for sent"-chance) er afvist og bruges ikke som reserve.
 - K7 Uændret: bjerg/højfjeld-ankre, vindertype-dommen, "jag" øger kun, "lad gå" skaber
@@ -110,9 +110,9 @@ attempt -> formed):
 3. Ryttere pr. hold skaleret med udbruddets størrelse: et lille udbrud har sjældent to
    fra samme hold, et stort må have flere; reaktionen fra de andre hold vokser med et
    holds overvægt i udbruddet (thelamba #6912: "3 gange 2 fra samme hold").
-4. Ingen ulogiske udbrud på 1. etape: ingen GC-favorit, aldrig tre fra samme hold.
+4. Ingen ulogiske udbrud på 1. etape: ingen GC-favorit og aldrig mange fra samme hold.
 
-**P4 Størrelse på kuperet (K5, ejer #6).** Kuperede udbrud dannes efter trappen 5-9;
+**P4 Størrelse på kuperet (K5, ejer #6).** Kuperede udbrud dannes efter størrelsestrappen;
 straffen for små udbrud må ikke trække under trappen. Udbruddets antal og flugt-evne
 påvirker fortsat chancen monotont.
 
@@ -140,11 +140,11 @@ testportens S5-ruter med syntetisk startfelt; samme gates begge steder.
   etapeløb; andelen i den øvre zone under et privat loft; **nul** etaper over den private hårde grænse, og
   enhver etape over den øvre zone skal have "ingen jagt-interesse" i sin hendelse.
 - G3 (ny, K4) Sammensætning:
-  a) GC-favorit i udbruddet under privat loft; nul på 1. etape.
+  a) GC-favorit i udbruddet sjældent (privat loft); aldrig på 1. etape.
   b) Etapefavorit (top på dagens afslutnings-evne) i udbruddet under privat loft.
-  c) To fra samme hold i et udbrud på højst fire under privat loft; tre fra samme hold
-     på 1. etape = nul; tre fra samme hold der holder hjem = nul.
-- G4 Størrelse på kuperet inden for trappen 5-9 (median og 10-90 %).
+  c) Flere fra samme hold i et lille udbrud sjældent (privat loft); mange fra samme hold
+     aldrig på 1. etape og aldrig i et udbrud der holder hjem. Grænserne står privat.
+- G4 Størrelse på kuperet inden for størrelsestrappen (fordelingskrav privat).
 - G5 Uændret dom for bjerg, højfjeld, flad og vindertype; `breakawayHoldVsLegacy`
   (Udbrudsmål §3) ikke markant under legacy på nogen profil.
 - G6 Bit-identitet: alle motortests under v1 grønne uden fixture-ændringer.
