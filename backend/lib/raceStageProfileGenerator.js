@@ -1803,7 +1803,9 @@ function drawIdentityTypes(rng, stages, identity, label) {
     }
     // En feature uden egen plads kan dele etape med typens egen lås af samme type.
     const shared = locks.find((l) => !l.feature && l.type === sig.type
-      && (sig.position === null || sig.position === l.position) && (!sig.prologue || l.prologue));
+      // #6857 (Codex P2): prolog-tilstanden skal være ens; en almindelig enkeltstart må aldrig
+      // dele plads med typens prolog-lås (den ville blive forkortet til en prolog).
+      && (sig.position === null || sig.position === l.position) && Boolean(sig.prologue) === Boolean(l.prologue));
     if (shared) { shared.feature = feature; continue; }
     let index = claim(sig.type);
     if (index < 0) {
@@ -1930,6 +1932,11 @@ function buildIdentityStageRace(rng, stages, race, identity, fillerTypes = null)
  * @param {any} race
  */
 function buildAuthoredSingle(race) {
+  // #6857 (Codex P2): fail-closed i generatoren selv (databasen har ingen constraint): en
+  // håndskreven rute gælder kun et endags-monument.
+  if (race?.race_type !== "single" || race?.race_class !== "Monuments") {
+    throw new TypeError(`authored_route requires a single-day Monuments race, got ${race?.race_type ?? "?"} / ${race?.race_class ?? "?"} (${race?.name ?? race?.id}, #6857)`);
+  }
   const r = race.authored_route;
   validateAuthoredRoute(r);
   // Afslutningen skal ligge i S5-matrixen for rutens eget terræn (B+), ellers afviser

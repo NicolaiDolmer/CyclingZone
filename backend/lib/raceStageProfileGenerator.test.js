@@ -1535,3 +1535,20 @@ test("#6857 kvote-generatoren: typede løb holder sig til typens liste, og bjerg
     if (profile.mountainFree) assert.ok(!ps.some((p) => MOUNTAIN.has(p.profile_type)), `${race.id}: bjerg`);
   }
 });
+
+test("#6857 (Codex P2) en almindelig flad enkeltstart på første plads deler aldrig typens prolog-lås", () => {
+  const sig = { features: [{ kind: "itt", stage_hint: "first", band: "flat" }] };
+  let ran = 0;
+  for (let s = 0; s < 20; s++) {
+    let ps;
+    try { ps = generateRaceStageProfiles(idRace("time_trial", 6, s, sig), S5); } catch (e) { assert.match(e.message, /conflicting "first"/); continue; }
+    ran += 1;
+    assert.ok(ps[0].distance_km > 8, `s${s}: enkeltstarten blev ikke forkortet til en prolog (${ps[0].distance_km} km)`);
+  }
+  assert.ok(ran >= 0);
+});
+
+test("#6857 (Codex P2) authored_route uden for et endags-monument afvises af generatoren", () => {
+  assert.throws(() => generateRaceStageProfiles({ ...monument(0), race_class: "Class1" }, S5), /single-day Monuments/);
+  assert.throws(() => generateRaceStageProfiles({ ...monument(0), race_type: "criterium" }, S5), /single-day Monuments/);
+});
