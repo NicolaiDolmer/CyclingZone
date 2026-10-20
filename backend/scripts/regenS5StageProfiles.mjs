@@ -37,7 +37,7 @@
 // Exit: 0 = grøn · 1 = blokerende fund (dry-run) eller fejlet post-verify · 2 = brugsfejl.
 
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -57,6 +57,7 @@ import { TIER_IDENTITY_DISTRIBUTION, RACE_IDENTITY_TYPES } from "../lib/raceIden
 import { GRAND_TOUR_MIN_STAGES } from "../lib/tierRaceSelection.js";
 import { fetchAllRows, fetchAllRowsChunkedIn } from "../lib/supabasePagination.js";
 import { onlySeniorSquadRows } from "../lib/squads.js";
+import { validateSeed } from "./applyRaceIdentity.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = resolve(__dirname, "..", "..");
@@ -145,7 +146,7 @@ export function assertPrivatePath(path, label) {
 
 // ── Argumenter ────────────────────────────────────────────────────────────────────────
 
-const VALUE_FLAGS = new Set(["season", "routes-out", "private-dir", "public-dir", "backup-table", "plan-hash", "motor-bench", "label"]);
+const VALUE_FLAGS = new Set(["season", "routes-out", "private-dir", "public-dir", "backup-table", "plan-hash", "motor-bench", "label", "identity-file"]);
 const BOOL_FLAGS = new Set(["apply", "confirm-season-upcoming", "allow-active", "skip-cache-wait"]);
 
 /**
@@ -154,7 +155,7 @@ const BOOL_FLAGS = new Set(["apply", "confirm-season-upcoming", "allow-active", 
 export function parseArgs(argv = []) {
   const o = {
     apply: false, season: null, confirmSeasonUpcoming: false, allowActive: false, skipCacheWait: false,
-    routesOut: null, privateDir: null, publicDir: null, backupTable: null, planHash: null, motorBench: null, label: null,
+    routesOut: null, privateDir: null, publicDir: null, backupTable: null, planHash: null, motorBench: null, label: null, identityFile: null,
   };
   const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
   for (let i = 0; i < argv.length; i++) {
@@ -179,6 +180,9 @@ export function parseArgs(argv = []) {
   }
   if (o.season != null && o.season !== TARGET_SEASON_NUMBER) {
     throw new Error(`scriptet regenererer kun sæson ${TARGET_SEASON_NUMBER} (fik --season ${o.season})`);
+  }
+  if (o.apply && o.identityFile) {
+    throw new Error("--identity-file er kun til dry-run: apply bruger prod's race_pool, så identiteten skal være anvendt dér først (applyRaceIdentity.js)");
   }
   if (o.apply) {
     if (o.season !== TARGET_SEASON_NUMBER) throw new Error(`--apply kræver eksplicit --season ${TARGET_SEASON_NUMBER}`);
@@ -272,6 +276,29 @@ export async function loadRegenInput(db, seasonNumber = TARGET_SEASON_NUMBER) {
   const profiles = raceIds.length ? await db.profilesOf(raceIds) : [];
   const claims = raceIds.length ? await db.claimsOf(raceIds) : [];
   return { season, divisions, races, catalog, profiles, claims };
+}
+
+/**
+ * Dry-run med en identitets-fil (database/seed/race_identity.json) lagt oven på prod's race_pool
+ * i hukommelsen, så tørkørslen kan vise typerne før applyRaceIdentity.js --apply har skrevet dem.
+ * Samme validering og samme krav til løbstypen som applyRaceIdentity (L1). Rører ikke databasen.
+ *
+ * @returns {{ catalog: object[], entries: number, applied: number }}
+ */
+export function overlayIdentity(catalog, document) {
+  const entries = validateSeed(document);
+  const byExternal = new Map(entries.map((e) => [e.external_id, e]));
+  let applied = 0;
+  const out = catalog.map((row) => {
+    const e = byExternal.get(row.external_id);
+    if (!e) return row;
+    if (e.race_identity_type !== null && row.race_type !== "stage_race") throw new Error(`${e.external_id}: race_identity_type kræver stage_race`);
+    if (e.signature !== null && row.race_type !== "stage_race") throw new Error(`${e.external_id}: signature kræver stage_race`);
+    if (e.authored_route !== null && (row.race_type !== "single" || row.race_class !== "Monuments")) throw new Error(`${e.external_id}: authored_route kræver et Monuments-endagsløb`);
+    applied += 1;
+    return { ...row, race_identity_type: e.race_identity_type, signature: e.signature, authored_route: e.authored_route };
+  });
+  return { catalog: out, entries: entries.length, applied };
 }
 
 // ── Planen (ren) ──────────────────────────────────────────────────────────────────────
@@ -755,7 +782,7 @@ export function signaturePins(race, signature, profiles) {
  * Rapporten pr. division. `full` har tal og navne (privat); `public` er kvalitativ (✅/❌ og
  * antal fra ejerens tabel A), så den kan committes.
  */
-export function buildReport({ input, plan, invariants, diff, generatedAt, gateLines = [] }) {
+export function buildReport({ input, plan, invariants, diff, generatedAt, gateLines = [], identitySource = "race_pool (prod)" }) {
   const catalogById = new Map(input.catalog.map((c) => [c.id, c]));
   const divisions = plan.tiers.map((t) => {
     const raceRows = t.raceRows;
@@ -800,14 +827,14 @@ export function buildReport({ input, plan, invariants, diff, generatedAt, gateLi
     parts: Object.fromEntries(["stages", "grandTours", "season", "motor"].map((k) => [k, { green: k === "motor" ? g.parts.motor.status !== "red" : g.parts[k].green, stub: k === "motor" ? Boolean(g.parts.motor.stub) : undefined, violations: (g.parts[k].violations ?? []).length }])),
   });
   const full = {
-    issue: "#6929 (#6857 L3)", generatedAt, season: input.season.number, planHash: plan.planHash, rowCount: plan.rowCount,
+    issue: "#6929 (#6857 L3)", generatedAt, identitySource, season: input.season.number, planHash: plan.planHash, rowCount: plan.rowCount,
     races: input.races.length, racesToWrite: diff.racesToWrite.length, unchanged: diff.unchanged.length,
     invariants, gate: { before: gatePart(plan.gate.before), after: gatePart(plan.gate.after), afterBlocking: plan.gate.after.blocking },
     divisions,
   };
 
   const publicJson = {
-    issue: full.issue, generatedAt, season: full.season, planHash: full.planHash, races: full.races,
+    issue: full.issue, generatedAt, identitySource, season: full.season, planHash: full.planHash, races: full.races,
     racesToWrite: full.racesToWrite, invariants: invariants.checks.map(({ name, ok }) => ({ name, ok })),
     gate: { before: { green: full.gate.before.green, parts: Object.fromEntries(Object.entries(full.gate.before.parts).map(([k, v]) => [k, v.green])) },
       after: { green: full.gate.after.green, parts: Object.fromEntries(Object.entries(full.gate.after.parts).map(([k, v]) => [k, v.green])) } },
@@ -830,7 +857,7 @@ function fullMarkdown(r, gateLines) {
   const L = [];
   L.push(`# #6929 tørkørsel: S5-etapeprofiler med løbsidentitet (PRIVAT, hard rule 17)`, "");
   L.push(`Genereret ${r.generatedAt} · sæson ${r.season} · ${r.races} løb · ${r.rowCount} profilrækker · ${r.racesToWrite} løb ændres, ${r.unchanged} uændrede`);
-  L.push(`Plan-hash: \`${r.planHash}\``, "");
+  L.push(`Plan-hash: \`${r.planHash}\` · identitet fra ${r.identitySource}`, "");
   L.push("## Invarianter (fail-closed)", "");
   for (const c of r.invariants.checks) L.push(`- ${mark(c.ok)} ${c.name} (${c.detail})`);
   L.push("", "## Benchmark-gaten (1-4), før → efter", "");
@@ -885,7 +912,7 @@ function publicMarkdown(r) {
   const L = [];
   L.push(`# #6929 tørkørsel: S5-etapeprofiler med løbsidentitet (offentlig udgave)`, "");
   L.push("Kvalitativ udgave (hard rule 17): kun domme og ejerens tabel A. Tallene, løbsnavnene og ruterne ligger i den private rapport i `balance-internals/6857/`.", "");
-  L.push(`Genereret ${r.generatedAt} · sæson ${r.season} · ${r.races} løb · ${r.racesToWrite} løb ville blive skrevet om · plan-hash \`${r.planHash.slice(0, 12)}…\``, "");
+  L.push(`Genereret ${r.generatedAt} · sæson ${r.season} · ${r.races} løb · ${r.racesToWrite} løb ville blive skrevet om · plan-hash \`${r.planHash.slice(0, 12)}…\` · identitet fra ${r.identitySource}`, "");
   L.push("## Invarianter", "");
   for (const c of r.invariants) L.push(`- ${mark(c.ok)} ${c.name}`);
   L.push("", "## Benchmark-gaten (1-4)", "", "| Del | Før | Efter |", "|---|---|---|");
@@ -931,6 +958,14 @@ async function main() {
   const input = await loadRegenInput(db, opts.season);
   log(`Sæson ${input.season.number} (${input.season.status}): ${input.races.length} seniorløb · ${input.profiles.length} profilrækker · ${input.claims.length} claims`);
 
+  let identitySource = "race_pool (prod)";
+  if (opts.identityFile) {
+    const doc = JSON.parse(readFileSync(resolve(opts.identityFile), "utf8"));
+    const overlay = overlayIdentity(input.catalog, doc);
+    input.catalog = overlay.catalog;
+    identitySource = `${opts.identityFile} lagt oven på race_pool (${overlay.applied} af ${overlay.entries} rækker ramte S5; IKKE anvendt i prod)`;
+    log(`Identitet: ${identitySource}`);
+  }
   const benchmark = loadS5Benchmark();
   const motor = loadMotorGapFile(opts.motorBench ?? DEFAULT_MOTOR_STUB_PATH);
   const plan = buildRegenPlan(input, { evaluateGate: makeGateEvaluator({ benchmark, motor }), log });
@@ -945,7 +980,7 @@ async function main() {
   mkdirSync(publicDir, { recursive: true });
 
   if (!opts.apply) {
-    const report = buildReport({ input, plan, invariants, diff, generatedAt, gateLines });
+    const report = buildReport({ input, plan, invariants, diff, generatedAt, gateLines, identitySource });
     const stamp = generatedAt.replace(/[:.]/g, "-");
     writeFileSync(join(privateDir, `regen-dry-run-${stamp}.md`), report.fullMarkdown, "utf8");
     writeFileSync(join(privateDir, `regen-dry-run-${stamp}.json`), `${JSON.stringify(report.full, null, 2)}\n`, "utf8");

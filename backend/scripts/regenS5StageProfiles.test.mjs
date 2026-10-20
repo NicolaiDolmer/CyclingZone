@@ -21,7 +21,7 @@ import {
   parseArgs, copenhagenDate, canonicalJson, loadRegenInput, buildRegenPlan, checkInvariants, diffAgainstCurrent,
   buildBackupSql, buildRestoreSql, assertBackupCovers, batchRaces, applyPlan, postVerify, crossPoolDivergence,
   parseDivergenceScriptOutput, waitForCalendarCache, buildRoutesFiles, writeRoutesDir, assertPrivatePath, buildReport,
-  seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient,
+  seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient, overlayIdentity,
   CALENDAR_CACHE_TTL_MS, CALENDAR_CACHE_MARGIN_MS, WRITE_BATCH_ROWS, ROUTES_FORMAT, PROFILE_COLUMNS, CUTOVER_DATE_CPH,
 } from "./regenS5StageProfiles.mjs";
 import { ARCHETYPE_PROFILES } from "../lib/raceStageProfileGenerator.js";
@@ -484,6 +484,27 @@ test("signaturePins: summit_finish kræver bjergtop; sector matches på navn i e
   ] }, profiles);
   assert.deepEqual(pins.map((p) => p.pinned), [false, true, false]);
   assert.equal(matchesAuthored(null, AUTHORED), null);
+});
+
+// ── Identitets-fil oven på race_pool (kun dry-run) ────────────────────────────────────
+
+test("--identity-file lægger seed-filen oven på kataloget i hukommelsen, med L1's krav", () => {
+  const cat = catalog().map((c) => ({ ...c, race_identity_type: null, signature: null, authored_route: null }));
+  const doc = { version: 1, entries: [
+    { external_id: "x-d2", race_identity_type: "time_trial", signature: { features: [{ kind: "prologue", stage_hint: "first", band: "flat" }] }, authored_route: null },
+    { external_id: "x-mon", race_identity_type: null, signature: null, authored_route: AUTHORED },
+    { external_id: "x-not-in-s5", race_identity_type: "gravel", signature: null, authored_route: null },
+  ] };
+  const res = overlayIdentity(cat, doc);
+  assert.equal(res.entries, 3);
+  assert.equal(res.applied, 2);
+  assert.equal(res.catalog.find((c) => c.id === "p-d2").race_identity_type, "time_trial");
+  assert.deepEqual(res.catalog.find((c) => c.id === "p-mon").authored_route, AUTHORED);
+  assert.equal(cat.find((c) => c.id === "p-d2").race_identity_type, null, "input-kataloget røres ikke");
+  assert.throws(() => overlayIdentity(cat, { version: 1, entries: [{ external_id: "x-d2s", race_identity_type: "sprinters", signature: null, authored_route: null }] }), /kræver stage_race/);
+  assert.throws(() => overlayIdentity(cat, { version: 1, entries: [{ external_id: "x-d2", race_identity_type: "nope", signature: null, authored_route: null }] }), /unknown type/);
+  assert.throws(() => parseArgs(["--apply", "--season", "5", "--confirm-season-upcoming", "--backup-table=backup_6857_race_stage_profiles_20261021", `--plan-hash=${"a".repeat(64)}`, "--identity-file=x.json"]), /kun til dry-run/);
+  assert.equal(parseArgs(["--identity-file=database/seed/race_identity.json"]).identityFile, "database/seed/race_identity.json");
 });
 
 // ── Mod den rigtige generator (nuværende signatur) ────────────────────────────────────
