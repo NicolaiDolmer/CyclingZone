@@ -666,7 +666,7 @@
       },
       "raceIdentityRaces": {
         "title": "Tipo y seña de identidad de cada carrera",
-        "text": "Ordenadas por división y por fecha en el calendario. Los Grand Tours no están en la lista.",
+        "text": "Ordenadas por división y por fecha en el calendario. Los Grand Tours no están en la lista. Los cinco monumentos están al final.",
         "rows": [
           [
             "Carrera",

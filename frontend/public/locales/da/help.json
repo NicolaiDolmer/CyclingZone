@@ -666,7 +666,7 @@
       },
       "raceIdentityRaces": {
         "title": "Type og signatur for hvert løb",
-        "text": "Sorteret efter division og dato i kalenderen. Grand Tours er ikke med.",
+        "text": "Sorteret efter division og dato i kalenderen. Grand Tours er ikke med. De fem monumenter står til sidst.",
         "rows": [
           [
             "Løb",

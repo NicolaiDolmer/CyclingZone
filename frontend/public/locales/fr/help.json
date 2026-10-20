@@ -666,7 +666,7 @@
       },
       "raceIdentityRaces": {
         "title": "Type et signature de chaque course",
-        "text": "Classées par division et par date dans le calendrier. Les Grands Tours ne figurent pas dans la liste.",
+        "text": "Classées par division et par date dans le calendrier. Les Grands Tours ne figurent pas dans la liste. Les cinq monuments sont à la fin.",
         "rows": [
           [
             "Course",

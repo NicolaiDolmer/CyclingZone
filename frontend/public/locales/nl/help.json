@@ -666,7 +666,7 @@
       },
       "raceIdentityRaces": {
         "title": "Type en kenmerk per koers",
-        "text": "Gesorteerd op divisie en op datum in de kalender. De Grand Tours staan niet in de lijst.",
+        "text": "Gesorteerd op divisie en op datum in de kalender. De Grand Tours staan niet in de lijst. De vijf monumenten staan onderaan.",
         "rows": [
           [
             "Koers",

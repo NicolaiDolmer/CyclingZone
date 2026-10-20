@@ -666,7 +666,7 @@
       },
       "raceIdentityRaces": {
         "title": "Every race's type and signature",
-        "text": "Sorted by division and by date in the calendar. Grand Tours are not on the list.",
+        "text": "Sorted by division and by date in the calendar. Grand Tours are not on the list. The five monuments are at the end.",
         "rows": [
           [
             "Race",
