@@ -30,7 +30,6 @@ import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
-import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
 import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey, seasonNumberFromReferenceYear } from "../../../lib/riderAge";
@@ -39,6 +38,7 @@ import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
 import { riderReputationBand, riderReputationProgress, riderReputationValue } from "../../../lib/riderReputationView.ts";
 import { formatNumber } from "../../../lib/intl.js";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
+import { squadBadgeKey } from "../../../lib/squadBadge.ts";
 import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon, Portal } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
@@ -72,7 +72,8 @@ function HeroStat({ label, value, sub, popover, valueClassName = "text-[20px] fo
 }
 
 // Status-banner (betinget). `banner` = { kind, ...data } fra parent. Gold-tonet for
-// markeds-tilstande, amber for kontrakt-udløb, neutral for akademi.
+// markeds-tilstande. #6934: kontrakt-udløb og akademi har ikke længere bjælke
+// (kontrakt-feltet og U23/Junior-mærket i chip-rækken bærer dem).
 //
 // #2748: "finalSeason" er DEFINITIVT (motoren har allerede besluttet pensionen,
 // bare ikke anvendt den endnu), til forskel fra retirementRiskBadgeKey-badget
@@ -100,21 +101,17 @@ function StatusBanner({ banner }) {
   const TONES = {
     listed:  "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t",
     auction: "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t",
-    academy: "bg-cz-subtle border-cz-border text-cz-2",
-    expiry:  "bg-cz-warning-bg border-cz-warning/30 text-cz-warning",
   };
-  const tone = TONES[banner.kind] ?? TONES.academy;
+  const tone = TONES[banner.kind];
+  if (!tone) return null;
 
   let text = null;
   if (banner.kind === "listed")  text = t("profile.banner.listed", { price: banner.price });
   if (banner.kind === "auction") text = t("profile.banner.auction", { endsIn: banner.endsIn, highBid: banner.highBid });
-  if (banner.kind === "academy") text = t("profile.banner.academy");
-  if (banner.kind === "expiry")  text = t("profile.banner.expiry", { season: banner.season });
   if (!text) return null;
 
   return (
     <div className={`mt-4 flex items-center gap-2 rounded-cz border px-3.5 py-2.5 text-sm tabular-nums ${tone}`}>
-      {banner.kind === "expiry" && <AlertTriangleIcon size={16} aria-hidden="true" className="shrink-0" />}
       <span>{text}</span>
       {/* #3490: samme "X% under/over vurdering"-indikator som Transferlisten/
           Auktioner (ValueDeltaBadge) — kun for "listed" og kun når rytterens
@@ -200,7 +197,6 @@ export default function RiderProfileHero({
   divisionLabel,                  // fx "DIV 2" (null hvis ukendt)
   valueAmount,                    // "4.366" (uden CZ$-suffix)
   valueLabel,                     // fuld label til title
-  valueTrendWindow = null,        // #2499: { delta, pct, actualDaysAgo, snapshotDate } | null
   salaryText,                     // præ-formateret løn, fx "CZ$ 293/år"
   isAiTeam = false,
   pendingTeam = null,             // kommende hold (handel til næste sæson) | null
@@ -287,7 +283,9 @@ export default function RiderProfileHero({
   const potentialEyebrow = viewer === "scouting"
     ? t("profile.hero.potentialScouted")
     : t("profile.hero.potentialOwn");
-  const isU23 = rider.is_u25 != null && age != null && age < 23;
+  // #6934: truppen (riders.squad) afgør U23/Junior-mærket; alders-U23 er kun fallback når squad mangler.
+  const squadKey = squadBadgeKey(rider.squad);
+  const isU23 = !squadKey && rider.is_u25 != null && age != null && age < 23;
   const hasRating = Number.isFinite(overallRating);
   const ratingPlate = hasRating ? (
     <span
@@ -323,7 +321,14 @@ export default function RiderProfileHero({
     : hasContractSeason
       ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
       : t("header.noContract");
-  const contractSub = contractOffer.awaitingRelease ? (
+  // #6934: udløber kontrakten ved dette sæsonskifte, står det i feltet (ikon + kort tekst), ikke i en bjælke.
+  const contractExpiresNow = contractOffer.state === CONTRACT_STATE.FINAL_SEASON;
+  const contractSub = contractExpiresNow ? (
+    <p className="text-2xs text-cz-warning mt-1 inline-flex items-center gap-1" data-testid="rider-contract-expires">
+      <AlertTriangleIcon size={12} aria-hidden="true" className="shrink-0" />
+      {t("profile.hero.contractExpires")}
+    </p>
+  ) : contractOffer.awaitingRelease ? (
     <p className="text-2xs text-cz-3 mt-1">{t("profile.hero.contractExpiredSub")}</p>
   ) : null;
   const reputationValue = riderReputationValue(rider, reputationOn);
@@ -379,6 +384,7 @@ export default function RiderProfileHero({
                   {divisionLabel}
                 </span>
               )}
+              {squadKey && <CategoryTag>{t(`header.${squadKey}`)}</CategoryTag>}
               {isU23 && <CategoryTag>{t("header.u23")}</CategoryTag>}
               <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 inline-flex items-center gap-1.5">
                 {rider.nationality_code && (
@@ -501,7 +507,6 @@ export default function RiderProfileHero({
           value={valueAmount}
           valueClassName="text-[20px] font-[650] truncate"
           valueProps={{ title: valueLabel, "data-testid": "rider-value-amount" }}
-          sub={<RiderValueTrendBadge window={valueTrendWindow} className="mt-1" />}
         />
         <HeroStat label={t("profile.hero.salary")} value={salaryText ?? "—"} valueClassName="text-[20px] font-[650] truncate" />
         <HeroStat

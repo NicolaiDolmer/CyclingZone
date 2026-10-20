@@ -52,6 +52,7 @@
     "visitorsTrendUp": "En hausse de {pct} % par rapport aux 7 jours précédents",
     "visitorsTrendDown": "En baisse de {pct} % par rapport aux 7 jours précédents",
     "u23": "U23",
+    "junior": "Junior",
     "u25": "U25",
     "retired": "Retraité",
     "ageYears": "{age} ans",
@@ -199,9 +200,8 @@
       "contractSeason": "Saison {season}",
       "contractExpired": "Expiré",
       "contractExpiredSub": "Agent libre au changement de saison sauf prolongation",
+      "contractExpires": "expire",
       "aiTag": "IA",
-      "valueTrend": "{value} sur {days} jours",
-      "valueTrendTitle": "Variation de valeur depuis le {date}",
       "ratingTrendRising": "En hausse cette saison",
       "ratingTrendSteady": "Stable cette saison",
       "ratingTrendDeclining": "En baisse cette saison",
@@ -253,9 +253,7 @@
       "listed": "Sur la liste des transferts · prix {price}",
       "auction": "Aux enchères · se termine dans {endsIn} · enchère la plus haute {highBid}",
       "finalSeasonTitle": "Dernière saison",
-      "finalSeason": "A annoncé sa retraite au début de la saison. Il prend sa retraite à la fin de la saison {season}.",
-      "academy": "Coureur de l'académie",
-      "expiry": "Le contrat expire après la saison {season}."
+      "finalSeason": "A annoncé sa retraite au début de la saison. Il prend sa retraite à la fin de la saison {season}."
     },
     "history": {
       "loading": "Chargement de l'historique...",
@@ -855,8 +853,7 @@
       "working": "Prolongation…",
       "success": "Contrat prolongé.",
       "errorPrefix": "Prolongation impossible :",
-      "capped": "Contrat à la durée maximale (jusqu'à la saison {season}).",
-      "capCounterLabel": "Prolongations utilisées"
+      "capped": "Contrat à la durée maximale (jusqu'à la saison {season})."
     },
     "release": {
       "button": "Libérer le coureur",

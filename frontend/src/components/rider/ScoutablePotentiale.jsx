@@ -89,7 +89,7 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
       className={`font-mono tabular-nums whitespace-nowrap text-cz-1 ${large ? "text-[17px]" : "text-[13px]"}`}
       data-potential-band={`${band.lo}-${band.hi}`}
     >
-      {band.lo}–{band.hi}
+      {band.lo === band.hi ? band.lo : `${band.lo}–${band.hi}`}
       {large && Number.isFinite(loft) && (
         <span className="ms-1.5 text-[12px] text-cz-3 font-normal" data-potential-loft={loft}>
           · {pastPeak ? t("rider:scouting.loftPastPeakShort", { value: loft }) : t("rider:scouting.loftShort", { value: loft })}
