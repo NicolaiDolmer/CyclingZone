@@ -42,7 +42,7 @@
  *   node scripts/ops/prodHealthSql.mjs --mode snapshot
  *   node scripts/ops/prodHealthSql.mjs --mode report --out prod-health-sql.json --comment prod-health-sql.md
  *
- * Exit: 0 = kørte (også med fund) · 1 = config-fejl · 2 = værn afvist (forkert rolle/ikke read-only)
+ * Exit: 0 = kørte (også med fund) · 1 = config-fejl · 2 = værn afvist (forkert projekt/rolle/ikke read-only)
  *       · 3 = værnet fik intet svar (login afvist, forbindelse, timeout); kommentaren skrives stadig.
  */
 
@@ -59,6 +59,25 @@ export const EXPECTED_ROLE = "cz_monitor";
 export const COMMENT_MARKER = "<!-- prod-health-sql -->";
 export const SCHEMA_VERSION = 1;
 
+/**
+ * Binder forbindelsen til prod-projektet (Codex-fund, PR #6996): Supabase'
+ * pooler router på brugernavnet `rolle.projektref`, og direct connection har
+ * projektref i hosten. Peger secret'en på et andet projekt, køres intet.
+ * REN; returnerer kun true/false, aldrig dele af URL'en.
+ */
+export function connectsToProject(dbUrl, ref = PROJECT_REF) {
+  let u;
+  try {
+    u = new URL(dbUrl);
+  } catch {
+    return false;
+  }
+  if (!/^postgres(ql)?:$/.test(u.protocol)) return false;
+  const user = decodeURIComponent(u.username);
+  if (user === `${EXPECTED_ROLE}.${ref}`) return true;
+  return user === EXPECTED_ROLE && u.hostname === `db.${ref}.supabase.co`;
+}
+
 export const THRESHOLDS = {
   connectionPressurePct: 80,
   longSessionSeconds: 30,
@@ -74,7 +93,8 @@ export const THRESHOLDS = {
   forecastMaxDaysAhead: 14,
 };
 
-const MAX_PSS_SNAPSHOTS = 3;
+// Plads til manuelle kørsler/genkørsler mellem de planlagte snapshots (Codex-fund, PR #6996).
+const MAX_PSS_SNAPSHOTS = 8;
 const MAX_SIZE_HISTORY = 30;
 const SNAPSHOT_MAX_AGE_MS = 4 * 60 * 60 * 1000;
 
@@ -312,6 +332,33 @@ export function pushSnapshot(list, snap, nowIso) {
   return kept.slice(-MAX_PSS_SNAPSHOTS);
 }
 
+const minutesBetween = (a, b) => (new Date(b.observed_at).getTime() - new Date(a.observed_at).getTime()) / 60_000;
+
+/**
+ * Vælger tre snapshots med ca. en times mellemrum, der slutter i det nyeste.
+ * For hvert skridt bagud tages det snapshot inden for 45-90 min, der ligger
+ * tættest på 60 min, så en manuel kørsel imellem ikke ødelægger rækken.
+ */
+export function pickHourlyTriple(snapshots) {
+  const list = (Array.isArray(snapshots) ? snapshots : []).filter((x) => x?.observed_at);
+  if (list.length < 3) return null;
+  const pickBefore = (idx) => {
+    let best = -1;
+    for (let i = idx - 1; i >= 0; i -= 1) {
+      const g = minutesBetween(list[i], list[idx]);
+      if (!Number.isFinite(g) || g < THRESHOLDS.snapshotSpacingMinMinutes || g > THRESHOLDS.snapshotSpacingMaxMinutes) continue;
+      if (best < 0 || Math.abs(g - 60) < Math.abs(minutesBetween(list[best], list[idx]) - 60)) best = i;
+    }
+    return best;
+  };
+  const i2 = list.length - 1;
+  const i1 = pickBefore(i2);
+  if (i1 < 0) return null;
+  const i0 = pickBefore(i1);
+  if (i0 < 0) return null;
+  return [list[i0], list[i1], list[i2]];
+}
+
 export function evaluateStatements(snapshots) {
   const id = "query_execution_time";
   const threshold = {
@@ -322,12 +369,13 @@ export function evaluateStatements(snapshots) {
   if (!Array.isArray(snapshots) || snapshots.length < 3) {
     return unable(id, "three_hourly_snapshots", { threshold, value: { snapshots: snapshots?.length ?? 0 } });
   }
-  const [s0, s1, s2] = snapshots.slice(-3);
-  const t = [s0, s1, s2].map((s) => new Date(s.observed_at).getTime());
-  const gaps = [(t[1] - t[0]) / 60_000, (t[2] - t[1]) / 60_000];
-  if (gaps.some((g) => !Number.isFinite(g) || g < THRESHOLDS.snapshotSpacingMinMinutes || g > THRESHOLDS.snapshotSpacingMaxMinutes)) {
+  const triple = pickHourlyTriple(snapshots);
+  if (!triple) {
+    const last = snapshots.slice(-3);
+    const gaps = [minutesBetween(last[0], last[1]), minutesBetween(last[1], last[2])];
     return unable(id, "snapshot_spacing", { threshold, value: { gaps_minutes: gaps.map((g) => Math.round(g)) } });
   }
+  const [s0, s1, s2] = triple;
   if (s0.stats_reset !== s1.stats_reset || s1.stats_reset !== s2.stats_reset
       || s0.dealloc !== s1.dealloc || s1.dealloc !== s2.dealloc) {
     return unable(id, "stats_reset_or_dealloc_changed", { threshold });
@@ -605,6 +653,10 @@ export async function main({ argv = process.argv.slice(2), env = process.env, ex
   if (!dbUrl) {
     log("prod-health-sql: CZ_MONITOR_DATABASE_URL mangler (GitHub-secret, se #6994)");
     return 1;
+  }
+  if (!connectsToProject(dbUrl)) {
+    log(`prod-health-sql: CZ_MONITOR_DATABASE_URL peger ikke på ${EXPECTED_ROLE} i projekt ${PROJECT_REF}; intet køres`);
+    return 2;
   }
   const stateFile = env.PROD_HEALTH_SQL_STATE || ".prod-health-sql-state/state.json";
   const { result, state, exitCode } = await runChecks({

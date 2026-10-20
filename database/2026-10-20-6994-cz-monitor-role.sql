@@ -57,6 +57,20 @@ ALTER ROLE cz_monitor SET statement_timeout = '5s';
 ALTER ROLE cz_monitor SET lock_timeout = '1s';
 ALTER ROLE cz_monitor SET idle_in_transaction_session_timeout = '15s';
 
+-- temp_file_limit (ejer-valg A, 20/10): loft over sorterings-/hash-temp-filer
+-- pr. session, så en lækket nøgle ikke kan fylde disken med tunge queries.
+-- Det er en superuser-indstilling (pg_settings.context = 'superuser'), som
+-- cz_monitor derfor ikke selv kan hæve. Supabase tillader det kun, hvis
+-- supautils giver postgres lov; ellers springes den over med en NOTICE i
+-- stedet for at fælde migrationen. Dækker IKKE midlertidige tabeller.
+DO $$
+BEGIN
+  EXECUTE 'ALTER ROLE cz_monitor SET temp_file_limit = ''256MB''';
+EXCEPTION WHEN insufficient_privilege OR invalid_parameter_value OR cant_change_runtime_param THEN
+  RAISE NOTICE '#6994: temp_file_limit kunne ikke sættes på cz_monitor (%); resten af rollen er uændret', SQLERRM;
+END
+$$;
+
 -- pg_read_all_stats (ikke hele pg_monitor): nok til at se alle sessioner i
 -- pg_stat_activity, pg_stat_statements for alle roller og pg_database_size.
 -- pg_monitor ville også give pg_stat_scan_tables (funktioner der tager låse)

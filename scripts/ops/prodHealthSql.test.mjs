@@ -10,6 +10,7 @@ import path from "node:path";
 import {
   classifyPsqlFailure,
   COMMENT_MARKER,
+  connectsToProject,
   evaluateConnections,
   evaluateForecast,
   evaluateGuard,
@@ -18,6 +19,7 @@ import {
   main,
   makePsqlRunner,
   pushSizeHistory,
+  pickHourlyTriple,
   pushSnapshot,
   renderComment,
   runChecks,
@@ -194,6 +196,40 @@ test("statements: uden stats_since kan reset ikke udelukkes -> unable", () => {
   assert.equal(evaluateStatements(snaps).missing, "statement_stats_since");
 });
 
+test("statements: manuel kørsel imellem fortrænger ikke den gyldige timesrække", () => {
+  const rows = [[["111", 1000, 10000]], [["111", 1050, 12000]], [["111", 1100, 14000]], [["111", 1150, 21500]]];
+  const times = [at(2, 45), at(3, 15), at(3, 45), at(4, 45)];
+  let list = [];
+  rows.forEach((r, i) => { list = pushSnapshot(list, toStatementSnapshot(stmtRaw(times[i], r)), times[i]); });
+  assert.deepEqual(pickHourlyTriple(list).map((s) => s.observed_at), [times[0], times[2], times[3]]);
+  const res = evaluateStatements(list);
+  assert.equal(res.outcome, "finding");
+  assert.equal(res.value.window_start, times[0]);
+});
+
+test("projekt-binding: kun cz_monitor i prod-projektet accepteres", () => {
+  assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@aws-0-eu.pooler.supabase.com:5432/postgres"), true);
+  assert.equal(connectsToProject("postgresql://cz_monitor:pw@db.ghwvkxzhsbbltzfnuhhz.supabase.co:5432/postgres"), true);
+  assert.equal(connectsToProject("postgresql://cz_monitor.andetprojekt:pw@aws-0-eu.pooler.supabase.com:5432/postgres"), false);
+  assert.equal(connectsToProject("postgresql://postgres.ghwvkxzhsbbltzfnuhhz:pw@aws-0-eu.pooler.supabase.com:5432/postgres"), false);
+  assert.equal(connectsToProject("postgresql://cz_monitor:pw@localhost:5432/postgres"), false);
+  assert.equal(connectsToProject("ikke en url"), false);
+});
+
+test("main: forkert projekt -> exit 2 uden at køre psql", async () => {
+  let called = false;
+  const logs = [];
+  const code = await main({
+    argv: ["--mode", "report"],
+    env: { CZ_MONITOR_DATABASE_URL: "postgresql://cz_monitor.andet:hemmelig@pooler:5432/postgres" },
+    execFn: async () => { called = true; },
+    log: (l) => logs.push(l),
+  });
+  assert.equal(code, 2);
+  assert.equal(called, false);
+  assert.equal(logs.join(" ").includes("hemmelig"), false);
+});
+
 test("snapshot: rækker uden queryid droppes, ingen query-tekst gemmes", () => {
   const raw = stmtRaw(at(2), [["1", 5, 5]]);
   raw.rows.push({ dbid: "5", userid: "10", queryid: null, toplevel: true, calls: 1, total_exec_time: 1, query: "select secret" });
@@ -202,10 +238,10 @@ test("snapshot: rækker uden queryid droppes, ingen query-tekst gemmes", () => {
   assert.equal(JSON.stringify(snap).includes("secret"), false);
 });
 
-test("pushSnapshot beholder de tre nyeste inden for 4 timer", () => {
+test("pushSnapshot beholder snapshots inden for 4 timer", () => {
   let list = [];
   for (const h of [0, 1, 2, 3, 4]) list = pushSnapshot(list, { observed_at: at(h), rows: {} }, at(h));
-  assert.deepEqual(list.map((s) => s.observed_at), [at(2), at(3), at(4)]);
+  assert.deepEqual(list.map((s) => s.observed_at), [at(0), at(1), at(2), at(3), at(4)]);
   const stale = pushSnapshot([{ observed_at: at(0, 0) }], { observed_at: at(4, 45) }, at(4, 45));
   assert.equal(stale.length, 1);
 });
@@ -366,7 +402,7 @@ test("main: skriver JSON, kommentar og tilstand; log indeholder ingen URL", asyn
   ]);
   const execFn = async (_cmd, args) => ({ stdout: JSON.stringify(answers.get(args.at(-1))) });
   const logs = [];
-  const url = "postgresql://cz_monitor.ref:hemmelig@pooler:5432/postgres";
+  const url = "postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:hemmelig@pooler:5432/postgres";
   const code = await main({
     argv: ["--mode", "report", "--out", path.join(dir, "r.json"), "--comment", path.join(dir, "c.md")],
     env: { CZ_MONITOR_DATABASE_URL: url, PROD_HEALTH_SQL_STATE: path.join(dir, "s", "state.json") },
