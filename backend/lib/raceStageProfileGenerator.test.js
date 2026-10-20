@@ -1705,4 +1705,5 @@ test("#6995 allround: signaturens kuperede enkeltstart overtager garantiens, så
 test("#6995 monument med rampe-afslutning uden målstigning kaster i stedet for at opfinde en rampe", () => {
   const noSummit = { ...DOYENNE, climbs: [DOYENNE.climbs[0]] };
   assert.throws(() => generateRaceStageProfiles(monument(0, noSummit), S5), /needs a summit_finish climb/);
+  assert.throws(() => generateRaceStageProfiles(monument(0, { ...DOYENNE, sprints: [] }), S5), /needs a finish sprint/);
 });

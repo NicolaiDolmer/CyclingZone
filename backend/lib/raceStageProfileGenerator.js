@@ -2006,6 +2006,8 @@ function authoredFinishRamp(r, race) {
   if (!spec) return null;
   const summit = r.climbs.find((/** @type {any} */ c) => c.summit_finish === true);
   if (!summit) throw new TypeError(`authored_route.finale_type "${r.finale_type}" needs a summit_finish climb as its finish ramp (${race.name ?? race.id}, #6995)`);
+  // Codex P2: rampen bor på målspurten; uden den ville etapen stadig mangle rampen (benchmark-gaten).
+  if (!r.sprints.some((/** @type {any} */ s) => s.kind === "finish")) throw new TypeError(`authored_route.finale_type "${r.finale_type}" needs a finish sprint to carry its ramp (${race.name ?? race.id}, #6995)`);
   const clampTo = (/** @type {number} */ v, /** @type {number[]} */ [lo, hi]) => Math.min(hi, Math.max(lo, v));
   return { ramp_km: clampTo(summit.length_km, spec.length), ramp_gradient: clampTo(summit.avg_gradient, spec.grad), ramp_in_climb: true };
 }
