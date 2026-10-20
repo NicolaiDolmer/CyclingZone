@@ -41,3 +41,24 @@ test("loadDoctorReportForSelection: flag off = null; fejl = null (vælter aldrig
   const broken = { from() { throw new Error("boom"); } };
   assert.equal(await loadDoctorReportForSelection({ supabase: broken, race: { id: "r" }, teamId: "t", riders }), null);
 });
+
+test("M4 på etape 2+ samme dato: lægen vurderer starttrætheden med datoens tidligere etaper (B2-løb)", async () => {
+  const { ridersAtNextStageStart } = await import("./doctorReport.js");
+  const mk = (revision) => ({ from(table) {
+    const q = { select() { return q; }, eq() { return q; }, in() { return q; }, lt() { return q; }, is() { return q; }, order() { return q; },
+      async maybeSingle() {
+        if (table === "races") return { data: { engine_rules_revision: revision, stages_completed: 1 }, error: null };
+        return { data: { game_day: 12, scheduled_at: "2026-11-01T14:00:00Z" }, error: null };
+      },
+      then(resolve) { resolve({ data: [{ rider_id: "a", game_day: 11, load: 30 }], error: null }); } };
+    return q; } });
+  const riders = [{ id: "a", fatigue: 45, abilities: { recovery: 50 } }];
+  const race = { id: "r", race_type: "stage_race" };
+  const b2 = await ridersAtNextStageStart({ supabase: mk("s5_profiles_v2"), race, riders, teamId: "t" });
+  assert.ok(b2[0].fatigue > 45, `B2 ${b2[0].fatigue}`);
+  assert.equal(riders[0].fatigue, 45, "input muteres ikke");
+  const legacy = await ridersAtNextStageStart({ supabase: mk("s5_profiles_v1"), race, riders, teamId: "t" });
+  assert.equal(legacy[0].fatigue, 45, "uden B2 = åbningen, som motoren");
+  const { buildDoctorReport } = await import("./doctorReport.js");
+  assert.notEqual(buildDoctorReport({ riders: b2, tier: 5 }).riders.a.assessment, buildDoctorReport({ riders, tier: 5 }).riders.a.assessment);
+});
