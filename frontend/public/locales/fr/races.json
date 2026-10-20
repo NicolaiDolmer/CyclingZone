@@ -728,6 +728,23 @@
     "whyBest": "Cette étape de type {bucket} récompense ton meilleur choix : {name}.",
     "form": "Forme",
     "fatigue": "Fatigue",
+    "doctor": {
+      "label": "Médecin",
+      "hint": "L'avis du médecin de l'équipe sur chaque coureur. Un meilleur service médical donne un avis plus précis.",
+      "assessment": {
+        "fresh": "Frais",
+        "ready": "Prêt",
+        "tired": "Fatigué",
+        "rest": "Doit se reposer",
+        "injured": "Blessé"
+      },
+      "season": {
+        "ready": "Prêt pour celui-ci et le reste de la saison.",
+        "ready_but_spent_later": "Prêt maintenant, mais à bout de forces au troisième Grand Tour.",
+        "already_heavy": "Il a beaucoup couru cette saison. Chaque étape coûte plus cher maintenant.",
+        "rest_first": "Fais-le se reposer avant celui-ci."
+      }
+    },
     "injured": "Blessé",
     "overAge": "Âge dépassé",
     "boundIn": "Court {race}",

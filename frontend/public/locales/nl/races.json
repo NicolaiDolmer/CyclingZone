@@ -728,6 +728,23 @@
     "whyBest": "Deze {bucket}-etappe beloont je sterkste match: {name}.",
     "form": "Vorm",
     "fatigue": "Vermoeidheid",
+    "doctor": {
+      "label": "Arts",
+      "hint": "Het oordeel van de ploegarts over elke renner. Een betere medische afdeling geeft een scherper oordeel.",
+      "assessment": {
+        "fresh": "Fris",
+        "ready": "Klaar",
+        "tired": "Moe",
+        "rest": "Moet rusten",
+        "injured": "Geblesseerd"
+      },
+      "season": {
+        "ready": "Klaar voor deze en de rest van het seizoen.",
+        "ready_but_spent_later": "Nu klaar, maar leeg tegen de derde grote ronde.",
+        "already_heavy": "Heeft dit seizoen veel gekoerst. Elke etappe kost nu meer.",
+        "rest_first": "Geef hem rust voor deze."
+      }
+    },
     "injured": "Geblesseerd",
     "overAge": "Te oud",
     "boundIn": "Rijdt {race}",

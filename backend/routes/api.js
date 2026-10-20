@@ -9,6 +9,7 @@
  *   /api/admin      — season, races, overrides
  */
 
+import { loadDoctorReportForSelection } from "../lib/doctorReport.js";
 import express from "express";
 import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js";
 import { createRankingsRouter } from "./rankings.ts";
@@ -4759,7 +4760,9 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
         }));
       }
     }
-    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
+    // #6984 M4 + M8: holdlægens ord (kun condition_model_v2; null = intet vises).
+    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ctx.riders }) : null;
+    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled, doctor });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

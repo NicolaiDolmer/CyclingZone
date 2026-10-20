@@ -34,6 +34,7 @@ import { resolveDayCloseStatus } from "./trainingDayCloseTrigger.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
+import { loadTeamMedicalBonus } from "./medicalEffects.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
 // #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
@@ -82,7 +83,7 @@ export function forecastSlotActivity({
 // `slots` er datoens fem felter i loebsdags-orden (forecastSlotActivity).
 // Kalder aftenopgoerelsens egen funktion; returnerer null hvis input ikke er
 // en hel dato (opgoerelsen kraever praecis fem felter).
-export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG, conditionModelV2 = false }) {
+export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG, conditionModelV2 = false, medicalBonus = 0 }) {
   if (!Array.isArray(slots) || slots.length !== FORECAST_SLOTS) return null;
   try {
     const settled = settleTrainingDateCondition({
@@ -93,6 +94,7 @@ export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recover
       recoveryAbility,
       recoveryConfig,
       modelV2: conditionModelV2,
+      medicalBonus,
     });
     return settled.fatigue;
   } catch {
@@ -108,7 +110,7 @@ export function buildTeamFatigueForecast({
   tickDate, seasonId, dateGameDays, riders, conditionByRider = new Map(), openingByRider = new Map(),
   recoveryByRider = new Map(), planByRider = new Map(), teamWeekDays = null, riderWeekDaysByRider = new Map(),
   receipts = [], recordedLoads = [], plannedStages = [], boundRiderIdsByGameDay = new Map(),
-  cellsOn = false, raceDayEngineOn = true, conditionModelV2 = false,
+  cellsOn = false, raceDayEngineOn = true, conditionModelV2 = false, medicalBonus = 0,
   // #4854: holdets regler (loadTeamFatigueRules) + hvem koerte etape i gaar.
   fatigueRules = null, stageYesterdayRiderIds = new Set(),
 }) {
@@ -161,7 +163,7 @@ export function buildTeamFatigueForecast({
         conditionModelV2,
       });
     });
-    const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig, conditionModelV2 });
+    const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig, conditionModelV2, medicalBonus });
     if (fatigue == null) continue;
     // raceSlots: dagens felter der er laast af et loeb (regel A). Gitteret viser
     // dem som etape; de oevrige felter er traening.
@@ -269,8 +271,10 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const { fatigueRules, stageYesterdayRiderIds } = await fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
   // #6984 (I5): prognosen regner med samme model som aftenens opgoerelse.
   const conditionModelV2 = await isConditionModelV2Enabled(supabase);
+  const medicalBonus = conditionModelV2 ? await loadTeamMedicalBonus(supabase, team.id) : 0;
   const forecast = buildTeamFatigueForecast({
     conditionModelV2,
+    medicalBonus,
     fatigueRules,
     stageYesterdayRiderIds,
     tickDate, seasonId, dateGameDays, riders,
