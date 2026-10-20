@@ -215,6 +215,7 @@ export async function runRaceEntryGenerator({
   // #4759: injicérbar for test (samme mønster som notificationService.js's
   // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
   notify = notifyAssistantFilledSquad,
+  includeStaged = false, // #6909: motor-testporten laaner dry-run-tildelingen (intet skrives)
 }) {
   let mode = normalizeAssistantMode(rawMode);
   const lateFillHours = normalizeLateFillHours(rawLateFillHours);
@@ -1548,5 +1549,6 @@ export async function runRaceEntryGenerator({
         ]
       : errors,
     constraint_not_deferrable: constraintNotDeferrable,
+    ...(includeStaged ? { staged } : {}),
   };
 }

@@ -296,6 +296,27 @@ export function sideBySideRows(card) {
 
 const table = (head, rows) => [`| ${head.join(" | ")} |`, `|${head.map(() => "---").join("|")}|`, ...rows.map((r) => `| ${r.join(" | ")} |`)];
 
+/**
+ * #6909: kortets linjer om input: startfeltets og ruternes kilde. `meta.field` og
+ * `meta.routes` kommer fra motorTestportInputs.prepareInputs; mangler de, er
+ * koerslen paa prod's egne tilmeldinger og ruter.
+ */
+export function inputLines(meta = {}) {
+  const lines = [];
+  const f = meta.field;
+  if (f) {
+    const parts = [`${f.prod} loeb med prod-tilmeldinger`];
+    if (f.kind) parts.push(`${f.synthetic} med syntetisk felt (${f.kind}: ${f.note ?? "-"})`);
+    if (f.skippedNoField) parts.push(`${f.skippedNoField} uden felt sprunget over`);
+    lines.push(`Startfelt: ${parts.join(" · ")}`);
+  } else {
+    lines.push("Startfelt: prod-tilmeldinger");
+  }
+  const r = meta.routes;
+  lines.push(r ? `Ruter: foreslaaede fra ${r.dir}${r.label ? ` (${r.label})` : ""}, ${r.races} loeb` : "Ruter: prod's nuvaerende race_stage_profiles");
+  return lines;
+}
+
 /** Markdown-kortet (privat, balance-internals). */
 export function renderTestportMarkdown(card) {
   const b = card.revisions.baseline;
@@ -305,6 +326,8 @@ export function renderTestportMarkdown(card) {
     `# Motor-testport (#6750): ${card.candidate} mod ${card.baseline} - PRIVAT (hard rule 17)`,
     "",
     `Genereret ${card.generatedAt ?? "-"} · ${card.races} loeb · ${m.seeds ?? "-"} seeds pr. revision · kilde ${m.source ?? "-"}${m.limit ? ` · --limit=${m.limit}` : ""}`,
+    "",
+    ...inputLines(m).map((l) => `- ${l}`),
   ];
   if (card.sameRevision) lines.push("", "**Kandidat = baseline**: samme koersel i begge kolonner (roegtest/reference).");
   if (m.failedRaces?.length) lines.push("", `**ADVARSEL:** ${m.failedRaces.length} opgaver fejlede og er IKKE med: ${m.failedRaces.join(", ")}.`);
@@ -369,6 +392,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;pad
 </style></head><body>
 <h1>Motor-testport: ${esc(card.candidate)} mod ${esc(card.baseline)}</h1>
 <p>${esc(card.generatedAt ?? "")} · ${card.races} loeb · ${esc(card.meta?.seeds ?? "-")} seeds · PRIVAT</p>
+<p>${inputLines(card.meta ?? {}).map(esc).join("<br>")}</p>
 ${(card.meta?.failedRaces?.length || card.meta?.missingScorecards?.length) ? `<p class="bad">UFULDSTAENDIG: ${card.meta?.failedRaces?.length ?? 0} opgaver fejlede, ${card.meta?.missingScorecards?.length ?? 0} scorecards mangler</p>` : ""}
 <p class="${reg.length ? "bad" : "ok"}">${reg.length ? `Haarde gates vaerre: ${esc(reg.map((r) => r.label).join(", "))}` : "Ingen haard gate er vaerre under kandidaten"} · FAIL-delta ${esc(String(card.verdict.failDelta))}</p>
 <table><thead><tr><th>Maaling</th><th class="n">${esc(card.baseline)}</th><th class="n">${esc(card.candidate)}</th><th class="n">delta</th></tr></thead><tbody>${rows}</tbody></table>
