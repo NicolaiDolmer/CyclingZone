@@ -323,6 +323,7 @@ import {
 } from "../lib/economyAdminDashboard.js";
 import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
+import { isEconomyNoUpkeepEnabled } from "../lib/economyNoUpkeepFlag.ts";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
 import { buildSeasonSwitchPreview } from "../lib/seasonSwitchPreview.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
@@ -10990,6 +10991,8 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       facilitiesEnabled,
       // #4385: upkeep pr. seniorløbsdag når flaget er on (fail-safe off).
       upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
+      // #6936: upkeep, facilitets-upkeep og akademi-drift fjernet når on.
+      noUpkeep: await isEconomyNoUpkeepEnabled(supabase),
     });
 
     // Backward-compat: spred det første (præcise) forecast på root.
@@ -11147,6 +11150,8 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
       facilitiesEnabled,
       // #4385: med flaget on trækkes intet fladt upkeep ved skiftet.
       upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
+      // #6936: kvitteringen viser ingen upkeep-/drift-trin når on.
+      noUpkeep: await isEconomyNoUpkeepEnabled(supabase),
     });
 
     const preview = buildSeasonSwitchPreview({
@@ -13976,7 +13981,9 @@ router.get("/club/facilities", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
-    const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase, { flags: { facilitiesEnabled } });
+    // #6936: drift-linjerne skjules når facilitets-upkeep ikke længere trækkes.
+    const noUpkeep = await isEconomyNoUpkeepEnabled(supabase);
+    const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase, { flags: { facilitiesEnabled, noUpkeep } });
     res.status(status).json(body);
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
@@ -14737,7 +14744,9 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     // #4385: samme flag som processSeasonStart — med upkeep_per_race_day on
     // trækkes intet fladt upkeep ved skiftet.
     const upkeepPerRaceDay = await isUpkeepPerRaceDayEnabled(supabase);
-    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay });
+    // #6936: samme flag som processSeasonStart — intet upkeep når on.
+    const noUpkeep = await isEconomyNoUpkeepEnabled(supabase);
+    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay, noUpkeep });
 
     res.json({ preview });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
