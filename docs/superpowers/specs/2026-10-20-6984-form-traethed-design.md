@@ -47,7 +47,7 @@ Alt bag **ét flag**: `condition_model_v2` (app_config, samme mønster som `trai
 Opgørelsen pr. dato bevares (#5928). Inden for datoen:
 - Etaperne tages ud af gennemsnittet med træningen og regnes hver for sig som en løbsdag for kroppen: etapens belastning lægges til, og rytteren restituerer imellem, i etapernes rækkefølge.
 - De frie pladser regnes som i dag.
-- En dato uden etaper giver præcis samme resultat som i dag. Træning bliver ikke dyrere.
+- En dato uden etaper regner trætheden med samme formel som i dag (for en middel-rytter præcis samme tal). Træning bliver ikke dyrere. Formen følger B4 også på disse datoer.
 - B1 (ejer 20/10): en etape vejer et helt døgn. Kalibreringen står privat i `balance-internals/6984/`.
 
 Konsekvens: en dato med flere etaper føles som flere hårde dage. Det er det, spillerne kaldte "S4 virkede": hviledage skal times.
@@ -95,7 +95,7 @@ Forklaringen til spilleren er én sætning: *"Hver etape koster træthed efter t
 ### 5.8 Stadig muligt at holde under 100
 To adskilte krav, der testes hver for sig i harness:
 - **Garantien (spillerkrav 6):** en rytter med middel recovery, der kører en hel GT på normal indsats og hviler på alle frie pladser, slutter under 100 i træthed.
-- **Skadeeksponering (egen gate):** andelen af rytter-datoer over skadegrænsen (70, `riderCondition.injuryFatigueFloor`, hvor trænings-skaderisikoen starter) måles og vises ejeren som G2; den er ikke selve garantien.
+- **Skadeeksponering (egen gate):** andelen af rytter-datoer over skadegrænsen (`riderCondition.injuryFatigueFloor`, hvor trænings-skaderisikoen starter; værdien står privat) måles og vises ejeren som G2; den er ikke selve garantien.
 
 En rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig, kan godt nå 100. Spareordre og hvile på de frie pladser (især på de lette GT-datoer) skal kunne bringe en rytter tilbage under grænsen.
 
@@ -112,7 +112,7 @@ En rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig
 2. §5.8-garantien som test.
 3. Formfordeling: andelen på fuld form skal falde markant, uden store formfald pr. dato.
 4. Skaderisiko pr. 1.000 rytter-datoer må ikke eksplodere.
-5. Regressionstest: flag off = bit-identisk; dato uden etaper = bit-identisk med i dag.
+5. Regressionstest: flag off = bit-identisk med i dag. Dato uden etaper: kun træthedsberegningen er bit-identisk (middel-rytter); formen testes særskilt mod B4 (inaktivitet og overbelastning koster form).
 6. Ejer ser tallene (privat) og giver ordret go.
 
 **Verifikationsniveau:** TIER FULL (backend-motor, delte libs, i18n): `scripts/verify-local.ps1` + hele `npm run test:e2e` for UI-delen (§5.7).
