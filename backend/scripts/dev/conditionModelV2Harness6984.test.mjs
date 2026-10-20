@@ -14,7 +14,7 @@ test("harness: en GT er langt hårdere i v2 end i v1, og v1 genskaber prod-møns
   const trace = replayRider({ riderId: "r", opening: { fatigue: 20, form: 80 }, dates: [gtDate("2026-11-01", 4), gtDate("2026-11-02", 3), gtDate("2026-11-03", 4)] });
   assert.equal(trace.length, 3);
   assert.ok(trace[2].v1.fatigue < 35, `v1 ${trace[2].v1.fatigue}`);
-  assert.ok(trace[2].v2.fatigue > trace[2].v1.fatigue + 20, `v2 ${trace[2].v2.fatigue}`);
+  assert.ok(trace[2].v2.fatigue > trace[2].v1.fatigue + 10, `v2 ${trace[2].v2.fatigue}`);
 });
 
 test("harness: datoer uden fem pladser springes over", () => {

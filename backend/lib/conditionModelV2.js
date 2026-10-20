@@ -17,17 +17,18 @@ import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, injuryRisk, rollInju
 import { effortFatigueMultiplier } from "./raceRoles.js";
 
 export const CONDITION_V2_CONFIG = Object.freeze({
-  // §5.2: profil-belastning (spillernes rækkefølge, større spænd end v1).
+  // §5.2: profil-belastning (spillernes rækkefølge, større spænd end v1). Niveauet er
+  // harness-kalibreret 20/10 mod hele S4 (balance-internals/6984/, variant k70acc4).
   profileLoad: Object.freeze({
-    flat: 9, rolling: 11, hilly: 14, classic: 16, cobbles: 16, gravel: 15,
-    medium_mountain: 16, mountain: 19, high_mountain: 22,
-    itt: 10, itt_hilly: 12, ttt: 9,
+    flat: 6.3, rolling: 7.7, hilly: 9.8, classic: 11.2, cobbles: 11.2, gravel: 10.5,
+    medium_mountain: 11.2, mountain: 13.3, high_mountain: 15.4,
+    itt: 7, itt_hilly: 8.4, ttt: 6.3,
   }),
-  unknownProfileLoad: 12,
+  unknownProfileLoad: 8.4,
   // §5.2: længde omkring en normaletape; enkeltstarter får ingen længdefaktor.
   lengthRefKm: 180, lengthMin: 0.85, lengthMax: 1.15,
-  // §5.5: GT-akkumulering (mindre end v1's, fordi fuld belastning pr. etape selv hober op).
-  accumulationPerStage: 0.02, accumulationCapStages: 15,
+  // §5.5: GT-akkumulering: sene etaper i et langt etapeløb koster mere (uge 3 er hård).
+  accumulationPerStage: 0.04, accumulationCapStages: 15,
   // §5.5: frontarbejde/grupetto (samme mekanik som v1) + tillæg for et hentet udbrud.
   frontWork: 0.5, shelterRelief: 0.3, caughtBreakawaySurcharge: 0.25,
   workFactorMin: 0.7, workFactorMax: 1.75,

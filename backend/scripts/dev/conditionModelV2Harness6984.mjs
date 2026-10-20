@@ -18,12 +18,12 @@
 // <out-dir> SKAL være balance-internals/6984 (gitignoreret, hard rule 17).
 
 import "dotenv/config";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { settleTrainingDateCondition } from "../../lib/trainingDateCondition.js";
-import { stageLoadV2 } from "../../lib/conditionModelV2.js";
+import { stageLoadV2, settleTrainingDateConditionV2, CONDITION_V2_CONFIG } from "../../lib/conditionModelV2.js";
 import { raceFatigueLoad, stageRaceConditionLoad } from "../../lib/raceFatigue.js";
 import { isS5ProfilesV1OrLater } from "../../lib/raceEngineRulesRevision.ts";
 import { RACE_DAY_ENGINE_RECOVERY_CONFIG } from "../../lib/riderCondition.js";
@@ -43,7 +43,7 @@ export function v1NormalLoad({ profileType, stageNumber, rulesRevision }) {
  * hvor stage = { recordedLoad, profileType, distanceKm, stageNumber, rulesRevision }.
  * Returnerer pr. dato { tickDate, v1: {fatigue, form, risk}, v2: {...} }.
  */
-export function replayRider({ riderId, opening, dates }) {
+export function replayRider({ riderId, opening, dates, cfg = CONDITION_V2_CONFIG }) {
   let s1 = { fatigue: Number(opening?.fatigue ?? 0), form: Number(opening?.form ?? 50) };
   let s2 = { ...s1 };
   let seasonDays = 0;
@@ -58,11 +58,12 @@ export function replayRider({ riderId, opening, dates }) {
       const st = slot.stage;
       const normal = v1NormalLoad(st);
       const ratio = normal > 0 ? Math.max(0.3, Math.min(2, Number(st.recordedLoad ?? normal) / normal)) : 1;
-      return stageLoadV2({ profileType: st.profileType, distanceKm: st.distanceKm, stageNumber: st.stageNumber, seasonRaceDays: seasonDays, rulesRevision: st.rulesRevision }) * ratio;
+      return stageLoadV2({ profileType: st.profileType, distanceKm: st.distanceKm, stageNumber: st.stageNumber, seasonRaceDays: seasonDays, rulesRevision: st.rulesRevision, cfg }) * ratio;
     });
     const args = { riderId, dateStr: date.tickDate, intensities, recoveryAbility: date.recovery ?? 50, recoveryConfig: RACE_DAY_ENGINE_RECOVERY_CONFIG };
     const r1 = settleTrainingDateCondition({ ...args, condition: s1, raceLoads: v1Loads });
-    const r2 = settleTrainingDateCondition({ ...args, condition: s2, raceLoads: v2Loads, modelV2: true });
+    // Samme funktion som settleTrainingDateCondition({ modelV2: true }) delegerer til, med cfg til kalibrering.
+    const r2 = settleTrainingDateConditionV2({ riderId, dateStr: date.tickDate, intensities, recoveryAbility: date.recovery ?? 50, condition: s2, raceLoads: v2Loads, cfg });
     s1 = { fatigue: r1.fatigue, form: r1.form };
     s2 = { fatigue: r2.fatigue, form: r2.form };
     out.push({ tickDate: date.tickDate, v1: { ...s1, risk: r1.risk }, v2: { ...s2, risk: r2.risk }, raced: v2Loads.some((l) => l > 0) });
@@ -178,29 +179,44 @@ function grandToursFrom({ loads, races }) {
 }
 
 async function main() {
-  const [seasonId, outDirArg] = process.argv.slice(2);
+  const argv = process.argv.slice(2);
+  const flag = (name) => { const i = argv.indexOf(name); return i >= 0 ? argv[i + 1] : null; };
+  const [seasonId, outDirArg] = argv.filter((a, i) => !a.startsWith("--") && !(i > 0 && argv[i - 1].startsWith("--")));
+  const cfg = flag("--cfg") ? { ...CONDITION_V2_CONFIG, ...JSON.parse(readFileSync(flag("--cfg"), "utf8")) } : CONDITION_V2_CONFIG;
+  const label = flag("--label") ?? "base";
   if (!seasonId || !outDirArg) { console.error("Brug: <season_id> <out-dir under balance-internals/>"); process.exit(2); }
   const outDir = resolve(outDirArg);
   if (!/balance-internals/.test(outDir)) { console.error("out-dir skal ligge under balance-internals/ (hard rule 17)"); process.exit(2); }
-  const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("SUPABASE_URL / SUPABASE_SERVICE_KEY mangler (kør via infisical run --env=prod)"); process.exit(2); }
-  const { createClient } = await import("@supabase/supabase-js");
-  const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-  console.log("Henter S4 (kun SELECT) ...");
-  const data = await exportSeason(sb, seasonId);
-  console.log(`ryttere ${data.settlements.length} · ticks ${data.ticks.length} · etaper ${data.loads.length}`);
-  const riders = buildRiders(data).map((r) => ({ riderId: r.riderId, ai: r.ai, trace: replayRider(r) }));
-  // GT-datoer = datoer hvor GT-feltets ryttere havde en etape i løbet.
-  const tickOfRiderDay = new Map(data.ticks.map((t) => [`${t.rider_id}:${t.game_day}`, t.tick_date]));
-  const grandTours = grandToursFrom(data).map((gt) => {
-    const dates = data.loads.filter((l) => l.race_id === gt.raceId).map((l) => tickOfRiderDay.get(`${l.rider_id}:${l.game_day}`)).filter(Boolean).sort();
-    return { ...gt, first: dates[0], last: dates[dates.length - 1] };
-  });
-  const summary = summarize({ riders, grandTours });
+  const fixturePath = join(outDir, `fixture-${seasonId.slice(-4)}.json`);
+  let built, data;
+  if (flag("--from-fixture")) {
+    ({ built, grandTourDates: data } = JSON.parse(readFileSync(fixturePath, "utf8")));
+    data.grandTours = data.grandTours.map((gt) => ({ ...gt, riderIds: new Set(gt.riderIds) }));
+  } else {
+    const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("SUPABASE_URL / SUPABASE_SERVICE_KEY mangler (kør via infisical run --env=prod)"); process.exit(2); }
+    const { createClient } = await import("@supabase/supabase-js");
+    const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    console.log("Henter S4 (kun SELECT) ...");
+    const raw = await exportSeason(sb, seasonId);
+    console.log(`ryttere ${raw.settlements.length} · ticks ${raw.ticks.length} · etaper ${raw.loads.length}`);
+    built = buildRiders(raw);
+    const tickOfRiderDay = new Map(raw.ticks.map((t) => [`${t.rider_id}:${t.game_day}`, t.tick_date]));
+    const grandTours = grandToursFrom(raw).map((gt) => {
+      const dates = raw.loads.filter((l) => l.race_id === gt.raceId).map((l) => tickOfRiderDay.get(`${l.rider_id}:${l.game_day}`)).filter(Boolean).sort();
+      return { ...gt, first: dates[0], last: dates[dates.length - 1] };
+    });
+    data = { grandTours };
+    mkdirSync(outDir, { recursive: true });
+    writeFileSync(fixturePath, JSON.stringify({ built, grandTourDates: { grandTours: grandTours.map((gt) => ({ ...gt, riderIds: [...gt.riderIds] })) } }));
+  }
+  const riders = built.map((r) => ({ riderId: r.riderId, ai: r.ai, trace: replayRider({ ...r, cfg }) }));
+  const summary = summarize({ riders, grandTours: data.grandTours });
   mkdirSync(outDir, { recursive: true });
   const stamp = new Date().toISOString().slice(0, 10);
-  writeFileSync(join(outDir, `harness-${stamp}.json`), JSON.stringify({ seasonId, riders: riders.length, ...summary }, null, 1));
-  console.log(`Skrevet: ${join(outDir, `harness-${stamp}.json`)}`);
+  const outFile = join(outDir, `harness-${stamp}-${label}.json`);
+  writeFileSync(outFile, JSON.stringify({ seasonId, label, cfg, riders: riders.length, ...summary }, null, 1));
+  console.log(`Skrevet: ${outFile}`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
