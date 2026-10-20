@@ -77,8 +77,15 @@ export function connectsToProject(dbUrl, ref = PROJECT_REF) {
   }
   if (!/^postgres(ql)?:$/.test(u.protocol)) return false;
   // libpq lader ?host=/hostaddr= overstyre den validerede host (opus-review).
-  for (const key of u.searchParams.keys()) {
-    if (["host", "hostaddr", "user", "port", "sslmode", "service", "passfile"].includes(key.toLowerCase())) return false;
+  // sslmode accepteres kun som require eller strengere (den dokumenterede URL har
+  // ?sslmode=require; PGSSLMODE=require sættes alligevel).
+  for (const [key, value] of u.searchParams.entries()) {
+    const k = key.toLowerCase();
+    if (k === "sslmode") {
+      if (!["require", "verify-ca", "verify-full"].includes(value.toLowerCase())) return false;
+      continue;
+    }
+    if (["host", "hostaddr", "user", "port", "service", "passfile"].includes(k)) return false;
   }
   const user = decodeURIComponent(u.username);
   // Pooler: brugeren bærer projektref, og hosten SKAL være Supabase' pooler,
