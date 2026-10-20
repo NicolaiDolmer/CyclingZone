@@ -283,9 +283,9 @@ export default function RiderProfileHero({
   const potentialEyebrow = viewer === "scouting"
     ? t("profile.hero.potentialScouted")
     : t("profile.hero.potentialOwn");
-  // #6934: truppen (riders.squad) afgør U23/Junior-mærket; alders-U23 er kun fallback når squad mangler.
+  // #6934: truppen (riders.squad) afgør U23/Junior-mærket; alders-U23 er kun fallback når squad mangler (en senior-trup-rytter under 23 får intet U23-mærke).
   const squadKey = squadBadgeKey(rider.squad);
-  const isU23 = !squadKey && rider.is_u25 != null && age != null && age < 23;
+  const isU23 = rider.squad == null && rider.is_u25 != null && age != null && age < 23;
   const hasRating = Number.isFinite(overallRating);
   const ratingPlate = hasRating ? (
     <span
