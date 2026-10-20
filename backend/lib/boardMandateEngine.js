@@ -1198,7 +1198,7 @@ async function stampOpeningNotice(supabase, mandateId, now) {
       .eq("id", mandateId)
       .is("opened_notified_at", null);
     if (error) console.warn(`⚠️  [mandate] opened_notified_at stamp failed for ${mandateId}: ${error.message}`);
-  } catch (error) {
+  } catch (error) { // best-effort: beskeden er sendt; cronen stempler ud fra notits-raekken
     console.warn(`⚠️  [mandate] opened_notified_at stamp failed for ${mandateId}: ${error.message}`);
   }
 }
