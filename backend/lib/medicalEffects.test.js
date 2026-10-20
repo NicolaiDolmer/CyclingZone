@@ -104,3 +104,17 @@ test("medicin-sporet er live præcis når condition_model_v2 er on; læsefejl = 
   const flags = await resolveTrackLiveFlags({ academyIntakePullEnabled: false }, failing);
   assert.equal(flags.conditionModelV2, false);
 });
+
+test("medicin-sporet kan hverken købes eller bemandes, når flaget er off", async () => {
+  const { postFacilityUpgradeHandler, getStaffCandidatesHandler, postStaffHireHandler } = await import("./facilityRoutesHandlers.js");
+  const off = { academyIntakePullEnabled: false, conditionModelV2: false, facilitiesEnabled: true };
+  const never = () => { throw new Error("må ikke kaldes"); };
+  assert.equal((await postFacilityUpgradeHandler({ teamId: "t", track: "medical" }, null, { flags: off, purchaseFacilityUpgrade: never })).status, 403);
+  assert.equal((await getStaffCandidatesHandler({ teamId: "t", role: "medical" }, null, { flags: off })).status, 403);
+  assert.equal((await postStaffHireHandler({ teamId: "t", role: "medical", candidateName: "x" }, null, { flags: off, hireStaff: never })).status, 403);
+  const on = { ...off, conditionModelV2: true };
+  const res = await postFacilityUpgradeHandler({ teamId: "t", track: "medical" }, null, { flags: on, purchaseFacilityUpgrade: async () => ({ ok: true }) });
+  assert.equal(res.status, 200);
+  const training = await postFacilityUpgradeHandler({ teamId: "t", track: "training" }, null, { flags: off, purchaseFacilityUpgrade: async () => ({ ok: true }) });
+  assert.equal(training.status, 200, "andre spor uændret");
+});
