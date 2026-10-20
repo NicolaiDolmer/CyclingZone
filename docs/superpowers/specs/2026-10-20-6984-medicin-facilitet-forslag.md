@@ -51,6 +51,7 @@ Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre 
 ### M8 · Lægens sæsonråd før hver Grand Tour
 - **Hvad:** før hver Grand Tour siger lægen i ord, aldrig tal, hvilke af holdets ryttere der er klar, og hvem der vil være kørt flade til den tredje Grand Tour. Bygger på M4's vurdering og sæsonbelastningen (løbsdage i sæsonen). Skarpere med højere tier og bedre chef, som M4.
 - **Spillerens gevinst:** man ser i tide, at man ikke kan køre alle tre Grand Tours på fuld styrke, og kan vælge hvem der skal spares.
+- **Antagelse (fast, så rådet er entydigt):** lægen regner med, at rytteren kører alle etaper i denne og sæsonens senere Grand Tours i hans division på normal indsats. Rådet lyder derfor "hvis han kører dem alle". Grundlag: rytterens løbsdage i sæsonen indtil nu plus de resterende GT-etaper, holdt op mod sæsonbelastningens grænser, og M4-vurderingen af hans træthed nu. Frontarbejde, indsats og træning på de frie pladser indgår ikke; det er et råd, ikke en prognose.
 - **Kræver:** samme vurdering som M4, kørt på holdets ryttere mod de kommende Grand Tours i kalenderen; vises på holdudtagelsen til en GT. Mellem.
 - **Bygger på:** ejeren 20/10 ("ikke nemt at peake i alle"), spillerkrav 2 og 5 i #6984.
 
@@ -75,4 +76,9 @@ I dag viser klubsiden Medicin som "Coming soon" og skjuler køb og ansættelse, 
 
 ## 5. Gate
 
-Samme gate som designets §7 plus: (a) tier 5 + topchef må ikke bryde §5.8 omvendt, dvs. en rytter med fuld medicin skal stadig kunne køre sig over grænsen i den tredje GT; (b) skader pr. 1.000 rytter-datoer pr. tier vises til ejeren; (c) flag off = bit-identisk, og hold uden afdeling = identisk med v2 uden medicin.
+Samme gate som designets §7 plus:
+- **(a) Fast scenarie:** en rytter med middel recovery, normal indsats, restitution på alle frie pladser, der kører alle etaper i sæsonens tre Grand Tours (S4-kalenderen genafspillet), skal med tier 5 og topchef stadig ligge over skadegrænsen på toppen af den tredje Grand Tour. Medicinen må gøre det lettere, ikke gratis.
+- **(b) Population:** harnessen køres med alle menneskehold på tier 5 + topchef; G1 og G3 fra designets §7 skal stadig holde, og forskellen mod "ingen afdeling" vises ejeren.
+- **(c)** Skader pr. 1.000 rytter-datoer pr. tier vises til ejeren.
+- **(d)** Flag off = bit-identisk; hold uden afdeling = identisk med v2 uden medicin.
+- **(e) Visning (M4/M8):** kildekode-guards for lægens kolonne (kun med data, ord i alle sprog, aldrig tal) og backend-tests for antal trin pr. niveau (2/3/4) og sæsonrådet. Preview: ejeren ser holdudtagelsen med flaget on på et hold uden afdeling, på niveau 2-3 og på niveau 4-5, og en udtagelse til en Grand Tour med sæsonrådet, desktop og Android-bredde, før tænd-kortet.
