@@ -57,3 +57,23 @@ test("#6984: loadSeasonRaceDaysByRider tæller distinkte løbsdage og springer e
   assert.deepEqual(calls, ["training_race_loads"]);
   assert.deepEqual(Object.fromEntries(await loadSeasonRaceDaysByRider({ supabase, seasonId: null, riderIds: ["a"] })), { a: 0 });
 });
+
+test("#6984 B2: applySameDateEnteringFatigueV2 lægger datoens tidligere etaper oven i åbningen", async () => {
+  const { applySameDateEnteringFatigueV2 } = await import("./raceFatigue.js");
+  const { enteringFatigueV2 } = await import("./conditionModelV2.js");
+  const filters = [];
+  const supabase = { from(table) {
+    const q = { select() { return q; }, eq(c, v) { filters.push([table, "eq", c, v]); return q; }, in() { return q; },
+      lt(c, v) { filters.push([table, "lt", c, v]); return q; }, is() { return q; }, order() { return q; },
+      async maybeSingle() { return { data: { game_day: 12, scheduled_at: "2026-11-01T14:00:00Z" }, error: null }; },
+      then(resolve) { resolve({ data: [{ rider_id: "a", game_day: 10, load: 20 }, { rider_id: "a", game_day: 11, load: 15 }], error: null }); } };
+    return q; } };
+  const entrants = [{ rider_id: "a", fatigue: 30, abilities: { recovery: 60 } }, { rider_id: "b", fatigue: 30 }, { rider_id: "c" }];
+  const raised = await applySameDateEnteringFatigueV2({ supabase, raceId: "r", stageNumber: 3, entrants });
+  assert.equal(raised, 1);
+  assert.equal(entrants[0].fatigue, enteringFatigueV2({ openingFatigue: 30, priorLoadsToday: [20, 15], recoveryAbility: 60 }));
+  assert.equal(entrants[1].fatigue, 30);
+  assert.equal(entrants[2].fatigue, undefined);
+  assert.ok(filters.some(([t, op, c, v]) => t === "training_race_loads" && op === "eq" && c === "tick_date" && v === "2026-11-01"));
+  assert.ok(filters.some(([t, op, c, v]) => t === "training_race_loads" && op === "lt" && c === "game_day" && v === 12));
+});

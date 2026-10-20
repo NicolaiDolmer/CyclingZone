@@ -79,7 +79,7 @@ import {
 import { buildStageTimeline, buildStageTimelineV4 } from "./raceTimeline.js";
 import { raceSeedInput, activeSaltVersion } from "./raceSeedSalt.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
+import { applyRaceFatigue, attachConditionWork, conditionWorkForRun, raceConditionLoads, stageConditionWork, stageEnteringFatigues, loadSeasonRaceDaysByRider, applySameDateEnteringFatigueV2, applyGrandTourRestDayFatigue as applyGrandTourRestDayFatigueShared } from "./raceFatigue.js";
 import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
 import {
   loadStageRoleOverrides,
@@ -3465,6 +3465,13 @@ export async function simulateStageByIndex({
     // (#1844-frosset for stageIndex>0); stagesSorted deler objekt-refs med stages,
     // så peakDay-mutationen ses i begge grene nedenfor. Bit-identisk ved flag-off.
     if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
+
+    // #6984 B2 (ejer 20/10): dagens tidligere etaper trætter rytteren til den næste,
+    // også inde i løbet. Ny balance = kun løb bundet til s5_profiles_v2 eller senere
+    // (#5955-princippet) OG condition_model_v2 on. Flag off = ingen ekstra read.
+    if (trainingOwnsRecovery && isS5ProfilesV2OrLater(rulesRevision) && await isConditionModelV2Enabled(supabase)) {
+      await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants });
+    }
 
     if (race.race_type === "stage_race") {
       // #2072: simulér KUN dagens etape; klassementer akkumuleres fra de
