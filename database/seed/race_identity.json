@@ -838,7 +838,8 @@
           { "name": "Côte de Mont-la-Brume", "category": "3", "crest_km": 197, "length_km": 2.4, "avg_gradient": 6.9, "summit_finish": false },
           { "name": "Côte de Chambrelle", "category": "3", "crest_km": 205, "length_km": 2.1, "avg_gradient": 6.4, "summit_finish": false },
           { "name": "Côte de la Redoutière", "category": "2", "crest_km": 220, "length_km": 2, "avg_gradient": 8.9, "summit_finish": false },
-          { "name": "Côte de la Roche-aux-Corbeaux", "category": "2", "crest_km": 242, "length_km": 1.5, "avg_gradient": 9.4, "summit_finish": false }
+          { "name": "Côte de la Roche-aux-Corbeaux", "category": "2", "crest_km": 242, "length_km": 1.5, "avg_gradient": 9.4, "summit_finish": false },
+          { "name": "Montée d'Ansaumont", "category": "4", "crest_km": 255, "length_km": 1.5, "avg_gradient": 5, "summit_finish": true }
         ],
         "sprints": [
           { "name": "Finish", "km": 255, "kind": "finish" }

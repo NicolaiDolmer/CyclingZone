@@ -97,4 +97,12 @@ test("checked-in seed: type totals match table A and every monument has an autho
   const got = {};
   for (const row of typed) got[row.race_identity_type] = (got[row.race_identity_type] ?? 0) + 1;
   assert.deepEqual(got, want);
+  // An uphill finale only exists in the derived profile when a climb reaches the line
+  // (authored sprints cannot carry a finish ramp), so the route must encode it.
+  for (const row of authored) {
+    const route = row.authored_route;
+    const summit = route.climbs.some(climb => climb.summit_finish && climb.crest_km === route.distance_km);
+    if (["uphill_sprint", "wall_finish", "long_climb"].includes(route.finale_type)) assert.ok(summit, `${row.external_id}: uphill finale needs a summit-finish climb`);
+    if (route.finale_type === "descent") assert.ok(!summit && route.climbs.length, `${row.external_id}: descent finale needs a last top before the line`);
+  }
 });
