@@ -1227,6 +1227,37 @@ Det bruges på alle skrivestier (realisme-gen-trækket, dæknings-verifikationen
 
 **Bølgede etapers afslutninger er ikke §7b's bånd for S5.** §7b's rolling-bånd (fladt 25-45 %, udbrud 55-75 %) bygger på udbrud som afslutning. S5 har ingen udbruds-afslutning (spec §3; udbrud er motoradfærd, #6368), og matrixen tillader flad spurt, stigende spurt og bakke på bølget terræn. S5_FINISH_WEIGHTS for bølget følger benchmarken, og del (3) dømmer afslutningerne. Om bølgede etaper skal have en bakke-andel benchmarken ikke viser, er et ejer-spørgsmål (#6367), ikke en generator-fejl.
 
+## 7d. Regenerering af S5's etapeprofiler på stedet (løbsidentitet, [#6857](https://github.com/NicolaiDolmer/CyclingZone/issues/6857) / [#6929](https://github.com/NicolaiDolmer/CyclingZone/issues/6929))
+
+S5-kalenderen var skrevet (15/10), før løbsidentiteten (type, signatur, håndskrevne monumenter) blev besluttet. Ejeren besluttede 18/10, at identiteten gælder fra S5. Ruterne skiftes derfor ud **på stedet**: ingen nye løb, ingen nye datoer, ingen nye etape-tider. Design: [spec](superpowers/specs/2026-10-18-6857-loebsidentitet-teknisk-design.md) §3.
+
+**Hvorfor det kan lade sig gøre.** `race_stage_profiles` er nøglet på `(race_id, stage_number)`, og alt spillerdata (tilmeldinger, løbsdage, formtoppe, etape-tider) peger på `races.id`. Samme antal rækker pr. løb giver ingen brud; kun profil-indholdet skifter. Placeringen af løbene (som kalender-golden-diffen dømmer) er uændret.
+
+**Værktøjet:** `backend/scripts/regenS5StageProfiles.mjs`. Dry-run er standard og læser gennem en klient der kaster ved enhver skrivning.
+
+1. Læser S5's seniorløb, `league_divisions.tier`, `race_pool` med identitetsfelterne og de nuværende profiler.
+2. Bygger seed-løbene som `tierCalendarMaterializer.seedRaceFor` (katalog-id, `external_id`, arketype, klasse, sæson, variant) plus `race_identity_type`, `signature` og `authored_route`. Én repræsentativ pulje pr. division (laveste pulje-id), løbene i fast rækkefølge (første løbsdag, så katalog-id).
+3. Genererer pr. division med S5-kvote-generatoren (§7c), realisme-gen-trækket (#3347) og finale-kvoterne, præcis som materializerens skrivesti. Samme parcours skrives til alle divisionens puljer.
+4. Dømmer: benchmark-gaten (1-4), §5's gulve, bjergfrie etapeløb og rolling-båndet, §6b (brosten inkl. grus, enkeltstart, højbjerg) og invarianterne nedenfor.
+
+**Invarianter (fail-closed, alle skal holde før `--apply`):** samme `races.id`-sæt, samme `stages` pr. løb (etaper 1..n uden huller), `stages_completed = 0`, ingen `race_stage_claims`, `engine_rules_revision IS NULL`, ingen `is_manual`-profiler og sæsonen `upcoming`. Fra **25/10** (dansk dato, sæsonskiftet) kræves også `--allow-active`, og det flag kræver ejer-go; `active` accepteres kun med flaget. En rød benchmark-gate eller et brudt gulv stopper også.
+
+**Apply (ejer-go pr. prod-skridt, #6857):** `--apply --season 5 --confirm-season-upcoming --backup-table=backup_6857_race_stage_profiles_YYYYMMDD --plan-hash=<hash>`.
+
+- Dry-runnet skriver `backup.sql` og `restore.sql` (privat). Backup-tabellen oprettes først (RLS, kun `service_role`), og apply nægter at skrive, hvis den ikke dækker hver række der slettes. Backuppen er nøglet på etape-pladsen `(race_id, stage_number)`, ikke på række-id: apply giver nye id'er, så en genkørsel af `backup.sql` efter (en del af) apply beholder originalen og kan aldrig lægge to generationer i samme plads.
+- Plan-hashen er dry-runnets fingeraftryk af alle rækker. Apply genlæser alt og kræver samme hash, så det der skrives er præcis det ejeren så.
+- Skriver pr. løb (DELETE + INSERT), hele løb, højst 200 rækker pr. batch. Et løb hvis rækker allerede er planen springes over, så en afbrudt kørsel samles op ved at køre igen (idempotent). Samme input giver samme hash (deterministisk).
+- Post-verify: `count(profiler) = sum(stages)`, hver række er planen, kryds-pulje-divergens 0 (også via `checkStageProfileSeedDivergence.js --season 5`), og calendar-cachen ventes ud. Cachen er pr. backend-proces med en TTL (`CACHE_TTL.calendar` i `routes/api.js`), så et script kan ikke rydde den; scriptet venter TTL'en ud efter sidste skrivning, og en test låser at de to tal er ens.
+- Rollback: `restore.sql` fra backup-tabellen (ejer-gated).
+
+**Før identiteten er anvendt i prod** kan dry-runnet køres med `--identity-file=database/seed/race_identity.json`: filen valideres som i `applyRaceIdentity.js` og lægges oven på `race_pool` i hukommelsen, så tørkørslen viser typerne, signaturerne og monument-ruterne, før de er skrevet. `--apply` afviser flaget: apply regenererer altid fra prod's `race_pool`, så identiteten skal være anvendt dér først.
+
+**Tørkørslens rapport** pr. division: etapeløb pr. type mod ejerens tabel A (og D1's GT-optakter), brosten/enkeltstart/højbjerg før og efter, bjergfrie etapeløb før og efter, §5's gulve, benchmark-gaten (1-4) før og efter, monument-ruterne (km, højdemeter, sektorer, sidste top, og om ruten følger den håndskrevne på hvert forfattet felt) og signatur-pins (er hver feature låst med sine egenskaber, fx stigningens kategori og længde, sektorens belægning eller enkeltstartens bånd, i den etape `stage_hint` peger på; `queen` er løbets hårdeste etape).
+
+**Hvad der committes, og hvad der er privat (hard rule 17).** Den offentlige rapport (`docs/snapshots/6857/dry-run-<dato>.md/.json`) har kun domme (✅/❌) og tabel A. Den fulde rapport med tal og løbsnavne, `backup.sql`/`restore.sql`, apply-øjebliksbilledet af de gamle rækker og de foreslåede ruter ligger i `balance-internals/6857/<dato>/`; scriptet afviser en privat sti uden for en `balance-internals`-mappe. Før apply skrives et offentligt manifest (`docs/snapshots/6857/pre-apply-<tid>.json`: antal løb og rækker, sha256 af de gamle rækker, backup-tabel, plan-hash). De gamle rækker selv står i backup-tabellen og den private kopi, fordi de rummer `demand_vector`-vægtene.
+
+**Motoren testes på de foreslåede ruter før apply** (ejer 19/10): `--routes-out=<mappe>` skriver én fil pr. løb i testportens format `cz-race-routes/v1` (`docs/MOTOR_TESTPORT.md`, "Foreslåede ruter", #6909) med præcis de rækker `--apply` ville skrive, og en `manifest.json`. Testporten læser mappen med `--routes-from`.
+
 ---
 
 ## 8. Rytterbinding og trupkrav
