@@ -135,29 +135,42 @@ export function withField(data, field) {
 }
 
 /** Prod-klient der kun kan laese: insert/update/upsert/delete og rpc kaster. */
-export function readOnlyDb(db, { overlay = null } = {}) {
+export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
   const WRITES = new Set(["insert", "update", "upsert", "delete"]);
-  // #6909 (Codex P2): med --routes-from skal generatoren udtage feltet mod de
-  // FORESLAAEDE etaper. `overlay` = { table, key, rowsByKey: Map key -> raekker }:
-  // prod-raekkerne for de noegler erstattes af de foreslaaede (én gang pr. noegle,
-  // ogsaa hvis et loeb deles over flere sider).
-  const injected = new Set();
-  const swap = (rows) => {
-    if (!Array.isArray(rows)) return rows;
-    const out = [];
-    for (const r of rows) {
-      const k = r?.[overlay.key];
-      if (!overlay.rowsByKey.has(k)) { out.push(r); continue; }
-      if (injected.has(k)) continue;
-      injected.add(k);
-      out.push(...overlay.rowsByKey.get(k));
-    }
-    return out;
+  // #6909 (Codex P2): lag oven paa prod's raekker, kun i hukommelsen.
+  //  - { table, key, rowsByKey: Map }: prod-raekkerne for de noegler erstattes af de
+  //    foreslaaede (én gang pr. noegle, ogsaa hvis et loeb deles over flere sider).
+  //  - { table, key, excludeKeys: Set }: raekker med de noegler skjules (fx ryttere der
+  //    allerede er bundet i et overlappende loeb), saa generatoren udtager andre.
+  const layers = [...(overlay ? [overlay] : []), ...overlays.filter(Boolean)];
+  const injected = new Map(layers.map((l) => [l, new Set()]));
+  const swapFor = (table) => {
+    const mine = layers.filter((l) => l.table === table);
+    if (!mine.length) return null;
+    return (rows) => {
+      if (!Array.isArray(rows)) return rows;
+      let cur = rows;
+      for (const l of mine) {
+        const out = [];
+        for (const r of cur) {
+          const k = r?.[l.key];
+          if (l.excludeKeys) { if (!l.excludeKeys.has(k)) out.push(r); continue; }
+          if (!l.rowsByKey.has(k)) { out.push(r); continue; }
+          const done = injected.get(l);
+          if (done.has(k)) continue;
+          done.add(k);
+          out.push(...l.rowsByKey.get(k));
+        }
+        cur = out;
+      }
+      return cur;
+    };
   };
   const wrap = (builder, table) => new Proxy(builder, {
     get(b, p) {
       if (WRITES.has(p)) return () => { throw new Error(`read-only (#6909): ${String(p)} paa ${table} afvist`); };
-      if (p === "then" && overlay && table === overlay.table) {
+      const swap = p === "then" ? swapFor(table) : null;
+      if (swap) {
         return (resolve, reject) => b.then((res) => resolve(res && !res.error ? { ...res, data: swap(res.data) } : res), reject);
       }
       const v = b[p];
@@ -358,21 +371,33 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
         // #6909 (Codex P2 x2): hvert loeb udtages paa SIN egen start (egen skade-/Train now-/late-fill-
         // vurdering). Bindingen haandhaeves bagefter med generatorens egen kanon, raceBindingWindow
         // (game_day-spaend): i start-orden droppes en rytter fra et loeb, hvis han allerede er
-        // udtaget til et loeb hvis binding-vindue overlapper. Antallet logges paa kortet.
+        // udtaget til et loeb hvis binding-vindue overlapper (sikkerhedsnet; skjulningen ovenfor
+        // goer det normalt til 0). Antallet logges paa kortet.
         const byStart = new Map();
         for (const id of wantedHere) { const t = firstStart.get(id); if (!byStart.has(t)) byStart.set(t, []); byStart.get(t).push(id); }
         const schedByRace = new Map();
         for (const st of sched) { if (!schedByRace.has(st.race_id)) schedByRace.set(st.race_id, []); schedByRace.get(st.race_id).push(st); }
         const windowOf = (id) => raceBindingWindow(schedByRace.get(id) ?? []);
         const byRace = new Map();
+        const bookedEarly = new Map(); // rider_id -> [{start,end}] fra tidligere koersler
+        const overlapsAny = (wins, w) => w && wins.some((p) => p.start <= w.end && w.start <= p.end);
         for (const [startMs, group] of [...byStart].sort((a, b) => a[0] - b[0])) {
+          // #6909 (Codex P2): ryttere der allerede er bundet i et overlappende loeb skjules for
+          // generatoren, saa den selv udtager erstatninger og kaptajner (intet underbemandet felt).
+          const groupWins = group.map(windowOf).filter(Boolean);
+          const excludeKeys = new Set([...bookedEarly].filter(([, wins]) => groupWins.some((w) => overlapsAny(wins, w))).map(([rid]) => rid));
           const res = await run({
-            supabase: readOnlyDb(db, { overlay }), seasonId, dryRun: true, mode: "late_fill",
+            supabase: readOnlyDb(db, { overlay, overlays: [excludeKeys.size ? { table: "riders", key: "id", excludeKeys } : null] }), seasonId, dryRun: true, mode: "late_fill",
             now: startMs, includeStaged: true, notify: async () => {},
           });
           log(`syntetisk felt (generator, dry-run): saeson ${seasonId}, start ${new Date(startMs).toISOString().slice(0, 16)}: ${group.length} loeb, ${res.generated} pladser`);
           const groupSet = new Set(group);
-          for (const [raceId, list] of entriesFromStaged(res.staged ?? [])) if (groupSet.has(raceId)) byRace.set(raceId, list);
+          for (const [raceId, list] of entriesFromStaged(res.staged ?? [])) {
+            if (!groupSet.has(raceId)) continue;
+            byRace.set(raceId, list);
+            const w = windowOf(raceId);
+            if (w) for (const e of list) bookedEarly.set(e.rider_id, [...(bookedEarly.get(e.rider_id) ?? []), { start: w.start, end: w.end }]);
+          }
         }
         const booked = new Map(); // rider_id -> [{start,end}]
         let dropped = 0;

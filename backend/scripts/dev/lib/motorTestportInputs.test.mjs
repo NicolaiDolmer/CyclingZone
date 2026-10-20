@@ -358,3 +358,32 @@ test("#6909 (Codex P2) generatorField: hvert loeb paa sin egen start; overlappen
   assert.ok(!out.get("r2").entries.some((e) => e.rider_id === "same"), "overlappende game_day-vindue: droppet");
   assert.ok(out.get("r3").entries.some((e) => e.rider_id === "same"), "samme dato, men intet overlap i game_day: beholdt");
 });
+
+test("#6909 (Codex P2) generatorField: bundne ryttere skjules for senere overlappende koersler, saa generatoren selv finder erstatninger", async () => {
+  const tables = {
+    races: [{ id: "r1", season_id: "s5" }, { id: "r2", season_id: "s5" }],
+    race_stage_schedule: [
+      { race_id: "r1", stage_number: 1, scheduled_at: "2026-10-28T10:00:00Z", game_day: 1 },
+      { race_id: "r1", stage_number: 2, scheduled_at: "2026-10-28T12:00:00Z", game_day: 3 },
+      { race_id: "r2", stage_number: 1, scheduled_at: "2026-10-28T14:00:00Z", game_day: 2 },
+    ],
+    riders: [{ id: "star", team_id: "t1" }, { id: "spare", team_id: "t1" }],
+    teams: [], rider_derived_abilities: [],
+  };
+  const runner = async (args) => {
+    const { data } = await args.supabase.from("riders").select("id, team_id").in("team_id", ["t1"]); // pagination-safe: test-fake
+    const pick = data.map((r) => r.id)[0];
+    return { generated: 1, staged: [{ race_id: args.now === Date.parse("2026-10-28T10:00:00Z") ? "r1" : "r2", team_id: "t1", picks: [{ rider_id: pick, race_role: "captain" }] }] };
+  };
+  const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
+  const out = await src.generatorField(["r1", "r2"]);
+  assert.equal(out.get("r1").entries[0].rider_id, "star");
+  assert.equal(out.get("r2").entries[0].rider_id, "spare", "generatoren valgte en erstatning, ingen tom plads");
+});
+
+test("#6909 readOnlyDb excludeKeys: skjuler raekker og afviser stadig skrivning", async () => {
+  const db = readOnlyDb(fakeDb({ riders: [{ id: "a" }, { id: "b" }] }), { overlays: [{ table: "riders", key: "id", excludeKeys: new Set(["a"]) }] });
+  const { data } = await db.from("riders").select("id").in("id", ["a", "b"]); // pagination-safe: test-fake
+  assert.deepEqual(data, [{ id: "b" }]);
+  assert.throws(() => db.from("riders").update({}), /read-only/);
+});
