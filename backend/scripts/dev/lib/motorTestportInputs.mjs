@@ -15,6 +15,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { raceBindingWindow } from "../../../lib/raceBinding.js";
+import { ABILITY_KEYS } from "../../../lib/raceSimulator.js";
 
 export const ROUTES_FORMAT = "cz-race-routes/v1";
 export const SYNTHETIC_KINDS = Object.freeze(["generator", "bench"]);
@@ -52,10 +53,12 @@ export function validateRouteDoc(doc, fileRaceId) {
     // #6909 (Codex P2): generatoren udtager feltet efter etapens krav (demand_vector); uden
     // dem bliver alle egnetheder 0, og feltet vaelges reelt efter rytter-id.
     const dv = p.demand_vector;
-    if (!dv || typeof dv !== "object" || Array.isArray(dv) || !Object.values(dv).some((v) => Number.isFinite(v) && v > 0)
-      || Object.values(dv).some((v) => !Number.isFinite(v) || v < 0)) {
-      throw new Error(`${where}: profiles[${i}].demand_vector mangler eller er ugyldig (ikke-negative tal, mindst ét > 0)`);
-    }
+    if (!dv || typeof dv !== "object" || Array.isArray(dv)) throw new Error(`${where}: profiles[${i}].demand_vector mangler`);
+    // #6909 (Codex P2): kun kendte evner (+ randomness); en stavefejl giver ellers stille 0-egnethed.
+    const unknownDims = Object.keys(dv).filter((k) => k !== "randomness" && !ABILITY_KEYS.includes(k));
+    if (unknownDims.length) throw new Error(`${where}: profiles[${i}].demand_vector har ukendte evner: ${unknownDims.join(", ")}`);
+    if (Object.values(dv).some((v) => !Number.isFinite(v) || v < 0)) throw new Error(`${where}: profiles[${i}].demand_vector skal vaere ikke-negative tal`);
+    if (!Object.entries(dv).some(([k, v]) => k !== "randomness" && v > 0)) throw new Error(`${where}: profiles[${i}].demand_vector skal have mindst én evne > 0`);
     return { ...p, race_id: fileRaceId };
   }).sort((a, b) => a.stage_number - b.stage_number);
   profiles.forEach((p, i) => {
@@ -182,7 +185,9 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
       }
       const v = b[p];
       if (typeof v !== "function") return v;
-      return (...args) => { const r = v.apply(b, args); return r === b ? wrap(b, table) : r; };
+      // #6909 (Codex P2): supabase-js returnerer et NYT builder-objekt fra fx .select(), saa
+      // alt der er en builder (har .then), pakkes ind igen; ellers naar laget aldrig frem.
+      return (...args) => { const r = v.apply(b, args); return r && typeof r === "object" && typeof r.then === "function" ? wrap(r, table) : r; };
     },
   });
   return new Proxy(db, {
@@ -227,7 +232,9 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
   // meta-filen fandtes) genbruges aldrig; den bygges forfra.
   const staleIds = new Set(resumed.filter((id) => {
     const c = JSON.parse(readFileSync(cacheFile(id), "utf8"));
-    return (c.routesSignature ?? null) !== (routes?.signature ?? null);
+    // #6909 (Codex P2): samme ruter, men et andet syntetisk felt, er ogsaa en anden koersel.
+    const fieldOk = c.fieldSource === "prod" || c.fieldSource === (synthetic ?? null);
+    return (c.routesSignature ?? null) !== (routes?.signature ?? null) || !fieldOk;
   }));
   for (const id of resumed) {
     if (staleIds.has(id)) continue;

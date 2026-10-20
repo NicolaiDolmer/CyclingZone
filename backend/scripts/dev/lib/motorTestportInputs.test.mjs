@@ -11,7 +11,7 @@ import {
 import { inputLines } from "./motorTestportReport.mjs";
 
 const tmp = (tag) => mkdtempSync(path.join(tmpdir(), `testport-6909-${tag}-`));
-const profile = (n, type = "flat") => ({ stage_number: n, profile_type: type, finale_type: "bunch_sprint", distance_km: 100 + n, climbs: [], demand_vector: { sprint: 0.6, flat: 0.4 } });
+const profile = (n, type = "flat") => ({ stage_number: n, profile_type: type, finale_type: "bunch_sprint", distance_km: 100 + n, climbs: [], demand_vector: { sprint: 0.6, climbing: 0.4 } });
 const routeDoc = (raceId, n = 2) => ({ format: ROUTES_FORMAT, race_id: raceId, stages: n, profiles: Array.from({ length: n }, (_, i) => profile(i + 1, i ? "hilly" : "flat")) });
 const raceData = (id, { stages = 2, entries = [] } = {}) => ({
   race: { id, name: `Loeb ${id}`, stages, squad: "senior" },
@@ -304,7 +304,7 @@ test("#6909 (Codex P2) loadRoutesDir: fingeraftrykket skifter naar en rutefil ae
 });
 
 test("#6909 (Codex P2) validateRouteDoc: demand_vector skal findes og have mindst ét positivt krav", () => {
-  for (const dv of [undefined, {}, { sprint: 0 }, { sprint: -1, flat: 1 }, { sprint: "x" }, [1]]) {
+  for (const dv of [undefined, {}, { sprint: 0 }, { sprint: -1, climbing: 1 }, { sprint: "x" }, [1], { sprit: 1 }, { randomness: 1 }]) {
     const d = routeDoc("race-a", 1); d.profiles[0].demand_vector = dv;
     assert.throws(() => validateRouteDoc(d, "race-a"), /demand_vector/);
   }
@@ -401,4 +401,23 @@ test("#6909 (Codex P2) prepareInputs: en cache fra andre ruter (afbrudt koersel 
   assert.equal(cache.routesSignature, routes.signature, "genbygget med de aktuelle ruter");
   assert.deepEqual(out.ids, ["r1"]);
   rmSync(outDir, { recursive: true, force: true }); rmSync(dir, { recursive: true, force: true });
+});
+
+test("#6909 (Codex P2) readOnlyDb: et NYT builder-objekt fra .select() (som supabase-js) faar stadig laget", async () => {
+  const realish = { from: () => ({ select() { return { in() { return this; }, then(res) { return res({ data: [{ race_id: "r1", profile_type: "mountain" }], error: null }); } }; } }) };
+  const db = readOnlyDb(realish, { overlay: { table: "race_stage_profiles", key: "race_id", rowsByKey: new Map([["r1", [{ race_id: "r1", profile_type: "hilly" }]]]) } });
+  const { data } = await db.from("race_stage_profiles").select("*").in("race_id", ["r1"]); // pagination-safe: test-fake
+  assert.deepEqual(data.map((r) => r.profile_type), ["hilly"]);
+  assert.throws(() => db.from("race_stage_profiles").select("*").update({}), /read-only/);
+});
+
+test("#6909 (Codex P2) prepareInputs: cache med et andet syntetisk felt bygges forfra", async () => {
+  const outDir = tmp("kind");
+  mkdirSync(path.join(outDir, "races", "r1"), { recursive: true });
+  writeFileSync(path.join(outDir, "races", "r1", "cache.json"), JSON.stringify({ ...raceData("r1"), fieldSource: "generator", routesSignature: null }));
+  const source = { withField: async () => new Set(), raceData: async () => new Map([["r1", raceData("r1")]]), benchField: async () => field("b") };
+  await prepareInputs({ raceIds: ["r1"], outDir, synthetic: "bench", source });
+  const cache = JSON.parse(readFileSync(path.join(outDir, "races", "r1", "cache.json"), "utf8"));
+  assert.equal(cache.fieldSource, "bench");
+  rmSync(outDir, { recursive: true, force: true });
 });
