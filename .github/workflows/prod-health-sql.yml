@@ -72,6 +72,9 @@ jobs:
       - name: Run SQL checks
         env:
           CZ_MONITOR_DATABASE_URL: ${{ secrets.CZ_MONITOR_DATABASE_URL }}
+          # Valgfri bekræftet grænse i bytes til kapacitetsprognosen (repo-variabel,
+          # ikke secret). Tom = capacity_forecast er unable_to_assess (confirmed_limit).
+          PROD_HEALTH_SQL_DB_LIMIT_BYTES: ${{ vars.PROD_HEALTH_SQL_DB_LIMIT_BYTES }}
         run: node scripts/ops/prodHealthSql.mjs --mode "$MODE" --out prod-health-sql.json --comment prod-health-sql.md
 
       - name: Save state

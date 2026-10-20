@@ -404,12 +404,15 @@ export function evaluateForecast(history, limitBytes) {
   if (pts.length < THRESHOLDS.forecastMinDays) {
     return unable(id, "seven_daily_measurements", { value: { days_of_history: pts.length } });
   }
-  // Diskontinuitet (hul > 1 dag) gør prognosen ugyldig.
-  for (let i = 1; i < pts.length; i += 1) {
-    const gapDays = (Date.parse(pts[i].date) - Date.parse(pts[i - 1].date)) / 86_400_000;
-    if (gapDays !== 1) return unable(id, "continuous_daily_measurements", { value: { days_of_history: pts.length } });
+  // Kun den seneste sammenhængende række dage tæller: et hul (mistet kørsel)
+  // ugyldiggør målingerne før hullet, ikke dem efter.
+  let start = pts.length - 1;
+  while (start > 0 && (Date.parse(pts[start].date) - Date.parse(pts[start - 1].date)) / 86_400_000 === 1) start -= 1;
+  const run = pts.slice(start);
+  if (run.length < THRESHOLDS.forecastMinDays) {
+    return unable(id, "continuous_daily_measurements", { value: { days_of_history: pts.length, consecutive_days: run.length } });
   }
-  const first = pts[0];
+  const first = run[0];
   const elapsed = (Date.parse(latest.date) - Date.parse(first.date)) / 86_400_000;
   const growth = (latest.database_bytes - first.database_bytes) / elapsed;
   if (!(growth > 0)) {

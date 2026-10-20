@@ -235,6 +235,14 @@ test("prognose: hul i historikken eller fladt forløb giver ingen dato", () => {
   assert.equal(evaluateForecast(flat, 10e9).outcome, "clear");
 });
 
+test("prognose: efter et hul bruges de seneste 7 sammenhængende dage", () => {
+  const before = [{ date: "2026-10-01", database_bytes: 1e9 }, { date: "2026-10-02", database_bytes: 1e9 }];
+  const after = Array.from({ length: 7 }, (_, i) => ({ date: `2026-10-${String(10 + i).padStart(2, "0")}`, database_bytes: 9e9 + (i + 1) * 1e8 }));
+  const r = evaluateForecast([...before, ...after], 10e9);
+  assert.equal(r.outcome, "finding");
+  assert.equal(r.value.days_remaining, 3);
+});
+
 test("pushSizeHistory: én måling pr. dag, sorteret", () => {
   let h = pushSizeHistory([], "2026-10-02", 2);
   h = pushSizeHistory(h, "2026-10-01", 1);
