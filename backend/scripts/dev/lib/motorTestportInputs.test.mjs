@@ -461,3 +461,28 @@ test("#6909 (Codex P2) generatorField: hver koersel ser kun sin egen gruppe (ikk
   await src.generatorField(["r1", "r2"]);
   assert.deepEqual(seen, ["r1", "r2"], "kun gruppens loeb; baade andre valgte og ikke-valgte loeb er skjult");
 });
+
+test("#6909 (Codex P2) generatorField: samme start, forskellige game_day-vinduer: rytteren skjules kun i det overlappende loeb", async () => {
+  const tables = {
+    races: [{ id: "r0", season_id: "s5" }, { id: "rA", season_id: "s5" }, { id: "rB", season_id: "s5" }],
+    race_stage_schedule: [
+      { race_id: "r0", stage_number: 1, scheduled_at: "2026-10-28T10:00:00Z", game_day: 1 },
+      { race_id: "rA", stage_number: 1, scheduled_at: "2026-10-28T12:00:00Z", game_day: 1 },
+      { race_id: "rB", stage_number: 1, scheduled_at: "2026-10-28T12:00:00Z", game_day: 4 },
+    ],
+    riders: [{ id: "star", team_id: "t1" }, { id: "spare", team_id: "t1" }],
+    teams: [], rider_derived_abilities: [],
+  };
+  const runs = [];
+  const runner = async (args) => {
+    const races = (await args.supabase.from("races").select("id").eq("season_id", "s5")).data.map((r) => r.id); // pagination-safe: test-fake
+    const pick = (await args.supabase.from("riders").select("id, team_id").in("team_id", ["t1"])).data.filter((r) => r.team_id === "t1").map((r) => r.id)[0]; // pagination-safe: test-fake
+    runs.push(races.join(","));
+    return { generated: races.length, staged: races.map((race_id) => ({ race_id, team_id: "t1", picks: [{ rider_id: pick, race_role: "captain" }] })) };
+  };
+  const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
+  const out = await src.generatorField(["r0", "rA", "rB"]);
+  assert.deepEqual(runs, ["r0", "rA", "rB"], "rA og rB har samme start men forskellige skjulte ryttere: hver sin koersel");
+  assert.equal(out.get("rA").entries[0].rider_id, "spare", "overlapper r0 (game_day 1): erstatning");
+  assert.equal(out.get("rB").entries[0].rider_id, "star", "intet overlap (game_day 4): rytteren er til raadighed");
+});

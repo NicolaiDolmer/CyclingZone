@@ -437,29 +437,44 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
         const byRace = new Map();
         const bookedEarly = new Map(); // rider_id -> [{start,end}] fra tidligere koersler
         const overlapsAny = (wins, w) => w && wins.some((p) => p.start <= w.end && w.start <= p.end);
-        for (const [startMs, group] of [...byStart].sort((a, b) => a[0] - b[0])) {
-          // #6909 (Codex P2): ryttere der allerede er bundet i et overlappende loeb skjules for
+        // Skjulte ryttere for ét loeb: dem der allerede er udtaget til et loeb hvis binding-vindue
+        // overlapper netop DETTE loebs vindue.
+        const excludedFor = (id) => {
+          const w = windowOf(id);
+          return w ? [...bookedEarly].filter(([, wins]) => overlapsAny(wins, w)).map(([rid]) => rid).sort() : [];
+        };
+        for (const [startMs, startGroup] of [...byStart].sort((a, b) => a[0] - b[0])) {
+          // #6909 (Codex P2 x2): ryttere der allerede er bundet i et overlappende loeb skjules for
           // generatoren, saa den selv udtager erstatninger og kaptajner (intet underbemandet felt).
-          const groupWins = group.map(windowOf).filter(Boolean);
-          const excludeKeys = new Set([...bookedEarly].filter(([, wins]) => groupWins.some((w) => overlapsAny(wins, w))).map(([rid]) => rid));
-          // #6909 (Codex P2 x2): koerslen ser KUN sin egen gruppe. Alle andre saesonens loeb
-          // (andre valgte grupper og ikke-valgte loeb) fjernes fra races, saa intet loeb uden for
-          // gruppen kan forbruge ryttere. Bindinger til loeb med rigtige tilmeldinger tabes ikke:
-          // generatoren laeser dem fra race_entries (rider_id + saeson), ikke fra races-listen.
-          const res = await run({
-            supabase: readOnlyDb(db, { overlay, overlays: [
-              excludeKeys.size ? { table: "riders", key: "id", excludeKeys, nullField: "team_id" } : null,
-              { table: "races", key: "id", keepKeys: new Set(group) },
-            ] }), seasonId, dryRun: true, mode: "late_fill",
-            now: startMs, includeStaged: true, notify: async () => {},
-          });
-          log(`syntetisk felt (generator, dry-run): saeson ${seasonId}, start ${new Date(startMs).toISOString().slice(0, 16)}: ${group.length} loeb, ${res.generated} pladser`);
-          const groupSet = new Set(group);
-          for (const [raceId, list] of entriesFromStaged(res.staged ?? [])) {
-            if (!groupSet.has(raceId)) continue;
-            byRace.set(raceId, list);
-            const w = windowOf(raceId);
-            if (w) for (const e of list) bookedEarly.set(e.rider_id, [...(bookedEarly.get(e.rider_id) ?? []), { start: w.start, end: w.end }]);
+          // Skjulningen gaelder pr. loeb: loeb med samme start men forskellige skjulte ryttere (fx
+          // ikke-overlappende game_day-vinduer) koeres hver for sig, saa en rytter kun mangler i
+          // de loeb han faktisk er bundet imod. Skjulningen genberegnes efter hver delkoersel.
+          let queue = [...startGroup].sort();
+          while (queue.length) {
+            const keyOf = (id) => excludedFor(id).join("|");
+            const k0 = keyOf(queue[0]);
+            const group = queue.filter((id) => keyOf(id) === k0);
+            queue = queue.filter((id) => !group.includes(id));
+            const excludeKeys = new Set(excludedFor(group[0]));
+            // #6909 (Codex P2 x2): koerslen ser KUN sin egen gruppe. Alle andre saesonens loeb
+            // (andre valgte grupper og ikke-valgte loeb) fjernes fra races, saa intet loeb uden for
+            // gruppen kan forbruge ryttere. Bindinger til loeb med rigtige tilmeldinger tabes ikke:
+            // generatoren laeser dem fra race_entries (rider_id + saeson), ikke fra races-listen.
+            const res = await run({
+              supabase: readOnlyDb(db, { overlay, overlays: [
+                excludeKeys.size ? { table: "riders", key: "id", excludeKeys, nullField: "team_id" } : null,
+                { table: "races", key: "id", keepKeys: new Set(group) },
+              ] }), seasonId, dryRun: true, mode: "late_fill",
+              now: startMs, includeStaged: true, notify: async () => {},
+            });
+            log(`syntetisk felt (generator, dry-run): saeson ${seasonId}, start ${new Date(startMs).toISOString().slice(0, 16)}: ${group.length} loeb, ${res.generated} pladser`);
+            const groupSet = new Set(group);
+            for (const [raceId, list] of entriesFromStaged(res.staged ?? [])) {
+              if (!groupSet.has(raceId)) continue;
+              byRace.set(raceId, list);
+              const w = windowOf(raceId);
+              if (w) for (const e of list) bookedEarly.set(e.rider_id, [...(bookedEarly.get(e.rider_id) ?? []), { start: w.start, end: w.end }]);
+            }
           }
         }
         const booked = new Map(); // rider_id -> [{start,end}]
