@@ -583,7 +583,7 @@ test("den rigtige S5-generator: gyldige rækker for hvert løb og samme plan-has
 
 test("#6929 (Codex P1) identityGateViolations: rød identitet, upinnet signatur eller afvigende monument blokerer apply", async () => {
   const { identityGateViolations } = await import("./regenS5StageProfiles.mjs");
-  const green = { divisions: [{ tier: 1, identity: { ok: true, untyped: 0 }, pins: [{ pinned: true }], monuments: [{ authored: true, matchesAuthored: true }, { authored: false, matchesAuthored: null }] }] };
+  const green = { divisions: [{ tier: 1, identity: { ok: true, untyped: 0 }, pins: [{ pinned: true }], monuments: [{ authored: true, matchesAuthored: true }], gtPreludes: [{ ok: true }] }] };
   assert.deepEqual(identityGateViolations(green), []);
   const red = { divisions: [{ tier: 2, identity: { ok: false, untyped: 3 }, pins: [{ pinned: false }], monuments: [{ authored: true, matchesAuthored: false }] }] };
   const v = identityGateViolations(red);
@@ -591,4 +591,30 @@ test("#6929 (Codex P1) identityGateViolations: rød identitet, upinnet signatur 
   assert.match(v.join(" "), /tabel A er rød \(3 uden type\)/);
   assert.match(v.join(" "), /signatur/);
   assert.match(v.join(" "), /authored_route/);
+});
+
+test("#6929 (Codex P1) identityGateViolations: monument uden authored_route og forkert GT-optakt blokerer", async () => {
+  const { identityGateViolations } = await import("./regenS5StageProfiles.mjs");
+  const d = { tier: 1, identity: { ok: true, untyped: 0 }, pins: [], monuments: [{ authored: false, matchesAuthored: null }], gtPreludes: [{ ok: true }, { ok: false }] };
+  const v = identityGateViolations({ divisions: [d] }).join(" ");
+  assert.match(v, /uden authored_route/);
+  assert.match(v, /GT-optakt/);
+});
+
+test("#6929 (Codex P1) applyPlan: vagterne læses igen før hver sletning; et nyligt claimet løb stopper før delete", async () => {
+  const { applyPlan } = await import("./regenS5StageProfiles.mjs");
+  const deleted = [];
+  const db = {
+    guardsOf: async (ids) => ({ races: ids.map((id) => ({ id, stages_completed: 0, engine_rules_revision: null })), claims: ids.includes("r2") ? [{ race_id: "r2", stage_index: 0 }] : [] }),
+    deleteProfiles: async (ids) => { deleted.push(...ids); },
+    insertProfiles: async () => {},
+  };
+  const plan = { rowsByRaceId: new Map([["r2", [{ race_id: "r2", stage_number: 1 }]]]) };
+  await assert.rejects(applyPlan({ db, plan, racesToWrite: ["r2"] }), /claimet/);
+  assert.deepEqual(deleted, [], "intet slettet");
+});
+
+test("#6929 (Codex P2) --skip-cache-wait er ikke tilladt med --apply", async () => {
+  const { parseArgs } = await import("./regenS5StageProfiles.mjs");
+  assert.throws(() => parseArgs(["--apply", "--season", "5", "--confirm-season-upcoming", "--backup-table=backup_6857_race_stage_profiles_20261020", `--plan-hash=${"a".repeat(64)}`, "--skip-cache-wait"]), /skip-cache-wait/);
 });

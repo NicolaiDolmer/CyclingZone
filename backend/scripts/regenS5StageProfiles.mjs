@@ -191,6 +191,8 @@ export function parseArgs(argv = []) {
       throw new Error("--apply kræver --backup-table=backup_6857_race_stage_profiles_YYYYMMDD (oprettet med dry-runnets backup.sql)");
     }
     if (!o.planHash || !/^[0-9a-f]{64}$/.test(o.planHash)) throw new Error("--apply kræver --plan-hash=<dry-runnets plan-hash>");
+    // #6929 (Codex P2): post-verify kræver at calendar-cachen er udløbet; ingen genvej i prod.
+    if (o.skipCacheWait) throw new Error("--skip-cache-wait er ikke tilladt med --apply (cachen skal være udløbet før succes)");
   } else {
     for (const f of ["backupTable", "planHash"]) if (o[f]) throw new Error(`--${f === "backupTable" ? "backup-table" : "plan-hash"} hører kun til --apply`);
   }
@@ -246,6 +248,11 @@ export function createSupabaseRegenDb(supabase) {
     },
     async scheduleOf(raceIds) {
       return fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_schedule").select("race_id, stage_number, scheduled_at").in("race_id", chunk).order("race_id").order("stage_number"));
+    },
+    async guardsOf(raceIds) {
+      const races = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("races").select("id, stages_completed, engine_rules_revision").in("id", chunk).order("id"));
+      const claims = await fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_claims").select("race_id, stage_index").in("race_id", chunk).order("race_id").order("stage_index"));
+      return { races, claims };
     },
     async claimsOf(raceIds) {
       return fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_claims").select("race_id, stage_index").in("race_id", chunk).order("race_id").order("stage_index"));
@@ -593,6 +600,16 @@ export async function applyPlan({ db, plan, racesToWrite, log = () => {}, clock 
   let lastWriteAt = null;
   const batches = batchRaces(racesToWrite, plan.rowsByRaceId);
   for (const [i, b] of batches.entries()) {
+    // #6929 (Codex P1): løbs-vagterne læses igen LIGE før sletningen. Et løb der er startet,
+    // bundet til en motor-revision eller har fået en claim siden dry-runnet røres ikke.
+    if (db.guardsOf) {
+      const g = await db.guardsOf(b.raceIds);
+      const moved = [
+        ...g.races.filter((r) => Number(r.stages_completed ?? Number.NaN) !== 0 || r.engine_rules_revision != null).map((r) => r.id),
+        ...g.claims.map((c) => c.race_id),
+      ];
+      if (moved.length) throw new Error(`batch ${i + 1}: ${new Set(moved).size} løb er startet/bundet/claimet siden kontrollen; stoppet før sletning (tidligere batches er skrevet, rul tilbage med restore-scriptet)`);
+    }
     await db.deleteProfiles(b.raceIds);
     await db.insertProfiles(b.rows);
     rowsWritten += b.rows.length;
@@ -832,6 +849,12 @@ export function identityGateViolations(full) {
     if (unpinned.length) out.push(`D${d.tier}: ${unpinned.length} signatur(er) ikke pinnet`);
     const offRoute = (d.monuments ?? []).filter((m) => m.authored && m.matchesAuthored !== true);
     if (offRoute.length) out.push(`D${d.tier}: ${offRoute.length} monument(er) følger ikke authored_route`);
+    // #6929 (Codex P1): også MANGLENDE identitet blokerer: hvert monument skal have en authored_route,
+    // og D1's GT-optakter skal ligge før den rigtige Grand Tour.
+    const unauthored = (d.monuments ?? []).filter((m) => !m.authored);
+    if (unauthored.length) out.push(`D${d.tier}: ${unauthored.length} monument(er) uden authored_route`);
+    const preludes = d.gtPreludes ?? [];
+    if (preludes.some((g) => !g.ok)) out.push(`D${d.tier}: ${preludes.filter((g) => !g.ok).length} GT-optakt(er) ligger forkert`);
   }
   return out;
 }
