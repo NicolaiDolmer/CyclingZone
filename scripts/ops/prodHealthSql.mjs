@@ -76,6 +76,10 @@ export function connectsToProject(dbUrl, ref = PROJECT_REF) {
     return false;
   }
   if (!/^postgres(ql)?:$/.test(u.protocol)) return false;
+  // libpq lader ?host=/hostaddr= overstyre den validerede host (opus-review).
+  for (const key of u.searchParams.keys()) {
+    if (["host", "hostaddr", "user", "port", "sslmode", "service", "passfile"].includes(key.toLowerCase())) return false;
+  }
   const user = decodeURIComponent(u.username);
   // Pooler: brugeren bærer projektref, og hosten SKAL være Supabase' pooler,
   // så nøglen aldrig sendes til en anden server (Codex-fund, PR #6996).
@@ -160,7 +164,7 @@ export function makePsqlRunner(dbUrl, execFn = execFileAsync) {
         {
           timeout: 30_000,
           maxBuffer: 4 * 1024 * 1024,
-          env: { ...process.env, PGCONNECT_TIMEOUT: "10", PGAPPNAME: "cz-prod-health-sql" },
+          env: { ...process.env, PGCONNECT_TIMEOUT: "10", PGAPPNAME: "cz-prod-health-sql", PGSSLMODE: "require" },
         }
       ));
     } catch (err) {

@@ -5,8 +5,12 @@
 -- de tal tjekkene bruger (Codex-fund, PR #6996). Den er IKKE medlem af
 -- pg_read_all_stats/pg_monitor, så en lækket nøgle kan ikke læse andre
 -- sessioners query-tekst i pg_stat_activity eller pg_stat_statements.
--- Funktionerne er SECURITY DEFINER (ejer postgres, som har pg_monitor),
--- search_path = '' og returnerer aldrig query-tekst, kun pid, rollenavn,
+-- Funktionerne er SECURITY DEFINER (ejer postgres, som har pg_monitor) med
+-- search_path = pg_catalog, pg_temp og skema-kvalificerede typer. pg_temp SKAL
+-- stå eksplicit sidst: med search_path = '' søges kalderens temp-skema FØRST for
+-- typer og relationer, og rollen har TEMP via PUBLIC, så en lækket nøgle kunne
+-- skygge fx text med et domæne, hvis CHECK kører som postgres (opus-review,
+-- PR #6996). De returnerer aldrig query-tekst, kun pid, rollenavn,
 -- state, alder, wait events, queryid, tal og tabelnavne. EXECUTE er fjernet
 -- fra PUBLIC/anon/authenticated/service_role; skemaet er ikke eksponeret i
 -- Data API'et.
@@ -77,10 +81,9 @@ EXCEPTION WHEN insufficient_privilege OR invalid_parameter_value OR cant_change_
 END
 $$;
 
--- Ingen brede statistik-roller (en tidligere udgave af PR'en gav
--- pg_read_all_stats; REVOKE gør gen-kørsel sikker, også hvis den blev givet).
-REVOKE pg_read_all_stats FROM cz_monitor;
-REVOKE pg_monitor FROM cz_monitor;
+-- Ingen brede statistik-roller. Der REVOKE'es ikke her: postgres har ikke
+-- ADMIN på pg_read_all_stats (målt 20/10), så REVOKE ville fælde migrationen
+-- (PG16+). Rollen har aldrig fået dem; verify-blokken fejler, hvis den har.
 
 -- Snævert interface: skema ops_monitor, kun USAGE til cz_monitor.
 CREATE SCHEMA IF NOT EXISTS ops_monitor AUTHORIZATION postgres;
@@ -91,31 +94,31 @@ COMMENT ON SCHEMA ops_monitor IS
 
 -- Supabase detection checks: forbindelsestryk.
 CREATE OR REPLACE FUNCTION ops_monitor.connection_pressure()
-RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
   SELECT pg_catalog.row_to_json(t) FROM (
     SELECT
       count(*) FILTER (WHERE a.backend_type = 'client backend') AS client_connections,
       count(*) FILTER (WHERE a.backend_type = 'client backend' AND a.state = 'active') AS active_connections,
-      pg_catalog.current_setting('max_connections')::int AS max_connections
+      pg_catalog.current_setting('max_connections')::pg_catalog.int4 AS max_connections
     FROM pg_catalog.pg_stat_activity a
   ) t
 $fn$;
 
 -- Lange sessioner, idle in transaction og blokerede sessioner. Ingen query-tekst.
 CREATE OR REPLACE FUNCTION ops_monitor.long_sessions()
-RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
-  SELECT COALESCE(pg_catalog.json_agg(t), '[]'::json) FROM (
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
+  SELECT COALESCE(pg_catalog.json_agg(t), '[]'::pg_catalog.json) FROM (
     SELECT a.pid, a.usename AS role, a.state,
-      pg_catalog.round(EXTRACT(epoch FROM pg_catalog.now() - a.query_start))::bigint AS query_age_s,
-      pg_catalog.round(EXTRACT(epoch FROM pg_catalog.now() - a.xact_start))::bigint AS transaction_age_s,
+      pg_catalog.round(EXTRACT(epoch FROM pg_catalog.now() - a.query_start))::pg_catalog.int8 AS query_age_s,
+      pg_catalog.round(EXTRACT(epoch FROM pg_catalog.now() - a.xact_start))::pg_catalog.int8 AS transaction_age_s,
       a.wait_event_type, a.wait_event,
       pg_catalog.pg_blocking_pids(a.pid) AS blocking_pids
     FROM pg_catalog.pg_stat_activity a
     WHERE a.datname = pg_catalog.current_database()
       AND a.pid <> pg_catalog.pg_backend_pid()
       AND (
-        (a.state = 'active' AND pg_catalog.now() - a.query_start > interval '30 seconds')
-        OR (a.state LIKE 'idle in transaction%' AND pg_catalog.now() - a.xact_start > interval '30 seconds')
+        (a.state = 'active' AND pg_catalog.now() - a.query_start > '30 seconds'::pg_catalog.interval)
+        OR (a.state LIKE 'idle in transaction%' AND pg_catalog.now() - a.xact_start > '30 seconds'::pg_catalog.interval)
         OR pg_catalog.cardinality(pg_catalog.pg_blocking_pids(a.pid)) > 0
       )
     ORDER BY a.query_start
@@ -125,23 +128,23 @@ $fn$;
 
 -- pg_stat_statements: kun nøgle, kald og samlet tid; aldrig query-tekst.
 CREATE OR REPLACE FUNCTION ops_monitor.statement_stats()
-RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
   SELECT pg_catalog.json_build_object(
     'observed_at', pg_catalog.now(),
     'info', (SELECT pg_catalog.row_to_json(i) FROM (
                SELECT si.stats_reset, si.dealloc FROM extensions.pg_stat_statements_info si) i),
     'rows', COALESCE((SELECT pg_catalog.json_agg(t) FROM (
-      SELECT s.dbid, s.userid, pg_catalog.pg_get_userbyid(s.userid) AS role, s.queryid::text AS queryid,
-        s.toplevel, s.calls, s.total_exec_time, s.stats_since::text AS statement_stats_since
+      SELECT s.dbid, s.userid, pg_catalog.pg_get_userbyid(s.userid) AS role, s.queryid::pg_catalog.text AS queryid,
+        s.toplevel, s.calls, s.total_exec_time, s.stats_since::pg_catalog.text AS statement_stats_since
       FROM extensions.pg_stat_statements s
       WHERE s.dbid = (SELECT d.oid FROM pg_catalog.pg_database d WHERE d.datname = pg_catalog.current_database())
       ORDER BY s.total_exec_time DESC
-      LIMIT 100) t), '[]'::json))
+      LIMIT 100) t), '[]'::pg_catalog.json))
 $fn$;
 
 -- Kapacitet: databasestørrelse, top-20 tabeller, forbindelser pr. rolle/state.
 CREATE OR REPLACE FUNCTION ops_monitor.capacity()
-RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
   SELECT pg_catalog.json_build_object(
     'observed_at', pg_catalog.now(),
     'database_bytes', pg_catalog.pg_database_size(pg_catalog.current_database()),
@@ -149,19 +152,19 @@ RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
       SELECT st.schemaname, st.relname AS table_name, pg_catalog.pg_total_relation_size(st.relid) AS total_bytes
       FROM pg_catalog.pg_statio_user_tables st
       ORDER BY total_bytes DESC
-      LIMIT 20) t), '[]'::json),
+      LIMIT 20) t), '[]'::pg_catalog.json),
     'connections_by_role', COALESCE((SELECT pg_catalog.json_agg(t) FROM (
       SELECT a.usename AS role, a.state, count(*) AS connections
       FROM pg_catalog.pg_stat_activity a
       WHERE a.datname = pg_catalog.current_database() AND a.backend_type = 'client backend'
       GROUP BY a.usename, a.state
       ORDER BY connections DESC
-      LIMIT 100) t), '[]'::json))
+      LIMIT 100) t), '[]'::pg_catalog.json))
 $fn$;
 
 -- Cache-hit (kumulativ kontekst, ingen alarm).
 CREATE OR REPLACE FUNCTION ops_monitor.cache_hit()
-RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = '' AS $fn$
+RETURNS json LANGUAGE sql STABLE SECURITY DEFINER SET search_path = pg_catalog, pg_temp AS $fn$
   SELECT pg_catalog.row_to_json(t) FROM (
     SELECT
       sum(st.heap_blks_hit) AS heap_hits,
@@ -267,6 +270,18 @@ BEGIN
          OR p.proname NOT IN ('connection_pressure', 'long_sessions', 'statement_stats', 'capacity', 'cache_hit'));
   IF v_bad IS NOT NULL THEN
     RAISE EXCEPTION '#6994: ops_monitor har funktioner med for bred EXECUTE eller ukendte funktioner: %', v_bad;
+  END IF;
+
+  SELECT string_agg(p.oid::regprocedure::text, ', ')
+    INTO v_bad
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'ops_monitor'
+    AND (NOT p.prosecdef
+         OR p.proowner <> 'postgres'::regrole
+         OR NOT coalesce(p.proconfig @> ARRAY['search_path=pg_catalog, pg_temp'], false));
+  IF v_bad IS NOT NULL THEN
+    RAISE EXCEPTION '#6994: ops_monitor-funktion uden SECURITY DEFINER/ejer postgres/search_path=pg_catalog, pg_temp: %', v_bad;
   END IF;
 
   IF (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace

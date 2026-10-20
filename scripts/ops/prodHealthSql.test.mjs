@@ -229,6 +229,9 @@ test("projekt-binding: kun cz_monitor i prod-projektet accepteres", () => {
   assert.equal(connectsToProject("postgresql://postgres.ghwvkxzhsbbltzfnuhhz:pw@aws-0-eu.pooler.supabase.com:5432/postgres"), false);
   assert.equal(connectsToProject("postgresql://cz_monitor:pw@localhost:5432/postgres"), false);
   assert.equal(connectsToProject("ikke en url"), false);
+  // Query-parametre må ikke overstyre host eller slå TLS fra.
+  assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@aws-0-eu.pooler.supabase.com:5432/postgres?host=attacker.example"), false);
+  assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@aws-0-eu.pooler.supabase.com:5432/postgres?sslmode=disable"), false);
   // Rigtig bruger, fremmed host: nøglen må aldrig sendes dertil.
   assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@attacker.example/postgres"), false);
   assert.equal(connectsToProject("postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:pw@pooler.supabase.com.attacker.example/postgres"), false);
