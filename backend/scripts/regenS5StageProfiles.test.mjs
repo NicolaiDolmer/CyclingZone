@@ -21,7 +21,7 @@ import {
   parseArgs, copenhagenDate, canonicalJson, loadRegenInput, buildRegenPlan, checkInvariants, diffAgainstCurrent,
   buildBackupSql, buildRestoreSql, assertBackupCovers, batchRaces, applyPlan, postVerify, crossPoolDivergence,
   parseDivergenceScriptOutput, waitForCalendarCache, buildRoutesFiles, writeRoutesDir, assertPrivatePath, buildReport,
-  seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient, overlayIdentity,
+  seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient, overlayIdentity, gtPreludes,
   CALENDAR_CACHE_TTL_MS, CALENDAR_CACHE_MARGIN_MS, WRITE_BATCH_ROWS, ROUTES_FORMAT, PROFILE_COLUMNS, CUTOVER_DATE_CPH,
 } from "./regenS5StageProfiles.mjs";
 import { ARCHETYPE_PROFILES } from "../lib/raceStageProfileGenerator.js";
@@ -79,6 +79,8 @@ function state({ status = "upcoming" } = {}) {
     seasons: [{ id: SEASON_ID, number: 5, status }],
     divisions: [{ id: 1, tier: 1, pool_index: 1 }, { id: 2, tier: 1, pool_index: 2 }, { id: 3, tier: 2, pool_index: 1 }],
     races, catalog: cat, profiles, claims: [], backup: {},
+    // én etape pr. dag fra løbets første løbsdag (kun rapportens GT-optakt-tjek læser den)
+    schedule: races.flatMap((r) => Array.from({ length: r.stages }, (_, i) => ({ race_id: r.id, stage_number: i + 1, scheduled_at: new Date(Date.UTC(2026, 9, 27 + r.game_day_start + i, 13)).toISOString() }))),
   };
 }
 
@@ -93,6 +95,7 @@ function fakeDb(s) {
     async catalogRows(ids) { return s.catalog.filter((x) => ids.includes(x.id)); },
     async profilesOf(ids) { return s.profiles.filter((p) => ids.includes(p.race_id)).map((p) => structuredClone(p)); },
     async claimsOf(ids) { return s.claims.filter((x) => ids.includes(x.race_id)); },
+    async scheduleOf(ids) { return s.schedule.filter((x) => ids.includes(x.race_id)); },
     async backupIds(table, ids) { return new Set((s.backup[table] ?? []).filter((id) => ids.includes(id))); },
     async deleteProfiles(ids) { calls.push(["delete", ids.slice()]); s.profiles = s.profiles.filter((p) => !ids.includes(p.race_id)); },
     async insertProfiles(rows) {
@@ -484,6 +487,21 @@ test("signaturePins: summit_finish kræver bjergtop; sector matches på navn i e
   ] }, profiles);
   assert.deepEqual(pins.map((p) => p.pinned), [false, true, false]);
   assert.equal(matchesAuthored(null, AUTHORED), null);
+});
+
+test("gtPreludes: optakten er det korte etapeløb der SLUTTER lige før Grand Touren", () => {
+  const cat = new Map([["pre", { race_identity_type: "climbers_gt_prelude" }], ["late", { race_identity_type: "sprinters" }], ["gt", {}]]);
+  const races = [
+    { id: "a", pool_race_id: "pre", name: "Optakt", race_type: "stage_race", stages: 5 },
+    { id: "b", pool_race_id: "late", name: "Overlapper", race_type: "stage_race", stages: 5 },
+    { id: "g", pool_race_id: "gt", name: "GT", race_type: "stage_race", stages: 21 },
+  ];
+  const span = (d0, d1) => ({ start: Date.UTC(2026, 10, d0), end: Date.UTC(2026, 10, d1) });
+  // "Overlapper" starter senere end optakten men slutter EFTER GT-starten: tæller ikke
+  const spans = new Map([["a", span(1, 5)], ["b", span(3, 9)], ["g", span(8, 30)]]);
+  assert.deepEqual(gtPreludes(races, cat, spans).map((g) => [g.prelude, g.ok]), [["Optakt", true]]);
+  // uden tidsplan: intet kan påvises, og tjekket er rødt
+  assert.deepEqual(gtPreludes(races, cat, new Map()).map((g) => g.ok), [false]);
 });
 
 // ── Identitets-fil oven på race_pool (kun dry-run) ────────────────────────────────────

@@ -244,6 +244,9 @@ export function createSupabaseRegenDb(supabase) {
     async profilesOf(raceIds) {
       return fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_profiles").select(PROFILE_COLUMNS.join(", ")).in("race_id", chunk).order("id"));
     },
+    async scheduleOf(raceIds) {
+      return fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_schedule").select("race_id, stage_number, scheduled_at").in("race_id", chunk).order("race_id").order("stage_number"));
+    },
     async claimsOf(raceIds) {
       return fetchAllRowsChunkedIn(raceIds, (chunk) => supabase.from("race_stage_claims").select("race_id, stage_index").in("race_id", chunk).order("race_id").order("stage_index"));
     },
@@ -275,7 +278,9 @@ export async function loadRegenInput(db, seasonNumber = TARGET_SEASON_NUMBER) {
   const catalog = poolIds.length ? await db.catalogRows(poolIds) : [];
   const profiles = raceIds.length ? await db.profilesOf(raceIds) : [];
   const claims = raceIds.length ? await db.claimsOf(raceIds) : [];
-  return { season, divisions, races, catalog, profiles, claims };
+  // Kun til rapporten (GT-optakterne): hvornår hvert løb starter og slutter.
+  const schedule = raceIds.length && typeof db.scheduleOf === "function" ? await db.scheduleOf(raceIds) : [];
+  return { season, divisions, races, catalog, profiles, claims, schedule };
 }
 
 /**
@@ -722,14 +727,24 @@ export function identityTable(tier, repRaces, catalogById) {
   return { rows, untyped: got.untyped, ok: rows.every((x) => x.ok) && got.untyped === 0 };
 }
 
-/** D1: hver Grand Tour skal have et klatreløb (GT-optakt) som nærmeste foregående korte etapeløb. */
-export function gtPreludes(repRaces, catalogById) {
-  const sorted = repRaces.slice().sort((a, b) => Number(a.game_day_start ?? 0) - Number(b.game_day_start ?? 0));
-  return sorted.filter(isGrandTour).map((gt) => {
-    const before = sorted.filter((r) => isShortStageRace(r) && Number(r.game_day_start ?? 0) < Number(gt.game_day_start ?? 0));
-    const prev = before[before.length - 1] ?? null;
-    const type = prev ? catalogById.get(prev.pool_race_id)?.race_identity_type ?? null : null;
-    return { gt: gt.name, prelude: prev?.name ?? null, type, ok: type === "climbers_gt_prelude" };
+/**
+ * D1 (spec §2): hver Grand Tour skal have et klatreløb (GT-optakt) blandt de korte etapeløb der
+ * SLUTTER lige før den. Start og slut er første og sidste etapes scheduled_at
+ * (race_stage_schedule); ved lige slutning tæller et hvilket som helst af dem.
+ *
+ * @param {Map<string, {start: number, end: number}>} spanByRaceId  races.id → tidsrum (ms)
+ */
+export function gtPreludes(repRaces, catalogById, spanByRaceId = new Map()) {
+  const start = (r) => spanByRaceId.get(r.id)?.start ?? Number.NaN;
+  const end = (r) => spanByRaceId.get(r.id)?.end ?? Number.NaN;
+  return repRaces.filter(isGrandTour).sort((a, b) => start(a) - start(b)).map((gt) => {
+    const before = repRaces.filter((r) => isShortStageRace(r) && end(r) < start(gt));
+    const lastEnd = before.length ? Math.max(...before.map(end)) : null;
+    const nearest = before.filter((r) => end(r) === lastEnd).sort((a, b) => compareIds(a.pool_race_id, b.pool_race_id));
+    const typeOf = (r) => catalogById.get(r.pool_race_id)?.race_identity_type ?? null;
+    const hit = nearest.find((r) => typeOf(r) === "climbers_gt_prelude") ?? nearest[0] ?? null;
+    const type = hit ? typeOf(hit) : null;
+    return { gt: gt.name, prelude: hit?.name ?? null, type, ok: type === "climbers_gt_prelude" };
   });
 }
 
@@ -784,6 +799,13 @@ export function signaturePins(race, signature, profiles) {
  */
 export function buildReport({ input, plan, invariants, diff, generatedAt, gateLines = [], identitySource = "race_pool (prod)" }) {
   const catalogById = new Map(input.catalog.map((c) => [c.id, c]));
+  const spanByRaceId = new Map();
+  for (const st of input.schedule ?? []) {
+    const ms = Date.parse(st.scheduled_at);
+    if (!Number.isFinite(ms)) continue;
+    const cur = spanByRaceId.get(st.race_id);
+    spanByRaceId.set(st.race_id, cur ? { start: Math.min(cur.start, ms), end: Math.max(cur.end, ms) } : { start: ms, end: ms });
+  }
   const divisions = plan.tiers.map((t) => {
     const raceRows = t.raceRows;
     const tb = terrainCounts(raceRows, t.before.profilesByPoolRaceId);
@@ -805,7 +827,7 @@ export function buildReport({ input, plan, invariants, diff, generatedAt, gateLi
       tier: t.tier, pools: t.poolIds.length, races: t.repRaces.length, stageRaces: stageRaces.length,
       seasonVariant: t.seasonVariant, drawExhausted: t.draw.exhausted,
       identity: identityTable(t.tier, t.repRaces, catalogById),
-      gtPreludes: t.tier === 1 ? gtPreludes(t.repRaces, catalogById) : [],
+      gtPreludes: t.tier === 1 ? gtPreludes(t.repRaces, catalogById, spanByRaceId) : [],
       terrain: { before: tb, after: ta },
       uniform: { before: t.before.coverage.uniformRows, after: t.after.coverage.uniformRows },
       mountainFree: {
