@@ -11,6 +11,8 @@
 //     redigeret, ingen stock, ingen gradienter, ingen skygger (hairline + 5 px).
 //   - Guld er rationeret: kun "Create your team" (top, kom i gang, afslutning;
 //     aldrig to på samme skærm). Ingen guld-tal, ingen bjælker.
+//   - Discord (ejer 20/10): sekundær knap ved siden af guld-knappen i toppen og en
+//     rigtig knap i "Made by one person". Aldrig guld.
 //   - Mobil: tekst og knap før billedet; telefon-udsnit (taget ved 520 px, så
 //     spillets tidsgab ikke skæres af) via <picture>, desktop-udsnit fra 768 px.
 //   - Kun links der virker uden konto (app-siderne help/rules/pro kræver login).
@@ -179,8 +181,8 @@ export default function LandingPage({ lang, dict }: { lang: Lang; dict: Dict }) 
               <AppLink href={signup} className={buttonClass({ variant: "primary", size: "lg" })}>
                 {t("hero.cta")}
               </AppLink>
-              <a href="#race" className={buttonClass({ variant: "secondary", size: "lg" })}>
-                {t("hero.ctaSecondary")}
+              <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: "secondary", size: "lg" })}>
+                {t("hero.ctaDiscord")}
               </a>
             </div>
             <p className="m-0 mt-4 text-sm text-cz-3">{keep(t("hero.micro"))}</p>
@@ -275,7 +277,7 @@ export default function LandingPage({ lang, dict }: { lang: Lang; dict: Dict }) 
                 </p>
               ))}
               <p className="m-0 mt-6">
-                <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className={link}>
+                <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className={buttonClass({ variant: "secondary", size: "lg" })}>
                   {t("person.link")}
                 </a>
               </p>
