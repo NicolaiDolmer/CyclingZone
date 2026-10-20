@@ -393,7 +393,7 @@ test("CALENDAR_CACHE_TTL_MS matcher CACHE_TTL.calendar i routes/api.js", () => {
 test("dry-run-klienten kaster ved enhver skrivning", () => {
   const fake = { from: () => ({ select: () => "ok", insert: () => "skrev", delete: () => "slettede" }) };
   const ro = createReadOnlyClient(fake);
-  assert.equal(ro.from("race_stage_profiles").select(), "ok");
+  assert.equal(ro.from("seasons").select(), "ok");
   assert.throws(() => ro.from("race_stage_profiles").insert([]), /blokeret/);
   assert.throws(() => ro.from("race_stage_profiles").delete(), /blokeret/);
   assert.throws(() => ro.rpc("x"), /blokeret/);

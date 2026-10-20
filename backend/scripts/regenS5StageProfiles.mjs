@@ -88,7 +88,6 @@ export const PROFILE_COLUMNS = Object.freeze([
 /** Indholdet der sammenlignes (idempotens, post-verify): alt undtagen række-id og tidsstempel. */
 export const PROFILE_CONTENT_COLUMNS = Object.freeze(PROFILE_COLUMNS.filter((c) => !["id", "generated_at"].includes(c)));
 
-const MOUNTAIN_PROFILE_TYPES = new Set(["mountain", "high_mountain"]);
 const TIME_TRIAL_TYPES = new Set(["itt", "itt_hilly", "ttt"]);
 
 // ── Små rene hjælpere ─────────────────────────────────────────────────────────────────
