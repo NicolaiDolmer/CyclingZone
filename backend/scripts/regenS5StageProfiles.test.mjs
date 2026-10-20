@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   parseArgs, copenhagenDate, canonicalJson, loadRegenInput, buildRegenPlan, checkInvariants, diffAgainstCurrent,
-  buildBackupSql, buildRestoreSql, assertBackupCovers, assertBackupCoversSlots, readTouchedRaces, touchedStateFile, batchRaces, applyPlan, postVerify, crossPoolDivergence,
+  buildBackupSql, buildRestoreSql, assertBackupCovers, assertBackupCoversSlots, readTouchedRaces, touchedStateFile, touchedFromDatabase, batchRaces, applyPlan, postVerify, crossPoolDivergence,
   parseDivergenceScriptOutput, waitForCalendarCache, buildRoutesFiles, writeRoutesDir, assertPrivatePath, buildReport,
   seedRaceFor, defaultGeneratorFactory, identityTable, signaturePins, matchesAuthored, createReadOnlyClient, overlayIdentity, gtPreludes,
   CALENDAR_CACHE_TTL_MS, CALENDAR_CACHE_MARGIN_MS, WRITE_BATCH_ROWS, ROUTES_FORMAT, PROFILE_COLUMNS, CUTOVER_DATE_CPH,
@@ -687,4 +687,14 @@ test("#6929 (Codex P1) restore-scope: kun batches der faktisk går i gang notere
   const f = touchedStateFile("backup_6857_race_stage_profiles_20261021", "C:/x");
   const parts = f.split(/[\\/]/);
   assert.deepEqual(parts.slice(-4), ["balance-internals", "6857", "apply-state", "touched-backup_6857_race_stage_profiles_20261021.json"], "fast sted, ingen dato");
+});
+
+test("#6929 (Codex P1) touchedFromDatabase: genopbygger tidligere skrevne løb uden lokal fil", async () => {
+  const db = {
+    backupIds: async () => new Set(["old-1"]),
+    backupSlots: async () => new Set(["r1|1", "r2|1", "r3|1"]),
+  };
+  const current = [{ id: "old-1", race_id: "r1" }, { id: "new-9", race_id: "r2" }];
+  assert.deepEqual(await touchedFromDatabase(db, "backup_6857_race_stage_profiles_20261021", ["r1", "r2", "r3"], current), ["r2", "r3"],
+    "r2 har en ny række (skrevet), r3 har ingen rækker men backup-pladser (døde mellem sletning og indsættelse), r1 er urørt");
 });

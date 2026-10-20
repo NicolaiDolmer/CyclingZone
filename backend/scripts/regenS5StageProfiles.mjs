@@ -596,6 +596,24 @@ commit;
 `;
 }
 
+/**
+ * #6929 (Codex P1): løb som en tidligere apply mod `table` allerede har ændret, læst fra databasen:
+ * en profilrække hvis id ikke findes i backuppen (apply indsætter nye id'er), eller et løb med
+ * etape-pladser i backuppen men ingen rækker nu (døde mellem sletning og indsættelse).
+ */
+export async function touchedFromDatabase(db, table, raceIds, currentRows) {
+  if (!raceIds.length) return [];
+  const backedUp = await db.backupIds(table, currentRows.map((r) => r.id));
+  const slots = await db.backupSlots(table, raceIds);
+  const out = new Set(currentRows.filter((r) => !backedUp.has(r.id)).map((r) => r.race_id));
+  const withRows = new Set(currentRows.map((r) => r.race_id));
+  for (const key of slots) {
+    const raceId = key.split("|")[0];
+    if (!withRows.has(raceId)) out.add(raceId);
+  }
+  return [...out].sort(compareIds);
+}
+
 /** Fast, datouafhængig placering af apply-tilstanden pr. backup-tabel (privat, hard rule 17). */
 export function touchedStateFile(backupTable, root = REPO_ROOT) {
   if (!BACKUP_TABLE_PATTERN.test(backupTable)) throw new Error(`ugyldigt backup-navn: ${backupTable}`);
@@ -1186,7 +1204,11 @@ async function main() {
   // en tidligere afbrudt kørsel (en anden dag). Tilstanden ligger et FAST sted pr. backup-tabel,
   // uafhængigt af kørselsdatoen, og et løb noteres først når dets batch går i gang (onBeforeWrite).
   const touchedFile = touchedStateFile(opts.backupTable);
-  const priorTouched = readTouchedRaces(touchedFile);
+  // #6929 (Codex P1): den lokale fil er kun en hjælp. Sandheden rekonstrueres fra databasen og
+  // backuppen (apply giver nye række-id'er), så en genoptagelse fra et andet checkout eller en
+  // anden maskine stadig dækker alle tidligere skrevne løb og venter cache-TTL'en ud.
+  const fromDb = await touchedFromDatabase(db, opts.backupTable, input.races.map((r) => r.id), input.profiles);
+  const priorTouched = [...new Set([...readTouchedRaces(touchedFile), ...fromDb])];
   let cumulativeTouched = [...priorTouched].sort(compareIds);
   const writeRestore = () => {
     mkdirSync(dirname(touchedFile), { recursive: true });
