@@ -808,7 +808,7 @@ function s5BandKey(profileType) {
  *                 sector). Udeladt = uændret rute-strøm og output.
  * @returns {{distance_km: number, elevation_gain_m: number, climbs: any[], sprints: any[], sectors: any[], terrain: string, finale_type: string}}
  */
-export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt = false, signature = null } = /** @type {any} */ ({})) {
+export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt = false, noPrologue = false, signature = null } = /** @type {any} */ ({})) {
   const target = stage.profile_type;
   const rng = makeRng(stableSeed(routeSeedKey(race, stage.stage_number)));
   const namer = makeRegionNamer(rng, regionOf(race?.name));
@@ -818,7 +818,10 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
   // Distance: samme bånd og samme forrangsregler som attachRoute (GT > klasse > terræn).
   // Den korte enkeltstart i en Grand Tour er ALTID prolog-båndet (spec §5: "én kort
   // enkeltstart tidligt"); ellers gælder v5's prolog-træk for etape 1.
-  const isProlog = target === "itt" && isStageRace && (shortItt || (stage.stage_number === 1 && rng() < PROLOGUE_PROBABILITY));
+  // #6857: noPrologue (en låst almindelig enkeltstart) forbyder prolog-trækket; rng-kaldet sker
+  // stadig, så strømmen er bit-identisk for alle andre etaper.
+  const drawnProlog = target === "itt" && isStageRace && (shortItt || (stage.stage_number === 1 && rng() < PROLOGUE_PROBABILITY));
+  const isProlog = drawnProlog && !noPrologue;
   const classBand = !isStageRace && race?.race_class ? CLASS_DISTANCE_BANDS[race.race_class] : null;
   const prologueBand = isGrandTour ? GRAND_TOUR_PROLOGUE_DISTANCE_BAND : PROLOGUE_DISTANCE_BAND;
   const grandTourBand = isGrandTour ? GRAND_TOUR_DISTANCE_BANDS[bandKey] : null;

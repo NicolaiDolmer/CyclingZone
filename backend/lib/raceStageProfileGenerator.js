@@ -1454,7 +1454,7 @@ export const S5_FINISH_WEIGHTS = Object.freeze({
  * @param {boolean} isStageRace @param {{ finish?: string | null, shortItt?: boolean, signature?: any }} [opts]
  *   signature  kun identitets-stien (#6857): signaturens stigning/sektor for netop denne etape
  */
-function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = null, shortItt = false, signature = null } = {}) {
+function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = null, shortItt = false, noPrologue = false, signature = null } = {}) {
   // Ét pass 1-rng-kald pr. etape, præcis som v5's drawFinale - så S5 ser samme typer og
   // samme rækkefølge som v5. En Grand Tour-etape med en kvote-tildelt afslutning trækker
   // intet (GT-stien har sin egen strøm).
@@ -1468,7 +1468,7 @@ function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = n
     if (summit === false) return pickByQuantile(weights.filter((/** @type {any} */ it) => it.value !== "long_climb"), u);
     return pickByQuantile(weights, u);
   };
-  const { terrain, ...route } = attachRouteS5({ stage_number: stageNumber, profile_type: targetType }, race, isStageRace, { chooseFinish, shortItt, ...(signature ? { signature } : {}) });
+  const { terrain, ...route } = attachRouteS5({ stage_number: stageNumber, profile_type: targetType }, race, isStageRace, { chooseFinish, shortItt, ...(noPrologue ? { noPrologue } : {}), ...(signature ? { signature } : {}) });
   // Typen afledes af ruten for alle terræn-mål. Brosten, grus, klassiker og tidskørsler er
   // formater/underlag og beholder deres type; deres terræn er B+(climbs) og afslutningen
   // ligger stadig inden for matrixen for det terræn.
@@ -1923,6 +1923,8 @@ function buildIdentityStageRace(rng, stages, race, identity, fillerTypes = null)
     const lock = lockAt.get(i);
     const stage = toStageS5(rng, t, i + 1, race, true, {
       shortItt: Boolean(lock?.prologue),
+      // #6857 (Codex P2): en låst almindelig enkeltstart må aldrig trækkes til prolog.
+      noPrologue: lock?.type === "itt" && !lock.prologue,
       signature: lock?.feature && ["climb", "summit_finish", "sector"].includes(lock.feature.kind) ? lock.feature : null,
     });
     return { ...stage, generator_version: IDENTITY_GENERATOR_VERSION };
@@ -1943,6 +1945,12 @@ function buildAuthoredSingle(race) {
   }
   const r = race.authored_route;
   validateAuthoredRoute(r);
+  // #6857 (Codex P2): S5-invarianten profile_type == B+(climbs) gælder også den håndskrevne rute.
+  // Kun stignings-terrænerne afledes af B+; brosten/grus/klassiker er overflade-typer.
+  const CLIMB_TERRAINS = new Set(["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain"]);
+  if (CLIMB_TERRAINS.has(r.profile_type) && r.profile_type !== deriveTerrainType(r.climbs)) {
+    throw new TypeError(`authored_route.profile_type "${r.profile_type}" does not match its climbs (${deriveTerrainType(r.climbs)}) (${race.name ?? race.id}, #6857)`);
+  }
   // Afslutningen skal ligge i S5-matrixen for rutens eget terræn (B+), ellers afviser
   // benchmark-gaten etapen bagefter. Tidskørsels-formater står uden for matrixen.
   if (!isTimeTrial(r.profile_type) && !isFinishAllowed(deriveTerrainType(r.climbs), canonicalFinaleType(r.finale_type) ?? "")) {

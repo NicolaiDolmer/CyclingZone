@@ -1568,3 +1568,17 @@ test("#6857 (Codex P2) Grand Tours genkendes også på klasse og etapeantal, ikk
   assert.throws(() => generateRaceStageProfiles({ ...race, race_class: "GiroVuelta" }, S5), /Grand Tours/);
   assert.throws(() => generateRaceStageProfiles({ ...race, stages: 21 }, S5), /Grand Tours/);
 });
+
+test("#6857 (Codex P2) en låst almindelig enkeltstart på etape 1 forkortes aldrig til prolog", () => {
+  const sig = { features: [{ kind: "itt", stage_hint: "first", band: "flat" }] };
+  for (let s = 0; s < 40; s++) {
+    let ps;
+    try { ps = generateRaceStageProfiles(idRace("hilly", 5, s, sig), S5); } catch { continue; }
+    if (ps[0].profile_type !== "itt") continue;
+    assert.ok(ps[0].distance_km > 8, `s${s}: ${ps[0].distance_km} km`);
+  }
+});
+
+test("#6857 (Codex P2) authored_route med terræn der ikke passer stigningerne afvises", () => {
+  assert.throws(() => generateRaceStageProfiles(monument(0, { ...ENFER, profile_type: "mountain", climbs: [], finale_type: "flat_sprint" }), S5), /does not match its climbs|not allowed/);
+});
