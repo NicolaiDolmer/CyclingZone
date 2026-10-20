@@ -100,11 +100,11 @@ export const PATCHES = [
         "topic": "Season",
         "en": {
           "title": "Relegation from Division 3 works again",
-          "body": "At the season change the bottom teams in Division 3 are relegated to Division 4 again, at most one division per season."
+          "body": "At the season change the bottom teams go down a division again, never more than one step per season."
         },
         "da": {
           "title": "Nedrykning fra division 3 virker igen",
-          "body": "Ved sæsonskiftet rykker bunden af division 3 igen ned i division 4, højst én division pr. sæson."
+          "body": "Ved sæsonskiftet rykker bunden igen ned i divisionen under, aldrig mere end ét trin pr. sæson."
         },
         "refs": [
           6771,
