@@ -55,9 +55,12 @@ $$;
 
 -- Attributter håndhæves hver gang (en manuel ændring rulles tilbage ved næste
 -- kørsel af filen). NOINHERIT: rollen skal ikke arve noget som helst.
+-- SUPERUSER/REPLICATION/BYPASSRLS må kun en superuser ændre (også til NO), og
+-- Supabases postgres er ikke superuser (auto-migrate 20/10: "permission denied
+-- to alter role"). De står til NO fra CREATE ROLE, og verify-blokken fejler,
+-- hvis nogen af dem er sat.
 ALTER ROLE cz_monitor WITH
-  LOGIN NOINHERIT
-  NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS
+  LOGIN NOINHERIT NOCREATEDB NOCREATEROLE
   CONNECTION LIMIT 3;
 
 -- Sessions-standarder: kun læsning, korte lofter, så et tjek aldrig kan holde
@@ -287,6 +290,11 @@ BEGIN
   IF (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
       WHERE n.nspname = 'ops_monitor' AND has_function_privilege('cz_monitor', p.oid, 'EXECUTE')) <> 5 THEN
     RAISE EXCEPTION '#6994: cz_monitor kan ikke køre alle fem ops_monitor-funktioner';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cz_monitor'
+             AND (rolsuper OR rolreplication OR rolbypassrls OR rolinherit OR rolcreatedb OR rolcreaterole)) THEN
+    RAISE EXCEPTION '#6994: cz_monitor har en rolle-attribut den ikke må have (superuser/replication/bypassrls/inherit/createdb/createrole)';
   END IF;
 
   IF has_schema_privilege('cz_monitor', 'ops_monitor', 'CREATE')
