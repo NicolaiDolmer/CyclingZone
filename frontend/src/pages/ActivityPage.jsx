@@ -253,13 +253,6 @@ export default function ActivityPage() {
   const histReceivedOffers   = receivedOffers.filter(o => ["accepted", "rejected"].includes(o.status));
   const histSentOffers       = sentOffers.filter(o => ["accepted", "rejected"].includes(o.status));
 
-  // Watchlist — mark riders currently in an auction (not mine)
-  const auctionRiderIds = new Set(
-    activeAuctions
-      .filter(a => !isAuctionSeller(a, myTeamId))
-      .map(a => a.rider?.id).filter(Boolean)
-  );
-
   const TABS = [
     { key: "action",    label: t("tabs.action"),              count: actionCount },
     { key: "auctions",  label: tCommon("nav.item.auctions"),  count: activeAuctions.length },
@@ -504,7 +497,6 @@ export default function ActivityPage() {
             <div className="divide-y divide-cz-border">
               {watchlist.map(entry => {
                 const r = entry.rider;
-                const inAuction = auctionRiderIds.has(r?.id);
                 return (
                   <div key={entry.id}
                     className="flex items-center gap-3 py-[13px] hover:bg-cz-subtle transition-colors">
@@ -518,11 +510,6 @@ export default function ActivityPage() {
                       </div>
                       <p className="font-data text-2xs uppercase tracking-[.04em] text-cz-3 truncate">{r?.team?.name || t("watchlist.freeAgent")}</p>
                     </div>
-                    {inAuction && (
-                      <span className="text-3xs px-2 py-0.5 rounded-full border font-medium uppercase bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap shrink-0">
-                        {t("badge.inAuction")}
-                      </span>
-                    )}
                     <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap shrink-0">
                       {formatNumber(getRiderMarketValue(r))} CZ$
                     </span>

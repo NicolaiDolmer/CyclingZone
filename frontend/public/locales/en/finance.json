@@ -191,7 +191,7 @@
     },
     "debtCeiling": {
       "title": "Debt cap per division",
-      "body": "Each division has a cap on total debt (D1 1,200K · D2 900K · D3 600K). Once the cap is reached, new loans are blocked, and the board also penalises overspending at season evaluation."
+      "body": "Each division has a cap on total debt (D1 1,200K · D2 900K · D3 600K · D4 400K). Once the cap is reached, new loans are blocked, and the board also penalises overspending at season evaluation."
     },
     "txHistory": {
       "title": "Follow the cashflow",
@@ -214,7 +214,7 @@
     },
     "debt": {
       "title": "Debt cap per division",
-      "body": "D1 1,200K · D2 900K · D3 600K. Break the cap and new loans are blocked, and the board punishes overspending."
+      "body": "D1 1,200K · D2 900K · D3 600K · D4 400K. Break the cap and new loans are blocked, and the board punishes overspending."
     },
     "loans": {
       "title": "Loans, short vs long",

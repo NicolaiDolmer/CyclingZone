@@ -191,7 +191,7 @@
     },
     "debtCeiling": {
       "title": "Tope de deuda por división",
-      "body": "Cada división tiene un tope de deuda total (D1 1.200K · D2 900K · D3 600K). Cuando se alcanza el tope, los préstamos nuevos se bloquean, y la directiva también penaliza el gasto excesivo en la evaluación de la temporada."
+      "body": "Cada división tiene un tope de deuda total (D1 1.200K · D2 900K · D3 600K · D4 400K). Cuando se alcanza el tope, los préstamos nuevos se bloquean, y la directiva también penaliza el gasto excesivo en la evaluación de la temporada."
     },
     "txHistory": {
       "title": "Sigue el flujo de caja",
@@ -214,7 +214,7 @@
     },
     "debt": {
       "title": "Tope de deuda por división",
-      "body": "D1 1.200K · D2 900K · D3 600K. Si superas el tope, los préstamos nuevos se bloquean y la directiva castiga el gasto excesivo."
+      "body": "D1 1.200K · D2 900K · D3 600K · D4 400K. Si superas el tope, los préstamos nuevos se bloquean y la directiva castiga el gasto excesivo."
     },
     "loans": {
       "title": "Préstamos, cortos o largos",

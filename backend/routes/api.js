@@ -2452,8 +2452,12 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
 // tværs af devices); manglende kolonne (42703) er graceful indtil migrationen
 // er applied.
 const DEV_TRANSITION_BACKUP_TABLE = "rider_caps_3746_backup_20260816";
+// #6935: slået fra. FØR-tallet (august-backup) blev blandet med dagens alder/type,
+// så panelet kunne vise forkerte før/nu-tal. Rigtig løsning designes bagefter.
+const DEV_TRANSITION_PANEL_ENABLED = false;
 router.get("/development/transition", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!DEV_TRANSITION_PANEL_ENABLED) return res.json({ active: false });
   try {
     // schema-columns-ok: kolonnen tilføjes af database/2026-08-18-3746-dev-
     // transition-dismiss.sql (applies post-merge under #2642); 42703-graceful indtil da

@@ -412,7 +412,6 @@
     "interest": {
       "loading": "Interesse laden...",
       "loadError": "De interessegegevens konden nu niet worden geladen.",
-      "trendNew": "nieuwe gegevens",
       "trendFlat": "stabiel",
       "seasonShort": "S{n}",
       "stats": {

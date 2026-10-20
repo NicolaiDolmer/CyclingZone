@@ -12,6 +12,9 @@
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HISTORY_REQUIRED_MS = 14 * DAY_MS; // fuld forrige 7d-periode
+// #6935: under så få besøgende i forrige periode er en procent støj (1 -> 2 = +100 %);
+// trenden undertrykkes (null) og frontend viser "—".
+const TREND_MIN_PREV_VISITORS = 5;
 
 /**
  * @param {Array<{user_id: string, viewed_at: string|Date}>} rows
@@ -43,7 +46,7 @@ export function aggregateRiderViews(rows, { nowMs, oldestViewedAtMs }) {
     oldestViewedAtMs == null || nowMs - oldestViewedAtMs < HISTORY_REQUIRED_MS;
 
   const trendPct = (cur, prev) =>
-    prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null;
+    prev >= TREND_MIN_PREV_VISITORS ? Math.round(((cur - prev) / prev) * 100) : null;
 
   return {
     views24h,

@@ -84,8 +84,6 @@
     "bidsCount": "{count, plural, one {# enchère} other {# enchères}}",
     "bidsUniqueBidders": "{count, plural, one {# équipe} other {# équipes}}",
     "bidWarBadge": "Guerre d'enchères · {bids, plural, one {# enchère} other {# enchères}}, {teams, plural, one {# équipe} other {# équipes}}",
-    "riderMeta": "Valeur : {value} CZ$ · Salaire : {salary}",
-    "salaryNone": "—",
     "pageOf": "Page {page} sur {total}",
     "prev": "Précédent",
     "next": "Suivant",

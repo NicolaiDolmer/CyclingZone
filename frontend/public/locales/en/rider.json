@@ -412,7 +412,6 @@
     "interest": {
       "loading": "Loading interest...",
       "loadError": "Interest data could not be loaded right now.",
-      "trendNew": "new data",
       "trendFlat": "stable",
       "seasonShort": "S{n}",
       "stats": {

@@ -41,3 +41,7 @@ test("#6322 (Codex) fejlet fetch viser en fejl med 'Proev igen', ikke nuller", (
   assert.match(source, /t\("strengthLoadError"\)/);
   assert.match(source, /onClick=\{\(\) => setStrengthError\(false\)\}/);
 });
+
+test("#6935 styrke-linsen tæller ikke pensionerede ryttere (samme som TeamPage)", () => {
+  assert.match(block, /\.eq\("is_retired", false\)/);
+});

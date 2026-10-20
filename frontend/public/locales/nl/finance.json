@@ -191,7 +191,7 @@
     },
     "debtCeiling": {
       "title": "Schuldenplafond per divisie",
-      "body": "Elke divisie heeft een plafond op de totale schuld (D1 1.200K · D2 900K · D3 600K). Zodra het plafond is bereikt, worden nieuwe leningen geblokkeerd, en het bestuur straft ook overbesteding af bij de seizoensevaluatie."
+      "body": "Elke divisie heeft een plafond op de totale schuld (D1 1.200K · D2 900K · D3 600K · D4 400K). Zodra het plafond is bereikt, worden nieuwe leningen geblokkeerd, en het bestuur straft ook overbesteding af bij de seizoensevaluatie."
     },
     "txHistory": {
       "title": "Volg de cashflow",
@@ -214,7 +214,7 @@
     },
     "debt": {
       "title": "Schuldenplafond per divisie",
-      "body": "D1 1.200K · D2 900K · D3 600K. Overschrijd je het plafond, dan worden nieuwe leningen geblokkeerd en straft het bestuur overbesteding af."
+      "body": "D1 1.200K · D2 900K · D3 600K · D4 400K. Overschrijd je het plafond, dan worden nieuwe leningen geblokkeerd en straft het bestuur overbesteding af."
     },
     "loans": {
       "title": "Leningen, kort tegenover lang",

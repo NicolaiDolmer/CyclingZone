@@ -412,7 +412,6 @@
     "interest": {
       "loading": "Chargement de l'intérêt...",
       "loadError": "Impossible de charger les données d'intérêt pour le moment.",
-      "trendNew": "nouvelles données",
       "trendFlat": "stable",
       "seasonShort": "S{n}",
       "stats": {

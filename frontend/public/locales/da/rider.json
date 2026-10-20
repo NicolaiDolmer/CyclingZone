@@ -412,7 +412,6 @@
     "interest": {
       "loading": "Henter interesse...",
       "loadError": "Interesse-data kunne ikke hentes lige nu.",
-      "trendNew": "nye data",
       "trendFlat": "stabilt",
       "seasonShort": "S{n}",
       "stats": {

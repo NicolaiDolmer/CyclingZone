@@ -334,6 +334,8 @@ export default function StandingsPage() {
           .from("riders")
           .select(`id, team_id, firstname, lastname, market_value, is_u25, ${ABILITY_SELECT}`)
           .not("team_id", "is", null)
+          // #6935: pensionerede ryttere tæller ikke med i trupstyrken (som TeamPage).
+          .eq("is_retired", false)
           .order("id", { ascending: true }));
       } catch (err) {
         console.error("[StandingsPage] squad-styrke-fetch fejlede:", err);

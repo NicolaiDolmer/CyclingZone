@@ -84,8 +84,6 @@
     "bidsCount": "{count, plural, one {1 puja} other {# pujas}}",
     "bidsUniqueBidders": "{count, plural, one {1 equipo} other {# equipos}}",
     "bidWarBadge": "Guerra de pujas · {bids, plural, one {1 puja} other {# pujas}}, {teams, plural, one {1 equipo} other {# equipos}}",
-    "riderMeta": "Valor: {value} CZ$ · Salario: {salary}",
-    "salaryNone": "—",
     "pageOf": "Página {page} de {total}",
     "prev": "Anterior",
     "next": "Siguiente",

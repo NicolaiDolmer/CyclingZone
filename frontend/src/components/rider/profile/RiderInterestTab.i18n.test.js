@@ -39,7 +39,7 @@ test("rider.json har profile.interest-nøgler i både en og da (key-parity)", ()
   assert.deepEqual(flatKeys(en).sort(), flatKeys(da).sort());
 
   for (const key of [
-    "loading", "loadError", "trendNew", "trendFlat", "seasonShort",
+    "loading", "loadError", "trendFlat", "seasonShort",
     "stats.followers", "stats.views7d", "stats.scoutedBy",
     "followersSub", "scoutedBySub",
     "summary.own", "summary.ownQuiet", "summary.scouting", "summary.scoutingQuiet",
