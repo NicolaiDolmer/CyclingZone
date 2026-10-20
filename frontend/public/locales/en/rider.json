@@ -52,6 +52,7 @@
     "visitorsTrendUp": "Up {pct}% vs the previous 7 days",
     "visitorsTrendDown": "Down {pct}% vs the previous 7 days",
     "u23": "U23",
+    "junior": "Junior",
     "u25": "U25",
     "retired": "Retired",
     "ageYears": "{age} yrs",
@@ -199,9 +200,8 @@
       "contractSeason": "Season {season}",
       "contractExpired": "Expired",
       "contractExpiredSub": "Free agent at the season change unless extended",
+      "contractExpires": "expires",
       "aiTag": "AI",
-      "valueTrend": "{value} last {days} days",
-      "valueTrendTitle": "Value change since {date}",
       "ratingTrendRising": "Rising this season",
       "ratingTrendSteady": "Steady this season",
       "ratingTrendDeclining": "Declining this season",
@@ -253,9 +253,7 @@
       "listed": "On the transfer list · price {price}",
       "auction": "In auction · ends in {endsIn} · highest bid {highBid}",
       "finalSeasonTitle": "Final season",
-      "finalSeason": "Announced his retirement at the season start. He retires when season {season} ends.",
-      "academy": "Academy rider",
-      "expiry": "Contract expires after Season {season}."
+      "finalSeason": "Announced his retirement at the season start. He retires when season {season} ends."
     },
     "history": {
       "loading": "Loading history...",
@@ -855,8 +853,7 @@
       "working": "Extending…",
       "success": "Contract extended.",
       "errorPrefix": "Couldn't extend:",
-      "capped": "Contract at maximum length (through season {season}).",
-      "capCounterLabel": "Extensions used"
+      "capped": "Contract at maximum length (through season {season})."
     },
     "release": {
       "button": "Release rider",

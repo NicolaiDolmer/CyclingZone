@@ -364,15 +364,7 @@ export default function RiderManageActions({ rider, onChanged, marketActions = n
         {extendLoading && <BusyDot />}
         {t("manage.extend.button")}
       </button>
-      {/* #3186: tælleren er synlig UANSET om loftet er nået — spilleren skal
-          kunne se mekanikken FØR han nærmer sig grænsen, ikke først når et
-          forsøg bliver afvist. */}
-      {extendCapInfo && (
-        <div className={`${ACTION_PANEL} flex items-center justify-between text-xs`}>
-          <span className="text-cz-3">{t("manage.extend.capCounterLabel")}</span>
-          <span className="text-cz-2 font-mono">{extendCapInfo.usedExtensions}/{extendCapInfo.maxExtensions}</span>
-        </div>
-      )}
+      {/* #6934: tælleren (X/3) er fjernet fra kortet; loftet håndhæves stadig (extendCap.atCap). */}
       {/* #3597: forklaringen følger samme gate som knappen — ellers ville en
           spærret knap stå uden begrundelse i netop det tilfælde (kapacitet brugt
           op af en succesfuld forlængelse) hvor spilleren mest har brug for den. */}

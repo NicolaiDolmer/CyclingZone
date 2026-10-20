@@ -3,9 +3,8 @@ import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { supabase, authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { getAuthedUser } from "../lib/getAuthedUser.js";
-import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for development/value-trend
+import { apiFetch } from "../lib/apiFetch.ts"; // #5089: Retry-After-respekt for development-historik
 import { formatCz, getRiderMarketValue, getRiderSalary, detectStartPriceTypo, computeBidValueDelta } from "../lib/marketValues.js";
-import { pickBestValueTrendWindow } from "../lib/riderValueTrend.js";
 import { sharedRequestCache, SHARED_KEYS, SHARED_TTL_MS } from "../lib/sharedRequestCache.js";
 import { riderBestRole, riderOverallRating } from "../lib/riderRating";
 import { isBestRoleDisplayOn } from "../lib/riderRatingMode.js";
@@ -929,7 +928,6 @@ export default function RiderStatsPage() {
   const [history, setHistory]               = useState(null);
   const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
   const [projection, setProjection]         = useState(null); // #2100 fuzzy loft-projektion
-  const [valueTrend, setValueTrend]         = useState(null); // #2499: { windows: {"7":...,"14":...} } | null
   const [levelCorrectionReceipt, setLevelCorrectionReceipt] = useState(null); // #3733 trin 1: { old_value, new_value, c, applied_at } | null
   const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
@@ -950,7 +948,6 @@ export default function RiderStatsPage() {
   // #2000 stykke 5: stale-guard for development-fetchen (hurtig prev/next-switch).
   const developmentFetchIdRef = useRef(null);
   const projectionFetchIdRef = useRef(null); // #2100 samme stale-guard for projektionen
-  const valueTrendFetchIdRef = useRef(null); // #2499 samme stale-guard for værdi-deltaet
   const levelCorrectionReceiptFetchIdRef = useRef(null); // #3733 trin 1 samme stale-guard
   // #2000 sidste faner: samme stale-guards for historik + interesse + de
   // datastroemme fanerne konsumerer (bid-timeline, visits, watchlist-count,
@@ -1223,30 +1220,10 @@ export default function RiderStatsPage() {
     }
   }, [id]);
 
-  const loadValueTrend = useCallback(async () => {
-    // #2499: værdi-bevægelse skal kunne SES — on-demand delta (7/14 dage) ved
-    // siden af market_value i hero'en. Non-critical (samme mønster som de
-    // andre sekundære profil-fetches): en fejl skjuler bare deltaet, brækker
-    // aldrig resten af profilen. Samme stale-guard som Udvikling-fanens data.
-    const fetchId = id;
-    valueTrendFetchIdRef.current = fetchId;
-    try {
-      const h = await authHeaders();
-      if (!h) { if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null); return; }
-      // #5089: samme apiFetch-kontrakt som loadDevelopmentHistory ovenfor.
-      const res = await apiFetch(`${API}/api/riders/${fetchId}/value-trend`, { headers: h });
-      if (valueTrendFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
-      if (res.limited || res.unauthorized) return; // stille backoff / session-kæden overtager
-      setValueTrend(res.ok ? res.data : null);
-    } catch {
-      if (valueTrendFetchIdRef.current === fetchId) setValueTrend(null);
-    }
-  }, [id]);
-
   const loadLevelCorrectionReceipt = useCallback(async () => {
     // #3733 trin 1: den seneste niveau-korrektions-kvittering for DENNE rytter,
     // eller null (ingen korrektion har kørt for ham endnu) — non-critical,
-    // samme mønster som loadValueTrend ovenfor.
+    // samme stale-guard-mønster som de andre sekundære profil-fetches.
     const fetchId = id;
     levelCorrectionReceiptFetchIdRef.current = fetchId;
     try {
@@ -1396,7 +1373,7 @@ export default function RiderStatsPage() {
       // (2026-06-10-riders-potentiale-column-privilege.sql grantede alt undtagen
       // potentiale), så ingen ny migration er nødvendig.
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
-        market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, pending_team_id,
+        market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, squad, pending_team_id,
         nationality_code, primary_type, secondary_type, team_id, acquired_at, popularity, reputation,
         team:team_id(id, name, is_ai, is_bank, division),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
@@ -1489,11 +1466,11 @@ export default function RiderStatsPage() {
   // ogsaa noeglen realtime-kanalen abonnerer paa (auction_id + status), og uden
   // den holder hero'ens live-pris op med at opdatere under en auktion.
   useEffect(() => {
-    loadRider(); loadMyTeam(); loadWatchlistStatus(); loadValueTrend();
+    loadRider(); loadMyTeam(); loadWatchlistStatus();
     loadLevelCorrectionReceipt(); loadDdStatus(); loadBidTimeline();
     loadRetirementStatus();
   }, [
-    loadRider, loadMyTeam, loadWatchlistStatus, loadValueTrend,
+    loadRider, loadMyTeam, loadWatchlistStatus,
     loadLevelCorrectionReceipt, loadDdStatus, loadBidTimeline, loadRetirementStatus,
   ]);
 
@@ -1795,13 +1772,6 @@ export default function RiderStatsPage() {
   // RIDER_TYPE_KEYS; rating beregnes i tabben.
   const developmentTypes = RIDER_TYPE_KEYS.map((key, i) => ({ key, label: tTypes(`types.${key}`), color: chartColor(i) }));
   const isMyRider  = rider.team_id === myTeamId;
-  // #2007: en egen AKADEMI-rytter har sit eget flow (promovér) og kan ikke
-  // fyres (backend afviser rider_is_academy).
-  // #3650 (ejer-direktiv 17/8): akademi-ryttere kan nu sættes BÅDE på
-  // transferlisten OG på auktion direkte (se TransferListButton/AuctionButton-
-  // brugen nedenfor) — salget graduerer dem atomisk til senior hos køberen ved
-  // handlens gennemførelse. Kun promovér/fyr er fortsat akademi-flowets egne.
-  const isAcademyRider = Boolean(rider.is_academy);
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
   const isAiRider = Boolean(rider.team?.is_ai);
@@ -1848,10 +1818,6 @@ export default function RiderStatsPage() {
   })();
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
   const riderValueAmount = riderValueLabel.replace(" CZ$", "");
-  // #2499: værdi-bevægelse skal kunne SES — vælg det bedste tilgængelige vindue
-  // (foretræk 14 dage) fra det separat hentede value-trend-svaret. null = intet
-  // vist (ny/utrænet rytter eller fetch fejlede) — RiderValueTrendBadge skjuler sig selv.
-  const riderValueTrendWindow = pickBestValueTrendWindow(valueTrend?.windows);
   // #2006: Overall 1-99-rating. Evnerne ligger på rider.abilities (rå rad fra
   // rider_derived_abilities) — riderOverallRating læser rider.climbing osv., så
   // vi fladter abilities ind sammen med den lagrede primary_type (ejer-direktiv:
@@ -1880,7 +1846,8 @@ export default function RiderStatsPage() {
     ? `${formatNumber(rider.salary)} CZ$`
     : `~${formatNumber(getRiderSalary(rider))} CZ$`;
   // Status-banner: auktion > transfer-listing > sidste sæson (pension) >
-  // akademi > kontrakt-udløb (egne ryttere). #2748: "finalSeason" er
+  // (#6934: akademi og kontrakt-udløb har ikke længere bjælke — U23/Junior-mærket
+  // og Kontrakt-feltet i heroen bærer dem). #2748: "finalSeason" er
   // DEFINITIVT (ikke kun risiko) og synligt for ALLE viewere — en køber skal
   // kunne se det FØR et bud/handel, ikke kun ejeren (derfor ingen isMyRider-
   // gate her, i modsætning til expiry). #3490: "listed" er samme slags
@@ -1908,10 +1875,6 @@ export default function RiderStatsPage() {
     };
   } else if (announcedRetirement) {
     statusBanner = { kind: "finalSeason", season: seasonNumberFromReferenceYear(seasonYear) };
-  } else if (isAcademyRider) {
-    statusBanner = { kind: "academy" };
-  } else if (isMyRider && rider.contract_end_season != null) {
-    statusBanner = { kind: "expiry", season: rider.contract_end_season };
   }
   // Switcher: rytterens position i det viste holds trup.
   const rosterIdx = roster.findIndex((r) => String(r.id) === String(rider.id));
@@ -1993,7 +1956,6 @@ export default function RiderStatsPage() {
             divisionLabel={divisionLabel}
             valueAmount={riderValueAmount}
             valueLabel={riderValueLabel}
-            valueTrendWindow={riderValueTrendWindow}
             salaryText={salaryText}
             isAiTeam={isAiRider}
             pendingTeam={pendingTeam}

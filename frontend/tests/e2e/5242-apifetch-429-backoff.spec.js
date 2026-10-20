@@ -14,7 +14,7 @@
 // Vinduets LÆNGDE er ikke under test — kun at det findes. Testen venter aldrig
 // på udløb, så mocken bruger et vindue ingen runner kan overhale: med de
 // oprindelige 2 s (backendens rigtige værdi) tog prev→next→prev 2,3-2,4 s på
-// GitHubs Windows-runner mod 0,6-1,0 s lokalt, og value-trend blev ramt igen
+// GitHubs Windows-runner mod 0,6-1,0 s lokalt, og level-correction-receipt blev ramt igen
 // 300-400 ms efter vinduet udløb (PR #5235, 2x deterministisk, trace-verificeret;
 // postmortem: .claude/learnings/2026-09-15-5242-e2e-real-clock-window-ci-flake.md).
 import { test, expect } from "./e2e-base.js";
@@ -54,15 +54,15 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
       return json(route, [RIDER_A, RIDER_B]);
     });
 
-    // #5242 kerne-fixturen: rider-1's value-trend (hentes UBETINGET ved hver
+    // #5242 kerne-fixturen: rider-1s level-correction-receipt (hentes UBETINGET ved hver
     // rytter-profil-visning, ikke fane-gated — se RiderStatsPage.jsx's
     // hoved-effekt) svarer ALTID 429 med Retry-After. Et 2. kald mod
     // PRÆCIS denne url inden for vinduet må aldrig nå hertil.
-    let riderAValueTrendHits = 0;
-    await page.route("**/api/riders/rider-1/value-trend**", (route) => {
+    let riderAReceiptHits = 0;
+    await page.route("**/api/riders/rider-1/level-correction-receipt**", (route) => {
       const request = route.request();
       if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
-      riderAValueTrendHits += 1;
+      riderAReceiptHits += 1;
       return route.fulfill({
         status: 429,
         contentType: "application/json",
@@ -73,17 +73,17 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
     // rider-5242b's tilsvarende endpoint svarer normalt — kun rider-1's url er
     // under test, en anden rytters url deler ikke vindue (apiFetch's Map er
     // nøglet PR. url, se apiFetch.ts).
-    await page.route("**/api/riders/rider-5242b/value-trend**", (route) => {
+    await page.route("**/api/riders/rider-5242b/level-correction-receipt**", (route) => {
       const request = route.request();
       if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
-      return json(route, { windows: {} });
+      return json(route, { receipt: null });
     });
 
     await login(page);
     await page.goto("/riders/rider-1");
     await expect(page.getByRole("heading", { name: "Ada Pedersen" }).first()).toBeVisible();
-    await expect.poll(() => riderAValueTrendHits).toBeGreaterThanOrEqual(1);
-    expect(riderAValueTrendHits).toBe(1);
+    await expect.poll(() => riderAReceiptHits).toBeGreaterThanOrEqual(1);
+    expect(riderAReceiptHits).toBe(1);
 
     // Prev/next — næste rytter, så tilbage til rider-1 igen, INDEN for
     // Retry-After-vinduet. Samme mønster som en spiller der klikker sig frem og
@@ -94,8 +94,8 @@ test.describe("#5242 — apiFetch 429/Retry-After-backoff er stille, ikke en fej
     await expect(page.getByRole("heading", { name: "Ada Pedersen" }).first()).toBeVisible();
 
     // #5242 kernepåstand: stille backoff — intet nyt netværkskald mod rider-1's
-    // value-trend, selvom komponenten er remountet/genrendret med samme id.
-    expect(riderAValueTrendHits).toBe(1);
+    // level-correction-receipt, selvom komponenten er remountet/genrendret med samme id.
+    expect(riderAReceiptHits).toBe(1);
 
     // "ingen fejlboks": et 429/limited er non-kritisk UI (apiFetch.ts's egen
     // kontrakt, punkt 2) — ingen synlig fejl-alert nogen steder på siden.
