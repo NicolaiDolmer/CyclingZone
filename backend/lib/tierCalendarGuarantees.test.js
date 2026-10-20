@@ -296,6 +296,15 @@ test("#6857 kalender-stien: typerne fra race_pool når generatoren, stemples v7,
     }
   }
   assert.ok(!r.hard.some((v) => v.includes("#6857")), r.hard.join(" · "));
+
+  // v5 (S1-S4) læser aldrig typerne: samme typede katalog giver hverken identitets-tælling
+  // eller andre brud end det utypede.
+  const s4 = { seasonNumber: 4, firstDay: "2026-09-28" };
+  const v5Typed = await runOfflineSeasonGates({ ...s4, fixture: typed });
+  const v5Plain = await runOfflineSeasonGates({ ...s4, fixture });
+  assert.equal(v5Typed.plan.profileModel, "v5");
+  for (const t of v5Typed.plan.planTiers) assert.equal(t.coverageStats.identityTypedStageRaces, 0, `S4 D${t.tier}`);
+  assert.deepEqual(v5Typed.plan.planTiers.map((t) => t.calendarViolations), v5Plain.plan.planTiers.map((t) => t.calendarViolations));
 });
 
 test("#6857 uden typer er dækningen uændret (ingen identitets-felter tæller)", () => {

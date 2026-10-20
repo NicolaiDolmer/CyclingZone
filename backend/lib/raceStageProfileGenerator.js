@@ -1763,7 +1763,12 @@ export function raceIdentityFor(race, identityProfiles = IDENTITY_PROFILES) {
  */
 export function signatureLockFor(feature) {
   const position = STAGE_HINT_POSITION[/** @type {"first"|"last"|"queen"|"any"} */ (feature.stage_hint)] ?? null;
-  if (feature.kind === "prologue") return { type: "itt", position: "first", prologue: true, feature };
+  if (feature.kind === "prologue") {
+    // En kuperet prolog har ingen rute-model endnu (prolog-båndet er kun den flade enkeltstart);
+    // den afvises i stedet for at blive skrevet som en flad prolog i tavshed.
+    if (feature.band !== "flat") throw new Error(`prologue band "${feature.band}" is not supported - use kind "itt" with band "hilly" (#6857)`);
+    return { type: "itt", position: "first", prologue: true, feature };
+  }
   if (feature.kind === "itt") return { type: feature.band === "hilly" ? "itt_hilly" : "itt", position, prologue: false, feature };
   if (feature.kind === "sector") return { type: feature.surface, position, prologue: false, feature };
   const type = deriveTerrainType([{ category: feature.category, length_km: feature.length_km, summit_finish: feature.summit_finish === true }]);
@@ -1812,6 +1817,15 @@ function drawIdentityTypes(rng, stages, identity, label) {
       claimed.add(index);
     }
     locks.push({ ...sig, index });
+  }
+  // To låse på samme faste plads (fx to "first", eller en signatur på typens egen prolog-
+  // eller slut-plads) kan ikke begge holdes. Kast i stedet for at flytte den ene i tavshed.
+  for (const position of ["first", "last"]) {
+    const clash = locks.filter((l) => l.position === position);
+    if (clash.length > 1) {
+      const what = clash.map((l) => l.feature?.name ?? l.feature?.kind ?? `${identity.type} ${l.type}`).join(" + ");
+      throw new Error(`conflicting "${position}" stage locks (${what}) in ${label} (#6857)`);
+    }
   }
   const protectedCount = types.length;
   const filler = profile.filler;

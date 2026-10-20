@@ -1131,7 +1131,8 @@ export async function materializeTierCalendars({
 
       const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier, profileModel, generate: tierGenerate });
       tierProfiles = profiles;
-      const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand, identityTypeByPoolRaceId: identityTypeByPoolRace });
+      // #6857: identitets-tjekket gaelder kun S5 - v5 (S1-S4) laeser aldrig typerne.
+      const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand, identityTypeByPoolRaceId: isS5 ? identityTypeByPoolRace : null });
       const coverageViolations = detectCoverageViolations({
         tier: tierPlan.tier, stats: coverageStats, oneDayShareMin, terrainFamilyMin, mountainFreeMin,
       });

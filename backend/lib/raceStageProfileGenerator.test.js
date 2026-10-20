@@ -1436,6 +1436,12 @@ test("#6857 fail-closed: ukendt type, signatur uden type, type på GT/endagsløb
   assert.throws(() => generateRaceStageProfiles({ ...race, signature: { features: [{ ...KWAREMBERG, extra: 1 }] } }, S5), TypeError);
   assert.throws(() => generateRaceStageProfiles({ ...race, authored_route: { profile_type: "flat" } }, S5), /single-day monuments only/);
   assert.throws(() => generateRaceStageProfiles(race, { ...S5, fillerTypes: ["hilly", "mountain"] }), /fillerTypes|mountain/);
+  // Faste pladser der ikke kan holdes samtidig, kastes - de flyttes aldrig i tavshed.
+  const firstHill = { ...KWAREMBERG, stage_hint: "first" };
+  assert.throws(() => generateRaceStageProfiles({ ...idRace("hilly", 5, 0), signature: { features: [firstHill, { ...firstHill, name: "Paterhelling" }] } }, S5), /conflicting "first" stage locks/);
+  assert.throws(() => generateRaceStageProfiles({ ...idRace("time_trial", 5, 0), signature: { features: [firstHill] } }, S5), /conflicting "first" stage locks/);
+  // En kuperet prolog har ingen rute-model endnu.
+  assert.throws(() => generateRaceStageProfiles({ ...idRace("hilly", 5, 0), signature: { features: [{ kind: "prologue", stage_hint: "first", band: "hilly" }] } }, S5), /prologue band "hilly"/);
   assert.equal(raceIdentityFor({ ...race, race_identity_type: null }), null);
 });
 
