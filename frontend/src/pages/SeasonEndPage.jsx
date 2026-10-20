@@ -5,6 +5,7 @@ import { supabase, authHeaders } from "../lib/supabase";
 import { apiFetch } from "../lib/apiFetch.ts";
 import { Link, useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
+import { isSeniorSquad } from "../lib/seniorScope.ts";
 import { formatNumber, formatDate } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { latestScheduledMsByRace } from "../lib/raceCompletionDate.js";
@@ -329,7 +330,7 @@ export default function SeasonEndPage() {
           .eq("season_id", season.id)
           .order("division").order("total_points", { ascending: false }),
         supabase.from("races")
-          .select("id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text)")
+          .select("id, name, race_type, race_class, stages, status, edition_year, squad, pool_race:pool_race_id(date_text)")
           .eq("season_id", season.id)
           .order("name"),
         supabase.from("race_points").select("race_class, result_type, rank, points"),
@@ -650,7 +651,8 @@ export default function SeasonEndPage() {
 
   const seasonExpectedTotal = useMemo(() => {
     if (!races.length || !racePoints.length) return 0;
-    return races.reduce((sum, race) => sum + computeExpectedRacePrize({
+    // #6935: ungdomsløb (squad != senior) udbetaler ingen præmiepenge.
+    return races.filter((race) => isSeniorSquad(race.squad)).reduce((sum, race) => sum + computeExpectedRacePrize({
       raceClass: race.race_class,
       raceType: race.race_type,
       stages: race.stages,
@@ -867,12 +869,12 @@ export default function SeasonEndPage() {
               <div className="flex flex-col">
                 {races.map(race => {
                   const statusKey = RACE_STATUS_CLS[race.status] ? race.status : "scheduled";
-                  const expectedPrize = computeExpectedRacePrize({
+                  const expectedPrize = isSeniorSquad(race.squad) ? computeExpectedRacePrize({
                     raceClass: race.race_class,
                     raceType: race.race_type,
                     stages: race.stages,
                     racePoints,
-                  });
+                  }) : 0;
                   return (
                     <div key={race.id}
                       onClick={() => navigate(`/race-archive/${encodeURIComponent(race.name)}`)}

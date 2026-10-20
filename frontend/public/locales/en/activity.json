@@ -31,8 +31,7 @@
     "bought": "Bought",
     "sold": "Sold",
     "noBids": "No bids",
-    "lost": "Lost",
-    "inAuction": "In auction"
+    "lost": "Lost"
   },
   "section": {
     "offersNeedResponse": "Offers awaiting your response",

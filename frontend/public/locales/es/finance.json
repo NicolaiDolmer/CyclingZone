@@ -110,15 +110,12 @@
       "useMax": "Usar el máximo",
       "maxZero": "No hay margen para un préstamo nuevo. Tu deuda está en el tope de la división, de {ceiling} CZ$.",
       "exceedsMax": "Esto te haría superar el tope de deuda, porque la comisión cuenta para él. Préstamo máximo ahora mismo: {value} CZ$.",
-      "costPerSeason": "Intereses de la próxima temporada si no devuelves nada: {interest} CZ$ -> la deuda llegaría a {projected} CZ$",
       "submit": "Contratar préstamo",
       "processing": "Procesando..."
     },
     "confirmModal": {
       "title": "Confirmar préstamo grande",
       "body": "Vas a pedir prestados <strong>{principal} CZ$</strong> más una comisión de <strong>{fee} CZ$</strong>. Tu deuda total pasa a ser de <strong>{newTotalDebt} CZ$</strong>, el {pct} % del tope de deuda de tu división, de {ceiling} CZ$.",
-      "interestForecast": "Si no devuelves nada, solo los intereses de la próxima temporada suman <strong>{interest} CZ$</strong> y llevan tu deuda a <strong>{projected} CZ$</strong>.",
-      "ceilingWarning": "Eso supera el tope de tu división solo por los intereses. Si sigue por encima en el próximo cambio de temporada, la directiva congela los fichajes y puede obligarte a vender ciclistas para cerrar la diferencia.",
       "question": "¿Contratar este préstamo de todos modos?",
       "confirm": "Contratar préstamo"
     },
@@ -194,7 +191,7 @@
     },
     "debtCeiling": {
       "title": "Tope de deuda por división",
-      "body": "Cada división tiene un tope de deuda total (D1 1.200K · D2 900K · D3 600K). Cuando se alcanza el tope, los préstamos nuevos se bloquean, y la directiva también penaliza el gasto excesivo en la evaluación de la temporada."
+      "body": "Cada división tiene un tope de deuda total (D1 1.200K · D2 900K · D3 600K · D4 400K). Cuando se alcanza el tope, los préstamos nuevos se bloquean, y la directiva también penaliza el gasto excesivo en la evaluación de la temporada."
     },
     "txHistory": {
       "title": "Sigue el flujo de caja",
@@ -217,7 +214,7 @@
     },
     "debt": {
       "title": "Tope de deuda por división",
-      "body": "D1 1.200K · D2 900K · D3 600K. Si superas el tope, los préstamos nuevos se bloquean y la directiva castiga el gasto excesivo."
+      "body": "D1 1.200K · D2 900K · D3 600K · D4 400K. Si superas el tope, los préstamos nuevos se bloquean y la directiva castiga el gasto excesivo."
     },
     "loans": {
       "title": "Préstamos, cortos o largos",

@@ -2453,8 +2453,12 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
 // tværs af devices); manglende kolonne (42703) er graceful indtil migrationen
 // er applied.
 const DEV_TRANSITION_BACKUP_TABLE = "rider_caps_3746_backup_20260816";
+// #6935: slået fra. FØR-tallet (august-backup) blev blandet med dagens alder/type,
+// så panelet kunne vise forkerte før/nu-tal. Rigtig løsning designes bagefter.
+const DEV_TRANSITION_PANEL_ENABLED = false;
 router.get("/development/transition", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!DEV_TRANSITION_PANEL_ENABLED) return res.json({ active: false });
   try {
     // schema-columns-ok: kolonnen tilføjes af database/2026-08-18-3746-dev-
     // transition-dismiss.sql (applies post-merge under #2642); 42703-graceful indtil da
@@ -2778,13 +2782,10 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
           captureException(err);
         }
       }
-      const valueGap = expected != null && rider.market_value != null
-        ? expected - rider.market_value : 0;
       verdict = buildVerdict({
         age, own, level, maxLevel: state.maxLevel,
         bestNow: best.now,
         bestCeilMid: (bestProg.progLo + bestProg.progHi) / 2,
-        valueGap,
       });
       // #3666: kalibreringen er VÆK. `types` sendes nu i visnings-opskriftens egen
       // enhed — samme enhed som evne-tallene og som alt andet i appen. Det var

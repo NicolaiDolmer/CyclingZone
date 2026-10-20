@@ -31,8 +31,7 @@
     "bought": "Købt",
     "sold": "Solgt",
     "noBids": "Ingen bud",
-    "lost": "Tabt",
-    "inAuction": "I auktion"
+    "lost": "Tabt"
   },
   "section": {
     "offersNeedResponse": "Tilbud der kræver svar",

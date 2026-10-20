@@ -230,7 +230,8 @@ export const SEED_SCOUT_ESTIMATES = Object.freeze({
 // så panelet på preview fortæller præcis den historie backfillen skriver:
 // lofterne HÆVES for de fleste, prognosen er ny information ved siden af.
 export const SEED_DEV_TRANSITION = Object.freeze({
-  active: true,
+  // #6935: panelet er slået fra i backenden (DEV_TRANSITION_PANEL_ENABLED), så preview viser det heller ikke.
+  active: false,
   capturedAt: "2026-08-19T05:00:00.000Z",
   up: 1,
   down: 0,
@@ -1939,7 +1940,7 @@ export const SEED_SCOUTING_REPORT = {
     { key: "rouleur", now: 27, progLo: 33, progHi: 42, ceilLo: 33, ceilHi: 42, loft: 81 },
     { key: "gc", now: 23, progLo: 26, progHi: 35, ceilLo: 26, ceilHi: 35, loft: 55 },
   ],
-  verdict: { headlineKey: "monitor", confidence: "high", factorKeys: ["ceiling_gap", "value_gap", "type_match", "form_unknown"] },
+  verdict: { headlineKey: "monitor", confidence: "high", factorKeys: ["ceiling_gap", "type_match", "form_unknown", "watch_races"] },
   precision: { halfWidth: 4.29, nextHalfWidth: null, nextGain: 0, nextLevelIsUseless: false, maxUsefulLevel: 3, limitedByScout: false },
   // #3666: `market` sagde 420.000 om en rytter hvis egen række siger 1.680.000 —
   // to tal om samme rytter, synlige på samme profil. Nu er de enige, og
