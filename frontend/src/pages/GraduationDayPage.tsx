@@ -290,10 +290,12 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
   );
   const rating = riderOverallRating(rider);
   const estimate = scouting.estimateFor(g.riderId);
-  const band = estimate?.hidden ? null : (estimate?.prog ?? estimate?.ceil ?? null);
+  const academyPrognosis = estimate?.academyPrognosis;
+  const band = academyPrognosis ? academyPrognosis.band : (estimate?.hidden ? null : (estimate?.prog ?? estimate?.ceil ?? null));
   const verdict = coachVerdictKey({
     rating: Number.isFinite(rating) ? rating : null,
     band: band ?? null,
+    knowledgeStage: academyPrognosis?.stage ?? null,
     level: estimate?.level ?? null,
     maxLevel: scouting.maxLevel ?? null,
   });
@@ -366,7 +368,7 @@ function GraduateRow({ graduate, choice, onChoice, disabled, rowError, scouting,
 
       {/* 5 · Traenerens vurdering, fog-gatet (lib/graduationDay.ts) */}
       <Cell label={t("graduationDay.colCoach")} className="lg:min-w-0">
-        <p className="text-[13px] leading-snug text-cz-2">{t(`graduationDay.coach.${verdict}`)}</p>
+        <p className="text-[13px] leading-snug text-cz-2" data-testid="graduation-coach-verdict">{t(`graduationDay.coach.${verdict}`)}</p>
       </Cell>
 
       {/* 6 · Valget. Blokeret oprykning = disabled segment + aarsag i danger. */}

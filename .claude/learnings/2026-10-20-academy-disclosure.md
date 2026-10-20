@@ -23,3 +23,8 @@ CI follow-up: the combined browser test exhausted its total deadline while
 navigating the later knowledge stages on WebKit. Each stage now has an isolated
 browser context and named surface steps, preserving every assertion and the
 existing timeout instead of increasing the deadline.
+
+The follow-up review found two further direct estimate readers: Training
+Development and Graduation Day. Training now renders the shared academy cell;
+the graduation coach reads the academy band and stays hedged until final
+knowledge. Existing coach copy and legacy non-academy behavior are unchanged.

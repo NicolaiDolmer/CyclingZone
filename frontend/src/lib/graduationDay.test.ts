@@ -121,3 +121,17 @@ test("en rytter uden rating faar 'unknown' frem for en opdigtet afstand", () => 
     "unknown",
   );
 });
+
+for (const knowledgeStage of ["broad", "narrow"] as const) {
+  test(`academy ${knowledgeStage} knowledge stays hedged despite a stale full scout level`, () => {
+    assert.equal(coachVerdictKey({ rating: 29, band: { lo: 39, hi: 49 },
+      knowledgeStage, level: 3, maxLevel: 3 }), "unproven");
+  });
+}
+test("final academy knowledge uses only the disclosed band, independent of stale scout level", () => {
+  assert.equal(coachVerdictKey({ rating: 29, band: { lo: 39, hi: 49 },
+    knowledgeStage: "final", level: 0, maxLevel: 3 }), "climbing");
+});
+test("learning academy knowledge has no coach forecast without a band", () => {
+  assert.equal(coachVerdictKey({ rating: 29, band: null, knowledgeStage: "learning" }), "unknown");
+});
