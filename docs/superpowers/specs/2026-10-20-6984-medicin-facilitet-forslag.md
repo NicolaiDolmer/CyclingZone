@@ -48,11 +48,11 @@ Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre 
 - **Kræver:** visning oven på samme funktion som afregningen (designets §5.7). Mellem.
 - **Bygger på:** spillerkrav 5 i #6984 (egomadsen og friisisch 20/10: konsekvensen skal være åben, tallene ikke), staff-ønskelisten 6/9 ("fortæller om rytter starter bjergetapen på 80 procent").
 
-### M5 · Lægeteam på hviledage i en Grand Tour
-- **Hvad:** en hel hviledato inde i en GT (alle fem pladser hvile) giver et ekstra restitutionstillæg, som vokser med afdelingen.
-- **Spillerens gevinst:** belønner at time hviledagene; det er netop det valg, spillerne savnede ("som i S4").
-- **Kræver:** genkendelse af en hviledato i et igangværende etapeløb (findes i `grandTourRestDays.js`) + tillæg i v2-afregningen. Lille-mellem.
-- **Bygger på:** spillerkrav 1 og 6 i #6984 (time hviledage, kunne holde under 100).
+### M5 · Lægeteam under en Grand Tour
+- **Hvad:** kalenderen har ingen hele hviledatoer midt i en GT (CALENDAR_RULES, ejer 15/10: 1-4 etaper pr. dato, de øvrige pladser er træning). Hviledagen er derfor datoens frie pladser: sætter manageren hvile eller restitution på dem, mens rytteren er bundet til en GT, giver afdelingen et ekstra restitutionstillæg pr. sådan plads, som vokser med afdelingen.
+- **Spillerens gevinst:** belønner at time hvilen på de lette GT-datoer (få etaper, mange frie pladser) frem for at træne; det er det valg, spillerne savnede ("som i S4").
+- **Kræver:** bindingen til et igangværende etapeløb findes allerede (race_entry_days); tillægget lægges i v2-afregningen på frie pladser med `rest`/`recovery`. Lille-mellem.
+- **Bygger på:** spillerkrav 1 og 6 i #6984 (time hvilen, kunne holde under 100).
 
 ### Ikke med nu (kan komme senere)
 - **Skadeshistorik i medicin-fanen (#4942):** thelamba 6/9 ønsker "medicin afdeling så jeg kan få overblik". Passer naturligt i samme fane; se beslutning MD4.

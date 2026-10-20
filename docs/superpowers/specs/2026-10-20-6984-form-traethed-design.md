@@ -37,7 +37,7 @@ Målt read-only i prod 20/10 på Vuelta-feltet (første to afregnede GT-datoer),
 | 3 | Restitution og modstandskraft betyder mere | §5.4 recovery-evnen styrer også den proportionale restitution |
 | 4 | Indsats og mislykkede angreb koster | §5.5 genbrug af indsats og frontarbejde + tillæg for hentet udbrud |
 | 5 | Simpelt og forudsigeligt | §5.7 én forklaring, forventet belastning vist før etapen |
-| 6 | Muligt at holde rytterne under 100 | §5.8 hviledatoer og spareordre skal kunne holde en GT-rytter under grænsen |
+| 6 | Muligt at holde rytterne under 100 | §5.8 hvile på frie pladser og spareordre skal kunne holde en GT-rytter under grænsen |
 
 ## 5. Design
 
@@ -67,7 +67,7 @@ Konsekvens: en dato med flere etaper føles som flere hårde dage. Det er det, s
 
 ### 5.4 Restitution og modstandskraft
 - Recovery-evnen styrer både det faste fradrag og den andel af trætheden, der forsvinder pr. døgn. En middel-rytter restituerer som i dag; en rytter med høj recovery restituerer klart hurtigere, en lav klart langsommere.
-- Hviledatoer i en GT (hele datoen på hvile) giver dermed mest til de ryttere, der er bygget til det.
+- Hvile på datoens frie pladser under en GT (kalenderen har ingen hele hviledatoer midt i en GT, CALENDAR_RULES 15/10) giver dermed mest til de ryttere, der er bygget til det.
 
 ### 5.5 Indsats koster
 - Genbruges: indsatsordren (`effortFatigueMultiplier`, hjælper der arbejder > normal > spare > grupetto) og frontarbejdet (`stageWorkExposure`: andel af etapen i udbrud, alene eller i jagtgruppe) fra #5928/15-10-pakken.
@@ -93,7 +93,7 @@ Forklaringen til spilleren er én sætning: *"Hver etape koster træthed efter t
 - help.json (EN+DA) + patch note ved tænding. Discord-opslag kun EN.
 
 ### 5.8 Stadig muligt at holde under 100
-Garanti, der testes i harness: en rytter med middel recovery, der kører en hel GT på normal indsats og hviler på alle frie pladser, slutter under skadegrænsen; en rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig, gør ikke. Spareordre og hviledatoer skal kunne bringe en rytter tilbage under grænsen.
+Garanti, der testes i harness: en rytter med middel recovery, der kører en hel GT på normal indsats og hviler på alle frie pladser, slutter under skadegrænsen; en rytter, der træner hårdt på de frie pladser og har mange løbsdage bag sig, gør ikke. Spareordre og hvile på de frie pladser (især på de lette GT-datoer) skal kunne bringe en rytter tilbage under grænsen.
 
 ## 6. Samspil
 
