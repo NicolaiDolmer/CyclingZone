@@ -13,6 +13,14 @@
 -- Målt i prod 20/10 (katalog, ingen data): PUBLIC har 0 tabel-grants i public,
 -- 0 SECURITY DEFINER-funktioner i public/extensions som PUBLIC kan køre, og
 -- PUBLIC har ikke USAGE på extensions/auth/storage/vault.
+-- Kendt rest-risiko (Codex-fund på PR #6996): databasens ACL giver TEMP til
+-- PUBLIC (=Tc/postgres), og Postgres har ingen per-rolle-undtagelse fra
+-- PUBLIC. cz_monitor kan derfor oprette midlertidige tabeller i sin egen
+-- session (ingen adgang til andre data). Fjernes det, skal TEMP fjernes fra
+-- PUBLIC for hele databasen, hvilket også rammer anon/authenticated/
+-- service_role og Supabase' egne roller; det er en separat ejer-beslutning og
+-- ikke en del af denne migration. Værnene mod en lækket nøgle er nøglen selv
+-- (kun Infisical + GitHub-secret), CONNECTION LIMIT 3 og korte timeouts.
 --
 -- INGEN password her. Rollen oprettes med PASSWORD NULL, så den kan ikke logge
 -- ind, før ejeren sætter et password ét sted (se PR-body til #6994:
