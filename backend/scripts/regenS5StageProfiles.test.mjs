@@ -188,7 +188,9 @@ test("seed-løbene bærer identitetsfelterne og seedes på katalog-id + sæson (
   assert.equal(d1.length, 3);
   // deterministisk rækkefølge: game_day_start, så katalog-id
   assert.deepEqual(d1.map((r) => r.id), ["p-pre", "p-mon", "p-gt"]);
-  assert.deepEqual(seedRaceFor({ pool_race_id: "p", race_type: "single", stages: 1 }, null, SEASON_ID).race_identity_type, null);
+  // uden identitet: præcis samme seed-løb som før #6857 (ingen null-felter, som materializeren)
+  const plain = seedRaceFor({ pool_race_id: "p", race_type: "single", stages: 1 }, { race_identity_type: null, signature: null, authored_route: null }, SEASON_ID);
+  for (const k of ["race_identity_type", "signature", "authored_route"]) assert.ok(!(k in plain), k);
 });
 
 test("alle puljer i en division får samme parcours; rækkerne har toStageProfileRow-formen", async () => {

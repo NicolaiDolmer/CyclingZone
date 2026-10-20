@@ -279,18 +279,20 @@ export async function loadRegenInput(db, seasonNumber = TARGET_SEASON_NUMBER) {
 /**
  * Seed-løbet for én planlagt løbsrække. Samme form som tierCalendarMaterializer.seedRaceFor
  * (id = katalog-id, så alle puljer i divisionen deler parcours) + #6857's identitetsfelter fra
- * race_pool, som identitets-generatoren (L2) læser. Generatoren før L2 ignorerer dem.
+ * race_pool, som identitets-generatoren (L2) læser. Som materializeren tages kun de felter med
+ * der er sat, så et løb uden identitet giver præcis samme seed-løb som før #6857.
  */
+export const RACE_IDENTITY_FIELDS = Object.freeze(["race_identity_type", "signature", "authored_route"]);
 export function seedRaceFor(race, cat, seasonId, seasonVariant = 0) {
+  const identity = {};
+  for (const k of RACE_IDENTITY_FIELDS) if (cat?.[k] != null) identity[k] = cat[k];
   return {
     id: race.pool_race_id, name: cat?.name ?? race.name ?? null, race_type: race.race_type, stages: race.stages,
     external_id: cat?.external_id ?? null,
     terrain_archetype: cat?.terrain_archetype ?? null,
     race_class: race.race_class ?? cat?.race_class ?? null,
     season_id: seasonId, season_variant: seasonVariant,
-    race_identity_type: cat?.race_identity_type ?? null,
-    signature: cat?.signature ?? null,
-    authored_route: cat?.authored_route ?? null,
+    ...identity,
   };
 }
 
@@ -316,8 +318,10 @@ export const DEFAULT_GUARANTEES = Object.freeze({
   classStageLengthBand: CLASS_STAGE_LENGTH_BAND,
 });
 
-function coverageFor(tier, raceRows, profilesByPoolRaceId, guarantees) {
-  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId, classStageLengthBand: guarantees.classStageLengthBand });
+// identityTypeByPoolRaceId: L2 (#6928) hæver bjergfri-gulvet til antallet af løb med en
+// bjergfri type og melder hvert typet løb der bryder løftet. Før L2 ignoreres argumentet.
+function coverageFor(tier, raceRows, profilesByPoolRaceId, guarantees, identityTypeByPoolRaceId) {
+  const stats = computeTierCoverageStats({ raceRows, profilesByPoolRaceId, classStageLengthBand: guarantees.classStageLengthBand, identityTypeByPoolRaceId });
   const violations = [
     ...detectCoverageViolations({
       tier, stats, oneDayShareMin: guarantees.oneDayShareMin, terrainFamilyMin: guarantees.terrainFamilyMin,
@@ -392,12 +396,13 @@ export function buildRegenPlan(input, {
     }
 
     const raceRows = repRaces.map((r) => ({ pool_race_id: r.pool_race_id, race_type: r.race_type, stages: r.stages, race_class: r.race_class }));
+    const identityTypes = new Map(repRaces.map((r) => [r.pool_race_id, catalogById.get(r.pool_race_id)?.race_identity_type ?? null]));
     tiers.push({
       tier, poolIds, repPoolId, seasonVariant,
       draw: { attempt: seasonVariant, exhausted: Boolean(draw?.exhausted), firstDrawFailures: draw?.firstDrawFailures ?? [] },
       repRaces, seedRaces, raceRows,
-      before: { profilesByPoolRaceId: beforeByPool, coverage: coverageFor(tier, raceRows, beforeByPool, guarantees) },
-      after: { profilesByPoolRaceId: afterByPool, coverage: coverageFor(tier, raceRows, afterByPool, guarantees) },
+      before: { profilesByPoolRaceId: beforeByPool, coverage: coverageFor(tier, raceRows, beforeByPool, guarantees, identityTypes) },
+      after: { profilesByPoolRaceId: afterByPool, coverage: coverageFor(tier, raceRows, afterByPool, guarantees, identityTypes) },
     });
   }
 
@@ -776,7 +781,12 @@ export function buildReport({ input, plan, invariants, diff, generatedAt, gateLi
       gtPreludes: t.tier === 1 ? gtPreludes(t.repRaces, catalogById) : [],
       terrain: { before: tb, after: ta },
       uniform: { before: t.before.coverage.uniformRows, after: t.after.coverage.uniformRows },
-      mountainFree: { before: t.before.coverage.stats.mountainFreeStageRaces, after: t.after.coverage.stats.mountainFreeStageRaces, min: TIER_MOUNTAIN_FREE_STAGE_RACE_MIN[t.tier] ?? null },
+      mountainFree: {
+        before: t.before.coverage.stats.mountainFreeStageRaces, after: t.after.coverage.stats.mountainFreeStageRaces,
+        // L2 (#6928): gulvet hæves til antallet af løb med en bjergfri type (tabel A).
+        min: TIER_MOUNTAIN_FREE_STAGE_RACE_MIN[t.tier] == null ? null : Math.max(TIER_MOUNTAIN_FREE_STAGE_RACE_MIN[t.tier], t.after.coverage.stats.identityMountainFreeExpected ?? 0),
+        broken: t.after.coverage.stats.identityMountainFreeBroken ?? [],
+      },
       floors: {
         familyAfter: t.after.coverage.stats.familyCounts, familyBefore: t.before.coverage.stats.familyCounts,
         min: TIER_TERRAIN_FAMILY_MIN[t.tier] ?? {}, max: TIER_TERRAIN_FAMILY_MAX[t.tier] ?? {},
@@ -850,6 +860,7 @@ function fullMarkdown(r, gateLines) {
       L.push(`- ${mark(u.pass)} ${u.category}: ${fmtPct(b?.actual ?? 0)} → ${fmtPct(u.actual)} (mål ${fmtPct(u.target)} ±${u.tolerance} pp)`);
     }
     L.push("", `### Bjergfrie etapeløb: ${d.mountainFree.before} → ${d.mountainFree.after} (gulv ${d.mountainFree.min ?? "-"}) ${mark(d.mountainFree.min == null || d.mountainFree.after >= d.mountainFree.min)}`);
+    for (const b of d.mountainFree.broken) L.push(`- ❌ bjergfri type med bjerg-etape: ${b}`);
     L.push("", `### §5-gulve ${mark(d.floors.violationsAfter.length === 0)}`, "", "| Familie | Gulv | Loft | Før | Efter |", "|---|---:|---:|---:|---:|");
     for (const f of Object.keys(d.floors.familyAfter)) L.push(`| ${f} | ${d.floors.min[f] ?? "-"} | ${d.floors.max[f] ?? "-"} | ${d.floors.familyBefore[f] ?? 0} | ${d.floors.familyAfter[f] ?? 0} |`);
     for (const v of d.floors.violationsAfter) L.push(`- ❌ ${v}`);
