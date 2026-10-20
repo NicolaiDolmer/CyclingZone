@@ -359,7 +359,7 @@
       "signature": {
         "features": [
           { "kind": "prologue", "stage_hint": "first", "band": "flat" },
-          { "kind": "itt", "stage_hint": "last", "band": "flat" }
+          { "kind": "itt", "stage_hint": "last", "band": "hilly" }
         ]
       },
       "authored_route": null
@@ -483,7 +483,7 @@
       "race_identity_type": "time_trial",
       "signature": {
         "features": [
-          { "kind": "itt", "stage_hint": "last", "band": "flat" }
+          { "kind": "itt", "stage_hint": "last", "band": "hilly" }
         ]
       },
       "authored_route": null
