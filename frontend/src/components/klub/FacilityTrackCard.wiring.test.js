@@ -46,3 +46,12 @@ test("TierStair: trappen scroller i kortet og markerer nuværende niveau", () =>
   // Pris kun for niveauer man ikke ejer endnu.
   assert.match(stair, /state === "next" \|\| state === "future"/);
 });
+
+test("#6936 drift-linjen skjules når facilitets-upkeep er fjernet (showUpkeep)", () => {
+  assert.match(src, /showUpkeep = true/, "default viser drift som før");
+  assert.match(src, /\{showUpkeep && \(/, "drift-linjen rendres kun med showUpkeep");
+  const page = readFileSync(new URL("../../pages/KlubPage.jsx", import.meta.url), "utf8");
+  assert.match(page, /upkeepCharged !== false/, "Klub-siden følger backendens upkeepCharged");
+  assert.match(page, /showUpkeep=\{showUpkeep\}/);
+  assert.match(page, /\.\.\.\(showUpkeep \? \[\["summary\.upkeep"/, "opsummeringens drift-tal skjules også");
+});
