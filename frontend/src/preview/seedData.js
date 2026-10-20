@@ -230,7 +230,8 @@ export const SEED_SCOUT_ESTIMATES = Object.freeze({
 // så panelet på preview fortæller præcis den historie backfillen skriver:
 // lofterne HÆVES for de fleste, prognosen er ny information ved siden af.
 export const SEED_DEV_TRANSITION = Object.freeze({
-  active: true,
+  // #6935: panelet er slået fra i backenden (DEV_TRANSITION_PANEL_ENABLED), så preview viser det heller ikke.
+  active: false,
   capturedAt: "2026-08-19T05:00:00.000Z",
   up: 1,
   down: 0,
