@@ -1166,6 +1166,10 @@ async function sendOpeningNoticeSafely(supabase, { teamId, proposal, now, notify
       notifyUser: notify,
       now,
     });
+    // #6946 (Codex P1): stempl mandatet her, hvor beskeden faktisk leveres. Ellers
+    // var stemplet kun sat, hvis cronen naaede at finde notits-raekken, foer
+    // spilleren slettede den, og saa sendte cronen beskeden (og DM'en) igen.
+    if (result?.delivered || result?.deduped) await stampOpeningNotice(supabase, proposal.mandate_id, now);
     return { sent: Boolean(result?.delivered), reason: result?.reason ?? (result?.deduped ? "deduped" : null) };
   } catch (error) {
     console.warn(`⚠️  [mandate] opening notice failed for team ${teamId} (mandate is written, the cron picks it up): ${error.message}`);
@@ -1176,6 +1180,26 @@ async function sendOpeningNoticeSafely(supabase, { teamId, proposal, now, notify
       });
     } catch { /* best-effort: en fejlende alarm må aldrig vælte sæsonskiftet */ }
     return { sent: false, reason: "error" };
+  }
+}
+
+/**
+ * #6946 · Åbnings-stemplet (`board_mandates.opened_notified_at`, samme kolonne som
+ * MANDATE_NOTICE_STAMPS.opened i boardMandateAutoAccept.js; ikke importeret for at
+ * undgå en import-cirkel). Kun hvis det stadig er NULL. Fejl (fx kolonnen findes
+ * ikke endnu i migrations-vinduet) vælter intet: beskeden ER sendt, og cronen
+ * stempler ud fra notits-rækken som før.
+ */
+async function stampOpeningNotice(supabase, mandateId, now) {
+  try {
+    const { error } = await supabase
+      .from("board_mandates")
+      .update({ opened_notified_at: now.toISOString() })
+      .eq("id", mandateId)
+      .is("opened_notified_at", null);
+    if (error) console.warn(`⚠️  [mandate] opened_notified_at stamp failed for ${mandateId}: ${error.message}`);
+  } catch (error) {
+    console.warn(`⚠️  [mandate] opened_notified_at stamp failed for ${mandateId}: ${error.message}`);
   }
 }
 

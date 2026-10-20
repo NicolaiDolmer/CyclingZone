@@ -81,3 +81,7 @@ WHERE m.status = 'proposed'
   AND sub.user_id = t.user_id;
 
 COMMIT;
+
+-- #6946 (Codex P1): nye kolonner laeses via supabase-js; uden reload ser PostgREST dem
+-- ikke (PGRST204), og cronen ville blive i notifications-fallbacken.
+NOTIFY pgrst, 'reload schema';
