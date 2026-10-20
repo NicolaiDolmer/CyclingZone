@@ -335,19 +335,26 @@ test("#6909 (Codex P2) generatorField: én generator-koersel pr. startdato, hver
   assert.equal(out.get("r2").entries[0].rider_id, `b@${Date.parse("2026-12-01T10:00:00Z")}`);
 });
 
-test("#6909 (Codex P2) generatorField: overlappende loeb udtages i samme koersel (ingen dobbeltbooking)", async () => {
+test("#6909 (Codex P2) generatorField: hvert loeb paa sin egen start; overlappende binding-vinduer (game_day) giver ingen dobbeltbooking", async () => {
   const tables = {
-    races: [{ id: "r1", season_id: "s5" }, { id: "r2", season_id: "s5" }],
+    races: [{ id: "r1", season_id: "s5" }, { id: "r2", season_id: "s5" }, { id: "r3", season_id: "s5" }],
     race_stage_schedule: [
-      { race_id: "r1", stage_number: 1, scheduled_at: "2026-10-28T10:00:00Z" },
-      { race_id: "r1", stage_number: 3, scheduled_at: "2026-10-31T10:00:00Z" },
-      { race_id: "r2", stage_number: 1, scheduled_at: "2026-10-30T10:00:00Z" },
+      { race_id: "r1", stage_number: 1, scheduled_at: "2026-10-28T10:00:00Z", game_day: 1 },
+      { race_id: "r1", stage_number: 2, scheduled_at: "2026-10-28T12:00:00Z", game_day: 3 },
+      { race_id: "r2", stage_number: 1, scheduled_at: "2026-10-28T14:00:00Z", game_day: 2 },
+      { race_id: "r3", stage_number: 1, scheduled_at: "2026-10-28T16:00:00Z", game_day: 5 },
     ],
     teams: [], rider_derived_abilities: [],
   };
   const nows = [];
-  const runner = async (args) => { nows.push(args.now); return { generated: 0, staged: [] }; };
+  const runner = async (args) => {
+    nows.push(args.now);
+    return { generated: 3, staged: ["r1", "r2", "r3"].map((race_id) => ({ race_id, team_id: "t1", picks: [{ rider_id: "same", race_role: "captain" }, { rider_id: `own-${race_id}`, race_role: "helper" }] })) };
+  };
   const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
-  await src.generatorField(["r1", "r2"]);
-  assert.deepEqual(nows, [Date.parse("2026-10-28T10:00:00Z")], "én koersel for det overlappende par");
+  const out = await src.generatorField(["r1", "r2", "r3"]);
+  assert.equal(nows.length, 3, "én koersel pr. startdato (egen late-fill/skade-vurdering)");
+  assert.ok(out.get("r1").entries.some((e) => e.rider_id === "same"), "foerste loeb beholder rytteren");
+  assert.ok(!out.get("r2").entries.some((e) => e.rider_id === "same"), "overlappende game_day-vindue: droppet");
+  assert.ok(out.get("r3").entries.some((e) => e.rider_id === "same"), "samme dato, men intet overlap i game_day: beholdt");
 });
