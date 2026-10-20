@@ -5,7 +5,7 @@ SSOT: `docs/RACE_ENGINE_RULES.md` (afsnittene "Udbrudsmål", "Jagten under offic
 "Udbrudsopfølgningen under s5_profiles_v2"). Bygge-PR'en opdaterer reglen dér i samme PR.
 Hard rule 17: ingen vægte, tærskler eller målte andele her. Baseline og kalibrering
 ligger privat i `balance-internals/6804/2026-10-20/`.
-Hard rule 36: baseline målt 20/10 før første motor-PR (se §9).
+Hard rule 36: offline motor-baseline målt 20/10; den lokale PG17-baseline (testporten på S5-ruterne) køres og noteres FØR første motor-PR i trin 2 (se §9). Denne PR er ren docs.
 Ejer-beslutninger 18/10 (B) og 19/10 (1-6) er låste og genåbnes ikke her.
 
 ## 1. Problem (målt 20/10, tal privat)
@@ -14,9 +14,9 @@ Ejer-beslutninger 18/10 (B) og 19/10 (1-6) er låste og genåbnes ikke her.
    spurt-, bakke- og murafslutninger i korte etapeløb. Nedkørselsafslutninger i
    endagsløb vinder derimod meget ofte.
 2. **Forspring uden loft (#6912 reproduceret).** På bjerg og kuperet i etapeløb får
-   en del udbrud mere end et kvarter, op til motorens 30-min-klemme; flade endagsløb
+   en del udbrud mere end et kvarter, op til motorens øvre klemme; flade endagsløb
    lægger sig fast ved lad-gå-loftet. Udfaldet er et knivsæg: små forspring hentes
-   næsten altid, meget store holder næsten altid. Mellemzonen (3-8 min), hvor
+   næsten altid, meget store holder næsten altid. Mellemzonen, hvor
    virkelighedens udbrudsdage afgøres, er tynd.
 3. **Sammensætning.** Kaptajner er aldrig med (korrekt). Men en af feltets bedste på
    dagens afslutnings-evne sidder ofte i udbruddet på bakke, mur og nedkørsel, og et
@@ -45,13 +45,14 @@ i benchen, før en knap drejes.
 
 ## 3. Krav
 
-- K1 Udbrudsbånd pr. løbstype (ejer 19/10 #1): Grand Tours ca. 25-40 %, korte
-  etapeløb ca. 10-25 %, endagsløb ca. 5-15 % (højere i små løb end i store).
+- K1 Udbrudsbånd pr. løbstype (ejer 19/10 #1): ét bånd for Grand Tours, ét for korte
+  etapeløb og ét for endagsløb, faldende i den rækkefølge (højere i små løb end i store).
+  Båndene står privat i `balance-internals/6804/`.
   Terrænbåndene i Udbrudsmål §2 gælder fortsat oveni.
 - K2 Kuperet spurtafslutning kan være udbrudsdag, lavere chance end bakke/mur/nedkørsel,
   men ikke nær nul (ejer #2).
-- K3 Realistisk forspring (ejer #3): typisk 3-8 min, sjældent over 10-12 min (kun når
-  ingen vil jage), aldrig et kvarter.
+- K3 Realistisk forspring (ejer #3): typisk en mellemzone, sjældent en øvre zone (kun
+  når ingen vil jage), aldrig et kvarter. Zonerne står privat i `balance-internals/6804/`.
 - K4 Sammensætning (ejer #4): GC- og etapefavoritter sjældent med; flere fra samme hold
   skalerer med udbruddets størrelse; ingen ulogiske udbrud.
 - K5 Størrelse på kuperet efter trappen 5-9 (ejer #6).
@@ -77,7 +78,10 @@ i benchen, før en knap drejes.
 **P2 Realistisk forspring (#6912, K3).** Ikke en klemme på uret, men feltets adfærd:
 når forspringet nærmer sig det holdene tolererer pr. profil og løbstype, går
 lad-gå-fasen over i kontrolleret jagt hos de hold der har etapeinteresse eller
-klassementsinteresse (eksisterende `interestByTeam`). Kun når INGEN hold har interesse,
+klassementsinteresse. Interessen læses fra BEGGE kilder i `stageWinChaseForceV3`:
+`interestByTeam` (etapeinteresse fra finale-rangerede ryttere) OG `teamSignals`
+(klassementsreaktioner og ordrer). Et hold med kun GC-signal tæller som interesseret, så
+et farligt udbrud aldrig vokser ind i den øvre zone mod K7's top-10-regel. Kun når INGEN hold har interesse,
 kan forspringet vokse til den sjældne øvre zone. Det kvarter, spillerne så, kræver
 dermed et felt uden jagt-interesse, og det kan forklares i filmen ("ingen hold ville
 jage"). Jagt-gulvet på flad/rullende beholdes; endagsløbets loft på bjerg (#6367)
@@ -119,8 +123,8 @@ testportens S5-ruter med syntetisk startfelt; samme gates begge steder.
 
 - G1 Udbrudsandel pr. løbstype inden for ejerbåndet (K1); pr. kuperet afslutning inden for
   det private anker, spurt > 0 og < bakke/mur (K2).
-- G2 (ny, K3) Forspringsfordeling: median maks-forspring i 3-8-min-zonen på kuperet/bjerg i
-  etapeløb; andelen over 10-12 min under et privat loft; **nul** etaper over 15 min, og
+- G2 (ny, K3) Forspringsfordeling: median maks-forspring i mellemzonen på kuperet/bjerg i
+  etapeløb; andelen i den øvre zone under et privat loft; **nul** etaper over et kvarter, og
   enhver etape over den øvre zone skal have "ingen jagt-interesse" i sin hendelse.
 - G3 (ny, K4) Sammensætning:
   a) GC-favorit i udbruddet under privat loft; nul på 1. etape.
