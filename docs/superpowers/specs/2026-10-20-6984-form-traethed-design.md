@@ -86,7 +86,7 @@ Formen skal bygges af passende aktivitet og svækkes af både inaktivitet og ove
 Konsekvens: fuld form kræver planlægning, og en hård GT tærer på formen. Det er forudsætningen for, at formtoppe (#6156) betyder noget fra S5: står alle på fuld form, kan en top intet løfte.
 
 ### 5.7 Simpelt og forudsigeligt
-Forklaringen til spilleren er én sætning: *"Hver etape koster træthed efter type, længde og arbejde; jo flere løbsdage i sæsonen, jo dyrere; recovery afgør, hvor hurtigt det går væk."*
+Forklaringen til spilleren skal være kort og dække tre ting: etapens type, længde og arbejde koster træthed; flere løbsdage i sæsonen gør det dyrere; recovery afgør, hvor hurtigt det går væk. Selve ordlyden skrives efter `docs/TONE_OF_VOICE.md` og godkendes af ejeren før merge (dette er hensigten, ikke teksten).
 - Holdudtagelse og etapesiden viser forventet belastning som kategori (lav/middel/høj/meget høj), ikke tallet. Lidt "fog of war" er ok (friisisch 09:27).
 - Rytterens side viser sæsonens løbsdage og om sæsonbelastningen er begyndt.
 - Ugeprognosen (`trainingWeekPlanForecast.js`) bruger samme afregningsfunktion som aftenen. Før etapen er arbejdet ukendt (frontarbejde, hentet udbrud, indsatsen motoren kører), så prognosen antager normal indsats og intet frontarbejde og vises som et "ca."-estimat. Testen kræver paritet for kendte input (registrerede belastninger), ikke for etaper der endnu ikke er kørt.

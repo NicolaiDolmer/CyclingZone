@@ -38,7 +38,7 @@ Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre 
 - **Bygger på:** #4854 (træthedsgrænse og skader), staff-ønskelisten 6/9 ("Lægen forkorter skader").
 
 ### M3 · Kortere skader
-- **Hvad:** skadens længde forkortes, både trænings- og styrtskader. Altid mindst én dag.
+- **Hvad:** skadens længde forkortes, både trænings- og styrtskader (nedre grænse privat).
 - **Spillerens gevinst:** et uheld koster mindre, især i en GT.
 - **Kræver:** faktor på skadedagene, der hvor de sættes: `rollInjury` (træning) og v4's `injury_days` i stage-runneren før persistering (begge styrttyper). Regressionstest for varigheden. Lille.
 - **Bygger på:** help.json-løftet ("injury recovery"), #5865 (skader ved sæsonskiftet) og thelamba 6/9 (uheldige skader).
