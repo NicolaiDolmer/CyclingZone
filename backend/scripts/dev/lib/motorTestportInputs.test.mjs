@@ -486,3 +486,14 @@ test("#6909 (Codex P2) generatorField: samme start, forskellige game_day-vinduer
   assert.equal(out.get("rA").entries[0].rider_id, "spare", "overlapper r0 (game_day 1): erstatning");
   assert.equal(out.get("rB").entries[0].rider_id, "star", "intet overlap (game_day 4): rytteren er til raadighed");
 });
+
+test("#6909 (Codex P2) validateRouteDoc: ukendt profile_type/finale_type og ikke-normaliseret demand_vector afvises", () => {
+  const bad = (mut, re) => { const d = routeDoc("race-a", 2); mut(d); assert.throws(() => validateRouteDoc(d, "race-a"), re); };
+  bad((d) => { d.profiles[0].profile_type = "flatt"; }, /profile_type "flatt" er ukendt/);
+  bad((d) => { d.profiles[0].finale_type = "bunch"; }, /finale_type "bunch" er ukendt/);
+  bad((d) => { d.profiles[0].demand_vector = { sprint: 6, climbing: 4 }; }, /summe til 1/);
+  const ok = routeDoc("race-a", 2);
+  ok.profiles[0].demand_vector = { sprint: 0.333, climbing: 0.333, randomness: 0.333 };
+  ok.profiles[1].finale_type = null;
+  assert.equal(validateRouteDoc(ok, "race-a").length, 2, "afrunding og manglende finale er tilladt");
+});

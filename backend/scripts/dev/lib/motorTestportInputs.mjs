@@ -16,8 +16,11 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { raceBindingWindow } from "../../../lib/raceBinding.js";
 import { ABILITY_KEYS } from "../../../lib/raceSimulator.js";
+import { STAGE_FINALE_TYPES, STAGE_PROFILE_TYPES } from "../../../lib/stageProfileTypes.js";
 
 export const ROUTES_FORMAT = "cz-race-routes/v1";
+// Afrunding i eksporten (fx 3 decimaler pr. vaegt) maa ikke afvise en gyldig vektor.
+const DEMAND_SUM_TOLERANCE = 0.01;
 export const SYNTHETIC_KINDS = Object.freeze(["generator", "bench"]);
 
 /** Kolonnerne i race_stage_profiles; en rute-fil maa ikke have andre (stavefejl fanges). */
@@ -50,6 +53,11 @@ export function validateRouteDoc(doc, fileRaceId) {
     if (unknown.length) throw new Error(`${where}: profiles[${i}] har ukendte kolonner: ${unknown.join(", ")}`);
     if (p.race_id !== undefined && p.race_id !== fileRaceId) throw new Error(`${where}: profiles[${i}].race_id passer ikke til filen`);
     if (typeof p.profile_type !== "string" || !p.profile_type) throw new Error(`${where}: profiles[${i}].profile_type mangler`);
+    // #6909 (Codex P2): kun det faelles ordforraad. Motoren tolker en ukendt vaerdi med et
+    // forsvarligt default (fx ukendt terraen = flad), saa en stavefejl ville give en
+    // trovaerdig koersel paa en anden etape end den foreslaaede.
+    if (!STAGE_PROFILE_TYPES.includes(p.profile_type)) throw new Error(`${where}: profiles[${i}].profile_type "${p.profile_type}" er ukendt`);
+    if (p.finale_type != null && !STAGE_FINALE_TYPES.includes(p.finale_type)) throw new Error(`${where}: profiles[${i}].finale_type "${p.finale_type}" er ukendt`);
     // #6909 (Codex P2): generatoren udtager feltet efter etapens krav (demand_vector); uden
     // dem bliver alle egnetheder 0, og feltet vaelges reelt efter rytter-id.
     const dv = p.demand_vector;
@@ -59,6 +67,10 @@ export function validateRouteDoc(doc, fileRaceId) {
     if (unknownDims.length) throw new Error(`${where}: profiles[${i}].demand_vector har ukendte evner: ${unknownDims.join(", ")}`);
     if (Object.values(dv).some((v) => !Number.isFinite(v) || v < 0)) throw new Error(`${where}: profiles[${i}].demand_vector skal vaere ikke-negative tal`);
     if (!Object.entries(dv).some(([k, v]) => k !== "randomness" && v > 0)) throw new Error(`${where}: profiles[${i}].demand_vector skal have mindst én evne > 0`);
+    // #6909 (Codex P2): generatorens kontrakt er normaliserede vaegte (sum 1.0 inkl. randomness).
+    // Motoren bruger dem raa, saa en anden skala ville flytte terraen/held i forhold til resten.
+    const total = Object.values(dv).reduce((a, v) => a + v, 0);
+    if (Math.abs(total - 1) > DEMAND_SUM_TOLERANCE) throw new Error(`${where}: profiles[${i}].demand_vector skal summe til 1 (fik ${total.toFixed(4)})`);
     return { ...p, race_id: fileRaceId };
   }).sort((a, b) => a.stage_number - b.stage_number);
   profiles.forEach((p, i) => {
