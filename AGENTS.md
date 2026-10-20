@@ -69,3 +69,5 @@ Handoff på issue/repo/OneDrive, maks 15 linjer: dato, slice, status, seneste/n�
 ## Review guidelines
 
 P1 kun spillerdata, penge, sikkerhed, prod-drift, spilleroplevelse eller brud på 16-17. Patch note i bølge-PR, SSOT/docs, PR-billeder og filendelser er P2.
+
+Ejer-beslutning 20/10 (review i ring): **kun P0/P1 blokerer merge** (review-gate). P2/P3 blokerer ikke; forfatteren samler dem i ét opfølgnings-issue (Refs PR'en), som gøres færdigt inden for planen. Til Codex: **find alt i første review** (gennemgå hele diffen grundigt én gang, inkl. kanttilfælde); **ved re-review kun de nye commits** og kun P0/P1; gentag ikke varianter af løste fund som nye fund. Til Claude: kør et skeptisk selv-review af hele diffen før første push; store risikable ops-scripts (apply, backup, migration) får design + fejltilstande beskrevet før kode.
