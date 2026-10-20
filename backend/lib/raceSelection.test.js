@@ -1016,3 +1016,71 @@ test("#5843 prepareSelectionChange: 3×3-matrix — kun løbets egen trup kan ud
     }
   }
 });
+
+// #6964 (ejer 20/10): alder afgør ungdomsløb. Sæson 4 = referenceår 2029:
+// junior ≤ 18 (født ≥ 2011), U23 ≤ 22 (født ≥ 2007).
+function ageGateState() {
+  const state = squadSelectionState();
+  const rider = (id, squad, birthdate) => ({
+    id, team_id: "t1", squad, is_academy: true, is_retired: false, firstname: id, lastname: "X", birthdate,
+  });
+  state.riders.push(
+    rider("j19", "junior", "2010-06-01"),   // 19 på juniorholdet ("afventer oprykning")
+    rider("j18", "junior", "2011-12-31"),   // 18 = grænsen
+    rider("u23old", "u23", "2006-06-01"),   // 23 på U23-holdet
+    rider("u23jun", "u23", "2012-06-01"),   // 17, flyttet op på U23-holdet
+  );
+  return state;
+}
+const ageTeam = { league_division_id: "d1", u23_league_division_id: "u23-pool", junior_league_division_id: "j-pool" };
+const ageRace = (squad) => ({
+  id: `race-${squad}`, status: "scheduled", stages_completed: 0, race_class: "Class2", season_id: ACTIVE_SEASON_ID,
+  squad, league_division_id: squad === "junior" ? "j-pool" : "u23-pool",
+});
+
+test("#6964 getSelectionContext: for gammel rytter vises som overAge og tæller ikke som ledig", async () => {
+  const ctx = await getSelectionContext({ supabase: makeSquadSelectionSupabase(ageGateState()), race: ageRace("junior"), teamId: "t1" });
+  const byId = new Map(ctx.riders.map((r) => [r.id, r]));
+  assert.equal(byId.get("j19").overAge, true);
+  assert.equal(byId.get("j18").overAge, false, "18 = grænsen");
+  assert.equal(byId.get("j16").overAge, false);
+  assert.equal(ctx.availableCount, ctx.riders.filter((r) => !r.overAge).length);
+  assert.ok(!("birthdate" in byId.get("j19")), "fødselsdatoen sendes ikke til klienten");
+});
+
+test("#6964 getSelectionContext: seniorløb får intet overAge-felt (ingen aldersgrænse)", async () => {
+  const race = { id: "raceS", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
+  const ctx = await getSelectionContext({ supabase: makeSquadSelectionSupabase(ageGateState()), race, teamId: "t1" });
+  assert.ok(ctx.riders.every((r) => !("overAge" in r)));
+});
+
+test("#6964 prepareSelectionChange: for gammel junior afvises med selection_rider_over_age; 18-årig gemmes", async () => {
+  const supabase = makeSquadSelectionSupabase(ageGateState());
+  const rejected = await prepareSelectionChange({
+    supabase, race: ageRace("junior"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
+    body: { rider_ids: ["j19", "j18"], captain_id: "j18" },
+  });
+  assert.equal(rejected.ok, false);
+  assert.equal(rejected.status, 400);
+  assert.equal(rejected.error, "selection_rider_over_age");
+  assert.deepEqual(rejected.over_age_rider_ids, ["j19"]);
+  const ok = await prepareSelectionChange({
+    supabase, race: ageRace("junior"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
+    body: { rider_ids: ["j18", "j16"], captain_id: "j18" },
+  });
+  assert.equal(ok.ok, true);
+});
+
+test("#6964 prepareSelectionChange: U23-løb — 23-årig afvises, junior på U23-holdet gemmes", async () => {
+  const supabase = makeSquadSelectionSupabase(ageGateState());
+  const old = await prepareSelectionChange({
+    supabase, race: ageRace("u23"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
+    body: { rider_ids: ["u23old"], captain_id: "u23old" },
+  });
+  assert.equal(old.error, "selection_rider_over_age");
+  const junior = await prepareSelectionChange({
+    supabase, race: ageRace("u23"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
+    body: { rider_ids: ["u23jun", "u1"], captain_id: "u23jun" },
+  });
+  assert.equal(junior.ok, true, "juniorer må køre U23 (YOUTH_RULES §2.2)");
+});
