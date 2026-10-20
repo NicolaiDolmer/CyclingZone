@@ -15,12 +15,15 @@ test("medicin: ingen afdeling = ingen effekt; bedre afdeling og chef = mere", ()
   assert.ok(t5top <= 1);
 });
 
-test("M1: restitutionen vokser med bonus, og klubben viser samme tal", () => {
+test("M1: forstærker rytterens recovery-evne; en god restituerer får mest, gulvet røres ikke", () => {
   const b = medicalBonus(5, { overall: 99 });
   assert.equal(medicalRecoveryMultiplier(0), 1);
-  const plain = recoveryV2({ fatigue: 60, recoveryAbility: 50 });
-  const med = recoveryV2({ fatigue: 60, recoveryAbility: 50, medicalBonus: b });
-  assert.ok(Math.abs(med / plain - (1 + medicalDisplayBonus(b))) < 1e-9);
+  const gain = (rec) => recoveryV2({ fatigue: 60, recoveryAbility: rec, medicalBonus: b }) - recoveryV2({ fatigue: 60, recoveryAbility: rec });
+  assert.ok(gain(90) > gain(50) && gain(50) > gain(10), "mere til den gode restituerer");
+  assert.ok(Math.abs(gain(0)) < 1e-9, "uden evne ingen effekt (gulvet uændret)");
+  // Samme som at give rytteren evne × (1 + visningstal).
+  const asAbility = recoveryV2({ fatigue: 60, recoveryAbility: 50 * (1 + medicalDisplayBonus(b)) });
+  assert.ok(Math.abs(recoveryV2({ fatigue: 60, recoveryAbility: 50, medicalBonus: b }) - asAbility) < 1e-9);
   assert.equal(displayTrackBonus("medical", 5, { overall: 99 }), medicalDisplayBonus(b));
 });
 

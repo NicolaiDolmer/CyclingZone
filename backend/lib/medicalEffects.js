@@ -8,7 +8,8 @@ import { seededUnitMixed } from "./riderProgression.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 
 export const MEDICAL_EFFECT_CONFIG = Object.freeze({
-  // M1: døgnets restitution × (1 + recoveryShare × bonus). Det er også tallet klubben viser.
+  // M1 (ejer 20/10): rytterens recovery-evne × (1 + recoveryShare × bonus) i restitutionen
+  // (forstærker evnen, ikke gulvet). Det er også tallet klubben viser.
   recoveryShare: 0.5,
   // M2: træningens skaderisiko × (1 − trainingInjuryShare × bonus).
   trainingInjuryShare: 1,
@@ -29,7 +30,7 @@ export function medicalBonus(tier, staff) {
   return clamp01(effectiveBonus("medical", t, staff ?? null));
 }
 
-/** M1: multiplikator på døgnets restitution. */
+/** M1: multiplikator på rytterens recovery-evne i restitutionen. */
 export function medicalRecoveryMultiplier(bonus, cfg = MEDICAL_EFFECT_CONFIG) {
   return 1 + cfg.recoveryShare * clamp01(bonus);
 }

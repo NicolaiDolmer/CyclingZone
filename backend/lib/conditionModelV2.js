@@ -49,12 +49,14 @@ const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 const finiteOr = (x, fallback) => (Number.isFinite(Number(x)) ? Number(x) : fallback);
 
 /** §5.4: ét døgns restitution ved træthed f. `share` = andel af et døgn (frie pladser).
- * M1: `medicalBonus` (holdets medicinske afdeling, 0 = ingen) gør restitutionen større. */
+ * M1 (ejer 20/10): `medicalBonus` FORSTÆRKER rytterens egen recovery-evne. Afdelingen
+ * ganges kun på evne-leddene (det faste evne-bidrag og evnens del af den proportionale
+ * andel), aldrig på gulvet; en god restituerer får mest ud af den, en dårlig lidt. */
 export function recoveryV2({ fatigue, recoveryAbility = 50, share = 1, medicalBonus = 0, cfg = CONDITION_V2_CONFIG }) {
-  const rec = clamp(finiteOr(recoveryAbility, 50), 0, 99) / 99;
+  const rec = (clamp(finiteOr(recoveryAbility, 50), 0, 99) / 99) * medicalRecoveryMultiplier(medicalBonus);
   const f = Math.max(0, finiteOr(fatigue, 0));
   const frac = cfg.recoveryFractionLo + (cfg.recoveryFractionHi - cfg.recoveryFractionLo) * rec;
-  return share * (cfg.recoveryBase + cfg.recoveryFromAbility * rec + frac * f) * medicalRecoveryMultiplier(medicalBonus);
+  return share * (cfg.recoveryBase + cfg.recoveryFromAbility * rec + frac * f);
 }
 
 /** §5.2: længdefaktor (1 for enkeltstarter og ukendt distance). */
