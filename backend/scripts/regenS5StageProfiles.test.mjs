@@ -475,18 +475,48 @@ test("identityTable tæller kun korte etapeløb og melder løb uden type", () =>
   assert.equal(t.ok, false);
 });
 
-test("signaturePins: summit_finish kræver bjergtop; sector matches på navn i etapen", () => {
+test("signaturePins: featurens egenskaber skal holde, ikke kun navnet (Codex-fund)", () => {
+  const top = { name: "Top", category: "1", length_km: 9, avg_gradient: 7 };
   const profiles = [
-    { stage_number: 1, profile_type: "flat", climbs: [], sectors: [{ name: "Pavé A" }] },
-    { stage_number: 2, profile_type: "mountain", climbs: [{ name: "Top", summit_finish: false }], sectors: [] },
+    { stage_number: 1, profile_type: "flat", climbs: [], sectors: [{ kind: "cobbles", name: "Pavé A", length_km: 2 }] },
+    { stage_number: 2, profile_type: "mountain", climbs: [{ ...top, crest_km: 150, summit_finish: false }], sectors: [] },
+    { stage_number: 3, profile_type: "itt", climbs: [], sectors: [] },
   ];
-  const pins = signaturePins({ name: "x" }, { features: [
-    { kind: "summit_finish", stage_hint: "last", name: "Top" },
-    { kind: "sector", stage_hint: "first", name: "Pavé A" },
-    { kind: "itt", stage_hint: "last", band: "hilly" },
-  ] }, profiles);
-  assert.deepEqual(pins.map((p) => p.pinned), [false, true, false]);
+  const pin = (feature) => signaturePins({ name: "x" }, { features: [feature] }, profiles)[0];
+  // summit_finish kræver bjergtop
+  assert.equal(pin({ kind: "summit_finish", stage_hint: "any", ...top, summit_finish: true }).pinned, false);
+  // climb: navn OG kategori/længde/gradient
+  assert.equal(pin({ kind: "climb", stage_hint: "any", ...top, summit_finish: false }).pinned, true);
+  assert.equal(pin({ kind: "climb", stage_hint: "any", ...top, category: "HC", summit_finish: false }).pinned, false);
+  // queen = løbets hårdeste etape(r)
+  assert.equal(pin({ kind: "climb", stage_hint: "queen", ...top, summit_finish: false }).stage, 2);
+  // sektor: navn, belægning og længde
+  assert.equal(pin({ kind: "sector", stage_hint: "first", surface: "cobbles", name: "Pavé A", length_km: 2 }).pinned, true);
+  assert.equal(pin({ kind: "sector", stage_hint: "first", surface: "gravel", name: "Pavé A", length_km: 2 }).pinned, false);
+  // enkeltstart: båndet tæller (hilly kræver itt_hilly)
+  assert.equal(pin({ kind: "itt", stage_hint: "last", band: "flat" }).pinned, true);
+  assert.equal(pin({ kind: "itt", stage_hint: "last", band: "hilly" }).pinned, false);
+});
+
+test("matchesAuthored: alle forfattede felter, ikke kun summer og navne (Codex-fund)", () => {
+  const generated = { ...structuredClone(AUTHORED), demand_vector: { cobblestone: 1 }, segments: [{ x: 1 }], weather: null, elevation_profile: [] };
+  assert.equal(matchesAuthored(generated, AUTHORED), true);
+  const moved = structuredClone(generated);
+  moved.climbs[0].crest_km = 230;
+  assert.equal(matchesAuthored(moved, AUTHORED), false);
+  const finale = { ...structuredClone(generated), finale_type: "punch" };
+  assert.equal(matchesAuthored(finale, AUTHORED), false);
+  const sector = structuredClone(generated);
+  sector.sectors[0].length_km = 3;
+  assert.equal(matchesAuthored(sector, AUTHORED), false);
   assert.equal(matchesAuthored(null, AUTHORED), null);
+});
+
+test("backup-tabellen er nøglet på etape-pladsen, så en genkørsel efter apply ikke blander generationer (Codex-fund)", () => {
+  const sql = buildBackupSql("backup_6857_race_stage_profiles_20261021", SEASON_ID);
+  assert.match(sql, /\(race_id, stage_number\);/);
+  assert.match(sql, /on conflict \(race_id, stage_number\) do nothing/);
+  assert.doesNotMatch(sql, /on conflict \(id\)/);
 });
 
 test("gtPreludes: optakten er det korte etapeløb der SLUTTER lige før Grand Touren", () => {

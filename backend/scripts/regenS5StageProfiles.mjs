@@ -531,12 +531,14 @@ alter table public.${table} enable row level security;
 -- RLS erstatter ikke grants (docs/DATA_API_GRANTS.md): kun service_role må læse.
 revoke all on table public.${table} from public, anon, authenticated, service_role;
 grant select on table public.${table} to service_role;
-create unique index if not exists ${table}_id on public.${table}(id);
+-- Nøglet på etape-pladsen, ikke på række-id: apply giver nye id'er, og en genkørsel af denne fil
+-- efter (en del af) apply må aldrig lægge den nye generation ved siden af originalen.
+create unique index if not exists ${table}_slot on public.${table}(race_id, stage_number);
 insert into public.${table}
   select p.*, now() from public.race_stage_profiles p
    where p.race_id in (select r.id from public.races r
                         where r.season_id = '${seasonId}' and (r.squad is null or r.squad = 'senior'))
-on conflict (id) do nothing;
+on conflict (race_id, stage_number) do nothing;
 commit;
 notify pgrst, 'reload schema';
 -- Verificér: select count(*) from public.${table}; (skal være = antal nuværende S5-profiler)
@@ -763,32 +765,46 @@ function monumentRoute(profile) {
 /** Følger den genererede rute den håndskrevne (authored_route)? */
 export function matchesAuthored(profile, authored) {
   if (!authored || !profile) return null;
-  const names = (xs) => (Array.isArray(xs) ? xs.map((x) => x.name).join("|") : "");
-  return profile.distance_km === authored.distance_km && profile.elevation_gain_m === authored.elevation_gain_m
-    && profile.profile_type === authored.profile_type && names(profile.climbs) === names(authored.climbs)
-    && names(profile.sectors) === names(authored.sectors);
+  // Hvert forfattet felt skal stå uændret i ruten; kun afledte felter (segments, weather,
+  // elevation_profile, demand_vector, generator_version) og felter generatoren lægger til ses bort fra.
+  const sameItems = (got, want) => Array.isArray(got) && Array.isArray(want) && got.length === want.length
+    && want.every((w, i) => Object.keys(w).every((k) => canonicalJson(got[i]?.[k]) === canonicalJson(w[k])));
+  return ["profile_type", "finale_type", "distance_km", "elevation_gain_m"].every((k) => profile[k] === authored[k])
+    && ["climbs", "sprints", "sectors"].every((k) => sameItems(profile[k] ?? [], authored[k] ?? []));
 }
 
-function targetStages(hint, n) {
+// Terrænets hårdhed til "queen": kongeetapen er en etape af løbets hårdeste terræn (spec §5).
+const TERRAIN_RANK = Object.freeze({ rolling: 1, hilly: 2, medium_mountain: 3, mountain: 4, high_mountain: 5 });
+
+function targetStages(hint, profiles) {
+  const n = profiles.length;
   if (hint === "first") return [1];
   if (hint === "last") return [n];
-  return Array.from({ length: n }, (_, i) => i + 1);
+  if (hint === "queen") {
+    const rank = (p) => TERRAIN_RANK[p.profile_type] ?? 0;
+    const top = Math.max(0, ...profiles.map(rank));
+    return profiles.filter((p) => rank(p) === top).map((p) => p.stage_number);
+  }
+  return profiles.map((p) => p.stage_number);
+}
+
+/** Matcher etapen featuren, inkl. dens forfattede egenskaber? */
+function featureHolds(f, p) {
+  if (f.kind === "climb" || f.kind === "summit_finish") {
+    return (p.climbs ?? []).some((c) => c.name === f.name && c.category === f.category && c.length_km === f.length_km
+      && c.avg_gradient === f.avg_gradient && Boolean(c.summit_finish) === (f.kind === "summit_finish" || Boolean(f.summit_finish)));
+  }
+  if (f.kind === "itt" || f.kind === "prologue") return p.profile_type === (f.band === "hilly" ? "itt_hilly" : "itt");
+  if (f.kind === "sector") return (p.sectors ?? []).some((x) => x.name === f.name && x.kind === f.surface && x.length_km === f.length_km);
+  return false;
 }
 
 /** Er hver signatur-feature låst i den genererede rute? */
 export function signaturePins(race, signature, profiles) {
   const features = Array.isArray(signature?.features) ? signature.features : [];
-  const n = profiles.length;
   return features.map((f) => {
-    const stages = targetStages(f.stage_hint, n);
-    const hit = profiles.find((p) => stages.includes(p.stage_number) && (() => {
-      if (f.kind === "climb" || f.kind === "summit_finish") {
-        return (p.climbs ?? []).some((c) => c.name === f.name && (f.kind !== "summit_finish" || c.summit_finish === true));
-      }
-      if (f.kind === "itt" || f.kind === "prologue") return p.profile_type === "itt" || p.profile_type === "itt_hilly";
-      if (f.kind === "sector") return (p.sectors ?? []).some((s) => s.name === f.name);
-      return false;
-    })());
+    const stages = targetStages(f.stage_hint, profiles);
+    const hit = profiles.find((p) => stages.includes(p.stage_number) && featureHolds(f, p));
     return { race: race.name, kind: f.kind, name: f.name ?? null, stage_hint: f.stage_hint, pinned: Boolean(hit), stage: hit?.stage_number ?? null };
   });
 }
