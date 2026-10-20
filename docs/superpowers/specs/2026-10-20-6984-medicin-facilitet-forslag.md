@@ -2,6 +2,7 @@
 
 **Status:** ejer-beslutning 20/10 (låst, #6984): **M1 (forstærker), M2, M3, M4 og M8 bygges**, sammen med Form og træthed 2.0 ([design](2026-10-20-6984-form-traethed-design.md)), bag `condition_model_v2`, tændes ved S5-start på ejerens go efter harness-gaten. M5 udgår. M6 (styrt: fortsæt/stå af), M7 (højdetræningslejr) og M9 (sygdom) er ikke valgt nu. Spillertekst (M4/M8, help.json) følger `docs/TONE_OF_VOICE.md` og vises ejeren før merge.
 **Tal:** alle styrker og lofter ligger privat i `balance-internals/6984/medicin-konstanter-2026-10-20.md` (hard rule 17).
+**SSOT:** [`docs/TRAINING_RULES.md`](../../TRAINING_RULES.md) §5 (restitution og træningsskader, M1-M3), [`docs/RACE_ENGINE_RULES.md`](../../RACE_ENGINE_RULES.md) (styrtskader på etapens output, M2-M3) og [`docs/COMMS_PLAYBOOK.md`](../../COMMS_PLAYBOOK.md) + [`docs/TONE_OF_VOICE.md`](../../TONE_OF_VOICE.md) (lægens ord M4/M8, help.json, patch note). Byg-PR'en (#6988) skriver medicin-reglerne ind i TRAINING_RULES §5.3b og RACE_ENGINE_RULES; denne note ændrer dem ikke.
 **Udgifter:** ingen løbende driftsudgift (facilitetsudgifterne er fjernet fra S5, #6936). Kun den eksisterende engangspris for at opgradere et tier og chefens løn som i dag.
 
 ## 1. Hvad findes i dag
