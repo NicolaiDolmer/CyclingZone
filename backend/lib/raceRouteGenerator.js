@@ -12,7 +12,7 @@
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
 // S5 (#6359): matrixen (spec §3) og pladsholder-kilderne bor i Fase 0's ordforråd.
-import { isFinishAllowed as isFinishAllowedS5, S5_PLACEHOLDER_SOURCE_PROFILE } from "./stageProfileTypes.js";
+import { isFinishAllowed as isFinishAllowedS5, S5_PLACEHOLDER_SOURCE_PROFILE, FINISH_MATRIX as FINISH_MATRIX_S5 } from "./stageProfileTypes.js";
 
 // FNV-1a 32-bit (lokal kopi af raceStageProfileGenerator.stableSeed — selvstændig fil).
 function stableSeed(str) {
@@ -691,12 +691,12 @@ export function assertFinishAllowed(terrain, finish) {
  * @param {number} distanceKm
  * @param {{ climb: () => string }} namer
  */
-function placeS5Climbs(rng, set, finish, distanceKm, namer) {
+function placeS5Climbs(rng, set, finish, distanceKm, namer, { summitClimax = false } = {}) {
   if (!set.length) return [];
   const n = set.length;
   const last = set[n - 1];
   let lastCrest;
-  if (finish === "long_climb") lastCrest = distanceKm;
+  if (finish === "long_climb" || summitClimax) lastCrest = distanceKm;
   else if (finish === "descent") lastCrest = distanceKm - randInt(rng, S5_DESCENT_TOP_WINDOW_KM[0], S5_DESCENT_TOP_WINDOW_KM[1]);
   else lastCrest = distanceKm - randInt(rng, S5_OPEN_FINISH_LAST_TOP_KM[0], S5_OPEN_FINISH_LAST_TOP_KM[1]);
   const anchor = lastCrest - last.length_km; // klimaksets fod
@@ -715,9 +715,24 @@ function placeS5Climbs(rng, set, finish, distanceKm, namer) {
   }
   climbs.push({
     name: namer.climb(), category: last.category, crest_km: Math.round(lastCrest),
-    length_km: last.length_km, avg_gradient: last.avg_gradient, summit_finish: finish === "long_climb",
+    length_km: last.length_km, avg_gradient: last.avg_gradient, summit_finish: finish === "long_climb" || summitClimax,
   });
   return climbs;
+}
+
+/**
+ * #6857: en signatur-stigning med topmål på et terræn hvor matrixen ikke tillader bjergtop
+ * (kuperet/bølget/flad, fx en kort stejl helling på stregen). Etapen ender da på den
+ * stejleste opad-afslutning matrixen tillader for terrænet, valgt af stigningens gradient.
+ * Ingen rng. null = matrixen har ingen opad-afslutning (kaster hos kalderen).
+ * @param {string} terrain @param {number} gradient
+ * @returns {string | null}
+ */
+export function summitFinishFor(terrain, gradient) {
+  const allowed = /** @type {Record<string, readonly string[]>} */ (FINISH_MATRIX_S5)[terrain] ?? [];
+  if (allowed.includes("long_climb")) return "long_climb";
+  const wanted = gradient >= 10 ? ["wall_finish", "punch", "uphill_sprint"] : gradient >= 5 ? ["punch", "wall_finish", "uphill_sprint"] : ["uphill_sprint", "punch", "wall_finish"];
+  return wanted.find((f) => allowed.includes(f)) ?? null;
 }
 
 // ── #6857 Løbsidentitet: signaturen i ruten (pass 2) ────────────────────────────────
@@ -831,7 +846,16 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
   // tilfældet af mellembjerg-reglen, og afslutningen vælges inden for matrixen af netop
   // dette terræn, så det endelige B+ nedenfor er altid det samme (testen håndhæver det).
   const terrain = deriveTerrainType(set);
-  const finale_type = sigClimb ? chooseFinish(terrain, { summit: sigClimb.summit_finish === true }) : chooseFinish(terrain);
+  const sigSummit = sigClimb?.summit_finish === true;
+  let finale_type;
+  if (!sigClimb) finale_type = chooseFinish(terrain);
+  else if (!sigSummit) finale_type = chooseFinish(terrain, { summit: false });
+  else {
+    // Topmål: bjergtop hvor matrixen tillader det, ellers den stejle opad-afslutning.
+    finale_type = summitFinishFor(terrain, sigClimb.avg_gradient);
+    if (!finale_type) throw new Error(`signature climb "${sigClimb.name}" finishes on the line, but terrain ${terrain} has no uphill finish (#6857)`);
+    if (finale_type === "long_climb") finale_type = chooseFinish(terrain, { summit: true });
+  }
   assertFinishAllowed(terrain, finale_type);
   if (finale_type === "long_climb") {
     const summitCat = set.length ? set[set.length - 1].category : null;
@@ -845,7 +869,9 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
       throw new Error(`S5 matrix: descent finish requires a last top of category 3 or harder, got "${topCat}"`);
     }
   }
-  const climbs = placeS5Climbs(rng, set, finale_type, distance_km, namer);
+  const climbs = sigClimb
+    ? placeS5Climbs(rng, set, finale_type, distance_km, namer, { summitClimax: sigSummit })
+    : placeS5Climbs(rng, set, finale_type, distance_km, namer);
   if (sigClimb) climbs[climbs.length - 1] = { ...climbs[climbs.length - 1], name: sigClimb.name };
 
   const rampSpec = S5_FINISH_RAMPS[finale_type];
