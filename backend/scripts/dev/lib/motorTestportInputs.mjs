@@ -341,10 +341,12 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
         // sidste: skader og Train now-laase vurderes som ved redningen ved etape 1. Loeb med
         // samme start koeres sammen (samme dags-konflikter haandteres af generatoren).
         const firstStart = new Map();
+        const lastStart = new Map();
         for (const st of sched) {
           const ms = Date.parse(st.scheduled_at);
           if (!Number.isFinite(ms)) continue;
           firstStart.set(st.race_id, Math.min(firstStart.get(st.race_id) ?? Infinity, ms));
+          lastStart.set(st.race_id, Math.max(lastStart.get(st.race_id) ?? -Infinity, ms));
         }
         const wantedHere = ids.filter((id) => races.some((r) => r.id === id && r.season_id === seasonId));
         const noStart = wantedHere.filter((id) => !Number.isFinite(firstStart.get(id)));
@@ -354,8 +356,17 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
           table: "race_stage_profiles", key: "race_id",
           rowsByKey: new Map([...routesByRace].map(([raceId, profiles]) => [raceId, profiles.map((p) => ({ ...p, race_id: raceId }))])),
         } : null;
+        // #6909 (Codex P2): loeb hvis spaend (foerste til sidste etape) overlapper, udtages i SAMME
+        // koersel paa den tidligste start, saa en rytter aldrig bookes i to overlappende loeb.
         const byStart = new Map();
-        for (const id of wantedHere) { const t = firstStart.get(id); if (!byStart.has(t)) byStart.set(t, []); byStart.get(t).push(id); }
+        const sorted = [...wantedHere].sort((a, b) => firstStart.get(a) - firstStart.get(b));
+        let groupStart = null, groupEnd = -Infinity;
+        for (const id of sorted) {
+          const s0 = firstStart.get(id), s1 = lastStart.get(id) ?? s0;
+          if (groupStart == null || s0 > groupEnd) { groupStart = s0; byStart.set(groupStart, []); groupEnd = s1; }
+          else groupEnd = Math.max(groupEnd, s1);
+          byStart.get(groupStart).push(id);
+        }
         const byRace = new Map();
         for (const [startMs, group] of [...byStart].sort((a, b) => a[0] - b[0])) {
           const res = await run({
