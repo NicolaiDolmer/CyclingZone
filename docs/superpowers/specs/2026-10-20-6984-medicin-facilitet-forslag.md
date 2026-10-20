@@ -11,7 +11,7 @@
 | Sporet `medical` (tier 0-5) | `backend/lib/facilityConstants.js:30` | Kan købes |
 | Effekt-kurve pr. tier ("form-genopretning") | `backend/lib/facilityConstants.js:167` | Kun til visning |
 | Effekten er slukket | `backend/lib/facilityConstants.js:193-194` (`EFFECT_LIVE_BY_TRACK.medical = false`) | Ingen motor-hook |
-| Chefens styrke (0,5-1,0 af effekten) | `backend/lib/facilityEngine.js:40` (`staffEffectFactor`), `:72` (`effectiveBonus`) | Virker for træning |
+| Chefens styrke skalerer effekten (bedre chef = større effekt; spænd privat) | `backend/lib/facilityEngine.js:40` (`staffEffectFactor`), `:72` (`effectiveBonus`) | Virker for træning |
 | Medicinchefens to akser: `recovery`, `injuryPrevention` | `backend/lib/staffAbilityDerivation.js:44` | Afledt, bruges ikke |
 | Mønster for at hente facilitet + chef pr. hold | `backend/lib/trainingStaffContext.js:67` (kun `training`) | Genbruges |
 | Restitution, skaderisiko, skadelængde (træning) | `backend/lib/riderCondition.js:31-101` | Medicin indgår ikke |
@@ -66,6 +66,10 @@ Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre 
 - **AI-hold:** se MD5.
 - **help.json + patch note:** "Coming soon" fjernes og erstattes af de effekter, der faktisk tændes (EN+DA), ved tænding.
 
-## 4. Gate
+## 4. Tænding af sporet i klubben
+
+I dag viser klubsiden Medicin som "Coming soon" og skjuler køb og ansættelse, fordi `EFFECT_LIVE_BY_TRACK.medical` er `false` (`facilityConstants.js:193-195`), og `resolveTrackLiveFlags` kun kender akademiet. Byg-PR'en skal derfor afledes af samme flag (`condition_model_v2`): `isTrackEffectLive('medical')` og `resolveTrackLiveFlags` bliver sande, når flaget er on, så `FacilityTrackCard` viser køb, ansættelse og den rigtige effekttekst. Test: flag off = "Coming soon" som i dag; flag on = sporet er aktivt i både klub-UI og route-svaret.
+
+## 5. Gate
 
 Samme gate som designets §7 plus: (a) tier 5 + topchef må ikke bryde §5.8 omvendt, dvs. en rytter med fuld medicin skal stadig kunne køre sig over grænsen i den tredje GT; (b) skader pr. 1.000 rytter-datoer pr. tier vises til ejeren; (c) flag off = bit-identisk, og hold uden afdeling = identisk med v2 uden medicin.

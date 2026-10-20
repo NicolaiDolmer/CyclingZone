@@ -136,5 +136,6 @@ Garanti, der testes i harness: en rytter med middel recovery, der kører en hel 
 2. Profil/længde/sæson-belastning i `raceFatigue.js` (`stageRaceConditionLoad`), hentet-udbrud-tillæg fra v4's gruppe-snapshots.
 3. Ny `nextForm`-variant bag flaget.
 4. Sæsontæller (deles med #6110 D4).
+4b. B2 i selve løbet: under dato-modellen springer `stageEnteringFatigues` ophobningen over (`trainingOwnsRecovery`), og afregningen sker først om aftenen. Derfor regnes etapens starttræthed i stage-runneren før simuleringen: åbningen plus datoens endnu ikke afregnede belastninger fra ledgeren, med samme døgnregnestykke som afregningen. Regressionstest: etape 2 samme dato får motor-input med etape 1's belastning; andre revisioner og flag off er uændrede.
 5. Prognose + UI-kategorier + help.json + patch note.
 6. Harness-gate (§7) → privat tal-kort → ejer-go → tænding.
