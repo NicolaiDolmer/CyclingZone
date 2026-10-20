@@ -433,11 +433,13 @@ export const SEED_STAGE_PROFILES = [
   // (st1), bjergetape med nedkørsel til mål — "valley" + "technical"-chips (st2),
   // bjergetape med målgang på toppen — "summit"-chip (st3), kort enkeltstart (st4).
   { race_id: "race-up-1", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint",
+    weather: { kind: "sun", wind_exposure: 0.4 },
     distance_km: 190, elevation_gain_m: 268,
     climbs: [{ name: "Côte de Beauregard", category: "4", crest_km: 172, length_km: 1.5, avg_gradient: 4.5, summit_finish: false }],
     sprints: [{ name: "Intermediate Sprint", km: 108, kind: "intermediate" }, { name: "Finish", km: 190, kind: "finish" }],
     sectors: [], demand_vector: { sprint: 0.61, acceleration: 0.15, positioning: 0.08, flat: 0.06, endurance: 0.02, randomness: 0.08 } },
   { race_id: "race-up-1", stage_number: 2, profile_type: "mountain", finale_type: "descent",
+    weather: { kind: "rain", wind_exposure: 0.4 },
     distance_km: 180, elevation_gain_m: 2621,
     climbs: [
       { name: "Col de El Cordal", category: "3", crest_km: 78, length_km: 5, avg_gradient: 4.9, summit_finish: false },
@@ -446,6 +448,7 @@ export const SEED_STAGE_PROFILES = [
     sprints: [{ name: "Intermediate Sprint", km: 77, kind: "intermediate" }, { name: "Finish", km: 180, kind: "finish" }],
     sectors: [], demand_vector: { climbing: 0.5, endurance: 0.2, tempo: 0.15, recovery: 0.1, randomness: 0.05 } },
   { race_id: "race-up-1", stage_number: 3, profile_type: "high_mountain", finale_type: "long_climb",
+    weather: { kind: "wind", wind_exposure: 0.4 },
     distance_km: 170, elevation_gain_m: 5286,
     climbs: [
       { name: "Col de la Colombière", category: "1", crest_km: 66, length_km: 14.2, avg_gradient: 6.6, summit_finish: false },
@@ -455,6 +458,7 @@ export const SEED_STAGE_PROFILES = [
     sprints: [{ name: "Finish", km: 170, kind: "finish" }],
     sectors: [], demand_vector: { punch: 0.45, climbing: 0.25, endurance: 0.15, positioning: 0.1, randomness: 0.05 } },
   { race_id: "race-up-1", stage_number: 4, profile_type: "itt", finale_type: "solo_tt",
+    weather: { kind: "overcast", wind_exposure: 0.4 },
     distance_km: 7, elevation_gain_m: 90,
     climbs: [], sprints: [{ name: "Finish", km: 7, kind: "finish" }], sectors: [],
     demand_vector: { time_trial: 0.65, endurance: 0.2, positioning: 0.1, randomness: 0.05 } },
@@ -495,6 +499,7 @@ export const SEED_STAGE_PROFILES = [
 
   // race-done-1 "Omloop Preview" (kørt endagsløb) — brostensetape, 5 sektorer.
   { race_id: "race-done-1", stage_number: 1, profile_type: "cobbles", finale_type: "breakaway",
+    weather: { kind: "rain", wind_exposure: 0.4 },
     distance_km: 165, elevation_gain_m: 420,
     climbs: [],
     sprints: [{ name: "Intermediate Sprint", km: 60, kind: "intermediate" }, { name: "Finish", km: 165, kind: "finish" }],
@@ -2250,3 +2255,8 @@ export const SEED_TEAM_ORDERS_BY_RACE = {
 
 // Default for ethvert andet loeb i preview: etapeloebet midt i afviklingen.
 export const SEED_TEAM_ORDERS = SEED_TEAM_ORDERS_BY_RACE["race-live-1"];
+
+// #6993: race-done-1's loebslog som v4 skriver den (timeline_version 2), med
+// motorens vejr-haendelse. Historien er bygget af backend/lib/raceStory.js's
+// buildRaceStory paa events herunder, saa preview viser etapesidens vejr-linje.
+export const SEED_STAGE_TIMELINE_RACE_DONE_1 = {"timeline_version": 2, "stage_number": 1, "events": [{"km": 0, "type": "stage_start", "params": {"field_count": 5, "profile_type": "cobbles", "distance_km": 165}}, {"km": 0, "type": "weather", "params": {"kind": "rain"}}, {"km": 14, "type": "breakaway_formed", "params": {"rider_ids": ["rider-1", "rider-3"]}}, {"km": 40, "type": "gap_update", "params": {"gap_seconds": 150}}, {"km": 60, "type": "intermediate_sprint", "params": {"top": [{"rider_id": "rider-1", "points": 20}]}}, {"km": 97, "type": "gap_update", "params": {"gap_seconds": 95}}, {"km": 128, "type": "gap_update", "params": {"gap_seconds": 40}}, {"km": 165, "type": "breakaway_survived", "params": {"rider_ids": ["rider-1"]}}, {"km": 165, "type": "finish", "params": {"rider_ids": ["rider-1"]}}], "created_at": "2026-03-01T15:00:00.000Z", "story": {"version": 1, "timeline_version": 2, "distance_km": 165, "field_count": 5, "precise_times": false, "time_trial": false, "leader_line": [{"km": 0, "time": 0}], "moments": [{"type": "stage_start", "key": "story.stage_start", "km": 0, "race_time_s": 0, "time_source": "leader_line", "importance": "detail", "data": {"field_count": 5, "profile_type": "cobbles", "distance_km": 165}}, {"type": "weather", "key": "story.weather", "km": 0, "race_time_s": 0, "time_source": "leader_line", "importance": "detail", "data": {"kind": "rain"}}, {"type": "breakaway_formed", "key": "story.breakaway_formed", "km": 14, "race_time_s": null, "time_source": null, "importance": "key", "data": {"rider_ids": ["rider-1", "rider-3"]}}, {"type": "intermediate_sprint", "key": "story.intermediate_sprint", "km": 60, "race_time_s": null, "time_source": null, "importance": "detail", "data": {"top": [{"rider_id": "rider-1", "points": 20}]}}, {"type": "breakaway_survived", "key": "story.breakaway_survived", "km": 165, "race_time_s": null, "time_source": null, "importance": "key", "data": {"rider_ids": ["rider-1"]}}, {"type": "finish", "key": "story.finish", "km": 165, "race_time_s": null, "time_source": null, "importance": "key", "data": {"rider_ids": ["rider-1"]}}], "snapshots": [{"km": 0, "leader_time_s": 0, "groups": [{"group_id": "peloton-0", "rider_ids": [], "size": 5, "includes_rest": true, "members_inferred": false, "gap_s": 0, "time_s": 0, "gap_source": "front"}], "out_rider_ids": [], "pending_rider_ids": []}, {"km": 40, "leader_time_s": null, "groups": [{"group_id": "peloton-0", "rider_ids": [], "size": 5, "includes_rest": true, "members_inferred": false, "gap_s": 0, "time_s": null, "gap_source": "carried"}], "out_rider_ids": [], "pending_rider_ids": []}, {"km": 97, "leader_time_s": null, "groups": [{"group_id": "peloton-0", "rider_ids": [], "size": 5, "includes_rest": true, "members_inferred": false, "gap_s": 0, "time_s": null, "gap_source": "carried"}], "out_rider_ids": [], "pending_rider_ids": []}, {"km": 128, "leader_time_s": null, "groups": [{"group_id": "peloton-0", "rider_ids": [], "size": 5, "includes_rest": true, "members_inferred": false, "gap_s": 0, "time_s": null, "gap_source": "carried"}], "out_rider_ids": [], "pending_rider_ids": []}, {"km": 165, "leader_time_s": null, "groups": [{"group_id": "peloton-0", "rider_ids": [], "size": 5, "includes_rest": true, "members_inferred": false, "gap_s": 0, "time_s": null, "gap_source": "carried"}], "out_rider_ids": [], "pending_rider_ids": []}], "checkpoints": [{"kind": "sprint", "km": 60, "name": null, "category": null, "top": [{"rider_id": "rider-1", "points": 20}], "leader_time_s": null, "leader_group_id": "peloton-0", "leader_rider_ids": [], "groups": [{"group_id": "peloton-0", "rider_ids": [], "size": 5, "includes_rest": true, "members_inferred": false, "gap_s": 0, "time_s": null, "gap_source": "carried"}], "groups_from_km": 60, "interpolated": true, "out_rider_ids": [], "pending_rider_ids": []}, {"kind": "finish", "km": 165, "name": null, "category": null, "top": [], "leader_time_s": null, "leader_group_id": "peloton-0", "leader_rider_ids": [], "groups": [{"group_id": "peloton-0", "rider_ids": [], "size": 5, "includes_rest": true, "members_inferred": false, "gap_s": 0, "time_s": null, "gap_source": "carried"}], "groups_from_km": 165, "interpolated": false, "out_rider_ids": [], "pending_rider_ids": []}], "group_spans": [{"group_id": "peloton-0", "from_km": 0, "to_km": null, "source_group_id": null, "into_group_id": null, "rider_ids": []}], "breakaway": {"morning_rider_ids": ["rider-1", "rider-3"], "outcomes": {"rider-1": "survived", "rider-3": "dropped"}}}};

@@ -1428,7 +1428,7 @@
       },
       "weatherAndCobbles": {
         "title": "Clima y adoquines",
-        "text": "Cada etapa lleva su propio clima. El sol y el cielo cubierto son la base tranquila, no cambia nada. La lluvia ralentiza toda la etapa y golpea más fuerte a un ciclista débil en mojado que al resto del grupo. El viento muerde sobre todo donde la carretera es abierta; una subida está resguardada por su propia pendiente. La lluvia también aumenta el riesgo de caída en adoquines, gravel y descensos atrevidos. Lo verás como una sola nota en la línea de tiempo de la etapa, en el kilómetro donde empieza a importar, nunca como un número asociado."
+        "text": "Cada etapa lleva su propio clima, y la página de la etapa lo muestra: seco, lluvia o viento. Seco es la base tranquila, no cambia nada. La lluvia ralentiza toda la etapa. El viento muerde sobre todo donde la carretera es abierta; una subida está resguardada por su propia pendiente. Ambos castigan más a los corredores con poco descenso y poca durabilidad. La lluvia también aumenta el riesgo de caída en adoquines, gravel y descensos atrevidos. Cuando la lluvia o el viento costaron fuerzas a los corredores, la historia de la carrera lo dice en una línea, nunca con un número asociado. Una contrarreloj por equipos se corre sin clima."
       }
     }
   },

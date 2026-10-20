@@ -18,6 +18,8 @@ import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import FinaleView, { PlayIcon, prefersReducedMotion } from "./FinaleView.tsx";
 import { useStoryText } from "./storyText.ts";
 import { Button, Section, Segmented } from "./ui.ts";
+import type { StageWeather } from "./stageWeather.ts";
+import { WeatherTag, weatherSentenceKey } from "./WeatherTag.tsx";
 
 type View = "route" | "stage" | "final";
 
@@ -35,9 +37,11 @@ export interface RaceStoryCardProps {
   /** "The route": profilen som foer etapen (StageTabV2 tegner den). */
   routeBody: ReactNode;
   onOpenStandings: () => void;
+  /** #6993: etapens vejr (stageWeather.ts); null = intet at vise. */
+  weather?: StageWeather | null;
 }
 
-export default function RaceStoryCard({ story, profile, series, climbs, cast, title, oneDay = false, hudLabel, routeBody, onOpenStandings }: RaceStoryCardProps) {
+export default function RaceStoryCard({ story, profile, series, climbs, cast, title, oneDay = false, hudLabel, routeBody, onOpenStandings, weather = null }: RaceStoryCardProps) {
   const { t } = useTranslation("races");
   const D = story.distance_km ?? (Number(profile?.distance_km) || 0);
   const finale = useMemo(() => finaleData(story), [story]);
@@ -64,6 +68,8 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
     ...(finale ? [{ value: "final", label: t("stagePageV2.story.view.final") }] : []),
   ];
 
+  const weatherSentence = weatherSentenceKey(weather);
+
   function jumpTo(line: StoryLine) {
     setKm(lineReplayKm(line, D || null));
     setView("stage");
@@ -81,6 +87,13 @@ export default function RaceStoryCard({ story, profile, series, climbs, cast, ti
           className="[&>button]:min-h-11"
         />
       </div>
+      {/* #6993: "The route" viser vejret i sine akser; her staar det for de andre visninger. */}
+      {weather && view !== "route" && (
+        <p className="m-0 mb-3 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm text-cz-2">
+          <WeatherTag weather={weather} className="font-data font-semibold text-cz-1" />
+          {weatherSentence && <span>{t(weatherSentence)}</span>}
+        </p>
+      )}
       {/* Forklaringen gaelder kun en log uden praecise tider (CodeRabbit). */}
       {!finale && !story.precise_times && <p className="m-0 mb-3 text-xs text-cz-3">{t("stagePageV2.story.noFinal")}</p>}
 

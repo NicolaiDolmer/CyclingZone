@@ -1428,7 +1428,7 @@
       },
       "weatherAndCobbles": {
         "title": "Vejr og brosten",
-        "text": "Hver etape har sit eget vejr. Sol og overskyet er den rolige baseline, intet ændrer sig. Regn sænker hele etapen og rammer en rytter, der er dårlig i regnvejr, hårdere end resten af gruppen. Vind bider mest, hvor vejen er åben; en stigning ligger i læ af sig selv. Regn øger også risikoen for et styrt på brosten, grus og i dristige nedkørsler. Du ser det som én melding i etapens tidslinje, på den kilometer, hvor det begynder at betyde noget, aldrig som et tal knyttet til den."
+        "text": "Hver etape har sit eget vejr, og etapesiden viser det: tørt, regn eller blæst. Tørt er den rolige baseline, intet ændrer sig. Regn sænker hele etapen. Vind bider mest, hvor vejen er åben; en stigning ligger i læ af sig selv. Begge rammer ryttere med svag nedkørsel og holdbarhed hårdest. Regn øger også risikoen for et styrt på brosten, grus og i dristige nedkørsler. Når regn eller vind kostede rytterne kraft, siger løbshistorien det i én linje, aldrig med et tal knyttet til. En holdtidskørsel køres uden vejr."
       }
     }
   },

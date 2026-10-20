@@ -16,6 +16,8 @@ import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent } from "./YourDayCard.tsx";
 import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, type RaceStory } from "./raceStoryModel.ts";
+import { stageWeather, type StageWeather } from "./stageWeather.ts";
+import { WeatherTag } from "./WeatherTag.tsx";
 import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines } from "./ui.ts";
 
 function FitBar({ fit }: { fit: number }) {
@@ -33,17 +35,18 @@ function FitBar({ fit }: { fit: number }) {
   );
 }
 
-function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, bare = false }: { profile: StageProfile; stageLabel: string; band: boolean; selectedClimb: number; onSelectClimb: (i: number) => void; bare?: boolean }) {
+function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, bare = false, weather = null }: { profile: StageProfile; stageLabel: string; band: boolean; selectedClimb: number; onSelectClimb: (i: number) => void; bare?: boolean; weather?: StageWeather | null }) {
   const { t } = useTranslation("races");
   const series = useMemo(() => elevationSeries(profile), [profile]);
   const climbs = useMemo(() => sortedClimbs(profile), [profile]);
   const terrainKey = profileLabelKey(profile.profile_type);
   const finaleKey = finaleLabelKey(profile.finale_type);
   const surface = surfaceOf(profile);
-  const axes: Array<[string, string]> = [];
+  const axes: Array<[string, ReactNode]> = [];
   if (terrainKey) axes.push([t("stagePageV2.axes.terrain"), t(`detail.${terrainKey}`)]);
   if (finaleKey) axes.push([t("stagePageV2.axes.finish"), t(`detail.${finaleKey}`)]);
   if (surface) axes.push([t("stagePageV2.axes.surface"), t("stagePageV2.axes.surfaceValue", { kind: surface.kind, count: surface.count, km: formatNumber(surface.km) })]);
+  if (weather) axes.push([t("stagePageV2.axes.weather"), <WeatherTag weather={weather} />]);
   const sprint = (profile.sprints ?? []).find((s) => s.kind === "intermediate");
 
   const stats = t("stagePageV2.profile.stats", {
@@ -123,6 +126,7 @@ export default function StageTabV2({
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
   const cast = useMemo(() => castFrom(results, riders, stageNumber, myTeamId), [results, riders, stageNumber, myTeamId]);
+  const weather = stageWeather(profile, phase, story);
 
   if (phase === "after") {
     return (
@@ -149,7 +153,8 @@ export default function StageTabV2({
             oneDay={!isStageRace}
             title={isStageRace ? t("stagePageV2.story.title", { number: stageNumber }) : t("stagePageV2.story.titleOneDay")}
             hudLabel={isStageRace ? t("stagePageV2.stripStage", { number: stageNumber }) : t("stagePageV2.story.hudOneDay")}
-            routeBody={profile && series ? <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} bare /> : null}
+            weather={weather}
+            routeBody={profile && series ? <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} bare weather={weather} /> : null}
             onOpenStandings={onOpenStandings}
           />
         ) : profile && series && <ProfileCard profile={profile} stageLabel={stageLabel} band selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} />}
@@ -161,7 +166,7 @@ export default function StageTabV2({
 
   return (
     <SectionStack>
-      <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} />
+      <ProfileCard profile={profile} stageLabel={stageLabel} band={false} selectedClimb={climbIndex} onSelectClimb={setSelectedClimb} weather={weather} />
       <div className="grid grid-cols-1 items-start gap-[14px] lg:grid-cols-[1.35fr_1fr]">
         <SectionStack>
           <ClimbCard profile={profile} series={series} climbs={climbs} selected={climbIndex} onSelect={setSelectedClimb} />

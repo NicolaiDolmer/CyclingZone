@@ -24,7 +24,18 @@
       "terrain": "Terrain",
       "finish": "Finish",
       "surface": "Surface",
-      "surfaceValue": "{kind, select, gravel {Gravel} other {Cobbles}} · {count, plural, one {# sector} other {# sectors}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Cobbles}} · {count, plural, one {# sector} other {# sectors}}, {km} km",
+      "weather": "Weather"
+    },
+    "weather": {
+      "dry": "Dry",
+      "rain": "Rain",
+      "wind": "Wind",
+      "aria": "Weather: {word}",
+      "mattered": {
+        "rain": "The rain hit riders with weak descending and durability hardest.",
+        "wind": "The wind on the open roads hit riders with weak descending and durability hardest."
+      }
     },
     "climbs": {
       "title": "The climbs",
