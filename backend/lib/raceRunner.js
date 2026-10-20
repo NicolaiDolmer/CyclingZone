@@ -1879,6 +1879,12 @@ export function applyFrozenMedical({ race, runs, incidents, timelines }) {
   return applyMedicalToStageOutputs({ incidents, timelines, bonusByRider, raceId: race.id });
 }
 
+/** #6984 REN: v2-snapshot + den gamle models belastning pr. rytter (legacy_load, til rollback-replay). */
+export function attachLegacyLoads(v2Rows, legacyRows) {
+  const legacy = new Map((legacyRows ?? []).map((row) => [String(row.rider_id), row.load]));
+  return (v2Rows ?? []).map((row) => ({ ...row, legacy_load: legacy.get(String(row.rider_id)) ?? null }));
+}
+
 async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision=null}) {
   // schema-columns-ok: condition_load_snapshot is added by this PR's 2026-09-29-5928-training-condition-date.sql and covered by actual SQL tests; reads are flag-gated until migration.
   const {data:saved,error}=await supabase.from('race_simulation_runs')
@@ -1903,6 +1909,12 @@ async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageR
         seasonRaceDaysByRider: await loadSeasonRaceDaysByRider({supabase,seasonId:race.season_id,riderIds:run.entrant_snapshot,excludeRaceId:race.id,excludeStageNumber:run.stage_number}),
       } : null;
       run.condition_load_snapshot=raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision,conditionWorkForRun(run),conditionV2);
+      // #6984: den gamle models belastning fryses ved siden af (legacy_load), så en
+      // eventuel rollback-reparation kan genafspille den kontrafaktiske gamle tilstand
+      // i stedet for at køre v2-tal gennem den gamle afregning. RPC'en læser kun rider_id/load.
+      if(conditionV2On) {
+        run.condition_load_snapshot=attachLegacyLoads(run.condition_load_snapshot,raceConditionLoads(run.entrant_snapshot,stage?.profile_type,effortByRider,rulesRevision,conditionWorkForRun(run)));
+      }
       // #6984: medicin-bonus fryses med snapshottet (RPC'en læser kun rider_id/load).
       if(conditionV2On) {
         const medical=await loadMedicalBonusForRiders({supabase,raceId:race.id,riderIds:run.entrant_snapshot});

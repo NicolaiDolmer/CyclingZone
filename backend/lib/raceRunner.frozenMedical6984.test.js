@@ -35,3 +35,14 @@ test("et udgået styrt hvor medicinen undgik skaden giver ingen skaderække", as
   assert.ok(!rows.some((r) => avoided.some((a) => a.rider_id === r.rider_id)));
   assert.equal(incidentInjuryUpsertRows({ incidents: many, todayStr: "2026-11-01" }).length, many.length, "uden medicin uændret");
 });
+
+test("v2-snapshottet bærer den gamle models belastning (legacy_load) til rollback-replay", async () => {
+  const { attachLegacyLoads } = await import("./raceRunner.js");
+  const { raceConditionLoads } = await import("./raceFatigue.js");
+  const v2 = raceConditionLoads(["a", "b"], "mountain", null, "s5_profiles_v1", { stageNumber: 9 }, { distanceKm: 200, seasonRaceDaysByRider: new Map([["a", 40]]) });
+  const v1 = raceConditionLoads(["a", "b"], "mountain", null, "s5_profiles_v1", { stageNumber: 9 });
+  const out = attachLegacyLoads(v2, v1);
+  assert.deepEqual(out.map((r) => r.load), v2.map((r) => r.load), "v2-belastningen er uændret");
+  assert.deepEqual(out.map((r) => r.legacy_load), v1.map((r) => r.load));
+  assert.notEqual(out[0].load, out[0].legacy_load);
+});
