@@ -358,7 +358,7 @@
       "race_identity_type": "cobbles_benelux",
       "signature": {
         "features": [
-          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Skovbøllevej", "length_km": 1.2 },
+          { "kind": "sector", "stage_hint": "any", "surface": "cobbles", "name": "Skovbyvej", "length_km": 1.2 },
           { "kind": "sector", "stage_hint": "last", "surface": "cobbles", "name": "Ryttervejen", "length_km": 1 }
         ]
       },

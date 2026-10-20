@@ -622,6 +622,409 @@
         "title": "Terrain and stage profiles",
         "text": "From season 2, races with route data show the stage's real profile: it's the exact route the race engine runs, with each climb's length, gradient and category, the intermediate sprint, cobbled sectors, and where the finish falls. A climb's category sets how many mountain points are up for grabs at the top, and a finish at the top of a climb opens bigger time gaps than a finish after a descent. Tap a marker on the profile to see what's at stake there, or who took it once the stage has been ridden. Older races without route data still show the earlier terrain badge: a schematic silhouette and an indicative category, not a measured profile."
       },
+      "raceIdentity": {
+        "title": "Race types and signatures",
+        "text": "From season 5 every short stage race has a fixed type that follows it from season to season, so you know what kind of race you are planning for. Each race also has one or two signatures that come back every year: the same decisive climb, sector or time trial. The rest of the route varies a little from edition to edition. The five monuments run the same route every year; only the weather, form and tactics change. Grand Tours keep their own format. You only see the type here in Help; on the race page it shows up in the route itself.",
+        "rows": [
+          [
+            "Type",
+            "What to expect"
+          ],
+          [
+            "Sprinters' race",
+            "Flat and rolling stages with one hilly day. No mountains, so the sprinters decide it."
+          ],
+          [
+            "Climbers' race",
+            "Mountain and high-mountain stages decide it. In Division 1 these are the warm-ups right before each Grand Tour."
+          ],
+          [
+            "Hilly race",
+            "Hills and short, steep climbs, but no real mountains. Made for riders with a punch."
+          ],
+          [
+            "Cobbles/Benelux",
+            "Cobbled sectors on flat, exposed roads. No mountains."
+          ],
+          [
+            "Time trial race",
+            "Time trials decide it: often a prologue on day one and a longer time trial late in the race."
+          ],
+          [
+            "Gravel race",
+            "Gravel sectors on hilly roads. No mountains."
+          ],
+          [
+            "Mountains first",
+            "The mountains come first. The sprinters reach the flat stages at the end on tired legs."
+          ],
+          [
+            "All-round",
+            "A bit of everything: flat stages, mountains and a time trial."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Every race's type and signature",
+        "text": "Sorted by division and by date in the calendar. Grand Tours are not on the list.",
+        "rows": [
+          [
+            "Race",
+            "Type",
+            "Signature"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Climbers' race",
+            "Summit finish on Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "Sprinters' race",
+            "Climb: Côte de Vauclairon"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Climbers' race",
+            "Summit finish on Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Sprinters' race",
+            "Climb: Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Mountains first",
+            "Summit finish on Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "All-round",
+            "Summit finish on Plateau des Glièrettes + hilly time trial"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Hilly race",
+            "Uphill finish on Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "All-round",
+            "Summit finish on Puerto de Sallentiza + flat time trial"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Climbers' race",
+            "Summit finish on Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "Gravel race",
+            "Gravel sector: Strada Bianca di Montesorbo + gravel sector: Sterrato del Pozzaccio on the last stage"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Hilly race",
+            "Uphill finish on Alto de Mendibeltz on the last stage"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Cobbles/Benelux",
+            "Cobbled sector: Pavé du Moulin-Brûlé + cobbled sector: Chemin des Quatre-Vents on the last stage"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Time trial race",
+            "Prologue + hilly time trial on the last stage"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "All-round",
+            "Summit finish on Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Climbers' race",
+            "Summit finish on Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Climbers' race",
+            "Summit finish on Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Hilly race",
+            "Climb: Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Mountains first",
+            "Summit finish on Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Climbers' race",
+            "Summit finish on Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Sprinters' race",
+            "Climb: Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Hilly race",
+            "Climb: Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Mountains first",
+            "Summit finish on Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Sprinters' race",
+            "Climb: Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Time trial race",
+            "Prologue + flat time trial on the last stage"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "All-round",
+            "Summit finish on Alto de Valdecuerna + flat time trial"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Hilly race",
+            "Uphill finish on Muro di Montevergello on the last stage"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Cobbles/Benelux",
+            "Cobbled sector: Pavés de Thieumont + cobbled sector: Chemin de la Hulpière on the last stage"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "All-round",
+            "Summit finish on Passo della Gaviola + hilly time trial"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Time trial race",
+            "Prologue + hilly time trial on the last stage"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Gravel race",
+            "Gravel sector: Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Cobbles/Benelux",
+            "Cobbled sector: Skovbyvej + cobbled sector: Ryttervejen on the last stage"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Sprinters' race",
+            "Climb: Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "All-round",
+            "Summit finish on Alto de Xorret del Pinós + flat time trial"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "Time trial race",
+            "Flat time trial on the last stage"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Hilly race",
+            "Uphill finish on Monte do Castrelo on the last stage"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Climbers' race",
+            "Summit finish on Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Cobbles/Benelux",
+            "Cobbled sector: Kasseiweg van Ronsbeke + cobbled sector: Holle Kasseistraat on the last stage"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Gravel race",
+            "Gravel sector: Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Climbers' race",
+            "Summit finish on Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Mountains first",
+            "Summit finish on Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "All-round",
+            "Summit finish on Alto da Senhora dos Ventos + flat time trial"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Sprinters' race",
+            "Climb: Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "All-round",
+            "Summit finish on Alto del Risco Pelado + hilly time trial"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Hilly race",
+            "Climb: Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Sprinters' race",
+            "Climb: Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Hilly race",
+            "Uphill finish on Stavnesbakken on the last stage"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Cobbles/Benelux",
+            "Cobbled sector: Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Sprinters' race",
+            "Climb: Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Climbers' race",
+            "Summit finish on Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Sprinters' race",
+            "Climb: Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Sprinters' race",
+            "Climb: Sallandse Bult"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Hilly race",
+            "Uphill finish on Muro di Castelvento on the last stage"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Gravel race",
+            "Gravel sector: Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "All-round",
+            "Flat time trial"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "All-round",
+            "Summit finish on Alto de Erroizar + hilly time trial"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Time trial race",
+            "Hilly time trial on the last stage"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Hilly race",
+            "Climb: Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Sprinters' race",
+            "Climb: Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Mountains first",
+            "Summit finish on Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Climbers' race",
+            "Summit finish on Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "All-round",
+            "Hilly time trial"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Hilly race",
+            "Climb: Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Cobbles/Benelux",
+            "Cobbled sector: Chemin de Kerlannec"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Cobbles/Benelux",
+            "Cobbled sector: Kasseistrook van Bertembos + cobbled sector: Holle Weg van Ottenrode on the last stage"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Time trial race",
+            "Prologue + hilly time trial on the last stage"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monument, fixed route",
+            "Cipressina and Poggio dei Fiori before the finish"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monument, fixed route",
+            "Oude Kwaremberg and Paterhelling before the finish, plus cobbled sectors"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monument, fixed route",
+            "Cobbled sectors from Trouée d'Arembourg to Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monument, fixed route",
+            "Côte de la Redoutière and Côte de la Roche-aux-Corbeaux, uphill finish"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monument, fixed route",
+            "Madonna del Ghisello, then Salita di Valtorta and a descent to the finish"
+          ]
+        ]
+      },
       "raceDetail": {
         "title": "Open a race: route, terrain DNA and your lineup",
         "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. Races with route data show the exact profile the engine runs; older races without it still show an indicative terrain category. On a stage's result tab you can switch between Stage, Overall, Points, Mountain, Youth and Teams to see the standings after that stage, and a team filter lets you narrow the tables to all teams, your own team, or one specific team."
