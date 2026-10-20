@@ -254,3 +254,39 @@ test("#6909 inputLines: feltets og ruternes kilde staar paa kortet", () => {
   assert.equal(lines[0], "Startfelt: 2 loeb med prod-tilmeldinger · 3 med syntetisk felt (generator: dry-run) · 1 uden felt sprunget over");
   assert.equal(lines[1], "Ruter: foreslaaede fra l3 (S5 v7), 5 loeb");
 });
+
+test("#6909 (Codex P2) readOnlyDb overlay: generatoren ser de foreslaaede etaper, ikke prod's", async () => {
+  const tables = { race_stage_profiles: [
+    { race_id: "r1", stage_number: 1, profile_type: "mountain" }, { race_id: "r1", stage_number: 2, profile_type: "mountain" },
+    { race_id: "r2", stage_number: 1, profile_type: "flat" },
+  ] };
+  const overlay = { table: "race_stage_profiles", key: "race_id", rowsByKey: new Map([["r1", [
+    { race_id: "r1", stage_number: 1, profile_type: "hilly" }, { race_id: "r1", stage_number: 2, profile_type: "flat" },
+  ]]]) };
+  const db = readOnlyDb(fakeDb(tables), { overlay });
+  const { data } = await db.from("race_stage_profiles").select("*").in("race_id", ["r1", "r2"]).order("race_id");
+  assert.deepEqual(data.map((r) => `${r.race_id}:${r.profile_type}`), ["r1:hilly", "r1:flat", "r2:flat"]);
+  assert.throws(() => db.from("race_stage_profiles").insert([]), /read-only/);
+});
+
+test("#6909 (Codex P2) generatorField med routesByRace sender overlay-klienten til generatoren", async () => {
+  const tables = {
+    races: [{ id: "r1", season_id: "s5" }],
+    race_stage_schedule: [{ race_id: "r1", stage_number: 1, scheduled_at: "2026-11-01T10:00:00Z" }],
+    race_stage_profiles: [{ race_id: "r1", stage_number: 1, profile_type: "mountain" }],
+  };
+  let seen = null;
+  const runner = async (args) => {
+    seen = (await args.supabase.from("race_stage_profiles").select("*").in("race_id", ["r1"])).data;
+    return { races: 1, teams: 0, generated: 0, staged: [] };
+  };
+  const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
+  await src.generatorField(["r1"], { routesByRace: new Map([["r1", [{ stage_number: 1, profile_type: "hilly" }]]]) });
+  assert.deepEqual(seen.map((r) => r.profile_type), ["hilly"]);
+});
+
+test("#6909 (Codex P1) generatorField: ingen planlagt start = klar fejl, aldrig vaeguret", async () => {
+  const tables = { races: [{ id: "r1", season_id: "s5" }], race_stage_schedule: [] };
+  const src = createProdSource(fakeDb(tables), { generatorRunner: async () => ({ staged: [] }), log: () => {} });
+  await assert.rejects(src.generatorField(["r1"]), /ingen planlagt start/);
+});

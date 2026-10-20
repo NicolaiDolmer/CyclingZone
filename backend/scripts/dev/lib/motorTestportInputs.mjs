@@ -115,23 +115,40 @@ export function withField(data, field) {
 }
 
 /** Prod-klient der kun kan laese: insert/update/upsert/delete og rpc kaster. */
-export function readOnlyDb(db) {
+export function readOnlyDb(db, { overlay = null } = {}) {
   const WRITES = new Set(["insert", "update", "upsert", "delete"]);
+  // #6909 (Codex P2): med --routes-from skal generatoren udtage feltet mod de
+  // FORESLAAEDE etaper. `overlay` = { table, key, rowsByKey: Map key -> raekker }:
+  // prod-raekkerne for de noegler erstattes af de foreslaaede (én gang pr. noegle,
+  // ogsaa hvis et loeb deles over flere sider).
+  const injected = new Set();
+  const swap = (rows) => {
+    if (!Array.isArray(rows)) return rows;
+    const out = [];
+    for (const r of rows) {
+      const k = r?.[overlay.key];
+      if (!overlay.rowsByKey.has(k)) { out.push(r); continue; }
+      if (injected.has(k)) continue;
+      injected.add(k);
+      out.push(...overlay.rowsByKey.get(k));
+    }
+    return out;
+  };
+  const wrap = (builder, table) => new Proxy(builder, {
+    get(b, p) {
+      if (WRITES.has(p)) return () => { throw new Error(`read-only (#6909): ${String(p)} paa ${table} afvist`); };
+      if (p === "then" && overlay && table === overlay.table) {
+        return (resolve, reject) => b.then((res) => resolve(res && !res.error ? { ...res, data: swap(res.data) } : res), reject);
+      }
+      const v = b[p];
+      if (typeof v !== "function") return v;
+      return (...args) => { const r = v.apply(b, args); return r === b ? wrap(b, table) : r; };
+    },
+  });
   return new Proxy(db, {
     get(target, prop) {
       if (prop === "rpc") return (fn) => { throw new Error(`read-only (#6909): rpc ${fn} afvist`); };
-      if (prop === "from") {
-        return (table) => {
-          const builder = target.from(table);
-          return new Proxy(builder, {
-            get(b, p) {
-              if (WRITES.has(p)) return () => { throw new Error(`read-only (#6909): ${String(p)} paa ${table} afvist`); };
-              const v = b[p];
-              return typeof v === "function" ? v.bind(b) : v;
-            },
-          });
-        };
-      }
+      if (prop === "from") return (table) => wrap(target.from(table), table);
       const v = target[prop];
       return typeof v === "function" ? v.bind(target) : v;
     },
@@ -187,7 +204,7 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
       const bench = await source.benchField();
       synthField = new Map(needSynthetic.map((id) => [id, bench]));
     } else {
-      synthField = await source.generatorField(needSynthetic);
+      synthField = await source.generatorField(needSynthetic, { routesByRace: routes?.byRace ?? null });
     }
   }
   const dataById = fromDir
@@ -285,7 +302,7 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
       }
       return out;
     },
-    async generatorField(ids) {
+    async generatorField(ids, { routesByRace = null } = {}) {
       const run = generatorRunner ?? (await import("../../../lib/raceEntryGenerator.js")).runRaceEntryGenerator;
       const races = await selectByIds(db, "races", "id, season_id", "id", ids, ["id"]);
       const out = new Map();
@@ -302,9 +319,15 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
         }
         const sched = await selectByIds(db, "race_stage_schedule", "race_id, stage_number, scheduled_at", "race_id", seasonRaceIds, ["race_id", "stage_number"]);
         const last = Math.max(...sched.map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite));
+        // #6909 (Codex P1): aldrig vaeguret - samme input skal give samme felt.
+        if (!Number.isFinite(last)) throw new Error(`syntetisk felt: saeson ${seasonId} har ingen planlagt start (race_stage_schedule.scheduled_at); kan ikke vaelge et deterministisk tidspunkt`);
+        const overlay = routesByRace ? {
+          table: "race_stage_profiles", key: "race_id",
+          rowsByKey: new Map([...routesByRace].map(([raceId, profiles]) => [raceId, profiles.map((p) => ({ ...p, race_id: raceId }))])),
+        } : null;
         const res = await run({
-          supabase: readOnlyDb(db), seasonId, dryRun: true, mode: "late_fill",
-          now: Number.isFinite(last) ? last : Date.now(), includeStaged: true, notify: async () => {},
+          supabase: readOnlyDb(db, { overlay }), seasonId, dryRun: true, mode: "late_fill",
+          now: last, includeStaged: true, notify: async () => {},
         });
         log(`syntetisk felt (generator, dry-run): saeson ${seasonId}: ${res.races} loeb, ${res.teams} hold, ${res.generated} pladser`);
         const byRace = entriesFromStaged(res.staged ?? []);
