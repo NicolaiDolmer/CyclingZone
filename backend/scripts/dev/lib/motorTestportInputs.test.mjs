@@ -11,7 +11,7 @@ import {
 import { inputLines } from "./motorTestportReport.mjs";
 
 const tmp = (tag) => mkdtempSync(path.join(tmpdir(), `testport-6909-${tag}-`));
-const profile = (n, type = "flat") => ({ stage_number: n, profile_type: type, finale_type: "bunch_sprint", distance_km: 100 + n, climbs: [] });
+const profile = (n, type = "flat") => ({ stage_number: n, profile_type: type, finale_type: "bunch_sprint", distance_km: 100 + n, climbs: [], demand_vector: { sprint: 0.6, flat: 0.4 } });
 const routeDoc = (raceId, n = 2) => ({ format: ROUTES_FORMAT, race_id: raceId, stages: n, profiles: Array.from({ length: n }, (_, i) => profile(i + 1, i ? "hilly" : "flat")) });
 const raceData = (id, { stages = 2, entries = [] } = {}) => ({
   race: { id, name: `Loeb ${id}`, stages, squad: "senior" },
@@ -146,7 +146,8 @@ test("#6909 createProdSource.generatorField: dry-run, read-only klient, late_fil
   assert.equal(calls[0].mode, "late_fill");
   assert.equal(calls[0].includeStaged, true);
   assert.equal(calls[0].seasonId, "s5");
-  assert.equal(calls[0].now, Date.parse("2026-12-01T10:00:00Z"));
+  // #6909 (Codex P2): r1 udtages paa sin egen start, ikke saesonens sidste.
+  assert.equal(calls[0].now, Date.parse("2026-10-25T10:00:00Z"));
   assert.deepEqual([...out.keys()], ["r1"], "kun de oenskede loeb");
   assert.deepEqual(out.get("r1").teams, [{ id: "t1", is_ai: true }]);
   assert.deepEqual(out.get("r1").abilities, [{ rider_id: "a", climbing: 1 }]);
@@ -288,7 +289,7 @@ test("#6909 (Codex P2) generatorField med routesByRace sender overlay-klienten t
 test("#6909 (Codex P1) generatorField: ingen planlagt start = klar fejl, aldrig vaeguret", async () => {
   const tables = { races: [{ id: "r1", season_id: "s5" }], race_stage_schedule: [] };
   const src = createProdSource(fakeDb(tables), { generatorRunner: async () => ({ staged: [] }), log: () => {} });
-  await assert.rejects(src.generatorField(["r1"]), /ingen planlagt start/);
+  await assert.rejects(src.generatorField(["r1"]), /uden planlagt start/);
 });
 
 test("#6909 (Codex P2) loadRoutesDir: fingeraftrykket skifter naar en rutefil aendres", () => {
@@ -300,4 +301,36 @@ test("#6909 (Codex P2) loadRoutesDir: fingeraftrykket skifter naar en rutefil ae
   writeFileSync(path.join(dir, "race-a.json"), JSON.stringify(doc));
   assert.notEqual(loadRoutesDir(dir).signature, a);
   rmSync(dir, { recursive: true, force: true });
+});
+
+test("#6909 (Codex P2) validateRouteDoc: demand_vector skal findes og have mindst ét positivt krav", () => {
+  for (const dv of [undefined, {}, { sprint: 0 }, { sprint: -1, flat: 1 }, { sprint: "x" }, [1]]) {
+    const d = routeDoc("race-a", 1); d.profiles[0].demand_vector = dv;
+    assert.throws(() => validateRouteDoc(d, "race-a"), /demand_vector/);
+  }
+});
+
+test("#6909 (Codex P2) generatorField: én generator-koersel pr. startdato, hvert loeb faar sit eget felt", async () => {
+  const tables = {
+    races: [{ id: "r1", season_id: "s5" }, { id: "r2", season_id: "s5" }],
+    race_stage_schedule: [
+      { race_id: "r1", stage_number: 1, scheduled_at: "2026-10-28T10:00:00Z" },
+      { race_id: "r1", stage_number: 2, scheduled_at: "2026-10-29T10:00:00Z" },
+      { race_id: "r2", stage_number: 1, scheduled_at: "2026-12-01T10:00:00Z" },
+    ],
+    teams: [{ id: "t1", is_ai: true }], rider_derived_abilities: [],
+  };
+  const nows = [];
+  const runner = async (args) => {
+    nows.push(args.now);
+    return { generated: 2, staged: [
+      { race_id: "r1", team_id: "t1", picks: [{ rider_id: `a@${args.now}`, race_role: "captain" }] },
+      { race_id: "r2", team_id: "t1", picks: [{ rider_id: `b@${args.now}`, race_role: "captain" }] },
+    ] };
+  };
+  const src = createProdSource(fakeDb(tables), { generatorRunner: runner, log: () => {} });
+  const out = await src.generatorField(["r1", "r2"]);
+  assert.deepEqual(nows, [Date.parse("2026-10-28T10:00:00Z"), Date.parse("2026-12-01T10:00:00Z")]);
+  assert.equal(out.get("r1").entries[0].rider_id, `a@${Date.parse("2026-10-28T10:00:00Z")}`);
+  assert.equal(out.get("r2").entries[0].rider_id, `b@${Date.parse("2026-12-01T10:00:00Z")}`);
 });

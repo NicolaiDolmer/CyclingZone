@@ -391,7 +391,7 @@ test("#6909 main: --from-dir + --routes-from + --synthetic-field=bench bygger ca
     for (const [id, entries] of [["a", [{ rider_id: "x", team_id: "t1", race_role: "captain" }]], ["b", []]]) {
       mkdirSync(path.join(exp, id), { recursive: true });
       writeFileSync(path.join(exp, id, "cache.json"), JSON.stringify(race(id, entries)));
-      writeFileSync(path.join(routesDir, `${id}.json`), JSON.stringify({ format: "cz-race-routes/v1", race_id: id, stages: 1, profiles: [{ stage_number: 1, profile_type: "flat" }] }));
+      writeFileSync(path.join(routesDir, `${id}.json`), JSON.stringify({ format: "cz-race-routes/v1", race_id: id, stages: 1, profiles: [{ stage_number: 1, profile_type: "flat", demand_vector: { sprint: 1 } }] }));
       // Loebene er allerede koert (done + scorecard), saa main starter ingen child-processer.
       mkdirSync(path.join(out, "races", id), { recursive: true });
       writeFileSync(path.join(out, "races", id, "done"), "x");
