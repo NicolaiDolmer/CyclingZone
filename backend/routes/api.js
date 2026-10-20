@@ -3237,6 +3237,8 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
       const reports = [];
       let ranAny = false;
       let lastTickDate = null;
+      // #6827: en loebsdag som en anden koersel holder, kaster (409 training_in_progress
+      // i catch'en nedenfor) og stopper loekken: ingen senere loebsdage koeres.
       for (const gameDay of gameDays) {
         const r = await runTeamTrainingDay({
           supabase,

@@ -8,6 +8,7 @@
   },
   "trainNow": {
     "button": "Train now",
+    "running": "Running…",
     "helper": "Locks today's training and today's race selection. The result is the same as if you wait.",
     "helperRace": "Locks today's training and today's race selection ({race}). The result is the same as if you wait.",
     "locked": "Today's training and entries are locked. Fatigue and form update at the evening settlement.",
@@ -71,6 +72,7 @@
     "statusPaused": "Paused",
     "statusNotYet": "Not run yet",
     "statusWaiting": "Runs on its own from {hour}:00",
+    "statusRunning": "Running, auto-updates",
     "statusReady": "Ready to run",
     "runNow": "Run now",
     "showing": "Showing: {label}",

@@ -1,8 +1,11 @@
+import { trainingDateRpc } from "./trainingDateRpc.js";
 // Daglig trænings-orchestrator (#1305) — eksekverer ÉN trænings-dag for ÉT hold.
 //
 // Idempotent via et unique-index i training_day_runs: reservation-first strategi
 // bruger en pending-row som mutex. Postgres 23505 unique-violation ved INSERT
-// → alreadyRan=true uden videre DB-skriv.
+// → alreadyRan=true uden videre DB-skriv, medmindre raekken er en reservation som en
+// anden koersel holder lige nu: saa en retryable held-fejl (#6759 gammel sti, #6827
+// loebsdags-stien).
 //
 // #4846/#4847: HVILKET index der er mutexen afgoeres af `training_tick_per_race_day`:
 //   flag off → UNIQUE(team_id, tick_date)                                   WHERE game_day IS NULL
@@ -170,6 +173,42 @@ function reservationHeldError(teamId, tickDate) {
  */
 export function isTrainingReservationHeldError(err) {
   return err?.retryable === true && err?.code === TRAINING_RESERVATION_HELD;
+}
+
+// ── #6827: holdt reservation paa loebsdags-stien ─────────────────────────────
+// Loebsdags-raekken staar som `{ pending: true }` fra reservationen til den sidste
+// rapport-update, altsaa gennem baade phase 1 og phase 2. En optaget noegle betyder
+// derfor ikke noedvendigvis "allerede koert": en sweep kan vaere midt i samme
+// loebsdag. Train now maa ikke svare already_trained_today og gaa videre til
+// senere loebsdage, mens det tidligere tick stadig skriver (409, se routen).
+//   afregnet (ingen pending)       → alreadyRan som foer.
+//   frisk pending (< taerskelen)   → retryable held-fejl; intet er skrevet.
+//   forældet pending               → alreadyRan som foer: en efterladt raekke (fx
+//                                    nedbrud i phase 2) er en blokeret loebsdag,
+//                                    aldrig en ledig (ingen overtagelse her).
+//   ingen raekke (frigivet imens)  → retryable held-fejl: den anden koersel
+//                                    fejlede i phase 1, proev igen om lidt.
+// Samme taerskel som den gamle sti (STALE_LEGACY_RESERVATION_MS); et tick for ét
+// hold tager sekunder, saa en levende koersel er altid frisk.
+/**
+ * @param {{pending?:string|boolean|null, report?:{pending?:boolean}|null, created_at?:string|null}} row
+ * @param {Date} now
+ */
+export function isHeldRaceDayReservation(row, now) {
+  if (String(row?.pending ?? row?.report?.pending) !== "true") return false;
+  const createdAt = Date.parse(row.created_at ?? "");
+  // Ukendt alder behandles konservativt som en levende koersel.
+  return !Number.isFinite(createdAt) || createdAt >= now.getTime() - STALE_LEGACY_RESERVATION_MS;
+}
+
+async function assertRaceDayReservationSettled({ supabase, runRowFilter, teamId, tickDate, now }) {
+  const { data: rows, error } = await runRowFilter(
+    supabase.from("training_day_runs").select("created_at, pending:report->>pending"),
+  );
+  if (error) throw new Error(`training_day_runs reservation lookup: ${error.message}`);
+  if (!(rows ?? []).length || rows.some((row) => isHeldRaceDayReservation(row, now))) {
+    throw reservationHeldError(teamId, tickDate);
+  }
 }
 
 // ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────
@@ -459,6 +498,10 @@ export async function runTeamTrainingDay({
     // maaske stadig i phase 1 — ikke "alreadyRan", men proev igen senere.
     if (insertError?.code === "23505") throw reservationHeldError(teamId, tickDate);
   }
+  // #6827: paa loebsdags-stien kaster en holdt raekke; kun en afregnet giver alreadyRan.
+  if (insertError?.code === "23505" && useRaceDayKey) {
+    await assertRaceDayReservationSettled({ supabase, runRowFilter, teamId, tickDate, now });
+  }
 
   if (insertError) {
     if (insertError.code === "23505") {
@@ -483,11 +526,12 @@ export async function runTeamTrainingDay({
   if(conditionPerDate && roster==null) throw new Error('Frozen training date requires a verified roster');
   let riders=roster??[];
   if(conditionPerDate) {
-    const {data:work,error}=await supabase.rpc('register_training_date_work',{
+    const {data:work,error}=await trainingDateRpc(supabase, 'register_training_date_work',{
       p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_game_days:dateDays,
       p_expected_rider_ids:dateWork?.expected_rider_ids ?? riders.map(rider=>rider.id),p_deadline_at:deadlineAt,p_registered_at:now.toISOString(),
-    });
+    }, executedBy === 'manager');
     if(error) throw new Error(`register training date: ${error.message}`);
+    if(work?.held === true) throw reservationHeldError(teamId, tickDate);
     dateWork=work;
     const unsafe=dateWork.expected_rider_ids.filter(id=>{
       const rider=riders.find(row=>row.id===id);
@@ -518,13 +562,14 @@ export async function runTeamTrainingDay({
     if (conditionPerDate) {
       emptyReport.condition_per_date = true;
       emptyReport.condition_settled = settlesCondition;
-      const { error } = await supabase.rpc('commit_training_date_tick', {
+      const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
         p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
         p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
         p_executed_by: executedBy, p_report: emptyReport, p_abilities: [], p_conditions: [],
         p_history: [], p_race_history: [], p_scores: [],
-      });
+      }, executedBy === 'manager');
       if (error) throw new Error(`daily condition commit: ${error.message}`);
+      if (data?.held === true) throw reservationHeldError(teamId, tickDate);
     } else if (useRaceDayKey) await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
     else {
       // #6759: samme ejerskabs-bevis som skiftet til "writing" (token), saa en
@@ -1392,7 +1437,7 @@ export async function runTeamTrainingDay({
     const report = { riders: reportRiders, bonus_applied: bonus, executed_by: executedBy,
       tick_date: tickDate, game_day: raceDay, date_game_days: dateDays, condition_per_date: true,
       condition_settled: settlesCondition };
-    const { data, error } = await supabase.rpc('commit_training_date_tick', {
+    const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
       p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
       p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
       p_executed_by: executedBy, p_report: report,
@@ -1400,8 +1445,9 @@ export async function runTeamTrainingDay({
       p_history: historyRows, p_race_history: raceDayHistoryRows, p_scores: scoreRows,
       p_race_loads: settlesCondition ? raceLoadRows : [],
       p_deadline_reached:deadlineReached,p_now:now.toISOString(),
-    });
+    }, executedBy === 'manager');
     if (error) throw new Error(`daily condition commit: ${error.message}`);
+    if (data?.held === true) throw reservationHeldError(teamId, tickDate);
     return { alreadyRan: data?.already_ran === true, tickDate, gameDay: raceDay, squad: squadKey, report:data?.report??report,workStatus:data?.work_status??null };
   }
   // Fra dette punkt er writes i gang: ved fejl bevares reservationen BEVIDST (blokeret dag er

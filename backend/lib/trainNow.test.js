@@ -610,3 +610,37 @@ test("#6536: a parked team cannot press (409 team_parked), nothing written", asy
   assert.deepEqual([result.status, result.body.error], [409, "team_parked"]);
   assert.equal(calls.length + supabase.writes.length, 0);
 });
+
+// Same shape as dailyTrainingEngine's held error (isTrainingReservationHeldError).
+function makeTrainingReservationHeldError() {
+  const err = new Error("training_day_runs: reservation held by an unfinished run");
+  err.retryable = true;
+  err.code = "training_reservation_held";
+  return err;
+}
+
+// #6839 (owner choice A 19/10): the evening run holds a race day. The press answers
+// 409 training_in_progress (the page shows "Running…" and updates by itself), runs
+// no later race day, and never becomes a 500.
+test("#6839: a race day held by the evening run answers 409 training_in_progress, no later day runs", async () => {
+  const state = baseState();
+  const { deps, calls } = harness(state);
+  deps.runDay = async (args) => {
+    calls.push(args);
+    if (args.gameDay === 32) throw makeTrainingReservationHeldError();
+    return { alreadyRan: false };
+  };
+  const result = await runTrainNow(deps);
+  assert.equal(result.status, 409);
+  assert.equal(result.body.error, "training_in_progress");
+  assert.deepEqual(result.body.settledGameDays, [31]);
+  assert.equal(result.body.locked, true, "this press locked the date before the held day");
+  assert.deepEqual(calls.map((c) => c.gameDay), [31, 32], "stops at the held day");
+});
+
+test("#6839: any other engine error still throws (route answers 500 + Sentry)", async () => {
+  const state = baseState();
+  const { deps } = harness(state);
+  deps.runDay = async () => { throw new Error("boom"); };
+  await assert.rejects(runTrainNow(deps), /boom/);
+});

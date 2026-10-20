@@ -12,22 +12,76 @@ import {
 } from "./TrainNowState.ts";
 
 const PATH = "/api/training/train-now";
+// #6839: while the evening run holds the date, ask again this often until it is settled.
+export const TRAIN_NOW_RUNNING_POLL_MS = 10_000;
+export const TRAIN_NOW_RUNNING_MAX_MS = 15 * 60_000;
+export const TRAIN_NOW_STATUS_TIMEOUT_MS = 8_000;
 
 export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> | void } = {}) {
   const [status, setStatus] = useState<TrainNowStatus>(TRAIN_NOW_OFF);
   const [result, setResult] = useState<TrainNowPressResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pressing, setPressing] = useState(false);
+  // #6839 (owner choice A 19/10): the evening run is training the team right now.
+  const [running, setRunning] = useState(false);
+  // #6839 (Codex P2): did OUR press lock the date before the evening run held it?
+  // Then "locked" is not a finish line. Otherwise a lock that appears while we wait
+  // is a competing press (another tab) that completed: stop and show it.
+  const heldWhileLocked = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (signal?: AbortSignal): Promise<TrainNowStatus | null> => {
     const headers = await authHeaders();
-    if (!headers) return;
-    const res = await apiFetch(PATH, { headers }, { source: "training-train-now" });
-    if (!res.ok) return;
-    setStatus(parseTrainNowStatus(res.data));
+    if (!headers || signal?.aborted) return null;
+    const res = await apiFetch(PATH, { headers, signal }, { source: "training-train-now" });
+    if (!res.ok || signal?.aborted) return null;
+    const next = parseTrainNowStatus(res.data);
+    setStatus(next);
+    return next;
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // #6839: poll until the date is settled, then refresh the page once. The ceiling
+  // is a timer of its own, so a status call that never answers cannot keep the
+  // buttons locked; one call at a time, each bounded by TRAIN_NOW_STATUS_TIMEOUT_MS.
+  useEffect(() => {
+    if (!running) return undefined;
+    let stopped = false;
+    let polling = false;
+    let controller: AbortController | null = null;
+    const stop = () => {
+      if (stopped) return false;
+      stopped = true;
+      controller?.abort();
+      clearInterval(timer);
+      clearTimeout(ceiling);
+      setRunning(false);
+      return true;
+    };
+    const ceiling = setTimeout(stop, TRAIN_NOW_RUNNING_MAX_MS);
+    const timer = setInterval(async () => {
+      if (stopped || polling) return;
+      polling = true;
+      controller = new AbortController();
+      const request = controller;
+      const timeout = setTimeout(() => request.abort(), TRAIN_NOW_STATUS_TIMEOUT_MS);
+      try {
+        // Keep polling=true until the actual request settles, including abort.
+        const next = await load(request.signal);
+        const done = next?.settled === true || (next?.locked === true && !heldWhileLocked.current);
+        if (done && stop()) {
+          try { await onSettled?.(); } catch { /* best-effort: the next visit shows it */ }
+        }
+      } catch {
+        // Aborted/unavailable status is retried by the next poll, without a UI error.
+      } finally {
+        clearTimeout(timeout);
+        controller = null;
+        polling = false;
+      }
+    }, TRAIN_NOW_RUNNING_POLL_MS);
+    return () => { stopped = true; controller?.abort(); clearInterval(timer); clearTimeout(ceiling); };
+  }, [running, load, onSettled]);
 
   // Synchronous in-flight guard: a second tap while the first POST is pending
   // sends nothing (state updates are not visible until the next render).
@@ -49,9 +103,15 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
         method: "POST", headers, body: JSON.stringify({ confirmedShortRaceIds }),
       }, { source: "training-train-now" });
       const data = (res.data ?? {}) as {
-        error?: string; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
+        error?: string; locked?: boolean; lockedAt?: string; settledRiderIds?: string[]; afterRaceRiderIds?: string[]; settledGameDays?: number[];
         shortRaces?: unknown;
       };
+      if (!res.ok && data.error === "training_in_progress") {
+        // #6839: not an error. The page shows "Running…" and updates by itself.
+        heldWhileLocked.current = data.locked === true;
+        setRunning(true);
+        return { ok: false, error: "training_in_progress" };
+      }
       if (!res.ok && data.error === "short_races_confirm") {
         setStatus((prev) => ({ ...prev, shortRaces: parseShortRaces(data.shortRaces) }));
         return { ok: false, error: "short_races_confirm" };
@@ -87,5 +147,5 @@ export function useTrainNow({ onSettled }: { onSettled?: () => Promise<unknown> 
     }
   }, [load, onSettled]);
 
-  return { status, result, error, pressing, press, reload: load };
+  return { status, result, error, pressing, running, press, reload: load };
 }
