@@ -8,6 +8,7 @@
   },
   "trainNow": {
     "button": "Nu trainen",
+    "running": "Bezig…",
     "helper": "Vergrendelt de training van vandaag en de koersselectie van vandaag. Het resultaat is hetzelfde als wanneer je wacht.",
     "helperRace": "Vergrendelt de training van vandaag en de koersselectie van vandaag ({race}). Het resultaat is hetzelfde als wanneer je wacht.",
     "locked": "De training en inschrijvingen van vandaag zijn vergrendeld. Vermoeidheid en vorm worden bij de avondafrekening bijgewerkt.",
@@ -71,6 +72,7 @@
     "statusPaused": "Gepauzeerd",
     "statusNotYet": "Nog niet gedraaid",
     "statusWaiting": "Draait vanzelf vanaf {hour}:00",
+    "statusRunning": "Bezig, ververst zelf",
     "statusReady": "Klaar om te draaien",
     "runNow": "Nu draaien",
     "showing": "Getoond: {label}",
