@@ -1,6 +1,6 @@
 # Medicinsk afdeling koblet til form og træthed (#6984)
 
-**Status:** ejer-beslutning 20/10 (låst, #6984): **M1, M2, M3, M4 og M8 bygges**, sammen med Form og træthed 2.0 ([design](2026-10-20-6984-form-traethed-design.md)), bag `condition_model_v2`, tændes ved S5-start på ejerens go efter harness-gaten. M5 udgår. M6 (styrt: fortsæt/stå af), M7 (højdetræningslejr) og M9 (sygdom) er ikke valgt nu. Spillertekst (M4/M8, help.json) følger `docs/TONE_OF_VOICE.md` og vises ejeren før merge.
+**Status:** ejer-beslutning 20/10 (låst, #6984): **M1 (forstærker), M2, M3, M4 og M8 bygges**, sammen med Form og træthed 2.0 ([design](2026-10-20-6984-form-traethed-design.md)), bag `condition_model_v2`, tændes ved S5-start på ejerens go efter harness-gaten. M5 udgår. M6 (styrt: fortsæt/stå af), M7 (højdetræningslejr) og M9 (sygdom) er ikke valgt nu. Spillertekst (M4/M8, help.json) følger `docs/TONE_OF_VOICE.md` og vises ejeren før merge.
 **Tal:** alle styrker og lofter ligger privat i `balance-internals/6984/medicin-konstanter-2026-10-20.md` (hard rule 17).
 **Udgifter:** ingen løbende driftsudgift (facilitetsudgifterne er fjernet fra S5, #6936). Kun den eksisterende engangspris for at opgradere et tier og chefens løn som i dag.
 
@@ -24,10 +24,10 @@ Spillerne har altså kunnet købe en afdeling, der intet gør. Det er det først
 
 Fælles princip: afdelingen gør en god manager bedre, men den kan aldrig gøre en Grand Tour gratis igen. Alle effekter regnes fra samme tal (`effectiveBonus('medical', tier, chef)`, der afhænger af afdelingens niveau og chefens samlede styrke; formlen står privat), har et samlet loft og ligger bag flaget `condition_model_v2`. Første version bruger kun det fælles tal; chefens to specialakser (`recovery`, `injuryPrevention`) indgår ikke endnu, så to chefer med samme samlede styrke giver samme effekt. En akse-afhængig vægt pr. effekt kan lægges på senere og kræver et ejer-valg. Effekterne indgår i harness-gaten (§7 i designet) med tier 5 og topchef som værste tilfælde.
 
-### M1 · Hurtigere restitution
-- **Hvad:** rytterens daglige restitution bliver lidt større.
+### M1 · Forstærker rytterens recovery-evne
+- **Hvad (ejer 20/10, efter staff-feedback: "restitution skal afgøres af evnerne"):** afdelingen forstærker rytterens egen recovery-evne i den daglige restitution; den giver ingen fast bonus. Evnen afgør stadig det meste: en god restituerer får mest ud af afdelingen, en dårlig lidt, og gulvet (det alle får) er uændret.
 - **Spillerens gevinst:** kan køre lidt flere løbsdage, før sæsonbelastningen bider; hviledage giver mere tilbage.
-- **Kræver:** én faktor ind i v2's restitutionsfunktion. Lille.
+- **Kræver:** afdelingens faktor ganges på evne-leddene i v2's restitutionsfunktion (det faste evne-bidrag og evnens del af den proportionale andel). Klubkortet viser effekten som "+X % på rytterens restitutionsevne". Lille.
 - **Bygger på:** spillerkrav 3 i #6984 (friisisch 20/10: restitution skal betyde mere), help.json-løftet, roadmap-ønsket "Medical: hurtigere restitution".
 
 ### M2 · Færre skader
