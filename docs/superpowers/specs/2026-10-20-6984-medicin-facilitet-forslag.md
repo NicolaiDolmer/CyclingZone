@@ -78,7 +78,7 @@ I dag viser klubsiden Medicin som "Coming soon" og skjuler køb og ansættelse, 
 ## 5. Gate
 
 Samme gate som designets §7 plus:
-- **(a) Fast scenarie:** en rytter med middel recovery, normal indsats, restitution på alle frie pladser, der kører alle etaper i sæsonens tre Grand Tours (S4-kalenderen genafspillet), skal med tier 5 og topchef stadig ligge over skadegrænsen på toppen af den tredje Grand Tour. Medicinen må gøre det lettere, ikke gratis.
+- **(a) Fast scenarie:** en rytter med middel recovery, normal indsats, restitution på alle frie pladser, der kører alle etaper i sæsonens tre Grand Tours på S5-kalenderen (den kalender funktionen tændes på; S4-genafspilningen beholdes som ekstra regression), skal med tier 5 og topchef stadig ligge over skadegrænsen på toppen af den tredje Grand Tour. Medicinen må gøre det lettere, ikke gratis.
 - **(b) Population:** harnessen køres med alle menneskehold på tier 5 + topchef; G1 og G3 fra designets §7 skal stadig holde, og forskellen mod "ingen afdeling" vises ejeren.
 - **(c)** Skader pr. 1.000 rytter-datoer pr. tier vises til ejeren.
 - **(d)** Flag off = bit-identisk; hold uden afdeling = identisk med v2 uden medicin.
