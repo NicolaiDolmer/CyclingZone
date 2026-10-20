@@ -13,7 +13,7 @@ import { nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.j
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isS5ProfilesV1OrLater } from "./raceEngineRulesRevision.ts";
 import { stageLoadV2, enteringFatigueV2 } from "./conditionModelV2.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 
 const RACE_FATIGUE_BY_PROFILE = {
@@ -435,8 +435,8 @@ export async function loadSeasonRaceDaysByRider({ supabase, seasonId, riderIds, 
   const out = new Map(ids.map((id) => [id, 0]));
   if (!seasonId || !ids.length) return out;
   const daysByRider = new Map();
-  for (let i = 0; i < ids.length; i += 200) {
-    const chunk = ids.slice(i, i + 200);
+  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
     const rows = await fetchAllRows(() => supabase.from("training_race_loads")
       .select("rider_id, game_day, race_id, stage_number")
       .eq("season_id", seasonId)
@@ -474,11 +474,11 @@ export async function applySameDateEnteringFatigueV2({ supabase, raceId, stageNu
   const tickDate = copenhagenDateString(new Date(sched.scheduled_at));
   const ids = withCondition.map((e) => e.rider_id);
   const rows = [];
-  for (let i = 0; i < ids.length; i += 200) {
-    // pagination-safe: ≤200 ryttere × højst 4 tidligere løbsdage samme dato.
+  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    // pagination-safe: ≤100 ryttere × højst 4 tidligere løbsdage samme dato.
     const { data, error } = await supabase.from("training_race_loads")
       .select("rider_id, game_day, load")
-      .in("rider_id", ids.slice(i, i + 200))
+      .in("rider_id", ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE))
       .eq("tick_date", tickDate).lt("game_day", gameDay)
       .is("consumed_at", null).is("duplicate_of_race_id", null)
       .order("game_day");

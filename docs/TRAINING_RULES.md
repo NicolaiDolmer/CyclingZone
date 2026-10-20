@@ -592,6 +592,20 @@ peak-vinduet, minus dykket i tilbagebetalingen bagefter, klampet til 0-100. Till
 samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
 Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
 
+### 5.3b Form og træthed 2.0 (`condition_model_v2`, #6984, **slukket**)
+
+Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`](superpowers/specs/2026-10-20-6984-form-traethed-design.md). Bag flaget `condition_model_v2` (ingen app_config-række = off; kræver `training_condition_per_date`). Flag off = §5.1-5.3 uændret.
+
+| Regel | Kode |
+|---|---|
+| B1: hver etape er et helt døgn: belastning lægges til og én restitution trækkes fra pr. etape i rækkefølge; de frie pladser regnes som i dag (sum/5 og en femtedel restitution pr. plads) | `conditionModelV2.settleDateFatigueV2`, kaldt fra `trainingDateCondition.settleTrainingDateCondition` (`modelV2`) |
+| §5.4: recovery-evnen styrer også den proportionale andel; en middel-rytter (49,5) restituerer præcis som i dag | `conditionModelV2.recoveryV2` |
+| §5.2 + B3 + §5.5: etapens belastning = profil × længde × indsats × arbejde (inkl. hentet udbrud) × etapens plads × sæsonens løbsdage; frosset ved etapen som i dag | `conditionModelV2.stageLoadV2`, `raceFatigue.raceConditionLoads(..., conditionV2)`, `raceRunner.freezeConditionLoadSnapshots`, `raceFatigue.loadSeasonRaceDaysByRider` |
+| B4: inaktivitet og overbelastning koster form, passende belastning bygger den; de sidste point mod toppen kommer langsommere | `conditionModelV2.nextFormV2` |
+| Ugeprognosen bruger samme v2-afregning (I5) | `trainingWeekPlanForecast.js` |
+
+Konstanterne står i `CONDITION_V2_CONFIG`; målinger og kalibrering kun i `balance-internals/6984/` (hard rule 17). Tænding: S5-start på ordret ejer-go efter harnessen (`backend/scripts/dev/conditionModelV2Harness6984.mjs`).
+
 ### 5.4 Skader fra træning
 
 | Regel | Kilde |

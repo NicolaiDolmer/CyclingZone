@@ -573,6 +573,18 @@ features:
     verified: 2026-10-14
     note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
 
+  - id: condition-model-v2
+    area: training
+    title_en: Form and fatigue 2.0
+    title_da: Form og træthed 2.0
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 6984
+    verified: 2026-10-20
+    note: 'Flag condition_model_v2 (ingen app_config-raekke = off); B1-B5 ejer 20/10, taendes S5-start paa ordret go.'
+    decision: taend
+    decide_by: 2026-10-25
+
   - id: training-groups
     area: training
     title_en: Training groups
