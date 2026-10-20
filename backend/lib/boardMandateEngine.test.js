@@ -638,6 +638,7 @@ function makeMandateLifecycleSupabase({
   // #6773 · `__lte:<kolonne>` understøtter closeEndedSeasonMandates' .lte().
   function matchAll(row, filters) {
     return Object.entries(filters).every(([k, v]) => {
+      if (k.startsWith("__is:")) return row[k.slice(5)] == null && v === null;
       if (k.startsWith("__lte:")) {
         const cell = row[k.slice(6)];
         return cell != null && Number(cell) <= v;
@@ -728,11 +729,13 @@ function makeMandateLifecycleSupabase({
             const chain = {
               eq(col, value) { filters[col] = value; return chain; },
               lte(col, value) { filters[`__lte:${col}`] = value; return chain; },
+              is(col, value) { filters[`__is:${col}`] = value; return chain; },
               select: async () => {
                 const matched = state.mandates.filter((m) => matchAll(m, filters));
                 matched.forEach((m) => Object.assign(m, payload));
                 return { data: matched.map((m) => ({ id: m.id })), error: null };
               },
+              then(resolve, reject) { return chain.select().then(({ error }) => ({ data: null, error })).then(resolve, reject); },
             };
             return chain;
           },
@@ -1153,6 +1156,17 @@ test("#5752 advanceMandateAtSeasonEnd: nyt proposed mandat → åbnings-notits s
     `${expectedChairman} has proposed your season 5 mandate. You have 5 days before the board signs on its own.`,
   );
   assert.deepEqual(result.opening_notice, { sent: true, reason: null });
+  assert.equal(proposed.opened_notified_at, now.toISOString(), "#6946: stemplet sættes ved levering, ikke først af cronen");
+});
+
+test("#6946 (Codex P1) advanceMandateAtSeasonEnd: ikke leveret → intet stempel (cronen sender senere)", async () => {
+  const supabase = makeSeasonSwitchSupabase();
+  await advanceMandateAtSeasonEnd(supabase, {
+    teamId: "t1", seasonId: "s4", currentSeasonNumber: 4, now: new Date("2026-09-27T10:00:00Z"),
+    notifyUser: async () => ({ delivered: false, reason: "rate_limited" }),
+  });
+  const proposed = supabase._state.mandates.find((m) => m.season_id === "s5");
+  assert.equal(proposed.opened_notified_at ?? null, null);
 });
 
 test("#5752 advanceMandateAtSeasonEnd: notifikationen kaster → mandatet er skrevet og returneres alligevel", async () => {
