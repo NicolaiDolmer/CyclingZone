@@ -77,7 +77,7 @@ import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
 import { applyEffortToDemand } from "./effortCost.ts";
-import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater } from "../../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater } from "../../../raceEngineRulesRevision.ts";
 import {
   runTimeTrialStage,
   type TeamRoster,
@@ -436,7 +436,11 @@ export function simulateIndividualTimeTrialStage(
     units,
     seed,
     tuning,
-    { incidentsTuning: options.incidentsTuning, timeLimitTuning: options.timeLimitTuning },
+    {
+      incidentsTuning: options.incidentsTuning,
+      timeLimitTuning: options.timeLimitTuning,
+      ...(isS5ProfilesV2OrLater(options.rulesRevision) ? { incidentStartFloor: true as const } : {}),
+    },
     individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare),
   );
   return output;

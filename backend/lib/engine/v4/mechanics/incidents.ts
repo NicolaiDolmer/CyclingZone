@@ -636,14 +636,29 @@ export function incidentChaseDtSeconds(
 }
 
 /**
- * #7008 (KUN s5_profiles_v2): uheldets km-maerke lander aldrig foer denne km.
- * Uheldet loddes pr. segment, og stedet i segmentet er et frit lodtraek; paa
- * foerste segment kunne det lande paa km 0,01, saa loebsfilmen viste minutter
- * tabt "foer der var koert" (#5951's spillerklage). Kun stedet flytter: samme
- * lodtraekninger, ryttere, udfald og tidstab. Ligger over scorecardets
- * startvindue (START_WINDOW_KM = 0,5).
+ * #7008 (KUN s5_profiles_v2): intet uheld lige efter starten. Gaelder alle
+ * uheldsveje (M10, nedkoersel, brosten, tidskoersel) via incidentKmSpan.
  */
 export const INCIDENT_START_FLOOR_KM = 1;
+
+/**
+ * #7008: det stykke af segmentet et uheld kan placeres paa. Uden gulv: hele
+ * segmentet (byte-identisk). Med gulv: fra INCIDENT_START_FLOOR_KM, og null
+ * naar segmentet slutter inden gulvet (der loddes da intet uheld). REN.
+ */
+export function incidentKmSpan(
+  segment: Pick<Segment, "from_km" | "to_km">,
+  startFloor: boolean,
+): { fromKm: number; toKm: number } | null {
+  if (!startFloor) return { fromKm: segment.from_km, toKm: segment.to_km };
+  if (segment.to_km <= INCIDENT_START_FLOOR_KM) return null;
+  return { fromKm: Math.max(segment.from_km, INCIDENT_START_FLOOR_KM), toKm: segment.to_km };
+}
+
+/** #7008: uheldets km paa spannet (samme lodtraek `kmFrac` som foer). */
+export function incidentKmAt(span: { fromKm: number; toKm: number }, kmFrac: number): number {
+  return round2(span.fromKm + kmFrac * (span.toKm - span.fromKm));
+}
 
 export function createIncidentHook(
   tuning: IncidentsTuning,
@@ -659,6 +674,8 @@ export function createIncidentHook(
 
     const lengthFactor = segmentLengthFactor(segment, tuning);
     if (lengthFactor <= 0) return { state, events };
+    const span = incidentKmSpan(segment, ctx.s5ProfilesV2 === true);
+    if (!span) return { state, events };
 
     // Kandidaterne behandles i STABIL rider_id-orden paa tvaers af ALLE grupper
     // (ikke gruppe-for-gruppe), saa etape-loftet fordeles uafhaengigt af hvilken
@@ -689,9 +706,7 @@ export function createIncidentHook(
       const p = clamp(incidentProbability(entrant.abilities.positioning, segment.kind, tuning) * lengthFactor, 0, 1);
       if (rng() >= p) continue;
 
-      const kmFrac = rng();
-      const fromKm = ctx.s5ProfilesV2 === true ? Math.min(Math.max(segment.from_km, INCIDENT_START_FLOOR_KM), segment.to_km) : segment.from_km;
-      const incidentKm = round2(fromKm + kmFrac * (segment.to_km - fromKm));
+      const incidentKm = incidentKmAt(span, rng());
       const protectedByRule = threeKmRuleApplies(incidentKm, route.distance_km, route.profile_type, tuning);
       const helperNearby = hasHelperNearby(group.rider_ids, entrants, riders, riderId);
 

@@ -20,6 +20,8 @@ import {
   incidentChaseTargetGroup,
   incidentHook,
   INCIDENT_START_FLOOR_KM,
+  incidentKmAt,
+  incidentKmSpan,
   incidentProbability,
   isFlatStageForThreeKmRule,
   isIncidentChasePacedSegment,
@@ -1242,4 +1244,29 @@ test("#7008 s5_profiles_v2: et segment helt efter startvinduet er uaendret", () 
   const v1 = buildSingleGroupScenario(pairs, segment, route, "late-seed");
   const v2 = buildSingleGroupScenario(pairs, segment, route, "late-seed");
   assert.deepEqual(hook(v2.state, { ...v2.ctx, s5ProfilesV2: true }), hook(v1.state, v1.ctx));
+});
+
+test("#7008 incidentKmSpan: uden gulv hele segmentet; med gulv fra gulvet, og intet spand naar segmentet slutter foer", () => {
+  assert.deepEqual(incidentKmSpan({ from_km: 0, to_km: 0.8 }, false), { fromKm: 0, toKm: 0.8 });
+  assert.equal(incidentKmSpan({ from_km: 0, to_km: 0.8 }, true), null);
+  assert.equal(incidentKmSpan({ from_km: 0, to_km: INCIDENT_START_FLOOR_KM }, true), null);
+  assert.deepEqual(incidentKmSpan({ from_km: 0, to_km: 20 }, true), { fromKm: INCIDENT_START_FLOOR_KM, toKm: 20 });
+  assert.deepEqual(incidentKmSpan({ from_km: 30, to_km: 40 }, true), { fromKm: 30, toKm: 40 });
+  fc.assert(fc.property(fc.double({ min: 0, max: 1, maxExcluded: true, noNaN: true }), fc.double({ min: 1.01, max: 200, noNaN: true }), (frac, toKm) => {
+    const km = incidentKmAt(incidentKmSpan({ from_km: 0, to_km: toKm }, true)!, frac);
+    return km >= INCIDENT_START_FLOOR_KM && km <= Math.round(toKm * 100) / 100;
+  }), { numRuns: 200 });
+});
+
+test("#7008 s5_profiles_v2: et foerste segment der slutter foer gulvet giver intet uheld (gulvet saenkes aldrig)", () => {
+  const route = makeRoute("hilly", 160);
+  const segment = flatSegment(0, 0.8);
+  const pairs: Array<[string, number]> = Array.from({ length: 8 }, (_, i) => [`r${i}`, 50]);
+  const hook = createIncidentHook(alwaysLightCrashTuning());
+  const v1 = buildSingleGroupScenario(pairs, segment, route, "short-open-seed");
+  const v2 = buildSingleGroupScenario(pairs, segment, route, "short-open-seed");
+  assert.ok(eventsOfType(hook(v1.state, v1.ctx).events, "incident").length > 0, "riggen skal styrte uden v2");
+  const after = hook(v2.state, { ...v2.ctx, s5ProfilesV2: true });
+  assert.deepEqual(after.events, []);
+  assert.equal(after.state, v2.state);
 });
