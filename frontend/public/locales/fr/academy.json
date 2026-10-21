@@ -70,7 +70,26 @@
     "narrow": "Lecture plus précise",
     "final": "Lecture finale",
     "nextDays": "Plus précis dans {days} jours d'entraînement.",
-    "tooltip": "La prévision s'affine à mesure qu'il passe de jours d'entraînement avec ton équipe. Un meilleur coach et de meilleures installations d'entraînement te rendent sûr plus vite. Ils ne changent jamais son talent."
+    "tooltip": "La prévision s'affine à mesure qu'il passe de jours d'entraînement avec ton équipe. Un meilleur coach et de meilleures installations d'entraînement te rendent sûr plus vite. Ils ne changent jamais son talent.",
+    "report": {
+      "title": "Prévision de l’académie",
+      "progress": "Étapes de la prévision",
+      "forecast": "Prévision",
+      "nextStage": "Prochaine étape",
+      "stages": {
+        "learning": "Découverte",
+        "broad": "Initiale",
+        "narrow": "Plus précise",
+        "final": "Finale"
+      },
+      "range": "{lo}–{hi} points de note",
+      "noEstimate": "Pas encore d’estimation",
+      "trainingDays": "{days, plural, one {# jour d’entraînement} other {# jours d’entraînement}}",
+      "complete": "Toutes les étapes atteintes",
+      "unavailable": "Pas encore connu",
+      "learningContext": "Les jours d’entraînement dans ton équipe affinent la prévision, plus vite avec de meilleurs entraîneurs.",
+      "readMore": "En savoir plus"
+    }
   },
   "profile": {
     "heading": "Profil de l'académie",

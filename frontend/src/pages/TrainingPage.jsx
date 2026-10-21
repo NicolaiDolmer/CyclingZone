@@ -1,3 +1,4 @@
+import AcademyPrognosisCell from "../components/rider/AcademyPrognosisCell";
 // TrainingPage — daglig træning (#1305).
 //
 // Viser holdets træningsprogrammer (fokus + intensitet per rytter) + dagens
@@ -2534,6 +2535,11 @@ export default function TrainingPage() {
                     <div className="min-w-[180px] max-w-[260px] flex-1">
                       {estimate === undefined ? (
                         <span className="text-cz-3 text-xs">{t("loading")}</span>
+                      ) : estimate?.academyPrognosis ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono tabular-nums text-2xs text-cz-1">{riderOverallRating(rider) ?? "—"}</span>
+                          <AcademyPrognosisCell prognosis={estimate.academyPrognosis} />
+                        </div>
                       ) : hasBand ? (
                         <>
                           <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />

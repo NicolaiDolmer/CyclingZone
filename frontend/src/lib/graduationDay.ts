@@ -139,6 +139,7 @@ export interface CoachVerdictInput {
   band: { lo: number; hi: number } | null;
   level?: number | null;
   maxLevel?: number | null;
+  knowledgeStage?: "learning" | "broad" | "narrow" | "final" | null;
 }
 
 // Afstanden mellem rytterens rating i dag og midten af prognose-baandet,
@@ -156,12 +157,14 @@ const ARRIVING_GAP = 2;
  *   • intet baand (uscoutet/ukendt) -> "unknown"
  *   • baandet er endnu ikke faerdig-scoutet (level < maxLevel) -> "unproven",
  *     en hedged saetning der IKKE sammenligner tal
+ *   • akademiets knowledgeStage overstyrer scout-niveauet; kun final er fuldt kendt
  *   • foerst med fuldt baand siger traeneren noget om afstanden
  * Sproget er bevidst blødt; "naaede sit loft" er forbudt sprog.
  */
-export function coachVerdictKey({ rating, band, level = null, maxLevel = null }: CoachVerdictInput): CoachVerdictKey {
+export function coachVerdictKey({ rating, band, level = null, maxLevel = null, knowledgeStage = null }: CoachVerdictInput): CoachVerdictKey {
   if (!band || !Number.isFinite(band.lo) || !Number.isFinite(band.hi)) return "unknown";
-  if (Number.isFinite(level as number) && Number.isFinite(maxLevel as number) && (level as number) < (maxLevel as number)) {
+  if (knowledgeStage != null && knowledgeStage !== "final") return "unproven";
+  if (knowledgeStage == null && Number.isFinite(level as number) && Number.isFinite(maxLevel as number) && (level as number) < (maxLevel as number)) {
     return "unproven";
   }
   if (!Number.isFinite(rating as number)) return "unknown";

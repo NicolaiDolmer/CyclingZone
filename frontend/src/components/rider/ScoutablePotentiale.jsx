@@ -1,3 +1,4 @@
+import AcademyPrognosisCell from "./AcademyPrognosisCell";
 // ScoutablePotentiale — progression L1 (#1138) + server-side skjuling (#1162)
 // + job-model "under"-tilstand (#2244 Fase 3 Slice C).
 //
@@ -129,6 +130,9 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const estimate = estimateFor(riderId);
 
   // undefined = ikke hentet endnu, null = rytter uden potentiale → begge "—".
+  if (estimate?.academyPrognosis) {
+    return <AcademyPrognosisCell prognosis={estimate.academyPrognosis} />;
+  }
   if (estimate == null) {
     return <PotentialeStars value={null} />;
   }

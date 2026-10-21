@@ -1,3 +1,4 @@
+import AcademyPrognosisCell from "./rider/AcademyPrognosisCell";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router";
@@ -62,13 +63,15 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
     const estimate = scouting.estimateFor(r.id);
     // undefined = ikke hentet endnu, null = intet potentiale, hidden = skjult
     // (defensivt her — egne ryttere er altid isOwn/maxLevel server-side).
-    const band = estimate && !estimate.hidden ? (estimate.prog ?? estimate.ceil) : null;
+    const academyPrognosis = estimate?.academyPrognosis;
+    const band = academyPrognosis ? academyPrognosis.band : (estimate && !estimate.hidden ? (estimate.prog ?? estimate.ceil) : null);
     const hasBand = Boolean(band && Number.isFinite(band.lo) && Number.isFinite(band.hi));
-    const loft = estimate && !estimate.hidden && Number.isFinite(estimate.loft) ? estimate.loft : null;
+    const loft = !academyPrognosis && estimate && !estimate.hidden && Number.isFinite(estimate.loft) ? estimate.loft : null;
     return {
       ...r,
       _age: getRiderAge(r.birthdate, seasonYear),
       _ovr: Number.isFinite(ovr) ? ovr : null,
+      _academyPrognosis: academyPrognosis,
       _band: hasBand ? band : null,
       _progHi: hasBand ? band.hi : null,
       _loft: loft,
@@ -138,7 +141,7 @@ export default function TeamDevelopmentTab({ riders, scouting, seasonYear }) {
       sortKey: "_progHi",
       numeric: true,
       compact: true,
-      render: (r) => (r._band ? (
+      render: (r) => (r._academyPrognosis ? <AcademyPrognosisCell prognosis={r._academyPrognosis} /> : r._band ? (
         <span className="font-mono tabular-nums text-cz-1">{r._band.lo}–{r._band.hi}</span>
       ) : (
         <span className="text-cz-3 text-xs whitespace-nowrap">{t("development.noForecast")}</span>

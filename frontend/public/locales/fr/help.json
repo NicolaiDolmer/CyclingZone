@@ -1207,7 +1207,7 @@
       },
       "prognosisTraining": {
         "title": "Découvrir le potentiel d'un jeune talent",
-        "text": "Quand tu fais venir un candidat, tu vois son nom, son âge, sa nationalité, son type de coureur et ses aptitudes actuelles. Son potentiel s'affiche Découvert par l'entraînement : tu le découvres en l'ayant dans ton équipe. Après environ 10 jours de course d'entraînement, tu obtiens une première prévision large, après environ 30 une prévision étroite, et après une saison complète la prévision finale. Un meilleur centre d'entraînement et un directeur sportif plus fort t'y amènent plus tôt. Ils te rendent plus sûr du coureur, ils ne le rendent pas meilleur."
+        "text": "Après avoir recruté un coureur de l’académie, tu découvres sa prévision grâce aux jours d’entraînement dans ton équipe. Au début, il n’y a pas d’estimation, puis une fourchette de note initiale, plus précise et enfin finale. L’onglet de recrutement montre l’étape actuelle, la fourchette révélée et les jours d’entraînement avant la prochaine étape. Un meilleur encadrement et de meilleures installations d’entraînement te font avancer plus vite. Ils ne changent pas son talent, et même la prévision finale reste une fourchette."
       },
       "signingProspects": {
         "title": "Signer des jeunes talents",
