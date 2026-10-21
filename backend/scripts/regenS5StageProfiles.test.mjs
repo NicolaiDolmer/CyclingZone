@@ -259,6 +259,21 @@ test("invarianterne er grønne på en ren upcoming-sæson før 25/10", async () 
   assert.equal(inv.ok, true);
 });
 
+test("#6995 §6b stopper apply, men er override-bar med --allow-uniform-target-drift (ejer-go); bruddet står stadig", async () => {
+  const { input, plan } = await setup();
+  plan.tiers[0].after.coverage.uniformViolations = ["uniformt mål (§6b) — division 3: cobbles"];
+  const blocked = checkInvariants({ input, plan, now: BEFORE_CUTOVER });
+  assert.equal(blocked.ok, false);
+  assert.ok(blocked.violations.some((v) => /§6b/.test(v)));
+  const allowed = checkInvariants({ input, plan, now: BEFORE_CUTOVER, allowUniformTargetDrift: true });
+  assert.equal(allowed.ok, true);
+  const check = allowed.checks.find((c) => /§6b/.test(c.name));
+  assert.match(check.detail, /1 brud \(override --allow-uniform-target-drift, ejer-go\)/);
+  assert.equal(parseArgs(["--allow-uniform-target-drift"]).allowUniformTargetDrift, true);
+  assert.equal(parseArgs([]).allowUniformTargetDrift, false);
+  assert.throws(() => parseArgs(["--allow-uniform-target-drift=1"]), /tager ingen værdi/);
+});
+
 const brokenCases = [
   ["stages_completed", (s) => { s.races[0].stages_completed = 1; }, /stages_completed/],
   ["stages_completed null", (s) => { s.races[0].stages_completed = null; }, /stages_completed/],
