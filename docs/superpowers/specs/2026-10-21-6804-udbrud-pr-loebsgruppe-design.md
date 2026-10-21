@@ -105,7 +105,9 @@ om side, så målet dømmes på prod-feltet og testfeltet stadig fanger "intet u
    realiseres; tidligt på dagen tæller den mindre.
 3. "Noget at forsvare" i korte etapeløb følger holdets realistiske klassementschance (evne og
    placering), ikke kun et lille tidshul; et hold uden reel chance kontrollerer ikke.
-4. Udbrydere uden klassementsevne er aldrig en trussel, uanset tidshul (samme fare-mål som #5978).
+4. Udbrydere uden klassementsevne er ikke en trussel (samme fare-mål som #5978), **undtagen**
+   klassementets forreste: en rytter der allerede står højt i klassementet er altid en rival med
+   kort snor, uanset evne (#5978 "rivalRankAlways"), så en top-10 aldrig får 5 minutter uden jagt.
 Ingen ny tilfældighed: hver udbrudssejr kan forklares i filmen (P5: kontrol, træthed, terræn).
 
 **P7 Tidsgab-mål i scorecardet (M2).** `tourScorecard.mjs` og testportens rapport får båndene for
