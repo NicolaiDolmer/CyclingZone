@@ -728,7 +728,12 @@ const S5_LAUNCH_COPY = {
 // medium withEmailUtm writes for the account mails (#6300).
 const S5_LAUNCH_URL = `${DASHBOARD_URL}?utm_source=email&utm_medium=email&utm_campaign=s5-launch`;
 
-export function buildS5LaunchEmail({ unsubscribeUrl, language }) {
+// The preheader text is drafted but NOT owner-approved yet (#6300), so a real
+// send goes out without it. Flip to true on the owner's go; that is the one
+// line. Tests and previews opt in with { withPreheader: true }.
+const S5_PREHEADER_APPROVED = false;
+
+export function buildS5LaunchEmail({ unsubscribeUrl, language, withPreheader = S5_PREHEADER_APPROVED }) {
   const lang = normalizeLanguage(language);
   const copy = copyFor(lang);
   const s5 = S5_LAUNCH_COPY[lang] || S5_LAUNCH_COPY.en;
@@ -751,7 +756,7 @@ export function buildS5LaunchEmail({ unsubscribeUrl, language }) {
       language: lang,
       unsubLine: s5.unsubLine,
       unsubLinkText: s5.unsubLinkText,
-      preheader: s5.preheader, // owner go pending (#6300): delete this line to send without a preheader
+      preheader: withPreheader ? s5.preheader : undefined,
     }),
     text: wrapText({ bodyText, unsubscribeUrl, language: lang, unsubLine: s5.unsubLine, unsubLinkText: s5.unsubLinkText }),
   };

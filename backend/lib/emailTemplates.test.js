@@ -771,13 +771,20 @@ test("s5-launch footer states the season-update consent, not the shared account 
   assert.ok(!t.html.includes("Cycling Zone-konto") && !t.text.includes("Cycling Zone-konto"));
 });
 
-test("s5-launch has a hidden preheader right after <body>, EN and DA, and only in the html part", () => {
+test("s5-launch sends WITHOUT the preheader by default (owner go pending, #6300)", () => {
+  for (const language of ["en", "da"]) {
+    const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language });
+    assert.ok(!t.html.includes("cz-preheader"), `${language}: no preheader in a default send`);
+  }
+});
+
+test("s5-launch with withPreheader has a hidden preheader right after <body>, EN and DA, and only in the html part", () => {
   const cases = {
     en: "Take another look ahead of the 25 October season change.",
     da: "Kig ind igen før sæsonskiftet 25. oktober.",
   };
   for (const [language, preheader] of Object.entries(cases)) {
-    const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language });
+    const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language, withPreheader: true });
     const match = t.html.match(/<body[^>]*>\s*<div class="cz-preheader" style="([^"]*)">([^<]*)<\/div>/);
     assert.ok(match, `${language}: preheader div is the first element in <body>`);
     assert.equal(match[2], preheader, `${language}: preheader text`);
