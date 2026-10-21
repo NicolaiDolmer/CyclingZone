@@ -1811,7 +1811,7 @@ export function signatureLockFor(feature) {
 function drawIdentityTypes(rng, stages, identity, label) {
   const { profile, features } = identity;
   const types = profile.guarantees.slice(0, stages);
-  /** @type {Array<{ type: string, position: string | null, prologue: boolean, feature: any, index: number }>} */
+  /** @type {Array<{ type: string, position: string | null, prologue: boolean, feature: any, features?: any[], index: number }>} */
   const locks = [];
   const claimed = new Set();
   const claim = (/** @type {string} */ type) => {
