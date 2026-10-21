@@ -36,6 +36,15 @@ test("#6818 withForm: --peaks=off giver kun formen, --peaks=tq1 fuld traeningskv
   assert.equal(withForm(cache, formData, "tq1").entries[0].peakWindows[0].trainingQuality, 1);
 });
 
+test("#6818 withForm: en tidligere formtest-cache som input beholder ikke gamle felter (review #7021)", () => {
+  const already = withForm(cache, formData, "on");
+  const off = withForm(already, formData, "off");
+  assert.equal(off.entries[0].peakWindows, undefined, "--peaks=off fjerner gamle toppe");
+  const noDays = withForm(already, { ...formData, stageDays: {}, conditions: {} }, "on");
+  assert.deepEqual(noDays.profiles.map((p) => p.peakDay), [undefined, undefined], "gamle etapedage fjernes");
+  assert.equal(noDays.entries[1].form, undefined, "gammel form fjernes");
+});
+
 test("#6818 splitEntrants: form og formtoppe foelger med; uden dem er entrant'en som foer", () => {
   const plain = splitEntrants(cache).entrants;
   assert.deepEqual(Object.keys(plain[0]).sort(), ["abilities", "effort", "race_role", "rider_id", "team_id", "team_is_ai"]);

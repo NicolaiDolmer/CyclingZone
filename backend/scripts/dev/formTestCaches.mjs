@@ -38,14 +38,16 @@ export function withForm(cache, formData, peaks = "on") {
   const seasonId = formData.raceSeason?.[raceId] ?? null;
   const seasonPeaks = (seasonId && formData.peaksBySeason?.[seasonId]) || {};
   const days = formData.stageDays?.[raceId] ?? {};
-  const entries = (cache.entries ?? []).map((e) => {
+  // Review #7021 (Codex P2): en tidligere formtest-cache som input maa aldrig beholde
+  // sine gamle felter; form/peakWindows/peakDay kommer KUN fra den nye form-data.
+  const entries = (cache.entries ?? []).map(({ form: _f, peakWindows: _w, ...e }) => {
     const form = formData.conditions?.[e.rider_id]?.form;
     const windows = peaks === "off" ? [] : (seasonPeaks[e.rider_id] ?? []).map((w) => ({ start: w.start, end: w.end, trainingQuality: peaks === "tq1" ? 1 : (w.trainingQuality ?? 1) }));
     return { ...e, ...(form != null ? { form } : {}), ...(windows.length ? { peakWindows: windows } : {}) };
   });
-  const profiles = (cache.profiles ?? []).map((p) => {
+  const profiles = (cache.profiles ?? []).map(({ peakDay: _d, ...p }) => {
     const day = days[String(p.stage_number)];
-    return day != null ? { ...p, peakDay: day } : { ...p };
+    return day != null ? { ...p, peakDay: day } : p;
   });
   return { ...cache, entries, profiles, formTest: { peaks, seasonId, formData: formData.generatedAt ?? null } };
 }
@@ -54,6 +56,9 @@ export function main(argv = process.argv.slice(2)) {
   const opts = parseArgs(argv);
   const formData = JSON.parse(readFileSync(opts.formData, "utf8"));
   if (formData.format !== "cz-form-test-data/v1") throw new Error(`${opts.formData}: forkert format (${formData.format})`);
+  // Review #7021 (Codex P2): testporten tager ALLE <race_id>-mapper i --from-dir som input,
+  // saa en genbrugt out-dir med gamle loeb ville blande dem ind. Kraev en tom/ny mappe.
+  if (existsSync(opts.outDir) && readdirSync(opts.outDir).length) throw new Error(`--out-dir ${opts.outDir} er ikke tom; brug en ny mappe`);
   let n = 0, withPeaks = 0, riders = 0;
   for (const id of readdirSync(opts.fromDir)) {
     const file = path.join(opts.fromDir, id, "cache.json");
