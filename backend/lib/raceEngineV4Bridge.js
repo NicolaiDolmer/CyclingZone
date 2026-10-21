@@ -527,6 +527,27 @@ export function buildGcContext({ isStageRace, stageNumber, standings, starterIds
  * alle dagens startere staar lige (rang 1, intet hul, ingen foerer); et klassement
  * faar maerket; endagsloeb og manglende data er uaendrede.
  */
+/**
+ * #6818 (ejer 21/10, "Ja, med A"; KUN s5_profiles_v2): loebets etaper (profiltype + etapens
+ * egne krav) til motorens loebsspecifikke klassementsevne (gcThreat.raceGcAbilityModel).
+ * null uden etaper eller krav. REN.
+ */
+export function raceGcStagesFor(raceStages, routeFromStageProfileRow) {
+  if (!Array.isArray(raceStages) || raceStages.length === 0) return null;
+  const out = [];
+  for (const s of raceStages) {
+    const demand = s?.demand_vector;
+    if (!demand || typeof demand !== "object") continue;
+    out.push({ stage_number: Number(s.stage_number) || 1, profile_type: routeFromStageProfileRow(s).profile_type, demand });
+  }
+  return out.length ? out.sort((a, b) => a.stage_number - b.stage_number) : null;
+}
+
+/** #6818: klassementet med loebets etaper, kun naar det er et klassement og der er etaper. */
+function withRaceGcStages(gcContext, raceGcStages) {
+  return raceGcStages && gcContext?.status === "standings" ? { ...gcContext, race_gc_stages: raceGcStages } : gcContext;
+}
+
 export function withS5ThreatModel(gcContext, startlist) {
   if (gcContext?.status === "standings") return { ...gcContext, threat_model: "s5" };
   if (gcContext?.status !== "first_stage" || !Array.isArray(startlist) || startlist.length === 0) return gcContext;
@@ -599,7 +620,7 @@ export function buildV4StageInput({
       // #6818 (KUN s5_profiles_v2): samme klassement som motoren faar, saa AI-holdene sender
       // en anden rytter i stedet for en klassementsrytter, motoren blokerer i morgenudbruddet.
       ...(isS5ProfilesV2OrLater(rulesRevision)
-        ? { gc_context: withS5ThreatModel(buildGcContext({ isStageRace, stageNumber, standings: gcStandings, starterIds: rosterForOrders.map((r) => r.rider_id) }), rosterForOrders) }
+        ? { gc_context: withRaceGcStages(withS5ThreatModel(buildGcContext({ isStageRace, stageNumber, standings: gcStandings, starterIds: rosterForOrders.map((r) => r.rider_id) }), rosterForOrders), raceGcStagesFor(raceStages, modules.route.routeFromStageProfileRow)) }
         : {}),
     },
   });
@@ -630,6 +651,8 @@ export function buildV4StageInput({
     // #5978 (KUN s5_profiles_v1): S5-trusselsmodellen (gcThreat.ts). Paa foerste etape
     // staar alle dagens startere lige (rang 1, intet hul), saa feltet ogsaa dér reagerer.
     if (isS5ProfilesV1OrLater(rulesRevision)) input.gc_context = withS5ThreatModel(input.gc_context, startlist);
+    // #6818 (KUN s5_profiles_v2): loebets etaper til den loebsspecifikke klassementsevne.
+    if (isS5ProfilesV2OrLater(rulesRevision)) input.gc_context = withRaceGcStages(input.gc_context, raceGcStagesFor(raceStages, modules.route.routeFromStageProfileRow));
     // #5978 (KUN orders_gc_v3): etaper tilbage efter i dag (farlighedens potentiale).
     if (isOrdersGcV3OrLater(rulesRevision) && input.gc_context.status === "standings" && Array.isArray(raceStages)) {
       input.gc_context.stages_remaining = raceStages.filter((s) => (Number(s?.stage_number) || 1) > Number(stageNumber)).length;

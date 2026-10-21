@@ -240,9 +240,17 @@ export type GcStanding = { rider_id: string; rank: number; gap_seconds: number }
  *   "one_day"     = endagsloeb: ingen GC, ingen GC-reaktion
  *   "missing"     = et etapeloeb uden brugbart klassement (diagnosticeres)
  */
+/**
+ * #6818 (ejer 21/10, KUN s5_profiles_v2): én etape i loebet til den loebsspecifikke
+ * klassementsevne (gcThreat.raceGcAbilityModel): profiltypen og etapens egne krav.
+ */
+export type GcStageDemand = { stage_number: number; profile_type: string; demand: Readonly<Partial<Record<AbilityKey, number>>> };
+
 export type GcContext =
   // #5978 (ADDITIVT, valgfrit, KUN orders_gc_v3): stages_remaining = etaper tilbage efter i dag.
-  | { status: "standings"; stage_number: number; leader_id: string | null; standings: readonly GcStanding[]; stages_remaining?: number }
+  // #6818 (ADDITIVT, valgfrit, KUN s5_profiles_v2): race_gc_stages = loebets etaper (alle) til den
+  // loebsspecifikke klassementsevne. Udeladt = den faste evne (klatring/tempo/enkeltstart) som foer.
+  | { status: "standings"; stage_number: number; leader_id: string | null; standings: readonly GcStanding[]; stages_remaining?: number; race_gc_stages?: readonly GcStageDemand[] }
   | { status: "first_stage"; stage_number: number }
   | { status: "one_day" }
   | { status: "missing"; stage_number?: number };
