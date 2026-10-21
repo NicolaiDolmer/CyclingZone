@@ -11,6 +11,9 @@ const hoursAgo = (userId, hours) => ({
   viewed_at: new Date(NOW - hours * 60 * 60 * 1000).toISOString(),
 });
 const daysAgo = (userId, days) => hoursAgo(userId, days * 24);
+// n unikke besøgende (prefix-1..n), alle `days` dage siden.
+const visitors = (prefix, n, days) =>
+  Array.from({ length: n }, (_, i) => daysAgo(`${prefix}${i + 1}`, days));
 
 // Systemet har kørt længe (>14d) medmindre andet angives, så trend er beregnelig.
 const OLD_SYSTEM = NOW - 60 * DAY_MS;
@@ -47,25 +50,33 @@ test("24t er en delmængde af 7d (views24h <= views7d)", () => {
 
 test("trend7dPct: +100% når 7d har dobbelt så mange som forrige 7d", () => {
   const rows = [
-    // aktuel 7d: u1, u2 (2 unikke)
-    daysAgo("u1", 1),
-    daysAgo("u2", 4),
-    // forrige 7d (8-14 dage siden): u3 (1 unik)
-    daysAgo("u3", 10),
+    ...visitors("a", 10, 1), // aktuel 7d: 10 unikke
+    ...visitors("p", 5, 10), // forrige 7d (8-14 dage siden): 5 unikke
   ];
   const agg = aggregateRiderViews(rows, { nowMs: NOW, oldestViewedAtMs: OLD_SYSTEM });
-  assert.equal(agg.views7d, 2);
+  assert.equal(agg.views7d, 10);
   assert.equal(agg.trend7dPct, 100);
 });
 
 test("trend7dPct: -50% ved fald", () => {
   const rows = [
-    daysAgo("u1", 2), // aktuel 7d: 1
-    daysAgo("u2", 9), // forrige 7d: u2, u3 = 2
-    daysAgo("u3", 11),
+    ...visitors("a", 5, 2), // aktuel 7d: 5
+    ...visitors("p", 10, 9), // forrige 7d: 10
   ];
   const agg = aggregateRiderViews(rows, { nowMs: NOW, oldestViewedAtMs: OLD_SYSTEM });
   assert.equal(agg.trend7dPct, -50);
+});
+
+test("#6935: trend er null ved få besøgende i forrige periode (1 -> 2 er ikke +100 %)", () => {
+  const rows = [
+    daysAgo("u1", 1),
+    daysAgo("u2", 4),
+    daysAgo("u3", 10), // forrige 7d: 1 unik
+  ];
+  const agg = aggregateRiderViews(rows, { nowMs: NOW, oldestViewedAtMs: OLD_SYSTEM });
+  assert.equal(agg.views7d, 2);
+  assert.equal(agg.trend7dPct, null);
+  assert.equal(agg.isNew, false);
 });
 
 test("trend er null når forrige periode er ægte 0 (men historik findes)", () => {
@@ -93,11 +104,12 @@ test("cold-start: <14d historik → isNew + trends undertrykt selv med data i be
 });
 
 test("vinduesgrænser overlapper ikke (besøg lige på 7d-grænsen havner i forrige)", () => {
-  const rows = [
-    // præcis 7 dage + 1 ms siden → IKKE i aktuel 7d, men i forrige 7d
-    { user_id: "u1", viewed_at: new Date(NOW - 7 * DAY_MS - 1).toISOString() },
-  ];
+  // præcis 7 dage + 1 ms siden → IKKE i aktuel 7d, men i forrige 7d (5 besøgende,
+  // så trend-minimummet er nået)
+  const rows = Array.from({ length: 5 }, (_, i) => (
+    { user_id: `u${i + 1}`, viewed_at: new Date(NOW - 7 * DAY_MS - 1).toISOString() }
+  ));
   const agg = aggregateRiderViews(rows, { nowMs: NOW, oldestViewedAtMs: OLD_SYSTEM });
-  assert.equal(agg.views7d, 0); // grænse-besøget tæller IKKE med i aktuel 7d
-  assert.equal(agg.trend7dPct, -100); // det havnede i forrige 7d: (0-1)/1 = -100
+  assert.equal(agg.views7d, 0); // grænse-besøgene tæller IKKE med i aktuel 7d
+  assert.equal(agg.trend7dPct, -100); // de havnede i forrige 7d: (0-5)/5 = -100
 });

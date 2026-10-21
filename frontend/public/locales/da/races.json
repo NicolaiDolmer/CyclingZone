@@ -24,7 +24,18 @@
       "terrain": "Terræn",
       "finish": "Afslutning",
       "surface": "Underlag",
-      "surfaceValue": "{kind, select, gravel {Grus} other {Brosten}} · {count, plural, one {# sektor} other {# sektorer}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Grus} other {Brosten}} · {count, plural, one {# sektor} other {# sektorer}}, {km} km",
+      "weather": "Vejr"
+    },
+    "weather": {
+      "dry": "Tørt",
+      "rain": "Regn",
+      "wind": "Blæst",
+      "aria": "Vejr: {word}",
+      "mattered": {
+        "rain": "Regnen ramte ryttere med svag nedkørsel og holdbarhed hårdest.",
+        "wind": "Vinden på de åbne veje ramte ryttere med svag nedkørsel og holdbarhed hårdest."
+      }
     },
     "climbs": {
       "title": "Stigningerne",
@@ -712,6 +723,7 @@
     "form": "Form",
     "fatigue": "Træthed",
     "injured": "Skadet",
+    "overAge": "Over aldersgrænsen",
     "boundIn": "Kører {race}",
     "boundConflict": "Overlapper {race}",
     "autoPicked": "Assistentens valg. Justér og gem for selv at tage styringen.",
@@ -753,6 +765,7 @@
       "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
       "selection_role_overlap": "Kaptajn, spurt-kaptajn og jæger skal være forskellige ryttere.",
       "selection_rider_injured": "Skadede ryttere kan ikke udtages.",
+      "selection_rider_over_age": "Ryttere over løbets aldersgrænse kan ikke udtages.",
       "selection_rider_not_on_team": "Du kan kun udtage dine egne ryttere.",
       "selection_duplicate_rider": "Hver rytter kan kun udtages én gang.",
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",

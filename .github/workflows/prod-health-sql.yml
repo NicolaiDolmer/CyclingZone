@@ -1,0 +1,111 @@
+name: Prod Health SQL
+
+# Daglige Postgres-helbredstjek mod prod (#6994), efter Supabase' guide
+# https://supabase.com/docs/guides/observability/detecting.md.
+# Den daglige Claude-rutine (05:15 UTC) har ingen SQL; den læser i stedet den
+# kommentar på #6994 som denne workflow vedligeholder (markør
+# <!-- prod-health-sql -->, forfatter github-actions[bot]).
+#
+# Kørsler (UTC):
+#   02:45 og 03:45  snapshot: kun pg_stat_statements-tal til tilstanden
+#   04:45           report: alle tjek + kommentar på #6994
+# Guiden kræver tre pg_stat_statements-snapshots med en times mellemrum for at
+# sammenligne query-tider; derfor tre kørsler. Tilstanden (snapshots,
+# databasestørrelse pr. dag) ligger i Actions-cache, ALDRIG i prod-DB
+# (guiden: "Do not create monitoring tables in the project").
+#
+# Forbindelse: rollen cz_monitor (database/2026-10-20-6994-cz-monitor-role.sql),
+# låst af Postgres til kun at læse statistik. Scriptet nægter at køre, hvis
+# forbindelsen ikke er cz_monitor i read-only (exit 2).
+# Environment-secret (ejer sætter) i environment prod-health-sql, der kun
+# tillader branch main: CZ_MONITOR_DATABASE_URL
+#   postgresql://cz_monitor.ghwvkxzhsbbltzfnuhhz:<password>@<session-pooler-host>:5432/postgres
+#
+# Eneste skrivning: én kommentar på #6994 (oprettes første gang, opdateres derefter).
+
+on:
+  schedule:
+    - cron: '45 2 * * *'
+    - cron: '45 3 * * *'
+    - cron: '45 4 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'report = alle tjek + kommentar; snapshot = kun pg_stat_statements-snapshot'
+        required: false
+        default: 'report'
+        type: choice
+        options: [report, snapshot]
+
+concurrency:
+  group: prod-health-sql
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health:
+    # Kun main-koden får prod-nøglen (Codex-fund, PR #6996): et dispatch fra en
+    # anden branch springes over, og secret'en ligger i environment
+    # prod-health-sql med deployment-branch-reglen "main" (ejer opretter).
+    if: github.ref == 'refs/heads/main'
+    environment: prod-health-sql
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      ISSUE: '6994'
+      MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || (github.event.schedule == '45 4 * * *' && 'report' || 'snapshot') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+
+      - name: Restore state
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .prod-health-sql-state
+          key: prod-health-sql-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            prod-health-sql-state-
+
+      - name: Run SQL checks
+        env:
+          CZ_MONITOR_DATABASE_URL: ${{ secrets.CZ_MONITOR_DATABASE_URL }}
+          # Valgfri bekræftet grænse i bytes til kapacitetsprognosen (repo-variabel,
+          # ikke secret). Tom = capacity_forecast er unable_to_assess (confirmed_limit).
+          PROD_HEALTH_SQL_DB_LIMIT_BYTES: ${{ vars.PROD_HEALTH_SQL_DB_LIMIT_BYTES }}
+        run: node scripts/ops/prodHealthSql.mjs --mode "$MODE" --out prod-health-sql.json --comment prod-health-sql.md
+
+      - name: Save state
+        if: always() && hashFiles('.prod-health-sql-state/state.json') != ''
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .prod-health-sql-state
+          key: prod-health-sql-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # Også når værnet afviste (exit 2): kommentaren siger så "kan ikke vurderes",
+      # så rutinen ikke tolker gårsdagens tal som dagens.
+      - name: Post or update comment on #6994
+        if: always() && env.MODE == 'report' && hashFiles('prod-health-sql.md') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          ID=$(gh api "repos/$REPO/issues/$ISSUE/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- prod-health-sql -->"))) | .id' \
+            | tail -n 1)
+          if [ -n "$ID" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$ID" -F body=@prod-health-sql.md > /dev/null
+            echo "Opdaterede kommentar $ID på #$ISSUE"
+          else
+            gh issue comment "$ISSUE" --repo "$REPO" --body-file prod-health-sql.md > /dev/null
+            echo "Oprettede kommentar på #$ISSUE"
+          fi

@@ -36,7 +36,18 @@
       "terrain": "Terrein",
       "finish": "Finish",
       "surface": "Ondergrond",
-      "surfaceValue": "{kind, select, gravel {Gravel} other {Kasseien}} · {count, plural, one {# strook} other {# stroken}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Kasseien}} · {count, plural, one {# strook} other {# stroken}}, {km} km",
+      "weather": "Weer"
+    },
+    "weather": {
+      "dry": "Droog",
+      "rain": "Regen",
+      "wind": "Wind",
+      "aria": "Weer: {word}",
+      "mattered": {
+        "rain": "De regen trof renners met zwak afdalen en weinig weerbaarheid het hardst.",
+        "wind": "De wind op de open wegen trof renners met zwak afdalen en weinig weerbaarheid het hardst."
+      }
     },
     "climbs": {
       "title": "De klimmen",
@@ -729,6 +740,7 @@
     "form": "Vorm",
     "fatigue": "Vermoeidheid",
     "injured": "Geblesseerd",
+    "overAge": "Te oud",
     "boundIn": "Rijdt {race}",
     "boundConflict": "Overlapt met {race}",
     "autoPicked": "Keuze van de assistent. Pas aan en sla op om zelf de controle te nemen.",
@@ -770,6 +782,7 @@
       "selection_role_not_selected": "Renners met een rol moeten deel uitmaken van de selectie.",
       "selection_role_overlap": "Kopman, sprintkopman en jager moeten verschillende renners zijn.",
       "selection_rider_injured": "Geblesseerde renners kunnen niet worden geselecteerd.",
+      "selection_rider_over_age": "Renners boven de leeftijdsgrens van de koers kunnen niet worden geselecteerd.",
       "selection_rider_not_on_team": "Je kunt alleen je eigen renners selecteren.",
       "selection_duplicate_rider": "Elke renner kan maar één keer worden geselecteerd.",
       "selection_race_not_open": "De selectie is gesloten voor deze koers.",

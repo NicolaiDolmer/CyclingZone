@@ -203,6 +203,10 @@ export default function FinanceForecastCard({
   // #4385: med upkeep_per_race_day on er upkeep "Rejse og personale" pr.
   // seniorløbsdag (sats × løbsdage), ikke et fladt sæsonstart-træk.
   const upkeepPerRaceDay = forecast.inputs?.upkeep_model === "per_race_day";
+  // #6936: med economy_no_upkeep_v1 on findes upkeep, facilitets-upkeep og
+  // akademi-drift ikke i næste sæson. Rækkerne står kun hvis indeværende sæson
+  // (historik) har et beløb, og prognose-kolonnen viser "—" uden forklaring.
+  const noUpkeep = forecast.inputs?.no_upkeep === true;
   const showUpkeepRow = hasSeasonSwitch
     ? forecast.projected_upkeep !== 0 || s2?.upkeep !== 0
     : forecast.projected_upkeep !== 0;
@@ -398,14 +402,16 @@ export default function FinanceForecastCard({
         {showUpkeepRow && (
           <Row
             label={upkeepPerRaceDay ? t("forecast.row.travelStaff") : t("forecast.row.upkeep")}
-            value={forecast.projected_upkeep}
+            value={noUpkeep ? undefined : forecast.projected_upkeep}
             accent="text-cz-danger"
-            detail={upkeepPerRaceDay
-              ? t("forecast.upkeepDetail.perRaceDay", {
-                rate: `${formatNumber(forecast.inputs?.upkeep_per_race_day ?? 0)} CZ$`,
-                days: formatNumber(forecast.inputs?.upkeep_race_days ?? 0),
-              })
-              : t("forecast.upkeepDetail.byDivision")}
+            detail={noUpkeep
+              ? undefined
+              : upkeepPerRaceDay
+                ? t("forecast.upkeepDetail.perRaceDay", {
+                  rate: `${formatNumber(forecast.inputs?.upkeep_per_race_day ?? 0)} CZ$`,
+                  days: formatNumber(forecast.inputs?.upkeep_race_days ?? 0),
+                })
+                : t("forecast.upkeepDetail.byDivision")}
             dualColumn={hasSeasonSwitch}
             s2Value={s2?.upkeep}
             activeCol={activeCol}
@@ -419,7 +425,7 @@ export default function FinanceForecastCard({
             {showFacilityUpkeepRow && (
               <Row
                 label={t("forecast.row.facilityUpkeep")}
-                value={forecast.projected_facility_upkeep}
+                value={noUpkeep ? undefined : forecast.projected_facility_upkeep}
                 accent="text-cz-danger"
                 dualColumn
                 s2Value={s2?.facility_upkeep}
@@ -466,7 +472,7 @@ export default function FinanceForecastCard({
         {showAcademyDriftRow && (
           <Row
             label={t("forecast.row.academyDrift")}
-            value={forecast.projected_academy_drift}
+            value={noUpkeep ? undefined : forecast.projected_academy_drift}
             accent="text-cz-danger"
             dualColumn={hasSeasonSwitch}
             s2Value={s2?.academy_drift}

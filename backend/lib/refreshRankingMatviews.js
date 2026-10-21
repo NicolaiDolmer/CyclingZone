@@ -51,6 +51,7 @@
 import { copenhagenDateString, copenhagenHour } from "./copenhagenTime.js";
 import { createRankingRefreshQueue } from "./rankingRefreshQueue.ts";
 import { getRankingRefreshWorkState, runRankingRefreshWork } from "./rankingRefreshWork.ts";
+import { runRankingShadowPass } from "./rankingShadowPass.ts";
 
 export const SETTLEMENT_WINDOW_START_HOUR = 20;
 export const SETTLEMENT_OVERNIGHT_END_HOUR = 3;
@@ -75,10 +76,14 @@ const runRefreshQueued = createRankingRefreshQueue();
 // Requests during a pass share one fresh follow-up, preserving later DB writes.
 export function refreshRankingMatviewsSafe(supabase, options = {}) {
   return runRefreshQueued(supabase, async () => (await runRankingRefreshWork(supabase,
-    (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { ...options, renewLease, ownerToken, targetVersion }), { ...options, force: true })) === true, 1);
+    (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, {
+      ...options, now: options.now ?? options.nowFn?.() ?? options.testNowFn?.() ?? new Date(),
+      renewLease, ownerToken, targetVersion,
+    }), { ...options, force: true })) === true, 1);
 }
 
-async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion } = {}) {
+async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock=()=>performance.now(), logger=console } = {}) {
+  const legacyStarted=clock();
   const failures = [];
 
   for (const { rpc, label } of REFRESH_RPCS) {
@@ -106,6 +111,7 @@ async function refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewL
   }
 
   // The fenced database acknowledgement atomically updates generation + heartbeat.
+  await runRankingShadowPass(supabase, { ownerToken, targetVersion, captureExceptionFn, renewLease, now: now.getTime()+Math.max(0,clock()-legacyStarted), clock, logger });
   return true;
 }
 
@@ -182,11 +188,16 @@ export async function refreshRankingMatviewsGated(
   const gateOptions = { now, clock, maxDeferMs, logger };
   const gateState = await rankingRefreshGateState(supabase, gateOptions);
   if (gateState === 'unavailable') return false;
-  if (gateState === 'clean') return true;
+  if (gateState === 'clean') {
+    // Clean one-minute ticks also drain additive backfill/corrections. Shadow
+    // failures are reported independently; they do not age the legacy heartbeat.
+    await runRankingShadowPass(supabase, { now: now.getTime()+Math.max(0,clock()-requestedAt), captureExceptionFn, clock, logger });
+    return true;
+  }
   if (gateState === "deferred") return "deferred";
   return runRefreshQueued(supabase,
     () => runRankingRefreshWork(supabase,
-      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion }), { captureExceptionFn, testNowFn }),
+      (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger }), { captureExceptionFn, testNowFn }),
     gateState === "expired" ? 1 : 0, {
       key: `gated:${copenhagenDateString(now)}:${maxDeferMs}`,
       check: async () => {
@@ -217,7 +228,7 @@ export async function refreshRankingsAfterTrainingSettlement({ supabase, now = n
     if (settling) return "deferred";
     return await runRefreshQueued(supabase,
       () => runRankingRefreshWork(supabase,
-        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion }), { captureExceptionFn, testNowFn }),
+        (renewLease, ownerToken, targetVersion) => refreshRankingMatviewsPass(supabase, { captureExceptionFn, renewLease, ownerToken, targetVersion, now, clock, logger }), { captureExceptionFn, testNowFn }),
       0, {
         key: `training-close:${copenhagenDateString(now)}`,
         check: async () => {

@@ -139,7 +139,7 @@ export default function AuctionHistoryPage() {
     let query = supabase
       .from("auctions")
       .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-        rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, is_u25, nationality_code, team_id),
+        rider:rider_id(id, firstname, lastname, birthdate, is_u25, nationality_code, team_id),
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
         { count: "exact" })
@@ -381,10 +381,6 @@ export default function AuctionHistoryPage() {
                         className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
                         {a.rider?.firstname} {a.rider?.lastname}
                       </RiderLink>
-                      <p className="text-cz-3 text-xs mt-0.5">{t("history.riderMeta", {
-                        value: formatNumber(a.rider?.market_value),
-                        salary: a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : t("history.salaryNone"),
-                      })}</p>
                       {/* #vk-auction-signals: budkrigs-markør — kun rækker med 2+
                           FORSKELLIGE budgivere (ikke bare "nogen bød"). Egen linje
                           (flex, ikke inline-flex) så den altid stables over

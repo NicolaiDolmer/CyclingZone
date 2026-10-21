@@ -118,11 +118,9 @@ test("verdict: moderat gap → monitor; lille gap → solid_contributor", () => 
   assert.equal(buildVerdict({ age: 26, own: false, level: 2, maxLevel: 3, bestNow: 60, bestCeilMid: 62 }).headlineKey, "solid_contributor");
 });
 
-test("verdict: value_gap-faktor kun ved positivt gap", () => {
-  const withGap = buildVerdict({ age: 21, own: false, level: 2, maxLevel: 3, bestNow: 50, bestCeilMid: 70, valueGap: 10000 });
-  assert.ok(withGap.factorKeys.includes("value_gap"));
-  const noGap = buildVerdict({ age: 21, own: false, level: 2, maxLevel: 3, bestNow: 50, bestCeilMid: 70, valueGap: 0 });
-  assert.ok(!noGap.factorKeys.includes("value_gap"));
+test("verdict: value_gap-faktoren vises aldrig (#6935, sammenlignede to forskellige modeller)", () => {
+  const v = buildVerdict({ age: 21, own: false, level: 2, maxLevel: 3, bestNow: 50, bestCeilMid: 70, valueGap: 10000 });
+  assert.ok(!v.factorKeys.includes("value_gap"));
 });
 
 // #3666: tærsklerne 2/3/8 er MÅLT, ikke valgt — heltalssøgning der bedst

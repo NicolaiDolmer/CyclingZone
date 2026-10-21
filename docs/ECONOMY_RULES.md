@@ -141,6 +141,20 @@ sæsonskiftets "Udfør sæsonskifte", ellers har holdene allerede betalt det fla
 Med flaget `off` er alt som før: fladt `UPKEEP_BY_DIVISION` ved sæsonstart. `UPKEEP_BY_DIVISION` bliver
 som sæsonsum-reference (compressPyramid, scorecards, flag-off-stien).
 
+**Ingen upkeep, akademi-drift eller facilitets-upkeep (#6936, ejer-beslutning 20/10, låst, ingen kompensation).**
+Bag app_config-flaget `economy_no_upkeep_v1` (`backend/lib/economyNoUpkeepFlag.ts`; default `off`; `beta`
+læses som `off`; fail-safe `off`). Gælder fra og med sæsonskiftet til sæson 5.
+
+| Regel | Med flaget `on` |
+|---|---|
+| Forrang | Overstyrer BEGGE upkeep-modeller: hverken fladt sæsonstart-upkeep (`upkeep`) eller rejse og personale pr. seniorløbsdag (`travel_staff`) trækkes, uanset `upkeep_per_race_day`. |
+| Sæsonstart | `processTeamSeasonPayroll` springer trin 4 (akademi-drift), trin 5 (upkeep) og trin 6a (facilitets-upkeep) over. Trin 7 (stabsløn), rytterløn, renter og nødlån er uændrede. |
+| Løbsdage | `chargeRaceDayTravelStaffToDate` returnerer `skipped: "no_upkeep"` og trækker intet. |
+| Ikke omfattet | Facilitetskøb (`facility_purchase`), scout-rejser (`scout_travel`), rytter- og stabsløn. |
+| Prognose og flader | `computeFinanceForecast`/`computeMultiSeasonForecast` (`noUpkeep`) regner de tre som 0 og sætter `inputs.no_upkeep`; prognose-kortet viser "—" i næste sæsons kolonne, sæsonskifte-kvitteringen udelader trinnene, Klub-siden skjuler drift (`seasonCost.upkeepCharged=false`), admin-previewet viser upkeep 0. Historiske posteringer og sæsonrapporten er uændrede. |
+| Tænding | Claude på ejer-go, EFTER at sæsonens sidste seniorløb er afregnet og FØR "Udfør sæsonskifte" (12c). |
+| Rollback | Bør ske ved et sæsonskifte. Slås flaget fra midt i en sæson, trækker næste afregning rejse og personale for alle sæsonens afsluttede seniorløbsdage på én gang (nøglerne findes ikke). |
+
 Disse konstanter bor i `backend/lib/economyConstants.js` og er dokumenteret i `docs/GAME_INVARIANTS.md` — **denne fil duplikerer dem ikke**. To afvigelser fundet ved verifikation 25/8, begge nyere end GAME_INVARIANTS' tekst:
 
 | Konstant | GAME_INVARIANTS.md siger | Kode siger i dag |

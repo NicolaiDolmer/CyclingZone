@@ -52,6 +52,7 @@
     "visitorsTrendUp": "Sube un {pct} % respecto a los 7 días anteriores",
     "visitorsTrendDown": "Baja un {pct} % respecto a los 7 días anteriores",
     "u23": "Sub-23",
+    "junior": "Júnior",
     "u25": "Sub-25",
     "retired": "Retirado",
     "ageYears": "{age} años",
@@ -199,9 +200,8 @@
       "contractSeason": "Temporada {season}",
       "contractExpired": "Caducado",
       "contractExpiredSub": "Agente libre en el cambio de temporada salvo que se amplíe",
+      "contractExpires": "vence",
       "aiTag": "IA",
-      "valueTrend": "{value} en los últimos {days} días",
-      "valueTrendTitle": "Cambio de valor desde el {date}",
       "ratingTrendRising": "En ascenso esta temporada",
       "ratingTrendSteady": "Estable esta temporada",
       "ratingTrendDeclining": "En descenso esta temporada",
@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Por qué se ha movido su reputación",
+      "progressTo": "{value} / {target} para {band}",
+      "weighting": "Las victorias y las grandes carreras cuentan más",
+      "help": "Cómo funciona la reputación",
+      "close": "Cerrar",
       "noEvents": "Aún no hay eventos de reputación.",
       "unknownRace": "Una carrera",
       "band": {
@@ -249,9 +253,7 @@
       "listed": "En la lista de fichajes · precio {price}",
       "auction": "En subasta · termina en {endsIn} · puja más alta {highBid}",
       "finalSeasonTitle": "Última temporada",
-      "finalSeason": "Anunció su retirada al inicio de la temporada. Se retira cuando termine la temporada {season}.",
-      "academy": "Ciclista de la academia",
-      "expiry": "El contrato caduca tras la temporada {season}."
+      "finalSeason": "Anunció su retirada al inicio de la temporada. Se retira cuando termine la temporada {season}."
     },
     "history": {
       "loading": "Cargando historial...",
@@ -375,7 +377,6 @@
       "factor_ceiling_gap": "Diferencia clara entre el nivel de hoy y el que se proyecta que alcance",
       "factor_near_ceiling": "Ya está cerca de su nivel proyectado, queda poco por ganar",
       "factor_decline_risk": "En una edad en la que empieza el declive",
-      "factor_value_gap": "Tiene un precio inferior a lo que sugieren los números que vale",
       "factor_type_match": "El veredicto da más peso a su mejor tipo de ciclista",
       "factor_form_unknown": "Los ojeadores no ven la forma ni la fatiga",
       "factor_watch_races": "Los resultados de las carreras confirmarán o pondrán en duda esta lectura",
@@ -396,11 +397,6 @@
       "typesLegend": "Barra sólida = nivel de hoy. Banda sombreada = hacia dónde se encamina de forma realista con tu entrenamiento: el extremo inferior es un trabajo constante pero sin enfoque, el superior es un enfoque dedicado cada día. Marca oscura = el techo del rol, igual para todos los de ese rol; el potencial decide con qué rapidez sube hacia él. Es una estimación, no una garantía, y ningún ojeador conoce a un ciclista con exactitud. Las valoraciones son comparables entre roles: el mismo número significa el mismo nivel en todas partes.",
       "capsMissingTitle": "Informe incompleto",
       "capsMissingBody": "Todavía no hay datos de proyección para este ciclista, así que no se puede mostrar la perspectiva por tipo.",
-      "valueTitle": "¿Una ganga?",
-      "valueMarket": "Valor de mercado",
-      "valueExpected": "Valor esperado",
-      "valueReadAbove": "El modelo lo valora por encima de su valor de mercado actual.",
-      "valueReadBelow": "Su valor de mercado es igual o superior a lo que espera el modelo.",
       "scoutFailed": "No se pudo enviar al ojeador. Inténtalo de nuevo en un momento.",
       "scoutErrors": {
         "max_level": "Este ciclista ya está totalmente ojeado.",
@@ -414,7 +410,6 @@
     "interest": {
       "loading": "Cargando interés...",
       "loadError": "Ahora mismo no se pudieron cargar los datos de interés.",
-      "trendNew": "datos nuevos",
       "trendFlat": "estable",
       "seasonShort": "T{n}",
       "stats": {
@@ -851,8 +846,7 @@
       "working": "Ampliando…",
       "success": "Contrato ampliado.",
       "errorPrefix": "No se pudo ampliar:",
-      "capped": "Contrato en la duración máxima (hasta la temporada {season}).",
-      "capCounterLabel": "Ampliaciones usadas"
+      "capped": "Contrato en la duración máxima (hasta la temporada {season})."
     },
     "release": {
       "button": "Liberar ciclista",

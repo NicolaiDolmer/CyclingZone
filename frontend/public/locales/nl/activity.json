@@ -31,8 +31,7 @@
     "bought": "Gekocht",
     "sold": "Verkocht",
     "noBids": "Geen biedingen",
-    "lost": "Verloren",
-    "inAuction": "In veiling"
+    "lost": "Verloren"
   },
   "section": {
     "offersNeedResponse": "Aanbiedingen die op jouw antwoord wachten",

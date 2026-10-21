@@ -1,0 +1,113 @@
+{
+  "branch": "staging-cutover",
+  "project_ref": "pywxpnynzmbukdvoiazp",
+  "measured_at": "2026-10-19T14:19:36.082Z",
+  "bulk_rows": 10000,
+  "warmups_per_variant": 1,
+  "trials_per_variant": 5,
+  "workload": "UPDATE team_id=team_id; EXPLAIN ANALYZE; every transaction ROLLBACK",
+  "before": {
+    "flag": "off",
+    "riders": 17989,
+    "pg_version": "17.6",
+    "row_trigger": false,
+    "queue_length": 0,
+    "rider_checksum": "-365544908685542201054",
+    "trigger_definition": "CREATE TRIGGER ranking_delta_riders_update AFTER UPDATE ON public.riders REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION enqueue_ranking_delta()"
+  },
+  "old": {
+    "median_execution_ms": 1710.558,
+    "median_m1_trigger_ms": 22.258,
+    "samples": [
+      {
+        "execution_ms": 1651.683,
+        "planning_ms": 1.709,
+        "m1_trigger_ms": 23.596,
+        "m1_trigger_calls": 1
+      },
+      {
+        "execution_ms": 1710.558,
+        "planning_ms": 1.774,
+        "m1_trigger_ms": 22.258,
+        "m1_trigger_calls": 1
+      },
+      {
+        "execution_ms": 1852.182,
+        "planning_ms": 1.778,
+        "m1_trigger_ms": 22.425,
+        "m1_trigger_calls": 1
+      },
+      {
+        "execution_ms": 1612.814,
+        "planning_ms": 1.675,
+        "m1_trigger_ms": 19.417,
+        "m1_trigger_calls": 1
+      },
+      {
+        "execution_ms": 1723.795,
+        "planning_ms": 1.771,
+        "m1_trigger_ms": 19.264,
+        "m1_trigger_calls": 1
+      }
+    ]
+  },
+  "replacement": {
+    "median_execution_ms": 1688.998,
+    "median_m1_trigger_ms": 0,
+    "samples": [
+      {
+        "execution_ms": 1549.093,
+        "planning_ms": 2.525,
+        "m1_trigger_ms": 0,
+        "m1_trigger_calls": 0
+      },
+      {
+        "execution_ms": 1739.306,
+        "planning_ms": 1.672,
+        "m1_trigger_ms": 0,
+        "m1_trigger_calls": 0
+      },
+      {
+        "execution_ms": 1688.998,
+        "planning_ms": 1.679,
+        "m1_trigger_ms": 0,
+        "m1_trigger_calls": 0
+      },
+      {
+        "execution_ms": 1661.682,
+        "planning_ms": 2.181,
+        "m1_trigger_ms": 0,
+        "m1_trigger_calls": 0
+      },
+      {
+        "execution_ms": 1699.535,
+        "planning_ms": 1.642,
+        "m1_trigger_ms": 0,
+        "m1_trigger_calls": 0
+      }
+    ]
+  },
+  "after": {
+    "flag": "off",
+    "riders": 17989,
+    "pg_version": "17.6",
+    "row_trigger": true,
+    "queue_length": 1,
+    "rider_checksum": "-365544908685542201054",
+    "trigger_definition": "CREATE TRIGGER ranking_delta_riders_update AFTER UPDATE ON public.riders FOR EACH ROW WHEN ((old.team_id IS DISTINCT FROM new.team_id)) EXECUTE FUNCTION enqueue_ranking_delta()"
+  },
+  "final_replay": {
+    "verified_at": "2026-10-19T14:34:58.358Z",
+    "flag": "off",
+    "riders": 17989,
+    "pg_version": "17.6",
+    "row_trigger": true,
+    "queue_length": 1,
+    "rider_checksum": "-365544908685542201054",
+    "trigger_definition": "CREATE TRIGGER ranking_delta_riders_update AFTER UPDATE ON public.riders FOR EACH ROW WHEN ((old.team_id IS DISTINCT FROM new.team_id)) EXECUTE FUNCTION enqueue_ranking_delta()",
+    "normal_rpc_status": {
+      "apply": "disabled",
+      "parity": "disabled"
+    }
+  }
+}

@@ -367,7 +367,7 @@ Claude-session åben FØR 18:00 dansk: følg stage-scheduler-logs + første etap
   ```
   Matcher `menneskehold` men ikke `teams_affected`, er #2852-fixet ikke deployet — STOP og undersøg før du kører skiftet. Resterende forekomster af den korte diskriminator uden for transition-motoren (season-end, cron, board-stier) er noteret i PR'ens backwards-check.
 - **Payroll før pension:** en rytter der pensioneres i fase `rider_progression` har allerede fået sin S2-løn trukket i fasen før. Én sæsons løn til en afgående rytter — accepteret spilregel-nuance.
-- **D3→D4-nedrykning hviler på data, ikke en regel:** `poolAllReal`-gaten er åben fordi alle 4 D3-puljer er 24/24 ægte. Efter S2 (hvor AI-fyld lander i D3) lukker gaten igen af sig selv — **#2164 skal implementeres eksplicit før S2→S3**. Skridt 2 verificerer gaten på dagen.
+- **D3→D4-nedrykning er en regel (#6771, 20/10):** gaten er fjernet; bund 4 pr. D3-pulje rykker altid ned (AI i bunden flyttes ikke). Historik: **D3→D4-nedrykning hvilede på data, ikke en regel:** `poolAllReal`-gaten er åben fordi alle 4 D3-puljer er 24/24 ægte. Efter S2 (hvor AI-fyld lander i D3) lukker gaten igen af sig selv — **#2164 skal implementeres eksplicit før S2→S3**. Skridt 2 verificerer gaten på dagen.
 - **`resolveCalendarAnchor`/kalender-regenerering:** ikke relevant — S2-kalenderen ER materialiseret og røres ikke.
 
 ## Reference

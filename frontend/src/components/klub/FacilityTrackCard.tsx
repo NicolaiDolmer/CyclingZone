@@ -27,9 +27,11 @@ interface Props {
   onOpenStaff: (track: string) => void;
   busy?: boolean;
   primary?: boolean;
+  // #6936: false når facilitets-upkeep ikke længere trækkes (economy_no_upkeep_v1).
+  showUpkeep?: boolean;
 }
 
-export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, busy = false, primary = false }: Props) {
+export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, busy = false, primary = false, showUpkeep = true }: Props) {
   const { t } = useTranslation("klub");
   const { track, tier, upgradePrice, tierUpkeep, effectiveBonus, effectLive } = facility;
 
@@ -120,17 +122,19 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
 
       <div className="mt-auto pt-4">
         <div className="border-t border-cz-border pt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <p className="text-xs text-cz-2 leading-snug">
-            {maxed
-              ? t("facilities.upkeepNow", { amount: formatNumber(tierUpkeep) })
-              : nextUpkeep != null
-                ? t("facilities.upkeepAt", { tier: nextTier, amount: formatNumber(nextUpkeep) })
-                : t("facilities.upkeepNow", { amount: formatNumber(tierUpkeep) })}
-          </p>
+          {showUpkeep && (
+            <p className="text-xs text-cz-2 leading-snug">
+              {maxed
+                ? t("facilities.upkeepNow", { amount: formatNumber(tierUpkeep) })
+                : nextUpkeep != null
+                  ? t("facilities.upkeepAt", { tier: nextTier, amount: formatNumber(nextUpkeep) })
+                  : t("facilities.upkeepNow", { amount: formatNumber(tierUpkeep) })}
+            </p>
+          )}
           {maxed ? (
-            <span className="text-xs text-cz-3">{t("facilities.maxed")}</span>
+            <span className={`text-xs text-cz-3${showUpkeep ? "" : " ml-auto"}`}>{t("facilities.maxed")}</span>
           ) : (
-            <Button variant={primary ? "primary" : "secondary"} size="sm" loading={busy} onClick={() => onUpgrade(track)}>
+            <Button className={showUpkeep ? undefined : "ml-auto"} variant={primary ? "primary" : "secondary"} size="sm" loading={busy} onClick={() => onUpgrade(track)}>
               {tier === 0 ? t("facilities.build") : t("facilities.upgrade")} · <span className="font-data tabular-nums">{formatNumber(upgradePrice)}</span>
             </Button>
           )}

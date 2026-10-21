@@ -35,50 +35,39 @@ export const LOAN_CONFIRM_DEBT_RATIO = 0.5;
 /**
  * Pure risk summary for a candidate loan, computed from numbers the Finance
  * page's loan form already has (server-sourced debt_ceiling/current debt +
- * the form's own principal/fee/interest for the selected loan type). Never
- * duplicates loanEngine.js's own ceiling check — this is purely a UX signal
- * for when to show a confirmation step, not a source of truth for what the
- * server will accept.
+ * the form's own principal/fee). Never duplicates loanEngine.js's own
+ * ceiling check: this is purely a UX signal for when to show a confirmation
+ * step, not a source of truth for what the server will accept.
+ *
+ * #6935: the former next-season interest forecast + "over the cap from
+ * interest alone" warning were removed. They applied the new loan's rate to
+ * the WHOLE debt (the engine charges each loan its own rate) and compared
+ * against debt incl. interest (the board measures without capitalised
+ * interest). Players must never see numbers that can be wrong.
  *
  * @param {object} params
  * @param {number} params.principal - requested loan principal
  * @param {number} params.fee - origination fee for this principal
- * @param {number} params.interestRatePct - the loan type's per-season interest rate (0..1)
  * @param {number} params.currentDebt - team's total_debt BEFORE this loan
  * @param {number|null} params.debtCeiling - division's debt ceiling, or null/undefined if unconfigured
  * @returns {{
  *   totalOwed: number,
  *   newTotalDebt: number,
  *   ceilingPct: number,
- *   nextSeasonInterest: number,
- *   projectedDebtAfterInterest: number,
- *   exceedsCeilingNextSeason: boolean,
  *   isHighDebt: boolean,
  * }}
  */
-export function computeLoanRiskSummary({ principal, fee, interestRatePct, currentDebt, debtCeiling }) {
+export function computeLoanRiskSummary({ principal, fee, currentDebt, debtCeiling }) {
   const totalOwed = (principal || 0) + (fee || 0);
   const newTotalDebt = (currentDebt || 0) + totalOwed;
   const hasCeiling = debtCeiling != null && debtCeiling > 0;
   const ceilingPct = hasCeiling ? newTotalDebt / debtCeiling : 0;
-
-  // Mirrors processLoanInterest's own math (backend/lib/loanEngine.js):
-  // Math.round(amount_remaining * interest_rate), capitalized on the WHOLE
-  // remaining balance (principal + fee), not principal alone. Purely
-  // illustrative here — the actual next-season charge depends on any
-  // repayments made before then.
-  const nextSeasonInterest = Math.round(newTotalDebt * (interestRatePct || 0));
-  const projectedDebtAfterInterest = newTotalDebt + nextSeasonInterest;
-  const exceedsCeilingNextSeason = hasCeiling && projectedDebtAfterInterest > debtCeiling;
   const isHighDebt = hasCeiling && ceilingPct >= LOAN_CONFIRM_DEBT_RATIO;
 
   return {
     totalOwed,
     newTotalDebt,
     ceilingPct,
-    nextSeasonInterest,
-    projectedDebtAfterInterest,
-    exceedsCeilingNextSeason,
     isHighDebt,
   };
 }

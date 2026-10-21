@@ -261,8 +261,7 @@ export function scoutPrecisionInfo(level, maxLevel, scout = DEFAULT_SCOUT) {
 //   level       : scout-niveau; maxLevel: config-max
 //   bestNow     : bedste type-rating nu (maks over buildTypeCeilingBands[].now)
 //   bestCeilMid : midtpunkt af bedste types loft-bånd
-//   valueGap    : forventet værdi minus markedsværdi (>0 = potentielt røverkøb);
-//                 0/ukendt → faktoren udelades.
+//   #6935: value_gap-faktoren er fjernet (sammenlignede to forskellige modeller).
 // Gap-tærskler i rating-point. #3666: rekalibreret fra 4/6/12.
 //
 // Tærsklerne er ABSOLUTTE tal, så en skalaomlægning ændrer hvilken dom en rytter
@@ -284,7 +283,7 @@ const GAP_NEAR_CEILING = 2;  // var 4
 const GAP_MONITOR = 3;       // var 6
 const GAP_HIGH_UPSIDE = 8;   // var 12
 
-export function buildVerdict({ age, own, level, maxLevel, bestNow, bestCeilMid, valueGap = 0 }) {
+export function buildVerdict({ age, own, level, maxLevel, bestNow, bestCeilMid }) {
   const gap = (Number(bestCeilMid) || 0) - (Number(bestNow) || 0);
   const a = Number(age) || 26;
   const headlineKey =
@@ -298,7 +297,6 @@ export function buildVerdict({ age, own, level, maxLevel, bestNow, bestCeilMid, 
   if (gap >= GAP_HIGH_UPSIDE) pool.push("ceiling_gap");
   if (gap < GAP_NEAR_CEILING) pool.push("near_ceiling");
   if (a >= 31) pool.push("decline_risk");
-  if (valueGap > 0) pool.push("value_gap");
   pool.push("type_match", "form_unknown", "watch_races");
   return { headlineKey, confidence, factorKeys: pool.slice(0, 4) };
 }

@@ -8,6 +8,7 @@
   },
   "trainNow": {
     "button": "Træn nu",
+    "running": "Kører…",
     "helper": "Låser dagens træning og dagens løbsudtagelse. Resultatet er det samme, som hvis du venter.",
     "helperRace": "Låser dagens træning og dagens løbsudtagelse ({race}). Resultatet er det samme, som hvis du venter.",
     "locked": "Dagens træning og tilmelding er låst. Træthed og form opdateres ved aftenopgørelsen.",
@@ -71,6 +72,7 @@
     "statusPaused": "Sat på pause",
     "statusNotYet": "Ikke kørt endnu",
     "statusWaiting": "Kører af sig selv fra kl. {hour}:00",
+    "statusRunning": "Kører, opdaterer selv",
     "statusReady": "Klar til at køre",
     "runNow": "Kør nu",
     "showing": "Viser: {label}",

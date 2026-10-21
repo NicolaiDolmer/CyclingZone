@@ -1,5 +1,221 @@
 export const PATCHES = [
   {
+    "version": "7.372",
+    "date": "2026-10-20",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Economy",
+        "en": {
+          "title": "Running costs are gone",
+          "body": "From today your team pays no Travel & staff per race day, and from season 5 there is no facility or academy upkeep either. Your forecast for next season already shows it. Old lines stay in your history."
+        },
+        "da": {
+          "title": "Driftsudgifterne er væk",
+          "body": "Fra i dag betaler dit hold ikke Rejse og stab pr. løbsdag, og fra sæson 5 er der heller ingen udgift til faciliteter eller akademi. Prognosen for næste sæson viser det allerede. Gamle linjer bliver stående i din historik."
+        },
+        "refs": [
+          6936,
+          6948
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squad",
+        "en": {
+          "title": "Age decides youth races",
+          "body": "A rider who is too old for a junior or U23 race can no longer be picked for it, by you or the assistant. He is shown greyed out with \"Over age limit\". Juniors can still ride U23 races."
+        },
+        "da": {
+          "title": "Alder afgør ungdomsløb",
+          "body": "En rytter, der er for gammel til et junior- eller U23-løb, kan ikke længere udtages til det, hverken af dig eller assistenten. Han vises gråt med \"Over aldersgrænsen\". Juniorer må stadig køre U23-løb."
+        },
+        "refs": [
+          6964,
+          6982
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Inbox",
+        "en": {
+          "title": "Deleted board messages stay deleted",
+          "body": "Messages from the board about the annual meeting no longer come back after you delete them."
+        },
+        "da": {
+          "title": "Slettede bestyrelsesbeskeder bliver væk",
+          "body": "Beskeder fra bestyrelsen om årsmødet kommer ikke længere igen, når du har slettet dem."
+        },
+        "refs": [
+          6946,
+          6983
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "A cleaner rider card",
+          "body": "The contract warning now sits in the contract field, the academy bar is a small U23 or Junior badge, and the value arrow and \"Extensions used\" are gone."
+        },
+        "da": {
+          "title": "Et ryddeligere rytterkort",
+          "body": "Kontraktvarslet står nu i kontraktfeltet, akademibjælken er blevet et lille U23- eller Junior-mærke, og værdipilen og \"Forlængelser brugt\" er væk."
+        },
+        "refs": [
+          6934,
+          6980
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Numbers that could be wrong are removed",
+          "body": "I removed numbers that were not always correct: the interest forecast on loans, the \"Bargain?\" card in scouting, the value and salary line in auction history, and a few more. They come back only when they can be right every time."
+        },
+        "da": {
+          "title": "Tal der kunne være forkerte er fjernet",
+          "body": "Jeg har fjernet tal, der ikke altid var rigtige: renteprognosen på lån, \"Røverkøb?\"-kortet i scouting, værdi- og lønlinjen i auktionshistorikken og et par til. De kommer kun tilbage, når de kan være rigtige hver gang."
+        },
+        "refs": [
+          6935,
+          6949
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Relegation from Division 3 works again",
+          "body": "At the season change the bottom teams go down a division again, never more than one step per season."
+        },
+        "da": {
+          "title": "Nedrykning fra division 3 virker igen",
+          "body": "Ved sæsonskiftet rykker bunden igen ned i divisionen under, aldrig mere end ét trin pr. sæson."
+        },
+        "refs": [
+          6771,
+          6981
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.371",
+    "date": "2026-10-20",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Train now during the evening run",
+          "body": "If you press Train now while the evening run is training your team, the button now shows Running… and the page updates by itself when training is done. Before, you got an error."
+        },
+        "da": {
+          "title": "Træn nu under aftenkørslen",
+          "body": "Trykker du på Træn nu, mens aftenkørslen træner dit hold, viser knappen nu Kører…, og siden opdaterer sig selv, når træningen er færdig. Før fik du en fejl."
+        },
+        "refs": [
+          6839,
+          6827
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Squad",
+        "en": {
+          "title": "Youth riders bought at auction join the senior squad",
+          "body": "A rider released from an academy and bought at auction could get stuck as a U23 rider outside the academy. He now joins the senior squad, and the riders it happened to have been moved."
+        },
+        "da": {
+          "title": "Ungdomsryttere købt på auktion kommer på seniorholdet",
+          "body": "En rytter, der var frigivet fra et akademi og købt på auktion, kunne sidde fast som U23-rytter uden for akademiet. Han kommer nu på seniorholdet, og de ryttere, det skete for, er flyttet."
+        },
+        "refs": [
+          6922,
+          6920
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.370",
+    "date": "2026-10-19",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Debt goal shows the right target",
+          "body": "The board's debt goal now shows its real target: no outstanding debt at season end. Before, it showed a wage-bill figure that was never the requirement."
+        },
+        "da": {
+          "title": "Gældsmålet viser det rigtige mål",
+          "body": "Bestyrelsens gældsmål viser nu det rigtige mål: ingen udestående gæld ved sæsonens slutning. Før stod der et tal for lønsummen, som aldrig var kravet."
+        },
+        "refs": [
+          6906,
+          6903
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Tidier side menu",
+          "body": "The side menu no longer shows a sideways scrollbar, and the fixed links at the bottom now sit under their own heading, Account & help."
+        },
+        "da": {
+          "title": "Pænere sidemenu",
+          "body": "Sidemenuen viser ikke længere en vandret scrollbar, og de faste links nederst står nu under deres egen overskrift, Konto & hjælp."
+        },
+        "refs": [
+          6911,
+          6904
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Reputation you can read",
+          "body": "A rider's reputation now shows as a level with a bar towards the next one. Tap it to see what moved it and how much each result counted."
+        },
+        "da": {
+          "title": "Omdømme du kan læse",
+          "body": "En rytters omdømme vises nu som et niveau med en bjælke mod det næste. Tryk på det for at se, hvad der flyttede det, og hvor meget hvert resultat talte."
+        },
+        "refs": [
+          6910,
+          6905
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.369",
     "date": "2026-10-19",
     "changes": [
@@ -11870,7 +12086,7 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "Old calendar links land on the Calendar tab again",
           "body": "Old bookmarks and links to the races calendar now correctly land on the Calendar tab inside the Planning hub, instead of dropping you on the default Team Selection tab."
@@ -12939,7 +13155,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "The race calendar now lives inside the Planning hub",
           "body": "The calendar is the fourth tab in the Planning hub, next to Team selection, Form plan and Strategy, so everything you use to plan your season sits on one page. The Planning menu group is down to a single entry. Nothing about the calendar itself has changed: same month grid, same season and division pickers, same clickable race chips. The old /calendar link and every button that pointed there redirect to the new tab automatically."
@@ -12986,7 +13202,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "One Planning hub: Team selection, Form plan and Strategy under a single menu entry",
           "body": "The three planning surfaces now live together on one page with tabs: Team selection (the race board, unchanged), Form plan (the season planner) and Strategy. The Planning menu group shrinks from four entries to two (Planning and Calendar). The old Races page has been dissolved: the world race catalogue and the completed-races results panel moved to the Results hub (under Archive and Latest respectively). Every old link and bookmark (/races, /planner, the strategy page) redirects to the right tab automatically, and nothing about how the race board works has changed."
@@ -13009,7 +13225,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "A tidier menu: one Rankings hub, Staff inside Club, My Activity inside your Inbox",
           "body": "Three rarely-visited menu items have moved in with the pages players actually use, so the menu is shorter without losing anything. League & standings, Rider Rankings and Global Rank are now one 'Rankings' entry with three tabs. The Staff directory lives as a tab on the Club page. My Activity (your auctions, offers and market history) is now a tab in your Inbox, next to 'To handle'. All old links and bookmarks redirect to the new places automatically."
@@ -13273,7 +13489,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "The Clubhouse menu is ordered by what you actually open",
           "body": "The menu had grown in the order things were built, not in the order you use them. Your inbox is the third most opened page in the game and sat tenth in the list. Finance sat below the boardroom despite more than twice the traffic. Clubhouse now reads: Dashboard, Inbox, My Team, Daily Training, Finance, Academy, Board, Scouting, Club, Staff. Your manager profile moved down to Settings, where the other personal pages live. Nothing was renamed and no page moved."
@@ -13296,7 +13512,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "Everything you plan with now sits in one menu group",
           "body": "Team selection sat under Season & Results, the season planner sat in the Clubhouse, and team strategy had no menu entry at all. The three of them are now a Planning group in the sidebar, in the order you use them: team selection, season planner, team strategy, calendar. Results keeps what you go there to read: overview, races, standings, rider rankings, global rank and season snapshot. Nothing moved inside the pages themselves, so team selection opens exactly where it did before."
@@ -13312,7 +13528,7 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "Team strategy is finally in the menu",
           "body": "Your standing preferences decide how the assistant builds every lineup, but the only way in was a small link on the squad board. Team strategy now has its own entry under Planning. The link on the board still works."
@@ -17949,7 +18165,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "Team names are clickable across the app",
           "body": "Team names that used to be plain text, on rider profiles, start lists, the compare drawer and interest lists, are now links straight to the team page."
@@ -24278,7 +24494,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "topic": "Navigation",
+        "topic": "Interface",
         "en": {
           "title": "Mobile logo links to your dashboard",
           "body": "The Cycling Zone logo in the mobile top bar now links to your dashboard, matching the desktop sidebar and the usual web convention. The navigation item for the page you are already on is now marked as the current page and no longer looks clickable, so it is clear where you are. Based on click-data from the UI audit."

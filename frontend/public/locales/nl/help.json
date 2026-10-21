@@ -622,6 +622,338 @@
         "title": "Terrein en etappeprofielen",
         "text": "Vanaf seizoen 2 tonen koersen met parcoursgegevens het echte profiel van de etappe: het is precies het parcours dat de koersmotor rijdt, met van elke klim de lengte, het stijgingspercentage en de categorie, de tussensprint, de kasseienstroken en waar de finish valt. De categorie van een klim bepaalt hoeveel bergpunten er bovenop te verdienen zijn, en een finish boven op een klim levert grotere tijdsverschillen op dan een finish na een afdaling. Tik op een markering in het profiel om te zien wat daar op het spel staat, of wie het pakte zodra de etappe is gereden. Oudere koersen zonder parcoursgegevens tonen nog de eerdere terreinbadge: een schematisch silhouet en een indicatieve categorie, geen gemeten profiel."
       },
+      "raceIdentity": {
+        "title": "Koerstypes en kenmerken",
+        "text": "Vanaf seizoen 5 heeft elke korte etappekoers een vast type dat de koers van seizoen tot seizoen volgt, zodat je weet voor wat voor koers je plant. Elke koers heeft ook een of twee kenmerken die elk jaar terugkomen: dezelfde beslissende helling, strook of tijdrit. De rest van het parcours verschilt een beetje van editie tot editie. De vijf monumenten rijden elk jaar hetzelfde parcours; alleen het weer, de vorm en de tactiek veranderen. De Grand Tours houden hun eigen formaat. Het type zie je alleen hier in Help; op de koerspagina zie je het terug in het parcours zelf.",
+        "rows": [
+          [
+            "Type",
+            "Wat je kunt verwachten"
+          ],
+          [
+            "Sprintkoers",
+            "Vooral vlakke etappes met minstens één heuvelachtige dag. Geen bergen, dus de sprinters beslissen."
+          ],
+          [
+            "Klimkoers",
+            "Berg- en hooggebergte-etappes beslissen. In Divisie 1 zijn dit de voorbereidingskoersen vlak voor elke Grand Tour."
+          ],
+          [
+            "Heuvelkoers",
+            "Heuvels en korte, steile hellingen, maar geen echte bergen. Gemaakt voor explosieve renners."
+          ],
+          [
+            "Kasseien/Benelux",
+            "Kasseistroken op vlakke, open wegen. Geen bergen."
+          ],
+          [
+            "Tijdritkoers",
+            "De tijdritten beslissen: vaak een proloog op de eerste dag en een langere tijdrit laat in de koers."
+          ],
+          [
+            "Gravelkoers",
+            "Gravelstroken op heuvelachtige wegen. Geen bergen."
+          ],
+          [
+            "Bergen eerst",
+            "De bergen komen eerst. De sprinters bereiken de vlakke etappes aan het eind met vermoeide benen."
+          ],
+          [
+            "Allround",
+            "Van alles wat: vlakke etappes, bergen en een tijdrit."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Type en kenmerk per koers",
+        "text": "Gesorteerd op divisie en op datum in de kalender. De Grand Tours staan niet in de lijst. De vijf monumenten staan onderaan.",
+        "rows": [
+          [
+            "Koers",
+            "Type en kenmerk"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Klimkoers · Bergaankomst op Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "Allround · Bergaankomst op Col de la Brasque + vlakke tijdrit"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Klimkoers · Bergaankomst op Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Sprintkoers · Helling: Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Bergen eerst · Bergaankomst op Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "Gravelkoers · Gravelstrook: Piste des Aravis Blanches + gravelstrook: Chemin du Plan-Bois in de laatste etappe"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Heuvelkoers · Aankomst bergop op Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "Sprintkoers · Helling: Alto de Monegrillo"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Klimkoers · Bergaankomst op Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "Allround · Bergaankomst op Monte Sassotorto + heuvelachtige tijdrit"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Heuvelkoers · Aankomst bergop op Alto de Mendibeltz in de laatste etappe"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Kasseien/Benelux · Kasseistrook: Pavé du Moulin-Brûlé + kasseistrook: Chemin des Quatre-Vents in de laatste etappe"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Tijdritkoers · Proloog + heuvelachtige tijdrit in de laatste etappe"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "Allround · Bergaankomst op Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Klimkoers · Bergaankomst op Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Klimkoers · Bergaankomst op Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Heuvelkoers · Helling: Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Bergen eerst · Bergaankomst op Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Klimkoers · Bergaankomst op Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Sprintkoers · Helling: Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Heuvelkoers · Helling: Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Bergen eerst · Bergaankomst op Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Sprintkoers · Helling: Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Kasseien/Benelux · Kasseistrook: Pflasterweg Donauleiten + kasseistrook: Alte Treppelstraße in de laatste etappe"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "Allround · Bergaankomst op Alto de Valdecuerna + vlakke tijdrit"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Heuvelkoers · Aankomst bergop op Muro di Montevergello in de laatste etappe"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Kasseien/Benelux · Kasseistrook: Pavés de Thieumont + kasseistrook: Chemin de la Hulpière in de laatste etappe"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "Allround · Bergaankomst op Passo della Gaviola + heuvelachtige tijdrit"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Tijdritkoers · Proloog + heuvelachtige tijdrit in de laatste etappe"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Gravelkoers · Gravelstrook: Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Tijdritkoers · Proloog + heuvelachtige tijdrit in de laatste etappe"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Sprintkoers · Helling: Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "Allround · Bergaankomst op Alto de Xorret del Pinós + vlakke tijdrit"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "Allround · Bergaankomst op Alto do Malhãozinho + heuvelachtige tijdrit"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Heuvelkoers · Aankomst bergop op Monte do Castrelo in de laatste etappe"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Klimkoers · Bergaankomst op Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Kasseien/Benelux · Kasseistrook: Kasseiweg van Ronsbeke + kasseistrook: Holle Kasseistraat in de laatste etappe"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Gravelkoers · Gravelstrook: Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Klimkoers · Bergaankomst op Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Bergen eerst · Bergaankomst op Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "Allround · Bergaankomst op Alto da Senhora dos Ventos + vlakke tijdrit"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Sprintkoers · Helling: Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "Tijdritkoers · Heuvelachtige tijdrit in de laatste etappe"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Heuvelkoers · Helling: Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Sprintkoers · Helling: Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Heuvelkoers · Aankomst bergop op Stavnesbakken in de laatste etappe"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Kasseien/Benelux · Kasseistrook: Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Sprintkoers · Helling: Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Klimkoers · Bergaankomst op Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Sprintkoers · Helling: Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Kasseien/Benelux · Kasseistrook: Kasseiweg van Holterberg"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Heuvelkoers · Aankomst bergop op Muro di Castelvento in de laatste etappe"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Gravelkoers · Gravelstrook: Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "Allround · Vlakke tijdrit"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "Allround · Bergaankomst op Alto de Erroizar + heuvelachtige tijdrit"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Tijdritkoers · Heuvelachtige tijdrit in de laatste etappe"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Heuvelkoers · Helling: Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Sprintkoers · Helling: Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Bergen eerst · Bergaankomst op Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Klimkoers · Bergaankomst op Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "Allround · Heuvelachtige tijdrit"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Heuvelkoers · Helling: Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Sprintkoers · Helling: Côte de Kerhuel"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Kasseien/Benelux · Kasseistrook: Kasseistrook van Bertembos + kasseistrook: Holle Weg van Ottenrode in de laatste etappe"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Tijdritkoers · Proloog + heuvelachtige tijdrit in de laatste etappe"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monument, vast parcours · Cipressina en Poggio dei Fiori voor de finish"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monument, vast parcours · Oude Kwaremberg en Paterhelling voor de finish, plus kasseistroken"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monument, vast parcours · Kasseistroken van de Trouée d'Arembourg tot de Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monument, vast parcours · Côte de la Redoutière en Côte de la Roche-aux-Corbeaux, aankomst bergop"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monument, vast parcours · Madonna del Ghisello, dan Salita di Valtorta en een afdaling naar de finish"
+          ]
+        ]
+      },
       "raceDetail": {
         "title": "Open een koers: parcours, terrein-DNA en je opstelling",
         "text": "Koersnamen zijn overal in het spel aanklikbaar. Een koers openen toont de uitslag als hij is gereden, of voor een komende koers het parcoursprofiel per etappe, een terrein-DNA-balk met welke vaardigheden elke etappe beloont, en je eigen opstelling met een parcoursmatch per etappe, zodat je renners kunt kiezen die bij het parcours passen. Kies een etappe in de etappestrook om het profiel en de parcoursmatch te wisselen. Koersen met parcoursgegevens tonen het exacte profiel dat de motor rijdt; oudere koersen zonder die gegevens tonen nog een indicatieve terreincategorie. Op het uitslagtabblad van een etappe kun je wisselen tussen Etappe, Algemeen, Punten, Berg, Jeugd en Ploegen om de stand na die etappe te zien, en met een teamfilter beperk je de tabellen tot alle teams, je eigen team of één specifiek team."
@@ -847,6 +1179,10 @@
       "salary": {
         "title": "Salaris",
         "text": "Het jaarsalaris van elke renner wordt bij het tekenen vastgesteld op basis van wat de renner naar verwachting in het huidige seizoen produceert, en wordt daarna vastgezet: het verandert niet automatisch naarmate de renner zich ontwikkelt. Waarde en salaris beantwoorden twee verschillende vragen: waarde is de prijs van de toekomst van de renner, salaris is de kost van wat hij nu levert. Jonge talenten zijn dus goedkoop op de loonlijst te houden, terwijl gevestigde sterren lonen verdienen die bij hun output passen. Het salaris staat als aparte kolom in de Rennersdatabase en op de volglijst. Salarissen worden automatisch betaald aan het begin van het volgende seizoen, direct nadat het sponsorgeld is binnengekomen. Als sponsor + je bestaande saldo de salarissen niet kunnen dekken, neemt het systeem automatisch een noodlening."
+      },
+      "reputation": {
+        "title": "Rennerreputatie",
+        "text": "Reputatie heeft vijf niveaus: Onbekend onder 20, Bekend vanaf 20, Profiel vanaf 45, Ster vanaf 70 en Legende vanaf 90. Koersresultaten beïnvloeden de reputatie, waaronder resultaten in eendagskoersen, het eindklassement en etappes van rittenkoersen, en truien. Overwinningen en grote koersen tellen het meest."
       },
       "abilitiesExplained": {
         "title": "De 17 vaardigheden en waar ze tellen",
@@ -1203,7 +1539,7 @@
       },
       "prognosisTraining": {
         "title": "Het potentieel van een talent leren kennen",
-        "text": "Wanneer je een kandidaat binnenhaalt, zie je zijn naam, leeftijd, nationaliteit, rennerstype en huidige vaardigheden. Zijn potentieel leest Via training geleerd: je komt het te weten door hem in je team te hebben. Na ongeveer 10 koersdagen training krijg je een eerste, brede voorspelling, na ongeveer 30 een smalle, en na een volledig seizoen de definitieve. Een beter Trainingscentrum en een sterkere Sportdirecteur brengen je er sneller. Ze maken je zekerder over de renner, ze maken hem niet beter."
+        "text": "Nadat je een academierenner hebt gecontracteerd, leer je zijn prognose kennen via trainingsdagen bij jouw ploeg. Eerst is er nog geen inschatting, daarna een grove, scherpere en definitieve bandbreedte in ratingpunten. Het scoutingtabblad toont de huidige stap, de onthulde bandbreedte en de trainingsdagen tot de volgende stap. Betere trainers en trainingsfaciliteiten helpen je sneller vooruit. Ze veranderen zijn talent niet, en ook de definitieve prognose blijft een bandbreedte."
       },
       "signingProspects": {
         "title": "Talenten contracteren",
@@ -1227,8 +1563,8 @@
         "text": "Wanneer je een talent uit de instroom afwijst, gaat hij in een jeugdveiling (gemarkeerd als Jeugd) waarop elke club kan bieden. Je kunt alleen bieden als je ruimte hebt voor de renner, ofwel een vrije seniorenplek ofwel een vrije academieplek; als beide vol zijn, is de biedknop uitgeschakeld. De winnende club betaalt het winnende bod, en het talent sluit zich bij zijn seniorenselectie aan als er een vrije plek is (met een seniorencontract en meetellend voor de limiet van 30 renners), en valt alleen terug op zijn Academie (een plek in het U23- of juniorenteam, naar zijn leeftijd) als de seniorenselectie vol is. Elke veiling toont waar de renner terechtkomt. Een talent waarop niemand biedt, verlaat de sport voorgoed, dus een kandidaat afwijzen is een echte beslissing. Er is nooit echt geld mee gemoeid, alleen punten in het spel."
       },
       "upkeepCost": {
-        "title": "Academieonderhoud",
-        "text": "De Academie draaiend houden kost een onderhoudsbedrag per bezette plek, automatisch in rekening gebracht bij de seizoensloonlijst naast je seniorensalarissen. Plan je budget daarop: een volle Academie ({u23SquadCap} U23- en {juniorSquadCap} juniorenrenners) kent elk seizoen merkbare lopende kosten. De wissel van seizoen 3 naar seizoen 4 was een uitzondering: bij die wissel is voor de jeugdselecties geen onderhoud in rekening gebracht."
+        "title": "Kosten van de academie",
+        "text": "Vanaf seizoen 5 heeft de academie geen onderhoudskosten per plek. Je academierenners kosten alleen hun salaris."
       },
       "graduation": {
         "title": "Graduation Day",
@@ -1280,14 +1616,14 @@
       },
       "noUpkeepAtSeasonChange": {
         "title": "Wat kostten mijn jeugdselecties bij de seizoenswissel van dit seizoen?",
-        "text": "Niets. Je U23- en juniorenrenners betaalden bij de wissel van seizoen 3 naar seizoen 4 geen onderhoud. Wat ze vanaf seizoen 4 kosten om te draaien, is nog niet besloten."
+        "text": "Niets. U23- en juniorrenners hebben geen onderhoudskosten, en vanaf seizoen 5 zijn er ook geen academiekosten."
       }
     },
     "facilities": {
       "label": "Clubfaciliteiten",
       "whatFacilities": {
         "title": "Wat zijn clubfaciliteiten?",
-        "text": "Faciliteiten zijn upgrades op clubniveau die je op de pagina Club bouwt en opwaardeert, los van je renners. Elke faciliteit heeft 5 niveaus: een eenmalige bouw-/upgradeprijs per niveau, plus een kleinere onderhoudskost elk seizoen zodra gebouwd. Je kunt ook een hoofd voor een faciliteit aannemen; de totale rating van het hoofd bepaalt hoeveel van het effect van de faciliteit je echt krijgt, van ongeveer de helft bij een kale faciliteit zonder hoofd tot het volledige effect met een topgewaardeerd hoofd."
+        "text": "Faciliteiten zijn upgrades op clubniveau die je op de pagina Club bouwt en opwaardeert, los van je renners. Elke faciliteit heeft 5 niveaus: een eenmalige bouw-/upgradeprijs per niveau, plus een kleinere onderhoudskost elk seizoen zodra gebouwd. Je kunt ook een hoofd voor een faciliteit aannemen; de totale rating van het hoofd bepaalt hoeveel van het effect van de faciliteit je echt krijgt, van ongeveer de helft bij een kale faciliteit zonder hoofd tot het volledige effect met een topgewaardeerd hoofd. Vanaf seizoen 5 zijn onderhoud, Reizen en staf en het onderhoud van faciliteiten en academie verwijderd, dus die regels verschijnen niet meer."
       },
       "tracks": {
         "title": "De 5 faciliteitensporen",
@@ -1341,8 +1677,8 @@
         "text": "De focus van de coachinggroep van een Sportdirecteur laat zien welke leeftijdsgroep hij of zij het best traint. U23 omvat Academy-renners en jonge profs tot 25 jaar; Senioren omvat renners van 26 jaar en ouder. Dit is de eigen specialisatie van een hoofd, los van de selectiestructuur van de club (Juniorenteam en U23-team komen binnenkort): een coachinggroep gaat over welke renners een hoofd het best traint, niet over bij welke selectie een renner hoort."
       },
       "costs": {
-        "title": "Kosten: eenmalige bouwprijs + terugkerend onderhoud",
-        "text": "Elk niveau heeft een eenmalige bouw- of upgradeprijs, eenmaal betaald wanneer je het bouwt. Daarbovenop draagt elk gebouwd niveau een kleinere onderhoudskost die elk seizoen automatisch opnieuw in rekening wordt gebracht, naast eventuele stafsalarissen, dus budgetteer het als terugkerende post, niet alleen de prijs vooraf."
+        "title": "Kosten: een eenmalige bouwprijs",
+        "text": "Elk niveau heeft een eenmalige prijs om te bouwen of te upgraden, die je één keer betaalt. Vanaf seizoen 5 hebben gebouwde faciliteiten geen terugkerend onderhoud. Een chef die je aanneemt heeft nog steeds een salaris."
       },
       "staffOverview": {
         "title": "De staf van elk team zien",
@@ -1424,7 +1760,7 @@
       },
       "weatherAndCobbles": {
         "title": "Weer en kasseien",
-        "text": "Elke etappe heeft zijn eigen weer. Zon en bewolking zijn de rustige basis, er verandert niets. Regen vertraagt de hele etappe en raakt een renner die zwak is in de regen harder dan de rest van de groep. Wind bijt vooral waar de weg open is; een klim wordt door zijn eigen helling beschut. Regen vergroot ook het risico op een valpartij op kasseien, gravel en gedurfde afdalingen. Je ziet het als één opmerking op de etappetijdlijn, op de kilometer waar het gaat tellen, nooit als een getal eraan gekoppeld."
+        "text": "Elke etappe heeft zijn eigen weer, en de etappepagina laat het zien: droog, regen of wind. Droog is de rustige basis, er verandert niets. Regen vertraagt de hele etappe. Wind bijt vooral waar de weg open is; een klim wordt door zijn eigen helling beschut. Beide treffen renners met zwak afdalen en weinig weerbaarheid het hardst. Regen vergroot ook het risico op een valpartij op kasseien, gravel en gedurfde afdalingen. Als regen of wind de renners kracht kostte, zegt het koersverhaal dat in één regel, nooit met een getal eraan. Een ploegentijdrit wordt zonder weer gereden."
       }
     }
   },
@@ -1623,11 +1959,11 @@
     },
     "seasonChangeMoneyFaq": {
       "q": "Wat gebeurt er met mijn geld bij de seizoenswissel?",
-      "a": "Alles gebeurt aan het begin van het nieuwe seizoen, in één batch. Eerst wordt je sponsorcontract vernieuwd, dan wordt het sponsorgeld uitbetaald, en direct daarna volgt de loonlijst van het seizoen: leningrente, rennerssalarissen, rente over een saldo dat daarna nog negatief is, academieonderhoud (als je academierenners hebt), clubonderhoud, faciliteitenonderhoud en stafsalarissen, in die volgorde. Als je clubonderhoud per koersdag wordt betaald als Reis & staf, maakt het geen deel uit van deze batch (zie 'Wat zijn de regels Reis & staf in mijn financiën?'). Er wordt niets afgeschreven wanneer het oude seizoen eindigt; salarissen en rente zijn in v3.78 naar de seizoensstart verplaatst. Als je sponsorinkomsten en saldo de loonlijst niet kunnen dekken, neemt het systeem automatisch een noodlening voor het tekort (zie 'Wat gebeurt er als ik de salarissen niet kan betalen?'). Als je sponsordeal ook een tarief per etappe heeft, wordt dat deel apart betaald terwijl je tijdens het seizoen koersen voltooit; het is geen onderdeel van de batch bij de seizoenswissel."
+      "a": "Alles gebeurt aan het begin van het nieuwe seizoen, in één batch. Eerst wordt je sponsorcontract vernieuwd, dan wordt het sponsorgeld uitbetaald, en direct daarna volgt de loonlijst van het seizoen: leningrente, rennerssalarissen, rente over een saldo dat daarna nog negatief is, academieonderhoud (als je academierenners hebt), clubonderhoud, faciliteitenonderhoud en stafsalarissen, in die volgorde. Als je clubonderhoud per koersdag wordt betaald als Reis & staf, maakt het geen deel uit van deze batch (zie 'Wat zijn de regels Reis & staf in mijn financiën?'). Er wordt niets afgeschreven wanneer het oude seizoen eindigt; salarissen en rente zijn in v3.78 naar de seizoensstart verplaatst. Als je sponsorinkomsten en saldo de loonlijst niet kunnen dekken, neemt het systeem automatisch een noodlening voor het tekort (zie 'Wat gebeurt er als ik de salarissen niet kan betalen?'). Als je sponsordeal ook een tarief per etappe heeft, wordt dat deel apart betaald terwijl je tijdens het seizoen koersen voltooit; het is geen onderdeel van de batch bij de seizoenswissel. Vanaf seizoen 5 zijn onderhoud, Reizen en staf en het onderhoud van faciliteiten en academie verwijderd, dus die regels verschijnen niet meer."
     },
     "upkeepPerRaceDayFaq": {
-      "q": "Wat zijn de regels Reis & staf in mijn financiën?",
-      "a": "Reis & staf is clubonderhoud dat per koersdag wordt betaald in plaats van in één bedrag bij de seizoensstart. Wanneer dat geldt, wordt er bij de seizoenswissel niets voor clubonderhoud afgeschreven. In plaats daarvan betaal je een vast bedrag voor elke seniorenkoersdag waarop je team start: 1.571 CZ$ in Divisie 1, 625 CZ$ in Divisie 2, 238 CZ$ in Divisie 3 en niets in Divisie 4. Over een heel seizoen telt dat op tot hetzelfde totaal als het bedrag bij de seizoensstart, alleen gespreid. Een koersdag kost alleen iets als minstens één van je renners die dag start. U23- en juniorenkoersen zijn gratis, en een geparkeerd team koerst niets en betaalt niets. Elke koersdag verschijnt als eigen regel Reis & staf, in rekening gebracht wanneer de koers wordt afgehandeld, op hetzelfde moment als het prijzengeld. Je prognose toont welk model voor jou geldt."
+      "q": "Wat waren de regels Reizen en staf in mijn financiën?",
+      "a": "Reizen en staf was het clubonderhoud dat je in seizoen 4 per koersdag betaalde. Vanaf seizoen 5 is het weg: je team betaalt geen onderhoudskosten per koersdag of bij de seizoenswissel. Oude regels blijven in je geschiedenis staan."
     },
     "salaryShortfall": {
       "q": "Wat gebeurt er als ik de salarissen niet kan betalen?",
@@ -1675,11 +2011,11 @@
     },
     "forecastCalculation": {
       "q": "Hoe wordt de prognose voor volgend seizoen op de pagina Financiën berekend?",
-      "a": "De prognose toont één regel per inkomsten-/kostenbron in plaats van één nettogetal, zodat je kunt zien waar het totaal vandaan komt. (1) Sponsor (basis): de naar divisie geschaalde basis van het seizoen (D1 600.000 · D2 400.000 · D3 340.000 CZ$) × de budgetmodifier van het bestuur × eventuele actieve factor voor sponsorterugtrekking. Als je al een deal met het bestuur hebt getekend die volgend seizoen begint, gebruikt deze regel in plaats daarvan de gegarandeerde basis van die deal. (2) Sponsor (variabel): tot 150.000 CZ$ vanaf seizoen 2, gebaseerd op de punten/plaats van vorig seizoen ten opzichte van je divisie. (3) Ik toon prijzengeld als mijn schatting voor je team, plus/min 20%. Dit is een schatting, geen gemeten bereik en geen garantie. (4) Salaris: voor een prognose van seizoen 1 of 2 is het de som van de salarissen van je huidige renners zoals nu geprijsd, omdat contracten bij het tekenen worden vastgezet; vanaf een prognose van seizoen 3 wordt elk contract bij de seizoenswissel opnieuw geprijsd, dus de regel toont wat je huidige selectie onder het loonsysteem zou kosten in plaats van wat hun oude contracten zeggen. Salaris is een vast aandeel van de huidige productiewaarde van elke renner, nooit van zijn marktwaarde. (5) Divisieonderhoud: een lopende kost bepaald door je divisie, niet door je selectie, in rekening gebracht bij de seizoensstart. Als het als Reis & staf wordt getoond, betaal je het in plaats daarvan per seniorenkoersdag waarop je team start, en toont de regel het tarief maal het verwachte aantal koersdagen. Het is een aparte regel omdat je het niet kunt veranderen door aan te nemen of te bouwen. (6) Staf & faciliteiten: alleen wat je zelf hebt gekozen te betalen, namelijk faciliteitenonderhoud voor alle sporen die je hebt gebouwd en salarissen voor alle staf die je hebt aangenomen. Leningrente (rente over de openstaande schuld van je actieve leningen) verschijnt als extra regel wanneer je een actieve lening hebt, maar het maakt geen deel uit van het nettototaal erboven: de rente wordt bij de lening zelf opgeteld in plaats van van je saldo afgeschreven, dus het wordt getoond voor de zichtbaarheid, niet meegeteld. Academieonderhoud (de kosten per plek van eventuele academierenners) verschijnt ook als eigen extra regel, en anders dan leningrente IS het onderdeel van het netto. Niet meegeteld, omdat niets daarvan betrouwbaar vooraf te voorspellen is: de variabele sponsorinkomsten per etappe van het seizoen en sponsorbonusclausules (resultaat-/doel-/tekenbonus), omdat die afhangen van resultaten die je nog niet hebt verdiend; eenmalige gebeurtenissen zoals promotie-/degradatiebonussen, de degradatieparachute of een gedwongen verkoop door het schuldenplafond; en alles wat afhangt van een beslissing die je nog niet hebt genomen, zoals renners kopen of verkopen, nieuwe faciliteitenbouw, staf aannemen of ontslaan, academiecontracten, scoutmissies, een lening of noodlening afsluiten, of leninghoofdsom aflossen boven de rente die hierboven al apart wordt getoond. Een handvol zeldzame posten die niets met gameplay te maken hebben (correcties van het saldo door de beheerder, boetes voor selectieregels, automatische aanvullingen van de selectie) zijn ook uitgesloten. Niets hiervan wordt stilletjes in de bovenstaande getallen verwerkt: als een stroom niet kan worden voorspeld, wordt hij weggelaten in plaats van geraden, en hij verschijnt in je transactiegeschiedenis zodra hij echt gebeurt. De risicobadge is groen als netto ≥ +50K en schuld < 50% van het plafond, geel als netto tussen -50K en +50K ligt of de schuld tussen 50-80% van het plafond, en rood als netto < -50K, schuld > 80% van het plafond, of als je tekort binnen 2 seizoenen het schuldenplafond raakt. De prognose gaat uit van je huidige selectie, geen transfers en het loonsysteem dat nu geldt: het is geen contract, en getallen kunnen veranderen als je renners verkoopt, leningen afsluit, meer punten scoort, over een nieuw bestuursplan onderhandelt of je investeringen in faciliteiten/staf/academie wijzigt."
+      "a": "De prognose toont één regel per inkomsten-/kostenbron in plaats van één nettogetal, zodat je kunt zien waar het totaal vandaan komt. (1) Sponsor (basis): de naar divisie geschaalde basis van het seizoen (D1 600.000 · D2 400.000 · D3 340.000 CZ$) × de budgetmodifier van het bestuur × eventuele actieve factor voor sponsorterugtrekking. Als je al een deal met het bestuur hebt getekend die volgend seizoen begint, gebruikt deze regel in plaats daarvan de gegarandeerde basis van die deal. (2) Sponsor (variabel): tot 150.000 CZ$ vanaf seizoen 2, gebaseerd op de punten/plaats van vorig seizoen ten opzichte van je divisie. (3) Ik toon prijzengeld als mijn schatting voor je team, plus/min 20%. Dit is een schatting, geen gemeten bereik en geen garantie. (4) Salaris: voor een prognose van seizoen 1 of 2 is het de som van de salarissen van je huidige renners zoals nu geprijsd, omdat contracten bij het tekenen worden vastgezet; vanaf een prognose van seizoen 3 wordt elk contract bij de seizoenswissel opnieuw geprijsd, dus de regel toont wat je huidige selectie onder het loonsysteem zou kosten in plaats van wat hun oude contracten zeggen. Salaris is een vast aandeel van de huidige productiewaarde van elke renner, nooit van zijn marktwaarde. (5) Divisieonderhoud: een lopende kost bepaald door je divisie, niet door je selectie, in rekening gebracht bij de seizoensstart. Als het als Reis & staf wordt getoond, betaal je het in plaats daarvan per seniorenkoersdag waarop je team start, en toont de regel het tarief maal het verwachte aantal koersdagen. Het is een aparte regel omdat je het niet kunt veranderen door aan te nemen of te bouwen. (6) Staf & faciliteiten: alleen wat je zelf hebt gekozen te betalen, namelijk faciliteitenonderhoud voor alle sporen die je hebt gebouwd en salarissen voor alle staf die je hebt aangenomen. Leningrente (rente over de openstaande schuld van je actieve leningen) verschijnt als extra regel wanneer je een actieve lening hebt, maar het maakt geen deel uit van het nettototaal erboven: de rente wordt bij de lening zelf opgeteld in plaats van van je saldo afgeschreven, dus het wordt getoond voor de zichtbaarheid, niet meegeteld. Academieonderhoud (de kosten per plek van eventuele academierenners) verschijnt ook als eigen extra regel, en anders dan leningrente IS het onderdeel van het netto. Niet meegeteld, omdat niets daarvan betrouwbaar vooraf te voorspellen is: de variabele sponsorinkomsten per etappe van het seizoen en sponsorbonusclausules (resultaat-/doel-/tekenbonus), omdat die afhangen van resultaten die je nog niet hebt verdiend; eenmalige gebeurtenissen zoals promotie-/degradatiebonussen, de degradatieparachute of een gedwongen verkoop door het schuldenplafond; en alles wat afhangt van een beslissing die je nog niet hebt genomen, zoals renners kopen of verkopen, nieuwe faciliteitenbouw, staf aannemen of ontslaan, academiecontracten, scoutmissies, een lening of noodlening afsluiten, of leninghoofdsom aflossen boven de rente die hierboven al apart wordt getoond. Een handvol zeldzame posten die niets met gameplay te maken hebben (correcties van het saldo door de beheerder, boetes voor selectieregels, automatische aanvullingen van de selectie) zijn ook uitgesloten. Niets hiervan wordt stilletjes in de bovenstaande getallen verwerkt: als een stroom niet kan worden voorspeld, wordt hij weggelaten in plaats van geraden, en hij verschijnt in je transactiegeschiedenis zodra hij echt gebeurt. De risicobadge is groen als netto ≥ +50K en schuld < 50% van het plafond, geel als netto tussen -50K en +50K ligt of de schuld tussen 50-80% van het plafond, en rood als netto < -50K, schuld > 80% van het plafond, of als je tekort binnen 2 seizoenen het schuldenplafond raakt. De prognose gaat uit van je huidige selectie, geen transfers en het loonsysteem dat nu geldt: het is geen contract, en getallen kunnen veranderen als je renners verkoopt, leningen afsluit, meer punten scoort, over een nieuw bestuursplan onderhandelt of je investeringen in faciliteiten/staf/academie wijzigt. Vanaf seizoen 5 zijn onderhoud, Reizen en staf en het onderhoud van faciliteiten en academie verwijderd, dus die regels verschijnen niet meer."
     },
     "seasonSwitchSettlement": {
       "q": "Wat toont de afrekening van de seizoenswissel op de pagina Financiën precies?",
-      "a": "De afrekening is een stapsgewijs voorbeeld van je saldo over de seizoenswissel, in dezelfde volgorde waarin het spel het echt in rekening brengt (economyEngine.processSeasonStart / processTeamSeasonPayroll). De boeken sluiten op je huidige saldo, dan: (1) Sponsor komt binnen, basis en prestatiebonus op basis van de plaats/punten van vorig seizoen samen bijgeschreven in één betaling, precies zoals het spel het betaalt (de twee worden niet in aparte transacties gesplitst, dus de afrekening splitst ze ook niet in aparte kosten). (2) Leningrente over de openstaande schuld van je actieve leningen, als je die hebt, hier ter zichtbaarheid getoond, maar het verlaat je saldo niet, omdat het bij de lening zelf wordt opgeteld in plaats van afgeschreven. (3) Salarissen voor volgend seizoen worden in rekening gebracht, en dit is de eerste regel die echt wordt afgeschreven: de loonherberekening draait vóór deze afschrijving op de dag van de overgang, dus het is de formule van volgend seizoen toegepast op de huidige productiewaarde van elke renner, nooit de vastgezette contractgetallen van vorig seizoen. (4) Academieonderhoud, alleen getoond als je academierenners hebt. (5) Divisieonderhoud, een vaste kost bepaald door je divisie. Als je het per koersdag betaalt als Reis & staf, wordt deze stap weggelaten, omdat het in plaats daarvan wordt afgeschreven naarmate je koersen worden afgehandeld. (6) Faciliteitenonderhoud voor alle sporen die je hebt gebouwd. (7) Stafsalarissen voor alle staf die je hebt aangenomen. Stappen (4)-(7) worden volledig weggelaten als het bedrag nul is, dezelfde regel die de optionele rijen van de prognosekaart gebruiken. Niet meegeteld, omdat niets daarvan vóór de wissel bekend is: prijzengeld en sponsorinkomsten per etappe, omdat ze afhangen van koersen die nog niet zijn gereden; alles wat afhankelijk is van omstandigheden, zoals rente op noodleningen als je saldo na de salarisafschrijving negatief wordt, of een gedwongen verkoop als je schuld het plafond van de divisie overschrijdt; en alles wat afhangt van een beslissing die je nog niet hebt genomen, zoals scoutmissies, transfers, faciliteitenaankopen, staf aannemen of ontslaan, of academiecontracten. De overzichtskaart Financiën hierboven toont de gerealiseerde inkomsten-/kostenbronnen van hetzelfde seizoen naast de prognose van volgend seizoen ter vergelijking; de twee kolommen kunnen voor sponsorinkomsten niet identiek worden gesplitst, omdat de sponsor van dit seizoen als één gecombineerde betaling werd bijgeschreven terwijl de prognose van volgend seizoen de gegarandeerde basis van de verwachte prestatiebonus splitst, dus de sponsorregel van dit seizoen toont het volledige gerealiseerde bedrag in plaats van een geraden splitsing, en inkomsten per etappe/resultaat/doel/tekenbonus die dit seizoen zijn verdiend, krijgen een eigen rij omdat de prognose van volgend seizoen die stroom helemaal niet voorspelt."
+      "a": "De afrekening is een stapsgewijs voorbeeld van je saldo over de seizoenswissel, in dezelfde volgorde waarin het spel het echt in rekening brengt (economyEngine.processSeasonStart / processTeamSeasonPayroll). De boeken sluiten op je huidige saldo, dan: (1) Sponsor komt binnen, basis en prestatiebonus op basis van de plaats/punten van vorig seizoen samen bijgeschreven in één betaling, precies zoals het spel het betaalt (de twee worden niet in aparte transacties gesplitst, dus de afrekening splitst ze ook niet in aparte kosten). (2) Leningrente over de openstaande schuld van je actieve leningen, als je die hebt, hier ter zichtbaarheid getoond, maar het verlaat je saldo niet, omdat het bij de lening zelf wordt opgeteld in plaats van afgeschreven. (3) Salarissen voor volgend seizoen worden in rekening gebracht, en dit is de eerste regel die echt wordt afgeschreven: de loonherberekening draait vóór deze afschrijving op de dag van de overgang, dus het is de formule van volgend seizoen toegepast op de huidige productiewaarde van elke renner, nooit de vastgezette contractgetallen van vorig seizoen. (4) Academieonderhoud, alleen getoond als je academierenners hebt. (5) Divisieonderhoud, een vaste kost bepaald door je divisie. Als je het per koersdag betaalt als Reis & staf, wordt deze stap weggelaten, omdat het in plaats daarvan wordt afgeschreven naarmate je koersen worden afgehandeld. (6) Faciliteitenonderhoud voor alle sporen die je hebt gebouwd. (7) Stafsalarissen voor alle staf die je hebt aangenomen. Stappen (4)-(7) worden volledig weggelaten als het bedrag nul is, dezelfde regel die de optionele rijen van de prognosekaart gebruiken. Niet meegeteld, omdat niets daarvan vóór de wissel bekend is: prijzengeld en sponsorinkomsten per etappe, omdat ze afhangen van koersen die nog niet zijn gereden; alles wat afhankelijk is van omstandigheden, zoals rente op noodleningen als je saldo na de salarisafschrijving negatief wordt, of een gedwongen verkoop als je schuld het plafond van de divisie overschrijdt; en alles wat afhangt van een beslissing die je nog niet hebt genomen, zoals scoutmissies, transfers, faciliteitenaankopen, staf aannemen of ontslaan, of academiecontracten. De overzichtskaart Financiën hierboven toont de gerealiseerde inkomsten-/kostenbronnen van hetzelfde seizoen naast de prognose van volgend seizoen ter vergelijking; de twee kolommen kunnen voor sponsorinkomsten niet identiek worden gesplitst, omdat de sponsor van dit seizoen als één gecombineerde betaling werd bijgeschreven terwijl de prognose van volgend seizoen de gegarandeerde basis van de verwachte prestatiebonus splitst, dus de sponsorregel van dit seizoen toont het volledige gerealiseerde bedrag in plaats van een geraden splitsing, en inkomsten per etappe/resultaat/doel/tekenbonus die dit seizoen zijn verdiend, krijgen een eigen rij omdat de prognose van volgend seizoen die stroom helemaal niet voorspelt. Vanaf seizoen 5 zijn onderhoud, Reizen en staf en het onderhoud van faciliteiten en academie verwijderd, dus die regels verschijnen niet meer."
     },
     "standingsUpdate": {
       "q": "Wanneer worden de seizoensranglijsten bijgewerkt?",
@@ -1811,7 +2147,7 @@
     },
     "season0To1Special": {
       "q": "Wat gebeurt er bij de overgang van seizoen 0 naar seizoen 1?",
-      "a": "Seizoen 0 is de openingsfase zonder koersen, punten of salarissen. Wanneer seizoen 1 begint, heb je al je oprichtingsbudget, dus het systeem betaalt daarbovenop geen sponsor voor seizoen 1 (dat zou dubbel inkomen bij de start zijn), en lopende kosten (onderhoud) worden achtergehouden tot het seizoen echt bezig is. Vanaf seizoen 2 draait bij de seizoensstart de normale cyclus: 1) sponsor wordt uitbetaald, 2) leningrente wordt afgeschreven, 3) salarissen worden afgeschreven, 4) onderhoud wordt afgeschreven (tenzij het per koersdag wordt betaald als Reis & staf), 5) er wordt een noodlening genomen als er nog een tekort is. Het einde van het seizoen behandelt alleen divisiebonus, promotie/degradatie en beoordeling van bestuursplannen."
+      "a": "Seizoen 0 is de openingsfase zonder koersen, punten of salarissen. Wanneer seizoen 1 begint, heb je al je oprichtingsbudget, dus het systeem betaalt daarbovenop geen sponsor voor seizoen 1 (dat zou dubbel inkomen bij de start zijn), en lopende kosten (onderhoud) worden achtergehouden tot het seizoen echt bezig is. Vanaf seizoen 2 draait bij de seizoensstart de normale cyclus: 1) sponsor wordt uitbetaald, 2) leningrente wordt afgeschreven, 3) salarissen worden afgeschreven, 4) onderhoud wordt afgeschreven (tenzij het per koersdag wordt betaald als Reis & staf), 5) er wordt een noodlening genomen als er nog een tekort is. Het einde van het seizoen behandelt alleen divisiebonus, promotie/degradatie en beoordeling van bestuursplannen. Vanaf seizoen 5 zijn onderhoud, Reizen en staf en het onderhoud van faciliteiten en academie verwijderd, dus die regels verschijnen niet meer."
     },
     "season1RaceCalendarFaq": {
       "q": "Welke koersen worden in seizoen 1 gereden?",
@@ -1847,7 +2183,7 @@
     },
     "newPlayerEconomyFaq": {
       "q": "Met hoeveel geld begin ik, en wanneer moet ik een lening nemen?",
-      "a": "Je begint met een budget van {startingBalance} CZ$ in Divisie 4. Prijzengeld uit koersen, sponsoruitbetalingen bij de seizoensstart en rennersverkopen voegen allemaal inkomsten toe; salarissen en leningrente worden automatisch afgeschreven aan het begin van elk seizoen, en onderhoud ook, tenzij het per koersdag wordt betaald als Reis & staf. Als je saldo en sponsorinkomsten de salarissen van dat seizoen niet kunnen dekken, neemt het spel een automatische noodlening om het tekort te dekken, zodat je nooit wordt geblokkeerd bij het betalen van lonen. Je kunt zelf ook een lening nemen via de pagina Financiën als je groot wilt bieden op een renner voordat je inkomsten bijkomen. Elke divisie heeft een schuldenplafond (Divisie 4: 400.000 CZ$) dat begrenst hoeveel je tegelijk kunt lenen."
+      "a": "Je begint met een budget van {startingBalance} CZ$ in Divisie 4. Prijzengeld uit koersen, sponsoruitbetalingen bij de seizoensstart en rennersverkopen voegen allemaal inkomsten toe; salarissen en leningrente worden automatisch afgeschreven aan het begin van elk seizoen, en onderhoud ook, tenzij het per koersdag wordt betaald als Reis & staf. Als je saldo en sponsorinkomsten de salarissen van dat seizoen niet kunnen dekken, neemt het spel een automatische noodlening om het tekort te dekken, zodat je nooit wordt geblokkeerd bij het betalen van lonen. Je kunt zelf ook een lening nemen via de pagina Financiën als je groot wilt bieden op een renner voordat je inkomsten bijkomen. Elke divisie heeft een schuldenplafond (Divisie 4: 400.000 CZ$) dat begrenst hoeveel je tegelijk kunt lenen. Vanaf seizoen 5 zijn onderhoud, Reizen en staf en het onderhoud van faciliteiten en academie verwijderd, dus die regels verschijnen niet meer."
     },
     "academyIntakeScoutingFaq": {
       "q": "Hoe vaak krijg ik nieuwe Academie-talenten, en wordt scouten gereset?",

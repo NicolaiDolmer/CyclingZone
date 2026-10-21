@@ -36,7 +36,18 @@
       "terrain": "Terreno",
       "finish": "Final",
       "surface": "Superficie",
-      "surfaceValue": "{kind, select, gravel {Gravel} other {Adoquines}} · {count, plural, one {# sector} other {# sectores}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Adoquines}} · {count, plural, one {# sector} other {# sectores}}, {km} km",
+      "weather": "Tiempo"
+    },
+    "weather": {
+      "dry": "Seco",
+      "rain": "Lluvia",
+      "wind": "Viento",
+      "aria": "Tiempo: {word}",
+      "mattered": {
+        "rain": "La lluvia castigó más a los corredores con poco descenso y poca durabilidad.",
+        "wind": "El viento en las carreteras abiertas castigó más a los corredores con poco descenso y poca durabilidad."
+      }
     },
     "climbs": {
       "title": "Las subidas",
@@ -729,6 +740,7 @@
     "form": "Forma",
     "fatigue": "Fatiga",
     "injured": "Lesionado",
+    "overAge": "Supera la edad",
     "boundIn": "Corre {race}",
     "boundConflict": "Se solapa con {race}",
     "autoPicked": "Elección del asistente. Ajusta y guarda para tomar el control.",
@@ -770,6 +782,7 @@
       "selection_role_not_selected": "Los ciclistas con rol deben formar parte de la selección.",
       "selection_role_overlap": "El jefe de filas, el jefe de filas de sprint y el cazador deben ser ciclistas distintos.",
       "selection_rider_injured": "No se puede seleccionar a ciclistas lesionados.",
+      "selection_rider_over_age": "No se puede seleccionar a ciclistas que superan el límite de edad de la carrera.",
       "selection_rider_not_on_team": "Solo puedes seleccionar a tus propios ciclistas.",
       "selection_duplicate_rider": "Cada ciclista solo se puede seleccionar una vez.",
       "selection_race_not_open": "La selección está cerrada para esta carrera.",

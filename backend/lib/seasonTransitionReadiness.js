@@ -45,6 +45,9 @@
  * logger dog et eksplicit season-end-verificeret JA/NEJ-warn, #2361).
  */
 
+import { copenhagenDateString } from './copenhagenTime.js';
+import { isTrainingDateTeam, loadTrainingDateTeams, trainingDateBounds } from './trainingDateReadiness.js';
+
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "./economyConstants.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
 import { getSquadLimits } from "./marketUtils.js";
@@ -310,4 +313,77 @@ export const TRANSITION_BLOCKED_ERROR = "Sæson-transition blokeret: readiness-g
 
 export function formatForceOverrideDescription(failedCritical) {
   return `Sæson-transition FORCED med rød readiness-gate (${failedCritical.join(", ")})`;
+}
+/**
+ * #6898: read-only fail-closed proof before season-end removes the active season.
+ * The final civil date comes from the season's calendar, never end_date or today's index:
+ * an empty training_date_work result is not evidence of completed training.
+ * Existing registered work always counts, including parked/disappeared teams.
+ * Unregistered population mirrors loadTrainingDateContext/currentIds.
+ */
+export async function assessFinalTrainingDateSettlement({ supabase, season, now } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!season?.id) throw new Error("season required");
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error("Explicit valid now required");
+  if (season.number === 0) return { blocked: false, tick_date: null, detail: null, blockers: [] };
+
+  // end_date is null while S4 is active and is also written at cutover.
+  // The scheduled season calendar is the training axis's date authority.
+  // pagination-safe: one maximum timestamp, scoped by the season through races.
+  const { data: lastStages, error: calendarError } = await supabase
+    .from('race_stage_schedule')
+    .select('scheduled_at,races!inner(season_id)')
+    .eq('races.season_id', season.id)
+    .not('scheduled_at', 'is', null)
+    .order('scheduled_at', { ascending: false })
+    .limit(1);
+  if (calendarError) throw new Error(`Kunne ikke læse sidste træningsdato fra sæsonens løbskalender: ${calendarError.message}`);
+  const scheduledAt = Array.isArray(lastStages) ? lastStages[0]?.scheduled_at : null;
+  const lastInstant = scheduledAt == null ? null : new Date(scheduledAt);
+  const tickDate = lastInstant && Number.isFinite(lastInstant.getTime()) ? copenhagenDateString(lastInstant) : null;
+  if (!tickDate) {
+    return { blocked: true, tick_date: null, blockers: [],
+      detail: "Sæsonen kan ikke afsluttes: sidste træningsdato kan ikke findes i sæsonens løbskalender (ingen gyldig planlagt etape)" };
+  }
+  if (tickDate > copenhagenDateString(now)) {
+    return { blocked: true, tick_date: tickDate, blockers: [],
+      detail: `Sæsonen kan ikke afsluttes: sidste træningsdato ${tickDate} fra løbskalenderen ligger i fremtiden` };
+  }
+  const [work, teams, riders] = await Promise.all([
+    fetchAllRows(() => supabase.from('training_date_work').select('team_id,status')
+      .eq('season_id', season.id).eq('tick_date', tickDate).order('team_id')),
+    loadTrainingDateTeams(supabase),
+    fetchAllRows(() => supabase.from('riders').select('id,team_id,created_at,acquired_at')
+      .eq('is_retired', false).not('team_id', 'is', null).order('id')),
+  ]);
+  const terminal = new Set(['complete', 'needs_reconciliation']);
+  const workByTeam = new Map(work.map(row => [row.team_id, row]));
+  const registered = new Set(workByTeam.keys());
+  const { end } = trainingDateBounds(tickDate);
+  const teamsWithRiders = new Set(riders.filter(rider =>
+    (!rider.created_at || new Date(rider.created_at) < end) &&
+    (!rider.acquired_at || new Date(rider.acquired_at) < end)).map(rider => rider.team_id));
+  const missingTeams = teams.filter(team => !registered.has(team.id) &&
+    isTrainingDateTeam(team, registered, end) && teamsWithRiders.has(team.id));
+
+  // Division-less teams use a calendar-day report rather than training_date_work.
+  // A reservation (including writing) is never proof. This legacy key has no
+  // season_id; date + team + game_day IS NULL is the writer's canonical key.
+  const legacyTeams = missingTeams.filter(team => !team.league_division_id);
+  const legacyRuns = legacyTeams.length ? await fetchAllRowsChunkedIn(legacyTeams.map(team => team.id), chunk =>
+    supabase.from('training_day_runs').select('id,team_id,report').in('team_id', chunk)
+      .eq('tick_date', tickDate).is('game_day', null).order('id')) : [];
+  const legacySettled = new Set(legacyRuns.filter(row => row.report?.pending !== true &&
+    Array.isArray(row.report?.riders) && row.report.tick_date === tickDate &&
+    row.report.game_day === null).map(row => row.team_id));
+  const blockers = work.filter(row => !terminal.has(row.status))
+    .map(row => ({ team_id: row.team_id, reason: row.status ?? 'unknown_status' }));
+  for (const team of missingTeams) {
+    if (!team.league_division_id && legacySettled.has(team.id)) continue;
+    blockers.push({ team_id: team.id, reason: 'missing_registration' });
+  }
+  return { blocked: blockers.length > 0, tick_date: tickDate, blockers,
+    detail: blockers.length ? `Sæsonen kan ikke afsluttes: træning ${tickDate} er ikke fuldt afregnet. ` +
+      blockers.slice(0, 5).map(row => `${row.team_id}: ${row.reason}`).join(', ') +
+      (blockers.length > 5 ? ` (+${blockers.length - 5} hold)` : '') : null };
 }

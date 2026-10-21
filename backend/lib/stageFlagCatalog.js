@@ -88,6 +88,7 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
   { key: "stage_scheduler_enabled", area: "race-engine", label: "Etape-skemalægger" },
+  { key: "ranking_shadow_enabled", area: "ops", label: "Ranglister — skyggeaggregater" },
   { key: "auto_calendar_enabled", area: "season", label: "Auto-kalender" },
   { key: "auto_entry_generator_enabled", area: "season", label: "Auto-tilmelding af felter" },
   { key: "auto_prize_enabled", area: "economy", label: "Auto-præmier" },
@@ -98,6 +99,9 @@ export const STAGE_FLAGS = Object.freeze([
   // #4385: upkeep pr. seniorløbsdag i stedet for fladt ved sæsonstart. Fail-safe
   // OFF; "beta" læses som off (upkeepPerRaceDayFlag.ts). Flippes FØR sæsonskiftet.
   { key: "upkeep_per_race_day", area: "economy", label: "Upkeep pr. løbsdag (rejse og personale)" },
+  // #6936: fjerner upkeep/rejse og personale, akademi-drift og facilitets-upkeep.
+  // Fail-safe OFF; "beta" læses som off (economyNoUpkeepFlag.ts). Flippes FØR sæsonskiftet.
+  { key: "economy_no_upkeep_v1", area: "economy", label: "Ingen upkeep, akademi-drift eller facilitets-upkeep" },
   { key: "season_end_pool_reseed", area: "season", label: "Sæsonslut — genfyld rytterpulje" },
   { key: "season_end_skip_division_movement", area: "season", label: "Sæsonslut — spring op/nedrykning over" },
   { key: "season_fatigue_reset_enabled", area: "season", label: "Sæsonslut — nulstil træthed" },

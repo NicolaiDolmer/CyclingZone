@@ -20,13 +20,14 @@
 // launch-defaults — centraliseret her, så de er ÉT sted at tune.
 
 import { makeRng } from "./fictionalRiderGenerator.js";
-import { attachRoute, attachRouteS5, regionOf, S5_SUMMIT_CATEGORIES } from "./raceRouteGenerator.js";
+import { attachRoute, attachRouteS5, regionOf, S5_SUMMIT_CATEGORIES, S5_FINISH_RAMPS, deriveTerrainType } from "./raceRouteGenerator.js";
+import { RACE_IDENTITY_TYPES, validateSignature, validateAuthoredRoute } from "./raceIdentityTypes.js";
 import { seasonSeedSuffix } from "./raceSeedAxis.js";
 import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } from "./raceStageOrderProfiles.js";
 import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
-import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders } from "./stageProfileTypes.js";
+import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed } from "./stageProfileTypes.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
 import { FINALE_CLASS_BY_TYPE, FINALE_CLASSES, OVERALL_FINALE_BAND, TERRAIN_FINALE_BANDS } from "./stageFinaleMetrics.js";
@@ -840,8 +841,11 @@ function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
 // `make` (#6359): etape-fabrikken. v5 = toStage (default, bit-identisk); S5 = toStageS5.
 // Begge forbruger PRÆCIS ét pass 1-rng-kald pr. etape, så typerne og rækkefølgen er de
 // samme i begge modeller for alt andet end Grand Tours.
+// #6857: et monuments håndskrevne rute (race_pool.authored_route) vinder over arketypen,
+// kun i S5-modellen (make = toStageS5). v5 læser aldrig feltet.
 /** @param {S5Rng} rng @param {any} cfg @param {any} race @param {StageFactory} [make] */
 function buildSingle(rng, cfg, race, make = toStage) {
+  if (make === toStageS5 && race?.authored_route != null) return buildAuthoredSingle(race);
   const weights = cfg?.kind === "single" ? cfg.weights : SINGLE_PROFILE_WEIGHTS;
   return [make(rng, weightedPick(rng, weights), 1, race, false)];
 }
@@ -1447,15 +1451,24 @@ export const S5_FINISH_WEIGHTS = Object.freeze({
 
 /**
  * @param {S5Rng} rng @param {string} targetType @param {number} stageNumber @param {any} race
- * @param {boolean} isStageRace @param {{ finish?: string | null, shortItt?: boolean }} [opts]
+ * @param {boolean} isStageRace @param {{ finish?: string | null, shortItt?: boolean, signature?: any }} [opts]
+ *   signature  kun identitets-stien (#6857): signaturens stigning/sektor for netop denne etape
  */
-function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = null, shortItt = false } = {}) {
+function toStageS5(rng, targetType, stageNumber, race, isStageRace, { finish = null, shortItt = false, noPrologue = false, signature = null } = {}) {
   // Ét pass 1-rng-kald pr. etape, præcis som v5's drawFinale - så S5 ser samme typer og
   // samme rækkefølge som v5. En Grand Tour-etape med en kvote-tildelt afslutning trækker
   // intet (GT-stien har sin egen strøm).
   const u = finish ? null : rng();
-  const chooseFinish = (/** @type {string} */ terrain) => finish ?? pickByQuantile(/** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain], u);
-  const { terrain, ...route } = attachRouteS5({ stage_number: stageNumber, profile_type: targetType }, race, isStageRace, { chooseFinish, shortItt });
+  // #6857: en signatur-stigning bestemmer om etapen ender på toppen. summit null (alle andre
+  // kald) = samme kvantil-træk som før; true = bjergtop; false = samme kvantil uden bjergtop.
+  const chooseFinish = (/** @type {string} */ terrain, /** @type {{ summit?: boolean | null }} */ { summit = null } = {}) => {
+    if (finish) return finish;
+    const weights = /** @type {Record<string, any>} */ (S5_FINISH_WEIGHTS)[terrain];
+    if (summit === true) return "long_climb";
+    if (summit === false) return pickByQuantile(weights.filter((/** @type {any} */ it) => it.value !== "long_climb"), u);
+    return pickByQuantile(weights, u);
+  };
+  const { terrain, ...route } = attachRouteS5({ stage_number: stageNumber, profile_type: targetType }, race, isStageRace, { chooseFinish, shortItt, ...(noPrologue ? { noPrologue } : {}), ...(signature ? { signature } : {}) });
   // Typen afledes af ruten for alle terræn-mål. Brosten, grus, klassiker og tidskørsler er
   // formater/underlag og beholder deres type; deres terræn er B+(climbs) og afslutningen
   // ligger stadig inden for matrixen for det terræn.
@@ -1627,6 +1640,425 @@ function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
   }));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// Løbsidentitet (#6857, spor L2 #6928). Design: docs/superpowers/specs/
+// 2026-10-18-6857-loebsidentitet-teknisk-design.md §2. Ejerbeslutningerne er låst på #6857.
+//
+// HVAD. Et kort etapeløb med `race_identity_type` (race_pool, L1) bygges af typens faste
+// profil i stedet for sin terrain_archetype: garantier, filler-typer og en ordning. Løbets
+// `signature` (1-2 faste kendetegn) låses før ordningen (pass 1: etapetype + plads) og i
+// ruten (pass 2: navngiven stigning eller sektor, applySignature i raceRouteGenerator.js).
+// Et monument med `authored_route` får sin håndskrevne rute (kun vejr, segmenter og
+// højdeprofil beregnes).
+//
+// HVOR. Kun profileModel "s5". v5 (S1-S4) læser aldrig felterne og er bit-identisk, og
+// S5 uden type/rute er bit-identisk med før (samme rng-forløb, samme stempel 6). Identitets-
+// stien stemples IDENTITY_GENERATOR_VERSION (7), så de regenererede rækker kan skelnes.
+//
+// FAIL-CLOSED. En ukendt type, en ugyldig signatur, en type på en Grand Tour, en signatur
+// der modsiger typen (bjerg i et bjergfrit løb) eller en håndskreven rute på et etapeløb
+// kaster med løbets navn. Ingen stille fallback til den gamle sti.
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+export const IDENTITY_GENERATOR_VERSION = 7;
+
+const w = (/** @type {string} */ value, /** @type {number} */ weight) => Object.freeze({ value, weight });
+
+// Tabellen i design §2. `guarantees` står i prioriteret rækkefølge (en signatur der kræver
+// en ny etapetype i et løb uden filler-plads, overtager den SIDSTE garanti). `filler` er de
+// eneste typer en filler-plads kan få - også efter divisionens kvote-fordeling
+// (s5TierTerrainQuota.js læser dem via s5StageRaceFillerSlots). `order` er ordnings-
+// arketypens vægte (samme format som raceStageOrderProfiles.js). `mountainFree` = typen
+// lover et etapeløb uden bjerg- og højbjergetape (#3327's tælling); filleren kan aldrig give
+// én, og en signatur der ville, kaster. `locks` er typens egne faste pladser.
+export const IDENTITY_PROFILES = Object.freeze({
+  sprinters: Object.freeze({
+    guarantees: Object.freeze(["flat", "flat", "hilly"]),
+    filler: Object.freeze([w("flat", 45), w("rolling", 35), w("hilly", 20)]),
+    order: Object.freeze([w("sprint_finale", 1)]),
+    mountainFree: true,
+  }),
+  climbers_gt_prelude: Object.freeze({
+    guarantees: Object.freeze(["mountain", "high_mountain", "flat"]),
+    filler: Object.freeze([w("hilly", 30), w("mountain", 30), w("medium_mountain", 25), w("high_mountain", 20), w("itt", 15)]),
+    order: Object.freeze([w("summit_finale", 1)]),
+    mountainFree: false,
+  }),
+  hilly: Object.freeze({
+    guarantees: Object.freeze(["hilly", "hilly", "rolling"]),
+    filler: Object.freeze([w("hilly", 40), w("rolling", 25), w("medium_mountain", 20), w("flat", 15)]),
+    order: Object.freeze([w("circuit_finale", 1)]),
+    mountainFree: true,
+  }),
+  cobbles_benelux: Object.freeze({
+    guarantees: Object.freeze(["cobbles", "flat", "hilly"]),
+    filler: Object.freeze([w("cobbles", 30), w("flat", 40), w("rolling", 30)]),
+    order: Object.freeze([w("sprint_finale", 50), w("circuit_finale", 50)]),
+    mountainFree: true,
+  }),
+  // Prologen er etape 1 (prolog-båndet), den kuperede enkeltstart er sidste etape (tt_finale,
+  // altså i sidste tredjedel). To tidskørsler er garanteret, så TT-loftet (#2029) er 2 her.
+  time_trial: Object.freeze({
+    guarantees: Object.freeze(["itt", "itt_hilly", "flat"]),
+    filler: Object.freeze([w("flat", 40), w("rolling", 30), w("hilly", 30)]),
+    order: Object.freeze([w("tt_finale", 1)]),
+    mountainFree: true,
+    locks: Object.freeze([
+      Object.freeze({ type: "itt", position: "first", prologue: true }),
+      Object.freeze({ type: "itt_hilly", position: "last", prologue: false }),
+    ]),
+  }),
+  gravel: Object.freeze({
+    guarantees: Object.freeze(["gravel", "flat", "hilly"]),
+    filler: Object.freeze([w("gravel", 30), w("rolling", 35), w("hilly", 35)]),
+    order: Object.freeze([w("circuit_finale", 1)]),
+    mountainFree: true,
+  }),
+  // Ny ordning: bjergene først, så kommer sprinterne trætte til de flade etaper (ejer 18/10).
+  mountains_first: Object.freeze({
+    guarantees: Object.freeze(["mountain", "high_mountain", "flat", "flat"]),
+    filler: Object.freeze([w("flat", 60), w("rolling", 40)]),
+    order: Object.freeze([w("mountains_first", 1)]),
+    mountainFree: false,
+  }),
+  // "Som i dag": balanced_week's garantier, filler og ordnings-vægte, inkl. åbnings-variationen.
+  allround: Object.freeze({
+    guarantees: Object.freeze([...ARCHETYPE_PROFILES.balanced_week.guarantees]),
+    filler: Object.freeze(ARCHETYPE_PROFILES.balanced_week.filler.map((it) => w(it.value, it.weight))),
+    order: orderWeightsFor("balanced_week"),
+    mountainFree: false,
+    openingVariety: true,
+  }),
+});
+
+// Bjergtyper i #3327's forstand (tierCalendarGuarantees.computeTierCoverageStats tæller de samme).
+const IDENTITY_MOUNTAIN_TYPES = new Set(["mountain", "high_mountain"]);
+const STAGE_HINT_POSITION = Object.freeze({ first: "first", last: "last", queen: null, any: null });
+// Terrænets hårdhed til "queen" (#6995): kongeetapen er en etape af løbets hårdeste terræn.
+// Samme rangering som tørkørslens signatur-pin (regenS5StageProfiles.mjs læser denne).
+export const IDENTITY_TERRAIN_RANK = Object.freeze({ rolling: 1, hilly: 2, medium_mountain: 3, mountain: 4, high_mountain: 5 });
+const terrainRank = (/** @type {string} */ t) => /** @type {Record<string, number>} */ (IDENTITY_TERRAIN_RANK)[t] ?? 0;
+
+/**
+ * #6995: det hårdeste terræn et løb med en queen-signatur må have (= queen-etapens terræn),
+ * eller null uden queen. Ingen garanti, filler eller kvote-type må ligge over det, så queen-
+ * etapen altid er løbets hårdeste etape (uafgjort er tilladt).
+ * @param {Array<{ type: string, feature?: any }>} locks
+ * @returns {number | null}
+ */
+function queenCeilingFor(locks) {
+  // #6995 (Codex P2): en queen uden terræn-rang (enkeltstart, sektor, flad stigning) har loft 0,
+  // ikke "intet loft"; en garanti over den kaster i stedet for at lade queen ligge forkert.
+  // En delt sektor-lås (features) er queen, hvis én af dens features er det.
+  const isQueen = (/** @type {any} */ l) => (l.features ?? [l.feature]).some((/** @type {any} */ f) => f?.stage_hint === "queen");
+  const ranks = locks.filter(isQueen).map((l) => terrainRank(l.type));
+  return ranks.length ? Math.min(...ranks) : null;
+}
+
+/** @param {string[]} types @param {number | null} ceiling */
+const aboveCeiling = (types, ceiling) => (ceiling == null ? [] : types.filter((t) => terrainRank(t) > ceiling));
+
+/**
+ * Løbets identitet, valideret. null = ingen type og ingen signatur (den gamle sti).
+ * @param {any} race
+ * @param {Record<string, any>} [identityProfiles]
+ * @returns {null | { type: string, profile: any, features: any[] }}
+ */
+export function raceIdentityFor(race, identityProfiles = IDENTITY_PROFILES) {
+  const type = race?.race_identity_type ?? null;
+  const signature = race?.signature ?? null;
+  const label = race?.name ?? race?.id;
+  if (type === null && signature === null) return null;
+  if (race?.race_type !== "stage_race") throw new Error(`race identity applies to stage races only (${label}, #6857)`);
+  if (type === null) throw new Error(`signature without race_identity_type (${label}, #6857)`);
+  if (!RACE_IDENTITY_TYPES.includes(type) || !identityProfiles[type]) throw new Error(`unknown race_identity_type "${type}" (${label}, #6857)`);
+  // #6857 (Codex P2): samme Grand Tour-kriterier som resten af repoet (arketype, klasse eller
+  // etapeantal), så en fejlkonfigureret arketype aldrig bygger en GT fra en kort-løbs-type.
+  const isGrandTour = race?.terrain_archetype === "grand_tour" || race?.race_class === "TourFrance"
+    || race?.race_class === "GiroVuelta" || Number(race?.stages) >= GRAND_TOUR_MIN_STAGES;
+  if (isGrandTour) throw new Error(`race_identity_type is not defined for Grand Tours (${label}, #6857)`);
+  validateSignature(signature);
+  return { type, profile: identityProfiles[type], features: signature?.features ?? [] };
+}
+
+/**
+ * Den etapetype en signatur-feature kræver, og om den låser en plads.
+ * Stigningen: terrænet stigningen selv giver efter B+ (deriveTerrainType). Så kan pass 2
+ * altid udskifte klimakset med den uden at terrænet skifter (applySignature kaster ellers).
+ * @param {any} feature
+ * @returns {{ type: string, position: string | null, prologue: boolean, feature: any }}
+ */
+export function signatureLockFor(feature) {
+  const position = STAGE_HINT_POSITION[/** @type {"first"|"last"|"queen"|"any"} */ (feature.stage_hint)] ?? null;
+  if (feature.kind === "prologue") {
+    // En kuperet prolog har ingen rute-model endnu (prolog-båndet er kun den flade enkeltstart);
+    // den afvises i stedet for at blive skrevet som en flad prolog i tavshed.
+    if (feature.band !== "flat") throw new Error(`prologue band "${feature.band}" is not supported - use kind "itt" with band "hilly" (#6857)`);
+    return { type: "itt", position: "first", prologue: true, feature };
+  }
+  if (feature.kind === "itt") return { type: feature.band === "hilly" ? "itt_hilly" : "itt", position, prologue: false, feature };
+  if (feature.kind === "sector") return { type: feature.surface, position, prologue: false, feature };
+  const type = deriveTerrainType([{ category: feature.category, length_km: feature.length_km, summit_finish: feature.summit_finish === true }]);
+  return { type, position, prologue: false, feature };
+}
+
+/**
+ * Pass 1 for en identitets-type: garantier + signaturens typer (beskyttet region) + filler-
+ * træk + TT-loft. Første rng-forbruger, så s5StageRaceFillerSlots kan genskabe det præcise
+ * naturlige træk uden at bygge løbet.
+ * @param {S5Rng} rng @param {number} stages @param {{ type: string, profile: any, features: any[] }} identity @param {string} label
+ */
+function drawIdentityTypes(rng, stages, identity, label) {
+  const { profile, features } = identity;
+  const types = profile.guarantees.slice(0, stages);
+  /** @type {Array<{ type: string, position: string | null, prologue: boolean, feature: any, index: number }>} */
+  const locks = [];
+  const claimed = new Set();
+  const claim = (/** @type {string} */ type) => {
+    const i = types.findIndex((t, k) => t === type && !claimed.has(k));
+    if (i >= 0) claimed.add(i);
+    return i;
+  };
+  for (const l of profile.locks ?? []) {
+    const index = claim(l.type);
+    if (index >= 0) locks.push({ ...l, feature: null, index });
+  }
+  for (const feature of features) {
+    const sig = signatureLockFor(feature);
+    if (profile.mountainFree && IDENTITY_MOUNTAIN_TYPES.has(sig.type)) {
+      throw new Error(`signature "${feature.name ?? feature.kind}" needs a ${sig.type} stage in a mountain-free ${identity.type} race (${label}, #6857)`);
+    }
+    // En feature uden egen plads kan dele etape med typens egen lås af samme type.
+    const shared = locks.find((l) => !l.feature && l.type === sig.type
+      // #6857 (Codex P2): prolog-tilstanden skal være ens; en almindelig enkeltstart må aldrig
+      // dele plads med typens prolog-lås (den ville blive forkortet til en prolog).
+      && (sig.position === null || sig.position === l.position) && Boolean(sig.prologue) === Boolean(l.prologue));
+    if (shared) { shared.feature = feature; continue; }
+    // #6995 (ejer-go 20/10, valg A): to sektorer af samme underlag deler én etape (en brostens-
+    // eller grusetape har flere sektorer), så signaturen ikke lægger en ekstra sektor-etape til.
+    // Pladserne må ikke modsige hinanden; den samlede lås får den faste plads, hvis én har den.
+    if (feature.kind === "sector") {
+      const sector = locks.find((l) => l.feature?.kind === "sector" && l.type === sig.type
+        && (l.position === null || sig.position === null || l.position === sig.position));
+      if (sector) {
+        sector.features = [...(sector.features ?? [sector.feature]), feature];
+        if (sector.position === null) sector.position = sig.position;
+        continue;
+      }
+    }
+    let index = claim(sig.type);
+    // #6995 (ejer-go 20/10, valg A): en enkeltstarts-signatur overtager en garanteret enkeltstart
+    // der ikke er låst (allround garanterer én flad; signaturen gør den kuperet), i stedet for at
+    // lægge en tidskørsel mere til. Garantiens prolog-lås røres aldrig (den er claimed).
+    if (index < 0 && feature.kind === "itt") {
+      index = types.findIndex((t, k) => isTimeTrial(t) && !claimed.has(k));
+      if (index >= 0) { types[index] = sig.type; claimed.add(index); }
+    }
+    if (index < 0) {
+      if (types.length < stages) { types.push(sig.type); index = types.length - 1; }
+      else {
+        // Ingen ledig plads: signaturen overtager den sidste garanti der ikke er låst.
+        for (let k = types.length - 1; k >= 0; k--) if (!claimed.has(k)) { index = k; break; }
+        if (index < 0) throw new Error(`signature does not fit in ${stages} stages (${label}, #6857)`);
+        types[index] = sig.type;
+      }
+      claimed.add(index);
+    }
+    locks.push({ ...sig, index });
+  }
+  // To låse på samme faste plads (fx to "first", eller en signatur på typens egen prolog-
+  // eller slut-plads) kan ikke begge holdes. Kast i stedet for at flytte den ene i tavshed.
+  for (const position of ["first", "last"]) {
+    const clash = locks.filter((l) => l.position === position);
+    if (clash.length > 1) {
+      const what = clash.map((l) => l.feature?.name ?? l.feature?.kind ?? `${identity.type} ${l.type}`).join(" + ");
+      throw new Error(`conflicting "${position}" stage locks (${what}) in ${label} (#6857)`);
+    }
+  }
+  const protectedCount = types.length;
+  // #6995: en queen-signatur er løbets hårdeste etape. En garanti over queen-terrænet er en
+  // modsigelse i typen/signaturen (kast); filleren trækker kun typer op til queen-terrænet.
+  const queenCeiling = queenCeilingFor(locks);
+  const tooHard = aboveCeiling(types, queenCeiling);
+  if (tooHard.length) throw new Error(`queen signature is easier than the ${tooHard.join(", ")} stage the ${identity.type} type guarantees (${label}, #6995)`);
+  const filler = queenCeiling == null ? profile.filler : profile.filler.filter((/** @type {any} */ it) => terrainRank(it.value) <= queenCeiling);
+  if (!filler.length) throw new Error(`no ${identity.type} filler type fits under the queen stage (${label}, #6995)`);
+  while (types.length < stages) types.push(weightedPick(rng, filler));
+  capTimeTrials(rng, types, protectedCount, filler, stages);
+  return { types, protectedCount, locks, filler, queenCeiling };
+}
+
+// mountains_first (ny ordning): bjerg-familien først (stigende sværhed, så den hårdeste
+// bjergdag lukker blokken), derefter resten fra det hårdeste til det fladeste, så de flade
+// etaper ligger sidst. Ét rng-kald pr. etape (jitter), som sortByHint.
+/** @param {S5Rng} rng @param {string[]} types */
+function orderMountainsFirst(rng, types) {
+  const isHard = (/** @type {string} */ t) => MOUNTAIN_FAMILY.has(t) || t === "medium_mountain";
+  const keyed = types.map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }));
+  const hard = keyed.filter((x) => isHard(x.t)).sort((a, b) => a.key - b.key);
+  const soft = keyed.filter((x) => !isHard(x.t)).sort((a, b) => b.key - a.key);
+  return [...hard, ...soft].map((x) => x.t);
+}
+
+/**
+ * Ordningen for et identitets-løb. Samme maskineri som orderAndBuildFinaleDriven (crescendo-
+ * scaffold, bjerg-blokke, finale-transform, andet vævnings-pas), derefter de låste pladser.
+ * @param {S5Rng} rng @param {string[]} types @param {string} orderArchetype @param {any} profile
+ * @param {Array<{ type: string, position: string | null }>} locks
+ * @returns {string[]}
+ */
+function orderIdentityTypes(rng, types, orderArchetype, profile, locks) {
+  const positioned = locks.filter((l) => l.position);
+  const rest = types.slice();
+  for (const l of positioned) rest.splice(rest.lastIndexOf(l.type), 1);
+  let ordered;
+  if (orderArchetype === "mountains_first") {
+    ordered = orderMountainsFirst(rng, rest);
+  } else {
+    const scaffold = weaveMountainFamilyBlocks(sortByHint(rng, rest));
+    const transform = ORDER_TRANSFORMS[/** @type {keyof typeof ORDER_TRANSFORMS} */ (orderArchetype)] ?? ORDER_TRANSFORMS.summit_finale;
+    ordered = transform(rng, scaffold);
+    if (profile.openingVariety) ordered = applyOpeningVariety(rng, ordered);
+    if (ordered.length > 3) {
+      if (MOUNTAIN_FAMILY.has(ordered[ordered.length - 1])) ordered = weaveMountainFamilyBlocks(ordered);
+      else ordered = [...weaveMountainFamilyBlocks(ordered.slice(0, -1)), ordered[ordered.length - 1]];
+    }
+  }
+  const first = positioned.filter((l) => l.position === "first").map((l) => l.type);
+  const last = positioned.filter((l) => l.position === "last").map((l) => l.type);
+  return [...first, ...ordered, ...last];
+}
+
+/**
+ * Hvilken etape (indeks) hver lås lander på. Faste pladser: først/sidst. Uden plads
+ * (queen/any): den SENESTE etape af låsens type, der ikke allerede er taget - i en
+ * crescendo-ordnet uge er det den hårdeste forekomst.
+ * @param {string[]} ordered @param {Array<{ type: string, position: string | null }>} locks
+ * @returns {Map<number, any>}
+ */
+function placeIdentityLocks(ordered, locks) {
+  const byIndex = new Map();
+  const firstLocks = locks.filter((l) => l.position === "first");
+  const lastLocks = locks.filter((l) => l.position === "last");
+  firstLocks.forEach((l, k) => byIndex.set(k, l));
+  lastLocks.forEach((l, k) => byIndex.set(ordered.length - lastLocks.length + k, l));
+  for (const l of locks.filter((x) => !x.position)) {
+    let at = -1;
+    for (let i = ordered.length - 1; i >= 0; i--) if (ordered[i] === l.type && !byIndex.has(i)) { at = i; break; }
+    if (at < 0) throw new Error(`signature stage of type ${l.type} was lost in ordering (#6857)`);
+    byIndex.set(at, l);
+  }
+  return byIndex;
+}
+
+/**
+ * #6995: delte sektorer i rutens rækkefølge. En sektor med stage_hint "last" er finale-sektoren
+ * (står sidst); ellers bevares seedets rækkefølge.
+ * @param {any[]} features
+ */
+function sectorSignatureOrder(features) {
+  return [...features.filter((f) => f.stage_hint !== "last"), ...features.filter((f) => f.stage_hint === "last")];
+}
+
+/**
+ * @param {S5Rng} rng @param {number} stages @param {any} race
+ * @param {{ type: string, profile: any, features: any[] }} identity
+ * @param {string[] | null} fillerTypes  divisionens kvote-fordelte filler-typer (som applyFillerTypes)
+ */
+function buildIdentityStageRace(rng, stages, race, identity, fillerTypes = null) {
+  const label = race?.name ?? race?.id;
+  const { types, protectedCount, locks, queenCeiling } = drawIdentityTypes(rng, stages, identity, label);
+  types.length = stages;
+  const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, identity.profile.order);
+  if (fillerTypes) applyFillerTypes(types, protectedCount, fillerTypes, orderArchetype, stages, race);
+  if (identity.profile.mountainFree && types.some((t) => IDENTITY_MOUNTAIN_TYPES.has(t))) {
+    throw new Error(`mountain stage in a mountain-free ${identity.type} race (${label}, #6857)`);
+  }
+  // #6995: også kvotens filler-typer (og en forceret ordnings-plads) holder sig under queen.
+  const tooHard = aboveCeiling(types, queenCeiling);
+  if (tooHard.length) throw new Error(`${tooHard.join(", ")} stage is harder than the queen signature stage (${label}, #6995)`);
+  const ordered = orderIdentityTypes(rng, types, orderArchetype, identity.profile, locks);
+  const lockAt = placeIdentityLocks(ordered, locks);
+  return ordered.map((t, i) => {
+    const lock = lockAt.get(i);
+    const stage = toStageS5(rng, t, i + 1, race, true, {
+      shortItt: Boolean(lock?.prologue),
+      // #6857 (Codex P2): en låst almindelig enkeltstart må aldrig trækkes til prolog.
+      noPrologue: lock?.type === "itt" && !lock.prologue,
+      signature: lock?.features ? sectorSignatureOrder(lock.features)
+        : lock?.feature && ["climb", "summit_finish", "sector"].includes(lock.feature.kind) ? lock.feature : null,
+    });
+    return { ...stage, generator_version: IDENTITY_GENERATOR_VERSION };
+  });
+}
+
+/**
+ * #6995: finale-rampen for en håndskreven rute med en rampe-afslutning (stigende spurt, mur,
+ * bakke). Rampen er et afledt felt (L1 forbyder at forfatte den), så den læses af målstigningen,
+ * præcis som rutegeneratoren gør for en signatur-stigning med topmål: rampen er stigningens
+ * sidste stykke (ramp_in_climb, højdemeterne tælles kun i stigningen), holdt inden for
+ * afslutningens bånd (spec §3). Uden målstigning kastes der i stedet for at opfinde en rampe.
+ * @param {any} r  authored_route @param {any} race
+ * @returns {null | { ramp_km: number, ramp_gradient: number, ramp_in_climb: true }}
+ */
+function authoredFinishRamp(r, race) {
+  const spec = /** @type {Record<string, any>} */ (S5_FINISH_RAMPS)[canonicalFinaleType(r.finale_type) ?? r.finale_type];
+  if (!spec) return null;
+  const summit = r.climbs.find((/** @type {any} */ c) => c.summit_finish === true);
+  if (!summit) throw new TypeError(`authored_route.finale_type "${r.finale_type}" needs a summit_finish climb as its finish ramp (${race.name ?? race.id}, #6995)`);
+  // Codex P2: rampen bor på målspurten; uden den ville etapen stadig mangle rampen (benchmark-gaten).
+  if (!r.sprints.some((/** @type {any} */ s) => s.kind === "finish")) throw new TypeError(`authored_route.finale_type "${r.finale_type}" needs a finish sprint to carry its ramp (${race.name ?? race.id}, #6995)`);
+  const clampTo = (/** @type {number} */ v, /** @type {number[]} */ [lo, hi]) => Math.min(hi, Math.max(lo, v));
+  return { ramp_km: clampTo(summit.length_km, spec.length), ramp_gradient: clampTo(summit.avg_gradient, spec.grad), ramp_in_climb: true };
+}
+
+/**
+ * Monumentets håndskrevne rute (design §1: kun vejr, form og taktik varierer). Ruten
+ * kopieres som den er forfattet; demand-vektoren følger profiltypen, og segmenter, vejr og
+ * højdeprofil beregnes af ruten med deres egne rng-strømme (sæsonens vejr varierer).
+ * @param {any} race
+ */
+function buildAuthoredSingle(race) {
+  // #6857 (Codex P2): fail-closed i generatoren selv (databasen har ingen constraint): en
+  // håndskreven rute gælder kun et endags-monument.
+  if (race?.race_type !== "single" || race?.race_class !== "Monuments") {
+    throw new TypeError(`authored_route requires a single-day Monuments race, got ${race?.race_type ?? "?"} / ${race?.race_class ?? "?"} (${race?.name ?? race?.id}, #6857)`);
+  }
+  const r = race.authored_route;
+  validateAuthoredRoute(r);
+  // #6857 (Codex P2): S5-invarianten profile_type == B+(climbs) gælder også den håndskrevne rute.
+  // Kun stignings-terrænerne afledes af B+; brosten/grus/klassiker er overflade-typer.
+  const CLIMB_TERRAINS = new Set(["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain"]);
+  if (CLIMB_TERRAINS.has(r.profile_type) && r.profile_type !== deriveTerrainType(r.climbs)) {
+    throw new TypeError(`authored_route.profile_type "${r.profile_type}" does not match its climbs (${deriveTerrainType(r.climbs)}) (${race.name ?? race.id}, #6857)`);
+  }
+  // Afslutningen skal ligge i S5-matrixen for rutens eget terræn (B+), ellers afviser
+  // benchmark-gaten etapen bagefter. Tidskørsels-formater står uden for matrixen.
+  if (!isTimeTrial(r.profile_type) && !isFinishAllowed(deriveTerrainType(r.climbs), canonicalFinaleType(r.finale_type) ?? "")) {
+    throw new TypeError(`authored_route.finale_type "${r.finale_type}" is not allowed on its route terrain ${deriveTerrainType(r.climbs)} (${race.name ?? race.id}, #6857)`);
+  }
+  const clone = (/** @type {any[]} */ xs) => xs.map((x) => ({ ...x }));
+  const finishRamp = authoredFinishRamp(r, race);
+  const merged = {
+    stage_number: 1,
+    profile_type: r.profile_type,
+    finale_type: r.finale_type,
+    demand_vector: demandVectorFor(r.profile_type),
+    distance_km: r.distance_km,
+    elevation_gain_m: r.elevation_gain_m,
+    climbs: clone(r.climbs),
+    sprints: clone(r.sprints).map((s) => (s.kind === "finish" && finishRamp ? { ...s, ...finishRamp } : s)),
+    sectors: clone(r.sectors),
+  };
+  // #6857 (Codex P1): geometrien (sektorernes stjerner, højdeprofilen) seedes på rutens faste
+  // identitet uden sæson, så monumentet kører ens hvert år. Kun vejret skifter med sæsonen.
+  const fixedRace = { ...race, season_id: null, season_variant: 0 };
+  const { segments } = attachSegmentsAndWeather(merged, fixedRace, 1);
+  const { weather } = attachSegmentsAndWeather(merged, race, 1);
+  const elevation_profile = buildElevationProfile({ ...merged, segments }, elevationSeedKey(fixedRace, 1));
+  return [{ ...merged, segments, weather, elevation_profile, generator_version: IDENTITY_GENERATOR_VERSION }];
+}
+
 /**
  * Generér stage-profiler for ét løb (rør ingen DB).
  * @param {{id:string, race_type?:string, stages?:number, external_id?:string, pool_race_id?:string, season_id?:string, season_variant?:number}} race
@@ -1651,17 +2083,26 @@ function buildGrandTourS5(rng, stages, race, { allowTtt = false } = {}) {
  *                     Grand Tour), fordelt efter kvote over divisionens løbssæt af
  *                     s5TierTerrainQuota.js. Længden skal være antallet af filler-pladser
  *                     (s5StageRaceFillerSlots). Ignoreres aldrig i tavshed: v5 kaster.
+ *   identityProfiles  kun S5 (#6857): override af IDENTITY_PROFILES (tests/analyse).
+ *
+ * OFFENTLIG KONTRAKT (L3-regen-scriptet #6929 kalder den): signaturen er uændret. #6857 tilføjer
+ * kun tre valgfrie felter på `race` - race_identity_type, signature, authored_route (samme navne
+ * og former som race_pool, L1) - som læses KUN når profileModel er "s5". Rækker fra identitets-
+ * stien har generator_version 7 (IDENTITY_GENERATOR_VERSION); alt andet er uændret.
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */
-export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false, fillerTypes = null } = {}) {
+export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false, fillerTypes = null, identityProfiles = IDENTITY_PROFILES } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
   const cfg = archetypeFor(race, archetypeProfiles);
   const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
   if (profileModel === "s5") {
-    const fillerApplies = isStageRace && cfg?.kind === "stage" && !cfg.grandTourOrder;
+    if (isStageRace && race.authored_route != null) throw new Error(`authored_route applies to single-day monuments only (${race.name ?? race.id}, #6857)`);
+    const identity = raceIdentityFor(race, identityProfiles);
+    const fillerApplies = isStageRace && (identity != null || (cfg?.kind === "stage" && !cfg.grandTourOrder));
     if (fillerTypes && !fillerApplies) throw new Error(`fillerTypes only applies to S5 archetype stage races outside Grand Tours (${race.name ?? race.id})`);
+    if (identity) return buildIdentityStageRace(rng, stages, race, identity, fillerTypes);
     if (!isStageRace) return buildSingle(rng, cfg, race, toStageS5);
     if (cfg?.kind === "stage" && cfg.grandTourOrder) return buildGrandTourS5(rng, stages, race, { allowTtt });
     return buildStageRace(rng, stages, cfg, race, toStageS5, fillerTypes);
@@ -1687,8 +2128,32 @@ export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCH
  *   ttCap           TT-loftet for løbet (#2029)
  *   orderArchetype  løbets ordnings-arketype; fillerTypes skal holde den mulig
  */
-export function s5StageRaceFillerSlots(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES } = {}) {
+export function s5StageRaceFillerSlots(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, identityProfiles = IDENTITY_PROFILES } = {}) {
   if (!race?.id || race.race_type !== "stage_race") return null;
+  // #6857: et identitets-løbs filler følger IDENTITY_PROFILES (typens liste), præcis som
+  // buildIdentityStageRace trækker den. Garantierne inkluderer signaturens låste typer.
+  const identity = raceIdentityFor(race, identityProfiles);
+  if (identity) {
+    const stages = Math.max(2, Number(race.stages) || 2);
+    const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
+    const { types, protectedCount, filler } = drawIdentityTypes(rng, stages, identity, race.name ?? race.id);
+    types.length = stages;
+    const orderArchetype = resolveOrderArchetype(rng, types, protectedCount, identity.profile.order);
+    const natural = types.slice(protectedCount);
+    // #6995: filler er typens liste skåret ved queen-terrænet, så kvoten heller ikke kan løfte en etape over queen.
+    const fromWeights = filler.filter((/** @type {any} */ it) => it.weight > 0).map((/** @type {any} */ it) => it.value);
+    return {
+      guaranteed: types.slice(0, protectedCount),
+      natural,
+      options: [...new Set([...fromWeights, ...natural])],
+      ttCap: timeTrialCap(types.slice(0, protectedCount), stages),
+      stages,
+      orderArchetype,
+      // Typens filler-liste ER løftet om bjergfrihed (mellembjerg er tilladt i fx "hilly",
+      // design §2), så kvoten skal ikke selv udlede et strengere bjergfri-forbud.
+      identityType: identity.type,
+    };
+  }
   const cfg = archetypeFor(race, archetypeProfiles);
   if (cfg?.kind !== "stage" || cfg.grandTourOrder) return null;
   const stages = Math.max(2, Number(race.stages) || 2);

@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-98 poster: live 75 · beta 3 · dormant 4 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+100 poster: live 76 · beta 3 · dormant 4 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -17,8 +17,8 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Form peaks in races (`race-form-peaks`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6156 | 2026-10-19 | Flaget oprettes off ved merge. |
-| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-15 | UI live; v4 er on, men flaget race_day_intention_enabled findes ikke i prod (læst 15/10). Kalibrering + beta i #6641. |
-| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). official_times_v5 var aktuel fra ejerens \"tænd\" 16/10 (#6462) til S5-tændingen 17/10 (s5_profiles_v1, se race-engine-s5-profiles); løb bundet til v2-v5 færdiggøres på deres revision (#6642). |
+| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-15 | UI live; flaget findes ikke i prod endnu. Kalibrering + beta i #6641. |
+| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype; v2-v5 i timeModel.ts/segmentLoop.ts. v5 aktiv 16/10 (#6462) til S5 17/10 (#6642); løb beholder bundet revision. |
 
 ## race-day
 
@@ -46,7 +46,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-09-15 | Data-only (#5268), resten senere. |
-| New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt rider_primary_type_from_distribution (off) koblet paa start-trup, AI-hold og relaunch; flag-feltet saettes naar raekken er verificeret i prod efter merge. Flip er ejer-gated. |
+| New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off) paa start-trup, AI-hold og relaunch. Flip er ejer-gated. |
 
 ## training
 
@@ -78,7 +78,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 ## economy
 
-**live:** Automatic prize money (`auto-prize`) 2026-09-06 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06 · Upkeep paid per senior race day (Travel & staff) (`upkeep-per-race-day`) 2026-09-27
+**live:** Automatic prize money (`auto-prize`) 2026-09-06 · No running costs from season 5 (`economy-no-upkeep`) 2026-10-20 · Finance overview (`finance-overview`) 2026-09-06 · Bulk rider value writes (`rider-values-bulk-write`) 2026-09-06 · Sponsors (`sponsors`) 2026-09-06 · Upkeep paid per senior race day (Travel & staff) (`upkeep-per-race-day`) 2026-09-27
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -131,4 +131,5 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
+| Ranking shadow (`ranking-shadow`) | building | - | [GAME_INVARIANTS](GAME_INVARIANTS.md) | #6765 | 2026-10-19 | ranking_shadow_enabled seed off; ejer-go før tænding. |
 | Survey banner (`survey-banner`) | retired | - | - | #2467 | 2026-10-15 | SurveyBanner.jsx slettet (#2467); kun seed-rækkerne survey_banner_enabled/survey_banner_url står tilbage i app_config. |

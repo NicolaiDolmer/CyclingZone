@@ -31,8 +31,7 @@
     "bought": "Acheté",
     "sold": "Vendu",
     "noBids": "Aucune enchère",
-    "lost": "Perdue",
-    "inAuction": "En enchère"
+    "lost": "Perdue"
   },
   "section": {
     "offersNeedResponse": "Offres en attente de ta réponse",

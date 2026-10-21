@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
+import { assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -241,7 +241,7 @@ test("runPool: hoejst `parallel` ad gangen, fejl stopper ikke de andre", async (
   assert.equal(peak, 4);
   assert.deepEqual(res.failed.sort(), ["t3", "t5"]);
   assert.equal(res.ok.length, 7);
-  assert.deepEqual(await runPool([], 4, async () => 0), { ok: [], failed: [] });
+  assert.deepEqual(await runPool([], 4, async () => 0), { ok: [], failed: [], pending: [] });
 });
 
 test("#6750: en output-mappe afviser en anden loebsudvaelgelse, men tillader genoptagelse", () => {
@@ -316,4 +316,113 @@ test("#6805: loeb uden startfelt springes over og taelles, raekkefoelgen bevares
   assert.deepEqual(splitByStartField(["a", "b", "c", "d"], new Set(["c", "a"])), { ids: ["a", "c"], skippedNoField: 2 });
   assert.deepEqual(splitByStartField([], new Set()), { ids: [], skippedNoField: 0 });
   assert.deepEqual(splitByStartField(["a"], new Set(["a"])), { ids: ["a"], skippedNoField: 0 });
+});
+
+test("#6909 parseArgs: --synthetic-field (default generator), --routes-from og --season", () => {
+  const o = parseArgs(["--candidate=c", "--synthetic-field", "--routes-from=balance-internals/l3", "--season=5"], { defaultBaseline: "b", now: NOW });
+  assert.equal(o.syntheticField, "generator");
+  assert.equal(o.routesFrom, "balance-internals/l3");
+  assert.equal(o.season, 5);
+  assert.equal(parseArgs(["--candidate=c", "--synthetic-field=bench"], { defaultBaseline: "b", now: NOW }).syntheticField, "bench");
+  const plain = parseArgs(["--candidate=c"], { defaultBaseline: "b", now: NOW });
+  assert.deepEqual([plain.syntheticField, plain.routesFrom, plain.season], [null, null, null]);
+  assert.throws(() => parseArgs(["--candidate=c", "--synthetic-field=giro"], { defaultBaseline: "b", now: NOW }), /--synthetic-field/);
+  assert.throws(() => parseArgs(["--candidate=c", "--season=0"], { defaultBaseline: "b", now: NOW }), /--season/);
+});
+
+test("#6909 planTasks: en forbygget cache i loebsmappen laeses (aldrig eksporten, aldrig --save-cache)", () => {
+  const opts = { candidate: "c", baseline: "b", seeds: 1, bench: false, benchOnly: false };
+  const [t] = planTasks({ raceIds: ["r1"], opts, outDir: "OUT", fromDir: "EXP", prebuilt: new Set(["r1"]) });
+  assert.ok(t.args.includes(`--cache=${path.join("OUT", "races", "r1", "cache.json")}`));
+  assert.ok(!t.args.some((x) => x.startsWith("--save-cache")));
+});
+
+test("#6909 runPool: tidsbudgettet starter ingen nye opgaver, de koerende goeres faerdige, resten er pending", async () => {
+  let started = 0;
+  const tasks = ["a", "b", "c", "d"].map((id) => ({ id }));
+  const res = await runPool(tasks, 2, async () => { started += 1; return 0; }, { shouldStop: () => started >= 2 });
+  assert.deepEqual(res.ok, ["a", "b"]);
+  assert.deepEqual(res.pending, ["c", "d"]);
+  assert.equal(parseArgs(["--candidate=c", "--time-budget=9"], { defaultBaseline: "b", now: NOW }).timeBudgetMin, 9);
+  assert.equal(parseArgs(["--candidate=c"], { defaultBaseline: "b", now: NOW }).timeBudgetMin, null);
+});
+
+test("#6909 (Codex): ventende opgaver (fx bench efter tidsbudget) gemmes i meta og goer kortet ufaerdigt, ogsaa i --report-only", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-pending-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    mkdirSync(out, { recursive: true });
+    writeFileSync(path.join(out, "testport-meta.json"), JSON.stringify({ candidate: "c", baseline: "b", seeds: 1, benchScope: "all", pendingTasks: ["bench:c"] }));
+    process.exitCode = 0;
+    const res = await main(["--report-only", `--out=${out}`, "--no-png"], { now: NOW });
+    assert.deepEqual(res.card.meta.pendingTasks, ["bench:c"]);
+    assert.match(readFileSync(path.join(out, "testport.md"), "utf8"), /UFAERDIG:\*\* tidsbudgettet stoppede koerslen; 1 opgaver er ikke koert: bench:c/);
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6909 assertSameRun: andet syntetisk felt, rute-mappe eller saeson er en anden koersel", () => {
+  const prev = { candidate: "c", baseline: "b", seeds: 2, benchScope: "all", syntheticField: "generator", routesFrom: "r", season: 5 };
+  const opts = { ...prev };
+  assertSameRun(null, opts, "OUT");
+  assertSameRun(prev, opts, "OUT");
+  assert.throws(() => assertSameRun(prev, { ...opts, syntheticField: "bench" }, "OUT"), /anden koersel.*syntetisk felt generator/);
+  assert.throws(() => assertSameRun(prev, { ...opts, routesFrom: null }, "OUT"), /anden koersel/);
+  assert.throws(() => assertSameRun(prev, { ...opts, season: 4 }, "OUT"), /anden koersel/);
+  // #6909 (Codex P2): samme mappe, men aendret indhold = anden koersel.
+  assert.throws(() => assertSameRun({ ...prev, routesSignature: "aaa" }, { ...opts, routesSignature: "bbb" }, "OUT"), /anden koersel/);
+  // Aeldre meta (foer #6909) uden felterne = koersel uden syntetisk felt og ruter.
+  assertSameRun({ candidate: "c", baseline: "b", seeds: 2 }, { candidate: "c", baseline: "b", seeds: 2, benchScope: "all", syntheticField: null, routesFrom: null, season: null }, "OUT");
+});
+
+test("#6909 main: --from-dir + --routes-from + --synthetic-field=bench bygger cachen og skriver kilderne paa kortet", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-6909-"));
+  const prevExit = process.exitCode;
+  try {
+    const exp = path.join(root, "export");
+    const routesDir = path.join(root, "routes");
+    const out = path.join(root, "balance-internals", "run");
+    const race = (id, entries) => ({ race: { id, name: `Loeb ${id}`, stages: 1 }, profiles: [{ race_id: id, stage_number: 1, profile_type: "mountain" }], entries, orders: [], teams: [{ id: "t1", is_ai: true }], abilities: entries.map((e) => ({ rider_id: e.rider_id })) });
+    mkdirSync(routesDir, { recursive: true });
+    for (const [id, entries] of [["a", [{ rider_id: "x", team_id: "t1", race_role: "captain" }]], ["b", []]]) {
+      mkdirSync(path.join(exp, id), { recursive: true });
+      writeFileSync(path.join(exp, id, "cache.json"), JSON.stringify(race(id, entries)));
+      writeFileSync(path.join(routesDir, `${id}.json`), JSON.stringify({ format: "cz-race-routes/v1", race_id: id, stages: 1, profiles: [{ stage_number: 1, profile_type: "flat", demand_vector: { sprint: 1 } }] }));
+      // Loebene er allerede koert (done + scorecard), saa main starter ingen child-processer.
+      mkdirSync(path.join(out, "races", id), { recursive: true });
+      writeFileSync(path.join(out, "races", id, "done"), "x");
+      writeFileSync(path.join(out, "races", id, `loeb-${id}-2026-10-20-10-00.json`), scorecard(id, "rev"));
+    }
+    const res = await main(["--candidate=rev", "--no-bench", "--no-png", `--out=${out}`, `--from-dir=${exp}`, `--routes-from=${routesDir}`, "--synthetic-field=bench"], { now: NOW, defaultBaseline: "rev" });
+    assert.equal(res.card.races, 2);
+    const cacheB = JSON.parse(readFileSync(path.join(out, "races", "b", "cache.json"), "utf8"));
+    assert.equal(cacheB.fieldSource, "bench");
+    assert.ok(cacheB.entries.length > 0, "bench-feltet");
+    assert.equal(cacheB.profiles[0].profile_type, "flat", "den foreslaaede rute");
+    const md = readFileSync(path.join(out, "testport.md"), "utf8");
+    assert.match(md, /Startfelt: 1 loeb med prod-tilmeldinger · 1 med syntetisk felt \(bench: /);
+    assert.match(md, /Ruter: foreslaaede fra routes, 2 loeb/);
+    const meta = JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8"));
+    assert.deepEqual([meta.syntheticField, meta.routes.races], ["bench", 2]);
+    await assert.rejects(main(["--candidate=rev", "--no-bench", "--no-png", `--out=${out}`, `--from-dir=${exp}`, `--routes-from=${routesDir}`], { now: NOW, defaultBaseline: "rev" }), /anden koersel/);
+    await assert.rejects(main(["--candidate=rev", "--no-bench", "--no-png", `--out=${path.join(root, "balance-internals", "run2")}`, "--races=a,c", `--routes-from=${routesDir}`], { now: NOW, defaultBaseline: "rev" }), /mangler rute for 1 loeb: c/);
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6909 (Codex P1) budgetStop: injiceret monotont ur styrer stop-tidspunktet deterministisk", () => {
+  let t = 1_000;
+  const stop = budgetStop(2, () => t);
+  assert.equal(stop(), false);
+  t += 2 * 60_000 - 1;
+  assert.equal(stop(), false, "1 ms foer budgettet");
+  t += 1;
+  assert.equal(stop(), true, "praecis ved budgettet");
+  assert.equal(budgetStop(null, () => { throw new Error("uret bruges ikke uden budget"); })(), false);
 });

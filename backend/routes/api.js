@@ -83,6 +83,7 @@ import {
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import {
+  assessFinalTrainingDateSettlement,
   assessSeasonEndBlockers,
   assessTransitionReadiness,
   formatForceOverrideDescription,
@@ -276,11 +277,11 @@ import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
-import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, ANY_SQUAD } from "../lib/riderEligibility.js";
+import { applyRiderEligibilityFilter, applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "../lib/riderEligibility.js";
 // #5517: withSeniorSquadScope er puljernes og løbenes senior-scope — alle liste-læsere
 // af league_divisions og sæson-læsere af races i denne fil går gennem den
 // (forward-guard: lib/squadSeniorReaders.test.js).
-import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad } from "../lib/squads.js";
+import { applySeniorSquadFilter, SQUAD_CAPS, withSeniorSquadScope, academyPlacementSquad, seniorSquadPatch } from "../lib/squads.js";
 import { youthSquadRoom, youthSquadRooms } from "../lib/youthSquadRoom.js"; // #5568: loft pr. ungdomstrup
 import { resolveSeasonDay, seasonDayAxis, seasonDayForTime } from "../lib/seasonDay.js";
 import { buildColumnSet, buildBindingMap, buildExternalBindings, columnBindingRiderIds, filterBindingEntries, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, partitionClearTargets, buildClearPreview, startListVisible, daysUntilStart, groupGrossSquads, raceDaysByRace, seasonLoadByRider, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
@@ -313,6 +314,7 @@ import {
 } from "../lib/academyIntake.js";
 import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
+import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from "../lib/academyDisclosure.ts";
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
 import { computeFrozenSalary } from "../lib/contractSeed.js";
@@ -322,6 +324,7 @@ import {
 } from "../lib/economyAdminDashboard.js";
 import { computeFinanceForecast, computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { isUpkeepPerRaceDayEnabled } from "../lib/upkeepPerRaceDayFlag.ts";
+import { isEconomyNoUpkeepEnabled } from "../lib/economyNoUpkeepFlag.ts";
 import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
 import { buildSeasonSwitchPreview } from "../lib/seasonSwitchPreview.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
@@ -2374,17 +2377,26 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
-        .from("riders").select("id, potentiale, birthdate, team_id, primary_type, secondary_type").in("id", chunk).order("id")),
+        .from("riders").select("id, potentiale, birthdate, team_id, is_academy, primary_type, secondary_type").in("id", chunk).order("id")),
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
         .from("rider_derived_abilities").select("*").in("rider_id", chunk).order("rider_id")),
       getActiveSeasonNumber(),
     ]);
     const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
+    const academyPrognoses = await loadAcademyPrognoses(supabase, {
+      enabled: (riders ?? []).some((r) => r.team_id === req.team.id && r.is_academy)
+        && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
+      riders: riders ?? [], abilitiesByRider, seasonNumber, scout,
+    });
     // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
     // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
     const currentYear = new Date().getFullYear();
     const estimates = {};
     for (const rider of riders ?? []) {
+      if (academyPrognoses.has(rider.id)) {
+        estimates[rider.id] = academyEstimate(academyPrognoses.get(rider.id));
+        continue;
+      }
       const level = state.levels[rider.id] ?? 0;
       const estimate = buildScoutEstimate(rider, level, req.team.id, SCOUTING_CONFIG, currentYear, scout);
       // #2454/#3746: potentiel prognose for rytterens EGEN rolle, i rating-point
@@ -2451,8 +2463,12 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
 // tværs af devices); manglende kolonne (42703) er graceful indtil migrationen
 // er applied.
 const DEV_TRANSITION_BACKUP_TABLE = "rider_caps_3746_backup_20260816";
+// #6935: slået fra. FØR-tallet (august-backup) blev blandet med dagens alder/type,
+// så panelet kunne vise forkerte før/nu-tal. Rigtig løsning designes bagefter.
+const DEV_TRANSITION_PANEL_ENABLED = false;
 router.get("/development/transition", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
+  if (!DEV_TRANSITION_PANEL_ENABLED) return res.json({ active: false });
   try {
     // schema-columns-ok: kolonnen tilføjes af database/2026-08-18-3746-dev-
     // transition-dismiss.sql (applies post-merge under #2642); 42703-graceful indtil da
@@ -2706,7 +2722,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         // #3345: valuation_type med — predictBaseValue nedenfor læser den FØR
         // primary_type (frosset værdisætning, se riderValuation.js).
         // #3746: secondary_type med — prognose-båndet fremskriver begge roller.
-        .select("id, team_id, potentiale, birthdate, primary_type, secondary_type, valuation_type, market_value")
+        .select("id, team_id, potentiale, is_academy, birthdate, primary_type, secondary_type, valuation_type, market_value")
         .eq("id", req.params.id)
         .maybeSingle(),
     ]);
@@ -2731,6 +2747,15 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
     const { data: ab, error: abErr } = await supabase
       .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
     if (abErr) throw new Error(abErr.message);
+
+    const academyPrognoses = await loadAcademyPrognoses(supabase, {
+      enabled: own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
+      riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
+      seasonNumber: await getActiveSeasonNumber(), scout,
+    });
+    if (academyPrognoses.has(rider.id)) {
+      return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
+    }
 
     const currentYear = new Date().getFullYear();
     const stars = buildScoutEstimate(rider, level, req.team.id, SCOUTING_CONFIG, currentYear, scout);
@@ -2776,13 +2801,10 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
           captureException(err);
         }
       }
-      const valueGap = expected != null && rider.market_value != null
-        ? expected - rider.market_value : 0;
       verdict = buildVerdict({
         age, own, level, maxLevel: state.maxLevel,
         bestNow: best.now,
         bestCeilMid: (bestProg.progLo + bestProg.progHi) / 2,
-        valueGap,
       });
       // #3666: kalibreringen er VÆK. `types` sendes nu i visnings-opskriftens egen
       // enhed — samme enhed som evne-tallene og som alt andet i appen. Det var
@@ -2829,7 +2851,7 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
       loadScout(req.team.id, supabase),
       supabase
         .from("riders")
-        .select("id, team_id, birthdate, primary_type")
+        .select("id, team_id, is_academy, birthdate, primary_type")
         .eq("id", req.params.id)
         .maybeSingle(),
     ]);
@@ -2837,6 +2859,9 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     if (!rider) return res.status(404).json({ error: "Rider not found" });
 
     const own = rider.team_id != null && rider.team_id === req.team.id;
+    if (own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase)) {
+      return res.json({ own: true, capsMissing: true });
+    }
     const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
     if (!own && level <= 0) {
       return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
@@ -3236,6 +3261,8 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
       const reports = [];
       let ranAny = false;
       let lastTickDate = null;
+      // #6827: en loebsdag som en anden koersel holder, kaster (409 training_in_progress
+      // i catch'en nedenfor) og stopper loekken: ingen senere loebsdage koeres.
       for (const gameDay of gameDays) {
         const r = await runTeamTrainingDay({
           supabase,
@@ -6082,7 +6109,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     // #2579/#2637: delt eligibility-filter + skade-udelukkelse — samme regler som
     // raceRunner.fillMissingTeamEntries og regenerate-endpointet (Spec 6.5, #1306).
     const [{ data: teamRiders, error: ridersErr }, { data: stageProfiles, error: profErr }] = await Promise.all([
-      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id), { squad: raceSquadOf(race) }),
+      // #6964: alder afgør ungdomsløb (seasonNumber slår aldersgaten til; seniorløb: undefined).
+      applyRiderEligibilityFilter(supabase.from("riders").select("id").eq("team_id", req.team.id), { squad: raceSquadOf(race), seasonNumber: await loadRaceSeasonNumber({ supabase, race }) }),
       supabase.from("race_stage_profiles")
         .select("stage_number, profile_type, finale_type, demand_vector")
         .eq("race_id", race.id).order("stage_number", { ascending: true }),
@@ -9340,8 +9368,10 @@ router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req
   // #2264: admin-flyt er altid en SENIOR-flytning (frigivelse eller senior-trup).
   // is_academy nulstilles, ellers strander rytteren som "akademi-rytter uden hold"
   // — vises i markedet men afvises af auktions-gaten (rider_is_academy).
+  // #6920: squad med (seniorSquadPatch), ellers beholder en ungdomsrytter
+  // squad='u23'/'junior' og optager en ungdomsplads uden at være i akademiet.
   const { error } = await supabase.from("riders")
-    .update({ team_id: team_id || null, pending_team_id: null, is_academy: false, acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
+    .update({ team_id: team_id || null, pending_team_id: null, ...seniorSquadPatch(), acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
   if (error) return res.status(500).json({ error: error.message });
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";
@@ -10985,6 +11015,8 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       facilitiesEnabled,
       // #4385: upkeep pr. seniorløbsdag når flaget er on (fail-safe off).
       upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
+      // #6936: upkeep, facilitets-upkeep og akademi-drift fjernet når on.
+      noUpkeep: await isEconomyNoUpkeepEnabled(supabase),
     });
 
     // Backward-compat: spred det første (præcise) forecast på root.
@@ -11142,6 +11174,8 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
       facilitiesEnabled,
       // #4385: med flaget on trækkes intet fladt upkeep ved skiftet.
       upkeepPerRaceDay: await isUpkeepPerRaceDayEnabled(supabase),
+      // #6936: kvitteringen viser ingen upkeep-/drift-trin når on.
+      noUpkeep: await isEconomyNoUpkeepEnabled(supabase),
     });
 
     const preview = buildSeasonSwitchPreview({
@@ -11939,6 +11973,12 @@ router.post("/admin/seasons/:id/end", requireAdmin, adminWriteLimiter, async (re
       });
     }
 
+    // #6898: require durable settlement proof before any season-end writes.
+    // No force bypass and no historical replay after riders/season are reset.
+    const trainingSettlement = await assessFinalTrainingDateSettlement({ supabase, season, now: new Date() });
+    if (trainingSettlement.blocked) {
+      return res.status(400).json({ error: trainingSettlement.detail, training_settlement: trainingSettlement });
+    }
     // #2847 · DB-niveau-garanti mod concurrent dobbelt-POST. De foregående checks
     // (status/pending-results/blockers) er check-then-act uden constraint — to
     // samtidige requests kan begge bestå dem og begge nå hertil. Herfra og ned er
@@ -13965,7 +14005,9 @@ router.get("/club/facilities", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const facilitiesEnabled = await resolveFacilitiesEnabled(req);
-    const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase, { flags: { facilitiesEnabled } });
+    // #6936: drift-linjerne skjules når facilitets-upkeep ikke længere trækkes.
+    const noUpkeep = await isEconomyNoUpkeepEnabled(supabase);
+    const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase, { flags: { facilitiesEnabled, noUpkeep } });
     res.status(status).json(body);
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
 });
@@ -14439,6 +14481,7 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
     // #1346: readiness-gate FØR enhver transition-write. dryRun gates ikke
     // (ingen writes). Force er en bevidst, logget nødudgang (ejer-beslutning
     // 12/6) til resume-edge-cases og bevidst tidlig sæsonlukning.
+    let beforeTransitionWrites;
     if (!dryRun) {
       const readiness = await assessTransitionReadiness({ supabase, fromSeasonId });
       if (!readiness.ready && !force) {
@@ -14448,17 +14491,19 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
         });
       }
       if (!readiness.ready && force) {
-        const { error: forceLogError } = await supabase.from("admin_log").insert({
-          admin_user_id: req.user?.id ?? null,
-          action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
-          description: formatForceOverrideDescription(readiness.failed_critical),
-          target_team_id: null,
-          meta: { source: "season_transition_force", failed_critical: readiness.failed_critical },
-        });
-        if (forceLogError) {
-          // Fail-closed: uden audit-spor må en forced transition ikke køre.
-          return res.status(500).json({ error: `Force-log kunne ikke skrives: ${forceLogError.message}` });
-        }
+        beforeTransitionWrites = async () => {
+          const { error: forceLogError } = await supabase.from("admin_log").insert({
+            admin_user_id: req.user?.id ?? null,
+            action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
+            description: formatForceOverrideDescription(readiness.failed_critical),
+            target_team_id: null,
+            meta: { source: "season_transition_force", failed_critical: readiness.failed_critical },
+          });
+          if (forceLogError) {
+            // Fail-closed: uden audit-spor må en forced transition ikke køre.
+            throw new Error(`Force-log kunne ikke skrives: ${forceLogError.message}`);
+          }
+        };
       }
     }
 
@@ -14468,10 +14513,15 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
       transitionAt: transitionAt ? new Date(transitionAt) : new Date(),
       dryRun: Boolean(dryRun),
       adminUserId: req.user?.id ?? null,
+      deps: { beforeTransitionWrites },
     });
 
     res.json(result);
   } catch (e) {
+    // Expected guard refusal: no transition or force audit was performed.
+    if (e?.code === 'training_settlement_blocked') {
+      return res.status(400).json({ error: e.message, training_settlement: e.settlement });
+    }
     // #2921 · Et 500 herfra nåede aldrig Sentry: ruten fangede fejlen selv og
     // returnerede den kun til browseren. En transition der fejler halvvejs er
     // dermed usynlig i overvågningen. Nu rapporteres den, OG der skrives et
@@ -14718,7 +14768,9 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     // #4385: samme flag som processSeasonStart — med upkeep_per_race_day on
     // trækkes intet fladt upkeep ved skiftet.
     const upkeepPerRaceDay = await isUpkeepPerRaceDayEnabled(supabase);
-    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay });
+    // #6936: samme flag som processSeasonStart — intet upkeep når on.
+    const noUpkeep = await isEconomyNoUpkeepEnabled(supabase);
+    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay, noUpkeep });
 
     res.json({ preview });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }

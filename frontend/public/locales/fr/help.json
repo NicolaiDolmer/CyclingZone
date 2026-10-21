@@ -622,6 +622,338 @@
         "title": "Terrain et profils d'étape",
         "text": "À partir de la saison 2, les courses avec des données de parcours affichent le vrai profil de l'étape : c'est le parcours exact que court le moteur de course, avec la longueur, la pente et la catégorie de chaque ascension, le sprint intermédiaire, les secteurs pavés et l'endroit où tombe l'arrivée. La catégorie d'une ascension fixe combien de points de montagne sont en jeu au sommet, et une arrivée au sommet d'une ascension crée de plus gros écarts qu'une arrivée après une descente. Touche un marqueur sur le profil pour voir ce qui est en jeu là, ou qui l'a pris une fois l'étape courue. Les courses plus anciennes sans données de parcours affichent toujours l'ancien badge de terrain : une silhouette schématique et une catégorie indicative, pas un profil mesuré."
       },
+      "raceIdentity": {
+        "title": "Types de course et signatures",
+        "text": "Dès la saison 5, chaque course par étapes courte a un type fixe qui la suit d'une saison à l'autre, pour que tu saches à quel genre de course te préparer. Chaque course a aussi une ou deux signatures qui reviennent chaque année : la même montée décisive, le même secteur ou le même contre-la-montre. Le reste du parcours varie un peu d'une édition à l'autre. Les cinq monuments suivent le même parcours chaque année ; seuls la météo, la forme et la tactique changent. Les Grands Tours gardent leur propre format. Tu ne vois le type qu'ici, dans l'Aide ; sur la page de la course, il se voit dans le parcours lui-même.",
+        "rows": [
+          [
+            "Type",
+            "À quoi t'attendre"
+          ],
+          [
+            "Course de sprinteurs",
+            "Des étapes surtout plates avec au moins une journée vallonnée. Pas de montagne, donc ce sont les sprinteurs qui décident."
+          ],
+          [
+            "Course de grimpeurs",
+            "Les étapes de montagne et de haute montagne font la différence. En Division 1, ce sont les courses de préparation juste avant chaque Grand Tour."
+          ],
+          [
+            "Course vallonnée",
+            "Des côtes et des montées courtes et raides, mais pas de vraie montagne. Faite pour les coureurs explosifs."
+          ],
+          [
+            "Pavés/Benelux",
+            "Des secteurs pavés sur des routes plates et exposées. Pas de montagne."
+          ],
+          [
+            "Course contre-la-montre",
+            "Les contre-la-montre décident : souvent un prologue le premier jour et un contre-la-montre plus long en fin de course."
+          ],
+          [
+            "Course sur gravier",
+            "Des secteurs de gravier sur des routes vallonnées. Pas de montagne."
+          ],
+          [
+            "Montagne d'abord",
+            "La montagne vient en premier. Les sprinteurs arrivent aux étapes plates de la fin avec les jambes fatiguées."
+          ],
+          [
+            "Polyvalente",
+            "Un peu de tout : des étapes plates, de la montagne et un contre-la-montre."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Type et signature de chaque course",
+        "text": "Classées par division et par date dans le calendrier. Les Grands Tours ne figurent pas dans la liste. Les cinq monuments sont à la fin.",
+        "rows": [
+          [
+            "Course",
+            "Type et signature"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Course de grimpeurs · Arrivée au sommet : Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "Polyvalente · Arrivée au sommet : Col de la Brasque + contre-la-montre plat"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Course de grimpeurs · Arrivée au sommet : Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Course de sprinteurs · Montée : Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Montagne d'abord · Arrivée au sommet : Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "Course sur gravier · Secteur de gravier : Piste des Aravis Blanches + secteur de gravier : Chemin du Plan-Bois lors de la dernière étape"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Course vallonnée · Arrivée en côte : Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "Course de sprinteurs · Montée : Alto de Monegrillo"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Course de grimpeurs · Arrivée au sommet : Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "Polyvalente · Arrivée au sommet : Monte Sassotorto + contre-la-montre vallonné"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Course vallonnée · Arrivée en côte : Alto de Mendibeltz lors de la dernière étape"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Pavés/Benelux · Secteur pavé : Pavé du Moulin-Brûlé + secteur pavé : Chemin des Quatre-Vents lors de la dernière étape"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "Polyvalente · Arrivée au sommet : Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Course de grimpeurs · Arrivée au sommet : Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Course de grimpeurs · Arrivée au sommet : Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Course vallonnée · Montée : Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Montagne d'abord · Arrivée au sommet : Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Course de grimpeurs · Arrivée au sommet : Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Course de sprinteurs · Montée : Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Course vallonnée · Montée : Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Montagne d'abord · Arrivée au sommet : Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Course de sprinteurs · Montée : Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Pavés/Benelux · Secteur pavé : Pflasterweg Donauleiten + secteur pavé : Alte Treppelstraße lors de la dernière étape"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "Polyvalente · Arrivée au sommet : Alto de Valdecuerna + contre-la-montre plat"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Course vallonnée · Arrivée en côte : Muro di Montevergello lors de la dernière étape"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Pavés/Benelux · Secteur pavé : Pavés de Thieumont + secteur pavé : Chemin de la Hulpière lors de la dernière étape"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "Polyvalente · Arrivée au sommet : Passo della Gaviola + contre-la-montre vallonné"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Course sur gravier · Secteur de gravier : Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Course de sprinteurs · Montée : Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "Polyvalente · Arrivée au sommet : Alto de Xorret del Pinós + contre-la-montre plat"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "Polyvalente · Arrivée au sommet : Alto do Malhãozinho + contre-la-montre vallonné"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Course vallonnée · Arrivée en côte : Monte do Castrelo lors de la dernière étape"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Course de grimpeurs · Arrivée au sommet : Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Pavés/Benelux · Secteur pavé : Kasseiweg van Ronsbeke + secteur pavé : Holle Kasseistraat lors de la dernière étape"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Course sur gravier · Secteur de gravier : Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Course de grimpeurs · Arrivée au sommet : Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Montagne d'abord · Arrivée au sommet : Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "Polyvalente · Arrivée au sommet : Alto da Senhora dos Ventos + contre-la-montre plat"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Course de sprinteurs · Montée : Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "Course contre-la-montre · Contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Course vallonnée · Montée : Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Course de sprinteurs · Montée : Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Course vallonnée · Arrivée en côte : Stavnesbakken lors de la dernière étape"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Pavés/Benelux · Secteur pavé : Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Course de sprinteurs · Montée : Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Course de grimpeurs · Arrivée au sommet : Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Course de sprinteurs · Montée : Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Pavés/Benelux · Secteur pavé : Kasseiweg van Holterberg"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Course vallonnée · Arrivée en côte : Muro di Castelvento lors de la dernière étape"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Course sur gravier · Secteur de gravier : Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "Polyvalente · Contre-la-montre plat"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "Polyvalente · Arrivée au sommet : Alto de Erroizar + contre-la-montre vallonné"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Course contre-la-montre · Contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Course vallonnée · Montée : Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Course de sprinteurs · Montée : Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Montagne d'abord · Arrivée au sommet : Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Course de grimpeurs · Arrivée au sommet : Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "Polyvalente · Contre-la-montre vallonné"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Course vallonnée · Montée : Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Course de sprinteurs · Montée : Côte de Kerhuel"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Pavés/Benelux · Secteur pavé : Kasseistrook van Bertembos + secteur pavé : Holle Weg van Ottenrode lors de la dernière étape"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monument, parcours fixe · Cipressina et Poggio dei Fiori avant l'arrivée"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monument, parcours fixe · Oude Kwaremberg et Paterhelling avant l'arrivée, plus des secteurs pavés"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monument, parcours fixe · Secteurs pavés de la Trouée d'Arembourg au Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monument, parcours fixe · Côte de la Redoutière et Côte de la Roche-aux-Corbeaux, arrivée en côte"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monument, parcours fixe · Madonna del Ghisello, puis Salita di Valtorta et une descente vers l'arrivée"
+          ]
+        ]
+      },
       "raceDetail": {
         "title": "Ouvrir une course : parcours, ADN du terrain et ta composition",
         "text": "Les noms de course sont cliquables partout dans le jeu. Ouvrir une course affiche ses résultats si elle a eu lieu, ou pour une course à venir le profil du parcours par étape, une barre d'ADN du terrain indiquant quelles aptitudes chaque étape récompense, et ta propre composition avec une adéquation au parcours par étape pour que tu puisses choisir des coureurs adaptés au parcours. Choisis une étape dans la bande d'étapes pour changer le profil et l'adéquation au parcours. Les courses avec données de parcours montrent le profil exact que court le moteur ; les courses plus anciennes sans elles affichent toujours une catégorie de terrain indicative. Dans l'onglet résultat d'une étape, tu peux basculer entre Étape, Général, Points, Montagne, Jeunes et Équipes pour voir le classement après cette étape, et un filtre d'équipe te permet de restreindre les tableaux à toutes les équipes, à ta propre équipe ou à une équipe précise."
@@ -847,6 +1179,10 @@
       "salary": {
         "title": "Salaire",
         "text": "Le salaire annuel de chaque coureur est fixé à la signature d'après ce qu'on attend de lui comme production sur la saison en cours, puis il est figé : il ne change pas automatiquement à mesure que le coureur progresse. La valeur et le salaire répondent à deux questions différentes : la valeur est le prix de l'avenir du coureur, le salaire est le coût de ce qu'il apporte maintenant. Les jeunes talents sont donc bon marché à garder sur la feuille de paie, tandis que les stars confirmées touchent des salaires à la hauteur de leur production. Le salaire est visible dans une colonne séparée dans la base des coureurs et dans la liste de suivi. Les salaires sont payés automatiquement au début de la saison suivante, juste après l'arrivée de l'argent du sponsor. Si le sponsor + ton solde existant ne peuvent pas couvrir les salaires, le système contracte automatiquement un emprunt d'urgence."
+      },
+      "reputation": {
+        "title": "Réputation du coureur",
+        "text": "La réputation comporte cinq niveaux : Inconnu en dessous de 20, Connu à partir de 20, Profil à partir de 45, Star à partir de 70 et Légende à partir de 90. Les résultats en course font évoluer la réputation, notamment les courses d'un jour, les classements généraux et les étapes des courses par étapes, ainsi que les maillots. Les victoires et les grandes courses comptent le plus."
       },
       "abilitiesExplained": {
         "title": "Les 17 aptitudes et où elles comptent",
@@ -1203,7 +1539,7 @@
       },
       "prognosisTraining": {
         "title": "Découvrir le potentiel d'un jeune talent",
-        "text": "Quand tu fais venir un candidat, tu vois son nom, son âge, sa nationalité, son type de coureur et ses aptitudes actuelles. Son potentiel s'affiche Découvert par l'entraînement : tu le découvres en l'ayant dans ton équipe. Après environ 10 jours de course d'entraînement, tu obtiens une première prévision large, après environ 30 une prévision étroite, et après une saison complète la prévision finale. Un meilleur centre d'entraînement et un directeur sportif plus fort t'y amènent plus tôt. Ils te rendent plus sûr du coureur, ils ne le rendent pas meilleur."
+        "text": "Après avoir recruté un coureur de l’académie, tu découvres sa prévision grâce aux jours d’entraînement dans ton équipe. Au début, il n’y a pas d’estimation, puis une fourchette de note initiale, plus précise et enfin finale. L’onglet de recrutement montre l’étape actuelle, la fourchette révélée et les jours d’entraînement avant la prochaine étape. Un meilleur encadrement et de meilleures installations d’entraînement te font avancer plus vite. Ils ne changent pas son talent, et même la prévision finale reste une fourchette."
       },
       "signingProspects": {
         "title": "Signer des jeunes talents",
@@ -1227,8 +1563,8 @@
         "text": "Quand tu refuses un jeune talent du recrutement, il part dans une enchère de jeunes (marquée Jeune) sur laquelle n'importe quel club peut enchérir. Tu ne peux enchérir que si tu as de la place pour le coureur, soit une place senior libre, soit une place d'académie libre ; si les deux sont pleines, le bouton d'enchère est désactivé. Le club gagnant paie l'enchère gagnante, et le jeune talent rejoint son effectif senior quand il y a une place libre (avec un contrat senior et en comptant dans la limite de 30 coureurs), et se rabat sur son académie (une place dans l'équipe U23 ou juniors, selon son âge) seulement quand l'effectif senior est complet. Chaque enchère indique où le coureur atterrira. Un jeune talent sur lequel personne n'enchérit quitte le sport pour de bon, refuser un candidat est donc une vraie décision. Aucun argent réel n'est jamais en jeu, seulement des points du jeu."
       },
       "upkeepCost": {
-        "title": "Entretien de l'académie",
-        "text": "Faire tourner l'académie coûte des frais d'entretien par place occupée, prélevés automatiquement à la paie de la saison en même temps que tes salaires seniors. Prévois ton budget en conséquence : une académie pleine ({u23SquadCap} coureurs U23 et {juniorSquadCap} juniors) a un coût de fonctionnement notable chaque saison. Le changement de la saison 3 à la saison 4 a fait exception : aucun entretien n'a été prélevé pour les effectifs de jeunes lors de ce changement."
+        "title": "Coûts de l'académie",
+        "text": "À partir de la saison 5, l'académie n'a plus de coût d'entretien par place. Tes coureurs de l'académie ne coûtent que leur salaire."
       },
       "graduation": {
         "title": "Jour de la remise des diplômes",
@@ -1280,14 +1616,14 @@
       },
       "noUpkeepAtSeasonChange": {
         "title": "Combien mes effectifs de jeunes ont-ils coûté au changement de saison de cette saison ?",
-        "text": "Rien. Tes coureurs U23 et juniors n'ont payé aucun entretien au changement de la saison 3 à la saison 4. Ce qu'ils coûteront à faire tourner à partir de la saison 4 n'a pas encore été décidé."
+        "text": "Rien. Les coureurs U23 et juniors n'ont pas de coût d'entretien, et à partir de la saison 5 il n'y a plus de coût d'académie non plus."
       }
     },
     "facilities": {
       "label": "Installations du club",
       "whatFacilities": {
         "title": "Que sont les installations du club ?",
-        "text": "Les installations sont des améliorations au niveau du club que tu construis et fais monter de niveau sur la page Club, séparées de tes coureurs. Chaque installation a 5 paliers : un prix unique de construction/amélioration par palier, plus un coût d'entretien plus petit chaque saison une fois construit. Tu peux aussi recruter un responsable pour une installation ; la note globale du responsable décide de la part de l'effet de l'installation que tu obtiens réellement, d'environ la moitié pour une installation nue sans responsable jusqu'à l'effet complet avec un responsable très bien noté."
+        "text": "Les installations sont des améliorations au niveau du club que tu construis et fais monter de niveau sur la page Club, séparées de tes coureurs. Chaque installation a 5 paliers : un prix unique de construction/amélioration par palier, plus un coût d'entretien plus petit chaque saison une fois construit. Tu peux aussi recruter un responsable pour une installation ; la note globale du responsable décide de la part de l'effet de l'installation que tu obtiens réellement, d'environ la moitié pour une installation nue sans responsable jusqu'à l'effet complet avec un responsable très bien noté. À partir de la saison 5, l'entretien, Voyages et staff et l'entretien des installations et de l'académie sont supprimés, ces lignes n'apparaissent donc plus."
       },
       "tracks": {
         "title": "Les 5 pistes d'installation",
@@ -1341,8 +1677,8 @@
         "text": "L'axe de groupe d'encadrement d'un directeur sportif montre la tranche d'âge qu'il entraîne le mieux. U23 couvre les coureurs de l'académie et les jeunes pros jusqu'à 25 ans ; Senior couvre les coureurs de 26 ans et plus. C'est la spécialisation propre d'un responsable, séparée de la structure d'effectif du club (équipe juniors et équipe U23 arrivent bientôt) : un groupe d'encadrement concerne les coureurs qu'un responsable entraîne le mieux, pas l'effectif auquel appartient un coureur."
       },
       "costs": {
-        "title": "Coûts : prix de construction unique + entretien récurrent",
-        "text": "Chaque palier a un prix de construction ou d'amélioration unique, payé une fois quand tu le construis. En plus de cela, chaque palier construit comporte un coût d'entretien plus petit qui est prélevé à nouveau automatiquement chaque saison, avec les éventuels salaires du staff, prévois-le donc comme une ligne récurrente, pas seulement comme le prix initial."
+        "title": "Coûts : un prix de construction unique",
+        "text": "Chaque niveau a un prix unique de construction ou d'amélioration, payé une fois. À partir de la saison 5, les installations construites n'ont plus d'entretien récurrent. Un chef embauché garde son salaire."
       },
       "staffOverview": {
         "title": "Voir le staff de chaque équipe",
@@ -1424,7 +1760,7 @@
       },
       "weatherAndCobbles": {
         "title": "Météo et pavés",
-        "text": "Chaque étape a sa propre météo. Le soleil et le ciel couvert sont la base calme, rien ne change. La pluie ralentit toute l'étape et touche plus durement un coureur faible sous l'eau que le reste du groupe. Le vent mord surtout là où la route est dégagée ; une ascension est abritée par sa propre pente. La pluie augmente aussi le risque de chute sur les pavés, le gravel et les descentes audacieuses. Tu le verras sous forme d'une seule note sur la ligne du temps de l'étape, au kilomètre où cela commence à compter, jamais comme un nombre qui y est attaché."
+        "text": "Chaque étape a sa propre météo, et la page de l'étape l'affiche : sec, pluie ou vent. Le sec est la base calme, rien ne change. La pluie ralentit toute l'étape. Le vent mord surtout là où la route est dégagée ; une ascension est abritée par sa propre pente. Les deux pénalisent le plus les coureurs faibles en descente et en durabilité. La pluie augmente aussi le risque de chute sur les pavés, le gravel et les descentes audacieuses. Quand la pluie ou le vent ont coûté des forces aux coureurs, le récit de la course le dit en une ligne, jamais avec un nombre attaché. Un contre-la-montre par équipes se court sans météo."
       }
     }
   },
@@ -1623,11 +1959,11 @@
     },
     "seasonChangeMoneyFaq": {
       "q": "Qu'arrive-t-il à mon argent au changement de saison ?",
-      "a": "Tout se passe au début de la nouvelle saison, en un seul lot. Ton contrat de sponsor se renouvelle d'abord, puis l'argent du sponsor est versé, et juste après la paie de la saison suit : intérêts d'emprunt, salaires des coureurs, intérêts sur tout solde encore négatif après cela, entretien de l'académie (si tu as des coureurs à l'académie), entretien du club, entretien des installations et salaires du staff, dans cet ordre. Si l'entretien de ton club est payé par jour de course sous forme de Déplacements et staff, il ne fait pas partie de ce lot (voir “Que sont les lignes Déplacements et staff dans mes finances ?”). Rien n'est déduit quand l'ancienne saison se termine ; les salaires et les intérêts ont été déplacés au début de saison dans la v3.78. Si ton revenu de sponsor et ton solde ne peuvent pas couvrir la paie, le système contracte automatiquement un emprunt d'urgence pour le manque (voir “Que se passe-t-il si je ne peux pas payer les salaires ?”). Si ton contrat de sponsor a aussi un tarif par étape, cette part est versée séparément au fil des courses que tu termines pendant la saison ; elle ne fait pas partie du lot du changement de saison."
+      "a": "Tout se passe au début de la nouvelle saison, en un seul lot. Ton contrat de sponsor se renouvelle d'abord, puis l'argent du sponsor est versé, et juste après la paie de la saison suit : intérêts d'emprunt, salaires des coureurs, intérêts sur tout solde encore négatif après cela, entretien de l'académie (si tu as des coureurs à l'académie), entretien du club, entretien des installations et salaires du staff, dans cet ordre. Si l'entretien de ton club est payé par jour de course sous forme de Déplacements et staff, il ne fait pas partie de ce lot (voir “Que sont les lignes Déplacements et staff dans mes finances ?”). Rien n'est déduit quand l'ancienne saison se termine ; les salaires et les intérêts ont été déplacés au début de saison dans la v3.78. Si ton revenu de sponsor et ton solde ne peuvent pas couvrir la paie, le système contracte automatiquement un emprunt d'urgence pour le manque (voir “Que se passe-t-il si je ne peux pas payer les salaires ?”). Si ton contrat de sponsor a aussi un tarif par étape, cette part est versée séparément au fil des courses que tu termines pendant la saison ; elle ne fait pas partie du lot du changement de saison. À partir de la saison 5, l'entretien, Voyages et staff et l'entretien des installations et de l'académie sont supprimés, ces lignes n'apparaissent donc plus."
     },
     "upkeepPerRaceDayFaq": {
-      "q": "Que sont les lignes Déplacements et staff dans mes finances ?",
-      "a": "Déplacements et staff est l'entretien du club payé par jour de course au lieu d'un prélèvement unique en début de saison. Quand il s'applique, rien n'est déduit pour l'entretien du club au changement de saison. À la place, tu paies un montant fixe pour chaque jour de course senior où ton équipe prend le départ : 1 571 CZ$ en division 1, 625 CZ$ en division 2, 238 CZ$ en division 3 et rien en division 4. Sur une saison complète, cela fait le même total que le prélèvement de début de saison, simplement étalé. Un jour de course ne coûte quelque chose que si au moins un de tes coureurs prend le départ ce jour-là. Les courses U23 et juniors sont gratuites, et une équipe en pause ne court rien et ne paie rien. Chaque jour de course apparaît comme sa propre ligne Déplacements et staff, prélevée au règlement de la course, en même temps que les gains. Ta prévision montre quel modèle s'applique à toi."
+      "q": "Que représentaient les lignes Voyages et staff dans mes finances ?",
+      "a": "Voyages et staff était l'entretien du club payé par jour de course pendant la saison 4. À partir de la saison 5, il est supprimé : ton équipe ne paie plus de frais d'entretien par jour de course ni au changement de saison. Les anciennes lignes restent dans ton historique."
     },
     "salaryShortfall": {
       "q": "Que se passe-t-il si je ne peux pas payer les salaires ?",
@@ -1675,11 +2011,11 @@
     },
     "forecastCalculation": {
       "q": "Comment la prévision de la saison prochaine sur la page Finances est-elle calculée ?",
-      "a": "La prévision montre une ligne par source de revenu/coût au lieu d'un seul chiffre net, pour que tu voies d'où vient le total. (1) Sponsor (base) : la base de la saison à l'échelle de la division (D1 600 000 · D2 400 000 · D3 340 000 CZ$) × le modificateur de budget de la direction × tout facteur de retrait de sponsor actif. Si tu as déjà signé un contrat avec la direction qui démarre la saison prochaine, cette ligne utilise à la place la base garantie de ce contrat. (2) Sponsor (variable) : jusqu'à 150 000 CZ$ à partir de la saison 2, selon les points/le rang de la saison dernière par rapport à ta division. (3) Je montre les gains comme mon estimation pour ton équipe, à plus ou moins 20 %. C'est une estimation, pas une fourchette mesurée ni une garantie. (4) Salaire : pour une prévision de saison 1 ou 2, c'est la somme des salaires de tes coureurs actuels tels qu'ils sont tarifés aujourd'hui, car les contrats sont figés à la signature ; à partir d'une prévision de saison 3, chaque contrat est retarifé au changement de saison, la ligne montre donc ce que coûterait ton effectif actuel sous le système de salaires plutôt que ce que disent leurs anciens contrats. Le salaire est une part fixe de la valeur de production actuelle de chaque coureur, jamais de sa valeur de marché. (5) Entretien de la division : un coût de fonctionnement fixé par ta division, pas par ton effectif, prélevé au début de la saison. S'il apparaît comme Déplacements et staff, tu le paies à la place par jour de course senior où ton équipe prend le départ, et la ligne montre le tarif multiplié par le nombre attendu de jours de course. C'est une ligne séparée parce que tu ne peux pas la changer en recrutant ou en construisant. (6) Staff et installations : seulement ce que tu as choisi de payer, à savoir l'entretien des installations des pistes que tu as construites et les salaires du staff que tu as recruté. Les intérêts d'emprunt (intérêts sur la dette restante de tes emprunts actifs) apparaissent comme une ligne supplémentaire quand tu as un emprunt actif, mais ils ne font pas partie du net total au-dessus : les intérêts sont ajoutés à l'emprunt lui-même plutôt que déduits de ton solde, ils sont donc montrés pour la visibilité, pas comptés. L'entretien de l'académie (le coût de fonctionnement par place des coureurs de l'académie) apparaît aussi comme sa propre ligne supplémentaire, et contrairement aux intérêts d'emprunt il FAIT partie du net. Non inclus, car rien de tout cela ne peut être prédit de façon fiable à l'avance : le revenu de sponsor variable par étape de la saison et les clauses de prime de sponsor (prime de résultat/objectif/signature), car elles dépendent de résultats que tu n'as pas encore obtenus ; les événements ponctuels comme les primes de promotion/relégation, le parachute de relégation ou une vente forcée liée au plafond de dette ; et tout ce qui dépend d'une décision que tu n'as pas encore prise, comme acheter ou vendre des coureurs, une nouvelle construction d'installation, recruter ou licencier du staff, des signatures à l'académie, des missions de détection, souscrire un emprunt ou un emprunt d'urgence, ou rembourser le capital d'un emprunt au-delà des intérêts déjà montrés séparément plus haut. Quelques rares entrées hors gameplay (corrections de solde admin, amendes de règle d'effectif, complétions automatiques d'effectif) sont aussi exclues. Rien de tout cela n'est discrètement intégré aux chiffres ci-dessus : si un flux ne peut pas être prévu, il est laissé de côté plutôt que deviné, et il apparaîtra dans ton historique de transactions dès qu'il se produira réellement. Le badge du niveau de risque est vert si le net ≥ +50 K et la dette < 50 % du plafond, jaune si le net est entre -50 K et +50 K ou si la dette est entre 50 et 80 % du plafond, et rouge si le net < -50 K, la dette > 80 % du plafond, ou si ton déficit atteint le plafond de dette d'ici 2 saisons. La prévision suppose ton effectif actuel, aucun transfert, et le système de salaires actuellement en vigueur : ce n'est pas un contrat, et les chiffres peuvent changer si tu vends des coureurs, souscris des emprunts, marques plus de points, négocies un nouveau plan avec la direction ou changes tes investissements en installations/staff/académie."
+      "a": "La prévision montre une ligne par source de revenu/coût au lieu d'un seul chiffre net, pour que tu voies d'où vient le total. (1) Sponsor (base) : la base de la saison à l'échelle de la division (D1 600 000 · D2 400 000 · D3 340 000 CZ$) × le modificateur de budget de la direction × tout facteur de retrait de sponsor actif. Si tu as déjà signé un contrat avec la direction qui démarre la saison prochaine, cette ligne utilise à la place la base garantie de ce contrat. (2) Sponsor (variable) : jusqu'à 150 000 CZ$ à partir de la saison 2, selon les points/le rang de la saison dernière par rapport à ta division. (3) Je montre les gains comme mon estimation pour ton équipe, à plus ou moins 20 %. C'est une estimation, pas une fourchette mesurée ni une garantie. (4) Salaire : pour une prévision de saison 1 ou 2, c'est la somme des salaires de tes coureurs actuels tels qu'ils sont tarifés aujourd'hui, car les contrats sont figés à la signature ; à partir d'une prévision de saison 3, chaque contrat est retarifé au changement de saison, la ligne montre donc ce que coûterait ton effectif actuel sous le système de salaires plutôt que ce que disent leurs anciens contrats. Le salaire est une part fixe de la valeur de production actuelle de chaque coureur, jamais de sa valeur de marché. (5) Entretien de la division : un coût de fonctionnement fixé par ta division, pas par ton effectif, prélevé au début de la saison. S'il apparaît comme Déplacements et staff, tu le paies à la place par jour de course senior où ton équipe prend le départ, et la ligne montre le tarif multiplié par le nombre attendu de jours de course. C'est une ligne séparée parce que tu ne peux pas la changer en recrutant ou en construisant. (6) Staff et installations : seulement ce que tu as choisi de payer, à savoir l'entretien des installations des pistes que tu as construites et les salaires du staff que tu as recruté. Les intérêts d'emprunt (intérêts sur la dette restante de tes emprunts actifs) apparaissent comme une ligne supplémentaire quand tu as un emprunt actif, mais ils ne font pas partie du net total au-dessus : les intérêts sont ajoutés à l'emprunt lui-même plutôt que déduits de ton solde, ils sont donc montrés pour la visibilité, pas comptés. L'entretien de l'académie (le coût de fonctionnement par place des coureurs de l'académie) apparaît aussi comme sa propre ligne supplémentaire, et contrairement aux intérêts d'emprunt il FAIT partie du net. Non inclus, car rien de tout cela ne peut être prédit de façon fiable à l'avance : le revenu de sponsor variable par étape de la saison et les clauses de prime de sponsor (prime de résultat/objectif/signature), car elles dépendent de résultats que tu n'as pas encore obtenus ; les événements ponctuels comme les primes de promotion/relégation, le parachute de relégation ou une vente forcée liée au plafond de dette ; et tout ce qui dépend d'une décision que tu n'as pas encore prise, comme acheter ou vendre des coureurs, une nouvelle construction d'installation, recruter ou licencier du staff, des signatures à l'académie, des missions de détection, souscrire un emprunt ou un emprunt d'urgence, ou rembourser le capital d'un emprunt au-delà des intérêts déjà montrés séparément plus haut. Quelques rares entrées hors gameplay (corrections de solde admin, amendes de règle d'effectif, complétions automatiques d'effectif) sont aussi exclues. Rien de tout cela n'est discrètement intégré aux chiffres ci-dessus : si un flux ne peut pas être prévu, il est laissé de côté plutôt que deviné, et il apparaîtra dans ton historique de transactions dès qu'il se produira réellement. Le badge du niveau de risque est vert si le net ≥ +50 K et la dette < 50 % du plafond, jaune si le net est entre -50 K et +50 K ou si la dette est entre 50 et 80 % du plafond, et rouge si le net < -50 K, la dette > 80 % du plafond, ou si ton déficit atteint le plafond de dette d'ici 2 saisons. La prévision suppose ton effectif actuel, aucun transfert, et le système de salaires actuellement en vigueur : ce n'est pas un contrat, et les chiffres peuvent changer si tu vends des coureurs, souscris des emprunts, marques plus de points, négocies un nouveau plan avec la direction ou changes tes investissements en installations/staff/académie. À partir de la saison 5, l'entretien, Voyages et staff et l'entretien des installations et de l'académie sont supprimés, ces lignes n'apparaissent donc plus."
     },
     "seasonSwitchSettlement": {
       "q": "Que montre exactement le règlement du changement de saison sur la page Finances ?",
-      "a": "Le règlement est un aperçu pas à pas de ton solde à travers le changement de saison, dans l'ordre exact où le jeu le prélève (economyEngine.processSeasonStart / processTeamSeasonPayroll). Les comptes se ferment sur ton solde actuel, puis : (1) Arrivée du sponsor, base et prime de performance selon le rang/les points de la saison dernière créditées ensemble en un seul paiement, exactement comme le jeu le verse (les deux ne sont pas séparés en transactions distinctes, le règlement ne les sépare donc pas non plus en prélèvements distincts). (2) Intérêts d'emprunt sur la dette restante de tes emprunts actifs, si tu en as, montrés ici pour la visibilité, mais ils ne quittent pas ton solde, puisqu'ils sont ajoutés à l'emprunt lui-même plutôt que débités. (3) Les salaires de la saison suivante sont prélevés, et c'est la première ligne qui est réellement débitée : le recalcul des salaires s'exécute avant ce prélèvement le jour du basculement, c'est donc la formule de la saison suivante appliquée à la valeur de production actuelle de chaque coureur, jamais les chiffres de contrat figés de la saison dernière. (4) Entretien de l'académie, affiché seulement si tu as des coureurs à l'académie. (5) Entretien de la division, un coût fixe défini par ta division. Si tu le paies par jour de course sous forme de Déplacements et staff, cette étape est omise, puisqu'il est prélevé à mesure que tes courses sont réglées. (6) Entretien des installations pour les pistes que tu as construites. (7) Salaires du staff que tu as recruté. Les étapes (4)-(7) sont entièrement omises quand le montant est nul, la même règle que celle des lignes facultatives de la carte de prévision. Non inclus, car rien de tout cela n'est connu avant le changement : les gains et le revenu de sponsor par étape, puisqu'ils dépendent de courses pas encore disputées ; tout ce qui est conditionnel, comme les intérêts d'emprunt d'urgence si ton solde devient négatif après le prélèvement des salaires, ou une vente forcée si ta dette dépasse le plafond de la division ; et tout ce qui dépend d'une décision que tu n'as pas encore prise, comme les missions de détection, les transferts, les achats d'installations, le recrutement ou le licenciement de staff, ou les signatures à l'académie. La carte d'aperçu des finances au-dessus montre les sources de revenus/coûts réalisées de la même saison à côté de la prévision de la saison suivante pour comparaison ; les deux colonnes ne peuvent pas être découpées de façon identique pour le revenu de sponsor, car le sponsor de cette saison a été crédité en un seul paiement combiné tandis que la prévision de la saison suivante sépare la base garantie de la prime de performance projetée, la ligne de sponsor de cette saison montre donc le montant réalisé complet plutôt qu'un découpage deviné, et tout revenu de prime par étape/résultat/objectif/signature gagné cette saison a sa propre ligne puisque la prévision de la saison suivante ne prédit pas du tout ce flux."
+      "a": "Le règlement est un aperçu pas à pas de ton solde à travers le changement de saison, dans l'ordre exact où le jeu le prélève (economyEngine.processSeasonStart / processTeamSeasonPayroll). Les comptes se ferment sur ton solde actuel, puis : (1) Arrivée du sponsor, base et prime de performance selon le rang/les points de la saison dernière créditées ensemble en un seul paiement, exactement comme le jeu le verse (les deux ne sont pas séparés en transactions distinctes, le règlement ne les sépare donc pas non plus en prélèvements distincts). (2) Intérêts d'emprunt sur la dette restante de tes emprunts actifs, si tu en as, montrés ici pour la visibilité, mais ils ne quittent pas ton solde, puisqu'ils sont ajoutés à l'emprunt lui-même plutôt que débités. (3) Les salaires de la saison suivante sont prélevés, et c'est la première ligne qui est réellement débitée : le recalcul des salaires s'exécute avant ce prélèvement le jour du basculement, c'est donc la formule de la saison suivante appliquée à la valeur de production actuelle de chaque coureur, jamais les chiffres de contrat figés de la saison dernière. (4) Entretien de l'académie, affiché seulement si tu as des coureurs à l'académie. (5) Entretien de la division, un coût fixe défini par ta division. Si tu le paies par jour de course sous forme de Déplacements et staff, cette étape est omise, puisqu'il est prélevé à mesure que tes courses sont réglées. (6) Entretien des installations pour les pistes que tu as construites. (7) Salaires du staff que tu as recruté. Les étapes (4)-(7) sont entièrement omises quand le montant est nul, la même règle que celle des lignes facultatives de la carte de prévision. Non inclus, car rien de tout cela n'est connu avant le changement : les gains et le revenu de sponsor par étape, puisqu'ils dépendent de courses pas encore disputées ; tout ce qui est conditionnel, comme les intérêts d'emprunt d'urgence si ton solde devient négatif après le prélèvement des salaires, ou une vente forcée si ta dette dépasse le plafond de la division ; et tout ce qui dépend d'une décision que tu n'as pas encore prise, comme les missions de détection, les transferts, les achats d'installations, le recrutement ou le licenciement de staff, ou les signatures à l'académie. La carte d'aperçu des finances au-dessus montre les sources de revenus/coûts réalisées de la même saison à côté de la prévision de la saison suivante pour comparaison ; les deux colonnes ne peuvent pas être découpées de façon identique pour le revenu de sponsor, car le sponsor de cette saison a été crédité en un seul paiement combiné tandis que la prévision de la saison suivante sépare la base garantie de la prime de performance projetée, la ligne de sponsor de cette saison montre donc le montant réalisé complet plutôt qu'un découpage deviné, et tout revenu de prime par étape/résultat/objectif/signature gagné cette saison a sa propre ligne puisque la prévision de la saison suivante ne prédit pas du tout ce flux. À partir de la saison 5, l'entretien, Voyages et staff et l'entretien des installations et de l'académie sont supprimés, ces lignes n'apparaissent donc plus."
     },
     "standingsUpdate": {
       "q": "Quand le classement de la saison est-il mis à jour ?",
@@ -1811,7 +2147,7 @@
     },
     "season0To1Special": {
       "q": "Que se passe-t-il à la transition de la saison 0 à la saison 1 ?",
-      "a": "La saison 0 est la phase d'ouverture sans courses, points ni salaires. Quand la saison 1 commence, tu détiens déjà ton budget fondateur, le système ne verse donc pas de sponsor de saison 1 par-dessus (ce serait un double revenu au départ), et les coûts de fonctionnement (entretien) sont retenus jusqu'à ce que la saison soit réellement lancée. À partir de la saison 2, le cycle normal se déroule au début de la saison : 1) le sponsor est versé, 2) les intérêts d'emprunt sont déduits, 3) les salaires sont déduits, 4) l'entretien est déduit (sauf s'il est payé par jour de course sous forme de Déplacements et staff), 5) un emprunt d'urgence est contracté s'il y a encore un manque. La fin de saison ne gère que la prime de division, la promotion/relégation et l'évaluation du plan de la direction."
+      "a": "La saison 0 est la phase d'ouverture sans courses, points ni salaires. Quand la saison 1 commence, tu détiens déjà ton budget fondateur, le système ne verse donc pas de sponsor de saison 1 par-dessus (ce serait un double revenu au départ), et les coûts de fonctionnement (entretien) sont retenus jusqu'à ce que la saison soit réellement lancée. À partir de la saison 2, le cycle normal se déroule au début de la saison : 1) le sponsor est versé, 2) les intérêts d'emprunt sont déduits, 3) les salaires sont déduits, 4) l'entretien est déduit (sauf s'il est payé par jour de course sous forme de Déplacements et staff), 5) un emprunt d'urgence est contracté s'il y a encore un manque. La fin de saison ne gère que la prime de division, la promotion/relégation et l'évaluation du plan de la direction. À partir de la saison 5, l'entretien, Voyages et staff et l'entretien des installations et de l'académie sont supprimés, ces lignes n'apparaissent donc plus."
     },
     "season1RaceCalendarFaq": {
       "q": "Quelles courses se disputent en saison 1 ?",
@@ -1847,7 +2183,7 @@
     },
     "newPlayerEconomyFaq": {
       "q": "Avec combien d'argent je démarre, et quand dois-je souscrire un emprunt ?",
-      "a": "Tu démarres avec un budget de {startingBalance} CZ$ en division 4. Les gains des courses, les versements de sponsor au début de la saison et les ventes de coureurs ajoutent tous du revenu ; les salaires et les intérêts d'emprunt sont déduits automatiquement au début de chaque saison, tout comme l'entretien, sauf s'il est payé par jour de course sous forme de Déplacements et staff. Si ton solde et ton revenu de sponsor ne peuvent pas couvrir les salaires de la saison, le jeu contracte un emprunt d'urgence automatique pour couvrir le manque, tu n'es donc jamais empêché de payer les salaires. Tu peux aussi souscrire un emprunt toi-même depuis la page Finances si tu veux enchérir gros sur un coureur avant que tes revenus ne suivent. Chaque division a un plafond de dette (division 4 : 400 000 CZ$) qui limite ce que tu peux emprunter en une fois."
+      "a": "Tu démarres avec un budget de {startingBalance} CZ$ en division 4. Les gains des courses, les versements de sponsor au début de la saison et les ventes de coureurs ajoutent tous du revenu ; les salaires et les intérêts d'emprunt sont déduits automatiquement au début de chaque saison, tout comme l'entretien, sauf s'il est payé par jour de course sous forme de Déplacements et staff. Si ton solde et ton revenu de sponsor ne peuvent pas couvrir les salaires de la saison, le jeu contracte un emprunt d'urgence automatique pour couvrir le manque, tu n'es donc jamais empêché de payer les salaires. Tu peux aussi souscrire un emprunt toi-même depuis la page Finances si tu veux enchérir gros sur un coureur avant que tes revenus ne suivent. Chaque division a un plafond de dette (division 4 : 400 000 CZ$) qui limite ce que tu peux emprunter en une fois. À partir de la saison 5, l'entretien, Voyages et staff et l'entretien des installations et de l'académie sont supprimés, ces lignes n'apparaissent donc plus."
     },
     "academyIntakeScoutingFaq": {
       "q": "À quelle fréquence ai-je de nouveaux jeunes talents d'académie, et la détection se remet-elle à zéro ?",

@@ -40,6 +40,7 @@ import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { withSeniorSquadScope } from "./squads.js";
 import { isUpkeepPerRaceDayEnabled } from "./upkeepPerRaceDayFlag.ts";
+import { isEconomyNoUpkeepEnabled } from "./economyNoUpkeepFlag.ts";
 
 export const TRAVEL_STAFF_FINANCE_TYPE = "travel_staff";
 
@@ -184,10 +185,14 @@ export interface ChargeRaceDayTravelStaffResult {
 export async function chargeRaceDayTravelStaffToDate(
   seasonId: string,
   supabase: SupabaseLike,
-  opts: { actorType?: string; enabled?: boolean } = {},
+  opts: { actorType?: string; enabled?: boolean; noUpkeep?: boolean } = {},
 ): Promise<ChargeRaceDayTravelStaffResult> {
   const enabled = opts.enabled ?? (await isUpkeepPerRaceDayEnabled(supabase));
   if (!enabled) return { charged: 0, total: 0, races_settled: 0, skipped: "flag_off" };
+  // #6936: economy_no_upkeep_v1 on fjerner rejse og personale helt. Læses kun
+  // når modellen ellers ville trække, så OFF-stien er uændret.
+  const noUpkeep = opts.noUpkeep ?? (await isEconomyNoUpkeepEnabled(supabase));
+  if (noUpkeep) return { charged: 0, total: 0, races_settled: 0, skipped: "no_upkeep" };
   const actorType = opts.actorType ?? FINANCE_ACTOR_TYPE.SYSTEM;
 
   // Kun sæsonens SENIORløb (valg 2). Samme scope som sponsorRaceDayIncome (#5537).

@@ -134,6 +134,31 @@ export const MANAGER_SETUP_REGISTRY = Object.freeze([
 
   // ── Motor-output / ledgere (ingen manager-opsætning) ──────────────────────
   {
+    table: "ranking_race_contrib",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#6765: derived race contributions retain their original season; never copy historical results into a new season.",
+  },
+  {
+    table: "ranking_rider_season",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#6765: derived historical rider totals, maintained from contributions and not manager configuration.",
+  },
+  {
+    table: "ranking_youth_rider_season",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#6765: derived historical youth totals stay in their original race squad and season; no carry-over.",
+  },
+  {
+    table: "ranking_team_season_ext",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#6765: derived historical team aggregate; copying it would duplicate results in the new season.",
+  },
+  {
+    table: "ranking_team_race_points",
+    disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
+    why: "#6765: derived per-race team aggregate remains with its source race and season; no carry-over.",
+  },
+  {
     table: "race_day_participation",
     disposition: CARRY_OVER_DISPOSITION.NOT_MANAGER_SETUP,
     why: "#5860: immutable actual participation per rider/season/game day. Engine evidence stays in its original season; copying it would falsely occupy the next season's race days.",

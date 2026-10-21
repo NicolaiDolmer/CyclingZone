@@ -52,6 +52,7 @@
     "visitorsTrendUp": "{pct}% hoger dan de vorige 7 dagen",
     "visitorsTrendDown": "{pct}% lager dan de vorige 7 dagen",
     "u23": "U23",
+    "junior": "Junior",
     "u25": "U25",
     "retired": "Gestopt",
     "ageYears": "{age} jr",
@@ -199,9 +200,8 @@
       "contractSeason": "Seizoen {season}",
       "contractExpired": "Verlopen",
       "contractExpiredSub": "Transfervrij bij de seizoenswissel tenzij verlengd",
+      "contractExpires": "verloopt",
       "aiTag": "AI",
-      "valueTrend": "{value} in de laatste {days} dagen",
-      "valueTrendTitle": "Waardeverandering sinds {date}",
       "ratingTrendRising": "Stijgend dit seizoen",
       "ratingTrendSteady": "Stabiel dit seizoen",
       "ratingTrendDeclining": "Dalend dit seizoen",
@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Waarom zijn reputatie veranderde",
+      "progressTo": "{value} / {target} tot {band}",
+      "weighting": "Overwinningen en grote koersen tellen het meest",
+      "help": "Zo werkt reputatie",
+      "close": "Sluiten",
       "noEvents": "Nog geen reputatiegebeurtenissen.",
       "unknownRace": "Een koers",
       "band": {
@@ -249,9 +253,7 @@
       "listed": "Op de transferlijst · prijs {price}",
       "auction": "In veiling · eindigt over {endsIn} · hoogste bod {highBid}",
       "finalSeasonTitle": "Laatste seizoen",
-      "finalSeason": "Heeft bij de start van het seizoen zijn pensioen aangekondigd. Hij stopt wanneer seizoen {season} eindigt.",
-      "academy": "Academierenner",
-      "expiry": "Contract loopt af na Seizoen {season}."
+      "finalSeason": "Heeft bij de start van het seizoen zijn pensioen aangekondigd. Hij stopt wanneer seizoen {season} eindigt."
     },
     "history": {
       "loading": "Geschiedenis laden...",
@@ -375,7 +377,6 @@
       "factor_ceiling_gap": "Duidelijk verschil tussen het niveau van vandaag en waar hij naar verwachting uitkomt",
       "factor_near_ceiling": "Zit al dicht bij zijn verwachte niveau, er valt weinig meer te winnen",
       "factor_decline_risk": "Op een leeftijd waarop achteruitgang inzet",
-      "factor_value_gap": "Geprijsd onder wat de cijfers suggereren dat hij waard is",
       "factor_type_match": "Het oordeel weegt zijn beste rennerstype het zwaarst",
       "factor_form_unknown": "Vorm en vermoeidheid zijn niet zichtbaar voor scouts",
       "factor_watch_races": "Koersuitslagen bevestigen of bevragen deze inschatting",
@@ -396,11 +397,6 @@
       "typesLegend": "Volle balk = niveau van vandaag. Gearceerde band = waar hij met jouw training realistisch naartoe gaat: de onderkant is gestaag maar ongericht werk, de bovenkant is elke dag gerichte focus. Donker streepje = het plafond van de rol, voor iedereen in die rol hetzelfde. Potentieel bepaalt hoe snel hij ernaartoe klimt. Het is een schatting, geen garantie, en geen scout kent een renner exact. Ratings zijn vergelijkbaar tussen rollen - hetzelfde getal betekent overal hetzelfde niveau.",
       "capsMissingTitle": "Rapport onvolledig",
       "capsMissingBody": "Voor deze renner zijn nog geen verwachtingsgegevens beschikbaar, dus de vooruitblik per type kan niet worden getoond.",
-      "valueTitle": "Koopje?",
-      "valueMarket": "Marktwaarde",
-      "valueExpected": "Verwachte waarde",
-      "valueReadAbove": "Het model waardeert hem hoger dan zijn huidige marktwaarde.",
-      "valueReadBelow": "Zijn marktwaarde ligt op of boven wat het model verwacht.",
       "scoutFailed": "De scout kon niet worden gestuurd. Probeer het over een moment opnieuw.",
       "scoutErrors": {
         "max_level": "Deze renner is al volledig gescout.",
@@ -414,7 +410,6 @@
     "interest": {
       "loading": "Interesse laden...",
       "loadError": "De interessegegevens konden nu niet worden geladen.",
-      "trendNew": "nieuwe gegevens",
       "trendFlat": "stabiel",
       "seasonShort": "S{n}",
       "stats": {
@@ -851,8 +846,7 @@
       "working": "Verlengen…",
       "success": "Contract verlengd.",
       "errorPrefix": "Verlengen is niet gelukt:",
-      "capped": "Contract heeft de maximale lengte (tot en met seizoen {season}).",
-      "capCounterLabel": "Gebruikte verlengingen"
+      "capped": "Contract heeft de maximale lengte (tot en met seizoen {season})."
     },
     "release": {
       "button": "Renner vrijgeven",

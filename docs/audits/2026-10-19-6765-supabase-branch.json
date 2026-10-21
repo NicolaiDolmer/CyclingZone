@@ -1,0 +1,136 @@
+{
+  "branch": "staging-cutover",
+  "project_ref": "pywxpnynzmbukdvoiazp",
+  "measured_at": "2026-10-19T12:41:07.778Z",
+  "before": {
+    "all_races": 1909,
+    "pg_version": "17.6",
+    "source_rows": 2307176,
+    "source_races": 1778
+  },
+  "first_rebuild": {
+    "batches": 11,
+    "server_ms": 30191.898,
+    "client_ms": 42683.166,
+    "max_batch_ms": 4121.627,
+    "batch_measurements": [
+      {
+        "result": {
+          "races": 0,
+          "pending": true,
+          "processed": 1
+        },
+        "server_ms": 41.341
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 2424.071
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 2743.574
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 2900.319
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 3166.936
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 2792.976
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 2786.597
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 2811.32
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 4016.814
+      },
+      {
+        "result": {
+          "races": 200,
+          "pending": true,
+          "processed": 200
+        },
+        "server_ms": 4121.627
+      },
+      {
+        "result": {
+          "races": 109,
+          "pending": false,
+          "processed": 109
+        },
+        "server_ms": 2386.323
+      }
+    ]
+  },
+  "one_pass": {
+    "source_race_rows": 4000,
+    "result": {
+      "races": 1,
+      "pending": false,
+      "processed": 1
+    },
+    "server_ms": 231.499
+  },
+  "parity": {
+    "rider_rankings_mv": 0,
+    "youth_rider_rankings_mv": 0,
+    "team_standings_ext_mv": 0,
+    "team_race_points_mv": 0
+  },
+  "after": {
+    "source_rows": 2307176,
+    "queue_length": 0,
+    "runtime_flag": "off",
+    "contributions": 199016
+  },
+  "post_controls_verification": {
+    "verified_at": "2026-10-19T12:59:13.602Z",
+    "peak_status": "deferred-peak",
+    "queue_length": 0,
+    "runtime_flag": "off",
+    "new_overload_present": true,
+    "old_overload_removed": true
+  }
+}

@@ -253,6 +253,21 @@ export function parseCodexReviewState(body) {
   }
 }
 
+/**
+ * Codex' alvorsgrad paa et fund ("![P1 Badge](...)" i traadens foerste kommentar).
+ * Ejer-beslutning 20/10: kun P0/P1 blokerer merge; P2/P3 samles i et opfoelgnings-issue.
+ * Ukendt grad (ingen badge) taeller som blokerende, saa intet fund slipper igennem stille.
+ * @returns {"P0"|"P1"|"P2"|"P3"|null}
+ */
+export function codexSeverity(body) {
+  return String(body || "").match(/!\[(P[0-3]) Badge\]/)?.[1] || null;
+}
+
+/** Blokerer et uloest Codex-fund merge? Kun P0, P1 og ukendt grad. */
+export function isBlockingSeverity(severity) {
+  return severity == null || severity === "P0" || severity === "P1";
+}
+
 /** "**Reviewed commit:** `fda8692284`" i en Codex-review-krop. */
 export function parseCodexReviewedCommit(body) {
   return String(body || "").match(/reviewed commit:\**\s*`?([0-9a-f]{7,40})/i)?.[1]?.toLowerCase() || null;
@@ -270,7 +285,10 @@ export function parseCodexReviewedCommit(body) {
  */
 export function evaluateCodex({ comments = [], reviews = [], threads = [], headSha = null } = {}) {
   const isCodex = (x) => login(x.author) === CODEX_LOGIN;
-  const unresolved = threads.filter((t) => isCodex(t) && !t.isResolved).length;
+  const open = threads.filter((t) => isCodex(t) && !t.isResolved);
+  const unresolved = open.filter((t) => isBlockingSeverity(t.severity ?? codexSeverity(t.body))).length;
+  const followUps = open.length - unresolved;
+  const followUpNote = followUps > 0 ? ` (${followUps} P2/P3-fund blokerer ikke: saml dem i et opfoelgnings-issue)` : "";
   const summaries = comments.filter(isCodex).map((c) => parseCodexSummary(c.body)).filter((s) => s.state !== "unknown");
   const summary = summaries.find((s) => shaMatchesHead(s.commit, headSha));
   const staleCommit = summaries.find((s) => !shaMatchesHead(s.commit, headSha))?.commit || null;
@@ -281,10 +299,10 @@ export function evaluateCodex({ comments = [], reviews = [], threads = [], headS
     else if (state === "missing" && (summaries.length > 0 || reviews.some(isCodex))) state = "stale";
   }
   if (unresolved > 0) {
-    return { ok: false, state, unresolved, detail: `${unresolved} uloest(e) Codex-fund: ret dem og marker traaden "Resolve conversation"` };
+    return { ok: false, state, unresolved, detail: `${unresolved} uloest(e) P0/P1-fund fra Codex: ret dem og marker traaden "Resolve conversation"${followUpNote}` };
   }
   if (state === "completed") {
-    return { ok: true, state, unresolved, detail: `Codex-review gennemfoert for HEAD ${short(headSha)}, ingen uloeste fund` };
+    return { ok: true, state, unresolved, detail: `Codex-review gennemfoert for HEAD ${short(headSha)}, ingen uloeste P0/P1-fund${followUpNote}` };
   }
   if (state === "pending") return { ok: false, state, unresolved, detail: "Codex-review koerer stadig" };
   if (state === "stale") {
@@ -474,11 +492,11 @@ function fetchThreads(repo, pr) {
   const threads = [];
   let cursor = null;
   for (let page = 0; page < 20; page += 1) {
-    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login}}}}}}}}`;
+    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body}}}}}}}`;
     const args = ["api", "graphql", "-f", `query=${q}`, "-f", `o=${owner}`, "-f", `n=${name}`, "-F", `pr=${pr}`];
     if (cursor) args.push("-f", `c=${cursor}`);
     const conn = ghJson(args).data.repository.pullRequest.reviewThreads;
-    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "" });
+    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body) });
     if (!conn.pageInfo.hasNextPage) break;
     cursor = conn.pageInfo.endCursor;
   }

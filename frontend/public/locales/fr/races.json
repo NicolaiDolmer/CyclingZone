@@ -36,7 +36,18 @@
       "terrain": "Terrain",
       "finish": "Arrivée",
       "surface": "Revêtement",
-      "surfaceValue": "{kind, select, gravel {Gravel} other {Pavés}} · {count, plural, one {# secteur} other {# secteurs}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Pavés}} · {count, plural, one {# secteur} other {# secteurs}}, {km} km",
+      "weather": "Météo"
+    },
+    "weather": {
+      "dry": "Sec",
+      "rain": "Pluie",
+      "wind": "Vent",
+      "aria": "Météo : {word}",
+      "mattered": {
+        "rain": "La pluie a le plus pénalisé les coureurs faibles en descente et en durabilité.",
+        "wind": "Le vent sur les routes dégagées a le plus pénalisé les coureurs faibles en descente et en durabilité."
+      }
     },
     "climbs": {
       "title": "Les ascensions",
@@ -729,6 +740,7 @@
     "form": "Forme",
     "fatigue": "Fatigue",
     "injured": "Blessé",
+    "overAge": "Âge dépassé",
     "boundIn": "Court {race}",
     "boundConflict": "Chevauche {race}",
     "autoPicked": "Choix de l'assistant. Ajuste et enregistre pour reprendre la main.",
@@ -770,6 +782,7 @@
       "selection_role_not_selected": "Les coureurs à rôle doivent faire partie de la sélection.",
       "selection_role_overlap": "Le leader, le leader sprint et le chasseur d'échappée doivent être des coureurs différents.",
       "selection_rider_injured": "Les coureurs blessés ne peuvent pas être sélectionnés.",
+      "selection_rider_over_age": "Les coureurs au-delà de la limite d'âge de la course ne peuvent pas être sélectionnés.",
       "selection_rider_not_on_team": "Tu ne peux sélectionner que tes propres coureurs.",
       "selection_duplicate_rider": "Chaque coureur ne peut être sélectionné qu'une fois.",
       "selection_race_not_open": "La sélection est close pour cette course.",

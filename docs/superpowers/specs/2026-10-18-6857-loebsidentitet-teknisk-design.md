@@ -18,13 +18,20 @@ Versionsstyret kilde: `database/seed/race_identity.json` + `backend/scripts/appl
 
 Ordforråd i den nye rene fil `backend/lib/raceIdentityTypes.js`: `RACE_IDENTITY_TYPES`, `SIGNATURE_KINDS`, `TIER_IDENTITY_DISTRIBUTION` (ejerens tabel A), `validateSignature()` og `validateAuthoredRoute()`.
 
+### L1-kontrakt (19/10)
+Validatorerne returnerer `true` eller kaster `TypeError` med feltsti. Kun eksplicit `null` betyder legacy; manglende felter, ukendte nøgler, numeriske strenge og ikke-endelige tal afvises. Signaturens `climb`/`summit_finish` kræver navn, kategori, længde, gradient, stage_hint og boolean summit_finish (true for summit_finish-kind). `itt`/`prologue` kræver band flat/hilly; prologue kræver first. `sector` kræver surface cobbles/gravel, navn, længde og stage_hint. Authored route bruger eksisterende climb/crest_km-, sprint/km- og sector/start_km-former; alle placeringer skal ligge inden for ruten. Afledte felter må ikke forfattes.
+
+Seed-envelope: `version: 1`, beskrivende `schema`, `examples` og `entries`. Kun entries anvendes; L1 leverer tom entries og tre syntetiske eksempler. Hver række kræver external_id og alle tre nullable identitetsfelter. Hele filen og alle katalogreferencer valideres før første mutation; dubletter og ukendte IDs stopper. Type/signatur kræver stage_race; authored_route kræver single med katalogklassen Monuments. `--apply` er eksplicit; ingen andre flag end `--file` accepteres. Skrivninger matches på katalogets id, kontrollerer én returneret række og er genkørbare; en netværksfejl under skrivning kan efterlade en delvis anvendelse (antal afsluttede skrivninger står i fejlen).
+
+Tabel A gælder korte etapeløb: D1's 13 inkluderer de 3 GT-optakter; de tre Grand Tours er udenfor. Snapshot-kolonnelisten udvides til den kommende migration uden at ændre tidspunktet for seneste prod-udtræk. Fixturefelter er null, og API/generator er uændrede. Lokal migrationstest: `database/manual/2026-10-19-6857-local-pg17-test.ps1`. Ingen patch notes/FEATURE_REGISTRY-ændring i L1: ingen spilleradfærd eller flag aktiveres; releasekommunikation tilhører den samlede levering.
+
 ## 2. Generatorændringer
 Hver type har et fast garanti-sæt, filler-vægte og en ordnings-arketype. Det lægges i en ny tabel `IDENTITY_PROFILES` i `raceStageProfileGenerator.js`, som erstatter `archetypeFor(race)` i S5-stien, når typen er sat. v5 forbliver bit-identisk.
 
 | Type | Garantier | Filler | Ordning |
 |---|---|---|---|
 | sprinters | flat, flat, hilly | flat, rolling, hilly | sprint_finale; bjergfri |
-| climbers_gt_prelude | mountain, high_mountain, flat | hilly, mountain, medium_mountain, itt | summit_finale |
+| climbers_gt_prelude | mountain, high_mountain, flat | hilly, mountain, medium_mountain, high_mountain (#6995), itt | summit_finale |
 | hilly | hilly, hilly, rolling | hilly, rolling, medium_mountain, flat | circuit_finale; bjergfri |
 | cobbles_benelux | cobbles, flat, hilly | cobbles, flat, rolling | sprint/circuit; bjergfri |
 | time_trial | itt (prolog, etape 1), itt_hilly (sidste tredjedel), flat | flat, rolling, hilly | tt_finale |
@@ -34,7 +41,9 @@ Hver type har et fast garanti-sæt, filler-vægte og en ordnings-arketype. Det l
 
 **Signaturen fastlåses i pass 2** (`raceRouteGenerator.js`, ny `applySignature`). En `climb` erstatter klimaks-stigningen på den etape, som `stage_hint` udpeger. Terrænet læses igen med `deriveTerrainType`, og hvis det skifter, kastes der (valideres i seed-testen). `itt`/`prologue` låser etapetypen før ordningen. Variationen pr. sæson bevares (`seedKeyFor` med `season_id`).
 
-**Monumenter:** `buildSingle` returnerer `authored_route`, når den findes. `generator_version` = 7 for identitets-stien.
+**Queen (#6995):** en `stage_hint: "queen"`-signatur er løbets hårdeste etape. Ingen garanti, filler eller kvote-type må ligge over queen-etapens terræn (uafgjort er tilladt); en garanti over den kaster (fail-closed). To sektor-signaturer af samme underlag deler én etape, og en enkeltstarts-signatur overtager garantiens enkeltstart (ejer-go 20/10, valg A).
+
+**Monumenter:** `buildSingle` returnerer `authored_route`, når den findes. Finale-rampen (stigende spurt, mur, bakke) er et afledt felt og læses af rutens målstigning, holdt i afslutningens bånd (#6995). `generator_version` = 7 for identitets-stien.
 
 **Kvoter:** `s5StageRaceFillerSlots` læser `IDENTITY_PROFILES`, og fillerne begrænses til typens liste. Brosten 5 % og ITT ~10 % måles i tørkørslen pr. division. `TIER_MOUNTAIN_FREE_STAGE_RACE_MIN` og `tierCalendarGuarantees.test.js` opdateres i samme PR. D1's 3 `climbers_gt_prelude` tildeles de tre korte D1-etapeløb, der slutter lige før Giro (1/11), Tour (8/11) og Vuelta (22/11).
 

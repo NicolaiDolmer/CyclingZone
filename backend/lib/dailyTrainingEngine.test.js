@@ -1,10 +1,12 @@
+import { runTrainNow } from "./trainNow.js";
+import { createTrainNowRouter } from "../routes/trainNow.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
   runTeamTrainingDay, stageMatchesCanonicalLoad,
   LEGACY_RESERVATION_STAGE_LOADING, LEGACY_RESERVATION_STAGE_WRITING, STALE_LEGACY_RESERVATION_MS,
-  isTrainingReservationHeldError, isReclaimableLegacyReservation,
+  isTrainingReservationHeldError, isReclaimableLegacyReservation, isHeldRaceDayReservation,
 } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
@@ -199,7 +201,9 @@ function createMockSupabase(state, opts = {}) {
 
   return {
     async rpc(name, args) {
-      if(name==='register_training_date_work') {
+      if (name.startsWith('try_') && opts.missingWrapper) return {error:{code:'PGRST202',message:`Could not find the function public.${name}`}};
+      if(name==='register_training_date_work' || name==='try_register_training_date_work') {
+        if (name.startsWith('try_') && opts.heldRegistration) return {data:{held:true},error:null};
         state.training_date_work??=[];
         let work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
         if(!work){work={team_id:args.p_team_id,season_id:args.p_season_id,tick_date:args.p_tick_date,game_days:args.p_game_days,expected_rider_ids:args.p_expected_rider_ids,deadline_at:args.p_deadline_at,status:'pending',quarantined_rider_ids:[],opening_conditions:Object.fromEntries((state.rider_condition??[]).filter(row=>args.p_expected_rider_ids.includes(row.rider_id)).map(row=>[row.rider_id,structuredClone(row)]))};state.training_date_work.push(work);}
@@ -211,7 +215,8 @@ function createMockSupabase(state, opts = {}) {
         work.status='needs_reconciliation';
         return {data:{work,work_status:work.status,quarantined_rider_ids:args.p_rider_ids},error:null};
       }
-      assert.equal(name, 'commit_training_date_tick');
+      assert.ok(['commit_training_date_tick','try_commit_training_date_tick'].includes(name));
+      if (name.startsWith('try_') && opts.heldCommit) return {data:{held:true},error:null};
       if (opts.failDateCommit) { opts.failDateCommit = false; return { error: { message: 'atomic commit failed' } }; }
       for (const item of args.p_abilities) Object.assign(state.rider_derived_abilities.find(row => row.rider_id === item.riderId), item.patch);
       for (const item of args.p_conditions) Object.assign(state.rider_condition.find(row => row.rider_id === item.rider_id), item);
@@ -1690,6 +1695,72 @@ test("#4846 (flag on): andet tick på SAMME løbsdag rammer mutexen → alreadyR
   assert.equal(state.training_day_runs.length, 1, "kun ÉN række pr. (hold, sæson, løbsdag)");
 });
 
+// ── #6827: holdt reservation paa loebsdags-stien ──────────────────────────────
+function seedRaceDayRun(state, { gameDay = 12, createdAt = NOW, report = { pending: true } } = {}) {
+  state.training_day_runs.push({
+    id: `run-held-${gameDay}`, team_id: TEAM_ID, season_id: SEASON_ID, squad: "senior", game_day: gameDay,
+    tick_date: "2026-06-12", executed_by: "assistant", bonus_applied: false,
+    created_at: createdAt.toISOString(), report,
+  });
+}
+const raceDaySnapshot = (state) => structuredClone({
+  runs: state.training_day_runs, abilities: state.rider_derived_abilities, conditions: state.rider_condition,
+});
+
+test("#6827 (flag on): frisk pending loebsdags-raekke (en sweep er i gang) → retryable held-fejl, intet skrevet", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW });
+  const before = raceDaySnapshot(state);
+  await assert.rejects(() => runDay(state, { gameDay: 12, now: minutesAfter(NOW, 1) }),
+    (err) => isTrainingReservationHeldError(err) && /held by an unfinished run/.test(err.message));
+  assert.deepEqual(raceDaySnapshot(state), before, "hverken reservation, evner eller condition roert");
+});
+
+test("#6827 (flag on): afregnet loebsdags-raekke → stadig alreadyRan, intet skrevet", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW, report: { riders: [], game_day: 12, tick_date: "2026-06-12" } });
+  const before = raceDaySnapshot(state);
+  const result = await runDay(state, { gameDay: 12, now: minutesAfter(NOW, 1) });
+  assert.equal(result.alreadyRan, true);
+  assert.equal(result.gameDay, 12);
+  assert.deepEqual(raceDaySnapshot(state), before);
+});
+
+test("#6827 (flag on): forældet pending loebsdags-raekke → alreadyRan som foer (blokeret dag, ingen overtagelse)", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW });
+  const before = raceDaySnapshot(state);
+  const later = new Date(NOW.getTime() + STALE_LEGACY_RESERVATION_MS + 60 * 1000);
+  const result = await runDay(state, { gameDay: 12, now: later });
+  assert.equal(result.alreadyRan, true);
+  assert.deepEqual(raceDaySnapshot(state), before, "raekken staar; intet slettet eller skrevet");
+});
+
+test("#6827 (flag on): 23505 men raekken er frigivet imens → retryable held-fejl, ikke alreadyRan", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  const supabase = createMockSupabase(state, { injectUniqueViolation: true });
+  await assert.rejects(() => runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager",
+    now: NOW, gameDay: 12, eligibleRiderIds: state.riders.map((rider) => rider.id),
+  }), (err) => isTrainingReservationHeldError(err));
+  assert.equal(state.training_day_runs.length, 0);
+});
+
+test("#6827: isHeldRaceDayReservation laeser det smalle format (pending som tekst) og report-formatet", () => {
+  const fresh = NOW.toISOString();
+  const old = new Date(NOW.getTime() - STALE_LEGACY_RESERVATION_MS - 1000).toISOString();
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: fresh }, NOW), true);
+  assert.equal(isHeldRaceDayReservation({ report: { pending: true }, created_at: fresh }, NOW), true);
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: null }, NOW), true, "ukendt alder = levende");
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: old }, NOW), false, "forældet");
+  assert.equal(isHeldRaceDayReservation({ pending: null, created_at: fresh }, NOW), false, "afregnet");
+  assert.equal(isHeldRaceDayReservation({ report: { riders: [] }, created_at: fresh }, NOW), false, "afregnet");
+});
+
 test("#4846 (flag on): to forskellige løbsdage på SAMME kalenderdato kører begge", async () => {
   const state = seedState();
   seedRaceDayTick(state, { gameDay: 12 });
@@ -3126,3 +3197,40 @@ test('#5620: dagen efter en etape er kun foerste felt restitution', async () => 
   }
   assert.deepEqual(intensities, ['recovery', 'hard', 'hard', 'hard', 'hard']);
 });
+
+for (const heldAt of ['heldRegistration', 'heldCommit']) {
+  test(`#6839 normalized manager reports held at ${heldAt} without training writes`, async () => {
+    const state = seedState(); seedRaceDayTick(state, {gameDay:1});
+    state.app_config.push({key:'training_condition_per_date',value:'on'});
+    const abilities = structuredClone(state.rider_derived_abilities);
+    await assert.rejects(runDay(state, {gameDay:1,dateGameDays:[1,2,3,4,5],
+      supabase:createMockSupabase(state,{[heldAt]:true})}), error => error.code === 'training_reservation_held');
+    assert.deepEqual(state.rider_derived_abilities, abilities);
+    assert.equal(state.training_day_runs.length, 0);
+  });
+}
+
+for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper']) {
+  test(`#6839 actual Train now router + normalized engine: ${heldAt ?? 'free'}`, async () => {
+    const state=seedState();seedRaceDayTick(state,{gameDay:1});
+    state.app_config.push({key:'training_condition_per_date',value:'on'},{key:'training_train_now',value:'on'});
+    const supabase=createMockSupabase(state,heldAt ? {[heldAt]:true} : {});
+    const team={id:TEAM_ID,league_division_id:'division-1'};
+    const context={teams:[team],riders:state.riders,races:[],stages:[],runs:[],entries:[],results:[],incidents:[],loads:[],
+      candidateRiderIdsByRace:new Map(),gameDaysByDivision:new Map([['division-1',[1,2,3,4,5]]])};
+    let captured=0;
+    const router=createTrainNowRouter({supabase,requireAuth:()=>{},isViewerBetaTester:async()=>false,
+      loadActiveSeason:async()=>({id:SEASON_ID,number:SEASON_NUMBER}),loadDaySpans:async()=>new Map(),
+      captureExceptionFn:()=>{captured++;},
+      run:args=>runTrainNow({...args,now:NOW,loadContext:async()=>context,loadShortRaces:async()=>[]})});
+    const handler=router.stack.find(layer=>layer.route?.methods.post).route.stack.at(-1).handle;
+    let status=200,body;
+    const res={status(code){status=code;return res;},json(value){body=value;return res;}};
+    await handler({team,body:{}},res);
+    const held = heldAt && heldAt !== 'missingWrapper';
+    assert.equal(status,held ? 409 : 200,JSON.stringify(body));
+    assert.equal(captured,0);
+    if(held){assert.equal(body.error,'training_in_progress');assert.deepEqual(body.settledGameDays,[]);assert.equal(state.training_day_runs.length,0);}
+    else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
+  });
+}

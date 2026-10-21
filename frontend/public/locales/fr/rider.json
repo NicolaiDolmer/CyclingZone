@@ -52,6 +52,7 @@
     "visitorsTrendUp": "En hausse de {pct} % par rapport aux 7 jours précédents",
     "visitorsTrendDown": "En baisse de {pct} % par rapport aux 7 jours précédents",
     "u23": "U23",
+    "junior": "Junior",
     "u25": "U25",
     "retired": "Retraité",
     "ageYears": "{age} ans",
@@ -199,9 +200,8 @@
       "contractSeason": "Saison {season}",
       "contractExpired": "Expiré",
       "contractExpiredSub": "Agent libre au changement de saison sauf prolongation",
+      "contractExpires": "expire",
       "aiTag": "IA",
-      "valueTrend": "{value} sur {days} jours",
-      "valueTrendTitle": "Variation de valeur depuis le {date}",
       "ratingTrendRising": "En hausse cette saison",
       "ratingTrendSteady": "Stable cette saison",
       "ratingTrendDeclining": "En baisse cette saison",
@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Pourquoi sa réputation a bougé",
+      "progressTo": "{value} / {target} avant {band}",
+      "weighting": "Les victoires et les grandes courses comptent le plus",
+      "help": "Comment fonctionne la réputation",
+      "close": "Fermer",
       "noEvents": "Pas encore d'événements de réputation.",
       "unknownRace": "Une course",
       "band": {
@@ -249,9 +253,7 @@
       "listed": "Sur la liste des transferts · prix {price}",
       "auction": "Aux enchères · se termine dans {endsIn} · enchère la plus haute {highBid}",
       "finalSeasonTitle": "Dernière saison",
-      "finalSeason": "A annoncé sa retraite au début de la saison. Il prend sa retraite à la fin de la saison {season}.",
-      "academy": "Coureur de l'académie",
-      "expiry": "Le contrat expire après la saison {season}."
+      "finalSeason": "A annoncé sa retraite au début de la saison. Il prend sa retraite à la fin de la saison {season}."
     },
     "history": {
       "loading": "Chargement de l'historique...",
@@ -375,7 +377,6 @@
       "factor_ceiling_gap": "Écart net entre le niveau d'aujourd'hui et celui où il est projeté",
       "factor_near_ceiling": "Déjà proche de son niveau projeté, peu à gagner encore",
       "factor_decline_risk": "À un âge où le déclin s'installe",
-      "factor_value_gap": "Coté en dessous de ce que les chiffres suggèrent qu'il vaut",
       "factor_type_match": "Le verdict pèse surtout son meilleur type de coureur",
       "factor_form_unknown": "La forme et la fatigue ne sont pas visibles pour les recruteurs",
       "factor_watch_races": "Les résultats de course confirmeront ou contesteront cette lecture",
@@ -396,11 +397,6 @@
       "typesLegend": "Barre pleine = niveau d'aujourd'hui. Bande ombrée = où il se dirige de façon réaliste avec ton entraînement : le bas correspond à un travail régulier mais peu ciblé, le haut à un travail ciblé chaque jour. Repère sombre = le plafond du rôle, le même pour tous ceux de ce rôle ; le potentiel décide de la vitesse à laquelle il s'en approche. C'est une estimation, pas une garantie, et aucun recruteur ne connaît un coureur exactement. Les notes sont comparables d'un rôle à l'autre : le même chiffre correspond partout au même niveau.",
       "capsMissingTitle": "Rapport incomplet",
       "capsMissingBody": "Les données de projection ne sont pas encore disponibles pour ce coureur, les perspectives par type ne peuvent donc pas être affichées.",
-      "valueTitle": "Une bonne affaire ?",
-      "valueMarket": "Valeur de marché",
-      "valueExpected": "Valeur attendue",
-      "valueReadAbove": "Le modèle le valorise au-dessus de sa valeur de marché actuelle.",
-      "valueReadBelow": "Sa valeur de marché est égale ou supérieure à ce que le modèle attend.",
       "scoutFailed": "Impossible d'envoyer le recruteur. Réessaie dans un instant.",
       "scoutErrors": {
         "max_level": "Ce coureur est déjà entièrement détecté.",
@@ -414,7 +410,6 @@
     "interest": {
       "loading": "Chargement de l'intérêt...",
       "loadError": "Impossible de charger les données d'intérêt pour le moment.",
-      "trendNew": "nouvelles données",
       "trendFlat": "stable",
       "seasonShort": "S{n}",
       "stats": {
@@ -851,8 +846,7 @@
       "working": "Prolongation…",
       "success": "Contrat prolongé.",
       "errorPrefix": "Prolongation impossible :",
-      "capped": "Contrat à la durée maximale (jusqu'à la saison {season}).",
-      "capCounterLabel": "Prolongations utilisées"
+      "capped": "Contrat à la durée maximale (jusqu'à la saison {season})."
     },
     "release": {
       "button": "Libérer le coureur",

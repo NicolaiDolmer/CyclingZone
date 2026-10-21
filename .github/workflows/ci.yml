@@ -863,6 +863,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/hvad-braender.test.mjs
 
+      # #6994 SQL-helbredstjek: værn (kun cz_monitor read-only), guidens tærskler,
+      # snapshot-sammenligning og kommentar. Kun node-indbyggede moduler, psql er fake.
+      - name: Test prod-health-sql checks
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ops/prodHealthSql.test.mjs
+
       # --- guard-inventory-cell escaping (#5092) ---
       # scripts/guard-inventory-cell.test.mjs fandtes, men koerte ingen steder i
       # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele

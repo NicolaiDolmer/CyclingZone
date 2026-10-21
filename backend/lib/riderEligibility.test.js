@@ -6,7 +6,11 @@ import {
   isRiderInjured, applyInjuredFilter, filterOutInjuredEntries,
   raceSelectionReferenceDateStr,
   ANY_SQUAD, raceSquadOf,
+  raceAgeLimit, isWithinRaceAgeLimit, raceAgeBirthdateFloor, loadRaceSeasonNumber, loadSeasonNumber,
+  RIDER_OVER_RACE_AGE_ERROR,
 } from "./riderEligibility.js";
+import { SQUAD_MAX_AGE, hasOutgrownSquad } from "./squads.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 test("isEligibleRider: senior på holdet er berettiget", () => {
   assert.equal(isEligibleRider({ team_id: "t1", is_academy: false, is_retired: false }, { teamId: "t1" }), true);
@@ -239,4 +243,147 @@ test("#5645 (ejer 24/9): seniorer må stadig ikke køre ungdomsløb", () => {
   const senior = { id: "s1", team_id: "t1", squad: "senior", is_academy: false, is_retired: false };
   assert.equal(isEligibleRider(senior, { teamId: "t1", squad: "junior" }), false);
   assert.equal(isEligibleRider(senior, { teamId: "t1", squad: "u23" }), false);
+});
+
+// ── #6964 (ejer 20/10): alder afgør ungdomsløb ─────────────────────────────────
+// Sæson 5 = referenceår 2030: junior ≤ 18 ⇔ født ≥ 2012, U23 ≤ 22 ⇔ født ≥ 2008.
+const S5 = 5;
+const youth = (squad, birthdate, extra = {}) => ({ id: `${squad}-${birthdate}`, team_id: "t1", squad, is_academy: true, is_retired: false, birthdate, ...extra });
+
+test("#6964 raceAgeLimit: truppernes aldersloft for ungdomsløb, ingen grænse for senior/ANY", () => {
+  assert.equal(raceAgeLimit("junior"), SQUAD_MAX_AGE.junior);
+  assert.equal(raceAgeLimit("u23"), SQUAD_MAX_AGE.u23);
+  assert.equal(raceAgeLimit("senior"), null);
+  assert.equal(raceAgeLimit(ANY_SQUAD), null);
+  assert.equal(RIDER_OVER_RACE_AGE_ERROR, "selection_rider_over_age");
+});
+
+test("#6964 isWithinRaceAgeLimit: grænsealderen er med, én over er ude (junior og U23)", () => {
+  assert.equal(isWithinRaceAgeLimit({ birthdate: "2012-12-31" }, { squad: "junior", seasonNumber: S5 }), true, "18 = grænsen");
+  assert.equal(isWithinRaceAgeLimit({ birthdate: "2011-01-01" }, { squad: "junior", seasonNumber: S5 }), false, "19");
+  assert.equal(isWithinRaceAgeLimit({ birthdate: "2008-01-01" }, { squad: "u23", seasonNumber: S5 }), true, "22 = grænsen");
+  assert.equal(isWithinRaceAgeLimit({ birthdate: "2007-12-31" }, { squad: "u23", seasonNumber: S5 }), false, "23");
+  assert.equal(isWithinRaceAgeLimit({ birthdate: "2014-06-01" }, { squad: "junior", seasonNumber: S5 }), true, "16");
+});
+
+test("#6964 isWithinRaceAgeLimit: samme dom som Graduation Day (hasOutgrownSquad) for hver alder", () => {
+  for (const squad of ["junior", "u23"]) {
+    for (let birthYear = 2000; birthYear <= 2015; birthYear++) {
+      const birthdate = `${birthYear}-07-01`;
+      const seasonAge = ageForSeason(birthdate, S5);
+      assert.equal(
+        isWithinRaceAgeLimit({ birthdate }, { squad, seasonNumber: S5 }),
+        !hasOutgrownSquad({ squad, seasonAge }),
+        `${squad} ${birthdate}`,
+      );
+    }
+  }
+});
+
+test("#6964 isWithinRaceAgeLimit: seniorløb har ingen grænse; ukendt alder er fejl lukket i ungdomsløb", () => {
+  assert.equal(isWithinRaceAgeLimit({ birthdate: "1980-01-01" }, { squad: "senior", seasonNumber: S5 }), true);
+  assert.equal(isWithinRaceAgeLimit({ birthdate: null }, { squad: "senior", seasonNumber: null }), true);
+  assert.equal(isWithinRaceAgeLimit({ birthdate: null }, { squad: "junior", seasonNumber: S5 }), false, "ingen fødselsdato");
+  assert.equal(isWithinRaceAgeLimit({ birthdate: "2013-01-01" }, { squad: "junior", seasonNumber: null }), false, "ukendt sæson");
+  assert.equal(isWithinRaceAgeLimit(null, { squad: "u23", seasonNumber: S5 }), false);
+});
+
+test("#6964 isEligibleRider: for gammel rytter afvises uanset trup; junior på U23-holdet er tilladt", () => {
+  const graduatePending = youth("junior", "2011-05-01"); // 19 på juniorholdet ("afventer oprykning")
+  assert.equal(isEligibleRider(graduatePending, { teamId: "t1", squad: "junior", seasonNumber: S5 }), false);
+  const u23Old = youth("u23", "2007-05-01"); // 23 på U23-holdet
+  assert.equal(isEligibleRider(u23Old, { teamId: "t1", squad: "u23", seasonNumber: S5 }), false);
+  const juniorOnU23 = youth("u23", "2013-05-01"); // 17, flyttet op på U23-holdet
+  assert.equal(isEligibleRider(juniorOnU23, { teamId: "t1", squad: "u23", seasonNumber: S5 }), true);
+  assert.equal(isEligibleRider(youth("junior", "2012-05-01"), { teamId: "t1", squad: "junior", seasonNumber: S5 }), true, "18");
+  // Trup-leddet gælder stadig: en junior-alder i U23-truppen kører ikke juniorløb.
+  assert.equal(isEligibleRider(juniorOnU23, { teamId: "t1", squad: "junior", seasonNumber: S5 }), false);
+});
+
+test("#6964 isEligibleRider: uden seasonNumber ingen aldersgate (trup-paritet med SQL-porten); ANY_SQUAD ingen grænse", () => {
+  const graduatePending = youth("junior", "2011-05-01");
+  assert.equal(isEligibleRider(graduatePending, { teamId: "t1", squad: "junior" }), true);
+  assert.equal(isEligibleRider(graduatePending, { teamId: "t1", squad: ANY_SQUAD, seasonNumber: S5 }), true);
+  const senior = { team_id: "t1", squad: "senior", is_academy: false, is_retired: false, birthdate: "1985-01-01" };
+  assert.equal(isEligibleRider(senior, { teamId: "t1", seasonNumber: S5 }), true);
+});
+
+test("#6964 filterEligibleEntries: for gamle committede entries falder ud når seasonNumber gives", () => {
+  const ridersById = new Map([
+    ["old", youth("junior", "2011-05-01", { id: "old" })],
+    ["ok", youth("junior", "2012-05-01", { id: "ok" })],
+  ]);
+  const entries = [{ rider_id: "old", team_id: "t1" }, { rider_id: "ok", team_id: "t1" }];
+  assert.deepEqual(filterEligibleEntries({ entries, ridersById, squad: "junior", seasonNumber: S5 }).map((e) => e.rider_id), ["ok"]);
+  assert.deepEqual(filterEligibleEntries({ entries, ridersById, squad: "junior" }).map((e) => e.rider_id), ["old", "ok"]);
+});
+
+function recordingQueryWithGte() {
+  const { q, calls } = recordingQuery();
+  q.gte = (col, val) => { calls.push(["gte", col, val]); return q; };
+  return { q, calls };
+}
+
+test("#6964 applyRiderEligibilityFilter: seasonNumber lægger et fødselsdato-gulv på ungdomsløb", () => {
+  const j = recordingQueryWithGte();
+  applyRiderEligibilityFilter(j.q, { squad: "junior", seasonNumber: S5 });
+  assert.deepEqual(j.calls.at(-1), ["gte", "birthdate", "2012-01-01"]);
+  const u = recordingQueryWithGte();
+  applyRiderEligibilityFilter(u.q, { squad: "u23", seasonNumber: S5 });
+  assert.deepEqual(u.calls.at(-1), ["gte", "birthdate", "2008-01-01"]);
+  // Gulvet og JS-prædikatet er enige på begge sider af grænsen.
+  for (const birthdate of ["2011-12-31", "2012-01-01"]) {
+    assert.equal(birthdate >= raceAgeBirthdateFloor({ squad: "junior", seasonNumber: S5 }),
+      isWithinRaceAgeLimit({ birthdate }, { squad: "junior", seasonNumber: S5 }), birthdate);
+  }
+});
+
+test("#6964 applyRiderEligibilityFilter: senior og udeladt seasonNumber = uændret kæde; ukendt sæson = ingen", () => {
+  const plain = recordingQueryWithGte();
+  applyRiderEligibilityFilter(plain.q, { squad: "junior" });
+  assert.ok(!plain.calls.some(([op]) => op === "gte"));
+  const senior = recordingQueryWithGte();
+  applyRiderEligibilityFilter(senior.q, { squad: "senior", seasonNumber: S5 });
+  assert.ok(!senior.calls.some(([op]) => op === "gte"), "seniorløb har ingen aldersgrænse");
+  const unknown = recordingQueryWithGte();
+  applyRiderEligibilityFilter(unknown.q, { squad: "u23", seasonNumber: null });
+  assert.deepEqual(unknown.calls.at(-1), ["gte", "birthdate", "9999-12-31"], "fejl lukket");
+});
+
+function seasonsSupabase({ seasons = [], races = [], error = null } = {}) {
+  const queried = [];
+  return {
+    queried,
+    from(table) {
+      queried.push(table);
+      const f = {};
+      const api = {
+        select() { return api; },
+        eq(col, val) { f[col] = val; return api; },
+        then(resolve) {
+          const rows = (table === "seasons" ? seasons : races).filter((r) => Object.entries(f).every(([c, v]) => r[c] === v));
+          resolve({ data: error ? null : rows, error });
+        },
+      };
+      return api;
+    },
+  };
+}
+
+test("#6964 loadRaceSeasonNumber: seniorløb slår intet op; ungdomsløb læser sæsonens nummer", async () => {
+  const sb = seasonsSupabase({ seasons: [{ id: "s5", number: 5 }] });
+  assert.equal(await loadRaceSeasonNumber({ supabase: sb, race: { id: "r", season_id: "s5" } }), undefined);
+  assert.deepEqual(sb.queried, []);
+  assert.equal(await loadRaceSeasonNumber({ supabase: sb, race: { id: "r", season_id: "s5", squad: "junior" } }), 5);
+});
+
+test("#6964 loadRaceSeasonNumber: mangler season_id slås den op på løbet; ukendt sæson = null; DB-fejl kaster", async () => {
+  const sb = seasonsSupabase({ seasons: [{ id: "s5", number: 5 }], races: [{ id: "r", season_id: "s5" }] });
+  assert.equal(await loadRaceSeasonNumber({ supabase: sb, race: { id: "r", squad: "u23" } }), 5);
+  assert.equal(await loadSeasonNumber({ supabase: sb, seasonId: "missing" }), null);
+  assert.equal(await loadSeasonNumber({ supabase: sb, seasonId: null }), null);
+  await assert.rejects(
+    () => loadSeasonNumber({ supabase: seasonsSupabase({ error: { message: "timeout" } }), seasonId: "s5" }),
+    /race age gate/,
+  );
 });

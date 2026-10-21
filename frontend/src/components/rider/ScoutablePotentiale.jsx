@@ -1,3 +1,4 @@
+import AcademyPrognosisCell from "./AcademyPrognosisCell";
 // ScoutablePotentiale — progression L1 (#1138) + server-side skjuling (#1162)
 // + job-model "under"-tilstand (#2244 Fase 3 Slice C).
 //
@@ -89,7 +90,7 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
       className={`font-mono tabular-nums whitespace-nowrap text-cz-1 ${large ? "text-[17px]" : "text-[13px]"}`}
       data-potential-band={`${band.lo}-${band.hi}`}
     >
-      {band.lo}–{band.hi}
+      {band.lo === band.hi ? band.lo : `${band.lo}–${band.hi}`}
       {large && Number.isFinite(loft) && (
         <span className="ms-1.5 text-[12px] text-cz-3 font-normal" data-potential-loft={loft}>
           · {pastPeak ? t("rider:scouting.loftPastPeakShort", { value: loft }) : t("rider:scouting.loftShort", { value: loft })}
@@ -129,6 +130,9 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const estimate = estimateFor(riderId);
 
   // undefined = ikke hentet endnu, null = rytter uden potentiale → begge "—".
+  if (estimate?.academyPrognosis) {
+    return <AcademyPrognosisCell prognosis={estimate.academyPrognosis} />;
+  }
   if (estimate == null) {
     return <PotentialeStars value={null} />;
   }

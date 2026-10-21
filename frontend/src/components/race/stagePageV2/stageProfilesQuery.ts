@@ -6,9 +6,12 @@
 // kolonnen endnu ikke (Postgres 42703 undefined_column), laeses profilerne uden
 // serien, og fladen viser syntesen som foer. En tom kolonne (null) er ikke en
 // fejl: elevationSeries() vaelger selv syntesen for den etape.
+//
+// #6993: weather (det vejr v4-motoren laeser) vises paa etapesiden; reglerne
+// for hvornaar staar i stageWeather.ts.
 
 export const STAGE_PROFILE_BASE_COLUMNS =
-  "race_id, stage_number, profile_type, finale_type, demand_vector, distance_km, elevation_gain_m, climbs, sprints, sectors";
+  "race_id, stage_number, profile_type, finale_type, demand_vector, distance_km, elevation_gain_m, climbs, sprints, sectors, weather";
 
 export const STAGE_PROFILE_COLUMNS = `${STAGE_PROFILE_BASE_COLUMNS}, elevation_profile`;
 

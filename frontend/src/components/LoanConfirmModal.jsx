@@ -19,9 +19,6 @@ export function LoanConfirmModal({
   newTotalDebt,
   ceilingPct,
   debtCeiling,
-  nextSeasonInterest,
-  projectedDebtAfterInterest,
-  exceedsCeilingNextSeason,
   onCancel,
   onConfirm,
   busy = false,
@@ -65,22 +62,6 @@ export function LoanConfirmModal({
             components={{ strong }}
           />
         </p>
-        <p className="text-cz-2 text-sm mb-3 text-start">
-          <Trans
-            i18nKey="loans.confirmModal.interestForecast"
-            ns="finance"
-            values={{
-              interest: formatNumber(nextSeasonInterest ?? 0),
-              projected: formatNumber(projectedDebtAfterInterest ?? 0),
-            }}
-            components={{ strong }}
-          />
-        </p>
-        {exceedsCeilingNextSeason && (
-          <p className="text-cz-danger text-xs mb-4 text-start leading-snug bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-2">
-            {t("finance:loans.confirmModal.ceilingWarning")}
-          </p>
-        )}
         <p className="text-cz-2 text-sm mb-5">{t("finance:loans.confirmModal.question")}</p>
         <div className="flex gap-2">
           <button

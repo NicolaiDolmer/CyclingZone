@@ -285,6 +285,10 @@ const SECTION_DEFS = [
       // Kilometre replay, which is the last piece of "what you see on a
       // race's page".
       { id: "stageProfile", kind: "text" },
+      // #6857/#6930: løbstype og signatur vises KUN her (ejer 18/10, designspørgsmål 9),
+      // ingen mærke på løbsside eller kalender. Typerne først, derefter løb for løb.
+      { id: "raceIdentity", kind: "textRows" },
+      { id: "raceIdentityRaces", kind: "textRows" },
       { id: "raceDetail", kind: "text" },
       { id: "finalKilometre", kind: "text" },
       // #4066: wired in — Squad distribution board (moving riders between
@@ -339,6 +343,7 @@ const SECTION_DEFS = [
     blocks: [
       { id: "valueAndPrice", kind: "text" },
       { id: "salary", kind: "text" },
+      { id: "reputation", kind: "text" },
       { id: "abilitiesExplained", kind: "rows" },
       { id: "riderType", kind: "text" },
       { id: "typeOverview", kind: "textRows" },
