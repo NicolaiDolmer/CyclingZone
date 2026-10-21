@@ -596,6 +596,11 @@ export function buildV4StageInput({
       // #6097: kun orders_gc_v2 aendrer AI-holdenes udbrudsforsoeg (M14);
       // legacy/orders_gc_v1 faar et uaendret kontekst-objekt.
       ...(isOrdersGcV2OrLater(rulesRevision) ? { rules_revision: rulesRevision } : {}),
+      // #6818 (KUN s5_profiles_v2): samme klassement som motoren faar, saa AI-holdene sender
+      // en anden rytter i stedet for en klassementsrytter, motoren blokerer i morgenudbruddet.
+      ...(isS5ProfilesV2OrLater(rulesRevision)
+        ? { gc_context: withS5ThreatModel(buildGcContext({ isStageRace, stageNumber, standings: gcStandings, starterIds: rosterForOrders.map((r) => r.rider_id) }), rosterForOrders) }
+        : {}),
     },
   });
   // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe);
