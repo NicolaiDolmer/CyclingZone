@@ -6,7 +6,11 @@
 // Henter for rytterne og loebene i en testport-eksport (<race_id>/cache.json):
 //   - rider_condition.form (0-100) pr. rytter (formen motoren laeser)
 //   - formtoppe (rider_peak_plans) for loebets saeson, med traeningskvaliteten
-//     regnet af spillets egen resolvePeakTrainingQualities (samme som raceRunner)
+//     regnet af spillets egen resolvePeakTrainingQualities (samme som raceRunner),
+//     men PAA KOERSELSDAGEN: for et kommende loeb er optakten (dagene foer vinduet)
+//     ikke koert endnu, saa kvaliteten er en NEDRE graense. Antallet af vinduer med
+//     ufaerdig optakt staar i outputtet (leadup); formTestCaches --peaks=tq1 er den oevre.
+//   - formen er dagens rider_condition.form, ikke formen paa loebsdagen
 //   - etapedagene (race_stage_schedule.scheduled_at -> dag-ordinal) pr. loeb og etape
 //   - #6158-tjek: formtoppe pr. saeson, S5-planer oprettet foer S5 startede,
 //     planer hvis maalloeb ligger i en anden saeson, og S4-vinduer der rager ind i S5.
@@ -23,8 +27,9 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readOnlyDb } from "./lib/motorTestportInputs.mjs";
-import { prodDb } from "./motorTestport.mjs";
-import { loadPeakPlans, loadStageDayOrdinals, resolvePeakTrainingQualities } from "../../lib/racePeakPlans.js";
+import { copenhagenDate } from "./lib/motorTestportReport.mjs";
+import { assertPrivateOutDir, prodDb } from "./motorTestport.mjs";
+import { dateStringToOrdinal, loadPeakPlans, loadStageDayOrdinals, resolvePeakTrainingQualities } from "../../lib/racePeakPlans.js";
 
 const IN_CHUNK = 200;
 
@@ -34,8 +39,9 @@ export function parseArgs(argv) {
   const out = get("out");
   if (!fromDir) throw new Error("--from-dir=<mappe med <race_id>/cache.json> kraeves");
   if (!out) throw new Error("--out=<fil.json> kraeves (under balance-internals/)");
-  if (!/balance-internals/.test(out.replace(/\\/g, "/"))) throw new Error("--out skal ligge under balance-internals/ (hard rule 17)");
-  return { fromDir, out, season: Number(get("season") ?? 5) };
+  // Hard rule 17: et af stiens mappe-segmenter skal hedde balance-internals (samme vagt som testporten).
+  assertPrivateOutDir(path.dirname(path.resolve(out)));
+  return { fromDir, out };
 }
 
 /** Loeb og ryttere i eksporten (race_id -> {riders:[{rider_id, team_id}]}). Ren. */
@@ -82,7 +88,8 @@ export function peakPlanDiagnostics({ plans, seasons, raceSeason }) {
   for (const p of plans) {
     const n = String(num(p.season_id));
     out.perSeason[n] = (out.perSeason[n] ?? 0) + 1;
-    if (s5 && p.season_id === s5.id && s5.start_date && p.created_at && p.created_at.slice(0, 10) < s5.start_date) out.s5PlansCreatedBeforeS5Start += 1;
+    // created_at er UTC; sammenlign paa den danske dato (start_date er en dansk kalenderdag).
+    if (s5 && p.season_id === s5.id && s5.start_date && p.created_at && copenhagenDate(new Date(p.created_at)) < s5.start_date) out.s5PlansCreatedBeforeS5Start += 1;
     if (!p.target_race_id) out.targetMissing += 1;
     else if (raceSeason.has(p.target_race_id) && raceSeason.get(p.target_race_id) !== p.season_id) out.targetInOtherSeason += 1;
     if (s4 && p.season_id === s4.id) {
@@ -114,6 +121,9 @@ export async function main(argv = process.argv.slice(2)) {
   for (const raceId of races.keys()) stageDays[raceId] = Object.fromEntries(await loadStageDayOrdinals({ supabase: db, raceId }));
 
   // Formtoppe pr. saeson med spillets egen traeningskvalitet (resolvePeakTrainingQualities muterer vinduerne).
+  // Kvaliteten regnes i dag: et vindue der starter efter i dag har en ufaerdig optakt (nedre graense).
+  const todayOrdinal = dateStringToOrdinal(copenhagenDate());
+  const leadup = { windows: 0, leadupIncomplete: 0, todayOrdinal };
   const peaksBySeason = {};
   const bySeason = new Map();
   for (const [raceId, r] of races) {
@@ -126,6 +136,7 @@ export async function main(argv = process.argv.slice(2)) {
     const entrants = [...ridersById.values()];
     const plans = await loadPeakPlans({ supabase: db, seasonId: sid, riderIds: entrants.map((e) => e.rider_id) });
     await resolvePeakTrainingQualities({ supabase: db, entrants, peakPlansByRider: plans });
+    for (const ws of plans.values()) for (const w of ws) { leadup.windows += 1; if (w.start > todayOrdinal) leadup.leadupIncomplete += 1; }
     peaksBySeason[sid] = Object.fromEntries([...plans].map(([rid, ws]) => [rid, ws.map((w) => ({ start: w.start, end: w.end, targetRaceId: w.targetRaceId ?? null, trainingQuality: w.trainingQuality ?? null }))]));
   }
 
@@ -144,12 +155,14 @@ export async function main(argv = process.argv.slice(2)) {
     conditions,
     stageDays,
     peaksBySeason,
+    leadup,
     diagnostics,
   };
   mkdirSync(path.dirname(path.resolve(opts.out)), { recursive: true });
   writeFileSync(opts.out, JSON.stringify(result));
   const peakRiders = Object.values(peaksBySeason).reduce((n, m) => n + Object.keys(m).length, 0);
   console.log(`formtest-data: ${races.size} loeb, ${Object.keys(conditions).length} ryttere med form, ${peakRiders} ryttere med formtop -> ${opts.out}`);
+  console.log(`formtoppe: ${leadup.windows} vinduer, ${leadup.leadupIncomplete} med ufaerdig optakt (traeningskvaliteten er en nedre graense for dem)`);
   console.log(`#6158-tjek: ${JSON.stringify(diagnostics)}`);
   return result;
 }

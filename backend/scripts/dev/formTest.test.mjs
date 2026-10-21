@@ -61,5 +61,8 @@ test("#6818 begge scripts skriver kun under balance-internals (hard rule 17)", (
   assert.throws(() => parseDataArgs(["--from-dir=x", "--out=C:/tmp/f.json"]), /balance-internals/);
   assert.equal(parseDataArgs(["--from-dir=x", "--out=C:\\Dev\\CyclingZone\\balance-internals\\f.json"]).out.endsWith("f.json"), true);
   assert.throws(() => parseCacheArgs(["--from-dir=x", "--form-data=y", "--out-dir=C:/tmp/z"]), /balance-internals/);
+  // Review #7021: et navn der blot INDEHOLDER ordet er ikke gitignoreret og afvises.
+  assert.throws(() => parseDataArgs(["--from-dir=x", "--out=balance-internals.json"]), /balance-internals/);
+  assert.throws(() => parseCacheArgs(["--from-dir=x", "--form-data=y", "--out-dir=tmp/balance-internals-copy/races"]), /balance-internals/);
   assert.throws(() => parseCacheArgs(["--from-dir=x", "--form-data=y", "--out-dir=balance-internals/z", "--peaks=maybe"]), /--peaks/);
 });

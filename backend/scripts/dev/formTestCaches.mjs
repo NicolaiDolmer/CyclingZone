@@ -4,19 +4,22 @@
 //
 //   node backend/scripts/dev/formTestCaches.mjs --from-dir=<eksport>/races --form-data=<form-data.json> --out-dir=<ny eksport>/races [--peaks=on|off|tq1]
 //
-//   --peaks=on   form + formtoppe med spillets traeningskvalitet (default)
+//   --peaks=on   form + formtoppe med spillets traeningskvalitet regnet paa data-dagen (default;
+//                for kommende loeb en NEDRE graense, fordi optakten ikke er koert endnu)
 //   --peaks=off  kun formen (kontrol: isolerer formtoppenes effekt)
 //   --peaks=tq1  form + formtoppe med fuld traeningskvalitet (oevre graense: alle toppe forberedt perfekt)
 //
 // Formtoppe laegges kun paa fra loebets EGEN saeson (som raceRunner.attachPeakContext:
 // rider_peak_plans.season_id = loebets saeson), og etapedagen (peakDay) fra
 // race_stage_schedule. Offline, ingen prod. Output er private maalinger: kun under
-// balance-internals/ (hard rule 17).
+// balance-internals/ (hard rule 17). Koer motorTestport --from-dir paa de nye caches
+// UDEN --routes-from/--synthetic-field: de erstatter profiler/startliste og fjerner peakDay/form.
 //
 // Refs #6818 #6156 #6158
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { assertPrivateOutDir } from "./motorTestport.mjs";
 
 export const PEAK_MODES = ["on", "off", "tq1"];
 
@@ -25,7 +28,7 @@ export function parseArgs(argv) {
   const opts = { fromDir: get("from-dir"), formData: get("form-data"), outDir: get("out-dir"), peaks: get("peaks") ?? "on" };
   if (!opts.fromDir || !opts.formData || !opts.outDir) throw new Error("--from-dir, --form-data og --out-dir kraeves");
   if (!PEAK_MODES.includes(opts.peaks)) throw new Error(`--peaks skal vaere ${PEAK_MODES.join(", ")}`);
-  if (!/balance-internals/.test(opts.outDir.replace(/\\/g, "/"))) throw new Error("--out-dir skal ligge under balance-internals/ (hard rule 17)");
+  assertPrivateOutDir(opts.outDir); // hard rule 17: et mappe-segment skal hedde balance-internals
   return opts;
 }
 
