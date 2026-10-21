@@ -1,5 +1,48 @@
 export const PATCHES = [
   {
+    "version": "7.373",
+    "date": "2026-10-21",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "See the weather before the stage",
+          "body": "The stage page now shows the day's weather next to terrain and finish: dry, rain or wind. After the stage, the race story says when the weather played a part. Help explains who it hits."
+        },
+        "da": {
+          "title": "Se vejret før etapen",
+          "body": "Etapesiden viser nu dagens vejr ved terræn og afslutning: tørt, regn eller vind. Efter etapen fortæller løbshistorien, når vejret spillede ind. Hjælp forklarer, hvem det rammer."
+        },
+        "refs": [
+          6993,
+          6999
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Every race gets its own character in season 5",
+          "body": "Stage races now have a type, like a sprinters' race or a climbers' race, and many have a signature climb or sector. The five monuments get a fixed route. Help lists these races and their types."
+        },
+        "da": {
+          "title": "Hvert løb får sin egen karakter i sæson 5",
+          "body": "Etapeløb har nu en type, fx sprinterløb eller klatreløb, og mange har en signatur-stigning eller -sektor. De fem monumenter får en fast rute. Hjælp viser løbene og deres type."
+        },
+        "refs": [
+          6857,
+          6930,
+          6995
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.372",
     "date": "2026-10-20",
     "changes": [
