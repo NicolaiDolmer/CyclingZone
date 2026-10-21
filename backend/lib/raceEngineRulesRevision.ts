@@ -270,7 +270,29 @@ export function isKnownRulesRevision(value: unknown): value is RaceRulesRevision
 export type RulesRevisionRace = {
   id?: string | number | null;
   stages_completed?: number | string | null;
+  /** #6818: loebets saeson (seasons.number); kun laest naar den aktuelle revision er s5_profiles_v2. */
+  season_number?: number | string | null;
 };
+
+/**
+ * #6818 (ejer 21/10: "Form skal testes og maa kun gaa live i saeson 5"): s5_profiles_v2
+ * (formtoppe i v4 + #6748) bindes KUN til loeb i saeson 5 og senere, uanset hvornaar
+ * taend-deployet sker. Et loeb fra en tidligere saeson - eller med ukendt saeson - bindes
+ * til s5_profiles_v1 (fail-closed: aldrig formtoppe paa usikkert grundlag).
+ */
+export const S5_PROFILES_V2_FIRST_SEASON = 5;
+
+/** #6818: skal kaldstedet slaa loebets saeson op, foer det binder til currentRevision? */
+export function rulesRevisionNeedsSeason(currentRevision: unknown): boolean {
+  return S5_PROFILES_V2_LINEAGE.has(currentRevision);
+}
+
+/** #6818: den revision et ikke-startet loeb i `seasonNumber` maa bindes til. */
+export function rulesRevisionForSeason(currentRevision: unknown, seasonNumber: unknown): unknown {
+  if (!rulesRevisionNeedsSeason(currentRevision)) return currentRevision;
+  const n = typeof seasonNumber === "string" && seasonNumber.trim() !== "" ? Number(seasonNumber) : seasonNumber;
+  return typeof n === "number" && Number.isInteger(n) && n >= S5_PROFILES_V2_FIRST_SEASON ? currentRevision : "s5_profiles_v1";
+}
 
 /**
  * Har loebet afviklet mindst én etape? Et ugyldigt/manglende tal behandles som
@@ -319,7 +341,8 @@ export function resolveRaceRulesRevision(input: {
       currentRevision,
     );
   }
-  return currentRevision;
+  // #6818: s5_profiles_v2 kun i saeson 5+; et tidligere/ukendt saesons loeb faar s5_profiles_v1.
+  return rulesRevisionForSeason(currentRevision, race?.season_number) as RaceRulesRevision;
 }
 
 /**
@@ -340,7 +363,7 @@ export function surfaceRulesRevision(input: {
     return isKnownRulesRevision(storedRevision) ? storedRevision : LEGACY_RULES_REVISION;
   }
   if (raceHasStarted(race) || !isKnownRulesRevision(currentRevision)) return LEGACY_RULES_REVISION;
-  return currentRevision;
+  return rulesRevisionForSeason(currentRevision, race?.season_number) as RaceRulesRevision;
 }
 
 /** Postgres/PostgREST-fejl for en kolonne der ikke findes (migrationen er ikke applied endnu). */

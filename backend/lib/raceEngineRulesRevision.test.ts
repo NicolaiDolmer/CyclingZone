@@ -22,10 +22,13 @@ import {
   usesSharedGroupTime,
   raceHasStarted,
   resolveRaceRulesRevision,
+  rulesRevisionForSeason,
+  S5_PROFILES_V2_FIRST_SEASON,
 } from "./raceEngineRulesRevision.ts";
 import { bindRaceRulesRevision } from "./raceRunner.js";
 
-const notStarted = { id: "race-a", stages_completed: 0 };
+// #6818: et nyt loeb i den kommende saeson (S5); s5_profiles_v2 bindes kun til saeson 5+.
+const notStarted = { id: "race-a", stages_completed: 0, season_number: 5 };
 const started = { id: "race-a", stages_completed: 2 };
 
 test("a new race is bound to the current revision on its first stage claim", () => {
@@ -113,13 +116,30 @@ test("only a missing-column error degrades to legacy", () => {
 
 // ── bindRaceRulesRevision: IO-kanten mod en minimal races-fake ────────────────
 
-type RaceRow = { engine_rules_revision?: string | null; stages_completed: number };
+type RaceRow = { engine_rules_revision?: string | null; stages_completed: number; season_id?: string | null };
 
-function fakeSupabase(row: RaceRow | null, opts: { missingColumn?: boolean; onUpdate?: (row: RaceRow) => void } = {}) {
+function fakeSupabase(row: RaceRow | null, opts: { missingColumn?: boolean; onUpdate?: (row: RaceRow) => void; seasons?: Record<string, number>; seasonError?: boolean } = {}) {
   const writes: Array<Record<string, unknown>> = [];
+  const seasonReads: unknown[] = [];
   const client = {
     writes,
+    seasonReads,
     from(table: string) {
+      if (table === "seasons") {
+        // #6818: saesonopslaget foer en s5_profiles_v2-binding.
+        let id: unknown = null;
+        const seasons = {
+          select() { return seasons; },
+          eq(_col: string, val: unknown) { id = val; return seasons; },
+          maybeSingle() {
+            seasonReads.push(id);
+            if (opts.seasonError) return Promise.resolve({ data: null, error: { message: "timeout" } });
+            const number = opts.seasons?.[String(id)];
+            return Promise.resolve({ data: number === undefined ? null : { number }, error: null });
+          },
+        };
+        return seasons;
+      }
       assert.equal(table, "races");
       const filters: Array<[string, string, unknown]> = [];
       let patch: Record<string, unknown> | null = null;
@@ -392,14 +412,67 @@ test("#6452: official_times_v3 keeps the full v3 lineage, official times and the
   assert.equal(usesSharedGroupTime(revision), true);
 });
 
-test("#6818 bind: a race with engine_rules_revision = null binds to s5_profiles_v2 on its first stage", async () => {
-  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0 };
-  const supabase = fakeSupabase(row);
+test("#6818 bind: an S5 race with engine_rules_revision = null binds to s5_profiles_v2 on its first stage", async () => {
+  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0, season_id: "s5" };
+  const supabase = fakeSupabase(row, { seasons: { s5: 5 } });
   // Default currentRevision: exactly what raceRunner uses in production.
   const revision = await bindRaceRulesRevision({ supabase, race: { id: "new" }, firstStageClaim: true });
   assert.equal(revision, "s5_profiles_v2");
   assert.deepEqual(supabase.writes, [{ engine_rules_revision: "s5_profiles_v2" }]);
   assert.equal(row.engine_rules_revision, "s5_profiles_v2");
+});
+
+// ── #6818 (ejer 21/10): formtoppe kun i S5 ─────────────────────────────────────
+// "Form skal testes og maa kun gaa live i saeson 5 som aftalt": et S4-loeb der
+// starter efter taend-deployet maa aldrig bindes til s5_profiles_v2.
+
+test("#6818 bind: a not-yet-started S4 race binds to s5_profiles_v1, never v2, even after the taend", async () => {
+  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0, season_id: "s4" };
+  const supabase = fakeSupabase(row, { seasons: { s4: 4 } });
+  const revision = await bindRaceRulesRevision({ supabase, race: { id: "late-s4" }, firstStageClaim: true });
+  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v2");
+  assert.equal(revision, "s5_profiles_v1");
+  assert.deepEqual(supabase.writes, [{ engine_rules_revision: "s5_profiles_v1" }]);
+  assert.equal(isS5ProfilesV2OrLater(revision), false);
+});
+
+test("#6818 bind: unknown season (no season_id or no seasons row) fails closed to s5_profiles_v1", async () => {
+  for (const [row, seasons] of [
+    [{ engine_rules_revision: null, stages_completed: 0, season_id: null }, {}],
+    [{ engine_rules_revision: null, stages_completed: 0, season_id: "gone" }, {}],
+  ] as Array<[RaceRow, Record<string, number>]>) {
+    const supabase = fakeSupabase(row, { seasons });
+    const revision = await bindRaceRulesRevision({ supabase, race: { id: "x" }, firstStageClaim: true });
+    assert.equal(revision, "s5_profiles_v1");
+  }
+});
+
+test("#6818 bind: a failed season read throws and writes nothing (never a permanent v1 binding by accident)", async () => {
+  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0, season_id: "s5" };
+  const supabase = fakeSupabase(row, { seasonError: true });
+  await assert.rejects(bindRaceRulesRevision({ supabase, race: { id: "new" }, firstStageClaim: true }), /saesonen kunne ikke laeses/);
+  assert.equal(supabase.writes.length, 0);
+  assert.equal(row.engine_rules_revision, null);
+});
+
+test("#6818 bind: the season is only read when binding to s5_profiles_v2 (older revisions and bound races: same DB calls as before)", async () => {
+  const fresh = fakeSupabase({ engine_rules_revision: null, stages_completed: 0, season_id: "s4" }, { seasons: { s4: 4 } });
+  assert.equal(await bindRaceRulesRevision({ supabase: fresh, race: { id: "r" }, firstStageClaim: true, currentRevision: "s5_profiles_v1" }), "s5_profiles_v1");
+  assert.equal(fresh.seasonReads.length, 0);
+  const bound = fakeSupabase({ engine_rules_revision: "s5_profiles_v2", stages_completed: 2, season_id: "s5" }, { seasons: { s5: 5 } });
+  assert.equal(await bindRaceRulesRevision({ supabase: bound, race: { id: "r" }, firstStageClaim: false }), "s5_profiles_v2");
+  assert.equal(bound.seasonReads.length, 0);
+});
+
+test("#6818 rulesRevisionForSeason: v2 only for season >= 5; every other revision passes through", () => {
+  assert.equal(S5_PROFILES_V2_FIRST_SEASON, 5);
+  for (const season of [5, 6, "5"]) assert.equal(rulesRevisionForSeason("s5_profiles_v2", season), "s5_profiles_v2");
+  for (const season of [4, 1, 0, null, undefined, "", "abc", 4.5, Number.NaN]) assert.equal(rulesRevisionForSeason("s5_profiles_v2", season), "s5_profiles_v1");
+  for (const revision of ["s5_profiles_v1", "official_times_v5", "legacy"]) assert.equal(rulesRevisionForSeason(revision, 4), revision);
+  assert.equal(resolveRaceRulesRevision({ race: { id: "a", stages_completed: 0, season_number: 4 }, firstStageClaim: true, storedRevision: null, currentRevision: "s5_profiles_v2" }), "s5_profiles_v1");
+  assert.equal(resolveRaceRulesRevision({ race: { id: "a", stages_completed: 0, season_number: 5 }, firstStageClaim: true, storedRevision: null, currentRevision: "s5_profiles_v2" }), "s5_profiles_v2");
+  // En allerede gemt v2 genbruges uanset saeson (ingen omskrivning af et bundet loeb).
+  assert.equal(resolveRaceRulesRevision({ race: { id: "a", stages_completed: 2, season_number: 4 }, firstStageClaim: false, storedRevision: "s5_profiles_v2", currentRevision: "s5_profiles_v2" }), "s5_profiles_v2");
 });
 
 test("#6818 bind: a race already bound to s5_profiles_v1 stays on S5 v1 and nothing is written", async () => {
@@ -688,8 +761,8 @@ test("#6156: isS5ProfilesV2OrLater is true for exactly s5_profiles_v2", () => {
 });
 
 test("#6818: a new race binds to s5_profiles_v2; a stored s5_profiles_v1 keeps S5 v1", async () => {
-  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0 };
-  assert.equal(await bindRaceRulesRevision({ supabase: fakeSupabase(row), race: { id: "new" }, firstStageClaim: true }), "s5_profiles_v2");
+  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0, season_id: "s5" };
+  assert.equal(await bindRaceRulesRevision({ supabase: fakeSupabase(row, { seasons: { s5: 5 } }), race: { id: "new" }, firstStageClaim: true }), "s5_profiles_v2");
   assert.equal(resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "s5_profiles_v1", currentRevision: CURRENT_RACE_RULES_REVISION }), "s5_profiles_v1");
   assert.equal(surfaceRulesRevision({ race: notStarted, storedRevision: null }), "s5_profiles_v2");
 });

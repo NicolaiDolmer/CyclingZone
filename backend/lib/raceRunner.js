@@ -71,6 +71,7 @@ import {
   resolveRaceRulesRevision,
   isOrdersGcRulesRevision,
   isS5ProfilesV2OrLater,
+  rulesRevisionNeedsSeason,
 } from "./raceEngineRulesRevision.ts";
 // #2410 (event-log S1): deterministisk etape-tidslinje-generator — REN funktion,
 // samme build-trin som moments/passages (data er i memory). Bag flag
@@ -314,6 +315,18 @@ function v4RulesRevisionArg(rulesRevision) {
 }
 
 /**
+ * #6818: loebets saeson (seasons.number) til revisionsbindingen. Intet season_id => null
+ * (bindingen falder fail-closed tilbage til s5_profiles_v1). En laesefejl kaster, saa
+ * etapen proeves igen: et S5-loeb maa aldrig bindes permanent til v1 pga. en forbigaaende fejl.
+ */
+async function readRaceSeasonNumber(supabase, seasonId, raceId) {
+  if (seasonId === null || seasonId === undefined) return null;
+  const { data, error } = await supabase.from("seasons").select("number").eq("id", seasonId).maybeSingle();
+  if (error) throw new Error(`race ${raceId}: saesonen kunne ikke laeses til regel-revisionen (${error.message})`);
+  return data?.number ?? null;
+}
+
+/**
  * #5955 (#5984 Task 2): bind/læs løbets taktiske regel-revision.
  *
  * Kaldes KUN når v4-motoren kører etapen (v3 har ingen regel-revisioner, og
@@ -328,6 +341,7 @@ function v4RulesRevisionArg(rulesRevision) {
  *  - Ellers (startet løb uden gemt revision) → legacy, intet skrives.
  *  - Kolonnen findes ikke (migrationen er ikke applied) → legacy, intet skrives.
  *  - dryRun skriver aldrig; et ikke-startet løb previewes på den aktuelle revision.
+ *  - #6818: s5_profiles_v2 bindes kun til et løb i sæson 5+; ellers s5_profiles_v1.
  *
  * @returns {Promise<import("./raceEngineRulesRevision.ts").RaceRulesRevision>}
  */
@@ -336,17 +350,21 @@ export async function bindRaceRulesRevision({ supabase, race, firstStageClaim, d
     .from("races")
     // schema-columns-ok: engine_rules_revision tilfoejes af database/2026-10-01-race-engine-rules-revision.sql;
     // foer den er applied, falder laesningen bevidst tilbage til legacy (isMissingRulesRevisionColumnError).
-    .select("engine_rules_revision, stages_completed")
+    .select(needsSeason ? "engine_rules_revision, stages_completed, season_id" : "engine_rules_revision, stages_completed")
     .eq("id", race.id)
     .maybeSingle();
+  // #6818 (ejer 21/10): s5_profiles_v2 bindes kun til saeson 5+. Saesonen laeses KUN
+  // naar den aktuelle revision kraever det og loebet kan bindes nu (ellers samme DB-kald som foer).
+  const needsSeason = rulesRevisionNeedsSeason(currentRevision);
   const { data: row, error } = await readRow();
   if (error) {
     if (isMissingRulesRevisionColumnError(error)) return LEGACY_RULES_REVISION;
     throw new Error(`race ${race.id}: engine_rules_revision kunne ikke laeses (${error.message})`);
   }
-  const raceRow = { id: race.id, stages_completed: row?.stages_completed ?? race.stages_completed ?? null };
+  const raceRow = { id: race.id, stages_completed: row?.stages_completed ?? race.stages_completed ?? null, season_number: null };
   const stored = row?.engine_rules_revision ?? null;
   const canBind = firstStageClaim === true && stored === null && !raceHasStarted(raceRow);
+  if (canBind && needsSeason) raceRow.season_number = await readRaceSeasonNumber(supabase, row?.season_id ?? race.season_id ?? null, race.id);
   if (!canBind || dryRun) {
     return resolveRaceRulesRevision({ race: raceRow, firstStageClaim: canBind, storedRevision: stored, currentRevision });
   }
@@ -367,7 +385,7 @@ export async function bindRaceRulesRevision({ supabase, race, firstStageClaim, d
   // Vandt en anden claim, eller er løbet startet imens, er det DEN gemte værdi
   // (eller legacy) der gælder — aldrig den vi selv ville skrive.
   return resolveRaceRulesRevision({
-    race: { id: race.id, stages_completed: after?.stages_completed ?? null },
+    race: { id: race.id, stages_completed: after?.stages_completed ?? null, season_number: raceRow.season_number },
     firstStageClaim: false,
     storedRevision: after?.engine_rules_revision ?? null,
     currentRevision,
