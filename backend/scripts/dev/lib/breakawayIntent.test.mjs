@@ -6,7 +6,7 @@ import {
   draws, raceGroupOf, ratesFor, ratesSignature, validateRates,
 } from "./breakawayIntent.mjs";
 
-const rates = (rows, extra = {}) => ({ format: RATES_FORMAT, seasonId: "s", minCellTeamStages: 40, rows, ...extra });
+const rates = (rows, extra = {}) => ({ format: RATES_FORMAT, seasonId: "s", minCellTeamStages: 7, rows, ...extra });
 const cell = (division, group, o) => ({ division, group, humanTeamRaces: 10, humanTeamRoadStages: 100, hunters: 0, freeRoles: 0, tryBreakRiders: 0, ...o });
 
 /** Et loeb med to menneskehold (h1, h2) og et AI-hold (a1), hver med kaptajn, sprint-kaptajn og tre hjaelpere. */
@@ -76,7 +76,7 @@ test("#6804 P0 aggregateIntentRates: kun menneskehold taeller, pr. division og g
 
 test("#6804 P0 ratesFor: lille celle falder tilbage til gruppens samlede sats", () => {
   const r = rates([
-    cell("1", "gt", { humanTeamRoadStages: 39, hunters: 50 }),
+    cell("1", "gt", { humanTeamRoadStages: 6, hunters: 50 }),
     cell("all", "gt", { hunters: 5, tryBreakRiders: 50 }),
     cell("3", "stage_race", { hunters: 2 }),
   ]);
