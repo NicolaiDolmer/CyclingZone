@@ -26,21 +26,31 @@ test("#6984: hentet udbrud koster et tillæg; et udbrud der kommer hjem gør ikk
   assert.equal(b.load, CONDITION_V2_CONFIG.profileLoad.flat * (1 + CONDITION_V2_CONFIG.frontWork * 0.6));
 });
 
-test("#6984: stageCaughtBreakaway finder front-ryttere der ikke er i front ved sidste snapshot", () => {
-  const out = { groupSnapshots: [
-    { km: 50, groups: [{ kind: "breakaway", rider_ids: ["a", "b"] }, { kind: "peloton", rider_ids: ["c"] }] },
-    { km: 150, groups: [{ kind: "breakaway", rider_ids: ["b"] }, { kind: "peloton", rider_ids: ["a", "c"] }] },
-    { km: 180, groups: [{ kind: "solo", rider_ids: ["b"] }, { kind: "peloton", rider_ids: ["a", "c"] }] },
-  ] };
-  assert.deepEqual([...stageCaughtBreakaway(out, "flat")], ["a"]);
-  // En rytter der kun var i en jagt-/sologruppe (feltsplit) og blev samlet op, er ikke et hentet udbrud.
-  const split = { groupSnapshots: [
-    { km: 60, groups: [{ kind: "chase", rider_ids: ["x"] }, { kind: "solo", rider_ids: ["y"] }, { kind: "peloton", rider_ids: ["z"] }] },
-    { km: 180, groups: [{ kind: "peloton", rider_ids: ["x", "y", "z"] }] },
-  ] };
-  assert.equal(stageCaughtBreakaway(split, "flat").size, 0);
+test("#6984: stageCaughtBreakaway følger motorens deltagelseshistorik (ikke sidste snapshot)", () => {
+  const out = {
+    results: [{ rider_id: "a" }, { rider_id: "b" }, { rider_id: "c" }, { rider_id: "d" }, { rider_id: "p" }],
+    timeline: { events: [
+      { km: 0, type: "stage_start", params: { distance_km: 180 } },
+      { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["a", "b"] } },
+      { km: 150, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["a", "b"], chase_group_id: "peloton-0", chase_group_kind: "peloton" } },
+      { km: 180, type: "finish", params: { top: [{ rider_id: "p", rank: 1 }] } },
+    ] },
+    // Sidste snapshot efter finalen: alle i "peloton"-placeringsgrupper; må ikke afgøre noget.
+    groupSnapshots: [{ km: 180, groups: [{ kind: "peloton", rider_ids: ["a", "b", "c", "d", "p"] }] }],
+  };
+  assert.deepEqual([...stageCaughtBreakaway(out, "flat")].sort(), ["a", "b"]);
+  const home = {
+    results: [{ rider_id: "c" }, { rider_id: "d" }, { rider_id: "p" }],
+    timeline: { events: [
+      { km: 10, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["c", "d"] } },
+      { km: 180, type: "breakaway_survived", params: { group_id: "breakaway-0", rider_ids: ["c", "d"], gap_seconds: 20 } },
+      { km: 180, type: "finish", params: { top: [{ rider_id: "c", rank: 1 }] } },
+    ] },
+    groupSnapshots: [{ km: 180, groups: [{ kind: "peloton", rider_ids: ["c", "d"] }, { kind: "peloton", rider_ids: ["p"] }] }],
+  };
+  assert.equal(stageCaughtBreakaway(home, "flat").size, 0, "et udbrud der holdt hjem er ikke hentet, selv i peloton-placeringsgrupper");
   assert.equal(stageCaughtBreakaway(out, "itt").size, 0);
-  assert.equal(stageCaughtBreakaway(null, "flat").size, 0);
+  assert.equal(stageCaughtBreakaway({ groupSnapshots: out.groupSnapshots }, "flat").size, 0, "uden tidslinje: ingen markering");
   const work = stageConditionWork({ rulesRevision: "s5_profiles_v1", stageNumber: 2, profileType: "flat", v4Result: { v4Output: out, efforts: new Map() } });
   assert.ok(work.caught.has("a"));
 });

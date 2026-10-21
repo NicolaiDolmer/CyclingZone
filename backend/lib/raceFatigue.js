@@ -15,6 +15,7 @@ import { isS5ProfilesV1OrLater } from "./raceEngineRulesRevision.ts";
 import { stageLoadV2, enteringFatigueV2 } from "./conditionModelV2.js";
 import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
 
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
@@ -302,23 +303,20 @@ export function stageConditionWork({ rulesRevision, stageNumber, profileType, v4
 }
 
 /**
- * #6984 REN: ryttere der lå i et UDBRUD (gruppe-kind "breakaway") i et af etapens
- * gruppe-snapshots, men IKKE i front i det sidste (udbruddet blev hentet). En rytter
- * der kun var i en solo- eller jagtgruppe (feltsplit, sent angreb, styrt) er ikke et
- * hentet udbrud og får intet tillæg; frontarbejdet tæller stadig via stageWorkExposure.
- * Enkeltstarter og manglende snapshots giver et tomt sæt.
+ * #6984 REN: morgenudbruddets ryttere, som motoren selv registrerede som hentet.
+ * Kilden er deltagelseshistorikken fra tidslinjens events (deriveParticipationHistory),
+ * den samme som race_results.breakaway_caught. Gruppe-snapshots bruges IKKE: det sidste
+ * tages efter finalen, hvor front-gruppen samles om til placeringsgrupper, så et udbrud
+ * der holdt hjem ville ligne et hentet. Ingen tidslinje = ingen markering (konservativt);
+ * frontarbejdet tæller stadig via stageWorkExposure.
  * @returns {Set<string>}
  */
 export function stageCaughtBreakaway(v4Output, profileType = null) {
   const caught = new Set();
-  const snaps = Array.isArray(v4Output?.groupSnapshots) ? v4Output.groupSnapshots : [];
-  if (!snaps.length || TIME_TRIAL_PROFILES.has(profileType)) return caught;
-  const sorted = snaps.slice().sort((a, b) => Number(a.km) - Number(b.km));
-  const idsOf = (snap, pred) => new Set((snap.groups ?? []).filter((g) => pred(g.kind)).flatMap((g) => (g.rider_ids ?? []).map(String)));
-  const finalFront = idsOf(sorted[sorted.length - 1], (kind) => FRONT_GROUP_KINDS.has(kind));
-  for (const snap of sorted.slice(0, -1)) {
-    for (const id of idsOf(snap, (kind) => kind === "breakaway")) if (!finalFront.has(id)) caught.add(id);
-  }
+  const events = v4Output?.timeline?.events;
+  if (!Array.isArray(events) || TIME_TRIAL_PROFILES.has(profileType)) return caught;
+  const history = deriveParticipationHistory(events, (v4Output?.results ?? []).map((r) => r.rider_id));
+  for (const id of history.morningRiderIds) if (history.riders.get(id)?.caught === true) caught.add(String(id));
   return caught;
 }
 
