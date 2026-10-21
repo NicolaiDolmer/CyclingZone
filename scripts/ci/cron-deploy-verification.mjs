@@ -124,7 +124,11 @@ export function deploymentImpact(files, { localChangedPaths, affected = affected
   }
   const slugs = affected(files);
   const paths = files.flatMap(file => [file.filename, ...(file.status === 'renamed' ? [file.previous_filename] : [])]);
-  return { slugs, needRailway: slugs.length > 0 || paths.some(path => path.startsWith('backend/')), empty: false };
+  // Railway bygger kun ved ændringer under backend/ (root directory /backend).
+  // En database-/script-only merge (migration via auto-migrate) får intet
+  // Railway-deploy, så verify må ikke vente på et (20/10: 50 min timeout, #6994;
+  // ejer-go 21/10). Cron-slugs bevises stadig af cron-beviset efter merge.
+  return { slugs, needRailway: paths.some(path => path.startsWith('backend/')), empty: false };
 }
 
 // Railway keeps the previous process alive for drainingSeconds after the new

@@ -350,7 +350,9 @@ test('#6318 review: an empty commit has no impact only when the checkout confirm
   assert.throws(() => deploymentImpact([]), /could not be confirmed/);
   const impact = deploymentImpact([{ filename: 'backend/a.js', status: 'modified' }], { affected: () => [] });
   assert.deepEqual(impact, { slugs: [], needRailway: true, empty: false });
-  assert.equal(deploymentImpact([{ filename: 'database/x.sql', status: 'added' }], { affected: () => ['short'] }).needRailway, true);
+  // #6994: en migration-only merge påvirker crons (slugs), men Railway bygger kun backend/.
+  assert.deepEqual(deploymentImpact([{ filename: 'database/x.sql', status: 'added' }], { affected: () => ['short'] }), { slugs: ['short'], needRailway: false, empty: false });
+  assert.equal(deploymentImpact([{ filename: 'scripts/ops/x.mjs', status: 'added' }], { affected: () => [] }).needRailway, false);
 });
 
 test('#6318 review: the top-level failure reason is logged without secrets or response bodies', () => {
