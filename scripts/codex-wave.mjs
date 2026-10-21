@@ -275,6 +275,9 @@ function productionDeps(root, worktreesRoot) {
       if (fs.existsSync(worktree)) throw Error(`Existing worktree requires owner recovery: ${worktree}`);
       const existing = gh('pr', 'list', '--head', t.branch, '--state', 'all', '--json', 'number,state');
       if (existing.length) throw Error(`Existing PR requires owner recovery: ${t.branch}`);
+      // new-worktree.ps1 branches from the cached origin/main; refresh it first,
+      // because investigate tracks cannot fetch themselves (#7027).
+      git(root, 'fetch', 'origin', 'main');
       execFileSync('pwsh', ['-NoProfile', '-File', path.join(root, 'scripts/new-worktree.ps1'), '-Branch', t.branch, '-RepoRoot', root, '-WorktreesRoot', worktreesRoot,
         ...(t.ownNodeModules ? ['-OwnNodeModules'] : [])], { stdio: 'inherit', timeout: 1800000 });
       const scratch = path.join(worktreesRoot, '.wave-scratch', context.wave.waveId, slug);
@@ -282,6 +285,7 @@ function productionDeps(root, worktreesRoot) {
       const base = git(worktree, 'rev-parse', 'HEAD');
       // #7027: investigate tracks run read-only without network, so they read the issue from scratch.
       if (t.kind === 'investigate') {
+        if (base !== git(root, 'rev-parse', 'origin/main')) throw Error(`Investigate worktree for #${t.issue} is not at the fetched origin/main`);
         fs.writeFileSync(path.join(scratch, 'issue.md'), execFileSync('gh', ['issue', 'view', String(t.issue), '--comments', '--repo', REPO],
           { encoding: 'utf8', timeout: 30000 }));
       }
