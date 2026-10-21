@@ -51,10 +51,13 @@ export function executionPlan(options, limit = hostLaneCap()) {
 export const WRITER_GIT_RULE = 'Git metadata under .git is always read-only in this sandbox. Run every git command that writes (fetch, pull, rebase, commit, push) with command-only escalation through automatic approval review; never disable the sandbox, add writable directories or change config. A git write that fails without that escalation is not a blocker: request it and retry once.';
 
 export function childArgs(role, track, schema, output) {
-  const readOnly = role === 'reviewer' || track.kind === 'investigate';
-  const args = ['exec', '-C', track.worktree, ...(readOnly ? ['--sandbox','read-only'] : ['--approve-for-me']),
-    '--json', '--output-schema', schema, '--output-last-message', output];
-  if (!readOnly) args.push('-c', 'sandbox_workspace_write.network_access=true');
+  // Investigate tracks need scratch writes and network for evidence (e.g. a
+  // prod SELECT) but no escalation; validateResult fails them if they leave the
+  // worktree dirty, and .git stays read-only regardless.
+  const sandbox = role === 'reviewer' ? ['--sandbox', 'read-only']
+    : track.kind === 'investigate' ? ['--sandbox', 'workspace-write'] : ['--approve-for-me'];
+  const args = ['exec', '-C', track.worktree, ...sandbox, '--json', '--output-schema', schema, '--output-last-message', output];
+  if (role !== 'reviewer') args.push('-c', 'sandbox_workspace_write.network_access=true');
   const selection = modelSelection(role, track);
   if (selection.model) args.push('--model', selection.model);
   if (selection.effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(selection.effort)}`);
@@ -183,7 +186,7 @@ export async function runAgent(role, track, context) {
     : role === 'reviewer'
     ? `READ-ONLY independent review. Read the brief below, inspect git diff ${track.reviewBase || track.base}...HEAD and tests. Do not trust the worker's summary. Check scope, ownership, requirements, SSOT, test evidence, privacy and regressions. No writes or agents. Approve only if there are no blocking findings.\n${track.brief}`
     : track.kind === 'investigate'
-    ? `${track.brief}\nCodex runtime: read-only sandbox without network. The orchestrator already fetched origin/main into ${track.worktree} and saved the issue with comments in ${path.join(track.scratch, 'issue.md')}; skip git fetch/pull and gh and read that file instead. No writes outside ${track.scratch}, no agents.\n`
+    ? `${track.brief}\nCodex runtime: the orchestrator already fetched origin/main into ${track.worktree} and saved the issue with comments in ${path.join(track.scratch, 'issue.md')}; skip git fetch/pull (.git is read-only). Network is on for read-only evidence (gh, prod SELECT). Write evidence only in ${track.scratch}; leave the worktree unchanged or the track fails. No agents.\n`
     : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${track.brief}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. ${WRITER_GIT_RULE} Return blocked if a required command still fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
   const childKey = `${track.issue}-${label}`;
   const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,

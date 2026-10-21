@@ -304,14 +304,16 @@ test('writer and reviewer invocation preserve selected cwd and distinct sandbox 
   assert.equal(childArgs('worker', t, 'schema', 'out').includes('--dangerously-bypass-approvals-and-sandbox'), false);
 });
 
-test('#7027: only writers get network; read-only roles stay offline', () => {
+test('#7027: writers and investigate tracks get network; reviewers stay offline', () => {
   const t = { worktree: '/fixture', scratch: '/scratch' };
   for (const role of ['worker', 'fixer', 'permission-probe']) {
     assert.ok(childArgs(role, t, 'schema', 'out').includes('sandbox_workspace_write.network_access=true'));
   }
-  for (const args of [childArgs('reviewer', t, 'schema', 'out'), childArgs('worker', { ...t, kind: 'investigate' }, 'schema', 'out')]) {
-    assert.equal(args.includes('sandbox_workspace_write.network_access=true'), false);
-  }
+  const investigate = childArgs('worker', { ...t, kind: 'investigate' }, 'schema', 'out');
+  assert.ok(investigate.includes('sandbox_workspace_write.network_access=true'));
+  assert.equal(investigate[investigate.indexOf('--sandbox') + 1], 'workspace-write');
+  assert.ok(investigate.includes('/scratch'));
+  assert.equal(childArgs('reviewer', t, 'schema', 'out').includes('sandbox_workspace_write.network_access=true'), false);
 });
 
 test('#7027: writers escalate git writes per command and never loosen the sandbox', () => {
