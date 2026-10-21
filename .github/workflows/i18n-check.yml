@@ -60,12 +60,12 @@ jobs:
     # til et *required* check kræver derudover at ejeren tilføjer job-navnet
     # `key-coverage` under Settings > Branches (kan ikke sættes fra repoet).
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -94,12 +94,12 @@ jobs:
     # feature-PR der tilføjer EN-strenge har én kommando til at lukke gælden i
     # stedet for at lade den vokse pr. sprog.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -118,12 +118,12 @@ jobs:
     # (Refs #470, postmortem 2026-05-17). Med useSuspense: false er dette en
     # USER-VISIBLE regression, ikke en advisory.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -140,12 +140,12 @@ jobs:
     # parallelle nav-strukturer drifter ud af sync når kun den ene migreres
     # til i18n (#689, postmortem 2026-05-26).
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -162,12 +162,12 @@ jobs:
     # blev konverteret; KNOWN_TODO-listen er nu tom, så jobbet er promoted til
     # required — en ny uoversat player-facing side blokerer nu PR'en.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -184,12 +184,12 @@ jobs:
     # mens hele batteriet var grønt. KNOWN_TODO-listen er nu tom; legitime
     # undtagelser er dokumenteret separat i EXEMPT_FILES.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -208,12 +208,12 @@ jobs:
     # ARCHETYPE_PROFILES kind:"single" (raceStageProfileGenerator.js) mod
     # rider.json — begge generator-kilder, ikke kun locale-filerne selv.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -237,12 +237,12 @@ jobs:
     # transferExecution.js's failure()-helper og de to issue-getters hvis
     # .code forwardes direkte) og fejler hvis en kode mangler oversættelse.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -266,12 +266,12 @@ jobs:
     # fejler aldrig (stale baseline = info). Stram baselinen med:
     #   node scripts/i18n-check-leaks.mjs --update-baseline
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -291,12 +291,12 @@ jobs:
     # Jobbet er IKKE i scripts/ci-required-checks.json endnu: at goere det
     # blokerende kraever at ejeren tilfoejer navnet under branch protection.
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -320,12 +320,12 @@ jobs:
     # NYE fund. Stram baselinen med:
     #   node scripts/i18n-check-hardcoded-formats.mjs --update-baseline
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -346,12 +346,12 @@ jobs:
     # Tilladt undtagelse: enkeltstående `—` som tom-værdi-glyf (TONE_OF_VOICE
     # §Punktuation).
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 
@@ -387,12 +387,12 @@ jobs:
     # Reglen har bidt: "Founder Supporter" laa live i spillervendt copy i fire
     # dage (.claude/learnings/2026-09-07-founder-supporter-forbudt-term-live-i-4-dage.md).
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
 

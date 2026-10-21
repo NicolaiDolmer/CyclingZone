@@ -41,9 +41,18 @@ test("tredjeparts-action pinnet til SHA passerer", () => {
   assert.deepEqual(found, []);
 });
 
-test("GitHubs egen action paa et tag passerer i en almindelig workflow", () => {
+test("#7029: GitHubs egen action paa et tag flages ogsaa i en almindelig workflow", () => {
   const found = withWorkflows(
     { "a.yml": "on:\n  pull_request:\njobs:\n  x:\n    steps:\n      - uses: actions/checkout@v7\n" },
+    findUnpinnedActions
+  );
+  assert.equal(found.length, 1);
+  assert.equal(found[0].rule, "github-owned");
+});
+
+test("GitHubs egen action pinnet til SHA passerer", () => {
+  const found = withWorkflows(
+    { "a.yml": `on:\n  pull_request:\njobs:\n  x:\n    steps:\n      - uses: actions/checkout@${SHA} # v7\n` },
     findUnpinnedActions
   );
   assert.deepEqual(found, []);
@@ -103,7 +112,9 @@ test("REGRESSION: `permissions: issues: write` er IKKE en trigger", () => {
     },
     findUnpinnedActions
   );
-  assert.deepEqual(found, []);
+  // Flages kun som github-owned (#7029), ALDRIG som secret-baerende trigger.
+  assert.equal(found.length, 1);
+  assert.equal(found[0].rule, "github-owned");
 });
 
 test("on-blokken stopper ved naeste noegle i kolonne 0", () => {
