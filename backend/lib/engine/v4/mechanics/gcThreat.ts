@@ -720,6 +720,39 @@ export function s5ReformationExcludedRiders(
   return out;
 }
 
+/**
+ * #6818 (ejer 21/10, KUN s5_profiles_v2): hvem der ikke maa gaa i morgenudbrud, fordi de
+ * "ligger godt til i klassementet" eller "kan komme til at ligge virkeligt godt":
+ *  - stillingens top `rankAtMost` (ikke paa det syntetiske foerste-etape-klassement), og
+ *  - feltets `rankAtMost` bedste paa klassementsevne blandt de koerende (fast raekkefoelge
+ *    ved lige evne: rider_id), saa graensen aldrig vokser med et svagt klassement, men KUN
+ *    ryttere inden for `potentialMaxGapSeconds` af foereren: en rytter langt nede kan ikke
+ *    laengere komme til at ligge godt (paa foerste etape staar alle lige).
+ * Hoejst 2 x rankAtMost ryttere. Endagsloeb/ingen stilling: ingen. REN.
+ */
+export function s5MorningGcExcludedRiders(
+  gc: GcContext | null,
+  entrants: Readonly<Record<string, Entrant>>,
+  rankAtMost: number,
+  racingRiderIds: ReadonlySet<string>,
+  potentialMaxGapSeconds: number = Infinity,
+): Set<string> {
+  const out = new Set<string>();
+  if (!gc || gc.status !== "standings") return out;
+  const synthetic = isSyntheticFirstStage(gc);
+  const gapOf = new Map(gc.standings.map((s) => [s.rider_id, s.gap_seconds]));
+  if (!synthetic) {
+    for (const s of gc.standings) if (s.rank <= rankAtMost && racingRiderIds.has(s.rider_id)) out.add(s.rider_id);
+  }
+  // Uden en raekke i stillingen (fx ikke klassificeret) regnes rytteren som inden for raekkevidde.
+  const inReach = (id: string) => synthetic || (gapOf.get(id) ?? 0) <= potentialMaxGapSeconds;
+  const byAbility = [...racingRiderIds]
+    .filter((id) => gcAbility(entrants[id]) > 0 && inReach(id))
+    .sort((a, b) => gcAbility(entrants[b]) - gcAbility(entrants[a]) || a.localeCompare(b));
+  for (const id of byAbility.slice(0, rankAtMost)) out.add(id);
+  return out;
+}
+
 /** #5978: rytterens plads paa klassementsevne blandt de koerende (1 = bedst; lige evne deler plads). */
 function fieldGcRank(riderId: string, entrants: Readonly<Record<string, Entrant>>, racingRiderIds?: ReadonlySet<string>): number {
   const own = gcAbility(entrants[riderId]);

@@ -101,6 +101,7 @@ import {
   normalizeGcContext,
   oneDayProtectedRider,
   protectedRiderForTeam,
+  s5MorningGcExcludedRiders,
   s5ReformationExcludedRiders,
   type DangerModel,
   type GcDangerTuning,
@@ -371,6 +372,22 @@ export const S5_REFORMATION_TUNING = Object.freeze({
   afterCatchKm: 5,
 });
 
+/**
+ * #6818 (ejer 21/10: klassementsryttere "slet ikke generelt faar lov til at komme
+ * afsted i udbrud, det er meningen at det skal ske meget sjaeldent"). KUN s5_profiles_v2.
+ *  - excludeGcRankAtMost: stillingens top (fra etape 2 i et etapeloeb).
+ *  - potentialMaxGapSeconds: klassementspotentialet taeller kun inden for dette hul til foereren.
+ * Plus klassementspotentialet: feltets bedste paa klassementsevne (gcThreat.s5MorningGcExcludedRiders);
+ * paa foerste etape (alle lige) kun evnen.
+ * Endagsloeb og loeb uden stilling: intet blokeres.
+ */
+export const S5_MORNING_GC_EXCLUSION = Object.freeze({ excludeGcRankAtMost: 10, potentialMaxGapSeconds: 600 });
+
+/** #6818: de ryttere hvis morgenudbrudsforsoeg blokeres under s5_profiles_v2. Eksporteret for kontrakt-tests. */
+export function s5MorningGcBlockedRiders(ctx: Pick<BreakawayHookContext, "gcContext" | "entrants">, racingRiderIds: readonly string[]): Set<string> {
+  return s5MorningGcExcludedRiders(normalizeGcContext(ctx.gcContext), ctx.entrants, S5_MORNING_GC_EXCLUSION.excludeGcRankAtMost, new Set(racingRiderIds), S5_MORNING_GC_EXCLUSION.potentialMaxGapSeconds);
+}
+
 function withS5Reformation(result: SegmentHookResult, ctx: BreakawayHookContext): SegmentHookResult {
   const current = findBreakawayGroups(result.state.groups).filter((g) => g.origin === "breakaway"); // kun morgen-/reformationsudbrud, aldrig et nedkoerselsangreb
   if (current.length > 0) {
@@ -478,6 +495,10 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
   if (!sourceGroup) return { state, events };
 
   const tryBreakByRider = effectiveTryBreakByRider(ctx.orders);
+  // #6818 (ejer 21/10, KUN s5_profiles_v2): en rytter der ligger godt i klassementet eller
+  // kan komme til det, gaar ikke i morgenudbrud. Forsoeget blokeres (ingen ordre, ingen
+  // spontan chance); rytteren bliver i feltet og kan stadig arbejde imod andres forsoeg.
+  const gcBlocked = ctx.s5ProfilesV2 === true ? s5MorningGcBlockedRiders(ctx, sourceGroup.rider_ids) : null;
   const formationRiders: FormationRider[] = [];
   for (const riderId of sourceGroup.rider_ids) {
     const entrant = ctx.entrants[riderId];
@@ -485,14 +506,15 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     if (!entrant || !riderState || riderState.status !== "racing") continue;
     const strength = computeJoinScore(entrant.abilities, false, 0);
     const factor = riderState.team_cp_factor;
+    const blocked = gcBlocked?.has(riderId) === true;
     formationRiders.push({
       rider_id: riderId,
       team_id: teamIdOf(entrant),
       role: entrant.role,
       effort: entrant.effort,
-      tryBreak: tryBreakByRider.get(riderId),
+      tryBreak: blocked ? false : tryBreakByRider.get(riderId),
       strength,
-      spontaneousChance: joinProbability(strength),
+      spontaneousChance: blocked ? 0 : joinProbability(strength),
       engine: collectiveAbility([riderId], ctx.entrants, CHASE_ENGINE_KEYS),
       freshness: clamp(Number.isFinite(factor) ? (factor as number) : 1, 0, 1),
     });
