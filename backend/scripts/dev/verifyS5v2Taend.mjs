@@ -8,7 +8,7 @@
 //      med spillets egen isRaceFormPeaksEnabled.
 //   3. Intet loeb er bundet til s5_profiles_v2 endnu (foer taend: 0).
 //   4. Info: S5's startdato og hvor mange ikke-startede S4-loeb der er tilbage
-//      (de bindes til s5_profiles_v1 af saesonvaernet, ogsaa efter taend).
+//      (ejer-valg A 21/10: de bindes ogsaa til s5_profiles_v2 efter taend; formtoppe slukket).
 //
 // Klienten kan kun laese (readOnlyDb). Kun ja/nej og antal printes; intet secret.
 // Exit 0 = klar, 1 = ikke klar.
@@ -65,7 +65,7 @@ export async function main() {
   }
   const v = verdict({ migrationApplied: !!mig, formPeaksEnabled, boundToV2 });
   for (const c of v.checks) console.log(`${c.ok ? "OK  " : "FEJL"} ${c.name}`);
-  console.log(`info: migration ${mig?.filename ?? "-"} applied_at ${mig?.applied_at ?? "-"} · S5 start_date ${s5?.start_date ?? "-"} (${s5?.status ?? "-"}) · ikke-startede S4-loeb ${s4NotStarted ?? "-"} (bindes til s5_profiles_v1)`);
+  console.log(`info: migration ${mig?.filename ?? "-"} applied_at ${mig?.applied_at ?? "-"} · S5 start_date ${s5?.start_date ?? "-"} (${s5?.status ?? "-"}) · ikke-startede S4-loeb ${s4NotStarted ?? "-"} (bindes til s5_profiles_v2 efter taend, ejer-valg A)`);
   console.log(v.ready ? "KLAR til taend (kraever stadig ejerens ordrette \"taend\")" : "IKKE KLAR");
   return v;
 }
