@@ -33,6 +33,12 @@ test("#6984: stageCaughtBreakaway finder front-ryttere der ikke er i front ved s
     { km: 180, groups: [{ kind: "solo", rider_ids: ["b"] }, { kind: "peloton", rider_ids: ["a", "c"] }] },
   ] };
   assert.deepEqual([...stageCaughtBreakaway(out, "flat")], ["a"]);
+  // En rytter der kun var i en jagt-/sologruppe (feltsplit) og blev samlet op, er ikke et hentet udbrud.
+  const split = { groupSnapshots: [
+    { km: 60, groups: [{ kind: "chase", rider_ids: ["x"] }, { kind: "solo", rider_ids: ["y"] }, { kind: "peloton", rider_ids: ["z"] }] },
+    { km: 180, groups: [{ kind: "peloton", rider_ids: ["x", "y", "z"] }] },
+  ] };
+  assert.equal(stageCaughtBreakaway(split, "flat").size, 0);
   assert.equal(stageCaughtBreakaway(out, "itt").size, 0);
   assert.equal(stageCaughtBreakaway(null, "flat").size, 0);
   const work = stageConditionWork({ rulesRevision: "s5_profiles_v1", stageNumber: 2, profileType: "flat", v4Result: { v4Output: out, efforts: new Map() } });

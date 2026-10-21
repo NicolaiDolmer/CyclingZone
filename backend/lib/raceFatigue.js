@@ -302,8 +302,10 @@ export function stageConditionWork({ rulesRevision, stageNumber, profileType, v4
 }
 
 /**
- * #6984 REN: ryttere der lå i front (udbrud, alene, jagtgruppe) i et af etapens
- * gruppe-snapshots, men IKKE i front i det sidste (udbruddet blev hentet).
+ * #6984 REN: ryttere der lå i et UDBRUD (gruppe-kind "breakaway") i et af etapens
+ * gruppe-snapshots, men IKKE i front i det sidste (udbruddet blev hentet). En rytter
+ * der kun var i en solo- eller jagtgruppe (feltsplit, sent angreb, styrt) er ikke et
+ * hentet udbrud og får intet tillæg; frontarbejdet tæller stadig via stageWorkExposure.
  * Enkeltstarter og manglende snapshots giver et tomt sæt.
  * @returns {Set<string>}
  */
@@ -312,10 +314,10 @@ export function stageCaughtBreakaway(v4Output, profileType = null) {
   const snaps = Array.isArray(v4Output?.groupSnapshots) ? v4Output.groupSnapshots : [];
   if (!snaps.length || TIME_TRIAL_PROFILES.has(profileType)) return caught;
   const sorted = snaps.slice().sort((a, b) => Number(a.km) - Number(b.km));
-  const frontIds = (snap) => new Set((snap.groups ?? []).filter((g) => FRONT_GROUP_KINDS.has(g.kind)).flatMap((g) => (g.rider_ids ?? []).map(String)));
-  const finalFront = frontIds(sorted[sorted.length - 1]);
+  const idsOf = (snap, pred) => new Set((snap.groups ?? []).filter((g) => pred(g.kind)).flatMap((g) => (g.rider_ids ?? []).map(String)));
+  const finalFront = idsOf(sorted[sorted.length - 1], (kind) => FRONT_GROUP_KINDS.has(kind));
   for (const snap of sorted.slice(0, -1)) {
-    for (const id of frontIds(snap)) if (!finalFront.has(id)) caught.add(id);
+    for (const id of idsOf(snap, (kind) => kind === "breakaway")) if (!finalFront.has(id)) caught.add(id);
   }
   return caught;
 }

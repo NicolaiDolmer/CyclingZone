@@ -594,7 +594,7 @@ Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i
 
 ### 5.3b Form og træthed 2.0 (`condition_model_v2`, #6984, **slukket**)
 
-Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`](superpowers/specs/2026-10-20-6984-form-traethed-design.md). Bag flaget `condition_model_v2` (ingen app_config-række = off; kræver `training_condition_per_date`). Flag off = §5.1-5.3 uændret.
+Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`](superpowers/specs/2026-10-20-6984-form-traethed-design.md) (indført i docs-PR #6986, der merges før denne kode-PR). Bag flaget `condition_model_v2` (ingen app_config-række = off; kræver `training_condition_per_date`). Flag off = §5.1-5.3 uændret.
 
 | Regel | Kode |
 |---|---|
