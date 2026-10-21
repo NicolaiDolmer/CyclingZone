@@ -118,3 +118,11 @@ test("medicin-sporet kan hverken købes eller bemandes, når flaget er off", asy
   const training = await postFacilityUpgradeHandler({ teamId: "t", track: "training" }, null, { flags: off, purchaseFacilityUpgrade: async () => ({ ok: true }) });
   assert.equal(training.status, 200, "andre spor uændret");
 });
+
+test("løbsstien: en forbigående DB-fejl kaster i stedet for at fryse medicin-bonus 0", async () => {
+  const { loadMedicalBonusByTeam } = await import("./medicalEffects.js");
+  const transient = { from() { const q = { select() { return q; }, eq() { return q; }, then(resolve) { resolve({ data: null, error: { message: "upstream connect error 503" }, status: 503 }); } }; return q; } };
+  await assert.rejects(loadMedicalBonusByTeam(transient, ["T1"], { retryOnTransient: true }));
+  const soft = await loadMedicalBonusByTeam(transient, ["T1"]);
+  assert.equal(soft.get("T1"), 0, "visninger (uden retry) får stadig neutral");
+});

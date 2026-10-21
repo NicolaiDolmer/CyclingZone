@@ -132,9 +132,11 @@ export async function loadTeamMedicalBonus(supabase, teamId, { retryOnTransient 
 }
 
 /** Bonus pr. hold for et sæt hold (fx et løbs startfelt). */
-export async function loadMedicalBonusByTeam(supabase, teamIds) {
+// #6596-mønstret: løbsstierne sender retryOnTransient: true, så en forbigående DB-fejl
+// kaster (trinnet prøves igen) i stedet for at fryse bonus 0 for et hold med afdeling.
+export async function loadMedicalBonusByTeam(supabase, teamIds, { retryOnTransient = false } = {}) {
   const out = new Map();
-  for (const id of [...new Set((teamIds ?? []).filter(Boolean))]) out.set(id, await loadTeamMedicalBonus(supabase, id));
+  for (const id of [...new Set((teamIds ?? []).filter(Boolean))]) out.set(id, await loadTeamMedicalBonus(supabase, id, { retryOnTransient }));
   return out;
 }
 
@@ -168,7 +170,7 @@ export function applyMedicalToStageOutputs({ incidents, timelines, bonusByRider,
 }
 
 /** IO: medicin-bonus pr. rytter i et løb (holdet han stillede op for, race_entries). */
-export async function loadMedicalBonusForRiders({ supabase, raceId, riderIds }) {
+export async function loadMedicalBonusForRiders({ supabase, raceId, riderIds, retryOnTransient = false }) {
   const ids = [...new Set((riderIds ?? []).map(String))];
   const out = new Map();
   if (!ids.length) return out;
@@ -176,7 +178,7 @@ export async function loadMedicalBonusForRiders({ supabase, raceId, riderIds }) 
   const { data, error } = await supabase.from("race_entries").select("rider_id, team_id").eq("race_id", raceId);
   if (error) throw new Error(`race_entries (medical): ${error.message}`);
   const teamByRider = new Map((data ?? []).filter((r) => ids.includes(String(r.rider_id))).map((r) => [String(r.rider_id), r.team_id]));
-  const bonusByTeam = await loadMedicalBonusByTeam(supabase, [...teamByRider.values()]);
+  const bonusByTeam = await loadMedicalBonusByTeam(supabase, [...teamByRider.values()], { retryOnTransient });
   for (const [rider, team] of teamByRider) out.set(rider, bonusByTeam.get(team) ?? 0);
   return out;
 }

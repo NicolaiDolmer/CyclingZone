@@ -1917,7 +1917,7 @@ async function freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageR
       }
       // #6984: medicin-bonus fryses med snapshottet (RPC'en læser kun rider_id/load).
       if(conditionV2On) {
-        const medical=await loadMedicalBonusForRiders({supabase,raceId:race.id,riderIds:run.entrant_snapshot});
+        const medical=await loadMedicalBonusForRiders({supabase,raceId:race.id,riderIds:run.entrant_snapshot,retryOnTransient:true});
         run.condition_load_snapshot=run.condition_load_snapshot.map(row=>medical.get(String(row.rider_id))>0?{...row,medical_bonus:medical.get(String(row.rider_id))}:row);
       }
     }
@@ -3506,7 +3506,7 @@ export async function simulateStageByIndex({
     // også inde i løbet. Ny balance = kun løb bundet til s5_profiles_v2 eller senere
     // (#5955-princippet) OG condition_model_v2 on. Flag off = ingen ekstra read.
     if (trainingOwnsRecovery && isS5ProfilesV2OrLater(rulesRevision) && await isConditionModelV2Enabled(supabase)) {
-      const medicalBonusByTeam = await loadMedicalBonusByTeam(supabase, entrants.map((e) => e.team_id));
+      const medicalBonusByTeam = await loadMedicalBonusByTeam(supabase, entrants.map((e) => e.team_id), { retryOnTransient: true });
       await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, medicalBonusByTeam });
     }
 
