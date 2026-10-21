@@ -2,12 +2,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  MIN_CELL_TEAM_STAGES, RATES_FORMAT, aggregateIntentRates, applyBreakawayIntent, breakawayAbilityFor,
+  RATES_FORMAT, aggregateIntentRates, applyBreakawayIntent, breakawayAbilityFor,
   draws, raceGroupOf, ratesFor, ratesSignature, validateRates,
 } from "./breakawayIntent.mjs";
 
-const rates = (rows, extra = {}) => ({ format: RATES_FORMAT, seasonId: "s", minCellTeamStages: MIN_CELL_TEAM_STAGES, rows, ...extra });
-const cell = (division, group, o) => ({ division, group, humanTeamRaces: 10, humanTeamStages: 100, hunters: 0, freeRoles: 0, tryBreakRiders: 0, ...o });
+const rates = (rows, extra = {}) => ({ format: RATES_FORMAT, seasonId: "s", minCellTeamStages: 40, rows, ...extra });
+const cell = (division, group, o) => ({ division, group, humanTeamRaces: 10, humanTeamRoadStages: 100, hunters: 0, freeRoles: 0, tryBreakRiders: 0, ...o });
 
 /** Et loeb med to menneskehold (h1, h2) og et AI-hold (a1), hver med kaptajn, sprint-kaptajn og tre hjaelpere. */
 function race({ stages = 3, profiles = null, orders = [] } = {}) {
@@ -60,18 +60,23 @@ test("#6804 P0 aggregateIntentRates: kun menneskehold taeller, pr. division og g
     { race_id: "g", team_id: "h", stage_number: 2, riders: [{ rider_id: "x", try_break: true }, { rider_id: "y", try_break: false }] },
     { race_id: "g", team_id: "a", stage_number: 2, riders: [{ rider_id: "z", try_break: true }] },
     { race_id: "g", team_id: "h", stage_number: 3, riders: "korrupt" },
+    { race_id: "g", team_id: "h", stage_number: 1, riders: [{ rider_id: "x", try_break: true }] },
   ];
-  const out = aggregateIntentRates({ races, entries, teams, orders, seasonId: "s5" });
+  // Etape 1 og 21 er tidskoersler: hverken etapen eller dens ordre taeller med (Codex P2).
+  const profiles = [{ race_id: "g", stage_number: 1, profile_type: "itt" }, { race_id: "g", stage_number: 21, profile_type: "ttt" }, { race_id: "g", stage_number: 2, profile_type: "hilly" }];
+  const out = aggregateIntentRates({ races, entries, teams, orders, profiles, minCellTeamStages: 7, seasonId: "s5" });
   assert.equal(out.format, RATES_FORMAT);
+  assert.equal(out.minCellTeamStages, 7);
   const gt1 = out.rows.find((r) => r.division === "1" && r.group === "gt");
-  assert.deepEqual(gt1, { division: "1", group: "gt", humanTeamRaces: 1, humanTeamStages: 21, hunters: 1, freeRoles: 0, tryBreakRiders: 1 });
+  assert.deepEqual(gt1, { division: "1", group: "gt", humanTeamRaces: 1, humanTeamRoadStages: 19, hunters: 1, freeRoles: 0, tryBreakRiders: 1 });
+  assert.throws(() => aggregateIntentRates({ races, entries, teams, orders }), /minCellTeamStages/, "den private graense skal gives");
   const dayAll = out.rows.find((r) => r.division === "all" && r.group === "one_day");
   assert.deepEqual([dayAll.humanTeamRaces, dayAll.freeRoles], [1, 1]);
 });
 
 test("#6804 P0 ratesFor: lille celle falder tilbage til gruppens samlede sats", () => {
   const r = rates([
-    cell("1", "gt", { humanTeamStages: MIN_CELL_TEAM_STAGES - 1, hunters: 50 }),
+    cell("1", "gt", { humanTeamRoadStages: 39, hunters: 50 }),
     cell("all", "gt", { hunters: 5, tryBreakRiders: 50 }),
     cell("3", "stage_race", { hunters: 2 }),
   ]);
@@ -126,8 +131,10 @@ test("#6804 P0 applyBreakawayIntent: samme input giver samme felt; nul-satser ro
 
 test("#6804 P0 validateRates + ratesSignature", () => {
   assert.throws(() => validateRates({ format: "x", rows: [] }), /format/);
+  assert.throws(() => validateRates({ format: RATES_FORMAT, rows: [] }), /minCellTeamStages/);
   const a = rates([cell("all", "gt")]);
   assert.equal(validateRates(a), a);
   assert.notEqual(ratesSignature(a), ratesSignature(rates([cell("all", "gt", { hunters: 1 })])));
-  assert.equal(ratesSignature(a), ratesSignature({ ...a, generatedAt: "andet tidspunkt" }), "kun raekkerne taeller");
+  assert.equal(ratesSignature(a), ratesSignature({ ...a, generatedAt: "andet tidspunkt" }), "tidspunktet taeller ikke");
+  assert.notEqual(ratesSignature(a), ratesSignature({ ...a, minCellTeamStages: 1 }), "graensen for smaa celler taeller (Codex P2)");
 });

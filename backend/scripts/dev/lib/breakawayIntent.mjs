@@ -9,7 +9,10 @@
 //
 // Reglen: satserne laeses READ-ONLY fra seneste afsluttede saeson (senior): pr. division og
 // loebsgruppe (gt, stage_race, one_day) hvor mange hunters og frie roller et menneskehold
-// stiller pr. loeb, og hvor mange "Forsoeg udbrud" det giver pr. etape. Hvert menneskehold i
+// stiller pr. loeb, og hvor mange "Forsoeg udbrud" det giver pr. vejetape (enkeltstarter og
+// holdtidskoersler taelles ikke med, hverken i taeller eller naevner). Hvor lille en celle maa
+// vaere foer gruppens samlede sats bruges, er en privat kalibrering (hard rule 17): den staar i
+// satsfilen (`minCellTeamStages`), aldrig i koden. Hvert menneskehold i
 // et syntetisk felt faar saa det forventede antal, deterministisk (hash af loeb, hold, etape):
 //   - hunter/free_role: holdets hjaelpere med hoejest udbruds-score (aggression + udholdenhed)
 //     faar rollen, aldrig kaptajn eller sprint-kaptajn.
@@ -21,9 +24,7 @@
 import { createHash } from "node:crypto";
 
 export const INTENT_MODES = Object.freeze(["prod", "none"]);
-export const RATES_FORMAT = "cz-breakaway-intent-rates/v1";
-/** Under saa mange menneskehold-etaper i en celle bruges gruppens samlede sats (alle divisioner). */
-export const MIN_CELL_TEAM_STAGES = 40;
+export const RATES_FORMAT = "cz-breakaway-intent-rates/v2";
 const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 
 const clampAbility = (v) => Math.max(0, Math.min(99, Number(v) || 0));
@@ -60,16 +61,25 @@ export function draws(rate, key) {
 /**
  * Prod-raekker -> satser. `races` [{id, league_division_id, stages}], `entries`
  * [{race_id, team_id, race_role}], `teams` [{id, is_ai}], `orders` [{race_id, team_id,
- * stage_number, riders}]. Kun menneskehold taeller. Celler pr. division og gruppe, plus
- * gruppens samlede (division "all").
+ * stage_number, riders}], `profiles` [{race_id, stage_number, profile_type}] (til at skille
+ * vejetaper fra tidskoersler). Kun menneskehold taeller. Celler pr. division og gruppe, plus
+ * gruppens samlede (division "all"). `minCellTeamStages` er den private graense (se ovenfor).
  */
-export function aggregateIntentRates({ races, entries, teams, orders, seasonId = null, generatedAt = null }) {
+export function aggregateIntentRates({ races, entries, teams, orders, profiles = [], minCellTeamStages, seasonId = null, generatedAt = null }) {
+  if (!Number.isFinite(minCellTeamStages) || minCellTeamStages < 0) throw new Error("aggregateIntentRates: minCellTeamStages (privat graense) skal vaere et tal >= 0");
   const ai = new Map(teams.map((t) => [t.id, t.is_ai === true]));
   const raceById = new Map(races.map((r) => [r.id, r]));
+  const ttStages = new Set(profiles.filter((p) => TIME_TRIALS.has(p.profile_type)).map((p) => `${p.race_id}|${p.stage_number}`));
+  const roadStagesOf = (race) => {
+    const n = Math.max(1, Number(race.stages) || 1);
+    let tt = 0;
+    for (let i = 1; i <= n; i++) if (ttStages.has(`${race.id}|${i}`)) tt += 1;
+    return n - tt;
+  };
   const cells = new Map();
   const cell = (division, group) => {
     const k = `${division}|${group}`;
-    if (!cells.has(k)) cells.set(k, { division, group, humanTeamRaces: 0, humanTeamStages: 0, hunters: 0, freeRoles: 0, tryBreakRiders: 0 });
+    if (!cells.has(k)) cells.set(k, { division, group, humanTeamRaces: 0, humanTeamRoadStages: 0, hunters: 0, freeRoles: 0, tryBreakRiders: 0 });
     return cells.get(k);
   };
   const both = (race, fn) => {
@@ -90,29 +100,33 @@ export function aggregateIntentRates({ races, entries, teams, orders, seasonId =
   for (const { race, hunters, freeRoles } of teamRaces.values()) {
     both(race, (c) => {
       c.humanTeamRaces += 1;
-      c.humanTeamStages += Math.max(1, Number(race.stages) || 1);
+      c.humanTeamRoadStages += roadStagesOf(race);
       c.hunters += hunters;
       c.freeRoles += freeRoles;
     });
   }
   for (const o of orders) {
     const race = raceById.get(o.race_id);
-    if (!race || !teamRaces.has(`${o.race_id}|${o.team_id}`)) continue;
+    if (!race || !teamRaces.has(`${o.race_id}|${o.team_id}`) || ttStages.has(`${o.race_id}|${o.stage_number}`)) continue;
     const n = (Array.isArray(o.riders) ? o.riders : []).filter((r) => r && r.try_break === true).length;
     if (n) both(race, (c) => { c.tryBreakRiders += n; });
   }
   const rows = [...cells.values()].sort((a, b) => a.group.localeCompare(b.group) || a.division.localeCompare(b.division, "en", { numeric: true }));
-  return { format: RATES_FORMAT, seasonId, generatedAt, minCellTeamStages: MIN_CELL_TEAM_STAGES, rows };
+  return { format: RATES_FORMAT, seasonId, generatedAt, minCellTeamStages, rows };
 }
 
-/** Kort signatur af satserne (cache-genbrug: andre satser = anden koersel). */
+/**
+ * Kort signatur af satserne (cache-genbrug: andre satser = anden koersel). Graensen for
+ * smaa celler er med, fordi den aendrer hvilken celle et loeb faar.
+ */
 export function ratesSignature(rates) {
-  return createHash("sha256").update(JSON.stringify(rates?.rows ?? [])).digest("hex").slice(0, 16);
+  return createHash("sha256").update(JSON.stringify({ rows: rates?.rows ?? [], minCellTeamStages: rates?.minCellTeamStages ?? null })).digest("hex").slice(0, 16);
 }
 
 /** Valider en satsfil (fail-closed). */
 export function validateRates(rates) {
   if (!rates || rates.format !== RATES_FORMAT || !Array.isArray(rates.rows)) throw new Error(`udbrudsvilje-satser: format skal vaere "${RATES_FORMAT}" med rows`);
+  if (!Number.isFinite(rates.minCellTeamStages) || rates.minCellTeamStages < 0) throw new Error("udbrudsvilje-satser: minCellTeamStages mangler");
   return rates;
 }
 
@@ -121,15 +135,14 @@ export function ratesFor(rates, division, stages) {
   const group = raceGroupOf(stages);
   const find = (d) => rates.rows.find((r) => r.division === d && r.group === group);
   const own = find(String(division ?? "?"));
-  const min = rates.minCellTeamStages ?? MIN_CELL_TEAM_STAGES;
-  const c = own && own.humanTeamStages >= min ? own : find("all");
+  const c = own && own.humanTeamRoadStages >= rates.minCellTeamStages ? own : find("all");
   if (!c || !(c.humanTeamRaces > 0)) return { group, source: "none", hunterPerRace: 0, freeRolePerRace: 0, tryBreakPerStage: 0 };
   return {
     group,
     source: c === own ? `division ${c.division}` : "alle divisioner",
     hunterPerRace: c.hunters / c.humanTeamRaces,
     freeRolePerRace: c.freeRoles / c.humanTeamRaces,
-    tryBreakPerStage: c.humanTeamStages > 0 ? c.tryBreakRiders / c.humanTeamStages : 0,
+    tryBreakPerStage: c.humanTeamRoadStages > 0 ? c.tryBreakRiders / c.humanTeamRoadStages : 0,
   };
 }
 

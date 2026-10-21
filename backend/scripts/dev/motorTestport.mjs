@@ -44,6 +44,7 @@
 //                            (default prod med --synthetic-field; none = intet, som foer). #6804 P0
 //   --intent-rates=<fil>     satserne fra en tidligere koersel (breakaway-intent-rates.json);
 //                            kraeves med --from-dir, ellers laeses de read-only fra prod. #6804 P0
+//   --intent-season=<n>      satserne fra saeson n (default: seneste afsluttede). #6804 P0
 //   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
 //                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //
@@ -117,6 +118,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     syntheticField: syntheticRaw,
     breakawayIntent,
     intentRates: get("intent-rates"),
+    intentSeason: get("intent-season") === null ? null : int("intent-season", 0),
     routesFrom: get("routes-from"),
     season,
     timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
@@ -515,9 +517,16 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
           ? validateRates(JSON.parse(readFileSync(abs(opts.intentRates), "utf8")))
           : existsSync(ratesPath) ? validateRates(JSON.parse(readFileSync(ratesPath, "utf8")))
             : fromDir ? (() => { throw new Error("--from-dir med --breakaway-intent=prod kraever --intent-rates=<fil> (eller --breakaway-intent=none)"); })()
-              : await src.breakawayIntentRates();
+              : await src.breakawayIntentRates({ now, seasonNumber: opts.intentSeason,
+                // Hard rule 17: graensen for smaa celler er privat (taerskelfilen), aldrig i koden.
+                minCellTeamStages: Number(loadThresholds(abs(opts.thresholds)).breakawayIntentMinCellTeamStages ?? 0) });
+        const signature = ratesSignature(rates);
+        // Codex P2: andre satser end en genoptaget koersels er en anden koersel (dens done-markoerer gaelder de gamle).
+        if (prev?.breakawayIntent?.signature && prev.breakawayIntent.signature !== signature) {
+          throw new Error(`${outDir} er en anden koersel (andre udbrudsvilje-satser end ${prev.breakawayIntent.signature}). Brug en ny --out.`);
+        }
         writeFileSync(ratesPath, JSON.stringify(rates, null, 2));
-        intent = { rates, signature: ratesSignature(rates) };
+        intent = { rates, signature };
         breakawayIntentMeta = { mode: "prod", signature: intent.signature, seasonId: rates.seasonId ?? null, ratesFile: path.basename(ratesPath) };
       }
       inputs = await prepareInputs({ raceIds, outDir, fromDir, routes, synthetic: opts.syntheticField, source: src, intent });

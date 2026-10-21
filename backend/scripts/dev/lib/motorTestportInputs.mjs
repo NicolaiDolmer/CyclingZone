@@ -558,15 +558,18 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
       return out;
     },
     /**
-     * #6804 P0: menneskeholdenes udbrudsvilje i seneste afsluttede saeson (senior), READ-ONLY.
-     * Satserne pr. division og loebsgruppe (breakawayIntent.aggregateIntentRates).
+     * #6804 P0: menneskeholdenes udbrudsvilje i en saeson (senior), READ-ONLY. Default den
+     * seneste med seasons.status = completed; `seasonNumber` vaelger en bestemt. `now`
+     * kraeves (injiceret ur, deterministisk artefakt); `minCellTeamStages` er den private graense.
      */
-    async breakawayIntentRates({ now = new Date() } = {}) {
-      const { data: last, error } = await db.from("races").select("season_id").eq("status", "completed").eq("squad", "senior")
-        .order("created_at", { ascending: false }).range(0, 0);
-      if (error) throw new Error(`races: ${error.message}`);
-      const seasonId = last?.[0]?.season_id;
-      if (!seasonId) throw new Error("udbrudsvilje-satser: ingen afsluttet senior-saeson fundet");
+    async breakawayIntentRates({ now, minCellTeamStages, seasonNumber = null } = {}) {
+      if (!(now instanceof Date) || Number.isNaN(now.getTime())) throw new Error("breakawayIntentRates: now (Date) kraeves");
+      let q = db.from("seasons").select("id, number, status");
+      q = seasonNumber === null ? q.eq("status", "completed") : q.eq("number", seasonNumber);
+      const { data: seasons, error } = await q.order("number", { ascending: false }).range(0, 0);
+      if (error) throw new Error(`seasons: ${error.message}`);
+      const seasonId = seasons?.[0]?.id;
+      if (!seasonId) throw new Error(seasonNumber === null ? "udbrudsvilje-satser: ingen afsluttet saeson fundet" : `udbrudsvilje-satser: saeson ${seasonNumber} findes ikke`);
       const races = [];
       // pagination-safe: .range() i sider af PAGE
       for (let from = 0; ; from += PAGE) {
@@ -579,8 +582,9 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
       const ids = races.map((r) => r.id);
       const entries = await selectByIds(db, "race_entries", "race_id, rider_id, team_id, race_role", "race_id", ids, ["race_id", "rider_id"]);
       const orders = await selectByIds(db, "race_team_orders", "race_id, team_id, stage_number, riders", "race_id", ids, ["race_id", "team_id", "stage_number"]);
+      const profiles = await selectByIds(db, "race_stage_profiles", "race_id, stage_number, profile_type", "race_id", ids, ["race_id", "stage_number"]);
       const teams = await teamsFor(entries.map((e) => e.team_id));
-      return aggregateIntentRates({ races, entries, teams, orders, seasonId, generatedAt: now.toISOString() });
+      return aggregateIntentRates({ races, entries, teams, orders, profiles, minCellTeamStages, seasonId, generatedAt: now.toISOString() });
     },
     async benchField() {
       const { loadBenchField } = await import("../s5MotorBench.mjs");

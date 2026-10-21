@@ -514,8 +514,8 @@ test("#6909 (Codex P2) prepareInputs: genoptagne generator-felter bygges med, na
 });
 
 // ── #6804 P0: menneskeholdenes udbrudsvilje i det syntetiske felt ──────────────
-const intentRates = { format: "cz-breakaway-intent-rates/v1", seasonId: "s4", minCellTeamStages: 1, rows: [
-  { division: "all", group: "stage_race", humanTeamRaces: 1, humanTeamStages: 2, hunters: 1, freeRoles: 0, tryBreakRiders: 0 },
+const intentRates = { format: "cz-breakaway-intent-rates/v2", seasonId: "s4", minCellTeamStages: 1, rows: [
+  { division: "all", group: "stage_race", humanTeamRaces: 1, humanTeamRoadStages: 2, hunters: 1, freeRoles: 0, tryBreakRiders: 0 },
 ] };
 const humanField = (tag) => ({
   entries: [{ rider_id: `${tag}-c`, team_id: "hx", race_role: "captain" }, { rider_id: `${tag}-h`, team_id: "hx", race_role: "helper" }],
@@ -575,10 +575,14 @@ test("#6804 P0 prepareInputs med intent: en eksports generator-felt faar udbruds
   }
 });
 
-test("#6804 P0 createProdSource.breakawayIntentRates: seneste afsluttede senior-saeson, kun SELECT", async () => {
+test("#6804 P0 createProdSource.breakawayIntentRates: seneste afsluttede saeson (seasons.status), kun SELECT", async () => {
   const log = [];
   const tables = {
+    // fakeDb sorterer ikke: den seneste afsluttede staar foerst, den aktive (s5) maa aldrig vaelges.
+    seasons: [{ id: "s4", number: 4, status: "completed" }, { id: "s3", number: 3, status: "completed" }, { id: "s5", number: 5, status: "active" }],
+    race_stage_profiles: [{ race_id: "r1", stage_number: 1, profile_type: "itt" }],
     races: [
+      { id: "r5", season_id: "s5", status: "completed", squad: "senior", league_division_id: 1, stages: 21 },
       { id: "r1", season_id: "s4", status: "completed", squad: "senior", league_division_id: 1, stages: 21 },
       { id: "r0", season_id: "s3", status: "completed", squad: "senior", league_division_id: 1, stages: 21 },
       { id: "r2", season_id: "s4", status: "completed", squad: "u23", league_division_id: 1, stages: 5 },
@@ -588,10 +592,15 @@ test("#6804 P0 createProdSource.breakawayIntentRates: seneste afsluttede senior-
     teams: [{ id: "h", is_ai: false }],
   };
   const src = createProdSource(fakeDb(tables, log), { log: () => {} });
-  const rates = await src.breakawayIntentRates({ now: new Date("2026-10-21T10:00:00Z") });
+  const now = new Date("2026-10-21T10:00:00Z");
+  const rates = await src.breakawayIntentRates({ now, minCellTeamStages: 5 });
   assert.equal(rates.seasonId, "s4");
+  assert.equal(rates.generatedAt, now.toISOString(), "det injicerede ur (Codex P1)");
+  assert.equal(rates.minCellTeamStages, 5);
   const gt = rates.rows.find((r) => r.division === "1" && r.group === "gt");
-  assert.deepEqual([gt.humanTeamRaces, gt.hunters, gt.tryBreakRiders], [1, 1, 1]);
+  assert.deepEqual([gt.humanTeamRaces, gt.humanTeamRoadStages, gt.hunters, gt.tryBreakRiders], [1, 20, 1, 1]);
+  assert.equal((await src.breakawayIntentRates({ now, minCellTeamStages: 5, seasonNumber: 3 })).seasonId, "s3", "--intent-season");
+  await assert.rejects(src.breakawayIntentRates({ minCellTeamStages: 5 }), /now/);
   assert.ok(!rates.rows.some((r) => r.group === "stage_race"), "u23 taeller ikke");
   assert.deepEqual(log, [], "ingen skrivning");
 });
