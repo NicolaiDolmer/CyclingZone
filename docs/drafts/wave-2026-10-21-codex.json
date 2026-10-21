@@ -1,0 +1,118 @@
+{
+ "allowExistingPr": false,
+ "lanes": 4,
+ "trackTimeoutMinutes": 150,
+ "tracks": [
+  {
+   "issue": 6990,
+   "branch": "codex/6990-6991-u25-milestone",
+   "title": "[bestyrelse] U25-milepaelen taeller paa saesonalder + 'x af 6' + een tekst (#6990 #6991)",
+   "scopeText": "Ejer-brief staar paa #6990 (20/10, Codex tager den) med tillaeg om #6991 i SAMME PR; laes begge issues + kommentarer FOERST og foelg dem ordret. Kort: vision-milepaelen min_u25_riders (backend/lib/boardConstants.js:129) taeller i dag via rider.is_u25 (boardGoals.js:1058-1059 evaluateGoal og :1296 progress; boardIdentity.js:107,210; boardMandateEngine.js:72-75). Ret til EEN regel: seniortruppens ryttere med riderSeasonAge <= 25 (ejer-regel 2/9; laes definitionen i backend/lib/boardGoalContext.js foer brug, genbrug den, opfind ikke en ny). Vis fremdrift 'x af 6' paa milepaelen i frontend/src/pages/boardroom/VisionCard.jsx. Erstat de to tekster boardroom.vision.countsAt/countsAtCurrent med den ejer-godkendte saetning fra #6990-tillaegget (EN+DA ordret; ES/FR/NL efter docs/TONE_OF_VOICE.md + GLOSSARY). Flyt den lange boardroom.vision.explainer til Hjaelp (help.json mandate.visionMilestones) med et link. Tests: 19-, 23-, 25- og 26-aarig i boardGoalTypes.test.js eller boardMandateEngine.test.js. PR-body: Refs #6990 Refs #6991, ETT annoteret foer/efter-billede (desktop 1440 + mobil 390) af visionskortet. Ingen patch note (samles ved close-out). Roer ikke docs/NOW.md.",
+   "designGo": "ejer 20/10 paa #6990 + tillaeg #6991 (regel + tekst godkendt, Codex tager den)",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/boardGoals.js",
+    "backend/lib/boardIdentity.js",
+    "backend/lib/boardMandateEngine.js",
+    "backend/lib/boardGoalTypes.test.js",
+    "backend/lib/boardMandateEngine.test.js",
+    "frontend/src/pages/boardroom/VisionCard.jsx",
+    "frontend/src/pages/boardroom/VisionCard.structure.test.js",
+    "frontend/public/locales/en/board.json",
+    "frontend/public/locales/da/board.json",
+    "frontend/public/locales/es/board.json",
+    "frontend/public/locales/fr/board.json",
+    "frontend/public/locales/nl/board.json",
+    "frontend/public/locales/en/help.json",
+    "frontend/public/locales/da/help.json",
+    "frontend/public/locales/es/help.json",
+    "frontend/public/locales/fr/help.json",
+    "frontend/public/locales/nl/help.json"
+   ],
+   "verifyCommands": [
+    "cd backend; node --test lib/boardGoalTypes.test.js lib/boardMandateEngine.test.js lib/boardRoom.test.js lib/boardEngine.test.js",
+    "cd frontend; node --test src/pages/boardroom/VisionCard.structure.test.js src/pages/boardroom/boardroomLocale.test.js",
+    "cd frontend; npm run lint",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 6965,
+   "branch": "codex/6965-transfer-history-pagination",
+   "title": "[marked] Transferhistorik: koebspris 'Unknown' - paginer de fire queries (#6965)",
+   "scopeText": "Laes #6965 + triage-kommentaren. Hypotese: backend/lib/teamTransferHistory.js buildTeamTransferHistory (ca. linje 72-110) henter auktioner, tilbud og byttehandler UDEN paginering, og Supabase leverer maks 1000 raekker pr. svar, saa de aeldste koeb klippes og koebsprisen bliver 'Unknown'. Byg en fejlende test der simulerer >1000 raekker (mock), pak alle fire queries i fetchAllRows fra backend/lib/supabasePagination.js med STABIL sortering (fx created_at + id), og vis at testen bliver groen. Er der tegn paa en anden aarsag (fx koeb registreret uden pris), skriv det i PR-body i stedet for at gaette. Ingen frontend-aendring, ingen DB-migration. PR-body: Refs #6965. Prod-taelling 21/10 (Claude, read-only): 149 menneskehold har afsluttede auktioner; maks 1040 pr. hold, og KUN 1 hold er over 1000. Pagineringen er altsaa en reel fejl for det hold og skal rettes, men den forklarer ikke 'Unknown' for hold under 1000. Undersoeg derfor OGSAA parringen koeb->salg (fx frontend/src/lib/transferProfit-logikken, koeb via transfer_offers/swap_offers/frie agenter/auto-salg uden pris), og beskriv i PR-body hvilke koebstyper der stadig kan ende som 'Unknown'. Ret dem kun, hvis det kan goeres i de ejede filer; ellers lav en konkret plan i PR-body.",
+   "tier": "TARGETED",
+   "ownership": [
+    "backend/lib/teamTransferHistory.js",
+    "backend/lib/teamTransferHistory.test.js"
+   ],
+   "verifyCommands": [
+    "cd backend; node --test lib/teamTransferHistory.test.js lib/supabasePagination.test.js",
+    "cd backend; npm run lint",
+    "pwsh -File scripts/preflight-pr.ps1"
+   ],
+   "ownNodeModules": false
+  },
+  {
+   "issue": 6976,
+   "kind": "investigate",
+   "branch": "codex/6976-squished-images-investigate",
+   "title": "[undersoeg] Nyt etapedesign: hvilke billeder er klemt (#6976)",
+   "scopeText": "Laes #6976 + triage. Find praecis hvilken flade i etapeside 2.0 (flag stage_page_v2, #6570) der viser klemt grafik paa pc. Mistaenkt: frontend/src/components/race/stagePageV2/StageStripV2.tsx:31 (svg viewBox 0 0 100 30 med preserveAspectRatio=none og fast hoejde h-7), mens StageProfileV2.tsx:165-168 maaler containerbredden. Gennemgaa alle svg/img i stagePageV2 for faste hoejder kombineret med preserveAspectRatio=none eller object-fill, og beregn den effektive forvraengning ved 1440 og 1920 px. Dom + konkret fix-plan (fil, linje, CSS) eller afvisning med bevis.",
+   "tier": "TARGETED",
+   "ownership": ["docs/investigations/6976-squished-images.md"],
+   "verifyCommands": []
+  },
+  {
+   "issue": 6955,
+   "kind": "investigate",
+   "branch": "codex/6955-crash-captains-investigate",
+   "title": "[undersoeg] Motor: rammer styrt kaptajner uforholdsmaessigt? (#6955)",
+   "scopeText": "Laes #6955 + kommentarer. Find styrt-logikken i backend/lib/engine/v4 (og i v2-revisionen paa branch feat/6818-s5v2-taend, kun laesning). Afgoer med kode + en kvantitativ koersel (testport/simulering lokalt, ingen prod-skrivning) om kaptajner/beskyttede ryttere har hoejere styrtrisiko end andre, og om tekniske evner (fx nedkoersel/handling) indgaar i risikoen. Sammenlign med virkelig cykelsport (styrt rammer feltet bredt; position i feltet beskytter). Dom: 'bekraeftet + fix-plan' (hvilke vaegte, hvilke filer, hvilken risiko for v2-taendingen 28/10) eller 'afvist + bevis-test'. Ingen spillervendte tal aendres; det er ejerens beslutning.",
+   "tier": "TARGETED",
+   "ownership": ["docs/investigations/6955-crash-captains.md"],
+   "verifyCommands": []
+  },
+  {
+   "issue": 6953,
+   "kind": "investigate",
+   "branch": "codex/6953-d3-vs-d2-income-investigate",
+   "title": "[undersoeg] Oekonomi: tjener toppen af D3 mere end midten af D2? (#6953)",
+   "scopeText": "Laes #6953 + kommentarer + docs/GAME_INVARIANTS.md (oekonomi-konstanter). Beregn ud fra koden (praemier, sponsor, oprykningstillaeg, division-multiplikatorer) den forventede saesonindtaegt for plads 1-3 i D3 mod plads 4-8 i D2, og forklar hvordan oprykningstillaegget virker i dag. Dom: bekraeftet med tal + 2 konkrete design-muligheder (A/B, med effekt pr. division) til ejeren, eller afvist med regnestykket. Aendr ingen tal.",
+   "tier": "TARGETED",
+   "ownership": ["docs/investigations/6953-d3-vs-d2-income.md"],
+   "verifyCommands": []
+  },
+  {
+   "issue": 6954,
+   "kind": "investigate",
+   "branch": "codex/6954-salary-level-investigate",
+   "title": "[undersoeg] Oekonomi: loen for hoej for talenter og ved forlaengelse (#6954)",
+   "scopeText": "Laes #6954 + kommentarer. Find loenformlen for nye kontrakter, talenter (U23/junior) og kontraktforlaengelse i backend. Lav en tabel: rating/alder/potentiale -> loen ved signering og ved forlaengelse, sat i forhold til typisk holdindtaegt pr. division (brug samme kilder som oekonomi-konstanterne). Dom: bekraeftet med tal + 2 konkrete muligheder til ejeren, eller afvist med regnestykket. Aendr ingen tal.",
+   "tier": "TARGETED",
+   "ownership": ["docs/investigations/6954-salary-level.md"],
+   "verifyCommands": []
+  },
+  {
+   "issue": 6966,
+   "kind": "investigate",
+   "branch": "codex/6966-scouting-age-weight-investigate",
+   "title": "[undersoeg] Scouting: vaegter alder for tungt i projektionen? (#6966)",
+   "scopeText": "Laes #6966 + kommentarer. Find scouted projection-formlen (backend + evt. frontend-visning). Vis med konkrete eksempler (samme rating/potentiale, alder 18/21/24/27) hvor meget alderen flytter projektionen, og sammenlign med den faktiske udviklingsmodel i traeningen (hvordan ryttere reelt udvikler sig med alderen i spillet). Dom: bekraeftet + fix-plan (hvilken vaegt, hvilke filer) eller afvist med bevis. Aendr ingen tal.",
+   "tier": "TARGETED",
+   "ownership": ["docs/investigations/6966-scouting-age-weight.md"],
+   "verifyCommands": []
+  },
+  {
+   "issue": 6978,
+   "kind": "investigate",
+   "branch": "codex/6978-projection-over-84-investigate",
+   "title": "[undersoeg] Scouting: prognose over 84 vises for spillere (#6978)",
+   "scopeText": "Laes #6978 + kommentarer (ejeren efterlyste eksempler). Find hvor prognosen beregnes og vises, og om der findes et loft paa 84 (eller hvor det burde haandhaeves). Find kodestien der kan give >84, og beskriv hvilke rytter-input der udloeser den. Dom: bekraeftet + fix-plan eller afvist med bevis-test.",
+   "tier": "TARGETED",
+   "ownership": ["docs/investigations/6978-projection-over-84.md"],
+   "verifyCommands": []
+  }
+ ]
+}
