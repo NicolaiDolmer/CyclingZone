@@ -142,7 +142,7 @@ Pakken i §4 og gatene i §5 er skrevet ud fra anbefalingerne, men er **ikke kla
 er betinget af sin beslutning. Rækkefølgen er 1 → 2 → 3 → 4 → 5, og den næste stilles først, når den
 forrige er besvaret, fordi svaret kan ændre den næste (fx måles 2-4 på det felt 1 vælger).
 Afviser ejeren en anbefaling, skrives den berørte del af §4/§5 om, før noget bygges.
-- Beslutning 1 åbner P0 og G14. Beslutning 2 åbner M1 og G1'. Beslutning 3 åbner M2, P7 og G12.
+- Beslutning 1 åbner P0. Beslutning 2 åbner M1, G1' og G14 (G14 kræver både 1 og 2). Beslutning 3 åbner M2, P7 og G12.
   Beslutning 4 åbner P6 og G11. Beslutning 5 åbner M3, P8 og G13.
 
 1. **Testfeltet (P0).** A: testporten giver menneskeholdene prod-lignende udbrudsvilje. B: mål med
