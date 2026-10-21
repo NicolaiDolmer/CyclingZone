@@ -172,6 +172,11 @@ export type Entrant = {
   // #6156 (valgfrit): rytterens form (rider_condition.form, 0-100). Broen saetter
   // det kun under official_times_v3; udeladt = byte-identisk med foer.
   form?: number | null;
+  // #6156 (ejer 21/10, KUN s5_profiles_v2 + race_form_peaks): formtoppens tillaeg
+  // (positiv) eller dykket bagefter (negativ) i formpoint paa etapedagen, som et EGET
+  // led oven i formen. Klemmes IKKE af formens 0-100-skala, saa en rytter med form 100
+  // ogsaa faar sin top. Udeladt = ingen top/dyk paa dagen (byte-identisk med foer).
+  form_peak_points?: number | null;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN

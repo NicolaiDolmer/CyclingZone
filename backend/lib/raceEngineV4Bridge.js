@@ -366,11 +366,34 @@ function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(
     // #6156: rytterens form KUN under official_times_v3 og kun naar der ER
     // form-data; ellers baerer Entrant intet form-felt (byte-identisk input).
     if (!withForm) return entrant;
-    // #6156 (KUN s5_profiles_v2): peakDay er sat => den samlede form (form + top /
-    // minus dyk). Uden peakDay (alle aeldre revisioner) er det formen alene.
-    const form = peakDay === null ? riderFormForV4(e) : combinedFormForV4(e, peakDay);
-    return form === null ? entrant : { ...entrant, form };
+    const form = riderFormForV4(e);
+    const withRiderForm = form === null ? entrant : { ...entrant, form };
+    // #6156 (KUN s5_profiles_v2 + race_form_peaks; ejer 21/10 "A: byg"): peakDay er sat =>
+    // toppen/dykket som eget led (form_peak_points) oven i formen, som motoren ikke
+    // klemmer ved 100. Uden top paa dagen (og i alle aeldre revisioner) intet felt.
+    const peakPoints = peakDay === null ? null : peakFormPointsForV4(e, peakDay);
+    return peakPoints === null ? withRiderForm : { ...withRiderForm, form_peak_points: peakPoints };
   });
+}
+
+/**
+ * #6156 (ejer 21/10, KUN s5_profiles_v2): formtoppens tillaeg (positiv) eller dykket i
+ * tilbagebetalingen (negativ) i formpoint paa etapedagen, eller null uden top/dyk.
+ * Stoerrelsen er den formplanlaeggeren viser (racePeaks.peakComponentForStage +
+ * plannerBoard.scoreComponentToFormPoints). Motoren laegger den oven i formen som eget
+ * led (physiology.formPeakCpModifier), saa den IKKE klemmes ved form 100. REN.
+ *
+ * @param {{peakWindows?: Array<{start:number,end:number,trainingQuality?:number}>}} entrant
+ * @param {number|null|undefined} peakDay
+ * @returns {number|null}
+ */
+export function peakFormPointsForV4(entrant, peakDay) {
+  const windows = entrant?.peakWindows;
+  if (peakDay == null || !Array.isArray(windows) || windows.length === 0) return null;
+  const component = peakComponentForStage({ stageDay: peakDay, windows });
+  if (!component) return null;
+  const points = scoreComponentToFormPoints(component);
+  return points ? points : null;
 }
 
 /**
@@ -381,7 +404,12 @@ function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(
 export const NEUTRAL_FORM_FOR_PEAK = 50;
 
 /**
- * #6156 (KUN s5_profiles_v2): rytterens SAMLEDE form paa etapedagen, som v4 skal
+ * #6156: den SAMLEDE form (form + top, klampet 0-100). Siden ejer 21/10 ("A: byg") er
+ * det KUN den form risikoen for en daarlig dag ser (motoren regner den selv af
+ * Entrant.form + Entrant.form_peak_points); ydeevnen faar toppen som eget led, der
+ * ikke klemmes ved 100. Beholdt som reference for den kontrakt (tests).
+ *
+ * Oprindelig: rytterens SAMLEDE form paa etapedagen, som v4 skal
  * se den (spec 2026-10-04 §3.1, ejer 4/10: "én samlet form"). Formen
  * (rider_condition.form) + formtoppens tillaeg, naar dagen ligger i et af
  * rytterens peak-vinduer, eller minus dykket, naar dagen ligger i
