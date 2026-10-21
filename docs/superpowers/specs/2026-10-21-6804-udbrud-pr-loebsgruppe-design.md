@@ -1,6 +1,6 @@
 # #6804 trin 2: udbrud, tidsgab og kuperet enkeltstart pr. løbsgruppe (design)
 
-Status: design, intet bygget. Refs #6804 #6857 #6909 #6912 #6464 #6369 #5978 #6441.
+Status: design besluttet af ejeren 21/10 (alle fem beslutninger A, se §6); intet bygget. Refs #6804 #6857 #6909 #6912 #6464 #6369 #5978 #6441.
 Bygger videre på `2026-10-17-6804-hilly-breakaway-design.md` (P1-P5, ejer-go 20/10), som stadig gælder.
 SSOT for reglerne: `docs/RACE_ENGINE_RULES.md` (Udbrudsmål, GC-reaktion, "Farlige klassementsryttere får
 kortere snor", "Bjergets tidsgab ens i alle divisioner"). Bygge-PR'erne opdaterer reglerne dér.
@@ -136,7 +136,10 @@ Rækkefølge: P0 og P7 først (måling, ingen motor), så P1 → mål → P6 →
 - G14 (ny) Endagsløb overstiger ikke båndet på kuperet, når feltet får flere udbrydere (P0).
 - G2-G10 uændret. v1 og ældre bit-identiske.
 
-## 6. Ejer-beslutninger (stilles én ad gangen)
+## 6. Ejer-beslutninger (besluttet 21/10, låst)
+
+**Besluttet 21/10:** ejeren valgte A i alle fem (#6804). Pakken i §4 og gatene i §5 gælder som
+skrevet og bygges i rækkefølgen fra §4, startende med P0. Afsnittet nedenfor står som beslutningsgrundlag.
 
 Pakken i §4 og gatene i §5 er skrevet ud fra anbefalingerne, men er **ikke klar til byg**: hver del
 er betinget af sin beslutning. Rækkefølgen er 1 → 2 → 3 → 4 → 5, og den næste stilles først, når den
