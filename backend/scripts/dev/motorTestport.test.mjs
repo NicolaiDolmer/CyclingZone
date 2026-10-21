@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
+import { privateMinCellTeamStages, assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -478,6 +478,22 @@ test("#6804 P0 main: --from-dir + syntetisk felt kraever satser; med --intent-ra
     assert.equal(JSON.parse(readFileSync(path.join(out, "breakaway-intent-rates.json"), "utf8")).rows[0].hunters, 1, "de gemte satser er uroerte");
   } finally {
     process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6804 P0 (Codex P1) privateMinCellTeamStages: privat graense kraeves, intet stille default", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-6804-thr-"));
+  try {
+    const f = path.join(root, "thr.json");
+    assert.throws(() => privateMinCellTeamStages(f), /breakawayIntentMinCellTeamStages/, "filen mangler");
+    writeFileSync(f, JSON.stringify({ andet: 1 }));
+    assert.throws(() => privateMinCellTeamStages(f), /breakawayIntentMinCellTeamStages/, "noeglen mangler");
+    writeFileSync(f, JSON.stringify({ breakawayIntentMinCellTeamStages: -1 }));
+    assert.throws(() => privateMinCellTeamStages(f), /tal >= 0/);
+    writeFileSync(f, JSON.stringify({ breakawayIntentMinCellTeamStages: 12 }));
+    assert.equal(privateMinCellTeamStages(f), 12);
+  } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });

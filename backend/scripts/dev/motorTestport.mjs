@@ -311,6 +311,18 @@ export function loadThresholds(file) {
 }
 
 /**
+ * #6804 P0 (Codex P1): graensen for smaa celler i udbrudsvilje-satserne er privat (hard rule 17)
+ * og har intet offentligt default. Mangler filen eller noeglen, stopper koerslen (fail closed).
+ */
+export function privateMinCellTeamStages(file) {
+  const v = file && existsSync(file) ? JSON.parse(readFileSync(file, "utf8")).breakawayIntentMinCellTeamStages : undefined;
+  if (!Number.isFinite(v) || v < 0) {
+    throw new Error(`udbrudsvilje-satser fra prod kraever breakawayIntentMinCellTeamStages (tal >= 0) i den private taerskelfil (${file}); eller giv --intent-rates=<fil>`);
+  }
+  return v;
+}
+
+/**
  * #6750 (Codex): en output-mappe tilhoerer EN loebsudvaelgelse. Genoptagelse med
  * samme loeb er ok; et andet saet ville blande gamle scorecards ind i kortet.
  */
@@ -519,7 +531,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
             : fromDir ? (() => { throw new Error("--from-dir med --breakaway-intent=prod kraever --intent-rates=<fil> (eller --breakaway-intent=none)"); })()
               : await src.breakawayIntentRates({ now, seasonNumber: opts.intentSeason,
                 // Hard rule 17: graensen for smaa celler er privat (taerskelfilen), aldrig i koden.
-                minCellTeamStages: Number(loadThresholds(abs(opts.thresholds)).breakawayIntentMinCellTeamStages ?? 0) });
+                minCellTeamStages: privateMinCellTeamStages(abs(opts.thresholds)) });
         const signature = ratesSignature(rates);
         // Codex P2: andre satser end en genoptaget koersels er en anden koersel (dens done-markoerer gaelder de gamle).
         if (prev?.breakawayIntent?.signature && prev.breakawayIntent.signature !== signature) {
