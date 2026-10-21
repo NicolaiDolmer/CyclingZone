@@ -19,6 +19,7 @@ import {
   incidentChaseHoldsPace,
   incidentChaseTargetGroup,
   incidentHook,
+  INCIDENT_START_FLOOR_KM,
   incidentProbability,
   isFlatStageForThreeKmRule,
   isIncidentChasePacedSegment,
@@ -50,6 +51,7 @@ import type {
   RouteV2,
   Segment,
   SegmentHookContext,
+  SegmentHookResult,
   StageIncident,
   StageInput,
   StageResult,
@@ -1209,4 +1211,35 @@ test("#5582 e2e: en etape uden uheld er bit-identisk (jagt-blokken roeres aldrig
   assert.deepEqual(withHook.state.riders, without.state.riders);
   assert.equal(withHook.state.incident_chasers, undefined);
   assert.equal(withHook.state.incident_chase_loss, undefined);
+});
+
+// ── #7008 (KUN s5_profiles_v2): intet uheld i startvinduet ──────────────────
+
+test("#7008 s5_profiles_v2: et uheld paa foerste segment ligger aldrig foer INCIDENT_START_FLOOR_KM; tidstab og ryttere uaendret", () => {
+  const route = makeRoute("hilly", 160);
+  const segment = flatSegment(0, 2); // halvdelen af segmentet ligger i startvinduet
+  const pairs: Array<[string, number]> = Array.from({ length: 12 }, (_, i) => [`r${String(i).padStart(2, "0")}`, 50]);
+  const hook = createIncidentHook(alwaysLightCrashTuning());
+  const v1 = buildSingleGroupScenario(pairs, segment, route, "start-window-seed");
+  const v2 = buildSingleGroupScenario(pairs, segment, route, "start-window-seed");
+  const before = hook(v1.state, v1.ctx);
+  const after = hook(v2.state, { ...v2.ctx, s5ProfilesV2: true });
+
+  const kms = (r: SegmentHookResult) => eventsOfType(r.events, "incident").map((e) => e.km);
+  assert.ok(kms(before).some((km) => km < INCIDENT_START_FLOOR_KM), "riggen skal ramme startvinduet uden v2");
+  assert.ok(kms(after).every((km) => km >= INCIDENT_START_FLOOR_KM && km <= segment.to_km), `v2: ${kms(after).join(", ")}`);
+  // Kun stedet flytter: samme ryttere, udfald og tidstab (samme lodtraekninger).
+  const strip = (r: SegmentHookResult) => eventsOfType(r.events, "incident").map((e) => ({ ...e.params, km: undefined }));
+  assert.deepEqual(strip(after), strip(before));
+  assert.deepEqual(after.state.groups, before.state.groups);
+});
+
+test("#7008 s5_profiles_v2: et segment helt efter startvinduet er uaendret", () => {
+  const route = makeRoute("hilly", 160);
+  const segment = flatSegment(40, 45);
+  const pairs: Array<[string, number]> = [["a", 50], ["b", 50], ["c", 50]];
+  const hook = createIncidentHook(alwaysLightCrashTuning());
+  const v1 = buildSingleGroupScenario(pairs, segment, route, "late-seed");
+  const v2 = buildSingleGroupScenario(pairs, segment, route, "late-seed");
+  assert.deepEqual(hook(v2.state, { ...v2.ctx, s5ProfilesV2: true }), hook(v1.state, v1.ctx));
 });

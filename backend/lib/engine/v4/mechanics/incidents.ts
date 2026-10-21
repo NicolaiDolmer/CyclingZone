@@ -635,6 +635,16 @@ export function incidentChaseDtSeconds(
   return Math.max(0, dt);
 }
 
+/**
+ * #7008 (KUN s5_profiles_v2): uheldets km-maerke lander aldrig foer denne km.
+ * Uheldet loddes pr. segment, og stedet i segmentet er et frit lodtraek; paa
+ * foerste segment kunne det lande paa km 0,01, saa loebsfilmen viste minutter
+ * tabt "foer der var koert" (#5951's spillerklage). Kun stedet flytter: samme
+ * lodtraekninger, ryttere, udfald og tidstab. Ligger over scorecardets
+ * startvindue (START_WINDOW_KM = 0,5).
+ */
+export const INCIDENT_START_FLOOR_KM = 1;
+
 export function createIncidentHook(
   tuning: IncidentsTuning,
 ): (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult {
@@ -680,7 +690,8 @@ export function createIncidentHook(
       if (rng() >= p) continue;
 
       const kmFrac = rng();
-      const incidentKm = round2(segment.from_km + kmFrac * (segment.to_km - segment.from_km));
+      const fromKm = ctx.s5ProfilesV2 === true ? Math.min(Math.max(segment.from_km, INCIDENT_START_FLOOR_KM), segment.to_km) : segment.from_km;
+      const incidentKm = round2(fromKm + kmFrac * (segment.to_km - fromKm));
       const protectedByRule = threeKmRuleApplies(incidentKm, route.distance_km, route.profile_type, tuning);
       const helperNearby = hasHelperNearby(group.rider_ids, entrants, riders, riderId);
 
