@@ -56,9 +56,12 @@ Tre løbsgrupper: Grand Tours, korte etapeløb (2-4 og 5-8 etaper) og endagsløb
   etapeløb er foreneligt med en lavere samlet andel. Gaten tester begge dele (G1': pr. terræn og samlet
   pr. gruppe). Bånd: privat.
   **Dækning:** den private tabel har et bånd for hver løbsgruppe på hvert terræn, der har et mål i
-  Udbrudsmål §2 (flad, rullende, kuperet, mellembjerg, bjerg, højfjeld, brosten); et terræn der ikke
-  findes i gruppen (fx brosten i Grand Tours) dømmes ikke. Klassiker og grus har intet udbrudsmål i dag
-  og vises kun som information i G1'; de genbruger aldrig et andet terræns eller gruppes bånd.
+  Udbrudsmål §2 (flad, rullende, kuperet, bjerg, højfjeld, brosten); et terræn der ikke findes i gruppen
+  (fx brosten i Grand Tours) dømmes ikke. **Mellembjerg** har intet mål i Udbrudsmål §2; M1-tabellen
+  ejeren godkendte 21/10 har et mellembjerg-bånd for Grand Tours og korte etapeløb, og bygge-PR'en
+  skriver det ind i Udbrudsmål §2 med den godkendelse som kilde. Endagsløb har intet mellembjerg-mål.
+  Klassiker, grus og endagsløbs mellembjerg vises kun som information i G1'; de genbruger aldrig et andet
+  terræns eller gruppes bånd.
 - **M2 Tidsgab i korte etapeløb.** Egne bånd for nr. 10 i slutklassementet og vindermarginen i
   2-4 og 5-8 etaper, forankret i slutklassementer 2023-2025. Ens i alle divisioner (samme princip som
   #6464). Scorecardet dømmer korte løb mod dem i stedet for Grand Tour-båndet.
