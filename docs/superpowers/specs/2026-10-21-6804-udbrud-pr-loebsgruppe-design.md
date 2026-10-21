@@ -1,0 +1,159 @@
+# #6804 trin 2: udbrud, tidsgab og kuperet enkeltstart pr. løbsgruppe (design)
+
+Status: design, intet bygget. Refs #6804 #6857 #6909 #6912 #6464 #6369 #5978 #6441.
+Bygger videre på `2026-10-17-6804-hilly-breakaway-design.md` (P1-P5, ejer-go 20/10), som stadig gælder.
+SSOT for reglerne: `docs/RACE_ENGINE_RULES.md` (Udbrudsmål, GC-reaktion, "Farlige klassementsryttere får
+kortere snor", "Bjergets tidsgab ens i alle divisioner"). Bygge-PR'erne opdaterer reglerne dér.
+Hard rule 17: ingen vægte, tærskler, bånd eller målte andele her. Baseline, kalibrering og de
+foreslåede bånd ligger privat i `balance-internals/6804/2026-10-21/baseline-6804-loebsgrupper.md`.
+Hard rule 36: baseline målt 21/10 offline på testportens S5-cache (nye ruter, 437 løb, 8 seeds).
+Motoren er ikke rørt; denne PR er ren docs.
+
+## 1. Problem (ejer 21/10, tal privat)
+
+1. Udbrudssejre ligger langt under målet i Grand Tours på kuperet og bølget, i etapeløb på bølget og
+   brosten, og kuperet i andre etapeløb faldt med de nye S5-ruter.
+2. Der findes kun Grand Tour-mål for tidsgab, så scorecardet dømmer korte etapeløb (2-4 og 5-8 etaper)
+   forkert.
+3. Den kuperede enkeltstart i etapeløb spreder for meget i toppen.
+
+## 2. Rod-årsager (målt, ikke antaget)
+
+**R1 Dannelsen: intet udbrud uden ordre, og testfeltet har ingen ordrer.** Kaptajn, sprint-kaptajn
+og hjælper forsøger kun morgenudbruddet med en ordre (ejer 10/10, valg B; "Morgenudbrud under
+`orders_gc_v1`"). Testportens syntetiske felt giver menneskeholdene ingen ordrer og ingen jægere.
+I et D1-felt (næsten kun menneskehold) dannes derfor næsten intet udbrud i Grand Tours. Prod er
+anderledes: mange menneskehold i de øverste divisioner har en udbrudsvillig rytter med (jæger-rolle
+eller "forsøg udbrud"), færre i de lavere divisioner. **Testporten undermåler altså Grand Tours**, og udbruddets størrelse afhænger i
+dag af hvor mange AI-hold der er i feltet.
+
+**R2 Klassementsjagten i etapeløb starter få km efter dannelsen.** Med et prod-lignende felt dannes
+udbruddet i Grand Tours, men så jager klassementsholdene det fra starten på de fleste kuperede
+etaper, og det hentes. I korte etapeløb sker det samme allerede i dag på langt de fleste kuperede,
+bølgede og mellembjerg-etaper. Årsagen er trusselsvurderingen (`assessGcThreat` under S5):
+- efter en flad etape står alle på samme tid, så hver udbryder med lidt klassementsevne er "inden for
+  rækkevidde";
+- vurderingen lægger udbruddets fremskrevne gevinst på de resterende åbne km oveni, så margenen er
+  opbrugt længe før forspringet er stort;
+- næsten alle hold har "noget at forsvare" i et kort etapeløb (hullet til føreren er lille);
+- svaret på en alvorlig trussel er fuld jagt til hentning, ikke kontrol på en snor. Det giver et
+  yo-yo-mønster: hentet, nyt udbrud (#6369), hentet igen.
+
+Flere udbrydere gør det værre i etapeløb (flere "trusler"), mens endagsløb, der ikke har denne
+jagt, vinder for ofte fra udbruddet når de får flere udbrydere. Det viser at jagten, ikke
+dannelsen, er flaskehalsen i etapeløb.
+
+**R3 Målene er Grand Tour-mål.** Udbrudsmål §2 (pr. terræn) er forankret i Grand Tour-data og
+anvendes på alle løb. Virkelighedens ugeløb (Paris-Nice, Dauphiné, Suisse) vindes sjældnere fra
+udbruddet end Grand Tours, fordi klassementet er tæt og de store hold kontrollerer hver dag.
+Tidsgab har kun Grand Tour-bånd (`TOUR_BENCHMARKS`, `headToHeadAnchors`).
+
+**R4 Kuperet enkeltstart måles i absolutte evne-point.** Spredningen på en kuperet enkeltstart vokser
+med feltets evne-spredning: samme rute giver flere gange større hul i de lavere divisioner end i D1.
+Bjergetaperne fik en felt-skalering i #6464 ("Bjergets tidsgab ens i alle divisioner"); den kuperede
+enkeltstart fik den ikke. Desuden ligger "bakket" og "stejl/opad" enkeltstart i samme klasse med ét
+loft, selv om de spreder meget forskelligt i virkeligheden.
+
+## 3. Mål pr. løbsgruppe (forslag til ejeren, tal privat)
+
+Tre løbsgrupper: Grand Tours, korte etapeløb (2-4 og 5-8 etaper) og endagsløb.
+
+- **M1 Udbrudssejre pr. løbsgruppe × terræn.** Grand Tours beholder terrænbåndene i Udbrudsmål §2
+  uændret. Korte etapeløb får lavere bånd end Grand Tours på flad, rullende, kuperet og bjerg; endagsløb
+  et bånd på kuperet, der ligger mellem de to. Ejerens gruppe-bånd fra 19/10 (GT > korte > endags,
+  låst) gælder oveni. Bånd: privat.
+- **M2 Tidsgab i korte etapeløb.** Egne bånd for nr. 10 i slutklassementet og vindermarginen i
+  2-4 og 5-8 etaper, forankret i slutklassementer 2023-2025. Ens i alle divisioner (samme princip som
+  #6464). Scorecardet dømmer korte løb mod dem i stedet for Grand Tour-båndet.
+- **M3 Kuperet enkeltstart i to klasser.** "Bakket" (ingen topankomst, lav stigningstæthed) og
+  "stejl/opad" (topankomst eller høj stigningstæthed), hver med sit bånd pr. 40 km, ens i alle
+  divisioner.
+- Uændret: K1-K8 og G1-G10 fra designet 17/10; bjerg/højfjeld-ankre; et hold jager aldrig sine egne
+  (#6187); en top-10 får aldrig 5 minutter uden jagt (#5978); skala-invarians (#4707); determinisme.
+
+Kilder (virkelig cykelsport):
+- Frontier Economics, "Tour de France: Breaking down the breakaway" (114 Tour-vejetaper; ca. hver
+  fjerde vundet fra udbruddet; flad næsten aldrig; mellem- og højbjerg over fire ud af ti):
+  https://www.frontier-economics.com/uk/en/news-and-insights/articles/article-i6444-breaking-down-the-breakaway/
+- Cyclingbeginner, seks Grand Tours 2020-2021 pr. etapetype (metode ikke beskrevet, tallene summerer
+  ikke helt): https://cyclingbeginner.com/success-rate-of-cycling-breakaway-comprehensive-analysis/
+- Scelles m.fl., udbrud lykkes oftere på kuperet og bjerg end flad (Touren 2013-2016):
+  https://www.emerald.com/insight/content/doi/10.1108/TPM-03-2017-0012/full/html og
+  https://www.stir.ac.uk/research/hub/publication/522272
+- Ugeløb: egen optælling af etapeberetninger 2024 (fransk Wikipedia) for Paris-Nice, Dauphiné,
+  Tour de Suisse, Itzulia, Volta a Catalunya og Tirreno-Adriatico. Ingen publiceret statistik fundet.
+- Tidsgab og enkeltstart: slutklassementer og etaperesultater på Wikipedia (en), 2022-2025, fx
+  https://en.wikipedia.org/wiki/2024_Paris%E2%80%93Nice, https://en.wikipedia.org/wiki/2024_Boucles_de_la_Mayenne,
+  https://en.wikipedia.org/wiki/2023_Tour_de_France,_Stage_12_to_Stage_21. Den fulde liste står i den
+  private baseline.
+- ProCyclingStats afviser automatiseret hentning; tallene er ikke krydstjekket mod PCS.
+- Korte etapeløb og endagsløb pr. terræn: **ingen kilde, antagelse** forankret i Grand Tour-kilderne
+  og ugeløbs-optællingen.
+
+## 4. Pakken (oven på P1-P5, byg-rækkefølge)
+
+**P0 Testporten måler et prod-lignende felt (R1).** Det syntetiske felt giver menneskeholdene
+udbrudsvilje som i prod (andel jægere og "forsøg udbrud" pr. division og løbsgruppe, læst
+read-only fra den seneste afsluttede sæson). Ingen motorændring. Rapporten viser begge felter side
+om side, så målet dømmes på prod-feltet og testfeltet stadig fanger "intet udbrud"-tilfældet.
+
+**P6 Klassementskontrol på snor i stedet for tidlig hentning (R2).** Bag `s5_profiles_v2`:
+1. En trussel tidligt på etapen giver kontrol: holdet holder forspringet på det det tolererer for
+   truslen (snoren findes allerede, #5978), i stedet for at jage til hentning. Hentning er finalens
+   opgave eller sker når snoren brydes.
+2. Den fremskrevne gevinst regnes først fuldt med, når resten af etapen er kort nok til at den kan
+   realiseres; tidligt på dagen tæller den mindre.
+3. "Noget at forsvare" i korte etapeløb følger holdets realistiske klassementschance (evne og
+   placering), ikke kun et lille tidshul; et hold uden reel chance kontrollerer ikke.
+4. Udbrydere uden klassementsevne er aldrig en trussel, uanset tidshul (samme fare-mål som #5978).
+Ingen ny tilfældighed: hver udbrudssejr kan forklares i filmen (P5: kontrol, træthed, terræn).
+
+**P7 Tidsgab-mål i scorecardet (M2).** `tourScorecard.mjs` og testportens rapport får båndene for
+2-4 og 5-8 etaper. Ingen motorændring. Halen (meget store hul i korte løb) måles pr. årsag; P2
+(realistisk forspring) forventes at tage den.
+
+**P8 Kuperet enkeltstart (M3, R4).** Bag `s5_profiles_v2`: den kuperede enkeltstarts tidshul måles i
+feltets egen spredning (samme regel som #6464 for bjerg), og scorecardet deler klassen i bakket og
+stejl/opad. Rækkefølgen på etapen er uændret; kun hullets størrelse følger feltet.
+
+Rækkefølge: P0 og P7 først (måling, ingen motor), så P1 → mål → P6 → mål → P2 → P3/P4 → P5 → P8,
+ét trin pr. commit så hver ændring kan isoleres.
+
+## 5. Testport (hårde gates, under `s5_profiles_v2`, S5-ruter + S4-ruter)
+
+- G1' (erstatter G1) Udbrudsandel pr. løbsgruppe × terræn inden for M1 på prod-feltet (P0); Grand
+  Tours på kuperet og bølget skal ramme båndet, ikke kun være > 0.
+- G11 (ny, R2) Andelen af etaper i korte etapeløb og Grand Tours hvor klassementsjagten henter
+  udbruddet i første del af etapen, under et privat loft; ingen yo-yo (hentet, nyt, hentet igen) som
+  normaltilfælde.
+- G12 (ny, M2) Nr. 10 og vindermargin i 2-4 og 5-8 etaper inden for båndet, median og hale.
+- G13 (ny, M3) Kuperet enkeltstart pr. klasse inden for båndet i hver division; samme rute spreder
+  ikke markant mere i lavere divisioner.
+- G14 (ny) Endagsløb overstiger ikke båndet på kuperet, når feltet får flere udbrydere (P0).
+- G2-G10 uændret. v1 og ældre bit-identiske.
+
+## 6. Ejer-beslutninger (stilles én ad gangen)
+
+1. **Testfeltet (P0).** A: testporten giver menneskeholdene prod-lignende udbrudsvilje. B: mål med
+   det nuværende felt uden ordrer. Anbefaling A: B undermåler Grand Tours og ville få os til at
+   kalibrere motoren mod et felt der ikke findes.
+2. **Mål pr. løbsgruppe (M1).** A: egne bånd pr. løbsgruppe × terræn, korte etapeløb lavere end Grand
+   Tours. B: Grand Tour-terrænbåndene gælder alle løb. Anbefaling A: virkelighedens ugeløb vindes
+   sjældnere fra udbruddet, og B ville kræve at korte løb ramte Grand Tour-niveau.
+3. **Klassementsjagten (P6).** A: kontrol på snor tidligt, hentning i finalen, kun hold med reel
+   chance forsvarer. B: kun en mindre dæmpning af den fremskrevne gevinst. Anbefaling A: B flytter
+   tidspunktet men ikke yo-yo-mønsteret.
+4. **Kuperet enkeltstart (P8).** A: felt-skalering som #6464 og to klasser. B: én klasse med højere
+   loft. Anbefaling A: B ville godkende for stor spredning i de lavere divisioner.
+
+## 7. Verifikations-tier
+
+TIER FULL for P6/P8 (motor): `scripts/verify-local.ps1`, hele backend `node --test`, s5MotorBench,
+tourDryRun-tests, testporten G1'-G14. P0/P7 (måleværktøj): `node --test` på scripts og en fuld
+testport-kørsel. Ejeren ser tallene (privat) og udvalgte løbsfilm på preview før "tænd".
+
+## 8. Risiko
+
+Bag slukket revision; ingen spillerpåvirkning før ejer-go. Største risiko: P6 gør klassementet for
+løst (udbrud der vinder løbet); G-gaten fra #5978 (top-10 aldrig 5 min uden jagt) og G12 fanger det.
+P0 kan afsløre at endagsløb vinder for ofte med prod-feltet; G14 fanger det, og P1/P2 justerer.
