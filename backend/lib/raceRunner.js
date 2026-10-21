@@ -2460,6 +2460,11 @@ export async function simulateRace({
         dates.add(copenhagenDateString(new Date(row.scheduled_at)));
       }
       if(byStage.size!==stages.length||dates.size!==1) throw new Error('Normalized full simulation requires a single canonical date; use recorded-load recovery for historical dates');
+      // #6984: under condition_model_v2 bygger fuld-simuleringen alle etaper før nogen
+      // belastning er registreret, så B2 (træthed mellem dagens etaper) og sæsonens
+      // løbsdage (B3) ville blive regnet forkert for etape 2+. Fail-closed: kun etape
+      // for etape, der regner begge korrekt. Endagsløb er uberørte. Læses FØR bindingen.
+      if(await isConditionModelV2Enabled(supabase)) throw new Error('condition_model_v2: multi-stage full simulation is not supported; run the race stage by stage');
     }
   }
 
