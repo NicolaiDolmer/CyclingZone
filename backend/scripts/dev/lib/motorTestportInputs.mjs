@@ -17,6 +17,7 @@ import { createHash } from "node:crypto";
 import { raceBindingWindow } from "../../../lib/raceBinding.js";
 import { ABILITY_KEYS } from "../../../lib/raceSimulator.js";
 import { STAGE_FINALE_TYPES, STAGE_PROFILE_TYPES } from "../../../lib/stageProfileTypes.js";
+import { aggregateIntentRates, applyBreakawayIntent } from "./breakawayIntent.mjs";
 
 export const ROUTES_FORMAT = "cz-race-routes/v1";
 // Afrunding i eksporten (fx 3 decimaler pr. vaegt) maa ikke afvise en gyldig vektor.
@@ -35,6 +36,9 @@ export const FIELD_NOTES = Object.freeze({
   generator: "tilmeldingsgeneratoren som dry-run i hukommelsen (intet skrevet): alle hold i puljen udtaget af assistenten, ligesom redningen ved etape 1; nuvaerende trupper og divisioner (foer op- og nedrykning); ingen holdordrer",
   bench: "det anonymiserede Giro-bench-felt (samme felt i alle loeb, ikke de rigtige puljer); ingen holdordrer",
 });
+
+/** #6804 P0: tillaeg til feltets note naar menneskeholdene faar prod-lignende udbrudsvilje. */
+export const INTENT_NOTE = "menneskeholdene faar udbrudsvilje som i prod (jaeger-roller og Forsoeg udbrud pr. division og loebsgruppe, #6804 P0)";
 
 /**
  * Valider én rute-fil (fail-closed). Returnerer etaperne sorteret paa stage_number,
@@ -257,15 +261,20 @@ export function readOnlyDb(db, { overlay = null, overlays = [] } = {}) {
  *
  * Returnerer {prebuilt: Set, ids (uden de loeb der ikke fik felt), field, routes}.
  * En eksisterende cache.json i loebsmappen genbruges (genoptagelse).
+ *
+ * #6804 P0: `intent` = {rates, signature} giver et syntetisk felt (bygget nu, eller en
+ * eksports felt med fieldSource generator/bench) menneskeholdenes udbrudsvilje som i prod
+ * (breakawayIntent.mjs). Prod-tilmeldinger roeres aldrig. Udeladt = uaendret.
  */
-export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = null, synthetic = null, source = null }) {
+export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = null, synthetic = null, source = null, intent = null }) {
   const cacheFile = (id) => path.join(outDir, "races", id, "cache.json");
   const exportFile = (id) => (fromDir ? path.join(fromDir, id, "cache.json") : null);
   const readExport = (id) => {
     const f = exportFile(id);
     return f && existsSync(f) ? JSON.parse(readFileSync(f, "utf8")) : null;
   };
-  const field = { kind: synthetic, note: synthetic ? FIELD_NOTES[synthetic] : null, prod: 0, synthetic: 0, skippedNoField: 0, skippedIds: [] };
+  const field = { kind: synthetic, note: synthetic ? FIELD_NOTES[synthetic] + (intent ? `; ${INTENT_NOTE}` : "") : null, prod: 0, synthetic: 0, skippedNoField: 0, skippedIds: [],
+    ...(intent ? { intent: { signature: intent.signature, races: 0, hunters: 0, freeRoles: 0, tryBreakOrders: 0 } } : {}) };
   const routesMeta = routes ? { dir: path.basename(routes.dir), label: routes.label, races: 0 } : null;
   const prebuilt = new Set();
   if (!routes && !synthetic) return { prebuilt, ids: raceIds, field: null, routes: null };
@@ -279,7 +288,8 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
     const c = JSON.parse(readFileSync(cacheFile(id), "utf8"));
     // #6909 (Codex P2): samme ruter, men et andet syntetisk felt, er ogsaa en anden koersel.
     const fieldOk = c.fieldSource === "prod" || c.fieldSource === (synthetic ?? null);
-    return (c.routesSignature ?? null) !== (routes?.signature ?? null) || !fieldOk;
+    // #6804 P0: andre udbrudsvilje-satser (eller ingen) er ogsaa en anden koersel.
+    return (c.routesSignature ?? null) !== (routes?.signature ?? null) || !fieldOk || (c.intentSignature ?? null) !== (intent?.signature ?? null);
   }));
   const kindOf = (id) => JSON.parse(readFileSync(cacheFile(id), "utf8")).fieldSource ?? "prod";
   fresh.push(...staleIds);
@@ -341,8 +351,20 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
       fieldSource = synthetic;
     }
     if (routes) data = applyRoutes(data, routes.byRace.get(id));
+    // #6804 P0: kun et syntetisk felt (bygget nu eller fra eksporten) faar udbrudsvilje.
+    let intentSummary = null;
+    if (intent && (fieldSource !== "prod" || SYNTHETIC_KINDS.includes(data.fieldSource))) {
+      const applied = applyBreakawayIntent(data, intent.rates);
+      data = applied.data;
+      intentSummary = applied.summary;
+      field.intent.races += 1;
+      field.intent.hunters += intentSummary.hunters;
+      field.intent.freeRoles += intentSummary.freeRoles;
+      field.intent.tryBreakOrders += intentSummary.tryBreakOrders;
+    }
     mkdirSync(path.dirname(cacheFile(id)), { recursive: true });
-    writeFileSync(cacheFile(id), JSON.stringify({ ...data, fieldSource, routesFrom: routesMeta?.dir ?? null, routesSignature: routes?.signature ?? null }));
+    writeFileSync(cacheFile(id), JSON.stringify({ ...data, fieldSource, routesFrom: routesMeta?.dir ?? null, routesSignature: routes?.signature ?? null,
+      intentSignature: intent?.signature ?? null, ...(intentSummary ? { breakawayIntent: intentSummary } : {}) }));
     prebuilt.add(id);
     ids.push(id);
     if (fieldSource === "prod") field.prod += 1; else field.synthetic += 1;
@@ -534,6 +556,31 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
         }
       }
       return out;
+    },
+    /**
+     * #6804 P0: menneskeholdenes udbrudsvilje i seneste afsluttede saeson (senior), READ-ONLY.
+     * Satserne pr. division og loebsgruppe (breakawayIntent.aggregateIntentRates).
+     */
+    async breakawayIntentRates({ now = new Date() } = {}) {
+      const { data: last, error } = await db.from("races").select("season_id").eq("status", "completed").eq("squad", "senior")
+        .order("created_at", { ascending: false }).range(0, 0);
+      if (error) throw new Error(`races: ${error.message}`);
+      const seasonId = last?.[0]?.season_id;
+      if (!seasonId) throw new Error("udbrudsvilje-satser: ingen afsluttet senior-saeson fundet");
+      const races = [];
+      // pagination-safe: .range() i sider af PAGE
+      for (let from = 0; ; from += PAGE) {
+        const { data, error: e } = await db.from("races").select("id, league_division_id, stages").eq("season_id", seasonId).eq("status", "completed").eq("squad", "senior")
+          .order("id", { ascending: true }).range(from, from + PAGE - 1);
+        if (e) throw new Error(`races: ${e.message}`);
+        races.push(...(data ?? []));
+        if (!data || data.length < PAGE) break;
+      }
+      const ids = races.map((r) => r.id);
+      const entries = await selectByIds(db, "race_entries", "race_id, rider_id, team_id, race_role", "race_id", ids, ["race_id", "rider_id"]);
+      const orders = await selectByIds(db, "race_team_orders", "race_id, team_id, stage_number, riders", "race_id", ids, ["race_id", "team_id", "stage_number"]);
+      const teams = await teamsFor(entries.map((e) => e.team_id));
+      return aggregateIntentRates({ races, entries, teams, orders, seasonId, generatedAt: now.toISOString() });
     },
     async benchField() {
       const { loadBenchField } = await import("../s5MotorBench.mjs");
