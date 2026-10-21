@@ -55,6 +55,10 @@ Tre løbsgrupper: Grand Tours, korte etapeløb (2-4 og 5-8 etaper) og endagsløb
   har få kuperede dage i forhold til flad, brosten og klassiker, så et højere kuperet bånd end i korte
   etapeløb er foreneligt med en lavere samlet andel. Gaten tester begge dele (G1': pr. terræn og samlet
   pr. gruppe). Bånd: privat.
+  **Dækning:** den private tabel har et bånd for hver løbsgruppe på hvert terræn, der har et mål i
+  Udbrudsmål §2 (flad, rullende, kuperet, mellembjerg, bjerg, højfjeld, brosten); et terræn der ikke
+  findes i gruppen (fx brosten i Grand Tours) dømmes ikke. Klassiker og grus har intet udbrudsmål i dag
+  og vises kun som information i G1'; de genbruger aldrig et andet terræns eller gruppes bånd.
 - **M2 Tidsgab i korte etapeløb.** Egne bånd for nr. 10 i slutklassementet og vindermarginen i
   2-4 og 5-8 etaper, forankret i slutklassementer 2023-2025. Ens i alle divisioner (samme princip som
   #6464). Scorecardet dømmer korte løb mod dem i stedet for Grand Tour-båndet.
@@ -128,15 +132,12 @@ Rækkefølge: P0 og P7 først (måling, ingen motor), så P1 → mål → P6 →
 
 ## 6. Ejer-beslutninger (besluttet 21/10, låst)
 
-**Besluttet 21/10:** ejeren valgte A i alle fem (#6804). Pakken i §4 og gatene i §5 gælder som
-skrevet og bygges i rækkefølgen fra §4, startende med P0. Afsnittet nedenfor står som beslutningsgrundlag.
+**Gate-status (gældende):** ejeren valgte A i alle fem 21/10 (#6804) og gav byg-go: pakken i §4 og
+gatene i §5 bygges som skrevet, i rækkefølgen fra §4, startende med P0. Al motorændring sker bag en
+slukket revision. **Tænding** er en separat ejer-beslutning efter testporten (G1'-G14) og er ikke givet.
 
-Pakken i §4 og gatene i §5 er skrevet ud fra anbefalingerne, men er **ikke klar til byg**: hver del
-er betinget af sin beslutning. Rækkefølgen er 1 → 2 → 3 → 4 → 5, og den næste stilles først, når den
-forrige er besvaret, fordi svaret kan ændre den næste (fx måles 2-4 på det felt 1 vælger).
-Afviser ejeren en anbefaling, skrives den berørte del af §4/§5 om, før noget bygges.
-- Beslutning 1 åbner P0. Beslutning 2 åbner M1, G1' og G14 (G14 kræver både 1 og 2). Beslutning 3 åbner M2, P7 og G12.
-  Beslutning 4 åbner P6 og G11. Beslutning 5 åbner M3, P8 og G13.
+Beslutningsgrundlaget (som det blev forelagt, én ad gangen; hver beslutning åbnede sine dele):
+P0 ← 1; M1, G1', G14 ← 2 (G14 kræver også 1); M2, P7, G12 ← 3; P6, G11 ← 4; M3, P8, G13 ← 5.
 
 1. **Testfeltet (P0).** A: testporten giver menneskeholdene prod-lignende udbrudsvilje. B: mål med
    det nuværende felt uden ordrer. Anbefaling A: B undermåler Grand Tours og ville få os til at
