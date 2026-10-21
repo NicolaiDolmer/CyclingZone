@@ -60,8 +60,11 @@ Tre løbsgrupper: Grand Tours, korte etapeløb (2-4 og 5-8 etaper) og endagsløb
 
 - **M1 Udbrudssejre pr. løbsgruppe × terræn.** Grand Tours beholder terrænbåndene i Udbrudsmål §2
   uændret. Korte etapeløb får lavere bånd end Grand Tours på flad, rullende, kuperet og bjerg; endagsløb
-  et bånd på kuperet, der ligger mellem de to. Ejerens gruppe-bånd fra 19/10 (GT > korte > endags,
-  låst) gælder oveni. Bånd: privat.
+  får et bånd på kuperet, der ligger mellem de to. Ejerens gruppe-bånd fra 19/10 (GT > korte > endags,
+  låst) gælder oveni og gælder **gruppens samlede andel af vejetaper**, ikke hvert terræn: endagsløb
+  har få kuperede dage i forhold til flad, brosten og klassiker, så et højere kuperet bånd end i korte
+  etapeløb er foreneligt med en lavere samlet andel. Gaten tester begge dele (G1': pr. terræn og samlet
+  pr. gruppe). Bånd: privat.
 - **M2 Tidsgab i korte etapeløb.** Egne bånd for nr. 10 i slutklassementet og vindermarginen i
   2-4 og 5-8 etaper, forankret i slutklassementer 2023-2025. Ens i alle divisioner (samme princip som
   #6464). Scorecardet dømmer korte løb mod dem i stedet for Grand Tour-båndet.
@@ -121,7 +124,8 @@ Rækkefølge: P0 og P7 først (måling, ingen motor), så P1 → mål → P6 →
 
 ## 5. Testport (hårde gates, under `s5_profiles_v2`, S5-ruter + S4-ruter)
 
-- G1' (erstatter G1) Udbrudsandel pr. løbsgruppe × terræn inden for M1 på prod-feltet (P0); Grand
+- G1' (erstatter G1) Udbrudsandel pr. løbsgruppe × terræn inden for M1 og samlet pr. løbsgruppe
+  inden for ejerens gruppe-bånd (19/10) på prod-feltet (P0); Grand
   Tours på kuperet og bølget skal ramme båndet, ikke kun være > 0.
 - G11 (ny, R2) Andelen af etaper i korte etapeløb og Grand Tours hvor klassementsjagten henter
   udbruddet i første del af etapen, under et privat loft; ingen yo-yo (hentet, nyt, hentet igen) som
@@ -133,6 +137,13 @@ Rækkefølge: P0 og P7 først (måling, ingen motor), så P1 → mål → P6 →
 - G2-G10 uændret. v1 og ældre bit-identiske.
 
 ## 6. Ejer-beslutninger (stilles én ad gangen)
+
+Pakken i §4 og gatene i §5 er skrevet ud fra anbefalingerne, men er **ikke klar til byg**: hver del
+er betinget af sin beslutning. Rækkefølgen er 1 → 2 → 3 → 4, og den næste stilles først, når den
+forrige er besvaret, fordi svaret kan ændre den næste (fx måles 2 og 3 på det felt 1 vælger).
+Afviser ejeren en anbefaling, skrives den berørte del af §4/§5 om, før noget bygges.
+- Beslutning 1 åbner P0. Beslutning 2 åbner P7 og G1'/G12. Beslutning 3 åbner P6 og G11.
+  Beslutning 4 åbner P8 og G13.
 
 1. **Testfeltet (P0).** A: testporten giver menneskeholdene prod-lignende udbrudsvilje. B: mål med
    det nuværende felt uden ordrer. Anbefaling A: B undermåler Grand Tours og ville få os til at
