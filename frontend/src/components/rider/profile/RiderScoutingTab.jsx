@@ -200,7 +200,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const { t, i18n } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
   const bestRoleOn = useBestRoleDisplay();
-  const [report, setReport] = useState(null);   // null = loader, ellers payload
+  const [report, setReport] = useState(/** @type {Record<string, any> | null} */ (null));   // null = loader, ellers payload
   const [failed, setFailed] = useState(false);
   // #2465: scout() returnerer eksplicit {ok, error} — handlingen koster CZ$, så en
   // fejl (fuld kapacitet, ikke nok CZ$, netværk) skal vises, ikke forsvinde stille.

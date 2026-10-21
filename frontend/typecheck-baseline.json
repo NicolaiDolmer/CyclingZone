@@ -1252,8 +1252,6 @@
     "TS2741": 2
   },
   "src/components/rider/profile/RiderScoutingTab.jsx": {
-    "TS2339": 14,
-    "TS2345": 1,
     "TS2739": 2,
     "TS2741": 1
   },
