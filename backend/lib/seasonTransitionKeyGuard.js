@@ -94,25 +94,33 @@ export async function checkSeasonTransitionKeyDrift({ supabase, now = new Date()
   // #7022: kalenderen er dommeren, når den findes.
   const firstStageAt = season.id ? await fetchSeasonStageEdge(supabase, season.id, { ascending: true }) : null;
   if (firstStageAt) {
-    const { data: active, error: activeErr } = await supabase
+    // Forrige sæson slås op på NUMMER, ikke status='active': efter "Afslut sæson" og før
+    // transitionen er kørt, står den afsluttende sæson som 'completed' (ingen 'active').
+    const { data: previous, error: previousErr } = await supabase
       .from("seasons")
       .select("id")
-      .eq("status", "active")
+      .eq("number", season.number - 1)
       .maybeSingle();
-    if (activeErr) throw new Error(`seasons-opslag (active) fejlede: ${activeErr.message}`);
-    const lastStageAt = active?.id ? await fetchSeasonStageEdge(supabase, active.id, { ascending: false }) : null;
+    if (previousErr) throw new Error(`seasons-opslag (number - 1) fejlede:${previousErr.message}`);
+    const lastStageAt = previous?.id ? await fetchSeasonStageEdge(supabase, previous.id, { ascending: false }) : null;
 
     const earliestAllowed = lastStageAt
       ? new Date(lastStageAt.getTime() + SEASON_TRANSITION_PROCESSING_BUFFER_MINUTES * 60_000)
       : null;
     const latestAllowed = new Date(firstStageAt.getTime() - PLANNING_WINDOW_HOURS * HOUR_MS);
+    // `expected` = den overtrådte kalendergrænse (cron.js logger den som "forventet"),
+    // ikke konventionen, som kalenderen ikke længere planlægger mod.
     const base = {
       checked: true, seasonNumber: season.number, startDate: season.start_date,
-      expected: expected?.toISOString() ?? null, existing: existingRaw, daysUntilStart,
+      existing: existingRaw, daysUntilStart,
       earliestAllowed: earliestAllowed?.toISOString() ?? null, latestAllowed: latestAllowed.toISOString(),
     };
-    if (earliestAllowed && existing.getTime() < earliestAllowed.getTime()) return { ...base, drift: true, reason: "too-early" };
-    if (existing.getTime() > latestAllowed.getTime()) return { ...base, drift: true, reason: "too-late" };
+    if (earliestAllowed && existing.getTime() < earliestAllowed.getTime()) {
+      return { ...base, drift: true, reason: "too-early", expected: base.earliestAllowed };
+    }
+    if (existing.getTime() > latestAllowed.getTime()) {
+      return { ...base, drift: true, reason: "too-late", expected: base.latestAllowed };
+    }
     return { checked: true, drift: false, reason: "ok-calendar", seasonNumber: season.number, daysUntilStart };
   }
 
