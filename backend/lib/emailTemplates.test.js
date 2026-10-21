@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import {
   TEMPLATE_TYPES,
   buildWelcomeEmail,
@@ -737,4 +738,112 @@ test("s5-launch email (DA): Danish subject and copy with æøå", () => {
 test("s5-launch email falls back to English for an unknown language", () => {
   const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language: "fr" });
   assert.equal(t.subject, "A new season in Cycling Zone");
+});
+
+// ─── s5-launch fixes (#6300) ────────────────────────────────────────────────
+
+const S5_URL = "https://cyclingzone.org/dashboard?utm_source=email&utm_medium=email&utm_campaign=s5-launch";
+
+test("s5-launch CTA is the GROWTH_STACK §3 link (medium=email), in html and text, EN and DA", () => {
+  for (const language of ["en", "da"]) {
+    const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language });
+    assert.ok(t.html.includes(`href="${S5_URL.replace(/&/g, "&amp;")}"`), `${language}: html CTA href`);
+    assert.ok(t.text.includes(`: ${S5_URL}`), `${language}: text CTA`);
+    assert.ok(!t.html.includes("utm_medium=s5-launch") && !t.text.includes("utm_medium=s5-launch"), `${language}: no loop-type medium`);
+  }
+});
+
+test("s5-launch footer states the season-update consent, not the shared account line (EN)", () => {
+  const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language: "en" });
+  const line = "You’re receiving this because you opted in to emails about season updates.";
+  assert.ok(t.html.includes(line), "html footer line");
+  assert.ok(t.html.includes(`>Unsubscribe</a>`), "html link text");
+  assert.ok(t.text.includes(`${line} Unsubscribe: ${UNSUB_URL}`), "text footer");
+  assert.ok(!t.html.includes("you have a Cycling Zone account") && !t.text.includes("you have a Cycling Zone account"));
+});
+
+test("s5-launch footer states the season-update consent, not the shared account line (DA)", () => {
+  const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language: "da" });
+  const line = "Du får denne mail, fordi du har sagt ja til e-mails om sæsonopdateringer.";
+  assert.ok(t.html.includes(line), "html footer line");
+  assert.ok(t.html.includes(`>Afmeld e-mails</a>`), "html link text");
+  assert.ok(t.text.includes(`${line} Afmeld e-mails: ${UNSUB_URL}`), "text footer");
+  assert.ok(!t.html.includes("Cycling Zone-konto") && !t.text.includes("Cycling Zone-konto"));
+});
+
+test("s5-launch has a hidden preheader right after <body>, EN and DA, and only in the html part", () => {
+  const cases = {
+    en: "Take another look ahead of the 25 October season change.",
+    da: "Kig ind igen før sæsonskiftet 25. oktober.",
+  };
+  for (const [language, preheader] of Object.entries(cases)) {
+    const t = buildS5LaunchEmail({ unsubscribeUrl: UNSUB_URL, language });
+    const match = t.html.match(/<body[^>]*>\s*<div class="cz-preheader" style="([^"]*)">([^<]*)<\/div>/);
+    assert.ok(match, `${language}: preheader div is the first element in <body>`);
+    assert.equal(match[2], preheader, `${language}: preheader text`);
+    assert.ok(match[1].includes("display:none"), `${language}: display:none`);
+    assert.ok(match[1].includes("mso-hide:all"), `${language}: mso-hide:all`);
+    assert.ok(!t.text.includes(preheader), `${language}: not repeated in the plain-text part`);
+  }
+});
+
+test("no other mail type gets a preheader or the s5 footer", () => {
+  for (const language of ["en", "da"]) {
+    const others = [
+      buildWelcomeEmail({ teamName: "Team Velodrome", unsubscribeUrl: UNSUB_URL, language }),
+      buildDay1Email({ teamName: "Team Velodrome", hasResults: true, unsubscribeUrl: UNSUB_URL, language }),
+      buildRaceDigestEmail({ teamName: "Team Velodrome", results: [], unsubscribeUrl: UNSUB_URL, language }),
+      buildWinbackEmail({ teamName: "Team Velodrome", rankInDivision: 2, poolLabel: "Division 2", unsubscribeUrl: UNSUB_URL, language }),
+      buildSeasonSignupReminderEmail({ teamName: "Team Velodrome", rankInDivision: 2, poolLabel: "Division 2", unsubscribeUrl: UNSUB_URL, language }),
+    ];
+    for (const t of others) {
+      assert.ok(!t.html.includes("cz-preheader"), `${language} ${t.subject}: no preheader`);
+      assert.ok(!t.html.includes("season updates") && !t.html.includes("sæsonopdateringer"), `${language} ${t.subject}: shared footer`);
+    }
+  }
+});
+
+// Byte-for-byte guard (#6300): sha256 of JSON.stringify({subject, html, text})
+// for every other mail type, EN and DA, taken from main BEFORE the s5-launch
+// overrides were added to wrapHtml/wrapText. If one of these fails after an
+// intentional copy/layout change to that mail, re-take its hash; if it fails
+// after a change to the s5-launch mail only, the shared shell leaked.
+test("every other mail type is byte-identical to before the s5-launch overrides", () => {
+  const U = "https://cyclingzone.org/api/email/unsubscribe?token=abc.def";
+  const baseline = {
+    "welcome:en": "f64bc5d21f08d8252ea434a706c3046c68452442afb1cd7451f466d57e6646ee",
+    "day1:en": "b7f2b2da178ac5ac082b78f27017b7d3d8d6356f90d4254512fbadf3438cb445",
+    "race_digest:en": "e2a1df99961c4d3424d9eddf956b40a2b0c1ab938c07b6069849d26a79af7bbb",
+    "winback:en": "7ea19b1f64820add6b691e8bf15aa64754639b86b6221f8324617e58840f498e",
+    "signup_reminder:en": "9f5177ed77a82bd9e3fafba9f2c352a52504ab57ff03142cf5d21a819d4f5955",
+    "welcome:da": "3c1f833633fcf6c32e37f6488783a603d88e01b36f53dc1f937c420e7d6a163f",
+    "day1:da": "5fb52ee7da71682096ee99e2af689b3e553fe3843efb54e0cd5ac6ee849c4e79",
+    "race_digest:da": "7a976ed5a9d475da8aa0552c549c364e6dcdbdb55c268f8715fb686395bffa8a",
+    "winback:da": "076f08fbfa66c874fcb40ea668be360f39d1c4554fcb382c4b147cd34ff8de15",
+    "signup_reminder:da": "22e5afd78911492bec498fbbf6bc2fe3597471fd0ad9d061ae14ab815b1e9360",
+  };
+  for (const language of ["en", "da"]) {
+    const rendered = {
+      welcome: buildWelcomeEmail({ teamName: "Team Velodrome", unsubscribeUrl: U, language }),
+      day1: buildDay1Email({ teamName: "Team Velodrome", hasResults: true, unsubscribeUrl: U, language }),
+      race_digest: buildRaceDigestEmail({
+        teamName: "Team Velodrome",
+        results: [{ riderName: "A", raceName: "R", rank: 3 }],
+        unsubscribeUrl: U,
+        language,
+      }),
+      winback: buildWinbackEmail({ teamName: "Team Velodrome", rankInDivision: 2, poolLabel: "Division 2", unsubscribeUrl: U, language }),
+      signup_reminder: buildSeasonSignupReminderEmail({
+        teamName: "Team Velodrome",
+        rankInDivision: 2,
+        poolLabel: "Division 2",
+        unsubscribeUrl: U,
+        language,
+      }),
+    };
+    for (const [type, t] of Object.entries(rendered)) {
+      const hash = createHash("sha256").update(JSON.stringify(t)).digest("hex");
+      assert.equal(hash, baseline[`${type}:${language}`], `${type}:${language} changed`);
+    }
+  }
 });

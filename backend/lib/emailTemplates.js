@@ -220,9 +220,16 @@ function outlineButtonHtml(url, label) {
 // rows); the navy band, the Discord CTA line, the "Dolmer, Cycling Zone"
 // signature and the unsubscribe footer are identical across all three
 // templates and live here, once, localized via COPY[language].
-function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language }) {
+//
+// #6300: three optional, campaign-specific overrides. unsubLine/unsubLinkText
+// replace the shared account-based footer for a mail sent on consent
+// (s5-launch), and preheader adds the hidden inbox-preview line. Left out, the
+// output is byte-identical to before, so no other mail type changes.
+function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language, unsubLine, unsubLinkText, preheader }) {
   const lang = normalizeLanguage(language);
   const copy = copyFor(lang);
+  const footerLine = unsubLine ?? copy.unsubLine;
+  const footerLinkText = unsubLinkText ?? copy.unsubLinkText;
   return `<!doctype html>
 <html lang="${lang}" style="color-scheme:light;supported-color-schemes:light;">
   <head>
@@ -232,7 +239,7 @@ function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language }) {
     <meta name="supported-color-schemes" content="light">
     <style>${COLOR_LOCK_CSS}</style>
   </head>
-  <body class="cz-page" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};background-color:${PAGE_BG};color-scheme:light;supported-color-schemes:light;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <body class="cz-page" bgcolor="${PAGE_BG}" style="margin:0;padding:0;background:${PAGE_BG};background-color:${PAGE_BG};color-scheme:light;supported-color-schemes:light;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">${preheaderHtml(preheader)}
     <table role="presentation" class="cz-page" bgcolor="${PAGE_BG}" width="100%" cellpadding="0" cellspacing="0" style="background:${PAGE_BG};background-color:${PAGE_BG};padding:24px 0;">
       <tr>
         <td align="center">
@@ -254,8 +261,8 @@ function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language }) {
                 <p style="margin:0 0 32px;">${outlineButtonHtml(DISCORD_URL, copy.discordButton)}</p>
                 <p class="cz-text" style="margin:0;font-weight:700;color:${TEXT};">Dolmer, Cycling Zone</p>
                 <p class="cz-muted" style="margin:24px 0 0;font-size:12px;color:${TEXT_MUTED};">
-                  ${escapeHtml(copy.unsubLine)}
-                  <a class="cz-muted" href="${escapeHtml(unsubscribeUrl)}" style="color:${TEXT_MUTED};">${escapeHtml(copy.unsubLinkText)}</a>.
+                  ${escapeHtml(footerLine)}
+                  <a class="cz-muted" href="${escapeHtml(unsubscribeUrl)}" style="color:${TEXT_MUTED};">${escapeHtml(footerLinkText)}</a>.
                 </p>
               </td>
             </tr>
@@ -267,15 +274,26 @@ function wrapHtml({ eyebrow, bodyHtml, unsubscribeUrl, language }) {
 </html>`;
 }
 
-function wrapText({ bodyText, unsubscribeUrl, language }) {
+function wrapText({ bodyText, unsubscribeUrl, language, unsubLine, unsubLinkText }) {
   const copy = copyFor(language);
   return [
     bodyText,
     copy.discordLine,
     `${copy.discordButton}: ${DISCORD_URL}`,
     "Dolmer, Cycling Zone",
-    `${copy.unsubLine} ${copy.unsubLinkText}: ${unsubscribeUrl}`,
+    `${unsubLine ?? copy.unsubLine} ${unsubLinkText ?? copy.unsubLinkText}: ${unsubscribeUrl}`,
   ].join("\n\n");
+}
+
+// Hidden preheader (#6300): the line inbox lists show next to the subject.
+// display:none hides it in the body, mso-hide:all does the same for desktop
+// Outlook, and the zero size/opacity/overflow covers clients that ignore
+// display:none. Without a preheader this returns "", so the HTML of every
+// template that does not pass one is unchanged.
+function preheaderHtml(preheader) {
+  if (!preheader) return "";
+  return `
+    <div class="cz-preheader" style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;color:${PAGE_BG};">${escapeHtml(preheader)}</div>`;
 }
 
 // Welcome-only numbered steps, rendered as table rows (owner pick: rows, not
@@ -674,6 +692,9 @@ export function buildWinbackEmail({ teamName, daysSinceLastSeen: _daysSinceLastS
 // scripts/winback-send.mjs --campaign s5-launch. DRAFT copy from Codex 13/10
 // (signature "Dolmer" via wrapHtml/wrapText); final owner review 21/10 before
 // any send, same rule as the 22/9 text: reword only with the owner.
+// #6300: preheader and footer are the owner-approved texts from the 21/10
+// appendix. The footer names the consent the campaign is sent on (season
+// updates), not the shared "you have an account" line.
 const S5_LAUNCH_COPY = {
   en: {
     subject: "A new season in Cycling Zone",
@@ -684,6 +705,9 @@ const S5_LAUNCH_COPY = {
       "If something was confusing or frustrating when you left, I’d also like to understand what happened. A specific example from your last visit would help me more than guessing which feature to build next.",
     ],
     cta: "Open Cycling Zone",
+    preheader: "Take another look ahead of the 25 October season change.",
+    unsubLine: "You’re receiving this because you opted in to emails about season updates.",
+    unsubLinkText: "Unsubscribe",
   },
   da: {
     subject: "En ny sæson i Cycling Zone",
@@ -694,14 +718,21 @@ const S5_LAUNCH_COPY = {
       "Hvis noget var forvirrende eller frustrerende, da du stoppede, vil jeg også gerne forstå, hvad der skete. Et konkret eksempel fra dit sidste besøg hjælper mig mere end at gætte på, hvilken funktion jeg skal bygge som den næste.",
     ],
     cta: "Åbn Cycling Zone",
+    preheader: "Kig ind igen før sæsonskiftet 25. oktober.",
+    unsubLine: "Du får denne mail, fordi du har sagt ja til e-mails om sæsonopdateringer.",
+    unsubLinkText: "Afmeld e-mails",
   },
 };
+
+// GROWTH_STACK §3: the campaign link uses medium=email, not the loop-type
+// medium withEmailUtm writes for the account mails (#6300).
+const S5_LAUNCH_URL = `${DASHBOARD_URL}?utm_source=email&utm_medium=email&utm_campaign=s5-launch`;
 
 export function buildS5LaunchEmail({ unsubscribeUrl, language }) {
   const lang = normalizeLanguage(language);
   const copy = copyFor(lang);
   const s5 = S5_LAUNCH_COPY[lang] || S5_LAUNCH_COPY.en;
-  const dashboardUrl = withEmailUtm(DASHBOARD_URL, "s5-launch");
+  const dashboardUrl = S5_LAUNCH_URL;
 
   const bodyHtml = `
     <p style="margin:0 0 16px;">${copy.greeting}</p>
@@ -713,8 +744,16 @@ export function buildS5LaunchEmail({ unsubscribeUrl, language }) {
 
   return {
     subject: s5.subject,
-    html: wrapHtml({ eyebrow: s5.eyebrow, bodyHtml, unsubscribeUrl, language: lang }),
-    text: wrapText({ bodyText, unsubscribeUrl, language: lang }),
+    html: wrapHtml({
+      eyebrow: s5.eyebrow,
+      bodyHtml,
+      unsubscribeUrl,
+      language: lang,
+      unsubLine: s5.unsubLine,
+      unsubLinkText: s5.unsubLinkText,
+      preheader: s5.preheader, // owner go pending (#6300): delete this line to send without a preheader
+    }),
+    text: wrapText({ bodyText, unsubscribeUrl, language: lang, unsubLine: s5.unsubLine, unsubLinkText: s5.unsubLinkText }),
   };
 }
 
