@@ -1,0 +1,225 @@
+{
+  "page": {
+    "title": "Planificateur de saison"
+  },
+  "empty": {
+    "title": "Le planificateur de saison n'est pas encore en ligne",
+    "description": "C'est ici que tu planifieras les pics de forme de chaque coureur sur la saison. Repasse bientôt."
+  },
+  "seasonMenu": {
+    "label": "Saison",
+    "option": "S{number}"
+  },
+  "seasonNotReady": {
+    "title": "Le calendrier de la saison {number} n'est pas encore prêt",
+    "description": "Le programme de courses de cette saison n'a pas encore été généré, il n'y a donc rien à planifier. Repasse plus près du début de la saison."
+  },
+  "nextSeasonBanner": {
+    "title": "La saison {number} est ouverte à la planification",
+    "body": "Le calendrier de la saison {number} est prêt. Tu peux déjà y fixer des pics, avant le début de la saison.",
+    "cta": "Passer à la saison {number}",
+    "dismiss": "Ignorer",
+    "bodyUpcoming": "Le calendrier de la saison {number} est prêt à explorer. Ta division pour cette saison se décide au changement de saison, les pics ouvrent donc une fois qu'elle est confirmée."
+  },
+  "tabs": {
+    "squad": "Effectif",
+    "season": "Saison"
+  },
+  "board": {
+    "title": "Tableau de la saison"
+  },
+  "statusLine": {
+    "peaks": "{count, plural, =0 {Aucun pic planifié} one {# pic planifié} other {# pics planifiés}}",
+    "needsAction": "{count, plural, one {# demande une action} other {# demandent une action}}",
+    "allClear": "Rien ne demande d'action",
+    "nextLeadup": "{count, plural, =0 {Une préparation démarre aujourd'hui} one {Prochaine préparation dans # jour} other {Prochaine préparation dans # jours}}",
+    "noLeadup": "Aucune préparation programmée"
+  },
+  "squad": {
+    "title": "Ton effectif",
+    "count": "{count, plural, one {# coureur} other {# coureurs}}",
+    "colRider": "Coureur",
+    "colForm": "Forme",
+    "colTarget": "Objectif de pic",
+    "colValue": "Ce que ça vaut",
+    "noPeak": "Pas de pic",
+    "pickRace": "Objectif de pic pour {name}",
+    "raceOption": "{date} · {race} · adéquation {fit}",
+    "raceOptionPayback": "{date} · {race} · adéquation {fit} · risque de contrecoup",
+    "raceOptionLocksNow": "{date} · {race} · adéquation {fit} · se verrouille tout de suite",
+    "age": "{age} ans",
+    "load": "{days, plural, one {# jour de course} other {# jours de course}}",
+    "loadTitle": "Charge de la saison : {races, plural, one {# course} other {# courses}}, {days, plural, one {# jour de course engagé} other {# jours de course engagés}} cette saison",
+    "formInline": "Forme {value}",
+    "remove": "Retirer le pic",
+    "window": "Préparation du {start} au {end}",
+    "locksOn": "Se verrouille le {date}",
+    "lockedTooltip": "Verrouillé depuis le début de sa fenêtre de pic le {date}. Les pics se verrouillent dès que leur fenêtre commence et ne peuvent plus être modifiés.",
+    "lockedTooltipGeneric": "La fenêtre de ce pic a commencé, il est donc verrouillé et ne peut plus être modifié.",
+    "value": {
+      "range": "+{floor} à +{ceiling} de forme",
+      "current": "+{current} de forme",
+      "rangeHint": "Dépend de la façon dont la préparation est courue. Puis {payback} de forme pendant {days} jours ensuite.",
+      "currentHint": "Puis {payback} de forme pendant {days} jours ensuite.",
+      "unset": "Fixe un objectif pour voir ce que vaut un pic."
+    },
+    "payback": {
+      "collision": "Le creux après ce pic couvre {race}, {days, plural, one {# jour} other {# jours}} plus tard. Attends-toi à {payback} de forme là-bas.",
+      "unknownRace": "une autre course du programme de ce coureur"
+    },
+    "youth": {
+      "title": "Coureurs U23 et juniors",
+      "note": "Ces coureurs disputent les courses U23 et juniors. Les pics sont planifiés pour le calendrier senior, leurs pics ne peuvent donc être que retirés ici.",
+      "squad": {
+        "u23": "U23",
+        "junior": "Juniors"
+      }
+    }
+  },
+  "assistant": {
+    "cardTitle": "L'assistant a rédigé {peaks, plural, one {# pic} other {# pics}} pour {riders, plural, one {# coureur} other {# coureurs}}",
+    "cardWhy": "Chacun est choisi d'après le calendrier de courses propre à ce coureur, son type et son âge. Accepte le tout, ou modifie n'importe lequel dans la liste ci-dessous.",
+    "cardRule": "Chaque coureur peut avoir un pic pour {max} courses par saison au maximum, alors choisis où ça compte.",
+    "acceptAll": "Tout accepter",
+    "acceptedAll": "{count, plural, one {# pic fixé} other {# pics fixés}}. Modifie n'importe lequel dans la liste.",
+    "acceptedPartial": "{created} fixés, {skipped} n'ont pas pu l'être. La liste montre ce qui a tenu.",
+    "badge": "Suggestion de l'assistant",
+    "badgeMixed": "{real, plural, one {# pic} other {# pics}} + {count, plural, one {# suggestion} other {# suggestions}}",
+    "accept": "Accepter",
+    "reset": "Remettre à blanc",
+    "resetDone": "Suggestion effacée. Choisis une course cible quand tu seras prêt.",
+    "reasonRegistered": "Correspond à une course pour laquelle tu l'as déjà engagé.",
+    "reasonSuitability": "Meilleure adéquation de type sur ton calendrier.",
+    "reasonNoPeak": "L'assistant ne suggère pas d'autre pic pour ce coureur pour l'instant.",
+    "noPeakTitle": "Aucun autre pic recommandé",
+    "keepOnePeak": "Garder un pic"
+  },
+  "filter": {
+    "mine": "Mes courses",
+    "all": "Toutes les courses"
+  },
+  "planningTowards": {
+    "label": "Planification vers : {race} · {date}"
+  },
+  "raceList": {
+    "title": "Courses de la saison",
+    "subtitle": "Chaque course de la saison : quand elle a lieu et ce qu'elle exige. Ouvres-en une pour planifier un pic, ou va directement à sa page complète.",
+    "count": "{count, plural, one {# course} other {# courses}}",
+    "viewPage": "Ouvrir la page de la course {race}",
+    "mine": "Dans ton calendrier",
+    "peaksHere": "{count, plural, one {# coureur a son pic ici} other {# coureurs ont leur pic ici}}",
+    "empty": "Aucune course ne correspond encore à ce filtre.",
+    "past": "Terminée"
+  },
+  "legend": {
+    "potential": "Sommet potentiel",
+    "realized": "Réalisé (entraîné)",
+    "block": "Charge / affûtage",
+    "token": "Jeton de pic",
+    "drag": "Fais glisser un repère pour recibler"
+  },
+  "status": {
+    "onTrack": "Affûtage dans les temps",
+    "atRisk": "Pic menacé",
+    "pending": "Préparation pas commencée",
+    "locked": "Verrouillé"
+  },
+  "tokens": {
+    "label": "{used} pics utilisés sur {max}"
+  },
+  "ovr": {
+    "label": "Note"
+  },
+  "today": "Aujourd'hui",
+  "form": {
+    "now": "Forme actuelle {value}"
+  },
+  "lane": {
+    "noPeaks": "Aucun pic fixé. Une saison plate tant que tu n'en planifies pas."
+  },
+  "drawer": {
+    "close": "Fermer",
+    "race": {
+      "summary": "{stages} étapes · {summits, plural, =0 {aucune arrivée au sommet} one {# arrivée au sommet} other {# arrivées au sommet}}",
+      "rankedTitle": "Tes coureurs, classés par adéquation",
+      "rivalThreat": "Menace des rivaux",
+      "rivalCount": "{count, plural, =0 {Aucun rival n'a son pic ici} one {# rival a aussi son pic ici} other {# rivaux ont aussi leur pic ici}}",
+      "viewProfiles": "Voir les profils d'étape",
+      "hideProfiles": "Masquer les profils d'étape",
+      "openStage": "Ouvrir l'étape {stage} dans un nouvel onglet",
+      "setPeak": "Fixer le pic",
+      "demands": "Cette course exige",
+      "alreadyPeaking": "Pic ici",
+      "suggestedHere": "L'assistant suggère ici",
+      "viewPage": "Voir la page de la course",
+      "peaksLocked": "Division en attente",
+      "maxedReached": "Limite de pics atteinte (max {max} par coureur)",
+      "started": "Commencée"
+    },
+    "rider": {
+      "abilities": "Aptitudes",
+      "suggestedBlock": "Préparation suggérée",
+      "autoPlan": "Planifier l'entraînement automatiquement",
+      "build": "Semaine de charge",
+      "taper": "Semaine d'affûtage",
+      "focus": "Axe recommandé : {focus}",
+      "accepted": "{week} écrite dans l'entraînement de {name}",
+      "noPeak": "Pas encore de pic. Choisis une course cible pour en planifier un.",
+      "peakFor": "Pic pour {race}",
+      "pickRace": "Choisir une course cible",
+      "removePeak": "Retirer le pic",
+      "windowLabel": "Fenêtre de pic {start} – {end}"
+    }
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "hilly": "Vallonné",
+    "mountain": "Montagne",
+    "itt": "CLM",
+    "ttt": "CLME",
+    "cobbles": "Pavés"
+  },
+  "focus": {
+    "vo2max": "VO2max",
+    "threshold": "Seuil",
+    "sprint": "Sprint",
+    "endurance": "Endurance",
+    "technique": "Technique",
+    "aero": "Aéro",
+    "loebslaere": "Sens de la course"
+  },
+  "error": {
+    "max_reached": "Ce coureur a déjà le maximum de {max} pics.",
+    "duplicate_target": "Ce coureur a déjà un pic pour cette course.",
+    "locked": "Ce pic est verrouillé et ne peut plus être modifié.",
+    "race_not_in_calendar": "Cette course n'est pas dans le calendrier de ta division.",
+    "race_not_scheduled": "Cette course n'est pas encore programmée.",
+    "generic": "Un problème est survenu. Réessaie.",
+    "title": "Impossible de charger le planificateur de saison",
+    "description": "Rien n'a été perdu. Tes pics et tes plans d'entraînement sont en sécurité. Réessaie.",
+    "session": "Ta session est terminée. Reconnecte-toi pour continuer à planifier.",
+    "retry": "Réessayer",
+    "division_not_settled": "Ta division pour cette saison se décide au changement de saison, les pics ne peuvent donc pas encore être fixés.",
+    "race_already_started": "Cette course a déjà commencé, elle ne peut donc plus être une cible de pic.",
+    "rider_not_senior_squad": "Les pics sont planifiés pour les coureurs seniors. Ce coureur est dans ton effectif U23 ou juniors."
+  },
+  "months": [
+    "janv.",
+    "févr.",
+    "mars",
+    "avr.",
+    "mai",
+    "juin",
+    "juil.",
+    "août",
+    "sept.",
+    "oct.",
+    "nov.",
+    "déc."
+  ],
+  "divisionPending": {
+    "title": "Ta division de la saison {number} se décide au changement de saison",
+    "body": "La promotion et la relégation se règlent à la clôture de la saison en cours, je ne peux donc pas encore te dire quel calendrier est le tien. Les courses de la saison {number} de chaque division sont listées ci-dessous, tu peux donc quand même étudier le parcours.",
+    "hint": "Les pics de la saison {number} ouvrent dès que ta division est confirmée."
+  }
+}

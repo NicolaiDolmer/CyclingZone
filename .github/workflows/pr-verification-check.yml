@@ -2,7 +2,7 @@ name: PR user-verification check
 
 on:
   pull_request:
-    types: [opened, edited, synchronize, labeled, unlabeled, reopened]
+    types: [opened, edited, synchronize, labeled, unlabeled, reopened, ready_for_review]
   # Merge queue (4/8): PR-body-kravet blev håndhævet på PR'en; en merge group
   # har ingen body. Jobbet rapporterer grønt via pass-through-steppet.
   merge_group:

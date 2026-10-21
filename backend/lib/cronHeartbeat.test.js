@@ -196,6 +196,26 @@ test("primeCronHeartbeatCheckIns — skriver ét check-in pr. monitor, fortsætt
   assert.deepEqual(upserts, ["job-b"]);
 });
 
+test("primeCronHeartbeatCheckIns — fast-tids-job (crontab) primes ikke, saa en misset slot stadig alarmerer (Codex P2 #6860)", async () => {
+  const upserts = [];
+  const updates = [];
+  const supabase = { from: () => ({
+    upsert: (row) => { upserts.push(row.job_slug); return Promise.resolve({ data: [row], error: null }); },
+    update: (patch) => ({ eq: (col, val) => { updates.push({ val, patch }); return Promise.resolve({ data: null, error: null }); } }),
+  }) };
+  const monitors = [
+    ["interval-job", CRON_MONITOR_5MIN],
+    ["sunday-job", { schedule: { type: "crontab", value: "0 14 * * 0" }, checkinMargin: 15, wallClock: { weekdays: ["sun"], hour: 14, minute: 0 } }],
+  ];
+  await primeCronHeartbeatCheckIns({ supabase, monitors, captureExceptionFn: () => {} });
+  assert.deepEqual(upserts, ["interval-job"]);
+  // Codex P1: kadencen migreres for crontab-jobbet, uden last_checkin_at.
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].val, "sunday-job");
+  assert.ok(!("last_checkin_at" in updates[0].patch));
+  assert.equal(typeof updates[0].patch.expected_cadence_seconds, "number");
+});
+
 // ── runCronHeartbeatSweepCron (in-memory supabase-stub) ─────────────────────
 // Anti-spam: signaturen i ops_alert_state ændrer sig KUN når SÆTTET af
 // overskredne jobs ændrer sig — uændret sæt mellem to sweeps sender ikke en ny

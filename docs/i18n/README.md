@@ -20,7 +20,8 @@
 | `i18n-check-icu-braces.mjs` | Dobbelt-klammer og brudt ICU |
 | `tone-check-em-dash.mjs` | Em-dash i spillervendt copy |
 | `build-backend-locales.mjs --check` | Backendens locale-bundle er stale i forhold til `frontend/public/locales` (#4734) |
-| `i18n-check-backend-player-strings.mjs` | Hardkodet dansk prosa i backendens spillervendte tekstkilder (#4734) |
+| `i18n-check-backend-player-strings.mjs` | Hardkodet dansk prosa i backendens spillervendte tekstkilder (#4734), og nye notifikations-kald med hardkodet tekst uden `titleCode`/`messageCode` (baseline-ratchet, #6801). CI-job `backend-player-strings`. Opgørelse: [`2026-10-17-6801-backend-strings.md`](2026-10-17-6801-backend-strings.md) |
+| `i18n-check-hardcoded-formats.mjs` | Nye hardkodede tal/dato/valuta-formater i spillervendt frontend (fast "da-DK", `toFixed` + `%`, håndskrevne separatorer). Ratchet-baseline `scripts/i18n-hardcoded-formats-baseline.json`, må kun skrumpe (#6785) |
 | `i18n-check-duplicate-keys`, `-namespace-inline`, `-nav-strings`, `-page-untranslated`, `-lib-strings`, `-leaks`, `-terrain-coverage`, `-error-codes` | Øvrige struktur- og dækningskrav |
 
 Hele kæden kører lokalt med `npm run check:i18n` (og i `scripts/preflight-pr.ps1`).
@@ -100,5 +101,7 @@ En sprogkaptajn ejer ét sprog (gratis Pro + badge, Hattrick-modellen).
 4. **Oversæt:** `infisical run --env=dev -- npm run i18n:translate -- --lng <kode>`. Første kørsel på et nyt sprog rammer sikkerhedsloftet, så kør med det `--max-keys`-tal fejlbeskeden angiver.
 5. **Review:** sprogkaptajnen gennemgår og kører `--mark-reviewed` pr. namespace.
 6. **Commit** locale-filerne og `frontend/i18n-state.json` sammen.
+
+Et **beta-sprog** (`beta: true`, fx fr/es/nl fra #6836) kræver desuden: sprognavne-nøglen `language.<kode>` i `common.json` for alle sprog, en lazy bundle `frontend/src/i18n/messages.<kode>.js` (+ `LAZY_BUNDLES` i `localeBundleBackend.js` og en `i18n-messages-<kode>`-gruppe i `vite.config.js`), og et flag i `LanguageSwitcherFlag.jsx`. Beta-chunken tæller ikke mod `bundle-budget.json` (`scripts/check-bundle-budget.mjs`) og preloades aldrig; flipper sproget til `beta: false`, tæller den med.
 
 Uden en kaptajn tilføjes sproget ikke. Triggeren for et nyt sprog står i #4110.

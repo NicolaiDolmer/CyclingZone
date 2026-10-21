@@ -13,6 +13,7 @@ import { sortRacesByDateDesc } from "../../lib/raceCalendarSort";
 import { racesForPool } from "../../lib/racesByPool";
 import { raceHasReportableResults, raceIsInProgress } from "../../lib/raceResultVisibility.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../../lib/expectedPrizeCalculator";
+import { isSeniorSquad } from "../../lib/seniorScope.ts";
 import { hasRouteData } from "../../lib/stageRouteProfile.js";
 import { fetchAllRows } from "../../lib/supabasePagination";
 import StageProfileGraph from "./StageProfileGraph.jsx";
@@ -244,12 +245,14 @@ export default function CompletedRacesExplorer() {
                 {selectedRace.race_type === "stage_race" ? t("raceType.stages", { count: selectedRace.stages }) : t("raceType.oneDay")}
               </p>
               {(() => {
-                const expected = computeExpectedRacePrize({
+                // #6935: ungdomsløb udbetaler ingen præmiepenge (raceResultsEngine
+                // isPrizeMoneyRace) - en "forventet pulje" ville være forkert.
+                const expected = isSeniorSquad(selectedRace.squad) ? computeExpectedRacePrize({
                   raceClass: selectedRace.race_class,
                   raceType: selectedRace.race_type,
                   stages: selectedRace.stages,
                   racePoints,
-                });
+                }) : 0;
                 return expected > 0 ? (
                   <p className="text-cz-2 text-xs font-mono mb-4" title={t("calendar.expectedPoolTooltip")}>
                     {t("calendar.expectedPool", { amount: formatExpectedPrize(expected) })}

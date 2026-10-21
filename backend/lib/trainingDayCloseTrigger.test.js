@@ -16,6 +16,7 @@ import {
   TEAM_CONCURRENCY_CONFIG_KEY, MAX_TEAM_CONCURRENCY, parseTeamConcurrency, resolveTeamConcurrency,
   startTrainingDayCloseAfterStages,
   formatTrainingDayCloseFailure, formatTrainingDayCloseFailures, createTrainingDayCloseFailureTracker,
+  loadLegacyRunBlockingTeamIds,
 } from "./trainingDayCloseTrigger.js";
 import {
   runNormalizedTrainingDateSweep, forEachTeamBounded, __resetNormalizedTrainingDateCacheForTests,
@@ -138,7 +139,7 @@ describe("buildSweepPlan", () => {
     // gameDay: null — motorens fail-safe-kaskade falder saa tilbage til
     // (team_id, tick_date). De stopper altsaa ikke stille med at udvikle sig.
     const plan = buildSweepPlan({
-      teams: [{ id: "ai1", league_division_id: null }],
+      teams: [{ id: "ai1", league_division_id: null, is_ai: true }],
       gameDaysByDivisionMap: byDivision,
       alreadyRanRaceDayKeys: new Set(),
       alreadyRanLegacyTeamIds: new Set(),
@@ -148,12 +149,63 @@ describe("buildSweepPlan", () => {
 
   it("et division-loest hold der allerede har koert i dag springes over", () => {
     const plan = buildSweepPlan({
-      teams: [{ id: "ai1", league_division_id: null }],
+      teams: [{ id: "ai1", league_division_id: null, is_ai: true }],
       gameDaysByDivisionMap: byDivision,
       alreadyRanRaceDayKeys: new Set(),
       alreadyRanLegacyTeamIds: new Set(["ai1"]),
     });
     assert.deepEqual(plan, []);
+  });
+
+  // #6536: parkering nulstiller league_division_id. Et parkeret menneskehold lignede
+  // derfor et division-loest AI-hold og fik et legacy-tick hver aften.
+  it("parkeret hold uden division faar INTET tick", () => {
+    const plan = buildSweepPlan({
+      teams: [{ id: "p1", league_division_id: null, is_ai: false, parked_at: "2026-09-27T18:59:00Z" }],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.deepEqual(plan, []);
+  });
+
+  it("parkeret hold springes over, ogsaa hvis det stadig baerer en division", () => {
+    const plan = buildSweepPlan({
+      teams: [{ id: "p1", league_division_id: "d1", is_ai: false, parked_at: "2026-09-27T18:59:00Z" }],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.deepEqual(plan, []);
+  });
+
+  it("aktivt menneskehold uden division (fallback ved oprettelse) faar stadig legacy-tick", () => {
+    const plan = buildSweepPlan({
+      teams: [{ id: "h1", league_division_id: null, is_ai: false, parked_at: null }],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.equal(plan.length, 1);
+    assert.equal(plan[0].teamId, "h1");
+    assert.equal(plan[0].gameDay, null);
+  });
+
+  it("blandet bestand: aktivt hold uaendret, AI-hold uden division stadig ét legacy-tick, parkeret intet", () => {
+    const plan = buildSweepPlan({
+      teams: [
+        { id: "t1", league_division_id: "d2", is_ai: false, parked_at: null },
+        { id: "ai1", league_division_id: null, is_ai: true, parked_at: null },
+        { id: "p1", league_division_id: null, is_ai: false, parked_at: "2026-09-27T18:59:00Z" },
+      ],
+      gameDaysByDivisionMap: byDivision,
+      alreadyRanRaceDayKeys: new Set(),
+      alreadyRanLegacyTeamIds: new Set(),
+    });
+    assert.deepEqual(plan, [
+      { teamId: "t1", gameDay: 7, squad: DEFAULT_SQUAD, dateGameDays: [7] },
+      { teamId: "ai1", gameDay: null, squad: DEFAULT_SQUAD },
+    ]);
   });
 });
 
@@ -429,6 +481,37 @@ describe("runTrainingDayCloseSweep", () => {
     assert.equal(first.ran, true);
     const second = await runTrainingDayCloseSweep({ supabase, now: inWindow, runDay });
     assert.equal(second.skipped, "already_done_today");
+  });
+
+  it("#6798: en forældet 'loading'-reservation paa den gamle noegle taeller IKKE som koert", async () => {
+    // inWindow = 18:30Z. stale er aeldre end taerskelen, fresh er ét minut gammel,
+    // done er afregnet (report->>stage = null i det smalle format).
+    const base = makeSupabase({
+      flags: ALL_ON,
+      races: [{ id: "r1", league_division_id: "d1", stages_completed: 3, finalize_state: null }],
+      stages: [{ race_id: "r1", stage_number: 3, game_day: 40, scheduled_at: "2026-09-15T09:00:00Z" }],
+      teams: ["stale", "fresh", "done", "new"].map((id) => ({ id, league_division_id: null, is_ai: false, parked_at: null })),
+      legacyRuns: [
+        { team_id: "stale", created_at: "2026-09-15T18:00:00Z", stage: "loading" },
+        { team_id: "fresh", created_at: "2026-09-15T18:29:00Z", stage: "loading" },
+        { team_id: "done", created_at: "2026-09-15T17:00:00Z", stage: null },
+      ],
+    });
+    const selects = [];
+    const supabase = { from(table) {
+      const chain = base.from(table);
+      if (table !== "training_day_runs") return chain;
+      const select = chain.select;
+      chain.select = function (columns) { selects.push(columns); return select.call(this, columns); };
+      return chain;
+    } };
+    const called = [];
+    const result = await runTrainingDayCloseSweep({
+      supabase, now: inWindow, runDay: async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; },
+    });
+    assert.ok(selects.includes("team_id, created_at, stage:report->>stage"), `legacy-opslaget henter kun stadiet: ${selects}`);
+    assert.deepEqual(called.sort(), ["new", "stale"], "forældet reservation sendes til motoren; frisk og afregnet springes over");
+    assert.equal(result.swept, 2);
   });
 
   it("en fejlet koersel LAASER IKKE dagen: naeste tick proever igen", async () => {
@@ -1058,6 +1141,45 @@ describe("parseTeamConcurrency / resolveTeamConcurrency (#5911)", () => {
     assert.equal(await sweepConcurrency(undefined), 1);
     assert.equal(await sweepConcurrency("on"), 1);
   });
+
+  it("#6759: den normaliserede sweep faar legacy-loaderen der ignorerer uafregnede reservationer", async () => {
+    __resetTrainingDayCloseStateForTests();
+    const query = { select() { return this; }, eq() { return this; },
+      async maybeSingle() { return { data: { value: "on" }, error: null }; } };
+    let received = null;
+    await runTrainingDayCloseSweep({
+      supabase: { from: () => query }, now: new Date("2026-10-11T18:05:00Z"),
+      runNormalized: async (args) => { received = args.loadLegacyRuns; return { ran: false }; },
+    });
+    assert.equal(received, loadLegacyRunBlockingTeamIds);
+  });
+});
+
+describe("loadLegacyRunBlockingTeamIds (#6759)", () => {
+  function fakeSupabase(rows, calls) {
+    const query = {
+      select(cols) { calls.push(["select", cols]); return this; },
+      eq(col, val) { calls.push(["eq", col, val]); return this; },
+      is(col, val) { calls.push(["is", col, val]); return this; },
+      order() { return this; },
+      range() { return Promise.resolve({ data: rows, error: null }); },
+    };
+    return { from: (table) => { calls.push(["from", table]); return query; } };
+  }
+
+  it("afregnede og 'writing'-raekker blokerer; 'loading'-reservationer (frisk eller forældet) goer ikke", async () => {
+    const calls = [];
+    const rows = [
+      { team_id: "settled", stage: null },
+      { team_id: "writing", stage: "writing" },
+      { team_id: "loading", stage: "loading" },
+    ];
+    const blocking = await loadLegacyRunBlockingTeamIds({ supabase: fakeSupabase(rows, calls), tickDate: "2026-10-11" });
+    assert.deepEqual([...blocking].sort(), ["settled", "writing"]);
+    assert.deepEqual(calls.filter((c) => c[0] !== "select"), [
+      ["from", "training_day_runs"], ["eq", "tick_date", "2026-10-11"], ["is", "game_day", null],
+    ]);
+  });
 });
 
 describe("forEachTeamBounded (#5911)", () => {
@@ -1106,7 +1228,7 @@ function buildParityFixture() {
   const riders = [];
   for (let t = 0; t < 262; t++) {
     const id = `team-${String(t).padStart(3, "0")}`;
-    teams.push({ id, league_division_id: t < 2 ? null : `div-${t % 11}` });
+    teams.push({ id, league_division_id: t < 2 ? null : `div-${t % 11}`, is_ai: t < 2 });
     for (let r = 0; r < 3; r++) riders.push({ id: `${id}-r${r}`, team_id: id });
   }
   // #6439: en rytter solgt efter at datoen aabnede, settles af det gamle hold.

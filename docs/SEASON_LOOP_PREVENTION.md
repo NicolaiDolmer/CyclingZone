@@ -28,11 +28,11 @@
 
 ## 2. Hvad er allerede deployed til at forebygge gentagelse?
 
-Tre lag forsvar er aktive lige nu:
+Tre lag forsvar er aktive lige nu. Siden #6796 (17/10) findes der heller ingen auto-skifte-cron: sæsonskiftet er en manuel admin-handling (#1155), og `seasonAutoTransition.js` er fjernet.
 
 ### Lag 1 — Kode-filter (v3.86)
-- `seasonAutoTransition.js`, `squadEnforcement.js`, `deadlineDayReport.js` filtrerer alle på `closed_at IS NOT NULL`
-- 3 regressionstests låser filteret så det ikke kan fjernes ved et uheld
+- `squadEnforcement.js` filtrerer på `closed_at IS NOT NULL` (oprindeligt også `seasonAutoTransition.js` og `deadlineDayReport.js`, som begge er fjernet: #6796 og #6120)
+- Regressionstesten for squadEnforcement låser filteret, så det ikke kan fjernes ved et uheld
 
 ### Lag 2 — DB-niveau CHECK constraint (v3.86)
 - `CHECK (final_whistle_sent_at IS NULL OR closed_at IS NOT NULL)` på `transfer_windows`
@@ -40,7 +40,7 @@ Tre lag forsvar er aktive lige nu:
 - PostgreSQL afviser **strukturelt** enhver UPDATE der ville sætte timestamps på et racing-window — selv hvis en fremtidig cron har bug
 
 ### Lag 3 — Observability + graceful operations (v3.87)
-- Discord-broadcast ved HVER `transitionToNextSeason` (admin + cron sender ens)
+- Discord-broadcast ved HVER `transitionToNextSeason` (kun admin-skiftet findes; cron'en er fjernet, #6796)
 - Sentry `cron:<label>`-tag på alle cron-fejl
 - Daglig safety-net: `processDailySeasonCountCheck` alerter ved >1 transition/24h
 - SIGTERM-handler venter på `awaitCronsIdle(30s)` ved Railway-deploy

@@ -1,0 +1,79 @@
+{
+  "tab": {
+    "label": "Berichten"
+  },
+  "list": {
+    "title": "Berichten",
+    "subtitle": "{count, plural, one {# gesprek wacht op je} other {# gesprekken wachten op je}}",
+    "subtitleNone": "Niets nieuws",
+    "emptyTitle": "Nog geen berichten",
+    "emptyBody": "Open een managerprofiel en schrijf naar de persoon achter het team. Een deal sluit makkelijker als je eerst even kunt vragen.",
+    "emptyAction": "Zoek een manager",
+    "you": "Jij",
+    "loadError": "Ik kon je berichten niet laden. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw"
+  },
+  "thread": {
+    "back": "Alle berichten",
+    "placeholder": "Schrijf een bericht",
+    "send": "Versturen",
+    "sending": "Versturen",
+    "counter": "{count}/{max}",
+    "loadMore": "Oudere berichten tonen",
+    "emptyTitle": "Nog geen berichten",
+    "emptyBody": "Zeg wat je wilt, en hou het netjes. Elk bericht wordt bewaard.",
+    "sendError": "Ik kon dat niet versturen. Probeer het opnieuw.",
+    "tooLong": "Houd het onder de {max} tekens.",
+    "openProfile": "Profiel openen",
+    "blockedNote": "Je hebt deze manager geblokkeerd. Je ziet geen nieuwe berichten van deze manager tot je de blokkade opheft."
+  },
+  "menu": {
+    "label": "Meer",
+    "block": "Manager blokkeren",
+    "unblock": "Manager deblokkeren",
+    "report": "Gesprek melden",
+    "hide": "Gesprek verbergen"
+  },
+  "block": {
+    "title": "Deze manager blokkeren?",
+    "body": "Deze manager kan je hier niet meer bereiken. Er wordt niet gemeld dat je hem of haar hebt geblokkeerd.",
+    "confirm": "Blokkeren",
+    "cancel": "Annuleren",
+    "done": "Geblokkeerd",
+    "undone": "Gedeblokkeerd",
+    "error": "Ik kon dat niet doen. Probeer het opnieuw."
+  },
+  "report": {
+    "title": "Dit gesprek melden",
+    "body": "Ik krijg een kopie van het gesprek en lees het zelf. Vertel me wat er mis is.",
+    "reasonLabel": "Wat is er gebeurd",
+    "reasonPlaceholder": "Een of twee zinnen zijn genoeg",
+    "confirm": "Melding versturen",
+    "cancel": "Annuleren",
+    "done": "Melding verstuurd. Ik ga ernaar kijken.",
+    "alreadyDone": "Je hebt dit gesprek al gemeld. Ik heb het.",
+    "tooShort": "Schrijf minstens {min} tekens, zodat ik weet waar ik op moet letten.",
+    "error": "Ik kon de melding niet versturen. Probeer het opnieuw."
+  },
+  "hide": {
+    "done": "Gesprek verborgen. Een nieuw bericht brengt het terug.",
+    "error": "Ik kon het niet verbergen. Probeer het opnieuw."
+  },
+  "start": {
+    "button": "Bericht",
+    "buttonAria": "Bericht naar {name}",
+    "forumLink": "Bericht",
+    "dealButton": "Stuur de andere manager een bericht",
+    "title": "Bericht naar {name}",
+    "placeholder": "Schrijf een bericht",
+    "send": "Versturen",
+    "cancel": "Annuleren",
+    "sent": "Bericht verstuurd"
+  },
+  "quote": {
+    "transfer_offer": "Transferaanbieding",
+    "auction": "Veiling",
+    "amount": "{amount} CZ$",
+    "open": "Openen"
+  }
+}

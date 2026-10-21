@@ -335,9 +335,45 @@ select number, status, start_date, end_date from seasons order by number;
 "@
 Write-Host $sqlSeasons
 
-$manual += "S$ToSeasonNumber-kalender-status (forvent 4/8: 0 raekker -- kalenderen for S$ToSeasonNumber er IKKE materialiseret endnu):"
+# #6795: puljer der pensioneres ved skiftet (maalstrukturen, calendarTargetStructure.js) har
+# stadig retired_at is null og ingen loeb, hvis kalenderen er bygget med --target-structure
+# FOER "Afslut saeson". De maa ikke vises som huller. Reglen (tier + antal aktive puljer paa
+# pool_index) laeses fra calendarTargetStructure.js via scripts/preflight-season-cutover-structure.mjs.
+$seniorPoolsCte = "with senior_pools as (select d.*, false as pensioneres_ved_skiftet from league_divisions d where coalesce(d.squad, 'senior') = 'senior')"
+$cteWarn = $null
+if ($nodeCmd) {
+  $cteOut = & $nodeCmd.Source (Join-Path $PSScriptRoot "preflight-season-cutover-structure.mjs") "$ToSeasonNumber" 2>&1
+  if ($LASTEXITCODE -eq 0 -and $cteOut) {
+    $seniorPoolsCte = (@($cteOut) -join "`n")
+  } else {
+    $cteWarn = "preflight-season-cutover-structure.mjs fejlede ($(@($cteOut) -join ' ')). Pulje-SQL'en udelader IKKE puljer der pensioneres ved maalstrukturen -- en pulje der pensioneres ved skiftet kan vises som kalenderhul."
+  }
+} else {
+  $cteWarn = "node mangler: pulje-SQL'en udelader IKKE puljer der pensioneres ved maalstrukturen -- en pulje der pensioneres ved skiftet kan vises som kalenderhul."
+}
+if ($cteWarn) {
+  $warn += $cteWarn
+  Write-Host "  [warn] $cteWarn" -ForegroundColor Yellow
+}
+
+$manual += "S$ToSeasonNumber-kalender-status (tilstands-neutral, #6781: rapportér kun. Kalenderen kan vaere bygget foer eller bygges af transitionen. Forvent at den, naar den findes, daekker ALLE aktive seniorpuljer UNDTAGEN dem der pensioneres ved skiftet (#6795, maalstrukturen i calendarTargetStructure.js; kolonnen pensioneres_ved_skiftet) -- 'pulje' = league_divisions med retired_at is null og squad senior. en pulje med kraever_kalender = true og loeb = 0 i en ellers bygget kalender er et hul (D3 uden rigtig manager har bevidst ingen kalender, #6781); 0 loeb i alt er ogsaa gyldigt, hvis transitionen bygger den selv):"
 $sqlCalendar = @"
-select count(*) from races where season_id = '$toSeasonId';
+select count(*) as loeb_i_alt from races where season_id = '$toSeasonId';
+-- kraever_kalender spejler poolHasCalendar (divisionCalendarGenerator.js, CALENDAR_RULES §1f):
+-- D1/D2/D4 altid; D3 kun med mindst een rigtig manager. Et hul = kraever_kalender og loeb = 0.
+-- #6795: pensioneres_ved_skiftet = true (pool_index-rangen, samme regel som --target-structure) kraever
+-- ingen kalender og er aldrig et hul, ogsaa selvom retired_at endnu er null.
+$seniorPoolsCte
+select d.id, d.label, d.tier,
+       (select count(*) from teams t where t.league_division_id = d.id and t.is_ai = false and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false) and not coalesce(t.is_test_account, false)) as rigtige_managere,
+       (not d.pensioneres_ved_skiftet and (d.tier in (1, 2, 4) or (select count(*) from teams t where t.league_division_id = d.id and t.is_ai = false and not coalesce(t.is_bank, false) and not coalesce(t.is_frozen, false) and not coalesce(t.is_test_account, false)) >= 1)) as kraever_kalender,
+       d.pensioneres_ved_skiftet,
+       count(r.id) as loeb
+from senior_pools d
+left join races r on r.league_division_id = d.id and r.season_id = '$toSeasonId'
+where d.retired_at is null
+group by d.id, d.label, d.tier, d.pensioneres_ved_skiftet
+order by d.label;
 "@
 Write-Host $sqlCalendar
 
@@ -345,7 +381,9 @@ $manual += "Udestaaende S$FromSeasonNumber-loeb / pending resultater / ubetalte 
 $sqlOutstanding = @"
 select count(*) from races where season_id='$fromSeasonId' and status != 'completed';
 select count(*) from pending_race_results p join races r on r.id=p.race_id where r.season_id='$fromSeasonId' and p.status='pending';
-select count(*) from races where season_id='$fromSeasonId' and status='completed' and prize_paid_at is null;
+-- #6751: kun seniorloeb udbetaler praemie; U23/junior-loeb staar altid med prize_paid_at=null.
+select count(*) from races where season_id='$fromSeasonId' and status='completed' and prize_paid_at is null
+  and coalesce(squad, 'senior') = 'senior';
 "@
 Write-Host $sqlOutstanding
 
@@ -380,21 +418,27 @@ from teams group by division order by 1;
 select league_division_id, count(*) filter (where is_ai=false and not is_bank and not is_frozen and not is_test_account) as real,
        count(*) filter (where is_ai=true) as ai
 from teams where division=3 group by 1 order by 1;
--- puljer med real=24/ai=0 relegerer for AEGTE denne cutover (poolAllReal-gaten, processDivisionEnd)
+-- puljer med real=24/ai=0 relegerer for AEGTE denne cutover (poolAllReal-gaten, processDivisionEnd).
+-- En D3-pulje med AI-hold relegerer INGEN til D4 (Div4-udskydelsen i processDivisionEnd).
 
--- D3-pulje -> dens to D4-boerne (ratio afledt af pool_index, buildPoolTree i economyEngine.js):
-select ld3.id as d3_pool, ld3.pool_index,
-       ld4a.id as child1, ld4a.pool_index as child1_idx,
-       ld4b.id as child2, ld4b.pool_index as child2_idx
-from league_divisions ld3
-join league_divisions ld4a on ld4a.tier=4 and ld4a.pool_index = ld3.pool_index*2
-join league_divisions ld4b on ld4b.tier=4 and ld4b.pool_index = ld3.pool_index*2+1
-where ld3.tier=3
-order by ld3.pool_index;
+-- #6751: senior-puljetraeet som buildPoolTree ser det (uden pensionerede puljer, ratio =
+-- puljer(T+1)/puljer(T) -- S4-formen 1/2/4/4 giver D3->D4 = 1:1, ikke 1:2):
+-- #6795: pensioneres_ved_skiftet = pulje der pensioneres ved maalstrukturen (retired_at er endnu null).
+$seniorPoolsCte
+select d.tier, d.pool_index, d.id, d.pensioneres_ved_skiftet,
+       count(t.id) filter (where not t.is_ai and not coalesce(t.is_bank, false)) as real,
+       count(t.id) filter (where t.is_ai) as ai,
+       count(t.id) filter (where t.is_ai) = 0 and count(t.id) >= 24 as pool_all_real
+from senior_pools d left join teams t on t.league_division_id = d.id
+where d.retired_at is null
+group by d.tier, d.pool_index, d.id, d.pensioneres_ved_skiftet order by d.tier, d.pool_index;
 
--- Har destinations-D4-puljerne allerede en kalender for S$FromSeasonNumber (proxy for 'er puljen live')?
-select league_division_id, count(*) from races
-where season_id='$fromSeasonId' and division=4
+-- Har destinations-D4-puljerne en kalender for S$ToSeasonNumber (races har ingen division-kolonne)?
+-- #6795: puljer der pensioneres ved skiftet er ikke destinationer og udelades.
+$seniorPoolsCte
+select d.pool_index, count(r.id) from senior_pools d
+left join races r on r.league_division_id = d.id and r.season_id = '$toSeasonId'
+where d.tier = 4 and d.retired_at is null and not d.pensioneres_ved_skiftet
 group by 1 order by 1;
 "@
 Write-Host $sqlDivisions

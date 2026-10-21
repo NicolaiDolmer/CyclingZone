@@ -1,3 +1,4 @@
+import AcademyScoutingPrognosis from "../AcademyScoutingPrognosis";
 // RiderScoutingTab — Scouting-fanen på rytterprofilen (#1543 Fase 1).
 //
 // Viser den server-beregnede scouting-rapport (GET /api/riders/:id/scouting-report):
@@ -17,7 +18,6 @@ import PotentialeStars from "../../PotentialeStars";
 import { SearchIcon, CheckIcon } from "../../ui";
 import { getSession } from "../../../lib/supabase";
 import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
-import { formatCz } from "../../../lib/marketValues";
 import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
@@ -348,6 +348,10 @@ export default function RiderScoutingTab({ rider, scouting }) {
     );
   }
 
+  if (report.academyPrognosis) {
+    return <SectionCard><AcademyScoutingPrognosis prognosis={report.academyPrognosis} /></SectionCard>;
+  }
+
   // FØR: uscoutet, ikke-egen rytter — intet potentiale, kun invitationen.
   if (report.hidden) {
     return (
@@ -369,7 +373,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
     );
   }
 
-  const { verdict, types, stars, value, own, scout: scoutMeta, precision, primaryKey, pastPeak } = report;
+  const { verdict, types, stars, own, scout: scoutMeta, precision, primaryKey, pastPeak } = report;
   const orderedTypes = TYPE_ORDER
     .map((key) => types?.find((x) => x.key === key))
     .filter(Boolean);
@@ -583,38 +587,6 @@ export default function RiderScoutingTab({ rider, scouting }) {
       {report.capsMissing && (
         <SectionCard>
           <p className="text-cz-2 text-[12.5px] m-0">{t("profile.scouting.capsMissingBody")}</p>
-        </SectionCard>
-      )}
-
-      {/* Røverkøb? — sammenligning + one-line read, ingen verdict-label.
-          Skjules når markedsværdi == modelværdi (tautologi — market_value ER
-          i dag modelbaseret for ryttere uden auktions-drift; kortet siger så
-          intet. Får reel signalværdi når expected bliver potentiale-justeret
-          i Fase 2/3). */}
-      {value && value.expected !== value.market && (
-        <SectionCard>
-          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
-            {t("profile.scouting.valueTitle")}
-          </h3>
-          <div className="grid grid-cols-2 gap-3 max-w-[420px]">
-            <div>
-              <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
-                {t("profile.scouting.valueMarket")}
-              </span>
-              <span className="block font-display text-[19px] text-cz-1 mt-0.5">{formatCz(value.market)}</span>
-            </div>
-            <div>
-              <span className="block font-mono text-3xs font-bold uppercase tracking-[0.12em] text-cz-3">
-                {t("profile.scouting.valueExpected")}
-              </span>
-              <span className="block font-display text-[19px] text-cz-1 mt-0.5">{formatCz(value.expected)}</span>
-            </div>
-          </div>
-          <p className="text-cz-2 text-[12px] mt-2.5 mb-0 max-w-prose">
-            {t(value.expected > (value.market ?? 0)
-              ? "profile.scouting.valueReadAbove"
-              : "profile.scouting.valueReadBelow")}
-          </p>
         </SectionCard>
       )}
     </div>

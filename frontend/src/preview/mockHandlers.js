@@ -19,6 +19,7 @@ import {
   SEED_RACES,
   SEED_RACE_ENTRIES,
   SEED_STAGE_PROFILES,
+  SEED_STAGE_TIMELINE_RACE_DONE_1,
   SEED_STAGE_SCHEDULE,
   SEED_LEAGUE_DIVISIONS,
   SEED_STAGE_PASSAGES,
@@ -1450,6 +1451,12 @@ export function apiResponse(pathname, search = "") {
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
   if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) return SEED_SELECTION;
+  // #6993: race-done-1's loebslog + historie (etapesidens "How it unfolded" og vejret).
+  // Kun det loeb; andre loeb har ingen log i preview, som foer.
+  if (/\/api\/races\/race-done-1\/timeline$/.test(pathname) && new URLSearchParams(search).get("stage") === "1") {
+    const { story, ...timeline } = SEED_STAGE_TIMELINE_RACE_DONE_1;
+    return new URLSearchParams(search).get("story") === "1" ? { ...timeline, story } : timeline;
+  }
   // #4632: loebsdagens intention (RaceIntentionPanel). /api/races/:id/stage-roles.
   // Svaret vaelges paa loebets id saa preview kan vise ALLE tre tilstande —
   // femtrins-skalaen, endagsloebet og flaget OFF (tre trin) — se

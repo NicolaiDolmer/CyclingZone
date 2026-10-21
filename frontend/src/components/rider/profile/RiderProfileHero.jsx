@@ -21,6 +21,8 @@
 // display), Inter Tight tabular til tal (font-data). Dark mode flipper
 // automatisk (alle farver er cz-tokens).
 
+import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Flag } from "../../Flag";
 import TeamLink from "../../TeamLink";
@@ -28,15 +30,16 @@ import { statPlateStyle } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import BestRoleTag from "../BestRoleTag.jsx";
 import ScoutablePotentiale from "../ScoutablePotentiale";
-import RiderValueTrendBadge from "../RiderValueTrendBadge.jsx";
 import RiderBadges from "../RiderBadges";
 import ValueDeltaBadge from "../ValueDeltaBadge.jsx";
 import { retirementRiskBadgeKey, seasonNumberFromReferenceYear } from "../../../lib/riderAge";
 import { contractOfferEligibility, CONTRACT_STATE } from "../../../../../backend/lib/contractOfferEligibility.js";
 import { useRiderReputation } from "../../../lib/useRiderReputation.ts";
-import { riderReputationBand, riderReputationValue } from "../../../lib/riderReputationView.ts";
+import { riderReputationBand, riderReputationProgress, riderReputationValue } from "../../../lib/riderReputationView.ts";
+import { formatNumber } from "../../../lib/intl.js";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
-import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon } from "../../ui";
+import { squadBadgeKey } from "../../../lib/squadBadge.ts";
+import { AlertTriangleIcon, CategoryTag, StarIcon, ChevronRightIcon, Portal } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
@@ -48,23 +51,29 @@ const DIVISION_CHIP = "rgb(96 165 250)";
 // ville kunne skubbe den testede VALUE-blok uden for viewport på mobil
 // (core-smoke.spec.js måler dens bounding-rect). Grid'en giver samme label/
 // value-anatomi men wrapper sikkert i stedet for at skuble bredde ud af syne.
-function HeroStat({ label, value, sub, valueClassName = "text-[20px] font-[650]", valueProps = {} }) {
+function HeroStat({ label, value, sub, popover, valueClassName = "text-[20px] font-[650]", valueProps = {}, interactive = false }) {
   return (
-    <div className="min-w-0">
+    <div className={`min-w-0 ${interactive ? "relative" : ""}`}>
       <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-1">{label}</p>
-      <div
-        className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`}
-        {...valueProps}
-      >
-        {value ?? "—"}
-      </div>
-      {sub}
+      {interactive ? (
+        <button type="button" className={`block min-h-11 cursor-pointer rounded-cz text-left font-data leading-tight text-cz-1 tabular-nums transition-colors hover:text-cz-2 hover:underline hover:decoration-cz-border hover:underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cz-2 ${valueClassName}`} {...valueProps}>
+          {value ?? "—"}
+          {sub}
+        </button>
+      ) : (
+        <div className={`font-data leading-tight text-cz-1 tabular-nums ${valueClassName}`} {...valueProps}>
+          {value ?? "—"}
+        </div>
+      )}
+      {!interactive && sub}
+      {popover}
     </div>
   );
 }
 
 // Status-banner (betinget). `banner` = { kind, ...data } fra parent. Gold-tonet for
-// markeds-tilstande, amber for kontrakt-udløb, neutral for akademi.
+// markeds-tilstande. #6934: kontrakt-udløb og akademi har ikke længere bjælke
+// (kontrakt-feltet og U23/Junior-mærket i chip-rækken bærer dem).
 //
 // #2748: "finalSeason" er DEFINITIVT (motoren har allerede besluttet pensionen,
 // bare ikke anvendt den endnu), til forskel fra retirementRiskBadgeKey-badget
@@ -92,21 +101,17 @@ function StatusBanner({ banner }) {
   const TONES = {
     listed:  "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t",
     auction: "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t",
-    academy: "bg-cz-subtle border-cz-border text-cz-2",
-    expiry:  "bg-cz-warning-bg border-cz-warning/30 text-cz-warning",
   };
-  const tone = TONES[banner.kind] ?? TONES.academy;
+  const tone = TONES[banner.kind];
+  if (!tone) return null;
 
   let text = null;
   if (banner.kind === "listed")  text = t("profile.banner.listed", { price: banner.price });
   if (banner.kind === "auction") text = t("profile.banner.auction", { endsIn: banner.endsIn, highBid: banner.highBid });
-  if (banner.kind === "academy") text = t("profile.banner.academy");
-  if (banner.kind === "expiry")  text = t("profile.banner.expiry", { season: banner.season });
   if (!text) return null;
 
   return (
     <div className={`mt-4 flex items-center gap-2 rounded-cz border px-3.5 py-2.5 text-sm tabular-nums ${tone}`}>
-      {banner.kind === "expiry" && <AlertTriangleIcon size={16} aria-hidden="true" className="shrink-0" />}
       <span>{text}</span>
       {/* #3490: samme "X% under/over vurdering"-indikator som Transferlisten/
           Auktioner (ValueDeltaBadge) — kun for "listed" og kun når rytterens
@@ -118,35 +123,65 @@ function StatusBanner({ banner }) {
   );
 }
 
-function ReputationEventList({ events = [] }) {
+function ReputationEventList({ events = [], open, onClose, dialogRef, position }) {
   const { t } = useTranslation("rider");
-  const rows = Array.isArray(events) ? events.slice(0, 4) : [];
+  const closeButtonRef = useRef(null);
+  const focusSetRef = useRef(false);
+  const rows = Array.isArray(events) ? events : [];
+  const desktop = typeof window !== "undefined" && window.innerWidth >= 640;
+  useEffect(() => {
+    if (!open) {
+      focusSetRef.current = false;
+    } else if ((!desktop || position) && !focusSetRef.current && closeButtonRef.current) {
+      closeButtonRef.current.focus();
+      focusSetRef.current = true;
+    }
+  }, [open, desktop, position]);
+  if (!open || (desktop && !position)) return null;
+  const handleDialogKeyDown = (event) => {
+    if (event.key === "Escape") {
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = dialogRef.current?.querySelectorAll("button:not([disabled]), a[href]:not([aria-disabled='true'])");
+    if (!focusable?.length) return;
+    const controls = Array.from(focusable);
+    const activeIndex = controls.indexOf(document.activeElement);
+    const nextIndex = (activeIndex + (event.shiftKey ? -1 : 1) + controls.length) % controls.length;
+    event.preventDefault();
+    controls[nextIndex].focus();
+  };
   return (
-    <div className="mt-4 rounded-cz border border-cz-border bg-cz-subtle/50 px-3.5 py-3">
-      <p className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3 mb-2">
-        {t("profile.reputation.whyTitle")}
-      </p>
-      {rows.length ? (
-        <ul className="space-y-1.5">
-          {rows.map((event, index) => {
-            const label = t(`profile.reputation.events.${event.event_kind}`, {
-              defaultValue: t("profile.reputation.events.fallback"),
-            });
-            const raceName = event.race?.name || t("profile.reputation.unknownRace");
-            return (
-              <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="flex items-baseline justify-between gap-3 text-xs">
-                <span className="min-w-0 truncate text-cz-2">{label}</span>
-                <span className="max-w-[58%] truncate text-right font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-                  {raceName}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="text-xs text-cz-3">{t("profile.reputation.noEvents")}</p>
-      )}
-    </div>
+    <Portal>
+      <div ref={dialogRef} id="rider-reputation-details" role="dialog" aria-modal="true" aria-labelledby="rider-reputation-dialog-title" onKeyDown={handleDialogKeyDown} style={position ? { top: position.top, left: position.left, maxHeight: position.maxHeight } : undefined} className="fixed bottom-[76px] left-4 right-4 z-overlay max-h-[calc(100dvh-120px)] overflow-y-auto rounded-cz border border-cz-border bg-cz-card px-3.5 py-3 sm:bottom-auto sm:left-auto sm:right-auto sm:w-[320px] sm:z-dropdown">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <p id="rider-reputation-dialog-title" className="font-data text-3xs font-semibold uppercase tracking-widest text-cz-3">{t("profile.reputation.whyTitle")}</p>
+          <button ref={closeButtonRef} type="button" onClick={onClose} className="text-xs text-cz-3 underline underline-offset-2">{t("profile.reputation.close")}</button>
+        </div>
+        {rows.length ? (
+          <ul className="space-y-1.5 max-h-56 overflow-y-auto">
+            {rows.map((event, index) => {
+              const label = t(`profile.reputation.events.${event.event_kind}`, {
+                defaultValue: t("profile.reputation.events.fallback"),
+              });
+              const raceName = event.race?.name || t("profile.reputation.unknownRace");
+              return (
+                <li key={`${event.dedupe_key || event.event_kind || "event"}-${index}`} className="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-2 text-xs">
+                  <span className="font-data tabular-nums text-cz-1">+{formatNumber(Number(event.form_points || 0), { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</span>
+                  <span className="min-w-0 truncate text-cz-2">{label}</span>
+                  <span className="col-start-2 min-w-0 truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">{raceName}</span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-xs text-cz-3">{t("profile.reputation.noEvents")}</p>
+        )}
+        <p className="mt-2 border-t border-cz-border pt-2 text-xs text-cz-2">{t("profile.reputation.weighting")}</p>
+        <Link to="/help?section=riders" onClick={onClose} className="mt-1 inline-block text-xs text-cz-accent-t underline underline-offset-2">{t("profile.reputation.help")}</Link>
+      </div>
+    </Portal>
   );
 }
 
@@ -162,7 +197,6 @@ export default function RiderProfileHero({
   divisionLabel,                  // fx "DIV 2" (null hvis ukendt)
   valueAmount,                    // "4.366" (uden CZ$-suffix)
   valueLabel,                     // fuld label til title
-  valueTrendWindow = null,        // #2499: { delta, pct, actualDaysAgo, snapshotDate } | null
   salaryText,                     // præ-formateret løn, fx "CZ$ 293/år"
   isAiTeam = false,
   pendingTeam = null,             // kommende hold (handel til næste sæson) | null
@@ -175,6 +209,73 @@ export default function RiderProfileHero({
   reputationEvents = [],
 }) {
   const { t } = useTranslation("rider");
+  const [reputationOpen, setReputationOpen] = useState(false);
+  const [reputationPosition, setReputationPosition] = useState(null);
+  const reputationTriggerRef = useRef(null);
+  const reputationDetailsRef = useRef(null);
+  const reputationWasOpenRef = useRef(false);
+  useEffect(() => {
+    if (reputationOpen) {
+      reputationWasOpenRef.current = true;
+    } else if (reputationWasOpenRef.current) {
+      reputationWasOpenRef.current = false;
+      reputationTriggerRef.current?.focus();
+    }
+  }, [reputationOpen]);
+  useEffect(() => {
+    if (!reputationOpen) return undefined;
+    const positionPopover = () => {
+      if (window.innerWidth < 640) {
+        setReputationPosition(null);
+        return;
+      }
+      const anchor = reputationTriggerRef.current?.getBoundingClientRect();
+      if (!anchor) return;
+      setReputationPosition({
+        top: anchor.bottom + 8,
+        left: Math.max(12, Math.min(anchor.right - 320, window.innerWidth - 332)),
+      });
+    };
+    const closeWhenOutside = (event) => {
+      const target = event.target;
+      if (reputationTriggerRef.current?.contains(target) || reputationDetailsRef.current?.contains(target)) return;
+      setReputationOpen(false);
+      setReputationPosition(null);
+    };
+    const closeOnScroll = (event) => {
+      if (event.target instanceof Node && reputationDetailsRef.current?.contains(event.target)) return;
+      setReputationOpen(false);
+      setReputationPosition(null);
+    };
+    const closeOnResize = () => {
+      setReputationOpen(false);
+      setReputationPosition(null);
+    };
+    positionPopover();
+    document.addEventListener("pointerdown", closeWhenOutside);
+    window.addEventListener("scroll", closeOnScroll, true);
+    window.addEventListener("resize", closeOnResize);
+    return () => {
+      document.removeEventListener("pointerdown", closeWhenOutside);
+      window.removeEventListener("scroll", closeOnScroll, true);
+      window.removeEventListener("resize", closeOnResize);
+    };
+  }, [reputationOpen]);
+  useEffect(() => {
+    if (!reputationOpen || !reputationPosition || !reputationDetailsRef.current || !reputationTriggerRef.current) return;
+    const anchor = reputationTriggerRef.current.getBoundingClientRect();
+    const panelHeight = reputationDetailsRef.current.getBoundingClientRect().height;
+    const margin = 12;
+    const gap = 8;
+    const belowTop = anchor.bottom + gap;
+    const top = belowTop + panelHeight <= window.innerHeight - margin
+      ? belowTop
+      : Math.max(margin, anchor.top - panelHeight - gap);
+    const maxHeight = Math.max(160, window.innerHeight - top - margin);
+    setReputationPosition((current) => current && current.top === top && current.maxHeight === maxHeight
+      ? current
+      : { ...current, top, maxHeight });
+  }, [reputationOpen, reputationPosition]);
   const bestRoleOn = useBestRoleDisplay();
   const reputationOn = useRiderReputation();
 
@@ -182,7 +283,9 @@ export default function RiderProfileHero({
   const potentialEyebrow = viewer === "scouting"
     ? t("profile.hero.potentialScouted")
     : t("profile.hero.potentialOwn");
-  const isU23 = rider.is_u25 != null && age != null && age < 23;
+  // #6934: truppen (riders.squad) afgør U23/Junior-mærket; alders-U23 er kun fallback når squad mangler (en senior-trup-rytter under 23 får intet U23-mærke).
+  const squadKey = squadBadgeKey(rider.squad);
+  const isU23 = rider.squad == null && rider.is_u25 != null && age != null && age < 23;
   const hasRating = Number.isFinite(overallRating);
   const ratingPlate = hasRating ? (
     <span
@@ -218,17 +321,37 @@ export default function RiderProfileHero({
     : hasContractSeason
       ? t("profile.hero.contractSeason", { season: rider.contract_end_season })
       : t("header.noContract");
-  const contractSub = contractOffer.awaitingRelease ? (
+  // #6934: udløber kontrakten ved dette sæsonskifte, står det i feltet (ikon + kort tekst), ikke i en bjælke.
+  const contractExpiresNow = contractOffer.state === CONTRACT_STATE.FINAL_SEASON;
+  const contractSub = contractExpiresNow ? (
+    <p className="text-2xs text-cz-warning mt-1 inline-flex items-center gap-1" data-testid="rider-contract-expires">
+      <AlertTriangleIcon size={12} aria-hidden="true" className="shrink-0" />
+      {t("profile.hero.contractExpires")}
+    </p>
+  ) : contractOffer.awaitingRelease ? (
     <p className="text-2xs text-cz-3 mt-1">{t("profile.hero.contractExpiredSub")}</p>
   ) : null;
   const reputationValue = riderReputationValue(rider, reputationOn);
   // Niveauet (Ukendt..Legende) hører kun til omdømmet: off/shadow viser popularitet uden label.
   const reputationBand = reputationOn ? riderReputationBand(reputationValue) : null;
-  const reputationSub = reputationBand ? (
-    <p className="font-data text-2xs text-cz-3 tabular-nums mt-1">
-      {t(`profile.reputation.band.${reputationBand}`)}
-    </p>
-  ) : null;
+  const reputationProgress = reputationOn ? riderReputationProgress(reputationValue) : null;
+  const reputationSub = (
+    <>
+      {reputationProgress && (
+        <span className="mt-1 block max-w-28">
+          <span className="block h-1 overflow-hidden rounded-cz bg-cz-subtle" aria-hidden="true">
+            <span className="block h-full bg-cz-2" style={{ width: `${reputationProgress.percent}%` }} />
+          </span>
+          <span className="mt-1 block font-data text-2xs text-cz-3 tabular-nums">
+            <span className="inline-flex items-center gap-0.5">
+            {t("profile.reputation.progressTo", { value: reputationProgress.current, target: reputationProgress.target, band: t(`profile.reputation.band.${reputationProgress.nextBand}`) })}
+              <ChevronRightIcon size={12} aria-hidden="true" className="shrink-0 text-cz-3" />
+            </span>
+          </span>
+        </span>
+      )}
+    </>
+  );
 
   return (
     <>
@@ -261,6 +384,7 @@ export default function RiderProfileHero({
                   {divisionLabel}
                 </span>
               )}
+              {squadKey && <CategoryTag>{t(`header.${squadKey}`)}</CategoryTag>}
               {isU23 && <CategoryTag>{t("header.u23")}</CategoryTag>}
               <span className="font-data text-2xs uppercase tracking-[.08em] text-cz-3 inline-flex items-center gap-1.5">
                 {rider.nationality_code && (
@@ -383,24 +507,39 @@ export default function RiderProfileHero({
           value={valueAmount}
           valueClassName="text-[20px] font-[650] truncate"
           valueProps={{ title: valueLabel, "data-testid": "rider-value-amount" }}
-          sub={<RiderValueTrendBadge window={valueTrendWindow} className="mt-1" />}
         />
         <HeroStat label={t("profile.hero.salary")} value={salaryText ?? "—"} valueClassName="text-[20px] font-[650] truncate" />
         <HeroStat
           label={t(reputationOn ? "profile.hero.reputationEyebrow" : "profile.hero.popularityEyebrow")}
-          value={reputationValue == null ? "—" : Math.round(reputationValue)}
+          value={reputationOn && reputationBand ? t(`profile.reputation.band.${reputationBand}`) : reputationValue == null ? "—" : Math.round(reputationValue)}
           valueClassName="text-[20px] font-[650]"
           sub={reputationSub}
+          popover={reputationOn && <ReputationEventList events={reputationEvents} open={reputationOpen} onClose={() => { setReputationOpen(false); setReputationPosition(null); }} dialogRef={reputationDetailsRef} position={reputationPosition} />}
+          interactive={reputationOn}
+          valueProps={reputationOn ? {
+            ref: reputationTriggerRef,
+            onClick: () => setReputationOpen((isOpen) => {
+              if (isOpen) setReputationPosition(null);
+              return !isOpen;
+            }),
+            onKeyDown: (event) => {
+              if (event.key === "Escape" && reputationOpen) {
+                setReputationOpen(false);
+                setReputationPosition(null);
+              }
+            },
+            "aria-expanded": reputationOpen,
+            "aria-controls": "rider-reputation-details",
+            "aria-haspopup": "dialog",
+          } : {}}
         />
         <HeroStat
           label={t("profile.hero.contract")}
           value={<span className={hasContractSeason && !contractOffer.awaitingRelease ? "text-cz-accent-t" : undefined}>{contractText}</span>}
-          valueClassName="text-[20px] font-[650] truncate"
+          valueClassName="text-[20px] font-[650] wrap-break-word"
           sub={contractSub}
         />
       </div>
-
-      {reputationOn && <ReputationEventList events={reputationEvents} />}
 
       {/* Action-række — injiceres af parent (genbruger eksisterende handlinger). */}
       {actions && <div className="mt-5 pt-5 border-t border-cz-border">{actions}</div>}

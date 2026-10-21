@@ -537,12 +537,11 @@ export default function FinancePage() {
     ? Math.max(0, loanData.debt_ceiling - (loanData?.total_debt || 0))
     : null;
   const loanFeeNum = selectedConfig ? Math.round(loanAmountNum * selectedConfig.origination_fee_pct) : 0;
-  // #2815: risk-forecast for det INDTASTEDE beløb — samme tal driver både den
-  // altid-synlige "rente næste sæson"-linje og LoanConfirmModal (isHighDebt).
+  // #2815: risk-summary for det INDTASTEDE beløb — driver LoanConfirmModal
+  // (isHighDebt). #6935: rente-prognosen er fjernet (kunne vise forkerte tal).
   const loanRisk = computeLoanRiskSummary({
     principal: loanAmountNum,
     fee: loanFeeNum,
-    interestRatePct: selectedConfig?.interest_rate_pct,
     currentDebt: loanData?.total_debt || 0,
     debtCeiling: loanData?.debt_ceiling,
   });
@@ -896,19 +895,6 @@ export default function FinancePage() {
                         {t("loans.take.exceedsMax", { value: formatNumber(maxPrincipal) })}
                       </p>
                     )}
-                    {/* #2815: "hvad koster det pr. sæson" — den manglende oplysning
-                        issuet peger på ("der vises gebyr og totalgæld, men ikke hvad
-                        afdraget koster pr. sæson"). Vist for ETHVERT lånebeløb, ikke
-                        kun høj-gældsgrad-tilfælde — ren oplysning, ingen gate. */}
-                    {loanData?.debt_ceiling != null && (
-                      <p className={`text-xs mt-2 pt-2 border-t border-cz-border text-center leading-snug ${
-                        loanRisk.exceedsCeilingNextSeason ? "text-cz-danger" : "text-cz-3"}`}>
-                        {t("loans.take.costPerSeason", {
-                          interest: formatNumber(loanRisk.nextSeasonInterest),
-                          projected: formatNumber(loanRisk.projectedDebtAfterInterest),
-                        })}
-                      </p>
-                    )}
                   </div>
                 )}
 
@@ -929,9 +915,6 @@ export default function FinancePage() {
             newTotalDebt={loanRisk.newTotalDebt}
             ceilingPct={loanRisk.ceilingPct}
             debtCeiling={loanData?.debt_ceiling}
-            nextSeasonInterest={loanRisk.nextSeasonInterest}
-            projectedDebtAfterInterest={loanRisk.projectedDebtAfterInterest}
-            exceedsCeilingNextSeason={loanRisk.exceedsCeilingNextSeason}
             busy={takingLoan}
             onCancel={() => setShowLoanConfirm(false)}
             onConfirm={() => submitLoan(loanAmountNum)}

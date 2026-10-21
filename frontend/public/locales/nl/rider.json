@@ -1,0 +1,980 @@
+{
+  "badges": {
+    "u23": "Onder 23 (U23)",
+    "u25": "Onder 25 (U25)",
+    "auction": "Actieve veiling",
+    "listed": "Op de transfermarkt",
+    "ai": "AI-team",
+    "incoming": "Binnenkomende transfer",
+    "outgoing": "Vertrekkende transfer",
+    "self": "Interne transfer (eigen team)",
+    "bought": "Jij hebt deze renner gekocht",
+    "sold": "Jij hebt deze renner verkocht",
+    "injured": "Geblesseerd",
+    "academy": "Academierenner (telt niet mee voor de seniorenlimiet)",
+    "retireRisk": "Groot risico op pensioen: renners stoppen meestal tussen 36 en 40 jaar",
+    "contractExpiring": "Het contract loopt af bij de volgende seizoenswissel: deze renner wordt transfervrij tenzij het contract eerst wordt verlengd",
+    "junior": "Juniorenrenner (in je juniorenselectie)",
+    "label": {
+      "u23": "U23",
+      "u25": "U25",
+      "auction": "VEIL",
+      "ai": "AI",
+      "incoming": "IN",
+      "outgoing": "UIT",
+      "self": "EIGEN",
+      "bought": "GEK",
+      "sold": "VERK",
+      "injured": "BLES",
+      "academy": "ACAD",
+      "retireRisk": "35+",
+      "contractExpiring": "AFL",
+      "listed": "LIJST",
+      "junior": "JR"
+    }
+  },
+  "page": {
+    "back": "Terug",
+    "notFound": "Renner niet gevonden",
+    "retry": "Probeer opnieuw",
+    "loadingAria": "Renner laden"
+  },
+  "header": {
+    "watchlistAdd": "Aan volglijst toevoegen",
+    "watchlistRemove": "Van volglijst halen",
+    "watchlistToggleFailed": "Je volglijst kon niet worden bijgewerkt. Probeer het opnieuw.",
+    "compare": "⇄ Vergelijken",
+    "compareTitle": "Vergelijken met andere renners",
+    "watchlistCount": "👁 {count, plural, one {1 manager volgt deze renner} other {# managers volgen deze renner}}",
+    "visitors": "👀 {count, plural, one {1 unieke bezoeker} other {# unieke bezoekers}} (7d)",
+    "visitors24h": "{count, plural, one {1 in de laatste 24u} other {# in de laatste 24u}}",
+    "visitorsNew": "Nieuw",
+    "visitorsTrendUp": "{pct}% hoger dan de vorige 7 dagen",
+    "visitorsTrendDown": "{pct}% lager dan de vorige 7 dagen",
+    "u23": "U23",
+    "junior": "Junior",
+    "u25": "U25",
+    "retired": "Gestopt",
+    "ageYears": "{age} jr",
+    "heightCm": "{height} cm",
+    "weightKg": "{weight} kg",
+    "potential": "Potentieel",
+    "overall": "Rating",
+    "teamPrefix": "Team:",
+    "freeAgent": "Transfervrij",
+    "nextSeasonPrefix": "Binnenkomend:",
+    "pendingTransfer": "Sluit zich aan bij {team} zodra zijn huidige etappekoers is afgelopen",
+    "activeAuctionBadge": "⚡ Actieve veiling",
+    "highestBidLabel": "Hoogste bod: {amount} CZ$",
+    "valueLabel": "Waarde CZ$",
+    "contractSalary": "Salaris CZ$",
+    "contractLength": "{count, plural, one {1 seizoen} other {# seizoenen}}",
+    "contractExpires": "Verloopt na seizoen {season}",
+    "noContract": "Transfervrij (geen contract)",
+    "estSalary": "Gesch. salaris CZ$",
+    "typeDefault": "Allrounder",
+    "newValueBeta": "Nieuwe waarde (beta): {amount} CZ$",
+    "newValueBetaTooltip": "Voorbeeld van de komende waardering op basis van vaardigheden. Wordt nog niet gebruikt voor kopen, verkopen of salaris."
+  },
+  "blocked": {
+    "pendingTransfer": "🔒 De renner is verhandeld en sluit zich bij zijn nieuwe team aan zodra zijn huidige etappekoers is afgelopen. Tot dan kan hij niet opnieuw worden verhandeld.",
+    "retired": "De renner is gestopt en kan niet worden verhandeld.",
+    "errorFallback": "Er ging iets mis"
+  },
+  "offerShortcut": {
+    "textWithPrice": "Open aanbieding: {price} CZ$ van {team}",
+    "text": "Open aanbieding van {team}",
+    "unknownTeam": "een andere manager",
+    "cta": "Beslissen"
+  },
+  "tabs": {
+    "stats": "Vaardigheden",
+    "season": "Seizoensgeschiedenis",
+    "results": "Koersuitslagen",
+    "bids": "Biedgeschiedenis",
+    "history": "Geschiedenis",
+    "development": "Ontwikkeling"
+  },
+  "profile": {
+    "training": {
+      "title": "Trainingsfocus",
+      "slotsUsed": "{used} / {total} plekken gebruikt",
+      "loading": "Training laden…",
+      "focus": {
+        "vo2max": "VO2max",
+        "vo2max_climb": "VO2max (klimmen)",
+        "vo2max_punch": "VO2max (punch)",
+        "threshold": "Drempel",
+        "sprint": "Sprint",
+        "endurance": "Uithoudingsvermogen",
+        "technique": "Techniek",
+        "aero": "Aero",
+        "tempo": "Tempo",
+        "restitution": "Actief herstel",
+        "loebslaere": "Koersinzicht",
+        "cobbled_sectors": "Kasseienstroken",
+        "echelon_drills": "Waaieroefeningen",
+        "attack_repeats": "Aanvalsherhalingen"
+      },
+      "active": "Actief: {focus} · {intensity} · traint {abilities}",
+      "activeRest": "Aan het rusten (focus {focus} gepauzeerd)",
+      "effectNote": "wordt dagelijks bijgewerkt",
+      "noRiskNote": "Hogere intensiteit groeit sneller, zonder risico op verlies van voortgang.",
+      "restNote": "Geen groei van vaardigheden op een rustdag. De vermoeidheid herstelt.",
+      "emptyFocus": "Kies een focus om training toe te wijzen.",
+      "actionErrorGeneric": "Opslaan is niet gelukt. Probeer het over een moment opnieuw.",
+      "actionErrors": {
+        "no_slots": "Geen trainingsplekken meer.",
+        "auth": "Je sessie is verlopen. Log opnieuw in.",
+        "network": "Verbinding mislukt. Controleer je netwerk en probeer het opnieuw."
+      },
+      "log": {
+        "title": "Dagelijkse training · laatste 7 dagen",
+        "empty": "Nog geen trainingsdagen.",
+        "today": "Vandaag",
+        "sharp": "Scherpe dag",
+        "flat": "Vlakke dag",
+        "gains": "+{count} vaardigheden"
+      },
+      "trend": {
+        "title": "Training · laatste 30 dagen",
+        "trained": "Getrainde sessies",
+        "breakthroughs": "Doorbraken",
+        "sharp": "Scherpe dagen",
+        "note": "Geteld uit de trainingsruns van de laatste 30 dagen."
+      },
+      "form": {
+        "title": "Vorm & herstel",
+        "healthy": "Blessurevrij",
+        "healthyHint": "Klaar om hard te trainen",
+        "pending": "Nog geen conditiegegevens."
+      },
+      "locked": {
+        "title": "Training is verborgen",
+        "body": "Je kunt de training, vorm of vermoeidheid van de renner van een ander team niet zien of beheren. Contracteer hem en het gaat open."
+      },
+      "retired": {
+        "title": "Gestopte renner",
+        "body": "Gestopte renners worden niet getraind, dus er is geen actief programma, geen vorm en geen vermoeidheid om te tonen."
+      },
+      "changeFocus": "Wijzigen",
+      "chooseFocus": "Kiezen",
+      "score": {
+        "title": "Trainingsscore",
+        "todayLabel": "Sessie van vandaag",
+        "race": "Koers",
+        "raceNote": "Koersdag: de koers vervangt de training",
+        "sparkAria": "Trainingsscore, laatste 7 dagen",
+        "avg": "Gemiddelde, {days} dagen",
+        "best": "Beste, 30 dagen",
+        "driverUp": "{driver} +{points}",
+        "driverDown": "{driver} −{points}"
+      }
+    },
+    "tabs": {
+      "overview": "Overzicht",
+      "physiology": "Fysiologie",
+      "training": "Training",
+      "development": "Ontwikkeling",
+      "scouting": "Scouting",
+      "history": "Geschiedenis",
+      "results": "Uitslagen",
+      "palmares": "Palmarès",
+      "interest": "Interesse"
+    },
+    "switcher": {
+      "hint": "Met de pijltoetsen wissel je van renner"
+    },
+    "hero": {
+      "ratingEyebrow": "Rating",
+      "bestRoleEyebrow": "Beste rol nu",
+      "divisionChip": "DIV {division}",
+      "photoFallback": "Foto",
+      "potentialOwn": "Verwacht niveau",
+      "potentialScouted": "Gescoute verwachting",
+      "valueEyebrow": "Marktwaarde",
+      "popularityEyebrow": "Populariteit",
+      "reputationEyebrow": "Reputatie",
+      "salary": "Salaris",
+      "contract": "Contract",
+      "contractSeason": "Seizoen {season}",
+      "contractExpired": "Verlopen",
+      "contractExpiredSub": "Transfervrij bij de seizoenswissel tenzij verlengd",
+      "contractExpires": "verloopt",
+      "aiTag": "AI",
+      "ratingTrendRising": "Stijgend dit seizoen",
+      "ratingTrendSteady": "Stabiel dit seizoen",
+      "ratingTrendDeclining": "Dalend dit seizoen",
+      "ratingTrendTitle": "Rating {value} sinds {date}"
+    },
+    "reputation": {
+      "whyTitle": "Waarom zijn reputatie veranderde",
+      "progressTo": "{value} / {target} tot {band}",
+      "weighting": "Overwinningen en grote koersen tellen het meest",
+      "help": "Zo werkt reputatie",
+      "close": "Sluiten",
+      "noEvents": "Nog geen reputatiegebeurtenissen.",
+      "unknownRace": "Een koers",
+      "band": {
+        "unknown": "Onbekend",
+        "known": "Bekend",
+        "profile": "Profiel",
+        "star": "Ster",
+        "legend": "Legende"
+      },
+      "events": {
+        "one_day_win": "Eendagszege",
+        "one_day_podium": "Eendagspodium",
+        "one_day_top10": "Eendags top 10",
+        "gc_win": "Klassementszege",
+        "gc_podium": "Klassementspodium",
+        "gc_top10": "Algemeen klassement top 10",
+        "stage_win": "Etappezege",
+        "stage_podium": "Etappepodium",
+        "stage_top10": "Etappe top 10",
+        "jersey_points_win": "Puntentrui",
+        "jersey_mountain_win": "Bergtrui",
+        "jersey_young_win": "Jongerentrui",
+        "leader_day": "Leiderstrui",
+        "fallback": "Reputatiegebeurtenis"
+      }
+    },
+    "levelCorrectionReceipt": {
+      "developmentLine": "Ontwikkeling: geen verandering door training deze week.",
+      "marketLine": "Markt: eenmalige niveaucorrectie voor alle renners. Waarden komen nu overeen met waarvoor renners echt worden verhandeld. Je renner wordt niet slechter.",
+      "detailsToggle": "Getallen tonen",
+      "detailsHide": "Getallen verbergen",
+      "anchorBefore": "Waarde vooraf",
+      "anchorAfter": "Waarde achteraf",
+      "factor": "Correctiefactor",
+      "appliedAt": "Toegepast op {date}"
+    },
+    "banner": {
+      "listed": "Op de transferlijst · prijs {price}",
+      "auction": "In veiling · eindigt over {endsIn} · hoogste bod {highBid}",
+      "finalSeasonTitle": "Laatste seizoen",
+      "finalSeason": "Heeft bij de start van het seizoen zijn pensioen aangekondigd. Hij stopt wanneer seizoen {season} eindigt."
+    },
+    "history": {
+      "loading": "Geschiedenis laden...",
+      "chipBid": "Bod",
+      "bidBy": "deed een bod",
+      "table": {
+        "date": "Datum",
+        "type": "Type",
+        "event": "Gebeurtenis",
+        "amount": "Bedrag"
+      },
+      "loadError": "De transfergeschiedenis kon nu niet worden geladen."
+    },
+    "results": {
+      "totalsTitle": "Seizoenstotalen",
+      "filterLabel": "Seizoensfilter",
+      "filterAll": "Alle",
+      "totals": {
+        "wins": "Zeges",
+        "races": "Koersen",
+        "top5": "Top 5",
+        "jerseys": "Truien",
+        "points": "Ranglijstpunten",
+        "prize": "Prijzengeld"
+      },
+      "table": {
+        "date": "Datum",
+        "race": "Koers",
+        "class": "Klasse",
+        "terrain": "Terrein",
+        "pos": "Pos.",
+        "points": "Punten",
+        "prize": "Prijs"
+      },
+      "terrain": {
+        "flat_sprint": "Vlak",
+        "long_sprint_classic": "Glooiend",
+        "cobbled_classic": "Kasseien",
+        "gravel_classic": "Gravel",
+        "puncheur": "Heuvelachtig",
+        "hilly_classic": "Heuvelachtig",
+        "mountain_classic": "Bergen",
+        "itt_classic": "Tijdrit"
+      },
+      "stagesCount": "{n} etappes",
+      "stageRow": "Etappe {n}",
+      "overallRow": "Algemeen klassement",
+      "expandHint": "Tik op het pijltje om alle etappes uit te klappen. Tik op de koersnaam om hem te openen.",
+      "emptySeason": "Geen uitslagen in dit seizoen.",
+      "seasonShort": "S{n}",
+      "loadError": "De uitslagen konden nu niet worden geladen."
+    },
+    "palmares": {
+      "careerFirstsTitle": "Eerste keren in de carrière",
+      "trophyTitle": "Trofeeënkast",
+      "trophy": {
+        "gcWins": "Klassementszeges",
+        "oneDayWins": "Eendagszeges",
+        "stageWins": "Etappezeges",
+        "jerseyWins": "Eindtruien",
+        "jerseyDays": "Dagen in een trui",
+        "podiums": "Podia"
+      },
+      "jerseyDayLine": {
+        "leader": "Leiderstrui · {n, plural, one {# dag} other {# dagen}}",
+        "points_day": "Puntentrui · {n, plural, one {# dag} other {# dagen}}",
+        "mountain_day": "Bergtrui · {n, plural, one {# dag} other {# dagen}}",
+        "young_day": "Jongerentrui · {n, plural, one {# dag} other {# dagen}}"
+      },
+      "totalsTitle": "Totalen over de carrière",
+      "totals": {
+        "races": "Koersen",
+        "winRate": "Winstpercentage",
+        "points": "Ranglijstpunten",
+        "prize": "Prijzengeld"
+      },
+      "seasonHonoursTitle": "Seizoen na seizoen",
+      "teamFallback": "Onbekend team",
+      "achievement": {
+        "gcWin": "Winnaar (algemeen klassement)",
+        "raceWin": "Winnaar",
+        "podium2": "2e plaats",
+        "podium3": "3e plaats",
+        "stageWin": "Winnaar etappe {n}",
+        "jersey": {
+          "points": "Puntenklassement",
+          "mountain": "Bergklassement",
+          "young": "Jongerenklassement"
+        }
+      },
+      "emptyTitle": "Nog geen palmarès",
+      "emptyBody": "Elke carrière begint blanco. Het eerste resultaat schrijft de openingsregel.",
+      "loadError": "Het palmarès kon nu niet worden geladen."
+    },
+    "scouting": {
+      "loading": "Scoutingrapport laden...",
+      "loadFailed": "Het scoutingrapport kon niet worden geladen. Probeer het over een moment opnieuw.",
+      "eyebrowOwn": "Het oordeel van je scout",
+      "eyebrowOther": "Scoutingrapport",
+      "provenanceNamed": "Beoordeeld door {name} · Scout van niveau {tier}",
+      "provenanceDefault": "Beoordeeld door de standaardscout van je team (rating {overall})",
+      "recalcNote": "De band laat zien waar hij met jouw training realistisch naartoe gaat. Hij weerspiegelt de nauwkeurigheid van je HUIDIGE scout en wordt herberekend wanneer je scout verandert, maar de echte vaardigheden van de renner worden nooit geraakt. Een betere scout maakt het bereik smaller, maar het is geen garantie: de ware waarde kan af en toe net buiten de band vallen.",
+      "notScoutedTitle": "Niet gescout",
+      "notScoutedBody": "Je kent het potentieel van deze renner nog niet. Gebruik een scoutplek om de eerste inschatting van je scout over hem te krijgen.",
+      "potentialLabel": "Potentieel",
+      "headline_keep_and_develop": "Houden & ontwikkelen",
+      "headline_bid_worth_considering": "Een bod dat het overwegen waard is",
+      "headline_monitor": "Houd hem in de gaten",
+      "headline_solid_contributor": "Solide bijdrager",
+      "headline_past_peak": "Over zijn hoogtepunt heen",
+      "confidence_high": "Volledig gescout",
+      "confidence_medium": "Deels gescout",
+      "confidence_low": "Nauwelijks gescout",
+      "confidenceTitle_high": "Je weet alles wat je scout over deze renner kan vertellen. Hoe smal de band is, hangt nog steeds af van de rating van je scout, niet hiervan.",
+      "confidenceTitle_medium": "Je scout heeft meer dan eens gerapporteerd, maar niet alles wat hij kan. Scout opnieuw om de inschatting compleet te maken.",
+      "confidenceTitle_low": "Alleen een eerste inschatting. Scout opnieuw voordat je erop handelt.",
+      "verdictIsRead": "Dit is de inschatting van je scout, geen feit. Ze is gebouwd op zijn verwachte niveau, dus de scout van een andere manager kan over dezelfde renner tot een andere conclusie komen.",
+      "verdictText": "Met de juiste training zie ik hem uitkomen op {progLo}-{progHi} - het plafond van de rol is {loft}, maar dat vraagt de hele weg gerichte focus.",
+      "verdictTextNoLoft": "Met de juiste training zie ik hem uitkomen op {progLo}-{progHi}, maar dat vraagt de hele weg gerichte focus.",
+      "factor_age_upside": "Jong genoeg om nog seizoenen van groei voor zich te hebben",
+      "factor_ceiling_gap": "Duidelijk verschil tussen het niveau van vandaag en waar hij naar verwachting uitkomt",
+      "factor_near_ceiling": "Zit al dicht bij zijn verwachte niveau, er valt weinig meer te winnen",
+      "factor_decline_risk": "Op een leeftijd waarop achteruitgang inzet",
+      "factor_type_match": "Het oordeel weegt zijn beste rennerstype het zwaarst",
+      "factor_form_unknown": "Vorm en vermoeidheid zijn niet zichtbaar voor scouts",
+      "factor_watch_races": "Koersuitslagen bevestigen of bevragen deze inschatting",
+      "rescoutHint": "Scout hem opnieuw om de schatting te verscherpen. Een scout met een lage rating bereikt zijn eigen nauwkeurigheidsgrens voor het laatste niveau.",
+      "typesTitle": "Verwachting per rennerstype",
+      "typesSubtitle": "het plafond is dat van de rol, potentieel bepaalt het tempo",
+      "primaryRoleLabel": "Zijn rol",
+      "primaryProgressionLabel": "Verwacht",
+      "otherRolesLabel": "De andere rollen",
+      "typesSubtitleNoLoft": "potentieel bepaalt het tempo",
+      "naturalRolesLabel": "Zijn natuurlijke rollen",
+      "otherRolesNaturalLabel": "Andere rollen",
+      "otherRolesNote": "Rollen delen vaardigheden. De volgorde hier is een schatting.",
+      "typesLegendNoLoft": "Volle balk = niveau van vandaag. Gearceerde band = waar hij met jouw training realistisch naartoe gaat: de onderkant is gestaag maar ongericht werk, de bovenkant is elke dag gerichte focus. Potentieel bepaalt hoe snel hij daar komt. Het is een schatting, geen garantie, en geen scout kent een renner exact. Ratings zijn vergelijkbaar tussen rollen - hetzelfde getal betekent overal hetzelfde niveau.",
+      "precisionNext": "Het volgende scoutniveau maakt de band smaller, van ±{half} naar ±{next} punten.",
+      "precisionUseless": "Nog een niveau zou de band voor je huidige hoofdscout (±{half} punten) niet zichtbaar smaller maken. Een betere hoofdscout wel.",
+      "precisionAtMax": "Smaller wordt de band door scouting niet. De breedte van de band hangt nu af van de rating van je hoofdscout (±{half} punten).",
+      "typesLegend": "Volle balk = niveau van vandaag. Gearceerde band = waar hij met jouw training realistisch naartoe gaat: de onderkant is gestaag maar ongericht werk, de bovenkant is elke dag gerichte focus. Donker streepje = het plafond van de rol, voor iedereen in die rol hetzelfde. Potentieel bepaalt hoe snel hij ernaartoe klimt. Het is een schatting, geen garantie, en geen scout kent een renner exact. Ratings zijn vergelijkbaar tussen rollen - hetzelfde getal betekent overal hetzelfde niveau.",
+      "capsMissingTitle": "Rapport onvolledig",
+      "capsMissingBody": "Voor deze renner zijn nog geen verwachtingsgegevens beschikbaar, dus de vooruitblik per type kan niet worden getoond.",
+      "scoutFailed": "De scout kon niet worden gestuurd. Probeer het over een moment opnieuw.",
+      "scoutErrors": {
+        "max_level": "Deze renner is al volledig gescout.",
+        "capacity": "Je scout zit al helemaal vol. Wacht tot een opdracht klaar is.",
+        "insufficient_funds": "Niet genoeg CZ$ om een scout te sturen.",
+        "insufficient_available_balance": "Niet genoeg beschikbaar geld: een deel van je saldo staat vast in veilingbiedingen.",
+        "auth": "Je sessie is verlopen. Log opnieuw in.",
+        "network": "Verbinding mislukt. Controleer je netwerk en probeer het opnieuw."
+      }
+    },
+    "interest": {
+      "loading": "Interesse laden...",
+      "loadError": "De interessegegevens konden nu niet worden geladen.",
+      "trendFlat": "stabiel",
+      "seasonShort": "S{n}",
+      "stats": {
+        "followers": "Volgers",
+        "views7d": "Profielweergaven (7d)",
+        "scoutedBy": "Gescout door"
+      },
+      "followersSub": "{count, plural, one {manager} other {managers}}",
+      "scoutedBySub": "{count, plural, one {rivaliserend team} other {rivaliserende teams}}",
+      "scoutedBySubNeutral": "{count, plural, one {team} other {teams}}",
+      "selfBadge": "incl. jij",
+      "summary": {
+        "own": "{followers, plural, =0 {Nog geen managers volgen hem} one {1 manager volgt hem} other {# managers volgen hem}} · gescout door {scouted, plural, =0 {geen rivalen} one {1 rivaliserend team} other {# rivaliserende teams}} · {views, plural, =0 {geen unieke bezoekers} one {1 unieke bezoeker} other {# unieke bezoekers}} in de laatste 7 dagen.",
+        "ownQuiet": "Nog niemand heeft interesse getoond. Hij blijft voorlopig onder de radar.",
+        "scouting": "{followers, plural, =0 {Nog geen managers volgen hem} one {1 manager volgt hem} other {# managers volgen hem}} · gescout door {scouted, plural, =0 {niemand} one {1 team} other {# teams}} · {views, plural, =0 {geen unieke bezoekers} one {1 unieke bezoeker} other {# unieke bezoekers}} in de laatste 7 dagen.",
+        "scoutingQuiet": "Nog geen zichtbare interesse."
+      },
+      "whoScouts": {
+        "title": "Wie scout je renner?",
+        "body": "{count, plural, one {1 rivaliserend team heeft scoutplekken aan hem besteed.} other {# rivaliserende teams hebben scoutplekken aan hem besteed.}}",
+        "empty": "Nog geen rivalen hebben hem gescout.",
+        "level": "Niveau {level}"
+      },
+      "feed": {
+        "title": "Activiteit",
+        "scout": "{team} scoutte hem",
+        "scoutAnon": "Een rivaal scoutte hem",
+        "scoutSelf": "Jij scoutte hem",
+        "watch": "Op de volglijst van een manager gezet",
+        "watchSelf": "Jij zette hem op je volglijst",
+        "viewsTrend": "Profielweergaven {pct}% tegenover de vorige 7 dagen",
+        "viewsTrendMeta": "laatste 7 dagen",
+        "empty": "Nog geen activiteit"
+      }
+    },
+    "overview": {
+      "skillCount": "{count} vaardigheden",
+      "radar": {
+        "title": "Renner-types",
+        "subtitle": "rating per type",
+        "legendNow": "Nu",
+        "allTypes": "Alle types",
+        "role": "Zijn rol",
+        "readsHighest": "Scoort nu het hoogst",
+        "notARanking": "Rollen worden opgebouwd uit verschillende vaardigheden, dus deze getallen zijn geen rangorde van wat hij zou moeten zijn."
+      },
+      "physio": {
+        "title": "Fysiologie",
+        "weight": "{kg} kg",
+        "link": "Vermogenscurve & zones"
+      }
+    },
+    "development": {
+      "empty": "Nog geen vastgelegde ontwikkeling. De curve bouwt zich op naarmate de renner traint en seizoenen voorbijgaan.",
+      "loading": "Ontwikkeling laden...",
+      "chart": {
+        "title": "Rating per type · over seizoenen",
+        "caption": "vastgelegde ontwikkeling · dagelijkse momentopnames",
+        "season": "S{n}",
+        "seasonNow": "S{n} nu"
+      },
+      "growth": {
+        "title": "Groei dit seizoen",
+        "typeRating": "Rating {type}",
+        "thisSeason": "{delta} dit seizoen",
+        "abilityPoints": "Gewonnen vaardigheidspunten",
+        "trackedSince": "Bijgehouden sinds"
+      },
+      "reading": {
+        "title": "Duiding",
+        "own": {
+          "rising": "Hij is dit seizoen {delta} gestegen in rating {type}. De training werpt vruchten af.",
+          "flat": "Dit seizoen nog geen gemeten winst. De curve bouwt zich op naarmate hij traint."
+        },
+        "scouting": {
+          "rising": "Stijgende curve dit seizoen. Trainingsplannen zijn verborgen voor renners van rivalen.",
+          "flat": "Tot nu toe een vlakke curve dit seizoen. Trainingsplannen zijn verborgen voor renners van rivalen."
+        }
+      },
+      "log": {
+        "title": "Ontwikkelingslog",
+        "hint": "training → vaardigheidswinst per seizoen",
+        "seasonNow": "Seizoen {n} · nu",
+        "delta": "{delta} rating",
+        "note": "winst op {days} van de laatste {window} dagen",
+        "noTraining": "geen training vastgelegd",
+        "scoutingHidden": "Het door training gedreven ontwikkelingslog is verborgen voor renners van rivalen. Je ziet alleen de vastgelegde trend hierboven."
+      },
+      "projection": {
+        "legend": "verwachting",
+        "caption": "volle lijn = vastgelegd · gestreept = verwachting · gearceerd = doelbereik",
+        "now": "nu",
+        "ceilingLabel": "DOEL",
+        "toCeiling": "Naar het doel",
+        "ageAtCeiling": "Leeftijd bij het doel",
+        "seasonsRange": "~{lo}–{hi} seizoenen",
+        "seasonsOpen": "~{lo}+ seizoenen",
+        "seasonsSingle": "~{n} seizoenen",
+        "ageRange": "~{lo}–{hi}",
+        "ageOpen": "~{lo}+",
+        "ageSingle": "~{n}",
+        "atCeiling": "Nu op het doel",
+        "outlook": "Vooruitblik",
+        "approaching": "Nadert het doel",
+        "gapToCeiling": "Grote afstand tot het doel",
+        "pastPeak": "Over het hoogtepunt heen, in daling"
+      }
+    },
+    "physio": {
+      "pending": "Fysiologie nog niet beschikbaar",
+      "over": "boven",
+      "under": "onder",
+      "divMean": "Gem. divisie {value}",
+      "divMeanShort": "t.o.v. Div {division}",
+      "head": {
+        "ftp": "FTP",
+        "ftpSub": "Drempel (~1 uur) · {wkg} W/kg",
+        "vo2": "VO₂max",
+        "vo2Sub": "Aeroob plafond (W/kg)",
+        "pmax": "Pmax",
+        "pmaxSub": "Piekvermogen sprint",
+        "zone2": "Zone 2",
+        "zone2Sub": "Duurbasis"
+      },
+      "curve": {
+        "title": "Vermogenscurve",
+        "subtitle": "Maximaal vermogen per duur · logaritmische schaal",
+        "hisZone": "ZIJN ZONE",
+        "rider": "Renner"
+      },
+      "profile": {
+        "title": "Vermogensprofiel",
+        "note": {
+          "sprint": "Sprinttop",
+          "anaerobic": "Anaeroob",
+          "vo2": "VO₂",
+          "thresholdPlus": "Drempel+",
+          "threshold": "Drempel",
+          "hour": "1 uur"
+        }
+      },
+      "cp": {
+        "title": "Critical Power-model",
+        "cp": "CP (kritisch vermogen)",
+        "wprime": "W′ anaerobe capaciteit",
+        "read": "W′ is de anaerobe reserve boven CP: het werk dat je kunt besteden voordat je inzakt. CP is het vermogen dat je bijna oneindig kunt volhouden."
+      },
+      "zones": {
+        "title": "Vermogenszones",
+        "derived": "Afgeleid van FTP {ftp} W (Coggan-zones)",
+        "name": {
+          "Z1": "Actief herstel",
+          "Z2": "Duur",
+          "Z3": "Tempo",
+          "Z4": "Drempel",
+          "Z5": "VO₂max",
+          "Z6": "Anaeroob",
+          "Z7": "Neuromusculair"
+        }
+      }
+    }
+  },
+  "terrain": {
+    "flatSprint": "Sprints op vlak terrein",
+    "rolling": "Glooiende wegen",
+    "punchy": "Explosieve finales",
+    "mountain": "Bergetappes",
+    "stageRace": "Etappekoersen",
+    "timeTrial": "Tijdritten",
+    "breakaway": "Ontsnappingen",
+    "cobbles": "Kasseien"
+  },
+  "stats": {
+    "potentialRow": "Potentieel",
+    "abilitiesPending": "Vaardigheden nog niet beschikbaar",
+    "categories": {
+      "physical": "Fysiek",
+      "mental": "Mentaal",
+      "technical": "Technisch"
+    }
+  },
+  "racePreview": {
+    "title": "Cycling Zones",
+    "beta": "Beta",
+    "disclaimer": "Nieuw fysiologisch model, berekend uit de huidige vaardigheden. Heeft nog geen invloed op koersuitslagen.",
+    "powerProfile": "Vermogensprofiel",
+    "derivedAbilities": "Afgeleide vaardigheden",
+    "zones": {
+      "ftp": "FTP",
+      "vo2max": "VO2max-vermogen",
+      "zone2": "Zone 2",
+      "pmax": "Piekvermogen"
+    },
+    "curve": {
+      "p5s": "5s",
+      "p15s": "15s",
+      "p1m": "1 min",
+      "p5m": "5 min"
+    },
+    "derived": {
+      "climbing": "Klimmen",
+      "time_trial": "Tijdrit",
+      "prolog": "Proloog",
+      "flat": "Vlak",
+      "tempo": "Tempo",
+      "sprint": "Sprint",
+      "acceleration": "Acceleratie",
+      "punch": "Punch",
+      "endurance": "Uithoudingsvermogen",
+      "recovery": "Herstel",
+      "durability": "Weerbaarheid",
+      "descending": "Afdalen",
+      "cobblestone": "Kasseien",
+      "positioning": "Positionering",
+      "aggression": "Agressie",
+      "tactics": "Tactiek",
+      "teamwork": "Samenwerking",
+      "leadership": "Leiderschap"
+    }
+  },
+  "skills": {
+    "fl": {
+      "short": "VL",
+      "long": "Vlak"
+    },
+    "bj": {
+      "short": "BG",
+      "long": "Berg"
+    },
+    "kb": {
+      "short": "MB",
+      "long": "Middelberg"
+    },
+    "bk": {
+      "short": "HEU",
+      "long": "Heuvel"
+    },
+    "tt": {
+      "short": "TT",
+      "long": "Tijdrit"
+    },
+    "prl": {
+      "short": "PRO",
+      "long": "Proloog"
+    },
+    "bro": {
+      "short": "KAS",
+      "long": "Kasseien"
+    },
+    "sp": {
+      "short": "SP",
+      "long": "Sprint"
+    },
+    "acc": {
+      "short": "ACC",
+      "long": "Acceleratie"
+    },
+    "ned": {
+      "short": "AFD",
+      "long": "Afdaling"
+    },
+    "udh": {
+      "short": "UIT",
+      "long": "Uithoudingsvermogen"
+    },
+    "mod": {
+      "short": "VEK",
+      "long": "Veerkracht"
+    },
+    "res": {
+      "short": "HER",
+      "long": "Herstel"
+    },
+    "ftr": {
+      "short": "VEC",
+      "long": "Vechter"
+    }
+  },
+  "season": {
+    "row": "Seizoen {n}"
+  },
+  "results": {
+    "empty": "Nog geen koersuitslagen",
+    "fallbackDash": "-"
+  },
+  "bids": {
+    "row": {
+      "teamFallback": "Onbekend",
+      "autoBidTag": "Automatisch bod"
+    }
+  },
+  "history": {
+    "empty": "Nog geen transfergeschiedenis",
+    "fallbackDash": "-",
+    "auction": {
+      "labelAi": "Verkoop aan AI",
+      "labelGuaranteed": "Gegarandeerde verkoop",
+      "labelDefault": "Veiling",
+      "wonBy": "gewonnen van",
+      "buyerFallback": "Onbekend",
+      "buyerFallbackAi": "AI-team",
+      "sellerFallbackAi": "AI-team",
+      "sellerFallback": "Onbekend"
+    },
+    "transfer": {
+      "label": "Transfer",
+      "buys": "koopt van",
+      "buyerFallback": "Onbekend",
+      "sellerFallback": "Onbekend"
+    },
+    "swap": {
+      "label": "Ruil",
+      "teamFallback": "Onbekend",
+      "cashAdjustment": "Contante aanpassing: {amount} CZ$"
+    }
+  },
+  "auctionPanel": {
+    "activeLabel": "⚡ Actieve veiling",
+    "badges": {
+      "leading": "Jij staat aan de leiding",
+      "selling": "Jij verkoopt",
+      "outbid": "Je bent overboden",
+      "extended": "⚡ Verl.",
+      "flash": "⚡ Flash"
+    },
+    "highestBid": "Hoogste bod",
+    "leaderFallback": "",
+    "timeLeft": "Resterende tijd",
+    "sellerPrefix": "Verkoper: {name}",
+    "cannotBidOwn": "Dit is jouw veiling. Je kunt niet op je eigen renner bieden.",
+    "fallbackDash": "-",
+    "bidInputAria": "Je bod in CZ$",
+    "bidPlace": "Bieden",
+    "bidRaise": "Verhogen",
+    "bidError": "Fout",
+    "bidPlaceAria": "Bod uitbrengen",
+    "bidRaiseAria": "Je bod verhogen",
+    "minBid": "Min. bod: {amount} CZ$",
+    "errorFallback": "Het bod kon niet worden geplaatst",
+    "proxyErrorFallback": "Automatisch bod instellen is mislukt",
+    "proxyRemoveErrorFallback": "De limiet voor automatisch bieden kon niet worden verwijderd. Hij is nog actief.",
+    "proxy": {
+      "display": "Automatisch bod: max. {amount} CZ$",
+      "edit": "Wijzigen",
+      "editAria": "Limiet voor automatisch bieden wijzigen",
+      "remove": "Verwijderen",
+      "removeAria": "Automatisch bod verwijderen",
+      "addAria": "Limiet voor automatisch bieden instellen",
+      "addButton": "+ Limiet voor automatisch bod instellen",
+      "inputPlaceholder": "Maximumlimiet",
+      "inputAria": "Limiet voor automatisch bieden in CZ$",
+      "save": "Opslaan",
+      "saveAria": "Limiet voor automatisch bieden opslaan",
+      "cancelAria": "Bewerken van automatisch bod annuleren",
+      "error": "Fout",
+      "saved": "✓"
+    },
+    "riderNameFallback": "renner"
+  },
+  "countdown": {
+    "completed": "Afgerond",
+    "expired": "Verlopen",
+    "hoursMinutes": "{h}u {m}m",
+    "minutesSeconds": "{m}m {s}s",
+    "seconds": "{s}s"
+  },
+  "auctionStart": {
+    "label": {
+      "myRider": "In veiling zetten",
+      "bank": "Veiling starten (AI-renner)",
+      "ai": "Veiling starten (AI-renner)",
+      "free": "Veiling starten (transfervrije renner)"
+    },
+    "flash": {
+      "label": "⚡ Flitsveiling (30 min)",
+      "hint": "Deadline Day: eindigt precies 30 minuten na de start"
+    },
+    "end": {
+      "label": "De veiling eindigt",
+      "hint": "{min}-{max} uur vanaf nu, speltijd (Kopenhagen).",
+      "windowHint": "De markt is open van {open} tot {close}."
+    },
+    "buttons": {
+      "start": "Veiling starten",
+      "startFlash": "⚡ Flitsveiling starten",
+      "loading": "..."
+    },
+    "priceError": "De startprijs moet minstens gelijk zijn aan de waarde ({amount} CZ$)",
+    "priceErrorOwn": "De startprijs moet tussen 0 en de waarde ({amount} CZ$) liggen",
+    "squadWarning": "Veiling gestart.\n\nLet op: je laat nu veilingen lopen voor {total} renners (max. {max}). De limiet is een harde grens, dus je kunt niet meer renners winnen dan je selectie kan bevatten."
+  },
+  "directOffer": {
+    "buttonOpen": "Transferaanbieding versturen",
+    "amountPlaceholder": "Aanbiedingsbedrag in CZ$",
+    "messagePlaceholder": "Bericht (optioneel)",
+    "submit": "Aanbieding versturen",
+    "sending": "Versturen...",
+    "toast": {
+      "success": "✅ Aanbieding verstuurd!",
+      "errorPrefix": "❌"
+    }
+  },
+  "sellRider": {
+    "buttonOpen": "Te koop zetten",
+    "description": "Zet de renner voor een vaste prijs op de transferlijst. Je kunt de prijs op elk moment aanpassen of de aanbieding verwijderen.",
+    "pricePlaceholder": "Vraagprijs in CZ$",
+    "submit": "Te koop zetten",
+    "submitUpdate": "Prijs bijwerken",
+    "sending": "Opslaan...",
+    "listedStatus": "Op de transferlijst voor {amount} CZ$",
+    "editPrice": "Prijs aanpassen",
+    "hideEdit": "Verbergen",
+    "remove": "Van de lijst halen",
+    "confirmRemove": "Ja, verwijderen",
+    "cancel": "Annuleren",
+    "toast": {
+      "listed": "✅ Te koop gezet!",
+      "priceUpdated": "✅ Vraagprijs bijgewerkt",
+      "removed": "✅ Van de transferlijst gehaald",
+      "errorPrefix": "❌"
+    }
+  },
+  "manage": {
+    "extend": {
+      "button": "Contract verlengen",
+      "description": "Verleng het contract van deze renner met één seizoen tegen een opnieuw onderhandeld salaris.",
+      "currentSalary": "Huidig salaris",
+      "newSalary": "Nieuw salaris",
+      "newSalaryHint": "Volgt wat hij dit seizoen levert. Het huidige salaris blijft vast tot je verlengt.",
+      "newContract": "Nieuw contract",
+      "newContractValue": "Tot en met seizoen {season}",
+      "confirm": "Verlenging bevestigen",
+      "loadingTerms": "Voorwaarden laden…",
+      "working": "Verlengen…",
+      "success": "Contract verlengd.",
+      "errorPrefix": "Verlengen is niet gelukt:",
+      "capped": "Contract heeft de maximale lengte (tot en met seizoen {season})."
+    },
+    "release": {
+      "button": "Renner vrijgeven",
+      "description": "Beëindig het contract van deze renner. Hij verlaat je selectie en wordt transfervrij.",
+      "fee": "Afkoopsom",
+      "balance": "Je saldo",
+      "feeHint": "De afkoopsom is de helft van het salaris dat nog op het contract staat.",
+      "freeHint": "Deze renner is uit contract, dus er is geen afkoopsom.",
+      "cannotAfford": "Je kunt de afkoopsom niet betalen.",
+      "confirm": "Renner vrijgeven",
+      "loadingTerms": "Voorwaarden laden…",
+      "working": "Vrijgeven…",
+      "cancel": "Annuleren",
+      "success": "Renner vrijgegeven.",
+      "errorPrefix": "Vrijgeven is niet gelukt:"
+    },
+    "move": {
+      "button": "Selectie wisselen",
+      "success": {
+        "senior": "Renner verplaatst naar je seniorenselectie.",
+        "u23": "Renner verplaatst naar je U23-team.",
+        "junior": "Renner verplaatst naar je juniorenteam."
+      }
+    }
+  },
+  "swapOffer": {
+    "buttonOpen": "⇄ Ruil voorstellen",
+    "selectRider": "Kies de renner om aan te bieden",
+    "cashLabel": "Contante betaling (CZ$)",
+    "cashHint": "Positief: jij betaalt. Negatief: jij ontvangt.",
+    "submit": "Ruil versturen",
+    "sending": "Versturen...",
+    "toast": {
+      "success": "✅ Ruil voorgesteld!",
+      "errorPrefix": "❌"
+    }
+  },
+  "celebration": {
+    "title": "Je hebt de veiling gewonnen! 🏆",
+    "subtitle": "De renner zit nu in je team"
+  },
+  "compare": {
+    "title": "Renners vergelijken",
+    "subtitle": "Voeg maximaal 3 renners toe om statistieken te vergelijken",
+    "searchPlaceholder": "Zoek een renner om toe te voegen...",
+    "searching": "Zoeken...",
+    "teamFree": "Transfervrij",
+    "empty": "Zoek hierboven een renner om te beginnen met vergelijken",
+    "potential": "Potentieel",
+    "loadingAria": "Vergelijking laden",
+    "loadErrorTitle": "De vergelijking kon niet worden geladen",
+    "loadErrorBody": "Er is niets verloren gegaan. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw"
+  },
+  "scouting": {
+    "label_worldclass": "Wereldklasse-talent",
+    "label_high": "Hoge verwachting",
+    "label_solid": "Solide talent",
+    "label_rotation": "Selectierotatie",
+    "scout": "Scouten",
+    "rescout": "Opnieuw scouten",
+    "scouting": "Scouten…",
+    "scoutTitle": "Stuur je scout om de potentieelschatting van deze renner te verscherpen. Hoeveel scherper het wordt, hangt af van de rating van je scout",
+    "noSlots": "Geen scoutplekken meer dit seizoen",
+    "scoutBusy": "Scout is bezig, vrij over {minutes, plural, one {1 min} other {# min}}",
+    "scoutBusyNow": "Scout is bezig, elk moment vrij",
+    "levelUseless": "Je hoofdscout heeft zijn eigen nauwkeurigheidsgrens bereikt: nog een niveau zou de schatting niet smaller maken",
+    "levelTitle": "Scoutingniveau. Hoger is nauwkeuriger, tot de nauwkeurigheidsgrens van je eigen scout",
+    "potentialBandTitle": "Verwacht niveau als {role}: {lo}-{hi}.",
+    "potentialBandSubtitle": "Waar hij met jouw training realistisch uitkomt. Altijd een bereik, geen scout kent een renner exact.",
+    "loftShort": "plafond {value}",
+    "loftTitle": "Plafond van de rol: tot {value}. Elke {role} deelt hetzelfde plafond, potentieel bepaalt hoe snel hij ernaartoe klimt.",
+    "loftPastPeakShort": "plafond {value} · over zijn hoogtepunt heen",
+    "loftPastPeakTitle": "Het vakplafond van de rol is {value}. Hij is over zijn hoogtepunt heen en ontwikkelt zich niet meer richting dat plafond - de voorspelling toont waar hij echt uitkomt.",
+    "notScouted": "Niet gescout",
+    "scoutToReveal": "Potentieel blijft verborgen tot je deze renner scout",
+    "pendingTitle": "Je scout werkt al aan deze renner",
+    "pendingShort": "Rapport over ~{minutes} min",
+    "pendingShortCountdown": "Rapport over {minutes, plural, one {1 min} other {# min}}",
+    "pendingShortDue": "Rapport klaar",
+    "pendingJob": "Scout is bezig, rapport over ~{minutes} min",
+    "pendingJobCountdown": "Scout is bezig, rapport over {minutes, plural, one {1 min} other {# min}}",
+    "pendingJobDue": "Rapport klaar. Vernieuw om het te openen.",
+    "pendingReadyAtTitle": "Rapport klaar om {time} Deense tijd",
+    "sendScoutJob": "Scout sturen (~{minutes} min, {cost, number})"
+  },
+  "condition": {
+    "form": "Vorm",
+    "fatigue": "Vermoeidheid",
+    "injured": "Geblesseerd: nog {days}d",
+    "injuredRaceDays": "Geblesseerd: nog {days, plural, one {1 koersdag} other {# koersdagen}}",
+    "injuredApprox": "Terug circa {date}"
+  },
+  "training": {
+    "title": "Trainingsfocus",
+    "intro": "Stel een trainingsfocus voor het hele seizoen in voor deze sleutelrenner. Hij duwt de getrainde vaardigheden sneller richting hun doel.",
+    "gatedNote": "Training vormt blijvende vaardigheden en gaat in bij de volgende seizoenswissel.",
+    "slotsLeft": "{remaining}/{total} focusplekken",
+    "focus": "Focus",
+    "intensity": "Intensiteit",
+    "focus_vo2max": "VO2max (gemengde intervallen)",
+    "focus_vo2max_climb": "VO2max (klimintervallen)",
+    "focus_vo2max_punch": "VO2max (punch-intervallen)",
+    "focus_threshold": "Drempel / TT",
+    "focus_sprint": "Sprint",
+    "focus_tempo": "Tempo",
+    "focus_endurance": "Uithoudingsvermogen (Zone 2)",
+    "focus_technique": "Techniek",
+    "focus_aero": "Aero",
+    "focus_loebslaere": "Koersinzicht",
+    "focus_restitution": "Actief herstel",
+    "focus_cobbled_sectors": "Kasseienstroken",
+    "focus_echelon_drills": "Waaieroefeningen",
+    "focus_attack_repeats": "Aanvalsherhalingen",
+    "intensity_rest": "Rust",
+    "intensity_unknown_pending": "Wacht op koersbeoordeling",
+    "intensity_easy": "Licht",
+    "intensity_normal": "Normaal",
+    "intensity_hard": "Zwaar",
+    "set": "Focus instellen",
+    "update": "Focus bijwerken",
+    "remove": "Verwijderen",
+    "saving": "Opslaan…",
+    "noSlots": "Geen focusplekken meer dit seizoen",
+    "current": "Huidige focus",
+    "assistantNoRisk": "Snellere gerichte groei, geen risico op tegenslag.",
+    "assistantRisk": "Snellere gerichte groei, maar ~{risk}% kans op een tegenslag (verloren winst) dit seizoen.",
+    "tradeoff": "Andere vaardigheden groeien iets langzamer.",
+    "intensity_recovery": "Herstel"
+  }
+}

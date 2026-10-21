@@ -528,6 +528,14 @@
         "title": "Byttehandel annulleret af admin",
         "message": "Byttehandlen {offeredName} <-> {requestedName} er annulleret af en admin.",
         "messageReason": "Byttehandlen {offeredName} <-> {requestedName} er annulleret af en admin: {reason}"
+      },
+      "confirmPending": {
+        "title": "Handlen afventer din bekræftelse",
+        "message": "{role, select, seller {Sælger} other {Køber}} har bekræftet handlen på {riderName}. Bekræft for at gennemføre."
+      },
+      "swapConfirmPending": {
+        "title": "Byttehandel afventer din bekræftelse",
+        "message": "{side, select, proposing {Det foreslående hold} other {Det modtagende hold}} har bekræftet byttehandlen. Bekræft for at gennemføre."
       }
     },
     "welcome": {
@@ -628,7 +636,9 @@
       "soldToAiTitle": "Rytter solgt til AI",
       "soldToAiMessage": "{rider} er solgt til AI for {price} CZ$ (garanteret pris)",
       "expiredNoBidsTitle": "Auktion udløb uden bud",
-      "expiredNoBidsMessage": "Ingen bød på {rider}"
+      "expiredNoBidsMessage": "Ingen bød på {rider}",
+      "adminCancelledBidder": "Auktionen på {rider} er annulleret af en admin. Dit bud er frigivet og din balance er igen disponibel.",
+      "adminCancelledSeller": "Din auktion på {rider} er annulleret af en admin."
     },
     "directMessage": {
       "title": "{count, plural, one {Ny besked} other {# nye beskeder}}",
@@ -643,6 +653,24 @@
     "teamDidNotStart": {
       "title": "Dit hold stillede ikke op",
       "message": "Dit hold stillede ikke op i {race}: færre end {min} raske ryttere ved start."
+    },
+    "autoBidStopped": {
+      "title": "Dit autobud er stoppet",
+      "message": "Dit autobud på {riderName} stoppede pga. utilstrækkelig balance. Sørg for at have penge på kontoen for at byde igen."
+    },
+    "autoBidMatched": {
+      "message": "{leaderName}'s autobud matchede dit bud på {riderName} og beholder føringen ved identisk bud"
+    },
+    "autoBidOutbid": {
+      "message": "{bidderName}'s autobud overbød dig på {riderName}"
+    },
+    "riderArrived": {
+      "title": "Rytteren er ankommet",
+      "message": "{riderName} er nu skiftet til dit hold. {reason, select, tourFinished {{raceName} er kørt færdigt.} tourFinishedUnnamed {Hans etapeløb er kørt færdigt.} dealCompleted {Hans handel er nu gennemført.} other {}}"
+    },
+    "squadEnforced": {
+      "title": "Holdstørrelse håndhævet",
+      "message": "{purchasedCount, plural, =0 {} one {Auto-købte # rytter: {purchasedNames}\n} other {Auto-købte # ryttere: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rytter kommer til holdet, når hans igangværende etapeløb er slut: {deferredNames}\n} other {# ryttere kommer til holdet, når deres igangværende etapeløb er slut: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-solgte # rytter: {soldNames}\n} other {Auto-solgte # ryttere: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rytter i et igangværende etapeløb sælges i stedet efter løbet\n} other {# ryttere i et igangværende etapeløb sælges i stedet efter løbet\n}}Bøde: {fine} CZ$ · Fradrag: {points} point"
     }
   },
   "error": {

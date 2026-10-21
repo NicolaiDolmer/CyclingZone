@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language.jsx";
 // #4733: rækkefølgen kommer nu fra den ene sprog-konfigurationsfil i stedet
 // for hardcodet her (samme rækkefølge som før: en, da).
-import { SUPPORTED_LANGS } from "../i18n/languages.js";
+import { PUBLIC_LANGS, documentLang } from "../i18n/languages.js"; // #6802: landing viser aldrig beta-sprog
 import { useDocumentHead, useJsonLd } from "../hooks/useDocumentHead.js";
 import { Wordmark } from "../components/Brand.jsx";
 import { buttonClass } from "../components/ui/buttonStyles.js";
@@ -62,7 +62,7 @@ function LanguageToggle() {
       role="group"
       aria-label={t("nav.languageLabel")}
     >
-      {SUPPORTED_LANGS.map((lng) => (
+      {PUBLIC_LANGS.map((lng) => (
         <button
           key={lng}
           type="button"
@@ -114,7 +114,7 @@ export default function LandingPage() {
   useDocumentHead({
     title: t("meta.title"),
     description: t("meta.description"),
-    lang,
+    lang: documentLang(i18n.language),
   });
 
   // #1405: VideoGame JSON-LD injiceres KUN på forsiden (Organization + WebSite

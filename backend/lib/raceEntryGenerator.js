@@ -18,13 +18,14 @@ import {
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
-import { applyRiderEligibilityFilter, applyInjuredFilter, raceSquadOf } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, applyInjuredFilter, raceSquadOf, loadSeasonNumber } from "./riderEligibility.js";
 import { teamPoolIdForSquad } from "./raceBinding.js";
 import { DEFAULT_SQUAD } from "./squads.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { notifyAssistantFilledSquad } from "./assistantFilledSquadNotification.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
+import { invalidateNamespace } from "./responseCache.js"; // #6680
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
 import { loadTrainNowLockedRidersByDate, lockedRidersOnDates, raceStageDates } from "./trainNowLock.js"; // #6006/#6139
 import { indexGeneratorBindings, generatorBindingLocks } from "./raceEntryGeneratorBindings.ts";
@@ -214,6 +215,7 @@ export async function runRaceEntryGenerator({
   // #4759: injicérbar for test (samme mønster som notificationService.js's
   // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
   notify = notifyAssistantFilledSquad,
+  includeStaged = false, // #6909: motor-testporten laaner dry-run-tildelingen (intet skrives)
 }) {
   let mode = normalizeAssistantMode(rawMode);
   const lateFillHours = normalizeLateFillHours(rawLateFillHours);
@@ -559,16 +561,17 @@ export async function runRaceEntryGenerator({
     });
     if (riderErr) throw new Error(`riders: ${riderErr.message}`);
     // #5645: ungdomstruppernes ryttere — kun for trupper med løb i spil og kun for hold
-    // med en pulje for truppen. Ejer 24/9: enhver rytter i juniortruppen (16-18) må
-    // køre juniorløb — ingen separat aldersgate, kun trup-medlemskabet (#5645).
+    // med en pulje for truppen. #6964 (ejer 20/10): alder afgør ungdomsløb — seasonNumber
+    // slår aldersgaten i applyRiderEligibilityFilter til (for gammel = aldrig kandidat).
     const youthRiders = [];
+    const seasonNumber = youthSquadsInPlay.length ? await loadSeasonNumber({ supabase, seasonId }) : undefined;
     for (const squad of youthSquadsInPlay) {
       const teamIds = youthTeamIdsBySquad.get(squad) || [];
       if (!teamIds.length) continue;
       const { data: squadRiders, error: sqErr } = await selectInChunks({
         supabase, table: "riders", columns: "id, team_id",
         inColumn: "team_id", ids: teamIds, orderBy: ["id"],
-        extra: (q) => applyRiderEligibilityFilter(q, { squad }),
+        extra: (q) => applyRiderEligibilityFilter(q, { squad, seasonNumber }),
       });
       if (sqErr) throw new Error(`riders (${squad}): ${sqErr.message}`);
       for (const r of squadRiders || []) youthRiders.push({ ...r, youthSquad: squad });
@@ -1514,6 +1517,11 @@ export async function runRaceEntryGenerator({
     }
   }
 
+  // Codex P2 (#6680): kalenderens 60 s-cache udleder "mangler/udtaget" af
+  // tilmeldingerne. Baade timesweepet og admin-generate skriver her, saa en
+  // live-koersel rydder cachen (billigt; dry-run roerer den aldrig).
+  if (!dryRun) invalidateNamespace("calendar");
+
   // 11. Antal hold der reelt blev behandlet i mindst én pulje.
   const processedTeamIds = new Set();
   for (const [poolKey] of racesByPool) {
@@ -1542,5 +1550,6 @@ export async function runRaceEntryGenerator({
         ]
       : errors,
     constraint_not_deferrable: constraintNotDeferrable,
+    ...(includeStaged ? { staged } : {}),
   };
 }

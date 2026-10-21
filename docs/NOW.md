@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · VAPID-nøgler til push (#6590) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord 7.356-7.363 (7.363 = #6743) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
+> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord: post 7.363-7.368 (`docs/drafts/discord-patch-7363-7368-2026-10-19.md`) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
 >
-> **🎯 Next action:** pc1 lang session 17-18/10: `docs/sessions/2026-10-17-pc1-eftermiddag-startprompt.md` (ejer-godkendt: sæsonskifte-generalprøve + 10x, `s5_profiles_v2` slået fra med kuperede udbrud + formtoppe, formtop-tilbagebetaling som tørkørsel, testport, dark mode, UI #6698 #6569 #6512 #6351 #6683 #6570, vækst-udkast). Søndag: verificér Vuelta binder S5 kl. 11 · `promotion_pending_enabled` på "tænd" · webhook · roadbook/Discord 7.361-7.367 · #6680. #6739: "spørg senere".
+> **🎯 Next action:** NÆSTE CLAUDE-SESSION (DolmerPC): [`sessions/2026-10-20-startprompt.md`](sessions/2026-10-20-startprompt.md). Først: tidspunkt for skiftet 25/10 (#6898) · Codex-pladser: #6909 testport S5 · #6804 udbrudspakken trin 1 (design) · L2 · L3 (#6857) · review #6839 · første løbsfilm-gennemgang (#6914) · gennemtest beta → live. Ingen deploy-frys; færdigt før nyt.
 >
-> **17/10 (pc1):** S5-motorreglerne tændt (#6699 merget 08:48, ejerens "Tænd"; testet på alle 157 S4-løb + hele S5-sæsonen, S5 872 mod v5 968 fejlende mål; nyt udbrud efter tidlig indhentning). GitHub-audit: 45 lukket, done 69 → 20. Opfølgning #6748.
+> **19/10 (DolmerPC):** 21 merges i alt (+ #6921 patch 7.370, #6922 U23-fix) (bl.a. #6899 ranglister M1 slukket, #6900 vagt før skiftet, #6907 løbsidentitet L1, #6910 omdømme, #6911 menu, design #6813/#6843/#6849). Testport v2 kørt (privat). Ejer-beslutninger: v2-udbrudspakken #6804, jagtafstand #6814 med i v2, #6820 tændes samlet når grøn, verdensklasse-køreplan (#6914-#6919, backend A).
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** pc1 lang session 17-18/10 (Claude, start 11:29), samle-issue #6749. Ejer merge-køen.
+> **🤖 Working agent:** Ingen aktiv session (Claude 19/10 aften på DolmerPC lukket; Codex: #6839 i gang; næste: se Next action).

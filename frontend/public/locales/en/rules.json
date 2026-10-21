@@ -41,8 +41,8 @@
           "text": "Sponsor income is scaled by division so a competent team is sustainable: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$, Division 4 {sponsorD4} CZ$. Your signed deal keeps its guaranteed base for its full length. If you change division while it runs, a separate division adjustment of {divisionAdjustmentPct} percent of the difference between the two divisions is paid on top, every season the difference lasts."
         },
         "upkeep": {
-          "title": "Upkeep",
-          "text": "Each season your team pays an operating cost (upkeep), scaled by division so higher divisions pay more. It is charged either once at season start or as Travel & staff for each senior race day your team starts; the season total is the same. I tune the exact figures between seasons, and you always see each charge in your Finance log."
+          "title": "Running costs",
+          "text": "From season 5 your team has no running costs: no upkeep, no Travel & staff, no facility upkeep and no academy upkeep. Your main costs are rider salaries, staff salaries and loan interest."
         },
         "salary": {
           "title": "Rider salary",
@@ -157,8 +157,8 @@
           "text": "Academy riders are paid {academySalaryPct}% of their current production value, the same share as senior riders, and sign {academyContractLength}-season youth contracts."
         },
         "drift": {
-          "title": "Upkeep",
-          "text": "Each filled academy place costs {academyDrift} CZ$ per season, charged at season start. A small academy (3–4 places) is comfortably affordable in every division; a full academy is a deliberate, heavier investment."
+          "title": "Costs",
+          "text": "From season 5 academy places have no running cost. A full academy is now a question of squad space, not money."
         }
       }
     },

@@ -1,3 +1,4 @@
+import AcademyPrognosisCell from "../components/rider/AcademyPrognosisCell";
 // AcademyPage — Akademi (#1308, UX-rework #2796).
 //
 // Fire sektioner:
@@ -113,31 +114,6 @@ const ROSTER_DESC_FIRST = new Set(["age", "potential", "market_value", "salary",
 // #6666 (ejer-beslutning 15/10 punkt 2): prognosen læres gennem træning. Før de
 // første træningsdage er der intet bånd, kun hvor langt der er til et første bud;
 // derefter et bånd i rating-point, der snævrer ind (groft → skarpere → endeligt).
-function AcademyPrognosisCell({ prognosis, t }) {
-  const { stage, band, nextStageDays } = prognosis;
-  // Kort på fladen (mobilens smalle kolonne); forklaringen og dage til næste
-  // trin står i tooltip'en.
-  const title = [
-    t("prognosis.tooltip"),
-    nextStageDays != null ? t(band ? "prognosis.nextDays" : "prognosis.learningDays", { days: nextStageDays }) : null,
-  ].filter(Boolean).join(" ");
-  if (!band) {
-    return (
-      <span className="flex flex-col leading-tight" title={title} data-testid="academy-prognosis-learning">
-        <span className="text-xs text-cz-2">{t("prognosis.learning")}</span>
-        {nextStageDays != null && (
-          <span className="text-3xs text-cz-3 tabular-nums whitespace-nowrap">{t("prognosis.daysLeft", { days: nextStageDays })}</span>
-        )}
-      </span>
-    );
-  }
-  return (
-    <span className="flex flex-col leading-tight" title={title} data-testid="academy-prognosis-band">
-      <span className="font-mono tabular-nums text-[13px] text-cz-1">{band.lo}–{band.hi}</span>
-      <span className="text-3xs text-cz-3 whitespace-nowrap">{t(`prognosis.${stage}`)}</span>
-    </span>
-  );
-}
 
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
@@ -287,7 +263,7 @@ export default function AcademyPage() {
       // #2796: labelAsTitle — stjernerne bærer informationen, den kvalitative
       // tekst ligger i tooltip'en.
       render: (r) => (r.prognosis
-        ? <AcademyPrognosisCell prognosis={r.prognosis} t={t} />
+        ? <AcademyPrognosisCell prognosis={r.prognosis} />
         : <ScoutablePotentiale rider={r} scouting={scouting} labelAsTitle />),
     },
     {

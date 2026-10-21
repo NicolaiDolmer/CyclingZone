@@ -1,0 +1,43 @@
+{
+  "title": "Panthéon",
+  "subtitle": "Records historiques et stats des managers",
+  "tabRecords": "Records",
+  "tabManagers": "Managers",
+  "tabDivHistory": "Historique des divisions",
+  "season": "Saison {n}",
+  "categories": {
+    "most_points_season": "Plus de points sur une saison",
+    "most_stage_wins_season": "Plus de victoires d'étape sur une saison",
+    "most_div1_titles": "Plus de titres en division 1"
+  },
+  "units": {
+    "points": "points",
+    "wins": "victoires",
+    "titles": "titres"
+  },
+  "noRecords": "Pas encore de records. Joue des saisons pour en établir",
+  "thManager": "Manager",
+  "thTitle": "Titre",
+  "thLevel": "Niveau",
+  "thXp": "XP",
+  "division1": "Division 1",
+  "noDivHistory": "Pas encore d'historique de division",
+  "noDivHistoryHint": "Termine des saisons pour voir l'historique",
+  "stageWins": "{count} victoires d'étape",
+  "ptSuffix": "pt",
+  "level": {
+    "rookie": "Rookie",
+    "amateur": "Amateur",
+    "continental": "Continental",
+    "pro": "Pro",
+    "proTeam": "Pro Team",
+    "worldTour": "WorldTour",
+    "monument": "Monument",
+    "gcContender": "Prétendant au général",
+    "grandTour": "Grand Tour",
+    "legend": "Légende"
+  },
+  "loadError": "Impossible de charger le Panthéon. Réessaie.",
+  "retry": "Réessayer",
+  "noManagers": "Pas encore de managers"
+}

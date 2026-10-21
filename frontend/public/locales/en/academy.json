@@ -70,7 +70,26 @@
     "narrow": "Sharper read",
     "final": "Final read",
     "nextDays": "Sharper in {days} training days.",
-    "tooltip": "The forecast narrows the more training days he has with your team. A better coach and training facility make you sure faster. They never change his talent."
+    "tooltip": "The forecast narrows the more training days he has with your team. A better coach and training facility make you sure faster. They never change his talent.",
+    "report": {
+      "title": "Academy forecast",
+      "progress": "Forecast stages",
+      "forecast": "Forecast",
+      "nextStage": "Next stage",
+      "stages": {
+        "learning": "Learning",
+        "broad": "Rough",
+        "narrow": "Sharper",
+        "final": "Final"
+      },
+      "range": "{lo}–{hi} rating points",
+      "noEstimate": "No estimate yet",
+      "trainingDays": "{days, plural, one {# training day} other {# training days}}",
+      "complete": "All stages reached",
+      "unavailable": "Not known yet",
+      "learningContext": "Training days on your team sharpen the forecast, faster with better coaches.",
+      "readMore": "Read more"
+    }
   },
   "profile": {
     "heading": "Academy profile",

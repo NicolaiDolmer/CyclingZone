@@ -1,3 +1,4 @@
+import AcademyPrognosisCell from "./AcademyPrognosisCell";
 // ScoutablePotentiale — progression L1 (#1138) + server-side skjuling (#1162)
 // + job-model "under"-tilstand (#2244 Fase 3 Slice C).
 //
@@ -89,7 +90,7 @@ function PotentialBand({ band, role, loft, pastPeak, label, large, t }) {
       className={`font-mono tabular-nums whitespace-nowrap text-cz-1 ${large ? "text-[17px]" : "text-[13px]"}`}
       data-potential-band={`${band.lo}-${band.hi}`}
     >
-      {band.lo}–{band.hi}
+      {band.lo === band.hi ? band.lo : `${band.lo}–${band.hi}`}
       {large && Number.isFinite(loft) && (
         <span className="ms-1.5 text-[12px] text-cz-3 font-normal" data-potential-loft={loft}>
           · {pastPeak ? t("rider:scouting.loftPastPeakShort", { value: loft }) : t("rider:scouting.loftShort", { value: loft })}
@@ -129,6 +130,9 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   const estimate = estimateFor(riderId);
 
   // undefined = ikke hentet endnu, null = rytter uden potentiale → begge "—".
+  if (estimate?.academyPrognosis) {
+    return <AcademyPrognosisCell prognosis={estimate.academyPrognosis} />;
+  }
   if (estimate == null) {
     return <PotentialeStars value={null} />;
   }
@@ -193,7 +197,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
             : t("rider:scouting.scoutBusyNow"))
           : t("rider:scouting.noSlots"))
         : t("rider:scouting.scoutTitle")}
-      className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+      className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors sm:whitespace-nowrap"
     >
       {busy ? (
         t("rider:scouting.scouting")
@@ -210,7 +214,7 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
   if (hidden) {
     return (
       <span className="inline-flex items-center gap-2 flex-wrap">
-        <span className="text-cz-3 text-xs whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
+        <span className="text-cz-3 text-xs sm:whitespace-nowrap" title={t("rider:scouting.scoutToReveal")}>
           {t("rider:scouting.notScouted")}
         </span>
         {pendingBadge}

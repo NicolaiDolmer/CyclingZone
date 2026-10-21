@@ -6,6 +6,7 @@
       "marked": "Marked",
       "resultater": "Resultater",
       "min": "Min",
+      "accountHelp": "Konto & hjælp",
       "admin": "Admin"
     },
     "item": {
@@ -62,6 +63,9 @@
     "label": "Sprog",
     "danish": "Dansk",
     "english": "English",
+    "fr": "Français",
+    "es": "Español",
+    "nl": "Nederlands",
     "switchTooltip": "Skift sprog"
   },
   "actions": {

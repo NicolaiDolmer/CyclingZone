@@ -33,6 +33,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { countTeamStarRiders } from "./boardIdentity.js";
 import { loadGoalContextForBoard } from "./boardGoalContext.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
+import { queryCurrentSeasonActiveMandate } from "./boardMandateEngine.js";
 import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 
 function ensureSupabase(supabase) {
@@ -162,39 +163,69 @@ export async function appendBonusGoalToBoardProfile({ supabase, teamId, goal, of
 /**
  * #4856 · Den nye sti: samme ekstra-mål ind i holdets AKTIVE mandat, som er
  * det Boardroom-siden læser. Rækken vælges med præcis samme filter+sortering
- * som `boardRoom.js` bruger (status='active', nyeste `signed_at`), så vi
- * skriver til den række spilleren faktisk får vist.
+ * som `boardRoom.js` bruger (#6773: aktivt mandat for den AKTIVE sæson via
+ * `queryCurrentSeasonActiveMandate`), så vi skriver til den række spilleren
+ * faktisk får vist, aldrig til et gammelt mandat fra en afsluttet sæson.
  */
+// Codex P1 (#6780, runde 3): laase-tokenet skal ALTID rykke frem. Et rent
+// ur-tidsstempel kan i samme millisekund skrive det gamle token tilbage, saa
+// en anden skriver med det gamle token ogsaa "vinder" og overskriver goals.
+// Nyt token = max(nu, gammelt + 1 ms), ligesom closeStaleMandates6773.
+export function nextMandateLockToken(previousToken, nowMs = Date.now()) {
+  const prevMs = previousToken == null ? Number.NEGATIVE_INFINITY : Date.parse(previousToken);
+  const nextMs = Number.isFinite(prevMs) ? Math.max(nowMs, prevMs + 1) : nowMs;
+  return new Date(nextMs).toISOString();
+}
+
 export async function appendBonusGoalToActiveMandate({ supabase, teamId, goal, offerId } = {}) {
   ensureSupabase(supabase);
-  const { data: mandate, error } = await supabase
-    .from("board_mandates")
-    .select("id, goals")
-    .eq("team_id", teamId)
+  const { data: activeSeason, error: seasonError } = await supabase
+    .from("seasons")
+    .select("id, number")
     .eq("status", "active")
-    .order("signed_at", { ascending: false })
+    // Codex P2 (#6780): under saesonskiftet kan to saesoner kortvarigt vaere
+    // aktive. Vaelg den nyeste i stedet for at fejle og falde tilbage til
+    // "uden saesonfilter" (som ville ramme det gamle mandat).
+    .order("number", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
-  if (!mandate) return { written: false, reason: "no_active_mandate" };
+  // Samme fallback som boardRoom.js: et fejlet sæson-opslag giver nyeste
+  // sæsons mandat, ikke et tabt ekstra-mål.
+  const seasonNumber = seasonError ? null : (activeSeason?.number ?? null);
 
-  // jsonb i skemaet, men vær tolerant: en streng må ikke koste ekstra-målet.
-  const existingGoals = Array.isArray(mandate.goals)
-    ? mandate.goals
-    : (typeof mandate.goals === "string" && mandate.goals.trim() ? JSON.parse(mandate.goals) : []);
+  // #6773 (Codex P1): optimistisk lås på updated_at. Goals skrives som hele
+  // arrayet, så en samtidig skriver (fx reparations-scriptets flytning af
+  // bonusmål) ellers kan få sit mål fjernet af vores forældede array. Ved
+  // kollision læses mandatet igen; tre forsøg.
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const { data: mandate, error } = await queryCurrentSeasonActiveMandate(supabase, {
+      teamId,
+      seasonNumber,
+      select: "id, goals, updated_at",
+    });
+    if (error) throw new Error(`board_mandates lookup failed: ${error.message}`);
+    if (!mandate) return { written: false, reason: "no_active_mandate" };
 
-  if (hasBonusGoalForOffer(existingGoals, { offerId, extraGoal: goal })) {
-    return { written: false, reason: "already_present", mandateId: mandate.id };
+    // jsonb i skemaet, men vær tolerant: en streng må ikke koste ekstra-målet.
+    const existingGoals = Array.isArray(mandate.goals)
+      ? mandate.goals
+      : (typeof mandate.goals === "string" && mandate.goals.trim() ? JSON.parse(mandate.goals) : []);
+
+    if (hasBonusGoalForOffer(existingGoals, { offerId, extraGoal: goal })) {
+      return { written: false, reason: "already_present", mandateId: mandate.id };
+    }
+
+    let q = supabase
+      .from("board_mandates")
+      .update({ goals: [...existingGoals, goal], updated_at: nextMandateLockToken(mandate.updated_at) })
+      .eq("id", mandate.id)
+      .eq("status", "active");
+    q = mandate.updated_at == null ? q.is("updated_at", null) : q.eq("updated_at", mandate.updated_at);
+    const { data: updated, error: updateError } = await q.select("id");
+    if (updateError) throw new Error(`board_mandates goal update failed: ${updateError.message}`);
+    if ((updated || []).length) return { written: true, mandateId: mandate.id };
   }
-
-  const { error: updateError } = await supabase
-    .from("board_mandates")
-    .update({ goals: [...existingGoals, goal], updated_at: new Date().toISOString() })
-    .eq("id", mandate.id)
-    .eq("status", "active");
-  if (updateError) throw new Error(`board_mandates goal update failed: ${updateError.message}`);
-
-  return { written: true, mandateId: mandate.id };
+  throw new Error(`board_mandates goal update lost the optimistic lock 3 times (team ${teamId}, offer ${offerId})`);
 }
 
 /**

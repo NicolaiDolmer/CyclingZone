@@ -692,13 +692,28 @@ export function dangerOf(strengthRatio: number): number {
  * staerk nok til at vaere farlig for dem (klassementsevne mindst dangerFloor x
  * medianen af de forreste), saa feltet ikke straks jagter det nye udbrud.
  * Synligt foerste-etape-klassement (alle lige) = ingen udelukkelse.
+ *
+ * #6748 (KUN s5_profiles_v2, `abilityOnFirstStage`): paa S5's syntetiske
+ * foerste-etape-klassement er "de forreste" feltets bedste paa klassementsevne
+ * (fieldGcRank blandt `racingRiderIds`, samme maal som trusselsmodellens
+ * foerste etape), saa en anden favorit ikke kommer med i det nye udbrud og
+ * jagtes igen. Udeladt = s5_profiles_v1, bit-identisk.
  */
-export function s5ReformationExcludedRiders(gc: GcContext, entrants: Readonly<Record<string, Entrant>>, rankAtMost: number): Set<string> {
+export function s5ReformationExcludedRiders(
+  gc: GcContext,
+  entrants: Readonly<Record<string, Entrant>>,
+  rankAtMost: number,
+  opts: { abilityOnFirstStage?: boolean; racingRiderIds?: ReadonlySet<string> } = {},
+): Set<string> {
   const out = new Set<string>();
-  if (gc.status !== "standings" || isSyntheticFirstStage(gc)) return out;
-  const top = gc.standings.filter((s) => s.rank <= rankAtMost);
-  for (const s of top) out.add(s.rider_id);
-  const abilities = top.map((s) => gcAbility(entrants[s.rider_id])).filter((a) => a > 0).sort((a, b) => a - b);
+  if (gc.status !== "standings") return out;
+  const synthetic = isSyntheticFirstStage(gc);
+  if (synthetic && opts.abilityOnFirstStage !== true) return out;
+  const topIds = synthetic
+    ? Object.keys(entrants).filter((id) => (!opts.racingRiderIds || opts.racingRiderIds.has(id)) && fieldGcRank(id, entrants, opts.racingRiderIds) <= rankAtMost)
+    : gc.standings.filter((s) => s.rank <= rankAtMost).map((s) => s.rider_id);
+  for (const id of topIds) out.add(id);
+  const abilities = topIds.map((id) => gcAbility(entrants[id])).filter((a) => a > 0).sort((a, b) => a - b);
   if (abilities.length === 0) return out;
   const floor = S5_GC_THREAT_TUNING.dangerFloor * abilities[Math.floor((abilities.length - 1) / 2)];
   for (const id of Object.keys(entrants)) if (gcAbility(entrants[id]) >= floor) out.add(id);

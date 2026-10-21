@@ -9,6 +9,7 @@ import {
   seasonSponsorKeys,
   ComebackError,
   assignYouthGroupsForComebackTeam,
+  isMissingComebackAtColumn,
 } from "./comebackService.js";
 import { YOUTH_GROUP_TIER } from "./youthPoolAssignment.js";
 
@@ -425,4 +426,54 @@ test("#5676 assignYouthGroupsForComebackTeam (ren enhedstest): vælger gruppen m
   assert.equal(result.assigned.u23.leagueDivisionId, "u23-y", "gruppen med to AI-hold vinder over gruppen med ét");
   const team = supabase.state.teams.find((t) => t.id === "comeback-team");
   assert.equal(team.u23_league_division_id, "u23-y");
+});
+
+// #6811: comeback_at er træningens varige grænse for parkeringsperioden.
+test("comeback sætter comeback_at til tidspunktet for tilbagevenden", async () => {
+  const supabase = fakeDb(baseState());
+  const { deps } = makeDeps(supabase);
+  const now = new Date("2026-10-12T08:00:00Z");
+
+  await returnParkedTeam({ supabase, teamId: TEAM, now, deps });
+
+  const team = supabase.state.teams.find((t) => t.id === TEAM);
+  assert.equal(team.comeback_at, now.toISOString());
+  assert.equal(team.parked_at, null);
+});
+
+test("deploy-vinduet: mangler teams.comeback_at, flyttes holdet alligevel", async () => {
+  const supabase = fakeDb(baseState());
+  const from = supabase.from;
+  const payloads = [];
+  supabase.from = (table) => {
+    const t = from(table);
+    if (table !== "teams") return t;
+    const update = t.update;
+    t.update = (payload) => {
+      payloads.push(payload);
+      if ("comeback_at" in payload) {
+        const q = { eq() { return q; }, select: async () => ({ data: null, error: { code: "PGRST204", message: "Could not find the 'comeback_at' column of 'teams' in the schema cache" } }) };
+        return q;
+      }
+      return update(payload);
+    };
+    return t;
+  };
+  const { deps } = makeDeps(supabase);
+  const warn = console.warn; console.warn = () => {};
+  try {
+    const result = await returnParkedTeam({ supabase, teamId: TEAM, now: new Date("2026-10-12T08:00:00Z"), deps });
+    assert.equal(result.returned, true);
+  } finally { console.warn = warn; }
+  const team = supabase.state.teams.find((t) => t.id === TEAM);
+  assert.equal(team.parked_at, null);
+  assert.equal(team.comeback_season_id, SEASON);
+  assert.equal(payloads.filter((p) => "parked_at" in p).length, 2, "én gentagelse uden kolonnen");
+});
+
+test("isMissingComebackAtColumn: kun fejl om netop kolonnen tæller", () => {
+  assert.equal(isMissingComebackAtColumn({ code: "42703", message: "column teams.comeback_at does not exist" }), true);
+  assert.equal(isMissingComebackAtColumn({ code: "42703", message: "column teams.other does not exist" }), false);
+  assert.equal(isMissingComebackAtColumn({ code: "23505", message: "comeback_at" }), false);
+  assert.equal(isMissingComebackAtColumn(null), false);
 });

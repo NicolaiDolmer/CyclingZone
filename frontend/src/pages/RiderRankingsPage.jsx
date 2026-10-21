@@ -9,6 +9,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { formatNumber } from "../lib/intl";
+import { riderNameMatches } from "../lib/riderNameSearch";
 import { compareNationality, getCountryCode3 } from "../lib/countryUtils";
 import { useRiderRankings } from "../hooks/useRiderRankings";
 import { filterByDivisionPool, ALL_POOLS_VALUE } from "../lib/resultsFilter";
@@ -244,7 +245,7 @@ export default function RiderRankingsPage() {
     .filter(r => teamFilter === "all" || String(r.team?.id) === teamFilter)
     .filter(r => {
       if (!search) return true;
-      return `${r.firstname} ${r.lastname}`.toLowerCase().includes(search.toLowerCase());
+      return riderNameMatches(`${r.firstname} ${r.lastname}`, search); // #5941
     })
     .sort((a, b) => {
       // Nation sorteres på den viste IOC-kode (#802) — øvrige kolonner er numeriske.

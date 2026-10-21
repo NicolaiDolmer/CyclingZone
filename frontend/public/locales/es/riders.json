@@ -1,0 +1,145 @@
+{
+  "page": {
+    "title": "Base de datos de ciclistas",
+    "subtitle": "{count} ciclistas",
+    "watchlistLink": "Mi lista de seguimiento ({count})",
+    "loadingAria": "Cargando ciclistas"
+  },
+  "loadError": "No se pudieron cargar los ciclistas. Inténtalo de nuevo.",
+  "retry": "Reintentar",
+  "watchlistToggleFailed": "No se pudo actualizar tu lista de seguimiento. Inténtalo de nuevo.",
+  "table": {
+    "nation": "País",
+    "rider": "Ciclista",
+    "rating": "Valoración",
+    "ratingTitle": "La media ponderada de las habilidades que necesita su propio rol. El mismo número significa el mismo nivel en cualquier rol.",
+    "team": "Equipo",
+    "badges": "Estado",
+    "age": "Edad",
+    "type": "Tipo",
+    "value": "Valor",
+    "salary": "Salario",
+    "popularity": "Popularidad",
+    "popularityTitle": "Popularidad entre los aficionados (0-100). Los objetivos de ciclista estrella de la directiva ya existentes mantienen la medida con la que se acordaron.",
+    "reputationLabel": "Reputación",
+    "reputationTitle": "Reputación en carrera. Durante la transición, nunca se muestra por debajo de la antigua popularidad de este ciclista. La directiva lee este número para los nuevos objetivos de perfil.",
+    "reputation": {
+      "band": {
+        "unknown": "Desconocido",
+        "known": "Conocido",
+        "profile": "Con perfil",
+        "star": "Estrella",
+        "legend": "Leyenda"
+      }
+    },
+    "compareTooltip": "Seleccionar para comparar",
+    "teamFree": "Libre",
+    "pendingTransfer": "Fichaje pendiente: se une a {team} cuando termine su carrera por etapas actual"
+  },
+  "abilityLegend": {
+    "toggle": "¿Qué significan los códigos?"
+  },
+  "mobileSort": {
+    "label": "Ordenar por",
+    "ascAria": "Orden ascendente, toca para ordenar de forma descendente",
+    "descAria": "Orden descendente, toca para ordenar de forma ascendente"
+  },
+  "pagination": {
+    "showing": "Mostrando {from}-{to} de {total}",
+    "prev": "Anterior",
+    "next": "Siguiente"
+  },
+  "tour": {
+    "filters": {
+      "title": "Filtra la lista según tu presupuesto",
+      "body": "Pon el “Valor máx.” igual a tu saldo para ver solo los ciclistas que puedes permitirte. Los interruptores Sub-25 / Agente libre abren caminos más baratos."
+    },
+    "list": {
+      "title": "Haz clic en un ciclista",
+      "body": "La página de detalle muestra todas las estadísticas, el estado del contrato y las opciones de compra y subasta. Desde ahí puedes iniciar una subasta o enviar una oferta."
+    },
+    "watchlist": {
+      "title": "Usa la lista de seguimiento",
+      "body": "La estrella añade al ciclista a tu lista de seguimiento para que puedas volver a él fácilmente. La lista también está en el menú, en Mercado: Lista de seguimiento."
+    }
+  },
+  "emptyState": {
+    "title": "Monta tu primer equipo",
+    "intro": "Todavía no tienes ciclistas. Usa los filtros de abajo para encontrar los ciclistas que encajan con tu estrategia y tu presupuesto.",
+    "balance": "Tu saldo",
+    "tipValue": "<strong>Filtros de valor</strong> = precio máximo en CZ$. Pon el máximo por debajo de tu saldo para ver solo los ciclistas asequibles.",
+    "tipStats": "<strong>Filtros de estadísticas</strong> = habilidades del ciclista como escalada, sprint y contrarreloj. Empieza con un rango amplio y ve acotando después.",
+    "tipBudget": "<strong>Sub-25 / Agente libre</strong> = caminos económicos: potencial más joven o ciclistas sin contrato.",
+    "ctaFindFirst": "Encuentra a tu primer ciclista (≤ {balance} CZ$)",
+    "ctaTour": "Enséñame el juego"
+  },
+  "rankings": {
+    "title": "Ranking de ciclistas",
+    "season": "Temporada {n}",
+    "noActiveSeason": "Sin temporada activa",
+    "completedSeasonNote": "· Temporada terminada. La nueva temporada aún no ha empezado.",
+    "ridersCount": "{count} ciclistas",
+    "filterIndicator": "Mostrando la División {division}",
+    "divisionFilterLabel": "Filtrar por división",
+    "divisionFilterAll": "Todas las divisiones",
+    "divisionFilterOption": "División {n}",
+    "poolFilterLabel": "Filtrar por grupo",
+    "poolFilterAll": "Todos los grupos",
+    "ownerFilterLabel": "Filtrar por propietario",
+    "searchPlaceholder": "Buscar nombre de ciclista…",
+    "noResults": "No se han encontrado resultados",
+    "noResultsFor": "No se han encontrado resultados para “{q}”",
+    "loadError": "No se pudo cargar el ranking. Inténtalo de nuevo.",
+    "retry": "Reintentar",
+    "thNation": "País",
+    "thRider": "Ciclista",
+    "thTeam": "Equipo",
+    "thBadges": "Estado",
+    "teamFree": "Agente libre",
+    "ownerAll": "Todos",
+    "ownerManager": "De mánagers",
+    "ownerAi": "De equipos IA",
+    "ownerFree": "Agentes libres",
+    "teamFilterLabel": "Filtrar por equipo",
+    "teamFilterAll": "Todos los equipos",
+    "colPoints": "Puntos",
+    "colTotalWins": "Victorias totales",
+    "colStageWins": "Victorias de etapa",
+    "colGcWins": "Victorias en la general",
+    "colClassicWins": "Victorias en clásicas",
+    "colPtsWins": "Clasificación por puntos",
+    "colMtnWins": "Clasificación de la montaña",
+    "colYoungWins": "Clasificación de jóvenes",
+    "colPrize": "Premios ganados",
+    "colTop3": "Top 3",
+    "colTop10": "Top 10",
+    "colYellowDays": "Días de amarillo",
+    "colGreenDays": "Días de verde",
+    "colPolkaDays": "Días de montaña",
+    "colWhiteDays": "Días de blanco",
+    "shortPoints": "Pts",
+    "shortTotalWins": "Vict.",
+    "shortStageWins": "Etapa",
+    "shortGcWins": "Gen.",
+    "shortClassicWins": "Clás.",
+    "shortPtsWins": "Pun.",
+    "shortMtnWins": "Mon.",
+    "shortYoungWins": "Sub-25",
+    "shortPrize": "Premio",
+    "shortTop3": "T3",
+    "shortTop10": "T10",
+    "shortYellowDays": "Ama",
+    "shortGreenDays": "Ver",
+    "shortPolkaDays": "Mon",
+    "shortWhiteDays": "Bla",
+    "columnsButton": "Columnas",
+    "columnsHeading": "Mostrar columnas",
+    "legendStage": "Etapa = victorias de etapa",
+    "legendGc": "Gen. = victorias en la general de carreras por etapas",
+    "legendClassic": "Clás. = victorias en clásicas de un día",
+    "legendPcl": "Pun. = clasificación por puntos",
+    "legendMtn": "Mon. = clasificación de la montaña",
+    "legendU25": "Sub-25 = clasificación de jóvenes",
+    "legendSort": "Haz clic en una columna para ordenar"
+  }
+}

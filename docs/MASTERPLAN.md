@@ -2,24 +2,25 @@
 
 > **Struktur ejer-godkendt 13/10: tre baner + to faste afsnit, aldrig flere.** 🔴 Brand · 🟠 Nu (højst 5) · 💰 Forretning. Alt andet bor som labels på GitHub (`priority:next`, `icebox`), ikke her. ≤1.500 tok. Spørg før omprioritering. **Intentionen** ejes af GDD'en; MASTERPLAN ejer kun rækkefølgen. Færdigt står IKKE her (patch notes + git-log). Release-gaten: #6553 (dato S6-start).
 
-**Reglen:** 🔴 brand foran alt (motor + rytterudvikling er brand fra 7/10) · klare PR'er merges én ad gangen morgen og aften · **gør det lovede færdigt** (dato først, ældste først, samme dato parallelt) · 💰 Forretning viger aldrig: fast torsdag. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) + [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
+**Reglen:** 🔴 brand foran alt (motor + rytterudvikling er brand fra 7/10) · klare PR'er merges løbende af merge-sessionen efter arbejdsstandarden ([`GITHUB_WORKFLOW.md`](GITHUB_WORKFLOW.md), merge-tog #6861) · nyt testes på beta først, kun det vi er sikre på releases (ejer 18/10) · **gør det lovede færdigt** (dato først, ældste først, samme dato parallelt) · 💰 Forretning viger aldrig: fast torsdag. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) + [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
 
-**Ro på spillet (ejer 7/10, til S5 25/10):** kvalitet og fastholdelse foran nyt. Datolovede ting bygges stadig.
+**Ro på spillet (ejer 7/10, til S5 25/10):** kvalitet og fastholdelse foran nyt. Datolovede ting bygges stadig. **Verdensklasse-køreplan (ejer 19/10, efter S5-skiftet; [`spec`](superpowers/specs/2026-10-19-world-class-roadmap.md)):** fundament #6917 ∥ race engine #6914 → oplevelse (mobil #6916 · desktop #6918 · palet #6915) → vækst #6919.
 
 ## 🔴 Brand
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
-- **Stabilitet:** aftenspidsen #6490: GIN-indeks droppet (#6663); 15/10-aftenen max 50 s → 1,1 s, 0 kald > 2 s, DB-tid halveret, vinduet stadig ~34 min (backend-løkken) → genmål 16/10, så job-kø #6491 + Postgres #6492 (spec #6655). Databasevagten #5878 kører, #5692 matview 0 låsefejl, chunk #5162 klar til lukning.
-- **Løbsmotoren:** v4-bjergetaper pr. division (#6456 #6464, luk kun på ejer-go) · D3-rute #6486 · udbrud vinder kuperet endagsløb #6428 · S5-udbrud #6201 merget 15/10 (bag `s5_profiles_v1`). "Long day" #6475 rettet (#6660).
+- **Stabilitet ved 10x:** aftenafregningen #6490 → job-kø #6491 + direkte Postgres #6492 (spec #6655) · ranglisten genberegner hele historikken #6765 (design #6849) · løbssiden crasher i Firefox #6698.
+- **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **v2-pakken (ejer 19/10): udbrudspakken #6804 (design først) + jagtafstand #6814 + testport på S5-ruter #6909 → tænd v2 #6820 samlet, når den er grøn; formtoppe #6156 via flaget `race_form_peaks`**.
+- **Spillerne må aldrig se forkert information (ejer 20/10):** fjern nu, rigtig løsning bagefter. Rytterkortet #6934 · oprydning i hele spillet #6935.
 
-## 🟠 Nu · højst 5
+## 🟠 Nu · højst 5 (ejer-godkendt 20/10)
 
-1. **S5-etapeprofiler #6369** (kalender #5841): motorreglerne tændt 17/10 (#6699); opfølgning #6748 i `s5_profiles_v2`.
-2. **Udvikling 2.0 del 1 #6499** (#6110): tilbagegang D4 + ingen udvikling uden for managerhold, til 25/10.
-3. **Sæsonskifte uden fejl 25/10:** #5904 lasttest · #5864 · #5833 · bestyrelse #6130 #6122.
-4. **Træningens rest:** #5947 historik · #5915 · #6210 maks +1 (PR #6248) · #5965 analyse.
-5. **Lovet med dato:** #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106.
+1. **S5-sæsonskifte uden fejl 25/10, ca. kl. 20:30 (#6898):** D3→D4-nedrykning #6771/#6981 · alder afgør ungdomsløb #6964 · bestyrelsesbeskeder #6946 · udgifter fjernes #6936 · formtoppe tændes #6156 · mandat-oprydning #6773 · ungdom S5 #6667 #6668 #6710 (dry-runs før 28/10) · board under skiftet #6876. Afkobling af skiftet fra aftenkørslen efter 25/10 #6924.
+2. **S5-ruter → motorpakken:** løbsidentitet #6857 L2-L4 (#6928-#6930) → **prøvekørsel til ejeren 21/10** med motoren testet på de nye ruter (#6909); L4 navne/Hjælp · derefter udbrudspakken #6804 kalibreret på de nye ruter + jagtafstand #6814 → tænd v2 samlet, når testporten er grøn.
+3. **Udvikling 2.0 #6110 + form/træthed 2.0 #6984:** del 1 #6499 prøvekørsel 23/10, tænding kun på ordret go (effekt 25/10) · del 2 en søndag i S5 med catch-up via løb #6950 og "Udviklingsscore" · #6984 (ejer 20/10, startet straks, langt før Giroen 1/11): målt baseline → design → byg bag flag.
+4. **Alt lovet til spillerne, dato først (#6947):** #6210 maks +1 (PR #6248) · #5947 historik · #5965 · #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106 · Discord: Træn nu = hele dagen i ét klik #6461 · taktik og trup låses samtidig #6959 · Hjælp-fejl #6979 · trøjer/udgåede/favoritter #6937-#6939 #2757.
+5. **Beta → live:** løbskort/Løbshistorik (`race_library_v2`) tændes sammen med ikoner + Kalender | Tabel #6683 · etapeside v2, træning for flere ryttere, push: gennemtest og tænd på ejer-go.
 
 ## 💰 Forretning · fast torsdag (SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 

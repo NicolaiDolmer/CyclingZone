@@ -94,6 +94,20 @@ features:
     verified: 2026-10-04
     note: On siden 28/9 (læst i prod 4/10); kører officielle etaper.
 
+  - id: race-form-peaks
+    area: race-engine
+    title_en: Form peaks in races
+    title_da: Formtoppe i løbene
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6156
+    verified: 2026-10-19
+    note: Flaget oprettes off ved merge.
+    decision: taend
+    decide_by: 2026-10-25
+    roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
+    roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision
@@ -102,7 +116,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: "official_times_v1 er nu en frosset prototype; linjen fortsætter i official_times_v2-v5 (timeModel.ts, segmentLoop.ts). official_times_v5 var aktuel fra ejerens \"tænd\" 16/10 (#6462) til S5-tændingen 17/10 (s5_profiles_v1, se race-engine-s5-profiles); løb bundet til v2-v5 færdiggøres på deres revision (#6642)."
+    note: Frosset prototype; v2-v5 i timeModel.ts/segmentLoop.ts. v5 aktiv 16/10 (#6462) til S5 17/10 (#6642); løb beholder bundet revision.
 
   - id: race-engine-s5-profiles
     area: race-engine
@@ -175,7 +189,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
     verified: 2026-10-15
-    note: UI live; v4 er on, men flaget race_day_intention_enabled findes ikke i prod (læst 15/10). Kalibrering + beta i #6641.
+    note: UI live; flaget findes ikke i prod endnu. Kalibrering + beta i #6641.
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -251,6 +265,19 @@ features:
     epic: 6570
     verified: 2026-10-15
     note: PR #6633; beta siden 15/10 efter ejer-go (læst i prod 15/10).
+
+  - id: race-library-v2
+    area: stats
+    title_en: Calendar race card and race history library
+    title_da: Kalender-løbskort og løbshistorik
+    state: building
+    ssot: docs/CALENDAR_RULES.md
+    epic: 6514
+    flag: race_library_v2
+    verified: 2026-10-18
+    note: PR #6680 merget 18/10; flaget race_library_v2 står som off i prod (læst 18/10 efter auto-migrate). Ejer flytter den til beta; #6875 rettes før "tænd beta".
+    decision: ejer-beslutning
+    decide_by: 2026-10-25
 
   - id: race-day-development
     area: race-day
@@ -406,7 +433,7 @@ features:
     ssot: docs/RIDER_GENERATION.md
     epic: 5327
     verified: 2026-09-23
-    note: 'Kontakt rider_primary_type_from_distribution (off) koblet paa start-trup, AI-hold og relaunch; flag-feltet saettes naar raekken er verificeret i prod efter merge. Flip er ejer-gated.'
+    note: 'Kontakt (off) paa start-trup, AI-hold og relaunch. Flip er ejer-gated.'
 
   # --- training ------------------------------------------------------------
   - id: daily-training
@@ -645,7 +672,18 @@ features:
     title_da: Sæsonskifte
     state: live
     ssot: docs/SEASON_TRANSITION_CHECKLIST.md
-    verified: 2026-09-06
+    verified: 2026-10-17
+    note: Manuelt admin-skift efter runbooken (#1155).
+
+  - id: season-auto-transition
+    area: season
+    title_en: Automatic season transition cron
+    title_da: Automatisk sæsonskifte (cron)
+    state: retired
+    ssot: docs/SEASON_CUTOVER_RUNBOOK.md
+    epic: 1155
+    verified: 2026-10-17
+    note: Slukket siden 8/6 (fyrede fire skift i træk 21/5) og fjernet helt 17/10 (#6796); sæsonskiftet er en bevidst manuel admin-handling.
 
   - id: season-signup
     area: season
@@ -725,6 +763,17 @@ features:
     note: "#6710 plan-PR 1. Flag-nøgle promotion_pending_enabled (oprettes off af migrationen); flyttes til flag-feltet når rækken findes i prod."
 
   # --- economy -------------------------------------------------------------
+  - id: economy-no-upkeep
+    area: economy
+    title_en: No running costs from season 5
+    title_da: Ingen driftsudgifter fra sæson 5
+    state: live
+    flag: economy_no_upkeep_v1
+    ssot: docs/ECONOMY_RULES.md
+    epic: 6936
+    verified: 2026-10-20
+    note: Tændt 20/10 (ejer-go). Rollback kun ved sæsonskifte.
+
   - id: sponsors
     area: economy
     title_en: Sponsors
@@ -840,12 +889,25 @@ features:
     note: ~55 typer, notificationTypes.js.
 
   # --- stats ---------------------------------------------------------------
+  - id: ranking-shadow
+    area: ops
+    title_en: Ranking shadow
+    title_da: Skyggeranglister
+    state: building
+    ssot: docs/GAME_INVARIANTS.md
+    epic: 6765
+    verified: 2026-10-19
+    decision: ejer-beslutning
+    decide_by: 2026-10-23
+    note: "ranking_shadow_enabled seed off; ejer-go før tænding."
   - id: standings-and-rankings
     area: stats
     title_en: Standings and rankings
     title_da: Stillinger og ranglister
     state: live
     verified: 2026-09-06
+    ssot: docs/GAME_INVARIANTS.md
+    note: "Legacy readers; M1 shadow gated separately (#6765)."
 
   - id: results-archive
     area: stats
@@ -895,7 +957,7 @@ features:
     flag: first_race_card
     epic: 1140
     verified: 2026-10-15
-    note: PR #6534 (12/10); on for alle siden 15/10 10:17 UTC efter ejer-go (nye hold er aldrig beta-testere, så beta ville vise kortet for ingen). Vises kun for hold uden første løb. Opfølgning dag 2-3-genkomst ca. 29/10 (#1140).
+    note: PR #6534; on for alle siden 15/10. Kun hold uden første løb. Opfølgning ca. 29/10 (#1140).
 
   # --- comms ---------------------------------------------------------------
   - id: email-loop
@@ -951,11 +1013,13 @@ features:
     area: comms
     title_en: Push notifications
     title_da: Push-notifikationer
-    state: dormant
+    state: beta
     flag: push_enabled
     epic: 6590
-    verified: 2026-10-15
-    note: PR #6591 (14/10) bag slukket flag; off i prod (læst 15/10), kun ejeren flipper.
+    verified: 2026-10-19
+    note: push_enabled = beta i prod 19/10 (ejer-go 18/10+19/10); VAPID-nøgler i Infisical prod + Railway; ejerens Android abonnerer (19/10).
+    roadmap_en: "Push notifications on your phone: outbid in the last minute, one race summary per race day, and offers waiting for you. Never between 22:00 and 08:00, at most 6 a day."
+    roadmap_da: "Push-notifikationer på telefonen: overbudt i sidste minut, ét løbsresumé pr. løbsdag og tilbud, der venter på dig. Aldrig mellem 22 og 08, højst 6 om dagen."
 
   # --- billing -------------------------------------------------------------
   - id: cz-pro

@@ -1,5 +1,7 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
-import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
+import { peakComponentForStage } from "./racePeaks.js";
+import { scoreComponentToFormPoints } from "./plannerBoard.js";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
 //
 // HVAD DEN ER: seamen mellem den UÆNDREDE resultat-pipeline (raceRunner.js →
@@ -347,7 +349,7 @@ export function passagesFromV4Output(output, { stageProfile = {}, isStageRace = 
  * v3's `buildTeamContext` springer enhver entrant uden team_id ELLER
  * race_role over.
  */
-function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(), { withForm = false } = {}) {
+function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(), { withForm = false, peakDay = null } = {}) {
   return entrants.map((e) => {
     const fatigue = Number(e.fatigue);
     const condition = Number.isFinite(fatigue) ? 1 - Math.min(Math.max(fatigue, 0), 100) / 100 : 1;
@@ -364,9 +366,53 @@ function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(
     // #6156: rytterens form KUN under official_times_v3 og kun naar der ER
     // form-data; ellers baerer Entrant intet form-felt (byte-identisk input).
     if (!withForm) return entrant;
-    const form = riderFormForV4(e);
+    // #6156 (KUN s5_profiles_v2): peakDay er sat => den samlede form (form + top /
+    // minus dyk). Uden peakDay (alle aeldre revisioner) er det formen alene.
+    const form = peakDay === null ? riderFormForV4(e) : combinedFormForV4(e, peakDay);
     return form === null ? entrant : { ...entrant, form };
   });
+}
+
+/**
+ * #6156: nulpunktet for en rytter uden form-data, naar han har en formtop at
+ * laegge oven i. Samme neutrale middel som v3's formComponent og v4's
+ * FORM_CP_TUNING.neutralForm (kontrakt-test i raceEngineV4Bridge.test.js).
+ */
+export const NEUTRAL_FORM_FOR_PEAK = 50;
+
+/**
+ * #6156 (KUN s5_profiles_v2): rytterens SAMLEDE form paa etapedagen, som v4 skal
+ * se den (spec 2026-10-04 §3.1, ejer 4/10: "én samlet form"). Formen
+ * (rider_condition.form) + formtoppens tillaeg, naar dagen ligger i et af
+ * rytterens peak-vinduer, eller minus dykket, naar dagen ligger i
+ * tilbagebetalingen efter et vindue. Klampes til skalaen 0-100.
+ *
+ * Toppens stoerrelse opfindes ikke her: fasen og tillaegget er v3's egen
+ * racePeaks.peakComponentForStage (vinduets traeningskvalitet, samme konstanter),
+ * omregnet til formpoint med planlaeggerens egen omregning
+ * (plannerBoard.scoreComponentToFormPoints). Det er altsaa den samme vaerdi
+ * formplanlaeggeren viser spilleren.
+ *
+ * Uden top/dyk paa dagen (ingen vinduer, ingen peakDay, dagen uden for alle
+ * vinduer) er svaret praecis riderFormForV4 (byte-identisk med s5_profiles_v1).
+ * En rytter uden form-data men med en top faar toppen oven i det neutrale
+ * middel. REN: ingen DB, ingen kalender (peakDay og vinduerne er allerede
+ * dag-ordinaler, sat af raceRunner.attachPeakContext).
+ *
+ * @param {{form?: number|string|null, peakWindows?: Array<{start:number,end:number,trainingQuality?:number}>}} entrant
+ * @param {number|null|undefined} peakDay  etapens dag-ordinal (stage.peakDay)
+ * @returns {number|null}
+ */
+export function combinedFormForV4(entrant, peakDay) {
+  const base = riderFormForV4(entrant);
+  const windows = entrant?.peakWindows;
+  if (peakDay == null || !Array.isArray(windows) || windows.length === 0) return base;
+  const component = peakComponentForStage({ stageDay: peakDay, windows });
+  if (!component) return base;
+  const points = scoreComponentToFormPoints(component);
+  if (!points) return base;
+  const combined = (base ?? NEUTRAL_FORM_FOR_PEAK) + points;
+  return Math.min(Math.max(combined, 0), 100);
 }
 
 /**
@@ -374,8 +420,9 @@ function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(
  * null naar der intet er at sende. raceRunner baerer den paa simEntrant.form;
  * foer #6156 smed toV4Entrants den vaek, og v4 kaldte jour sans med form=null.
  *
- * KUN formen: formtoppens tillaeg / dykket bagefter laegges IKKE til (ejer
- * 10/10: formtoppe kobles paa ved S5 under en senere revision). Klampes til
+ * KUN formen: formtoppens tillaeg / dykket bagefter laegges IKKE til her (ejer
+ * 10/10: formtoppe kobles paa ved S5; under s5_profiles_v2 goer
+ * combinedFormForV4 det oven paa denne). Klampes til
  * skalaen 0-100. REN: ingen DB, ingen datoer.
  *
  * @param {{form?: number|string|null}} entrant
@@ -479,7 +526,7 @@ export function withS5ThreatModel(gcContext, startlist) {
  */
 export function buildV4StageInput({
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
-  rulesRevision = "legacy", gcStandings = null,
+  rulesRevision = "legacy", gcStandings = null, formPeaks = true,
 }) {
   // #5955: løbets bundne taktiske regel-revision (raceRunner.bindRaceRulesRevision).
   // En ukendt værdi er en fejl, aldrig nyeste regler.
@@ -523,9 +570,12 @@ export function buildV4StageInput({
       ...(isOrdersGcV2OrLater(rulesRevision) ? { rules_revision: rulesRevision } : {}),
     },
   });
-  // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe).
+  // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe);
+  // KUN s5_profiles_v2 laegger formtoppen/dykket oveni (den samlede form).
   const startlist = toV4Entrants(entrants, modules.entrants, plan.aiEffortByRider, {
     withForm: sharedTimeModelGeneration(rulesRevision) === 3,
+    // #6156 (ejer 19/10): og kun naar flaget race_form_peaks er taendt (formPeaks).
+    peakDay: isS5ProfilesV2OrLater(rulesRevision) && formPeaks ? (stageProfile?.peakDay ?? null) : null,
   });
   const input = { route, startlist, orders: plan.orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
   // Ejer 28/9: kun ungdomsloeb baerer truppen; seniorens input er uaendret.
@@ -606,7 +656,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -614,7 +664,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med

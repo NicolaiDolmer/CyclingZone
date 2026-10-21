@@ -1,0 +1,15 @@
+CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS; GRANT USAGE ON SCHEMA public TO anon,authenticated,service_role;
+    CREATE TABLE app_config(key text PRIMARY KEY, value jsonb,updated_at timestamptz DEFAULT now());
+    CREATE TABLE riders(id uuid PRIMARY KEY, team_id uuid,is_retired boolean DEFAULT false);
+    CREATE TABLE races(id uuid PRIMARY KEY,season_id uuid,status text DEFAULT 'scheduled',stages_completed integer DEFAULT 0,finalize_state jsonb,finalize_updated_at timestamptz,stages integer DEFAULT 5,race_type text DEFAULT 'stage_race');
+    CREATE TABLE race_results(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),race_id uuid,stage_number integer,result_type text);
+    CREATE TABLE race_stage_schedule(race_id uuid,stage_number integer,game_day integer,scheduled_at timestamptz);
+    CREATE TABLE race_incidents(race_id uuid,stage_number integer,rider_id uuid,kind text,outcome text,injury_days integer);
+    CREATE TABLE race_simulation_runs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),race_id uuid,stage_number integer,entrant_snapshot jsonb,seed bigint DEFAULT 0,engine_version integer DEFAULT 1,input_checksum bigint DEFAULT 0,source text,salt_version text,UNIQUE(race_id,stage_number));
+    CREATE TABLE race_simulation_rider_scores(run_id uuid REFERENCES race_simulation_runs(id) ON DELETE CASCADE,rider_id uuid,rank integer,components jsonb NOT NULL,PRIMARY KEY(run_id,rider_id));
+    CREATE TABLE rider_derived_abilities(rider_id uuid PRIMARY KEY, climbing integer, ability_progress jsonb);
+    CREATE TABLE rider_condition(rider_id uuid PRIMARY KEY, form smallint, fatigue smallint CHECK(fatigue BETWEEN 0 AND 100), injured_until date, injury_cause text, updated_at timestamptz, injury_end_game_day integer, injury_season_id uuid, injury_race_days_left integer);
+    CREATE TABLE training_day_runs(team_id uuid, season_id uuid, squad text, game_day integer, tick_date date, executed_by text, bonus_applied boolean, report jsonb, UNIQUE(team_id, season_id, squad, game_day));
+    CREATE TABLE rider_derived_ability_history(rider_id uuid, snapshot_date date, source text, season_number integer, abilities jsonb, UNIQUE(rider_id,snapshot_date,source));
+    CREATE TABLE rider_ability_race_day_history(rider_id uuid, season_id uuid, game_day integer, source text, season_number integer, snapshot_date date, abilities jsonb, UNIQUE(rider_id,season_id,game_day,source));
+    CREATE TABLE rider_training_scores(rider_id uuid, team_id uuid, season_id uuid, tick_date date, game_day integer, score integer, session text, day_type text, was_race_day boolean, intention text, contributions jsonb);

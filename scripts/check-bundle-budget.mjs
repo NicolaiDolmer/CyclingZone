@@ -30,9 +30,22 @@ try {
   process.exit(2);
 }
 
-const sizes = files
+// #6836: et skjult beta-sprogs lazy chunk (`i18n-messages-<kode>`, languages.js
+// beta: true) hentes aldrig af en almindelig spiller og preloades aldrig, saa den
+// taeller ikke mod budgettet. Det loft beskytter spillerens vaegt. Bliver sproget
+// offentligt (beta: false) taeller chunken automatisk med, og budgettet haeves
+// bevidst i samme PR.
+const { isBetaLang } = await import("../frontend/src/i18n/languages.js");
+const betaChunkLang = (f) => {
+  const m = /^i18n-messages-([a-z]{2,3})-/.exec(f);
+  return m && isBetaLang(m[1]) ? m[1] : null;
+};
+
+const all = files
   .map((f) => ({ file: f, kb: gzipKB(readFileSync(join(assetsDir, f))) }))
   .sort((a, b) => b.kb - a.kb);
+const betaChunks = all.filter((x) => betaChunkLang(x.file));
+const sizes = all.filter((x) => !betaChunkLang(x.file));
 
 const totalKB = sizes.reduce((s, x) => s + x.kb, 0);
 
@@ -45,6 +58,13 @@ for (const { file, kb } of sizes.slice(0, 8)) {
   console.log(`  ${kb.toFixed(1).padStart(7)} KB  ${file}`);
 }
 console.log(`  (… ${sizes.length} JS-chunks i alt)`);
+if (betaChunks.length > 0) {
+  const betaKB = betaChunks.reduce((s, x) => s + x.kb, 0);
+  console.log(
+    `  (+ ${betaChunks.length} skjulte beta-sprog-chunks udenfor budget: ${betaKB.toFixed(1)} KB, ` +
+      `${betaChunks.map((x) => betaChunkLang(x.file)).join("/")})`
+  );
+}
 console.log(
   `\nTotal gzipped JS: ${totalKB.toFixed(1)} KB  ` +
     `(budget ${budget.total_gzip_kb} KB + ${marginPct}% margin = ${limitKB.toFixed(1)} KB loft)`

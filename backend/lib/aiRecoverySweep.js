@@ -178,7 +178,7 @@ export async function runAiRecoverySweep({
         .order("team_id")),
   ]);
 
-  const pending = teamsNeedingSweep(teams, runs, tickDate);
+  const pending = teamsNeedingSweep(teams, runs, tickDate, now);
 
   let swept = 0;
   let failed = 0;

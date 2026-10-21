@@ -53,6 +53,8 @@ export interface StageProfile {
   sprints?: Array<{ name?: string; km: number; kind?: string }> | null;
   sectors?: Sector[] | null;
   elevation_profile?: { v?: number; step_km?: number; h?: number[] } | null;
+  /** #6993: det vejr v4-motoren læser (sun/overcast/rain/wind). */
+  weather?: { kind?: string; wind_exposure?: number } | null;
 }
 
 export interface ResultRow {

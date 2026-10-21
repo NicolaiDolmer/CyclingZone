@@ -130,6 +130,7 @@ import { sumActiveLoanDebt, sumRiderSalaries } from "./boardUtils.js";
 import { sampleVoiceLine, BoardVoiceEmptyBucketError } from "./boardVoice.js";
 import { MANDATE_CATEGORIES, resolveMandateDisplayGoals } from "./boardMandate.js";
 import { BOARD_MANDATE_MODEL_FLAG_KEY } from "./boardMandateFlag.js";
+import { queryCurrentSeasonActiveMandate } from "./boardMandateEngine.js";
 import { readFlagStage } from "./featureStage.js";
 import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } from "./boardConsequences.js";
 // #5632 · Samme rene visnings-beregninger som det gamle bestyrelsesrum
@@ -138,6 +139,7 @@ import { getActiveConsequencesForTeam, getLayerLabelKey, CONSEQUENCE_LAYERS } fr
 import { computeBonusOfferProgress, computePassiveModifierInfo } from "./boardTransparency.js";
 import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.js";
 import { captureException } from "./sentry.js";
+import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 const MINUTES_LIMIT = 10;
 const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så weekDelta + mood har nok historik
@@ -502,13 +504,32 @@ export async function buildBoardRoomPayload({
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
 
+  // #6773 · Mandatet vælges for den AKTIVE sæson. Uden sæsonfilter vandt et
+  // gammelt mandat der var underskrevet efter sit eget sæsonskifte (nyere
+  // signed_at end det aktuelle). Sæson-opslaget er derfor startet først, og
+  // mandat-opslaget venter kun på det, resten kører stadig parallelt.
+  // #6876 · Under sæsonskiftet kan to sæsoner være aktive. Den fælles loader
+  // vælger den nyeste og returnerer ét promise, som begge forbrugere deler.
+  const activeSeasonPromise = loadSingleActiveSeason(supabase, {
+    select: "id, number", tag: "board-room",
+  }).catch((err) => {
+    // Preserve Boardroom's best-effort payload on an actual season read error.
+    captureException(err);
+    return null;
+  });
+  const mandatePromise = activeSeasonPromise.then((season) =>
+    queryCurrentSeasonActiveMandate(supabase, {
+      teamId,
+      seasonNumber: season?.number ?? null,
+    }));
+
   const [
     relationRes,
     membersRes,
     mandateRes,
     milestonesRes,
     teamRes,
-    seasonRes,
+    activeSeason,
     seasonsListRes,
     standingRes,
     ridersRes,
@@ -522,8 +543,7 @@ export async function buildBoardRoomPayload({
     supabase.from("team_board_members")
       .select("archetype_key, selection_kind, alignment_score, is_chairman")
       .eq("team_id", teamId),
-    supabase.from("board_mandates").select("*").eq("team_id", teamId).eq("status", "active")
-      .order("signed_at", { ascending: false }).limit(1).maybeSingle(),
+    mandatePromise,
     supabase.from("board_vision_milestones").select("*").eq("team_id", teamId)
       .order("target_season_number", { ascending: true }),
     // #4579 · sponsor_income tilføjet: buildBoardEvalContext's currentSponsorIncome
@@ -531,7 +551,7 @@ export async function buildBoardRoomPayload({
     // #1237 · balance tilføjet: nettostilling-input til no_outstanding_debt
     // (scoreFinanceHealthGoal).
     supabase.from("teams").select("team_dna_key, created_at, sponsor_income, balance").eq("id", teamId).maybeSingle(),
-    supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle(),
+    activeSeasonPromise,
     // #4557 (1/9-tillæg) · Hele sæson-listen, kun til board.members[].sinceSeason
     // (deriveFoundingSeasonNumber). Lille tabel (én række pr. sæson) — billig
     // ekstra-query, ikke en ny tabel-afhængighed af betydning.
@@ -609,8 +629,8 @@ export async function buildBoardRoomPayload({
   const mandateRow = mandateRes.data ?? null;
   const milestoneRows = milestonesRes.data ?? [];
   const dnaKey = teamRes.data?.team_dna_key ?? null;
-  const currentSeasonNumber = seasonRes?.data?.number ?? null;
-  const currentSeasonId = seasonRes?.data?.id ?? null;
+  const currentSeasonNumber = activeSeason?.number ?? null;
+  const currentSeasonId = activeSeason?.id ?? null;
   const reputationEnabled = isReputationReadEnabled(reputationStage);
   const events = eventsRes.data ?? [];
   const sinceSeason = deriveFoundingSeasonNumber({
@@ -906,7 +926,11 @@ export async function buildBoardRoomPayload({
       }
 
       const achievedDisplay = formatGoalDisplayValue(evaluation?.actual);
-      const targetDisplay = formatGoalDisplayValue(evaluation?.target ?? goal?.target);
+      // #6903: gældsmålets krav er nettostilling >= 0 (goal.target = 0). Evalueringens
+      // target er score-kurvens buffer (en sæsons lønsum) og må ikke vises som målet.
+      const targetDisplay = formatGoalDisplayValue(goal?.type === "no_outstanding_debt"
+        ? (goal?.target ?? 0)
+        : (evaluation?.target ?? goal?.target));
 
       return {
         // #4578 · goal_key (indholdsbaseret) i stedet for den tidligere

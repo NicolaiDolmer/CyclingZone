@@ -15,6 +15,8 @@
 // bor i scoutCountdownParts/scoutReadyClock og enheds-testes uden React-render.
 
 import { useEffect, useState } from "react";
+import { formatClock24 } from "./intlLocale.ts";
+import { relativeDayKey } from "./stageScheduleConfig.js";
 
 // Hvor ofte hooken kigger efter om minut-tallet er skiftet. 15s er rigeligt til
 // minut-granularitet og koster ingen re-render medmindre labelen faktisk ændrer sig.
@@ -66,17 +68,7 @@ export function scoutReadyClock(readyAt) {
   if (!readyAt) return null;
   const ready = readyAt instanceof Date ? readyAt : new Date(readyAt);
   if (Number.isNaN(ready.getTime())) return null;
-  return ready.toLocaleTimeString("en-GB", {
-    hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Copenhagen",
-  });
-}
-
-const CPH_DATE_FMT = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit",
-});
-
-function copenhagenDateKey(date) {
-  return CPH_DATE_FMT.format(date); // "YYYY-MM-DD"
+  return formatClock24(ready, "Europe/Copenhagen");
 }
 
 // #3997 — mission-modning viser nu et forventet klokkeslæt (afledt af
@@ -102,12 +94,9 @@ export function missionReadyLabel(readyAt, now = new Date()) {
   if (ready.getTime() <= reference.getTime()) return { state: "due" };
 
   const time = scoutReadyClock(ready);
-  const readyDay = copenhagenDateKey(ready);
-  const todayDay = copenhagenDateKey(reference);
-  if (readyDay === todayDay) return { state: "today", time };
-
-  const tomorrow = new Date(reference.getTime() + 86_400_000);
-  if (readyDay === copenhagenDateKey(tomorrow)) return { state: "tomorrow", time };
+  // #6862: share calendar-day arithmetic with stages; a local day is not always 24h.
+  const day = relativeDayKey(ready, reference);
+  if (day) return { state: day, time };
 
   return { state: "date", time, date: ready };
 }

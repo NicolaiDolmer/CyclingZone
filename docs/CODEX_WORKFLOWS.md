@@ -43,6 +43,10 @@ Forløbet er: undersøg → implementér → verificér → uafhængigt review �
 
 Ejeren modtager problem og løsning, den præcise beslutning, alternativer/anbefaling, relevante før/efter-beviser, test- og reviewstatus og material risiko/rollback. UI følger de eksisterende billedkrav; følsomme billeder og balance-tal holdes uden for offentlige issues. Agenten samler pakken og fortsætter efter svaret inden for mandatet.
 
+## Agentopsætning
+
+Projektroller og sikker installation af brugerens agentstandarder: [CODEX_AGENT_SETUP.md](CODEX_AGENT_SETUP.md). AGENTS.md beskriver, hvornår læsning deles op; skrivende spor bruger fortsat codex-wave og egne worktrees. Tilføjelsen ændrer hverken produkt-/prod-mandat eller den overordnede model. Sessionsprompten 18/10 giver alene Claude merge-ansvaret. Målinger skelner mellem estimeret kontekst, svartid, faktisk parallelitet og gennemført opgave; en fejlet probe er ikke en produktivitetsgevinst.
+
 ## Skills og kontekst
 
 Læs kun skills, der løser et konkret behov i opgaven. Skill-katalogets tilstedeværelse eller en bred nøgleords-trigger er ikke i sig selv relevans. Projektets og ejerens eksplicitte instruktioner har forrang over skill-proces.

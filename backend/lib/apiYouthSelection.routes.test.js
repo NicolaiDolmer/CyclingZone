@@ -49,7 +49,8 @@ test("#5843: auto-udtagelse bruger truppens pulje og truppens ryttere", () => {
   const block = routeBlock('router.post("/races/:raceId/selection/auto"');
   assert.match(block, RACE_SELECT_WITH_SQUAD);
   assert.match(block, /teamInRaceSquadPool\(\{ team: req\.team, race \}\)/);
-  assert.match(block, /applyRiderEligibilityFilter\([^\n]*\{ squad: raceSquadOf\(race\) \}\)/);
+  // #6964: og aldersgaten (løbets sæson) — alder afgør ungdomsløb, også via knappen.
+  assert.match(block, /applyRiderEligibilityFilter\([^\n]*\{ squad: raceSquadOf\(race\), seasonNumber: await loadRaceSeasonNumber\(\{ supabase, race \}\) \}\)/);
 });
 
 test("#5843: afmelding bruger truppens pulje", () => {

@@ -53,15 +53,17 @@ test("loadAllowlist reads the real repo allowlist file and produces a usable sha
   assert.ok(real.names instanceof Set);
   assert.ok(Array.isArray(real.cacheKeyPrefixes));
   assert.ok(real.names.has("rls_enabled_no_policy"));
-  assert.ok(real.cacheKeyPrefixes.some((p) => p.includes("is_offered_intake_rider")));
+  assert.ok(real.cacheKeyPrefixes.some((p) => p.includes("offered_intake_rider_ids")));
 });
 
-// #5088: alle tre LEVENDE 0029-WARN (maalt 17/9 kl. 15:30 UTC) skal vaere
-// daekket af en cache_key-post, ellers aabner sweepen et issue hver uge om fund
-// der er dokumenteret bevidst aabne i docs/SUPABASE_SECURITY_ADVISORS.md.
+// #5088: alle tre bevidst aabne 0029-WARN skal vaere daekket af en
+// cache_key-post, ellers aabner sweepen et issue hver uge om fund der er
+// dokumenteret bevidst aabne i docs/SUPABASE_SECURITY_ADVISORS.md.
+// #6752 (17/10): is_offered_intake_rider er revoket og erstattet af
+// offered_intake_rider_ids, som "Public read riders" kalder (#6341).
 test("de tre dokumenterede 0029-fund er daekket af accept-listen (#5088)", () => {
   const real = loadAllowlist();
-  for (const fn of ["founder_public_list", "is_admin", "is_offered_intake_rider"]) {
+  for (const fn of ["founder_public_list", "is_admin", "offered_intake_rider_ids"]) {
     const finding = {
       name: "authenticated_security_definer_function_executable",
       cache_key: `authenticated_security_definer_function_executable_public_${fn}_`,
@@ -98,6 +100,7 @@ test("accept-listen daekker ikke fund der allerede er lukket (#5088)", () => {
     ["authenticated_security_definer_function_executable", "public_get_cohort_retention_", "#4870"],
     ["authenticated_security_definer_function_executable", "public_get_retention_scorecard_activity_", "#4870"],
     ["authenticated_security_definer_function_executable", "public_get_sprint_metrics_", "#4870"],
+    ["authenticated_security_definer_function_executable", "public_is_offered_intake_rider_", "#6752"],
   ];
   for (const [name, suffix, closedBy] of closed) {
     const finding = { name, cache_key: `${name}_${suffix}` };

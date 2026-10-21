@@ -6,7 +6,7 @@ import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
 import { getRiderMarketValue, getRiderSalary } from "./marketValues";
 import { buildSalaryFilterOr } from "./salaryFilter.js";
 import { getRiderAge, isU23, isU25 } from "./riderAge";
-import { applyNameSearch } from "./riderNameSearch";
+import { applyNameSearch, riderNameMatches } from "./riderNameSearch";
 import {
   ABILITY_KEYS, ABILITY_SELECT, ABILITY_SELECT_INNER, ABILITY_TABLE, flattenAbilities,
 } from "./abilities";
@@ -57,8 +57,7 @@ export function useClientRiderFilters(riders = [], seasonYear = null) {
     let result = riders.filter(r => !r.is_retired);
 
     if (filters.q) {
-      const q = filters.q.toLowerCase();
-      result = result.filter(r => `${r.firstname} ${r.lastname}`.toLowerCase().includes(q));
+      result = result.filter(r => riderNameMatches(`${r.firstname} ${r.lastname}`, filters.q)); // #5941
     }
 
     if (filters.min_value) result = result.filter(r => getRiderMarketValue(r) >= parseInt(filters.min_value));

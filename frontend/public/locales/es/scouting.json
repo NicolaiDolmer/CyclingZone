@@ -1,0 +1,97 @@
+{
+  "page": {
+    "title": "Ojeo",
+    "subtitle": "El trabajo activo de tu ojeador, sus hallazgos y los encargos de misión."
+  },
+  "empty": {
+    "title": "La central de ojeo aún no está abierta",
+    "description": "Esta página se desbloquea cuando el sistema de trabajos de ojeo esté activo para tu equipo."
+  },
+  "scoutCard": {
+    "eyebrow": "Tu ojeador",
+    "defaultTitle": "Ojeador por defecto",
+    "defaultBody": "No has contratado a ningún ojeador de talentos. Un ojeador básico (valoración {overall}) sigue cubriendo tus trabajos dirigidos y tus misiones, solo que con una lectura más amplia de lo que encuentra.",
+    "ratingLabel": "Valoración",
+    "capacityLabel": "{capacity, plural, one {1 trabajo a la vez} other {# trabajos a la vez}}",
+    "capacityHintLocked": "Un segundo trabajo a la vez requiere un jefe de ojeadores con una valoración global de unos 80. Construir la Red de ojeo por sí solo no lo concede.",
+    "viewProfile": "Ver perfil"
+  },
+  "queue": {
+    "title": "Trabajos activos",
+    "empty": "Ahora mismo no hay ningún trabajo en marcha.",
+    "kindTarget": "Trabajo dirigido",
+    "kindMission": "Misión",
+    "reportIn": "Informe en {days, plural, one {1 día} other {# días}}",
+    "reportOn": "Informe listo el {date} sobre las {time}",
+    "reportToday": "Informe listo hoy sobre las {time}",
+    "reportTomorrow": "Informe listo mañana sobre las {time}",
+    "reportDue": "Informe listo. Actualiza para abrirlo.",
+    "targetReportIn": "Informe en ~{minutes} min",
+    "targetReportCountdown": "Informe en {minutes, plural, one {1 min} other {# min}}",
+    "readyAtTitle": "Informe listo a las {time}, hora danesa",
+    "loadingRider": "Cargando ciclista…",
+    "cancel": "Cancelar"
+  },
+  "mission": {
+    "form": {
+      "title": "Iniciar una misión",
+      "subtitle": "Envía a tu ojeador a cubrir un entorno para obtener una lista corta de promesas.",
+      "targetPoolLabel": "A quién ojear",
+      "recommended": "Recomendado",
+      "pool": {
+        "freeAgents": {
+          "title": "Agentes libres",
+          "subtitle": "Ciclistas sin contrato. Puedes ficharlos de inmediato."
+        },
+        "otherTeams": {
+          "title": "Ciclistas de otros equipos",
+          "subtitle": "Ojea talento que pertenece a otros mánagers. Ficharlos implica pujar o negociar."
+        }
+      },
+      "existenceGuarantee": "Cada informe solo contiene ciclistas que existen y se pueden encontrar en la búsqueda.",
+      "scopeLabel": "Alcance",
+      "countryLabel": "País",
+      "typeLabel": "Tipo de ciclista",
+      "submit": "Iniciar misión",
+      "costNote": "Tu ojeador te informa unas {hours} horas después de enviarlo, y esta misión cuesta {cost, number} en gastos de viaje de tu presupuesto. No hay reembolso si se cancela."
+    },
+    "scope": {
+      "u23": "Ciclistas sub-23",
+      "country": "País",
+      "nm": "Campeonatos nacionales",
+      "division": "Mi división",
+      "type": "Tipo de ciclista"
+    }
+  },
+  "shortlist": {
+    "title": "Listas cortas de misiones",
+    "empty": "Ninguna misión ha informado todavía.",
+    "allReportedNote": "Todos los ciclistas de abajo traen un informe de ojeo de nivel 1 gratis. Abre la pestaña Ojeo de su perfil para verlo.",
+    "topFind": "Mejor coincidencia",
+    "noMatches": "Tu ojeador ha buscado, pero no ha encontrado ciclistas que cumplan tus criterios.",
+    "allHidden": "Ahora mismo no se pueden ver los ciclistas de esta misión, por ejemplo por una oferta abierta de la academia o un fichaje en curso.",
+    "statusFreeAgent": "Agente libre"
+  },
+  "teamHistory": {
+    "title": "Ciclistas ojeados por tu equipo",
+    "subtitle": "Todas las investigaciones individuales completadas, sea cual sea el ojeador que las hizo.",
+    "empty": "Ninguna investigación individual ha informado todavía.",
+    "levelValue": "Nivel {level}",
+    "riderUnavailable": "Ya no disponible"
+  },
+  "error": {
+    "capacity": "Tu ojeador ya está a plena capacidad. Mira la lista de trabajos activos: tu trabajo existente sigue en cola e informará según lo previsto.",
+    "insufficient_funds": "No tienes saldo suficiente para cubrir el coste del viaje.",
+    "insufficient_available_balance": "No tienes suficiente dinero disponible: parte de tu saldo está bloqueada en pujas de subastas.",
+    "invalid_target_pool": "Elección de objetivo no válida. Inténtalo de nuevo.",
+    "no_active_season": "Ahora mismo no hay ninguna temporada activa.",
+    "auth": "Tienes que haber iniciado sesión.",
+    "network": "Error de red. Inténtalo de nuevo.",
+    "failed": "Algo salió mal. Inténtalo de nuevo.",
+    "load": {
+      "title": "No se pudo cargar la central de ojeo",
+      "description": "No se ha perdido nada. Los trabajos activos de tu ojeador siguen en marcha. Inténtalo de nuevo.",
+      "retry": "Reintentar"
+    }
+  }
+}

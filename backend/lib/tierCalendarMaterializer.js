@@ -245,7 +245,7 @@ function editionYearFrom(startDate) {
 // i BÅDE dry-run og apply, så dry-run-rapporten viser de tal apply ville håndhæve.
 // #3347: seedRace-formen for én planlagt løbsrække — ÉT sted, så dæknings-verifikationen,
 // realisme-re-drawet og selve insert'et beviseligt seeder ens.
-function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant = 0 }) {
+function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant = 0 }) {
   return {
     id: r.pool_race_id, name: r.name, race_type: r.race_type, stages: r.stages,
     external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null,
@@ -255,7 +255,19 @@ function seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, s
     // altsaa verificerer man andre ruter end dem der persisteres.
     race_class: r.race_class ?? null,
     season_id: seasonId, season_variant: seasonVariant,
+    // #6857: loebets identitet (type, signatur, haandskreven monument-rute). Kun felter der
+    // er sat, saa et loeb uden identitet giver PRAECIS samme seedRace som foer.
+    ...(identityByPoolRace?.get(r.pool_race_id) ?? {}),
   };
+}
+
+// #6857: race_pool's tre identitetsfelter (L1) pr. katalog-loeb - kun de felter der er sat.
+// Generatoren laeser dem kun i S5-modellen; v5 (S1-S4) er uaendret.
+export const RACE_IDENTITY_COLUMNS = Object.freeze(["race_identity_type", "signature", "authored_route"]);
+function identityFieldsOf(row) {
+  const out = {};
+  for (const key of RACE_IDENTITY_COLUMNS) if (row?.[key] != null) out[key] = row[key];
+  return out;
 }
 
 // ctx.archetypeProfiles (#4103, opt-in): tier-tiltet ARCHETYPE_PROFILES-tabel, hvis
@@ -985,7 +997,8 @@ export async function materializeTierCalendars({
   // squad-filteret ville de kunne vælges til seniorkalenderen. NULL/manglende kolonne =
   // senior (se racePoolCatalog.js).
   // #5644 (Y5): en trup laeser KUN sit eget katalog (race_pool.squad = truppen).
-  const catalogColumns = "id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text";
+  // #6857: + identitetsfelterne (additiv migration 2026-10-19, L1).
+  const catalogColumns = `id, external_id, terrain_archetype, name, race_class, race_type, stages, date_text, ${RACE_IDENTITY_COLUMNS.join(", ")}`;
   const { data: dbCatalog, error: cErr } = isSenior
     ? await selectSeniorRacePool(
       (columns) => supabase.from("race_pool").select(columns).is("retired_at", null),
@@ -1012,6 +1025,8 @@ export async function materializeTierCalendars({
   // terrænfordelingen (jf. raceStageProfileGenerator.js).
   const externalIdByPoolRace = new Map((catalog || []).map((c) => [c.id, c.external_id ?? null]));
   const archetypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.terrain_archetype ?? null]));
+  const identityByPoolRace = new Map((catalog || []).map((c) => [c.id, identityFieldsOf(c)]));
+  const identityTypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.race_identity_type ?? null]));
   // #4104: race_class laeses fra KATALOGET, ikke fra races-insertets .select(). Foerste
   // forsoeg hentede den fra den indsatte raekke - men selectet paa linjen nedenfor tager
   // kun (id, pool_race_id, name, race_type, stages) med, saa race_class var undefined og
@@ -1088,7 +1103,7 @@ export async function materializeTierCalendars({
     // dæknings-verifikationen, dry-run-scorecardet OG insert'et nedenfor.
     let tierProfiles = null;
     if (repPool) {
-      const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId }));
+      const seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId }));
       // #6367: S5-seniorens profiler kommer fra divisionens kvote-generator (filler-terraen
       // fordelt over HELE loebssaettet, s5TierTerrainQuota.js). Den samme funktion bruges af
       // gen-traekket, daeknings-verifikationen og dermed insert'et (tierProfiles).
@@ -1114,9 +1129,10 @@ export async function materializeTierCalendars({
         if (draw.exhausted) log(`  ⚠ tier ${tierPlan.tier}: alle ${draw.attemptsTried} gen-træk brød realisme-båndene — bruger det kanoniske træk; realisme-scorecardet vil melde NO-GO (#3347)`);
       }
 
-      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier, profileModel, generate: tierGenerate });
+      const profiles = coverageProfilesFor(repPool.raceRows, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant, archetypeProfiles: archetypeProfilesForTier, profileModel, generate: tierGenerate });
       tierProfiles = profiles;
-      const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand });
+      // #6857: identitets-tjekket gaelder kun S5 - v5 (S1-S4) laeser aldrig typerne.
+      const coverageStats = computeTierCoverageStats({ raceRows: repPool.raceRows, profilesByPoolRaceId: profiles, classStageLengthBand, identityTypeByPoolRaceId: isS5 ? identityTypeByPoolRace : null });
       const coverageViolations = detectCoverageViolations({
         tier: tierPlan.tier, stats: coverageStats, oneDayShareMin, terrainFamilyMin, mountainFreeMin,
       });
@@ -1142,7 +1158,7 @@ export async function materializeTierCalendars({
       // så vægte kalibreret mod S2's udvalg overfitter til netop det udvalg. Kun i dry-run:
       // apply-stien har ingen brug for det, og summary'en skal ikke bære unødig vægt.
       if (dryRun) {
-        tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, seasonId, seasonVariant }));
+        tierPlan.seedRaces = repPool.raceRows.map((r) => seedRaceFor(r, { externalIdByPoolRace, archetypeByPoolRace, identityByPoolRace, seasonId, seasonVariant }));
       }
       // #4270: de PRÆCIS samme profiler dæknings-verifikationen (og dermed insert'et)
       // bruger — så kalender-scorecardet i buildSeasonCalendar.js's dry-run måler det
@@ -1243,7 +1259,7 @@ export async function materializeTierCalendars({
         // (#3347, tierens resolverede re-draw) fra konteksten.
         let profiles = tierProfiles?.get(race.pool_race_id);
         if (!profiles) {
-          const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant };
+          const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, race_class: raceClassByPoolRace.get(race.pool_race_id) ?? race.race_class ?? null, season_id: seasonId, season_variant: seasonVariant, ...(identityByPoolRace.get(race.pool_race_id) ?? {}) };
           profiles = generateRaceStageProfiles(seedRace, { archetypeProfiles: archetypeProfilesForTier, profileModel });
         }
         for (const p of profiles) profileRows.push(toStageProfileRow(race.id, p));

@@ -1,3 +1,4 @@
+import AcademyPrognosisCell from "../components/rider/AcademyPrognosisCell";
 // TrainingPage — daglig træning (#1305).
 //
 // Viser holdets træningsprogrammer (fokus + intensitet per rytter) + dagens
@@ -33,6 +34,7 @@ import {
 import { copenhagenDayKey } from "../lib/raceCentre.js";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
+import { formatClock24 } from "../lib/intlLocale.ts";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities.js";
 import FocusPanel from "../components/training/FocusPanel.jsx";
 import AssistantSuggestionsPanel from "../components/training/AssistantSuggestionsPanel.jsx";
@@ -577,7 +579,8 @@ export default function TrainingPage() {
     RELOAD_BLOCK_REASONS.DIRTY,
   );
   useReloadBlock(
-    Boolean(savingWeekPlan || savingRiderWeekPlanId || savingId || bulkApplying || running),
+    // #6839: "Kører…" venter på aftenkørslen; et reload ville afbryde opfølgningen.
+    Boolean(savingWeekPlan || savingRiderWeekPlanId || savingId || bulkApplying || running || trainNow.running),
     RELOAD_BLOCK_REASONS.BUSY,
   );
 
@@ -868,9 +871,7 @@ export default function TrainingPage() {
     if (!ts) return null;
     const d = new Date(ts);
     if (Number.isNaN(d.getTime())) return null;
-    return d.toLocaleTimeString("en-GB", {
-      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Copenhagen",
-    });
+    return formatClock24(d, "Europe/Copenhagen");
   }
 
   // Bestem hvilken trained-today label der vises (med klokkeslæt når det kendes).
@@ -1311,7 +1312,8 @@ export default function TrainingPage() {
   // for ..." — intet markeret = alle i visningen.
   const bulkDayFlag = training.bulkDay === true;
   const bulkScope = resolveBulkScope(selected, filterIds, selectableRiders.map((r) => r.id));
-  const runTodayLabel = running || trainNow.pressing ? t("loading")
+  const runTodayLabel = trainNow.running ? t("trainNow.running")
+    : running || trainNow.pressing ? t("loading")
     : trainNow.status.enabled ? t("trainNow.button") : (dayClose ? t("runDayNow") : t("trainToday"));
   const primaryLabel = primaryAction.kind === "setDays"
     ? t("primary.setDays", { n: primaryAction.riders })
@@ -1345,7 +1347,9 @@ export default function TrainingPage() {
   }
 
   // Dagens status-linje (overblikkets femte celle).
-  const todayStatusText = todayRun
+  const todayStatusText = trainNow.running
+    ? t("overview.statusRunning") // #6839: the evening run is training the team now
+    : todayRun
     ? trainedTodayLabel()
     : !enabled
       ? t("overview.statusPaused")
@@ -1677,7 +1681,8 @@ export default function TrainingPage() {
           // Kun optaget mens kørslen eller en mængde-ændring står på; ellers er
           // knappen aldrig grå (Clarity: den grå "Train today" var en af sidens
           // største kilder til døde klik).
-          disabled={running || trainNow.pressing || bulkApplying}
+          disabled={running || trainNow.pressing || trainNow.running || bulkApplying}
+          loading={trainNow.running && primaryAction.kind === "run"}
           // min-h-11 = #1602's 44px tryk-mål på telefonen.
           className={isMobile ? "min-h-11 flex-1" : ""}
           data-testid="training-primary"
@@ -1693,11 +1698,12 @@ export default function TrainingPage() {
             size={isMobile ? "md" : "sm"}
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running || trainNow.pressing || bulkApplying}
+            disabled={running || trainNow.pressing || trainNow.running || bulkApplying}
+            loading={trainNow.running}
             className={isMobile ? "min-h-11 flex-none" : ""}
             data-testid="training-run-now"
           >
-            {running ? t("loading") : t("overview.runNow")}
+            {trainNow.running ? t("trainNow.running") : running ? t("loading") : t("overview.runNow")}
           </Button>
         </span>
       )}
@@ -1727,10 +1733,11 @@ export default function TrainingPage() {
             size="sm"
             iconLeft={<PlayIcon size={12} aria-hidden="true" />}
             onClick={handleRunToday}
-            disabled={running || trainNow.pressing}
+            disabled={running || trainNow.pressing || trainNow.running}
+            loading={trainNow.running}
             data-testid="training-run-now"
           >
-            {running ? t("loading") : t("overview.runNow")}
+            {trainNow.running ? t("trainNow.running") : running ? t("loading") : t("overview.runNow")}
           </Button>
         </span>
       )}
@@ -2528,6 +2535,11 @@ export default function TrainingPage() {
                     <div className="min-w-[180px] max-w-[260px] flex-1">
                       {estimate === undefined ? (
                         <span className="text-cz-3 text-xs">{t("loading")}</span>
+                      ) : estimate?.academyPrognosis ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono tabular-nums text-2xs text-cz-1">{riderOverallRating(rider) ?? "—"}</span>
+                          <AcademyPrognosisCell prognosis={estimate.academyPrognosis} />
+                        </div>
                       ) : hasBand ? (
                         <>
                           <DevelopmentGlyph now={estimate.now} progLo={estimate.prog.lo} progHi={estimate.prog.hi} loft={estimate.loft} />

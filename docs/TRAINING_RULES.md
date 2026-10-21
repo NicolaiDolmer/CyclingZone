@@ -1,5 +1,44 @@
 # Træningens regler - SSOT
 
+## Sidste dato før sæsonafslutning (#6898, ejer-go 19/10/2026)
+
+Før `POST /admin/seasons/:id/end` claimer eller skriver sæsonafslutningen, kræver
+`assessFinalTrainingDateSettlement` dokumenteret afregning af sæsonens sidste
+planlagte løbsdato: seneste `race_stage_schedule.scheduled_at`, scoped gennem
+`races.season_id`, konverteret til kalenderdato i Europe/Copenhagen.
+`seasons.end_date` bruges ikke: feltet kan være null for aktiv S4 og skrives ved
+sæsonskiftet. Manglende/ugyldig kalender, læsefejl eller en slutdato i fremtiden
+blokerer med en konkret årsag; der gættes aldrig ud fra dagens dato eller end_date.
+Alle registrerede hold skal være `complete` eller `needs_reconciliation`; sidstnævnte
+er den eksisterende terminaltilstand med manuel afstemning, ikke en genafregning.
+`pending`, `partial`, ukendte tilstande og læsefejl stopper afslutningen.
+
+Et tomt registreringsopslag er aldrig tilstrækkeligt bevis. Holdpopulationen følger
+`isTrainingDateTeam` og sweepens ikke-pensionerede ryttere oprettet/anskaffet før
+datoens slut. Hold med ryttere kræver en registrering, også hvis ingen hold endnu er
+registreret. Registreret arbejde kontrolleres altid, også efter parkering eller tab
+af ryttere. Divisionløse hold bruger den eksisterende kalenderdagssti: en færdig
+`training_day_runs`-rapport på hold/dato med `game_day IS NULL` er deres kvittering;
+en pending/loading/writing-reservation er ikke nok. Den kvittering erstatter aldrig
+registreringen for et hold med division. Sæson 0 er fortsat undtaget.
+
+Samme gate håndhæves i `transitionToNextSeason` før første write når kildesæsonen
+er `active`, også for force og direkte scriptkald. Referenceuret er transitionens
+normaliserede `transitionAt` (Date eller ISO-streng), uden et ekstra opslag af
+maskinuret eller et separat `deps.now`-ur. Et udeladt transitionAt fastlægges af
+den eksisterende standard én gang ved funktionskaldet. Dry-run er fortsat læsende;
+genoptagelse fra en allerede completed sæson genmåler ikke den ændrede population.
+Force-auditten (`MANUAL_OVERRIDE`) skrives først via kernens `beforeTransitionWrites`
+efter samme settlement-tjek er passeret, før transitionens øvrige writes. En forventet
+settlement-afvisning (`training_settlement_blocked`) returnerer HTTP 400 med vagtens
+fejltekst og skriver hverken force-audit eller fejlaudit. Der foretages ikke et ekstra
+route-tjek, som kunne passere før auditten og afvise ved kernens gentagne læsning.
+Audit-skrivningsfejl stopper stadig transitionen før dens øvrige writes.
+Gaten er read-only, kan ikke force-omgås og afregner aldrig historisk træning efter
+et skifte. Admin får dato, hold og årsag før første irreversible handling. Den ændrer
+ikke kl. 20-reglen eller udbyttet ved manuel træning. Faste tests bruger
+25/10/2026 kl. 20 Copenhagen (19:00Z); databaseopslag er lokale syntetiske fixtures.
+
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 
 Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
@@ -20,6 +59,23 @@ Begge migrationer er registreret i prod (read-only 6/10). Det oprindelige forsla
 er fjernet fra proposals, fordi dets writer er erstattet og ikke må genanvendes.
 Infrastrukturen er live; en konkret kompensationskørsel kræver fortsat separat
 ejer-go og præcis fil-hash. Dette er ikke en godkendelse af en ny datareparation.
+
+## Parkerede hold træner ikke (#6536, 17/10)
+
+- Et parkeret hold (`teams.parked_at` sat) er urørt: ingen træningstick, hverken på løbsdags-nøglen eller den gamle kalenderdags-nøgle. Arbejde der allerede var registreret for datoen før parkeringen, afregnes færdigt.
+- Den gamle kalenderdags-nøgle (`game_day IS NULL`) gælder kun hold uden division, der ikke er parkeret: division-løse AI-hold og et nyt menneskehold oprettet uden division (fallback i `pickDivisionForNewTeam`).
+- Én regel for begge writers: `isLegacyCalendarTickTeam` (`trainingDateClose.js`) og `isTrainingDateTeam` (`trainingDateReadiness.js`).
+- Managerens egne tryk afviser også et parkeret hold med 409 `team_parked`: "Træn nu" (`runTrainNow`) og den gamle `POST /api/training/run-today`. `GET /api/training/me` viser gaten lukket for et parkeret hold (`enabled: false`, og `dayClose.reason: "team_parked"` når løbsdags-tick er on), så fladen ikke lover en knap, der afvises (#6811).
+- **Varig parkeringsperiode (#6811):** et comeback (`returnParkedTeam`) sætter `teams.comeback_at`. En dato der sluttede før comebacket, regnes ikke med for holdet, samme regel som `created_at` for et nyt hold; comeback-dagen selv tæller. Reglen ligger i databasen, så den holder også efter en genstart, hvor sweepen gennemgår alle sæsonens datoer igen. Uden den fik et tilbagevendt hold alle de parkerede datoer på én gang. Comebacks fra før kolonnen fandtes, har `comeback_at` NULL og er ikke dækket.
+
+## Forbigående DB-fejl i facilitets- og træneropslaget (#6596, 17/10)
+
+- **Forbigående fejl** (HTTP 0/502/503/504/520-524, netværksfejl, statement-timeout): træningsmotoren afregner IKKE holdet uden facilitets- og trænerbonus. Tick'et kaster, intet skrives, og holdet tages ved næste sweep. Kun motoren beder om dette (`loadTrainingStaffContext(..., { retryOnTransient: true })`).
+- **Vedvarende fejl** (fx manglende rettighed, skema-drift): neutral kontekst og Sentry, så én permanent fejl ikke stopper al træning.
+- **Andre læsere** (akademi-visningen, dev-scripts) får altid neutral kontekst; en kort gateway-fejl vælter ikke siden.
+- **Reservationen** på den gamle kalenderdags-sti slettes efter en fejl og prøves op til 3 gange; lykkes det ikke, meldes det i Sentry (`step: reservation_cleanup`).
+- **Selvrettende reservation (#6759):** reservationen bærer et stadie. `loading` (kun læsning, intet skrevet) ældre end én sweep-cyklus (5 min, cron-kadencen) er ledig: næste kørsel sletter den betinget og afregner holdet én gang. En frisk `loading` giver en retryable fejl, så sweepen prøver igen i stedet for at kalde dagen færdig. `writing` (writes i gang) og afregnede rækker frigives aldrig.
+- **Managerens tryk på en holdt reservation (#6798, #6827, begge stier):** rammer `POST /api/training/run-today` en reservation som en sweep eller et andet tryk holder lige nu, svarer routen `409 { error: "training_in_progress" }` uden Sentry, og frontenden genindlæser som ved `already_trained_today`. På den gamle kalenderdags-sti er det en frisk `loading`-reservation. På løbsdags-stien er det en frisk `pending`-række (yngre end samme tærskel, dvs. phase 1 eller phase 2 i gang) eller en række der blev frigivet mellem INSERT og opslaget. Routen stopper da og kører ingen senere løbsdage. En afregnet løbsdag giver stadig `already_trained_today`, og en forældet `pending`-række (fx efter et nedbrud i phase 2) tæller som kørt som før: en blokeret løbsdag, aldrig en ledig. Sweeps beholder den retryable fejl. `trainingDayCloseTrigger` tæller en forældet `loading` som ikke kørt.
 
 ## Datoens rytterkvittering (#5915, ejer-valg A 30/9)
 
@@ -74,6 +130,28 @@ i `trainingDailyReceipt.ts`. Ingen træningsskrivning eller flag ændres.
 Eksisterende resultater og immutable belastningssnapshots bevares ved den ejer-godkendte genopretning. Et ekstra bevis på samme rytter/sæson/løbsdag kan referere den oprindelige, tidligere afviklede aktivitet via `training_race_loads.duplicate_of_race_id/duplicate_of_stage_number`. Kun det oprindelige bidrag tæller i datoens tilstand; alle bevisrækker indgår i den atomiske afregningskvittering og forbruges samlet. Der opstår ét udviklingstick pr. rytter/løbsdag og én tilstandsafregning pr. dato. Normale nye belastninger er fortsat unikke på rytter/sæson/løbsdag.
 
 `recover_transferred_race_loads` er service-only, sammenligner præcist snapshot og finaliseringsstatus, kræver eksisterende resultat og en tidligere, uafregnet aktivitet på samme slot og committer hele belastningsbatchen eller intet. Ukendte ekstra konflikter, ændret evidens eller allerede afregnet tilstand afviser genopretningen. Ingen resultater, programmer, evner, skader eller live-tilstand skrives af denne RPC. Fremtidige dobbeltstarter afvises før resultat/startsnapshot efter [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md); aksen står i [CALENDAR_RULES §8](CALENDAR_RULES.md#8-rytterbinding-og-trupkrav). Den godkendte genopretning er gennemført 30/9 efter PR #5983. Resultatfingeraftrykket er bevaret; privat før-/efterbevis og rollback-note ligger i OneDrive-context.
+
+## Rytter der har forladt holdet (#6504, 19/10)
+
+En rytter i datoens frosne trup, som **nu** har `riders.team_id IS NULL` (frigivet,
+pension, graduering), er ikke et afstemningsfund. Aftenafregningen
+(`trainingDateClose.js`) sender ham til `depart_training_date_riders`
+(`database/2026-10-19-6504-departed-training-riders.sql`), som tjekker `team_id`
+server-side under datoens låse.
+
+- Han lægges i `quarantined_rider_ids` som før. Dermed er datoens
+  ejerskabs-semantik uændret: et andet hold kan registrere ham samme dato,
+  og værnet for tidligere datoer springer ham over.
+- Beviset (tidspunkt, `applied_receipt_days`, åbnings-tilstand) gemmes i
+  `departure_evidence`, **ikke** i `quarantine_evidence`. Derfor indgår han
+  ikke i `missing_evidence`, datoen kan ende `complete`, og der skrives ingen
+  outbox-række (ingen Sentry, ingen Discord-ops).
+- Kun almindelige hold i aktiv sæson. Bank-, frosne og testhold, historiske
+  sæsoner og ryttere på et andet hold karantæneres uændret med alarm.
+- Mangler funktionen i deploy-vinduet (PGRST202), departes ingen, og alle
+  karantæneres som før #6504.
+- En rytter frigivet mellem afregningens tjek og commit karantæneres stadig
+  af commit-RPC'en (`unsafe_current_state`). Det er sjældent og ikke ændret.
 
 ## Førstegangsregistrering og driftalarmer (#5928, 29/9)
 
@@ -506,6 +584,14 @@ et øjebliksbillede af hele bestanden.
 som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
 fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
 
+**Formtoppe i løbsmotor v4 (#6156, `s5_profiles_v2`, slukket).** Under v4 når formen motoren fra
+`official_times_v3` (uden top). Toppen kobles på, når løbet er bundet til `s5_profiles_v2` **og**
+flaget `app_config.race_form_peaks` er tændt (eget flag fra 19/10, tændes ved sæsonskiftet; slukket
+= formen alene): én samlet form = rytterens form + toppens tillæg i
+peak-vinduet, minus dykket i tilbagebetalingen bagefter, klampet til 0-100. Tillægget er det
+samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
+Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
+
 ### 5.4 Skader fra træning
 
 | Regel | Kilde |
@@ -895,6 +981,14 @@ Ejeren formulerede 18/9 aften den regel al løbsdags-mekanik skal måles mod. Fu
 
 **"Train now" og løbsudtagelsen (#4847; pr. rytter siden #6139, ejer 8/10 valg A).** Et tryk skriver én lås pr. rytter i trykkets frosne trup (`training_train_now_locks`). Kun de ryttere er afgjort for datoen: en låst rytter kan hverken sættes ind i eller tages ud af et løb med en etape den dato. Ryttere uden lås (købt eller flyttet efter trykket) kan stadig udtages. Det gælder alle veje: manuel/bulk, auto-udfyld, regenerering, "Train only", entry-sweep og løbsstartens autofyld. Regel 2 er uændret. Låsen vises på udtagelsen (banner med tidspunkt, grå ryttere) og på træningssiden. Kode: `trainNowLock.js`. **Advarsel før trykket (#6740, ejer 16/10):** status (`GET` Train now) har `shortRaces: [{ id, name, fit, entered, min, startsShort }]`, et løb pr. af dagens løb (ikke startet, ikke afmeldt, ikke ryddet) hvor holdets raske udtagne ryttere (`fit`) er under 6. `entered` er antallet af gyldige udtagne (også skadede); `0` betyder "ingen udtaget", ellers vises "kun {fit} af {min}". Efter trykket kan ingen rytter sættes ind og assistenten kan ikke fylde op. Holdet stiller da ikke op, undtagen under regel B (#6740 PR 2, ejer 16/10): havde holdet mindst 6 udtaget (`entered`), og er det kun skade der tager det under, starter det med de `fit` raske (mindst 1), og `startsShort` er `true`. Linjen siger så "starter med N" i stedet for "stiller ikke op", og bekræft-vinduet hedder "Your team starts with fewer riders". Se [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) under "Hvem stillede op". Siden viser en linje pr. løb under knappen og spørger i et bekræft-vindue før trykket; trykket blokeres ikke. Listen er kun med, mens trykket er muligt. Serveren tjekker igen ved selve trykket (`POST`): regner den listen ud igen ved hvert første tryk; står et af løbene ikke i `confirmedShortRaceIds` (de løb siden viste, og som manageren sagde ja til), svarer den `409 short_races_confirm` med den friske liste, og intet låses. Et gentaget tryk (låse findes) spørges aldrig igen. Kan tjekket ved trykket ikke læse listen, fejler trykket (500, ingen låse); kun GET-visningen er best-effort. Tællingen bruger samme filtre som motoren før gulvet: egnede ryttere i løbets trup, ikke skadede, ikke brugt på dagen i et andet løb (#5860).
 
+**Train now under afregning (#6827/#6839, ejer-valg 18/10).** Når aftenkørslen holder holdets dato,
+svarer managerens kald `409 training_in_progress`; knappen viser den godkendte igangværende tilstand og
+siden opdaterer automatisk, når status er afregnet. I den normaliserede datosti bruger manageren
+`try_register_training_date_work` og `try_commit_training_date_tick`: ikke-ventende advisory-locks i samme
+transaktion som den eksisterende RPC. Begge bevarer cutover → hold-låserækkefølgen. Sweepens blokerende
+RPC'er er uændrede. Statuspolling afbryder timeoutede kald og holder ét kald aktivt ad gangen; stop og
+unmount afbryder også. Under backend-før-migration-vinduet bruges kun ved manglende try-RPC (`PGRST202`) den gamle ventende RPC; held-adfærden kræver anvendt migration og opdateret schema-cache.
+
 ### 13.3c Fast udbytte pr. dato uanset sæsonens længde (#6711, ejer-go 16/10)
 
 Plan-PR 2 i [`docs/superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md`](superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md).
@@ -940,7 +1034,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-o
 - **Akademi-indtag.** Ét kuld pr. hold pr. **uge**, claimet på ugens søndag (`academyIntakePull.js`, `academy_intake_ticks`). Uafhængigt af løbsdags-aksen.
 - **Konsekvens.** G1-deleren holder sæsonens samlede udvikling uændret, så på sæson-niveau flytter forholdet "udvikling pr. lønkrone" sig ikke af akse-skiftet alene. Inden for sæsonen følger udviklingen løbsdagene og lønnen kalenderdatoen. Skal økonomien flytte med til løbsdagen, er det en selvstændig ejer-beslutning og et selvstændigt stykke arbejde. Dette afsnit beskriver status quo, det vælger den ikke.
 
-**Gate G6 (målt om 20/9, harness `backend/scripts/dev/trainingDayCloseCapacity4847.mjs`):** 362 hold × 5 løbsdage × 18 ryttere = 1.810 ticks, ca. 61.600 DB-kald, ca. 134.000 skrevne rækker. Sekventielt ved 12 ms latens pr. kald: ca. 152 s mod cron-intervallets 300 s (49 % margin) — **grøn**. Ved 25 ms latens er sweepen over intervallet; knappen er `TEAM_CONCURRENCY` i `trainingDayCloseTrigger.js`. Overlap-guarden gør en langsom dag sikker: den forsinker, den fordobler aldrig.
+**Gate G6 (målt om 20/9, harness `backend/scripts/dev/trainingDayCloseCapacity4847.mjs`):** 362 hold × 5 løbsdage × 18 ryttere = 1.810 ticks, ca. 61.600 DB-kald, ca. 134.000 skrevne rækker. Sekventielt ved 12 ms latens pr. kald: ca. 152 s mod cron-intervallets 300 s (49 % margin) — **grøn**. Ved 25 ms latens er sweepen over intervallet; knappen er `TEAM_CONCURRENCY` i `trainingDayCloseTrigger.js`. Overlap-guarden gør en langsom dag sikker: den forsinker, den fordobler aldrig. **Forældet 18/10 (#6766):** målt i prod ca. 6 s pr. hold serielt (405-408 hold, 39-50 min; spec `2026-10-15-training-10x-jobqueue-direct-pg-design.md` §1). Kapacitetskravet er nu ejerens mål < 2 min (#5911), tjekket i `backend/scripts/loadtestRaceDay.mjs` (`training_close_duration`, nedre grænse: kan afvise, ikke bevise).
 
 Kald-tallet er hævet fra 15/9's 27.200 af to grunde, og **varigheden er uændret**: (1) hvert ability-update tælles nu som ét fysisk kald i stedet for ét pr. batch — de 25 samtidige er parallelle i tid, men de er 18 kald mod databasen, så det gamle tal undervurderede belastningen; (2) løbsdags-stien har fået to loads mere pr. tick (bindingen + `race_results`, se §13.3b). Begge ligger i motorens parallelle load-fase, derfor slår de ikke igennem på uret.
 

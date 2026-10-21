@@ -1,0 +1,108 @@
+{
+  "page": {
+    "title": "Privacybeleid",
+    "langSwitchLabel": "Dansk",
+    "back": "Terug",
+    "intro": "Laatst bijgewerkt: 6 oktober 2026. Cycling Zone is een open beta die wordt beheerd door Dolmer Digital (Deens CVR 46524861). Ik verwerk zo min mogelijk gegevens en jij bepaalt wat ik mag meten."
+  },
+  "sections": {
+    "controller": {
+      "heading": "Wie is de verwerkingsverantwoordelijke?",
+      "paragraph1": "<bold>Dolmer Digital</bold> (Deens CVR 46524861), een eenmanszaak die wordt gedreven door Nicolai Dolmer Mikkelsen. Cycling Zone is een product van Dolmer Digital.",
+      "paragraph2": "Verzoeken over je gegevens (inzage, verwijdering, overdraagbaarheid, bezwaar) kun je sturen via Discord (voorkeur) of via een e-mailadres dat op de <helpLink>Helppagina</helpLink> staat. Ik antwoord meestal binnen een paar dagen, en uiterlijk binnen één maand volgens GDPR art. 12."
+    },
+    "dataTypes": {
+      "heading": "Welke gegevens verwerk ik?",
+      "items": [
+        "<bold>Account:</bold> e-mailadres, gebruikersnaam, gekozen teamnaam en managernaam (nodig om in te loggen en te spelen).",
+        "<bold>Spelgegevens:</bold> de economie van je team, renners, veilingen, bestuursstatus, seizoensresultaten (alles wat door te spelen ontstaat).",
+        "<bold>Optioneel:</bold> je Discord-ID als je die toevoegt om DM-meldingen te ontvangen.",
+        "<bold>Technisch:</bold> IP-adres in toegangslogs gedurende maximaal 30 dagen, gebruikt voor beheer en beveiliging.",
+        "<bold>Analyse (alleen met toestemming):</bold> anonieme gedragsgegevens via Microsoft Clarity (bijvoorbeeld waar gebruikers vergeefs klikken of gefrustreerd scrollen), anonieme verkeers- en bronstatistieken via Google Analytics (bijvoorbeeld van welke pagina je kwam) en anonieme paginaweergaven via Vercel Web Analytics (bijvoorbeeld hoeveel mensen een pagina bezoeken). Alleen gebruikt om slechte UX te verhelpen en te begrijpen waar spelers het spel vinden.",
+        "<bold>Productanalyse via PostHog (draait tenzij je analyse weigert):</bold> paginaweergaven en belangrijke stappen in het spel (bijvoorbeeld aanmelden, team aangemaakt, eerste bod en eerste training), om te zien waar nieuwe spelers vastlopen. PostHog plaatst geen cookies en slaat niets op in je browser: elke paginaweergave krijgt een nieuw willekeurig ID. Zodra je inlogt, worden deze gebeurtenissen gekoppeld aan je interne account-ID (nooit je e-mailadres of naam), zodat bezoeken over sessies heen kunnen worden verbonden. Als je de categorie \"Analyse\" weigert, gaat PostHog direct uit. De rechtsgrond is het gerechtvaardigd belang bij het verbeteren van het spel (GDPR art. 6, lid 1, onder f), en analyse weigeren is hoe je bezwaar maakt.",
+        "<bold>Herkomstbron (gerechtvaardigd belang):</bold> wanneer je een account aanmaakt, leg ik vast hoe je de site voor het eerst bereikte (een verwijzende link, eventuele campagnetags in de URL en de pagina waarop je binnenkwam), zodat ik kan zien welke kanalen nieuwe spelers brengen. Alleen eerstepartij, geen tracking over sites heen, en je kunt op elk moment bezwaar maken.",
+        "<bold>Geaggregeerde verkeersstatistieken (geen toestemming nodig):</bold> ik tel anonieme, geaggregeerde paginaweergaven en betrokkenheid (bijvoorbeeld hoeveel bezoekers een pagina kreeg en of ze actief waren) zonder cookies en zonder IP-adressen of andere gegevens op te slaan die jou kunnen identificeren. Ik leg ook vast van welke pagina een bezoek kwam en welke campagnetags in de URL stonden, zodat ik kan zien welke kanalen bezoekers brengen. Dat is informatie over de verwijzende link, niet over jou. Omdat het niet aan jou te koppelen is, is hiervoor geen toestemming nodig.",
+        "<bold>Fair play (gerechtvaardigd belang):</bold> om valsspelen met meerdere accounts op te sporen en vast te leggen, noteer ik technische signalen wanneer een account wordt aangemaakt en wanneer er acties met waarde in het spel plaatsvinden (bijvoorbeeld geaccepteerde transfers, veilingbiedingen en opgenomen leningen): IP-adres, browsergegevens (user agent), taalinstelling en tijdzone. Deze gegevens worden uitsluitend gebruikt om fair play te handhaven, zijn nooit zichtbaar voor andere spelers, worden niet met derden gedeeld en worden na 180 dagen automatisch verwijderd. Als je je account verwijdert, worden ze samen met het account verwijderd. De rechtsgrond is mijn gerechtvaardigd belang bij een eerlijk spel (GDPR art. 6, lid 1, onder f), en je kunt op elk moment bezwaar maken."
+      ]
+    },
+    "founderWaitlist": {
+      "heading": "Founder-wachtlijst (vrijblijvende interesse)",
+      "intro": "Als je je aanmeldt voor de \"Founder\"-wachtlijst, verwerk ik de volgende gegevens op basis van je uitdrukkelijke toestemming (GDPR art. 6, lid 1, onder a):",
+      "items": [
+        "<bold>Contact:</bold> e-mailadres en/of Discord-gebruikersnaam (minstens één is nodig, zodat ik je kan bereiken).",
+        "<bold>Intentie:</bold> interessegraad, voorkeursniveau, belangrijkste reden, gewaardeerde voordelen, rode lijnen rond eerlijkheid (vrije tekst).",
+        "<bold>Opvolging:</bold> toestemming voor persoonlijke opvolging (apart ja/nee).",
+        "<bold>Herkomst:</bold> waar je vandaan kwam (UTM-parameter of handmatige tag, bijvoorbeeld \"discord_launch\").",
+        "<bold>Tijdstempel:</bold> wanneer je toestemming gaf (bewijs van de rechtsgrond)."
+      ],
+      "purpose": "<bold>Doel:</bold> de wachtlijst beheren, contact met je opnemen over de lancering en meten welke kanalen echte interesse opleveren.",
+      "retention": "<bold>Bewaartermijn:</bold> tot je vraagt om verwijdering, of na 24 maanden inactiviteit, wat eerst komt. Je kunt me op elk moment schrijven om verwijderd te worden.",
+      "important": "<bold>Belangrijk:</bold> een aanmelding voor de wachtlijst is <em>geen</em> aankoop en <em>niet</em> bindend. Er wordt geen betaling geïnd vóór een eventuele latere lancering, waarbij je actief commerciële voorwaarden moet accepteren."
+    },
+    "thirdParties": {
+      "heading": "Derden (verwerkers)",
+      "items": [
+        "<bold>Supabase (EU, Frankfurt):</bold> database en authenticatie (verwerkersovereenkomst aanwezig).",
+        "<bold>Vercel:</bold> frontend-hosting (EU/VS-edge). Vercel ziet IP-adressen in toegangslogs.",
+        "<bold>Railway:</bold> backend-hosting.",
+        "<bold>PostHog (EU-cloud):</bold> productanalyse zonder cookies. Uitgeschakeld als je de categorie \"Analyse\" weigert.",
+        "<bold>Microsoft Clarity:</bold> wordt alleen geladen als je de categorie \"Analyse\" hebt geaccepteerd.",
+        "<bold>Google Analytics:</bold> wordt alleen geladen als je de categorie \"Analyse\" hebt geaccepteerd. Advertentiesignalen staan uit.",
+        "<bold>Vercel Web Analytics:</bold> wordt alleen geladen als je de categorie \"Analyse\" hebt geaccepteerd.",
+        "<bold>Discord (via Discord Inc.):</bold> alleen als je vrijwillig je Discord-ID toevoegt of via Discord contact met me opneemt. Discord is een zelfstandige verwerkingsverantwoordelijke voor alle inhoud die je me daar stuurt."
+      ],
+      "footnote": "Ik verkoop je gegevens niet en deel ze niet met derden voor marketingdoeleinden. Een link naar Discord is geen gegevensdoorgifte, alleen wanneer je zelf klikt en me schrijft."
+    },
+    "retention": {
+      "heading": "Hoe lang bewaar ik gegevens?",
+      "items": [
+        "<bold>Account- en spelgegevens:</bold> zolang je account actief is. Als je je account verwijdert, worden persoonsgegevens binnen 30 dagen verwijderd. Geaggregeerde spelgeschiedenis (bijvoorbeeld eerdere seizoensresultaten) kan in geanonimiseerde vorm bewaard blijven.",
+        "<bold>Wachtlijstgegevens:</bold> tot je vraagt om verwijdering, of 24 maanden inactiviteit, wat eerst komt.",
+        "<bold>Toegangslogs (IP):</bold> automatisch verwijderd na 30 dagen.",
+        "<bold>Fair-playtelemetrie (IP- en apparaatsignalen):</bold> automatisch verwijderd na 180 dagen.",
+        "<bold>Bewijs van toestemming (tijdstempel + keuzes):</bold> zolang de bijbehorende gegevens worden verwerkt, zodat ik de rechtsgrond kan aantonen."
+      ]
+    },
+    "rights": {
+      "heading": "Je GDPR-rechten",
+      "intro": "Je hebt het recht om:",
+      "items": [
+        "<bold>Inzage</bold>: te weten welke gegevens ik over je heb.",
+        "<bold>Rectificatie</bold>: onjuiste gegevens te laten corrigeren.",
+        "<bold>Wissing</bold> (\"recht om vergeten te worden\").",
+        "<bold>Overdraagbaarheid</bold>: je gegevens in een machineleesbaar formaat te ontvangen.",
+        "<bold>Bezwaar</bold> te maken tegen verwerking op basis van gerechtvaardigd belang.",
+        "<bold>Toestemming in te trekken</bold>: geldt vanaf dat moment en stopt het verzamelen. Gegevens die vóór het intrekken zijn verzameld, kunnen niet uit anonieme aggregaten worden gehaald."
+      ],
+      "complaint": "<bold>Klacht indienen bij de Deense gegevensbeschermingsautoriteit</bold>: <datatilsynetLink>datatilsynet.dk/english</datatilsynetLink>.",
+      "complaintUrl": "https://www.datatilsynet.dk/english",
+      "consentButton": "Mijn toestemmingskeuzes wijzigen"
+    },
+    "cookies": {
+      "heading": "Cookies en lokale opslag",
+      "intro": "Ik gebruik <em>strikt noodzakelijke</em> cookies/localStorage en eerstepartij-opslag voor:",
+      "items": [
+        "<bold>Inlogsessie</bold> (Supabase auth): nodig om je ingelogd te houden.",
+        "<bold>Themakeuze</bold> (licht/donker): lokaal in je browser opgeslagen.",
+        "<bold>Toestemmingskeuzes</bold> (<code>cz_consent_v1</code> in localStorage): zodat ik je selectie onthoud en het niet opnieuw vraag.",
+        "<bold>Versievastlegging</bold> (<code>__vdpl</code>): houdt je browser op de versie van de app die je hebt geladen, zodat de pagina halverwege een sessie niet kapotgaat."
+      ],
+      "outro": "Hiervoor is geen toestemming nodig onder de ePrivacyrichtlijn (strikt noodzakelijk). <bold>Microsoft Clarity</bold>, <bold>Google Analytics</bold> en <bold>Vercel Web Analytics</bold> worden alleen geladen als je de categorie \"Analyse\" actief hebt geaccepteerd. <bold>PostHog</bold> slaat niets op in je browser (geen cookies, geen localStorage) en gaat uit als je \"Analyse\" weigert. Je kunt je keuze op deze pagina op elk moment wijzigen."
+    },
+    "currentChoices": {
+      "heading": "Je huidige keuzes",
+      "necessary": "Noodzakelijk",
+      "alwaysOn": "altijd aan",
+      "analytics": "Analyse",
+      "marketing": "Marketing",
+      "email": "E-mail",
+      "accepted": "geaccepteerd",
+      "denied": "geweigerd",
+      "lastUpdated": "Laatst bijgewerkt: {date}"
+    },
+    "changes": {
+      "heading": "Wijzigingen in dit beleid",
+      "paragraph": "Ik werk dit beleid bij wanneer er nieuwe tools of functies worden ingevoerd. Belangrijke wijzigingen kondig ik aan in de patch notes in het spel. De nieuwste versie vind je altijd hier."
+    }
+  }
+}

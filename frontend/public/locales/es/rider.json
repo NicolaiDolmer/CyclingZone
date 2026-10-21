@@ -1,0 +1,980 @@
+{
+  "badges": {
+    "u23": "Menor de 23 (sub-23)",
+    "u25": "Menor de 25 (sub-25)",
+    "auction": "Subasta activa",
+    "listed": "En el mercado de fichajes",
+    "ai": "Equipo IA",
+    "incoming": "Fichaje entrante",
+    "outgoing": "Fichaje saliente",
+    "self": "Operación interna (equipo propio)",
+    "bought": "Has comprado a este ciclista",
+    "sold": "Has vendido a este ciclista",
+    "injured": "Lesionado",
+    "academy": "Ciclista de la academia (no cuenta para el tope de la plantilla sénior)",
+    "retireRisk": "Alto riesgo de retirada: los ciclistas suelen retirarse entre los 36 y los 40 años",
+    "contractExpiring": "El contrato caduca en el próximo cambio de temporada: este ciclista pasará a ser agente libre salvo que antes se amplíe el contrato",
+    "junior": "Ciclista júnior (en tu plantilla júnior)",
+    "label": {
+      "u23": "S23",
+      "u25": "S25",
+      "auction": "SUB",
+      "ai": "IA",
+      "incoming": "ENT",
+      "outgoing": "SAL",
+      "self": "PROP",
+      "bought": "COMP",
+      "sold": "VEND",
+      "injured": "LES",
+      "academy": "ACAD",
+      "retireRisk": "35+",
+      "contractExpiring": "CAD",
+      "listed": "VENTA",
+      "junior": "JÚN"
+    }
+  },
+  "page": {
+    "back": "Atrás",
+    "notFound": "Ciclista no encontrado",
+    "retry": "Reintentar",
+    "loadingAria": "Cargando ciclista"
+  },
+  "header": {
+    "watchlistAdd": "Añadir a la lista de seguimiento",
+    "watchlistRemove": "Quitar de la lista de seguimiento",
+    "watchlistToggleFailed": "No se pudo actualizar tu lista de seguimiento. Inténtalo de nuevo.",
+    "compare": "⇄ Comparar",
+    "compareTitle": "Comparar con otros ciclistas",
+    "watchlistCount": "{count, plural, one {1 mánager sigue a este ciclista} other {# mánagers siguen a este ciclista}}",
+    "visitors": "{count, plural, one {1 visitante único} other {# visitantes únicos}} (7 d)",
+    "visitors24h": "{count, plural, one {1 en las últimas 24 h} other {# en las últimas 24 h}}",
+    "visitorsNew": "Nuevo",
+    "visitorsTrendUp": "Sube un {pct} % respecto a los 7 días anteriores",
+    "visitorsTrendDown": "Baja un {pct} % respecto a los 7 días anteriores",
+    "u23": "Sub-23",
+    "junior": "Júnior",
+    "u25": "Sub-25",
+    "retired": "Retirado",
+    "ageYears": "{age} años",
+    "heightCm": "{height} cm",
+    "weightKg": "{weight} kg",
+    "potential": "Potencial",
+    "overall": "Valoración",
+    "teamPrefix": "Equipo:",
+    "freeAgent": "Agente libre",
+    "nextSeasonPrefix": "Entrante:",
+    "pendingTransfer": "Se une a {team} cuando termine su carrera por etapas actual",
+    "activeAuctionBadge": "Subasta activa",
+    "highestBidLabel": "Puja más alta: {amount} CZ$",
+    "valueLabel": "Valor CZ$",
+    "contractSalary": "Salario CZ$",
+    "contractLength": "{count, plural, one {1 temporada} other {# temporadas}}",
+    "contractExpires": "Caduca tras la temporada {season}",
+    "noContract": "Agente libre (sin contrato)",
+    "estSalary": "Salario est. CZ$",
+    "typeDefault": "Todoterreno",
+    "newValueBeta": "Nuevo valor (beta): {amount} CZ$",
+    "newValueBetaTooltip": "Vista previa de la próxima valoración basada en habilidades. Aún no se usa para comprar, vender ni para el salario."
+  },
+  "blocked": {
+    "pendingTransfer": "El ciclista ha sido traspasado y se une a su nuevo equipo cuando termine su carrera por etapas actual. No se le puede volver a traspasar hasta entonces.",
+    "retired": "El ciclista está retirado y no se puede traspasar.",
+    "errorFallback": "Algo salió mal"
+  },
+  "offerShortcut": {
+    "textWithPrice": "Oferta abierta: {price} CZ$ de {team}",
+    "text": "Oferta abierta de {team}",
+    "unknownTeam": "otro mánager",
+    "cta": "Decidir"
+  },
+  "tabs": {
+    "stats": "Habilidades",
+    "season": "Historial de temporadas",
+    "results": "Resultados de carreras",
+    "bids": "Historial de pujas",
+    "history": "Historial",
+    "development": "Desarrollo"
+  },
+  "profile": {
+    "training": {
+      "title": "Enfoque de entrenamiento",
+      "slotsUsed": "{used} / {total} plazas usadas",
+      "loading": "Cargando entrenamiento…",
+      "focus": {
+        "vo2max": "VO2max",
+        "vo2max_climb": "VO2max (escalada)",
+        "vo2max_punch": "VO2max (punch)",
+        "threshold": "Umbral",
+        "sprint": "Sprint",
+        "endurance": "Resistencia",
+        "technique": "Técnica",
+        "aero": "Aerodinámica",
+        "tempo": "Tempo",
+        "restitution": "Recuperación activa",
+        "loebslaere": "Lectura de carrera",
+        "cobbled_sectors": "Sectores de adoquines",
+        "echelon_drills": "Ejercicios de abanicos",
+        "attack_repeats": "Repeticiones de ataque"
+      },
+      "active": "Activo: {focus} · {intensity} · entrena {abilities}",
+      "activeRest": "Descansando (enfoque {focus} en pausa)",
+      "effectNote": "se actualiza a diario",
+      "noRiskNote": "Una intensidad mayor crece más rápido, sin riesgo de perder progreso.",
+      "restNote": "Sin crecimiento de habilidades en un día de descanso; la fatiga se recupera.",
+      "emptyFocus": "Elige un enfoque para asignar entrenamiento.",
+      "actionErrorGeneric": "No se pudo guardar. Inténtalo de nuevo en un momento.",
+      "actionErrors": {
+        "no_slots": "No quedan plazas de entrenamiento.",
+        "auth": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+        "network": "Falló la conexión. Comprueba tu red e inténtalo de nuevo."
+      },
+      "log": {
+        "title": "Entrenamiento diario · últimos 7 días",
+        "empty": "Aún no hay días de entrenamiento.",
+        "today": "Hoy",
+        "sharp": "Día de buenas piernas",
+        "flat": "Día flojo",
+        "gains": "+{count} habilidades"
+      },
+      "trend": {
+        "title": "Entrenamiento · últimos 30 días",
+        "trained": "Sesiones entrenadas",
+        "breakthroughs": "Saltos de nivel",
+        "sharp": "Días de buenas piernas",
+        "note": "Contado a partir de las ejecuciones de entrenamiento de los últimos 30 días."
+      },
+      "form": {
+        "title": "Forma y recuperación",
+        "healthy": "Sin lesiones",
+        "healthyHint": "Listo para entrenar duro",
+        "pending": "Aún no hay datos de condición."
+      },
+      "locked": {
+        "title": "El entrenamiento está oculto",
+        "body": "No puedes ver ni gestionar el entrenamiento, la forma o la fatiga de un ciclista de otro equipo. Fíchalo y se desbloquea."
+      },
+      "retired": {
+        "title": "Ciclista retirado",
+        "body": "Los ciclistas retirados no entrenan, así que no hay programa activo, forma ni fatiga que mostrar."
+      },
+      "changeFocus": "Cambiar",
+      "chooseFocus": "Elegir",
+      "score": {
+        "title": "Puntuación de entrenamiento",
+        "todayLabel": "Sesión de hoy",
+        "race": "Carrera",
+        "raceNote": "Día de carrera: la carrera sustituye al entrenamiento",
+        "sparkAria": "Puntuación de entrenamiento, últimos 7 días",
+        "avg": "Media, {days} días",
+        "best": "Mejor, 30 días",
+        "driverUp": "{driver} +{points}",
+        "driverDown": "{driver} −{points}"
+      }
+    },
+    "tabs": {
+      "overview": "Resumen",
+      "physiology": "Fisiología",
+      "training": "Entrenamiento",
+      "development": "Desarrollo",
+      "scouting": "Ojeo",
+      "history": "Historial",
+      "results": "Resultados",
+      "palmares": "Palmarés",
+      "interest": "Interés"
+    },
+    "switcher": {
+      "hint": "Las teclas de flecha cambian de ciclista"
+    },
+    "hero": {
+      "ratingEyebrow": "Valoración",
+      "bestRoleEyebrow": "Mejor rol ahora",
+      "divisionChip": "DIV {division}",
+      "photoFallback": "Foto",
+      "potentialOwn": "Nivel proyectado",
+      "potentialScouted": "Proyección ojeada",
+      "valueEyebrow": "Valor de mercado",
+      "popularityEyebrow": "Popularidad",
+      "reputationEyebrow": "Reputación",
+      "salary": "Salario",
+      "contract": "Contrato",
+      "contractSeason": "Temporada {season}",
+      "contractExpired": "Caducado",
+      "contractExpiredSub": "Agente libre en el cambio de temporada salvo que se amplíe",
+      "contractExpires": "vence",
+      "aiTag": "IA",
+      "ratingTrendRising": "En ascenso esta temporada",
+      "ratingTrendSteady": "Estable esta temporada",
+      "ratingTrendDeclining": "En descenso esta temporada",
+      "ratingTrendTitle": "Valoración {value} desde el {date}"
+    },
+    "reputation": {
+      "whyTitle": "Por qué se ha movido su reputación",
+      "progressTo": "{value} / {target} para {band}",
+      "weighting": "Las victorias y las grandes carreras cuentan más",
+      "help": "Cómo funciona la reputación",
+      "close": "Cerrar",
+      "noEvents": "Aún no hay eventos de reputación.",
+      "unknownRace": "Una carrera",
+      "band": {
+        "unknown": "Desconocido",
+        "known": "Conocido",
+        "profile": "Con perfil",
+        "star": "Estrella",
+        "legend": "Leyenda"
+      },
+      "events": {
+        "one_day_win": "Victoria en carrera de un día",
+        "one_day_podium": "Podio en carrera de un día",
+        "one_day_top10": "Top 10 en carrera de un día",
+        "gc_win": "Victoria en la general",
+        "gc_podium": "Podio en la general",
+        "gc_top10": "Top 10 en la general",
+        "stage_win": "Victoria de etapa",
+        "stage_podium": "Podio de etapa",
+        "stage_top10": "Top 10 de etapa",
+        "jersey_points_win": "Maillot verde",
+        "jersey_mountain_win": "Maillot de la montaña",
+        "jersey_young_win": "Maillot blanco",
+        "leader_day": "Maillot de líder",
+        "fallback": "Evento de reputación"
+      }
+    },
+    "levelCorrectionReceipt": {
+      "developmentLine": "Desarrollo: sin cambios por el entrenamiento esta semana.",
+      "marketLine": "Mercado: ajuste de nivel único, para todos los ciclistas. Los valores ahora coinciden con lo que realmente se paga por los ciclistas. Tu ciclista no está empeorando.",
+      "detailsToggle": "Mostrar números",
+      "detailsHide": "Ocultar números",
+      "anchorBefore": "Valor antes",
+      "anchorAfter": "Valor después",
+      "factor": "Factor de corrección",
+      "appliedAt": "Aplicado el {date}"
+    },
+    "banner": {
+      "listed": "En la lista de fichajes · precio {price}",
+      "auction": "En subasta · termina en {endsIn} · puja más alta {highBid}",
+      "finalSeasonTitle": "Última temporada",
+      "finalSeason": "Anunció su retirada al inicio de la temporada. Se retira cuando termine la temporada {season}."
+    },
+    "history": {
+      "loading": "Cargando historial...",
+      "chipBid": "Puja",
+      "bidBy": "hizo una puja",
+      "table": {
+        "date": "Fecha",
+        "type": "Tipo",
+        "event": "Evento",
+        "amount": "Importe"
+      },
+      "loadError": "Ahora mismo no se pudo cargar el historial de operaciones."
+    },
+    "results": {
+      "totalsTitle": "Totales de la temporada",
+      "filterLabel": "Filtro de temporada",
+      "filterAll": "Todas",
+      "totals": {
+        "wins": "Victorias",
+        "races": "Carreras",
+        "top5": "Top 5",
+        "jerseys": "Maillots",
+        "points": "Puntos de ranking",
+        "prize": "Premios en metálico"
+      },
+      "table": {
+        "date": "Fecha",
+        "race": "Carrera",
+        "class": "Categoría",
+        "terrain": "Terreno",
+        "pos": "Pos.",
+        "points": "Puntos",
+        "prize": "Premio"
+      },
+      "terrain": {
+        "flat_sprint": "Llano",
+        "long_sprint_classic": "Rodador",
+        "cobbled_classic": "Adoquines",
+        "gravel_classic": "Gravel",
+        "puncheur": "Ondulado",
+        "hilly_classic": "Ondulado",
+        "mountain_classic": "Montaña",
+        "itt_classic": "Contrarreloj"
+      },
+      "stagesCount": "{n} etapas",
+      "stageRow": "Etapa {n}",
+      "overallRow": "General (GC)",
+      "expandHint": "Toca la flecha para desplegar todas las etapas; toca el nombre de la carrera para abrirla.",
+      "emptySeason": "No hay resultados en esta temporada.",
+      "seasonShort": "T{n}",
+      "loadError": "Ahora mismo no se pudieron cargar los resultados."
+    },
+    "palmares": {
+      "careerFirstsTitle": "Primeras veces de su carrera",
+      "trophyTitle": "Vitrina de trofeos",
+      "trophy": {
+        "gcWins": "Victorias en la general",
+        "oneDayWins": "Victorias en carreras de un día",
+        "stageWins": "Victorias de etapa",
+        "jerseyWins": "Maillots finales",
+        "jerseyDays": "Días con maillot",
+        "podiums": "Podios"
+      },
+      "jerseyDayLine": {
+        "leader": "Maillot de líder · {n, plural, one {# día} other {# días}}",
+        "points_day": "Maillot verde · {n, plural, one {# día} other {# días}}",
+        "mountain_day": "Maillot de la montaña · {n, plural, one {# día} other {# días}}",
+        "young_day": "Maillot blanco · {n, plural, one {# día} other {# días}}"
+      },
+      "totalsTitle": "Totales de la carrera",
+      "totals": {
+        "races": "Carreras",
+        "winRate": "Porcentaje de victorias",
+        "points": "Puntos de ranking",
+        "prize": "Premios en metálico"
+      },
+      "seasonHonoursTitle": "Temporada a temporada",
+      "teamFallback": "Equipo desconocido",
+      "achievement": {
+        "gcWin": "Ganador (general)",
+        "raceWin": "Ganador",
+        "podium2": "2.º puesto",
+        "podium3": "3.er puesto",
+        "stageWin": "Ganador de la etapa {n}",
+        "jersey": {
+          "points": "Clasificación por puntos",
+          "mountain": "Clasificación de la montaña",
+          "young": "Clasificación de jóvenes"
+        }
+      },
+      "emptyTitle": "Aún no hay palmarés",
+      "emptyBody": "Toda carrera empieza en blanco. El primer resultado escribe la primera línea.",
+      "loadError": "Ahora mismo no se pudo cargar el palmarés."
+    },
+    "scouting": {
+      "loading": "Cargando informe de ojeo...",
+      "loadFailed": "No se pudo cargar el informe de ojeo. Inténtalo de nuevo en un momento.",
+      "eyebrowOwn": "El veredicto de tu ojeador",
+      "eyebrowOther": "Informe de ojeo",
+      "provenanceNamed": "Evaluado por {name} · Ojeador de nivel {tier}",
+      "provenanceDefault": "Evaluado por el ojeador por defecto de tu equipo (valoración {overall})",
+      "recalcNote": "La banda muestra hacia dónde se encamina de forma realista con tu entrenamiento. Refleja la precisión de tu ojeador ACTUAL y se recalcula cada vez que cambia tu ojeador, pero las habilidades reales del ciclista nunca se ven afectadas. Un ojeador mejor estrecha el rango, pero no es una garantía: el valor real puede quedar a veces justo fuera.",
+      "notScoutedTitle": "Sin ojear",
+      "notScoutedBody": "Aún no conoces el potencial de este ciclista. Usa una plaza de ojeo para obtener la primera lectura de tu ojeador sobre él.",
+      "potentialLabel": "Potencial",
+      "headline_keep_and_develop": "Conservar y desarrollar",
+      "headline_bid_worth_considering": "Una puja que merece la pena",
+      "headline_monitor": "Vigílalo de cerca",
+      "headline_solid_contributor": "Aportación sólida",
+      "headline_past_peak": "Pasado su mejor momento",
+      "confidence_high": "Totalmente ojeado",
+      "confidence_medium": "Ojeado en parte",
+      "confidence_low": "Apenas ojeado",
+      "confidenceTitle_high": "Has aprendido todo lo que tu ojeador puede decirte sobre este ciclista. Lo estrecha que sea la banda sigue dependiendo de la valoración de tu ojeador, no de esto.",
+      "confidenceTitle_medium": "Tu ojeador ha informado más de una vez, pero no de todo lo que puede. Vuelve a ojearlo para completar la lectura.",
+      "confidenceTitle_low": "Solo una primera lectura. Vuelve a ojearlo antes de actuar con ella.",
+      "verdictIsRead": "Esta es la lectura de tu ojeador, no un hecho. Se basa en su nivel proyectado, así que el ojeador de otro mánager puede llegar a una conclusión distinta sobre el mismo ciclista.",
+      "verdictText": "Con el entrenamiento adecuado lo veo llegando a {progLo}-{progHi} - el techo del rol es {loft}, pero exige un enfoque dedicado todo el camino.",
+      "verdictTextNoLoft": "Con el entrenamiento adecuado lo veo llegando a {progLo}-{progHi}, pero exige un enfoque dedicado todo el camino.",
+      "factor_age_upside": "Lo bastante joven como para tener temporadas de crecimiento por delante",
+      "factor_ceiling_gap": "Diferencia clara entre el nivel de hoy y el que se proyecta que alcance",
+      "factor_near_ceiling": "Ya está cerca de su nivel proyectado, queda poco por ganar",
+      "factor_decline_risk": "En una edad en la que empieza el declive",
+      "factor_type_match": "El veredicto da más peso a su mejor tipo de ciclista",
+      "factor_form_unknown": "Los ojeadores no ven la forma ni la fatiga",
+      "factor_watch_races": "Los resultados de las carreras confirmarán o pondrán en duda esta lectura",
+      "rescoutHint": "Vuelve a ojearlo para afinar la estimación. Un ojeador de baja valoración alcanza su propio límite de precisión antes del último nivel.",
+      "typesTitle": "Proyección por tipo de ciclista",
+      "typesSubtitle": "el techo es el del rol, el potencial marca el ritmo",
+      "primaryRoleLabel": "Su rol",
+      "primaryProgressionLabel": "Proyectado",
+      "otherRolesLabel": "Los demás roles",
+      "typesSubtitleNoLoft": "el potencial marca el ritmo",
+      "naturalRolesLabel": "Sus roles naturales",
+      "otherRolesNaturalLabel": "Otros roles",
+      "otherRolesNote": "Los roles comparten habilidades. El orden aquí es una estimación.",
+      "typesLegendNoLoft": "Barra sólida = nivel de hoy. Banda sombreada = hacia dónde se encamina de forma realista con tu entrenamiento: el extremo inferior es un trabajo constante pero sin enfoque, el superior es un enfoque dedicado cada día. El potencial decide con qué rapidez llega. Es una estimación, no una garantía, y ningún ojeador conoce a un ciclista con exactitud. Las valoraciones son comparables entre roles: el mismo número significa el mismo nivel en todas partes.",
+      "precisionNext": "El siguiente nivel de ojeo estrecha la banda de ±{half} a ±{next} puntos.",
+      "precisionUseless": "Otro nivel no estrecharía visiblemente la banda con tu jefe de ojeadores actual (±{half} puntos). Un jefe de ojeadores mejor sí lo haría.",
+      "precisionAtMax": "Más estrecho no se puede ojear. La anchura de la banda depende ahora de la valoración de tu jefe de ojeadores (±{half} puntos).",
+      "typesLegend": "Barra sólida = nivel de hoy. Banda sombreada = hacia dónde se encamina de forma realista con tu entrenamiento: el extremo inferior es un trabajo constante pero sin enfoque, el superior es un enfoque dedicado cada día. Marca oscura = el techo del rol, igual para todos los de ese rol; el potencial decide con qué rapidez sube hacia él. Es una estimación, no una garantía, y ningún ojeador conoce a un ciclista con exactitud. Las valoraciones son comparables entre roles: el mismo número significa el mismo nivel en todas partes.",
+      "capsMissingTitle": "Informe incompleto",
+      "capsMissingBody": "Todavía no hay datos de proyección para este ciclista, así que no se puede mostrar la perspectiva por tipo.",
+      "scoutFailed": "No se pudo enviar al ojeador. Inténtalo de nuevo en un momento.",
+      "scoutErrors": {
+        "max_level": "Este ciclista ya está totalmente ojeado.",
+        "capacity": "Tu ojeador ya tiene la agenda completa. Espera a que termine un trabajo.",
+        "insufficient_funds": "No tienes suficientes CZ$ para enviar a un ojeador.",
+        "insufficient_available_balance": "No tienes suficiente dinero disponible: parte de tu saldo está bloqueada en pujas de subastas.",
+        "auth": "Tu sesión ha caducado. Vuelve a iniciar sesión.",
+        "network": "Falló la conexión. Comprueba tu red e inténtalo de nuevo."
+      }
+    },
+    "interest": {
+      "loading": "Cargando interés...",
+      "loadError": "Ahora mismo no se pudieron cargar los datos de interés.",
+      "trendFlat": "estable",
+      "seasonShort": "T{n}",
+      "stats": {
+        "followers": "Seguidores",
+        "views7d": "Visitas al perfil (7 d)",
+        "scoutedBy": "Ojeado por"
+      },
+      "followersSub": "{count, plural, one {mánager} other {mánagers}}",
+      "scoutedBySub": "{count, plural, one {equipo rival} other {equipos rivales}}",
+      "scoutedBySubNeutral": "{count, plural, one {equipo} other {equipos}}",
+      "selfBadge": "incl. tú",
+      "summary": {
+        "own": "{followers, plural, =0 {Aún no lo sigue ningún mánager} one {Lo sigue 1 mánager} other {Lo siguen # mánagers}} · ojeado por {scouted, plural, =0 {ningún rival} one {1 equipo rival} other {# equipos rivales}} · {views, plural, =0 {ningún visitante único} one {1 visitante único} other {# visitantes únicos}} en los últimos 7 días.",
+        "ownQuiet": "Nadie ha mostrado interés todavía. Por ahora pasa desapercibido.",
+        "scouting": "{followers, plural, =0 {Aún no lo sigue ningún mánager} one {Lo sigue 1 mánager} other {Lo siguen # mánagers}} · ojeado por {scouted, plural, =0 {nadie} one {1 equipo} other {# equipos}} · {views, plural, =0 {ningún visitante único} one {1 visitante único} other {# visitantes únicos}} en los últimos 7 días.",
+        "scoutingQuiet": "Aún no hay interés visible."
+      },
+      "whoScouts": {
+        "title": "¿Quién está ojeando a tu ciclista?",
+        "body": "{count, plural, one {1 equipo rival ha usado plazas de ojeo con él.} other {# equipos rivales han usado plazas de ojeo con él.}}",
+        "empty": "Ningún rival lo ha ojeado todavía.",
+        "level": "Nivel {level}"
+      },
+      "feed": {
+        "title": "Actividad",
+        "scout": "{team} lo ha ojeado",
+        "scoutAnon": "Un rival lo ha ojeado",
+        "scoutSelf": "Lo has ojeado",
+        "watch": "Añadido a la lista de seguimiento de un mánager",
+        "watchSelf": "Lo has añadido a tu lista de seguimiento",
+        "viewsTrend": "Visitas al perfil {pct} % respecto a los 7 días anteriores",
+        "viewsTrendMeta": "últimos 7 días",
+        "empty": "Aún no hay actividad"
+      }
+    },
+    "overview": {
+      "skillCount": "{count} habilidades",
+      "radar": {
+        "title": "Tipos de ciclista",
+        "subtitle": "valoración por tipo",
+        "legendNow": "Ahora",
+        "allTypes": "Todos los tipos",
+        "role": "Su rol",
+        "readsHighest": "Puntúa más alto ahora",
+        "notARanking": "Los roles se construyen con habilidades distintas, así que estos números no son un ranking de lo que debería ser."
+      },
+      "physio": {
+        "title": "Fisiología",
+        "weight": "{kg} kg",
+        "link": "Curva de potencia y zonas"
+      }
+    },
+    "development": {
+      "empty": "Aún no hay desarrollo registrado. La curva se construye a medida que el ciclista entrena y pasan las temporadas.",
+      "loading": "Cargando desarrollo...",
+      "chart": {
+        "title": "Valoración por tipo · a lo largo de las temporadas",
+        "caption": "desarrollo registrado · instantáneas diarias",
+        "season": "T{n}",
+        "seasonNow": "T{n} ahora"
+      },
+      "growth": {
+        "title": "Crecimiento esta temporada",
+        "typeRating": "Valoración de {type}",
+        "thisSeason": "{delta} esta temporada",
+        "abilityPoints": "Puntos de habilidad ganados",
+        "trackedSince": "Seguido desde"
+      },
+      "reading": {
+        "title": "Lectura",
+        "own": {
+          "rising": "Ha ganado {delta} en la valoración de {type} esta temporada. El entrenamiento está dando resultado.",
+          "flat": "Aún no hay ganancia medida esta temporada. La curva se construye a medida que entrena."
+        },
+        "scouting": {
+          "rising": "Curva ascendente esta temporada. Los planes de entrenamiento están ocultos para los ciclistas rivales.",
+          "flat": "Curva plana hasta ahora esta temporada. Los planes de entrenamiento están ocultos para los ciclistas rivales."
+        }
+      },
+      "log": {
+        "title": "Registro de desarrollo",
+        "hint": "entrenamiento -> ganancias de habilidad por temporada",
+        "seasonNow": "Temporada {n} · ahora",
+        "delta": "{delta} de valoración",
+        "note": "ganancias en {days} de los últimos {window} días",
+        "noTraining": "sin entrenamiento registrado",
+        "scoutingHidden": "El registro de desarrollo basado en el entrenamiento está oculto para los ciclistas rivales. Solo ves la tendencia registrada de arriba."
+      },
+      "projection": {
+        "legend": "proyección",
+        "caption": "sólido = registrado · discontinuo = proyección · sombreado = rango objetivo",
+        "now": "ahora",
+        "ceilingLabel": "OBJETIVO",
+        "toCeiling": "Hasta el objetivo",
+        "ageAtCeiling": "Edad objetivo",
+        "seasonsRange": "~{lo}–{hi} temporadas",
+        "seasonsOpen": "~{lo}+ temporadas",
+        "seasonsSingle": "~{n} temporadas",
+        "ageRange": "~{lo}–{hi}",
+        "ageOpen": "~{lo}+",
+        "ageSingle": "~{n}",
+        "atCeiling": "En el objetivo ahora",
+        "outlook": "Perspectiva",
+        "approaching": "Acercándose al objetivo",
+        "gapToCeiling": "Mucha distancia al objetivo",
+        "pastPeak": "Pasado su mejor momento, en declive"
+      }
+    },
+    "physio": {
+      "pending": "La fisiología aún no está disponible",
+      "over": "por encima",
+      "under": "por debajo",
+      "divMean": "Media de la div. {value}",
+      "divMeanShort": "frente a la Div {division}",
+      "head": {
+        "ftp": "FTP",
+        "ftpSub": "Umbral (~1 hora) · {wkg} W/kg",
+        "vo2": "VO₂max",
+        "vo2Sub": "Techo aeróbico (W/kg)",
+        "pmax": "Pmax",
+        "pmaxSub": "Potencia máxima de sprint",
+        "zone2": "Zona 2",
+        "zone2Sub": "Base de resistencia"
+      },
+      "curve": {
+        "title": "Curva de potencia",
+        "subtitle": "Potencia máxima por duración · escala logarítmica",
+        "hisZone": "SU ZONA",
+        "rider": "Ciclista"
+      },
+      "profile": {
+        "title": "Perfil de potencia",
+        "note": {
+          "sprint": "Pico de sprint",
+          "anaerobic": "Anaeróbico",
+          "vo2": "VO₂",
+          "thresholdPlus": "Umbral+",
+          "threshold": "Umbral",
+          "hour": "1 hora"
+        }
+      },
+      "cp": {
+        "title": "Modelo de Potencia Crítica",
+        "cp": "CP (potencia crítica)",
+        "wprime": "W′ capacidad anaeróbica",
+        "read": "W′ es la reserva anaeróbica por encima de la CP: el trabajo que puedes gastar antes de flaquear; la CP es la potencia que puedes sostener casi indefinidamente."
+      },
+      "zones": {
+        "title": "Zonas de potencia",
+        "derived": "Derivadas de una FTP de {ftp} W (zonas de Coggan)",
+        "name": {
+          "Z1": "Recuperación activa",
+          "Z2": "Resistencia",
+          "Z3": "Tempo",
+          "Z4": "Umbral",
+          "Z5": "VO₂max",
+          "Z6": "Anaeróbico",
+          "Z7": "Neuromuscular"
+        }
+      }
+    }
+  },
+  "terrain": {
+    "flatSprint": "Sprints masivos en llano",
+    "rolling": "Carreteras onduladas",
+    "punchy": "Finales explosivos",
+    "mountain": "Etapas de montaña",
+    "stageRace": "Carreras por etapas",
+    "timeTrial": "Contrarrelojes",
+    "breakaway": "Escapadas",
+    "cobbles": "Adoquines"
+  },
+  "stats": {
+    "potentialRow": "Potencial",
+    "abilitiesPending": "Las habilidades aún no están disponibles",
+    "categories": {
+      "physical": "Físicas",
+      "mental": "Mentales",
+      "technical": "Técnicas"
+    }
+  },
+  "racePreview": {
+    "title": "Cycling Zones",
+    "beta": "Beta",
+    "disclaimer": "Nuevo modelo fisiológico, calculado a partir de las habilidades actuales. Aún no afecta a los resultados de las carreras.",
+    "powerProfile": "Perfil de potencia",
+    "derivedAbilities": "Habilidades derivadas",
+    "zones": {
+      "ftp": "FTP",
+      "vo2max": "Potencia de VO2max",
+      "zone2": "Zona 2",
+      "pmax": "Potencia máxima"
+    },
+    "curve": {
+      "p5s": "5 s",
+      "p15s": "15 s",
+      "p1m": "1 min",
+      "p5m": "5 min"
+    },
+    "derived": {
+      "climbing": "Escalada",
+      "time_trial": "Contrarreloj",
+      "prolog": "Prólogo",
+      "flat": "Llano",
+      "tempo": "Tempo",
+      "sprint": "Sprint",
+      "acceleration": "Aceleración",
+      "punch": "Punch",
+      "endurance": "Resistencia",
+      "recovery": "Recuperación",
+      "durability": "Durabilidad",
+      "descending": "Descenso",
+      "cobblestone": "Adoquines",
+      "positioning": "Colocación",
+      "aggression": "Agresividad",
+      "tactics": "Táctica",
+      "teamwork": "Trabajo en equipo",
+      "leadership": "Liderazgo"
+    }
+  },
+  "skills": {
+    "fl": {
+      "short": "FL",
+      "long": "Llano"
+    },
+    "bj": {
+      "short": "BJ",
+      "long": "Montaña"
+    },
+    "kb": {
+      "short": "KB",
+      "long": "Media montaña"
+    },
+    "bk": {
+      "short": "BAK",
+      "long": "Cuesta"
+    },
+    "tt": {
+      "short": "TT",
+      "long": "Contrarreloj"
+    },
+    "prl": {
+      "short": "PRL",
+      "long": "Prólogo"
+    },
+    "bro": {
+      "short": "BRO",
+      "long": "Adoquines"
+    },
+    "sp": {
+      "short": "SP",
+      "long": "Sprint"
+    },
+    "acc": {
+      "short": "ACC",
+      "long": "Aceleración"
+    },
+    "ned": {
+      "short": "NED",
+      "long": "Descenso"
+    },
+    "udh": {
+      "short": "UDH",
+      "long": "Resistencia"
+    },
+    "mod": {
+      "short": "MOD",
+      "long": "Resiliencia"
+    },
+    "res": {
+      "short": "RES",
+      "long": "Recuperación"
+    },
+    "ftr": {
+      "short": "FTR",
+      "long": "Combativo"
+    }
+  },
+  "season": {
+    "row": "Temporada {n}"
+  },
+  "results": {
+    "empty": "Aún no hay resultados de carreras",
+    "fallbackDash": "-"
+  },
+  "bids": {
+    "row": {
+      "teamFallback": "Desconocido",
+      "autoBidTag": "Puja automática"
+    }
+  },
+  "history": {
+    "empty": "Aún no hay historial de operaciones",
+    "fallbackDash": "-",
+    "auction": {
+      "labelAi": "Venta IA",
+      "labelGuaranteed": "Venta garantizada",
+      "labelDefault": "Subasta",
+      "wonBy": "ganado a",
+      "buyerFallback": "Desconocido",
+      "buyerFallbackAi": "Equipo IA",
+      "sellerFallbackAi": "Equipo IA",
+      "sellerFallback": "Desconocido"
+    },
+    "transfer": {
+      "label": "Fichaje",
+      "buys": "compra a",
+      "buyerFallback": "Desconocido",
+      "sellerFallback": "Desconocido"
+    },
+    "swap": {
+      "label": "Intercambio",
+      "teamFallback": "Desconocido",
+      "cashAdjustment": "Ajuste en efectivo: {amount} CZ$"
+    }
+  },
+  "auctionPanel": {
+    "activeLabel": "Subasta activa",
+    "badges": {
+      "leading": "Vas liderando",
+      "selling": "Estás vendiendo",
+      "outbid": "Te han superado",
+      "extended": "Pró.",
+      "flash": "Relámpago"
+    },
+    "highestBid": "Puja más alta",
+    "leaderFallback": "",
+    "timeLeft": "Tiempo restante",
+    "sellerPrefix": "Vendedor: {name}",
+    "cannotBidOwn": "Estás vendiendo en esta subasta. No puedes pujar por tu propio ciclista.",
+    "fallbackDash": "-",
+    "bidInputAria": "Tu puja en CZ$",
+    "bidPlace": "Pujar",
+    "bidRaise": "Subir",
+    "bidError": "Error",
+    "bidPlaceAria": "Hacer puja",
+    "bidRaiseAria": "Subir tu puja",
+    "minBid": "Puja mín.: {amount} CZ$",
+    "errorFallback": "No se pudo hacer la puja",
+    "proxyErrorFallback": "No se pudo fijar la puja automática",
+    "proxyRemoveErrorFallback": "No se pudo quitar el límite de la puja automática. Sigue activo.",
+    "proxy": {
+      "display": "Puja automática: máx. {amount} CZ$",
+      "edit": "Cambiar",
+      "editAria": "Cambiar límite de puja automática",
+      "remove": "Quitar",
+      "removeAria": "Quitar puja automática",
+      "addAria": "Fijar límite de puja automática",
+      "addButton": "+ Fijar límite de puja automática",
+      "inputPlaceholder": "Límite máx.",
+      "inputAria": "Límite de puja automática en CZ$",
+      "save": "Guardar",
+      "saveAria": "Guardar límite de puja automática",
+      "cancelAria": "Cancelar la edición de la puja automática",
+      "error": "Error",
+      "saved": "OK"
+    },
+    "riderNameFallback": "ciclista"
+  },
+  "countdown": {
+    "completed": "Terminada",
+    "expired": "Caducada",
+    "hoursMinutes": "{h} h {m} min",
+    "minutesSeconds": "{m} min {s} s",
+    "seconds": "{s} s"
+  },
+  "auctionStart": {
+    "label": {
+      "myRider": "Poner en subasta",
+      "bank": "Iniciar subasta (ciclista IA)",
+      "ai": "Iniciar subasta (ciclista IA)",
+      "free": "Iniciar subasta (agente libre)"
+    },
+    "flash": {
+      "label": "Subasta relámpago (30 min)",
+      "hint": "Deadline Day: termina exactamente 30 minutos después de empezar"
+    },
+    "end": {
+      "label": "La subasta termina",
+      "hint": "Entre {min} y {max} horas desde ahora, hora del juego (Copenhague).",
+      "windowHint": "El mercado está abierto de {open} a {close}."
+    },
+    "buttons": {
+      "start": "Iniciar subasta",
+      "startFlash": "Iniciar subasta relámpago",
+      "loading": "..."
+    },
+    "priceError": "El precio de salida debe igualar al menos el Valor ({amount} CZ$)",
+    "priceErrorOwn": "El precio de salida debe estar entre 0 y el Valor ({amount} CZ$)",
+    "squadWarning": "Subasta iniciada.\n\nOjo: ahora tienes en marcha subastas equivalentes a {total} ciclistas (máx. {max}). El tope es un límite estricto, así que no puedes ganar más ciclistas de los que caben en tu plantilla."
+  },
+  "directOffer": {
+    "buttonOpen": "Enviar oferta de fichaje",
+    "amountPlaceholder": "Importe de la oferta en CZ$",
+    "messagePlaceholder": "Mensaje (opcional)",
+    "submit": "Enviar oferta",
+    "sending": "Enviando...",
+    "toast": {
+      "success": "¡Oferta enviada!",
+      "errorPrefix": "Error:"
+    }
+  },
+  "sellRider": {
+    "buttonOpen": "Poner a la venta",
+    "description": "Pon al ciclista a la venta a un precio fijo en la lista de fichajes. Puedes editar el precio o quitar el anuncio en cualquier momento.",
+    "pricePlaceholder": "Precio pedido en CZ$",
+    "submit": "Poner a la venta",
+    "submitUpdate": "Actualizar precio",
+    "sending": "Guardando...",
+    "listedStatus": "En la lista de fichajes por {amount} CZ$",
+    "editPrice": "Editar precio",
+    "hideEdit": "Ocultar",
+    "remove": "Quitar de la lista",
+    "confirmRemove": "Sí, quitar",
+    "cancel": "Cancelar",
+    "toast": {
+      "listed": "¡Puesto a la venta!",
+      "priceUpdated": "Precio pedido actualizado",
+      "removed": "Quitado de la lista de fichajes",
+      "errorPrefix": "Error:"
+    }
+  },
+  "manage": {
+    "extend": {
+      "button": "Ampliar contrato",
+      "description": "Amplía el contrato de este ciclista una temporada con un salario renegociado.",
+      "currentSalary": "Salario actual",
+      "newSalary": "Nuevo salario",
+      "newSalaryHint": "Sigue lo que aporta esta temporada. El salario actual se mantiene fijo hasta que renueves.",
+      "newContract": "Nuevo contrato",
+      "newContractValue": "Hasta la temporada {season}",
+      "confirm": "Confirmar ampliación",
+      "loadingTerms": "Cargando condiciones…",
+      "working": "Ampliando…",
+      "success": "Contrato ampliado.",
+      "errorPrefix": "No se pudo ampliar:",
+      "capped": "Contrato en la duración máxima (hasta la temporada {season})."
+    },
+    "release": {
+      "button": "Liberar ciclista",
+      "description": "Termina el contrato de este ciclista. Sale de tu plantilla y pasa a ser agente libre.",
+      "fee": "Cláusula de rescisión",
+      "balance": "Tu saldo",
+      "feeHint": "La cláusula de rescisión es la mitad del salario que queda en el contrato.",
+      "freeHint": "Este ciclista está sin contrato, así que no hay cláusula de rescisión.",
+      "cannotAfford": "No puedes pagar la cláusula de rescisión.",
+      "confirm": "Liberar ciclista",
+      "loadingTerms": "Cargando condiciones…",
+      "working": "Liberando…",
+      "cancel": "Cancelar",
+      "success": "Ciclista liberado.",
+      "errorPrefix": "No se pudo liberar:"
+    },
+    "move": {
+      "button": "Cambiar de plantilla",
+      "success": {
+        "senior": "Ciclista movido a tu plantilla sénior.",
+        "u23": "Ciclista movido a tu equipo sub-23.",
+        "junior": "Ciclista movido a tu equipo júnior."
+      }
+    }
+  },
+  "swapOffer": {
+    "buttonOpen": "⇄ Proponer intercambio",
+    "selectRider": "Elige el ciclista que ofreces",
+    "cashLabel": "Pago en efectivo (CZ$)",
+    "cashHint": "Positivo: pagas tú. Negativo: recibes.",
+    "submit": "Enviar intercambio",
+    "sending": "Enviando...",
+    "toast": {
+      "success": "¡Intercambio propuesto!",
+      "errorPrefix": "Error:"
+    }
+  },
+  "celebration": {
+    "title": "¡Has ganado la subasta!",
+    "subtitle": "El ciclista ya está en tu equipo"
+  },
+  "compare": {
+    "title": "Comparar ciclistas",
+    "subtitle": "Añade hasta 3 ciclistas para comparar estadísticas",
+    "searchPlaceholder": "Busca un ciclista para añadir...",
+    "searching": "Buscando...",
+    "teamFree": "Agente libre",
+    "empty": "Busca un ciclista arriba para empezar a comparar",
+    "potential": "Potencial",
+    "loadingAria": "Cargando comparación",
+    "loadErrorTitle": "No se pudo cargar la comparación",
+    "loadErrorBody": "No se ha perdido nada. Inténtalo de nuevo.",
+    "retry": "Reintentar"
+  },
+  "scouting": {
+    "label_worldclass": "Promesa de clase mundial",
+    "label_high": "Proyección alta",
+    "label_solid": "Promesa sólida",
+    "label_rotation": "Rotación de plantilla",
+    "scout": "Ojear",
+    "rescout": "Ojear de nuevo",
+    "scouting": "Ojeando…",
+    "scoutTitle": "Envía a tu ojeador para afinar la estimación del potencial de este ciclista. Cuánto se afina depende de la valoración de tu ojeador",
+    "noSlots": "No quedan plazas de ojeo esta temporada",
+    "scoutBusy": "Ojeador ocupado, libre en {minutes, plural, one {1 min} other {# min}}",
+    "scoutBusyNow": "Ojeador ocupado, libre en cualquier momento",
+    "levelUseless": "Tu jefe de ojeadores ha alcanzado su propio límite de precisión: otro nivel no estrecharía la estimación",
+    "levelTitle": "Nivel de ojeo. Más alto es más preciso, hasta el límite de precisión de tu propio ojeador",
+    "potentialBandTitle": "Nivel proyectado como {role}: {lo}-{hi}.",
+    "potentialBandSubtitle": "Hasta dónde llega de forma realista con tu entrenamiento. Siempre es un rango: ningún ojeador conoce a un ciclista con exactitud.",
+    "loftShort": "techo {value}",
+    "loftTitle": "Techo del rol: hasta {value}. Todos los {role} comparten el mismo techo; el potencial decide con qué rapidez sube hacia él.",
+    "loftPastPeakShort": "techo {value} · pasado su mejor momento",
+    "loftPastPeakTitle": "El techo de oficio del rol es {value}. Ha pasado su mejor momento y ya no se desarrolla hacia él: el pronóstico muestra dónde llega realmente.",
+    "notScouted": "Sin ojear",
+    "scoutToReveal": "El potencial está oculto hasta que ojees a este ciclista",
+    "pendingTitle": "Tu ojeador ya está trabajando con este ciclista",
+    "pendingShort": "Informe en ~{minutes} min",
+    "pendingShortCountdown": "Informe en {minutes, plural, one {1 min} other {# min}}",
+    "pendingShortDue": "Informe listo",
+    "pendingJob": "Ojeador trabajando, informe en ~{minutes} min",
+    "pendingJobCountdown": "Ojeador trabajando, informe en {minutes, plural, one {1 min} other {# min}}",
+    "pendingJobDue": "Informe listo. Actualiza para abrirlo.",
+    "pendingReadyAtTitle": "Informe listo a las {time}, hora danesa",
+    "sendScoutJob": "Enviar ojeador (~{minutes} min, {cost, number})"
+  },
+  "condition": {
+    "form": "Forma",
+    "fatigue": "Fatiga",
+    "injured": "Lesionado: quedan {days} d",
+    "injuredRaceDays": "Lesionado: {days, plural, one {queda 1 día de carrera} other {quedan # días de carrera}}",
+    "injuredApprox": "Vuelve aprox. el {date}"
+  },
+  "training": {
+    "title": "Enfoque de entrenamiento",
+    "intro": "Fija un enfoque de entrenamiento para toda la temporada para este ciclista clave. Acerca más rápido las habilidades entrenadas a su objetivo.",
+    "gatedNote": "El entrenamiento da forma a la habilidad permanente y se aplica en el próximo cambio de temporada.",
+    "slotsLeft": "{remaining}/{total} plazas de enfoque",
+    "focus": "Enfoque",
+    "intensity": "Intensidad",
+    "focus_vo2max": "VO2max (intervalos mixtos)",
+    "focus_vo2max_climb": "VO2max (intervalos de escalada)",
+    "focus_vo2max_punch": "VO2max (intervalos de punch)",
+    "focus_threshold": "Umbral / CRI",
+    "focus_sprint": "Sprint",
+    "focus_tempo": "Tempo",
+    "focus_endurance": "Resistencia (Zona 2)",
+    "focus_technique": "Técnica",
+    "focus_aero": "Aerodinámica",
+    "focus_loebslaere": "Lectura de carrera",
+    "focus_restitution": "Recuperación activa",
+    "focus_cobbled_sectors": "Sectores de adoquines",
+    "focus_echelon_drills": "Ejercicios de abanicos",
+    "focus_attack_repeats": "Repeticiones de ataque",
+    "intensity_rest": "Descanso",
+    "intensity_unknown_pending": "A la espera de la revisión de la carrera",
+    "intensity_easy": "Suave",
+    "intensity_normal": "Normal",
+    "intensity_hard": "Duro",
+    "set": "Fijar enfoque",
+    "update": "Actualizar enfoque",
+    "remove": "Quitar",
+    "saving": "Guardando…",
+    "noSlots": "No quedan plazas de enfoque esta temporada",
+    "current": "Enfoque actual",
+    "assistantNoRisk": "Crecimiento dirigido más rápido, sin riesgo de retroceso.",
+    "assistantRisk": "Crecimiento dirigido más rápido, pero con un ~{risk} % de riesgo de retroceso (ganancias perdidas) esta temporada.",
+    "tradeoff": "Las demás habilidades crecen algo más despacio.",
+    "intensity_recovery": "Recuperación"
+  }
+}

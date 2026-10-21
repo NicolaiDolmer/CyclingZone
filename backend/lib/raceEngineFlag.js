@@ -13,6 +13,14 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const RACE_ENGINE_V2_FLAG_KEY = "race_engine_v2_enabled";
 
+// #6156 (ejer 19/10): formtoppe/dyk i v4 har deres EGET flag, adskilt fra
+// regel-revisionen s5_profiles_v2, saa v2 kan taendes for nye loeb uden at
+// formtoppe taendes midt i en saeson. off = v2 bruger formen alene.
+export const RACE_FORM_PEAKS_FLAG_KEY = "race_form_peaks";
+export async function isRaceFormPeaksEnabled(supabase, opts = {}) {
+  return evaluateFlagStage(await readFlagStage(supabase, RACE_FORM_PEAKS_FLAG_KEY), opts);
+}
+
 export async function isRaceEngineV2Enabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, RACE_ENGINE_V2_FLAG_KEY), opts);
 }

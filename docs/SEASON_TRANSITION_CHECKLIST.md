@@ -2,7 +2,7 @@
 
 > **⚠️ EJER-BESLUTNING 23/7 + BYG-BESLUTNING 25/7: pyramide-komprimering, [#2851](https://github.com/NicolaiDolmer/CyclingZone/issues/2851) — BYGGET 25/7, fallback-vejen forladt (ejerens kald).** Global rank (kun managerhold) fylder D2 (48) + D3 (96) i DETTE skifte; motorens op/nedrykning springes over (app_config-gate `season_end_skip_division_movement`, fail-safe off = motorens adfærd) og genoptages S2→S3. Skridt 2/3/3b nedenfor er omskrevet til komprimerings-flowet. **Ejer-gates før kørsel søndag:** økonomi-sim set + navngiven liste godkendt (begge printes af `compressPyramid.js` dry-run). Alt andet — spærren, window-wrap, auktions-politik, transition, entries — gælder uændret.
 
-> **Omskrevet fra bunden 23/7 (S8 cutover-generalprøve, #2361).** Den gamle checkliste var bygget om deadline-day-cyklussen (transfervindue med `closes_at`, auto-close, squad-enforcement-kæde) — den verden findes ikke længere: markedet er altid åbent (#1996), auto-transition er slået fra (`SEASON_AUTO_TRANSITION_ENABLED=false`), og den nævnte aldrig **"Afslut sæson"** (`processSeasonEnd`), som er det skridt der afgør op/nedrykning. Denne version er verificeret mod koden og prod-data 23/7 og dækker S1→S2 konkret; generalisér først efter cutoveren har bevist den.
+> **Omskrevet fra bunden 23/7 (S8 cutover-generalprøve, #2361).** Den gamle checkliste var bygget om deadline-day-cyklussen (transfervindue med `closes_at`, auto-close, squad-enforcement-kæde) — den verden findes ikke længere: markedet er altid åbent (#1996), auto-transition-cron'en er fjernet (#6796), og den nævnte aldrig **"Afslut sæson"** (`processSeasonEnd`), som er det skridt der afgør op/nedrykning. Denne version er verificeret mod koden og prod-data 23/7 og dækker S1→S2 konkret; generalisér først efter cutoveren har bevist den.
 >
 > **Historisk kontekst der stadig gælder:** cron-loop-incidenten 2026-05-21 (flere transitions samme dag) — safety-nets fra dengang består: daglig season-count-vagt, admin_log pr. transition, Discord-broadcast pr. transition, DB-CHECK på racing-windows. Postmortem: `.claude/learnings/2026-05-22-season-transition-cron-loop-racing-window-leakage.md`.
 
@@ -204,7 +204,7 @@ set closed_at = now(), final_whistle_sent_at = now(), squad_enforcement_complete
 where season_id = '00000000-0000-0000-0000-000000000001' and closed_at is null;
 ```
 
-Sikkert fordi: markedet styres ikke længere af transfer_windows (#1996), deadline-crons skipper netop wrapped windows, og auto-transition-cron'en er slået fra i koden (`SEASON_AUTO_TRANSITION_ENABLED=false`) — der er ingen cron der kan "se" det wrappede vindue og fyre.
+Sikkert fordi: markedet styres ikke længere af transfer_windows (#1996), deadline-crons skipper netop wrapped windows, og auto-transition-cron'en er fjernet (#6796) — der er ingen cron der kan "se" det wrappede vindue og fyre.
 
 Kør derefter `GET /api/admin/season-transition/preview` — forventet: **alle checks grønne**, evt. undtagen `no_active_auctions` (skridt 5b).
 
@@ -367,7 +367,7 @@ Claude-session åben FØR 18:00 dansk: følg stage-scheduler-logs + første etap
   ```
   Matcher `menneskehold` men ikke `teams_affected`, er #2852-fixet ikke deployet — STOP og undersøg før du kører skiftet. Resterende forekomster af den korte diskriminator uden for transition-motoren (season-end, cron, board-stier) er noteret i PR'ens backwards-check.
 - **Payroll før pension:** en rytter der pensioneres i fase `rider_progression` har allerede fået sin S2-løn trukket i fasen før. Én sæsons løn til en afgående rytter — accepteret spilregel-nuance.
-- **D3→D4-nedrykning hviler på data, ikke en regel:** `poolAllReal`-gaten er åben fordi alle 4 D3-puljer er 24/24 ægte. Efter S2 (hvor AI-fyld lander i D3) lukker gaten igen af sig selv — **#2164 skal implementeres eksplicit før S2→S3**. Skridt 2 verificerer gaten på dagen.
+- **D3→D4-nedrykning er en regel (#6771, 20/10):** gaten er fjernet; bund 4 pr. D3-pulje rykker altid ned (AI i bunden flyttes ikke). Historik: **D3→D4-nedrykning hvilede på data, ikke en regel:** `poolAllReal`-gaten er åben fordi alle 4 D3-puljer er 24/24 ægte. Efter S2 (hvor AI-fyld lander i D3) lukker gaten igen af sig selv — **#2164 skal implementeres eksplicit før S2→S3**. Skridt 2 verificerer gaten på dagen.
 - **`resolveCalendarAnchor`/kalender-regenerering:** ikke relevant — S2-kalenderen ER materialiseret og røres ikke.
 
 ## Reference

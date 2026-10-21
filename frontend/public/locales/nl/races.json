@@ -1,0 +1,1882 @@
+{
+  "stagePageV2": {
+    "tabsAria": "Koersweergaven",
+    "tab": {
+      "stage": "Etappe",
+      "standings": "Ranglijst",
+      "team": "Team",
+      "tactics": "Tactiek"
+    },
+    "stripAria": "Etappes",
+    "stripStage": "Etappe {number}",
+    "today": "Vandaag",
+    "stripResult": "{name} #{rank}",
+    "stripRidden": "Gereden",
+    "profile": {
+      "title": "Etappe {number} · het parcours",
+      "titleOneDay": "Het parcours",
+      "stats": "{km} km · {gain} hoogtemeters · {climbs, plural, one {# klim} other {# klimmen}}",
+      "aria": "Etappeprofiel, {km} km, ingekleurd naar stijgingspercentage.",
+      "tipToGo": "Nog {km} km",
+      "tipToTop": "{km} km tot de top van {name}",
+      "finish": "Finish · {m} m",
+      "toGoAxis": "Nog {km} km",
+      "drawn": "Getekend op basis van de klimmen en het totale aantal hoogtemeters. Stijgingspercentages tussen de klimmen zijn bij benadering.",
+      "legend": {
+        "flat": "onder 3 %",
+        "band2": "3-6 %",
+        "band3": "6-8 %",
+        "band4": "8-10 %",
+        "band5": "boven 10 %",
+        "down": "bergaf"
+      },
+      "sprint": "Sprint km {km}"
+    },
+    "axes": {
+      "terrain": "Terrein",
+      "finish": "Finish",
+      "surface": "Ondergrond",
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Kasseien}} · {count, plural, one {# strook} other {# stroken}}, {km} km",
+      "weather": "Weer"
+    },
+    "weather": {
+      "dry": "Droog",
+      "rain": "Regen",
+      "wind": "Wind",
+      "aria": "Weer: {word}",
+      "mattered": {
+        "rain": "De regen trof renners met zwak afdalen en weinig weerbaarheid het hardst.",
+        "wind": "De wind op de open wegen trof renners met zwak afdalen en weinig weerbaarheid het hardst."
+      }
+    },
+    "climbs": {
+      "title": "De klimmen",
+      "hint": "Tik op een klim in het profiel of hier",
+      "length": "Lengte",
+      "average": "Gemiddeld",
+      "steepest": "Steilste km",
+      "hardest5": "Zwaarste 5 km",
+      "top": "Top",
+      "steepestValue": "{grade} % · km {index}",
+      "topValue": "{m} m · km {km}",
+      "toFinish": "Tot de finish",
+      "perKmAria": "{name}, stijgingspercentage per kilometer",
+      "noPerKm": "Stijgingspercentages per kilometer komen met het echte etappeprofiel.",
+      "none": "Geen gecategoriseerde klimmen in deze etappe."
+    },
+    "demands": {
+      "title": "Wat de dag vraagt",
+      "decides": "Beslist",
+      "matters": "Telt mee",
+      "helps": "Helpt"
+    },
+    "lineup": {
+      "title": "Jouw opstelling",
+      "fit": "Parcoursmatch",
+      "fitAria": "Parcoursmatch {fit} van 100",
+      "empty": "Je hebt geen renners in deze koers."
+    },
+    "cta": {
+      "setTactics": "Tactiek instellen voor etappe {number} · {done} van {total} klaar",
+      "setTacticsLocks": "Tactiek instellen voor etappe {number} · {done} van {total} klaar · vergrendelt {time}",
+      "setTacticsOneDay": "Tactiek instellen · {done} van {total} klaar",
+      "fullResult": "Volledige uitslag"
+    },
+    "favourites": {
+      "title": "Favorieten",
+      "foot": "Gebaseerd op deze koers tot nu toe. Parcoursmatch alleen voor je eigen renners.",
+      "leadsOverall": "Aan de leiding in het klassement",
+      "overall": "#{rank} in het klassement, {gap}",
+      "wonStage": "Won etappe {number}",
+      "you": "Jij"
+    },
+    "story": {
+      "title": "Hoe etappe {number} verreden werd",
+      "titleOneDay": "Hoe de koers verliep",
+      "hudOneDay": "Koers",
+      "viewsAria": "Profielweergave",
+      "view": {
+        "route": "De route",
+        "stage": "Hele etappe",
+        "race": "Hele koers",
+        "final": "Laatste 5 km"
+      },
+      "noFinal": "De laatste 5 km hebben exacte tijden in het koerslogboek nodig. Deze etappe is verreden voordat ze werden vastgelegd, dus er staan alleen posities in km.",
+      "timeTrial": "Tijdrit: elke renner rijdt alleen, dus er is geen verhaal over groepen. De tijden staan in de uitslag.",
+      "you": "Jij",
+      "aRider": "Een renner",
+      "kmAt": "km {km}",
+      "kmSpan": "km {from}-{to}",
+      "unfolded": "Hoe het verliep",
+      "source": "Elke tijd, achterstand en zin hier komt uit het koerslogboek van deze etappe.",
+      "replay": {
+        "play": "Speel de etappe af",
+        "pause": "Pauze",
+        "scrubAria": "Positie in de herhaling in km",
+        "positionTime": "km {km} · {time}"
+      },
+      "group": {
+        "leads": "Aan kop",
+        "peloton": "Peloton",
+        "riders": "{count, plural, one {# renner} other {# renners}}",
+        "rest": "{groups, plural, one {# groep meer} other {# groepen meer}} · {riders, plural, one {# renner} other {# renners}} · +{min} tot +{max}"
+      },
+      "line": {
+        "formed": "{count, plural, one {# renner rijdt weg} other {# renners rijden weg}}",
+        "caught": "{count, plural, one {# renner uit de ontsnapping wordt ingehaald} other {# renners uit de ontsnapping worden ingehaald}}",
+        "survived": "De ontsnapping houdt stand tot de finish",
+        "attack": "{count, plural, one {{names} valt aan} other {{names} vallen aan}}",
+        "attackGain": "{count, plural, one {{names} valt aan en wint {gain}} other {{names} vallen aan en winnen {gain}}}",
+        "attackAnon": "Een late aanval",
+        "incident": "{name} {kind, select, crash {valt} mechanical {heeft pech} other {heeft een incident}}{outcome, select, abandoned { en geeft op} loss { en verliest {loss}} other {}}",
+        "climb": "Top van {name}",
+        "climbFirst": "{rider} als eerste over {name}",
+        "gap": "De voorsprong op {group, select, rest {het peloton} other {de achtervolgers}} {dir, select, grew {groeit} other {krimpt}} van {before} naar {after}",
+        "split": "{count, plural, one {Een groep splitst af} other {# groepen splitsen af}}",
+        "dropped": "{count, plural, one {{names} moet lossen uit de ontsnapping} other {{names} moeten lossen uit de ontsnapping}}",
+        "joined": "{count, plural, one {Twee groepen komen samen} other {Groepen komen # keer samen}}",
+        "gcLead": "{name} pakt de leiding in het algemeen klassement",
+        "crack": "{name} klapt",
+        "finish": "{name} wint",
+        "finishSprint": "{name} wint de sprint",
+        "finishAnon": "Finish"
+      },
+      "splits": {
+        "title": "Tussentijden",
+        "point": "Punt",
+        "leaderTime": "Leider",
+        "leading": "Aan kop",
+        "first": "Eerst over de top",
+        "top": "Top {name}",
+        "climb": "klim",
+        "sprint": "Sprint",
+        "finish": "Finish",
+        "none": "Geen klimmen, sprints of finish in het koerslogboek."
+      },
+      "report": {
+        "title": "Verslag",
+        "formed": "{count, plural, one {# renner reed weg} other {# renners reden weg}} bij km {km}.",
+        "formedMine": "{count, plural, one {# renner reed weg} other {# renners reden weg}} bij km {km}, met jouw {mine}.",
+        "caught": "De ontsnapping werd bij km {km} ingehaald.",
+        "survived": "{names} bleven uit de greep tot de finish.",
+        "attack": "{names} viel aan bij km {km}.",
+        "attackGain": "{names} viel aan bij km {km} en won {gain}.",
+        "winner": "{winner} won.",
+        "winnerGap": "{winner} won, {gap} voor {second}.",
+        "winnerSame": "{winner} won voor {second} op dezelfde tijd.",
+        "mine": "Jouw beste was {name}, nr. {rank}.",
+        "mineGap": "Jouw beste was {name}, nr. {rank}, {gap} achter.",
+        "mineWon": "Jouw renner {name} won.",
+        "climb": "De koers ging bij km {km} over {name}.",
+        "climbFirst": "{rider} was als eerste over {name}.",
+        "sameTime": "{count} renners finishten op de tijd van de winnaar.",
+        "third": "{name} werd derde.",
+        "thirdGap": "{name} werd derde, {gap} achter.",
+        "placed": "{name} finishte op plaats {rank}.",
+        "placedGap": "{name} finishte op plaats {rank}, {gap} achter."
+      },
+      "final": {
+        "aria": "De laatste 5 km: groepen op de weg met resterende afstand, achterstanden en koersklok",
+        "toGoKm": "{km} KM",
+        "toGoM": "{m} M",
+        "finish": "FINISH",
+        "winningTime": "Winnende tijd",
+        "speed": "{kmh} km/h",
+        "back": "{label} · {dist} km achter",
+        "gaps": "Achterstanden",
+        "gapsFoot": "Achterstand in seconden op de positie van de leider, uit het koerslogboek.",
+        "finished": "Gefinisht",
+        "behindMark": "Achter de 5 km-markering",
+        "closeUp": "Sprint van dichtbij",
+        "closeUpOpens": "Opent bij 500 m te gaan",
+        "closeUpHint": "De close-up volgt de kop vanaf 500 m te gaan.",
+        "closeUpDone": "Uitslag",
+        "play": "Speel de laatste 5 km af",
+        "scrubAria": "Koerstijd in de laatste 5 km",
+        "speedAria": "Afspeelsnelheid"
+      }
+    },
+    "yourDay": {
+      "title": "Jouw dag · etappe {number}",
+      "titleOneDay": "Jouw dag",
+      "classAria": "Klassement",
+      "stage": "Etappe",
+      "overall": "Algemeen",
+      "top3": "Top 3",
+      "yourRiders": "Jouw renners",
+      "noRiders": "Geen van je renners staat in deze uitslag.",
+      "bestOverall": "Jouw beste in het klassement",
+      "bestOverallGap": "{name} · {gap} op {leader}",
+      "bestOverallLeads": "{name} leidt de koers",
+      "whyGap": "{winner} won, {gap} voor {second}.",
+      "whySame": "{winner} won voor {second} op dezelfde tijd.",
+      "mineLine": "Jouw beste was {name}, #{rank}, {gap} achter.",
+      "mineWon": "Jouw renner {name} won de etappe."
+    }
+  },
+  "hub": {
+    "title": "Planning",
+    "tabSelection": "Teamselectie",
+    "tabForm": "Vormplan",
+    "tabStrategy": "Strategie",
+    "tabCalendar": "Kalender"
+  },
+  "seasonView": {
+    "toggleSeason": "Seizoen",
+    "toggleDay": "Dag",
+    "meta": "Seizoen {season} · {division} · {count, plural, one {# koers} other {# koersen}} · {start} – {end}",
+    "divisionLabel": "Divisie {n}",
+    "hint": "Kies een koersdag om het bord te openen",
+    "today": "VANDAAG",
+    "stagesGt": "{count} etappes · GT",
+    "stagesOnly": "{count} etappes",
+    "monument": "Monument · exclusieve koersdag",
+    "bandAria": "{name}, dag {day} van {total}. Open het dagbord.",
+    "dayPanel": {
+      "title": "Dag {day} van {total} · {date}",
+      "meta": "{races, plural, one {# koers} other {# koersen}} · {saved, plural, one {# selectie opgeslagen} other {# selecties opgeslagen}} · {open} open",
+      "openBoard": "Dagbord openen"
+    },
+    "legend": {
+      "label": "LEGENDA",
+      "gt": "Grand Tour",
+      "monument": "Monument, exclusieve koersdag",
+      "selected": "Je hebt een selectie",
+      "none": "Nog geen selectie"
+    },
+    "empty": "Nog geen koersen in de kalender",
+    "error": "Er is niets verloren gegaan. Deze weergave is alleen-lezen.",
+    "errorSession": "Je sessie is verlopen. Log opnieuw in om verder te plannen.",
+    "retry": "Probeer opnieuw",
+    "picker": {
+      "ariaLabel": "Seizoen",
+      "current": "Seizoen {number} (huidig)",
+      "upcoming": "Seizoen {number} (komend)",
+      "previous": "Seizoen {number} (vorig)"
+    },
+    "startsOn": "Begint {date}",
+    "readOnlyHint": "Alleen-lezen voorbeeld. Bewerken opent automatisch zodra dit seizoen actief wordt.",
+    "changeover": {
+      "title": "Wat er verandert bij de seizoenswissel",
+      "items": {
+        "age": "Renners worden 1 jaar ouder",
+        "form": "Vorm zakt richting 50 (ongeveer 25% blijft over)",
+        "fatigue": "Vermoeidheid gaat terug naar 0",
+        "injuries": "Blessures worden niet gereset",
+        "peaks": "Piekplannen blijven ongewijzigd",
+        "wages": "Lonen en rennerswaarden worden zondag bijgewerkt"
+      },
+      "firstRaceDay": "Het koersen begint de dag na de wissel, minstens 24 uur na de laatste koers van het oude seizoen.",
+      "readMore": "Alle details in Help"
+    },
+    "errorTitle": "De seizoenskalender kon niet worden geladen"
+  },
+  "matrix": {
+    "heading": "Selectiematrix",
+    "mobile": {
+      "raceLabel": "Koers",
+      "riderLabel": "Renner",
+      "earlier": "Eerder",
+      "later": "Later",
+      "windowStatus": "Dagen {first}-{last} van {total}",
+      "gameDay": "Dag {day}"
+    },
+    "lens": {
+      "entries": "Inschrijvingen",
+      "routeMatch": "Parcoursmatch",
+      "formPeak": "Vorm & piek",
+      "load": "Belasting"
+    },
+    "problemsOnly": "Alleen problemen",
+    "save": "Plan opslaan",
+    "saveCount": "{count, plural, one {Plan opslaan · # wijziging} other {Plan opslaan · # wijzigingen}}",
+    "saving": "Opslaan...",
+    "saveErrorNamed": "{race} kon niet worden opgeslagen: {reason}",
+    "noProblems": "Geen problemen",
+    "problemsCount": "{count, plural, one {# probleem} other {# problemen}}",
+    "leaveUnsaved": "Je hebt niet-opgeslagen wijzigingen in de matrix. Toch weggaan?",
+    "errorTitle": "De selectiematrix kon niet worden geladen",
+    "empty": "Dit seizoen nog geen koersen",
+    "restDay": "Rustdag",
+    "withdrawnHint": "Je hebt je uit deze koers teruggetrokken. De opgeslagen opstelling blijft bewaard voor het geval je je opnieuw inschrijft, maar deze renners starten niet.",
+    "dayAria": "Koersdag {index}, {date}. Open het dagbord.",
+    "cellEmptyAria": "{rider}, {race}: niet geselecteerd. Klik om toe te voegen.",
+    "cellFilledAria": "{rider}, {race}: {role}. Klik om te wijzigen.",
+    "squadCount": "{count}/{max}",
+    "loadSuffix": "{count, plural, one {# koersdag} other {# koersdagen}}",
+    "peakWindow": "Pieksvenster · richting {race}",
+    "peakWindowNoTarget": "Pieksvenster",
+    "peakLocked": "vergrendeld",
+    "backToMatrix": "Terug naar de seizoensmatrix",
+    "cellPopover": {
+      "roleChoice": "Rol",
+      "remove": "Uit koers halen"
+    }
+  },
+  "racehub": {
+    "error": {
+      "title": "De teamselectie kon niet worden geladen",
+      "body": "Er is niets verloren gegaan. Je opstellingen zijn veilig.",
+      "parse": "Het koersbord kon niet worden geladen. Laad de pagina opnieuw.",
+      "session": "Je sessie is verlopen. Log opnieuw in om verder te plannen.",
+      "retry": "Probeer opnieuw"
+    },
+    "scope": {
+      "mine": "Mijn koersen",
+      "division": "Mijn divisie",
+      "others": "Andere divisies",
+      "soon": "Binnenkort"
+    },
+    "timeline": {
+      "dayOf": "Dag {day} van {total}",
+      "youAreHere": "hier ben je",
+      "prev": "Vorige dag",
+      "next": "Volgende dag"
+    },
+    "heading": "Verdeling van de selectie",
+    "overlap": "{count} koersen vandaag",
+    "raceDay": "Koersdag {day}",
+    "raceDays": "Koersdagen {start}-{end}",
+    "sameDayNote": "Dezelfde echte dag, verschillende koersdagen. Een renner kan één koers per koersdag rijden.",
+    "learnReuse": {
+      "title": "Een renner op meerdere koersdagen inzetten",
+      "body": "Deze koersen delen één middag maar vallen op verschillende koersdagen in het spel, dus een renner kan beide rijden. Hij neemt vermoeidheid mee naar de latere koers. Dat is een afweging, geen bug.",
+      "dismiss": "Begrepen"
+    },
+    "save": "Wijzigingen opslaan",
+    "discard": "Weggooien",
+    "unsaved": "Je hebt niet-opgeslagen wijzigingen",
+    "leaveUnsaved": "Je hebt niet-opgeslagen wijzigingen. Weggaan zonder op te slaan?",
+    "status": {
+      "full": "{selected} / {target} geselecteerd",
+      "understaffed": "{selected} / {target} · te weinig renners",
+      "overfull": "{selected} / {target} · te veel",
+      "withdrawn": "Teruggetrokken",
+      "locked": "Opstelling vergrendeld",
+      "didNotStart": "Niet gestart"
+    },
+    "pool": {
+      "title": "Beschikbare renners · selectie van {count}",
+      "autofill": "Automatisch vullen",
+      "fillMissing": "Gaten vullen",
+      "clearDay": "Dag wissen",
+      "clearAllSeason": "Alles wissen",
+      "bound": "Vergrendelde renners kunnen niet aan een van de koersen van vandaag worden toegevoegd",
+      "loadShort": "{days}d",
+      "loadTitle": "Seizoensbelasting: {races, plural, one {# koers} other {# koersen}}, {days, plural, one {# koersdag} other {# koersdagen}} dit seizoen ingeschreven",
+      "clearDayTooltip": "Wist {races, plural, one {# koers} other {# koersen}} en haalt {riders, plural, one {# renner} other {# renners}} voor deze dag weg"
+    },
+    "clearDayWarn": "{riders, plural, one {# renner} other {# renners}} vandaag uit {races, plural, one {# koers} other {# koersen}} halen? Dit kan niet ongedaan worden gemaakt, en de assistent vult ze niet opnieuw tot je erom vraagt.",
+    "clearAllWarn": "Elke renner uit ALLE je resterende koersen van dit seizoen halen? Dit kan niet ongedaan worden gemaakt, en de assistent vult ze niet opnieuw tot je erom vraagt.",
+    "clearAllDialog": {
+      "title": "Alle selecties wissen?",
+      "body": "Een koers waarvoor je geen selectie hebt, is een koers waarin je team niet start. Hiermee haal je je renners uit {count, plural, one {1 koers} other {# koersen}}.",
+      "startsIn": "start over {time}",
+      "reassurance": "Je kunt op elk moment voordat een koers start een nieuwe selectie kiezen.",
+      "keepSquad": "Mijn selectie behouden",
+      "clearAnyway": "Toch wissen"
+    },
+    "column": {
+      "riderHeading": "Renner",
+      "orderHeading": "Opdracht",
+      "helperOrder": "Knecht",
+      "editOrder": "{order}: opdracht voor {name} wijzigen",
+      "routeMatchHeading": "Parcoursmatch",
+      "currentFormHeading": "Huidige vorm",
+      "numbersExplanation": "Parcoursmatch: gemiddelde voor de hele koers over zijn etappes. Huidige vorm: de vorm van vandaag, geen voorspelling. Een streepje betekent niet beschikbaar.",
+      "add": "Toevoegen uit beschikbare",
+      "withdraw": "Terugtrekken",
+      "reenter": "Opnieuw inschrijven",
+      "withdrawnNote": "Je team start vrijwillig niet in deze koers",
+      "didNotStartNote": "Je team is niet gestart: minder dan {min} fitte renners aan de start.",
+      "remove": "Renner verwijderen",
+      "openRace": "{name} openen",
+      "peaksHere": "Pieken hier: {names}",
+      "paybackHere": "Terugvaldip hier: {names} ({points} vorm)",
+      "paybackHereNoPoints": "Terugvaldip hier: {names}",
+      "clearSelection": "Selectie wissen",
+      "sharesDay": "Deelt koersdag {day} met {race}",
+      "sharesDays": "Deelt koersdagen {start}-{end} met {race}",
+      "sharesMany": "Deelt koersdagen met {count, plural, one {# andere koers} other {# andere koersen}}",
+      "sharesItem": "Koersdag {day} · {race}",
+      "sharesItemDays": "Koersdagen {start}-{end} · {race}",
+      "clash": "{rider} rijdt beide op koersdag {day}",
+      "clashMany": "{count, plural, one {# renner rijdt} other {# renners rijden}} meer dan één koers op dezelfde dag"
+    },
+    "popover": {
+      "title": "Aan welke koers toevoegen?",
+      "none": "Vandaag geen koers beschikbaar voor deze renner",
+      "understaffed": "heeft renners nodig",
+      "availableGroup": "Beschikbaar voor",
+      "blockedGroup": "Bezet in een overlappende koers",
+      "blockedReason": "Overlapt met {race}",
+      "compatibleHint": "Dezelfde dag als {race}, koersdag {day}. Kan beide rijden.",
+      "compatibleHintNoDay": "Dezelfde dag als {race}. Kan beide rijden."
+    },
+    "role": {
+      "hint": "Tik op een opdracht om de rol van de renner te wijzigen",
+      "captain": "Kopman",
+      "sprintCaptain": "Sprintkopman",
+      "hunter": "Ontsnappingsjager",
+      "rider": "Alleen renner"
+    },
+    "roleCard": {
+      "heading": "Tactiek",
+      "subhead": "Geef elke renner een taak. De hint laat zien waarom de rol bij dit terrein past.",
+      "captain": {
+        "title": "Kopman",
+        "hint": {
+          "flat": "Je beschermde leider. De ploeg rijdt om hem naar de vlakke finish te brengen.",
+          "hilly": "Je beschermde leider in de klimmen. De ploeg beschermt hem tot de heuvelachtige finish.",
+          "mountain": "Je beschermde leider in de bergen. De ploeg bepaalt zijn tempo tot de top.",
+          "cobbles": "Je beschermde leider over de kasseien. De ploeg houdt hem uit de problemen.",
+          "itt": "De renner op wie je inzet in de tijdrit. Hier geldt geen steun van de ploeg."
+        }
+      },
+      "sprint_captain": {
+        "title": "Sprintkopman",
+        "hint": {
+          "flat": "Je afmaker voor een massasprint. De ploeg leidt hem uit op het vlakke.",
+          "hilly": "Je afmaker als de heuvels eindigen in een kleine sprint.",
+          "mountain": "Sprints beslissen zelden een bergetappe. Alleen nuttig voor een vroege sprint.",
+          "cobbles": "Je afmaker als de kasseien weer samenkomen voor een sprint.",
+          "itt": "Een sprintrol heeft geen effect in een tijdrit."
+        }
+      },
+      "hunter": {
+        "title": "Ontsnappingsjager",
+        "hint": {
+          "flat": "Stuurt deze renner vooruit. Bij vlakke finishes kan een ontsnapping wegblijven.",
+          "hilly": "Stuurt deze renner in de aanval. Heuvelachtige finales belonen een jager.",
+          "mountain": "Stuurt deze renner weg. Een ontsnapping in de bergen kan tot de streep standhouden.",
+          "cobbles": "Stuurt deze renner de kasseiontsnapping in. Die kan tot de finish blijven staan.",
+          "itt": "In een tijdrit is er geen ontsnapping."
+        }
+      },
+      "rider": {
+        "title": "Alleen renner",
+        "hint": {
+          "flat": "Geen bijzondere rol. Rijdt ter ondersteuning van je kopman en sprinter.",
+          "hilly": "Geen bijzondere rol. Rijdt ter ondersteuning in de klimmen.",
+          "mountain": "Geen bijzondere rol. Bepaalt het tempo en beschermt je leider in de bergen.",
+          "cobbles": "Geen bijzondere rol. Helpt je leiders te positioneren over de kasseien.",
+          "itt": "Geen bijzondere rol. Elke renner rijdt de tijdrit alleen."
+        }
+      },
+      "free_role": {
+        "title": "Vrije rol",
+        "hint": {
+          "flat": "Rijdt zijn eigen koers op het vlakke. Geen taken voor de ploeg, geen steun voor de kopman.",
+          "hilly": "Rijdt zijn eigen koers in de klimmen. Geen taken voor de ploeg, geen steun voor de kopman.",
+          "mountain": "Rijdt zijn eigen koers in de bergen. Geen taken voor de ploeg, geen steun voor de kopman.",
+          "cobbles": "Rijdt zijn eigen koers over de kasseien. Geen taken voor de ploeg, geen steun voor de kopman.",
+          "itt": "Rijdt zijn eigen koers in de tijdrit. Geen taken voor de ploeg, geen steun voor de kopman."
+        }
+      }
+    },
+    "breakawayStrength": {
+      "label": "Kans op ontsnapping",
+      "high": "Hoog",
+      "medium": "Gemiddeld",
+      "low": "Laag",
+      "none": "Geen",
+      "tooltip": "Hoe groot de kans is dat een ontsnapping op dit terrein wegblijft. De jager is altijd een kandidaat voor de ontsnapping."
+    },
+    "hunterExplainer": {
+      "strengthLine": "Op het terrein van deze koers heeft een ontsnapping een {strength} kans om weg te blijven.",
+      "candidatesHint": "Gerangschikt op agressie: de drang om aan te vallen en je aan een aanval te committeren.",
+      "noCandidates": "Kies renners voor deze koers om je beste jagers te zien.",
+      "aggression": "Agressie",
+      "pickTitle": "Kies je ontsnappingsjager",
+      "noHunter": "Geen jager"
+    },
+    "fit": {
+      "label": "Match",
+      "strong": "Sterk",
+      "average": "Gemiddeld",
+      "poor": "Zwak"
+    },
+    "boundNamed": "Vergrendeld · koerst in {race}",
+    "lockBoundUnnamed": "Vergrendeld · koerst al in een overlappende koers",
+    "outgoingShort": "Vertrekt na deze koers",
+    "lockOutgoing": "Vertrekt na de huidige koers · kan niet voor een nieuwe worden gekozen",
+    "lockAllStarted": "Vergrendeld · elke koers van vandaag is al begonnen",
+    "lockAllWithdrawn": "Vergrendeld · je hebt je uit elke koers van vandaag teruggetrokken",
+    "lockUnavailable": "Vergrendeld · geen koers van vandaag kan nog worden gewijzigd",
+    "lineupLocked": {
+      "title": "Opstelling vergrendeld",
+      "note": "Deze koers is begonnen. De opstelling is definitief."
+    },
+    "dismiss": "Sluiten",
+    "empty": "Geen koersen om voor deze dag te plannen.",
+    "regenerateWarn": "Hiermee wordt elke keuze in de koersen van vandaag vervangen door het voorstel van de assistent. Doorgaan?"
+  },
+  "tabs": {
+    "library": "Bibliotheek",
+    "world": "Wereldkalender"
+  },
+  "raceType": {
+    "stageRace": "Etappekoers",
+    "oneDay": "Eendagskoers",
+    "oneDayShort": "Eendags",
+    "stages": "{count, plural, one {# etappe} other {# etappes}}",
+    "stageRaceWithStages": "Etappekoers · {count, plural, one {# etappe} other {# etappes}}",
+    "stageRaceParen": "Etappekoers ({count})"
+  },
+  "classOption": {
+    "TourFrance": "Grand Tour",
+    "GiroVuelta": "Major Tour",
+    "Monuments": "Monuments",
+    "OtherWorldTourA": "WorldTour A",
+    "OtherWorldTourB": "WorldTour B",
+    "OtherWorldTourC": "WorldTour C",
+    "ProSeries": "ProSeries",
+    "Class1": "Klasse 1",
+    "Class2": "Klasse 2"
+  },
+  "classBadge": {
+    "grandTour": "Grand Tour",
+    "oneDay": "Eendags",
+    "worldTour": "WorldTour",
+    "continental": "Continental"
+  },
+  "status": {
+    "completed": "Afgerond",
+    "active": "Live",
+    "live": "Live",
+    "scheduled": "Komend"
+  },
+  "liveProgress": "Etappe {done} / {total}",
+  "common": {
+    "free": "Vrij",
+    "dash": "—",
+    "loading": "Laden…",
+    "points": "{count} pt"
+  },
+  "empty": {
+    "noRacesMatch": "Geen koersen die bij de filters passen",
+    "raceNotFound": "Koers niet gevonden",
+    "noResultsImportedRace": "Voor deze koers zijn nog geen uitslagen geïmporteerd",
+    "noHistory": "Geen gegevens gevonden voor \"{name}\"",
+    "raceNotFoundHint": "De link is mogelijk oud, of de koers is verwijderd. Open de koersbibliotheek om een andere te vinden.",
+    "noResultsImportedRaceHint": "Deze koers heeft nog geen uitslagrijen. Andere koersen in de bibliotheek hebben ze al.",
+    "noResultsImportedRaceCta": "De koersbibliotheek openen"
+  },
+  "calendar": {
+    "upcoming": "Komend",
+    "completed": "Afgerond",
+    "resultsImported": "{count} uitslagen geïmporteerd",
+    "expectedPool": "Verwachte pot {amount}",
+    "expectedPoolTooltip": "Live berekende verwachte pot op basis van koersklasse × koerstype × etappes",
+    "selectPrompt": "Kies een koers om details te zien",
+    "noResultsYet": "Nog geen uitslagen geïmporteerd",
+    "viewFull": "Volledige uitslag bekijken",
+    "viewFullWithStages": "Volledige uitslag + alle etappes bekijken"
+  },
+  "library": {
+    "searchLabel": "Koersen zoeken",
+    "searchPlaceholder": "Klassiker, Gran Premio, Trofeo…",
+    "seasonLabel": "Seizoen",
+    "allSeasons": "Alle seizoenen",
+    "seasonOption": "Seizoen {number}",
+    "seasonOptionActive": "Seizoen {number} (actief)",
+    "classLabel": "Klasse",
+    "allClasses": "Alle klassen",
+    "statusLabel": "Status",
+    "allStatuses": "Alle",
+    "myDivisionOnly": "Alleen mijn divisie",
+    "filteredCount": "{filtered} van {total} koersen",
+    "clearFilters": "Filters wissen",
+    "thRace": "Koers",
+    "thSeason": "Seizoen",
+    "thClass": "Klasse",
+    "thType": "Type",
+    "thStatus": "Status",
+    "seasonLink": "Seizoen {number}"
+  },
+  "world": {
+    "loading": "Wereldkalender laden…",
+    "totalRaces": "{count} koersen in totaal op de wereldkalender",
+    "classSummary": "{count} koersen · {stages} etappes",
+    "filteredOn": "Gefilterd op {class}.",
+    "clearFilter": "Filter wissen",
+    "thRace": "Koers",
+    "thClass": "Klasse",
+    "thType": "Type",
+    "thStages": "Etappes"
+  },
+  "resultType": {
+    "stage": "Etappe",
+    "gc": "Algemeen",
+    "points": "Punten",
+    "mountain": "Bergen",
+    "young": "Jeugd"
+  },
+  "points": {
+    "loadError": "De puntentabel kon niet worden geladen. Probeer het opnieuw.",
+    "retry": "Probeer opnieuw",
+    "subtitle": "Hoe je koersprijzen uit je plaatsingen worden berekend",
+    "help": "Help & Regels",
+    "formula": "Prijsformule: 1 punt = {amount} CZ$",
+    "noClassData": "Geen puntengegevens voor deze klasse",
+    "thRank": "Plaats",
+    "thPoints": "Punten",
+    "thPrize": "Prijs",
+    "showLess": "Verbergen",
+    "showAll": "Alle {count} plaatsen tonen",
+    "prizeExample": {
+      "tourWin": "Zege in een Grand Tour",
+      "monumentWin": "Zege in een Monument",
+      "tourStageWin": "Etappezege (Grand Tour)",
+      "proSeriesWin": "Zege in een ProSeries-koers",
+      "class1Win": "Zege in een Klasse 1-koers",
+      "class2Win": "Zege in een Klasse 2-koers"
+    },
+    "type": {
+      "Klassement": {
+        "label": "Algemeen klassement",
+        "desc": "Plaats in het algemeen klassement in etappekoersen"
+      },
+      "Klassiker": {
+        "label": "Klassiekers",
+        "desc": "Eindplaats in eendagskoersen"
+      },
+      "Etapeplacering": {
+        "label": "Etappeplaatsing",
+        "desc": "Per etappe in etappekoersen"
+      },
+      "Pointtroje": {
+        "label": "Puntentrui",
+        "desc": "Top 3 in het puntenklassement"
+      },
+      "Bjergtroje": {
+        "label": "Bergtrui",
+        "desc": "Top 3 in het bergklassement"
+      },
+      "Ungdomstroje": {
+        "label": "Jongerentrui",
+        "desc": "Top 3 in het U25-klassement"
+      },
+      "EtapelobHold": {
+        "label": "Ploeg (etappekoers)",
+        "desc": "Beste ploeg in etappekoersen"
+      },
+      "KlassikerHold": {
+        "label": "Ploeg (klassieker)",
+        "desc": "Beste ploeg in klassiekers"
+      },
+      "Forertroje": {
+        "label": "Leiderstrui",
+        "desc": "Per dag in de leiderstrui"
+      },
+      "PointtrojeDag": {
+        "label": "Puntentrui (per dag)",
+        "desc": "Per dag in de puntentrui"
+      },
+      "BjergtrojeDag": {
+        "label": "Bergtrui (per dag)",
+        "desc": "Per dag in de bergtrui"
+      },
+      "UngdomstrojeDag": {
+        "label": "Jongerentrui (per dag)",
+        "desc": "Per dag in de jongerentrui"
+      }
+    }
+  },
+  "selection": {
+    "title": "Teamselectie",
+    "subtitle": "Kies maximaal {max} renners voor deze koers. Je kunt een gedeeltelijk team opslaan, en je assistent vult de rest in wanneer de koers draait. Geen straf.",
+    "count": "{count}/{max} geselecteerd",
+    "partialHint": "{open, plural, one {1 plek open. Je assistent vult hem in wanneer de koers draait.} other {# plekken open. Je assistent vult ze in wanneer de koers draait.}}",
+    "partialHintShort": "{open, plural, one {1 plek open} other {# plekken open}}, {free, plural, one {1 renner vrij} other {# renners vrij}} voor deze koers. Je assistent vult in wat kan.",
+    "assistantFillsEmpty": "Geen renners geselecteerd. Je assistent kiest de selectie wanneer de koers draait.",
+    "willNotStart": "Minder dan {min} renners. Je team start niet in deze koers.",
+    "willNotStartEmpty": "Minder dan {min} renners vrij voor deze koers. Je team start niet.",
+    "willNotStartShort": "Minder dan {min} renners. Start niet.",
+    "startsShort": "{injured, plural, one {1 geselecteerde renner is geblesseerd} other {# geselecteerde renners zijn geblesseerd}}. Je team start met {starters, plural, one {1 renner} other {# renners}}.",
+    "startsShortShort": "Blessures: start met {starters}.",
+    "minHint": "Minimaal {min} renners om te starten.",
+    "captain": "Kopman",
+    "sprintCaptain": "Sprintkopman (optioneel)",
+    "hunter": "Ontsnappingsjager",
+    "freeRole": "Vrije rol",
+    "noRole": "Geen",
+    "thRider": "Renner",
+    "type": "Type",
+    "mode": {
+      "current": "Huidig",
+      "abilities": "Vaardigheden"
+    },
+    "suitabilityHelp": "Geschiktheid (0-100) geeft aan hoe goed een renner bij het terrein van deze koers past. Hoger is een betere match.",
+    "hideInjured": "Geblesseerden verbergen",
+    "suitability": "Geschiktheid",
+    "routeMatch": "Parcoursmatch",
+    "riderProfile": {
+      "viewProfile": "Profiel van {name} bekijken",
+      "aggression": "Agressie",
+      "tactics": "Tactiek",
+      "hint": "Dit sluiten verandert je selectie niet. Gebruik het selectievakje om deze renner te selecteren of te deselecteren."
+    },
+    "driverInsight": {
+      "escape": {
+        "high": "Kans op ontsnapping: hoog. Agressie trekt hem op dit terrein vaak in ontsnappingspogingen, en het kost zijn eigen resultaat nooit iets als de poging wordt gegrepen.",
+        "medium": "Kans op ontsnapping: gemiddeld. Agressie trekt hem op dit terrein af en toe in ontsnappingspogingen, zonder kosten als de poging wordt gegrepen.",
+        "low": "Kans op ontsnapping: laag. Niet agressief genoeg om op dit terrein een vaste ontsnappingsdreiging te zijn."
+      },
+      "tactics": {
+        "strong": "Tactische match: sterk. Deze etappe beloont positionering en koersinzicht, en dat is een sterkte van hem.",
+        "average": "Tactische match: gemiddeld. Deze etappe beloont positionering en koersinzicht.",
+        "poor": "Tactische match: beperkt. Deze etappe beloont positionering en koersinzicht, en dat is nog niet zijn sterkte."
+      }
+    },
+    "sort": {
+      "label": "Sorteren op",
+      "ascAria": "Oplopend gesorteerd, tik voor aflopend",
+      "descAria": "Aflopend gesorteerd, tik voor oplopend"
+    },
+    "best": "Beste",
+    "bestForStage": "Je sterkste match voor deze etappe",
+    "whyBest": "Deze {bucket}-etappe beloont je sterkste match: {name}.",
+    "form": "Vorm",
+    "fatigue": "Vermoeidheid",
+    "injured": "Geblesseerd",
+    "overAge": "Te oud",
+    "boundIn": "Rijdt {race}",
+    "boundConflict": "Overlapt met {race}",
+    "autoPicked": "Keuze van de assistent. Pas aan en sla op om zelf de controle te nemen.",
+    "draftRestored": "Ik heb je niet-opgeslagen keuzes bewaard. Sla ze op voordat de vlag valt.",
+    "autoFill": "Automatisch kiezen",
+    "autoFillError": "Automatisch kiezen is niet gelukt. Probeer het opnieuw.",
+    "autoFillReloadFailed": "Automatisch kiezen heeft je selectie opgeslagen, maar het opnieuw laden hier is mislukt. Probeer het opnieuw voordat je meer wijzigt.",
+    "retry": "Probeer opnieuw",
+    "save": "Selectie opslaan",
+    "saveLocked": "Selectie opslaan (vergrendeld)",
+    "trainNowLock": {
+      "title": "Vandaag vergrendeld.",
+      "bodyAt": "Je drukte om {time} op Nu trainen. Renners die vandaag hebben getraind, kunnen de koers van vandaag niet rijden.",
+      "body": "Renners die vandaag hebben getraind, kunnen de koers van vandaag niet rijden.",
+      "rider": "Vandaag getraind",
+      "columnLocked": "Vergrendeld"
+    },
+    "saving": "Opslaan…",
+    "saved": "Selectie opgeslagen.",
+    "wrongPool": {
+      "title": "Deze koers zit in een andere divisie",
+      "note": "Je kunt alleen aan koersen in je eigen divisie deelnemen, dus hier valt geen opstelling in te stellen."
+    },
+    "withdrawnPanel": {
+      "title": "Je hebt je uit deze koers teruggetrokken",
+      "note": "Je team start vrijwillig niet, dus er valt geen opstelling in te stellen. Schrijf je opnieuw in vanaf het koersbord als je je bedenkt voor de start.",
+      "keptHeading": "{count, plural, one {# renner bewaard voor een nieuwe inschrijving} other {# renners bewaard voor een nieuwe inschrijving}}"
+    },
+    "errors": {
+      "selection_wrong_size": "Je kunt maximaal {max} renners kiezen.",
+      "move_target_full": "Die koers is al vol. Haal daar eerst een renner weg.",
+      "move_target_locked": "Die koers is begonnen, dus de opstelling is vergrendeld.",
+      "move_wrong_pool": "Je kunt alleen aan koersen in je eigen divisie deelnemen.",
+      "move_rider_ineligible": "Die renner kan op dit moment niet voor je team koersen.",
+      "move_invalid_body": "De renner kon niet worden verplaatst. Probeer het opnieuw.",
+      "move_failed": "De renner kon niet worden verplaatst. Probeer het opnieuw.",
+      "selection_captain_required": "Kies een kopman uit je geselecteerde renners.",
+      "selection_captain_not_selected": "Je kopman moet een van de geselecteerde renners zijn.",
+      "selection_role_not_selected": "Renners met een rol moeten deel uitmaken van de selectie.",
+      "selection_role_overlap": "Kopman, sprintkopman en jager moeten verschillende renners zijn.",
+      "selection_rider_injured": "Geblesseerde renners kunnen niet worden geselecteerd.",
+      "selection_rider_over_age": "Renners boven de leeftijdsgrens van de koers kunnen niet worden geselecteerd.",
+      "selection_rider_not_on_team": "Je kunt alleen je eigen renners selecteren.",
+      "selection_duplicate_rider": "Elke renner kan maar één keer worden geselecteerd.",
+      "selection_race_not_open": "De selectie is gesloten voor deze koers.",
+      "selection_race_started": "Deze koers is begonnen, dus de opstelling is vergrendeld.",
+      "selection_season_not_active": "Deze koers hoort bij een seizoen dat nog niet is begonnen.",
+      "selection_rider_bound": "Deze renner koerst al in een overlappende koers.",
+      "selection_rider_bound_named": "{rider} koerst al in {race}, die overlapt. Haal hem daar weg, of kies iemand anders.",
+      "selection_flag_disabled": "De teamselectie is nog niet actief.",
+      "selection_invalid_body": "De selectie kon niet worden opgeslagen. Probeer het opnieuw.",
+      "selection_wrong_pool": "Je kunt alleen aan koersen in je eigen divisie deelnemen.",
+      "selection_withdrawn": "Je hebt je uit deze koers teruggetrokken, dus er kan geen opstelling voor worden opgeslagen.",
+      "selection_train_now_locked": "Renners die vandaag hebben getraind, kunnen niet aan de koers van vandaag worden toegevoegd of eruit worden gehaald.",
+      "selection_youth_squad_train_only": "Deze selectie staat op Alleen trainen. Zet hem op de selectiepagina op Aan koersen deelnemen om hem in te schrijven.",
+      "selection_duplicate_race": "Opslaan is niet gelukt: dezelfde koers zat er twee keer in. Probeer het opnieuw.",
+      "selection_bulk_too_large": "Je kunt maximaal {max} gewijzigde koersen tegelijk opslaan. Sla er nu een aantal op, en daarna de rest.",
+      "race_not_found": "Deze koers bestaat niet meer. Vernieuw en probeer het opnieuw.",
+      "strategy_invalid_body": "Je strategie kon niet worden opgeslagen: ongeldige gegevens.",
+      "strategy_flag_disabled": "Het koersplatform is nog niet actief.",
+      "generic": "De selectie kon niet worden opgeslagen. Probeer het opnieuw.",
+      "saveAllPartial": "Deze opstellingen zijn niet opgeslagen: {races}. Je wijzigingen staan er nog, dus probeer het opnieuw op te slaan."
+    }
+  },
+  "intention": {
+    "title": "Intentie voor koersdag",
+    "help": "De rol loopt de hele koers. De intentie is wat je van hem wilt in de etappe die je open hebt.",
+    "helpRaceDay": "De rol loopt de hele koers. De intentie is wat je van hem wilt op de koersdag.",
+    "colRider": "Renner",
+    "colRole": "Rol",
+    "colIntention": "Intentie · etappe {number}",
+    "colIntentionRaceDay": "Intentie · koersdag",
+    "allRace": "Hele koers",
+    "thisRace": "Deze koers",
+    "stage": "Etappe {number}",
+    "stageToday": "Etappe {number} · vandaag",
+    "stageAria": "Intenties voor etappe {number}",
+    "stageTodayAria": "Intenties voor etappe {number}, vandaag",
+    "stageLower": "etappe {number}",
+    "raceDay": "Koersdag",
+    "raceDayLower": "koersdag",
+    "roleFree": "Vrije rol",
+    "notSetNote": "Niet ingesteld betekent dat hij de standaard van zijn rol rijdt.",
+    "roleDefault": "Standaard van de rol · normaal",
+    "listAnd": " en ",
+    "roleDefaultTag": "Standaard van de rol",
+    "nothingSet": "Niets ingesteld. Hij rijdt zijn rol.",
+    "setIntention": "Intentie instellen",
+    "change": "Wijzigen",
+    "close": "Sluiten",
+    "appliesToStageOnly": "Geldt alleen voor deze etappe",
+    "pickerTitle": "{name} · {scope}",
+    "line": "Standaard {role}. Vandaag: {today}.",
+    "riderAbandoned": "Uit de koers",
+    "copyToStage": "Kopiëren naar etappe {number}",
+    "save": "Etappe {number} opslaan",
+    "saveRaceDay": "Koersdag opslaan",
+    "saving": "Opslaan…",
+    "saved": "Intenties opgeslagen.",
+    "unsaved": "Je hebt niet-opgeslagen wijzigingen",
+    "footer": "Etappe {stage}: {set, plural, one {# renner} other {# renners}} ingesteld, {onDefault} op de standaard van hun rol",
+    "footerRaceDay": "Koersdag: {set, plural, one {# renner} other {# renners}} ingesteld, {onDefault} op de standaard van hun rol",
+    "footerUntouchedOne": "etappe {stages} onaangeroerd",
+    "footerUntouchedMany": "etappes {stages} onaangeroerd",
+    "step": {
+      "grupetto": "Grupetto",
+      "save": "Rustig rijden",
+      "normal": "Normaal",
+      "protect": "Werken of aanvallen",
+      "all_out": "Volle inzet"
+    },
+    "why": {
+      "grupetto": "Rijdt hem uit in de achterste groep. Geen kans op een resultaat.",
+      "save": "Rijdt mee en spaart de benen voor de dagen die tellen.",
+      "normal": "Zijn gewone koers.",
+      "protect": "Geeft zich helemaal voor de kopman. Echte vermoeidheid.",
+      "all_out": "Alles op vandaag. De zwaarste dag voor zijn benen."
+    },
+    "today": {
+      "grupetto": "grupetto",
+      "save": "meerijden in het peloton",
+      "normal": "zijn gewone koers",
+      "protect": "werken of aanvallen",
+      "all_out": "volle inzet"
+    },
+    "roleWord": {
+      "captain": "kopman",
+      "sprint_captain": "sprintkopman",
+      "helper": "renner",
+      "hunter": "jager",
+      "free_role": "vrije rol"
+    },
+    "errors": {
+      "stage_roles_invalid_body": "De intenties konden niet worden opgeslagen. Probeer het opnieuw.",
+      "stage_roles_stage_locked": "Een van de wijzigingen betreft een etappe die al is begonnen, dus die kan niet worden opgeslagen.",
+      "stage_roles_rider_not_entered": "Een van de renners is niet voor deze koers ingeschreven.",
+      "stage_roles_invalid_role": "Een van de rollen is niet geldig.",
+      "stage_roles_invalid_effort": "Een van de intenties is niet geldig.",
+      "stage_roles_role_overlap": "Per etappe kan maar één renner kopman zijn, maar één sprintkopman en maar één ontsnappingsjager.",
+      "stage_roles_duplicate": "Dezelfde renner komt twee keer voor in dezelfde etappe.",
+      "stage_roles_rider_abandoned": "Een van de renners is uit de koers en kan geen intentie meer krijgen.",
+      "stage_roles_race_completed": "Deze koers is afgelopen, dus de intenties kunnen niet meer worden gewijzigd.",
+      "generic": "De intenties konden niet worden opgeslagen. Probeer het opnieuw.",
+      "stage_roles_conflict": "Je tactiek is in een ander venster gewijzigd. De nieuwste versie is geladen. Controleer hem en sla opnieuw op."
+    }
+  },
+  "tacticsOrders": {
+    "title": "Tactiek",
+    "locksAt": "Vergrendelt {time}",
+    "locked": "Vergrendeld",
+    "lockedNote": "De opdrachten zijn voor deze etappe vergrendeld. Ze zijn bij de start van de etappe vastgelegd.",
+    "empty": "Sla hierboven je opstelling op om er tactiek voor in te stellen.",
+    "planLabel": "Teamplan",
+    "breakawayLabel": "Ontsnapping",
+    "effortLabel": "Inspanning",
+    "plan": {
+      "noCaptain": "Nog geen kopman ingesteld. Stel hierboven je opstelling in.",
+      "chase": "{captain} leidt. De ploeg rijdt om de ontsnapping terug te halen.",
+      "neutral": "{captain} leidt. De ploeg leest de koers terwijl hij zich ontwikkelt.",
+      "letGo": "{captain} leidt. De ploeg laat de vroege ontsnapping gaan."
+    },
+    "breakawayAria": "Houding van het team tegenover de ontsnapping",
+    "ordersGc": {
+      "rulesLabel": "Koersregels",
+      "rulesName": "Ontsnappingsopdrachten en reactie in het klassement",
+      "rulesHelp": "Hoe ze werken",
+      "stanceLabel": "De ontsnapping najagen",
+      "stance": {
+        "chase": "Najagen",
+        "neutral": "De koers lezen",
+        "let_go": "Het najagen aan anderen overlaten"
+      },
+      "gcNote": "De ploeg kan met haar vrije renners beperkt reageren op een serieuze bedreiging in het klassement.",
+      "breakNote": "Kopman, sprintkopman en knecht gaan alleen voor de ochtendontsnapping als Probeer de ontsnapping is geselecteerd."
+    },
+    "breakaway": {
+      "chase": "Terughalen",
+      "neutral": "Neutraal",
+      "let_go": "Laten gaan"
+    },
+    "effort": {
+      "protect": "Beschermen",
+      "normal": "Normaal",
+      "save": "Sparen",
+      "grupetto": "Grupetto",
+      "all_out": "Volle inzet"
+    },
+    "effortAria": "Inspanning voor {name}",
+    "tryBreak": "Probeer de ontsnapping",
+    "tryBreakAria": "{name} probeert de ontsnapping",
+    "roleLabel": {
+      "captain": "Kopman",
+      "sprint_captain": "Sprintkopman",
+      "hunter": "Ontsnappingsjager",
+      "helper": "Knecht",
+      "free_role": "Vrije rol"
+    },
+    "save": "Tactiek opslaan",
+    "saving": "Opslaan…",
+    "saved": "Tactiek opgeslagen.",
+    "leadout": "Sprinttrein",
+    "leadoutAria": "{name} rijdt in de sprinttrein",
+    "standardPrefix": "Standaard: {role}",
+    "todayPrefix": "Vandaag: {today}",
+    "today": {
+      "ridesRole": "rijdt zijn rol",
+      "tryBreak": "gaat voor de ontsnapping",
+      "stayInBunch": "blijft in het peloton",
+      "joinTrain": "rijdt in de sprinttrein",
+      "leaveTrain": "uit de sprinttrein",
+      "effort": {
+        "protect": "beschermt",
+        "normal": "normale inspanning",
+        "save": "spaart",
+        "grupetto": "rijdt in de grupetto",
+        "all_out": "geeft alles"
+      }
+    },
+    "riderFallback": "Renner",
+    "loadError": "Je tactiek voor deze etappe kon niet worden geladen.",
+    "retry": "Probeer opnieuw",
+    "saveError": "Opslaan is niet gelukt. Probeer het opnieuw.",
+    "roleDefault": {
+      "captain": "beschermde kopman",
+      "sprint_captain": "sprintkopman",
+      "hunter": "ontsnappingsjager",
+      "helper": "knecht",
+      "free_role": "vrije rol"
+    }
+  },
+  "racePage": {
+    "tabsAria": "Koersonderdelen",
+    "tab": {
+      "overview": "Overzicht",
+      "team": "Team",
+      "tactics": "Tactiek",
+      "stages": "Etappes",
+      "results": "Uitslagen"
+    },
+    "hero": {
+      "stageLabel": "Etappe",
+      "stagesLabel": "Etappes",
+      "terrain": "Terrein",
+      "selected": "Geselecteerd",
+      "locks": "Vergrendelt",
+      "stageLocks": "Etappe {number} vergrendelt",
+      "yourBest": "Jouw beste",
+      "stageWins": "Etappezeges",
+      "finishers": "Finishers",
+      "notStarted": "Nog niet gestart",
+      "racingNow": "Nu in koers",
+      "allRidden": "Alles gereden",
+      "squadLockedIn": "Selectie vergrendeld",
+      "squadFrozen": "Selectie bevroren",
+      "abandons": "{count, plural, one {# opgave} other {# opgaven}}",
+      "chipStageOnRoad": "Etappe {number} onderweg",
+      "chipRacing": "Onderweg",
+      "chipFinished": "Afgelopen",
+      "chipStartsAt": "Start {time}",
+      "chipNotStarted": "Nog niet gestart"
+    },
+    "stages": {
+      "emptyTitle": "Nog geen parcours",
+      "emptyHint": "Het parcours van deze koers is nog niet uitgetekend. Het verschijnt hier zodra het er is."
+    },
+    "tactics": {
+      "title": "Tactiek",
+      "help": "De rol loopt de hele koers. De intentie en de opdrachten zijn wat je wilt in de etappe die je open hebt.",
+      "helpScoped": "Jij kiest voor welke etappes een rol geldt. De intentie en de opdrachten zijn wat je wilt in de etappe die je open hebt.",
+      "helpRaceDay": "De rol loopt de hele koers. De intentie en de opdrachten zijn wat je wilt op de koersdag.",
+      "colOrders": "Opdrachten · etappe {number}",
+      "colOrdersRaceDay": "Opdrachten · koersdag",
+      "colRouteMatch": "Parcoursmatch · etappe {number}",
+      "colRouteMatchRaceDay": "Parcoursmatch · koersdag",
+      "sortRouteMatch": "Sorteren op parcoursmatch voor deze etappe",
+      "stageMeta": "Etappe {number} · vergrendelt {time}",
+      "sprintTrainRiders": "{count, plural, =0 {Niemand} one {# renner} other {# renners}} voor {name}",
+      "sprintTrainNone": "Geen sprintkopman in dit team.",
+      "locked": "Vergrendeld",
+      "lockedStage": "Etappe {number} vergrendeld om {time}. Dit is waarmee je ze op pad stuurde.",
+      "lockedStageNoTime": "Etappe {number} is vergrendeld. Dit is waarmee je ze op pad stuurde.",
+      "lockedRaceDay": "De koersdag is vergrendeld. Dit is waarmee je ze op pad stuurde.",
+      "whatYouSet": "Wat je hebt ingesteld. Etappe {number}: {today}.",
+      "whatYouSetRaceDay": "Wat je hebt ingesteld. Koersdag: {today}.",
+      "loadError": "Je tactiek voor deze koers kon niet worden geladen.",
+      "changeRoleAria": "De rol van {name} wijzigen",
+      "rolePickerTitle": "Rol van {name}",
+      "roleScope": "Van etappe {number} tot het einde van de koers",
+      "roleScopeRaceDay": "Voor deze koers",
+      "roleScopeLabel": "Geldt voor",
+      "roleScopeRest": "Etappe {number} tot het einde van de koers",
+      "roleScopeStageOnly": "Alleen etappe {number}",
+      "roleExclusiveNote": "Eén kopman, één sprintkopman en één ontsnappingsjager tegelijk. De renner die de rol had, wordt knecht.",
+      "roleExclusiveNoteScoped": "Eén kopman, één sprintkopman en één ontsnappingsjager tegelijk. De renner die de rol had, wordt in dezelfde etappes knecht. Eerdere etappes behouden hun rollen.",
+      "roleWhy": {
+        "captain": "De ploeg rijdt voor hem en hij krijgt de bescherming.",
+        "sprint_captain": "Hij krijgt de sprinttrein en de lead-out.",
+        "hunter": "Hij gaat op jacht naar de ontsnapping.",
+        "helper": "Hij werkt voor de leiders.",
+        "free_role": "Hij rijdt zijn eigen koers."
+      }
+    },
+    "team": {
+      "title": "Team",
+      "riderCount": "{count, plural, one {# renner} other {# renners}}",
+      "duringNote": "De selectie is bevroren. Dit is wie er rijdt, en de rol die je hem gaf.",
+      "afterNote": "Er valt niets meer te wijzigen. Dit is waarmee je ze op pad stuurde, etappe voor etappe.",
+      "legend": "Goud is wat je koos. Grijs is de standaard van de rol, die je met rust liet.",
+      "loadError": "Je team voor deze koers kon niet worden geladen.",
+      "noRiders": "Je hebt geen renners in deze koers.",
+      "gc": "AK",
+      "stageShort": "Et {number}",
+      "dnf": "DNF",
+      "jerseyShortcutNote": "{name} leidt het algemeen klassement maar is niet je kopman.",
+      "jerseyShortcutAction": "Kopman maken",
+      "jerseyShortcutSaving": "Opslaan…",
+      "jerseyShortcutError": "Opslaan is niet gelukt. Probeer het opnieuw."
+    },
+    "overview": {
+      "gap": "Achterstand",
+      "latest": "Het laatste van onderweg",
+      "whereYouStand": "Waar je staat",
+      "whereYouStandHelp": "Algemeen klassement na etappe {done}. Etappe {running} is nog onderweg.",
+      "whereYouStandHelpOneDay": "De koers is onderweg.",
+      "noStandingsYet": "Nog geen klassement. Het verschijnt zodra de eerste etappe binnen is.",
+      "topOf": "Top 6 van {count}",
+      "today": "Vandaag · etappe {number}",
+      "howItEnded": "Hoe het afliep",
+      "howItEndedHelp": "Eindstand van het algemeen klassement.",
+      "otherClassifications": "Punten-, berg- en ploegenklassementen staan bij Uitslagen.",
+      "openResults": "Uitslagen openen",
+      "latestStageResultHint": "Zie wie etappe {number} won en hoe het verliep.",
+      "latestStageResultCta": "Uitslag etappe {number}",
+      "raceIsDone": "Er valt niets meer in te stellen. De koers is afgelopen.",
+      "beforeFlag": "Voor de vlag valt",
+      "beforeFlagHelp": "Wat er nog openstaat voor deze koers.",
+      "nextDecision": "Je volgende beslissing",
+      "nextDecisionHelp": "De etappes waarvoor je nog tactiek kunt instellen.",
+      "stageTactics": "Tactiek etappe {number}",
+      "raceDayTactics": "Tactiek koersdag",
+      "somethingSet": "Ingesteld",
+      "nothingSet": "Niets ingesteld",
+      "nothingLeft": "Er valt niets meer in te stellen voor deze koers.",
+      "nothingSetNote": "Niets ingesteld betekent dat ze hun rollen rijden.",
+      "setStageTactics": "Tactiek voor etappe {number} instellen",
+      "setRaceDayTactics": "Tactiek voor de koersdag instellen",
+      "check": {
+        "teamPicked": "Team gekozen",
+        "rolesSet": "Rollen ingesteld voor de koers",
+        "firstStage": "Tactiek voor etappe 1",
+        "laterStages": "Etappes {from}–{to}"
+      },
+      "checkValue": {
+        "picked": "{count, plural, one {# renner} other {# renners}}",
+        "rolesDone": "Kopman ingesteld",
+        "laterStages": "Open tot elke etappe vergrendelt"
+      }
+    }
+  },
+  "strategy": {
+    "title": "Teamstrategie",
+    "subtitle": "Vaste voorkeuren die je assistent gebruikt om elke opstelling samen te stellen.",
+    "open": "Teamstrategie",
+    "save": "Strategie opslaan",
+    "saved": "Strategie opgeslagen",
+    "regenerate": "Suggesties opnieuw genereren",
+    "aChain": {
+      "title": "A-keten",
+      "help": "Je kernrenners, gerangschikt. Zij krijgen voorrang voor je doelkoersen.",
+      "add": "Renner toevoegen",
+      "empty": "Nog geen kernrenners. Voeg de renners toe waaromheen je bouwt.",
+      "up": "Omhoog",
+      "down": "Omlaag",
+      "remove": "Verwijderen"
+    },
+    "roleRules": {
+      "title": "Vaste rollen",
+      "help": "Leg een renner vast op een rol zodra hij wordt geselecteerd.",
+      "none": "Geen vaste rol",
+      "always_captain": "Altijd kopman",
+      "always_sprint_captain_if_present": "Altijd sprintkopman (indien geselecteerd)"
+    },
+    "captains": {
+      "title": "Kopmannen per terrein",
+      "help": "Gerangschikte kopmankandidaten per terrein. De assistent kiest de hoogst gerangschikte geselecteerde renner.",
+      "suggest": "Automatisch voorstellen",
+      "rank": "Kopman {n}",
+      "empty": "Nog geen kandidaten"
+    },
+    "buckets": {
+      "flat": "Vlak",
+      "hilly": "Heuvelachtig",
+      "mountain": "Bergen",
+      "cobbles": "Kasseien",
+      "itt": "Tijdrit"
+    },
+    "targets": {
+      "title": "Doelkoersen",
+      "help": "Markeer de koersen die het meest tellen. Je A-keten krijgt hier voorrang.",
+      "marked": "Doel",
+      "empty": "Geen komende koersen."
+    },
+    "preview": {
+      "title": "Hoe je strategie selecties verandert",
+      "run": "Wijzigingen bekijken",
+      "none": "Geen wijzigingen voor komende automatisch gevulde koersen.",
+      "summary": "{changedRaces} koersen veranderen · +{totalAdded}/−{totalRemoved} renners · {captainChanges} kopmanwijzigingen",
+      "in": "Erbij",
+      "out": "Eraf",
+      "captain": "Kopman → {name}"
+    },
+    "error": {
+      "title": "Er ging iets mis",
+      "loadTitle": "De teamstrategie kon niet worden geladen",
+      "loadBody": "Er is niets verloren gegaan. Je opgeslagen strategie is veilig.",
+      "session": "Je sessie is verlopen. Log opnieuw in om verder te plannen.",
+      "retry": "Probeer opnieuw"
+    }
+  },
+  "discoverCta": {
+    "title": "Kies je koersselectie",
+    "bodyStage": "{race} komt eraan. Kies je renners, kopman en tactiek voor de start.",
+    "bodyOneDay": "{race} komt eraan. Kies je renners, kopman en tactiek voor de start.",
+    "action": "Stel je opstelling in"
+  },
+  "raceCentre": {
+    "title": "Koerscentrum",
+    "subtitle": "De koersen van vandaag, van de eerste afteltelling tot de eindstand.",
+    "navLabel": "Koerscentrum",
+    "stageLabel": "Etappe {number} van {total}",
+    "oneDayLabel": "Eendagskoers",
+    "divisionLabel": "Div {tier} poule {pool}",
+    "state": {
+      "live": "Live",
+      "upcoming": "Komend",
+      "finished": "Afgelopen"
+    },
+    "card": {
+      "yourRider": "Jouw renner",
+      "yourBest": "Jouw beste: {rank} {rider}",
+      "liveNoFilm": "De etappe is bezig. De uitslag verschijnt zodra de renners over de streep komen.",
+      "playbackProgress": "Voortgang van de etappeweergave",
+      "lineupReady": "Opstelling klaar, {selected} van {max} renners gekozen.",
+      "lineupIncomplete": "Opstelling onvolledig, {selected} van {max} renners gekozen.",
+      "lineupUnknown": "De status van de opstelling is niet beschikbaar voor deze koers.",
+      "withdrawn": "Teruggetrokken uit deze koers.",
+      "noResults": "Voor deze etappe is nog geen uitslag gepubliceerd."
+    },
+    "action": {
+      "watchLive": "Live kijken",
+      "reviewTactics": "Tactiek bekijken",
+      "watchFilm": "De koersfilm bekijken",
+      "fullResult": "Volledige uitslag",
+      "viewRace": "Koers bekijken"
+    },
+    "yours": {
+      "title": "Jouw koersen vandaag",
+      "emptyTitle": "Vandaag geen koersen voor je team",
+      "emptyBody": "Je volgende koersdag staat in de kalender. Kijk in de planningshub om je selectie op te stellen."
+    },
+    "divisions": {
+      "title": "Rond de divisies"
+    },
+    "error": {
+      "title": "De koersen van vandaag konden niet worden geladen",
+      "body": "Er is niets verloren gegaan. Je opstellingen en uitslagen zijn veilig.",
+      "retry": "Probeer opnieuw"
+    }
+  },
+  "detail": {
+    "loadError": {
+      "message": "De koers kon niet worden geladen. Er is niets verloren gegaan. Probeer het opnieuw.",
+      "stageMessage": "De uitslag van deze etappe kon niet worden geladen. Er is niets verloren gegaan. Probeer het opnieuw.",
+      "retry": "Probeer opnieuw"
+    },
+    "stat": {
+      "status": "Status",
+      "stages": "Etappes",
+      "season": "Seizoen",
+      "nextStage": "Volgende etappe"
+    },
+    "backToLibrary": "Koersbibliotheek",
+    "back": "Terug",
+    "raceDnaLabel": "Deze koers:",
+    "terrainDna": {
+      "label": "Terrein-DNA · wat de etappe beloont",
+      "rest": "Overige factoren",
+      "finaleFactor": "+ tot ±{pct}%: afdalen & positioneren beslissen de finale"
+    },
+    "ability": {
+      "climbing": "Klimmen",
+      "time_trial": "Tijdrit",
+      "sprint": "Sprint",
+      "punch": "Punch",
+      "endurance": "Uithoudingsvermogen",
+      "cobblestone": "Kasseien",
+      "acceleration": "Acceleratie",
+      "recovery": "Herstel",
+      "tactics": "Tactiek",
+      "positioning": "Positionering",
+      "flat": "Vlak",
+      "tempo": "Tempo",
+      "durability": "Weerbaarheid",
+      "aggression": "Agressie",
+      "descending": "Afdalen"
+    },
+    "tabOverall": "Algemeen",
+    "tabStage": "Etappe {number}",
+    "noOverall": "Geen algemene klassementen vastgelegd",
+    "tableResult": "Uitslag",
+    "jerseysAfterStage": "Truien na de etappe",
+    "liveStandings": {
+      "title": "Stand na etappe {number}",
+      "note": "De koers is nog bezig. De stand wordt na elke etappe bijgewerkt."
+    },
+    "stageFinishOrder": "Etappe {number} · finishvolgorde",
+    "noResults": "Geen uitslagen",
+    "passages": {
+      "title": "Tussenuitslagen",
+      "kom": "Bergsprint",
+      "sprint": "Tussensprint",
+      "category": "cat. {cat}",
+      "points": "{count} pnt",
+      "bonus": "+{count}s"
+    },
+    "classification": {
+      "gc": "Algemeen klassement",
+      "points": "Puntenklassement",
+      "mountain": "Bergklassement",
+      "young": "Jongerenklassement",
+      "team": "Ploegenklassement"
+    },
+    "classTab": {
+      "ariaLabel": "Klassement",
+      "stage": "Etappe",
+      "gc": "Algemeen",
+      "points": "Punten",
+      "mountain": "Berg",
+      "young": "Jeugd",
+      "team": "Ploegen"
+    },
+    "teamFilter": {
+      "label": "Team",
+      "all": "Alle teams",
+      "mine": "Mijn team"
+    },
+    "showAll": "Alle {count} tonen",
+    "showLess": "Verbergen",
+    "team": {
+      "winner": "Winnaar"
+    },
+    "youBadge": "Jij",
+    "finalKm": {
+      "title": "De laatste kilometer",
+      "replay": "Opnieuw afspelen",
+      "distanceKm": "{value} km",
+      "distanceM": "{value} m",
+      "secondsToGo": "nog {count} sec",
+      "finishLine": "Finish",
+      "photoFinish": "Fotofinish",
+      "moreFinishers": "{count, plural, one {+ # finisher meer} other {+ # finishers meer}}",
+      "winType": {
+        "sprint_win": "Massasprint",
+        "close_win": "Nek-aan-nekfinish",
+        "solo_win": "Solozege",
+        "itt_win": "Snelste tijd",
+        "ttt_win": "Snelste ploegentijd"
+      }
+    },
+    "film": {
+      "storyTitle": "Het verhaal van de etappe",
+      "watchButton": "De koersfilm bekijken",
+      "title": "Koersfilm",
+      "km": "km {value}",
+      "gapCurveTitle": "Achterstand op het peloton",
+      "scrubberLabel": "Door de etappe scrollen",
+      "replay": "Opnieuw afspelen",
+      "play": "Afspelen",
+      "pause": "Pauzeren",
+      "feedEmpty": "Scroll vooruit om te zien wat er gebeurde.",
+      "split": {
+        "title": "Tussentijden",
+        "lossTitle": "Waar je renners tijd verloren",
+        "showAll": "Alle groepen tonen",
+        "front": "Kop",
+        "riders": "{count, plural, one {# renner} other {# renners}}",
+        "yours": "Van jou: {names}",
+        "more": "{count, plural, one {# groep verder terug} other {# groepen verder terug}}",
+        "group": {
+          "breakaway": "Ontsnapping",
+          "peloton": "Peloton",
+          "group": "Groep"
+        },
+        "drop": "{rider} verloor het contact met {from, select, breakaway {de ontsnapping} peloton {het peloton} other {{count, plural, one {zijn groep} other {hun groep}}}}{where, select, climb { op {place}} sector { op {place}} other {}}.",
+        "reason": {
+          "climb_deficit": "Het tempo op de klim was te hoog voor {count, plural, one {hem} other {hen}}.",
+          "wprime_depleted": "{count, plural, one {Hij had} other {Zij hadden}} geen kracht meer.",
+          "mixed": "Het tempo was te hoog, en sommigen in de groep hadden geen kracht meer.",
+          "grupetto": "{count, plural, one {Hij moest} other {Zij moesten}} in de grupetto rijden.",
+          "cobbles_sector": "De kasseien braken de groep uit elkaar."
+        },
+        "order": {
+          "save": "Jouw opdracht: Rustig rijden.",
+          "grupetto": "Jouw opdracht: Grupetto."
+        }
+      },
+      "event": {
+        "stage_start": "{count} renners vertrekken voor {distance} km.",
+        "stage_start_itt": "{count} renners gaan een voor een van start over {distance} km tegen de klok.",
+        "stage_start_ttt": "De ploegen gaan een voor een van start over {distance} km tegen de klok.",
+        "breakaway_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg aan de kop.",
+        "kom_passage": "{name} (cat. {category}): {rider} is als eerste boven.",
+        "intermediate_sprint": "{name}: {rider} pakt de tussensprint.",
+        "breakaway_caught": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door de achtervolgende groep.",
+        "breakaway_caught_by_teams": "{riders} {count, plural, one {wordt} other {worden}} gegrepen. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} en {teamLast}}} deed het achtervolgingswerk.",
+        "breakaway_caught_by_peloton": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door het peloton.",
+        "breakaway_survived": "De ontsnapping houdt het peloton tot aan de streep van zich af.",
+        "breakaway_dropped": "{riders} {count, plural, one {moet} other {moeten}} de ontsnapping laten gaan.",
+        "incident": "{kind, select, mechanical {{rider} gaat onderuit door materiaalpech.} other {{rider} gaat onderuit in een valpartij.}}",
+        "incident_crash_time_loss": "{rider} gaat onderuit en verliest {seconds} sec.",
+        "incident_crash_hard": "{rider} gaat hard onderuit: {seconds} sec. verloren, en {days, plural, one {# dag} other {# dagen}} aan de kant.",
+        "incident_crash_abandon": "De koers van {rider} eindigt in een valpartij. Hij is {days, plural, one {# dag} other {# dagen}} uitgeschakeld.",
+        "incident_mechanical": "{rider} heeft een lekke band en verliest {seconds} sec.",
+        "incident_mechanical_helper": "{rider} heeft een lekke band, maar hulp is er meteen. Slechts {seconds} sec. verloren.",
+        "incident_protected": "{rider} gaat onderuit binnen de laatste kilometers, maar behoudt de tijd van de groep.",
+        "favorite_crack": "{rider} knapt en verliest het contact met de kop.",
+        "favorite_crack_tt": "{rider} zakt in de tweede helft in en verliest tijd.",
+        "finale_attack": "{rider} valt aan in de finale.",
+        "ttt_rider_dropped": "{rider} moet zijn ploeg laten gaan.",
+        "sprint_decided": "Het komt aan op de streep tussen {rider} en de achtervolgers.",
+        "sprint_decided_photo": "Fotofinish: het komt aan op de streep voor {rider}.",
+        "outside_time_limit": "{count, plural, one {# renner finisht} other {# renners finishen}} buiten de tijdslimiet en {count, plural, one {verlaat} other {verlaten}} de koers.",
+        "grupetto_saved": "De grupetto komt samen binnen: {count, plural, one {# renner is} other {# renners zijn}} gered.",
+        "finish": "{rider} pakt de etappezege.",
+        "finish_sprint_win": "{rider} wint de massasprint.",
+        "finish_close_win": "{rider} pakt de etappezege.",
+        "finish_solo_win": "{rider} wint solo de etappe.",
+        "finish_itt_win": "{rider} rijdt de snelste tijd van de dag.",
+        "finish_ttt_win": "{rider} leidt de snelste ploeg van de dag naar de finish.",
+        "gc_change": "{rider} neemt de leiding in het klassement over van {previousLeader}.",
+        "group_merged": "{riders} {count, plural, one {sluit} other {sluiten}} aan bij een groep.",
+        "group_merged_many": "{count} renners groeperen zich opnieuw.",
+        "peloton_split": "{riders} {count, plural, one {gaat} other {gaan}} in een aparte groep rijden.",
+        "group_split_many": "{count} renners splitsen zich af in een aparte groep.",
+        "descent_attack": "{riders} {count, plural, one {valt} other {vallen}} aan in de afdaling.",
+        "descent_attack_many": "{count} renners vallen aan in de afdaling.",
+        "gc_reaction_started": "De ploeg van {rider} gaat aan het werk om zijn plaats in het klassement te beschermen.",
+        "gc_reaction_started_threat": "De ploeg van {rider} gaat aan het werk om de dreiging van {threats} in het klassement te beperken.",
+        "gc_reaction_contained": "De ploeg van {rider} stopt met werken. De dreiging voor zijn plaats in het klassement is onder controle.",
+        "gc_reaction_stopped": "De ploeg van {rider} stopt met reageren.",
+        "gc_reaction_exhausted": "De ploeg van {rider} heeft in deze etappe besteed wat ze kan aan de reactie en stopt met werken.",
+        "gc_reaction_no_workers": "De ploeg van {rider} ziet de dreiging, maar heeft geen vrije renners in zijn groep om te reageren.",
+        "group_merged_batch": "{count} {scope, select, others {andere groepen} other {groepen}} kwamen weer samen.",
+        "peloton_split_batch": "{count} {scope, select, others {andere groepen} other {groepen}} scheurden af.",
+        "finale_attack_batch": "{count} {scope, select, others {andere renners} other {renners}} vallen aan in de finale.",
+        "finale_attack_named_batch": "{riders} vallen aan in de finale.",
+        "gc_reaction_batch_started": "{count} {scope, select, others {andere ploegen} other {ploegen}} reageerden.",
+        "gc_reaction_batch_contained": "{count} {scope, select, others {andere ploegen} other {ploegen}} stopten met werken. De dreiging is onder controle.",
+        "gc_reaction_batch_stopped": "{count} {scope, select, others {andere ploegen} other {ploegen}} stopten met reageren.",
+        "gc_reaction_batch_exhausted": "{count} {scope, select, others {andere ploegen} other {ploegen}} besteedden in deze etappe wat ze konden aan de reactie en stopten met werken.",
+        "gc_reaction_batch_no_workers": "{count} {scope, select, others {andere ploegen} other {ploegen}} zagen de dreiging, maar hadden geen vrije renners in de groep om te reageren.",
+        "gc_context_missing": "De klassementsstand van vóór deze etappe is niet beschikbaar, dus vandaag reageert geen enkele ploeg op een dreiging in het klassement.",
+        "own_riders_ahead": "De ploeg van {rider} jaagt niet na. Ze heeft {riders} voorop.",
+        "own_riders_ahead_team": "De ploeg van {riders} jaagt niet na. Ze heeft {count, plural, one {hem} other {hen}} voorop."
+      }
+    },
+    "recap": {
+      "title": "Koersoverzicht",
+      "win": "{rider} pakte de zege.",
+      "soloWin": "{rider} reed solo weg en won met {marginText} voorsprong.",
+      "sprintWin": "{rider} won de sprint.",
+      "ittWin": "{rider} reed de snelste tijd.",
+      "tttWin": "{rider} leidde de snelste ploeg naar de finish.",
+      "breakawaySurvived": "{count, plural, one {Een soloontsnapper bleef weg tot de finish.} other {Een ontsnapping van # renners bleef weg tot de finish.}}",
+      "breakawayCaught": "{count, plural, one {De soloontsnapper werd voor de streep gegrepen.} other {De ontsnapping (# renners) werd voor de streep gegrepen.}}",
+      "breakawayCaughtByTeams": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} en {teamLast}}} leidde de achtervolging en greep de ontsnapping {where, select, km {met nog {km} km te gaan} other {voor de streep}}.",
+      "breakawayCaughtByPeloton": "Het peloton greep de ontsnapping {where, select, km {met nog {km} km te gaan} other {voor de streep}}.",
+      "teamDay": "{team} leidde het ploegenklassement met {count} renners in de top 10.",
+      "teamWon": "{team} won het ploegenklassement.",
+      "jerseys": "Truidragers: {points} in het puntenklassement, {mountain} in de bergen.",
+      "abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af door materiaalpech.} injury {{rider} startte niet: geblesseerd.} other {{rider} stapte af.}}",
+      "notableCrash": "{rider} viel en verloor {marginText}."
+    },
+    "incidents": {
+      "title": "Opgaven",
+      "crash": "Valpartij",
+      "mechanical": "Materiaalpech",
+      "injury": "Niet gestart"
+    },
+    "why": {
+      "title": "Het grotere plaatje",
+      "gcTakeover": "{rider} nam de leiding in het klassement over van {previousLeader}.",
+      "finalGc": "Eindstand algemeen klassement: {first}, {second} en {third}.",
+      "helperShift": "{captain} eindigde in de top 5 nadat {count} ploeggenoten hun eigen resultaat opgaven om hem te steunen.",
+      "favoriteOffDay": "{rider} startte de etappe als sterkste renner op papier maar eindigde buiten de top 15: {reason, select, jour_sans {hij had een slechte dag} incident {een valpartij of materiaalpech kostte hem de dag} helper_work {hij gaf zich helemaal voor een ploeggenoot} other {er kwam geen duidelijke reden naar boven}}.",
+      "formPeak": "{rider} kwam in uitstekende vorm aan de start en maakte dat waar."
+    },
+    "storyTags": {
+      "tag_jour_sans": {
+        "label": "Slechte dag",
+        "tooltip": "Had een slechte dag: de benen waren er gewoon niet."
+      },
+      "tag_peak_day": {
+        "label": "Piek",
+        "tooltip": "Had zijn vorm getimed om te pieken voor deze etappe."
+      },
+      "tag_perfect_peak": {
+        "label": "Perfecte piek",
+        "tooltip": "Won in een etappe waarvoor hij specifiek piekte."
+      },
+      "tag_helper_sacrifice": {
+        "label": "Opoffering",
+        "tooltip": "Gaf zijn eigen resultaat op om voor de kopman van de ploeg te werken."
+      },
+      "tag_outsider_win": {
+        "label": "Outsider",
+        "tooltip": "Won zonder op papier de sterkste renner te zijn."
+      },
+      "tag_favorite_collapse": {
+        "label": "Instorting",
+        "tooltip": "De favoriet van de etappe verloor zijn kans: {reason, select, jour_sans {hij had een slechte dag, de benen waren er gewoon niet} incident {een valpartij of materiaalpech kostte hem de dag} helper_work {hij gaf zich helemaal voor een ploeggenoot} other {er kwam geen duidelijke reden naar boven}}."
+      },
+      "tag_crash_ruined": {
+        "label": "Valpartij",
+        "tooltip": "Een waarschijnlijk topresultaat werd verpest door een valpartij of materiaalpech."
+      },
+      "tag_aggression_no_cost": {
+        "label": "Zonder kosten",
+        "tooltip": "Viel aan en werd gegrepen, maar het kostte hem niets: meegaan in een ontsnapping kost nooit extra vermoeidheid of je eigen plaats."
+      },
+      "tag_saved_effort": {
+        "label": "Benen gespaard",
+        "tooltip": "Stond ingesteld om in deze etappe de benen te sparen, zoals gekozen op de tactiekpagina."
+      },
+      "tag_gave_everything": {
+        "label": "Alles gegeven",
+        "tooltip": "Stond ingesteld om in deze etappe op volle inspanning te werken, zoals gekozen op de tactiekpagina."
+      }
+    },
+    "dayformLine": {
+      "band_m5": [
+        "De slechtste benen die ik dit seizoen heb gehad.",
+        "Ik was daar vandaag alleen maar aan het overleven.",
+        "Alles deed pijn vanaf de allereerste kilometer.",
+        "Ik heb nog nooit zo afgezien."
+      ],
+      "band_m4": [
+        "Ik had een zware dag.",
+        "Vandaag zat er niets in de benen.",
+        "Ik had het al zwaar vanaf de eerste klim.",
+        "Niet mijn dag. Ik kom terug."
+      ],
+      "band_m3": [
+        "Het was een ruwe dag daar.",
+        "Ik vond vandaag nooit mijn ritme.",
+        "Niets aan vandaag voelde makkelijk.",
+        "Ik heb vandaag voor elke meter gevochten."
+      ],
+      "band_m2": [
+        "Ik zat er vandaag wat meer doorheen dan normaal.",
+        "De benen wilden vandaag niet meewerken.",
+        "Een zware dag, ik moest diep gaan.",
+        "Niets ging vandaag vanzelf."
+      ],
+      "band_m1": [
+        "De benen voelden vandaag een beetje plat.",
+        "Er ontbraken vandaag net wat dingen.",
+        "Een licht mindere dag, niets ernstigs.",
+        "Voelde me vandaag wat zwaar in de benen."
+      ],
+      "band_0": [
+        "Gewoon een normale dag daar.",
+        "Niets bijzonders vandaag, gestaag zoals altijd.",
+        "Een gewone dag. Niets te melden.",
+        "De benen voelden ongeveer als altijd."
+      ],
+      "band_p1": [
+        "Voelde me vandaag iets beter dan normaal.",
+        "Een klein vonkje in de benen vandaag.",
+        "Een prima dag, niets te klagen.",
+        "Het viel vandaag een beetje op zijn plek."
+      ],
+      "band_p2": [
+        "De benen voelden goed, een makkelijke dag daar.",
+        "Een solide dag, alles werkte zoals gepland.",
+        "Ik had de hele etappe goede energie.",
+        "Voelde me de hele dag sterk en comfortabel."
+      ],
+      "band_p3": [
+        "Ik had vandaag goede benen.",
+        "Vandaag voelde als een van mijn betere dagen.",
+        "Ik vloog daar vandaag een beetje.",
+        "Goede dag. Ik kon druk zetten als het erop aankwam."
+      ],
+      "band_p4": [
+        "Ik voelde me vandaag sterk.",
+        "De benen waren vandaag goed, baas.",
+        "Ik had het vandaag. Er was meer te geven.",
+        "Goede dag. Het lijf antwoordde elke keer."
+      ],
+      "band_p5": [
+        "De beste benen die ik dit seizoen heb gehad.",
+        "Ik had vandaag twee keer zo ver kunnen gaan.",
+        "Alles wat ik vandaag probeerde werkte gewoon.",
+        "Ik heb me nog nooit zo sterk gevoeld."
+      ]
+    },
+    "report": {
+      "title": "Verslag van etappe {number}",
+      "numbers": {
+        "margin": "Winstmarge",
+        "field": "Renners aan de start",
+        "breakaway": "In de ontsnapping"
+      },
+      "headline": {
+        "sprint_win": {
+          "v1": "{rider} wint de sprint",
+          "v2": "{rider} is de snelste in de massasprint",
+          "v3": "De sprint gaat naar {rider}"
+        },
+        "itt_win": {
+          "v1": "{rider} rijdt de snelste tijd",
+          "v2": "Niemand verslaat {rider} tegen de klok"
+        },
+        "ttt_win": {
+          "v1": "{rider} leidt de snelste ploeg naar de finish",
+          "v2": "De snelste ploegentijd gaat naar {team}"
+        },
+        "close_win": {
+          "v1": "{rider} wint met {marginText}",
+          "v2": "{rider} houdt stand voor de zege"
+        },
+        "solo_win": {
+          "v1": "{rider} rijdt weg van het veld",
+          "v2": "Niemand kon {rider} volgen",
+          "v3": "Een solozege met {marginText} voor {rider}"
+        },
+        "breakaway_survived": {
+          "v1": "De ontsnapping haalt het: {rider} wint",
+          "v2": "{rider} wint vanuit de ontsnapping"
+        },
+        "gc_takeover": {
+          "v1": "{rider} neemt de leiding in de koers",
+          "v2": "Nieuwe leider in de koers: {rider}"
+        },
+        "final_gc": {
+          "v1": "{rider} wint {race}",
+          "v2": "De klassementszege in {race} gaat naar {rider}"
+        }
+      },
+      "lede": {
+        "bunch_sprint": {
+          "v1": "De etappe werd beslist in een massasprint, en {rider} timede hem het best voor {team}.",
+          "v2": "Een vol peloton kwam samen aan. In de sprint was {rider} de snelste man voor {team}."
+        },
+        "reduced_sprint": {
+          "v1": "Een zware finale deelde het peloton op, en {rider} won de sprint uit de kopgroep voor {team}."
+        },
+        "time_trial": {
+          "v1": "Elke renner ging alleen van start tegen de klok. {rider} reed de snelste tijd van de dag voor {team}.",
+          "v2": "Alleen de renner, de weg en de klok. Niemand reed sneller dan {rider} van {team}."
+        },
+        "team_time_trial": {
+          "v1": "De ploegen reden het parcours een voor een tegen de klok. {team} was het snelst, met {rider} als eerste over de streep."
+        },
+        "solo": {
+          "v1": "{rider} liet het veld achter zich en kwam alleen over de streep, {marginText} voorsprong.",
+          "v2": "Het gat werd alleen maar groter. {rider} pakte de zege voor {team} met {marginText} over."
+        },
+        "breakaway": {
+          "v1": "De ontsnapping werd nooit teruggehaald. {rider} maakte het af voor {team}."
+        },
+        "generic": {
+          "v1": "{rider} won voor {team}."
+        }
+      },
+      "beat": {
+        "breakaway_caught": {
+          "v1": "{count, plural, one {De soloontsnapper werd voor de finish teruggehaald.} other {De ontsnapping van # werd voor de finish teruggehaald.}}",
+          "v2": "{count, plural, one {Het veld sloot de soloaanvoerder op tijd af.} other {Het veld sloot de # aanvoerders op tijd af.}}"
+        },
+        "breakaway_caught_by_teams": {
+          "v1": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} en {teamLast}}} leidde de achtervolging en haalde de ontsnapping terug {where, select, km {met nog {km} km te gaan} other {voor de finish}}."
+        },
+        "breakaway_caught_by_peloton": {
+          "v1": "Het peloton haalde de ontsnapping terug {where, select, km {met nog {km} km te gaan} other {voor de finish}}."
+        },
+        "breakaway_survived": {
+          "v1": "{count, plural, one {De soloaanvoerder werd nooit gegrepen.} other {De # ontsnapten hielden het veld tot aan de streep van zich af.}}"
+        },
+        "helper_shift": {
+          "v1": "{team} zette alles in op {captain}: {count, plural, one {één ploeggenoot} other {# ploeggenoten}} werkten om hem naar voren te brengen.",
+          "v2": "{count, plural, one {Een ploeggenoot gaf} other {# ploeggenoten gaven}} vandaag hun eigen kansen op voor {captain}."
+        },
+        "form_peak": {
+          "v1": "{rider} kwam in topvorm aan de start, en dat was te zien.",
+          "v2": "Vorm maakte vandaag het verschil voor {rider}."
+        },
+        "favorite_off_day": {
+          "v1": "Op papier de sterkste renner in dit veld, maar {rider} eindigde buiten de top 15."
+        },
+        "gc_takeover": {
+          "v1": "{rider} neemt de leiding in het klassement over van {previousLeader}.",
+          "v2": "De klassementsleiding wisselt van eigenaar: {rider} staat nu voorop."
+        },
+        "team_day": {
+          "v1": "Het was een dag voor {team}: {count} renners in de top 10."
+        },
+        "aggression_no_cost": {
+          "v1": "{rider} viel aan en werd gegrepen, maar het kostte hem niets. Een ontsnappingspoging kost nooit extra vermoeidheid of je eigen plaats.",
+          "v2": "{rider} waagde zijn kans in de ontsnapping. Voor de streep gegrepen, maar niet slechter af voor de poging."
+        },
+        "saved_effort": {
+          "v1": "{rider} stond ingesteld om de benen te sparen in deze etappe en nam gas terug om iets in reserve te houden.",
+          "v2": "{rider} reed vandaag binnen zichzelf en spaarde inspanning voor wat nog komt."
+        },
+        "gave_everything": {
+          "v1": "{rider} stond ingesteld om op volle inspanning te werken en gaf vandaag alles voor het team.",
+          "v2": "Geen ingehouden adem voor {rider} vandaag: volle inspanning, de hele weg."
+        }
+      },
+      "yourTeam": {
+        "title": "Jouw team",
+        "bestResult": "Best geplaatst: {rider}, etappeplaats {rank}.",
+        "inBreak": "{rider} zat de hele dag in de ontsnapping.",
+        "helperWork": "{count, plural, one {Een ploeggenoot reed} other {# ploeggenoten reden}} in dienst van {captain}.",
+        "none": "Geen renners van jouw team zijn in deze etappe gestart."
+      }
+    },
+    "jersey": {
+      "leader": "Leider",
+      "points_day": "Punten",
+      "mountain_day": "Berg",
+      "young_day": "Jeugd"
+    },
+    "breakaway": {
+      "label": "Ochtendontsnapping",
+      "survived": "bleef weg tot de finish",
+      "caught": "gegrepen",
+      "dropped": "uit de ontsnapping gelost",
+      "participated": "deed mee",
+      "laterAttack": "Latere aanval",
+      "legacyLabel": "Ontsnapping"
+    },
+    "stageProfile": {
+      "label": "Terrein",
+      "note": "Indicatieve terreincategorie op basis van de moeilijkheid van elke etappe.",
+      "sectionTitle": "Etappeprofiel"
+    },
+    "stageSchedule": {
+      "title": "Etappeschema",
+      "subtitle": "Elke etappe wordt op een vast tijdstip gereden (Kopenhagen).",
+      "nextStageLabel": "Volgende etappe",
+      "countdownPrefix": "over",
+      "countdownDays": "{count, plural, one {# dag} other {# dagen}}",
+      "countdownHours": "{count, plural, one {# uur} other {# uur}}",
+      "countdownMinutes": "{count, plural, one {# min} other {# min}}",
+      "startingNow": "Start nu",
+      "stageLabel": "Etappe {number}",
+      "done": "Klaar",
+      "live": "Live",
+      "today": "Vandaag",
+      "tomorrow": "Morgen",
+      "timezoneNote": "Tijden getoond in Kopenhagense tijd (CET/CEST)."
+    },
+    "profileType": {
+      "flat": "Vlak",
+      "rolling": "Glooiend",
+      "hilly": "Heuvelachtig",
+      "mountain": "Bergen",
+      "high_mountain": "Hooggebergte",
+      "itt": "Tijdrit",
+      "itt_hilly": "Heuvelachtige tijdrit",
+      "ttt": "Ploegentijdrit",
+      "cobbles": "Kasseien",
+      "gravel": "Gravel",
+      "classic": "Klassieker",
+      "medium_mountain": "Middelgebergte"
+    },
+    "finaleType": {
+      "bunch_sprint": "Massasprint",
+      "reduced_sprint": "Kleine sprint",
+      "punch": "Explosieve finish",
+      "long_climb": "Bergaankomst",
+      "descent": "Finish na een afdaling",
+      "solo_tt": "Individuele tijdrit",
+      "breakaway": "Gunstig voor ontsnappingen",
+      "flat_sprint": "Sprint op vlak terrein",
+      "uphill_sprint": "Bergop sprint",
+      "wall_finish": "Finish op een muur"
+    },
+    "finaleTypeHint": {
+      "bunch_sprint": "Het peloton blijft bij elkaar en de etappe wordt beslist in een massasprint.",
+      "reduced_sprint": "Een uitgedunde groep haalt de streep en sprint voor de zege.",
+      "punch": "Een korte, steile uitsloper vlak voor de streep beloont een late aanval boven een zuivere sprint.",
+      "long_climb": "Bergaankomst: de klim zelf is de finishlijn, wat de grootste tijdsverschillen van de dag oplevert.",
+      "descent": "De finish komt na een afdaling, waardoor achtervolgers de kans krijgen om voor de streep terug te keren.",
+      "solo_tt": "Elke renner start alleen tegen de klok, zonder wiel te kunnen volgen.",
+      "breakaway": "Terrein dat een vroege ontsnapping begunstigt. Of die wegblijft, wordt op de weg beslist, niet hier.",
+      "flat_sprint": "De etappe finisht op vlakke weg en wordt in een sprint beslist.",
+      "uphill_sprint": "De laatste kilometer loopt licht op, dus de sprint beloont renners die hun vermogen bergop kunnen vasthouden.",
+      "wall_finish": "De finishlijn ligt op een korte, zeer steile muur, waar explosief vermogen de etappe beslist."
+    },
+    "route": {
+      "stats": {
+        "km": "KM",
+        "elevation": "M",
+        "climbs": "KLIMMEN"
+      },
+      "read": {
+        "summit": {
+          "label": "Bergaankomst",
+          "note": "de klim is de streep, geen peloton in de finish"
+        },
+        "valley": {
+          "label": "{km} km afdaling naar de streep",
+          "note": "achtervolgers kunnen terugkomen"
+        },
+        "technical": {
+          "label": "Technische finale",
+          "note": "afdalen & positioneren beslissen"
+        },
+        "long": {
+          "label": "Lange dag",
+          "note": "uithoudingsvermogen & vermoeidheid versterkt"
+        },
+        "short": {
+          "label": "Korte dag",
+          "note": "vermoeidheid gedempt"
+        },
+        "cobbles": {
+          "label": "{count} kasseienstroken",
+          "note": "positionering & kracht over de kasseien"
+        },
+        "gravel": {
+          "label": "{count} gravelstroken",
+          "note": "bochtenwerk & kracht op losse ondergrond"
+        }
+      },
+      "waypoint": {
+        "climb": "Klim van categorie {cat}",
+        "sprint": "Tussensprint",
+        "finish": "Finish",
+        "kmMark": "km {km}",
+        "gradient": "{length} km @ {gradient}%",
+        "altitude": "{m} m hoogte",
+        "afterCrest": "{km} km na de laatste top"
+      },
+      "atStake": "OP HET SPEL",
+      "result": "UITSLAG",
+      "komPoints": "{count} bergpnt",
+      "greenPoints": "{count} groene pnt",
+      "bonusSeconds": "+{count}s",
+      "sprintMarker": "SPRINT · {points}p · +{bonus}s",
+      "finishNote": "FINISH {first} / {second} / {third} s",
+      "a11y": {
+        "graph": "Hoogteprofiel voor etappe {number}: {distance} km, {elevation} m klimmen, {climbs} gecategoriseerde klimmen"
+      }
+    },
+    "table": {
+      "prizePoints": "Prijspunten",
+      "jerseyPoints": "Truipunten",
+      "prizePointsShort": "Prijs",
+      "jerseyPointsShort": "Trui"
+    },
+    "jumpToResults": "Naar de uitslag"
+  },
+  "history": {
+    "loadError": {
+      "message": "De koersgeschiedenis kon niet worden geladen. Probeer het opnieuw.",
+      "retry": "Probeer opnieuw"
+    },
+    "backToLibrary": "Koersbibliotheek",
+    "editionsCount": "{count, plural, one {# editie} other {# edities}}",
+    "editions": "Edities",
+    "season": "Seizoen {number}",
+    "noResults": "Geen uitslagen",
+    "bestRiders": "Beste renners",
+    "bestRidersSub": "Opgeteld over alle edities",
+    "noResultsYet": "Nog geen uitslagen",
+    "statGc": "{count} klassement",
+    "statStageWins": "{count} etappezeges",
+    "statTop3": "{count} top-3",
+    "noWins": "Geen zeges",
+    "accumulatedTitle": "Opgeteld puntentotaal",
+    "accumulatedSub": "Topscorers per totaal aantal punten over alle edities"
+  },
+  "browse": {
+    "error": {
+      "title": "De startlijsten konden niet worden geladen",
+      "body": "Deze weergave is alleen-lezen, dus er is niets verloren gegaan.",
+      "session": "Je sessie is verlopen. Log opnieuw in om verder te plannen.",
+      "retry": "Probeer opnieuw"
+    },
+    "readonly": "Alleen-lezen",
+    "heading": "{division} · {pool}",
+    "headingGeneric": "Startlijsten",
+    "horizonNote": "Startlijsten openen {count} dagen voor elke koers. Rollen, vorm en vermoeidheid blijven verborgen.",
+    "empty": "Geen koersen in deze poule op deze dag.",
+    "noEntries": "Nog geen startlijst.",
+    "grossOnly": "Alleen brutoselecties. Rollen, vorm en vermoeidheid verborgen.",
+    "inDays": "{count, plural, one {over # dag} other {over # dagen}}",
+    "opensIn": "{count, plural, one {Opent over # dag} other {Opent over # dagen}}",
+    "teamCount": "{count, plural, one {# team} other {# teams}}",
+    "division": "Div {n}",
+    "poolN": "Poule {n}",
+    "divisionPicker": "Divisie",
+    "poolPicker": "Poule",
+    "you": "jij",
+    "unknownTeam": "Onbekend"
+  },
+  "tour": {
+    "pickRace": {
+      "title": "Eén kolom per koers vandaag",
+      "body": "Het label toont hoeveel renners je hebt ingeschreven van de plekken die deze koers je geeft. Rijd je met te weinig renners, dan heb je niemand die voor je leider werkt. Tik op een renner om hem kopman, sprintkopman of ontsnappingsjager te maken."
+    },
+    "pickRiders": {
+      "title": "Hier staan je renners",
+      "body": "Tik op een renner, of sleep hem naar een koers, om hem in te schrijven. Een grijs label is al vergeven: een renner koerst één keer per koersdag. Automatisch vullen dicht de gaten en behoudt wat je zelf koos. Niets telt tot je op Wijzigingen opslaan drukt."
+    },
+    "tactics": {
+      "title": "Stel je voorkeuren één keer in",
+      "body": "Teamstrategie slaat de renners op waaromheen je bouwt, je kopmannen per terrein en de koersen die het meest tellen. Je assistent gebruikt het elke keer opnieuw als hij een opstelling voor je invult. Tactiek binnen een etappekoers stel je in op de koers zelf."
+    }
+  },
+  "selectionReminder": {
+    "title": "Selectie ontbreekt",
+    "titleUrgent": "Je team start niet",
+    "body": "{count, plural, one {# koers start} other {# koersen starten}} zonder volledige selectie.",
+    "bodyUrgent": "{count, plural, one {# koers zit} other {# koersen zitten}} onder het minimum om te starten.",
+    "picked": "{picked}/{target} gekozen",
+    "deadlinePassed": "deadline verstreken",
+    "in": {
+      "minutes": "over {count} min",
+      "hours": "over {count}u",
+      "days": "over {count, plural, one {# dag} other {# dagen}}"
+    }
+  }
+}

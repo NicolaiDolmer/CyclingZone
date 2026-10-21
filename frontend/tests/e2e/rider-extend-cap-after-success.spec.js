@@ -10,7 +10,7 @@
 // afvist — ét klik, én Sentry-hændelse, uanset browser.
 //
 // Testen kører hele spillerens vej: forlæng en rytter der har 1 forlængelse
-// tilbage, og kræv at knappen er LÅST bagefter (og at tælleren står 3/3).
+// tilbage, og kræv at knappen er LÅST bagefter.
 // Uden fixet er knappen enabled her, og testen fejler.
 import { expect, test } from "./e2e-base.js";
 import { corsHeaders, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
@@ -76,11 +76,9 @@ test("#3597: forlæng-knappen låser når forlængelsen bruger sidste tilladte s
 
   // Fixturen låser locale til DA (se stabilizePage).
   const trigger = page.getByRole("button", { name: "Forlæng kontrakt" });
-  const counter = page.getByText("Forlængelser brugt").locator("xpath=following-sibling::span[1]");
 
-  // Udgangspunkt: 2/3 brugt, knappen er åben (mount-tjekket er landet).
+  // Udgangspunkt: knappen er åben (den er deaktiveret mens mount-tjekket kører, så enabled = tjekket er landet). #6934: tælleren vises ikke længere.
   await expect(trigger).toBeEnabled();
-  await expect(counter).toHaveText("2/3");
 
   await trigger.click();
   await page.getByRole("button", { name: "Bekræft forlængelse" }).click();
@@ -88,7 +86,6 @@ test("#3597: forlæng-knappen låser når forlængelsen bruger sidste tilladte s
 
   // Kontrakten: kapaciteten er brugt op, så knappen må ikke kunne klikkes igen.
   // Præcis her stod den enabled før fixet — ét klik = én afvist extend-quote.
-  await expect(counter).toHaveText("3/3");
   await expect(trigger).toBeDisabled();
 
   // Og forklaringen skal følge med, så en låst knap ikke bare er tavs.

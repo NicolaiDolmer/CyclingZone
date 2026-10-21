@@ -102,7 +102,12 @@ function parseBranches(body) {
   return branches;
 }
 
-function pluralCategory(value) {
+// #6836 (Codex): sprogets egne flertalsregler (fransk 'one' daekker 0 og 1).
+// Ukendt/ugyldigt sprog falder tilbage til den gamle regel (kun 1 er 'one').
+function pluralCategory(value, language) {
+  try {
+    if (language) return new Intl.PluralRules(language).select(Number(value));
+  } catch { /* best-effort: ugyldig locale falder tilbage til en/da-reglen */ }
   return Number(value) === 1 ? "one" : "other";
 }
 
@@ -111,7 +116,7 @@ function pluralCategory(value) {
  * Ukendte parametre efterlades som "{name}" (samme adfaerd som i18next uden
  * vaerdi), saa en manglende param er synlig i stedet for at blive til "undefined".
  */
-export function formatMessage(template, params = {}, depthValue = null) {
+export function formatMessage(template, params = {}, depthValue = null, language = null) {
   if (typeof template !== "string" || !template.includes("{")) {
     return typeof template === "string" ? template.replace(/#/g, depthValue == null ? "#" : String(depthValue)) : "";
   }
@@ -151,12 +156,12 @@ export function formatMessage(template, params = {}, depthValue = null) {
       if (type === "plural" || type === "selectordinal") {
         const branches = parseBranches(body);
         const exact = branches[`=${Number(value)}`];
-        const chosen = exact ?? branches[pluralCategory(value)] ?? branches.other ?? "";
-        out += formatMessage(chosen, params, Number(value));
+        const chosen = exact ?? branches[pluralCategory(value, language)] ?? branches.other ?? "";
+        out += formatMessage(chosen, params, Number(value), language);
       } else if (type === "select") {
         const branches = parseBranches(body);
         const chosen = branches[String(value)] ?? branches.other ?? "";
-        out += formatMessage(chosen, params, depthValue);
+        out += formatMessage(chosen, params, depthValue, language);
       } else {
         // Ukendt ICU-type (fx number/date) — vis raa vaerdi frem for at kaste.
         out += value == null ? `{${name}}` : String(value);
@@ -185,7 +190,9 @@ export function translate(key, params = {}, { language = DEFAULT_LANGUAGE, fallb
   const lng = normalizeLanguage(language);
   const template = bundle?.[lng]?.[key] ?? bundle?.[DEFAULT_LANGUAGE]?.[key];
   if (template == null) return fallback || key;
-  return formatMessage(template, params);
+  // Flertalsreglerne foelger det sprog, skabelonen faktisk kom fra (EN-fallback = en-regler).
+  const usedLng = bundle?.[lng]?.[key] != null ? lng : DEFAULT_LANGUAGE;
+  return formatMessage(template, params, null, usedLng);
 }
 
 /** Findes noeglen i EN-bundlen? Bruges af tests og guards. */

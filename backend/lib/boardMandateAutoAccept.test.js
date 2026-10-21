@@ -7,9 +7,9 @@ import { processMandateAutoAcceptCron } from "./boardMandateAutoAccept.js";
 // signMandate (boardMandateMeeting.js) selv rører når den kaldes med Keep på
 // alt — samme tabel-sæt som boardMandateMeeting.test.js's mock. ────────────
 function makeCronSupabase({
-  flagValue = "on", mandates = [], teams = [], users = [], notifications = [], boardMembers = [],
+  flagValue = "on", mandates = [], teams = [], users = [], notifications = [], boardMembers = [], seasons = [],
 } = {}) {
-  const state = { mandates: [...mandates], events: [], boardProfiles: [], notificationQueries: [] };
+  const state = { mandates: [...mandates], events: [], boardProfiles: [], notificationQueries: [], notifications: [...notifications], stampUpdates: [] };
 
   function selectChain(rows) {
     const filters = {};
@@ -29,6 +29,7 @@ function makeCronSupabase({
   function applyFilters(rows, filters) {
     return rows.filter((r) => Object.entries(filters).every(([k, v]) => {
       if (k.startsWith("__in:")) return v.includes(r[k.slice(5)]);
+      if (k.startsWith("__is:")) return (r[k.slice(5)] ?? null) === v;
       return r[k] === v;
     }));
   }
@@ -44,8 +45,10 @@ function makeCronSupabase({
           select: () => selectChain(state.mandates),
           update(payload) {
             const filters = {};
+            if (Object.keys(payload).some((k) => k.endsWith("_notified_at"))) state.stampUpdates.push(payload);
             const chain = {
               eq(col, value) { filters[col] = value; return chain; },
+              is(col, value) { filters[`__is:${col}`] = value; return chain; },
               select: () => ({
                 then: (resolve) => {
                   const matched = applyFilters(state.mandates, filters);
@@ -79,7 +82,7 @@ function makeCronSupabase({
               limit: () => chain,
               then: (resolve) => {
                 state.notificationQueries.push({ ...filters });
-                const rows = notifications.filter((n) => Object.entries(filters).every(([k, v]) => (
+                const rows = state.notifications.filter((n) => Object.entries(filters).every(([k, v]) => (
                   k === "metadata->>titleCode" ? n.metadata?.titleCode === v : n[k] === v
                 )));
                 resolve({ data: rows.map((n) => ({ id: n.id })), error: null });
@@ -104,8 +107,9 @@ function makeCronSupabase({
         };
       }
       if (table === "seasons") {
-        const chain = { eq: () => chain, order: () => ({ data: [], error: null }), maybeSingle: async () => ({ data: null, error: null }) };
-        return { select: () => chain };
+        // #6773 · isMandateSeasonEnded slår op på id/number; uden fixtures
+        // findes sæsonen ikke (= ikke afsluttet), som før.
+        return { select: () => selectChain(seasons) };
       }
       if (table === "riders") return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
       if (table === "season_standings") {
@@ -143,7 +147,7 @@ test("processMandateAutoAcceptCron: kill-switch off → no-op, ingen queries udo
   const supabase = makeCronSupabase({ flagValue: "off" });
   const notified = [];
   const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified) });
-  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 });
+  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 });
   assert.equal(notified.length, 0);
 });
 
@@ -294,7 +298,7 @@ test("#4839 processMandateAutoAcceptCron: off → stadig no-op, også som motor-
   });
   const notified = [];
   const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified) });
-  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 });
+  assert.deepEqual(result, { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 });
   assert.equal(supabase._state.mandates[0].status, "proposed");
 });
 
@@ -341,4 +345,299 @@ test("#6122 processMandateAutoAcceptCron: T-3 allerede sendt (anden daysLeft-tek
   assert.equal(notified.length, 0, "24t-tekst-dedup ville have sendt igen; mandat-nøglen gør ikke");
   assert.equal(result.reminders_sent, 0);
   assert.equal(result.errors, 0);
+});
+
+test("#6773 processMandateAutoAcceptCron: forslag for en AFSLUTTET sæson underskrives ikke, det udløber (lapsed)", async () => {
+  const openedAt = new Date("2026-09-25T00:00:00Z");
+  const now = new Date(openedAt.getTime() + 8 * 24 * 60 * 60 * 1000);
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    seasons: [
+      { id: "s3", number: 3, status: "completed" },
+      { id: "s4", number: 4, status: "active" },
+    ],
+    mandates: [
+      {
+        id: "m-old", team_id: "t1", season_id: "s3", season_number: 3, status: "proposed", focus: "balanced",
+        goals: [], adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+        source: {},
+      },
+      {
+        id: "m-new", team_id: "t1", season_id: "s4", season_number: 4, status: "proposed", focus: "balanced",
+        goals: [{ type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }],
+        adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+        source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+      },
+    ],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  const byId = Object.fromEntries(supabase._state.mandates.map((m) => [m.id, m]));
+  assert.equal(byId["m-old"].status, "lapsed", "den afsluttede sæsons forslag bliver aldrig aktivt");
+  assert.equal(byId["m-old"].signed_at, undefined, "ingen underskrift");
+  assert.equal(byId["m-new"].status, "active", "den aktuelle sæsons forslag auto-accepteres som før");
+  assert.equal(result.lapsed_ended_season, 1);
+  assert.equal(result.auto_accepted, 1);
+  assert.equal(result.errors, 0);
+  assert.ok(notified.every((n) => n.relatedId !== "m-old"), "ingen besked om det udløbne forslag");
+});
+
+test("#6780 (Codex P2) auto-accept: lapses forslaget under underskriften, sendes ingen 'underskrevet for dig'", async () => {
+  const openedAt = new Date("2026-09-25T00:00:00Z");
+  const now = new Date(openedAt.getTime() + 8 * 24 * 60 * 60 * 1000);
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    seasons: [{ id: "s4", number: 4, status: "active" }],
+    mandates: [{
+      id: "m1", team_id: "t1", season_id: "s4", season_number: 4, status: "proposed", focus: "balanced",
+      goals: [{ type: "top_n_finish", target: 4, satisfaction_bonus: 10, satisfaction_penalty: 6 }],
+      adjustments_allowed: 2, proposed_at: openedAt.toISOString(), auto_accept_deadline: null,
+      source: { negotiation_power: { counteroffer_generosity: 1.0 } },
+    }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1" }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  // Sæsonskiftet lapser forslaget lige før den betingede sign-opdatering.
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_mandates") return api;
+    return {
+      ...api,
+      update: (payload) => {
+        if (payload.status === "active") supabase._state.mandates[0].status = "lapsed";
+        return api.update(payload);
+      },
+    };
+  };
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeNotifyUser(notified), now });
+  assert.equal(supabase._state.mandates[0].status, "lapsed");
+  assert.equal(result.auto_accepted, 0);
+  assert.equal(result.errors, 0);
+  assert.equal(notified.length, 0, "ingen besked om en underskrift der ikke skete");
+});
+
+// ── #6946: dedupe-sandheden er stemplet på mandatet, ikke indbakke-rækken ───
+
+// notifyUser der faktisk "indsætter" i fake-indbakken, så en senere kørsel kan
+// se (eller ikke se, efter sletning) rækken.
+function makeInsertingNotifyUser(supabase, deliveredLog) {
+  return async (args) => {
+    deliveredLog.push(args);
+    supabase._state.notifications.push({
+      id: `n${supabase._state.notifications.length + 1}`,
+      user_id: args.userId, type: args.type, related_id: args.relatedId, metadata: args.metadata,
+    });
+    return { delivered: true };
+  };
+}
+
+test("#6946 første T-3-tick sender påmindelsen og stempler mandatet", async () => {
+  const { supabase, now } = t3Fixture();
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeInsertingNotifyUser(supabase, notified), now });
+  assert.equal(result.reminders_sent, 1);
+  assert.equal(notified.length, 1);
+  assert.equal(supabase._state.mandates[0].t3_notified_at, now.toISOString());
+});
+
+test("#6946 spilleren sletter T-3-beskeden → næste kørsler sender den IKKE igen", async () => {
+  const { supabase, now } = t3Fixture();
+  const notified = [];
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  await processMandateAutoAcceptCron({ supabase, notifyUser, now });
+  assert.equal(notified.length, 1);
+
+  supabase._state.notifications.length = 0; // hard DELETE i indbakken
+  const later = new Date(now.getTime() + 30 * 60 * 1000);
+  const nextDay = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+  const r1 = await processMandateAutoAcceptCron({ supabase, notifyUser, now: later });
+  const r2 = await processMandateAutoAcceptCron({ supabase, notifyUser, now: nextDay });
+  assert.equal(notified.length, 1, "ingen ny besked efter sletning");
+  assert.equal(r1.reminders_sent + r2.reminders_sent, 0);
+  assert.equal(r1.errors + r2.errors, 0);
+});
+
+test("#6946 idempotens: gentagne kørsler uden sletning giver præcis én T-3", async () => {
+  const { supabase, now } = t3Fixture();
+  const notified = [];
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  for (let i = 0; i < 4; i += 1) {
+    await processMandateAutoAcceptCron({ supabase, notifyUser, now: new Date(now.getTime() + i * 30 * 60 * 1000) });
+  }
+  assert.equal(notified.length, 1);
+  assert.equal(supabase._state.mandates[0].t3_notified_at, now.toISOString(), "første stempel bevares");
+});
+
+test("#6946 spilleren sletter T-1-beskeden → den sendes ikke igen", async () => {
+  const openedAt = new Date("2026-09-27T10:00:00Z");
+  const now = new Date(openedAt.getTime() + 4.2 * 24 * 60 * 60 * 1000); // korte vindue: T-1 fra dag 4
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    mandates: [{ id: "m1", team_id: "t1", season_number: 5, status: "proposed", proposed_at: openedAt.toISOString(), auto_accept_deadline: null }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1", team_dna_key: null }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  const notified = [];
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  await processMandateAutoAcceptCron({ supabase, notifyUser, now });
+  assert.equal(notified[0].metadata.titleCode, "notif.boardMandateT1Reminder.title");
+  assert.ok(supabase._state.mandates[0].t1_notified_at);
+
+  supabase._state.notifications.length = 0;
+  await processMandateAutoAcceptCron({ supabase, notifyUser, now: new Date(now.getTime() + 30 * 60 * 1000) });
+  assert.equal(notified.length, 1);
+});
+
+test("#6946 spilleren sletter åbnings-notitsen → cronens fallback sender den ikke igen", async () => {
+  const now = new Date("2026-09-03T12:00:00Z");
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    mandates: [{ id: "m1", team_id: "t1", season_number: 4, status: "proposed", proposed_at: now.toISOString(), auto_accept_deadline: null }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1", team_dna_key: null }],
+    users: [{ id: "u1", last_seen: null }],
+  });
+  const notified = [];
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  await processMandateAutoAcceptCron({ supabase, notifyUser, now });
+  assert.equal(notified.length, 1);
+  assert.ok(supabase._state.mandates[0].opened_notified_at);
+
+  supabase._state.notifications.length = 0;
+  await processMandateAutoAcceptCron({ supabase, notifyUser, now: new Date(now.getTime() + 30 * 60 * 1000) });
+  assert.equal(notified.length, 1);
+});
+
+test("#6946 sæsonskiftets notits (uden stempel) stemples ved første cron-kørsel, så en senere sletning ikke genåbner", async () => {
+  const proposedAt = new Date("2026-09-27T10:00:00Z");
+  const now = new Date(proposedAt.getTime() + 30 * 60 * 1000);
+  const supabase = makeCronSupabase({
+    flagValue: "on",
+    mandates: [{ id: "m1", team_id: "t1", season_number: 5, status: "proposed", proposed_at: proposedAt.toISOString(), auto_accept_deadline: null }],
+    teams: [{ id: "t1", user_id: "u1", name: "Team 1", team_dna_key: null }],
+    users: [{ id: "u1", last_seen: null }],
+    notifications: [{ id: "n1", user_id: "u1", type: "board_update", related_id: "m1", metadata: { titleCode: "notif.boardMandateOpened.title" } }],
+  });
+  const notified = [];
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  await processMandateAutoAcceptCron({ supabase, notifyUser, now });
+  assert.equal(notified.length, 0);
+  assert.equal(supabase._state.mandates[0].opened_notified_at, now.toISOString(), "beviset er flyttet til mandatet");
+
+  supabase._state.notifications.length = 0;
+  await processMandateAutoAcceptCron({ supabase, notifyUser, now: new Date(now.getTime() + 30 * 60 * 1000) });
+  assert.equal(notified.length, 0);
+});
+
+test("#6946 backfillet stempel uden notits-række → ingen besked og intet notits-opslag", async () => {
+  const { supabase, now } = t3Fixture();
+  supabase._state.mandates[0].t3_notified_at = "2026-09-29T10:00:00.000Z";
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({ supabase, notifyUser: makeInsertingNotifyUser(supabase, notified), now });
+  assert.equal(notified.length, 0);
+  assert.equal(result.reminders_sent, 0);
+  assert.equal(supabase._state.notificationQueries.length, 0);
+  assert.equal(supabase._state.stampUpdates.length, 0);
+});
+
+test("#6946 fejler afsendelsen, sættes intet stempel, og næste kørsel prøver igen", async () => {
+  const { supabase, now } = t3Fixture();
+  const notified = [];
+  const ok = makeInsertingNotifyUser(supabase, notified);
+  const failing = async () => { throw new Error("insert failed"); };
+  const r1 = await processMandateAutoAcceptCron({ supabase, notifyUser: failing, now });
+  assert.equal(r1.errors, 1);
+  assert.equal(supabase._state.mandates[0].t3_notified_at ?? null, null, "intet stempel uden levering");
+
+  const later = new Date(now.getTime() + 30 * 60 * 1000);
+  const r2 = await processMandateAutoAcceptCron({ supabase, notifyUser: ok, now: later });
+  assert.equal(r2.reminders_sent, 1);
+  assert.equal(notified.length, 1);
+  assert.equal(supabase._state.mandates[0].t3_notified_at, later.toISOString());
+});
+
+test("#6946 (Codex P2) kørslen dør mellem afsendelse og stempel → næste kørsel stempler ud fra notitsen, ingen gensendelse og intet tab", async () => {
+  const { supabase, now } = t3Fixture();
+  const origFrom = supabase.from.bind(supabase);
+  let failStampOnce = true;
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_mandates") return api;
+    return {
+      ...api,
+      update: (payload) => {
+        if ("t3_notified_at" in payload && failStampOnce) {
+          failStampOnce = false;
+          throw new Error("process died before stamp");
+        }
+        return api.update(payload);
+      },
+    };
+  };
+  const notified = [];
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  const r1 = await processMandateAutoAcceptCron({ supabase, notifyUser, now });
+  assert.equal(notified.length, 1, "beskeden blev leveret");
+  assert.equal(r1.errors, 1);
+  assert.equal(supabase._state.mandates[0].t3_notified_at ?? null, null);
+
+  const later = new Date(now.getTime() + 30 * 60 * 1000);
+  const r2 = await processMandateAutoAcceptCron({ supabase, notifyUser, now: later });
+  assert.equal(notified.length, 1, "ingen gensendelse");
+  assert.equal(r2.errors, 0);
+  assert.equal(supabase._state.mandates[0].t3_notified_at, later.toISOString(), "beviset flyttet til mandatet");
+});
+
+test("#6946 notifyUser leverer ikke (fx 24t-dedup) → intet stempel; notits-beviset tager over næste kørsel", async () => {
+  const { supabase, now } = t3Fixture();
+  const notified = [];
+  const result = await processMandateAutoAcceptCron({
+    supabase, notifyUser: async (args) => { notified.push(args); return { delivered: false, deduped: true }; }, now,
+  });
+  assert.equal(result.reminders_sent, 0);
+  assert.equal(supabase._state.mandates[0].t3_notified_at ?? null, null);
+});
+
+test("#6946 migrations-vinduet: stempel-kolonnerne findes ikke endnu → gammel notits-dedupe, ingen fejl", async () => {
+  const { supabase, now } = t3Fixture();
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_mandates") return api;
+    return {
+      ...api,
+      select: (columns) => {
+        if (String(columns).includes("t3_notified_at")) {
+          const failed = { eq: () => failed, then: (resolve) => resolve({ data: null, error: { code: "42703", message: "column board_mandates.t3_notified_at does not exist" } }) };
+          return failed;
+        }
+        return api.select(columns);
+      },
+      update: (payload) => {
+        if (Object.keys(payload).some((k) => k.endsWith("_notified_at"))) throw new Error("stempel skrevet uden kolonne");
+        return api.update(payload);
+      },
+    };
+  };
+  const notified = [];
+  const notifyUser = makeInsertingNotifyUser(supabase, notified);
+  const r1 = await processMandateAutoAcceptCron({ supabase, notifyUser, now });
+  const r2 = await processMandateAutoAcceptCron({ supabase, notifyUser, now: new Date(now.getTime() + 30 * 60 * 1000) });
+  assert.equal(r1.errors + r2.errors, 0);
+  assert.equal(notified.length, 1, "gammel dedupe: notits-rækken holder anden kørsel tilbage");
+});
+
+test("#6946 en anden fejl end manglende stempel-kolonne kastes stadig", async () => {
+  const { supabase, now } = t3Fixture();
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_mandates") return api;
+    const failed = { eq: () => failed, then: (resolve) => resolve({ data: null, error: { code: "42703", message: "column board_mandates.status does not exist" } }) };
+    return { ...api, select: () => failed };
+  };
+  await assert.rejects(() => processMandateAutoAcceptCron({ supabase, notifyUser: async () => ({ delivered: true }), now }));
 });

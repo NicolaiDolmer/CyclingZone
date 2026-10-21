@@ -1,0 +1,228 @@
+{
+  "tab": "Sponsor",
+  "page": {
+    "title": "Sponsors",
+    "subtitle": "Le contrat de la saison {season} et ce qu'il rapporte.",
+    "subtitleNoSeason": "Ton contrat et ce qu'il rapporte.",
+    "chooseCta": "Choisir le sponsor de la saison prochaine",
+    "seasonMeta": "Saison {season} · division {division}",
+    "seasonMetaNoDivision": "Saison {season}",
+    "dealLine": "{variant} · signé pour la saison {season}",
+    "goToNextSeason": "Aller à la saison prochaine",
+    "howMoneyWorks": "Comment fonctionne l'argent des sponsors",
+    "perStageLine": "{rate} CZ$ par étape, {count, plural, one {# étape restante vaut} other {# étapes restantes valent}} {worth} CZ$",
+    "nextSeasonOpen": "Saison prochaine : {count, plural, one {# offre est ouverte} other {# offres sont ouvertes}}, le montant se verrouille à la signature",
+    "nextSeasonClosed": "Saison prochaine : les offres ouvrent à la fin de la saison {season}",
+    "errorTitle": "Impossible de charger tes sponsors",
+    "error": "Rien n'a été perdu et ton contrat est en sécurité. Réessaie.",
+    "retry": "Réessayer",
+    "tab": {
+      "overview": "Aperçu",
+      "deal": "Contrat",
+      "payments": "Paiements",
+      "next": "Saison prochaine"
+    },
+    "stat": {
+      "paidSoFar": "Déjà versé",
+      "guaranteed": "Garanti",
+      "earnedOnTop": "Gagné en plus",
+      "stagesRidden": "Étapes courues",
+      "stagesOf": "{ridden} sur {total}"
+    },
+    "noContract": {
+      "title": "Signe ton premier contrat de sponsor",
+      "description": "Les offres ouvrent dans l'onglet Saison prochaine dès que ton club peut négocier.",
+      "action": "Aller à la saison prochaine"
+    },
+    "deal": {
+      "paidDayOne": "Versé le premier jour",
+      "stagesInDivision": "{count} étapes en division {division}",
+      "overTheSeason": "{amount} CZ$ sur la saison",
+      "divisionAdjustment": "Ajustement de division",
+      "divisionAdjustmentSub": "Contrat tarifé pour la division {signed}, tu cours en division {current}",
+      "everySeason": "Chaque saison",
+      "signingBonus": "Prime à la signature",
+      "signingBonusSub": "Versée à la signature",
+      "stageWinBonus": "Prime de victoire d'étape",
+      "stageWinBonusSub": "Par victoire d'étape",
+      "podiumBonus": "Prime de podium",
+      "podiumBonusSub": "Par podium, de la 2e à la 3e place",
+      "capPerSeason": "Plafond de {amount} CZ$ par saison",
+      "seasonObjective": "Prime d'objectif de saison",
+      "seasonObjectiveTop40": "Finir dans les 40 % meilleurs de ta division",
+      "seasonObjectiveTopHalf": "Finir dans la première moitié de ta division",
+      "runsThrough": "Court jusqu'à la saison {season}"
+    },
+    "payments": {
+      "title": "Versé jusqu'ici cette saison",
+      "source": "Source",
+      "stages": "Étapes",
+      "amount": "Montant",
+      "total": "Total",
+      "group": {
+        "guaranteed": "Garanti",
+        "stagesAt": "Étapes à {rate} CZ$",
+        "stages": "Étapes",
+        "bonuses": "Primes"
+      },
+      "row": {
+        "seasonBase": "Base de la saison",
+        "seasonBaseSub": "Garantie du contrat",
+        "divisionAdjustment": "Ajustement de division",
+        "divisionAdjustmentSub": "Contrat tarifé pour la division {division}",
+        "stageWin": "Victoire d'étape",
+        "podium": "Podium",
+        "resultBonus": "Prime de résultat"
+      },
+      "empty": {
+        "title": "Regarde arriver ton premier paiement",
+        "description": "L'argent des sponsors apparaît ici dès que la base de ta saison est créditée et que ton équipe se met à courir.",
+        "action": "Voir le contrat"
+      }
+    },
+    "next": {
+      "title": "Saison prochaine",
+      "meta": "{count, plural, one {# offre} other {# offres}} · division {division} · {stages} étapes",
+      "metaEstimated": "{count, plural, one {# offre} other {# offres}} · division {division} · {stages} étapes (estimation)",
+      "metaClosed": "Les offres ouvrent à la fin de la saison {season}",
+      "dealType": "{variant} · {count, plural, one {# saison} other {# saisons}}",
+      "ifEveryStage": "{amount} CZ$ si tu cours toutes les étapes",
+      "noBonuses": "Aucune",
+      "pricingTitle": "Comment les offres sont tarifées",
+      "column": {
+        "sponsor": "Sponsor",
+        "guaranteed": "Garanti",
+        "perStage": "Par étape",
+        "bonuses": "Primes en plus"
+      },
+      "empty": {
+        "title": "Les offres ouvrent à la fin de la saison {season}",
+        "description": "Les cinq offres ouvrent le jour où ton contrat actuel se termine.",
+        "action": "Lire les règles des sponsors"
+      }
+    }
+  },
+  "cta": {
+    "title": "Choisis ton sponsor pour la saison {season}",
+    "body": "Cinq sponsors sont à la table, chacun avec sa propre façon de te payer. Compare les contrats et verrouille ton soutien.",
+    "button": "Voir les offres",
+    "pendingTitle": "Sponsor sélectionné pour la saison {season}",
+    "pendingBody": "Tu as signé un contrat pour la saison à venir. Tu peux encore passer à une autre offre jusqu'au début de la saison.",
+    "changeButton": "Changer de choix"
+  },
+  "offers": {
+    "title": "Choisis ton sponsor",
+    "subtitle": "Cinq sponsors, cinq façons de gagner de l'argent en saison {season}.",
+    "unitDefinition": "Ton sponsor paie pour chaque étape que ton équipe prend au départ. Les jours d'entraînement ne rapportent pas ce paiement.",
+    "unitCount": "La division {division} court {count} étapes en saison {season}, et chacune d'elles est payée.",
+    "unitPerDay": "Elles sont réparties sur {days} jours de calendrier, donc la plupart des jours comptent environ {perDay} étapes.",
+    "divisionNote": "Le contrat lui-même paie le même maximum quelle que soit la division choisie ci-dessus. La division ne change que le nombre d'étapes sur lesquelles tu le gagnes, ce qui fixe le tarif par étape. L'ajustement de division est une ligne à part, affichée plus haut quand il s'applique.",
+    "divisionPicker": "Aperçu du tarif pour une division",
+    "divisionPill": "Division {division} · {count} étapes",
+    "deadline": "Le montant se verrouille au moment où tu signes, tarifé d'après la division et les résultats que tu as ce jour-là, et il reste verrouillé pendant tout le contrat. Le contrat lui-même démarre avec la saison {season}. Si tu ne choisis pas, le club signe pour toi le contrat sûr d'une saison, au prix auquel ces offres ont ouvert.",
+    "amountFollowsClub": "Le montant suit ton propre club : ta réputation, ta division et ta place dans ton groupe. Deux clubs peuvent choisir le même sponsor et recevoir des offres différentes.",
+    "empty": "Aucune offre n'est disponible pour l'instant. Un nouveau contrat peut être négocié dès que le contrat actuel arrive à renouvellement.",
+    "choose": "Choisir",
+    "pending": "Sélectionné",
+    "reviewSign": "Relire et signer",
+    "confirmBody": "Signer avec {sponsor} pour {count, plural, one {# saison} other {# saisons}} ? Tu peux changer ton choix jusqu'au début de la saison {season}.",
+    "signDeal": "Signer le contrat",
+    "cancel": "Annuler",
+    "acceptFailed": "Le contrat n'a pas été signé. Rien n'a changé. Réessaie.",
+    "guaranteedShare": "{pct} % du contrat est garanti",
+    "boardNote": "La satisfaction de la direction ajuste la part garantie de ±20 % au maximum. Elle ne touche ni l'argent par étape ni les primes : ceux-ci sont versés en totalité, en plus, au fur et à mesure que tu les gagnes.",
+    "divisionAdjustmentUp": "Si tu cours en division {division} avec ce contrat, un ajustement de division de {amount} CZ$ est versé en plus chaque saison, car le contrat est tarifé pour la division {signed}.",
+    "divisionAdjustmentDown": "Si tu cours en division {division} avec ce contrat, {amount} CZ$ sont déduits chaque saison, car le contrat est tarifé pour la division {signed}.",
+    "calendarEstimate": "J'utilise ton calendrier actuel pour estimer le tarif de la première saison du contrat, en attendant que le calendrier de la saison prochaine soit prêt. Le tarif est recalculé au démarrage du contrat et reste fixe pour les saisons restantes d'un contrat de plusieurs saisons.",
+    "calendarUnknown": "Le calendrier de la saison prochaine n'est pas prêt, je ne peux donc pas encore afficher de tarif fiable par étape. Le total de la saison est indiqué ci-dessous.",
+    "unitCountEstimate": "Cette estimation utilise les {count} étapes de ta division actuelle {division}.",
+    "rateUnknown": "En attente du calendrier"
+  },
+  "variant": {
+    "safe": "Le contrat sûr",
+    "loyal": "Le contrat fidèle",
+    "racing": "Le contrat de course",
+    "results": "Le contrat résultats",
+    "ambition": "Le contrat ambition",
+    "predictable": "Sponsor régulier",
+    "activity": "Sponsor à l'étape",
+    "long": "Partenaire à long terme"
+  },
+  "clause": {
+    "signing": "{amount} CZ$ de prime à la signature, versés d'avance",
+    "stageWin": "{amount} CZ$ par victoire d'étape",
+    "podium": "{amount} CZ$ par podium (2e–3e place)",
+    "podiumCapped": "{amount} CZ$ par podium (2e–3e place). Plafond des primes : {cap} CZ$ par saison",
+    "seasonObjective": "Finir dans la première moitié de ta division : {amount} CZ$ en fin de saison",
+    "seasonObjectiveTop40": "Finir dans les 40 % meilleurs de ta division : {amount} CZ$ en fin de saison"
+  },
+  "field": {
+    "guaranteedBase": "Garanti au début de la saison",
+    "perRaceDay": "Par étape disputée",
+    "raceDayMath": "{count} étapes × {rate} CZ$",
+    "ifYouStartEveryStage": "Si tu prends le départ de toutes les étapes",
+    "signingBonus": "Prime à la signature",
+    "bonusUpside": "Primes en plus, si gagnées",
+    "length": "Durée",
+    "seasons": "{count, plural, one {# saison} other {# saisons}}"
+  },
+  "contract": {
+    "title": "Sponsor actuel",
+    "loading": "Chargement du contrat de sponsor",
+    "errorTitle": "Impossible de charger ton contrat de sponsor",
+    "error": "Rien n'a été perdu et ton contrat est en sécurité. Réessaie.",
+    "retry": "Réessayer",
+    "none": "Aucun contrat de sponsor actif.",
+    "runsThrough": "Court jusqu'à la saison {season}",
+    "sponsorName": "Sponsor",
+    "clausesTitle": "Clauses de prime",
+    "earningsTitle": "Gagné sur ce contrat",
+    "earningsBase": "Début de saison",
+    "earningsSigning": "Prime à la signature",
+    "earningsRaceDays": "Étapes",
+    "earningsResults": "Primes de résultat",
+    "earningsObjective": "Objectif de saison",
+    "earningsTotal": "Total"
+  },
+  "income": {
+    "title": "Revenus de sponsor",
+    "meta": "{sponsor} · cette saison",
+    "metaNoSponsor": "Cette saison",
+    "loading": "Chargement des revenus de sponsor",
+    "errorTitle": "Impossible de charger tes revenus de sponsor",
+    "error": "Rien n'a été perdu et ton solde est en sécurité. Réessaie.",
+    "retry": "Réessayer",
+    "totalLabel": "Total cette saison",
+    "split": "Garanti {guaranteed} · gagné en plus {earned}",
+    "group": {
+      "fixed": {
+        "title": "Revenu fixe",
+        "row": "Base de la saison (garantie du contrat)"
+      },
+      "raceDays": {
+        "title": "Étapes",
+        "row": "{raceName} · {days, plural, one {# étape} other {# étapes}} à {rate} CZ$",
+        "unknownRace": "Course",
+        "showAll": "Afficher les {count} courses",
+        "showLess": "Afficher moins"
+      },
+      "bonuses": {
+        "title": "Primes",
+        "stageWin": "Prime de victoire d'étape · {raceName}",
+        "podium": "Prime de podium · {raceName}",
+        "signing": "Prime à la signature",
+        "objective": "Prime d'objectif de saison",
+        "generic": "Prime de résultat · {raceName}",
+        "capLine": "Plafond des primes de résultat cette saison : {used} sur {limit} utilisés"
+      }
+    },
+    "footer": {
+      "full": "Pourquoi tu es payé : ton contrat garantit une base de saison, paie pour chaque étape que ton équipe prend au départ, et ajoute des primes pour les victoires d'étape et les podiums.",
+      "noBonuses": "Pourquoi tu es payé : ton contrat garantit une base de saison et paie pour chaque étape que ton équipe prend au départ."
+    },
+    "empty": {
+      "title": "Pas encore de revenus de sponsor",
+      "description": "Les revenus apparaissent ici dès que la base de ta saison est créditée et que ton équipe se met à courir."
+    }
+  }
+}

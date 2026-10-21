@@ -106,7 +106,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/9"
+      "date_text": "19/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "00cce376-f57f-4f77-a137-977fa79504f0",
@@ -116,7 +119,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "14/3"
+      "date_text": "14/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "00f882da-e734-464e-9495-d7219d7abf23",
@@ -126,7 +132,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "9/8 - 11/8"
+      "date_text": "9/8 - 11/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "01f8066a-ad36-41a9-b303-10dcaf283be1",
@@ -136,7 +145,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "18/8 - 21/8"
+      "date_text": "18/8 - 21/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "024d69fd-d448-4c27-8866-4d23fe582040",
@@ -146,7 +158,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "16/9"
+      "date_text": "16/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "032ef571-69af-4613-88d9-486a9de0fdae",
@@ -156,7 +171,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "2/3 - 5/3"
+      "date_text": "2/3 - 5/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "0333d7ca-9c2b-4303-9fc4-37d3f4219cd6",
@@ -166,7 +184,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "14/10"
+      "date_text": "14/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "03731324-8832-41e9-b8c9-e9216c73e1db",
@@ -176,7 +197,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "7/5 - 10/5"
+      "date_text": "7/5 - 10/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "047cedbc-0dd8-4600-b9d3-77a1ae75ab51",
@@ -186,7 +210,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "13/9"
+      "date_text": "13/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "0a408e95-b0c6-4749-9953-46a441dab96c",
@@ -196,7 +223,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "16/4 - 20/4"
+      "date_text": "16/4 - 20/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "0ab9faee-7f25-43af-a092-f88ae4ecf370",
@@ -206,7 +236,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "2/9 - 6/9"
+      "date_text": "2/9 - 6/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "0c41d89e-6385-4d66-bda0-d8b424bb6f96",
@@ -216,7 +249,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "14/4 - 18/4"
+      "date_text": "14/4 - 18/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "0dc1b6b0-d97d-404e-86d7-59eb4f184252",
@@ -226,7 +262,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "7/3"
+      "date_text": "7/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "0e76b709-6641-4678-b510-cf35a6fc111f",
@@ -236,7 +275,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "3/8 - 9/8"
+      "date_text": "3/8 - 9/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "0ec6b10e-799f-4c20-95fc-c0f9aa8637a9",
@@ -246,7 +288,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "17/4"
+      "date_text": "17/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "11c3cf36-96e1-4e56-873f-618b08f4546c",
@@ -256,7 +301,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "9/5"
+      "date_text": "9/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "12044880-c637-4e23-a64d-166a9dae89fc",
@@ -266,7 +314,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "9/3 - 11/3"
+      "date_text": "9/3 - 11/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "13b388c1-c8ff-4fbd-85de-dcd63055c0ae",
@@ -276,7 +327,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "11/10"
+      "date_text": "11/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "14465b30-be82-4d41-a086-e47dbe7295c9",
@@ -286,7 +340,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "6/9"
+      "date_text": "6/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "1489fc89-0562-42b9-ad4d-1637805ae7e0",
@@ -296,7 +353,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "14/2"
+      "date_text": "14/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "148f0a3b-6829-496f-8f9f-eedeb50930d1",
@@ -306,7 +366,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "5/9"
+      "date_text": "5/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "14e0b20d-93a0-4f32-abdd-b44bdbc1dd44",
@@ -316,7 +379,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "20/5 - 24/5"
+      "date_text": "20/5 - 24/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "19e99bc3-9826-4956-b18c-c5ef52fb6191",
@@ -326,7 +392,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "4/3"
+      "date_text": "4/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "1bcbe89b-a3ef-4a3e-822a-8f603b988593",
@@ -336,7 +405,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "20/7 - 25/7"
+      "date_text": "20/7 - 25/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "1df9c18a-b05d-4a51-a255-a42cc95a4cf9",
@@ -346,7 +418,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "11/10 - 13/10"
+      "date_text": "11/10 - 13/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "1fe29fc7-8754-4541-812a-46e82add0e59",
@@ -356,7 +431,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "7/7 - 12/7"
+      "date_text": "7/7 - 12/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "20c378b1-a387-47de-a246-19a19990c20e",
@@ -366,7 +444,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "11/5"
+      "date_text": "11/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "213a8c8c-122e-432b-a4dd-d162b4adf715",
@@ -376,7 +457,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "12/6"
+      "date_text": "12/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "24479030-6795-40fb-bbcd-1b9abc4c88d7",
@@ -386,7 +470,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/5"
+      "date_text": "19/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2513e511-8995-405b-9015-6038e66bcb51",
@@ -396,7 +483,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "15/3"
+      "date_text": "15/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "25e39624-ece8-4e6d-8e5f-a3d3ae4a66f7",
@@ -406,7 +496,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "2/7 - 5/7"
+      "date_text": "2/7 - 5/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "25f6a4b9-9449-45ae-9f6d-4af7aa7cbe2e",
@@ -416,7 +509,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "4/4"
+      "date_text": "4/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "271c7963-2a79-4ca9-93fb-1d1c94db92fa",
@@ -426,7 +522,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "29/7 - 2/8"
+      "date_text": "29/7 - 2/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "29bf1371-0909-4f71-b4af-70c00df1c065",
@@ -436,7 +535,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "31/3 - 5/4"
+      "date_text": "31/3 - 5/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "29e0ead0-d167-4dc6-9ad4-5619a1579838",
@@ -446,7 +548,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "16/9 - 18/9"
+      "date_text": "16/9 - 18/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2a0ea230-7238-4bd5-887d-f3e9b2672652",
@@ -456,7 +561,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "26/2"
+      "date_text": "26/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2a72fb0e-096e-4e48-a2b5-396455a3ff20",
@@ -466,7 +574,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "single",
       "stages": 1,
-      "date_text": "2/5"
+      "date_text": "2/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2b9f0051-646c-4465-885f-2d6dc7b2d9ce",
@@ -476,7 +587,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "30/8"
+      "date_text": "30/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2bfa483f-0d3f-4051-945e-a98a5ae374d1",
@@ -486,7 +600,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "14/5 - 17/5"
+      "date_text": "14/5 - 17/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2db10942-f0de-46db-9799-4aaeb62be2ea",
@@ -496,7 +613,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/8"
+      "date_text": "1/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2de605c5-796e-4808-85d1-ac096d023fe8",
@@ -506,7 +626,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "single",
       "stages": 1,
-      "date_text": "18/4"
+      "date_text": "18/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "2e749f4a-c090-443c-93e7-0a4ccf7efdd7",
@@ -516,7 +639,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "2/5"
+      "date_text": "2/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "30aa26b6-67f8-4ae1-a794-8a8dd35a8a7c",
@@ -526,7 +652,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "1/6 - 5/6"
+      "date_text": "1/6 - 5/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "30ac9981-5dce-4d51-bb48-e4efea3320fc",
@@ -536,7 +665,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 8,
-      "date_text": "8/3 - 15/3"
+      "date_text": "8/3 - 15/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "332a2fd4-122e-458e-a983-b8f1ba5cdec3",
@@ -546,7 +678,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "9/7 - 13/7"
+      "date_text": "9/7 - 13/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "343c425c-1445-457f-a027-16d2038f25a7",
@@ -556,7 +691,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "13/9"
+      "date_text": "13/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "351bfc12-5ede-4878-bc87-12c53d6c1cc6",
@@ -566,7 +704,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "18/3"
+      "date_text": "18/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "352583e4-d1ea-464c-9d46-04b22e080123",
@@ -576,7 +717,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "14/3"
+      "date_text": "14/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "36468b7a-2dcc-41f8-aabe-c024a409ce0c",
@@ -586,7 +730,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "13/9"
+      "date_text": "13/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "36875229-8ad3-4ecc-ba5e-ac6f8575b761",
@@ -596,7 +743,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "12/4"
+      "date_text": "12/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "38e11d6f-1969-4d4d-9c3d-e715cbc7292f",
@@ -606,7 +756,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "4/5 - 10/5"
+      "date_text": "4/5 - 10/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "39799ba9-d521-4ccd-a9e9-5fb63f2f2f43",
@@ -616,7 +769,10 @@
       "race_class": "Monuments",
       "race_type": "single",
       "stages": 1,
-      "date_text": "21/3"
+      "date_text": "21/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3a39666b-75de-4380-b414-a891976e7eae",
@@ -626,7 +782,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "6/8 - 10/8"
+      "date_text": "6/8 - 10/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3bf686a1-a36b-46f7-ab59-d15ce52cc806",
@@ -636,7 +795,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "9/6 - 12/6"
+      "date_text": "9/6 - 12/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3c5d43b4-0588-4d97-8069-597f7b24fab4",
@@ -646,7 +808,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "17/6 - 21/6"
+      "date_text": "17/6 - 21/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3c984ff1-d68a-475f-b307-2e4359dacfd7",
@@ -656,7 +821,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "23/5"
+      "date_text": "23/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3deef114-1225-4929-b9d1-fc95d96890c8",
@@ -666,7 +834,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "4/8 - 8/8"
+      "date_text": "4/8 - 8/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3e1df237-33b6-4f05-bcdd-8e0436d65840",
@@ -676,7 +847,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "20/1 - 25/1"
+      "date_text": "20/1 - 25/1",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3eae1125-2ad7-421b-8f62-9fe47b87c2e0",
@@ -686,7 +860,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "1/7 - 5/7"
+      "date_text": "1/7 - 5/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "3f2e1c9c-53d7-438b-80ec-1d6feac5ce45",
@@ -696,7 +873,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "3/2"
+      "date_text": "3/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "40363f9e-d3bb-469e-bdfa-b96a6e10fa99",
@@ -706,7 +886,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 2,
-      "date_text": "18/4 - 19/4"
+      "date_text": "18/4 - 19/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "4159e409-b08f-44e4-9d19-8ec2e6352593",
@@ -716,7 +899,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "20/4 - 24/4"
+      "date_text": "20/4 - 24/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "42bfe706-a9a3-4c9d-ade7-adff1634eca6",
@@ -726,7 +912,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "18/10"
+      "date_text": "18/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "43226508-76b0-40cc-9e82-53c241a9254b",
@@ -736,7 +925,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "13/10 - 18/10"
+      "date_text": "13/10 - 18/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "43dab855-a61d-4d65-8ac1-452fb97aa8b7",
@@ -746,7 +938,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "25/4"
+      "date_text": "25/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "456ceeae-0b9f-4ade-9d3e-a61b167f9e3e",
@@ -756,7 +951,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "27/9 - 1/10"
+      "date_text": "27/9 - 1/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "45b99e81-a6d7-4754-bd26-393f3080a275",
@@ -766,7 +964,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "14/4 - 18/4"
+      "date_text": "14/4 - 18/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "470596a1-94eb-4c00-8621-1b9051a98a18",
@@ -776,7 +977,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "5/10"
+      "date_text": "5/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "470be242-e972-47df-b16b-8d10a6441d7f",
@@ -786,7 +990,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "20/3"
+      "date_text": "20/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "47671765-be33-499f-9065-6bf7afbf1cb3",
@@ -796,7 +1003,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "8/4"
+      "date_text": "8/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "47f83bb8-9383-4c2c-93dc-5c9a78b294d2",
@@ -806,7 +1016,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 8,
-      "date_text": "7/6 - 14/6"
+      "date_text": "7/6 - 14/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "4958ae51-a174-4ae0-8b1a-9fce171a37dc",
@@ -816,7 +1029,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "23/3 - 29/3"
+      "date_text": "23/3 - 29/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "49bda79e-58de-40a5-9dc3-23e34bf9fe21",
@@ -826,7 +1042,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "single",
       "stages": 1,
-      "date_text": "11/4"
+      "date_text": "11/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "4bc8f11d-d6ba-4f0a-a391-2e0401636fa0",
@@ -836,7 +1055,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "16/8"
+      "date_text": "16/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "4e202ad5-0927-4d29-84bd-1c5e9a041bce",
@@ -846,7 +1068,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "13/8 - 16/8"
+      "date_text": "13/8 - 16/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "4f9b0e87-4136-423f-94a0-8a6610267a39",
@@ -856,7 +1081,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "30/5"
+      "date_text": "30/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "5115d06d-6494-4263-9d7e-fa3ac2577d5b",
@@ -866,7 +1094,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "4/4"
+      "date_text": "4/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "513ff0f4-7a84-4ddf-ba8a-b1287af2f619",
@@ -876,7 +1107,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "15/8"
+      "date_text": "15/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "53cdce5f-98a3-4a27-bf94-e7c23d192208",
@@ -886,7 +1120,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "16/5"
+      "date_text": "16/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "53e1b08f-d0ee-441c-85ee-c450fdc1252b",
@@ -896,7 +1133,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/3"
+      "date_text": "1/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "53eaad90-8db5-45c8-8489-20c044980633",
@@ -906,7 +1146,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "17/8 - 23/8"
+      "date_text": "17/8 - 23/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "5472f766-276d-460d-b651-9219686c5ed6",
@@ -916,7 +1159,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "2/6 - 7/6"
+      "date_text": "2/6 - 7/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "5712670d-2ab8-445c-877e-b0812a62d9b1",
@@ -926,7 +1172,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "18/3"
+      "date_text": "18/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "591179a5-6238-4ff0-99ec-cc4837ab0a68",
@@ -936,7 +1185,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "5/2 - 8/2"
+      "date_text": "5/2 - 8/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "59925f99-ca81-4b3e-ab46-700e319ebdb8",
@@ -946,7 +1198,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "7/3"
+      "date_text": "7/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "5993507d-ede9-45d1-ae1b-2b761e69c55f",
@@ -956,7 +1211,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "10/6"
+      "date_text": "10/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "5d0a1160-b180-46e1-850d-ecce9bee554b",
@@ -966,7 +1224,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "9/7 - 13/7"
+      "date_text": "9/7 - 13/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "60096108-e7cd-4e2a-85e0-e1823958aec0",
@@ -976,7 +1237,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "18/2 - 22/2"
+      "date_text": "18/2 - 22/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "62bf9857-a403-407f-af81-e856ff1b897c",
@@ -986,7 +1250,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "9/3 - 15/3"
+      "date_text": "9/3 - 15/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "677fa061-90ca-4e93-a619-a50ff7fbad8f",
@@ -996,7 +1263,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/3"
+      "date_text": "19/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "6792903c-3050-4729-8b1b-0a916f5b3990",
@@ -1006,7 +1276,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "30/8"
+      "date_text": "30/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "67af67c7-f4a0-4539-b696-844d9e8d5ee1",
@@ -1016,7 +1289,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "15/7 - 18/7"
+      "date_text": "15/7 - 18/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "6839e789-972f-452f-a03a-a12bd0f8b2a0",
@@ -1026,7 +1302,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "10/6 - 16/6"
+      "date_text": "10/6 - 16/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "6a1fa7c8-a356-404e-9776-98369b811a89",
@@ -1036,7 +1315,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "18/7"
+      "date_text": "18/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "6a9c9d38-70a2-4034-9c12-603b9380737b",
@@ -1046,7 +1328,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "15/4 - 19/4"
+      "date_text": "15/4 - 19/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "6ab42e3d-fbce-418d-aef5-44a49188e2c5",
@@ -1056,7 +1341,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "8/10"
+      "date_text": "8/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "6eaa10d8-c402-4294-91ee-7ebec2c6835a",
@@ -1066,7 +1354,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "16/2 - 22/2"
+      "date_text": "16/2 - 22/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "72124ef0-bbb2-429e-b583-add6c7939630",
@@ -1076,7 +1367,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "6/2"
+      "date_text": "6/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "74b5b50f-d616-4fcc-aec5-190fa1560295",
@@ -1086,7 +1380,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "7/3"
+      "date_text": "7/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "74d75202-5697-4018-a80e-30041237265a",
@@ -1096,7 +1393,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "24/4"
+      "date_text": "24/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "7619fc41-497c-4710-b18f-5f316ec64306",
@@ -1106,7 +1406,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "23/6 - 25/6"
+      "date_text": "23/6 - 25/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "7808f7d8-44cc-4f9b-8471-eb38e29ed121",
@@ -1116,7 +1419,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "24/5 - 26/5"
+      "date_text": "24/5 - 26/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "7c446ded-7efb-4a5b-be9d-714f10a72da3",
@@ -1126,7 +1432,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "4/8 - 8/8"
+      "date_text": "4/8 - 8/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "7f2fe431-fc8c-4f49-a6ec-1f6801a095bd",
@@ -1136,7 +1445,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "12/8 - 17/8"
+      "date_text": "12/8 - 17/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "80544674-a1d3-48e2-9e2c-63d05fe2230a",
@@ -1146,7 +1458,10 @@
       "race_class": "GiroVuelta",
       "race_type": "stage_race",
       "stages": 17,
-      "date_text": "22/8 - 9/9"
+      "date_text": "22/8 - 9/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "805ef5be-2257-44ab-8f4b-18050a7c62bf",
@@ -1156,7 +1471,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "3/4 - 6/4"
+      "date_text": "3/4 - 6/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "83496003-6e28-4217-9dab-d1af76f03329",
@@ -1166,7 +1484,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/2"
+      "date_text": "19/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "8456fccc-dd60-401e-9541-7243b59f1235",
@@ -1176,7 +1497,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "single",
       "stages": 1,
-      "date_text": "28/2"
+      "date_text": "28/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "84816795-7007-4aab-8150-f526ed46afe9",
@@ -1186,7 +1510,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "2/4 - 5/4"
+      "date_text": "2/4 - 5/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "84d5f2f6-3876-410e-8912-a1750bcbd9c9",
@@ -1196,7 +1523,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "12/2 - 15/2"
+      "date_text": "12/2 - 15/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "85c615ee-46cf-4494-a6f9-1462952bd6bb",
@@ -1206,7 +1536,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "19/8 - 23/8"
+      "date_text": "19/8 - 23/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "86b20945-eb69-405d-82f1-6758028c676f",
@@ -1216,7 +1549,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "8/5 - 10/5"
+      "date_text": "8/5 - 10/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "870f7776-a41b-4651-82b7-7192861bad04",
@@ -1226,7 +1562,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "6/9"
+      "date_text": "6/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "87789030-aea0-4ca4-8038-c8ef9cac76f0",
@@ -1236,7 +1575,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "2/6 - 6/6"
+      "date_text": "2/6 - 6/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "8a77055e-2b9b-48ae-bbef-4db11fb698f3",
@@ -1246,7 +1588,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "7/4 - 10/4"
+      "date_text": "7/4 - 10/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "8aff214c-4800-4e6f-ba10-589d6f1d410a",
@@ -1256,7 +1601,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "11/9"
+      "date_text": "11/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "8bd63387-05ff-4561-8f6f-c69096736efe",
@@ -1266,7 +1614,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/10"
+      "date_text": "19/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "8f0bbfa7-e6fc-4375-a163-abe22c9d693a",
@@ -1276,7 +1627,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "18/10"
+      "date_text": "18/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "9012687b-b865-413a-8256-49c1a490d28e",
@@ -1286,7 +1640,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "7/6"
+      "date_text": "7/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "901d1a00-49a5-418c-8c27-c99d4995b952",
@@ -1296,7 +1653,10 @@
       "race_class": "Monuments",
       "race_type": "single",
       "stages": 1,
-      "date_text": "5/4"
+      "date_text": "5/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "926631a7-3bda-45da-b6f7-819f261c39c8",
@@ -1306,7 +1666,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/4"
+      "date_text": "19/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "92da893b-b094-4ab4-9310-a8103c80e7de",
@@ -1316,7 +1679,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "4/4"
+      "date_text": "4/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "95ff92fb-2210-44d7-9b0a-5a0cdeed0794",
@@ -1326,7 +1692,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "20/5 - 24/5"
+      "date_text": "20/5 - 24/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "96724bc2-3b46-419e-8d32-4ff834adfd0a",
@@ -1336,7 +1705,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "23/3"
+      "date_text": "23/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "99b86277-3a05-48c6-8e61-c550dd21e73d",
@@ -1346,7 +1718,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "9/2"
+      "date_text": "9/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "9b24e2c6-63cf-43fa-995b-edda5c620bc7",
@@ -1356,7 +1731,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "10/5"
+      "date_text": "10/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "9c4a3b76-536d-4697-890c-aecb35d338d0",
@@ -1366,7 +1744,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "22/8"
+      "date_text": "22/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "9cbd83ce-dd32-4919-be01-c80c877f2435",
@@ -1376,7 +1757,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/2"
+      "date_text": "1/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "9fad3d99-36a9-4069-8fbe-e216bb9de164",
@@ -1386,7 +1770,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/3"
+      "date_text": "1/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a1817538-8656-475e-80c4-28256198fcaa",
@@ -1396,7 +1783,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "21/4 - 24/4"
+      "date_text": "21/4 - 24/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a21a427f-2294-4e37-8c24-47e34e50d58b",
@@ -1406,7 +1796,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/9"
+      "date_text": "19/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a3acea53-7d60-4bb8-b93c-6b5f9d1530eb",
@@ -1416,7 +1809,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "6/6"
+      "date_text": "6/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a3b809cd-3355-40aa-87a7-b7d812150130",
@@ -1426,7 +1822,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "4/2 - 7/2"
+      "date_text": "4/2 - 7/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a530535d-49cf-4819-84ce-cf505edf9c15",
@@ -1436,7 +1835,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "13/8 - 16/8"
+      "date_text": "13/8 - 16/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a61920ff-6286-4d81-9fa2-c1a36b22fc10",
@@ -1446,7 +1848,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "7/2 - 11/2"
+      "date_text": "7/2 - 11/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a773196c-1ceb-498b-8248-5ff71a3a81e0",
@@ -1456,7 +1861,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "25/8 - 29/8"
+      "date_text": "25/8 - 29/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a784f01d-e54e-4f8d-adba-b0303e65fc9a",
@@ -1466,7 +1874,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "8/3"
+      "date_text": "8/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a856ed49-37dc-4186-9fc0-32c5c49aee81",
@@ -1476,7 +1887,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "26/7"
+      "date_text": "26/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a8af0d8c-7fdc-4bbd-9d11-60939a38edc2",
@@ -1486,7 +1900,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "28/4 - 3/5"
+      "date_text": "28/4 - 3/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a9ca79b1-8c9a-468c-8b0f-4ee26c4ff1fc",
@@ -1496,7 +1913,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "29/3"
+      "date_text": "29/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "a9f4ec04-bcce-401d-9175-ffeb978b0a35",
@@ -1506,7 +1926,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "6/6 - 10/6"
+      "date_text": "6/6 - 10/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "aa468dc3-dd13-4b66-b8e6-1e8581377a3d",
@@ -1516,7 +1939,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "19/8 - 23/8"
+      "date_text": "19/8 - 23/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ab66bfdc-2faa-47e9-babb-10ea3131df13",
@@ -1526,7 +1952,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "10/9"
+      "date_text": "10/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ab84f510-4162-414b-a072-d2c6f7ef3d8d",
@@ -1536,7 +1965,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "11/6 - 14/6"
+      "date_text": "11/6 - 14/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "adfbef11-912c-44b9-8d29-38b5e44bf9e3",
@@ -1546,7 +1978,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "5/9"
+      "date_text": "5/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ae5910ac-949e-44f5-ab4f-d58a12ffef83",
@@ -1556,7 +1991,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "single",
       "stages": 1,
-      "date_text": "25/3"
+      "date_text": "25/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "aea70518-1d61-46c3-bc38-eb5eca036a80",
@@ -1566,7 +2004,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "28/2"
+      "date_text": "28/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "af3735fe-68df-436c-ad31-8329289ffa18",
@@ -1576,7 +2017,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/5"
+      "date_text": "1/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "af923be7-fbf2-464e-9f1c-6b1eb5064100",
@@ -1586,7 +2030,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "single",
       "stages": 1,
-      "date_text": "14/3"
+      "date_text": "14/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "afa3288a-e4d0-449e-b7af-5d3897722513",
@@ -1596,7 +2043,10 @@
       "race_class": "GiroVuelta",
       "race_type": "stage_race",
       "stages": 17,
-      "date_text": "8/5 - 28/5"
+      "date_text": "8/5 - 28/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "b0a1cfa5-8bef-417f-a154-5058c9fe56c0",
@@ -1606,7 +2056,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "12/7 - 14/7"
+      "date_text": "12/7 - 14/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "b1750335-7dee-469f-9b87-70855f4641ed",
@@ -1616,7 +2069,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "5/4"
+      "date_text": "5/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "b3af0dea-0144-4597-b797-c2e6f4d97814",
@@ -1626,7 +2082,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "20/6"
+      "date_text": "20/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "b6944e7c-b9fa-4ce6-9455-5c855f5b48ce",
@@ -1636,7 +2095,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "single",
       "stages": 1,
-      "date_text": "22/2"
+      "date_text": "22/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "b6d29acc-3447-45bb-8a90-18e8d4dbfcb2",
@@ -1646,7 +2108,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "1/6 - 5/6"
+      "date_text": "1/6 - 5/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "b9e68014-b3cd-4499-a051-a867c51c5288",
@@ -1656,7 +2121,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "3/10"
+      "date_text": "3/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "bb049ee0-96df-43c3-8c22-d0d722243862",
@@ -1666,7 +2134,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "3/10"
+      "date_text": "3/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "bb58d5a3-de2a-490e-8554-5f2a408feaee",
@@ -1676,7 +2147,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "28/3"
+      "date_text": "28/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "bc7231c6-8183-404a-8632-c423a00b7278",
@@ -1686,7 +2160,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "22/5 - 26/5"
+      "date_text": "22/5 - 26/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "bc92c334-4ff0-461b-b91e-47f06d16d6f2",
@@ -1696,7 +2173,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "27/3"
+      "date_text": "27/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "be7f2368-e8d9-41f0-b925-88aebb8fce8d",
@@ -1706,7 +2186,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "29/3"
+      "date_text": "29/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "bed28ee9-4151-4961-ba8f-f76f7d3c7df0",
@@ -1716,7 +2199,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "17/3"
+      "date_text": "17/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "beecd536-9274-4e93-821a-7f3fd5387bca",
@@ -1726,7 +2212,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "28/5 - 31/5"
+      "date_text": "28/5 - 31/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "bf4c76ee-bf8c-4dd0-8f77-c48934163cd8",
@@ -1736,7 +2225,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "28/5 - 31/5"
+      "date_text": "28/5 - 31/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c1f9a8f2-c462-415a-93b5-cdbb8c08eec4",
@@ -1746,7 +2238,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "11/7 - 15/7"
+      "date_text": "11/7 - 15/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c25b56b0-f84d-4d20-bb58-6328b9cdb49f",
@@ -1756,7 +2251,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "6/10"
+      "date_text": "6/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c55f9b79-7ffb-463e-a085-7fe8b5f5c5e5",
@@ -1766,7 +2264,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "5/10"
+      "date_text": "5/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c5efc18e-883f-4e0f-9c55-bd06632a559a",
@@ -1776,7 +2277,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/3"
+      "date_text": "1/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c75e0557-5509-433d-8cad-1594e5f4fec9",
@@ -1786,7 +2290,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "17/3 - 21/3"
+      "date_text": "17/3 - 21/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c82624c9-074a-48cf-b725-61fb5c432f8c",
@@ -1796,7 +2303,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "21/6"
+      "date_text": "21/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c8b51dca-85c0-46b5-b801-87d0d579e198",
@@ -1806,7 +2316,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "27/6"
+      "date_text": "27/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c8d6cc7e-d24c-45a3-9129-bdf6c4b693cc",
@@ -1816,7 +2329,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "28/2"
+      "date_text": "28/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "c98b4757-dcbd-4d1d-8393-0ad354a9646d",
@@ -1826,7 +2342,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "21/2"
+      "date_text": "21/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ca6de363-e5a3-4829-98da-f947bd473ecd",
@@ -1836,7 +2355,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "13/9"
+      "date_text": "13/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "cd143c02-a83b-491e-8ba2-f0859b3934b8",
@@ -1846,7 +2368,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "20/3"
+      "date_text": "20/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ce6a3f76-a28a-40d7-9438-41de2697389c",
@@ -1856,7 +2381,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "16/9 - 20/9"
+      "date_text": "16/9 - 20/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "cf54cc31-95d1-45cd-9ba4-e17cad48d9a3",
@@ -1866,7 +2394,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "21/2"
+      "date_text": "21/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "d05ae649-c0f8-4b00-be43-73060f466b4b",
@@ -1876,7 +2407,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "26/3 - 29/3"
+      "date_text": "26/3 - 29/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "d17d0b5c-a680-44b6-b78c-efd6692b836c",
@@ -1886,7 +2420,10 @@
       "race_class": "Monuments",
       "race_type": "single",
       "stages": 1,
-      "date_text": "10/10"
+      "date_text": "10/10",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "d3aa53d5-1a57-4e24-9759-e8dbfaeb7840",
@@ -1896,7 +2433,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "single",
       "stages": 1,
-      "date_text": "14/6"
+      "date_text": "14/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "d3ff6e5d-caf8-444d-9c88-dffdbdcead63",
@@ -1906,7 +2446,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "15/2"
+      "date_text": "15/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "d46239b1-cf7e-4615-a126-f8a98a4b5825",
@@ -1916,7 +2459,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "22/9 - 26/9"
+      "date_text": "22/9 - 26/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "d771f029-a9a1-454e-8a09-30f6326bb0a5",
@@ -1926,7 +2472,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "stage_race",
       "stages": 6,
-      "date_text": "6/4 - 11/4"
+      "date_text": "6/4 - 11/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "dccab7cd-9c14-48bd-8405-643285804847",
@@ -1936,7 +2485,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "31/1"
+      "date_text": "31/1",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "dd28449b-e945-46c5-b029-de05b1ec1893",
@@ -1946,7 +2498,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 2,
-      "date_text": "20/6 - 21/6"
+      "date_text": "20/6 - 21/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ddd4c82a-bb19-416d-9e0f-6e0881b3675d",
@@ -1956,7 +2511,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "single",
       "stages": 1,
-      "date_text": "22/4"
+      "date_text": "22/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ded85b3b-dc44-4b75-b01d-2f0be7896cf2",
@@ -1966,7 +2524,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "18/6 - 21/6"
+      "date_text": "18/6 - 21/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e260f1cd-63b5-439a-a25f-12cfda9636e2",
@@ -1976,7 +2537,10 @@
       "race_class": "Class2",
       "race_type": "single",
       "stages": 1,
-      "date_text": "10/4"
+      "date_text": "10/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e47d7081-ebe6-406e-991e-059fd4da271a",
@@ -1986,7 +2550,10 @@
       "race_class": "OtherWorldTourB",
       "race_type": "stage_race",
       "stages": 7,
-      "date_text": "23/6 - 29/6"
+      "date_text": "23/6 - 29/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e48e2985-d252-4cbe-bfb3-6b4b697acdf8",
@@ -1996,7 +2563,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "12/5 - 16/5"
+      "date_text": "12/5 - 16/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e504b61a-c9b6-4369-a69c-4cd577510268",
@@ -2006,7 +2576,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "17/6 - 21/6"
+      "date_text": "17/6 - 21/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e6abceb7-4327-4f91-8230-417baba64882",
@@ -2016,7 +2589,10 @@
       "race_class": "TourFrance",
       "race_type": "stage_race",
       "stages": 18,
-      "date_text": "4/7 - 22/7"
+      "date_text": "4/7 - 22/7",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e72064c9-051e-4d2a-a358-48a0aac97196",
@@ -2026,7 +2602,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/4"
+      "date_text": "1/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e748a402-b210-40d6-88bd-8f085dbe1fbf",
@@ -2036,7 +2615,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "2/8 - 6/8"
+      "date_text": "2/8 - 6/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "e8941263-1a1c-4559-b925-1d14cf104e37",
@@ -2046,7 +2628,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "24/3 - 27/3"
+      "date_text": "24/3 - 27/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "eb5482e3-5006-4345-9d22-93407283e1f4",
@@ -2056,7 +2641,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "13/5 - 17/5"
+      "date_text": "13/5 - 17/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ebfac467-b2fe-4feb-a172-8fdc6fdaf0ab",
@@ -2066,7 +2654,10 @@
       "race_class": "Monuments",
       "race_type": "single",
       "stages": 1,
-      "date_text": "12/4"
+      "date_text": "12/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ecae5079-5814-484e-b40f-9389f7da741d",
@@ -2076,7 +2667,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "5/9 - 7/9"
+      "date_text": "5/9 - 7/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "efd49e64-159b-4a54-ba29-ac13fb436001",
@@ -2086,7 +2680,10 @@
       "race_class": "Class1",
       "race_type": "single",
       "stages": 1,
-      "date_text": "7/2"
+      "date_text": "7/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f0dab9ba-a1d7-4e6d-b69d-c0ac1bcdb183",
@@ -2096,7 +2693,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "26/4 - 30/4"
+      "date_text": "26/4 - 30/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f2ace2bf-b158-41cf-9255-3565fbb3487f",
@@ -2106,7 +2706,10 @@
       "race_class": "Monuments",
       "race_type": "single",
       "stages": 1,
-      "date_text": "26/4"
+      "date_text": "26/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f4aea0bb-ec40-4e96-9c2a-e63fa50cc7b7",
@@ -2116,7 +2719,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "14/8 - 18/8"
+      "date_text": "14/8 - 18/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f4f729fc-f6a7-4a82-81d6-5d844668e796",
@@ -2126,7 +2732,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "5/5 - 9/5"
+      "date_text": "5/5 - 9/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f7873498-9dd5-45de-81fc-5fdb937b9be0",
@@ -2136,7 +2745,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "27/1 - 31/1"
+      "date_text": "27/1 - 31/1",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f864da8d-7e82-4dca-a909-fafae1b25778",
@@ -2146,7 +2758,10 @@
       "race_class": "Class2",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "25/3 - 28/3"
+      "date_text": "25/3 - 28/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f9436dc6-d73f-4430-9ce8-907c2c38c205",
@@ -2156,7 +2771,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "13/8 - 17/8"
+      "date_text": "13/8 - 17/8",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f9954ded-6ad0-4b8b-af12-99b9e0250b58",
@@ -2166,7 +2784,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "11/3 - 14/3"
+      "date_text": "11/3 - 14/3",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f9cec8f3-1af5-470e-8c88-cf81572ba36c",
@@ -2176,7 +2797,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "26/6 - 30/6"
+      "date_text": "26/6 - 30/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "f9d31e66-0be5-4d8c-822f-0c69cdb73a16",
@@ -2186,7 +2810,10 @@
       "race_class": "OtherWorldTourC",
       "race_type": "single",
       "stages": 1,
-      "date_text": "1/4"
+      "date_text": "1/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "fd32ad3f-ab91-4e2d-9279-a5f026596e56",
@@ -2196,7 +2823,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "4/2 - 8/2"
+      "date_text": "4/2 - 8/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "fd83cfdc-611a-4bd6-95eb-bf432f70905e",
@@ -2206,7 +2836,10 @@
       "race_class": "OtherWorldTourA",
       "race_type": "single",
       "stages": 1,
-      "date_text": "23/5"
+      "date_text": "23/5",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "fdf92b36-76f8-401d-9ba2-54f996dccf68",
@@ -2216,7 +2849,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 4,
-      "date_text": "11/6 - 14/6"
+      "date_text": "11/6 - 14/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "fe8dc286-d89a-415b-8588-4dd842b3fc06",
@@ -2226,7 +2862,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "19/9"
+      "date_text": "19/9",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "fe8faa51-c5f3-437b-a4ea-b4e8d39533a0",
@@ -2236,7 +2875,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "17/6 - 21/6"
+      "date_text": "17/6 - 21/6",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "fec44146-e768-441a-8094-2239910bd1e3",
@@ -2246,7 +2888,10 @@
       "race_class": "ProSeries",
       "race_type": "single",
       "stages": 1,
-      "date_text": "29/1"
+      "date_text": "29/1",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "fee3992a-4880-41f9-8521-367df7631c42",
@@ -2256,7 +2901,10 @@
       "race_class": "ProSeries",
       "race_type": "stage_race",
       "stages": 5,
-      "date_text": "18/2 - 22/2"
+      "date_text": "18/2 - 22/2",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     },
     {
       "id": "ffeab590-70a9-46d3-8b39-dc6cb6d9fd8f",
@@ -2266,7 +2914,10 @@
       "race_class": "Class1",
       "race_type": "stage_race",
       "stages": 3,
-      "date_text": "28/4 - 30/4"
+      "date_text": "28/4 - 30/4",
+      "race_identity_type": null,
+      "signature": null,
+      "authored_route": null
     }
   ]
 }

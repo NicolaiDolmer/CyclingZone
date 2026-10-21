@@ -41,8 +41,8 @@
           "text": "Sponsorindtægt skaleres med division, så et kompetent hold er bæredygtigt: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$, Division 4 {sponsorD4} CZ$. Din underskrevne aftale beholder sin garanterede base hele løbetiden. Skifter du division mens den løber, udbetales et separat divisions-tillæg på {divisionAdjustmentPct} procent af forskellen mellem de to divisioner oveni, hver sæson forskellen findes."
         },
         "upkeep": {
-          "title": "Driftsomkostning",
-          "text": "Hver sæson betaler dit hold en driftsomkostning (upkeep), skaleret med division så højere divisioner betaler mere. Den trækkes enten på én gang ved sæsonstart eller som Rejse og personale for hver seniorløbsdag dit hold stiller til start på; sæsonens samlede beløb er det samme. Jeg justerer de præcise beløb mellem sæsoner, og du ser altid hvert træk i din finanslog."
+          "title": "Driftsudgifter",
+          "text": "Fra sæson 5 har dit hold ingen driftsudgifter: ingen drift, ingen Rejse og stab, ingen udgift til faciliteter og ingen udgift til akademiet. Dine største udgifter er rytterløn, stabsløn og renter på lån."
         },
         "salary": {
           "title": "Rytterløn",
@@ -157,8 +157,8 @@
           "text": "Akademiryttere får {academySalaryPct}% af deres nuværende produktionsværdi, samme andel som seniorryttere, og signerer {academyContractLength}-sæsoners ungdomskontrakter."
         },
         "drift": {
-          "title": "Drift",
-          "text": "Hver besat akademiplads koster {academyDrift} CZ$ pr. sæson, opkrævet ved sæsonstart. Et lille akademi (3–4 pladser) er komfortabelt bæredygtigt i alle divisioner; et fuldt akademi er en bevidst, tungere satsning."
+          "title": "Udgifter",
+          "text": "Fra sæson 5 koster pladser i akademiet ingenting at drive. Et fuldt akademi er nu et spørgsmål om plads i truppen, ikke penge."
         }
       }
     },

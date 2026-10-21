@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    // JS parameters/destructuring often lack annotations. Ignore implicit-any
+    // noise here; retain real type errors. The separate TS config stays strict.
+    "noImplicitAny": false
+  },
+  "include": ["src/**/*.js", "src/**/*.jsx"]
+}

@@ -1,7 +1,30 @@
+import { trainingDateRpc } from "./trainingDateRpc.js";
 import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
 import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
 import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
+
+/**
+ * #6536: who gets the division-less calendar-day tick (gameDay null)?
+ *
+ * Teams without a `league_division_id` (spec §3.2) that are not parked: they have
+ * no race-day axis, so one tick on the old calendar-day key keeps them developing. That
+ * covers division-less AI teams and the supported fallback where a new human
+ * team is created without a division (teamProfileEngine.pickDivisionForNewTeam).
+ * A parked team also loses its division (managerParking.js), but parking leaves
+ * the team untouched apart from parked_at, so it must not train (#6536). Callers
+ * MUST select parked_at; both writers below do, and the per-date context also
+ * drops parked teams up front (trainingDateReadiness.isTrainingDateTeam).
+ *
+ * Both writers use this one rule: buildSweepPlan (trainingDayCloseTrigger.js)
+ * and the per-date sweep below.
+ *
+ * @param {{league_division_id?: string|null, is_ai?: boolean|null, parked_at?: string|null}} team
+ * @returns {boolean}
+ */
+export function isLegacyCalendarTickTeam(team) {
+  return !team?.league_division_id && team?.parked_at == null;
+}
 
 async function checked(query, label) {
   const { data, error } = await query;
@@ -36,17 +59,32 @@ export async function loadTrainingDateIndex({ supabase, now }) {
   return { jobs: [...jobs.values()].sort((a, b) => a.tickDate.localeCompare(b.tickDate)), today, activeSeasonId: active?.id ?? null };
 }
 
-export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now }) {
-  return checked(supabase.rpc('register_training_date_work', {
+export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now, nonBlocking = false }) {
+  return checked(trainingDateRpc(supabase, 'register_training_date_work', {
     p_team_id: teamId, p_season_id: seasonId, p_tick_date: tickDate,
     p_game_days: gameDays, p_expected_rider_ids: riderIds,
     p_deadline_at: trainingDateDeadline(tickDate).toISOString(),
     p_registered_at: now.toISOString(),
-  }), 'register training date');
+  }, nonBlocking), 'register training date');
 }
 
 async function loadTrainingWorkRows({ supabase, season, tickDate }) {
   return fetchAllRows(() => supabase.from('training_date_work').select('team_id,game_days,expected_rider_ids,status,opening_conditions,quarantined_rider_ids').eq('season_id', season.id).eq('tick_date', tickDate).order('team_id'));
+}
+
+// #6504: a rider who has provably left the team (team_id is null now) is taken out
+// of the date without alarm. The RPC re-checks team_id server-side and returns only
+// the riders it accepted; the rest are quarantined by the caller as before.
+// In the deploy window before auto-migrate has created the function (PGRST202),
+// nobody is departed: the caller quarantines them exactly as before #6504.
+export async function departTrainingDateRiders({ supabase, teamId, seasonId, tickDate, riderIds, now }) {
+  const { data, error } = await supabase.rpc('depart_training_date_riders', {
+    p_team_id: teamId, p_season_id: seasonId, p_tick_date: tickDate,
+    p_rider_ids: riderIds, p_now: now.toISOString(),
+  });
+  if (error?.code === 'PGRST202' || error?.code === '42883') return [];
+  if (error) throw new Error(`depart released riders from training date: ${error.message}`);
+  return data?.departed_rider_ids ?? [];
 }
 
 async function quarantineTrainingRiders({ supabase, teamId, seasonId, tickDate, riderIds, reason, now }) {
@@ -143,7 +181,7 @@ export async function runNormalizedTrainingDateSweep({
   supabase, now, runDay, loadDaySpans, onAlarm, logger = console,
   loadIndex = loadTrainingDateIndex, loadContext = loadTrainingDateContext,
   registerWork = registerTrainingDateWork, dispatchAlarms = dispatchTrainingDateAlarms,
-  loadWorkRows = loadTrainingWorkRows, quarantineRiders = quarantineTrainingRiders,
+  loadWorkRows = loadTrainingWorkRows, quarantineRiders = quarantineTrainingRiders, departRiders = departTrainingDateRiders,
   loadLegacyRuns = loadLegacyRunTeamIds,
   refreshRankings = refreshRankingsAfterTrainingSettlement,
   elapsedClock = () => performance.now(),
@@ -152,7 +190,7 @@ export async function runNormalizedTrainingDateSweep({
 }) {
   const startedAt = elapsedClock();
   const index = await loadIndex({ supabase, now });
-  const summary = { ran: false, tickDate: index.today, gameDays: [], divisions: 0, planned: 0, swept: 0, alreadyRan: 0, failed: 0, failures: [], pending: 0, quarantined: 0, durationMs: 0 };
+  const summary = { ran: false, tickDate: index.today, gameDays: [], divisions: 0, planned: 0, swept: 0, alreadyRan: 0, failed: 0, failures: [], pending: 0, quarantined: 0, departed: 0, durationMs: 0 };
   const allDays = new Set(), divisions = new Set();
   let settledToday = false;
   for (const job of index.jobs) {
@@ -183,8 +221,10 @@ export async function runNormalizedTrainingDateSweep({
         (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd)).map(rider => rider.id);
       if (!currentIds.length && !workByTeam.has(team.id)) return;
       const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(team.league_division_id);
-      // Division-less teams retain their existing calendar-day fallback.
+      // Division-less AI teams retain their existing calendar-day fallback. A
+      // division-less human team is parked (#6536) and gets no tick at all.
       if (!team.league_division_id && !workByTeam.has(team.id)) {
+        if (!isLegacyCalendarTickTeam(team)) return;
         try {
           const legacyRan = await loadLegacyRan();
           if (legacyRan.has(team.id)) return;
@@ -214,10 +254,23 @@ export async function runNormalizedTrainingDateSweep({
           (riderById.get(id)?.team_id != null && work.opening_conditions?.[id] != null);
         const unavailable = remaining.filter(id => unsafeSeason || team.is_bank || team.is_frozen || team.is_test_account ||
           !followsRider(id) || (work.opening_conditions !== undefined && !work.opening_conditions[id]));
-        if (unavailable.length) {
+        // #6504: a rider who left the team (released, retired, graduated) is not a
+        // reconciliation finding. Only for an ordinary team in the active season;
+        // riderById may not hold a released rider, so unknown counts as a candidate
+        // and the RPC decides from riders.team_id.
+        const ordinaryTeam = !unsafeSeason && !team.is_bank && !team.is_frozen && !team.is_test_account;
+        const leftTeam = ordinaryTeam
+          ? unavailable.filter(id => !currentIds.includes(id) && riderById.get(id)?.team_id == null)
+          : [];
+        const departed = leftTeam.length
+          ? await departRiders({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, riderIds: leftTeam, now })
+          : [];
+        summary.departed += departed.length;
+        const toQuarantine = unavailable.filter(id => !departed.includes(id));
+        if (toQuarantine.length) {
           await quarantineRiders({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate,
-            riderIds: unavailable, reason: unsafeSeason ? 'historical_season_requires_review' : 'roster_or_opening_evidence_unavailable', now });
-          summary.quarantined += unavailable.length;
+            riderIds: toQuarantine, reason: unsafeSeason ? 'historical_season_requires_review' : 'roster_or_opening_evidence_unavailable', now });
+          summary.quarantined += toQuarantine.length;
         }
         const available = remaining.filter(id => !unavailable.includes(id));
         const readiness = resolveTrainingDateReadiness({ ...context, tickDate: job.tickDate, now, riderIds: available });

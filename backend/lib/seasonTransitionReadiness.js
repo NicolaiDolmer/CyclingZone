@@ -1,12 +1,10 @@
 /**
  * #1346 — Readiness-gate for manuel sæson-transition.
  * =====================================================
- * Genbruger auto-cron'ens "wrapped window"-semantik (seasonAutoTransition.js):
- * den afgående sæsons seneste transfervindue skal være lukket via deadline-
- * cyklussen (status='closed' OG closed_at sat — et racing-window født af
- * transitionToNextSeason har closed_at=null og tæller IKKE) og squad
- * enforcement kørt. Dertil: ingen aktive auktioner og alle
- * sæsonens løb afviklet (ejer-beslutning 12/6: kritisk check).
+ * Ingen udskudte transfers må vente, og trup-loftets resultat skal holde
+ * (se #5855 nedenfor for hvordan det måles).
+ * Dertil: ingen aktive auktioner og alle sæsonens løb afviklet
+ * (ejer-beslutning 12/6: kritisk check).
  *
  * #2361 — season_end_completed: transitionToNextSeason (season-transition) og
  * processSeasonEnd ("Afslut sæson") er TO adskilte manuelle admin-handlinger.
@@ -22,9 +20,24 @@
  *
  * #6120 — final_whistle_sent er fjernet: Final Whistle blev kun sat af den
  * afskaffede Deadline Day-cron (markedet er altid åbent, docs/TRANSFER_MARKET_RULES.md),
- * så checket var permanent rødt uden at beskytte noget. De øvrige kritiske
- * checks er uændrede — squad enforcement (trup-loftet) kræver stadig både et
- * lukket vindue (closed_at) og squad_enforcement_completed_at.
+ * så checket var permanent rødt uden at beskytte noget.
+ *
+ * #5855 — markedet er altid åbent, og transfer_windows er død data som ingen
+ * kode må ankre adfærd i (docs/TRANSFER_MARKET_RULES.md, "Transfervinduet er
+ * afskaffet"). Gaten læser derfor IKKE transfer_windows. Kontrakten er:
+ *   - no_deferred_transfers: ingen gennemførte handler, der venter på at blive
+ *     flyttet (riders.pending_team_id sat). En udskudt transfer under et
+ *     etapeløb flyttes af flush/heal-sweepet; står den stadig ved skiftet,
+ *     ville transitionen regne trupper og kontrakter på det gamle hold.
+ *     Åbne forhandlinger (pending/countered/awaiting_confirmation) blokerer
+ *     ikke: markedet er altid åbent, og finalize-gaten håndhæver trup-loftet
+ *     mod tilstanden efter skiftet (TRANSFER_MARKET_RULES §7).
+ *   - squad_enforcement_completed: trup-loftets POSTCONDITION måles på data,
+ *     ikke på en markør: ingen menneske-styrede, ikke-frosne hold uden for
+ *     divisionens trup-grænser, talt med samme semantik som
+ *     getTeamMarketState.future_count (nuværende minus udgående plus
+ *     indgående udskudte), samme population og senior-tælling som
+ *     squadEnforcement.js.
  *
  * Gaten håndhæves i POST /api/admin/season-transition (routes/api.js).
  * Cron, relaunch-orchestratoren (#1103) og scripts/executeSeasonTransition.js
@@ -32,22 +45,87 @@
  * logger dog et eksplicit season-end-verificeret JA/NEJ-warn, #2361).
  */
 
+import { copenhagenDateString } from './copenhagenTime.js';
+import { isTrainingDateTeam, loadTrainingDateTeams, trainingDateBounds } from './trainingDateReadiness.js';
+
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "./economyConstants.js";
 import { loadEmptyPoolFilter } from "./emptyPoolPolicy.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { getSquadLimits } from "./marketUtils.js";
+import { applySeniorSquadFilter } from "./squads.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
+
+/**
+ * #5855 — read-only måling af trup-håndhævelsens postcondition.
+ * Samme population som processSquadEnforcementCron (menneske-styret, ikke bank,
+ * ikke frosset, har user_id) og samme tælling som getSquadSnapshot i
+ * squadEnforcement.js (senior-trup, ikke akademi, ikke pensioneret), målt mod
+ * getSquadLimits(division) — begge retninger, ligesom håndhævelsen.
+ * Returnerer antal hold uden for grænserne og hvilke (#6784: violating_teams =
+ * {teamId, teamName, count, min, max}). Kaster ved læsefejl (fail-closed).
+ */
+export async function countSquadLimitViolations({ supabase } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  let teams;
+  let riders;
+  let incoming;
+  try {
+    teams = await fetchAllRows(() => supabase
+      .from("teams")
+      .select("id, name, division")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .not("user_id", "is", null)
+      .order("id", { ascending: true }));
+    const teamIds = (teams || []).map((t) => t.id);
+    riders = teamIds.length === 0 ? [] : await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+      applySeniorSquadFilter(supabase
+        .from("riders")
+        .select("id, team_id, pending_team_id")
+        .in("team_id", chunk))
+        .eq("is_retired", false)
+        .order("id", { ascending: true }));
+    // #5855 (Codex): udskudte indgående transfers tæller paa KOEBERENS trup
+    // (getTeamMarketState.future_count), ikke paa saelgerens.
+    incoming = teamIds.length === 0 ? [] : await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+      applySeniorSquadFilter(supabase
+        .from("riders")
+        .select("id, pending_team_id, team_id")
+        .in("pending_team_id", chunk))
+        .eq("is_retired", false)
+        .order("id", { ascending: true }));
+  } catch (e) {
+    throw new Error(`Kunne ikke måle trup-grænser: ${e.message || e}`, { cause: e });
+  }
+
+  const effectiveTeamById = new Map();
+  for (const r of [...(riders || []), ...(incoming || [])]) {
+    effectiveTeamById.set(r.id, r.pending_team_id ?? r.team_id);
+  }
+  const countByTeam = new Map();
+  for (const teamId of effectiveTeamById.values()) countByTeam.set(teamId, (countByTeam.get(teamId) || 0) + 1);
+  const violatingTeams = [];
+  for (const t of teams || []) {
+    const limits = getSquadLimits(t.division);
+    const n = countByTeam.get(t.id) || 0;
+    if (n > limits.max || n < limits.min) {
+      violatingTeams.push({ teamId: t.id, teamName: t.name ?? null, count: n, min: limits.min, max: limits.max });
+    }
+  }
+  return { teams_checked: (teams || []).length, violations: violatingTeams.length, violating_teams: violatingTeams };
+}
 
 export async function assessTransitionReadiness({ supabase, fromSeasonId } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!fromSeasonId) throw new Error("fromSeasonId required");
 
-  const [windowRes, auctionsRes, racesRes, seasonRes, poolFilterRes] = await Promise.all([
-    supabase
-      .from("transfer_windows")
-      .select("id, status, closed_at, squad_enforcement_completed_at")
-      .eq("season_id", fromSeasonId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+  const [deferredRes, auctionsRes, racesRes, seasonRes, poolFilterRes] = await Promise.all([
+    fetchAllRows(() => supabase
+      .from("riders")
+      .select("id")
+      .not("pending_team_id", "is", null)
+      .order("id", { ascending: true }))
+      .then((rows) => ({ data: rows, error: null }), (e) => ({ data: null, error: e })),
     supabase
       .from("auctions")
       .select("id", { count: "exact", head: true })
@@ -72,14 +150,14 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
       .then((f) => ({ data: f, error: null }), (e) => ({ data: null, error: e })),
   ]);
 
-  if (windowRes.error) throw new Error(`Kunne ikke læse transfervindue: ${windowRes.error.message}`);
+  if (deferredRes.error) throw new Error(`Kunne ikke tælle udskudte transfers: ${deferredRes.error.message || deferredRes.error}`);
   if (auctionsRes.error) throw new Error(`Kunne ikke tælle auktioner: ${auctionsRes.error.message}`);
   if (racesRes.error) throw new Error(`Kunne ikke tælle løb: ${racesRes.error.message || racesRes.error}`);
   if (seasonRes.error) throw new Error(`Kunne ikke læse sæson: ${seasonRes.error.message}`);
   if (!seasonRes.data) throw new Error(`Sæson ${fromSeasonId} findes ikke`);
   if (poolFilterRes.error) throw new Error(`Kunne ikke læse puljer: ${poolFilterRes.error.message || poolFilterRes.error}`);
 
-  const win = windowRes.data;
+  const deferredTransfers = (deferredRes.data || []).length;
   const activeAuctions = auctionsRes.count || 0;
   const { inEmptyPool } = poolFilterRes.data;
   const unfinishedRaces = (racesRes.data || []).filter((r) => !inEmptyPool(r)).length;
@@ -89,14 +167,16 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   const seasonEndRequired = season.number >= FIRST_PROMOTION_RELEGATION_SEASON;
   const seasonEndCompleted = !seasonEndRequired || season.status === "completed";
 
-  const windowClosed = Boolean(win && win.status === "closed" && win.closed_at);
-  const windowDetail = !win
-    ? "Intet transfervindue fundet for sæsonen, deadline-cyklussen er ikke kørt"
-    : win.status !== "closed"
-      ? `Vinduet har status '${win.status}'`
-      : !win.closed_at
-        ? "Vinduet er aldrig lukket via deadline-cyklussen (closed_at mangler)"
-        : null;
+  // #5855: trup-loftet maales altid paa data (ingen vindue-markoer at stole paa).
+  const { violations, violating_teams: violatingTeams = [] } = await countSquadLimitViolations({ supabase });
+  const squadOk = violations === 0;
+  // #6784: admin skal kunne handle paa fundet, saa de foerste 5 hold vises med antal.
+  const shownTeams = violatingTeams.slice(0, 5)
+    .map((t) => `${t.teamName ?? t.teamId} ${t.count} (${t.count > t.max ? `max ${t.max}` : `min ${t.min}`})`)
+    .join(", ") + (violatingTeams.length > 5 ? ` og ${violatingTeams.length - 5} flere` : "");
+  const squadDetail = squadOk
+    ? null
+    : `${violations} hold er uden for divisionens trup-grænser (inkl. udskudte transfers): ${shownTeams} — ret trupperne før skiftet`;
 
   const checks = {
     season_end_completed: {
@@ -106,12 +186,14 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
         ? null
         : `Sæson ${season.number} er stadig '${season.status}' — kør 'Afslut sæson' (season-end) FØRST, ellers springes op/nedrykning + divisionsbonusser over`,
     },
-    window_closed: { ok: windowClosed, critical: true, detail: windowDetail },
-    squad_enforcement_completed: {
-      ok: Boolean(win?.squad_enforcement_completed_at),
+    no_deferred_transfers: {
+      ok: deferredTransfers === 0,
       critical: true,
-      detail: win?.squad_enforcement_completed_at ? null : "squad_enforcement_completed_at mangler på vinduet",
+      detail: deferredTransfers === 0
+        ? null
+        : `${deferredTransfers} gennemførte transfers venter på at blive flyttet (pending_team_id) — kør flush/heal-sweepet først`,
     },
+    squad_enforcement_completed: { ok: squadOk, critical: true, detail: squadDetail },
     no_active_auctions: {
       ok: activeAuctions === 0,
       critical: true,
@@ -231,4 +313,77 @@ export const TRANSITION_BLOCKED_ERROR = "Sæson-transition blokeret: readiness-g
 
 export function formatForceOverrideDescription(failedCritical) {
   return `Sæson-transition FORCED med rød readiness-gate (${failedCritical.join(", ")})`;
+}
+/**
+ * #6898: read-only fail-closed proof before season-end removes the active season.
+ * The final civil date comes from the season's calendar, never end_date or today's index:
+ * an empty training_date_work result is not evidence of completed training.
+ * Existing registered work always counts, including parked/disappeared teams.
+ * Unregistered population mirrors loadTrainingDateContext/currentIds.
+ */
+export async function assessFinalTrainingDateSettlement({ supabase, season, now } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!season?.id) throw new Error("season required");
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error("Explicit valid now required");
+  if (season.number === 0) return { blocked: false, tick_date: null, detail: null, blockers: [] };
+
+  // end_date is null while S4 is active and is also written at cutover.
+  // The scheduled season calendar is the training axis's date authority.
+  // pagination-safe: one maximum timestamp, scoped by the season through races.
+  const { data: lastStages, error: calendarError } = await supabase
+    .from('race_stage_schedule')
+    .select('scheduled_at,races!inner(season_id)')
+    .eq('races.season_id', season.id)
+    .not('scheduled_at', 'is', null)
+    .order('scheduled_at', { ascending: false })
+    .limit(1);
+  if (calendarError) throw new Error(`Kunne ikke læse sidste træningsdato fra sæsonens løbskalender: ${calendarError.message}`);
+  const scheduledAt = Array.isArray(lastStages) ? lastStages[0]?.scheduled_at : null;
+  const lastInstant = scheduledAt == null ? null : new Date(scheduledAt);
+  const tickDate = lastInstant && Number.isFinite(lastInstant.getTime()) ? copenhagenDateString(lastInstant) : null;
+  if (!tickDate) {
+    return { blocked: true, tick_date: null, blockers: [],
+      detail: "Sæsonen kan ikke afsluttes: sidste træningsdato kan ikke findes i sæsonens løbskalender (ingen gyldig planlagt etape)" };
+  }
+  if (tickDate > copenhagenDateString(now)) {
+    return { blocked: true, tick_date: tickDate, blockers: [],
+      detail: `Sæsonen kan ikke afsluttes: sidste træningsdato ${tickDate} fra løbskalenderen ligger i fremtiden` };
+  }
+  const [work, teams, riders] = await Promise.all([
+    fetchAllRows(() => supabase.from('training_date_work').select('team_id,status')
+      .eq('season_id', season.id).eq('tick_date', tickDate).order('team_id')),
+    loadTrainingDateTeams(supabase),
+    fetchAllRows(() => supabase.from('riders').select('id,team_id,created_at,acquired_at')
+      .eq('is_retired', false).not('team_id', 'is', null).order('id')),
+  ]);
+  const terminal = new Set(['complete', 'needs_reconciliation']);
+  const workByTeam = new Map(work.map(row => [row.team_id, row]));
+  const registered = new Set(workByTeam.keys());
+  const { end } = trainingDateBounds(tickDate);
+  const teamsWithRiders = new Set(riders.filter(rider =>
+    (!rider.created_at || new Date(rider.created_at) < end) &&
+    (!rider.acquired_at || new Date(rider.acquired_at) < end)).map(rider => rider.team_id));
+  const missingTeams = teams.filter(team => !registered.has(team.id) &&
+    isTrainingDateTeam(team, registered, end) && teamsWithRiders.has(team.id));
+
+  // Division-less teams use a calendar-day report rather than training_date_work.
+  // A reservation (including writing) is never proof. This legacy key has no
+  // season_id; date + team + game_day IS NULL is the writer's canonical key.
+  const legacyTeams = missingTeams.filter(team => !team.league_division_id);
+  const legacyRuns = legacyTeams.length ? await fetchAllRowsChunkedIn(legacyTeams.map(team => team.id), chunk =>
+    supabase.from('training_day_runs').select('id,team_id,report').in('team_id', chunk)
+      .eq('tick_date', tickDate).is('game_day', null).order('id')) : [];
+  const legacySettled = new Set(legacyRuns.filter(row => row.report?.pending !== true &&
+    Array.isArray(row.report?.riders) && row.report.tick_date === tickDate &&
+    row.report.game_day === null).map(row => row.team_id));
+  const blockers = work.filter(row => !terminal.has(row.status))
+    .map(row => ({ team_id: row.team_id, reason: row.status ?? 'unknown_status' }));
+  for (const team of missingTeams) {
+    if (!team.league_division_id && legacySettled.has(team.id)) continue;
+    blockers.push({ team_id: team.id, reason: 'missing_registration' });
+  }
+  return { blocked: blockers.length > 0, tick_date: tickDate, blockers,
+    detail: blockers.length ? `Sæsonen kan ikke afsluttes: træning ${tickDate} er ikke fuldt afregnet. ` +
+      blockers.slice(0, 5).map(row => `${row.team_id}: ${row.reason}`).join(', ') +
+      (blockers.length > 5 ? ` (+${blockers.length - 5} hold)` : '') : null };
 }

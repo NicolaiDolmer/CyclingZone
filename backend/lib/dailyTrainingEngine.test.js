@@ -1,7 +1,13 @@
+import { runTrainNow } from "./trainNow.js";
+import { createTrainNowRouter } from "../routes/trainNow.js";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runTeamTrainingDay, stageMatchesCanonicalLoad } from "./dailyTrainingEngine.js";
+import {
+  runTeamTrainingDay, stageMatchesCanonicalLoad,
+  LEGACY_RESERVATION_STAGE_LOADING, LEGACY_RESERVATION_STAGE_WRITING, STALE_LEGACY_RESERVATION_MS,
+  isTrainingReservationHeldError, isReclaimableLegacyReservation, isHeldRaceDayReservation,
+} from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { applyDailyTick } from "./dailyTraining.js";
 import { conditionMultiplier, nextFatigue, injuryRisk, rollInjury, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
@@ -25,7 +31,14 @@ function createMockSupabase(state, opts = {}) {
   // opts.injectUniqueViolation = true → første INSERT på training_day_runs fejler 23505
 
   function builder(table, op = "select", filters = [], patch = null, inList = null) {
-    const matchRow = (row) => {
+    const matchRow = (rawRow) => {
+      // #6759: PostgREST-JSON-sti ("report->>stage") slaas op i kolonnens objekt.
+      const row = new Proxy(rawRow, { get: (target, col) => {
+        if (typeof col !== "string" || !col.includes("->>")) return target[col];
+        const [base, key] = col.split("->>");
+        const value = target[base]?.[key];
+        return value == null ? value : String(value);
+      } });
       if (filters.some(([col, val, fop]) => {
         // #4846: order/limit rejser med i filter-listen som "meta" — de filtrerer ikke.
         if (fop === "meta") return false;
@@ -44,6 +57,8 @@ function createMockSupabase(state, opts = {}) {
     const obj = {
       select(/* _cols */) {
         // Vi ignorerer kolonne-selektionen og returnerer alle felter (mock).
+        // #6759: .update()/.delete() efterfulgt af .select() returnerer de ramte raekker.
+        if (op === "update" || op === "delete") return builder(table, op, [...filters, ["__returning", true, "meta"]], patch, inList);
         return builder(table, "select", filters, patch, inList);
       },
       eq(col, val) {
@@ -138,15 +153,16 @@ function createMockSupabase(state, opts = {}) {
         // Await-støtte: flush pending operation på .then().
         state[table] ??= [];
         let result;
+        const returning = filters.some((f) => f[0] === "__returning");
         if (op === "update") {
-          for (const row of state[table]) {
-            if (matchRow(row)) Object.assign(row, patch);
-          }
-          result = { error: null };
+          const hit = state[table].filter(matchRow);
+          for (const row of hit) Object.assign(row, patch);
+          result = returning ? { data: hit, error: null } : { error: null };
         } else if (op === "delete") {
           if (opts.deleteCalls) opts.deleteCalls.push({ table, filters: [...filters] });
+          const hit = state[table].filter(matchRow);
           state[table] = state[table].filter((row) => !matchRow(row));
-          result = { error: null };
+          result = returning ? { data: hit, error: null } : { error: null };
         } else {
           // select — injicér fejl hvis opts.injectRidersError matcher dette bord
           if (opts.injectRidersError && table === "riders") {
@@ -185,7 +201,9 @@ function createMockSupabase(state, opts = {}) {
 
   return {
     async rpc(name, args) {
-      if(name==='register_training_date_work') {
+      if (name.startsWith('try_') && opts.missingWrapper) return {error:{code:'PGRST202',message:`Could not find the function public.${name}`}};
+      if(name==='register_training_date_work' || name==='try_register_training_date_work') {
+        if (name.startsWith('try_') && opts.heldRegistration) return {data:{held:true},error:null};
         state.training_date_work??=[];
         let work=state.training_date_work.find(row=>row.team_id===args.p_team_id&&row.season_id===args.p_season_id&&row.tick_date===args.p_tick_date);
         if(!work){work={team_id:args.p_team_id,season_id:args.p_season_id,tick_date:args.p_tick_date,game_days:args.p_game_days,expected_rider_ids:args.p_expected_rider_ids,deadline_at:args.p_deadline_at,status:'pending',quarantined_rider_ids:[],opening_conditions:Object.fromEntries((state.rider_condition??[]).filter(row=>args.p_expected_rider_ids.includes(row.rider_id)).map(row=>[row.rider_id,structuredClone(row)]))};state.training_date_work.push(work);}
@@ -197,7 +215,8 @@ function createMockSupabase(state, opts = {}) {
         work.status='needs_reconciliation';
         return {data:{work,work_status:work.status,quarantined_rider_ids:args.p_rider_ids},error:null};
       }
-      assert.equal(name, 'commit_training_date_tick');
+      assert.ok(['commit_training_date_tick','try_commit_training_date_tick'].includes(name));
+      if (name.startsWith('try_') && opts.heldCommit) return {data:{held:true},error:null};
       if (opts.failDateCommit) { opts.failDateCommit = false; return { error: { message: 'atomic commit failed' } }; }
       for (const item of args.p_abilities) Object.assign(state.rider_derived_abilities.find(row => row.rider_id === item.riderId), item.patch);
       for (const item of args.p_conditions) Object.assign(state.rider_condition.find(row => row.rider_id === item.rider_id), item);
@@ -956,6 +975,282 @@ test("Plan B: trænings-facilitet + chef løfter dags-score; uden club-data = bi
   assert.equal(zeroResult.report.riders[0].score, baseScore, "tier 0 → bit-identisk med baseline");
 });
 
+// #6596: et kort Supabase-502 paa facilitets-opslaget maa ALDRIG afregne holdet uden
+// bonus. Tick'et skal kaste, reservationen slettes, og intet er skrevet, saa naeste
+// sweep tager holdet igen og faar bonussen med.
+test("#6596: 502 paa team_facilities → tick kaster, reservation slettet, ingen afregning uden bonus", async () => {
+  const deleteCalls = [];
+  const state = seedState();
+  state.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 5 }];
+  const abilitiesBefore = structuredClone(state.rider_derived_abilities);
+  const conditionsBefore = structuredClone(state.rider_condition);
+  const base = createMockSupabase(state, { deleteCalls });
+  const html502 = "<!DOCTYPE html><html><head><title>supabase.co | 502: Bad gateway</title></head><body>cf-error-details</body></html>";
+  const gateway502 = { data: null, error: { message: html502 }, status: 502 };
+  const failing = { select: () => failing, eq: () => failing, then: (resolve) => Promise.resolve(gateway502).then(resolve) };
+  const supabase = { ...base, from: (table) => (table === "team_facilities" ? failing : base.from(table)) };
+
+  await assert.rejects(
+    () => runTeamTrainingDay({
+      supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "assistant", now: NOW,
+    }),
+    (err) => err.retryable === true && /502 Bad gateway/.test(err.message) && !/<html/i.test(err.message)
+      // #6798: en forbigaaende gateway-fejl er IKKE "traening i gang" (Train now: 500 + Sentry).
+      && !isTrainingReservationHeldError(err),
+  );
+  assert.equal(deleteCalls.filter((c) => c.table === "training_day_runs").length, 1, "reservationen slettes");
+  assert.equal(state.training_day_runs.length, 0, "ingen run-raekke: naeste sweep tager holdet igen");
+  assert.deepEqual(state.rider_derived_abilities, abilitiesBefore, "ingen ability-writes uden bonus");
+  assert.deepEqual(state.rider_condition, conditionsBefore, "ingen condition-writes");
+
+  // Naeste sweep (gatewayen er oppe igen) kan afregne holdet, nu med facilitets-
+  // konteksten indlaest (bonus-effekten selv daekkes af Plan B-testen ovenfor).
+  const retry = await runTeamTrainingDay({
+    supabase: base, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "assistant", now: NOW,
+  });
+  assert.equal(retry.alreadyRan, false);
+  assert.equal(state.training_day_runs.length, 1);
+});
+
+// #6596 (Codex-fund): sletningen af reservationen rammer typisk samme nedbrud.
+// Den proeves igen, saa holdet ikke staar med en pending-raekke resten af dagen.
+test("#6596: fejlet oprydning af reservationen proeves igen, indtil den lykkes", async () => {
+  const deleteCalls = [];
+  const state = seedState();
+  state.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 5 }];
+  const base = createMockSupabase(state, { deleteCalls });
+  const gateway502 = { data: null, error: { message: "Bad gateway" }, status: 502 };
+  const failing = { select: () => failing, eq: () => failing, then: (resolve) => Promise.resolve(gateway502).then(resolve) };
+  let failedDeletes = 0;
+  const failingDelete = { eq: () => failingDelete, then: (resolve) => { failedDeletes += 1; return Promise.resolve({ error: { message: "Bad gateway" } }).then(resolve); } };
+  const supabase = {
+    ...base,
+    from: (table) => {
+      if (table === "team_facilities") return failing;
+      if (table === "training_day_runs" && failedDeletes < 2) {
+        const q = base.from(table);
+        return new Proxy(q, { get: (target, prop) => (prop === "delete" ? () => failingDelete : target[prop]) });
+      }
+      return base.from(table);
+    },
+  };
+  await assert.rejects(() => runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "assistant", now: NOW,
+  }), (err) => err.retryable === true);
+  assert.equal(failedDeletes, 2, "to fejlede sletninger");
+  assert.equal(deleteCalls.filter((c) => c.table === "training_day_runs").length, 1, "tredje forsoeg sletter");
+  assert.equal(state.training_day_runs.length, 0, "ingen efterladt reservation");
+});
+
+// ── #6759: forældet pending-reservation paa den gamle kalenderdags-sti ─────────
+const minutesAfter = (date, minutes) => new Date(date.getTime() + minutes * 60 * 1000);
+function seedLegacyRun(state, { stage, createdAt, report } = {}) {
+  state.training_day_runs.push({
+    id: "run-stale", team_id: TEAM_ID, tick_date: "2026-06-12", executed_by: "assistant", bonus_applied: false,
+    created_at: createdAt.toISOString(),
+    report: report ?? { pending: true, stage, token: "token-of-a-dead-run" },
+  });
+}
+const runLegacy = (supabase, now) => runTeamTrainingDay({
+  supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "assistant", now,
+});
+
+test("#6759: reservationen baerer stadie + token; afregningen erstatter den med rapporten", async () => {
+  const state = seedState();
+  const reportsSeen = [];
+  const base = createMockSupabase(state);
+  const supabase = { ...base, from: (table) => {
+    if (table === "riders") reportsSeen.push(structuredClone(state.training_day_runs[0]?.report));
+    return base.from(table);
+  } };
+  const result = await runLegacy(supabase, NOW);
+  assert.equal(result.alreadyRan, false);
+  assert.equal(reportsSeen[0].stage, LEGACY_RESERVATION_STAGE_LOADING, "phase 1 koerer under 'loading'");
+  assert.equal(typeof reportsSeen[0].token, "string");
+  assert.equal(state.training_day_runs.length, 1);
+  assert.equal(state.training_day_runs[0].report.stage, undefined, "afregnet raekke har intet stadie");
+  assert.equal(state.training_day_runs[0].report.pending, undefined);
+});
+
+test("#6759: haengende 'loading'-reservation aeldre end taerskelen → holdet afregnes én gang", async () => {
+  const deleteCalls = [];
+  const state = seedState();
+  seedLegacyRun(state, { stage: LEGACY_RESERVATION_STAGE_LOADING, createdAt: NOW });
+  const later = new Date(NOW.getTime() + STALE_LEGACY_RESERVATION_MS + 60 * 1000);
+  const supabase = createMockSupabase(state, { deleteCalls });
+
+  const first = await runLegacy(supabase, later);
+  assert.equal(first.alreadyRan, false, "forældet reservation frigives, holdet afregnes");
+  assert.equal(first.report.riders.length, 1);
+  assert.equal(state.training_day_runs.length, 1, "én raekke for (hold, dato)");
+  assert.equal(state.training_day_runs[0].report.tick_date, "2026-06-12");
+  const releases = deleteCalls.filter((c) => c.table === "training_day_runs");
+  assert.equal(releases.length, 1, "én betinget sletning");
+  const filters = Object.fromEntries(releases[0].filters.filter((f) => f[2] !== "meta").map((f) => [f[0], [f[1], f[2]]]));
+  assert.deepEqual(filters["report->>stage"], [LEGACY_RESERVATION_STAGE_LOADING, "eq"]);
+  assert.equal(filters.created_at[1], "lt", "kun raekker aeldre end taerskelen");
+  const conditionAfter = structuredClone(state.rider_condition);
+  const abilitiesAfter = structuredClone(state.rider_derived_abilities);
+
+  const second = await runLegacy(supabase, minutesAfter(later, 1));
+  assert.equal(second.alreadyRan, true, "naeste koersel ser den afregnede raekke");
+  assert.deepEqual(state.rider_condition, conditionAfter, "ingen dobbelt-afregning (condition)");
+  assert.deepEqual(state.rider_derived_abilities, abilitiesAfter, "ingen dobbelt-afregning (evner)");
+});
+
+test("#6759: frisk 'loading'-reservation → springes over med retryable fejl, intet skrevet, raekken staar", async () => {
+  const state = seedState();
+  seedLegacyRun(state, { stage: LEGACY_RESERVATION_STAGE_LOADING, createdAt: NOW });
+  const snapshot = () => structuredClone({ runs: state.training_day_runs, abilities: state.rider_derived_abilities, conditions: state.rider_condition });
+  const before = snapshot();
+  await assert.rejects(() => runLegacy(createMockSupabase(state), minutesAfter(NOW, 1)),
+    (err) => err.retryable === true && /held by an unfinished run/.test(err.message)
+      && isTrainingReservationHeldError(err)); // #6798: Train now svarer 409 training_in_progress
+  assert.deepEqual(snapshot(), before, "intet roert: hverken reservation, evner eller condition");
+});
+
+test("#6798: isTrainingReservationHeldError kraever baade retryable og reservations-koden", () => {
+  assert.equal(isTrainingReservationHeldError(null), false);
+  assert.equal(isTrainingReservationHeldError(new Error("boom")), false);
+  assert.equal(isTrainingReservationHeldError(Object.assign(new Error("gateway"), { retryable: true })), false);
+  assert.equal(isTrainingReservationHeldError(Object.assign(new Error("x"), { code: "training_reservation_held" })), false);
+  assert.equal(isTrainingReservationHeldError(Object.assign(new Error("x"), { retryable: true, code: "training_reservation_held" })), true);
+});
+
+test("#6798: isReclaimableLegacyReservation laeser det smalle sweep-format (stage-kolonne, ingen report)", () => {
+  const old = new Date(NOW.getTime() - STALE_LEGACY_RESERVATION_MS - 1000).toISOString();
+  assert.equal(isReclaimableLegacyReservation({ stage: LEGACY_RESERVATION_STAGE_LOADING, created_at: old }, NOW), true);
+  assert.equal(isReclaimableLegacyReservation({ stage: LEGACY_RESERVATION_STAGE_LOADING, created_at: NOW.toISOString() }, NOW), false);
+  assert.equal(isReclaimableLegacyReservation({ stage: LEGACY_RESERVATION_STAGE_WRITING, created_at: old }, NOW), false);
+  assert.equal(isReclaimableLegacyReservation({ stage: null, created_at: old }, NOW), false, "afregnet raekke: report->>stage er null");
+});
+
+test("#6759: afregnet run, 'writing' og gammelt format frigives aldrig, uanset alder", async () => {
+  const old = new Date(NOW.getTime() - 24 * 60 * 60 * 1000);
+  for (const seed of [
+    { report: { riders: [], bonus_applied: false, executed_by: "assistant", tick_date: "2026-06-12", game_day: null } },
+    { stage: LEGACY_RESERVATION_STAGE_WRITING },
+    { report: { pending: true } },
+  ]) {
+    const deleteCalls = [];
+    const state = seedState();
+    seedLegacyRun(state, { ...seed, createdAt: old });
+    const snapshot = () => structuredClone({ runs: state.training_day_runs, abilities: state.rider_derived_abilities, conditions: state.rider_condition });
+  const before = snapshot();
+    const result = await runLegacy(createMockSupabase(state, { deleteCalls }), NOW);
+    assert.equal(result.alreadyRan, true, `alreadyRan for ${JSON.stringify(seed)}`);
+    assert.equal(deleteCalls.length, 0, "ingen sletning");
+    assert.deepEqual(snapshot(), before, "intet roert");
+  }
+});
+
+test("#6759: issue-scenariet — sletningen fejler 3 gange, holdet afregnes ved en senere koersel, én gang", async () => {
+  const state = seedState();
+  state.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 5 }];
+  const base = createMockSupabase(state);
+  const gateway502 = { data: null, error: { message: "Bad gateway" }, status: 502 };
+  const failing = { select: () => failing, eq: () => failing, then: (resolve) => Promise.resolve(gateway502).then(resolve) };
+  const failingDelete = { eq: () => failingDelete, then: (resolve) => Promise.resolve({ error: { message: "Bad gateway" } }).then(resolve) };
+  const outage = { ...base, from: (table) => {
+    if (table === "team_facilities") return failing;
+    if (table === "training_day_runs") {
+      const q = base.from(table);
+      return new Proxy(q, { get: (target, prop) => (prop === "delete" ? () => failingDelete : target[prop]) });
+    }
+    return base.from(table);
+  } };
+  await assert.rejects(() => runLegacy(outage, NOW), (err) => err.retryable === true);
+  assert.equal(state.training_day_runs.length, 1, "reservationen blev staaende under nedbruddet");
+  assert.equal(state.training_day_runs[0].report.stage, LEGACY_RESERVATION_STAGE_LOADING);
+  state.training_day_runs[0].created_at = NOW.toISOString(); // databasens DEFAULT now()
+
+  await assert.rejects(() => runLegacy(base, minutesAfter(NOW, 1)), (err) => err.retryable === true,
+    "inden for taerskelen: ikke afregnet, sweepen taeller en fejl og proever igen");
+  const settled = await runLegacy(base, new Date(NOW.getTime() + STALE_LEGACY_RESERVATION_MS + 1000));
+  assert.equal(settled.alreadyRan, false, "efter taerskelen: holdet afregnes");
+  const again = await runLegacy(base, new Date(NOW.getTime() + 2 * STALE_LEGACY_RESERVATION_MS));
+  assert.equal(again.alreadyRan, true, "og aldrig igen");
+  assert.equal(state.training_day_runs.length, 1);
+});
+
+test("#6759: taber koerslen frigivelsen eller det nye INSERT til en samtidig koersel → retryable, ikke alreadyRan", async () => {
+  const later = new Date(NOW.getTime() + STALE_LEGACY_RESERVATION_MS + 60 * 1000);
+  // a) Den anden koersel sletter raekken mellem vores opslag og vores sletning.
+  {
+    const state = seedState();
+    seedLegacyRun(state, { stage: LEGACY_RESERVATION_STAGE_LOADING, createdAt: NOW });
+    const base = createMockSupabase(state);
+    const supabase = { ...base, from: (table) => {
+      const q = base.from(table);
+      if (table !== "training_day_runs") return q;
+      return new Proxy(q, { get: (target, prop) => (prop === "delete" ? () => {
+        state.training_day_runs = []; // vinderen kom foerst
+        return target.delete();
+      } : target[prop]) });
+    } };
+    await assert.rejects(() => runLegacy(supabase, later), (err) => err.retryable === true && /held by an unfinished run/.test(err.message));
+  }
+  // b) Vi frigiver, men vinderen naar at reservere foer vores nye INSERT.
+  {
+    const state = seedState();
+    seedLegacyRun(state, { stage: LEGACY_RESERVATION_STAGE_LOADING, createdAt: NOW });
+    const winner = { id: "run-winner", team_id: TEAM_ID, tick_date: "2026-06-12", created_at: later.toISOString(),
+      report: { pending: true, stage: LEGACY_RESERVATION_STAGE_LOADING, token: "token-of-the-winner" } };
+    const base = createMockSupabase(state);
+    let inserts = 0;
+    const supabase = { ...base, from: (table) => {
+      const q = base.from(table);
+      if (table !== "training_day_runs") return q;
+      return new Proxy(q, { get: (target, prop) => (prop === "insert" ? (row) => {
+        inserts += 1;
+        if (inserts === 2) state.training_day_runs.push(structuredClone(winner));
+        return target.insert(row);
+      } : target[prop]) });
+    } };
+    await assert.rejects(() => runLegacy(supabase, later), (err) => err.retryable === true);
+    assert.deepEqual(state.training_day_runs, [winner], "vinderens reservation staar uroert");
+  }
+});
+
+test("#6759: tom trup — en overtaget koersel overskriver ikke den nye ejers raekke", async () => {
+  const state = seedState({ riders: [], abilities: [], conditions: [] });
+  const base = createMockSupabase(state);
+  const newOwner = { pending: true, stage: LEGACY_RESERVATION_STAGE_LOADING, token: "token-of-the-new-owner" };
+  const supabase = { ...base, from: (table) => {
+    if (table === "riders") state.training_day_runs[0].report = { ...newOwner };
+    return base.from(table);
+  } };
+  await assert.rejects(() => runLegacy(supabase, NOW), /reservation no longer held/);
+  assert.equal(state.training_day_runs.length, 1);
+  assert.deepEqual(state.training_day_runs[0].report, newOwner, "den nye ejers raekke er uroert");
+
+  // Uden overtagelse afregnes den tomme trup som foer.
+  const fresh = seedState({ riders: [], abilities: [], conditions: [] });
+  const result = await runLegacy(createMockSupabase(fresh), NOW);
+  assert.equal(result.alreadyRan, false);
+  assert.equal(fresh.training_day_runs[0].report.riders.length, 0);
+  assert.equal(fresh.training_day_runs[0].report.stage, undefined);
+});
+
+test("#6759: en overtaget koersel skriver intet og sletter ikke den nye ejers reservation", async () => {
+  const state = seedState();
+  const before = structuredClone({ abilities: state.rider_derived_abilities, conditions: state.rider_condition });
+  const base = createMockSupabase(state);
+  const newOwner = { pending: true, stage: LEGACY_RESERVATION_STAGE_LOADING, token: "token-of-the-new-owner" };
+  const supabase = { ...base, from: (table) => {
+    // Midt i phase 1 frigiver en anden koersel reservationen og reserverer forfra.
+    if (table === "riders") state.training_day_runs[0].report = { ...newOwner };
+    return base.from(table);
+  } };
+  await assert.rejects(() => runLegacy(supabase, NOW), /reservation no longer held/);
+  assert.equal(state.training_day_runs.length, 1, "den nye ejers raekke staar");
+  assert.deepEqual(state.training_day_runs[0].report, newOwner, "og er uroert");
+  assert.deepEqual({ abilities: state.rider_derived_abilities, conditions: state.rider_condition }, before, "intet skrevet");
+});
+
 // ── #3459 fase 2a: løbsdags-motoren (D1 løbsdags-gate + D3 recovery-konstanter) ──
 // NOW = 2026-06-12T10:00+02:00 → tickDate "2026-06-12" i dansk tid.
 const IMPORTED_AT_TODAY = "2026-06-12T08:00:00Z"; // 10:00 CEST — inde i tickDate's danske døgn
@@ -1398,6 +1693,72 @@ test("#4846 (flag on): andet tick på SAMME løbsdag rammer mutexen → alreadyR
   assert.equal(second.alreadyRan, true, "løbsdags-nøglen forhindrer dobbelt-tick samme løbsdag");
   assert.equal(second.gameDay, 12);
   assert.equal(state.training_day_runs.length, 1, "kun ÉN række pr. (hold, sæson, løbsdag)");
+});
+
+// ── #6827: holdt reservation paa loebsdags-stien ──────────────────────────────
+function seedRaceDayRun(state, { gameDay = 12, createdAt = NOW, report = { pending: true } } = {}) {
+  state.training_day_runs.push({
+    id: `run-held-${gameDay}`, team_id: TEAM_ID, season_id: SEASON_ID, squad: "senior", game_day: gameDay,
+    tick_date: "2026-06-12", executed_by: "assistant", bonus_applied: false,
+    created_at: createdAt.toISOString(), report,
+  });
+}
+const raceDaySnapshot = (state) => structuredClone({
+  runs: state.training_day_runs, abilities: state.rider_derived_abilities, conditions: state.rider_condition,
+});
+
+test("#6827 (flag on): frisk pending loebsdags-raekke (en sweep er i gang) → retryable held-fejl, intet skrevet", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW });
+  const before = raceDaySnapshot(state);
+  await assert.rejects(() => runDay(state, { gameDay: 12, now: minutesAfter(NOW, 1) }),
+    (err) => isTrainingReservationHeldError(err) && /held by an unfinished run/.test(err.message));
+  assert.deepEqual(raceDaySnapshot(state), before, "hverken reservation, evner eller condition roert");
+});
+
+test("#6827 (flag on): afregnet loebsdags-raekke → stadig alreadyRan, intet skrevet", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW, report: { riders: [], game_day: 12, tick_date: "2026-06-12" } });
+  const before = raceDaySnapshot(state);
+  const result = await runDay(state, { gameDay: 12, now: minutesAfter(NOW, 1) });
+  assert.equal(result.alreadyRan, true);
+  assert.equal(result.gameDay, 12);
+  assert.deepEqual(raceDaySnapshot(state), before);
+});
+
+test("#6827 (flag on): forældet pending loebsdags-raekke → alreadyRan som foer (blokeret dag, ingen overtagelse)", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  seedRaceDayRun(state, { gameDay: 12, createdAt: NOW });
+  const before = raceDaySnapshot(state);
+  const later = new Date(NOW.getTime() + STALE_LEGACY_RESERVATION_MS + 60 * 1000);
+  const result = await runDay(state, { gameDay: 12, now: later });
+  assert.equal(result.alreadyRan, true);
+  assert.deepEqual(raceDaySnapshot(state), before, "raekken staar; intet slettet eller skrevet");
+});
+
+test("#6827 (flag on): 23505 men raekken er frigivet imens → retryable held-fejl, ikke alreadyRan", async () => {
+  const state = seedState();
+  seedRaceDayTick(state, { gameDay: 12 });
+  const supabase = createMockSupabase(state, { injectUniqueViolation: true });
+  await assert.rejects(() => runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager",
+    now: NOW, gameDay: 12, eligibleRiderIds: state.riders.map((rider) => rider.id),
+  }), (err) => isTrainingReservationHeldError(err));
+  assert.equal(state.training_day_runs.length, 0);
+});
+
+test("#6827: isHeldRaceDayReservation laeser det smalle format (pending som tekst) og report-formatet", () => {
+  const fresh = NOW.toISOString();
+  const old = new Date(NOW.getTime() - STALE_LEGACY_RESERVATION_MS - 1000).toISOString();
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: fresh }, NOW), true);
+  assert.equal(isHeldRaceDayReservation({ report: { pending: true }, created_at: fresh }, NOW), true);
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: null }, NOW), true, "ukendt alder = levende");
+  assert.equal(isHeldRaceDayReservation({ pending: "true", created_at: old }, NOW), false, "forældet");
+  assert.equal(isHeldRaceDayReservation({ pending: null, created_at: fresh }, NOW), false, "afregnet");
+  assert.equal(isHeldRaceDayReservation({ report: { riders: [] }, created_at: fresh }, NOW), false, "afregnet");
 });
 
 test("#4846 (flag on): to forskellige løbsdage på SAMME kalenderdato kører begge", async () => {
@@ -2836,3 +3197,40 @@ test('#5620: dagen efter en etape er kun foerste felt restitution', async () => 
   }
   assert.deepEqual(intensities, ['recovery', 'hard', 'hard', 'hard', 'hard']);
 });
+
+for (const heldAt of ['heldRegistration', 'heldCommit']) {
+  test(`#6839 normalized manager reports held at ${heldAt} without training writes`, async () => {
+    const state = seedState(); seedRaceDayTick(state, {gameDay:1});
+    state.app_config.push({key:'training_condition_per_date',value:'on'});
+    const abilities = structuredClone(state.rider_derived_abilities);
+    await assert.rejects(runDay(state, {gameDay:1,dateGameDays:[1,2,3,4,5],
+      supabase:createMockSupabase(state,{[heldAt]:true})}), error => error.code === 'training_reservation_held');
+    assert.deepEqual(state.rider_derived_abilities, abilities);
+    assert.equal(state.training_day_runs.length, 0);
+  });
+}
+
+for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper']) {
+  test(`#6839 actual Train now router + normalized engine: ${heldAt ?? 'free'}`, async () => {
+    const state=seedState();seedRaceDayTick(state,{gameDay:1});
+    state.app_config.push({key:'training_condition_per_date',value:'on'},{key:'training_train_now',value:'on'});
+    const supabase=createMockSupabase(state,heldAt ? {[heldAt]:true} : {});
+    const team={id:TEAM_ID,league_division_id:'division-1'};
+    const context={teams:[team],riders:state.riders,races:[],stages:[],runs:[],entries:[],results:[],incidents:[],loads:[],
+      candidateRiderIdsByRace:new Map(),gameDaysByDivision:new Map([['division-1',[1,2,3,4,5]]])};
+    let captured=0;
+    const router=createTrainNowRouter({supabase,requireAuth:()=>{},isViewerBetaTester:async()=>false,
+      loadActiveSeason:async()=>({id:SEASON_ID,number:SEASON_NUMBER}),loadDaySpans:async()=>new Map(),
+      captureExceptionFn:()=>{captured++;},
+      run:args=>runTrainNow({...args,now:NOW,loadContext:async()=>context,loadShortRaces:async()=>[]})});
+    const handler=router.stack.find(layer=>layer.route?.methods.post).route.stack.at(-1).handle;
+    let status=200,body;
+    const res={status(code){status=code;return res;},json(value){body=value;return res;}};
+    await handler({team,body:{}},res);
+    const held = heldAt && heldAt !== 'missingWrapper';
+    assert.equal(status,held ? 409 : 200,JSON.stringify(body));
+    assert.equal(captured,0);
+    if(held){assert.equal(body.error,'training_in_progress');assert.deepEqual(body.settledGameDays,[]);assert.equal(state.training_day_runs.length,0);}
+    else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
+  });
+}

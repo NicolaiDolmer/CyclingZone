@@ -5,7 +5,7 @@
 import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf } from "./riderEligibility.js";
+import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, isWithinRaceAgeLimit, loadRaceSeasonNumber, RIDER_OVER_RACE_AGE_ERROR } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 import { loadRaceTrainNowLock, trainNowSelectionViolations } from "./trainNowLock.js";
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOptOut.ts";
@@ -193,6 +193,10 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   if (lockedMoves.length) {
     return { ok: false, status: 409, error: "selection_train_now_locked", locked_rider_ids: lockedMoves };
   }
+  // #6964: alder afgør ungdomsløb — en for gammel rytter kan ikke udtages, uanset trup.
+  const overAgeIds = new Set(ctx.riders.filter((r) => r.overAge).map((r) => r.id));
+  const overAge = riderIds.filter((id) => overAgeIds.has(id));
+  if (overAge.length) return { ok: false, status: 400, error: RIDER_OVER_RACE_AGE_ERROR, over_age_rider_ids: overAge };
 
   const result = validateSelection({
     riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
@@ -404,7 +408,7 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 export async function getSelectionContext({ supabase, race, teamId }) {
   // #5645 (Y4): truppen der må udtages til løbet. Senior = uændret select + filter.
   const raceSquad = raceSquadOf(race);
-  const riderColumns = "id, firstname, lastname, primary_type, secondary_type, pending_team_id";
+  const riderColumns = "id, firstname, lastname, primary_type, secondary_type, pending_team_id, birthdate";
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
     // #1307/#1308: akademiryttere er ikke løbs-berettigede. Rod B: delt eligibility-filter.
     // #1747: ryttertype (primary/secondary) med så fronten kan vise typen ved udtagelsen.
@@ -424,17 +428,19 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   for (const [name, res] of [["riders", ridersRes], ["race_stage_profiles", profilesRes], ["race_entries", entriesRes]]) {
     if (res.error) throw new Error(`${name}: ${res.error.message}`);
   }
-  // #5645: enhver rytter i løbets trup må udtages — ejer 24/9: ingen separat aldersgate.
+  // #5645: rytterne i løbets trup. #6964 (ejer 20/10): alder afgør ungdomsløb — se overAge nedenfor.
   const riders = ridersRes.data || [];
   const stages = profilesRes.data || [];
   const riderIds = riders.map((r) => r.id);
 
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");
-  const [abilitiesRes, conditionRes, trainNowLock] = await Promise.all([
+  const [abilitiesRes, conditionRes, trainNowLock, seasonNumber] = await Promise.all([
     supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIds),
     supabase.from("rider_condition").select("rider_id, form, fatigue, injured_until").in("rider_id", riderIds),
     // #6139: hvilke af holdets ryttere er laast af et "Train now"-tryk paa en af loebets datoer.
     loadRaceTrainNowLock({ supabase, raceId: race.id, riderIds, teamId }),
+    // #6964: ungdomsløbets sæson til aldersgaten (seniorløb: undefined, intet opslag).
+    loadRaceSeasonNumber({ supabase, race }),
   ]);
   const abilityByRider = new Map((abilitiesRes.data || []).map((a) => [a.rider_id, a]));
   const conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
@@ -448,13 +454,16 @@ export async function getSelectionContext({ supabase, race, teamId }) {
 
   const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr })
     // #6139: panelet graaner en laast rytter op-front (han kan hverken ind eller ud).
-    .map((row) => ({ ...row, trainNowLocked: trainNowLock.riderIds.has(row.id) }));
+    .map((row) => ({ ...row, trainNowLocked: trainNowLock.riderIds.has(row.id) }))
+    // #6964: for gammel til ungdomsløbet — vises, men kan ikke udtages.
+    .map((row, i) => (seasonNumber === undefined ? row
+      : { ...row, overAge: !isWithinRaceAgeLimit(riders[i], { squad: raceSquad, seasonNumber }) }));
 
   // Rod B (#1800/#1742): kryds committede entries mod den gyldige roster. En ghost
   // (rytter udtaget FØR han blev solgt/fyret/akademi/pensioneret) er ikke i `riders`
   // (eligibility-filtreret ovenfor) og må hverken vises eller tælle med — ellers
   // renderer den blank i kolonnen (intet ×), tæller i 6/6, og låser redigeringen.
-  const eligibleIds = new Set(riderRows.map((r) => r.id));
+  const eligibleIds = new Set(riderRows.filter((r) => !r.overAge).map((r) => r.id)); // #6964: motoren dropper dem
   const entries = (entriesRes.data || []).filter((e) => eligibleIds.has(e.rider_id));
   const selection = entries.length
     ? {
@@ -479,7 +488,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     selection,
     // #4119: en udgaaende rytter kan ikke udtages til nye loeb og taeller derfor
     // ikke som "ledig" — samme skel som cap-taellingen bruger (#1090/#250).
-    availableCount: riderRows.filter((r) => !r.injured && !r.outgoing).length,
+    availableCount: riderRows.filter((r) => !r.injured && !r.outgoing && !r.overAge).length,
     // #6139: laasen for UI'et (banner med tidspunkt + graa ryttere) og for prepareSelectionChange.
     trainNowLock: { riderIds: [...trainNowLock.riderIds].sort(), pressedAt: trainNowLock.pressedAt },
   };

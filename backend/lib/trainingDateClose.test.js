@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runNormalizedTrainingDateSweep, dispatchTrainingDateAlarms, __resetNormalizedTrainingDateCacheForTests } from './trainingDateClose.js';
+import { runNormalizedTrainingDateSweep, dispatchTrainingDateAlarms, departTrainingDateRiders, __resetNormalizedTrainingDateCacheForTests } from './trainingDateClose.js';
 import { runTrainingDayCloseSweep, __resetTrainingDayCloseStateForTests } from './trainingDayCloseTrigger.js';
 
 test('teammates settle independently and a midnight retry cannot grant growth twice', async () => {
@@ -115,6 +115,8 @@ function transferOptions({ work, riders, quarantine, calls }) {
     loadWorkRows: async () => [work],
     loadContext: async () => ({ teams: [{ id: 'old', league_division_id: 'division' }], riders, gameDaysByDivision: new Map() }),
     quarantineRiders: async args => { quarantine.push(...args.riderIds); },
+    // #6504: the RPC accepts nobody unless a test says otherwise.
+    departRiders: async () => [],
     runDay: async args => { calls.push(args); return {}; },
     dispatchAlarms: async () => ({ dates: 1, failed: 0 }),
   };
@@ -142,6 +144,42 @@ test('a moved rider without a frozen opening condition, or released from every t
     await runNormalizedTrainingDateSweep(transferOptions({ work, riders, quarantine, calls }));
     assert.deepEqual(quarantine, ['moved']);
     assert.ok(calls.every(call => call.eligibleRiderIds.join() === 'ready'));
+  }
+});
+
+// #6504: a rider who provably left the team (team_id null now) is departed without
+// alarm; anything the RPC does not accept is still quarantined.
+test('a released rider is departed, not quarantined; a rider the RPC rejects is still quarantined', async () => {
+  for (const [accepted, expectDeparted, expectQuarantine] of [[['gone'], ['gone'], []], [[], [], ['gone']]]) {
+    __resetNormalizedTrainingDateCacheForTests();
+    const calls = [], quarantine = [], departCalls = [];
+    const work = { team_id: 'old', game_days: [5, 6, 7, 8, 9], expected_rider_ids: ['ready', 'gone'], status: 'partial', opening_conditions: { ready: {}, gone: {} } };
+    const result = await runNormalizedTrainingDateSweep({
+      ...transferOptions({ work, quarantine, calls, riders: [{ id: 'ready', team_id: 'old' }] }),
+      departRiders: async args => { departCalls.push(args.riderIds); return accepted; },
+    });
+    assert.deepEqual(departCalls, [['gone']]);
+    assert.deepEqual(quarantine, expectQuarantine);
+    assert.equal(result.departed, expectDeparted.length);
+    assert.equal(result.quarantined, expectQuarantine.length);
+    assert.ok(calls.every(call => call.eligibleRiderIds.join() === 'ready'));
+  }
+});
+
+test('a rider moved to another team, or any rider on a frozen team, is never sent to departure', async () => {
+  for (const [team, riders, opening] of [
+    [{ id: 'old', league_division_id: 'division' }, [{ id: 'ready', team_id: 'old' }, { id: 'gone', team_id: 'new' }], { ready: {} }],
+    [{ id: 'old', league_division_id: 'division', is_frozen: true }, [{ id: 'ready', team_id: 'old' }], { ready: {}, gone: {} }],
+  ]) {
+    __resetNormalizedTrainingDateCacheForTests();
+    const calls = [], quarantine = [];
+    const work = { team_id: 'old', game_days: [5, 6, 7, 8, 9], expected_rider_ids: ['ready', 'gone'], status: 'partial', opening_conditions: opening };
+    await runNormalizedTrainingDateSweep({
+      ...transferOptions({ work, quarantine, calls, riders }),
+      loadContext: async () => ({ teams: [team], riders, gameDaysByDivision: new Map() }),
+      departRiders: async () => { throw new Error('must not depart'); },
+    });
+    assert.ok(quarantine.includes('gone'));
   }
 });
 
@@ -221,7 +259,7 @@ function retryLoopOptions({ calls, legacyLookups, legacyRan = new Set(), forceRe
     loadIndex: async () => ({ today: '2026-10-01', activeSeasonId: 'season', jobs: [{ tickDate: '2026-09-30', season: { id: 'season', number: 4 }, ...(forceRetry ? { forceRetry: true } : {}) }] }),
     loadWorkRows: async () => (forceRetry ? [work] : []),
     loadContext: async () => ({
-      teams: [{ id: 'stuck', league_division_id: 'division' }, { id: 'legacy-a', league_division_id: null }, { id: 'legacy-b', league_division_id: null }],
+      teams: [{ id: 'stuck', league_division_id: 'division' }, { id: 'legacy-a', league_division_id: null, is_ai: true }, { id: 'legacy-b', league_division_id: null, is_ai: true }],
       riders: [{ id: 'r-stuck', team_id: 'stuck' }, { id: 'r-a', team_id: 'legacy-a' }, { id: 'r-b', team_id: 'legacy-b' }],
       races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
       gameDaysByDivision: new Map([['division', [5]]]),
@@ -263,6 +301,32 @@ test('a normal date pass still settles division-less teams without a legacy row'
   assert.equal(result.failed, 1);
 });
 
+// #6536: parking clears league_division_id, so a parked human team looked like a
+// division-less AI team and got a legacy tick every evening.
+test('a parked team gets no legacy tick; division-less AI and active human teams still do', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const calls = [], legacyLookups = [];
+  const base = retryLoopOptions({ calls, legacyLookups, forceRetry: false });
+  const result = await runNormalizedTrainingDateSweep({
+    ...base,
+    loadContext: async () => ({
+      teams: [
+        { id: 'active', league_division_id: 'division', is_ai: false },
+        { id: 'parked', league_division_id: null, is_ai: false, parked_at: '2026-09-27T18:59:00Z' },
+        { id: 'human-no-division', league_division_id: null, is_ai: false },
+        { id: 'ai', league_division_id: null, is_ai: true },
+      ],
+      riders: [{ id: 'r-active', team_id: 'active' }, { id: 'r-parked', team_id: 'parked' }, { id: 'r-human', team_id: 'human-no-division' }, { id: 'r-ai', team_id: 'ai' }],
+      races: [], stages: [], runs: [], entries: [], results: [], incidents: [], loads: [],
+      gameDaysByDivision: new Map([['division', [5]]]),
+    }),
+    registerWork: async args => ({ team_id: args.teamId, game_days: args.gameDays, expected_rider_ids: args.riderIds, status: 'pending', opening_conditions: { 'r-active': {} } }),
+    runDay: async args => { calls.push(`${args.teamId}:${args.gameDay}`); return {}; },
+  });
+  assert.deepEqual(calls.sort(), ['active:5', 'ai:null', 'human-no-division:null']);
+  assert.equal(result.failed, 0);
+});
+
 test('a legacy failure keeps the forced retry on a full pass', async () => {
   __resetNormalizedTrainingDateCacheForTests();
   const calls = [], legacyLookups = [];
@@ -287,4 +351,14 @@ test('a sweep that settles today triggers one ranking refresh; a past-date retry
   __resetNormalizedTrainingDateCacheForTests();
   await runNormalizedTrainingDateSweep({ ...retryLoopOptions({ calls: [], legacyLookups: [] }), refreshRankings: async () => { refreshes.push('past'); } });
   assert.equal(refreshes.length, 1);
+});
+
+test('#6504: before auto-migrate creates the RPC nobody is departed; other errors still throw', async () => {
+  const call = error => departTrainingDateRiders({ supabase: { rpc: async () => ({ data: null, error }) },
+    teamId: 't', seasonId: 's', tickDate: '2026-10-19', riderIds: ['r'], now: new Date('2026-10-19T18:00:00Z') });
+  assert.deepEqual(await call({ code: 'PGRST202', message: 'Could not find the function' }), []);
+  assert.deepEqual(await call({ code: '42883', message: 'function does not exist' }), []);
+  await assert.rejects(call({ code: 'XX000', message: 'boom' }), /depart released riders/);
+  assert.deepEqual(await departTrainingDateRiders({ supabase: { rpc: async () => ({ data: { departed_rider_ids: ['r'] }, error: null }) },
+    teamId: 't', seasonId: 's', tickDate: '2026-10-19', riderIds: ['r'], now: new Date() }), ['r']);
 });

@@ -52,6 +52,7 @@
     "visitorsTrendUp": "Up {pct}% vs the previous 7 days",
     "visitorsTrendDown": "Down {pct}% vs the previous 7 days",
     "u23": "U23",
+    "junior": "Junior",
     "u25": "U25",
     "retired": "Retired",
     "ageYears": "{age} yrs",
@@ -199,9 +200,8 @@
       "contractSeason": "Season {season}",
       "contractExpired": "Expired",
       "contractExpiredSub": "Free agent at the season change unless extended",
+      "contractExpires": "expires",
       "aiTag": "AI",
-      "valueTrend": "{value} last {days} days",
-      "valueTrendTitle": "Value change since {date}",
       "ratingTrendRising": "Rising this season",
       "ratingTrendSteady": "Steady this season",
       "ratingTrendDeclining": "Declining this season",
@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Why his reputation moved",
+      "progressTo": "{value} / {target} to {band}",
+      "weighting": "Wins and big races count most",
+      "help": "How reputation works",
+      "close": "Close",
       "noEvents": "No reputation events yet.",
       "unknownRace": "A race",
       "band": {
@@ -249,9 +253,7 @@
       "listed": "On the transfer list · price {price}",
       "auction": "In auction · ends in {endsIn} · highest bid {highBid}",
       "finalSeasonTitle": "Final season",
-      "finalSeason": "Announced his retirement at the season start. He retires when season {season} ends.",
-      "academy": "Academy rider",
-      "expiry": "Contract expires after Season {season}."
+      "finalSeason": "Announced his retirement at the season start. He retires when season {season} ends."
     },
     "history": {
       "loading": "Loading history...",
@@ -375,7 +377,6 @@
       "factor_ceiling_gap": "Clear gap between today's level and where he's projected to land",
       "factor_near_ceiling": "Already close to his projected level, little left to gain",
       "factor_decline_risk": "At an age where decline sets in",
-      "factor_value_gap": "Priced below what the numbers suggest he is worth",
       "factor_type_match": "The verdict weighs his best rider type most",
       "factor_form_unknown": "Form and fatigue are not visible to scouts",
       "factor_watch_races": "Race results will confirm or challenge this read",
@@ -396,11 +397,6 @@
       "typesLegend": "Solid bar = level today. Shaded band = where he's realistically heading with your training: the bottom is steady but unfocused work, the top is dedicated focus every day. Dark mark = the role's ceiling, the same for everyone in that role; potential decides how fast he climbs toward it. It is an estimate, not a guarantee, and no scout knows a rider exactly. Ratings are comparable across roles - the same number means the same level everywhere.",
       "capsMissingTitle": "Report incomplete",
       "capsMissingBody": "Projection data is not available for this rider yet, so the per-type outlook can't be shown.",
-      "valueTitle": "Bargain?",
-      "valueMarket": "Market value",
-      "valueExpected": "Expected value",
-      "valueReadAbove": "The model values him above his current market value.",
-      "valueReadBelow": "His market value is at or above what the model expects.",
       "scoutFailed": "Could not send the scout. Try again in a moment.",
       "scoutErrors": {
         "max_level": "This rider is already fully scouted.",
@@ -414,7 +410,6 @@
     "interest": {
       "loading": "Loading interest...",
       "loadError": "Interest data could not be loaded right now.",
-      "trendNew": "new data",
       "trendFlat": "stable",
       "seasonShort": "S{n}",
       "stats": {
@@ -851,8 +846,7 @@
       "working": "Extending…",
       "success": "Contract extended.",
       "errorPrefix": "Couldn't extend:",
-      "capped": "Contract at maximum length (through season {season}).",
-      "capCounterLabel": "Extensions used"
+      "capped": "Contract at maximum length (through season {season})."
     },
     "release": {
       "button": "Release rider",

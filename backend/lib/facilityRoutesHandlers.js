@@ -179,9 +179,12 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
   const { data: teamRow, error: teamErr } = await supabaseClient
     .from("teams").select("balance").eq("id", teamId).maybeSingle();
   if (teamErr) throw new Error(`facilityRoutes: could not load balance for ${teamId}: ${teamErr.message}`);
-  const totalUpkeep = facilities.reduce((sum, f) => sum + (f.tierUpkeep ?? 0), 0);
+  // #6936: med economy_no_upkeep_v1 on trækkes facilitets-upkeep ikke længere —
+  // upkeepCharged=false får UI'et til at skjule drift-linjerne (og totalen er 0).
+  const upkeepCharged = flags.noUpkeep !== true;
+  const totalUpkeep = upkeepCharged ? facilities.reduce((sum, f) => sum + (f.tierUpkeep ?? 0), 0) : 0;
   const totalPayroll = (staffRows ?? []).reduce((sum, s) => sum + (s.salary ?? 0), 0);
-  const seasonCost = { totalUpkeep, totalPayroll, balance: teamRow?.balance ?? 0 };
+  const seasonCost = { totalUpkeep, totalPayroll, balance: teamRow?.balance ?? 0, upkeepCharged };
 
   return { status: 200, body: { facilities, seasonCost } };
 }

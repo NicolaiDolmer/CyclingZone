@@ -30,6 +30,7 @@
 // only (gc-RANK driver points); standings/schema er uændret.
 
 import { randomUUID } from "node:crypto";
+import { invalidateNamespace } from "./responseCache.js"; // #6514
 import { isAiTeamRetireEnabled } from './aiTeamRetireFlag.js';
 import {
   applyRaceResults as applyRaceResultsShared,
@@ -51,7 +52,7 @@ import {
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ENGINE_VERSION_V3, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
-import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled } from "./raceEngineFlag.js";
+import { isRaceEngineV3ScoringEnabled, isRaceStageTimelineEnabled, isRaceEngineV4Enabled, isRaceFormPeaksEnabled } from "./raceEngineFlag.js";
 // #5462: skadens varighed i LOEBSDAGE naar loebsdagen er tick-enheden.
 import { isTrainingTickPerRaceDayEnabled } from "./trainingTickRaceDayFlag.js";
 import { isTrainingConditionPerDateEnabled } from './trainingDateConditionFlag.js';
@@ -69,6 +70,7 @@ import {
   raceHasStarted,
   resolveRaceRulesRevision,
   isOrdersGcRulesRevision,
+  isS5ProfilesV2OrLater,
 } from "./raceEngineRulesRevision.ts";
 // #2410 (event-log S1): deterministisk etape-tidslinje-generator — REN funktion,
 // samme build-trin som moments/passages (data er i memory). Bag flag
@@ -122,7 +124,7 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds } from "./raceFieldIntegrity.js";
-import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD } from "./riderEligibility.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadSpentRaceDays } from './raceSpentDays.js';
 import { isMissingSquadColumnError } from "./racePoolCatalog.js";
@@ -277,14 +279,23 @@ export async function resolveRaceEngineV4({
   supabase, race, checkV4Enabled,
   loadEngine = loadRaceEngineV4,
   loadOrders = loadTeamOrderRows,
+  checkFormPeaksEnabled = isRaceFormPeaksEnabled,
 }) {
   const enabled = await checkV4Enabled(supabase);
   if (!enabled) return { v4Engine: null, teamOrderRows: [] };
   try {
-    const [v4Engine, teamOrderRows] = await Promise.all([
+    const [engine, teamOrderRows, formPeaks] = await Promise.all([
       loadEngine(),
       loadOrders({ supabase, raceId: race.id }),
+      // #6156 (ejer 19/10): fail closed, en fejl i flag-opslaget = ingen formtoppe.
+      Promise.resolve().then(() => checkFormPeaksEnabled(supabase)).catch(() => false),
     ]);
+    // Flaget laeses een gang pr. afvikling, som motorflaget; adapteren faar vaerdien med.
+    const v4Engine = formPeaks === true ? engine : {
+      ...engine,
+      formPeaks: false, // #6156: med i run-identiteten (input_checksum), se buildRaceResults
+      simulateStage: (args) => engine.simulateStage({ ...args, formPeaks: false }),
+    };
     return { v4Engine, teamOrderRows };
   } catch (err) {
     console.error(`  ⚠️  race ${race.id}: loebsmotor v4 kunne ikke indlaeses (${err?.message}) - koerer v3 for denne afvikling`);
@@ -654,6 +665,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         // ændrer hvilken fase (peak/payback/none) etapen rammer → skal med for at
         // to identiske inputs giver identisk output (determinisme-garantien).
         ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: stage.peakDay ?? null } : {}),
+        // #6156: race_form_peaks slukket aendrer v4's input under s5_profiles_v2; kun da
+        // med i identiteten (taendt/aeldre revisioner = uaendret checksum).
+        ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
         // #5914: troejefoererne styrer hvem der kaemper om passagerne -> input.
         // Kun naar en foerer faktisk sendes videre (bagudkompatibel checksum).
         ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
@@ -1288,15 +1302,16 @@ export async function fillMissingTeamEntries({
   }
   let missingTeamIds = eligibleTeams.map((t) => t.id);
   if (!missingTeamIds.length) return [];
+  const raceSeasonNumber = await loadRaceSeasonNumber({ supabase, race }); // #6964
 
   const { data: riders, error: riderErr } = await selectInChunks({
     supabase, table: "riders", columns: "id, team_id, base_value",
     // Rod B: delt eligibility-filter (ikke-akademi + ikke-pensioneret). Manglede
     // is_academy → akademiryttere kunne sim-tids-autofyldes (#1742/#1800).
     // #5645: trup-parameteren — et U23-/juniorløb fylder KUN med holdets egen trup.
-    // Ejer 24/9: ingen separat aldersgate — trup-medlemskabet er hele kravet.
+    // #6964 (ejer 20/10): alder afgør ungdomsløb — for gammel = aldrig autofyldt.
     inColumn: "team_id", ids: missingTeamIds,
-    extra: (q) => applyRiderEligibilityFilter(q, { squad: raceSquad }),
+    extra: (q) => applyRiderEligibilityFilter(q, { squad: raceSquad, seasonNumber: raceSeasonNumber }),
   });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 
@@ -1620,14 +1635,16 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
     const { data: entryRiders, error: erErr } = await selectInChunks({
       supabase, table: "riders",
-      columns: "id, team_id, squad, is_academy, is_retired",
+      columns: "id, team_id, squad, is_academy, is_retired, birthdate",
       inColumn: "id", ids: entryRiderIds,
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
     const ridersById = new Map((entryRiders || []).map((r) => [r.id, r]));
     // #5645: ghost-tjekket mod LØBETS trup — en U23-rytter i et U23-løb er ikke en ghost,
-    // en senior i et U23-løb er. Ejer 24/9: ingen separat juniors-aldersgate herudover.
-    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: raceSquad });
+    // en senior i et U23-løb er. #6964 (ejer 20/10): og en for gammel rytter starter ikke.
+    // Kun FØR start: et igangværende etapeløbs startfelt er låst (#1825/#1844).
+    const seasonNumber = Number(race.stages_completed) > 0 ? undefined : await loadRaceSeasonNumber({ supabase, race });
+    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, squad: raceSquad, seasonNumber });
   }
   // #3896: skadede committede entries må hverken starte eller simuleres — motoren
   // ekskluderede tidligere KUN skade fra auto-fyld/auto-pick-kandidatpuljer (#2637/#1306),
@@ -2893,6 +2910,9 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
       ...(v3 && stageRoleOverrides?.size ? { stageRoles: serializeStageRoleOverrides(stageRoleOverrides) } : {}),
       // S5 (#2224): se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(v3 && peakInputs.length ? { peaks: peakInputs, peakDay: thisStage.peakDay ?? null } : {}),
+        // #6156: race_form_peaks slukket aendrer v4's input under s5_profiles_v2; kun da
+        // med i identiteten (taendt/aeldre revisioner = uaendret checksum).
+        ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
       // #5914: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
     })),
@@ -3527,6 +3547,10 @@ export async function simulateStageByIndex({
       };
     }
     applied = { rowsImported };
+    // #6514 (Codex-fund): kalenderen udleder lineupFrozen af stages_completed, saa den
+    // cachede kalender skal toemmes naar en etape er committet, ellers viser
+    // kalenderkortet en udtagelses-knap som lineup-endpointet afviser (op til 60 s).
+    invalidateNamespace("calendar");
     // #6740: etape 1 er committet (låsen vundet) — først nu er "stillede ikke op" sandt.
     await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
     // #6740 (review #6747): ved senere etaper afstemmes feltet, så en frigivelse der

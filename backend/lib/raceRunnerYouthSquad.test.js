@@ -99,7 +99,8 @@ function youthState() {
   for (const t of ["t1", "t2", "t3"]) {
     // Seniorerne er de stærkeste: en trup-blind autofyld ville vælge dem.
     addRiders(state, t, "senior", 10, { strength: 99 });
-    addRiders(state, t, "u23", 8);
+    // #6964: sæsonalder 21 i S4 — inden for U23-grænsen (alder afgør ungdomsløb).
+    addRiders(state, t, "u23", 8, { birthdate: "2008-03-01" });
   }
   return state;
 }
@@ -215,4 +216,55 @@ test("#5944 autofyld: Train only-trup reddes ikke ind i U23-feltet", async () =>
   const race = { id: "raceU", race_type: "single", season_id: "s1", league_division_id: 10, squad: "u23" };
   const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false });
   assert.equal(entrants.filter((e) => e.team_id === "t1").length, 0);
+});
+
+// ── #6964 (ejer 20/10): alder afgør ungdomsløb ─────────────────────────────────
+// Sæson 4 = referenceår 2029. Junior-grænse 18 (født ≥ 2011), U23-grænse 22 (født ≥ 2007).
+
+test("#6964 autofyld: en for gammel rytter i juniortruppen autofyldes aldrig; 18-årig (grænsen) gør", async () => {
+  const state = youthState();
+  // De for gamle (19, "afventer oprykning") er de stærkeste: en alders-blind autofyld ville vælge dem.
+  addRiders(state, "t1", "junior", 4, { prefix: "j19-", birthdate: "2010-03-01", strength: 99 });
+  addRiders(state, "t1", "junior", 8, { prefix: "j18-", birthdate: "2011-12-31", strength: 70 });
+  const race = { id: "raceJ", race_type: "single", season_id: "s1", league_division_id: 20, squad: "junior" };
+  const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false });
+  const ids = entrants.map((e) => e.rider_id);
+  assert.ok(ids.length > 0, "juniorfeltet blev fyldt");
+  assert.ok(!ids.some((id) => id.startsWith("t1-j19-")), "19-årig autofyldt til juniorløb");
+  assert.ok(ids.some((id) => id.startsWith("t1-j18-")), "18-årig (grænsen) skal kunne autofyldes");
+});
+
+test("#6964 autofyld: U23-løb — junior på U23-holdet er tilladt, en 23-årig er ikke", async () => {
+  const state = youthState();
+  addRiders(state, "t1", "u23", 2, { prefix: "u23old-", birthdate: "2006-06-01", strength: 99 });
+  addRiders(state, "t1", "u23", 2, { prefix: "u23jun-", birthdate: "2012-06-01", strength: 98 });
+  const race = { id: "raceU", race_type: "single", season_id: "s1", league_division_id: 10, squad: "u23" };
+  const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false });
+  const ids = entrants.map((e) => e.rider_id);
+  assert.ok(!ids.some((id) => id.startsWith("t1-u23old-")), "23-årig autofyldt til U23-løb");
+  assert.ok(ids.some((id) => id.startsWith("t1-u23jun-")), "junior på U23-holdet må køre U23 (YOUTH_RULES §2.2)");
+});
+
+test("#6964 startfelt: en committet for gammel junior-entry starter ikke; 18-årige gør", async () => {
+  const state = youthState();
+  addRiders(state, "t1", "junior", 1, { prefix: "j19-", birthdate: "2010-03-01" });
+  addRiders(state, "t1", "junior", 6, { prefix: "j18-", birthdate: "2011-03-01" });
+  const race = { id: "raceJ", race_type: "single", season_id: "s1", league_division_id: 20, squad: "junior", stages_completed: 0 };
+  state.race_entries = [
+    { race_id: "raceJ", team_id: "t1", rider_id: "t1-j19-0", race_role: "captain" },
+    ...Array.from({ length: 6 }, (_, i) => ({ race_id: "raceJ", team_id: "t1", rider_id: `t1-j18-${i}`, race_role: "helper" })),
+  ];
+  const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false, allowAutofill: false });
+  const ids = entrants.map((e) => e.rider_id);
+  assert.ok(!ids.includes("t1-j19-0"), "for gammel rytter må ikke starte i juniorløbet");
+  for (let i = 0; i < 6; i++) assert.ok(ids.includes(`t1-j18-${i}`), `18-årig t1-j18-${i} blev tabt`);
+});
+
+test("#6964 startfelt: et igangværende etapeløbs felt er låst — aldersgaten rører det ikke (#1825)", async () => {
+  const state = youthState();
+  addRiders(state, "t1", "junior", 1, { prefix: "j19-", birthdate: "2010-03-01" });
+  const race = { id: "raceJ", race_type: "stage_race", season_id: "s1", league_division_id: 20, squad: "junior", stages_completed: 1 };
+  state.race_entries = [{ race_id: "raceJ", team_id: "t1", rider_id: "t1-j19-0", race_role: "captain" }];
+  const entrants = await loadEntrantsForRace({ supabase: makeSupabase(state), race, stages, persist: false, allowAutofill: false });
+  assert.ok(entrants.map((e) => e.rider_id).includes("t1-j19-0"));
 });

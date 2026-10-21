@@ -52,6 +52,7 @@
     "visitorsTrendUp": "Op {pct}% ift. de forrige 7 dage",
     "visitorsTrendDown": "Ned {pct}% ift. de forrige 7 dage",
     "u23": "U23",
+    "junior": "Junior",
     "u25": "U25",
     "retired": "Pensioneret",
     "ageYears": "{age} år",
@@ -199,9 +200,8 @@
       "contractSeason": "Sæson {season}",
       "contractExpired": "Udløbet",
       "contractExpiredSub": "Fri agent ved sæsonskiftet, hvis kontrakten ikke forlænges",
+      "contractExpires": "udløber",
       "aiTag": "AI",
-      "valueTrend": "{value} seneste {days} dage",
-      "valueTrendTitle": "Værdiændring siden {date}",
       "ratingTrendRising": "Stigende denne sæson",
       "ratingTrendSteady": "Stabil denne sæson",
       "ratingTrendDeclining": "Faldende denne sæson",
@@ -209,6 +209,10 @@
     },
     "reputation": {
       "whyTitle": "Hvorfor omdømmet flyttede sig",
+      "progressTo": "{value} / {target} til {band}",
+      "weighting": "Sejre og store løb tæller mest",
+      "help": "Sådan virker omdømme",
+      "close": "Luk",
       "noEvents": "Ingen omdømme-events endnu.",
       "unknownRace": "Et løb",
       "band": {
@@ -249,9 +253,7 @@
       "listed": "På transferlisten · pris {price}",
       "auction": "I auktion · slutter om {endsIn} · højeste bud {highBid}",
       "finalSeasonTitle": "Sidste sæson",
-      "finalSeason": "Meldte sin pension ved sæsonstart. Han stopper når sæson {season} slutter.",
-      "academy": "Akademirytter",
-      "expiry": "Kontrakt udløber efter Sæson {season}."
+      "finalSeason": "Meldte sin pension ved sæsonstart. Han stopper når sæson {season} slutter."
     },
     "history": {
       "loading": "Henter historik...",
@@ -375,7 +377,6 @@
       "factor_ceiling_gap": "Tydeligt spring mellem niveauet i dag og hvor han er ventet at lande",
       "factor_near_ceiling": "Allerede tæt på sit forventede niveau, lidt tilbage at hente",
       "factor_decline_risk": "I en alder hvor tilbagegangen sætter ind",
-      "factor_value_gap": "Prissat under hvad tallene antyder han er værd",
       "factor_type_match": "Vurderingen vægter hans bedste ryttertype højest",
       "factor_form_unknown": "Form og træthed er ikke synlige for spejdere",
       "factor_watch_races": "Løbsresultater vil be- eller afkræfte vurderingen",
@@ -396,11 +397,6 @@
       "typesLegend": "Fyldt bar = niveau i dag. Skraveret bånd = hvor han realistisk er på vej hen med din træning: bunden er jævnt men ufokuseret arbejde, toppen er dedikeret fokus hver dag. Mørkt mærke = rollens loft, ens for alle i rollen; potentiale afgør hvor hurtigt han klatrer mod det. Det er et estimat, ikke en garanti, og ingen spejder kender en rytter præcist. Tallene kan sammenlignes på tværs af roller - samme tal betyder samme niveau overalt.",
       "capsMissingTitle": "Rapport ufuldstændig",
       "capsMissingBody": "Der findes endnu ikke prognose-data for denne rytter, så per-type-udsigten kan ikke vises.",
-      "valueTitle": "Røverkøb?",
-      "valueMarket": "Markedsværdi",
-      "valueExpected": "Forventet værdi",
-      "valueReadAbove": "Modellen vurderer ham højere end hans nuværende markedsværdi.",
-      "valueReadBelow": "Hans markedsværdi er på niveau med eller over modellens forventning.",
       "scoutFailed": "Kunne ikke sende spejderen. Prøv igen om lidt.",
       "scoutErrors": {
         "max_level": "Denne rytter er allerede fuldt scoutet.",
@@ -414,7 +410,6 @@
     "interest": {
       "loading": "Henter interesse...",
       "loadError": "Interesse-data kunne ikke hentes lige nu.",
-      "trendNew": "nye data",
       "trendFlat": "stabilt",
       "seasonShort": "S{n}",
       "stats": {
@@ -851,8 +846,7 @@
       "working": "Forlænger…",
       "success": "Kontrakt forlænget.",
       "errorPrefix": "Kunne ikke forlænge:",
-      "capped": "Kontrakt på maksimal længde (til og med sæson {season}).",
-      "capCounterLabel": "Forlængelser brugt"
+      "capped": "Kontrakt på maksimal længde (til og med sæson {season})."
     },
     "release": {
       "button": "Fyr rytter",

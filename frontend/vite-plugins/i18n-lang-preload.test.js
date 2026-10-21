@@ -27,6 +27,16 @@ test("collectLangChunks finder lazy sprog-chunks og springer den statiske en ove
   });
 });
 
+test("collectLangChunks preloader aldrig et beta-sprog (#6802)", () => {
+  const bundle = bundleOf([
+    { type: "chunk", name: "i18n-messages-da", fileName: "assets/i18n-messages-da-c3.js" },
+    { type: "chunk", name: "i18n-messages-xx", fileName: "assets/i18n-messages-xx-e5.js" },
+  ]);
+  assert.deepEqual(collectLangChunks(bundle, "/", (lng) => lng === "xx"), {
+    da: "/assets/i18n-messages-da-c3.js",
+  });
+});
+
 test("collectLangChunks respekterer en base-sti", () => {
   const bundle = bundleOf([
     { type: "chunk", name: "i18n-messages-da", fileName: "assets/i18n-messages-da-c3.js" },

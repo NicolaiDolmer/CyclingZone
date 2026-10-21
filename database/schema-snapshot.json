@@ -1699,7 +1699,10 @@
         "auto_accept_deadline",
         "source",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "opened_notified_at",
+        "t3_notified_at",
+        "t1_notified_at"
       ]
     },
     "board_plan_snapshots": {
@@ -2802,7 +2805,10 @@
         "updated_at",
         "terrain_archetype",
         "retired_at",
-        "squad"
+        "squad",
+        "race_identity_type",
+        "signature",
+        "authored_route"
       ]
     },
     "race_results": {

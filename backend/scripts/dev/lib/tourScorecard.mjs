@@ -18,8 +18,9 @@ import { ANCHOR_BANDS, isShortUphillFinish } from "../../lib/headToHeadAnchors.j
 import { mean, median, spearmanCorrelation } from "../../lib/headToHeadStats.js";
 import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
-import { isOrdersGcRulesRevision } from "../../../lib/raceEngineRulesRevision.ts";
+import { isOrdersGcRulesRevision, isS5ProfilesV2OrLater } from "../../../lib/raceEngineRulesRevision.ts";
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
+import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
 // Loebsfilmens egen afledning (samme kode som spillerne ser): "hvor tabte
 // rytterne tid" og om tidslinjen overhovedet baerer v4's gruppe-gab.
 import { buildOwnTimeLoss, hasGroupGaps } from "../../../../frontend/src/lib/stageSplitTimes.ts";
@@ -446,15 +447,19 @@ export function minuteLossAtZeroKm(events, { riderIds = null, maxKm = START_WIND
  *  - vinderen staar som "i udbrud og indhentet", men vandt med mere end
  *    `soloMarginSeconds` til nr. 2 (indhentet og alligevel alene foran);
  *  - motorens dom (breakaway_win) og maerket (in_breakaway + ikke indhentet) er uenige.
+ * #6748: den foerste antager trin-modellen (en indhentet rytter kan ikke vinde
+ * med over `soloMarginSeconds`). Under s5_profiles_v2 (`stepModel: false`)
+ * kan en klatrer der blev hentet, sagtens vinde alene med mere; den maales
+ * ikke dér. Den anden gaelder altid.
  */
-export function labelContradictions(ranked, out, { soloMarginSeconds = 60 } = {}) {
+export function labelContradictions(ranked, out, { soloMarginSeconds = 60, stepModel = true } = {}) {
   const issues = [];
   const w = ranked?.[0];
   if (!w) return issues;
   const st = w.breakaway_status;
   const fin = finishedSorted(out);
   const margin = fin.length >= 2 ? fin[1].time_seconds - fin[0].time_seconds : 0;
-  if (st?.in_breakaway === true && st?.breakaway_caught === true && margin > soloMarginSeconds) {
+  if (stepModel && st?.in_breakaway === true && st?.breakaway_caught === true && margin > soloMarginSeconds) {
     issues.push({ kind: "caught_but_solo", margin });
   }
   if (typeof w.breakaway_win === "boolean" && st) {
@@ -604,8 +609,27 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
   return gcAfter;
 }
 
+/**
+ * #6750 motor-testport: vinderen og hans rolle, dagens udbrudsryttere, og om
+ * morgenudbruddet blev hentet tidligt (inden for motorens egen reformations-
+ * graense, S5_REFORMATION_TUNING.maxStageFraction) og et nyt udbrud gik.
+ */
+export function testportStageFacts(out, profile, roleByRider = null) {
+  const events = out?.timeline?.events ?? [];
+  const winnerId = finishedSorted(out)[0]?.rider_id ?? null;
+  const morningIds = new Set(events.find((e) => e.type === "breakaway_formed" && e.params?.reformation !== true)?.params?.rider_ids ?? []);
+  const km = Number(profile?.distance_km);
+  const caughtKm = events.filter((e) => e.type === "breakaway_caught" && (e.params?.rider_ids ?? []).some((id) => morningIds.has(id))).map((e) => Number(e.params?.exact_km ?? e.km)).filter(Number.isFinite);
+  return {
+    winnerId, winnerRole: winnerId ? roleByRider?.get(winnerId) ?? null : null,
+    breakawayRiderIds: [...breakawaySets(out).formed],
+    earlyCatch: morningIds.size > 0 && km > 0 && caughtKm.length > 0 && Math.min(...caughtKm) <= km * S5_REFORMATION_TUNING.maxStageFraction,
+    reformed: events.some((e) => e.type === "breakaway_formed" && e.params?.reformation === true),
+  };
+}
+
 /** Etapens maalinger for ét seed. */
-export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds = null, roleByRider = null }) {
+export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds = null, roleByRider = null, revision = null }) {
   const out = res.v4Output;
   const ranked = res.ranked;
   const cls = profileClass(profile.profile_type);
@@ -635,8 +659,9 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     over30Raw: overCapRaw(out),
     // Paa en tidskoersel har filmen intet felt at staa bagud i: N/A, ikke 0.
     minuteLossAtZeroKm: tt ? null : minuteLossAtZeroKm(res.timeline?.events ?? null, { riderIds }),
-    labelContradictions: labelContradictions(ranked, out).length,
+    labelContradictions: labelContradictions(ranked, out, { stepModel: !isS5ProfilesV2OrLater(revision) }).length,
     winType: ranked?.[0]?.win_type ?? null,
+    ...(tt ? { winnerId: testportStageFacts(out, profile, roleByRider).winnerId } : testportStageFacts(out, profile, roleByRider)), // #6750
   };
   if (tt) {
     m.rhoTempo = abilityTimeCorrelation(out, abilitiesById, "time_trial");
@@ -682,7 +707,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const final = runStagesInOrder({
       v4, data, revision, seedTag, stages, entrants: all,
       onStage: ({ profile, res, gcBefore, gcAfter, entrants }) => {
-        const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider });
+        const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider, revision });
         if (leadoutPair && isBunchSprintStage(profile)) {
           const teams = leadoutTeams(data.orders, profile.stage_number);
           if (teams.size) {

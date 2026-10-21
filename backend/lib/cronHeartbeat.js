@@ -33,6 +33,7 @@
  */
 
 import { ALL_CRON_MONITORS } from "./cronMonitorRegistry.js";
+import { nextWallClockSlotMs, wallClockPeriodSeconds } from "./wallClockScheduler.js";
 import { withOpsMention } from "./opsWebhook.js";
 import { clampEmbedPayload, DISCORD_EMBED_LIMITS } from "./discordEmbedLimits.js";
 import { shouldAlertOnChange } from "./opsAlertDedupe.js";
@@ -44,6 +45,12 @@ const SECONDS_PER_UNIT = { minute: 60, hour: 3600, day: 86400 };
 
 /** @returns {number} forventet kadence i sekunder, udledt af monitorConfig.schedule. */
 export function cadenceSecondsFromConfig(monitorConfig) {
+  // #6858: crontab-monitorer (fast tidspunkt i dansk tid) bærer deres vægur-skema
+  // i `wallClock` (cronMonitorRegistry.js's wallClockMonitorConfig).
+  if (monitorConfig.schedule?.type === "crontab") {
+    if (!monitorConfig.wallClock) throw new Error("cadenceSecondsFromConfig: crontab-monitor uden wallClock-skema");
+    return wallClockPeriodSeconds(monitorConfig.wallClock);
+  }
   const { value, unit } = monitorConfig.schedule;
   const perUnit = SECONDS_PER_UNIT[unit];
   if (!perUnit) throw new Error(`cadenceSecondsFromConfig: ukendt schedule-unit "${unit}"`);
@@ -80,6 +87,19 @@ export function isOverdue({ lastCheckinAt, cadenceSeconds, marginSeconds, now = 
  * @param {Date} [params.now]
  * @returns {{slug: string, lastCheckinAt: string, cadenceSeconds: number, marginSeconds: number}[]}
  */
+/**
+ * #6858: frist for et job med fast tidspunkt (crontab-monitor). Et interval-job
+ * forventes `kadence` efter sidste check-in; et fast-tids-job forventes ved det
+ * NÆSTE faste tidspunkt efter sidste check-in (boot-runs og genforsøg flytter ikke
+ * det tidspunkt). Fristen er tidspunktet + checkinMargin + maxRuntime: check-in'et
+ * skrives først når kørslen er færdig, og søndagens værdier må gerne tage tid.
+ * @returns {number} epoch-ms
+ */
+export function wallClockDeadlineMs({ lastCheckinAt, monitorConfig }) {
+  const slotMs = nextWallClockSlotMs(new Date(lastCheckinAt).getTime(), monitorConfig.wallClock, { primaryOnly: true });
+  return slotMs + (marginSecondsFromConfig(monitorConfig) + (monitorConfig.maxRuntime ?? 0) * 60) * 1000;
+}
+
 export function computeOverdueSlugs({ monitors = ALL_CRON_MONITORS, checkinsBySlug, now = new Date() }) {
   const overdue = [];
   for (const [slug, config] of monitors) {
@@ -89,6 +109,13 @@ export function computeOverdueSlugs({ monitors = ALL_CRON_MONITORS, checkinsBySl
     if (!row?.last_checkin_at) continue;
     const cadenceSeconds = cadenceSecondsFromConfig(config);
     const marginSeconds = marginSecondsFromConfig(config);
+    if (config.schedule?.type === "crontab") {
+      const deadlineMs = wallClockDeadlineMs({ lastCheckinAt: row.last_checkin_at, monitorConfig: config });
+      if (now.getTime() > deadlineMs) {
+        overdue.push({ slug, lastCheckinAt: row.last_checkin_at, cadenceSeconds, marginSeconds, deadlineMs });
+      }
+      continue;
+    }
     if (isOverdue({ lastCheckinAt: row.last_checkin_at, cadenceSeconds, marginSeconds, now })) {
       overdue.push({ slug, lastCheckinAt: row.last_checkin_at, cadenceSeconds, marginSeconds });
     }
@@ -141,6 +168,27 @@ export async function primeCronHeartbeatCheckIns({
   captureExceptionFn,
 }) {
   for (const [slug, config] of monitors) {
+    // Codex P2 (#6860): fast-tids-job (crontab) primes IKKE. Et boot-check-in efter
+    // dagens slot ville flytte fristen til naeste slot (i morgen / naeste soendag),
+    // saa en misset kørsel ikke alarmerede. Fristen regnes fra sidste RIGTIGE
+    // kørsel; boot-indhentningen skriver selv sit check-in.
+    if (config.schedule?.type === "crontab") {
+      // Codex P1 (#6860): kadencen (fx 3600 -> 86400 ved overgangen til fast tid)
+      // skal stadig migreres, ellers afviser deploy-verify raekken. Kun
+      // expected_cadence_seconds opdateres; last_checkin_at bevares, og der
+      // indsaettes aldrig en ny raekke (en ny slug venter paa sin foerste kørsel).
+      try {
+        const { error } = await supabase
+          .from(CRON_CHECKINS_TABLE)
+          .update({ expected_cadence_seconds: cadenceSecondsFromConfig(config), updated_at: now.toISOString() })
+          .eq("job_slug", slug);
+        if (error) throw new Error(error.message);
+      } catch (err) {
+        console.error(`[cron-heartbeat] kadence-migrering fejlede for ${slug}:`, err.message);
+        captureExceptionFn?.(err, { tags: { cron: "cron-heartbeat-prime", job: slug } });
+      }
+      continue;
+    }
     await recordCronCheckIn({
       supabase,
       jobSlug: slug,
@@ -152,9 +200,11 @@ export async function primeCronHeartbeatCheckIns({
 }
 
 function buildOverdueEmbed(overdue, now) {
-  const lines = overdue.map(({ slug, lastCheckinAt, cadenceSeconds, marginSeconds }) => {
+  const lines = overdue.map(({ slug, lastCheckinAt, cadenceSeconds, marginSeconds, deadlineMs }) => {
     const minutesLate = Math.round(
-      (now.getTime() - new Date(lastCheckinAt).getTime() - (cadenceSeconds + marginSeconds) * 1000) / 60000
+      deadlineMs != null
+        ? (now.getTime() - deadlineMs) / 60000
+        : (now.getTime() - new Date(lastCheckinAt).getTime() - (cadenceSeconds + marginSeconds) * 1000) / 60000
     );
     return `• \`${slug}\` — sidste check-in ${new Date(lastCheckinAt).toISOString()} (${minutesLate} min over margin)`;
   });

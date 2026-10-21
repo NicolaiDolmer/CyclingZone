@@ -4321,6 +4321,88 @@ test("#4619: garanteret bank-handel af en U23-akademirytter sætter squad='senio
   assert.equal(bankUpdate.squad, "senior", "squad følger med — ellers står han som U23 hos banken");
 });
 
+// #6920: en FRI rytter med squad='u23' og is_academy=false (frigivet fra et akademi)
+// købt på en almindelig auktion skal lande som senior. Før fixet beholdt han
+// squad='u23' hos køberen: talte på U23-loftet uden at være i akademiet.
+test("#6920: fri U23-rytter (is_academy=false) købt på almindelig auktion lander som senior", async () => {
+  const riderUpdates = [];
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-free-u23",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 50,
+        seller_team_id: "buyer-team", // fri-agent-auktion: initiativtageren står som sælger
+        rider: {
+          id: "rider-free-u23",
+          firstname: "Fri",
+          lastname: "Ungdom",
+          team_id: null,
+          is_academy: false,
+          squad: "u23",
+          salary: null,
+          contract_length: null,
+          contract_end_season: null,
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 1000, division: 3, user_id: "user-b", is_ai: false },
+        bank: { id: "bank", name: "AI", balance: 999999, division: 1, user_id: null, is_ai: true, is_bank: true },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        bank: { riderCount: 100, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates: [],
+      riderUpdates,
+    }),
+    auctionId: "auction-free-u23",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-06-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  const buyerUpdate = riderUpdates.find((u) => u.team_id === "buyer-team");
+  assert.ok(buyerUpdate, "rytteren overdrages til køberen");
+  assert.equal(buyerUpdate.squad, "senior", "squad skal følge med til senior");
+  assert.equal(buyerUpdate.is_academy, false);
+});
+
+test("#6920: senior-rytter købt på almindelig auktion får ingen trup-patch", async () => {
+  const riderUpdates = [];
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-free-senior",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 50,
+        seller_team_id: "buyer-team", // fri-agent-auktion: initiativtageren står som sælger
+        rider: { id: "rider-free-senior", firstname: "Fri", lastname: "Senior", team_id: null, is_academy: false, squad: "senior" },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 1000, division: 3, user_id: "user-b", is_ai: false },
+        bank: { id: "bank", name: "AI", balance: 999999, division: 1, user_id: null, is_ai: true, is_bank: true },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+        bank: { riderCount: 100, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates: [],
+      riderUpdates,
+    }),
+    auctionId: "auction-free-senior",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-06-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  const buyerUpdate = riderUpdates.find((u) => u.team_id === "buyer-team");
+  assert.ok(buyerUpdate);
+  assert.equal("squad" in buyerUpdate, false, "uændret adfærd for seniorer");
+});
+
 // #6474 (review): en retry, hvor køberen i mellemtiden har brugt pengene, må ikke
 // annullere auktionen — rytteren er allerede leveret. Køberen betaler (saldoen må
 // gå i minus; spillet har negativ saldo med renter), og sælgeren får beløbet.

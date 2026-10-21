@@ -24,6 +24,8 @@ function makeMeetingSupabase({
   team = { id: "t1", balance: 0, sponsor_income: 100, team_dna_key: null },
   boardProfiles = [],
   milestones = [],
+  seasons = [],
+  activeSeason = null,
 } = {}) {
   const state = { mandates: [...mandates], relations: [...relations], boardProfiles: [...boardProfiles], events: [], milestones: milestones.map((m) => ({ ...m })) };
 
@@ -32,18 +34,29 @@ function makeMeetingSupabase({
   }
   function selectChain(rows) {
     const filters = {};
+    const orders = [];
+    // #6793 · Honorér .order(): ellers kan et sæson-/tidsstempel-valg ikke testes.
+    // Uden order-kald er rækkefølgen uændret (stabil sortering). null sorterer sidst.
+    const pick = () => {
+      const list = rows.filter((r) => matchAll(r, filters));
+      return list.sort((x, y) => {
+        for (const { col, ascending } of orders) {
+          const xv = x[col] ?? null;
+          const yv = y[col] ?? null;
+          if (xv === yv) continue;
+          if (xv === null) return 1;
+          if (yv === null) return -1;
+          return (xv < yv ? -1 : 1) * (ascending ? 1 : -1);
+        }
+        return 0;
+      });
+    };
     const chain = {
       eq(col, value) { filters[col] = value; return chain; },
-      order() { return chain; },
+      order(col, opts = {}) { orders.push({ col, ascending: opts.ascending !== false }); return chain; },
       limit() { return chain; },
-      maybeSingle: async () => {
-        const list = rows.filter((r) => matchAll(r, filters));
-        return { data: list[0] ?? null, error: null };
-      },
-      single: async () => {
-        const list = rows.filter((r) => matchAll(r, filters));
-        return { data: list[0] ?? null, error: null };
-      },
+      maybeSingle: async () => ({ data: pick()[0] ?? null, error: null }),
+      single: async () => ({ data: pick()[0] ?? null, error: null }),
     };
     return chain;
   }
@@ -74,9 +87,26 @@ function makeMeetingSupabase({
       }
       if (table === "seasons") {
         // buildBoardRoomPayload henter (a) den AKTIVE sæson og (b) hele
-        // sæson-listen (til sinceSeason) — begge tomme/no-op er fint her.
-        const chain = { eq: () => chain, order: () => ({ error: null, data: [] }), maybeSingle: async () => ({ data: null, error: null }) };
-        return { select: () => chain };
+        // sæson-listen (til sinceSeason); #6793 · loadSingleActiveSeason henter
+        // den aktive (order+limit+maybeSingle) og tæller aktive (awaitet direkte).
+        // #6773 · signMandate slår mandatets sæson op på id (isMandateSeasonEnded)
+        // mod `seasons`-fixturen. Default: ingen aktiv sæson, ingen sæsoner.
+        const active = activeSeason ? [activeSeason] : [];
+        const select = () => {
+          let byId = null;
+          const chain = {
+            eq(col, value) { if (col === "id") byId = value; return chain; },
+            order: () => chain,
+            limit: () => chain,
+            maybeSingle: async () => ({
+              data: byId ? (seasons.find((x) => x.id === byId) ?? null) : (active[0] ?? null),
+              error: null,
+            }),
+            then: (resolve) => resolve({ data: [], count: active.length, error: null }),
+          };
+          return chain;
+        };
+        return { select };
       }
       if (table === "loans") {
         // .select("id", { count: "exact", head: true }).eq(...).eq(...) — awaitet direkte.
@@ -142,7 +172,19 @@ function makeMeetingSupabase({
           };
           return upd;
         };
-        return { select: () => chain, insert, update };
+        // #6780 · rollback-sletning: .delete().eq().eq().eq() awaitet direkte.
+        const del = () => {
+          const filters = {};
+          const d = {
+            eq(col, value) { filters[col] = value; return d; },
+            then: (resolve) => {
+              state.milestones = state.milestones.filter((m) => !matchAll(m, filters));
+              resolve({ error: null });
+            },
+          };
+          return d;
+        };
+        return { select: () => chain, insert, update, delete: del };
       }
       if (table === "board_satisfaction_events") {
         const chain = {
@@ -227,6 +269,67 @@ test("buildBoardMeetingPayload: seneste mandat er 'completed' (mellem sæsoner) 
   assert.deepEqual(payload, { available: false, reason: "no_proposal" });
 });
 
+// #6793 · Læserne følger BOARD_RULES: den aktive sæsons mandat, fallback til
+// nyeste KUN når ingen sæson er aktiv.
+const OLD_PROPOSED = {
+  id: "m-old", team_id: "t1", season_number: 3, focus: "balanced", status: "proposed", goals: [sampleGoal],
+  adjustments_allowed: 2, adjustments_used: 0, request_used: false, auto_accept_deadline: "2026-09-08T00:00:00Z",
+  proposed_at: "2026-09-01T00:00:00Z", source: {},
+};
+const NEW_PROPOSED = { ...OLD_PROPOSED, id: "m-new", season_number: 4, proposed_at: "2026-10-01T00:00:00Z" };
+
+test("buildBoardMeetingPayload (#6793): gammelt proposed mandat i forrige sæson, intet i den aktive → intet møde", async () => {
+  const supabase = makeMeetingSupabase({ mandates: [OLD_PROPOSED], activeSeason: { id: "s4", number: 4 } });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.deepEqual(payload, { available: false, reason: "no_mandate" });
+});
+
+test("buildBoardMeetingPayload (#6793): gammelt active mandat i forrige sæson, intet i den aktive → ikke 'signed'", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{ id: "m-old", team_id: "t1", season_number: 3, status: "active", proposed_at: "2026-06-01T00:00:00Z" }],
+    activeSeason: { id: "s4", number: 4 },
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.equal(payload.available, false);
+  assert.notEqual(payload.reason, "signed");
+});
+
+test("buildBoardMeetingPayload (#6793): den aktive sæsons forslag vælges frem for et gammelt", async () => {
+  const supabase = makeMeetingSupabase({
+    // Det gamle forslag er lagt først og er "nyere" ved proposed_at, så kun sæsonfilteret kan vælge rigtigt.
+    mandates: [{ ...OLD_PROPOSED, proposed_at: "2026-10-05T00:00:00Z" }, NEW_PROPOSED],
+    relations: [{ team_id: "t1", confidence: 60 }],
+    activeSeason: { id: "s4", number: 4 },
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.equal(payload.available, true);
+  assert.equal(payload.mandate.id, "m-new");
+  assert.equal(payload.mandate.seasonNumber, 4);
+});
+
+test("buildBoardMeetingPayload (#6793): aktiv sæson har et active mandat → 'signed' trods ældre rækker", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [
+      { id: "m-old", team_id: "t1", season_number: 3, status: "completed", proposed_at: "2026-10-05T00:00:00Z" },
+      { id: "m-new", team_id: "t1", season_number: 4, status: "active", proposed_at: "2026-10-01T00:00:00Z" },
+    ],
+    activeSeason: { id: "s4", number: 4 },
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.deepEqual(payload, { available: false, reason: "signed" });
+});
+
+test("buildBoardMeetingPayload (#6793): ingen aktiv sæson → nyeste sæsons forslag vælges (fallback)", async () => {
+  const supabase = makeMeetingSupabase({
+    mandates: [{ ...OLD_PROPOSED, proposed_at: "2026-10-05T00:00:00Z" }, NEW_PROPOSED],
+    relations: [{ team_id: "t1", confidence: 60 }],
+    activeSeason: null,
+  });
+  const payload = await buildBoardMeetingPayload({ supabase, teamId: "t1" });
+  assert.equal(payload.available, true);
+  assert.equal(payload.mandate.seasonNumber, 4);
+});
+
 test("buildBoardMeetingPayload: proposed mandat → goals bærer Easier/Keep/Stretch-options", async () => {
   const supabase = makeMeetingSupabase({
     mandates: [{
@@ -292,6 +395,19 @@ test("signMandate: status hverken proposed eller active → MandateSignConflictE
     () => signMandate(supabase, { teamId: "t1", mandateId: "m1" }),
     (err) => err instanceof MandateSignConflictError
   );
+});
+
+test("#6773 signMandate: forslag for en AFSLUTTET sæson kan ikke underskrives (forbliver proposed)", async () => {
+  const supabase = makeMeetingSupabase({
+    seasons: [{ id: "s3", number: 3, status: "completed" }],
+    mandates: [{ id: "m1", team_id: "t1", season_id: "s3", season_number: 3, status: "proposed", focus: "balanced", goals: [] }],
+  });
+  await assert.rejects(
+    () => signMandate(supabase, { teamId: "t1", mandateId: "m1" }),
+    (err) => err instanceof MandateSignConflictError && err.errorCode === "board_mandate_season_ended"
+  );
+  assert.equal(supabase._state.mandates[0].status, "proposed");
+  assert.equal(supabase._state.mandates[0].signed_at, undefined);
 });
 
 test("signMandate: budget-overskridelse propagerer MandateAdjustmentBudgetError", async () => {
@@ -759,4 +875,63 @@ test("#5840 signMandate: samtidigt sign vandt mandat-opdateringen → ingen dobb
   assert.ok(payload, "taberen får den friske payload (idempotent svar)");
   assert.equal(base._state.events.length, 0, "ingen kvittering fra taberen");
   assert.equal(base._state.boardProfiles.length, 0, "ingen legacy dual-write fra taberen");
+});
+
+test("#6780 (Codex P1) signMandate: forslaget lukkes midt i underskriften → vision-slot rulles tilbage", async () => {
+  const supabase = makeCollisionSupabase();
+  // Efterlign saesonskiftet: lige efter at slottet er claimet og milepaelen
+  // indsat, saettes forslaget til lapsed, saa den betingede sign-opdatering rammer 0 raekker.
+  const origFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_vision_milestones") return api;
+    return {
+      ...api,
+      insert: async (payload) => {
+        const res = await api.insert(payload);
+        supabase._state.mandates[0].status = "lapsed";
+        return res;
+      },
+    };
+  };
+  // Codex P2 (#6780): et forslag der blev lapsed, svarer konflikt, ikke succes.
+  await assert.rejects(
+    () => signMandate(supabase, {
+      teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true },
+    }),
+    (err) => err.errorCode === "board_mandate_not_proposed",
+  );
+  assert.equal(supabase._state.mandates[0].status, "lapsed", "mandatet er ikke underskrevet");
+  const slot = supabase._state.milestones.find((m) => m.id === "vm-slot");
+  assert.equal(slot.slot_open, true, "slottet er genaabnet");
+  assert.equal(supabase._state.milestones.filter((m) => m.id !== "vm-slot").length, 0, "den nye milepael er fjernet igen");
+});
+
+test("#6780 (Codex P1 runde 2) signMandate: fejler tilbagerulningen, svares der ikke succes", async () => {
+  const supabase = makeCollisionSupabase();
+  const origFrom = supabase.from.bind(supabase);
+  let reopenCalls = 0;
+  supabase.from = (table) => {
+    const api = origFrom(table);
+    if (table !== "board_vision_milestones") return api;
+    return {
+      ...api,
+      insert: async (payload) => {
+        const res = await api.insert(payload);
+        supabase._state.mandates[0].status = "lapsed";
+        return res;
+      },
+      update: (payload) => {
+        if (payload.slot_open !== true) return api.update(payload);
+        reopenCalls++;
+        return { eq: () => ({ then: (resolve) => resolve({ error: { message: "connection reset" } }) }) };
+      },
+    };
+  };
+  await assert.rejects(
+    signMandate(supabase, { teamId: "t1", mandateId: "m1", adjustments: [], request: null, visionSlot: { accept: true } }),
+    (err) => /rollback incomplete/.test(err.message) && /reopen slot vm-slot/.test(err.message),
+  );
+  assert.equal(reopenCalls, 3, "genaabningen proeves 3 gange");
+  assert.equal(supabase._state.milestones.filter((m) => m.id !== "vm-slot").length, 0, "milepaelen er stadig fjernet");
 });

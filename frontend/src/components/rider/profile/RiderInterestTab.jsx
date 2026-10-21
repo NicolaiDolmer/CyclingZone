@@ -27,7 +27,8 @@ import { StarIcon, EyeIcon, SearchIcon, SkeletonLines } from "../../ui";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
 function TrendSub({ pct, t }) {
-  if (pct == null) return <span className="text-2xs text-cz-3">{t("profile.interest.trendNew")}</span>;
+  // #6935: null = for få besøgende til en ærlig trend (backend-minimum) → "—".
+  if (pct == null) return <span className="text-2xs text-cz-3">—</span>;
   if (pct === 0) return <span className="text-2xs text-cz-3">{t("profile.interest.trendFlat")}</span>;
   const up = pct > 0;
   return (

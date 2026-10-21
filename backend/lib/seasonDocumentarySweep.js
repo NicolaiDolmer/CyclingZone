@@ -6,7 +6,7 @@
 //
 // "BATCH NATTEN OVER"-SEMANTIK: issue-teksten beder om nat-batch ved
 // sæsonskifte. I stedet for en engangs-trigger PÅ selve transitionen (som
-// ville kræve et nyt hook i seasonTransition.js/seasonAutoTransition.js —
+// ville kræve et nyt hook i seasonTransition.js —
 // scope-udvidelse denne slice bevidst undgår, jf. "nul engine-ændringer" i
 // #3395's bølge 1-mål), poller denne sweep periodisk (60 min, samme kadence
 // som discord-race-digest/entry-generator) efter COMPLETED sæsoner med

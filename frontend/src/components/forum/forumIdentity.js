@@ -3,6 +3,8 @@
 // signatur). Holdt uden JSX og uden React-import, saa reglerne kan koeres
 // direkte under `node --test` (samme moenster som lib/avatarStyles.js).
 
+import { intlLocale } from "../../lib/intlLocale.ts";
+
 /**
  * Datoformat for forummet. Altid Europe/Copenhagen — spillet er dansk-drevet,
  * og en trad-tidslinje maa ikke skifte betydning med browserens tidszone.
@@ -11,7 +13,7 @@
  */
 export function formatForumDate(iso, language) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString(language === "da" ? "da-DK" : "en-GB", {
+  return new Date(iso).toLocaleString(intlLocale(language), {
     timeZone: "Europe/Copenhagen",
     day: "numeric",
     month: "short",

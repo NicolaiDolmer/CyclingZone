@@ -211,7 +211,7 @@ export function isGraduateAge(age) {
  * Rytter-patch for "denne graduering blev gennemført": sæt BEGGE trup-felter.
  *
  * `riders.is_academy` er afledt af `riders.squad` i overgangsperioden (spec §3.2
- * — 35+ kaldsteder og RLS-funktionen `is_offered_intake_rider()` læser den), så
+ * — 35+ kaldsteder og RLS-funktionen `offered_intake_rider_ids()` læser den), så
  * de to må ALDRIG skrives hver for sig. Ét sted at gøre det, så promote-stien i
  * resolveGraduation, completeStuckPromotion og academyTransfer.promote() ikke kan
  * ende med tre lidt forskellige patches.
@@ -956,7 +956,8 @@ export async function restampSoldGraduation(supabase, { teamId, riderId, now, st
     // det tilbage — den logges for synlighed og fanges naeste gang af
     // ownershipInvariantWatch invariant G. Samme moenster som
     // resolvePendingGraduationOnSale nedenfor.
-    console.error(`restampSoldGraduation(${status}) failed (${riderId}):`, err.message);
+    // CodeQL #376: vaerdier som argumenter, aldrig i format-strengen (%-tegn i data).
+    console.error("restampSoldGraduation(%s) failed (%s):", status, riderId, err.message);
   }
 }
 

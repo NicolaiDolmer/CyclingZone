@@ -1,0 +1,154 @@
+{
+  "page": {
+    "title": "Club",
+    "subtitle": "Instalaciones y personal técnico",
+    "balance": "Saldo",
+    "division": "División {division}"
+  },
+  "summary": {
+    "upkeep": "Mantenimiento por temporada",
+    "wages": "Sueldos",
+    "balance": "Saldo"
+  },
+  "sections": {
+    "facilities": "Instalaciones",
+    "staff": "Personal técnico"
+  },
+  "facilities": {
+    "tier": "Nivel {tier} / {max}",
+    "notBuilt": "Sin construir",
+    "maxed": "Mejora completa",
+    "comingSoon": "Próximamente",
+    "upgrade": "Mejorar",
+    "build": "Construir",
+    "upkeepAt": "Mantenimiento en el nivel {tier}: {amount}/temporada",
+    "upkeepNow": "Mantenimiento {amount}/temporada"
+  },
+  "roi": {
+    "trainingBuild": "Constrúyelo para entrenar a tus ciclistas más rápido",
+    "scoutingBuild": "Constrúyelo para poder contratar a un jefe de ojeadores",
+    "academyBuild": "Constrúyelo para tener más candidatos semanales y un perfil para tu cantera"
+  },
+  "badge": {
+    "active": "Activo"
+  },
+  "hero": {
+    "trainingSub": "entrenamiento más rápido cada día",
+    "scouting": "Jefe de ojeadores",
+    "scoutingSub": "Puedes contratar hasta un responsable de nivel {tier}",
+    "academy": "{value} candidatos",
+    "academySub": "por semana, y tu perfil da forma a la cantera"
+  },
+  "ladder": {
+    "label": "Niveles",
+    "now": "ahora",
+    "scouting": "Resp. N{tier}",
+    "academy": "{value} cand.",
+    "unlock": {
+      "origin": "región",
+      "type": "+ tipo",
+      "extra": "+1 extra",
+      "stronger": "más atracción"
+    }
+  },
+  "effect": {
+    "live": "Activo ahora",
+    "target": "Próximamente"
+  },
+  "tracks": {
+    "training": {
+      "name": "Centro de entrenamiento",
+      "effect": "entrenamiento",
+      "soon": "Desarrollo más rápido de los ciclistas",
+      "teaser": "Tus ciclistas entrenan más rápido cada día."
+    },
+    "scouting": {
+      "name": "Red de ojeo",
+      "effect": "conocimiento de ciclistas",
+      "soon": "Un conocimiento más afinado de los ciclistas",
+      "teaser": "Contrata a un jefe de ojeadores para evaluaciones de ciclistas más precisas."
+    },
+    "medical": {
+      "name": "Departamento médico",
+      "effect": "recuperación",
+      "soon": "Recuperación más rápida",
+      "teaser": "Tus ciclistas recuperan la forma más rápido después de carreras duras."
+    },
+    "academy": {
+      "name": "Ampliación de la academia",
+      "effect": "candidatos por semana",
+      "soon": "Una cantera semanal mayor con tu propio perfil",
+      "teaser": "Una cantera semanal mayor que se inclina hacia los ciclistas que buscas."
+    },
+    "commercial": {
+      "name": "Departamento comercial",
+      "effect": "patrocinio (con tope)",
+      "soon": "Ingresos de patrocinio a largo plazo",
+      "teaser": "Ingresos extra de patrocinio a largo plazo."
+    }
+  },
+  "roles": {
+    "training": "Director deportivo",
+    "scouting": "Jefe de ojeadores",
+    "medical": "Médico del equipo",
+    "academy": "Director de la academia",
+    "commercial": "Director comercial"
+  },
+  "staff": {
+    "none": "Sin personal contratado",
+    "locked": "Bloqueado: construye primero el nivel 1",
+    "hired": "Contratado",
+    "salary": "Salario {amount} CZ$/temporada",
+    "candidates": "Candidatos",
+    "addAnother": "+ Contratar a otro",
+    "slotsFull": "Los dos puestos están cubiertos. Despide a uno para contratar a alguien nuevo.",
+    "candidate": "Nivel {tier} · {amount}/temporada",
+    "hire": "Contratar",
+    "release": "Despedir",
+    "severance": "Indemnización {amount}",
+    "tierGate": "Los niveles superiores se desbloquean al mejorar la instalación",
+    "billNote": "El salario se cobra al inicio de la temporada"
+  },
+  "errors": {
+    "insufficient_funds": "No tienes saldo suficiente para esa mejora.",
+    "insufficient_available_balance": "No tienes suficiente dinero disponible: parte de tu saldo está bloqueada en pujas de subastas.",
+    "max_tier": "Esta línea ya tiene la mejora completa.",
+    "role_occupied": "Ya tienes personal en este rol.",
+    "staff_tier_exceeds_facility": "Mejora la instalación antes de contratar a un responsable de nivel superior.",
+    "invalid_candidate": "Ese candidato ya no está disponible.",
+    "candidate_already_hired": "Ese candidato ya está contratado en el otro puesto.",
+    "failed": "Algo salió mal. Inténtalo de nuevo.",
+    "network": "No se pudo conectar con el servidor. Inténtalo de nuevo."
+  },
+  "empty": {
+    "title": "El club está cerrado",
+    "description": "Las instalaciones y el personal técnico aún no están disponibles."
+  },
+  "confirm": {
+    "upgradeTitle": "Confirmar mejora",
+    "buildTitle": "Confirmar construcción",
+    "fireTitle": "¿Despedir a {name}?",
+    "cost": "Coste",
+    "newTier": "Nuevo nivel",
+    "deductNote": "Se descuenta ahora de tu saldo",
+    "severanceNote": "La indemnización se descuenta ahora",
+    "confirm": "Confirmar",
+    "cancel": "Cancelar"
+  },
+  "error": {
+    "load": {
+      "title": "No se pudo cargar el club",
+      "description": "No se ha perdido nada. Tus instalaciones y tu personal técnico están a salvo. Inténtalo de nuevo.",
+      "retry": "Reintentar"
+    },
+    "upgrade": {
+      "failed": "No se pudo completar la compra. No se ha descontado nada.",
+      "network": "Sin conexión con el servidor. No se ha descontado nada.",
+      "auth": "Tu sesión ha caducado. Inicia sesión de nuevo y reinténtalo."
+    }
+  },
+  "tabs": {
+    "club": "Instalaciones",
+    "staff": "Personal técnico"
+  }
+}

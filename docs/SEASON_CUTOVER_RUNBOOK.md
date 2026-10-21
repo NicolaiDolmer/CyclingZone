@@ -66,7 +66,8 @@ SQL-blokke tæt på cutover-dagen, ikke ugen før.
    Verificér issuets status i preflight-scriptets output; er det stadig åbent,
    eskalér til ejeren FØR cutover, ikke bagefter.
 
-3. **D3→D4-nedrykning: data-gaten er fuldt åben.** Alle 4 D3-puljer var
+3. **D3→D4-nedrykning (opdateret 20/10, #6771):** `poolAllReal`-gaten er FJERNET; bund 4 i hver D3-pulje rykker ned uanset AI-fyld (AI i bunden flyttes ikke). Afsnittet herunder er historik fra S2.
+   **Historik:** D3→D4-nedrykning: data-gaten var fuldt åben. Alle 4 D3-puljer var
    **24/24 ægte** (0 AI) målt 4/8 — `processDivisionEnd`s `poolAllReal`-gate
    (`backend/lib/economyEngine.js`, LÆSES kun af denne PR, røres ikke) er
    derfor sand i alle fire, og bund-4-pr.-pulje relegerer for ægte til D4.
@@ -232,7 +233,7 @@ Dette er efterkontrol af den udførte rækkefølge. Ovenstående observationer f
 2. Kør **Afslut sæson** først. Frys derefter kilde-sæsonen for D4 → D3-sammenlægning: brug `mergeD4IntoD3S4.js --season=<afsluttet sæsons uuid>` i dry-run og kontrollér at rangeringens kilde er den afsluttede sæson. En dry-run uden eksplicit sæson valgte denne aften den højeste, kommende sæson og gav nul point til alle. Stol ikke på default, før #5857 er merget. Kør sammenlægningen med eget ejer-go og snapshot.
 3. Håndtér frosne hold eksplicit før D4 E-H-pensioneringen. Ét frosset hold blev parkeret manuelt efter ejerbeslutning for at frigøre puljen. Pensioneringsscriptet kan efterlade AI-hold med aktive markedsforpligtelser; behold dem markeret til nedlæggelse og genkør først efter at forpligtelserne er afsluttet. Ingen S4-løb må ligge i pensionerede puljer.
 4. Seed ungdomsgrupper efter den endelige seniorplacering, og byg U23-/juniorkalender mod de seedede grupper. Generér AI-ungdomstrupper og verificér startklare felter i alle grupper, før entries bygges. `academy_drift_enabled` var off ved netop dette cutover.
-5. Kontrollér transfervinduets markører før transition-preview. S3-rækken måtte normaliseres manuelt (`closed_at`, `final_whistle_sent_at`, `squad_enforcement_started_at` og `squad_enforcement_completed_at`), fordi readiness stadig kræver felter fra den afskaffede deadline-cyklus (#5855). Gør dette til et eksplicit, idempotent flow før næste skifte; behandl ikke en manglende markør som bevis for at løb faktisk mangler.
+5. ~~Kontrollér transfervinduets markører~~ **Erstattet af #5855 (17/10): sæt ALDRIG vindue-markører med SQL.** Readiness læser ikke længere `transfer_windows`. I stedet skal `no_deferred_transfers` være grøn (ingen ryttere med `pending_team_id`; ellers kør flush/heal-sweepet, når løbene er slut), og `squad_enforcement_completed` måles på trupperne inkl. udskudte transfers. Ved S3 → S4 måtte S3-rækken normaliseres manuelt, fordi den gamle gate krævede felter fra den afskaffede deadline-cyklus.
 6. **Udfør sæsonskifte** først efter preview. Denne aften blev auktion-gaten overstyret med ejer-go, efter særskilt måling af pensionsrisiko for de aktive auktioner. Log begrundelse og mål både auktioner og berørte ryttere før en fremtidig override. Bekræft én transition, form-reset, sponsor/payroll og puljer efter kørslen.
 7. Lad den timelige entry-generator fylde **AI-hold**. Dens første kørsel efter cutover var ikke en managerudtagelse. Managers kan selv vælge; den særskilte late-fill-regel og den sene redning ved første etape gælder efter deres egne tids- og trupkrav (`ASSISTANT_RULES.md`). Mål derfor managerhold under startgulvet før første etape (#5839), frem for at læse tomme tidlige entries som en generatorfejl.
 
@@ -594,7 +595,7 @@ Et nyt flip og fremtidig sats kræver ejerbeslutning; denne status ændrer ikke 
   2. **12a+** Sammenlægningen D4 → D3 (#5641) og pensioneringen af D4 E-H (#5642), hver med tørkørsel og eget go, og AI-fyldet af alle puljer. Ungdomsgrupperne seedes her, hvis de ikke allerede er det. `mergeD4IntoD3S4.js` vælger den senest afsluttede sæson ved dry-run uden `--season`; brug stadig eksplicit `--season=<uuid>` i cutover-loggen, så rangeringens kilde kan efterprøves. `--apply` læser kilden fra det frosne snapshot.
   3. **12b (kontrol, #5795)** S4-kalenderen er skrevet i trin 1. Efter pensioneringen køres trin 1's SQL-kontrol igen: senior 1/2/4/4 puljer, `loeb_i_pensionerede_puljer` = 0, og ingen D3-pulje uden managers efter sammenlægningen (`select d.id, count(t.id) from league_divisions d left join teams t on t.league_division_id = d.id and not t.is_ai and not t.is_bank where d.tier = 3 group by d.id;`). Kun hvis kontrollen er rød: tørkørsel og `--apply --replace-existing` (eget go, S4 er stadig `upcoming`). Mangler ungdomskalenderne, køres `--squad u23` og `--squad junior` her, når grupperne er seedet.
   4. Preview = `GET /api/admin/season-transition/preview` (`api.js:13996`).
-  5. **12c** "Udfør sæsonskifte" = `POST /api/admin/season-transition` (`api.js:14013`). `auto_calendar_enabled` må ikke være sat, så transitionen ikke genererer kalenderen igen.
+  5. **12c** "Udfør sæsonskifte" = `POST /api/admin/season-transition` (`api.js:14013`). `auto_calendar_enabled` må ikke være sat, så transitionen ikke genererer kalenderen igen. Skiftet sker kun her: der er ingen auto-skifte-cron (fjernet, #6796).
 
   Mekanikken følger checklistens skridt 0/1/1b/4/5/7 og afsnittene ovenfor.
 - **Kontrol bagefter:**
@@ -888,7 +889,7 @@ SSOT for accept: `GAME_INVARIANTS.md`, `RACE_ENGINE_RULES.md`,
 - `docs/SEASON_TRANSITION_CHECKLIST.md` — S1→S2-drejebogen (komprimerings-specifik,
   men trin 0/1/1b/4/5/7-strukturen og transition-motor-referencerne er stadig facit).
 - `scripts/preflight-season-cutover.ps1` — kør FØRST. Parametre: `-FromSeasonNumber`/
-  `-ToSeasonNumber` (default 2→3), `-SkipTests`, `-SkipGh`.
+  `-ToSeasonNumber` (default 2→3), `-SkipTests`, `-SkipGh`. Kalender-SQL'en udelader puljer der pensioneres ved målstrukturen (`--target-structure`, #6795), så de ikke ses som huller før "Afslut sæson".
 - Åbne issues denne cutover skærer ind i: #2164 (D3→D4 eksplicit regel) ·
   #3114 (D1-oprykning game_day-sentinel) · #2840 (løn-mode dagsbaseret) ·
   #3266 (form-reset decay-claim-guard).

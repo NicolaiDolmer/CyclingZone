@@ -1,0 +1,75 @@
+{
+  "header": {
+    "title": "Mi actividad",
+    "subtitle": "Tus acciones de mercado en un solo lugar"
+  },
+  "lastUpdated": "Última actualización {time}",
+  "refresh": "Actualizar",
+  "refreshing": "Actualizando...",
+  "refreshTitle": "Actualizar datos",
+  "countdown": {
+    "ended": "Terminada"
+  },
+  "tabs": {
+    "action": "Requiere acción",
+    "transfers": "Fichajes",
+    "history": "Historial"
+  },
+  "offerStatus": {
+    "pending": "Esperando respuesta",
+    "countered": "Contraoferta recibida",
+    "awaiting_confirmation": "Confirmar acuerdo",
+    "window_pending": "Acordado · a la espera del mercado",
+    "accepted": "Aceptada",
+    "rejected": "Rechazada",
+    "withdrawn": "Retirada"
+  },
+  "badge": {
+    "seller": "Vendedor",
+    "winner": "Ganador",
+    "bidder": "Pujador",
+    "bought": "Comprado",
+    "sold": "Vendido",
+    "noBids": "Sin pujas",
+    "lost": "Perdida"
+  },
+  "section": {
+    "offersNeedResponse": "Ofertas que esperan tu respuesta",
+    "auctionsEndingSoon": "Subastas que terminan en menos de 1 hora",
+    "activeAuctions": "Subastas activas",
+    "receivedOffers": "Ofertas recibidas",
+    "sentOffers": "Ofertas enviadas",
+    "auctions": "Subastas",
+    "transfers": "Fichajes"
+  },
+  "empty": {
+    "actionTitle": "Nada requiere tu acción",
+    "actionSub": "Estás al día con todas las ofertas y acuerdos",
+    "auctionsTitle": "No hay subastas activas",
+    "auctionsSub": "No estás pujando en ninguna subasta ni vendiendo nada",
+    "transfersTitle": "No hay fichajes activos",
+    "transfersSub": "Las ofertas que envíes o recibas aparecerán aquí",
+    "watchlistTitle": "Tu lista de seguimiento está vacía",
+    "watchlistSub": "Añade ciclistas desde la base de datos de ciclistas con el botón de la estrella.",
+    "historyTitle": "Aún no hay historial",
+    "historySub": "Los acuerdos completados aparecerán aquí"
+  },
+  "detail": {
+    "to": "Para: {name}",
+    "from": "De: {name}",
+    "season": "Temporada {start}–{end}",
+    "highestBidder": "Puja más alta: {name}",
+    "noBidsYet": "Aún no hay pujas",
+    "leader": "Líder: {name}",
+    "noLeaderYet": "Aún no hay líder"
+  },
+  "watchlist": {
+    "goToFull": "Ir a la lista de seguimiento completa",
+    "freeAgent": "Agente libre",
+    "removeFailed": "No se pudo quitar al ciclista de tu lista de seguimiento. Inténtalo de nuevo."
+  },
+  "loadError": {
+    "message": "No se pudo cargar tu actividad. Inténtalo de nuevo.",
+    "retry": "Reintentar"
+  }
+}

@@ -75,6 +75,8 @@ function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = 
   const workQueries = [];
   let requested = 1, completed = 0, target = null, clock = () => 0, dirtyAt = 0, clockInitialized = false, lastCompleted = null, onComplete = () => {};
   const control = (name, args) => {
+    if (name === 'get_ranking_shadow_metrics') return { data: { queue_length: 0 }, error: null };
+    if (name === 'apply_ranking_deltas') return { data: null, error: { code: 'PGRST202', message: 'M1 schema not installed in legacy fixture' } };
     if (name === 'get_ranking_refresh_work_state') return { data: { pending: requested > completed,
       pending_age_ms: Math.max(0, clock() - dirtyAt), last_completed_at: lastCompleted }, error: null };
     if (name === 'claim_ranking_refresh_work') {
@@ -109,6 +111,7 @@ function createMockSupabase({ rpcErrors = {}, heartbeatError = null, workRows = 
       return { error: null };
     },
     from(table) {
+      if (table === 'app_config') return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: 'on' }, error: null }) }) }) };
       if (table === "training_date_work") {
         // #5911: statusopslaget select().eq(tick_date).in(status).limit(1).
         const q = { filters: [] };
@@ -675,9 +678,42 @@ test('#5692: background finalization wakeup still respects training while within
   assert.deepEqual(db.rpcCalls, []);
 });
 
-test('#5692: unchanged ticks perform only the cheap durable state check', async () => {
+test('#6765: unchanged ticks drain shadow work without a legacy refresh', async () => {
   const calls = [];
-  const db = { async rpc(name) { calls.push(name); return { data: { pending: false, pending_age_ms: 0, last_completed_at: FIXED_NOW.toISOString() }, error: null }; } };
+  const db = {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: 'on' }, error: null }) }) }) }),
+    async rpc(name) { calls.push(name); return { data: name==='get_ranking_shadow_metrics'?{queue_length:0}:name==='check_ranking_shadow_parity'?{status:'equal'}:{ pending: false, pending_age_ms: 0, last_completed_at: FIXED_NOW.toISOString() }, error: null }; },
+  };
   assert.equal(await rawGated(db, { now: FIXED_NOW, clock: () => 0, heartbeatNowFn: () => FIXED_NOW, logger: quietLogger }), true);
-  assert.deepEqual(calls, ['get_ranking_refresh_work_state']);
+  assert.deepEqual(calls, ['get_ranking_refresh_work_state','get_ranking_shadow_metrics','apply_ranking_deltas','check_ranking_shadow_parity']);
+});
+test('#6765: Safe forwards its injected nowFn into daily shadow cadence', async () => {
+  const db=createMockSupabase();
+  const legacyControl=db._controlRpc;
+  let parityCalls=0;
+  db._controlRpc=(name,args)=>{
+    if(name==='apply_ranking_deltas') return {data:{pending:false},error:null};
+    if(name==='check_ranking_shadow_parity') {parityCalls++;return {data:{status:'equal'},error:null};}
+    return legacyControl(name,args);
+  };
+  let now=new Date('2026-10-04T10:00:00Z');
+  const options={nowFn:()=>now,testNowFn:()=>now,clock:()=>0};
+  assert.equal(await rawSafe(db,options),true);
+  now=new Date('2026-10-05T10:00:00Z');
+  assert.equal(await rawSafe(db,options),true);
+  assert.equal(parityCalls,2,'a full injected day elapses independently of host time');
+});
+test('#6765: time spent in legacy refresh is included in parity peak admission',async()=>{
+  const db=createMockSupabase();const control=db._controlRpc;
+  let elapsed=0,parityCalls=0;
+  db._controlRpc=(name,args)=>{
+    if(name==='apply_ranking_deltas') return {data:{pending:false},error:null};
+    if(name==='check_ranking_shadow_parity'){parityCalls++;return {data:{status:'equal'},error:null};}
+    return control(name,args);
+  };
+  const rpc=db.rpc.bind(db);
+  db.rpc=async(name,args)=>{if(name.startsWith('refresh_')) elapsed+=1000;return rpc(name,args);};
+  const now=new Date('2026-10-19T16:59:59Z');
+  assert.equal(await rawSafe(db,{now,clock:()=>elapsed,testNowFn:()=>now}),true);
+  assert.equal(parityCalls,0);
 });

@@ -19,7 +19,8 @@
  *     5. minut hele dagen på det klokke-justerede tick-gitter (schedulerTick.js) mod en
  *     tællende in-memory Supabase. Dens udvælgelse (forfaldne etaper, tomme puljer,
  *     dagligt loft, genoptagelse) og dens egne DB-kald + returnerede rækker er målt.
- *     Etape-tiderne kommer fra `slotsFor`/`TIER_STAGE_SLOTS` og `SQUAD_CALENDAR`, og
+ *     Etape-tiderne kommer fra `slotsFor`/`TIER_STAGE_SLOTS` (senior) og
+ *     `squadSlotsForDate`/`SQUAD_CALENDAR` (ungdom, samme kilde som materializeren), og
  *     puljestrukturen fra `SENIOR_CALENDAR_POOLS_FROM_S4` og `YOUTH_GROUP_SIZE`.
  *   - MODEL: selve etapeafviklingen (`runStageFn`, motoren) erstattes af en kalibreret
  *     omkostningsmodel (COST_PROFILES), fordi motoren ikke kan køres uden en fuld DB.
@@ -44,14 +45,24 @@ import { STAGE_TICK_PERIOD_MS, STAGE_TICK_OFFSET_MS } from "../lib/schedulerTick
 import { TIER_STAGE_SLOTS, slotsFor } from "../lib/calendarPlanningWindow.js";
 import { SQUAD_CALENDAR, SENIOR_CALENDAR_POOLS_FROM_S4 } from "../lib/calendarTierCaps.js";
 import { YOUTH_GROUP_SIZE } from "../lib/youthPoolAssignment.js";
+import { squadSlotsForDate } from "../lib/squadCalendarPacker.js";
 import { copenhagenHourToUTC, copenhagenMidnightUTC } from "../lib/copenhagenTime.js";
 import { isStageSchedulerEnabled, STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled, RACE_ENGINE_V2_FLAG_KEY } from "../lib/raceEngineFlag.js";
 // Samme kl. 20-gate som prod: startTrainingDayCloseAfterStages og runTrainingDayCloseSweep
 // starter ingen sweep før shouldSweepNow(now) tillader det.
-import { shouldSweepNow } from "../lib/trainingDayCloseTrigger.js";
+import { shouldSweepNow, MAX_TEAM_CONCURRENCY } from "../lib/trainingDayCloseTrigger.js";
 
 // ─── Referencetal og grænser ──────────────────────────────────────────────────
+
+/**
+ * Prods aktuelle holdantal (#6766). Kilde (målt 11-14/10/2026, 405-408 hold afregnet):
+ * docs/superpowers/specs/2026-10-15-training-10x-jobqueue-direct-pg-design.md §1. Afrundet op til
+ * ca. 410, så fixturen er mindst så stor som prod. Opdatér tallet, når holdantallet flytter sig.
+ */
+export const PROD_TEAM_COUNT = 410;
+/** Ejerens mål for aftentræningen (#5911): færdig på under 2 minutter. */
+export const TRAINING_CLOSE_TARGET_MS = 2 * 60 * 1000;
 
 /** Kald/min hvor S4 løbsdag 1 faldt sammen (#5893, 28/9 kl. 19:53). */
 export const COLLAPSE_CALLS_PER_MIN = 6800;
@@ -77,11 +88,29 @@ export const DEFAULT_LIMITS = Object.freeze({
   maxSweepCallsPerTick: 80,
   // Et svar med 1.000 rækker er afkortet af PostgREST (P0 2/7: skjulte forfaldne etaper).
   maxRowsPerResponse: POSTGREST_ROW_CAP - 1,
+  // #5911: aftentræningen (training_close) skal være færdig på < 2 min. Målt som jobbets
+  // varighed fra start; starten (efter sidste etape / kl. 20-gaten) er en separat sag.
+  maxTrainingCloseMs: TRAINING_CLOSE_TARGET_MS,
 });
 
 // ─── Omkostningsmodel for etapeafvikling ──────────────────────────────────────
 
 const CALLS_PER_SECOND = Math.round(MEASURED_TICK_PEAK_CALLS_PER_MIN / 60); // ca. 89/s
+
+/**
+ * Aftentræningens omkostning pr. hold, serielt (1 hold ad gangen = TEAM_CONCURRENCY 1).
+ *
+ * ms: MÅLT i prod (#6766). Kilde (read-only prod-måling 15/10/2026 af aftenerne 11-14/10):
+ * docs/superpowers/specs/2026-10-15-training-10x-jobqueue-direct-pg-design.md §1.
+ * 405-408 hold afregnet på 39,2-50,1 minutter fra første til sidste afregning (serielt),
+ * dvs. ca. 6 s pr. hold. Den tidligere antagelse (0,4 s) var mere end 10 gange for optimistisk.
+ *
+ * calls: stadig en ANTAGELSE. edge_logs måler kun commit-kaldet (ca. 3 pr. hold, 1.211-1.298
+ * kald for 405-408 hold); backendens læsninger pr. hold er ikke målt (spec §1: "fordelingen
+ * inden i backenden er ikke målt"). 8 er derfor en grov øvre ramme, ikke en kalibrering, og
+ * påvirker kun kald/min-checket, ikke varighedsgaten.
+ */
+const TRAINING_CLOSE_PER_TEAM = Object.freeze({ calls: 8, ms: 6_000 });
 
 /**
  * Pr. etape: `stageMs` (alle etaper), + `finalizeMs` på løbets sidste etape, + `boardMs`
@@ -98,8 +127,9 @@ export const COST_PROFILES = Object.freeze({
     boardCalls: 4, // #5892: én RPC + #3511: tre resultatlæsninger i boardGoalContext
     boardOnYouth: false, // #5892/#5898: bestyrelsen ser kun seniortruppen
     rankingRefresh: Object.freeze({ calls: 6, ms: 20_000 }), // #6184: tre matviews ca. 11,5 + 4,6 + 4,2 s
-    // Ingen måling af aftentræningens samlede kald (antagelse): ca. 8 kald og 0,4 s pr. hold.
-    trainingClosePerTeam: Object.freeze({ calls: 8, ms: 400 }),
+    // Aftentræningen: ms pr. hold er målt i prod (#6766), kald pr. hold er en antagelse; se
+    // TRAINING_CLOSE_PER_TEAM for kilde og forbehold.
+    trainingClosePerTeam: TRAINING_CLOSE_PER_TEAM,
   }),
   "legacy-s4-day1": Object.freeze({
     label: "S4 løbsdag 1 (28/9) før rettelserne: kontrolprofil, SKAL fejle",
@@ -110,7 +140,7 @@ export const COST_PROFILES = Object.freeze({
     boardCalls: 200, // #5893: ca. 200 HTTP-kald pr. løb, O(alle hold)
     boardOnYouth: true, // #5893 rod-årsag 3: ungdomsløb kørte den fulde bestyrelse
     rankingRefresh: Object.freeze({ calls: 6, ms: 20_000 }),
-    trainingClosePerTeam: Object.freeze({ calls: 8, ms: 400 }),
+    trainingClosePerTeam: TRAINING_CLOSE_PER_TEAM,
   }),
 });
 
@@ -119,7 +149,8 @@ export const COST_PROFILES = Object.freeze({
 export const SCENARIOS = Object.freeze(["normal", "season-last-day"]);
 export const USAGE = "node backend/scripts/loadtestRaceDay.mjs [--date YYYY-MM-DD] "
   + "[--scenarios normal,season-last-day] [--profile current|legacy-s4-day1] "
-  + "[--youth-groups 1-40] [--teams-per-senior-pool 2-40] [--final-share 0-1] "
+  + "[--youth-groups 1-40] [--teams-per-senior-pool 2-40] [--teams 1-5000] "
+  + `[--training-concurrency 1-${MAX_TEAM_CONCURRENCY}] [--final-share 0-1] `
   + "[--latency-ms 0-200] [--json] [--out <fil>]";
 
 const DEFAULT_OPTIONS = Object.freeze({
@@ -128,13 +159,15 @@ const DEFAULT_OPTIONS = Object.freeze({
   profile: "current",
   youthGroups: 10, // S4 løbsdag 1: 20 ungdomsløb = 10 U23 + 10 junior (#5893)
   teamsPerSeniorPool: 20,
+  teams: PROD_TEAM_COUNT, // hold i alt; strukturen (puljer + ungdom) er gulvet, resten fyldes op (#6766)
+  trainingConcurrency: 1, // training_day_close_team_concurrency; prod-default er 1 (serielt)
   finalShare: 1, // værst tænkelige: hver etape i dag er løbets sidste (afslutning + bestyrelse)
   latencyMs: 10, // Railway <-> Supabase RTT (scripts/loadtest/mock-supabase.js)
   json: false,
   out: null,
 });
 
-const VALUE_FLAGS = new Set(["date", "scenarios", "profile", "youth-groups", "teams-per-senior-pool", "final-share", "latency-ms", "out"]);
+const VALUE_FLAGS = new Set(["date", "scenarios", "profile", "youth-groups", "teams-per-senior-pool", "teams", "training-concurrency", "final-share", "latency-ms", "out"]);
 const BOOL_FLAGS = new Set(["json"]);
 
 function intIn(raw, min, max) {
@@ -178,6 +211,16 @@ export function parseArgs(argv) {
       case "teams-per-senior-pool": {
         const n = intIn(value, 2, 40);
         if (n == null) errors.push("USAGE_INVALID_TEAMS_PER_SENIOR_POOL"); else options.teamsPerSeniorPool = n;
+        break;
+      }
+      case "teams": {
+        const n = intIn(value, 1, 5000);
+        if (n == null) errors.push("USAGE_INVALID_TEAMS"); else options.teams = n;
+        break;
+      }
+      case "training-concurrency": {
+        const n = intIn(value, 1, MAX_TEAM_CONCURRENCY);
+        if (n == null) errors.push("USAGE_INVALID_TRAINING_CONCURRENCY"); else options.trainingConcurrency = n;
         break;
       }
       case "final-share": {
@@ -229,9 +272,10 @@ export function firstTickAtOrAfter(fromMs) {
 }
 
 /**
- * Kadencen for cron'ens "training day-close" (backend/cron.js: setInterval 5 min).
- * Dens fase afhænger af hvornår processen startede; modellen lægger den på hele
- * 5-minutter, så den tidligst mulige start er præcis kl. 20:00 dansk tid.
+ * Kadencen for cron'ens "training day-close" (backend/cron.js: 5 min på klokken via
+ * startClockAlignedInterval, #6858). Prod tikker på hele 5-minutter plus et offset
+ * på få sekunder; modellen lægger den på hele 5-minutter, så den tidligst mulige
+ * start er kl. 20:00 dansk tid.
  */
 export const TRAINING_DAY_CLOSE_CRON_PERIOD_MS = 5 * 60 * 1000;
 
@@ -252,9 +296,34 @@ export function trainingCloseStart(lastStageEndMs) {
   return { startMs: at, trigger: "cron" };
 }
 
+/**
+ * Aftentræningens varighed: hele hold-runder × ms pr. hold, hvor en runde er N hold
+ * ad gangen (`training_day_close_team_concurrency`, backend/lib/trainingDayCloseTrigger.js).
+ * Et hold deles aldrig, saa sidste runde tager et fuldt hold, ogsaa hvis den er halvfuld.
+ * Modellen er IDEEL: N hold ad gangen giver N gange hurtigere. Det er et gulv for
+ * varigheden, ikke en måling; GIN-flush-halerne (spec §1) og delt DB-kapacitet kan gøre det
+ * dårligere. Består gaten ikke her, består den heller ikke i prod.
+ */
+export function trainingCloseDurationMs(msPerTeam, teamsTotal, concurrency = 1) {
+  const n = Number.isInteger(concurrency) && concurrency >= 1 ? concurrency : 1;
+  return Math.ceil(teamsTotal / n) * msPerTeam;
+}
+
 // ─── Fixture: én S5-løbsdag ───────────────────────────────────────────────────
 
 const HISTORY_DAYS = 12; // afsluttede løb tidligere i sæsonen (fylder schedule-tabellen)
+
+/**
+ * Ungdomstruppens etape-tid(er) på en dato, præcis som tierCalendarMaterializer udleder dem:
+ * truppens ene stageSlot gennem slotsFor (sæsonens sidste dag) og derefter flyttet væk fra
+ * seniorens tider og de andre truppers tid (squadSlotsForDate, #6667).
+ */
+export function youthSlotsFor(squad, date, seasonLastRaceDay = null) {
+  const otherSquadSlots = Object.entries(SQUAD_CALENDAR).filter(([s]) => s !== squad).map(([, c]) => c.stageSlot);
+  return squadSlotsForDate({
+    squad, tier: 1, localDate: date, squadSlots: [SQUAD_CALENDAR[squad].stageSlot], otherSquadSlots, seasonLastRaceDay,
+  });
+}
 
 function poolAlias(squad, index) {
   const prefix = squad === "senior" ? "S" : squad === "u23" ? "U" : "J";
@@ -264,7 +333,8 @@ function poolAlias(squad, index) {
 /**
  * Bygger databasen for én løbsdag: aktiv sæson 5, flag tændt, seniorpyramiden 1/2/4/4,
  * `youthGroups` grupper pr. ungdomstrup à YOUTH_GROUP_SIZE hold, ét løb pr. (pulje, slot)
- * med dagens etape på slottet, plus afsluttede løb fra tidligere dage.
+ * med dagens etape på slottet, plus afsluttede løb fra tidligere dage. `teams` er holdantallet
+ * i alt (default prods ca. 410): strukturen er gulvet, og resten er hold uden pulje.
  *
  * @returns {{ state: object, expected: Array<object>, pools: Array<object>, teamsTotal: number }}
  */
@@ -273,6 +343,7 @@ export function buildRaceDayFixture({
   scenario = "normal",
   youthGroups = DEFAULT_OPTIONS.youthGroups,
   teamsPerSeniorPool = DEFAULT_OPTIONS.teamsPerSeniorPool,
+  teams = DEFAULT_OPTIONS.teams,
   finalShare = DEFAULT_OPTIONS.finalShare,
   dropYouthPoolColumns = false,
 } = {}) {
@@ -343,6 +414,9 @@ export function buildRaceDayFixture({
       }
     }
   }
+  // #6766: fyld op til det ønskede holdantal (default prods ca. 410) med hold uden pulje.
+  // Strukturen ovenfor er gulvet; et lavere `teams` forkorter den ikke.
+  while (state.teams.length < teams) newTeam(null);
   if (dropYouthPoolColumns) {
     // Kontrol (#5890): skemaet før ungdomskolonnerne. Hold kender kun seniorpuljen.
     for (const team of state.teams) {
@@ -388,9 +462,12 @@ export function buildRaceDayFixture({
       });
     }
 
+    // Ungdom: samme kilde som materializeren (tierCalendarMaterializer -> squadSlotsForDate).
+    // #6772: rå slotsFor lagde U23 på seniorens 15:00 på sæsonens sidste dag; prod flytter
+    // den væk fra senior-tiderne (youthSlotsApartFromSenior, #6667).
     const slots = pool.squad === "senior"
       ? slotsFor(pool.tier, date, { seasonLastRaceDay })
-      : slotsFor(1, date, { slots: { 1: [SQUAD_CALENDAR[pool.squad].stageSlot] }, seasonLastRaceDay });
+      : youthSlotsFor(pool.squad, date, seasonLastRaceDay);
     slots.forEach((hhmm, lane) => {
       const scheduledMs = copenhagenSlotMs(date, hhmm);
       // Andelen af afsluttende etaper styres deterministisk af finalShare.
@@ -630,10 +707,12 @@ export async function simulateRaceDay({
   latencyMs = DEFAULT_OPTIONS.latencyMs,
   youthGroups = DEFAULT_OPTIONS.youthGroups,
   teamsPerSeniorPool = DEFAULT_OPTIONS.teamsPerSeniorPool,
+  teams = DEFAULT_OPTIONS.teams,
+  trainingConcurrency = DEFAULT_OPTIONS.trainingConcurrency,
   finalShare = DEFAULT_OPTIONS.finalShare,
   dropYouthPoolColumns = false,
 } = {}) {
-  const fixture = buildRaceDayFixture({ date, scenario, youthGroups, teamsPerSeniorPool, finalShare, dropYouthPoolColumns });
+  const fixture = buildRaceDayFixture({ date, scenario, youthGroups, teamsPerSeniorPool, teams, finalShare, dropYouthPoolColumns });
   const { state, expected } = fixture;
   const clock = { now: 0 };
   const minuteBuckets = new Map();
@@ -674,7 +753,10 @@ export async function simulateRaceDay({
   const emitTrainingClose = (startMs, trigger) => {
     trainingCloseStarted = true;
     const per = profile.trainingClosePerTeam;
-    emitJob("training_close", startMs, per.ms * fixture.teamsTotal, per.calls * fixture.teamsTotal, trigger);
+    // trainingDateClose.js venter paa refreshRankings efter afregningen, foer jobbet er
+    // faerdigt (#6766, Codex): ranglisteopdateringen er en del af varigheden.
+    const durationMs = trainingCloseDurationMs(per.ms, fixture.teamsTotal, trainingConcurrency) + profile.rankingRefresh.ms;
+    emitJob("training_close", startMs, durationMs, per.calls * fixture.teamsTotal + profile.rankingRefresh.calls, trigger);
   };
 
   const runStageFn = async ({ raceId, stageIndex }) => {
@@ -848,7 +930,10 @@ export async function simulateRaceDay({
     })),
     trainingClose: (() => {
       const job = concurrentJobs.find((j) => j.kind === "training_close");
-      return job ? { at: copenhagenHHMM(job.startMs), trigger: job.trigger, calls: job.calls } : null;
+      return job ? {
+        at: copenhagenHHMM(job.startMs), trigger: job.trigger, calls: job.calls,
+        durationMs: job.durationMs, concurrency: trainingConcurrency, teams: fixture.teamsTotal,
+      } : null;
     })(),
     emptyPoolSkipLines: logs.emptyPoolSkips,
     errors: errors.length,
@@ -865,9 +950,33 @@ export async function simulateRaceDay({
     { id: "stage_delay", ok: metrics.stageDelayMsMax <= limits.maxStageDelayMs, value: metrics.stageDelayMsMax, limit: limits.maxStageDelayMs, note: `p50 ${metrics.stageDelayMsP50} ms, p90 ${metrics.stageDelayMsP90} ms` },
     { id: "sweep_calls_per_tick", ok: metrics.sweepCallsPerTickMax <= limits.maxSweepCallsPerTick, value: metrics.sweepCallsPerTickMax, limit: limits.maxSweepCallsPerTick, note: `median ${metrics.sweepCallsPerTickMedian}, ${sweepCallsTotal} i døgnet` },
     { id: "rows_per_response", ok: maxRowsPerResponse <= limits.maxRowsPerResponse, value: maxRowsPerResponse, limit: limits.maxRowsPerResponse, note: maxRowsTable ? `største svar: ${maxRowsTable}` : "" },
+    trainingCloseCheck(metrics.trainingClose, limits.maxTrainingCloseMs, expected.length > 0),
   ];
 
   return { scenario, passed: checks.every((c) => c.ok), checks, metrics };
+}
+
+/**
+ * #5911/#6766: aftentræningens varighed mod ejerens mål. Fejler ærligt: er jobbet ikke
+ * startet, selv om dagen havde etaper, er det en fejl (gaten må ikke bestå tomt).
+ */
+export function trainingCloseCheck(trainingClose, limitMs, stagesExpected) {
+  if (!trainingClose) {
+    return {
+      id: "training_close_duration", ok: !stagesExpected, value: "ikke startet", limit: limitMs,
+      note: stagesExpected ? "aftentræningen blev aldrig startet" : "ingen etaper i dag",
+    };
+  }
+  return {
+    id: "training_close_duration",
+    // Strengt under maalet (#5911: "< 2 min"). Estimatet er en NEDRE graense: over maalet
+    // er en aegte fejl; under maalet er kun "ikke afvist", aldrig bevis (lowerBound).
+    ok: trainingClose.durationMs < limitMs,
+    lowerBound: true,
+    value: trainingClose.durationMs,
+    limit: limitMs,
+    note: `${trainingClose.teams} hold, hold-parallelitet ${trainingClose.concurrency} (training_day_close_team_concurrency), ideel model: ${trainingClose.durationMs < limitMs ? "ikke afvist, kræver prod-måling (#6490)" : "afvist"}`,
+  };
 }
 
 // ─── Rapport ──────────────────────────────────────────────────────────────────
@@ -889,12 +998,13 @@ export function renderMarkdown(report) {
     lines.push("");
     lines.push(`Puljer: senior ${m.pools.senior}, U23 ${m.pools.u23}, junior ${m.pools.junior} · hold ${fmt(m.teams)} · etaper ${m.stagesRan}/${m.stagesExpected} (${m.finalsRan} afslutninger) · ${m.ticksRun} ticks`);
     lines.push(`Travleste tick: ${m.busiestTick ? `kl. ${m.busiestTick.at}, ${m.busiestTick.stages} etaper, ${fmt(m.busiestTick.calls)} kald` : "ingen"} · kald i døgnet ${fmt(m.totalCalls)} (sweep ${fmt(m.sweepCallsTotal)})`);
-    lines.push(`Aftentræning: ${m.trainingClose ? `kl. ${m.trainingClose.at} (startet af ${m.trainingClose.trigger}), ${fmt(m.trainingClose.calls)} kald` : "ikke startet"}`);
+    lines.push(`Aftentræning: ${m.trainingClose ? `kl. ${m.trainingClose.at} (startet af ${m.trainingClose.trigger}), ${fmt(m.trainingClose.calls)} kald, varighed ${fmt(Math.round(m.trainingClose.durationMs / 1000))} s for ${fmt(m.trainingClose.teams)} hold ved parallelitet ${m.trainingClose.concurrency}` : "ikke startet"}`);
     lines.push("");
     lines.push("| Check | Resultat | Værdi | Grænse | Note |");
     lines.push("|---|---|---|---|---|");
     for (const c of s.checks) {
-      lines.push(`| ${c.id} | ${c.ok ? "ok" : "**FAIL**"} | ${fmt(c.value)} | ${fmt(c.limit)} | ${c.note} |`);
+      const result = c.ok ? (c.lowerBound ? "ikke afvist (nedre grænse)" : "ok") : "**FAIL**";
+      lines.push(`| ${c.id} | ${result} | ${fmt(c.value)} | ${fmt(c.limit)} | ${c.note} |`);
     }
   }
   lines.push("");
@@ -913,6 +1023,8 @@ export async function runLoadtest(options) {
       latencyMs: options.latencyMs,
       youthGroups: options.youthGroups,
       teamsPerSeniorPool: options.teamsPerSeniorPool,
+      teams: options.teams,
+      trainingConcurrency: options.trainingConcurrency,
       finalShare: options.finalShare,
     }));
   }
@@ -922,6 +1034,8 @@ export async function runLoadtest(options) {
     date: options.date,
     latencyMs: options.latencyMs,
     finalShare: options.finalShare,
+    teams: options.teams,
+    trainingConcurrency: options.trainingConcurrency,
     limits: DEFAULT_LIMITS,
     scenarios,
   };

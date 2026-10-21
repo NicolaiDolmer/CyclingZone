@@ -1,0 +1,158 @@
+{
+  "title": "Temporada {number}",
+  "titleFallback": "Resumen de temporada",
+  "subtitle": "{status} · calendario, clasificación final y ganadores de la temporada",
+  "statusOngoing": "En curso",
+  "statusCompleted": "Terminada",
+  "financeReport": "Informe financiero",
+  "seasonOption": "Temporada {number} · {status}",
+  "empty": {
+    "title": "Aún no hay resultados",
+    "body": "Termina carreras y temporadas para ver resultados aquí",
+    "cta": "Ver calendario"
+  },
+  "status": {
+    "completed": "Terminada",
+    "active": "En directo",
+    "scheduled": "Próxima"
+  },
+  "honours": {
+    "heading": "Los mejores ciclistas de la temporada",
+    "metaFinal": "Temporada {number} · final",
+    "metaProvisional": "Provisional",
+    "title": {
+      "points": "Más puntos",
+      "wins": "Más victorias"
+    },
+    "unit": {
+      "points": "puntos",
+      "wins": "victorias"
+    },
+    "tieBreak": {
+      "points": "Empate a puntos. El orden alfabético decide quién aparece primero.",
+      "wins": "Empate a victorias. Los puntos deciden el orden."
+    },
+    "note": "Las victorias cuentan las de etapa, clasificación general, de un día, puntos, montaña y clasificación juvenil, el mismo total que la columna Victorias del ranking de ciclistas.",
+    "noRider": "Aún no hay ciclista.",
+    "noTeam": "Sin equipo",
+    "empty": {
+      "title": "Aún no hay resultados de ciclistas",
+      "body": "Los ciclistas ganan puntos y victorias cuando se han corrido las carreras de la temporada."
+    },
+    "error": "No se pudieron cargar los mejores ciclistas de la temporada."
+  },
+  "winners": {
+    "prize": {
+      "title": "Líder en premios",
+      "secondary": "+{amount} ganados",
+      "empty": "Aún no hay premios"
+    },
+    "transfer": {
+      "title": "Mayor fichaje",
+      "fallback": "Fichaje",
+      "empty": "Sin fichajes"
+    },
+    "active": {
+      "title": "Más activo",
+      "secondary": "{count} fichajes",
+      "empty": "Sin tratos"
+    },
+    "stageKing": {
+      "title": "Rey de las etapas",
+      "secondary": "{count, plural, one {# victoria de etapa} other {# victorias de etapa}}",
+      "empty": "Sin etapas disputadas"
+    },
+    "classicKing": {
+      "title": "Victorias en clásicas",
+      "secondary": "{count, plural, one {# victoria en clásica} other {# victorias en clásicas}}"
+    }
+  },
+  "calendar": {
+    "heading": "Calendario · {count} carreras",
+    "expectedTotal": "Bolsa total esperada de la temporada:",
+    "expectedTotalTooltip": "Suma calculada en directo de la bolsa esperada de todas las carreras de la temporada",
+    "summary": "{completed} terminadas · {scheduled} próximas",
+    "stageRace": "Carrera por etapas · {count, plural, one {# etapa} other {# etapas}}",
+    "oneDay": "Carrera de un día"
+  },
+  "division": "División {div}",
+  "promotionNote": "Los 2 primeros ascienden",
+  "relegationNote": "Los 4 últimos descienden",
+  "table": {
+    "rank": "#",
+    "team": "Equipo",
+    "stageWins": "Victorias de etapa",
+    "points": "Puntos",
+    "progression": "Evolución"
+  },
+  "you": "Tú",
+  "promotion": "Sube",
+  "relegation": "Baja",
+  "myProgression": "Evolución de puntos de tu equipo",
+  "loadError": "No se pudo cargar la temporada. Inténtalo de nuevo.",
+  "retry": "Reintentar",
+  "recap": {
+    "heading": "Tu temporada, en resumen",
+    "metaFinal": "Temporada {number} · final",
+    "eyebrow": "Temporada {number} completada",
+    "stat": {
+      "rank": "Puesto final",
+      "points": "Puntos",
+      "stageWins": "Victorias de etapa",
+      "prize": "Premios ganados",
+      "classicWins": "Victorias en clásicas"
+    },
+    "rankLine": "n.º {rank} de {size} en la División {division}",
+    "movement": {
+      "promoted": "Ascenso",
+      "relegated": "Descenso",
+      "maintained": "Mantienes la División {division}"
+    },
+    "boardVerdict": {
+      "label": "El veredicto de la directiva",
+      "value": "{met} de {total} objetivos cumplidos",
+      "confidence": "confianza",
+      "confidenceTo": "a",
+      "attribution": "{name} · Presidente · veredicto de la temporada",
+      "ctaMeeting": "Ir a la junta anual",
+      "ctaBoardroom": "Abrir la sala de juntas"
+    },
+    "highlight": {
+      "prizeLeader": "Líder en premios de la División {division}",
+      "biggestSale": "Mayor venta de la temporada",
+      "stageKing": "Rey de las etapas del equipo: {name}",
+      "stageKingValue": "{count, plural, one {# victoria} other {# victorias}}",
+      "classicKing": "Rey de las clásicas del equipo: {name}",
+      "classicKingValue": "{count, plural, one {# victoria} other {# victorias}}",
+      "turningPoint": "El mejor día de la temporada",
+      "turningPointValue": "{race} · {points} pts",
+      "biggestResult": "Mejor resultado individual",
+      "biggestResultValue": "{rider} · {race}",
+      "rival": "Rival más cercano: {team}",
+      "rivalBeatenBy": "lo superaste por {n} pts",
+      "rivalBehindBy": "{n} pts por detrás"
+    },
+    "copyLink": "Copiar enlace del resumen",
+    "linkCopied": "Enlace copiado",
+    "downloadCard": "Descargar tarjeta para compartir",
+    "downloading": "Preparando…",
+    "downloadError": "No se pudo crear la imagen. Inténtalo de nuevo.",
+    "shareCardMeta": "División {division} · n.º {rank} de {size}"
+  },
+  "documentary": {
+    "heading": "El documental",
+    "metaFinal": "Temporada {number} · final",
+    "eyebrow": "Tu temporada, contada al completo",
+    "error": "No se pudo cargar el documental de la temporada.",
+    "sourceLlm": "Narración pulida con IA",
+    "sourceDeterministic": "Narración de la temporada",
+    "card": {
+      "eyebrow": "Documental de la temporada {number}",
+      "turningPoint": "Punto de inflexión",
+      "pts": "pts",
+      "result": "Mayor resultado",
+      "rival": "Rival más cercano",
+      "finalPoints": "Puntos finales"
+    }
+  }
+}

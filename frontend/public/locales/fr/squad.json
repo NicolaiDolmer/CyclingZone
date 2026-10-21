@@ -1,0 +1,147 @@
+{
+  "page": {
+    "title": {
+      "u23": "{team} U23",
+      "junior": "{team} Juniors"
+    },
+    "fallbackTitle": {
+      "u23": "Équipe U23",
+      "junior": "Équipe juniors"
+    },
+    "subtitle": {
+      "u23": "Équipe U23, coureurs de 22 ans ou moins",
+      "junior": "Équipe juniors, coureurs de 18 ans ou moins"
+    },
+    "squadValue": "Valeur de l'effectif : {value} CZ$",
+    "rosterCount": "{count}/{cap} coureurs dans l'effectif",
+    "seniorsStayHint": "Les coureurs de ton effectif senior restent seniors tant que tu ne les déplaces pas. Ouvre un coureur et utilise Changer d'effectif."
+  },
+  "tabs": {
+    "ariaLabel": "Sections de l'effectif",
+    "calendar": "Calendrier",
+    "results": "Résultats",
+    "standings": "Classement"
+  },
+  "empty": {
+    "squad": {
+      "title": "Signe un talent dans ton académie",
+      "description": {
+        "u23": "Les coureurs de l'académie de 22 ans ou moins peuvent courir pour ton équipe U23. Tu peux aussi y faire monter un junior.",
+        "junior": "Les coureurs de l'académie de 18 ans ou moins peuvent courir pour ton équipe juniors."
+      },
+      "action": "Aller à l'académie"
+    },
+    "races": {
+      "title": "Voir quand démarrent les courses de jeunes",
+      "action": "Feuille de route",
+      "calendar": {
+        "u23": "Ton équipe U23 n'a pas encore de courses au calendrier.",
+        "junior": "Ton équipe juniors n'a pas encore de courses au calendrier."
+      },
+      "results": {
+        "u23": "Ton équipe U23 n'a pas encore couru.",
+        "junior": "Ton équipe juniors n'a pas encore couru."
+      },
+      "standings": {
+        "u23": "Le classement U23 commence avec la première course U23.",
+        "junior": "Le classement juniors commence avec la première course juniors."
+      }
+    }
+  },
+  "error": {
+    "title": "Impossible de charger ton effectif",
+    "description": "Rien n'a été modifié. Tes coureurs sont en sécurité.",
+    "retry": "Réessayer"
+  },
+  "development": {
+    "hint": "Comment la note de chaque coureur devrait progresser avec ton entraînement, et la note la plus haute que son rôle peut atteindre."
+  },
+  "filter": {
+    "u23": "U23 · âge max. {age} ({count})",
+    "junior": "Juniors · âge max. {age} ({count})"
+  },
+  "standings": {
+    "headers": {
+      "team": "Équipe",
+      "races": "Courses",
+      "wins": "Victoires",
+      "podiums": "Podiums",
+      "points": "Points"
+    },
+    "count": "{count, plural, one {# équipe} other {# équipes}}",
+    "group": "Groupe {letter}",
+    "ownGroup": "Ton groupe",
+    "groupLabel": "Groupe",
+    "allGroups": "Tous les groupes",
+    "noGroup": {
+      "title": "Voir les groupes de jeunes",
+      "description": {
+        "u23": "Ton équipe U23 n'est pas encore dans un groupe. Les groupes sont dans Courses de jeunes.",
+        "junior": "Ton équipe juniors n'est pas encore dans un groupe. Les groupes sont dans Courses de jeunes."
+      }
+    },
+    "error": {
+      "title": "Impossible de charger le classement",
+      "description": "Rien n'a été modifié. Réessaie dans un instant."
+    }
+  },
+  "optOut": {
+    "label": "Courses",
+    "enter": "Engager en course",
+    "trainOnly": "Entraînement uniquement",
+    "noteTitle": {
+      "u23": "Ton effectif U23 s'entraîne au lieu de courir.",
+      "junior": "Ton effectif juniors s'entraîne au lieu de courir."
+    },
+    "noteBody": "L'assistant ne l'engagera pas, et tu ne peux pas l'engager à la main.",
+    "fromDay": "Prend effet dès le jour {day}, le premier jour de course pas encore verrouillé.",
+    "help": "Comment ça marche",
+    "saveError": "Impossible d'enregistrer ton choix. Rien n'a été modifié. Réessaie.",
+    "unavailable": "Ce choix n'est pas encore disponible. Réessaie plus tard."
+  },
+  "youthRaces": {
+    "title": "Courses de jeunes",
+    "subtitle": {
+      "u23": "Classement U23, un groupe à la fois",
+      "junior": "Classement juniors, un groupe à la fois"
+    },
+    "squadLabel": "Effectif",
+    "tabsLabel": "Sections des courses de jeunes",
+    "calendarHint": "Choisis tes coureurs pour chaque course. Tu peux modifier l'effectif jusqu'au départ de la première étape, même s'il a été choisi automatiquement.",
+    "headers": {
+      "race": "Course",
+      "team": "Ton équipe",
+      "action": "Action"
+    },
+    "status": {
+      "open": "Sélection ouverte",
+      "live": "En course",
+      "completed": "Terminée"
+    },
+    "team": {
+      "none": "Pas choisi",
+      "training": "Non engagé · entraînement",
+      "auto": "{count, plural, one {# coureur, choisi automatiquement} other {# coureurs, choisis automatiquement}}",
+      "manual": "{count, plural, one {# coureur choisi} other {# coureurs choisis}}",
+      "rode": "{count, plural, one {# coureur} other {# coureurs}}",
+      "belowFloor": "Moins de {min} : ajoute des coureurs"
+    },
+    "action": {
+      "pick": "Choisir les coureurs",
+      "edit": "Modifier l'effectif",
+      "view": "Voir la course",
+      "results": "Résultats"
+    },
+    "error": {
+      "title": "Impossible de charger les courses de jeunes",
+      "description": "Réessaie dans un instant."
+    },
+    "stages": "{count, plural, one {# étape} other {# étapes}}",
+    "count": "{count, plural, one {# course} other {# courses}}",
+    "noPool": {
+      "title": "Pas encore de groupe de jeunes pour ton équipe",
+      "u23": "Ton équipe n'est dans aucun groupe U23 cette saison, il n'y a donc pas de courses U23 à composer.",
+      "junior": "Ton équipe n'est dans aucun groupe juniors cette saison, il n'y a donc pas de courses juniors à composer."
+    }
+  }
+}

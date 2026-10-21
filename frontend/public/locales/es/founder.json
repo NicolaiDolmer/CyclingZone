@@ -1,0 +1,257 @@
+{
+  "metaTitle": "Únete a la lista de espera Founder · Cycling Zone",
+  "metaDescription": "Apoya Cycling Zone como Founder. El premium nunca comprará ciclistas ni resultados más fuertes. Únete a la lista de espera y ayuda a dar forma a un mánager de ciclismo justo.",
+  "languageLabel": "Idioma",
+  "badgeBeta": "Beta abierta",
+  "badgeFair": "Premium justo",
+  "heroEyebrow": "Beta abierta, debate sobre un premium justo",
+  "heroHeadline": "Monta tu equipo ciclista. Corre por el mundo. Apoya un juego de mánager justo.",
+  "heroSub": "Cycling Zone es un juego de mánager de ciclismo en el navegador donde importan las tácticas, la planificación a largo plazo y la rivalidad de la comunidad. Estoy explorando un premium, pero la regla es sencilla:",
+  "heroSubStrong": "el juego debe ser justo para todos. No puedes pagar por mejores ciclistas, entrenamiento más rápido ni mejores resultados.",
+  "ctaPrimary": "Únete a la lista de espera Founder",
+  "ctaSecondary": "Leer la promesa completa",
+  "promiseTitle": "Cycling Zone debe seguir siendo justo",
+  "promiseBody": "El premium puede desbloquear identidad, comodidad, analítica y formas de apoyar el desarrollo. No puede desbloquear mejores resultados de carrera, entrenamiento más rápido, ciclistas más fuertes, ventajas en los fichajes, mejores probabilidades de ojeo ni poder oculto.",
+  "promiseFootnote": "Esta promesa aparece aquí y junto a cualquier información de precios futura. Es el mensaje de confianza más importante de toda la conversación sobre el premium.",
+  "tiersTitle": "¿Cómo podría ser un premium justo?",
+  "tiersSub": "Nada de esto es definitivo. Las tarjetas de abajo muestran un posible conjunto de precios mensuales. Para el nivel Premium estoy sopesando {prices}/mes, y unirte a la lista de espera me ayuda a decidir.",
+  "perDayApprox": "≈ {price}/día",
+  "founderNoteTitle": "¿Dónde encaja la lista de espera Founder?",
+  "founderNoteBody": "Founder no es un nivel de pago aparte. Es un estatus de lista de espera anticipada para los primeros 100 jugadores que quieran ser tenidos en cuenta si el pago se abre más adelante. Unirse no te compromete a nada y hoy no se te cobra nada.",
+  "tierFree": {
+    "name": "Mánager gratuito",
+    "tagline": "Jugadores nuevos / ocasionales",
+    "bullets": [
+      "Acceso competitivo completo",
+      "Nada recortado del juego base",
+      "Los jugadores gratuitos seguirán siendo competitivos, para siempre"
+    ]
+  },
+  "tierSupporter": {
+    "name": "Plan Premium",
+    "priceSuffix": "/mes",
+    "altYearTemplate": "{annual}/año (= 10 meses)",
+    "tagline": "Jugadores implicados",
+    "bullets": [
+      "Insignia Premium en el perfil",
+      "Temas de perfil y cosmética",
+      "Rol en Discord",
+      "Filtros guardados e historial ampliado"
+    ]
+  },
+  "tierPro": {
+    "name": "Analista Pro",
+    "priceSuffix": "/mes",
+    "tagline": "Mánagers hardcore",
+    "bullets": [
+      "Analítica avanzada",
+      "Comparación de ciclistas",
+      "Paneles de ojeo",
+      "Listas de seguimiento de fichajes y exportación de datos"
+    ]
+  },
+  "tierPatron": {
+    "name": "Mecenas",
+    "priceSuffix": "/mes",
+    "tagline": "Superfans / primeros creyentes",
+    "bullets": [
+      "Insignia Founder y cosmética",
+      "Preguntas y respuestas con el desarrollador",
+      "Votos en temas de la hoja de ruta ajenos al equilibrio",
+      "Créditos en el juego"
+    ]
+  },
+  "fairnessTitle": "Qué se puede vender y qué no se debe vender nunca",
+  "fairnessSub": "La promesa de la marca convertida en reglas concretas. A prueba de bombas.",
+  "soldCol": "Se puede vender",
+  "notSoldCol": "NO se puede vender (pay-to-win)",
+  "sold": [
+    "Insignia Premium",
+    "Temas de perfil / cosmética",
+    "Rol en Discord",
+    "Paneles guardados",
+    "Historial ampliado",
+    "Analítica y comparación de ciclistas",
+    "Exportación de datos",
+    "Votos en temas de la hoja de ruta ajenos al equilibrio"
+  ],
+  "notSold": [
+    "Entrenamiento más rápido",
+    "Mejores resultados de carrera",
+    "Mayor presupuesto de fichajes",
+    "Mejores probabilidades de ojeo",
+    "Carreras clasificatorias exclusivas para usuarios de pago",
+    "Moneda de pago que altere el equilibrio",
+    "Funciones de poder",
+    "Votos que cambien el equilibrio / la economía"
+  ],
+  "benefitsTitle": "¿Qué reciben los miembros de la lista de espera Founder?",
+  "benefitsBody": "El estatus Founder es identidad y un agradecimiento, nunca una ventaja competitiva. La lista final se decide junto con la comunidad antes de que se abra el pago.",
+  "benefitsList": [
+    {
+      "title": "Insignia Founder permanente",
+      "desc": "Una marca de identidad que no se podrá comprar más adelante."
+    },
+    {
+      "title": "Rol Founder en Discord",
+      "desc": "Una señal fuerte para la comunidad."
+    },
+    {
+      "title": "Tema de perfil o marco cosmético",
+      "desc": "Valor de Founder temprano."
+    },
+    {
+      "title": "Tu nombre en el Muro de Founders",
+      "desc": "Para los primeros creyentes."
+    },
+    {
+      "title": "Novedades mensuales del desarrollo",
+      "desc": "Genera confianza y transparencia."
+    },
+    {
+      "title": "Voto en temas de la hoja de ruta ajenos al equilibrio",
+      "desc": "Nunca sobre equilibrio ni ventaja competitiva."
+    }
+  ],
+  "formSectionTitle": "Únete a la lista de espera Founder",
+  "formSectionSub": "NO te compromete a nada. Hoy no se te cobra nada. El objetivo es ver si hay suficiente interés en apoyar económicamente el proyecto antes de que añada pagos.",
+  "faqTitle": "Preguntas que me han hecho",
+  "faqItems": [
+    {
+      "q": "¿Se está volviendo Cycling Zone pay-to-win?",
+      "a": "No. El núcleo competitivo debe seguir siendo justo. El premium trata de identidad, comodidad, analítica y formas de apoyar el desarrollo."
+    },
+    {
+      "q": "¿Pueden competir los jugadores gratuitos?",
+      "a": "Sí. Los jugadores gratuitos tienen acceso completo al núcleo competitivo del juego. Esa es la base de la justicia."
+    },
+    {
+      "q": "¿Pueden los usuarios premium comprar ciclistas más fuertes o entrenamiento más rápido?",
+      "a": "No. Esas funciones no se deben vender. Punto."
+    },
+    {
+      "q": "¿Por qué preguntar ahora por el premium?",
+      "a": "Para saber si Cycling Zone puede ser sostenible antes de construir lo que no toca. Mejor enterarme antes de invertir."
+    },
+    {
+      "q": "¿Está activo el pago ahora?",
+      "a": "No. Primero la lista de espera, el pago después, y solo si la respuesta de la comunidad es positiva. Al unirte no se te cobra nada."
+    },
+    {
+      "q": "¿Qué pasa si la gente no quiere premium?",
+      "a": "Entonces el premium espera y el foco vuelve a la retención, la jugabilidad y el crecimiento de la comunidad. De eso trata preguntar primero."
+    }
+  ],
+  "footerPrivacy": "Política de privacidad",
+  "footerTerms": "Condiciones de venta",
+  "footerBack": "Volver a Cycling Zone",
+  "form": {
+    "contactLegend": "Cómo contacto contigo",
+    "contactHelp": "Hay que rellenar al menos uno de los campos de abajo.",
+    "emailLabel": "Correo electrónico",
+    "emailPlaceholder": "tu@correo.com",
+    "discordLabel": "Usuario de Discord (opcional)",
+    "discordPlaceholder": "p. ej. nicolai.dolmer",
+    "interestLegend": "¿Cuánto te interesa?",
+    "tierLegend": "¿Qué nivel se ajustaría a ti?",
+    "tierHelp": "Estoy probando distintos precios, tu respuesta no te compromete.",
+    "benefitsLegend": "¿Qué te importaría? (opcional)",
+    "benefitsHelp": "Elige todas las que quieras.",
+    "mainReasonLabel": "¿Cuál es el motivo principal por el que te planteas apoyar el proyecto? (opcional)",
+    "mainReasonPlaceholder": "Escribe unas frases...",
+    "fairnessLabel": "¿Algo que te haría decir que no? (opcional)",
+    "fairnessPlaceholder": "p. ej. mecánicas pay-to-win, sistemas injustos...",
+    "countryLabel": "¿Dónde vives?",
+    "followUpConsent": "Puedes contactar conmigo con hasta 2 preguntas de seguimiento (entrevista / encuesta corta). Es opcional.",
+    "gdprBefore": "He leído y acepto la",
+    "gdprLink": "política de privacidad",
+    "gdprAfter": "y consiento que se guarden mi correo y mi usuario de Discord para la finalidad indicada arriba.",
+    "privacyPath": "/privacy-policy",
+    "submit": "Únete a la lista de espera Founder",
+    "submitLoading": "Enviando...",
+    "submitDisclaimer": "No hago spam y nunca comparto tus datos. Siempre puedes escribirme para que te quite.",
+    "honeypotLabel": "Deja este campo vacío",
+    "successTitle": "¡Estás en la lista!",
+    "successBody": "Gracias por unirte pronto. Te escribiré cuando se abra el premium, y antes si tengo preguntas sobre lo que piensas.",
+    "successNextTitle": "Próximos pasos:",
+    "successNext": [
+      {
+        "text": "Únete a nuestro Discord para novedades y preguntas"
+      },
+      {
+        "text": "Sigue las patch notes para ver los avances"
+      },
+      {
+        "text": "Revisa tu bandeja de entrada en los próximos días"
+      }
+    ],
+    "successDiscordCta": "Únete al Discord",
+    "interestOptions": {
+      "very": "Muy interesado, quiero estar desde el principio",
+      "maybe": "Quizá, depende del precio y del contenido",
+      "unsure": "No lo tengo claro, primero quiero saber más"
+    },
+    "tierOptions": {
+      "supporter_monthly": {
+        "label": "Premium mensual",
+        "sub": "{price}/mes, apoya el proyecto y desbloquea la insignia Founder"
+      },
+      "supporter_annual": {
+        "label": "Premium anual",
+        "sub": "{price}/año, lo mismo que el mensual + 2 meses gratis"
+      },
+      "pro_analyst_monthly": {
+        "label": "Analista Pro mensual",
+        "sub": "{price}/mes, Premium + análisis táctico avanzado"
+      },
+      "free_only": {
+        "label": "Solo gratis",
+        "sub": "Jugaré gratis, no pagaré"
+      }
+    },
+    "benefitOptions": {
+      "founder_badge": "Insignia Founder en el perfil",
+      "early_pricing": "Asegurar el precio de lanzamiento para el futuro",
+      "dev_dialog": "Diálogo directo con el desarrollador (Discord/MD)",
+      "beta_features": "Acceso anticipado a las funciones nuevas",
+      "tactical_analysis": "Análisis táctico avanzado",
+      "income_breakdown": "Estadísticas detalladas de ingresos",
+      "ad_free": "Experiencia sin anuncios",
+      "support_project": "Solo para apoyar el proyecto"
+    },
+    "countryOptions": {
+      "DK": "Dinamarca",
+      "NO": "Noruega",
+      "SE": "Suecia",
+      "DE": "Alemania",
+      "NL": "Países Bajos",
+      "BE": "Bélgica",
+      "FR": "Francia",
+      "IT": "Italia",
+      "ES": "España",
+      "GB": "Reino Unido",
+      "IE": "Irlanda",
+      "PL": "Polonia",
+      "CH": "Suiza",
+      "AT": "Austria",
+      "US": "EE. UU.",
+      "OTHER": "Otro país"
+    },
+    "errors": {
+      "contact": "Introduce al menos un correo o un usuario de Discord",
+      "email": "Dirección de correo no válida",
+      "discordHandle": "Usuario de Discord no válido (p. ej. nicolai.dolmer o Nombre#1234)",
+      "interestLevel": "Elige tu nivel de interés",
+      "preferredTier": "Elige un nivel",
+      "country": "País no válido",
+      "valuedBenefits": "Se ha seleccionado un beneficio desconocido",
+      "gdprConsent": "Debes aceptar la política de privacidad para continuar"
+    },
+    "insertErrors": {
+      "duplicate": "Ya estás en la lista. Revisa tu bandeja de entrada (y el spam) por mi primer correo.",
+      "rls": "Acceso denegado. Recarga la página e inténtalo de nuevo. Contacta con soporte si el problema persiste.",
+      "network": "No se pudo conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
+      "unknown": "Algo salió mal. Inténtalo de nuevo en un momento."
+    }
+  }
+}

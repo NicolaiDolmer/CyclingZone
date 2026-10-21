@@ -156,6 +156,14 @@ export const FULL_TIER_RULES = [
 export const SOURCE_FILE_COUNT_THRESHOLD = 6;
 
 // Pure: klassificér en filliste i TIER FULL eller TIER AFFECTED.
+export function needsFrontendTypecheck(files) {
+  return files.some(file => file.startsWith("frontend/") ||
+    file.startsWith("backend/") || /(^|\/)package(-lock)?\.json$/.test(file) ||
+    file.startsWith("scripts/ci/typecheck-baseline") ||
+    file === ".github/workflows/frontend-typecheck.yml");
+}
+
+// Pure: klassificér en filliste i TIER FULL eller TIER AFFECTED.
 export function classifyTier(files) {
   const matches = [];
   for (const rule of FULL_TIER_RULES) {
@@ -350,6 +358,12 @@ function main() {
 
   console.log(`\nÆndrede filer (${files.length}):`);
   for (const f of files) console.log(`  - ${f}`);
+
+  if (needsFrontendTypecheck(files)) {
+    console.log("\nCI-job: frontend-typecheck-baseline");
+    console.log("  node scripts/ci/typecheck-baseline.mjs");
+    console.log("  Ved færre fejl: kør med --update og commit den lavere baseline.");
+  }
 
   const result = classifyTier(files);
 

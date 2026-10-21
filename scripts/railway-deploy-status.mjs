@@ -35,6 +35,10 @@
  *   - Matchet deployment har enhver anden status (BUILDING, DEPLOYING,
  *     QUEUED, WAITING, SLEEPING, SKIPPED, eller en fremtidig ukendt vaerdi)
  *     → "pending".
+ *   - #6859: intet SUCCESS for SHA'en selv, men et SUCCESS-deploy af en nyere
+ *     main-SHA der indeholder den (git merge-base --is-ancestor, se
+ *     scripts/ci/deploy-coverage.mjs) → "success". FAILED/CRASHED for SHA'en
+ *     selv er stadig "failed"; et afloest (REMOVED) deploy er daekket.
  *   - ENHVER API-/netvaerks-/parse-fejl → "pending" (aldrig "failed" — en
  *     API-hikke maa aldrig faa merge-koeen til at rapportere et falsk rødt
  *     Railway-deploy; det var praecis den fejlklasse #5489 handler om, blot
@@ -83,6 +87,7 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { DEFAULT_PROJECT_ID } from "./ops/railway-log-watch.mjs";
+import { gitCoverageCheck } from "./ci/deploy-coverage.mjs";
 
 export { DEFAULT_PROJECT_ID };
 
@@ -120,18 +125,42 @@ const SUCCESS_STATUSES = new Set(["SUCCESS"]);
  * @param {string} sha
  * @returns {"success"|"failed"|"pending"}
  */
-export function classifyDeploymentStatus(deployments, sha) {
+export function classifyDeploymentStatus(deployments, sha, { covers } = {}) {
   if (!sha) return "pending";
   const target = String(sha).trim().toLowerCase();
   const match = (deployments ?? []).find((d) => {
     const hash = d?.meta?.commitHash;
     return typeof hash === "string" && hash.trim().toLowerCase() === target;
   });
+  const status = String(match?.status ?? "").toUpperCase();
+  // #6859: en fejlet build af SELVE SHA'en er og bliver en fejl.
+  if (match && (status === "FAILED" || status === "CRASHED")) return "failed";
+  if (match && SUCCESS_STATUSES.has(status)) return "success";
+  // #6859 (ejer 18/10): et SUCCESS-deploy af en nyere main-SHA der indeholder
+  // SHA'en beviser ogsaa den (Railway kan springe/afloese mellem-builds; et
+  // afloest deploy staar som REMOVED).
+  if (findCoveringDeployment(deployments, sha, covers)) return "success";
   if (!match) return "pending"; // SHA ikke fundet (endnu) — se docstring foroven
-  const status = String(match.status ?? "").toUpperCase();
   if (FAILED_STATUSES.has(status)) return "failed";
-  if (SUCCESS_STATUSES.has(status)) return "success";
   return "pending"; // BUILDING/DEPLOYING/QUEUED/WAITING/SLEEPING/SKIPPED/ukendt
+}
+
+/**
+ * #6859: nyeste SUCCESS-deployment af en ANDEN SHA, som `covers(sha)` (git:
+ * maal-SHA er forfader til kandidaten, kandidaten ligger paa main, se
+ * scripts/ci/deploy-coverage.mjs) godkender. Uden `covers` aldrig et match.
+ * @returns {{status?:string, meta?:{commitHash?:string}}|null}
+ */
+export function findCoveringDeployment(deployments, sha, covers) {
+  if (!sha || typeof covers !== "function") return null;
+  const target = String(sha).trim().toLowerCase();
+  for (const d of deployments ?? []) {
+    const hash = d?.meta?.commitHash;
+    if (typeof hash !== "string" || hash.trim().toLowerCase() === target) continue;
+    if (!SUCCESS_STATUSES.has(String(d?.status ?? "").toUpperCase())) continue;
+    try { if (covers(hash.trim())) return d; } catch { /* ukendt bevis = ikke daekket */ }
+  }
+  return null;
 }
 
 // ── Netvaerk ─────────────────────────────────────────────────────────────────
@@ -249,6 +278,7 @@ export async function getRailwayDeployStatus(opts) {
     url = RAILWAY_API_URL,
     first = 20,
     fetchImpl = fetch,
+    covers,
   } = opts ?? {};
 
   if (!token) {
@@ -270,8 +300,12 @@ export async function getRailwayDeployStatus(opts) {
       fetchImpl,
     );
     const nodes = data?.deployments?.edges?.map((e) => e.node) ?? [];
-    const result = classifyDeploymentStatus(nodes, sha);
+    const result = classifyDeploymentStatus(nodes, sha, { covers });
     console.error(`[railway-deploy-status] ${nodes.length} deployment(s) hentet, SHA ${String(sha).slice(0, 7)} -> ${result}`);
+    const own = nodes.some((n) => String(n?.meta?.commitHash ?? "").trim().toLowerCase() === String(sha).trim().toLowerCase()
+      && SUCCESS_STATUSES.has(String(n?.status ?? "").toUpperCase()));
+    const cover = result === "success" && !own ? findCoveringDeployment(nodes, sha, covers) : null;
+    if (cover) console.error(`[railway-deploy-status] daekket af nyere main-SHA ${String(cover.meta.commitHash).slice(0, 7)} (SUCCESS, indeholder ${String(sha).slice(0, 7)}, #6859)`);
     return result;
   } catch (err) {
     console.error(`[railway-deploy-status] API-fejl (klassificeret som pending): ${err.message}`);
@@ -287,8 +321,11 @@ async function main() {
     return i >= 0 ? process.argv[i + 1] : undefined;
   };
 
+  const sha = argValue("--sha") || process.env.SHA || process.env.GITHUB_SHA;
   const status = await getRailwayDeployStatus({
-    sha: argValue("--sha") || process.env.SHA || process.env.GITHUB_SHA,
+    sha,
+    // #6859: git-baseret daeknings-tjek (koeres i deploy-verify's checkout).
+    covers: sha ? gitCoverageCheck(sha) : undefined,
     token: process.env.RAILWAY_TOKEN,
     projectId: process.env.RAILWAY_PROJECT_ID || DEFAULT_PROJECT_ID,
     serviceId: process.env.RAILWAY_SERVICE_ID,

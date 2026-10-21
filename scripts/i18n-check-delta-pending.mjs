@@ -24,17 +24,21 @@
 // skal enhver feature-PR der tilføjer EN-strenge også levere oversættelserne —
 // ellers vokser gælden pr. sprog i stedet for at gå mod nul.
 //
+// Kun sprog registreret i frontend/src/i18n/languages.js er maalsprog. En
+// uregistreret locale-mappe er work in progress og springes over (meldt som
+// info), praecis som i18n-check-keys.mjs og i18n-check-key-parity.mjs (#6806).
+//
 // Brug:
-//   node scripts/i18n-check-delta-pending.mjs
+//   node scripts/i18n-check-delta-pending.mjs [--root <dir>]
 //
 // CI: .github/workflows/i18n-check.yml, jobbet `delta-pending` (blokerende).
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PSEUDO_LANG, registeredLanguages } from "./i18n-check-key-parity.mjs";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
-const LOCALES_DIR = join(ROOT, "frontend", "public", "locales");
 
 export const SOURCE_LNG = "en";
 export const PLACEHOLDER = "__MISSING__";
@@ -103,63 +107,98 @@ export function formatPendingMessage(lng, ns, keys) {
   );
 }
 
-function listLngs() {
-  return readdirSync(LOCALES_DIR).filter((name) => {
+/**
+ * Hvilke locale-mapper er maalsprog? Kun sprog registreret i
+ * frontend/src/i18n/languages.js. En uregistreret mappe er work in progress
+ * (samme filter som i18n-check-keys.mjs og i18n-check-key-parity.mjs, #6806):
+ * den maa ikke blokere delta-pending eller check:i18n, men meldes som info.
+ *
+ * @param {string[]} dirs  locale-mapper paa disk
+ * @param {Iterable<string>} registered  koder fra languages.js
+ * @returns {{ targets: string[], skipped: string[] }}
+ */
+export function selectTargetLngs(dirs, registered) {
+  const reg = new Set(registered);
+  const candidates = dirs.filter((l) => l !== SOURCE_LNG && !IGNORED_LNGS.has(l) && l !== PSEUDO_LANG);
+  return {
+    targets: candidates.filter((l) => reg.has(l)),
+    skipped: candidates.filter((l) => !reg.has(l)),
+  };
+}
+
+function listLngs(localesDir) {
+  return readdirSync(localesDir).filter((name) => {
     try {
-      return statSync(join(LOCALES_DIR, name)).isDirectory();
+      return statSync(join(localesDir, name)).isDirectory();
     } catch {
       return false;
     }
   });
 }
 
-function listNamespaces(lng) {
-  return readdirSync(join(LOCALES_DIR, lng))
+function listNamespaces(localesDir, lng) {
+  return readdirSync(join(localesDir, lng))
     .filter((f) => f.endsWith(".json"))
     .map((f) => f.replace(/\.json$/, ""));
 }
 
-function loadJSON(lng, ns) {
-  return JSON.parse(readFileSync(join(LOCALES_DIR, lng, `${ns}.json`), "utf8"));
+function loadJSON(localesDir, lng, ns) {
+  return JSON.parse(readFileSync(join(localesDir, lng, `${ns}.json`), "utf8"));
 }
 
-function main() {
-  const lngs = listLngs();
+/**
+ * Koer hele guarden mod et repo-root. Returnerer i stedet for at exit'e, saa
+ * testen kan koere den mod en midlertidig mappe.
+ *
+ * @param {{ root?: string }} [opts]
+ * @returns {{ ok: boolean, fatal?: string, failures: string[], info: string[],
+ *             pendingTotal: number, targets: string[], skipped: string[], namespaces: string[] }}
+ */
+export function runDeltaPending({ root = ROOT } = {}) {
+  const localesDir = join(root, "frontend", "public", "locales");
+  const out = { ok: true, failures: [], info: [], pendingTotal: 0, targets: [], skipped: [], namespaces: [] };
+
+  const lngs = listLngs(localesDir);
   if (!lngs.includes(SOURCE_LNG)) {
-    console.error(
-      `[i18n-delta-pending] kildesproget "${SOURCE_LNG}" findes ikke i ${relative(ROOT, LOCALES_DIR)}`,
+    out.ok = false;
+    out.fatal = `[i18n-delta-pending] kildesproget "${SOURCE_LNG}" findes ikke i ${relative(root, localesDir)}`;
+    return out;
+  }
+
+  const registered = registeredLanguages(
+    readFileSync(join(root, "frontend", "src", "i18n", "languages.js"), "utf8"),
+  );
+  const { targets, skipped } = selectTargetLngs(lngs, registered);
+  out.targets = targets;
+  out.skipped = skipped;
+  if (skipped.length > 0) {
+    out.info.push(
+      `i18n delta-pending: springer uregistrerede locale-mapper over (work in progress): ${skipped.join(", ")}`,
     );
-    process.exit(1);
   }
+  if (targets.length === 0) return out;
 
-  const targets = lngs.filter((l) => l !== SOURCE_LNG && !IGNORED_LNGS.has(l));
-  if (targets.length === 0) {
-    console.log("✓ i18n delta-pending OK — kun kildesproget findes, intet at oversætte");
-    process.exit(0);
-  }
-
-  const namespaces = listNamespaces(SOURCE_LNG);
-  const failures = [];
-  let pendingTotal = 0;
+  const namespaces = listNamespaces(localesDir, SOURCE_LNG);
+  out.namespaces = namespaces;
 
   for (const lng of targets) {
     for (const ns of namespaces) {
       let sourceData;
       try {
-        sourceData = loadJSON(SOURCE_LNG, ns);
+        sourceData = loadJSON(localesDir, SOURCE_LNG, ns);
       } catch (err) {
-        failures.push(`[${SOURCE_LNG}/${ns}] kunne ikke læses: ${err.message}`);
+        out.failures.push(`[${SOURCE_LNG}/${ns}] kunne ikke læses: ${err.message}`);
         continue;
       }
 
       let targetData = null;
       try {
-        targetData = loadJSON(lng, ns);
+        targetData = loadJSON(localesDir, lng, ns);
       } catch (err) {
         // Manglende fil = hele namespacet er uoversat. Ugyldig JSON er en anden
         // fejlklasse og skal sige hvad den er, ikke drukne i en nøgle-liste.
         if (err.code !== "ENOENT") {
-          failures.push(`[${lng}/${ns}] ugyldig JSON: ${err.message}`);
+          out.failures.push(`[${lng}/${ns}] ugyldig JSON: ${err.message}`);
           continue;
         }
       }
@@ -167,22 +206,43 @@ function main() {
       const pending = findPendingKeys(sourceData, targetData);
       if (pending.length === 0) continue;
 
-      pendingTotal += pending.length;
+      out.pendingTotal += pending.length;
       const sample = pending.slice(0, 10).map((k) => `    · ${k}`).join("\n");
       const more = pending.length > 10 ? `\n    … og ${pending.length - 10} mere` : "";
-      failures.push(`${formatPendingMessage(lng, ns, pending)}\n${sample}${more}`);
+      out.failures.push(`${formatPendingMessage(lng, ns, pending)}\n${sample}${more}`);
     }
   }
 
-  if (failures.length === 0) {
+  out.ok = out.failures.length === 0;
+  return out;
+}
+
+function main() {
+  const args = process.argv.slice(2);
+  const rootIdx = args.indexOf("--root");
+  const root = rootIdx >= 0 ? resolve(args[rootIdx + 1]) : ROOT;
+  const r = runDeltaPending({ root });
+
+  if (r.fatal) {
+    console.error(r.fatal);
+    process.exit(1);
+  }
+  for (const line of r.info) console.log(line);
+
+  if (r.targets.length === 0) {
+    console.log("✓ i18n delta-pending OK — ingen registrerede målsprog ud over kildesproget, intet at oversætte");
+    process.exit(0);
+  }
+
+  if (r.ok) {
     console.log(
-      `✓ i18n delta-pending OK — ${SOURCE_LNG} → ${targets.join(", ")} fuldt oversat (${namespaces.length} namespaces)`,
+      `✓ i18n delta-pending OK — ${SOURCE_LNG} → ${r.targets.join(", ")} fuldt oversat (${r.namespaces.length} namespaces)`,
     );
     process.exit(0);
   }
 
-  for (const msg of failures) console.error(msg);
-  console.error(`\n✗ i18n delta-pending FAILED — ${pendingTotal} uoversatte noegler`);
+  for (const msg of r.failures) console.error(msg);
+  console.error(`\n✗ i18n delta-pending FAILED — ${r.pendingTotal} uoversatte noegler`);
   process.exit(1);
 }
 

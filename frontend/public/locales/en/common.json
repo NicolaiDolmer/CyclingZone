@@ -6,6 +6,7 @@
       "marked": "Market",
       "resultater": "Results",
       "min": "My",
+      "accountHelp": "Account & help",
       "admin": "Admin"
     },
     "item": {
@@ -62,6 +63,9 @@
     "label": "Language",
     "danish": "Dansk",
     "english": "English",
+    "fr": "Français",
+    "es": "Español",
+    "nl": "Nederlands",
     "switchTooltip": "Change language"
   },
   "actions": {

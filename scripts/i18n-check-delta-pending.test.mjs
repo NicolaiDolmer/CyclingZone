@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +10,8 @@ import {
   findPendingKeys,
   formatPendingMessage,
   flattenEntries,
+  selectTargetLngs,
+  runDeltaPending,
   IGNORED_LNGS,
   PLACEHOLDER,
 } from "./i18n-check-delta-pending.mjs";
@@ -72,6 +76,90 @@ test("fejlbeskeden peger på kommandoen der loeser problemet", () => {
 test("pseudo-locale en-XA er aldrig et maalsprog", () => {
   // en-XA genereres på runtime i frontend/src/i18n/index.js og har ingen filer.
   assert.ok(IGNORED_LNGS.has("en-XA"));
+});
+
+// #6806: uregistrerede locale-mapper er work in progress, samme filter som key-coverage.
+test("selectTargetLngs: kun registrerede sprog er maalsprog, resten er WIP", () => {
+  const r = selectTargetLngs(["en", "da", "nl", "en-XA", "fr"], ["en", "da", "fr"]);
+  assert.deepEqual(r.targets, ["da", "fr"]);
+  assert.deepEqual(r.skipped, ["nl"]);
+});
+
+test("selectTargetLngs: kildesproget og pseudo-locale er hverken maal eller WIP", () => {
+  const r = selectTargetLngs(["en", "en-XA"], ["en"]);
+  assert.deepEqual(r, { targets: [], skipped: [] });
+});
+
+function makeRoot(t, registered, locales) {
+  const root = mkdtempSync(join(tmpdir(), "i18n-delta-pending-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "frontend/src/i18n"), { recursive: true });
+  writeFileSync(
+    join(root, "frontend/src/i18n/languages.js"),
+    "export const LANGUAGES = [\n" + registered.map((c) => `  { code: "${c}", label: "${c}" },`).join("\n") + "\n];\n",
+  );
+  for (const [lng, namespaces] of Object.entries(locales)) {
+    const dir = join(root, "frontend/public/locales", lng);
+    mkdirSync(dir, { recursive: true });
+    for (const [ns, data] of Object.entries(namespaces)) writeFileSync(join(dir, `${ns}.json`), JSON.stringify(data));
+  }
+  return root;
+}
+
+function run(root) {
+  const r = spawnSync(process.execPath, [SCRIPT, "--root", root], { encoding: "utf8" });
+  return { status: r.status, output: r.stdout + r.stderr };
+}
+
+const EN = { common: { hello: "Hello", bye: "Bye" } };
+
+test("runDeltaPending: uoversat WIP-mappe blokerer ikke og meldes som info (#6806)", (t) => {
+  const root = makeRoot(t, ["en", "da"], {
+    en: EN,
+    da: { common: { hello: "Hej", bye: "Farvel" } },
+    nl: { common: { hello: "Hallo" } }, // uregistreret og ufaerdig
+  });
+  const r = runDeltaPending({ root });
+  assert.equal(r.ok, true, r.failures.join("\n"));
+  assert.deepEqual(r.targets, ["da"]);
+  assert.deepEqual(r.skipped, ["nl"]);
+  assert.match(r.info.join("\n"), /uregistrerede[^\n]*nl/);
+
+  const cli = run(root);
+  assert.equal(cli.status, 0, cli.output);
+  assert.match(cli.output, /springer uregistrerede locale-mapper over[^\n]*nl/);
+  assert.match(cli.output, /i18n delta-pending OK/);
+});
+
+test("runDeltaPending: registreret sprog med manglende noegler blokerer stadig (#6806)", (t) => {
+  const root = makeRoot(t, ["en", "da", "nl"], {
+    en: EN,
+    da: { common: { hello: "Hej", bye: "Farvel" } },
+    nl: { common: { hello: "Hallo" } },
+  });
+  const r = runDeltaPending({ root });
+  assert.equal(r.ok, false);
+  assert.equal(r.pendingTotal, 1);
+  assert.match(r.failures.join("\n"), /nl\/common/);
+
+  const cli = run(root);
+  assert.equal(cli.status, 1, cli.output);
+  assert.match(cli.output, /Manglende oversaettelser: 1 noegler i nl\/common/);
+});
+
+test("runDeltaPending: kun WIP-mapper og ingen registrerede maalsprog er groent (#6806)", (t) => {
+  const root = makeRoot(t, ["en"], { en: EN, nl: { common: {} } });
+  const cli = run(root);
+  assert.equal(cli.status, 0, cli.output);
+  assert.match(cli.output, /nl/);
+});
+
+test("runDeltaPending: pseudo-locale en-XA med mappe bliver aldrig et maalsprog", (t) => {
+  const root = makeRoot(t, ["en"], { en: EN, "en-XA": { common: {} } });
+  const r = runDeltaPending({ root });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.targets, []);
+  assert.deepEqual(r.skipped, []);
 });
 
 // Integration: guarden skal være GRØN på repoets egne locale-filer, ellers er

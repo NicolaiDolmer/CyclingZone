@@ -20,9 +20,9 @@
  */
 
 import { resolveThresholds, DAY_MS } from "./boardNegotiationThresholds.js";
-import { signMandate } from "./boardMandateMeeting.js";
+import { MandateSignConflictError, signMandate } from "./boardMandateMeeting.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
-import { MANDATE_OPENED_TITLE_CODE, notifyMandateOpened } from "./boardMandateEngine.js";
+import { MANDATE_OPENED_TITLE_CODE, isMandateSeasonEnded, notifyMandateOpened } from "./boardMandateEngine.js";
 
 /**
  * Cron-entry: tjek alle `proposed` mandater og send reminders / auto-sign
@@ -43,7 +43,7 @@ export async function processMandateAutoAcceptCron({
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (typeof notifyUser !== "function") throw new Error("notifyUser is required");
 
-  const summary = { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, errors: 0 };
+  const summary = { mandates_checked: 0, reminders_sent: 0, auto_accepted: 0, lapsed_ended_season: 0, errors: 0 };
 
   // Kill-switch: samme fail-safe-disciplin som alle andre mandat-indgange.
   // Ingen isBetaTester-parameter her — cronen kører for HELE populationen og
@@ -53,11 +53,7 @@ export async function processMandateAutoAcceptCron({
   // 'off' stopper stadig alt.
   if (!await isBoardMandateModelEnabled(supabase, { engineWrite: true })) return summary;
 
-  const { data: proposedMandates, error } = await supabase
-    .from("board_mandates")
-    .select("id, team_id, season_number, proposed_at, auto_accept_deadline")
-    .eq("status", "proposed");
-  if (error) throw error;
+  const { mandates: proposedMandates, stampsAvailable } = await loadProposedMandates(supabase);
   if (!proposedMandates?.length) return summary;
 
   const teamIds = [...new Set(proposedMandates.map((m) => m.team_id).filter(Boolean))];
@@ -73,12 +69,27 @@ export async function processMandateAutoAcceptCron({
     userIds: (teams || []).map((t) => t.user_id).filter(Boolean),
   });
 
+  // #6773 · Ét sæson-opslag pr. sæson pr. kørsel, ikke pr. mandat.
+  const seasonEndedByKey = new Map();
+  const seasonEnded = async (mandate) => {
+    const key = mandate.season_id ?? `n:${mandate.season_number}`;
+    if (!seasonEndedByKey.has(key)) seasonEndedByKey.set(key, await isMandateSeasonEnded(supabase, mandate));
+    return seasonEndedByKey.get(key);
+  };
+
   for (const mandate of proposedMandates) {
     summary.mandates_checked += 1;
     const team = teamById.get(mandate.team_id);
     if (!team) continue;
     try {
-      const result = await processMandateAutoAccept({ supabase, mandate, team, notifyUser, now, lastSeenByUserId });
+      // #6773 · Et forslag for en afsluttet sæson underskrives aldrig og får
+      // ingen påmindelser: det udløber ('lapsed'). Før blev det underskrevet
+      // efter skiftet og stod aktivt ved siden af næste sæsons mandat.
+      if (await seasonEnded(mandate)) {
+        if (await lapseProposedMandate({ supabase, mandateId: mandate.id, now })) summary.lapsed_ended_season += 1;
+        continue;
+      }
+      const result = await processMandateAutoAccept({ supabase, mandate, team, notifyUser, now, lastSeenByUserId, stampsAvailable });
       if (result.reminder_sent) summary.reminders_sent += 1;
       if (result.auto_accepted) summary.auto_accepted += 1;
     } catch (autoAcceptError) {
@@ -94,6 +105,60 @@ export async function processMandateAutoAcceptCron({
   }
 
   return summary;
+}
+
+const MANDATE_BASE_COLUMNS = "id, team_id, season_id, season_number, proposed_at, auto_accept_deadline";
+
+// #6946 · Dedupe-stemplerne pr. besked-slags. Stemplet står på mandatet, som
+// spilleren ikke kan slette (board_mandates har RLS uden policies), i modsætning
+// til notifications-rækken, som indbakken hard-sletter.
+export const MANDATE_NOTICE_STAMPS = Object.freeze({
+  opened: "opened_notified_at",
+  t3: "t3_notified_at",
+  t1: "t1_notified_at",
+});
+const STAMP_COLUMNS = Object.values(MANDATE_NOTICE_STAMPS);
+
+// #6946 · auto-migrate applier migrationen ~3 min EFTER deployet. Svarer
+// databasen i det vindue at en stempel-kolonne ikke findes (42703 fra Postgres,
+// PGRST204 fra PostgREST's skema-cache), kører cronen den gamle
+// notifications-dedupe i stedet for at fejle. Kun fejl der nævner en
+// stempel-kolonne tæller.
+export function isMissingStampColumnError(error) {
+  if (!error || (error.code !== "42703" && error.code !== "PGRST204")) return false;
+  const message = String(error.message ?? "");
+  return STAMP_COLUMNS.some((col) => message.includes(col));
+}
+
+async function loadProposedMandates(supabase) {
+  const { data, error } = await supabase
+    .from("board_mandates")
+    .select(`${MANDATE_BASE_COLUMNS}, ${STAMP_COLUMNS.join(", ")}`)
+    .eq("status", "proposed");
+  if (!error) return { mandates: data ?? [], stampsAvailable: true };
+  if (!isMissingStampColumnError(error)) throw error;
+  console.warn("  ⚠️  mandate auto-accept: stempel-kolonnerne (#6946) findes ikke endnu — bruger notifications-dedupe til migrationen er kørt");
+  const { data: legacy, error: legacyError } = await supabase
+    .from("board_mandates")
+    .select(MANDATE_BASE_COLUMNS)
+    .eq("status", "proposed");
+  if (legacyError) throw legacyError;
+  return { mandates: legacy ?? [], stampsAvailable: false };
+}
+
+/**
+ * #6773 · Betinget på `status = 'proposed'`, så et samtidigt sign eller en
+ * anden kørsel aldrig overskrives. Returnerer true når rækken blev lukket.
+ */
+async function lapseProposedMandate({ supabase, mandateId, now }) {
+  const { data, error } = await supabase
+    .from("board_mandates")
+    .update({ status: "lapsed", updated_at: now.toISOString() })
+    .eq("id", mandateId)
+    .eq("status", "proposed")
+    .select("id");
+  if (error) throw new Error(`board_mandates lapse failed: ${error.message}`);
+  return Array.isArray(data) && data.length > 0;
 }
 
 /**
@@ -113,7 +178,7 @@ async function loadLastSeenByUserId({ supabase, userIds }) {
   return map;
 }
 
-async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, now, lastSeenByUserId }) {
+async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, now, lastSeenByUserId, stampsAvailable }) {
   const result = { reminder_sent: false, auto_accepted: false };
   if (!mandate.proposed_at) return result;
 
@@ -126,19 +191,26 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
   if (daysSinceOpen >= thresholds.AUTO_ACCEPT) {
     // Keep på alt: ingen adjustments, ingen anmodning, intet vision-slot-svar
     // (et evt. åbent slot forbliver åbent til næste rigtige møde).
-    await signMandate(supabase, {
-      teamId: team.id,
-      mandateId: mandate.id,
-      adjustments: [],
-      request: null,
-      visionSlot: null,
-      now,
-      // #4839: cron-skrivning uden viewer — 'beta' skal underskrive for alle
-      // hold, ellers returnerer signMandate null og cronen tæller et
-      // auto_accepted der aldrig skete.
-      engineWrite: true,
-      signedVia: "auto_accept",
-    });
+    try {
+      await signMandate(supabase, {
+        teamId: team.id,
+        mandateId: mandate.id,
+        adjustments: [],
+        request: null,
+        visionSlot: null,
+        now,
+        // #4839: cron-skrivning uden viewer — 'beta' skal underskrive for alle
+        // hold, ellers returnerer signMandate null og cronen tæller et
+        // auto_accepted der aldrig skete.
+        engineWrite: true,
+        signedVia: "auto_accept",
+      });
+    } catch (signError) {
+      // Codex P2 (#6780): forslaget blev lukket (fx lapsed af sæsonskiftet)
+      // under underskriften. Ingen underskrift, ingen besked, ingen fejl.
+      if (signError instanceof MandateSignConflictError && signError.errorCode === "board_mandate_not_proposed") return result;
+      throw signError;
+    }
     result.auto_accepted = true;
     if (team.user_id) {
       await notifyUser({
@@ -159,14 +231,14 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
 
   if (daysSinceOpen >= thresholds.T_MINUS_1) {
     result.reminder_sent = await sendReminder({
-      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical: true,
+      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, stampsAvailable, critical: true,
     });
     return result;
   }
 
   if (daysSinceOpen >= thresholds.T_MINUS_3) {
     result.reminder_sent = await sendReminder({
-      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical: false,
+      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, stampsAvailable, critical: false,
     });
     return result;
   }
@@ -174,7 +246,7 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
   // #3579-mønsteret: åbnings-varsel KUN i mandatets første døgn.
   if (daysSinceOpen >= thresholds.NOTICE && daysSinceOpen < 1) {
     result.reminder_sent = await sendOpeningNotice({
-      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds,
+      supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, stampsAvailable,
     });
   }
 
@@ -190,10 +262,13 @@ async function processMandateAutoAccept({ supabase, mandate, team, notifyUser, n
  * "{days} dage tilbage", så cronens tekst er en anden end skiftets. Derfor
  * slås notitsen op direkte (manager + board_update + related_id = mandatet +
  * titleCode) i stedet for at stole på tekst-lighed.
+ *
+ * #6946 · Den egentlige dedupe-sandhed er nu stemplet på mandatet
+ * (`sendMandateNoticeOnce`). Notits-opslaget er kun BEVIS for at beskeden
+ * allerede er sendt af en vej der ikke stempler (sæsonskiftet, rækker fra før
+ * migrationen); finder cronen beviset, stempler den mandatet med det samme, så
+ * en senere sletning i indbakken ikke kan genåbne det.
  */
-async function hasOpeningNotice({ supabase, userId, mandateId }) {
-  return hasMandateNotice({ supabase, userId, mandateId, type: "board_update", titleCode: MANDATE_OPENED_TITLE_CODE });
-}
 
 // #6122 · Dedupe-nøgle (manager, type, mandat, titleCode) uden tidsvindue.
 // Reminder-teksten bærer "{daysLeft}", så notifyUser's 24t-tekst-dedup lod
@@ -212,30 +287,92 @@ async function hasMandateNotice({ supabase, userId, mandateId, type, titleCode }
   return Array.isArray(data) && data.length > 0;
 }
 
-async function sendOpeningNotice({ supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds }) {
+// #6946 · Sæt stemplet KUN hvis det stadig er NULL, så det første tidspunkt
+// bevares hvis to kørsler stempler samme mandat.
+async function stampMandateNotice({ supabase, mandateId, stamp, stampedAt }) {
+  const { error } = await supabase
+    .from("board_mandates")
+    .update({ [stamp]: stampedAt })
+    .eq("id", mandateId)
+    .is(stamp, null);
+  if (error) throw new Error(`board_mandates ${stamp} stamp failed: ${error.message}`);
+}
+
+/**
+ * #6946 · Højst én besked af hver slags pr. mandat, også når spilleren sletter
+ * den i indbakken. Rækkefølge:
+ *   1. Stemplet står → sendt, færdig.
+ *   2. Notits-bevis findes (sæsonskiftet / før migrationen / en kørsel der
+ *      døde mellem afsendelse og stempel) → stempl, send ikke.
+ *   3. Ellers: send, og stempl når beskeden er leveret.
+ * Stemplet skrives EFTER afsendelsen (Codex P2): et stempel før afsendelse
+ * ville tabe beskeden for altid, hvis processen døde imellem. Dør den efter
+ * afsendelsen, fanger trin 2 det i næste kørsel (notits-rækken står der).
+ * Samtidige kørsler med samme tekst fanges af notifyUser's 24t-tekst-dedup.
+ * Uden stempel-kolonnerne (migrations-vinduet) kører kun trin 2 + send, som før.
+ */
+async function sendMandateNoticeOnce({ supabase, mandate, userId, stamp, type, titleCode, now, stampsAvailable, send }) {
+  if (stampsAvailable && mandate[stamp]) return false;
+
+  const stampedAt = now.toISOString();
+  if (await hasMandateNotice({ supabase, userId, mandateId: mandate.id, type, titleCode })) {
+    if (stampsAvailable) await stampMandateNotice({ supabase, mandateId: mandate.id, stamp, stampedAt });
+    return false;
+  }
+
+  const delivered = await send();
+  if (delivered && stampsAvailable) await stampMandateNotice({ supabase, mandateId: mandate.id, stamp, stampedAt });
+  return delivered;
+}
+
+async function sendOpeningNotice({ supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, stampsAvailable }) {
   if (!team.user_id) return false;
-  if (await hasOpeningNotice({ supabase, userId: team.user_id, mandateId: mandate.id })) return false;
 
   // Samme regel som reminderne: dage tilbage af vinduet, rundet op, min. 1.
   const days = Math.max(1, Math.ceil(thresholds.AUTO_ACCEPT - daysSinceOpen));
-  const result = await notifyMandateOpened(supabase, {
-    teamId: team.id,
-    mandateId: mandate.id,
-    seasonNumber: mandate.season_number,
-    days,
+  return sendMandateNoticeOnce({
+    supabase,
+    mandate,
     userId: team.user_id,
-    dnaKey: team.team_dna_key ?? null,
-    notifyUser,
+    stamp: MANDATE_NOTICE_STAMPS.opened,
+    type: "board_update",
+    titleCode: MANDATE_OPENED_TITLE_CODE,
     now,
+    stampsAvailable,
+    send: async () => {
+      const result = await notifyMandateOpened(supabase, {
+        teamId: team.id,
+        mandateId: mandate.id,
+        seasonNumber: mandate.season_number,
+        days,
+        userId: team.user_id,
+        dnaKey: team.team_dna_key ?? null,
+        notifyUser,
+        now,
+      });
+      return Boolean(result?.delivered);
+    },
   });
-  return Boolean(result?.delivered);
 }
 
-async function sendReminder({ supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical }) {
+async function sendReminder({ supabase, team, mandate, notifyUser, now, daysSinceOpen, thresholds, stampsAvailable, critical }) {
   if (!team.user_id) return false;
   const type = critical ? "board_critical" : "board_update";
   const titleCode = critical ? "notif.boardMandateT1Reminder.title" : "notif.boardMandateT3Reminder.title";
-  if (await hasMandateNotice({ supabase, userId: team.user_id, mandateId: mandate.id, type, titleCode })) return false;
+  return sendMandateNoticeOnce({
+    supabase,
+    mandate,
+    userId: team.user_id,
+    stamp: critical ? MANDATE_NOTICE_STAMPS.t1 : MANDATE_NOTICE_STAMPS.t3,
+    type,
+    titleCode,
+    now,
+    stampsAvailable,
+    send: () => deliverReminder({ team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical, type, titleCode }),
+  });
+}
+
+async function deliverReminder({ team, mandate, notifyUser, now, daysSinceOpen, thresholds, critical, type, titleCode }) {
   const daysLeft = Math.max(1, Math.ceil(thresholds.AUTO_ACCEPT - daysSinceOpen));
   const isSingle = daysLeft === 1;
   const result = await notifyUser({

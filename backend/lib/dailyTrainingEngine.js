@@ -1,8 +1,11 @@
+import { trainingDateRpc } from "./trainingDateRpc.js";
 // Daglig trænings-orchestrator (#1305) — eksekverer ÉN trænings-dag for ÉT hold.
 //
 // Idempotent via et unique-index i training_day_runs: reservation-first strategi
 // bruger en pending-row som mutex. Postgres 23505 unique-violation ved INSERT
-// → alreadyRan=true uden videre DB-skriv.
+// → alreadyRan=true uden videre DB-skriv, medmindre raekken er en reservation som en
+// anden koersel holder lige nu: saa en retryable held-fejl (#6759 gammel sti, #6827
+// loebsdags-stien).
 //
 // #4846/#4847: HVILKET index der er mutexen afgoeres af `training_tick_per_race_day`:
 //   flag off → UNIQUE(team_id, tick_date)                                   WHERE game_day IS NULL
@@ -24,6 +27,7 @@
 // stien har ingen bonus (ejer 15/9, TRAINING_RULES.md §13.3 beslutning 3). Ingen
 // nondeterminisme udover `now`-default + updated_at-timestamps.
 
+import { randomUUID } from "node:crypto";
 import { copenhagenDateString, copenhagenWeekdayKey, copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
 // #4850 spor C2 (ejer 24/9): loebsdagen er et mellem-pas paa etapens profil-evner,
@@ -44,6 +48,7 @@ import { buildCapsForRider, sameCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
+import { captureException } from "./sentry.js";
 import { riderLevelBand } from "./staffAbilityConstants.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isRaceDayDevelopmentEnabled } from "./raceDayDevelopmentFlag.js";
@@ -67,6 +72,144 @@ import {
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
 // findes for at sweepens noegle-strenge og motorens INSERT kan dele ÉN sandhed.
 export const TRAINING_DAY_RUN_DEFAULT_SQUAD = "senior";
+// #6596: oprydning af en reservation efter en phase-1-fejl proeves et par gange,
+// fordi sletningen typisk rammer samme forbigaaende nedbrud som selve fejlen.
+const RESERVATION_CLEANUP_ATTEMPTS = 3;
+const RESERVATION_CLEANUP_BACKOFF_MS = 250;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ── #6759: selvrettende reservation paa den gamle kalenderdags-sti ─────────────
+// Fejler baade phase 1 OG oprydningen (samme nedbrud), bliver en pending-raekke
+// staaende og ville blokere holdet resten af dagen. Reservationen baerer derfor sit
+// stadie i rapporten:
+//   "loading" = kun laesninger/beregning, intet skrevet. En forældet "loading"-raekke
+//               er ledig: naeste koersel sletter den betinget og reserverer forfra.
+//   "writing" = phase 2 er i gang (eller fejlede midt i writes). ALDRIG ledig: en
+//               blokeret dag er sikrere end et dobbelt-tick efter delvise ability-writes.
+// `token` binder stadie-skiftet og oprydningen til PRAECIS denne reservation: en
+// koersel der selv blev overtaget, finder ikke sin token ved skiftet til "writing",
+// kaster foer writes og sletter aldrig den nye ejers raekke. Derfor er det sikkert
+// at taerskelen er kort.
+// Raekker uden stadie (skrevet foer #6759) behandles konservativt som optaget.
+export const LEGACY_RESERVATION_STAGE_LOADING = "loading";
+export const LEGACY_RESERVATION_STAGE_WRITING = "writing";
+// Taerskel = én sweep-cyklus: begge traenings-crons (training sweep + training
+// day-close) tikker hvert 5. minut (cron.js). En levende reservation lever kun
+// under ét holds phase 1 (sekunder), saa en "loading"-raekke aeldre end ét cron-
+// interval er efterladt, og en overtagelse af en langsom levende koersel er
+// ufarlig (token, se ovenfor).
+export const STALE_LEGACY_RESERVATION_MS = 5 * 60 * 1000;
+
+/**
+ * #6759: er en legacy-reservation forældet og dermed ledig? Kun en "loading"-raekke
+ * aeldre end taerskelen. `created_at` er databasens egen tid ved INSERT.
+ * @param {{stage?:string|null, report?:{stage?:string}|null, created_at?:string|null}} row
+ * @param {Date} now
+ */
+export function isReclaimableLegacyReservation(row, now) {
+  if (!isLegacyLoadingReservation(row)) return false;
+  const createdAt = Date.parse(row.created_at ?? "");
+  return Number.isFinite(createdAt) && createdAt < now.getTime() - STALE_LEGACY_RESERVATION_MS;
+}
+
+/** #6759: en uafregnet "loading"-reservation (frisk eller forældet). */
+export function isLegacyLoadingReservation(row) {
+  return (row?.stage ?? row?.report?.stage) === LEGACY_RESERVATION_STAGE_LOADING;
+}
+
+// #6759: noeglen er optaget paa den gamle sti. Tre udfald:
+//   "settled"   — afregnet, "writing" eller gammelt format: alreadyRan som foer.
+//   "reclaimed" — forældet "loading": slettet betinget, kalderen reserverer forfra.
+//   kast        — frisk "loading": en anden koersel er i gang ELLER oprydningen
+//                 fejlede for nylig. Holdet er IKKE afregnet: sweepene taeller
+//                 kastet som en fejl (datoen forbliver aaben) og proever igen, og
+//                 Train now svarer 409 (se isTrainingReservationHeldError); efter
+//                 taerskelen frigives raekken. Intet er skrevet.
+// Sletningen er compare-and-delete paa stadie + alder: to samtidige koersler kan
+// ikke begge slette (Postgres laaser raekken, den anden ser 0 raekker), og en frisk
+// reservation (created_at = nu) matcher aldrig. Taber en koersel sletningen eller det
+// nye INSERT, kaster den samme retryable fejl som ved en frisk reservation (vinderen
+// kan stadig fejle i phase 1), saa holdet afregnes hoejst én gang og aldrig tabes.
+async function resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }) {
+  const { data: rows, error } = await supabase.from("training_day_runs")
+    .select("id, created_at, report")
+    .eq("team_id", teamId).eq("tick_date", tickDate)
+    .eq("report->>stage", LEGACY_RESERVATION_STAGE_LOADING);
+  if (error) throw new Error(`training_day_runs reservation lookup: ${error.message}`);
+  const held = (rows ?? []).filter(isLegacyLoadingReservation);
+  if (!held.length) return "settled";
+  if (!held.every((row) => isReclaimableLegacyReservation(row, now))) throw reservationHeldError(teamId, tickDate);
+  const cutoff = new Date(now.getTime() - STALE_LEGACY_RESERVATION_MS).toISOString();
+  const { data: released, error: deleteError } = await supabase.from("training_day_runs").delete()
+    .eq("team_id", teamId).eq("tick_date", tickDate)
+    .eq("report->>stage", LEGACY_RESERVATION_STAGE_LOADING)
+    .lt("created_at", cutoff)
+    .select("id");
+  if (deleteError) throw new Error(`training_day_runs stale reservation: ${deleteError.message}`);
+  // En samtidig koersel kom foerst og er maaske stadig i phase 1: ikke afregnet endnu.
+  if (!(released ?? []).length) throw reservationHeldError(teamId, tickDate);
+  console.warn(`  ♻️ training_day_runs: stale reservation for team ${teamId} (${tickDate}) released`);
+  return "reclaimed";
+}
+
+// #6759: holdet er ikke afregnet, men en anden koersel ejer noeglen lige nu.
+// Sweepene ser bare et kast: de taeller en fejl og tager holdet igen (datoen
+// forbliver aaben). `retryable` + `code` laeses af Train now-routen (#6798), der
+// svarer 409 "proev igen om lidt" i stedet for 500 + Sentry.
+export const TRAINING_RESERVATION_HELD = "training_reservation_held";
+
+function reservationHeldError(teamId, tickDate) {
+  const err = new Error(`training_day_runs: reservation for team ${teamId} (${tickDate}) is held by an unfinished run`);
+  err.retryable = true;
+  err.code = TRAINING_RESERVATION_HELD;
+  return err;
+}
+
+/**
+ * #6798: en anden koersel holder holdets reservation lige nu (intet er skrevet).
+ * Kun denne retryable fejl er "traening i gang"; andre retryable fejl (fx en
+ * forbigaaende gateway-fejl i staff-konteksten) er stadig rigtige fejl.
+ * @param {unknown} err
+ */
+export function isTrainingReservationHeldError(err) {
+  return err?.retryable === true && err?.code === TRAINING_RESERVATION_HELD;
+}
+
+// ── #6827: holdt reservation paa loebsdags-stien ─────────────────────────────
+// Loebsdags-raekken staar som `{ pending: true }` fra reservationen til den sidste
+// rapport-update, altsaa gennem baade phase 1 og phase 2. En optaget noegle betyder
+// derfor ikke noedvendigvis "allerede koert": en sweep kan vaere midt i samme
+// loebsdag. Train now maa ikke svare already_trained_today og gaa videre til
+// senere loebsdage, mens det tidligere tick stadig skriver (409, se routen).
+//   afregnet (ingen pending)       → alreadyRan som foer.
+//   frisk pending (< taerskelen)   → retryable held-fejl; intet er skrevet.
+//   forældet pending               → alreadyRan som foer: en efterladt raekke (fx
+//                                    nedbrud i phase 2) er en blokeret loebsdag,
+//                                    aldrig en ledig (ingen overtagelse her).
+//   ingen raekke (frigivet imens)  → retryable held-fejl: den anden koersel
+//                                    fejlede i phase 1, proev igen om lidt.
+// Samme taerskel som den gamle sti (STALE_LEGACY_RESERVATION_MS); et tick for ét
+// hold tager sekunder, saa en levende koersel er altid frisk.
+/**
+ * @param {{pending?:string|boolean|null, report?:{pending?:boolean}|null, created_at?:string|null}} row
+ * @param {Date} now
+ */
+export function isHeldRaceDayReservation(row, now) {
+  if (String(row?.pending ?? row?.report?.pending) !== "true") return false;
+  const createdAt = Date.parse(row.created_at ?? "");
+  // Ukendt alder behandles konservativt som en levende koersel.
+  return !Number.isFinite(createdAt) || createdAt >= now.getTime() - STALE_LEGACY_RESERVATION_MS;
+}
+
+async function assertRaceDayReservationSettled({ supabase, runRowFilter, teamId, tickDate, now }) {
+  const { data: rows, error } = await runRowFilter(
+    supabase.from("training_day_runs").select("created_at, pending:report->>pending"),
+  );
+  if (error) throw new Error(`training_day_runs reservation lookup: ${error.message}`);
+  if (!(rows ?? []).length || rows.some((row) => isHeldRaceDayReservation(row, now))) {
+    throw reservationHeldError(teamId, tickDate);
+  }
+}
 
 // ── #6500 (Udvikling 2.0 del 1, D6): daglig udvikling kun paa managerhold ─────
 // AI-, bank- og testhold (og hold uden manager) koerer stadig det daglige tick:
@@ -324,14 +467,19 @@ export async function runTeamTrainingDay({
     : query.eq("team_id", teamId).eq("tick_date", tickDate));
 
   // ── 1) Reservation: INSERT pending-row; 23505 → alreadyRan ───────────────────
-  const { error: insertError } = conditionPerDate ? { error: null } : await supabase
+  // #6759: kun den gamle sti baerer stadie + token (se headeren ved
+  // STALE_LEGACY_RESERVATION_MS); loebsdags-stiens raekke er uaendret.
+  const reservationToken = useRaceDayKey ? null : randomUUID();
+  const reserve = () => supabase
     .from("training_day_runs")
     .insert({
       team_id: teamId,
       tick_date: tickDate,
       executed_by: executedBy,
       bonus_applied: bonus,
-      report: { pending: true },
+      report: useRaceDayKey
+        ? { pending: true }
+        : { pending: true, stage: LEGACY_RESERVATION_STAGE_LOADING, token: reservationToken },
       // Bart INSERT uden ON CONFLICT: det PARTIELLE unique-index paa
       // (team_id, season_id, game_day) WHERE game_day IS NOT NULL rejser 23505
       // praecis som tabel-constrainten gjorde. Udelades felterne, falder raekken
@@ -340,6 +488,20 @@ export async function runTeamTrainingDay({
       // DEFAULT 'senior' staa, saa raekken er bit-identisk med foer.
       ...(useRaceDayKey ? { season_id: seasonId, game_day: raceDay, squad: squadKey } : {}),
     });
+  let { error: insertError } = conditionPerDate ? { error: null } : await reserve();
+  // #6759: optaget noegle paa den gamle sti → er det en forældet "loading"-reservation,
+  // slettes den betinget og der reserveres forfra (hoejst ét forsoeg).
+  if (insertError?.code === "23505" && !useRaceDayKey
+    && await resolveTakenLegacyReservation({ supabase, teamId, tickDate, now }) === "reclaimed") {
+    ({ error: insertError } = await reserve());
+    // Taber vi INSERT'et efter frigivelsen, ejer en samtidig koersel noeglen og er
+    // maaske stadig i phase 1 — ikke "alreadyRan", men proev igen senere.
+    if (insertError?.code === "23505") throw reservationHeldError(teamId, tickDate);
+  }
+  // #6827: paa loebsdags-stien kaster en holdt raekke; kun en afregnet giver alreadyRan.
+  if (insertError?.code === "23505" && useRaceDayKey) {
+    await assertRaceDayReservationSettled({ supabase, runRowFilter, teamId, tickDate, now });
+  }
 
   if (insertError) {
     if (insertError.code === "23505") {
@@ -364,11 +526,12 @@ export async function runTeamTrainingDay({
   if(conditionPerDate && roster==null) throw new Error('Frozen training date requires a verified roster');
   let riders=roster??[];
   if(conditionPerDate) {
-    const {data:work,error}=await supabase.rpc('register_training_date_work',{
+    const {data:work,error}=await trainingDateRpc(supabase, 'register_training_date_work',{
       p_team_id:teamId,p_season_id:seasonId,p_tick_date:tickDate,p_game_days:dateDays,
       p_expected_rider_ids:dateWork?.expected_rider_ids ?? riders.map(rider=>rider.id),p_deadline_at:deadlineAt,p_registered_at:now.toISOString(),
-    });
+    }, executedBy === 'manager');
     if(error) throw new Error(`register training date: ${error.message}`);
+    if(work?.held === true) throw reservationHeldError(teamId, tickDate);
     dateWork=work;
     const unsafe=dateWork.expected_rider_ids.filter(id=>{
       const rider=riders.find(row=>row.id===id);
@@ -399,14 +562,23 @@ export async function runTeamTrainingDay({
     if (conditionPerDate) {
       emptyReport.condition_per_date = true;
       emptyReport.condition_settled = settlesCondition;
-      const { error } = await supabase.rpc('commit_training_date_tick', {
+      const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
         p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
         p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
         p_executed_by: executedBy, p_report: emptyReport, p_abilities: [], p_conditions: [],
         p_history: [], p_race_history: [], p_scores: [],
-      });
+      }, executedBy === 'manager');
       if (error) throw new Error(`daily condition commit: ${error.message}`);
-    } else await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
+      if (data?.held === true) throw reservationHeldError(teamId, tickDate);
+    } else if (useRaceDayKey) await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }));
+    else {
+      // #6759: samme ejerskabs-bevis som skiftet til "writing" (token), saa en
+      // overtaget koersel aldrig overskriver den nye ejers raekke.
+      const { data: written, error } = await runRowFilter(supabase.from("training_day_runs").update({ report: emptyReport }))
+        .eq("report->>token", reservationToken).select("id");
+      if (error) throw new Error(`training_day_runs empty report: ${error.message}`);
+      if ((written ?? []).length !== 1) throw new Error("training_day_runs empty report: reservation no longer held");
+    }
     return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, squad: squadKey, report: emptyReport };
   }
 
@@ -642,9 +814,10 @@ export async function runTeamTrainingDay({
 
   // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
   // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
-  // (nul regression). Best-effort inde i loaderen — kan aldrig vælte træningsdagen.
+  // (nul regression). Vedvarende fejl: neutral i loaderen. #6596: forbigaaende fejl
+  // KASTER, saa catch'en nedenfor sletter reservationen og naeste sweep proever igen.
   const { facilityTier: trainingFacilityTier, staff: trainingStaff } =
-    await loadTrainingStaffContext(supabase, teamId);
+    await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true });
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   abilityUpdates = []; // { riderId, patch }
@@ -1213,11 +1386,46 @@ export async function runTeamTrainingDay({
     }
   }
 
+  // #6759: sidste skridt foer writes paa den gamle sti — reservationen skifter til
+  // "writing" og kan derefter aldrig overtages som forældet. Token-filteret beviser
+  // at vi stadig ejer den; fejler skiftet, er intet skrevet, og catch'en rydder op.
+  if (!useRaceDayKey) {
+    const { data: marked, error: markError } = await supabase.from("training_day_runs")
+      .update({ report: { pending: true, stage: LEGACY_RESERVATION_STAGE_WRITING, token: reservationToken } })
+      .eq("team_id", teamId).eq("tick_date", tickDate).eq("report->>token", reservationToken)
+      .select("id");
+    if (markError) throw new Error(`training_day_runs write stage: ${markError.message}`);
+    if ((marked ?? []).length !== 1) throw new Error("training_day_runs write stage: reservation no longer held");
+  }
+
   } catch (phase1Err) {
     // Load/beregnings-fejl: slet reservationen så holdet kan retrye samme dag.
-    try {
-      if (!conditionPerDate) await runRowFilter(supabase.from("training_day_runs").delete());
-    } catch { /* swallow — original fejl er vigtigst */ }
+    // #6596 (Codex-fund): under samme nedbrud kan sletningen også fejle, og en
+    // efterladt pending-række ville give alreadyRan resten af dagen. Derfor
+    // tjekkes svaret og prøves igen; lykkes det stadig ikke, meldes det højt, og
+    // #6759 frigiver den forældede "loading"-raekke ved en senere koersel.
+    // Paa den gamle sti slettes kun VORES reservation (token), aldrig en overtagers.
+    if (!conditionPerDate) {
+      let cleanupError = null;
+      const ownRow = (query) => (useRaceDayKey ? runRowFilter(query) : runRowFilter(query).eq("report->>token", reservationToken));
+      for (let attempt = 1; attempt <= RESERVATION_CLEANUP_ATTEMPTS; attempt += 1) {
+        try {
+          const { error } = await ownRow(supabase.from("training_day_runs").delete());
+          cleanupError = error ?? null;
+        } catch (err) {
+          cleanupError = err;
+        }
+        if (!cleanupError) break;
+        if (attempt < RESERVATION_CLEANUP_ATTEMPTS) await sleep(RESERVATION_CLEANUP_BACKOFF_MS * attempt);
+      }
+      if (cleanupError) {
+        console.error(`  ⚠️ training_day_runs reservation cleanup failed for team ${teamId} (${tickDate}): ${cleanupError?.message ?? cleanupError}`);
+        captureException(cleanupError instanceof Error ? cleanupError : new Error(String(cleanupError?.message ?? cleanupError)), {
+          tags: { lib: "dailyTrainingEngine", step: "reservation_cleanup" },
+          extra: { teamId, tickDate, originalError: phase1Err?.message ?? String(phase1Err) },
+        });
+      }
+    }
     throw phase1Err;
   }
 
@@ -1229,7 +1437,7 @@ export async function runTeamTrainingDay({
     const report = { riders: reportRiders, bonus_applied: bonus, executed_by: executedBy,
       tick_date: tickDate, game_day: raceDay, date_game_days: dateDays, condition_per_date: true,
       condition_settled: settlesCondition };
-    const { data, error } = await supabase.rpc('commit_training_date_tick', {
+    const { data, error } = await trainingDateRpc(supabase, 'commit_training_date_tick', {
       p_team_id: teamId, p_season_id: seasonId, p_squad: squadKey,
       p_game_day: raceDay, p_tick_date: tickDate, p_date_game_days: dateDays,
       p_executed_by: executedBy, p_report: report,
@@ -1237,12 +1445,14 @@ export async function runTeamTrainingDay({
       p_history: historyRows, p_race_history: raceDayHistoryRows, p_scores: scoreRows,
       p_race_loads: settlesCondition ? raceLoadRows : [],
       p_deadline_reached:deadlineReached,p_now:now.toISOString(),
-    });
+    }, executedBy === 'manager');
     if (error) throw new Error(`daily condition commit: ${error.message}`);
+    if (data?.held === true) throw reservationHeldError(teamId, tickDate);
     return { alreadyRan: data?.already_ran === true, tickDate, gameDay: raceDay, squad: squadKey, report:data?.report??report,workStatus:data?.work_status??null };
   }
   // Fra dette punkt er writes i gang: ved fejl bevares reservationen BEVIDST (blokeret dag er
   // sikrere end dobbelt-tick efter delvise ability-writes). Manuel recovery: slet rækken.
+  // #6759: raekken staar her som stage "writing" og frigives derfor aldrig automatisk.
 
   // ── 5) Persistér ─────────────────────────────────────────────────────────────
   // Ability-updates (gains + progress + evt. caps).

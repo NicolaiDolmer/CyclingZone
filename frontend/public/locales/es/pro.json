@@ -1,0 +1,70 @@
+{
+  "metaTitle": "Pásate a CZ Pro",
+  "title": "Hazte Founder",
+  "subtitle": "Apoya el desarrollo del juego y asegura tu estatus Founder. El juego gratuito sigue siendo totalmente competitivo. Pro es una insignia y una identidad, nunca una ventaja.",
+  "monthly": "Mensual",
+  "semiannual": "6 meses",
+  "monthlyPrice": "6,49 €/mes",
+  "semiannualPrice": "34,99 €",
+  "semiannualNote": "≈5,83 €/mes · ahorra ~10 %",
+  "vatNote": "Todos los precios incluyen el 25 % de IVA danés.",
+  "currencyNote": "Precios en euros. Cambia el juego a danés para pagar en coronas. La página de pago en sí está en danés.",
+  "prorataNote": "Tu primer cobro cubre solo lo que queda de este mes, así que puede ser menor que el precio indicado. El precio completo se aplica desde el día 1.",
+  "cta": "Continuar al pago",
+  "checkoutPaused": "Las compras están pausadas temporalmente mientras termino las condiciones de venta y la cancelación por autoservicio. Las cuentas existentes y el juego gratuito no se ven afectados.",
+  "error": "No se pudo iniciar el pago. Inténtalo de nuevo.",
+  "alreadyPro": "Eres Pro. Gracias por apoyar Cycling Zone.",
+  "alreadyFounder": "Eres Founder. Gracias por apoyar Cycling Zone desde el principio.",
+  "founderHeading": "Plazas Founder",
+  "founderSeatsTaken": "{taken} de {cap} plazas Founder ocupadas",
+  "founderSeatsRemaining": "Quedan {remaining} plazas",
+  "founderSeatsFull": "Todas las plazas Founder están ocupadas. Los nuevos suscriptores siguen recibiendo Pro completo.",
+  "founderExplainer": "Los primeros 50 suscriptores de pago se convierten en Founders. Los Founders conservan una insignia Founder permanente, incluso si la suscripción caduca más adelante.",
+  "fairnessNote": "Nunca pay-to-win: el dinero compra profundidad, comodidad y cosmética, nunca una ventaja competitiva.",
+  "termsAccept": "Acepto las <termsLink>Condiciones de venta</termsLink> y consiento expresamente que CZ Pro se entregue de inmediato, reconociendo que mi derecho de desistimiento caduca por ello para el periodo iniciado.",
+  "renewalNote": "La suscripción se renueva automáticamente hasta que la canceles. Sin permanencia más allá del periodo pagado; cancela cuando quieras desde los ajustes de tu cuenta.",
+  "choosePlan": "Elige tu plan",
+  "loadError": {
+    "message": "No pude cargar los datos de tu suscripción. No se ha perdido nada y tu cuenta no se ve afectada.",
+    "retry": "Reintentar"
+  },
+  "founderMark": {
+    "label": "Founder",
+    "aria": "Founder n.º {n} de {cap}",
+    "heroLine": "Founder n.º {n} de {cap}"
+  },
+  "gate": {
+    "note": "Pro muestra esto en todas las temporadas, no solo en la actual.",
+    "cta": "Ver Pro"
+  },
+  "riderHistory": {
+    "title": "Historial de temporadas",
+    "cta": "Ver Pro",
+    "note": "Pro muestra todas las habilidades de todas las temporadas, no solo de la actual.",
+    "ceilingLegend": "Tope de la escala (99)",
+    "empty": "Aún no hay historial de temporadas registrado.",
+    "errorTitle": "No se pudo cargar el historial de temporadas",
+    "statusErrorTitle": "No se pudo comprobar tu estado Pro",
+    "errorBody": "No se ha perdido nada. Las habilidades del ciclista no han cambiado.",
+    "retry": "Reintentar",
+    "emptyTitle": "Aún no hay habilidades registradas",
+    "checkAgain": "Comprobar de nuevo",
+    "now": "Ahora"
+  },
+  "savedFilters": {
+    "title": "Filtros guardados",
+    "save": "Guardar el filtro actual",
+    "namePlaceholder": "Ponle nombre a este filtro",
+    "saveConfirm": "Guardar",
+    "cancel": "Cancelar",
+    "remove": "Quitar",
+    "empty": "Aún no hay filtros guardados.",
+    "note": "Pro te permite guardar filtros con nombre y volver a ellos con un solo clic.",
+    "cta": "Ver Pro",
+    "removeNamed": "Quitar {name}",
+    "duplicate": "Ya tienes un filtro con ese nombre.",
+    "limit": "Has guardado {max} filtros, el máximo. Quita uno para guardar uno nuevo.",
+    "statusError": "No pude comprobar tu estado Pro, así que los filtros guardados quedan ocultos por ahora.",
+    "retry": "Reintentar"
+  }
+}

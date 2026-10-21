@@ -1,0 +1,225 @@
+{
+  "meta": {
+    "title": "Reglas · Cycling Zone",
+    "description": "La referencia de los límites, tasas y fórmulas de Cycling Zone: plantilla, finanzas, entrenamiento, subastas y carreras."
+  },
+  "page": {
+    "title": "Reglas",
+    "subtitle": "La referencia de autoridad para los límites, tasas y fórmulas de Cycling Zone.",
+    "intro": "Esta página es la fuente de verdad de los números del juego. La página de Ayuda explica cómo hacer las cosas; esta página enumera cuáles son realmente los límites y las tasas. Cuando un administrador fija un número (horarios de subasta, tasas de los préstamos de emergencia), puede cambiar de una temporada a otra, y se indica así.",
+    "faqLinkIntro": "Preguntas de Ayuda relacionadas",
+    "lastVerified": "Números verificados con el código del juego."
+  },
+  "sections": {
+    "navLabel": "Secciones de las reglas",
+    "squad": {
+      "label": "Plantilla y alineación",
+      "blocks": {
+        "cap": {
+          "title": "Tope de plantilla",
+          "text": "Puedes tener un máximo de {squadCap} ciclistas, igual en todas las divisiones. No hay mínimo: puedes vender hasta quedarte con 0 ciclistas sin penalización."
+        },
+        "enforcement": {
+          "title": "Tope estricto",
+          "text": "El tope es un límite estricto. No puedes comprar, pujar ni pedir cesiones por encima del máximo de {squadCap} ciclistas de tu división. No hay margen, ni multa, ni venta automática: un trato que te haría superar el tope simplemente se rechaza."
+        },
+        "academyExempt": {
+          "title": "Los ciclistas de la academia van aparte",
+          "text": "Los ciclistas de la academia nunca cuentan para el tope sénior de {squadCap} ciclistas y la comprobación de plantilla nunca los vende automáticamente. Tienen sus propios topes: {u23SquadCap} en el equipo sub-23 y {juniorSquadCap} en el equipo júnior."
+        }
+      }
+    },
+    "economy": {
+      "label": "Economía",
+      "blocks": {
+        "startingBalance": {
+          "title": "Saldo inicial",
+          "text": "Cada equipo empieza con {startingBalance} CZ$. CZ$ es la moneda del juego: se gana jugando y nunca se compra con dinero real."
+        },
+        "sponsor": {
+          "title": "Ingresos de patrocinio",
+          "text": "Los ingresos de patrocinio se escalan por división para que un equipo competente sea sostenible: División 1 {sponsorD1} CZ$, División 2 {sponsorD2} CZ$, División 3 {sponsorD3} CZ$, División 4 {sponsorD4} CZ$. Tu contrato firmado mantiene su base garantizada durante toda su duración. Si cambias de división mientras está en vigor, se paga además un ajuste de división aparte del {divisionAdjustmentPct} por ciento de la diferencia entre las dos divisiones, cada temporada que dure la diferencia."
+        },
+        "upkeep": {
+          "title": "Costes de mantenimiento",
+          "text": "Desde la temporada 5 tu equipo no tiene costes de mantenimiento: ni mantenimiento, ni Viajes y personal, ni mantenimiento de instalaciones o de la academia. Tus costes principales son los salarios de corredores y personal y los intereses de préstamos."
+        },
+        "salary": {
+          "title": "Salario del ciclista",
+          "text": "El salario de un ciclista se fija al firmarlo en el {salaryRatePct} % de su valor de producción actual en ese momento y no cambia automáticamente después. El valor de producción es lo que el juego espera que rinda esta temporada con sus habilidades actuales, no lo que vale en el mercado. La proporción es la misma para todos los equipos de todas las divisiones, y los ciclistas de la academia también la usan."
+        },
+        "negativeInterest": {
+          "title": "Intereses por saldo negativo",
+          "text": "Si tu saldo es negativo al inicio de la temporada, se añade un {negativeInterestPct} % de interés sobre el déficit."
+        },
+        "debtCeiling": {
+          "title": "Techo de deuda",
+          "text": "Cada división tiene una deuda máxima: División 1 {debtD1} CZ$, División 2 {debtD2} CZ$, División 3 {debtD3} CZ$, División 4 {debtD4} CZ$. Los préstamos nuevos se rechazan si el préstamo más su comisión te hicieran superar el techo. Los préstamos de emergencia automáticos pueden superarlo, pero recibes un aviso y debes recortar gastos."
+        },
+        "emergencyLoan": {
+          "title": "Préstamos de emergencia",
+          "text": "Los préstamos de emergencia llevan una comisión y un interés fijados en la configuración de préstamos (ahora mismo en torno al 15 % cada uno). Estas tasas las configura el administrador y pueden cambiar; el formulario de préstamo de la página de Finanzas siempre muestra los números actuales."
+        },
+        "divisionBonus": {
+          "title": "Bonus de división (fin de temporada)",
+          "text": "Un bonus único que se paga al final de la temporada. Léelo en dos pasos: elige la fila del puesto en que terminaste en tu propia división y luego la columna de la división en la que corriste. Las celdas en blanco no pagan nada, y tampoco cualquier puesto por debajo de la última fila.",
+          "rows": [
+            [
+              "Dónde terminaste",
+              "En la División 1",
+              "En la División 2",
+              "En la División 3",
+              "En la División 4"
+            ],
+            [
+              "1.º en tu división",
+              "{bonusD1P1} CZ$",
+              "{bonusD2P1} CZ$",
+              "{bonusD3P1} CZ$",
+              "{bonusD4P1} CZ$"
+            ],
+            [
+              "2.º en tu división",
+              "{bonusD1P2} CZ$",
+              "{bonusD2P2} CZ$",
+              "{bonusD3P2} CZ$",
+              "{bonusD4P2} CZ$"
+            ],
+            [
+              "3.º en tu división",
+              "{bonusD1P3} CZ$",
+              "{bonusD2P3} CZ$",
+              "{bonusD3P3} CZ$",
+              "{bonusD4P3} CZ$"
+            ],
+            [
+              "4.º en tu división",
+              "{bonusD1P4} CZ$",
+              "{bonusD2P4} CZ$",
+              "—",
+              "—"
+            ]
+          ]
+        }
+      }
+    },
+    "auctions": {
+      "label": "Subastas y pujas",
+      "blocks": {
+        "duration": {
+          "title": "Duración de la subasta",
+          "text": "Una subasta dura {auctionActiveHours, plural, one {# hora activa} other {# horas activas}}. Las horas nocturnas no cuentan: el mercado está activo de 08:00 a 24:00 todos los días (en pausa de 00:00 a 08:00). Estas franjas las configura el administrador."
+        },
+        "minBid": {
+          "title": "Puja mínima",
+          "text": "Tu puja debe superar el precio actual en al menos {minBidStep} CZ$. Si nadie ha pujado todavía, puedes igualar el precio de salida."
+        },
+        "extension": {
+          "title": "Prórroga de última hora",
+          "text": "Una puja realizada en los últimos {auctionExtensionMinutes} minutos prolonga la subasta para que los demás tengan ocasión de responder. Nada de pujar en el último segundo."
+        },
+        "proxy": {
+          "title": "Pujas automáticas y saldo reservado",
+          "text": "Puedes fijar un tope de puja automática y el sistema puja en tu nombre hasta ese tope. Las subastas activas que lideras cuentan a la vez como saldo reservado y como hueco de plantilla reservado, así que no puedes comprometerte más allá de tus fondos disponibles."
+        }
+      }
+    },
+    "transfers": {
+      "label": "Fichajes y plazos",
+      "blocks": {
+        "contractInherited": {
+          "title": "Los contratos se traspasan tal cual",
+          "text": "Cuando un ciclista cambia de equipo (por fichaje, intercambio o venta en subasta), el comprador asume el contrato existente sin cambios. El salario y la duración del contrato nunca se recalculan en un trato."
+        },
+        "loansCount": {
+          "title": "Las cesiones cuentan para el tope",
+          "text": "Las cesiones activas cuentan para el tamaño de tu plantilla, así que una plantilla llena puede ser rechazada en cesiones, subastas u otros tratos entrantes."
+        }
+      }
+    },
+    "races": {
+      "label": "Carreras y puntos",
+      "blocks": {
+        "prize": {
+          "title": "Premios en metálico",
+          "text": "Los premios en metálico se pagan por resultado: puntos por el puesto × {prizePerPoint} CZ$. Solo las carreras con una categoría de carrera (Grand Tour, WorldTour, ProSeries, etc.) generan premios; las carreras sin categoría dan 0."
+        },
+        "resultType": {
+          "title": "Tipo de resultado",
+          "text": "El resultado de una carrera de un día cuenta como resultado de clasificación general (GC). El tipo de resultado es solo una etiqueta: el premio depende de la tabla de puntos del puesto, no del tipo."
+        },
+        "freeAgentPrize": {
+          "title": "Ciclistas sin equipo",
+          "text": "Los premios que ganan los ciclistas que no están en el equipo de un mánager aumentan su valor de mercado, pero nunca se pagan a nadie. Los ciclistas sin propietario se vuelven más valiosos, pero ningún equipo recibe el dinero."
+        }
+      }
+    },
+    "season": {
+      "label": "Temporada y ascensos",
+      "blocks": {
+        "structure": {
+          "title": "Estructura de divisiones",
+          "text": "Hay {divisions} divisiones. La División {minDivision} es la más alta; la División {maxDivision} es la más baja y ahí empiezan los equipos nuevos."
+        },
+        "promotion": {
+          "title": "Ascensos y descensos",
+          "text": "Los ascensos y descensos están activos desde la temporada {firstPromotionSeason}. Al final de cada temporada a partir de entonces, los mejores equipos de cada división suben y los últimos bajan."
+        },
+        "transition": {
+          "title": "Cambio de temporada manual",
+          "text": "Pasar a una nueva temporada es una acción manual deliberada del administrador, nunca un cron automático. El cierre del mercado, el pitido final y las comprobaciones de plantilla siguen siendo automáticos."
+        }
+      }
+    },
+    "academy": {
+      "label": "Academia",
+      "blocks": {
+        "slots": {
+          "title": "Tamaño de la academia",
+          "text": "Tu academia tiene dos equipos con un tope estricto cada uno: hasta {u23SquadCap} ciclistas en el equipo sub-23 y {juniorSquadCap} en el equipo júnior, aparte de tu plantilla sénior."
+        },
+        "age": {
+          "title": "Rango de edad",
+          "text": "Los ciclistas de la academia tienen entre {academyMinAge} y {academyMaxAge} años. Las promesas más jóvenes reciben un multiplicador juvenil de desarrollo que se reduce hacia los 22 años."
+        },
+        "salary": {
+          "title": "Salario juvenil y contratos",
+          "text": "A los ciclistas de la academia se les paga el {academySalaryPct} % de su valor de producción actual, la misma proporción que a los ciclistas sénior, y firman contratos juveniles de {academyContractLength} temporadas."
+        },
+        "drift": {
+          "title": "Costes",
+          "text": "Desde la temporada 5 las plazas de la academia no tienen coste de mantenimiento. Una academia llena es ahora una cuestión de espacio en la plantilla, no de dinero."
+        }
+      }
+    },
+    "fairPlay": {
+      "label": "Juego limpio",
+      "blocks": {
+        "onePerPerson": {
+          "title": "Un equipo por persona",
+          "text": "Cada jugador puede tener un equipo en una cuenta. Llevar varios equipos con cuentas adicionales se considera trampa y se vigila mediante las señales de cuenta e inicio de sesión descritas en la política de privacidad."
+        },
+        "aiAutomation": {
+          "title": "Herramientas de IA y automatización",
+          "text": "Puedes usar herramientas de IA y hojas de cálculo para analizar ciclistas y planificar tu equipo. Las pujas, los fichajes, las tácticas y cualquier otra acción del juego las tienes que hacer tú. Los scripts, bots o agentes de IA que actúan en tu cuenta se consideran trampa."
+        },
+        "starProtection": {
+          "title": "Protección de ciclistas estrella",
+          "text": "Un ciclista cuyo valor de mercado sea de al menos {starValue} CZ$ cuenta como estrella y está protegido de las ventas forzosas. Es el mismo valor que ves en el perfil del ciclista."
+        },
+        "noBoardForBots": {
+          "title": "Equipos IA, banco y congelados",
+          "text": "Los equipos IA, el banco y los equipos congelados nunca tienen funciones de directiva; son solo para mánagers. Tampoco activan nunca consecuencias de la directiva."
+        }
+      }
+    }
+  },
+  "academyDisabledNote": "La Academia se lanza con el relanzamiento. Los límites de abajo son definitivos y se muestran como referencia; la función aún no está activa.",
+  "faqLinks": {
+    "minBidAmount": "¿Cuánto tengo que pujar por encima del precio actual?",
+    "debtCeiling": "¿Qué es el techo de deuda y cuándo se aplica?",
+    "prizeMoneyFaq": "¿Qué son los premios en metálico y cuándo se pagan?",
+    "divisionBonusFaq": "¿Qué es el bonus de división y cuándo se paga?",
+    "auctionExpiry": "¿Cuándo caduca una subasta?"
+  }
+}
