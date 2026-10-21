@@ -304,6 +304,22 @@ test('writer and reviewer invocation preserve selected cwd and distinct sandbox 
   assert.equal(childArgs('worker', t, 'schema', 'out').includes('--dangerously-bypass-approvals-and-sandbox'), false);
 });
 
+test('#7027: only writers get network; read-only roles stay offline', () => {
+  const t = { worktree: '/fixture', scratch: '/scratch' };
+  for (const role of ['worker', 'fixer', 'permission-probe']) {
+    assert.ok(childArgs(role, t, 'schema', 'out').includes('sandbox_workspace_write.network_access=true'));
+  }
+  for (const args of [childArgs('reviewer', t, 'schema', 'out'), childArgs('worker', { ...t, kind: 'investigate' }, 'schema', 'out')]) {
+    assert.equal(args.includes('sandbox_workspace_write.network_access=true'), false);
+  }
+});
+
+test('#7027: writers escalate git writes per command and never loosen the sandbox', () => {
+  assert.match(runner.WRITER_GIT_RULE, /command-only escalation/);
+  assert.match(runner.WRITER_GIT_RULE, /never disable the sandbox, add writable directories or change config/);
+  for (const op of ['fetch', 'rebase', 'commit', 'push']) assert.ok(runner.WRITER_GIT_RULE.includes(op));
+});
+
 test('Codex child receives explicit runtime even with a Claude parent and no Codex session variables', async () => {
   const { spawnSync } = await import('node:child_process');
   const inherited = { ...process.env, CZ_VERIFY_RUNTIME: 'claude' };

@@ -44,10 +44,17 @@ export function executionPlan(options, limit = hostLaneCap()) {
   };
 }
 
+// #7027: the Windows sandbox keeps everything under .git read-only, even when
+// added with --add-dir (measured 21/10), so writers run git writes through
+// command-only escalation (see WRITER_GIT_RULE). gh and npm need the network,
+// which workspace-write turns off by default.
+export const WRITER_GIT_RULE = 'Git metadata under .git is always read-only in this sandbox. Run every git command that writes (fetch, pull, rebase, commit, push) with command-only escalation through automatic approval review; never disable the sandbox, add writable directories or change config. A git write that fails without that escalation is not a blocker: request it and retry once.';
+
 export function childArgs(role, track, schema, output) {
   const readOnly = role === 'reviewer' || track.kind === 'investigate';
   const args = ['exec', '-C', track.worktree, ...(readOnly ? ['--sandbox','read-only'] : ['--approve-for-me']),
     '--json', '--output-schema', schema, '--output-last-message', output];
+  if (!readOnly) args.push('-c', 'sandbox_workspace_write.network_access=true');
   const selection = modelSelection(role, track);
   if (selection.model) args.push('--model', selection.model);
   if (selection.effort) args.push('-c', `model_reasoning_effort=${JSON.stringify(selection.effort)}`);
@@ -175,7 +182,9 @@ export async function runAgent(role, track, context) {
     ? `Run ONLY the local Git metadata write probe, not project implementation. Execute node ${JSON.stringify(path.join(context.root,'scripts/codex-git-write-probe.mjs'))} --worktree ${JSON.stringify(track.worktree)} --branch ${JSON.stringify(track.branch)} --out ${JSON.stringify(path.join(track.scratch,'git-permissions.json'))}. If sandbox permissions block this specific command, request command-only escalation through automatic approval review. Do not disable sandboxing, add writable directories, change config, start agents, or touch main/other branches. Report ready only after the probe artifact says ok=true; otherwise blocked with the precise reason.`
     : role === 'reviewer'
     ? `READ-ONLY independent review. Read the brief below, inspect git diff ${track.reviewBase || track.base}...HEAD and tests. Do not trust the worker's summary. Check scope, ownership, requirements, SSOT, test evidence, privacy and regressions. No writes or agents. Approve only if there are no blocking findings.\n${track.brief}`
-    : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${track.brief}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. Return blocked if a required command fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
+    : track.kind === 'investigate'
+    ? `${track.brief}\nCodex runtime: read-only sandbox without network. The orchestrator already fetched origin/main into ${track.worktree} and saved the issue with comments in ${path.join(track.scratch, 'issue.md')}; skip git fetch/pull and gh and read that file instead. No writes outside ${track.scratch}, no agents.\n`
+    : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${track.brief}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. ${WRITER_GIT_RULE} Return blocked if a required command still fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
   const childKey = `${track.issue}-${label}`;
   const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,
     children: [...(current.children || []).filter(c => c.key !== childKey), { key: childKey, state, pid }] }));
@@ -271,6 +280,11 @@ function productionDeps(root, worktreesRoot) {
       const scratch = path.join(worktreesRoot, '.wave-scratch', context.wave.waveId, slug);
       fs.mkdirSync(scratch, { recursive: true });
       const base = git(worktree, 'rev-parse', 'HEAD');
+      // #7027: investigate tracks run read-only without network, so they read the issue from scratch.
+      if (t.kind === 'investigate') {
+        fs.writeFileSync(path.join(scratch, 'issue.md'), execFileSync('gh', ['issue', 'view', String(t.issue), '--comments', '--repo', REPO],
+          { encoding: 'utf8', timeout: 30000 }));
+      }
       const brief = generateBrief({ ...t, slug, repoWorktreesRoot: worktreesRoot, scratchRoot: path.dirname(scratch) });
       fs.writeFileSync(path.join(scratch, 'brief.md'), brief);
       save(path.join(context.evidence, `${slug}.json`), { issue: t.issue, worktree, branch: t.branch, base, scratch });
