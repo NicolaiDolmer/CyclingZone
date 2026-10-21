@@ -622,6 +622,338 @@
         "title": "Terreno y perfiles de etapa",
         "text": "A partir de la temporada 2, las carreras con datos de recorrido muestran el perfil real de la etapa: es el recorrido exacto que ejecuta el motor de carreras, con la longitud, la pendiente y la categoría de cada subida, el sprint intermedio, los sectores de adoquines y dónde cae la meta. La categoría de una subida fija cuántos puntos de montaña hay en juego en la cima, y una meta en lo alto de una subida abre mayores diferencias que una meta tras un descenso. Toca una marca del perfil para ver qué hay en juego allí, o quién se lo llevó una vez disputada la etapa. Las carreras antiguas sin datos de recorrido siguen mostrando la etiqueta de terreno anterior: una silueta esquemática y una categoría indicativa, no un perfil medido."
       },
+      "raceIdentity": {
+        "title": "Tipos de carrera y señas de identidad",
+        "text": "Desde la temporada 5, cada vuelta por etapas corta tiene un tipo fijo que la acompaña de una temporada a otra, para que sepas para qué clase de carrera te preparas. Cada carrera tiene además una o dos señas de identidad que vuelven cada año: la misma subida decisiva, el mismo sector o la misma contrarreloj. El resto del recorrido varía un poco de una edición a otra. Los cinco monumentos tienen el mismo recorrido cada año; solo cambian el tiempo, la forma y la táctica. Los Grand Tours mantienen su propio formato. El tipo solo lo ves aquí, en la Ayuda; en la página de la carrera se nota en el propio recorrido.",
+        "rows": [
+          [
+            "Tipo",
+            "Qué esperar"
+          ],
+          [
+            "Carrera de velocistas",
+            "Etapas mayoritariamente llanas con al menos un día accidentado. Sin montaña, así que deciden los velocistas."
+          ],
+          [
+            "Carrera de escaladores",
+            "Deciden las etapas de montaña y alta montaña. En la División 1 son la preparación justo antes de cada Grand Tour."
+          ],
+          [
+            "Carrera accidentada",
+            "Repechos y subidas cortas y duras, pero sin montaña de verdad. Hecha para corredores explosivos."
+          ],
+          [
+            "Adoquines/Benelux",
+            "Sectores de adoquines en carreteras llanas y expuestas. Sin montaña."
+          ],
+          [
+            "Carrera contrarreloj",
+            "Deciden las contrarrelojes: a menudo un prólogo el primer día y una contrarreloj más larga al final de la carrera."
+          ],
+          [
+            "Carrera de grava",
+            "Sectores de grava en carreteras accidentadas. Sin montaña."
+          ],
+          [
+            "Montaña primero",
+            "La montaña llega primero. Los velocistas llegan a las etapas llanas del final con las piernas cansadas."
+          ],
+          [
+            "Polivalente",
+            "Un poco de todo: etapas llanas, montaña y una contrarreloj."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Tipo y seña de identidad de cada carrera",
+        "text": "Ordenadas por división y por fecha en el calendario. Los Grand Tours no están en la lista. Los cinco monumentos están al final.",
+        "rows": [
+          [
+            "Carrera",
+            "Tipo y seña de identidad"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Carrera de escaladores · Final en alto en Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "Polivalente · Final en alto en Col de la Brasque + contrarreloj llana"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Carrera de escaladores · Final en alto en Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Carrera de velocistas · Subida: Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Montaña primero · Final en alto en Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "Carrera de grava · Sector de grava: Piste des Aravis Blanches + sector de grava: Chemin du Plan-Bois en la última etapa"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Carrera accidentada · Final en subida en Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "Carrera de velocistas · Subida: Alto de Monegrillo"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Carrera de escaladores · Final en alto en Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "Polivalente · Final en alto en Monte Sassotorto + contrarreloj accidentada"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Carrera accidentada · Final en subida en Alto de Mendibeltz en la última etapa"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Adoquines/Benelux · Sector de adoquines: Pavé du Moulin-Brûlé + sector de adoquines: Chemin des Quatre-Vents en la última etapa"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "Polivalente · Final en alto en Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Carrera de escaladores · Final en alto en Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Carrera de escaladores · Final en alto en Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Carrera accidentada · Subida: Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Montaña primero · Final en alto en Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Carrera de escaladores · Final en alto en Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Carrera de velocistas · Subida: Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Carrera accidentada · Subida: Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Montaña primero · Final en alto en Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Carrera de velocistas · Subida: Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Adoquines/Benelux · Sector de adoquines: Pflasterweg Donauleiten + sector de adoquines: Alte Treppelstraße en la última etapa"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "Polivalente · Final en alto en Alto de Valdecuerna + contrarreloj llana"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Carrera accidentada · Final en subida en Muro di Montevergello en la última etapa"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Adoquines/Benelux · Sector de adoquines: Pavés de Thieumont + sector de adoquines: Chemin de la Hulpière en la última etapa"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "Polivalente · Final en alto en Passo della Gaviola + contrarreloj accidentada"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Carrera de grava · Sector de grava: Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Carrera de velocistas · Subida: Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "Polivalente · Final en alto en Alto de Xorret del Pinós + contrarreloj llana"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "Polivalente · Final en alto en Alto do Malhãozinho + contrarreloj accidentada"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Carrera accidentada · Final en subida en Monte do Castrelo en la última etapa"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Carrera de escaladores · Final en alto en Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Adoquines/Benelux · Sector de adoquines: Kasseiweg van Ronsbeke + sector de adoquines: Holle Kasseistraat en la última etapa"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Carrera de grava · Sector de grava: Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Carrera de escaladores · Final en alto en Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Montaña primero · Final en alto en Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "Polivalente · Final en alto en Alto da Senhora dos Ventos + contrarreloj llana"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Carrera de velocistas · Subida: Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "Carrera contrarreloj · Contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Carrera accidentada · Subida: Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Carrera de velocistas · Subida: Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Carrera accidentada · Final en subida en Stavnesbakken en la última etapa"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Adoquines/Benelux · Sector de adoquines: Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Carrera de velocistas · Subida: Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Carrera de escaladores · Final en alto en Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Carrera de velocistas · Subida: Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Adoquines/Benelux · Sector de adoquines: Kasseiweg van Holterberg"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Carrera accidentada · Final en subida en Muro di Castelvento en la última etapa"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Carrera de grava · Sector de grava: Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "Polivalente · Contrarreloj llana"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "Polivalente · Final en alto en Alto de Erroizar + contrarreloj accidentada"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Carrera contrarreloj · Contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Carrera accidentada · Subida: Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Carrera de velocistas · Subida: Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Montaña primero · Final en alto en Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Carrera de escaladores · Final en alto en Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "Polivalente · Contrarreloj accidentada"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Carrera accidentada · Subida: Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Carrera de velocistas · Subida: Côte de Kerhuel"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Adoquines/Benelux · Sector de adoquines: Kasseistrook van Bertembos + sector de adoquines: Holle Weg van Ottenrode en la última etapa"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monumento, recorrido fijo · Cipressina y Poggio dei Fiori antes de la meta"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monumento, recorrido fijo · Oude Kwaremberg y Paterhelling antes de la meta, además de sectores de adoquines"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monumento, recorrido fijo · Sectores de adoquines desde la Trouée d'Arembourg hasta el Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monumento, recorrido fijo · Côte de la Redoutière y Côte de la Roche-aux-Corbeaux, final en subida"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monumento, recorrido fijo · Madonna del Ghisello, luego Salita di Valtorta y un descenso hasta la meta"
+          ]
+        ]
+      },
       "raceDetail": {
         "title": "Abre una carrera: recorrido, ADN del terreno y tu alineación",
         "text": "Los nombres de las carreras se pueden pulsar en todo el juego. Abrir una carrera muestra sus resultados si se ha corrido o, para una carrera próxima, el perfil del recorrido por etapa, una barra de ADN del terreno con las habilidades que premia cada etapa y tu propia alineación con el encaje con el recorrido por etapa, para que elijas ciclistas que se adapten al recorrido. Elige una etapa en la franja de etapas para cambiar el perfil y el encaje con el recorrido. Las carreras con datos de recorrido muestran el perfil exacto que ejecuta el motor; las más antiguas sin ellos siguen mostrando una categoría de terreno indicativa. En la pestaña de resultados de una etapa puedes cambiar entre Etapa, General, Puntos, Montaña, Jóvenes y Equipos para ver la clasificación tras esa etapa, y un filtro de equipo te permite acotar las tablas a todos los equipos, a tu propio equipo o a uno concreto."

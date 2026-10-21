@@ -622,6 +622,338 @@
         "title": "Terræn og etapeprofiler",
         "text": "Fra sæson 2 viser løb med rutedata etapens rigtige profil: det er den nøjagtige rute race-motoren afvikler, med hver stignings længde, hældning og kategori, mellemsprinten, brostenssektorer, og hvor målstregen ligger. En stignings kategori afgør hvor mange bjergpoint der er på spil på toppen, og en målgang på toppen af en stigning giver større tidsforskelle end en målgang efter en nedkørsel. Tryk på en markør på profilen for at se hvad der er på spil der, eller hvem der tog den, når etapen er kørt. Ældre løb uden rutedata viser stadig det tidligere terræn-badge: en skematisk silhuet og en vejledende kategori, ikke en målt profil."
       },
+      "raceIdentity": {
+        "title": "Løbstyper og signaturer",
+        "text": "Fra sæson 5 har hvert kort etapeløb en fast type, der følger løbet fra sæson til sæson, så du ved, hvilken slags løb du planlægger efter. Hvert løb har også en eller to signaturer, der går igen hvert år: den samme afgørende stigning, sektor eller enkeltstart. Resten af ruten varierer lidt fra udgave til udgave. De fem monumenter kører den samme rute hvert år; kun vejr, form og taktik skifter. Grand Tours har deres eget format. Typen står kun her i Hjælp; på løbssiden ser du den i selve ruten.",
+        "rows": [
+          [
+            "Type",
+            "Hvad du kan vente"
+          ],
+          [
+            "Sprinterløb",
+            "Mest flade etaper med mindst én kuperet dag. Ingen bjerge, så sprinterne afgør det."
+          ],
+          [
+            "Klatreløb",
+            "Bjerg- og højbjergetaper afgør det. I Division 1 er de optakten lige før hver Grand Tour."
+          ],
+          [
+            "Kuperet løb",
+            "Bakker og korte, stejle stigninger, men ingen rigtige bjerge. Bygget til ryttere med et hurtigt ryk."
+          ],
+          [
+            "Brosten/Benelux",
+            "Brostenssektorer på flade, åbne veje. Ingen bjerge."
+          ],
+          [
+            "Enkeltstartsløb",
+            "Enkeltstarterne afgør det: ofte en prolog på første dag og en længere enkeltstart sent i løbet."
+          ],
+          [
+            "Grusløb",
+            "Grussektorer på kuperede veje. Ingen bjerge."
+          ],
+          [
+            "Bjerg-først",
+            "Bjergene kommer først. Sprinterne når de flade etaper til sidst med trætte ben."
+          ],
+          [
+            "Allround",
+            "Lidt af det hele: flade etaper, bjerge og en enkeltstart."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Type og signatur for hvert løb",
+        "text": "Sorteret efter division og dato i kalenderen. Grand Tours er ikke med. De fem monumenter står til sidst.",
+        "rows": [
+          [
+            "Løb",
+            "Type og signatur"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Klatreløb · Bjergafslutning på Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "Allround · Bjergafslutning på Col de la Brasque + flad enkeltstart"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Klatreløb · Bjergafslutning på Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Sprinterløb · Stigning: Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Bjerg-først · Bjergafslutning på Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "Grusløb · Grussektor: Piste des Aravis Blanches + grussektor: Chemin du Plan-Bois på sidste etape"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Kuperet løb · Afslutning op ad Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "Sprinterløb · Stigning: Alto de Monegrillo"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Klatreløb · Bjergafslutning på Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "Allround · Bjergafslutning på Monte Sassotorto + kuperet enkeltstart"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Kuperet løb · Afslutning op ad Alto de Mendibeltz på sidste etape"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Brosten/Benelux · Brostenssektor: Pavé du Moulin-Brûlé + brostenssektor: Chemin des Quatre-Vents på sidste etape"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Enkeltstartsløb · Prolog + kuperet enkeltstart på sidste etape"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "Allround · Bjergafslutning på Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Klatreløb · Bjergafslutning på Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Klatreløb · Bjergafslutning på Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Kuperet løb · Stigning: Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Bjerg-først · Bjergafslutning på Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Klatreløb · Bjergafslutning på Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Sprinterløb · Stigning: Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Kuperet løb · Stigning: Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Bjerg-først · Bjergafslutning på Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Sprinterløb · Stigning: Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Brosten/Benelux · Brostenssektor: Pflasterweg Donauleiten + brostenssektor: Alte Treppelstraße på sidste etape"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "Allround · Bjergafslutning på Alto de Valdecuerna + flad enkeltstart"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Kuperet løb · Afslutning op ad Muro di Montevergello på sidste etape"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Brosten/Benelux · Brostenssektor: Pavés de Thieumont + brostenssektor: Chemin de la Hulpière på sidste etape"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "Allround · Bjergafslutning på Passo della Gaviola + kuperet enkeltstart"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Enkeltstartsløb · Prolog + kuperet enkeltstart på sidste etape"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Grusløb · Grussektor: Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Enkeltstartsløb · Prolog + kuperet enkeltstart på sidste etape"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Sprinterløb · Stigning: Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "Allround · Bjergafslutning på Alto de Xorret del Pinós + flad enkeltstart"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "Allround · Bjergafslutning på Alto do Malhãozinho + kuperet enkeltstart"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Kuperet løb · Afslutning op ad Monte do Castrelo på sidste etape"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Klatreløb · Bjergafslutning på Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Brosten/Benelux · Brostenssektor: Kasseiweg van Ronsbeke + brostenssektor: Holle Kasseistraat på sidste etape"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Grusløb · Grussektor: Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Klatreløb · Bjergafslutning på Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Bjerg-først · Bjergafslutning på Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "Allround · Bjergafslutning på Alto da Senhora dos Ventos + flad enkeltstart"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Sprinterløb · Stigning: Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "Enkeltstartsløb · Kuperet enkeltstart på sidste etape"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Kuperet løb · Stigning: Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Sprinterløb · Stigning: Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Kuperet løb · Afslutning op ad Stavnesbakken på sidste etape"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Brosten/Benelux · Brostenssektor: Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Sprinterløb · Stigning: Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Klatreløb · Bjergafslutning på Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Sprinterløb · Stigning: Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Brosten/Benelux · Brostenssektor: Kasseiweg van Holterberg"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Kuperet løb · Afslutning op ad Muro di Castelvento på sidste etape"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Grusløb · Grussektor: Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "Allround · Flad enkeltstart"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "Allround · Bjergafslutning på Alto de Erroizar + kuperet enkeltstart"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Enkeltstartsløb · Kuperet enkeltstart på sidste etape"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Kuperet løb · Stigning: Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Sprinterløb · Stigning: Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Bjerg-først · Bjergafslutning på Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Klatreløb · Bjergafslutning på Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "Allround · Kuperet enkeltstart"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Kuperet løb · Stigning: Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Sprinterløb · Stigning: Côte de Kerhuel"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Brosten/Benelux · Brostenssektor: Kasseistrook van Bertembos + brostenssektor: Holle Weg van Ottenrode på sidste etape"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Enkeltstartsløb · Prolog + kuperet enkeltstart på sidste etape"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monument, fast rute · Cipressina og Poggio dei Fiori før mål"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monument, fast rute · Oude Kwaremberg og Paterhelling før mål, plus brostenssektorer"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monument, fast rute · Brostenssektorer fra Trouée d'Arembourg til Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monument, fast rute · Côte de la Redoutière og Côte de la Roche-aux-Corbeaux, afslutning op ad bakke"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monument, fast rute · Madonna del Ghisello, så Salita di Valtorta og en nedkørsel til mål"
+          ]
+        ]
+      },
       "raceDetail": {
         "title": "Åbn et løb: rute, terræn-DNA og din opstilling",
         "text": "Løbsnavne er klikbare overalt i spillet. Når du åbner et løb, ser du resultaterne hvis det er kørt, eller for et kommende løb ruteprofilen pr. etape, en terræn-DNA-bar over hvilke evner hver etape belønner, og din egen opstilling med en rute-match pr. etape, så du kan vælge ryttere der passer parcouren. Vælg en etape i etape-striben for at skifte profil og rute-match. Løb med rutedata viser den nøjagtige profil motoren afvikler; ældre løb uden rutedata viser stadig en vejledende terrænkategori. På en etapes resultat-fane kan du skifte mellem Etape, Samlet, Point, Bjerg, Ungdom og Hold for at se stillingen efter den etape, og et holdfilter lader dig indsnævre tabellerne til alle hold, dit eget hold, eller ét bestemt hold."

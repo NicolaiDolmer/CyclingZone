@@ -622,6 +622,338 @@
         "title": "Terrain et profils d'étape",
         "text": "À partir de la saison 2, les courses avec des données de parcours affichent le vrai profil de l'étape : c'est le parcours exact que court le moteur de course, avec la longueur, la pente et la catégorie de chaque ascension, le sprint intermédiaire, les secteurs pavés et l'endroit où tombe l'arrivée. La catégorie d'une ascension fixe combien de points de montagne sont en jeu au sommet, et une arrivée au sommet d'une ascension crée de plus gros écarts qu'une arrivée après une descente. Touche un marqueur sur le profil pour voir ce qui est en jeu là, ou qui l'a pris une fois l'étape courue. Les courses plus anciennes sans données de parcours affichent toujours l'ancien badge de terrain : une silhouette schématique et une catégorie indicative, pas un profil mesuré."
       },
+      "raceIdentity": {
+        "title": "Types de course et signatures",
+        "text": "Dès la saison 5, chaque course par étapes courte a un type fixe qui la suit d'une saison à l'autre, pour que tu saches à quel genre de course te préparer. Chaque course a aussi une ou deux signatures qui reviennent chaque année : la même montée décisive, le même secteur ou le même contre-la-montre. Le reste du parcours varie un peu d'une édition à l'autre. Les cinq monuments suivent le même parcours chaque année ; seuls la météo, la forme et la tactique changent. Les Grands Tours gardent leur propre format. Tu ne vois le type qu'ici, dans l'Aide ; sur la page de la course, il se voit dans le parcours lui-même.",
+        "rows": [
+          [
+            "Type",
+            "À quoi t'attendre"
+          ],
+          [
+            "Course de sprinteurs",
+            "Des étapes surtout plates avec au moins une journée vallonnée. Pas de montagne, donc ce sont les sprinteurs qui décident."
+          ],
+          [
+            "Course de grimpeurs",
+            "Les étapes de montagne et de haute montagne font la différence. En Division 1, ce sont les courses de préparation juste avant chaque Grand Tour."
+          ],
+          [
+            "Course vallonnée",
+            "Des côtes et des montées courtes et raides, mais pas de vraie montagne. Faite pour les coureurs explosifs."
+          ],
+          [
+            "Pavés/Benelux",
+            "Des secteurs pavés sur des routes plates et exposées. Pas de montagne."
+          ],
+          [
+            "Course contre-la-montre",
+            "Les contre-la-montre décident : souvent un prologue le premier jour et un contre-la-montre plus long en fin de course."
+          ],
+          [
+            "Course sur gravier",
+            "Des secteurs de gravier sur des routes vallonnées. Pas de montagne."
+          ],
+          [
+            "Montagne d'abord",
+            "La montagne vient en premier. Les sprinteurs arrivent aux étapes plates de la fin avec les jambes fatiguées."
+          ],
+          [
+            "Polyvalente",
+            "Un peu de tout : des étapes plates, de la montagne et un contre-la-montre."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Type et signature de chaque course",
+        "text": "Classées par division et par date dans le calendrier. Les Grands Tours ne figurent pas dans la liste. Les cinq monuments sont à la fin.",
+        "rows": [
+          [
+            "Course",
+            "Type et signature"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Course de grimpeurs · Arrivée au sommet : Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "Polyvalente · Arrivée au sommet : Col de la Brasque + contre-la-montre plat"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Course de grimpeurs · Arrivée au sommet : Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Course de sprinteurs · Montée : Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Montagne d'abord · Arrivée au sommet : Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "Course sur gravier · Secteur de gravier : Piste des Aravis Blanches + secteur de gravier : Chemin du Plan-Bois lors de la dernière étape"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Course vallonnée · Arrivée en côte : Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "Course de sprinteurs · Montée : Alto de Monegrillo"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Course de grimpeurs · Arrivée au sommet : Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "Polyvalente · Arrivée au sommet : Monte Sassotorto + contre-la-montre vallonné"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Course vallonnée · Arrivée en côte : Alto de Mendibeltz lors de la dernière étape"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Pavés/Benelux · Secteur pavé : Pavé du Moulin-Brûlé + secteur pavé : Chemin des Quatre-Vents lors de la dernière étape"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "Polyvalente · Arrivée au sommet : Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Course de grimpeurs · Arrivée au sommet : Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Course de grimpeurs · Arrivée au sommet : Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Course vallonnée · Montée : Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Montagne d'abord · Arrivée au sommet : Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Course de grimpeurs · Arrivée au sommet : Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Course de sprinteurs · Montée : Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Course vallonnée · Montée : Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Montagne d'abord · Arrivée au sommet : Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Course de sprinteurs · Montée : Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Pavés/Benelux · Secteur pavé : Pflasterweg Donauleiten + secteur pavé : Alte Treppelstraße lors de la dernière étape"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "Polyvalente · Arrivée au sommet : Alto de Valdecuerna + contre-la-montre plat"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Course vallonnée · Arrivée en côte : Muro di Montevergello lors de la dernière étape"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Pavés/Benelux · Secteur pavé : Pavés de Thieumont + secteur pavé : Chemin de la Hulpière lors de la dernière étape"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "Polyvalente · Arrivée au sommet : Passo della Gaviola + contre-la-montre vallonné"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Course sur gravier · Secteur de gravier : Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Course de sprinteurs · Montée : Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "Polyvalente · Arrivée au sommet : Alto de Xorret del Pinós + contre-la-montre plat"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "Polyvalente · Arrivée au sommet : Alto do Malhãozinho + contre-la-montre vallonné"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Course vallonnée · Arrivée en côte : Monte do Castrelo lors de la dernière étape"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Course de grimpeurs · Arrivée au sommet : Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Pavés/Benelux · Secteur pavé : Kasseiweg van Ronsbeke + secteur pavé : Holle Kasseistraat lors de la dernière étape"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Course sur gravier · Secteur de gravier : Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Course de grimpeurs · Arrivée au sommet : Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Montagne d'abord · Arrivée au sommet : Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "Polyvalente · Arrivée au sommet : Alto da Senhora dos Ventos + contre-la-montre plat"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Course de sprinteurs · Montée : Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "Course contre-la-montre · Contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Course vallonnée · Montée : Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Course de sprinteurs · Montée : Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Course vallonnée · Arrivée en côte : Stavnesbakken lors de la dernière étape"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Pavés/Benelux · Secteur pavé : Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Course de sprinteurs · Montée : Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Course de grimpeurs · Arrivée au sommet : Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Course de sprinteurs · Montée : Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Pavés/Benelux · Secteur pavé : Kasseiweg van Holterberg"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Course vallonnée · Arrivée en côte : Muro di Castelvento lors de la dernière étape"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Course sur gravier · Secteur de gravier : Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "Polyvalente · Contre-la-montre plat"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "Polyvalente · Arrivée au sommet : Alto de Erroizar + contre-la-montre vallonné"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Course contre-la-montre · Contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Course vallonnée · Montée : Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Course de sprinteurs · Montée : Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Montagne d'abord · Arrivée au sommet : Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Course de grimpeurs · Arrivée au sommet : Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "Polyvalente · Contre-la-montre vallonné"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Course vallonnée · Montée : Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Course de sprinteurs · Montée : Côte de Kerhuel"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Pavés/Benelux · Secteur pavé : Kasseistrook van Bertembos + secteur pavé : Holle Weg van Ottenrode lors de la dernière étape"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Course contre-la-montre · Prologue + contre-la-montre vallonné lors de la dernière étape"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monument, parcours fixe · Cipressina et Poggio dei Fiori avant l'arrivée"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monument, parcours fixe · Oude Kwaremberg et Paterhelling avant l'arrivée, plus des secteurs pavés"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monument, parcours fixe · Secteurs pavés de la Trouée d'Arembourg au Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monument, parcours fixe · Côte de la Redoutière et Côte de la Roche-aux-Corbeaux, arrivée en côte"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monument, parcours fixe · Madonna del Ghisello, puis Salita di Valtorta et une descente vers l'arrivée"
+          ]
+        ]
+      },
       "raceDetail": {
         "title": "Ouvrir une course : parcours, ADN du terrain et ta composition",
         "text": "Les noms de course sont cliquables partout dans le jeu. Ouvrir une course affiche ses résultats si elle a eu lieu, ou pour une course à venir le profil du parcours par étape, une barre d'ADN du terrain indiquant quelles aptitudes chaque étape récompense, et ta propre composition avec une adéquation au parcours par étape pour que tu puisses choisir des coureurs adaptés au parcours. Choisis une étape dans la bande d'étapes pour changer le profil et l'adéquation au parcours. Les courses avec données de parcours montrent le profil exact que court le moteur ; les courses plus anciennes sans elles affichent toujours une catégorie de terrain indicative. Dans l'onglet résultat d'une étape, tu peux basculer entre Étape, Général, Points, Montagne, Jeunes et Équipes pour voir le classement après cette étape, et un filtre d'équipe te permet de restreindre les tableaux à toutes les équipes, à ta propre équipe ou à une équipe précise."
