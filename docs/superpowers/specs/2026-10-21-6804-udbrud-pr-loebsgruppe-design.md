@@ -139,22 +139,25 @@ Rækkefølge: P0 og P7 først (måling, ingen motor), så P1 → mål → P6 →
 ## 6. Ejer-beslutninger (stilles én ad gangen)
 
 Pakken i §4 og gatene i §5 er skrevet ud fra anbefalingerne, men er **ikke klar til byg**: hver del
-er betinget af sin beslutning. Rækkefølgen er 1 → 2 → 3 → 4, og den næste stilles først, når den
-forrige er besvaret, fordi svaret kan ændre den næste (fx måles 2 og 3 på det felt 1 vælger).
+er betinget af sin beslutning. Rækkefølgen er 1 → 2 → 3 → 4 → 5, og den næste stilles først, når den
+forrige er besvaret, fordi svaret kan ændre den næste (fx måles 2-4 på det felt 1 vælger).
 Afviser ejeren en anbefaling, skrives den berørte del af §4/§5 om, før noget bygges.
-- Beslutning 1 åbner P0. Beslutning 2 åbner P7 og G1'/G12. Beslutning 3 åbner P6 og G11.
-  Beslutning 4 åbner P8 og G13.
+- Beslutning 1 åbner P0 og G14. Beslutning 2 åbner M1 og G1'. Beslutning 3 åbner M2, P7 og G12.
+  Beslutning 4 åbner P6 og G11. Beslutning 5 åbner M3, P8 og G13.
 
 1. **Testfeltet (P0).** A: testporten giver menneskeholdene prod-lignende udbrudsvilje. B: mål med
    det nuværende felt uden ordrer. Anbefaling A: B undermåler Grand Tours og ville få os til at
    kalibrere motoren mod et felt der ikke findes.
-2. **Mål pr. løbsgruppe (M1).** A: egne bånd pr. løbsgruppe × terræn, korte etapeløb lavere end Grand
+2. **Udbrudsmål pr. løbsgruppe (M1).** A: egne bånd pr. løbsgruppe × terræn, korte etapeløb lavere end Grand
    Tours. B: Grand Tour-terrænbåndene gælder alle løb. Anbefaling A: virkelighedens ugeløb vindes
    sjældnere fra udbruddet, og B ville kræve at korte løb ramte Grand Tour-niveau.
-3. **Klassementsjagten (P6).** A: kontrol på snor tidligt, hentning i finalen, kun hold med reel
+3. **Tidsgab-mål for korte etapeløb (M2).** A: egne bånd for nr. 10 og vindermarginen i 2-4 og 5-8
+   etaper, ens i alle divisioner. B: egne bånd, men bredere i de lavere divisioner. Anbefaling A:
+   samme princip som #6464, og slutklassementets bredde skal komme af løbet, ikke af divisionen.
+4. **Klassementsjagten (P6).** A: kontrol på snor tidligt, hentning i finalen, kun hold med reel
    chance forsvarer. B: kun en mindre dæmpning af den fremskrevne gevinst. Anbefaling A: B flytter
    tidspunktet men ikke yo-yo-mønsteret.
-4. **Kuperet enkeltstart (P8).** A: felt-skalering som #6464 og to klasser. B: én klasse med højere
+5. **Kuperet enkeltstart (M3, P8).** A: felt-skalering som #6464 og to klasser. B: én klasse med højere
    loft. Anbefaling A: B ville godkende for stor spredning i de lavere divisioner.
 
 ## 7. Verifikations-tier
