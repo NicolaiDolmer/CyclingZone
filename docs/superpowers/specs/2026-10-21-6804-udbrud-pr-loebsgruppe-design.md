@@ -9,50 +9,40 @@ foreslåede bånd ligger privat i `balance-internals/6804/2026-10-21/baseline-68
 Hard rule 36: baseline målt 21/10 offline på testportens S5-cache (nye ruter, 437 løb, 8 seeds).
 Motoren er ikke rørt; denne PR er ren docs.
 
-## 1. Problem (ejer 21/10, tal privat)
+## 1. Problem (ejer 21/10)
 
-1. Udbrudssejre ligger langt under målet i Grand Tours på kuperet og bølget, i etapeløb på bølget og
-   brosten, og kuperet i andre etapeløb faldt med de nye S5-ruter.
-2. Der findes kun Grand Tour-mål for tidsgab, så scorecardet dømmer korte etapeløb (2-4 og 5-8 etaper)
-   forkert.
-3. Den kuperede enkeltstart i etapeløb spreder for meget i toppen.
+Ejeren bestilte tre ting: udbrudssejre vurderet pr. løbsgruppe (Grand Tours, andre etapeløb,
+endagsløb) og pr. terræn, mål for tidsgab i korte etapeløb (der i dag kun har Grand Tour-mål), og
+en vurdering af den kuperede enkeltstart i etapeløb. Observationer, målinger og kalibreringsgrundlag
+står privat i `balance-internals/6804/2026-10-21/baseline-6804-loebsgrupper.md` (hard rule 17).
 
-## 2. Rod-årsager (målt, ikke antaget)
+## 2. Rod-årsager (mekanik; målingerne der understøtter dem er private)
 
-**R1 Dannelsen: intet udbrud uden ordre, og testfeltet har ingen ordrer.** Kaptajn, sprint-kaptajn
-og hjælper forsøger kun morgenudbruddet med en ordre (ejer 10/10, valg B; "Morgenudbrud under
-`orders_gc_v1`"). Testportens syntetiske felt giver menneskeholdene ingen ordrer og ingen jægere.
-I et D1-felt (næsten kun menneskehold) dannes derfor næsten intet udbrud i Grand Tours. Prod er
-anderledes: mange menneskehold i de øverste divisioner har en udbrudsvillig rytter med (jæger-rolle
-eller "forsøg udbrud"), færre i de lavere divisioner. **Testporten undermåler altså Grand Tours**, og udbruddets størrelse afhænger i
-dag af hvor mange AI-hold der er i feltet.
+**R1 Dannelsen afhænger af ordrer.** Kaptajn, sprint-kaptajn og hjælper forsøger kun morgenudbruddet
+med en ordre (ejer 10/10, valg B; "Morgenudbrud under `orders_gc_v1`"). Et testfelt uden
+holdordrer og jæger-roller for menneskeholdene danner derfor kun udbrud fra AI-holdene, og det
+undervurderer felter med mange menneskehold. I prod sætter menneskeholdene selv jæger-roller og
+"Forsøg udbrud".
 
-**R2 Klassementsjagten i etapeløb starter få km efter dannelsen.** Med et prod-lignende felt dannes
-udbruddet i Grand Tours, men så jager klassementsholdene det fra starten på de fleste kuperede
-etaper, og det hentes. I korte etapeløb sker det samme allerede i dag på langt de fleste kuperede,
-bølgede og mellembjerg-etaper. Årsagen er trusselsvurderingen (`assessGcThreat` under S5):
-- efter en flad etape står alle på samme tid, så hver udbryder med lidt klassementsevne er "inden for
-  rækkevidde";
+**R2 Klassementsjagten i etapeløb starter tidligt og henter i stedet for at kontrollere.** Under S5
+(`assessGcThreat`):
+- efter en flad etape står alle på samme tid, så en udbryder med lidt klassementsevne regnes som
+  inden for rækkevidde;
 - vurderingen lægger udbruddets fremskrevne gevinst på de resterende åbne km oveni, så margenen er
   opbrugt længe før forspringet er stort;
-- næsten alle hold har "noget at forsvare" i et kort etapeløb (hullet til føreren er lille);
-- svaret på en alvorlig trussel er fuld jagt til hentning, ikke kontrol på en snor. Det giver et
+- "noget at forsvare" følger tidshullet, så næsten alle hold forsvarer i et kort etapeløb;
+- svaret på en alvorlig trussel er jagt til hentning, ikke kontrol på en snor, hvilket giver et
   yo-yo-mønster: hentet, nyt udbrud (#6369), hentet igen.
-
-Flere udbrydere gør det værre i etapeløb (flere "trusler"), mens endagsløb, der ikke har denne
-jagt, vinder for ofte fra udbruddet når de får flere udbrydere. Det viser at jagten, ikke
-dannelsen, er flaskehalsen i etapeløb.
+Endagsløb har ikke denne jagt; flere udbrydere hjælper der, men ikke i etapeløb.
 
 **R3 Målene er Grand Tour-mål.** Udbrudsmål §2 (pr. terræn) er forankret i Grand Tour-data og
-anvendes på alle løb. Virkelighedens ugeløb (Paris-Nice, Dauphiné, Suisse) vindes sjældnere fra
-udbruddet end Grand Tours, fordi klassementet er tæt og de store hold kontrollerer hver dag.
-Tidsgab har kun Grand Tour-bånd (`TOUR_BENCHMARKS`, `headToHeadAnchors`).
+anvendes på alle løb, og tidsgab har kun Grand Tour-bånd (`TOUR_BENCHMARKS`, `headToHeadAnchors`).
+I virkeligheden vindes ugeløb sjældnere fra udbruddet end Grand Tours (tæt klassement, daglig kontrol).
 
-**R4 Kuperet enkeltstart måles i absolutte evne-point.** Spredningen på en kuperet enkeltstart vokser
-med feltets evne-spredning: samme rute giver flere gange større hul i de lavere divisioner end i D1.
-Bjergetaperne fik en felt-skalering i #6464 ("Bjergets tidsgab ens i alle divisioner"); den kuperede
-enkeltstart fik den ikke. Desuden ligger "bakket" og "stejl/opad" enkeltstart i samme klasse med ét
-loft, selv om de spreder meget forskelligt i virkeligheden.
+**R4 Kuperet enkeltstart måles i absolutte evne-point.** Hullet følger feltets evne-spredning, så
+samme rute spreder mere i felter med større spredning (de lavere divisioner). Bjergetaperne fik en
+felt-skalering i #6464; den kuperede enkeltstart fik den ikke. "Bakket" og "stejl/opad" enkeltstart
+ligger desuden i samme klasse med ét loft, selv om de spreder forskelligt i virkeligheden.
 
 ## 3. Mål pr. løbsgruppe (forslag til ejeren, tal privat)
 
