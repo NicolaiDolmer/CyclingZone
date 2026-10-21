@@ -25,6 +25,14 @@ import { RACE_FORM_PEAKS_FLAG_KEY, isRaceFormPeaksEnabled } from "../../lib/race
 
 export const S5_V2_MIGRATION = "2026-10-17-6818-engine-rules-revision-s5-v2.sql";
 
+/**
+ * auto-migrate.yml gemmer stien som `find database ...` giver den ("database/<fil>"),
+ * aeldre raekker kan staa uden mappe. Match paa filnavnet, uanset praefiks. Ren.
+ */
+export function migrationRow(rows, file = S5_V2_MIGRATION) {
+  return (rows ?? []).find((r) => typeof r?.filename === "string" && r.filename.replace(/\\/g, "/").split("/").pop() === file) ?? null;
+}
+
 /** Ren dom over de indsamlede fakta. */
 export function verdict({ migrationApplied, formPeaksEnabled, boundToV2 }) {
   const checks = [
@@ -37,8 +45,11 @@ export function verdict({ migrationApplied, formPeaksEnabled, boundToV2 }) {
 
 export async function main() {
   const db = readOnlyDb(await prodDb());
-  const { data: mig, error: mErr } = await db.from("schema_migrations").select("filename, applied_at").eq("filename", S5_V2_MIGRATION).maybeSingle();
+  // Raekken findes kun hvis auto-migrate koerte filen med ON_ERROR_STOP (erstatning + VALIDATE lykkedes).
+  // CHECK-constraint'en selv (pg_constraint) kan ikke laeses via PostgREST uden rpc, og rpc er afvist her.
+  const { data: migRows, error: mErr } = await db.from("schema_migrations").select("filename, applied_at").in("filename", [S5_V2_MIGRATION, `database/${S5_V2_MIGRATION}`]);
   if (mErr) throw new Error(`schema_migrations: ${mErr.message}`);
+  const mig = migrationRow(migRows);
   const formPeaksEnabled = await isRaceFormPeaksEnabled(db);
   const { count: boundToV2, error: bErr } = await db.from("races").select("id", { count: "exact", head: true }).eq("engine_rules_revision", "s5_profiles_v2");
   if (bErr) throw new Error(`races (v2): ${bErr.message}`);
@@ -54,7 +65,7 @@ export async function main() {
   }
   const v = verdict({ migrationApplied: !!mig, formPeaksEnabled, boundToV2 });
   for (const c of v.checks) console.log(`${c.ok ? "OK  " : "FEJL"} ${c.name}`);
-  console.log(`info: migration applied_at ${mig?.applied_at ?? "-"} · S5 start_date ${s5?.start_date ?? "-"} (${s5?.status ?? "-"}) · ikke-startede S4-loeb ${s4NotStarted ?? "-"} (bindes til s5_profiles_v1)`);
+  console.log(`info: migration ${mig?.filename ?? "-"} applied_at ${mig?.applied_at ?? "-"} · S5 start_date ${s5?.start_date ?? "-"} (${s5?.status ?? "-"}) · ikke-startede S4-loeb ${s4NotStarted ?? "-"} (bindes til s5_profiles_v1)`);
   console.log(v.ready ? "KLAR til taend (kraever stadig ejerens ordrette \"taend\")" : "IKKE KLAR");
   return v;
 }

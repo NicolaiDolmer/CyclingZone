@@ -11,3 +11,14 @@ test("#6818 verifyS5v2Taend: klar kun naar migration er applied, formtoppe slukk
   // Ukendt (fx null fra en fejlet laesning) er aldrig "klar".
   assert.equal(verdict({ migrationApplied: true, formPeaksEnabled: null, boundToV2: null }).ready, false);
 });
+
+test("#6818 verifyS5v2Taend: migrationen findes med og uden database/-praefiks (auto-migrate gemmer stien)", async () => {
+  const { migrationRow, S5_V2_MIGRATION } = await import("./verifyS5v2Taend.mjs");
+  assert.equal(migrationRow([{ filename: `database/${S5_V2_MIGRATION}` }])?.filename, `database/${S5_V2_MIGRATION}`);
+  assert.equal(migrationRow([{ filename: S5_V2_MIGRATION }])?.filename, S5_V2_MIGRATION);
+  assert.equal(migrationRow([{ filename: "database\\" + S5_V2_MIGRATION }]) !== null, true, "Windows-sti");
+  assert.equal(migrationRow([{ filename: "database/2026-10-16-6462-engine-rules-revision-official-times-v5.sql" }]), null);
+  assert.equal(migrationRow([{ filename: `x${S5_V2_MIGRATION}` }]), null, "kun hele filnavnet");
+  assert.equal(migrationRow([]), null);
+  assert.equal(migrationRow(null), null);
+});
