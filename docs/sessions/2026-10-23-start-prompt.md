@@ -67,6 +67,6 @@ Du er Codex på DolmerPC. PC1 (Claude Code) er den primære session og ejer merg
 3. Når første PR er pushet: luk #7027 med link til PR'en.
 4. Hvert spor ender som draft-PR med "Refs #N" og ingen patch note (PC1 samler dem). #6990 er spillervendt: lav før/efter-skærmbilleder, og marker den klar først efter ejerens visuelle go.
 5. #6965: pagineringsfejlen er reel (149 hold, maks 1.040 auktioner pr. hold, 1 hold over 1.000), men forklarer ikke alle "Unknown". Find resten, før du kalder det løst.
-6. Maks. 2 review-runder pr. PR. Ingen prod-skrivning. Anonymisér spillernavne i alt, du skriver på GitHub.
+6. Ingen frys: byg og push også fre-søn (ejer 22/10). Maks. 2 review-runder pr. PR. Ingen prod-skrivning. Anonymisér spillernavne i alt, du skriver på GitHub.
 7. Slut med en kort status på hvert issue: PR-link, hvad der er testet, og hvad der mangler.
 ```
