@@ -901,6 +901,29 @@ export function summarizeTour(perSeed, stages, revision = null, { shortRaceGapBa
   return summary;
 }
 
+/**
+ * #6804 P7: doem et faerdigt scorecard (fx et tourDryRun-resultat koert uden baand)
+ * mod de private M2-baand. Kun et kort etapeloeb (race.gapGroup) roeres; returnerer
+ * et NYT summary med nye domme og optaelling (inputtet er uaendret). Uden baand for
+ * gruppen = summary uaendret.
+ */
+export function withShortRaceGapBands(summary, shortRaceGapBands) {
+  const group = summary?.race?.gapGroup;
+  const bands = group ? shortRaceGapBands?.[group] : null;
+  if (!bands) return summary;
+  const race = {
+    ...summary.race,
+    verdicts: {
+      ...summary.race.verdicts,
+      gcTo10Final: verdict(summary.race.gcTo10Final, privateGapBand(bands.gcTo10Final)),
+      gcWinnerMargin: verdict(summary.race.gcWinnerMargin, privateGapBand(bands.gcWinnerMargin)),
+    },
+  };
+  const out = { ...summary, race };
+  out.counts = countVerdicts(out);
+  return out;
+}
+
 /** PASS/WARN/FAIL/TODO/N/A over alle domme i et scorecard. */
 export function countVerdicts(summary) {
   const all = [...summary.stages.flatMap((r) => Object.values(r.verdicts)), ...summary.classes.flatMap((r) => Object.values(r.verdicts)), ...Object.values(summary.race.verdicts)];

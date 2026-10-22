@@ -5,9 +5,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   aggregateRaceGroups, bandVerdict, breakawayRaceGroup, buildTestportCard, gapGroupVerdicts, quantile,
-  raceGroupMarkdown, raceResultFromDryRun, renderTestportMarkdown, shortGapGroup,
+  raceGroupMarkdown, raceResultFromDryRun, renderTestportMarkdown, shortGapGroup, withGapBands,
 } from "./motorTestportReport.mjs";
-import { privateGapBand, shortStageRaceGroup, summarizeTour } from "./tourScorecard.mjs";
+import { privateGapBand, shortStageRaceGroup, summarizeTour, withShortRaceGapBands } from "./tourScorecard.mjs";
 
 const row = (over = {}) => ({ stage: 1, profile_type: "hilly", cls: "hilly", breakawayWon: false, breakawaySize: 6, gapTo10: 10, ...over });
 const dryRun = (id, stages, perSeed) => raceResultFromDryRun({ race: { id, name: id, stages }, runs: [{ revision: "rev", seeds: perSeed.length, perSeed, summary: { counts: { PASS: 0, WARN: 0, FAIL: 0, TODO: 0, "N/A": 0 }, stages: [], classes: [], race: { verdicts: {} } } }] });
@@ -106,4 +106,22 @@ test("privateGapBand: kun gyldige graenser, ellers null (N/A)", () => {
   assert.equal(privateGapBand({ min: "x" }), null);
   assert.deepEqual({ min: privateGapBand({ min: 1, max: 2 }).min, max: privateGapBand({ min: 1, max: 2 }).max }, { min: 1, max: 2 });
   assert.equal(privateGapBand({ max: 2 }).min, undefined);
+});
+
+test("withShortRaceGapBands/withGapBands: et faerdigt kort-loebs-scorecard doemmes mod de private baand i kortet", () => {
+  const stages = [1, 2, 3].map((n) => ({ stage_number: n, profile_type: "flat" }));
+  const perSeed = [1, 2, 3].map((seed) => ({ seed, rows: stages.map((p) => ({ stage: p.stage_number, gapTo10: 0, breakawayWon: false })), gcWeek1: 1, gcFinalTo10: 50, gcWinnerMargin: 3, gcWinner: "a" }));
+  const summary = summarizeTour(perSeed, stages, "s5_profiles_v2");
+  const bands = { "sr2-4": { gcTo10Final: { min: 10, max: 60 } } };
+  const judged = withShortRaceGapBands(summary, bands);
+  assert.equal(summary.race.verdicts.gcTo10Final, "N/A", "inputtet er uaendret");
+  assert.equal(judged.race.verdicts.gcTo10Final, "PASS");
+  assert.equal(judged.race.verdicts.gcWinnerMargin, "N/A", "intet baand for margin");
+  assert.equal(judged.counts.PASS, summary.counts.PASS + 1);
+  assert.equal(withShortRaceGapBands(summary, null), summary);
+  const rr = { raceId: "x", name: "x", stages: 3, runs: { rev: { revision: "rev", summary } } };
+  assert.equal(withGapBands(rr, bands).runs.rev.summary.race.verdicts.gcTo10Final, "PASS");
+  assert.equal(withGapBands(rr, null), rr);
+  const card = buildTestportCard({ raceResults: [rr], baseline: "rev", candidate: "rev", thresholds: { shortStageRaceGapBands: bands } });
+  assert.equal(card.revisions.baseline.tallies.gcTo10Final.PASS, 1);
 });

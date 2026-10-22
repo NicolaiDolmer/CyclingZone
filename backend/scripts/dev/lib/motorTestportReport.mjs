@@ -7,7 +7,7 @@
 // motorTestport.mjs. Repoet er offentligt (hard rule 17): her staar ingen
 // maalte tal, kun definitionerne.
 import { raceGroupOf } from "./breakawayIntent.mjs";
-import { SHORT_STAGE_RACE_GROUPS, shortStageRaceGroup } from "./tourScorecard.mjs";
+import { SHORT_STAGE_RACE_GROUPS, shortStageRaceGroup, withShortRaceGapBands } from "./tourScorecard.mjs";
 
 /** Tidskoersler: ingen udbrud, ingen favoritter at doemme. */
 export const TIME_TRIAL_CLASSES = Object.freeze(["itt", "itt_hilly", "ttt"]);
@@ -289,6 +289,13 @@ export function aggregateRaceGroups(raceResults, revision, thresholds = {}) {
   return { breakaway, gaps };
 }
 
+/** #6804 P7: et loebsresultat med hver revisions scorecard doemt mod de private M2-baand (nyt objekt). */
+export function withGapBands(rr, shortStageRaceGapBands) {
+  if (!shortStageRaceGapBands || !rr?.runs) return rr;
+  const runs = Object.fromEntries(Object.entries(rr.runs).map(([rev, run]) => [rev, run?.summary ? { ...run, summary: withShortRaceGapBands(run.summary, shortStageRaceGapBands) } : run]));
+  return { ...rr, runs };
+}
+
 /** Pr. loeb: domme og haard-gate-hits under begge revisioner (til tabellen "pr. loeb"). */
 export function perRaceRows(raceResults, baseline, candidate) {
   const pick = (run) => {
@@ -327,7 +334,8 @@ export function benchView(json) {
  * parametre (seeds, parallel, kilde, fejlede loeb ...), skrives som de er.
  */
 export function buildTestportCard({ raceResults, baseline, candidate, benchByRevision = {}, meta = {}, thresholds = {} }) {
-  const results = raceResults.filter(Boolean);
+  // #6804 P7: et kort etapeloebs scorecard (koert uden de private baand) doemmes her mod M2-baandene.
+  const results = raceResults.filter(Boolean).map((rr) => withGapBands(rr, thresholds?.shortStageRaceGapBands));
   const base = aggregateRevision(results, baseline, thresholds);
   const cand = baseline === candidate ? base : aggregateRevision(results, candidate, thresholds);
   const regressions = [];
