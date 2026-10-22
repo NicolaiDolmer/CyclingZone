@@ -1257,6 +1257,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
     met = cumValue >= enrichedGoal.target;
   }
 
+  /** @type {number | null} */
   let actual = null;
   let target = enrichedGoal.target;
   let score = 0.5;
