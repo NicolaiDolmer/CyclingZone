@@ -63,7 +63,7 @@ ARBEJDSFORM:
 - Byggearbejde som bølge: .claude/workflows/wave.js med højst 3 spor og eksplicit model pr. agent (opus på motor/DB/sikkerhed, sonnet på UI/ops).
 - Auto-fix slået fra. Maks. 2 Codex-review-runder pr. PR; derefter bliver P2/P3 et opfølger-issue. Vær stille om rutine-CI.
 - Arkivér en sidesession først, når dens PR er merget OG dens private filer er flyttet til hovedmappens balance-internals/. Arkivering sletter worktreet.
-- Påmind ejeren (gør dem ikke selv): post 7.364-7.366 + S5-opslaget og Discord-svarene (docs/drafts/discord-update-2026-10-20.md, discord-svar-2026-10-20.md; tjek svar #5) · svar spilleren fra #7042 på dansk, når årsagen er kendt · afskriv Alunta-faktura 7534 · ejer-mail #7041.
+- Påmind ejeren (gør dem ikke selv): post 7.364-7.366 + S5-opslaget og Discord-svarene (ligger i OneDrive CyclingZone-context/drafts/discord-update-2026-10-20.md + discord-svar-2026-10-20.md, ikke i git; tjek svar #5) · svar spilleren fra #7042 på dansk, når årsagen er kendt · afskriv Alunta-faktura 7534 · ejer-mail #7041.
 - Close-out: kør check-agent-token-hygiene.ps1, close-out-cleanup.ps1 og generate-status-board.mjs.
 ```
 
