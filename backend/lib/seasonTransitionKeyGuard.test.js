@@ -7,14 +7,27 @@ import {
   SEASON_TRANSITION_KEY_DRIFT_TOLERANCE_MS,
 } from "./seasonTransitionKeyGuard.js";
 
-function makeSupabase({ upcomingSeason = null, appConfigRow = null, seasonsError = null, configError = null } = {}) {
+// stagesBySeason: { [seasonId]: ["ISO", ...] } — race_stage_schedule-rækker pr. sæson.
+function makeSupabase({
+  upcomingSeason = null, previousSeason = null, appConfigRow = null, stagesBySeason = {},
+  seasonsError = null, configError = null, stagesError = null,
+} = {}) {
   return {
     from(table) {
       if (table === "seasons") {
-        return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: upcomingSeason, error: seasonsError }); } }; } }; } };
+        return { select() { return { eq(col) { return { maybeSingle() {
+          return Promise.resolve({ data: col === "number" ? previousSeason : upcomingSeason, error: seasonsError });
+        } }; } }; } };
       }
       if (table === "app_config") {
         return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: appConfigRow, error: configError }); } }; } }; } };
+      }
+      if (table === "race_stage_schedule") {
+        return { select() { return { eq(_col, seasonId) { return { order(_c, { ascending }) { return { limit(n) {
+          const sorted = [...(stagesBySeason[seasonId] ?? [])].sort();
+          if (!ascending) sorted.reverse();
+          return Promise.resolve({ data: sorted.slice(0, n).map((scheduled_at) => ({ scheduled_at })), error: stagesError });
+        } }; } }; } }; } };
       }
       throw new Error(`unexpected table ${table}`);
     },
@@ -112,4 +125,99 @@ test("fejlende app_config-opslag kastes", async () => {
     () => checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") }),
     /timeout/
   );
+});
+
+// #7022: kalenderen er dommeren, når den kommende sæson har etaper.
+const S4 = { id: "s4", number: 4, start_date: "2026-09-28" };
+const S5 = { id: "s5", number: 5, start_date: "2026-10-28" };
+const S5_NOW = new Date("2026-10-21T06:04:00Z"); // Sentry CYCLINGZONE-A9
+const S5_STAGES = {
+  s4: ["2026-09-28T17:30:00Z", "2026-10-25T14:00:00Z"], // S4's sidste etape lørdag 16:00 dansk tid
+  s5: ["2026-10-28T10:00:00Z", "2026-11-28T14:00:00Z"],
+};
+
+test("#7022 regression: S5-nøglen 25/10 18:30Z ligger dage før konventionen, men passer til kalenderen → ingen drift", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: S5, previousSeason: S4, stagesBySeason: S5_STAGES,
+    appConfigRow: { value: "2026-10-25T18:30:00.000Z" },
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW });
+  assert.equal(result.drift, false);
+  assert.equal(result.reason, "ok-calendar");
+});
+
+test("#7022: nøgle før den afsluttende sæsons sidste etape + buffer → drift=true, reason=too-early", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: S5, previousSeason: S4, stagesBySeason: S5_STAGES,
+    appConfigRow: { value: "2026-10-25T14:15:00.000Z" }, // 15 min efter sidste etapes start (< 30 min buffer)
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW });
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "too-early");
+  assert.equal(result.earliestAllowed, "2026-10-25T14:30:00.000Z");
+  assert.equal(result.expected, "2026-10-25T14:30:00.000Z"); // grænsen, ikke konventionen
+});
+
+test("#7022: nøgle < 24 t før den nye sæsons første etape → drift=true, reason=too-late (selv inden for konventionens 12 t)", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: S5, previousSeason: S4, stagesBySeason: S5_STAGES,
+    appConfigRow: { value: "2026-10-27T17:00:00.000Z" }, // konventionen selv, men kun 17 t før 28/10 10:00Z
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW });
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "too-late");
+  assert.equal(result.latestAllowed, "2026-10-27T10:00:00.000Z");
+  assert.equal(result.expected, "2026-10-27T10:00:00.000Z"); // ikke konventionens 17:00Z
+});
+
+test("#7022: grænserne er inklusive (præcis buffer efter sidste etape og præcis 24 t før første)", async () => {
+  for (const value of ["2026-10-25T14:30:00.000Z", "2026-10-27T10:00:00.000Z"]) {
+    const supabase = makeSupabase({ upcomingSeason: S5, previousSeason: S4, stagesBySeason: S5_STAGES, appConfigRow: { value } });
+    const result = await checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW });
+    assert.equal(result.drift, false, value);
+  }
+});
+
+test("#7022: kalender bygget men ingen forrige sæson (første sæson) → kun 24 t-reglen gælder", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: S5, previousSeason: null, stagesBySeason: S5_STAGES,
+    appConfigRow: { value: "2026-10-20T12:00:00.000Z" },
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW });
+  assert.equal(result.drift, false);
+  assert.equal(result.reason, "ok-calendar");
+});
+
+test("#7022: nøglen mangler stadig → missing, også når kalenderen er bygget", async () => {
+  const supabase = makeSupabase({ upcomingSeason: S5, previousSeason: S4, stagesBySeason: S5_STAGES, appConfigRow: null });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW });
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "missing");
+});
+
+test("#7022: fejlende etape-opslag kastes", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: S5, previousSeason: S4, stagesBySeason: S5_STAGES,
+    appConfigRow: { value: "2026-10-25T18:30:00.000Z" }, stagesError: { message: "timeout" },
+  });
+  await assert.rejects(() => checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW }), /timeout/);
+});
+
+test("#7022: forrige sæson slås op på nummer, så too-early virker efter 'Afslut sæson' (S4 completed, ingen active)", async () => {
+  const lookups = [];
+  const base = makeSupabase({
+    upcomingSeason: S5, previousSeason: { ...S4, status: "completed" }, stagesBySeason: S5_STAGES,
+    appConfigRow: { value: "2026-10-25T12:00:00.000Z" },
+  });
+  const supabase = {
+    from(table) {
+      const q = base.from(table);
+      if (table !== "seasons") return q;
+      return { select(cols) { const sel = q.select(cols); return { eq(col, val) { lookups.push([col, val]); return sel.eq(col, val); } }; } };
+    },
+  };
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: S5_NOW });
+  assert.deepEqual(lookups, [["status", "upcoming"], ["number", 4]]);
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "too-early");
 });
