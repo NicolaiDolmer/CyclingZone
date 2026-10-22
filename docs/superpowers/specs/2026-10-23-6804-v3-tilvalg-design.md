@@ -26,8 +26,10 @@ Refs #6937 #6938 #6814 #6912 #2757 #6939 #6486 #6804
   (#7016, prod-lignende testfelt) kører, og hver gate nedenfor dømmes dér.
 - **Ingen lokal PG17** på denne maskine (kun PG16-binærer; PG17-runneren fra #6765 kræver en PG17-bin).
   Motor-målingerne er DB-uafhængige. For #6814 er databasesiden målt read-only i prod
-  (tidslinjernes størrelse), og motorsiden offline. Bygge-PR'en for #6814 skal stadig køre sin
-  før/efter-måling på samme revision (løbsfilm-designet §3A).
+  (tidslinjernes størrelse), og motorsiden offline. **Hard rule 36 er derfor ikke opfyldt for
+  #6814 endnu:** den lokale PG17-baseline (løbsfilm-designet §3A) køres og noteres i
+  `balance-internals/6804-tilvalg/` på en maskine med PG17, FØR første kode-PR for #6814. Indtil da
+  er #6814 ikke byg-klar; de øvrige tilvalg er DB-uafhængige motor- eller frontendændringer.
 
 ## 2. Tilvalgene
 
@@ -102,8 +104,8 @@ besvaret som anbefalet.
 ### 2.4 15-minutters-udbrud (#6912)
 
 **Baseline.** Forspringet på feltet stiger på flade etaper rutinemæssigt helt op til lad-gå-loftet,
-og en betydelig del af de flade udbrudsetaper passerer ejerens "sjældent
-over 10-12 min". Feltet henter dem til sidst (flade udbrudssejre er få og små), men filmen og
+og en betydelig del af de flade udbrudsetaper passerer ejerens
+loft for flade udbrud (tallet er privat). Feltet henter dem til sidst (flade udbrudssejre er få og små), men filmen og
 spillerne ser det store tal undervejs. På bjerg ses de store forspring i halen. v2 ændrer det ikke;
 på flad er det en anelse værre.
 
@@ -128,10 +130,10 @@ om flad og derfor er en ejer-beslutning (§4, beslutning 6):
 størstedelen af sine point på flade etaper. Alligevel vinder feltets bedste sprinter kun en
 mindre del af pointtrøjerne, i prod og i simuleringen, og klassementsvinderen vinder en mærkbar del.
 Antallet af flade etaper i løbet ændrer ikke billedet mærkbart i simuleringen; i prod er stikprøven
-med to eller flere flade etaper for lille til en konklusion. Den gamle flade tabel
+med flere flade etaper for lille til en konklusion. Den gamle flade tabel
 (`classPointsForRank`) kører ikke i S5: alle S5-etapeløb har fulde rutedata.
 "Bedste sprinter" er i målingen rytteren med højest sprint-evne i feltet; G18 bruger en bredere
-definition (sprint-kaptajn eller sprint-top-5).
+definition (sprint-kaptajn eller en af feltets bedste sprintere).
 
 **Rod-årsag (målt, i rækkefølge):**
 1. **Hvem vinder de flade dage (største):** når den bedste sprinter taber trøjen, taber han allerede
@@ -152,10 +154,10 @@ definition (sprint-kaptajn eller sprint-top-5).
   spurt (samme udvælgelse som B1, motivation "sprintpoint"). Skalaerne og #5914 er uændrede.
 - Brosten bruger flad-skalaen (ejer-låst) og vindes ofte af klassikerkaptajner; det er virkeligt
   og ændres ikke.
-- **S2 (rute-generator, ikke motor):** etapeløb med pointtrøje får mindst én flad etape, og løb med
-  fem eller flere etaper mindst to. Den hører til generatoren (#6369-linjen), ikke v3.
-- **Gate G18:** i løb med mindst to flade etaper vinder en sprinter (sprint-kaptajn eller
-  sprint-top-5 i feltet) pointtrøjen inden for et privat bånd; klassementsvinderen vinder den sjældent.
+- **S2 (rute-generator, ikke motor):** etapeløb med pointtrøje får mindst én flad etape, og længere
+  løb flere (minimum pr. løbslængde er privat). Den hører til generatoren (#6369-linjen), ikke v3.
+- **Gate G18:** i løb med flere flade etaper vinder en sprinter (sprint-kaptajn eller
+  en af feltets bedste sprintere; definitionen er privat) pointtrøjen inden for et privat bånd; klassementsvinderen vinder den sjældent.
 - Issue #2757's første acceptkriterie (fallback-stien) er ikke rettet, men gjort irrelevant for S5,
   fordi alle S5-løb har rutedata. Kriteriet beder om at det dokumenteres i issuet; det gør bygge-PR'en.
 
@@ -238,7 +240,7 @@ lægges til tænd-gaten, er ejer-beslutning 8.
    den største målte årsag er hvem der vinder de flade dage, og den skal måles (S0) før der
    designes; S1 rammer kun ekstrapointene.
 4. **Rutemix for pointtrøjen (#2757, S2).** A: generatoren giver alle etapeløb mindst én flad etape og
-   løb med fem eller flere etaper mindst to. B: ingen ændring. Anbefaling A for løb uden flade
+   længere løb flere (minimum pr. løbslængde er privat). B: ingen ændring. Anbefaling A for løb uden flade
    etaper (der kan en sprinter aldrig vinde trøjen); effekten på resten er lille i målingen.
 5. **Favoritter (#6939).** A: bygges nu som frontend-PR med billede. B: venter på v3. Anbefaling A:
    uafhængig af motoren.
@@ -264,6 +266,12 @@ besvaret som anbefalet.
   bit-identitet.
 - #6939: frontend-tests, lint, typecheck, snapshots i alle tre Playwright-projekter, skærmbillede.
 - Private før/efter-tal skrives i `balance-internals/6804-tilvalg/` ved siden af denne baseline.
+- **Ejeren ser det før tænding (tænd-gaten 22/10, uændret):** Tour-prøvekørsel mod den gamle motor,
+  Fable som uafhængig dommer, og 3 udvalgte løbsfilm på preview, valgt så de viser tilvalgene
+  (en bjergetape med bjergjæger i udbrud, et etapeløb med udgåede, en flad etape med kontrolleret
+  forspring). v3 er én samlet motorpakke bag én revision, så de udvalgte film på preview er
+  ejerens validering af pakken; der er ingen separat staging-runde for motoren.
+- #6939: ejeren ser etapesiden på preview (Android-bredde) før merge.
 
 ## 6. Risiko
 
