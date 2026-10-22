@@ -488,10 +488,19 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp, retire
     // Best-effort: stil puljerne tilbage (både genåbnede og lukkede), så
     // kataloget aldrig står halvt skrevet, og ingen hold sidder fast i en lukket
     // gruppe uden løb (AI-pensioneringens trigger afviser dem).
+    const unrestored = [];
     for (const p of poolsBefore) {
-      await supabase.from("league_divisions").update({ retired_at: p.retired_at }).eq("id", p.id);
+      try {
+        const { error: rollbackErr } = await supabase.from("league_divisions").update({ retired_at: p.retired_at }).eq("id", p.id);
+        if (rollbackErr) unrestored.push(p.id);
+      } catch {
+        unrestored.push(p.id);
+      }
     }
-    throw new Error(`${err.message}. Puljernes retired_at er sat tilbage; holdene kan være delvist flyttet. Kør regroup igen, eller gendan fra ${relative(REPO_ROOT, restorePath)}.`, { cause: err });
+    const poolState = unrestored.length
+      ? `ADVARSEL: retired_at kunne IKKE sættes tilbage for pulje(r) ${unrestored.join(", ")}; ret dem fra restore-filen før næste kørsel`
+      : "Puljernes retired_at er sat tilbage";
+    throw new Error(`${err.message}. ${poolState}; holdene kan være delvist flyttet. Kør regroup igen, eller gendan fra ${relative(REPO_ROOT, restorePath)}.`, { cause: err });
   }
 
   const after = ids.length
