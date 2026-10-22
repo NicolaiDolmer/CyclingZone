@@ -465,10 +465,10 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     if (!byTarget.has(key)) byTarget.set(key, { target, ids: [] });
     byTarget.get(key).ids.push(u.teamId);
   }
-  for (const { target, ids: teamIds } of byTarget.values()) {
-    const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
-    if (error) throw new Error(`teams.${col} update: ${error.message}`);
-  }
+  // #6667 (Codex P2): genåbn og luk puljerne FØR holdene flyttes. Tilmelding og
+  // comeback vælger kun puljer uden retired_at, så en samtidig tilmelding kan ikke
+  // lande i en pulje der er ved at blive tømt. Rest-vinduet er én tilmeldings egen
+  // læs-så-skriv (millisekunder); regroup køres af ejeren som et enkelt, kort trin.
   if (reviveIds.length) {
     const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
     if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
@@ -476,6 +476,10 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
   if (retireIds.length) {
     const { error } = await supabase.from("league_divisions").update({ retired_at: new Date().toISOString() }).in("id", retireIds);
     if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
+  }
+  for (const { target, ids: teamIds } of byTarget.values()) {
+    const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
+    if (error) throw new Error(`teams.${col} update: ${error.message}`);
   }
 
   const after = ids.length
