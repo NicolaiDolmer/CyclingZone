@@ -18,6 +18,7 @@ before(async () => {
   // Execute the actual migration, not a JavaScript imitation of its SQL.
   await db.exec(await readFile(new URL('../../database/2026-09-09-4753-ai-pool-retirement.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../../database/2026-09-28-4753-youth-pool-retirement-replacement.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../../database/2026-10-22-7039-youth-retire-vacate-fallback.sql', import.meta.url), 'utf8'));
 });
 after(async () => { await db?.close(); });
 beforeEach(async () => {
@@ -415,13 +416,25 @@ test('#4753 keeps an in-flight AI racing, then replaces both youth places in its
   assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE junior_league_division_id=33')).rows[0].n),24);
 });
 
-test('#4753 no safe spare aborts the whole retirement, including rider changes',async()=>{
+test('#7039 no safe spare: the AI still retires and vacates its youth places',async()=>{
   await seedYouthGroupForAi();
   await excess();
-  await assert.rejects(retire(),/no_safe_youth_replacement/);
-  assert.equal((await team()).retired_at,null);
-  assert.equal((await db.query('SELECT team_id FROM riders WHERE id=$1',[RIDER])).rows[0].team_id,AI);
-  assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE u23_league_division_id=21')).rows[0].n),24);
+  assert.equal((await retire()).retired,true);
+  assert.notEqual((await team()).retired_at,null);
+  assert.deepEqual([(await team()).u23_league_division_id,(await team()).junior_league_division_id],[null,null]);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE u23_league_division_id=21')).rows[0].n),23);
+  assert.equal(await count(),24);
+});
+
+test('#7039 a youth group already short of 24 is vacated, not refilled or blocked',async()=>{
+  const spare='00000000-0000-0000-0000-000000000101';
+  await seedYouthGroupForAi(); await seedYouthSpare(spare);
+  await db.exec("UPDATE teams SET u23_league_division_id=NULL,junior_league_division_id=NULL WHERE id=(SELECT id FROM teams WHERE name='Youth peer 1')");
+  await excess();
+  assert.equal((await retire()).retired,true);
+  assert.equal((await team()).u23_league_division_id,null);
+  assert.equal((await db.query('SELECT u23_league_division_id FROM teams WHERE id=$1',[spare])).rows[0].u23_league_division_id,null);
+  assert.equal(Number((await db.query('SELECT count(*) n FROM teams WHERE u23_league_division_id=21')).rows[0].n),22);
 });
 
 test('#4753 spare with an uncompleted youth entry is skipped',async()=>{
@@ -460,13 +473,13 @@ for (const scenario of [
   });
 }
 
-test('#4753 no eligible youth reserve rolls back the entire retirement', async () => {
+test('#7039 no eligible youth reserve still retires and vacates', async () => {
   const spare = '00000000-0000-0000-0000-000000000101';
   await excess(); await seedYouthGroupForAi(); await seedYouthSpare(spare);
   await db.query("INSERT INTO rider_condition(rider_id,injured_until) SELECT id,'2026-09-09'::date FROM riders WHERE team_id=$1 AND squad='junior' ORDER BY id LIMIT 1",[spare]);
-  await assert.rejects(retire(),/no_safe_youth_replacement/);
-  assert.equal((await team()).retired_at,null);
-  assert.equal((await team()).u23_league_division_id,21);
+  assert.equal((await retire()).retired,true);
+  assert.equal((await team()).u23_league_division_id,null);
+  assert.equal((await db.query('SELECT u23_league_division_id FROM teams WHERE id=$1',[spare])).rows[0].u23_league_division_id,null);
 });
 
 test('#4753 replacement injury gate uses Copenhagen date across UTC midnight',async()=>{
