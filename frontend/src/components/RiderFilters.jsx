@@ -35,6 +35,7 @@ import { useBestRoleDisplay } from "../lib/useBestRoleDisplay.js";
 // Re-eksporteres her for bagudkompatibilitet med eksisterende imports.
 import { STAT_KEYS } from "../lib/riderRating";
 import { ABILITY_SHORT } from "../lib/abilities";
+import { CONTRACT_NONE } from "../lib/contractFilter.js";
 
 export { STAT_KEYS };
 
@@ -86,6 +87,8 @@ export const DEFAULT_FILTERS = {
   u25: false,
   u23: false,
   free_agent: false,
+  // #6967: "" = alle, "none" = ingen kontrakt, "<n>" = kontrakt udloeber senest saeson n.
+  contract_by: "",
   // #2238: default false = ryttere på AI-hold skjules (man kan ikke købe/auktionere
   // dem). true = vis dem alligevel. Fri-agenter påvirkes aldrig (owner_is_ai=false).
   show_ai: false,
@@ -100,7 +103,7 @@ const BASIC_FILTER_KEYS = [
   "min_age", "max_age",
   "min_auction_price", "max_auction_price", "min_asking_price", "max_asking_price",
   "min_value_deviation_pct", "max_value_deviation_pct",
-  "u25", "u23", "free_agent", "show_ai", "team_id",
+  "u25", "u23", "free_agent", "contract_by", "show_ai", "team_id",
 ];
 
 function isStatActive(filters, key) {
@@ -246,6 +249,8 @@ export default function RiderFilters({
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
   showAuctionPriceFilter = false, showAskingPriceFilter = false, showAiToggle = false,
   showValueDeviationFilter = false,
+  // #6967: aktivt saesonnummer -> viser "Contract expires by season"-feltet (kun Rytterdatabasen).
+  contractSeasonNumber = null,
   // #4628: felter som kalderen selv har loeftet op i den kanoniske FilterBar-linje
   // (T2, docs/design/PAGE_TEMPLATES.md#t2-wide-data-page). Uden den ville navnet
   // staa to gange paa Auktioner: én gang i filterlinjen og én gang i panelet bag
@@ -369,6 +374,19 @@ export default function RiderFilters({
     <Select value={filters.best_role ?? ""} onChange={e => onChange("best_role", e.target.value)}
       aria-label={tTypes("bestRole.label")} data-testid="filter-best-role">
       {optionNodes(bestRoleOptions)}
+    </Select>
+  ) : null;
+
+  const contractSelect = Number.isFinite(contractSeasonNumber) ? (
+    <Select value={filters.contract_by ?? ""} onChange={e => onChange("contract_by", e.target.value)}
+      aria-label={t("fields.contractBy")} data-testid="filter-contract-by">
+      <option value="">{t("fields.contractAny")}</option>
+      <option value={CONTRACT_NONE}>{t("fields.contractNone")}</option>
+      {[0, 1, 2, 3, 4].map(i => (
+        <option key={i} value={String(contractSeasonNumber + i)}>
+          {t("fields.contractSeason", { season: contractSeasonNumber + i })}
+        </option>
+      ))}
     </Select>
   ) : null;
 
@@ -505,6 +523,13 @@ export default function RiderFilters({
       {filters.u25 && <Chip t={t} label={t("toggles.u25")} onRemove={() => onChange("u25", false)} />}
       {filters.u23 && <Chip t={t} label={t("toggles.u23")} onRemove={() => onChange("u23", false)} />}
       {filters.free_agent && <Chip t={t} label={t("toggles.freeAgent")} onRemove={() => onChange("free_agent", false)} />}
+      {filters.contract_by && (
+        <Chip
+          t={t}
+          label={filters.contract_by === CONTRACT_NONE ? t("chips.contract.none") : t("chips.contract.by", { season: filters.contract_by })}
+          onRemove={() => onChange("contract_by", "")}
+        />
+      )}
       {showAiToggle && filters.show_ai && <Chip t={t} label={t("toggles.showAi")} onRemove={() => onChange("show_ai", false)} />}
       {filters.team_id && <Chip t={t} label={t("chips.teamSelected")} onRemove={() => onChange("team_id", "")} />}
       {activeStatKeys.map(key => {
@@ -552,6 +577,12 @@ export default function RiderFilters({
               </div>
             )}
             {rangeFieldNodes}
+            {contractSelect && (
+              <div>
+                <label className={labelClass()}>{t("fields.contractBy")}</label>
+                {contractSelect}
+              </div>
+            )}
             {togglesNode}
           </div>
           <div className="w-full">{abilitiesNode}</div>
