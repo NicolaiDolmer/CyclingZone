@@ -135,12 +135,14 @@ test('#6765 M1.5 shadow processor keeps parity without raw transfer fan-out',asy
   });
 
   await t.test('queue metrics expose the age of the oldest item',async()=>{
-    const empty=(await db.query<{v:{queue_length:number;oldest_age_s:number|null}}>('SELECT get_ranking_shadow_metrics() v')).rows[0].v;
-    assert.deepEqual(empty,{queue_length:0,oldest_age_s:null});
-    await db.exec("INSERT INTO ranking_dirty_log(kind,race_id,enqueued_at) VALUES('race',fid(1009),clock_timestamp()-interval '90 seconds');");
-    const aged=(await db.query<{v:{queue_length:number;oldest_age_s:number}}>('SELECT get_ranking_shadow_metrics() v')).rows[0].v;
-    assert.equal(aged.queue_length,1);
-    assert.ok(Number.isSafeInteger(aged.oldest_age_s)&&aged.oldest_age_s>=90&&aged.oldest_age_s<600,String(aged.oldest_age_s));
+    // Fixed timestamps only (AGENTS.md: explicit time injection in tests).
+    type Metrics={queue_length:number;oldest_age_s:number|null};
+    const at=async(now:string)=>(await db.query<{v:Metrics}>('SELECT get_ranking_shadow_metrics($1) v',[now])).rows[0].v;
+    assert.deepEqual(await at('2026-10-19T08:01:30Z'),{queue_length:0,oldest_age_s:null});
+    assert.deepEqual((await db.query<{v:Metrics}>('SELECT get_ranking_shadow_metrics() v')).rows[0].v,{queue_length:0,oldest_age_s:null},'no-argument call stays unambiguous');
+    await db.exec("INSERT INTO ranking_dirty_log(kind,race_id,enqueued_at) VALUES('race',fid(1009),'2026-10-19T08:00:00Z'),('race',fid(1010),'2026-10-19T08:01:00Z');");
+    assert.deepEqual(await at('2026-10-19T08:01:30.900Z'),{queue_length:2,oldest_age_s:90});
+    assert.deepEqual(await at('2026-10-19T07:59:00Z'),{queue_length:2,oldest_age_s:0},'never negative');
     await drain(db);
   });
 

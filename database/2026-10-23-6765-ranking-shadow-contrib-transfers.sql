@@ -3,8 +3,10 @@
 -- rebuild path". Builds on 2026-10-19-6765-incremental-rankings-shadow.sql.
 --
 -- Order matters: replaying 2026-10-19-6765-incremental-rankings-shadow.sql
--- after this file restores the M1 function (unbounded claim, raw fan-out).
--- Any manual M1 replay must be followed by a replay of this file.
+-- after this file restores the M1 function (unbounded claim, raw fan-out) and
+-- adds a second zero-argument get_ranking_shadow_metrics (ambiguous calls).
+-- Any manual M1 replay must be followed by a replay of this file, which drops
+-- that overload again.
 --
 -- Legacy matviews remain the only reader and heartbeat contract. This file
 -- replaces two shadow functions in place; no table, trigger, grant or flag
@@ -246,16 +248,21 @@ REVOKE ALL ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint,boolean) 
 GRANT EXECUTE ON FUNCTION public.apply_ranking_deltas(integer,uuid,bigint,boolean) TO service_role;
 
 -- oldest_age_s is NULL when the queue is empty. Integer seconds keep the
--- Node-side validation strict (safe integer, never negative).
-CREATE OR REPLACE FUNCTION public.get_ranking_shadow_metrics()
+-- Node-side validation strict (safe integer, never negative). p_now injects the
+-- reference time (tests, shifted clocks); NULL falls back to the wall clock.
+-- The no-argument form is replaced, not overloaded: a second zero-argument
+-- candidate would make the existing `rpc('get_ranking_shadow_metrics',{})`
+-- call ambiguous. Old and new Node both call it without arguments.
+DROP FUNCTION IF EXISTS public.get_ranking_shadow_metrics();
+CREATE OR REPLACE FUNCTION public.get_ranking_shadow_metrics(p_now timestamptz DEFAULT NULL)
 RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path=public,pg_temp AS $$
   SELECT jsonb_build_object('queue_length',count(*),
     'oldest_age_s',CASE WHEN min(enqueued_at) IS NULL THEN NULL
-      ELSE greatest(0,floor(extract(epoch FROM clock_timestamp()-min(enqueued_at))))::bigint END)
+      ELSE greatest(0,floor(extract(epoch FROM coalesce(p_now,clock_timestamp())-min(enqueued_at))))::bigint END)
   FROM public.ranking_dirty_log;
 $$;
-REVOKE ALL ON FUNCTION public.get_ranking_shadow_metrics() FROM PUBLIC,anon,authenticated;
-GRANT EXECUTE ON FUNCTION public.get_ranking_shadow_metrics() TO service_role;
+REVOKE ALL ON FUNCTION public.get_ranking_shadow_metrics(timestamptz) FROM PUBLIC,anon,authenticated;
+GRANT EXECUTE ON FUNCTION public.get_ranking_shadow_metrics(timestamptz) TO service_role;
 COMMIT;
 NOTIFY pgrst,'reload schema';
