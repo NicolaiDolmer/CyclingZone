@@ -92,8 +92,25 @@ test("proRiderHistory: aktivt abonnement → 200, dedupet én række pr. sæson 
   ]);
 });
 
-test("proRiderHistory: Founder uden aktivt abonnement er alligevel Pro (permanent status)", async () => {
+test("#2806 proRiderHistory: Founder uden aktivt abonnement → 403 (Founder giver kun maerket, ejer 13/10)", async () => {
   const sub = { status: "inactive", current_period_end: null, is_founder: true };
+  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows: [] }) });
+  const r = res();
+  await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
+  assert.equal(r.code, 403);
+  assert.equal(r.body.errorCode, "pro_required");
+});
+
+test("#2806 proRiderHistory: Founder der har opsagt (cancelled, periode udloebet) → 403", async () => {
+  const sub = { status: "cancelled", current_period_end: "2020-01-01T00:00:00Z", is_founder: true };
+  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows: [] }) });
+  const r = res();
+  await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
+  assert.equal(r.code, 403);
+});
+
+test("#2806 proRiderHistory: Founder med aktivt abonnement → 200", async () => {
+  const sub = { status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: true };
   const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows: [] }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
