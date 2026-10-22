@@ -279,13 +279,13 @@ test("#6284/#6199: the v3 migration excludes official_times; the official-times 
   const check = sql.match(/IN \(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   const allowed = check[1].split(",").map((s) => s.trim().replace(/'/g, ""));
-  assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => !revision.startsWith("official_times_") && revision !== "s5_profiles_v1" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && !revision.startsWith("official_times_") && revision !== "s5_profiles_v1" && revision !== "s5_profiles_v2"));
   const migration = readFileSync(new URL("../../database/2026-10-08-race-engine-rules-revision-official-times.sql", import.meta.url), "utf8");
   const migrated = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(migrated);
   // #6200: official_times_v3 got its own migration (#6452); #6464: official_times_v4
   // is switched off and needs its own migration in the flip PR.
-  assert.deepEqual(migrated[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v3" && revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(migrated[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "official_times_v3" && revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
   // Idempotent and additive: the constraint is replaced, never a row update.
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
@@ -365,7 +365,7 @@ test("#6452: the v3 migration allows every known revision, additively and idempo
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6464: official_times_v4 came later, with its own migration (test below).
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
 });
@@ -376,7 +376,7 @@ test("#6464: the v4 migration allows every revision known at the v4 taend, addit
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6369: s5_profiles_v1 is switched off; its CHECK extension belongs to the flip PR.
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
@@ -546,7 +546,7 @@ test("#6369: the S5 migration allows every revision known before official_times_
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6462: official_times_v5 came later, with its own migration (test below).
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   // Hot table: add NOT VALID (no scan under ACCESS EXCLUSIVE), validate as its own statement.
@@ -633,7 +633,7 @@ test("#6462: the official_times_v5 migration allows every known revision incl. t
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6818: s5_profiles_v2 came later, with its own migration (#6818 tests below).
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "s5_profiles_v2"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   assert.match(migration, /\)\)\s*NOT VALID;/);
@@ -702,7 +702,7 @@ test("#6818: the s5_profiles_v2 migration allows every known revision, additivel
   const migration = await readS5V2Migration();
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), [...RACE_RULES_REVISIONS]);
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   // Hot table: add NOT VALID (no scan under ACCESS EXCLUSIVE), validate as its own statement.
