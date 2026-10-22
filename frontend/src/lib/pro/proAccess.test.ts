@@ -1,5 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { hasProFeatureAccess, proBenefitPath, parseProBenefit, PRO_BENEFITS } from "./proAccess.ts";
 import { PRO_SAMPLE_SEASONS, PRO_SAMPLE_ABILITIES } from "./proSampleData.ts";
 
@@ -16,6 +19,17 @@ test("#2806 gratis spiller faar ikke funktionerne", () => {
   assert.equal(hasProFeatureAccess({ isPro: false, isFounder: false }), false);
   assert.equal(hasProFeatureAccess({ isPro: false }), false);
 });
+
+// Gemte filtre er ren localStorage (ingen backend-gate), saa komponenten ER
+// haandhaevelsen. Guarden sikrer at begge Pro-flader bruger den ene regel.
+const componentsDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "components");
+for (const rel of ["rider/SavedFiltersBar.jsx", "rider/profile/RiderAbilityHistoryPro.jsx"]) {
+  test(`#2806 ${rel} gater paa hasProFeatureAccess, ikke isPro || isFounder`, () => {
+    const src = readFileSync(join(componentsDir, rel), "utf8");
+    assert.match(src, /hasProFeatureAccess\(\{ isPro, isFounder \}\)/);
+    assert.doesNotMatch(src, /isPro \|\| isFounder/);
+  });
+}
 
 test("#2806 opsalgslinket peger paa den rigtige fane paa /pro", () => {
   assert.equal(proBenefitPath("history"), "/pro?benefit=history");
