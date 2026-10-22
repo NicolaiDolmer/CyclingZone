@@ -7,7 +7,7 @@
 
 import { PUBLIC_OFFER_STATUSES } from "./riderHistory.js";
 import { assertNoSupabaseError } from "./supabaseResultGuard.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { SUPABASE_PAGE_SIZE } from "./supabasePagination.js";
 
 export { PUBLIC_OFFER_STATUSES };
 
@@ -69,15 +69,23 @@ export function buildSeasonResolver(seasons) {
   };
 }
 
+// Henter alle sider og returnerer {data, error} i samme form som en enkelt query,
+// saa assertNoSupabaseError (#1338) stadig navngiver den fejlende tabel.
+async function paged(buildQuery) {
+  const data = [];
+  for (let from = 0; ; from += SUPABASE_PAGE_SIZE) {
+    const res = await buildQuery().range(from, from + SUPABASE_PAGE_SIZE - 1);
+    if (res.error) return { data: null, error: res.error };
+    data.push(...(res.data || []));
+    if (!res.data || res.data.length < SUPABASE_PAGE_SIZE) return { data, error: null };
+  }
+}
+
 export async function buildTeamTransferHistory(supabase, teamId) {
   // #6965: PostgREST afkorter hver select ved 1000 raekker. Et aktivt hold har
   // tusindvis af auktionsraekker (mest no-sale), saa de aeldste koeb blev klippet
   // vaek og senere salg kunne ikke paares (-> "Unknown"). Alle kilder pagineres
   // derfor med en unik id-tie-breaker, saa sidegraenser er deterministiske.
-  const paged = async (buildQuery) => {
-    try { return { data: await fetchAllRows(buildQuery), error: null }; }
-    catch (error) { return { data: null, error }; }
-  };
   const [auctionsRes, offersRes, swapsRes, seasonsRes, academyRes] = await Promise.all([
     paged(() => supabase.from("auctions")
       .select("id, current_price, actual_end, created_at, is_guaranteed_sale, seller_team_id, current_bidder_id, seller:seller_team_id(id, name, is_ai), winner:current_bidder_id(id, name, is_ai), rider:rider_id(id, firstname, lastname)")
