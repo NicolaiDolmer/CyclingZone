@@ -37,6 +37,9 @@ function publicSummary(raw) {
   return { generated_at: raw.generated_at, groups_checked: raw.groups_checked,
     required_team_count: raw.required_team_count, total_findings: raw.total_findings,
     waiting_count: (raw.waiting || []).length,
+    // #7039: a youth group short until the next regroup is a visible warning, not a failure.
+    youth_short_count: (raw.youth_short || []).length,
+    youth_short: (raw.youth_short || []).map(({ label, count, required, delta }) => ({ label, count, required, delta })),
     findings: raw.findings.map(({ label, count, required, delta }) => ({ label, count, required, delta })) };
 }
 
@@ -44,7 +47,9 @@ async function finishCheck(github, context, id, summary, succeeded, now) {
   const conclusion = succeeded && summary?.total_findings === 0 ? 'success' : 'failure';
   await github.rest.checks.update({ ...context.repo, check_run_id: id,
     status: 'completed', conclusion, completed_at: now,
-    output: { title: conclusion === 'success' ? 'League invariant measured healthy' : 'League invariant not verified healthy',
+    output: { title: conclusion !== 'success' ? 'League invariant not verified healthy'
+      : summary?.youth_short_count ? `League invariant healthy; ${summary.youth_short_count} youth group(s) short until regroup`
+      : 'League invariant measured healthy',
       summary: summary ? JSON.stringify(summary, null, 2)
         : 'Audit did not return a valid measurement. No green result is inferred.' } });
 }

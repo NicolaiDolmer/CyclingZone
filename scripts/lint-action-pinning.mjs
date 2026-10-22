@@ -15,8 +15,10 @@
 //      folk uden skriveadgang: pull_request_target, issue_comment, issues,
 //      pull_request_review_comment, pull_request_review.
 //
-// GitHub-ejede orgs er undtaget for regel 1, fordi de er en anden tillidsklasse end en
-// tilfaeldig tredjepart. De er IKKE undtaget for regel 2.
+//   3. (#7029) Ogsaa GitHubs egne actions skal SHA-pinnes i ALLE workflows. Undtagelsen
+//      for GitHub-ejede orgs blev fjernet efter Railway-haendelsen 21/10-2026, hvor
+//      angreb mod platform-leverandoerer gjorde flytbare tags til en uacceptabel risiko,
+//      ogsaa hos en betroet udgiver. Dependabot (github-actions) holder SHA'erne friske.
 //
 // Brug:
 //   node scripts/lint-action-pinning.mjs          # exit 1 ved fund
@@ -98,6 +100,12 @@ export function findUnpinnedActions(dir = WORKFLOW_DIR) {
           rule: "secret-bearing-trigger",
           why: `${file} har trigger(e) ${risky.join(", ")} og koerer derfor med repoets secrets, udloest af folk uden skriveadgang. Alle actions i den fil skal SHA-pinnes, ogsaa GitHubs egne.`,
         });
+      } else {
+        findings.push({
+          file, line: i + 1, action, ref,
+          rule: "github-owned",
+          why: `${action} er GitHub-ejet, men skal ogsaa SHA-pinnes (#7029), ikke til det flytbare tag ${ref}`,
+        });
       }
     });
   }
@@ -110,7 +118,7 @@ if (isMain) {
   const findings = findUnpinnedActions();
 
   if (findings.length === 0) {
-    console.log("action-pinning: alle tredjeparts-actions og alle actions i secret-baerende workflows er SHA-pinnet");
+    console.log("action-pinning: alle actions er SHA-pinnet");
     process.exit(0);
   }
 

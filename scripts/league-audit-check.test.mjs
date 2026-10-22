@@ -59,3 +59,14 @@ test('public reports contain aggregate findings only and reject incomplete measu
   assert.throws(() => publicSummary({ ...raw, total_findings: 0 }), /Incomplete/);
   assert.throws(() => publicSummary({ ...raw, groups_checked: 0 }), /Incomplete/);
 });
+test('#7039 short youth groups are published as a warning and named in a green check title', async () => {
+  const raw = { total_findings: 0, groups_checked: 35, findings: [], waiting: [],
+    youth_short: [{ league_division_id: 19, label: 'U23 Group D', count: 21, required: 24, delta: -3, private: 'x' }] };
+  const safe = publicSummary(raw);
+  assert.equal(safe.youth_short_count, 1);
+  assert.deepEqual(safe.youth_short, [{ label: 'U23 Group D', count: 21, required: 24, delta: -3 }]);
+  const github = api();
+  await finishCheck(github, context, 7, safe, true, now);
+  assert.equal(github.calls[0].conclusion, 'success');
+  assert.match(github.calls[0].output.title, /1 youth group\(s\) short until regroup/);
+});
