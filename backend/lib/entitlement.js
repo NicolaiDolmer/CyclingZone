@@ -50,12 +50,12 @@ export function computeIsPro(sub, now = Date.now()) {
 // is_founder. Ejer-beslutning 13/10 (#2806): Pro-funktioner (sæsonhistorik,
 // gemte filtre) kræver AKTIV Pro; Founder-status giver kun det permanente
 // Founder-mærke (Layout.jsx gater mærket på isPro || isFounder).
-export async function isPro(supabase, teamId) {
+export async function isPro(supabase, teamId, now = Date.now()) {
   const { data, error } = await supabase
     .from("subscriptions")
     .select("status, current_period_end, is_founder, last_event_at")
     .eq("team_id", teamId)
     .maybeSingle();
   if (error) throw error;
-  return computeIsPro(data);
+  return computeIsPro(data, now);
 }
