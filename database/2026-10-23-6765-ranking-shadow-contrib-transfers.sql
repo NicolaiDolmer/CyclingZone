@@ -2,6 +2,10 @@
 -- Design: PR #6849, open review finding "Keep rider transfers off the raw-race
 -- rebuild path". Builds on 2026-10-19-6765-incremental-rankings-shadow.sql.
 --
+-- Order matters: replaying 2026-10-19-6765-incremental-rankings-shadow.sql
+-- after this file restores the M1 function (unbounded claim, raw fan-out).
+-- Any manual M1 replay must be followed by a replay of this file.
+--
 -- Legacy matviews remain the only reader and heartbeat contract. This file
 -- replaces two shadow functions in place; no table, trigger, grant or flag
 -- changes. Replaying it is a no-op.

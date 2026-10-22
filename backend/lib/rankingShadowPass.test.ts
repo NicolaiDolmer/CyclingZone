@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { runRankingShadowPass as rawRun, SHADOW_DRAIN_MAX_BATCHES, SHADOW_DRAIN_BUDGET_MS, SHADOW_QUEUE_STALL_ALARM_S } from './rankingShadowPass.ts';
 type Client=Parameters<typeof rawRun>[0];
-type Options=Omit<Parameters<typeof rawRun>[1],'clock'>;
+type Options=Omit<Parameters<typeof rawRun>[1],'clock'>&{clock?:()=>number};
 const adapters=new WeakMap<Client,Client>();
 function runRankingShadowPass(client:Client,options:Options){
   let adapter=adapters.get(client);
@@ -97,39 +97,41 @@ test('#6765 M1.5: a lost lease between batches stops the drain and reports',asyn
   assert.equal(applies,1);
   assert.match(errors[0].message,/between shadow batches/);
 });
-test('#6765 M1.5: the drain stops at the time budget and leaves the rest queued',async()=>{
+test('#6765 M1.5: the drain stops before a batch would cross the time budget',async()=>{
   let elapsed=0,applies=0;const logs:Array<Record<string,unknown>>=[];
   const client={rpc:async(name:string)=>{
     if(name==='apply_ranking_deltas'){applies++;elapsed+=3000;}
     return {data:{pending:true},error:null};
   }};
-  assert.equal(await rawRun(adapterFor(client),{now:0,clock:()=>elapsed,logger:{info:(_m,d)=>{logs.push(d);}}}),true);
-  assert.equal(applies,Math.ceil(SHADOW_DRAIN_BUDGET_MS/3000));
-  assert.equal(logs[0].status,'pending');assert.equal(logs[0].batches,applies);
+  assert.equal(await runRankingShadowPass(client,{now:0,clock:()=>elapsed,logger:{info:(_m,d)=>{logs.push(d);}}}),true);
+  // 3 s batches: after two (6 s) a third would end at 9 s, past the 8 s budget.
+  assert.equal(SHADOW_DRAIN_BUDGET_MS,8000);
+  assert.equal(applies,2);
+  assert.equal(logs[0].status,'pending');assert.equal(logs[0].batches,2);
 });
-test('#6765 M1.5: queue age is optional, validated, and alarms only while enabled',async()=>{
-  const run=async(age:unknown,stage='on')=>{
+test('#6765 M1.5: queue age is optional, validated, and alarms only when undrained and enabled',async()=>{
+  const MORNING=Date.parse('2026-10-19T08:00:00Z');
+  const run=async(age:unknown,{stage='on',pending=true,client:shared,now=MORNING}:{stage?:string;pending?:boolean;client?:object;now?:number}={})=>{
     const alarms:string[]=[];const errors:string[]=[];
-    const client={
+    const client=Object.assign(shared??{},{
       from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{value:stage},error:null})})})}),
       rpc:async(name:string)=>({data:name==='get_ranking_shadow_metrics'?{queue_length:1,...(age===undefined?{}:{oldest_age_s:age})}
-        :name==='apply_ranking_deltas'?{pending:false}:{status:'equal'},error:null}),
-    };
-    await rawRun(client,{now:Date.parse('2026-10-19T08:00:00Z'),clock:()=>0,logger:{info(){}},
+        :name==='apply_ranking_deltas'?{pending}:{status:'equal'},error:null}),
+    });
+    await rawRun(client,{now,clock:()=>0,logger:{info(){}},
       captureExceptionFn:(e,c)=>{(c.tags.alarm?alarms:errors).push(c.tags.alarm??e.message);}});
     return {alarms,errors};
   };
+  const STALE=SHADOW_QUEUE_STALL_ALARM_S+1;
   assert.deepEqual(await run(undefined),{alarms:[],errors:[]},'pre-migration metrics stay valid');
   assert.deepEqual(await run(null),{alarms:[],errors:[]});
   assert.deepEqual(await run(SHADOW_QUEUE_STALL_ALARM_S),{alarms:[],errors:[]});
-  assert.deepEqual(await run(SHADOW_QUEUE_STALL_ALARM_S+1),{alarms:['queue-stall'],errors:[]});
-  assert.deepEqual(await run(SHADOW_QUEUE_STALL_ALARM_S+1,'off'),{alarms:[],errors:[]},'off keeps one aged repair marker by design');
+  assert.deepEqual(await run(STALE),{alarms:['queue-stall'],errors:[]});
+  assert.deepEqual(await run(STALE,{pending:false}),{alarms:[],errors:[]},'a pass that drained the queue is not stalled');
+  assert.deepEqual(await run(STALE,{stage:'off'}),{alarms:[],errors:[]},'off keeps one aged repair marker by design');
   for(const bad of [-1,1.5,'60']) assert.deepEqual(await run(bad),{alarms:[],errors:['Invalid ranking shadow queue age metric']},String(bad));
+  const client={};
+  assert.deepEqual((await run(STALE,{client})).alarms,['queue-stall']);
+  assert.deepEqual((await run(STALE,{client,now:MORNING+60_000})).alarms,[],'clean ticks do not repeat the alarm');
+  assert.deepEqual((await run(STALE,{client,now:MORNING+3_600_000})).alarms,['queue-stall'],'repeats hourly while stalled');
 });
-function adapterFor(client:Client):Client{
-  return {...client,
-    from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{value:'on'},error:null})})})}),
-    rpc:(name,args)=>name==='get_ranking_shadow_metrics'
-      ?Promise.resolve({data:{queue_length:0},error:null}):client.rpc(name,args),
-  };
-}

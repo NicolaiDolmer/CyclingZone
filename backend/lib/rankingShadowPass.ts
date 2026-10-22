@@ -20,8 +20,12 @@ const DAY_MS=24*60*60*1000;
 // burst does not wait one cron minute per batch. Remaining work stays queued.
 export const SHADOW_DRAIN_MAX_BATCHES=20;
 export const SHADOW_DRAIN_BUDGET_MS=8000;
-// A queue head older than this means batches keep failing and rolling back.
+// A queue head older than this that a pass could not drain means batches keep
+// failing/rolling back or the backlog outgrows the drain. Reported at most
+// hourly per backend client so clean one-minute ticks do not flood Sentry.
 export const SHADOW_QUEUE_STALL_ALARM_S=1800;
+const STALL_ALARM_EVERY_MS=60*60*1000;
+const lastStallAlarm = new WeakMap<object,number>();
 
 export async function runRankingShadowPass(client: Client, {
   ownerToken, targetVersion, now,
@@ -30,7 +34,7 @@ export async function runRankingShadowPass(client: Client, {
   captureExceptionFn, renewLease,
 }: Options): Promise<boolean> {
   const started=clock();
-  let queueLength:number|null=null,oldestAgeS:number|null=null,batches=0,enabled=false,status='disabled';
+  let queueLength:number|null=null,oldestAgeS:number|null=null,batches=0,enabled=false,drained=false,status='disabled';
   try {
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost before shadow metrics');
     const metrics=await client.rpc('get_ranking_shadow_metrics',{});
@@ -52,9 +56,9 @@ export async function runRankingShadowPass(client: Client, {
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost after shadow flag');
     if(!enabled) return false;
     status='processing';
-    let pending=true;
-    while(pending){
+    for(;;){
       if(batches>0 && renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost between shadow batches');
+      const batchStarted=clock();
       const {data,error}=await client.rpc('apply_ranking_deltas',{
         p_max_items:200,p_owner_token:ownerToken??null,p_target_version:targetVersion??null,
       });
@@ -62,14 +66,17 @@ export async function runRankingShadowPass(client: Client, {
       if(error?.code==='PGRST202'||error?.code==='42883') return false;
       if(error) throw new Error(error.message);
       batches++;
-      if((data as {status?:string}|null)?.status==='disabled') {status='disabled';return false;}
-      // Anything but an explicit pending:false keeps the M1 meaning "not done";
-      // only an explicit pending:true is worth another batch in this pass.
-      pending=!data || (data as {pending?:boolean}).pending!==false;
-      if(pending && ((data as {pending?:boolean}|null)?.pending!==true
-        || batches>=SHADOW_DRAIN_MAX_BATCHES || clock()-started>=SHADOW_DRAIN_BUDGET_MS)) break;
+      const result=data as {status?:string;pending?:boolean}|null;
+      if(result?.status==='disabled') {status='disabled';return false;}
+      if(result?.pending===false) break;
+      // Only an explicit pending:true earns another batch; anything else keeps
+      // the M1 meaning "not done" until the next pass. The budget check assumes
+      // the next batch costs what this one did (a batch is never interrupted).
+      const elapsed=clock()-started,lastBatch=Math.max(0,clock()-batchStarted);
+      if(result?.pending!==true || batches>=SHADOW_DRAIN_MAX_BATCHES
+        || elapsed+lastBatch>SHADOW_DRAIN_BUDGET_MS) {status='pending';return true;}
     }
-    if(pending) {status='pending';return true;}
+    drained=true;
     status='processed';
     if(renewLease && !await renewLease()) throw new Error('Ranking refresh claim lost before shadow parity');
     const executionNow=now+Math.max(0,clock()-started);
@@ -108,8 +115,12 @@ export async function runRankingShadowPass(client: Client, {
         extra:{queue_length:queueLength,oldest_age_s:oldestAgeS,batches,pass_ms:passMs,enabled,status},
       });
     }
-    // Only while enabled: an off flag deliberately keeps one aged repair marker.
-    if(enabled&&oldestAgeS!==null&&oldestAgeS>SHADOW_QUEUE_STALL_ALARM_S){
+    // Only while enabled (off deliberately keeps one aged repair marker) and
+    // only when this pass did not drain the queue the age was measured on.
+    const alarmAt=now+passMs,lastAlarm=lastStallAlarm.get(client);
+    if(enabled&&!drained&&oldestAgeS!==null&&oldestAgeS>SHADOW_QUEUE_STALL_ALARM_S
+      &&(lastAlarm===undefined||alarmAt-lastAlarm>=STALL_ALARM_EVERY_MS)){
+      lastStallAlarm.set(client,alarmAt);
       captureExceptionFn?.(new Error('Ranking shadow queue head is stalled'),{
         tags:{lib:'rankingShadowPass',alarm:'queue-stall'},
         extra:{queue_length:queueLength,oldest_age_s:oldestAgeS,batches,enabled,status},

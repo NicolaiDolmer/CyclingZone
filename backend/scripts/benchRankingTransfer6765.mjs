@@ -6,6 +6,8 @@
 //   B. bulk transfer of 200 riders (M1: per-race raw fan-out, M1.5: contrib only)
 //   C. one rider transfer
 // Every step ends with EXCEPT ALL parity against the legacy SELECTs.
+// processed_items exposes the M1 claim bug: an M1 "200" batch can consume the
+// whole fan-out queue, so M1 batch counts understate its bounded behaviour.
 //
 //   pwsh -File scripts/verify-lock.ps1 -Max 2 -- node backend/scripts/benchRankingTransfer6765.mjs
 // --quick runs a small fixture.
