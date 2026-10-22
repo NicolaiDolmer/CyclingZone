@@ -7,7 +7,7 @@ import {
   SEASON_TRANSITION_KEY_DRIFT_TOLERANCE_MS,
 } from "./seasonTransitionKeyGuard.js";
 
-function makeSupabase({ upcomingSeason = null, appConfigRow = null, seasonsError = null, configError = null, raceIds = [], firstStageAt = null, stageError = null } = {}) {
+function makeSupabase({ upcomingSeason = null, appConfigRow = null, seasonsError = null, configError = null, raceIds = [], firstStageAt = null, prevEndDate = null, stageError = null } = {}) {
   return {
     from(table) {
       if (table === "races") {
@@ -17,7 +17,9 @@ function makeSupabase({ upcomingSeason = null, appConfigRow = null, seasonsError
         return { select() { return { in() { return { order() { return { limit() { return { maybeSingle() { return Promise.resolve({ data: firstStageAt ? { scheduled_at: firstStageAt } : null, error: stageError }); } }; } }; } }; } }; } };
       }
       if (table === "seasons") {
-        return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: upcomingSeason, error: seasonsError }); } }; } }; } };
+        return { select() { return {
+          neq() { return { not() { return { order() { return { limit() { return { maybeSingle() { return Promise.resolve({ data: prevEndDate ? { end_date: prevEndDate } : null, error: null }); } }; } }; } }; } }; },
+          eq() { return { maybeSingle() { return Promise.resolve({ data: upcomingSeason, error: seasonsError }); } }; } }; } };
       }
       if (table === "app_config") {
         return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: appConfigRow, error: configError }); } }; } }; } };
@@ -94,6 +96,7 @@ test("#7022: nøgle tidligere end konventionen, første etape >= 24t efter → b
     appConfigRow: { value: "2026-09-25T16:00:00.000Z" },
     raceIds: ["r1"],
     firstStageAt: "2026-09-28T08:00:00.000Z",
+    prevEndDate: "2026-09-20",
   });
   const result = await checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") });
   assert.equal(result.drift, false);
@@ -118,6 +121,19 @@ test("#7022: nøgle efter første etape → stadig drift", async () => {
     appConfigRow: { value: "2026-09-29T16:00:00.000Z" },
     raceIds: ["r1"],
     firstStageAt: "2026-09-28T08:00:00.000Z",
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") });
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "diverges");
+});
+
+test("#7022: efterladt nøgle fra forrige sæson (før dens slutning) → stadig drift", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: { id: "s4", number: 4, start_date: "2026-09-28" },
+    appConfigRow: { value: "2026-08-23T16:00:00.000Z" },
+    raceIds: ["r1"],
+    firstStageAt: "2026-09-28T08:00:00.000Z",
+    prevEndDate: "2026-09-27",
   });
   const result = await checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") });
   assert.equal(result.drift, true);

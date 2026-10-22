@@ -24,6 +24,23 @@ export const SEASON_TRANSITION_KEY_DRIFT_WINDOW_DAYS = 7;
 export const SEASON_TRANSITION_KEY_DRIFT_TOLERANCE_MS = 12 * 60 * 60 * 1000;
 export const SEASON_TRANSITION_KEY_PLANNED_MIN_LEAD_MS = 24 * 60 * 60 * 1000;
 
+// Slutningen af forrige sæsons sidste dag (end_date + 1 dag, 00:00Z), eller null.
+// En planlagt nøgle skal ligge EFTER dette, ellers er den en efterladenskab (codex P2).
+async function fetchPreviousSeasonEndedAt(supabase, seasonId) {
+  const { data, error } = await supabase
+    .from("seasons")
+    .select("end_date")
+    .neq("id", seasonId)
+    .not("end_date", "is", null)
+    .order("end_date", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`previous-season lookup failed: ${error.message}`);
+  if (!data?.end_date) return null;
+  const end = new Date(`${String(data.end_date).slice(0, 10)}T00:00:00Z`);
+  return Number.isNaN(end.getTime()) ? null : new Date(end.getTime() + 24 * 60 * 60 * 1000);
+}
+
 // Tidligste etape-tidspunkt for sæsonen (race_stage_schedule), eller null.
 async function fetchFirstStageAt(supabase, seasonId) {
   if (seasonId == null) return null;
@@ -96,6 +113,14 @@ export async function checkSeasonTransitionKeyDrift({ supabase, now = new Date()
       && existing.getTime() < firstStageAt.getTime()
       && firstStageAt.getTime() - existing.getTime() >= SEASON_TRANSITION_KEY_PLANNED_MIN_LEAD_MS
     ) {
+      const prevEndedAt = await fetchPreviousSeasonEndedAt(supabase, season.id);
+      if (prevEndedAt && existing.getTime() < prevEndedAt.getTime()) {
+        return {
+          checked: true, drift: true, reason: "diverges",
+          seasonNumber: season.number, startDate: season.start_date,
+          expected: expected?.toISOString() ?? null, existing: existingRaw, diffMs, daysUntilStart,
+        };
+      }
       return {
         checked: true, drift: false, reason: "planned-earlier",
         seasonNumber: season.number, existing: existingRaw, diffMs, daysUntilStart,
