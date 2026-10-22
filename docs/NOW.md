@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · **22/10:** S5-mailens preheader (#7011, `S5_PREHEADER_APPROVED`) · **forsiden #6665:** merge-klar, ejeren siger selv hvornår; spørg ikke.
+> **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · S5-mailens preheader (#7011) · **forsiden #6665:** ejeren siger selv hvornår.
 >
-> **🎯 Next action (22/10):** **S5-skiftet 25/10 kl. 20:30 følger [drejebogen](runbooks/2026-10-25-s4-s5-drejebog.md)** (9 ejer-beslutninger B1-B9, 20 huller). Vigtigst: **ungdom kan ikke køre "løft → regroup → kalender"** → B4-forslag på #6667 (regroup + kalender før transitionen, løft efter). **Railway** (sikkerhedshændelse #7029): builds kun Pro/Enterprise, alle API-tokens ugyldige → ejer `railway login` + rotation fase 1. Skift-fixes er live (`28149fcc1`); motor v2 #6820 kræver build før 28/10 11:00. **#7035** (backend-image til GHCR, #7034) bygger grønt, venter review-gate. Merge-kø når Railway bygger: `7020,7012,7025,6988` (7011 preheader-go). #7028 merget → ejeren genstarter Codex-bølgen.
+> **🎯 Next action (23/10):** **S5-skiftet 25/10 kl. 20:30 følger [drejebogen](runbooks/2026-10-25-s4-s5-drejebog.md).** Besluttet 22/10: ungdom **søndag efter parkering** (regroup → kalender U23 → junior → transition → løft; prøvekørsel: 6+6 grupper à 24), tomme grupper lukkes af regroup selv, server-test (#5904) køres 23/10, "afventer oprykning" (#6710) tændes før skiftet + PR #7036 samme dag. **23/10:** prøvekørsler #6499 + #6710 + løbsdag. **Merge når grøn:** #7037 (lukkede ungdomsgrupper), #7038 (React 19.3.1). **Railway** (#7029): builds kun Pro/Enterprise; ejer mangler `railway login`. Nøglerotation fase 1: Supabase ×3, Alunta gjort, Anthropic slettet; Resend/Discord + tilbagekald efter 25/10, **ingen nøgleændringer fre-søn**. Motor v2 #6820: build før 28/10 11:00 (image-vej #7034; kildeskift = ejer-go). Kø når Railway bygger: `7012,7025,6988`.
 >
-> **22/10:** GitHub-audit (29 lukket, 6 til done) · #7028 merget · drejebog S4→S5 · #7035 åbnet.
+> **22/10:** audit (29 lukket) · merget #7028 #7030 #7020 #7035 #7040 · #7039 rettet (AI-pensionering blokerede D4 + "Afslut sæson"; live) · drejebog.
 >
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Claude 22/10 DolmerPC (dynamisk session: audit, drejebog, #7034).
+> **🤖 Working agent:** Ingen aktiv session (Claude 22/10 DolmerPC lukket; state i issues + denne fil).
