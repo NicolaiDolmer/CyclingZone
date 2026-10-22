@@ -2257,6 +2257,26 @@
       "q": "¿Qué es el grupo beta y cómo me uno?",
       "a": "Abro la mayoría de las funciones nuevas primero a un grupo pequeño, para poder leer cada respuesta antes de que las tenga todo el mundo. Un beta tester ve esas funciones pronto, y algunas cambiarán o se romperán por el camino. Pide unirte en Perfil, Grupo beta: contesto cada solicitud a mano y recibes un mensaje en tu bandeja de entrada de cualquier manera. Cuéntame lo que te parezca raro en Discord o a través del formulario de comentarios. Puedes salir del grupo de nuevo desde el mismo sitio, y conservas todo lo que ya se ha activado para todos. En las patch notes, Beta marca un cambio que solo tiene el grupo beta, Ya disponible para todos marca el día en que llega a todos, Activado marca algo construido antes que ahora está en uso y Evento de temporada marca cosas como un cambio de temporada. Un cambio sin etiqueta está activo para todos."
     },
+    "transferRumourFaq": {
+      "q": "¿Qué significa \"Un manager tiene el ojo puesto en un ciclista\"?",
+      "a": "Es un rumor de traspaso. De vez en cuando, cuando otro manager abre el perfil de uno de tus ciclistas, recibes este aviso. No ocurre en cada visita y no es una oferta. No tienes que hacer nada. Solo te dice que alguien lo está mirando. Los ciclistas que se miran mucho lo provocan más a menudo."
+    },
+    "freeSeniorAuctionFaq": {
+      "q": "¿Los agentes libres se ponen en subasta automáticamente?",
+      "a": "No. Cuando el contrato de un ciclista sénior termina y no se renueva, pasa a ser agente libre sin subasta. Solo sale a subasta si un manager inicia una. Cualquier manager puede hacerlo. Las subastas automáticas solo se dan con ciclistas jóvenes: el mercado juvenil y las ofertas de cantera que caducaron o fueron rechazadas."
+    },
+    "ownDivisionCalendarFaq": {
+      "q": "¿Mi equipo solo corre en su propia división?",
+      "a": "Sí. Tus ciclistas se inscriben en las carreras del calendario de tu propia división. Los ciclistas que fichas se unen también a ese calendario. Si fichas a un ciclista durante una carrera por etapas, la termina primero para su antiguo equipo y se une al tuyo justo después de la meta."
+    },
+    "trainWeaknessesFaq": {
+      "q": "¿Debo entrenar mis habilidades débiles?",
+      "a": "Normalmente no. El tipo de un ciclista fija un techo por habilidad, y una debilidad tiene un techo bajo, así que deja de crecer pronto. Cuanto más cerca está una habilidad de su techo, menos suma cada día de entrenamiento. Entrena las habilidades para las que está hecho su tipo y deja las debilidades en segundo lugar. Una habilidad débil sigue contando en una etapa, pero pesa sobre todo donde la etapa la exige."
+    },
+    "raceFatigueSameFatigueFaq": {
+      "q": "¿La fatiga del esfuerzo en carrera es la misma que la Fatiga de la página de entrenamiento?",
+      "a": "Sí. Hay una sola Fatiga por ciclista, no un medidor oculto de carrera. Empieza una carrera con la Fatiga que ves en la página de entrenamiento. En una carrera por etapas cada etapa añade carga encima, y un esfuerzo más duro (trabajar o atacar) añade más que uno más suave, así que un ciclista que va fuerte cada día se cansa a lo largo de la carrera. Esa fatiga se queda con él después, en el mismo valor."
+    },
     "sharpFlatTrainingDaysFaq": {
       "q": "¿Qué significan los días “de buenas piernas” y “flojos” de entrenamiento, y debería preocuparme una racha de días flojos?",
       "a": "Cada día de entrenamiento incluye una pequeña oscilación aleatoria sobre el progreso habitual de tu ciclista: algunos días quedan algo por encima de lo previsto (un día de buenas piernas), otros algo por debajo (un día flojo), y la mayoría se sitúan alrededor de lo normal. Es aproximadamente un tercio de los días en cada sentido, sorteado de nuevo por ciclista y por día y totalmente independiente del día anterior, así que no sigue la fatiga, la forma ni nada que estés haciendo mal. Dos o tres días flojos seguidos le ocurrirán a alguien en una plantilla de tamaño normal por pura casualidad; juzga el desarrollo de un ciclista a lo largo de un bloque de entrenamiento completo, no de un solo día."

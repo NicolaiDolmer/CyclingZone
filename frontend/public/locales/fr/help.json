@@ -2257,6 +2257,26 @@
       "q": "Qu'est-ce que le groupe bêta, et comment le rejoindre ?",
       "a": "J'ouvre la plupart des nouvelles fonctionnalités à un petit groupe d'abord, pour pouvoir lire chaque réponse avant que tout le monde les ait. Un bêta-testeur voit ces fonctionnalités en avance, et certaines vont changer ou planter en chemin. Demande à rejoindre sous Profil, Groupe bêta : je réponds à chaque demande à la main et tu reçois un message dans ta boîte de réception dans les deux cas. Dis-moi ce qui te semble anormal sur Discord ou via le formulaire de retour. Tu peux quitter le groupe au même endroit, et tu gardes tout ce qui est déjà passé en ligne pour tout le monde. Dans les Patch Notes, Bêta marque un changement que seul le groupe bêta a, Maintenant disponible pour tous marque le jour où il atteint tout le monde, Activé marque quelque chose construit plus tôt qui est maintenant utilisé, et Événement de saison marque des choses comme un changement de saison. Un changement sans étiquette est disponible pour tout le monde."
     },
+    "transferRumourFaq": {
+      "q": "Que signifie « Un manager a des vues sur un coureur » ?",
+      "a": "C'est une rumeur de transfert. De temps en temps, quand un autre manager ouvre le profil d'un de tes coureurs, tu reçois cet avis. Cela n'arrive pas à chaque visite et ce n'est pas une offre. Tu n'as rien à faire. Il t'indique seulement que quelqu'un le regarde. Les coureurs très consultés la déclenchent plus souvent."
+    },
+    "freeSeniorAuctionFaq": {
+      "q": "Les agents libres sont-ils mis aux enchères automatiquement ?",
+      "a": "Non. Quand le contrat d'un coureur senior se termine sans être renouvelé, il devient agent libre sans enchère. Il ne va aux enchères que si un manager en lance une. N'importe quel manager peut le faire. Les enchères automatiques ne concernent que les jeunes coureurs : le marché des jeunes et les offres d'académie expirées ou refusées."
+    },
+    "ownDivisionCalendarFaq": {
+      "q": "Mon équipe court-elle seulement dans sa propre division ?",
+      "a": "Oui. Tes coureurs sont inscrits aux courses du calendrier de ta propre division. Les coureurs que tu achètes rejoignent aussi ce calendrier. Si tu achètes un coureur pendant une course par étapes, il la termine d'abord pour son ancienne équipe et rejoint la tienne juste après l'arrivée."
+    },
+    "trainWeaknessesFaq": {
+      "q": "Dois-je entraîner mes capacités faibles ?",
+      "a": "En général non. Le type d'un coureur fixe un plafond par capacité, et une faiblesse a un plafond bas, donc elle cesse vite de progresser. Plus une capacité approche de son plafond, moins chaque jour d'entraînement apporte. Entraîne les capacités pour lesquelles son type est fait, et mets les faiblesses en second. Une capacité faible compte quand même dans une étape, mais surtout là où l'étape l'exige."
+    },
+    "raceFatigueSameFatigueFaq": {
+      "q": "La fatigue de l'effort en course est-elle la même que la Fatigue de la page d'entraînement ?",
+      "a": "Oui. Il y a une seule Fatigue par coureur, pas de jauge cachée de course. Il commence une course avec la Fatigue que tu vois sur la page d'entraînement. Dans une course par étapes, chaque étape ajoute de la charge, et un effort plus dur (travailler ou attaquer) en ajoute plus qu'un effort plus léger, donc un coureur qui roule fort chaque jour se fatigue au fil de la course. Cette fatigue reste avec lui ensuite, dans la même valeur."
+    },
     "sharpFlatTrainingDaysFaq": {
       "q": "Que signifient les jours d'entraînement “de forme” et “sans” (sharp et flat), et une série de jours sans doit-elle m'inquiéter ?",
       "a": "Chaque jour d'entraînement comprend une petite oscillation aléatoire par-dessus la progression habituelle de ton coureur : certains jours tombent un peu au-dessus du plan (un jour de forme), d'autres un peu en dessous (un jour sans), et la plupart restent autour de la normale. C'est environ un tiers des jours de chaque côté, tiré à neuf par coureur et par jour et complètement indépendant de la veille, il ne suit donc ni la fatigue, ni la forme, ni quoi que ce soit que tu fais de travers. Deux ou trois jours sans d'affilée arriveront à quelqu'un dans un effectif de taille normale par pur hasard ; juge la progression d'un coureur sur un bloc d'entraînement complet, pas sur un seul jour."

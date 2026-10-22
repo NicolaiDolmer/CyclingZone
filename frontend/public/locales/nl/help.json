@@ -2257,6 +2257,26 @@
       "q": "Wat is de betagroep, en hoe doe ik mee?",
       "a": "Ik open de meeste nieuwe functies eerst voor een kleine groep, zodat ik elke reactie kan lezen voordat iedereen ze krijgt. Een beta-tester ziet die functies vroeg, en sommige zullen onderweg veranderen of stukgaan. Vraag onder Profiel, Betagroep om mee te doen: ik beantwoord elk verzoek met de hand en je krijgt hoe dan ook een bericht in je inbox. Vertel me wat er niet goed voelt op Discord of via het feedbackformulier. Je kunt de groep vanaf dezelfde plek weer verlaten, en je houdt alles wat al voor iedereen live is gegaan. In patch notes markeert Beta een wijziging die alleen de betagroep heeft, markeert Nu live voor iedereen de dag waarop het iedereen bereikt, markeert Ingeschakeld iets wat eerder is gebouwd en nu in gebruik is, en markeert Seizoensevent zaken als een seizoenswissel. Een wijziging zonder label is live voor iedereen."
     },
+    "transferRumourFaq": {
+      "q": "Wat betekent \"Een manager heeft een oogje op een renner\"?",
+      "a": "Het is een transfergerucht. Af en toe, als een andere manager het profiel van een van je renners opent, krijg je dit bericht. Het gebeurt niet bij elk bezoek en het is geen bod. Je hoeft niets te doen. Het zegt alleen dat iemand naar hem kijkt. Renners die veel bekeken worden, veroorzaken het vaker."
+    },
+    "freeSeniorAuctionFaq": {
+      "q": "Worden vrije agenten automatisch geveild?",
+      "a": "Nee. Als het contract van een seniorrenner afloopt en niet wordt verlengd, wordt hij een vrije agent zonder veiling. Hij komt alleen op veiling als een manager er een start. Elke manager kan dat doen. Automatische veilingen gelden alleen voor jonge renners: de jeugdmarkt en academie-aanbiedingen die verlopen of afgewezen zijn."
+    },
+    "ownDivisionCalendarFaq": {
+      "q": "Rijdt mijn team alleen in zijn eigen divisie?",
+      "a": "Ja. Je renners worden ingeschreven voor de koersen op de kalender van je eigen divisie. Renners die je koopt, komen ook op die kalender. Koop je een renner tijdens een etappekoers, dan rijdt hij die eerst uit voor zijn oude team en komt hij direct na de finish bij het jouwe."
+    },
+    "trainWeaknessesFaq": {
+      "q": "Moet ik mijn zwakke eigenschappen trainen?",
+      "a": "Meestal niet. Het type van een renner bepaalt een plafond per eigenschap, en een zwakte heeft een laag plafond, dus die groeit al snel niet meer. Hoe dichter een eigenschap bij het plafond komt, hoe minder elke trainingsdag oplevert. Train de eigenschappen waarvoor zijn type gebouwd is en zet zwaktes op de tweede plaats. Een zwakke eigenschap telt nog steeds mee in een etappe, maar vooral waar de etappe erom vraagt."
+    },
+    "raceFatigueSameFatigueFaq": {
+      "q": "Is vermoeidheid door inspanning in de koers dezelfde als de Vermoeidheid op de trainingspagina?",
+      "a": "Ja. Er is één Vermoeidheid per renner, geen verborgen koersmeter. Hij begint een koers met de Vermoeidheid die je op de trainingspagina ziet. In een etappekoers komt er per etappe belasting bij, en een hardere inspanning (werken of aanvallen) voegt meer toe dan een lichtere, dus een renner die elke dag hard rijdt, raakt tijdens de koers moe. Die vermoeidheid blijft daarna bij hem, in dezelfde waarde."
+    },
     "sharpFlatTrainingDaysFaq": {
       "q": "Wat betekenen 'scherpe' en 'vlakke' trainingsdagen, en moet een reeks vlakke dagen me zorgen baren?",
       "a": "Elke trainingsdag bevat een kleine willekeurige schommeling bovenop de gebruikelijke voortgang van je renner: sommige dagen landen iets boven plan (een scherpe dag), sommige iets eronder (een vlakke dag), en de meeste zitten rond normaal. Het is ongeveer een derde van de dagen elke kant op, per renner per dag opnieuw gegooid en volledig onafhankelijk van de dag ervoor, dus het volgt geen vermoeidheid, vorm of iets wat jij verkeerd doet. Twee of drie vlakke dagen op rij zullen bij iemand in een selectie van normale grootte puur door toeval voorkomen; beoordeel de ontwikkeling van een renner over een heel trainingsblok, niet over één dag."
