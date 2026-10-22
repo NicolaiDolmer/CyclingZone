@@ -84,7 +84,7 @@ export default function CompletedRacesExplorer() {
   const [races, setRaces] = useState([]);
   const [racePoints, setRacePoints] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedRace, setSelectedRace] = useState(null);
+  const [selectedRace, setSelectedRace] = useState(/** @type {any} */ (null));
   // #1715 — spillerens egen liga-pulje (teams.league_division_id), så de 7
   // puljers løb ikke blandes i én liste (gav dublet-lignende visning).
   const [myPoolId, setMyPoolId] = useState(null);

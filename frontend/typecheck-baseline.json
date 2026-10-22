@@ -1043,7 +1043,6 @@
   },
   "src/components/race/CompletedRacesExplorer.jsx": {
     "TS18046": 1,
-    "TS2339": 16,
     "TS2345": 3,
     "TS2739": 2
   },
@@ -2567,10 +2566,9 @@
   "src/pages/RaceDetailPage.jsx": {
     "TS18047": 31,
     "TS2322": 20,
-    "TS2339": 67,
+    "TS2339": 43,
     "TS2345": 17,
     "TS2353": 3,
-    "TS2698": 1,
     "TS2739": 1,
     "TS2741": 12
   },
