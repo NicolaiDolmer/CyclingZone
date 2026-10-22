@@ -728,10 +728,10 @@ const S5_LAUNCH_COPY = {
 // medium withEmailUtm writes for the account mails (#6300).
 const S5_LAUNCH_URL = `${DASHBOARD_URL}?utm_source=email&utm_medium=email&utm_campaign=s5-launch`;
 
-// The preheader text is drafted but NOT owner-approved yet (#6300), so a real
-// send goes out without it. Flip to true on the owner's go; that is the one
-// line. Tests and previews opt in with { withPreheader: true }.
-const S5_PREHEADER_APPROVED = false;
+// Preheader approved by the owner 22/10 after an inbox mock with and without
+// it (#6300), so a real send carries it. Set to false to send without it;
+// that is the one line. withPreheader: false overrides it per call.
+const S5_PREHEADER_APPROVED = true;
 
 export function buildS5LaunchEmail({ unsubscribeUrl, language, withPreheader = S5_PREHEADER_APPROVED }) {
   const lang = normalizeLanguage(language);
