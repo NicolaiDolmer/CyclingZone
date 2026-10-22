@@ -15,10 +15,10 @@ export interface SampleSeason {
 export const PRO_SAMPLE_ABILITIES = ["climbing", "tempo", "time_trial", "endurance"] as const;
 
 export const PRO_SAMPLE_SEASONS: readonly SampleSeason[] = [
-  { season_number: 1, abilities: { climbing: 54, tempo: 50, time_trial: 48, endurance: 57 } },
-  { season_number: 2, abilities: { climbing: 61, tempo: 55, time_trial: 51, endurance: 60 } },
-  { season_number: 3, abilities: { climbing: 67, tempo: 58, time_trial: 53, endurance: 64 } },
-  { season_number: null, live: true, abilities: { climbing: 70, tempo: 60, time_trial: 52, endurance: 66 } },
+  { season_number: 1, abilities: { climbing: 41, tempo: 38, time_trial: 44, endurance: 45 } },
+  { season_number: 2, abilities: { climbing: 55, tempo: 47, time_trial: 50, endurance: 54 } },
+  { season_number: 3, abilities: { climbing: 65, tempo: 55, time_trial: 54, endurance: 62 } },
+  { season_number: null, live: true, abilities: { climbing: 71, tempo: 59, time_trial: 52, endurance: 66 } },
 ];
 
 // Navnene paa eksempel-filtrene staar i pro.json (benefits.filters.examples.*).
