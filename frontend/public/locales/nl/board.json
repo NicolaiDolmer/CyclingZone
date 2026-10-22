@@ -1876,9 +1876,9 @@
       "meta": "{seasons, plural, one {plan van 1 seizoen} other {plan van # seizoenen}}",
       "seasonLabel": "Seizoen {season}",
       "currentSeasonLabel": "Seizoen {season} · Je bent hier",
-      "explainer": "Elke mijlpaal moet aan het eind van zijn doelseizoen zijn gehaald. Haal je hem eerder, dan telt hij aan het eind van dat seizoen. Een gemiste mijlpaal kost eenmalig vertrouwen, daarna gaat de visie verder.",
-      "countsAt": "Telt aan het eind van seizoen {season} · kan eerder worden gehaald",
-      "countsAtCurrent": "Telt aan het eind van seizoen {season}",
+      "countsAt": "Haal hem uiterlijk aan het eind van seizoen {season}. Haal je hem eerder, dan telt hij meteen.",
+      "milestoneProgress": "{current} van {target}",
+      "helpLink": "Hoe mijlpalen meetellen",
       "milestoneAchieved": "Gehaald",
       "milestoneMissed": "Gemist",
       "empty": {

@@ -1876,9 +1876,9 @@
       "meta": "{seasons, plural, one {Plan over 1 sæson} other {Plan over # sæsoner}}",
       "seasonLabel": "Sæson {season}",
       "currentSeasonLabel": "Sæson {season} · Du er her",
-      "explainer": "Hver milepæl skal nås senest ved udgangen af sin målsæson. Når du den før, tæller den ved udgangen af den sæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",
-      "countsAt": "Tælles ved udgangen af sæson {season} · kan nås før tid",
-      "countsAtCurrent": "Tælles ved udgangen af sæson {season}",
+      "countsAt": "Nå det senest ved udgangen af sæson {season}. Når du det før, tæller det med det samme.",
+      "milestoneProgress": "{current} af {target}",
+      "helpLink": "Sådan tæller milepæle",
       "milestoneAchieved": "Nået",
       "milestoneMissed": "Ikke nået",
       "empty": {

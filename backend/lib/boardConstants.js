@@ -225,6 +225,9 @@ export const BOARD_IDENTITY_RIDER_SELECT = [
   // #6990 · birthdate så U25-målet kan udledes af sæsonalder (riderSeasonAge) i stedet
   // for den lagrede is_u25-kolonne, som kan stå forkert for helt unge ryttere.
   "birthdate",
+  // #6990 · trup, så U25-målet kun tæller seniortruppen (squads.isSeniorSquadRider).
+  "squad",
+  "is_academy",
   "salary",
   "market_value",
   "uci_points",

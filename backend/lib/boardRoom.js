@@ -122,7 +122,7 @@ import { getArchetypeByKey } from "./boardArchetypes.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
-import { buildGoalKey, evaluateGoalProgress, parseBoardGoals } from "./boardGoals.js";
+import { buildGoalKey, countU25RidersForBoard, evaluateGoalProgress, parseBoardGoals } from "./boardGoals.js";
 import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 // #1237 · nettostilling-hjælpere (activeDebt/wageBillPerSeason) til
 // no_outstanding_debt (scoreFinanceHealthGoal, boardUtils.js).
@@ -1045,6 +1045,10 @@ export async function buildBoardRoomPayload({
           },
           status,
           isCurrentSeason,
+          // #6990/#6991 · "x af 6" på tælle-milepæle. Samme tæller som målets evaluering.
+          progress: milestone.goal?.type === "min_u25_riders"
+            ? { current: countU25RidersForBoard(riders, currentSeasonNumber), target: milestone.goal?.target ?? null }
+            : null,
         };
       }),
     };

@@ -16,6 +16,7 @@ import {
   countTeamStarRiders,
 } from "./boardIdentity.js";
 import { isU25ForSeason } from "./riderSeasonAge.js";
+import { isSeniorSquadRider } from "./squads.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
 import { stampGoalsOwners } from "./boardMembers.js";
 import {
@@ -1010,11 +1011,13 @@ function countSignatureRiders(riders, goal, context = {}) {
   ).length;
 }
 
-// #6990 · Én regel for "U25-rytter" i bestyrelsens min_u25_riders-mål: UCI-reglen
-// (riderSeasonAge.isU25ForSeason) når sæsonnummer og fødselsdato kendes, ellers den
-// lagrede is_u25-kolonne som fallback. Alle ryttere på holdet tælles uanset trup
-// (junior, U23, senior): en rytter under 23 er pr. definition også U25.
+// #6990 · Én regel for bestyrelsens min_u25_riders-mål: seniortruppens ryttere med
+// sæsonalder <= 25 (ejer-valg B, #5898: bestyrelsen ser kun seniortruppen). Alderen er
+// UCI-reglen (riderSeasonAge.isU25ForSeason) når sæsonnummer og fødselsdato kendes,
+// ellers den lagrede is_u25-kolonne som fallback. Junior- og U23-truppens ryttere
+// tælles ikke med.
 export function isRiderU25ForBoard(rider, seasonNumber = null) {
+  if (!isSeniorSquadRider(rider)) return false;
   if (seasonNumber != null && rider?.birthdate) {
     return isU25ForSeason(rider.birthdate, seasonNumber);
   }
