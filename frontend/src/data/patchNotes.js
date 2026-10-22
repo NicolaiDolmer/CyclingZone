@@ -7,23 +7,6 @@ export const PATCHES = [
         "category": "improved",
         "audience": "player",
         "rollout": "live",
-        "topic": "Youth",
-        "en": {
-          "title": "No youth classification in U23 and junior races",
-          "body": "Everyone in a U23 or junior field is young already, so the youth classification only copied the overall one. It is gone from these races, also from races already ridden. Senior races keep it."
-        },
-        "da": {
-          "title": "Intet ungdomsklassement i U23- og juniorløb",
-          "body": "Alle i et U23- eller juniorfelt er i forvejen unge, så ungdomsklassementet var bare en kopi af det samlede. Det er væk fra disse løb, også fra løb der allerede er kørt. Seniorløb beholder det."
-        },
-        "refs": [
-          7031
-        ]
-      },
-      {
-        "category": "improved",
-        "audience": "player",
-        "rollout": "live",
         "topic": "Academy",
         "en": {
           "title": "One prognosis for your academy riders",
