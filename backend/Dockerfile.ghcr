@@ -5,10 +5,14 @@
 # builder, foer ejeren har sagt go til at skifte kilde. Se
 # docs/runbooks/RAILWAY_IMAGE_DEPLOY.md.
 #
-# Node-versionen foelger engines i backend/package.json (#7020 pinner 24.22.1).
-ARG NODE_VERSION=24.22.1
-FROM node:${NODE_VERSION}-bookworm-slim
+# Node 24.x som engines i backend/package.json (#7020 pinner 24.22.1). Basen er
+# pinnet paa digest, saa samme commit altid giver samme image.
+FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205
 
+# Railway saetter kun RAILWAY_GIT_COMMIT_SHA ved deploy fra GitHub. Ved
+# image-kilde ville Sentry ellers miste release (lib/sentry.js releaseName).
+ARG GIT_SHA
+ENV SENTRY_RELEASE=${GIT_SHA}
 ENV NODE_ENV=production
 WORKDIR /app
 
