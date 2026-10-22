@@ -429,7 +429,7 @@ export function poolRetirement(squadPlan) {
   };
 }
 
-async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
+async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp, retiredAt }) {
   const { squad, poolsToCreate, updates } = squadPlan;
   const col = fkColumn(squad);
 
@@ -475,7 +475,8 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
   }
   if (retireIds.length) {
-    const { error } = await supabase.from("league_divisions").update({ retired_at: new Date().toISOString() }).in("id", retireIds);
+    if (!retiredAt) throw new Error("applySquadPlan: retiredAt mangler (indsprøjtet tidspunkt for lukning)");
+    const { error } = await supabase.from("league_divisions").update({ retired_at: retiredAt }).in("id", retireIds);
     if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
   }
   try {
@@ -571,7 +572,7 @@ export async function main(argv = process.argv.slice(2)) {
   let failed = 0;
   for (const sp of squadPlans) {
     console.log(`APPLY ${sp.squad} (${sp.mode}): ${sp.poolsToCreate.length} grupper oprettes, ${sp.updates.length} hold opdateres`);
-    const { written, wrong, strandedInRetired } = await applySquadPlan(supabase, sp, { internalsDir, stamp });
+    const { written, wrong, strandedInRetired } = await applySquadPlan(supabase, sp, { internalsDir, stamp, retiredAt: generatedAt });
     console.log(`  skrevet ${written}, forkerte efter tilbagelæsning: ${wrong}, hold i lukkede grupper: ${strandedInRetired}`);
     if (strandedInRetired > 0) console.log("  STOP: hold står i en lukket gruppe (formentlig tilmeldt under kørslen). Kør regroup igen.");
     failed += wrong + strandedInRetired;
