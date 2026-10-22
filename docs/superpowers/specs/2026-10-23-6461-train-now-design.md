@@ -10,7 +10,7 @@
 ## 1. Kort
 
 - **Det er ikke en tilfældig fejl. Koden gør præcis, hvad specifikationen fra 29/9 siger.** Klikket afregner alle løbsdage på datoen undtagen den sidste. Den sidste løbsdag ejer datoens ene skrivning af træthed og form, og den skrivning er reserveret til aftenkørslen (beslutning 4 + I4).
-- **Ryttere med løb i dag får 0 af 5 ved klikket.** Hele deres dato venter på løbet og derefter på aftenkørslen.
+- **Ryttere med et løb i dag, der ikke er kørt endnu, får 0 af 5 ved klikket.** Hele deres dato venter på løbet og derefter på aftenkørslen. (Er løbet allerede kørt, får de 4 af 5 som ryttere uden løb.)
 - **Prod (read-only, 1/10-22/10):** ca. 38 hold har brugt knappen. Ved tryk før kl. 20 fik ca. 6 ud af 10 ryttere 4 af 5, og ca. 3-4 ud af 10 fik 0 af 5. Resten kom i median ca. 10 timer senere. Ingen rytter mistede træning; alle datoer blev afregnet til 5 af 5 om aftenen.
 - **Spillerne oplever det som en fejl**, fordi knappen hedder "Træn nu" og alligevel venter på aftenen. Ejeren 20/10: "alt sker med klikket", træning skal føles som en øjeblikkelig reaktion.
 - **Forslag:** variant A lader klikket afregne hele datoen (5 af 5, også træthed og form) for alle ryttere, hvis dato er kendt på klik-tidspunktet. Det er ryttere uden løb, og ryttere hvis løb allerede er kørt. Løbsryttere afregnes som i dag. Variant B tager også løbsryttere med og kræver ændringer i løbsmotoren (§6).
@@ -75,7 +75,7 @@ Kontrol: en gruppe ryttere fik 4 af 5 ved klikket **og** havde et løb samme dat
 
 1. **Intet input kan ændre sig efter klikket.** Låsen (`training_train_now_locks`) gør, at en rytter uden tilmelding ikke kan sættes ind i et løb på datoen. Uden løb kommer der ingen løbsbelastning (`training_race_loads`). Skadesrullet er seedet på datoen, og tilstanden regnes fra datoens starttilstand (`opening_conditions`). Klikket og aftenkørslen regner derfor samme tal: I1 holder.
 2. **Afregningen er allerede pr. rytter.** `commit_training_date_tick` har kvitteringer pr. rytter og løbsdag, tilstandsafregning pr. rytter (`training_condition_settlements`), status `partial` når kun en del af truppen er færdig, og et tjek af løbsbelastningen ved afregningen. Aftenkørslen springer ryttere med kvittering over. Der skal ikke bygges en ny skrivevej.
-3. **Løbet påvirkes ikke.** Løbsmotoren læser træthed og form for løbets deltagere. En rytter der afregnes ved klikket, kører ikke på datoen, så en tidlig skrivning når aldrig et løb samme dag (beslutning 3 holder).
+3. **Løbet påvirkes ikke.** Løbsmotoren læser træthed og form for løbets deltagere, og autoudfyldningen læser træthed for holdets ryttere, når den vælger kandidater (`raceRunner.js`). En rytter der afregnes ved klikket, har en lås og springes over af alle udtagelsesveje, så han kører ikke på datoen, og en tidlig skrivning når aldrig et løb samme dag (beslutning 3 holder). Bygge-PR'en skal have en test, der låser netop dette: en låst rytter er aldrig autoudfyld-kandidat.
 4. **#3461-tricket kan ikke komme tilbage.** Ryttere med et løb får ikke deres tilstand skrevet før løbet. Der er stadig én tilstandsafregning pr. rytter pr. dato.
 
 **Ændringer (til bygge-PR'en, ikke denne):**
@@ -84,8 +84,9 @@ Kontrol: en gruppe ryttere fik 4 af 5 ved klikket **og** havde et løb samme dat
 |---|---|
 | `trainNow.js` | `trainNowGameDays` returnerer alle datoens løbsdage for `settleNow`-ryttere. Kommentaren "What the press deliberately does NOT settle" omskrives |
 | I4 i 29/9-specen | Omformuleres fra "skrives kun af aftenopgørelsen" til "skrives én gang pr. rytter pr. dato, af den afregning der afslutter rytterens dato, så snart datoen er kendt (klik eller aften)". Ejer-godkendelse kræves, fordi I4 er en låst invariant |
-| Status-API og siden | `settledGameDays` bliver 5 for de afregnede. Teksten "4 af 5" forsvinder. Prognosen "Træthed i aften" bliver til den faktiske tilstand for afregnede ryttere |
-| Hjælp (`help.json` en+da) | Beslutning 9-teksten ("restitutionen sker ved aftenopgørelsen") opdateres: for ryttere uden løb sker alt i klikket |
+| Status-API og siden | `settledGameDays` bliver 5 for de afregnede. Teksten "4 af 5" forsvinder. Har holdet ingen løbsryttere, bliver datoen `complete` allerede ved klikket: status skifter da fra `locked` til `date_settled`, og `isTodayPlanLocked` slipper dagens plan (ændringer rammer ikke længere i dag). `TrainNowState` skal vise den tilstand direkte efter trykket |
+| Prognosen (`trainingWeekPlanForecast.js`) | `settled` afgøres i dag for hele holdet (status `complete`, eller alle ryttere har 5 kvitteringer). Den skal afgøres **pr. rytter**, så afregnede ryttere viser den faktiske træthed, mens holdets løbsryttere stadig viser "Træthed i aften" |
+| Hjælp (`help.json` en+da) | Beslutning 9-teksten ("restitutionen sker ved aftenopgørelsen") og det eksisterende afsnit om at træningen kører af sig selv "tidligst kl. 20" opdateres: for ryttere uden løb sker alt i klikket |
 | Patch note | EN først, DA under, i bølgens close-out |
 
 **Det A ikke løser:** løbsryttere med et løb, der ikke er kørt, venter stadig på løbet og aftenkørslen. Prod viser, at det er ca. 1 ud af 3 ryttere ved et tryk.
