@@ -2014,6 +2014,29 @@ function addDaysToDate(dateStr, days) {
  *   seasonId?: string|null}} args
  * @returns {Array<{rider_id, injured_until, injury_cause}>}
  */
+/**
+ * #7042: ryttere hvis SKADENDE uheld var et hårdt styrt han kørte videre efter (trin 2),
+ * så skadebeskeden kan sige at han kørte etapen færdig. Afgøres af det skadende uheld på
+ * rytterens seneste etape, samme filter som incidentInjuryUpsertRows: kører hele løbet
+ * i ét kald (admin-simulering), kan et tidligt styrt han kørte videre efter ellers
+ * maskere en senere udgåelse (Codex P2).
+ */
+export function injuryFinishedRiderIds(incidents = []) {
+  const latest = new Map();
+  for (const inc of incidents) {
+    const injuring = (inc.outcome === "abandon" && inc.kind === "crash")
+      || (inc.kind !== "injury" && Number.isFinite(inc.injury_days) && inc.injury_days > 0);
+    if (!injuring || !inc.rider_id) continue;
+    const prev = latest.get(inc.rider_id);
+    if (!prev || Number(inc.stage_number) >= Number(prev.stage_number)) latest.set(inc.rider_id, inc);
+  }
+  const out = new Set();
+  for (const [riderId, inc] of latest) {
+    if (inc.kind === "crash" && inc.outcome !== "abandon") out.add(riderId);
+  }
+  return out;
+}
+
 export function incidentInjuryUpsertRows({ incidents = [], todayStr, gameDayByStage = null, seasonId = null, seasonNumber = null, raceDayInjuries = false }) {
   const injuring = incidents.filter(
     (inc) => (inc.outcome === "abandon" && inc.kind === "crash")
@@ -2172,11 +2195,7 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers, seaso
   // ellers rask ud (Friis 16/10). Efter den bekræftede skrivning; en fejl her må aldrig
   // vælte etapen. notifyTeamOwner's 24t-dedup dækker en gen-kørsel af samme etape.
   try {
-    // #7042: et hårdt styrt (tidstab + skade) kører etapen færdig; beskeden skal sige det.
-    const finishedRiderIds = new Set(incidents
-      .filter((inc) => inc.kind === "crash" && inc.outcome !== "abandon")
-      .map((inc) => inc.rider_id));
-    await notifyRaceInjuries({ supabase, race, injuryRows, finishedRiderIds });
+    await notifyRaceInjuries({ supabase, race, injuryRows, finishedRiderIds: injuryFinishedRiderIds(incidents) });
   } catch (err) {
     captureException(err, { tags: { flow: "race-run", stage: "injury-notice" }, raceId: race.id });
   }
