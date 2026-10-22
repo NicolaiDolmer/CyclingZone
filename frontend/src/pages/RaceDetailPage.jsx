@@ -67,7 +67,7 @@ import {
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
 import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
-import { raceHasYouthClassification, withoutHiddenYouthClassification } from "../lib/youthClassification.ts";
+import { raceHasYouthClassification, withoutHiddenYouthClassification, isHiddenYouthCareerEvent } from "../lib/youthClassification.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -668,7 +668,7 @@ export default function RaceDetailPage() {
     setSchedule(scheduleRows ?? []);
     setIncidents(incidentRows ?? []);
     setMoments(momentRows ?? []);
-    setCareerEvents(careerEventRows ?? []);
+    setCareerEvents((careerEventRows ?? []).filter((e) => !isHiddenYouthCareerEvent(e, raceRow?.squad))); // #7031
     setPassages(passageRows ?? []);
     setLoading(false);
   }, [raceId]);

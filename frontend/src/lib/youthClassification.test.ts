@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceHasYouthClassification, isHiddenYouthClassificationRow, withoutHiddenYouthClassification } from "./youthClassification.ts";
+import { raceHasYouthClassification, isHiddenYouthClassificationRow, withoutHiddenYouthClassification, isHiddenYouthCareerEvent } from "./youthClassification.ts";
 
 test("#7031: kun seniorløb (og ukendt trup) har ungdomsklassement", () => {
   assert.equal(raceHasYouthClassification("senior"), true);
@@ -26,4 +26,14 @@ test("#7031: rækkefilteret til rytterens resultater", () => {
   assert.equal(isHiddenYouthClassificationRow({ result_type: "young_day" }, "junior"), true);
   assert.equal(isHiddenYouthClassificationRow({ result_type: "young" }, "senior"), false);
   assert.equal(isHiddenYouthClassificationRow({ result_type: "gc" }, "u23"), false);
+});
+
+test("#7031: first_jersey for ungdomstrøjen skjules kun i ungdomsløb", () => {
+  const young = { event_type: "first_jersey", params: { classification: "young" } };
+  const points = { event_type: "first_jersey", params: { classification: "points" } };
+  assert.equal(isHiddenYouthCareerEvent(young, "u23"), true);
+  assert.equal(isHiddenYouthCareerEvent(young, "junior"), true);
+  assert.equal(isHiddenYouthCareerEvent(young, "senior"), false);
+  assert.equal(isHiddenYouthCareerEvent(points, "u23"), false);
+  assert.equal(isHiddenYouthCareerEvent({ event_type: "maiden_win", params: {} }, "u23"), false);
 });

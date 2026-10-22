@@ -25,3 +25,15 @@ export function withoutHiddenYouthClassification<T extends { result_type?: strin
   if (raceHasYouthClassification(squad)) return list;
   return list.filter((r) => !YOUTH_RESULT_TYPES.has(String(r?.result_type ?? "")));
 }
+
+// Karriere-præstationen "første klassementstrøje" (first_jersey) blev også skrevet
+// for ungdomstrøjen i U23-/juniorløb før #7031. Den skjules af samme regel.
+export function isHiddenYouthCareerEvent(
+  // params er Supabase-Json (løst typet); kun classification læses.
+  event: { event_type?: string | null; params?: unknown } | null | undefined,
+  squad: string | null | undefined,
+): boolean {
+  return !raceHasYouthClassification(squad)
+    && event?.event_type === "first_jersey"
+    && (event?.params as { classification?: unknown } | null | undefined)?.classification === "young";
+}
