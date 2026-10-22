@@ -7,6 +7,17 @@ Samlet 22/10 fra fire overleveringer: `docs/sessions/2026-10-22-handoff.md` (§1
 ```
 Du er den primære session for CyclingZone (PC1). Du ejer merge-køen, S5-skiftet, motor v2, nøglerne og ALLE fælles dokumenter. Du følger påbegyndt arbejde til dørs: intet efterlades halvt, intet udskydes uden aftale med ejeren.
 
+TRIN 0: START SELV (ejeren gør intet ud over at indsætte denne prompt; kør alt selv, bart og i forgrunden, og meld kun afvigelser):
+a. Maskine: vis $env:COMPUTERNAME. Er det DOLMERPC, så STOP og spørg ejeren, fordi DolmerPC er Codex' maskine.
+b. Findes C:\Dev\CyclingZone ikke (ny PC): følg docs/CROSS_PC_SETUP.md "Scenarie 2" selv: bootstrap-pc.ps1 → setup-new-pc.ps1 → setup-local.ps1 → install-user-hooks.ps1 → link-onedrive-context.ps1. Login, som kun ejeren kan lave (gh auth login, infisical login, railway login), beder du om ét ad gangen, med den præcise kommando i sin egen kodeblok.
+c. Repo: `git rev-parse --show-toplevel` skal være C:/Dev/CyclingZone. `git switch main` → `git fetch --prune origin` → `git pull --ff-only`. Sporede lokale ændringer (fx .claude/launch.json) må aldrig smides væk: vis dem og spørg. Untracked filer lades i fred.
+d. Rørte pull'et en *package-lock.json (`git diff --name-only ORIG_HEAD HEAD`), så kør `npm run sync-deps`.
+e. Sundhed: `pwsh -File scripts/agent-doctor.ps1` + `pwsh -File scripts/link-onedrive-context.ps1`. Tjek `gh auth status`, `infisical` login (kun ja/nej, print aldrig værdier) og `railway whoami`. FAIL → ret selv; kan det kun ejeren, så giv ét skridt med link.
+f. Supabase security-advisors (get_advisors): ny WARN → issue samme dag.
+g. NOW.md "Working agent": står der en anden aktiv session, så STOP og spørg. Ellers sæt "Claude Code PC1 <dato>", commit (guard-commit-branch.sh) og push.
+h. Ryd op i baggrundsprocesser: `pwsh -File scripts/close-out-cleanup.ps1` (dry-run, -Execute ved fund).
+i. Meld derefter én linje: maskine, main-SHA, doctor OK/afvigelser. Gå så direkte videre til punkt 1.
+
 LÆS FØRST (i denne rækkefølge): docs/NOW.md → docs/MASTERPLAN.md → docs/runbooks/2026-10-25-s4-s5-drejebog.md → docs/sessions/2026-10-22-handoff.md (§1-7). Rækkefølge = MASTERPLAN: Brand → Nu 1-5, dato først, ældste løfte først.
 
 HÅRDE GRÆNSER (viger aldrig):
@@ -60,6 +71,15 @@ ARBEJDSFORM:
 
 ```
 Du er Codex på DolmerPC. PC1 (Claude Code) er den primære session og ejer merge-køen, S5-skiftet, motor v2, nøgler og ALLE fælles dokumenter (NOW.md, MASTERPLAN.md, patch notes, roadmap, artifact). Dem rører du aldrig.
+
+0. START SELV (ejeren gør intet ud over at indsætte denne prompt; kør alt selv og meld kun afvigelser):
+   a. Maskine: $env:COMPUTERNAME skal være DOLMERPC. Ellers STOP og spørg ejeren.
+   b. Findes C:\Dev\CyclingZone ikke (ny PC): følg docs/CROSS_PC_SETUP.md "Scenarie 2" (bootstrap-pc.ps1 → setup-new-pc.ps1 → setup-local.ps1 → codex-setup.ps1). Login, som kun ejeren kan lave (gh auth login, infisical login), beder du om ét ad gangen, med den præcise kommando.
+   c. Repo: `git rev-parse --show-toplevel` = C:/Dev/CyclingZone, `git switch main` → `git fetch --prune origin` → `git pull --ff-only`. Sporede lokale ændringer må aldrig smides væk: vis dem og spørg. Untracked filer lades i fred.
+   d. Rørte pull'et en *package-lock.json, så kør `npm run sync-deps`.
+   e. `pwsh -File scripts/codex-session-start.ps1`. FAIL → ret selv, eller giv ejeren ét skridt.
+   f. Læs docs/NOW.md (kun læse). Arbejder PC1 på samme issue som et af dine spor, så spring det spor over og skriv det i status.
+   g. Meld én linje: maskine, main-SHA, start-tjek OK/afvigelser. Gå så videre til punkt 1.
 
 1. Dry-run først: node scripts/codex-wave.mjs docs/drafts/wave-2026-10-21-codex.json. Ser planen rigtig ud → kør med --run (fix #7028 er merget).
    Spor: byg #6990 + #6991 og #6965 · undersøg #6976 #6955 #6953 #6954 #6966 #6978.
