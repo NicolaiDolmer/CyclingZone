@@ -76,7 +76,7 @@ function seasonState(): State {
     ],
     race_stage_schedule: [
       { race_id: "u-locked", stage_number: 1, scheduled_at: "2026-10-02T10:00:00Z" },
-      { race_id: "u-open-1", stage_number: 1, scheduled_at: "2026-10-03T10:00:00Z" },
+      { race_id: "u-open-1", stage_number: 1, scheduled_at: "2999-10-03T10:00:00Z" } /* #6959: fremtid, ellers er starten passeret og udtagelsen laast */,
     ],
     // #6139: laasen er pr. rytter. u-locked-r er tilmeldt u-locked og traenede den dag; u1 traenede ogsaa,
     // men er ikke tilmeldt noget U23-loeb den dato.
