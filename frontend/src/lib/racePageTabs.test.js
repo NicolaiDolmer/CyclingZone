@@ -9,6 +9,7 @@ import {
   resolveRaceTab,
   defaultRaceTab,
   isStageLockedForTactics,
+  hasScheduledStartPassed,
   firstOpenStage,
 } from "./racePageTabs.js";
 
@@ -87,4 +88,38 @@ test("firstOpenStage: den første etape der kan sættes; er alt låst, den sidst
   assert.equal(firstOpenStage(stages), 3);
   assert.equal(firstOpenStage(stages.map((s) => ({ ...s, locked: true }))), 3);
   assert.equal(firstOpenStage([]), null);
+});
+
+// #6959: taktik og trup laaser samtidig ved loebets start (etape 1's planlagte start).
+const START = "2026-10-02T12:00:00Z";
+const T_BEFORE = Date.parse("2026-10-02T11:59:59Z");
+const T_AFTER = Date.parse("2026-10-02T12:00:01Z");
+
+test("#6959 racePhase: start passeret uden koert etape (pause) er 'during', foer start er 'before'", () => {
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5, firstStageScheduledAt: START, now: T_BEFORE }), "before");
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5, firstStageScheduledAt: START, now: T_AFTER }), "during");
+});
+
+test("#6959 racePhase: schedule-hul holder loebet aabent (before) indtil en etape er koert", () => {
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5, firstStageScheduledAt: null, now: T_AFTER }), "before");
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5, now: T_AFTER }), "before");
+});
+
+test("#6959 racePhase: en flyttet start (planlagt pause) aabner loebet igen", () => {
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5, firstStageScheduledAt: "2026-10-09T12:00:00Z", now: T_AFTER }), "before");
+});
+
+test("#6959 trup (fase) og etape-1-taktik skifter i SAMME oejeblik", () => {
+  for (const now of [T_BEFORE, T_AFTER]) {
+    const squadLocked = racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5, firstStageScheduledAt: START, now }) !== "before";
+    const tacticsLocked = isStageLockedForTactics({ stageNumber: 1, stagesCompleted: 0, scheduledAt: START, now });
+    assert.equal(squadLocked, tacticsLocked);
+  }
+});
+
+test("#6959 hasScheduledStartPassed: manglende/ugyldigt tidspunkt er aabent", () => {
+  assert.equal(hasScheduledStartPassed(null, T_AFTER), false);
+  assert.equal(hasScheduledStartPassed("ikke-en-dato", T_AFTER), false);
+  assert.equal(hasScheduledStartPassed(START, T_BEFORE), false);
+  assert.equal(hasScheduledStartPassed(START, T_AFTER), true);
 });

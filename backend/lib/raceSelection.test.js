@@ -306,6 +306,33 @@ test("prepareSelectionChange: frosset løb afviser BÅDE tilføjelse/uændret tr
   assert.deepEqual(blockedClear, { ok: false, status: 409, error: "selection_race_started" });
 });
 
+// #6959 (BUG): under en motor-pause var etape 1's planlagte start passeret uden at en etape var
+// koert. Taktikken var laast, men truppen aaben. Nu laaser truppen paa samme regel.
+test("prepareSelectionChange: etape 1's start passeret (pause, ingen koert etape) afviser udtagelsen (#6959)", async () => {
+  const teamId = "t1";
+  const ids = ["r1", "r2", "r3", "r4", "r5", "r6"];
+  const state = {
+    riders: ids.map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+    race_stage_profiles: [], race_entries: [], rider_derived_abilities: [], rider_condition: [],
+    seasons: ACTIVE_SEASONS,
+    race_stage_schedule: [{ race_id: "race1", stage_number: 1, scheduled_at: "2020-01-01T10:00:00Z" }],
+  };
+  const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
+  const result = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.deepEqual(result, { ok: false, status: 409, error: "selection_race_started" });
+
+  // Flyttes starten ud i fremtiden (planlagt pause), aabner udtagelsen igen.
+  state.race_stage_schedule = [{ race_id: "race1", stage_number: 1, scheduled_at: "2999-01-01T10:00:00Z" }];
+  const reopened = await prepareSelectionChange({
+    supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
+    body: { rider_ids: ids, captain_id: "r1" },
+  });
+  assert.equal(reopened.ok, true);
+});
+
 // ── #5405: udtagelse må kun skrives i den AKTIVE sæsons løb ──────────────────────────
 //
 // Hullet: en pre-oprettet kommende sæsons løb materialiseres med status 'scheduled' og
@@ -639,6 +666,8 @@ function makeSelectionSupabase(state) {
       lte() { return b; },
       is(col, val) { f.is[col] = val; return b; },
       order() { return b; },
+      // #6959: race_stage_schedule-opslaget (loadFirstStageStarts) pagineres via fetchAllRows.
+      range() { return b; },
       // #5405: sæson-opslaget (loadRaceSeasonStatus) er det eneste .maybeSingle() i
       // raceSelection.js. Stubben spejler PostgREST: ingen række → { data: null }, ikke
       // en fejl — så testen for "sæsonen findes ikke" rammer den ægte fail-closed-sti.
@@ -912,6 +941,7 @@ function makeSquadSelectionSupabase(state) {
       or() { return b; },
       is(col, val) { f.is[col] = val; return b; },
       order() { return b; },
+      range() { return b; }, // #6959: schedule-opslaget pagineres
       maybeSingle() { return b.then((res) => ({ data: res.data?.[0] ?? null, error: res.error })); },
       then(resolve, reject) {
         let rows = state[table] || [];

@@ -161,10 +161,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   // mekanik endnu (ejer-beslutning, Discord 31/8), så et startet løbs lineup er låst
   // for både tilføjelse og fjernelse. Tjekket ligger FØR getSelectionContext — en
   // afvisning skal ikke koste roster-opslagene.
-  // #6959: samme regel som taktikken (raceStartLock.js): truppen er også låst når etape
-  // 1's planlagte start er passeret, ikke først når en etape er kørt. Så en motor-pause
-  // lader ikke truppen stå åben mens taktikken er låst.
-  if (await isRaceLineupLockedNow({ supabase, race })) {
+  if ((race.stages_completed ?? 0) > 0) {
     return { ok: false, status: 409, error: "selection_race_started" };
   }
 
@@ -177,6 +174,14 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   const seasonStatus = await loadRaceSeasonStatus({ supabase, seasonId: race.season_id });
   if (!seasonAllowsSelectionWrites(seasonStatus)) {
     return { ok: false, status: 409, error: "selection_season_not_active" };
+  }
+
+  // #6959: samme regel som taktikken (raceStartLock.js): truppen er også låst når etape
+  // 1's planlagte start er passeret, ikke først når en etape er kørt. Så en motor-pause
+  // lader ikke truppen stå åben mens taktikken er låst. Ét schedule-opslag, efter
+  // sæson-tjekket så en kommende sæsons afvisning stadig er billigst.
+  if (await isRaceLineupLockedNow({ supabase, race })) {
+    return { ok: false, status: 409, error: "selection_race_started" };
   }
 
   // #5944: en ungdomstrup sat til "Train only" kan ikke tilmeldes. Tom trup (ryd) er tilladt.

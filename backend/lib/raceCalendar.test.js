@@ -135,6 +135,8 @@ function sampleInput(overrides = {}) {
     teamDivisionId: 4,
     teamEntryRaceIds: new Set(["r-single"]),
     teamLeaderRaceIds: new Set(["r-single"]),
+    // #6959: fast "nu" foer alle schedule-raekker, saa lineupFrozen ikke afhaenger af kalenderen.
+    now: new Date("2026-06-01T00:00:00Z"),
     ...overrides,
   };
 }
@@ -309,4 +311,12 @@ test("#6514 lineupFrozen: afviklet eller igangvaerende loeb er laast, kun sendt 
   const open = buildCalendarModel(sampleInput()).entries[0];
   assert.equal(open.lineupFrozen, false);
   assert.ok(!("lineupFrozen" in toCalendarWireEntry(open)), "intet felt naar udtagelsen er aaben");
+});
+
+test("#6959 lineupFrozen: etape 1's start passeret (pause, ingen koert etape) laaser udtagelsen som taktikken", () => {
+  const after = buildCalendarModel(sampleInput({ now: new Date("2026-06-28T06:00:01Z") })).entries;
+  assert.equal(after.find((e) => e.id === "r-single").lineupFrozen, true);
+  assert.equal(after.find((e) => e.id === "r-stage").lineupFrozen, false, "et andet loebs start er ikke passeret");
+  const before = buildCalendarModel(sampleInput({ now: new Date("2026-06-28T05:59:59Z") })).entries;
+  assert.equal(before.find((e) => e.id === "r-single").lineupFrozen, false);
 });
