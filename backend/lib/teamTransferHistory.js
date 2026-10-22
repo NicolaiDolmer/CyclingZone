@@ -7,6 +7,7 @@
 
 import { PUBLIC_OFFER_STATUSES } from "./riderHistory.js";
 import { assertNoSupabaseError } from "./supabaseResultGuard.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export { PUBLIC_OFFER_STATUSES };
 
@@ -69,24 +70,32 @@ export function buildSeasonResolver(seasons) {
 }
 
 export async function buildTeamTransferHistory(supabase, teamId) {
+  // #6965: PostgREST afkorter hver select ved 1000 raekker. Et aktivt hold har
+  // tusindvis af auktionsraekker (mest no-sale), saa de aeldste koeb blev klippet
+  // vaek og senere salg kunne ikke paares (-> "Unknown"). Alle kilder pagineres
+  // derfor med en unik id-tie-breaker, saa sidegraenser er deterministiske.
+  const paged = async (buildQuery) => {
+    try { return { data: await fetchAllRows(buildQuery), error: null }; }
+    catch (error) { return { data: null, error }; }
+  };
   const [auctionsRes, offersRes, swapsRes, seasonsRes, academyRes] = await Promise.all([
-    supabase.from("auctions")
+    paged(() => supabase.from("auctions")
       .select("id, current_price, actual_end, created_at, is_guaranteed_sale, seller_team_id, current_bidder_id, seller:seller_team_id(id, name, is_ai), winner:current_bidder_id(id, name, is_ai), rider:rider_id(id, firstname, lastname)")
       .eq("status", "completed")
       .or(`seller_team_id.eq.${teamId},current_bidder_id.eq.${teamId}`)
-      .order("actual_end", { ascending: false }),
+      .order("actual_end", { ascending: false }).order("id", { ascending: true })),
 
-    supabase.from("transfer_offers")
+    paged(() => supabase.from("transfer_offers")
       .select("id, offer_amount, counter_amount, status, updated_at, seller_team_id, buyer_team_id, buyer:buyer_team_id(id, name, is_ai), seller:seller_team_id(id, name, is_ai), rider:rider_id(id, firstname, lastname)")
       .in("status", PUBLIC_OFFER_STATUSES)
       .or(`seller_team_id.eq.${teamId},buyer_team_id.eq.${teamId}`)
-      .order("updated_at", { ascending: false }),
+      .order("updated_at", { ascending: false }).order("id", { ascending: true })),
 
-    supabase.from("swap_offers")
+    paged(() => supabase.from("swap_offers")
       .select("id, cash_adjustment, counter_cash, status, updated_at, proposing_team_id, receiving_team_id, offered_rider:offered_rider_id(id, firstname, lastname), requested_rider:requested_rider_id(id, firstname, lastname), proposing:proposing_team_id(id, name, is_ai), receiving:receiving_team_id(id, name, is_ai)")
       .in("status", PUBLIC_OFFER_STATUSES)
       .or(`proposing_team_id.eq.${teamId},receiving_team_id.eq.${teamId}`)
-      .order("updated_at", { ascending: false }),
+      .order("updated_at", { ascending: false }).order("id", { ascending: true })),
 
     supabase.from("seasons")
       .select("id, number, start_date, end_date")
@@ -102,11 +111,11 @@ export async function buildTeamTransferHistory(supabase, teamId) {
     // rytterens kostbasis — uden den kan transfer-profit-panelet ikke parre en
     // senere sale mod dette køb. NULL på ældre rækker fra før #2793 (kostbasis
     // ukendt, UI viser det eksplicit i stedet for et bart "unknown").
-    supabase.from("academy_intake")
+    paged(() => supabase.from("academy_intake")
       .select("id, status, resolved_at, created_at, signing_fee, rider:rider_id(id, firstname, lastname)")
       .eq("team_id", teamId)
       .eq("status", "signed")
-      .order("resolved_at", { ascending: false }),
+      .order("resolved_at", { ascending: false }).order("id", { ascending: true })),
   ]);
 
   // Security-audit 2026-06-12 (P3, #1338): se supabaseResultGuard.js — en slugt

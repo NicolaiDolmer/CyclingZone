@@ -190,6 +190,7 @@
     "loadError": "Impossible de charger l'historique des transferts",
     "noSaleToggle": "Afficher les enchères sans offre",
     "noSaleHiddenNote": "{count, plural, one {# enchère sans offre est masquée} other {# enchères sans offre sont masquées}}. Aucun coureur n'a changé de mains.",
+    "showMore": "Afficher plus ({shown} sur {total})",
     "emptyFilteredNoSaleOnly": "Aucun vrai transfert dans la saison sélectionnée : seulement des enchères sans offre (masquées, voir le filtre ci-dessus).",
     "reportAction": "Signaler pour examen",
     "reportActionAria": "Signaler ce transfert pour examen"
