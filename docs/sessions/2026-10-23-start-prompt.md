@@ -23,6 +23,8 @@ Udskyd intet uden aftale med ejeren. Rækkefølge = MASTERPLAN, "dato først".
 
 3. SIKKERHED (#7029): ingen nøgleændringer fre-søn. Efter 25/10: backend på de nye nøgler → GitHub/Vercel → tilbagekald gamle nøgler + slå legacy JWT fra · Resend, Discord, VAPID.
 
+3b. EJERVALG FØR S5-LØBENE (28/10): #6739, små trupper mister hele etapeløb. Sidste etape af ét etapeløb og etape 1 af det næste deler løbsdag i samme pulje (målt 17/10: 105 gange i S4, 122 i S5), og en trup på ca. 12 kan ikke stille 6 + 6. A (anbefalet): start med færre ryttere (mindst N), når de manglende kørte et andet løb samme løbsdag. Det er en motorregel uden kalenderændring og bygger videre på skade-reglen fra #6745. B: en kalenderregel, der genåbner den låste overlap-andel (#3329) og kræver en ny S5-kalender. Grundlaget står i #6739-kommentaren af 17/10. Mål tallene igen mod den aktuelle S5-kalender, før du spørger mig. Spørg mig om A eller B og ved A om N. Lav design og målt baseline før første PR (motor, AGENTS 36), og tænd først på mit go. #6740 (Did not start, skade-besked, Train now-advarsel, frigivelse) er lukket og live.
+
 4. DEREFTER: løbsfilm-pakken samlet (#6814 + #6803 + #6512) · motor v3 #6804 (#7013, #7016; mål ca. 31/10-2/11) · Udvikling 2.0 · #7022 punkt 2 (teknisk) · fairplay-kort til ejeren mandag 26/10 (#5203).
 
 ARBEJDSFORM:
