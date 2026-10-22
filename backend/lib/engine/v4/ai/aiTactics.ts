@@ -93,6 +93,11 @@ export type AiTacticsInput = {
    * udeladt eller enhver anden vaerdi giver praecis samme ordre som foer.
    */
   rules_revision?: string;
+  /**
+   * #6818 (VALGFRIT, KUN s5_profiles_v2): ryttere motoren blokerer i morgenudbruddet. De faar
+   * aldrig et udbrudsforsoeg; naeste passende rytter tager pladsen. Udeladt = uaendret.
+   */
+  break_blocked_rider_ids?: ReadonlySet<string>;
 };
 
 export type AiTacticsReasons = {
@@ -404,11 +409,14 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
   // naar hans udbruds-score er i feltets top-andel.
   let breakCandidates: BreakScoreEntry[] = [];
   if (stance !== "chase") {
+    // #6818: blokerede ryttere er ikke kandidater; listerne nedenfor fyldes saa af de naeste.
+    const blocked = input.break_blocked_rider_ids;
+    const noBreakIds = blocked && blocked.size > 0 ? new Set([...grupettoIds, ...input.roster.map((r) => r.rider_id).filter((id) => blocked.has(id))]) : grupettoIds;
     const fieldBreakScores = field.map((r) => breakScore(r.abilities, primaryAbility));
     const freeRoleRankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.BREAK_CANDIDATE_FIELD_SHARE));
     breakCandidates = sortByScoreDesc(
       input.roster
-        .filter((r) => !grupettoIds.has(r.rider_id))
+        .filter((r) => !noBreakIds.has(r.rider_id))
         .filter((r) => r.role === "hunter" || (stance === "let_go" && r.role === "free_role"))
         .map((r) => ({ riderId: r.rider_id, role: r.role, score: breakScore(r.abilities, primaryAbility) }))
         .filter((c) => c.role === "hunter" || fieldRank(c.score, fieldBreakScores) <= freeRoleRankCap)
@@ -427,7 +435,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     if (isOrdersGcV2OrLater(input.rules_revision)) { // #6187: v3 arver v2
       const v2RankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
       const eligible = input.roster
-        .filter((r) => !grupettoIds.has(r.rider_id))
+        .filter((r) => !noBreakIds.has(r.rider_id))
         .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
         .map((r) => ({ riderId: r.rider_id, hunter: r.role === "hunter", score: breakScore(r.abilities, primaryAbility) }))
         .filter((c) => c.hunter || fieldRank(c.score, fieldBreakScores) <= v2RankCap)
@@ -447,7 +455,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
       const climbCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
       const taken = new Set(breakCandidates.map((c) => c.riderId));
       const climber = input.roster
-        .filter((r) => !grupettoIds.has(r.rider_id) && !taken.has(r.rider_id))
+        .filter((r) => !noBreakIds.has(r.rider_id) && !taken.has(r.rider_id))
         .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
         .filter((r) => fieldRank(abilityOf(r, "climbing"), fieldPrimary) <= climbCap)
         .sort((a, b) => abilityOf(b, "climbing") - abilityOf(a, "climbing") || a.rider_id.localeCompare(b.rider_id))[0];
@@ -467,7 +475,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     // V3_MAX_BREAK_CANDIDATES i alt. Aldrig en garanti: motoren afgoer stadig
     // hvem der kommer afsted. Ordrernes betydning er uaendret.
     if (sharedTimeModelGeneration(input.rules_revision) === 3) {
-      breakCandidates = v3ExtraBreakCandidates({ input, demand, primaryAbility, field, fieldPrimary, grupettoIds, breakCandidates });
+      breakCandidates = v3ExtraBreakCandidates({ input, demand, primaryAbility, field, fieldPrimary, grupettoIds: noBreakIds, breakCandidates });
     }
   }
   const breakScoreById = new Map(breakCandidates.map((c) => [c.riderId, c.score]));

@@ -344,6 +344,22 @@ export function formCpModifier(form: number | null | undefined, tuning: FormCpTu
   return frac * Math.max(0, tuning.maxCp);
 }
 
+/**
+ * #6156 (ejer 21/10): formtoppens tillaeg/dyk (signerede formpoint) -> CP-led, med
+ * PRAECIS formens egen sats pr. point (samme haeldning som formCpModifier paa hver side
+ * af nulpunktet), men UDEN formskalaens loft: toppen ligger oven i formen, saa en
+ * rytter paa form 100 ogsaa faar sin top. Kun en sanity-graense paa +/-100 point.
+ * 0/ugyldig -> 0.
+ */
+export function formPeakCpModifier(points: number | null | undefined, tuning: FormCpTuning = FORM_CP_TUNING): number {
+  const p = Number(points);
+  if (points == null || !Number.isFinite(p) || p === 0) return 0;
+  const neutral = clamp(tuning.neutralForm, 1, 99);
+  const pc = clamp(p, -100, 100);
+  const perPoint = pc >= 0 ? 1 / (100 - neutral) : 1 / neutral;
+  return pc * perPoint * Math.max(0, tuning.maxCp);
+}
+
 /** Anvend dagsform + jour sans paa en base-CP; gulv 0 (CP kan aldrig blive negativ). */
 export function applyDayformToCp(cp: number, dayform: number, jourSans: number): number {
   return Math.max(0, cp + dayform + jourSans);

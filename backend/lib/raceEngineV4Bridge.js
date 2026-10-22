@@ -366,11 +366,34 @@ function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(
     // #6156: rytterens form KUN under official_times_v3 og kun naar der ER
     // form-data; ellers baerer Entrant intet form-felt (byte-identisk input).
     if (!withForm) return entrant;
-    // #6156 (KUN s5_profiles_v2): peakDay er sat => den samlede form (form + top /
-    // minus dyk). Uden peakDay (alle aeldre revisioner) er det formen alene.
-    const form = peakDay === null ? riderFormForV4(e) : combinedFormForV4(e, peakDay);
-    return form === null ? entrant : { ...entrant, form };
+    const form = riderFormForV4(e);
+    const withRiderForm = form === null ? entrant : { ...entrant, form };
+    // #6156 (KUN s5_profiles_v2 + race_form_peaks; ejer 21/10 "A: byg"): peakDay er sat =>
+    // toppen/dykket som eget led (form_peak_points) oven i formen, som motoren ikke
+    // klemmer ved 100. Uden top paa dagen (og i alle aeldre revisioner) intet felt.
+    const peakPoints = peakDay === null ? null : peakFormPointsForV4(e, peakDay);
+    return peakPoints === null ? withRiderForm : { ...withRiderForm, form_peak_points: peakPoints };
   });
+}
+
+/**
+ * #6156 (ejer 21/10, KUN s5_profiles_v2): formtoppens tillaeg (positiv) eller dykket i
+ * tilbagebetalingen (negativ) i formpoint paa etapedagen, eller null uden top/dyk.
+ * Stoerrelsen er den formplanlaeggeren viser (racePeaks.peakComponentForStage +
+ * plannerBoard.scoreComponentToFormPoints). Motoren laegger den oven i formen som eget
+ * led (physiology.formPeakCpModifier), saa den IKKE klemmes ved form 100. REN.
+ *
+ * @param {{peakWindows?: Array<{start:number,end:number,trainingQuality?:number}>}} entrant
+ * @param {number|null|undefined} peakDay
+ * @returns {number|null}
+ */
+export function peakFormPointsForV4(entrant, peakDay) {
+  const windows = entrant?.peakWindows;
+  if (peakDay == null || !Array.isArray(windows) || windows.length === 0) return null;
+  const component = peakComponentForStage({ stageDay: peakDay, windows });
+  if (!component) return null;
+  const points = scoreComponentToFormPoints(component);
+  return points ? points : null;
 }
 
 /**
@@ -381,7 +404,12 @@ function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(
 export const NEUTRAL_FORM_FOR_PEAK = 50;
 
 /**
- * #6156 (KUN s5_profiles_v2): rytterens SAMLEDE form paa etapedagen, som v4 skal
+ * #6156: den SAMLEDE form (form + top, klampet 0-100). Siden ejer 21/10 ("A: byg") er
+ * det KUN den form risikoen for en daarlig dag ser (motoren regner den selv af
+ * Entrant.form + Entrant.form_peak_points); ydeevnen faar toppen som eget led, der
+ * ikke klemmes ved 100. Beholdt som reference for den kontrakt (tests).
+ *
+ * Oprindelig: rytterens SAMLEDE form paa etapedagen, som v4 skal
  * se den (spec 2026-10-04 §3.1, ejer 4/10: "én samlet form"). Formen
  * (rider_condition.form) + formtoppens tillaeg, naar dagen ligger i et af
  * rytterens peak-vinduer, eller minus dykket, naar dagen ligger i
@@ -499,6 +527,27 @@ export function buildGcContext({ isStageRace, stageNumber, standings, starterIds
  * alle dagens startere staar lige (rang 1, intet hul, ingen foerer); et klassement
  * faar maerket; endagsloeb og manglende data er uaendrede.
  */
+/**
+ * #6818 (ejer 21/10, "Ja, med A"; KUN s5_profiles_v2): loebets etaper (profiltype + etapens
+ * egne krav) til motorens loebsspecifikke klassementsevne (gcThreat.raceGcAbilityModel).
+ * null uden etaper eller krav. REN.
+ */
+export function raceGcStagesFor(raceStages, routeFromStageProfileRow) {
+  if (!Array.isArray(raceStages) || raceStages.length === 0) return null;
+  const out = [];
+  for (const s of raceStages) {
+    const demand = s?.demand_vector;
+    if (!demand || typeof demand !== "object") continue;
+    out.push({ stage_number: Number(s.stage_number) || 1, profile_type: routeFromStageProfileRow(s).profile_type, demand });
+  }
+  return out.length ? out.sort((a, b) => a.stage_number - b.stage_number) : null;
+}
+
+/** #6818: klassementet med loebets etaper, kun naar det er et klassement og der er etaper. */
+function withRaceGcStages(gcContext, raceGcStages) {
+  return raceGcStages && gcContext?.status === "standings" ? { ...gcContext, race_gc_stages: raceGcStages } : gcContext;
+}
+
 export function withS5ThreatModel(gcContext, startlist) {
   if (gcContext?.status === "standings") return { ...gcContext, threat_model: "s5" };
   if (gcContext?.status !== "first_stage" || !Array.isArray(startlist) || startlist.length === 0) return gcContext;
@@ -568,6 +617,11 @@ export function buildV4StageInput({
       // #6097: kun orders_gc_v2 aendrer AI-holdenes udbrudsforsoeg (M14);
       // legacy/orders_gc_v1 faar et uaendret kontekst-objekt.
       ...(isOrdersGcV2OrLater(rulesRevision) ? { rules_revision: rulesRevision } : {}),
+      // #6818 (KUN s5_profiles_v2): samme klassement som motoren faar, saa AI-holdene sender
+      // en anden rytter i stedet for en klassementsrytter, motoren blokerer i morgenudbruddet.
+      ...(isS5ProfilesV2OrLater(rulesRevision)
+        ? { gc_context: withRaceGcStages(withS5ThreatModel(buildGcContext({ isStageRace, stageNumber, standings: gcStandings, starterIds: rosterForOrders.map((r) => r.rider_id) }), rosterForOrders), raceGcStagesFor(raceStages, modules.route.routeFromStageProfileRow)) }
+        : {}),
     },
   });
   // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe);
@@ -597,6 +651,8 @@ export function buildV4StageInput({
     // #5978 (KUN s5_profiles_v1): S5-trusselsmodellen (gcThreat.ts). Paa foerste etape
     // staar alle dagens startere lige (rang 1, intet hul), saa feltet ogsaa dér reagerer.
     if (isS5ProfilesV1OrLater(rulesRevision)) input.gc_context = withS5ThreatModel(input.gc_context, startlist);
+    // #6818 (KUN s5_profiles_v2): loebets etaper til den loebsspecifikke klassementsevne.
+    if (isS5ProfilesV2OrLater(rulesRevision)) input.gc_context = withRaceGcStages(input.gc_context, raceGcStagesFor(raceStages, modules.route.routeFromStageProfileRow));
     // #5978 (KUN orders_gc_v3): etaper tilbage efter i dag (farlighedens potentiale).
     if (isOrdersGcV3OrLater(rulesRevision) && input.gc_context.status === "standings" && Array.isArray(raceStages)) {
       input.gc_context.stages_remaining = raceStages.filter((s) => (Number(s?.stage_number) || 1) > Number(stageNumber)).length;

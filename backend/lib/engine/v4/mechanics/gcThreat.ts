@@ -20,7 +20,7 @@
 // START-KANDIDATER (samme lokale praecedens som breakaway.ts's TEAM_CHASE); de
 // kalibreres privat (#5984 Task 6) og er ikke ejer-godkendte maal.
 
-import type { AbilityKey, Entrant, GcContext, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
+import type { AbilityKey, Entrant, GcContext, GcStageDemand, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
 
 export type GcThreatSeverity = "none" | "moderate" | "serious";
 
@@ -267,11 +267,11 @@ function hasSomethingToDefend(standing: GcStanding, isLeader: boolean, stagesRem
 }
 
 /** #5578 robust: den bedste GC-evne blandt klassementets forreste (protectRankLimit). */
-function bestTopGcAbility(standings: readonly GcStanding[], entrants: Readonly<Record<string, Entrant>>): number {
+function bestTopGcAbility(standings: readonly GcStanding[], entrants: Readonly<Record<string, Entrant>>, gc?: GcContext): number {
   let best = 0;
   for (const standing of standings) {
     if (standing.rank > GC_THREAT_TUNING.protectRankLimit) continue;
-    best = Math.max(best, gcAbility(entrants[standing.rider_id]));
+    best = Math.max(best, gcAbilityIn(gc, entrants[standing.rider_id]));
   }
   return best;
 }
@@ -326,6 +326,81 @@ function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
 }
 
+/** #6818: loebets etaper fra gc_context, eller null (ugyldig/tom = den faste evne). Samme array-reference naar gyldig. */
+function validRaceGcStages(raw: unknown): readonly GcStageDemand[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  for (const s of raw) {
+    if (!s || typeof s !== "object") return null;
+    const r = s as Record<string, unknown>;
+    if (!Number.isFinite(Number(r["stage_number"])) || typeof r["profile_type"] !== "string" || !r["demand"] || typeof r["demand"] !== "object") return null;
+  }
+  return raw as readonly GcStageDemand[];
+}
+
+/**
+ * #6818 (ejer 21/10, "Ja, med A"): hvor meget en etapetype typisk flytter klassementet
+ * (virkelig cykelsport, top-10-tidsgab pr. etapetype). Ejer-godkendt designkort 21/10.
+ */
+export const S5_GC_STAGE_IMPACT: Readonly<Record<string, number>> = Object.freeze({
+  itt: 1.0, itt_hilly: 1.0, high_mountain: 1.0, mountain: 0.8, cobbles: 0.6,
+  medium_mountain: 0.5, gravel: 0.5, hilly: 0.3, classic: 0.3, rolling: 0.1, flat: 0.05,
+});
+/** Ukendt profiltype (fx holdtidskoersel) vaegter som kuperet. */
+const S5_GC_STAGE_IMPACT_DEFAULT = 0.3;
+/** Afgoer resten af loebet mindre end dette, bruges hele loebet (kun flade etaper tilbage). */
+export const S5_GC_REMAINING_MIN_IMPACT = 0.5;
+
+/** #6818: rytterens normaliserede evne paa én etape (etapens krav som vaegte, uden "randomness"). */
+function stageGcAbility(entrant: Entrant | undefined, demand: Readonly<Partial<Record<AbilityKey, number>>>): number {
+  const abilities = entrant?.abilities;
+  if (!abilities) return 0;
+  let sum = 0;
+  let weight = 0;
+  for (const [key, raw] of Object.entries(demand)) {
+    const w = Number(raw) || 0;
+    if (!(w > 0) || !(key in abilities)) continue;
+    sum += w * (clamp(Number(abilities[key as AbilityKey]) || 0, 0, 99) / 99);
+    weight += w;
+  }
+  return weight > 0 ? sum / weight : 0;
+}
+
+const RACE_GC_MODEL_CACHE = new WeakMap<readonly GcStageDemand[], Map<number, ((e: Entrant | undefined) => number) | null>>();
+
+/**
+ * #6818 (ejer 21/10, "Ja, med A"): den loebsspecifikke klassementsevne. En rytters evne paa
+ * hver etape i RESTEN af loebet (fra dagens etape), vaegtet efter hvor meget etapetypen
+ * flytter klassementet (S5_GC_STAGE_IMPACT). Afgoer resten for lidt (kun flade etaper
+ * tilbage), bruges hele loebet. null uden loebets etaper (= den faste evne, som foer).
+ * Samme evne bruges i udvaelgelse, eksklusion, jagt og snor. REN.
+ */
+export function raceGcAbilityModel(gc: GcContext | null | undefined): ((entrant: Entrant | undefined) => number) | null {
+  if (!gc || gc.status !== "standings" || !gc.race_gc_stages || gc.race_gc_stages.length === 0) return null;
+  const stages = gc.race_gc_stages;
+  let byStage = RACE_GC_MODEL_CACHE.get(stages);
+  if (!byStage) { byStage = new Map(); RACE_GC_MODEL_CACHE.set(stages, byStage); }
+  const cached = byStage.get(gc.stage_number);
+  if (cached !== undefined) return cached;
+  const impact = (s: GcStageDemand) => S5_GC_STAGE_IMPACT[s.profile_type] ?? S5_GC_STAGE_IMPACT_DEFAULT;
+  const remaining = stages.filter((s) => Number(s.stage_number) >= gc.stage_number);
+  const use = remaining.reduce((sum, s) => sum + impact(s), 0) >= S5_GC_REMAINING_MIN_IMPACT ? remaining : stages;
+  const weighted = use.map((s) => ({ w: impact(s), demand: s.demand })).filter((s) => s.w > 0);
+  const model = weighted.length === 0 ? null : (entrant: Entrant | undefined) => {
+    let sum = 0;
+    let w = 0;
+    for (const s of weighted) { sum += s.w * stageGcAbility(entrant, s.demand); w += s.w; }
+    return w > 0 ? sum / w : 0;
+  };
+  byStage.set(gc.stage_number, model);
+  return model;
+}
+
+/** #6818: klassementsevnen i dette klassement: loebsspecifik under v2, ellers den faste. */
+function gcAbilityIn(gc: GcContext | null | undefined, entrant: Entrant | undefined): number {
+  const model = raceGcAbilityModel(gc);
+  return model ? model(entrant) : gcAbility(entrant);
+}
+
 function gcAbility(entrant: Entrant | undefined): number {
   const abilities = entrant?.abilities;
   if (!abilities) return 0;
@@ -378,7 +453,9 @@ export function normalizeGcContext(raw: unknown): GcContext {
         ? { stages_remaining: stagesRemaining }
         : {};
       const marks: S5GcMarks = s5 ? { threat_model: "s5", ...(firstStage ? { first_stage: true as const } : {}) } : {};
-      const out = { status: "standings" as const, stage_number: stageNumber, leader_id: leaderId, standings, ...remaining, ...marks };
+      // #6818 (ADDITIVT, KUN s5_profiles_v2): loebets etaper til den loebsspecifikke klassementsevne.
+      const raceStages = validRaceGcStages(ctx["race_gc_stages"]);
+      const out = { status: "standings" as const, stage_number: stageNumber, leader_id: leaderId, standings, ...remaining, ...marks, ...(raceStages ? { race_gc_stages: raceStages } : {}) };
       return out;
     }
     case "missing":
@@ -405,7 +482,7 @@ export function protectedRiderForTeam(input: {
     let pick: { standing: GcStanding; ability: number } | null = null;
     for (const standing of input.gcContext.standings) {
       if (input.entrants[standing.rider_id]?.team_id !== input.teamId) continue;
-      const ability = gcAbility(input.entrants[standing.rider_id]);
+      const ability = gcAbilityIn(input.gcContext, input.entrants[standing.rider_id]);
       if (!pick || standing.gap_seconds < pick.standing.gap_seconds
         || (standing.gap_seconds === pick.standing.gap_seconds && ability > pick.ability)) pick = { standing, ability };
     }
@@ -533,8 +610,8 @@ export function assessGcThreat(input: {
   // #5578 robust (KUN official_times_v2): en svag foerer (fx en sprinter i
   // troejen) maaler rivaler mod en reel klassementsrytter, ikke mod sig selv.
   const floorShare = isLeader && model ? danger.leaderRivalFloorShare : undefined;
-  const contenderFloor = floorShare !== undefined ? floorShare * bestTopGcAbility(gcContext.standings, input.entrants) : 0;
-  const protectedStrength = Math.max(gcAbility(input.entrants[protectedId]), contenderFloor);
+  const contenderFloor = floorShare !== undefined ? floorShare * bestTopGcAbility(gcContext.standings, input.entrants, gcContext) : 0;
+  const protectedStrength = Math.max(gcAbilityIn(gcContext, input.entrants[protectedId]), contenderFloor);
   const terrain = remainingTerrainKm(input.route, input.km);
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
 
@@ -556,7 +633,7 @@ export function assessGcThreat(input: {
       if (!standing) continue; // ikke i klassementet: ingen GC-trussel
       anyClassified = true;
       const deficit = standing.gap_seconds - protectedStanding.gap_seconds;
-      const strengthRaw = protectedStrength > 0 ? gcAbility(input.entrants[riderId]) / protectedStrength : 1;
+      const strengthRaw = protectedStrength > 0 ? gcAbilityIn(gcContext, input.entrants[riderId]) / protectedStrength : 1;
       const strength = clamp(strengthRaw, ratioLo, ratioHi);
       // #5978 (KUN orders_gc_v3): de kommende etaper taeller med (evne x antal).
       const future = model ? stagesRemaining * danger.futureSecondsPerStage * (strength - 1) : 0;
@@ -710,23 +787,56 @@ export function s5ReformationExcludedRiders(
   const synthetic = isSyntheticFirstStage(gc);
   if (synthetic && opts.abilityOnFirstStage !== true) return out;
   const topIds = synthetic
-    ? Object.keys(entrants).filter((id) => (!opts.racingRiderIds || opts.racingRiderIds.has(id)) && fieldGcRank(id, entrants, opts.racingRiderIds) <= rankAtMost)
+    ? Object.keys(entrants).filter((id) => (!opts.racingRiderIds || opts.racingRiderIds.has(id)) && fieldGcRank(id, entrants, opts.racingRiderIds, gc) <= rankAtMost)
     : gc.standings.filter((s) => s.rank <= rankAtMost).map((s) => s.rider_id);
   for (const id of topIds) out.add(id);
-  const abilities = topIds.map((id) => gcAbility(entrants[id])).filter((a) => a > 0).sort((a, b) => a - b);
+  const abilities = topIds.map((id) => gcAbilityIn(gc, entrants[id])).filter((a) => a > 0).sort((a, b) => a - b);
   if (abilities.length === 0) return out;
   const floor = S5_GC_THREAT_TUNING.dangerFloor * abilities[Math.floor((abilities.length - 1) / 2)];
-  for (const id of Object.keys(entrants)) if (gcAbility(entrants[id]) >= floor) out.add(id);
+  for (const id of Object.keys(entrants)) if (gcAbilityIn(gc, entrants[id]) >= floor) out.add(id);
+  return out;
+}
+
+/**
+ * #6818 (ejer 21/10, KUN s5_profiles_v2): hvem der ikke maa gaa i morgenudbrud, fordi de
+ * "ligger godt til i klassementet" eller "kan komme til at ligge virkeligt godt":
+ *  - stillingens top `rankAtMost` (ikke paa det syntetiske foerste-etape-klassement), og
+ *  - feltets `rankAtMost` bedste paa klassementsevne blandt de koerende (fast raekkefoelge
+ *    ved lige evne: rider_id), saa graensen aldrig vokser med et svagt klassement, men KUN
+ *    ryttere inden for `potentialMaxGapSeconds` af foereren: en rytter langt nede kan ikke
+ *    laengere komme til at ligge godt (paa foerste etape staar alle lige).
+ * Hoejst 2 x rankAtMost ryttere. Endagsloeb/ingen stilling: ingen. REN.
+ */
+export function s5MorningGcExcludedRiders(
+  gc: GcContext | null,
+  entrants: Readonly<Record<string, Entrant>>,
+  rankAtMost: number,
+  racingRiderIds: ReadonlySet<string>,
+  potentialMaxGapSeconds: number = Infinity,
+): Set<string> {
+  const out = new Set<string>();
+  if (!gc || gc.status !== "standings") return out;
+  const synthetic = isSyntheticFirstStage(gc);
+  const gapOf = new Map(gc.standings.map((s) => [s.rider_id, s.gap_seconds]));
+  if (!synthetic) {
+    for (const s of gc.standings) if (s.rank <= rankAtMost && racingRiderIds.has(s.rider_id)) out.add(s.rider_id);
+  }
+  // Uden en raekke i stillingen (fx ikke klassificeret) regnes rytteren som inden for raekkevidde.
+  const inReach = (id: string) => synthetic || (gapOf.get(id) ?? 0) <= potentialMaxGapSeconds;
+  const byAbility = [...racingRiderIds]
+    .filter((id) => gcAbilityIn(gc, entrants[id]) > 0 && inReach(id))
+    .sort((a, b) => gcAbilityIn(gc, entrants[b]) - gcAbilityIn(gc, entrants[a]) || a.localeCompare(b));
+  for (const id of byAbility.slice(0, rankAtMost)) out.add(id);
   return out;
 }
 
 /** #5978: rytterens plads paa klassementsevne blandt de koerende (1 = bedst; lige evne deler plads). */
-function fieldGcRank(riderId: string, entrants: Readonly<Record<string, Entrant>>, racingRiderIds?: ReadonlySet<string>): number {
-  const own = gcAbility(entrants[riderId]);
+function fieldGcRank(riderId: string, entrants: Readonly<Record<string, Entrant>>, racingRiderIds?: ReadonlySet<string>, gc?: GcContext): number {
+  const own = gcAbilityIn(gc, entrants[riderId]);
   let better = 0;
   for (const id of Object.keys(entrants)) {
     if (id === riderId || (racingRiderIds && !racingRiderIds.has(id))) continue;
-    if (gcAbility(entrants[id]) > own) better++;
+    if (gcAbilityIn(gc, entrants[id]) > own) better++;
   }
   return better + 1;
 }
