@@ -74,6 +74,17 @@ test('#6765 M1.5 shadow processor keeps parity without raw transfer fan-out',asy
     await parity(db,'bulk transfer');
   });
 
+  await t.test('a batch claims at most p_max_items, also with analyzed large queues',async()=>{
+    // Statistics from an empty queue (the normal steady state) made the M1
+    // claim subquery a rescanned nested-loop inner: one call took the whole queue.
+    await db.exec("ANALYZE ranking_dirty_log; INSERT INTO ranking_dirty_log(kind,race_id) SELECT 'race',fid(1000+1+i%12) FROM generate_series(1,2400) i;");
+    const r=await apply(db);
+    assert.equal(r.processed,200);
+    assert.equal(r.pending,true);
+    assert.equal((await db.query<{n:number}>('SELECT count(*)::int n FROM ranking_dirty_log')).rows[0].n,2200);
+    await drain(db); await parity(db,'bounded claim');
+  });
+
   await t.test('transfer to and from no team, including NULL-season races',async()=>{
     await db.exec('UPDATE riders SET team_id=NULL WHERE id IN (fid(1),fid(2));');
     await drain(db); await parity(db,'to no team');

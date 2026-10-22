@@ -17,7 +17,9 @@
 --    (direct team rows via (season_id,team_id), owner-attributed rows via
 --    riders(team_id) -> (season_id,rider_id)) instead of scanning all of
 --    contrib joined to riders on every batch.
--- 3. get_ranking_shadow_metrics also reports the age of the oldest queue item,
+-- 3. The queue claim is bounded for real: p_max_items is picked once in a
+--    materialized CTE (see the comment at the claim).
+-- 4. get_ranking_shadow_metrics also reports the age of the oldest queue item,
 --    so a head-of-line stall (same batch failing and rolling back) is visible.
 BEGIN;
 SET LOCAL lock_timeout = '5s';
@@ -55,12 +57,17 @@ BEGIN
   DROP TABLE IF EXISTS pg_temp.ranking_batch;
   DROP TABLE IF EXISTS pg_temp.ranking_rider_keys;
   DROP TABLE IF EXISTS pg_temp.ranking_team_keys;
+  -- The claim is picked exactly once. As `id IN (SELECT ... LIMIT ... FOR
+  -- UPDATE SKIP LOCKED)` the planner may rescan the subquery per outer row;
+  -- rows this statement already deleted are skipped by the lock, so each
+  -- rescan returns the next ids and the batch silently grows to the whole
+  -- queue (measured: 4,560 items in one "200" batch after a bulk transfer).
   CREATE TEMP TABLE ranking_batch ON COMMIT DROP AS
-    WITH claimed AS (
-      DELETE FROM public.ranking_dirty_log WHERE id IN (
-        SELECT id FROM public.ranking_dirty_log ORDER BY id
-        LIMIT p_max_items FOR UPDATE SKIP LOCKED
-      ) RETURNING *
+    WITH picked AS MATERIALIZED (
+      SELECT id FROM public.ranking_dirty_log ORDER BY id
+      LIMIT p_max_items FOR UPDATE SKIP LOCKED
+    ), claimed AS (
+      DELETE FROM public.ranking_dirty_log d USING picked p WHERE d.id=p.id RETURNING d.*
     ) SELECT * FROM claimed;
   SELECT count(*) INTO v_count FROM pg_temp.ranking_batch;
   IF v_count=0 THEN RETURN jsonb_build_object('processed',0,'pending',false); END IF;

@@ -38,9 +38,14 @@ async function applyOnce(){
   return {r:rows[0].r,ms:+(performance.now()-started).toFixed(1)};
 }
 async function drain(){
-  const ms=[];
-  for(let i=0;i<5000;i++){ const {r,ms:m}=await applyOnce(); ms.push(m); if(!r.pending) break; }
-  return {batches:ms.length,total_ms:+ms.reduce((a,b)=>a+b,0).toFixed(1),max_batch_ms:Math.max(...ms)};
+  const ms=[];let queuedAfterFirst=null,rawRaces=0,processed=0;
+  for(let i=0;i<5000;i++){
+    const {r,ms:m}=await applyOnce(); ms.push(m); rawRaces+=r.races??0; processed+=r.processed??0;
+    if(i===0) queuedAfterFirst=+(await sql('SELECT count(*) FROM ranking_dirty_log'));
+    if(!r.pending) break;
+  }
+  return {batches:ms.length,total_ms:+ms.reduce((a,b)=>a+b,0).toFixed(1),max_batch_ms:Math.max(...ms),
+    queued_after_first_batch:queuedAfterFirst,processed_items:processed,raw_race_recomputes:rawRaces};
 }
 async function parity(label){
   for(let i=0;i<names.length;i++){
