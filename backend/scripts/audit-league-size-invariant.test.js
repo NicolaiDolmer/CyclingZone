@@ -161,8 +161,18 @@ test("#4753 an already retired AI with stale youth pointers cannot fill a youth 
     is_ai: true, retired_at: "2026-07-20T09:00:00Z",
   });
   const summary = await runLeagueSizeAudit({ supabase: makeMock({ divisions, teams: [...active, ghost] }), now: NOW });
-  assert.equal(summary.total_findings, 2);
-  assert.deepEqual(summary.findings.map((finding) => finding.count), [23, 23]);
+  // #7039: a youth group one short is a warning (vacated place), not a finding.
+  assert.equal(summary.total_findings, 0);
+  assert.deepEqual(summary.youth_short.map((short) => short.count), [23, 23]);
+});
+
+test("#7039 a youth group over 24 is still a finding; a short senior pool is still a finding", async () => {
+  const divisions = [makeDivision(10, 4, 2, "Division 4 — C"), makeDivision(21, 1, 5, "U23 Group F")];
+  const senior = Array.from({ length: 23 }, (_, i) => makeTeam(`senior-${i}`, { league_division_id: 10 }));
+  const youth = Array.from({ length: 25 }, (_, i) => makeTeam(`youth-${i}`, { u23_league_division_id: 21 }));
+  const summary = await runLeagueSizeAudit({ supabase: makeMock({ divisions, teams: [...senior, ...youth] }), now: NOW });
+  assert.deepEqual(summary.findings.map((f) => [f.label, f.delta]).sort(), [["Division 4 — C", -1], ["U23 Group F", 1]]);
+  assert.equal(summary.youth_short.length, 0);
 });
 
 test("hold markeret til fjernelse tæller ikke med i invarianten (#2639)", async () => {

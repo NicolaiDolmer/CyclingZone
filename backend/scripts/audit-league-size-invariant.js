@@ -251,6 +251,12 @@ export async function runLeagueSizeAudit({
   // league_division_id. Uden dette talte auditten 0 hold i alle 20 grupper
   // (falsk rød 27/9). Et hold tælles derfor i hver gruppe det står i.
   const teamsByDivision = new Map();
+  // #7039: en ungdomsgruppe er en pulje, som hold peger på via u23_/junior-FK.
+  const youthDivisionIds = new Set();
+  for (const team of realTeams) {
+    if (team.u23_league_division_id != null) youthDivisionIds.add(team.u23_league_division_id);
+    if (team.junior_league_division_id != null) youthDivisionIds.add(team.junior_league_division_id);
+  }
   for (const team of realTeams) {
     const memberships = [team.league_division_id, team.u23_league_division_id, team.junior_league_division_id];
     for (const [index, divId] of memberships.entries()) {
@@ -263,6 +269,12 @@ export async function runLeagueSizeAudit({
 
   const sortedDivisions = [...divisions].sort((a, b) => a.tier - b.tier || a.pool_index - b.pool_index);
   const findings = [];
+  // #7039: et pensioneret AI-hold forlader sin ungdomsplads, når ingen sikker
+  // erstatning findes (database/2026-10-22-7039-youth-retire-vacate-fallback.sql),
+  // så en ungdomsgruppe må køre kort til næste regroup (YOUTH_RULES §2.3). Det er
+  // en advarsel, ikke en overtrædelse. For mange hold i en ungdomsgruppe og alle
+  // senior-afvigelser er stadig findings.
+  const youthShort = [];
   for (const div of sortedDivisions) {
     const groupTeams = teamsByDivision.get(div.id) || [];
     const count = groupTeams.length;
@@ -273,6 +285,10 @@ export async function runLeagueSizeAudit({
     const expected = expectedTeamCount(div, realManagers, requiredCount);
     if (count === expected) continue;
     const delta = count - expected;
+    if (delta < 0 && youthDivisionIds.has(div.id)) {
+      youthShort.push({ league_division_id: div.id, label: div.label, count, required: expected, delta });
+      continue;
+    }
     const candidates = groupTeams
       .map((t) => toCandidate(t, riderCountByTeam))
       .sort((a, b) => excessScore(b) - excessScore(a) || new Date(b.created_at) - new Date(a.created_at))
@@ -292,6 +308,7 @@ export async function runLeagueSizeAudit({
   return {
     generated_at: now.toISOString(),
     waiting,
+    youth_short: youthShort,
     required_team_count: requiredCount,
     groups_checked: sortedDivisions.length,
     total_findings: findings.length,
@@ -317,6 +334,9 @@ function printHuman(summary) {
     console.log('WAIT: pool ' + wait.pool_id + ', AI ' + wait.team_id + ': ' + wait.reason);
   }
   if (summary.total_findings === 0) {
+    for (const short of summary.youth_short ?? []) {
+      console.log("YOUTH SHORT (advarsel, #7039): " + short.label + ": " + short.count + " hold (krav " + short.required + ") indtil næste regroup");
+    }
     console.log(summary.waiting?.length
       ? "Ingen uforklarede afvigelser; de viste AI-hold afventer afslutning af eksisterende forpligtelser."
       : "OK: alle aktive puljer har præcis 24 hold (dormant og pensionerede puljer 0).\n");
