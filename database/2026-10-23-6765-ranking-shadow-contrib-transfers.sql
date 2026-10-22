@@ -240,7 +240,8 @@ CREATE OR REPLACE FUNCTION public.get_ranking_shadow_metrics()
 RETURNS jsonb LANGUAGE sql STABLE SECURITY DEFINER
 SET search_path=public,pg_temp AS $$
   SELECT jsonb_build_object('queue_length',count(*),
-    'oldest_age_s',greatest(0,floor(extract(epoch FROM clock_timestamp()-min(enqueued_at))))::bigint)
+    'oldest_age_s',CASE WHEN min(enqueued_at) IS NULL THEN NULL
+      ELSE greatest(0,floor(extract(epoch FROM clock_timestamp()-min(enqueued_at))))::bigint END)
   FROM public.ranking_dirty_log;
 $$;
 REVOKE ALL ON FUNCTION public.get_ranking_shadow_metrics() FROM PUBLIC,anon,authenticated;
