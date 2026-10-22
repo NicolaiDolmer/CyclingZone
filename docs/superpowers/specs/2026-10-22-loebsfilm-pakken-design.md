@@ -15,10 +15,12 @@ AGENTS 36 (design + målt baseline før 1. kode-PR), AGENTS 17 (tal kun i `balan
 Målt read-only i prod (alle tidslinjer sidste 60 dage) 22/10:
 
 - Ingen af v4-tidslinjernes `gap_update` har `chase_group_id`/`separation_seconds`, på tværs af alle regelrevisioner og både endagsløb og etapeløb. Filmens kurve er derfor tom på samtlige etaper med udbrud.
-- Motoren har imens et tydeligt gab-signal i udbrudsvinduet (mellem udbruddets dannelse og indhentning) på næsten alle de etaper: typisk et forspring på flere minutter, i de store tilfælde over en time. Afvigelsen mellem film og motor er altså total: motoren ved det, filmen viser intet.
+- Motoren har imens et gab-signal i udbrudsvinduet (mellem udbruddets dannelse og indhentning) på næsten alle de etaper. Afvigelsen mellem film og motor er altså total: motoren ved det, filmen viser intet. Størrelserne står privat i `balance-internals/loebsfilm/2026-10-22/`.
 - Nye udbrud efter en indhentning forekommer kun under `s5_profiles_v1` og på en mærkbar andel af dens etaper, både endagsløb og etaper.
 - Endagsløb: tidslinjen findes på alle nyere endagsløb. Det der mangler, er visningen (`RaceDetailPage.jsx` endagsgren renderer ikke `StoryOfTheStageSection`).
 - Den præcise "med design"-effekt (kurvepunkter, tidslinjestørrelse) er målt offline i 18/10-designet §7 og gælder fortsat (motorkoden i gap-loopet er uændret siden).
+
+**Byggegate for A (AGENTS 36) er IKKE opfyldt endnu.** Ovenstående er en read-only prod-måling plus 18/10-designets offline-simulering. Før første motor-PR for A skal der køres en lokal PG17-baseline (samme målinger før/efter på samme revision) og resultatet skrives privat. C og B kræver den ikke (ren visning/tests).
 
 ## 3. Løsning pr. del
 
