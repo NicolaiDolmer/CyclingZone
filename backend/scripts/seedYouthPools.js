@@ -467,8 +467,9 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
   }
   // #6667 (Codex P2): genåbn og luk puljerne FØR holdene flyttes. Tilmelding og
   // comeback vælger kun puljer uden retired_at, så en samtidig tilmelding kan ikke
-  // lande i en pulje der er ved at blive tømt. Rest-vinduet er én tilmeldings egen
-  // læs-så-skriv (millisekunder); regroup køres af ejeren som et enkelt, kort trin.
+  // lande i en pulje der er ved at blive tømt. Rest-vindue: en tilmelding mellem
+  // loadState og retire-skrivningen (sekunder) er ikke i planen; efter-tjekket
+  // nedenfor fanger den, så ejeren kan køre regroup igen.
   if (reviveIds.length) {
     const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
     if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
@@ -477,9 +478,18 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     const { error } = await supabase.from("league_divisions").update({ retired_at: new Date().toISOString() }).in("id", retireIds);
     if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
   }
-  for (const { target, ids: teamIds } of byTarget.values()) {
-    const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
-    if (error) throw new Error(`teams.${col} update: ${error.message}`);
+  try {
+    for (const { target, ids: teamIds } of byTarget.values()) {
+      const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
+      if (error) throw new Error(`teams.${col} update: ${error.message}`);
+    }
+  } catch (err) {
+    // Best-effort: stil puljerne tilbage, så ingen hold sidder fast i en lukket
+    // gruppe uden løb (og AI-pensioneringens trigger ikke afviser dem).
+    for (const p of poolsBefore) {
+      await supabase.from("league_divisions").update({ retired_at: p.retired_at }).eq("id", p.id);
+    }
+    throw new Error(`${err.message}. Puljernes retired_at er sat tilbage; holdene kan være delvist flyttet. Kør regroup igen, eller gendan fra ${relative(REPO_ROOT, restorePath)}.`, { cause: err });
   }
 
   const after = ids.length
@@ -487,7 +497,14 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     : [];
   const afterById = new Map(after.map((t) => [t.id, t[col]]));
   const wrong = updates.filter((u) => afterById.get(u.teamId) !== (u.poolIndex == null ? null : poolIdByIndex.get(u.poolIndex)));
-  return { written: updates.length, wrong: wrong.length };
+  // Efter-tjek (#6667): ingen hold må stå i en pulje, regroup lige har lukket.
+  let strandedInRetired = 0;
+  if (retireIds.length) {
+    const { data: stranded, error: strandedErr } = await supabase.from("teams").select("id").in(col, retireIds);
+    if (strandedErr) throw new Error(`teams.${col} efter-tjek: ${strandedErr.message}`);
+    strandedInRetired = (stranded || []).length;
+  }
+  return { written: updates.length, wrong: wrong.length, strandedInRetired };
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -554,9 +571,10 @@ export async function main(argv = process.argv.slice(2)) {
   let failed = 0;
   for (const sp of squadPlans) {
     console.log(`APPLY ${sp.squad} (${sp.mode}): ${sp.poolsToCreate.length} grupper oprettes, ${sp.updates.length} hold opdateres`);
-    const { written, wrong } = await applySquadPlan(supabase, sp, { internalsDir, stamp });
-    console.log(`  skrevet ${written}, forkerte efter tilbagelæsning: ${wrong}`);
-    failed += wrong;
+    const { written, wrong, strandedInRetired } = await applySquadPlan(supabase, sp, { internalsDir, stamp });
+    console.log(`  skrevet ${written}, forkerte efter tilbagelæsning: ${wrong}, hold i lukkede grupper: ${strandedInRetired}`);
+    if (strandedInRetired > 0) console.log("  STOP: hold står i en lukket gruppe (formentlig tilmeldt under kørslen). Kør regroup igen.");
+    failed += wrong + strandedInRetired;
   }
   return failed > 0 ? 1 : 0;
 }
