@@ -488,6 +488,23 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp, retire
     // Best-effort: stil puljerne tilbage (både genåbnede og lukkede), så
     // kataloget aldrig står halvt skrevet, og ingen hold sidder fast i en lukket
     // gruppe uden løb (AI-pensioneringens trigger afviser dem).
+    // Hold først (fra snapshottet taget før første skrivning), så ingen hold står
+    // i en pulje, der lige nedenfor lukkes igen.
+    const unrestoredTeams = [];
+    const beforeByValue = new Map();
+    for (const t of before) {
+      const key = t[col] == null ? "null" : String(t[col]);
+      if (!beforeByValue.has(key)) beforeByValue.set(key, { value: t[col] ?? null, ids: [] });
+      beforeByValue.get(key).ids.push(t.id);
+    }
+    for (const { value, ids: teamIds } of beforeByValue.values()) {
+      try {
+        const { error: teamErr } = await supabase.from("teams").update({ [col]: value }).in("id", teamIds);
+        if (teamErr) unrestoredTeams.push(...teamIds);
+      } catch {
+        unrestoredTeams.push(...teamIds);
+      }
+    }
     const unrestored = [];
     for (const p of poolsBefore) {
       try {
@@ -497,10 +514,13 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp, retire
         unrestored.push(p.id);
       }
     }
+    const teamState = unrestoredTeams.length
+      ? `ADVARSEL: ${unrestoredTeams.length} hold kunne IKKE flyttes tilbage`
+      : "Holdene er flyttet tilbage";
     const poolState = unrestored.length
       ? `ADVARSEL: retired_at kunne IKKE sættes tilbage for pulje(r) ${unrestored.join(", ")}; ret dem fra restore-filen før næste kørsel`
       : "Puljernes retired_at er sat tilbage";
-    throw new Error(`${err.message}. ${poolState}; holdene kan være delvist flyttet. Kør regroup igen, eller gendan fra ${relative(REPO_ROOT, restorePath)}.`, { cause: err });
+    throw new Error(`${err.message}. ${teamState}. ${poolState}. Kør regroup igen, eller gendan fra ${relative(REPO_ROOT, restorePath)}.`, { cause: err });
   }
 
   const after = ids.length
