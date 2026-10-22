@@ -7,6 +7,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, isWithinRaceAgeLimit, loadRaceSeasonNumber, RIDER_OVER_RACE_AGE_ERROR } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
+import { isRaceLineupLockedNow } from "./raceStartLock.js";
 import { loadRaceTrainNowLock, trainNowSelectionViolations } from "./trainNowLock.js";
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOptOut.ts";
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
@@ -160,7 +161,10 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   // mekanik endnu (ejer-beslutning, Discord 31/8), så et startet løbs lineup er låst
   // for både tilføjelse og fjernelse. Tjekket ligger FØR getSelectionContext — en
   // afvisning skal ikke koste roster-opslagene.
-  if ((race.stages_completed ?? 0) > 0) {
+  // #6959: samme regel som taktikken (raceStartLock.js): truppen er også låst når etape
+  // 1's planlagte start er passeret, ikke først når en etape er kørt. Så en motor-pause
+  // lader ikke truppen stå åben mens taktikken er låst.
+  if (await isRaceLineupLockedNow({ supabase, race })) {
     return { ok: false, status: 409, error: "selection_race_started" };
   }
 

@@ -273,7 +273,7 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
-import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
+import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, withLineupLocked } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
@@ -4781,7 +4781,9 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
         }));
       }
     }
-    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
+    // #6959: trup-låsen (samme regel som taktikken) så panelet kan vise den, også i en pause.
+    const lineupLocked = await isRaceLineupLockedNow({ supabase, race });
+    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, lineup_locked: lineupLocked, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -5306,7 +5308,17 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // dag) og raceBindingWindow (in-game-dag-rum, jf. game_day ovenfor) til BINDING (bindingMap —
     // hvilke ryttere er låst pga. ægte samme-spil-dag-overlap, #1823). gameDaySpan = det synlige
     // "Race day N"-mærke (#2195), afledt direkte af game_day.
-    const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
+    // #6959: lineup_locked = samme regel som taktikken (etape 1's start passeret ELLER en etape kørt).
+    const boardFirstStarts = firstStageStartsFromSchedule(schedRows);
+    const boardLockNow = new Date();
+    const withWindow = (races || []).map((r) => ({
+      ...r,
+      window: raceTimeWindow(schedByRace.get(r.id)),
+      lineup_locked: isRaceLineupLocked({
+        status: r.status, stagesCompleted: r.stages_completed,
+        firstStageScheduledAt: boardFirstStarts.get(r.id) ?? null, now: boardLockNow,
+      }),
+    }));
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
     const gameDaySpanByRace = new Map(raceIds.map((id) => [id, raceGameDaySpan(schedByRace.get(id))]));
 
@@ -5418,7 +5430,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       // kolonners valg her. Et igangværende løb (frys, #1825) binder derimod ALT, auto
       // som manuelt, for der er intet at frigive fra (truppen er reel).
       const startedHere = (race.stages_completed ?? 0) > 0;
-      const bindingRiderIds = columnBindingRiderIds({ selection: ctx.selection, startedHere });
+      // #6959: låst = startet ELLER etape 1's start passeret (pause). Et låst løb binder
+      // ALT, for truppen kan ikke længere ændres (intet at frigive).
+      const lockedHere = race.lineup_locked === true;
+      const bindingRiderIds = columnBindingRiderIds({ selection: ctx.selection, startedHere: lockedHere });
       // #3102 PR 2: hvem topper/betaler payback netop her (CET-ordinal for startdagen).
       const raceOrdinal = race.window?.start != null
         ? dateStringToOrdinal(toCopenhagenISODate(race.window.start))
@@ -5438,7 +5453,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         // #6740: inaktiv for al eksisterende klient-logik (pulje, overlap, binding) ved
         // begge slags afmelding; kolonnens tekst læser did_not_start først.
         withdrawn: withdrawnSet.has(race.id),
-        lineup_locked: startedHere,
+        lineup_locked: lockedHere,
         did_not_start: startedHere && !voluntaryWithdrawnSet.has(race.id)
           && (didNotStartSet.has(race.id) || inFieldByRace.get(race.id) === false),
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
@@ -5474,7 +5489,8 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // #3041: samme regel som ovenfor for kolonnerne — en auto-udtaget entry i et løb der
     // ikke er startet endnu binder ikke (den viger automatisk ved gem, #2637); kun manuelle
     // entries og allerede startede løb binder. `races` dækker HELE sæsonen (inkl. eksterne).
-    const startedRaceIds = new Set((races || []).filter((r) => (r.stages_completed ?? 0) > 0).map((r) => r.id));
+    // #6959: også løb hvor etape 1's start er passeret (låst trup, intet at frigive).
+    const startedRaceIds = new Set(withWindow.filter((r) => r.lineup_locked === true).map((r) => r.id));
     const bindingTeamEntries = filterBindingEntries({ entries: teamEntries || [], startedRaceIds });
     const externalBindings = buildExternalBindings({
       entries: bindingTeamEntries,
@@ -6080,7 +6096,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): et igangværende etapeløb må ikke få sit startfelt genskrevet.
-    if (isRaceLineupFrozen(race)) return res.status(409).json({ error: "selection_race_started" });
+    // #6959: frosset = kørt ELLER etape 1's start passeret (samme regel som taktikken).
+    if (await isRaceLineupLockedNow({ supabase, race })) return res.status(409).json({ error: "selection_race_started" });
     // #5843: trup-bevidst pulje-match (ungdomsløb mod holdets U23-/juniorpulje).
     if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
@@ -6474,7 +6491,8 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): afmelding midt i et igangværende etapeløb ville ændre startfeltet.
-    if ((race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
+    // #6959: også når etape 1's start er passeret (pause), ikke kun efter en kørt etape.
+    if (await isRaceLineupLockedNow({ supabase, race })) return res.status(409).json({ error: "selection_race_started" });
     if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
@@ -6499,7 +6517,7 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
     // (sæson-filteret i #3070 er ikke valgfrit).
     const { data: race } = await supabase
       .from("races").select("id, status, stages_completed, season_id").eq("id", req.params.raceId).maybeSingle();
-    if (race && (race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
+    if (race && await isRaceLineupLockedNow({ supabase, race })) return res.status(409).json({ error: "selection_race_started" }); // #6959
 
     // #5301: gen-deltag kan dobbeltbooke. Afmeldingen NULLer entries' binding_span
     // (race_entries_binding_span + trg_race_withdrawals_resync_binding), så holdet
@@ -6570,7 +6588,17 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // ms til display (buildColumnSet), in-game-dag-rum til binding (jf. game_day ovenfor, #1823).
     const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
-    const withWindow = (races || []).map((r) => ({ ...r, window: windowByRace.get(r.id) }));
+    // #6959: start passeret = frosset, også uden kørt etape (samme regel som taktikken).
+    const regenFirstStarts = firstStageStartsFromSchedule(schedRows);
+    const regenLockNow = new Date();
+    const withWindow = (races || []).map((r) => ({
+      ...r,
+      window: windowByRace.get(r.id),
+      lineup_locked: isRaceLineupLocked({
+        status: r.status, stagesCompleted: r.stages_completed,
+        firstStageScheduledAt: regenFirstStarts.get(r.id) ?? null, now: regenLockNow,
+      }),
+    }));
     const { dayWindow } = resolveSeasonDay({ season, schedRows, dayParam: Number.parseInt(req.query.day, 10) });
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
     if (!cols.length) return res.json({ ok: true, regenerated: 0, skipped: 0, mode });
@@ -6791,7 +6819,8 @@ router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async 
 
     // Pure helper (testet): kun frys (#1825) undtager et løb — en bekræftet ryd-handling
     // fjerner ALT, inkl. manuelt udtagne.
-    const { target, skipped } = partitionClearTargets({ cols });
+    // #6959: ryd er en trup-ændring og låses af samme regel som taktikken (start passeret).
+    const { target, skipped } = partitionClearTargets({ cols: await withLineupLocked({ supabase, races: cols }) });
     if (!target.length) return res.json({ ok: true, cleared: 0, skipped, scope });
 
     const targetIds = target.map((r) => r.id);

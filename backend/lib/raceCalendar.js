@@ -11,6 +11,8 @@
 // game_day→CET-dato-mapping fra schedule-rækkerne selv, så kalenderen følger den
 // faktiske binding (jf. prompt: "key on game_day, not scheduled_at").
 
+import { isRaceLineupLocked, firstStageStartsFromSchedule } from "./raceStartLock.js";
+
 // league_divisions.tier → spiller-vendt "Division N"-nummer. tier ER divisionsnummeret
 // i pyramiden (tier1 = Division 1, …). pool_index adskiller puljer inden for en tier.
 export function tierToDivision(tier) {
@@ -145,8 +147,10 @@ export function buildCalendarModel({
   teamEntryRaceIds = new Set(),
   teamLeaderRaceIds = new Set(),
   teamWithdrawnRaceIds = new Set(),
+  now = new Date(),
 } = {}) {
   const dayDateMap = buildGameDayDateMap(scheduleRows);
+  const firstStageStarts = firstStageStartsFromSchedule(scheduleRows); // #6959
 
   // game_days pr. løb (fra schedule) → start/slut-dag + dato. game_day er sandheden;
   // game_day_start på races er en hint men vi stoler på schedule-rækkerne.
@@ -238,9 +242,12 @@ export function buildCalendarModel({
       leaderSet: teamLeaderRaceIds.has(race.id),
       entered: teamEntryRaceIds.has(race.id),
       withdrawn: teamWithdrawnRaceIds.has(race.id),
-      // #6514: udtagelsen er låst (afviklet eller i gang). Samme regel som isRaceLineupFrozen (raceActiveGuard.js), inlinet fordi
-      // dette modul er rent og ikke maa traekke sentry ind.
-      lineupFrozen: race.status === "completed" || (race.stages_completed ?? 0) > 0,
+      // #6514: udtagelsen er låst (afviklet, i gang eller - #6959 - etape 1's start er passeret).
+      // Samme regel som taktikken (raceStartLock.js, ren: ingen sentry).
+      lineupFrozen: isRaceLineupLocked({
+        status: race.status, stagesCompleted: race.stages_completed,
+        firstStageScheduledAt: firstStageStarts.get(race.id) ?? null, now,
+      }),
       ...(restGameDays.length ? { restGameDays } : {}), // #3470: kun til stede når ikke-tom
     });
   }
