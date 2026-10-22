@@ -1,0 +1,27 @@
+# Backend-image til GHCR (#7034). Bygges af .github/workflows/backend-image.yml.
+#
+# Filen hedder IKKE "Dockerfile": Railway bruger automatisk en Dockerfile i
+# servicens rodmappe (/backend), og så ville de nuvaerende Railway-builds skifte
+# builder, foer ejeren har sagt go til at skifte kilde. Se
+# docs/runbooks/RAILWAY_IMAGE_DEPLOY.md.
+#
+# Node-versionen foelger engines i backend/package.json (#7020 pinner 24.22.1).
+ARG NODE_VERSION=24.22.1
+FROM node:${NODE_VERSION}-bookworm-slim
+
+ENV NODE_ENV=production
+WORKDIR /app
+
+# Afhaengigheder foerst, saa laget caches, naar kun koden aendres. Ingen
+# devDependencies importeres ved runtime (tjekket 22/10).
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
+
+COPY --chown=node:node . .
+
+USER node
+# PORT saettes af Railway; server.js falder tilbage til 3001.
+EXPOSE 3001
+# Samme start som railway.json deploy.startCommand. node er PID 1 og fanger
+# selv SIGTERM (gracefulShutdown i server.js).
+CMD ["node", "--import", "./instrument.mjs", "server.js"]
