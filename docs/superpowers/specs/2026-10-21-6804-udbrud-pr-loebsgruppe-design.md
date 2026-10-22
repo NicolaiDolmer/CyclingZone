@@ -1,13 +1,17 @@
 # #6804 trin 2: udbrud, tidsgab og kuperet enkeltstart pr. løbsgruppe (design)
 
-Status: design besluttet af ejeren 21/10 (alle fem beslutninger A, se §6); intet bygget. Refs #6804 #6857 #6909 #6912 #6464 #6369 #5978 #6441.
+Status: design besluttet af ejeren 21/10 (alle fem beslutninger A, se §6). Bygges som den slukkede
+revision `s5_profiles_v3` oven på `s5_profiles_v2` (plan 21/10, #6804). Bygget (PR til #6804): P7
+(løbsgrupper og tidsgab-mål i scorecard og testport) og P1 (jagten på kuperet, kun i etapeløb: endagsløb
+vinder allerede for ofte på kuperet, G14). Resten af rækkefølgen i §4 er ikke bygget.
+Refs #6804 #6857 #6909 #6912 #6464 #6369 #5978 #6441.
 Bygger videre på `2026-10-17-6804-hilly-breakaway-design.md` (P1-P5, ejer-go 20/10), som stadig gælder.
 SSOT for reglerne: `docs/RACE_ENGINE_RULES.md` (Udbrudsmål, GC-reaktion, "Farlige klassementsryttere får
 kortere snor", "Bjergets tidsgab ens i alle divisioner"). Bygge-PR'erne opdaterer reglerne dér.
 Hard rule 17: ingen vægte, tærskler, bånd eller målte andele her. Baseline, kalibrering og de
 foreslåede bånd ligger privat i `balance-internals/6804/2026-10-21/baseline-6804-loebsgrupper.md`.
 Hard rule 36: baseline målt 21/10 offline på testportens S5-cache (nye ruter, 437 løb, 8 seeds).
-Motoren er ikke rørt; denne PR er ren docs.
+Design-PR'en (#7013) rørte ikke motoren; bygget sker bag `s5_profiles_v3` (se Status).
 
 ## 1. Problem (ejer 21/10)
 

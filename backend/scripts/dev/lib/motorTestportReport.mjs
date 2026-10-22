@@ -6,6 +6,8 @@
 // loebsnavne og skrives derfor KUN til balance-internals/ (gitignoreret) af
 // motorTestport.mjs. Repoet er offentligt (hard rule 17): her staar ingen
 // maalte tal, kun definitionerne.
+import { raceGroupOf } from "./breakawayIntent.mjs";
+import { SHORT_STAGE_RACE_GROUPS, shortStageRaceGroup } from "./tourScorecard.mjs";
 
 /** Tidskoersler: ingen udbrud, ingen favoritter at doemme. */
 export const TIME_TRIAL_CLASSES = Object.freeze(["itt", "itt_hilly", "ttt"]);
@@ -198,17 +200,11 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
 
 /** Loebsgruppe for udbrudsmaalene (samme inddeling som P0-satserne: breakawayIntent.raceGroupOf). */
 export const BREAKAWAY_RACE_GROUPS = Object.freeze(["gt", "stage_race", "one_day"]);
-export function breakawayRaceGroup(stages) {
-  const n = Number(stages) || 1;
-  return n <= 1 ? "one_day" : n >= 15 ? "gt" : "stage_race";
-}
+export const breakawayRaceGroup = raceGroupOf;
 
 /** Kort etapeloebs tidsgab-gruppe (samme som tourScorecard.shortStageRaceGroup). */
-export const SHORT_GAP_GROUPS = Object.freeze(["sr2-4", "sr5-8"]);
-export function shortGapGroup(stages) {
-  const n = Number(stages) || 0;
-  return n >= 2 && n <= 4 ? "sr2-4" : n >= 5 && n <= 8 ? "sr5-8" : null;
-}
+export const SHORT_GAP_GROUPS = SHORT_STAGE_RACE_GROUPS;
+export const shortGapGroup = shortStageRaceGroup;
 
 /** p-kvantil (naermeste rang) af endelige tal; null uden data. */
 export function quantile(xs, p) {

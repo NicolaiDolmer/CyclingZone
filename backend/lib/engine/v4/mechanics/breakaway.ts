@@ -1826,9 +1826,10 @@ function gcContextEvents(ctx: BreakawayHookContext): TimelineEvent[] {
 
 function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHookResult {
   // #6818 (KUN s5_profiles_v2, ejer 21/10 "Ja, med A"): loebsspecifik klassementsevne i jagt og snor.
-  const gcAbilityOf = ctx.s5ProfilesV2 === true ? raceGcAbilityModel(normalizeGcContext(ctx.gcContext)) : null;
+  const normalizedGc = ctx.s5ProfilesV2 === true ? normalizeGcContext(ctx.gcContext) : null;
+  const gcAbilityOf = normalizedGc ? raceGcAbilityModel(normalizedGc) : null;
   // #6804 P1 (KUN s5_profiles_v3, slukket): jagten paa kuperet i etapeloeb (breakawayV3_6804.ts).
-  const p1Hilly = ctx.s5ProfilesV3 === true && s5V3HillyChaseApplies({ s5ProfilesV3: true, profileType: ctx.route.profile_type, gcContext: normalizeGcContext(ctx.gcContext) });
+  const p1Hilly = s5V3HillyChaseApplies({ s5ProfilesV3: ctx.s5ProfilesV3, profileType: ctx.route.profile_type, gcContext: normalizedGc });
   const p1FinaleWeightScale = s5V3FinaleWeightScale(p1Hilly, ctx.route.finale_type);
   const events: TimelineEvent[] = [];
   const breakawayGroups = findBreakawayGroups(state.groups);
