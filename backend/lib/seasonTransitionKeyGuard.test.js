@@ -7,9 +7,15 @@ import {
   SEASON_TRANSITION_KEY_DRIFT_TOLERANCE_MS,
 } from "./seasonTransitionKeyGuard.js";
 
-function makeSupabase({ upcomingSeason = null, appConfigRow = null, seasonsError = null, configError = null } = {}) {
+function makeSupabase({ upcomingSeason = null, appConfigRow = null, seasonsError = null, configError = null, raceIds = [], firstStageAt = null, stageError = null } = {}) {
   return {
     from(table) {
+      if (table === "races") {
+        return { select() { return { eq() { return Promise.resolve({ data: raceIds.map((id) => ({ id })), error: null }); } }; } };
+      }
+      if (table === "race_stage_schedule") {
+        return { select() { return { in() { return { order() { return { limit() { return { maybeSingle() { return Promise.resolve({ data: firstStageAt ? { scheduled_at: firstStageAt } : null, error: stageError }); } }; } }; } }; } }; } };
+      }
       if (table === "seasons") {
         return { select() { return { eq() { return { maybeSingle() { return Promise.resolve({ data: upcomingSeason, error: seasonsError }); } }; } }; } };
       }
@@ -80,6 +86,53 @@ test("< 7 dage til sæsonstart + nøgle afviger > 12t fra fallback → drift=tru
   assert.equal(result.drift, true);
   assert.equal(result.reason, "diverges");
   assert.ok(result.diffMs > SEASON_TRANSITION_KEY_DRIFT_TOLERANCE_MS);
+});
+
+test("#7022: nøgle tidligere end konventionen, første etape >= 24t efter → bevidst planlagt, ingen drift", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: { id: "s4", number: 4, start_date: "2026-09-28" },
+    appConfigRow: { value: "2026-09-25T16:00:00.000Z" },
+    raceIds: ["r1"],
+    firstStageAt: "2026-09-28T08:00:00.000Z",
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") });
+  assert.equal(result.drift, false);
+  assert.equal(result.reason, "planned-earlier");
+});
+
+test("#7022: nøgle under 24t før første etape → stadig drift", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: { id: "s4", number: 4, start_date: "2026-09-28" },
+    appConfigRow: { value: "2026-09-28T05:00:00.000Z" },
+    raceIds: ["r1"],
+    firstStageAt: "2026-09-28T08:00:00.000Z",
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") });
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "diverges");
+});
+
+test("#7022: nøgle efter første etape → stadig drift", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: { id: "s4", number: 4, start_date: "2026-09-28" },
+    appConfigRow: { value: "2026-09-29T16:00:00.000Z" },
+    raceIds: ["r1"],
+    firstStageAt: "2026-09-28T08:00:00.000Z",
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") });
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "diverges");
+});
+
+test("#7022: ingen etaper i kalenderen → afvigelse alarmerer som før", async () => {
+  const supabase = makeSupabase({
+    upcomingSeason: { id: "s4", number: 4, start_date: "2026-09-28" },
+    appConfigRow: { value: "2026-09-25T16:00:00.000Z" },
+    raceIds: [],
+  });
+  const result = await checkSeasonTransitionKeyDrift({ supabase, now: new Date("2026-09-24T00:00:00Z") });
+  assert.equal(result.drift, true);
+  assert.equal(result.reason, "diverges");
 });
 
 test("nøgle-værdi er ugyldig dato → behandles som manglende", async () => {

@@ -12,11 +12,36 @@
 // enten mangler eller afviger > 12 timer fra den beregnede fallback (samme
 // beregning som guarden selv bruger, computeSeasonTransitionBoundary). Pure read
 // — ingen DB-writes, ingen risiko for at forstyrre en kørende sæson.
+//
+// #7022 punkt 2: en nøgle der afviger fra konventionen er IKKE drift, hvis den er
+// bevidst planlagt tidligere: sæsonens første etape ligger mindst 24 t efter nøglen
+// (planlægningsankeret) og nøglen ligger før første etape. En nøgle efter første etape
+// eller under 24 t før den alarmerer stadig.
 
 import { computeSeasonTransitionBoundary, SEASON_TRANSITION_PLANNED_AT_KEY } from "./seasonTransitionBoundary.js";
 
 export const SEASON_TRANSITION_KEY_DRIFT_WINDOW_DAYS = 7;
 export const SEASON_TRANSITION_KEY_DRIFT_TOLERANCE_MS = 12 * 60 * 60 * 1000;
+export const SEASON_TRANSITION_KEY_PLANNED_MIN_LEAD_MS = 24 * 60 * 60 * 1000;
+
+// Tidligste etape-tidspunkt for sæsonen (race_stage_schedule), eller null.
+async function fetchFirstStageAt(supabase, seasonId) {
+  if (seasonId == null) return null;
+  const { data: races, error: racesErr } = await supabase.from("races").select("id").eq("season_id", seasonId);
+  if (racesErr) throw new Error(`races-opslag fejlede: ${racesErr.message}`);
+  const raceIds = (races ?? []).map((r) => r.id);
+  if (raceIds.length === 0) return null;
+  const { data: stage, error: stageErr } = await supabase
+    .from("race_stage_schedule")
+    .select("scheduled_at")
+    .in("race_id", raceIds)
+    .order("scheduled_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (stageErr) throw new Error(`race_stage_schedule-opslag fejlede: ${stageErr.message}`);
+  const at = stage?.scheduled_at ? new Date(stage.scheduled_at) : null;
+  return at && !Number.isNaN(at.getTime()) ? at : null;
+}
 
 /**
  * @param {{ supabase: object, now?: Date }} args
@@ -31,7 +56,7 @@ export async function checkSeasonTransitionKeyDrift({ supabase, now = new Date()
 
   const { data: season, error: seasonErr } = await supabase
     .from("seasons")
-    .select("number, start_date")
+    .select("id, number, start_date")
     .eq("status", "upcoming")
     .maybeSingle();
   if (seasonErr) throw new Error(`seasons-opslag fejlede: ${seasonErr.message}`);
@@ -65,6 +90,18 @@ export async function checkSeasonTransitionKeyDrift({ supabase, now = new Date()
 
   const diffMs = Math.abs(existing.getTime() - (expected?.getTime() ?? existing.getTime()));
   if (diffMs > SEASON_TRANSITION_KEY_DRIFT_TOLERANCE_MS) {
+    const firstStageAt = await fetchFirstStageAt(supabase, season.id);
+    if (
+      firstStageAt
+      && existing.getTime() < firstStageAt.getTime()
+      && firstStageAt.getTime() - existing.getTime() >= SEASON_TRANSITION_KEY_PLANNED_MIN_LEAD_MS
+    ) {
+      return {
+        checked: true, drift: false, reason: "planned-earlier",
+        seasonNumber: season.number, existing: existingRaw, diffMs, daysUntilStart,
+        firstStageAt: firstStageAt.toISOString(),
+      };
+    }
     return {
       checked: true, drift: true, reason: "diverges",
       seasonNumber: season.number, startDate: season.start_date,
