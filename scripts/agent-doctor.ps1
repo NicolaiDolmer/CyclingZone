@@ -681,10 +681,10 @@ if ($auditPrefix.Count -gt 0 -or ($env:SUPABASE_URL -and $env:SUPABASE_SERVICE_K
       $livenessData = $livenessJson | ConvertFrom-Json
       $total = [int]$livenessData.total_findings
       $by = $livenessData.by_detector
-      $actionable = @($livenessData.findings | Where-Object { $_.severity -ne "info" }).Count
-      $infoOnly = $total - $actionable
+      # Kun forældede whitelist-poster er oprydning (WARN). Alt andet, ogsaa detector B's
+      # info-fund om forældreløse endpoints, er ægte drift og giver FAIL (Codex P2 #7047).
+      $actionable = @($livenessData.findings | Where-Object { -not ($_.severity -eq "info" -and "$($_.reason)" -like "Stale whitelist-entry*") }).Count
       $detail = if ($total -eq 0) { "no drift findings" } else { "$total finding(s): A=$($by.A) B=$($by.B) C=$($by.C) D=$($by.D) E=$($by.E)" }
-      # info-only (fx stale whitelist-entry) er oprydning, ikke drift: WARN, ikke FAIL
       $livenessStatus = if ($total -eq 0) { "OK" } elseif ($actionable -eq 0) { "WARN" } else { "FAIL" }
       Add-Check "feature-liveness" $livenessStatus $detail
     } catch {
