@@ -1214,7 +1214,6 @@
     "TS2741": 1
   },
   "src/components/rider/profile/RiderAbilityHistoryPro.jsx": {
-    "TS18047": 2,
     "TS2322": 3,
     "TS2339": 2
   },
@@ -2625,7 +2624,6 @@
     "TS2353": 18,
     "TS2362": 2,
     "TS2363": 2,
-    "TS2589": 1,
     "TS2698": 1,
     "TS2739": 3,
     "TS2741": 4
