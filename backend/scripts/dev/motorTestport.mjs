@@ -90,9 +90,10 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
   if (syntheticRaw !== null && !SYNTHETIC_KINDS.includes(syntheticRaw)) throw new Error(`--synthetic-field skal vaere ${SYNTHETIC_KINDS.join(" eller ")}`);
   const season = get("season") === null ? null : int("season", 1);
   // #6804 P0 (ejer 21/10): et syntetisk felt faar som standard menneskeholdenes udbrudsvilje fra prod.
-  const breakawayIntent = get("breakaway-intent", syntheticRaw ? "prod" : "none");
+  // Review P2: kun generator-feltet har menneskehold; bench-feltet er lutter AI-hold (udbrudsvilje virker ikke dér).
+  const breakawayIntent = get("breakaway-intent", syntheticRaw === "generator" ? "prod" : "none");
   if (!INTENT_MODES.includes(breakawayIntent)) throw new Error(`--breakaway-intent skal vaere ${INTENT_MODES.join(" eller ")}`);
-  if (breakawayIntent === "prod" && !syntheticRaw) throw new Error("--breakaway-intent=prod kraever --synthetic-field (prod-tilmeldinger har deres egne ordrer)");
+  if (breakawayIntent === "prod" && syntheticRaw !== "generator") throw new Error("--breakaway-intent=prod kraever --synthetic-field=generator (prod-tilmeldinger har deres egne ordrer, bench-feltet har kun AI-hold)");
   return {
     candidate, baseline,
     seeds: int("seeds", 8),
@@ -118,7 +119,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     syntheticField: syntheticRaw,
     breakawayIntent,
     intentRates: get("intent-rates"),
-    intentSeason: get("intent-season") === null ? null : int("intent-season", 0),
+    intentSeason: get("intent-season") === null ? null : int("intent-season", 1),
     routesFrom: get("routes-from"),
     season,
     timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
@@ -532,6 +533,10 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
               : await src.breakawayIntentRates({ now, seasonNumber: opts.intentSeason,
                 // Hard rule 17: graensen for smaa celler er privat (taerskelfilen), aldrig i koden.
                 minCellTeamStages: privateMinCellTeamStages(abs(opts.thresholds)) });
+        // Review P2: en valgt saeson skal passe med satserne (fil eller gemte satser i --out).
+        if (opts.intentSeason !== null && rates.seasonNumber !== opts.intentSeason) {
+          throw new Error(`--intent-season=${opts.intentSeason} passer ikke med satserne (saeson ${rates.seasonNumber ?? "ukendt"}); brug en ny --out eller den rigtige --intent-rates`);
+        }
         const signature = ratesSignature(rates);
         // Codex P2: andre satser end en genoptaget koersels er en anden koersel (dens done-markoerer gaelder de gamle).
         if (prev?.breakawayIntent?.signature && prev.breakawayIntent.signature !== signature) {

@@ -153,13 +153,14 @@ export function ratesFor(rates, division, stages) {
  */
 export function applyBreakawayIntent(data, rates) {
   const r = ratesFor(rates, data.race?.league_division_id, data.race?.stages ?? data.profiles?.length);
-  const ai = new Set((data.teams ?? []).filter((t) => t.is_ai === true).map((t) => t.id));
+  // Samme definition som aggregateIntentRates: kun hold der er markeret som menneskehold (is_ai === false).
+  const human = new Set((data.teams ?? []).filter((t) => t.is_ai === false).map((t) => t.id));
   const ab = new Map((data.abilities ?? []).map((a) => [a.rider_id, a]));
   const raceId = data.race?.id ?? "?";
   const entries = (data.entries ?? []).map((e) => ({ ...e }));
   const byTeam = new Map();
   for (const e of entries) {
-    if (e.team_id == null || ai.has(e.team_id)) continue;
+    if (e.team_id == null || !human.has(e.team_id)) continue;
     if (!byTeam.has(e.team_id)) byTeam.set(e.team_id, []);
     byTeam.get(e.team_id).push(e);
   }

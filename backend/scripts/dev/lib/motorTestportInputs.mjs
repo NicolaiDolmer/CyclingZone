@@ -353,7 +353,13 @@ export async function prepareInputs({ raceIds, outDir, fromDir = null, routes = 
     if (routes) data = applyRoutes(data, routes.byRace.get(id));
     // #6804 P0: kun et syntetisk felt (bygget nu eller fra eksporten) faar udbrudsvilje.
     let intentSummary = null;
-    if (intent && (fieldSource !== "prod" || SYNTHETIC_KINDS.includes(data.fieldSource))) {
+    // Review P2: en eksport der allerede har faaet udbrudsvilje faar den ikke igen; andre satser afvises.
+    if (intent && data.intentSignature && data.intentSignature !== intent.signature) {
+      throw new Error(`${id}: eksportens felt har allerede udbrudsvilje med andre satser (${data.intentSignature}); brug en eksport uden udbrudsvilje eller de samme satser`);
+    }
+    const alreadyApplied = intent && data.intentSignature === intent.signature;
+    if (alreadyApplied) intentSummary = data.breakawayIntent ?? null;
+    if (intent && !alreadyApplied && (fieldSource !== "prod" || SYNTHETIC_KINDS.includes(data.fieldSource))) {
       const applied = applyBreakawayIntent(data, intent.rates);
       data = applied.data;
       intentSummary = applied.summary;
@@ -584,7 +590,7 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
       const orders = await selectByIds(db, "race_team_orders", "race_id, team_id, stage_number, riders", "race_id", ids, ["race_id", "team_id", "stage_number"]);
       const profiles = await selectByIds(db, "race_stage_profiles", "race_id, stage_number, profile_type", "race_id", ids, ["race_id", "stage_number"]);
       const teams = await teamsFor(entries.map((e) => e.team_id));
-      return aggregateIntentRates({ races, entries, teams, orders, profiles, minCellTeamStages, seasonId, generatedAt: now.toISOString() });
+      return { ...aggregateIntentRates({ races, entries, teams, orders, profiles, minCellTeamStages, seasonId, generatedAt: now.toISOString() }), seasonNumber: seasons[0].number };
     },
     async benchField() {
       const { loadBenchField } = await import("../s5MotorBench.mjs");

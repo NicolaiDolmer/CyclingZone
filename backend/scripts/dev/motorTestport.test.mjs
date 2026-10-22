@@ -436,6 +436,10 @@ test("#6804 P0 parseArgs: syntetisk felt faar prod-lignende udbrudsvilje som sta
   assert.throws(() => p(["--synthetic-field", "--breakaway-intent=maaske"]), /prod eller none/);
   assert.equal(p(["--synthetic-field", "--intent-rates=x.json"]).intentRates, "x.json");
   assert.equal(p(["--synthetic-field", "--intent-season=4"]).intentSeason, 4);
+  // Review P2: bench-feltet har kun AI-hold; udbrudsvilje er kun standard (og kun tilladt) med generatoren.
+  assert.equal(p(["--synthetic-field=bench"]).breakawayIntent, "none");
+  assert.throws(() => p(["--synthetic-field=bench", "--breakaway-intent=prod"]), /synthetic-field=generator/);
+  assert.throws(() => p(["--synthetic-field", "--intent-season=0"]), /intent-season/);
   assert.equal(p(["--synthetic-field"]).intentSeason, null);
 });
 
@@ -447,7 +451,7 @@ test("#6804 P0 main: --from-dir + syntetisk felt kraever satser; med --intent-ra
     const routesDir = path.join(root, "routes");
     const out = path.join(root, "balance-internals", "run");
     const ratesFile = path.join(root, "rates.json");
-    writeFileSync(ratesFile, JSON.stringify({ format: "cz-breakaway-intent-rates/v2", seasonId: "s4", minCellTeamStages: 1, rows: [
+    writeFileSync(ratesFile, JSON.stringify({ format: "cz-breakaway-intent-rates/v2", seasonId: "s4", seasonNumber: 3, minCellTeamStages: 1, rows: [
       { division: "all", group: "one_day", humanTeamRaces: 1, humanTeamRoadStages: 1, hunters: 1, freeRoles: 0, tryBreakRiders: 0 },
     ] }));
     mkdirSync(routesDir, { recursive: true });
@@ -475,6 +479,8 @@ test("#6804 P0 main: --from-dir + syntetisk felt kraever satser; med --intent-ra
     const other = path.join(root, "rates2.json");
     writeFileSync(other, readFileSync(ratesFile, "utf8").replace('"hunters":1', '"hunters":0'));
     await assert.rejects(main([...args, `--intent-rates=${other}`], { now: NOW, defaultBaseline: "rev" }), /andre udbrudsvilje-satser/);
+    // Review P2: en valgt saeson der ikke passer med satserne afvises (satsfilen er fra saeson 3).
+    await assert.rejects(main([...args, "--intent-season=4"], { now: NOW, defaultBaseline: "rev" }), /passer ikke med satserne/);
     assert.equal(JSON.parse(readFileSync(path.join(out, "breakaway-intent-rates.json"), "utf8")).rows[0].hunters, 1, "de gemte satser er uroerte");
   } finally {
     process.exitCode = prevExit;
