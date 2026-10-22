@@ -1,5 +1,81 @@
 export const PATCHES = [
   {
+    "version": "7.374",
+    "date": "2026-10-23",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Youth",
+        "en": {
+          "title": "No youth classification in U23 and junior races",
+          "body": "Everyone in a U23 or junior field is young already, so the youth classification only copied the overall one. It is gone from these races, also from races already ridden. Senior races keep it."
+        },
+        "da": {
+          "title": "Intet ungdomsklassement i U23- og juniorløb",
+          "body": "Alle i et U23- eller juniorfelt er i forvejen unge, så ungdomsklassementet var bare en kopi af det samlede. Det er væk fra disse løb, også fra løb der allerede er kørt. Seniorløb beholder det."
+        },
+        "refs": [
+          7031
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "One prognosis for your academy riders",
+          "body": "Your own academy riders now show the same prognosis everywhere: academy, My Team, the rider profile and training. The Scouting tab shows the steps, where the rider is now and how many training days are left to the next step."
+        },
+        "da": {
+          "title": "Én prognose for dine akademiryttere",
+          "body": "Dine egne akademiryttere viser nu samme prognose overalt: akademiet, Mit Hold, rytterprofilen og træning. Scouting-fanen viser trinnene, hvor rytteren står nu, og hvor mange træningsdage der er til næste trin."
+        },
+        "refs": [
+          6985,
+          6987
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Injury messages say when the rider finished",
+          "body": "After a hard crash, a rider can finish the stage and still be injured. The message now says so, instead of sounding like he abandoned."
+        },
+        "da": {
+          "title": "Skadebeskeden siger, når rytteren kørte færdig",
+          "body": "Efter et hårdt styrt kan en rytter køre etapen færdig og stadig være skadet. Beskeden siger det nu i stedet for at lyde, som om han udgik."
+        },
+        "refs": [
+          7042
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "App",
+        "en": {
+          "title": "The mobile menu stays open",
+          "body": "On slow phones the menu could close right after you opened it. It now only closes when you pick a page."
+        },
+        "da": {
+          "title": "Mobilmenuen bliver åben",
+          "body": "På langsomme telefoner kunne menuen lukke lige efter, at du åbnede den. Nu lukker den kun, når du vælger en side."
+        },
+        "refs": [
+          7009,
+          7010
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.373",
     "date": "2026-10-21",
     "changes": [
