@@ -38,13 +38,13 @@ jobs:
 
       - name: Check out repository
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -77,7 +77,7 @@ jobs:
 
       - name: Upload report
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: rls-audit-report
           path: |
@@ -86,7 +86,7 @@ jobs:
 
       - name: Comment on PR if findings (PR runs only)
         if: github.event_name == 'pull_request' && steps.audit.outputs.critical != '0'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
@@ -113,7 +113,7 @@ jobs:
 
       - name: Open or update tracking issue (scheduled runs only)
         if: github.event_name == 'schedule' && steps.audit.outputs.critical != '0'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
