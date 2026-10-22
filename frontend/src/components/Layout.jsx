@@ -595,8 +595,14 @@ export default function Layout() {
     // foldbar gruppe, så der er ingen gruppe at åbne for den rute længere.
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i)));
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
-    setMobileOpen(false);
   }, [location, isAdmin, isOwner, t, academyEnabled, facilitiesEnabled, scoutSystemEnabled, youthSquadPagesEnabled, boardMandateBeta]);
+
+  // #7009: mobilmenuen lukker KUN ved navigation. Før lå lukningen i effekten ovenfor,
+  // så den også lukkede, når sprog, admin-status eller feature-flag landede asynkront
+  // lige efter at spilleren havde åbnet menuen (den smækkede i af sig selv).
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location]);
 
   // #5404: éen hentning pr. session (loadFeatureFlagStages deler løftet med
   // andre samtidige kaldere, se lib/featureStage.ts) — kun til Beta-badgen.

@@ -1,0 +1,2935 @@
+{
+  "../backend/lib/academyGenerator.js": {
+    "TS1127": 2,
+    "TS2322": 1,
+    "TS2345": 2
+  },
+  "../backend/lib/academyGraduation.js": {
+    "TS18046": 4,
+    "TS18047": 1,
+    "TS2322": 6,
+    "TS2339": 55,
+    "TS2345": 1,
+    "TS2353": 3,
+    "TS2741": 1,
+    "TS8032": 1
+  },
+  "../backend/lib/academyIntake.js": {
+    "TS1127": 1,
+    "TS2322": 4,
+    "TS2339": 12,
+    "TS2353": 3,
+    "TS2739": 1,
+    "TS8032": 1
+  },
+  "../backend/lib/academyOfferProtection.js": {
+    "TS2339": 2
+  },
+  "../backend/lib/activeSeasonLookup.js": {
+    "TS2339": 2,
+    "TS2345": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/aiPoolRetirement.js": {
+    "TS18046": 3,
+    "TS2345": 7
+  },
+  "../backend/lib/aiTeamGenerator.js": {
+    "TS18046": 2,
+    "TS2322": 1,
+    "TS2339": 11,
+    "TS2353": 1,
+    "TS2739": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/aiTeamRetirement.js": {
+    "TS2339": 2
+  },
+  "../backend/lib/archetypePhysiology.js": {
+    "TS2339": 5
+  },
+  "../backend/lib/auctionEngine.js": {
+    "TS18047": 1,
+    "TS2339": 4
+  },
+  "../backend/lib/auctionRules.js": {
+    "TS2339": 26,
+    "TS2353": 1
+  },
+  "../backend/lib/availableBalance.js": {
+    "TS2339": 3
+  },
+  "../backend/lib/backfillCores.js": {
+    "TS18048": 6,
+    "TS2322": 2,
+    "TS2339": 11,
+    "TS2345": 2,
+    "TS2554": 13
+  },
+  "../backend/lib/betaResetService.js": {
+    "TS2353": 1
+  },
+  "../backend/lib/boardClubDna.js": {
+    "TS2339": 3
+  },
+  "../backend/lib/boardDmMirror.js": {
+    "TS2339": 8
+  },
+  "../backend/lib/boardEvaluation.js": {
+    "TS2339": 20,
+    "TS2345": 1,
+    "TS2353": 4
+  },
+  "../backend/lib/boardGoalContext.js": {
+    "TS1127": 1,
+    "TS2322": 2,
+    "TS2339": 20,
+    "TS2463": 1,
+    "TS2739": 1
+  },
+  "../backend/lib/boardGoals.js": {
+    "TS18047": 13,
+    "TS2322": 11,
+    "TS2339": 115,
+    "TS2739": 1
+  },
+  "../backend/lib/boardIdentity.js": {
+    "TS2322": 3,
+    "TS2339": 27
+  },
+  "../backend/lib/boardMandate.js": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2488": 1,
+    "TS2739": 1
+  },
+  "../backend/lib/boardMandateEngine.js": {
+    "TS18046": 4,
+    "TS2322": 5,
+    "TS2339": 60,
+    "TS2353": 13
+  },
+  "../backend/lib/boardMandateNames.js": {
+    "TS2339": 5,
+    "TS2353": 2
+  },
+  "../backend/lib/boardMembers.js": {
+    "TS18047": 9,
+    "TS2322": 9,
+    "TS2339": 63,
+    "TS2353": 12,
+    "TS2561": 1,
+    "TS2739": 5,
+    "TS2741": 1
+  },
+  "../backend/lib/boardMidSeason.js": {
+    "TS1127": 1,
+    "TS18046": 2,
+    "TS2339": 8,
+    "TS2739": 1
+  },
+  "../backend/lib/boardNegotiationThresholds.js": {
+    "TS2339": 1
+  },
+  "../backend/lib/boardRequests.js": {
+    "TS2322": 12,
+    "TS2339": 56,
+    "TS2353": 5
+  },
+  "../backend/lib/boardSequentialNegotiation.js": {
+    "TS2322": 1,
+    "TS2339": 7,
+    "TS2353": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/boardTestMode.js": {
+    "TS2339": 4
+  },
+  "../backend/lib/calendarActivationRaceDays.js": {
+    "TS2322": 3,
+    "TS2367": 1
+  },
+  "../backend/lib/calendarCompositionTargets.js": {
+    "TS2339": 5,
+    "TS2741": 2
+  },
+  "../backend/lib/calendarPlanningWindow.js": {
+    "TS2322": 3,
+    "TS2339": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/calendarRaceDayTargets.js": {
+    "TS2322": 2,
+    "TS2741": 1,
+    "TS4104": 1
+  },
+  "../backend/lib/contractOfferEligibility.js": {
+    "TS2739": 1
+  },
+  "../backend/lib/contractSeed.js": {
+    "TS2339": 8
+  },
+  "../backend/lib/dbChunk.js": {
+    "TS2339": 1,
+    "TS2349": 1
+  },
+  "../backend/lib/discordDeadConnection.js": {
+    "TS1127": 1,
+    "TS2322": 1,
+    "TS2339": 2
+  },
+  "../backend/lib/discordDmDelivery.js": {
+    "TS18046": 1,
+    "TS2322": 2,
+    "TS2353": 2
+  },
+  "../backend/lib/discordDmOutbox.js": {
+    "TS1064": 1,
+    "TS2322": 1,
+    "TS2339": 6
+  },
+  "../backend/lib/discordDmRateGuard.js": {
+    "TS2339": 1
+  },
+  "../backend/lib/discordNotifier.js": {
+    "TS18046": 3,
+    "TS2322": 10,
+    "TS2339": 3,
+    "TS2345": 1,
+    "TS2353": 5
+  },
+  "../backend/lib/discordWebhookDelivery.js": {
+    "TS18046": 1,
+    "TS2339": 1
+  },
+  "../backend/lib/discordWebhookOutbox.js": {
+    "TS1064": 1,
+    "TS2339": 5
+  },
+  "../backend/lib/divisionAdjustment.js": {
+    "TS18047": 2,
+    "TS2339": 2
+  },
+  "../backend/lib/economyEngine.js": {
+    "TS18046": 9,
+    "TS18047": 5,
+    "TS2322": 4,
+    "TS2339": 22,
+    "TS2345": 14,
+    "TS2353": 6
+  },
+  "../backend/lib/errorMiddleware.js": {
+    "TS2339": 4
+  },
+  "../backend/lib/facilityEngine.js": {
+    "TS2339": 2
+  },
+  "../backend/lib/fairplayScoring.js": {
+    "TS2339": 5,
+    "TS2345": 1
+  },
+  "../backend/lib/fictionalLaunchPopulation.js": {
+    "TS1127": 1
+  },
+  "../backend/lib/fictionalRiderGenerator.js": {
+    "TS1127": 4,
+    "TS2322": 4,
+    "TS2339": 2,
+    "TS2345": 2
+  },
+  "../backend/lib/forumMentions.js": {
+    "TS2322": 1,
+    "TS2339": 2
+  },
+  "../backend/lib/founderBadge.js": {
+    "TS2339": 2
+  },
+  "../backend/lib/grandTourRestDays.js": {
+    "TS2538": 1
+  },
+  "../backend/lib/humanTeamFilter.js": {
+    "TS2339": 1
+  },
+  "../backend/lib/i18nServer.js": {
+    "TS2322": 1,
+    "TS2345": 2,
+    "TS2769": 1
+  },
+  "../backend/lib/loanEngine.js": {
+    "TS2339": 14,
+    "TS2345": 5
+  },
+  "../backend/lib/managerActivity.js": {
+    "TS1127": 1
+  },
+  "../backend/lib/managerParking.js": {
+    "TS18047": 3,
+    "TS2322": 1,
+    "TS2339": 35,
+    "TS2345": 2,
+    "TS2739": 1
+  },
+  "../backend/lib/marketUtils.js": {
+    "TS2339": 1
+  },
+  "../backend/lib/midSeasonSponsor.js": {
+    "TS2339": 6
+  },
+  "../backend/lib/newAccountGates.js": {
+    "TS2339": 1
+  },
+  "../backend/lib/notificationService.js": {
+    "TS18046": 1,
+    "TS18047": 2,
+    "TS2322": 4,
+    "TS2339": 15,
+    "TS2345": 5,
+    "TS2559": 2
+  },
+  "../backend/lib/poolBalance.js": {
+    "TS2345": 3,
+    "TS2739": 2
+  },
+  "../backend/lib/pyramidCompression.js": {
+    "TS2322": 1,
+    "TS2339": 10,
+    "TS8024": 5
+  },
+  "../backend/lib/raceAutopick.js": {
+    "TS2339": 1
+  },
+  "../backend/lib/raceBinding.js": {
+    "TS18046": 2,
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/raceCalendarLanePacker.js": {
+    "TS18047": 3,
+    "TS2322": 4,
+    "TS2339": 15,
+    "TS2345": 6
+  },
+  "../backend/lib/raceCalendarScheduling.js": {
+    "TS2322": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/raceClassifications.js": {
+    "TS2339": 2,
+    "TS2561": 1,
+    "TS8024": 1
+  },
+  "../backend/lib/raceDayForm.js": {
+    "TS2339": 9,
+    "TS2739": 2
+  },
+  "../backend/lib/raceEntriesLoader.js": {
+    "TS2741": 2
+  },
+  "../backend/lib/raceEntryCleanup.js": {
+    "TS18046": 1
+  },
+  "../backend/lib/raceIncidents.js": {
+    "TS2322": 3,
+    "TS2339": 12,
+    "TS2739": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/raceNarrativeNotification.js": {
+    "TS2322": 1,
+    "TS2339": 10,
+    "TS2345": 2,
+    "TS2353": 2,
+    "TS2741": 2
+  },
+  "../backend/lib/raceNotifyOutbox.js": {
+    "TS2339": 9
+  },
+  "../backend/lib/racePassages.js": {
+    "TS2339": 9
+  },
+  "../backend/lib/racePeaks.js": {
+    "TS2322": 1,
+    "TS2339": 14,
+    "TS2739": 1,
+    "TS2741": 2
+  },
+  "../backend/lib/raceRoles.js": {
+    "TS2538": 2
+  },
+  "../backend/lib/raceRouteGenerator.js": {
+    "TS18047": 1,
+    "TS2339": 2,
+    "TS2538": 1
+  },
+  "../backend/lib/raceRouteRealismDraw.js": {
+    "TS18046": 1,
+    "TS18047": 4,
+    "TS2322": 1,
+    "TS2339": 16,
+    "TS2345": 1,
+    "TS2353": 2,
+    "TS2739": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/raceSimulator.js": {
+    "TS2322": 2,
+    "TS2339": 6,
+    "TS2353": 1,
+    "TS2721": 1,
+    "TS2739": 1
+  },
+  "../backend/lib/raceStageProfileGenerator.js": {
+    "TS18048": 3,
+    "TS2322": 3,
+    "TS2339": 16,
+    "TS2345": 3,
+    "TS2353": 2,
+    "TS2740": 1
+  },
+  "../backend/lib/raceStory.js": {
+    "TS18047": 3,
+    "TS2322": 12,
+    "TS2339": 49,
+    "TS2345": 3,
+    "TS2531": 1,
+    "TS2741": 1
+  },
+  "../backend/lib/raceWithdrawal.js": {
+    "TS2322": 1
+  },
+  "../backend/lib/renownEngine.js": {
+    "TS2322": 2
+  },
+  "../backend/lib/resultWebhookRouting.js": {
+    "TS2322": 1
+  },
+  "../backend/lib/retirementNotice.js": {
+    "TS2339": 7,
+    "TS2345": 1
+  },
+  "../backend/lib/riderBirthPriors.js": {
+    "TS2322": 5,
+    "TS2339": 25,
+    "TS2538": 1,
+    "TS4104": 2
+  },
+  "../backend/lib/riderCareerNpv.js": {
+    "TS2322": 1
+  },
+  "../backend/lib/riderEligibility.js": {
+    "TS2339": 2,
+    "TS2353": 1
+  },
+  "../backend/lib/riderOwnershipAudit.js": {
+    "TS18046": 1,
+    "TS2339": 2
+  },
+  "../backend/lib/riderProgression.js": {
+    "TS2339": 5
+  },
+  "../backend/lib/riderProgressionEngine.js": {
+    "TS1127": 6,
+    "TS18046": 1,
+    "TS18047": 1,
+    "TS2322": 2,
+    "TS2339": 11,
+    "TS2345": 1
+  },
+  "../backend/lib/riderSeasonAge.js": {
+    "TS18049": 5
+  },
+  "../backend/lib/riderValuation.js": {
+    "TS2322": 1,
+    "TS2538": 1
+  },
+  "../backend/lib/riderValuationModelSelect.js": {
+    "TS2322": 3,
+    "TS2345": 1
+  },
+  "../backend/lib/routeSegments.js": {
+    "TS1005": 1,
+    "TS2322": 1,
+    "TS2538": 2
+  },
+  "../backend/lib/s5BenchmarkGate.js": {
+    "TS1131": 1,
+    "TS2339": 20,
+    "TS2345": 1
+  },
+  "../backend/lib/s5TierTerrainQuota.js": {
+    "TS2322": 1,
+    "TS2339": 14
+  },
+  "../backend/lib/seasonDevelopmentLoad.js": {
+    "TS2322": 3
+  },
+  "../backend/lib/seasonLookup.js": {
+    "TS2339": 1,
+    "TS2739": 2
+  },
+  "../backend/lib/seasonPhaseProfiles.js": {
+    "TS18047": 1,
+    "TS2345": 1
+  },
+  "../backend/lib/seasonTransitionBoundary.js": {
+    "TS2339": 5,
+    "TS2358": 1
+  },
+  "../backend/lib/seasonTransitionPhaseLog.js": {
+    "TS2339": 4
+  },
+  "../backend/lib/sentry.js": {
+    "TS2339": 3,
+    "TS2349": 2
+  },
+  "../backend/lib/sponsorContractsService.js": {
+    "TS2322": 5,
+    "TS2339": 3
+  },
+  "../backend/lib/sponsorEngine.js": {
+    "TS18047": 4,
+    "TS2322": 2,
+    "TS2339": 13,
+    "TS2739": 1
+  },
+  "../backend/lib/squadCalendarPacker.js": {
+    "TS2322": 3,
+    "TS2345": 3,
+    "TS2739": 1
+  },
+  "../backend/lib/squadEnforcement.js": {
+    "TS18046": 1,
+    "TS2554": 2
+  },
+  "../backend/lib/squads.js": {
+    "TS18049": 6,
+    "TS2322": 3,
+    "TS2339": 2,
+    "TS2345": 3,
+    "TS2538": 3,
+    "TS2739": 1,
+    "TS2769": 1
+  },
+  "../backend/lib/stageFinaleMetrics.js": {
+    "TS2339": 3,
+    "TS2345": 1,
+    "TS8032": 2
+  },
+  "../backend/lib/stageOrderMetrics.js": {
+    "TS2339": 1
+  },
+  "../backend/lib/stageRaceTransferDefer.js": {
+    "TS2322": 1,
+    "TS2339": 6
+  },
+  "../backend/lib/stallWatchdog.js": {
+    "TS18046": 1,
+    "TS18048": 2,
+    "TS2322": 1,
+    "TS2339": 7,
+    "TS2345": 1,
+    "TS2532": 1
+  },
+  "../backend/lib/starterSquadAllocator.js": {
+    "TS18048": 4,
+    "TS2322": 7,
+    "TS2339": 13,
+    "TS2345": 2
+  },
+  "../backend/lib/teamProfileEngine.js": {
+    "TS18048": 2,
+    "TS2322": 1,
+    "TS2339": 37,
+    "TS2353": 5,
+    "TS2532": 3,
+    "TS2739": 1
+  },
+  "../backend/lib/tierCalendarGuarantees.js": {
+    "TS2339": 4,
+    "TS2739": 1
+  },
+  "../backend/lib/tierCalendarMaterializer.js": {
+    "TS18046": 4,
+    "TS18047": 8,
+    "TS2322": 12,
+    "TS2339": 87,
+    "TS2345": 4,
+    "TS2353": 9,
+    "TS2554": 7,
+    "TS2739": 3,
+    "TS2741": 1
+  },
+  "../backend/lib/tierRaceSelection.js": {
+    "TS18048": 1,
+    "TS2322": 2,
+    "TS2339": 4,
+    "TS2345": 5,
+    "TS2739": 1
+  },
+  "../backend/lib/tierUniformFillerTilt.js": {
+    "TS2741": 1
+  },
+  "../backend/lib/training.js": {
+    "TS2322": 1,
+    "TS2339": 3
+  },
+  "../backend/lib/trainingDayTypes.js": {
+    "TS2339": 1,
+    "TS2345": 1,
+    "TS2353": 1,
+    "TS2538": 1
+  },
+  "../backend/lib/valuationTypefree/abilityProduction.js": {
+    "TS18047": 1,
+    "TS2345": 1
+  },
+  "../backend/lib/valuationTypefree/careerTypefree.js": {
+    "TS2322": 1,
+    "TS2554": 1
+  },
+  "../backend/lib/valuationTypefree/marketComponent.js": {
+    "TS2322": 1,
+    "TS2339": 5
+  },
+  "../backend/lib/valuationTypefree/typefreeValuation.js": {
+    "TS2339": 5
+  },
+  "../backend/lib/wageDeductionConfig.js": {
+    "TS2339": 2
+  },
+  "../backend/lib/youthMarket.js": {
+    "TS1127": 3,
+    "TS18047": 1,
+    "TS2339": 5,
+    "TS2741": 1
+  },
+  "../backend/lib/youthPoolAssignment.js": {
+    "TS18047": 2,
+    "TS2339": 11,
+    "TS2345": 2,
+    "TS2353": 2,
+    "TS2532": 1,
+    "TS2561": 1,
+    "TS2739": 1
+  },
+  "src/App.jsx": {
+    "TS18047": 2,
+    "TS2345": 3,
+    "TS2604": 1,
+    "TS2786": 1
+  },
+  "src/components/AcademyPnl.jsx": {
+    "TS2339": 11
+  },
+  "src/components/AnnualMeetingNudgeCard.jsx": {
+    "TS2322": 1
+  },
+  "src/components/AuctionBidWarModal.jsx": {
+    "TS2739": 1,
+    "TS2741": 2
+  },
+  "src/components/AuctionsSidebarFeed.jsx": {
+    "TS2739": 1
+  },
+  "src/components/BidConfirmModal.jsx": {
+    "TS2345": 1
+  },
+  "src/components/BoardSatisfactionTimeline.jsx": {
+    "TS2322": 1
+  },
+  "src/components/CareerFirstMomentRow.jsx": {
+    "TS2739": 1
+  },
+  "src/components/CompareDrawer.jsx": {
+    "TS2339": 16,
+    "TS2345": 1,
+    "TS2353": 1,
+    "TS2741": 7
+  },
+  "src/components/CookieBanner.jsx": {
+    "TS2339": 9,
+    "TS2349": 1
+  },
+  "src/components/CountdownRing.jsx": {
+    "TS2362": 1
+  },
+  "src/components/DevTransitionCard.jsx": {
+    "TS2339": 5,
+    "TS2345": 1
+  },
+  "src/components/FeedbackModal.jsx": {
+    "TS2345": 5,
+    "TS2739": 2,
+    "TS2741": 1
+  },
+  "src/components/FinanceForecastCard.jsx": {
+    "TS2345": 2,
+    "TS2739": 7,
+    "TS2741": 2
+  },
+  "src/components/FinanceSeasonSwitchPanel.jsx": {
+    "TS2322": 1
+  },
+  "src/components/ForumHighlightsCard.jsx": {
+    "TS2322": 2,
+    "TS2339": 10,
+    "TS2741": 1
+  },
+  "src/components/GlobalRankWidget.jsx": {
+    "TS2339": 7,
+    "TS2353": 1
+  },
+  "src/components/HeroAgonyCard.jsx": {
+    "TS2322": 2,
+    "TS2339": 7
+  },
+  "src/components/LanguageSwitcher.jsx": {
+    "TS18048": 2,
+    "TS2339": 8,
+    "TS2349": 2,
+    "TS2353": 1
+  },
+  "src/components/Layout.jsx": {
+    "TS18046": 3,
+    "TS2339": 12,
+    "TS2345": 6,
+    "TS2589": 1,
+    "TS2741": 2
+  },
+  "src/components/MaidenWinMomentCard.jsx": {
+    "TS2339": 4,
+    "TS2345": 3
+  },
+  "src/components/MyLatestResultCard.jsx": {
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2353": 1,
+    "TS2741": 2
+  },
+  "src/components/NextActionsCard.jsx": {
+    "TS2339": 6,
+    "TS8024": 5
+  },
+  "src/components/NpsPrompt.jsx": {
+    "TS2345": 1
+  },
+  "src/components/OnboardingProgressCard.jsx": {
+    "TS2339": 6,
+    "TS2345": 1,
+    "TS2353": 2
+  },
+  "src/components/OnboardingTour.jsx": {
+    "TS2339": 5
+  },
+  "src/components/PotentialeStars.jsx": {
+    "TS2741": 1
+  },
+  "src/components/RaceControlBanner.jsx": {
+    "TS2339": 2,
+    "TS2345": 1
+  },
+  "src/components/RiderFilters.jsx": {
+    "TS2322": 5,
+    "TS2339": 6,
+    "TS2741": 1,
+    "TS2746": 1
+  },
+  "src/components/SeasonDocumentary.jsx": {
+    "TS18047": 2,
+    "TS2322": 1,
+    "TS2741": 1
+  },
+  "src/components/SeasonFinanceReportPanel.jsx": {
+    "TS2322": 2,
+    "TS2339": 11,
+    "TS2345": 5,
+    "TS2739": 1
+  },
+  "src/components/SeasonHonours.jsx": {
+    "TS18047": 2,
+    "TS2322": 2,
+    "TS2741": 3
+  },
+  "src/components/SeasonRecapHero.jsx": {
+    "TS1127": 1,
+    "TS2322": 3,
+    "TS2786": 1
+  },
+  "src/components/SeasonSignupCard.jsx": {
+    "TS18047": 1,
+    "TS2339": 1,
+    "TS2345": 1
+  },
+  "src/components/SeasonStartGuideCard.jsx": {
+    "TS2322": 1,
+    "TS2339": 2
+  },
+  "src/components/SeasonWrapNudgeCard.jsx": {
+    "TS2339": 3
+  },
+  "src/components/SetupWizardModal.jsx": {
+    "TS2339": 2
+  },
+  "src/components/SponsorContractPanel.jsx": {
+    "TS18047": 1,
+    "TS2322": 1,
+    "TS2339": 23
+  },
+  "src/components/SponsorIncomeBreakdown.jsx": {
+    "TS18047": 1,
+    "TS2322": 1,
+    "TS2339": 4,
+    "TS2741": 1
+  },
+  "src/components/StatsToggle.jsx": {
+    "TS2339": 1
+  },
+  "src/components/SurveyInviteCard.jsx": {
+    "TS18047": 1,
+    "TS2339": 1,
+    "TS2345": 1
+  },
+  "src/components/TeamClubTab.jsx": {
+    "TS2339": 6,
+    "TS2741": 2
+  },
+  "src/components/TeamDevelopmentTab.jsx": {
+    "TS2322": 4,
+    "TS2741": 1
+  },
+  "src/components/TeamResultsTab.jsx": {
+    "TS2339": 1,
+    "TS2345": 2
+  },
+  "src/components/TeamStatsTab.jsx": {
+    "TS2322": 6,
+    "TS2339": 3,
+    "TS2345": 2,
+    "TS2739": 2,
+    "TS2741": 1
+  },
+  "src/components/TeamTransferHistoryTab.jsx": {
+    "TS18046": 1,
+    "TS18047": 1,
+    "TS2339": 3,
+    "TS2345": 2,
+    "TS2741": 2
+  },
+  "src/components/TodayStagesStrip.jsx": {
+    "TS2322": 2
+  },
+  "src/components/TrafficBeacon.jsx": {
+    "TS2322": 1,
+    "TS2339": 2
+  },
+  "src/components/admin/DeadlineReadinessSection.jsx": {
+    "TS18046": 2,
+    "TS2339": 26,
+    "TS2345": 2
+  },
+  "src/components/admin/EconomyAdminSection.jsx": {
+    "TS18046": 8,
+    "TS2339": 92,
+    "TS2345": 2
+  },
+  "src/components/admin/RacePointModelSection.jsx": {
+    "TS18046": 2,
+    "TS2339": 27,
+    "TS2345": 2,
+    "TS2698": 2
+  },
+  "src/components/admin/RacePointsAdminSection.jsx": {
+    "TS18046": 3,
+    "TS2339": 50,
+    "TS2345": 1
+  },
+  "src/components/admin/RacePoolSection.jsx": {
+    "TS18046": 4,
+    "TS18047": 3,
+    "TS2339": 27,
+    "TS2345": 10
+  },
+  "src/components/admin/SeasonCycleSection.jsx": {
+    "TS18046": 2,
+    "TS2339": 32,
+    "TS2345": 1,
+    "TS2741": 1
+  },
+  "src/components/admin/ValuationPreviewSection.jsx": {
+    "TS18046": 1,
+    "TS2339": 7
+  },
+  "src/components/admin/ValuationV4PreviewSection.jsx": {
+    "TS18046": 1,
+    "TS2339": 7
+  },
+  "src/components/admin/growth/GrowthCustomersTab.jsx": {
+    "TS18046": 1,
+    "TS2322": 2,
+    "TS2339": 3,
+    "TS2739": 8,
+    "TS2741": 5
+  },
+  "src/components/admin/growth/GrowthNpsTab.jsx": {
+    "TS18046": 1,
+    "TS2322": 2,
+    "TS2339": 3,
+    "TS2739": 4,
+    "TS2741": 5
+  },
+  "src/components/admin/growth/GrowthOverviewTab.jsx": {
+    "TS18046": 1,
+    "TS18047": 8,
+    "TS2322": 2,
+    "TS2339": 5,
+    "TS2739": 9,
+    "TS2741": 3
+  },
+  "src/components/admin/growth/GrowthRoadmapTab.jsx": {
+    "TS18046": 2,
+    "TS18047": 1,
+    "TS2322": 10,
+    "TS2339": 28,
+    "TS2345": 4,
+    "TS2353": 12
+  },
+  "src/components/admin/growth/RoadmapAdminForms.jsx": {
+    "TS2339": 1,
+    "TS2345": 3,
+    "TS2739": 17,
+    "TS2741": 7
+  },
+  "src/components/admin/sections/BalanceDriftWatchSection.jsx": {
+    "TS18046": 1,
+    "TS2339": 1,
+    "TS2345": 1,
+    "TS2741": 1
+  },
+  "src/components/admin/sections/BetaToolsSection.jsx": {
+    "TS18046": 1,
+    "TS2339": 64
+  },
+  "src/components/admin/sections/BoardTestModeSection.jsx": {
+    "TS18046": 1,
+    "TS2339": 11,
+    "TS2345": 2
+  },
+  "src/components/admin/sections/FeatureFlagBoardSection.jsx": {
+    "TS18046": 2,
+    "TS2339": 5
+  },
+  "src/components/admin/shared/useAdminAuth.js": {
+    "TS2322": 1
+  },
+  "src/components/admin/survey/SurveyIdeasTab.jsx": {
+    "TS2322": 4
+  },
+  "src/components/admin/survey/SurveyOverviewTab.jsx": {
+    "TS2322": 13
+  },
+  "src/components/admin/survey/SurveyProTab.jsx": {
+    "TS2322": 1,
+    "TS2739": 2
+  },
+  "src/components/admin/survey/SurveySegmentsTab.jsx": {
+    "TS2322": 5
+  },
+  "src/components/admin/survey/SurveyTextTab.jsx": {
+    "TS2322": 3,
+    "TS2339": 1,
+    "TS2362": 1,
+    "TS2363": 1
+  },
+  "src/components/board/ClubDnaSelectionCard.jsx": {
+    "TS2322": 1
+  },
+  "src/components/forum/ForumAuthorIdentity.jsx": {
+    "TS2741": 1
+  },
+  "src/components/forum/ForumImageAttachments.jsx": {
+    "TS2349": 1
+  },
+  "src/components/forum/ForumImagePicker.jsx": {
+    "TS2339": 1
+  },
+  "src/components/forum/MentionAutocomplete.jsx": {
+    "TS2322": 2,
+    "TS2339": 24,
+    "TS2345": 1,
+    "TS2551": 1
+  },
+  "src/components/forum/forumCategories.test.js": {
+    "TS2322": 3
+  },
+  "src/components/klub/ConfirmModal.jsx": {
+    "TS2739": 1
+  },
+  "src/components/klub/StaffPanel.jsx": {
+    "TS2322": 1,
+    "TS2339": 12,
+    "TS2345": 3,
+    "TS2739": 1
+  },
+  "src/components/landing/LaunchWaitlistForm.jsx": {
+    "TS18047": 1,
+    "TS2339": 1,
+    "TS2345": 6
+  },
+  "src/components/messages/MessageManagerButton.jsx": {
+    "TS18046": 1,
+    "TS2339": 2,
+    "TS2345": 1,
+    "TS2739": 1
+  },
+  "src/components/messages/MessagesPanel.jsx": {
+    "TS18046": 8,
+    "TS18047": 4,
+    "TS2322": 3,
+    "TS2339": 29,
+    "TS2345": 9,
+    "TS2698": 1,
+    "TS2739": 1,
+    "TS2741": 3
+  },
+  "src/components/notifications/supersededUnread.test.js": {
+    "TS2345": 1
+  },
+  "src/components/notifications/unreadSync.js": {
+    "TS2769": 2
+  },
+  "src/components/notifications/unreadSync.test.js": {
+    "TS2345": 15
+  },
+  "src/components/planner/MasterCanvas.jsx": {
+    "TS18047": 4,
+    "TS2322": 4,
+    "TS2339": 13,
+    "TS2353": 1,
+    "TS2698": 1,
+    "TS2741": 1
+  },
+  "src/components/planner/MobileLanes.jsx": {
+    "TS2741": 1
+  },
+  "src/components/planner/PlannerDrawer.jsx": {
+    "TS2741": 2
+  },
+  "src/components/planner/PlannerSquad.jsx": {
+    "TS2322": 2,
+    "TS2339": 21,
+    "TS2741": 2
+  },
+  "src/components/planner/plannerRating.guard.test.js": {
+    "TS18047": 1,
+    "TS2531": 1
+  },
+  "src/components/planner/plannerShared.test.js": {
+    "TS18047": 2
+  },
+  "src/components/planner/plannerSquadModel.js": {
+    "TS18047": 2,
+    "TS2322": 1,
+    "TS2339": 41,
+    "TS2559": 1
+  },
+  "src/components/planner/plannerSquadModel.test.js": {
+    "TS2322": 2,
+    "TS2339": 13,
+    "TS2345": 2,
+    "TS2353": 19,
+    "TS2531": 3,
+    "TS2741": 1
+  },
+  "src/components/race/CompletedRacesExplorer.jsx": {
+    "TS18046": 1,
+    "TS2339": 16,
+    "TS2345": 3,
+    "TS2739": 2
+  },
+  "src/components/race/FinalKilometrePlayback.jsx": {
+    "TS2322": 1,
+    "TS2353": 1,
+    "TS2741": 1
+  },
+  "src/components/race/HunterExplainer.jsx": {
+    "TS2349": 1
+  },
+  "src/components/race/LegacyStageProfileCard.jsx": {
+    "TS2741": 1
+  },
+  "src/components/race/RaceArchiveTable.jsx": {
+    "TS2322": 1,
+    "TS2339": 5,
+    "TS2345": 3,
+    "TS2739": 1
+  },
+  "src/components/race/RaceCentreCard.jsx": {
+    "TS2339": 11,
+    "TS2741": 1
+  },
+  "src/components/race/RaceOverviewTab.jsx": {
+    "TS2322": 2,
+    "TS2741": 1
+  },
+  "src/components/race/RaceSelectionPanel.jsx": {
+    "TS18046": 7,
+    "TS18047": 3,
+    "TS2322": 5,
+    "TS2339": 33,
+    "TS2345": 12,
+    "TS2353": 1,
+    "TS2698": 1
+  },
+  "src/components/race/RaceTacticsTab.jsx": {
+    "TS18047": 6,
+    "TS2322": 8,
+    "TS2339": 35,
+    "TS2345": 5,
+    "TS2464": 1,
+    "TS2538": 3
+  },
+  "src/components/race/RaceTeamTab.jsx": {
+    "TS18047": 1,
+    "TS2322": 3,
+    "TS2339": 8
+  },
+  "src/components/race/StageDetailPanel.jsx": {
+    "TS2322": 1,
+    "TS2741": 1
+  },
+  "src/components/race/StageFilmScrubber.jsx": {
+    "TS2339": 3
+  },
+  "src/components/race/StageProfileCard.jsx": {
+    "TS2322": 2,
+    "TS2345": 2
+  },
+  "src/components/race/StageProfileGraph.jsx": {
+    "TS2339": 17,
+    "TS2349": 1
+  },
+  "src/components/race/StageScheduleCard.jsx": {
+    "TS2339": 1,
+    "TS2345": 1
+  },
+  "src/components/race/StageStripe.jsx": {
+    "TS2339": 2
+  },
+  "src/components/race/StoryOfTheStageSection.jsx": {
+    "TS2322": 2
+  },
+  "src/components/race/TimelineFilmPlayer.jsx": {
+    "TS2322": 1,
+    "TS2739": 1
+  },
+  "src/components/race/WorldCatalog.jsx": {
+    "TS2339": 1
+  },
+  "src/components/race/stagePageV2/FinaleView.tsx": {
+    "TS2345": 1
+  },
+  "src/components/racehub/AvailableRidersPool.jsx": {
+    "TS2322": 1,
+    "TS2339": 1
+  },
+  "src/components/racehub/ClearAllDialog.jsx": {
+    "TS2741": 1
+  },
+  "src/components/racehub/DivisionStartLists.jsx": {
+    "TS2322": 1,
+    "TS2339": 25,
+    "TS2345": 2,
+    "TS2353": 5,
+    "TS2739": 1
+  },
+  "src/components/racehub/RaceColumn.jsx": {
+    "TS2322": 5,
+    "TS2353": 1,
+    "TS2698": 1,
+    "TS2741": 1
+  },
+  "src/components/racehub/RaceHubBoard.jsx": {
+    "TS2322": 5,
+    "TS2339": 21,
+    "TS2345": 2,
+    "TS2353": 12,
+    "TS2739": 1
+  },
+  "src/components/racehub/SeasonMatrix.jsx": {
+    "TS18046": 1,
+    "TS2322": 1,
+    "TS2339": 27,
+    "TS2345": 5,
+    "TS2353": 5,
+    "TS2488": 1,
+    "TS2739": 1
+  },
+  "src/components/racehub/SeasonMatrixCellPopover.jsx": {
+    "TS2339": 5,
+    "TS2353": 1
+  },
+  "src/components/racehub/SeasonView.jsx": {
+    "TS18048": 2,
+    "TS18049": 5,
+    "TS2322": 2,
+    "TS2339": 22,
+    "TS2345": 3,
+    "TS2353": 1,
+    "TS2739": 1
+  },
+  "src/components/racehub/StartListColumn.jsx": {
+    "TS2741": 3
+  },
+  "src/components/racehub/strategy/PreviewDiff.jsx": {
+    "TS2322": 1
+  },
+  "src/components/rider/NationCell.jsx": {
+    "TS2741": 1
+  },
+  "src/components/rider/RiderBadges.jsx": {
+    "TS2322": 1
+  },
+  "src/components/rider/RiderManageActions.jsx": {
+    "TS2339": 31,
+    "TS2345": 11,
+    "TS2353": 1
+  },
+  "src/components/rider/RiderMiniProfileModal.jsx": {
+    "TS2339": 1
+  },
+  "src/components/rider/ScoutablePotentiale.jsx": {
+    "TS2739": 1,
+    "TS2741": 2
+  },
+  "src/components/rider/TeamCell.jsx": {
+    "TS18047": 3,
+    "TS2339": 1,
+    "TS2741": 2
+  },
+  "src/components/rider/ValueDeltaBadge.jsx": {
+    "TS2322": 1
+  },
+  "src/components/rider/profile/RiderAbilityColumns.jsx": {
+    "TS2741": 1
+  },
+  "src/components/rider/profile/RiderAbilityHistoryPro.jsx": {
+    "TS18047": 2,
+    "TS2322": 3,
+    "TS2339": 2
+  },
+  "src/components/rider/profile/RiderDevelopmentTab.jsx": {
+    "TS2345": 1
+  },
+  "src/components/rider/profile/RiderHistoryTab.jsx": {
+    "TS2345": 1,
+    "TS2741": 1
+  },
+  "src/components/rider/profile/RiderInterestTab.jsx": {
+    "TS2339": 3,
+    "TS2345": 1,
+    "TS2741": 1
+  },
+  "src/components/rider/profile/RiderPalmaresTab.jsx": {
+    "TS2345": 1
+  },
+  "src/components/rider/profile/RiderPhysiologyTab.jsx": {
+    "TS2322": 1,
+    "TS2339": 4,
+    "TS2783": 1
+  },
+  "src/components/rider/profile/RiderProfileHero.jsx": {
+    "TS2322": 5,
+    "TS2339": 12,
+    "TS2353": 1,
+    "TS2698": 1,
+    "TS2739": 3,
+    "TS2741": 5
+  },
+  "src/components/rider/profile/RiderResultsTab.jsx": {
+    "TS2345": 1,
+    "TS2739": 1,
+    "TS2741": 2
+  },
+  "src/components/rider/profile/RiderScoutingTab.jsx": {
+    "TS2739": 2,
+    "TS2741": 1
+  },
+  "src/components/rider/profile/RiderSwitcherBar.jsx": {
+    "TS2339": 1,
+    "TS2741": 1
+  },
+  "src/components/rider/profile/RiderTrainingTab.jsx": {
+    "TS2322": 2,
+    "TS2741": 4
+  },
+  "src/components/rider/profile/RiderTypeRadar.jsx": {
+    "TS18047": 2,
+    "TS2322": 1,
+    "TS2345": 1
+  },
+  "src/components/staff/profile/StaffAbilityColumns.jsx": {
+    "TS2741": 1
+  },
+  "src/components/staff/profile/StaffScoutHistoryTab.jsx": {
+    "TS18047": 2,
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2345": 1
+  },
+  "src/components/staff/profile/StaffSwitcherBar.jsx": {
+    "TS2339": 1
+  },
+  "src/components/survey/SurveyQuestion.jsx": {
+    "TS2741": 4
+  },
+  "src/components/training/AbilityReceiptRow.jsx": {
+    "TS2322": 2,
+    "TS2345": 1
+  },
+  "src/components/training/AssistantSuggestionsPanel.jsx": {
+    "TS2339": 2
+  },
+  "src/components/training/FocusPanel.jsx": {
+    "TS2339": 4,
+    "TS2353": 1,
+    "TS2559": 2,
+    "TS2741": 1
+  },
+  "src/components/training/TrainingHistory.jsx": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2739": 1
+  },
+  "src/components/training/TrainingMoment.jsx": {
+    "TS2322": 2
+  },
+  "src/components/ui/DataTable.jsx": {
+    "TS18047": 4,
+    "TS2322": 2,
+    "TS2339": 11,
+    "TS2349": 3
+  },
+  "src/components/ui/FilterBar.jsx": {
+    "TS2339": 10
+  },
+  "src/components/ui/Link.jsx": {
+    "TS2322": 1
+  },
+  "src/components/ui/Modal.jsx": {
+    "TS2322": 1,
+    "TS2339": 9
+  },
+  "src/components/ui/Section.jsx": {
+    "TS2322": 2
+  },
+  "src/components/ui/Tabs.jsx": {
+    "TS2322": 1,
+    "TS2339": 7
+  },
+  "src/components/ui/Tooltip.jsx": {
+    "TS2339": 7,
+    "TS2345": 1
+  },
+  "src/components/ui/dataTableStyles.test.js": {
+    "TS2322": 3,
+    "TS2345": 4
+  },
+  "src/components/waitlist/FounderSupporterWaitlistForm.jsx": {
+    "TS18047": 1,
+    "TS2339": 1,
+    "TS2345": 10,
+    "TS2739": 2,
+    "TS2741": 2
+  },
+  "src/entry-server.jsx": {
+    "TS2322": 1
+  },
+  "src/hooks/useActiveSeasonYear.js": {
+    "TS2339": 1,
+    "TS2345": 1
+  },
+  "src/hooks/useDocumentHead.js": {
+    "TS2322": 2,
+    "TS2339": 5
+  },
+  "src/hooks/useDocumentHead.test.js": {
+    "TS2339": 2,
+    "TS2740": 7
+  },
+  "src/hooks/useFirstRaceCard.js": {
+    "TS2345": 1
+  },
+  "src/hooks/useForumHighlights.js": {
+    "TS2322": 1,
+    "TS2339": 3
+  },
+  "src/hooks/useGlobalRank.js": {
+    "TS18047": 2,
+    "TS2345": 4
+  },
+  "src/hooks/useHeroAgonyMoment.js": {
+    "TS2322": 3,
+    "TS2339": 1,
+    "TS2345": 5
+  },
+  "src/hooks/useMentionableManagers.js": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2531": 1,
+    "TS4104": 1
+  },
+  "src/hooks/useModalA11y.js": {
+    "TS2339": 3
+  },
+  "src/hooks/useMyTeamId.js": {
+    "TS18047": 1,
+    "TS2322": 3,
+    "TS2339": 1
+  },
+  "src/hooks/useNpsPrompt.js": {
+    "TS2322": 1,
+    "TS2339": 2
+  },
+  "src/hooks/useRealtimeRefetch.js": {
+    "TS2322": 1
+  },
+  "src/hooks/useReleaseWatch.js": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2353": 4
+  },
+  "src/hooks/useRiderRankings.js": {
+    "TS18047": 1,
+    "TS2339": 1,
+    "TS2345": 4
+  },
+  "src/hooks/useStageRoles.js": {
+    "TS2345": 4
+  },
+  "src/hooks/useStageTimeline.js": {
+    "TS2339": 4,
+    "TS2353": 1,
+    "TS2769": 1
+  },
+  "src/hooks/useTodayStages.js": {
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2345": 1,
+    "TS2532": 1
+  },
+  "src/hooks/useTodayStages.test.js": {
+    "TS2339": 3,
+    "TS2365": 1
+  },
+  "src/i18n/index.js": {
+    "TS2339": 1,
+    "TS2345": 2,
+    "TS2741": 1
+  },
+  "src/i18n/localeBundleBackend.js": {
+    "TS2532": 3,
+    "TS2554": 1
+  },
+  "src/i18n/localeBundleBackend.test.js": {
+    "TS2345": 3
+  },
+  "src/lib/abilities.js": {
+    "TS2322": 1
+  },
+  "src/lib/academyNavVisibility.test.js": {
+    "TS2739": 1,
+    "TS2790": 1
+  },
+  "src/lib/academyPromoteContract.test.js": {
+    "TS2554": 1
+  },
+  "src/lib/amountInput.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/anonymousId.test.js": {
+    "TS2790": 1
+  },
+  "src/lib/apiError.js": {
+    "TS2345": 1
+  },
+  "src/lib/assistantTrainingSuggestions.js": {
+    "TS2339": 3
+  },
+  "src/lib/attribution.js": {
+    "TS2339": 1
+  },
+  "src/lib/attribution.test.js": {
+    "TS2353": 12,
+    "TS2790": 2
+  },
+  "src/lib/auctionBidRoom.test.js": {
+    "TS2322": 4
+  },
+  "src/lib/auctionEndTime.test.js": {
+    "TS18047": 2,
+    "TS2531": 4
+  },
+  "src/lib/auctionHistorySort.js": {
+    "TS2322": 2,
+    "TS2345": 1
+  },
+  "src/lib/auctionValueUpdateWindow.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/authErrorHash.test.js": {
+    "TS2345": 3
+  },
+  "src/lib/authErrors.js": {
+    "TS2339": 3
+  },
+  "src/lib/availableBalance.js": {
+    "TS2345": 2
+  },
+  "src/lib/availableBalance.test.js": {
+    "TS2345": 2,
+    "TS2740": 1
+  },
+  "src/lib/backendMessage.js": {
+    "TS2345": 1,
+    "TS2349": 1
+  },
+  "src/lib/boardCopy.js": {
+    "TS2339": 5
+  },
+  "src/lib/boardGoalLabel.test.js": {
+    "TS2339": 2
+  },
+  "src/lib/boardUtils.js": {
+    "TS2339": 21
+  },
+  "src/lib/boardUtils.test.js": {
+    "TS2345": 4,
+    "TS2531": 1
+  },
+  "src/lib/boardWizardNav.js": {
+    "TS2339": 8
+  },
+  "src/lib/boardWizardNav.test.js": {
+    "TS2353": 5
+  },
+  "src/lib/bulkPriceAdjust.test.js": {
+    "TS2322": 1,
+    "TS2345": 3,
+    "TS2739": 1
+  },
+  "src/lib/calendarGrid.js": {
+    "TS2339": 4
+  },
+  "src/lib/calendarGrid.test.js": {
+    "TS2322": 4,
+    "TS2353": 2
+  },
+  "src/lib/chartPalette.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/chunkErrors.js": {
+    "TS2339": 17,
+    "TS2353": 2,
+    "TS2739": 1
+  },
+  "src/lib/chunkErrors.test.js": {
+    "TS2345": 2,
+    "TS2353": 18,
+    "TS2559": 1,
+    "TS2739": 3
+  },
+  "src/lib/chunkSelfHeal.test.js": {
+    "TS2322": 6,
+    "TS2339": 2,
+    "TS2345": 3,
+    "TS2353": 2
+  },
+  "src/lib/clarityIntegration.jsx": {
+    "TS18047": 4,
+    "TS2322": 1,
+    "TS2349": 1
+  },
+  "src/lib/consent.jsx": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2349": 2
+  },
+  "src/lib/dashboardDivStandings.js": {
+    "TS2345": 1
+  },
+  "src/lib/dashboardDivStandings.test.js": {
+    "TS18047": 1,
+    "TS2339": 1,
+    "TS2345": 2
+  },
+  "src/lib/dashboardGoldCta.test.js": {
+    "TS2739": 1,
+    "TS2741": 5
+  },
+  "src/lib/dashboardSquadStats.js": {
+    "TS2322": 2
+  },
+  "src/lib/dashboardSquadStats.test.js": {
+    "TS2322": 9,
+    "TS2339": 3,
+    "TS2345": 4
+  },
+  "src/lib/dashboardTodayStages.test.js": {
+    "TS18047": 3
+  },
+  "src/lib/dayformLine.test.js": {
+    "TS18047": 4
+  },
+  "src/lib/developmentReport.js": {
+    "TS18047": 4
+  },
+  "src/lib/developmentReport.test.js": {
+    "TS18047": 8,
+    "TS2345": 2
+  },
+  "src/lib/divisionAdjustment.js": {
+    "TS2339": 2
+  },
+  "src/lib/divisionAdjustmentParity.test.js": {
+    "TS2322": 3
+  },
+  "src/lib/emailDomainSuggestion.js": {
+    "TS2322": 1
+  },
+  "src/lib/emailDomainSuggestion.test.js": {
+    "TS2345": 3
+  },
+  "src/lib/extendCapGate.js": {
+    "TS2339": 2
+  },
+  "src/lib/feedbackForm.js": {
+    "TS2339": 3
+  },
+  "src/lib/finalKilometre.js": {
+    "TS2339": 1
+  },
+  "src/lib/finalKilometre.test.js": {
+    "TS18048": 9,
+    "TS2322": 11,
+    "TS2353": 14
+  },
+  "src/lib/firstBidRecommendation.js": {
+    "TS2339": 1
+  },
+  "src/lib/firstRaceCardModel.js": {
+    "TS2339": 14,
+    "TS2345": 1,
+    "TS2358": 1
+  },
+  "src/lib/firstRaceCardModel.test.js": {
+    "TS18047": 12,
+    "TS2339": 2,
+    "TS2345": 3,
+    "TS2739": 2,
+    "TS2741": 6
+  },
+  "src/lib/firstRaceResult.js": {
+    "TS2322": 2,
+    "TS2339": 1
+  },
+  "src/lib/forumHighlights.test.js": {
+    "TS2322": 3,
+    "TS2339": 1,
+    "TS2353": 6
+  },
+  "src/lib/forumImages.js": {
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2698": 1
+  },
+  "src/lib/forumMentions.js": {
+    "TS2322": 1
+  },
+  "src/lib/gaIntegration.jsx": {
+    "TS2339": 4,
+    "TS2349": 1,
+    "TS2554": 3
+  },
+  "src/lib/groupNotifications.js": {
+    "TS2362": 2,
+    "TS2363": 2
+  },
+  "src/lib/groupNotifications.test.js": {
+    "TS2322": 103
+  },
+  "src/lib/heroAgonyCopy.test.js": {
+    "TS18047": 12,
+    "TS2531": 2
+  },
+  "src/lib/heroAgonyMoment.js": {
+    "TS2322": 21,
+    "TS2339": 8,
+    "TS2739": 1
+  },
+  "src/lib/heroAgonyMoment.test.js": {
+    "TS18047": 6,
+    "TS18048": 2,
+    "TS2322": 1,
+    "TS2339": 6,
+    "TS2345": 1
+  },
+  "src/lib/intl.js": {
+    "TS2345": 1
+  },
+  "src/lib/intl.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/language.jsx": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2349": 1
+  },
+  "src/lib/launchWaitlist.test.js": {
+    "TS2531": 3,
+    "TS2540": 1
+  },
+  "src/lib/lazyWithRetry.js": {
+    "TS2339": 1
+  },
+  "src/lib/lazyWithRetry.test.js": {
+    "TS18046": 5
+  },
+  "src/lib/loanRisk.test.js": {
+    "TS2739": 1
+  },
+  "src/lib/logEvent.js": {
+    "TS2322": 2
+  },
+  "src/lib/marketValues.test.js": {
+    "TS18047": 1,
+    "TS2769": 1
+  },
+  "src/lib/messageSegments.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/messagesApi.js": {
+    "TS2322": 3,
+    "TS2339": 6
+  },
+  "src/lib/npsGating.test.js": {
+    "TS2741": 5
+  },
+  "src/lib/onboardingTourTarget.test.js": {
+    "TS2740": 4
+  },
+  "src/lib/opsNotices.test.js": {
+    "TS2739": 1
+  },
+  "src/lib/patchNotes.test.js": {
+    "TS2554": 1
+  },
+  "src/lib/patchNotesUnread.test.js": {
+    "TS2345": 3
+  },
+  "src/lib/physiologyModel.js": {
+    "TS2538": 1
+  },
+  "src/lib/physiologyModel.test.js": {
+    "TS18047": 16,
+    "TS18048": 2
+  },
+  "src/lib/playerFeatureFlags.js": {
+    "TS2339": 1
+  },
+  "src/lib/posthogClient.js": {
+    "TS18047": 3,
+    "TS2322": 3,
+    "TS2339": 4,
+    "TS2698": 1
+  },
+  "src/lib/posthogIntegration.jsx": {
+    "TS2339": 1
+  },
+  "src/lib/posthogIntegration.test.js": {
+    "TS2322": 2,
+    "TS2740": 1
+  },
+  "src/lib/raceCalendarSort.test.js": {
+    "TS2345": 4
+  },
+  "src/lib/raceCentre.js": {
+    "TS18047": 1,
+    "TS2339": 3,
+    "TS2741": 1
+  },
+  "src/lib/raceCentre.test.js": {
+    "TS18047": 4,
+    "TS2339": 4,
+    "TS2345": 1,
+    "TS2353": 2,
+    "TS2531": 1
+  },
+  "src/lib/raceClassificationGaps.js": {
+    "TS2339": 5
+  },
+  "src/lib/raceClassificationGaps.test.js": {
+    "TS2345": 5,
+    "TS2353": 1,
+    "TS2739": 1,
+    "TS2741": 7
+  },
+  "src/lib/raceClassificationTotals.test.js": {
+    "TS2353": 2
+  },
+  "src/lib/raceCompletionDate.test.js": {
+    "TS2322": 1,
+    "TS2345": 2
+  },
+  "src/lib/raceHubDnd.test.js": {
+    "TS2322": 3
+  },
+  "src/lib/raceHubLogic.js": {
+    "TS18047": 4,
+    "TS2322": 2,
+    "TS2339": 2
+  },
+  "src/lib/raceHubLogic.test.js": {
+    "TS18047": 4,
+    "TS2322": 31,
+    "TS2353": 5,
+    "TS2531": 2,
+    "TS2741": 3
+  },
+  "src/lib/raceLatestWindow.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/raceLiveStandings.test.js": {
+    "TS18047": 6
+  },
+  "src/lib/raceOverviewLogic.js": {
+    "TS2339": 3
+  },
+  "src/lib/raceOverviewLogic.test.js": {
+    "TS2339": 2
+  },
+  "src/lib/racePageTabs.js": {
+    "TS8024": 1
+  },
+  "src/lib/racePageTabs.test.js": {
+    "TS2322": 2
+  },
+  "src/lib/raceRecap.js": {
+    "TS2339": 1
+  },
+  "src/lib/raceRecap.test.js": {
+    "TS2322": 33,
+    "TS2353": 1
+  },
+  "src/lib/raceReport.js": {
+    "TS1127": 3,
+    "TS2741": 1
+  },
+  "src/lib/raceReport.test.js": {
+    "TS18047": 2,
+    "TS2322": 44
+  },
+  "src/lib/raceResultVisibility.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/raceResultsPodium.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/raceSelectionDraft.js": {
+    "TS2322": 1,
+    "TS2339": 3
+  },
+  "src/lib/raceSelectionDraft.test.js": {
+    "TS2531": 2
+  },
+  "src/lib/raceSelectionLogic.test.js": {
+    "TS18047": 15,
+    "TS2322": 14,
+    "TS2353": 1,
+    "TS2531": 5
+  },
+  "src/lib/raceStageClassifications.test.js": {
+    "TS2345": 21
+  },
+  "src/lib/raceStageMoments.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/racesByPool.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/rankingsApi.ts": {
+    "TS2556": 1
+  },
+  "src/lib/ratingNullIsNotZero.5321.test.js": {
+    "TS2531": 2,
+    "TS2790": 1
+  },
+  "src/lib/realtimeChannelCore.js": {
+    "TS18047": 1
+  },
+  "src/lib/realtimeChannelCore.test.js": {
+    "TS2322": 7,
+    "TS2339": 10,
+    "TS2345": 5,
+    "TS2349": 1
+  },
+  "src/lib/release.test.js": {
+    "TS2740": 1,
+    "TS2790": 2
+  },
+  "src/lib/releaseWatch.js": {
+    "TS2322": 2,
+    "TS2339": 24,
+    "TS2345": 1,
+    "TS2353": 2
+  },
+  "src/lib/releaseWatch.test.js": {
+    "TS18047": 3,
+    "TS2322": 7,
+    "TS2345": 1,
+    "TS2353": 13,
+    "TS2739": 4,
+    "TS2740": 2
+  },
+  "src/lib/resendCooldown.js": {
+    "TS2339": 1
+  },
+  "src/lib/resendCooldown.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/resultsFilter.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/riderAge.test.js": {
+    "TS18047": 1
+  },
+  "src/lib/riderHistoryTable.js": {
+    "TS2339": 1
+  },
+  "src/lib/riderHistoryTable.test.js": {
+    "TS2322": 9
+  },
+  "src/lib/riderNameSearch.js": {
+    "TS2339": 1
+  },
+  "src/lib/riderRating.js": {
+    "TS2322": 2
+  },
+  "src/lib/riderRating.test.js": {
+    "TS18047": 2,
+    "TS2345": 10,
+    "TS2531": 3,
+    "TS2532": 1
+  },
+  "src/lib/riderRatingTrajectory.js": {
+    "TS2322": 1
+  },
+  "src/lib/riderRatingTrajectory.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/riderResultsTab.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/riderSort.test.js": {
+    "TS2345": 1,
+    "TS2739": 1
+  },
+  "src/lib/riderTableSort.js": {
+    "TS2339": 2
+  },
+  "src/lib/ridersUrlState.test.js": {
+    "TS2739": 1,
+    "TS2790": 1
+  },
+  "src/lib/roadmapVoting.js": {
+    "TS2339": 4,
+    "TS2345": 1
+  },
+  "src/lib/roadmapVoting.test.js": {
+    "TS2339": 3
+  },
+  "src/lib/roleHint.test.js": {
+    "TS18047": 4,
+    "TS2531": 1
+  },
+  "src/lib/salaryFilter.test.js": {
+    "TS18047": 1
+  },
+  "src/lib/salaryProjection.test.js": {
+    "TS2554": 2
+  },
+  "src/lib/savedRiderFilters.test.js": {
+    "TS2739": 1
+  },
+  "src/lib/scoutCountdown.js": {
+    "TS2322": 1,
+    "TS2339": 2
+  },
+  "src/lib/scoutCountdown.test.js": {
+    "TS18047": 3,
+    "TS2531": 1
+  },
+  "src/lib/scouting.test.js": {
+    "TS2531": 2
+  },
+  "src/lib/scoutingCentralDisplay.js": {
+    "TS2339": 3
+  },
+  "src/lib/seasonDocumentaryData.js": {
+    "TS1016": 1,
+    "TS2339": 4
+  },
+  "src/lib/seasonDocumentaryData.test.js": {
+    "TS2532": 2
+  },
+  "src/lib/seasonEndDefault.js": {
+    "TS2345": 1
+  },
+  "src/lib/seasonEndDefault.test.js": {
+    "TS2531": 7
+  },
+  "src/lib/seasonHonours.js": {
+    "TS2339": 9
+  },
+  "src/lib/seasonHonours.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/seasonMatrix.js": {
+    "TS2339": 1
+  },
+  "src/lib/seasonMatrix.test.js": {
+    "TS2339": 2,
+    "TS2345": 3,
+    "TS2769": 6
+  },
+  "src/lib/seasonRecapData.js": {
+    "TS1127": 3,
+    "TS18047": 12,
+    "TS18048": 3,
+    "TS2322": 1,
+    "TS2339": 17,
+    "TS2551": 1,
+    "TS2739": 1,
+    "TS2741": 1,
+    "TS2769": 1
+  },
+  "src/lib/seasonRecapData.test.js": {
+    "TS2532": 1,
+    "TS2739": 17
+  },
+  "src/lib/seasonReference.test.js": {
+    "TS2322": 2,
+    "TS2531": 1
+  },
+  "src/lib/seasonStartGuide.js": {
+    "TS2740": 1
+  },
+  "src/lib/seasonStartGuide.test.js": {
+    "TS2739": 12
+  },
+  "src/lib/seasonTimeline.js": {
+    "TS2322": 3
+  },
+  "src/lib/seasonTimeline.test.js": {
+    "TS18047": 5,
+    "TS2531": 9,
+    "TS2532": 1
+  },
+  "src/lib/seasonTransitionGate.test.js": {
+    "TS18048": 2
+  },
+  "src/lib/sentry.jsx": {
+    "TS2322": 2,
+    "TS2353": 1
+  },
+  "src/lib/sessionExpiry.test.js": {
+    "TS2790": 1
+  },
+  "src/lib/sessionId.test.js": {
+    "TS2739": 7
+  },
+  "src/lib/skewProtection.js": {
+    "TS2304": 4
+  },
+  "src/lib/skewProtection.test.js": {
+    "TS18047": 1,
+    "TS2322": 1,
+    "TS2345": 1
+  },
+  "src/lib/sponsorIncomeBreakdown.js": {
+    "TS2339": 2
+  },
+  "src/lib/sponsorIncomeBreakdown.test.js": {
+    "TS18048": 8,
+    "TS2322": 5
+  },
+  "src/lib/sponsorOfferProjection.js": {
+    "TS2322": 2,
+    "TS2339": 6
+  },
+  "src/lib/sponsorPayments.js": {
+    "TS2339": 2,
+    "TS2739": 1
+  },
+  "src/lib/sponsorPayments.test.js": {
+    "TS18047": 1,
+    "TS2322": 6,
+    "TS2739": 1,
+    "TS2741": 1
+  },
+  "src/lib/staffAbilities.test.js": {
+    "TS18047": 5
+  },
+  "src/lib/stageProfileConfig.test.js": {
+    "TS2345": 2
+  },
+  "src/lib/stageRouteProfile.js": {
+    "TS2339": 8
+  },
+  "src/lib/stageRouteProfile.test.js": {
+    "TS18047": 12,
+    "TS18048": 7,
+    "TS2339": 18,
+    "TS2345": 1
+  },
+  "src/lib/stageTimelineFilm.js": {
+    "TS18048": 5,
+    "TS2339": 2,
+    "TS2532": 1
+  },
+  "src/lib/stageTimelineFilm.test.js": {
+    "TS18047": 18
+  },
+  "src/lib/statColor.contract.test.js": {
+    "TS2322": 2,
+    "TS2740": 1,
+    "TS2790": 1
+  },
+  "src/lib/statColor.test.js": {
+    "TS2322": 1,
+    "TS2740": 1,
+    "TS2790": 1
+  },
+  "src/lib/supabasePagination.test.js": {
+    "TS2322": 2
+  },
+  "src/lib/survey.js": {
+    "TS2339": 2,
+    "TS2345": 1,
+    "TS2532": 2
+  },
+  "src/lib/survey.test.js": {
+    "TS18048": 1,
+    "TS2322": 7,
+    "TS2339": 1,
+    "TS2353": 13,
+    "TS2531": 2,
+    "TS2532": 1,
+    "TS2741": 1
+  },
+  "src/lib/tacticsOrdersAdapter.js": {
+    "TS2339": 12
+  },
+  "src/lib/tacticsPlan.js": {
+    "TS2339": 1
+  },
+  "src/lib/tacticsPlan.test.js": {
+    "TS2322": 8,
+    "TS2339": 2,
+    "TS2345": 3
+  },
+  "src/lib/teamPalmares.js": {
+    "TS2322": 3,
+    "TS2339": 5
+  },
+  "src/lib/theme.jsx": {
+    "TS2322": 1,
+    "TS2345": 1
+  },
+  "src/lib/trafficBeacon.js": {
+    "TS2322": 1,
+    "TS2698": 1
+  },
+  "src/lib/trainingFocus.js": {
+    "TS2339": 2
+  },
+  "src/lib/trainingFocus.test.js": {
+    "TS2322": 4,
+    "TS2353": 7,
+    "TS2532": 1
+  },
+  "src/lib/trainingReport.js": {
+    "TS2322": 1,
+    "TS2339": 11
+  },
+  "src/lib/trainingReport.test.js": {
+    "TS18047": 3,
+    "TS2531": 2,
+    "TS2741": 9
+  },
+  "src/lib/trainingRoster.js": {
+    "TS18048": 2
+  },
+  "src/lib/trainingRoster.test.js": {
+    "TS18048": 1
+  },
+  "src/lib/transferProfit.js": {
+    "TS2339": 3
+  },
+  "src/lib/transferProfit.test.js": {
+    "TS2345": 1
+  },
+  "src/lib/translationResilience.js": {
+    "TS2322": 2,
+    "TS2339": 2,
+    "TS2345": 2
+  },
+  "src/lib/translationResilience.test.js": {
+    "TS2345": 2,
+    "TS2740": 7
+  },
+  "src/lib/upcomingRaces.test.js": {
+    "TS2345": 5
+  },
+  "src/lib/useAcademy.js": {
+    "TS2339": 24,
+    "TS2345": 2
+  },
+  "src/lib/useAcademyPnl.js": {
+    "TS2339": 2,
+    "TS2345": 3
+  },
+  "src/lib/useAuctionBidding.js": {
+    "TS2345": 10
+  },
+  "src/lib/useAuctionEndTimeSelector.js": {
+    "TS18047": 1
+  },
+  "src/lib/useDashboardLayout.test.js": {
+    "TS2739": 2,
+    "TS2790": 1
+  },
+  "src/lib/useFacilities.js": {
+    "TS2339": 11
+  },
+  "src/lib/useFounderTeams.js": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2531": 2
+  },
+  "src/lib/usePlanner.js": {
+    "TS2339": 2,
+    "TS2345": 4,
+    "TS2554": 1
+  },
+  "src/lib/useRiderFilters.js": {
+    "TS18047": 4,
+    "TS2322": 1
+  },
+  "src/lib/useRiderNames.js": {
+    "TS2339": 1
+  },
+  "src/lib/useScoutHistory.js": {
+    "TS2339": 3
+  },
+  "src/lib/useScouting.js": {
+    "TS2322": 1,
+    "TS2339": 22,
+    "TS2769": 1
+  },
+  "src/lib/useScoutingCentral.js": {
+    "TS18046": 6,
+    "TS2339": 9
+  },
+  "src/lib/useStaffDirectory.js": {
+    "TS2339": 3
+  },
+  "src/lib/useStaffProfile.js": {
+    "TS18046": 9,
+    "TS2339": 4,
+    "TS2345": 1,
+    "TS2353": 1
+  },
+  "src/lib/useStaffRelease.js": {
+    "TS2339": 3
+  },
+  "src/lib/useSubscription.js": {
+    "TS2322": 3,
+    "TS2339": 1
+  },
+  "src/lib/useTableSort.js": {
+    "TS18046": 4,
+    "TS2322": 1,
+    "TS2345": 1
+  },
+  "src/lib/useTeamPublicProfile.js": {
+    "TS2339": 4
+  },
+  "src/lib/useTraining.js": {
+    "TS18046": 20,
+    "TS2339": 26,
+    "TS2345": 1
+  },
+  "src/lib/useTrainingHistory.js": {
+    "TS18047": 1,
+    "TS2322": 1,
+    "TS2345": 2,
+    "TS2365": 1
+  },
+  "src/lib/userProfile.jsx": {
+    "TS2322": 1,
+    "TS2345": 3
+  },
+  "src/lib/vercelAnalyticsIntegration.jsx": {
+    "TS2349": 1
+  },
+  "src/lib/vitePreloadContract.4595.test.js": {
+    "TS18046": 8,
+    "TS2322": 1,
+    "TS2353": 1
+  },
+  "src/lib/waitlistForm.js": {
+    "TS2322": 3
+  },
+  "src/lib/waitlistForm.test.js": {
+    "TS18047": 12
+  },
+  "src/lib/webVitalsIntegration.jsx": {
+    "TS2339": 2,
+    "TS2349": 1
+  },
+  "src/main.jsx": {
+    "TS18047": 3,
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2345": 2,
+    "TS2353": 1,
+    "TS2810": 1
+  },
+  "src/pages/AcademyPage.jsx": {
+    "TS2322": 5,
+    "TS2339": 19,
+    "TS2345": 1,
+    "TS2353": 2,
+    "TS2698": 2,
+    "TS2741": 2
+  },
+  "src/pages/ActivityPage.jsx": {
+    "TS18047": 1,
+    "TS2322": 10,
+    "TS2339": 45,
+    "TS2345": 7,
+    "TS2362": 3,
+    "TS2363": 3,
+    "TS2741": 10
+  },
+  "src/pages/AdminAttributionPage.jsx": {
+    "TS18046": 1,
+    "TS2322": 3,
+    "TS2339": 13,
+    "TS2739": 15,
+    "TS2741": 4
+  },
+  "src/pages/AdminFairplayPage.jsx": {
+    "TS18046": 2,
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2741": 5
+  },
+  "src/pages/AdminGrowthPage.jsx": {
+    "TS2345": 1
+  },
+  "src/pages/AdminRetentionPage.jsx": {
+    "TS18046": 1,
+    "TS2322": 3,
+    "TS2339": 3,
+    "TS2739": 5,
+    "TS2741": 1
+  },
+  "src/pages/AdminSprintMetricsPage.jsx": {
+    "TS18046": 1,
+    "TS18047": 2,
+    "TS2322": 2,
+    "TS2339": 24,
+    "TS2345": 1,
+    "TS2739": 7,
+    "TS2741": 2
+  },
+  "src/pages/AdminSurveyResultsPage.jsx": {
+    "TS18046": 1,
+    "TS2322": 2,
+    "TS2339": 5,
+    "TS2345": 3
+  },
+  "src/pages/AdminValueTransitionPage.jsx": {
+    "TS18046": 1,
+    "TS2322": 2,
+    "TS2345": 2,
+    "TS2741": 1
+  },
+  "src/pages/AdminWaitlistPage.jsx": {
+    "TS2322": 2,
+    "TS2339": 10,
+    "TS2345": 2,
+    "TS2741": 2
+  },
+  "src/pages/AuctionHistoryPage.jsx": {
+    "TS2322": 5,
+    "TS2339": 22,
+    "TS2345": 3,
+    "TS2362": 1,
+    "TS2363": 1,
+    "TS2739": 7,
+    "TS2741": 2
+  },
+  "src/pages/AuctionsPage.jsx": {
+    "TS18046": 1,
+    "TS18047": 7,
+    "TS2322": 21,
+    "TS2339": 52,
+    "TS2345": 14,
+    "TS2349": 2,
+    "TS2353": 3,
+    "TS2362": 1,
+    "TS2363": 1,
+    "TS2698": 4,
+    "TS2739": 2,
+    "TS2741": 3,
+    "TS2769": 1
+  },
+  "src/pages/BoardPage.jsx": {
+    "TS18047": 2,
+    "TS2322": 5,
+    "TS2339": 15,
+    "TS2345": 12,
+    "TS2353": 2,
+    "TS2739": 3,
+    "TS2741": 13
+  },
+  "src/pages/BoardroomPreviewPage.jsx": {
+    "TS2322": 2
+  },
+  "src/pages/CalendarPage.jsx": {
+    "TS2322": 7,
+    "TS2339": 24,
+    "TS2345": 7,
+    "TS2349": 1,
+    "TS2353": 6,
+    "TS2739": 1,
+    "TS2741": 3
+  },
+  "src/pages/DashboardPage.jsx": {
+    "TS18046": 5,
+    "TS18047": 9,
+    "TS2322": 23,
+    "TS2339": 132,
+    "TS2345": 20,
+    "TS2353": 1,
+    "TS2362": 3,
+    "TS2363": 3,
+    "TS2698": 1,
+    "TS2741": 8
+  },
+  "src/pages/FinancePage.jsx": {
+    "TS18046": 1,
+    "TS18047": 4,
+    "TS2322": 2,
+    "TS2339": 56,
+    "TS2345": 14,
+    "TS2362": 1,
+    "TS2363": 1,
+    "TS2741": 4
+  },
+  "src/pages/ForumPage.jsx": {
+    "TS2322": 4,
+    "TS2339": 3,
+    "TS2345": 5,
+    "TS2698": 2,
+    "TS2739": 5,
+    "TS2741": 2
+  },
+  "src/pages/ForumPostPage.jsx": {
+    "TS18047": 24,
+    "TS2322": 3,
+    "TS2339": 11,
+    "TS2345": 7,
+    "TS2353": 4,
+    "TS2739": 5,
+    "TS2741": 1,
+    "TS2769": 9
+  },
+  "src/pages/FounderSupporterPage.jsx": {
+    "TS2339": 5,
+    "TS2349": 2
+  },
+  "src/pages/GlobalRankPage.jsx": {
+    "TS2322": 3,
+    "TS2339": 9,
+    "TS2345": 2,
+    "TS2739": 1,
+    "TS2741": 2
+  },
+  "src/pages/HallOfFamePage.jsx": {
+    "TS2322": 2,
+    "TS2339": 17,
+    "TS2345": 1,
+    "TS2739": 3,
+    "TS2741": 4
+  },
+  "src/pages/HelpPage.flagGates.test.js": {
+    "TS2322": 4,
+    "TS2531": 1,
+    "TS2532": 1
+  },
+  "src/pages/HelpPage.jsx": {
+    "TS2345": 2,
+    "TS2741": 1
+  },
+  "src/pages/KitchenSinkPage.jsx": {
+    "TS2322": 13,
+    "TS2739": 6,
+    "TS2741": 34,
+    "TS2786": 1
+  },
+  "src/pages/KlubPage.jsx": {
+    "TS2322": 4,
+    "TS2339": 5,
+    "TS2345": 2,
+    "TS2741": 1
+  },
+  "src/pages/LandingPage.jsx": {
+    "TS2349": 1
+  },
+  "src/pages/LoginPage.a11y.test.js": {
+    "TS2769": 2
+  },
+  "src/pages/LoginPage.jsx": {
+    "TS2322": 1,
+    "TS2339": 10,
+    "TS2345": 2,
+    "TS2353": 3,
+    "TS2739": 1
+  },
+  "src/pages/ManagerProfilePage.jsx": {
+    "TS2322": 1,
+    "TS2339": 34,
+    "TS2345": 2,
+    "TS2362": 1,
+    "TS2363": 1,
+    "TS2739": 7,
+    "TS2741": 2
+  },
+  "src/pages/NotificationsPage.jsx": {
+    "TS18048": 1,
+    "TS2322": 4,
+    "TS2339": 27,
+    "TS2345": 19,
+    "TS2362": 2,
+    "TS2363": 2,
+    "TS2698": 6,
+    "TS2741": 1
+  },
+  "src/pages/PatchNotesPage.jsx": {
+    "TS2322": 1,
+    "TS2345": 2,
+    "TS2741": 3
+  },
+  "src/pages/PlanningHubPage.jsx": {
+    "TS2345": 1,
+    "TS2741": 1
+  },
+  "src/pages/PrivacyPolicyPage.jsx": {
+    "TS2339": 8
+  },
+  "src/pages/ProUpgradePage.jsx": {
+    "TS18047": 2,
+    "TS2322": 1,
+    "TS2339": 4,
+    "TS2345": 4
+  },
+  "src/pages/ProfilePage.jsx": {
+    "TS2339": 52,
+    "TS2345": 6,
+    "TS2349": 1,
+    "TS2698": 8,
+    "TS2739": 6,
+    "TS2741": 5
+  },
+  "src/pages/RaceCentrePage.jsx": {
+    "TS18047": 2,
+    "TS2322": 3,
+    "TS2339": 10,
+    "TS2345": 5,
+    "TS2353": 1,
+    "TS2741": 1,
+    "TS2769": 1
+  },
+  "src/pages/RaceDetailPage.jsx": {
+    "TS18047": 31,
+    "TS2322": 20,
+    "TS2339": 67,
+    "TS2345": 17,
+    "TS2353": 3,
+    "TS2698": 1,
+    "TS2739": 1,
+    "TS2741": 12
+  },
+  "src/pages/RaceHistoryPage.jsx": {
+    "TS2322": 1,
+    "TS2339": 36,
+    "TS2345": 3,
+    "TS2739": 1,
+    "TS2741": 3
+  },
+  "src/pages/RacePointsPage.jsx": {
+    "TS2322": 1,
+    "TS2345": 1,
+    "TS2739": 1
+  },
+  "src/pages/RankingsHubPage.jsx": {
+    "TS2345": 1,
+    "TS2741": 1
+  },
+  "src/pages/ResetPasswordPage.a11y.test.js": {
+    "TS2769": 2
+  },
+  "src/pages/ResetPasswordPage.jsx": {
+    "TS2322": 1
+  },
+  "src/pages/ResultaterPage.jsx": {
+    "TS2322": 3,
+    "TS2339": 34,
+    "TS2345": 16,
+    "TS2739": 2,
+    "TS2741": 4
+  },
+  "src/pages/RiderComparePage.jsx": {
+    "TS2322": 1,
+    "TS2339": 23,
+    "TS2345": 3,
+    "TS2739": 1,
+    "TS2741": 2
+  },
+  "src/pages/RiderRankingsPage.jsx": {
+    "TS2322": 4,
+    "TS2339": 6,
+    "TS2345": 2,
+    "TS2739": 2,
+    "TS2741": 2
+  },
+  "src/pages/RiderStatsPage.jsx": {
+    "TS18047": 10,
+    "TS2322": 25,
+    "TS2339": 119,
+    "TS2345": 47,
+    "TS2353": 18,
+    "TS2362": 2,
+    "TS2363": 2,
+    "TS2589": 1,
+    "TS2698": 1,
+    "TS2739": 3,
+    "TS2741": 4
+  },
+  "src/pages/RidersPage.jsx": {
+    "TS18046": 1,
+    "TS2322": 8,
+    "TS2339": 4,
+    "TS2345": 8,
+    "TS2739": 1,
+    "TS2741": 2
+  },
+  "src/pages/RoadmapPage.jsx": {
+    "TS2322": 1,
+    "TS2339": 2,
+    "TS2345": 4
+  },
+  "src/pages/RulesPage.jsx": {
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2739": 1
+  },
+  "src/pages/ScoutingCentralPage.jsx": {
+    "TS18047": 1,
+    "TS2322": 2,
+    "TS2339": 8,
+    "TS2345": 1,
+    "TS2741": 2
+  },
+  "src/pages/SeasonEndPage.jsx": {
+    "TS18047": 1,
+    "TS2322": 14,
+    "TS2339": 98,
+    "TS2345": 11,
+    "TS2353": 4,
+    "TS2739": 5,
+    "TS2741": 1
+  },
+  "src/pages/SeasonExperiencePreviewPage.jsx": {
+    "TS2322": 1,
+    "TS2741": 1
+  },
+  "src/pages/SeasonPlannerPage.jsx": {
+    "TS2322": 1,
+    "TS2339": 31,
+    "TS2345": 1,
+    "TS2353": 9,
+    "TS2741": 3
+  },
+  "src/pages/SponsorsPage.jsx": {
+    "TS18046": 2,
+    "TS18047": 3,
+    "TS2322": 18,
+    "TS2339": 29,
+    "TS2345": 5,
+    "TS2739": 8,
+    "TS2741": 3
+  },
+  "src/pages/StaffOverviewPage.jsx": {
+    "TS2322": 4,
+    "TS2339": 10,
+    "TS2345": 3,
+    "TS2739": 1,
+    "TS2741": 1
+  },
+  "src/pages/StaffProfilePage.jsx": {
+    "TS2322": 1,
+    "TS2339": 8,
+    "TS2345": 2,
+    "TS2741": 3
+  },
+  "src/pages/StandingsPage.jsx": {
+    "TS18046": 1,
+    "TS2322": 6,
+    "TS2339": 29,
+    "TS2345": 10,
+    "TS2353": 1,
+    "TS2538": 1,
+    "TS2739": 1
+  },
+  "src/pages/StrategyPage.jsx": {
+    "TS18047": 8,
+    "TS2322": 5,
+    "TS2339": 14,
+    "TS2353": 11,
+    "TS2698": 1,
+    "TS2739": 1
+  },
+  "src/pages/SurveyPage.jsx": {
+    "TS18048": 1,
+    "TS2322": 4,
+    "TS2339": 12,
+    "TS2345": 6,
+    "TS2741": 4
+  },
+  "src/pages/TeamPage.jsx": {
+    "TS18047": 2,
+    "TS2322": 9,
+    "TS2339": 38,
+    "TS2345": 8,
+    "TS2362": 1,
+    "TS2363": 1,
+    "TS2739": 3,
+    "TS2741": 1
+  },
+  "src/pages/TeamProfilePage.jsx": {
+    "TS2322": 6,
+    "TS2339": 30,
+    "TS2345": 10,
+    "TS2739": 2
+  },
+  "src/pages/TrainingPage.jsx": {
+    "TS18047": 3,
+    "TS18049": 2,
+    "TS2322": 12,
+    "TS2339": 95,
+    "TS2345": 10,
+    "TS2353": 13,
+    "TS2739": 4,
+    "TS2741": 3
+  },
+  "src/pages/TransfersPage.jsx": {
+    "TS18047": 4,
+    "TS2322": 5,
+    "TS2339": 40,
+    "TS2345": 22,
+    "TS2353": 2,
+    "TS2362": 1,
+    "TS2363": 1,
+    "TS2538": 1,
+    "TS2739": 7,
+    "TS2741": 4
+  },
+  "src/pages/WatchlistPage.jsx": {
+    "TS18047": 1,
+    "TS2322": 8,
+    "TS2339": 11,
+    "TS2345": 9,
+    "TS2698": 2,
+    "TS2739": 1,
+    "TS2741": 1
+  },
+  "src/pages/admin/AdminDataTab.jsx": {
+    "TS18046": 5,
+    "TS18047": 6,
+    "TS2339": 29,
+    "TS2345": 5,
+    "TS2698": 4
+  },
+  "src/pages/admin/AdminEconomyTab.jsx": {
+    "TS18046": 5,
+    "TS18047": 4,
+    "TS2339": 65,
+    "TS2345": 4,
+    "TS2698": 12
+  },
+  "src/pages/admin/AdminFeedbackTab.jsx": {
+    "TS18046": 3,
+    "TS2322": 3,
+    "TS2339": 4,
+    "TS2345": 1,
+    "TS2698": 2,
+    "TS2739": 1,
+    "TS2741": 4
+  },
+  "src/pages/admin/AdminForumTab.jsx": {
+    "TS18046": 2,
+    "TS2322": 2,
+    "TS2741": 1
+  },
+  "src/pages/admin/AdminLayout.jsx": {
+    "TS2322": 2
+  },
+  "src/pages/admin/AdminSeasonTab.jsx": {
+    "TS18046": 10,
+    "TS2339": 65,
+    "TS2345": 5,
+    "TS2556": 1
+  },
+  "src/pages/admin/AdminSystemTab.jsx": {
+    "TS18046": 6,
+    "TS2322": 2,
+    "TS2339": 31,
+    "TS2345": 1
+  },
+  "src/pages/admin/AdminUsersTab.jsx": {
+    "TS18046": 6,
+    "TS2339": 28,
+    "TS2345": 3,
+    "TS2698": 1
+  },
+  "src/pages/adminValueTransitionShape.test.js": {
+    "TS18047": 1
+  },
+  "src/pages/annualMeeting/AnnualMeetingPage.jsx": {
+    "TS2322": 1,
+    "TS2339": 1,
+    "TS2345": 3
+  },
+  "src/pages/annualMeeting/MandateGoalRow.jsx": {
+    "TS2322": 1,
+    "TS2741": 2
+  },
+  "src/pages/annualMeeting/RequestSection.jsx": {
+    "TS2322": 1
+  },
+  "src/pages/boardroom/BoardCard.jsx": {
+    "TS2322": 3,
+    "TS2339": 2
+  },
+  "src/pages/boardroom/BoardroomPage.jsx": {
+    "TS2322": 2,
+    "TS2339": 4,
+    "TS2345": 3
+  },
+  "src/pages/boardroom/ConfidenceCard.jsx": {
+    "TS2322": 2,
+    "TS2339": 9,
+    "TS2741": 1
+  },
+  "src/pages/boardroom/DnaChoiceCard.jsx": {
+    "TS2322": 1
+  },
+  "src/pages/boardroom/MandateCard.jsx": {
+    "TS2322": 2,
+    "TS2339": 2,
+    "TS2741": 3,
+    "TS2769": 1
+  },
+  "src/pages/boardroom/MandateSummaryCard.jsx": {
+    "TS2322": 2,
+    "TS2339": 6,
+    "TS2741": 1
+  },
+  "src/pages/boardroom/MemberPanel.jsx": {
+    "TS2322": 1,
+    "TS2741": 1
+  },
+  "src/pages/boardroom/OverviewSummaryRows.jsx": {
+    "TS2322": 2,
+    "TS2741": 1
+  },
+  "src/pages/boardroom/VisionCard.jsx": {
+    "TS2322": 1,
+    "TS2741": 1
+  },
+  "src/pages/boardroom/boardroomFormat.js": {
+    "TS2345": 3
+  },
+  "src/pages/boardroom/boardroomLocale.test.js": {
+    "TS2769": 1
+  },
+  "src/pages/helpFlagGates.js": {
+    "TS2345": 2
+  },
+  "src/preview/betaAccessMock.js": {
+    "TS2322": 3
+  },
+  "src/preview/boardMeetingMock.js": {
+    "TS2322": 1
+  },
+  "src/preview/clubMock.js": {
+    "TS2345": 1,
+    "TS2538": 1
+  },
+  "src/preview/installPreviewMock.js": {
+    "TS2339": 5,
+    "TS2345": 11
+  },
+  "src/preview/mockHandlers.test.js": {
+    "TS18047": 2,
+    "TS2339": 17
+  },
+  "src/preview/plannerMock.js": {
+    "TS18047": 13,
+    "TS18048": 8,
+    "TS2322": 2,
+    "TS2532": 1
+  },
+  "src/preview/scoutingMock.js": {
+    "TS2339": 1,
+    "TS2345": 1
+  },
+  "src/preview/scoutingMock.test.js": {
+    "TS18047": 30,
+    "TS2531": 8
+  },
+  "src/preview/seedData.consistency.test.js": {
+    "TS18047": 2,
+    "TS18048": 7,
+    "TS2339": 2
+  },
+  "src/preview/seedData.js": {
+    "TS2345": 4
+  },
+  "src/preview/seedData.test.js": {
+    "TS2345": 1
+  },
+  "src/preview/surveyResultsMock.js": {
+    "TS2345": 2,
+    "TS2362": 1,
+    "TS2363": 1
+  },
+  "src/preview/trainingFatigueRulesMock.js": {
+    "TS2322": 1
+  }
+}

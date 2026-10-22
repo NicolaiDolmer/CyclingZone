@@ -523,6 +523,14 @@ læring om at et scorecard der hænger på et absolut tal måler feltstørrelsen
 
 Etapekortets lang/kort-mærke (`routeReadKeys` i `frontend/src/lib/stageRouteProfile.js`) sammenligner distancen med profilens typiske længde. På `itt`, `itt_hilly` og `ttt` vises mærket ALDRIG: en enkeltstart på 40 km er ikke en "lang dag", og v4 lægger intet ekstra udholdenheds-slid på enkeltstarter under 150 km. Enkeltstarten afgøres af tidskørselsevnen (se afsnittet om `s5_profiles_v1` ovenfor). Kommer der senere et nyt rutemærke, skal undtagelsen stå her.
 
+### Løbsidentitet: queen-etapen og monument-rampen ([#6995](https://github.com/NicolaiDolmer/CyclingZone/issues/6995), S5-stien, `generator_version` 7)
+
+- **Queen er løbets hårdeste etape.** En signatur med `stage_hint: "queen"` sætter et loft: ingen garanti, filler eller kvote-type må have et hårdere terræn (rolling < hilly < medium_mountain < mountain < high_mountain; enkeltstart, sektor og flad har rang 0). Uafgjort er tilladt. En garanti over loftet kaster (fail-closed). Tørkørslens signatur-pin bruger samme rangering (`IDENTITY_TERRAIN_RANK`).
+- **Monument-rampen er afledt.** En håndskreven rute med stigende spurt, mur eller bakke får sin finale-rampe fra målstigningen (`ramp_in_climb`), holdt i afslutningens bånd fra S5-spec §3. Uden målstigning kaster generatoren i stedet for at opfinde en rampe.
+- **Sektorer deler etape (ejer-go 20/10, valg A).** To sektor-signaturer af samme underlag i ét løb ligger på samme etape, når deres pladser ikke modsiger hinanden; sektoren med `stage_hint: "last"` er finale-sektoren, de andre ligger før den uden overlap.
+- **Én tidskørsel fra signaturen (ejer-go 20/10, valg A).** En enkeltstarts-signatur overtager en garanteret enkeltstart der ikke er låst (allround: den flade bliver kuperet), i stedet for at lægge en tidskørsel mere til. Typens prolog-lås røres ikke.
+- **§6b i regen af S5 (ejer-go 20/10, valg A).** Med tabel A og S5's faste endagsløb kan §6b ikke holdes i D3/D4. `regenS5StageProfiles.mjs` stopper stadig på §6b, men `--allow-uniform-target-drift` (ejer-go pr. kørsel, samme betydning som i kalender-byggeren) tillader apply; afvigelsen står i rapporten. Rettes fra S6, hvor endagsløbene vælges med typerne kendt.
+
 ## 2c. Incidents — hvad koster hvad (M10)
 
 To modeller lever side om side indtil v4-flippet: **v4's trappe** (den ejer-besluttede, gældende fremad) og **v3's binære model** (den spillerne møder i dag).
