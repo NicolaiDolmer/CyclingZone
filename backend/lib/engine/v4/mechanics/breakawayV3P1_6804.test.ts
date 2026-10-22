@@ -99,7 +99,7 @@ test("#6804 P1: v3 er deterministisk paa en kuperet etape i et etapeloeb, og fla
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   for (const name of ["mur-finale", "punch-finale-forspring", "flat-massespurt", "bjerg-selektion"]) {
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
-    const run = (rev: string) => JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: rev }));
+    const run = (rev: string): string => JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: rev }));
     assert.equal(run("s5_profiles_v3"), run("s5_profiles_v3"), `${name} deterministisk`);
     if (input.route.profile_type !== "hilly") assert.equal(run("s5_profiles_v3"), run("s5_profiles_v2"), `${name}: P1 roerer kun kuperet`);
   }
