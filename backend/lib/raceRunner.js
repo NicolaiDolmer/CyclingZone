@@ -2172,7 +2172,11 @@ async function persistIncidents({ supabase, race, incidents, stageNumbers, seaso
   // ellers rask ud (Friis 16/10). Efter den bekræftede skrivning; en fejl her må aldrig
   // vælte etapen. notifyTeamOwner's 24t-dedup dækker en gen-kørsel af samme etape.
   try {
-    await notifyRaceInjuries({ supabase, race, injuryRows });
+    // #7042: et hårdt styrt (tidstab + skade) kører etapen færdig; beskeden skal sige det.
+    const finishedRiderIds = new Set(incidents
+      .filter((inc) => inc.kind === "crash" && inc.outcome !== "abandon")
+      .map((inc) => inc.rider_id));
+    await notifyRaceInjuries({ supabase, race, injuryRows, finishedRiderIds });
   } catch (err) {
     captureException(err, { tags: { flow: "race-run", stage: "injury-notice" }, raceId: race.id });
   }

@@ -648,7 +648,9 @@
     "riderInjured": {
       "title": "Rider injured",
       "message": "{rider} crashed in {race} and is injured until {until}.",
-      "messageMissed": "{rider} crashed in {race} and is injured until {until}. He will not ride {missed}."
+      "messageMissed": "{rider} crashed in {race} and is injured until {until}. He will not ride {missed}.",
+      "messageFinished": "{rider} crashed in {race} but finished the stage. He is injured until {until}.",
+      "messageFinishedMissed": "{rider} crashed in {race} but finished the stage. He is injured until {until} and will not ride {missed}."
     },
     "teamDidNotStart": {
       "title": "Your team did not start",

@@ -28,26 +28,33 @@ export function shortDayMonth(dateStr) {
 
 /**
  * @param {{ riderName: string, raceName?: string|null, raceId: string, injuredUntil: string,
- *   missedRaces?: Array<{ id: string, name: string|null }> }} args
+ *   missedRaces?: Array<{ id: string, name: string|null }>, finishedStage?: boolean }} args
+ *   finishedStage: et hårdt styrt (tidstab + skade) kører etapen færdig; kun et
+ *   styrt med udgåelse gør ikke. Uden det led lød beskeden som om han udgik (#7042).
  */
-export function buildRiderInjuredNotification({ riderName, raceName, raceId, injuredUntil, missedRaces = [] }) {
+export function buildRiderInjuredNotification({ riderName, raceName, raceId, injuredUntil, missedRaces = [], finishedStage = false }) {
   const rider = riderName || "A rider";
   const race = raceName || "a race";
   const until = shortDayMonth(injuredUntil) ?? injuredUntil;
   const missed = missedRaces.map((r) => r.name).filter(Boolean).join(", ");
   const linkRaceId = missedRaces[0]?.id ?? raceId;
+  const crashed = finishedStage
+    ? `${rider} crashed in ${race} but finished the stage. He is injured until ${until}`
+    : `${rider} crashed in ${race} and is injured until ${until}`;
+  const message = !missed
+    ? `${crashed}.`
+    : finishedStage ? `${crashed} and will not ride ${missed}.` : `${crashed}. He will not ride ${missed}.`;
+  const variant = finishedStage ? "messageFinished" : "message";
   return {
     type: RACE_AVAILABILITY_NOTIFICATION_TYPE,
     title: "Rider injured",
-    message: missed
-      ? `${rider} crashed in ${race} and is injured until ${until}. He will not ride ${missed}.`
-      : `${rider} crashed in ${race} and is injured until ${until}.`,
+    message,
     relatedId: linkRaceId ?? null,
     metadata: {
       raceId: linkRaceId ?? null,
       titleCode: "notif.riderInjured.title",
       titleParams: {},
-      messageCode: missed ? "notif.riderInjured.messageMissed" : "notif.riderInjured.message",
+      messageCode: `notif.riderInjured.${variant}${missed ? "Missed" : ""}`,
       messageParams: { rider, race, until, missed },
     },
   };
@@ -94,9 +101,11 @@ export function racesMissedByInjury({ entries, races, firstStageDateByRace, inju
 
 /**
  * Én besked pr. skadet rytter til holdets ejer (AI-hold har ingen ejer: no-op).
- * @param {{ supabase, race: {id,name}, injuryRows: Array<{rider_id, injured_until}>, notify?, now? }} args
+ * @param {{ supabase, race: {id,name}, injuryRows: Array<{rider_id, injured_until}>,
+ *   finishedRiderIds?: Set<string>, notify?, now? }} args
+ *   finishedRiderIds: ryttere hvis styrt ikke var en udgåelse (de kørte etapen færdig, #7042).
  */
-export async function notifyRaceInjuries({ supabase, race, injuryRows, notify = notifyTeamOwner, now = new Date() }) {
+export async function notifyRaceInjuries({ supabase, race, injuryRows, finishedRiderIds = new Set(), notify = notifyTeamOwner, now = new Date() }) {
   const rows = (injuryRows ?? []).filter((r) => r?.rider_id && r?.injured_until);
   if (!rows.length) return { sent: 0 };
   const riderIds = [...new Set(rows.map((r) => r.rider_id))];
@@ -147,6 +156,7 @@ export async function notifyRaceInjuries({ supabase, race, injuryRows, notify = 
     const payload = buildRiderInjuredNotification({
       riderName: [rider.firstname, rider.lastname].filter(Boolean).join(" "),
       raceName: race.name, raceId: race.id, injuredUntil: row.injured_until, missedRaces,
+      finishedStage: finishedRiderIds.has(row.rider_id),
     });
     if (await deliverOne({ notify, supabase, teamId: rider.team_id, now, payload, raceId: race.id })) sent += 1;
   }

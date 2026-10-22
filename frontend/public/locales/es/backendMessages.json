@@ -648,7 +648,9 @@
     "riderInjured": {
       "title": "Ciclista lesionado",
       "message": "{rider} se cayó en {race} y está lesionado hasta el {until}.",
-      "messageMissed": "{rider} se cayó en {race} y está lesionado hasta el {until}. No correrá {missed}."
+      "messageMissed": "{rider} se cayó en {race} y está lesionado hasta el {until}. No correrá {missed}.",
+      "messageFinished": "{rider} se cayó en {race}, pero terminó la etapa. Está lesionado hasta el {until}.",
+      "messageFinishedMissed": "{rider} se cayó en {race}, pero terminó la etapa. Está lesionado hasta el {until} y no correrá {missed}."
     },
     "teamDidNotStart": {
       "title": "Tu equipo no tomó la salida",
