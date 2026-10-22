@@ -470,23 +470,24 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp, retire
   // lande i en pulje der er ved at blive tømt. Rest-vindue: en tilmelding mellem
   // loadState og retire-skrivningen (sekunder) er ikke i planen; efter-tjekket
   // nedenfor fanger den, så ejeren kan køre regroup igen.
-  if (reviveIds.length) {
-    const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
-    if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
-  }
-  if (retireIds.length) {
-    if (!retiredAt) throw new Error("applySquadPlan: retiredAt mangler (indsprøjtet tidspunkt for lukning)");
-    const { error } = await supabase.from("league_divisions").update({ retired_at: retiredAt }).in("id", retireIds);
-    if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
-  }
   try {
+    if (reviveIds.length) {
+      const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
+      if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
+    }
+    if (retireIds.length) {
+      if (!retiredAt) throw new Error("applySquadPlan: retiredAt mangler (indsprøjtet tidspunkt for lukning)");
+      const { error } = await supabase.from("league_divisions").update({ retired_at: retiredAt }).in("id", retireIds);
+      if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
+    }
     for (const { target, ids: teamIds } of byTarget.values()) {
       const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
       if (error) throw new Error(`teams.${col} update: ${error.message}`);
     }
   } catch (err) {
-    // Best-effort: stil puljerne tilbage, så ingen hold sidder fast i en lukket
-    // gruppe uden løb (og AI-pensioneringens trigger ikke afviser dem).
+    // Best-effort: stil puljerne tilbage (både genåbnede og lukkede), så
+    // kataloget aldrig står halvt skrevet, og ingen hold sidder fast i en lukket
+    // gruppe uden løb (AI-pensioneringens trigger afviser dem).
     for (const p of poolsBefore) {
       await supabase.from("league_divisions").update({ retired_at: p.retired_at }).eq("id", p.id);
     }
