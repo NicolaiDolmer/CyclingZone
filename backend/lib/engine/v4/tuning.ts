@@ -1594,3 +1594,35 @@ export type MountainSelectionV2Knobs = {
 
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
 export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);
+
+// ── #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2 ────────────────
+// Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md (oven paa
+// 2026-10-17-6804-hilly-breakaway-design.md P1-P5). Ét trin pr. commit; ingen aeldre
+// revision laeser noget herfra (mechanics/breakawayV3_6804.ts). Tallene er kalibreret
+// privat mod testporten (balance-internals/6804/, hard rule 17); ingen tal i kommentarer.
+const s5V3Breakaway = {
+  // P1 "slank B" (ejer 18/10): jagten paa kuperet i ETAPELOEB (endagsloeb uaendret: de
+  // vinder allerede for ofte paa kuperet, G14). Tre knapper, alle kun paa `hillyProfiles`:
+  p1: {
+    hillyProfiles: ["hilly"] as readonly ProfileType[],
+    // 1. Finalevaegten (etapeinteressen) ganges med en faktor pr. afslutning. Ordenen i
+    //    udbruddets favoer (spurt < bakke/mur < nedkoersel, K2) bevares: spurten beholder
+    //    den hoejeste vaegt, nedkoerslen roeres ikke.
+    finaleWeightFactorByFinale: {
+      flat_sprint: 0.6,
+      uphill_sprint: 0.6,
+      bunch_sprint: 0.6,
+      reduced_sprint: 0.6,
+      wall_finish: 0.8,
+      punch: 0.8,
+    } as Partial<Record<import("./types.ts").FinaleType, number>>,
+    // 2. Jagtens lukning foer finalestigningen er daempet (samme knap som bjerg); en
+    //    GC-reaktion jager stadig uden daempning.
+    preFinalChaseClosingScale: 0.6,
+    // 3. Lad-gaa-loftet ganges med denne faktor (lavere loft i etapeloeb).
+    letGoMaxGapScale: 0.85,
+  },
+};
+
+/** #6804 s5_profiles_v3-udbrudspakken (deep-frosset). Se kommentaren ovenfor. */
+export const S5_V3_BREAKAWAY_TUNING = deepFreeze(s5V3Breakaway);

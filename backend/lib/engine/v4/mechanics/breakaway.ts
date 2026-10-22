@@ -124,6 +124,7 @@ import type { EngineTuning, GcContext, RouteV2, TeamReactionState } from "../typ
 import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScale } from "./mountainSelection.ts";
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
+import { s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale } from "./breakawayV3_6804.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1191,6 +1192,8 @@ export type StageWinChaseV3Input = {
   teamSignals: ReadonlyMap<string, number>;
   /** Hold med en egen koerende rytter i udbruddet: ingen etapeinteresse i at jage det. */
   excludedTeamIds?: ReadonlySet<string>;
+  /** #6804 P1 (KUN s5_profiles_v3, kuperet etapeloeb): faktor paa finalevaegten. Udeladt = 1 (bit-identisk). */
+  finaleWeightScale?: number;
 };
 
 /**
@@ -1218,9 +1221,11 @@ export function stageWinChaseForceV3(input: StageWinChaseV3Input & {
 }): { total: number; interest: number; orderExcess: number; interestByTeam: Map<string, number> } {
   const v3 = BREAKAWAY_CHASE_V3_TUNING;
   const keys = stageWinDemandKeys(input.finaleType, input.profileType);
-  const finaleWeight = input.finaleType
+  const tableWeight = input.finaleType
     ? (v3.stageWinFinaleWeight[input.finaleType] ?? v3.stageWinFinaleWeightDefault)
     : v3.stageWinFinaleWeightDefault;
+  // #6804 P1.1 (KUN s5_profiles_v3): kun ganget naar faktoren er sat (aeldre revisioner bit-identiske).
+  const finaleWeight = input.finaleWeightScale !== undefined ? tableWeight * input.finaleWeightScale : tableWeight;
   const ranked = input.chaseGroupRiderIds
     .filter((id) => input.entrants[id]?.abilities)
     .map((id) => ({ id, ability: collectiveAbility([id], input.entrants, keys) }))
@@ -1822,6 +1827,9 @@ function gcContextEvents(ctx: BreakawayHookContext): TimelineEvent[] {
 function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHookResult {
   // #6818 (KUN s5_profiles_v2, ejer 21/10 "Ja, med A"): loebsspecifik klassementsevne i jagt og snor.
   const gcAbilityOf = ctx.s5ProfilesV2 === true ? raceGcAbilityModel(normalizeGcContext(ctx.gcContext)) : null;
+  // #6804 P1 (KUN s5_profiles_v3, slukket): jagten paa kuperet i etapeloeb (breakawayV3_6804.ts).
+  const p1Hilly = ctx.s5ProfilesV3 === true && s5V3HillyChaseApplies({ s5ProfilesV3: true, profileType: ctx.route.profile_type, gcContext: normalizeGcContext(ctx.gcContext) });
+  const p1FinaleWeightScale = s5V3FinaleWeightScale(p1Hilly, ctx.route.finale_type);
   const events: TimelineEvent[] = [];
   const breakawayGroups = findBreakawayGroups(state.groups);
   // #5978: under orders_gc_v1 skal et hold der reagerer, kvittere for stoppet
@@ -1982,6 +1990,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       // skal jagten hente det fysisk; feltet giver derfor et andet lad-gaa-loft,
       // #5578: kalibreret pr. etapeprofil mod udbrudsmaalene.
       maxGapSeconds *= letGoTuning.letGoMaxGapScaleByProfile[ctx.route.profile_type] ?? letGoTuning.letGoMaxGapScale;
+      // #6804 P1.3 (KUN s5_profiles_v3, kuperet etapeloeb): lavere lad-gaa-loft.
+      if (p1Hilly) maxGapSeconds *= s5V3LetGoMaxGapScale(true);
       // #6369 (KUN s5_profiles_v1, endagsloeb): uden klassementshold der lofter
       // udbruddet skal bjerg-bucket'ens loft vaere endagsloebets eget (timeModel.ts).
       if (ctx.s5ProfilesV1 === true && gcContext?.status === "one_day") {
@@ -2038,7 +2048,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       ...(breakaway.rider_ids.some((id) => wheelSitterIds.has(id)) ? { pullingBreakawayRiderIds: breakaway.rider_ids.filter((id) => !wheelSitterIds.has(id)) } : {}),
       ...(gcAbilityOf ? { gcAbilityOf } : {}),
       // #6441: et hold med egen koerende mand i udbruddet har ingen etapeinteresse i at jage det.
-      ...(chaseV3 ? { officialTimesV3: { profileType: ctx.route.profile_type, teamSignals: chasePlan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants) } } : {}),
+      ...(chaseV3 ? { officialTimesV3: { profileType: ctx.route.profile_type, teamSignals: chasePlan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ...(p1FinaleWeightScale !== 1 ? { finaleWeightScale: p1FinaleWeightScale } : {}) } } : {}),
     });
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
     // et. En holdordre (stancen) virker kun gennem jagten, saa den kan aldrig
@@ -2063,7 +2073,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // En GC-reaktion (et farligt udbrud) jager uden daempning.
     // #6441 (KUN official_times_v3): kuperet jager uden daempning foer finalen (bjerg uaendret).
     const phaseKnobs = mountainSelectionKnobsFor(ctx.route.profile_type, chaseV3);
-    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, phaseKnobs.preFinalChaseClosingScale, phaseKnobs.finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1) * oneDayScale;
+    // #6804 P1.2 (KUN s5_profiles_v3, kuperet etapeloeb): daempet jagt foer finalestigningen.
+    const preFinalClosingScale = s5V3PreFinalChaseClosingScale(p1Hilly) ?? phaseKnobs.preFinalChaseClosingScale;
+    const netClosingSeconds = (ctx.mountainSelectionPhase && !(reactions && reactions.size > 0) ? netClosingRaw * phaseChaseClosingScale(ctx.mountainSelectionPhase, preFinalClosingScale, phaseKnobs.finalChaseClosingScale) : netClosingRaw) * (smallPace?.closingScale ?? 1) * oneDayScale;
     if (smallPace) smallBreakWork.push({ riderIds: smallBreakPullers, pace: smallPace, km: letGoKm + chaseKm });
     const letGoGrowth = (braked ? braked.growthSeconds : letGoKm * letGoRate) * oneDayScale;
     const letGoCeiling = maxGapSeconds * oneDayScale;
