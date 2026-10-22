@@ -24,7 +24,7 @@ const indexSource = readFileSync(join(here, "..", "i18n", "index.js"), "utf8");
 
 const KEY = "dashboard:cards.maidenWin.headline.maidenWin";
 
-async function makeInstance(extraOptions) {
+async function makeInstance(extraOptions: Record<string, unknown>) {
   const inst = i18next.createInstance();
   await inst.use(ICU).init({
     lng: "en",
@@ -40,9 +40,9 @@ async function makeInstance(extraOptions) {
 
 // looksLikeObjectPath bygger sin regex som `( |,|\?|!|;)` (tegn-alternation).
 // Kun den kaster; al anden regex-brug i i18next er uberørt.
-function withBrokenObjectPathRegex(fn) {
+function withBrokenObjectPathRegex<T>(fn: () => T): T {
   const original = RegExp.prototype.test;
-  RegExp.prototype.test = function patchedTest(...args) {
+  RegExp.prototype.test = function patchedTest(this: RegExp, ...args: [string]) {
     if (this.source.startsWith("( |")) {
       throw new RangeError("too much recursion (simuleret Firefox 158-regexfejl)");
     }
