@@ -75,6 +75,8 @@ jobs:
           expected=$(jq -r '.engines.node' backend/package.json)
           actual=$(docker run --rm "$IMAGE:$GITHUB_SHA" node -p 'process.versions.node')
           echo "engines.node=$expected image=$actual"
+          pinned=$(sed -nE 's/^FROM node:([0-9]+\.[0-9]+\.[0-9]+)-.*/\1/p' backend/Dockerfile.ghcr)
+          [ -n "$pinned" ] && [ "$actual" = "$pinned" ] || { echo "::error::Node $actual matcher ikke Dockerfile-tagget $pinned (digest og tag er uenige)"; exit 1; }
           case "$expected" in
             [0-9]*.[0-9]*.[0-9]*) [ "$actual" = "$expected" ] || { echo "::error::Node $actual matcher ikke engines $expected"; exit 1; } ;;
             *) [ "${actual%%.*}" = "24" ] || { echo "::error::Node $actual er ikke 24.x"; exit 1; } ;;
