@@ -67,6 +67,7 @@ import {
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
 import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
+import { raceHasYouthClassification, withoutHiddenYouthClassification } from "../lib/youthClassification.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
 import { dayformLineMoment, dayformLineI18nKey } from "../lib/dayformLine.js";
@@ -379,7 +380,9 @@ export default function RaceDetailPage() {
   const location = useLocation();
 
   const [race, setRace] = useState(null);
-  const [results, setResults] = useState([]);
+  const [allResults, setResults] = useState([]);
+  // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i løb afviklet før reglen.
+  const results = useMemo(() => withoutHiddenYouthClassification(allResults, race?.squad), [allResults, race?.squad]);
   // #3519/#4581: whole-race "stage"-type-rækker (smal projektion, ingen embeds) til
   // classificationPointTotals's kumulative trøje-punkt-total — se stagePointsPromise
   // i loadAll for hvorfor denne IKKE kan deles med `results`s per-etape-scope.
@@ -480,7 +483,7 @@ export default function RaceDetailPage() {
     // fjernet som del af dato-oprydningen på resultat-fladen.
     const { data: raceRow, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, engine_rules_revision, season:season_id(id, number)")
+      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, engine_rules_revision, squad, season:season_id(id, number)")
       .eq("id", raceId)
       .single();
 
@@ -1302,7 +1305,7 @@ export default function RaceDetailPage() {
                   ? <StageTab key={n} stage={n} results={results} stagePointsRows={stagePointsRows} profile={profileByStage[n]} profileByStage={profileByStage}
                       filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} incidents={incidents}
                       moments={moments} riderNameById={riderNameById} teamNameById={teamNameById}
-                      raceId={race.id} raceName={race.name} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} />
+                      raceId={race.id} raceName={race.name} raceSquad={race.squad} passages={passages} stageRoles={stageRoles} rulesRevision={rulesRevision} t={t} />
                   : <Section key={n}><SkeletonLines lines={6} /></Section>
               ))}
             </div>
@@ -1870,7 +1873,9 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, passages, stageRoles = null, rulesRevision = null, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = null, passages, stageRoles = null, rulesRevision = null, t }) {
+  // #7031: U23-/juniorløb har ingen Ungdom-fane.
+  const classTabs = raceHasYouthClassification(raceSquad) ? STAGE_CLASS_TABS : STAGE_CLASS_TABS.filter((k) => k !== "young");
   const [classTab, setClassTab] = useState("stage");
   // #6080: egne ryttere + egne indsats-ordrer til mellemtider/tidstab.
   const ownRiderIds = useMemo(() => ownRiderIdsForStage(results, stage, myOwnTeamId), [results, stage, myOwnTeamId]);
@@ -1987,7 +1992,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
           forskellig klassement-linse. Fast kardinalitet (6) → ui/Tabs (#2849 bølge 3). */}
       <Tabs value={classTab} onChange={setClassTab}>
         <TabList label={t("detail.classTab.ariaLabel")}>
-          {STAGE_CLASS_TABS.map(key => (
+          {classTabs.map(key => (
             <Tab key={key} value={key}>{t(`detail.classTab.${key}`)}</Tab>
           ))}
         </TabList>

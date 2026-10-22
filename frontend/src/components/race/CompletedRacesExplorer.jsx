@@ -17,6 +17,7 @@ import { isSeniorSquad } from "../../lib/seniorScope.ts";
 import { hasRouteData } from "../../lib/stageRouteProfile.js";
 import { fetchAllRows } from "../../lib/supabasePagination";
 import StageProfileGraph from "./StageProfileGraph.jsx";
+import { isHiddenYouthClassificationRow } from "../../lib/youthClassification.ts";
 import {
   Card,
   ChevronRightIcon,
@@ -274,7 +275,7 @@ export default function CompletedRacesExplorer() {
                     <ChevronRightIcon size={12} aria-hidden="true" />
                   </Link>
                   {RESULT_TYPES.map(rt => {
-                    const rows = selectedRace.results.filter(r => r.result_type === rt.key).slice(0, 10);
+                    const rows = selectedRace.results.filter(r => r.result_type === rt.key && !isHiddenYouthClassificationRow(r, selectedRace.squad)).slice(0, 10); // #7031
                     if (!rows.length) return null;
                     return (
                       <div key={rt.key} className="mb-4">

@@ -449,6 +449,16 @@ function reportStageRoleConflicts({ raceId, stageNumber, conflicts, captureExcep
   }
 }
 
+/**
+ * #7031 (ejer 21/10): intet ungdomsklassement i U23- og juniorløb. Alle i feltet er
+ * i forvejen unge, så klassementet blev en kopi af det samlede. Seniorløb er uændrede.
+ * Afgøres af løbets trup (`raceSquadOf`, løst af `resolveRaceSquad` før resultaterne bygges).
+ */
+export function youthClassificationRanking({ race, classified, cumTime, posSum }) {
+  if (isYouthSquad(raceSquadOf(race))) return [];
+  return rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
+}
+
 export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [], trainingOwnsRecovery = false, rulesRevision = "legacy" }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stages.length) throw new Error("no stage profiles");
@@ -844,7 +854,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       // beholder "holder trøjen"-pointet (race_points har KUN rank 1 for dag-typerne);
       // rank 2+ har intet opslag → points_earned 0, også under rederiveSeasonRacePoints.
       // leader-rækker bærer GC-gap (display af løbende samlet stilling).
-      const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
+      const young = youthClassificationRanking({ race, classified, cumTime, posSum });
       const pointsCls = rankByCompDesc(classified, pointsComp);
       const komCls = rankByCompDesc(classified, komComp);
       for (const g of gc) pushIndiv({ result_type: "leader", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
@@ -854,7 +864,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       for (const t of teamClassification(classified, teamClassificationTime({ cumTime, cumTimeRaw }, rulesRevision), overallTeamTiebreak)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
     } else {
       // Slut-etape: hele klassementet udbetales.
-      const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
+      const young = youthClassificationRanking({ race, classified, cumTime, posSum });
       const pointsCls = rankByCompDesc(classified, pointsComp);
       const komCls = rankByCompDesc(classified, komComp);
       for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
@@ -3045,7 +3055,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
     return [{ stage_number: stageNumber, timeline_version: timelineResult.timeline_version, events: timelineResult.events }];
   })() : [];
 
-  const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), acc.cumTime, acc.posSum);
+  const young = youthClassificationRanking({ race, classified, cumTime: acc.cumTime, posSum: acc.posSum });
   const pointsCls = rankByCompDesc(classified, acc.pointsComp);
   const komCls = rankByCompDesc(classified, acc.komComp);
 
