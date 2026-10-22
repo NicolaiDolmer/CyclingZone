@@ -35,8 +35,9 @@ Refs #6937 #6938 #6814 #6912 #2757 #6939 #6486 #6804
 **Baseline.** I prod vinder klassementsvinderen også bjergtrøjen langt oftere end i virkeligheden,
 i både korte og lange etapeløb og under både v3 og v4. Simuleringen rammer samme niveau, så
 fejlen er motorens og ikke et prod-tilfælde. v2 ændrer det ikke. I virkeligheden sker det i omkring
-hver femte Grand Tour 2015-2025 (Touren oftere, Vueltaen næsten aldrig); for ugeløb er der ingen
-publiceret statistik.
+hver femte Grand Tour 2015-2025 (Touren oftere, Vueltaen næsten aldrig; egen optælling fra
+Wikipedias slutklassementer, ikke krydstjekket mod ProCyclingStats); for ugeløb er der ingen
+publiceret statistik. Båndet for G16 forankres først efter en kildetjekket optælling.
 
 **Rod-årsag (målt):**
 1. Topankomster på HC/1. kategori tæller dobbelt (ejer-låst skala) og afgøres af målordenen, dvs.
@@ -62,8 +63,9 @@ publiceret statistik.
 **Baseline.** I prod udgår kun en lille brøkdel af dem der starter et etapeløb, og nogle løb har
 slet ingen udgåede. Simuleringen giver endnu færre: styrt-udgang er næsten fraværende på alle
 terræner, og uden for tidsgrænsen er den eneste reelle kilde, og kun på bjerg. I virkeligheden
-mister en Grand Tour typisk en sjettedel til en femtedel af feltet (Touren 2023 og 2024), og
-ugeløb og endagsløb mister mange flere end i spillet.
+mister en Grand Tour typisk en sjettedel til en femtedel af feltet (Touren 2023 og 2024, egen
+optælling fra Wikipedias slutklassementer, ikke krydstjekket), og ugeløb og endagsløb mister mange
+flere end i spillet. Båndet for G17 forankres først efter en kildetjekket optælling.
 
 **Rod-årsag.** Motoren kender kun to veje ud: alvorligt styrt (sjældent) og tidsgrænsen (med
 grupetto-redning og juryens genindsættelse). Den kender ikke de største kilder i virkeligheden:
@@ -104,11 +106,15 @@ over 10-12 min". Feltet henter dem til sidst (flade udbrudssejre er få og små)
 spillerne ser det store tal undervejs. På bjerg ses de store forspring i halen. v2 ændrer det ikke;
 på flad er det en anelse værre.
 
-**Rod-årsag.** P2 (17/10-designet, realistisk forspring) og dens gate G2 måler kun kuperet og bjerg.
-På flad gælder "jagt-gulvet beholdes", men gulvet virker først sent; indtil da stiger forspringet
-frit mod lad-gå-loftet, fordi spurterholdene først får jagt-interesse tæt på finalen.
+**Rod-årsag (målt del og hypotese).** Målt: P2's gate G2 (17/10-designet) dømmer kun kuperet og
+bjerg, og på flad når forspringet loftet i stedet for at stoppe i mellemzonen. Hypotese, ikke
+verificeret i koden endnu: spurterholdenes etapeinteresse (`stageWinChaseForceV3`) virker først
+sent på etapen, og P2's tekst "jagt-gulvet på flad/rullende beholdes" lader loftet stå. Første
+bygge-trin læser `breakaway.ts`/`stageWinChaseForceV3` og bekræfter eller afkræfter hypotesen, før
+der ændres noget.
 
-**Design (kort).** Ingen ny mekanik; P2 udvides til flad:
+**Design (kort).** Ingen ny mekanik, men en udvidelse af P2 til flad, som ændrer P2's formulering
+om flad og derfor er en ejer-beslutning (§4, beslutning 6):
 - Spurterhold med etapeinteresse (flad afslutning) går i kontrolleret jagt, når forspringet nærmer
   sig det et fladt udbrud realistisk får, i stedet for at vente på finalen.
 - **G2 udvides** til flad og rullende med eget privat loft for den øvre zone og en hård grænse;
@@ -120,18 +126,26 @@ frit mod lad-gå-loftet, fordi spurterholdene først får jagt-interesse tæt p�
 **Baseline.** Point pr. etapetype er allerede skaleret (siden #2770), og pointtrøjens vinder henter
 størstedelen af sine point på flade etaper. Alligevel vinder feltets bedste sprinter kun en
 mindre del af pointtrøjerne, i prod og i simuleringen, og klassementsvinderen vinder en mærkbar del.
-I løb med to eller flere flade etaper går trøjen i prod oftere til en sprinter. Den gamle flade
-tabel (`classPointsForRank`) kører ikke i S5: alle S5-etapeløb har fulde rutedata.
+Antallet af flade etaper i løbet ændrer ikke billedet mærkbart i simuleringen; i prod er stikprøven
+med to eller flere flade etaper for lille til en konklusion. Den gamle flade tabel
+(`classPointsForRank`) kører ikke i S5: alle S5-etapeløb har fulde rutedata.
+"Bedste sprinter" er i målingen rytteren med højest sprint-evne i feltet; G18 bruger en bredere
+definition (sprint-kaptajn eller sprint-top-5).
 
-**Rod-årsag (målt):**
-1. **Rutemix:** en del S5-etapeløb har ingen flade etaper, og mange har kun én. Så kan en sprinter
-   ikke vinde trøjen.
-2. **Hvem vinder de flade dage:** når den bedste sprinter taber trøjen, taber han allerede på de flade
-   etaper (brosten og reducerede spurter vindes ofte af kaptajner).
-3. **Ekstrapoint:** indlagte spurter og kuperede afslutninger giver kaptajner og udbrydere de få point
+**Rod-årsag (målt, i rækkefølge):**
+1. **Hvem vinder de flade dage (største):** når den bedste sprinter taber trøjen, taber han allerede
+   på de flade etaper; trøjens vinder tager langt flere flad-point end ham. Hvorfor (spurtfinalens
+   evne-blanding, leadout, brosten, reducerede spurter) er **ikke målt**; kun vinderens rolle er talt
+   (kaptajner og sprint-kaptajner deler det meste).
+2. **Ekstrapoint:** indlagte spurter og kuperede afslutninger giver kaptajner og udbrydere de få point
    der afgør et tæt regnskab.
+3. **Rutemix (mindre, men reel for nogle løb):** en del S5-etapeløb har ingen flade etaper. Der kan en
+   sprinter ikke vinde trøjen, uanset motoren.
 
 **Design (kort).** Ejer-låste skalaer røres ikke.
+- **S0 Mål spurtfinalen først (måling, ingen motorændring):** på flade etaper med spurtafslutning
+  måles hvem der vinder (rolle, sprint-evne, leadout, brostens- vs. ren flad), så årsag 1 kan
+  designes på data. Det er første trin for #2757 og kommer før S1.
 - **S1 Pointjagt (motor, v3):** som i virkeligheden kan pointtrøjens fører og hold med en
   sprint-kaptajn sende en pointjæger i morgenudbruddet på kuperede etaper for at tage den indlagte
   spurt (samme udvælgelse som B1, motivation "sprintpoint"). Skalaerne og #5914 er uændrede.
@@ -141,15 +155,17 @@ tabel (`classPointsForRank`) kører ikke i S5: alle S5-etapeløb har fulde ruted
   fem eller flere etaper mindst to. Den hører til generatoren (#6369-linjen), ikke v3.
 - **Gate G18:** i løb med mindst to flade etaper vinder en sprinter (sprint-kaptajn eller
   sprint-top-5 i feltet) pointtrøjen inden for et privat bånd; klassementsvinderen vinder den sjældent.
-- Issue #2757's første acceptkriterie (fallback-stien) er opfyldt for S5 ved at alle S5-løb har
-  rutedata; bygge-PR'en dokumenterer det i issuet.
+- Issue #2757's første acceptkriterie (fallback-stien) er ikke rettet, men gjort irrelevant for S5,
+  fordi alle S5-løb har rutedata. Kriteriet beder om at det dokumenteres i issuet; det gør bygge-PR'en.
 
 ### 2.6 Favoritter efter etapens profil, ikke klassementet (#6939)
 
 **Baseline.** Etapesidens favoritliste (`favouritesFor`, `stagePageV2Model.ts`) er top 5 i det
 samlede plus tidligere etapevindere. I prod rammer listen sjældent vinderen af en flad etape og
-kun en del af gangene på bjerg og kuperet. En liste efter etapens krav ville i simuleringen
-ramme vinderen markant oftere på flad og enkeltstart.
+kun en del af gangene på bjerg og kuperet. En liste efter etapens krav og rytternes (skjulte)
+evner ville i simuleringen ramme vinderen markant oftere på flad og enkeltstart. Det er et loft:
+den spillervendte liste må kun bruge offentlig information og når ikke loftet. Dens træfsikkerhed
+er ikke målt endnu; bygge-PR'en måler den mod prod-resultaterne før go-kortet.
 
 **Rod-årsag.** Listen kender ikke etapens profil.
 
@@ -158,7 +174,8 @@ ramme vinderen markant oftere på flad og enkeltstart.
   flade etaper i dette løb og denne sæson; på bjerg og enkeltstart det samlede klassement plus de
   bedste på samme terræn; på kuperet en blanding. Kun offentlig information (resultater og
   rytterens type), aldrig skjulte evner eller route fit for andre hold (fog of war).
-- Før første etape: samme regel ud fra sæsonens resultater, i stedet for en tom liste.
+- Før første etape: uændret tom liste (bevidst valg i `favouritesFor`: intet ærligt grundlag i løbet
+  endnu). En sæsonbaseret liste før etape 1 er en mulig senere udvidelse, ikke en del af dette design.
 - Fodnoten ændres fra "Baseret på løbet indtil nu" til en tekst der siger at listen følger etapens
   profil (EN først, DA under, efter `docs/TONE_OF_VOICE.md`).
 - Etapesiden deles med #6512, #6683 og #6970; bygges i rækkefølge efter ejerskabsreglen.
@@ -166,21 +183,27 @@ ramme vinderen markant oftere på flad og enkeltstart.
 
 ### 2.7 D3: bjergetape uden topankomst (#6486)
 
-**Baseline.** Den rute #6486 handler om, er ikke kørt i prod under v4 eller S5-motoren, og den findes
-ikke i S5: S5's D3-bjergetaper med nedkørselsfinale er nye generator-ruter. Målt isoleret med
-felter fra alle tre divisioner: en rute med én lang stigning og toppen tæt på mål ligger på loftet i
-alle divisioner, mens en rute med flere lange stigninger og toppen langt fra mål ligger over loftet
-i **alle** divisioner, også D1.
+**Baseline.** Ingen D3-bjergetape med nedkørselsfinale er kørt i prod under v4 eller S5-motoren
+(kun før tændingen 11/10). S5's D3-bjergetaper med nedkørselsfinale er nye generator-ruter; den rute
+#6486 beskriver, blev ikke fundet blandt de to S5-ruter der er set i detaljer (af fire ruter, hver i
+fire D3-grupper). To af dem er målt isoleret med felter fra alle tre divisioner: ruten med én lang
+stigning og toppen tæt på mål ligger på loftet i alle divisioner; ruten med flere lange stigninger og
+toppen langt fra mål ligger over loftet i alle divisioner, også D1.
 
-**Afgørelse.** Hullet følger rutetypen, ikke divisionen. D1/D3-kontrakten (#6464) er derfor ikke
-problemet, og rute-generatoren er heller ikke det rigtige sted: ruterne er realistiske, og et
-blødere sidste bjerg ville bryde kontrakten (#6486). Rettelsen hører til **v3**:
-- **D1 (motor, v3):** på en bjergetape uden topankomst skal favoritgruppen kunne samle sig på en lang
-  nedkørsel og i dalen før mål (nedkørsels-regrupperingen i finalen), så nr. 10 dømmes mod sit eget
-  loft (`mountain_non_summit`, #6456) i alle divisioner.
-- **Gate G19:** nr. 10 på bjerg uden topankomst inden for loftet i alle divisioner på S5-ruterne
-  (P0-feltet), uden at topankomsterne flytter sig (G5 uændret).
-- Isolerede kørsler har intet klassement og ingen holdordrer; G19 dømmes i testporten med hele løb.
+**Foreløbig afgørelse (svagt grundlag).** Målingen er én rute af hver type, kørt isoleret uden
+klassement og holdordrer, så den peger på rutetypen frem for divisionen, men beviser det ikke. Begge
+steder er derfor stadig mulige:
+- **D1 (motor, v3):** på en bjergetape uden topankomst kan favoritgruppen samle sig på en lang
+  nedkørsel og i dalen før mål (finale-nedkørslens regruppering), så nr. 10 dømmes mod sit eget loft
+  (`mountain_non_summit`, #6456) i alle divisioner. Risiko: den samme regruppering virker på alle
+  bjergetaper uden topankomst i alle løb.
+- **D2 (rute-generator):** generatoren undgår, eller placerer anderledes, den rutetype der spreder
+  over loftet (flere lange stigninger med toppen langt fra mål) i de divisioner hvor det sker.
+- **Næste skridt før valget:** alle fire S5-D3-ruter (og de tilsvarende i D1/D2) køres i testporten
+  med hele løb og P0-feltet. Ligger hullet kun på én rutetype, er D2 det mindste indgreb; ligger det
+  bredt på bjerg uden topankomst, er D1 det rigtige. Valget er ejer-beslutning 7 (§4).
+- **Gate G19 (forslag):** nr. 10 på bjerg uden topankomst inden for loftet i alle divisioner på
+  S5-ruterne, uden at topankomsterne flytter sig (G5 uændret).
 
 ## 3. Placering og rækkefølge
 
@@ -189,14 +212,16 @@ blødere sidste bjerg ville bryde kontrakten (#6486). Rettelsen hører til **v3*
 | #6814 jagtafstand | motor (`breakaway.ts`/`segmentLoop.ts`) | v3 | P6 |
 | #6912 forspring på flad | motor (P2 udvidet) | v3 | P2 |
 | #6937 bjergtrøje (B1, B2) | motor (`breakawayPermission.ts`, `bonusSeconds.ts`) | v3 | P3 |
-| #2757 S1 | motor (`breakawayPermission.ts`) | v3 | B1 |
+| #2757 S0 | måling (testport/tourScorecard), ingen motor | ingen | kan køres nu |
+| #2757 S1 | motor (`breakawayPermission.ts`) | v3 | B1 og S0 |
 | #2757 S2 | rute-generator | ingen (generator) | efter ejer-beslutning |
 | #6938 udgåede (U1-U3) | motor + kørsels-flow (ikke-start mellem etaper) | v3 | sidst, efter G1'-G15 er grønne |
-| #6486 D1 | motor (nedkørsel i finalen) | v3 | P8 |
+| #6486 D1 eller D2 | motor (finale-nedkørsel) eller rute-generator | v3 eller ingen | efter testport på alle S5-D3-ruter |
 | #6939 favoritter | frontend (etapesiden) | ingen | kan bygges nu, uafhængigt |
 
 Ét trin pr. commit, testport efter hvert, som P0-P8. Al motorændring bag slukket `s5_profiles_v3`;
-v1 og v2 bit-identiske. Tænd-gaten fra 22/10 gælder uændret og udvides med G16-G19.
+v1 og v2 bit-identiske. Tænd-gaten fra 22/10 gælder uændret. G16-G19 er forslag; om de skal
+lægges til tænd-gaten, er ejer-beslutning 8.
 
 ## 4. Ejer-beslutninger (én ad gangen, hver med anbefaling)
 
@@ -208,20 +233,33 @@ v1 og v2 bit-identiske. Tænd-gaten fra 22/10 gælder uændret og udvides med G1
    stiger af i endagsløb). B: kun U2. Anbefaling A: U2 alene giver flere styrt, men ikke den store
    kilde i virkeligheden; U1 og U3 rammer mest hjælpere.
 3. **Pointjagt i udbrud (#2757, S1).** A: pointjægere kan gå i udbrud på kuperede etaper og tage den
-   indlagte spurt. B: ingen motorændring, kun rutemix (S2). Anbefaling A + S2: rutemixen er den
-   største årsag, men S1 giver sprinterholdene et modtræk til de ekstrapoint der afgør et tæt regnskab.
+   indlagte spurt. B: ingen motorændring nu; vent på S0-målingen af spurtfinalen. Anbefaling B:
+   den største målte årsag er hvem der vinder de flade dage, og den skal måles (S0) før der
+   designes; S1 rammer kun ekstrapointene.
 4. **Rutemix for pointtrøjen (#2757, S2).** A: generatoren giver alle etapeløb mindst én flad etape og
-   løb med fem eller flere etaper mindst to. B: ingen ændring. Anbefaling A.
+   løb med fem eller flere etaper mindst to. B: ingen ændring. Anbefaling A for løb uden flade
+   etaper (der kan en sprinter aldrig vinde trøjen); effekten på resten er lille i målingen.
 5. **Favoritter (#6939).** A: bygges nu som frontend-PR med billede. B: venter på v3. Anbefaling A:
    uafhængig af motoren.
 
-#6814, #6912 og #6486 kræver ingen ny beslutning: de følger allerede besluttede designs (løbsfilm
-§3A, P2 og loftet fra #6456) og udvider kun deres gates.
+6. **Forspring på flad (#6912).** A: P2 udvides til flad (spurterhold kontrollerer tidligere, G2 også
+   på flad og rullende); det ændrer P2's linje om at jagt-gulvet på flad beholdes. B: P2 uændret;
+   kun filmen forklarer store forspring. Anbefaling A: det er netop på flad, spillerne ser de store
+   tal, og hypotesen bekræftes i koden før byg.
+7. **D3-bjergetaper uden topankomst (#6486).** A: vent på testporten med alle S5-D3-ruter og vælg
+   derefter D1 (motor) eller D2 (generator) efter hvor bredt hullet ligger. B: byg D1 nu. Anbefaling
+   A: grundlaget er én rute af hver type.
+8. **Nye gates til tænd-gaten (G16-G19).** A: G16-G19 lægges til tænd-gaten for v3 med private bånd
+   for de tilvalg ejeren siger ja til. B: de måles og vises, men blokerer ikke tændingen. Anbefaling A;
+   et fravalgt tilvalg får ingen gate.
+
+Kun #6814 kræver ingen ny beslutning: det følger løbsfilm-designet §3A, og dets §7 punkt 2 (v3) er
+besvaret som anbefalet.
 
 ## 5. Verifikation
 
 - Motor-tilvalgene: TIER FULL som P6/P8 (`scripts/verify-local.ps1`, hele backend `node --test`,
-  s5MotorBench, tourDryRun-tests), testporten G1'-G19 på S5- og S4-ruter med P0-feltet, v1/v2
+  s5MotorBench, tourDryRun-tests), testporten G1'-G15 og de godkendte af G16-G19 på S5- og S4-ruter med P0-feltet, v1/v2
   bit-identitet.
 - #6939: frontend-tests, lint, typecheck, snapshots i alle tre Playwright-projekter, skærmbillede.
 - Private før/efter-tal skrives i `balance-internals/6804-tilvalg/` ved siden af denne baseline.
@@ -231,7 +269,7 @@ v1 og v2 bit-identiske. Tænd-gaten fra 22/10 gælder uændret og udvides med G1
 - B1, B2 og S1 ændrer pointfordeling, som spillerne ser i klassementerne; derfor bag slukket revision og
   ejer-beslutning.
 - U1 kan tage en kaptajn ud af et løb; G17 holder kaptajner under hjælperne.
-- D1 kan gøre bjergetaper uden topankomst for lukkede; G5 (topankomster uændret) og loftet fra #6456
+- D1 (hvis valgt) kan gøre bjergetaper uden topankomst for lukkede i alle løb; G5 (topankomster uændret) og loftet fra #6456
   i begge retninger fanger det.
 - Simuleringen er på S4-ruter; S5-ruterne har færre flade etaper i en del løb, så #2757 og #6912
   kan se anderledes ud. Første testport med P0 på S5-ruterne opdaterer baselinen.
