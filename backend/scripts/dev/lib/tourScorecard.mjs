@@ -184,6 +184,35 @@ export const TOUR_BENCHMARKS = Object.freeze({
 });
 
 /**
+ * #6804 P7 (M2, ejer 21/10 beslutning 3 A): de korte etapeloeb har egne tidsgab-maal for
+ * slutklassementets nr. 10 og vindermarginen i 2-4 og 5-8 etaper, ens i alle divisioner.
+ * Grand Tour-baandene ovenfor (gcTo10Final, gcWinnerMargin, gcTo10AfterWeek1) doemmer
+ * dem aldrig. Baandene er balance-tal og staar privat (hard rule 17:
+ * `shortStageRaceGapBands` i den private taerskelfil); uden dem er dommen N/A.
+ */
+export const SHORT_STAGE_RACE_GROUPS = Object.freeze(["sr2-4", "sr5-8"]);
+
+/** "sr2-4", "sr5-8" eller null (endagsloeb, Grand Tours og 9+ etaper beholder deres dom). */
+export function shortStageRaceGroup(stageCount) {
+  const n = Number(stageCount) || 0;
+  if (n >= 2 && n <= 4) return "sr2-4";
+  if (n >= 5 && n <= 8) return "sr5-8";
+  return null;
+}
+
+/**
+ * Et privat baand for én maaling ({min, max}) -> verdict-baandet. Ugyldigt eller
+ * manglende baand = null (dommen bliver N/A, aldrig en gaettet graense).
+ */
+export function privateGapBand(band) {
+  if (!band || typeof band !== "object") return null;
+  const min = Number.isFinite(Number(band.min)) && band.min !== null ? Number(band.min) : undefined;
+  const max = Number.isFinite(Number(band.max)) && band.max !== null ? Number(band.max) : undefined;
+  if (min === undefined && max === undefined) return null;
+  return { ...(min === undefined ? {} : { min }), ...(max === undefined ? {} : { max }), status: "ejer", source: "#6804 M2 (ejer 21/10, privat baand)" };
+}
+
+/**
  * Etapens benchmark-klasse for TIDSGAB og udbrudsSTOERRELSE. Udbrudsdommen
  * (andel sejre) bruger profile_type direkte, se summarizeTour.
  */
@@ -691,7 +720,7 @@ export function leadoutEffect({ withRes, withoutRes, entrants, teams }) {
  * Hele loebet under én revision over `seeds` seeds. Klassementet akkumuleres
  * pr. seed som i spillet (runStagesInOrder).
  */
-export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, seedPrefix = "tour6285" }) {
+export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, seedPrefix = "tour6285", shortRaceGapBands = null }) {
   const stages = sortedStages(data);
   const { entrants: all, droppedWithoutAbilities } = splitEntrants(data);
   const abilitiesById = new Map(data.abilities.map((a) => [a.rider_id, a]));
@@ -727,14 +756,18 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     });
     perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length });
   }
-  return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision) };
+  return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision, { shortRaceGapBands }) };
 }
 
 const sum = (xs) => xs.reduce((a, b) => a + (Number(b) || 0), 0);
 const RACE_GATE_CHECK = Object.fromEntries(Object.entries(GATE_METRIC).map(([check, metric]) => [metric, check]));
 
-/** Etape- og loebsoversigt over seeds, med benchmark-dom. */
-export function summarizeTour(perSeed, stages, revision = null) {
+/**
+ * Etape- og loebsoversigt over seeds, med benchmark-dom.
+ * #6804 P7: `shortRaceGapBands` = de private M2-baand pr. kort gruppe
+ * ({ "sr2-4": { gcTo10Final: {min,max}, gcWinnerMargin: {min,max} }, ... }).
+ */
+export function summarizeTour(perSeed, stages, revision = null, { shortRaceGapBands = null } = {}) {
   const stageRows = stages.map((p) => {
     const ms = perSeed.map((s) => s.rows.find((r) => r.stage === p.stage_number)).filter(Boolean);
     const med = (k) => median(ms.map((m) => m[k]).filter((v) => v !== null && v !== undefined));
@@ -842,12 +875,23 @@ export function summarizeTour(perSeed, stages, revision = null) {
   const mountainTrials = sum(mountainRows.map((c) => c.trials));
   race.mountainBreakAheadShare = mountainTrials ? sum(mountainRows.map((c) => c.breakawayAheadShare * c.trials)) / mountainTrials : null;
   race.minuteLossMeasuredStages = stageRows.filter((r) => r.minuteLossAtZeroKm !== null).length;
-  race.verdicts = {
-    gcTo10AfterWeek1: verdict(race.gcTo10AfterWeek1, TOUR_BENCHMARKS.gcTo10AfterWeek1.byClass.race),
-    gcTo10Final: verdict(race.gcTo10Final, TOUR_BENCHMARKS.gcTo10Final.byClass.race),
-    gcWinnerMargin: verdict(race.gcWinnerMargin, TOUR_BENCHMARKS.gcWinnerMargin.byClass.race),
-    mountainBreakAheadShare: verdict(race.mountainBreakAheadShare, TOUR_BENCHMARKS.mountainBreakAheadShare.byClass.race),
-  };
+  // #6804 P7 (M2): et kort etapeloeb doemmes mod sin egen gruppes private baand,
+  // aldrig mod Grand Tour-baandene (heller ikke "efter uge 1", der er et Grand Tour-maal).
+  const gapGroup = shortStageRaceGroup(stages.length);
+  const groupBands = gapGroup ? shortRaceGapBands?.[gapGroup] ?? null : null;
+  if (gapGroup) race.gapGroup = gapGroup;
+  race.verdicts = gapGroup
+    ? {
+        gcTo10AfterWeek1: "N/A",
+        gcTo10Final: verdict(race.gcTo10Final, privateGapBand(groupBands?.gcTo10Final)),
+        gcWinnerMargin: verdict(race.gcWinnerMargin, privateGapBand(groupBands?.gcWinnerMargin)),
+      }
+    : {
+        gcTo10AfterWeek1: verdict(race.gcTo10AfterWeek1, TOUR_BENCHMARKS.gcTo10AfterWeek1.byClass.race),
+        gcTo10Final: verdict(race.gcTo10Final, TOUR_BENCHMARKS.gcTo10Final.byClass.race),
+        gcWinnerMargin: verdict(race.gcWinnerMargin, TOUR_BENCHMARKS.gcWinnerMargin.byClass.race),
+      };
+  race.verdicts.mountainBreakAheadShare = verdict(race.mountainBreakAheadShare, TOUR_BENCHMARKS.mountainBreakAheadShare.byClass.race);
   for (const k of ["gcTop10InBreakOver5Min", "ownTeamChasesOwn", "clampedAtCap", "minuteLossAtZeroKm", "labelContradictions", "flatBreakawayWinMinutes"]) {
     race.verdicts[k] = applyKnownOpen(verdict(race[k], TOUR_BENCHMARKS[k].byClass.race), RACE_GATE_CHECK[k], revision);
   }

@@ -186,6 +186,113 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
   return agg;
 }
 
+// ── #6804: loebsgrupper (G1', G12, G14) ──────────────────────────────────────
+//
+// Udbrudssejre pr. loebsgruppe x terraen (M1) og tidsgab i korte etapeloeb (M2).
+// Baandene er balance-tal og staar KUN i den private taerskelfil (hard rule 17):
+//   breakawayWinShareByGroup: { gt|stage_race|one_day: { <profile_type>: {min,max} } }
+//   breakawayGroupTotalBands: { gt|stage_race|one_day: {min,max} }  (gruppens samlede andel af vejetaper)
+//   shortStageRaceGapBands:   { sr2-4|sr5-8: { gcTo10Final: {min,max,medianMin?,medianMax?}, gcWinnerMargin: {...} } }
+// Mangler et baand, er dommen "-" (aldrig en gaettet graense). Et terraen uden baand
+// i gruppen vises kun som information.
+
+/** Loebsgruppe for udbrudsmaalene (samme inddeling som P0-satserne: breakawayIntent.raceGroupOf). */
+export const BREAKAWAY_RACE_GROUPS = Object.freeze(["gt", "stage_race", "one_day"]);
+export function breakawayRaceGroup(stages) {
+  const n = Number(stages) || 1;
+  return n <= 1 ? "one_day" : n >= 15 ? "gt" : "stage_race";
+}
+
+/** Kort etapeloebs tidsgab-gruppe (samme som tourScorecard.shortStageRaceGroup). */
+export const SHORT_GAP_GROUPS = Object.freeze(["sr2-4", "sr5-8"]);
+export function shortGapGroup(stages) {
+  const n = Number(stages) || 0;
+  return n >= 2 && n <= 4 ? "sr2-4" : n >= 5 && n <= 8 ? "sr5-8" : null;
+}
+
+/** p-kvantil (naermeste rang) af endelige tal; null uden data. */
+export function quantile(xs, p) {
+  const s = xs.filter((v) => v !== null && v !== undefined && Number.isFinite(Number(v))).map(Number).sort((a, b) => a - b);
+  if (!s.length) return null;
+  return s[Math.min(s.length - 1, Math.max(0, Math.round(p * (s.length - 1))))];
+}
+
+const finiteOrUndef = (v) => (v !== null && v !== undefined && Number.isFinite(Number(v)) ? Number(v) : undefined);
+
+/** PASS/FAIL for en andel eller et tal mod et privat {min,max}; "-" uden baand eller maaling. */
+export function bandVerdict(value, band) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "-";
+  const min = finiteOrUndef(band?.min);
+  const max = finiteOrUndef(band?.max);
+  if (min === undefined && max === undefined) return "-";
+  return (min === undefined || value >= min) && (max === undefined || value <= max) ? "PASS" : "FAIL";
+}
+
+/**
+ * G12: median i median-baandet (medianMin/medianMax, ellers min/max) og halen (p10 >= min,
+ * p90 <= max). Returnerer { median, tail } hver PASS/FAIL/"-".
+ */
+export function gapGroupVerdicts(stats, band) {
+  if (!band) return { median: "-", tail: "-" };
+  const median = bandVerdict(stats.median, { min: band.medianMin ?? band.min, max: band.medianMax ?? band.max });
+  const lo = finiteOrUndef(band.min);
+  const hi = finiteOrUndef(band.max);
+  let tail = "-";
+  if ((lo !== undefined || hi !== undefined) && stats.p10 !== null && stats.p90 !== null) {
+    tail = (lo === undefined || stats.p10 >= lo) && (hi === undefined || stats.p90 <= hi) ? "PASS" : "FAIL";
+  }
+  return { median, tail };
+}
+
+/**
+ * #6804: alle loebsgruppe-maalinger for EN revision. Udbrudsandelen er pr.
+ * (etape, seed) paa vejetaper som resten af kortet; tidsgabet er pr. (loeb, seed).
+ */
+export function aggregateRaceGroups(raceResults, revision, thresholds = {}) {
+  const shareBands = thresholds?.breakawayWinShareByGroup ?? {};
+  const totalBands = thresholds?.breakawayGroupTotalBands ?? {};
+  const gapBands = thresholds?.shortStageRaceGapBands ?? {};
+  const rowsByGroup = Object.fromEntries(BREAKAWAY_RACE_GROUPS.map((g) => [g, []]));
+  const gapByGroup = Object.fromEntries(SHORT_GAP_GROUPS.map((g) => [g, { races: 0, gcTo10Final: [], gcWinnerMargin: [] }]));
+  for (const rr of raceResults) {
+    const run = rr?.runs?.[revision];
+    if (!run) continue;
+    const g = breakawayRaceGroup(rr.stages);
+    for (const s of run.perSeed ?? []) for (const r of s.rows ?? []) if (isRoad(r)) rowsByGroup[g].push(r);
+    const sg = shortGapGroup(rr.stages);
+    if (sg) {
+      gapByGroup[sg].races += 1;
+      for (const s of run.perSeed ?? []) {
+        gapByGroup[sg].gcTo10Final.push(s.gcFinalTo10);
+        gapByGroup[sg].gcWinnerMargin.push(s.gcWinnerMargin);
+      }
+    }
+  }
+  const breakaway = {};
+  for (const g of BREAKAWAY_RACE_GROUPS) {
+    const rows = rowsByGroup[g];
+    const total = { ...terrainStats(rows) };
+    total.verdict = bandVerdict(total.breakawayWinShare, totalBands[g]);
+    const byTerrain = {};
+    for (const t of [...new Set(rows.map((r) => r.profile_type))].sort()) {
+      const st = terrainStats(rows.filter((r) => r.profile_type === t));
+      const band = shareBands[g]?.[t] ?? null;
+      byTerrain[t] = { ...st, hasBand: Boolean(band), verdict: bandVerdict(st.breakawayWinShare, band) };
+    }
+    breakaway[g] = { total, byTerrain };
+  }
+  const gaps = {};
+  for (const g of SHORT_GAP_GROUPS) {
+    const x = gapByGroup[g];
+    gaps[g] = { races: x.races };
+    for (const k of ["gcTo10Final", "gcWinnerMargin"]) {
+      const stats = { n: x[k].filter((v) => Number.isFinite(Number(v)) && v !== null).length, median: median(x[k]), p10: quantile(x[k], 0.1), p90: quantile(x[k], 0.9) };
+      gaps[g][k] = { ...stats, verdicts: gapGroupVerdicts(stats, gapBands[g]?.[k] ?? null) };
+    }
+  }
+  return { breakaway, gaps };
+}
+
 /** Pr. loeb: domme og haard-gate-hits under begge revisioner (til tabellen "pr. loeb"). */
 export function perRaceRows(raceResults, baseline, candidate) {
   const pick = (run) => {
@@ -238,6 +345,8 @@ export function buildTestportCard({ raceResults, baseline, candidate, benchByRev
     races: results.length,
     thresholds,
     revisions: { baseline: base, candidate: cand },
+    // #6804: loebsgrupper (G1', G12, G14) mod de private baand.
+    groups: { baseline: aggregateRaceGroups(results, baseline, thresholds), candidate: baseline === candidate ? null : aggregateRaceGroups(results, candidate, thresholds) },
     verdict: { failDelta: cand.counts.FAIL - base.counts.FAIL, passDelta: cand.counts.PASS - base.counts.PASS, hardGateRegressions: regressions },
     perRace: perRaceRows(results, baseline, candidate),
     bench: { baseline: benchByRevision[baseline] ?? null, candidate: benchByRevision[candidate] ?? null },
@@ -317,6 +426,46 @@ export function inputLines(meta = {}) {
   return lines;
 }
 
+/**
+ * #6804: kortets afsnit om loebsgrupper. Udbrudssejre pr. gruppe x terraen og samlet
+ * (G1', G14: endagsloeb paa kuperet) og tidsgab i korte etapeloeb (G12), baseline og
+ * kandidat side om side med dommen mod de private baand ("-" = intet baand).
+ */
+export function raceGroupMarkdown(card) {
+  const gb = card.groups?.baseline;
+  const gc = card.groups?.candidate ?? gb;
+  if (!gb) return [];
+  const revs = [card.baseline, card.candidate];
+  const out = ["## Loebsgrupper (#6804 G1', G12, G14)", "", "Dom mod de private baand (taerskelfilen); \"-\" = intet baand for cellen.", ""];
+  const bRows = [];
+  for (const g of BREAKAWAY_RACE_GROUPS) {
+    const pick = (a) => a?.breakaway?.[g];
+    const tb = pick(gb)?.total;
+    const tc = pick(gc)?.total;
+    bRows.push([`${g} samlet`, String(tb?.n ?? 0), `${fmtPct(tb?.breakawayWinShare)} ${tb?.verdict ?? "-"}`, `${fmtPct(tc?.breakawayWinShare)} ${tc?.verdict ?? "-"}`]);
+    const terrains = [...new Set([...Object.keys(pick(gb)?.byTerrain ?? {}), ...Object.keys(pick(gc)?.byTerrain ?? {})])].sort();
+    for (const t of terrains) {
+      const xb = pick(gb)?.byTerrain?.[t];
+      const xc = pick(gc)?.byTerrain?.[t];
+      const txt = (x) => (x ? `${fmtPct(x.breakawayWinShare)} · ${fmtN(x.breakawaySizeMedian)} ${x.hasBand ? x.verdict : "info"}` : "-");
+      bRows.push([`${g} ${t}`, String(xb?.n ?? xc?.n ?? 0), txt(xb), txt(xc)]);
+    }
+  }
+  out.push("### Udbrudssejre pr. loebsgruppe x terraen (andel af vejetaper · median str.)", "", ...table(["Gruppe/terraen", "n", revs[0], revs[1]], bRows));
+  const gRows = [];
+  for (const g of SHORT_GAP_GROUPS) {
+    for (const k of ["gcTo10Final", "gcWinnerMargin"]) {
+      const txt = (a) => {
+        const x = a?.gaps?.[g]?.[k];
+        return x ? `${fmtS(x.median)} (${fmtS(x.p10)}-${fmtS(x.p90)}) median ${x.verdicts.median} · hale ${x.verdicts.tail}` : "-";
+      };
+      gRows.push([`${g} ${k}`, String(gb.gaps?.[g]?.races ?? 0), txt(gb), txt(gc)]);
+    }
+  }
+  out.push("", "### Tidsgab i korte etapeloeb (median, p10-p90 over loeb x seeds)", "", ...table(["Gruppe/maaling", "loeb", revs[0], revs[1]], gRows));
+  return out;
+}
+
 /** Markdown-kortet (privat, balance-internals). */
 export function renderTestportMarkdown(card) {
   const b = card.revisions.baseline;
@@ -345,6 +494,7 @@ export function renderTestportMarkdown(card) {
   const types = [...new Set([...Object.keys(b.byProfileType), ...Object.keys(c.byProfileType)])].sort();
   lines.push(...table(["Profil", ...[card.baseline, card.candidate].flatMap((r) => [`${r} n`, `${r} udbrud vandt`, `${r} str.`, `${r} nr. 10 hentet`])],
     types.map((t) => [t, ...[b, c].flatMap((a) => { const x = a.byProfileType[t]; return x ? [String(x.n), fmtPct(x.breakawayWinShare), fmtN(x.breakawaySizeMedian), fmtS(x.gapTo10Median)] : ["-", "-", "-", "-"]; })])));
+  lines.push("", ...raceGroupMarkdown(card));
   lines.push("", "## Scorecard-maal (domme pr. maaling, alle loeb)", "");
   const keys = [...new Set([...Object.keys(b.tallies), ...Object.keys(c.tallies)])].sort();
   const tt = (t) => (t ? `${t.PASS}/${t.WARN}/${t.FAIL}/${t.TODO}/${t["N/A"]}` : "-");
