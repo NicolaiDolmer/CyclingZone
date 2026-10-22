@@ -81,6 +81,10 @@ jobs:
           const report = publicSummary(JSON.parse(fs.readFileSync('league-audit-private.json', 'utf8')));
           fs.writeFileSync('league-size-audit.json', JSON.stringify(report, null, 2));
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `total=${report.total_findings}\n`);
+          // #7039: short youth groups are a visible warning, never a silent pass.
+          for (const short of report.youth_short) {
+            console.log(`::warning title=Youth group short until regroup::${short.label}: ${short.count}/${short.required}`);
+          }
           NODE
 
       - name: Complete PR check even when measurement fails

@@ -29,3 +29,17 @@ test("#4753 reserve readiness mirrors injury and pending-transfer entry gates wi
   assert.match(sql, /c\.injured_until >= \(p_now AT TIME ZONE 'Europe\/Copenhagen'\)::date/);
   assert.match(sql, /REVOKE ALL ON FUNCTION public\.replace_retired_ai_youth_group\(uuid,timestamptz\) FROM PUBLIC,anon,authenticated/);
 });
+
+// #7039: the live contract is the vacate fallback, which supersedes the
+// no_safe_youth_replacement RAISE asserted above for the original migration.
+const vacateSql = readFileSync(new URL("../../database/2026-10-22-7039-youth-retire-vacate-fallback.sql", import.meta.url), "utf8");
+
+test("#7039 retirement vacates youth places instead of raising when no safe replacement exists", () => {
+  assert.match(vacateSql, /CREATE OR REPLACE FUNCTION public\.replace_retired_ai_youth_group\(p_team_id uuid, p_now timestamptz\)/);
+  assert.doesNotMatch(vacateSql, /RAISE EXCEPTION 'no_safe_youth_replacement'/);
+  assert.match(vacateSql, /vacate_reason := 'no_safe_youth_replacement'/);
+  assert.match(vacateSql, /vacate_reason := 'youth_group_not_full'/);
+  assert.match(vacateSql, /'vacated',true/);
+  assert.match(vacateSql, /RAISE EXCEPTION 'target_has_unfinished_entries'/);
+  assert.match(vacateSql, /FOR UPDATE OF t SKIP LOCKED/);
+});
