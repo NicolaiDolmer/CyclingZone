@@ -24,7 +24,8 @@ Refs #6937 #6938 #6814 #6912 #2757 #6939 #6486 #6804
 - **Ikke kørt:** testporten på S5-ruterne med generator-felt. Det kald kræver prod-hemmeligheder
   og var ikke tilladt i denne session. Simuleringen er derfor på S4-ruter. Det dækkes, når P0
   (#7016, prod-lignende testfelt) kører, og hver gate nedenfor dømmes dér.
-- **Ingen lokal PG17-instans** på maskinen. For #6814 er databasesiden målt read-only i prod
+- **Ingen lokal PG17** på denne maskine (kun PG16-binærer; PG17-runneren fra #6765 kræver en PG17-bin).
+  Motor-målingerne er DB-uafhængige. For #6814 er databasesiden målt read-only i prod
   (tidslinjernes størrelse), og motorsiden offline. Bygge-PR'en for #6814 skal stadig køre sin
   før/efter-måling på samme revision (løbsfilm-designet §3A).
 
