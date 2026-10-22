@@ -2258,7 +2258,7 @@
       "a": "J'ouvre la plupart des nouvelles fonctionnalités à un petit groupe d'abord, pour pouvoir lire chaque réponse avant que tout le monde les ait. Un bêta-testeur voit ces fonctionnalités en avance, et certaines vont changer ou planter en chemin. Demande à rejoindre sous Profil, Groupe bêta : je réponds à chaque demande à la main et tu reçois un message dans ta boîte de réception dans les deux cas. Dis-moi ce qui te semble anormal sur Discord ou via le formulaire de retour. Tu peux quitter le groupe au même endroit, et tu gardes tout ce qui est déjà passé en ligne pour tout le monde. Dans les Patch Notes, Bêta marque un changement que seul le groupe bêta a, Maintenant disponible pour tous marque le jour où il atteint tout le monde, Activé marque quelque chose construit plus tôt qui est maintenant utilisé, et Événement de saison marque des choses comme un changement de saison. Un changement sans étiquette est disponible pour tout le monde."
     },
     "transferRumourFaq": {
-      "q": "Que signifie « Un manager a des vues sur un coureur » ?",
+      "q": "Que signifie \"Un manager a des vues sur un coureur\" ?",
       "a": "C'est une rumeur de transfert. De temps en temps, quand un autre manager ouvre le profil d'un de tes coureurs, tu reçois cet avis. Cela n'arrive pas à chaque visite et ce n'est pas une offre. Tu n'as rien à faire. Il t'indique seulement que quelqu'un le regarde. Les coureurs très consultés la déclenchent plus souvent."
     },
     "freeSeniorAuctionFaq": {
