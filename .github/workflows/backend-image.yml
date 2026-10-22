@@ -76,7 +76,7 @@ jobs:
             *) [ "${actual%%.*}" = "24" ] || { echo "::error::Node $actual er ikke 24.x"; exit 1; } ;;
           esac
           docker run --rm \
-            -e SUPABASE_URL=http://127.0.0.1:9 -e SUPABASE_SERVICE_KEY=smoke -e SUPABASE_ANON_KEY=smoke \
+            -e SUPABASE_URL=http://127.0.0.1:9 -e SUPABASE_SERVICE_KEY=dummy -e SUPABASE_ANON_KEY=dummy \
             "$IMAGE:$GITHUB_SHA" node --input-type=module -e \
             "await import('./lib/healthRoutes.ts'); await import('./routes/api.js'); await import('./cron.js'); console.log('IMPORT_OK'); process.exit(0)"
           docker run --rm "$IMAGE:$GITHUB_SHA" id -un | grep -qx node
