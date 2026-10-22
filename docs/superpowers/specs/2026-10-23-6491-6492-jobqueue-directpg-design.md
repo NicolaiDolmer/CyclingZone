@@ -46,7 +46,7 @@ Backend-kald (supabase-js fra Railway) 22/10, 20:00-20:32 mod 19:28-20:00, opdel
 | heraf læsninger (`training_*`, `rider_*`, `team_*`, `race_*`) | ca. 20 | ca. 95 |
 | heraf RPC (`register_training_date_work`, `commit_training_date_tick`) | ca. 2,2 | ca. 10 |
 
-Rundturene kører efter hinanden. Med en databasesvartid på ca. 25-40 ms pr. læsning (p50) plus netværk Railway → Supabase giver det størstedelen af de ca. 1,2-1,5 s pr. afregning, før commit-kaldet. Fordelingen inde i backenden (netværk mod beregning) er **ikke målt**; tallet er en afledning af deltaet, og en lille del af deltaet kan være spillertrafik, der også stiger kl. 20.
+Rundturene kører efter hinanden. En afregning tager ca. 1,4 s (ca. 7 s pr. hold / 4,8), og commit-kaldet står for ca. 0,3 s af dem. Resten er de ca. 25 øvrige rundture (databasesvartid ca. 25-40 ms p50 hver, plus netværk Railway → Supabase) og beregning i backenden. Fordelingen inde i backenden (netværk mod beregning) er **ikke målt**; tallet er en afledning af deltaet, og en lille del af deltaet kan være spillertrafik, der også stiger kl. 20.
 
 ### 1.3 PostgREST-loftet
 
@@ -83,7 +83,7 @@ Plus 25 boot-kørsler, fordi `setInterval(24h)` nulstilles ved hvert deploy (#23
 
 10x ≈ 2.650 hold med løbsdag (fremskrevet fra ca. 265), ca. 12.700 afregninger.
 1. **Vægur-tiden, stadig først.** Serielt med ca. 7 s pr. hold: ca. 5,2 timer. Lineær fremskrivning, ikke målt.
-2. **Rundture.** Ca. 340.000 PostgREST-kald på aftenen alene for afregningen; med parallelitet 8 ca. 180 kald/s oven i spillertrafikken. Ikke målt.
+2. **Rundture.** Ca. 340.000 PostgREST-kald på aftenen alene for afregningen; med parallelitet 8 (ca. 40 min) ca. 150 kald/s oven i spillertrafikken. Ikke målt.
 3. **Forbindelser.** Parallelitet via PostgREST deler poolen med spillerne (36 forbindelser ved målingen). Ikke målt ved last.
 4. Commit-kaldets DB-tid (ca. 0,3 s p50) skalerer lineært: ca. 70 min samlet DB-tid ved 10x, fordelt over den parallelitet vi vælger.
 
