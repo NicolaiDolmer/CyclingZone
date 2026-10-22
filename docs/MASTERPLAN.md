@@ -11,7 +11,7 @@
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
 - **Stabilitet ved 10x:** aftenafregningen #6490 → job-kø #6491 + direkte Postgres #6492 (spec #6655) · ranglisten genberegner hele historikken #6765 (design #6849) · løbssiden crasher i Firefox #6698.
-- **Sikkerhed (Railway-hændelse 21/10, ejer 22/10):** nøglerotation #7029 (fase 1 Supabase/Alunta gjort; tilbagekald + Resend/Discord/VAPID efter 25/10, ingen nøgleændringer fre-søn) · deploy uden Railway-builds #7034 (vent til lør aften → image → Pro 1 md.).
+- **Sikkerhed (Railway-hændelse 21/10, ejer 22/10):** nøglerotation #7029 (fase 1 Supabase/Alunta gjort; tilbagekald + Resend/Discord/VAPID fortsætter, også fre-søn (ejer 22/10: ingen frys)) · deploy uden Railway-builds #7034 (vent til lør aften → image → Pro 1 md.).
 - **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **v2 (ejer 19/10): testport grøn (#6909) → tænd v2 #6820 på ordret "tænd", deploy før 28/10 11:00 (+ #7026/#7008)** · v3: udbrudspakken #6804 · **formtoppe #6156 tændes ved S5-skiftet via `race_form_peaks` (ejer 22/10).**
 - **Spillerne må aldrig se forkert information (ejer 20/10):** fjern nu, rigtig løsning bagefter. Rytterkortet #6934 · oprydning i hele spillet #6935.
 

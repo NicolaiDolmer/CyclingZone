@@ -11,7 +11,7 @@ LÆS FØRST (i denne rækkefølge): docs/NOW.md → docs/MASTERPLAN.md → docs/
 
 HÅRDE GRÆNSER (viger aldrig):
 - Prod-skrivning kun på ejerens ordrette "kør". Merge af spillervendt kun på ordret "merge". Motor/flag-tænding kun på ordret "tænd".
-- Ingen nøgleændringer fre 23/10 - søn 25/10 aften. Print aldrig secrets (ingen `railway variables`, `cat .env*`); verificér med ja/nej og statuskoder.
+- Ingen frys: store ændringer og forbedringer er velkomne alle dage, også fre-søn (ejer 22/10). Print aldrig secrets (ingen `railway variables`, `cat .env*`); verificér med ja/nej og statuskoder.
 - Repoet er offentligt: anonymisér spillernavne, handles og mails i issues/kommentarer.
 - Destruktive skridt er ejer-gated, og ejeren ser live-tilstanden før hvert enkelt.
 
@@ -31,7 +31,7 @@ HÅRDE GRÆNSER (viger aldrig):
    - Formtoppe #6156: tændes ved skiftet på ordret "tænd", efter transitionen og før 28/10 kl. 11, når #7021-formtesten og v2-testporten er grønne.
    - Patch note 7.374 (S5): akademiets Scouting-fane (#6987), mobilmenu (#7010), motor v2, S5-ruter/identitet, formtoppe hvis tændt.
 
-3. SIKKERHED (#7029): intet fre-søn. Efter 25/10: backend på nye nøgler → GitHub/Vercel → tilbagekald gamle + slå legacy JWT fra → Resend, Discord, VAPID. Ét skridt ad gangen med links til ejeren.
+3. SIKKERHED (#7029), fortsæt nu (også fre-søn): backend på nye nøgler → GitHub/Vercel → tilbagekald gamle + slå legacy JWT fra → Resend, Discord, VAPID. Ét skridt ad gangen med links til ejeren.
 
 4. EJERVALG (ét kort ad gangen i morgenblokken 08:30, med anbefaling og billede når det er visuelt). Rækkefølge efter spillereffekt:
    1) #6739 små trupper mister hele etapeløb (FØR 28/10). Mål tallene igen mod den aktuelle S5-kalender, før du spørger (17/10: 105 gange i S4, 122 i S5). A (anbefalet): start med færre ryttere (mindst N), når de manglende kørte et andet løb samme løbsdag. Motorregel uden kalenderændring, bygger på skade-reglen fra #6745. B: kalenderregel, genåbner låst overlap-andel #3329 og kræver ny S5-kalender. Spørg A/B, ved A også N. Design + målt baseline før 1. PR (AGENTS 36). Tænd på go.
