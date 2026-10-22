@@ -1568,7 +1568,7 @@
       },
       "graduation": {
         "title": "Graduation Day",
-        "text": "Riders who have outgrown their squad move on at the season turn. A junior who turns 19 moves to your U23 team, and a U23 rider who turns 23 moves to your senior team. The list opens the week before the season turns, and the deadline is the turn itself. Until you move a rider, he trains and races in his old squad. For each rider you choose Move up (needs a free place in the squad he is moving to, and he keeps his contract exactly as it is), Sell on the transfer market, or Release as a free agent. If you do nothing, the club picks for you at the turn: move up when there is room, otherwise sell. Your coach gives a short read on each rider, and it is only ever a read, never a promise."
+        "text": "Riders who have outgrown their squad move on at the season turn. A junior who turns 19 moves to your U23 team, and a U23 rider who turns 23 moves to your senior team. The list opens the week before the season turns, and the deadline is the turn itself. Until you move a rider, he trains and races in his old squad. For each rider you choose Move up (needs a free place in the squad he is moving to, and he keeps his contract exactly as it is), Sell on the transfer market, or Release as a free agent. If you do nothing, the club picks for you at the turn: move up when there is room. If that squad is full, he waits under Awaiting promotion and keeps racing in his current squad on the same contract, until you free a spot and press Promote. Your coach gives a short read on each rider, and it is only ever a read, never a promise."
       },
       "graduationDayPage": {
         "title": "Where to make the choice",
@@ -1600,7 +1600,7 @@
       },
       "graduationDayAt23": {
         "title": "What happens when a rider ages out of his squad?",
-        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it, otherwise sells him, otherwise releases him as a free agent."
+        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it. If the squad is full, he waits under Awaiting promotion until you free a spot. If there is room but the club cannot afford him, he is sold, and if nobody buys him he is released as a free agent."
       },
       "youthRacesFromS4": {
         "title": "Do U23 team and Junior team actually race?",

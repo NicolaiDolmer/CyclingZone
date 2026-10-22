@@ -1568,7 +1568,7 @@
       },
       "graduation": {
         "title": "Graduation Day",
-        "text": "Ryttere der er vokset ud af deres trup, rykker videre ved sæsonskiftet. En junior der fylder 19, flytter til dit U23-hold, og en U23-rytter der fylder 23, flytter til dit seniorhold. Listen åbner ugen før sæsonen skifter, og fristen er selve skiftet. Indtil du flytter en rytter, træner og kører han i sin gamle trup. For hver rytter vælger du Ryk op (kræver en ledig plads i den trup han flytter til, og han beholder sin kontrakt præcis som den er), Sælg på transfermarkedet, eller Fyr som free agent. Gør du ingenting, vælger klubben for dig ved skiftet: op når der er plads, ellers sælg. Din træner giver en kort vurdering af hver rytter, og det er altid kun en vurdering, aldrig et løfte."
+        "text": "Ryttere der er vokset ud af deres trup, rykker videre ved sæsonskiftet. En junior der fylder 19, flytter til dit U23-hold, og en U23-rytter der fylder 23, flytter til dit seniorhold. Listen åbner ugen før sæsonen skifter, og fristen er selve skiftet. Indtil du flytter en rytter, træner og kører han i sin gamle trup. For hver rytter vælger du Ryk op (kræver en ledig plads i den trup han flytter til, og han beholder sin kontrakt præcis som den er), Sælg på transfermarkedet, eller Fyr som free agent. Gør du ingenting, vælger klubben for dig ved skiftet: op når der er plads. Er truppen fuld, venter han under Afventer oprykning og kører videre i sin nuværende trup på samme kontrakt, til du har gjort plads og trykker Ryk op. Din træner giver en kort vurdering af hver rytter, og det er altid kun en vurdering, aldrig et løfte."
       },
       "graduationDayPage": {
         "title": "Hvor du træffer valget",
@@ -1600,7 +1600,7 @@
       },
       "graduationDayAt23": {
         "title": "Hvad sker der, når en rytter vokser ud af sin trup?",
-        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd, ellers sælges han, ellers slippes han som free agent."
+        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd. Er truppen fuld, venter han under Afventer oprykning, til du har gjort plads. Er der plads, men ikke råd, sælges han, og bliver han ikke solgt, slippes han som free agent."
       },
       "youthRacesFromS4": {
         "title": "Kører U23-holdet og Juniorholdet faktisk løb?",
