@@ -15,6 +15,7 @@ import {
   getStarRiderScoreThreshold,
   countTeamStarRiders,
 } from "./boardIdentity.js";
+import { isU25ForSeason } from "./riderSeasonAge.js";
 import { applyDnaWeightingToGoals, buildDnaTraditionGoal } from "./boardClubDna.js";
 import { stampGoalsOwners } from "./boardMembers.js";
 import {
@@ -1009,6 +1010,21 @@ function countSignatureRiders(riders, goal, context = {}) {
   ).length;
 }
 
+// #6990 · Én regel for "U25-rytter" i bestyrelsens min_u25_riders-mål: UCI-reglen
+// (riderSeasonAge.isU25ForSeason) når sæsonnummer og fødselsdato kendes, ellers den
+// lagrede is_u25-kolonne som fallback. Alle ryttere på holdet tælles uanset trup
+// (junior, U23, senior): en rytter under 23 er pr. definition også U25.
+export function isRiderU25ForBoard(rider, seasonNumber = null) {
+  if (seasonNumber != null && rider?.birthdate) {
+    return isU25ForSeason(rider.birthdate, seasonNumber);
+  }
+  return Boolean(rider?.is_u25);
+}
+
+export function countU25RidersForBoard(riders = [], seasonNumber = null) {
+  return (riders || []).filter((rider) => isRiderU25ForBoard(rider, seasonNumber)).length;
+}
+
 export function evaluateGoal(goal, standing, team, context = {}) {
   const enrichedGoal = addGoalMetadata(goal);
   const {
@@ -1056,7 +1072,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       if (enrichedGoal.cumulative) return null;
       return (standing?.gc_wins || 0) >= enrichedGoal.target;
     case "min_u25_riders":
-      return (team?.riders || []).filter((rider) => rider.is_u25).length >= enrichedGoal.target;
+      return countU25RidersForBoard(team?.riders, context.seasonNumber) >= enrichedGoal.target;
     case "min_national_riders":
       return (team?.riders || [])
         .filter((rider) => normalizeBoardRider(rider).nationality_code === enrichedGoal.nationality_code)
@@ -1294,7 +1310,7 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;
     case "min_u25_riders":
-      actual = riders.filter((rider) => rider.is_u25).length;
+      actual = countU25RidersForBoard(riders, context.seasonNumber);
       score = scoreHigherBetter(actual, target);
       status = actual >= target ? "ahead" : score >= 0.65 ? "on_track" : "behind";
       break;

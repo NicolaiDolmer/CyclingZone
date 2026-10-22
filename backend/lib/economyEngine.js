@@ -2052,6 +2052,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       currentSponsorIncome: freshTeamData?.sponsor_income ?? team.sponsor_income,
       recentSnapshots: recentSnapshots || [],
       goalContext,
+      seasonNumber: currentSeasonNumber ?? null,
     });
 
     // #1187: evaluer fra sæson-start-ankeret → newSatisfaction = anker + delta,

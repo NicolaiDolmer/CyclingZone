@@ -877,6 +877,7 @@ export async function buildBoardRoomPayload({
       wageBillPerSeason: sumRiderSalaries(riders),
       currentSponsorIncome: teamRes.data?.sponsor_income ?? null,
       goalContext,
+      seasonNumber: currentSeasonNumber,
       extra: { assignedMembers, reputationEnabled },
     });
 

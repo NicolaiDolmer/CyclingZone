@@ -17185,6 +17185,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
         recentSnapshots: boardSnapshots.slice(-3).reverse(),
         goalContext,
+        seasonNumber: activeSeason?.number ?? null,
         extra: {
           isExpired,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
@@ -18084,6 +18085,7 @@ async function computeBoardRequestOutcome(req) {
       currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
       recentSnapshots: snapshotsRes.data || [],
       goalContext,
+      seasonNumber: activeSeason?.number ?? null,
       extra: {
         isExpired: board.negotiation_status === "pending",
         requestUsedThisSeason,
