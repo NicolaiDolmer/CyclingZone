@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8">
+<title>#4714 valgkort: auktion 12 timer</title>
+<style>
+:root{--bg:#f4f2ec;--card:#fcfbf7;--line:#e5e0d5;--t1:#0e0f15;--t2:#5d5a54;--t3:#8c877e;--gold:#c9a227;--goldt:#a07800;--subtle:#ece9e1;--ink:#141a2e;--dan:#b4231a;--danbg:#fbece9}
+*{box-sizing:border-box}
+body{margin:0;background:#151a24;font-family:'DM Sans',system-ui,Segoe UI,sans-serif;color:var(--t1);padding:28px;width:900px}
+h1{font-family:'Inter Tight','Segoe UI',sans-serif;color:#fff;font-size:24px;margin:0 0 4px}
+.sub{color:#b9bfcc;font-size:14px;margin:0 0 22px}
+.cols{display:grid;grid-template-columns:390px 390px;gap:36px}
+.col h2{color:#fff;font-family:'Inter Tight','Segoe UI',sans-serif;font-size:16px;margin:0 0 4px}
+.col h2 span{color:#e8c547}
+.col .cap{color:#b9bfcc;font-size:13px;line-height:1.45;margin:0 0 10px;min-height:56px}
+.phone{background:var(--bg);border-radius:5px;padding:16px;min-height:600px}
+.t{font-family:'Inter Tight','Segoe UI',sans-serif;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.s{font-size:13px;color:var(--t2);margin:4px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:16px;margin-bottom:14px}
+.card h3{font-size:15px;font-weight:600;margin:0 0 12px}
+.rid{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.rid b{font-size:14px;font-weight:600}.rid .m{font-family:'Inter Tight','Segoe UI',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3)}
+.f{margin-bottom:12px}
+.f label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:5px}
+.in{border:1px solid var(--line);background:#fff;border-radius:5px;padding:9px 11px;font-size:14px;font-variant-numeric:tabular-nums}
+.in.bad{border-color:var(--dan)}
+.seg{display:flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;font-size:12.5px;background:var(--card)}
+.seg div{flex:1;text-align:center;padding:7px 4px;color:var(--t2);border-left:1px solid var(--line)}
+.seg div:first-child{border-left:none}
+.seg .sel{background:#f3ead0;color:var(--goldt);font-weight:600}
+.hint{font-size:12px;color:var(--t2);margin-top:6px;line-height:1.4}
+.err{font-size:12.5px;color:var(--dan);background:var(--danbg);border-radius:5px;padding:8px 10px;margin-top:8px;line-height:1.4}
+.btn{background:var(--gold);color:var(--ink);border-radius:5px;text-align:center;font-weight:600;font-size:14px;padding:10px}
+.btn.off{background:var(--subtle);color:var(--t3)}
+.new{outline:2px dashed #e8c547;outline-offset:3px;border-radius:5px}
+.leg{margin-top:12px;color:#d7dbe4;font-size:13.5px;line-height:1.5;width:390px}
+.leg b{color:#e8c547}
+</style></head><body>
+<h1>#4714 Fri agent-auktion: valgt sluttid</h1>
+<p class="sub">Statisk skitse, mobil 390 px. Rytter uden hold, manager starter auktionen og vælger selv sluttid. Fiktivt rytternavn og tidspunkter. Gul stiplet ramme = ændring.</p>
+<div class="cols">
+
+<div class="col"><h2><span>A</span> · Mindst 12 timer for ryttere uden hold</h2>
+<p class="cap">Vælger du 3 timer, får du en besked med tidligste tilladte tid, og knappen er låst.</p>
+<div class="phone">
+ <div class="t">Start auktion</div><div class="s">Rytter A er uden hold.</div>
+ <div class="card">
+  <div class="rid"><b>Rytter A</b><span class="m">Ingen hold</span></div>
+  <div class="f"><label>Sluttid</label>
+   <div class="seg"><div>Standard</div><div class="sel">Vælg selv</div></div>
+  </div>
+  <div class="f"><div class="in bad">i dag kl. 20:30</div>
+   <div class="err new">Ryttere uden hold kører mindst 12 timer. Tidligste sluttid er i morgen kl. 08:30.</div>
+  </div>
+  <div class="hint new">Du kan vælge mellem 12 og 48 timer frem.</div>
+ </div>
+ <div class="btn off new">Start auktion</div>
+</div>
+<div class="leg"><b>Uændret:</b> dine egne ryttere (1 til 48 timer) og Deadline Day-lynauktioner.</div>
+</div>
+
+<div class="col"><h2><span>B</span> · Behold 1 time</h2>
+<p class="cap">Ingen ændring i spillet. Vi retter i stedet teksten, så ingen tror 12 timer også gælder dem.</p>
+<div class="phone">
+ <div class="t">Start auktion</div><div class="s">Rytter A er uden hold.</div>
+ <div class="card">
+  <div class="rid"><b>Rytter A</b><span class="m">Ingen hold</span></div>
+  <div class="f"><label>Sluttid</label>
+   <div class="seg"><div>Standard</div><div class="sel">Vælg selv</div></div>
+  </div>
+  <div class="f"><div class="in">i dag kl. 20:30</div></div>
+  <div class="hint new">Du kan vælge mellem 1 og 48 timer frem. Spillets egne auktioner på ryttere uden hold kører mindst 12 timer; din egen kan være kortere.</div>
+ </div>
+ <div class="btn">Start auktion</div>
+</div>
+<div class="leg"><b>Konsekvens:</b> korte auktioner sent på dagen kan stadig lukke, før andre når at se rytteren.</div>
+</div>
+
+</div>
+</body></html>

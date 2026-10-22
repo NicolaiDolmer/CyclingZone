@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8">
+<title>#3984 valgkort: indstillinger</title>
+<style>
+:root{--bg:#f4f2ec;--card:#fcfbf7;--line:#e5e0d5;--t1:#0e0f15;--t2:#5d5a54;--t3:#8c877e;--gold:#c9a227;--goldt:#a07800;--subtle:#ece9e1;--ink:#141a2e}
+*{box-sizing:border-box}
+body{margin:0;background:#151a24;font-family:'DM Sans',system-ui,Segoe UI,sans-serif;color:var(--t1);padding:28px;width:900px}
+h1{font-family:'Inter Tight','Segoe UI',sans-serif;color:#fff;font-size:24px;margin:0 0 4px}
+.sub{color:#b9bfcc;font-size:14px;margin:0 0 22px}
+.cols{display:grid;grid-template-columns:390px 390px;gap:36px}
+.col h2{color:#fff;font-family:'Inter Tight','Segoe UI',sans-serif;font-size:16px;margin:0 0 4px}
+.col h2 span{color:#e8c547}
+.col .cap{color:#b9bfcc;font-size:13px;line-height:1.45;margin:0 0 10px;min-height:56px}
+.phone{background:var(--bg);border-radius:5px;padding:16px;min-height:640px}
+.t{font-family:'Inter Tight','Segoe UI',sans-serif;font-weight:700;font-size:20px;letter-spacing:-.01em}
+.s{font-size:13px;color:var(--t2);margin:4px 0 14px}
+.tabs{display:flex;gap:18px;font-size:14px;font-weight:500;color:var(--t2);border-bottom:1px solid var(--line);margin-bottom:14px;overflow:hidden;white-space:nowrap}
+.tabs div{padding:0 0 9px}
+.tabs .on{color:var(--goldt);border-bottom:2px solid var(--gold);margin-bottom:-1px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:16px;margin-bottom:14px}
+.card h3{font-size:15px;font-weight:600;margin:0 0 14px}
+.f{margin-bottom:12px}
+.f label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:5px}
+.in{border:1px solid var(--line);background:#fff;border-radius:5px;padding:9px 11px;font-size:14px;display:flex;align-items:center;gap:8px;justify-content:space-between}
+.in .l{display:flex;align-items:center;gap:8px}
+.flag{display:inline-block;width:20px;height:14px;border-radius:2px;border:1px solid #d9d3c5;position:relative;overflow:hidden}
+.flag.dk{background:#c8102e}.flag.dk:before{content:"";position:absolute;left:5px;top:0;width:3px;height:100%;background:#fff}.flag.dk:after{content:"";position:absolute;left:0;top:5px;width:100%;height:3px;background:#fff}
+.flag.be{background:linear-gradient(90deg,#000 33%,#fdda24 33% 66%,#ef3340 66%)}
+.chev{width:12px;height:12px;stroke:var(--t3);fill:none;stroke-width:2}
+.btn{background:var(--gold);color:var(--ink);border-radius:5px;text-align:center;font-weight:600;font-size:14px;padding:10px;margin-top:4px}
+.hint{font-size:12px;color:var(--t3);margin-top:5px;line-height:1.4}
+.row{display:flex;justify-content:space-between;align-items:center;font-size:13.5px;font-weight:500;padding:13px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:none;padding-top:0}
+.row .m{font-family:'Inter Tight','Segoe UI',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);font-weight:500}
+.tag{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+.new{outline:2px dashed #e8c547;outline-offset:3px;border-radius:5px}
+.leg{margin-top:20px;color:#d7dbe4;font-size:13.5px;line-height:1.5;width:816px}
+.leg b{color:#e8c547}
+</style></head><body>
+<h1>#3984 Indstillinger + nationalitet</h1>
+<p class="sub">Statisk skitse, mobil 390 px. Skabelon T1 (PAGE_TEMPLATES.md). Fiktivt navn og data. Gul stiplet ramme = nyt.</p>
+<div class="cols">
+
+<div class="col"><h2><span>A</span> · Tre områder: Manager, Hold, Generelt</h2>
+<p class="cap">Fanerne omdøbes og flyttes rundt, så de matcher dit direktiv. Nationalitet bor i Manager og Hold.</p>
+<div class="phone">
+ <div class="t">Indstillinger</div><div class="s">Din manager, dit hold og spillet.</div>
+ <div class="tabs"><div class="on">Manager</div><div>Hold</div><div>Generelt</div><div>Beta</div></div>
+ <div class="card"><h3>Managerprofil</h3>
+  <div class="f"><label>Brugernavn</label><div class="in">Nordlys-manager</div></div>
+  <div class="f"><label>Managernavn</label><div class="in">Mads Eriksen</div></div>
+  <div class="f new"><label>Managerens land</label><div class="in"><span class="l"><i class="flag dk"></i>Danmark</span><svg class="chev" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4"/></svg></div></div>
+  <div class="f"><label>Discord</label><div class="in">Forbundet</div></div>
+  <div class="btn">Gem</div>
+ </div>
+ <div class="card"><h3>Abonnement</h3><div class="row"><span>Pro</span><span class="m">Ikke aktiv</span></div></div>
+</div>
+<div class="leg" style="width:390px"><b>Hold-fanen:</b> holdnavn, holdets land, assistent. <b>Generelt:</b> notifikationer, udseende, sprog, privatliv.</div>
+</div>
+
+<div class="col"><h2><span>B</span> · Behold fanerne, tilføj kun nationalitet</h2>
+<p class="cap">Ingen omlægning. To nye felter i Hold-kortet, resten af indstillingerne står hvor de står.</p>
+<div class="phone">
+ <div class="t">Indstillinger</div><div class="s">Konto, notifikationer og præferencer.</div>
+ <div class="tabs"><div class="on">Konto</div><div>Notifikationer</div><div>Præferencer</div><div>Privatliv</div></div>
+ <div class="card"><h3>Konto</h3>
+  <div class="f"><label>Brugernavn</label><div class="in">Nordlys-manager</div></div>
+  <div class="f"><label>E-mail</label><div class="in">mads@example.com</div></div>
+ </div>
+ <div class="card"><h3>Hold</h3>
+  <div class="f"><label>Holdnavn</label><div class="in">Nordlys CK</div></div>
+  <div class="f"><label>Managernavn</label><div class="in">Mads Eriksen</div></div>
+  <div class="f new"><label>Managerens land</label><div class="in"><span class="l"><i class="flag dk"></i>Danmark</span><svg class="chev" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4"/></svg></div></div>
+  <div class="f new"><label>Holdets land</label><div class="in"><span class="l"><i class="flag be"></i>Belgien</span><svg class="chev" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4"/></svg></div></div>
+  <div class="btn">Gem</div>
+ </div>
+</div>
+<div class="leg" style="width:390px"><b>Bemærk:</b> manager og hold i samme kort, som i dag.</div>
+</div>
+
+</div>
+</body></html>
