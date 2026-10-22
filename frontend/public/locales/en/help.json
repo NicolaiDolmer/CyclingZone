@@ -157,7 +157,7 @@
           "You get a set number of adjustments per meeting, shown at the top. A board that is confident in you grants more of them and stretches further in its counter-offers.",
           "The board may propose a new milestone for the club vision, with the season it should be reached in. Accept it or decline it.",
           "You get one request per meeting. A refusal always comes back with a counter-offer, never a flat no.",
-          "Sign, and the mandate is active for the season. Until it is signed it stays a proposal.",
+          "Sign, and the mandate is active for the season. Until it is signed it stays a proposal. After you sign, the board does not change it. The only thing that can be added is a bonus offer, and only if you accept it yourself.",
           "If you never answer, the board signs its own proposal for you when the deadline shown at the top of the meeting runs out. You keep the mandate, you just did not shape it."
         ]
       },
@@ -1381,7 +1381,7 @@
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
-        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. Two separate things decide what an ability becomes: how high it can reach, and how fast it gets there. His type sets both. An ability his primary type is built for reaches highest and builds fastest. His secondary type is close behind, around 85% as high. Positioning and tactics are craft: nobody is born with them, so every rider can reach around 75% as high, but they build slowly. An ability outside both his roles reaches around 60% as high and builds slowly. Each type covers several abilities, not only the one in its name: a GC type also covers time trial, so a GC rider can reach high there. An ability his type actively works against barely moves at all. Check both type badges before picking a focus, and note that reaching high and getting there quickly are no longer the same thing: an ability can have plenty of room left and still take years to fill it. The pace is adjusted from time to time as part of ongoing game balancing, so a rider's daily progress can feel different from one update to the next even though nothing about him personally has changed."
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a potential, all set when the rider is created. Two separate things decide what an ability becomes: how high it can reach, and how fast it gets there. His type sets how high. An ability his primary type is built for reaches highest and builds fastest. His secondary type is close behind. Positioning and tactics are craft: nobody is born with them, so every rider can reach a decent level, but they build slowly. An ability outside both his roles has a low ceiling and builds slowly. Each type covers several abilities, not only the one in its name: a GC type also covers time trial, so a GC rider can reach high there. An ability his type actively works against barely moves at all. His potential sets how fast he develops overall, so a bigger talent gets to his ceiling sooner, but it never lifts the ceiling. Check both type badges before picking a focus, and note that reaching high and getting there quickly are two different things: an ability can have plenty of room left and still take years to fill it. The pace is adjusted from time to time as part of ongoing game balancing, so a rider's daily progress can feel different from one update to the next even though nothing about him personally has changed."
       },
       "ceilingReached": {
         "title": "My rider's ability has stopped rising",
@@ -1433,7 +1433,7 @@
       },
       "longTermGrowth": {
         "title": "Long-term growth",
-        "text": "Two separate things decide where an ability ends up: how high it can reach, and how fast it gets there. Both come from the rider's type. This is why a rider no longer arrives at his ceiling just by existing long enough. The ceiling is what he could have become; your training decides how close he gets, and which abilities he gets close on. Riders still peak around age 27-28 and decline after that, and training can never push anyone past their potential."
+        "text": "Two separate things decide where an ability ends up: how high it can reach, and how fast it gets there. How high comes from the rider's type: each type has its own ceiling for each ability. How fast comes from his potential: a bigger talent develops faster toward the same ceiling, but potential does not raise the ceiling itself. This is why a rider no longer arrives at his ceiling just by existing long enough. The ceiling is what he could have become; your training decides how close he gets, and which abilities he gets close on. Riders still peak around age 27-28 and decline after that, and training can never push anyone past his ceiling."
       },
       "readingReport": {
         "title": "Reading the training report",
@@ -1556,7 +1556,7 @@
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
-        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system and no hidden brake on how fast they improve: set a focus and an intensity, and gains accumulate day by day in the same way. The one real difference is age. Riders under 22 get an extra youth boost that fades as they approach 22. Their potential sets both how high their abilities can ultimately reach and how fast they get there, so a bigger talent develops quicker and tops out higher, while a smaller talent grows into a solid domestique."
+        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system and no hidden brake on how fast they improve: set a focus and an intensity, and gains accumulate day by day in the same way. The one real difference is age. Riders under 22 get an extra youth boost that fades as they approach 22. Their type sets how high each ability can ultimately reach, and their potential sets how fast they get there, so a bigger talent develops quicker toward the same ceiling, while a smaller talent grows more slowly into a solid domestique."
       },
       "youthAuctions": {
         "title": "Youth auctions",
@@ -1899,7 +1899,7 @@
     },
     "trainingFocusFaq": {
       "q": "How do I train a rider?",
-      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You can set a focus on as many riders as you like. Higher intensity trains faster and builds more fatigue, but never risks losing progress; changing an existing focus costs nothing, and training is free."
+      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling, day by day as the training runs. You can set a focus on as many riders as you like. Higher intensity trains faster and builds more fatigue, but never risks losing progress; changing an existing focus costs nothing, and training is free."
     },
     "restForDevelopedFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
@@ -2256,6 +2256,26 @@
     "betaGroupFaq": {
       "q": "What is the beta group, and how do I join?",
       "a": "I open most new features to a small group first, so I can read every reply before everyone gets them. A beta tester sees those features early, and some of them will change or break along the way. Ask to join under Profile, Beta group: I answer each request by hand and you get a message in your inbox either way. Tell me what feels wrong in Discord or through the feedback form. You can leave the group again from the same place, and you keep everything that has already gone live for everyone. In patch notes, Beta marks a change only the beta group has, Now live for all marks the day it reaches everyone, Switched on marks something built earlier that is now in use, and Season event marks things like a season switch. A change with no label is live for everyone."
+    },
+    "transferRumourFaq": {
+      "q": "What does \"A manager is eyeing a rider\" mean?",
+      "a": "It is a transfer rumour. Now and then, when another manager opens the profile of one of your riders, you get this notice. It does not happen on every visit, and it is no offer. You do not have to do anything. It only tells you that someone is looking at him. Riders who are looked at often will trigger it more often."
+    },
+    "freeSeniorAuctionFaq": {
+      "q": "Are free agents put up for auction automatically?",
+      "a": "No. When a senior rider's contract runs out and is not renewed, he becomes a free agent without an auction. He only goes to auction if a manager starts one. Any manager can do that. Automatic auctions only happen for young riders: the youth market, and academy intake offers that expired or were turned down."
+    },
+    "ownDivisionCalendarFaq": {
+      "q": "Does my team only race in its own division?",
+      "a": "Yes. Your riders are entered in the races on your own division's calendar. Riders you buy join that calendar too. If you buy a rider during a stage race, he finishes it for his old team first and joins yours right after the finish."
+    },
+    "trainWeaknessesFaq": {
+      "q": "Should I train my weak abilities?",
+      "a": "Usually not. A rider's type sets a ceiling per ability, and a weakness has a low ceiling, so it stops growing early. The closer an ability gets to its ceiling, the less each training day adds. Train the abilities his type is built for, and put weaknesses second. A weak ability still counts in a stage, but it matters mostly where the stage asks for it."
+    },
+    "raceFatigueSameFatigueFaq": {
+      "q": "Is the fatigue from race effort the same as the Fatigue on the training page?",
+      "a": "Yes. There is one Fatigue per rider, not a hidden race meter. He starts a race with the Fatigue you see on the training page. In a stage race every stage adds load on top, and a harder effort (work or attack) adds more than an easier one, so a rider who goes hard every day gets tired over the race. That fatigue stays with him afterwards, in the same value."
     },
     "sharpFlatTrainingDaysFaq": {
       "q": "What do 'sharp' and 'flat' training days mean, and should a run of flat days worry me?",

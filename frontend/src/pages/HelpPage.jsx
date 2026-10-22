@@ -681,6 +681,13 @@ const FAQ_KEYS = [
   "riderPoolNationalityFaq",
   "retirementAgeWindowFaq",
   "scoutCancelRefundFaq",
+  // #6979: spoergsmaal der gaar igen (transferrygte, frie seniorer, egen division,
+  // svagheder, loebstraethed), verificeret mod koden.
+  "transferRumourFaq",
+  "freeSeniorAuctionFaq",
+  "ownDivisionCalendarFaq",
+  "trainWeaknessesFaq",
+  "raceFatigueSameFatigueFaq",
 ];
 
 function buildSections(t, vars, flags) {
