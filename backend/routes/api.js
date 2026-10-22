@@ -14770,7 +14770,13 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     const upkeepPerRaceDay = await isUpkeepPerRaceDayEnabled(supabase);
     // #6936: samme flag som processSeasonStart — intet upkeep når on.
     const noUpkeep = await isEconomyNoUpkeepEnabled(supabase);
-    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay, noUpkeep });
+    // #6990 · sæsonnummer til U25-målets aldersudledning (samme regel som season-end).
+    const { data: previewSeason } = await supabase
+      .from("seasons").select("number").eq("id", seasonId).maybeSingle();
+    const preview = buildSeasonEndPreviewRows({
+      teams, standings, loanData, upkeepPerRaceDay, noUpkeep,
+      seasonNumber: previewSeason?.number ?? null,
+    });
 
     res.json({ preview });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
