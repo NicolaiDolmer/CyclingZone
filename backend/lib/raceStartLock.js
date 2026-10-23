@@ -26,6 +26,10 @@ import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 // AGENTS hard rule 16: laasebeslutninger laeser aldrig vaeguret selv. Kalderen (ruten,
 // request-graensen) injicerer `now`; mangler det, er det en programfejl, ikke "aaben".
+/**
+ * @param {unknown} now
+ * @returns {asserts now is Date}
+ */
 function assertNow(now) {
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
     throw new TypeError("raceStartLock: now (Date) skal injiceres");
@@ -35,7 +39,7 @@ function assertNow(now) {
 /**
  * Er et planlagt tidspunkt passeret? Ugyldigt/manglende tidspunkt => false (aaben).
  * @param {string|null|undefined} scheduledAt ISO-tidspunkt
- * @param {Date} [now]
+ * @param {Date} now injiceret ur (hard rule 16)
  */
 export function hasScheduledStartPassed(scheduledAt, now) {
   assertNow(now);
@@ -47,7 +51,7 @@ export function hasScheduledStartPassed(scheduledAt, now) {
 /**
  * T2: er en ETAPE laast for taktik-writes? Ren. Se filhovedet.
  *
- * @param {{stageNumber: number, stagesCompleted: number, scheduledAt: string|null|undefined, now?: Date}} args
+ * @param {{stageNumber: number, stagesCompleted: number, scheduledAt: string|null|undefined, now: Date}} args
  */
 export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, now }) {
   if (stageNumber <= stagesCompleted) return true;
@@ -57,9 +61,9 @@ export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, n
 /**
  * Er LOEBETS trup laast? Ren. Samme regel som taktikken for etape 1.
  *
- * @param {{status?: string|null, stagesCompleted?: number|null, firstStageScheduledAt?: string|null, now?: Date}} args
+ * @param {{status?: string|null, stagesCompleted?: number|null, firstStageScheduledAt?: string|null, now: Date}} args
  */
-export function isRaceLineupLocked({ status = null, stagesCompleted = 0, firstStageScheduledAt = null, now } = {}) {
+export function isRaceLineupLocked({ status = null, stagesCompleted = 0, firstStageScheduledAt = null, now }) {
   if (status === "completed") return true;
   return isStageLocked({ stageNumber: 1, stagesCompleted: Number(stagesCompleted) || 0, scheduledAt: firstStageScheduledAt, now });
 }
@@ -68,7 +72,7 @@ export function isRaceLineupLocked({ status = null, stagesCompleted = 0, firstSt
  * Etape 1's planlagte start pr. loeb. Kun loeb der ikke allerede er laast af
  * status/stages_completed slaas op (resten er afgjort uden schedule).
  *
- * @param {{supabase: object, races: Array<{id: string, status?: string|null, stages_completed?: number|null}>}} args
+ * @param {{supabase: any, races: Array<{id: string, status?: string|null, stages_completed?: number|null}>}} args
  * @returns {Promise<Map<string, string|null>>} raceId -> scheduled_at (kun loeb med en raekke)
  */
 export async function loadFirstStageStarts({ supabase, races = [] }) {
@@ -108,7 +112,7 @@ export function firstStageStartsFromSchedule(scheduleRows = []) {
  * saettet. Bruges af board-/kalender-/regenerer-/ryd-stierne saa de ikke hver
  * genopfinder reglen.
  *
- * @param {{supabase?: object, races: Array<object>, starts?: Map<string, string|null>, now?: Date}} args
+ * @param {{supabase?: any, races: Array<{id: string, status?: string|null, stages_completed?: number|null}>, starts?: Map<string, string|null>|null, now: Date}} args
  */
 export async function withLineupLocked({ supabase, races = [], starts = null, now }) {
   assertNow(now);
@@ -129,7 +133,7 @@ export async function withLineupLocked({ supabase, races = [], starts = null, no
  * etape 1's start). Til skrive-graensen (regenerer) og konflikt-klassifikationen
  * (auto-frigivelse), hvor et tidligere snapshot kan vaere foraeldet.
  *
- * @param {{supabase: object, raceIds: string[], now: Date}} args
+ * @param {{supabase: any, raceIds: string[], now: Date}} args
  * @returns {Promise<Set<string>>} id'er paa laaste loeb
  */
 export async function loadLockedRaceIds({ supabase, raceIds = [], now }) {
@@ -156,7 +160,7 @@ export async function loadLockedRaceIds({ supabase, raceIds = [], now }) {
 
 /**
  * Enkelt-loeb-variant til skrive-stierne (PUT /selection, auto, afmeld).
- * @param {{supabase: object, race: {id: string, status?: string|null, stages_completed?: number|null}, now?: Date}} args
+ * @param {{supabase: any, race: {id: string, status?: string|null, stages_completed?: number|null}, now: Date}} args
  * @returns {Promise<boolean>}
  */
 export async function isRaceLineupLockedNow({ supabase, race, now }) {

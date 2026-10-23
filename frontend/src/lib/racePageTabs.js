@@ -60,6 +60,10 @@ export function racePhase({ status, stagesCompleted = 0, stages = 1, hasResults 
  * (backend/lib/raceStartLock.js, #6959). Manglende/ugyldigt tidspunkt => false (åben):
  * et schedule-hul må aldrig fastlåse et helt løb.
  */
+/**
+ * @param {string|null|undefined} scheduledAt
+ * @param {number} [now]
+ */
 export function hasScheduledStartPassed(scheduledAt, now = Date.now()) {
   if (!scheduledAt) return false;
   const startMs = Date.parse(scheduledAt);
@@ -104,6 +108,8 @@ export function resolveRaceTab(requested, tabs) {
  * løbs taktik) — præcis samme defensive valg som serveren.
  *
  * Kun en visnings-gate: serveren afviser stadig selv en write efter lås.
+ *
+ * @param {{stageNumber: number, stagesCompleted?: number, scheduledAt?: string|null, raceCompleted?: boolean, now?: number}} args
  */
 export function isStageLockedForTactics({ stageNumber, stagesCompleted = 0, scheduledAt = null, raceCompleted = false, now = Date.now() }) {
   if (raceCompleted) return true;
