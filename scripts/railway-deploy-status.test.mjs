@@ -36,7 +36,7 @@ test("failed: matchet SHA med status REMOVED", () => {
 });
 
 test("pending: matchet SHA stadig under bygning (BUILDING/DEPLOYING/QUEUED)", () => {
-  for (const status of ["BUILDING", "DEPLOYING", "QUEUED", "WAITING", "SLEEPING", "SKIPPED"]) {
+  for (const status of ["BUILDING", "DEPLOYING", "QUEUED", "WAITING", "SLEEPING"]) {
     const deployments = [{ status, meta: { commitHash: sha } }];
     assert.equal(classifyDeploymentStatus(deployments, sha), "pending", `status ${status}`);
   }
@@ -180,4 +180,35 @@ test("getRailwayDeployStatus: service ikke fundet ved navne-opslag klassificeres
   });
   const result = await getRailwayDeployStatus({ sha, token: "tok", serviceName: "CyclingZone", fetchImpl });
   assert.equal(result, "pending");
+});
+
+test("#7098 success: SKIPPED (ingen aendring i watchPatterns) med et koerende SUCCESS-deploy", () => {
+  const deployments = [
+    { status: "SKIPPED", meta: { commitHash: sha } },
+    { status: "SUCCESS", meta: { commitHash: "ffffffffffffffffffffffffffffffffffffff" } },
+  ];
+  assert.equal(classifyDeploymentStatus(deployments, sha), "success");
+});
+
+test("#7098 pending: SKIPPED uden noget SUCCESS-deploy at staa paa", () => {
+  const deployments = [{ status: "SKIPPED", meta: { commitHash: sha } }];
+  assert.equal(classifyDeploymentStatus(deployments, sha), "pending");
+});
+
+test("#7112 pending: SKIPPED efter et fejlet deploy, selvom et aeldre SUCCESS findes (Codex P1)", () => {
+  const deployments = [
+    { status: "SKIPPED", meta: { commitHash: sha } },
+    { status: "FAILED", meta: { commitHash: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" } },
+    { status: "SUCCESS", meta: { commitHash: "ffffffffffffffffffffffffffffffffffffff" } },
+  ];
+  assert.equal(classifyDeploymentStatus(deployments, sha), "pending");
+});
+
+test("#7112 success: SKIPPED efter afloeste (REMOVED) og et koerende SUCCESS", () => {
+  const deployments = [
+    { status: "SKIPPED", meta: { commitHash: sha } },
+    { status: "SUCCESS", meta: { commitHash: "ffffffffffffffffffffffffffffffffffffff" } },
+    { status: "REMOVED", meta: { commitHash: "dddddddddddddddddddddddddddddddddddddddd" } },
+  ];
+  assert.equal(classifyDeploymentStatus(deployments, sha), "success");
 });
