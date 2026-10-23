@@ -157,4 +157,4 @@ I dag giver "Træn nu" kun 4 af 5 felter. Det sidste felt, og træthed og form, 
 ## 9. Uden for scope (forslag, ikke oprettet)
 
 - A+: afregn en løbsrytter lige efter sin egen etape i stedet for kl. 20.
-- Ca. 50 hold-datoer står som `needs_reconciliation` i `training_date_work`. Det er den kendte afstemningssti, men listen bør gennemgås for at se, om nogen er gamle og glemt.
+- En række hold-datoer står som `needs_reconciliation` i `training_date_work`. Det er den kendte afstemningssti, men listen bør gennemgås for at se, om nogen er gamle og glemt.
