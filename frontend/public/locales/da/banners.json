@@ -52,5 +52,10 @@
     "regionAriaLabel": "Driftsstatus",
     "dismissAriaLabel": "Luk besked",
     "knownIssuesLink": "Kendte fejl"
+  },
+  "racePaused": {
+    "title": "Pauset.",
+    "newStart": "Ny start {{time}}.",
+    "newStartUnknown": "Ny starttid meldes ud."
   }
 }
