@@ -39,7 +39,7 @@ import {
 } from "./boardMandate.js";
 import { buildGoalKey, evaluateGoalProgress, generateBoardGoals } from "./boardGoals.js";
 import { clamp, clampSatisfaction } from "./boardUtils.js";
-import { WEEKEND_SATISFACTION_CLAMP, WEEKEND_SATISFACTION_CLAMP_UP } from "./boardWeekendUpdate.js";
+import { WEEKEND_SATISFACTION_CLAMP, WEEKEND_SATISFACTION_CLAMP_UP } from "./boardConstants.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 import { resolveThresholds } from "./boardNegotiationThresholds.js";
