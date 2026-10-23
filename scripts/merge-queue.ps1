@@ -942,9 +942,11 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $entryDeploys = [bool]($entryBackend -or $entryRailway -or $entryVercel)
   $entrySolo = [bool]($entry.solo -or $fresh.solo)
   # Codex P1 #7104: deploy-verify.yml udleder NEED_VERCEL/NEED_RAILWAY af den SIDSTE merge-SHA's
+  # diff, og NEED_RAILWAY kraever backend-stier (cron-deploy-verification.mjs deploymentImpact),
+  # ikke blot Railways watch patterns. Daekningen sammenlignes derfor med touchesBackend.
   # diff. Daekker denne PR ikke togets samlede deploy-maal, lukkes toget foerst. En solo-PR
   # (migration/motor) lukker ogsaa et aabent tog foer den merges, saa den altid koerer alene.
-  $coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not ($script:batchRailway -or $script:batchBackend)) -or $entryRailway)
+  $coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not $script:batchBackend) -or $entryBackend)
   if (-not $DryRun -and $script:batchMerged.Count -gt 0 -and ($entrySolo -or -not $coversTrain)) {
     Write-Host "  PR #$n $(if ($entrySolo) { 'koerer alene (migration/motor)' } else { 'daekker ikke togets deploy-maal' }): lukker det aabne tog foerst." -ForegroundColor DarkYellow
     Close-OpenTrain
