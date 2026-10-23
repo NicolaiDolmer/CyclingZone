@@ -40,7 +40,25 @@ const meta = fs.existsSync(path.join(SNAP_DIR, "meta.json"))
 
 const { remapById, rankViolations } = remapPotentiale(riders.filter((r) => r.age != null), "b");
 const riderById = new Map(riders.map((r) => [r.id, r]));
-const truePotOf = (id) => remapById.get(id)?.newPot99 ?? null;
+
+// Byggetrin 1b: det sande tal er det bløde loft i den naturlige rolle (ratingskala),
+// ikke talent-tallet fra remappen. FIT_LOFT=1 fitter omsætningen på de ejede ryttere
+// ud fra params.loftFit (mål private); ellers bruges params.loft direkte.
+const { ratingLoft, fitLoft, shareOverLoft } = await import(pathToFileURL(path.join(import.meta.dirname, "lib/ratingLoft6110.mjs")).href);
+const ownedRows = riders
+  .filter((r) => r.team_id && r.rating != null && remapById.has(r.id))
+  .map((r) => ({ rating: r.rating, talent: remapById.get(r.id).newPot99 }));
+let loftFit = null;
+if (process.env.FIT_LOFT === "1") {
+  loftFit = fitLoft(ownedRows, params.loftFit);
+  params.loft = loftFit.params;
+}
+const loftParams = params.loft ?? null;
+const truePotOf = (id) => {
+  const g = remapById.get(id)?.newPot99;
+  if (g == null) return null;
+  return loftParams ? Math.round(ratingLoft(g, loftParams)) : g;
+};
 
 // Stab fremskynder egen viden (samme idé som akademiets kendskabstrin #6666).
 const staffSpeed = (k) => ((k.coachTier ?? 0) + (k.facilityTier ?? 0)) / 10;
@@ -170,6 +188,9 @@ const out = {
   snapshot: meta,
   params_file: path.basename(PARAMS),
   remap_rank_violations: rankViolations.length,
+  loft: loftParams
+    ? { params: loftParams, fitted: !!loftFit, owned_share_over_loft: Math.round(1000 * shareOverLoft(ownedRows, loftParams)) / 10 }
+    : null,
   h1_precision_by_word: h1,
   h2_unstable_pairs: unstable,
   h3: { mean_abs_err_by_step: h3, mean_increases: meanBreaks, word_downgrades: wordBreaks, per_rider_checks: perRiderChecks, per_rider_err_increases: perRiderIncreases },
@@ -187,6 +208,10 @@ const md = [
   "# #6110 potentiale-skøn: harness (PRIVAT, hard rule 17)",
   "",
   `Snapshot: ${meta.measured_at_utc ?? "ukendt"} · params: ${path.basename(PARAMS)} · kørt ${out.generated_at}`,
+  "",
+  loftParams
+    ? `Sandt tal = blødt loft i naturlig rolle (ratingskala)${loftFit ? ", fittet" : ""}: ${JSON.stringify(loftParams)} · ejede over loftet: ${pct(out.loft.owned_share_over_loft)}`
+    : "Sandt tal = talent-tal fra remappen (ikke ratingskala).",
   "",
   "## H1 præcision pr. ord (virkelig viden i prod)",
   "",
