@@ -40,6 +40,11 @@
 //                            trupper; bench = det anonymiserede Giro-felt). #6909
 //   --routes-from=<dir>      foreslaaede ruter (cz-race-routes/v1, se docs/MOTOR_TESTPORT.md)
 //                            i stedet for prod's etapeprofiler; default-udvaelgelse = mappens loeb. #6909
+//   --breakaway-intent=<prod|none>  syntetisk felt: menneskeholdenes udbrudsvilje som i prod
+//                            (default prod med --synthetic-field; none = intet, som foer). #6804 P0
+//   --intent-rates=<fil>     satserne fra en tidligere koersel (breakaway-intent-rates.json);
+//                            kraeves med --from-dir, ellers laeses de read-only fra prod. #6804 P0
+//   --intent-season=<n>      satserne fra saeson n (default: seneste afsluttede). #6804 P0
 //   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
 //                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //
@@ -50,6 +55,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { benchView, buildTestportCard, copenhagenDate, raceResultFromDryRun, renderTestportHtml, renderTestportMarkdown } from "./lib/motorTestportReport.mjs";
 import { SYNTHETIC_KINDS, assertRoutesCover, createProdSource, loadRoutesDir, prepareInputs } from "./lib/motorTestportInputs.mjs";
+import { INTENT_MODES, ratesSignature, validateRates } from "./lib/breakawayIntent.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -83,6 +89,11 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
   const syntheticRaw = flag("synthetic-field") ? "generator" : get("synthetic-field");
   if (syntheticRaw !== null && !SYNTHETIC_KINDS.includes(syntheticRaw)) throw new Error(`--synthetic-field skal vaere ${SYNTHETIC_KINDS.join(" eller ")}`);
   const season = get("season") === null ? null : int("season", 1);
+  // #6804 P0 (ejer 21/10): et syntetisk felt faar som standard menneskeholdenes udbrudsvilje fra prod.
+  // Review P2: kun generator-feltet har menneskehold; bench-feltet er lutter AI-hold (udbrudsvilje virker ikke dér).
+  const breakawayIntent = get("breakaway-intent", syntheticRaw === "generator" ? "prod" : "none");
+  if (!INTENT_MODES.includes(breakawayIntent)) throw new Error(`--breakaway-intent skal vaere ${INTENT_MODES.join(" eller ")}`);
+  if (breakawayIntent === "prod" && syntheticRaw !== "generator") throw new Error("--breakaway-intent=prod kraever --synthetic-field=generator (prod-tilmeldinger har deres egne ordrer, bench-feltet har kun AI-hold)");
   return {
     candidate, baseline,
     seeds: int("seeds", 8),
@@ -106,6 +117,9 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     benchWorker,
     revision: get("revision"),
     syntheticField: syntheticRaw,
+    breakawayIntent,
+    intentRates: get("intent-rates"),
+    intentSeason: get("intent-season") === null ? null : int("intent-season", 1),
     routesFrom: get("routes-from"),
     season,
     timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
@@ -298,6 +312,18 @@ export function loadThresholds(file) {
 }
 
 /**
+ * #6804 P0 (Codex P1): graensen for smaa celler i udbrudsvilje-satserne er privat (hard rule 17)
+ * og har intet offentligt default. Mangler filen eller noeglen, stopper koerslen (fail closed).
+ */
+export function privateMinCellTeamStages(file) {
+  const v = file && existsSync(file) ? JSON.parse(readFileSync(file, "utf8")).breakawayIntentMinCellTeamStages : undefined;
+  if (!Number.isFinite(v) || v < 0) {
+    throw new Error(`udbrudsvilje-satser fra prod kraever breakawayIntentMinCellTeamStages (tal >= 0) i den private taerskelfil (${file}); eller giv --intent-rates=<fil>`);
+  }
+  return v;
+}
+
+/**
  * #6750 (Codex): en output-mappe tilhoerer EN loebsudvaelgelse. Genoptagelse med
  * samme loeb er ok; et andet saet ville blande gamle scorecards ind i kortet.
  */
@@ -347,6 +373,7 @@ export function assertSameRun(prev, opts, outDir) {
   const same = prev.candidate === opts.candidate && prev.baseline === opts.baseline && prev.seeds === opts.seeds
     && (prev.benchScope ?? "all") === opts.benchScope
     && (prev.syntheticField ?? null) === (opts.syntheticField ?? null)
+    && (prev.breakawayIntent?.mode ?? "none") === (opts.breakawayIntent ?? "none")
     && (prev.routesFrom ?? null) === (opts.routesFrom ?? null)
     && (prev.routesSignature ?? null) === (opts.routesSignature ?? null)
     && (prev.season ?? null) === (opts.season ?? null);
@@ -468,6 +495,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   let source = prev?.source ?? null;
   let raceIds = [];
   let inputs = { prebuilt: new Set(), field: prev?.field ?? null, routes: prev?.routes ?? null };
+  let breakawayIntentMeta = prev?.breakawayIntent ?? null;
   const fromDir = opts.fromDir ? abs(opts.fromDir) : null;
   if (!opts.benchOnly) {
     // #6909: foreslaaede ruter valideres i sin helhed foer noget koeres.
@@ -494,7 +522,31 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
     if (routes || opts.syntheticField) {
       const offline = { benchField: async () => (await import("./s5MotorBench.mjs")).loadBenchField(), generatorField: async () => { throw new Error("--synthetic-field=generator kraever prod (infisical run --env=prod), ikke --from-dir"); } };
       const src = fromDir ? offline : createProdSource(await prodDb());
-      inputs = await prepareInputs({ raceIds, outDir, fromDir, routes, synthetic: opts.syntheticField, source: src });
+      // #6804 P0: satserne for menneskeholdenes udbrudsvilje (fil, ellers read-only fra prod), gemt i --out.
+      let intent = null;
+      if (opts.breakawayIntent === "prod") {
+        const ratesPath = path.join(outDir, "breakaway-intent-rates.json");
+        const rates = opts.intentRates
+          ? validateRates(JSON.parse(readFileSync(abs(opts.intentRates), "utf8")))
+          : existsSync(ratesPath) ? validateRates(JSON.parse(readFileSync(ratesPath, "utf8")))
+            : fromDir ? (() => { throw new Error("--from-dir med --breakaway-intent=prod kraever --intent-rates=<fil> (eller --breakaway-intent=none)"); })()
+              : await src.breakawayIntentRates({ now, seasonNumber: opts.intentSeason,
+                // Hard rule 17: graensen for smaa celler er privat (taerskelfilen), aldrig i koden.
+                minCellTeamStages: privateMinCellTeamStages(abs(opts.thresholds)) });
+        // Review P2: en valgt saeson skal passe med satserne (fil eller gemte satser i --out).
+        if (opts.intentSeason !== null && rates.seasonNumber !== opts.intentSeason) {
+          throw new Error(`--intent-season=${opts.intentSeason} passer ikke med satserne (saeson ${rates.seasonNumber ?? "ukendt"}); brug en ny --out eller den rigtige --intent-rates`);
+        }
+        const signature = ratesSignature(rates);
+        // Codex P2: andre satser end en genoptaget koersels er en anden koersel (dens done-markoerer gaelder de gamle).
+        if (prev?.breakawayIntent?.signature && prev.breakawayIntent.signature !== signature) {
+          throw new Error(`${outDir} er en anden koersel (andre udbrudsvilje-satser end ${prev.breakawayIntent.signature}). Brug en ny --out.`);
+        }
+        writeFileSync(ratesPath, JSON.stringify(rates, null, 2));
+        intent = { rates, signature };
+        breakawayIntentMeta = { mode: "prod", signature: intent.signature, seasonId: rates.seasonId ?? null, ratesFile: path.basename(ratesPath) };
+      }
+      inputs = await prepareInputs({ raceIds, outDir, fromDir, routes, synthetic: opts.syntheticField, source: src, intent });
       if (inputs.field?.skippedNoField) console.log(`${inputs.field.skippedNoField} loeb fik intet startfelt og koeres ikke.`);
       raceIds = inputs.ids;
     }
@@ -505,7 +557,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
-    syntheticField: opts.syntheticField, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, field: inputs.field, routes: inputs.routes,
+    syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, field: inputs.field, routes: inputs.routes,
   };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 

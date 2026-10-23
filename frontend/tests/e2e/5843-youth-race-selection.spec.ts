@@ -94,9 +94,11 @@ async function setup(page: Page, c: (typeof CASES)[number], { noPool = false }: 
     const url = decodeURIComponent(route.request().url());
     if (!url.includes(c.race.id)) return route.fallback();
     const stages = Array.from({ length: c.race.stages }, (_, i) => ({
-      race_id: c.race.id, stage_number: i + 1, scheduled_at: `2026-09-${28 + i}T17:30:00+00:00`,
+      race_id: c.race.id, stage_number: i + 1, scheduled_at: `2099-09-${10 + i}T17:30:00+00:00`, // #6959: fremtid, saa loebet ikke er startet (start laaser trup)
     }));
-    return json(route, [{ race_id: c.doneRace.id, stage_number: 1, scheduled_at: "2026-09-27T17:30:00+00:00" }, ...stages]);
+    // Kun det efterspurgte loebs raekker (prod filtrerer paa race_id); ellers ser siden
+    // det afsluttede loebs etape 1 som sin egen start (#6959).
+    return json(route, stages);
   });
   await page.route("**/rest/v1/race_entries*", (route) => {
     if (preflight(route)) return;

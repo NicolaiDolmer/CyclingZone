@@ -157,7 +157,7 @@
           "Du har et fast antal justeringer pr. møde, vist øverst. En bestyrelse med tillid til dig giver flere af dem og strækker sig længere i sine modtilbud.",
           "Bestyrelsen kan foreslå en ny milepæl til klubvisionen, med den sæson den skal nås i. Accepter den eller afvis den.",
           "Du har én anmodning pr. møde. Et afslag kommer altid tilbage med et modtilbud, aldrig et rent nej.",
-          "Underskriv, og mandatet er aktivt for sæsonen. Indtil det er underskrevet, står det som et forslag.",
+          "Underskriv, og mandatet er aktivt for sæsonen. Indtil det er underskrevet, står det som et forslag. Efter underskrift ændrer bestyrelsen det ikke. Det eneste der kan komme til, er et bonustilbud, og kun hvis du selv siger ja.",
           "Svarer du aldrig, underskriver bestyrelsen sit eget forslag for dig, når fristen øverst på mødet løber ud. Du får mandatet, du har bare ikke formet det."
         ]
       },
@@ -1381,11 +1381,11 @@
       },
       "typeGating": {
         "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
-        "text": "Hver rytter har en primær OG en sekundær type (sprinter, klatrer, tidskører, klassementsrytter og så videre) samt et skjult potentiale per evne, begge fastlagt da rytteren blev skabt. To ting afgør hvad en evne bliver: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Typen sætter begge. En evne hans primære type er bygget til når højest og vokser hurtigst. Hans sekundære type ligger tæt på, omkring 85 procent så højt. Positionering og taktik er håndværk: ingen fødes med dem, så alle ryttere kan nå omkring 75 procent så højt, men de bygges langsomt op. En evne uden for begge hans roller når omkring 60 procent så højt og vokser langsomt. Hver type dækker flere evner end den, den er opkaldt efter: en GC-type dækker også enkeltstart, så en GC-rytter kan nå højt dér. En evne hans type direkte modarbejder rykker sig knap nok. Tjek begge type-mærker før du vælger fokus, og husk at det at nå højt og det at komme hurtigt derhen ikke længere er det samme: en evne kan have masser af luft tilbage og alligevel tage år at fylde. Tempoet justeres løbende som en del af den fortsatte balancering af spillet, så en rytters daglige fremgang kan føles anderledes fra én opdatering til den næste, uden at noget ved rytteren selv er ændret."
+        "text": "Hver rytter har en primær OG en sekundær type (sprinter, klatrer, tidskører, klassementsrytter og så videre) samt et potentiale, alt fastlagt da rytteren blev skabt. To ting afgør hvad en evne bliver: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Typen sætter hvor højt. En evne hans primære type er bygget til når højest og vokser hurtigst. Hans sekundære type ligger tæt på. Positionering og taktik er håndværk: ingen fødes med dem, så alle ryttere kan nå et ordentligt niveau, men de bygges langsomt op. En evne uden for begge hans roller har et lavt loft og vokser langsomt. Hver type dækker flere evner end den, den er opkaldt efter: en GC-type dækker også enkeltstart, så en GC-rytter kan nå højt dér. En evne hans type direkte modarbejder rykker sig knap nok. Hans potentiale afgør hvor hurtigt han udvikler sig samlet set, så et større talent når sit loft tidligere, men det løfter aldrig loftet. Tjek begge type-mærker før du vælger fokus, og husk at det at nå højt og det at komme hurtigt derhen er to forskellige ting: en evne kan have masser af luft tilbage og alligevel tage år at fylde. Tempoet justeres løbende som en del af den fortsatte balancering af spillet, så en rytters daglige fremgang kan føles anderledes fra én opdatering til den næste, uden at noget ved rytteren selv er ændret."
       },
       "ceilingReached": {
         "title": "Min rytters evne er holdt op med at stige",
-        "text": "Det er nu usædvanligt. Hver evne har stadig et livstidsloft sat af type og potentiale, men ryttere ankommer ikke længere bare derhen. Hvor tæt en rytter kommer, og på hvilke evner, afgøres af hvordan du træner ham. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder i stedet for at vokse, og det han har er det han beholder. Eller også ligger evnen allerede over hvad hans type og potentiale ville bygge op af sig selv, hvilket sker for ryttere der er båret over fra en tidligere udgave af spillet. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Hver evne har sin egen linje på træningssiden og på rytterprofilen, og en færdig evne står som færdig hvor de andre viser fremdrift. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet i sig selv, som aldrig vises som et tal noget sted i spillet, og fremgangen aftager naturligt jo tættere rytteren kommer, så en værdi der står stille i nogle dage ikke nødvendigvis betyder at den er færdig."
+        "text": "Det er nu usædvanligt. Hver evne har stadig et livstidsloft sat af hans type, men ryttere ankommer ikke længere bare derhen. Hvor tæt en rytter kommer, og på hvilke evner, afgøres af hvordan du træner ham. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder i stedet for at vokse, og det han har er det han beholder. Eller også ligger evnen allerede over hvad hans type ville bygge op af sig selv, hvilket sker for ryttere der er båret over fra en tidligere udgave af spillet. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Hver evne har sin egen linje på træningssiden og på rytterprofilen, og en færdig evne står som færdig hvor de andre viser fremdrift. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet i sig selv, som aldrig vises som et tal noget sted i spillet, og fremgangen aftager naturligt jo tættere rytteren kommer, så en værdi der står stille i nogle dage ikke nødvendigvis betyder at den er færdig."
       },
       "trainToday": {
         "title": "Kør dagens træning nu",
@@ -1425,7 +1425,7 @@
       },
       "progressBars": {
         "title": "Fremskridtslinjer og evnepoint",
-        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Hver evne har et skjult livstidsloft bestemt af rytterens potentiale og alder; en evne der har nået det, står som \"færdig\" på sin egen linje i stedet for en bar. Rytterprofilens Træning-fane viser alle 17 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. Skift fokus hvis et andet område stadig har plads, eller nyd rytteren i fuld styrke. Ældre ryttere forbi karriere-toppen har naturligt lidt eller ingen plads tilbage. En procent som \"Flad +10%\" i en træningsrapport er dagens fremskridt talt i evnepoint: 100% svarer til ét helt point. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
+        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne, og linjen starter forfra mod NÆSTE point, så en lav eller næsten tom linje lige efter en fremgang er et godt tegn, ikke et tab. Trænings-siden viser også et \"+N i dag\"-mærkat på ryttere der har vundet hele point i dagens session. Hver evne har et skjult livstidsloft bestemt af rytterens type og alder; en evne der har nået det, står som \"færdig\" på sin egen linje i stedet for en bar. Rytterprofilens Træning-fane viser alle 17 evner med hvad hver enkelt står på nu, hvor mange hele point rytteren har fået i denne sæson, og hvor langt der er til næste point. Skift fokus hvis et andet område stadig har plads, eller nyd rytteren i fuld styrke. Ældre ryttere forbi karriere-toppen har naturligt lidt eller ingen plads tilbage. En procent som \"Flad +10%\" i en træningsrapport er dagens fremskridt talt i evnepoint: 100% svarer til ét helt point. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen. Tællingen for \"denne sæson\" dækker kun dage inde i den aktive sæson. Mellem to sæsoner viser den startdatoen i stedet for et tal, mens evneværdierne og linjerne stadig tæller hvert pas med. En ny sæsons tælling starter tom og fyldes ud fra dens første træningsdag."
       },
       "trainingScore": {
         "title": "Træningsscoren",
@@ -1433,7 +1433,7 @@
       },
       "longTermGrowth": {
         "title": "Udvikling på lang sigt",
-        "text": "To ting afgør hvor en evne ender: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Begge kommer fra rytterens type. Det er derfor en rytter ikke længere ankommer til sit loft bare ved at eksistere længe nok. Loftet er hvad han kunne være blevet; din træning afgør hvor tæt han kommer, og på hvilke evner han kommer tæt på. Ryttere topper stadig omkring 27-28 år og falder derefter, og træning kan aldrig skubbe nogen forbi sit potentiale."
+        "text": "To ting afgør hvor en evne ender: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Hvor højt kommer fra rytterens type: hver type har sit eget loft for hver evne. Hvor hurtigt kommer fra hans potentiale: et større talent udvikler sig hurtigere mod samme loft, men potentialet hæver ikke selve loftet. Det er derfor en rytter ikke længere ankommer til sit loft bare ved at eksistere længe nok. Loftet er hvad han kunne være blevet; din træning afgør hvor tæt han kommer, og på hvilke evner han kommer tæt på. Ryttere topper stadig omkring 27-28 år og falder derefter, og træning kan aldrig skubbe nogen forbi hans loft."
       },
       "readingReport": {
         "title": "Sådan læser du træningsrapporten",
@@ -1556,7 +1556,7 @@
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",
-        "text": "Akademi-ryttere følger nøjagtig samme træningsmodel som din seniortrup. Der findes ikke et særskilt akademi-system og ingen skjult bremse på hvor hurtigt de forbedrer sig: sæt et fokus og en intensitet, og gevinsterne samler sig dag for dag på samme måde. Den eneste rigtige forskel er alder. Ryttere under 22 får et ekstra ungdoms-boost der aftager frem mod 22. Deres potentiale sætter både hvor højt deres evner i sidste ende kan nå, og hvor hurtigt de kommer derhen, så et større talent udvikler sig hurtigere og topper højere, mens et mindre talent vokser til en solid hjælperytter."
+        "text": "Akademi-ryttere følger nøjagtig samme træningsmodel som din seniortrup. Der findes ikke et særskilt akademi-system og ingen skjult bremse på hvor hurtigt de forbedrer sig: sæt et fokus og en intensitet, og gevinsterne samler sig dag for dag på samme måde. Den eneste rigtige forskel er alder. Ryttere under 22 får et ekstra ungdoms-boost der aftager frem mod 22. Deres type sætter hvor højt hver evne i sidste ende kan nå, og deres potentiale sætter hvor hurtigt de kommer derhen, så et større talent udvikler sig hurtigere mod samme loft, mens et mindre talent vokser langsommere til en solid hjælperytter."
       },
       "youthAuctions": {
         "title": "Ungdomsauktioner",
@@ -1568,7 +1568,7 @@
       },
       "graduation": {
         "title": "Graduation Day",
-        "text": "Ryttere der er vokset ud af deres trup, rykker videre ved sæsonskiftet. En junior der fylder 19, flytter til dit U23-hold, og en U23-rytter der fylder 23, flytter til dit seniorhold. Listen åbner ugen før sæsonen skifter, og fristen er selve skiftet. Indtil du flytter en rytter, træner og kører han i sin gamle trup. For hver rytter vælger du Ryk op (kræver en ledig plads i den trup han flytter til, og han beholder sin kontrakt præcis som den er), Sælg på transfermarkedet, eller Fyr som free agent. Gør du ingenting, vælger klubben for dig ved skiftet: op når der er plads, ellers sælg. Din træner giver en kort vurdering af hver rytter, og det er altid kun en vurdering, aldrig et løfte."
+        "text": "Ryttere der er vokset ud af deres trup, rykker videre ved sæsonskiftet. En junior der fylder 19, flytter til dit U23-hold, og en U23-rytter der fylder 23, flytter til dit seniorhold. Listen åbner ugen før sæsonen skifter, og fristen er selve skiftet. Indtil du flytter en rytter, træner han i sin gamle trup, men han er over dens aldersgrænse og kan ikke køre løb for den. For hver rytter vælger du Ryk op (kræver en ledig plads i den trup han flytter til, og han beholder sin kontrakt præcis som den er), Sælg på transfermarkedet, eller Fyr som free agent. Gør du ingenting, vælger klubben for dig ved skiftet: op når der er plads. Er truppen fuld, venter han under Afventer oprykning og træner videre i sin nuværende trup på samme kontrakt, men kan ikke køre løb, før du har gjort plads og trykker Ryk op. Din træner giver en kort vurdering af hver rytter, og det er altid kun en vurdering, aldrig et løfte."
       },
       "graduationDayPage": {
         "title": "Hvor du træffer valget",
@@ -1600,7 +1600,7 @@
       },
       "graduationDayAt23": {
         "title": "Hvad sker der, når en rytter vokser ud af sin trup?",
-        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd, ellers sælges han, ellers slippes han som free agent."
+        "text": "Ved sæsonskiftet rykker ryttere, der er vokset ud af deres trup, videre: junior til U23-holdet ved sæsonalder 19, U23 til seniorholdet ved sæsonalder 23. Du får første valg på Graduation Day; gør du ingenting inden fristen, flytter klubben ham op, hvis der er plads og råd. Er truppen fuld, venter han under Afventer oprykning, til du har gjort plads. Er der plads, men ikke råd, sælges han, og bliver han ikke solgt, slippes han som free agent."
       },
       "youthRacesFromS4": {
         "title": "Kører U23-holdet og Juniorholdet faktisk løb?",
@@ -1670,7 +1670,7 @@
       },
       "hireChiefScout": {
         "title": "Ansæt en chefscout",
-        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor."
+        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor. Kandidaterne du kan ansætte er en lille pulje pr. rolle. Facilitetens tier er det højeste, de kan have, og mindst én kandidat pr. rolle er på det tier. En ny pulje trækkes ved sæsonskiftet, og inden for en sæson ændrer den sig kun, når du opgraderer faciliteten eller ansætter nogen. Fyrede og nuværende chefer optræder aldrig i den."
       },
       "coachingGroups": {
         "title": "Trænings-grupper: U23 vs. Senior",
@@ -1899,7 +1899,7 @@
     },
     "trainingFocusFaq": {
       "q": "Hvordan træner jeg en rytter?",
-      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere og bygger mere træthed op, men risikerer aldrig et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
+      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft, dag for dag mens træningen kører. Du kan sætte fokus på så mange ryttere du vil. Højere intensitet træner hurtigere og bygger mere træthed op, men risikerer aldrig et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
     "restForDevelopedFaq": {
       "q": "Min rytter er færdigudviklet. Skal jeg bare sætte hvile?",
@@ -2256,6 +2256,26 @@
     "betaGroupFaq": {
       "q": "Hvad er beta-gruppen, og hvordan kommer jeg med?",
       "a": "Jeg åbner de fleste nye funktioner for en lille gruppe først, så jeg kan nå at læse hvert svar inden alle får dem. En beta-tester ser de funktioner tidligt, og nogle af dem bliver lavet om eller går i stykker undervejs. Bed om at komme med under Profil, Beta-gruppen: jeg svarer i hånden, og du får en besked i indbakken uanset hvad. Sig hvad der føles forkert på Discord eller gennem feedback-formularen. Du kan forlade gruppen igen samme sted, og du beholder alt det der allerede er live for alle. I patch notes markerer Beta en ændring, kun beta-gruppen har, Nu for alle markerer dagen, den når alle, Tændt markerer noget, der er bygget tidligere og nu er i brug, og Sæsonbegivenhed markerer fx et sæsonskifte. En ændring uden mærke er live for alle."
+    },
+    "transferRumourFaq": {
+      "q": "Hvad betyder \"En manager har øje på en rytter\"?",
+      "a": "Det er et transferrygte. Af og til, når en anden manager åbner profilen på en af dine ryttere, får du den her besked. Det sker ikke ved hvert besøg, og det er ikke et tilbud. Du behøver ikke gøre noget. Den fortæller bare, at nogen kigger på ham. Ryttere der bliver kigget meget på, udløser den oftere."
+    },
+    "freeSeniorAuctionFaq": {
+      "q": "Bliver frie agenter sat automatisk på auktion?",
+      "a": "Nej. Når en senior-rytters kontrakt udløber og ikke bliver fornyet, bliver han en fri agent uden auktion. Han kommer kun på auktion, hvis en manager starter en. Det kan enhver manager gøre. Automatiske auktioner gælder kun unge ryttere: ungdomsmarkedet, akademi-tilbud, der udløb eller blev afvist, og akademiryttere, der ikke kan rykke op på Graduation Day, fx når klubben er i minus."
+    },
+    "ownDivisionCalendarFaq": {
+      "q": "Kører mit hold kun løb i sin egen division?",
+      "a": "Ja. Dine ryttere bliver tilmeldt løbene på din egen divisions kalender. Ryttere du køber, kommer også på den kalender. Køber du en rytter midt i et etapeløb, kører han det færdigt for sit gamle hold og kommer til dit lige efter målstregen."
+    },
+    "trainWeaknessesFaq": {
+      "q": "Skal jeg træne mine svage evner?",
+      "a": "Som regel ikke. En rytters type sætter et loft pr. evne, og en svaghed har et lavt loft, så den holder op med at vokse tidligt. Jo tættere en evne kommer på sit loft, jo mindre giver hver træningsdag. Træn de evner, hans type er bygget til, og sæt svaghederne på andenpladsen. En svag evne tæller stadig i en etape, men den betyder mest, hvor etapen kræver den."
+    },
+    "raceFatigueSameFatigueFaq": {
+      "q": "Er træthed fra løbsindsats den samme som Træthed på træningssiden?",
+      "a": "Ja. Der er én Træthed pr. rytter, ikke en skjult løbsmåler. Han starter et løb med den Træthed, du ser på træningssiden. I et etapeløb lægger hver etape belastning oveni, og en hårdere indsats (arbejd eller angrib) lægger mere på end en lettere, så en rytter der kører hårdt hver dag, bliver træt hen over løbet. Den træthed følger ham bagefter, i samme værdi."
     },
     "sharpFlatTrainingDaysFaq": {
       "q": "Hvad betyder 'skarpe' og 'flade' træningsdage, og skal jeg bekymre mig hvis jeg får flere flade dage i træk?",

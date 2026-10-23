@@ -67,10 +67,16 @@
     },
     "favourites": {
       "title": "Favourites",
-      "foot": "Based on this race so far. Route fit only for your own riders.",
+      "foot": "Follows the stage profile, from results in this race so far. Route fit only for your own riders.",
       "leadsOverall": "Leads the overall",
       "overall": "#{rank} overall, {gap}",
       "wonStage": "Won stage {number}",
+      "placed": {
+        "flat": "Top 10 on {count, plural, one {# flat stage} other {# flat stages}}",
+        "hilly": "Top 10 on {count, plural, one {# hilly stage} other {# hilly stages}}",
+        "mountain": "Top 10 on {count, plural, one {# mountain stage} other {# mountain stages}}",
+        "itt": "Top 10 on {count, plural, one {# time trial} other {# time trials}}"
+      },
       "you": "You"
     },
     "story": {

@@ -8,6 +8,7 @@ import { selectInChunks } from "./dbChunk.js";
 import { ANY_SQUAD, raceSquadOf } from "./riderEligibility.js";
 import { loadSpentRaceDays, spentRaceBindingWindows } from './raceSpentDays.js';
 import { fetchAllRows } from './supabasePagination.js';
+import { loadFirstStageStarts, isRaceLineupLocked } from './raceStartLock.js';
 
 const DAY_MS = 86_400_000;
 
@@ -253,7 +254,9 @@ export function classifyBindingConflicts({ boundRiderIds = [], details, raceMeta
       race_id: raceId, race_name: meta?.name ?? null,
     };
     const isAutoFilled = raceId ? autoFilledKeys.has(`${raceId}|${riderId}`) : false;
-    const raceAlreadyStarted = (meta?.stages_completed ?? 0) > 0;
+    // #6959: laast = koert ELLER etape 1's start passeret (pause). Et laast loebs trup
+    // maa aldrig aendres, saa en rytter dér frigives aldrig automatisk.
+    const raceAlreadyStarted = meta?.lineup_locked === true || (meta?.stages_completed ?? 0) > 0;
     if (isAutoFilled && !raceAlreadyStarted) resolvable.push(item);
     else blocking.push(item);
   }
@@ -270,18 +273,23 @@ export function classifyBindingConflicts({ boundRiderIds = [], details, raceMeta
 // rytter/løb-navn, og UI'et faldt tilbage til den generiske (ikke-navngivne) copy —
 // selvom races.json's "selection_rider_bound_named" allerede findes og bruges af den
 // anden vej. Ren I/O-wrapper: klassifikationslogikken er stadig i classifyBindingConflicts.
-export async function resolveBindingConflictDetails({ supabase, teamId, boundRiderIds, thisWindow, otherRaces, riders = [] }) {
+export async function resolveBindingConflictDetails({ supabase, teamId, boundRiderIds, thisWindow, otherRaces, riders = [], now }) {
   const details = mapRiderBindingDetails({ riderIds: boundRiderIds, thisWindow, otherRaces });
   const conflictRaceIds = [...new Set(details.values())];
   const [{ data: conflictRaces, error: crErr }, { data: conflictEntries, error: ceErr }] = await Promise.all([
-    supabase.from("races").select("id, name, stages_completed").in("id", conflictRaceIds),
+    supabase.from("races").select("id, name, status, stages_completed").in("id", conflictRaceIds),
     // pagination-safe: bounded af conflictRaceIds × boundRiderIds (begge små in-lists, ≤ trupstørrelse)
     supabase.from("race_entries").select("race_id, rider_id, is_auto_filled")
       .eq("team_id", teamId).in("race_id", conflictRaceIds).in("rider_id", boundRiderIds),
   ]);
   if (crErr) throw new Error(`races (binding conflict details): ${crErr.message}`);
   if (ceErr) throw new Error(`race_entries (binding conflict details): ${ceErr.message}`);
-  const raceMetaById = new Map((conflictRaces || []).map((r) => [r.id, r]));
+  // #6959: frisk laas (schedule-baseret) for konflikt-loebene, ikke kun stages_completed.
+  const starts = await loadFirstStageStarts({ supabase, races: conflictRaces || [] });
+  const raceMetaById = new Map((conflictRaces || []).map((r) => [r.id, {
+    ...r,
+    lineup_locked: isRaceLineupLocked({ status: r.status, stagesCompleted: r.stages_completed, firstStageScheduledAt: starts.get(r.id) ?? null, now }),
+  }]));
   const autoFilledKeys = new Set(
     (conflictEntries || []).filter((e) => e.is_auto_filled).map((e) => `${e.race_id}|${e.rider_id}`)
   );

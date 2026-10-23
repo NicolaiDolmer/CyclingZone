@@ -3,6 +3,7 @@
  */
 import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
+import { contractFilterMatches, parseContractFilter } from "./contractFilter.ts";
 import { getRiderMarketValue, getRiderSalary } from "./marketValues";
 import { buildSalaryFilterOr } from "./salaryFilter.js";
 import { getRiderAge, isU23, isU25 } from "./riderAge";
@@ -89,6 +90,8 @@ export function useClientRiderFilters(riders = [], seasonYear = null) {
     if (filters.u23) result = result.filter(r => isU23(r.birthdate, seasonYear));
 
     if (filters.free_agent) result = result.filter(r => !r.team_id);
+    // #6967: "Contract expires by season X" / "No contract".
+    if (filters.contract_by) result = result.filter(r => contractFilterMatches(r.contract_end_season, filters.contract_by));
     // #2238: show_ai er RidersPage-only (server-pathen fetchRidersPage). Denne
     // klient-variant driver auktions-/transfer-/hold-/watchlist-lister, hvor
     // AI-hold-ryttere ikke optræder — så ingen AI-filtrering her.
@@ -180,6 +183,11 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
     query = query.gte(col("birthdate"), minBirth);
   }
   if (filters.free_agent) query = query.is(col("team_id"), null);
+  // #6967: kontrakt-udloeb. "none" = ingen kontrakt (contract_end_season NULL);
+  // et saesonnummer X = kontrakt udloeber senest X (<=, NULL udelukkes af lte).
+  const contractFilter = parseContractFilter(filters.contract_by);
+  if (contractFilter?.kind === "none") query = query.is(col("contract_end_season"), null);
+  else if (contractFilter) query = query.lte(col("contract_end_season"), contractFilter.season);
   // #2238: skjul ryttere på AI-hold (kan ikke købes/auktioneres) medmindre toggle er slået til.
   // owner_is_ai er denormaliseret (fri-agenter = false → altid synlige).
   if (!filters.show_ai) query = query.eq(col("owner_is_ai"), false);

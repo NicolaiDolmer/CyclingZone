@@ -19,7 +19,11 @@
     "team": "Team",
     "teamAll": "All teams",
     "min": "Min",
-    "max": "Max"
+    "max": "Max",
+    "contractBy": "Contract expires by season",
+    "contractAny": "Any contract",
+    "contractNone": "No contract",
+    "contractSeason": "Season {season}"
   },
   "toggles": {
     "freeAgent": "Free agent",
@@ -60,6 +64,10 @@
     },
     "teamSelected": "Team selected",
     "statRange": "{label} {min}-{max}",
-    "remove": "Remove filter: {label}"
+    "remove": "Remove filter: {label}",
+    "contract": {
+      "by": "Contract ≤ season {season}",
+      "none": "No contract"
+    }
   }
 }

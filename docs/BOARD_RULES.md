@@ -53,6 +53,13 @@ Dette afsnit afløser ældre STATUS-påstande nedenfor, ikke de uændrede mekani
 - Et forslag for en afsluttet sæson kan ikke underskrives (fejlkode `board_mandate_season_ended`, en+da).
 - Bonusmål (`source: 'bonus_offer'`) skrives til den aktive sæsons mandat. Engangsreparationen af S3-mandater (`closeStaleMandates6773.mjs`, ejer-gated) flytter bonusmål fra et gammelt mandat til holdets aktuelle, før det gamle lukkes.
 
+**Tillidens kontrakt (#7088, 23/10):**
+- `board_relations.confidence` er ankret, ikke additiv. Evalueringens `satisfaction_delta` er et målniveau i forhold til sæsonstart, ikke et skridt.
+- Target = sæsonens anker + sæsondelta. Ved hver løbsafslutning bevæger tilliden sig mod target med samme loft pr. kørsel som weekend-tilfredsheden (`WEEKEND_SATISFACTION_CLAMP`/`_UP` i `boardConstants.js`), og den kommer aldrig forbi target.
+- Ankeret gemmes i `confidence_source.season_anchor` (sæson + værdi). Mangler det, eller hører det til en anden sæson, ankres der på den aktuelle værdi.
+- Sæsonafslutningen lander på target og markerer sæsonen som dømt, så en genkørsel eller en sen løbskørsel for samme sæson ikke lægger noget på igen. Milepæls-skrivninger beholder ankeret.
+- Engangsrettelsen `backend/scripts/ops/recomputeBoardConfidence7088.mjs` genafspiller historikken med denne model. Dry-run er standard; `--apply --owner-go` skriver kun eksakte rækker (tilnærmelser kræver `--allow-approx`), tager backup først og springer over, hvis rækken er ændret siden dry-run. Ejer-gated pr. skridt.
+
 **Aktuel flagstatus 28/9 (read-only prodmåling):** `board_mandate_model_enabled = 'on'` i S4.
 De ældre beta-tal nedenfor beskriver tilstanden på deres måledato og er historiske.
 

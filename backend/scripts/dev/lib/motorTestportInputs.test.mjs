@@ -512,3 +512,127 @@ test("#6909 (Codex P2) prepareInputs: genoptagne generator-felter bygges med, na
   assert.deepEqual(asked, [["r1", "r2"]], "r1 (genoptaget) og r2 (ny) udtages i samme koersel");
   rmSync(outDir, { recursive: true, force: true });
 });
+
+// ── #6804 P0: menneskeholdenes udbrudsvilje i det syntetiske felt ──────────────
+const intentRates = { format: "cz-breakaway-intent-rates/v2", seasonId: "s4", minCellTeamStages: 1, rows: [
+  { division: "all", group: "stage_race", humanTeamRaces: 1, humanTeamRoadStages: 2, hunters: 1, freeRoles: 0, tryBreakRiders: 0 },
+] };
+const humanField = (tag) => ({
+  entries: [{ rider_id: `${tag}-c`, team_id: "hx", race_role: "captain" }, { rider_id: `${tag}-h`, team_id: "hx", race_role: "helper" }],
+  teams: [{ id: "hx", is_ai: false }],
+  abilities: [{ rider_id: `${tag}-c`, aggression: 1 }, { rider_id: `${tag}-h`, aggression: 9 }],
+});
+
+test("#6804 P0 prepareInputs med intent: kun det syntetiske felt faar udbrudsvilje; andre satser bygger forfra", async () => {
+  const outDir = tmp("intent");
+  const source = {
+    withField: async () => new Set(["a"]),
+    raceData: async (ids) => new Map(ids.map((id) => [id, raceData(id, { entries: id === "a" ? [{ rider_id: "p-h", team_id: "t1", race_role: "helper" }] : [] })])),
+    generatorField: async () => new Map([["b", humanField("b")]]),
+  };
+  const intent = { rates: intentRates, signature: "sig1" };
+  try {
+    const res = await prepareInputs({ raceIds: ["a", "b"], outDir, synthetic: "generator", source, intent });
+    const b = JSON.parse(readFileSync(path.join(outDir, "races", "b", "cache.json"), "utf8"));
+    assert.equal(b.entries.find((e) => e.rider_id === "b-h").race_role, "hunter");
+    assert.equal(b.entries.find((e) => e.rider_id === "b-c").race_role, "captain");
+    assert.equal(b.intentSignature, "sig1");
+    assert.equal(b.breakawayIntent.hunters, 1);
+    assert.match(res.field.note, /udbrudsvilje som i prod/);
+    assert.deepEqual([res.field.intent.races, res.field.intent.hunters], [1, 1]);
+    assert.equal(existsSync(path.join(outDir, "races", "a", "cache.json")), false, "prod-feltet roeres ikke (tourDryRun henter det selv)");
+
+    let calls = 0;
+    const counting = { ...source, generatorField: async () => { calls += 1; return new Map([["b", humanField("b")]]); } };
+    await prepareInputs({ raceIds: ["a", "b"], outDir, synthetic: "generator", source: counting, intent });
+    assert.equal(calls, 0, "samme satser: cachen genbruges");
+    await prepareInputs({ raceIds: ["a", "b"], outDir, synthetic: "generator", source: counting, intent: { ...intent, signature: "sig2" } });
+    assert.equal(calls, 1, "andre satser: bygges forfra");
+  } finally {
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+test("#6804 P0 prepareInputs med intent: en eksports generator-felt faar udbrudsvilje, et prod-felt ikke", async () => {
+  const root = tmp("intent-export");
+  const fromDir = path.join(root, "export");
+  const outDir = path.join(root, "out");
+  const routesDir = path.join(root, "routes");
+  try {
+    const f = humanField("g");
+    for (const [id, fieldSource] of [["g", "generator"], ["p", "prod"]]) {
+      mkdirSync(path.join(fromDir, id), { recursive: true });
+      writeFileSync(path.join(fromDir, id, "cache.json"), JSON.stringify({ ...raceData(id), entries: f.entries, teams: f.teams, abilities: f.abilities, orders: [], fieldSource }));
+    }
+    mkdirSync(routesDir);
+    for (const id of ["g", "p"]) writeFileSync(path.join(routesDir, `${id}.json`), JSON.stringify(routeDoc(id)));
+    await prepareInputs({ raceIds: ["g", "p"], outDir, fromDir, routes: loadRoutesDir(routesDir), synthetic: "generator", source: {}, intent: { rates: intentRates, signature: "s" } });
+    const role = (id) => JSON.parse(readFileSync(path.join(outDir, "races", id, "cache.json"), "utf8")).entries.find((e) => e.rider_id === "g-h").race_role;
+    assert.equal(role("g"), "hunter");
+    assert.equal(role("p"), "helper");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6804 P0 createProdSource.breakawayIntentRates: seneste afsluttede saeson (seasons.status), kun SELECT", async () => {
+  const log = [];
+  const tables = {
+    // fakeDb sorterer ikke: den seneste afsluttede staar foerst, den aktive (s5) maa aldrig vaelges.
+    seasons: [{ id: "s4", number: 4, status: "completed" }, { id: "s3", number: 3, status: "completed" }, { id: "s5", number: 5, status: "active" }],
+    race_stage_profiles: [{ race_id: "r1", stage_number: 1, profile_type: "itt" }],
+    races: [
+      { id: "r5", season_id: "s5", status: "completed", squad: "senior", league_division_id: 1, stages: 21 },
+      { id: "r1", season_id: "s4", status: "completed", squad: "senior", league_division_id: 1, stages: 21 },
+      { id: "r0", season_id: "s3", status: "completed", squad: "senior", league_division_id: 1, stages: 21 },
+      { id: "r2", season_id: "s4", status: "completed", squad: "u23", league_division_id: 1, stages: 5 },
+    ],
+    race_entries: [{ race_id: "r1", rider_id: "a", team_id: "h", race_role: "hunter" }, { race_id: "r0", rider_id: "b", team_id: "h", race_role: "hunter" }],
+    race_team_orders: [{ race_id: "r1", team_id: "h", stage_number: 3, riders: [{ rider_id: "a", try_break: true }] }],
+    teams: [{ id: "h", is_ai: false }],
+  };
+  const src = createProdSource(fakeDb(tables, log), { log: () => {} });
+  const now = new Date("2026-10-21T10:00:00Z");
+  const rates = await src.breakawayIntentRates({ now, minCellTeamStages: 5 });
+  assert.equal(rates.seasonId, "s4");
+  assert.equal(rates.seasonNumber, 4);
+  assert.equal(rates.generatedAt, now.toISOString(), "det injicerede ur (Codex P1)");
+  assert.equal(rates.minCellTeamStages, 5);
+  const gt = rates.rows.find((r) => r.division === "1" && r.group === "gt");
+  assert.deepEqual([gt.humanTeamRaces, gt.humanTeamRoadStages, gt.hunters, gt.tryBreakRiders], [1, 20, 1, 1]);
+  assert.equal((await src.breakawayIntentRates({ now, minCellTeamStages: 5, seasonNumber: 3 })).seasonId, "s3", "--intent-season");
+  await assert.rejects(src.breakawayIntentRates({ minCellTeamStages: 5 }), /now/);
+  assert.ok(!rates.rows.some((r) => r.group === "stage_race"), "u23 taeller ikke");
+  assert.deepEqual(log, [], "ingen skrivning");
+});
+
+test("#6804 P0 (review P2) prepareInputs: en eksport der allerede har udbrudsvilje faar den ikke igen; andre satser afvises", async () => {
+  const root = tmp("intent-twice");
+  const fromDir = path.join(root, "export");
+  const routesDir = path.join(root, "routes");
+  try {
+    const f = humanField("g");
+    const applied = { ...raceData("g"), entries: f.entries.map((e) => (e.rider_id === "g-h" ? { ...e, race_role: "hunter" } : e)), teams: f.teams, abilities: f.abilities, orders: [],
+      fieldSource: "generator", intentSignature: "s", breakawayIntent: { hunters: 1, freeRoles: 0, tryBreakOrders: 0 } };
+    mkdirSync(path.join(fromDir, "g"), { recursive: true });
+    writeFileSync(path.join(fromDir, "g", "cache.json"), JSON.stringify(applied));
+    mkdirSync(routesDir);
+    writeFileSync(path.join(routesDir, "g.json"), JSON.stringify(routeDoc("g")));
+    const routes = loadRoutesDir(routesDir);
+    const outDir = path.join(root, "out");
+    const res = await prepareInputs({ raceIds: ["g"], outDir, fromDir, routes, synthetic: "generator", source: {}, intent: { rates: intentRates, signature: "s" } });
+    const c = JSON.parse(readFileSync(path.join(outDir, "races", "g", "cache.json"), "utf8"));
+    assert.equal(c.entries.filter((e) => e.race_role === "hunter").length, 1, "ingen ekstra jaegere");
+    assert.equal(res.field.intent.hunters, 0, "intet nyt udlagt");
+    await assert.rejects(prepareInputs({ raceIds: ["g"], outDir: path.join(root, "out2"), fromDir, routes, synthetic: "generator", source: {}, intent: { rates: intentRates, signature: "andre" } }), /andre satser/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6804 P0 (review nit) applyBreakawayIntent: et hold uden is_ai-markering er ikke et menneskehold", async () => {
+  const { applyBreakawayIntent } = await import("./breakawayIntent.mjs");
+  const data = { race: { id: "r", stages: 2, league_division_id: 1 }, profiles: [], orders: [], teams: [{ id: "x" }],
+    entries: [{ rider_id: "a", team_id: "x", race_role: "helper" }], abilities: [] };
+  assert.equal(applyBreakawayIntent(data, intentRates).data.entries[0].race_role, "helper");
+});

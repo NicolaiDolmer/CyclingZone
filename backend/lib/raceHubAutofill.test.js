@@ -260,3 +260,74 @@ test("#5789: loadTeamSeasonEntries paginerer forbi 1000 rækker og filtrerer på
   assert.ok(seen.some(([k, col, v]) => k === "eq" && col === "races.season_id" && v === "S3"));
   assert.ok(seen.some(([k, col, v]) => k === "eq" && col === "team_id" && v === "T"));
 });
+
+// ── #6959 (Codex P1 på #7063): låsen genkontrolleres lige før skrivning ───────────
+// Ruten beregnede lineup_locked tidligt. Er etape 1's start passeret, når skrivningen
+// sker (frisk DB-opslag med injiceret ur), må løbets trup ikke skrives om.
+function withLockTables(supabase, { races = [], schedule = [] }) {
+  const base = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    if (table !== "races" && table !== "race_stage_schedule") return base(table);
+    const f = {};
+    const b = {
+      select() { return b; },
+      eq(col, v) { f[col] = v; return b; },
+      in(col, vs) { f["in_" + col] = vs; return b; },
+      order() { return b; },
+      range() { return b; },
+      then(resolve, reject) {
+        const data = table === "races"
+          ? races.filter((r) => (f.in_id || []).includes(r.id))
+          : schedule.filter((s) => (f.in_race_id || []).includes(s.race_id) && (f.stage_number == null || s.stage_number === f.stage_number));
+        return Promise.resolve({ data, error: null }).then(resolve, reject);
+      },
+    };
+    return b;
+  };
+  return supabase;
+}
+
+test("#6959: writeRegeneratedLineups springer et løb over, hvis etape 1's start er passeret ved skrivning", async () => {
+  const entries = [e("S1", "a", "captain"), e("S2", "c", "captain")];
+  const supabase = withLockTables(makeFakeSupabase({ entries, dayByRace: { S1: [1], S2: [2] } }), {
+    races: [race("S1"), race("S2")],
+    schedule: [
+      { race_id: "S1", stage_number: 1, scheduled_at: "2999-01-01T10:00:00Z" },
+      { race_id: "S2", stage_number: 1, scheduled_at: "2020-01-01T10:00:00Z" },
+    ],
+  });
+  const picksByRace = {
+    S1: [{ rider_id: "a", race_role: "captain" }, { rider_id: "n1", race_role: "helper" }],
+    S2: [{ rider_id: "c", race_role: "captain" }, { rider_id: "n2", race_role: "helper" }],
+  };
+  const res = await writeRegeneratedLineups({
+    supabase, teamId: "T", target: [race("S1"), race("S2")], picksByRace, existingEntries: entries,
+    clock: () => new Date("2026-10-23T00:00:00Z"),
+  });
+  assert.equal(res.regenerated, 1, "kun S1 skrives");
+  assert.deepEqual(raceIdsOf(supabase.state, "n1"), ["S1"]);
+  assert.deepEqual(raceIdsOf(supabase.state, "n2"), [], "S2's trup er låst og røres ikke");
+  assert.deepEqual(raceIdsOf(supabase.state, "c"), ["S2"]);
+});
+
+test("#6959: beforeWrite (clear-markeringer) faar kun de loeb der skrives efter den friske laas", async () => {
+  const entries = [e("S1", "a", "captain"), e("S2", "c", "captain")];
+  const supabase = withLockTables(makeFakeSupabase({ entries, dayByRace: { S1: [1], S2: [2] } }), {
+    races: [race("S1"), race("S2")],
+    schedule: [
+      { race_id: "S1", stage_number: 1, scheduled_at: "2999-01-01T10:00:00Z" },
+      { race_id: "S2", stage_number: 1, scheduled_at: "2020-01-01T10:00:00Z" },
+    ],
+  });
+  const picksByRace = {
+    S1: [{ rider_id: "a", race_role: "captain" }],
+    S2: [{ rider_id: "c", race_role: "captain" }],
+  };
+  const seen = [];
+  await writeRegeneratedLineups({
+    supabase, teamId: "T", target: [race("S1"), race("S2")], picksByRace, existingEntries: entries,
+    clock: () => new Date("2026-10-23T00:00:00Z"),
+    beforeWrite: async (raceIds) => { seen.push(...raceIds); },
+  });
+  assert.deepEqual(seen, ["S1"], "S2 startede under beregningen og beholder sin clear-markering");
+});

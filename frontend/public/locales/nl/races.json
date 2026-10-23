@@ -84,10 +84,16 @@
     },
     "favourites": {
       "title": "Favorieten",
-      "foot": "Gebaseerd op deze koers tot nu toe. Parcoursmatch alleen voor je eigen renners.",
+      "foot": "Volgt het etappeprofiel, gebaseerd op deze koers tot nu toe. Parcoursmatch alleen voor je eigen renners.",
       "leadsOverall": "Aan de leiding in het klassement",
       "overall": "#{rank} in het klassement, {gap}",
       "wonStage": "Won etappe {number}",
+      "placed": {
+        "flat": "Top 10 in {count, plural, one {# vlakke etappe} other {# vlakke etappes}}",
+        "hilly": "Top 10 in {count, plural, one {# heuvelachtige etappe} other {# heuvelachtige etappes}}",
+        "mountain": "Top 10 in {count, plural, one {# bergetappe} other {# bergetappes}}",
+        "itt": "Top 10 in {count, plural, one {# tijdrit} other {# tijdritten}}"
+      },
       "you": "Jij"
     },
     "story": {

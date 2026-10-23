@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
+import { privateMinCellTeamStages, assertPrivateOutDir, assertSameRaceSelection, assertSameRun, budgetStop, buildReportMeta, collectCard, loadThresholds, latestDryRunJson, resolveReportThresholds, resolveThresholdsFile, main, parseArgs, parseIdsText, planTasks, raceIdsFromDir, runPool, selectRaceIds, splitByStartField, tourDryRunArgs } from "./motorTestport.mjs";
 
 /** Et syntetisk tourDryRun-scorecard (ingen motor-tal). */
 const scorecard = (id, revision) => JSON.stringify({
@@ -397,7 +397,7 @@ test("#6909 main: --from-dir + --routes-from + --synthetic-field=bench bygger ca
       writeFileSync(path.join(out, "races", id, "done"), "x");
       writeFileSync(path.join(out, "races", id, `loeb-${id}-2026-10-20-10-00.json`), scorecard(id, "rev"));
     }
-    const res = await main(["--candidate=rev", "--no-bench", "--no-png", `--out=${out}`, `--from-dir=${exp}`, `--routes-from=${routesDir}`, "--synthetic-field=bench"], { now: NOW, defaultBaseline: "rev" });
+    const res = await main(["--candidate=rev", "--no-bench", "--no-png", `--out=${out}`, `--from-dir=${exp}`, `--routes-from=${routesDir}`, "--synthetic-field=bench", "--breakaway-intent=none"], { now: NOW, defaultBaseline: "rev" });
     assert.equal(res.card.races, 2);
     const cacheB = JSON.parse(readFileSync(path.join(out, "races", "b", "cache.json"), "utf8"));
     assert.equal(cacheB.fieldSource, "bench");
@@ -425,4 +425,81 @@ test("#6909 (Codex P1) budgetStop: injiceret monotont ur styrer stop-tidspunktet
   t += 1;
   assert.equal(stop(), true, "praecis ved budgettet");
   assert.equal(budgetStop(null, () => { throw new Error("uret bruges ikke uden budget"); })(), false);
+});
+
+test("#6804 P0 parseArgs: syntetisk felt faar prod-lignende udbrudsvilje som standard", () => {
+  const p = (extra) => parseArgs(["--candidate=rev", ...extra], { defaultBaseline: "rev", now: NOW });
+  assert.equal(p(["--synthetic-field"]).breakawayIntent, "prod");
+  assert.equal(p(["--synthetic-field", "--breakaway-intent=none"]).breakawayIntent, "none");
+  assert.equal(p([]).breakawayIntent, "none");
+  assert.throws(() => p(["--breakaway-intent=prod"]), /kraever --synthetic-field/);
+  assert.throws(() => p(["--synthetic-field", "--breakaway-intent=maaske"]), /prod eller none/);
+  assert.equal(p(["--synthetic-field", "--intent-rates=x.json"]).intentRates, "x.json");
+  assert.equal(p(["--synthetic-field", "--intent-season=4"]).intentSeason, 4);
+  // Review P2: bench-feltet har kun AI-hold; udbrudsvilje er kun standard (og kun tilladt) med generatoren.
+  assert.equal(p(["--synthetic-field=bench"]).breakawayIntent, "none");
+  assert.throws(() => p(["--synthetic-field=bench", "--breakaway-intent=prod"]), /synthetic-field=generator/);
+  assert.throws(() => p(["--synthetic-field", "--intent-season=0"]), /intent-season/);
+  assert.equal(p(["--synthetic-field"]).intentSeason, null);
+});
+
+test("#6804 P0 main: --from-dir + syntetisk felt kraever satser; med --intent-rates staar de i meta og cachen", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-6804-"));
+  const prevExit = process.exitCode;
+  try {
+    const exp = path.join(root, "export");
+    const routesDir = path.join(root, "routes");
+    const out = path.join(root, "balance-internals", "run");
+    const ratesFile = path.join(root, "rates.json");
+    writeFileSync(ratesFile, JSON.stringify({ format: "cz-breakaway-intent-rates/v2", seasonId: "s4", seasonNumber: 3, minCellTeamStages: 1, rows: [
+      { division: "all", group: "one_day", humanTeamRaces: 1, humanTeamRoadStages: 1, hunters: 1, freeRoles: 0, tryBreakRiders: 0 },
+    ] }));
+    mkdirSync(routesDir, { recursive: true });
+    const entries = [{ rider_id: "x", team_id: "h", race_role: "helper" }];
+    mkdirSync(path.join(exp, "a"), { recursive: true });
+    writeFileSync(path.join(exp, "a", "cache.json"), JSON.stringify({ race: { id: "a", name: "Loeb a", stages: 1 }, profiles: [{ race_id: "a", stage_number: 1, profile_type: "hilly" }],
+      entries, orders: [], teams: [{ id: "h", is_ai: false }], abilities: [{ rider_id: "x" }], fieldSource: "generator" }));
+    writeFileSync(path.join(routesDir, "a.json"), JSON.stringify({ format: "cz-race-routes/v1", race_id: "a", stages: 1, profiles: [{ stage_number: 1, profile_type: "hilly", demand_vector: { punch: 1 } }] }));
+    mkdirSync(path.join(out, "races", "a"), { recursive: true });
+    writeFileSync(path.join(out, "races", "a", "done"), "x");
+    writeFileSync(path.join(out, "races", "a", "loeb-a-2026-10-21-10-00.json"), scorecard("a", "rev"));
+    const args = ["--candidate=rev", "--no-bench", "--no-png", `--out=${out}`, `--from-dir=${exp}`, `--routes-from=${routesDir}`, "--synthetic-field=generator"];
+    await assert.rejects(main(args, { now: NOW, defaultBaseline: "rev" }), /kraever --intent-rates/);
+    await main([...args, `--intent-rates=${ratesFile}`], { now: NOW, defaultBaseline: "rev" });
+    const meta = JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8"));
+    assert.equal(meta.breakawayIntent.mode, "prod");
+    assert.equal(meta.breakawayIntent.seasonId, "s4");
+    assert.equal(JSON.parse(readFileSync(path.join(out, "breakaway-intent-rates.json"), "utf8")).seasonId, "s4");
+    const cache = JSON.parse(readFileSync(path.join(out, "races", "a", "cache.json"), "utf8"));
+    assert.equal(cache.entries[0].race_role, "hunter");
+    // En genoptagelse uden satser bruger dem der staar i --out; en koersel uden udbrudsvilje er en anden koersel.
+    await main(args, { now: NOW, defaultBaseline: "rev" });
+    await assert.rejects(main([...args, "--breakaway-intent=none"], { now: NOW, defaultBaseline: "rev" }), /anden koersel/);
+    // Codex P2: andre satser ved genoptagelse afvises, foer noget skrives (done-markoererne gaelder de gamle).
+    const other = path.join(root, "rates2.json");
+    writeFileSync(other, readFileSync(ratesFile, "utf8").replace('"hunters":1', '"hunters":0'));
+    await assert.rejects(main([...args, `--intent-rates=${other}`], { now: NOW, defaultBaseline: "rev" }), /andre udbrudsvilje-satser/);
+    // Review P2: en valgt saeson der ikke passer med satserne afvises (satsfilen er fra saeson 3).
+    await assert.rejects(main([...args, "--intent-season=4"], { now: NOW, defaultBaseline: "rev" }), /passer ikke med satserne/);
+    assert.equal(JSON.parse(readFileSync(path.join(out, "breakaway-intent-rates.json"), "utf8")).rows[0].hunters, 1, "de gemte satser er uroerte");
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("#6804 P0 (Codex P1) privateMinCellTeamStages: privat graense kraeves, intet stille default", () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-6804-thr-"));
+  try {
+    const f = path.join(root, "thr.json");
+    assert.throws(() => privateMinCellTeamStages(f), /breakawayIntentMinCellTeamStages/, "filen mangler");
+    writeFileSync(f, JSON.stringify({ andet: 1 }));
+    assert.throws(() => privateMinCellTeamStages(f), /breakawayIntentMinCellTeamStages/, "noeglen mangler");
+    writeFileSync(f, JSON.stringify({ breakawayIntentMinCellTeamStages: -1 }));
+    assert.throws(() => privateMinCellTeamStages(f), /tal >= 0/);
+    writeFileSync(f, JSON.stringify({ breakawayIntentMinCellTeamStages: 12 }));
+    assert.equal(privateMinCellTeamStages(f), 12);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
