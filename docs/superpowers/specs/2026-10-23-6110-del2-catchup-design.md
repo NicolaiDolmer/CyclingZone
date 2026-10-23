@@ -39,8 +39,8 @@ Målingen 23/10 viser, at den største kløft i dag ikke er penge, men aktivitet
 Målt read-only i prod 23/10 på S4 (25 af 28 løbsdatoer afregnet), alle ryttere på menneskehold i seniordivisionerne (holdets division, ikke rytterens trup: U23- og juniorryttere på de hold er med). Mål: summen af rå evne-deltaer pr. tick fra `training_rider_ticks.report`. Rig/fattig = tredjedel inden for divisionen efter truppens markedsværdi. Tallene står privat.
 
 **Træning mod løb**
-- Løb står i dag for en lille del af rytternes samlede udvikling, omkring en syvendedel. Resten er træning.
-- Samlet over alle ticks giver en løbsdag omkring halvdelen af en hård dag (samme billede som 3/10). Inden for den samme rytter er forskellen mindre: løbsdagen ligger tydeligt under en hård dag, men tættere end halvdelen. Forskellen skyldes, at de ryttere der kører mange løb, er ældre og længere fremme. Begge dele bekræfter D2's præmis: løbet betaler sig ikke i dag.
+- Løb står i dag for en lille del af rytternes samlede udvikling. Langt det meste kommer fra træning.
+- En løbsdag giver klart mindre end en hård træningsdag (samme billede som 3/10). Forskellen er mindre, når man sammenligner inden for den samme rytter, fordi de ryttere der kører mange løb, er ældre og længere fremme. Begge målinger bekræfter D2's præmis: løbet betaler sig ikke i dag.
 - Fattige hold kører relativt flere løb og træner hårdt langt sjældnere end rige hold. Løbet er altså allerede deres vigtigste udviklingskilde.
 
 **Rige mod fattige**
@@ -76,12 +76,12 @@ Løbsdagen er fortsat et program gennem den samme `applyDailyTick` som træninge
 ### 3.2 Rollens fordeling (D3)
 - Kaptajn (`captain`), spurtkaptajn (`sprint_captain`) og jæger (`hunter`): tillægget lægges mest i etapens afgørende evne (bjerg → klatring, flad → sprint, enkeltstart → enkeltstart, brosten → brosten osv.).
 - Hjælpere (`helper`): tillægget lægges mest i de bærende evner (udholdenhed, flad, positionering, restitution afhængigt af profilen).
-- Fri rolle (`free_role`): halvt af hver fordeling (forslag; afgøres i byg-PR'en). Rollerne er motorens `VALID_RACE_ROLES` (`raceRoles.js`).
+- Fri rolle (`free_role`): ejer-spørgsmål, se §8.1. Rollerne er motorens `VALID_RACE_ROLES` (`raceRoles.js`).
 - Kilde til rollen: etapens rolle i `race_stage_roles` (pr. etape), ellers løbets rolle i `race_entries.race_role`, ellers hjælper-fordelingen. Samme opslagsrækkefølge som løbsmotoren.
 - Ingen straf for at hjælpe holdet: summen er ens.
 
 ### 3.3 Hvad tæller som en løbsdag
-Uændret fra §6.2: rytteren har et etaperesultat på løbsdagen (`race_results` ⋈ `race_stage_schedule`). Bundet uden etape (hviledag i etapeløb) er hvile. Et endagsløb er én løbsdag. Udgået rytter: basis, men intet tillæg (forslag, se §8).
+Uændret fra §6.2: rytteren har et etaperesultat på løbsdagen (`race_results` ⋈ `race_stage_schedule`). Bundet uden etape (hviledag i etapeløb) er hvile. Et endagsløb er én løbsdag. Udgået rytter: ejer-spørgsmål, se §8.1.
 
 ### 3.4 Sammenhæng med de øvrige S5-dele
 - **D1-kurven** bestemmer hvor meget et point koster; løbsdagen arver den automatisk via tick'et.
@@ -126,7 +126,7 @@ D1 har flere løbsdage med etaper end de lavere divisioner, og kalenderen er lå
 - **Løbsdagen får et tal på samme skala** (forslag, arkitekt-valg; må udfordres). I dag vises "løb" uden tal. Med del 2 er løbet den bedste udviklingsdag, og uden et tal kan en manager på et lille hold ikke se, at hans løb betaler sig. Løbsdagens score bygges af de samme led som træningsdagens (kondition, talent, træner/facilitet på basis) plus terræn-match, rolle og stræk-bonus. Ingen nye skjulte tal vises: kun scoren og én linje "hvad trak op/ned" (fx "stærkt felt: ekstra udbytte").
 - Scoren driver fortsat udviklingen med den eksisterende kobling (høj score giver lidt mere, samlet tempo uændret). **På løbsdagen kobles scoren kun på basis-delen.** Tillæg og stræk-bonus ganges ikke med koblingen, ellers ville trænere og facilitet snige sig ind i det ekstra udbytte igen via scoren og bryde kort 1 A. Vælges kort 1 B, kobles scoren på hele løbsdagen som i dag.
 - Kortet på rytterprofilen viser løbsdage som punkter på kurven i stedet for huller.
-- Ungdomsregler fra 11/10 (skjult potentiale, prognose efter 5 træninger) gælder uændret. Løbsdage tæller ikke som "træninger" til salgsgrænsen (forslag; afgøres i byg-PR'en).
+- Ungdomsregler fra 11/10 (skjult potentiale, prognose efter 5 træninger) gælder uændret. Om løbsdage tæller som "træninger" til salgsgrænsen, er et ejer-spørgsmål (§8.1).
 
 ## 6. Harness og gates (simulér før ship)
 
@@ -174,11 +174,19 @@ Anbefaling: **A**. B ville ramme bunden af 1. og 2. division i mange af deres l�
 
 Anbefaling: **A**. B rammer toppen, og den nye træthed er allerede prisen for at køre meget.
 
-## 8. Åbent til byg-PR'en (tekniske valg, ikke ejer-kort)
+## 8. Åbent
 
-- Udgået rytter (DNF): basis uden tillæg (forslag).
+### 8.1 Spillervendte spørgsmål til ejeren (stilles efter kort 1-3, ét ad gangen; IKKE afgjort af denne spec)
+
+Et go på kort 1-3 afgør ikke disse. De påvirker spillerens udbytte eller handlemuligheder og kræver hver sit ejer-svar før byg:
+
+- **Udgået rytter (DNF):** får han løbsdagens fulde udbytte, kun basis, eller som en hård dag? Arkitektens forslag: basis uden tillæg.
+- **Fri rolle (`free_role`):** hvor lander tillægget? Forslag: halvt som kaptajn, halvt som hjælper.
+- **Salgsgrænsen for unge (5 træninger, ejer 11/10):** tæller løbsdage med? Forslag: nej, kun træningsdage, fordi grænsen er knyttet til træningsscoren som første signal.
+
+### 8.2 Tekniske valg til byg-PR'en
+
 - Niveau-målet for felt og rytter: rollens rating ved start, fastfrosset i løbets snapshot. Skal kunne genafspilles.
-- Løbsdage tæller ikke mod salgsgrænsen på 5 træninger (forslag).
 - U23- og juniortrupper: samme regler på deres egen akse; feltet er trup-løbets felt.
 - Flag: ét flag for del 2 (løbsudvikling + catch-up + omdøbning), tændes på en dato-grænse, fail-safe off, bit-identisk off.
 
