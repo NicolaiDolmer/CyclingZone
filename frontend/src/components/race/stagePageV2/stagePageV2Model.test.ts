@@ -5,10 +5,11 @@ import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
   surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
   yourDay, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage,
-  activeRiders, profileScale, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
+  activeRiders, profileScale, favouriteTerrain, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
 import { elevationScaleFor } from "../../../lib/stageRouteProfile.js";
+import { PROFILE_TYPE_KEYS } from "../../../lib/stageProfileConfig.js";
 
 const MOUNTAIN: StageProfile = {
   race_id: "r1", stage_number: 2, profile_type: "mountain", finale_type: "descent",
@@ -261,6 +262,12 @@ const STAGES: ResultRow[] = [
   stageRow(4, 1, "Allround Four"), stageRow(4, 2, "Climber One"),
 ];
 const ids = (f: ReturnType<typeof favouritesFor>) => f.map((x) => x.name);
+
+test("favouriteTerrain: hver kendt profiltype (ogsaa S5 medium_mountain) har en terraenfamilie", () => {
+  for (const k of PROFILE_TYPE_KEYS) assert.notEqual(favouriteTerrain(k), null, k);
+  assert.equal(favouriteTerrain("medium_mountain"), "hilly");
+  assert.equal(favouriteTerrain("nope"), null);
+});
 
 test("favouritesFor: tom foer foerste etape og ved ukendt profil", () => {
   assert.deepEqual(favouritesFor(GC_AFTER_4, [], 1, MINE, 0, PROFILES), []);

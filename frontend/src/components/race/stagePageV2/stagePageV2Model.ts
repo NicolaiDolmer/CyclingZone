@@ -482,7 +482,7 @@ export type FavouriteTerrain = "flat" | "hilly" | "mountain" | "itt";
 export function favouriteTerrain(profileType: string | null | undefined): FavouriteTerrain | null {
   switch (profileType) {
     case "flat": case "rolling": return "flat";
-    case "hilly": case "classic": case "cobbles": case "gravel": return "hilly";
+    case "hilly": case "medium_mountain": case "classic": case "cobbles": case "gravel": return "hilly";
     case "mountain": case "high_mountain": return "mountain";
     case "itt": case "itt_hilly": case "ttt": return "itt";
     default: return null; // ukendt profil: intet aerligt grundlag, listen udelades
