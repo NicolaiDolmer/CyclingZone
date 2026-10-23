@@ -18,6 +18,7 @@
 // Manglende tabel (foer auto-migrate har koert): alle laesere svarer "Enter
 // races" (fail-open = dagens adfaerd), skrivestien svarer 503.
 import { loadTrainNowLocksForRaces } from "./trainNowLock.js";
+import { loadLockedRaceIds } from "./raceStartLock.js";
 
 export const YOUTH_RACE_OPT_OUT_TABLE = "team_youth_race_opt_outs";
 export const OPT_OUT_SQUADS = ["u23", "junior"] as const;
@@ -194,15 +195,17 @@ async function trainNowKeptRaceIds(
  */
 export async function firstUnlockedRaceDay(
   supabase: Supabase,
-  { team, squad, races = null }: { team: TeamRow; squad: OptOutSquad; races?: SquadRace[] | null },
+  { team, squad, races = null, now }: { team: TeamRow; squad: OptOutSquad; races?: SquadRace[] | null; now: Date },
 ): Promise<number | null> {
   const list = (races ?? await loadSquadRaces(supabase, { team, squad }))
     .filter(isRaceOpenForChange)
     .sort((a, b) => (a.game_day_start ?? Infinity) - (b.game_day_start ?? Infinity));
   const kept = await trainNowKeptRaceIds(supabase, { teamId: team.id, raceIds: list.map((r) => r.id) });
+  // #6959: et loeb hvis etape 1-start er passeret (ogsaa i en pause) er laast for trup og taktik.
+  const startLocked = await loadLockedRaceIds({ supabase, raceIds: list.map((r) => r.id), now });
   for (const race of list) {
     if (race.game_day_start == null) continue;
-    if (kept.has(race.id)) continue;
+    if (kept.has(race.id) || startLocked.has(race.id)) continue;
     return race.game_day_start;
   }
   return null;
@@ -217,7 +220,7 @@ export async function firstUnlockedRaceDay(
  */
 export async function setTeamSquadTrainOnly(
   supabase: Supabase,
-  { team, squad, trainOnly }: { team: TeamRow; squad: OptOutSquad; trainOnly: boolean },
+  { team, squad, trainOnly, now }: { team: TeamRow; squad: OptOutSquad; trainOnly: boolean; now: Date },
 ): Promise<{ trainOnly: boolean; clearedRaceIds: string[]; effectiveFromDay: number | null }> {
   const unavailable = () => Object.assign(new Error("opt_out_unavailable"), { code: "opt_out_unavailable" });
 
@@ -228,7 +231,7 @@ export async function setTeamSquadTrainOnly(
       if (isMissingOptOutTable(error)) throw unavailable();
       throw new Error(`${YOUTH_RACE_OPT_OUT_TABLE} delete: ${error.message}`);
     }
-    const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad });
+    const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad, now });
     return { trainOnly: false, clearedRaceIds: [], effectiveFromDay };
   }
 
@@ -259,7 +262,9 @@ export async function setTeamSquadTrainOnly(
       const { data: fresh, error: freshError } = (await supabase.from("races")
         .select("id, status, stages_completed, game_day_start").in("id", clearedRaceIds)) as Result<SquadRace[]>;
       if (freshError) throw new Error(`races (${squad} recheck): ${freshError.message}`);
-      clearedRaceIds = (fresh ?? []).filter(isRaceOpenForChange).map((r) => r.id);
+      // #6959 (Codex P1): samme faelles start-laas som udtagelsen; etape 1's start er passeret = laast.
+      const startLocked = await loadLockedRaceIds({ supabase, raceIds: clearedRaceIds, now });
+      clearedRaceIds = (fresh ?? []).filter((r) => isRaceOpenForChange(r) && !startLocked.has(r.id)).map((r) => r.id);
     }
     if (clearedRaceIds.length) {
       const { error: deleteError } = (await supabase.from("race_entries").delete()
@@ -267,6 +272,6 @@ export async function setTeamSquadTrainOnly(
       if (deleteError) throw new Error(`race_entries delete (${squad} train only): ${deleteError.message}`);
     }
   }
-  const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad, races });
+  const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad, races, now });
   return { trainOnly: true, clearedRaceIds, effectiveFromDay };
 }
