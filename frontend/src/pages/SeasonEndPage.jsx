@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/apiFetch.ts";
 import { Link, useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { isSeniorSquad } from "../lib/seniorScope.ts";
-import { aggregateJerseyWins, JERSEY_RESULT_TYPES } from "../lib/seasonJerseyWins.js";
+import { aggregateJerseyWins, fetchJerseyWinnerRows } from "../lib/seasonJerseyWins.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { latestScheduledMsByRace } from "../lib/raceCompletionDate.js";
@@ -321,16 +321,7 @@ export default function SeasonEndPage() {
     jerseySeasonRef.current = season.id;
     setJerseyByTeam(null);
     try {
-      const rows = [];
-      for (let i = 0; i < raceIds.length; i += 60) {
-        const { data, error: jerseyError } = await supabase.from("race_results")
-          .select("result_type, rank, team_id")
-          .in("race_id", raceIds.slice(i, i + 60))
-          .in("result_type", JERSEY_RESULT_TYPES)
-          .eq("rank", 1);
-        if (jerseyError) throw jerseyError;
-        rows.push(...(data || []));
-      }
+      const rows = await fetchJerseyWinnerRows(supabase, raceIds);
       if (jerseySeasonRef.current === season.id) setJerseyByTeam(aggregateJerseyWins(rows));
     } catch (e) {
       console.error("SeasonEndPage: jersey winners failed", e);

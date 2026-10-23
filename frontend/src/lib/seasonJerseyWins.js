@@ -21,3 +21,21 @@ export function aggregateJerseyWins(rows) {
   }
   return out;
 }
+
+/**
+ * Henter KUN de endelige trøje-rækker (rank 1, tre result_types) for de givne
+ * løb, i bidder så URL'en holdes kort. Kaster ved fejl (kalderen degraderer).
+ */
+export async function fetchJerseyWinnerRows(client, raceIds, chunkSize = 60) {
+  const rows = [];
+  for (let i = 0; i < raceIds.length; i += chunkSize) {
+    const { data, error } = await client.from("race_results")
+      .select("result_type, rank, team_id")
+      .in("race_id", raceIds.slice(i, i + chunkSize))
+      .in("result_type", JERSEY_RESULT_TYPES)
+      .eq("rank", 1);
+    if (error) throw error;
+    rows.push(...(data || []));
+  }
+  return rows;
+}
