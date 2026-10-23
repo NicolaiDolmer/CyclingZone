@@ -1,7 +1,8 @@
 # Udvikling 2.0 byggetrin 7: Udviklingsscore B, teknisk design
 
 **Status:** teknisk design 23/10 2026 (AGENTS 36: design + målt baseline før første kode-PR). Ingen kode endnu.
-**Epic:** [#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110) · **Samlet design:** [`2026-10-23-6110-potentiale-et-tal-samlet-design.md`](2026-10-23-6110-potentiale-et-tal-samlet-design.md) §5 og §13 (S9, S10, S11, S13, S14, S22)
+**Epic:** [#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110) · **Samlet design:** `2026-10-23-6110-potentiale-et-tal-samlet-design.md` §5 og §13 (S9, S10, S11, S13, S14, S22), i [PR #7107](https://github.com/NicolaiDolmer/CyclingZone/pull/7107) (ejer-godkendt 23/10, ikke merget endnu)
+**SSOT for området:** [`TRAINING_RULES.md`](../../TRAINING_RULES.md) §6.2 (løbsdagens udbytte) og §13 (træningsscoren) · [`PROGRESSION_RULES.md`](../../PROGRESSION_RULES.md) §1 (rolleklassernes fart) og §11 (Udvikling 2.0). Begge opdateres i tænd-PR'en, så de beskriver den nye score.
 **Baseline og tal:** privat i `balance-internals/6110/udviklingsscore-baseline-2026-10-23.md` (hard rule 17). Dette dokument er kvalitativt.
 
 ## 1. Hvad er besluttet (genåbnes ikke)
@@ -34,7 +35,7 @@ developmentDay(input) -> { score: 1..99, devMult: number, kind: "training" | "ra
 - `score` er det, spilleren ser. `devMult` er det, motoren ganger på dagens udvikling, og det afledes KUN af `score` (S22, doktrinen S20). Ingen skjult parallel faktor.
 - `dailyAbilityDelta` får score-stien som eneste sti, når flaget er tændt: niveau-kurven (D1) × rolleklasse-fart (S6) × `devMult`. Konditions-leddet (`conditionMult`) fjernes fra udviklingen (S29); trætheden virker kun gennem form og skade (#6984). Den gamle gren (alder, ungdomstillæg, potentiale-rate) bliver stående bag slukket flag til tænding og slettes bagefter.
 - **Træningsdag:** led = intensitet, fokus-match (rolleklasse pr. sessionens evner, S12-kataloget), træner, facilitet, talent (grundtalent + træningsdisciplin), dagsstøj. Ingen form/træthed (S29).
-- **Løbsdag:** led = basis (som hård dag, uden træner og facilitet, S13), tillæg i etapens evner, afgørelses-bonus (S14), niveau-bonus, talent, dagsstøj. Ingen form/træthed (S29). Udgået rytter: kun basis (S16). Fri rolle: halvt kaptajn, halvt hjælper (S17).
+- **Løbsdag:** led = basis (som hård dag, uden træner og facilitet, S13), tillæg i etapens evner, afgørelses-bonus (S14), niveau-bonus, talent, dagsstøj. Ingen form/træthed (S29). Udgået rytter: kun basis (S16). Fri rolle: delt mellem kaptajnens og hjælperens fordeling (S17; den præcise fordeling er privat).
 - **Støj** seedes pr. (rytter, dato), som i dag med `seededUnitMixed`, men bredere (B). Kalibreres mod H6b.
 - **Normalisering:** `devMult` normaliseres, så sæsonens samlede udvikling rammer D1-milepælene; måles i 10-sæsoners-simuleringen (S25).
 
@@ -52,5 +53,11 @@ developmentDay(input) -> { score: 1..99, devMult: number, kind: "training" | "ra
 - PR-rækkefølge: (a) modul + tests uden kaldere · (b) skrivning af score for løbsdage bag flag · (c) motor-kobling bag flag · (d) API-svar bag flag · (e) tekster i tænd-PR'en.
 - Gates før tænding: H6b, G1-G8 (del 2), D1-milepælene i 10-sæsoners-simuleringen.
 
-## 7. Åbent til ejeren (ét kort)
+## 7. Verifikation
+- **Niveau:** TIER FULL (motor, delte libs, API, i18n): `scripts/verify-local.ps1`, alle træningstests, hele e2e for de rørte flader.
+- **Paritet:** med flaget slukket er motor og DB-kald bit-identiske (tests for begge stier). Med flaget tændt giver Train now og aftenkørslen samme score og samme udvikling for samme dato.
+- **Simulering:** H6b, G1-G8 og D1-milepælene i 10-sæsoners-simuleringen (S25), resultater privat.
+- **Det ejeren ser på preview før merge af visnings-PR'en:** rytterprofilens score med en træningsdag og en løbsdag, 7-dages snittet, at intet bidrag eller nogen faktor vises, og at netværkssvaret kun indeholder tal og snit. Både desktop og Android-bredde, med rigtige skærmbilleder.
+
+## 8. Åbent til ejeren (ét kort)
 **Sidekanalen i dag.** Skal talent- og støj-bidraget fjernes fra API-svaret nu, som en ren teknisk rettelse, i stedet for at vente på tændingen? Anbefaling: ja. Det lukker lækagen med det samme. Den eneste synlige forskel er, at "talent" ikke længere kan stå som årsag i linjen "trækker op/ned".
