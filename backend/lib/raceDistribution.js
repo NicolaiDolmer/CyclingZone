@@ -109,7 +109,7 @@ export function partitionRegenTargets({ cols = [], withdrawnIds, manualRaceIds, 
   let skipped = 0;
   for (const r of cols) {
     if (withdrawn.has(r.id)) continue;
-    if ((r.stages_completed ?? 0) > 0) { skipped += 1; continue; } // frys (#1825)
+    if ((r.stages_completed ?? 0) > 0 || r.lineup_locked === true) { skipped += 1; continue; } // frys (#1825) + start passeret (#6959)
     if (mode === "missing" && manual.has(r.id)) { skipped += 1; continue; }
     target.push(r);
   }
@@ -127,7 +127,7 @@ export function partitionClearTargets({ cols = [] }) {
   const target = [];
   let skipped = 0;
   for (const r of cols) {
-    if ((r.stages_completed ?? 0) > 0) { skipped += 1; continue; } // frys (#1825)
+    if ((r.stages_completed ?? 0) > 0 || r.lineup_locked === true) { skipped += 1; continue; } // frys (#1825) + start passeret (#6959)
     target.push(r);
   }
   return { target, skipped };

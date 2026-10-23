@@ -1039,6 +1039,9 @@ export default function RaceDetailPage() {
     stagesCompleted: race.stages_completed,
     stages: race.stages,
     hasResults: hasAnyResults,
+    // #6959: start passeret (også i en pause uden kørt etape) = løbet er i gang for både trup og taktik.
+    firstStageScheduledAt: /** @type {Array<{stage_number: number, scheduled_at?: string | null}>} */ (schedule).find((s) => s.stage_number === 1)?.scheduled_at ?? null,
+    now: nowMs,
   });
   const tabs = raceTabsFor({ phase, isStageRace: race.race_type === "stage_race" });
   // ?stage=N UDEN ?tab= er et dybt link til et RESULTAT (dashboard, holdresultater,

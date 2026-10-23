@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails, classifyBindingConflicts, resolveBindingConflictDetails, isRiderDayInvariantViolation, isConstraintNotDeferrable, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
+const TEST_NOW_6959 = new Date("2026-10-23T00:00:00Z"); // #6959: injiceret ur (hard rule 16)
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(__dirname, "..", "..");
@@ -602,18 +603,23 @@ test("classifyBindingConflicts: blandet — nogle løsbare, nogle blocking, klas
 // {error: "selection_rider_bound"}), selvom races.json's navngivne copy
 // ("selection_rider_bound_named") allerede findes og bruges af pre-flight-vejen —
 // frontend faldt derfor tilbage til den generiske, ikke-navngivne besked.
-function makeConflictDetailsSupabase({ races = [], entries = [] } = {}) {
+function makeConflictDetailsSupabase({ races = [], entries = [], schedule = [] } = {}) {
   function from(table) {
     const f = {};
     const b = {
       select() { return b; },
       eq(col, val) { f[col] = val; return b; },
       in(col, vals) { f["in_" + col] = vals; return b; },
+      order() { return b; },
+      range() { return b; },
       then(resolve, reject) {
         let data = [];
         if (table === "races") {
           const ids = f.in_id || [];
           data = races.filter((r) => ids.includes(r.id));
+        } else if (table === "race_stage_schedule") {
+          const raceIds = f.in_race_id || [];
+          data = schedule.filter((s) => raceIds.includes(s.race_id) && (f.stage_number == null || s.stage_number === f.stage_number));
         } else if (table === "race_entries") {
           const raceIds = f.in_race_id || [];
           const riderIds = f.in_rider_id || [];
@@ -634,7 +640,7 @@ test("resolveBindingConflictDetails: auto-genereret + ikke-startet konfliktløb 
     races: [{ id: "race-a", name: "Volta", stages_completed: 0 }],
     entries: [{ team_id: "team-1", race_id: "race-a", rider_id: "r1", is_auto_filled: true }],
   });
-  const { resolvable, blocking } = await resolveBindingConflictDetails({
+  const { resolvable, blocking } = await resolveBindingConflictDetails({ now: TEST_NOW_6959,
     supabase, teamId: "team-1", boundRiderIds: ["r1"],
     thisWindow: { start: 5, end: 5 },
     otherRaces: [{ raceId: "race-a", window: { start: 5, end: 6 }, riderIds: ["r1"] }],
@@ -651,7 +657,7 @@ test("resolveBindingConflictDetails: manuel entry i et allerede-startet løb →
     races: [{ id: "race-b", name: "Roubaix", stages_completed: 2 }],
     entries: [], // ingen is_auto_filled-række → manuel entry
   });
-  const { resolvable, blocking } = await resolveBindingConflictDetails({
+  const { resolvable, blocking } = await resolveBindingConflictDetails({ now: TEST_NOW_6959,
     supabase, teamId: "team-1", boundRiderIds: ["r9"],
     thisWindow: { start: 5, end: 5 },
     otherRaces: [{ raceId: "race-b", window: { start: 5, end: 6 }, riderIds: ["r9"] }],
@@ -661,9 +667,28 @@ test("resolveBindingConflictDetails: manuel entry i et allerede-startet løb →
   assert.deepEqual(blocking, [{ rider_id: "r9", rider_name: "Rider Nine", race_id: "race-b", race_name: "Roubaix" }]);
 });
 
+// #6959 (Codex P1 på #7063): auto-udtaget rytter i et løb hvis etape 1-start er passeret
+// (pause, ingen kørt etape). Truppen dér er låst, så rytteren må ALDRIG frigives
+// automatisk ved gem i et andet løb: den skal være blocking, ikke resolvable.
+test("resolveBindingConflictDetails: auto-entry i et pauset løb (etape 1-start passeret, 0 kørt) → blocking (#6959)", async () => {
+  const supabase = makeConflictDetailsSupabase({
+    races: [{ id: "race-p", name: "Paused", status: "scheduled", stages_completed: 0 }],
+    entries: [{ team_id: "team-1", race_id: "race-p", rider_id: "r1", is_auto_filled: true }],
+    schedule: [{ race_id: "race-p", stage_number: 1, scheduled_at: "2020-01-01T10:00:00Z" }],
+  });
+  const { resolvable, blocking } = await resolveBindingConflictDetails({ now: TEST_NOW_6959,
+    supabase, teamId: "team-1", boundRiderIds: ["r1"],
+    thisWindow: { start: 5, end: 5 },
+    otherRaces: [{ raceId: "race-p", window: { start: 5, end: 6 }, riderIds: ["r1"] }],
+    riders: [{ id: "r1", name: "Rider One" }],
+  });
+  assert.equal(resolvable.length, 0);
+  assert.deepEqual(blocking, [{ rider_id: "r1", rider_name: "Rider One", race_id: "race-p", race_name: "Paused" }]);
+});
+
 test("resolveBindingConflictDetails: ingen bundne ryttere → tomme resolvable/blocking, ingen DB-opslag nødvendigt", async () => {
   const supabase = makeConflictDetailsSupabase();
-  const { resolvable, blocking } = await resolveBindingConflictDetails({
+  const { resolvable, blocking } = await resolveBindingConflictDetails({ now: TEST_NOW_6959,
     supabase, teamId: "team-1", boundRiderIds: [], thisWindow: { start: 5, end: 5 }, otherRaces: [], riders: [],
   });
   assert.deepEqual(resolvable, []);

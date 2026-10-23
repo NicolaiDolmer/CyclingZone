@@ -1809,9 +1809,6 @@
   "src/lib/racePageTabs.js": {
     "TS8024": 1
   },
-  "src/lib/racePageTabs.test.js": {
-    "TS2322": 2
-  },
   "src/lib/raceRecap.js": {
     "TS2339": 1
   },
