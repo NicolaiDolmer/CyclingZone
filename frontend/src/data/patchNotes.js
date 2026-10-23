@@ -110,7 +110,8 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "rollout": "live",
+        "rollout": "beta",
+        "flag": "stage_page_v2",
         "topic": "Races",
         "en": {
           "title": "Top 5 after a stage on desktop",
