@@ -74,12 +74,13 @@ for (const [name, width, height] of [["mobil", 390, 844], ["desktop", 1440, 900]
     await expect(lines).toHaveCount(4);
     await expect(lines.nth(0)).toHaveText(/^(Achieved|Nået)$/);
     // Indeværende sæson er selve målsæsonen: ingen "før tid"-hale.
-    await expect(lines.nth(1)).toHaveText(/^(Counts at the end of season 4|Tælles ved udgangen af sæson 4)$/);
-    await expect(lines.nth(2)).toHaveText(/^(Counts at the end of season 5 · can be met early|Tælles ved udgangen af sæson 5 · kan nås før tid)$/);
+    await expect(lines.nth(1)).toHaveText(/^(Reach it by the end of season 4\.|Nå det senest ved udgangen af sæson 4\.)$/);
+    await expect(lines.nth(2)).toHaveText(/^(Reach it by the end of season 5\. Get there sooner and it counts too\.|Nå det senest ved udgangen af sæson 5\. Når du det før, tæller det også\.)$/);
     await expect(lines.nth(3)).toContainText(/season 6|sæson 6/);
     // Forklaringen under milepælene siger ikke længere "bedømmes i målsæsonen"
     // uden undtagelsen for tidlig opfyldelse.
-    await expect(page.getByText(/Reach it sooner|Når du den før/)).toBeVisible();
+    await expect(page.getByTestId("vision-progress")).toHaveText(/^(1 of 4 milestones reached|1 af 4 milepæle nået)$/);
+    await expect(page.getByRole("link", { name: /How milestones count|Sådan tæller milepæle/ })).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, "ingen vandret scroll").toBeLessThanOrEqual(0);
     await page.screenshot({ path: evidenceShotPath(`pr-screens/5820-vision-${width}.png`), fullPage: width < 640 });
