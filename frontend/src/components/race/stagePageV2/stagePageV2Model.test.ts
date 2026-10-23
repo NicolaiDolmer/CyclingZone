@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
   surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
-  yourDay, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage,
+  yourDay, DAY_TOP_COUNT, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage,
   activeRiders, profileScale, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
@@ -156,6 +156,8 @@ const RESULTS: ResultRow[] = [
   row("s1", "stage", 2, 1, "Carl Rojas", OTHER, "+0:00"),
   row("s2", "stage", 2, 2, "Luca Marchetti", OTHER, "+0:00"),
   row("s3", "stage", 2, 3, "Simon Kranjc", OTHER, "+0:24"),
+  row("s4", "stage", 2, 4, "Pavel Novak", OTHER, "+0:31"),
+  row("s5", "stage", 2, 5, "Jonas Berg", OTHER, "+0:44"),
   row("s6", "stage", 2, 6, "Ana Ibarra", MINE, "+1:10"),
   row("s40", "stage", 2, 40, "Mads Holm", MINE, "+6:12"),
   row("g1", "leader", 2, 1, "Carl Rojas", OTHER, "+0:00"),
@@ -163,13 +165,14 @@ const RESULTS: ResultRow[] = [
   row("g4", "leader", 2, 4, "Ana Ibarra", MINE, "+1:32"),
 ];
 
-test("yourDay: top 3, dine ryttere uanset plads, din bedste i samlet + hul", () => {
+test("yourDay: top 5, dine ryttere uanset plads, din bedste i samlet + hul", () => {
   const d = yourDay(RESULTS, 2, MINE, "stage");
-  assert.deepEqual(d.top3.map((r) => r.rank), [1, 2, 3]);
+  assert.equal(DAY_TOP_COUNT, 5);
+  assert.deepEqual(d.top.map((r) => r.rank), [1, 2, 3, 4, 5]);
   assert.deepEqual(d.mine.map((r) => [r.rank, r.name]), [[6, "Ana Ibarra"], [40, "Mads Holm"]]);
   assert.deepEqual(d.bestOverall, { rank: 4, name: "Ana Ibarra", gapToLeader: "+1:32", leaderName: "Carl Rojas" });
   const gc = yourDay(RESULTS, 2, MINE, "gc");
-  assert.deepEqual(gc.top3.map((r) => r.name), ["Carl Rojas", "Luca Marchetti", "Ana Ibarra"]);
+  assert.deepEqual(gc.top.map((r) => r.name), ["Carl Rojas", "Luca Marchetti", "Ana Ibarra"]);
   assert.equal(winningMargin(RESULTS, 2), 0);
 });
 

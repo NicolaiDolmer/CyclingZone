@@ -32,7 +32,8 @@
 | Trup- og kontrakt-advarsler | **Allerøverst**, over dagens etaper | Ejer 25/8 — de eneste moduler der koster point hvis de overses |
 | Seniortrup under startgulvet | Vedvarende advarselsstrip sammen med trupadvarslerne; kun aktive managerhold med færre end `MIN_RACE_ENTRIES` reelle seniorryttere. Link til markedet, ingen dismiss. Forsvinder når den indlæste trup når gulvet. | [#5867](https://github.com/NicolaiDolmer/CyclingZone/issues/5867), ejerens design-go 28/9 |
 | `SeasonSignupCard` (Tilmeld næste sæson) | Lige under trup-/kontrakt-advarslerne, over dagens etaper — samme konto-risiko-klasse | [#452](https://github.com/NicolaiDolmer/CyclingZone/issues/452), ejer-go 23/9 |
-| `TodayStagesStrip` | Øverst i indholdsflowet, kun advarsler må stå over | [#3915](https://github.com/NicolaiDolmer/CyclingZone/issues/3915), justeret af ejer 25/8 |
+| `RacePausedBanner` | Kun mens løbene er pauset: lige over `TodayStagesStrip`, under advarslerne og `SeasonSignupCard`. Under en pause viser dashboardet ingen gamle starttider (dagens etaper og "næste etape" skjules, til ny start er kendt). Ikke en nudge-banner (tæller ikke med i "maks én nudge") og kan ikke slås fra, fordi den retter forkert information | [#6970](https://github.com/NicolaiDolmer/CyclingZone/issues/6970), ejer-default 22/10 |
+| `TodayStagesStrip` | Øverst i indholdsflowet, kun advarsler (og pause-banneret) må stå over | [#3915](https://github.com/NicolaiDolmer/CyclingZone/issues/3915), justeret af ejer 25/8 |
 | `MyLatestResultCard` | Første-løbs-øjeblikket ejer toppen indtil resultatet er set | [#3310](https://github.com/NicolaiDolmer/CyclingZone/issues/3310) |
 | `OnboardingProgressCard` | Over "Næste træk" | [#2288 B](https://github.com/NicolaiDolmer/CyclingZone/issues/2288) |
 | `SeasonWrapNudgeCard` | Før "Næste træk" ved sæson-lukning | [#2752](https://github.com/NicolaiDolmer/CyclingZone/issues/2752) / [#2361](https://github.com/NicolaiDolmer/CyclingZone/issues/2361) |
@@ -53,13 +54,13 @@
 
 ## 4. Modulrækkefølgen (efter omlægningen 25/8, PR [#4249](https://github.com/NicolaiDolmer/CyclingZone/pull/4249))
 
-**Øvre del.** Advarsler · **Tilmeld næste sæson** (#4592/#452 — flyttet op fra engangskortene efter ejer-go 23/9; flag-gated, kun for parkerede/sovende hold, ingen dismiss med vilje) · Dagens etaper (fuld) · [Seneste resultat | Næste træk] · [Holdudtagelse | Sæsonstatus] · betingede engangskort (Udviklings-overgang, Onboarding-progress, Onboarding fuldført, Sæson slut, Sæsonstart-guide, Første sejr, **Årsmøde-genvej** (`AnnualMeetingNudgeCard`, #4557 S-M2d — flag-gated på GET /board/meeting `available:true`, lige før to-kolonne-gridet, ingen dismiss), Discord-nudge).
+**Øvre del.** Advarsler · **Tilmeld næste sæson** (#4592/#452 — flyttet op fra engangskortene efter ejer-go 23/9; flag-gated, kun for parkerede/sovende hold, ingen dismiss med vilje) · **Pause-banner** (`RacePausedBanner`, #6970, kun mens løbene er pauset) · Dagens etaper (fuld) · [Seneste resultat | Næste træk] · [Holdudtagelse | Sæsonstatus] · betingede engangskort (Udviklings-overgang, Onboarding-progress, Onboarding fuldført, Sæson slut, Sæsonstart-guide, Første sejr, **Årsmøde-genvej** (`AnnualMeetingNudgeCard`, #4557 S-M2d — flag-gated på GET /board/meeting `available:true`, lige før to-kolonne-gridet, ingen dismiss), Discord-nudge).
 
 **To-kolonne-gridet.** [Auktioner | Transfers] · [Løb | From the forum] · [Stilling/pulje | Økonomi-prognose] · [Seneste resultater | Rytter-rangliste] · [Bestyrelse | …].
 
 Bestyrelsen mistede sin `lg:col-span-2` i omlægningen: /board har 959 sessions mod Mit Holds 5.955, så den fyldte mest og blev brugt mindst.
 
-**23 moduler i alt. Ingen blev fjernet i omlægningen** — 9 flyttede plads, 6 gik fra fuld til halv bredde, og ét (forum-kortet) var nyt.
+**23 moduler i alt ved omlægningen 25/8 (siden kommet til: pause-banneret, #6970). Ingen blev fjernet i omlægningen** — 9 flyttede plads, 6 gik fra fuld til halv bredde, og ét (forum-kortet) var nyt.
 
 ---
 

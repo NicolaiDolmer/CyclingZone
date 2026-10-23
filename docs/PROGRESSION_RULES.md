@@ -273,7 +273,7 @@ Det sidste niveau er nøjagtig det hul kalenderen havde før [#4176](https://git
 | **Kurvemodel B (D-058):** fart = niveau (hvert point dyrere jo tættere på 100) × potentiale × belastningsevne. Alder er ikke længere turbo, kun belastningsevne for de helt unge. Større sværhedsforskel lav/høj end i dag. Mål: omkring 60 % ved 22, omkring 85 % ved 25, top 27-28 | afstand-til-loft × `growthFractionByAge` × `youthMultiplier` (§1) | #3564 | ⏳ design D1-D2 4-5/10, byg uge 41 |
 | **Løbsdag (D-059):** hård basis + tillæg i etapens profil-evner, vægtet efter rolle (kaptajn/angriber, hjælper). Planen er fortsat ikke input | variant A's mellem-pas (§5) | #5950 | ⏳ design D3, byg uge 41 |
 | **Tilbagegang (D-060):** løbsdage bremser faldet ved sæsonskiftet; stilstandsår overvejes | fast alderstrappe ved skiftet (§4) | #6109 | ⏳ design D4, første effekt S4→S5 |
-| **Én kurve for alle:** AI-ryttere og frie ryttere udvikles som managerryttere (ingen sæsonvækst-knæk) | sæsonvækst for ikke-menneskehold | #6059 | ⏳ design D6 |
+| **Ingen udvikling uden for managerhold (D6, ejer 11/10):** AI-ryttere og frie ryttere udvikler sig ikke, hverken dagligt eller ved sæsonskiftet; de falder stadig med alderen (D4). En rytter der kommer til et managerhold, udvikler sig fra dagen efter. Afløser 3/10-retningen "én kurve for alle" | sæsonvækst for ikke-menneskehold | #6059 · #6110 D6 | ✅ besluttet; sæsonhoppet fjernes med `development_v2_aging_enabled` ved skiftet (D7, #6499) |
 | **Eksisterende ryttere:** anbefalet kun fremadrettet | — | #6110 D5 | ❓ ejer-kort |
 
 Fravalgt 3/10: model A (ren niveau-kurve uden alder). Lave niveauer er billige, så de unge ville stadig være næsten færdige som 21-årige.

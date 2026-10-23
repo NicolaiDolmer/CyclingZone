@@ -72,7 +72,7 @@ import {
   type StageOverlayRider,
   type TeamOrder as TeamTacticsOrder,
 } from "../ai/teamOrderContract.ts";
-import { TEAM_TACTICS_ORDER_KIND } from "../mechanics/breakaway.ts";
+import { TEAM_TACTICS_ORDER_KIND, s5MorningGcBlockedRiders } from "../mechanics/breakaway.ts";
 import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
 import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater } from "../../../raceEngineRulesRevision.ts";
 
@@ -105,6 +105,12 @@ export type StageOrderContext = {
   race?: AiRaceContext;
   /** #6097 (VALGFRIT): loebets regel-revision, videre til M14. Udeladt = uaendret. */
   rules_revision?: string;
+  /**
+   * #6818 (VALGFRIT, KUN s5_profiles_v2): samme gc_context som motoren faar. AI-holdene sender
+   * saa ikke en rytter, motoren blokerer i morgenudbruddet (stillingens top / klassementspotentiale),
+   * men naeste passende rytter. Udeladt = uaendret.
+   */
+  gc_context?: unknown;
 };
 
 export type StageOrderPlan = {
@@ -312,6 +318,13 @@ export function buildStageOrderPlan(args: {
   }
   // Hele dagens startliste: M14 placerer kaptajnen i FELTET, ikke i holdet.
   const field: AiFieldRider[] = [...abilitiesByRider.entries()].map(([rider_id, abilities]) => ({ rider_id, abilities }));
+  // #6818 (KUN s5_profiles_v2): de ryttere motoren blokerer i morgenudbruddet (samme funktion som motoren).
+  const breakBlocked = context?.gc_context !== undefined && aiTeams.size > 0
+    ? s5MorningGcBlockedRiders(
+      { gcContext: context.gc_context as never, entrants: Object.fromEntries(roster.filter((r) => r.rider_id != null).map((r) => [String(r.rider_id), { rider_id: String(r.rider_id), abilities: rawAbilitiesByRider.get(String(r.rider_id)) ?? {} }])) as never },
+      roster.filter((r) => r.rider_id != null).map((r) => String(r.rider_id)),
+    )
+    : null;
   const trainByDefault = trainIsDefaultOnStage(context);
 
   const orders: EngineTeamOrder[] = [];
@@ -330,6 +343,7 @@ export function buildStageOrderPlan(args: {
           field,
           race: context.race,
           ...(context.rules_revision ? { rules_revision: context.rules_revision } : {}),
+          ...(breakBlocked ? { break_blocked_rider_ids: breakBlocked } : {}),
         }).order
       : v3HumanStance
         ? humanDefaultOrderV3(teamId, teamRoster, context.route, field, rawAbilitiesByRider)

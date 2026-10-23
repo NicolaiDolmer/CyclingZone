@@ -328,6 +328,23 @@ test("#5676 comeback: holdet overtager AI-holdets eksisterende u23- og junior-gr
   assert.equal(team.junior_league_division_id, juniorPool.id);
 });
 
+test("#6667 comeback: en lukket (retired) ungdomsgruppe vælges aldrig", async () => {
+  const state = baseState({ rank: 30 });
+  // Uden filteret ville den tomme, lukkede gruppe vinde (færrest hold, ingen AI i nogen af dem).
+  const retired = { id: "u23-closed", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 0, label: "U23 Group A", retired_at: "2026-10-23T15:00:00Z" };
+  const active = { id: "u23-open", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 1, label: "U23 Group B", retired_at: null };
+  state.league_divisions.push(retired, active);
+  state.teams.push({ id: "manager-u23-1", is_ai: false, u23_league_division_id: active.id });
+  const supabase = fakeDb(state);
+  const { deps } = makeDeps(supabase);
+
+  const result = await returnParkedTeam({ supabase, teamId: TEAM, deps });
+
+  assert.equal(result.returned, true);
+  const team = supabase.state.teams.find((t) => t.id === TEAM);
+  assert.equal(team.u23_league_division_id, active.id);
+});
+
 test("#5676 comeback: rører ALDRIG et hold der allerede har en ungdomsgruppe (idempotent)", async () => {
   const { state, juniorPool } = withYouthGroups(baseState({ rank: 30 }));
   const otherU23Pool = { id: "u23-b", squad: "u23", tier: YOUTH_GROUP_TIER, pool_index: 1, label: "U23 Group B" };

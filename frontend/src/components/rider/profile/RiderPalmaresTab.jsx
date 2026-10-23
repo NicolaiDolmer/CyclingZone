@@ -19,6 +19,7 @@ import { buildTrophyCase, careerTotals, seasonHonours } from "../../../lib/rider
 import { formatNumber } from "../../../lib/intl.js";
 import { supabase } from "../../../lib/supabase.js";
 import CareerFirstMomentRow from "../../CareerFirstMomentRow.jsx";
+import { isHiddenYouthCareerEvent } from "../../../lib/youthClassification.ts";
 
 // #3398 (Maiden Win Engine) — permanent palmarès-spor: en "first" skal kunne
 // genfindes på rytterens egen profil, ikke kun dashboardet/løbssiden i det
@@ -33,7 +34,7 @@ function useRiderCareerEvents(riderId) {
     (async () => {
       const { data, error } = await supabase
         .from("rider_career_events")
-        .select("id, event_type, rider_id, rider_name, team_name, race_id, params, occurred_at")
+        .select("id, event_type, rider_id, rider_name, team_name, race_id, params, occurred_at, race:race_id(squad)")
         .eq("rider_id", riderId)
         .order("occurred_at", { ascending: true })
         .limit(20);
@@ -42,7 +43,7 @@ function useRiderCareerEvents(riderId) {
         console.warn("rider_career_events fetch failed (table may not be migrated yet):", error.message);
         return;
       }
-      setEvents(data || []);
+      setEvents((data || []).filter((e) => !isHiddenYouthCareerEvent(e, e.race?.squad))); // #7031
     })();
     return () => { cancelled = true; };
   }, [riderId]);

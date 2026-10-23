@@ -1518,11 +1518,13 @@ for (const squad of ["u23", "junior"]) {
   test(`#5645 buildRaceResults: ${squad}-løb giver prize_money = 0 på hver række, point uændrede`, () => {
     const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
     const youth = buildRaceResults({ race: { ...STAGE_RACE, squad }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
-    assert.equal(youth.resultRows.length, base.resultRows.length);
+    // #7031: ungdomsløb har intet ungdomsklassement; sammenlign uden det.
+    const baseRows = base.resultRows.filter((r) => r.result_type !== "young" && r.result_type !== "young_day");
+    assert.equal(youth.resultRows.length, baseRows.length);
     for (const r of youth.resultRows) assert.equal(r.prize_money, 0, `${r.result_type} rank ${r.rank} bar en præmie`);
     assert.deepEqual(
       youth.resultRows.map((r) => r.points_earned),
-      base.resultRows.map((r) => r.points_earned),
+      baseRows.map((r) => r.points_earned),
       "point er uændrede",
     );
   });
@@ -1705,4 +1707,30 @@ test('normal normalized full-race execution rejects multiple canonical dates bef
   const supabase=makeSupabase({race_stage_profiles:STAGES_3,...cannedField(),app_config:[{key:'training_condition_per_date',value:'on'}],race_points:[],race_stage_schedule:STAGES_3.map((stage,index)=>({race_id:STAGE_RACE.id,stage_number:stage.stage_number,game_day:index,scheduled_at:index===2?'2026-09-30T09:00:00Z':'2026-09-29T09:00:00Z'}))});
   await assert.rejects(simulateRace({supabase,race:STAGE_RACE,checkV3Enabled:async()=>false,checkV4Enabled:async()=>false,applyFatigue:async()=>({updated:0}),applyRaceResults:async()=>({rowsImported:0}),recomputeRaceDays:async()=>1}),/single canonical date/);
   assert.equal(supabase.__writes.length,0);
+});
+
+// #7031 (ejer 21/10): intet ungdomsklassement i U23- og juniorløb. Seniorløb uændrede,
+// og resten af resultatet (etaper, GC, point, bjerg, hold) er byte-identisk.
+test("#7031 buildRaceResults: U23/junior skriver hverken young eller young_day; resten er uændret", () => {
+  // prize_money er 0 i ungdomsløb (#5645), så den sammenlignes ikke her.
+  const strip = (rows) => rows.filter((r) => r.result_type !== "young" && r.result_type !== "young_day").map(({ prize_money: _prize, ...r }) => r);
+  const senior = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  assert.ok(rowsBy(senior.resultRows, "young_day").length > 0, "seniorløb har stadig ungdomsklassementet");
+  assert.ok(rowsBy(senior.resultRows, "young").length > 0);
+  for (const squad of ["u23", "junior"]) {
+    const youth = buildRaceResults({ race: { ...STAGE_RACE, squad }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    assert.equal(rowsBy(youth.resultRows, "young").length, 0, `${squad}: ingen young`);
+    assert.equal(rowsBy(youth.resultRows, "young_day").length, 0, `${squad}: ingen young_day`);
+    assert.deepEqual(youth.resultRows.map(({ prize_money: _prize, ...r }) => r), strip(senior.resultRows), `${squad}: alt andet byte-identisk`);
+  }
+});
+
+test("#7031 buildStageRowsAccumulated: etape-for-etape-stien følger samme regel", () => {
+  const args = { stagesSorted: STAGES_3, stageIndex: 0, pointsLookup: POINTS, priorStageRows: [], entrants: ENTRANTS.map((e) => ({ ...e, fatigue: 0 })) };
+  const senior = buildStageRowsAccumulated({ ...args, race: STAGE_RACE });
+  const youth = buildStageRowsAccumulated({ ...args, race: { ...STAGE_RACE, squad: "junior" } });
+  assert.ok(rowsBy(senior.resultRows, "young_day").length > 0);
+  assert.equal(rowsBy(youth.resultRows, "young_day").length, 0);
+  const noPrize = (rows) => rows.map(({ prize_money: _prize, ...r }) => r);
+  assert.deepEqual(noPrize(youth.resultRows), noPrize(senior.resultRows.filter((r) => r.result_type !== "young_day")));
 });

@@ -55,6 +55,9 @@ const HELPER = "withSeniorSquadScope";
 // Keep this allowlist exact; any later migration must earn its own review.
 const YOUTH_MEMBERSHIP_MAINTENANCE = new Set([
   "2026-09-28-4753-youth-pool-retirement-replacement.sql",
+  // #7039 (reviewed 22/10): replaces only the function body with the vacate
+  // fallback; the trigger is still installed by the #4753 file.
+  "2026-10-22-7039-youth-retire-vacate-fallback.sql",
 ]);
 
 // ── Kilde-scanner ────────────────────────────────────────────────────────────────
@@ -356,7 +359,8 @@ test("#5517 seed-gate: ingen auto-migration seeder ungdomspuljer før de blokere
     const sql = readFileSync(join(DATABASE_DIR, file), "utf8");
     if (YOUTH_MEMBERSHIP_MAINTENANCE.has(file)) {
       assert.match(sql, /CREATE OR REPLACE FUNCTION public\.replace_retired_ai_youth_group\(/);
-      assert.match(sql, /AFTER UPDATE OF retired_at ON public\.teams/);
+      // Only the file that installs the trigger must contain it; later files replace the function.
+      if (/youth-pool-retirement-replacement/.test(file)) assert.match(sql, /AFTER UPDATE OF retired_at ON public\.teams/);
       assert.doesNotMatch(stripSqlComments(sql), /\b(?:INSERT\s+INTO|UPDATE)\s+(?:public\.)?league_divisions\b/i);
       continue;
     }

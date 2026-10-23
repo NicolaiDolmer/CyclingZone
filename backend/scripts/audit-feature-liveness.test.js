@@ -275,11 +275,9 @@ test("#3069 Detector C: en committed fil uden whitelist-entry er intet fund i ap
   assert.equal(evaluateDetectorCApplied("database/2026-09-01-noget-andet.sql", committed), null);
 });
 
-test("#3069 Detector E: de fire whitelistede events er intet fund ved 0 impressions", () => {
+test("#3069 Detector E: de to whitelistede events er intet fund ved 0 impressions", () => {
   for (const eventName of [
     "feature_hall_of_fame_opened",
-    "feature_board_meeting_opened",
-    "board_meeting_signed",
     "feature_board_consequences_panel_viewed",
   ]) {
     assert.equal(
@@ -292,11 +290,11 @@ test("#3069 Detector E: de fire whitelistede events er intet fund ved 0 impressi
 });
 
 test("#3069 Detector E: forward-guard — whitelistet event med impressions er stale", () => {
-  const stale = evaluateDetectorEEvent("feature_board_meeting_opened", {
-    event_name: "feature_board_meeting_opened",
+  const stale = evaluateDetectorEEvent("feature_board_consequences_panel_viewed", {
+    event_name: "feature_board_consequences_panel_viewed",
     event_count: 12,
   });
-  assert.ok(stale, "entryen skal selv-rydde når årsmødet er åbnet efter S3→S4");
+  assert.ok(stale, "entryen skal selv-rydde når panelet får impressions");
   assert.equal(stale.severity, "info");
   assert.match(stale.reason, /Stale whitelist-entry/);
 });
@@ -330,9 +328,11 @@ test("#5369 Detector E: parseKnownEvents giver tom liste naar blokken ikke finde
   assert.deepEqual(parseKnownEvents("export const EVENTS = [];"), []);
 });
 
-test("#5369 Detector E: academy_intake_pull (dormant bag flag) er intet fund ved 0, men stale naar det flyder", () => {
-  assert.equal(evaluateDetectorEEvent("academy_intake_pull", undefined), null);
-  const stale = evaluateDetectorEEvent("academy_intake_pull", { event_name: "academy_intake_pull", event_count: 3 });
-  assert.ok(stale, "entryen skal selv-rydde den dag flaget flippes og eventet flyder");
-  assert.match(stale.reason, /Stale whitelist-entry/);
+test("22/10 Detector E: de stale poster er ude af whitelisten og flages ved 0 impressions", () => {
+  for (const eventName of ["academy_intake_pull", "feature_board_meeting_opened", "board_meeting_signed"]) {
+    const finding = evaluateDetectorEEvent(eventName, undefined);
+    assert.ok(finding, `${eventName}: skal overvaages normalt`);
+    assert.equal(finding.severity, "warning");
+    assert.equal(evaluateDetectorEEvent(eventName, { event_name: eventName, event_count: 5 }), null);
+  }
 });
