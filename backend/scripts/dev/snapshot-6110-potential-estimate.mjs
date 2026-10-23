@@ -31,12 +31,17 @@ const OUT_DIR =
   path.join(import.meta.dirname, `.snapshots-6110-${new Date().toISOString().slice(0, 10)}`);
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
-async function fetchAll(table, cols, filterFn) {
+// `order`: kolonner der tilsammen er UNIKKE pr. raekke. Uden en stabil, unik
+// sortering kan PostgREST give overlappende eller manglende raekker mellem sider
+// (se backend/lib/supabasePagination.js).
+async function fetchAll(table, cols, order, filterFn) {
   const out = [];
   const PAGE = 1000;
   for (let from = 0; ; from += PAGE) {
-    let q = sb.from(table).select(cols).range(from, from + PAGE - 1);
+    let q = sb.from(table).select(cols);
     if (filterFn) q = filterFn(q);
+    for (const col of order) q = q.order(col, { ascending: true });
+    q = q.range(from, from + PAGE - 1);
     const { data, error } = await q;
     if (error) throw new Error(`${table}: ${error.message}`);
     out.push(...(data || []));
@@ -56,12 +61,13 @@ function ageOn(birthdate, asOf) {
 const measuredAt = new Date();
 console.log(`=== #6110 snapshot (READ-ONLY) ${measuredAt.toISOString()} UTC ===`);
 
-const teams = await fetchAll("teams", "id, is_ai, is_test_account");
+const teams = await fetchAll("teams", "id, is_ai, is_test_account", ["id"]);
 const humanTeamIds = new Set(teams.filter((t) => !t.is_ai && !t.is_test_account).map((t) => t.id));
 
 const ridersRaw = await fetchAll(
   "riders",
   "id, birthdate, potentiale, team_id, best_role_rating",
+  ["id"],
   (q) => q.or("is_retired.is.null,is_retired.eq.false"),
 );
 const riders = ridersRaw
@@ -77,7 +83,7 @@ const riderById = new Map(riders.map((r) => [r.id, r]));
 fs.writeFileSync(path.join(OUT_DIR, "riders.json"), JSON.stringify(riders));
 console.log(`riders.json: ${riders.length}`);
 
-const staff = await fetchAll("team_staff", "team_id, role, tier", (q) => q.eq("status", "active"));
+const staff = await fetchAll("team_staff", "id, team_id, role, tier", ["id"], (q) => q.eq("status", "active"));
 const bestTier = (role) => {
   const m = new Map();
   for (const s of staff) if (s.role === role) m.set(s.team_id, Math.max(m.get(s.team_id) ?? 0, s.tier ?? 0));
@@ -85,11 +91,11 @@ const bestTier = (role) => {
 };
 const scoutTierByTeam = bestTier("scouting");
 const coachTierByTeam = bestTier("training");
-const facilities = await fetchAll("team_facilities", "team_id, track, tier", (q) => q.eq("track", "training"));
+const facilities = await fetchAll("team_facilities", "id, team_id, track, tier", ["id"], (q) => q.eq("track", "training"));
 const facilityTierByTeam = new Map(facilities.map((f) => [f.team_id, f.tier ?? 0]));
 
 // Scout-kig pr. (hold, rytter), kun menneskehold og kun fremmede ryttere.
-const actions = await fetchAll("scout_actions", "team_id, rider_id");
+const actions = await fetchAll("scout_actions", "id, team_id, rider_id", ["id"]);
 const looks = new Map();
 for (const a of actions) {
   if (!humanTeamIds.has(a.team_id)) continue;
@@ -106,7 +112,8 @@ const windowDays = Number(process.env.TRAINING_WINDOW_DAYS || 60);
 const cutoff = new Date(measuredAt.getTime() - windowDays * 86400000).toISOString().slice(0, 10);
 const ticks = await fetchAll(
   "training_rider_ticks",
-  "team_id, rider_id, tick_date",
+  "team_id, rider_id, tick_date, game_day, season_id",
+  ["rider_id", "season_id", "game_day"], // primaernoeglen: unik pr. raekke
   (q) => q.not("team_id", "is", null).gte("tick_date", cutoff),
 );
 const datesByPair = new Map();

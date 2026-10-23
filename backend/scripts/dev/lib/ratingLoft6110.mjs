@@ -21,14 +21,15 @@ export function shareOverLoft(rows, loftParams) {
 
 // Grid-søgning: find (lo, gamma) for et fast hi, så andelen over loftet rammer
 // targetShare, og andelen med loft >= highBar ligger tættest på targetHighShare.
-export function fitLoft(rows, { hi, targetShare, highBar, targetHighShare, loGrid, gammaGrid }) {
+export function fitLoft(rows, { hi, targetShare, highBar, targetHighShare, overWeight, loGrid, gammaGrid }) {
+  if (!Number.isFinite(overWeight)) throw new Error("fitLoft: overWeight mangler (privat i params.loftFit)");
   let best = null;
   for (const lo of loGrid) {
     for (const gamma of gammaGrid) {
       const p = { lo, hi, gamma };
       const over = shareOverLoft(rows, p);
       const high = rows.filter((r) => ratingLoft(r.talent, p) >= highBar).length / rows.length;
-      const cost = Math.abs(over - targetShare) * 4 + Math.abs(high - targetHighShare);
+      const cost = Math.abs(over - targetShare) * overWeight + Math.abs(high - targetHighShare);
       if (!best || cost < best.cost) best = { params: p, over, high, cost };
     }
   }
