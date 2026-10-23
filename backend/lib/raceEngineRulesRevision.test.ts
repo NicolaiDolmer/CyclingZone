@@ -99,8 +99,8 @@ test("an unreadable stages_completed counts as started", () => {
   assert.equal(raceHasStarted({ stages_completed: "0" }), false);
 });
 
-test("new races are bound to s5_profiles_v1 from the owner's 'taend' (#6369)", () => {
-  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v1");
+test("new races are bound to s5_profiles_v2 from the owner's 'taend' (#6818)", () => {
+  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v2");
 });
 
 test("only a missing-column error degrades to legacy", () => {
@@ -246,8 +246,8 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
   assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"]);
-  // #6369: nye loeb bindes til s5_profiles_v1; loeb bundet til v2/v3/v4/v5 beholder deres.
-  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v1");
+  // #6818: nye loeb bindes til s5_profiles_v2; loeb bundet til v2/v3/v4/v5/S5 v1 beholder deres.
+  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v2");
 });
 
 test("#6084: a race stored on orders_gc_v2 keeps it; a new race binds to v2 only when v2 is current", () => {
@@ -392,14 +392,27 @@ test("#6452: official_times_v3 keeps the full v3 lineage, official times and the
   assert.equal(usesSharedGroupTime(revision), true);
 });
 
-test("#6369 bind: a race with engine_rules_revision = null binds to s5_profiles_v1 on its first stage", async () => {
+test("#6818 bind: a race with engine_rules_revision = null binds to s5_profiles_v2 on its first stage", async () => {
   const row: RaceRow = { engine_rules_revision: null, stages_completed: 0 };
   const supabase = fakeSupabase(row);
   // Default currentRevision: exactly what raceRunner uses in production.
   const revision = await bindRaceRulesRevision({ supabase, race: { id: "new" }, firstStageClaim: true });
-  assert.equal(revision, "s5_profiles_v1");
-  assert.deepEqual(supabase.writes, [{ engine_rules_revision: "s5_profiles_v1" }]);
-  assert.equal(row.engine_rules_revision, "s5_profiles_v1");
+  assert.equal(revision, "s5_profiles_v2");
+  assert.deepEqual(supabase.writes, [{ engine_rules_revision: "s5_profiles_v2" }]);
+  assert.equal(row.engine_rules_revision, "s5_profiles_v2");
+});
+
+test("#6818 bind: a race already bound to s5_profiles_v1 stays on S5 v1 and nothing is written", async () => {
+  for (const firstStageClaim of [true, false]) {
+    for (const stagesCompleted of [0, 3]) {
+      const row: RaceRow = { engine_rules_revision: "s5_profiles_v1", stages_completed: stagesCompleted };
+      const supabase = fakeSupabase(row);
+      const revision = await bindRaceRulesRevision({ supabase, race: { id: "running" }, firstStageClaim });
+      assert.equal(revision, "s5_profiles_v1");
+      assert.equal(supabase.writes.length, 0);
+      assert.equal(row.engine_rules_revision, "s5_profiles_v1");
+    }
+  }
 });
 
 test("#6369 bind: a race already bound to official_times_v5 stays on v5 and nothing is written", async () => {
@@ -494,12 +507,12 @@ test("#6464: the bridge carries official_times_v4 with the same input as officia
   assert.deepEqual({ ...v4, rules_revision: "official_times_v3" }, v3);
 });
 
-// ── #6369: s5_profiles_v1 (S5-etapeprofiler), aktuel fra ejerens "taend" ─────────
+// ── #6369: s5_profiles_v1 (S5-etapeprofiler), aktuel fra ejerens "taend" til S5 v2-taend ─────────
 
-test("#6369: s5_profiles_v1 is known, current since the owner's taend, and inherits the whole official_times_v4 package", () => {
+test("#6369: s5_profiles_v1 is known, was current from its taend until #6818, and inherits the whole official_times_v4 package", () => {
   const revision = "s5_profiles_v1";
   assert.equal(isKnownRulesRevision(revision), true);
-  assert.equal(CURRENT_RACE_RULES_REVISION, revision, "nye loeb bindes til s5_profiles_v1 fra ejerens taend (#6369)");
+  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision, "s5_profiles_v2 is current since #6818; races bound to S5 v1 keep it");
   assert.equal(ordersGcGeneration(revision), ordersGcGeneration("official_times_v4"));
   assert.equal(sharedTimeModelGeneration(revision), 3);
   assert.equal(isOfficialTimesV3OrLater(revision), true);
@@ -515,10 +528,8 @@ test("#6369/#6156: isS5ProfilesV1OrLater is true for exactly s5_profiles_v1 and 
   }
 });
 
-test("#6369: a new race binds to s5_profiles_v1 by default; a stored one keeps it", async () => {
-  const row: RaceRow = { engine_rules_revision: null, stages_completed: 0 };
-  const revision = await bindRaceRulesRevision({ supabase: fakeSupabase(row), race: { id: "new" }, firstStageClaim: true });
-  assert.equal(revision, "s5_profiles_v1");
+test("#6369: a new race binds to s5_profiles_v1 only while it is current; a stored one keeps it", async () => {
+  assert.equal(resolveRaceRulesRevision({ race: notStarted, firstStageClaim: true, storedRevision: null, currentRevision: "s5_profiles_v1" }), "s5_profiles_v1");
   assert.equal(
     resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "s5_profiles_v1", currentRevision: CURRENT_RACE_RULES_REVISION }),
     "s5_profiles_v1",
@@ -583,7 +594,7 @@ test("#6369: the bridge carries s5_profiles_v1 with the same input as official_t
 test("#6462: official_times_v5 is known, was current from its taend until #6369, and inherits the whole official_times_v4 package", () => {
   const revision = "official_times_v5";
   assert.equal(isKnownRulesRevision(revision), true);
-  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision, "s5_profiles_v1 is current since #6369; races bound to v5 keep it");
+  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision, "s5_profiles_v2 is current since #6818; races bound to v5 keep it");
   assert.equal(ordersGcGeneration(revision), ordersGcGeneration("official_times_v4"));
   assert.equal(sharedTimeModelGeneration(revision), 3);
   assert.equal(isOfficialTimesV3OrLater(revision), true);
@@ -627,7 +638,7 @@ test("#6462: the bridge carries official_times_v5 with the same input as officia
   assert.deepEqual({ ...v5, rules_revision: "official_times_v4" }, v4);
 });
 
-test("#6462: the official_times_v5 migration allows every known revision incl. the current one, additively, idempotently, NOT VALID + VALIDATE", async () => {
+test("#6462: the official_times_v5 migration allows every revision known before s5_profiles_v2, additively, idempotently, NOT VALID + VALIDATE", async () => {
   const { readFileSync } = await import("node:fs");
   const migration = readFileSync(new URL(`../../database/${V5_MIGRATION}`, import.meta.url), "utf8");
   const check = migration.match(/IN\s*\(([^)]*)\)/);
@@ -639,8 +650,8 @@ test("#6462: the official_times_v5 migration allows every known revision incl. t
   assert.match(migration, /\)\)\s*NOT VALID;/);
   assert.match(migration, /COMMIT;\s*(?:--[^\n]*\n\s*)*ALTER TABLE public\.races\s+VALIDATE CONSTRAINT races_engine_rules_revision_check;/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
-  // The current revision must be a value the constraint allows, or the first claim fails on CHECK.
-  assert.ok(check[1].includes(`'${CURRENT_RACE_RULES_REVISION}'`));
+  // s5_profiles_v1 (current when v2 was added) stays legal; the current revision is checked against the #6818 migration.
+  assert.ok(check[1].includes("'s5_profiles_v1'"));
 });
 
 test("#6462: only the official_times_v5 migration makes official_times_v5 legal", async () => {
@@ -656,12 +667,12 @@ test("#6462: only the official_times_v5 migration makes official_times_v5 legal"
   assert.deepEqual(legal.sort(), [V5_MIGRATION, "2026-10-17-6818-engine-rules-revision-s5-v2.sql", "2026-10-23-6804-engine-rules-revision-s5-v3.sql"].sort());
 });
 
-// ── #6156 (ejer 17/10, SLUKKET): s5_profiles_v2 = s5_profiles_v1 + formtoppe i v4 ──
+// ── #6156 (ejer 17/10, aktuel fra ejerens "taend" #6818): s5_profiles_v2 = s5_profiles_v1 + formtoppe i v4 ──
 
-test("#6156: s5_profiles_v2 is known, NOT current, and inherits the whole s5_profiles_v1 package", () => {
+test("#6156/#6818: s5_profiles_v2 is known, current since the owner's taend, and inherits the whole s5_profiles_v1 package", () => {
   const revision = "s5_profiles_v2";
   assert.equal(isKnownRulesRevision(revision), true);
-  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v1", "nye loeb bindes stadig til s5_profiles_v1");
+  assert.equal(CURRENT_RACE_RULES_REVISION, revision, "nye loeb bindes til s5_profiles_v2 fra ejerens taend (#6818)");
   for (const helper of [ordersGcGeneration, sharedTimeModelGeneration, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater,
     isOfficialTimesV3OrLater, isOfficialTimesV4OrLater, isOfficialTimesV5OrLater, isS5ProfilesV1OrLater, preservesOfficialStageTimes, usesSharedGroupTime]) {
     assert.equal(helper(revision), helper("s5_profiles_v1"), helper.name);
@@ -676,11 +687,11 @@ test("#6156: isS5ProfilesV2OrLater is true for exactly s5_profiles_v2", () => {
   }
 });
 
-test("#6156: a new race still binds to s5_profiles_v1; only a stored s5_profiles_v2 keeps v2", async () => {
+test("#6818: a new race binds to s5_profiles_v2; a stored s5_profiles_v1 keeps S5 v1", async () => {
   const row: RaceRow = { engine_rules_revision: null, stages_completed: 0 };
-  assert.equal(await bindRaceRulesRevision({ supabase: fakeSupabase(row), race: { id: "new" }, firstStageClaim: true }), "s5_profiles_v1");
-  assert.equal(resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "s5_profiles_v2", currentRevision: CURRENT_RACE_RULES_REVISION }), "s5_profiles_v2");
-  assert.equal(surfaceRulesRevision({ race: notStarted, storedRevision: null }), "s5_profiles_v1");
+  assert.equal(await bindRaceRulesRevision({ supabase: fakeSupabase(row), race: { id: "new" }, firstStageClaim: true }), "s5_profiles_v2");
+  assert.equal(resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "s5_profiles_v1", currentRevision: CURRENT_RACE_RULES_REVISION }), "s5_profiles_v1");
+  assert.equal(surfaceRulesRevision({ race: notStarted, storedRevision: null }), "s5_profiles_v2");
 });
 
 const S5_V2_MIGRATION = "2026-10-17-6818-engine-rules-revision-s5-v2.sql";
