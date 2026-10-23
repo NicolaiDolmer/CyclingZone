@@ -1,6 +1,6 @@
 # #6804 trin 2: udbrud, tidsgab og kuperet enkeltstart pr. løbsgruppe (design)
 
-Status: design besluttet af ejeren 21/10 (alle fem beslutninger A, se §6). Bygges som den slukkede revision `s5_profiles_v3` oven på `s5_profiles_v2` (PR til #6804, ét trin pr. commit): P7, P1 og P6 (med G11 i testporten) er bygget; resten af rækkefølgen i §4 er ikke. Refs #6804 #6857 #6909 #6912 #6464 #6369 #5978 #6441.
+Status: design besluttet af ejeren 21/10 (alle fem beslutninger A, se §6). Bygges som den slukkede revision `s5_profiles_v3` oven på `s5_profiles_v2` (PR til #6804, ét trin pr. commit): P7, P1, P6 (med G11 i testporten) og P2 (realistisk forspring, med G2-målingen) er bygget; resten af rækkefølgen i §4 er ikke. Refs #6804 #6857 #6909 #6912 #6464 #6369 #5978 #6441.
 Bygger videre på `2026-10-17-6804-hilly-breakaway-design.md` (P1-P5, ejer-go 20/10), som stadig gælder.
 SSOT for reglerne: `docs/RACE_ENGINE_RULES.md` (Udbrudsmål, GC-reaktion, "Farlige klassementsryttere får
 kortere snor", "Bjergets tidsgab ens i alle divisioner"). Bygge-PR'erne opdaterer reglerne dér.

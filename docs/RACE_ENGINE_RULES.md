@@ -272,7 +272,14 @@ Gælder med S5-revisionen (aktuel fra ejerens "tænd" 17/10); `official_times_v5
 3. **Noget at forsvare i korte etapeløb** (højst otte etaper) kræver en reel klassementschance: holdets klassementsrytter skal være blandt feltets bedste på klassementsevne og stå så godt placeret som revisionens almindelige regel kræver. Føreren har altid trøjen at forsvare. Grand Tours er uændrede.
 4. **En udbryder uden klassementsevne er ingen trussel**, heller ikke mod trøjen (samme fare-mål som snoren). Klassementets forreste er stadig altid en rival med kort snor, uanset evne, så en top-10 aldrig får minutter uden jagt.
 
-Kode: `mechanics/breakawayV3_6804.ts`, `mechanics/gcThreat.ts` (`DangerModel.s5V3`), `progressChase` i `mechanics/breakaway.ts`. Test: `mechanics/breakawayV3P1_6804.test.ts`, `mechanics/breakawayV3P6_6804.test.ts`, `s5ProfilesV3Revision6804.test.ts`. Måling: testporten (`docs/MOTOR_TESTPORT.md`, G11 for klassementsjagten).
+**P2 realistisk forspring (#6912, K3, byg-go 21/10).** Kun i etapeløb og kun på profiler med etapeinteressen (flad, rullende, kuperet, bjerg, højfjeld); endagsløb har fortsat deres eget loft (#6428). Ikke en klemme på uret, men feltets adfærd:
+1. **Lad gå slutter ved det feltet tolererer.** Når forspringet når det feltet tolererer for profilen (mellemzonen), slutter lad-gå-fasen, og jagten tager over hos de hold der har interesse. Interesse er etapeinteressen (holdets ryttere blandt jagtgruppens bedste på dagens afslutning) eller et positivt ordre- eller klassementssignal. "Lad gå" tæller aldrig som interesse, og et hold med egen mand i udbruddet har ingen (#6187).
+2. **Den øvre zone kræver et felt uden jagt.** Kun når intet hold har interesse, kan lad-gå-fasen give et forspring i den sjældne øvre zone, og aldrig over den. Motoren melder det i filmen (`breakaway_unchased`, "intet hold ville jage"), så et meget stort forspring altid kan forklares.
+3. **Den automatiske jagt bærer arbejde.** Et hold med interesse, men uden ordre eller klassementsreaktion, jager med sine ryttere i jagtgruppen efter samme udvælgelse som en ordret jagt (aldrig kaptajner), i forhold til interessen. Rytterne betaler for jagten, og filmen kan navngive jagtholdene. Lukkekraften er uændret (interessen), så intet tælles dobbelt.
+
+Forspring der opstår af terrænet (udbruddet klatrer hurtigere end feltet) er ikke lad-gå-fasen og loftes ikke af P2.
+
+Kode: `mechanics/breakawayV3_6804.ts`, `mechanics/gcThreat.ts` (`DangerModel.s5V3`), `progressChase` i `mechanics/breakaway.ts`. Test: `mechanics/breakawayV3P1_6804.test.ts`, `mechanics/breakawayV3P2_6804.test.ts`, `mechanics/breakawayV3P6_6804.test.ts`, `s5ProfilesV3Revision6804.test.ts`. Måling: testporten (`docs/MOTOR_TESTPORT.md`, G2 for forspringet, G11 for klassementsjagten).
 
 ## Udbruddets størrelse følger etapens profil under `orders_gc_v3` (#6201)
 
