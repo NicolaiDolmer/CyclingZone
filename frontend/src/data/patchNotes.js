@@ -55,6 +55,40 @@ export const PATCHES = [
           7009,
           7010
         ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No youth classification in U23 and junior races",
+          "body": "Everyone in a U23 or junior field is young already, so the youth classification only copied the overall one. It is gone from these races. Senior races keep it."
+        },
+        "da": {
+          "title": "Intet ungdomsklassement i U23- og juniorløb",
+          "body": "Alle i et U23- eller juniorfelt er i forvejen unge, så ungdomsklassementet var bare en kopi af det samlede. Det er væk fra disse løb. Seniorløb beholder det."
+        },
+        "refs": [
+          7031
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "App",
+        "en": {
+          "title": "Race pages work in Firefox again",
+          "body": "Some race pages crashed in Firefox with a \"too much recursion\" error. They now load normally."
+        },
+        "da": {
+          "title": "Løbssider virker igen i Firefox",
+          "body": "Nogle løbssider gik ned i Firefox med fejlen \"too much recursion\". Nu indlæses de normalt."
+        },
+        "refs": [
+          6698
+        ]
       }
     ]
   },
