@@ -52,13 +52,7 @@
   },
   "today": "Aujourd'hui",
   "legend": {
-    "title": "Terrain",
-    "sprint": "Sprint",
-    "cobbles": "Pavés",
-    "hilly": "Vallonné",
-    "mountain": "Montagne",
-    "itt": "Contre-la-montre",
-    "ttt": "Contre-la-montre par équipes"
+    "title": "Terrain"
   },
   "terrain": {
     "sprint": "Sprint",

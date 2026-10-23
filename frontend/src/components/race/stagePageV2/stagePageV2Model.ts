@@ -374,21 +374,29 @@ function toDayRow(r: ResultRow, myTeamId: string | null): DayRow {
   };
 }
 
+/**
+ * Antal raekker i "Din dag"-kortets resultatliste (#6570). EN konstant: desktop
+ * viser alle, mobil de foerste DAY_TOP_COUNT_MOBILE (resten skjules med CSS).
+ * Morgenkortet kan vaelge 10 ved at aendre kun dette tal.
+ */
+export const DAY_TOP_COUNT = 5;
+export const DAY_TOP_COUNT_MOBILE = 3;
+
 export interface YourDay {
-  top3: DayRow[];
+  top: DayRow[];
   mine: DayRow[];
   bestOverall: { rank: number; name: string; gapToLeader: string | null; leaderName: string } | null;
   winner: DayRow | null;
 }
 
 /**
- * "Your day"-kortet for etape N: top 3 og dine ryttere med placering uanset
+ * "Your day"-kortet for etape N: top DAY_TOP_COUNT og dine ryttere med placering uanset
  * plads, for etapen eller det samlede efter etapen.
  */
 export function yourDay(results: ResultRow[], stageNumber: number, myTeamId: string | null, cls: "stage" | "gc"): YourDay {
   const rows = classificationRowsForStage(results, stageNumber, cls) as ResultRow[];
   const gcRows = classificationRowsForStage(results, stageNumber, "gc") as ResultRow[];
-  const top3 = rows.slice(0, 3).map((r) => toDayRow(r, myTeamId));
+  const top = rows.slice(0, DAY_TOP_COUNT).map((r) => toDayRow(r, myTeamId));
   const mine = rows.filter((r) => isMine(r, myTeamId)).map((r) => toDayRow(r, myTeamId));
   const myGc = gcRows.filter((r) => isMine(r, myTeamId) && Number.isFinite(Number(r.rank)));
   const leader = gcRows[0];
@@ -403,7 +411,7 @@ export function yourDay(results: ResultRow[], stageNumber: number, myTeamId: str
     };
   }
   const stageRows = classificationRowsForStage(results, stageNumber, "stage") as ResultRow[];
-  return { top3, mine, bestOverall, winner: stageRows[0] ? toDayRow(stageRows[0], myTeamId) : null };
+  return { top, mine, bestOverall, winner: stageRows[0] ? toDayRow(stageRows[0], myTeamId) : null };
 }
 
 /** Etapens margin mellem nr. 1 og nr. 2 i sekunder (null hvis ukendt). */
