@@ -582,7 +582,7 @@ export function assessGcThreat(input: {
   const s5 = model !== undefined && isS5ThreatModel(gcContext);
   const firstStage = s5 && isSyntheticFirstStage(gcContext);
   const interested = firstStage
-    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds) <= S5_GC_THREAT_TUNING.contenderFieldRank
+    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds, gcContext) <= S5_GC_THREAT_TUNING.contenderFieldRank
     : model
       ? hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining, dangerTuningOf(model))
       : isLeader || protectedStanding.rank <= tuning.protectRankLimit;
