@@ -59,18 +59,22 @@ klatreevne, så det er klatrehjælperne der sætter farten, som i virkeligheden.
   interessen (`computeNetChaseAdvantage`), inklusive jagt-gulvet og P1's dæmpning før finalestigningen.
 - *Stigning over snoren:* klatre-jagten er en kontrol, ikke en hentning. Den bringer forspringet ned
   til snoren og aldrig under, samme form som P6.1 (`s5V3ControlledClosing`). Den lægges ikke oven i den
-  almindelige lukning. Segmentets lukning er den største af de to, så intet tælles dobbelt, og
-  klatre-jagten kan aldrig hente et udbrud alene. Hentning er stadig finalens og den almindelige
+  almindelige lukning, så intet tælles dobbelt (den præcise regel ligger privat i
+  `balance-internals/6804/`), og klatre-jagten kan aldrig hente et udbrud alene. Hentning er stadig finalens og den almindelige
   jagts opgave.
 - *Prisen:* jagtholdenes klatrere betaler arbejde i forhold til hvor meget der skulle lukkes
   (samme work-mappe som P2.3, `withAutoChaseWork`). Det giver træthed og en mindre jagtgruppe senere
   på etapen, og filmen kan navngive jagtholdene (`chasing_team_ids`). En stor terrængevinst er
   derfor dyr for feltet, ikke gratis.
 
-**Ingen jagt.** Har intet hold interesse (eller ingen af dem har ryttere i jagtgruppen), sker der
-ingen klatre-jagt. Forspringet kan da vokse på stigningen. Krydser det snoren, skriver motoren P2's
-eksisterende hændelse `breakaway_unchased` ("intet hold ville jage"), højst én gang pr. udbrud pr.
-etape. Dermed kan ethvert forspring over den øvre zone forklares i filmen, som G2 kræver.
+**Ingen jagt.** Klatre-jagten kræver *effektiv interesse*: et hold med interesse OG ryttere i
+jagtgruppen. Uden det sker der ingen klatre-jagt, og forspringet kan vokse på stigningen. Krydser det
+snoren, skriver motoren P2's hændelse `breakaway_unchased` med en årsag, højst én gang pr. udbrud pr.
+etape:
+- `no_interest`: intet hold ville jage (filmen: "intet hold ville jage").
+- `no_riders`: et hold ville jage, men havde ingen ryttere tilbage i jagtgruppen (filmen: "jagtholdene
+  havde ingen ryttere tilbage").
+Dermed kan ethvert forspring over den øvre zone forklares sandt i filmen, som G2 kræver.
 
 **Samspil med P6-snoren.** P6.1 holder en klassementsreaktion på det reagerende hold tolererer for
 truslen (snoren fra #5978). Den snor er normalt kortere end klatre-jagtens. Når begge gælder, vinder
@@ -101,8 +105,10 @@ Ingen ny tilfældighed. Alle knapper flytter kun eksisterende led.
 
 ## 5. Testport-gates (v2 mod v3, samme input som P2-målingen)
 
-- **G2:** nul vejetaper i etapeløb og Grand Tours over den hårde grænse, når et hold havde interesse.
-  Enhver etape over den øvre zone har `breakaway_unchased`. Medianen ligger stadig i mellemzonen.
+- **G2:** nul vejetaper i etapeløb og Grand Tours over den hårde grænse, når et hold havde *effektiv*
+  interesse (interesse og ryttere i jagtgruppen). Enhver etape over den øvre zone har
+  `breakaway_unchased` med årsag; andelen med årsagen `no_riders` rapporteres for sig, så et felt der
+  løber tør for hjælpere ikke gemmer sig i "ingen jagt". Medianen ligger stadig i mellemzonen.
 - **G1':** udbrudssejrene pr. løbsgruppe og terræn falder ikke yderligere i forhold til P2 knap-runde 2
   (særligt etapeløb samlet, etapeløb bjerg og Grand Tour samlet, der i forvejen ligger lavt).
   Falder de, flyttes snoren først op mod den hårde grænse, før noget andet ændres.
@@ -116,6 +122,10 @@ Ingen ny tilfældighed. Alle knapper flytter kun eksisterende led.
 1. **Kontrakt-test først:** en bjergetape i et etapeløb, hvor udbruddet klatrer over den hårde grænse
    efter lad-gå-fasen med et interesseret hold. Den fejler i dag. Samme test bekræfter, at hooket ser
    stigningens gevinst før snapshottet. Fil: `mechanics/breakawayV3ClimbChase_6804.test.ts`.
+   **Modstykket i samme fil:** samme etape uden effektiv interesse (dels intet interesseret hold, dels
+   et interesseret hold uden ryttere i jagtgruppen). Forspringet klemmes IKKE, og
+   `breakaway_unchased` skrives med årsagen `no_interest` henholdsvis `no_riders`. Begge tests skal
+   fejle eller bestå af de rigtige grunde, så en byg der klemmer alle udbrud ikke kan bestå.
 2. **Rene funktioner** i `mechanics/breakawayV3_6804.ts` (gælder-betingelse, snor pr. profil,
    kontrolleret lukning) og knapperne i `tuning.ts`.
 3. **Ledningsføring** i `progressChase` (`breakaway.ts`): lukningen er den største af den almindelige
