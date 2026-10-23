@@ -9684,7 +9684,7 @@ router.get("/inbox/pending", requireAuth, async (req, res) => {
     try {
       const academyIntakeScheduled = (await isAcademyEnabled(supabase)) && !(await isAcademyIntakePullEnabled(supabase));
       next_updates = buildNextScheduledUpdates({ academyIntakeScheduled });
-    } catch { /* udeladt */ }
+    } catch { /* best-effort: next_updates er kun pynt paa kortet; pending-listen skal altid svare */ }
     res.json({ ...result, next_updates });
   } catch (error) {
     res.status(500).json({ error: error.message });
