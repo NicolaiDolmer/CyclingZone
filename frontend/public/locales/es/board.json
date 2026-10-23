@@ -1890,7 +1890,8 @@
         "promotionPush": "Empujón por el ascenso",
         "monumentPodium": "Podio en un Monument",
         "clubRankingTop30": "Top 30 del ranking de clubes"
-      }
+      },
+      "progress": "{done} de {total} hitos alcanzados"
     },
     "board": {
       "cardTitle": "La directiva",

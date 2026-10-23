@@ -10,7 +10,11 @@ import { useTableSort } from "../lib/useTableSort.js";
 import { isTradeReportable, parseTransferEventId } from "../lib/tradeReport.js";
 import SortableTh from "./ui/SortableTh.jsx";
 import ReportTradeDialog from "./ReportTradeDialog.js";
-import { Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon, EyeIcon } from "./ui/index.js";
+import { Button, Card, Select, Checkbox, ExchangeIcon, ArrowDownIcon, ArrowUpIcon, EyeIcon } from "./ui/index.js";
+
+// #6965: en aktiv historik kan have hundredvis af raekker; vis dem i sider i
+// stedet for at rendere hele listen paa een gang.
+const HISTORY_PAGE_SIZE = 50;
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", academy: "type.academy" };
 
@@ -296,6 +300,10 @@ export default function TeamTransferHistoryTab({ teamId }) {
     descFirstKeys: HISTORY_SORT_DESC_FIRST_KEYS,
   });
 
+  const [visibleLimit, setVisibleLimit] = useState(HISTORY_PAGE_SIZE);
+  useEffect(() => { setVisibleLimit(HISTORY_PAGE_SIZE); }, [seasonFilter, showNoSale]);
+  const pagedRows = filtered.slice(0, visibleLimit);
+
   if (loading) return (
     <div className="flex justify-center py-8">
       <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
@@ -370,7 +378,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((ev) => (
+              {pagedRows.map((ev) => (
                 <tr key={ev.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/40">
                   <td className="py-2 text-cz-2 whitespace-nowrap">
                     {ev.date ? formatDate(ev.date, "short") : "—"}
@@ -423,6 +431,13 @@ export default function TeamTransferHistoryTab({ teamId }) {
               ))}
             </tbody>
           </table>
+          {filtered.length > pagedRows.length && (
+            <div className="flex justify-center pt-3">
+              <Button variant="secondary" size="sm" onClick={() => setVisibleLimit((n) => n + HISTORY_PAGE_SIZE)}>
+                {t("history.showMore", { shown: pagedRows.length, total: filtered.length })}
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </Card>

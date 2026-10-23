@@ -73,13 +73,14 @@ for (const [name, width, height] of [["mobil", 390, 844], ["desktop", 1440, 900]
     const lines = list.getByTestId("vision-milestone-counts");
     await expect(lines).toHaveCount(4);
     await expect(lines.nth(0)).toHaveText(/^(Achieved|Nået)$/);
-    // #6991: én forståelig sætning for alle åbne milepæle. Tidlig opfyldelse tæller
-    // ved udgangen af den sæson (motoren afgør det i applySeasonEndSync), ikke straks.
+    // #6991: én forståelig sætning for alle åbne milepæle; tidlig opfyldelse tæller ved udgangen af den sæson.
     await expect(lines.nth(1)).toContainText(/(Reach it by the end of season 4|Nå det senest ved udgangen af sæson 4)/);
     await expect(lines.nth(2)).toContainText(/(Reach it by the end of season 5|Nå det senest ved udgangen af sæson 5)/);
     await expect(lines.nth(2)).toContainText(/(counts at the end of that season|tæller det ved udgangen af den sæson)/);
     await expect(lines.nth(3)).toContainText(/season 6|sæson 6/);
-    // Prosaen bor i Hjælp (kort på fladen): et link i stedet for en forklaringstekst.
+    // Forklaringen under milepælene siger ikke længere "bedømmes i målsæsonen"
+    // uden undtagelsen for tidlig opfyldelse.
+    await expect(page.getByTestId("vision-progress")).toHaveText(/^(1 of 4 milestones reached|1 af 4 milepæle nået)$/);
     await expect(page.getByRole("link", { name: /How milestones count|Sådan tæller milepæle/ })).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow, "ingen vandret scroll").toBeLessThanOrEqual(0);
