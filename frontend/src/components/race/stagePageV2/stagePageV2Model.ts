@@ -470,47 +470,85 @@ export function tacticsStartStage(stages: Array<{ stage_number: number; locked?:
   return firstOpenStage(stages) as number | null;
 }
 
-// ── Favoritter: fra loebet indtil nu, uden route fit for andre ─────────────
+// ── Favoritter: efter etapens profil, kun offentlige resultater (#6939) ────
 
-export interface Favourite { riderId: string; name: string; nation: string | null; mine: boolean; reasons: Array<{ key: "leadsOverall" | "overall" | "wonStage"; params: Record<string, string | number> }> }
+export type FavouriteReasonKey =
+  | "leadsOverall" | "overall" | "wonStage"
+  | "placed.flat" | "placed.hilly" | "placed.mountain" | "placed.itt";
+export interface Favourite { riderId: string; name: string; nation: string | null; mine: boolean; reasons: Array<{ key: FavouriteReasonKey; params: Record<string, string | number> }> }
+
+/** Terraenfamilie for favoritvalget: flad/spurt, kuperet (inkl. brosten/grus), bjerg, enkeltstart. */
+export type FavouriteTerrain = "flat" | "hilly" | "mountain" | "itt";
+export function favouriteTerrain(profileType: string | null | undefined): FavouriteTerrain | null {
+  switch (profileType) {
+    case "flat": case "rolling": return "flat";
+    case "hilly": case "classic": case "cobbles": case "gravel": return "hilly";
+    case "mountain": case "high_mountain": return "mountain";
+    case "itt": case "itt_hilly": case "ttt": return "itt";
+    default: return null; // ukendt profil: intet aerligt grundlag, listen udelades
+  }
+}
+
+// Hvor mange pladser i listen der gaar til det samlede foerst; resten gaar til dem der har
+// kørt godt paa samme terraen i loebet (flad: kun terraenformen; kuperet: en blanding).
+const FAVOURITE_OVERALL_SLOTS: Record<FavouriteTerrain, number> = { flat: 0, hilly: 2, mountain: 3, itt: 3 };
 
 /**
- * Favoritter til etape N ud fra loebet indtil nu: top i det samlede efter
- * den senest koerte etape foer N og etapevindere. Foer foerste etape er der intet aerligt grundlag
+ * Favoritter til etape N efter etapens profil. Kun offentlige resultater fra loebet
+ * (stage-raekker og det samlede), aldrig skjulte evner eller route fit for andre hold.
+ *  - flad: flest gode placeringer (top 10) paa flade etaper foer N i dette loeb
+ *  - bjerg/enkeltstart: det samlede foerst, saa de bedste paa samme terraen
+ *  - kuperet: en blanding af de to
+ * Hullerne fyldes op af det samlede. Foer foerste etape er der intet aerligt grundlag
  * i loebet, og listen er tom (kortet udelades).
  */
-export function favouritesFor(results: ResultRow[], stagePointRows: ResultRow[], stageNumber: number, myTeamId: string | null, stagesCompleted: number, limit = 5): Favourite[] {
+export function favouritesFor(
+  results: ResultRow[], stagePointRows: ResultRow[], stageNumber: number, myTeamId: string | null, stagesCompleted: number,
+  profileByStage: Record<number, { profile_type?: string | null } | null | undefined> = {}, limit = 5,
+): Favourite[] {
+  const terrain = favouriteTerrain(profileByStage[stageNumber]?.profile_type);
+  if (!terrain) return [];
   // Det seneste samlede FOER etape N som findes: etape N-1, eller den senest koerte.
   const prev = Math.min(stageNumber - 1, stagesCompleted);
   if (prev < 1) return [];
-  const gc = classificationRowsForStage(results, prev, "gc") as ResultRow[];
-  const byRider = new Map<string, Favourite>();
-  const names = new Map<string, ResultRow>();
-  for (const r of [...(results || []), ...gc]) if (r.rider_id && !names.has(r.rider_id) && rowName(r)) names.set(r.rider_id, r);
-  for (const r of gc.slice(0, limit)) {
-    if (!r.rider_id) continue;
+  const gc = (classificationRowsForStage(results, prev, "gc") as ResultRow[]).filter((r) => r.rider_id && rowName(r));
+  if (!gc.length) return [];
+
+  // Terraenform: 11 - placering for hver top 10-placering paa en tidligere etape af samme terraen.
+  const form = new Map<string, { score: number; placed: number; lastWin: number | null }>();
+  for (const r of stagePointRows || []) {
+    const n = r.stage_number ?? 1;
     const rank = Number(r.rank);
-    byRider.set(r.rider_id, {
-      riderId: r.rider_id,
-      name: rowName(r),
-      nation: r.rider?.nationality_code ?? null,
-      mine: isMine(r, myTeamId),
-      reasons: [rank === 1 ? { key: "leadsOverall", params: {} } : { key: "overall", params: { rank, gap: r.finish_time ?? "" } }],
-    });
+    if (r.result_type !== "stage" || !r.rider_id || n > prev || !(rank >= 1 && rank <= 10)) continue;
+    if (favouriteTerrain(profileByStage[n]?.profile_type) !== terrain) continue;
+    const f = form.get(r.rider_id) ?? { score: 0, placed: 0, lastWin: null };
+    f.score += 11 - rank;
+    f.placed += 1;
+    if (rank === 1 && (f.lastWin === null || n > f.lastWin)) f.lastWin = n;
+    form.set(r.rider_id, f);
   }
-  const wins = (stagePointRows || [])
-    .filter((r) => r.result_type === "stage" && Number(r.rank) === 1 && (r.stage_number ?? 1) <= prev && r.rider_id)
-    .sort((a, b) => (b.stage_number ?? 1) - (a.stage_number ?? 1));
-  for (const w of wins) {
-    const id = w.rider_id as string;
-    const known = names.get(id);
-    if (!byRider.has(id)) {
-      if (!known || byRider.size >= limit + 1) continue;
-      byRider.set(id, { riderId: id, name: rowName(known), nation: known.rider?.nationality_code ?? null, mine: isMine(w, myTeamId), reasons: [] });
-    }
-    byRider.get(id)!.reasons.push({ key: "wonStage", params: { number: w.stage_number ?? 1 } });
-  }
-  return [...byRider.values()];
+
+  const picked = new Set<string>();
+  const order: ResultRow[] = [];
+  const take = (r: ResultRow) => { if (order.length < limit && !picked.has(r.rider_id as string)) { picked.add(r.rider_id as string); order.push(r); } };
+  gc.slice(0, FAVOURITE_OVERALL_SLOTS[terrain]).forEach(take);
+  gc.map((r, i) => ({ r, i, f: form.get(r.rider_id as string) }))
+    .filter((x) => x.f && x.f.score > 0 && !picked.has(x.r.rider_id as string))
+    .sort((a, b) => b.f!.score - a.f!.score || a.i - b.i)
+    .forEach((x) => take(x.r));
+  gc.forEach(take);
+
+  return order.map((r) => {
+    const id = r.rider_id as string;
+    const rank = Number(r.rank);
+    const f = form.get(id);
+    const reasons: Favourite["reasons"] = [];
+    if (rank === 1) reasons.push({ key: "leadsOverall", params: {} });
+    else if (rank <= limit || !f) reasons.push({ key: "overall", params: { rank, gap: r.finish_time ?? "" } });
+    if (f?.lastWin != null) reasons.push({ key: "wonStage", params: { number: f.lastWin } });
+    if (f && f.placed > 0) reasons.push({ key: `placed.${terrain}` as FavouriteReasonKey, params: { count: f.placed } });
+    return { riderId: id, name: rowName(r), nation: r.rider?.nationality_code ?? null, mine: isMine(r, myTeamId), reasons };
+  });
 }
 
 // ── Tider ──────────────────────────────────────────────────────────────────
