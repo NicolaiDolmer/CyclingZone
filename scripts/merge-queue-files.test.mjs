@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyPrFiles, mustRunAlone } from './merge-queue-files.mjs';
+import { classifyPrFiles, mustRunAlone, needsRailwayVerification } from './merge-queue-files.mjs';
+
+test('needsRailwayVerification: samme praedikat som verifikatoren (backend eller cron-paavirkende), Codex P1 #7104', () => {
+  assert.equal(needsRailwayVerification(['backend/routes/api.js']), true);
+  assert.equal(needsRailwayVerification(['package.json']), true, 'rod-pakker paavirker alle cron-jobs');
+  assert.equal(needsRailwayVerification(['frontend/src/App.jsx']), false);
+  assert.equal(needsRailwayVerification(['docs/x.md']), false);
+  assert.equal(needsRailwayVerification([]), true, 'ukendt = fail-safe');
+});
 
 test('mustRunAlone: migrationer og race-motoren koerer alene; tests og frontend gaar i tog (ejer 23/10)', () => {
   assert.equal(mustRunAlone(['database/2026-10-23-x.sql']), true);

@@ -186,6 +186,7 @@ function Get-PrPlanEntry([int]$number) {
   $mergeable = "UNKNOWN"
   $isDraft = $false
   $solo = $true
+  $needRailway = $true
   $headSha = $null
   $mergeState = "UNKNOWN"
   if ($filesJson) {
@@ -224,12 +225,13 @@ function Get-PrPlanEntry([int]$number) {
         $touchesRailway = [bool]$cls.touchesRailway
         if ($cls.PSObject.Properties['touchesVercel']) { $touchesVercel = [bool]$cls.touchesVercel }
         if ($cls.PSObject.Properties['solo']) { $solo = [bool]$cls.solo }
+        if ($cls.PSObject.Properties['needRailway']) { $needRailway = [bool]$cls.needRailway }
         $filesKnown = $listComplete
       }
     } catch {}
   }
   # Ukendt filliste maa aldrig batches stille uden deploy-verifikation.
-  if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true; $touchesVercel = $true; $solo = $true }
+  if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true; $touchesVercel = $true; $solo = $true; $needRailway = $true }
 
   [pscustomobject]@{
     number         = $number
@@ -244,6 +246,7 @@ function Get-PrPlanEntry([int]$number) {
     headSha        = $headSha
     mergeState     = $mergeState
     solo           = $solo
+    needRailway    = $needRailway
   }
 }
 
@@ -776,6 +779,7 @@ function Exit-Queue([int]$Code) {
 # 23/10: klar-foerst + een opdatering ad gangen (se -WaitPendingMinutes/-NoUpdateBehind).
 $script:deferred = @{}
 $script:trainDeploys = 0
+$script:trainNeedsRailway = $false
 $script:updated = @{}
 $script:skipped = @()
 
@@ -834,6 +838,7 @@ function Close-OpenTrain {
   $script:batchMerged = @()
   $script:batchShas = @()
   $script:trainDeploys = 0
+  $script:trainNeedsRailway = $false
 
   # Deploy-verifikation: altid naar toget udloeser et deploy (backend, Railway
   # eller Vercel/byggeinput, AGENTS regel 20). Codex P1 (#6861): et
@@ -946,7 +951,8 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # ikke blot Railways watch patterns. Daekningen sammenlignes derfor med touchesBackend.
   # diff. Daekker denne PR ikke togets samlede deploy-maal, lukkes toget foerst. En solo-PR
   # (migration/motor) lukker ogsaa et aabent tog foer den merges, saa den altid koerer alene.
-  $coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not $script:batchBackend) -or $entryBackend)
+  $entryNeedsRailway = [bool]($entry.needRailway -or $fresh.needRailway)
+  $coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not $script:trainNeedsRailway) -or $entryNeedsRailway)
   if (-not $DryRun -and $script:batchMerged.Count -gt 0 -and ($entrySolo -or -not $coversTrain)) {
     Write-Host "  PR #$n $(if ($entrySolo) { 'koerer alene (migration/motor)' } else { 'daekker ikke togets deploy-maal' }): lukker det aabne tog foerst." -ForegroundColor DarkYellow
     Close-OpenTrain
@@ -1029,6 +1035,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   if ($entryRailway) { $script:batchRailway = $true }
   if ($entryBackend) { $script:batchBackend = $true }
   if ($entryVercel) { $script:batchVercel = $true }
+  if ($entryNeedsRailway) { $script:trainNeedsRailway = $true }
 
   if ($batchWithNext) {
     Write-Host "  PR #$n merget - merger videre og verificerer EEN gang efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray

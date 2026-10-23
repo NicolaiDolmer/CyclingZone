@@ -89,7 +89,7 @@ test('Wait-PrGreen: injiceret ur, timeout naas uden vaegur (Codex P1 #7104)', ()
 });
 
 test('et aabent tog lukkes foer en solo-PR eller en PR der ikke daekker togets deploy-maal (Codex P1 #7104)', () => {
-  assert.ok(source.includes('$coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not $script:batchBackend) -or $entryBackend)'));
+  assert.ok(source.includes('$coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not $script:trainNeedsRailway) -or $entryNeedsRailway)'));
   assert.match(source, /if \(-not \$DryRun -and \$script:batchMerged\.Count -gt 0 -and \(\$entrySolo -or -not \$coversTrain\)\) \{[\s\S]*?Close-OpenTrain/);
 });
 

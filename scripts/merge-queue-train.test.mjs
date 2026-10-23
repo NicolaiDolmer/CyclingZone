@@ -173,7 +173,7 @@ test('plan entry: an incomplete file list (100-file cap) fails closed as deploy-
   assert.match(queueText, /\.previous_filename \/\/ ""/);
   assert.match(queueText, /if \(\$cols\.Count -gt 1 -and \$cols\[1\]\) \{ \$paths \+= \$cols\[1\] \}/);
   assert.match(queueText, /\$filesKnown = \$listComplete/);
-  assert.match(queueText, /if \(-not \$filesKnown\) \{ \$touchesBackend = \$true; \$touchesRailway = \$true; \$touchesVercel = \$true; \$solo = \$true \}/);
+  assert.match(queueText, /if \(-not \$filesKnown\) \{ \$touchesBackend = \$true; \$touchesRailway = \$true; \$touchesVercel = \$true; \$solo = \$true; \$needRailway = \$true \}/);
 });
 
 test('#6861 (Codex P1/P2): the head is re-validated right before merging, and the stall default exceeds the longest valid step', () => {
