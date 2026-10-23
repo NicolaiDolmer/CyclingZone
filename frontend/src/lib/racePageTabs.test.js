@@ -13,27 +13,30 @@ import {
   firstOpenStage,
 } from "./racePageTabs.js";
 
+// Hard rule 16: fast ur i alle racePhase-kald.
+const T_FIXED = Date.parse("2026-10-01T12:00:00Z");
+
 test("racePhase: et løb der ikke er kørt endnu er 'før'", () => {
-  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5 }), "before");
-  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 1 }), "before");
-  assert.equal(racePhase({}), "before");
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 5, now: T_FIXED }), "before");
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 0, stages: 1, now: T_FIXED }), "before");
+  assert.equal(racePhase({ now: T_FIXED }), "before");
 });
 
 test("racePhase: status forbliver 'scheduled' gennem hele afviklingen (#1825) — fasen læses af stages_completed", () => {
-  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 2, stages: 5 }), "during");
-  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 4, stages: 5 }), "during");
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 2, stages: 5, now: T_FIXED }), "during");
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 4, stages: 5, now: T_FIXED }), "during");
 });
 
 test("racePhase: sidste etape kørt ELLER status completed er 'efter'", () => {
-  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 5, stages: 5 }), "after");
-  assert.equal(racePhase({ status: "completed", stagesCompleted: 2, stages: 5 }), "after");
-  assert.equal(racePhase({ status: "completed", stagesCompleted: 1, stages: 1 }), "after");
+  assert.equal(racePhase({ status: "scheduled", stagesCompleted: 5, stages: 5, now: T_FIXED }), "after");
+  assert.equal(racePhase({ status: "completed", stagesCompleted: 2, stages: 5, now: T_FIXED }), "after");
+  assert.equal(racePhase({ status: "completed", stagesCompleted: 1, stages: 1, now: T_FIXED }), "after");
 });
 
 test("racePhase: et importeret løb uden stages_completed men MED resultater er kørt færdigt", () => {
   // Gamle PCM-importer har ingen stages_completed — de har aldrig haft en
   // "under løbet"-tilstand i denne app og må ikke vise en Taktik-fane.
-  assert.equal(racePhase({ status: "imported", stagesCompleted: 0, stages: 3, hasResults: true }), "after");
+  assert.equal(racePhase({ status: "imported", stagesCompleted: 0, stages: 3, hasResults: true, now: T_FIXED }), "after");
 });
 
 test("faner: etapeløb får Resultater først når der ER noget at vise", () => {
@@ -122,4 +125,13 @@ test("#6959 hasScheduledStartPassed: manglende/ugyldigt tidspunkt er aabent", ()
   assert.equal(hasScheduledStartPassed("ikke-en-dato", T_AFTER), false);
   assert.equal(hasScheduledStartPassed(START, T_BEFORE), false);
   assert.equal(hasScheduledStartPassed(START, T_AFTER), true);
+});
+
+test("#6959 racePhase og hasScheduledStartPassed kraever et injiceret ur (hard rule 16)", () => {
+  // @ts-expect-error bevidst uden ur
+  assert.throws(() => racePhase({ status: "scheduled" }), /now \(ms\) skal injiceres/);
+  // @ts-expect-error bevidst uden ur
+  assert.throws(() => hasScheduledStartPassed("2026-10-02T12:00:00Z"), /now \(ms\) skal injiceres/);
+  // @ts-expect-error bevidst uden ur
+  assert.equal(hasScheduledStartPassed(null), false, "uden tidspunkt er loebet aabent, ingen ur noedvendigt");
 });

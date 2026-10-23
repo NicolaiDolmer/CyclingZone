@@ -38,10 +38,12 @@ export const RACE_TAB_KEYS = Object.freeze([
  * løb hvis start er passeret, men uden kørt etape, er "during" i stedet for "before" —
  * så Hold-fanen ikke tilbyder en åben udtagelse mens Taktik allerede er låst.
  *
- * @param {{status?: string|null, stagesCompleted?: number|null, stages?: number|null, hasResults?: boolean, firstStageScheduledAt?: string|null, now?: number}} race
+ * @param {{status?: string|null, stagesCompleted?: number|null, stages?: number|null, hasResults?: boolean, firstStageScheduledAt?: string|null, now: number}} race
  * @returns {"before"|"during"|"after"}
  */
-export function racePhase({ status, stagesCompleted = 0, stages = 1, hasResults = false, firstStageScheduledAt = null, now = Date.now() } = {}) {
+export function racePhase({ status, stagesCompleted = 0, stages = 1, hasResults = false, firstStageScheduledAt = null, now }) {
+  // Hard rule 16 (Codex P1 #7063): uret injiceres altid; intet vaegur-default.
+  if (!Number.isFinite(now)) throw new Error("racePhase: now (ms) skal injiceres");
   const done = Number(stagesCompleted) || 0;
   const total = Math.max(1, Number(stages) || 1);
   if (status === "completed") return "after";
@@ -62,10 +64,11 @@ export function racePhase({ status, stagesCompleted = 0, stages = 1, hasResults 
  */
 /**
  * @param {string|null|undefined} scheduledAt
- * @param {number} [now]
+ * @param {number} now
  */
-export function hasScheduledStartPassed(scheduledAt, now = Date.now()) {
+export function hasScheduledStartPassed(scheduledAt, now) {
   if (!scheduledAt) return false;
+  if (!Number.isFinite(now)) throw new Error("hasScheduledStartPassed: now (ms) skal injiceres");
   const startMs = Date.parse(scheduledAt);
   return Number.isFinite(startMs) && now >= startMs;
 }
