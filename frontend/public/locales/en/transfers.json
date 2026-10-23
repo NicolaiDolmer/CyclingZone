@@ -190,6 +190,7 @@
     "loadError": "Could not load transfer history",
     "noSaleToggle": "Show auctions with no bids",
     "noSaleHiddenNote": "{count, plural, one {# auction with no bids is} other {# auctions with no bids are}} hidden. No rider changed hands.",
+    "showMore": "Show more ({shown} of {total})",
     "emptyFilteredNoSaleOnly": "No actual transfers in the selected season: only auctions with no bids (hidden, see filter above).",
     "reportAction": "Report for review",
     "reportActionAria": "Report this trade for review"
