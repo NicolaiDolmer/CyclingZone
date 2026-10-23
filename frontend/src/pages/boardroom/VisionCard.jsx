@@ -111,7 +111,7 @@ export default function VisionCard({ vision }) {
       </div>
       <div className="mt-[18px] border-t border-cz-border pt-3 text-[13px] text-cz-2">
         {t("boardroom.vision.explainer")}{" "}
-        <Link to="/help?faq=visionMilestones" className="text-cz-accent-t hover:underline">
+        <Link to="/help?section=mandate" className="text-cz-accent-t hover:underline">
           {t("boardroom.vision.explainerLink")}
         </Link>
       </div>
