@@ -252,22 +252,3 @@ for (const perDate of [true, false]) {
     assert.deepEqual(visible(state.rider_derived_abilities[0]), start);
   });
 }
-
-// #6210 (Codex P1): loftet er pr. RYTTER, ikke pr. hold. Skifter rytteren hold samme
-// dato, ligger datoens foerste point i det gamle holds rapport.
-for (const perDate of [true, false]) {
-  const label = perDate ? "dato-kvitteringer" : "loebsdags-stien uden dato-kvitteringer";
-  test(`#6210 ${label}: et point fra rytterens tidligere hold samme dato taeller med`, async () => {
-    const state = seedState({ perDate });
-    const popped = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 1]));
-    state.training_day_runs.push({
-      team_id: "other-team", season_id: SEASON_ID, tick_date: "2026-06-12",
-      game_day: perDate ? null : 1, squad: null,
-      report: { riders: [{ rider_id: "r1", gains: popped }] },
-    });
-    const start = visible(state.rider_derived_abilities[0]);
-    const result = await run(state, { executedBy: "assistant", gameDay: perDate ? 1 : 2, ...(perDate ? { dateGameDays: [1, 2, 3, 4, 5] } : {}) });
-    assert.deepEqual(result.report.riders[0].gains, {}, "det gamle holds point taeller for rytteren");
-    assert.deepEqual(visible(state.rider_derived_abilities[0]), start);
-  });
-}

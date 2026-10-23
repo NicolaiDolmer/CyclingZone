@@ -636,27 +636,25 @@ export async function runTeamTrainingDay({
   // safe-faldet uden division) taeller altid med. Datoens andre loebsdage taeller
   // herfra kun uden dato-kvitteringer; med conditionPerDate er kilden kvitteringerne
   // (dateReceipts, rytter-noeglet), saa de ikke taelles to gange.
-  // #6210 (Codex P1): rytter-niveau, ikke hold-niveau. En rytter der skifter hold samme
-  // dato har sin foerste gevinst i det gamle holds rapport, saa opslaget gaar paa tvaers af
-  // hold og filtreres paa holdets ryttere. Kalenderdags-stien (useRaceDayKey=false, fx efter
-  // rollback eller fallback) laeser ogsaa, saa loftet gaelder alle stier.
+  // #6210: datoens tidligere gevinster. Opslaget er hold-scopet (indekset leder med team_id;
+  // aftenafregningen kalder dette pr. hold pr. loebsdag, saa en scanning paa tvaers af hold er
+  // for dyr, Codex P1 paa #7075). Et holdskifte samme dato daekkes paa live-stien af
+  // dato-kvitteringerne (training_rider_ticks, rytter-noeglet, laest paa tvaers af hold).
+  // Kalenderdags-stien (useRaceDayKey=false: rollback eller fallback) laeser ogsaa.
   let sameDateRunReports = [];
   {
-    let query = supabase.from("training_day_runs").select("team_id, game_day, season_id, squad, report")
-      .eq("tick_date", tickDate);
-    // Med dato-kvitteringer (rytter-noeglede) kommer loebsdagene derfra; kun kalenderdags-raekker her.
+    let query = supabase.from("training_day_runs").select("game_day, season_id, squad, report")
+      .eq("team_id", teamId).eq("tick_date", tickDate);
+    // Med dato-kvitteringer kommer loebsdagene derfra; kun kalenderdags-raekker her.
     if (conditionPerDate) query = query.is("game_day", null);
     const { data, error } = await query;
     if (error) throw new Error(`same-date training reports: ${error.message}`);
-    const teamRiderIds = new Set(riderIds);
-    const isThisRun = (row) => row.team_id === teamId
-      && (useRaceDayKey
-        ? Number(row.game_day) === raceDay && (row.squad ?? TRAINING_DAY_RUN_DEFAULT_SQUAD) === squadKey
-        : row.game_day == null);
+    const isThisRun = (row) => (useRaceDayKey
+      ? Number(row.game_day) === raceDay && (row.squad ?? TRAINING_DAY_RUN_DEFAULT_SQUAD) === squadKey
+      : row.game_day == null);
     sameDateRunReports = (data ?? []).filter((row) => !isThisRun(row) && (row.game_day == null
       || (!conditionPerDate && row.season_id === seasonId)))
-      .flatMap((row) => row.report?.riders ?? [])
-      .filter((r) => teamRiderIds.has(r?.rider_id));
+      .flatMap((row) => row.report?.riders ?? []);
   }
   if (conditionPerDate) {
     const { data, error } = await supabase.from('training_race_loads')
