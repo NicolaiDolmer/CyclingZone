@@ -5815,9 +5815,17 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       // gemmer denne udtagelse. replace_race_selection-RPC'en gentager binding-tjekket
       // under advisory-lås (#2256), så en samtidig skrivning kan aldrig bryde invarianten.
       // #6959 (Codex P1): genkontrollér låsen ved skrive-grænsen. Starter løbet under
-      // læsningerne ovenfor, må hverken frigivelsen eller gemningen ske.
-      if (resolvable.length && (await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
-        return res.status(409).json({ error: "selection_race_started" });
+      // læsningerne ovenfor, må hverken frigivelsen eller gemningen ske. Kildeløbene tjekkes
+      // også: er et konfliktløb startet siden klassificeringen, er konflikten blokerende.
+      if (resolvable.length) {
+        const lockedNow = await loadLockedRaceIds({
+          supabase, raceIds: [race.id, ...resolvable.map((r) => r.race_id)], now: new Date(),
+        });
+        if (lockedNow.has(race.id)) return res.status(409).json({ error: "selection_race_started" });
+        const nowBlocking = resolvable.filter((r) => lockedNow.has(r.race_id));
+        if (nowBlocking.length) {
+          return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: nowBlocking });
+        }
       }
       for (const r of resolvable) {
         const { error: relErr } = await supabase.from("race_entries").delete()
@@ -6039,9 +6047,17 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
 
     // #6959 (Codex P1): bulk forbereder op til 60 løb serielt; genkontrollér låsen for alle
     // løb med ét friskt opslag lige før den atomiske RPC (som ikke kender scheduled_at).
-    const lockedNow = await loadLockedRaceIds({ supabase, raceIds: changes.map((c) => c.raceId), now: new Date() });
+    // Kildeløbene i autoReleases tjekkes med: et konfliktløb der er startet siden
+    // klassificeringen gør konflikten blokerende, så rytteren ikke slettes fra et låst løb.
+    const lockedNow = await loadLockedRaceIds({
+      supabase, raceIds: [...new Set([...changes.map((c) => c.raceId), ...autoReleases.map((r) => r.race_id)])], now: new Date(),
+    });
     const firstLocked = changes.find((c) => lockedNow.has(c.raceId));
     if (firstLocked) return res.status(409).json({ error: "selection_race_started", race_id: firstLocked.raceId });
+    const lockedSource = autoReleases.filter((r) => lockedNow.has(r.race_id));
+    if (lockedSource.length) {
+      return res.status(409).json({ error: "selection_rider_bound", conflicts: lockedSource });
+    }
     await saveSelectionBulk({ supabase, teamId: req.team.id, changes: rpcChanges, autoReleases });
 
     // #2599-oprydning pr. løb (samme som single-endpointet): en manuel udtagelse med ≥1
