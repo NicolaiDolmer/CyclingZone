@@ -273,7 +273,7 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
-import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, withLineupLocked } from "../lib/raceStartLock.js";
+import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, withLineupLocked, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
@@ -4346,6 +4346,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     });
 
     const model = buildCalendarModel({
+      now: new Date(), // #6959: request-grænsen injicerer uret (lineupFrozen)
       races: raceList,
       scheduleRows,
       profileRows: fullProfiles.map((r) => ({ race_id: r.race_id, stage_number: r.stage_number, profile_type: r.profile_type })),
@@ -5030,6 +5031,7 @@ router.get("/races/calendar", requireAuth, cached({
     }
 
     const model = buildCalendarModel({
+      now: new Date(), // #6959: request-grænsen injicerer uret (lineupFrozen)
       races: raceList,
       scheduleRows,
       profileRows,
@@ -5812,6 +5814,11 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       // DEN pågældende rytter fjernes fra det konfliktende auto-udtaget løb — FØR vi
       // gemmer denne udtagelse. replace_race_selection-RPC'en gentager binding-tjekket
       // under advisory-lås (#2256), så en samtidig skrivning kan aldrig bryde invarianten.
+      // #6959 (Codex P1): genkontrollér låsen ved skrive-grænsen. Starter løbet under
+      // læsningerne ovenfor, må hverken frigivelsen eller gemningen ske.
+      if (resolvable.length && (await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
+        return res.status(409).json({ error: "selection_race_started" });
+      }
       for (const r of resolvable) {
         const { error: relErr } = await supabase.from("race_entries").delete()
           .eq("race_id", r.race_id).eq("team_id", req.team.id).eq("rider_id", r.rider_id).eq("is_auto_filled", true);
@@ -5822,6 +5829,11 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       }
     }
 
+    // #6959 (Codex P1): låsen genkontrolleres lige før gemningen (frisk races-række +
+    // frisk ur). replace_race_selection kender ikke scheduled_at, så det sker her.
+    if ((await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
     await saveSelection({
       supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
     });
@@ -6025,6 +6037,11 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       };
     });
 
+    // #6959 (Codex P1): bulk forbereder op til 60 løb serielt; genkontrollér låsen for alle
+    // løb med ét friskt opslag lige før den atomiske RPC (som ikke kender scheduled_at).
+    const lockedNow = await loadLockedRaceIds({ supabase, raceIds: changes.map((c) => c.raceId), now: new Date() });
+    const firstLocked = changes.find((c) => lockedNow.has(c.raceId));
+    if (firstLocked) return res.status(409).json({ error: "selection_race_started", race_id: firstLocked.raceId });
     await saveSelectionBulk({ supabase, teamId: req.team.id, changes: rpcChanges, autoReleases });
 
     // #2599-oprydning pr. løb (samme som single-endpointet): en manuel udtagelse med ≥1

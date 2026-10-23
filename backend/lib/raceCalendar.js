@@ -147,7 +147,7 @@ export function buildCalendarModel({
   teamEntryRaceIds = new Set(),
   teamLeaderRaceIds = new Set(),
   teamWithdrawnRaceIds = new Set(),
-  now = new Date(),
+  now, // #6959: injiceres af kalderen (hard rule 16); bruges til lineupFrozen
 } = {}) {
   const dayDateMap = buildGameDayDateMap(scheduleRows);
   const firstStageStarts = firstStageStartsFromSchedule(scheduleRows); // #6959
