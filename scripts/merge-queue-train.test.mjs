@@ -159,7 +159,7 @@ test('train: deploy-PRs run in trains of -MaxDeployBatch; migrations and the rac
   assert.match(queueText, /\[int\] \$MaxDeployBatch = 3/);
   assert.match(queueText, /if \(\$entrySolo -or \$nextSolo -or \(\$entryDeploys -and \(\$script:trainDeploys \+ 1\) -ge \$MaxDeployBatch\)\) \{ \$batchWithNext = \$false \}/);
   // En solo-PR merges aldrig ind i et aabent tog: den stilles efter toget.
-  assert.match(queueText, /if \(\$entrySolo -and \$script:batchMerged\.Count -gt 0 -and -not \$DryRun/);
+  assert.match(queueText, /\(\$entrySolo -or -not \$coversTrain\)\) \{[\s\S]*?Close-OpenTrain/);
   // Togets taeller nulstilles naar toget er verificeret.
   assert.match(queueText, /\$script:batchShas = @\(\)\n\s*\$script:trainDeploys = 0/);
 });

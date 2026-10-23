@@ -30,8 +30,9 @@ const harness = (states, failed) => `
   function Get-PrPlanEntry([int]$n) { $i=[Math]::Min($script:reads, $script:states.Count-1); $script:reads++; [pscustomobject]$script:states[$i] }
   function Test-RequiredCheckFailed([int]$n) { return $${failed ? 'true' : 'false'} }
   function Invoke-PrUpdateBehind([int]$n) { $script:updates++; $script:updated["$n"] = $true; return $true }
-  function Start-Sleep { param([int]$Seconds) }
-  $r = Wait-PrGreen 7 5
+  $script:t = [datetime]'2026-10-23T12:00:00'
+  $now = { $script:t }; $pause = { param($s) $script:t = $script:t.AddSeconds($s) }
+  $r = Wait-PrGreen 7 5 -Now $now -Pause $pause
   "RESULT=" + (@{ exit=$r.checksExit; reads=$script:reads; updates=$script:updates } | ConvertTo-Json -Compress)`;
 
 test('Wait-PrGreen venter til groen og opdaterer ikke en PR der kun afventer', () => {
@@ -73,6 +74,21 @@ test('aldrig masseopdatering: update-branch kaldes kun fra Invoke-PrUpdateBehind
 });
 
 test('et tog hvis sidste PR blev sprunget over, verificeres efter loekken', () => {
-  assert.match(source, /if \(-not \$DryRun -and \$script:batchMerged\.Count -gt 0\) \{\n\s*\$label[\s\S]*?Wait-BatchCi/);
+  // Codex P1 #7104: samme lukning (CI + deploy-verifikation) som et normalt togslut.
+  assert.match(source, /if \(-not \$DryRun -and \$script:batchMerged\.Count -gt 0\) \{ Close-OpenTrain \}/);
+  assert.match(source, /function Close-OpenTrain \{[\s\S]*?Wait-BatchCi[\s\S]*?Wait-ForDeployVerification[\s\S]*?\n\}/);
   assert.match(source, /\[DELVIS\][\s\S]*?exit 2/);
+});
+
+test('Wait-PrGreen: injiceret ur, timeout naas uden vaegur (Codex P1 #7104)', () => {
+  // Altid afventende -> efter 5 min (5 pauser a 60 s paa det injicerede ur) gives op.
+  const { result, stdout } = pwsh(harness([[8, 'CLEAN']], false));
+  assert.ok(result, stdout);
+  assert.equal(result.exit, 8);
+  assert.equal(result.reads, 6, 'foerste laesning + en pr. minut indtil deadline');
+});
+
+test('et aabent tog lukkes foer en solo-PR eller en PR der ikke daekker togets deploy-maal (Codex P1 #7104)', () => {
+  assert.ok(source.includes('$coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not ($script:batchRailway -or $script:batchBackend)) -or $entryRailway)'));
+  assert.match(source, /if \(-not \$DryRun -and \$script:batchMerged\.Count -gt 0 -and \(\$entrySolo -or -not \$coversTrain\)\) \{[\s\S]*?Close-OpenTrain/);
 });

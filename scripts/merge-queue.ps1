@@ -781,7 +781,6 @@ function Exit-Queue([int]$Code) {
 # 23/10: klar-foerst + een opdatering ad gangen (se -WaitPendingMinutes/-NoUpdateBehind).
 $script:deferred = @{}
 $script:trainDeploys = 0
-$script:soloDeferred = @{}
 $script:updated = @{}
 $script:skipped = @()
 
@@ -802,19 +801,76 @@ function Invoke-PrUpdateBehind([int]$number) {
   return $true
 }
 
-function Wait-PrGreen([int]$number, [int]$Minutes) {
+function Wait-PrGreen([int]$number, [int]$Minutes, [scriptblock]$Now = { Get-Date }, [scriptblock]$Pause = { param($s) Start-Sleep -Seconds $s }) {
   # Poller til checks er groenne eller tiden er gaaet. Returnerer den sidste plan-entry.
-  $deadline = (Get-Date).AddMinutes($Minutes)
+  # Uret og pausen injiceres (hard rule 16, Codex P1 #7104), saa timeout kan testes.
+  $deadline = (& $Now).AddMinutes($Minutes)
   $last = Get-PrPlanEntry $number
-  while ($last.checksExit -ne 0 -and (Get-Date) -lt $deadline) {
+  while ($last.checksExit -ne 0 -and (& $Now) -lt $deadline) {
     if (-not $NoUpdateBehind -and -not $script:updated.ContainsKey("$number") -and $last.mergeState -eq 'BEHIND' -and (Test-RequiredCheckFailed $number)) {
       [void](Invoke-PrUpdateBehind $number)
     }
     Write-Host "  venter paa PR #$number ($($last.checksSummary)), hoejst til $($deadline.ToString('HH:mm'))..." -ForegroundColor DarkGray
-    Start-Sleep -Seconds 60
+    & $Pause 60
     $last = Get-PrPlanEntry $number
   }
   return $last
+}
+
+# 23/10 (Codex P1 #7104): lukker det aabne tog: CI (main) for togets SHA'er + deploy-
+# verifikation hvis toget deployer. Bruges naar toget slutter normalt, foer en solo-PR
+# eller en PR der ikke daekker togets deploy-maal merges, og naar koeen slutter med et
+# aabent tog (fx fordi sidste kandidat blev sprunget over). Fejl = exit som foer.
+function Close-OpenTrain {
+  $batchLabel = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
+  $batchSize = $script:batchMerged.Count
+  $sha = $script:lastMergedSha
+  $ciOk = Wait-BatchCi
+  if (-not $ciOk) {
+    if ($script:queueStall) { Stop-QueueStall }
+    if ($script:ciUnverified -and -not ($script:ciResults.Values -contains $false)) {
+      Write-Host "STOP: main-CI er endnu ikke verificeret groen efter $batchLabel. Kontroller koerslens status foer naeste merge." -ForegroundColor Yellow
+      exit 1
+    }
+    Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
+    Write-TrainCulprit 'ci'
+    exit 1
+  }
+  $script:batchMerged = @()
+  $script:batchShas = @()
+  $script:trainDeploys = 0
+
+  # Deploy-verifikation: altid naar toget udloeser et deploy (backend, Railway
+  # eller Vercel/byggeinput, AGENTS regel 20). Codex P1 (#6861): et
+  # deploy-paavirkende PR afslutter toget, saa "raekke paa 2+ med Railway"
+  # (review #6357 B1) ville springe enkelt-PR-deploys over.
+  if ($script:batchBackend -or $script:batchRailway -or $script:batchVercel) {
+    $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -StallMinutes $StallMinutes
+    if ($deployState -eq 'stalled') { Stop-QueueStall }
+    $gate = Get-DeployGateAction $deployState
+    if ($deployState -eq 'deferred') {
+      Write-Host "  AFVENTER CHECK-IN efter ${batchLabel}: jobs med lang kadence (> 30 min) er ikke bevist endnu (se deploy-verify-summary). Korte kadencer er bevist; koeen fortsaetter." -ForegroundColor Yellow
+    }
+    if ($gate -eq 'pending') {
+      Write-Host "AFVENTER: deploy-verifikation efter $batchLabel er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
+      exit 75
+    }
+    if ($gate -ne 'continue') {
+      Write-Host "STOP: deploy-verifikation efter $batchLabel er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
+      $failure = if ($deployState -eq 'failed') { Get-TrainFailedTarget } else { 'unknown' }
+      Write-TrainCulprit $failure
+      exit 1
+    }
+  } else {
+    Write-Host "  $batchLabel roerer ikke backend/ - venter mindst $MinWaitMinutesNoBackend min foer naeste merge."
+    Start-Sleep -Seconds ($MinWaitMinutesNoBackend * 60)
+  }
+  $script:batchRailway = $false
+  $script:batchBackend = $false
+  $script:batchVercel = $false
+  $script:trainEntries = @()
+
+  Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
 }
 
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
@@ -890,11 +946,13 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # En solo-PR (migration/motor) merges aldrig ind i et aabent tog og afslutter selv toget.
   $entryDeploys = [bool]($entryBackend -or $entryRailway -or $entryVercel)
   $entrySolo = [bool]($entry.solo -or $fresh.solo)
-  if ($entrySolo -and $script:batchMerged.Count -gt 0 -and -not $DryRun -and -not $script:soloDeferred.ContainsKey("$n")) {
-    $script:soloDeferred["$n"] = $true
-    Write-Host "  PR #$n koerer alene (migration/motor): stilles efter det aabne tog." -ForegroundColor DarkYellow
-    $plan += $entry
-    continue
+  # Codex P1 #7104: deploy-verify.yml udleder NEED_VERCEL/NEED_RAILWAY af den SIDSTE merge-SHA's
+  # diff. Daekker denne PR ikke togets samlede deploy-maal, lukkes toget foerst. En solo-PR
+  # (migration/motor) lukker ogsaa et aabent tog foer den merges, saa den altid koerer alene.
+  $coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not ($script:batchRailway -or $script:batchBackend)) -or $entryRailway)
+  if (-not $DryRun -and $script:batchMerged.Count -gt 0 -and ($entrySolo -or -not $coversTrain)) {
+    Write-Host "  PR #$n $(if ($entrySolo) { 'koerer alene (migration/motor)' } else { 'daekker ikke togets deploy-maal' }): lukker det aabne tog foerst." -ForegroundColor DarkYellow
+    Close-OpenTrain
   }
   $nextSolo = (($idx + 1) -lt $plan.Count) -and [bool]$plan[$idx + 1].solo
   if ($entrySolo -or $nextSolo -or ($entryDeploys -and ($script:trainDeploys + 1) -ge $MaxDeployBatch)) { $batchWithNext = $false }
@@ -980,67 +1038,12 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     continue
   }
 
-  $batchLabel = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
-  $batchSize = $script:batchMerged.Count
-  $ciOk = Wait-BatchCi
-  if (-not $ciOk) {
-    if ($script:queueStall) { Stop-QueueStall }
-    if ($script:ciUnverified -and -not ($script:ciResults.Values -contains $false)) {
-      Write-Host "STOP: main-CI er endnu ikke verificeret groen efter $batchLabel. Kontroller koerslens status foer naeste merge." -ForegroundColor Yellow
-      exit 1
-    }
-    Write-Host "STOP: main-CI er ROED efter $batchLabel. Fix main FOER naeste merge i koeen (rod main = stop-alt-fix-foerst)." -ForegroundColor Red
-    Write-TrainCulprit 'ci'
-    exit 1
-  }
-  $script:batchMerged = @()
-  $script:batchShas = @()
-  $script:trainDeploys = 0
-
-  # Deploy-verifikation: altid naar toget udloeser et deploy (backend, Railway
-  # eller Vercel/byggeinput, AGENTS regel 20). Codex P1 (#6861): et
-  # deploy-paavirkende PR afslutter toget, saa "raekke paa 2+ med Railway"
-  # (review #6357 B1) ville springe enkelt-PR-deploys over.
-  if ($script:batchBackend -or $script:batchRailway -or $script:batchVercel) {
-    $deployState = Wait-ForDeployVerification -Sha $sha -TimeoutMinutes $DeployVerifyTimeoutMinutes -StallMinutes $StallMinutes
-    if ($deployState -eq 'stalled') { Stop-QueueStall }
-    $gate = Get-DeployGateAction $deployState
-    if ($deployState -eq 'deferred') {
-      Write-Host "  AFVENTER CHECK-IN efter ${batchLabel}: jobs med lang kadence (> 30 min) er ikke bevist endnu (se deploy-verify-summary). Korte kadencer er bevist; koeen fortsaetter." -ForegroundColor Yellow
-    }
-    if ($gate -eq 'pending') {
-      Write-Host "AFVENTER: deploy-verifikation efter $batchLabel er ikke faerdig. Ingen naeste merge; Railway er ikke meldt fejlet." -ForegroundColor Yellow
-      exit 75
-    }
-    if ($gate -ne 'continue') {
-      Write-Host "STOP: deploy-verifikation efter $batchLabel er $deployState. Ingen naeste merge uden positivt bevis." -ForegroundColor Red
-      $failure = if ($deployState -eq 'failed') { Get-TrainFailedTarget } else { 'unknown' }
-      Write-TrainCulprit $failure
-      exit 1
-    }
-  } else {
-    Write-Host "  PR #$n roerer ikke backend/ - venter mindst $MinWaitMinutesNoBackend min foer naeste merge."
-    Start-Sleep -Seconds ($MinWaitMinutesNoBackend * 60)
-  }
-  $script:batchRailway = $false
-  $script:batchBackend = $false
-  $script:batchVercel = $false
-  $script:trainEntries = @()
-
-  Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
+  Close-OpenTrain
 }
 
 # 23/10: blev sidste PR i et tog sprunget over, er togets merges endnu ikke verificeret.
-if (-not $DryRun -and $script:batchMerged.Count -gt 0) {
-  $label = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
-  if (-not (Wait-BatchCi)) {
-    if ($script:queueStall) { Stop-QueueStall }
-    Write-Host "STOP: main-CI er ikke verificeret groen efter $label." -ForegroundColor Red
-    Write-TrainCulprit 'ci'
-    exit 1
-  }
-  $script:batchMerged = @()
-}
+# Codex P1 #7104: samme lukning (CI + deploy-verifikation) som et normalt togslut.
+if (-not $DryRun -and $script:batchMerged.Count -gt 0) { Close-OpenTrain }
 
 Write-Host ""
 if ($script:skipped.Count -gt 0) {
