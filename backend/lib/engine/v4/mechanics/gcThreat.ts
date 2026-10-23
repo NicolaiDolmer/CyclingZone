@@ -594,8 +594,10 @@ export function assessGcThreat(input: {
   // P6.3: i et kort etapeloeb forsvarer kun et hold med en reel klassementschance (evne og placering).
   const v3Short = v3 && s5V3IsShortStageRace(gcContext);
   const contenderOnAbility = () => fieldGcRank(protectedId, input.entrants, input.racingRiderIds, gcContext) <= s5V3ContenderAbilityRank();
+  // Paa foerste etape maaler revisionen allerede kun evnen; P6.3 kan kun goere graensen strammere, aldrig loesere.
+  const firstStageRank = v3Short ? Math.min(S5_GC_THREAT_TUNING.contenderFieldRank, s5V3ContenderAbilityRank()) : S5_GC_THREAT_TUNING.contenderFieldRank;
   const interested = firstStage
-    ? (v3Short ? contenderOnAbility() : fieldGcRank(protectedId, input.entrants, input.racingRiderIds, gcContext) <= S5_GC_THREAT_TUNING.contenderFieldRank)
+    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds, gcContext) <= firstStageRank
     : model
       ? (v3Short
         ? isLeader || (hasSomethingToDefend(protectedStanding, false, stagesRemaining, dangerTuningOf(model)) && contenderOnAbility())

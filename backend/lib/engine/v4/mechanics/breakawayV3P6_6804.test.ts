@@ -176,6 +176,18 @@ test("#6804 P6.3: i et kort etapeloeb forsvarer et hold uden reel klassementscha
   assert.notEqual(assess(short, ["s1"], 120, "cap", 150, true).reason, "no_gc_interest");
 });
 
+test("#6804 P6.3: paa foerste etape (alle lige) er v3 aldrig loesere end v2 om hvem der forsvarer", () => {
+  const first = normalizeGcContext({ status: "standings", stage_number: 1, leader_id: null, threat_model: "s5", first_stage: true, stages_remaining: P6.shortRaceMaxStages - 1,
+    standings: ALL.map((rider_id) => ({ rider_id, rank: 1, gap_seconds: 0 })) });
+  let defendersV3 = 0;
+  for (const id of ALL.filter((x) => x !== "s1")) {
+    const v2 = assess(first, ["s1"], 120, id, 150, false).reason !== "no_gc_interest";
+    const v3 = assess(first, ["s1"], 120, id, 150, true).reason !== "no_gc_interest";
+    if (v3) { defendersV3 += 1; assert.ok(v2, `${id}: forsvarer under v3, men ikke under v2`); }
+  }
+  assert.ok(defendersV3 > 0, "feltets bedste forsvarer stadig");
+});
+
 test("#6804 P6.2: tidligt paa etapen taeller den fremskrevne gevinst mindre; i finalen er v2 og v3 ens", () => {
   // En lige saa staerk rytter (fuld fare) uden for de forreste, et stykke nede.
   const rows: GcStanding[] = [{ rider_id: "cap", rank: 1, gap_seconds: 0 },
