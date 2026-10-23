@@ -36,7 +36,7 @@ Målingen 23/10 viser, at den største kløft i dag ikke er penge, men aktivitet
 
 ## 2. Målt baseline (offentlig version)
 
-Målt read-only i prod 23/10 på S4 (25 af 28 løbsdatoer afregnet), alle ryttere på menneskehold i seniordivisionerne (holdets division, ikke rytterens trup: U23- og juniorryttere på de hold er med). Mål: summen af rå evne-deltaer pr. tick fra `training_rider_ticks.report`. Rig/fattig = tredjedel inden for divisionen efter truppens markedsværdi. Tallene står privat.
+Målt read-only i prod 23/10 på S4. Metode, stikprøve, opdeling og alle tal står privat i `balance-internals/6110-del2/` (hard rule 17); her står kun de kvalitative konklusioner, som designet bygger på.
 
 **Træning mod løb**
 - Løb står i dag for en lille del af rytternes samlede udvikling. Langt det meste kommer fra træning.
