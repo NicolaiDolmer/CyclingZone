@@ -161,7 +161,7 @@ test('train: a deployment-affecting PR always ends the train (Codex P1)', () => 
 
 test('plan entry: an incomplete file list (100-file cap) fails closed as deploy-affecting (Codex P1)', () => {
   const queueText = read('./merge-queue.ps1');
-  assert.match(queueText, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid'/);
+  assert.match(queueText, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid,mergeStateStatus'/);
   assert.match(queueText, /\$listComplete = \(\$changed -gt 0\) -and \(\$fileCount -ge \$changed\)/);
   // Codex P1 (#6861): rename origins count too - the paginated REST list carries previous_filename.
   assert.match(queueText, /pulls\/\$number\/files", '--paginate'/);
@@ -176,6 +176,6 @@ test('#6861 (Codex P1/P2): the head is re-validated right before merging, and th
   const recheck = q.indexOf('$recheck = Get-PrPlanEntry $n');
   assert.ok(recheck > 0 && recheck < q.indexOf("guarded-merge --pr"), 'recheck happens before the merge call');
   assert.match(q, /\$recheck\.headSha -ne \$fresh\.headSha/);
-  assert.match(q, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid'/);
+  assert.match(q, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid,mergeStateStatus'/);
   assert.match(q, /\[int\] \$StallMinutes = 45,/);
 });

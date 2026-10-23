@@ -13,8 +13,15 @@
 #
 # Hvad scriptet goer pr. PR i den angivne raekkefolge:
 #   1. Venter til uden for etape-tick-vinduet (HH:57 - HH:03).
-#   2. Tjekker at alle PAAKRAEVEDE checks er groenne (`gh pr checks --required`)
-#      - ellers STOPPER hele koeen (ingen af de foelgende PR'er merges).
+#   2. Tjekker at alle PAAKRAEVEDE checks er groenne (`gh pr checks --required`).
+#      23/10 (ejer: "een PR ad gangen"): er de ikke groenne endnu, stilles PR'en
+#      bagerst een gang, saa klare PR'er merges foerst. Naar den er forrest igen,
+#      ventes op til -WaitPendingMinutes; er den bagud for main OG fejler et
+#      paakraevet check, opdateres KUN den PR (gh pr update-branch + @codex review).
+#      Stadig ikke groen = SKIP (koeen fortsaetter, exit 2 til sidst). Overlap med
+#      en koerende boelge = SKIP. Aldrig masseopdatering af alle PR'er: 23/10 fyldte
+#      12 samtidige opdateringer Actions-koeen i over en time. -StopOnRedPr = gammel
+#      adfaerd (en ikke-groen PR stopper hele koeen). Roed main stopper altid.
 #   3. Merger med `gh pr merge <N> --squash --delete-branch --admin`.
 #   4. Venter paa at hovedrepoets CI-workflow (ci.yml) er groent for den nye
 #      main-HEAD (den commit merges skabte).
@@ -98,7 +105,17 @@ param(
   [string] $Repo = "NicolaiDolmer/CyclingZone",
   # #6318: over deploy-verify.yml's timeout-minutes (100) + oprettelses-slack.
   [int] $DeployVerifyTimeoutMinutes = 140,
-  [int] $CiTimeoutMinutes = 25
+  [int] $CiTimeoutMinutes = 25,
+  # 23/10 (ejer: "een PR ad gangen"): en PR hvis checks ikke er groenne endnu, stilles
+  # bagerst i koeen een gang (klar-foerst). Naar den igen er forrest, ventes hoejst saa
+  # mange minutter. Stadig ikke groen = PR'en springes over (SKIP), koeen fortsaetter.
+  [int] $WaitPendingMinutes = 40,
+  # 23/10: fejler et paakraevet check og er PR'en bagud for main, opdateres KUN den PR
+  # (gh pr update-branch) naar den er forrest, Codex bestilles paa det nye hoved, og
+  # koeen venter. Aldrig masseopdatering af alle PR'er (det fyldte Actions-koeen 23/10).
+  [switch] $NoUpdateBehind,
+  # Den gamle adfaerd: en PR der ikke er groen stopper hele koeen.
+  [switch] $StopOnRedPr
 )
 
 Set-StrictMode -Version Latest
@@ -152,7 +169,7 @@ function Get-PrPlanEntry([int]$number) {
   elseif ($checksExit -eq 8) { $checksSummary = "AFVENTER" }
   else { $checksSummary = "ROED/mangler" }
 
-  $filesJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid') -TolerateFailure
+  $filesJson = Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid,mergeStateStatus') -TolerateFailure
   $touchesBackend = $false
   # Review #6357: Railway bygger paa ALT undtagen backend/railway.json's
   # watchPatterns-undtagelser (docs/, pr-screens/, superpowers/, .claude/, rod-*.md).
@@ -165,6 +182,7 @@ function Get-PrPlanEntry([int]$number) {
   $mergeable = "UNKNOWN"
   $isDraft = $false
   $headSha = $null
+  $mergeState = "UNKNOWN"
   if ($filesJson) {
     try {
       $parsed = ($filesJson -join "") | ConvertFrom-Json
@@ -172,6 +190,7 @@ function Get-PrPlanEntry([int]$number) {
       $mergeable = $parsed.mergeable
       $isDraft = [bool]$parsed.isDraft
       if ($parsed.PSObject.Properties['headRefOid']) { $headSha = [string]$parsed.headRefOid }
+      if ($parsed.PSObject.Properties['mergeStateStatus']) { $mergeState = [string]$parsed.mergeStateStatus }
       # Ejer 10/10 (valg B): klassifikationen bor i scripts/merge-queue-files.mjs
       # (node --test). Kun produktionskode er "backend"; tests/dev-scripts/
       # test-data venter ikke paa deploy-verifikation alene.
@@ -217,6 +236,7 @@ function Get-PrPlanEntry([int]$number) {
     mergeable      = $mergeable
     isDraft        = $isDraft
     headSha        = $headSha
+    mergeState     = $mergeState
   }
 }
 
@@ -751,6 +771,43 @@ function Exit-Queue([int]$Code) {
   exit $Code
 }
 
+# 23/10: klar-foerst + een opdatering ad gangen (se -WaitPendingMinutes/-NoUpdateBehind).
+$script:deferred = @{}
+$script:updated = @{}
+$script:skipped = @()
+
+function Test-RequiredCheckFailed([int]$number) {
+  # Et AFSLUTTET roedt paakraevet check (ikke afventende eller manglende).
+  $json = Invoke-GhWithRetry @('pr', 'checks', "$number", '--repo', $Repo, '--required', '--json', 'name,bucket') -TolerateFailure
+  if (-not $json) { return $false }
+  try { return [bool](@((($json -join "") | ConvertFrom-Json) | Where-Object { $_.bucket -eq 'fail' }).Count -gt 0) } catch { return $false }
+}
+
+function Invoke-PrUpdateBehind([int]$number) {
+  # Opdaterer EEN PR med main og bestiller Codex paa det nye hoved. Returnerer $true hvis opdateret.
+  Write-Host "  PR #$number fejler et paakraevet check og er bagud for main: opdaterer kun denne PR med main." -ForegroundColor Yellow
+  $out = Invoke-GhWithRetry @('pr', 'update-branch', "$number", '--repo', $Repo) -TolerateFailure
+  if (-not $out -and $LASTEXITCODE -ne 0) { return $false }
+  Invoke-GhWithRetry @('pr', 'comment', "$number", '--repo', $Repo, '--body', '@codex review') -TolerateFailure | Out-Null
+  $script:updated["$number"] = $true
+  return $true
+}
+
+function Wait-PrGreen([int]$number, [int]$Minutes) {
+  # Poller til checks er groenne eller tiden er gaaet. Returnerer den sidste plan-entry.
+  $deadline = (Get-Date).AddMinutes($Minutes)
+  $last = Get-PrPlanEntry $number
+  while ($last.checksExit -ne 0 -and (Get-Date) -lt $deadline) {
+    if (-not $NoUpdateBehind -and -not $script:updated.ContainsKey("$number") -and $last.mergeState -eq 'BEHIND' -and (Test-RequiredCheckFailed $number)) {
+      [void](Invoke-PrUpdateBehind $number)
+    }
+    Write-Host "  venter paa PR #$number ($($last.checksSummary)), hoejst til $($deadline.ToString('HH:mm'))..." -ForegroundColor DarkGray
+    Start-Sleep -Seconds 60
+    $last = Get-PrPlanEntry $number
+  }
+  return $last
+}
+
 for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   $entry = $plan[$idx]
   $n = $entry.number
@@ -784,11 +841,34 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
 
   & node (Join-Path $PSScriptRoot 'wave-policy.mjs') assert-merge-allowed --pr "$n" --repo $Repo
   if ($LASTEXITCODE -ne 0) {
+    # 23/10: overlap med en koerende boelge er PR-specifikt. Spring PR'en over i stedet
+    # for at stoppe hele koeen (-StopOnRedPr = gammel adfaerd).
+    if (-not $StopOnRedPr -and -not $DryRun) {
+      Write-Host "SKIP: PR #$n overlapper en koerende boelges ownership. Springes over; koeen fortsaetter." -ForegroundColor Yellow
+      $script:skipped += $n
+      continue
+    }
     Write-Host "STOP: Aktiv boelgemarkoer: PR #$n overlapper boelgens ownership (eller markoeren/fil-listen kunne ikke laeses) - merge-koeen er blokeret." -ForegroundColor Red
     Exit-Queue 1
   }
 
   $fresh = Get-PrPlanEntry $n
+  if ($fresh.checksExit -ne 0 -and -not $StopOnRedPr -and -not $DryRun) {
+    # 23/10 klar-foerst: ikke groen endnu -> bagerst i koeen een gang, saa klare PR'er
+    # merges imens. Andet besoeg: vent (og opdater kun denne PR hvis den er bagud og roed).
+    if (-not $script:deferred.ContainsKey("$n") -and ($idx + 1) -lt $plan.Count) {
+      $script:deferred["$n"] = $true
+      Write-Host "  PR #$n er ikke groen endnu ($($fresh.checksSummary)): stilles bagerst, klare PR'er foerst." -ForegroundColor DarkYellow
+      $plan += $entry
+      continue
+    }
+    $fresh = Wait-PrGreen $n $WaitPendingMinutes
+    if ($fresh.checksExit -ne 0) {
+      Write-Host "SKIP: PR #$n er ikke groen efter $WaitPendingMinutes min ($($fresh.checksSummary)). Springes over; koeen fortsaetter." -ForegroundColor Red
+      $script:skipped += $n
+      continue
+    }
+  }
   if ($fresh.checksExit -ne 0) {
     Write-Host "STOP: PR #$n har ikke groenne paakraevede checks ($($fresh.checksSummary)). Ingen flere PR'er merges." -ForegroundColor Red
     Exit-Queue 1
@@ -929,7 +1009,22 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   Write-Host "  [ok] $batchLabel faerdig - klar til naeste i koeen." -ForegroundColor Green
 }
 
+# 23/10: blev sidste PR i et tog sprunget over, er togets merges endnu ikke verificeret.
+if (-not $DryRun -and $script:batchMerged.Count -gt 0) {
+  $label = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
+  if (-not (Wait-BatchCi)) {
+    if ($script:queueStall) { Stop-QueueStall }
+    Write-Host "STOP: main-CI er ikke verificeret groen efter $label." -ForegroundColor Red
+    Write-TrainCulprit 'ci'
+    exit 1
+  }
+  $script:batchMerged = @()
+}
+
 Write-Host ""
+if ($script:skipped.Count -gt 0) {
+  Write-Host "SPRUNGET OVER (ikke groenne): $(($script:skipped | ForEach-Object { "#$_" }) -join ', '). Koer dem igen naar de er groenne." -ForegroundColor Yellow
+}
 if ($DryRun) {
   Write-Host "[dry-run] Hele koeen ($($PrNumbers.Count) PR'er) blev gennemgaaet uden fejl - alle er klar til en rigtig koersel lige nu." -ForegroundColor Green
 } else {
@@ -938,6 +1033,10 @@ if ($DryRun) {
   if ($finalFailed.Count -gt 0) {
     Write-Host "STOP: Release checks efter sidste merge er ikke groenne: $($finalFailed -join ', '). Se koerslen foer naeste merge-koe." -ForegroundColor Red
     exit 1
+  }
+  if ($script:skipped.Count -gt 0) {
+    Write-Host "[DELVIS] $($PrNumbers.Count - $script:skipped.Count) af $($PrNumbers.Count) PR'er er merget og verificeret." -ForegroundColor Yellow
+    exit 2
   }
   Write-Host "[OK] Hele merge-koeen ($($PrNumbers.Count) PR'er) er merget og verificeret." -ForegroundColor Green
   foreach ($id in @($script:handedOffRuns)) {
