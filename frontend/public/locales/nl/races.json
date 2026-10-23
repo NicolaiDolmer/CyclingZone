@@ -202,7 +202,7 @@
       "classAria": "Klassement",
       "stage": "Etappe",
       "overall": "Algemeen",
-      "top3": "Top 3",
+      "topN": "Top {count}",
       "yourRiders": "Jouw renners",
       "noRiders": "Geen van je renners staat in deze uitslag.",
       "bestOverall": "Jouw beste in het klassement",

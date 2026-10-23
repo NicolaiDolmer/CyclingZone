@@ -29,3 +29,11 @@ test("#4557 vision: milepæl-status styrer prikken (current/achieved/missed/upco
   assert.match(source, /status === "achieved"/);
   assert.match(source, /status === "missed"/);
 });
+
+test("#6990/#6991 vision: én sætning pr. milepæl, fremdrift 'x af y' og link til Hjælp i stedet for den lange forklaring", () => {
+  assert.match(source, /t\("boardroom\.vision\.countsAt", \{ season: m\.seasonNumber \}\)/);
+  assert.doesNotMatch(source, /countsAtCurrent/);
+  assert.doesNotMatch(source, /boardroom\.vision\.explainer/);
+  assert.match(source, /t\("boardroom\.vision\.milestoneProgress", \{ current: m\.progress\.current, target: m\.progress\.target \}\)/);
+  assert.match(source, /to="\/help\?section=mandate"/);
+});

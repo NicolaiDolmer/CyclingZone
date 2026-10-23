@@ -59,6 +59,15 @@ En mappe med én fil pr. løb, `<race_id>.json`, og en valgfri `manifest.json`:
 
 Kørslen bygger løbets `cache.json` i løbsmappen (tourDryRun-formen) med det syntetiske felt og/eller de foreslåede etaper, og tourDryRun læser den. Ved genoptagelse genbruges en eksisterende `cache.json`; en `--out` tilhører én kombination af revisioner, seeds, syntetisk felt, rute-mappe og sæson.
 
+## Form og formtoppe (#6818, #6156)
+
+Testporten og Tour-gennemtesten kører som udgangspunkt uden rytternes form: eksporten bærer ikke `rider_condition.form` eller formtoppe. Formtesten lægger dem på i to trin:
+
+1. **Data (read-only, prod):** `infisical run --env=prod --silent -- node backend/scripts/dev/formTestData.mjs --from-dir=<eksport>/races --out=balance-internals/<...>/form-data.json`. Scriptet henter formen for feltets ryttere, formtoppene for løbets egen sæson (med spillets egen træningskvalitet, `resolvePeakTrainingQualities`), etapedagene (`race_stage_schedule.scheduled_at`) og et #6158-tjek af alle formtoppe (pr. sæson, S5-planer oprettet før S5-start, mål i en anden sæson, S4-vinduer der rager ind i S5). Klienten kan kun læse, og outputtet skal ligge under `balance-internals/`.
+2. **Caches (offline):** `node backend/scripts/dev/formTestCaches.mjs --from-dir=<eksport>/races --form-data=<fil> --out-dir=balance-internals/<...>/races [--peaks=on|off|tq1]`. Startlisten får `form` og `peakWindows`, og etaperne får `peakDay`. `off` giver kun formen (kontrol), og `tq1` giver fuld træningskvalitet (øvre grænse). **Forbehold:** træningskvaliteten og formen er dem på data-dagen. For et kommende løb er optakten til et vindue ikke kørt endnu, så `on` er en nedre grænse (outputtets `leadup` tæller vinduerne med ufærdig optakt), og formen er dagens, ikke løbsdagens. Kør `--from-dir` på de nye caches uden `--routes-from`/`--synthetic-field`, ellers erstattes profiler og startliste. Derefter kører `motorTestport.mjs --from-dir=<ny eksport>` som normalt.
+
+`tourScorecard.splitEntrants` tager `form` og `peakWindows` med, når startlisten har dem; uden dem er motor-input byte-identisk med før. Kode: `formTestData.mjs`, `formTestCaches.mjs`. Test: `formTest.test.mjs`.
+
 ## Hvad den gør
 
 1. **Kommende løb:** ikke afsluttede løb uden kørt etape (dem en ny revision binder til), eller en eksport/id-liste.

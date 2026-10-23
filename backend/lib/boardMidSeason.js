@@ -259,6 +259,7 @@ async function processTeamMidSeason({
     // #1237 · nettostilling til no_outstanding_debt (scoreFinanceHealthGoal).
     activeDebt,
     activeLoanCount,
+    seasonNumber: activeSeason?.number ?? null,
   });
 
   if (!trigger) return { banner_sent: false };
@@ -294,6 +295,8 @@ export async function evaluateMidSeasonTrigger({
   // uden den falder scoren tilbage til 0 lån for alle hold, uanset faktisk gæld.
   activeDebt = 0,
   activeLoanCount = 0,
+  // #6990 · sæsonnummer til U25-målets aldersudledning (se boardGoals.isRiderU25ForBoard).
+  seasonNumber = null,
 }) {
   if (Number(satisfaction) < 50) {
     return { trigger: true, reason: "low_satisfaction" };
@@ -308,6 +311,7 @@ export async function evaluateMidSeasonTrigger({
     activeDebt,
     activeLoanCount,
     wageBillPerSeason: sumRiderSalaries(riders),
+    seasonNumber,
   };
 
   const behindCount = countBehindGoals({

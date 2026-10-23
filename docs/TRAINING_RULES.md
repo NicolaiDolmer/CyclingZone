@@ -584,11 +584,12 @@ et øjebliksbillede af hele bestanden.
 som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
 fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
 
-**Formtoppe i løbsmotor v4 (#6156, `s5_profiles_v2`, slukket).** Under v4 når formen motoren fra
-`official_times_v3` (uden top). Toppen kobles på, når løbet er bundet til `s5_profiles_v2` **og**
-flaget `app_config.race_form_peaks` er tændt (eget flag fra 19/10, tændes ved sæsonskiftet; slukket
-= formen alene): én samlet form = rytterens form + toppens tillæg i
-peak-vinduet, minus dykket i tilbagebetalingen bagefter, klampet til 0-100. Tillægget er det
+**Formtoppe i løbsmotor v4 (#6156, `s5_profiles_v2`, aktuel fra ejerens "tænd" #6818; toppen kræver også flaget `app_config.race_form_peaks`, slukket indtil sæsonskiftet 25/10).** Under v4
+nåede formen motoren fra `official_times_v3` til og med `s5_profiles_v1` uden top. Under
+`s5_profiles_v2` med flaget tændt virker formtoppe i løb igen for alle løb hvis første etape claimes efter tændingen
+(løb bundet til en ældre revision kører færdig uden top): rytteren får toppens tillæg i peak-vinduet
+og dykket i tilbagebetalingen bagefter, som eget led oven i formen og uden formskalaens loft (ejer
+21/10); kun risikoen for en dårlig dag ser den samlede form, klampet til 0-100. Tillægget er det
 samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
 Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
 
