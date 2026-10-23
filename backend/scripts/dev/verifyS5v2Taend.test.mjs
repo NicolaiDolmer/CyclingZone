@@ -22,3 +22,12 @@ test("#6818 verifyS5v2Taend: migrationen findes med og uden database/-praefiks (
   assert.equal(migrationRow([]), null);
   assert.equal(migrationRow(null), null);
 });
+
+test("#6818 verifyS5v2Taend: en laesefejl paa formtop-flaget kaster i stedet for at ligne slukket", async () => {
+  const { readFormPeaksEnabled } = await import("./verifyS5v2Taend.mjs");
+  const db = (result) => ({ from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => result }) }) }) });
+  await assert.rejects(readFormPeaksEnabled(db({ data: null, error: { message: "boom" } })), /app_config \(race_form_peaks\): boom/);
+  assert.equal(await readFormPeaksEnabled(db({ data: null, error: null })), false, "manglende raekke = slukket, som spillet");
+  assert.equal(await readFormPeaksEnabled(db({ data: { value: "off" }, error: null })), false);
+  assert.equal(await readFormPeaksEnabled(db({ data: { value: "on" }, error: null })), true);
+});
