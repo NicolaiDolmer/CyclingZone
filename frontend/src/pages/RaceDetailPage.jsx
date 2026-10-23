@@ -381,7 +381,7 @@ export default function RaceDetailPage() {
   const { raceId } = useParams();
   const location = useLocation();
 
-  const [race, setRace] = useState(null);
+  const [race, setRace] = useState(/** @type {any} */ (null)); // Supabase-raekken; any saa nye race.*-brug ikke regner typen som null
   const [allResults, setResults] = useState([]);
   // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i løb afviklet før reglen.
   const results = useMemo(() => withoutHiddenYouthClassification(allResults, race?.squad), [allResults, race?.squad]);
@@ -1344,7 +1344,7 @@ export default function RaceDetailPage() {
                     raceId={race.id} stageNumber={1} profile={profileByStage[1]}
                     riderNameById={riderNameById} teamNameById={teamNameById}
                     stageLabel={race.name} startlist={oneDayStartlist}
-                    ownRiderIds={oneDayOwnRiderIds}
+                    ownRiderIds={oneDayOwnRiderIds} effortByRider={undefined} onToggleFinalKm={undefined}
                   />
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
