@@ -332,6 +332,10 @@ export default function SeasonEndPage() {
     setSelectedSeason(season);
     setError(null);
     setTeamRecap(null);
+    // Nulstil troejekolonnen ved hvert saesonskift, ogsaa hvis races-kaldet
+    // fejler: ellers kan forrige saesons tal (eller et sent svar) blive staaende.
+    jerseySeasonRef.current = season.id;
+    setJerseyByTeam(null);
     loadHonours(season);
     loadDocumentary(season);
     loadBoardVerdict(season);
