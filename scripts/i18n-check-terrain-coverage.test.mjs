@@ -73,7 +73,7 @@ test("integration: alle CALENDAR_TERRAIN_BUCKETS + kind:single-arketyper + PROFI
   const { CALENDAR_TERRAIN_BUCKETS } = await import("../backend/lib/raceCalendar.js");
   const { ARCHETYPE_PROFILES } = await import("../backend/lib/raceStageProfileGenerator.js");
   const { PROFILE_TYPE_KEYS } = await import("../frontend/src/lib/stageProfileConfig.js");
-  const { TERRAIN_TYPE_ICON_NAME } = await import("../frontend/src/lib/terrainTypeIcons.ts");
+  const { TERRAIN_TYPE_GLYPH } = await import("../frontend/src/lib/terrainTypeIcons.ts");
 
   const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
   const LOCALES_DIR = join(ROOT, "frontend", "public", "locales");
@@ -93,6 +93,6 @@ test("integration: alle CALENDAR_TERRAIN_BUCKETS + kind:single-arketyper + PROFI
   const profileLabelMissing = findMissingTerrainKeys(PROFILE_TYPE_KEYS, racesByLng, "detail.profileType");
   assert.deepEqual(profileLabelMissing, [], `races.json detail.profileType mangler: ${JSON.stringify(profileLabelMissing)}`);
 
-  const iconMissing = findMissingIconCoverage(PROFILE_TYPE_KEYS, TERRAIN_TYPE_ICON_NAME);
-  assert.deepEqual(iconMissing, [], `terrainTypeIcons.ts TERRAIN_TYPE_ICON_NAME mangler: ${JSON.stringify(iconMissing)}`);
+  const iconMissing = findMissingIconCoverage(PROFILE_TYPE_KEYS, TERRAIN_TYPE_GLYPH);
+  assert.deepEqual(iconMissing, [], `terrainTypeIcons.ts TERRAIN_TYPE_GLYPH mangler: ${JSON.stringify(iconMissing)}`);
 });

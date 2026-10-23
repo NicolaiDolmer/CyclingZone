@@ -4486,6 +4486,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           // Fallback for løb uden game_day-rækker ligger i raceDaysByRace ovenfor.
           raceDays: raceDaysByRaceId.get(e.id) ?? 1,
           terrain: e.terrain,
+          terrainProfile: e.terrainProfile, // #6683: løbets dominerende profile_type (ét farvet ikon pr. etapetype)
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
           demandVector: demandByRace.get(e.id) || null,
