@@ -19,7 +19,11 @@
     "team": "Équipe",
     "teamAll": "Toutes les équipes",
     "min": "Min",
-    "max": "Max"
+    "max": "Max",
+    "contractBy": "Contrat expirant au plus tard en saison",
+    "contractAny": "Tous les contrats",
+    "contractNone": "Sans contrat",
+    "contractSeason": "Saison {season}"
   },
   "toggles": {
     "freeAgent": "Agent libre",
@@ -60,6 +64,10 @@
     },
     "teamSelected": "Équipe sélectionnée",
     "statRange": "{label} {min}-{max}",
-    "remove": "Retirer le filtre : {label}"
+    "remove": "Retirer le filtre : {label}",
+    "contract": {
+      "by": "Contrat ≤ saison {season}",
+      "none": "Sans contrat"
+    }
   }
 }
