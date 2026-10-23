@@ -222,3 +222,16 @@ Gennemgangen dækkede GDD, PROGRESSION_RULES, TRAINING_RULES, YOUTH_RULES, specs
 | 20 | Tæller for 5 afregnede datoer (S18) | ja |
 | 21 | Holdarbejde i motoren (#5348): eget design først, ikke nu | `teamwork_in_engine` |
 | 22 | SSOT og GDD: D-061 og frem for 11/10, 20/10 og 23/10; PROGRESSION_RULES §0/§3/§4/§11, TRAINING_RULES §13, YOUTH_RULES §2.5/§7 rettes | docs |
+
+### 13.2 Anden runde 23/10: S22-S27
+
+| # | Emne | Ejerens svar |
+|---|---|---|
+| S22 | Udviklingsscoren og udviklingen | Scoren ER udviklingen: dagens udvikling følger scoren direkte. Det samlede tempo kalibreres, så D1-milepælene holder |
+| S23 | Se at en evne nærmer sig toppen | Fart pr. evne som fem ord (Meget hurtig, Hurtig, Normal, Langsom, Meget langsom) på evnelisten og i træningens rytterkort. Intet loft vises |
+| S24 | Kommunikation | Kort Discord-statusopslag nu (designet er færdigt, hvad der kommer, tændes en søndag i S5), som også svarer på de åbne løfter (4/10, #5436, #5965), og roadmappen rettes. Det store udspil kommer på tændingssøndagen. Claude skriver udkast, ejeren poster |
+| S25 | Simulering | Testverden 10 sæsoner frem (kopi af prod, assistenten styrer alle hold) før tænding; resultater på ét privat kort |
+| S26 | Udviklingsplan pr. rytter og træningssiden | Med i 2.0. Træningssiden får fanerne I dag, Plan, Udvikling og Rapport, uden underfaner. Plan = én tabel med én række pr. rytter (Mål, Ugen, Træthedsgrænse, Ret uge) og holdets standard på én linje øverst. Ugegitter og programskabeloner flytter til et panel ved siden af ("Ret uge"); træthedsgrænsen bliver en kolonne; gruppeundtagelser ligger i Grupper-dialogen. Ingen lange scroll-sider. Træning → Udvikling og Mit hold → Udvikling bliver én. Designes færdigt med ejeren (mobil, rigtige skærmbilleder) før byg |
+| S27 | Karrierehistorie, sæsonrapport, scouting som jagt | Gode, men ikke i første omgang; ønskes i løbet af sæsonen/året med eget design (#7109, #7110, #7111) |
+
+Byggetrin 23: harness for 10 sæsoner (S25). Byggetrin 24: træningssidens nye struktur og udviklingsplanen (S26), efter designrunde. Byggetrin 25: fart-ord pr. evne (S23).
