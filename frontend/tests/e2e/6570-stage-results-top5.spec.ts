@@ -8,7 +8,7 @@
 //
 // Foer/efter-billederne tages med CZ_WRITE_COMMITTED_SHOTS=1 (ellers lander de i
 // frontend/test-results/evidence): desktop 1440 og mobil 390.
-import type { Page, Route } from "@playwright/test";
+import type { Locator, Page, Route } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, raceResultsRoute, evidenceShotPath, TEST_TEAM } from "./fixtures.js";
 
@@ -77,7 +77,7 @@ async function openDay(page: Page) {
   await mockPage(page);
   await login(page);
   await page.goto("/races/race-e2e-6570?stage=2");
-  const card = page.getByRole("region", { name: /Din dag|Your day/ });
+  const card = page.locator("[aria-label^=\"Din dag\"], [aria-label^=\"Your day\"]").first();
   await expect(card).toBeVisible();
   return card;
 }
@@ -85,7 +85,20 @@ async function openDay(page: Page) {
 test("Din dag shows the top 5 on desktop and the top 3 on mobile (#6570)", async ({ page }, testInfo) => {
   const card = await openDay(page);
   const isMobile = (page.viewportSize()?.width ?? 1280) < 768;
+  // Foer-billedet tages med DAY_TOP_COUNT midlertidigt sat til 3 (CZ_SHOT_PREFIX=before).
+  const prefix = process.env.CZ_SHOT_PREFIX || "after";
 
+  if (prefix === "after") await assertRows(card, isMobile);
+
+  const shot = isMobile ? "390" : "1440";
+  if (testInfo.project.name !== "mobile-webkit") {
+    if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
+    await card.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: evidenceShotPath(`pr-screens/6570-${prefix}-${shot}.png`), fullPage: false });
+  }
+});
+
+async function assertRows(card: Locator, isMobile: boolean) {
   // Rytter 1-3 er synlige overalt; 4-5 kun fra md; nr. 6-7 aldrig (nr. 8 er
   // mit hold og staar i "Dine ryttere").
   for (const name of ["Ada Pedersen", "Mikkel Hansen", "Jonas Berg"]) {
@@ -100,10 +113,4 @@ test("Din dag shows the top 5 on desktop and the top 3 on mobile (#6570)", async
     await expect(card.getByRole("link", { name })).toHaveCount(0);
   }
   await expect(card.getByText(isMobile ? "Top 3" : "Top 5", { exact: true }).first()).toBeVisible();
-
-  const shot = isMobile ? "390" : "1440";
-  if (testInfo.project.name !== "mobile-webkit") {
-    if (!isMobile) await page.setViewportSize({ width: 1440, height: 900 });
-    await page.screenshot({ path: evidenceShotPath(`pr-screens/6570-after-${shot}.png`), fullPage: false });
-  }
-});
+}

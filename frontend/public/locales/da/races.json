@@ -185,7 +185,7 @@
       "classAria": "Klassement",
       "stage": "Etape",
       "overall": "Samlet",
-      "topN": "Top {{count}}",
+      "topN": "Top {count}",
       "yourRiders": "Dine ryttere",
       "noRiders": "Ingen af dine ryttere er med i resultatet.",
       "bestOverall": "Din bedste samlet",

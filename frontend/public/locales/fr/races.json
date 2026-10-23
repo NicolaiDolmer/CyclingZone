@@ -202,7 +202,7 @@
       "classAria": "Classement",
       "stage": "Étape",
       "overall": "Général",
-      "topN": "Top {{count}}",
+      "topN": "Top {count}",
       "yourRiders": "Tes coureurs",
       "noRiders": "Aucun de tes coureurs n'est dans ce résultat.",
       "bestOverall": "Ton meilleur au général",
