@@ -329,6 +329,7 @@ const RACE_TODAY = { id: "race-today", status: "scheduled", league_division_id: 
 const select = (state, rider_ids, captain_id = rider_ids[0] ?? null) => prepareSelectionChange({
   supabase: fakeSupabase(state), race: RACE_TODAY, teamId: TEAM.id, teamDivisionId: TEAM.league_division_id,
   body: { rider_ids, captain_id },
+  now: new Date("2026-10-23T00:00:00Z"), // #6959: injiceret ur (hard rule 16)
 });
 
 test("I3 in the selection endpoint: a rider who trained cannot be entered on the locked date", async () => {
