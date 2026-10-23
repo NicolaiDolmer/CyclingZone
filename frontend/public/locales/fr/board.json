@@ -1890,7 +1890,9 @@
         "promotionPush": "Poussée vers la promotion",
         "monumentPodium": "Podium en Monument",
         "clubRankingTop30": "Top 30 du classement des clubs"
-      }
+      },
+      "explainerLink": "Comment les jalons sont comptés",
+      "progress": "{done} jalons atteints sur {total}"
     },
     "board": {
       "cardTitle": "La direction",
