@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { profileLabelKey } from "../../../lib/stageProfileConfig.js";
 import { elevationSeries, profileScale, shortName, type StageProfile } from "./stagePageV2Model.ts";
+import { TerrainTypeGlyph } from "./ui.ts";
 
 export interface StripStage {
   number: number;
@@ -82,7 +83,7 @@ export default function StageStripV2({ stages, selected, today, ridden, onSelect
               <span>{t("stagePageV2.stripStage", { number: s.number })}</span>
               {isToday
                 ? <span className="rounded-sm border border-cz-1 px-1 py-px text-3xs font-bold uppercase tracking-[.08em] text-cz-1">{t("stagePageV2.today")}</span>
-                : typeKey && <span className="truncate text-3xs font-medium text-cz-3">{t(`detail.${typeKey}`)}</span>}
+                : typeKey && s.profile && <TerrainTypeGlyph profileType={s.profile.profile_type} size={16} showLabel className="min-w-0 gap-1" labelClassName="truncate text-3xs font-medium text-cz-3" />}
             </span>
             <Mini profile={s.profile} active={active} />
             <span className="mt-1 block truncate font-data text-2xs tabular-nums text-cz-2">{resultLine}</span>

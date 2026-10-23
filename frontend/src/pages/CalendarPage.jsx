@@ -454,7 +454,7 @@ export default function CalendarPage() {
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <span className="font-data text-3xs font-bold uppercase tracking-[0.14em] text-cz-3">{t("legend.title")}</span>
           {LEGEND_TYPES.map((type) => (
-            <TerrainTypeGlyph key={type} profileType={type} size={16} showLabel className="gap-1.5 text-cz-2" labelClassName="text-xs" />
+            <TerrainTypeGlyph key={type} profileType={type} size={20} showLabel className="gap-1.5 text-cz-2" labelClassName="text-xs" />
           ))}
         </div>
         {/* The "mine only" filter is redundant on the "mine" tab (already filtered).
@@ -658,7 +658,7 @@ function StageChip({ ev, t, className = "", onPeek = null, status = null }) {
         {/* #6683: samme farvede streg-ikon som etapesiden, forklaringen og holdudtagelsen
             (components/race/TerrainTypeGlyph.jsx). Farven viser svaerhed; navnet staar i
             ikonets title og i chippens aria-label. */}
-        <TerrainTypeGlyph profileType={profileType} size={14} className="mt-0.5 shrink-0" />
+        <TerrainTypeGlyph profileType={profileType} size={18} className="shrink-0" />
         <span className={`min-w-0 break-words text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
       </span>
       {secondLine && (

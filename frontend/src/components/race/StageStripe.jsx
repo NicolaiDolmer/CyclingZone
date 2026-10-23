@@ -72,7 +72,7 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
                   skifter til den etape der trykkes/vælges her — der er derfor
                   aldrig brug for et hover for at læse typen på mobil. */}
               <span className="flex items-center justify-center gap-1 mt-0.5">
-                <TerrainTypeGlyph profileType={s.profile_type} size={12} />
+                <TerrainTypeGlyph profileType={s.profile_type} size={16} />
                 <span className="text-3xs font-mono">{n}</span>
               </span>
               {times?.[n]?.timeLabel && (

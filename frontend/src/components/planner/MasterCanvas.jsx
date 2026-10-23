@@ -176,7 +176,7 @@ export default function MasterCanvas({ riders: allRiders, races, today, leadupDa
                 aria-label (typens navn); hit-området nedenfor bærer stadig den fulde
                 navn · dato · terræn-label. */}
             {gap && (
-              <foreignObject x={rx - 10} y={AXIS - 24} width="20" height="13" pointerEvents="none">
+              <foreignObject x={rx - 11} y={AXIS - 30} width="22" height="18" pointerEvents="none">
                 <div
                   xmlns="http://www.w3.org/1999/xhtml"
                   title={terrainLabel}
@@ -185,7 +185,7 @@ export default function MasterCanvas({ riders: allRiders, races, today, leadupDa
                     width: "100%", height: "100%", pointerEvents: "auto",
                   }}
                 >
-                  <TerrainTypeGlyph profileType={terrainType} size={13} />
+                  <TerrainTypeGlyph profileType={terrainType} size={18} />
                 </div>
               </foreignObject>
             )}
