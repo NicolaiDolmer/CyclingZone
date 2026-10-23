@@ -54,12 +54,11 @@
 // motoren selv er uaendret. s5_profiles_v1 arver den (S5 = official_times_v5 + S5-motoren).
 // Aktuel for nye loeb fra ejerens ordrette "taend"; migrationen
 // 2026-10-16-6462-engine-rules-revision-official-times-v5.sql goer vaerdien lovlig.
-// #6156 (ejer 17/10, SLUKKET): "s5_profiles_v2" = hele s5_profiles_v1-pakken +
+// #6156 (ejer 17/10): "s5_profiles_v2" = hele s5_profiles_v1-pakken +
 // formtoppe i v4 (toppens tillaeg i vinduet, dykket bagefter; broen regner den
-// samlede form) + udbrudsopfoelgningen (#6748). IKKE aktuel (CURRENT_RACE_RULES_REVISION er
-// uaendret): ingen nye loeb binder til den foer taend-PR'en (ejer-only, #6818) flytter
-// konstanten. races_engine_rules_revision_check goer vaerdien lovlig via
-// 2026-10-17-6818-engine-rules-revision-s5-v2.sql, som skal vaere applied foer taend-PR'en merges.
+// samlede form) + udbrudsopfoelgningen (#6748). Aktuel for nye loeb fra ejerens
+// ordrette "taend" (taend-PR'en, #6818); races_engine_rules_revision_check goer
+// vaerdien lovlig via 2026-10-17-6818-engine-rules-revision-s5-v2.sql.
 export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
@@ -150,11 +149,12 @@ export function isS5ProfilesV1OrLater(revision: unknown): boolean {
 }
 
 /**
- * #6156 (SLUKKET, ikke aktuel): s5_profiles_v2 = HELE s5_profiles_v1-pakken +
+ * #6156 (aktuel fra ejerens "taend", #6818): s5_profiles_v2 = HELE s5_profiles_v1-pakken +
  * formtoppe i v4. Broen (raceEngineV4Bridge.js) laegger formtoppens tillaeg oven
  * i rytterens form i peak-vinduet og traekker dykket fra bagefter (én samlet form,
- * spec 2026-10-04 §3.1). Motoren selv er s5_profiles_v1. Ingen loeb bindes hertil
- * foer ejerens ordrette "taend" (S5) og en migration der goer vaerdien lovlig.
+ * spec 2026-10-04 §3.1). Motoren er s5_profiles_v1 + udbrudsopfoelgningen (#6748).
+ * Nye loeb bindes hertil fra ejerens ordrette "taend" (#6818); migrationen
+ * 2026-10-17-6818-engine-rules-revision-s5-v2.sql goer vaerdien lovlig.
  */
 export function isS5ProfilesV2OrLater(revision: unknown): boolean {
   return S5_PROFILES_V2_LINEAGE.has(revision);
@@ -243,8 +243,16 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * deploy. Loeb der allerede er bundet til official_times_v5 (eller aeldre)
  * faerdiggoeres paa den. Migrationen 2026-10-16-6369-engine-rules-revision-s5.sql
  * er applied. Rollback = revert af denne konstant (migrationen kan blive staaende).
+ *
+ * "s5_profiles_v2" fra ejerens ordrette "taend" (#6818): hele S5 v1 + formtoppe i
+ * v4 (#6156, broens samlede form) + udbrudsopfoelgningen (#6748) er aktuel for
+ * ALLE loeb hvis foerste etape claimes efter deploy. Loeb der allerede er bundet
+ * til s5_profiles_v1 (eller aeldre) faerdiggoeres paa den. Migrationen
+ * 2026-10-17-6818-engine-rules-revision-s5-v2.sql SKAL vaere applied foer foerste
+ * claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten. Rollback =
+ * revert af denne konstant (migrationen kan blive staaende).
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "s5_profiles_v1";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "s5_profiles_v2";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;

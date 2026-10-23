@@ -544,3 +544,25 @@ test("#6201 orders_gc_v3: en klatrer uden for feltets passende top-andel sendes 
   const decision = generateAiTeamOrder({ team_id: "ai-6201d", route: MOUNTAIN, roster, field, rules_revision: "orders_gc_v3" });
   assert.deepEqual(tryBreakIds(decision), []);
 });
+
+// ── #6818 (KUN s5_profiles_v2): en blokeret klassementsrytter erstattes ──────────
+
+test("#6818: en hjaelper motoren blokerer i morgenudbruddet, erstattes af holdets naeste passende rytter", () => {
+  // let_go-hold med tre passende hjaelpere: holdet sender de to bedste.
+  const roster = [...aiTypicalRoster(20), rider("h-alt", "helper", { aggression: 68, climbing: 62 })];
+  const field = fieldOf(roster, opponents("climbing", spread(40, 30, 70)));
+  const input: AiTacticsInput = { team_id: "ai-6818", route: MOUNTAIN, roster, field, rules_revision: "s5_profiles_v2" };
+  const free = tryBreakIds(generateAiTeamOrder(input));
+  assert.ok(free.includes("h-strong"), "uden blokering sendes den bedste hjaelper");
+  const blocked = tryBreakIds(generateAiTeamOrder({ ...input, break_blocked_rider_ids: new Set(["h-strong"]) }));
+  assert.equal(blocked.includes("h-strong"), false, "den blokerede faar aldrig et forsoeg");
+  assert.equal(blocked.length, free.length, "holdet sender lige saa mange: naeste passende rytter tager pladsen");
+  assert.ok(blocked.includes("h-alt"), "naeste passende hjaelper rykker op");
+});
+
+test("#6818: uden blokeringssaet er ordren identisk med foer", () => {
+  const roster = aiTypicalRoster(20);
+  const field = fieldOf(roster, opponents("climbing", spread(40, 30, 70)));
+  const input: AiTacticsInput = { team_id: "ai-6818b", route: MOUNTAIN, roster, field, rules_revision: "s5_profiles_v2" };
+  assert.deepEqual(generateAiTeamOrder({ ...input, break_blocked_rider_ids: new Set() }), generateAiTeamOrder(input));
+});
