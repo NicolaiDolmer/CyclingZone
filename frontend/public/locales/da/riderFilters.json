@@ -19,7 +19,11 @@
     "team": "Hold",
     "teamAll": "Alle hold",
     "min": "Min",
-    "max": "Max"
+    "max": "Max",
+    "contractBy": "Kontrakt udløber senest sæson",
+    "contractAny": "Alle kontrakter",
+    "contractNone": "Uden kontrakt",
+    "contractSeason": "Sæson {season}"
   },
   "toggles": {
     "freeAgent": "Fri agent",
@@ -60,6 +64,10 @@
     },
     "teamSelected": "Hold valgt",
     "statRange": "{label} {min}-{max}",
-    "remove": "Fjern filter: {label}"
+    "remove": "Fjern filter: {label}",
+    "contract": {
+      "by": "Kontrakt ≤ sæson {season}",
+      "none": "Uden kontrakt"
+    }
   }
 }
