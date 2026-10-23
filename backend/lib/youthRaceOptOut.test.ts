@@ -110,7 +110,7 @@ test("#5944 racesToClearOnTrainOnly: kun aabne, tilmeldte og ikke Train now-laas
 
 test("#5944 skift til Train only: rydder kun truppens ulaaste loeb, laaste dage bevares", async () => {
   const state = seasonState();
-  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: true, now: NOW });
+  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: true, clock: () => NOW });
   assert.equal(result.trainOnly, true);
   assert.deepEqual(result.clearedRaceIds.sort(), ["u-open-1", "u-open-2"]);
   assert.deepEqual(entered(state), ["j-open", "s-open", "u-done", "u-locked", "u-started"],
@@ -124,7 +124,7 @@ test("#6139 skift til Train only: et loeb paa en Train now-dato ryddes, naar ing
   const state = seasonState();
   // Den tilmeldte rytter blev koebt efter trykket: ingen laase-raekke, saa loebet er ikke afgjort.
   state.training_train_now_locks = state.training_train_now_locks.filter((row) => row.rider_id !== "u-locked-r");
-  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: true, now: NOW });
+  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: true, clock: () => NOW });
   assert.deepEqual(result.clearedRaceIds.sort(), ["u-locked", "u-open-1", "u-open-2"]);
   assert.equal(result.effectiveFromDay, 21);
 });
@@ -132,8 +132,8 @@ test("#6139 skift til Train only: et loeb paa en Train now-dato ryddes, naar ing
 test("#5944 skift til Train only to gange er idempotent (én raekke)", async () => {
   const state = seasonState();
   const sb = fakeSupabase(state);
-  await setTeamSquadTrainOnly(sb, { team: TEAM, squad: "u23", trainOnly: true, now: NOW });
-  await setTeamSquadTrainOnly(sb, { team: TEAM, squad: "u23", trainOnly: true, now: NOW });
+  await setTeamSquadTrainOnly(sb, { team: TEAM, squad: "u23", trainOnly: true, clock: () => NOW });
+  await setTeamSquadTrainOnly(sb, { team: TEAM, squad: "u23", trainOnly: true, clock: () => NOW });
   assert.equal(state[YOUTH_RACE_OPT_OUT_TABLE].length, 1);
 });
 
@@ -141,7 +141,7 @@ test("#5944 skift tilbage til Enter races: raekken slettes, intet felt aendres",
   const state = seasonState();
   state[YOUTH_RACE_OPT_OUT_TABLE] = [{ team_id: "team-a", squad: "u23" }, { team_id: "team-a", squad: "junior" }];
   const before = entered(state);
-  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: false, now: NOW });
+  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: false, clock: () => NOW });
   assert.equal(result.trainOnly, false);
   assert.deepEqual(result.clearedRaceIds, []);
   assert.deepEqual(entered(state), before);
@@ -156,7 +156,7 @@ test("#5944 manglende tabel: laesere svarer Enter races, skrivning kaster opt_ou
   assert.equal((await loadOptedOutKeys(sb)).size, 0);
   assert.deepEqual(await loadTeamTrainOnly(sb, "team-a"), { available: false, u23: false, junior: false });
   await assert.rejects(
-    () => setTeamSquadTrainOnly(sb, { team: TEAM, squad: "u23", trainOnly: true, now: NOW }),
+    () => setTeamSquadTrainOnly(sb, { team: TEAM, squad: "u23", trainOnly: true, clock: () => NOW }),
     (err: { code?: string }) => err.code === "opt_out_unavailable",
   );
   assert.equal(entered(state).length, 7, "intet ryddes naar valget ikke kan gemmes");
@@ -207,7 +207,7 @@ test("#6959 skift til Train only: et loeb hvis etape 1-start er passeret (pause)
   // u-open-2 har ingen koert etape, men starten er passeret: laast for trup og taktik.
   const st = state as Record<string, Row[]>;
   st.race_stage_schedule = [...(st.race_stage_schedule ?? []).filter((r) => r.race_id !== "u-open-2" || r.stage_number !== 1), { race_id: "u-open-2", stage_number: 1, scheduled_at: "2026-09-30T12:00:00Z" }];
-  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: true, now: NOW });
+  const result = await setTeamSquadTrainOnly(fakeSupabase(state), { team: TEAM, squad: "u23", trainOnly: true, clock: () => NOW });
   assert.deepEqual(result.clearedRaceIds.sort(), ["u-open-1"]);
   assert.ok(entered(state).includes("u-open-2"), "det startede loeb beholder holdets tilmelding");
 });

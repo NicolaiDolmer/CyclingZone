@@ -48,7 +48,7 @@ export function createYouthRaceOptOutRouter({
     if (!MODES.has(mode)) return res.status(400).json({ error: "invalid_mode" });
     try {
       const result = await setTeamSquadTrainOnly(supabase, {
-        team: req.team, squad, trainOnly: mode === "train_only", now: new Date(),
+        team: req.team, squad, trainOnly: mode === "train_only", clock: () => new Date(),
       });
       res.json({
         squad,

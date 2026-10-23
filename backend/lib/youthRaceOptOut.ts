@@ -220,7 +220,7 @@ export async function firstUnlockedRaceDay(
  */
 export async function setTeamSquadTrainOnly(
   supabase: Supabase,
-  { team, squad, trainOnly, now }: { team: TeamRow; squad: OptOutSquad; trainOnly: boolean; now: Date },
+  { team, squad, trainOnly, clock }: { team: TeamRow; squad: OptOutSquad; trainOnly: boolean; clock: () => Date },
 ): Promise<{ trainOnly: boolean; clearedRaceIds: string[]; effectiveFromDay: number | null }> {
   const unavailable = () => Object.assign(new Error("opt_out_unavailable"), { code: "opt_out_unavailable" });
 
@@ -231,7 +231,7 @@ export async function setTeamSquadTrainOnly(
       if (isMissingOptOutTable(error)) throw unavailable();
       throw new Error(`${YOUTH_RACE_OPT_OUT_TABLE} delete: ${error.message}`);
     }
-    const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad, now });
+    const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad, now: clock() });
     return { trainOnly: false, clearedRaceIds: [], effectiveFromDay };
   }
 
@@ -263,7 +263,8 @@ export async function setTeamSquadTrainOnly(
         .select("id, status, stages_completed, game_day_start").in("id", clearedRaceIds)) as Result<SquadRace[]>;
       if (freshError) throw new Error(`races (${squad} recheck): ${freshError.message}`);
       // #6959 (Codex P1): samme faelles start-laas som udtagelsen; etape 1's start er passeret = laast.
-      const startLocked = await loadLockedRaceIds({ supabase, raceIds: clearedRaceIds, now });
+      // Frisk ur LIGE foer laase-kontrollen (Codex P1): starten kan passere under opslagene ovenfor.
+      const startLocked = await loadLockedRaceIds({ supabase, raceIds: clearedRaceIds, now: clock() });
       clearedRaceIds = (fresh ?? []).filter((r) => isRaceOpenForChange(r) && !startLocked.has(r.id)).map((r) => r.id);
     }
     if (clearedRaceIds.length) {
@@ -272,6 +273,6 @@ export async function setTeamSquadTrainOnly(
       if (deleteError) throw new Error(`race_entries delete (${squad} train only): ${deleteError.message}`);
     }
   }
-  const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad, races, now });
+  const effectiveFromDay = await firstUnlockedRaceDay(supabase, { team, squad, races, now: clock() });
   return { trainOnly: true, clearedRaceIds, effectiveFromDay };
 }
