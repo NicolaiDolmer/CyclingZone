@@ -141,6 +141,7 @@ import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.j
 import { captureException } from "./sentry.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 import { SQUADS, isYouthSquad } from "./squads.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 const MINUTES_LIMIT = 10;
 const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så weekDelta + mood har nok historik
@@ -394,15 +395,20 @@ export function deriveYouthResultMoodEvents({ rows = [], assignedMembers = [] } 
  */
 export async function loadYouthRaceResultsForBoard({ supabase, teamId, seasonId } = {}) {
   if (!supabase?.from || !teamId || !seasonId) return [];
-  const { data, error } = await supabase.from("race_results")
-    .select("race_id, result_type, rank, imported_at, races!inner(squad, season_id)")
-    .eq("team_id", teamId)
-    .in("result_type", [...YOUTH_RESULT_TYPES])
-    .lte("rank", YOUTH_PODIUM_MAX_RANK)
-    .eq("races.season_id", seasonId)
-    .in("races.squad", [...YOUTH_RACE_SQUADS]);
-  if (error) throw new Error(`race_results (youth) lookup failed: ${error.message}`);
-  return data ?? [];
+  try {
+    // Pagineret (PostgREST-loftet, #3331): et hold med et fuldt ungdomsprogram
+    // kan nærme sig loftet over en hel sæson. Stabil rækkefølge på id.
+    return await fetchAllRows(() => supabase.from("race_results")
+      .select("id, race_id, result_type, rank, imported_at, races!inner(squad, season_id)")
+      .eq("team_id", teamId)
+      .in("result_type", [...YOUTH_RESULT_TYPES])
+      .lte("rank", YOUTH_PODIUM_MAX_RANK)
+      .eq("races.season_id", seasonId)
+      .in("races.squad", [...YOUTH_RACE_SQUADS])
+      .order("id", { ascending: true }));
+  } catch (err) {
+    throw new Error(`race_results (youth) lookup failed: ${err?.message ?? err}`, { cause: err });
+  }
 }
 
 /**

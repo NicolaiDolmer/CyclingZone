@@ -112,7 +112,8 @@ function recordingSupabase(result = { data: [], error: null }) {
     eq(col, value) { calls.push(["eq", col, value]); return builder; },
     in(col, values) { calls.push(["in", col, values]); return builder; },
     lte(col, value) { calls.push(["lte", col, value]); return builder; },
-    then(resolve, reject) { return Promise.resolve(result).then(resolve, reject); },
+    order(col, opts) { calls.push(["order", col, opts]); return builder; },
+    range(from, to) { calls.push(["range", from, to]); return Promise.resolve(result); },
   };
   return {
     calls,
@@ -133,7 +134,24 @@ test("loadYouthRaceResultsForBoard filtrerer på hold, sæson, ungdomstrup, resu
     ["lte", "rank", 3],
     ["eq", "races.season_id", "s3"],
     ["in", "races.squad", ["junior", "u23"]],
+    ["order", "id", { ascending: true }],
+    ["range", 0, 999],
   ]);
+});
+
+test("loadYouthRaceResultsForBoard paginerer forbi PostgREST-loftet", async () => {
+  const pages = [
+    Array.from({ length: 1000 }, (_, i) => ({ id: i })),
+    [{ id: 1000 }],
+  ];
+  const ranges = [];
+  const builder = {
+    select: () => builder, eq: () => builder, in: () => builder, lte: () => builder, order: () => builder,
+    range(from, to) { ranges.push([from, to]); return Promise.resolve({ data: pages.shift() ?? [], error: null }); },
+  };
+  const rows = await loadYouthRaceResultsForBoard({ supabase: { from: () => builder }, teamId: TEAM_ID, seasonId: "s3" });
+  assert.equal(rows.length, 1001);
+  assert.deepEqual(ranges, [[0, 999], [1000, 1999]]);
 });
 
 test("loadYouthRaceResultsForBoard: manglende input → [] uden opslag; fejl kastes", async () => {
@@ -155,6 +173,7 @@ function makeQueryBuilder(rows) {
     eq(col, value) { filtered = filtered.filter((r) => r[col] === value); return builder; },
     in(col, values) { filtered = filtered.filter((r) => values.includes(r[col])); return builder; },
     lte() { return builder; },
+    range() { return builder; },
     or() { return builder; },
     not() { return builder; },
     order(col, opts = {}) {
