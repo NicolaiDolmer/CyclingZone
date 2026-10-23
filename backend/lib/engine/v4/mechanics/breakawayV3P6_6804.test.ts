@@ -13,14 +13,14 @@ import {
   s5V3IsShortStageRace,
   s5V3ProjectionWeight,
 } from "./breakawayV3_6804.ts";
-import { assessGcThreat, normalizeGcContext, type DangerModel, type GcThreat } from "./gcThreat.ts";
+import { assessGcThreat, normalizeGcContext, type DangerModel, type GcDangerTuning, type GcThreat } from "./gcThreat.ts";
 import { SHARED_TIME_MODEL_V2_TUNING } from "./timeModel.ts";
 import { S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
 import { simulateStageV4 } from "../index.ts";
 import type { AbilityKey, Entrant, GcContext, GcStanding, RaceGroup, RouteV2 } from "../types.ts";
 
 const P6 = S5_V3_BREAKAWAY_TUNING.p6;
-const DANGER = SHARED_TIME_MODEL_V2_TUNING.gcDanger;
+const DANGER = SHARED_TIME_MODEL_V2_TUNING.gcDanger as unknown as GcDangerTuning;
 
 // ── Hjaelperne ────────────────────────────────────────────────────────────────
 
@@ -200,7 +200,7 @@ test("#6804 P6.2: en lige saa staerk rival der er inden for raekkevidde tidligt 
   // Afstand + snorens margin ligger mellem den nedvaegtede og den fulde fremskrivning.
   const deficit = P6.minLeashSeconds + 200;
   const lead = deficit - 150;
-  const ctxDeficit = normalizeGcContext({ ...(ctx as Record<string, unknown>), standings: (ctx as { standings: GcStanding[] }).standings.map((s) => (s.rider_id === "twin" ? { ...s, gap_seconds: deficit } : s)) });
+  const ctxDeficit = normalizeGcContext({ ...(ctx as unknown as Record<string, unknown>), standings: (ctx as unknown as { standings: GcStanding[] }).standings.map((s) => (s.rider_id === "twin" ? { ...s, gap_seconds: deficit } : s)) });
   const run = (v3: boolean, km: number) => assessGcThreat({
     gcContext: ctxDeficit, groups: [
       { id: "breakaway-0", kind: "breakaway", rider_ids: ["twin"], gap_seconds: 0, cohesion: 1 },
