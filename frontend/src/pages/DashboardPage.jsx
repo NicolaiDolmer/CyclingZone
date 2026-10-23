@@ -611,7 +611,7 @@ export default function DashboardPage() {
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
-  const todayStages = useTodayStages(team?.id);
+  const todayStages = withoutPausedUpcoming(useTodayStages(team?.id), Boolean(racePause)); // #6970
 
   // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
   // Promise.all med vilje (progressiv, aldrig blokerende for resten af
@@ -1389,7 +1389,7 @@ export default function DashboardPage() {
           DASHBOARD_RULES.md §2. Skjuler sig selv når holdet ingen løb har i
           dag (mindst-støj-valg, ejer 18/8). */}
       <RacePausedBanner pause={racePause} />
-      <TodayStagesStrip stages={withoutPausedUpcoming(todayStages, Boolean(racePause))} />
+      <TodayStagesStrip stages={todayStages} />
 
       {/* #1140: "Your first race" (flag first_race_card), samme plads som #3310-kortet
           nedenfor; de to optræder aldrig sammen (se firstRaceCardGateOpen). */}
