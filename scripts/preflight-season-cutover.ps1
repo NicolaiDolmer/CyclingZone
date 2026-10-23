@@ -128,12 +128,20 @@ if ($SkipTests) {
   }
   $present = @($cutoverTestFiles | Where-Object { Test-Path (Join-Path $backendRoot $_) })
   if ($present.Count -gt 0) {
+    # Samme dummy-env som CI (ci.yml): moduler som discordNotifier.js opretter en
+    # Supabase-klient ved import og crasher uden URL. Uden dette gav en lokal koersel
+    # falsk NO-GO paa seasonTransition.test.js (22/10). Eksisterende vaerdier roeres ikke,
+    # og intet af det rammer en database (testene er DB-frie).
+    $dummyEnv = @{ SUPABASE_URL = "https://example.supabase.co"; SUPABASE_SERVICE_KEY = "test-service-key"; SUPABASE_ANON_KEY = "test-anon-key" }
+    $setDummy = @($dummyEnv.Keys | Where-Object { -not [Environment]::GetEnvironmentVariable($_) })
+    foreach ($k in $setDummy) { [Environment]::SetEnvironmentVariable($k, $dummyEnv[$k]) }
     Push-Location $backendRoot
     try {
       $testOut = & $nodeCmd.Source --test @present 2>&1
       $testExit = $LASTEXITCODE
     } finally {
       Pop-Location
+      foreach ($k in $setDummy) { [Environment]::SetEnvironmentVariable($k, $null) }
     }
     $summaryLine = @($testOut) | Where-Object { $_ -match '^ℹ (tests|pass|fail) ' }
     $summaryLine | ForEach-Object { Write-Host "  $_" }

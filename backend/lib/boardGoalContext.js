@@ -147,6 +147,8 @@ export function buildBoardEvalContext({
   currentSponsorIncome = null,
   recentSnapshots = [],
   goalContext = {},
+  // #6990 · aktiv sæsonnummer, så min_u25_riders kan udlede U25 af fødselsdato.
+  seasonNumber = null,
   extra = {},
 } = {}) {
   if (!board) throw new Error("buildBoardEvalContext requires a board");
@@ -166,6 +168,7 @@ export function buildBoardEvalContext({
     currentSponsorIncome,
     recentSnapshots,
     hasSeasonData: Boolean(standing),
+    seasonNumber,
     // #979 · Kumulativ = afsluttede sæsoner (board.cumulative_*, persisteres ved
     // season-end) + indeværende sæsons in-progress wins (standing.*).
     // #4034 · + goalContext.cumulativeOneDayWins: endagssejre tælles ALDRIG med i

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
 import { Section, SectionHeader, EmptyState, FlagIcon } from "../../components/ui";
 import { resolveGoalTitle, visionSpan } from "./boardroomFormat.js";
 
@@ -80,29 +81,31 @@ export default function VisionCard({ vision }) {
                 <p data-testid="vision-milestone-title" className="mt-[3px] wrap-break-word text-[13px] font-medium text-cz-1">
                   {resolveGoalTitle(t, m) || t(m.labelKey, m.labelParams || {})}
                 </p>
-                {/* #5820 · Én kort linje om HVORNÅR milepælen tælles, så et
-                    langsigtet mål ikke ligner et inaktivt mål midt i sæsonen.
-                    Motoren afgør milepæle ved sæsonafslutning: i målsæsonen,
-                    eller tidligere hvis målet allerede er nået (BOARD_RULES
-                    §0.1 / A7). Indeværende (eller forfalden) milepæl er i sin
-                    målsæson, så "kan nås før tid" udelades dér. Forklaringen
-                    står i Hjælp (mandate.visionMilestones). */}
+                {/* #5820/#6991 · Én sætning om HVORNÅR milepælen tælles (senest i
+                    målsæsonen, med det samme hvis den nås før). Den lange
+                    forklaring står i Hjælp (mandate.visionMilestones). */}
                 <p data-testid="vision-milestone-counts" className="mt-[2px] text-xs text-cz-3">
                   {m.status === "achieved"
                     ? t("boardroom.vision.milestoneAchieved")
                     : m.status === "missed"
                       ? t("boardroom.vision.milestoneMissed")
-                      : m.status === "current"
-                        ? t("boardroom.vision.countsAtCurrent", { season: m.seasonNumber })
-                        : t("boardroom.vision.countsAt", { season: m.seasonNumber })}
+                      : t("boardroom.vision.countsAt", { season: m.seasonNumber })}
                 </p>
+                {/* #6990/#6991 · Fremdrift "x af y" på tælle-milepæle (fx U25-ryttere). */}
+                {m.progress && m.progress.target != null && m.status !== "achieved" && m.status !== "missed" && (
+                  <p data-testid="vision-milestone-progress" className="mt-[2px] text-xs font-medium tabular-nums text-cz-2">
+                    {t("boardroom.vision.milestoneProgress", { current: m.progress.current, target: m.progress.target })}
+                  </p>
+                )}
               </div>
             </li>
           ))}
         </ol>
       </div>
       <div className="mt-[18px] border-t border-cz-border pt-3 text-[13px] text-cz-2">
-        {t("boardroom.vision.explainer")}
+        <Link to="/help?section=mandate" className="text-cz-accent-t hover:underline">
+          {t("boardroom.vision.helpLink")}
+        </Link>
       </div>
     </Section>
   );

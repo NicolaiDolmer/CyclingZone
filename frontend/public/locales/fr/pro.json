@@ -1,7 +1,7 @@
 {
   "metaTitle": "Passer à CZ Pro",
-  "title": "Deviens Founder",
-  "subtitle": "Soutiens le développement du jeu et verrouille le statut Founder. Le jeu gratuit reste pleinement compétitif. Pro est un badge et une identité, jamais un avantage.",
+  "title": "CZ Pro",
+  "subtitle": "Suis tes coureurs au fil des saisons. Enregistre les recherches que tu réutilises.",
   "monthly": "Mensuel",
   "semiannual": "6 mois",
   "monthlyPrice": "6,49 €/mois",
@@ -28,18 +28,36 @@
     "message": "Je n'ai pas pu charger les détails de ton abonnement. Rien n'a été perdu et ton compte n'est pas touché.",
     "retry": "Réessayer"
   },
+  "benefits": {
+    "title": "Ce que Pro ajoute",
+    "exampleLabel": "Données d'exemple",
+    "history": {
+      "tab": "Historique des saisons",
+      "headline": "Suis ton coureur au fil des saisons",
+      "body": "Chaque aptitude, saison par saison, dans l'onglet Développement du coureur.",
+      "sampleCaption": "Coureur inventé, pas de ta partie",
+      "sampleAria": "Graphique d'exemple : grimpe, tempo, contre-la-montre et endurance d'un coureur inventé sur trois saisons et maintenant."
+    },
+    "filters": {
+      "tab": "Filtres enregistrés",
+      "headline": "Réutilise cette recherche en un clic",
+      "body": "Donne un nom à une recherche dans la base des coureurs et retrouve-la quand tu en as besoin. Jusqu'à {max} filtres, enregistrés dans ce navigateur.",
+      "sampleCaption": "Exemples de filtres",
+      "examples": {
+        "youngClimbers": "Jeunes grimpeurs",
+        "sprintersU25": "Sprinteurs U25",
+        "cheapTimeTrial": "Rouleurs chrono bon marché"
+      }
+    }
+  },
   "founderMark": {
     "label": "Founder",
     "aria": "Founder n° {n} sur {cap}",
     "heroLine": "Founder n° {n} sur {cap}"
   },
-  "gate": {
-    "note": "Pro montre ceci sur toutes les saisons, pas seulement la saison en cours.",
-    "cta": "Voir Pro"
-  },
   "riderHistory": {
     "title": "Historique des saisons",
-    "cta": "Voir Pro",
+    "cta": "Voir l'historique des saisons avec Pro",
     "note": "Pro montre chaque aptitude sur toutes les saisons, pas seulement la saison en cours.",
     "ceilingLegend": "Plafond de l'échelle (99)",
     "empty": "Aucun historique de saison enregistré pour l'instant.",
@@ -49,7 +67,8 @@
     "retry": "Réessayer",
     "emptyTitle": "Aucune aptitude enregistrée pour l'instant",
     "checkAgain": "Vérifier à nouveau",
-    "now": "Maintenant"
+    "now": "Maintenant",
+    "upsellTitle": "Suis ton coureur au fil des saisons"
   },
   "savedFilters": {
     "title": "Filtres enregistrés",
@@ -59,8 +78,8 @@
     "cancel": "Annuler",
     "remove": "Retirer",
     "empty": "Aucun filtre enregistré pour l'instant.",
-    "note": "Pro te permet d'enregistrer des filtres par nom et d'y revenir en un clic.",
-    "cta": "Voir Pro",
+    "note": "Réutilise cette recherche en un clic.",
+    "cta": "Enregistrer des filtres avec Pro",
     "removeNamed": "Retirer {name}",
     "duplicate": "Tu as déjà un filtre portant ce nom.",
     "limit": "Tu as enregistré {max} filtres, le maximum. Retires-en un pour en enregistrer un nouveau.",

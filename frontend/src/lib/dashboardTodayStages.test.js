@@ -1,36 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  terrainGlyphBucket,
   computeStageRaceStanding,
   todayStageWinner,
   entryCountFor,
   mergeStandingRowsByRace,
 } from "./dashboardTodayStages.js";
-
-test("terrainGlyphBucket — flat/rolling renames to sprint (TerrainGlyph vocabulary)", () => {
-  assert.equal(terrainGlyphBucket("flat"), "sprint");
-  assert.equal(terrainGlyphBucket("rolling"), "sprint");
-});
-
-test("terrainGlyphBucket — hilly/classic → hilly, mountain/high_mountain → mountain, cobbles stays", () => {
-  assert.equal(terrainGlyphBucket("hilly"), "hilly");
-  assert.equal(terrainGlyphBucket("classic"), "hilly");
-  assert.equal(terrainGlyphBucket("mountain"), "mountain");
-  assert.equal(terrainGlyphBucket("high_mountain"), "mountain");
-  assert.equal(terrainGlyphBucket("cobbles"), "cobbles");
-});
-
-test("terrainGlyphBucket — itt/ttt both fold to itt (existing stageTerrain.js simplification)", () => {
-  assert.equal(terrainGlyphBucket("itt"), "itt");
-  assert.equal(terrainGlyphBucket("ttt"), "itt");
-});
-
-test("terrainGlyphBucket — unknown/missing profile_type falls back to sprint", () => {
-  assert.equal(terrainGlyphBucket(null), "sprint");
-  assert.equal(terrainGlyphBucket(undefined), "sprint");
-  assert.equal(terrainGlyphBucket("something-unknown"), "sprint");
-});
 
 test("computeStageRaceStanding — null with no rows / no teamId", () => {
   assert.equal(computeStageRaceStanding([], "team-1"), null);

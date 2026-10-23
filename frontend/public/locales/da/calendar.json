@@ -52,13 +52,7 @@
   },
   "today": "I dag",
   "legend": {
-    "title": "Terræn",
-    "sprint": "Sprint",
-    "cobbles": "Brosten",
-    "hilly": "Kuperet",
-    "mountain": "Bjerge",
-    "itt": "Enkeltstart",
-    "ttt": "Holdstart"
+    "title": "Terræn"
   },
   "terrain": {
     "sprint": "Sprint",
