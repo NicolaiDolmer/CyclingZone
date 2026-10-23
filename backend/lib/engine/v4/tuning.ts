@@ -1640,6 +1640,27 @@ const s5V3Breakaway = {
     shortRaceMaxStages: 8,
     contenderAbilityRank: 100,
   },
+  // P2 (#6912, K3): realistisk forspring i ETAPELOEB (endagsloeb uaendret: deres eget loft,
+  // #6428). Ikke en klemme paa uret: naar forspringet naar det feltet tolererer, slutter
+  // lad-gaa-fasen, og jagten (de interesserede hold) tager over. Kun paa profiler med
+  // etapeinteressen (BREAKAWAY_CHASE_V3_TUNING.profileTypes).
+  p2: {
+    // Det forspring feltet tolererer pr. profil, naar mindst et hold har etape- eller
+    // klassementsinteresse (mellemzonen). Udeladt profil = `interestedLeadSecondsDefault`.
+    interestedLeadSecondsByProfile: {
+      flat: 300,
+      rolling: 360,
+      hilly: 420,
+      mountain: 480,
+      high_mountain: 480,
+    } as Partial<Record<ProfileType, number>>,
+    interestedLeadSecondsDefault: 420,
+    // Uden jagt-interesse hos noget hold: den sjaeldne oevre zone, aldrig over den haarde graense.
+    unchasedLeadSeconds: 720,
+    // Automatisk jagt baerer arbejde: et interesseret hold uden ordre/reaktion jager med
+    // arbejde i forhold til interessen, maalt mod en fuld ordre (teamSignalWeight x maxTeamSignal).
+    autoChaseWorkScale: 1,
+  },
 };
 
 /** #6804 s5_profiles_v3-udbrudspakken (deep-frosset). Se kommentaren ovenfor. */

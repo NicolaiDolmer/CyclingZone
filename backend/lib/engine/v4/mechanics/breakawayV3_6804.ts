@@ -114,3 +114,48 @@ export function s5V3ControlledClosing(input: { fullClosing: number; baseClosing:
   const room = Math.max(0, input.gapSeconds - input.targetSeconds);
   return Math.max(base, Math.min(full, room));
 }
+
+// ── P2 (#6912, K3, byg-go 21/10): realistisk forspring ───────────────────────
+//   Ikke en klemme paa uret, men feltets adfaerd: naar forspringet naar det feltet
+//   tolererer pr. profil, slutter lad-gaa-fasen, og jagten tager over hos de hold der har
+//   interesse. Interesse = positiv etapeinteresse (`interestByTeam` fra
+//   stageWinChaseForceV3) ELLER et positivt ordre-/klassementssignal (`teamSignals`; "lad
+//   gaa" er negativt og taeller ikke). Kun naar INGEN hold har interesse, kan forspringet
+//   vokse til den sjaeldne oevre zone, og aldrig over den. Kun i etapeloeb (endagsloeb har
+//   deres eget loft, #6428) og kun paa profiler med etapeinteressen (chaseV3).
+//   Automatisk jagt baerer arbejde: et interesseret hold uden ordre/reaktion skriver sine
+//   jagt-rytteres arbejde i work-mappen (traethed + "hvem jagede" i filmen). Lukkekraften er
+//   uaendret (interessen), saa intet taelles dobbelt.
+
+/** P2 gaelder: v3, et etapeloeb og en profil med etapeinteressen (chaseV3). */
+export function s5V3RealisticLeadApplies(input: { s5ProfilesV3?: boolean; chaseV3: boolean; gcContext: GcContext | null | undefined }): boolean {
+  return input.s5ProfilesV3 === true && input.chaseV3 && isStageRaceGcContext(input.gcContext);
+}
+
+/** P2: de hold (sorteret) der har jagt-interesse i dette udbrud; udelukkede hold (egne foran, #6187) aldrig. */
+export function s5V3InterestedTeamIds(input: {
+  interestByTeam: ReadonlyMap<string, number>;
+  teamSignals?: ReadonlyMap<string, number>;
+  excludedTeamIds?: ReadonlySet<string>;
+}): string[] {
+  const ids = new Set<string>();
+  for (const [teamId, interest] of input.interestByTeam) if (interest > 0) ids.add(teamId);
+  for (const [teamId, signal] of input.teamSignals ?? []) if (Math.max(0, signal) > 0) ids.add(teamId);
+  return [...ids].filter((id) => !input.excludedTeamIds?.has(id)).sort((a, b) => a.localeCompare(b));
+}
+
+/** P2: lad-gaa-loftet feltet tolererer: mellemzonen med interesse, ellers den oevre zone. */
+export function s5V3RealisticLeadCeilingSeconds(profileType: ProfileType, interested: boolean): number {
+  const t = S5_V3_BREAKAWAY_TUNING.p2;
+  if (!interested) return t.unchasedLeadSeconds;
+  return t.interestedLeadSecondsByProfile[profileType] ?? t.interestedLeadSecondsDefault;
+}
+
+/**
+ * P2: arbejds-intensiteten (0..1) for et holds automatiske jagt: interessen maalt mod en
+ * fuld ordre (`fullOrderForce`), ganget med autoChaseWorkScale. 0 uden interesse.
+ */
+export function s5V3AutoChaseIntensity(teamInterest: number, fullOrderForce: number): number {
+  if (!(teamInterest > 0) || !(fullOrderForce > 0)) return 0;
+  return Math.max(0, Math.min(1, (teamInterest / fullOrderForce) * S5_V3_BREAKAWAY_TUNING.p2.autoChaseWorkScale));
+}
