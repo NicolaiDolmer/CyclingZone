@@ -31,7 +31,7 @@ export function createYouthRaceOptOutRouter({
     try {
       const state = await loadTeamTrainOnly(supabase, req.team.id);
       const effectiveFromDay = state.available
-        ? await firstUnlockedRaceDay(supabase, { team: req.team, squad })
+        ? await firstUnlockedRaceDay(supabase, { team: req.team, squad, now: new Date() })
         : null;
       res.json({ available: state.available, squad, trainOnly: state[squad], effectiveFromDay });
     } catch (err) {
@@ -48,7 +48,7 @@ export function createYouthRaceOptOutRouter({
     if (!MODES.has(mode)) return res.status(400).json({ error: "invalid_mode" });
     try {
       const result = await setTeamSquadTrainOnly(supabase, {
-        team: req.team, squad, trainOnly: mode === "train_only",
+        team: req.team, squad, trainOnly: mode === "train_only", clock: () => new Date(),
       });
       res.json({
         squad,

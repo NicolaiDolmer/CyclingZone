@@ -467,9 +467,10 @@ function makeSupabase(canned = {}) {
   const writes = [];
   const rpcCalls = [];
   function from(table) {
+    let appConfigKey = null; // #6984: app_config-flag slås op på nøglen, ikke "første række"
     const b = {
       select() { return b; },
-      eq() { return b; },
+      eq(c, v) { if (table === "app_config" && c === "key") appConfigKey = v; return b; },
       in() { return b; },
       or() { return b; },
       is() { return b; },
@@ -481,7 +482,15 @@ function makeSupabase(canned = {}) {
       // #2962 · fillMissingTeamEntries' teams-select pagineres nu via fetchAllRows
       // (.order("id").range()) — mocken slicer den cannede tabel som en enkelt side.
       range(from, to) { return Promise.resolve({ data: (canned[table] || []).slice(from, to + 1), error: null }); },
-      maybeSingle() { return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null }); },
+      maybeSingle() {
+        // Kun fixtures MED nøgler slås op på nøglen; ældre fixtures uden `key` (én række
+        // til ét flag) får første række som før.
+        const rows = canned[table] || [];
+        if (table === "app_config" && appConfigKey != null && rows.some((row) => row.key != null)) {
+          return Promise.resolve({ data: rows.find((row) => row.key === appConfigKey) ?? null, error: null });
+        }
+        return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null });
+      },
       insert(rows) { writes.push({ table, op: "insert", rows }); return Promise.resolve({ error: null }); },
       // #3193-test: matview_refresh_heartbeat-upsert (refreshRankingMatviewsSafe).
       upsert(obj) { writes.push({ table, op: "upsert", obj }); return Promise.resolve({ error: null }); },
@@ -1518,11 +1527,13 @@ for (const squad of ["u23", "junior"]) {
   test(`#5645 buildRaceResults: ${squad}-løb giver prize_money = 0 på hver række, point uændrede`, () => {
     const base = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
     const youth = buildRaceResults({ race: { ...STAGE_RACE, squad }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
-    assert.equal(youth.resultRows.length, base.resultRows.length);
+    // #7031: ungdomsløb har intet ungdomsklassement; sammenlign uden det.
+    const baseRows = base.resultRows.filter((r) => r.result_type !== "young" && r.result_type !== "young_day");
+    assert.equal(youth.resultRows.length, baseRows.length);
     for (const r of youth.resultRows) assert.equal(r.prize_money, 0, `${r.result_type} rank ${r.rank} bar en præmie`);
     assert.deepEqual(
       youth.resultRows.map((r) => r.points_earned),
-      base.resultRows.map((r) => r.points_earned),
+      baseRows.map((r) => r.points_earned),
       "point er uændrede",
     );
   });
@@ -1684,7 +1695,7 @@ test("race-day training owns recovery in full-race prediction and persistence", 
 });
 
 test('normalized single-race ledger failure precedes results and completion; retry commits once',async()=>{
-  const supabase=makeSupabase({race_stage_profiles:[STAGES_3[0]],...cannedField(),app_config:[{key:'training_condition_per_date',value:'on'}],race_points:[]});
+  const supabase=makeSupabase({race_stage_profiles:[STAGES_3[0]],...cannedField(),app_config:[{key:'training_condition_per_date',value:'on'},{key:'training_tick_per_race_day',value:'on'}],race_points:[]});
   const race={...STAGE_RACE,id:'single-ledger-retry',race_type:'single',stages:1,status:'scheduled'};
   let attempts=0,resultWrites=0;
   const keys=new Set();
@@ -1702,7 +1713,43 @@ test('normalized single-race ledger failure precedes results and completion; ret
 });
 
 test('normal normalized full-race execution rejects multiple canonical dates before writes',async()=>{
-  const supabase=makeSupabase({race_stage_profiles:STAGES_3,...cannedField(),app_config:[{key:'training_condition_per_date',value:'on'}],race_points:[],race_stage_schedule:STAGES_3.map((stage,index)=>({race_id:STAGE_RACE.id,stage_number:stage.stage_number,game_day:index,scheduled_at:index===2?'2026-09-30T09:00:00Z':'2026-09-29T09:00:00Z'}))});
+  const supabase=makeSupabase({race_stage_profiles:STAGES_3,...cannedField(),app_config:[{key:'training_condition_per_date',value:'on'},{key:'training_tick_per_race_day',value:'on'}],race_points:[],race_stage_schedule:STAGES_3.map((stage,index)=>({race_id:STAGE_RACE.id,stage_number:stage.stage_number,game_day:index,scheduled_at:index===2?'2026-09-30T09:00:00Z':'2026-09-29T09:00:00Z'}))});
   await assert.rejects(simulateRace({supabase,race:STAGE_RACE,checkV3Enabled:async()=>false,checkV4Enabled:async()=>false,applyFatigue:async()=>({updated:0}),applyRaceResults:async()=>({rowsImported:0}),recomputeRaceDays:async()=>1}),/single canonical date/);
   assert.equal(supabase.__writes.length,0);
+});
+
+test('#6984: condition_model_v2 rejects multi-stage full simulation before writes (stage by stage only)',async()=>{
+  const sched=STAGES_3.map((stage,index)=>({race_id:STAGE_RACE.id,stage_number:stage.stage_number,game_day:index,scheduled_at:'2026-11-01T09:00:00Z'}));
+  const flags=[{key:'training_condition_per_date',value:'on'},{key:'training_tick_per_race_day',value:'on'},{key:'condition_model_v2',value:'on'}];
+  const supabase=makeSupabase({race_stage_profiles:STAGES_3,...cannedField(),app_config:flags,race_points:[],race_stage_schedule:sched});
+  let resultWrites=0;
+  await assert.rejects(simulateRace({supabase,race:STAGE_RACE,checkV3Enabled:async()=>false,checkV4Enabled:async()=>false,applyFatigue:async()=>({updated:0}),applyRaceResults:async()=>{resultWrites++;return {rowsImported:0};},recomputeRaceDays:async()=>1}),/condition_model_v2: multi-stage full simulation/);
+  assert.equal(resultWrites,0);
+  assert.equal(supabase.__writes.some(row=>row.table==='race_simulation_runs'),false);
+});
+
+// #7031 (ejer 21/10): intet ungdomsklassement i U23- og juniorløb. Seniorløb uændrede,
+// og resten af resultatet (etaper, GC, point, bjerg, hold) er byte-identisk.
+test("#7031 buildRaceResults: U23/junior skriver hverken young eller young_day; resten er uændret", () => {
+  // prize_money er 0 i ungdomsløb (#5645), så den sammenlignes ikke her.
+  const strip = (rows) => rows.filter((r) => r.result_type !== "young" && r.result_type !== "young_day").map(({ prize_money: _prize, ...r }) => r);
+  const senior = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  assert.ok(rowsBy(senior.resultRows, "young_day").length > 0, "seniorløb har stadig ungdomsklassementet");
+  assert.ok(rowsBy(senior.resultRows, "young").length > 0);
+  for (const squad of ["u23", "junior"]) {
+    const youth = buildRaceResults({ race: { ...STAGE_RACE, squad }, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+    assert.equal(rowsBy(youth.resultRows, "young").length, 0, `${squad}: ingen young`);
+    assert.equal(rowsBy(youth.resultRows, "young_day").length, 0, `${squad}: ingen young_day`);
+    assert.deepEqual(youth.resultRows.map(({ prize_money: _prize, ...r }) => r), strip(senior.resultRows), `${squad}: alt andet byte-identisk`);
+  }
+});
+
+test("#7031 buildStageRowsAccumulated: etape-for-etape-stien følger samme regel", () => {
+  const args = { stagesSorted: STAGES_3, stageIndex: 0, pointsLookup: POINTS, priorStageRows: [], entrants: ENTRANTS.map((e) => ({ ...e, fatigue: 0 })) };
+  const senior = buildStageRowsAccumulated({ ...args, race: STAGE_RACE });
+  const youth = buildStageRowsAccumulated({ ...args, race: { ...STAGE_RACE, squad: "junior" } });
+  assert.ok(rowsBy(senior.resultRows, "young_day").length > 0);
+  assert.equal(rowsBy(youth.resultRows, "young_day").length, 0);
+  const noPrize = (rows) => rows.map(({ prize_money: _prize, ...r }) => r);
+  assert.deepEqual(noPrize(youth.resultRows), noPrize(senior.resultRows.filter((r) => r.result_type !== "young_day")));
 });

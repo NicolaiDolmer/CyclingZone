@@ -11,6 +11,8 @@
 // game_day→CET-dato-mapping fra schedule-rækkerne selv, så kalenderen følger den
 // faktiske binding (jf. prompt: "key on game_day, not scheduled_at").
 
+import { isRaceLineupLocked, firstStageStartsFromSchedule } from "./raceStartLock.js";
+
 // league_divisions.tier → spiller-vendt "Division N"-nummer. tier ER divisionsnummeret
 // i pyramiden (tier1 = Division 1, …). pool_index adskiller puljer inden for en tier.
 export function tierToDivision(tier) {
@@ -33,7 +35,9 @@ const PROFILE_TO_CAL_BUCKET = {
   classic: "hilly",
   mountain: "mountain",
   high_mountain: "mountain",
+  medium_mountain: "mountain", // #6683: manglede, faldt stille til sprint
   itt: "itt",
+  itt_hilly: "itt", // #6683: manglede, faldt stille til sprint
   ttt: "ttt",
 };
 
@@ -60,6 +64,27 @@ export function dominantCalendarBucket(profileTypes) {
       bestCount = c;
       best = c > 0 ? b : best;
     }
+  }
+  return best;
+}
+
+// #6683: den dominerende profile_type på tværs af et løbs etaper, til det ene farvede
+// terræn-ikon pr. etapetype (planlæggerens løbsmarkør). Samme dominans som
+// dominantCalendarBucket (bucket først), derefter den hyppigste profile_type INDEN
+// for den bucket; tie → den der kom først (profileTypes er sorteret efter etapenummer).
+// Tomt → null.
+export function dominantProfileType(profileTypes) {
+  const bucket = dominantCalendarBucket(profileTypes);
+  if (!bucket) return null;
+  const counts = new Map();
+  for (const pt of profileTypes) {
+    if (calendarTerrainBucket(pt) !== bucket) continue;
+    counts.set(pt, (counts.get(pt) || 0) + 1);
+  }
+  let best = null;
+  let bestCount = 0;
+  for (const [pt, c] of counts) {
+    if (c > bestCount) { best = pt; bestCount = c; }
   }
   return best;
 }
@@ -145,8 +170,10 @@ export function buildCalendarModel({
   teamEntryRaceIds = new Set(),
   teamLeaderRaceIds = new Set(),
   teamWithdrawnRaceIds = new Set(),
+  now, // #6959: injiceres af kalderen (hard rule 16); bruges til lineupFrozen
 } = {}) {
   const dayDateMap = buildGameDayDateMap(scheduleRows);
+  const firstStageStarts = firstStageStartsFromSchedule(scheduleRows); // #6959
 
   // game_days pr. løb (fra schedule) → start/slut-dag + dato. game_day er sandheden;
   // game_day_start på races er en hint men vi stoler på schedule-rækkerne.
@@ -165,8 +192,12 @@ export function buildCalendarModel({
   }
   // terræn-bucket pr. (race, stage_number) — til per-etape-chips på kalenderen.
   const terrainByRaceStage = new Map();
+  // #6683: den rå profile_type pr. etape, så kalenderchippen kan tegne etapens EGET ikon
+  // (ét ikon pr. etapetype overalt) i stedet for kun den grove bucket.
+  const profileTypeByRaceStage = new Map();
   for (const row of profileRows || []) {
     terrainByRaceStage.set(`${row.race_id}:${row.stage_number}`, calendarTerrainBucket(row.profile_type));
+    profileTypeByRaceStage.set(`${row.race_id}:${row.stage_number}`, row.profile_type ?? null);
   }
 
   // Per-etape-plan pr. løb: { stage, date, time, terrain } sorteret efter faktisk tidspunkt.
@@ -183,6 +214,7 @@ export function buildCalendarModel({
       date: toCopenhagenISODate(ms),
       time: toCopenhagenTime(ms),
       terrain: terrainByRaceStage.get(`${row.race_id}:${row.stage_number}`) || null,
+      profileType: profileTypeByRaceStage.get(`${row.race_id}:${row.stage_number}`) || null,
       _ms: ms,
     });
   }
@@ -232,15 +264,19 @@ export function buildCalendarModel({
       gameDayEnd: endDay,
       date,
       terrain: dominantCalendarBucket(profileTypes),
+      terrainProfile: dominantProfileType(profileTypes), // #6683: løbets dominerende profile_type (ikon)
       terrainStages: profileTypes.map(calendarTerrainBucket),
       stageSchedule: stageScheduleByRace.get(race.id) || [],
       isMine,
       leaderSet: teamLeaderRaceIds.has(race.id),
       entered: teamEntryRaceIds.has(race.id),
       withdrawn: teamWithdrawnRaceIds.has(race.id),
-      // #6514: udtagelsen er låst (afviklet eller i gang). Samme regel som isRaceLineupFrozen (raceActiveGuard.js), inlinet fordi
-      // dette modul er rent og ikke maa traekke sentry ind.
-      lineupFrozen: race.status === "completed" || (race.stages_completed ?? 0) > 0,
+      // #6514: udtagelsen er låst (afviklet, i gang eller - #6959 - etape 1's start er passeret).
+      // Samme regel som taktikken (raceStartLock.js, ren: ingen sentry).
+      lineupFrozen: isRaceLineupLocked({
+        status: race.status, stagesCompleted: race.stages_completed,
+        firstStageScheduledAt: firstStageStarts.get(race.id) ?? null, now,
+      }),
       ...(restGameDays.length ? { restGameDays } : {}), // #3470: kun til stede når ikke-tom
     });
   }

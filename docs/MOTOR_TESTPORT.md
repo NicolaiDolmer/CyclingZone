@@ -15,7 +15,7 @@ node backend/scripts/dev/motorTestport.mjs --candidate=<ny revision> --from-dir=
 node backend/scripts/dev/motorTestport.mjs --report-only --out=<tidligere out>
 ```
 
-`--baseline` er som default den aktuelle revision (`CURRENT_RACE_RULES_REVISION`). Øvrige flag står i scriptets header: `--seeds` (default 8), `--parallel` (default 4), `--out`, `--limit`, `--races`, `--ids-file`, `--include-running`, `--no-bench`, `--bench-only`, `--bench-scope`, `--no-png`, `--season`, `--synthetic-field`, `--routes-from`, `--time-budget`.
+`--baseline` er som default den aktuelle revision (`CURRENT_RACE_RULES_REVISION`). Øvrige flag står i scriptets header: `--seeds` (default 8), `--parallel` (default 4), `--out`, `--limit`, `--races`, `--ids-file`, `--include-running`, `--no-bench`, `--bench-only`, `--bench-scope`, `--no-png`, `--season`, `--synthetic-field`, `--breakaway-intent`, `--intent-rates`, `--routes-from`, `--time-budget`.
 
 ## Før sæsonskiftet: syntetisk startfelt og foreslåede ruter (#6909)
 
@@ -29,6 +29,7 @@ infisical run --env=prod --silent -- node backend/scripts/dev/motorTestport.mjs 
 
 - **`--synthetic-field`** (= `generator`): løb uden tilmeldinger får et startfelt i hukommelsen. Tilmeldingsgeneratoren (`raceEntryGenerator.runRaceEntryGenerator`) køres som dry-run på de nuværende trupper med en klient der afviser enhver skrivning; tilstanden er `late_fill` med "nu" sat til hvert løbs egen start (etape 1; løb med samme start køres sammen), så assistenten udtager alle hold i puljen med den dags skader og Train now-låse, ligesom redningen ved etape 1 gør i spillet. Hver kørsel ser kun sine egne løb; ryttere der allerede er udtaget til et overlappende løb, skjules. Holdene står i deres nuværende division (før op- og nedrykning), og ingen holdordrer er sat. Løb uden tildelt felt (fx uden tidsvindue) springes over og tælles.
 - **`--synthetic-field=bench`**: det anonymiserede Giro-bench-felt (`s5MotorBench.loadBenchField`) i alle løb uden tilmeldinger. Kræver ikke prod, men er ikke de rigtige puljer; brug det kun når generatoren ikke kan køres.
+- **`--breakaway-intent`** (#6804 P0, ejer 21/10; default `prod` med `--synthetic-field=generator`, kun tilladt dér: bench-feltet har kun AI-hold): menneskeholdene i et syntetisk felt får udbrudsvilje som i prod. Satserne læses read-only fra seneste afsluttede sæson (`seasons.status`; `--intent-season=<n>` vælger en anden), senior: pr. division og løbsgruppe (endagsløb, etapeløb, Grand Tour) hvor mange jægere og frie roller et menneskehold stiller pr. løb, og hvor mange "Forsøg udbrud" det giver pr. vejetape (tidskørsler tælles ikke). Små celler bruger gruppens samlede sats; grænsen er privat (`breakawayIntentMinCellTeamStages` i den private tærskelfil, hard rule 17), kræves når satserne hentes fra prod (mangler den, stopper kørslen), og står i satsfilen. Hvert menneskehold får det forventede antal, deterministisk: jæger-rollen går til holdets hjælpere med højest aggression og udholdenhed, "Forsøg udbrud" til den bedste hjælper på dagens terræn. Kaptajner, AI-hold, prod-tilmeldinger og et holds egne ordre-rækker røres aldrig. Satserne gemmes som `breakaway-intent-rates.json` i `--out`, og en genoptagelse med andre satser afvises; med `--from-dir` skal de gives med `--intent-rates=<fil>`. `--breakaway-intent=none` giver det gamle felt uden ordrer (fanger "intet udbrud"-tilfældet). Kode: `lib/breakawayIntent.mjs`.
 - Løb der allerede har tilmeldinger, kører på dem. Kortet viser feltets kilde ("Startfelt: ...") og ruternes kilde ("Ruter: ...").
 - **`--season=<n>`** begrænser prod-listen til én sæson. **`--time-budget=<min>`** starter ingen nye opgaver efter budgettet; samme kommando igen genoptager (de færdige løb springes over).
 
@@ -58,6 +59,15 @@ En mappe med én fil pr. løb, `<race_id>.json`, og en valgfri `manifest.json`:
 - Uden `--races`/`--ids-file` er udvælgelsen mappens løb; ellers skal hvert valgt løb have en fil. Løbet (navn, klasse, trup) og dets tilmeldinger hentes fra prod; kun etaperne udskiftes.
 
 Kørslen bygger løbets `cache.json` i løbsmappen (tourDryRun-formen) med det syntetiske felt og/eller de foreslåede etaper, og tourDryRun læser den. Ved genoptagelse genbruges en eksisterende `cache.json`; en `--out` tilhører én kombination af revisioner, seeds, syntetisk felt, rute-mappe og sæson.
+
+## Form og formtoppe (#6818, #6156)
+
+Testporten og Tour-gennemtesten kører som udgangspunkt uden rytternes form: eksporten bærer ikke `rider_condition.form` eller formtoppe. Formtesten lægger dem på i to trin:
+
+1. **Data (read-only, prod):** `infisical run --env=prod --silent -- node backend/scripts/dev/formTestData.mjs --from-dir=<eksport>/races --out=balance-internals/<...>/form-data.json`. Scriptet henter formen for feltets ryttere, formtoppene for løbets egen sæson (med spillets egen træningskvalitet, `resolvePeakTrainingQualities`), etapedagene (`race_stage_schedule.scheduled_at`) og et #6158-tjek af alle formtoppe (pr. sæson, S5-planer oprettet før S5-start, mål i en anden sæson, S4-vinduer der rager ind i S5). Klienten kan kun læse, og outputtet skal ligge under `balance-internals/`.
+2. **Caches (offline):** `node backend/scripts/dev/formTestCaches.mjs --from-dir=<eksport>/races --form-data=<fil> --out-dir=balance-internals/<...>/races [--peaks=on|off|tq1]`. Startlisten får `form` og `peakWindows`, og etaperne får `peakDay`. `off` giver kun formen (kontrol), og `tq1` giver fuld træningskvalitet (øvre grænse). **Forbehold:** træningskvaliteten og formen er dem på data-dagen. For et kommende løb er optakten til et vindue ikke kørt endnu, så `on` er en nedre grænse (outputtets `leadup` tæller vinduerne med ufærdig optakt), og formen er dagens, ikke løbsdagens. Kør `--from-dir` på de nye caches uden `--routes-from`/`--synthetic-field`, ellers erstattes profiler og startliste. Derefter kører `motorTestport.mjs --from-dir=<ny eksport>` som normalt.
+
+`tourScorecard.splitEntrants` tager `form` og `peakWindows` med, når startlisten har dem; uden dem er motor-input byte-identisk med før. Kode: `formTestData.mjs`, `formTestCaches.mjs`. Test: `formTest.test.mjs`.
 
 ## Hvad den gør
 

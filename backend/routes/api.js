@@ -9,6 +9,7 @@
  *   /api/admin      — season, races, overrides
  */
 
+import { loadDoctorReportForSelection } from "../lib/doctorReport.js";
 import express from "express";
 import { loadDevelopmentReceiptHistory } from "../lib/riderDevelopmentReceipt.js";
 import { createRankingsRouter } from "./rankings.ts";
@@ -273,7 +274,7 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
-import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
+import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
@@ -4346,6 +4347,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     });
 
     const model = buildCalendarModel({
+      now: new Date(), // #6959: request-grænsen injicerer uret (lineupFrozen)
       races: raceList,
       scheduleRows,
       profileRows: fullProfiles.map((r) => ({ race_id: r.race_id, stage_number: r.stage_number, profile_type: r.profile_type })),
@@ -4486,6 +4488,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           // Fallback for løb uden game_day-rækker ligger i raceDaysByRace ovenfor.
           raceDays: raceDaysByRaceId.get(e.id) ?? 1,
           terrain: e.terrain,
+          terrainProfile: e.terrainProfile, // #6683: løbets dominerende profile_type (ét farvet ikon pr. etapetype)
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
           demandVector: demandByRace.get(e.id) || null,
@@ -4781,7 +4784,11 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
         }));
       }
     }
-    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
+    // #6984 M4 + M8: holdlægens ord (kun condition_model_v2; null = intet vises).
+    const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ctx.riders }) : null;
+    // #6959: trup-låsen (samme regel som taktikken) så panelet kan vise den, også i en pause.
+    const lineupLocked = await isRaceLineupLockedNow({ supabase, race, now: new Date() });
+    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, lineup_locked: lineupLocked, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled, doctor });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -5028,6 +5035,7 @@ router.get("/races/calendar", requireAuth, cached({
     }
 
     const model = buildCalendarModel({
+      now: new Date(), // #6959: request-grænsen injicerer uret (lineupFrozen)
       races: raceList,
       scheduleRows,
       profileRows,
@@ -5306,7 +5314,17 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // dag) og raceBindingWindow (in-game-dag-rum, jf. game_day ovenfor) til BINDING (bindingMap —
     // hvilke ryttere er låst pga. ægte samme-spil-dag-overlap, #1823). gameDaySpan = det synlige
     // "Race day N"-mærke (#2195), afledt direkte af game_day.
-    const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
+    // #6959: lineup_locked = samme regel som taktikken (etape 1's start passeret ELLER en etape kørt).
+    const boardFirstStarts = firstStageStartsFromSchedule(schedRows);
+    const boardLockNow = new Date();
+    const withWindow = (races || []).map((r) => ({
+      ...r,
+      window: raceTimeWindow(schedByRace.get(r.id)),
+      lineup_locked: isRaceLineupLocked({
+        status: r.status, stagesCompleted: r.stages_completed,
+        firstStageScheduledAt: boardFirstStarts.get(r.id) ?? null, now: boardLockNow,
+      }),
+    }));
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
     const gameDaySpanByRace = new Map(raceIds.map((id) => [id, raceGameDaySpan(schedByRace.get(id))]));
 
@@ -5418,7 +5436,10 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       // kolonners valg her. Et igangværende løb (frys, #1825) binder derimod ALT, auto
       // som manuelt, for der er intet at frigive fra (truppen er reel).
       const startedHere = (race.stages_completed ?? 0) > 0;
-      const bindingRiderIds = columnBindingRiderIds({ selection: ctx.selection, startedHere });
+      // #6959: låst = startet ELLER etape 1's start passeret (pause). Et låst løb binder
+      // ALT, for truppen kan ikke længere ændres (intet at frigive).
+      const lockedHere = race.lineup_locked === true;
+      const bindingRiderIds = columnBindingRiderIds({ selection: ctx.selection, startedHere: lockedHere });
       // #3102 PR 2: hvem topper/betaler payback netop her (CET-ordinal for startdagen).
       const raceOrdinal = race.window?.start != null
         ? dateStringToOrdinal(toCopenhagenISODate(race.window.start))
@@ -5438,7 +5459,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         // #6740: inaktiv for al eksisterende klient-logik (pulje, overlap, binding) ved
         // begge slags afmelding; kolonnens tekst læser did_not_start først.
         withdrawn: withdrawnSet.has(race.id),
-        lineup_locked: startedHere,
+        lineup_locked: lockedHere,
         did_not_start: startedHere && !voluntaryWithdrawnSet.has(race.id)
           && (didNotStartSet.has(race.id) || inFieldByRace.get(race.id) === false),
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
@@ -5474,7 +5495,8 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     // #3041: samme regel som ovenfor for kolonnerne — en auto-udtaget entry i et løb der
     // ikke er startet endnu binder ikke (den viger automatisk ved gem, #2637); kun manuelle
     // entries og allerede startede løb binder. `races` dækker HELE sæsonen (inkl. eksterne).
-    const startedRaceIds = new Set((races || []).filter((r) => (r.stages_completed ?? 0) > 0).map((r) => r.id));
+    // #6959: også løb hvor etape 1's start er passeret (låst trup, intet at frigive).
+    const startedRaceIds = new Set(withWindow.filter((r) => r.lineup_locked === true).map((r) => r.id));
     const bindingTeamEntries = filterBindingEntries({ entries: teamEntries || [], startedRaceIds });
     const externalBindings = buildExternalBindings({
       entries: bindingTeamEntries,
@@ -5750,6 +5772,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
     const prepared = await prepareSelectionChange({
       supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: req.body,
+      now: new Date(), // #6959: request-grænsen injicerer uret (hard rule 16)
     });
     if (!prepared.ok) {
       return res.status(prepared.status).json(
@@ -5766,6 +5789,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // hårde garanti ligger i replace_race_selection-RPC'en, der gentager overlap-
     // tjekket UNDER advisory-låsen på holdet (#2256, TOCTOU-hullet mellem læs og lås
     // lukket i database/2026-07-10-replace-race-selection-binding-guard.sql).
+    /** @type {any[]} */ const releasedRows = []; /** @type {any[]} */ let releasable = []; // #6959: til gendannelse hvis løbet starter under gemningen
     const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
     const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
     if (bound.length) {
@@ -5780,7 +5804,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       // "1 rytter = 1 løb pr. løbsdag" brydes aldrig: enten frigiver vi FØR vi gemmer,
       // eller vi gemmer slet ikke.
       // #3098: delt med RPC-fallbackens catch-blok nedenfor (samme 409-payload begge veje).
-      const { resolvable, blocking } = await resolveBindingConflictDetails({
+      const { resolvable, blocking } = await resolveBindingConflictDetails({ now: new Date(),
         supabase, teamId: req.team.id, boundRiderIds: bound,
         thisWindow: binding.thisWindow, otherRaces: binding.otherRaces, riders: ctx.riders,
       });
@@ -5790,14 +5814,30 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       if (blocking.length) {
         return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: blocking });
       }
+      releasable = resolvable;
 
       // Alle konflikter er løsbare (auto-genereret + ikke-startet løb): frigiv dem — kun
       // DEN pågældende rytter fjernes fra det konfliktende auto-udtaget løb — FØR vi
       // gemmer denne udtagelse. replace_race_selection-RPC'en gentager binding-tjekket
       // under advisory-lås (#2256), så en samtidig skrivning kan aldrig bryde invarianten.
+      // #6959 (Codex P1): genkontrollér låsen ved skrive-grænsen. Starter løbet under
+      // læsningerne ovenfor, må hverken frigivelsen eller gemningen ske. Kildeløbene tjekkes
+      // også: er et konfliktløb startet siden klassificeringen, er konflikten blokerende.
+      if (resolvable.length) {
+        const lockedNow = await loadLockedRaceIds({
+          supabase, raceIds: [race.id, ...resolvable.map((r) => r.race_id)], now: new Date(),
+        });
+        if (lockedNow.has(race.id)) return res.status(409).json({ error: "selection_race_started" });
+        const nowBlocking = resolvable.filter((r) => lockedNow.has(r.race_id));
+        if (nowBlocking.length) {
+          return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: nowBlocking });
+        }
+      }
       for (const r of resolvable) {
-        const { error: relErr } = await supabase.from("race_entries").delete()
-          .eq("race_id", r.race_id).eq("team_id", req.team.id).eq("rider_id", r.rider_id).eq("is_auto_filled", true);
+        const { data: relRows, error: relErr } = await supabase.from("race_entries").delete()
+          .eq("race_id", r.race_id).eq("team_id", req.team.id).eq("rider_id", r.rider_id).eq("is_auto_filled", true)
+          .select("*");
+        if (!relErr && Array.isArray(relRows)) releasedRows.push(...relRows);
         if (relErr) {
           captureException(new Error(`race_entries auto-release (${r.race_id}/${r.rider_id}): ${relErr.message}`));
           return res.status(500).json({ error: relErr.message });
@@ -5805,6 +5845,25 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       }
     }
 
+    // #6959 (Codex P1): låsen genkontrolleres lige før gemningen (frisk races-række +
+    // frisk ur). replace_race_selection kender ikke scheduled_at, så det sker her.
+    // Kildeløbene for frigivelserne tjekkes også her: er et af dem låst under frigivelsen,
+    // gendannes alt og gemningen afvises (Codex P1 #7063).
+    const releasedRaceIds = [...new Set(releasedRows.map((r) => r.race_id))];
+    const finalLocked = await loadLockedRaceIds({ supabase, raceIds: [race.id, ...releasedRaceIds], now: new Date() });
+    const sourceLocked = releasedRaceIds.filter((id) => finalLocked.has(id));
+    if (finalLocked.has(race.id) || sourceLocked.length) {
+      // #6959 (Codex P1): startede et løb mens frigivelserne kørte, gendannes de frigivne
+      // auto-entries, så en afvist gemning aldrig efterlader et hul i kildeløbene.
+      if (releasedRows.length) {
+        const { error: restoreErr } = await supabase.from("race_entries").insert(releasedRows);
+        if (restoreErr) captureException(new Error(`race_entries auto-release restore: ${restoreErr.message}`));
+      }
+      if (!finalLocked.has(race.id)) {
+        return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: releasable.filter((r) => sourceLocked.includes(r.race_id)) });
+      }
+      return res.status(409).json({ error: "selection_race_started" });
+    }
     await saveSelection({
       supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
     });
@@ -5835,7 +5894,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
           const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
           const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
           if (bound.length) {
-            const { resolvable, blocking } = await resolveBindingConflictDetails({
+            const { resolvable, blocking } = await resolveBindingConflictDetails({ now: new Date(),
               supabase, teamId: req.team.id, boundRiderIds: bound,
               thisWindow: binding.thisWindow, otherRaces: binding.otherRaces, riders: ctx.riders,
             });
@@ -5940,6 +5999,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       const race = raceById.get(change.raceId);
       const result = await prepareSelectionChange({
         supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: change,
+        now: new Date(), // #6959
       });
       if (!result.ok) {
         return res.status(result.status).json({
@@ -5983,7 +6043,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
         const { ctx } = prepared.get(raceId);
         const thisWindow = windowByRace.get(raceId);
         const dbOthers = otherRacesByRace.get(raceId);
-        const { resolvable, blocking } = await resolveBindingConflictDetails({
+        const { resolvable, blocking } = await resolveBindingConflictDetails({ now: new Date(),
           supabase, teamId: req.team.id, boundRiderIds: result.boundRiderIds, thisWindow, otherRaces: dbOthers, riders: ctx.riders,
         });
         if (blocking.length) {
@@ -6007,6 +6067,19 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       };
     });
 
+    // #6959 (Codex P1): bulk forbereder op til 60 løb serielt; genkontrollér låsen for alle
+    // løb med ét friskt opslag lige før den atomiske RPC (som ikke kender scheduled_at).
+    // Kildeløbene i autoReleases tjekkes med: et konfliktløb der er startet siden
+    // klassificeringen gør konflikten blokerende, så rytteren ikke slettes fra et låst løb.
+    const lockedNow = await loadLockedRaceIds({
+      supabase, raceIds: [...new Set([...changes.map((c) => c.raceId), ...autoReleases.map((r) => r.race_id)])], now: new Date(),
+    });
+    const firstLocked = changes.find((c) => lockedNow.has(c.raceId));
+    if (firstLocked) return res.status(409).json({ error: "selection_race_started", race_id: firstLocked.raceId });
+    const lockedSource = autoReleases.filter((r) => lockedNow.has(r.race_id));
+    if (lockedSource.length) {
+      return res.status(409).json({ error: "selection_rider_bound", conflicts: lockedSource });
+    }
     await saveSelectionBulk({ supabase, teamId: req.team.id, changes: rpcChanges, autoReleases });
 
     // #2599-oprydning pr. løb (samme som single-endpointet): en manuel udtagelse med ≥1
@@ -6080,7 +6153,8 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): et igangværende etapeløb må ikke få sit startfelt genskrevet.
-    if (isRaceLineupFrozen(race)) return res.status(409).json({ error: "selection_race_started" });
+    // #6959: frosset = kørt ELLER etape 1's start passeret (samme regel som taktikken).
+    if (await isRaceLineupLockedNow({ supabase, race, now: new Date() })) return res.status(409).json({ error: "selection_race_started" });
     // #5843: trup-bevidst pulje-match (ungdomsløb mod holdets U23-/juniorpulje).
     if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
@@ -6159,6 +6233,17 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
       thisWindow: binding.thisWindow, lockedWindows: binding.otherRaces, strategy,
     });
     if (!picks.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
+
+    // #6959 (Codex P1): genkontrollér låsen ved skrive-grænsen med frisk ur og frisk
+    // races-række. Starter løbet (etape 1's tid passeres) mens der regnes ovenfor, må
+    // truppen ikke skrives om. Første skrivning er race_entry_clears-oprydningen herunder.
+    const { data: raceNow, error: raceNowErr } = await supabase
+      .from("races").select("id, status, stages_completed").eq("id", race.id).maybeSingle();
+    if (raceNowErr) return res.status(500).json({ error: raceNowErr.message });
+    if (!raceNow || raceNow.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+    if (await isRaceLineupLockedNow({ supabase, race: raceNow, now: new Date() })) {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
 
     // #2599: en eksplicit auto-udtagelse supersederer en evt. tidligere "Ryd dag/alt"-
     // markering for netop dette (race,team)-par (samme regel som manuel gem/regenerate).
@@ -6474,9 +6559,14 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): afmelding midt i et igangværende etapeløb ville ændre startfeltet.
-    if ((race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
+    // #6959: også når etape 1's start er passeret (pause), ikke kun efter en kørt etape.
+    if (await isRaceLineupLockedNow({ supabase, race, now: new Date() })) return res.status(409).json({ error: "selection_race_started" });
     if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
+    }
+    // #6959 (Codex P1): frisk lås-tjek ved skrivegrænsen.
+    if ((await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
+      return res.status(409).json({ error: "selection_race_started" });
     }
     const { error: upErr } = await supabase
       .from("race_withdrawals").upsert({ race_id: race.id, team_id: req.team.id }, { onConflict: "race_id,team_id" });
@@ -6499,7 +6589,7 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
     // (sæson-filteret i #3070 er ikke valgfrit).
     const { data: race } = await supabase
       .from("races").select("id, status, stages_completed, season_id").eq("id", req.params.raceId).maybeSingle();
-    if (race && (race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
+    if (race && await isRaceLineupLockedNow({ supabase, race, now: new Date() })) return res.status(409).json({ error: "selection_race_started" }); // #6959
 
     // #5301: gen-deltag kan dobbeltbooke. Afmeldingen NULLer entries' binding_span
     // (race_entries_binding_span + trg_race_withdrawals_resync_binding), så holdet
@@ -6520,6 +6610,10 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
       if (conflicts.length) return res.status(409).json({ error: "rejoin_rider_bound", conflicts });
     }
 
+    // #6959 (Codex P1): findRejoinConflicts laver flere opslag; genkontrollér låsen lige før sletningen.
+    if (race && (await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
     const { error: delErr } = await supabase
       .from("race_withdrawals").delete().eq("race_id", req.params.raceId).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
@@ -6570,7 +6664,17 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // ms til display (buildColumnSet), in-game-dag-rum til binding (jf. game_day ovenfor, #1823).
     const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
-    const withWindow = (races || []).map((r) => ({ ...r, window: windowByRace.get(r.id) }));
+    // #6959: start passeret = frosset, også uden kørt etape (samme regel som taktikken).
+    const regenFirstStarts = firstStageStartsFromSchedule(schedRows);
+    const regenLockNow = new Date();
+    const withWindow = (races || []).map((r) => ({
+      ...r,
+      window: windowByRace.get(r.id),
+      lineup_locked: isRaceLineupLocked({
+        status: r.status, stagesCompleted: r.stages_completed,
+        firstStageScheduledAt: regenFirstStarts.get(r.id) ?? null, now: regenLockNow,
+      }),
+    }));
     const { dayWindow } = resolveSeasonDay({ season, schedRows, dayParam: Number.parseInt(req.query.day, 10) });
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
     if (!cols.length) return res.json({ ok: true, regenerated: 0, skipped: 0, mode });
@@ -6595,13 +6699,6 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       return res.status(409).json({ error: "selection_train_now_locked" });
     }
 
-    // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
-    // det er en eksplicit handling der supersederer en evt. tidligere "Ryd dag/alt"
-    // for netop disse (race,team)-par. Slet en evt. clear-markering FØR skrivningen
-    // nedenfor, så entry-generator-sweepet ikke fortsat springer enheden over.
-    const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
-      .delete().eq("team_id", req.team.id).in("race_id", target.map((r) => r.id));
-    if (clearCleanupErr) throw new Error(`race_entry_clears cleanup: ${clearCleanupErr.message}`);
 
     // #2579: delt eligibility-filter (i stedet for den tidligere duplikerede
     // akademi/pensioneret-kæde) — udelukker OGSÅ en rytter der er solgt men
@@ -6679,7 +6776,18 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // #6132: afvises et insert, genskabes holdets hele eksisterende måludtagelse.
     const { regenerated } = await writeRegeneratedLineupsPreservingTarget({
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
-      write: async (args) => await writeRegeneratedLineups({ ...args }),
+      write: async (args) => await writeRegeneratedLineups({
+        ...args, clock: () => new Date(),
+        // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende — det supersederer en
+        // tidligere "Ryd dag/alt" for netop disse (race,team)-par, så clear-markeringen slettes
+        // FØR skrivningen. #6959 (Codex P1): kun for løb der faktisk skrives efter den friske
+        // lås-kontrol; et løb der startede under beregningen beholder sin markering.
+        beforeWrite: async (raceIds) => {
+          const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
+            .delete().eq("team_id", req.team.id).in("race_id", raceIds);
+          if (clearCleanupErr) throw new Error(`race_entry_clears cleanup: ${clearCleanupErr.message}`);
+        },
+      }),
     });
     invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, regenerated, skipped, mode });
@@ -6791,7 +6899,11 @@ router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async 
 
     // Pure helper (testet): kun frys (#1825) undtager et løb — en bekræftet ryd-handling
     // fjerner ALT, inkl. manuelt udtagne.
-    const { target, skipped } = partitionClearTargets({ cols });
+    // #6959: ryd er en trup-ændring og låses af samme regel som taktikken (start passeret).
+    // #6959 (Codex P1): låsen læses frisk (status, stages_completed og etape 1's start) lige
+    // før sletningen; cols er fra starten af requesten og kan være forældet.
+    const lockedNow = await loadLockedRaceIds({ supabase, raceIds: cols.map((r) => r.id), now: new Date() });
+    const { target, skipped } = partitionClearTargets({ cols: cols.map((r) => ({ ...r, lineup_locked: lockedNow.has(r.id) })) });
     if (!target.length) return res.json({ ok: true, cleared: 0, skipped, scope });
 
     const targetIds = target.map((r) => r.id);
@@ -14770,7 +14882,13 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     const upkeepPerRaceDay = await isUpkeepPerRaceDayEnabled(supabase);
     // #6936: samme flag som processSeasonStart — intet upkeep når on.
     const noUpkeep = await isEconomyNoUpkeepEnabled(supabase);
-    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay, noUpkeep });
+    // #6990 · sæsonnummer til U25-målets aldersudledning (samme regel som season-end).
+    const { data: previewSeason } = await supabase
+      .from("seasons").select("number").eq("id", seasonId).maybeSingle();
+    const preview = buildSeasonEndPreviewRows({
+      teams, standings, loanData, upkeepPerRaceDay, noUpkeep,
+      seasonNumber: previewSeason?.number ?? null,
+    });
 
     res.json({ preview });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
@@ -17185,6 +17303,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
         recentSnapshots: boardSnapshots.slice(-3).reverse(),
         goalContext,
+        seasonNumber: activeSeason?.number ?? null,
         extra: {
           isExpired,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
@@ -18084,6 +18203,7 @@ async function computeBoardRequestOutcome(req) {
       currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
       recentSnapshots: snapshotsRes.data || [],
       goalContext,
+      seasonNumber: activeSeason?.number ?? null,
       extra: {
         isExpired: board.negotiation_status === "pending",
         requestUsedThisSeason,

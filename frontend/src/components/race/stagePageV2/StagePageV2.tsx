@@ -123,6 +123,7 @@ export default function StagePageV2(props: StagePageV2Props) {
           profile={profileByStage[selectedStage] ?? null}
           results={results}
           stagePointRows={stagePointRows}
+          profileByStage={profileByStage}
           stageLoaded={stageLoaded}
           stageErrorSlot={stageErrorSlot}
           myTeamId={myTeamId}

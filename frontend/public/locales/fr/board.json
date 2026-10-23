@@ -1876,9 +1876,9 @@
       "meta": "{seasons, plural, one {plan d'# saison} other {plan de # saisons}}",
       "seasonLabel": "Saison {season}",
       "currentSeasonLabel": "Saison {season} · Tu es ici",
-      "explainer": "Chaque étape est due à la fin de sa saison cible. Atteins-la plus tôt et elle compte à la fin de cette saison. Une étape manquée coûte une fois de la confiance, puis la vision avance.",
-      "countsAt": "Compte à la fin de la saison {season} · peut être atteinte plus tôt",
-      "countsAtCurrent": "Compte à la fin de la saison {season}",
+      "countsAt": "Atteins-la au plus tard à la fin de la saison {season}. Si tu y arrives plus tôt, elle compte à la fin de cette saison.",
+      "milestoneProgress": "{current} sur {target}",
+      "helpLink": "Comment comptent les étapes",
       "milestoneAchieved": "Atteinte",
       "milestoneMissed": "Manquée",
       "empty": {
@@ -1890,7 +1890,8 @@
         "promotionPush": "Poussée vers la promotion",
         "monumentPodium": "Podium en Monument",
         "clubRankingTop30": "Top 30 du classement des clubs"
-      }
+      },
+      "progress": "{done} jalons atteints sur {total}"
     },
     "board": {
       "cardTitle": "La direction",

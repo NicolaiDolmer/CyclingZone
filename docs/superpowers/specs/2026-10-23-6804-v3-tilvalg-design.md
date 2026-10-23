@@ -174,9 +174,12 @@ er ikke målt endnu; bygge-PR'en måler den mod prod-resultaterne før go-kortet
 
 **Design (kort), frontend, ingen motor, ingen revision:**
 - Favoritterne vælges efter etapens afslutning: på flad/spurt rytterne med flest gode placeringer på
-  flade etaper i dette løb og denne sæson; på bjerg og enkeltstart det samlede klassement plus de
-  bedste på samme terræn; på kuperet en blanding. Kun offentlig information (resultater og
-  rytterens type), aldrig skjulte evner eller route fit for andre hold (fog of war).
+  flade etaper i dette løb; på bjerg og enkeltstart det samlede klassement plus de
+  bedste på samme terræn; på kuperet en blanding. Kun offentlige resultater fra løbet selv,
+  aldrig skjulte evner eller route fit for andre hold (fog of war). **Bygget (PR #7079):** sæsonens
+  resultater og rytterens type er bevidst ikke med; den målte træfsikkerhed med løbets egne
+  resultater ligger privat (`balance-internals/6939/`). Vægtene pr. terræn står i koden under
+  runtime-konstant-undtagelsen (ejer 23/10).
 - Før første etape: uændret tom liste (bevidst valg i `favouritesFor`: intet ærligt grundlag i løbet
   endnu). En sæsonbaseret liste før etape 1 er en mulig senere udvidelse, ikke en del af dette design.
 - Fodnoten ændres fra "Baseret på løbet indtil nu" til en tekst der siger at listen følger etapens

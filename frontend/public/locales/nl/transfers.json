@@ -190,6 +190,7 @@
     "loadError": "De transfergeschiedenis kon niet worden geladen",
     "noSaleToggle": "Veilingen zonder biedingen tonen",
     "noSaleHiddenNote": "{count, plural, one {# veiling zonder biedingen is} other {# veilingen zonder biedingen zijn}} verborgen. Er is geen renner van eigenaar gewisseld.",
+    "showMore": "Toon meer ({shown} van {total})",
     "emptyFilteredNoSaleOnly": "Geen echte transfers in het gekozen seizoen: alleen veilingen zonder biedingen (verborgen, zie het filter hierboven).",
     "reportAction": "Ter beoordeling melden",
     "reportActionAria": "Deze transfer ter beoordeling melden"

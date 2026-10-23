@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
 import { Card, Section, SectionHeader, SectionAction, StatusBadge, ClockIcon, TrophyIcon, SkeletonLines } from "./ui/index.js";
-import TerrainGlyph from "./calendar/TerrainGlyph.jsx";
+import TerrainTypeGlyph from "./race/TerrainTypeGlyph.jsx";
 import StageProfileGraph from "./race/StageProfileGraph.jsx";
 import { hasRouteData } from "../lib/stageRouteProfile.js";
 import { formatLocalTime } from "../lib/intl.js";
@@ -49,12 +49,13 @@ function TodayStageSkeletonCard() {
 function TodayStageCard({ card, t }) {
   const {
     raceId, raceName, stageNumber, totalStages, isStageRace, state,
-    scheduledMs, bucket, standing, entryCount, winnerName, profile,
+    scheduledMs, profileType, standing, entryCount, winnerName, profile,
   } = card;
   // #3958 (ejer-mistanke bekræftet 23/8, #4107/#4108): SAMME komponent som
   // resten af appen — den ægte rute (climbs/elevation_gain_m), ikke et
   // generisk 6-vejrs kategori-piktogram. "Misvisende > manglende" (#3958):
-  // uden rutedata falder den tilbage til TerrainGlyph, som er ærligt en
+  // uden rutedata falder den tilbage til etapetypens ikon (#6683, samme
+  // farvede streg-ikon som resten af appen), som er ærligt en
   // kategori-glyf og aldrig har påstået at være målt elevation.
   const hasRoute = hasRouteData(profile);
   const raceHref = `/races/${raceId}${stageNumber ? `?stage=${stageNumber}` : ""}`;
@@ -83,7 +84,7 @@ function TodayStageCard({ card, t }) {
         <div className="mt-3 text-cz-3" style={{ width: 90, height: 22 }}>
           {hasRoute
             ? <StageProfileGraph profile={profile} tier="mini" width={90} height={22} uid={`tds-${raceId}-${stageNumber}`} />
-            : <TerrainGlyph bucket={bucket} width={90} height={22} />}
+            : <TerrainTypeGlyph profileType={profileType} size={22} />}
         </div>
 
         {/* Status-linje: starttid (spillerens lokale tid) / LIVE / vindernavn. */}

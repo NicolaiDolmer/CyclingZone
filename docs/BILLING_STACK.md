@@ -234,7 +234,7 @@ status = cancelled            OG  current_period_end > nu              (betalt t
 
 **Historik:** før 2/9 var udløbet hårdt, og den eneste betalende kunde mistede Pro ved fornyelsen 1/9 mens Alunta sagde `active` med ny periode. Reconcilen kørte reelt aldrig (se nedenfor).
 
-`isPro` gater i dag kun UI: `Layout.jsx:326` (`isPro || isFounder`), `ProfilePage.jsx:541`, `ProUpgradePage.jsx:151`. Ingen spilfunktion er hårdt gatet — se #2806.
+**Adgang (ejer-beslutning 13/10, #2806):** Pro-funktionerne (sæsonhistorik på rytterens Udvikling-fane, gemte filtre i rytterdatabasen) kræver **aktiv Pro**. Founder-status giver kun det permanente Founder-mærke, som vilkårene lover. Reglen bor ét sted pr. side: `frontend/src/lib/pro/proAccess.ts` (`hasProFeatureAccess`) og backend `isPro()` i `entitlement.js`, som håndhæver den på `GET /api/pro/rider-history/:riderId` (403 `pro_required`). Mærket i `Layout.jsx` gater fortsat på `isPro || isFounder`. Gemte filtre ligger i browserens localStorage, så dér er der intet serverkald at håndhæve.
 
 ### Webhook-events 📄
 

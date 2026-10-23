@@ -84,10 +84,16 @@
     },
     "favourites": {
       "title": "Favoritos",
-      "foot": "Según lo visto de esta carrera hasta ahora. El encaje con el recorrido solo se muestra para tus propios ciclistas.",
+      "foot": "Sigue el perfil de la etapa, según lo visto de esta carrera hasta ahora. El encaje con el recorrido solo se muestra para tus propios ciclistas.",
       "leadsOverall": "Lidera la general",
       "overall": "n.º {rank} en la general, {gap}",
       "wonStage": "Ganó la etapa {number}",
+      "placed": {
+        "flat": "Top 10 en {count, plural, one {# etapa llana} other {# etapas llanas}}",
+        "hilly": "Top 10 en {count, plural, one {# etapa ondulada} other {# etapas onduladas}}",
+        "mountain": "Top 10 en {count, plural, one {# etapa de montaña} other {# etapas de montaña}}",
+        "itt": "Top 10 en {count, plural, one {# contrarreloj} other {# contrarrelojes}}"
+      },
       "you": "Tú"
     },
     "story": {
@@ -202,7 +208,7 @@
       "classAria": "Clasificación",
       "stage": "Etapa",
       "overall": "General",
-      "top3": "Top 3",
+      "topN": "Top {count}",
       "yourRiders": "Tus ciclistas",
       "noRiders": "Ninguno de tus ciclistas está en este resultado.",
       "bestOverall": "Tu mejor en la general",
@@ -739,6 +745,23 @@
     "whyBest": "Esta etapa de tipo {bucket} premia tu mejor encaje: {name}.",
     "form": "Forma",
     "fatigue": "Fatiga",
+    "doctor": {
+      "label": "Médico",
+      "hint": "La valoración del médico del equipo sobre cada ciclista. Un mejor servicio médico da una valoración más precisa.",
+      "assessment": {
+        "fresh": "Fresco",
+        "ready": "Listo",
+        "tired": "Cansado",
+        "rest": "Necesita descanso",
+        "injured": "Lesionado"
+      },
+      "season": {
+        "ready": "Listo para esta y el resto de la temporada.",
+        "ready_but_spent_later": "Listo ahora, pero sin fuerzas para la tercera Gran Vuelta.",
+        "already_heavy": "Ha corrido mucho esta temporada. Cada etapa cuesta más ahora.",
+        "rest_first": "Dale descanso antes de esta."
+      }
+    },
     "injured": "Lesionado",
     "overAge": "Supera la edad",
     "boundIn": "Corre {race}",

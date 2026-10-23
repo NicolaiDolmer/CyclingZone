@@ -7,6 +7,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, isWithinRaceAgeLimit, loadRaceSeasonNumber, RIDER_OVER_RACE_AGE_ERROR } from "./riderEligibility.js";
 import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
+import { isRaceLineupLockedNow } from "./raceStartLock.js";
 import { loadRaceTrainNowLock, trainNowSelectionViolations } from "./trainNowLock.js";
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOptOut.ts";
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
@@ -135,7 +136,7 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 // (race.squad = u23/junior) matches mod holdets pulje for TRUPPEN (raceBinding.
 // teamInRaceSquadPool). Uden `team` kendes kun seniorpuljen (teamDivisionId), og et
 // ungdomsløb afvises derfor med selection_wrong_pool (fejl lukket). Seniorløb: uændret.
-export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, team = null, body }) {
+export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, team = null, body, now }) {
   if (race.status !== "scheduled") return { ok: false, status: 409, error: "selection_race_not_open" };
 
   // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje (se #1146-
@@ -173,6 +174,14 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   const seasonStatus = await loadRaceSeasonStatus({ supabase, seasonId: race.season_id });
   if (!seasonAllowsSelectionWrites(seasonStatus)) {
     return { ok: false, status: 409, error: "selection_season_not_active" };
+  }
+
+  // #6959: samme regel som taktikken (raceStartLock.js): truppen er også låst når etape
+  // 1's planlagte start er passeret, ikke først når en etape er kørt. Så en motor-pause
+  // lader ikke truppen stå åben mens taktikken er låst. Ét schedule-opslag, efter
+  // sæson-tjekket så en kommende sæsons afvisning stadig er billigst.
+  if (await isRaceLineupLockedNow({ supabase, race, now })) {
+    return { ok: false, status: 409, error: "selection_race_started" };
   }
 
   // #5944: en ungdomstrup sat til "Train only" kan ikke tilmeldes. Tom trup (ryd) er tilladt.

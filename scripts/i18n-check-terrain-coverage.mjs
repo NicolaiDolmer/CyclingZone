@@ -29,7 +29,7 @@
 //        ⊆ rider.json `profile.results.terrain` keys (en + da)
 //   3. PROFILE_TYPE_KEYS (frontend stageProfileConfig.js — #4748/#4487)
 //        ⊆ races.json `detail.profileType` keys (en + da) — the visible label
-//        ⊆ terrainTypeIcons.ts `TERRAIN_TYPE_ICON_NAME` keys — the glyph
+//        ⊆ terrainTypeIcons.ts `TERRAIN_TYPE_GLYPH` keys — the glyph
 //      A profile_type missing either would render a raw i18n key or fall back
 //      silently to the wrong icon (RoadIcon) — this class is exactly #2896's
 //      failure mode again, just on the new terrain-glyph table.
@@ -45,7 +45,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { CALENDAR_TERRAIN_BUCKETS } from "../backend/lib/raceCalendar.js";
 import { ARCHETYPE_PROFILES } from "../backend/lib/raceStageProfileGenerator.js";
 import { PROFILE_TYPE_KEYS } from "../frontend/src/lib/stageProfileConfig.js";
-import { TERRAIN_TYPE_ICON_NAME } from "../frontend/src/lib/terrainTypeIcons.ts";
+import { TERRAIN_TYPE_GLYPH } from "../frontend/src/lib/terrainTypeIcons.ts";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
 const LOCALES_DIR = join(ROOT, "frontend", "public", "locales");
@@ -86,7 +86,7 @@ export function singleRaceArchetypes(archetypeProfiles) {
     .map(([key]) => key);
 }
 
-// #4748/#4487: profile_type-keys uden en glyf-navn i TERRAIN_TYPE_ICON_NAME.
+// #4748/#4487: profile_type-keys uden en ikon i TERRAIN_TYPE_GLYPH.
 // Ren funktion (samme moenster som findMissingTerrainKeys) saa den kan testes
 // uden fs.
 export function findMissingIconCoverage(values, iconNameByKey) {
@@ -110,7 +110,7 @@ function main() {
 
   const allMissing = [...calendarMissing, ...archetypeMissing, ...profileLabelMissing];
 
-  const iconMissing = findMissingIconCoverage(PROFILE_TYPE_KEYS, TERRAIN_TYPE_ICON_NAME);
+  const iconMissing = findMissingIconCoverage(PROFILE_TYPE_KEYS, TERRAIN_TYPE_GLYPH);
 
   if (allMissing.length === 0 && iconMissing.length === 0) {
     console.log(
@@ -124,7 +124,7 @@ function main() {
     console.error(`  • "${value}" (from ${source}) missing at frontend/public/locales/{${missingIn.join(",")}}/${ns} → ${keyPath}.${value}`);
   }
   for (const value of iconMissing) {
-    console.error(`  • "${value}" (from PROFILE_TYPE_KEYS) has no glyf in frontend/src/lib/terrainTypeIcons.ts's TERRAIN_TYPE_ICON_NAME`);
+    console.error(`  • "${value}" (from PROFILE_TYPE_KEYS) has no glyf in frontend/src/lib/terrainTypeIcons.ts's TERRAIN_TYPE_GLYPH`);
   }
   console.error(`\nFix: add the missing key(s)/glyf under frontend/public/locales/{en,da}/<namespace>.json or terrainTypeIcons.ts.`);
   console.error(`Why this matters: these keys are built DYNAMICALLY (t(\`...\${value}\`)) — a key missing in`);

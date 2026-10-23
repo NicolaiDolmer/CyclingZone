@@ -32,6 +32,7 @@ import {
   defaultTeamOrderForRoster,
 } from "./engine/v4/ai/teamOrderContract.ts";
 import { validEffortsFor } from "./raceRoles.js";
+import { isStageLocked } from "./raceStartLock.js";
 import { isOfficialTimesV5OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
 
 export const VALID_BREAKAWAY_STANCES = [...BREAKAWAY_STANCE_VALUES];
@@ -56,21 +57,9 @@ export function neutralTeamOrder() {
   return { breakaway_stance: "neutral", riders: [] };
 }
 
-/**
- * T2: er en etape låst for ordre-writes? Ren. Låst når etapen er kørt
- * (stagesCompleted) ELLER dens planlagte start er passeret. Mangler
- * scheduled_at (defensivt: schedule-hul) behandles etapen som ÅBEN indtil
- * stages_completed siger andet — en manglende række må aldrig fastlåse
- * taktikken for et helt løb.
- *
- * @param {{stageNumber: number, stagesCompleted: number, scheduledAt: string|null|undefined, now?: Date}} args
- */
-export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, now = new Date() }) {
-  if (stageNumber <= stagesCompleted) return true;
-  if (!scheduledAt) return false;
-  const startMs = Date.parse(scheduledAt);
-  return Number.isFinite(startMs) && now.getTime() >= startMs;
-}
+// T2: er en etape låst for ordre-writes? Reglen bor i raceStartLock.js (#6959) og deles
+// med trup-låsen, så taktik og trup låser i samme øjeblik ved løbets start.
+export { isStageLocked };
 
 /**
  * Ren validering af én PUT-body (ordren for ÉN etape). Fejlrækkefølge

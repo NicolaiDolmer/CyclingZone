@@ -40,25 +40,55 @@ function createSupabase({
 
   function buildQuery(table) {
     const filters = { or: null, in: null, eq: [] };
+    const orders = [];
+    let from = 0;
+    let to = 999;
     const chain = {
       select() { return chain; },
       or(expr) { filters.or = expr; return chain; },
       in(column, values) { filters.in = { column, values }; return chain; },
       eq(column, value) { filters.eq.push({ column, value }); return chain; },
-      order() {
+      order(column, { ascending = true } = {}) { orders.push({ column, ascending }); return chain; },
+      range(start, end) { from = start; to = end; return chain; },
+      then(resolve, reject) {
         const rows = (tableData[table] || []).filter((row) => {
           if (filters.in && !filters.in.values.includes(row[filters.in.column])) return false;
           for (const { column, value } of filters.eq) if (row[column] !== value) return false;
           if (filters.or && !matchOr(filters.or, row)) return false;
           return true;
         });
-        return Promise.resolve({ data: rows, error: null });
+        rows.sort((a, b) => {
+          for (const { column, ascending } of orders) {
+            const cmp = a[column] < b[column] ? -1 : a[column] > b[column] ? 1 : 0;
+            if (cmp) return ascending ? cmp : -cmp;
+          }
+          return 0;
+        });
+        // Simulerer PostgREST-loftet: aldrig mere end 1000 raekker pr. svar.
+        return Promise.resolve({ data: rows.slice(from, Math.min(to + 1, from + 1000)), error: null }).then(resolve, reject);
       },
     };
     return chain;
   }
 
   return { from(table) { return buildQuery(table); } };
+}
+
+for (const source of ["auctions", "transferOffers", "swapOffers", "academyIntake"]) {
+  test(`teamTransferHistory — #6965 paginates ${source} beyond the response cap with tied dates`, async () => {
+    const date = "2026-05-01T00:00:00Z";
+    const rows = Array.from({ length: 1001 }, (_, i) => {
+      const id = String(i).padStart(4, "0");
+      if (source === "auctions") return auctionRow({ id, seller: OTHER, winner: TEAM, price: 12000, date });
+      if (source === "transferOffers") return offerRow({ id, seller: OTHER, buyer: TEAM, amount: 12000, date });
+      if (source === "swapOffers") return swapRow({ id, proposing: TEAM, receiving: OTHER, date });
+      return academyIntakeRow({ id, team: TEAM, date, signingFee: 12000 });
+    }).reverse();
+    const events = await buildTeamTransferHistory(createSupabase({ [source]: rows }), TEAM);
+    assert.equal(events.length, rows.length);
+    assert.equal(new Set(events.map((event) => event.id)).size, rows.length);
+    if (source !== "swapOffers") assert.equal(events[0].amount, 12000);
+  });
 }
 
 function auctionRow({ id, seller, winner, price, date, sellerIsAi = false, winnerIsAi = false, guaranteed = false }) {

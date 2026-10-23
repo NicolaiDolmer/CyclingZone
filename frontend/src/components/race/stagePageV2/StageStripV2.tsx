@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { profileLabelKey } from "../../../lib/stageProfileConfig.js";
 import { elevationSeries, profileScale, shortName, type StageProfile } from "./stagePageV2Model.ts";
+import { TerrainTypeGlyph } from "./ui.ts";
 
 export interface StripStage {
   number: number;
@@ -31,7 +32,7 @@ function Mini({ profile, active }: { profile: StageProfile | null; active: boole
     <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="block h-7 w-full" aria-hidden="true">
       {path
         ? <path d={path} fill={active ? "rgb(var(--climb-grad-3))" : "var(--text-3)"} fillOpacity={active ? 0.9 : 0.35} />
-        : <line x1={0} x2={100} y1={26} y2={26} stroke="var(--text-3)" strokeOpacity={0.5} strokeWidth={2} />}
+        : <line x1={0} x2={100} y1={26} y2={26} stroke="var(--text-3)" strokeOpacity={0.5} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
     </svg>
   );
 }
@@ -80,9 +81,12 @@ export default function StageStripV2({ stages, selected, today, ridden, onSelect
           >
             <span className="flex items-center justify-between gap-1.5 font-data text-2xs font-semibold text-cz-1">
               <span>{t("stagePageV2.stripStage", { number: s.number })}</span>
-              {isToday
-                ? <span className="rounded-sm border border-cz-1 px-1 py-px text-3xs font-bold uppercase tracking-[.08em] text-cz-1">{t("stagePageV2.today")}</span>
-                : typeKey && <span className="truncate text-3xs font-medium text-cz-3">{t(`detail.${typeKey}`)}</span>}
+              {/* #6683: ét terræn-ikon pr. etape overalt, også på dagens etape. Dér står
+                  "I dag"-mærket i stedet for ikonets tekst, så kortet ikke bliver for bredt. */}
+              <span className="flex min-w-0 items-center gap-1">
+                {typeKey && s.profile && <TerrainTypeGlyph profileType={s.profile.profile_type} size={16} showLabel={!isToday} className="min-w-0 gap-1" labelClassName="truncate text-3xs font-medium text-cz-3" />}
+                {isToday && <span className="rounded-sm border border-cz-1 px-1 py-px text-3xs font-bold uppercase tracking-[.08em] text-cz-1">{t("stagePageV2.today")}</span>}
+              </span>
             </span>
             <Mini profile={s.profile} active={active} />
             <span className="mt-1 block truncate font-data text-2xs tabular-nums text-cz-2">{resultLine}</span>

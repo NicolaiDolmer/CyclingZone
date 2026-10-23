@@ -10,6 +10,7 @@ import NpsPrompt from "./NpsPrompt";
 import { logFirstEvent } from "../lib/logEvent";
 import { pickFirstRaceResultPayload } from "../lib/firstRaceResult";
 import SortableTh from "./ui/SortableTh";
+import { isHiddenYouthClassificationRow } from "../lib/youthClassification.ts";
 
 // #824 (Discord-feedback): Holdets resultatliste, med rytternavn pr. resultat.
 // Attribution = race_results.team_id (holdet på løbstidspunktet — samme felt
@@ -74,13 +75,14 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
           // ville mangle. Stabil .order() er fetchAllRows' kontrakt.
           fetchAllRows(() => supabase
             .from("race_results")
-            .select("id, rank, result_type, stage_number, points_earned, prize_money, rider_name, rider:rider_id(id, firstname, lastname), race:race_id(id, name, race_type, season:season_id(number))")
+            .select("id, rank, result_type, stage_number, points_earned, prize_money, rider_name, rider:rider_id(id, firstname, lastname), race:race_id(id, name, race_type, squad, season:season_id(number))")
             .eq("team_id", teamId)
             .order("id", { ascending: true })),
           supabase.from("seasons").select("number").eq("status", "active").maybeSingle(),
         ]);
         if (cancelled) return;
-        setResults(rows || []);
+        // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i ældre løb (tæller heller ikke i totalerne).
+        setResults((rows || []).filter((r) => !isHiddenYouthClassificationRow(r, r.race?.squad)));
         setCurrentSeason(seasonRes?.data?.number ?? null);
       } catch {
         if (!cancelled) setError(tRef.current("results.loadError"));

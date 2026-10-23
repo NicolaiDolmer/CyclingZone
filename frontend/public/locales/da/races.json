@@ -67,10 +67,16 @@
     },
     "favourites": {
       "title": "Favoritter",
-      "foot": "Ud fra løbet indtil nu. Rutematch kun for dine egne ryttere.",
+      "foot": "Følger etapens profil, ud fra løbet indtil nu. Rutematch kun for dine egne ryttere.",
       "leadsOverall": "Fører samlet",
       "overall": "#{rank} samlet, {gap}",
       "wonStage": "Vandt etape {number}",
+      "placed": {
+        "flat": "Top 10 på {count, plural, one {# flad etape} other {# flade etaper}}",
+        "hilly": "Top 10 på {count, plural, one {# kuperet etape} other {# kuperede etaper}}",
+        "mountain": "Top 10 på {count, plural, one {# bjergetape} other {# bjergetaper}}",
+        "itt": "Top 10 på {count, plural, one {# enkeltstart} other {# enkeltstarter}}"
+      },
       "you": "Dig"
     },
     "story": {
@@ -185,7 +191,7 @@
       "classAria": "Klassement",
       "stage": "Etape",
       "overall": "Samlet",
-      "top3": "Top 3",
+      "topN": "Top {count}",
       "yourRiders": "Dine ryttere",
       "noRiders": "Ingen af dine ryttere er med i resultatet.",
       "bestOverall": "Din bedste samlet",
@@ -722,6 +728,23 @@
     "whyBest": "Denne {bucket}-etape belønner dit stærkeste fit: {name}.",
     "form": "Form",
     "fatigue": "Træthed",
+    "doctor": {
+      "label": "Læge",
+      "hint": "Holdlægens vurdering af hver rytter. En bedre medicinsk afdeling giver en skarpere vurdering.",
+      "assessment": {
+        "fresh": "Frisk",
+        "ready": "Klar",
+        "tired": "Træt",
+        "rest": "Bør hvile",
+        "injured": "Skadet"
+      },
+      "season": {
+        "ready": "Klar til denne og resten af sæsonen.",
+        "ready_but_spent_later": "Klar nu, men kørt flad til den tredje Grand Tour.",
+        "already_heavy": "Har kørt meget i år. Hver etape koster mere nu.",
+        "rest_first": "Giv ham hvile før denne."
+      }
+    },
     "injured": "Skadet",
     "overAge": "Over aldersgrænsen",
     "boundIn": "Kører {race}",

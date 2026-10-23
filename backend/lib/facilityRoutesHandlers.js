@@ -3,6 +3,8 @@
 // al route-logik ligger her så den kan unit-testes (api.js selv er ikke unit-testbar —
 // eksisterende konvention er source-contract-tests, se loanAmountValidation.routes.test.js).
 // Ingen forretningslogik: delegerer til facilityService og mapper domænefejl → HTTP-status.
+import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
+import { medicalBonus, medicalDisplayBonus } from "./medicalEffects.js";
 import {
   FACILITIES_ENABLED,
   FACILITY_TRACKS,
@@ -43,13 +45,25 @@ export async function resolveTrackLiveFlags(flags, supabaseClient) {
   const academyIntakePullEnabled = typeof flags?.academyIntakePullEnabled === "boolean"
     ? flags.academyIntakePullEnabled
     : await isAcademyIntakePullEnabled(supabaseClient);
-  return { academyIntakePullEnabled };
+  // #6984: medicin følger condition_model_v2. En visning må aldrig vælte på en
+  // flag-læsefejl: fejl = slukket (fail-safe), modsat motorens strikse læsning.
+  let conditionModelV2 = false;
+  if (typeof flags?.conditionModelV2 === "boolean") conditionModelV2 = flags.conditionModelV2;
+  else {
+    try { conditionModelV2 = await isConditionModelV2Enabled(supabaseClient); } catch {
+      // best-effort: en visning viser sporet som slukket ved en flag-læsefejl i stedet for at fejle siden.
+      conditionModelV2 = false;
+    }
+  }
+  return { academyIntakePullEnabled, conditionModelV2 };
 }
 
 // #6666: akademiets effekt vises som kuldstørrelse pr. uge (optag 2.0), ikke den gamle
 // slot-kurve. Øvrige spor: uændret facilityEngine.effectiveBonus.
 export function displayTrackBonus(track, tier, staff) {
   if (track === "academy") return candidatesForTier(tier);
+  // #6984 M1: klubben viser præcis den restitution motoren giver.
+  if (track === "medical") return medicalDisplayBonus(medicalBonus(tier, staff));
   return effectiveBonus(track, tier, staff);
 }
 
@@ -189,14 +203,24 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
   return { status: 200, body: { facilities, seasonCost } };
 }
 
+// #6666 + #6984: spor der kun findes bag et flag (akademi: optag 2.0; medicin:
+// condition_model_v2) kan hverken købes eller bemandes, før de er live. Samme
+// live-status som klubsiden viser, så et direkte API-kald ikke kan bruge penge eller
+// binde løn på en afdeling uden effekt.
+const FLAG_GATED_TRACKS = Object.freeze(["academy", "medical"]);
+async function trackWriteBlocked(track, flags, supabaseClient) {
+  if (!FLAG_GATED_TRACKS.includes(track)) return false;
+  return !isTrackEffectLive(track, await resolveTrackLiveFlags(flags, supabaseClient));
+}
+
 // POST /api/club/facilities/upgrade — body { track }.
 export async function postFacilityUpgradeHandler(
   { teamId, track, seasonId, seasonNumber },
   supabaseClient,
   { flags = DEFAULT_FLAGS, purchaseFacilityUpgrade = defaultPurchase } = {}
 ) {
-  // #6666: akademiet kan kun købes når optag 2.0 er tændt (køb og effekt samtidig).
-  if (track === "academy" && !isTrackEffectLive(track, await resolveTrackLiveFlags(flags, supabaseClient))) {
+  // #6666/#6984: køb og effekt samtidig.
+  if (await trackWriteBlocked(track, flags, supabaseClient)) {
     return { status: 403, body: { error: "facility_track_unavailable" } };
   }
   const result = await purchaseFacilityUpgrade({ teamId, track, seasonId, seasonNumber }, supabaseClient, flags);
@@ -214,6 +238,7 @@ export async function getStaffCandidatesHandler(
   if (!flags.facilitiesEnabled) return { status: 403, body: { error: "facilities_disabled" } };
   if (!FACILITY_TRACKS.includes(role)) return { status: 400, body: { error: "invalid_role" } };
   if (TRACKS_WITHOUT_STAFF.includes(role)) return { status: 400, body: { error: "staff_role_unavailable" } };
+  if (await trackWriteBlocked(role, flags, supabaseClient)) return { status: 403, body: { error: "facility_track_unavailable" } };
 
   const { data, error } = await supabaseClient
     .from("team_facilities")
@@ -253,6 +278,7 @@ export async function postStaffHireHandler(
 ) {
   // #6666: en akademichef har ingen effekt i optag 2.0 — ingen løn for ingenting.
   if (TRACKS_WITHOUT_STAFF.includes(role)) return { status: 400, body: { error: "staff_role_unavailable" } };
+  if (await trackWriteBlocked(role, flags, supabaseClient)) return { status: 403, body: { error: "facility_track_unavailable" } };
   const result = await hireStaff({ teamId, role, candidateName, seasonId, seasonNumber }, supabaseClient, flags);
   if (!result.ok) {
     return {

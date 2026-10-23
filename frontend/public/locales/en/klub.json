@@ -70,7 +70,7 @@
     },
     "medical": {
       "name": "Medical Department",
-      "effect": "recovery",
+      "effect": "on each rider's recovery ability, plus fewer and shorter injuries",
       "soon": "Faster recovery",
       "teaser": "Your riders get their form back faster after hard races."
     },

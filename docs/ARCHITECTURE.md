@@ -89,6 +89,9 @@ checks compare both EXCEPT ALL directions and report drift to Sentry, daily per
 backend client outside 19-22 Europe/Copenhagen. The staging every-pass override
 also respects the peak window. Every invocation logs queue length/pass duration;
 queue >10,000 or pass >20s alarms in Sentry. No reader swap is included.
+M1.5 recomputes rider transfers from contribution rows only, bounds each claim
+to p_max_items, drains up to 20 batches/8s per pass and alarms on a queue head
+older than 30 minutes while enabled.
 
 ### Spillersynlige feature-flags (#4948, #6103)
 GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`

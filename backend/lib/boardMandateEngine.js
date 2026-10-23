@@ -38,7 +38,8 @@ import {
   getTrustTier,
 } from "./boardMandate.js";
 import { buildGoalKey, evaluateGoalProgress, generateBoardGoals } from "./boardGoals.js";
-import { clampSatisfaction } from "./boardUtils.js";
+import { clamp, clampSatisfaction } from "./boardUtils.js";
+import { WEEKEND_SATISFACTION_CLAMP, WEEKEND_SATISFACTION_CLAMP_UP } from "./boardConstants.js";
 import { isBoardMandateModelEnabled } from "./boardMandateFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "./reputationFlag.js";
 import { resolveThresholds } from "./boardNegotiationThresholds.js";
@@ -197,6 +198,61 @@ export function buildGoalStatesFromEvaluation(evaluation) {
   }));
 }
 
+// #7088 · Tilliden er ANKRET, ikke additiv.
+// ---------------------------------------------------------------------------
+// `evaluation.feedback.satisfaction_delta` er et MÅLNIVEAU i forhold til
+// sæsonstart (hele sæsonens bevægelse indtil nu), ikke et skridt. Før #7088
+// lagde hver løbsafslutning det oveni den løbende værdi igen, så tilliden
+// mættede på 0 eller 100 (prod 23/10: langt de fleste hold på en af de to
+// yderværdier). Nu genbruges board_profiles' model (boardWeekendUpdate.js):
+//   target = sæsonens anker + satisfaction_delta,
+//   weekend: bevæg mod target med samme asymmetriske loft pr. kørsel,
+//   sæsonslut: lander på target (dommen), som processTeamSeasonEnd gør.
+// Ankeret gemmes i `confidence_source.season_anchor` ({ season_id, confidence })
+// — ingen ny kolonne. Mangler det, eller hører det til en anden sæson, ankres
+// på den aktuelle værdi (selv-healende ved sæsonskifte, samme regel som
+// board_profiles.season_start_satisfaction). `season_end_season_id` markerer
+// at sæsonens dom er afsagt; en genkørsel (repair-stien) eller en sen
+// weekend-kørsel for samme sæson lægger den derfor ikke på igen.
+
+function readRelationSource(relation) {
+  const source = relation?.confidence_source;
+  return source && typeof source === "object" && !Array.isArray(source) ? source : {};
+}
+
+/**
+ * Sæsonens anker for relationen. Gyldigt kun når det hører til `seasonId`;
+ * ellers ankres på den aktuelle confidence (`reanchored: true`).
+ */
+export function resolveRelationSeasonAnchor(relation, seasonId = null) {
+  const stored = readRelationSource(relation).season_anchor;
+  const key = seasonId ?? null;
+  if (stored && typeof stored === "object" && (stored.season_id ?? null) === key
+    && stored.confidence !== null && stored.confidence !== undefined
+    && Number.isFinite(Number(stored.confidence))) {
+    return { anchor: clampSatisfaction(Number(stored.confidence)), reanchored: false };
+  }
+  return { anchor: clampSatisfaction(Number(relation?.confidence ?? 50)), reanchored: true };
+}
+
+/** Er sæsonens dom allerede afsagt for relationen? */
+export function isRelationSeasonFinalized(relation, seasonId = null) {
+  if (seasonId == null) return false;
+  return readRelationSource(relation).season_end_season_id === seasonId;
+}
+
+/**
+ * Ét skridt mod target med board_profiles' asymmetriske loft
+ * (WEEKEND_SATISFACTION_CLAMP nedad, WEEKEND_SATISFACTION_CLAMP_UP opad).
+ * Overskyder aldrig target: et kald der allerede står på target flytter intet.
+ */
+export function stepConfidenceTowardTarget(current, target) {
+  const from = clampSatisfaction(Number(current ?? 50));
+  const to = clampSatisfaction(Number(target ?? from));
+  const step = clamp(to - from, -WEEKEND_SATISFACTION_CLAMP, WEEKEND_SATISFACTION_CLAMP_UP);
+  return clampSatisfaction(from + step);
+}
+
 /**
  * Oversæt én sæson-evaluering til den nye relations-tilstand.
  *
@@ -204,6 +260,10 @@ export function buildGoalStatesFromEvaluation(evaluation) {
  * clamp-mekanikken og forventnings-baselinen genbruges (spec §3.1: "eksisterende
  * vægte og evaluerings-motor genbruges"). Det eneste nye er at resultatet lander
  * ét sted i stedet for tre, og at kvitteringen følger med tallet.
+ *
+ * #7088: ankret og idempotent (se blokken ovenfor). Samme evaluering kørt to
+ * gange flytter højst ét loft-skridt mere mod det SAMME target, aldrig forbi.
+ * `reasonCategory: "season_end"` lander på target og markerer sæsonen afsluttet.
  */
 export function computeRelationUpdateFromEvaluation({
   relation,
@@ -211,21 +271,42 @@ export function computeRelationUpdateFromEvaluation({
   reasonCategory = "weekend_update",
   raceId = null,
   raceName = null,
+  seasonId = null,
 } = {}) {
   const before = clampSatisfaction(Number(relation?.confidence ?? 50));
-  const delta = Number(evaluation?.feedback?.satisfaction_delta ?? 0);
-  const after = clampSatisfaction(before + (Number.isFinite(delta) ? delta : 0));
+  const rawDelta = Number(evaluation?.feedback?.satisfaction_delta ?? 0);
+  const seasonDelta = Number.isFinite(rawDelta) ? rawDelta : 0;
+  const isSeasonEnd = reasonCategory === "season_end";
+  const previousSource = readRelationSource(relation);
+  const { anchor } = resolveRelationSeasonAnchor(relation, seasonId);
+  const target = clampSatisfaction(anchor + seasonDelta);
+  const finalized = isRelationSeasonFinalized(relation, seasonId);
+  // En afsagt sæson-dom flyttes ikke af en sen weekend-kørsel eller en
+  // genkørsel af sæsonslut for samme sæson.
+  const after = finalized
+    ? before
+    : (isSeasonEnd ? target : stepConfidenceTowardTarget(before, target));
+
+  const confidenceSource = {
+    method: reasonCategory,
+    delta: after - before,
+    goals_met: evaluation?.goalsMet ?? 0,
+    goals_total: Array.isArray(evaluation?.goals) ? evaluation.goals.length : 0,
+    overall_score: evaluation?.overallScore ?? null,
+    season_delta: seasonDelta,
+    target,
+    season_anchor: { season_id: seasonId ?? null, confidence: anchor },
+  };
+  const finalizedSeasonId = (isSeasonEnd && seasonId != null)
+    ? seasonId
+    : (previousSource.season_end_season_id ?? null);
+  if (finalizedSeasonId != null) confidenceSource.season_end_season_id = finalizedSeasonId;
 
   return {
     confidence: after,
+    finalized,
     category_scores: buildCategoryScores(evaluation?.scoreBreakdown?.categories),
-    confidence_source: {
-      method: reasonCategory,
-      delta: after - before,
-      goals_met: evaluation?.goalsMet ?? 0,
-      goals_total: Array.isArray(evaluation?.goals) ? evaluation.goals.length : 0,
-      overall_score: evaluation?.overallScore ?? null,
-    },
+    confidence_source: confidenceSource,
     // Kvittering i det FÆLLES feed (board_satisfaction_events), ikke i en ny strøm.
     receipt: {
       satisfaction_before: before,
@@ -430,7 +511,7 @@ async function fetchPendingMilestones(supabase, teamId) {
  * slot_open) OG confidence + kvittering i samme funktion, samme princip som
  * `persistConfidenceChange` — aldrig et tal uden sin kvittering.
  */
-async function persistMilestoneOutcome(supabase, { teamId, seasonId, mandateId, relationId, step }) {
+async function persistMilestoneOutcome(supabase, { teamId, seasonId, mandateId, relationId, step, confidenceSource = null }) {
   const now = new Date().toISOString();
   const { error: milestoneError } = await supabase
     .from("board_vision_milestones")
@@ -452,6 +533,7 @@ async function persistMilestoneOutcome(supabase, { teamId, seasonId, mandateId, 
     mandateId,
     milestoneId: step.milestone_id,
     confidence: step.confidence_after,
+    confidenceSource,
     receipt: {
       satisfaction_before: step.confidence_before,
       satisfaction_after: step.confidence_after,
@@ -492,6 +574,10 @@ export async function applyWeekendSync(supabase, {
   const relation = await fetchRelationRow(supabase, teamId);
   if (!relation) return { skipped: "no_shadow_relation" };
 
+  // #7088: sæsonens dom er afsagt → en sen weekend-kørsel for samme sæson
+  // flytter intet (og skriver ingen tom kvittering).
+  if (isRelationSeasonFinalized(relation, seasonId)) return { skipped: "season_finalized" };
+
   const mandate = await fetchActiveMandateRow(supabase, teamId, seasonId);
   const update = computeRelationUpdateFromEvaluation({
     relation,
@@ -499,6 +585,7 @@ export async function applyWeekendSync(supabase, {
     reasonCategory: "weekend_update",
     raceId,
     raceName,
+    seasonId,
   });
 
   await persistConfidenceChange(supabase, {
@@ -548,14 +635,21 @@ export async function applySeasonEndSync(supabase, {
 
   const mandate = await fetchActiveMandateRow(supabase, teamId, seasonId);
   let confidence = clampSatisfaction(Number(relation.confidence ?? 50));
+  // #7088: kilden føres videre gennem milepæls-skrivningerne, så ankeret og
+  // "dommen er afsagt"-mærket ikke slettes af dem.
+  let confidenceSource = readRelationSource(relation);
 
-  if (mandateEvaluation) {
+  // #7088: dommen lander på sæsonens anker + delta (ikke oveni den løbende
+  // værdi), og kun én gang pr. sæson (genkørsel via repair-stien = no-op).
+  if (mandateEvaluation && !isRelationSeasonFinalized(relation, seasonId)) {
     const update = computeRelationUpdateFromEvaluation({
       relation,
       evaluation: mandateEvaluation,
       reasonCategory: "season_end",
+      seasonId,
     });
     confidence = update.confidence;
+    confidenceSource = update.confidence_source;
 
     await persistConfidenceChange(supabase, {
       relationId: relation.id,
@@ -587,8 +681,9 @@ export async function applySeasonEndSync(supabase, {
   if (outcomes.length) {
     const applied = applyMilestoneDeltas(confidence, outcomes);
     for (const step of applied.steps) {
+      confidenceSource = { ...confidenceSource, method: step.chairman_beat_key, delta: step.applied_delta };
       await persistMilestoneOutcome(supabase, {
-        teamId, seasonId, mandateId: mandate?.id ?? null, relationId: relation.id, step,
+        teamId, seasonId, mandateId: mandate?.id ?? null, relationId: relation.id, step, confidenceSource,
       });
     }
     confidence = applied.confidence;

@@ -15,6 +15,7 @@ import {
 } from "../../ui/index.js";
 import { Flag as FlagJs } from "../../Flag.jsx";
 import RiderLinkJs from "../../RiderLink.jsx";
+import TerrainTypeGlyphJs from "../TerrainTypeGlyph.jsx"; // #6683
 
 interface SectionProps { className?: string; children: ReactNode; "aria-label"?: string }
 interface SectionHeaderProps { title: ReactNode; action?: ReactNode; meta?: ReactNode; className?: string }
@@ -35,6 +36,7 @@ interface TabsProps { value: string; onChange: (next: string) => void; className
 interface TabListProps { label: string; className?: string; fit?: boolean; children: ReactNode }
 interface TabProps { value: string; className?: string; children: ReactNode }
 interface FlagProps { code?: string | null; className?: string; squared?: boolean; title?: string }
+interface TerrainTypeGlyphProps { profileType?: string | null; size?: number; className?: string; showLabel?: boolean; labelClassName?: string }
 interface RiderLinkProps { id?: string | null; className?: string; children: ReactNode }
 
 export const Section = SectionJs as unknown as (props: SectionProps) => ReactNode;
@@ -48,3 +50,5 @@ export const TabList = TabListJs as unknown as (props: TabListProps) => ReactNod
 export const Tab = TabJs as unknown as (props: TabProps) => ReactNode;
 export const Flag = FlagJs as unknown as (props: FlagProps) => ReactNode;
 export const RiderLink = RiderLinkJs as unknown as (props: RiderLinkProps) => ReactNode;
+/** #6683: etapetypens ene farvede streg-ikon (samme som kalender, holdudtagelse og etape-navigation). */
+export const TerrainTypeGlyph = TerrainTypeGlyphJs as unknown as (props: TerrainTypeGlyphProps) => ReactNode;
