@@ -73,9 +73,10 @@ for (const [name, width, height] of [["mobil", 390, 844], ["desktop", 1440, 900]
     const lines = list.getByTestId("vision-milestone-counts");
     await expect(lines).toHaveCount(4);
     await expect(lines.nth(0)).toHaveText(/^(Achieved|Nået)$/);
-    // Indeværende sæson er selve målsæsonen: ingen "før tid"-hale.
-    await expect(lines.nth(1)).toHaveText(/^(Reach it by the end of season 4\.|Nå det senest ved udgangen af sæson 4\.)$/);
-    await expect(lines.nth(2)).toHaveText(/^(Reach it by the end of season 5\. Get there sooner and it counts too\.|Nå det senest ved udgangen af sæson 5\. Når du det før, tæller det også\.)$/);
+    // #6991: én forståelig sætning for alle åbne milepæle; tidlig opfyldelse tæller ved udgangen af den sæson.
+    await expect(lines.nth(1)).toContainText(/(Reach it by the end of season 4|Nå det senest ved udgangen af sæson 4)/);
+    await expect(lines.nth(2)).toContainText(/(Reach it by the end of season 5|Nå det senest ved udgangen af sæson 5)/);
+    await expect(lines.nth(2)).toContainText(/(counts at the end of that season|tæller det ved udgangen af den sæson)/);
     await expect(lines.nth(3)).toContainText(/season 6|sæson 6/);
     // Forklaringen under milepælene siger ikke længere "bedømmes i målsæsonen"
     // uden undtagelsen for tidlig opfyldelse.

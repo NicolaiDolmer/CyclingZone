@@ -102,3 +102,19 @@ test("tom input", () => {
   assert.deepEqual(riderResultTotals([]), { wins: 0, races: 0, top5: 0, jerseys: 0, points: 0, prize: 0 });
   assert.deepEqual(seasonsInRaces([]), []);
 });
+
+test("#7031: ungdomstroejer fra U23-/juniorloeb taeller ikke, seniorloebets goer", () => {
+  const rows = [
+    { result_type: "gc", rank: 1, race: { id: "u", squad: "u23", race_type: "stage_race" } },
+    { result_type: "young", rank: 1, race: { id: "u", squad: "u23", race_type: "stage_race" } },
+    { result_type: "young_day", rank: 1, stage_number: 1, race: { id: "u", squad: "u23", race_type: "stage_race" } },
+    { result_type: "young", rank: 1, race: { id: "s", squad: "senior", race_type: "stage_race" } },
+  ];
+  const races = groupRiderRaces(rows);
+  const u = races.find((r) => r.raceId === "u");
+  const s = races.find((r) => r.raceId === "s");
+  assert.deepEqual(u.jerseys, {});
+  assert.deepEqual(u.dayLeads, {});
+  assert.equal(u.finalRank, 1);
+  assert.equal(s.jerseys.young, 1);
+});
