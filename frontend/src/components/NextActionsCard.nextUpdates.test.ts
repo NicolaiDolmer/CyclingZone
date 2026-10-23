@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "NextActionsCard.jsx"), "utf8");
-const read = (lang) =>
+const read = (lang: string) =>
   JSON.parse(readFileSync(join(__dirname, "../../public/locales", lang, "dashboard.json"), "utf8"));
 
 test("#6962: kortet laeser tiderne fra pending.next_updates og viser dem i dansk tid", () => {
