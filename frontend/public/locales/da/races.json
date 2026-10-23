@@ -728,6 +728,23 @@
     "whyBest": "Denne {bucket}-etape belønner dit stærkeste fit: {name}.",
     "form": "Form",
     "fatigue": "Træthed",
+    "doctor": {
+      "label": "Læge",
+      "hint": "Holdlægens vurdering af hver rytter. En bedre medicinsk afdeling giver en skarpere vurdering.",
+      "assessment": {
+        "fresh": "Frisk",
+        "ready": "Klar",
+        "tired": "Træt",
+        "rest": "Bør hvile",
+        "injured": "Skadet"
+      },
+      "season": {
+        "ready": "Klar til denne og resten af sæsonen.",
+        "ready_but_spent_later": "Klar nu, men kørt flad til den tredje Grand Tour.",
+        "already_heavy": "Har kørt meget i år. Hver etape koster mere nu.",
+        "rest_first": "Giv ham hvile før denne."
+      }
+    },
     "injured": "Skadet",
     "overAge": "Over aldersgrænsen",
     "boundIn": "Kører {race}",

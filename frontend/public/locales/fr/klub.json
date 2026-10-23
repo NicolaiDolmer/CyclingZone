@@ -70,7 +70,7 @@
     },
     "medical": {
       "name": "Département médical",
-      "effect": "récupération",
+      "effect": "sur la capacité de récupération de chaque coureur, et moins de blessures, plus courtes",
       "soon": "Récupération plus rapide",
       "teaser": "Tes coureurs retrouvent plus vite leur forme après les courses difficiles."
     },

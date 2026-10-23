@@ -70,7 +70,7 @@
     },
     "medical": {
       "name": "Medicinsk afdeling",
-      "effect": "restitution",
+      "effect": "på rytterens restitutionsevne, og færre og kortere skader",
       "soon": "Hurtigere restitution",
       "teaser": "Dine ryttere får formen hurtigere tilbage efter hårde løb."
     },

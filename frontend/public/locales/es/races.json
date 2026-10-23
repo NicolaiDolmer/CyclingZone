@@ -745,6 +745,23 @@
     "whyBest": "Esta etapa de tipo {bucket} premia tu mejor encaje: {name}.",
     "form": "Forma",
     "fatigue": "Fatiga",
+    "doctor": {
+      "label": "Médico",
+      "hint": "La valoración del médico del equipo sobre cada ciclista. Un mejor servicio médico da una valoración más precisa.",
+      "assessment": {
+        "fresh": "Fresco",
+        "ready": "Listo",
+        "tired": "Cansado",
+        "rest": "Necesita descanso",
+        "injured": "Lesionado"
+      },
+      "season": {
+        "ready": "Listo para esta y el resto de la temporada.",
+        "ready_but_spent_later": "Listo ahora, pero sin fuerzas para la tercera Gran Vuelta.",
+        "already_heavy": "Ha corrido mucho esta temporada. Cada etapa cuesta más ahora.",
+        "rest_first": "Dale descanso antes de esta."
+      }
+    },
     "injured": "Lesionado",
     "overAge": "Supera la edad",
     "boundIn": "Corre {race}",

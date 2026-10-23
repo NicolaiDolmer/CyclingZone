@@ -70,7 +70,7 @@
     },
     "medical": {
       "name": "Medische afdeling",
-      "effect": "herstel",
+      "effect": "op het herstelvermogen van elke renner, en minder en kortere blessures",
       "soon": "Sneller herstel",
       "teaser": "Je renners krijgen hun vorm sneller terug na zware koersen."
     },
