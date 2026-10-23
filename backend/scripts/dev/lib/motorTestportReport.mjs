@@ -200,6 +200,11 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
 
 /** Loebsgruppe for udbrudsmaalene (samme inddeling som P0-satserne: breakawayIntent.raceGroupOf). */
 export const BREAKAWAY_RACE_GROUPS = Object.freeze(["gt", "stage_race", "one_day"]);
+/**
+ * #6804 G11: grupperne hvor klassementsjagten maales (etapeloeb). Private lofter (valgfrie):
+ *   gcChaseCatchBands: { gt|stage_race: { gcEarlyCatchMaxShare?, yoyoMaxShare? } }
+ */
+export const G11_RACE_GROUPS = Object.freeze(["gt", "stage_race"]);
 export const breakawayRaceGroup = raceGroupOf;
 
 /** Kort etapeloebs tidsgab-gruppe (samme som tourScorecard.shortStageRaceGroup). */
@@ -277,6 +282,19 @@ export function aggregateRaceGroups(raceResults, revision, thresholds = {}) {
     }
     breakaway[g] = { total, byTerrain };
   }
+  // #6804 G11: klassementsjagtens tidlige indhentninger og yo-yo i etapeloeb (GT og korte).
+  const g11Bands = thresholds?.gcChaseCatchBands ?? {};
+  const gcChase = {};
+  for (const g of G11_RACE_GROUPS) {
+    const rows = rowsByGroup[g].filter((r) => has(r, "gcEarlyCatch"));
+    if (!rows.length) { gcChase[g] = null; continue; }
+    const early = rows.filter((r) => r.gcEarlyCatch === true).length;
+    const yoyo = rows.filter((r) => r.yoyo === true).length;
+    const earlyShare = share(early, rows.length);
+    const yoyoShare = share(yoyo, rows.length);
+    gcChase[g] = { n: rows.length, gcEarlyCatches: early, gcEarlyCatchShare: earlyShare, yoyo, yoyoShare,
+      verdicts: { gcEarlyCatch: bandVerdict(earlyShare, { max: g11Bands[g]?.gcEarlyCatchMaxShare }), yoyo: bandVerdict(yoyoShare, { max: g11Bands[g]?.yoyoMaxShare }) } };
+  }
   const gaps = {};
   for (const g of SHORT_GAP_GROUPS) {
     const x = gapByGroup[g];
@@ -286,7 +304,7 @@ export function aggregateRaceGroups(raceResults, revision, thresholds = {}) {
       gaps[g][k] = { ...stats, verdicts: gapGroupVerdicts(stats, gapBands[g]?.[k] ?? null) };
     }
   }
-  return { breakaway, gaps };
+  return { breakaway, gaps, gcChase };
 }
 
 /** #6804 P7: et loebsresultat med hver revisions scorecard doemt mod de private M2-baand (nyt objekt). */
@@ -440,7 +458,7 @@ export function raceGroupMarkdown(card) {
   const gc = card.groups?.candidate ?? gb;
   if (!gb) return [];
   const revs = [card.baseline, card.candidate];
-  const out = ["## Loebsgrupper (#6804 G1', G12, G14)", "", "Dom mod de private baand (taerskelfilen); \"-\" = intet baand for cellen.", ""];
+  const out = ["## Loebsgrupper (#6804 G1', G11, G12, G14)", "", "Dom mod de private baand (taerskelfilen); \"-\" = intet baand for cellen.", ""];
   const bRows = [];
   for (const g of BREAKAWAY_RACE_GROUPS) {
     const pick = (a) => a?.breakaway?.[g];
@@ -467,6 +485,17 @@ export function raceGroupMarkdown(card) {
     }
   }
   out.push("", "### Tidsgab i korte etapeloeb (median, p10-p90 over loeb x seeds)", "", ...table(["Gruppe/maaling", "loeb", revs[0], revs[1]], gRows));
+  // #6804 G11: klassementsjagten henter i foerste del af etapen + yo-yo (andel af vejetaper).
+  const cRows = [];
+  for (const g of G11_RACE_GROUPS) {
+    const pick = (a) => a?.gcChase?.[g] ?? null;
+    if (!pick(gb) && !pick(gc)) continue;
+    const early = (x) => (x ? `${fmtPct(x.gcEarlyCatchShare)} (${x.gcEarlyCatches}) ${x.verdicts.gcEarlyCatch}` : "-");
+    const yoyo = (x) => (x ? `${fmtPct(x.yoyoShare)} (${x.yoyo}) ${x.verdicts.yoyo}` : "-");
+    cRows.push([`${g} tidlig GC-indhentning`, String(pick(gb)?.n ?? pick(gc)?.n ?? 0), early(pick(gb)), early(pick(gc))]);
+    cRows.push([`${g} yo-yo`, String(pick(gb)?.n ?? pick(gc)?.n ?? 0), yoyo(pick(gb)), yoyo(pick(gc))]);
+  }
+  if (cRows.length) out.push("", "### Klassementsjagten (G11, andel af vejetaper)", "", ...table(["Gruppe/maaling", "n", revs[0], revs[1]], cRows));
   return out;
 }
 

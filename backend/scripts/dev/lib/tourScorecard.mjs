@@ -643,6 +643,42 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
  * morgenudbruddet blev hentet tidligt (inden for motorens egen reformations-
  * graense, S5_REFORMATION_TUNING.maxStageFraction) og et nyt udbrud gik.
  */
+/**
+ * #6804 G11 (spec par. 5): henter klassementsjagten udbruddet i foerste del af etapen, og
+ * er der yo-yo (hentet, nyt udbrud, hentet igen)?
+ *  - gcEarlyCatch: en `breakaway_caught` inden for motorens egen "foerste del"
+ *    (S5_REFORMATION_TUNING.maxStageFraction), hvor mindst et af de jagende hold
+ *    (chasing_team_ids) havde en igangvaerende klassementsreaktion (`gc_reaction`
+ *    "started" uden "stopped"/"exhausted"/"unavailable" foer indhentningen i filmen).
+ *  - yoyo: et nyt udbrud (`reformation: true`) blev dannet og derefter ogsaa hentet.
+ * Filmens raekkefoelge afgoer (en reaktion der stopper i samme segment, staar efter
+ * indhentningen). REN.
+ */
+export function gcChaseCatchFacts(events, distanceKm) {
+  const list = Array.isArray(events) ? events : [];
+  const km = Number(distanceKm);
+  const limit = km > 0 ? km * S5_REFORMATION_TUNING.maxStageFraction : -Infinity;
+  const reacting = new Set();
+  let gcEarlyCatch = false;
+  let reformIds = null;
+  let yoyo = false;
+  for (const e of list) {
+    const p = e?.params ?? {};
+    if (e?.type === "gc_reaction" && typeof p.team_id === "string") {
+      if (p.status === "started") reacting.add(p.team_id);
+      else if (p.status === "stopped" || p.status === "exhausted" || p.status === "unavailable") reacting.delete(p.team_id);
+    } else if (e?.type === "breakaway_formed" && p.reformation === true) {
+      reformIds = new Set(p.rider_ids ?? []);
+    } else if (e?.type === "breakaway_caught") {
+      const at = Number(p.exact_km ?? e.km);
+      const byGc = (p.chasing_team_ids ?? []).some((t) => reacting.has(t));
+      if (byGc && Number.isFinite(at) && at <= limit) gcEarlyCatch = true;
+      if (reformIds && (p.rider_ids ?? []).some((id) => reformIds.has(id))) yoyo = true;
+    }
+  }
+  return { gcEarlyCatch, yoyo };
+}
+
 export function testportStageFacts(out, profile, roleByRider = null) {
   const events = out?.timeline?.events ?? [];
   const winnerId = finishedSorted(out)[0]?.rider_id ?? null;
@@ -654,6 +690,7 @@ export function testportStageFacts(out, profile, roleByRider = null) {
     breakawayRiderIds: [...breakawaySets(out).formed],
     earlyCatch: morningIds.size > 0 && km > 0 && caughtKm.length > 0 && Math.min(...caughtKm) <= km * S5_REFORMATION_TUNING.maxStageFraction,
     reformed: events.some((e) => e.type === "breakaway_formed" && e.params?.reformation === true),
+    ...gcChaseCatchFacts(events, km), // #6804 G11
   };
 }
 
