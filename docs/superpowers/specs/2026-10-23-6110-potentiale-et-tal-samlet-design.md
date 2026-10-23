@@ -32,6 +32,7 @@ Alt bygges bag slukkede flag, i små PR'er, som PC1 kan merge løbende uden at n
 | #6110 D7 | Del 2 tændes samlet en søndag i S5. Ingen datopres | ejer 11/10 |
 | #6110 | #7075 og #6461 leveres sammen med Udvikling 2.0 | ejer 23/10 |
 | #6461 | Train now = hele dagen for alle ryttere (variant B), designet sammen med #6984 | ejer 23/10 |
+| #2798 | Potentialet ud af værdien på sigt; gradvis overgang til Udviklingsscoren, når den er rettet | ejer 23/10 |
 | Rating-reglen | Synlige ratings falder aldrig uden ejerens vidende | 17/9 |
 
 **Konsekvens af 11/10 og 23/10 sammen:** retning C sagde "spillerne ser ingen tal". Den 23/10 afløser det for potentialet: spilleren ser ét skønnet tal. Professionalismen og grundtalentet forbliver skjulte.
@@ -115,7 +116,15 @@ Alle flader fra kortlægningen skifter fra interval til tal + ord via én ny kom
 - **Kobling til skønnet:** egne træninger er det, der gør skønnet mere sikkert for egne ryttere. Tælleren er den samme som salgsgrænsen på 5 træninger.
 
 ## 6. Prisen (#2798)
-Prisen må ikke afsløre det sande potentiale. Retning: den publicerede værdi fremskriver med et **offentligt skøn** (stor, fast usikkerhed, ens for alle hold), ikke med det sande loft. Valget mellem de åbne varianter i #2798 stilles som eget ejer-kort med pris-eksempler (tal privat). Omregningen (§4) må ikke ramme prod, før dette er rettet (låst 11/10).
+**Ejer-retning 23/10:** potentialet skal på sigt ud af værdien. Når Udviklingsscoren er rettet (§5), overgår værdiens fremadrettede del **gradvist** fra potentialet til **Udviklingsscoren** (det rytteren faktisk har vist i træning og løb). Slutmålet er et værdisystem helt uden potentiale.
+
+Konsekvenser for designet:
+- Udviklingsscore B kommer **før** prisskiftet. Værdien må først læne sig på scoren, når scoren måler det rigtige.
+- Overgangen er glidende: potentialets vægt i værdien aftager, scorens vokser. Ingen engangs-omregning af alle værdier.
+- Værdien bruger rytterens **historik** af Udviklingsscore (fx et glidende snit over en periode), ikke dagens tal, så støjen fra B ikke slår igennem på prisen.
+- Ryttere uden nok historik (nye unge før de første træninger) prissættes uden fremadrettet del; de første træninger flytter prisen.
+- Under overgangen findes der stadig en rest af sidekanalen. Harnessen måler, hvor meget potentialet kan aflæses af værdien, og overgangens tempo kalibreres efter det. Tal privat.
+- Omregningen 1-6 → 1-99 (§4) må ikke ramme prod, før potentialets vægt i værdien er nede på et niveau, hvor omregningen ikke flytter priserne synligt (låst 11/10: #2798 før omregningen).
 
 ## 7. De bundtede rettelser
 
@@ -159,7 +168,7 @@ Se byggeplanen (§11). Migrationer er additive og idempotente: tabel til gemte s
 | 8 | #7075 rebased bag eget flag | - | Nej |
 | 9 | #7084 rytter-nøglet kvittering | 8 | Nej |
 | 10 | #6461 Train now hele dagen for alle (B): teknisk design + målt baseline sammen med #6984 først, derefter byg | 8, #6984 | Nej |
-| 11 | #2798 pris på offentligt skøn (efter ejer-kort) | 3 | Nej |
+| 11 | #2798 værdi: glidende overgang fra potentiale til Udviklingsscore-historik, harness for rest-lækage | 7 | Nej |
 | 12 | Omregning 1-6 → 1-99: script, dry-run, privat kort | 1, 11 | Nej (apply ejer-gated) |
 | 13 | Tænd-kort: harness-resultater + preview-billeder → ejer-go → samlet tænding søndag | alle | Ja, efter go |
 
@@ -168,6 +177,6 @@ Højst 2-3 spor parallelt. 1, 2, 7 og 8 kan starte samtidig. Verifikation: TIER 
 ## 12. Åbne ejer-kort (ét ad gangen, i denne rækkefølge)
 1. ~~Sikkerhed som ord~~ besluttet A 23/10.
 2. ~~#6461: Train now variant A eller B~~ besluttet B 23/10 (hele dagen for alle, med #6984).
-3. #2798: hvordan prisen regnes uden at afsløre potentialet.
+3. ~~#2798: hvordan prisen regnes~~ besluttet 23/10: potentialet ud af værdien, glidende overgang til Udviklingsscoren, når den er rettet.
 4. Godkendelse af hele designet (denne spec + mockups) før første kode-PR.
 5. Senere: tænd-kortet med harness-tal (privat).
