@@ -18,6 +18,8 @@
 // dayLeads: trøje-dags-optællinger (leder/point/bjerg/ungdom-dage, distinkt
 // fra den ENDELIGE klassementstrøje i `jerseys`) — også Palmarès-fanens input.
 
+import { isHiddenYouthClassificationRow } from "./youthClassification.ts";
+
 const JERSEY_TYPES = ["points", "mountain", "young"];
 const DAY_JERSEY_TYPES = ["leader", "mountain_day", "points_day", "young_day"];
 
@@ -25,6 +27,8 @@ export function groupRiderRaces(rows = []) {
   const byRace = new Map();
   for (const r of rows || []) {
     if (!r || r.result_type === "team") continue;
+    // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i ældre løb.
+    if (isHiddenYouthClassificationRow(r, r.race?.squad)) continue;
     const race = r.race ?? {};
     const id = race.id ?? r.race_id;
     if (!id) continue;
