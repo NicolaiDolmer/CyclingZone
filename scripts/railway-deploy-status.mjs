@@ -33,7 +33,9 @@
  *   - Matchet deployment har status FAILED, CRASHED eller REMOVED → "failed".
  *   - Matchet deployment har status SUCCESS → "success".
  *   - Matchet deployment har enhver anden status (BUILDING, DEPLOYING,
- *     QUEUED, WAITING, SLEEPING, SKIPPED, eller en fremtidig ukendt vaerdi)
+ *     QUEUED, WAITING, SLEEPING, eller en fremtidig ukendt vaerdi)
+ *   - #7098: SKIPPED (Railway byggede ikke, ingen aendring i watchPatterns) → "success",
+ *     naar der findes et SUCCESS-deploy (det koerende er uaendret).
  *     → "pending".
  *   - #6859: intet SUCCESS for SHA'en selv, men et SUCCESS-deploy af en nyere
  *     main-SHA der indeholder den (git merge-base --is-ancestor, se
@@ -141,6 +143,11 @@ export function classifyDeploymentStatus(deployments, sha, { covers } = {}) {
   // afloest deploy staar som REMOVED).
   if (findCoveringDeployment(deployments, sha, covers)) return "success";
   if (!match) return "pending"; // SHA ikke fundet (endnu) — se docstring foroven
+  // #7098 (23/10, hang 2x paa en dag): SKIPPED = Railway saa ingen aendring i sine
+  // watchPatterns og byggede bevidst ikke. Den koerende deploy er da uaendret og er
+  // beviset, saa laenge der findes et SUCCESS-deploy. Foer stod SKIPPED som "pending",
+  // og deploy-verify ventede 40 min til timeout paa et deploy, der aldrig kommer.
+  if (status === "SKIPPED" && (deployments ?? []).some((d) => SUCCESS_STATUSES.has(String(d?.status ?? "").toUpperCase()))) return "success";
   if (FAILED_STATUSES.has(status)) return "failed";
   return "pending"; // BUILDING/DEPLOYING/QUEUED/WAITING/SLEEPING/SKIPPED/ukendt
 }
@@ -301,7 +308,9 @@ export async function getRailwayDeployStatus(opts) {
     );
     const nodes = data?.deployments?.edges?.map((e) => e.node) ?? [];
     const result = classifyDeploymentStatus(nodes, sha, { covers });
-    console.error(`[railway-deploy-status] ${nodes.length} deployment(s) hentet, SHA ${String(sha).slice(0, 7)} -> ${result}`);
+    const ownStatus = nodes.find((n) => String(n?.meta?.commitHash ?? "").trim().toLowerCase() === String(sha).trim().toLowerCase())?.status ?? "ikke fundet";
+    // #7098: Railways egen status for SHA'en logges, saa en haenger kan aflaeses direkte.
+    console.error(`[railway-deploy-status] ${nodes.length} deployment(s) hentet, SHA ${String(sha).slice(0, 7)} (Railway: ${ownStatus}) -> ${result}`);
     const own = nodes.some((n) => String(n?.meta?.commitHash ?? "").trim().toLowerCase() === String(sha).trim().toLowerCase()
       && SUCCESS_STATUSES.has(String(n?.status ?? "").toUpperCase()));
     const cover = result === "success" && !own ? findCoveringDeployment(nodes, sha, covers) : null;
