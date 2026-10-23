@@ -273,7 +273,7 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
-import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, withLineupLocked, loadLockedRaceIds } from "../lib/raceStartLock.js";
+import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "../lib/raceEntryAutoFillSource.js";
@@ -5786,6 +5786,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // hårde garanti ligger i replace_race_selection-RPC'en, der gentager overlap-
     // tjekket UNDER advisory-låsen på holdet (#2256, TOCTOU-hullet mellem læs og lås
     // lukket i database/2026-07-10-replace-race-selection-binding-guard.sql).
+    /** @type {any[]} */ const releasedRows = []; // #6959: til gendannelse hvis løbet starter under gemningen
     const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
     const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
     if (bound.length) {
@@ -5829,8 +5830,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         }
       }
       for (const r of resolvable) {
-        const { error: relErr } = await supabase.from("race_entries").delete()
-          .eq("race_id", r.race_id).eq("team_id", req.team.id).eq("rider_id", r.rider_id).eq("is_auto_filled", true);
+        const { data: relRows, error: relErr } = await supabase.from("race_entries").delete()
+          .eq("race_id", r.race_id).eq("team_id", req.team.id).eq("rider_id", r.rider_id).eq("is_auto_filled", true)
+          .select("*");
+        if (!relErr && Array.isArray(relRows)) releasedRows.push(...relRows);
         if (relErr) {
           captureException(new Error(`race_entries auto-release (${r.race_id}/${r.rider_id}): ${relErr.message}`));
           return res.status(500).json({ error: relErr.message });
@@ -5841,6 +5844,12 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // #6959 (Codex P1): låsen genkontrolleres lige før gemningen (frisk races-række +
     // frisk ur). replace_race_selection kender ikke scheduled_at, så det sker her.
     if ((await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
+      // #6959 (Codex P1): startede løbet mens frigivelserne kørte, gendannes de frigivne
+      // auto-entries, så en afvist gemning aldrig efterlader et hul i kildeløbene.
+      if (releasedRows.length) {
+        const { error: restoreErr } = await supabase.from("race_entries").insert(releasedRows);
+        if (restoreErr) captureException(new Error(`race_entries auto-release restore: ${restoreErr.message}`));
+      }
       return res.status(409).json({ error: "selection_race_started" });
     }
     await saveSelection({
@@ -6879,7 +6888,10 @@ router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async 
     // Pure helper (testet): kun frys (#1825) undtager et løb — en bekræftet ryd-handling
     // fjerner ALT, inkl. manuelt udtagne.
     // #6959: ryd er en trup-ændring og låses af samme regel som taktikken (start passeret).
-    const { target, skipped } = partitionClearTargets({ cols: await withLineupLocked({ supabase, races: cols, now: new Date() }) });
+    // #6959 (Codex P1): låsen læses frisk (status, stages_completed og etape 1's start) lige
+    // før sletningen; cols er fra starten af requesten og kan være forældet.
+    const lockedNow = await loadLockedRaceIds({ supabase, raceIds: cols.map((r) => r.id), now: new Date() });
+    const { target, skipped } = partitionClearTargets({ cols: cols.map((r) => ({ ...r, lineup_locked: lockedNow.has(r.id) })) });
     if (!target.length) return res.json({ ok: true, cleared: 0, skipped, scope });
 
     const targetIds = target.map((r) => r.id);

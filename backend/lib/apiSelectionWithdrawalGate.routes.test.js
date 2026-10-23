@@ -74,3 +74,29 @@ test("PUT /races/:raceId/selection: withdrawal-gaten ligger FØR den delte valid
   const selectionSource = readFileSync(resolve(__dirname, "raceSelection.js"), "utf8");
   assert.match(selectionSource, /selection_wrong_pool/, "pulje-gaten skal bestå i den delte prepareSelectionChange");
 });
+
+// #6959 (Codex P1): starter loebet mens auto-frigivelserne koerer, afvises gemningen ved
+// den sidste laase-kontrol. De frigivne auto-entries skal da laegges tilbage, ellers efterlader
+// en afvist gemning et hul i kildeloebene.
+test("PUT /races/:raceId/selection: sidste laase-kontrol gendanner frigivne auto-entries (#6959)", () => {
+  const putBlock = routeBlock('router.put("/races/:raceId/selection"');
+  const captureIdx = putBlock.indexOf("releasedRows.push(...relRows)");
+  const finalLockIdx = putBlock.lastIndexOf("loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })");
+  const restoreIdx = putBlock.indexOf('.from("race_entries").insert(releasedRows)');
+  const saveIdx = putBlock.indexOf("await saveSelection(");
+  assert.ok(captureIdx !== -1, "frigivne raekker skal opsamles");
+  assert.ok(finalLockIdx !== -1 && restoreIdx !== -1, "sidste laase-kontrol og gendannelse skal findes");
+  assert.ok(captureIdx < finalLockIdx && finalLockIdx < restoreIdx && restoreIdx < saveIdx,
+    "gendannelsen sker i den afviste gren efter den sidste laase-kontrol og foer saveSelection");
+});
+
+// #6959 (Codex P1): "Ryd" skal laese laasen frisk (status, stages_completed, etape 1's start)
+// lige foer sletningen, ikke fra requestens tidlige races-snapshot.
+test("POST /races/distribution/clear laeser laasen frisk foer sletningen (#6959)", () => {
+  const block = routeBlock('router.post("/races/distribution/clear"');
+  const lockIdx = block.indexOf("await loadLockedRaceIds({ supabase, raceIds: cols.map((r) => r.id), now: new Date() })");
+  const delIdx = block.indexOf('.from("race_entries")');
+  assert.ok(lockIdx !== -1, "clear skal bruge loadLockedRaceIds");
+  assert.ok(lockIdx < delIdx, "laasen laeses foer sletningen");
+  assert.ok(!block.slice(0, delIdx).includes("withLineupLocked("), "intet foraeldet snapshot til laasen");
+});
