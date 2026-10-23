@@ -32,11 +32,11 @@ Målingen 23/10 viser, at den største kløft i dag ikke er penge, men aktivitet
 | Kalenderen | Antal løb pr. division røres ikke | 15/9 |
 | #6984 B3 | Sæsonbelastningen deler løbsdagstælleren med Udvikling 2.0 | 20/10 |
 
-**Doktrin:** styrke straffes aldrig. Ingen mekanik i del 2 må give en rytter mindre end han ville have fået uden den.
+**Doktrin:** styrke straffes aldrig. Ingen mekanik i del 2 må give en rytter mindre ud af en løbsdag end i dag eller end en hård træningsdag, og ingen regel må give mindre, fordi rytteren eller holdet er stærkt (gate G2).
 
 ## 2. Målt baseline (offentlig version)
 
-Målt read-only i prod 23/10 på S4 (25 af 28 løbsdatoer afregnet), alle menneskeholds seniorryttere. Mål: summen af rå evne-deltaer pr. tick fra `training_rider_ticks.report`. Rig/fattig = tredjedel inden for divisionen efter truppens markedsværdi. Tallene står privat.
+Målt read-only i prod 23/10 på S4 (25 af 28 løbsdatoer afregnet), alle ryttere på menneskehold i seniordivisionerne (holdets division, ikke rytterens trup: U23- og juniorryttere på de hold er med). Mål: summen af rå evne-deltaer pr. tick fra `training_rider_ticks.report`. Rig/fattig = tredjedel inden for divisionen efter truppens markedsværdi. Tallene står privat.
 
 **Træning mod løb**
 - Løb står i dag for en lille del af rytternes samlede udvikling, omkring en syvendedel. Resten er træning.
@@ -46,7 +46,7 @@ Målt read-only i prod 23/10 på S4 (25 af 28 løbsdatoer afregnet), alle mennes
 **Rige mod fattige**
 - På tværs af divisioner er rigdom næsten det samme som division. Inden for en division er kløften i sæsonudvikling stor i D3 og D4 og lille i D1.
 - **Den største forvekslingsfaktor er aktivitet.** I D3 er hele den fattigste tredjedel hold, hvis manager ikke har været inde den seneste uge. Blandt aktive hold er kløften i D1 omtrent nul og i D2 moderat. D4 domineres af hold, der kom til midt i sæsonen.
-- **Pengene virker gennem facilitet og trænere.** Kontrolleret for alder og potentiale giver en topfacilitet unge ryttere en markant højere udvikling pr. hård dag end tier 0-1, og en lidt mindre fordel på løbsdagen. Løbsdagen bærer i dag samme facilitets- og træner-led som træningen, fordi den kører gennem `applyDailyTick`.
+- **Pengene virker gennem facilitet og trænere.** Kontrolleret for alder og potentiale giver en topfacilitet unge ryttere en markant højere udvikling pr. hård dag end tier 0-1, og en lidt mindre fordel på løbsdagen. Løbsdagen bærer i dag samme facilitets- og træner-led som træningen, fordi den kører gennem `applyDailyTick` med de delte tick-argumenter (`TRAINING_RULES.md` §6.2, "Udbyttet"; `dailyTrainingEngine.js`, `racedToday`). Målingen bekræfter det: facilitetens fordel ses også på løbsdage.
 - Rige holds ryttere er også yngre og har højere potentiale. Alderens vægt forsvinder med D1-kurven; potentialets bliver.
 
 **Løbsmuligheder**
@@ -74,9 +74,10 @@ Løbsdagen er fortsat et program gennem den samme `applyDailyTick` som træninge
 | **Prisen** | Trætheden fra løbet, med #6984 v2's sæsonbelastning | #6984, låst |
 
 ### 3.2 Rollens fordeling (D3)
-- Kaptajn og jæger: tillægget lægges mest i etapens afgørende evne (bjerg → klatring, flad → sprint, enkeltstart → enkeltstart, brosten → brosten osv.).
-- Hjælpere: tillægget lægges mest i de bærende evner (udholdenhed, flad, positionering, restitution afhængigt af profilen).
-- Kilde til rollen: løbsmotorens rolle pr. rytter pr. etape (`race_entries.race_role`). Uden rolle: hjælper-fordelingen.
+- Kaptajn (`captain`), spurtkaptajn (`sprint_captain`) og jæger (`hunter`): tillægget lægges mest i etapens afgørende evne (bjerg → klatring, flad → sprint, enkeltstart → enkeltstart, brosten → brosten osv.).
+- Hjælpere (`helper`): tillægget lægges mest i de bærende evner (udholdenhed, flad, positionering, restitution afhængigt af profilen).
+- Fri rolle (`free_role`): halvt af hver fordeling (forslag; afgøres i byg-PR'en). Rollerne er motorens `VALID_RACE_ROLES` (`raceRoles.js`).
+- Kilde til rollen: etapens rolle i `race_stage_roles` (pr. etape), ellers løbets rolle i `race_entries.race_role`, ellers hjælper-fordelingen. Samme opslagsrækkefølge som løbsmotoren.
 - Ingen straf for at hjælpe holdet: summen er ens.
 
 ### 3.3 Hvad tæller som en løbsdag
@@ -84,7 +85,7 @@ Uændret fra §6.2: rytteren har et etaperesultat på løbsdagen (`race_results`
 
 ### 3.4 Sammenhæng med de øvrige S5-dele
 - **D1-kurven** bestemmer hvor meget et point koster; løbsdagen arver den automatisk via tick'et.
-- **D1b (blødt loft fra potentialet):** stræk-bonus og tillæg kan aldrig løfte en rytter over hans bløde loft hurtigere end træning kan. De er fart, ikke højde.
+- **D1b (blødt loft fra potentialet):** tillæg og stræk-bonus flytter aldrig det bløde loft. De er fart mod loftet, ikke højde, og jo tættere rytteren er på loftet, jo mindre giver de, præcis som træningen.
 - **#6984 v2:** trætheden er prisen for løbets ekstra udvikling. Sæsonbelastningen gør mange løbsdage dyre, og det er den naturlige bremse på, at D1 har flere løbsdage (§2).
 - **D4 (løbsbremse på tilbagegang):** samme løbsdagstæller.
 - **Variant B (#4632, dagens intention):** lægges senere oven på som modifikator; denne spec lukker den ikke.
@@ -123,7 +124,7 @@ D1 har flere løbsdage med etaper end de lavere divisioner, og kalenderen er lå
 
 - **Navnet** skifter fra Træningsscore til Udviklingsscore samme søndag som løbsudviklingen tændes (låst 20/10). Alle sprog, help.json og patch note i samme PR.
 - **Løbsdagen får et tal på samme skala** (forslag, arkitekt-valg; må udfordres). I dag vises "løb" uden tal. Med del 2 er løbet den bedste udviklingsdag, og uden et tal kan en manager på et lille hold ikke se, at hans løb betaler sig. Løbsdagens score bygges af de samme led som træningsdagens (kondition, talent, træner/facilitet på basis) plus terræn-match, rolle og stræk-bonus. Ingen nye skjulte tal vises: kun scoren og én linje "hvad trak op/ned" (fx "stærkt felt: ekstra udbytte").
-- Scoren driver fortsat udviklingen med den eksisterende kobling (høj score giver lidt mere, samlet tempo uændret).
+- Scoren driver fortsat udviklingen med den eksisterende kobling (høj score giver lidt mere, samlet tempo uændret). **På løbsdagen kobles scoren kun på basis-delen.** Tillæg og stræk-bonus ganges ikke med koblingen, ellers ville trænere og facilitet snige sig ind i det ekstra udbytte igen via scoren og bryde kort 1 A. Vælges kort 1 B, kobles scoren på hele løbsdagen som i dag.
 - Kortet på rytterprofilen viser løbsdage som punkter på kurven i stedet for huller.
 - Ungdomsregler fra 11/10 (skjult potentiale, prognose efter 5 træninger) gælder uændret. Løbsdage tæller ikke som "træninger" til salgsgrænsen (forslag; afgøres i byg-PR'en).
 
@@ -134,8 +135,8 @@ Afspilning af S4's faktiske løbsdage og programmer for alle menneskeholds rytte
 | Gate | Hvad der måles | Krav |
 |---|---|---|
 | G1 Løb slår træning | Udbytte pr. løbsdag mod pr. hård dag, inden for samme rytter, i profil-evnerne | Løbsdag over hård dag (D2) |
-| G2 Doktrin | Rytter-løbsdage hvor catch-up giver mindre end uden catch-up | Nul |
-| G3 Kløft inden for division (aktive hold) | Sæsonudvikling, fattigste mod rigeste tredjedel | Kløften mindre end i baseline; rigeste tredjedel ikke lavere end D2 uden catch-up |
+| G2 Doktrin | Rytter-løbsdage hvor del 2 giver mindre end (a) løbsdagen i dag og (b) en hård træningsdag for samme rytter; og rytter-løbsdage hvor stræk-bonussen er negativ | Nul. Referencen er IKKE "D2 med pengeled på tillægget": kort 1 A fjerner bevidst pengene fra tillægget, så den sammenligning ville fejle per konstruktion |
+| G3 Kløft inden for division (aktive hold) | Sæsonudvikling, fattigste mod rigeste tredjedel | Kløften mindre end i baseline; rigeste tredjedel ikke lavere end i baseline |
 | G4 Kløft mellem divisioner (aktive hold) | Sæsonudvikling D3/D4 mod D1 | Kløften mindre end i baseline |
 | G5 Løbsmængde | Øverste del af løbsdage pr. rytter pr. division, og hvor meget af kløften den forklarer | Rapporteres; over målbåndet → nyt kort |
 | G6 Ingen inflation | Samlet udvikling pr. sæson og milepælene fra D1 | Inden for D1's milepæle |
