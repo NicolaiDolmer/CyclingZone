@@ -83,8 +83,8 @@ export function withFinishSafetyNet<T extends RankedResultRow>(rows: readonly T[
   });
 }
 
-export type BreakawayMarkerIcon = "flag" | "dropped";
-export type BreakawayMarkerTone = "accent" | "muted" | "danger";
+export type BreakawayMarkerIcon = "flag" | "dropped" | "bolt" | "none";
+export type BreakawayMarkerTone = "accent" | "muted" | "danger" | "later";
 export type BreakawayMarkerState = { labelKey: string; muted: boolean; icon: BreakawayMarkerIcon; tone: BreakawayMarkerTone };
 
 /**
@@ -107,4 +107,25 @@ export function participationFlagsForResult(result: ResultMarkerRow, history: St
     breakaway_caught: participation?.caught ? true : participation?.survived ? false : null,
     breakaway_dropped: Boolean(participation?.dropped),
   };
+}
+
+export type BreakawayMarkerKind = "morning" | "later" | "none";
+export type BreakawayMarkerEntry = { kind: BreakawayMarkerKind; icon: BreakawayMarkerIcon; tone: BreakawayMarkerTone; labelKey: string };
+
+/**
+ * #7092: the three readings of a rider's day, each with its own icon SHAPE:
+ * morning break (flag, tone by outcome; dropped = arrow down), later attack
+ * (bolt) and no break involvement (faint minus). "None" is only claimed when
+ * a verified timeline backs it: without one the stored flags cannot tell a
+ * later attacker from a passive rider, so nothing is shown.
+ */
+export function breakawayMarkerEntries(participation: ResultParticipation): BreakawayMarkerEntry[] {
+  const entries: BreakawayMarkerEntry[] = [];
+  if (participation.morning) {
+    const state = breakawayMarkerState(participation);
+    entries.push({ kind: "morning", icon: state.icon, tone: state.tone, labelKey: state.labelKey });
+  }
+  if (participation.laterAttack) entries.push({ kind: "later", icon: "bolt", tone: "later", labelKey: "detail.breakaway.laterAttack" });
+  if (!entries.length && participation.verified) entries.push({ kind: "none", icon: "none", tone: "muted", labelKey: "detail.breakaway.none" });
+  return entries;
 }

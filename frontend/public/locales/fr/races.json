@@ -1706,6 +1706,7 @@
       "dropped": "lâché de l'échappée",
       "participated": "a participé",
       "laterAttack": "Attaque tardive",
+      "none": "Pas dans une échappée",
       "legacyLabel": "Échappée"
     },
     "stageProfile": {

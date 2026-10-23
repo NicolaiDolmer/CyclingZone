@@ -1689,6 +1689,7 @@
       "dropped": "sat af fra udbruddet",
       "participated": "deltog",
       "laterAttack": "Senere angreb",
+      "none": "Ikke i et udbrud",
       "legacyLabel": "Udbrud"
     },
     "stageProfile": {

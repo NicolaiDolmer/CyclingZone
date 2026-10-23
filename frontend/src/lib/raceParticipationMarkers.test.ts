@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { participationForResult, historyForStage, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "./raceParticipationMarkers.ts";
+import { participationForResult, historyForStage, participationFlagsForResult, breakawayMarkerState, breakawayMarkerEntries, withFinishSafetyNet } from "./raceParticipationMarkers.ts";
 import { PENISOLA_STAGE3_EVENTS, PENISOLA_STAGE3_RANKS, PENISOLA_DROPPED, PENISOLA_CAUGHT, STAGE_2349_E1, STAGE_2349_E1_ROWS, STAGE_877_E4, STAGE_877_E4_ROWS } from "../../../backend/lib/raceParticipationHistory.fixtures.ts";
 const timeline = { timeline_version: 2, stage_number: 6, events: [
   { km: 0, type: "stage_start", params: { field_count: 3 } },
@@ -196,4 +196,14 @@ test("#6185 B1 Penisola with the finish order: dropped riders behind a non-escap
   const history = historyForStage(penisola, 3, penisolaIds, rows);
   for (const row of rows.filter((r) => (PENISOLA_DROPPED as readonly string[]).includes(r.rider_id))) assert.equal(labelOf(row, history), "detail.breakaway.dropped", row.rider_id);
   for (const row of rows.filter((r) => (PENISOLA_CAUGHT as readonly string[]).includes(r.rider_id))) assert.equal(labelOf(row, history), "detail.breakaway.caught", row.rider_id);
+});
+
+test("#7092 morning break, later attack and no involvement get three different icons", () => {
+  const history = historyForStage(timeline, 6, ["morning", "attacker", "passive"]);
+  const kinds = (id: string) => breakawayMarkerEntries(participationForResult({ rider_id: id }, history)!).map((e) => `${e.kind}:${e.icon}`);
+  assert.deepEqual(kinds("morning"), ["morning:flag"]);
+  assert.deepEqual(kinds("attacker"), ["later:bolt"]);
+  assert.deepEqual(kinds("passive"), ["none:none"]);
+  // Without a verified timeline "none" is never claimed.
+  assert.deepEqual(breakawayMarkerEntries(participationForResult({ rider_id: "p", in_breakaway: false }, null)!), []);
 });

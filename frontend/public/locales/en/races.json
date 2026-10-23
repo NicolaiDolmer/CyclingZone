@@ -1689,6 +1689,7 @@
       "dropped": "dropped from the break",
       "participated": "participated",
       "laterAttack": "Later attack",
+      "none": "Not in a breakaway",
       "legacyLabel": "Breakaway"
     },
     "stageProfile": {
