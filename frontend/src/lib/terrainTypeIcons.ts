@@ -70,14 +70,14 @@ export const TERRAIN_TYPE_GLYPH: Readonly<Record<string, string>> = Object.freez
 
 /** Vise-typen: `classic` -> `hilly`, ellers uaendret. Ukendt/manglende -> null. */
 export function terrainDisplayType(profileType: string | null | undefined): string | null {
-  if (!profileType || !(profileType in TERRAIN_TYPE_GLYPH)) return null;
+  if (!profileType || !Object.hasOwn(TERRAIN_TYPE_GLYPH, profileType)) return null;
   return TERRAIN_TYPE_GLYPH[profileType];
 }
 
 /** profile_type -> ikon-definition, eller null for ukendt/manglende (vis intet frem for et forkert ikon). */
 export function terrainGlyph(profileType: string | null | undefined): TerrainGlyphDef | null {
   const key = terrainDisplayType(profileType);
-  return key ? TERRAIN_GLYPHS[key] ?? null : null;
+  return key ? TERRAIN_GLYPHS[key] ?? null : null; // nøglen er altid en egen nøgle (hasOwn ovenfor)
 }
 
 /** CSS-farve for en glyf: tokenet i index.css (lyst + moerkt tema). */

@@ -62,7 +62,7 @@ test("rolling er ikke flad, og bjergtyperne er hver sin", () => {
 });
 
 test("ukendt/manglende profile_type giver intet ikon (hellere intet end et forkert)", () => {
-  for (const bad of ["nonsense", "", null, undefined]) {
+  for (const bad of ["nonsense", "", null, undefined, "constructor", "toString", "__proto__"]) {
     assert.equal(terrainGlyph(bad), null);
     assert.equal(terrainDisplayType(bad), null);
   }
