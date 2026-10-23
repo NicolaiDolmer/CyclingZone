@@ -89,6 +89,91 @@ export const PATCHES = [
         "refs": [
           6698
         ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "One icon per stage type, everywhere",
+          "body": "Every stage type now has its own coloured icon, the same on the calendar, the race page, planning and team selection. The colour shows how hard the terrain is, and the name is always there when you hover or tap."
+        },
+        "da": {
+          "title": "Ét ikon pr. etapetype, overalt",
+          "body": "Hver etapetype har nu sit eget farvede ikon, det samme i kalenderen, på løbssiden, i planlægningen og i holdudtagelsen. Farven viser hvor hårdt terrænet er, og navnet står der altid, når du holder musen over eller trykker."
+        },
+        "refs": [
+          6683
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Top 5 after a stage on desktop",
+          "body": "After a stage has been ridden, \"Your day\" now shows the top 5 on desktop. Mobile keeps the top 3."
+        },
+        "da": {
+          "title": "Top 5 efter en etape på computer",
+          "body": "Efter en kørt etape viser \"Din dag\" nu top 5 på computer. Mobil beholder top 3."
+        },
+        "refs": [
+          6570
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "A clear notice when races are paused",
+          "body": "When races are paused, the race page and your dashboard now say so."
+        },
+        "da": {
+          "title": "Tydelig besked når løbene er sat på pause",
+          "body": "Når løbene er sat på pause, står det nu på løbssiden og på dit dashboard."
+        },
+        "refs": [
+          6970
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Race film for one-day races",
+          "body": "One-day races now get \"The story of the stage\" and the race film on the results tab, like stage races already had."
+        },
+        "da": {
+          "title": "Løbsfilm til endagsløb",
+          "body": "Endagsløb får nu \"The story of the stage\" og løbsfilmen på resultatfanen, som etapeløb allerede havde."
+        },
+        "refs": [
+          6512
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "CZ Pro",
+        "en": {
+          "title": "CZ Pro: season history and saved filters",
+          "body": "With CZ Pro you can follow a rider's development across seasons on the Development tab and save your searches in the rider database. The new /pro page shows both with example data. Founder status stays as a badge; the Pro features need an active CZ Pro subscription."
+        },
+        "da": {
+          "title": "CZ Pro: sæsonhistorik og gemte filtre",
+          "body": "Med CZ Pro kan du følge en rytters udvikling på tværs af sæsoner på Udvikling-fanen og gemme dine søgninger i rytterdatabasen. Den nye /pro-side viser begge med eksempeldata. Founder-status bliver som mærke; Pro-funktionerne kræver et aktivt CZ Pro-abonnement."
+        },
+        "refs": [
+          2806
+        ]
       }
     ]
   },
