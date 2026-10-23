@@ -17,16 +17,14 @@ Stock-Firefox kan ikke styres af Playwright (kraever Playwrights patchede build,
 ## Fix (opdateret 23/10, PR #7060)
 **17/10:** ingen kodeændring; årsagen var ikke fastslået.
 
-**22-23/10, ny evidens:** et andet event (CYCLINGZONE-AD) med **samme top-frame** (looksLikeObjectPath i i18next, .test(key)), men en anden spiller, en anden side (dashboard, komponent DashboardPage) og et andet sprog (da-DK). Begge Firefox 158 på Windows. Det udelukker løbssiden og zh-locale som årsag og peger på Firefox 158's regex-motor, som sporadisk kaster fra netop den regex-test, der køres på hvert 	()-kald.
+**22-23/10, ny evidens:** et andet event (CYCLINGZONE-AD) med **samme top-frame** (`looksLikeObjectPath` i i18next, `r.test(key)`), men en anden spiller, en anden side (dashboard, komponent `DashboardPage`) og et andet sprog (`da-DK`). Begge Firefox 158 på Windows. Det udelukker løbssiden og zh-locale som årsag og peger på Firefox 158's regex-motor, som sporadisk kaster fra netop den regex-test, der køres på hvert `t()`-kald.
 
-**Rettelse:** rontend/src/i18n/index.js sætter 
-sSeparator: ":" og keySeparator: "." eksplicit (i18nexts egne standardværdier). Med eksplicitte separatorer springer i18next heuristikken looksLikeObjectPath over, så den regex aldrig køres. Opslag er uændrede (alle nøgler er 
-s:sti.nøgle; ingen naturligt-sprog-nøgler med mellemrum eller kolon). Regressionstest rontend/src/lib/raceRecursion6698.test.ts: lader netop den regex kaste; uden rettelsen dør 	(), med den ikke; opslag er identiske med og uden separatorerne.
+**Rettelse:** `frontend/src/i18n/index.js` sætter `nsSeparator: ":"` og `keySeparator: "."` eksplicit (i18nexts egne standardværdier). Med eksplicitte separatorer springer i18next heuristikken `looksLikeObjectPath` over, så den regex aldrig køres. Opslag er uændrede (alle nøgler er `ns:sti.nøgle`; ingen naturligt-sprog-nøgler med mellemrum eller kolon). Regressionstest `frontend/src/lib/raceRecursion6698.test.ts`: lader netop den regex kaste; uden rettelsen dør `t()`, med den ikke; opslag er identiske med og uden separatorerne.
 
 **Begrænsning:** ikke reproduceret i rigtig Firefox 158 (Playwright har intet firefox-projekt her). Rettelsen bygger på stakken fra to events og en simuleret regex-fejl. Verifikation efter merge: nye "too much recursion"-events i Sentry fra Firefox skal forsvinde; dukker de op med en anden top-frame, åbnes sporet igen.
 
 ## Forhindret-fremover
-Kommer der nye 	oo much recursion-events efter #7060, undersøges top-framen: er det en anden native funktion (regex, JSON, ICU), er det samme miljø-mønster. Forslaget om at nedgradere en React-recoverable 	oo much recursion i sentry.jsx eforeSend (som chunk-fejl #4545 og netværksfejl #5312) står stadig åbent.
+Kommer der nye `too much recursion`-events efter #7060, undersøges top-framen: er det en anden native funktion (regex, JSON, ICU), er det samme miljø-mønster. Forslaget om at nedgradere en React-recoverable `too much recursion` i `sentry.jsx` `beforeSend` (som chunk-fejl #4545 og netværksfejl #5312) står stadig åbent.
 
 ## Læring
 `too much recursion` i et Sentry-event er ikke automatisk et rekursions-bug, men en frisk reproduktion udelukker heller ikke en fejl der kraever lang levetid. Tjek stak-DYBDEN foer du leder efter loops: en kort stak med en native funktion (regex, JSON, ICU) i toppen er et miljoe-signal. Og hvis React selv skriver "was able to recover", er brugeren ikke blevet ramt af et crash.
