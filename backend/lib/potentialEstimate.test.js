@@ -107,6 +107,14 @@ test("bedre scout giver mindre usikkerhed; ordet bliver aldrig mindre sikkert", 
   }
 });
 
+test("scoutens niveau sætter loftet for sikkerheden (K2): svag scout giver aldrig Sikker", () => {
+  const P = { ...PARAMS, scout: { ...PARAMS.scout, minUByTier: [3.5, 3.5, 1, 1, 1] } };
+  for (const tier of [1, 2]) {
+    for (const looks of [1, 2, 3]) assert.notEqual(certaintyWord(uncertaintyFor(scoutKnow(looks, tier), P), P), "sure");
+  }
+  assert.equal(certaintyWord(uncertaintyFor(scoutKnow(3, 3), P), P), "sure");
+});
+
 test("usikkerheden går aldrig under minU (kan altid ramme lidt ved siden af)", () => {
   assert.equal(uncertaintyFor({ own: true, trainingDates: 500, staffSpeed: 10 }, PARAMS), 2);
   assert.ok(uncertaintyFor(scoutKnow(3, 5), PARAMS) >= PARAMS.minU);

@@ -54,11 +54,23 @@ if (process.env.FIT_LOFT === "1") {
   params.loft = loftFit.params;
 }
 const loftParams = params.loft ?? null;
+// K3b (ejer 23/10): ryttere, der allerede er over deres loft, får et personligt
+// loft lidt over deres rating, så ingen manager ser en "færdig" rytter.
+const personalMargin = params.personalLoftMargin ?? null;
+let personalLofts = 0;
 const truePotOf = (id) => {
   const g = remapById.get(id)?.newPot99;
   if (g == null) return null;
-  return loftParams ? Math.round(ratingLoft(g, loftParams)) : g;
+  if (!loftParams) return g;
+  const base = Math.round(ratingLoft(g, loftParams));
+  const rating = riderById.get(id)?.rating;
+  if (personalMargin != null && rating != null && rating >= base) return Math.min(99, rating + personalMargin);
+  return base;
 };
+for (const r of riders) {
+  const g = remapById.get(r.id)?.newPot99;
+  if (g != null && loftParams && personalMargin != null && r.team_id && r.rating != null && r.rating >= Math.round(ratingLoft(g, loftParams))) personalLofts++;
+}
 
 // Stab fremskynder egen viden (samme idé som akademiets kendskabstrin #6666).
 const staffSpeed = (k) => ((k.coachTier ?? 0) + (k.facilityTier ?? 0)) / 10;
@@ -189,7 +201,7 @@ const out = {
   params_file: path.basename(PARAMS),
   remap_rank_violations: rankViolations.length,
   loft: loftParams
-    ? { params: loftParams, fitted: !!loftFit, owned_share_over_loft: Math.round(1000 * shareOverLoft(ownedRows, loftParams)) / 10 }
+    ? { params: loftParams, fitted: !!loftFit, owned_share_over_loft: Math.round(1000 * shareOverLoft(ownedRows, loftParams)) / 10, owned_personal_lofts: personalLofts }
     : null,
   h1_precision_by_word: h1,
   h2_unstable_pairs: unstable,
@@ -210,7 +222,7 @@ const md = [
   `Snapshot: ${meta.measured_at_utc ?? "ukendt"} · params: ${path.basename(PARAMS)} · kørt ${out.generated_at}`,
   "",
   loftParams
-    ? `Sandt tal = blødt loft i naturlig rolle (ratingskala)${loftFit ? ", fittet" : ""}: ${JSON.stringify(loftParams)} · ejede over loftet: ${pct(out.loft.owned_share_over_loft)}`
+    ? `Sandt tal = blødt loft i naturlig rolle (ratingskala)${loftFit ? ", fittet" : ""}: ${JSON.stringify(loftParams)} · ejede over loftet: ${pct(out.loft.owned_share_over_loft)} · personlige lofter: ${out.loft.owned_personal_lofts}`
     : "Sandt tal = talent-tal fra remappen (ikke ratingskala).",
   "",
   "## H1 præcision pr. ord (virkelig viden i prod)",

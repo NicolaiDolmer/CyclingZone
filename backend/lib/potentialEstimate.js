@@ -59,7 +59,10 @@ export function knowledgeLevel(knowledge, params) {
   if (looks <= 0) return null;
   const tier = Math.min(5, Math.max(1, Number(k.bestScoutTier) || params.scout.defaultTier));
   const u = params.scout.uByLooks[looks - 1] * params.scout.tierFactor[tier - 1];
-  return { key: `s${looks}t${tier}`, u: Math.max(params.minU, u) };
+  // K2 (ejer 23/10): scoutens niveau sætter loftet for sikkerheden. En svag scout
+  // kan aldrig bringe usikkerheden ned i "Sikker", uanset antal kig.
+  const tierFloor = params.scout.minUByTier?.[tier - 1] ?? params.minU;
+  return { key: `s${looks}t${tier}`, u: Math.max(params.minU, tierFloor, u) };
 }
 
 export function uncertaintyFor(knowledge, params) {
