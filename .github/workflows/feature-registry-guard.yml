@@ -32,7 +32,7 @@ jobs:
     if: github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
       - name: Husk registret hvis PR'en roerer sider/routes uden registret
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const MARKER = '<!-- feature-registry-guard -->';

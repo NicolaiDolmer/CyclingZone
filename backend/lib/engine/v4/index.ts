@@ -239,7 +239,9 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   if (input.route.profile_type === "ttt") {
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) {
-      return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning), trace: TIME_TRIAL_TRACE };
+      // #7008 (KUN s5_profiles_v2): intet uheld lige efter starten.
+      const tttOptions = isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {};
+      return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning, tttOptions), trace: TIME_TRIAL_TRACE };
     }
   }
 

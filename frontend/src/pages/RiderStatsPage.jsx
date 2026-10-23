@@ -90,7 +90,7 @@ async function fetchAllRiderSeasonRows(riderId) {
     const { data, error } = await supabase
       .from("race_results")
       .select(`rank, prize_money, points_earned, result_type, stage_number, team_name,
-        race:race_id(id, name, race_type, race_class, stages, status, scheduled_for,
+        race:race_id(id, name, race_type, race_class, stages, status, scheduled_for, squad,
           season:season_id(number), pool:pool_race_id(terrain_archetype))`)
       .eq("rider_id", riderId)
       .order("id", { ascending: true })

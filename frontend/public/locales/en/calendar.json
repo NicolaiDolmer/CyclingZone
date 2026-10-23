@@ -52,13 +52,7 @@
   },
   "today": "Today",
   "legend": {
-    "title": "Terrain",
-    "sprint": "Sprint",
-    "cobbles": "Cobbles",
-    "hilly": "Hilly",
-    "mountain": "Mountain",
-    "itt": "Time trial",
-    "ttt": "Team time trial"
+    "title": "Terrain"
   },
   "terrain": {
     "sprint": "Sprint",

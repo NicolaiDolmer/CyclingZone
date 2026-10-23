@@ -52,11 +52,11 @@ export interface TeamFit { score: number; best: { id: string; name: string; scor
 // højst 3, den hårdeste først (bjerg, enkeltstart, brosten, kuperet, sprint).
 // Antallet står kun i tooltip. "Type" er kalenderens egne kategorier
 // (calendar.json terrain.*), så kort, kalenderchip og legende taler samme sprog.
-// #6683 skifter ikonerne ud i TerrainTypeGlyph, ét sted for alle.
+// #6683: ikonerne er farvede streg-ikon i TerrainTypeGlyph, ét sted for alle.
 export const TERRAIN_KINDS: readonly TerrainKind[] = ["mountain", "itt", "ttt", "cobbles", "hilly", "sprint"];
 
 // profile_type → kalender-kategori. Ukendt type → sprint (samme fallback som
-// lib/terrainBucket.ts's toTerrainBucket).
+// backend/lib/raceCalendar.js's calendarTerrainBucket).
 const KIND_BY_PROFILE: Readonly<Record<string, TerrainKind>> = {
   high_mountain: "mountain",
   mountain: "mountain",

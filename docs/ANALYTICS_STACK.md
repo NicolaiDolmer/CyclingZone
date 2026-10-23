@@ -154,7 +154,7 @@ Kolonnen "Kendt" = står i `KNOWN_EVENTS` (og er dermed canary-overvåget). Volu
 | `academy_reject` | ja | `useAcademy.js:122` | Akademirytter afvist |
 | `academy_graduate` | ja | `useAcademy.js:142` | Rytter dimitteret fra akademiet |
 | `academy_promote` | ja | `useAcademy.js:162` | Rytter rykket op |
-| `academy_intake_pull` | ja | `useAcademy.js:180` | Nyt akademi-hold trukket. **0 events i prod**: featuren er dormant bag flaget `academy_intake_pull_enabled`, så eventet står i `WHITELIST_ZERO_IMPRESSION_EVENTS` |
+| `academy_intake_pull` | ja | `useAcademy.js:180` | Nyt akademi-hold trukket. Flyder i prod (verificeret 22/10), overvåges normalt af Detector E |
 | `academy_demote` | ja | `useAcademy.js:200` | Rytter rykket ned |
 | `academy_release` | ja | `useAcademy.js:239` | Rytter frigivet |
 | `facility_upgrade` | ja | `useFacilities.js:45` | Facilitet opgraderet, bærer `{track, tier}` |
@@ -310,7 +310,7 @@ Alt herunder er noget der **aktivt gør et tal forkert i dag**. Læs listen før
 | 8 | **`users.browser_language` er næsten tom** | ✅ målt 8/9: 4 af 263 rækker udfyldt. Kolonnen kom 3/9 og skrives KUN af `handle_new_user()` ved nye signups | 📄 [#4811](https://github.com/NicolaiDolmer/CyclingZone/issues/4811). Konsistent med kolonnens alder, ikke nødvendigvis en fejl. Sprogfordeling for eksisterende brugere skal tages fra `users.language`, ikke herfra |
 | 9 | **Sprint-metrics-snapshottet kører ikke** | `.github/workflows/sprint-metrics-snapshot.yml.disabled`. Der findes ingen automatisk historik på DAU/WAU/MAU ud over `growth_metric_snapshots` | 📄 bevidst deaktiveret. `backend/scripts/snapshot-sprint-metrics.mjs` findes og kan køres manuelt |
 | 10 | **PostHog-projektet er tomt** | 0 events nogensinde. Ethvert PostHog-tal er indtil videre ikke-eksisterende, ikke lavt | ❓ SDK'et er wiret (variant A, §1a); ingestion starter først når `VITE_POSTHOG_KEY` er sat i Vercel ([#4321](https://github.com/NicolaiDolmer/CyclingZone/issues/4321)) |
-| 11 | ~~16 events er canary-blinde~~ **lukket 18/9** | De fyrede i prod, men stod ikke i `KNOWN_EVENTS`, så Detector E ville ikke opdage at de tørrede ud | ✅ Alle 16 tilføjet i [#5369](https://github.com/NicolaiDolmer/CyclingZone/issues/5369). 15 flyder (8 til 3.502 pr. 30 dage, målt mod prod 18/9); `academy_intake_pull` er dormant bag flag og whitelistet i Detector E. Guarden FEJLER nu på et nyt canary-blindt event |
+| 11 | ~~16 events er canary-blinde~~ **lukket 18/9** | De fyrede i prod, men stod ikke i `KNOWN_EVENTS`, så Detector E ville ikke opdage at de tørrede ud | ✅ Alle 16 tilføjet i [#5369](https://github.com/NicolaiDolmer/CyclingZone/issues/5369). 15 flyder (8 til 3.502 pr. 30 dage, målt mod prod 18/9); `academy_intake_pull` flyder nu og er ikke længere whitelistet (22/10). Guarden FEJLER nu på et nyt canary-blindt event |
 | 12 | **First-touch tabt på marketing-forsiden fra 14/9** | Signups via marketing-forsiden fik vores egen side som referrer og ingen UTM. Den eksterne referrer er tabt for de rækker | 🔧 [#5310](https://github.com/NicolaiDolmer/CyclingZone/issues/5310): skrive-siden rettet, læse-siden udleder UTM fra referrerens query eller viser "ukendt (tabt i marketing)". Ingen backfill. Se `docs/GROWTH_STACK.md` §3.5 |
 
 ## 7. Adgang og scripts

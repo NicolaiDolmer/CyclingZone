@@ -70,6 +70,8 @@ import { DESCENT_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING, WEATHER_EXTRA_TUNING } fr
 import {
   addIncidentChaser,
   hasHelperNearby,
+  incidentKmAt,
+  incidentKmSpan,
   maxIncidentsForField,
   resolveCrashIncident,
   threeKmRuleApplies,
@@ -522,8 +524,11 @@ export const descentHook: DescentHook = (
   // ETAPE, ikke pr. gruppe.
   const loggedIncidents: StageIncident[] = state.stage_incidents ?? [];
   const newIncidents: StageIncident[] = [];
-  let incidentBudget = maxIncidentsForField(Object.keys(state.riders).length, INCIDENTS_EXTRA_TUNING)
-    - loggedIncidents.length;
+  // #7008 (KUN s5_profiles_v2): intet styrt lige efter starten (incidentKmSpan).
+  const incidentSpan = incidentKmSpan(segment, ctx.s5ProfilesV2 === true);
+  let incidentBudget = incidentSpan
+    ? maxIncidentsForField(Object.keys(state.riders).length, INCIDENTS_EXTRA_TUNING) - loggedIncidents.length
+    : 0;
 
   const gapBeforeById = new Map(state.groups.map((g) => [g.id, g.gap_seconds]));
   let changed = groups.some((g) => gapBeforeById.get(g.id) !== g.gap_seconds);
@@ -621,8 +626,7 @@ export const descentHook: DescentHook = (
       const p = incidentProbability(attacker.descending, weatherAdjustedDescentTuning);
       const roll = rng();
       if (roll >= p) continue;
-      const kmFrac = rng();
-      const incidentKm = round2(segment.from_km + kmFrac * (segment.to_km - segment.from_km));
+      const incidentKm = incidentKmAt(incidentSpan!, rng());
       const riderState = riders[attacker.riderId];
       if (!riderState) continue;
 

@@ -478,16 +478,9 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // Udløb: fjern entryen den dag eventet fjernes fra KNOWN_EVENTS, eller den dag
   // HoF-fladen får en rigtig route igen (så flager forward-guarden den selv).
   "feature_hall_of_fame_opened",
-  // feature_board_meeting_opened + board_meeting_signed: instrumenteringen
-  // landede 3/9 (commit b0373c0a2, #4557 S-M2d), ALTSÅ EFTER at S3 startede
-  // 23/8. Årsmødet er et sæsonskifte-vindue: `feature_board_meeting_opened`
-  // fyrer kun når `meeting.mandate` findes ved mount, og board_meeting_signed
-  // kun når mødet underskrives. S3's vindue var lukket før koden var i prod, så
-  // 0 impressions er den forventede tilstand — ikke en død flade.
-  // Udløb: fjern BEGGE entries efter det første sæsonskifte efter 3/9 (S3→S4).
-  // Er de stadig 0 dér, er det et ægte fund, og det skal flages.
-  "feature_board_meeting_opened",
-  "board_meeting_signed",
+  // feature_board_meeting_opened + board_meeting_signed fjernet 22/10: årsmødet
+  // har været åbnet siden (impressions i 30-dages-vinduet, fundet af forward-
+  // guarden nedenfor), så Detector E overvåger dem normalt igen.
   // feature_board_consequences_panel_viewed: panelet rendrer kun for et hold der
   // BÅDE åbner Bestyrelse-siden OG har en aktiv konsekvens i lag 2-5
   // (BoardPage.jsx: `visible.length > 0`). Prod 11/9: 63 aktive lag 2-5-rækker
@@ -498,15 +491,8 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // Udløb: genvurdér ved næste telemetri-gennemgang, og fjern entryen så snart
   // eventet får impressions — forward-guarden nedenfor flager den selv dér.
   "feature_board_consequences_panel_viewed",
-  // academy_intake_pull (#5369): kom med i KNOWN_EVENTS 18/9 sammen med de 15
-  // andre canary-blinde events. De 15 flyder (8 til 3.502 impressions i
-  // 30-dages-vinduet, målt mod prod 18/9); denne står på 0 fordi featuren er
-  // dormant: POST /academy/intake/pull er gated af flaget
-  // academy_intake_pull_enabled (FEATURE_REGISTRY.yml, state: dormant), så
-  // knappen findes ikke for spillerne og eventet KAN ikke fyre.
-  // Udløb: fjern entryen når flaget flippes — forward-guarden flager den selv
-  // ved første impression.
-  "academy_intake_pull",
+  // academy_intake_pull (#5369) fjernet 22/10: eventet flyder nu (impressions i
+  // 30-dages-vinduet), så forward-guarden flagede entryen som stale.
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo

@@ -648,7 +648,9 @@
     "riderInjured": {
       "title": "Renner geblesseerd",
       "message": "{rider} viel in {race} en is geblesseerd tot {until}.",
-      "messageMissed": "{rider} viel in {race} en is geblesseerd tot {until}. Hij rijdt {missed} niet."
+      "messageMissed": "{rider} viel in {race} en is geblesseerd tot {until}. Hij rijdt {missed} niet.",
+      "messageFinished": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until}.",
+      "messageFinishedMissed": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until} en rijdt {missed} niet."
     },
     "teamDidNotStart": {
       "title": "Je team is niet gestart",

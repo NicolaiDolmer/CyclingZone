@@ -6,6 +6,17 @@ import path from 'node:path';
 import { runWave, childArgs } from './codex-wave.mjs';
 import * as runner from './codex-wave.mjs';
 import { hostLaneCap } from './wave-capacity.mjs';
+import { generateBrief } from './make-wave-brief.mjs';
+
+test('#7027: writer brief uses the PowerShell guard with fail-closed commit ordering', () => {
+  const brief = generateBrief({ ...tracks[0], slug: 'guard-fixture', scopeText: 'Fixture',
+    repoWorktreesRoot: 'C:/Work trees', scratchRoot: 'C:/Scratch' });
+  const rendered = runner.writerBrief(brief);
+  assert.ok(brief.includes('bash "C:/Work trees\\guard-fixture/scripts/guard-commit-branch.sh"'));
+  assert.ok(rendered.includes('pwsh -File "C:/Work trees\\guard-fixture/scripts/guard-commit-branch.ps1" "codex/1-fixture" "C:/Work trees\\guard-fixture"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git -C "C:/Work trees\\guard-fixture" commit -F'));
+  assert.doesNotMatch(rendered, /bash [^\r\n]*guard-commit-branch[.]sh/);
+  assert.ok(rendered.includes('Blokerer guarden: STOP'));
+});
 
 const localAppData = 'C:\\Users\\Fixture\\AppData\\Local';
 const appCli = `${localAppData}\\OpenAI\\Codex\\bin\\current\\codex.exe`;
@@ -302,6 +313,24 @@ test('writer and reviewer invocation preserve selected cwd and distinct sandbox 
   assert.ok(childArgs('reviewer', t, 'schema', 'out').includes('read-only'));
   assert.ok(childArgs('reviewer', t, 'schema', 'out').includes(t.worktree));
   assert.equal(childArgs('worker', t, 'schema', 'out').includes('--dangerously-bypass-approvals-and-sandbox'), false);
+});
+
+test('#7027: writers and investigate tracks get network; reviewers stay offline', () => {
+  const t = { worktree: '/fixture', scratch: '/scratch' };
+  for (const role of ['worker', 'fixer', 'permission-probe']) {
+    assert.ok(childArgs(role, t, 'schema', 'out').includes('sandbox_workspace_write.network_access=true'));
+  }
+  const investigate = childArgs('worker', { ...t, kind: 'investigate' }, 'schema', 'out');
+  assert.ok(investigate.includes('sandbox_workspace_write.network_access=true'));
+  assert.equal(investigate[investigate.indexOf('--sandbox') + 1], 'workspace-write');
+  assert.ok(investigate.includes('/scratch'));
+  assert.equal(childArgs('reviewer', t, 'schema', 'out').includes('sandbox_workspace_write.network_access=true'), false);
+});
+
+test('#7027: writers escalate git writes per command and never loosen the sandbox', () => {
+  assert.match(runner.WRITER_GIT_RULE, /command-only escalation/);
+  assert.match(runner.WRITER_GIT_RULE, /never disable the sandbox, add writable directories or change config/);
+  for (const op of ['fetch', 'rebase', 'commit', 'push']) assert.ok(runner.WRITER_GIT_RULE.includes(op));
 });
 
 test('Codex child receives explicit runtime even with a Claude parent and no Codex session variables', async () => {

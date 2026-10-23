@@ -429,7 +429,7 @@ export function poolRetirement(squadPlan) {
   };
 }
 
-async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
+async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp, retiredAt }) {
   const { squad, poolsToCreate, updates } = squadPlan;
   const col = fkColumn(squad);
 
@@ -465,17 +465,62 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     if (!byTarget.has(key)) byTarget.set(key, { target, ids: [] });
     byTarget.get(key).ids.push(u.teamId);
   }
-  for (const { target, ids: teamIds } of byTarget.values()) {
-    const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
-    if (error) throw new Error(`teams.${col} update: ${error.message}`);
-  }
-  if (reviveIds.length) {
-    const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
-    if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
-  }
-  if (retireIds.length) {
-    const { error } = await supabase.from("league_divisions").update({ retired_at: new Date().toISOString() }).in("id", retireIds);
-    if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
+  // #6667 (Codex P2): genåbn og luk puljerne FØR holdene flyttes. Tilmelding og
+  // comeback vælger kun puljer uden retired_at, så en samtidig tilmelding kan ikke
+  // lande i en pulje der er ved at blive tømt. Rest-vindue: en tilmelding mellem
+  // loadState og retire-skrivningen (sekunder) er ikke i planen; efter-tjekket
+  // nedenfor fanger den, så ejeren kan køre regroup igen.
+  try {
+    if (reviveIds.length) {
+      const { error } = await supabase.from("league_divisions").update({ retired_at: null }).in("id", reviveIds);
+      if (error) throw new Error(`league_divisions revive (${squad}): ${error.message}`);
+    }
+    if (retireIds.length) {
+      if (!retiredAt) throw new Error("applySquadPlan: retiredAt mangler (indsprøjtet tidspunkt for lukning)");
+      const { error } = await supabase.from("league_divisions").update({ retired_at: retiredAt }).in("id", retireIds);
+      if (error) throw new Error(`league_divisions retire (${squad}): ${error.message}`);
+    }
+    for (const { target, ids: teamIds } of byTarget.values()) {
+      const { error } = await supabase.from("teams").update({ [col]: target }).in("id", teamIds);
+      if (error) throw new Error(`teams.${col} update: ${error.message}`);
+    }
+  } catch (err) {
+    // Best-effort: stil puljerne tilbage (både genåbnede og lukkede), så
+    // kataloget aldrig står halvt skrevet, og ingen hold sidder fast i en lukket
+    // gruppe uden løb (AI-pensioneringens trigger afviser dem).
+    // Hold først (fra snapshottet taget før første skrivning), så ingen hold står
+    // i en pulje, der lige nedenfor lukkes igen.
+    const unrestoredTeams = [];
+    const beforeByValue = new Map();
+    for (const t of before) {
+      const key = t[col] == null ? "null" : String(t[col]);
+      if (!beforeByValue.has(key)) beforeByValue.set(key, { value: t[col] ?? null, ids: [] });
+      beforeByValue.get(key).ids.push(t.id);
+    }
+    for (const { value, ids: teamIds } of beforeByValue.values()) {
+      try {
+        const { error: teamErr } = await supabase.from("teams").update({ [col]: value }).in("id", teamIds);
+        if (teamErr) unrestoredTeams.push(...teamIds);
+      } catch {
+        unrestoredTeams.push(...teamIds);
+      }
+    }
+    const unrestored = [];
+    for (const p of poolsBefore) {
+      try {
+        const { error: rollbackErr } = await supabase.from("league_divisions").update({ retired_at: p.retired_at }).eq("id", p.id);
+        if (rollbackErr) unrestored.push(p.id);
+      } catch {
+        unrestored.push(p.id);
+      }
+    }
+    const teamState = unrestoredTeams.length
+      ? `ADVARSEL: ${unrestoredTeams.length} hold kunne IKKE flyttes tilbage`
+      : "Holdene er flyttet tilbage";
+    const poolState = unrestored.length
+      ? `ADVARSEL: retired_at kunne IKKE sættes tilbage for pulje(r) ${unrestored.join(", ")}; ret dem fra restore-filen før næste kørsel`
+      : "Puljernes retired_at er sat tilbage";
+    throw new Error(`${err.message}. ${teamState}. ${poolState}. Kør regroup igen, eller gendan fra ${relative(REPO_ROOT, restorePath)}.`, { cause: err });
   }
 
   const after = ids.length
@@ -483,7 +528,14 @@ async function applySquadPlan(supabase, squadPlan, { internalsDir, stamp }) {
     : [];
   const afterById = new Map(after.map((t) => [t.id, t[col]]));
   const wrong = updates.filter((u) => afterById.get(u.teamId) !== (u.poolIndex == null ? null : poolIdByIndex.get(u.poolIndex)));
-  return { written: updates.length, wrong: wrong.length };
+  // Efter-tjek (#6667): ingen hold må stå i en pulje, regroup lige har lukket.
+  let strandedInRetired = 0;
+  if (retireIds.length) {
+    const { data: stranded, error: strandedErr } = await supabase.from("teams").select("id").in(col, retireIds);
+    if (strandedErr) throw new Error(`teams.${col} efter-tjek: ${strandedErr.message}`);
+    strandedInRetired = (stranded || []).length;
+  }
+  return { written: updates.length, wrong: wrong.length, strandedInRetired };
 }
 
 export async function main(argv = process.argv.slice(2)) {
@@ -550,9 +602,10 @@ export async function main(argv = process.argv.slice(2)) {
   let failed = 0;
   for (const sp of squadPlans) {
     console.log(`APPLY ${sp.squad} (${sp.mode}): ${sp.poolsToCreate.length} grupper oprettes, ${sp.updates.length} hold opdateres`);
-    const { written, wrong } = await applySquadPlan(supabase, sp, { internalsDir, stamp });
-    console.log(`  skrevet ${written}, forkerte efter tilbagelæsning: ${wrong}`);
-    failed += wrong;
+    const { written, wrong, strandedInRetired } = await applySquadPlan(supabase, sp, { internalsDir, stamp, retiredAt: generatedAt });
+    console.log(`  skrevet ${written}, forkerte efter tilbagelæsning: ${wrong}, hold i lukkede grupper: ${strandedInRetired}`);
+    if (strandedInRetired > 0) console.log("  STOP: hold står i en lukket gruppe (formentlig tilmeldt under kørslen). Kør regroup igen.");
+    failed += wrong + strandedInRetired;
   }
   return failed > 0 ? 1 : 0;
 }
