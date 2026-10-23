@@ -96,6 +96,8 @@ function createMockSupabase(state, opts = {}) {
         const rows = result.data ?? [];
         return { data: rows[0] ?? null, error: result.error };
       },
+      // #7086: notifyTeamOwner slaar holdets ejer op med .single().
+      async single() { return obj.maybeSingle(); },
       update(p) { return builder(table, "update", filters, p, inList); },
       delete() {
         return builder(table, "delete", filters, patch, inList);
@@ -2226,6 +2228,56 @@ test("#5462 (flag off): BIT-IDENTISK — kalenderdato, og ingen af de tre loebsd
   for (const kolonne of ["injury_end_game_day", "injury_season_id", "injury_race_days_left"]) {
     assert.ok(!(kolonne in cond), `${kolonne} maa ikke findes i payloaden naar flaget er off`);
   }
+});
+
+test("#7086: en ny traeningsskade giver ÉN indbakkebesked til ejeren, aldrig igen ved genkoersel", async () => {
+  const { id, days } = findInjuringRider("2026-06-12");
+  const state = seedInjuryRider(id);
+  seedRaceDayTick(state, { gameDay: 12, value: "off" });
+  seedInjuryCalendar(state);
+  state.teams = [{ id: TEAM_ID, user_id: "user-owner" }];
+
+  const first = await runDay(state);
+  const again = await runDay(state);
+
+  assert.equal(first.alreadyRan, false);
+  assert.equal(again.alreadyRan, true, "reservationen stopper genkoerslen");
+  assert.equal(state.notifications.length, 1, "én besked, ingen ved genkoersel");
+  const n = state.notifications[0];
+  const until = new Date(Date.UTC(2026, 5, 12 + days)).toISOString().slice(0, 10);
+  assert.equal(n.user_id, "user-owner");
+  assert.equal(n.type, "selection_warning");
+  assert.equal(n.related_id, id);
+  assert.equal(n.metadata.messageCode, "notif.riderInjured.messageTraining");
+  assert.equal(n.metadata.riderId, id);
+  assert.equal(n.message, `Test Rytter was injured in training and is out until ${Number(until.slice(8))}/${Number(until.slice(5, 7))}.`);
+});
+
+test("#7086 (dato-modellen): skaden afregnes paa datoens sidste loebsdag og giver ÉN besked, ogsaa ved genkoersel", async () => {
+  const risk = injuryRisk({ intensity: 'hard', fatigue: 99 });
+  const riderId = Array.from({ length: 1000 }, (_, i) => `injury-date-${i}`).find((rid) => rollInjury({ riderId: rid, dateStr: '2026-06-12', risk }).injured);
+  const state = seedState({ riders: [makeRider({ id: riderId })], abilities: [makeAbilityRow(riderId)], conditions: [makeCondition(riderId, { fatigue: 99 })], plans: [{ rider_id: riderId, team_id: TEAM_ID, season_id: SEASON_ID, focus: 'climbing', intensity: 'hard' }] });
+  seedRaceDayTick(state, { gameDay: 1 });
+  state.app_config.push({ key: 'training_condition_per_date', value: 'on' });
+  state.teams = [{ id: TEAM_ID, user_id: "user-owner" }];
+  let notificationInserts = 0;
+  const base = createMockSupabase(state);
+  const supabase = { ...base, from(table) { const b = base.from(table); if (table !== "notifications") return b; return { ...b, select: b.select, insert: (row) => { notificationInserts += 1; return b.insert(row); } }; } };
+  for (const gameDay of [1, 2, 3, 4]) await runDay(state, { gameDay, dateGameDays: [1, 2, 3, 4, 5], seasonNumber: 4, supabase });
+  assert.equal(notificationInserts, 0, "ingen besked foer datoen er afregnet");
+  await runDay(state, { gameDay: 5, dateGameDays: [1, 2, 3, 4, 5], seasonNumber: 4, supabase });
+  assert.equal(notificationInserts, 1);
+  assert.equal(state.notifications[0].related_id, riderId);
+  const again = await runDay(state, { gameDay: 5, dateGameDays: [1, 2, 3, 4, 5], seasonNumber: 4, supabase });
+  assert.equal(again.alreadyRan, true);
+  assert.equal(notificationInserts, 1, "genkoerslen proever ikke engang at sende igen");
+});
+
+test("#7086: en igangvaerende skade giver ingen besked", async () => {
+  const state = seedState({ conditions: [makeCondition("r1", { fatigue: 30, injured_until: "2026-06-15" })] });
+  state.teams = [{ id: TEAM_ID, user_id: "user-owner" }];
+  await runDay(state);
+  assert.equal((state.notifications ?? []).length, 0);
 });
 
 test("#5462 (flag on): raskmeldingen foelger LOEBSDAGEN, ikke datoen", async () => {
