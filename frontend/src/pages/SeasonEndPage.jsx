@@ -6,7 +6,7 @@ import { apiFetch } from "../lib/apiFetch.ts";
 import { Link, useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { isSeniorSquad } from "../lib/seniorScope.ts";
-import { aggregateJerseyWins, fetchJerseyWinnerRows } from "../lib/seasonJerseyWins.js";
+import { aggregateJerseyWins, fetchJerseyWinnerRows } from "../lib/seasonJerseyWins.ts";
 import { formatNumber, formatDate } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { latestScheduledMsByRace } from "../lib/raceCompletionDate.js";
@@ -352,7 +352,7 @@ export default function SeasonEndPage() {
         supabase.from("race_points").select("race_class, result_type, rank, points"),
       ]);
       setRacePoints(racePointsRes.data || []);
-      loadJerseys(season, (racesRes.data || []).filter(r => isSeniorSquad(r.squad)).map(r => r.id));
+      if (!racesRes.error) loadJerseys(season, (racesRes.data || []).filter(r => isSeniorSquad(r.squad)).map(r => r.id));
 
       const allStandings = standingsRes.data || [];
       const standings = allStandings.filter(s => !s.team?.is_ai);
