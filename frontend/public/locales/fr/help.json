@@ -157,7 +157,7 @@
           "Tu disposes d'un nombre fixe d'ajustements par assemblée, affiché en haut. Une direction qui a confiance en toi en accorde davantage et pousse plus loin ses contre-propositions.",
           "La direction peut proposer une nouvelle étape pour la vision du club, avec la saison où elle doit être atteinte. Accepte-la ou refuse-la.",
           "Tu as une demande par assemblée. Un refus revient toujours avec une contre-proposition, jamais un non sec.",
-          "Signe, et le mandat est actif pour la saison. Tant qu'il n'est pas signé, il reste une proposition.",
+          "Signez, et le mandat est actif pour la saison. Tant qu'il n'est pas signé, il reste une proposition. Une fois signé, le conseil ne le modifie plus. La seule chose qui peut s'ajouter est une offre de bonus, et seulement si vous l'acceptez vous-même.",
           "Si tu ne réponds jamais, la direction signe sa propre proposition pour toi quand la date limite affichée en haut de l'assemblée arrive à échéance. Tu gardes le mandat, tu ne l'as simplement pas façonné."
         ]
       },
@@ -1381,7 +1381,7 @@
       },
       "typeGating": {
         "title": "Pourquoi un axe progresse-t-il plus vite chez certains coureurs ?",
-        "text": "Chaque coureur a un type principal ET secondaire (Sprinteur, Grimpeur, CLM, Général, etc.) et un potentiel caché par aptitude, tous deux fixés à la création du coureur. Deux choses distinctes décident de ce que devient une aptitude : jusqu'où elle peut monter, et à quelle vitesse elle y arrive. Son type fixe les deux. Une aptitude pour laquelle son type principal est fait monte le plus haut et se construit le plus vite. Son type secondaire est juste derrière, environ 85 % aussi haut. Le placement et la tactique sont du savoir-faire : personne ne naît avec, donc chaque coureur peut monter environ 75 % aussi haut, mais ils se construisent lentement. Une aptitude en dehors de ses deux rôles monte environ 60 % aussi haut et se construit lentement. Chaque type couvre plusieurs aptitudes, pas seulement celle de son nom : un type Général couvre aussi le contre-la-montre, un coureur du général peut donc monter haut là-dedans. Une aptitude contre laquelle son type joue activement ne bouge presque pas du tout. Vérifie les deux badges de type avant de choisir un axe, et note que monter haut et y arriver vite ne sont plus la même chose : une aptitude peut avoir encore beaucoup de marge et mettre des années à la remplir. Le rythme est ajusté de temps en temps dans le cadre de l'équilibrage continu du jeu, la progression quotidienne d'un coureur peut donc sembler différente d'une mise à jour à l'autre alors que rien n'a changé chez lui personnellement."
+        "text": "Chaque coureur a un type principal ET un type secondaire (Sprinteur, Grimpeur, CLM, Classement général, etc.) et un potentiel, tous fixés à la création du coureur. Deux choses distinctes décident de ce que devient une capacité : jusqu'où elle peut monter, et à quelle vitesse elle y arrive. Son type fixe jusqu'où. Une capacité pour laquelle son type principal est fait monte le plus haut et progresse le plus vite. Son type secondaire suit de près. Le placement et la tactique relèvent du métier : personne ne naît avec, donc tout coureur peut atteindre un niveau correct, mais ils progressent lentement. Une capacité hors de ses deux rôles a un plafond bas et progresse lentement. Chaque type couvre plusieurs capacités, pas seulement celle de son nom : un type Classement général couvre aussi le contre-la-montre, donc un coureur de classement peut y monter haut. Une capacité contre laquelle son type travaille activement bouge à peine. Son potentiel fixe la vitesse de son développement global : un plus grand talent atteint son plafond plus tôt, mais ne relève jamais le plafond. Vérifiez les deux badges de type avant de choisir un axe, et retenez que monter haut et y arriver vite sont deux choses différentes : une capacité peut avoir beaucoup de marge et mettre quand même des années à la combler. Le rythme est ajusté de temps en temps dans le cadre de l'équilibrage continu du jeu, donc la progression quotidienne d'un coureur peut sembler différente d'une mise à jour à l'autre alors que rien n'a changé pour lui."
       },
       "ceilingReached": {
         "title": "L'aptitude de mon coureur a cessé de monter",
@@ -1433,7 +1433,7 @@
       },
       "longTermGrowth": {
         "title": "Progression à long terme",
-        "text": "Deux choses distinctes décident de l'endroit où finit une aptitude : jusqu'où elle peut monter, et à quelle vitesse elle y arrive. Les deux viennent du type du coureur. C'est pourquoi un coureur n'arrive plus à son plafond simplement en existant assez longtemps. Le plafond est ce qu'il aurait pu devenir ; ton entraînement décide de la proximité à laquelle il y arrive, et sur quelles aptitudes. Les coureurs atteignent toujours leur pic vers 27-28 ans et déclinent ensuite, et l'entraînement ne peut jamais pousser quelqu'un au-delà de son potentiel."
+        "text": "Deux choses distinctes décident où une capacité finit : jusqu'où elle peut monter, et à quelle vitesse elle y arrive. Jusqu'où vient du type du coureur : chaque type a son propre plafond pour chaque capacité. La vitesse vient de son potentiel : un plus grand talent progresse plus vite vers le même plafond, mais le potentiel ne relève pas le plafond. C'est pourquoi un coureur n'atteint plus son plafond simplement en existant assez longtemps. Le plafond est ce qu'il aurait pu devenir ; votre entraînement décide à quel point il s'en approche, et sur quelles capacités. Les coureurs atteignent toujours leur sommet vers 27-28 ans et déclinent ensuite, et l'entraînement ne peut jamais pousser quelqu'un au-delà de son plafond."
       },
       "readingReport": {
         "title": "Lire le rapport d'entraînement",
@@ -1556,7 +1556,7 @@
       },
       "dailyTrainingBoost": {
         "title": "Entraînement quotidien à l'académie",
-        "text": "Les coureurs de l'académie suivent exactement le même modèle d'entraînement que ton effectif senior. Il n'y a pas de système d'académie séparé ni de frein caché sur leur vitesse de progression : fixe un axe et une intensité, et les gains s'accumulent jour après jour de la même façon. La seule vraie différence est l'âge. Les coureurs de moins de 22 ans reçoivent un coup de pouce de jeunesse supplémentaire qui s'estompe à l'approche de 22 ans. Leur potentiel fixe à la fois jusqu'où leurs aptitudes peuvent monter et à quelle vitesse elles y arrivent, un plus grand talent progresse donc plus vite et plafonne plus haut, tandis qu'un talent plus petit devient un solide équipier."
+        "text": "Les coureurs de l'académie suivent exactement le même modèle d'entraînement que votre équipe senior. Il n'y a pas de système à part pour l'académie ni de frein caché sur leur progression : choisissez un axe et une intensité, et les gains s'accumulent jour après jour de la même façon. La seule vraie différence est l'âge. Les coureurs de moins de 22 ans reçoivent un bonus jeunesse supplémentaire qui s'estompe à l'approche de 22 ans. Leur type fixe jusqu'où chaque capacité peut finalement monter, et leur potentiel fixe à quelle vitesse ils y arrivent : un plus grand talent progresse plus vite vers le même plafond, tandis qu'un talent plus modeste devient plus lentement un équipier solide."
       },
       "youthAuctions": {
         "title": "Enchères de jeunes",
@@ -1899,7 +1899,7 @@
     },
     "trainingFocusFaq": {
       "q": "Comment entraîner un coureur ?",
-      "a": "Ouvre l'un de tes propres coureurs et fixe un axe d'entraînement sous “Axe d'entraînement” sur le profil : choisis une direction et une intensité. Les aptitudes entraînées progressent plus vite vers leur plafond au prochain changement de saison. Tu peux fixer un axe sur autant de coureurs que tu veux. Une intensité plus haute entraîne plus vite et accumule plus de fatigue, mais ne risque jamais de faire perdre des acquis ; changer un axe existant ne coûte rien, et l'entraînement est gratuit."
+      "a": "Ouvrez l'un de vos coureurs et choisissez un axe d'entraînement sous « Axe d'entraînement » sur le profil : choisissez une direction et une intensité. Les capacités entraînées progressent plus vite vers leur plafond, jour après jour pendant l'entraînement. Vous pouvez définir un axe pour autant de coureurs que vous voulez. Une intensité plus élevée entraîne plus vite et génère plus de fatigue, mais ne risque jamais de faire perdre de la progression ; changer un axe existant ne coûte rien, et l'entraînement est gratuit."
     },
     "restForDevelopedFaq": {
       "q": "Mon coureur est entièrement développé. Dois-je simplement le mettre au repos ?",

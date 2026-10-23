@@ -157,7 +157,7 @@
           "Tienes un número fijo de ajustes por junta, que se muestra arriba. Una directiva que confía en ti concede más y estira más en sus contraofertas.",
           "La directiva puede proponer un hito nuevo para la visión del club, con la temporada en la que debería alcanzarse. Acéptalo o recházalo.",
           "Tienes una solicitud por junta. Una negativa siempre vuelve con una contraoferta, nunca con un no rotundo.",
-          "Firma, y el mandato queda activo para la temporada. Hasta que se firma sigue siendo una propuesta.",
+          "Firma y el mandato queda activo para la temporada. Hasta que lo firmes, sigue siendo una propuesta. Después de firmar, la junta no lo cambia. Lo único que se puede añadir es una oferta de bonificación, y solo si tú mismo la aceptas.",
           "Si nunca respondes, la directiva firma su propia propuesta por ti cuando se agota el plazo que se muestra arriba en la junta. Conservas el mandato, simplemente no lo moldeaste."
         ]
       },
@@ -1381,7 +1381,7 @@
       },
       "typeGating": {
         "title": "¿Por qué un enfoque crece más rápido en unos ciclistas que en otros?",
-        "text": "Cada ciclista tiene un tipo principal Y secundario (Sprinter, Escalador, CRI, general, etc.) y un potencial oculto por habilidad, ambos fijados cuando se crea el ciclista. Dos cosas distintas deciden en qué se convierte una habilidad: hasta dónde puede llegar y con qué rapidez llega. Su tipo fija ambas. Una habilidad para la que está hecho su tipo principal llega más alto y se construye más rápido. Su tipo secundario va justo detrás, con alrededor del 85 % de esa altura. La colocación y la táctica son oficio: nadie nace con ellas, así que todos los ciclistas pueden llegar en torno al 75 % de esa altura, pero se construyen despacio. Una habilidad fuera de sus dos roles llega en torno al 60 % de esa altura y se construye despacio. Cada tipo cubre varias habilidades, no solo la de su nombre: un tipo general también cubre la contrarreloj, así que un ciclista de la general puede llegar alto ahí. Una habilidad contra la que trabaja activamente su tipo apenas se mueve. Mira las dos etiquetas de tipo antes de elegir un enfoque, y ten en cuenta que llegar alto y llegar rápido ya no son lo mismo: una habilidad puede tener mucho margen y aun así tardar años en llenarlo. El ritmo se ajusta de vez en cuando como parte del equilibrado continuo del juego, así que el progreso diario de un ciclista puede sentirse distinto de una actualización a otra aunque nada en él personalmente haya cambiado."
+        "text": "Cada corredor tiene un tipo principal Y uno secundario (Sprinter, Escalador, CRI, General, etc.) y un potencial, todo fijado cuando se crea el corredor. Dos cosas distintas deciden en qué se convierte una habilidad: hasta dónde puede llegar y lo rápido que llega. Su tipo fija hasta dónde. Una habilidad para la que está hecho su tipo principal llega más alto y se desarrolla más rápido. Su tipo secundario va justo detrás. La colocación y la táctica son oficio: nadie nace con ellas, así que todos los corredores pueden alcanzar un nivel decente, pero se desarrollan despacio. Una habilidad fuera de sus dos papeles tiene un techo bajo y se desarrolla despacio. Cada tipo cubre varias habilidades, no solo la de su nombre: un tipo General también cubre la contrarreloj, así que un corredor de General puede llegar alto ahí. Una habilidad contra la que su tipo trabaja activamente apenas se mueve. Su potencial fija lo rápido que se desarrolla en general, así que un talento mayor llega antes a su techo, pero nunca eleva el techo. Mira las dos insignias de tipo antes de elegir un enfoque, y ten en cuenta que llegar alto y llegar rápido son dos cosas distintas: una habilidad puede tener mucho margen y aun así tardar años en llenarlo. El ritmo se ajusta de vez en cuando como parte del equilibrio continuo del juego, así que el progreso diario de un corredor puede sentirse distinto de una actualización a otra aunque nada haya cambiado en él."
       },
       "ceilingReached": {
         "title": "La habilidad de mi ciclista ha dejado de subir",
@@ -1433,7 +1433,7 @@
       },
       "longTermGrowth": {
         "title": "Crecimiento a largo plazo",
-        "text": "Dos cosas distintas deciden dónde acaba una habilidad: hasta dónde puede llegar y con qué rapidez llega. Las dos vienen del tipo del ciclista. Por eso un ciclista ya no llega a su techo solo por existir el tiempo suficiente. El techo es en lo que podría haberse convertido; tu entrenamiento decide lo cerca que llega y en qué habilidades se acerca. Los ciclistas siguen alcanzando su pico en torno a los 27-28 años y decaen después, y el entrenamiento nunca puede llevar a nadie más allá de su potencial."
+        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores siguen alcanzando su mejor momento hacia los 27-28 años y declinan después, y el entrenamiento nunca puede llevar a nadie por encima de su techo."
       },
       "readingReport": {
         "title": "Leer el informe de entrenamiento",
@@ -1556,7 +1556,7 @@
       },
       "dailyTrainingBoost": {
         "title": "Entrenamiento diario en la academia",
-        "text": "Los ciclistas de la academia siguen exactamente el mismo modelo de entrenamiento que tu plantilla sénior. No hay un sistema de academia aparte ni un freno oculto a la rapidez con que mejoran: fija un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. La única diferencia real es la edad. Los ciclistas menores de 22 años reciben un impulso juvenil extra que se desvanece al acercarse a los 22. Su potencial fija tanto hasta dónde pueden llegar sus habilidades como con qué rapidez llegan, así que un talento mayor se desarrolla antes y llega más alto, mientras que un talento menor se convierte en un gregario sólido."
+        "text": "Los corredores de la academia siguen exactamente el mismo modelo de entrenamiento que tu equipo sénior. No hay un sistema aparte para la academia ni un freno oculto a su mejora: elige un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. La única diferencia real es la edad. Los corredores menores de 22 años reciben un impulso juvenil extra que se desvanece al acercarse a los 22. Su tipo fija hasta dónde puede llegar cada habilidad, y su potencial fija lo rápido que llegan, así que un talento mayor se desarrolla antes hacia el mismo techo, mientras que un talento menor crece más despacio hasta ser un gregario sólido."
       },
       "youthAuctions": {
         "title": "Subastas juveniles",
@@ -1899,7 +1899,7 @@
     },
     "trainingFocusFaq": {
       "q": "¿Cómo entreno a un ciclista?",
-      "a": "Abre uno de tus propios ciclistas y fija un enfoque de entrenamiento en “Enfoque de entrenamiento” del perfil: elige una dirección y una intensidad. Las habilidades entrenadas se desarrollan más rápido hacia su techo en el próximo cambio de temporada. Puedes fijar un enfoque en tantos ciclistas como quieras. Una intensidad más alta entrena más rápido y acumula más fatiga, pero nunca arriesga perder progreso; cambiar un enfoque existente no cuesta nada, y el entrenamiento es gratuito."
+      "a": "Abre uno de tus corredores y elige un enfoque de entrenamiento en 'Enfoque de entrenamiento' en el perfil: escoge una dirección y una intensidad. Las habilidades entrenadas se desarrollan más rápido hacia su techo, día a día mientras corre el entrenamiento. Puedes poner un enfoque a tantos corredores como quieras. Más intensidad entrena más rápido y genera más fatiga, pero nunca arriesga perder progreso; cambiar un enfoque existente no cuesta nada y el entrenamiento es gratis."
     },
     "restForDevelopedFaq": {
       "q": "Mi ciclista está totalmente desarrollado. ¿Le pongo simplemente en Descanso?",

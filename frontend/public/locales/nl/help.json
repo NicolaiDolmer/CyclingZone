@@ -157,7 +157,7 @@
           "Je krijgt per vergadering een vast aantal aanpassingen, bovenaan getoond. Een bestuur dat vertrouwen in je heeft, staat er meer toe en rekt in zijn tegenvoorstellen verder op.",
           "Het bestuur kan een nieuwe mijlpaal voor de clubvisie voorstellen, met het seizoen waarin hij moet worden bereikt. Accepteer of wijs af.",
           "Je krijgt één verzoek per vergadering. Een weigering komt altijd met een tegenvoorstel, nooit met een kaal nee.",
-          "Teken, en het mandaat is actief voor het seizoen. Tot het getekend is, blijft het een voorstel.",
+          "Teken, en het mandaat is actief voor het seizoen. Zolang het niet getekend is, blijft het een voorstel. Na ondertekening verandert het bestuur het niet meer. Het enige dat nog kan worden toegevoegd is een bonusaanbod, en alleen als je het zelf accepteert.",
           "Als je nooit antwoordt, tekent het bestuur zijn eigen voorstel voor je wanneer de deadline bovenaan de vergadering verloopt. Je houdt het mandaat, je hebt het alleen niet vormgegeven."
         ]
       },
@@ -1381,7 +1381,7 @@
       },
       "typeGating": {
         "title": "Waarom groeit een focus bij sommige renners sneller?",
-        "text": "Elke renner heeft een primair EN secundair type (Sprinter, Klimmer, TT, Klassementsrenner enzovoort) en een verborgen potentieel per vaardigheid, beide vastgesteld wanneer de renner wordt aangemaakt. Twee aparte dingen bepalen wat een vaardigheid wordt: hoe hoog hij kan komen en hoe snel hij daar komt. Zijn type bepaalt beide. Een vaardigheid waarvoor zijn primaire type is gebouwd, komt het hoogst en bouwt het snelst op. Zijn secundaire type zit er vlak achter, op ongeveer 85% van die hoogte. Positionering en tactiek zijn vakmanschap: niemand wordt ermee geboren, dus elke renner kan ongeveer 75% zo hoog komen, maar ze bouwen langzaam op. Een vaardigheid buiten beide rollen komt ongeveer 60% zo hoog en bouwt langzaam op. Elk type dekt meerdere vaardigheden, niet alleen de vaardigheid in zijn naam: een klassementstype dekt ook tijdrit, dus een klassementsrenner kan daar hoog komen. Een vaardigheid waar zijn type actief tegen werkt, beweegt nauwelijks. Controleer beide typebadges voordat je een focus kiest, en let op dat hoog komen en er snel komen niet meer hetzelfde zijn: een vaardigheid kan nog veel ruimte hebben en toch jaren nodig hebben om die te vullen. Het tempo wordt van tijd tot tijd bijgesteld als onderdeel van de lopende balansering van het spel, dus de dagelijkse voortgang van een renner kan van update tot update anders aanvoelen, ook al is er niets aan hem persoonlijk veranderd."
+        "text": "Elke renner heeft een primair EN een secundair type (Sprinter, Klimmer, Tijdrijder, Klassementsrenner enzovoort) en een potentieel, allemaal vastgelegd bij het aanmaken van de renner. Twee aparte dingen bepalen wat een vaardigheid wordt: hoe hoog die kan komen, en hoe snel hij daar komt. Zijn type bepaalt hoe hoog. Een vaardigheid waarvoor zijn primaire type gebouwd is, komt het hoogst en groeit het snelst. Zijn secundaire type volgt kort daarachter. Positionering en tactiek zijn vakmanschap: niemand wordt ermee geboren, dus elke renner kan een behoorlijk niveau halen, maar ze groeien langzaam. Een vaardigheid buiten beide rollen heeft een laag plafond en groeit langzaam. Elk type dekt meerdere vaardigheden, niet alleen die in de naam: een klassementstype dekt ook tijdrijden, dus een klassementsrenner kan daar hoog komen. Een vaardigheid waar zijn type actief tegenin werkt, beweegt nauwelijks. Zijn potentieel bepaalt hoe snel hij zich in het algemeen ontwikkelt, dus een groter talent bereikt zijn plafond eerder, maar het plafond gaat nooit omhoog. Bekijk beide typebadges voordat je een focus kiest, en onthoud dat hoog komen en er snel komen twee verschillende dingen zijn: een vaardigheid kan nog veel ruimte hebben en er toch jaren over doen om die te vullen. Het tempo wordt af en toe aangepast als onderdeel van de doorlopende balans van het spel, dus de dagelijkse vooruitgang van een renner kan per update anders aanvoelen, ook al is er aan hem zelf niets veranderd."
       },
       "ceilingReached": {
         "title": "De vaardigheid van mijn renner stijgt niet meer",
@@ -1433,7 +1433,7 @@
       },
       "longTermGrowth": {
         "title": "Groei op lange termijn",
-        "text": "Twee aparte dingen bepalen waar een vaardigheid eindigt: hoe hoog hij kan komen en hoe snel hij daar komt. Beide komen van het type van de renner. Daarom bereikt een renner zijn plafond niet meer door simpelweg lang genoeg te bestaan. Het plafond is wat hij had kunnen worden; jouw training bepaalt hoe dicht hij komt, en op welke vaardigheden hij dicht komt. Renners pieken nog steeds rond 27-28 jaar en gaan daarna achteruit, en training kan nooit iemand voorbij zijn potentieel duwen."
+        "text": "Twee aparte dingen bepalen waar een vaardigheid uitkomt: hoe hoog die kan komen, en hoe snel hij daar komt. Hoe hoog komt van het type van de renner: elk type heeft zijn eigen plafond per vaardigheid. Hoe snel komt van zijn potentieel: een groter talent ontwikkelt zich sneller richting hetzelfde plafond, maar potentieel verhoogt het plafond zelf niet. Daarom bereikt een renner zijn plafond niet meer alleen doordat hij lang genoeg bestaat. Het plafond is wat hij had kunnen worden; jouw training bepaalt hoe dichtbij hij komt, en bij welke vaardigheden. Renners pieken nog steeds rond 27-28 jaar en gaan daarna achteruit, en training kan niemand ooit boven zijn plafond uittillen."
       },
       "readingReport": {
         "title": "Het trainingsrapport lezen",
@@ -1556,7 +1556,7 @@
       },
       "dailyTrainingBoost": {
         "title": "Dagelijkse training in de academie",
-        "text": "Academierenners volgen precies hetzelfde trainingsmodel als je seniorenselectie. Er is geen apart academiesysteem en geen verborgen rem op hoe snel ze verbeteren: stel een focus en een intensiteit in, en de winst stapelt zich dag na dag op dezelfde manier op. Het enige echte verschil is leeftijd. Renners onder 22 krijgen een extra jeugdboost die vervaagt naarmate ze 22 naderen. Hun potentieel bepaalt zowel hoe hoog hun vaardigheden uiteindelijk kunnen komen als hoe snel ze er komen, dus een groter talent ontwikkelt zich sneller en komt hoger, terwijl een kleiner talent groeit tot een solide knecht."
+        "text": "Academierenners volgen precies hetzelfde trainingsmodel als je seniorenteam. Er is geen apart academiesysteem en geen verborgen rem op hoe snel ze beter worden: kies een focus en een intensiteit, en de winst stapelt zich dag na dag op dezelfde manier op. Het enige echte verschil is leeftijd. Renners onder de 22 krijgen een extra jeugdboost die afneemt naarmate ze de 22 naderen. Hun type bepaalt hoe hoog elke vaardigheid uiteindelijk kan komen, en hun potentieel bepaalt hoe snel ze daar komen, dus een groter talent ontwikkelt zich sneller richting hetzelfde plafond, terwijl een kleiner talent langzamer uitgroeit tot een degelijke knecht."
       },
       "youthAuctions": {
         "title": "Jeugdveilingen",
@@ -1899,7 +1899,7 @@
     },
     "trainingFocusFaq": {
       "q": "Hoe train ik een renner?",
-      "a": "Open een van je eigen renners en stel op het profiel onder 'Trainingsfocus' een trainingsfocus in: kies een richting en een intensiteit. De getrainde vaardigheden ontwikkelen zich bij de volgende seizoenswissel sneller richting hun plafond. Je kunt een focus instellen op zoveel renners als je wilt. Hogere intensiteit traint sneller en bouwt meer vermoeidheid op, maar riskeert nooit verlies van voortgang; een bestaande focus wijzigen kost niets, en training is gratis."
+      "a": "Open een van je eigen renners en stel een trainingsfocus in onder 'Trainingsfocus' op het profiel: kies een richting en een intensiteit. De getrainde vaardigheden ontwikkelen zich sneller richting hun plafond, dag na dag terwijl de training loopt. Je kunt bij zoveel renners een focus instellen als je wilt. Hogere intensiteit traint sneller en bouwt meer vermoeidheid op, maar je verliest nooit vooruitgang; een bestaande focus wijzigen kost niets en training is gratis."
     },
     "restForDevelopedFaq": {
       "q": "Mijn renner is volledig ontwikkeld. Moet ik hem gewoon op Rust zetten?",
