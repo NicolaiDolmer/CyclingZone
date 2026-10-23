@@ -6,6 +6,7 @@ import { apiFetch } from "../lib/apiFetch.ts";
 import { Link, useNavigate, useParams } from "react-router";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { isSeniorSquad } from "../lib/seniorScope.ts";
+import { aggregateJerseyWins, JERSEY_RESULT_TYPES } from "../lib/seasonJerseyWins.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { latestScheduledMsByRace } from "../lib/raceCompletionDate.js";
@@ -159,6 +160,10 @@ export default function SeasonEndPage() {
   const [races, setRaces] = useState([]);
   const [racePoints, setRacePoints] = useState([]);
   const [pointsByTeam, setPointsByTeam] = useState({});
+  // #6961 · trøjevindere pr. hold. null = ikke hentet / fejlet → kolonnen skjules
+  // i stedet for at vise et forkert 0 (best-effort, vælter aldrig resten af siden).
+  const [jerseyByTeam, setJerseyByTeam] = useState(null);
+  const jerseySeasonRef = useRef(null);
   const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null, classicKing: null });
   // #2863 Blokken har sin EGEN state, adskilt fra `error` ovenfor. Blokken er
   // additiv: get_season_honours() applies efter merge, og ~150 managere lander
@@ -312,6 +317,26 @@ export default function SeasonEndPage() {
     }
   };
 
+  const loadJerseys = async (season, raceIds) => {
+    jerseySeasonRef.current = season.id;
+    setJerseyByTeam(null);
+    try {
+      const rows = [];
+      for (let i = 0; i < raceIds.length; i += 60) {
+        const { data, error: jerseyError } = await supabase.from("race_results")
+          .select("result_type, rank, team_id")
+          .in("race_id", raceIds.slice(i, i + 60))
+          .in("result_type", JERSEY_RESULT_TYPES)
+          .eq("rank", 1);
+        if (jerseyError) throw jerseyError;
+        rows.push(...(data || []));
+      }
+      if (jerseySeasonRef.current === season.id) setJerseyByTeam(aggregateJerseyWins(rows));
+    } catch (e) {
+      console.error("SeasonEndPage: jersey winners failed", e);
+    }
+  };
+
   const loadSeason = async (season) => {
     setSelectedSeason(season);
     setError(null);
@@ -336,6 +361,7 @@ export default function SeasonEndPage() {
         supabase.from("race_points").select("race_class, result_type, rank, points"),
       ]);
       setRacePoints(racePointsRes.data || []);
+      loadJerseys(season, (racesRes.data || []).filter(r => isSeniorSquad(r.squad)).map(r => r.id));
 
       const allStandings = standingsRes.data || [];
       const standings = allStandings.filter(s => !s.team?.is_ai);
@@ -934,6 +960,8 @@ export default function SeasonEndPage() {
                       <Th className="w-8">{t("table.rank")}</Th>
                       <Th>{t("table.team")}</Th>
                       <Th numeric className="hidden sm:table-cell">{t("table.stageWins")}</Th>
+                      <Th numeric className="hidden sm:table-cell">{t("table.gcWins")}</Th>
+                      {jerseyByTeam && <Th numeric className="hidden sm:table-cell">{t("table.jerseys")}</Th>}
                       <Th numeric>{t("table.points")}</Th>
                       <Th numeric className="hidden md:table-cell">{t("table.progression")}</Th>
                     </tr>
@@ -960,7 +988,7 @@ export default function SeasonEndPage() {
                           {/* Separator before relegation zone */}
                           {isCompleted && i === divStandings.length - 2 && div < RULES_NUMBERS.maxDivision && divStandings.length > 4 && (
                             <tr aria-hidden="true">
-                              <td colSpan={5} className="p-0 leading-0 border-0">
+                              <td colSpan={7} className="p-0 leading-0 border-0">
                                 <div className="border-t border-cz-danger/30" />
                               </td>
                             </tr>
@@ -999,6 +1027,14 @@ export default function SeasonEndPage() {
                             <Td numeric className="hidden sm:table-cell">
                               {s.stage_wins || 0}
                             </Td>
+                            <Td numeric className="hidden sm:table-cell">
+                              {s.gc_wins || 0}
+                            </Td>
+                            {jerseyByTeam && (
+                              <Td numeric className="hidden sm:table-cell">
+                                {jerseyByTeam[s.team_id]?.total || 0}
+                              </Td>
+                            )}
                             <Td numeric>
                               <span className="font-mono font-bold" style={{ color }}>
                                 {formatNumber(s.total_points) || 0}
@@ -1011,7 +1047,7 @@ export default function SeasonEndPage() {
                           {/* Separator after promotion zone */}
                           {isCompleted && i === 1 && div > RULES_NUMBERS.minDivision && divStandings.length > 2 && (
                             <tr aria-hidden="true">
-                              <td colSpan={5} className="p-0 leading-0 border-0">
+                              <td colSpan={7} className="p-0 leading-0 border-0">
                                 <div className="border-t border-cz-success/30" />
                               </td>
                             </tr>
