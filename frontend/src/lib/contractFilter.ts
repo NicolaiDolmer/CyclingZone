@@ -5,16 +5,21 @@
 
 export const CONTRACT_NONE = "none";
 
-// Returnerer { kind: "none" } | { kind: "by", season } | null (filteret er ikke aktivt).
-export function parseContractFilter(contractBy) {
+export type ContractFilter = { kind: "none" } | { kind: "by"; season: number };
+
+/** Returnerer det aktive filter, eller null naar filteret ikke er aktivt. */
+export function parseContractFilter(contractBy: string | null | undefined): ContractFilter | null {
   if (contractBy === CONTRACT_NONE) return { kind: "none" };
-  const season = parseInt(contractBy, 10);
+  const season = parseInt(String(contractBy ?? ""), 10);
   return Number.isFinite(season) ? { kind: "by", season } : null;
 }
 
-export function contractFilterMatches(contractEndSeason, contractBy) {
+export function contractFilterMatches(
+  contractEndSeason: number | string | null | undefined,
+  contractBy: string | null | undefined,
+): boolean {
   const parsed = parseContractFilter(contractBy);
   if (!parsed) return true;
   if (parsed.kind === "none") return contractEndSeason == null;
-  return contractEndSeason != null && parsed.season != null && Number(contractEndSeason) <= parsed.season;
+  return contractEndSeason != null && Number(contractEndSeason) <= parsed.season;
 }

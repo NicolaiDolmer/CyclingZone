@@ -3,7 +3,7 @@
  */
 import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
-import { contractFilterMatches, parseContractFilter } from "./contractFilter.js";
+import { contractFilterMatches, parseContractFilter } from "./contractFilter.ts";
 import { getRiderMarketValue, getRiderSalary } from "./marketValues";
 import { buildSalaryFilterOr } from "./salaryFilter.js";
 import { getRiderAge, isU23, isU25 } from "./riderAge";

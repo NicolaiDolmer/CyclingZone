@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { contractFilterMatches, parseContractFilter, CONTRACT_NONE } from "./contractFilter.js";
+import { contractFilterMatches, parseContractFilter, CONTRACT_NONE } from "./contractFilter.ts";
 
 test("tomt filter eller ugyldig vaerdi er inaktiv og matcher alt", () => {
   assert.equal(parseContractFilter(""), null);

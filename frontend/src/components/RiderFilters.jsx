@@ -35,7 +35,7 @@ import { useBestRoleDisplay } from "../lib/useBestRoleDisplay.js";
 // Re-eksporteres her for bagudkompatibilitet med eksisterende imports.
 import { STAT_KEYS } from "../lib/riderRating";
 import { ABILITY_SHORT } from "../lib/abilities";
-import { CONTRACT_NONE } from "../lib/contractFilter.js";
+import { CONTRACT_NONE } from "../lib/contractFilter.ts";
 
 export { STAT_KEYS };
 
