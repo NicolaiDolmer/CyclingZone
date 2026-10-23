@@ -547,7 +547,13 @@ export function splitEntrants(data) {
     const ab = abilitiesById.get(e.rider_id);
     if (!ab) { droppedRiderIds.push(e.rider_id); continue; }
     const { rider_id: _r, ...abilities } = ab;
-    entrants.push({ rider_id: e.rider_id, team_id: e.team_id ?? null, team_is_ai: aiByTeam.get(e.team_id) === true, race_role: e.race_role ?? null, effort: "normal", abilities });
+    entrants.push({
+      rider_id: e.rider_id, team_id: e.team_id ?? null, team_is_ai: aiByTeam.get(e.team_id) === true, race_role: e.race_role ?? null, effort: "normal", abilities,
+      // #6818: formtesten (formTestCaches.mjs) laegger rytterens form og formtoppe paa
+      // startlisten. Uden dem er entrant'en praecis som foer (byte-identisk motor-input).
+      ...(e.form != null ? { form: e.form } : {}),
+      ...(Array.isArray(e.peakWindows) && e.peakWindows.length ? { peakWindows: e.peakWindows } : {}),
+    });
   }
   return { entrants, droppedWithoutAbilities: droppedRiderIds.length, droppedRiderIds };
 }

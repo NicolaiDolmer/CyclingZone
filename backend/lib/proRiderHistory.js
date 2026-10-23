@@ -27,7 +27,7 @@
 // -princip som dedupeSnapshots() i frontend/src/lib/developmentReport.js, men
 // noeglet paa season_number i stedet for dato.
 
-import { isProOrFounder } from "./entitlement.js";
+import { isPro } from "./entitlement.js";
 import { captureException } from "./sentry.js";
 import { loadRaceDayHistory } from "./riderDevelopmentReceipt.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
@@ -95,13 +95,15 @@ export function withLivePoint(seasons, live) {
     .sort((a, b) => (a.season_number ?? Infinity) - (b.season_number ?? Infinity));
 }
 
-export function createProRiderHistoryHandler({ supabase }) {
+// `now` injiceres saa tests aldrig laeser vaegur-tiden (AGENTS.md hard rule 16).
+export function createProRiderHistoryHandler({ supabase, now = () => Date.now() }) {
   return async function proRiderHistory(req, res) {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     try {
-      // #4649: isProOrFounder — samme "isPro || isFounder"-kontrakt som
-      // Layout.jsx's sidebar-gate, ikke isPro() alene (se entitlement.js).
-      const pro = await isProOrFounder(supabase, req.team.id);
+      // #2806 ejer-beslutning 13/10: historikken kraever AKTIV Pro. Founder-
+      // status alene giver kun det permanente maerke (pro.json founderExplainer),
+      // ikke funktionerne. Frontend spejler reglen i lib/pro/proAccess.ts.
+      const pro = await isPro(supabase, req.team.id, now());
       if (!pro) {
         return res.status(403).json({ error: "Pro required", errorCode: "pro_required" });
       }

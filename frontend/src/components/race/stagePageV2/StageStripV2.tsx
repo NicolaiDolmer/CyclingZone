@@ -32,7 +32,7 @@ function Mini({ profile, active }: { profile: StageProfile | null; active: boole
     <svg viewBox="0 0 100 30" preserveAspectRatio="none" className="block h-7 w-full" aria-hidden="true">
       {path
         ? <path d={path} fill={active ? "rgb(var(--climb-grad-3))" : "var(--text-3)"} fillOpacity={active ? 0.9 : 0.35} />
-        : <line x1={0} x2={100} y1={26} y2={26} stroke="var(--text-3)" strokeOpacity={0.5} strokeWidth={2} />}
+        : <line x1={0} x2={100} y1={26} y2={26} stroke="var(--text-3)" strokeOpacity={0.5} strokeWidth={2} vectorEffect="non-scaling-stroke" />}
     </svg>
   );
 }

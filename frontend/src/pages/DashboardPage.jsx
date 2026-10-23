@@ -39,6 +39,9 @@ import MyLatestResultCard from "../components/MyLatestResultCard";
 import FirstRaceCard from "../components/FirstRaceCard"; // #1140
 import useFirstRaceCard from "../hooks/useFirstRaceCard.js"; // #1140
 import { buildFirstRaceCardModel } from "../lib/firstRaceCardModel.js"; // #1140
+import RacePausedBanner from "../components/race/RacePausedBanner.tsx"; // #6970
+import useRacePause from "../hooks/useRacePause.ts"; // #6970
+import { withoutPausedUpcoming } from "../lib/racePause.ts"; // #6970
 // #3397 (epic #3395 bølge 1): Hero & Agony moment-kort. Selv-hentende
 // komponent (kun team-props) med vilje — se komponentfilens kommentar.
 import HeroAgonyCard from "../components/HeroAgonyCard";
@@ -233,6 +236,7 @@ export default function DashboardPage() {
   const { pending: actionSummary, loading: actionLoading } = useActionSummary();
   // #1140: server-afgjort "Your first race"-kort (flag first_race_card, preview). null = intet kort.
   const firstRaceCard = useFirstRaceCard(team?.id);
+  const racePause = useRacePause(); // #6970: pauset = ingen gamle starttider nedenfor
 
   // #4997 — In-app NPS. Dashboardet er den side alle managere lander på; før
   // #4997 var prompten kun monteret på Resultater-fanen på egen holdside, og kun
@@ -607,7 +611,7 @@ export default function DashboardPage() {
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps -- loadAll er lokal funktion (ny ref hver render) — kun mount-fetch
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
   // #6569: paa topniveau (foer early-return) saa stribens fetch starter naar team er kendt.
-  const todayStages = useTodayStages(team?.id);
+  const todayStages = withoutPausedUpcoming(useTodayStages(team?.id), Boolean(racePause)); // #6970
 
   // #4557 (S-M2d) · dashboard-genvej til aarsmoedet — udenfor loadAll'ens
   // Promise.all med vilje (progressiv, aldrig blokerende for resten af
@@ -630,7 +634,7 @@ export default function DashboardPage() {
       const s = deriveRaceStatus(r.status, r.stages_completed, r.stages);
       return s === "live" || s === "scheduled";
     });
-    if (!scheduled.length) { setNextStageByRace({}); return undefined; }
+    if (!scheduled.length || racePause) { setNextStageByRace({}); return undefined; }
     let cancelled = false;
     (async () => {
       const { data } = await supabase.from("race_stage_schedule")
@@ -645,7 +649,7 @@ export default function DashboardPage() {
       setNextStageByRace(map);
     })();
     return () => { cancelled = true; };
-  }, [nextRaces]);
+  }, [nextRaces, racePause]);
 
   // Et minut-tick rækker til en kalender-countdown (vi viser ikke sekunder).
   useEffect(() => {
@@ -1384,6 +1388,7 @@ export default function DashboardPage() {
           må stå over dagens etaper — se docs/
           DASHBOARD_RULES.md §2. Skjuler sig selv når holdet ingen løb har i
           dag (mindst-støj-valg, ejer 18/8). */}
+      <RacePausedBanner pause={racePause} />
       <TodayStagesStrip stages={todayStages} />
 
       {/* #1140: "Your first race" (flag first_race_card), samme plads som #3310-kortet

@@ -101,6 +101,8 @@ import {
   normalizeGcContext,
   oneDayProtectedRider,
   protectedRiderForTeam,
+  s5MorningGcExcludedRiders,
+  raceGcAbilityModel,
   s5ReformationExcludedRiders,
   type DangerModel,
   type GcDangerTuning,
@@ -371,6 +373,22 @@ export const S5_REFORMATION_TUNING = Object.freeze({
   afterCatchKm: 5,
 });
 
+/**
+ * #6818 (ejer 21/10: klassementsryttere "slet ikke generelt faar lov til at komme
+ * afsted i udbrud, det er meningen at det skal ske meget sjaeldent"). KUN s5_profiles_v2.
+ *  - excludeGcRankAtMost: stillingens top (fra etape 2 i et etapeloeb).
+ *  - potentialMaxGapSeconds: klassementspotentialet taeller kun inden for dette hul til foereren.
+ * Plus klassementspotentialet: feltets bedste paa klassementsevne (gcThreat.s5MorningGcExcludedRiders);
+ * paa foerste etape (alle lige) kun evnen.
+ * Endagsloeb og loeb uden stilling: intet blokeres.
+ */
+export const S5_MORNING_GC_EXCLUSION = Object.freeze({ excludeGcRankAtMost: 10, potentialMaxGapSeconds: 600 });
+
+/** #6818: de ryttere hvis morgenudbrudsforsoeg blokeres under s5_profiles_v2. Eksporteret for kontrakt-tests. */
+export function s5MorningGcBlockedRiders(ctx: Pick<BreakawayHookContext, "gcContext" | "entrants">, racingRiderIds: readonly string[]): Set<string> {
+  return s5MorningGcExcludedRiders(normalizeGcContext(ctx.gcContext), ctx.entrants, S5_MORNING_GC_EXCLUSION.excludeGcRankAtMost, new Set(racingRiderIds), S5_MORNING_GC_EXCLUSION.potentialMaxGapSeconds);
+}
+
 function withS5Reformation(result: SegmentHookResult, ctx: BreakawayHookContext): SegmentHookResult {
   const current = findBreakawayGroups(result.state.groups).filter((g) => g.origin === "breakaway"); // kun morgen-/reformationsudbrud, aldrig et nedkoerselsangreb
   if (current.length > 0) {
@@ -478,6 +496,10 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
   if (!sourceGroup) return { state, events };
 
   const tryBreakByRider = effectiveTryBreakByRider(ctx.orders);
+  // #6818 (ejer 21/10, KUN s5_profiles_v2): en rytter der ligger godt i klassementet eller
+  // kan komme til det, gaar ikke i morgenudbrud. Forsoeget blokeres (ingen ordre, ingen
+  // spontan chance); rytteren bliver i feltet og kan stadig arbejde imod andres forsoeg.
+  const gcBlocked = ctx.s5ProfilesV2 === true ? s5MorningGcBlockedRiders(ctx, sourceGroup.rider_ids) : null;
   const formationRiders: FormationRider[] = [];
   for (const riderId of sourceGroup.rider_ids) {
     const entrant = ctx.entrants[riderId];
@@ -485,14 +507,15 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     if (!entrant || !riderState || riderState.status !== "racing") continue;
     const strength = computeJoinScore(entrant.abilities, false, 0);
     const factor = riderState.team_cp_factor;
+    const blocked = gcBlocked?.has(riderId) === true;
     formationRiders.push({
       rider_id: riderId,
       team_id: teamIdOf(entrant),
       role: entrant.role,
       effort: entrant.effort,
-      tryBreak: tryBreakByRider.get(riderId),
+      tryBreak: blocked ? false : tryBreakByRider.get(riderId),
       strength,
-      spontaneousChance: joinProbability(strength),
+      spontaneousChance: blocked ? 0 : joinProbability(strength),
       engine: collectiveAbility([riderId], ctx.entrants, CHASE_ENGINE_KEYS),
       freshness: clamp(Number.isFinite(factor) ? (factor as number) : 1, 0, 1),
     });
@@ -611,6 +634,26 @@ const GC_THREAT_KEYS: AbilityKey[] = ["climbing", "tempo", "time_trial"];
  * og leddene skalerer med samme faktor naar feltet bliver staerkere/svagere.
  */
 const CHASE_REFERENCE_KEYS: AbilityKey[] = ["sprint", "climbing", "tempo", "time_trial", "endurance"];
+
+/** #6818 (KUN s5_profiles_v2): den loebsspecifikke klassementsevne pr. rytter (gcThreat.raceGcAbilityModel). */
+export type GcAbilityOf = (entrant: Entrant | undefined) => number;
+
+/**
+ * #6818: gruppens klassementstrussel. Med en loebsspecifik evne (v2) er det snittet af den;
+ * uden er det PRAECIS den gamle faste trussel (klatring/tempo/enkeltstart), bit-identisk.
+ */
+function gcThreatAbility(riderIds: string[], entrants: Readonly<Record<string, Entrant>>, gcAbilityOf?: GcAbilityOf | null): number {
+  if (!gcAbilityOf) return collectiveAbility(riderIds, entrants, GC_THREAT_KEYS);
+  let total = 0;
+  let n = 0;
+  for (const riderId of riderIds) {
+    const entrant = entrants[riderId];
+    if (!entrant?.abilities) continue;
+    total += gcAbilityOf(entrant);
+    n++;
+  }
+  return n > 0 ? total / n : 0;
+}
 
 function collectiveAbility(riderIds: string[], entrants: Readonly<Record<string, Entrant>>, keys: AbilityKey[]): number {
   if (riderIds.length === 0 || keys.length === 0) return 0;
@@ -771,9 +814,10 @@ export function breakawayStrength(
   breakawayRiderIds: string[],
   fieldRiderIds: string[],
   entrants: Readonly<Record<string, Entrant>>,
+  gcAbilityOf?: GcAbilityOf | null,
 ): BreakawayStrength {
-  const fieldThreat = collectiveAbility(fieldRiderIds, entrants, GC_THREAT_KEYS);
-  const threatRatio = fieldThreat > 0 ? collectiveAbility(breakawayRiderIds, entrants, GC_THREAT_KEYS) / fieldThreat : 1;
+  const fieldThreat = gcThreatAbility(fieldRiderIds, entrants, gcAbilityOf);
+  const threatRatio = fieldThreat > 0 ? gcThreatAbility(breakawayRiderIds, entrants, gcAbilityOf) / fieldThreat : 1;
   const climbing = (id: string) => normAbility(entrants[id]?.abilities?.climbing);
   const top = fieldRiderIds.map(climbing).sort((a, b) => b - a).slice(0, ORDERS_GC_V1_LET_GO_CLIMB_LEAD.fieldTopN);
   const topMean = top.length > 0 ? top.reduce((a, b) => a + b, 0) / top.length : 0;
@@ -1238,6 +1282,8 @@ export function computeNetChaseAdvantage(input: {
    * udbruddet koerer (bit-identisk).
    */
   pullingBreakawayRiderIds?: string[];
+  /** #6818 (KUN s5_profiles_v2): den loebsspecifikke klassementsevne. Udeladt = den faste (bit-identisk). */
+  gcAbilityOf?: GcAbilityOf | null;
   /**
    * #6441 (KUN official_times_v3): etapeinteresse + additiv holdjagt i stedet
    * for sprinter-interessen og stance-multiplikatoren (se stageWinChaseForceV3).
@@ -1264,7 +1310,7 @@ export function computeNetChaseAdvantage(input: {
     });
     const chaseForceV3 =
       teamForce.total +
-      extra.gcThreatWeight * collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS) * abilityScale +
+      extra.gcThreatWeight * gcThreatAbility(input.breakawayRiderIds, input.entrants, input.gcAbilityOf) * abilityScale +
       extra.lateRaceUrgencyWeight * clamp(input.remainingKmFraction, 0, 1);
     const resistanceV3 =
       extra.enginePowerResistanceWeight * collectiveAbility(pullers, input.entrants, CHASE_ENGINE_KEYS) * abilityScale * pullerShareV3 +
@@ -1274,7 +1320,7 @@ export function computeNetChaseAdvantage(input: {
 
   const sprinterInterest =
     collectiveAbility(input.chaseGroupRiderIds, input.entrants, ["sprint"]) * abilityScale * finaleTypeChaseWeight(input.finaleType);
-  const gcThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS) * abilityScale;
+  const gcThreat = gcThreatAbility(input.breakawayRiderIds, input.entrants, input.gcAbilityOf) * abilityScale;
   const lateRaceUrgency = clamp(input.remainingKmFraction, 0, 1);
 
   // #6187: en rytter paa hjul bidrager med 0 (summen over de koerende delt med
@@ -1314,13 +1360,15 @@ export function letGoMaxGapSeconds(input: {
   finaleType?: FinaleType | null;
   /** #5578 (KUN official_times_v2): finalens faktor i stedet for maxGapFinaleFactor. Udeladt = tabellen. */
   finaleFactor?: number;
+  /** #6818 (KUN s5_profiles_v2): den loebsspecifikke klassementsevne. Udeladt = den faste (bit-identisk). */
+  gcAbilityOf?: GcAbilityOf | null;
 }): number {
   const extra = BREAKAWAY_EXTRA_TUNING;
   const profileBase = extra.maxGapSecondsByProfile[input.profileType] ?? extra.maxGapSecondsDefault;
   const finaleFactor = input.finaleFactor ?? (input.finaleType ? (extra.maxGapFinaleFactor[input.finaleType] ?? 1) : 1);
   const base = profileBase * Math.max(0, finaleFactor);
-  const fieldThreat = collectiveAbility(input.fieldRiderIds, input.entrants, GC_THREAT_KEYS);
-  const breakawayThreat = collectiveAbility(input.breakawayRiderIds, input.entrants, GC_THREAT_KEYS);
+  const fieldThreat = gcThreatAbility(input.fieldRiderIds, input.entrants, input.gcAbilityOf);
+  const breakawayThreat = gcThreatAbility(input.breakawayRiderIds, input.entrants, input.gcAbilityOf);
   const ratio = fieldThreat > 0 ? breakawayThreat / fieldThreat : 1;
   const [lo, hi] = extra.maxGapFactorBounds;
   const reference = extra.threatReferenceRatio > 0 ? extra.threatReferenceRatio : 1;
@@ -1772,6 +1820,8 @@ function gcContextEvents(ctx: BreakawayHookContext): TimelineEvent[] {
 }
 
 function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHookResult {
+  // #6818 (KUN s5_profiles_v2, ejer 21/10 "Ja, med A"): loebsspecifik klassementsevne i jagt og snor.
+  const gcAbilityOf = ctx.s5ProfilesV2 === true ? raceGcAbilityModel(normalizeGcContext(ctx.gcContext)) : null;
   const events: TimelineEvent[] = [];
   const breakawayGroups = findBreakawayGroups(state.groups);
   // #5978: under orders_gc_v1 skal et hold der reagerer, kvittere for stoppet
@@ -1875,7 +1925,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     const dangerous = gcSetup !== null
       && letGoBrakingTeams(letGoDecisions.filter(inBreak), chaseGroup.id, ordersGcV3).size > 0;
     // #6088: et udbrud med staerke ryttere faar ikke det ekstra loft.
-    const strength = ordersGcV1 ? breakawayStrength(breakaway.rider_ids, fieldRiderIds, ctx.entrants) : undefined;
+    const strength = ordersGcV1 ? breakawayStrength(breakaway.rider_ids, fieldRiderIds, ctx.entrants, gcAbilityOf) : undefined;
     // #6073 (KUN orders_gc_v2 paa rullende): mindre ekstra plads (rollingBreakaway.ts).
     const letGoBalance = rollingLetGoBalance(ctx.rollingBreakawayV2, letGoBalanceFor(ctx.rulesRevision, ctx.route.profile_type, dangerous ? 1 : letGoShare, strength), ORDERS_GC_V1_LET_GO.maxGapFactorByProfile.rolling ?? 1);
     // #6201 (KUN orders_gc_v3): farten foelger antallet der deler foeringerne i dagens udbrud
@@ -1923,6 +1973,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
         profileType: ctx.route.profile_type,
         finaleType: ctx.route.finale_type,
         ...(finaleFactor !== undefined ? { finaleFactor } : {}),
+        ...(gcAbilityOf ? { gcAbilityOf } : {}),
       });
       maxGapSeconds *= letGoBalance.maxGapFactor;
       // #6084 (KUN orders_gc_v2 paa bjerg): feltet holder samlet, saa loftet skaleres (mountainSelection.ts).
@@ -1985,6 +2036,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       fieldRiderIds,
       // #6187: ryttere paa hjul koerer ikke foran i udbruddet.
       ...(breakaway.rider_ids.some((id) => wheelSitterIds.has(id)) ? { pullingBreakawayRiderIds: breakaway.rider_ids.filter((id) => !wheelSitterIds.has(id)) } : {}),
+      ...(gcAbilityOf ? { gcAbilityOf } : {}),
       // #6441: et hold med egen koerende mand i udbruddet har ingen etapeinteresse i at jage det.
       ...(chaseV3 ? { officialTimesV3: { profileType: ctx.route.profile_type, teamSignals: chasePlan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants) } } : {}),
     });
