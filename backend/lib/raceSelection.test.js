@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateSelection, buildRiderRows, getSelectionContext, saveSelection, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, seasonAllowsSelectionWrites, loadRaceSeasonStatus } from "./raceSelection.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+const TEST_NOW_6959 = new Date("2026-10-23T00:00:00Z"); // #6959: injiceret ur (hard rule 16)
 
 // Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
 const base = {
@@ -169,7 +170,7 @@ test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/ct
     seasons: ACTIVE_SEASONS,
   };
   const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
   });
@@ -181,7 +182,7 @@ test("prepareSelectionChange: gyldig ændring passerer og returnerer riderIds/ct
 
 test("prepareSelectionChange: løb der ikke er 'scheduled' afvises med 409 selection_race_not_open", async () => {
   const race = { id: "race1", status: "completed", stages_completed: 8, league_division_id: "d1" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "d1", body: {},
   });
   assert.deepEqual(result, { ok: false, status: 409, error: "selection_race_not_open" });
@@ -189,7 +190,7 @@ test("prepareSelectionChange: løb der ikke er 'scheduled' afvises med 409 selec
 
 test("prepareSelectionChange: forkert pulje afvises med 409 selection_wrong_pool", async () => {
   const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "pool-A" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "pool-B", body: {},
   });
   assert.deepEqual(result, { ok: false, status: 409, error: "selection_wrong_pool" });
@@ -197,7 +198,7 @@ test("prepareSelectionChange: forkert pulje afvises med 409 selection_wrong_pool
 
 test("prepareSelectionChange: ugyldigt body (rider_ids ikke et array) afvises med 400 selection_invalid_body", async () => {
   const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase({}), race, teamId: "t1", teamDivisionId: "d1",
     body: { rider_ids: "r1,r2" },
   });
@@ -215,7 +216,7 @@ test("prepareSelectionChange: for stor trup afvises med 400 selection_wrong_size
     seasons: ACTIVE_SEASONS,
   };
   const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
   });
@@ -241,7 +242,7 @@ test("prepareSelectionChange: a race day the rider already rode blocks with 409 
     race_results: [{ rider_id: "r2", race_id: "done", stage_number: 5, result_type: "stage", races: { season_id: ACTIVE_SEASON_ID, race_type: "stage_race" } }],
   };
   const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
   });
@@ -261,7 +262,7 @@ test("prepareSelectionChange: rolle-reference uden for truppen afvises med 400 s
     seasons: ACTIVE_SEASONS,
   };
   const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1", sprint_captain_id: "r9" },
   });
@@ -287,19 +288,19 @@ test("prepareSelectionChange: frosset løb afviser BÅDE tilføjelse/uændret tr
   };
   const race = { id: "race1", status: "scheduled", stages_completed: 2, league_division_id: "d1", race_class: "Class2" };
 
-  const blockedAdd = await prepareSelectionChange({
+  const blockedAdd = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" }, // uændret trup / tilføjelses-retningen
   });
   assert.deepEqual(blockedAdd, { ok: false, status: 409, error: "selection_race_started" });
 
-  const blockedRemoval = await prepareSelectionChange({
+  const blockedRemoval = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids.slice(0, 4), captain_id: "r1" }, // ægte delmængde — før #4534 slap den igennem
   });
   assert.deepEqual(blockedRemoval, { ok: false, status: 409, error: "selection_race_started" });
 
-  const blockedClear = await prepareSelectionChange({
+  const blockedClear = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: [], captain_id: null }, // tøm hele truppen — den groveste fjernelse
   });
@@ -318,7 +319,7 @@ test("prepareSelectionChange: etape 1's start passeret (pause, ingen koert etape
     race_stage_schedule: [{ race_id: "race1", stage_number: 1, scheduled_at: "2020-01-01T10:00:00Z" }],
   };
   const race = { id: "race1", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
   });
@@ -326,7 +327,7 @@ test("prepareSelectionChange: etape 1's start passeret (pause, ingen koert etape
 
   // Flyttes starten ud i fremtiden (planlagt pause), aabner udtagelsen igen.
   state.race_stage_schedule = [{ race_id: "race1", stage_number: 1, scheduled_at: "2999-01-01T10:00:00Z" }];
-  const reopened = await prepareSelectionChange({
+  const reopened = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
   });
@@ -384,7 +385,7 @@ test("prepareSelectionChange: AKTIV sæson → uændret, udtagelsen passerer som
     seasons: [{ id: "s3", status: "active" }, { id: "s4", status: "upcoming" }],
   };
   const race = { id: "race-s3", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s3" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
   });
@@ -403,7 +404,7 @@ test("prepareSelectionChange: løb i en KOMMENDE sæson afvises med 409 selectio
     seasons: [{ id: "s3", status: "active" }, { id: "s4", status: "upcoming" }],
   };
   const race = { id: "race-s4", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s4" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ids, captain_id: "r1" },
   });
@@ -416,7 +417,7 @@ test("prepareSelectionChange: sæson-rækken findes ikke → afvist (fail-closed
     seasons: [{ id: "s3", status: "active" }],
   };
   const race = { id: "race-x", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s-ukendt" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId: "t1", teamDivisionId: "d1", body: { rider_ids: [], captain_id: null },
   });
   assert.deepEqual(result, { ok: false, status: 409, error: "selection_season_not_active" });
@@ -428,7 +429,7 @@ test("prepareSelectionChange: løb uden season_id → afvist (fail-closed, #5405
     seasons: [{ id: "s3", status: "active" }],
   };
   const race = { id: "race-x", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSelectionSupabase(state), race, teamId: "t1", teamDivisionId: "d1", body: { rider_ids: [], captain_id: null },
   });
   assert.deepEqual(result, { ok: false, status: 409, error: "selection_season_not_active" });
@@ -445,7 +446,7 @@ test("prepareSelectionChange: en kommende sæson afvises UDEN at hente roster/en
   const tables = [];
   const supabase = { from: (t) => { tables.push(t); return inner.from(t); } };
   const race = { id: "race-s4", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: "s4" };
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase, race, teamId: "t1", teamDivisionId: "d1", body: { rider_ids: [], captain_id: null },
   });
   assert.equal(result.error, "selection_season_not_active");
@@ -471,7 +472,7 @@ test("prepareSelectionChange: blandet bulk-input — aktivt løb OK, kommende s�
   ];
   const results = [];
   for (const race of races) {
-    const r = await prepareSelectionChange({
+    const r = await prepareSelectionChange({ now: TEST_NOW_6959,
       supabase, race, teamId, teamDivisionId: "d1", body: { rider_ids: ids, captain_id: "r1" },
     });
     results.push({ raceId: race.id, ok: r.ok, error: r.error ?? null, status: r.status ?? null });
@@ -774,7 +775,7 @@ test("prepareSelectionChange: en udgående rytter kan ikke udtages til et nyt l�
   };
   const supabase = makeSelectionSupabase(state);
   const race = { id: "race2", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
-  const out = await prepareSelectionChange({
+  const out = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase, race, teamId, teamDivisionId: "d1",
     body: { rider_ids: ["r1", "sold-pending"], captain_id: "r1" },
   });
@@ -975,11 +976,11 @@ function squadSelectionState() {
 test("#5645 prepareSelectionChange: U23-løb uden holdets U23-pulje afvises med selection_wrong_pool", async () => {
   const race = { id: "raceU", status: "scheduled", stages_completed: 0, league_division_id: "u23-pool", squad: "u23", season_id: ACTIVE_SEASON_ID };
   // Kun seniorpuljen kendt (sådan kalder api.js i dag) → fejl lukket.
-  const withoutTeam = await prepareSelectionChange({
+  const withoutTeam = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "u23-pool", body: {},
   });
   assert.deepEqual(withoutTeam, { ok: false, status: 409, error: "selection_wrong_pool" });
-  const otherPool = await prepareSelectionChange({
+  const otherPool = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1",
     team: { league_division_id: "d1", u23_league_division_id: "u23-other" }, body: {},
   });
@@ -989,13 +990,13 @@ test("#5645 prepareSelectionChange: U23-løb uden holdets U23-pulje afvises med 
 test("#5645 prepareSelectionChange: U23-løb i holdets U23-pulje ser kun U23-ryttere", async () => {
   const race = { id: "raceU", status: "scheduled", stages_completed: 0, league_division_id: "u23-pool", squad: "u23", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
   const team = { league_division_id: "d1", u23_league_division_id: "u23-pool" };
-  const ok = await prepareSelectionChange({
+  const ok = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1", team,
     body: { rider_ids: ["u1", "u2"], captain_id: "u1" },
   });
   assert.equal(ok.ok, true);
   assert.deepEqual(ok.ctx.riders.map((r) => r.id).sort(), ["u1", "u2"]);
-  const senior = await prepareSelectionChange({
+  const senior = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1", team,
     body: { rider_ids: ["s1"], captain_id: "s1" },
   });
@@ -1005,7 +1006,7 @@ test("#5645 prepareSelectionChange: U23-løb i holdets U23-pulje ser kun U23-ryt
 
 test("#5645 prepareSelectionChange: seniorløb bruger teamDivisionId præcis som før, også med team", async () => {
   const race = { id: "raceS", status: "scheduled", stages_completed: 0, league_division_id: "d1", race_class: "Class2", season_id: ACTIVE_SEASON_ID };
-  const res = await prepareSelectionChange({
+  const res = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1",
     team: { league_division_id: "d1", u23_league_division_id: "u23-pool" }, body: { rider_ids: ["s1"], captain_id: "s1" },
   });
@@ -1033,7 +1034,7 @@ test("#5843 prepareSelectionChange: 3×3-matrix — kun løbets egen trup kan ud
   for (const [raceSquad, r] of Object.entries(races)) {
     const race = { ...r, status: "scheduled", stages_completed: 0, race_class: "Class2", season_id: ACTIVE_SEASON_ID };
     for (const [riderSquad, riderId] of Object.entries(riderOf)) {
-      const res = await prepareSelectionChange({
+      const res = await prepareSelectionChange({ now: TEST_NOW_6959,
         supabase: makeSquadSelectionSupabase(squadSelectionState()), race, teamId: "t1", teamDivisionId: "d1", team,
         body: { rider_ids: [riderId], captain_id: riderId },
       });
@@ -1086,7 +1087,7 @@ test("#6964 getSelectionContext: seniorløb får intet overAge-felt (ingen alder
 
 test("#6964 prepareSelectionChange: for gammel junior afvises med selection_rider_over_age; 18-årig gemmes", async () => {
   const supabase = makeSquadSelectionSupabase(ageGateState());
-  const rejected = await prepareSelectionChange({
+  const rejected = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase, race: ageRace("junior"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
     body: { rider_ids: ["j19", "j18"], captain_id: "j18" },
   });
@@ -1094,7 +1095,7 @@ test("#6964 prepareSelectionChange: for gammel junior afvises med selection_ride
   assert.equal(rejected.status, 400);
   assert.equal(rejected.error, "selection_rider_over_age");
   assert.deepEqual(rejected.over_age_rider_ids, ["j19"]);
-  const ok = await prepareSelectionChange({
+  const ok = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase, race: ageRace("junior"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
     body: { rider_ids: ["j18", "j16"], captain_id: "j18" },
   });
@@ -1103,12 +1104,12 @@ test("#6964 prepareSelectionChange: for gammel junior afvises med selection_ride
 
 test("#6964 prepareSelectionChange: U23-løb — 23-årig afvises, junior på U23-holdet gemmes", async () => {
   const supabase = makeSquadSelectionSupabase(ageGateState());
-  const old = await prepareSelectionChange({
+  const old = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase, race: ageRace("u23"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
     body: { rider_ids: ["u23old"], captain_id: "u23old" },
   });
   assert.equal(old.error, "selection_rider_over_age");
-  const junior = await prepareSelectionChange({
+  const junior = await prepareSelectionChange({ now: TEST_NOW_6959,
     supabase, race: ageRace("u23"), teamId: "t1", teamDivisionId: "d1", team: ageTeam,
     body: { rider_ids: ["u23jun", "u1"], captain_id: "u23jun" },
   });

@@ -183,7 +183,7 @@ const SELECTION_TEAM = { league_division_id: 1, u23_league_division_id: 10 };
 test("#5944 prepareSelectionChange: manuel tilmelding af en Train only-trup afvises med 409", async () => {
   const state = seasonState();
   state[YOUTH_RACE_OPT_OUT_TABLE] = [{ team_id: "team-a", squad: "u23" }];
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: new Date("2026-10-23T00:00:00Z"),
     supabase: fakeSupabase(state), race: U23_RACE, teamId: "team-a", teamDivisionId: 1, team: SELECTION_TEAM,
     body: { rider_ids: ["u1"], captain_id: "u1" },
   });
@@ -193,7 +193,7 @@ test("#5944 prepareSelectionChange: manuel tilmelding af en Train only-trup afvi
 test("#5944 prepareSelectionChange: en anden trup paa samme hold paavirkes ikke af U23-valget", async () => {
   const state = seasonState();
   state[YOUTH_RACE_OPT_OUT_TABLE] = [{ team_id: "team-a", squad: "junior" }];
-  const result = await prepareSelectionChange({
+  const result = await prepareSelectionChange({ now: new Date("2026-10-23T00:00:00Z"),
     supabase: fakeSupabase(state), race: U23_RACE, teamId: "team-a", teamDivisionId: 1, team: SELECTION_TEAM,
     body: { rider_ids: ["u1"], captain_id: "u1" },
   });

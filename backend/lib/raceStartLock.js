@@ -24,12 +24,21 @@
 
 import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
+// AGENTS hard rule 16: laasebeslutninger laeser aldrig vaeguret selv. Kalderen (ruten,
+// request-graensen) injicerer `now`; mangler det, er det en programfejl, ikke "aaben".
+function assertNow(now) {
+  if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
+    throw new TypeError("raceStartLock: now (Date) skal injiceres");
+  }
+}
+
 /**
  * Er et planlagt tidspunkt passeret? Ugyldigt/manglende tidspunkt => false (aaben).
  * @param {string|null|undefined} scheduledAt ISO-tidspunkt
  * @param {Date} [now]
  */
-export function hasScheduledStartPassed(scheduledAt, now = new Date()) {
+export function hasScheduledStartPassed(scheduledAt, now) {
+  assertNow(now);
   if (!scheduledAt) return false;
   const startMs = Date.parse(scheduledAt);
   return Number.isFinite(startMs) && now.getTime() >= startMs;
@@ -40,7 +49,7 @@ export function hasScheduledStartPassed(scheduledAt, now = new Date()) {
  *
  * @param {{stageNumber: number, stagesCompleted: number, scheduledAt: string|null|undefined, now?: Date}} args
  */
-export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, now = new Date() }) {
+export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, now }) {
   if (stageNumber <= stagesCompleted) return true;
   return hasScheduledStartPassed(scheduledAt, now);
 }
@@ -50,7 +59,7 @@ export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, n
  *
  * @param {{status?: string|null, stagesCompleted?: number|null, firstStageScheduledAt?: string|null, now?: Date}} args
  */
-export function isRaceLineupLocked({ status = null, stagesCompleted = 0, firstStageScheduledAt = null, now = new Date() } = {}) {
+export function isRaceLineupLocked({ status = null, stagesCompleted = 0, firstStageScheduledAt = null, now } = {}) {
   if (status === "completed") return true;
   return isStageLocked({ stageNumber: 1, stagesCompleted: Number(stagesCompleted) || 0, scheduledAt: firstStageScheduledAt, now });
 }
@@ -101,7 +110,8 @@ export function firstStageStartsFromSchedule(scheduleRows = []) {
  *
  * @param {{supabase?: object, races: Array<object>, starts?: Map<string, string|null>, now?: Date}} args
  */
-export async function withLineupLocked({ supabase, races = [], starts = null, now = new Date() }) {
+export async function withLineupLocked({ supabase, races = [], starts = null, now }) {
+  assertNow(now);
   starts = starts ?? await loadFirstStageStarts({ supabase, races });
   return races.map((race) => ({
     ...race,
@@ -115,11 +125,42 @@ export async function withLineupLocked({ supabase, races = [], starts = null, no
 }
 
 /**
+ * Friske laase for en liste loeb, laest LIGE NU fra DB (status, stages_completed og
+ * etape 1's start). Til skrive-graensen (regenerer) og konflikt-klassifikationen
+ * (auto-frigivelse), hvor et tidligere snapshot kan vaere foraeldet.
+ *
+ * @param {{supabase: object, raceIds: string[], now: Date}} args
+ * @returns {Promise<Set<string>>} id'er paa laaste loeb
+ */
+export async function loadLockedRaceIds({ supabase, raceIds = [], now }) {
+  assertNow(now);
+  const ids = [...new Set((raceIds || []).filter(Boolean))];
+  const locked = new Set();
+  if (!ids.length) return locked;
+  const races = await fetchAllRowsChunkedIn(ids, (chunk) => supabase
+    .from("races")
+    .select("id, status, stages_completed")
+    .in("id", chunk)
+    .order("id"));
+  const starts = await loadFirstStageStarts({ supabase, races });
+  for (const race of races) {
+    if (isRaceLineupLocked({
+      status: race.status,
+      stagesCompleted: race.stages_completed,
+      firstStageScheduledAt: starts.get(race.id) ?? null,
+      now,
+    })) locked.add(race.id);
+  }
+  return locked;
+}
+
+/**
  * Enkelt-loeb-variant til skrive-stierne (PUT /selection, auto, afmeld).
  * @param {{supabase: object, race: {id: string, status?: string|null, stages_completed?: number|null}, now?: Date}} args
  * @returns {Promise<boolean>}
  */
-export async function isRaceLineupLockedNow({ supabase, race, now = new Date() }) {
+export async function isRaceLineupLockedNow({ supabase, race, now }) {
+  assertNow(now);
   if (!race) return false;
   if (race.status === "completed" || (race.stages_completed ?? 0) > 0) return true;
   const starts = await loadFirstStageStarts({ supabase, races: [race] });

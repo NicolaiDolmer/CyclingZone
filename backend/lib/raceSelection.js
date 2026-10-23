@@ -136,7 +136,7 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 // (race.squad = u23/junior) matches mod holdets pulje for TRUPPEN (raceBinding.
 // teamInRaceSquadPool). Uden `team` kendes kun seniorpuljen (teamDivisionId), og et
 // ungdomsløb afvises derfor med selection_wrong_pool (fejl lukket). Seniorløb: uændret.
-export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, team = null, body }) {
+export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, team = null, body, now }) {
   if (race.status !== "scheduled") return { ok: false, status: 409, error: "selection_race_not_open" };
 
   // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje (se #1146-
@@ -180,7 +180,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   // 1's planlagte start er passeret, ikke først når en etape er kørt. Så en motor-pause
   // lader ikke truppen stå åben mens taktikken er låst. Ét schedule-opslag, efter
   // sæson-tjekket så en kommende sæsons afvisning stadig er billigst.
-  if (await isRaceLineupLockedNow({ supabase, race })) {
+  if (await isRaceLineupLockedNow({ supabase, race, now })) {
     return { ok: false, status: 409, error: "selection_race_started" };
   }
 

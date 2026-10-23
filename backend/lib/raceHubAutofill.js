@@ -24,6 +24,7 @@ import { raceBindingWindow, isRiderDayInvariantViolation } from "./raceBinding.j
 import { findCrossUnitMoves } from "./raceEntryGenerator.js";
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { isRaceLineupFrozen } from "./raceActiveGuard.js";
+import { loadLockedRaceIds } from "./raceStartLock.js";
 import { captureException } from "./sentry.js";
 
 const PAGE = 1000;
@@ -93,7 +94,7 @@ export function withEntryRaceWindows({ windowByRace, scheduleRows = [] }) {
  *           existingEntries: Array<{race_id, rider_id, is_auto_filled, race_role}> }} args
  * @returns {Promise<{ regenerated: number, released: number }>}
  */
-export async function writeRegeneratedLineups({ supabase, teamId, target = [], picksByRace = {}, existingEntries = [] }) {
+export async function writeRegeneratedLineups({ supabase, teamId, target = [], picksByRace = {}, existingEntries = [], clock = null }) {
   // Kun løb der faktisk skrives: frosne (#1825/#2074) og løb uden picks/kaptajn røres ikke.
   const planned = [];
   for (const race of target) {
@@ -102,6 +103,14 @@ export async function writeRegeneratedLineups({ supabase, teamId, target = [], p
     const captainId = picks.find((p) => p.race_role === "captain")?.rider_id ?? picks[0]?.rider_id ?? null;
     if (!picks.length || !captainId) continue;
     planned.push({ race, picks });
+  }
+  // #6959: genkontrollér laasen LIGE foer skrivning. Ruten beregnede lineup_locked tidligt;
+  // starter loebet (etape 1's tid passeres) mens der regnes, maa truppen ikke skrives om.
+  // clock injiceres af ruten (hard rule 16); uden clock (tests/aeldre kaldere) springes
+  // genkontrollen over, og den tidlige laas gaelder.
+  if (clock) {
+    const lockedNow = await loadLockedRaceIds({ supabase, raceIds: planned.map((p) => p.race.id), now: clock() });
+    for (let i = planned.length - 1; i >= 0; i--) if (lockedNow.has(planned[i].race.id)) planned.splice(i, 1);
   }
   if (!planned.length) return { regenerated: 0, released: 0 };
 

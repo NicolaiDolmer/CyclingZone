@@ -12,6 +12,7 @@ import {
 } from "./raceStartLock.js";
 import { isStageLocked as isStageLockedViaOrdersApi } from "./raceTeamOrdersApi.js";
 import { partitionRegenTargets, partitionClearTargets } from "./raceDistribution.js";
+const TEST_NOW_6959 = new Date("2026-10-23T00:00:00Z"); // #6959: injiceret ur (hard rule 16)
 
 const START = "2026-10-02T12:00:00Z";
 const BEFORE = new Date("2026-10-02T11:59:59Z");
@@ -142,12 +143,12 @@ test("withLineupLocked stempler lineup_locked pr. loeb efter den delte regel", a
 
 test("isRaceLineupLockedNow: koerte/afsluttede loeb afgoeres uden schedule-opslag", async () => {
   const supabase = fakeSupabase([{ race_id: "x", stage_number: 1, scheduled_at: START }]);
-  assert.equal(await isRaceLineupLockedNow({ supabase, race: { id: "x", status: "scheduled", stages_completed: 1 } }), true);
-  assert.equal(await isRaceLineupLockedNow({ supabase, race: { id: "x", status: "completed", stages_completed: 0 } }), true);
+  assert.equal(await isRaceLineupLockedNow({ now: TEST_NOW_6959, supabase, race: { id: "x", status: "scheduled", stages_completed: 1 } }), true);
+  assert.equal(await isRaceLineupLockedNow({ now: TEST_NOW_6959, supabase, race: { id: "x", status: "completed", stages_completed: 0 } }), true);
   assert.equal(supabase.calls.length, 0);
   assert.equal(await isRaceLineupLockedNow({ supabase, race: { id: "x", status: "scheduled", stages_completed: 0 }, now: AFTER }), true);
   assert.equal(await isRaceLineupLockedNow({ supabase, race: { id: "x", status: "scheduled", stages_completed: 0 }, now: BEFORE }), false);
-  assert.equal(await isRaceLineupLockedNow({ supabase, race: null }), false);
+  assert.equal(await isRaceLineupLockedNow({ now: TEST_NOW_6959, supabase, race: null }), false);
 });
 
 test("regenerer/ryd springer et tids-laast loeb over (samme som et koert loeb)", () => {

@@ -4782,7 +4782,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       }
     }
     // #6959: trup-låsen (samme regel som taktikken) så panelet kan vise den, også i en pause.
-    const lineupLocked = await isRaceLineupLockedNow({ supabase, race });
+    const lineupLocked = await isRaceLineupLockedNow({ supabase, race, now: new Date() });
     res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, lineup_locked: lineupLocked, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled });
   } catch (err) {
     captureException(err);
@@ -5766,6 +5766,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
     const prepared = await prepareSelectionChange({
       supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: req.body,
+      now: new Date(), // #6959: request-grænsen injicerer uret (hard rule 16)
     });
     if (!prepared.ok) {
       return res.status(prepared.status).json(
@@ -5796,7 +5797,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       // "1 rytter = 1 løb pr. løbsdag" brydes aldrig: enten frigiver vi FØR vi gemmer,
       // eller vi gemmer slet ikke.
       // #3098: delt med RPC-fallbackens catch-blok nedenfor (samme 409-payload begge veje).
-      const { resolvable, blocking } = await resolveBindingConflictDetails({
+      const { resolvable, blocking } = await resolveBindingConflictDetails({ now: new Date(),
         supabase, teamId: req.team.id, boundRiderIds: bound,
         thisWindow: binding.thisWindow, otherRaces: binding.otherRaces, riders: ctx.riders,
       });
@@ -5851,7 +5852,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
           const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
           const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
           if (bound.length) {
-            const { resolvable, blocking } = await resolveBindingConflictDetails({
+            const { resolvable, blocking } = await resolveBindingConflictDetails({ now: new Date(),
               supabase, teamId: req.team.id, boundRiderIds: bound,
               thisWindow: binding.thisWindow, otherRaces: binding.otherRaces, riders: ctx.riders,
             });
@@ -5956,6 +5957,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       const race = raceById.get(change.raceId);
       const result = await prepareSelectionChange({
         supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: change,
+        now: new Date(), // #6959
       });
       if (!result.ok) {
         return res.status(result.status).json({
@@ -5999,7 +6001,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
         const { ctx } = prepared.get(raceId);
         const thisWindow = windowByRace.get(raceId);
         const dbOthers = otherRacesByRace.get(raceId);
-        const { resolvable, blocking } = await resolveBindingConflictDetails({
+        const { resolvable, blocking } = await resolveBindingConflictDetails({ now: new Date(),
           supabase, teamId: req.team.id, boundRiderIds: result.boundRiderIds, thisWindow, otherRaces: dbOthers, riders: ctx.riders,
         });
         if (blocking.length) {
@@ -6097,7 +6099,7 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): et igangværende etapeløb må ikke få sit startfelt genskrevet.
     // #6959: frosset = kørt ELLER etape 1's start passeret (samme regel som taktikken).
-    if (await isRaceLineupLockedNow({ supabase, race })) return res.status(409).json({ error: "selection_race_started" });
+    if (await isRaceLineupLockedNow({ supabase, race, now: new Date() })) return res.status(409).json({ error: "selection_race_started" });
     // #5843: trup-bevidst pulje-match (ungdomsløb mod holdets U23-/juniorpulje).
     if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
@@ -6492,7 +6494,7 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
     // Frys (#1825): afmelding midt i et igangværende etapeløb ville ændre startfeltet.
     // #6959: også når etape 1's start er passeret (pause), ikke kun efter en kørt etape.
-    if (await isRaceLineupLockedNow({ supabase, race })) return res.status(409).json({ error: "selection_race_started" });
+    if (await isRaceLineupLockedNow({ supabase, race, now: new Date() })) return res.status(409).json({ error: "selection_race_started" });
     if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
@@ -6517,7 +6519,7 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
     // (sæson-filteret i #3070 er ikke valgfrit).
     const { data: race } = await supabase
       .from("races").select("id, status, stages_completed, season_id").eq("id", req.params.raceId).maybeSingle();
-    if (race && await isRaceLineupLockedNow({ supabase, race })) return res.status(409).json({ error: "selection_race_started" }); // #6959
+    if (race && await isRaceLineupLockedNow({ supabase, race, now: new Date() })) return res.status(409).json({ error: "selection_race_started" }); // #6959
 
     // #5301: gen-deltag kan dobbeltbooke. Afmeldingen NULLer entries' binding_span
     // (race_entries_binding_span + trg_race_withdrawals_resync_binding), så holdet
@@ -6707,7 +6709,7 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // #6132: afvises et insert, genskabes holdets hele eksisterende måludtagelse.
     const { regenerated } = await writeRegeneratedLineupsPreservingTarget({
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
-      write: async (args) => await writeRegeneratedLineups({ ...args }),
+      write: async (args) => await writeRegeneratedLineups({ ...args, clock: () => new Date() }),
     });
     invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, regenerated, skipped, mode });
@@ -6820,7 +6822,7 @@ router.post("/races/distribution/clear", requireAuth, marketWriteLimiter, async 
     // Pure helper (testet): kun frys (#1825) undtager et løb — en bekræftet ryd-handling
     // fjerner ALT, inkl. manuelt udtagne.
     // #6959: ryd er en trup-ændring og låses af samme regel som taktikken (start passeret).
-    const { target, skipped } = partitionClearTargets({ cols: await withLineupLocked({ supabase, races: cols }) });
+    const { target, skipped } = partitionClearTargets({ cols: await withLineupLocked({ supabase, races: cols, now: new Date() }) });
     if (!target.length) return res.json({ ok: true, cleared: 0, skipped, scope });
 
     const targetIds = target.map((r) => r.id);
