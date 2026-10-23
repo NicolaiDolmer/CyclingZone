@@ -6,6 +6,17 @@ import path from 'node:path';
 import { runWave, childArgs } from './codex-wave.mjs';
 import * as runner from './codex-wave.mjs';
 import { hostLaneCap } from './wave-capacity.mjs';
+import { generateBrief } from './make-wave-brief.mjs';
+
+test('#7027: writer brief uses the PowerShell guard with fail-closed commit ordering', () => {
+  const brief = generateBrief({ ...tracks[0], slug: 'guard-fixture', scopeText: 'Fixture',
+    repoWorktreesRoot: 'C:/Work trees', scratchRoot: 'C:/Scratch' });
+  const rendered = runner.writerBrief(brief);
+  assert.ok(brief.includes('bash "C:/Work trees\\guard-fixture/scripts/guard-commit-branch.sh"'));
+  assert.ok(rendered.includes('pwsh -File "C:/Work trees\\guard-fixture/scripts/guard-commit-branch.ps1" "codex/1-fixture" "C:/Work trees\\guard-fixture"; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; git -C "C:/Work trees\\guard-fixture" commit -F'));
+  assert.doesNotMatch(rendered, /bash [^\r\n]*guard-commit-branch[.]sh/);
+  assert.ok(rendered.includes('Blokerer guarden: STOP'));
+});
 
 const localAppData = 'C:\\Users\\Fixture\\AppData\\Local';
 const appCli = `${localAppData}\\OpenAI\\Codex\\bin\\current\\codex.exe`;

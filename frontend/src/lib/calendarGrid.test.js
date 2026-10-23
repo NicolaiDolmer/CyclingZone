@@ -114,6 +114,18 @@ test("expandStageEvents bærer poolId videre fra entryen", () => {
   assert.equal(ev.poolId, 3);
 });
 
+test("#6683 expandStageEvents bærer etapens egen profileType videre (null for ældre svar)", () => {
+  const entries = [
+    { id: "r1", name: "Race A", raceType: "stage_race", division: 2, date: "2026-07-05", terrain: "mountain",
+      stageSchedule: [{ stage: 1, date: "2026-07-05", time: "14:00", terrain: "mountain", profileType: "high_mountain" }, { stage: 2, date: "2026-07-06", time: "14:00", terrain: "sprint" }] },
+    { id: "r2", name: "Race B", raceType: "single", division: 2, date: "2026-07-07", terrain: "hilly" },
+  ];
+  const evs = expandStageEvents(entries);
+  assert.equal(evs[0].profileType, "high_mountain");
+  assert.equal(evs[1].profileType, null);
+  assert.equal(evs[2].profileType, null);
+});
+
 test("expandStageEvents falder tilbage til poolId=null når entryen ikke har en pulje", () => {
   const entries = [{ id: "r1", name: "Race A", raceType: "single", division: 2, date: "2026-07-05", terrain: "sprint" }];
   const [ev] = expandStageEvents(entries);

@@ -52,5 +52,10 @@
     "regionAriaLabel": "Estado del servicio",
     "dismissAriaLabel": "Descartar el aviso",
     "knownIssuesLink": "Problemas conocidos"
+  },
+  "racePaused": {
+    "title": "En pausa.",
+    "newStart": "Nuevo inicio {time}.",
+    "newStartUnknown": "Se anunciará la nueva hora de inicio."
   }
 }

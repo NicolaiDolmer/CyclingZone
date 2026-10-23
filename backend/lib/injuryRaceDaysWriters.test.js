@@ -9,7 +9,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { incidentInjuryUpsertRows } from "./raceRunner.js";
+import { incidentInjuryUpsertRows, injuryFinishedRiderIds } from "./raceRunner.js";
 import { isRiderInjured, applyInjuredFilter } from "./riderEligibility.js";
 import { injuryEndGameDay, injuryRaceDaysLeft } from "./injuryRaceDays.js";
 
@@ -122,4 +122,28 @@ test("#5462 gate + akse haenger sammen: samme skade, to udtryk, samme rytter", (
   assert.equal(injuryRaceDaysLeft({ endGameDay: end, currentGameDay: 56 }), 0);
   // ... og gaten paa den dato loebsdag 43 ligger paa.
   assert.equal(isRiderInjured("2026-06-13", "2026-06-13"), true);
+});
+
+test("#7042 injuryFinishedRiderIds: haardt styrt koert faerdigt = ja; udgaaelse, tidsgraense og ikke-skadende uheld = nej", () => {
+  const ids = injuryFinishedRiderIds([
+    { rider_id: "hard", stage_number: 8, kind: "crash", outcome: "time_loss", injury_days: 4 },
+    { rider_id: "out", stage_number: 3, kind: "crash", outcome: "abandon", injury_days: 6 },
+    { rider_id: "otl", stage_number: 5, kind: "time_limit", outcome: "abandon", injury_days: 2 },
+    { rider_id: "light", stage_number: 2, kind: "crash", outcome: "time_loss", injury_days: null },
+    { rider_id: "dns", stage_number: 9, kind: "injury", outcome: "abandon", injury_days: null },
+  ]);
+  assert.deepEqual([...ids], ["hard"]);
+});
+
+test("#7042 injuryFinishedRiderIds: helt loeb i et kald, senere udgaaelse vinder over tidligere styrt (Codex P2)", () => {
+  const later = injuryFinishedRiderIds([
+    { rider_id: "r", stage_number: 2, kind: "crash", outcome: "time_loss", injury_days: 3 },
+    { rider_id: "r", stage_number: 6, kind: "crash", outcome: "abandon", injury_days: 5 },
+  ]);
+  assert.equal(later.has("r"), false);
+  const earlierAbandonOrder = injuryFinishedRiderIds([
+    { rider_id: "r", stage_number: 6, kind: "crash", outcome: "abandon", injury_days: 5 },
+    { rider_id: "r", stage_number: 2, kind: "crash", outcome: "time_loss", injury_days: 3 },
+  ]);
+  assert.equal(earlierAbandonOrder.has("r"), false, "raekkefoelgen i arrayet maa ikke afgoere det");
 });

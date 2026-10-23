@@ -50,6 +50,12 @@ export function executionPlan(options, limit = hostLaneCap()) {
 // which workspace-write turns off by default.
 export const WRITER_GIT_RULE = 'Git metadata under .git is always read-only in this sandbox. Run every git command that writes (fetch, pull, rebase, commit, push) with command-only escalation through automatic approval review; never disable the sandbox, add writable directories or change config. A git write that fails without that escalation is not a blocker: request it and retry once.';
 
+export function writerBrief(brief) {
+  // The shared brief uses bash on PATH; the Windows wrapper resolves Git Bash.
+  return brief.replace(/bash ("[^"\r\n]+\/guard-commit-branch)\.sh" (\S+) ("[^"\r\n]+") && /g,
+    (_, guard, branch, dir) => `pwsh -File ${guard}.ps1" "${branch}" ${dir}; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; `);
+}
+
 export function childArgs(role, track, schema, output) {
   // Investigate tracks need scratch writes and network for evidence (e.g. a
   // prod SELECT) but no escalation; validateResult fails them if they leave the
@@ -187,7 +193,7 @@ export async function runAgent(role, track, context) {
     ? `READ-ONLY independent review. Read the brief below, inspect git diff ${track.reviewBase || track.base}...HEAD and tests. Do not trust the worker's summary. Check scope, ownership, requirements, SSOT, test evidence, privacy and regressions. No writes or agents. Approve only if there are no blocking findings.\n${track.brief}`
     : track.kind === 'investigate'
     ? `${track.brief}\nCodex runtime: the orchestrator already fetched origin/main into ${track.worktree} and saved the issue with comments in ${path.join(track.scratch, 'issue.md')}; skip git fetch/pull (.git is read-only). Network is on for read-only evidence (gh, prod SELECT). Write evidence only in ${track.scratch}; leave the worktree unchanged or the track fails. No agents.\n`
-    : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${track.brief}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. ${WRITER_GIT_RULE} Return blocked if a required command still fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
+    : `${role === 'fixer' ? `Fix only these independently found issues: ${JSON.stringify(context.review)}\n` : ''}${writerBrief(track.brief)}\nCodex runtime: work ONLY in ${track.worktree}. No other agents, merge, prod writes, flag flips or changes to main. Keep the PR draft for owner review. Never edit shared coordination files. Use the selected worktree in every shell call. ${WRITER_GIT_RULE} Return blocked if a required command still fails. Refs #${track.issue}, never Closes. Before every push run scripts/preflight-pr.ps1. Do not claim success from shell exit alone: inspect each command.\n`);
   const childKey = `${track.issue}-${label}`;
   const recordChild = (state, pid) => updateWave(context.runDir, context.wave.waveId, current => ({ ...current,
     children: [...(current.children || []).filter(c => c.key !== childKey), { key: childKey, state, pid }] }));

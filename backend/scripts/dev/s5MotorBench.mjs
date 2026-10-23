@@ -2,7 +2,7 @@
 // backend/scripts/dev/s5MotorBench.mjs
 // #6362 (S5-etapeprofiler): den rigtige motor-bench bag benchmark-gatens del (4).
 //
-// HVAD DEN GOER. Koerer v4-motoren under regel-revisionen s5_profiles_v1 (KUN her, i en
+// HVAD DEN GOER. Koerer v4-motoren under regel-revisionen s5_profiles_v2 (#6818: den aktuelle; KUN her, i en
 // bench-kontekst: flaget og prod-revisionen roeres ikke) paa S5-ruter genereret lokalt
 // med generatoren (profileModel "s5"), med de samme saeson-traek som
 // scripts/dev/s5ProfileDryRun.mjs (season_id "s5-dryrun-<i>", foerste loebsdag
@@ -77,7 +77,7 @@ const REAL_DAYS = 32;
  *   simSeeds   motor-seeds pr. rute.
  */
 export const S5_MOTOR_BENCH_CONFIG = Object.freeze({
-  revision: "s5_profiles_v1",
+  revision: "s5_profiles_v2",
   firstDay: "2026-10-28",
   genSeeds: 3,
   simSeeds: 3,
@@ -474,7 +474,7 @@ export function fixtureFromSummary(summary, winners, winnerDigests) {
   if (!winnerDigests) throw new Error("fixtureFromSummary: vindertype-digesten mangler");
   return {
     stub: false,
-    source: "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt, etapeloeb med akkumuleret traethed og hviledage (raceRunner.entrantFatigueSequences). Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel; winnerDigests binder dommen til maalingerne, saa CI kan haandhaeve den uden taersklen. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+    source: "#6362 motor-bench: v4 under s5_profiles_v2 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt, etapeloeb med akkumuleret traethed og hviledage (raceRunner.entrantFatigueSequences). Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel; winnerDigests binder dommen til maalingerne, saa CI kan haandhaeve den uden taersklen. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
     config: { ...S5_MOTOR_BENCH_CONFIG },
     verdicts: summary.gate.verdicts,
     sources: summary.gate.sources,
