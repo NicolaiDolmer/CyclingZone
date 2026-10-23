@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { formatDate } from "../lib/intl.js";
 import { Card, ExchangeIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon, ChevronRightIcon } from "./ui";
 
 /**
@@ -26,7 +27,7 @@ export default function NextActionsCard({
   pending, urgentAuctionCount = 0, loading = false,
   squadSelectionMissingRace = null, notTrainedToday = false, boardPlanMissing = false,
 }) {
-  const { t, i18n } = useTranslation("dashboard");
+  const { t } = useTranslation("dashboard");
   const counts = pending?.counts || { transfer_offers: 0, swap_offers: 0, total: 0 };
 
   // #2288 D — mest presserende øverst: holdudtagelse (deadline-følsomt) → ikke
@@ -50,13 +51,9 @@ export default function NextActionsCard({
     items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
 
   // #6962: næste ugentlige opdateringer (serverens tider, vist i dansk tid).
-  const fmtWhen = (iso) => {
-    const d = iso ? new Date(iso) : null;
-    if (!d || Number.isNaN(d.getTime())) return null;
-    return new Intl.DateTimeFormat(i18n.language?.startsWith("da") ? "da-DK" : "en-GB", {
-      timeZone: "Europe/Copenhagen", weekday: "long", hour: "2-digit", minute: "2-digit", hour12: false,
-    }).format(d);
-  };
+  const fmtWhen = (iso) => formatDate(iso, null, {
+    timeZone: "Europe/Copenhagen", weekday: "long", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
   const valueWhen = fmtWhen(pending?.next_updates?.value_update_at);
   const intakeWhen = fmtWhen(pending?.next_updates?.academy_intake_at);
 
