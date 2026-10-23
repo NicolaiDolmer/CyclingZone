@@ -52,5 +52,10 @@
     "regionAriaLabel": "Servicestatus",
     "dismissAriaLabel": "Melding sluiten",
     "knownIssuesLink": "Bekende problemen"
+  },
+  "racePaused": {
+    "title": "Gepauzeerd.",
+    "newStart": "Nieuwe start {time}.",
+    "newStartUnknown": "De nieuwe starttijd volgt."
   }
 }
