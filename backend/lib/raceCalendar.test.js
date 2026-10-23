@@ -9,6 +9,7 @@ import {
   toCopenhagenISODate,
   splitISODate,
   calendarTerrainBucket,
+  dominantProfileType,
   dominantCalendarBucket,
   tierToDivision,
   buildDivisionTree,
@@ -175,10 +176,25 @@ test("buildCalendarModel: stageSchedule giver per-etape dato+tid+terræn fra sch
   const { entries } = buildCalendarModel(sampleInput());
   const stage = entries.find((e) => e.id === "r-stage");
   assert.equal(stage.stageSchedule.length, 2, "to scheduled etaper");
-  assert.deepEqual(stage.stageSchedule[0], { stage: 1, date: "2026-06-30", time: "08:00", terrain: "mountain" });
-  assert.deepEqual(stage.stageSchedule[1], { stage: 5, date: "2026-07-01", time: "08:00", terrain: null });
+  assert.deepEqual(stage.stageSchedule[0], { stage: 1, date: "2026-06-30", time: "08:00", terrain: "mountain", profileType: "mountain" });
+  assert.deepEqual(stage.stageSchedule[1], { stage: 5, date: "2026-07-01", time: "08:00", terrain: null, profileType: null });
   const single = entries.find((e) => e.id === "r-single");
-  assert.deepEqual(single.stageSchedule, [{ stage: 1, date: "2026-06-28", time: "08:00", terrain: "sprint" }]);
+  assert.deepEqual(single.stageSchedule, [{ stage: 1, date: "2026-06-28", time: "08:00", terrain: "sprint", profileType: "flat" }]);
+});
+
+test("#6683 buildCalendarModel: terrainProfile er løbets dominerende profile_type (ikon), stageSchedule bærer etapens egen", () => {
+  const { entries } = buildCalendarModel(sampleInput());
+  assert.equal(entries.find((e) => e.id === "r-single").terrainProfile, "flat");
+  // mountain(1) + high_mountain(1) = mountain-bucket dominerer; tie → første etape.
+  assert.equal(entries.find((e) => e.id === "r-stage").terrainProfile, "mountain");
+  assert.equal(dominantProfileType([]), null);
+  assert.equal(dominantProfileType(["flat", "high_mountain", "high_mountain"]), "high_mountain");
+  assert.equal(dominantProfileType(["rolling", "rolling", "hilly"]), "rolling", "rolling foldes til sprint-bucketen men beholder sin egen type");
+});
+
+test("#6683 calendarTerrainBucket: medium_mountain → mountain, itt_hilly → itt (faldt før stille til sprint)", () => {
+  assert.equal(calendarTerrainBucket("medium_mountain"), "mountain");
+  assert.equal(calendarTerrainBucket("itt_hilly"), "itt");
 });
 
 test("buildCalendarModel: isMine=false når holdet ingen pulje har", () => {

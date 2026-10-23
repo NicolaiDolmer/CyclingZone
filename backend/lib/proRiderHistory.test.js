@@ -47,19 +47,22 @@ function fakeSupabase({
   };
 }
 
+// Fast ur (AGENTS.md hard rule 16): entitlement-udfaldet maa aldrig afhaenge af vaeguret.
+const NOW = () => Date.parse("2026-10-23T12:00:00Z");
+
 function res() {
   return { code: 0, body: null, status(c) { this.code = c; return this; }, json(b) { this.body = b; return this; } };
 }
 
 test("proRiderHistory: intet team → 400", async () => {
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase() });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase() });
   const r = res();
   await handler({ team: null, params: {} }, r);
   assert.equal(r.code, 400);
 });
 
 test("proRiderHistory: ikke Pro (ingen subscription) → 403 pro_required, ingen historik-kald", async () => {
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub: null }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub: null }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.equal(r.code, 403);
@@ -68,7 +71,7 @@ test("proRiderHistory: ikke Pro (ingen subscription) → 403 pro_required, ingen
 
 test("proRiderHistory: udløbet abonnement (status inactive) → 403 pro_required", async () => {
   const sub = { status: "inactive", current_period_end: "2020-01-01T00:00:00Z", is_founder: false };
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.equal(r.code, 403);
@@ -81,7 +84,7 @@ test("proRiderHistory: aktivt abonnement → 200, dedupet én række pr. sæson 
     { snapshot_date: "2026-03-01", season_number: 1, abilities: { climbing: 45 } }, // sæson 1's seneste
     { snapshot_date: "2026-06-01", season_number: 2, abilities: { climbing: 52 } },
   ];
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub, historyRows }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.equal(r.code, 0); // res() ikke eksplicit sat 200 — handler bruger json() uden status()
@@ -92,9 +95,26 @@ test("proRiderHistory: aktivt abonnement → 200, dedupet én række pr. sæson 
   ]);
 });
 
-test("proRiderHistory: Founder uden aktivt abonnement er alligevel Pro (permanent status)", async () => {
+test("#2806 proRiderHistory: Founder uden aktivt abonnement → 403 (Founder giver kun maerket, ejer 13/10)", async () => {
   const sub = { status: "inactive", current_period_end: null, is_founder: true };
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows: [] }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub, historyRows: [] }) });
+  const r = res();
+  await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
+  assert.equal(r.code, 403);
+  assert.equal(r.body.errorCode, "pro_required");
+});
+
+test("#2806 proRiderHistory: Founder der har opsagt (cancelled, periode udloebet) → 403", async () => {
+  const sub = { status: "cancelled", current_period_end: "2020-01-01T00:00:00Z", is_founder: true };
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub, historyRows: [] }) });
+  const r = res();
+  await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
+  assert.equal(r.code, 403);
+});
+
+test("#2806 proRiderHistory: Founder med aktivt abonnement → 200", async () => {
+  const sub = { status: "active", current_period_end: "2099-01-01T00:00:00Z", is_founder: true };
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub, historyRows: [] }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.equal(r.body.errorCode, undefined);
@@ -110,7 +130,7 @@ test("#5947 proRiderHistory: season end uses the last race day of the date, not 
     { snapshot_date: "2026-09-29", season_number: 4, source: "daily_training", game_day: 7, abilities: { climbing: 50 } },
     { snapshot_date: "2026-09-29", season_number: 4, source: "race_development", game_day: 9, abilities: { climbing: 52 } },
   ];
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows, raceDayRows }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub, historyRows, raceDayRows }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.deepEqual(r.body.seasons, [{ season_number: 4, abilities: { climbing: 52 } }]);
@@ -126,7 +146,7 @@ test("#5947 proRiderHistory: a season-transition date shared by two seasons keep
   const raceDayRows = [
     { snapshot_date: "2026-09-27", season_number: 3, source: "daily_training", game_day: 139, abilities: { climbing: 49 } },
   ];
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub, historyRows, raceDayRows }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub, historyRows, raceDayRows }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.deepEqual(r.body.seasons, [
@@ -141,7 +161,7 @@ test("#6286 sortering er deterministisk: samme dato + saeson, kilde-prioritet af
   const transition = { snapshot_date: "2026-09-27", season_number: 4, source: "season_transition", abilities: { climbing: 50 } };
   const training = { snapshot_date: "2026-09-27", season_number: 4, source: "daily_training", abilities: { climbing: 51 } };
   for (const historyRows of [[transition, training], [training, transition]]) {
-    const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub: ACTIVE, historyRows }) });
+    const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub: ACTIVE, historyRows }) });
     const r = res();
     await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
     assert.deepEqual(r.body.seasons, [{ season_number: 4, abilities: { climbing: 51 } }]);
@@ -174,7 +194,7 @@ test("#6286 live-punkt: nuvaerende evner erstatter den aktive saesons punkt og m
     { snapshot_date: "2026-09-29", season_number: 4, source: "daily_training", abilities: { climbing: 50 } },
   ];
   const current = { climbing: 53, teamwork: 31, hidden_potential: 77 };
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub: ACTIVE, historyRows, current, activeSeason: 4 }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub: ACTIVE, historyRows, current, activeSeason: 4 }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.deepEqual(r.body.seasons, [
@@ -184,7 +204,7 @@ test("#6286 live-punkt: nuvaerende evner erstatter den aktive saesons punkt og m
 });
 
 test("#6286 rytter uden historik faar eet nu-punkt i den aktive saeson", async () => {
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub: ACTIVE, current: { climbing: 22 }, activeSeason: 5 }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub: ACTIVE, current: { climbing: 22 }, activeSeason: 5 }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.deepEqual(r.body.seasons, [{ season_number: 5, abilities: { climbing: 22 }, live: true }]);
@@ -192,7 +212,7 @@ test("#6286 rytter uden historik faar eet nu-punkt i den aktive saeson", async (
 
 test("#6286 live-opslaget fejler: historikken vises stadig, uden live-punkt", async () => {
   const historyRows = [{ snapshot_date: "2026-08-01", season_number: 3, source: "daily_training", abilities: { climbing: 48 } }];
-  const handler = createProRiderHistoryHandler({ supabase: fakeSupabase({ sub: ACTIVE, historyRows, currentError: { message: "boom" } }) });
+  const handler = createProRiderHistoryHandler({ now: NOW, supabase: fakeSupabase({ sub: ACTIVE, historyRows, currentError: { message: "boom" } }) });
   const r = res();
   await handler({ team: { id: "t1" }, params: { riderId: "r1" } }, r);
   assert.deepEqual(r.body.seasons, [{ season_number: 3, abilities: { climbing: 48 } }]);

@@ -12,6 +12,7 @@ import {
   EmptyState, ErrorState, SkeletonLines,
 } from "../components/ui";
 import { fetchAllRows } from "../lib/supabasePagination";
+import { isHiddenYouthClassificationRow } from "../lib/youthClassification.ts";
 
 export default function RaceHistoryPage() {
   const { t } = useTranslation("races");
@@ -40,7 +41,7 @@ export default function RaceHistoryPage() {
     try {
       let racesQuery = supabase
         .from("races")
-        .select("id, name, race_type, stages, edition_year, status, season:season_id(id, number, status)")
+        .select("id, name, race_type, stages, edition_year, status, squad, season:season_id(id, number, status)")
         .ilike("name", raceName);
       if (raceTypeFilter) racesQuery = racesQuery.eq("race_type", raceTypeFilter);
       if (poolFilter && Number.isFinite(Number(poolFilter))) racesQuery = racesQuery.eq("league_division_id", Number(poolFilter));
@@ -67,6 +68,10 @@ export default function RaceHistoryPage() {
       } catch {
         setLoadError(true); return;
       }
+
+      // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i ældre udgaver (tæller ikke i top-3).
+      const squadByRace = new Map(races.map((r) => [r.id, r.squad]));
+      results = (results || []).filter((res) => !isHiddenYouthClassificationRow(res, squadByRace.get(res.race_id)));
 
       // Kanonisk (GAME_INVARIANTS, raceHistoryModel): vinderen er rank 1 i "gc" — endagsløb ved etape 1, etapeløb ved højeste etape.
       const primaryType = "gc";

@@ -5,7 +5,6 @@ import {
   computeStageRaceStanding,
   entryCountFor,
   mergeStandingRowsByRace,
-  terrainGlyphBucket,
   todayStageWinner,
 } from "../lib/dashboardTodayStages.js";
 import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
@@ -76,7 +75,7 @@ export default function useTodayStages(teamId) {
         // pagination-safe: MINE dagens race_id'er (højst 3 pr. hold, 23/9).
         // #3958 (ejer-mistanke bekræftet 23/8): tidligere hentede denne query KUN
         // profile_type → miniaturen var et generisk 6-vejrs kategori-piktogram
-        // (TerrainGlyph), IKKE etapens ægte rutedata. Nu hentes de samme felter
+        // (silhuet-piktogram), IKKE etapens ægte rutedata. Nu hentes de samme felter
         // StageProfileGraph/buildProfileSeries bruger overalt ellers, så dashboardets
         // "dagens etaper" viser SAMME rigtige rute som løbssiden (#4107/#4108).
         supabase.from("race_stage_profiles")
@@ -198,7 +197,6 @@ export default function useTodayStages(teamId) {
         const standingRows = standingRowsByRace.get(c.raceId) || [];
         return {
           ...c,
-          bucket: terrainGlyphBucket(c.profileType),
           standing: c.isStageRace ? computeStageRaceStanding(standingRows, teamId) : null,
           entryCount: c.isStageRace ? null : entryCountFor(entryRowsAll, c.raceId),
           winnerName: c.state === "finished"
