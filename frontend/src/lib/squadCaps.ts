@@ -18,6 +18,7 @@
 
 import { ageForSeason } from "./riderAge.js";
 import { YOUTH_SQUADS, type YouthSquad } from "./youthSquadPages.ts";
+import type { supabase as appSupabase } from "./supabase.ts";
 
 /** Loft pr. ungdomstrup. Spejl af backend/lib/squads.js SQUAD_CAPS. */
 export const SQUAD_CAPS: Readonly<Record<YouthSquad, number>> = Object.freeze({ u23: 12, junior: 10 });
@@ -105,7 +106,14 @@ interface RidersCountClient {
  * samme tælling som backend countSquadMembers (academyGraduation.js). Et fejlet
  * kald giver null for den trup (= "ikke fuld", se isSquadFull).
  */
-export async function fetchAcademySquadCounts(client: RidersCountClient, teamId: string | null | undefined): Promise<SquadCounts> {
+// Første overload tager appens typede klient direkte: så slipper tsc for at
+// sammenligne hele SupabaseClient<Database> strukturelt med RidersCountClient,
+// en kontrol der giver TS2589 ("excessively deep") i de .jsx-filer, der kalder
+// funktionen, afhængigt af hvilken fil tsc tjekker først (#2806).
+export function fetchAcademySquadCounts(client: typeof appSupabase, teamId: string | null | undefined): Promise<SquadCounts>;
+export function fetchAcademySquadCounts(client: RidersCountClient, teamId: string | null | undefined): Promise<SquadCounts>;
+export async function fetchAcademySquadCounts(anyClient: unknown, teamId: string | null | undefined): Promise<SquadCounts> {
+  const client = anyClient as RidersCountClient;
   if (!teamId) return { ...EMPTY_SQUAD_COUNTS };
   const results = await Promise.all(YOUTH_SQUADS.map((squad) =>
     client.from("riders").select("id", { count: "exact", head: true }).eq("team_id", teamId).eq("squad", squad),
