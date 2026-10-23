@@ -49,6 +49,7 @@ export async function fetchJerseyWinnerRows(
 ): Promise<JerseyRow[]> {
   const rows: JerseyRow[] = [];
   for (let i = 0; i < raceIds.length; i += chunkSize) {
+    // pagination-safe: rank 1 i tre trøje-typer pr. løb, max 60 løb pr. bid (ca. 180 rækker)
     const { data, error } = await client.from("race_results")
       .select("result_type, rank, team_id")
       .in("race_id", raceIds.slice(i, i + chunkSize))
