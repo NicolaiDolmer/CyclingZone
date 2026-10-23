@@ -26,7 +26,7 @@ export default function NextActionsCard({
   pending, urgentAuctionCount = 0, loading = false,
   squadSelectionMissingRace = null, notTrainedToday = false, boardPlanMissing = false,
 }) {
-  const { t } = useTranslation("dashboard");
+  const { t, i18n } = useTranslation("dashboard");
   const counts = pending?.counts || { transfer_offers: 0, swap_offers: 0, total: 0 };
 
   // #2288 D — mest presserende øverst: holdudtagelse (deadline-følsomt) → ikke
@@ -48,6 +48,17 @@ export default function NextActionsCard({
     items.push({ key: "swaps", Icon: ExchangeIcon, label: t("nextActions.swapOffers", { count: counts.swap_offers }), to: "/transfers" });
   if (urgentAuctionCount > 0)
     items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
+
+  // #6962: næste ugentlige opdateringer (serverens tider, vist i dansk tid).
+  const fmtWhen = (iso) => {
+    const d = iso ? new Date(iso) : null;
+    if (!d || Number.isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat(i18n.language?.startsWith("da") ? "da-DK" : "en-GB", {
+      timeZone: "Europe/Copenhagen", weekday: "long", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).format(d);
+  };
+  const valueWhen = fmtWhen(pending?.next_updates?.value_update_at);
+  const intakeWhen = fmtWhen(pending?.next_updates?.academy_intake_at);
 
   return (
     <Card className="p-4">
@@ -88,6 +99,13 @@ export default function NextActionsCard({
             </li>
           ))}
         </ul>
+      )}
+
+      {(valueWhen || intakeWhen) && (
+        <div className="mt-3 space-y-0.5 border-t border-cz-border pt-3 text-xs text-cz-3">
+          {valueWhen && <p>{t("nextActions.nextValueUpdate", { when: valueWhen })}</p>}
+          {intakeWhen && <p>{t("nextActions.nextAcademyIntake", { when: intakeWhen })}</p>}
+        </div>
       )}
     </Card>
   );

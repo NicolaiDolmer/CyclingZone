@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {1 auction ends within the hour} other {# auctions end within the hour}}",
     "squadSelectionMissing": "Squad selection missing for {race}",
     "notTrainedToday": "You have not trained today",
-    "boardPlanMissing": "No board plan negotiated yet"
+    "boardPlanMissing": "No board plan negotiated yet",
+    "nextValueUpdate": "Next value update: {when}",
+    "nextAcademyIntake": "Next academy intake: {when}"
   },
   "seasonStart": {
     "title": "Season {number}: get started",

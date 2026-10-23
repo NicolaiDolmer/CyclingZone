@@ -298,6 +298,7 @@ import { peakTargetRaceStarted, plannerSquadFor } from "../lib/peakTargetScope.j
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
+import { buildNextScheduledUpdates } from "../lib/nextScheduledUpdates.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
@@ -9677,7 +9678,14 @@ router.get("/inbox/pending", requireAuth, async (req, res) => {
 
   try {
     const result = await getPendingInboxItems({ supabase, teamId: req.team.id });
-    res.json(result);
+    // #6962: næste ugentlige opdateringer til Dashboard "Næste træk". Best-effort:
+    // en fejl her må aldrig fælde pending-listen.
+    let next_updates = null;
+    try {
+      const academyIntakeScheduled = (await isAcademyEnabled(supabase)) && !(await isAcademyIntakePullEnabled(supabase));
+      next_updates = buildNextScheduledUpdates({ academyIntakeScheduled });
+    } catch { /* udeladt */ }
+    res.json({ ...result, next_updates });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
