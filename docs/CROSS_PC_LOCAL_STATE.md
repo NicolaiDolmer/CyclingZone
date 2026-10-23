@@ -10,6 +10,7 @@
 - `SUPABASE_CONTEXT.md` — hardlinked til OneDrive (managed)
 - `supabase-readonly.env` — hardlinked til OneDrive (managed)
 - `preflight-state.json` — kortlivet health-check artefakt
+- `season-cutover-preflight.json` — rapport fra `scripts/preflight-season-cutover.ps1`, genereres på ny ved hver kørsel
 - Pattern: `commit-msg*.txt`, `commit-N.txt`, `commitmsg-*.txt`, `pr*-body.md`, `pr-body-*.md` — **levetid < 1 time**, slet efter `git commit -F` / `gh pr create --body-file`
 
 **Alt andet i `.codex.local/` er en fejl.** Tilsvarende for `~/.codex/AGENTS.md` (skal være tom eller hardlinket) og `~/.codex/memories/` (skal være tom eller junctioned). `~/.manus/` må kun have `logs/`.
