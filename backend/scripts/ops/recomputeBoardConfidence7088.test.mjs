@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   APPROX_FLAG,
+  healMissingReceipts,
   applyPlan,
   buildCorrectedSource,
   buildPlan,
@@ -216,4 +217,30 @@ test("#7088 APPROX_FLAG: manglende sæsonafslutning er en tilnærmelse (Codex P1
   assert.ok(APPROX_FLAG.test("s3_no_season_end"));
   assert.ok(APPROX_FLAG.test("s3_delta_maybe_clipped"));
   assert.ok(!APPROX_FLAG.test("s3_something_exact"));
+});
+
+test("#7088 healMissingReceipts: en rettet række uden kvittering får den skrevet ved næste kørsel (Codex P1)", async () => {
+  const inserts = [];
+  const supabase = {
+    from(table) {
+      assert.equal(table, "board_satisfaction_events");
+      return {
+        select: () => ({ eq: () => ({ eq: async () => ({ data: [{ team_id: "t2" }], error: null }) }) }),
+        insert: async (row) => { inserts.push(row); return { error: null }; },
+      };
+    },
+  };
+  const src = (delta, target) => ({ method: "correction_7088", delta, target, season_anchor: { season_id: activeSeason.id, confidence: target } });
+  const data = {
+    activeSeason,
+    perTeam: [
+      { relation: { id: "r1", team_id: "t1", confidence_source: src(-40, 60) } },
+      { relation: { id: "r2", team_id: "t2", confidence_source: src(10, 50) } },
+      { relation: { id: "r3", team_id: "t3", confidence_source: src(0, 70) } },
+      { relation: { id: "r4", team_id: "t4", confidence_source: {} } },
+    ],
+  };
+  const healed = await healMissingReceipts(supabase, { data });
+  assert.equal(healed, 1, "kun t1: t2 har kvittering, t3 flyttede intet, t4 er ikke rettet");
+  assert.deepEqual([inserts[0].team_id, inserts[0].satisfaction_before, inserts[0].satisfaction_after, inserts[0].satisfaction_delta], ["t1", 100, 60, -40]);
 });

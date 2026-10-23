@@ -372,6 +372,7 @@ export async function applyPlan(supabase, {
   if (heldBack) log(`${heldBack} rækker er tilnærmelser og skrives ikke (brug --allow-approx efter ejer-go).`);
   const relationsById = new Map(data.perTeam.map((t) => [t.relation.id, t.relation]));
 
+  const healed = await healMissingReceipts(supabase, { data, log });
   makeDir(backupDir, { recursive: true });
   const backupPath = join(backupDir, `board-relations-backup-${nowIso.replace(/[:.]/g, "-")}.json`);
   writeFile(backupPath, JSON.stringify(targets.map((r) => relationsById.get(r.relation_id)), null, 2));
@@ -411,7 +412,47 @@ export async function applyPlan(supabase, {
     });
     if (eventError) throw new Error(`board_satisfaction_events ${row.team_id}: ${eventError.message}`);
   }
-  return { updated, skipped, heldBack, backupPath };
+  return { updated, skipped, heldBack, backupPath, healed };
+}
+
+/**
+ * Codex P1: kvitteringen skrives efter rækken. Fejler den, er rækken allerede rettet, og
+ * genafspilningen ser intet at skrive. Derfor heles manglende kvitteringer ved hver
+ * `--apply`: en rettet række (method = CORRECTION_REASON, ikke-nul delta, aktiv sæson)
+ * uden en correction_7088-kvittering for sæsonen får den skrevet ud fra kilden.
+ */
+export async function healMissingReceipts(supabase, { data, log = () => {} }) {
+  const seasonId = data.activeSeason.id;
+  const corrected = data.perTeam.map((t) => t.relation).filter((r) => {
+    const src = r?.confidence_source;
+    return src?.method === CORRECTION_REASON && Number(src.delta) !== 0
+      && Number.isFinite(Number(src.target)) && src.season_anchor?.season_id === seasonId;
+  });
+  if (!corrected.length) return 0;
+  const { data: existing, error } = await supabase.from("board_satisfaction_events")
+    .select("team_id").eq("season_id", seasonId).eq("reason_category", CORRECTION_REASON);
+  if (error) throw new Error(`board_satisfaction_events (kvitteringstjek): ${error.message}`);
+  const have = new Set((existing || []).map((e) => e.team_id));
+  let healed = 0;
+  for (const rel of corrected) {
+    if (have.has(rel.team_id)) continue;
+    const after = Number(rel.confidence_source.target);
+    const delta = Number(rel.confidence_source.delta);
+    const { error: insertError } = await supabase.from("board_satisfaction_events").insert({
+      team_id: rel.team_id,
+      season_id: seasonId,
+      satisfaction_before: after - delta,
+      satisfaction_after: after,
+      satisfaction_delta: delta,
+      goals_met: 0,
+      goals_total: 0,
+      reason_category: CORRECTION_REASON,
+    });
+    if (insertError) throw new Error(`board_satisfaction_events ${rel.team_id} (heling): ${insertError.message}`);
+    healed += 1;
+  }
+  if (healed) log(`${healed} manglende kvitteringer fra en tidligere afbrudt kørsel er skrevet.`);
+  return healed;
 }
 
 export function parseArgs(argv) {
