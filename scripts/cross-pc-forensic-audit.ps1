@@ -127,7 +127,9 @@ $codexLocalWhitelist = @(
   "SESSION_CONTEXT.md",
   "SUPABASE_CONTEXT.md",
   "supabase-readonly.env",
-  "preflight-state.json"
+  "preflight-state.json",
+  # preflight-season-cutover.ps1 skriver sin rapport her; den genereres paa ny ved hver koersel.
+  "season-cutover-preflight.json"
 )
 # Pattern-baserede ephemerals (kortlivede buffers)
 $codexLocalEphemeralPatterns = @(
