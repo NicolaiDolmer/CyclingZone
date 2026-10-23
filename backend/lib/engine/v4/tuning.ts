@@ -1638,7 +1638,7 @@ const s5V3Breakaway = {
     //    dets klassementsrytter er blandt feltets bedste paa klassementsevne OG placeringen
     //    giver en reel chance (foereren har altid troejen at forsvare).
     shortRaceMaxStages: 8,
-    contenderAbilityRank: 10,
+    contenderAbilityRank: 60,
   },
 };
 
