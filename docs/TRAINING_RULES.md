@@ -664,7 +664,10 @@ prod 24/8 (#4192): 1.520 ryttere på 103 hold stod på Hvile OG var tilmeldt et 
 **Reglen nu (ejer 24/9, [#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850), S1
 valgt efter simuleringen i PR #5640):** planen er IKKE input. En rytter der kører en etape på en
 løbsdag udvikler sig som efter et **mellem-pas** i de evner etapens profil kræver, under reglen
-**maks +1 pr. evne pr. løbsdag**, og resten af fremdriften bæres videre.
+**maks +1 pr. evne pr. løbsdag**, og resten af fremdriften bæres videre. Oven på det gælder
+**maks +1 pr. evne pr. rytter pr. dato** ([#6210](https://github.com/NicolaiDolmer/CyclingZone/issues/6210)): på tværs af datoens løbsdage, alle stier (Train now, aftenens
+kørsel, kalenderdags-faldet) og et holdskifte samme dato. Et klippet point bæres videre på
+fremdriftsbaren til næste dato (`capTickGainsPerDate`, `dailyTrainingEngine.js`).
 
 | Del | Mekanisme | Hvor |
 |---|---|---|

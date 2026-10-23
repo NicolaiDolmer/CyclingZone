@@ -636,15 +636,27 @@ export async function runTeamTrainingDay({
   // safe-faldet uden division) taeller altid med. Datoens andre loebsdage taeller
   // herfra kun uden dato-kvitteringer; med conditionPerDate er kilden kvitteringerne
   // (dateReceipts, rytter-noeglet), saa de ikke taelles to gange.
+  // #6210 (Codex P1): rytter-niveau, ikke hold-niveau. En rytter der skifter hold samme
+  // dato har sin foerste gevinst i det gamle holds rapport, saa opslaget gaar paa tvaers af
+  // hold og filtreres paa holdets ryttere. Kalenderdags-stien (useRaceDayKey=false, fx efter
+  // rollback eller fallback) laeser ogsaa, saa loftet gaelder alle stier.
   let sameDateRunReports = [];
-  if (useRaceDayKey) {
-    const { data, error } = await supabase.from("training_day_runs").select("game_day, season_id, squad, report")
-      .eq("team_id", teamId).eq("tick_date", tickDate);
+  {
+    let query = supabase.from("training_day_runs").select("team_id, game_day, season_id, squad, report")
+      .eq("tick_date", tickDate);
+    // Med dato-kvitteringer (rytter-noeglede) kommer loebsdagene derfra; kun kalenderdags-raekker her.
+    if (conditionPerDate) query = query.is("game_day", null);
+    const { data, error } = await query;
     if (error) throw new Error(`same-date training reports: ${error.message}`);
-    sameDateRunReports = (data ?? []).filter((row) => (row.game_day == null
-      || (!conditionPerDate && row.season_id === seasonId
-        && (row.squad ?? TRAINING_DAY_RUN_DEFAULT_SQUAD) === squadKey && Number(row.game_day) !== raceDay)))
-      .flatMap((row) => row.report?.riders ?? []);
+    const teamRiderIds = new Set(riderIds);
+    const isThisRun = (row) => row.team_id === teamId
+      && (useRaceDayKey
+        ? Number(row.game_day) === raceDay && (row.squad ?? TRAINING_DAY_RUN_DEFAULT_SQUAD) === squadKey
+        : row.game_day == null);
+    sameDateRunReports = (data ?? []).filter((row) => !isThisRun(row) && (row.game_day == null
+      || (!conditionPerDate && row.season_id === seasonId)))
+      .flatMap((row) => row.report?.riders ?? [])
+      .filter((r) => teamRiderIds.has(r?.rider_id));
   }
   if (conditionPerDate) {
     const { data, error } = await supabase.from('training_race_loads')
@@ -1148,13 +1160,18 @@ export async function runTeamTrainingDay({
         tickResult = { ...tickResult, abilities: { ...abilities }, gains: {}, progress: preProgress };
       } else if (useRaceDayKey) {
         // #6210: maks +1 pr. evne pr. dato, paa tvaers af datoens loebsdage og stier.
-        // Den gamle kalenderdags-sti har kun ét tick pr. dato og er uroert. Et
+        // Kalenderdags-stien faar samme loft i else-grenen nedenfor. Et
         // ikke-managerhold (ovenfor) faar ingen gevinst, saa vaernet er kun noedvendigt her.
         const usedGains = sumDateGains([
           ...(conditionPerDate ? dateReceipts.filter((row) => row.rider_id === rider.id
             && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
           ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
         ]);
+        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
+      } else {
+        // #6210 (Codex P1): kalenderdags-stien (flag slukket, rollback eller loebsdags-fallback)
+        // faar samme dato-loft, inkl. gevinster fra datoens tidligere loebsdags-ticks.
+        const usedGains = sumDateGains(sameDateRunReports.filter((row) => row.rider_id === rider.id));
         tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
       }
     }

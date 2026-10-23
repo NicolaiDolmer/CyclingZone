@@ -1862,7 +1862,9 @@ test("#4846 (flag on): +1-loftet pr. evne gælder pr. løbsdag (#4801)", async (
   const on = await runDay(onState);
 
   const maxGain = (r) => Math.max(0, ...Object.values(r.report.riders[0].gains));
-  assert.ok(maxGain(off) >= 2, `uden loft skal mindst én evne stige 2+ (var ${maxGain(off)})`);
+  // #6210: kalenderdags-stien (flag off) har nu ogsaa dato-loftet; foer gav den 2+ her.
+  assert.equal(maxGain(off), 1, "kalenderdags-stien er ogsaa klippet til +1 pr. evne pr. dato (#6210)");
+  assert.ok(Object.values(off.report.riders[0].gains_deferred_by_date_cap ?? {}).some((n) => n > 0), "det klippede point baeres videre, ikke tabt");
   assert.equal(maxGain(on), 1, "med løbsdags-ticket er loftet +1 pr. evne pr. løbsdag");
 });
 
