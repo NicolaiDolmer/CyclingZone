@@ -2263,7 +2263,7 @@
     },
     "freeSeniorAuctionFaq": {
       "q": "Bliver frie agenter sat automatisk på auktion?",
-      "a": "Nej. Når en senior-rytters kontrakt udløber og ikke bliver fornyet, bliver han en fri agent uden auktion. Han kommer kun på auktion, hvis en manager starter en. Det kan enhver manager gøre. Automatiske auktioner gælder kun unge ryttere: ungdomsmarkedet og akademi-tilbud, der udløb eller blev afvist."
+      "a": "Nej. Når en senior-rytters kontrakt udløber og ikke bliver fornyet, bliver han en fri agent uden auktion. Han kommer kun på auktion, hvis en manager starter en. Det kan enhver manager gøre. Automatiske auktioner gælder kun unge ryttere: ungdomsmarkedet, akademi-tilbud, der udløb eller blev afvist, og akademiryttere, der ikke kan rykke op på Graduation Day, fx når klubben er i minus."
     },
     "ownDivisionCalendarFaq": {
       "q": "Kører mit hold kun løb i sin egen division?",

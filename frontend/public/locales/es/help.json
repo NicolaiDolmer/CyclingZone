@@ -2263,7 +2263,7 @@
     },
     "freeSeniorAuctionFaq": {
       "q": "¿Los agentes libres se ponen en subasta automáticamente?",
-      "a": "No. Cuando el contrato de un ciclista sénior termina y no se renueva, pasa a ser agente libre sin subasta. Solo sale a subasta si un manager inicia una. Cualquier manager puede hacerlo. Las subastas automáticas solo se dan con ciclistas jóvenes: el mercado juvenil y las ofertas de cantera que caducaron o fueron rechazadas."
+      "a": "No. Cuando el contrato de un ciclista sénior termina y no se renueva, pasa a ser agente libre sin subasta. Solo sale a subasta si un manager inicia una. Cualquier manager puede hacerlo. Las subastas automáticas solo se dan con ciclistas jóvenes: el mercado juvenil, las ofertas de cantera que caducaron o fueron rechazadas y los graduados de la cantera que no pueden subir en el Graduation Day, por ejemplo cuando el club está en números rojos."
     },
     "ownDivisionCalendarFaq": {
       "q": "¿Mi equipo solo corre en su propia división?",

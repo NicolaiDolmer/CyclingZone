@@ -2263,7 +2263,7 @@
     },
     "freeSeniorAuctionFaq": {
       "q": "Are free agents put up for auction automatically?",
-      "a": "No. When a senior rider's contract runs out and is not renewed, he becomes a free agent without an auction. He only goes to auction if a manager starts one. Any manager can do that. Automatic auctions only happen for young riders: the youth market, and academy intake offers that expired or were turned down."
+      "a": "No. When a senior rider's contract runs out and is not renewed, he becomes a free agent without an auction. He only goes to auction if a manager starts one. Any manager can do that. Automatic auctions only happen for young riders: the youth market, academy intake offers that expired or were turned down, and academy graduates who cannot move up on Graduation Day, for example when the club is in debt."
     },
     "ownDivisionCalendarFaq": {
       "q": "Does my team only race in its own division?",

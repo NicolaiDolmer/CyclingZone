@@ -2263,7 +2263,7 @@
     },
     "freeSeniorAuctionFaq": {
       "q": "Les agents libres sont-ils mis aux enchères automatiquement ?",
-      "a": "Non. Quand le contrat d'un coureur senior se termine sans être renouvelé, il devient agent libre sans enchère. Il ne va aux enchères que si un manager en lance une. N'importe quel manager peut le faire. Les enchères automatiques ne concernent que les jeunes coureurs : le marché des jeunes et les offres d'académie expirées ou refusées."
+      "a": "Non. Quand le contrat d'un coureur senior se termine sans être renouvelé, il devient agent libre sans enchère. Il ne va aux enchères que si un manager en lance une. N'importe quel manager peut le faire. Les enchères automatiques ne concernent que les jeunes coureurs : le marché des jeunes, les offres d'académie expirées ou refusées et les diplômés de l'académie qui ne peuvent pas monter lors du Graduation Day, par exemple quand le club est dans le rouge."
     },
     "ownDivisionCalendarFaq": {
       "q": "Mon équipe court-elle seulement dans sa propre division ?",

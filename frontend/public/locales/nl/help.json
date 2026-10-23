@@ -2263,7 +2263,7 @@
     },
     "freeSeniorAuctionFaq": {
       "q": "Worden vrije agenten automatisch geveild?",
-      "a": "Nee. Als het contract van een seniorrenner afloopt en niet wordt verlengd, wordt hij een vrije agent zonder veiling. Hij komt alleen op veiling als een manager er een start. Elke manager kan dat doen. Automatische veilingen gelden alleen voor jonge renners: de jeugdmarkt en academie-aanbiedingen die verlopen of afgewezen zijn."
+      "a": "Nee. Als het contract van een seniorrenner afloopt en niet wordt verlengd, wordt hij een vrije agent zonder veiling. Hij komt alleen op veiling als een manager er een start. Elke manager kan dat doen. Automatische veilingen gelden alleen voor jonge renners: de jeugdmarkt, academie-aanbiedingen die verlopen of afgewezen zijn, en academierenners die op Graduation Day niet kunnen doorstromen, bijvoorbeeld als de club in de min staat."
     },
     "ownDivisionCalendarFaq": {
       "q": "Rijdt mijn team alleen in zijn eigen divisie?",
