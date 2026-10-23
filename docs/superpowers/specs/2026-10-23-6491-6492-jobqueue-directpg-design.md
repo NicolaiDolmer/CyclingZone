@@ -1,6 +1,6 @@
 # Job-kø (#6491) og direkte Postgres (#6492): målt baseline 16-22/10 og design
 
-> **Refs:** #6491 · #6492 · #6490 · #6766 · #5911 · #6184 · **Status:** målt baseline + design (AGENTS hard rule 36). Ingen kode, ingen migration, ingen flag- eller konfig-ændring.
+> **Refs:** #6491 · #6492 · #6490 · #6766 · #5911 · #6184 · **Status:** design + målt prod-baseline (read-only, §1). **Hard rule 36 er ikke opfyldt endnu:** den lokale PG17-baseline (#5904-harnessen ved 1x og 10x, parallelitet 1/4/8, med de samme mål som §7) er en forudsætning for trin 0 og skal ligge i `balance-internals/6491/` før første bygge-PR. Ingen kode, ingen migration, ingen flag- eller konfig-ændring.
 > **Bygger på:** [`2026-10-15-training-10x-jobqueue-direct-pg-design.md`](2026-10-15-training-10x-jobqueue-direct-pg-design.md) (#6655). Den spec dækker træningsafregningen alene og valget af bibliotek. Denne spec måler igen efter GIN-droppet (#6663) og dækker hele `backend/cron.js`: hvilke timere der kører i web-serveren, i hvilken rækkefølge de flyttes, og hvordan hvert skridt rulles tilbage.
 > **SSOT for afregningens kontrakt:** [`docs/TRAINING_RULES.md`](../../TRAINING_RULES.md) (tick-enheden og idempotens-låsen). Intet her ændrer den.
 
@@ -144,7 +144,7 @@ Hvert job flyttes med sit eget `app_config`-flag `job_queue_owner.<job>` = `cron
 
 ### 4.2 Typer
 
-Typer genereres fra `database/schema-snapshot.json` til en `.d.ts`-fil (eller `supabase gen types`) og tjekkes i CI mod snapshot, så en omdøbt kolonne fejler ved build i stedet for i prod. Forespørgsler skrives som tagged templates med de genererede typer.
+Genererede tabel-typer (fra `database/schema-snapshot.json` eller `supabase gen types`) typer kun **resultatrækkerne**: postgres.js' tagged templates lader en omdøbt kolonne stå i SQL-teksten, og bygget går stadig igennem. Kolonnekontrollen sker derfor ved at **køre hver forespørgsel mod PostgreSQL i CI**: alle worker-forespørgsler bor i ét modul, og en test forbereder (`PREPARE`) hver af dem mod den lokale PG17 med det aktuelle skema (samme opsætning som `trainingHeld.pg17.test.js`), så en ukendt kolonne eller tabel fejler i CI. Resultattyperne gives eksplicit pr. forespørgsel ud fra de genererede typer. En skema-bevidst query-builder (fx Kysely) er alternativet, hvis CI-tjekket viser sig for skrøbeligt; valget tages i trin 0.
 
 ### 4.3 Transaktionsmønster
 
@@ -169,7 +169,7 @@ Hvert trin er sin egen PR med eget flag, egen måling og eget ejer-go før tænd
 |---|---|---|---|
 | 0 | Infrastruktur: `pgboss`-skema som migration, worker-proces (B), postgres.js-forbindelse, ét hjerteslag-job. Intet spiljob flyttet. | Beviser forbindelse, rolle, deploy-genstart og hukommelse uden spillerrisiko | Staging: worker dræbes midt i et job → jobbet genoptages én gang. Forbindelsesforbrug målt. |
 | 1 | Ét læse-job: en 24-timers vagt (fx ejerskabs-invarianten) via `schedule()` | Ingen skrivninger; beviser at planlagte job overlever deploy uden boot-kørsel | Kører præcis én gang pr. døgn i 3 døgn med deploys imellem |
-| 2 | Outbox-drænene (Discord DM/webhook, notify, e-mail-retry) | Allerede idempotente outboxe; naturlige kø-job | Samme sendte antal som før, 0 dubletter |
+| 2 | Outbox-drænene (Discord DM/webhook, notify, e-mail-retry) | Naturlige kø-job. **Levering er "mindst én gang":** dræbes workeren efter en ekstern afsendelse men før status-skrivningen, sendes beskeden igen efter lease-udløb (dokumenteret i `backend/lib/raceNotifyOutbox.js`). Det gælder også i dag | Samme sendte antal som før **uden for fejl-vinduet**; fejlinjektion (dræb mellem send og status-skrivning) giver højst én ekstra levering pr. dræbt job og aldrig en tabt; e-mail bruger udbyderens idempotens-nøgle, hvor den findes |
 | 3 | Træningsafregningen som job pr. hold, læsninger via postgres.js, producent = løbsafslutning + 5-min-poll | Største gevinst (§1); kræver trin 0-2 og målingen af parallel-knappen | #5904-harnessen ved 1x og 10x med parallelitet 1/4/8; staging-aften; paritet 0 afvigelser mod den gamle sti; ejer-go |
 | 4 | Andre tunge job: finaliserings-recovery, auto-præmie, heal-sweeps, sæsonskiftets trin | Følger samme mønster | Pr. job: paritet + én rolig dag |
 | 5 | Minut-job (auktioner) | Latenskritiske; flyttes sidst, helst når workeren er isoleret (A) | Auktionslukning inden for samme sekund-interval som i dag |
@@ -194,7 +194,7 @@ Samme målinger som §1, før og efter hvert trin, med de samme forespørgsler:
 - Rundture pr. afregning (mål: ≤ 5 mod ca. 27 i dag), `app_config`-opslag pr. døgn, sider ud over loftet pr. døgn.
 - Forbindelser i `pg_stat_activity` pr. `application_name` under aftenvinduet.
 - Spillernes API p95/p99/max 20:00-20:15 mod 19:30-19:45.
-- Deploy-test: et deploy midt i et job må give 0 tabte og 0 dobbelte job.
+- Deploy-test: et deploy midt i et job må give 0 tabte job og 0 dobbelte **afregninger** (afregningen er idempotent via låsen); eksterne afsendelser i outbox-drænene er "mindst én gang" (trin 2).
 
 Gates pr. trin som i [#6655-specens §4](2026-10-15-training-10x-jobqueue-direct-pg-design.md#4-verifikationsplan-gates-før-build-og-før-rollout): lokal (unit + #5904-harness ved 1x/10x), staging, ejer-review med før/efter-tabel, rollout bag flag i et roligt vindue, tilbagerulning uden deploy.
 
