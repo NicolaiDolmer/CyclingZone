@@ -12247,10 +12247,6 @@
           "srcHash": "fd6e874f43f84791",
           "status": "reviewed"
         },
-        "tabs.seasonSwitch": {
-          "srcHash": "9e3cc0e26ae80bc1",
-          "status": "reviewed"
-        },
         "loanSummary.active": {
           "srcHash": "abb959c6207fd67a",
           "status": "reviewed"
@@ -12853,142 +12849,6 @@
         },
         "hint.skip": {
           "srcHash": "28d03596d24eeb4e",
-          "status": "reviewed"
-        },
-        "seasonSwitch.loading": {
-          "srcHash": "6461ed90512c52fc",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.title": {
-          "srcHash": "3d83c2906c26e7a9",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.subtitle": {
-          "srcHash": "cccd194cbff07275",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.balanceAfter": {
-          "srcHash": "51edab56dd5143b2",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.books_close.label": {
-          "srcHash": "ce4b716de7d19366",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.books_close.detail": {
-          "srcHash": "2f9724b0c9cee9c9",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.sponsor.label": {
-          "srcHash": "f2c928fc9bb03f62",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.sponsor.detail": {
-          "srcHash": "2d240823917a7211",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.loan_interest.label": {
-          "srcHash": "3d547b63adf93e00",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.loan_interest.detail": {
-          "srcHash": "732b23996e2d7071",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.salary.label": {
-          "srcHash": "a189577a0d058a01",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.salary.detail": {
-          "srcHash": "0ad6ce119346d46e",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.academy_drift.label": {
-          "srcHash": "5c2c316deed99aa9",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.academy_drift.detail": {
-          "srcHash": "fdbe0004f0260b67",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.upkeep.label": {
-          "srcHash": "fe4eb899a03aa701",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.upkeep.detail": {
-          "srcHash": "7661a6284aca9132",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.facility_upkeep.label": {
-          "srcHash": "b146309625425b8e",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.facility_upkeep.detail": {
-          "srcHash": "5578851f5ae7c5de",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.staff_salary.label": {
-          "srcHash": "60f4f3fabe49d6e4",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.staff_salary.detail": {
-          "srcHash": "4c62dbe052e7a033",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.start_s3.label": {
-          "srcHash": "ebf58e1a7034d88c",
-          "status": "reviewed"
-        },
-        "seasonSwitch.receipt.step.start_s3.detail": {
-          "srcHash": "98802bbe0802b683",
-          "status": "reviewed"
-        },
-        "seasonSwitch.footnote": {
-          "srcHash": "9404d52c7a8ea03e",
-          "status": "reviewed"
-        },
-        "seasonSwitch.footnoteLink": {
-          "srcHash": "50a887b803dc3247",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.title": {
-          "srcHash": "6d9e6a193e87155a",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.subtitle": {
-          "srcHash": "70577ba203b86047",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.empty": {
-          "srcHash": "7408d72a18a2bf2e",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.header.rider": {
-          "srcHash": "8eb9369aed3ff0af",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.header.contract": {
-          "srcHash": "9e9733b72d7401a5",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.header.projection": {
-          "srcHash": "ab62db29c5f152eb",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.header.delta": {
-          "srcHash": "c0bf75bd78bf9572",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.total": {
-          "srcHash": "c9b3c38247f744e1",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.viewAll": {
-          "srcHash": "005f070d8295a399",
-          "status": "reviewed"
-        },
-        "seasonSwitch.salaryTable.showLess": {
-          "srcHash": "255beb6510e7827d",
           "status": "reviewed"
         },
         "report.season": {
@@ -17533,14 +17393,6 @@
         },
         "faq.forecastCalculation.a": {
           "srcHash": "2f5f263c13cc6fcb",
-          "status": "reviewed"
-        },
-        "faq.seasonSwitchSettlement.q": {
-          "srcHash": "9033a0096b7481cb",
-          "status": "reviewed"
-        },
-        "faq.seasonSwitchSettlement.a": {
-          "srcHash": "abb0e9549c957809",
           "status": "reviewed"
         },
         "faq.standingsUpdate.q": {
