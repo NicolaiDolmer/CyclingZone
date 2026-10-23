@@ -128,8 +128,8 @@ Ingen ny tilfældighed. Alle knapper flytter kun eksisterende led.
    fejle eller bestå af de rigtige grunde, så en byg der klemmer alle udbrud ikke kan bestå.
 2. **Rene funktioner** i `mechanics/breakawayV3_6804.ts` (gælder-betingelse, snor pr. profil,
    kontrolleret lukning) og knapperne i `tuning.ts`.
-3. **Ledningsføring** i `progressChase` (`breakaway.ts`): lukningen er den største af den almindelige
-   lukning og klatre-jagtens, arbejdet føres i work-mappen, og `breakaway_unchased` skrives på stigningen.
+3. **Ledningsføring** i `progressChase` (`breakaway.ts`): den almindelige lukning og klatre-jagtens
+   kombineres uden dobbelttælling (regel privat), arbejdet føres i work-mappen, og `breakaway_unchased` skrives på stigningen.
 4. **Regel og testport-tekst:** P2-punkt 4 i `docs/RACE_ENGINE_RULES.md` erstatter sætningen om
    terræn-forspring, og G2-teksten i `docs/MOTOR_TESTPORT.md` får "med interesse".
 5. **Testport** v2 mod v3 (og mod P2 knap-runde 2). Højst to knap-runder, som P2. Tal i
