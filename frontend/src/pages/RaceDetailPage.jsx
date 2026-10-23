@@ -376,12 +376,17 @@ function HeroStatBlock({ label, value, sub, last = false }) {
 // Intentions-halvdelen (#4632) er ikke gated og vises altid.
 const TACTICS_V4_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_PREVIEW_MOCK;
 
+/**
+ * #7095: races-raekken som loadRace() selecter den (smal projektion + joinet season).
+ * @typedef {Pick<import("../types/database.types").Tables<"races">, "id" | "name" | "race_type" | "race_class" | "stages" | "stages_completed" | "edition_year" | "status" | "engine_rules_revision" | "squad"> & { season: { id: string, number: number } | null }} RaceDetailRow
+ */
+
 export default function RaceDetailPage() {
   const { t, i18n } = useTranslation("races");
   const { raceId } = useParams();
   const location = useLocation();
 
-  const [race, setRace] = useState(/** @type {any} */ (null)); // Supabase-raekken; any saa nye race.*-brug ikke regner typen som null
+  const [race, setRace] = useState(/** @type {RaceDetailRow | null} */ (null)); // #7095: Supabase-raekken med joinet season
   const [allResults, setResults] = useState([]);
   // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i løb afviklet før reglen.
   const results = useMemo(() => withoutHiddenYouthClassification(allResults, race?.squad), [allResults, race?.squad]);
