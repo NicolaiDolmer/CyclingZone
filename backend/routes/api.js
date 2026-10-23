@@ -216,6 +216,7 @@ import {
   maxAllowedContractEndSeason,
   contractExtensionCapInfo,
 } from "../lib/contractSeed.js";
+import { quoteBatchExtension, applyBatchExtension } from "../lib/contractBatchExtension.js"; // #6855
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildRiderInterest } from "../lib/riderInterest.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
@@ -2318,6 +2319,23 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
     extensionCap: contractExtensionCapInfo(next.contract_end_season, currentSeason),
   });
 });
+
+// #6855: forlæng flere kontrakter ad gangen ({ items: [{ riderId, seasons }] }).
+// Samme regler som extend-contract ovenfor; logikken bor i contractBatchExtension.js.
+async function sendBatchExtension(req, res, run, label) {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const result = await run({ supabase, teamId: req.team.id, body: req.body });
+    if (result.writeError) captureException(new Error(`${label} (${req.team.id}): ${result.writeError.message}`));
+    if (result.status === 200 && run === applyBatchExtension) invalidateNamespace("riders");
+    return res.status(result.status).json(result.body);
+  } catch (err) {
+    captureException(err);
+    return res.status(500).json({ error: "Something went wrong extending these contracts" });
+  }
+}
+router.post("/riders/extend-contracts/quote", requireAuth, (req, res) => sendBatchExtension(req, res, quoteBatchExtension, "extend-contracts quote"));
+router.post("/riders/extend-contracts", requireAuth, marketWriteLimiter, (req, res) => sendBatchExtension(req, res, applyBatchExtension, "extend-contracts"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SCOUTING (#1138 — progression L1: skjult potentiale, begrænset kapacitet)
