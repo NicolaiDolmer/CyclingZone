@@ -11,7 +11,11 @@
 
 - **Det er ikke en tilfældig fejl. Koden gør præcis, hvad specifikationen fra 29/9 siger.** Klikket afregner alle løbsdage på datoen undtagen den sidste. Den sidste løbsdag ejer datoens ene skrivning af træthed og form, og den skrivning er reserveret til aftenkørslen (beslutning 4 + I4).
 - **Ryttere med et løb i dag, der ikke er kørt endnu, får 0 af 5 ved klikket.** Hele deres dato venter på løbet og derefter på aftenkørslen. (Er løbet allerede kørt, får de 4 af 5 som ryttere uden løb.)
-- **Prod (read-only, 1/10-22/10):** ca. 38 hold har brugt knappen. Ved tryk før kl. 20 fik ca. 6 ud af 10 ryttere 4 af 5, og ca. 3-4 ud af 10 fik 0 af 5. Resten kom i median ca. 10 timer senere. Ingen rytter mistede træning; alle datoer blev afregnet til 5 af 5 om aftenen.
+- **Prod (read-only, 1/10-22/10):** knappen bruges dagligt af en stor del af de aktive hold.
+  - Ved tryk før aftenkørslen fik de fleste ryttere 4 af 5. En betydelig del, næsten alle med et løb samme dag, fik 0 af 5.
+  - Resten kom typisk mange timer senere.
+  - Ingen rytter mistede træning, og alle datoer blev afregnet til 5 af 5 om aftenen.
+  - Tallene ligger privat (se ovenfor).
 - **Spillerne oplever det som en fejl**, fordi knappen hedder "Træn nu" og alligevel venter på aftenen. Ejeren 20/10: "alt sker med klikket", træning skal føles som en øjeblikkelig reaktion.
 - **Forslag:** variant A lader klikket afregne hele datoen (5 af 5, også træthed og form) for alle ryttere, hvis dato er kendt på klik-tidspunktet. Det er ryttere uden løb, og ryttere hvis løb allerede er kørt. Løbsryttere afregnes som i dag. Variant B tager også løbsryttere med og kræver ændringer i løbsmotoren (§6).
 
@@ -38,18 +42,13 @@ Grunden til reglen er beslutning 4 + I4 fra 29/9: træthed og form opdateres **�
 
 ## 4. Måling i prod (kun SELECT, 23/10)
 
-Read-only opslag i `training_train_now_locks`, `training_rider_ticks` og `training_race_loads`. Afrundede tal:
+Read-only opslag i `training_train_now_locks`, `training_rider_ticks` og `training_race_loads`. Tallene ligger privat i `balance-internals/2026-10-23-6461-train-now-measurement.md`. Kvalitativt:
 
-| Måling | Resultat |
-|---|---|
-| Hold der har trykket (1/10-22/10) | ca. 40 |
-| Hold-datoer med tryk | ca. 260 (sidste 7 dage: ca. 16 pr. dag) |
-| Rytter-tryk i alt | ca. 10.600 |
-| Tryk før kl. 20: rytteren fik 4 af 5 ved klikket | ca. 62 % |
-| Tryk før kl. 20: rytteren fik 0 af 5 ved klikket | ca. 34 % (næsten alle havde et løb samme dag) |
-| Tryk før kl. 20: rytteren fik 5 af 5 | ca. 3 %, og kun ved tryk kl. 19:50-19:59, hvor aftenkørslen kom lige bagefter |
-| Ventetid på resten (median) | ca. 10 timer |
-| Rytter-tryk hvor datoen endte på 5 af 5 | over 99 % (resten ligger i den kendte afstemningssti) |
+- Knappen bruges hver dag af mange hold, og mange ryttere trykkes hver dag.
+- Ved tryk før aftenkørslen får de fleste ryttere 4 af 5. En betydelig del får 0 af 5, næsten alle med et løb samme dag.
+- 5 af 5 ved klikket sker kun, når aftenkørslen følger lige efter trykket.
+- Resten af datoen kommer typisk mange timer efter trykket.
+- Næsten alle datoer ender på 5 af 5. De få undtagelser ligger i den kendte afstemningssti.
 
 Kontrol: en gruppe ryttere fik 4 af 5 ved klikket **og** havde et løb samme dato. Deres løbsdags-felt er afregnet som løb, og ingen blev tilmeldt efter trykket. Løbet var altså kørt før klikket, og afregningen var korrekt. Realisme-reglen ("løb ELLER træning") er ikke brudt.
 
@@ -89,7 +88,7 @@ Kontrol: en gruppe ryttere fik 4 af 5 ved klikket **og** havde et løb samme dat
 | Hjælp (`help.json` en+da) | Beslutning 9-teksten ("restitutionen sker ved aftenopgørelsen") og det eksisterende afsnit om at træningen kører af sig selv "tidligst kl. 20" opdateres: for ryttere uden løb sker alt i klikket |
 | Patch note | EN først, DA under, i bølgens close-out |
 
-**Det A ikke løser:** løbsryttere med et løb, der ikke er kørt, venter stadig på løbet og aftenkørslen. Prod viser, at det er ca. 1 ud af 3 ryttere ved et tryk.
+**Det A ikke løser:** løbsryttere med et løb, der ikke er kørt, venter stadig på løbet og aftenkørslen. Prod viser, at det er en betydelig del af de trykkede ryttere.
 
 **Mulig lille tilføjelse (A+, kræver eget valg):** en løbsrytter, hvis eget løb er færdigt, kunne afregnes lige efter sin etape i stedet for kl. 20. Det kræver en udløser efter hver finalization for hold med et tryk og en ny kapacitetsmåling. Det er ikke en del af A.
 
@@ -132,7 +131,7 @@ B ligger tæt op ad #6984 (form/træthed 2.0), som allerede omdesigner træthed 
 - Blandet trup: løbsryttere står uafregnet tilbage (`partial`), og aftenkørslen afregner kun dem.
 - En låst rytter kan ikke få en løbsbelastning på datoen, efter hans tilstand er afregnet (lås + RPC'ens tjek).
 - En rytter hvis løb allerede er kørt ved klikket, afregnes 5 af 5 inklusive løbsbelastningen.
-- Næste dato kan registreres, mens løbsryttere stadig er åbne (uændret adfærd).
+- Værnet mod en åben forrige dato bevares (uændret adfærd). Står forrige dato `partial`, fordi løbsryttere stadig er åbne, afviser `runTrainNow` klikket på næste dato med `previous_date_open` (`backend/lib/trainNow.js`, regressionstesten i `trainNow.test.js`). Ellers fryser den nye dato en forældet starttilstand. Testen skal vise, at A ikke fjerner eller omgår værnet.
 
 **Forudsætning for A: én fælles lås mellem klikket og alle udtagelsesveje.** Klikkets lås-skrivning og readiness-genindlæsning skal tage samme advisory-lås pr. (hold, dato) i databasen som alle veje, der skriver en udtagelse. Det gælder løbsstartens autofyld (læs låse → indsæt valg) og managerens egne gemninger. Det gælder også de øvrige automatiske skrivere: `POST /races/:raceId/selection/auto` (tjekker låse og sletter/indsætter derefter direkte), Race Hubs regenerering (`raceHubAutofill.js`) og den timevise/boot-kørte `raceEntryGenerator.js` (læser låse længe før sin batch-RPC). De manuelle gemninger er `PUT /api/races/:raceId/selection` og bulk via `replace_race_selection` (`raceSelection.js` + `database/2026-09-23-5246-late-fill-log.sql`). I dag tager RPC'en kun holdets egen advisory-lås og læser ikke `training_train_now_locks`. Alternativet er ét atomisk claim i RPC'erne, der afviser en rytter med en Train now-lås på datoen. Så kan en gemning, der passerede `prepareSelectionChange` før klikket, aldrig indsætte en rytter, hvis tilstand allerede er afregnet.
 
@@ -153,7 +152,7 @@ I dag giver "Træn nu" kun 4 af 5 felter. Det sidste felt, og træthed og form, 
 - **A: Hele dagen for ryttere uden løb.** Klikket giver 5 af 5 felter plus træthed og form med det samme for alle ryttere uden et løb, der mangler at blive kørt. Løbsryttere afregnes som i dag efter løbet. Lille ændring med samme motor. Løbet påvirkes ikke.
 - **B: Hele dagen for alle.** Som A, men løbsryttere får også deres træning i klikket, og løbet lægges på som en egen linje bagefter. Det kræver, at løbsmotoren bruger morgenens form og træthed, og at reglen "én skrivning pr. dato" ændres. Stort stykke arbejde, som hører sammen med form/træthed 2.0 (#6984).
 
-**Anbefaling: A.** Den løser det, spillerne har meldt, for ca. 2 ud af 3 ryttere, uden at røre løbet. Hvis du også vil have løbsryttere med i klikket (B), designes det sammen med #6984, så træthed og form ikke bygges om to gange.
+**Anbefaling: A.** Den løser det, spillerne har meldt, for de fleste ryttere, uden at røre løbet. Hvis du også vil have løbsryttere med i klikket (B), designes det sammen med #6984, så træthed og form ikke bygges om to gange.
 
 ## 9. Uden for scope (forslag, ikke oprettet)
 
