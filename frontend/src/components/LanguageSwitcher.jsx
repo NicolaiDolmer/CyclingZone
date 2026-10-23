@@ -174,7 +174,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
                     <LanguageSwitcherFlag code={opt.flag} />
                     <span>{t(opt.labelKey)}</span>
                     {opt.beta && (
-                      <span className="rounded-cz border border-cz-border px-1 text-[10px] font-medium uppercase tracking-wide text-cz-2">
+                      <span className="rounded-cz border border-cz-border px-1 text-xs font-medium uppercase tracking-wide text-cz-2">
                         {t("language.betaBadge")}
                       </span>
                     )}
