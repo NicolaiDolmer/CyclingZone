@@ -278,6 +278,13 @@
     "beta_invalid_payload": "Den beta-indstilling kunne ikke læses.",
     "flag_unknown": "Det funktionsflag findes ikke.",
     "flag_invalid_stage": "En funktion kan kun være fra, beta eller til.",
-    "flag_boolean_only": "Dette flag er kun til/fra og har intet beta-stadie."
+    "flag_boolean_only": "Dette flag er kun til/fra og har intet beta-stadie.",
+    "contract_batch_empty": "Vælg mindst én rytter at forlænge",
+    "contract_batch_too_large": "Du kan højst forlænge {max} kontrakter ad gangen",
+    "contract_batch_invalid": "Hver rytter kan forlænges med 1 til {max} sæsoner",
+    "contract_batch_duplicate": "Den samme rytter er valgt to gange",
+    "contract_batch_rejected": "Nogle kontrakter kan ikke forlænges. Intet er ændret",
+    "contract_batch_salary_cap": "Forlængelserne ville tage holdets samlede løn over bestyrelsens loft på {cap} CZ$. Intet er ændret",
+    "contract_batch_write_failed": "Noget gik galt, da en kontrakt skulle gemmes. Intet er ændret"
   }
 }

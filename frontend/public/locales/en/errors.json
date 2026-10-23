@@ -278,6 +278,13 @@
     "beta_invalid_payload": "That beta setting could not be read.",
     "flag_unknown": "That feature flag does not exist.",
     "flag_invalid_stage": "A feature can only be off, beta or on.",
-    "flag_boolean_only": "This flag is on/off only and has no beta stage."
+    "flag_boolean_only": "This flag is on/off only and has no beta stage.",
+    "contract_batch_empty": "Pick at least one rider to extend",
+    "contract_batch_too_large": "You can extend at most {max} contracts at once",
+    "contract_batch_invalid": "Each rider can be extended by 1 to {max} seasons",
+    "contract_batch_duplicate": "The same rider was picked twice",
+    "contract_batch_rejected": "Some contracts can't be extended. Nothing was changed",
+    "contract_batch_salary_cap": "These extensions would take your total salary over the board's cap of {cap} CZ$. Nothing was changed",
+    "contract_batch_write_failed": "Something went wrong saving a contract. Nothing was changed"
   }
 }

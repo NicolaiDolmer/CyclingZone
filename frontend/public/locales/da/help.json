@@ -1516,7 +1516,7 @@
       },
       "extendContract": {
         "title": "Forlængelse af en kontrakt",
-        "text": "Forlænger du en rytters kontrakt fra profil-siden, lægges én sæson til kontraktlængden, og udløbssæsonen rykker én sæson længere ud, til en genforhandlet løn baseret på rytterens nuværende produktion. Du kan forlænge lige så ofte du vil, men udløbssæsonen kan aldrig rykkes forbi 3 sæsoner fra den nuværende: når en rytters kontrakt allerede rækker så langt frem, blokeres yderligere forlængelser indtil den aktuelle sæson rykker frem."
+        "text": "Forlæng en kontrakt fra rytterens profilside, eller flere ad gangen fra fanen Kontrakter på Mit hold. Hver sæson du lægger til, rykker udløbssæsonen én sæson længere ud, til en genforhandlet løn baseret på rytterens nuværende produktion. At forlænge med 2 eller 3 sæsoner på én gang giver præcis samme resultat som at forlænge én sæson ad gangen, og det koster intet gebyr. På fanen Kontrakter sætter du flueben ved rytterne, vælger 1, 2 eller 3 sæsoner for dem alle (du kan rette det pr. rytter) og ser hver rytters nye udløbssæson og løn samt holdets samlede løn, før noget gemmes. Udløbssæsonen kan aldrig rykkes forbi 3 sæsoner fra den nuværende: en rytter der kun har plads til 2 mere, forlænges med 2 og markeres \"(maks)\", og en rytter der allerede er ved loftet, kan forlænges igen når sæsonen skifter. Har bestyrelsen sat et lønloft, skal hele forlængelsen kunne være under det, ellers bliver intet forlænget."
       },
       "freeAgents": {
         "title": "Free agents",
@@ -2215,7 +2215,7 @@
     },
     "contractExpiryRetirementFaq": {
       "q": "Hvad sker der med udløbende kontrakter og ældre ryttere ved sæsonskiftet?",
-      "a": "Når en sæson slutter, frigives ryttere med udløbet kontrakt som fri agenter, og ryttere på 36 år eller derover kan vælge at gå på pension. Pension kan ikke forhindres, men et kontraktudløb kan: forlæng kontrakten fra rytterens profil før skiftet. Er din trup berørt, får du et varsel før sæsonskiftet, og spillet blokerer salg, frigivelser og auktioner der kunne efterlade dit hold under markedets sikkerhedsbuffer på 8 ryttere, med både kontraktudløb og pensionsrisiko regnet med. Seks seniorryttere kræves for at stille til start. Din holdside viser en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller med i den risiko, og et blokeret salg navngiver de konkrete ryttere, så du kan se præcis hvorfor."
+      "a": "Når en sæson slutter, frigives ryttere med udløbet kontrakt som fri agenter, og ryttere på 36 år eller derover kan vælge at gå på pension. Pension kan ikke forhindres, men et kontraktudløb kan: forlæng kontrakten fra rytterens profil, eller flere ad gangen fra fanen Kontrakter på Mit hold, før skiftet. Er din trup berørt, får du et varsel før sæsonskiftet, og spillet blokerer salg, frigivelser og auktioner der kunne efterlade dit hold under markedets sikkerhedsbuffer på 8 ryttere, med både kontraktudløb og pensionsrisiko regnet med. Seks seniorryttere kræves for at stille til start. Din holdside viser en 'kontrakt udløber'- eller 'pensionsrisiko'-badge ud for hver rytter der tæller med i den risiko, og et blokeret salg navngiver de konkrete ryttere, så du kan se præcis hvorfor."
     },
     "seniorStartReminderFaq": {
       "q": "Hvorfor siger dashboardet, at jeg mangler seniorryttere til start?",

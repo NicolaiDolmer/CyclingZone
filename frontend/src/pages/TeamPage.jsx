@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
@@ -40,6 +40,8 @@ import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractAc
 import { currentSquadOf, hasMoveTarget } from "../lib/squadTarget.ts"; // #5748
 import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
+import ContractsTab from "../components/team/ContractsTab.tsx"; // #6855
+import { readSquadSort, writeSortParams, SQUAD_SORT_PARAM, SQUAD_DIR_PARAM } from "../components/team/contractsTabModel.ts"; // #6855
 import { useRiderReputation } from "../lib/useRiderReputation.ts";
 import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputationView.ts";
 import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
@@ -643,7 +645,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
       _ovr: riderOverallRating(r),
     }));
-  const riderFilters = useClientRiderFilters(displayRidersBase, seasonYear);
+  // #6855: sorteringen står i URL'en (sort/dir), så den huskes efter et klik ind på en rytter og tilbage.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const riderFilters = useClientRiderFilters(displayRidersBase, seasonYear, readSquadSort(searchParams));
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
   const sortDir = riderFilters.filters.sort_dir;
@@ -652,6 +656,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     const next = cycleSortState({ sort, dir: sortDir }, key);
     riderFilters.onChange("sort", next.sort);
     riderFilters.onChange("sort_dir", next.dir);
+    setSearchParams((prev) => writeSortParams(prev, SQUAD_SORT_PARAM, SQUAD_DIR_PARAM, next), { replace: true });
   }
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
@@ -997,6 +1002,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   );
 }
 
+const TEAM_TABS = ["squad", "contracts", "development", "stats", "transfers"]; // #6855
+
 export function TeamPage() {
   const { t } = useTranslation("team");
   const scouting = useScouting();
@@ -1010,7 +1017,10 @@ export function TeamPage() {
   const activeSeasonNumber = seasonNumberFromReferenceYear(seasonYear);
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
-  const [activeTab, setActiveTab] = useState("squad");
+  // #6855: fanen står i URL'en (?tab=), så "tilbage" fra en rytter lander på samme fane.
+  const [tabParams, setTabParams] = useSearchParams();
+  const activeTab = TEAM_TABS.includes(tabParams.get("tab")) ? tabParams.get("tab") : "squad";
+  const setActiveTab = (key) => setTabParams((prev) => { const next = new URLSearchParams(prev); next.set("tab", key); return next; }, { replace: true });
   // #5075: gruppe-filteret boede tidligere kun i SquadTab — Stats-fanen
   // manglede dermed helt til-/fravalget af akademiryttere. Løftet herop, så
   // Trup- og Stats-fanen deler PRÆCIS samme state i stedet for at hver fane
@@ -1204,6 +1214,7 @@ export function TeamPage() {
     // #1929: squad-fane-tælleren matcher senior-tabellens indhold — akademiryttere
     // er splittet ud i egen sektion, så de tælles ikke i "Squad (N)".
     { key: "squad", label: t("tabs.squad", { count: currentRiders.filter(r => !r.is_academy).length }) },
+    { key: "contracts", label: t("tabs.contracts") }, // #6855
     // #3979 (ejer-beslutning 19/8, "Begge, A foerst" superseded samme
     // eftermiddag af "bundles med #3798"): sorterbar udviklings-status-tabel
     // ved siden af Squad — samme trup, ny visning (rating/prognose/loft).
@@ -1294,6 +1305,9 @@ export function TeamPage() {
       {activeTab === "squad" && (
         <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
           squadFilter={squadFilter} reputationOn={reputationOn} />
+      )}
+      {activeTab === "contracts" && (
+        <ContractsTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} onChanged={loadAll} />
       )}
       {activeTab === "development" && (
         <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />
