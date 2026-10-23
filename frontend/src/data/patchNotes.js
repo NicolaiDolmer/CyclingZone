@@ -7,6 +7,24 @@ export const PATCHES = [
         "category": "improved",
         "audience": "player",
         "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Smarter racing from the next stage race",
+          "body": "Riders who are high in the GC, or strong enough to get there, now almost never join the morning breakaway. Who counts as a GC threat depends on the rest of the race, so a time trialist matters more before a time trial. Races that have already started keep their rules."
+        },
+        "da": {
+          "title": "Klogere løb fra næste etapeløb",
+          "body": "Ryttere der ligger højt i klassementet, eller er stærke nok til at komme der, går nu næsten aldrig med i morgenudbruddet. Hvem der er en klassementstrussel, afhænger af resten af løbet, så en enkeltstartsrytter tæller mere før en enkeltstart. Løb der allerede er startet, beholder deres regler."
+        },
+        "refs": [
+          6818,
+          6748
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
         "topic": "Academy",
         "en": {
           "title": "One prognosis for your academy riders",
