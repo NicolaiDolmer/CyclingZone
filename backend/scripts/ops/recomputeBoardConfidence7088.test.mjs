@@ -62,6 +62,25 @@ test("#7088 replay: umættet seneste løbs-kvittering giver den eksakte aktive d
   assert.equal(row.after, 46);
 });
 
+test("#7088 replay: efter deploy er kvitteringen kun et loft-skridt → motorens gemte season_delta bruges", () => {
+  const row = replayTeamConfidence({
+    relation: {
+      team_id: "t",
+      confidence: 8,
+      // Den rettede motor ankrede på den fejlagtige 0 og tog ét skridt mod 0 + 40.
+      confidence_source: { season_anchor: { season_id: S4, confidence: 0 }, season_delta: 40 },
+    },
+    activeSeason,
+    seasonNumberById,
+    firstEvent: { season_id: S4, satisfaction_before: 50 },
+    lastActiveWeekend: { satisfaction_before: 0, satisfaction_after: 8 },
+    oneYearBoard: { satisfaction: 100, season_start_satisfaction: 70, season_start_anchor_season_id: S4 },
+  });
+  assert.equal(row.active_delta, 40, "ikke kvitteringens skridt (8) og ikke planens grænse (30)");
+  assert.equal(row.after, 90);
+  assert.ok(row.flags.includes("active_delta_from_engine"));
+});
+
 test("#7088 replay: mangler både kvittering og plan → anker, markeret", () => {
   const row = replayTeamConfidence({
     relation: { team_id: "t", confidence: 0 },

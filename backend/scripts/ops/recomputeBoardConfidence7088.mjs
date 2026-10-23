@@ -137,15 +137,28 @@ export function replayTeamConfidence({
     ? clampSatisfaction(toNum(firstEvent.satisfaction_before))
     : confidence;
 
-  // Aktiv sæsons løbende delta.
+  // Aktiv sæsons løbende delta, i rækkefølge efter præcision:
+  //  1. Den rettede motor har kørt i sæsonen → den gemte `season_delta` er eksakt.
+  //  2. Den gamle additive motor: seneste umættede kvittering er `after - before`
+  //     = hele delta'en (efter rettelsen er en kvittering kun et loft-skridt,
+  //     så den bruges KUN når relationen endnu ikke bærer et anker).
+  //  3. 1yr-planens `satisfaction - season_start_satisfaction`.
   let activeDelta = null;
+  const source = relation?.confidence_source && typeof relation.confidence_source === "object"
+    ? relation.confidence_source : {};
+  const fixedEngineRan = source.season_anchor?.season_id === activeSeason.id
+    && Number.isFinite(toNum(source.season_delta));
+  const oldEngineReceipt = !source.season_anchor;
   const lastAfter = toNum(lastActiveWeekend?.satisfaction_after);
   const lastBefore = toNum(lastActiveWeekend?.satisfaction_before);
   const bpValid = oneYearBoard
     && oneYearBoard.season_start_anchor_season_id === activeSeason.id
     && Number.isFinite(toNum(oneYearBoard.season_start_satisfaction))
     && Number.isFinite(toNum(oneYearBoard.satisfaction));
-  if (lastActiveWeekend && isUnsaturated(lastAfter) && Number.isFinite(lastBefore)) {
+  if (fixedEngineRan) {
+    activeDelta = toNum(source.season_delta);
+    flags.push("active_delta_from_engine");
+  } else if (oldEngineReceipt && lastActiveWeekend && isUnsaturated(lastAfter) && Number.isFinite(lastBefore)) {
     activeDelta = lastAfter - lastBefore;
   } else if (bpValid) {
     const bpNow = toNum(oneYearBoard.satisfaction);
