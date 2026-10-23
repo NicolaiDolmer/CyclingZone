@@ -30,7 +30,8 @@ Alt bygges bag slukkede flag, i små PR'er, som PC1 kan merge løbende uden at n
 | #6110 | Søndagens unge: intet potentiale og ingen prognose ved hentning; første skøn efter 5 træninger (samme grænse som salg), skarpere efter ca. 12, sikkert efter ca. 20 | ejer 11/10 |
 | #6110 | "Træningsscore" omdøbes til "Udviklingsscore" samme søndag som løbsudviklingen tændes | ejer 20/10 |
 | #6110 D7 | Del 2 tændes samlet en søndag i S5. Ingen datopres | ejer 11/10 |
-| #6110 | #7075 og #6461 leveres sammen med Udvikling 2.0; #6461's variant vælges i den sammenhæng | ejer 23/10 |
+| #6110 | #7075 og #6461 leveres sammen med Udvikling 2.0 | ejer 23/10 |
+| #6461 | Train now = hele dagen for alle ryttere (variant B), designet sammen med #6984 | ejer 23/10 |
 | Rating-reglen | Synlige ratings falder aldrig uden ejerens vidende | 17/9 |
 
 **Konsekvens af 11/10 og 23/10 sammen:** retning C sagde "spillerne ser ingen tal". Den 23/10 afløser det for potentialet: spilleren ser ét skønnet tal. Professionalismen og grundtalentet forbliver skjulte.
@@ -122,7 +123,7 @@ Prisen må ikke afsløre det sande potentiale. Retning: den publicerede værdi f
 |---|---|---|
 | **#7075** maks +1 pr. evne pr. dato | Fælles værn lige før skrivningen; klippet point bæres videre | PR'en rebases og lægges bag et eget slukket flag, der tændes samme søndag. Ingen ændring af indholdet |
 | **#7084** holdskifte på reserve-stien | En rytter, der skifter hold samme dato, kan få +1 to gange, når dato-kvitteringerne er slukket | Rytter-nøglet gevinstkvittering, der skrives uanset sti. Teknisk design: en lille tabel eller et indeks på eksisterende rytter-ticks; vælges i PR'en efter målt baseline |
-| **#6461** Train now = hele dagen | Variant A (hele datoen inkl. træthed/form for ryttere uden løb) eller B (også løbsryttere) fra PR #7071 | Ejer-kort i denne runde (næste beslutning). Bygges efter skiftet 25/10, bag flag. Klikket skal tælle som træning til de 5 træninger og respektere +1 pr. dato |
+| **#6461** Train now = hele dagen | **Ejer-valg B 23/10: hele dagen for alle.** Klikket afregner datoens træning for alle ryttere, også dem med løb samme dag; løbet lægges på som egen linje, når det er kørt. Løbet køres stadig på datoens starttilstand (29/9, beslutning 3). Reglen "træthed og form skrives én gang pr. dato" (I4 fra 29/9) revideres | Designes og bygges sammen med form og træthed 2.0 (#6984), så træthed og form ikke bygges om to gange. Efter skiftet 25/10, bag flag. Klikket tæller som træning til de 5 træninger og respekterer +1 pr. dato |
 
 ## 8. Flag
 Ét paraply-flag for visningen (`potential_single_number`) og de eksisterende/nye flag for motoren. Alle **fail-safe off, bit-identisk off**: med flaget slukket ser spillet ud og regner præcis som i dag. Tænding sker samlet en søndag i S5 efter harness-kort og ejer-go (D7).
@@ -157,7 +158,7 @@ Se byggeplanen (§11). Migrationer er additive og idempotente: tabel til gemte s
 | 7 | Udviklingsscore B + lukket sidekanal (navneskiftet ligger i del 2-pakken) | - | Nej |
 | 8 | #7075 rebased bag eget flag | - | Nej |
 | 9 | #7084 rytter-nøglet kvittering | 8 | Nej |
-| 10 | #6461 Train now hele dagen (efter ejer-valg A/B, efter 25/10) | 8 | Nej |
+| 10 | #6461 Train now hele dagen for alle (B): teknisk design + målt baseline sammen med #6984 først, derefter byg | 8, #6984 | Nej |
 | 11 | #2798 pris på offentligt skøn (efter ejer-kort) | 3 | Nej |
 | 12 | Omregning 1-6 → 1-99: script, dry-run, privat kort | 1, 11 | Nej (apply ejer-gated) |
 | 13 | Tænd-kort: harness-resultater + preview-billeder → ejer-go → samlet tænding søndag | alle | Ja, efter go |
@@ -166,7 +167,7 @@ Højst 2-3 spor parallelt. 1, 2, 7 og 8 kan starte samtidig. Verifikation: TIER 
 
 ## 12. Åbne ejer-kort (ét ad gangen, i denne rækkefølge)
 1. ~~Sikkerhed som ord~~ besluttet A 23/10.
-2. #6461: Train now variant A eller B (PR #7071 §8).
+2. ~~#6461: Train now variant A eller B~~ besluttet B 23/10 (hele dagen for alle, med #6984).
 3. #2798: hvordan prisen regnes uden at afsløre potentialet.
 4. Godkendelse af hele designet (denne spec + mockups) før første kode-PR.
 5. Senere: tænd-kortet med harness-tal (privat).
