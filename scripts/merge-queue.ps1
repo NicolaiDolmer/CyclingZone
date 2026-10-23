@@ -115,7 +115,11 @@ param(
   # koeen venter. Aldrig masseopdatering af alle PR'er (det fyldte Actions-koeen 23/10).
   [switch] $NoUpdateBehind,
   # Den gamle adfaerd: en PR der ikke er groen stopper hele koeen.
-  [switch] $StopOnRedPr
+  [switch] $StopOnRedPr,
+  # Ejer 23/10: op til saa mange deploy-PR'er (backend/Railway/Vercel) i eet tog med EEN
+  # deploy-verifikation. Migrationer og race-motoren (merge-queue-files.mjs solo) koerer
+  # altid alene. Roedt tog = STOP + skyldig PR (merge-queue-train.mjs). 1 = gammel adfaerd.
+  [int] $MaxDeployBatch = 3
 )
 
 Set-StrictMode -Version Latest
@@ -181,6 +185,7 @@ function Get-PrPlanEntry([int]$number) {
   $title = "(ukendt)"
   $mergeable = "UNKNOWN"
   $isDraft = $false
+  $solo = $true
   $headSha = $null
   $mergeState = "UNKNOWN"
   if ($filesJson) {
@@ -218,12 +223,13 @@ function Get-PrPlanEntry([int]$number) {
         $touchesBackend = [bool]$cls.touchesBackend
         $touchesRailway = [bool]$cls.touchesRailway
         if ($cls.PSObject.Properties['touchesVercel']) { $touchesVercel = [bool]$cls.touchesVercel }
+        if ($cls.PSObject.Properties['solo']) { $solo = [bool]$cls.solo }
         $filesKnown = $listComplete
       }
     } catch {}
   }
   # Ukendt filliste maa aldrig batches stille uden deploy-verifikation.
-  if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true; $touchesVercel = $true }
+  if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true; $touchesVercel = $true; $solo = $true }
 
   [pscustomobject]@{
     number         = $number
@@ -237,6 +243,7 @@ function Get-PrPlanEntry([int]$number) {
     isDraft        = $isDraft
     headSha        = $headSha
     mergeState     = $mergeState
+    solo           = $solo
   }
 }
 
@@ -773,6 +780,8 @@ function Exit-Queue([int]$Code) {
 
 # 23/10: klar-foerst + een opdatering ad gangen (se -WaitPendingMinutes/-NoUpdateBehind).
 $script:deferred = @{}
+$script:trainDeploys = 0
+$script:soloDeferred = @{}
 $script:updated = @{}
 $script:skipped = @()
 
@@ -876,9 +885,20 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # Review #6357 M3: brug den FRISKE fil-klassifikation for selve PR'en.
   $entryBackend = $entry.touchesBackend -or $fresh.touchesBackend
   $entryRailway = $entry.touchesRailway -or $fresh.touchesRailway
-  # Codex P1 (#6861): en deploy-paavirkende PR afslutter altid toget.
   $entryVercel = [bool]($entry.touchesVercel -or $fresh.touchesVercel)
-  if ($entryBackend -or $entryRailway -or $entryVercel) { $batchWithNext = $false }
+  # Ejer 23/10: deploy-PR'er koerer i tog paa op til -MaxDeployBatch (foer #6861: altid alene).
+  # En solo-PR (migration/motor) merges aldrig ind i et aabent tog og afslutter selv toget.
+  $entryDeploys = [bool]($entryBackend -or $entryRailway -or $entryVercel)
+  $entrySolo = [bool]($entry.solo -or $fresh.solo)
+  if ($entrySolo -and $script:batchMerged.Count -gt 0 -and -not $DryRun -and -not $script:soloDeferred.ContainsKey("$n")) {
+    $script:soloDeferred["$n"] = $true
+    Write-Host "  PR #$n koerer alene (migration/motor): stilles efter det aabne tog." -ForegroundColor DarkYellow
+    $plan += $entry
+    continue
+  }
+  $nextSolo = (($idx + 1) -lt $plan.Count) -and [bool]$plan[$idx + 1].solo
+  if ($entrySolo -or $nextSolo -or ($entryDeploys -and ($script:trainDeploys + 1) -ge $MaxDeployBatch)) { $batchWithNext = $false }
+  if ($entryDeploys) { $script:trainDeploys++ }
 
   if ($DryRun) {
     Write-Host "  [dry-run] ville merge nu: gh pr merge $n --squash --delete-branch --admin" -ForegroundColor DarkGray
@@ -890,10 +910,10 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
       Write-Host "  [dry-run] ville merge videre uden at vente; CI (main) og evt. Deploy verify ventes EEN gang efter raekken (maks $MaxBatch)." -ForegroundColor DarkGray
     } elseif ($script:batchBackend -or $script:batchRailway -or $script:batchVercel) {
       Write-Host "  [dry-run] sidste i raekken: ville vente paa CI (main) + 'Deploy verify' for hele raekken." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:batchRailway = $false; $script:batchBackend = $false; $script:batchVercel = $false
+      $script:dryBatchSize = 0; $script:trainDeploys = 0; $script:batchRailway = $false; $script:batchBackend = $false; $script:batchVercel = $false
     } else {
       Write-Host "  [dry-run] ville derefter vente paa CI (main) + mindst $MinWaitMinutesNoBackend min (roerer ikke backend/)." -ForegroundColor DarkGray
-      $script:dryBatchSize = 0; $script:batchRailway = $false; $script:batchVercel = $false
+      $script:dryBatchSize = 0; $script:trainDeploys = 0; $script:batchRailway = $false; $script:batchVercel = $false
     }
     continue
   }
@@ -975,6 +995,7 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   }
   $script:batchMerged = @()
   $script:batchShas = @()
+  $script:trainDeploys = 0
 
   # Deploy-verifikation: altid naar toget udloeser et deploy (backend, Railway
   # eller Vercel/byggeinput, AGENTS regel 20). Codex P1 (#6861): et
