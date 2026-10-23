@@ -6179,6 +6179,17 @@ router.post("/races/:raceId/selection/auto", requireAuth, marketWriteLimiter, as
     });
     if (!picks.length) return res.status(409).json({ error: "selection_no_eligible_riders" });
 
+    // #6959 (Codex P1): genkontrollér låsen ved skrive-grænsen med frisk ur og frisk
+    // races-række. Starter løbet (etape 1's tid passeres) mens der regnes ovenfor, må
+    // truppen ikke skrives om. Første skrivning er race_entry_clears-oprydningen herunder.
+    const { data: raceNow, error: raceNowErr } = await supabase
+      .from("races").select("id, status, stages_completed").eq("id", race.id).maybeSingle();
+    if (raceNowErr) return res.status(500).json({ error: raceNowErr.message });
+    if (!raceNow || raceNow.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+    if (await isRaceLineupLockedNow({ supabase, race: raceNow, now: new Date() })) {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
+
     // #2599: en eksplicit auto-udtagelse supersederer en evt. tidligere "Ryd dag/alt"-
     // markering for netop dette (race,team)-par (samme regel som manuel gem/regenerate).
     const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
