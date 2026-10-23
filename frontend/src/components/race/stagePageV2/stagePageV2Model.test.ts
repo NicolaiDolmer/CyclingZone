@@ -277,9 +277,10 @@ test("favouritesFor: tom foer foerste etape og ved ukendt profil", () => {
 
 test("favouritesFor: flad etape vaelger efter placeringer paa flade etaper, ikke klassementet", () => {
   const f = favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, PROFILES);
-  // Flade etaper foer 5: 1 (flad) og 3 (rolling). Five: 9+10... Six: 10+9, Five: 9+10, Seven 8, Four 8 (3. paa etape 3).
+  // Flade etaper foer 5: 1 og 3 (rolling). Score 11-placering: Five 9+10, Six 10+9, Seven 8, Four 8 (3. paa etape 3).
   assert.deepEqual(ids(f).slice(0, 2).sort(), ["Sprinter Five", "Sprinter Six"]);
-  assert.ok(!ids(f).includes("Climber One") || ids(f).indexOf("Climber One") >= 4, "bjergmand ikke blandt toppen paa en flad etape");
+  assert.deepEqual(ids(f).slice(0, 4).sort(), ["Allround Four", "Sprinter Five", "Sprinter Seven", "Sprinter Six"], "de fire foerste er dem med flad form");
+  assert.ok(ids(f).indexOf("Climber One") >= 4, "bjergmand kun som fyld af samlet");
   assert.equal(f.length, 5);
   const five = f.find((x) => x.name === "Sprinter Five")!;
   assert.equal(five.mine, true);
