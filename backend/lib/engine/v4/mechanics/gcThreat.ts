@@ -338,8 +338,8 @@ function validRaceGcStages(raw: unknown): readonly GcStageDemand[] | null {
 }
 
 /**
- * #6818 (ejer 21/10, "Ja, med A"): hvor meget en etapetype typisk flytter klassementet
- * (virkelig cykelsport, top-10-tidsgab pr. etapetype). Ejer-godkendt designkort 21/10.
+ * #6818 (ejer 21/10, "Ja, med A"): hvor meget en etapetype typisk flytter klassementet.
+ * Ejer-godkendt designkort 21/10; grundlaget ligger privat (balance-internals/motor-release-s5/).
  */
 export const S5_GC_STAGE_IMPACT: Readonly<Record<string, number>> = Object.freeze({
   itt: 1.0, itt_hilly: 1.0, high_mountain: 1.0, mountain: 0.8, cobbles: 0.6,
