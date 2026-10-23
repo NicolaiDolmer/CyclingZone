@@ -66,13 +66,13 @@ const TIMELINE = { ...MOUNTAIN_TIMELINE, stage_number: 1 };
 // simple km-akse og testen dækker aldrig silhuet-stien.
 const PROFILE = { ...MOUNTAIN_STAGE_PROFILE, stage_number: 1 };
 
-async function mockRace(page, { withTimeline = true, withProfile = true } = {}) {
+async function mockRace(page, { withTimeline = true, withProfile = true, race = RACE } = {}) {
   await stabilizePage(page);
   await installNetworkMocks(page);
 
   await page.route("**/rest/v1/races**", route => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
-    return json(route, wantsObject ? RACE : [RACE]);
+    return json(route, wantsObject ? race : [race]);
   });
   await page.route("**/rest/v1/race_results**", raceResultsRoute(RESULTS));
   await page.route("**/rest/v1/race_stage_profiles**", route => json(route, withProfile ? [PROFILE] : []));
@@ -186,4 +186,28 @@ test("stage without route data falls back to the simple km axis, feed still work
   await expect(dialog.getByText("Ada Pedersen soloer til etapesejr.")).toBeVisible();
   // Ingen klima-chips uden rutedata (fallback-stien tegner ikke silhuet-navne).
   await expect(dialog.getByText("COL DU TEST", { exact: true })).toHaveCount(0);
+});
+
+// #6512: endagsloeb har kun ÉN etape og fik tidligere aldrig filmen (kun
+// etapefanen renderede StoryOfTheStageSection). Resultatfanen viser den nu.
+const ONE_DAY_RACE = { ...RACE, id: "race-oneday-1", name: "Film E2E Classic", race_type: "single", stages: 1, stages_completed: 1 };
+
+test("one-day race shows the story of the race + film button on the results tab (#6512)", async ({ page }) => {
+  await mockRace(page, { race: ONE_DAY_RACE });
+  await page.goto("/races/race-oneday-1?tab=results");
+
+  await expect(page.getByText("Etapens historie")).toBeVisible();
+  await expect(page.getByText("Ada Pedersen soloer til etapesejr.").first()).toBeVisible();
+  await page.getByRole("button", { name: "Se løbsfilmen" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Løbsfilm" })).toBeVisible();
+  await expect(dialog.getByRole("slider", { name: "Scrub gennem etapen" })).toBeVisible();
+});
+
+test("one-day race without timeline data shows no film button (#6512)", async ({ page }) => {
+  await mockRace(page, { race: ONE_DAY_RACE, withTimeline: false });
+  await page.goto("/races/race-oneday-1?tab=results");
+
+  await expect(page.getByRole("button", { name: "Se løbsfilmen" })).toHaveCount(0);
+  await expect(page.getByText("Etapens historie")).toHaveCount(0);
 });

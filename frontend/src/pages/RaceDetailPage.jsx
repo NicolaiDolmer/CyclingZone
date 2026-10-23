@@ -84,6 +84,7 @@ import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.js
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
 import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
 import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
+import { ownRiderIdsForOneDay } from "../lib/oneDayTimeline.ts"; // #6512
 import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
@@ -793,6 +794,7 @@ export default function RaceDetailPage() {
   }, [oneDayTimeline, results]);
   // #6400: startlisten (som historyForStage) til filmens regroup-filter.
   const oneDayStartlist = useMemo(() => results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean), [results]);
+  const oneDayOwnRiderIds = useMemo(() => ownRiderIdsForOneDay(results, myTeamId), [results, myTeamId]); // #6512
   const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
     row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
 
@@ -1336,6 +1338,14 @@ export default function RaceDetailPage() {
                   )}
                 </SectionStack>
                 <SectionStack>
+                  {/* #6512: endagsløb får samme "story of the stage" + løbsfilm som etapefanen (tidslinjen hentes allerede ovenfor). */}
+                  <StoryOfTheStageSection
+                    timeline={oneDayTimeline}
+                    raceId={race.id} stageNumber={1} profile={profileByStage[1]}
+                    riderNameById={riderNameById} teamNameById={teamNameById}
+                    stageLabel={race.name} startlist={oneDayStartlist}
+                    ownRiderIds={oneDayOwnRiderIds}
+                  />
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
                   <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
