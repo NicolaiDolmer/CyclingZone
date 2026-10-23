@@ -55,7 +55,7 @@
   },
   "racePaused": {
     "title": "Paused.",
-    "newStart": "New start {{time}}.",
+    "newStart": "New start {time}.",
     "newStartUnknown": "New start time will be announced."
   }
 }

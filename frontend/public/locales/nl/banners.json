@@ -55,7 +55,7 @@
   },
   "racePaused": {
     "title": "Gepauzeerd.",
-    "newStart": "Nieuwe start {{time}}.",
+    "newStart": "Nieuwe start {time}.",
     "newStartUnknown": "De nieuwe starttijd volgt."
   }
 }
