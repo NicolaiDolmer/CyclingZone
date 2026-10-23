@@ -1598,7 +1598,7 @@ export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);
 // ── #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2 ────────────────
 // Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md (oven paa
 // 2026-10-17-6804-hilly-breakaway-design.md P1-P5). Ét trin pr. commit; ingen aeldre
-// revision laeser noget herfra (mechanics/breakawayV3_6804.ts). Tallene er kalibreret
+// revision laeser noget herfra (mechanics/breakawayV3_6804.ts, gcThreat.ts). Tallene er kalibreret
 // privat mod testporten (balance-internals/6804/, hard rule 17); ingen tal i kommentarer.
 const s5V3Breakaway = {
   // P1 "slank B" (ejer 18/10): jagten paa kuperet i ETAPELOEB (endagsloeb uaendret: de
@@ -1621,6 +1621,24 @@ const s5V3Breakaway = {
     preFinalChaseClosingScale: 0.6,
     // 3. Lad-gaa-loftet ganges med denne faktor (lavere loft i etapeloeb).
     letGoMaxGapScale: 0.85,
+  },
+  // P6 (ejer-beslutning 4 = A, 21/10): klassementskontrol paa snor i ETAPELOEB (endagsloeb
+  // uaendret). Ingen ny tilfaeldighed; alle fire punkter flytter kun eksisterende led.
+  p6: {
+    // 1. Foer finalen holder en reagerende klassementsjagt forspringet paa det holdet
+    //    tolererer (snoren, #5978) i stedet for at hente. Finalen = de sidste km til maal;
+    //    dér hentes der som foer. Under den mindste snor er snoren brudt: der hentes.
+    controlFinaleKm: 35,
+    minLeashSeconds: 45,
+    // 2. Den fremskrevne gevinst paa resten af etapen taeller fuldt naar der hoejst er
+    //    dette tilbage; laengere ude vaegtes den ned (aldrig under gulvet).
+    projectionFullKm: 50,
+    projectionMinWeight: 0.3,
+    // 3. Korte etapeloeb (hoejst saa mange etaper): et hold har kun noget at forsvare naar
+    //    dets klassementsrytter er blandt feltets bedste paa klassementsevne OG placeringen
+    //    giver en reel chance (foereren har altid troejen at forsvare).
+    shortRaceMaxStages: 8,
+    contenderAbilityRank: 10,
   },
 };
 
