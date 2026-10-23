@@ -5,10 +5,11 @@ import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
   surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
   yourDay, DAY_TOP_COUNT, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage,
-  activeRiders, profileScale, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
+  activeRiders, profileScale, favouriteTerrain, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
 import { elevationScaleFor } from "../../../lib/stageRouteProfile.js";
+import { PROFILE_TYPE_KEYS } from "../../../lib/stageProfileConfig.js";
 
 const MOUNTAIN: StageProfile = {
   race_id: "r1", stage_number: 2, profile_type: "mountain", finale_type: "descent",
@@ -246,13 +247,76 @@ test("perKmGradeCeil: fast procentloft, kun en outlier udvider det", () => {
   assert.equal(perKmGradeCeil([]), PER_KM_GRADE_CEIL_PCT);
 });
 
-test("favouritesFor: fra loebet indtil nu; tom foer foerste etape", () => {
-  assert.deepEqual(favouritesFor(RESULTS, [], 1, MINE, 0), []);
-  const stageRows: ResultRow[] = [{ result_type: "stage", stage_number: 2, rank: 1, rider_id: "rid-Carl Rojas", team_id: OTHER }];
-  const f = favouritesFor(RESULTS, stageRows, 3, MINE, 2);
-  assert.equal(favouritesFor(RESULTS, stageRows, 4, MINE, 2)[0].name, "Carl Rojas", "etape 4 bruger det samlede efter etape 2 naar 3 ikke er koert");
-  assert.equal(f[0].name, "Carl Rojas");
-  assert.deepEqual(f[0].reasons.map((r) => r.key), ["leadsOverall", "wonStage"]);
-  const mine = f.find((x) => x.mine);
-  assert.equal(mine?.name, "Ana Ibarra");
+
+// ── favouritesFor (#6939): efter etapens profil ────────────────────────────
+// Loeb: etape 1 flad, 2 bjerg, 3 flad, 4 kuperet, 5 flad (maalet), 6 bjerg, 7 enkeltstart.
+const PROFILES = {
+  1: { profile_type: "flat" }, 2: { profile_type: "mountain" }, 3: { profile_type: "rolling" },
+  4: { profile_type: "hilly" }, 5: { profile_type: "flat" }, 6: { profile_type: "high_mountain" }, 7: { profile_type: "itt" },
+};
+const NAMES = ["Climber One", "Climber Two", "Climber Three", "Allround Four", "Sprinter Five", "Sprinter Six", "Sprinter Seven", "Domestique Eight"];
+// Samlet efter etape 4: bjergmaend foran, sprintere bag.
+const GC_AFTER_4: ResultRow[] = NAMES.map((n, i) => row(`g${i}`, "leader", 4, i + 1, n, i === 4 ? MINE : OTHER, `+${i}:00`));
+const stageRow = (stage: number, rank: number, rider: string): ResultRow => ({ ...row(`s${stage}-${rank}`, "stage", stage, rank, rider, OTHER, "+0:00") });
+const STAGES: ResultRow[] = [
+  stageRow(1, 1, "Sprinter Six"), stageRow(1, 2, "Sprinter Five"), stageRow(1, 3, "Sprinter Seven"),
+  stageRow(2, 1, "Climber One"), stageRow(2, 2, "Climber Two"), stageRow(2, 3, "Climber Three"), stageRow(2, 4, "Sprinter Five"),
+  stageRow(3, 1, "Sprinter Five"), stageRow(3, 2, "Sprinter Six"), stageRow(3, 3, "Allround Four"),
+  stageRow(4, 1, "Allround Four"), stageRow(4, 2, "Climber One"),
+];
+const ids = (f: ReturnType<typeof favouritesFor>) => f.map((x) => x.name);
+
+test("favouriteTerrain: hver kendt profiltype (ogsaa S5 medium_mountain) har en terraenfamilie", () => {
+  for (const k of PROFILE_TYPE_KEYS) assert.notEqual(favouriteTerrain(k), null, k);
+  assert.equal(favouriteTerrain("medium_mountain"), "hilly");
+  assert.equal(favouriteTerrain("nope"), null);
+});
+
+test("favouritesFor: tom foer foerste etape og ved ukendt profil", () => {
+  assert.deepEqual(favouritesFor(GC_AFTER_4, [], 1, MINE, 0, PROFILES), []);
+  assert.deepEqual(favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, {}), [], "ingen profil = intet aerligt grundlag");
+  assert.deepEqual(favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, { 5: { profile_type: null } }), []);
+});
+
+test("favouritesFor: flad etape vaelger efter placeringer paa flade etaper, ikke klassementet", () => {
+  const f = favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, PROFILES);
+  // Flade etaper foer 5: 1 og 3 (rolling). Score 11-placering: Five 9+10, Six 10+9, Seven 8, Four 8 (3. paa etape 3).
+  assert.deepEqual(ids(f).slice(0, 2).sort(), ["Sprinter Five", "Sprinter Six"]);
+  assert.deepEqual(ids(f).slice(0, 4).sort(), ["Allround Four", "Sprinter Five", "Sprinter Seven", "Sprinter Six"], "de fire foerste er dem med flad form");
+  assert.ok(ids(f).indexOf("Climber One") >= 4, "bjergmand kun som fyld af samlet");
+  assert.equal(f.length, 5);
+  const five = f.find((x) => x.name === "Sprinter Five")!;
+  assert.equal(five.mine, true);
+  assert.deepEqual(five.reasons.map((r) => r.key), ["overall", "wonStage", "placed.flat"]);
+  assert.deepEqual(five.reasons.find((r) => r.key === "placed.flat")!.params, { count: 2 });
+  assert.deepEqual(five.reasons.find((r) => r.key === "wonStage")!.params, { number: 3 });
+});
+
+test("favouritesFor: bjergetape tager det samlede foerst, saa de bedste paa bjerg", () => {
+  const f = favouritesFor(GC_AFTER_4, STAGES, 6, MINE, 4, PROFILES);
+  assert.deepEqual(ids(f).slice(0, 3), ["Climber One", "Climber Two", "Climber Three"]);
+  assert.equal(f[0].reasons[0].key, "leadsOverall");
+  assert.equal(f.length, 5);
+});
+
+test("favouritesFor: enkeltstart uden tidligere enkeltstarter fylder op af det samlede", () => {
+  const f = favouritesFor(GC_AFTER_4, STAGES, 7, MINE, 4, PROFILES);
+  assert.deepEqual(ids(f), NAMES.slice(0, 5));
+});
+
+test("favouritesFor: kuperet er en blanding af samlet og terraenform", () => {
+  const f = favouritesFor(GC_AFTER_4, STAGES, 8, MINE, 4, { ...PROFILES, 8: { profile_type: "hilly" } });
+  assert.deepEqual(ids(f).slice(0, 3), ["Climber One", "Climber Two", "Allround Four"], "to fra samlet, saa kuperet form");
+  assert.equal(f.length, 5);
+});
+
+test("favouritesFor: etape efter seneste koerte bruger formen indtil den senest koerte", () => {
+  const f = favouritesFor(GC_AFTER_4, STAGES, 6, MINE, 4, PROFILES);
+  const g = favouritesFor(GC_AFTER_4, STAGES, 9, MINE, 4, { ...PROFILES, 9: { profile_type: "mountain" } });
+  assert.deepEqual(ids(g), ids(f), "etape 9 ligger efter 5 og 6 der ikke er koert endnu: samme grundlag");
+});
+
+test("favouritesFor: kun offentlige data (ingen route fit/evner i resultatet)", () => {
+  const f = favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, PROFILES);
+  for (const fav of f) assert.deepEqual(Object.keys(fav).sort(), ["mine", "name", "nation", "reasons", "riderId"]);
 });

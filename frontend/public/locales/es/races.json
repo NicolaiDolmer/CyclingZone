@@ -84,10 +84,16 @@
     },
     "favourites": {
       "title": "Favoritos",
-      "foot": "Según lo visto de esta carrera hasta ahora. El encaje con el recorrido solo se muestra para tus propios ciclistas.",
+      "foot": "Sigue el perfil de la etapa, según lo visto de esta carrera hasta ahora. El encaje con el recorrido solo se muestra para tus propios ciclistas.",
       "leadsOverall": "Lidera la general",
       "overall": "n.º {rank} en la general, {gap}",
       "wonStage": "Ganó la etapa {number}",
+      "placed": {
+        "flat": "Top 10 en {count, plural, one {# etapa llana} other {# etapas llanas}}",
+        "hilly": "Top 10 en {count, plural, one {# etapa ondulada} other {# etapas onduladas}}",
+        "mountain": "Top 10 en {count, plural, one {# etapa de montaña} other {# etapas de montaña}}",
+        "itt": "Top 10 en {count, plural, one {# contrarreloj} other {# contrarrelojes}}"
+      },
       "you": "Tú"
     },
     "story": {
