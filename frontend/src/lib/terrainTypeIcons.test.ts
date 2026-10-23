@@ -69,7 +69,7 @@ test("ukendt/manglende profile_type giver intet ikon (hellere intet end et forke
 });
 
 test("farven er et token, aldrig raa hex, og tokenet findes i baade lyst og moerkt tema", () => {
-  const css = readFileSync(new URL("../index.css", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../index.css", import.meta.url), "utf8").split("\r\n").join("\n");
   const light = css.slice(css.indexOf(":root {\n  color-scheme: light;"), css.indexOf('[data-theme="dark"] {'));
   const dark = css.slice(css.indexOf('[data-theme="dark"] {\n  color-scheme: dark;'));
   for (const def of Object.values(TERRAIN_GLYPHS)) {
