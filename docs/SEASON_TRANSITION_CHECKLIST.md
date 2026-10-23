@@ -121,7 +121,8 @@ Fordelingen er `pyramidCompression.js` (unit-testet, deterministisk tiebreak: po
 
 ### Skridt 2c — Info-banner op (#6973) (lige før "Afslut sæson")
 
-**Hvem:** Claude. Skrives med service role (Supabase MCP/SQL-editor); der er ingen admin-side til `ops_notices`. Banneret (`RaceControlBanner`, læser via `frontend/src/lib/opsNotices.js`) viser rækker med `active=true`, `starts_at <= now()` og `ends_at` tom/fremtidig. Ingen nedetidsside. Opret banneret FØR skridt 3, så spillerne ser det mens skiftet kører:
+**Hvem:** Claude. Skrives med service role (Supabase MCP/SQL-editor); der er ingen admin-side til `ops_notices`. Banneret (`RaceControlBanner`, læser via `frontend/src/lib/opsNotices.js`) viser rækker med `active=true`, `starts_at <= now()` og `ends_at` tom/fremtidig. Ingen nedetidsside. Opret banneret FØR skridt 3, så spillere der åbner appen mens skiftet kører, ser det. **Bannerets levetid (kun hentning ved sideindlæsning):** `RaceControlBanner` henter notices én gang, når appen åbnes, og tjekker ikke `ends_at` bagefter. Sessioner der var åbne før insert, ser det ikke; sessioner der var åbne ved nedtagning, beholder det til næste genindlæsning (`ends_at` skjuler det kun for nye sideindlæsninger). Verificér derfor synlighed og fjernelse i en FRISK session/privat vindue, ikke i en åben fane.
+
 
 ```sql
 -- Opret (starts_at/ends_at er timestamptz; ends_at er kun sikkerhedsnet).
@@ -130,8 +131,8 @@ values (
   'info',
   'Season change in progress',
   'Sæsonskifte i gang',
-  'The season change is running. Some pages may look odd for a short while. Nothing is lost, and this notice disappears when it is done.',
-  'Sæsonskiftet kører. Nogle sider kan se mærkelige ud et kort stykke tid. Intet går tabt, og beskeden forsvinder, når det er færdigt.',
+  'The season change is running. Some pages may look odd for a short while. Nothing is lost. Reload the page once the season change is done to clear this notice.',
+  'Sæsonskiftet kører. Nogle sider kan se mærkelige ud et kort stykke tid. Intet går tabt. Genindlæs siden, når skiftet er færdigt, for at fjerne beskeden.',
   true,
   now(),
   now() + interval '4 hours'
