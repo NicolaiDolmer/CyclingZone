@@ -52,13 +52,7 @@
   },
   "today": "Vandaag",
   "legend": {
-    "title": "Terrein",
-    "sprint": "Sprint",
-    "cobbles": "Kasseien",
-    "hilly": "Heuvelachtig",
-    "mountain": "Bergen",
-    "itt": "Tijdrit",
-    "ttt": "Ploegentijdrit"
+    "title": "Terrein"
   },
   "terrain": {
     "sprint": "Sprint",
