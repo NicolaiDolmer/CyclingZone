@@ -1650,9 +1650,9 @@ const s5V3Breakaway = {
     interestedLeadSecondsByProfile: {
       flat: 360,
       rolling: 420,
-      hilly: 420,
-      mountain: 660,
-      high_mountain: 600,
+      hilly: 480,
+      mountain: 720,
+      high_mountain: 540,
     } as Partial<Record<ProfileType, number>>,
     interestedLeadSecondsDefault: 420,
     // Uden jagt-interesse hos noget hold: den sjaeldne oevre zone, aldrig over den haarde graense.

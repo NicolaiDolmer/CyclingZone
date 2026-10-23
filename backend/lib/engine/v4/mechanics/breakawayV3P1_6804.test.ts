@@ -95,12 +95,14 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
   }
 });
 
-test("#6804 P1: v3 er deterministisk paa en kuperet etape i et etapeloeb, og flad/bjerg er uroert", () => {
+test("#6804 P1: v3 er deterministisk paa en kuperet etape i et etapeloeb (og paa flad/bjerg, hvor P2 ogsaa virker)", () => {
+  // P1 roerer kun kuperet (s5V3HillyChaseApplies ovenfor); P2 (realistisk forspring) virker paa
+  // alle profiler med etapeinteressen i etapeloeb, saa flad/bjerg sammenlignes ikke laengere med v2
+  // her (breakawayV3P2_6804.test.ts daekker P2; endagsloeb er byte-identiske i fixture-testen).
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   for (const name of ["mur-finale", "punch-finale-forspring", "flat-massespurt", "bjerg-selektion"]) {
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
     const run = (rev: string): string => JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: rev }));
     assert.equal(run("s5_profiles_v3"), run("s5_profiles_v3"), `${name} deterministisk`);
-    if (input.route.profile_type !== "hilly") assert.equal(run("s5_profiles_v3"), run("s5_profiles_v2"), `${name}: P1 roerer kun kuperet`);
   }
 });

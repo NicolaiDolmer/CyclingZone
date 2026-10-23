@@ -682,18 +682,20 @@ export function gcChaseCatchFacts(events, distanceKm) {
 /**
  * #6804 G2 (spec 17/10 par. 5, K3): udbruddets stoerste forspring paa etapen, maalt i
  * motorens segment-snapshots som afstanden fra det forreste udbrud til feltet: den
- * forreste gruppe uden for udbruddet med mindst `fieldMinRiders` ryttere (ellers den
- * stoerste), saa en afhaegtet grupetto aldrig er maalestokken. null uden udbrud.
- * `unchased` = motoren meldte at intet hold ville jage (`breakaway_unchased`, P2). REN.
+ * forreste gruppe uden for udbruddet med mindst `fieldMinShare` af ryttere uden for
+ * udbruddet. Er feltet splittet saa ingen gruppe er saa stor (fx paa slutstigningen),
+ * taeller snapshottet ikke: forspringet er det feltet gav, ikke slutstigningens hul.
+ * null uden udbrud. `unchased` = motoren meldte at intet hold ville jage
+ * (`breakaway_unchased`, P2). REN.
  */
-export function breakawayLeadFacts(out, fieldMinRiders = 10) {
+export function breakawayLeadFacts(out, fieldMinShare = 0.25) {
   let maxLead = null;
   for (const snap of out?.groupSnapshots ?? []) {
     const groups = snap?.groups ?? [];
     const breaks = groups.filter((g) => g.kind === "breakaway");
     const others = groups.filter((g) => g.kind !== "breakaway");
-    const big = others.filter((g) => (g.rider_ids?.length ?? 0) >= fieldMinRiders).sort((a, b) => Number(a.gap_seconds) - Number(b.gap_seconds));
-    const field = big[0] ?? [...others].sort((a, b) => (b.rider_ids?.length ?? 0) - (a.rider_ids?.length ?? 0))[0];
+    const total = others.reduce((n, g) => n + (g.rider_ids?.length ?? 0), 0);
+    const field = others.filter((g) => (g.rider_ids?.length ?? 0) >= fieldMinShare * total).sort((a, b) => Number(a.gap_seconds) - Number(b.gap_seconds))[0];
     if (!breaks.length || !field) continue;
     const lead = Number(field.gap_seconds) - Math.min(...breaks.map((g) => Number(g.gap_seconds)));
     if (Number.isFinite(lead) && lead > 0 && (maxLead === null || lead > maxLead)) maxLead = lead;
