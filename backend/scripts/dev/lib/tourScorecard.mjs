@@ -764,6 +764,37 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
 }
 
 /**
+ * #2757 S0 (maaling, ingen motor): pladsen paa sprint-evne blandt startfeltet (1 = feltets
+ * bedste sprinter). null naar rytteren ikke har evner. REN, deterministisk (lige evne: id).
+ */
+export function sprintRankIn(riderId, riderIds, abilitiesById) {
+  if (!riderId || !abilitiesById?.has(riderId)) return null;
+  const sprintOf = (id) => Number(abilitiesById.get(id)?.sprint ?? 0);
+  const mine = sprintOf(riderId);
+  let rank = 1;
+  for (const id of riderIds ?? []) {
+    if (id === riderId || !abilitiesById.has(id)) continue;
+    const s = sprintOf(id);
+    if (s > mine || (s === mine && id.localeCompare(riderId) < 0)) rank += 1;
+  }
+  return rank;
+}
+
+/**
+ * #2757 S0: pointtroejens vinder i ét seed ud fra motorens egne passage-point (spurt-point
+ * pr. etape, `passage_totals`). Flest point vinder; lige point: flest etapesejre er ikke kendt
+ * her, saa id afgoer (deterministisk). null uden point.
+ */
+export function pointsJerseyWinner(pointsByRider) {
+  let best = null;
+  for (const [id, pts] of pointsByRider ?? []) {
+    if (!(pts > 0)) continue;
+    if (!best || pts > best.points || (pts === best.points && id.localeCompare(best.riderId) < 0)) best = { riderId: id, points: pts };
+  }
+  return best;
+}
+
+/**
  * Sprinttogets effekt paa én etape (#6352): samme seed og felt med og uden
  * holdordrernes leadout. Maaler sprint-kaptajnerne paa hold der HAR leadout i
  * ordrerne: gennemsnitlig placering uden tog minus med tog (positiv = toget hjaelper).
@@ -795,11 +826,17 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
   for (let s = 1; s <= seeds; s++) {
     const rows = [];
     let gcWeek1 = null;
+    const pointsByRider = new Map(); // #2757 S0
     const seedTag = `${seedPrefix}-${s}`;
     const final = runStagesInOrder({
       v4, data, revision, seedTag, stages, entrants: all,
       onStage: ({ profile, res, gcBefore, gcAfter, entrants }) => {
         const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider, revision });
+        // #2757 S0: vinderens plads paa sprint-evne + pointtroejens regnskab (motorens passage-point).
+        m.winnerSprintRank = sprintRankIn(m.winnerId, riderIds, abilitiesById);
+        for (const t of res.v4Output?.passage_totals ?? []) {
+          if (Number(t.sprint_points) > 0) pointsByRider.set(t.rider_id, (pointsByRider.get(t.rider_id) ?? 0) + Number(t.sprint_points));
+        }
         if (leadoutPair && isBunchSprintStage(profile)) {
           const teams = leadoutTeams(data.orders, profile.stage_number);
           if (teams.size) {
@@ -817,7 +854,9 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
         rows.push(m);
       },
     });
-    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length });
+    const pj = stages.length > 1 ? pointsJerseyWinner(pointsByRider) : null; // #2757 S0 (kun etapeloeb)
+    const pointsJersey = pj ? { riderId: pj.riderId, role: roleByRider.get(pj.riderId) ?? null, sprintRank: sprintRankIn(pj.riderId, riderIds, abilitiesById), isGcWinner: pj.riderId === (final[0]?.rider_id ?? null) } : null;
+    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, ...(pointsJersey ? { pointsJersey } : {}) });
   }
   return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision, { shortRaceGapBands }) };
 }
