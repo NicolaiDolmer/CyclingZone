@@ -143,7 +143,7 @@ Konsekvenser for designet:
 | Gate | Krav |
 |---|---|
 | H1 Præcision pr. ord | Fejlen pr. ord holder, hvad ordet lover |
-| H2 Stabilitet | Samme (rytter, hold) uden ny viden: samme tal over 30 dage |
+| H2 Stabilitet | Samme (rytter, hold) uden ny viden og med uændret sandt loft: samme tal over 30 dage. Søndagskørslens tilladte opdateringer (§3.3: flere afregnede datoer, flyttet levende talent) er undtaget, men må kun ske ved søndagskørslen |
 | H3 Monotoni | Mere viden giver mindre fejl i forventning (gennemsnit over mange ryttere) og gør aldrig ordet mindre sikkert. Pr. rytter kan fejlen stige en smule; det er prisen for inversionsværnet (§3.2) |
 | H4 Ingen lækage | Sortering, filtre, API-svar til andre hold og Udviklingsscorens viste felter indeholder hverken sandt loft eller afvigelse |
 | H4b Afgrænset pris-lækage | Under #2798-overgangen må værdien ikke afsløre potentialet mere præcist end et skøn efter ét kig med standardscout |
@@ -173,7 +173,7 @@ Se byggeplanen (§11). Migrationer er additive og idempotente: tabel til gemte s
 | 10 | #6461 Train now hele dagen for alle (B): teknisk design + målt baseline sammen med #6984 først, derefter byg | 8, #6984 | Nej |
 | 11 | #2798 værdi: glidende overgang fra potentiale til Udviklingsscore-historik, harness for rest-lækage | 7 | Nej |
 | 12 | Omregning 1-6 → 1-99: script, dry-run, privat kort | 1, 11 | Nej (apply ejer-gated) |
-| 13 | Tænd-kort: harness-resultater + preview-billeder → ejer-go → samlet tænding søndag | alle | Ja, efter go |
+| 13 | Tænd-kort: harness-resultater + preview-billeder → ejer-go → samlet tænding søndag. **Altid det sidste trin**: afhænger af trin 1-12 OG 14-25, herunder 10-sæsoners-simuleringen (trin 23, S25) | 1-12, 14-25 | Ja, efter go |
 
 Højst 2-3 spor parallelt. 1, 2, 7 og 8 kan starte samtidig. Verifikation: TIER FULL for 3-7 og 9-12 (motor, delte libs, i18n); ejeren ser preview (desktop og Android-bredde) før merge af 6.
 

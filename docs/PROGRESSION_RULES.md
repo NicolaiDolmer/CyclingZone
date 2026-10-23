@@ -63,6 +63,8 @@ er ukendt i kvitteringen, ikke et målt sæsonnul.
 
 ## 0. Potentiale styrer FARTEN, ikke længere HØJDEN (den hyppigste fejlkilde)
 
+> **⚠ Udvikling 2.0 vender dette, når flagene tændes (ejer 11/10 D1b + 23/10 S2, #6110):** potentialet sætter igen **niveauet** for rytterens lofter, men som **bløde** lofter: rolleklassen fordeler potentialet på evnerne (højt i signaturen, lavt i svagheden), sekundæren er altid næsthøjest, og kun signaturen kan nå verdenstoppen. Ny kode til Udvikling 2.0 SKAL bygge på den model (spec [`2026-10-23-6110-potentiale-et-tal-samlet-design.md`](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) §13, S2/S4/S5/S6/S8) bag flag. Teksten nedenfor beskriver det, der kører i prod, indtil tændingen; brug den ikke til nye Udvikling 2.0-lofter.
+
 Indtil trin 7 (PR #3798, merged 20/8) betød `potentiale` (1-6, ét tal pr. rytter) **to ting på én gang**: hvor HØJT en evne kunne ende (loftet, `loftByPotential`) OG hvor HURTIGT den voksede dertil (`rateByPotential`). Trin 7 skilte dem ad.
 
 | | Før trin 7 | Efter trin 7 (nu) |
