@@ -679,6 +679,29 @@ export function gcChaseCatchFacts(events, distanceKm) {
   return { gcEarlyCatch, yoyo };
 }
 
+/**
+ * #6804 G2 (spec 17/10 par. 5, K3): udbruddets stoerste forspring paa etapen, maalt i
+ * motorens segment-snapshots som afstanden fra det forreste udbrud til feltet: den
+ * forreste gruppe uden for udbruddet med mindst `fieldMinRiders` ryttere (ellers den
+ * stoerste), saa en afhaegtet grupetto aldrig er maalestokken. null uden udbrud.
+ * `unchased` = motoren meldte at intet hold ville jage (`breakaway_unchased`, P2). REN.
+ */
+export function breakawayLeadFacts(out, fieldMinRiders = 10) {
+  let maxLead = null;
+  for (const snap of out?.groupSnapshots ?? []) {
+    const groups = snap?.groups ?? [];
+    const breaks = groups.filter((g) => g.kind === "breakaway");
+    const others = groups.filter((g) => g.kind !== "breakaway");
+    const big = others.filter((g) => (g.rider_ids?.length ?? 0) >= fieldMinRiders).sort((a, b) => Number(a.gap_seconds) - Number(b.gap_seconds));
+    const field = big[0] ?? [...others].sort((a, b) => (b.rider_ids?.length ?? 0) - (a.rider_ids?.length ?? 0))[0];
+    if (!breaks.length || !field) continue;
+    const lead = Number(field.gap_seconds) - Math.min(...breaks.map((g) => Number(g.gap_seconds)));
+    if (Number.isFinite(lead) && lead > 0 && (maxLead === null || lead > maxLead)) maxLead = lead;
+  }
+  const unchased = (out?.timeline?.events ?? []).some((e) => e?.type === "breakaway_unchased");
+  return { breakawayMaxLead: maxLead, breakawayUnchased: unchased };
+}
+
 export function testportStageFacts(out, profile, roleByRider = null) {
   const events = out?.timeline?.events ?? [];
   const winnerId = finishedSorted(out)[0]?.rider_id ?? null;
@@ -727,6 +750,7 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     minuteLossAtZeroKm: tt ? null : minuteLossAtZeroKm(res.timeline?.events ?? null, { riderIds }),
     labelContradictions: labelContradictions(ranked, out, { stepModel: !isS5ProfilesV2OrLater(revision) }).length,
     winType: ranked?.[0]?.win_type ?? null,
+    ...(tt ? {} : breakawayLeadFacts(out)), // #6804 G2
     ...(tt ? { winnerId: testportStageFacts(out, profile, roleByRider).winnerId } : testportStageFacts(out, profile, roleByRider)), // #6750
   };
   if (tt) {

@@ -1648,15 +1648,15 @@ const s5V3Breakaway = {
     // Det forspring feltet tolererer pr. profil, naar mindst et hold har etape- eller
     // klassementsinteresse (mellemzonen). Udeladt profil = `interestedLeadSecondsDefault`.
     interestedLeadSecondsByProfile: {
-      flat: 300,
-      rolling: 360,
+      flat: 360,
+      rolling: 420,
       hilly: 420,
-      mountain: 480,
-      high_mountain: 480,
+      mountain: 660,
+      high_mountain: 600,
     } as Partial<Record<ProfileType, number>>,
     interestedLeadSecondsDefault: 420,
     // Uden jagt-interesse hos noget hold: den sjaeldne oevre zone, aldrig over den haarde graense.
-    unchasedLeadSeconds: 720,
+    unchasedLeadSeconds: 780,
     // Automatisk jagt baerer arbejde: et interesseret hold uden ordre/reaktion jager med
     // arbejde i forhold til interessen, maalt mod en fuld ordre (teamSignalWeight x maxTeamSignal).
     autoChaseWorkScale: 1,
