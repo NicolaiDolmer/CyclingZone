@@ -178,5 +178,47 @@ Højst 2-3 spor parallelt. 1, 2, 7 og 8 kan starte samtidig. Verifikation: TIER 
 1. ~~Sikkerhed som ord~~ besluttet A 23/10.
 2. ~~#6461: Train now variant A eller B~~ besluttet B 23/10 (hele dagen for alle, med #6984).
 3. ~~#2798: hvordan prisen regnes~~ besluttet 23/10: potentialet ud af værdien, glidende overgang til Udviklingsscoren, når den er rettet.
-4. Godkendelse af hele designet (denne spec + mockups) før første kode-PR.
+4. Godkendelse af hele designet (denne spec + mockups + §13) før første kode-PR.
 5. Senere: tænd-kortet med harness-tal (privat).
+
+## 13. Samlet gennemgang 23/10: ejerens svar S1-S21
+
+Gennemgangen dækkede GDD, PROGRESSION_RULES, TRAINING_RULES, YOUTH_RULES, specs og alle relaterede issues. Kort: `pr-screens/6110-gennemgang/` (lokalt). Svarene her afløser modstridende tekst tidligere i denne spec (fx skjult professionalisme i §1, forklaringslinjen i §5).
+
+| # | Emne | Ejerens svar |
+|---|---|---|
+| S1 | Hvad potentiale-tallet måler | Potentiale og ryttertype skabes først; den naturlige type er dér, hvor rytteren kan nå sin bedste rating på sigt. Tallet = potentialet i den naturlige rolle, som pr. konstruktion er det højeste (#5764) |
+| S2 | Potentiale og evnernes lofter | Potentialet sætter niveauet, rolleklassen fordeler det: blødt loft pr. evne (højt i signaturen, lavt i svagheden), skaleret af potentialet. Ingen hårde mure, ingen synlige lofter |
+| S3 | Når et skøn ændrer sig | Én samlet indbakke-besked søndag (fald og stigninger, årsag som kort udsagn) + én linje på rytterprofilen |
+| S4 | Sekundær ryttertype | Bliver et medfødt anlæg. Lofterne bliver bløde og skaleres af potentialet, og sekundærens nøgleevner får altid de næsthøjeste lofter (#3813) |
+| S5 | Klatrerens punch (D-050) | Mellemting: klatrere er gode i bakker, men ingen rytter kan være verdensbedst i to områder. Kun signaturen når verdenstoppen. Puncheur-klatrere har punch i sekundær-klassen, andre klatrere i en mellemklasse |
+| S6 | Svaghedernes fart (#4765) | Farten stiger med klassen; svagheden er langsomst, men kan løftes over nogle sæsoner |
+| S7 | Hyperspecialisering | Ingen ekstra regel. Lofter, signatur-princippet og den dyrere top er bremsen. Harnessen måler gabet |
+| S8 | Tæt på toppen (#5275) | Blødt og bevaret: hvert point dyrere, fremdriften gemmes altid, ingen mur |
+| S9 | Løbsdage i Udviklingsscoren | Løbsdage får et tal på samme skala; snit og værdi bygger på hele historikken |
+| S10 | Hvad står under scoren | Kun tallet og 7-dages snittet. Ingen faktorforklaring (lukker også talent-sidekanalen) |
+| S11 | Professionalisme og træningsdisciplin (#6190) | Én synlig mental evne: træningsdisciplin ER professionalismen og løfter både dagens udbytte og det reelle loft over tid. Ingen skjult professionalisme |
+| S12 | Træningsformerne (#7103, #5319) | Version 3: hver ryttertype har to hårde sessioner med hver sin styrke og pris; ingen session giver alt. Nye: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter, Brostensklassiker. Ændrede: Bjergintervaller (før VO2max klatring), VO2max (punch), Spurt, Tærskel. Enkeltstart og Tempo trænes aldrig i samme session. Katalog med vægte på kort før byg |
+| S13 | Træner og facilitet på løbsdage (del 2 kort 1) | Faciliteter forbedrer kun træning, aldrig løb. Træneren forbedrer også kun træningsdage. Løbsdagens udvikling er ens for alle hold (catch-up-kanalen). Gate G2: ingen rytter får mindre ud af en løbsdag end i dag |
+| S14 | Passende sværhed (del 2 kort 2) | D, "lær af afgørelsen": ekstra udbytte i etapens evner for ryttere med i afgørelsen, mellem for dem der faldt fra i finalen; hjælpere der arbejder i finalen tæller med (D3). Plus en bred bonus omkring eget niveau og et lidt stærkere felt, aldrig under fuldt udbytte, ingen bonus ved et alt for hårdt felt. Kræver afgørelses-data fra løbsmotoren |
+| S15 | D1's ekstra løbsdage (del 2 kort 3) | Ingen ny regel; træthed 2.0 (#6984) er bremsen; harnessen måler |
+| S16 | Udgået rytter | Kun basis (som en hård dag), ikke løbets ekstra |
+| S17 | Fri rolle | Halvt som kaptajn, halvt som hjælper |
+| S18 | Grænsen på 5 træninger | 5 rigtige datoer på holdet, hvor træningen er afregnet (Train now-klik eller automatisk træning) |
+| S19 | Scout-viden | Forfalder ikke |
+| S20 | Doktrinen #5490 | Besluttet. Skrives i GDD. Potentialet (skjult grundtalent, vist som skøn + ord) er den eneste bevidste undtagelse |
+| S21 | Holdarbejde og Lederskab | Udvikles gennem løb efter rolle (hjælper: Holdarbejde, kaptajn: Lederskab), samlet udbytte uændret. **Holdarbejde skal virke i løbene efter den designede plan (#5348) inden sæsonskiftet 25/10** |
+
+### 13.1 Tilføjelser til byggeplanen (§11)
+
+| # | PR | Bag flag |
+|---|---|---|
+| 14 | Bløde lofter pr. evne: potentiale × rolleklasse, sekundær altid næsthøjest, signatur-princippet, klatrerens punch (S2, S4, S5) | ja |
+| 15 | Fart pr. klasse og fremdrift uden mur (S6, S8) | ja |
+| 16 | Træningskataloget version 3 (S12), vægte fra harness og ejer-kort før byg | ja |
+| 17 | Løbsdagen: træner/facilitet kun på træningsdage (S13), afgørelses-bonus og niveau-bonus (S14), DNF (S16), fri rolle (S17), mentale evner efter rolle (S21) | ja |
+| 18 | Søndagsbesked om ændrede skøn + profil-linje (S3) | ja |
+| 19 | Træningsdisciplin som mental evne (S11, #6190) | ja |
+| 20 | Tæller for 5 afregnede datoer (S18) | ja |
+| 21 | Holdarbejde i motoren (#5348), **før 25/10** | `teamwork_in_engine`; tænding kræver ejerens ordrette go |
+| 22 | SSOT og GDD: D-061 og frem for 11/10, 20/10 og 23/10; PROGRESSION_RULES §0/§3/§4/§11, TRAINING_RULES §13, YOUTH_RULES §2.5/§7 rettes | docs |
