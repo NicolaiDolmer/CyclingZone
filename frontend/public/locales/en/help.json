@@ -1670,7 +1670,7 @@
       },
       "hireChiefScout": {
         "title": "Hiring a chief scout",
-        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track."
+        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track. The candidates you can hire are a pool of 3 per role. Each one is drawn at random between tier 1 and your facility's tier, so the facility sets the ceiling, not a guarantee: you may see no top-tier candidate. The pool is fixed within a season and a new one comes at the season change. A chief you fired will not come back in it."
       },
       "coachingGroups": {
         "title": "Coaching groups: U23 vs Senior",
