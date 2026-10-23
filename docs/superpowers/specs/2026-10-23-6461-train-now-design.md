@@ -31,7 +31,7 @@ To spillere har meldt det uafhængigt af hinanden: #bugs 10/10 ("only trained 4 
 | `trainNowGameDays(gameDays)` returnerer `days.slice(0, -1)`: alle datoens løbsdage **undtagen den sidste** | `backend/lib/trainNow.js` (`trainNowGameDays`, kommentaren øverst i filen: "What the press deliberately does NOT settle") | Ryttere uden åbent løbsslot får 4 af 5 |
 | Den sidste løbsdag er den eneste, der skriver tilstanden (`settlesCondition = raceDay === dateDays.at(-1)`) | `backend/lib/dailyTrainingEngine.js` | Træthed og form følger med 5. dag og venter derfor også |
 | RPC'en afviser tilstandsskrivning på andre dage end den sidste ("Condition writes only at date settlement") og kræver tidligere dage committet først ("Earlier rider date ticks must commit first") | `commit_training_date_tick`, `database/2026-10-10-6439-training-follows-rider.sql` | Rækkefølgen er låst: dag 1-4, så dag 5 med tilstand |
-| `splitTrainNowRiders`: en rytter med et uafklaret løbsslot (tilmeldt, eller kandidat til autoudtagelse) lægges i `afterRace` og afregnes slet ikke ved klikket | `backend/lib/trainNow.js` + `resolveTrainingDateReadiness` | Løbsryttere får 0 af 5 ved klikket |
+| `splitTrainNowRiders`: en rytter med et uafklaret løbsslot (reelt tilmeldt et løb, der ikke er kørt endnu) lægges i `afterRace` og afregnes slet ikke ved klikket. Kandidater til autoudtagelse venter ikke: klikket låser dem, `runTrainNow` genindlæser readiness efter låsene, og `trainingAutopickCandidates` udelukker låste ryttere (testen for #6006: 45 ryttere, 10 tilmeldt, kun de 10 venter) | `backend/lib/trainNow.js` + `resolveTrainingDateReadiness` | Løbsryttere får 0 af 5 ved klikket |
 | Aftenkørslen åbner tidligst kl. 20 og først efter dagens sidste finalization | `trainingDayCloseTrigger.js`, `trainingDateClose.js` | Resten kommer typisk ca. 20:00-20:50 |
 
 Grunden til reglen er beslutning 4 + I4 fra 29/9: træthed og form opdateres **én gang pr. dato**, så det gamle trick (#3461: kør etaper, tryk træning for at restituere, kør frisk videre) ikke kommer tilbage.
@@ -121,7 +121,9 @@ B ligger tæt op ad #6984 (form/træthed 2.0), som allerede omdesigner træthed 
 
 **Målt nu:** brug (tabellen i §4) og fordeling 4/0/5 pr. tryk.
 
-**Kan ikke måles fra databasen:** hvor lang tid et klik tager. RPC'en stempler alle rækker med trykkets tidspunkt. Bygge-PR'en skal derfor først måle klikkets varighed i routen (før/efter) på et hold med fuld trup. Forventet effekt af A: ét ekstra dags-tick pr. klik (5 i stedet for 4), og aftenkørslen får tilsvarende mindre arbejde for de hold.
+**Kan ikke måles fra databasen:** hvor lang tid et klik tager. RPC'en stempler alle rækker med trykkets tidspunkt.
+
+**Forudsætning før første bygge-PR (hard rule 36), ikke opfyldt endnu:** klikkets varighed måles lokalt på PG17 (PGlite, samme fremgangsmåde som `backend/scripts/benchRankingTransfer6765.mjs`) på et hold med fuld trup, før og efter: i dag 4 dags-ticks uden tilstandsafregning, med A 5 dags-ticks + tilstandsafregningen i klikket. Tallene lægges i `balance-internals/6461/`. Uden den måling får A ikke byg-go. Forventet effekt af A: ét ekstra dags-tick pr. klik, og aftenkørslen får tilsvarende mindre arbejde for de hold.
 
 **Tests bygge-PR'en skal have (A):**
 
@@ -131,6 +133,10 @@ B ligger tæt op ad #6984 (form/træthed 2.0), som allerede omdesigner træthed 
 - En låst rytter kan ikke få en løbsbelastning på datoen, efter hans tilstand er afregnet (lås + RPC'ens tjek).
 - En rytter hvis løb allerede er kørt ved klikket, afregnes 5 af 5 inklusive løbsbelastningen.
 - Næste dato kan registreres, mens løbsryttere stadig er åbne (uændret adfærd).
+
+**Verifikations-tier (A):** TIER FULL (træningsmotoren og en delt RPC-sti): `scripts/verify-local.ps1`, hele backend `node --test` på trænings-filerne, frontend lint + `node --test` + build for knap- og hjælpeteksten, og PG17-målingen ovenfor før/efter.
+
+**Ejeren ser på preview (Android):** et hold med både løbsryttere og ryttere uden løb trykker "Træn nu"; ryttere uden løb viser 5 af 5 felter og opdateret træthed og form med det samme, løbsryttere står som "venter på løbet", og et gentaget klik ændrer intet. Aftenkørslen afregner bagefter kun løbsrytterne.
 
 ## 8. Valg-kort til ejeren
 
