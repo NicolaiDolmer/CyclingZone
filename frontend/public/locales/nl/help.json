@@ -1568,7 +1568,7 @@
       },
       "graduation": {
         "title": "Graduation Day",
-        "text": "Renners die aan hun selectie zijn ontgroeid, gaan bij de seizoenswissel door. Een junior die 19 wordt, gaat naar je U23-team, en een U23-renner die 23 wordt, gaat naar je seniorenteam. De lijst opent in de week voordat het seizoen wisselt, en de deadline is de wissel zelf. Tot je een renner verplaatst, traint en koerst hij in zijn oude selectie. Voor elke renner kies je Doorschuiven (vereist een vrije plek in de selectie waar hij naartoe gaat, en hij houdt zijn contract precies zoals het is), Verkopen op de transfermarkt, of Vrijgeven als transfervrije renner. Als je niets doet, kiest de club voor je bij de wissel: doorschuiven als er ruimte is, anders verkopen. Je coach geeft een korte inschatting van elke renner, en het is altijd maar een inschatting, nooit een belofte."
+        "text": "Renners die aan hun selectie zijn ontgroeid, gaan bij de seizoenswissel door. Een junior die 19 wordt, gaat naar je U23-team, en een U23-renner die 23 wordt, gaat naar je seniorenteam. De lijst opent in de week voordat het seizoen wisselt, en de deadline is de wissel zelf. Tot je een renner verplaatst, traint hij in zijn oude selectie, maar hij is te oud voor die selectie en kan er niet voor koersen. Voor elke renner kies je Doorschuiven (vereist een vrije plek in de selectie waar hij naartoe gaat, en hij houdt zijn contract precies zoals het is), Verkopen op de transfermarkt, of Vrijgeven als transfervrije renner. Als je niets doet, kiest de club voor je bij de wissel: doorschuiven als er ruimte is. Is die selectie vol, dan wacht hij onder Wacht op promotie en blijft hij trainen in zijn huidige selectie op hetzelfde contract, maar kan hij niet koersen tot je een plek vrijmaakt en op Promoveren drukt. Je coach geeft een korte inschatting van elke renner, en het is altijd maar een inschatting, nooit een belofte."
       },
       "graduationDayPage": {
         "title": "Waar je de keuze maakt",
@@ -1600,7 +1600,7 @@
       },
       "graduationDayAt23": {
         "title": "Wat gebeurt er als een renner uit zijn selectie groeit?",
-        "text": "Bij de seizoenswissel gaan renners die aan hun selectie zijn ontgroeid verder: junioren naar het U23-team op seizoensleeftijd 19, U23 naar senioren op seizoensleeftijd 23. Op Graduation Day heb je de eerste keuze; als je voor de deadline niets doet, schuift de club hem door als er ruimte is en je het kunt betalen, anders verkoopt ze hem, anders geeft ze hem vrij als transfervrije renner."
+        "text": "Bij de seizoenswissel gaan renners die aan hun selectie zijn ontgroeid verder: junioren naar het U23-team op seizoensleeftijd 19, U23 naar senioren op seizoensleeftijd 23. Op Graduation Day heb je de eerste keuze; als je voor de deadline niets doet, schuift de club hem door als er ruimte is en je het kunt betalen. Is de selectie vol, dan wacht hij onder Wacht op promotie tot je een plek vrijmaakt. Is er ruimte maar kan de club hem niet betalen, dan verkoopt ze hem, en als niemand hem koopt, geeft ze hem vrij als transfervrije renner."
       },
       "youthRacesFromS4": {
         "title": "Koersen het U23-team en het Juniorenteam echt?",
