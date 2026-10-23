@@ -207,7 +207,7 @@ Gennemgangen dækkede GDD, PROGRESSION_RULES, TRAINING_RULES, YOUTH_RULES, specs
 | S18 | Grænsen på 5 træninger | 5 rigtige datoer på holdet, hvor træningen er afregnet (Train now-klik eller automatisk træning) |
 | S19 | Scout-viden | Forfalder ikke |
 | S20 | Doktrinen #5490 | Besluttet. Skrives i GDD. Potentialet (skjult grundtalent, vist som skøn + ord) er den eneste bevidste undtagelse |
-| S21 | Holdarbejde og Lederskab | Udvikles gennem løb efter rolle (hjælper: Holdarbejde, kaptajn: Lederskab), samlet udbytte uændret. **Holdarbejde skal virke i løbene efter den designede plan (#5348) inden sæsonskiftet 25/10** |
+| S21 | Holdarbejde og Lederskab | Udvikles gennem løb efter rolle (hjælper: Holdarbejde, kaptajn: Lederskab), samlet udbytte uændret. Holdarbejde i løbsmotoren (#5348) designes først i en egen session senere og bygges, når designet er endeligt (ejer 23/10, rettet samme dag) |
 
 ### 13.1 Tilføjelser til byggeplanen (§11)
 
@@ -220,5 +220,5 @@ Gennemgangen dækkede GDD, PROGRESSION_RULES, TRAINING_RULES, YOUTH_RULES, specs
 | 18 | Søndagsbesked om ændrede skøn + profil-linje (S3) | ja |
 | 19 | Træningsdisciplin som mental evne (S11, #6190) | ja |
 | 20 | Tæller for 5 afregnede datoer (S18) | ja |
-| 21 | Holdarbejde i motoren (#5348), **før 25/10** | `teamwork_in_engine`; tænding kræver ejerens ordrette go |
+| 21 | Holdarbejde i motoren (#5348): eget design først, ikke nu | `teamwork_in_engine` |
 | 22 | SSOT og GDD: D-061 og frem for 11/10, 20/10 og 23/10; PROGRESSION_RULES §0/§3/§4/§11, TRAINING_RULES §13, YOUTH_RULES §2.5/§7 rettes | docs |
