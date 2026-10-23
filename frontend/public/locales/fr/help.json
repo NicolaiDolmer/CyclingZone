@@ -1899,7 +1899,7 @@
     },
     "trainingFocusFaq": {
       "q": "Comment entraîner un coureur ?",
-      "a": "Ouvrez l'un de vos coureurs et choisissez un axe d'entraînement sous « Axe d'entraînement » sur le profil : choisissez une direction et une intensité. Les capacités entraînées progressent plus vite vers leur plafond, jour après jour pendant l'entraînement. Vous pouvez définir un axe pour autant de coureurs que vous voulez. Une intensité plus élevée entraîne plus vite et génère plus de fatigue, mais ne risque jamais de faire perdre de la progression ; changer un axe existant ne coûte rien, et l'entraînement est gratuit."
+      "a": "Ouvrez l'un de vos coureurs et choisissez un axe d'entraînement sous “Axe d'entraînement” sur le profil : choisissez une direction et une intensité. Les capacités entraînées progressent plus vite vers leur plafond, jour après jour pendant l'entraînement. Vous pouvez définir un axe pour autant de coureurs que vous voulez. Une intensité plus élevée entraîne plus vite et génère plus de fatigue, mais ne risque jamais de faire perdre de la progression ; changer un axe existant ne coûte rien, et l'entraînement est gratuit."
     },
     "restForDevelopedFaq": {
       "q": "Mon coureur est entièrement développé. Dois-je simplement le mettre au repos ?",
