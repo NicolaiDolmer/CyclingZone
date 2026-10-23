@@ -110,7 +110,8 @@ Alle flader fra kortlægningen skifter fra interval til tal + ord via én ny kom
 
 ## 5. Udviklingsscoren (træningsscore B + omdøbning)
 - Én værdi pr. dag af intensitet, fokus-match, kondition, træner, facilitet og talent (grundtalent) og træningsdisciplin (S11). Ungdomsfaktoren fjernes. Dagsstøjen hæves, så talentet først skiller sig ud efter nogle træninger. 7-dages snit vises ved siden af.
-- **Sidekanalen lukkes:** talent vises aldrig som eget bidrag i "hvad trak op/ned". Det indgår i støjen og i totalen.
+- **Den separate sidekanal lukkes:** talent vises aldrig som eget bidrag (S10: kun tallet og 7-dages snittet).
+- **Scorehistorikken er en bevidst, afgrænset kanal:** over mange dage kan dagsstøjen midles væk, så talentleddet kan anes. Det er ejerens design for EGNE ryttere (11/10: træningsscoren er det første signal om talent), og scoren ses kun af rytterens egen manager. Kravet er, at scorehistorikken aldrig må afsløre talentet mere præcist end holdets eget skøn efter samme antal afregnede datoer. Gate H6b måler det, og dagsstøjen kalibreres efter det.
 - Løbsdage får et tal på samme skala efter del 2 (kort 1-3 i del 2-spec'en afgøres der).
 - Navnet skifter til Udviklingsscore samme søndag (alle sprog, help.json, patch note).
 - **Kobling til skønnet:** egne træninger er det, der gør skønnet mere sikkert for egne ryttere. Tælleren er den samme som salgsgrænsen på 5 træninger.
@@ -123,7 +124,7 @@ Konsekvenser for designet:
 - Overgangen er glidende: potentialets vægt i værdien aftager, scorens vokser. Ingen engangs-omregning af alle værdier.
 - Værdien bruger rytterens **historik** af Udviklingsscore (fx et glidende snit over en periode), ikke dagens tal, så støjen fra B ikke slår igennem på prisen.
 - Ryttere uden nok historik (nye unge før de første træninger) prissættes uden fremadrettet del; de første træninger flytter prisen.
-- Under overgangen findes der stadig en rest af sidekanalen. Harnessen måler, hvor meget potentialet kan aflæses af værdien, og overgangens tempo kalibreres efter det. Tal privat.
+- Under overgangen findes der stadig en rest af sidekanalen. Den er **eksplicit afgrænset**: værdien må aldrig afsløre potentialet mere præcist end et skøn efter ét kig med en standardscout (gate H4b). Potentialets vægt i værdien sættes, så H4b holder ved tændingen, og vægten falder derefter. Tal privat.
 - Omregningen 1-6 → 1-99 (§4) må ikke ramme prod, før potentialets vægt i værdien er nede på et niveau, hvor omregningen ikke flytter priserne synligt (låst 11/10: #2798 før omregningen).
 
 ## 7. De bundtede rettelser
@@ -143,10 +144,12 @@ Konsekvenser for designet:
 |---|---|
 | H1 Præcision pr. ord | Fejlen pr. ord holder, hvad ordet lover |
 | H2 Stabilitet | Samme (rytter, hold) uden ny viden: samme tal over 30 dage |
-| H3 Monotoni | Mere viden flytter aldrig skønnet væk fra sandheden og gør aldrig ordet mindre sikkert |
-| H4 Ingen lækage | Pris, sortering, Udviklingsscorens bidrag og API-svar indeholder hverken sandt loft eller afvigelse |
+| H3 Monotoni | Mere viden giver mindre fejl i forventning (gennemsnit over mange ryttere) og gør aldrig ordet mindre sikkert. Pr. rytter kan fejlen stige en smule; det er prisen for inversionsværnet (§3.2) |
+| H4 Ingen lækage | Sortering, filtre, API-svar til andre hold og Udviklingsscorens viste felter indeholder hverken sandt loft eller afvigelse |
+| H4b Afgrænset pris-lækage | Under #2798-overgangen må værdien ikke afsløre potentialet mere præcist end et skøn efter ét kig med standardscout |
 | H5 Konsistens | Alle flader viser samme tal for samme (rytter, hold) samme dag |
-| H6 Inversion | To kig med forskellig scout kan ikke regne sandheden ud |
+| H6 Inversion | To aflæsninger på hvert sit vidensniveau og sammenlægning på tværs af hold er ikke bedre end det bedste enkelt-skøn, de bygger på |
+| H6b Scorehistorik | Talentet udledt af en egen rytters Udviklingsscore-historik er ikke mere præcist end holdets eget skøn efter samme antal afregnede datoer |
 | Del 2 G1-G8 | Som i del 2-spec'en |
 
 Tal og målbånd: privat i `balance-internals/6110/`.
