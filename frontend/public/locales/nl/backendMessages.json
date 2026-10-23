@@ -650,7 +650,8 @@
       "message": "{rider} viel in {race} en is geblesseerd tot {until}.",
       "messageMissed": "{rider} viel in {race} en is geblesseerd tot {until}. Hij rijdt {missed} niet.",
       "messageFinished": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until}.",
-      "messageFinishedMissed": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until} en rijdt {missed} niet."
+      "messageFinishedMissed": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until} en rijdt {missed} niet.",
+      "messageTraining": "{rider} raakte geblesseerd op training en is uitgeschakeld tot {until}."
     },
     "teamDidNotStart": {
       "title": "Je team is niet gestart",
