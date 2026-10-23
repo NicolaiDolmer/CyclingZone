@@ -765,15 +765,10 @@ function Wait-BatchCi {
 function Exit-Queue([int]$Code) {
   if ($script:batchMerged.Count -gt 0 -and $script:lastMergedSha) {
     $label = ($script:batchMerged | ForEach-Object { "#$_" }) -join ", "
-    Write-Host "  Koeen stopper midt i en raekke: $label er allerede merget. Venter paa CI (main) for raekkens merge-SHA'er foer exit." -ForegroundColor Yellow
-    $ok = Wait-BatchCi
-    if ($script:queueStall) { Stop-QueueStall }
-    if ($ok) {
-      Write-Host "  CI (main) groen efter $label. Deploy-verifikation er IKKE ventet - tjek 'Deploy verify' for $($script:lastMergedSha)." -ForegroundColor Yellow
-    } else {
-      Write-Host "  CI (main) er ikke verificeret groen efter $label - kontroller koerslen foer naeste merge." -ForegroundColor Red
-      if ($Code -eq 0) { $Code = 1 }
-    }
+    # Codex P1 #7104: med deploy-tog kan et aabent tog indeholde Railway/Vercel-aendringer.
+    # Exit lukker det derfor med fuld CI + deploy-verifikation (Close-OpenTrain exit'er selv ved fejl).
+    Write-Host "  Koeen stopper midt i et tog: $label er allerede merget. Lukker toget (CI + deploy-verifikation) foer exit." -ForegroundColor Yellow
+    Close-OpenTrain
   }
   exit $Code
 }

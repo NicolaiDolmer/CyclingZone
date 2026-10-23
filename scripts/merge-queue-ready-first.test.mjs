@@ -92,3 +92,8 @@ test('et aabent tog lukkes foer en solo-PR eller en PR der ikke daekker togets d
   assert.ok(source.includes('$coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not ($script:batchRailway -or $script:batchBackend)) -or $entryRailway)'));
   assert.match(source, /if \(-not \$DryRun -and \$script:batchMerged\.Count -gt 0 -and \(\$entrySolo -or -not \$coversTrain\)\) \{[\s\S]*?Close-OpenTrain/);
 });
+
+test('Exit-Queue lukker et aabent tog med fuld deploy-verifikation (Codex P1 #7104)', () => {
+  assert.match(source, /function Exit-Queue\(\[int\]\$Code\) \{[\s\S]*?Close-OpenTrain[\s\S]*?exit \$Code/);
+  assert.doesNotMatch(source, /Deploy-verifikation er IKKE ventet/);
+});
