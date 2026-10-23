@@ -698,6 +698,20 @@ video {
      for guld+navy i stedet for den tidligere fremmede violet (--cz-chart-2).
      Tema-bevidst: lysere på den mørke canvas. */
   --div-3: 152 150 176;   /* divisions-farve (grafik, ikke tekst); var lig --text-3 foer #6681 */
+
+  /* Terraen-ikoner (#6683, ejer 15/10): farven viser svaerhed, flad (blaagroen) ->
+     hoejbjerg (violet); tidskoersel er blaa, brosten stenfarve, grus sandfarve.
+     Daempede toner, moerk variant i [data-theme="dark"]. Navnet staar altid i
+     title/aria-label, saa farven aldrig staar alene. Kun TerrainTypeGlyph laeser dem. */
+  --terrain-flat:            #2a7366;
+  --terrain-rolling:         #567326;
+  --terrain-hilly:           #80651a;
+  --terrain-medium-mountain: #8e4d1f;
+  --terrain-mountain:        #962f2a;
+  --terrain-high-mountain:   #62388f;
+  --terrain-time-trial:      #2b5f99;
+  --terrain-cobbles:         #5e5a52;
+  --terrain-gravel:          #7d6234;
 }
 
 [data-theme="dark"] {
@@ -744,6 +758,17 @@ video {
 
   /* Division-3 neutral — lysere på den mørke canvas (matcher --text-3 #888ba0). */
   --div-3: 136 139 160;
+
+  /* Terraen-ikoner (#6683): se :root. */
+  --terrain-flat:            #5fae9f;
+  --terrain-rolling:         #97b46a;
+  --terrain-hilly:           #c9aa55;
+  --terrain-medium-mountain: #cf8c5a;
+  --terrain-mountain:        #cf6f69;
+  --terrain-high-mountain:   #a885c9;
+  --terrain-time-trial:      #6f9fd4;
+  --terrain-cobbles:         #a29d94;
+  --terrain-gravel:          #bba584;
 }
 
 /* #6271 — everything below sits in the utilities layer, AFTER Tailwind's

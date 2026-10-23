@@ -3,27 +3,13 @@
 // raceHubLogic.js/raceCentre.js).
 //
 // GENBRUG (ingen ny data-logik):
-//   - terrainGlyphBucket wraps stageTerrain.js's already-shipped, backend-
-//     parity-tested terrainBucket() — same 5-bucket simplification the app
-//     already ships elsewhere (roleHint.js reuses it as-is) — just renamed to
-//     match TerrainGlyph's calendar vocabulary (flat -> sprint).
 //   - computeStageRaceStanding wraps raceLiveStandings.js's
 //     deriveTeamStandings — the SAME per-day team classification
 //     RaceDetailPage already derives for an ongoing stage race's "Overall"
 //     tab — instead of re-deriving GC time/gaps from scratch.
 
-import { terrainBucket } from "./stageTerrain.js";
 import { deriveTeamStandings } from "./raceLiveStandings.js";
 import { isRaceStageResultRow } from "./raceWinnerResultType.ts";
-
-// Mini profile silhouette bucket for TerrainGlyph (calendar's 6-name
-// vocabulary: sprint/cobbles/hilly/mountain/itt/ttt). stageTerrain.js's
-// terrainBucket already folds itt+ttt into "itt" (an existing, shipped
-// simplification) — we only rename its "flat" to TerrainGlyph's "sprint" key.
-export function terrainGlyphBucket(profileType) {
-  const bucket = terrainBucket(profileType);
-  return bucket === "flat" ? "sprint" : bucket;
-}
 
 // Team's current overall position for a stage race "i dag"-panel (#3915).
 // `rows` = race_results rows for ONE race, result_type in ('leader','team').
