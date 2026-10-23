@@ -81,7 +81,7 @@ test("PUT /races/:raceId/selection: withdrawal-gaten ligger FØR den delte valid
 test("PUT /races/:raceId/selection: sidste laase-kontrol gendanner frigivne auto-entries (#6959)", () => {
   const putBlock = routeBlock('router.put("/races/:raceId/selection"');
   const captureIdx = putBlock.indexOf("releasedRows.push(...relRows)");
-  const finalLockIdx = putBlock.lastIndexOf("loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })");
+  const finalLockIdx = putBlock.indexOf("const finalLocked = await loadLockedRaceIds(");
   const restoreIdx = putBlock.indexOf('.from("race_entries").insert(releasedRows)');
   const saveIdx = putBlock.indexOf("await saveSelection(");
   assert.ok(captureIdx !== -1, "frigivne raekker skal opsamles");
@@ -99,4 +99,11 @@ test("POST /races/distribution/clear laeser laasen frisk foer sletningen (#6959)
   assert.ok(lockIdx !== -1, "clear skal bruge loadLockedRaceIds");
   assert.ok(lockIdx < delIdx, "laasen laeses foer sletningen");
   assert.ok(!block.slice(0, delIdx).includes("withLineupLocked("), "intet foraeldet snapshot til laasen");
+});
+
+// #6959 (Codex P1, runde 2): kildeloebene for frigivelserne er med i den sidste laase-kontrol.
+test("PUT /races/:raceId/selection: sidste laase-kontrol omfatter frigivelsernes kildeloeb (#6959)", () => {
+  const putBlock = routeBlock('router.put("/races/:raceId/selection"');
+  assert.match(putBlock, /loadLockedRaceIds\(\{ supabase, raceIds: \[race\.id, \.\.\.releasedRaceIds\], now: new Date\(\) \}\)/);
+  assert.match(putBlock, /if \(finalLocked\.has\(race\.id\) \|\| sourceLocked\.length\)/);
 });

@@ -5786,7 +5786,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // hårde garanti ligger i replace_race_selection-RPC'en, der gentager overlap-
     // tjekket UNDER advisory-låsen på holdet (#2256, TOCTOU-hullet mellem læs og lås
     // lukket i database/2026-07-10-replace-race-selection-binding-guard.sql).
-    /** @type {any[]} */ const releasedRows = []; // #6959: til gendannelse hvis løbet starter under gemningen
+    /** @type {any[]} */ const releasedRows = []; /** @type {any[]} */ let releasable = []; // #6959: til gendannelse hvis løbet starter under gemningen
     const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
     const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
     if (bound.length) {
@@ -5811,6 +5811,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       if (blocking.length) {
         return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: blocking });
       }
+      releasable = resolvable;
 
       // Alle konflikter er løsbare (auto-genereret + ikke-startet løb): frigiv dem — kun
       // DEN pågældende rytter fjernes fra det konfliktende auto-udtaget løb — FØR vi
@@ -5843,12 +5844,20 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     // #6959 (Codex P1): låsen genkontrolleres lige før gemningen (frisk races-række +
     // frisk ur). replace_race_selection kender ikke scheduled_at, så det sker her.
-    if ((await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
-      // #6959 (Codex P1): startede løbet mens frigivelserne kørte, gendannes de frigivne
+    // Kildeløbene for frigivelserne tjekkes også her: er et af dem låst under frigivelsen,
+    // gendannes alt og gemningen afvises (Codex P1 #7063).
+    const releasedRaceIds = [...new Set(releasedRows.map((r) => r.race_id))];
+    const finalLocked = await loadLockedRaceIds({ supabase, raceIds: [race.id, ...releasedRaceIds], now: new Date() });
+    const sourceLocked = releasedRaceIds.filter((id) => finalLocked.has(id));
+    if (finalLocked.has(race.id) || sourceLocked.length) {
+      // #6959 (Codex P1): startede et løb mens frigivelserne kørte, gendannes de frigivne
       // auto-entries, så en afvist gemning aldrig efterlader et hul i kildeløbene.
       if (releasedRows.length) {
         const { error: restoreErr } = await supabase.from("race_entries").insert(releasedRows);
         if (restoreErr) captureException(new Error(`race_entries auto-release restore: ${restoreErr.message}`));
+      }
+      if (!finalLocked.has(race.id)) {
+        return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: releasable.filter((r) => sourceLocked.includes(r.race_id)) });
       }
       return res.status(409).json({ error: "selection_race_started" });
     }
