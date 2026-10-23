@@ -216,6 +216,13 @@ ved den model der kører i dag.
 `signature_rider` · `no_outstanding_debt` · `profitable_transfers` · `sponsor_growth` ·
 `domestic_dominance`
 
+**`min_u25_riders` (#6990):** tæller seniortruppens ryttere med sæsonalder til og med 25
+(bestyrelsen ser kun seniortruppen, ejer-valg B #5898). Alderen er UCI-reglen
+(`riderSeasonAge.isU25ForSeason`) ud fra fødselsdato og sæsonnummer; den lagrede `is_u25` bruges kun
+som fallback, når en af dem mangler. Én delt tæller (`countU25RidersForBoard`) bruges af både
+afgørelsen (`evaluateGoal`) og fremdriften (`evaluateGoalProgress`), så de aldrig er uenige.
+Junior- og U23-truppens ryttere tælles ikke.
+
 Mål genereres af `generateBoardGoals` ud fra fokus × klub-DNA × dynamisk kalibrering.
 `sponsor_growth` filtreres bort for 1-årige planer (#1267: sponsorindkomst kan ikke flyttes inden
 for én sæson).
