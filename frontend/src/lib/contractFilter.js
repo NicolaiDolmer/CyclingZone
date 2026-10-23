@@ -16,5 +16,5 @@ export function contractFilterMatches(contractEndSeason, contractBy) {
   const parsed = parseContractFilter(contractBy);
   if (!parsed) return true;
   if (parsed.kind === "none") return contractEndSeason == null;
-  return contractEndSeason != null && Number(contractEndSeason) <= parsed.season;
+  return contractEndSeason != null && parsed.season != null && Number(contractEndSeason) <= parsed.season;
 }

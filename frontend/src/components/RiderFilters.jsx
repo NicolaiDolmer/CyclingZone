@@ -250,7 +250,7 @@ export default function RiderFilters({
   showAuctionPriceFilter = false, showAskingPriceFilter = false, showAiToggle = false,
   showValueDeviationFilter = false,
   // #6967: aktivt saesonnummer -> viser "Contract expires by season"-feltet (kun Rytterdatabasen).
-  contractSeasonNumber = null,
+  contractSeasonNumber = /** @type {number | null} */ (null),
   // #4628: felter som kalderen selv har loeftet op i den kanoniske FilterBar-linje
   // (T2, docs/design/PAGE_TEMPLATES.md#t2-wide-data-page). Uden den ville navnet
   // staa to gange paa Auktioner: én gang i filterlinjen og én gang i panelet bag
@@ -377,14 +377,15 @@ export default function RiderFilters({
     </Select>
   ) : null;
 
-  const contractSelect = Number.isFinite(contractSeasonNumber) ? (
+  const contractBase = typeof contractSeasonNumber === "number" && Number.isFinite(contractSeasonNumber) ? contractSeasonNumber : null;
+  const contractSelect = contractBase !== null ? (
     <Select value={filters.contract_by ?? ""} onChange={e => onChange("contract_by", e.target.value)}
       aria-label={t("fields.contractBy")} data-testid="filter-contract-by">
       <option value="">{t("fields.contractAny")}</option>
       <option value={CONTRACT_NONE}>{t("fields.contractNone")}</option>
       {[0, 1, 2, 3, 4].map(i => (
-        <option key={i} value={String(contractSeasonNumber + i)}>
-          {t("fields.contractSeason", { season: contractSeasonNumber + i })}
+        <option key={i} value={String(contractBase + i)}>
+          {t("fields.contractSeason", { season: contractBase + i })}
         </option>
       ))}
     </Select>
