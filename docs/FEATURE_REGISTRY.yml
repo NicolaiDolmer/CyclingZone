@@ -748,7 +748,17 @@ features:
     flag: development_v2_aging_enabled
     epic: 6499
     verified: 2026-10-15
-    note: PR #6501 (11/10); off i prod (læst 15/10). Fail-safe off, beta læses som off; kun ejeren flipper.
+    note: PR #6501. Ejer flipper ved skiftet 25/10.
+
+  - id: ability-cap-per-date
+    area: training
+    title_en: Max +1 per ability per date
+    title_da: Maks +1 pr. evne pr. dato
+    state: dormant
+    flag: ability_cap_per_date_enabled
+    epic: 6110
+    note: Ejer, med Udvikling 2.0.
+    verified: 2026-10-23
 
   - id: promotion-pending
     area: academy

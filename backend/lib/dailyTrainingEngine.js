@@ -227,6 +227,17 @@ async function assertRaceDayReservationSettled({ supabase, runRowFilter, teamId,
 // developmentV2Flag.js, og denne laesning flyttes dertil ved en senere refaktor.
 export const DEVELOPMENT_V2_AGING_FLAG_KEY = "development_v2_aging_enabled";
 
+// #6210/#7075: maks +1 pr. evne pr. DATO (paa tvaers af datoens loebsdage og stier).
+// Leveres med Udvikling 2.0 (ejer 23/10) og taendes samme soendag som resten.
+// Slukket (default, fail-safe) = bit-identisk med foer, ogsaa i DB-kaldene: datoens
+// andre rapporter hentes kun naar flaget er taendt. Kun "on" taender (beta = off).
+export const ABILITY_CAP_PER_DATE_FLAG_KEY = "ability_cap_per_date_enabled";
+
+async function isAbilityCapPerDateEnabled(supabase, { strict = false } = {}) {
+  if (strict) return readConditionWriterFlag(supabase, ABILITY_CAP_PER_DATE_FLAG_KEY);
+  return evaluateFlagStage(await readFlagStage(supabase, ABILITY_CAP_PER_DATE_FLAG_KEY));
+}
+
 async function isDevelopmentV2AgingEnabled(supabase, { strict = false } = {}) {
   // strict = loebsdags-datoens atomare sti: en fejlet laesning kaster (som de
   // oevrige flag der laeses dér), i stedet for at blive tolket som "off".
@@ -645,8 +656,9 @@ export async function runTeamTrainingDay({
   // for dyr, Codex P1 paa #7075). Et holdskifte samme dato daekkes paa live-stien af
   // dato-kvitteringerne (training_rider_ticks, rytter-noeglet, laest paa tvaers af hold).
   // Kalenderdags-stien (useRaceDayKey=false: rollback eller fallback) laeser ogsaa.
+  const capPerDateOn = await isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate });
   let sameDateRunReports = [];
-  {
+  if (capPerDateOn) {
     let query = supabase.from("training_day_runs").select("game_day, season_id, squad, report")
       .eq("team_id", teamId).eq("tick_date", tickDate);
     // Med dato-kvitteringer kommer loebsdagene derfra; kun kalenderdags-raekker her.
@@ -1162,6 +1174,8 @@ export async function runTeamTrainingDay({
       // forbrugere (patch, historik, rapport) ser automatisk "ingen gevinst".
       if (!developmentAllowed) {
         tickResult = { ...tickResult, abilities: { ...abilities }, gains: {}, progress: preProgress };
+      } else if (!capPerDateOn) {
+        // #6210-flaget slukket: ingen dato-loft (bit-identisk med foer #7075).
       } else if (useRaceDayKey) {
         // #6210: maks +1 pr. evne pr. dato, paa tvaers af datoens loebsdage og stier.
         // Kalenderdags-stien faar samme loft i else-grenen nedenfor. Et

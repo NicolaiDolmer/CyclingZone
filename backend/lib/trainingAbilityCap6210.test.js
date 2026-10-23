@@ -171,6 +171,8 @@ function seedState({ perDate }) {
   return {
     app_config: [
       { key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" },
+      // #6210: vaernet ligger bag sit eget flag (ejer 23/10: leveres med Udvikling 2.0).
+      { key: "ability_cap_per_date_enabled", value: "on" },
       ...(perDate ? [{ key: "training_condition_per_date", value: "on" }] : []),
     ],
     teams: [{ id: TEAM_ID, league_division_id: "div-6210" }],

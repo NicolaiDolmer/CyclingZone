@@ -1862,10 +1862,16 @@ test("#4846 (flag on): +1-loftet pr. evne gælder pr. løbsdag (#4801)", async (
   const on = await runDay(onState);
 
   const maxGain = (r) => Math.max(0, ...Object.values(r.report.riders[0].gains));
-  // #6210: kalenderdags-stien (flag off) har nu ogsaa dato-loftet; foer gav den 2+ her.
-  assert.equal(maxGain(off), 1, "kalenderdags-stien er ogsaa klippet til +1 pr. evne pr. dato (#6210)");
-  assert.ok(Object.values(off.report.riders[0].gains_deferred_by_date_cap ?? {}).some((n) => n > 0), "det klippede point baeres videre, ikke tabt");
+  // #6210-flaget slukket (default): kalenderdags-stien er uaendret (bit-identisk med foer #7075).
+  assert.ok(maxGain(off) >= 2, `uden loft skal mindst én evne stige 2+ (var ${maxGain(off)})`);
   assert.equal(maxGain(on), 1, "med løbsdags-ticket er loftet +1 pr. evne pr. løbsdag");
+
+  // #6210-flaget taendt: kalenderdags-stien faar ogsaa dato-loftet, og det klippede point baeres videre.
+  const capState = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: fatProgress })] });
+  capState.app_config = [...(capState.app_config ?? []), { key: "ability_cap_per_date_enabled", value: "on" }];
+  const capped = await runDay(capState);
+  assert.equal(maxGain(capped), 1, "kalenderdags-stien er klippet til +1 pr. evne pr. dato (#6210, flag on)");
+  assert.ok(Object.values(capped.report.riders[0].gains_deferred_by_date_cap ?? {}).some((n) => n > 0), "det klippede point baeres videre, ikke tabt");
 });
 
 test("#4846 (flag on): historik-snapshot skrives pr. løbsdag uden tavs kassering", async () => {
