@@ -147,7 +147,14 @@ export function classifyDeploymentStatus(deployments, sha, { covers } = {}) {
   // watchPatterns og byggede bevidst ikke. Den koerende deploy er da uaendret og er
   // beviset, saa laenge der findes et SUCCESS-deploy. Foer stod SKIPPED som "pending",
   // og deploy-verify ventede 40 min til timeout paa et deploy, der aldrig kommer.
-  if (status === "SKIPPED" && (deployments ?? []).some((d) => SUCCESS_STATUSES.has(String(d?.status ?? "").toUpperCase()))) return "success";
+  // Codex P1 #7112: kun hvis det SENESTE rigtige deploy (nyeste foerst, SKIPPED/REMOVED
+  // springes over) er SUCCESS. Fejlede forgaengeren, serverer Railway stadig gammel kode,
+  // og et historisk SUCCESS maa ikke bevise SHA'en.
+  if (status === "SKIPPED") {
+    const latestReal = (deployments ?? []).find((d) => d !== match
+      && !["SKIPPED", "REMOVED"].includes(String(d?.status ?? "").toUpperCase()));
+    if (latestReal && SUCCESS_STATUSES.has(String(latestReal.status).toUpperCase())) return "success";
+  }
   if (FAILED_STATUSES.has(status)) return "failed";
   return "pending"; // BUILDING/DEPLOYING/QUEUED/WAITING/SLEEPING/SKIPPED/ukendt
 }

@@ -194,3 +194,21 @@ test("#7098 pending: SKIPPED uden noget SUCCESS-deploy at staa paa", () => {
   const deployments = [{ status: "SKIPPED", meta: { commitHash: sha } }];
   assert.equal(classifyDeploymentStatus(deployments, sha), "pending");
 });
+
+test("#7112 pending: SKIPPED efter et fejlet deploy, selvom et aeldre SUCCESS findes (Codex P1)", () => {
+  const deployments = [
+    { status: "SKIPPED", meta: { commitHash: sha } },
+    { status: "FAILED", meta: { commitHash: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" } },
+    { status: "SUCCESS", meta: { commitHash: "ffffffffffffffffffffffffffffffffffffff" } },
+  ];
+  assert.equal(classifyDeploymentStatus(deployments, sha), "pending");
+});
+
+test("#7112 success: SKIPPED efter afloeste (REMOVED) og et koerende SUCCESS", () => {
+  const deployments = [
+    { status: "SKIPPED", meta: { commitHash: sha } },
+    { status: "SUCCESS", meta: { commitHash: "ffffffffffffffffffffffffffffffffffffff" } },
+    { status: "REMOVED", meta: { commitHash: "dddddddddddddddddddddddddddddddddddddddd" } },
+  ];
+  assert.equal(classifyDeploymentStatus(deployments, sha), "success");
+});
