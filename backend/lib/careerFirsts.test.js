@@ -339,3 +339,40 @@ test("detectCareerFirsts: manglende supabase/race degraderer stille (aldrig en t
   const stats2 = await detectCareerFirsts({ supabase: makeFakeSupabase({}), race: null, resultRows: [{ rider_id: "r1", result_type: "stage", rank: 1 }] });
   assert.equal(stats2.candidates, 0);
 });
+
+// #7031: ungdomstrøjen fra U23-/juniorløb er skjult. En ældre rank-1 young-række fra et
+// ungdomsløb (og dens skjulte præstation) må ikke blokere den første ungdomstrøje i et seniorløb.
+test("#7031 first_jersey young: ældre ungdomsløbs-trøje blokerer ikke seniorløbets første ungdomstrøje", async () => {
+  const race = { id: "race-senior", name: "GP Senior" };
+  const resultRows = [
+    { rider_id: "r9", team_id: "tA", rider_name: "Ung", team_name: "Team A", result_type: "young", rank: 1, stage_number: 3 },
+  ];
+  const supabase = makeFakeSupabase({
+    raceResultsFixture: [
+      { id: "old", rider_id: "r9", race_id: "race-u23", result_type: "young", rank: 1, stage_number: 5, "races.squad": "u23" },
+    ],
+  });
+  supabase.careerEvents.push({ dedupe_key: "rider:r9:first_jersey:young", event_type: CAREER_EVENT_TYPES.FIRST_JERSEY });
+
+  const stats = await detectCareerFirsts({ supabase, race, resultRows, stageNumbers: [3], notify: noopNotify });
+
+  assert.equal(stats.detected, 1);
+  const ev = supabase.careerEvents.find((e) => e.dedupe_key === "rider:r9:first_jersey:young:senior");
+  assert.ok(ev, "ny præstation med egen nøgle");
+  assert.equal(ev.params.classification, "young");
+});
+
+test("#7031 first_jersey young: en tidligere ungdomstrøje fra et seniorløb tæller stadig", async () => {
+  const race = { id: "race-senior-2", name: "GP Senior 2" };
+  const resultRows = [
+    { rider_id: "r10", team_id: "tA", rider_name: "Ung", team_name: "Team A", result_type: "young", rank: 1, stage_number: 2 },
+  ];
+  const supabase = makeFakeSupabase({
+    raceResultsFixture: [
+      { id: "old", rider_id: "r10", race_id: "race-senior-1", result_type: "young", rank: 1, stage_number: 4, "races.squad": "senior" },
+    ],
+  });
+  const stats = await detectCareerFirsts({ supabase, race, resultRows, stageNumbers: [2], notify: noopNotify });
+  assert.equal(stats.detected, 0);
+  assert.equal(supabase.careerEvents.length, 0);
+});

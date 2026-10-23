@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
 import { reportLoadFailure } from "../lib/actionTelemetry.js";
 import { PageLoader, EmptyState, ErrorState, Button, Select, Checkbox, Modal, CalendarIcon, InfoIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
-import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
+import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import { densityForDivision } from "../lib/calendarTierDensity";
-import { toTerrainBucket } from "../lib/terrainBucket";
+import { terrainDisplayType } from "../lib/terrainTypeIcons";
 import {
   buildMonthGrid,
   expandStageEvents,
@@ -16,15 +16,15 @@ import {
   stepMonth,
 } from "../lib/calendarGrid.js";
 import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
-import { myRaceStatus } from "../lib/racePeek.ts"; // #6514
+import { myRaceStatus, bucketProfileType } from "../lib/racePeek.ts"; // #6514
 import RacePeekCard from "../components/calendar/RacePeekCard.tsx"; // #6514
 
 const API = import.meta.env.VITE_API_URL;
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-// #2605: brosten har sin egen legend-post + glyf mellem sprint og hilly (spillerønske
-// — brosten var tidligere umuligt at skelne fra en flad sprint-etape i kalenderen).
-const LEGEND_BUCKETS = ["sprint", "cobbles", "hilly", "mountain", "itt", "ttt"];
+// #6683: forklaringen viser ALLE etapetyper med deres ene ikon (samme som chippen, etapesiden
+// og holdudtagelsen), svaerhed foerst, saa tidskoersel, saa underlag. classic er ikke en rutetype.
+const LEGEND_TYPES = ["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "itt", "itt_hilly", "ttt", "cobbles", "gravel"];
 const TABS = ["mine", "all", "divisions"];
 // #4386: cellens loft var hardcodet til 4 uanset division, selvom D1 kører
 // 5,0 etaper/løbsdag i snit (målt 29/8) — "+N more" var derfor dagligdags for
@@ -453,11 +453,8 @@ export default function CalendarPage() {
       <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-cz-border pt-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <span className="font-data text-3xs font-bold uppercase tracking-[0.14em] text-cz-3">{t("legend.title")}</span>
-          {LEGEND_BUCKETS.map((b) => (
-            <span key={b} className="flex items-center gap-1.5 text-cz-2">
-              <TerrainGlyph bucket={toTerrainBucket(b)} className="text-cz-2" />
-              <span className="text-xs">{t(`legend.${b}`)}</span>
-            </span>
+          {LEGEND_TYPES.map((type) => (
+            <TerrainTypeGlyph key={type} profileType={type} size={20} showLabel className="gap-1.5 text-cz-2" labelClassName="text-xs" />
           ))}
         </div>
         {/* The "mine only" filter is redundant on the "mine" tab (already filtered).
@@ -617,13 +614,17 @@ function DayDetailModal({ iso, events, onClose, t, locale, onPeek = null, status
 // løbsnavn og en anden linje med "N. etape · HH:MM" (endagsløb: kun klokkeslæt).
 
 function StageChip({ ev, t, className = "", onPeek = null, status = null }) {
+  const { t: tRaces } = useTranslation("races");
   const mine = ev.isMine;
+  // #6683: etapens egen type (fra kalender-svaret), ellers den grove kategori. classic vises som kuperet.
+  const profileType = ev.profileType || bucketProfileType(ev.terrain);
+  const typeLabel = tRaces(`detail.profileType.${terrainDisplayType(profileType) || "flat"}`);
   const isStageRace = ev.raceType === "stage_race";
   const stageLabel = isStageRace ? t("chip.stageNum", { n: ev.stage }) : null;
   const secondLine = [stageLabel, ev.time].filter(Boolean).join(" · ");
 
   // Full name + meta is always the accessible name (visible name truncates hard in narrow cells).
-  const a11yLabel = `${ev.name} · ${t(`terrain.${ev.terrain || "sprint"}`)}${secondLine ? ` · ${secondLine}` : ""}${ev.poolLabel ? ` · ${ev.poolLabel}` : ""}`;
+  const a11yLabel = `${ev.name} · ${typeLabel}${secondLine ? ` · ${secondLine}` : ""}${ev.poolLabel ? ` · ${ev.poolLabel}` : ""}`;
   const chipClass = `block rounded-cz border px-1.5 py-0.5 leading-tight transition-colors
         ${mine
           ? "border-cz-accent/40 bg-cz-accent/[0.07] hover:bg-cz-accent/[0.14]"
@@ -654,11 +655,10 @@ function StageChip({ ev, t, className = "", onPeek = null, status = null }) {
           #6728 (fund 9): navnet ombrydes ved mellemrum i stedet for at blive klippet;
           paa smalle skaerme staar terraen-ikonet over navnet. */}
       <span className="flex flex-col items-start gap-0.5 sm:flex-row sm:gap-1.5">
-        {/* #4143 v2: ejeren afviste bogstavkoder (3/9) — tilbage til den
-            miniature-terræn-silhuet (samme tegning som StageStripe's
-            MiniSilhouette, se components/calendar/TerrainGlyph.jsx), nu delt
-            med planlæggerens MasterCanvas via lib/terrainBucket.ts. */}
-        <TerrainGlyph bucket={toTerrainBucket(ev.terrain)} width={18} height={10} className={`mt-0.5 shrink-0 ${mine ? "text-cz-1" : "text-cz-3"}`} />
+        {/* #6683: samme farvede streg-ikon som etapesiden, forklaringen og holdudtagelsen
+            (components/race/TerrainTypeGlyph.jsx). Farven viser svaerhed; navnet staar i
+            ikonets title og i chippens aria-label. */}
+        <TerrainTypeGlyph profileType={profileType} size={18} className="shrink-0" />
         <span className={`min-w-0 break-words text-2xs font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
       </span>
       {secondLine && (

@@ -1825,7 +1825,7 @@ export async function repairSeasonEndFinanceAndBoard(seasonId, deps = {}) {
 // balance_after, needs_emergency_loan) bevares for kontrakt-stabilitet,
 // men balance_after og needs_emergency_loan reflekterer nu den samlede
 // transition og inkluderer sponsor-income.
-export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [], upkeepPerRaceDay = false, noUpkeep = false } = {}) {
+export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData = [], upkeepPerRaceDay = false, noUpkeep = false, seasonNumber = null } = {}) {
   return teams.map((team) => {
     const standing = standings.find(s => s.team_id === team.id);
     const riders = team.riders || [];
@@ -1875,6 +1875,7 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
           wageBillPerSeason: totalSalary,
           currentSponsorIncome: team.sponsor_income,
           recentSnapshots: [],
+          seasonNumber,
         }),
       });
 
@@ -2052,6 +2053,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       currentSponsorIncome: freshTeamData?.sponsor_income ?? team.sponsor_income,
       recentSnapshots: recentSnapshots || [],
       goalContext,
+      seasonNumber: currentSeasonNumber ?? null,
     });
 
     // #1187: evaluer fra sæson-start-ankeret → newSatisfaction = anker + delta,

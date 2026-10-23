@@ -1,4 +1,4 @@
-// #6570 · "Your day": det foerste efter en koert etape. Top 3, dine ryttere med
+// #6570 · "Your day": det foerste efter en koert etape. Top 5 (mobil 3), dine ryttere med
 // placering uanset plads, din bedste i det samlede + hullet, en forklarende
 // linje og en milepael-linje. Stage/Overall skifter listerne.
 //
@@ -7,7 +7,7 @@
 // kontrakt (#6350), indtil da staar den nuvaerende film under Standings.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { formatGap, yourDay, type DayRow, type ResultRow } from "./stagePageV2Model.ts";
+import { DAY_TOP_COUNT, DAY_TOP_COUNT_MOBILE, formatGap, yourDay, type DayRow, type ResultRow } from "./stagePageV2Model.ts";
 import { parseGapSeconds } from "../../../lib/raceLiveStandings.js";
 import { Button, Flag, RiderLink, Section, Segmented, SkeletonLines } from "./ui.ts";
 
@@ -20,12 +20,12 @@ const EVENT_LABEL_KEY: Record<string, string> = {
   club_milestone_win: "clubMilestoneWin",
 };
 
-function Rows({ rows, emptyText }: { rows: DayRow[]; emptyText?: string }) {
+function Rows({ rows, emptyText, mobileLimit }: { rows: DayRow[]; emptyText?: string; mobileLimit?: number }) {
   if (!rows.length) return emptyText ? <p className="border-t border-cz-border py-2.5 text-sm text-cz-3">{emptyText}</p> : null;
   return (
     <ul>
-      {rows.map((r) => (
-        <li key={r.key} className={`flex min-h-11 items-center gap-2.5 border-t border-cz-border px-1 ${r.mine ? "bg-cz-subtle" : ""}`}>
+      {rows.map((r, i) => (
+        <li key={r.key} className={`min-h-11 items-center gap-2.5 border-t border-cz-border px-1 ${mobileLimit != null && i >= mobileLimit ? "hidden md:flex" : "flex"} ${r.mine ? "bg-cz-subtle" : ""}`}>
           <span className="w-9 flex-none text-right font-data text-sm font-semibold tabular-nums text-cz-1">{r.rank ?? "-"}</span>
           {r.nation && <Flag code={r.nation} className="flex-none" />}
           <RiderLink id={r.riderId} className="min-w-0 flex-1 truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name}</RiderLink>
@@ -52,10 +52,10 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
   const [cls, setCls] = useState<"stage" | "gc">("stage");
   const stageDay = yourDay(results, stageNumber, myTeamId, "stage");
   // Endagsloeb kan have resultatet som gc-raekker alene.
-  const effectiveCls = !isStageRace && !stageDay.top3.length ? "gc" : cls;
+  const effectiveCls = !isStageRace && !stageDay.top.length ? "gc" : cls;
   const day = effectiveCls === "stage" ? stageDay : yourDay(results, stageNumber, myTeamId, "gc");
-  const winner = stageDay.winner ?? day.top3[0] ?? null;
-  const second = (stageDay.top3.length ? stageDay.top3 : day.top3)[1] ?? null;
+  const winner = stageDay.winner ?? day.top[0] ?? null;
+  const second = (stageDay.top.length ? stageDay.top : day.top)[1] ?? null;
 
   let why: string | null = null;
   // Kun et tidshul vi kan laese ("+M:SS") giver en linje; ukendt hul = ingen linje.
@@ -96,8 +96,8 @@ export default function YourDayCard({ results, stageNumber, isStageRace, loaded,
           )}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
             <div>
-              <div className="mb-1 font-data text-2xs font-semibold uppercase tracking-[.14em] text-cz-3">{t("stagePageV2.yourDay.top3")}</div>
-              <Rows rows={day.top3} />
+              <div className="mb-1 font-data text-2xs font-semibold uppercase tracking-[.14em] text-cz-3"><span className="md:hidden">{t("stagePageV2.yourDay.topN", { count: DAY_TOP_COUNT_MOBILE })}</span><span className="hidden md:inline">{t("stagePageV2.yourDay.topN", { count: DAY_TOP_COUNT })}</span></div>
+              <Rows rows={day.top} mobileLimit={DAY_TOP_COUNT_MOBILE} />
             </div>
             <div>
               <div className="mb-1 font-data text-2xs font-semibold uppercase tracking-[.14em] text-cz-3">{t("stagePageV2.yourDay.yourRiders")}</div>
