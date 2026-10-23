@@ -60,7 +60,7 @@ function hashString(s) {
 // IKKE-ekskluderede navne (samme behandling som usedNames-dedup), så en tom/
 // udeladt excludeNames giver 100% samme output som før.
 //
-// #6974 (ejer-beslutning 23/10): mindst én af de 3 kandidater er PRÆCIS på
+// #6974 (ejer-beslutning 23/10): mindst én kandidat i puljen er PRÆCIS på
 // facilitetens tier. Navne og tiers trækkes som før; mangler puljen en kandidat
 // på loftet, løftes én plads til loftet. Hvilken plads vælges af en SEPARAT
 // seeded strøm (samme (teamId, season, role)), så hovedstrømmen er uændret og
