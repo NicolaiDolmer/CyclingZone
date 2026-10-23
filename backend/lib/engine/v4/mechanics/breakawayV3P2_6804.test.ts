@@ -73,8 +73,8 @@ test("#6804 P2: v2 og endagsloeb melder aldrig 'ingen jagt-interesse'; v3 er det
     }
     const v3OneDay = simulateStageV4({ ...input, gc_context: oneDay, rules_revision: "s5_profiles_v3" });
     assert.equal(unchased(v3OneDay.timeline.events).length, 0, `${name} v3 endagsloeb`);
-    const a = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3" }));
-    const b = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3" }));
+    const a: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3" }));
+    const b: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3" }));
     assert.equal(a, b, `${name} deterministisk`);
   }
 });
