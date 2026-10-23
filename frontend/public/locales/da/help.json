@@ -1670,7 +1670,7 @@
       },
       "hireChiefScout": {
         "title": "Ansæt en chefscout",
-        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor."
+        "text": "Scouting-netværkets tier sætter det højeste tier af chefscout, du må ansætte, så byg eller opgradér det først hvis kandidaten du vil have er låst. Alle hold har allerede en standard-spejder selv uden en bygget facilitet, men en ansat chefscout har en ægte, højere samlet rating: den rating indsnævrer hans estimater yderligere (et smallere potentiale-bånd på Scouting-fanen) og lader ham, når hans rating når omkring 80, køre to spejder-opgaver ad gangen i stedet for én. Ansæt og fyr chefer fra Klub-siden, ligesom ethvert andet facilitets-spor. Kandidaterne du kan ansætte er en lille pulje pr. rolle. Facilitetens tier er det højeste, de kan have, og mindst én kandidat pr. rolle er på det tier. En ny pulje trækkes ved sæsonskiftet, og inden for en sæson ændrer den sig kun, når du opgraderer faciliteten eller ansætter nogen. Fyrede og nuværende chefer optræder aldrig i den."
       },
       "coachingGroups": {
         "title": "Trænings-grupper: U23 vs. Senior",
