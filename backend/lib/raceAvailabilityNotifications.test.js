@@ -42,6 +42,32 @@ test("buildRiderInjuredNotification: uden kommende loeb linker den til styrt-loe
   assert.equal(n.relatedId, "r1");
 });
 
+test("buildRiderInjuredNotification #7042: haardt styrt koert faerdigt siger det, med og uden kommende loeb", () => {
+  const n = buildRiderInjuredNotification({ riderName: "A B", raceName: "R", raceId: "r1", injuredUntil: "2026-10-24", finishedStage: true });
+  assert.equal(n.message, "A B crashed in R but finished the stage. He is injured until 24/10.");
+  assert.equal(n.metadata.messageCode, "notif.riderInjured.messageFinished");
+  const m = buildRiderInjuredNotification({
+    riderName: "A B", raceName: "R", raceId: "r1", injuredUntil: "2026-10-24", finishedStage: true,
+    missedRaces: [{ id: "x", name: "X" }],
+  });
+  assert.equal(m.message, "A B crashed in R but finished the stage. He is injured until 24/10 and will not ride X.");
+  assert.equal(m.metadata.messageCode, "notif.riderInjured.messageFinishedMissed");
+  assert.deepEqual(m.metadata.messageParams, { rider: "A B", race: "R", until: "24/10", missed: "X" });
+});
+
+test("riderInjured #7042: alle fire beskednoegler findes i hvert bundlet sprog med samme pladsholdere", async () => {
+  const { readFileSync } = await import("node:fs");
+  const bundle = JSON.parse(readFileSync(new URL("./locales/backendMessages.generated.json", import.meta.url), "utf8"));
+  for (const [lang, msgs] of Object.entries(bundle)) {
+    for (const key of ["message", "messageMissed", "messageFinished", "messageFinishedMissed"]) {
+      const text = msgs[`notif.riderInjured.${key}`];
+      assert.ok(text, `${lang}: notif.riderInjured.${key} mangler`);
+      for (const p of ["{rider}", "{race}", "{until}"]) assert.ok(text.includes(p), `${lang} ${key} mangler ${p}`);
+      assert.equal(text.includes("{missed}"), key.endsWith("Missed"), `${lang} ${key}: {missed}`);
+    }
+  }
+});
+
 test("buildTeamDidNotStartNotification: tekst + noegler", () => {
   const n = buildTeamDidNotStartNotification({ raceId: "leman", raceName: "Tour du Léman" });
   assert.equal(n.type, "selection_warning");

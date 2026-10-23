@@ -784,6 +784,37 @@ export function applySectorSignature(sectors, feature, distanceKm) {
 }
 
 /**
+ * #6995 (ejer-go 20/10, valg A): flere signatur-sektorer på samme etape. Den sidste i listen er
+ * finale-sektoren (som applySectorSignature); de foregående erstatter de forudgående sektorer
+ * bagfra, eller lægges ind før dem hvis etapen har for få. Hver sektor holder sit navn og sin
+ * længde, sektorerne overlapper aldrig (mindst 1 km imellem), og alt ligger inden for ruten. Ren.
+ * @param {any[]} sectors @param {Array<{ name: string, length_km: number, surface: string }>} features @param {number} distanceKm
+ */
+export function applySectorSignatures(sectors, features, distanceKm) {
+  if (!features.length) return sectors;
+  let out = applySectorSignature(sectors, features[features.length - 1], distanceKm);
+  for (let k = features.length - 2; k >= 0; k--) {
+    const feature = features[k];
+    const at = out.length - (features.length - k);
+    const next = out[at + 1];
+    const latestStart = Math.floor(next.start_km - 1 - feature.length_km);
+    if (at >= 0) {
+      const cur = out[at];
+      if (cur.kind !== feature.surface) throw new Error(`signature sector "${feature.name}" is ${feature.surface} on a ${cur.kind} stage (#6857)`);
+      const prevEnd = at > 0 ? out[at - 1].start_km + out[at - 1].length_km : 0;
+      const start_km = Math.max(Math.ceil(prevEnd + 1), Math.min(cur.start_km, latestStart));
+      if (start_km > latestStart || start_km < 0) throw new Error(`signature sector "${feature.name}" does not fit before the next sector (#6995)`);
+      out = [...out.slice(0, at), { ...cur, start_km, length_km: feature.length_km, name: feature.name }, ...out.slice(at + 1)];
+    } else {
+      const start_km = Math.max(0, Math.min(latestStart, Math.round(next.start_km - 10 - feature.length_km)));
+      if (start_km > latestStart) throw new Error(`signature sector "${feature.name}" does not fit before the next sector (#6995)`);
+      out = [{ kind: feature.surface, start_km, length_km: feature.length_km, name: feature.name }, ...out];
+    }
+  }
+  return out;
+}
+
+/**
  * Bandopslag for S5: mellembjerg har (endnu) intet eget bånd og bruger sin pladsholder-kilde.
  * @param {string} profileType
  * @returns {string}
@@ -892,7 +923,8 @@ export function attachRouteS5(stage, race, isStageRace, { chooseFinish, shortItt
   const sprints = buildSprints(rng, target, finale_type, distance_km, isStageRace, climbs)
     .map((s) => (s.kind === "finish" && finishRamp ? { ...s, ...finishRamp } : s));
   const drawnSectors = buildSectors(rng, target, distance_km, namer);
-  const sectors = signature?.kind === "sector" ? applySectorSignature(drawnSectors, signature, distance_km) : drawnSectors;
+  const sectors = Array.isArray(signature) ? applySectorSignatures(drawnSectors, signature, distance_km)
+    : signature?.kind === "sector" ? applySectorSignature(drawnSectors, signature, distance_km) : drawnSectors;
   return {
     distance_km,
     elevation_gain_m: elevationGainS5({ climbs, distanceKm: distance_km, finishRamp: finishRamp?.ramp_in_climb ? null : finishRamp }),

@@ -849,3 +849,21 @@ test("evaluateGate: afkortet filliste kraever Claude-review (og lav risiko goer 
   const reviewed = evaluateGate({ ...base, changedFiles: 3400, comments: [codexDone, marker("clean")] });
   assert.equal(reviewed.ok, true, "med Claude-markoer for HEAD kan den afkortede PR passere");
 });
+
+test("ejer 20/10: kun P0/P1 (og ukendt grad) blokerer; P2/P3 noteres som opfoelgning", async () => {
+  const { evaluateCodex, codexSeverity } = await import("./review-gate.mjs");
+  const head = "abc1234def";
+  const comments = [{ author: "chatgpt-codex-connector", body: "**Reviewed commit:** `abc1234def`\nCodex Review: Didn't find any major issues." }];
+  const reviews = [{ author: "chatgpt-codex-connector", body: "**Reviewed commit:** `abc1234def`", commit: head }];
+  const t = (sev, isResolved = false) => ({ author: "chatgpt-codex-connector", isResolved, severity: sev });
+  assert.equal(codexSeverity("**<sub>![P2 Badge](https://img)</sub>** Foo"), "P2");
+  assert.equal(codexSeverity("ingen badge"), null);
+  const p2only = evaluateCodex({ comments, reviews, threads: [t("P2"), t("P3")], headSha: head });
+  assert.equal(p2only.ok, true, p2only.detail);
+  assert.match(p2only.detail, /2 P2\/P3-fund blokerer ikke/);
+  const p1 = evaluateCodex({ comments, reviews, threads: [t("P1"), t("P2")], headSha: head });
+  assert.equal(p1.ok, false);
+  assert.equal(p1.unresolved, 1);
+  const unknown = evaluateCodex({ comments, reviews, threads: [t(null)], headSha: head });
+  assert.equal(unknown.ok, false, "ukendt grad blokerer");
+});

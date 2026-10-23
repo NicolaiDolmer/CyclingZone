@@ -481,11 +481,13 @@ function youthFkColumn(squad) {
 async function loadYouthGroupCandidates(supabase, squad) {
   const { data: pools, error: poolsError } = await supabase
     .from("league_divisions")
-    .select("id, pool_index")
+    .select("id, pool_index, retired_at")
     .eq("squad", squad)
     .eq("tier", YOUTH_GROUP_TIER);
   if (poolsError) throw new Error(`league_divisions (youth ${squad}): ${poolsError.message}`);
-  const activePools = pools || [];
+  // #6667: en lukket gruppe (retired_at, fx tømt af regroup) har ingen løb;
+  // et nyt eller tilbagevendende hold må aldrig lande der.
+  const activePools = (pools || []).filter((p) => p.retired_at == null);
   if (!activePools.length) return { pools: [], groups: [] };
 
   const col = youthFkColumn(squad);

@@ -36,7 +36,18 @@
       "terrain": "Terreno",
       "finish": "Final",
       "surface": "Superficie",
-      "surfaceValue": "{kind, select, gravel {Gravel} other {Adoquines}} · {count, plural, one {# sector} other {# sectores}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Adoquines}} · {count, plural, one {# sector} other {# sectores}}, {km} km",
+      "weather": "Tiempo"
+    },
+    "weather": {
+      "dry": "Seco",
+      "rain": "Lluvia",
+      "wind": "Viento",
+      "aria": "Tiempo: {word}",
+      "mattered": {
+        "rain": "La lluvia castigó más a los corredores con poco descenso y poca durabilidad.",
+        "wind": "El viento en las carreteras abiertas castigó más a los corredores con poco descenso y poca durabilidad."
+      }
     },
     "climbs": {
       "title": "Las subidas",

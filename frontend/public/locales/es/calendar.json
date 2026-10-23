@@ -52,13 +52,7 @@
   },
   "today": "Hoy",
   "legend": {
-    "title": "Terreno",
-    "sprint": "Sprint",
-    "cobbles": "Adoquines",
-    "hilly": "Ondulado",
-    "mountain": "Montaña",
-    "itt": "Contrarreloj",
-    "ttt": "Contrarreloj por equipos"
+    "title": "Terreno"
   },
   "terrain": {
     "sprint": "Sprint",

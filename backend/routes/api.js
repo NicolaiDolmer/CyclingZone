@@ -315,6 +315,7 @@ import {
 } from "../lib/academyIntake.js";
 import { isAcademyIntakePullEnabled } from "../lib/academyIntakePullFlag.js";
 import { pullWeeklyAcademyIntake, hasPulledThisWeek } from "../lib/academyIntakePull.js";
+import { academyEstimate, loadAcademyPrognoses, isAcademyKnowledgeEnabled } from "../lib/academyDisclosure.ts";
 import { buildIntake2View } from "../lib/academyIntake2View.ts"; // #6666
 import { saveAcademyProfile } from "../lib/academyIntakeProfile.ts"; // #6666
 import { computeFrozenSalary } from "../lib/contractSeed.js";
@@ -2377,17 +2378,26 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
-        .from("riders").select("id, potentiale, birthdate, team_id, primary_type, secondary_type").in("id", chunk).order("id")),
+        .from("riders").select("id, potentiale, birthdate, team_id, is_academy, primary_type, secondary_type").in("id", chunk).order("id")),
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
         .from("rider_derived_abilities").select("*").in("rider_id", chunk).order("rider_id")),
       getActiveSeasonNumber(),
     ]);
     const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
+    const academyPrognoses = await loadAcademyPrognoses(supabase, {
+      enabled: (riders ?? []).some((r) => r.team_id === req.team.id && r.is_academy)
+        && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
+      riders: riders ?? [], abilitiesByRider, seasonNumber, scout,
+    });
     // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
     // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
     const currentYear = new Date().getFullYear();
     const estimates = {};
     for (const rider of riders ?? []) {
+      if (academyPrognoses.has(rider.id)) {
+        estimates[rider.id] = academyEstimate(academyPrognoses.get(rider.id));
+        continue;
+      }
       const level = state.levels[rider.id] ?? 0;
       const estimate = buildScoutEstimate(rider, level, req.team.id, SCOUTING_CONFIG, currentYear, scout);
       // #2454/#3746: potentiel prognose for rytterens EGEN rolle, i rating-point
@@ -2713,7 +2723,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
         // #3345: valuation_type med — predictBaseValue nedenfor læser den FØR
         // primary_type (frosset værdisætning, se riderValuation.js).
         // #3746: secondary_type med — prognose-båndet fremskriver begge roller.
-        .select("id, team_id, potentiale, birthdate, primary_type, secondary_type, valuation_type, market_value")
+        .select("id, team_id, potentiale, is_academy, birthdate, primary_type, secondary_type, valuation_type, market_value")
         .eq("id", req.params.id)
         .maybeSingle(),
     ]);
@@ -2738,6 +2748,15 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
     const { data: ab, error: abErr } = await supabase
       .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
     if (abErr) throw new Error(abErr.message);
+
+    const academyPrognoses = await loadAcademyPrognoses(supabase, {
+      enabled: own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
+      riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
+      seasonNumber: await getActiveSeasonNumber(), scout,
+    });
+    if (academyPrognoses.has(rider.id)) {
+      return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
+    }
 
     const currentYear = new Date().getFullYear();
     const stars = buildScoutEstimate(rider, level, req.team.id, SCOUTING_CONFIG, currentYear, scout);
@@ -2833,7 +2852,7 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
       loadScout(req.team.id, supabase),
       supabase
         .from("riders")
-        .select("id, team_id, birthdate, primary_type")
+        .select("id, team_id, is_academy, birthdate, primary_type")
         .eq("id", req.params.id)
         .maybeSingle(),
     ]);
@@ -2841,6 +2860,9 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
     if (!rider) return res.status(404).json({ error: "Rider not found" });
 
     const own = rider.team_id != null && rider.team_id === req.team.id;
+    if (own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase)) {
+      return res.json({ own: true, capsMissing: true });
+    }
     const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
     if (!own && level <= 0) {
       return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
@@ -4465,6 +4487,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           // Fallback for løb uden game_day-rækker ligger i raceDaysByRace ovenfor.
           raceDays: raceDaysByRaceId.get(e.id) ?? 1,
           terrain: e.terrain,
+          terrainProfile: e.terrainProfile, // #6683: løbets dominerende profile_type (ét farvet ikon pr. etapetype)
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
           demandVector: demandByRace.get(e.id) || null,

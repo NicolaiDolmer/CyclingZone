@@ -32,12 +32,12 @@ jobs:
         working-directory: backend
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -91,13 +91,13 @@ jobs:
       # utilstraekkelig i forvejen - den fejler bare AABENT (tom diff) i stedet
       # for lukket, saa den har aldrig vist sig som en rod CI-fejl. Refs #5093.
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -477,12 +477,12 @@ jobs:
       VERCEL_ENV: production
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -563,7 +563,7 @@ jobs:
       # syntetiske builds - ingen secrets, ingen kildekode.
       - name: Upload manifests and diff
         if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: build-determinism-manifests
           path: determinism-report/
@@ -576,12 +576,12 @@ jobs:
       contents: read
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -620,12 +620,12 @@ jobs:
     # de sidste tre var ikke blandt #4505's ti navngivne kandidater.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -863,6 +863,12 @@ jobs:
         if: ${{ !cancelled() }}
         run: node --test scripts/ops/hvad-braender.test.mjs
 
+      # #6994 SQL-helbredstjek: værn (kun cz_monitor read-only), guidens tærskler,
+      # snapshot-sammenligning og kommentar. Kun node-indbyggede moduler, psql er fake.
+      - name: Test prod-health-sql checks
+        if: ${{ !cancelled() }}
+        run: node --test scripts/ops/prodHealthSql.test.mjs
+
       # --- guard-inventory-cell escaping (#5092) ---
       # scripts/guard-inventory-cell.test.mjs fandtes, men koerte ingen steder i
       # CI-kaeden (ingen test:*-entry, ingen workflow-step) - "usynlig" for hele
@@ -975,12 +981,12 @@ jobs:
     # docs/MIGRATIONS.md.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1038,12 +1044,12 @@ jobs:
     # maaling uden pipefail.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1072,12 +1078,12 @@ jobs:
     # issue-reference, mangler en review-dato, eller review-datoen er passeret.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1099,12 +1105,12 @@ jobs:
     # fetchAll*-helpers). Opt-out: `postgrest-cap-ok`-kommentar med begrundelse.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1129,12 +1135,12 @@ jobs:
     # "maybesingle-scope-ok: <begrundelse>".
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1156,12 +1162,12 @@ jobs:
     # guard (frontend/src/lib/getAuthedUser.js). Opt-out: `getuser-guard-ok`.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1183,12 +1189,12 @@ jobs:
     # Opt-out: `rankings-raceresults-ok`-kommentar med begrundelse.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1213,12 +1219,12 @@ jobs:
     # Statisk (parser database/*.sql), ingen DB-adgang nødvendig i CI.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1241,12 +1247,12 @@ jobs:
     # 174 svaltede catches) lå udenfor, hvilket var hele pointen i issuet.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1267,12 +1273,12 @@ jobs:
     # tavst i UI'et. Ratchet pr. fil, samme mønster som swallowed-catch-guard.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1301,12 +1307,12 @@ jobs:
     # for #2957's scope, ikke aktuel drift (verificeret mod prod 26/7).
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1329,12 +1335,12 @@ jobs:
     # Ratchet pr. fil, samme mønster som søster-guardsene. Statisk, ingen DB.
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -1384,12 +1390,12 @@ jobs:
     # ejerens flag at vippe (kommandoen står i den fils _comment).
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm

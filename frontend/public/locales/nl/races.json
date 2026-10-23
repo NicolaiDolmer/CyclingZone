@@ -36,7 +36,18 @@
       "terrain": "Terrein",
       "finish": "Finish",
       "surface": "Ondergrond",
-      "surfaceValue": "{kind, select, gravel {Gravel} other {Kasseien}} · {count, plural, one {# strook} other {# stroken}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Kasseien}} · {count, plural, one {# strook} other {# stroken}}, {km} km",
+      "weather": "Weer"
+    },
+    "weather": {
+      "dry": "Droog",
+      "rain": "Regen",
+      "wind": "Wind",
+      "aria": "Weer: {word}",
+      "mattered": {
+        "rain": "De regen trof renners met zwak afdalen en weinig weerbaarheid het hardst.",
+        "wind": "De wind op de open wegen trof renners met zwak afdalen en weinig weerbaarheid het hardst."
+      }
     },
     "climbs": {
       "title": "De klimmen",

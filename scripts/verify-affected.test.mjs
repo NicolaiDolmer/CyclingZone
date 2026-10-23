@@ -273,3 +273,13 @@ test("deriveAffectedSpecs: records both filename and route-grep reasons when bot
 
   assert.equal(matches.get("training-race-day.spec.js").length, 2);
 });
+
+test('frontend typecheck job follows frontend and its own infrastructure', async () => {
+  const { needsFrontendTypecheck } = await import('./verify-affected.mjs');
+  for (const file of ['frontend/src/a.js', 'frontend/tsconfig.checkjs.json',
+    'scripts/ci/typecheck-baseline.test.mjs', '.github/workflows/frontend-typecheck.yml',
+    'backend/lib/sentry.js', 'backend/package-lock.json', 'package-lock.json']) {
+    assert.equal(needsFrontendTypecheck([file]), true);
+  }
+  assert.equal(needsFrontendTypecheck(['docs/example.md']), false);
+});

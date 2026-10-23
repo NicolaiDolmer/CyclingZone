@@ -129,6 +129,14 @@ i18n
     // at tabe. Kald ALDRIG changeLanguage før `initialized` er udsendt.
     ...(PSEUDO_ENABLED ? { lng: PSEUDO_LANG } : {}),
     fallbackLng: "en",
+    // #6698: separatorerne er i18next's defaults, men sat EKSPLICIT. Er de ikke
+    // sat, kører extractFromKey i18next's "ligner nøglen naturligt sprog?"-
+    // heuristik (looksLikeObjectPath) på HVERT t()-kald, og den er en regex-test.
+    // Firefox 158 kaster sporadisk "too much recursion" fra netop den test (Sentry
+    // CYCLINGZONE-9H + -AD: to spillere, to sider, samme top-frame). Eksplicitte
+    // separatorer springer heuristikken over. Vores nøgler er ALTID ns:sti.nøgle.
+    nsSeparator: ":",
+    keySeparator: ".",
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",

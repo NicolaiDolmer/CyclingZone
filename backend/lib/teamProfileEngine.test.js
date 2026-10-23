@@ -1622,6 +1622,25 @@ test("#5676 assignYouthGroupsForNewTeam: nyt hold placeres i ÉN u23- og ÉN jun
   assert.equal(stored.junior_league_division_id, juniorGroups[0].id);
 });
 
+test("#6667 assignYouthGroupsForNewTeam: en lukket (retired) ungdomsgruppe vælges aldrig", async () => {
+  // Uden filteret ville den tomme, lukkede gruppe vinde (færrest hold, ingen AI i nogen af dem).
+  const [retired, active] = seedYouthGroups({ squad: "u23", count: 2 });
+  retired.retired_at = "2026-10-23T15:00:00Z";
+  const supabase = createSupabaseDouble({
+    leagueDivisions: [retired, active],
+    teams: [
+      { id: "new-team-1", division: MANAGER_ENTRY_DIVISION },
+      seedYouthOccupant({ id: "manager-u23-1", squad: "u23", poolId: active.id, isAi: false }),
+    ],
+  });
+
+  const result = await assignYouthGroupsForNewTeam({ supabase, team: { id: "new-team-1" } });
+
+  assert.equal(result.assigned.u23.leagueDivisionId, active.id);
+  const stored = supabase.state.teams.find((t) => t.id === "new-team-1");
+  assert.equal(stored.u23_league_division_id, active.id);
+});
+
 test("#5676 assignYouthGroupsForNewTeam: rører ALDRIG et hold der allerede har en gruppe (idempotent)", async () => {
   const u23Groups = seedYouthGroups({ squad: "u23", count: 2 });
   const supabase = createSupabaseDouble({

@@ -46,6 +46,10 @@ export function potentialLabelKey(range) {
 // (riderColumnSort.js / useTableSort.js) placerer `null` sidst uanset
 // sorteringsretning.
 export function scoutSortValue(estimate) {
+  if (estimate?.academyPrognosis) {
+    const band = estimate.academyPrognosis.band;
+    return band && Number.isFinite(band.lo) && Number.isFinite(band.hi) ? (band.lo + band.hi) / 2 : null;
+  }
   if (!estimate || estimate.hidden) return null;
   const band = estimate.prog ?? estimate.ceil;
   if (band && Number.isFinite(band.lo) && Number.isFinite(band.hi)) {

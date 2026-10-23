@@ -94,6 +94,8 @@ import { gapUpdateEvent, finishEvent, incidentEvent, makeEvent, sortTimeline } f
 import { BONUS_SECONDS_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING, TTT_EXTRA_TUNING } from "../tuning.ts";
 import {
   applyThreeKmRuleToResults,
+  incidentKmAt,
+  incidentKmSpan,
   incidentProbability,
   maxIncidentsForField,
   resolveIncident,
@@ -161,6 +163,8 @@ export type TeamTimeTrialOutput = StageOutput & { teams: TeamTimeTrialTeamResult
  */
 export type TeamTimeTrialOptions = {
   incidentsTuning?: IncidentsTuning;
+  /** #7008 (KUN s5_profiles_v2): intet uheld lige efter starten (incidentKmSpan). Udeladt = som foer. */
+  incidentStartFloor?: true;
   timeLimitTuning?: TimeLimitTuning;
 };
 
@@ -417,6 +421,7 @@ function rollSegmentIncidents(args: {
   fieldSize: number;
   loggedCount: number;
   tuning: IncidentsTuning;
+  startFloor?: boolean;
 }): { incidents: StageIncident[]; events: TimelineEvent[] } {
   const { perTeam, route, segment, rngFor, tuning } = args;
   const incidents: StageIncident[] = [];
@@ -426,6 +431,8 @@ function rollSegmentIncidents(args: {
   if (budget <= 0) return { incidents, events };
   const lengthFactor = segmentLengthFactor(segment, tuning);
   if (lengthFactor <= 0) return { incidents, events };
+  const span = incidentKmSpan(segment, args.startFloor === true);
+  if (!span) return { incidents, events };
 
   const candidates: Array<{ riderId: string; team: TeamState }> = [];
   for (const team of perTeam) {
@@ -446,8 +453,7 @@ function rollSegmentIncidents(args: {
     const p = clamp(incidentProbability(entrant.abilities.positioning, segment.kind, tuning) * lengthFactor, 0, 1);
     if (rng() >= p) continue;
 
-    const kmFrac = rng();
-    const incidentKm = round2(segment.from_km + kmFrac * (segment.to_km - segment.from_km));
+    const incidentKm = incidentKmAt(span, rng());
     const protectedByRule = threeKmRuleApplies(incidentKm, route.distance_km, route.profile_type, tuning);
     const withTeam = rider.status === "with_team";
     const helperNearby =
@@ -809,6 +815,7 @@ export function runTimeTrialStage(
       fieldSize: totalFieldCount,
       loggedCount: stageIncidents.length,
       tuning: incidentsTuning,
+      startFloor: options.incidentStartFloor === true,
     });
     stageIncidents.push(...segmentIncidents.incidents);
     events.push(...segmentIncidents.events);

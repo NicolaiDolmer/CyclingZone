@@ -1,3 +1,6 @@
+/// <reference types="vite/client" />
+// #7081: tsconfig.json (typecheck) trækker denne fil ind via type-overloads i squadCaps.ts og
+// stageProfilesQuery.ts; referencen gør import.meta.env kendt uanset hvilken tsconfig der tjekker.
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "../types/database.types";
 

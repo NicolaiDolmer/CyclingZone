@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import CareerFirstMomentRow from "./CareerFirstMomentRow";
 import { Card } from "./ui";
+import { isHiddenYouthCareerEvent } from "../lib/youthClassification.ts";
 
 // #3398 (Maiden Win Engine) — dashboard-fladen for career-first-momentkort
 // ("MAIDEN VICTORY — Jonas Krogh, 21, wins his first race in club colours").
@@ -63,10 +64,11 @@ export default function MaidenWinMomentCard() {
         // eksplicit sat for at holde payloaden lille.
         const { data, error } = await supabase
           .from("rider_career_events")
-          .select("id, event_type, rider_id, rider_name, team_name, race_id, params, occurred_at")
+          .select("id, event_type, rider_id, rider_name, team_name, race_id, params, occurred_at, race:race_id(squad)")
           .eq("team_id", myTeam.id)
           .order("occurred_at", { ascending: false })
-          .limit(MAX_EVENTS);
+          // #7031: hent lidt ekstra, så skjulte ungdomstrøje-præstationer ikke tømmer kortet.
+          .limit(MAX_EVENTS * 2);
         if (cancelled) return;
         if (error) {
           // Ærlig degradering: tabellen kan mangle i vinduet mellem merge og
@@ -76,7 +78,7 @@ export default function MaidenWinMomentCard() {
           setEvents([]);
           return;
         }
-        setEvents(data || []);
+        setEvents((data || []).filter((e) => !isHiddenYouthCareerEvent(e, e.race?.squad)).slice(0, MAX_EVENTS));
       } catch {
         if (!cancelled) setEvents([]);
       }

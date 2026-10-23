@@ -70,7 +70,26 @@
     "narrow": "Scherpere inschatting",
     "final": "Definitieve inschatting",
     "nextDays": "Scherper over {days} trainingsdagen.",
-    "tooltip": "De voorspelling wordt scherper naarmate hij meer trainingsdagen bij jouw team heeft. Een betere coach en trainingsfaciliteit maken je sneller zeker. Ze veranderen nooit zijn talent."
+    "tooltip": "De voorspelling wordt scherper naarmate hij meer trainingsdagen bij jouw team heeft. Een betere coach en trainingsfaciliteit maken je sneller zeker. Ze veranderen nooit zijn talent.",
+    "report": {
+      "title": "Academieprognose",
+      "progress": "Stappen van de prognose",
+      "forecast": "Prognose",
+      "nextStage": "Volgende stap",
+      "stages": {
+        "learning": "Leren",
+        "broad": "Grof",
+        "narrow": "Scherper",
+        "final": "Definitief"
+      },
+      "range": "{lo}–{hi} ratingpunten",
+      "noEstimate": "Nog geen inschatting",
+      "trainingDays": "{days, plural, one {# trainingsdag} other {# trainingsdagen}}",
+      "complete": "Alle stappen bereikt",
+      "unavailable": "Nog niet bekend",
+      "learningContext": "Trainingsdagen bij jouw ploeg maken de prognose scherper, sneller met betere trainers.",
+      "readMore": "Lees meer"
+    }
   },
   "profile": {
     "heading": "Academieprofiel",

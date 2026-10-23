@@ -36,7 +36,18 @@
       "terrain": "Terrain",
       "finish": "Arrivée",
       "surface": "Revêtement",
-      "surfaceValue": "{kind, select, gravel {Gravel} other {Pavés}} · {count, plural, one {# secteur} other {# secteurs}}, {km} km"
+      "surfaceValue": "{kind, select, gravel {Gravel} other {Pavés}} · {count, plural, one {# secteur} other {# secteurs}}, {km} km",
+      "weather": "Météo"
+    },
+    "weather": {
+      "dry": "Sec",
+      "rain": "Pluie",
+      "wind": "Vent",
+      "aria": "Météo : {word}",
+      "mattered": {
+        "rain": "La pluie a le plus pénalisé les coureurs faibles en descente et en durabilité.",
+        "wind": "Le vent sur les routes dégagées a le plus pénalisé les coureurs faibles en descente et en durabilité."
+      }
     },
     "climbs": {
       "title": "Les ascensions",

@@ -1,3 +1,4 @@
+import AcademyScoutingPrognosis from "../AcademyScoutingPrognosis";
 // RiderScoutingTab — Scouting-fanen på rytterprofilen (#1543 Fase 1).
 //
 // Viser den server-beregnede scouting-rapport (GET /api/riders/:id/scouting-report):
@@ -199,7 +200,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const { t, i18n } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
   const bestRoleOn = useBestRoleDisplay();
-  const [report, setReport] = useState(null);   // null = loader, ellers payload
+  const [report, setReport] = useState(/** @type {any} */ (null));   // null = loader, ellers payload
   const [failed, setFailed] = useState(false);
   // #2465: scout() returnerer eksplicit {ok, error} — handlingen koster CZ$, så en
   // fejl (fuld kapacitet, ikke nok CZ$, netværk) skal vises, ikke forsvinde stille.
@@ -345,6 +346,10 @@ export default function RiderScoutingTab({ rider, scouting }) {
         <p className="text-cz-3 text-[12.5px] m-0">{t("profile.scouting.loading")}</p>
       </SectionCard>
     );
+  }
+
+  if (report.academyPrognosis) {
+    return <SectionCard><AcademyScoutingPrognosis prognosis={report.academyPrognosis} /></SectionCard>;
   }
 
   // FØR: uscoutet, ikke-egen rytter — intet potentiale, kun invitationen.
