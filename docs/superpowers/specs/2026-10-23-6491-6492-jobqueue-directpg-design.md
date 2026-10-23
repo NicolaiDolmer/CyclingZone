@@ -103,17 +103,17 @@ Ikke-mål: omskrivning af spillogik. `commit_training_date_tick` og de andre SQL
 
 Valgt 15/10 (#6655) og bekræftet her: pg-boss bor i Postgres (intet nyt infrastruktur-led, ingen ny udgift), har genforsøg med backoff, `singletonKey` med køpolitikken `stately` (højst ét ventende og ét aktivt job pr. nøgle), dead-letter-kø, `expireInSeconds` og planlagte job (`schedule`) gemt i databasen. Det sidste fjerner boot-kørsels-tricket: et 24-timers job nulstilles ikke af deploy, når planen ligger i Postgres. Supabase Queues (pgmq) er ikke installeret i prod og mangler planlægning, genforsøgspolitik og worker-loop.
 
-Skemaet `pgboss` oprettes via en almindelig migration i `database/` (SQL genereret af pg-boss' egen plan-funktion), ikke af `boss.start()` ved første opstart. Workeren starter med automatisk migrering slået fra. Så går skemaet gennem auto-migrate og review som alt andet. Konsekvens: en opgradering af pg-boss skal altid følges af sin migration i samme PR, og Dependabot-bumps af pg-boss merges ikke automatisk. Workeren tjekker skemaversionen ved opstart og nægter at starte (med Sentry-alarm) ved forkert version, så jobbene falder tilbage til cron (§6).
+Skemaet `pgboss` oprettes via en almindelig migration i `database/` (SQL genereret af pg-boss' egen plan-funktion), ikke af `boss.start()` ved første opstart. Workeren starter med automatisk migrering slået fra. Så går skemaet gennem auto-migrate og review som alt andet. Konsekvens: en opgradering af pg-boss skal altid følges af sin migration i samme PR, og Dependabot-bumps af pg-boss merges ikke automatisk. Workeren tjekker skemaversionen ved opstart og nægter at starte (med Sentry-alarm) ved forkert version; så holder den ikke sin lease, og cron overtager efter reglen i §3.4.
 
 ### 3.2 Job-modellen
 
 | Job-type | Nøgle (`singletonKey`) | Politik | Producent |
 |---|---|---|---|
-| Træningsafregning | `(team_id, season_id, tick_date)`: ét job pr. hold og dato, der afregner datoens løbsdage i rækkefølge, som løkken i `runNormalizedTrainingDateSweep` gør i dag | `stately`, retry 3, backoff | Løbsafslutningen, når en divisions sidste etape i dag er færdig og klokken er mindst 20 (ellers planlagt til kl. 20), + sikkerheds-poll hvert 5. min |
+| Træningsafregning | `team_id`: højst ét ventende og ét aktivt job pr. hold. Jobbet afregner alle holdets åbne datoer, ældste først, og hver datos løbsdage i rækkefølge, som `runNormalizedTrainingDateSweep` gør i dag | `stately`, retry 3, backoff | Løbsafslutningen, når en divisions sidste etape i dag er færdig og klokken er mindst 20 (ellers planlagt til kl. 20), + sikkerheds-poll hvert 5. min |
 | Periodisk vagt / sweep | job-navn + dato eller tidsslot | `singleton` | `schedule()` med tidszone Europe/Copenhagen |
 | Outbox-dræn | job-navn | `singleton` | `schedule()` hvert minut / 5. min |
 
-Jobbet er bevidst ikke én løbsdag: samme holds løbsdage må aldrig køre samtidig eller i forkert rækkefølge (kommentaren ved `forEachTeamBounded`), og registrering, karantæne og afgang sker én gang pr. hold og dato før løkken. Tick-enheden og idempotens-låsen pr. løbsdag i TRAINING_RULES.md er uændret; parallelitet er kun mellem hold. Jobbet bærer kun nøgler, aldrig spildata. Idempotens bevares to steder: køens nøgle forhindrer dubletter i køen, og databasens eksisterende unikke låse (fx `uniq_training_day_runs_team_season_squad_game_day`) forhindrer dobbelt afregning, hvis et job alligevel køres to gange.
+Jobbet er bevidst hverken én løbsdag eller én dato: samme holds løbsdage og datoer (fx gårsdagens uafsluttede arbejde og dagens) må aldrig køre samtidig eller i forkert rækkefølge (kommentaren ved `forEachTeamBounded`), og registrering, karantæne og afgang sker én gang pr. hold og dato før løkken. Tick-enheden og idempotens-låsen pr. løbsdag i TRAINING_RULES.md er uændret; parallelitet er kun mellem hold. Jobbet bærer kun nøgler, aldrig spildata. Idempotens bevares to steder: køens nøgle forhindrer dubletter i køen, og databasens eksisterende unikke låse (fx `uniq_training_day_runs_team_season_squad_game_day`) forhindrer dobbelt afregning, hvis et job alligevel køres to gange.
 
 ### 3.3 Worker-placering (ejer-beslutning, åben siden 15/10)
 
@@ -129,6 +129,8 @@ Jobbet er bevidst ikke én løbsdag: samme holds løbsdage må aldrig køre samt
 
 Hvert job flyttes med sit eget `app_config`-flag `job_queue_owner.<job>` = `cron` | `worker`. Den gamle timer i `cron.js` bliver stående og tjekker flaget ved hver tick: står det på `worker`, springer timeren over. Workeren gør det omvendte. Et flip virker ved næste tick uden deploy. Flaget alene forhindrer ikke overlap i selve flip-øjeblikket (et cron-tick kan allerede være i gang). Derfor er ejerskabet en lease pr. job-navn: en række med ejer-side (`cron`/`worker`) og udløbstid, claimet og fornyet via en RPC af den side, der kører jobbet (workeren fornyer den for hele køen, ikke pr. hold-job, så paralleliteten bevares). Den anden side starter først, når lease er frigivet eller udløbet. En RPC er valgt, så cron-siden (supabase-js, uden transaktioner i koden) og workeren (postgres.js) bruger samme mekanisme; en advisory-lock dur ikke, fordi cron-siden ikke kan holde en transaktion åben gennem PostgREST. Det gælder også job uden unikke låse i databasen (vagter, heal-sweeps).
 
+**Når workeren er nede:** cron kører et job, hvis flaget står på `cron`, **eller** hvis `job_queue_worker_enabled` er off (overstyrer alle job-flag), **eller** hvis workerens lease for jobbet er udløbet (fx 10 min uden fornyelse). Det sidste giver en Sentry-alarm, så et nedbrud i workeren aldrig efterlader job uden udførelse. Flaget beskriver den ønskede ejer, leasen den faktiske.
+
 ## 4. Design: direkte typet Postgres (#6492)
 
 ### 4.1 Bibliotek og forbindelse
@@ -138,7 +140,7 @@ Hvert job flyttes med sit eget `app_config`-flag `job_queue_owner.<job>` = `cron
   - pg-boss: session mode (port 5432), pool 2-3.
   - Job-transaktioner: transaction mode (port 6543) med `prepare: false`, pool = valgt parallelitet + 1.
 - **Forbindelsesbudget:** `max_connections=120`; ca. 62 i brug ved målingen (36 PostgREST, 26 Supabase-interne). Worker + kø må højst bruge 12 ved start. Supavisor-poolens loft for vores compute-tier er **ikke målt** og måles i trin 0.
-- **Rolle:** en egen login-rolle (fx `cz_worker`) med samme tabel-grants som service_role, `BYPASSRLS` (som service_role har; ellers giver RLS-beskyttede tabeller tomme svar uden fejl) og `statement_timeout=60s` på rollen, ikke `postgres`. Grants-auditten (`scripts/audit-table-grants.mjs`) udvides til rollen. Forbindelsesstrengen ligger i Infisical/Railway som hemmelighed og logges aldrig.
+- **Rolle:** en egen login-rolle (fx `cz_worker`, ikke `postgres`) uden egne tabel-rettigheder, men medlem af `service_role` (NOINHERIT). Hver transaktion starter med `SET LOCAL ROLE service_role`, så tabel-grants, `EXECUTE` på SQL-funktionerne (fx er `commit_training_date_tick` kun tildelt service_role) og `BYPASSRLS` er præcis som for backenden i dag; en rolle med kopierede grants ville fejle med "permission denied" eller få tomme RLS-svar. `statement_timeout` sættes med `SET LOCAL` (60 s som service_role). Trin 0 verificerer det med den rigtige worker-login mod staging. Grants-auditten (`scripts/audit-table-grants.mjs`) udvides til rollen. Forbindelsesstrengen ligger i Infisical/Railway som hemmelighed og logges aldrig.
 
 ### 4.2 Typer
 
@@ -146,7 +148,7 @@ Typer genereres fra `database/schema-snapshot.json` til en `.d.ts`-fil (eller `s
 
 ### 4.3 Transaktionsmønster
 
-Én transaktion pr. job (for afregningen: én tick-enhed):
+Én transaktion pr. tick-enhed (for afregningen: én løbsdag for ét hold; et hold-job kører flere af dem efter hinanden):
 
 1. `SET LOCAL statement_timeout` og `SET LOCAL lock_timeout`.
 2. Læs alt holdets afregning behøver i 2-4 forespørgsler (i dag ca. 20 rundture), uden 1.000-rækkers loft.
@@ -168,7 +170,7 @@ Hvert trin er sin egen PR med eget flag, egen måling og eget ejer-go før tænd
 | 0 | Infrastruktur: `pgboss`-skema som migration, worker-proces (B), postgres.js-forbindelse, ét hjerteslag-job. Intet spiljob flyttet. | Beviser forbindelse, rolle, deploy-genstart og hukommelse uden spillerrisiko | Staging: worker dræbes midt i et job → jobbet genoptages én gang. Forbindelsesforbrug målt. |
 | 1 | Ét læse-job: en 24-timers vagt (fx ejerskabs-invarianten) via `schedule()` | Ingen skrivninger; beviser at planlagte job overlever deploy uden boot-kørsel | Kører præcis én gang pr. døgn i 3 døgn med deploys imellem |
 | 2 | Outbox-drænene (Discord DM/webhook, notify, e-mail-retry) | Allerede idempotente outboxe; naturlige kø-job | Samme sendte antal som før, 0 dubletter |
-| 3 | Træningsafregningen som job pr. tick-enhed, læsninger via postgres.js, producent = løbsafslutning + 5-min-poll | Største gevinst (§1); kræver trin 0-2 og målingen af parallel-knappen | #5904-harnessen ved 1x og 10x med parallelitet 1/4/8; staging-aften; paritet 0 afvigelser mod den gamle sti; ejer-go |
+| 3 | Træningsafregningen som job pr. hold, læsninger via postgres.js, producent = løbsafslutning + 5-min-poll | Største gevinst (§1); kræver trin 0-2 og målingen af parallel-knappen | #5904-harnessen ved 1x og 10x med parallelitet 1/4/8; staging-aften; paritet 0 afvigelser mod den gamle sti; ejer-go |
 | 4 | Andre tunge job: finaliserings-recovery, auto-præmie, heal-sweeps, sæsonskiftets trin | Følger samme mønster | Pr. job: paritet + én rolig dag |
 | 5 | Minut-job (auktioner) | Latenskritiske; flyttes sidst, helst når workeren er isoleret (A) | Auktionslukning inden for samme sekund-interval som i dag |
 
@@ -180,7 +182,7 @@ Hvert trin er sin egen PR med eget flag, egen måling og eget ejer-go før tænd
 |---|---|---|---|
 | Ét job | `job_queue_owner.<job>` = `cron` i `app_config` | Næste tick, ingen deploy | Ingen tab; lease pr. job (§3.4) forhindrer dobbeltkørsel ved skiftet |
 | Direkte PG for afregningen | Flag tilbage til supabase-js-stien, som bliver i koden, indtil to rolige aftener er målt | Næste tick | Ingen; samme SQL-funktion begge veje |
-| Hele workeren | `job_queue_worker_enabled` = off; alle job falder tilbage til timerne i `cron.js` | Næste tick | Ventende job bliver liggende i `pgboss` og ryddes manuelt |
+| Hele workeren | `job_queue_worker_enabled` = off; overstyrer alle job-flag, så alle job falder tilbage til timerne i `cron.js` (§3.4) | Næste tick | Ventende job bliver liggende i `pgboss` og ryddes manuelt |
 | Skemaet | `pgboss` bliver stående (uskadeligt). `DROP SCHEMA` kun på særskilt ejer-go | - | Kun kø-metadata, ingen spildata |
 
 Den gamle timer-sti slettes først, når jobbet har kørt på workeren i 14 dage uden tilbagerulning, og så i en separat PR.
