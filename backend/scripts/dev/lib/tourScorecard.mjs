@@ -704,6 +704,38 @@ export function breakawayLeadFacts(out, fieldMinShare = 0.25) {
   return { breakawayMaxLead: maxLead, breakawayUnchased: unchased };
 }
 
+/**
+ * #6804 G3 (spec 17/10 par. 5, K4; maaling): morgenudbruddets sammensaetning.
+ *  - gcFavInBreak: udbrydere blandt klassementets `topN` foer etapen; uden klassement (1. etape)
+ *    blandt startfeltets `topN` paa klassementsevne (klatring + enkeltstart).
+ *  - stageFavInBreak: udbrydere blandt startfeltets `topN` paa dagens afslutnings-evne
+ *    (spurt paa spurtafslutning/flad, punch paa mur/punch/kuperet, ellers klatring).
+ *  - maxSameTeam: flest ryttere fra samme hold i udbruddet.
+ * Definitionerne er arbejdsvalg (G3's lofter og graenser er private). REN.
+ */
+export function breakawayCompositionFacts({ out, profile, gcBefore = null, abilitiesById, teamByRider, riderIds, topN = 5 }) {
+  const events = out?.timeline?.events ?? [];
+  const ids = events.find((e) => e.type === "breakaway_formed" && e.params?.reformation !== true)?.params?.rider_ids ?? [];
+  if (!ids.length) return { breakawayGcFav: null, breakawayStageFav: null, breakawayMaxSameTeam: null };
+  const ab = (id, keys) => keys.reduce((s, k) => s + Number(abilitiesById?.get(id)?.[k] ?? 0), 0) / keys.length;
+  const topBy = (keys) => new Set([...(riderIds ?? [])].filter((id) => abilitiesById?.has(id)).sort((a, b) => ab(b, keys) - ab(a, keys) || a.localeCompare(b)).slice(0, topN));
+  const gcTop = gcBefore?.length ? new Set(gcBefore.slice(0, topN).map((s) => s.rider_id)) : topBy(["climbing", "time_trial"]);
+  const f = profile?.finale_type ?? null;
+  const keys = ["bunch_sprint", "reduced_sprint", "flat_sprint", "uphill_sprint"].includes(f) || (f === null && profile?.profile_type === "flat") ? ["sprint"]
+    : ["wall_finish", "punch"].includes(f) || profile?.profile_type === "hilly" ? ["punch"] : ["climbing"];
+  const stageTop = topBy(keys);
+  const perTeam = new Map();
+  for (const id of ids) {
+    const t = teamByRider?.get(id);
+    if (t) perTeam.set(t, (perTeam.get(t) ?? 0) + 1);
+  }
+  return {
+    breakawayGcFav: ids.filter((id) => gcTop.has(id)).length,
+    breakawayStageFav: ids.filter((id) => stageTop.has(id)).length,
+    breakawayMaxSameTeam: perTeam.size ? Math.max(...perTeam.values()) : 0,
+  };
+}
+
 export function testportStageFacts(out, profile, roleByRider = null) {
   const events = out?.timeline?.events ?? [];
   const winnerId = finishedSorted(out)[0]?.rider_id ?? null;
@@ -753,6 +785,7 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     labelContradictions: labelContradictions(ranked, out, { stepModel: !isS5ProfilesV2OrLater(revision) }).length,
     winType: ranked?.[0]?.win_type ?? null,
     ...(tt ? {} : breakawayLeadFacts(out)), // #6804 G2
+    ...(tt ? {} : breakawayCompositionFacts({ out, profile, gcBefore, abilitiesById, teamByRider, riderIds })), // #6804 G3
     ...(tt ? { winnerId: testportStageFacts(out, profile, roleByRider).winnerId } : testportStageFacts(out, profile, roleByRider)), // #6750
   };
   if (tt) {
