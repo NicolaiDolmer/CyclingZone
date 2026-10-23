@@ -35,9 +35,7 @@ import LanguageSwitcherFlag from "./LanguageSwitcherFlag.jsx";
 // rækkefølge (dansk øverst, engelsk nederst) uændret uanset rækkefølgen i
 // LANGUAGES.
 import { LANGUAGES } from "../i18n/languages.js";
-// #6802: beta-sprog (LANGUAGES[].beta) vises kun for ejer + beta-testere.
-import { selectableLanguages, languageToRevertTo } from "../lib/languageAccess.ts";
-import { useBetaLanguageAccess } from "../lib/languageAccessHook.ts";
+// #7087: beta-sprog (LANGUAGES[].beta) er synlige for alle, med et Beta-maerke + en kort note.
 
 const LABEL_KEYS = { da: "language.danish", en: "language.english" };
 const DISPLAY_ORDER = ["da", "en"];
@@ -49,8 +47,9 @@ const orderOf = (code) => {
 const toOptions = (languages) =>
   [...languages]
     .sort((a, b) => orderOf(a.code) - orderOf(b.code))
-    .map((l) => ({ code: l.code, flag: l.flag, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
-const ALL_OPTIONS = toOptions(LANGUAGES);
+    .map((l) => ({ code: l.code, flag: l.flag, beta: l.beta === true, labelKey: LABEL_KEYS[l.code] ?? `language.${l.code}` }));
+const OPTIONS = toOptions(LANGUAGES);
+const HAS_BETA_OPTION = OPTIONS.some((o) => o.beta);
 
 // Estimeret højde pr. valg til at vælge op/ned før menuen er målt; menuen
 // vokser med antallet af valg, når beta-sprog vises (Codex #6812).
@@ -62,8 +61,6 @@ const GAP = 4;
 export default function LanguageSwitcher({ className = "", surface = "page" }) {
   const { t } = useTranslation("common");
   const { language, setLanguage } = useLanguage();
-  const betaAccess = useBetaLanguageAccess();
-  const OPTIONS = toOptions(selectableLanguages(LANGUAGES, betaAccess));
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState(null);
   const btnRef = useRef(null);
@@ -83,7 +80,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
       top: openUp ? null : r.bottom + GAP,
       bottom: openUp ? window.innerHeight - r.top + GAP : null,
     });
-  }, [OPTIONS.length]);
+  }, []);
 
   useLayoutEffect(() => {
     if (!open) {
@@ -118,14 +115,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
     };
   }, [open]);
 
-  const active = ALL_OPTIONS.find((o) => o.code === language) ?? ALL_OPTIONS.find((o) => o.code === "en");
-
-  // Kendt uden beta-adgang men staar paa et beta-sprog (fx tilbagekaldt adgang):
-  // rul tilbage til standardsproget. Aldrig mens adgangen endnu er ukendt (null).
-  const revertTo = languageToRevertTo(language, betaAccess);
-  useEffect(() => {
-    if (revertTo) setLanguage(revertTo);
-  }, [revertTo, setLanguage]);
+  const active = OPTIONS.find((o) => o.code === language) ?? OPTIONS.find((o) => o.code === "en");
 
   return (
     <div className={`relative inline-block ${className}`}>
@@ -163,7 +153,7 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
             // must always win over nav (z-nav) and any open drawer (z-overlay),
             // so it uses the same tier as a modal (the closest "always on top,
             // no matter what surrounds the trigger" semantic).
-            className="z-modal min-w-[140px] overflow-y-auto rounded-cz border border-cz-border bg-cz-card shadow-lg py-1"
+            className="z-modal min-w-[140px] max-w-[240px] overflow-y-auto rounded-cz border border-cz-border bg-cz-card shadow-lg py-1"
           >
             {OPTIONS.map((opt) => {
               const selected = opt.code === language;
@@ -183,6 +173,11 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
                   >
                     <LanguageSwitcherFlag code={opt.flag} />
                     <span>{t(opt.labelKey)}</span>
+                    {opt.beta && (
+                      <span className="rounded-cz border border-cz-border px-1 text-[10px] font-medium uppercase tracking-wide text-cz-2">
+                        {t("language.betaBadge")}
+                      </span>
+                    )}
                     {selected && (
                       <CheckIcon className="ms-auto w-3.5 h-3.5 text-cz-accent" aria-hidden="true" />
                     )}
@@ -190,6 +185,11 @@ export default function LanguageSwitcher({ className = "", surface = "page" }) {
                 </li>
               );
             })}
+            {HAS_BETA_OPTION && (
+              <li role="presentation" className="mt-1 border-t border-cz-border px-3 pt-1.5 pb-1 text-xs text-cz-2">
+                {t("language.betaNote")}
+              </li>
+            )}
           </ul>,
           document.body
         )}

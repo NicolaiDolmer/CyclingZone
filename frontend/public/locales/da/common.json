@@ -66,7 +66,9 @@
     "fr": "Français",
     "es": "Español",
     "nl": "Nederlands",
-    "switchTooltip": "Skift sprog"
+    "switchTooltip": "Skift sprog",
+    "betaBadge": "Beta",
+    "betaNote": "Manglende tekster vises på engelsk."
   },
   "actions": {
     "cancel": "Annullér",
