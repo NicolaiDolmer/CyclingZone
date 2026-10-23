@@ -13,20 +13,24 @@
 //   et span inde i en knap.
 // - Dublet-navne afvises med en kort besked; ved loftet forklares det i stedet
 //   for at Save-knappen forsvinder.
+//
+// #2806 (design-go 13/10 + ejer-beslutning 13/10): kræver AKTIV Pro
+// (hasProFeatureAccess); Founder alene giver kun mærket. Gratis spillere ser
+// ProUpsellInline med en sekundær knap til filter-fanen på /pro.
 
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router";
 import { Button, Input } from "../ui";
 import { XIcon } from "../ui/icons/index.jsx";
 import { useSubscription } from "../../lib/useSubscription.js";
+import { hasProFeatureAccess } from "../../lib/pro/proAccess.ts";
+import { ProUpsellInline } from "../pro/ProUpsell.tsx";
 import {
   loadSavedFilters, addSavedFilter, removeSavedFilter, savedFilterNameError, MAX_SAVED_FILTERS,
 } from "../../lib/savedRiderFilters.js";
 
 export default function SavedFiltersBar({ userId, teamId, filters, onApply }) {
   const { t } = useTranslation("pro");
-  const navigate = useNavigate();
   const { isPro, isFounder, loading: subLoading, error: subError, reload: reloadSub } = useSubscription(teamId);
   const [saved, setSaved] = useState(() => loadSavedFilters(userId));
   const [naming, setNaming] = useState(false);
@@ -49,13 +53,8 @@ export default function SavedFiltersBar({ userId, teamId, filters, onApply }) {
     );
   }
 
-  if (!(isPro || isFounder)) {
-    return (
-      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap rounded-cz border border-cz-border bg-cz-card px-3 py-2">
-        <span className="text-xs text-cz-2">{t("savedFilters.note")}</span>
-        <Button size="sm" variant="secondary" onClick={() => navigate("/pro")}>{t("savedFilters.cta")}</Button>
-      </div>
-    );
+  if (!hasProFeatureAccess({ isPro, isFounder })) {
+    return <ProUpsellInline benefit="filters" body={t("savedFilters.note")} cta={t("savedFilters.cta")} />;
   }
 
   const nameError = naming && name.trim() ? savedFilterNameError(saved, name) : null;

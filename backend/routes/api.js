@@ -4486,6 +4486,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           // Fallback for løb uden game_day-rækker ligger i raceDaysByRace ovenfor.
           raceDays: raceDaysByRaceId.get(e.id) ?? 1,
           terrain: e.terrain,
+          terrainProfile: e.terrainProfile, // #6683: løbets dominerende profile_type (ét farvet ikon pr. etapetype)
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
           demandVector: demandByRace.get(e.id) || null,
@@ -14770,7 +14771,13 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
     const upkeepPerRaceDay = await isUpkeepPerRaceDayEnabled(supabase);
     // #6936: samme flag som processSeasonStart — intet upkeep når on.
     const noUpkeep = await isEconomyNoUpkeepEnabled(supabase);
-    const preview = buildSeasonEndPreviewRows({ teams, standings, loanData, upkeepPerRaceDay, noUpkeep });
+    // #6990 · sæsonnummer til U25-målets aldersudledning (samme regel som season-end).
+    const { data: previewSeason } = await supabase
+      .from("seasons").select("number").eq("id", seasonId).maybeSingle();
+    const preview = buildSeasonEndPreviewRows({
+      teams, standings, loanData, upkeepPerRaceDay, noUpkeep,
+      seasonNumber: previewSeason?.number ?? null,
+    });
 
     res.json({ preview });
   } catch (e) { captureApiRouteError(e, req); res.status(500).json({ error: e.message }); }
@@ -17185,6 +17192,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
         recentSnapshots: boardSnapshots.slice(-3).reverse(),
         goalContext,
+        seasonNumber: activeSeason?.number ?? null,
         extra: {
           isExpired,
           // S-02c · Lad outlook vælge dominant_member + pr-mål reactions
@@ -18084,6 +18092,7 @@ async function computeBoardRequestOutcome(req) {
       currentSponsorIncome: team?.sponsor_income ?? SPONSOR_INCOME_BASE,
       recentSnapshots: snapshotsRes.data || [],
       goalContext,
+      seasonNumber: activeSeason?.number ?? null,
       extra: {
         isExpired: board.negotiation_status === "pending",
         requestUsedThisSeason,

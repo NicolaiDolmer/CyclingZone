@@ -18,7 +18,7 @@ import RaceStoryCard from "./RaceStoryCard.tsx";
 import { castFrom, type RaceStory } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
 import { WeatherTag } from "./WeatherTag.tsx";
-import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines } from "./ui.ts";
+import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines, TerrainTypeGlyph } from "./ui.ts";
 
 function FitBar({ fit }: { fit: number }) {
   const { t } = useTranslation("races");
@@ -43,7 +43,7 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, 
   const finaleKey = finaleLabelKey(profile.finale_type);
   const surface = surfaceOf(profile);
   const axes: Array<[string, ReactNode]> = [];
-  if (terrainKey) axes.push([t("stagePageV2.axes.terrain"), t(`detail.${terrainKey}`)]);
+  if (terrainKey) axes.push([t("stagePageV2.axes.terrain"), <TerrainTypeGlyph profileType={profile.profile_type} size={18} showLabel labelClassName="" className="gap-1.5" />]);
   if (finaleKey) axes.push([t("stagePageV2.axes.finish"), t(`detail.${finaleKey}`)]);
   if (surface) axes.push([t("stagePageV2.axes.surface"), t("stagePageV2.axes.surfaceValue", { kind: surface.kind, count: surface.count, km: formatNumber(surface.km) })]);
   if (weather) axes.push([t("stagePageV2.axes.weather"), <WeatherTag weather={weather} />]);

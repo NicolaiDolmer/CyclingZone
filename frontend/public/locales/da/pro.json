@@ -1,7 +1,7 @@
 {
   "metaTitle": "Opgradér til CZ Pro",
-  "title": "Bliv Founder",
-  "subtitle": "Støt spillets udvikling og lås Founder-status. Gratis-spillet forbliver fuldt konkurrencedygtigt. Pro er et badge og en identitet, aldrig en fordel.",
+  "title": "CZ Pro",
+  "subtitle": "Følg dine ryttere gennem sæsonerne. Gem de søgninger, du bruger igen.",
   "monthly": "Månedlig",
   "semiannual": "6 måneder",
   "monthlyPrice": "49 kr/md",
@@ -28,18 +28,36 @@
     "message": "Jeg kunne ikke hente dine abonnementsoplysninger. Intet er gået tabt, og din konto er upåvirket.",
     "retry": "Prøv igen"
   },
+  "benefits": {
+    "title": "Det får du med Pro",
+    "exampleLabel": "Eksempeldata",
+    "history": {
+      "tab": "Sæsonhistorik",
+      "headline": "Følg hele rytterens udvikling",
+      "body": "Hver evne, sæson for sæson, på rytterens Udvikling-fane.",
+      "sampleCaption": "Opdigtet rytter, ikke fra dit spil",
+      "sampleAria": "Eksempelgraf: en opdigtet rytters klatring, tempo, enkeltstart og udholdenhed over tre sæsoner og nu."
+    },
+    "filters": {
+      "tab": "Gemte filtre",
+      "headline": "Brug denne søgning igen med ét klik",
+      "body": "Giv en søgning i rytterdatabasen et navn, og hent den frem, når du har brug for den. Op til {max} filtre, gemt i denne browser.",
+      "sampleCaption": "Eksempler på filtre",
+      "examples": {
+        "youngClimbers": "Unge klatrere",
+        "sprintersU25": "Sprintere U25",
+        "cheapTimeTrial": "Billige enkeltstartsryttere"
+      }
+    }
+  },
   "founderMark": {
     "label": "Founder",
     "aria": "Founder nr. {n} af {cap}",
     "heroLine": "Founder nr. {n} af {cap}"
   },
-  "gate": {
-    "note": "Pro viser dette på tværs af alle sæsoner, ikke kun den nuværende.",
-    "cta": "Se Pro"
-  },
   "riderHistory": {
     "title": "Sæsonhistorik",
-    "cta": "Se Pro",
+    "cta": "Se sæsonhistorik med Pro",
     "note": "Pro viser alle evner på tværs af alle sæsoner, ikke kun den nuværende.",
     "ceilingLegend": "Skala-loft (99)",
     "empty": "Ingen sæsonhistorik registreret endnu.",
@@ -49,7 +67,8 @@
     "retry": "Prøv igen",
     "emptyTitle": "Ingen evner registreret endnu",
     "checkAgain": "Tjek igen",
-    "now": "Nu"
+    "now": "Nu",
+    "upsellTitle": "Følg hele rytterens udvikling"
   },
   "savedFilters": {
     "title": "Gemte filtre",
@@ -59,8 +78,8 @@
     "cancel": "Annullér",
     "remove": "Fjern",
     "empty": "Ingen gemte filtre endnu.",
-    "note": "Pro lader dig gemme filtre med navn og hoppe direkte tilbage til dem.",
-    "cta": "Se Pro",
+    "note": "Brug denne søgning igen med ét klik.",
+    "cta": "Gem filtre med Pro",
     "removeNamed": "Fjern {name}",
     "duplicate": "Du har allerede et filter med det navn.",
     "limit": "Du har gemt {max} filtre, som er loftet. Fjern et for at gemme et nyt.",

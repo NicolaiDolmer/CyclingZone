@@ -248,7 +248,9 @@ test("#6748 rigtig motor: et nyt udbrud paa foerste etape rummer under v2 ingen 
   const stages = sortedStages(GIRO).filter((s: { profile_type: string }) => s.profile_type !== "itt" && s.profile_type !== "ttt").slice(0, 2);
   // Kun evnerne bruges (gcAbility); maaleskemaets raekker er ikke fulde Entrants.
   const byId = Object.fromEntries(entrants.map((e: { rider_id: string }) => [e.rider_id, e])) as unknown as Record<string, Entrant>;
-  const top = s5ReformationExcludedRiders(syntheticFirstStage(Object.keys(byId)), byId, S5_REFORMATION_TUNING.excludeGcRankAtMost, { abilityOnFirstStage: true });
+  // #6818: motoren maaler klassementsevnen paa loebets egne etaper (race_gc_stages); det goer testen ogsaa.
+  const raceGcStages = stages.map((s: { stage_number: number; profile_type: string; demand_vector: Record<string, number> }) => ({ stage_number: s.stage_number, profile_type: s.profile_type, demand: s.demand_vector }));
+  const top = s5ReformationExcludedRiders({ ...syntheticFirstStage(Object.keys(byId)), threat_model: "s5", race_gc_stages: raceGcStages } as unknown as GcContext, byId, S5_REFORMATION_TUNING.excludeGcRankAtMost, { abilityOnFirstStage: true });
   let seen = 0;
   for (const seedTag of ["a1", "a2", "a3", "a4", "a5", "a6"]) {
     runStagesInOrder({

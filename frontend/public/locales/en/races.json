@@ -191,7 +191,7 @@
       "classAria": "Classification",
       "stage": "Stage",
       "overall": "Overall",
-      "top3": "Top 3",
+      "topN": "Top {count}",
       "yourRiders": "Your riders",
       "noRiders": "None of your riders are in this result.",
       "bestOverall": "Your best overall",
