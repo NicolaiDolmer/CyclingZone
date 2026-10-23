@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  APPROX_FLAG,
   applyPlan,
   buildCorrectedSource,
   buildPlan,
@@ -184,7 +185,7 @@ test("#7088 applyPlan: backup FØR skrivning, optimistisk vagt, kvittering pr. f
   ];
   const data = {
     activeSeason,
-    perTeam: rows.map((r) => ({ relation: { id: r.relation_id, team_id: r.team_id, confidence: r.before, confidence_source: {} } })),
+    perTeam: rows.map((r) => ({ relation: { id: r.relation_id, team_id: r.team_id, confidence: r.before, confidence_source: {}, updated_at: `ts-${r.relation_id}` } })),
   };
   const files = [];
   const result = await applyPlan(supabase, {
@@ -200,6 +201,7 @@ test("#7088 applyPlan: backup FØR skrivning, optimistisk vagt, kvittering pr. f
   assert.equal(files[0].body.length, 3, "backup af præcis de rækker der skrives");
   assert.deepEqual(updates.map((u) => u.filters.id), ["r1", "r2", "r4"], "r3 er korrekt, r5 er en tilnærmelse");
   assert.equal(updates[0].filters.confidence, 100, "optimistisk vagt på dry-run-værdien");
+  assert.equal(updates[0].filters.updated_at, "ts-r1", "vagten fanger også en ændring der kun rørte kilden (Codex P1)");
   assert.deepEqual(updates[2].payload.confidence_source.season_anchor, { season_id: S4, confidence: 80 });
   assert.equal(result.updated, 2);
   assert.equal(result.skipped, 1);
@@ -208,4 +210,10 @@ test("#7088 applyPlan: backup FØR skrivning, optimistisk vagt, kvittering pr. f
   assert.equal(inserts[0].reason_category, "correction_7088");
   assert.equal(inserts[0].satisfaction_delta, -40);
   assert.equal(inserts[0].mandate_id, undefined, "auditspor, ikke et formandscitat");
+});
+
+test("#7088 APPROX_FLAG: manglende sæsonafslutning er en tilnærmelse (Codex P1)", () => {
+  assert.ok(APPROX_FLAG.test("s3_no_season_end"));
+  assert.ok(APPROX_FLAG.test("s3_delta_maybe_clipped"));
+  assert.ok(!APPROX_FLAG.test("s3_something_exact"));
 });

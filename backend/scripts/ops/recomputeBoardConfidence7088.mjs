@@ -213,7 +213,7 @@ export function replayTeamConfidence({
  * `--allow-approx` er givet. Efter deploy giver den rettede motor eksakt
  * `season_delta` for hvert hold der har kørt et løb.
  */
-export const APPROX_FLAG = /^(active_delta_(from_plan|bound|unknown)|s\d+_(delta_unknown|delta_maybe_clipped|milestone_missing))$/;
+export const APPROX_FLAG = /^(active_delta_(from_plan|bound|unknown)|s\d+_(delta_unknown|delta_maybe_clipped|milestone_missing|no_season_end))$/;
 
 /** Fordeling i ti spande (0-9, 10-19, ..., 90-100) + yderværdierne for sig. */
 export function histogram(values) {
@@ -293,12 +293,14 @@ function must({ data, error }, label) {
 
 export async function loadData(supabase, { concurrency = 8 } = {}) {
   const seasons = must(await supabase.from("seasons").select("id, number, status").order("number"), "seasons");
-  const activeSeason = seasons.find((s) => s.status === "active");
+  // Codex P1: i overlappet ved sæsonskiftet kan to sæsoner være aktive; den nyeste gælder.
+  const activeSeason = seasons.filter((s) => s.status === "active")
+    .sort((a, b) => Number(b.number) - Number(a.number))[0];
   if (!activeSeason) throw new Error("Ingen aktiv sæson");
   const seasonNumberById = new Map(seasons.map((s) => [s.id, Number(s.number)]));
 
   const relations = await fetchAllRows(() => supabase.from("board_relations")
-    .select("id, team_id, confidence, confidence_source").order("id"));
+    .select("id, team_id, confidence, confidence_source, updated_at").order("id"));
   const boards = await fetchAllRows(() => supabase.from("board_profiles")
     .select("id, team_id, plan_type, satisfaction, season_start_satisfaction, season_start_anchor_season_id").order("id"));
   const oneYearBoardIds = new Set(boards.filter((b) => b.plan_type === "1yr").map((b) => b.id));
@@ -388,6 +390,9 @@ export async function applyPlan(supabase, {
       })
       .eq("id", row.relation_id)
       .eq("confidence", row.before)
+      // Codex P1: en weekend-sync der kun rørte confidence_source (samme tal) skal også
+      // få skrivningen til at springe over, ellers overskrives den nyere kilde.
+      .eq("updated_at", existing?.updated_at ?? null)
       .select("id");
     if (error) throw new Error(`board_relations ${row.relation_id}: ${error.message}`);
     if (!hit?.length) { skipped += 1; continue; }
