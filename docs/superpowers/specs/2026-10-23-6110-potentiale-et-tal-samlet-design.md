@@ -2,7 +2,7 @@
 
 **Status:** design 23/10 2026 (DolmerPC-designsessionen), IKKE bygget. Ingen kode før ejer-go på hele designet (AGENTS 36).
 **Epic:** [#6110](https://github.com/NicolaiDolmer/CyclingZone/issues/6110) · **Dele:** [#3564](https://github.com/NicolaiDolmer/CyclingZone/issues/3564) progressionskæden · [#5490](https://github.com/NicolaiDolmer/CyclingZone/issues/5490) doktrin · [#6666](https://github.com/NicolaiDolmer/CyclingZone/issues/6666) akademi-prognose · [#6210](https://github.com/NicolaiDolmer/CyclingZone/issues/6210)/PR [#7075](https://github.com/NicolaiDolmer/CyclingZone/pull/7075) maks +1 pr. dato · [#7084](https://github.com/NicolaiDolmer/CyclingZone/issues/7084) holdskifte på reserve-stien · [#6461](https://github.com/NicolaiDolmer/CyclingZone/issues/6461)/PR [#7071](https://github.com/NicolaiDolmer/CyclingZone/pull/7071) Train now hele dagen · [#2798](https://github.com/NicolaiDolmer/CyclingZone/issues/2798) prisen må ikke afsløre potentialet
-**Forgængere (gælder stadig):** [spec 3/10](2026-10-03-udvikling-2-design.md) (kurve, løb, tilbagegang) · [del 2 catch-up 23/10](2026-10-23-6110-del2-catchup-design.md) (løbsudvikling, kort 1-3) · [#6461-design](2026-10-23-6461-train-now-design.md) (PR #7071) · [Train nu 29/9](2026-09-29-traen-nu-og-prognose-design.md)
+**Forgængere (gælder stadig):** [spec 3/10](2026-10-03-udvikling-2-design.md) (kurve, løb, tilbagegang) · [del 2 catch-up 23/10](2026-10-23-6110-del2-catchup-design.md) (løbsudvikling, kort 1-3) · #6461-design i [PR #7071](https://github.com/NicolaiDolmer/CyclingZone/pull/7071) (ikke merget endnu) · [Train nu 29/9](2026-09-29-traen-nu-og-prognose-design.md)
 **Tal:** privat i `balance-internals/6110/` (hard rule 17). Dette dokument er kvalitativt.
 
 ## 0. Kort fortalt
@@ -25,7 +25,7 @@ Alt bygges bag slukkede flag, i små PR'er, som PC1 kan merge løbende uden at n
 | #6110 | Sikkerheden vises som ord ved siden af tallet (A) | ejer 23/10 |
 | #6110 | Potentiale 1-6 omregnes til 1-99, rangbevarende, kun toptalent-overskuddet presses ned, fredningsgulve. Dry-run og ejer-go før apply | ejer 11/10 |
 | #6110 D1b | Potentialet sætter et blødt loft (fart og højde) | ejer 11/10 |
-| #6110 retning C | Levende talent: fast skjult grundtalent + skjult professionalisme; det reelle loft ligger i et bånd om grundtalentet og flytter sig med karrieren; låses gradvist omkring 25 | ejer 11/10 |
+| #6110 retning C | Levende talent: fast skjult grundtalent + professionalisme (afløst af S11: synlig træningsdisciplin); det reelle loft ligger i et bånd om grundtalentet og flytter sig med karrieren; låses gradvist omkring 25 | ejer 11/10 |
 | #6110 træningsscore B | Én værdi pr. dag; ungdomsfaktoren væk; mere dagsstøj, så talentet først skiller sig ud efter nogle træninger; 7-dages snit ved siden af | ejer 11/10 |
 | #6110 | Søndagens unge: intet potentiale og ingen prognose ved hentning; første skøn efter 5 træninger (samme grænse som salg), skarpere efter ca. 12, sikkert efter ca. 20 | ejer 11/10 |
 | #6110 | "Træningsscore" omdøbes til "Udviklingsscore" samme søndag som løbsudviklingen tændes | ejer 20/10 |
@@ -56,7 +56,7 @@ Alt bygges bag slukkede flag, i små PR'er, som PC1 kan merge løbende uden at n
 
 **Prisen** fremskriver med det sande potentiale (karriere-NPV og typefri v6), så markedsværdien afslører potentialet (#2798).
 
-**Baseline (prod 23/10, tal privat):** langt de fleste scoutede (hold, rytter)-par har kun ét kig på laveste niveau; kun en lille del er scoutet dybt eller flere gange. Under en tredjedel af menneskeholdene har en scout ansat. Designet skal derfor give et brugbart skøn ved første kig og lade dyb scouting være en investering.
+**Baseline:** målt read-only i prod 23/10; tal og fordelinger står kun i `balance-internals/6110/` (hard rule 17). Konsekvensen for designet: skønnet skal være brugbart ved første kig, og dyb scouting skal være en investering.
 
 ## 3. Design: skønnet
 
@@ -64,13 +64,13 @@ Alt bygges bag slukkede flag, i små PR'er, som PC1 kan merge løbende uden at n
 Det sande tal er rytterens **reelle loft i ratingens skala**: det niveau, det levende talent (grundtalent ± bånd, retning C) i dag peger på, at han kan nå. Det er samme størrelse, som D1b's bløde loft bygger på, og samme størrelse, som omregningen 1-6 → 1-99 lander i. Motoren regner på det sande loft; spilleren ser et skøn over det.
 
 ### 3.2 Hvordan skønnet trækkes
-- Skøn = sandt loft + **en fast afvigelse pr. (rytter, hold)** × **usikkerheden**.
-- Afvigelsen trækkes én gang fra et seed på (rytter, hold, salt). Den er den samme hele livet for parret og er klippet, så skønnet aldrig ryger helt ved siden af.
+- Skøn = sandt loft + **afvigelse** × **usikkerheden**.
+- Afvigelsen har to dele: en **fast del pr. (rytter, hold)** og en **del pr. vidensniveau** (seeded på rytter, hold og niveau). De blandes med en fast korrelation, så skønnet mest glider, men aldrig er et rent multiplum af samme tal. Afvigelsen er klippet, så skønnet aldrig ryger helt ved siden af.
 - **Usikkerheden** falder med viden: antal kig, scoutens niveau ved det bedste kig, og for egne ryttere antal træninger på holdet og trænerstab/facilitet (som i akademiets kendskabstrin i dag). Den når aldrig nul, så selv et sikkert skøn kan ramme lidt ved siden af (ejerkravet).
-- Fordi afvigelsen er fast og kun usikkerheden skrumper, **glider skønnet mod sandheden**, når man ved mere. Det springer ikke til et nyt tilfældigt tal. Nyt kig kan derfor aldrig gøre skønnet mindre sikkert.
+- Fordi den faste del dominerer og usikkerheden skrumper, **glider skønnet mod sandheden**, når man ved mere. Det springer ikke til et nyt tilfældigt tal. Ordet bliver aldrig mindre sikkert, og fejlen falder i forventning (ikke nødvendigvis for hver enkelt rytter).
 - To hold, der ser på samme rytter, får forskellige skøn (forskellige seeds). Det er meningen: ens viden er ens egen.
 - Skønnet vises aldrig under rytterens nuværende rating (han har allerede nået det niveau).
-- Værn mod omvendt beregning: afvigelsen afhænger ikke af niveauet, og usikkerheden er en tabel pr. vidensniveau, så to kig med forskellig scout ikke kan bruges til at regne sandheden ud. Den eksisterende inversion-harness udvides til skønnet.
+- Værn mod omvendt beregning: med kun en fast afvigelse kunne to aflæsninger på hvert sit vidensniveau løses for det sande loft (E1 = T + d·u1, E2 = T + d·u2). Delen pr. niveau gør ligningssystemet underbestemt: hver ny aflæsning bringer en ny ukendt med sig. Sammenlægning af flere aflæsninger giver kun den præcision, som den bedste viden berettiger. Harnessen (H6) måler både to-niveau-angrebet og sammenlægning på tværs af hold.
 
 ### 3.3 Hvornår skønnet opdateres
 Skønnet **gemmes** pr. (rytter, hold) og vises fra den gemte værdi. Det skrives kun ved:
@@ -103,13 +103,13 @@ Alle flader fra kortlægningen skifter fra interval til tal + ord via én ny kom
 
 ## 4. Omregningen 1-6 → 1-99 (#3564 trin 1, låst 11/10)
 - Rangbevarende omregning af `riders.potentiale` til et grundtalent 1-99; kun toptalent-overskuddet presses ned; fredningsgulve.
-- Ny skjult egenskab: professionalisme. Begge skjult med kolonne-privilegier som i dag.
+- Grundtalentet er skjult med kolonne-privilegier som i dag. Professionalisme er ikke en skjult egenskab: den er den synlige mentale evne træningsdisciplin (S11, #6190).
 - Det reelle loft (levende talent) beregnes fra grundtalent + karriere og gemmes, så motor, skøn og harness læser samme tal.
 - `hidden_potential` er ikke grundtalentet (lav sammenhæng med `potentiale` i prod) og bruges ikke som kilde.
 - Dry-run med friske tal → privat kort → ejer-go → apply (destruktivt for skalaen: ejer-gated, backup først).
 
 ## 5. Udviklingsscoren (træningsscore B + omdøbning)
-- Én værdi pr. dag af intensitet, fokus-match, kondition, træner, facilitet og talent (grundtalent + professionalisme). Ungdomsfaktoren fjernes. Dagsstøjen hæves, så talentet først skiller sig ud efter nogle træninger. 7-dages snit vises ved siden af.
+- Én værdi pr. dag af intensitet, fokus-match, kondition, træner, facilitet og talent (grundtalent) og træningsdisciplin (S11). Ungdomsfaktoren fjernes. Dagsstøjen hæves, så talentet først skiller sig ud efter nogle træninger. 7-dages snit vises ved siden af.
 - **Sidekanalen lukkes:** talent vises aldrig som eget bidrag i "hvad trak op/ned". Det indgår i støjen og i totalen.
 - Løbsdage får et tal på samme skala efter del 2 (kort 1-3 i del 2-spec'en afgøres der).
 - Navnet skifter til Udviklingsscore samme søndag (alle sprog, help.json, patch note).
@@ -152,14 +152,14 @@ Konsekvenser for designet:
 Tal og målbånd: privat i `balance-internals/6110/`.
 
 ## 10. Rækkefølge og migrationsbehov
-Se byggeplanen (§11). Migrationer er additive og idempotente: tabel til gemte skøn, kolonner til grundtalent og professionalisme (skjulte), rytter-nøglet gevinstkvittering (#7084). Apply efter merge via auto-migrate (#2642). Omregningen af eksisterende ryttere (§4) og backfill af skøn er data-skridt med dry-run og ejer-go.
+Se byggeplanen (§11). Migrationer er additive og idempotente: tabel til gemte skøn, kolonne til grundtalent (skjult), træningsdisciplin som mental evne (synlig, S11), rytter-nøglet gevinstkvittering (#7084). Apply efter merge via auto-migrate (#2642). Omregningen af eksisterende ryttere (§4) og backfill af skøn er data-skridt med dry-run og ejer-go.
 
 ## 11. Byggeplan (små PR'er, alle bag slukket flag)
 
 | # | PR | Afhænger af | Rører spillet før tænding? |
 |---|---|---|---|
 | 1 | Harness: skøn (H1-H6) + omregning dry-run, kun SELECT, output privat | - | Nej |
-| 2 | Migration: skjult grundtalent + professionalisme, tabel til gemte skøn, kolonne-privilegier | - | Nej (additiv) |
+| 2 | Migration: skjult grundtalent, tabel til gemte skøn, kolonne-privilegier (træningsdisciplin følger i trin 19) | - | Nej (additiv) |
 | 3 | `potentialEstimate`-lib: seed, usikkerhed, ord, monotoni + tests | 2 | Nej |
 | 4 | Én prognose-kilde: estimates, scouting-rapport, akademi og Udvikling-fanen læser samme lib (bag flag) | 3 | Nej |
 | 5 | Søndagsjob + skrivning ved nyt kig og holdskifte | 3 | Nej |
@@ -221,7 +221,7 @@ Gennemgangen dækkede GDD, PROGRESSION_RULES, TRAINING_RULES, YOUTH_RULES, specs
 | 19 | Træningsdisciplin som mental evne (S11, #6190) | ja |
 | 20 | Tæller for 5 afregnede datoer (S18) | ja |
 | 21 | Holdarbejde i motoren (#5348): eget design først, ikke nu | `teamwork_in_engine` |
-| 22 | SSOT og GDD: D-061 og frem for 11/10, 20/10 og 23/10; PROGRESSION_RULES §0/§3/§4/§11, TRAINING_RULES §13, YOUTH_RULES §2.5/§7 rettes | docs |
+| 22 | GDD D-061 og frem samt den fulde omskrivning af PROGRESSION_RULES §0/§1/§4, TRAINING_RULES §13 og YOUTH_RULES §2.5. De modsatrettede regler (1-99 overhalet/må ikke bygges) er allerede rettet i denne PR | docs |
 
 ### 13.2 Anden runde 23/10: S22-S27
 
