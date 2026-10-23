@@ -1876,7 +1876,7 @@
       "meta": "{seasons, plural, one {plan van 1 seizoen} other {plan van # seizoenen}}",
       "seasonLabel": "Seizoen {season}",
       "currentSeasonLabel": "Seizoen {season} · Je bent hier",
-      "countsAt": "Haal hem uiterlijk aan het eind van seizoen {season}. Haal je hem eerder, dan telt hij meteen.",
+      "countsAt": "Haal hem uiterlijk aan het eind van seizoen {season}. Haal je hem eerder, dan telt hij aan het eind van dat seizoen.",
       "milestoneProgress": "{current} van {target}",
       "helpLink": "Hoe mijlpalen meetellen",
       "milestoneAchieved": "Gehaald",

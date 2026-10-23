@@ -588,7 +588,7 @@ export async function processBoardWeekendFinalization({
           currentSponsorIncome: team.sponsor_income,
           recentSnapshots,
           goalContext,
-          seasonNumber: season?.number ?? null,
+          seasonNumber: /** @type {{ number?: number | null } | null} */ (season)?.number ?? null,
         });
 
         // Anker: sæson-start-satisfaction. Selv-healende ved sæson-skift —

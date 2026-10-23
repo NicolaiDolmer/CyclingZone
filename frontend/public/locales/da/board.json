@@ -1876,7 +1876,7 @@
       "meta": "{seasons, plural, one {Plan over 1 sæson} other {Plan over # sæsoner}}",
       "seasonLabel": "Sæson {season}",
       "currentSeasonLabel": "Sæson {season} · Du er her",
-      "countsAt": "Nå det senest ved udgangen af sæson {season}. Når du det før, tæller det med det samme.",
+      "countsAt": "Nå det senest ved udgangen af sæson {season}. Når du det før, tæller det ved udgangen af den sæson.",
       "milestoneProgress": "{current} af {target}",
       "helpLink": "Sådan tæller milepæle",
       "milestoneAchieved": "Nået",

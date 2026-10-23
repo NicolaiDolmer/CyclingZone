@@ -171,7 +171,7 @@
       },
       "visionMilestones": {
         "title": "When vision milestones count",
-        "text": "Each milestone in your club vision has a target season, and the milestone itself says when it counts, for example \"Reach it by the end of season 5. If you get there earlier, it counts straight away.\". The board checks milestones at each season end, not along the way, so a long-term goal can look untouched for most of a season without being behind. You can meet a milestone early: if you have already reached it at the end of an earlier season, it counts right there, the board marks it achieved and proposes a new milestone at the next annual meeting. A milestone you have not reached by the end of its target season is missed. That costs confidence once, and the rest of the vision carries on unchanged."
+        "text": "Each milestone in your club vision has a target season, and the milestone itself says when it counts, for example \"Reach it by the end of season 5. If you get there earlier, it counts at the end of that season.\". The board checks milestones at each season end, not along the way, so a long-term goal can look untouched for most of a season without being behind. You can meet a milestone early: if you have already reached it at the end of an earlier season, it counts right there, the board marks it achieved and proposes a new milestone at the next annual meeting. A milestone you have not reached by the end of its target season is missed. That costs confidence once, and the rest of the vision carries on unchanged."
       }
     },
     "auctions": {

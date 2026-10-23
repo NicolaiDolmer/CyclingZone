@@ -1876,7 +1876,7 @@
       "meta": "{seasons, plural, one {plan d'# saison} other {plan de # saisons}}",
       "seasonLabel": "Saison {season}",
       "currentSeasonLabel": "Saison {season} · Tu es ici",
-      "countsAt": "Atteins-la au plus tard à la fin de la saison {season}. Si tu y arrives plus tôt, elle compte tout de suite.",
+      "countsAt": "Atteins-la au plus tard à la fin de la saison {season}. Si tu y arrives plus tôt, elle compte à la fin de cette saison.",
       "milestoneProgress": "{current} sur {target}",
       "helpLink": "Comment comptent les étapes",
       "milestoneAchieved": "Atteinte",
