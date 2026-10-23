@@ -95,12 +95,13 @@ const FLAT: RouteV2 = {
   weather: { kind: "sun", wind_exposure: 0 }, waypoints: [],
 };
 
-// Hold A: kaptajnen (foerer). 12 staerke klassementsryttere paa hver sit hold, en svag
+const STRONG = Math.max(12, P6.contenderAbilityRank + 2);
+// Hold A: kaptajnen (foerer). flere staerke klassementsryttere end P6-graensen for en reel chance (paa hver sit hold), en svag
 // rytter paa hold W og 20 fyldryttere.
 const ENTRANTS: Record<string, Entrant> = {
   cap: entrant("cap", "A", 80, "captain"),
   aHelp: entrant("aHelp", "A", 55),
-  ...Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`s${i}`, entrant(`s${i}`, `S${i}`, 76 + (i % 4), "captain")])),
+  ...Object.fromEntries(Array.from({ length: STRONG }, (_, i) => [`s${i}`, entrant(`s${i}`, `S${i}`, 76 + (i % 4), "captain")])),
   w1: entrant("w1", "W", 50, "captain"),
   weak: entrant("weak", "D", 55, "hunter"),
   ...Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`f${i}`, entrant(`f${i}`, `F${i % 5}`, 45)])),
