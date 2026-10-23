@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Trans, useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useSubscription } from "../lib/useSubscription";
+import { parseProBenefit } from "../lib/pro/proAccess.ts";
+import ProBenefitsSection from "../components/pro/ProBenefitsSection.tsx";
 import { resolveApiError } from "../lib/apiError";
 import { TERMS_VERSION } from "../lib/termsVersion.js";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
@@ -54,6 +56,15 @@ export default function ProUpgradePage() {
   // et lovkrav — CTA'en er død indtil boksen er tjekket, og backenden afviser
   // uden accepten (400 terms_not_accepted).
   const [termsAccepted, setTermsAccepted] = useState(false);
+  // #2806: opsalgsfladerne linker til /pro?benefit=history|filters, så den fane
+  // spilleren kom fra står åben. Fanevalget skrives tilbage i URL'en (replace).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const benefit = parseProBenefit(searchParams.get("benefit"));
+  const setBenefit = (next) => setSearchParams((prev) => {
+    const params = new URLSearchParams(prev);
+    params.set("benefit", next);
+    return params;
+  }, { replace: true });
 
   useDocumentHead({ title: t("metaTitle") });
 
@@ -152,18 +163,9 @@ export default function ProUpgradePage() {
         />
       ) : (
         <SectionStack>
-          {seats && (
-            <Section>
-              <SectionHeader title={t("founderHeading")} />
-              <div className="font-data text-2xl text-cz-1 tabular-nums">
-                {seatsLeft > 0 ? t("founderSeatsTaken", { taken: seats.taken, cap: seats.cap }) : t("founderSeatsFull")}
-              </div>
-              {seatsLeft > 0 && (
-                <p className="mt-0.5 text-2xs text-cz-3">{t("founderSeatsRemaining", { remaining: seatsLeft })}</p>
-              )}
-              <p className="mt-3 text-sm leading-relaxed text-cz-2">{t("founderExplainer")}</p>
-            </Section>
-          )}
+          {/* #2806 (design-go 13/10): de to konkrete fordele først, så planvalg,
+              og Founder/støtte til sidst som supplement. */}
+          <ProBenefitsSection benefit={benefit} onBenefitChange={setBenefit} />
 
           {isPro ? (
             <Section>
@@ -260,6 +262,19 @@ export default function ProUpgradePage() {
               </Button>
                 </>
               )}
+            </Section>
+          )}
+
+          {seats && (
+            <Section>
+              <SectionHeader title={t("founderHeading")} />
+              <div className="font-data text-2xl text-cz-1 tabular-nums">
+                {seatsLeft > 0 ? t("founderSeatsTaken", { taken: seats.taken, cap: seats.cap }) : t("founderSeatsFull")}
+              </div>
+              {seatsLeft > 0 && (
+                <p className="mt-0.5 text-2xs text-cz-3">{t("founderSeatsRemaining", { remaining: seatsLeft })}</p>
+              )}
+              <p className="mt-3 text-sm leading-relaxed text-cz-2">{t("founderExplainer")}</p>
             </Section>
           )}
         </SectionStack>

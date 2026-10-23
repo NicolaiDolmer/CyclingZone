@@ -172,6 +172,11 @@ export type Entrant = {
   // #6156 (valgfrit): rytterens form (rider_condition.form, 0-100). Broen saetter
   // det kun under official_times_v3; udeladt = byte-identisk med foer.
   form?: number | null;
+  // #6156 (ejer 21/10, KUN s5_profiles_v2 + race_form_peaks): formtoppens tillaeg
+  // (positiv) eller dykket bagefter (negativ) i formpoint paa etapedagen, som et EGET
+  // led oven i formen. Klemmes IKKE af formens 0-100-skala, saa en rytter med form 100
+  // ogsaa faar sin top. Udeladt = ingen top/dyk paa dagen (byte-identisk med foer).
+  form_peak_points?: number | null;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
@@ -235,9 +240,17 @@ export type GcStanding = { rider_id: string; rank: number; gap_seconds: number }
  *   "one_day"     = endagsloeb: ingen GC, ingen GC-reaktion
  *   "missing"     = et etapeloeb uden brugbart klassement (diagnosticeres)
  */
+/**
+ * #6818 (ejer 21/10, KUN s5_profiles_v2): én etape i loebet til den loebsspecifikke
+ * klassementsevne (gcThreat.raceGcAbilityModel): profiltypen og etapens egne krav.
+ */
+export type GcStageDemand = { stage_number: number; profile_type: string; demand: Readonly<Partial<Record<AbilityKey, number>>> };
+
 export type GcContext =
   // #5978 (ADDITIVT, valgfrit, KUN orders_gc_v3): stages_remaining = etaper tilbage efter i dag.
-  | { status: "standings"; stage_number: number; leader_id: string | null; standings: readonly GcStanding[]; stages_remaining?: number }
+  // #6818 (ADDITIVT, valgfrit, KUN s5_profiles_v2): race_gc_stages = loebets etaper (alle) til den
+  // loebsspecifikke klassementsevne. Udeladt = den faste evne (klatring/tempo/enkeltstart) som foer.
+  | { status: "standings"; stage_number: number; leader_id: string | null; standings: readonly GcStanding[]; stages_remaining?: number; race_gc_stages?: readonly GcStageDemand[] }
   | { status: "first_stage"; stage_number: number }
   | { status: "one_day" }
   | { status: "missing"; stage_number?: number };

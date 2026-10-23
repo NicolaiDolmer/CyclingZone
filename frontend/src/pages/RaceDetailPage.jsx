@@ -7,6 +7,7 @@ import TeamLink from "../components/TeamLink";
 import CareerFirstMomentRow from "../components/CareerFirstMomentRow";
 import RaceOverviewTab from "../components/race/RaceOverviewTab.jsx";
 import RaceTeamTab from "../components/race/RaceTeamTab.jsx";
+import RacePausedBanner from "../components/race/RacePausedBanner.tsx"; // #6970
 import RaceTacticsTab from "../components/race/RaceTacticsTab.jsx";
 import StageStripe from "../components/race/StageStripe.jsx";
 import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
@@ -83,6 +84,7 @@ import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.js
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
 import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
 import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
+import { ownRiderIdsForOneDay } from "../lib/oneDayTimeline.ts"; // #6512
 import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
@@ -379,7 +381,7 @@ export default function RaceDetailPage() {
   const { raceId } = useParams();
   const location = useLocation();
 
-  const [race, setRace] = useState(null);
+  const [race, setRace] = useState(/** @type {any} */ (null)); // Supabase-raekken; any saa nye race.*-brug ikke regner typen som null
   const [allResults, setResults] = useState([]);
   // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i løb afviklet før reglen.
   const results = useMemo(() => withoutHiddenYouthClassification(allResults, race?.squad), [allResults, race?.squad]);
@@ -792,6 +794,7 @@ export default function RaceDetailPage() {
   }, [oneDayTimeline, results]);
   // #6400: startlisten (som historyForStage) til filmens regroup-filter.
   const oneDayStartlist = useMemo(() => results.filter(row => row.result_type === "gc" || row.result_type === "stage").map(row => row.rider_id).filter(Boolean), [results]);
+  const oneDayOwnRiderIds = useMemo(() => ownRiderIdsForOneDay(results, myTeamId), [results, myTeamId]); // #6512
   const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
     row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
 
@@ -1335,6 +1338,14 @@ export default function RaceDetailPage() {
                   )}
                 </SectionStack>
                 <SectionStack>
+                  {/* #6512: endagsløb får samme "story of the stage" + løbsfilm som etapefanen (tidslinjen hentes allerede ovenfor). */}
+                  <StoryOfTheStageSection
+                    timeline={oneDayTimeline}
+                    raceId={race.id} stageNumber={1} profile={profileByStage[1]}
+                    riderNameById={riderNameById} teamNameById={teamNameById}
+                    stageLabel={race.name} startlist={oneDayStartlist}
+                    ownRiderIds={oneDayOwnRiderIds} effortByRider={undefined} onToggleFinalKm={undefined}
+                  />
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
                   <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
@@ -1415,6 +1426,8 @@ export default function RaceDetailPage() {
           <ChevronLeftIcon size={13} aria-hidden="true" />
           {backLabel}
         </Link>
+
+        {ds !== "completed" && <RacePausedBanner />}{/* #6970 */}
 
         <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">

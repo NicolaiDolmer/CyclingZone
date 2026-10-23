@@ -11,8 +11,12 @@ import {
 } from "./proAbilityHistory.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const componentSource = readFileSync(
-  join(__dirname, "..", "components", "rider", "profile", "RiderAbilityHistoryPro.jsx"), "utf8");
+// #2806: raekker/akse er flyttet til components/pro/AbilityHistoryRows.tsx (delt
+// med /pro-sidens eksempel), saa guards laeser begge filer.
+const componentSource = [
+  join(__dirname, "..", "components", "rider", "profile", "RiderAbilityHistoryPro.jsx"),
+  join(__dirname, "..", "components", "pro", "AbilityHistoryRows.tsx"),
+].map((p) => readFileSync(p, "utf8")).join("\n");
 
 // Teamwork fandtes ikke i S1-S2: de sæsoner er huller, ikke 0.
 const SEASONS = [

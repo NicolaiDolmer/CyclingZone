@@ -88,8 +88,8 @@
     "TS2739": 1
   },
   "../backend/lib/boardGoals.js": {
-    "TS18047": 13,
-    "TS2322": 11,
+    "TS18047": 9,
+    "TS2322": 4,
     "TS2339": 115,
     "TS2739": 1
   },
@@ -1213,7 +1213,6 @@
     "TS2741": 1
   },
   "src/components/rider/profile/RiderAbilityHistoryPro.jsx": {
-    "TS18047": 2,
     "TS2322": 3,
     "TS2339": 2
   },
@@ -2564,10 +2563,9 @@
     "TS2769": 1
   },
   "src/pages/RaceDetailPage.jsx": {
-    "TS18047": 31,
     "TS2322": 20,
-    "TS2339": 43,
-    "TS2345": 17,
+    "TS2339": 19,
+    "TS2345": 16,
     "TS2353": 3,
     "TS2739": 1,
     "TS2741": 12
