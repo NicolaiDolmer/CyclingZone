@@ -6542,6 +6542,10 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     if (!teamInRaceSquadPool({ team: req.team, race })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
+    // #6959 (Codex P1): frisk lås-tjek ved skrivegrænsen.
+    if ((await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
     const { error: upErr } = await supabase
       .from("race_withdrawals").upsert({ race_id: race.id, team_id: req.team.id }, { onConflict: "race_id,team_id" });
     if (upErr) return res.status(500).json({ error: upErr.message });
@@ -6584,6 +6588,10 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
       if (conflicts.length) return res.status(409).json({ error: "rejoin_rider_bound", conflicts });
     }
 
+    // #6959 (Codex P1): findRejoinConflicts laver flere opslag; genkontrollér låsen lige før sletningen.
+    if (race && (await loadLockedRaceIds({ supabase, raceIds: [race.id], now: new Date() })).has(race.id)) {
+      return res.status(409).json({ error: "selection_race_started" });
+    }
     const { error: delErr } = await supabase
       .from("race_withdrawals").delete().eq("race_id", req.params.raceId).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
@@ -6669,13 +6677,6 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       return res.status(409).json({ error: "selection_train_now_locked" });
     }
 
-    // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende for disse løb —
-    // det er en eksplicit handling der supersederer en evt. tidligere "Ryd dag/alt"
-    // for netop disse (race,team)-par. Slet en evt. clear-markering FØR skrivningen
-    // nedenfor, så entry-generator-sweepet ikke fortsat springer enheden over.
-    const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
-      .delete().eq("team_id", req.team.id).in("race_id", target.map((r) => r.id));
-    if (clearCleanupErr) throw new Error(`race_entry_clears cleanup: ${clearCleanupErr.message}`);
 
     // #2579: delt eligibility-filter (i stedet for den tidligere duplikerede
     // akademi/pensioneret-kæde) — udelukker OGSÅ en rytter der er solgt men
@@ -6753,7 +6754,18 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     // #6132: afvises et insert, genskabes holdets hele eksisterende måludtagelse.
     const { regenerated } = await writeRegeneratedLineupsPreservingTarget({
       supabase, teamId: req.team.id, target, picksByRace, existingEntries: allEntries,
-      write: async (args) => await writeRegeneratedLineups({ ...args, clock: () => new Date() }),
+      write: async (args) => await writeRegeneratedLineups({
+        ...args, clock: () => new Date(),
+        // #2599: spilleren har selv bedt om auto-fill/udfyld-manglende — det supersederer en
+        // tidligere "Ryd dag/alt" for netop disse (race,team)-par, så clear-markeringen slettes
+        // FØR skrivningen. #6959 (Codex P1): kun for løb der faktisk skrives efter den friske
+        // lås-kontrol; et løb der startede under beregningen beholder sin markering.
+        beforeWrite: async (raceIds) => {
+          const { error: clearCleanupErr } = await supabase.from("race_entry_clears")
+            .delete().eq("team_id", req.team.id).in("race_id", raceIds);
+          if (clearCleanupErr) throw new Error(`race_entry_clears cleanup: ${clearCleanupErr.message}`);
+        },
+      }),
     });
     invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, regenerated, skipped, mode });

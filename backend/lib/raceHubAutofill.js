@@ -91,10 +91,11 @@ export function withEntryRaceWindows({ windowByRace, scheduleRows = [] }) {
  *      fra begge løb pga. trin 1. Fejlen kastes derefter videre.
  *
  * @param {{ supabase, teamId: string, target: Array<object>, picksByRace: Record<string, Array<{rider_id, race_role}>>,
- *           existingEntries: Array<{race_id, rider_id, is_auto_filled, race_role}> }} args
+ *           existingEntries: Array<{race_id, rider_id, is_auto_filled, race_role}>, clock?: (() => Date) | null,
+ *           beforeWrite?: ((raceIds: string[]) => Promise<void>) | null }} args
  * @returns {Promise<{ regenerated: number, released: number }>}
  */
-export async function writeRegeneratedLineups({ supabase, teamId, target = [], picksByRace = {}, existingEntries = [], clock = null }) {
+export async function writeRegeneratedLineups({ supabase, teamId, target = [], picksByRace = {}, existingEntries = [], clock = null, beforeWrite = null }) {
   // Kun løb der faktisk skrives: frosne (#1825/#2074) og løb uden picks/kaptajn røres ikke.
   const planned = [];
   for (const race of target) {
@@ -113,6 +114,9 @@ export async function writeRegeneratedLineups({ supabase, teamId, target = [], p
     for (let i = planned.length - 1; i >= 0; i--) if (lockedNow.has(planned[i].race.id)) planned.splice(i, 1);
   }
   if (!planned.length) return { regenerated: 0, released: 0 };
+  // #6959 (Codex P1): rutens bivirkninger (fx slet race_entry_clears) kun for de loeb der
+  // faktisk skrives, efter den friske laas-kontrol.
+  if (beforeWrite) await beforeWrite(planned.map((p) => p.race.id));
 
   const plannedIds = new Set(planned.map((p) => p.race.id));
   const existingByRace = new Map();

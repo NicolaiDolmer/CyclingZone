@@ -309,3 +309,25 @@ test("#6959: writeRegeneratedLineups springer et løb over, hvis etape 1's start
   assert.deepEqual(raceIdsOf(supabase.state, "n2"), [], "S2's trup er låst og røres ikke");
   assert.deepEqual(raceIdsOf(supabase.state, "c"), ["S2"]);
 });
+
+test("#6959: beforeWrite (clear-markeringer) faar kun de loeb der skrives efter den friske laas", async () => {
+  const entries = [e("S1", "a", "captain"), e("S2", "c", "captain")];
+  const supabase = withLockTables(makeFakeSupabase({ entries, dayByRace: { S1: [1], S2: [2] } }), {
+    races: [race("S1"), race("S2")],
+    schedule: [
+      { race_id: "S1", stage_number: 1, scheduled_at: "2999-01-01T10:00:00Z" },
+      { race_id: "S2", stage_number: 1, scheduled_at: "2020-01-01T10:00:00Z" },
+    ],
+  });
+  const picksByRace = {
+    S1: [{ rider_id: "a", race_role: "captain" }],
+    S2: [{ rider_id: "c", race_role: "captain" }],
+  };
+  const seen = [];
+  await writeRegeneratedLineups({
+    supabase, teamId: "T", target: [race("S1"), race("S2")], picksByRace, existingEntries: entries,
+    clock: () => new Date("2026-10-23T00:00:00Z"),
+    beforeWrite: async (raceIds) => { seen.push(...raceIds); },
+  });
+  assert.deepEqual(seen, ["S1"], "S2 startede under beregningen og beholder sin clear-markering");
+});
