@@ -25,7 +25,7 @@ Du vil have ét sted til manager, ét til hold og ét til almindelige indstillin
 
 **A. Tre områder: Manager, Hold, Generelt (+ Beta).** Fanerne omdøbes og sektionerne flyttes, så de matcher dit direktiv. Landevalget bor i Manager (managerens land) og Hold (holdets land).
 
-- Manager: brugernavn, e-mail og adgangskode, managernavn, managerens land, Discord, abonnement.
+- Manager: brugernavn, e-mail, "Skift adgangskode" (et link til den eksisterende `/reset-password`-flow; profilsiden har i dag ingen adgangskode-kontrol), managernavn, managerens land, Discord, abonnement.
 - Hold: holdnavn, holdets land, assistent.
 - Generelt: notifikationer, udseende og sprog, privatliv.
 - Gamle links (`?tab=account`, `?tab=notifications` og ankre som `#discord`) skal blive ved at virke.
@@ -43,10 +43,11 @@ Det er det du bad om, og det er næsten gratis at bygge nu, fordi fanerne og lin
 1. Migration (additiv, ikke destruktiv, apply efter merge jf. #2642): to kolonner på `teams`, `manager_nationality_code` og `team_nationality_code`, begge nullable og med fremmednøgle til `countries(iso2)`. Opdatér `database/schema-snapshot.json`.
 2. Backend: `/api/teams/my` (PUT) tager imod de to felter og validerer mod aktive lande. Test i `backend/`.
 3. `frontend/src/lib/settingsTabs.ts`: nye faner `manager`, `team`, `general`, `beta`; ny `SETTINGS_SECTION_TAB`; en kort tabel der oversætter gamle `?tab=`-værdier til de nye. Opdatér testen.
-4. `frontend/src/pages/ProfilePage.jsx`: flyt kortene mellem `TabPanel`s; to landevælgere (søgbar liste med `Flag`, danske og engelske landenavne via `countryUtils`). Brug kun eksisterende primitiver (`Card`, `Field`, `Tabs`).
+4. `frontend/src/pages/ProfilePage.jsx`: flyt kortene mellem `TabPanel`s; to landevælgere (søgbar liste med `Flag`, danske og engelske landenavne via `countryUtils`); et "Skift adgangskode"-link i Manager-fanen der sender en nulstillingsmail (samme kald som `LoginPage.jsx`'s `resetPasswordForEmail`) og fører til den eksisterende `ResetPasswordPage.jsx`. Ingen ny adgangskode-logik. Brug kun eksisterende primitiver (`Card`, `Field`, `Tabs`).
 5. Tekster: `frontend/public/locales/{da,en}/profile.json` (fanenavne, "Managerens land", "Holdets land").
 6. Ikke med: bestyrelsen læser landet. UI-teksten må ikke love det, før #1239 er bygget.
 7. Patch note EN + DA samt en linje i `help.json`, ved close-out.
+8. Verifikation: TIER FULL (migration + delt side): `scripts/verify-local.ps1`, backend-test af `PUT /api/teams/my` (gyldigt land gemmes, ukendt land afvises, tomt felt nulstiller), `settingsTabs`-testen (gamle `?tab=`-links lander rigtigt), hele `npm run test:e2e` og snapshots i alle tre Playwright-projekter. **Ejeren ser på preview (Android):** de tre faner, at landevalget gemmes og vises med flag, at "Skift adgangskode" sender mailen, og at et gammelt link som `/profile?tab=notifications` stadig åbner det rigtige sted.
 
 Berørte filer: én migrationsfil, `backend/routes/api.js`, `settingsTabs.ts` (+ test), `ProfilePage.jsx`, to `profile.json`, schema-snapshot.
 

@@ -1,6 +1,6 @@
 # Valgkort 23/10 2026: #3984 og #4714
 
-To beslutninger med de ældste løfter. Hver har ét problem, to muligheder (A/B), en anbefaling, en mobil-mockup og en byg-plan, så den kan bygges samme dag du vælger.
+To beslutninger med de ældste løfter. Hver har ét problem, to muligheder (A/B), en anbefaling, en mobil-mockup, en byg-plan og en verifikationsplan (tier + hvad du ser på preview), så den kan bygges samme dag du vælger.
 
 | Kort | Løfte | Anbefaling | Mockup |
 |---|---|---|---|
