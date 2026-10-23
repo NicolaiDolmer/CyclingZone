@@ -134,7 +134,9 @@ B ligger tæt op ad #6984 (form/træthed 2.0), som allerede omdesigner træthed 
 - En rytter hvis løb allerede er kørt ved klikket, afregnes 5 af 5 inklusive løbsbelastningen.
 - Næste dato kan registreres, mens løbsryttere stadig er åbne (uændret adfærd).
 
-**Forudsætning for A: én fælles lås mellem klik og løbsstart.** Klikkets lås-skrivning + readiness-genindlæsning og løbsstartens autofyld (læs låse → indsæt valg) skal tage samme advisory-lås pr. (hold, dato) i databasen (eller ét atomisk claim i en RPC), så de aldrig overlapper. Test: en samtidighedstest der starter klik og autofyld for samme hold og dato og viser, at en rytter enten afregnes ved klikket og aldrig udtages, eller udtages og venter på løbet, aldrig begge. Uden låsen må A ikke bygges.
+**Forudsætning for A: én fælles lås mellem klikket og alle udtagelsesveje.** Klikkets lås-skrivning og readiness-genindlæsning skal tage samme advisory-lås pr. (hold, dato) i databasen som alle veje, der skriver en udtagelse. Det gælder både løbsstartens autofyld (læs låse → indsæt valg) og managerens egne gemninger. De manuelle gemninger er `PUT /api/races/:raceId/selection` og bulk via `replace_race_selection` (`raceSelection.js` + `database/2026-09-23-5246-late-fill-log.sql`). I dag tager RPC'en kun holdets egen advisory-lås og læser ikke `training_train_now_locks`. Alternativet er ét atomisk claim i RPC'erne, der afviser en rytter med en Train now-lås på datoen. Så kan en gemning, der passerede `prepareSelectionChange` før klikket, aldrig indsætte en rytter, hvis tilstand allerede er afregnet.
+
+Test: en samtidighedstest for hver udtagelsesvej (autofyld, enkelt-gemning og bulk) mod klikket for samme hold og dato. Den skal vise, at en rytter enten afregnes ved klikket og aldrig udtages, eller udtages og venter på løbet, aldrig begge. Uden låsen må A ikke bygges.
 
 **Verifikations-tier (A):** TIER FULL (træningsmotoren og en delt RPC-sti): `scripts/verify-local.ps1`, hele backend `node --test` på trænings-filerne, frontend lint + `node --test` + build for knap- og hjælpeteksten, og PG17-målingen ovenfor før/efter.
 
