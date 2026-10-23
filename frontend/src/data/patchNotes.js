@@ -193,6 +193,125 @@ export const PATCHES = [
         "refs": [
           2806
         ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Lineup and tactics lock together",
+          "body": "Your lineup and your tactics for a race now lock at the same moment, when the race starts, also during a pause."
+        },
+        "da": {
+          "title": "Trup og taktik låser samtidig",
+          "body": "Din trup og din taktik til et løb låser nu på samme tidspunkt, når løbet starter, også i en pause."
+        },
+        "refs": [
+          6959
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Races",
+        "en": {
+          "title": "Favourites follow the stage profile",
+          "body": "On the new stage page, the favourites are picked by the stage: sprinters on flat stages, climbers and GC riders in the mountains."
+        },
+        "da": {
+          "title": "Favoritter følger etapens profil",
+          "body": "På den nye etapeside vælges favoritterne efter etapen: sprintere på flade etaper, klatrere og klassementsryttere i bjergene."
+        },
+        "refs": [
+          6939
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Filter by contract expiry",
+          "body": "The rider list can now show riders whose contract runs out in a given season, or riders without a contract."
+        },
+        "da": {
+          "title": "Filtrér efter kontraktudløb",
+          "body": "Rytterlisten kan nu vise ryttere, hvis kontrakt udløber i en bestemt sæson, eller ryttere uden kontrakt."
+        },
+        "refs": [
+          6967
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "The right buying price in transfer history",
+          "body": "Riders bought long ago no longer show \"Unknown\" as their buying price."
+        },
+        "da": {
+          "title": "Den rigtige købspris i transferhistorikken",
+          "body": "Ryttere, der er købt for længe siden, viser ikke længere \"Unknown\" som købspris."
+        },
+        "refs": [
+          6965
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Clearer vision milestones",
+          "body": "Each milestone is one clear sentence, and you can see how many you have reached."
+        },
+        "da": {
+          "title": "Tydeligere milepæle i visionen",
+          "body": "Hver milepæl er én klar sætning, og du kan se, hvor mange du har nået."
+        },
+        "refs": [
+          6991
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "The U25 goal counts your youngest riders",
+          "body": "Riders under 23 now count towards the board's U25 goal."
+        },
+        "da": {
+          "title": "U25-målet tæller dine yngste ryttere",
+          "body": "Ryttere under 23 tæller nu med i bestyrelsens U25-mål."
+        },
+        "refs": [
+          6990
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Club",
+        "en": {
+          "title": "A candidate on your facility's tier",
+          "body": "When you hire staff, at least one candidate per role is now on your facility's tier."
+        },
+        "da": {
+          "title": "En kandidat på facilitetens niveau",
+          "body": "Når du ansætter personale, er mindst én kandidat pr. rolle nu på facilitetens niveau."
+        },
+        "refs": [
+          6974
+        ]
       }
     ]
   },
