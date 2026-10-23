@@ -97,3 +97,7 @@ test('Exit-Queue lukker et aabent tog med fuld deploy-verifikation (Codex P1 #71
   assert.match(source, /function Exit-Queue\(\[int\]\$Code\) \{[\s\S]*?Close-OpenTrain[\s\S]*?exit \$Code/);
   assert.doesNotMatch(source, /Deploy-verifikation er IKKE ventet/);
 });
+
+test('et aabent tog lukkes foer ventetiden paa en udskudt PR (Codex P1 #7104)', () => {
+  assert.match(source, /if \(\$script:batchMerged\.Count -gt 0\) \{ Close-OpenTrain \}\n\s*\$fresh = Wait-PrGreen \$n \$WaitPendingMinutes/);
+});

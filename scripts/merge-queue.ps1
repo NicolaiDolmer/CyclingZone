@@ -927,6 +927,9 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
       $plan += $entry
       continue
     }
+    # Codex P1 #7104: et aabent tog lukkes (CI + deploy) foer der ventes paa en udskudt PR,
+    # saa en ny merge aldrig lander oven paa en uverificeret eller roed main.
+    if ($script:batchMerged.Count -gt 0) { Close-OpenTrain }
     $fresh = Wait-PrGreen $n $WaitPendingMinutes
     if ($fresh.checksExit -ne 0) {
       Write-Host "SKIP: PR #$n er ikke groen efter $WaitPendingMinutes min ($($fresh.checksSummary)). Springes over; koeen fortsaetter." -ForegroundColor Red
