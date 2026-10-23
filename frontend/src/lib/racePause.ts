@@ -40,15 +40,30 @@ export function isRacePauseActive(pause: RacePause | null, nowMs: number): pause
 
 interface StageCardLike {
   state?: string;
+  stageNumber?: number;
+  stagesCompleted?: number;
 }
 
-/** Dashboardets "Today's stages": skjul kommende kort (gammel starttid) mens pausen staar. */
+function isUnrunStage(c: StageCardLike): boolean {
+  if (c.state === "upcoming") return true;
+  if (c.state !== "live") return false;
+  const { stageNumber, stagesCompleted } = c;
+  return typeof stageNumber === "number" && typeof stagesCompleted === "number"
+    ? stagesCompleted < stageNumber
+    : false;
+}
+
+/**
+ * Dashboardets "Today's stages": skjul kort for etaper der IKKE er kørt (kommende, og
+ * forfaldne uden resultat som Race Centre ellers viser som LIVE) mens pausen staar.
+ * Kørte etaper (afspilning/resultat) bevares.
+ */
 export function withoutPausedUpcoming<T extends { cards?: StageCardLike[] }>(
   stages: T,
   paused: boolean,
 ): T {
   if (!paused || !stages || !Array.isArray(stages.cards)) return stages;
-  return { ...stages, cards: stages.cards.filter((c) => c.state !== "upcoming") };
+  return { ...stages, cards: stages.cards.filter((c) => !isUnrunStage(c)) };
 }
 
 /** Henter pausen. Dynamisk import af supabase (som lib/opsNotices.js) saa filen kan testes uden loader. */
