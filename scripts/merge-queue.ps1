@@ -951,8 +951,10 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
   # ikke blot Railways watch patterns. Daekningen sammenlignes derfor med touchesBackend.
   # diff. Daekker denne PR ikke togets samlede deploy-maal, lukkes toget foerst. En solo-PR
   # (migration/motor) lukker ogsaa et aabent tog foer den merges, saa den altid koerer alene.
+  # Codex P1 #7104: kravene (hvad toget skal verificere) samler plan + frisk; daekningen
+  # (hvad SIDSTE merge-SHA faar verificeret) maa kun bygge paa den friske diff.
   $entryNeedsRailway = [bool]($entry.needRailway -or $fresh.needRailway)
-  $coversTrain = ((-not $script:batchVercel) -or $entryVercel) -and ((-not $script:trainNeedsRailway) -or $entryNeedsRailway)
+  $coversTrain = ((-not $script:batchVercel) -or [bool]$fresh.touchesVercel) -and ((-not $script:trainNeedsRailway) -or [bool]$fresh.needRailway)
   if (-not $DryRun -and $script:batchMerged.Count -gt 0 -and ($entrySolo -or -not $coversTrain)) {
     Write-Host "  PR #$n $(if ($entrySolo) { 'koerer alene (migration/motor)' } else { 'daekker ikke togets deploy-maal' }): lukker det aabne tog foerst." -ForegroundColor DarkYellow
     Close-OpenTrain
