@@ -1,5 +1,9 @@
 # Race-motorens regler — SSOT
 
+## Intet ungdomsklassement i U23- og juniorløb ([#7031](https://github.com/NicolaiDolmer/CyclingZone/issues/7031), ejer 21/10)
+
+Resultatkontrakten for et løb med truppen `u23` eller `junior`: ingen `young`- eller `young_day`-rækker (ungdomsklassement og daglig ungdomstrøje). Alle øvrige rækker (etape, GC, point, bjerg, hold og deres dag-typer) er uændrede. Gælder alle revisioner fra deployet og begge stier (hele løbet og etape for etape); seniorløb skriver stadig ungdomsklassementet for ryttere med `is_u25`. Kode: `raceRunner.youthClassificationRanking`. Test: `raceRunner.test.js` (#7031). Visning og ældre data: `YOUTH_RULES.md` §2.3.
+
 ## Jagt og hændelsesbaserede markeringer (#5951/#5953/#5954, build-go 30/9)
 
 Denne rettelse er bygget til review, ikke meldt live. Den fysisk nærmeste relevante gruppe bag et udbrud ejer jagten. Aktiv indhentning flytter jagtgruppen frem, aldrig udbryderne baglæns. Efter indhentning følger de fangede ryttere samme gruppes videre fremdrift; én gruppe betaler sit faktiske segmentarbejde én gang, også med flere mål. Gruppereferencen normaliseres uden at ændre deres indbyrdes afstand. Almindelig terræn-/energiselektion kan senere sætte ryttere af.
