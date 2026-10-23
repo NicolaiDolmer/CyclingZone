@@ -1890,7 +1890,8 @@
         "promotionPush": "Promotieronde",
         "monumentPodium": "Monument-podium",
         "clubRankingTop30": "Top 30 van de clubranglijst"
-      }
+      },
+      "progress": "{done} van {total} mijlpalen gehaald"
     },
     "board": {
       "cardTitle": "Het bestuur",
