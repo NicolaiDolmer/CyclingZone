@@ -20,7 +20,7 @@ import { applyRaceResultsBatchAtomic as applyRaceResultsBatchAtomicDefault } fro
 import { clearRaceResultsSnapshots } from "./raceResultsSnapshotCache.js";
 import { assertValidEntrantRows } from "./raceResultEntrantKey.js";
 import { captureException } from "./sentry.js";
-import { isSeniorSquadRow } from "./squads.js";
+import { isSeniorSquadRow, isYouthSquad } from "./squads.js";
 
 // #5645 (Y4, spec 2026-09-15 §5.4 + YOUTH_RULES §2.3): ungdomsløb (races.squad =
 // u23/junior) udbetaler INGEN præmiepenge i v1 — ingen ny guldkilde uden økonomi-sim.
@@ -273,7 +273,9 @@ export async function rederiveSeasonRacePoints({
 
     for (const row of results || []) {
       const mountainRow = row.result_type === "mountain" || row.result_type === "mountain_day";
-      const pts = mountainRow && !komScored(row) ? 0 : lookup[`${row.result_type}__${row.rank}`] || 0;
+      // #7031: ungdomsklassementet findes ikke i U23-/juniorløb; ældre rækker giver 0 point.
+      const hiddenYouth = isYouthSquad(race.squad) && (row.result_type === "young" || row.result_type === "young_day");
+      const pts = hiddenYouth || (mountainRow && !komScored(row)) ? 0 : lookup[`${row.result_type}__${row.rank}`] || 0;
       const prize = prizeMoneyForPoints(pts, race);
       // Skip rækker der allerede matcher → undgå unødige writes.
       if (row.points_earned === pts && row.prize_money === prize) continue;
