@@ -64,13 +64,17 @@ Alt bygges bag slukkede flag, i små PR'er, som PC1 kan merge løbende uden at n
 Det sande tal er rytterens **reelle loft i ratingens skala**: det niveau, det levende talent (grundtalent ± bånd, retning C) i dag peger på, at han kan nå. Det er samme størrelse, som D1b's bløde loft bygger på, og samme størrelse, som omregningen 1-6 → 1-99 lander i. Motoren regner på det sande loft; spilleren ser et skøn over det.
 
 ### 3.2 Hvordan skønnet trækkes
-- Skøn = sandt loft + **afvigelse** × **usikkerheden**.
-- Afvigelsen har to dele: en **fast del pr. (rytter, hold)** og en **del pr. vidensniveau** (seeded på rytter, hold og niveau). De blandes med en fast korrelation, så skønnet mest glider, men aldrig er et rent multiplum af samme tal. Afvigelsen er klippet, så skønnet aldrig ryger helt ved siden af.
+- Skønnet er det sande loft plus en afvigelse, der bliver mindre, jo mere holdet ved.
+- Afvigelsen har tre seeded dele (ejer-valg 23/10 om deling mellem hold):
+  - en **fælles del pr. rytter**, ens for alle hold. Alle scouts tager lidt fejl af ham på samme måde, fordi hans ry deles. Derfor hjælper det kun lidt at samle flere holds skøn.
+  - en **fast del pr. (rytter, hold)**, så to hold ikke ser præcis det samme tal.
+  - en **del pr. vidensniveau**, så aflæsninger på flere niveauer ikke kan bruges til at regne sandheden ud.
+- Afvigelsen er klippet, så skønnet aldrig ryger helt ved siden af. Konstruktion, vægte og grænser står kun i `balance-internals/6110/` (hard rule 17).
 - **Usikkerheden** falder med viden: antal kig, scoutens niveau ved det bedste kig, og for egne ryttere antal træninger på holdet og trænerstab/facilitet (som i akademiets kendskabstrin i dag). Den når aldrig nul, så selv et sikkert skøn kan ramme lidt ved siden af (ejerkravet).
-- Fordi den faste del dominerer og usikkerheden skrumper, **glider skønnet mod sandheden**, når man ved mere. Det springer ikke til et nyt tilfældigt tal. Ordet bliver aldrig mindre sikkert, og fejlen falder i forventning (ikke nødvendigvis for hver enkelt rytter).
-- To hold, der ser på samme rytter, får forskellige skøn (forskellige seeds). Det er meningen: ens viden er ens egen.
+- Fordi de faste dele dominerer og usikkerheden skrumper, **glider skønnet mod sandheden**, når man ved mere. Det springer ikke til et nyt tilfældigt tal. Ordet bliver aldrig mindre sikkert, og fejlen falder i forventning (ikke nødvendigvis for hver enkelt rytter).
+- To hold, der ser på samme rytter, får forskellige, men beslægtede skøn. Det er meningen: ens viden er ens egen, men ryet er fælles.
 - Skønnet vises aldrig under rytterens nuværende rating (han har allerede nået det niveau).
-- Værn mod omvendt beregning: med kun en fast afvigelse kunne to aflæsninger på hvert sit vidensniveau løses for det sande loft (E1 = T + d·u1, E2 = T + d·u2). Delen pr. niveau gør ligningssystemet underbestemt: hver ny aflæsning bringer en ny ukendt med sig. Sammenlægning af flere aflæsninger giver kun den præcision, som den bedste viden berettiger. Harnessen (H6) måler både to-niveau-angrebet og sammenlægning på tværs af hold.
+- Værn mod omvendt beregning: hverken aflæsninger på flere vidensniveauer eller sammenlægning på tværs af hold må give væsentligt mere præcision end den bedste viden, de bygger på. Harnessen (H6) måler begge angreb mod en privat grænse.
 
 ### 3.3 Hvornår skønnet opdateres
 Skønnet **gemmes** pr. (rytter, hold) og vises fra den gemte værdi. Det skrives kun ved:
@@ -89,7 +93,8 @@ Ellers står tallet stille. **Teknisk valg: gemt skøn** frem for live-beregning
 ### 3.5 Doktrinen #5490
 Doktrinen siger: det spilleren ser, er det spillet regner på. Potentialet er den **ene bevidste undtagelse**, fordi ejeren har besluttet, at det skal være et skøn (23/10). Undtagelsen afgrænses:
 - Skønnet er en **visning af holdets viden**, ikke en værdi, motoren bruger. Motoren regner på det sande loft.
-- Ingen anden mekanik må regne på det sande loft på en måde, spilleren kan aflæse: ikke prisen (§6), ikke sortering, ikke filtre, ikke Udviklingsscorens bidrag (§5), ikke API-svar til andre hold.
+- Ingen anden mekanik må regne på det sande loft på en måde, spilleren kan aflæse: ikke sortering, ikke filtre, ikke Udviklingsscorens viste felter (§5), ikke API-svar til andre hold.
+- **Midlertidig, afgrænset undtagelse: prisen under #2798-overgangen (§6).** Indtil potentialet er helt ude af værdien, må værdien bære en rest af potentialet. Den er afgrænset af gate H4b (aldrig mere præcis end et skøn efter ét kig med standardscout) og aftager til nul. Når overgangen er slut, gælder doktrinen også fuldt for prisen.
 - Undtagelsen skrives ind i GDD ved siden af doktrinen, når designet godkendes.
 
 ### 3.6 Fladerne (mockups: [`docs/design/mockups-6110-potentiale-2026-10-23/foer-efter.png`](../../design/mockups-6110-potentiale-2026-10-23/foer-efter.png))
@@ -148,7 +153,7 @@ Konsekvenser for designet:
 | H4 Ingen lækage | Sortering, filtre, API-svar til andre hold og Udviklingsscorens viste felter indeholder hverken sandt loft eller afvigelse |
 | H4b Afgrænset pris-lækage | Under #2798-overgangen må værdien ikke afsløre potentialet mere præcist end et skøn efter ét kig med standardscout |
 | H5 Konsistens | Alle flader viser samme tal for samme (rytter, hold) samme dag |
-| H6 Inversion | To aflæsninger på hvert sit vidensniveau og sammenlægning på tværs af hold er ikke bedre end det bedste enkelt-skøn, de bygger på |
+| H6 Inversion | Aflæsninger på flere vidensniveauer og sammenlægning på tværs af hold forbedrer højst marginalt i forhold til det bedste enkelt-skøn, de bygger på (grænse privat) |
 | H6b Scorehistorik | Talentet udledt af en egen rytters Udviklingsscore-historik er ikke mere præcist end holdets eget skøn efter samme antal afregnede datoer |
 | Del 2 G1-G8 | Som i del 2-spec'en |
 
