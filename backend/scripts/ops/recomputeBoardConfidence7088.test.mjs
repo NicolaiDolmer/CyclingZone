@@ -46,6 +46,35 @@ test("#7088 replay: dom = anker + 1yr-delta, milepæle med ægte belønning, akt
   assert.equal(row.active_delta, 6);
   assert.equal(row.after, afterS3 + 6);
   assert.ok(row.flags.includes("active_delta_from_plan"));
+  assert.equal(row.exact, false, "planens bevægelse er et skøn, ikke eksakt");
+  assert.equal(row.needs_write, true);
+});
+
+test("#7088 replay: planens anker på 100 → forrige sæsons snapshot-delta kan være klampet", () => {
+  const row = replayTeamConfidence({
+    relation: { team_id: "t", confidence: 100, confidence_source: { season_anchor: { season_id: S4, confidence: 100 }, season_delta: 3 } },
+    activeSeason,
+    seasonNumberById,
+    firstEvent: { season_id: S3, satisfaction_before: 60 },
+    verdictEvents: [{ season_id: S3, reason_category: "season_end", satisfaction_before: 100, satisfaction_after: 100 }],
+    oneYearDeltaBySeasonNumber: new Map([[3, 5]]),
+    oneYearBoard: { satisfaction: 100, season_start_satisfaction: 100, season_start_anchor_season_id: S4 },
+  });
+  assert.ok(row.flags.includes("s3_delta_maybe_clipped"));
+  assert.equal(row.exact, false);
+  assert.equal(row.after, 68);
+});
+
+test("#7088 replay: allerede korrekt gemt anker og tal → intet at skrive", () => {
+  const row = replayTeamConfidence({
+    relation: { team_id: "t", confidence: 55, confidence_source: { season_anchor: { season_id: S4, confidence: 50 }, season_delta: 5 } },
+    activeSeason,
+    seasonNumberById,
+    firstEvent: { season_id: S4, satisfaction_before: 50 },
+  });
+  assert.equal(row.exact, true);
+  assert.equal(row.after, 55);
+  assert.equal(row.needs_write, false);
 });
 
 test("#7088 replay: umættet seneste løbs-kvittering giver den eksakte aktive delta", () => {
@@ -110,7 +139,8 @@ test("#7088 buildCorrectedSource: motoren læser det nye anker for den aktive s�
 });
 
 test("#7088 parseArgs: --apply uden --owner-go opdages", () => {
-  assert.deepEqual(parseArgs(["--apply"]), { apply: true, ownerGo: false, json: null, backupDir: null });
+  assert.deepEqual(parseArgs(["--apply"]), { apply: true, ownerGo: false, allowApprox: false, json: null, backupDir: null });
+  assert.equal(parseArgs(["--allow-approx"]).allowApprox, true);
   assert.equal(parseArgs(["--apply", "--owner-go", "--json=x.json"]).json, "x.json");
 });
 
@@ -144,9 +174,13 @@ test("#7088 applyPlan: backup FØR skrivning, optimistisk vagt, kvittering pr. f
     },
   };
   const rows = [
-    { relation_id: "r1", team_id: "t1", status: "replayed", before: 100, after: 60, anchor: 55, active_delta: 5, flags: [] },
-    { relation_id: "r2", team_id: "t2", status: "replayed", before: 0, after: 40, anchor: 40, active_delta: 0, flags: [] },
-    { relation_id: "r3", team_id: "t3", status: "replayed", before: 50, after: 50, anchor: 50, active_delta: 0, flags: [] },
+    { relation_id: "r1", team_id: "t1", status: "replayed", exact: true, needs_write: true, before: 100, after: 60, anchor: 55, active_delta: 5, flags: [] },
+    { relation_id: "r2", team_id: "t2", status: "replayed", exact: true, needs_write: true, before: 0, after: 40, anchor: 40, active_delta: 0, flags: [] },
+    { relation_id: "r3", team_id: "t3", status: "replayed", exact: true, needs_write: false, before: 50, after: 50, anchor: 50, active_delta: 0, flags: [] },
+    // Uændret tal, men ankeret skal rettes → skrives, ingen kvittering.
+    { relation_id: "r4", team_id: "t4", status: "replayed", exact: true, needs_write: true, before: 100, after: 100, anchor: 80, active_delta: 20, flags: [] },
+    // Tilnærmelse → holdes tilbage uden --allow-approx.
+    { relation_id: "r5", team_id: "t5", status: "replayed", exact: false, needs_write: true, before: 0, after: 30, anchor: 30, active_delta: 0, flags: ["active_delta_from_plan"] },
   ];
   const data = {
     activeSeason,
@@ -163,12 +197,14 @@ test("#7088 applyPlan: backup FØR skrivning, optimistisk vagt, kvittering pr. f
     log: () => {},
   });
   assert.deepEqual(order.slice(0, 2), ["mkdir", "backup"]);
-  assert.equal(files[0].body.length, 2, "kun rækker der flytter sig tages backup af");
-  assert.equal(updates.length, 2, "uændrede rækker røres ikke");
+  assert.equal(files[0].body.length, 3, "backup af præcis de rækker der skrives");
+  assert.deepEqual(updates.map((u) => u.filters.id), ["r1", "r2", "r4"], "r3 er korrekt, r5 er en tilnærmelse");
   assert.equal(updates[0].filters.confidence, 100, "optimistisk vagt på dry-run-værdien");
-  assert.equal(result.updated, 1);
+  assert.deepEqual(updates[2].payload.confidence_source.season_anchor, { season_id: S4, confidence: 80 });
+  assert.equal(result.updated, 2);
   assert.equal(result.skipped, 1);
-  assert.equal(inserts.length, 1);
+  assert.equal(result.heldBack, 1);
+  assert.equal(inserts.length, 1, "kun r1 flyttede et tal og fik en kvittering");
   assert.equal(inserts[0].reason_category, "correction_7088");
   assert.equal(inserts[0].satisfaction_delta, -40);
   assert.equal(inserts[0].mandate_id, undefined, "auditspor, ikke et formandscitat");

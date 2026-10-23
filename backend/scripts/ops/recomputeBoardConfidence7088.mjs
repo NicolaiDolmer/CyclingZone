@@ -25,6 +25,12 @@
 //    (`--backup-dir`, default `balance-internals/7088/` i repo-roden, gitignoreret).
 //  - Optimistisk vagt: en række opdateres kun hvis dens confidence stadig er
 //    den værdi dry-run'et så (`.eq("confidence", before)`).
+//  - Kun EKSAKTE rækker skrives. En række hvis delta er en grænse eller et skøn
+//    (se APPROX_FLAG) holdes tilbage, medmindre `--allow-approx` gives. Efter
+//    deploy gemmer den rettede motor den eksakte `season_delta` ved hver
+//    løbsafslutning, så kør genberegningen når holdene har kørt et løb.
+//  - Ankeret skrives også når tallet er uændret (ellers ville et hold på 100
+//    med et forkert anker give et forkert target ved næste ændring).
 //  - Hvert flyttet tal får en kvittering i board_satisfaction_events
 //    (reason_category `correction_7088`, uden mandate_id: auditspor, ikke et
 //    formandscitat i Boardroom).
@@ -36,6 +42,7 @@
 //   infisical run --env=prod -- node scripts/ops/recomputeBoardConfidence7088.mjs                  # dry-run
 //   infisical run --env=prod -- node scripts/ops/recomputeBoardConfidence7088.mjs --json=<fil>     # dry-run + rapport til fil
 //   infisical run --env=prod -- node scripts/ops/recomputeBoardConfidence7088.mjs --apply --owner-go   # KUN efter ejerens "kør"
+//   ... --apply --owner-go --allow-approx                                                              # skriver også tilnærmelser (særskilt go)
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -92,6 +99,10 @@ export function replayTeamConfidence({
   }
 
   const flags = [];
+  const bpValid = Boolean(oneYearBoard)
+    && oneYearBoard.season_start_anchor_season_id === activeSeason.id
+    && Number.isFinite(toNum(oneYearBoard.season_start_satisfaction))
+    && Number.isFinite(toNum(oneYearBoard.satisfaction));
   let confidence = clampSatisfaction(toNum(firstEvent.satisfaction_before));
   const seasonsReplayed = [];
   for (let season = startSeason; season < activeSeason.number; season += 1) {
@@ -102,6 +113,12 @@ export function replayTeamConfidence({
     if (seasonEnd) {
       if (oneYearDeltaBySeasonNumber.has(season)) {
         verdictDelta = Number(oneYearDeltaBySeasonNumber.get(season));
+        // Snapshottet gemmer planens KLAMPEDE bevægelse. Landede planen på 0/100
+        // (= næste sæsons anker), er delta'en kun en grænse, ikke eksakt.
+        if (season === activeSeason.number - 1 && bpValid
+          && !isUnsaturated(toNum(oneYearBoard.season_start_satisfaction))) {
+          flags.push(`s${season}_delta_maybe_clipped`);
+        }
       } else if (isUnsaturated(toNum(seasonEnd.satisfaction_before)) && isUnsaturated(toNum(seasonEnd.satisfaction_after))) {
         verdictDelta = toNum(seasonEnd.satisfaction_after) - toNum(seasonEnd.satisfaction_before);
         flags.push(`s${season}_delta_from_receipt`);
@@ -151,10 +168,6 @@ export function replayTeamConfidence({
   const oldEngineReceipt = !source.season_anchor;
   const lastAfter = toNum(lastActiveWeekend?.satisfaction_after);
   const lastBefore = toNum(lastActiveWeekend?.satisfaction_before);
-  const bpValid = oneYearBoard
-    && oneYearBoard.season_start_anchor_season_id === activeSeason.id
-    && Number.isFinite(toNum(oneYearBoard.season_start_satisfaction))
-    && Number.isFinite(toNum(oneYearBoard.satisfaction));
   if (fixedEngineRan) {
     activeDelta = toNum(source.season_delta);
     flags.push("active_delta_from_engine");
@@ -173,10 +186,18 @@ export function replayTeamConfidence({
   }
 
   const after = clampSatisfaction(anchor + activeDelta);
+  // Ankeret skal skrives selv når tallet er uændret: står et hold på 100 med
+  // et forkert gemt anker, giver næste ændring i delta'en et forkert target.
+  const storedAnchor = source.season_anchor;
+  const anchorStored = storedAnchor?.season_id === activeSeason.id
+    && Number(storedAnchor?.confidence) === anchor
+    && Number(source.season_delta) === activeDelta;
   return {
     ...base,
     status: "replayed",
     flags,
+    exact: !flags.some((f) => APPROX_FLAG.test(f)),
+    needs_write: after !== before || !anchorStored,
     start_season: startSeason,
     start: clampSatisfaction(toNum(firstEvent.satisfaction_before)),
     seasons: seasonsReplayed,
@@ -185,6 +206,14 @@ export function replayTeamConfidence({
     after,
   };
 }
+
+/**
+ * Flag der betyder at tallet er en tilnærmelse (en grænse eller et skøn), ikke
+ * en eksakt genafspilning. `--apply` skriver kun eksakte rækker, medmindre
+ * `--allow-approx` er givet. Efter deploy giver den rettede motor eksakt
+ * `season_delta` for hvert hold der har kørt et løb.
+ */
+export const APPROX_FLAG = /^(active_delta_(from_plan|bound|unknown)|s\d+_(delta_unknown|delta_maybe_clipped|milestone_missing))$/;
 
 /** Fordeling i ti spande (0-9, 10-19, ..., 90-100) + yderværdierne for sig. */
 export function histogram(values) {
@@ -210,6 +239,9 @@ export function buildPlan(rows) {
       replayed: rows.filter((r) => r.status === "replayed").length,
       no_history: rows.filter((r) => r.status === "no_history").length,
       would_change: changed.length,
+      would_change_exact: changed.filter((r) => r.exact).length,
+      would_change_approx: changed.filter((r) => !r.exact).length,
+      anchor_only_writes: rows.filter((r) => r.status === "replayed" && r.needs_write && r.after === r.before).length,
       flags: flagCounts,
     },
     before: histogram(rows.map((r) => r.before)),
@@ -328,9 +360,14 @@ export function computeRows(data) {
  * Skriv genberegningen. Kræver at kalderen har tjekket `--owner-go`.
  * `now` injiceres (ingen skjult ur).
  */
-export async function applyPlan(supabase, { plan, data, now, backupDir, writeFile = writeFileSync, makeDir = mkdirSync, log = console.log }) {
+export async function applyPlan(supabase, {
+  plan, data, now, backupDir, allowApprox = false,
+  writeFile = writeFileSync, makeDir = mkdirSync, log = console.log,
+}) {
   const nowIso = now.toISOString();
-  const targets = plan.rows.filter((r) => r.status === "replayed" && r.after !== r.before);
+  const targets = plan.rows.filter((r) => r.status === "replayed" && r.needs_write && (r.exact || allowApprox));
+  const heldBack = plan.rows.filter((r) => r.status === "replayed" && r.needs_write && !r.exact && !allowApprox).length;
+  if (heldBack) log(`${heldBack} rækker er tilnærmelser og skrives ikke (brug --allow-approx efter ejer-go).`);
   const relationsById = new Map(data.perTeam.map((t) => [t.relation.id, t.relation]));
 
   makeDir(backupDir, { recursive: true });
@@ -354,6 +391,9 @@ export async function applyPlan(supabase, { plan, data, now, backupDir, writeFil
       .select("id");
     if (error) throw new Error(`board_relations ${row.relation_id}: ${error.message}`);
     if (!hit?.length) { skipped += 1; continue; }
+    updated += 1;
+    // Kun et flyttet tal får en kvittering; en ren anker-rettelse flytter intet.
+    if (row.after === row.before) continue;
     const { error: eventError } = await supabase.from("board_satisfaction_events").insert({
       team_id: row.team_id,
       season_id: data.activeSeason.id,
@@ -365,9 +405,8 @@ export async function applyPlan(supabase, { plan, data, now, backupDir, writeFil
       reason_category: CORRECTION_REASON,
     });
     if (eventError) throw new Error(`board_satisfaction_events ${row.team_id}: ${eventError.message}`);
-    updated += 1;
   }
-  return { updated, skipped, backupPath };
+  return { updated, skipped, heldBack, backupPath };
 }
 
 export function parseArgs(argv) {
@@ -376,6 +415,7 @@ export function parseArgs(argv) {
   return {
     apply: flags.has("--apply"),
     ownerGo: flags.has("--owner-go"),
+    allowApprox: flags.has("--allow-approx"),
     json: value("json"),
     backupDir: value("backup-dir"),
   };
@@ -412,8 +452,8 @@ async function main() {
 
   if (args.apply) {
     const backupDir = args.backupDir ?? join(backendRoot, "..", "balance-internals", "7088");
-    const result = await applyPlan(supabase, { plan, data, now, backupDir });
-    console.log(`APPLY: ${result.updated} relationer opdateret, ${result.skipped} sprunget over (tallet flyttede sig siden dry-run).`);
+    const result = await applyPlan(supabase, { plan, data, now, backupDir, allowApprox: args.allowApprox });
+    console.log(`APPLY: ${result.updated} relationer opdateret, ${result.skipped} sprunget over (tallet flyttede sig siden dry-run), ${result.heldBack} tilnærmelser holdt tilbage.`);
   }
 }
 
