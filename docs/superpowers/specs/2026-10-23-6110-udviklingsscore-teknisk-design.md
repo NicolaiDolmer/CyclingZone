@@ -15,6 +15,7 @@
 | S13 | Træner og facilitet påvirker kun træningsdage, aldrig løbsdage |
 | S14 | Løbsdagen: basis + tillæg + "lær af afgørelsen" + bred niveau-bonus |
 | S22 | Scoren ER udviklingen: dagens udvikling følger scoren direkte; samlet tempo kalibreres til D1-milepælene |
+| S29 (ejer 23/10) | Form og træthed indgår ikke i scoren og påvirker ikke udviklingen. Træthed koster kun gennem form og skadesrisiko (#6984), så rytteren ikke straffes to gange |
 | H6b | Scorehistorikken må ikke afsløre talentet mere præcist end holdets eget skøn efter samme antal afregnede datoer |
 
 ## 2. Hvad er sandt i dag (kortlægning + baseline 23/10)
@@ -31,9 +32,9 @@ developmentDay(input) -> { score: 1..99, devMult: number, kind: "training" | "ra
 ```
 
 - `score` er det, spilleren ser. `devMult` er det, motoren ganger på dagens udvikling, og det afledes KUN af `score` (S22, doktrinen S20). Ingen skjult parallel faktor.
-- `dailyAbilityDelta` får score-stien som eneste sti, når flaget er tændt: niveau-kurven (D1) × rolleklasse-fart (S6) × `devMult`. Den gamle gren (alder, ungdomstillæg, potentiale-rate) bliver stående bag slukket flag til tænding og slettes bagefter.
-- **Træningsdag:** led = intensitet, fokus-match (rolleklasse pr. sessionens evner, S12-kataloget), kondition, træner, facilitet, talent (grundtalent + træningsdisciplin), dagsstøj.
-- **Løbsdag:** led = basis (som hård dag, uden træner og facilitet, S13), tillæg i etapens evner, afgørelses-bonus (S14), niveau-bonus, kondition, talent, dagsstøj. Udgået rytter: kun basis (S16). Fri rolle: halvt kaptajn, halvt hjælper (S17).
+- `dailyAbilityDelta` får score-stien som eneste sti, når flaget er tændt: niveau-kurven (D1) × rolleklasse-fart (S6) × `devMult`. Konditions-leddet (`conditionMult`) fjernes fra udviklingen (S29); trætheden virker kun gennem form og skade (#6984). Den gamle gren (alder, ungdomstillæg, potentiale-rate) bliver stående bag slukket flag til tænding og slettes bagefter.
+- **Træningsdag:** led = intensitet, fokus-match (rolleklasse pr. sessionens evner, S12-kataloget), træner, facilitet, talent (grundtalent + træningsdisciplin), dagsstøj. Ingen form/træthed (S29).
+- **Løbsdag:** led = basis (som hård dag, uden træner og facilitet, S13), tillæg i etapens evner, afgørelses-bonus (S14), niveau-bonus, talent, dagsstøj. Ingen form/træthed (S29). Udgået rytter: kun basis (S16). Fri rolle: halvt kaptajn, halvt hjælper (S17).
 - **Støj** seedes pr. (rytter, dato), som i dag med `seededUnitMixed`, men bredere (B). Kalibreres mod H6b.
 - **Normalisering:** `devMult` normaliseres, så sæsonens samlede udvikling rammer D1-milepælene; måles i 10-sæsoners-simuleringen (S25).
 
