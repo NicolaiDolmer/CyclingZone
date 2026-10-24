@@ -2203,6 +2203,8 @@ export function ensureFlatStageS5(race, stages) {
  *                     s5TierTerrainQuota.js. Længden skal være antallet af filler-pladser
  *                     (s5StageRaceFillerSlots). Ignoreres aldrig i tavshed: v5 kaster.
  *   identityProfiles  kun S5 (#6857): override af IDENTITY_PROFILES (tests/analyse).
+ *   a2FlatStage       kun S5 (#2757 A2, default true): et etapeløb uden flad etape får én
+ *                     (ensureFlatStageS5). false = før-A2-output (tests af identitets-mekanikken).
  *
  * OFFENTLIG KONTRAKT (L3-regen-scriptet #6929 kalder den): signaturen er uændret. #6857 tilføjer
  * kun tre valgfrie felter på `race` - race_identity_type, signature, authored_route (samme navne
@@ -2210,7 +2212,7 @@ export function ensureFlatStageS5(race, stages) {
  * stien har generator_version 7 (IDENTITY_GENERATOR_VERSION); alt andet er uændret.
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */
-export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false, fillerTypes = null, identityProfiles = IDENTITY_PROFILES } = {}) {
+export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false, fillerTypes = null, identityProfiles = IDENTITY_PROFILES, a2FlatStage = true } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
@@ -2223,9 +2225,10 @@ export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCH
     if (fillerTypes && !fillerApplies) throw new Error(`fillerTypes only applies to S5 archetype stage races outside Grand Tours (${race.name ?? race.id})`);
     if (!isStageRace) return buildSingle(rng, cfg, race, toStageS5);
     // #2757 A2: et S5-etapeløb uden flad etape får én (ensureFlatStageS5, egen rng-strøm).
-    if (identity) return ensureFlatStageS5(race, buildIdentityStageRace(rng, stages, race, identity, fillerTypes));
-    if (cfg?.kind === "stage" && cfg.grandTourOrder) return ensureFlatStageS5(race, buildGrandTourS5(rng, stages, race, { allowTtt }));
-    return ensureFlatStageS5(race, buildStageRace(rng, stages, cfg, race, toStageS5, fillerTypes));
+    const a2 = (/** @type {any[]} */ built) => (a2FlatStage ? ensureFlatStageS5(race, built) : built);
+    if (identity) return a2(buildIdentityStageRace(rng, stages, race, identity, fillerTypes));
+    if (cfg?.kind === "stage" && cfg.grandTourOrder) return a2(buildGrandTourS5(rng, stages, race, { allowTtt }));
+    return a2(buildStageRace(rng, stages, cfg, race, toStageS5, fillerTypes));
   }
   if (profileModel !== "v5") throw new Error(`unknown profileModel "${profileModel}"`);
   if (fillerTypes) throw new Error("fillerTypes only applies to profileModel \"s5\" (#6367)");
