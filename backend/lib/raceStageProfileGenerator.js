@@ -27,6 +27,7 @@ import { orderWeightsFor, OPENING_VARIETY_CHANCE, OPENING_VARIETY_CANDIDATES } f
 import { attachSegmentsAndWeather } from "./routeSegments.js";
 import { buildElevationProfile, elevationSeedKey } from "./routeElevationProfile.js";
 import { GRAND_TOUR_MIN_STAGES } from "./grandTourRestDays.js";
+import { isAscendingOrder, REAL_STAGE_RACES, positionBucket, coarseClassOf } from "./stageOrderVariationGate.js";
 import { STAGE_PROFILE_TYPES, STAGE_FINALE_TYPES, TERRAIN_TYPES, FINISH_MATRIX, withS5ProfilePlaceholders, canonicalFinaleType, isFinishAllowed } from "./stageProfileTypes.js";
 // #5405: ejerens bånd (ren data, ingen imports tilbage hertil) — kvote-fordelingens
 // afrunding holder sig inden for dem, se chooseRoundingsWithinBands.
@@ -2179,6 +2180,145 @@ export function ensureFlatStageS5(race, stages) {
     : s));
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// #2757 rækkefølge-variation (ejer-beslutning 24/10, "Ja, test + varier i dag").
+//
+// Crescendo-sorteringen (sortByHint) gav mange S5-etapeløb samme faste stigende skabelon
+// (fx bakket → kuperet → mellembjerg → kuperet). Et løb hvis rækkefølge er den skabelon
+// (isAscendingOrder, stageOrderVariationGate.js), får en ny rækkefølge af DE SAMME etaper:
+// samme indhold, kun nyt etapenummer. Fast står: finalen (sidste etape), tidskørslerne,
+// signatur-etaperne (#6857) og kongeetapen (den seneste af løbets hårdeste etaper, så GC
+// stadig afgøres sent som i rigtige en-uges-løb). Resten stilles i en rækkefølge der ikke er
+// skabelonen, uden flere ens etaper i træk end før og uden bjergetape som åbning (medmindre
+// løbet åbnede sådan), valgt deterministisk pr. løb (egen rng-strøm) og vægtet efter hvor
+// etapetyperne ligger i rigtige en-uges-løb. Samme funktion bruges af s5FlatStageA2_2757.js på
+// S5's skrevne ruter, så generator og prod følger samme regel. A2 lægges ovenpå bagefter.
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+/** Højst så mange flyttelige etaper (permutationerne tælles fuldt ud). */
+const ORDER_VARIATION_MAX_MOVABLE = 7;
+
+/** @param {any} race */
+function orderVariationRng(race) {
+  return makeRng(stableSeed(`${seedKeyFor(race)}:order-variation`));
+}
+
+/** @param {string[]} types */
+function longestRun(types) {
+  let best = types.length ? 1 : 0;
+  let run = 1;
+  for (let i = 1; i < types.length; i++) {
+    run = types[i] === types[i - 1] ? run + 1 : 1;
+    if (run > best) best = run;
+  }
+  return best;
+}
+
+/** Alle forskellige rækkefølger af et multisæt (leksikografisk, deterministisk). @param {string[]} items */
+function distinctPermutations(items) {
+  const sorted = items.slice().sort();
+  /** @type {string[][]} */
+  const out = [];
+  const used = new Array(sorted.length).fill(false);
+  /** @type {string[]} */
+  const cur = [];
+  const walk = () => {
+    if (cur.length === sorted.length) { out.push(cur.slice()); return; }
+    for (let i = 0; i < sorted.length; i++) {
+      if (used[i] || (i > 0 && sorted[i] === sorted[i - 1] && !used[i - 1])) continue;
+      used[i] = true; cur.push(sorted[i]);
+      walk();
+      cur.pop(); used[i] = false;
+    }
+  };
+  walk();
+  return out;
+}
+
+/**
+ * Den nye rækkefølge for et etapeløb med fast stigende skabelon.
+ * @param {any} race  samme seed-form som generateRaceStageProfiles (+ signature)
+ * @param {Array<{stage_number:number, profile_type:string, finale_type?:string|null, climbs?:any[], sectors?:any[]}>} stages
+ * @returns {{ order: number[] | null, fixed: number[], reason: string }}
+ *   order = de gamle etapenumre i den nye rækkefølge (null = uændret)
+ */
+export function chooseStageOrderVariation(race, stages = []) {
+  const n = stages.length;
+  if (race?.race_type !== "stage_race") return { order: null, fixed: [], reason: "not_stage_race" };
+  const isGrandTour = race?.terrain_archetype === "grand_tour" || race?.race_class === "TourFrance"
+    || race?.race_class === "GiroVuelta" || n >= GRAND_TOUR_MIN_STAGES;
+  if (isGrandTour) return { order: null, fixed: [], reason: "grand_tour" };
+  const sorted = stages.slice().sort((a, b) => Number(a.stage_number) - Number(b.stage_number));
+  const types = sorted.map((s) => s.profile_type);
+  if (!isAscendingOrder(types)) return { order: null, fixed: [], reason: "varied" };
+  const sig = signatureStageNumbers(race?.signature ?? null, sorted);
+  const fixed = new Set([n - 1]);
+  sorted.forEach((s, i) => { if (isTimeTrial(s.profile_type) || sig.has(Number(s.stage_number))) fixed.add(i); });
+  // Kongeetapen: den seneste af de hårdeste vejetaper før finalen.
+  let queen = -1;
+  for (let i = 0; i < n - 1; i++) {
+    if (isTimeTrial(types[i])) continue;
+    if (queen < 0 || terrainRank(types[i]) >= terrainRank(types[queen])) queen = i;
+  }
+  if (queen >= 0) fixed.add(queen);
+  const movable = sorted.map((_, i) => i).filter((i) => !fixed.has(i));
+  const fixedNumbers = [...fixed].sort((a, b) => a - b).map((i) => Number(sorted[i].stage_number));
+  if (movable.length < 2 || movable.length > ORDER_VARIATION_MAX_MOVABLE) return { order: null, fixed: fixedNumbers, reason: "too_few_movable" };
+  const runCap = Math.max(2, longestRun(types));
+  const mountainOpen = MOUNTAIN_FAMILY.has(types[0]);
+  const original = types.join(",");
+  const candidates = [];
+  for (const perm of distinctPermutations(movable.map((i) => types[i]))) {
+    const next = types.slice();
+    movable.forEach((slot, k) => { next[slot] = perm[k]; });
+    if (next.join(",") === original || isAscendingOrder(next)) continue;
+    if (longestRun(next) > runCap) continue;
+    if (!mountainOpen && MOUNTAIN_FAMILY.has(next[0])) continue;
+    // Vægt: hvor almindelig hver flyttet etapes klasse er på sin nye placering i rigtige løb.
+    let weight = 1;
+    for (const slot of movable) {
+      const real = /** @type {Record<string, number>} */ (REAL_STAGE_RACES.positions[positionBucket(slot, n)]);
+      const total = Object.values(real).reduce((s, x) => s + x, 0);
+      weight *= (real[coarseClassOf(next[slot])] ?? 0) / total;
+    }
+    if (weight > 0) candidates.push({ value: next, weight });
+  }
+  if (!candidates.length) return { order: null, fixed: fixedNumbers, reason: "no_candidate" };
+  const next = /** @type {string[]} */ (pickByQuantile(candidates, orderVariationRng(race)()));
+  // Etaper af samme type beholder deres indbyrdes rækkefølge (stabilt): kun typerne flytter.
+  const queues = new Map();
+  for (const slot of movable) {
+    const t = types[slot];
+    if (!queues.has(t)) queues.set(t, []);
+    queues.get(t).push(Number(sorted[slot].stage_number));
+  }
+  const order = sorted.map((s, i) => (fixed.has(i) ? Number(s.stage_number) : queues.get(next[i]).shift()));
+  return { order, fixed: fixedNumbers, reason: "reordered" };
+}
+
+/**
+ * Etaperne i en ny rækkefølge: samme etape-objekter, kun stage_number skifter.
+ * @template {{ stage_number: number }} T
+ * @param {T[]} stages @param {number[]} order  de gamle etapenumre i den nye rækkefølge
+ * @returns {T[]}
+ */
+export function applyStageOrder(stages, order) {
+  const byNumber = new Map(stages.map((s) => [Number(s.stage_number), s]));
+  if (order.length !== stages.length || new Set(order).size !== order.length || order.some((x) => !byNumber.has(x))) {
+    throw new Error(`stage order ${order.join(",")} is not a permutation of the ${stages.length} stages (#2757)`);
+  }
+  return order.map((old, i) => ({ .../** @type {T} */ (byNumber.get(old)), stage_number: i + 1 }));
+}
+
+/**
+ * Giv et S5-etapeløb med fast stigende skabelon en varieret rækkefølge. Andre løb uændrede.
+ * @param {any} race @param {any[]} stages
+ */
+export function varyStageOrderS5(race, stages) {
+  const { order } = chooseStageOrderVariation(race, stages);
+  return order ? applyStageOrder(stages, order) : stages;
+}
+
 /**
  * Generér stage-profiler for ét løb (rør ingen DB).
  * @param {{id:string, race_type?:string, stages?:number, external_id?:string, pool_race_id?:string, season_id?:string, season_variant?:number}} race
@@ -2206,6 +2346,9 @@ export function ensureFlatStageS5(race, stages) {
  *   identityProfiles  kun S5 (#6857): override af IDENTITY_PROFILES (tests/analyse).
  *   a2FlatStage       kun S5 (#2757 A2, default true): et etapeløb uden flad etape får én
  *                     (ensureFlatStageS5). false = før-A2-output (tests af identitets-mekanikken).
+ *   orderVariation    kun S5 (#2757, default true): et etapeløb med fast stigende skabelon får en
+ *                     varieret rækkefølge af samme etaper (varyStageOrderS5), før A2. false =
+ *                     crescendo-rækkefølgen (bruges af A2-scriptet til at genskabe skrevne ruter).
  *
  * OFFENTLIG KONTRAKT (L3-regen-scriptet #6929 kalder den): signaturen er uændret. #6857 tilføjer
  * kun tre valgfrie felter på `race` - race_identity_type, signature, authored_route (samme navne
@@ -2213,7 +2356,7 @@ export function ensureFlatStageS5(race, stages) {
  * stien har generator_version 7 (IDENTITY_GENERATOR_VERSION); alt andet er uændret.
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */
-export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false, fillerTypes = null, identityProfiles = IDENTITY_PROFILES, a2FlatStage = true } = {}) {
+export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCHETYPE_PROFILES, profileModel = "v5", allowTtt = false, fillerTypes = null, identityProfiles = IDENTITY_PROFILES, a2FlatStage = true, orderVariation = true } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
@@ -2225,8 +2368,12 @@ export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCH
     const fillerApplies = isStageRace && (identity != null || (cfg?.kind === "stage" && !cfg.grandTourOrder));
     if (fillerTypes && !fillerApplies) throw new Error(`fillerTypes only applies to S5 archetype stage races outside Grand Tours (${race.name ?? race.id})`);
     if (!isStageRace) return buildSingle(rng, cfg, race, toStageS5);
-    // #2757 A2: et S5-etapeløb uden flad etape får én (ensureFlatStageS5, egen rng-strøm).
-    const a2 = (/** @type {any[]} */ built) => (a2FlatStage ? ensureFlatStageS5(race, built) : built);
+    // #2757: fast stigende skabelon → varieret rækkefølge af samme etaper (egen rng-strøm), og
+    // derefter A2: et S5-etapeløb uden flad etape får én (ensureFlatStageS5, egen rng-strøm).
+    const a2 = (/** @type {any[]} */ built) => {
+      const ordered = orderVariation ? varyStageOrderS5(race, built) : built;
+      return a2FlatStage ? ensureFlatStageS5(race, ordered) : ordered;
+    };
     if (identity) return a2(buildIdentityStageRace(rng, stages, race, identity, fillerTypes));
     if (cfg?.kind === "stage" && cfg.grandTourOrder) return a2(buildGrandTourS5(rng, stages, race, { allowTtt }));
     return a2(buildStageRace(rng, stages, cfg, race, toStageS5, fillerTypes));
