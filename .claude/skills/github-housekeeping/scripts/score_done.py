@@ -66,6 +66,12 @@ STRONG_PATTERNS = [
     # Sweepen verificerer PR-nummeret med `gh pr view N --json state` (MERGED) i eet loop.
     r'Shipped\s+\d{1,2}/\d{1,2}\s+i\s+PR\s+#\d+',
     r'Leveret\s+\d{1,2}/\d{1,2}:.*PR\s+#\d+',
+    # 2026-10-24: merge-koeens og patch-note-rundens done-flips ("Merget i #7123 (24/10, ...)",
+    # "Med i patch notes 7.374 (#7062, 9b58d95)", "Leveret: PR #7059 merget"). 28 af 62 scorede WEAK.
+    # Sweepen verificerer stadig PR-nummeret med `gh pr view N --json state` (MERGED).
+    r'Merget\s+(?:i|via)\s+#\d+',
+    r'Med\s+i\s+patch\s+notes?\s+\d+\.\d+\s*\(#\d+',
+    r'Leveret:\s+PR\s+#\d+.*merget',
 ]
 
 NEG_KEYWORDS = [
