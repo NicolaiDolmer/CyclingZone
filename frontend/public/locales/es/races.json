@@ -1339,7 +1339,7 @@
       "title": "Película de la carrera",
       "km": "km {value}",
       "gapCurveTitle": "Ventaja sobre los perseguidores",
-      "gapNow": "Ventaja {{gap}}",
+      "gapNow": "Ventaja {gap}",
       "scrubberLabel": "Recorrer la etapa",
       "replay": "Repetición",
       "play": "Reproducir",

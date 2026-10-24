@@ -1322,7 +1322,7 @@
       "title": "Løbsfilm",
       "km": "km {value}",
       "gapCurveTitle": "Forspring til jagten",
-      "gapNow": "Forspring {{gap}}",
+      "gapNow": "Forspring {gap}",
       "scrubberLabel": "Scrub gennem etapen",
       "replay": "Afspil igen",
       "play": "Afspil",

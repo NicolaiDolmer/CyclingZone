@@ -1322,7 +1322,7 @@
       "title": "Race film",
       "km": "km {value}",
       "gapCurveTitle": "Lead over the chase",
-      "gapNow": "Lead {{gap}}",
+      "gapNow": "Lead {gap}",
       "scrubberLabel": "Scrub through the stage",
       "replay": "Replay",
       "play": "Play",

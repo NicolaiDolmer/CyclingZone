@@ -1339,7 +1339,7 @@
       "title": "Koersfilm",
       "km": "km {value}",
       "gapCurveTitle": "Voorsprong op de achtervolgers",
-      "gapNow": "Voorsprong {{gap}}",
+      "gapNow": "Voorsprong {gap}",
       "scrubberLabel": "Door de etappe scrollen",
       "replay": "Opnieuw afspelen",
       "play": "Afspelen",
