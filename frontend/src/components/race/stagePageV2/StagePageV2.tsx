@@ -24,7 +24,7 @@ export interface StagePageV2Props {
   stagesCompleted: number;
   raceFinished: boolean;
   selectedStage: number;
-  todayStage: number | null;
+  todayStage: number | number[] | null;
   onSelectStage: (n: number) => void;
   activeTab: StagePageV2Tab;
   onChangeTab: (tab: StagePageV2Tab) => void;
