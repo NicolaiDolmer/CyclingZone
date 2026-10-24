@@ -1339,7 +1339,7 @@
       "title": "Film de la course",
       "km": "km {value}",
       "gapCurveTitle": "Avance sur les poursuivants",
-      "gapNow": "Avance {{gap}}",
+      "gapNow": "Avance {gap}",
       "scrubberLabel": "Parcourir l'étape",
       "replay": "Rejouer",
       "play": "Lecture",
