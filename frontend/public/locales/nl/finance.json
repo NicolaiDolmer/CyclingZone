@@ -9,8 +9,7 @@
     "overview": "Overzicht",
     "loans": "Leningen",
     "history": "Geschiedenis",
-    "sponsors": "Sponsor",
-    "seasonSwitch": "Seizoenswissel"
+    "sponsors": "Sponsor"
   },
   "loanSummary": {
     "active": "{count, plural, one {1 actieve lening} other {# actieve leningen}}",
@@ -222,68 +221,6 @@
     },
     "showTour": "Laat me rondkijken",
     "skip": "Overslaan"
-  },
-  "seasonSwitch": {
-    "loading": "De afrekening van de seizoenswissel laden…",
-    "receipt": {
-      "title": "Afrekening seizoen {current} -> {next}",
-      "subtitle": "Wat er met je saldo gebeurt wanneer de boeken sluiten en seizoen {next} begint, in dezelfde volgorde waarin het spel het echt in rekening brengt.",
-      "balanceAfter": "Saldo: {value} CZ$",
-      "step": {
-        "books_close": {
-          "label": "Boeken sluiten",
-          "detail": "Je saldo zoals het nu staat, meegenomen in de wissel."
-        },
-        "sponsor": {
-          "label": "Sponsor komt binnen",
-          "detail": "Basis {base} + prestatiebonus {variable} op basis van de plaats/punten van vorig seizoen, samen bijgeschreven als één betaling bij de seizoensstart."
-        },
-        "loan_interest": {
-          "label": "Leningrente",
-          "detail": "Rente over de openstaande schuld van je actieve leningen, berekend direct nadat de sponsorbetaling is binnengekomen. Wordt bij de lening zelf opgeteld, niet van je saldo afgeschreven."
-        },
-        "salary": {
-          "label": "Salarissen voor seizoen {next} worden in rekening gebracht",
-          "detail": "Opnieuw berekend volgens de regels van seizoen {next} op basis van de huidige productiewaarde van elke renner op de dag van de wissel, niet de vastgezette contractgetallen van vorig seizoen."
-        },
-        "academy_drift": {
-          "label": "Academieonderhoud",
-          "detail": "Onderhoudskosten bij de seizoensstart voor je academieplekken."
-        },
-        "upkeep": {
-          "label": "Divisieonderhoud",
-          "detail": "Vaste kosten bepaald door je divisie, in rekening gebracht bij de seizoensstart."
-        },
-        "facility_upkeep": {
-          "label": "Faciliteitenonderhoud",
-          "detail": "Onderhoud bij de seizoensstart voor de faciliteitssporen die je hebt gebouwd."
-        },
-        "staff_salary": {
-          "label": "Stafsalarissen",
-          "detail": "Salarissen bij de seizoensstart voor de staf die je hebt aangenomen."
-        },
-        "start_s3": {
-          "label": "Je begint volgend seizoen met",
-          "detail": "Je saldo na alle kosten bij de seizoensstart hierboven."
-        }
-      }
-    },
-    "footnote": "Voorbeeld van de afrekening, geen garantie. Prijzengeld en sponsorinkomsten per etappe zijn niet meegeteld, omdat ze afhangen van koersen die nog niet zijn gereden, en ook niets wat afhankelijk is van omstandigheden, zoals rente op noodleningen als je saldo negatief wordt, of een gedwongen verkoop als je schuld het plafond overschrijdt. Reizen van de scout, transfers, faciliteitenaankopen, stafwijzigingen en academiecontracten zijn evenmin meegeteld, want niets daarvan is vooraf bekend.",
-    "footnoteLink": "Wat is er precies bij inbegrepen?",
-    "salaryTable": {
-      "title": "Salarissen: huidig contract tegenover volgend seizoen",
-      "subtitle": "Het vastgezette contractsalaris van elke gecontracteerde renner naast wat de formule van seizoen {next} hem vandaag zou prijzen.",
-      "empty": "Geen renners onder contract.",
-      "header": {
-        "rider": "Renner",
-        "contract": "Contract (S{current})",
-        "projection": "Prognose S{next}",
-        "delta": "Verandering"
-      },
-      "total": "Totaal",
-      "viewAll": "Alle {count} renners bekijken",
-      "showLess": "Minder tonen"
-    }
   },
   "report": {
     "season": "Seizoen {n}",

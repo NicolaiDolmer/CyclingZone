@@ -65,7 +65,7 @@ export default function RaceSelectionPanel({
   // #3809: fulde evne-navne til kolonne-tooltips (samme mønster som TeamPage's
   // SquadTab tRider-brug til de forkortede kolonne-headers).
   const { t: tRider } = useTranslation("rider");
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(/** @type {any} */ (null)); // selection-svaret; any saa data?.size-snaevringen ikke goer typen til never
   const [sel, setSel] = useState(EMPTY_SELECTION);
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
