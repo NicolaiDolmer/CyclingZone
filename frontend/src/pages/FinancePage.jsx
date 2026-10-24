@@ -7,7 +7,6 @@ import { renderBackendMessage } from "../lib/backendMessage";
 import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
-import FinanceSeasonSwitchPanel from "../components/FinanceSeasonSwitchPanel";
 import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
 import SponsorContractPanel from "../components/SponsorContractPanel";
 import SponsorIncomeBreakdown from "../components/SponsorIncomeBreakdown";
@@ -57,10 +56,8 @@ function RepayButton({ maxRepay, onStart, t }) {
   );
 }
 
-// #4011 (design-go 20/8, punkt C): ny fane "season-switch" — sæsonskifte-
-// afregningen (kvitterings-flow + løn-tabel pr. rytter). Samme ?tab=-mønster
-// som de øvrige faner (#986).
-const FINANCE_TABS = ["overview", "loans", "sponsors", "history", "season-switch"];
+// ?tab=-mønster for fanerne (#986). #7033: sæsonskifte-fanen er fjernet.
+const FINANCE_TABS = ["overview", "loans", "sponsors", "history"];
 // #2306: sentinel-værdi for "ingen sæson valgt" i Historik-fanens sæsonvælger —
 // viser al historik uafhængig af sæson (default), i modsætning til `null`
 // (loading-tilstand før sæsonlisten er hentet).
@@ -119,12 +116,8 @@ export default function FinancePage() {
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(true);
   const [seasonsAhead, setSeasonsAhead] = useState(1);
-  // #4011: sæsonskifte-opgørelsen (S2/S3-opstilling + kvittering + løn-
-  // tabel). Egen loading-state (adskilt fra forecastLoading) — kortet på
-  // Overblik skal ikke vente på season-switch-preview, og season-switch-
-  // fanen skal ikke vente på forecast-kaldet.
+  // #4011: sæsonskifte-opgørelsen (S2/S3-opstilling) til forecast-kortet.
   const [seasonSwitch, setSeasonSwitch] = useState(null);
-  const [seasonSwitchLoading, setSeasonSwitchLoading] = useState(true);
 
   // Onboarding v2 Slice 3 — tour-trin på /finance (aktiveres fra FinanceFirstVisitHint
   // "Vis mig rundt"-knap). #986: tour peger nu på Overblik-fanens elementer
@@ -238,8 +231,8 @@ export default function FinancePage() {
     const [loanRes, forecastRes, seasonSwitchRes, leadingRes, proxiesRes, seasonsRes] = await Promise.all([
       apiFetch(`${API}/api/finance/loans`, { headers: authHeaders }),
       apiFetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
-      // #4011: S2/S3-opgørelsen — fælles kilde for både forecast-kortets
-      // to-kolonne-visning (Overblik) og season-switch-fanens kvittering.
+      // #4011: S2/S3-opgørelsen — kilde til forecast-kortets
+      // to-kolonne-visning (Overblik).
       apiFetch(`${API}/api/finance/season-switch-preview`, { headers: authHeaders }),
       // #44: hent leading auktioner + proxies så vi kan vise reserveret balance
       supabase.from("auctions")
@@ -325,7 +318,6 @@ export default function FinancePage() {
       setLoadError(true);
     } finally {
       setForecastLoading(false);
-      setSeasonSwitchLoading(false);
       setLoading(false);
     }
   }, []);
@@ -579,7 +571,6 @@ export default function FinancePage() {
           <Tab value="loans">{t("tabs.loans")}</Tab>
           <Tab value="sponsors">{t("tabs.sponsors")}</Tab>
           <Tab value="history">{t("tabs.history")}</Tab>
-          <Tab value="season-switch">{t("tabs.seasonSwitch")}</Tab>
         </TabList>
 
         {/* ───────────────────────────── Overblik ───────────────────────────── */}
@@ -1089,14 +1080,6 @@ export default function FinancePage() {
               </div>
             )}
           </Card>
-        </TabPanel>
-
-        {/* ─────────────────────────── Sæsonskifte ───────────────────────────── */}
-        {/* #4011 (design-go 20/8, punkt C): kvitterings-flow + løn-tabel pr.
-            rytter. Ren visnings-komponent, data fra
-            GET /api/finance/season-switch-preview. */}
-        <TabPanel value="season-switch">
-          <FinanceSeasonSwitchPanel data={seasonSwitch} loading={seasonSwitchLoading} />
         </TabPanel>
       </Tabs>
     </div>

@@ -63,6 +63,8 @@ er ukendt i kvitteringen, ikke et målt sæsonnul.
 
 ## 0. Potentiale styrer FARTEN, ikke længere HØJDEN (den hyppigste fejlkilde)
 
+> **⚠ Udvikling 2.0 vender dette, når flagene tændes (ejer 11/10 D1b + 23/10 S2, #6110):** potentialet sætter igen **niveauet** for rytterens lofter, men som **bløde** lofter: rolleklassen fordeler potentialet på evnerne (højt i signaturen, lavt i svagheden), sekundæren er altid næsthøjest, og kun signaturen kan nå verdenstoppen. Ny kode til Udvikling 2.0 SKAL bygge på den model (spec [`2026-10-23-6110-potentiale-et-tal-samlet-design.md`](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md) §13, S2/S4/S5/S6/S8) bag flag. Teksten nedenfor beskriver det, der kører i prod, indtil tændingen; brug den ikke til nye Udvikling 2.0-lofter.
+
 Indtil trin 7 (PR #3798, merged 20/8) betød `potentiale` (1-6, ét tal pr. rytter) **to ting på én gang**: hvor HØJT en evne kunne ende (loftet, `loftByPotential`) OG hvor HURTIGT den voksede dertil (`rateByPotential`). Trin 7 skilte dem ad.
 
 | | Før trin 7 | Efter trin 7 (nu) |
@@ -131,13 +133,15 @@ De eksisterende ryttere migreres som en ÉN samlet delta-migration (`backend/scr
 
 ## 3. Potentialets skala og overskuddet
 
-Ejer-beslutning 13/8, "tredje vej": potentiale forbliver **1-6 internt**, UI viser potentiel RATING i evnernes point-skala. Den oprindelige plan om at migrere potentiale til 1-99 i DB (spec `2026-08-09-3564-progressionskaede-samlet-design.md`, beslutning 1) blev droppet af ejeren og er **overhalet** — spec'en er ikke rettet.
+> **⚠ Afløst for Udvikling 2.0 (ejer 11/10 og 23/10, #6110):** potentiale omregnes til **1-99** (rangbevarende, remap-variant B med fredningsgulve) og sætter et **blødt loft** (fart OG højde). Spilleren ser **ét skønnet tal + et sikkerhedsord** (Usikker/Rimelig/Sikker), aldrig et interval. Spec: [`2026-10-23-6110-potentiale-et-tal-samlet-design.md`](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md). Indtil flagene er bygget og tændt, gælder teksten nedenfor stadig for det, der kører i prod; 1-99-omregningen må nu bygges (bag flag, apply ejer-gated).
+
+Ejer-beslutning 13/8, "tredje vej" (**gælder i prod indtil Udvikling 2.0 tændes**): potentiale forbliver **1-6 internt**, UI viser potentiel RATING i evnernes point-skala. Planen om at migrere potentiale til 1-99 i DB (spec `2026-08-09-3564-progressionskaede-samlet-design.md`, beslutning 1) blev droppet 13/8 og genoptaget af ejeren 11/10 i #6110.
 
 | Regel | Konstant | Fil | Status |
 |---|---|---|---|
 | Potentiale → farts-multiplikator | `rateByPotential` (lineær interpolation via `youthRateForPotential`) | `riderProgression.js` | ✅ |
 | Potentiale-overskuddet i bestanden udlignes | (udligningsplan hang på migrationen) | — | ⛔ bortfaldt, overskuddet består i prod |
-| Potentiale-leddet fjernes fra PUBLICERET værdi for unge uden handelsevidens | #2798 | — | ❌ åben `needs-decision` |
+| Potentiale-leddet fjernes fra PUBLICERET værdi for unge uden handelsevidens | #2798 | — | ⏳ ejer-retning 23/10: potentialet ud af værdien, glidende overgang til Udviklingsscore-historikken (spec #6110 §6) |
 
 ---
 

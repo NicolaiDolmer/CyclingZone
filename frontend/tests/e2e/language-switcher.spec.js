@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
   await stabilizePage(page);
 });
 
-test("#787 language dropdown: fully visible and both options reachable", async ({ page }) => {
+test("#787 language dropdown: fully visible and all options reachable", async ({ page }) => {
   await login(page);
 
   const trigger = page.locator('button[aria-haspopup="listbox"]:visible').first();
@@ -27,9 +27,9 @@ test("#787 language dropdown: fully visible and both options reachable", async (
   const menu = page.locator('ul[role="listbox"]');
   await expect(menu).toBeVisible();
 
-  // Both language options render.
+  // All five language options render (#7087: fr/es/nl visible to everyone as Beta).
   const options = menu.getByRole("option");
-  await expect(options).toHaveCount(2);
+  await expect(options).toHaveCount(5);
 
   // The menu must sit entirely within the viewport — the regression was the
   // bottom edge spilling past it. Assert against the real boundingBox so a

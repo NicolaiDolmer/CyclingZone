@@ -173,7 +173,7 @@ Trup-lofter vist i artboards (Junior 10, U23 12) er §2.4-forslaget, stadig afve
 
 ### 2.5 Hvad der IKKE ændres
 
-- Potentiale er **1-6 internt, spilleren ser et scout-bånd** ("tredje vej", ejer 13/8, `PROGRESSION_RULES.md` §3). Addendum 16/7 §1.1 og §2 siger "eksakt 1-99 i DB": **det er overhalet** og må ikke bygges. Rå potentiale forlader aldrig serveren (#1162).
+- Potentiale er i prod **1-6 internt, spilleren ser et scout-bånd** ("tredje vej", ejer 13/8, `PROGRESSION_RULES.md` §3). **Udvikling 2.0 (ejer 11/10 og 23/10, #6110) afløser det:** 1-99 i DB (rangbevarende omregning) og ét skønnet tal + sikkerhedsord på alle flader; søndagens unge viser intet skøn før 5 afregnede træningsdatoer. Bygges bag flag, se spec `2026-10-23-6110-potentiale-et-tal-samlet-design.md`. Rå potentiale forlader aldrig serveren (#1162).
 - Ungdomsryttere træner i den daglige træning som alle andre (`TRAINING_RULES.md` §7: kun `youthMultiplier(alder)` adskiller dem).
 - Straf aldrig styrke; balance er struktur (`project_no_punishment_for_strength`). Ingen handicap på store ungdomsafdelinger.
 - Fair-premium (#1142): betaling giver aldrig bedre forventet ungdomsoutput.
@@ -268,7 +268,7 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 
 | # | Modsigelse | Vinder |
 |---|---|---|
-| 1 | Addendum 16/7 §1.1/§2: potentiale 1-99 i DB vs. `PROGRESSION_RULES.md` §3: 1-6 internt (ejer 13/8) | `PROGRESSION_RULES.md` |
+| 1 | Addendum 16/7 §1.1/§2: potentiale 1-99 i DB vs. `PROGRESSION_RULES.md` §3: 1-6 internt (ejer 13/8). **Afgjort 11/10 og 23/10 (#6110): 1-99 bygges i Udvikling 2.0, bag flag** | `PROGRESSION_RULES.md` §3 + spec `2026-10-23-6110-potentiale-et-tal-samlet-design.md` |
 | 2 | Addendum 16/7 §1.1: "Junior-hold (16-18)" vs. doktrin 8/6: "Junior = U19, normally 17-18" | Denne fil §2.1: trup 16-18, løb fra 16 (ejer 24/9; før 17). Begge tilfredsstilles |
 | 3 | Addendum §7.1: tidlig oprykning fra 21 som undtagelse | Denne fil §2.2: opad altid tilladt |
 | 4 | ~~`GAME_INVARIANTS.md`: "8-plads akademi-cap håndhæves på ENHVER akademi-tilføjelse"~~ | **LUKKET 15/9 (#4619):** `GAME_INVARIANTS.md` §Akademi siger nu loft pr. trup (`SQUAD_CAPS`, U23 12 / junior 10). Restgæld: RPC'ernes egen 8-cap i SQL |

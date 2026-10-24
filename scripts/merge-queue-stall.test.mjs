@@ -174,7 +174,7 @@ test('every waiting step in the queue is stall-guarded and stops through Stop-Qu
   assert.match(source, /Wait-ForWorkflowRun -WorkflowFile "ci\.yml" .* -StallMinutes \$StallMinutes\n\s+# #6859[^\n]*\n\s+if \(\$script:queueStall\) \{ return \$false \}/);
   assert.match(source, /\$deployState = Wait-ForDeployVerification -Sha \$sha -TimeoutMinutes \$DeployVerifyTimeoutMinutes -StallMinutes \$StallMinutes\n\s+if \(\$deployState -eq 'stalled'\) \{ Stop-QueueStall \}/);
   assert.match(source, /\[double\] \$StallMinutes = \$script:StallMinutes/);
-  for (const call of ['$failedRuns = @(Get-FailedHandedOffRuns', '$finalFailed = @(Get-FailedHandedOffRuns', '$ok = Wait-BatchCi', '$ciOk = Wait-BatchCi']) {
+  for (const call of ['$failedRuns = @(Get-FailedHandedOffRuns', '$finalFailed = @(Get-FailedHandedOffRuns', '$ciOk = Wait-BatchCi']) {
     const at = source.indexOf(call);
     assert.ok(at > 0, call);
     assert.match(source.slice(at, at + 250), /if \(\$script:queueStall\) \{ Stop-QueueStall \}/, call);
