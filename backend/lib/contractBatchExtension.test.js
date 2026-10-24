@@ -61,6 +61,7 @@ function makeDb({ riders = [], season = 4, consequences = [], failUpdateFor = nu
     const match = (row) => filters.every((f) => f(row));
     const api = {
       select() { return api; },
+      limit() { return api; },
       eq(col, val) { filters.push((row) => row[col] === val); return api; },
       is(col, val) { filters.push((row) => (row[col] ?? null) === val); return api; },
       in(col, vals) { filters.push((row) => vals.includes(row[col])); return api; },

@@ -39,6 +39,9 @@ import {
 // Et hold har højst et par dusin ryttere inkl. ungdomstrupper; loftet her er
 // kun et værn mod misbrug af endpointet, ikke en spilregel.
 export const MAX_BATCH_RIDERS = 100;
+// Et hold har langt under 1000 ryttere; loftet gør forespørgslen begrænset
+// (PostgREST-loftet, #3331), og rammes det, kastes der i stedet for at tælle forkert.
+const TEAM_RIDER_LIMIT = 1000;
 export const MAX_SEASONS_PER_REQUEST = CONTRACT.MAX_EXTENSION_SEASONS_AHEAD;
 
 const RIDER_SELECT =
@@ -164,14 +167,15 @@ async function loadActiveSeasonNumber(supabase) {
 
 async function loadTeamSalaryTotal(supabase, teamId) {
   const { data, error } = await supabase
-    .from("riders").select("id, salary").eq("team_id", teamId);
+    .from("riders").select("id, salary").eq("team_id", teamId).limit(TEAM_RIDER_LIMIT);
   if (error) throw new Error(`contractBatchExtension: could not load team salaries: ${error.message}`);
+  if ((data || []).length >= TEAM_RIDER_LIMIT) throw new Error("contractBatchExtension: team salary list hit the row limit");
   return (data || []).reduce((sum, r) => sum + Number(r.salary || 0), 0);
 }
 
 async function loadRiders(supabase, riderIds) {
   const { data, error } = await supabase
-    .from("riders").select(RIDER_SELECT).in("id", riderIds);
+    .from("riders").select(RIDER_SELECT).in("id", riderIds).limit(MAX_BATCH_RIDERS);
   if (error) throw new Error(`contractBatchExtension: could not load riders: ${error.message}`);
   return data || [];
 }

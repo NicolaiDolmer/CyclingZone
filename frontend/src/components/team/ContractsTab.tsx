@@ -196,7 +196,6 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
       setBase({ status: "error" }); // netværk: fejltilstand med "Prøv igen"
     }
     // quoteKey dækker rytter-listen; riders selv skifter reference hver render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteKey]);
 
   useEffect(() => { loadBase(); }, [loadBase]);

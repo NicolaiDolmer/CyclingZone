@@ -2334,7 +2334,7 @@ async function sendBatchExtension(req, res, run, label) {
     return res.status(500).json({ error: "Something went wrong extending these contracts" });
   }
 }
-router.post("/riders/extend-contracts/quote", requireAuth, (req, res) => sendBatchExtension(req, res, quoteBatchExtension, "extend-contracts quote"));
+router.post("/riders/extend-contracts/quote", requireAuth, presencePulseLimiter, (req, res) => sendBatchExtension(req, res, quoteBatchExtension, "extend-contracts quote"));
 router.post("/riders/extend-contracts", requireAuth, marketWriteLimiter, (req, res) => sendBatchExtension(req, res, applyBatchExtension, "extend-contracts"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
