@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-100 poster: live 76 · beta 3 · dormant 4 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+101 poster: live 76 · beta 3 · dormant 5 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -55,6 +55,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Set the training day for several riders at once (`training-bulk-day`) | beta | `training_bulk_day` | [TRAINING_RULES](TRAINING_RULES.md) | #6523 | 2026-10-15 | PR #6533 (12/10); beta siden 15/10 10:16 UTC efter ejer-go på før/efter-billedet (læst tilbage i prod). |
+| Max +1 per ability per date (`ability-cap-per-date`) | dormant | `ability_cap_per_date_enabled` | - | #6110 | 2026-10-23 | Ejer, med Udvikling 2.0. |
 
 ## academy
 
@@ -72,7 +73,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) | dormant | `development_v2_aging_enabled` | - | #6499 | 2026-10-15 | PR #6501 (11/10); off i prod (læst 15/10). Fail-safe off, beta læses som off; kun ejeren flipper. |
+| Development 2.0 part 1 (decline at season change, only manager teams develop) (`development-v2-aging`) | dormant | `development_v2_aging_enabled` | - | #6499 | 2026-10-15 | PR #6501. Ejer flipper ved skiftet 25/10. |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
 | Automatic season transition cron (`season-auto-transition`) | retired | - | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #1155 | 2026-10-17 | Slukket siden 8/6 (fyrede fire skift i træk 21/5) og fjernet helt 17/10 (#6796); sæsonskiftet er en bevidst manuel admin-handling. |
 
