@@ -52,6 +52,12 @@ import {
 
 export const ROUTE_MATCH_MODEL_VERSION = "engine_v1";
 
+// De race_stage_profiles-kolonner motorens rute-adapter læser. Kaldsteder henter
+// præcis disse, så rute-matchen ser samme rute som motoren (uden segmenter
+// syntetiserer adapteren dem deterministisk, samme fallback som motoren selv).
+export const ROUTE_MATCH_STAGE_COLUMNS =
+  "race_id, stage_number, profile_type, finale_type, demand_vector, distance_km, segments, climbs, sectors";
+
 // Samme 15 evner og samme rækkefølge som frontend/src/lib/suitability.js
 // (SUITABILITY_ABILITY_KEYS) og raceSimulator.ABILITY_KEYS. Rækkefølgen er en del
 // af kontrakten: frontend-visningen regner tooltip-bidrag i samme orden, og
@@ -66,7 +72,7 @@ const ABILITY_MAX = 99;
 
 // Finalens andel af en vej-etapes vektor; resten er terrænet. Valgt ud fra
 // målingen mod S4-resultater (balance-internals/6207/, privat).
-export const ROUTE_MATCH_FINALE_SHARE = 0.5;
+export const ROUTE_MATCH_FINALE_SHARE = 0.25;
 
 const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
 
@@ -139,7 +145,9 @@ export function stageRouteVector(stageRow, revision, { finaleShare = ROUTE_MATCH
   try {
     route = routeForRulesRevision(routeFromStageProfileRow(stageRow), revision);
   } catch {
-    // En række motoren ikke kan læse som rute: terrænet alene (aldrig et opfundet tal).
+    // best-effort: en række motoren ikke kan læse som rute giver terrænet alene
+    // (aldrig et opfundet tal). Fejlen er et datafund, ikke et nedbrud: visningen
+    // skal stadig kunne vise de øvrige etaper.
     return terrain;
   }
   if (TIME_TRIAL_PROFILES.has(stageRow.profile_type)) return timeTrialVector(route, revision);
