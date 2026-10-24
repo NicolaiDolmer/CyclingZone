@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "Race result is in",
-      "message": "{race} has been run. View the result."
+      "message": "{race} has been run. View the result.",
+      "messageBest": "{race} has been run. Your best: {riders}."
     },
     "firstRaceResult": {
       "title": "Your first race is in the books",
-      "message": "{race} has been run. See how your riders did."
+      "message": "{race} has been run. See how your riders did.",
+      "messageBest": "{race} has been run. Your best: {riders}."
     },
     "stageResult": {
       "title": "Stage result is in",

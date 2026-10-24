@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "Ya está el resultado de la carrera",
-      "message": "Se ha corrido {race}. Ver el resultado."
+      "message": "Se ha corrido {race}. Ver el resultado.",
+      "messageBest": "{race} ya se ha corrido. Tus mejores: {riders}."
     },
     "firstRaceResult": {
       "title": "Tu primera carrera ya es historia",
-      "message": "Se ha corrido {race}. Mira cómo les fue a tus ciclistas."
+      "message": "Se ha corrido {race}. Mira cómo les fue a tus ciclistas.",
+      "messageBest": "{race} ya se ha corrido. Tus mejores: {riders}."
     },
     "stageResult": {
       "title": "Ya está el resultado de la etapa",

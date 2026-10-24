@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "De koersuitslag is binnen",
-      "message": "{race} is gereden. Bekijk de uitslag."
+      "message": "{race} is gereden. Bekijk de uitslag.",
+      "messageBest": "{race} is gereden. Je beste renners: {riders}."
     },
     "firstRaceResult": {
       "title": "Je eerste koers zit erop",
-      "message": "{race} is gereden. Kijk hoe je renners het deden."
+      "message": "{race} is gereden. Kijk hoe je renners het deden.",
+      "messageBest": "{race} is gereden. Je beste renners: {riders}."
     },
     "stageResult": {
       "title": "De etappeuitslag is binnen",
