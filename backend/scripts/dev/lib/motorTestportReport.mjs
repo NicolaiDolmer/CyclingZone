@@ -357,7 +357,6 @@ function v3GateSection(card) {
   if (!v?.candidate) return [];
   const byId = (side) => Object.fromEntries((v[side]?.gates ?? []).map((g) => [g.id, g]));
   const b = byId("baseline");
-  const c = byId("candidate");
   return ["", `## Taend-gaten for v3 (#6804, ejer valg 8 A: blokerende)${v.applies ? "" : " - til orientering"}`, "",
     ...table(["Gate", `${card.baseline} dom`, `${card.baseline} vaerdi`, `${card.candidate} dom`, `${card.candidate} vaerdi`, "Hvorfor (kandidat)"],
       (v.candidate.gates ?? []).map((g) => [`${g.id} ${g.issue}: ${g.label}`, b[g.id]?.status ?? "-", v3GateValueText(b[g.id]), g.status, v3GateValueText(g), g.why ?? "-"])),
