@@ -2059,6 +2059,125 @@ function buildAuthoredSingle(race) {
   return [{ ...merged, segments, weather, elevation_profile, generator_version: IDENTITY_GENERATOR_VERSION }];
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════
+// #2757 A2 (ejer-beslutning 24/10): ethvert S5-etapeløb har mindst én flad etape.
+//
+// Et etapeløb uden flad etape giver sprinteren ingen dag at vinde pointtrøjen på. Har løbet
+// ingen, bliver én bakket/kuperet etape (rolling/hilly) til en rigtig flad etape: ny rute
+// (distance, højdemeter, stigninger, spurter) fra samme S5-rutegenerator. Aldrig signatur-
+// etapen (#6857) og aldrig en topankomst. Hvilken etape vælges deterministisk pr. løb (egen
+// rng-strøm, så alle andre etaper er bit-identiske), vægtet efter hvor flade etaper ligger i
+// rigtige en-uges-løb, så placeringen varierer fra løb til løb og den samlede spredning
+// ligner virkeligheden. Samme funktioner bruges af s5FlatStageA2_2757.js på S5's skrevne ruter.
+// ═══════════════════════════════════════════════════════════════════════════════════
+
+// Flade etapers placering i rigtige en-uges WorldTour-etapeløb 2024-2026 (antal flade etaper
+// pr. placering; docs/research/2026-08-04-stage-race-structure/, Grand Tours udeladt).
+// first = etape 1, last = sidste etape, ellers etapens relative placering i tredjedele.
+export const A2_FLAT_POSITION_WEIGHTS = Object.freeze({ first: 9, early: 7, middle: 8, late: 8, last: 3 });
+/** Etapetyper en flad etape må erstatte (ejer 24/10: "på en bakket/kuperet etape"). */
+export const A2_REPLACEABLE_TYPES = Object.freeze(["rolling", "hilly"]);
+
+/**
+ * Placerings-kassen for etape `index` (0-baseret) i et løb med `n` etaper.
+ * @param {number} index @param {number} n
+ * @returns {"first"|"early"|"middle"|"late"|"last"}
+ */
+export function flatStagePositionBucket(index, n) {
+  if (index <= 0) return "first";
+  if (index >= n - 1) return "last";
+  const r = index / (n - 1);
+  return r < 1 / 3 ? "early" : r < 2 / 3 ? "middle" : "late";
+}
+
+/**
+ * Etaperne der bærer løbets signatur (#6857): stigningen/sektoren med signaturens navn, eller
+ * tidskørslen for en enkeltstarts-/prolog-signatur. Samme genkendelse som L3-tørkørslens pin.
+ * @param {any} signature  race_pool.signature (eller null)
+ * @param {Array<{stage_number:number, profile_type:string, climbs?:any[], sectors?:any[]}>} stages
+ * @returns {Set<number>}
+ */
+export function signatureStageNumbers(signature, stages = []) {
+  const out = new Set();
+  const features = Array.isArray(signature?.features) ? signature.features : [];
+  for (const f of features) {
+    for (const s of stages) {
+      const hit = (f.kind === "climb" || f.kind === "summit_finish")
+        ? (s.climbs ?? []).some((/** @type {any} */ c) => c?.name === f.name)
+        : f.kind === "sector" ? (s.sectors ?? []).some((/** @type {any} */ x) => x?.name === f.name)
+          : (f.kind === "itt" || f.kind === "prologue") ? isTimeTrial(s.profile_type) : false;
+      if (hit) out.add(Number(s.stage_number));
+    }
+  }
+  return out;
+}
+
+/** Topankomst: bjergtop-afslutningen eller en stigning hvis top er målstregen. @param {any} stage */
+export function isSummitFinishStage(stage) {
+  return stage?.finale_type === "long_climb" || (stage?.climbs ?? []).some((/** @type {any} */ c) => c?.summit_finish === true);
+}
+
+/**
+ * De etaper A2 må gøre flade: rolling/hilly, ikke signatur-etapen, ikke en topankomst.
+ * @param {any[]} stages @param {{ signature?: any }} [opts]
+ * @returns {number[]} stage_numbers i stigende orden
+ */
+export function a2FlatStageCandidates(stages = [], { signature = null } = {}) {
+  const sig = signatureStageNumbers(signature, stages);
+  return stages
+    .filter((s) => A2_REPLACEABLE_TYPES.includes(s.profile_type) && !sig.has(Number(s.stage_number)) && !isSummitFinishStage(s))
+    .map((s) => Number(s.stage_number))
+    .sort((a, b) => a - b);
+}
+
+/** A2's egen rng-strøm pr. løb (samme seed-nøgle som løbets parcours + et fast suffiks). @param {any} race */
+function a2Rng(race) {
+  return makeRng(stableSeed(`${seedKeyFor(race)}:a2-flat`));
+}
+
+/**
+ * Hvilken etape A2 gør flad i et løb uden flad etape. null = løbet har allerede en flad etape,
+ * er ikke et etapeløb, eller har ingen lovlig kandidat.
+ * @param {any} race  samme seed-form som generateRaceStageProfiles (+ signature)
+ * @param {any[]} stages  løbets etaper (genererede eller skrevne rækker)
+ * @returns {{ stageNumber: number | null, candidates: number[], reason: string }}
+ */
+export function chooseA2FlatStage(race, stages = []) {
+  if (race?.race_type !== "stage_race") return { stageNumber: null, candidates: [], reason: "not_stage_race" };
+  if (stages.some((s) => s.profile_type === "flat")) return { stageNumber: null, candidates: [], reason: "has_flat" };
+  const candidates = a2FlatStageCandidates(stages, { signature: race?.signature ?? null });
+  if (!candidates.length) return { stageNumber: null, candidates, reason: "no_candidate" };
+  const n = stages.length;
+  const weighted = candidates.map((sn) => ({ value: sn, weight: A2_FLAT_POSITION_WEIGHTS[flatStagePositionBucket(sn - 1, n)] }));
+  return { stageNumber: pickByQuantile(weighted, a2Rng(race)()), candidates, reason: "chosen" };
+}
+
+/**
+ * Den nye flade etape: en fuld S5-etape (type flat, rute, segmenter, vejr, højdeprofil) bygget
+ * af samme toStageS5 som resten af løbet. Rute-strømmen er etapens egen (seed + etapenummer),
+ * afslutningen trækkes af A2-strømmen efter etapevalget.
+ * @param {any} race @param {number} stageNumber @param {{ generatorVersion?: number }} [opts]
+ */
+export function buildA2FlatStage(race, stageNumber, { generatorVersion = S5_GENERATOR_VERSION } = {}) {
+  const rng = a2Rng(race);
+  rng(); // etapevalget (chooseA2FlatStage) er strømmens første træk
+  const stage = toStageS5(rng, "flat", stageNumber, race, true);
+  if (stage.profile_type !== "flat") throw new Error(`A2: flat stage ${stageNumber} became ${stage.profile_type} (${race?.name ?? race?.id}, #2757)`);
+  return { ...stage, generator_version: generatorVersion };
+}
+
+/**
+ * Giv et S5-etapeløb uden flad etape én flad etape (A2). Andre løb returneres uændret.
+ * @param {any} race @param {any[]} stages
+ */
+export function ensureFlatStageS5(race, stages) {
+  const { stageNumber } = chooseA2FlatStage(race, stages);
+  if (stageNumber == null) return stages;
+  return stages.map((s) => (s.stage_number === stageNumber
+    ? buildA2FlatStage(race, stageNumber, { generatorVersion: s.generator_version ?? S5_GENERATOR_VERSION })
+    : s));
+}
+
 /**
  * Generér stage-profiler for ét løb (rør ingen DB).
  * @param {{id:string, race_type?:string, stages?:number, external_id?:string, pool_race_id?:string, season_id?:string, season_variant?:number}} race
@@ -2102,10 +2221,11 @@ export function generateRaceStageProfiles(race, { seed, archetypeProfiles = ARCH
     const identity = raceIdentityFor(race, identityProfiles);
     const fillerApplies = isStageRace && (identity != null || (cfg?.kind === "stage" && !cfg.grandTourOrder));
     if (fillerTypes && !fillerApplies) throw new Error(`fillerTypes only applies to S5 archetype stage races outside Grand Tours (${race.name ?? race.id})`);
-    if (identity) return buildIdentityStageRace(rng, stages, race, identity, fillerTypes);
     if (!isStageRace) return buildSingle(rng, cfg, race, toStageS5);
-    if (cfg?.kind === "stage" && cfg.grandTourOrder) return buildGrandTourS5(rng, stages, race, { allowTtt });
-    return buildStageRace(rng, stages, cfg, race, toStageS5, fillerTypes);
+    // #2757 A2: et S5-etapeløb uden flad etape får én (ensureFlatStageS5, egen rng-strøm).
+    if (identity) return ensureFlatStageS5(race, buildIdentityStageRace(rng, stages, race, identity, fillerTypes));
+    if (cfg?.kind === "stage" && cfg.grandTourOrder) return ensureFlatStageS5(race, buildGrandTourS5(rng, stages, race, { allowTtt }));
+    return ensureFlatStageS5(race, buildStageRace(rng, stages, cfg, race, toStageS5, fillerTypes));
   }
   if (profileModel !== "v5") throw new Error(`unknown profileModel "${profileModel}"`);
   if (fillerTypes) throw new Error("fillerTypes only applies to profileModel \"s5\" (#6367)");
