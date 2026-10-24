@@ -768,6 +768,8 @@ export type SegmentHookContext = {
   s5ProfilesV1?: true;
   // #6748 (ADDITIVT og VALGFRIT, KUN s5_profiles_v2, slukket): udbrudsopfoelgningen. Udeladt = v1.
   s5ProfilesV2?: true;
+  // #6937 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen og lead-outens pris. Udeladt = v2.
+  s5ProfilesV3?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;
