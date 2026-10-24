@@ -981,6 +981,10 @@
       "free_role": "fri rolle"
     }
   },
+  "stageOrders": {
+    "title": "Dine ordrer",
+    "roleDefaults": "intet gemt, så hver rytter kørte sin rolle"
+  },
   "racePage": {
     "tabsAria": "Løbets afsnit",
     "tab": {

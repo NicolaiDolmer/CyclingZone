@@ -981,6 +981,10 @@
       "free_role": "free role"
     }
   },
+  "stageOrders": {
+    "title": "Your orders",
+    "roleDefaults": "nothing saved, so each rider rode his role"
+  },
   "racePage": {
     "tabsAria": "Race sections",
     "tab": {

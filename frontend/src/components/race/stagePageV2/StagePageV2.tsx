@@ -17,6 +17,8 @@ import type { CareerEvent } from "./YourDayCard.tsx";
 import { Tab, TabList, Tabs } from "./ui.ts";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
 import { asStory } from "./raceStoryModel.ts";
+import StageOrdersRecap from "../../stageOrders/StageOrdersRecap.tsx"; // #6299
+import { ownRiderIdsForStage } from "../../../lib/stageSplitTimes.ts";
 
 export interface StagePageV2Props {
   isStageRace: boolean;
@@ -78,6 +80,10 @@ export default function StagePageV2(props: StagePageV2Props) {
   // ingen tidslinje = den nuvaerende visning, uaendret.
   const { timeline } = useStageTimeline(phase === "after" && activeTab === "stage" ? raceId : null, selectedStage, { story: true });
   const story = useMemo(() => asStory((timeline as { story?: unknown } | null)?.story), [timeline]);
+  // #6299 (b): egne rytteres laaste ordre paa en koert v4-etape.
+  const ranTimeline = timeline as { timeline_version?: number; created_at?: string | null } | null;
+  const ownStageRiders = useMemo(() => ownRiderIdsForStage(results, selectedStage, myTeamId), [results, selectedStage, myTeamId]);
+  const nameOfRider = useMemo(() => (id: string) => nameById.get(id) || null, [nameById]);
 
   // Den ene guld-knap: taktik for den etape der er aaben. Foer etapen = den
   // valgte; efter = den naeste, hvis loebet ikke er slut.
@@ -134,6 +140,9 @@ export default function StagePageV2(props: StagePageV2Props) {
           emptyState={emptyStageSlot}
           story={story}
         />
+      )}
+      {activeTab === "stage" && phase === "after" && (ranTimeline?.timeline_version ?? 1) >= 2 && (
+        <StageOrdersRecap raceId={raceId} stageNumber={selectedStage} riderIds={ownStageRiders} nameOf={nameOfRider} profileType={profileByStage[selectedStage]?.profile_type ?? null} stageRoles={stageRoles} ranAt={ranTimeline?.created_at ?? null} />
       )}
       {activeTab === "standings" && standingsSlot}
       {activeTab === "team" && teamSlot}

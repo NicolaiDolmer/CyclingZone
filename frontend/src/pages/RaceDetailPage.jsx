@@ -82,6 +82,7 @@ import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
+import StageOrdersRecap from "../components/stageOrders/StageOrdersRecap.tsx"; // #6299
 import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
 import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
 import { ownRiderIdsForOneDay } from "../lib/oneDayTimeline.ts"; // #6512
@@ -2048,6 +2049,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             profileType={profile?.profile_type ?? null} startlist={stageStartlist} t={t}
           />
           <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+          {isV4Timeline && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
           {jerseys.length > 0 && (
