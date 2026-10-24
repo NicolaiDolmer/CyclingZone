@@ -402,19 +402,15 @@
   "i_hilly": [
     {
       "stage_number": 1,
-      "profile_type": "rolling",
+      "profile_type": "flat",
       "finale_type": "flat_sprint",
       "demand_vector": {
-        "endurance": 0.18,
-        "flat": 0.12,
-        "punch": 0.12,
-        "tempo": 0.08,
+        "sprint": 0.61,
+        "acceleration": 0.15,
+        "flat": 0.06,
         "positioning": 0.08,
-        "sprint": 0.08,
-        "tactics": 0.06,
-        "climbing": 0.04,
-        "recovery": 0.04,
-        "randomness": 0.2
+        "endurance": 0.02,
+        "randomness": 0.08
       }
     },
     {
@@ -880,19 +876,15 @@
     },
     {
       "stage_number": 2,
-      "profile_type": "rolling",
+      "profile_type": "flat",
       "finale_type": "flat_sprint",
       "demand_vector": {
-        "endurance": 0.18,
-        "flat": 0.12,
-        "punch": 0.12,
-        "tempo": 0.08,
+        "sprint": 0.61,
+        "acceleration": 0.15,
+        "flat": 0.06,
         "positioning": 0.08,
-        "sprint": 0.08,
-        "tactics": 0.06,
-        "climbing": 0.04,
-        "recovery": 0.04,
-        "randomness": 0.2
+        "endurance": 0.02,
+        "randomness": 0.08
       }
     },
     {
