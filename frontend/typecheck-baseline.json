@@ -668,9 +668,6 @@
     "TS2739": 7,
     "TS2741": 2
   },
-  "src/components/FinanceSeasonSwitchPanel.jsx": {
-    "TS2322": 1
-  },
   "src/components/ForumHighlightsCard.jsx": {
     "TS2322": 2,
     "TS2339": 10,
