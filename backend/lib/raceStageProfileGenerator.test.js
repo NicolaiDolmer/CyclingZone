@@ -1847,7 +1847,7 @@ test("#2757 property: generatoren giver samme etaper (multisæt, indhold) i en r
     const varied = generateRaceStageProfiles(race, { profileModel: "s5", a2FlatStage: false });
     const where = `${race.race_identity_type ?? race.terrain_archetype}/${race.stages} ${race.season_id}: ${crescendo.map((p) => p.profile_type).join(" ")}`;
     assert.deepEqual(varied, varyStageOrderS5(race, crescendo), where);
-    const strip = (ps) => ps.map(({ stage_number, ...rest }) => JSON.stringify(rest)).sort();
+    const strip = (ps) => ps.map((p) => JSON.stringify({ ...p, stage_number: 0 })).sort();
     assert.deepEqual(strip(varied), strip(crescendo), `${where}: samme etaper`);
     assert.deepEqual(varied.map((p) => p.stage_number), crescendo.map((p) => p.stage_number), where);
     for (const n of signatureStageNumbers(race.signature, crescendo)) {
