@@ -95,11 +95,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Clearer breakaway icons",
-          "body": "The race film and results use three icons: morning breakaway, later attack and no attack. Hover an icon to see what it means."
+          "body": "Results now show a flag for riders in the morning breakaway and a bolt for riders who attacked later. Hover an icon to see what it means."
         },
         "da": {
           "title": "Tydeligere udbrudsikoner",
-          "body": "Løbsfilmen og resultaterne bruger tre ikoner: morgenudbrud, angreb senere i løbet og intet angreb. Hold musen over et ikon for at se, hvad det betyder."
+          "body": "Resultaterne viser nu et flag ved ryttere i morgenudbruddet og et lyn ved ryttere, der angreb senere. Hold musen over et ikon for at se, hvad det betyder."
         },
         "refs": [
           7092
