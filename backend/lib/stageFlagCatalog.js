@@ -109,6 +109,9 @@ export const STAGE_FLAGS = Object.freeze([
   // (developmentV2Flag.js) og ingen daglig udvikling uden for managerhold
   // (dailyTrainingEngine.js). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_v2_aging_enabled", area: "season", label: "Udvikling 2.0 del 1 — tilbagegang + kun managerhold udvikler sig" },
+  // #6210: maks +1 pr. evne pr. rytter pr. dato (dailyTrainingEngine.js). Fail-safe
+  // OFF; tændes med Udvikling 2.0. Ejer-only flip.
+  { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },

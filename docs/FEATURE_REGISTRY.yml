@@ -759,6 +759,8 @@ features:
     epic: 6110
     note: Ejer, med Udvikling 2.0.
     verified: 2026-10-23
+    decision: taend
+    decide_by: 2026-10-25
 
   - id: promotion-pending
     area: academy
