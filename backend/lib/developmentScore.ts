@@ -155,6 +155,12 @@ export interface DevelopmentDayFactors {
 const GROWTH: Readonly<Record<string, number>> = TRAINING_CONFIG.focusGrowthMult;
 const FOCUSES: Readonly<Record<string, readonly string[]>> = TRAINING_FOCUSES;
 const ROLE_RATE: Readonly<Record<string, number>> = ROLE_CLASS_RATE;
+// JSDoc'en i staffTrainingBonus.js kræver en streng som riderLevel, men funktionen
+// tåler null (ukendt niveau = ingen specialiserings-fordel), som trainingScore.js
+// allerede sender.
+const coachBonus = staffTrainingBonus as unknown as (args: {
+  facilityTier: number | null; staff: unknown; ability: string; riderLevel: string | null;
+}) => number;
 
 // Referencen: et mellem-pas med håndværks-match er 1,0 på begge led.
 const REFERENCE_INTENSITY = GROWTH.normal;
@@ -297,7 +303,7 @@ function trainingCoach(
   for (const { ability, weight } of weights) {
     if (!isPositiveFinite(weight)) continue;
     weightSum += weight;
-    sum += weight * Number(staffTrainingBonus({
+    sum += weight * Number(coachBonus({
       facilityTier: input.facilityTier ?? null,
       staff: input.staff ?? null,
       ability,

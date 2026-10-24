@@ -121,7 +121,7 @@ test("S29 + B: form, træthed, kondition og alder påvirker hverken score eller 
 });
 
 test("S13: træner og facilitet påvirker aldrig en løbsdag", () => {
-  const staff = { overall: 90, dimensions: { climbing: 1 }, levels: { senior: 1 } };
+  const staff = { overall: 95, dimensions: { physical: 95 }, levels: { senior: 95 } };
   const plain = developmentDay(race(), PARAMS);
   const rich = { ...race(), staff, facilityTier: 5, riderLevel: "senior" } as RaceDayInput;
   assert.deepEqual(developmentDay(rich, PARAMS), plain);
@@ -132,7 +132,7 @@ test("S13: træner og facilitet påvirker aldrig en løbsdag", () => {
 });
 
 test("træning straffer aldrig: træner og facilitet kan kun løfte en træningsdag", () => {
-  const staff = { overall: 90, dimensions: { climbing: 1 }, levels: { senior: 1 } };
+  const staff = { overall: 95, dimensions: { physical: 95 }, levels: { senior: 95 } };
   const plain = developmentDayFactors(training(), QUIET);
   assert.ok(plain);
   for (const tier of [0, 1, 2, 3, 4, 5]) {
@@ -144,6 +144,8 @@ test("træning straffer aldrig: træner og facilitet kan kun løfte en trænings
     const b = developmentDay(training(), QUIET);
     assert.ok(a && b && a.score >= b.score);
   }
+  const top = developmentDayFactors(training({ staff, facilityTier: 5, riderLevel: "senior" }), QUIET);
+  assert.ok(top && top.coach > 1 && top.facility > 1, "en stærk træner på bedste facilitet løfter faktisk");
 });
 
 test("S16: udgået rytter får kun basis, uafhængigt af afgørelse og felt", () => {
