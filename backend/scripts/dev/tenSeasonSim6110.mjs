@@ -45,7 +45,7 @@
 // Genkør på gemt billede (ingen prod-kald):
 //   node scripts/dev/tenSeasonSim6110.mjs --snapshot <fil>
 // Flag: --seasons 10 --race-days 160 --b-scales 0.75,1,1.25 --variants nu,nu_maks1,B
-//       --render-only (byg kortet af allerede koerte varianter i runs-<dato>/)
+//       --b-noise <bredde> --b-ref-age <alder> --render-only (kortet af koerte varianter)
 //       --out-dir <mappe> (default <repo>/balance-internals/6110/s25) --limit-teams N
 //
 // Output (gitignoreret, må aldrig committes):
@@ -58,7 +58,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
-import { applyDailyTick, dailyAbilityDelta, growthFractionForAge, resolveProgram } from "../../lib/dailyTraining.js";
+import {
+  DAILY_TRAINING_CONFIG, applyDailyTick, dailyAbilityDelta, growthFractionForAge, resolveProgram,
+} from "../../lib/dailyTraining.js";
 import {
   buildCapsForRider, developRiderSeasonV2, seededUnitMixed, youthRateForPotential,
 } from "../../lib/riderProgression.js";
@@ -86,10 +88,11 @@ export const SIM_DEFAULTS = Object.freeze({
   abilityCapPerRaceDay: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
   abilityCapPerDate: 1, // #7075-reglen
   bScales: Object.freeze([0.75, 1, 1.25]),
-  // B-proxy: dagsstøjens bredde (B: "mere dagsstøj"; den endelige bredde
-  // kalibreres mod H6b i byggetrin 7). Fast vækstfraktion = fraktionen ved
-  // referencealderen, så alder ikke er en turbo (D-058).
-  bNoiseSpan: 0.3,
+  // B-proxy: dagsstøjens bredde. Default = dagens bredde; B's bredere støj
+  // sættes med --b-noise (værdien er privat og står på kortet; den endelige
+  // bredde kalibreres mod H6b i byggetrin 7). Fast vækstfraktion = fraktionen
+  // ved referencealderen (--b-ref-age), så alder ikke er en turbo (D-058).
+  bNoiseSpan: DAILY_TRAINING_CONFIG.noiseSpan,
   bReferenceAge: 23,
   inflowAgeBand: Object.freeze({ min: 17, max: 19 }),
   variants: Object.freeze(["nu", "nu_maks1", "B"]),
@@ -527,6 +530,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   ).rating;
   result.bNorm = world.bNorm;
   result.dateCap = world.dateCap;
+  result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge };
   result.raceShares = { young: round(shares.youngMedian, 3), old: round(shares.oldMedian, 3) };
   return result;
 }
@@ -610,6 +614,8 @@ function renderCard(snapshot, results, opts, date) {
   L.push("");
   L.push(`Øjebliksbillede: aktiv sæson ${snapshot.season.number}, taget ${snapshot.takenAt}. Simuleret: S${Number(snapshot.season.number) + 1} til S${Number(snapshot.season.number) + opts.seasons}, ${opts.raceDaysPerSeason} løbsdage pr. sæson (${opts.raceDaysPerDate} pr. dato). Assistenten styrer alle hold. Aldring = Udvikling 2.0 (#6499).`);
   L.push(`Varianter: ${v.join(" · ")}. B-normalisering (B@1): ${round(results.find((r) => r.variant.startsWith("B"))?.bNorm ?? NaN, 3) ?? "-"}. Løbsdags-andel uden måling (ung/ældre): ${results[0].raceShares.young} / ${results[0].raceShares.old}.`);
+  const bp = results.find((r) => r.variant.startsWith("B"))?.params;
+  if (bp) L.push(`B-proxy-parametre: dagsstøj ±${bp.bNoiseSpan}, fast vækstfraktion fra alder ${bp.bReferenceAge}.`);
   L.push("");
   L.push("## Overblik");
   L.push("");
@@ -713,6 +719,8 @@ function parseArgs(argv) {
   if (get("--race-days")) opts.raceDaysPerSeason = Number(get("--race-days"));
   if (get("--b-scales")) opts.bScales = get("--b-scales").split(",").map(Number).filter(Number.isFinite);
   if (get("--variants")) opts.variants = get("--variants").split(",");
+  if (get("--b-noise")) opts.bNoiseSpan = Number(get("--b-noise"));
+  if (get("--b-ref-age")) opts.bReferenceAge = Number(get("--b-ref-age"));
   return { opts, snapshotPath: get("--snapshot"), outDir: get("--out-dir"), limitTeams: Number(get("--limit-teams")) || null };
 }
 

@@ -48,7 +48,7 @@ test("applyTickB: +1-loftet holder, hviledag giver intet, deterministisk", () =>
   const args = {
     riderId: "r1", seedKey: "s#gd1", abilities, caps, progress: flatAbilities(0.9), program: resolveProgram(null, "climber"),
     potentiale: 6, staff: null, facilityTier: 0, riderLevel: "senior", primaryType: "climber", secondaryType: null,
-    budgetDivisor: 1, hardDailyCap: 1, scale: 50, noiseSpan: 0.3, referenceAge: 23,
+    budgetDivisor: 1, hardDailyCap: 1, scale: 50, noiseSpan: 0.2, referenceAge: 23,
   };
   const out = applyTickB(args);
   for (const k of VISIBLE_ABILITIES) assert.ok((out.gains[k] ?? 0) <= 1, `${k} stiger hoejst 1`);
