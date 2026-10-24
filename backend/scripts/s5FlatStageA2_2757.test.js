@@ -1,0 +1,171 @@
+// #2757 A2: s5FlatStageA2_2757.js på syntetiske snapshots (ingen prod, ingen tal fra spillet).
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  parseArgs, expandSnapshot, buildA2Plan, evaluateGates, buildBackupSql, buildRestoreSql, diffAgainstCurrent,
+  applyPlan, postVerify, renderA2Html, renderA2Markdown, writeContent, violationKey, INPUT_FORMAT, A2_WRITE_COLUMNS,
+} from "./s5FlatStageA2_2757.js";
+
+const RACE_A1 = "11111111-1111-4111-8111-111111111111";
+const RACE_A2 = "22222222-2222-4222-8222-222222222222";
+const RACE_B = "33333333-3333-4333-8333-333333333333";
+const POOL_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const POOL_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const SIG = { features: [{ kind: "climb", name: "Muro Test", category: "3", length_km: 2.4, avg_gradient: 7.5, stage_hint: "any", summit_finish: false }] };
+
+function snapshot(overrides = {}) {
+  const route = [
+    { stage_number: 1, profile_type: "rolling", finale_type: "flat_sprint", climbs: [{ name: "Côte Un", category: "4", summit_finish: false }], generator_version: 7, is_manual: false },
+    { stage_number: 2, profile_type: "hilly", finale_type: "descent", climbs: [{ name: "Muro Test", category: "3", summit_finish: false }], generator_version: 7, is_manual: false },
+    { stage_number: 3, profile_type: "medium_mountain", finale_type: "long_climb", climbs: [{ name: "Col Top", category: "2", summit_finish: true }], generator_version: 7, is_manual: false },
+    { stage_number: 4, profile_type: "hilly", finale_type: "flat_sprint", climbs: [{ name: "Côte Deux", category: "3", summit_finish: false }], generator_version: 7, is_manual: false },
+  ];
+  return {
+    format: INPUT_FORMAT, label: "test",
+    season: { id: "00000000-0000-0000-0000-000000000005", number: 5, status: "upcoming" },
+    divisions: [{ id: 4, tier: 3 }, { id: 5, tier: 3 }],
+    races: [
+      { id: RACE_A1, name: "Ronde Test", race_type: "stage_race", race_class: "ProSeries", stages: 4, stages_completed: 0, pool_race_id: POOL_A, league_division_id: 4, engine_rules_revision: null, route: "A", game_days: [2, 4, 7, 9], first_date: "2026-10-28" },
+      { id: RACE_A2, name: "Ronde Test", race_type: "stage_race", race_class: "ProSeries", stages: 4, stages_completed: 0, pool_race_id: POOL_A, league_division_id: 5, engine_rules_revision: null, route: "A" },
+      { id: RACE_B, name: "Tour Plat", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 0, pool_race_id: POOL_B, league_division_id: 4, engine_rules_revision: null, profile_types: "flat,hilly,flat", game_days: [12, 14, 17], first_date: "2026-10-30" },
+      { id: "k1", name: "Klassiker", race_type: "single", race_class: "ProSeries", stages: 1, stages_completed: 0, pool_race_id: "p1", league_division_id: 4, engine_rules_revision: null, profile_types: "hilly", game_days: [2], first_date: "2026-10-28" },
+    ],
+    catalog: [
+      { id: POOL_A, external_id: "cz-test-a", name: "Ronde Test", race_type: "stage_race", race_class: "ProSeries", terrain_archetype: "hilly_tour", race_identity_type: "hilly", signature: SIG },
+      { id: POOL_B, external_id: "cz-test-b", name: "Tour Plat", race_type: "stage_race", race_class: "ProSeries", terrain_archetype: null, race_identity_type: "sprinters", signature: null },
+      { id: "p1", name: "Klassiker", race_type: "single", race_class: "ProSeries", race_identity_type: null },
+    ],
+    routes: { A: route },
+    claims: [],
+    ...overrides,
+  };
+}
+
+test("parseArgs: dry-run er standard; apply kræver owner-go, backup-tabel og plan-hash, aldrig --input", () => {
+  assert.equal(parseArgs([]).apply, false);
+  assert.throws(() => parseArgs(["--season=4"]), /kun sæson 5/);
+  assert.throws(() => parseArgs(["--apply"]), /--owner-go/);
+  assert.throws(() => parseArgs(["--apply", "--owner-go"]), /--backup-table/);
+  assert.throws(() => parseArgs(["--apply", "--owner-go", "--backup-table=backup_2757_race_stage_profiles_20261024"]), /--plan-hash/);
+  const hash = "a".repeat(64);
+  assert.equal(parseArgs(["--apply", "--owner-go", "--backup-table=backup_2757_race_stage_profiles_20261024", `--plan-hash=${hash}`]).apply, true);
+  assert.throws(() => parseArgs(["--apply", "--owner-go", "--backup-table=backup_2757_race_stage_profiles_20261024", `--plan-hash=${hash}`, "--input=x.json"]), /--input er kun til dry-run/);
+  assert.throws(() => parseArgs(["--owner-go"]), /kun til --apply/);
+  assert.throws(() => parseArgs(["--plan-hash", hash]), /kun til --apply/);
+  assert.throws(() => parseArgs(["--ukendt"]), /ukendt flag/);
+});
+
+test("expandSnapshot: route, profile_types og game_days udfoldes; forkert format og etapeantal afvises", () => {
+  const input = expandSnapshot(snapshot());
+  assert.equal(input.profiles.filter((p) => p.race_id === RACE_A2).length, 4);
+  assert.deepEqual(input.profiles.filter((p) => p.race_id === RACE_B).map((p) => p.profile_type), ["flat", "hilly", "flat"]);
+  assert.deepEqual(input.schedule.filter((s) => s.race_id === RACE_A1).map((s) => s.game_day), [2, 4, 7, 9]);
+  assert.equal(input.schedule.find((s) => s.race_id === RACE_A1 && s.stage_number === 1).scheduled_at, "2026-10-28");
+  assert.throws(() => expandSnapshot({ ...snapshot(), format: "x" }), /format/);
+  assert.throws(() => expandSnapshot(snapshot({ routes: {} })), /ruten "A" findes ikke/);
+  const bad = snapshot();
+  bad.races[2].profile_types = "flat,hilly";
+  assert.throws(() => expandSnapshot(bad), /2 profiler, men stages = 3/);
+});
+
+test("buildA2Plan: kun løb uden flad etape; aldrig signatur-etapen eller topankomsten; puljerne får samme etape", () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  assert.deepEqual(plan.planErrors, []);
+  assert.deepEqual(plan.items.map((it) => it.race_id).sort(), [RACE_A1, RACE_A2].sort(), "løbet med flade etaper røres ikke");
+  const [a, b] = plan.items;
+  assert.deepEqual(a.candidates, [1, 4], "signatur-etapen (2) og topankomsten (3) er aldrig kandidater");
+  assert.ok([1, 4].includes(a.stage_number));
+  assert.equal(a.stage_number, b.stage_number);
+  assert.deepEqual(a.content, b.content, "samme parcours i begge puljer");
+  assert.equal(a.content.profile_type, "flat");
+  assert.equal(a.content.generator_version, 7, "etapen beholder løbets generator-version");
+  assert.deepEqual(Object.keys(a.content), [...A2_WRITE_COLUMNS]);
+  assert.deepEqual(a.benchmark, []);
+  assert.equal(buildA2Plan(expandSnapshot(snapshot())).planHash, plan.planHash, "deterministisk plan-hash");
+  assert.match(plan.planHash, /^[0-9a-f]{64}$/);
+});
+
+test("evaluateGates: grøn på et sundt snapshot; et startet løb eller en claim blokerer", () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  const gates = evaluateGates({ input, plan });
+  assert.equal(gates.ok, true, gates.violations.join(" · "));
+  assert.equal(gates.tiers.length, 1);
+  assert.equal(gates.tiers[0].after.familyCounts.flat_sprint, gates.tiers[0].before.familyCounts.flat_sprint + 1);
+  const started = snapshot();
+  started.races[0].stages_completed = 1;
+  const s = expandSnapshot(started);
+  assert.equal(evaluateGates({ input: s, plan: buildA2Plan(s) }).ok, false);
+  const claimed = expandSnapshot(snapshot({ claims: [{ race_id: RACE_A2, stage_index: 0 }] }));
+  assert.match(evaluateGates({ input: claimed, plan: buildA2Plan(claimed) }).violations.join(" "), /claims/);
+  assert.match(evaluateGates({ input, plan, ciGate: { ok: false, pass: 1, fail: 1, skipped: 0 } }).violations.join(" "), /calendarInvariantsCiGate4123/);
+  // Brud der fandtes før A2 (her: det lille syntetiske løbssæt under gulvene) er ikke nye, selv om tallet flytter sig.
+  assert.deepEqual(gates.tiers[0].newViolations, []);
+  assert.ok(gates.tiers[0].before.violations.length > 0);
+  assert.equal(violationKey("tier 3: \"flat_sprint\" har 3 etaper, under 12 (#3327)"), violationKey("tier 3: \"flat_sprint\" har 4 etaper, under 12 (#3327)"));
+  assert.notEqual(violationKey("tier 3: \"rolling\" under gulvet"), violationKey("tier 3: \"flat_sprint\" under gulvet"));
+});
+
+test("backup.sql har RLS og dækker præcis etape-pladserne; restore lægger dem tilbage på samme plads", () => {
+  const plan = buildA2Plan(expandSnapshot(snapshot()));
+  const table = "backup_2757_race_stage_profiles_20261024";
+  const sql = buildBackupSql(table, plan.items);
+  assert.match(sql, /enable row level security/);
+  assert.match(sql, /grant select on table public\.backup_2757_race_stage_profiles_20261024 to service_role/);
+  assert.match(sql, new RegExp(`'${RACE_A1}'::uuid, ${plan.items[0].stage_number}`));
+  assert.match(sql, /on conflict \(race_id, stage_number\) do nothing/);
+  assert.throws(() => buildBackupSql("backup_x", plan.items), /ugyldigt backup-navn/);
+  assert.throws(() => buildBackupSql(table, [{ ...plan.items[0], race_id: "k1" }]), /uuid/);
+  const restore = buildRestoreSql(table, plan.items);
+  assert.match(restore, /update public\.race_stage_profiles p/);
+  assert.match(restore, /elevation_profile = b\.elevation_profile/);
+});
+
+function fakeDb(input, { backup = true } = {}) {
+  const rows = input.profiles.map((p, i) => ({ id: `row-${i}`, ...p }));
+  const writes = [];
+  return {
+    writes,
+    rows,
+    async fullProfilesOf(ids) { return rows.filter((r) => ids.includes(r.race_id)); },
+    async backupSlots() { return new Set(backup ? rows.map((r) => `${r.race_id}|${r.stage_number}`) : []); },
+    async updateStage(raceId, stageNumber, content) {
+      const hit = rows.filter((r) => r.race_id === raceId && r.stage_number === stageNumber);
+      assert.equal(hit.length, 1);
+      Object.assign(hit[0], content);
+      writes.push(`${raceId}|${stageNumber}`);
+    },
+  };
+}
+
+test("apply: kræver backup, skriver kun den valgte etape, er idempotent og post-verificerer", async () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  await assert.rejects(applyPlan({ db: fakeDb(input, { backup: false }), plan, backupTable: "backup_2757_race_stage_profiles_20261024" }), /mangler 2 af 2/);
+  const db = fakeDb(input);
+  const before = JSON.stringify(db.rows.filter((r) => !plan.items.some((it) => it.race_id === r.race_id && it.stage_number === r.stage_number)));
+  assert.equal((await postVerify({ db, plan })).ok, false);
+  const first = await applyPlan({ db, plan, backupTable: "backup_2757_race_stage_profiles_20261024" });
+  assert.deepEqual(first, { written: 2, skipped: 0 });
+  assert.equal(JSON.stringify(db.rows.filter((r) => !plan.items.some((it) => it.race_id === r.race_id && it.stage_number === r.stage_number))), before, "andre etaper urørte");
+  const again = await applyPlan({ db, plan, backupTable: "backup_2757_race_stage_profiles_20261024" });
+  assert.deepEqual(again, { written: 0, skipped: 2 });
+  assert.equal((await postVerify({ db, plan })).ok, true);
+  assert.equal(diffAgainstCurrent(plan, db.rows).toWrite.length, 0);
+  assert.deepEqual(writeContent(db.rows.find((r) => r.race_id === RACE_A1 && r.stage_number === plan.items[0].stage_number)), plan.items[0].content);
+});
+
+test("rapport og billede: løbsnavne, før/efter og den nye etape markeret", () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  const gates = evaluateGates({ input, plan });
+  const html = renderA2Html({ plan, gates, generatedAt: "2026-10-24T12:00:00Z" });
+  assert.match(html, /Ronde Test/);
+  assert.match(html, /pulje 1\/2/);
+  assert.equal((html.match(/class="st ch"/g) ?? []).length, 2, "én markeret etape pr. løb");
+  const md = renderA2Markdown({ input, plan, gates, generatedAt: "2026-10-24T12:00:00Z" });
+  assert.match(md, /\*\*2 løb\*\* \(1 ruter/);
+  assert.match(md, /## Placering af flade etaper/);
+});

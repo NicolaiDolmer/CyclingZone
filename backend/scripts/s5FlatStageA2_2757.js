@@ -335,6 +335,11 @@ export function placementFor(tier, races, schedule) {
   return { evaluated: true, violations };
 }
 
+/** Et bruds regel uden dets tal (to brud på samme regel med forskellige tal er samme brud). */
+export function violationKey(text) {
+  return String(text).replace(/\d+(?:[.,]\d+)?/g, "#");
+}
+
 /** Placeringen af flade etaper i alle S5-etapeløb (én pr. division og katalog-løb). */
 export function flatPositionDistribution(input, profiles) {
   const reps = representativeRaces(input);
@@ -369,8 +374,10 @@ export function evaluateGates({ input, plan, ciGate = null }) {
   for (const [tier, races] of representativeRaces(input)) {
     const before = coverageFor(tier, races, input.profiles, catalogById);
     const aft = coverageFor(tier, races, after, catalogById);
-    const known = new Set([...before.violations, ...before.uniformViolations]);
-    const added = [...aft.violations, ...aft.uniformViolations].filter((v) => !known.has(v));
+    // Et brud der fandtes før A2, er samme brud efter, selv om tallet i teksten flytter sig (fx et gulv
+    // der stadig er brudt med en etape mere eller mindre). Nyt = en regel der først brydes efter A2.
+    const known = new Set([...before.violations, ...before.uniformViolations].map(violationKey));
+    const added = [...aft.violations, ...aft.uniformViolations].filter((v) => !known.has(violationKey(v)));
     tiers.push({ tier, before, after: aft, newViolations: added, placement: placementFor(tier, races, input.schedule ?? []) });
   }
   const affectedIds = new Set(plan.items.map((it) => it.race_id));
@@ -384,8 +391,12 @@ export function evaluateGates({ input, plan, ciGate = null }) {
   add("benchmark-gatens etape-tjek på hver ny flad etape", bench.length === 0, bench.map((it) => `${it.name} e${it.stage_number}: ${it.benchmark.join("; ")}`).join(" · "));
   const added = tiers.flatMap((t) => t.newViolations);
   add("ingen nye brud på §5-gulve, rolling-båndet eller §6b", added.length === 0, added.join(" · "));
+  // A2 rører ingen datoer, så placerings-gaterne er ens før og efter: de rapporteres, men et brud
+  // her er kalenderens (fandtes før A2) og blokerer ikke A2.
   const placement = tiers.flatMap((t) => t.placement.violations);
-  add("placerings-gaterne (calendarPlacementGates) grønne", placement.length === 0, placement.join(" · ") || `${tiers.filter((t) => t.placement.evaluated).length} divisioner tjekket`);
+  const evaluated = tiers.filter((t) => t.placement.evaluated).length;
+  add("placerings-gaterne (calendarPlacementGates), uændrede af A2", true,
+    placement.length ? `${placement.length} brud fandtes før A2: ${placement.join(" · ")}` : `grønne, ${evaluated} divisioner tjekket`);
   if (ciGate) add("CI-gaten calendarInvariantsCiGate4123", ciGate.ok, `${ciGate.pass} pass, ${ciGate.fail} fail, ${ciGate.skipped} skip`);
   const started = affectedRaces.filter((r) => Number(r.stages_completed ?? 0) !== 0);
   add("ingen af løbene er startet (stages_completed = 0)", started.length === 0, `${started.length} løb`);
