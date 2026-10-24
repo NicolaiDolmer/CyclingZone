@@ -308,8 +308,11 @@ function simulateSeason(world, seasonNumber, variant, opts) {
           });
         }
         if (variant.capPerDate) {
-          const before = r.abilities;
-          res = capGainsPerDate({ tickResult: res, abilities: before, usedGains: usedToday, cap: opts.abilityCapPerDate });
+          const uncapped = res;
+          res = capGainsPerDate({ tickResult: res, abilities: r.abilities, usedGains: usedToday, cap: opts.abilityCapPerDate });
+          if (res !== uncapped) {
+            for (const [k, n] of Object.entries(uncapped.gains)) world.dateCap.clipped += n - (res.gains[k] ?? 0);
+          }
         }
         for (const [k, n] of Object.entries(res.gains ?? {})) {
           if (n > 0) { usedToday[k] = (usedToday[k] ?? 0) + n; anyGain = true; }
@@ -317,6 +320,8 @@ function simulateSeason(world, seasonNumber, variant, opts) {
         r.abilities = res.abilities;
         r.progress = res.progress;
       }
+      // Hvor tit ville datoen give mere end +1 i en evne (uden dato-loftet)?
+      for (const n of Object.values(usedToday)) if (n > opts.abilityCapPerDate) world.dateCap.over += n - opts.abilityCapPerDate;
       if (anyGain) {
         caps = buildCapsForRider(r.abilities, { potentiale: r.potentiale, age }, r.primary_type, r.secondary_type);
       }
@@ -501,6 +506,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   const shares = fillMissingRaceShares(world.riders, s0);
   world.youngRaceShare = shares.youngMedian;
   world.bNorm = bNormalizer(world.riders.filter((r) => r.teamId != null).map((r) => ageForSeason(r.birthdate, s0)), opts.bReferenceAge);
+  world.dateCap = { over: 0, clipped: 0 };
   const result = { variant: variant.name, start: seasonStats(world, s0, "start"), seasons: [], transitions: [] };
   // Første skifte: den aktive sæsons målte løbsdage (fremskrevet til hel sæson).
   const measuredSeasonRaceDays = (Number(snapshot.season.race_days_total) || 0) * opts.raceDaysPerDate || opts.raceDaysPerSeason;
@@ -519,6 +525,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
     { ...world, riders: world.riders.filter((r) => r.inflow) }, s0 + opts.seasons, "nye unge ved slut",
   ).rating;
   result.bNorm = world.bNorm;
+  result.dateCap = world.dateCap;
   result.raceShares = { young: round(shares.youngMedian, 3), old: round(shares.oldMedian, 3) };
   return result;
 }
@@ -660,6 +667,13 @@ function renderCard(snapshot, results, opts, date) {
     const t = Object.entries(s.top100ByDivision).sort().map(([k, n]) => `D${k}: ${n}`).join(" · ");
     L.push(`| ${r.variant} | ${s.label} | ${d} | ${t} |`);
   }
+  L.push("");
+  L.push("## Maks +1 pr. dato (#7075): hvor tit binder det?");
+  L.push("Uden loft: evne-point ud over +1 på samme dato (summeret over 10 sæsoner). Med loft: point skubbet til en senere dato.");
+  L.push("");
+  L.push("| Variant | Point over +1 pr. dato (uden loft) | Point skubbet af loftet |");
+  L.push("|---|---|---|");
+  for (const r of results) L.push(`| ${r.variant} | ${r.dateCap?.over ?? "-"} | ${r.dateCap?.clipped ?? "-"} |`);
   L.push("");
   L.push("## Nye unge (kom ind via generatoren) ved slut");
   L.push("");
