@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "Le résultat de la course est tombé",
-      "message": "{race} a été disputée. Voir le résultat."
+      "message": "{race} a été disputée. Voir le résultat.",
+      "messageBest": "{race} a été courue. Tes meilleurs : {riders}."
     },
     "firstRaceResult": {
       "title": "Ta première course est dans les annales",
-      "message": "{race} a été disputée. Vois comment tes coureurs s'en sont sortis."
+      "message": "{race} a été disputée. Vois comment tes coureurs s'en sont sortis.",
+      "messageBest": "{race} a été courue. Tes meilleurs : {riders}."
     },
     "stageResult": {
       "title": "Le résultat de l'étape est tombé",
@@ -297,8 +299,8 @@
     },
     "seasonTransitionRisk": {
       "title": "Changement de saison : risque de contrat et de retraite",
-      "messageBoth": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire, et {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. Prolonge le contrat d'un coureur depuis son profil avant le changement pour éviter sa libération ; la retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée.",
-      "messageExpiringOnly": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire. Prolonge leur contrat depuis le profil du coureur avant le changement pour les garder.",
+      "messageBoth": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire, et {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. Prolonge les contrats avant le changement dans l'onglet Contrats de Mon équipe, où tu peux prolonger plusieurs coureurs de 1 à 3 saisons à la fois. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée.",
+      "messageExpiringOnly": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire. Prolonge-les avant le changement dans l'onglet Contrats de Mon équipe, où tu peux prolonger plusieurs coureurs de 1 à 3 saisons à la fois.",
       "messageRetirementOnly": "Ton effectif est concerné par le prochain changement de saison : {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée."
     },
     "watchlistDeparted": {

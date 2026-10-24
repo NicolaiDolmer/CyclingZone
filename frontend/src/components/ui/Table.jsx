@@ -24,6 +24,10 @@ export function Tr({ className = "", children, ...rest }) {
 // aria-sort som den kanoniske SortableTh (så en <Table>-baseret tabel kan
 // sortere uden at skifte til rå <table>/<SortTh>). Uden onSort er adfærden
 // uændret — eksisterende ikke-sorterbare headers rører intet.
+/**
+ * @param {{ numeric?: boolean, sticky?: boolean, sortKey?: any, sort?: any, sortDir?: any,
+ *   onSort?: any, className?: string, children?: any, [key: string]: any }} props
+ */
 export function Th({ numeric = false, sticky = false, sortKey, sort, sortDir, onSort, className = "", children, ...rest }) {
   const sortable = typeof onSort === "function" && sortKey != null;
   const active = sortable && sort === sortKey;
