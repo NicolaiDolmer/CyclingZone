@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "../lib/boardUtils";
+import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { getBoardGoalLabel } from "../lib/boardGoalLabel";
 import { getWizardBackState, canResumeNegotiation, shouldAutoOpenSetupWizard } from "../lib/boardWizardNav";
 import { getCountryDisplay } from "../lib/countryUtils";
@@ -136,25 +136,6 @@ function getBenchmarkMeta(t, satisfaction) {
   const sat = satisfaction ?? 0;
   const bucket = BENCHMARK_BUCKETS.find(b => sat >= b.min) || BENCHMARK_BUCKETS[BENCHMARK_BUCKETS.length - 1];
   return { label: t(`status.benchmark.${bucket.key}`), color: bucket.color };
-}
-
-// #955 · trend-pil ud fra seneste afsluttede sæsons satisfaction_delta.
-function getSatisfactionTrend(snapshots) {
-  if (!snapshots?.length) return null;
-  const latest = snapshots.reduce((a, b) =>
-    (b.season_within_plan ?? b.season_number ?? 0) > (a.season_within_plan ?? a.season_number ?? 0) ? b : a);
-  const delta = latest?.satisfaction_delta ?? 0;
-  if (delta > 0) return { color: "text-cz-success", key: "up" };
-  if (delta < 0) return { color: "text-cz-danger", key: "down" };
-  return { color: "text-cz-3", key: "flat" };
-}
-
-// #2849 bølge 6 → #3422: trend.glyph (var ▲/▼/→ rå unicode-chrome) er fjernet fra
-// getSatisfactionTrend/getEventSatisfactionTrend (delt lib) — feltet var dødt,
-// render har altid brugt TREND_ICON via key, aldrig trend.glyph direkte.
-const TREND_ICON = { up: ArrowUpIcon, down: ArrowDownIcon, flat: MinusIcon };
-function getTrendIcon(key) {
-  return TREND_ICON[key] || MinusIcon;
 }
 
 // #1073 · skærmlæser-alternativ for status-glyfferne (✓/!/~/○). Uden dette læses
@@ -1683,10 +1664,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   const satColor = board.satisfaction >= 70 ? "text-cz-success"
     : board.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
   const benchmark = getBenchmarkMeta(t, board.satisfaction);
-  // #1451 · Foretræk in-season-event-trenden (løb-for-løb); fald tilbage til den
-  // sæson-slut-baserede trend når der endnu ingen events er.
   const events = satisfaction_events ?? [];
-  const trend = getEventSatisfactionTrend(events) ?? getSatisfactionTrend(snapshots);
   const showMidReviewBanner = plan_duration > 1
     && seasons_completed === Math.floor(plan_duration / 2);
 
@@ -1734,20 +1712,11 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           </button>
         ) : (
           <>
-            {/* #955 · standing = kvalitativ label + trend-pil + bar + tal */}
+            {/* #955 · standing = kvalitativ label + bar + tal (#6935: trend-pil fjernet) */}
             <div className="flex items-center justify-between gap-3 mb-1.5">
               <div className="flex items-baseline gap-2 min-w-0">
                 <span className="text-cz-3 text-2xs uppercase tracking-wider">{t("plan.standingHeading")}</span>
                 <span className={`text-sm font-semibold ${benchmark.color}`}>{benchmark.label}</span>
-                {trend && (
-                  <>
-                    {(() => {
-                      const TrendIcon = getTrendIcon(trend.key);
-                      return <TrendIcon size={13} aria-hidden="true" className={trend.color} />;
-                    })()}
-                    <span className="sr-only">{t(`status.trend.${trend.key}`)}</span>
-                  </>
-                )}
               </div>
               <span className="text-cz-2 text-xs font-data shrink-0">{t("plan.goalsLabel")} {goalsAchieved}/{nonCumGoals.length}</span>
             </div>
