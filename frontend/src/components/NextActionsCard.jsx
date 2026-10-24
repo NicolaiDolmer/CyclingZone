@@ -51,7 +51,7 @@ export default function NextActionsCard({
     items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
 
   // #6962: næste ugentlige opdateringer (serverens tider, vist i dansk tid).
-  const fmtWhen = (iso) => formatDate(iso, null, {
+  const fmtWhen = (iso) => formatDate(iso, /** @type {any} */ (null), {
     timeZone: "Europe/Copenhagen", weekday: "long", hour: "2-digit", minute: "2-digit", hour12: false,
   });
   const valueWhen = fmtWhen(pending?.next_updates?.value_update_at);
