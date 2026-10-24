@@ -34,3 +34,9 @@ test("intake udelades naar akademi-intaget ikke er planlagt", () => {
   assert.equal(buildNextScheduledUpdates({ now }).academy_intake_at, null);
   assert.ok(buildNextScheduledUpdates({ now, academyIntakeScheduled: true }).academy_intake_at);
 });
+
+test("uret skal injiceres: manglende eller ugyldigt now kaster (AGENTS.md hard rule 16)", () => {
+  assert.throws(() => nextValueUpdateAt(), /hard rule 16/);
+  assert.throws(() => nextAcademyIntakeAt(new Date("ugyldig")), /hard rule 16/);
+  assert.throws(() => buildNextScheduledUpdates({ academyIntakeScheduled: true }), /hard rule 16/);
+});

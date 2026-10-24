@@ -13,6 +13,13 @@ import {
 
 const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
+// AGENTS.md hard rule 16: uret injiceres fra kalderen (ruten), aldrig en new Date()-default.
+function requireNow(now, fn) {
+  if (!(now instanceof Date) || Number.isNaN(now.getTime())) {
+    throw new Error(`${fn}: eksplicit \`now\` (Date) er paakraevet, se AGENTS.md hard rule 16`);
+  }
+}
+
 // Dansk kalenderdato (YYYY-MM-DD) for den kommende søndag; "i dag" tæller kun med
 // hvis includeToday. Datoregning ved UTC-middag (DST-robust).
 function sundayDate(now, includeToday) {
@@ -29,7 +36,8 @@ function sundayDate(now, includeToday) {
  * @param {Date} now
  * @returns {Date} UTC-instant for næste søndags værdiopdatering
  */
-export function nextValueUpdateAt(now = new Date()) {
+export function nextValueUpdateAt(now) {
+  requireNow(now, "nextValueUpdateAt");
   const todayIsSunday = copenhagenWeekdayKey(copenhagenDateString(now)) === "sun";
   const stillToday = todayIsSunday && copenhagenHour(now) < SUNDAY_VALUE_FROM_HOUR;
   return copenhagenWallTimeToUTC(sundayDate(now, stillToday), SUNDAY_VALUE_FROM_HOUR);
@@ -41,16 +49,18 @@ export function nextValueUpdateAt(now = new Date()) {
  * @param {Date} now
  * @returns {Date} UTC-instant for næste søndags akademi-intake
  */
-export function nextAcademyIntakeAt(now = new Date()) {
+export function nextAcademyIntakeAt(now) {
+  requireNow(now, "nextAcademyIntakeAt");
   return copenhagenWallTimeToUTC(sundayDate(now, false), 0);
 }
 
 /**
- * @param {{ now?: Date, academyIntakeScheduled?: boolean }} opts
+ * @param {{ now: Date, academyIntakeScheduled?: boolean }} opts
  *   academyIntakeScheduled=false (akademi slukket, eller pull-flaget overtager
  *   intaget) udelader intake-tiden, så dashboardet ikke lover et automatisk kuld.
  */
-export function buildNextScheduledUpdates({ now = new Date(), academyIntakeScheduled = false } = {}) {
+export function buildNextScheduledUpdates({ now, academyIntakeScheduled = false }) {
+  requireNow(now, "buildNextScheduledUpdates");
   return {
     value_update_at: nextValueUpdateAt(now).toISOString(),
     academy_intake_at: academyIntakeScheduled ? nextAcademyIntakeAt(now).toISOString() : null,
