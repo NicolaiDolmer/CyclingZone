@@ -160,6 +160,14 @@ export function isS5ProfilesV2OrLater(revision: unknown): boolean {
   return S5_PROFILES_V2_LINEAGE.has(revision);
 }
 
+/**
+ * #6804 (SLUKKET): s5_profiles_v3 = hele s5_profiles_v2-pakken + v3-tilvalgene (#6937 m.fl.).
+ * Endnu ikke en kendt revision (taend-PR'en optager den); kaldsteder spoerger HER, aldrig paa strengen.
+ */
+export function isS5ProfilesV3OrLater(revision: unknown): boolean {
+  return revision === "s5_profiles_v3";
+}
+
 /** Only the future pinned official-times revisions store uncapped official stage gaps. */
 export function preservesOfficialStageTimes(value: unknown): boolean {
   return OFFICIAL_TIMES_REVISIONS.has(value);

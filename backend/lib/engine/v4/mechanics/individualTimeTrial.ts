@@ -77,7 +77,7 @@ import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
 import { applyEffortToDemand } from "./effortCost.ts";
-import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater } from "../../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import {
   runTimeTrialStage,
   type TeamRoster,
@@ -167,6 +167,34 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
       demandVectorByFinaleType: { ...tuning.finale.demandVectorByFinaleType, solo_tt: S5_ITT_ABILITY_VECTOR },
     },
   };
+}
+
+/**
+ * #6595 (KUN s5_profiles_v3): enkeltstartens egen terraen-vaegt i fart-formlen.
+ *
+ * Vejetapens STRENGTH_SPEED_EXTRA_TUNING.terrainWeight daemper styrke-forskelle
+ * paa fladt og rullende terraen, fordi aerodynamik og LAE dominerer dér: i en
+ * gruppe koerer den svage paa den staerkes hjul. En rytter alene mod uret har
+ * intet laee, og tidskoersels-evnen ER hans aerodynamik og flade effekt, saa
+ * vejetapens daempning tog den samme ting fra ham to gange.
+ *
+ * Maalt paa S5-benchens Grand Tours (tal og kilder i balance-internals/6595/):
+ * enkeltstartens top-10-spredning pr. km var tydeligt under virkelige Grand
+ * Tours paa flade enkeltstarter og naermere paa kuperede (dér vejer stigningerne
+ * allerede fuldt), og enkeltstarterne flyttede kun en lille brøkdel af
+ * klassementet mod en betydelig andel i Touren og Giroen. Kun fladt og rullende
+ * terraen faar mere vaegt; stigning, nedkoersel og brosten er vejetapens.
+ * Haeldningen, stoejen og evne-grundlaget (#6645) er uaendrede.
+ */
+export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = Object.freeze({
+  ...STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
+  flat: 0.48,
+  rolling: 0.6,
+});
+
+/** #6595: terraen-vaegten enkeltstarten regner fart med. Aeldre revisioner: vejetapens (samme objekt). */
+export function ittTerrainWeight(rulesRevision: unknown): Readonly<Record<SegmentKind, number>> {
+  return isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
 }
 
 // ── Evne og fart ─────────────────────────────────────────────────────────────
@@ -315,10 +343,11 @@ export function ittSpeedKmh(
   kind: SegmentKind,
   tuning: EngineTuning,
   ittTuning: IndividualTimeTrialTuning = INDIVIDUAL_TIME_TRIAL_TUNING,
+  terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
 ): number {
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
-  const slope = ittTuning.abilitySpeedSlope * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight[kind];
+  const slope = ittTuning.abilitySpeedSlope * terrainWeight[kind];
   const paceFactor = clamp(1 - slope * (capacity - referenceCapacity), 1 / hi, 1 / lo);
   return baseSpeed / paceFactor;
 }
@@ -340,10 +369,11 @@ function tickSoloRider(
   tuning: EngineTuning,
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
+  terrainWeight: Readonly<Record<SegmentKind, number>>,
 ): void {
   const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
-  const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning);
+  const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning, terrainWeight);
   const dtSeconds = speedKmh > 0 ? (distanceKm / speedKmh) * 3600 : 0;
   // Kravet: vejetapens front-rytter i en gruppe paa én (tickGroupRiders med
   // collectiveCp = rytterens egen evne), moduleret af rytterens indsatsvalg.
@@ -374,6 +404,7 @@ function individualTimeTrialMode(
   stageNoiseByRider: ReadonlyMap<string, number>,
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
+  terrainWeight: Readonly<Record<SegmentKind, number>>,
 ): TimeTrialMode {
   return {
     groupPrefix: "itt",
@@ -396,7 +427,7 @@ function individualTimeTrialMode(
         const rider = unit.riders[entrant.rider_id];
         if (!rider || rider.status === "abandoned") continue;
         const noise = stageNoiseByRider.get(entrant.rider_id) ?? 0;
-        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare);
+        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare, terrainWeight);
       }
       return [];
     },
@@ -441,7 +472,8 @@ export function simulateIndividualTimeTrialStage(
       timeLimitTuning: options.timeLimitTuning,
       ...(isS5ProfilesV2OrLater(options.rulesRevision) ? { incidentStartFloor: true as const } : {}),
     },
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare),
+    // #6595: kun s5_profiles_v3 faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, ittTerrainWeight(options.rulesRevision)),
   );
   return output;
 }
