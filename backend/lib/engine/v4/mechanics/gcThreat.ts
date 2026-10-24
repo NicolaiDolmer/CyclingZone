@@ -597,7 +597,8 @@ export function assessGcThreat(input: {
   // Paa foerste etape maaler revisionen allerede kun evnen; P6.3 kan kun goere graensen strammere, aldrig loesere.
   const firstStageRank = v3Short ? Math.min(S5_GC_THREAT_TUNING.contenderFieldRank, s5V3ContenderAbilityRank()) : S5_GC_THREAT_TUNING.contenderFieldRank;
   const interested = firstStage
-    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds, gcContext) <= firstStageRank
+    // Kun v3 maaler foerste etape paa loebets egen klassementsevne; v2 og aeldre bruger den faste (bit-identisk).
+    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds, v3 ? gcContext : undefined) <= firstStageRank
     : model
       ? (v3Short
         ? isLeader || (hasSomethingToDefend(protectedStanding, false, stagesRemaining, dangerTuningOf(model)) && contenderOnAbility())

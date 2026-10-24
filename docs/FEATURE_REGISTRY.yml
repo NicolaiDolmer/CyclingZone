@@ -260,11 +260,11 @@ features:
     area: race-day
     title_en: Stage page 2.0 (stage tabs, real elevation profile, your day)
     title_da: Etapeside 2.0 (etapefaner, rigtig højdeprofil, din dag)
-    state: beta
+    state: live
     flag: stage_page_v2
     epic: 6570
-    verified: 2026-10-15
-    note: PR #6633; beta siden 15/10 efter ejer-go (læst i prod 15/10).
+    verified: 2026-10-24
+    note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168.
 
   - id: race-library-v2
     area: stats

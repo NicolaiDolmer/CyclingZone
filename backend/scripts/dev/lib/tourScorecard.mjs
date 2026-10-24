@@ -18,6 +18,7 @@ import { ANCHOR_BANDS, isShortUphillFinish } from "../../lib/headToHeadAnchors.j
 import { mean, median, spearmanCorrelation } from "../../lib/headToHeadStats.js";
 import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
+import { createJerseyTally } from "./jerseyTally.mjs"; // #6804 v3 G16/G18
 import { isOrdersGcRulesRevision, isS5ProfilesV2OrLater } from "../../../lib/raceEngineRulesRevision.ts";
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
 import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
@@ -658,7 +659,7 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
  *    "started" uden "stopped"/"exhausted"/"unavailable" foer indhentningen i filmen).
  *  - yoyo: et nyt udbrud (`reformation: true`) blev dannet og derefter ogsaa hentet.
  * Filmens raekkefoelge afgoer (en reaktion der stopper i samme segment, staar efter
- * indhentningen). REN.
+ * indhentningen); en reaktion der starter i indhentningens segment taeller med. REN.
  */
 export function gcChaseCatchFacts(events, distanceKm) {
   const list = Array.isArray(events) ? events : [];
@@ -668,7 +669,8 @@ export function gcChaseCatchFacts(events, distanceKm) {
   let gcEarlyCatch = false;
   let reformIds = null;
   let yoyo = false;
-  for (const e of list) {
+  for (let i = 0; i < list.length; i++) {
+    const e = list[i];
     const p = e?.params ?? {};
     if (e?.type === "gc_reaction" && typeof p.team_id === "string") {
       if (p.status === "started") reacting.add(p.team_id);
@@ -677,7 +679,14 @@ export function gcChaseCatchFacts(events, distanceKm) {
       reformIds = new Set(p.rider_ids ?? []);
     } else if (e?.type === "breakaway_caught") {
       const at = Number(p.exact_km ?? e.km);
-      const byGc = (p.chasing_team_ids ?? []).some((t) => reacting.has(t));
+      // progressChase skriver indhentningen FOER segmentets gc_reaction-events: en reaktion der
+      // starter i samme segment (samme km, efter indhentningen) har ogsaa hentet udbruddet.
+      const startedHere = new Set();
+      for (let j = i + 1; j < list.length && list[j]?.km === e.km; j++) {
+        const q = list[j]?.params ?? {};
+        if (list[j]?.type === "gc_reaction" && q.status === "started" && typeof q.team_id === "string") startedHere.add(q.team_id);
+      }
+      const byGc = (p.chasing_team_ids ?? []).some((t) => reacting.has(t) || startedHere.has(t));
       if (byGc && Number.isFinite(at) && at <= limit) gcEarlyCatch = true;
       if (reformIds && (p.rider_ids ?? []).some((id) => reformIds.has(id))) yoyo = true;
     }
@@ -867,6 +876,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     let gcWeek1 = null;
     const pointsByRider = new Map(); // #2757 S0
     const seedTag = `${seedPrefix}-${s}`;
+    const jerseys = createJerseyTally(); // #6804 v3 G16/G18
     const final = runStagesInOrder({
       v4, data, revision, seedTag, stages, entrants: all,
       onStage: ({ profile, res, gcBefore, gcAfter, entrants }) => {
@@ -876,6 +886,9 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
         for (const t of res.v4Output?.passage_totals ?? []) {
           if (Number(t.sprint_points) > 0) pointsByRider.set(t.rider_id, (pointsByRider.get(t.rider_id) ?? 0) + Number(t.sprint_points));
         }
+        jerseys.addStage({ profile, ranked: res.ranked, passages: res.passages });
+        // #2757 S0: spurtfinalens top 10 (sprinterrangering mod resultat i testporten).
+        if (isBunchSprintStage(profile)) m.sprintTop10 = res.ranked.slice(0, 10).map((r) => r.rider_id);
         if (leadoutPair && isBunchSprintStage(profile)) {
           const teams = leadoutTeams(data.orders, profile.stage_number);
           if (teams.size) {
@@ -893,9 +906,11 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
         rows.push(m);
       },
     });
-    const pj = stages.length > 1 ? pointsJerseyWinner(pointsByRider) : null; // #2757 S0 (kun etapeloeb)
+    // #2757 S0 (kun etapeloeb): kun ryttere der fuldfoerte loebet kan vinde troejen (som filterCompletedEntrants).
+    const finisherIds = new Set(final.map((r) => r.rider_id));
+    const pj = stages.length > 1 ? pointsJerseyWinner(new Map([...pointsByRider].filter(([id]) => finisherIds.has(id)))) : null;
     const pointsJersey = pj ? { riderId: pj.riderId, role: roleByRider.get(pj.riderId) ?? null, sprintRank: sprintRankIn(pj.riderId, riderIds, abilitiesById), isGcWinner: pj.riderId === (final[0]?.rider_id ?? null) } : null;
-    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, ...(pointsJersey ? { pointsJersey } : {}) });
+    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, ...jerseys.winners(final), ...(pointsJersey ? { pointsJersey } : {}) });
   }
   return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision, { shortRaceGapBands }) };
 }
