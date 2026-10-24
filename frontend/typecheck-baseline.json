@@ -1496,8 +1496,7 @@
     "TS2339": 21
   },
   "src/lib/boardUtils.test.js": {
-    "TS2345": 4,
-    "TS2531": 1
+    "TS2345": 4
   },
   "src/lib/boardWizardNav.js": {
     "TS2339": 8
