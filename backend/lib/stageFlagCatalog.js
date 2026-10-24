@@ -109,6 +109,10 @@ export const STAGE_FLAGS = Object.freeze([
   // (developmentV2Flag.js) og ingen daglig udvikling uden for managerhold
   // (dailyTrainingEngine.js). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_v2_aging_enabled", area: "season", label: "Udvikling 2.0 del 1 — tilbagegang + kun managerhold udvikler sig" },
+  // #6853/#5764 (spec 6110 §8): paraply-flaget for potentiale-visningen i
+  // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
+  // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
+  { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
