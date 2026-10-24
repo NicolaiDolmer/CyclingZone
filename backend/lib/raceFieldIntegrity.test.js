@@ -2,7 +2,8 @@
 // Rene funktioner — ingen DB. RED-first.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds } from "./raceFieldIntegrity.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
+  OVERLAP_MIN_START, overlapStartsShort, startDayOverlapRiderIds, addRidersByTeam, overlapShortTeamIds, teamStartsShortOnOverlap } from "./raceFieldIntegrity.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 // ── #1844: feltet må ikke ændre sig mellem etaper ──────────────────────────────
@@ -137,4 +138,46 @@ test("filterTeamsBelowMinimumEntries: et undtaget hold starter under gulvet (#67
   const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries, exemptTeamIds: new Set(["tShort"]) });
   assert.deepEqual(droppedTeamIds, ["tLow"]);
   assert.equal(kept.length, 5);
+});
+
+// ── #6739: regel A — overlap på startdagen, start med mindst 4 (ejer 24/10) ────
+test("overlapStartsShort: mindst 4, under 6, og kun når overlap forklarer manglen", () => {
+  assert.equal(OVERLAP_MIN_START, 4);
+  assert.equal(overlapStartsShort({ starters: 4, overlap: 8 }), true);
+  assert.equal(overlapStartsShort({ starters: 5, overlap: 1 }), true);
+  assert.equal(overlapStartsShort({ starters: 3, overlap: 9 }), false, "under 4");
+  assert.equal(overlapStartsShort({ starters: 5, overlap: 0 }), false, "ikke-overlap-dag: gulvet gælder");
+  assert.equal(overlapStartsShort({ starters: 4, overlap: 1 }), false, "havde aldrig 6");
+  assert.equal(overlapStartsShort({ starters: 6, overlap: 3 }), false, "på gulvet: ingen undtagelse nødvendig");
+  assert.equal(overlapStartsShort({ starters: 4, overlap: 1, injured: 1 }), true, "skade + overlap");
+  assert.equal(overlapStartsShort({ starters: 4, overlap: 0, injured: 2 }), false, "kun skade: regel B alene");
+});
+
+test("startDayOverlapRiderIds: brugte ryttere + bundet på startdagen, ikke senere i løbet", () => {
+  const riders = ["a", "b", "c", "d"].map((rider_id) => ({ rider_id }));
+  const thisWindow = { start: 10, end: 12, days: [10, 11, 12] };
+  const otherRaces = [
+    { window: { start: 10, end: 10, days: [10] }, riderIds: ["b"] }, // samme dag som etape 1
+    { window: { start: 11, end: 11, days: [11] }, riderIds: ["c"] }, // senere i etapeløbet
+  ];
+  const out = startDayOverlapRiderIds({ riders, spentRiderIds: new Set(["a"]), thisWindow, otherRaces });
+  assert.deepEqual([...out].sort(), ["a", "b"]);
+  assert.deepEqual([...startDayOverlapRiderIds({ riders, spentRiderIds: new Set(), thisWindow: null, otherRaces })], []);
+});
+
+test("overlapShortTeamIds: tæller hver rytter én gang og ignorerer hold uden overlap", () => {
+  const overlapRidersByTeam = new Map();
+  addRidersByTeam(overlapRidersByTeam, "tO", ["tO-x1", "tO-x2"]);
+  addRidersByTeam(overlapRidersByTeam, "tO", ["tO-x1"]); // dublet
+  addRidersByTeam(overlapRidersByTeam, "tS", ["tS-r0"]); // står også som starter: tæller ikke
+  addRidersByTeam(overlapRidersByTeam, "tI", ["tI-x"]);
+  const entries = [...team("tO", 4), ...team("tS", 5), ...team("tI", 4), ...team("tN", 5), ...team("t3", 3)];
+  addRidersByTeam(overlapRidersByTeam, "t3", ["t3-a", "t3-b", "t3-c"]);
+  const injuredEntries = [{ team_id: "tI", rider_id: "tI-i" }, { team_id: "tI", rider_id: "tI-x" }];
+  const out = overlapShortTeamIds({ entries, overlapRidersByTeam, injuredEntries });
+  // tO: 4 + 2 = 6. tS: 5 + 0. tI: 4 + 1 overlap + 1 skadet (tI-x tæller kun som overlap) = 6.
+  // tN: intet overlap. t3: under 4.
+  assert.deepEqual([...out].sort(), ["tI", "tO"]);
+  assert.equal(teamStartsShortOnOverlap({ teamId: "tO", starterIds: new Set(team("tO", 4).map((e) => e.rider_id)), overlapRidersByTeam }), true);
+  assert.equal(overlapShortTeamIds({ entries, overlapRidersByTeam: new Map() }).size, 0);
 });

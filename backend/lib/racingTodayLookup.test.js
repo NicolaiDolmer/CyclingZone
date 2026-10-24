@@ -353,6 +353,26 @@ test("loadRacingTodayByRider: Train now-laaste ryttere taeller ikke som frie res
   assert.deepEqual(locked, {}, "alle reserver laast: holdet stiller ikke op, intet badge");
 });
 
+test("loadRacingTodayByRider: overlap-dag, 4 udtaget og resten i et andet løb i dag -> holdet starter (#6739 regel A)", async () => {
+  const ids = Array.from({ length: 12 }, (_, i) => `rider-${i + 1}`);
+  const today = new Date("2026-10-28T08:00:00Z");
+  const base = {
+    sched: [{ race_id: "race-a" }, { race_id: "race-b" }],
+    races: [{ id: "race-a", name: "Race A", stages_completed: 0 }, { id: "race-b", name: "Race B", stages_completed: 0 }],
+    riders: ids.map((id) => ({ id, squad: "senior" })), withdrawals: [], locks: [],
+  };
+  const four = await loadRacingTodayByRider(fakeSupabase({ ...base, entries: [
+    ...ids.slice(0, 4).map((rider_id) => ({ race_id: "race-a", rider_id })),
+    ...ids.slice(4).map((rider_id) => ({ race_id: "race-b", rider_id })),
+  ] }), "team-1", ids, today);
+  assert.equal(four["rider-1"]?.race, "Race A", "4 frie på en overlap-dag: holdet starter med 4");
+  const three = await loadRacingTodayByRider(fakeSupabase({ ...base, entries: [
+    ...ids.slice(0, 3).map((rider_id) => ({ race_id: "race-a", rider_id })),
+    ...ids.slice(3).map((rider_id) => ({ race_id: "race-b", rider_id })),
+  ] }), "team-1", ids, today);
+  assert.equal(three["rider-1"], undefined, "3 frie: under 4, holdet stiller ikke op");
+});
+
 test("computeRacingTodayByRider: en skadet udtaget rytter løber ikke, selv om holdet starter (regel B, #6740)", () => {
   const out = computeRacingTodayByRider({
     entryRows: [{ race_id: "leman", rider_id: "fit" }, { race_id: "leman", rider_id: "hurt" }],

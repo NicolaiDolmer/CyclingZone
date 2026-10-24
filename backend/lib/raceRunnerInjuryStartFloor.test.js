@@ -116,9 +116,14 @@ test("regel B: alle udtagne skadede, 2 frie -> assistenten redder holdet med 2 (
 
 test("regel B: en skadet rytter der OGSÅ har brugt løbsdagen tæller ikke som skade (Codex P1)", async () => {
   const race = { ...RACE, season_id: "s1" };
-  // 6 udtaget, A-r0 skadet og spent: 5 raske + 0 skadede der tæller = 5 -> gulvet gælder.
-  const spentToo = await startField({ A: { entered: 6, injured: 1 } }, { race, spent: ["A-r0"] });
+  // 6 udtaget, 3 skadede, A-r0 også spent: regel B ser 3 raske + 2 skadede = 5 -> ikke
+  // skade-kort. Regel A (#6739) kræver mindst 4 -> gulvet gælder.
+  const spentToo = await startField({ A: { entered: 6, injured: 3 } }, { race, spent: ["A-r0"] });
   assert.equal(spentToo.countByTeam.A, undefined);
+  // #6739 (regel A): med 5 raske tilbage kørte A-r0 et andet løb samme løbsdag (overlap),
+  // så holdet starter med de 5.
+  const overlapDay = await startField({ A: { entered: 6, injured: 1 } }, { race, spent: ["A-r0"] });
+  assert.equal(overlapDay.countByTeam.A, 5);
   // Kontrol: samme hold uden spent starter med 5.
   const injuredOnly = await startField({ A: { entered: 6, injured: 1 } }, { race });
   assert.equal(injuredOnly.countByTeam.A, 5);

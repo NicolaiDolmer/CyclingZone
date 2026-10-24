@@ -673,8 +673,9 @@ test("getStageRolesContext (#6740): en solgt udtaget rytter redder ikke holdet v
 });
 
 test("getStageRolesContext (#6740): en udtaget rytter der har brugt løbsdagen redder ikke holdet via regel B (Codex P2)", async () => {
-  // 6 udtaget, r6 skadet, r5 spent, reserver laast: motoren ser 4 raske + 1 skadet = 5 -> gulvet.
-  const conditions = [{ rider_id: "r6", form: 50, fatigue: 0, injured_until: "2999-01-01" }];
+  // 6 udtaget, r6+r4 skadet, r5 spent, reserver laast: regel B ser 3 raske + 2 skadede = 5,
+  // og regel A (#6739) kræver mindst 4 -> gulvet.
+  const conditions = ["r6", "r4"].map((rider_id) => ({ rider_id, form: 50, fatigue: 0, injured_until: "2999-01-01" }));
   const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
   const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
   const ctx = await getStageRolesContext({
@@ -682,6 +683,16 @@ test("getStageRolesContext (#6740): en udtaget rytter der har brugt løbsdagen r
     race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
   });
   assert.deepEqual(ctx.start_outlook, { starts: false, min: 6, reason: "below_min" });
+});
+
+test("getStageRolesContext (#6739): 2 udtagne har kørt et andet løb samme løbsdag -> starter med 4 (regel A)", async () => {
+  const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
+  const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
+  const ctx = await getStageRolesContext({
+    supabase: makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)), spent: ["r5", "r6"] }),
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
+  });
+  assert.deepEqual(ctx.start_outlook, { starts: true, min: 6, reason: null });
 });
 
 test("getStageRolesContext (#6740): en did_not_start-afmelding viser did_not_start, ikke withdrawn (Friis 17/10)", async () => {

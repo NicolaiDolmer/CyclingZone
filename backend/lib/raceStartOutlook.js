@@ -19,19 +19,25 @@
 // Ren funktion, ingen I/O. Kaster aldrig.
 
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
+import { overlapStartsShort } from "./raceFieldIntegrity.js";
 
 /**
  * #6740 (regel B, ejer 16/10): et hold der kun er under gulvet fordi udtagne ryttere
  * blev skadet efter udtagelsen, starter med de raske det har tilbage (mindst 1, efter
  * at assistenten har fyldt op med frie). Spejler raceFieldIntegrity.injuryShortTeamIds.
  *
+ * #6739 (regel A, ejer 24/10): et hold der kun er under gulvet fordi ryttere kører et andet
+ * løb på startdagen, starter med de frie, mindst 4. Spejler raceFieldIntegrity.overlapStartsShort.
+ *
  * @param {{ entryCount?: number, injuredEntryCount?: number, freeEligibleCount?: number,
- *   stagesCompleted?: number, inField?: boolean|null, withdrawn?: boolean }} args
+ *   overlapCount?: number, stagesCompleted?: number, inField?: boolean|null, withdrawn?: boolean }} args
  *   entryCount: RASKE udtagne. injuredEntryCount: skadede udtagne (motoren fjerner dem ved start).
+ *   overlapCount: raske ryttere optaget af et andet løb på startdagen (udtagne her der har brugt
+ *   dagen + ikke-udtagne der kører eller har kørt et andet løb samme dag).
  *   inField: efter start, er holdet i det faktiske startfelt? null = ukendt (fejler mod "stiller op").
  * @returns {{ starts: boolean, min: number, reason: null|"withdrawn"|"did_not_start"|"below_min" }}
  */
-export function teamWillStart({ entryCount = 0, injuredEntryCount = 0, freeEligibleCount = 0, stagesCompleted = 0, inField = null, withdrawn = false } = {}) {
+export function teamWillStart({ entryCount = 0, injuredEntryCount = 0, freeEligibleCount = 0, overlapCount = 0, stagesCompleted = 0, inField = null, withdrawn = false } = {}) {
   const min = MIN_RACE_ENTRIES;
   if (withdrawn === true) return { starts: false, min, reason: "withdrawn" };
   if ((Number(stagesCompleted) || 0) > 0) {
@@ -41,7 +47,8 @@ export function teamWillStart({ entryCount = 0, injuredEntryCount = 0, freeEligi
   const free = Math.max(0, Number(freeEligibleCount) || 0);
   const injured = Math.max(0, Number(injuredEntryCount) || 0);
   const shortByInjury = injured > 0 && picked < min && picked + injured >= min && picked + free >= 1;
-  const starts = picked + free >= min || shortByInjury;
+  const shortByOverlap = overlapStartsShort({ starters: picked + free, overlap: overlapCount, injured, minEntries: min });
+  const starts = picked + free >= min || shortByInjury || shortByOverlap;
   return { starts, min, reason: starts ? null : "below_min" };
 }
 

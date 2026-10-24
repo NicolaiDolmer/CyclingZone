@@ -90,6 +90,9 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
       // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
       injuredEntryCount: keptEntryIds.filter((id) => injuredIds.has(id)).length,
       freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id) && !spent.has(id)).length,
+      // #6739 regel A: ryttere der har kørt et andet løb samme løbsdag giver start med mindst 4
+      // (bundne ryttere tælles allerede som frie her, se BEVIDST KONSERVATIVT ovenfor).
+      overlapCount: rosterIds.filter((id) => spent.has(id) && (entered.has(id) || (!injuredIds.has(id) && !locked.has(id)))).length,
       stagesCompleted,
     });
   } catch {

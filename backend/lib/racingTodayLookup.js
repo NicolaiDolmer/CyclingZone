@@ -189,6 +189,9 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
         // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
         injuredEntryCount: keptEntered.filter((id) => injured.has(id)).length,
         freeEligibleCount, stagesCompleted,
+        // #6739 regel A: ryttere i et andet løb i dag (eller som har kørt det) giver start med mindst 4.
+        overlapCount: roster.filter((id) => (entered.has(id) ? spent.has(id)
+          : !injured.has(id) && !locked.has(id) && (boundElsewhere.has(id) || spent.has(id)))).length,
       });
       starts.set(raceId, willStart);
     }
