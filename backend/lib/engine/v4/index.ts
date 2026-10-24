@@ -56,8 +56,7 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
 import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
-import { appendNonStarterResults, applyHelperWithdrawals, nonStartIncidents, rollNonStarters } from "./mechanics/abandons.ts";
-import { INCIDENTS_EXTRA_TUNING } from "./tuning.ts";
+import { applyHelperWithdrawals } from "./mechanics/abandons.ts";
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 
@@ -215,43 +214,6 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   // #6363: S5-ordforraadet oversat til regel-revisionen (s5Profiles.ts). Samme
   // objekt for alle ruter uden S5-ord under en aeldre revision (byte-identisk).
   const input = stageInputForRulesRevision(rawInput);
-  // #6938 U1 (KUN s5_profiles_v3, slukket): ryttere der ikke starter i dag
-  // (traethed og form, mechanics/abandons.ts). De koerer ikke etapen; de staar
-  // sidst i resultatet som udgaaede med en "illness"-raekke. Aeldre revisioner
-  // gaar direkte igennem (byte-identisk).
-  if (!isS5ProfilesV3OrLater(input.rules_revision)) return simulateStartedStage(input);
-  const nonStarters = rollNonStarters(input.startlist, input.gc_context, input.seed);
-  if (nonStarters.length === 0) return simulateStartedStage(input);
-  const out = new Set(nonStarters);
-  const started = simulateStartedStage({
-    ...input,
-    startlist: input.startlist.filter((e) => !out.has(e.rider_id)),
-    gc_context: gcContextWithout(input.gc_context, out),
-  });
-  const zeroLoads: RiderLoad[] = nonStarters.map((riderId) => ({ rider_id: riderId, wprime_depleted_j_norm: 0, seconds_over_cp: 0, work_norm: 0 }));
-  return {
-    output: {
-      ...started.output,
-      results: appendNonStarterResults(started.output.results, nonStarters, INCIDENTS_EXTRA_TUNING.abandonedGapSeconds),
-      loads: [...started.output.loads, ...zeroLoads].sort((a, b) => a.rider_id.localeCompare(b.rider_id)),
-      incidents: [...nonStartIncidents(nonStarters), ...(started.output.incidents ?? [])],
-    },
-    trace: started.trace,
-  };
-}
-
-/** #6938 U1: klassementet uden dagens ikke-startere (rang og hul fra den bedste starter, som broen). */
-function gcContextWithout(gc: StageInput["gc_context"], out: ReadonlySet<string>): StageInput["gc_context"] {
-  if (!gc || gc.status !== "standings") return gc;
-  const kept = gc.standings.filter((s) => !out.has(s.rider_id));
-  if (kept.length === gc.standings.length) return gc;
-  const best = kept.reduce((m, s) => Math.min(m, s.gap_seconds), Number.POSITIVE_INFINITY);
-  const standings = kept.map((s, i) => ({ ...s, rank: i + 1, gap_seconds: Math.round((s.gap_seconds - (Number.isFinite(best) ? best : 0)) * 100) / 100 }));
-  const leaderGone = gc.leader_id !== null && out.has(gc.leader_id);
-  return { ...gc, standings, leader_id: leaderGone ? (standings[0]?.rider_id ?? null) : gc.leader_id };
-}
-
-function simulateStartedStage(input: StageInput): { output: StageOutput; trace: StageTraceV4 } {
   // ── M13: holdtidskoerslen (#3463/#2412, ejer-beslutning 6/9) ─────────────
   // En TTT er ikke en vejetape med et ekstra hook paa: hele gruppe-modellen er
   // en anden (ét hold = én gruppe der koerer sammen fra egen start, og holdets

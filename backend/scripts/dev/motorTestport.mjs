@@ -46,7 +46,7 @@
 //                            kraeves med --from-dir, ellers laeses de read-only fra prod. #6804 P0
 //   --intent-season=<n>      satserne fra saeson n (default: seneste afsluttede). #6804 P0
 //   --track-fatigue          traethed og form mellem etaperne (#6984-modellen), saa G17 ogsaa
-//                            maaler U1 (ikke-start af traethed). #6938
+//                            giver G17 realistisk traethed mellem etaperne (og sygdom, naar den bygges). #6938
 //   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
 //                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //

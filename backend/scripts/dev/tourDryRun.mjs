@@ -21,7 +21,7 @@
 //   --seeds=<n>                         seeds pr. revision (default 5)
 //   --no-leadout-pair                   spring den parrede sprinttog-maaling over
 //   --no-legacy-ref                     spring legacy-referencen over (udbrudsmaal 3, #5578)
-//   --track-fatigue                     traethed og form mellem etaperne (#6984-modellen), saa U1 maales (#6938)
+//   --track-fatigue                     traethed og form mellem etaperne (#6984-modellen), til G17 og sygdom (#6938)
 //   --out-dir=<dir>                     default balance-internals/tour-6285
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";

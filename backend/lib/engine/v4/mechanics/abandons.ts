@@ -2,15 +2,16 @@
 // #6938 (KUN s5_profiles_v3, slukket): flere udgaaede. Ejer 15/10 "Der er ikke
 // nok ryttere der udgaar fra loeb. - Det bliver haevet."
 // Spec: docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md §2.2
-// (U1 ikke-start mellem etaper, U3 hjaelper stiger af i endagsloeb; U2 styrt
-// pr. terraen bor i mechanics/incidents.ts). Regler i klartekst:
+// (U3 hjaelper stiger af i endagsloeb; U2 styrt pr. terraen bor i
+// mechanics/incidents.ts). U1 "ikke-start af traethed" er erstattet af sygdom af
+// langvarig ekstrem traethed (ejer 24/10), som bygges i sin egen PR. Regler i klartekst:
 // docs/RACE_ENGINE_RULES.md "Udgaaede under s5_profiles_v3".
 //
 // REN: ingen IO/Date/Math.random, intet input muteres. Lodtraekningerne er
 // seedede pr. (etape-seed, mekanik, rider_id), saa udfaldet afhaenger kun af
 // rytteren selv og ikke af hvem andre der starter.
 //
-// Ingen af de to veje giver skade eller straf: rytteren er bare ude af loebet
+// Ingen af vejene giver skade eller straf: rytteren er bare ude af loebet
 // (status "abandoned"). Skadedage kommer stadig KUN fra et styrt (#4520).
 //
 // Tallene er startgaet og kalibreres mod G17's private baand (balance-internals/
@@ -26,153 +27,6 @@ function clamp(n: number, lo: number, hi: number): number {
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
-}
-
-// ── U1: ikke-start mellem etaper ─────────────────────────────────────────────
-
-export type NonStartTuning = Readonly<{
-  fatigueFloor: number;
-  maxPerStage: number;
-  formWeight: number;
-  formFactorRange: readonly [number, number];
-  longRaceStages: number;
-  minLengthFactor: number;
-  afterProfileFactor: Readonly<Partial<Record<ProfileType, number>>>;
-  captainFactor: number;
-  maxFieldShare: number;
-}>;
-
-export const NON_START_V3_TUNING: NonStartTuning = Object.freeze({
-  // Traethed (1 - condition, 0-1) under gulvet giver ingen risiko. Over gulvet
-  // stiger risikoen kvadratisk op til maxPerStage ved fuld traethed.
-  fatigueFloor: 0.3,
-  maxPerStage: 0.08,
-  // Formen (0-100, 50 = neutral): lav form haever risikoen, hoej saenker den.
-  formWeight: 0.8,
-  formFactorRange: Object.freeze([0.4, 1.8]) as readonly [number, number],
-  // "Hoejest i lange loeb": loebets laengde i etaper mod en Grand Tour.
-  longRaceStages: 21,
-  minLengthFactor: 0.35,
-  // "...og efter bjergetaper": faktor efter gaarsdagens profil.
-  afterProfileFactor: Object.freeze({ high_mountain: 1.6, mountain: 1.6, medium_mountain: 1.25 }) as Readonly<
-    Partial<Record<ProfileType, number>>
-  >,
-  // G17: kaptajner udgaar ikke oftere end hjaelpere. En kaptajn koerer sjaeldent
-  // sig selv i stykker for andre, saa hans risiko daempes.
-  captainFactor: 0.5,
-  // Haardt loft pr. etape (andel af startlisten), samme princip som M10's loft.
-  maxFieldShare: 0.05,
-});
-
-/** Etapeloebets laengde og gaarsdagens profil, laest af GC-konteksten. null = ikke en etape efter den foerste. */
-export type NonStartRaceContext = {
-  stageNumber: number;
-  totalStages: number;
-  previousProfile: ProfileType | null;
-};
-
-/**
- * U1 gaelder kun i et etapeloeb fra etape 2: GC-konteksten skal vaere et
- * rigtigt klassement (ikke foerste etape, ikke endagsloeb, ikke manglende data).
- */
-export function nonStartRaceContext(gc: GcContext | null | undefined): NonStartRaceContext | null {
-  if (!gc || gc.status !== "standings") return null;
-  if ((gc as { first_stage?: boolean }).first_stage === true) return null;
-  const stageNumber = Math.floor(Number(gc.stage_number));
-  if (!Number.isFinite(stageNumber) || stageNumber < 2) return null;
-  const stages = gc.race_gc_stages ?? [];
-  const lastKnown = stages.reduce((m, s) => Math.max(m, Number(s.stage_number) || 0), 0);
-  const remaining = Number(gc.stages_remaining);
-  const totalStages = Math.max(stageNumber, lastKnown, Number.isFinite(remaining) ? stageNumber + remaining : 0);
-  const previous = stages.find((s) => Number(s.stage_number) === stageNumber - 1);
-  return { stageNumber, totalStages, previousProfile: (previous?.profile_type as ProfileType | undefined) ?? null };
-}
-
-/**
- * U1: sandsynligheden for at én rytter ikke starter dagens etape. REN.
- * Monoton: mere traethed eller lavere form giver aldrig mindre risiko.
- */
-export function nonStartProbability(
-  entrant: Pick<Entrant, "condition" | "form" | "role">,
-  race: NonStartRaceContext,
-  tuning: NonStartTuning = NON_START_V3_TUNING,
-): number {
-  const condition = Number(entrant.condition);
-  const fatigue = clamp(1 - (Number.isFinite(condition) ? condition : 1), 0, 1);
-  if (fatigue <= tuning.fatigueFloor) return 0;
-  const excess = (fatigue - tuning.fatigueFloor) / (1 - tuning.fatigueFloor);
-  const form = Number(entrant.form);
-  const formValue = Number.isFinite(form) ? clamp(form, 0, 100) : 50;
-  const formFactor = clamp(1 + (tuning.formWeight * (50 - formValue)) / 50, tuning.formFactorRange[0], tuning.formFactorRange[1]);
-  const lengthFactor = clamp(race.totalStages / tuning.longRaceStages, tuning.minLengthFactor, 1);
-  const afterFactor = (race.previousProfile && tuning.afterProfileFactor[race.previousProfile]) || 1;
-  const roleFactor = entrant.role === "captain" || entrant.role === "sprint_captain" ? tuning.captainFactor : 1;
-  return clamp(tuning.maxPerStage * excess * excess * formFactor * lengthFactor * afterFactor * roleFactor, 0, 1);
-}
-
-/**
- * U1: hvem starter ikke i dag? Seedet pr. rytter (mekanik "non_start"). Loftet
- * beholder de mest afgoerende lodtraekninger (laveste u/p), saa udfaldet ikke
- * afhaenger af startlistens raekkefoelge. Mindst to ryttere starter altid.
- */
-export function rollNonStarters(
-  startlist: readonly Entrant[],
-  gc: GcContext | null | undefined,
-  seed: string,
-  tuning: NonStartTuning = NON_START_V3_TUNING,
-): string[] {
-  const race = nonStartRaceContext(gc);
-  if (!race) return [];
-  const hits: Array<{ riderId: string; score: number }> = [];
-  for (const entrant of startlist) {
-    const p = nonStartProbability(entrant, race, tuning);
-    if (p <= 0) continue;
-    const u = rngFor(seed, "non_start", entrant.rider_id)();
-    if (u < p) hits.push({ riderId: entrant.rider_id, score: u / p });
-  }
-  const cap = Math.min(Math.ceil(tuning.maxFieldShare * startlist.length), Math.max(0, startlist.length - 2));
-  return hits
-    .sort((a, b) => a.score - b.score || a.riderId.localeCompare(b.riderId))
-    .slice(0, cap)
-    .map((h) => h.riderId)
-    .sort((a, b) => a.localeCompare(b));
-}
-
-/** U1-protokollen: én "illness"-udgaaelse ved km 0 pr. ikke-starter. Ingen skade. */
-export function nonStartIncidents(riderIds: readonly string[]): StageIncident[] {
-  return riderIds.map((riderId) => ({
-    rider_id: riderId,
-    km: 0,
-    kind: "illness" as const,
-    severity: null,
-    outcome: "abandoned" as const,
-    time_loss_seconds: null,
-    injury_days: null,
-    helper_assist: false,
-  }));
-}
-
-/**
- * U1: ikke-starterne laegges sidst i resultatlisten som "abandoned" (resultatet
- * forbliver en komplet permutation af startlisten). Tiden er en repraesentation
- * af "ingen maaltid", som M10's udgaaede (abandonedGapSeconds over den sidste).
- */
-export function appendNonStarterResults(
-  results: readonly StageResult[],
-  riderIds: readonly string[],
-  abandonedGapSeconds: number,
-): StageResult[] {
-  if (riderIds.length === 0) return [...results];
-  const lastTime = results.reduce((m, r) => Math.max(m, Number(r.time_seconds) || 0), 0);
-  const appended: StageResult[] = riderIds.map((riderId, i) => ({
-    rider_id: riderId,
-    rank: results.length + i + 1,
-    time_seconds: round2(lastTime + abandonedGapSeconds),
-    group_id: "non_start",
-    status: "abandoned",
-    injury_days: null,
-  }));
-  return [...results, ...appended];
 }
 
 // ── U3: hjaelperen stiger af i et endagsloeb ─────────────────────────────────

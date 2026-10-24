@@ -616,7 +616,7 @@ Reglen bor i `mechanics/incidents.ts` (jagt-blokken) og kobles i `segmentLoop.ts
 
 Ejer 15/10: der udgår for få ryttere. Spec: `docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md` §2.2. Kun under den slukkede revision `s5_profiles_v3`; ældre revisioner er bit-identiske. Ingen af de tre veje giver skade (skade-reglen nedenfor gælder uændret), og ingen giver straf: rytteren er ude af løbet og står som udgået i resultatet.
 
-- **U1 Startede ikke.** I et etapeløb fra etape 2 kan en træt rytter blive væk fra start (`race_incidents.kind='illness'`). Risikoen følger trætheden (samme model som #6984), stiger med lav form, i lange løb og efter en bjergetape, og er lavere for kaptajner. Et loft pr. etape holder antallet nede. `mechanics/abandons.ts`, koblet i `index.ts` før etapen køres.
+- **U1 (erstattet, ejer 24/10).** "Ikke-start af træthed" er erstattet af sygdom af langvarig ekstrem træthed: kun ekstremt trætte ryttere flere dage i træk, risikoen stiger med varighed og grad, rytteren starter ikke og er ude nogle dage uden evneskade, lægen giver besked i indbakken, og den medicinske afdeling sænker risikoen. Den bygges i sin egen PR (`conditionIllness`); `race_incidents.kind='illness'` og mærkaten "Syg, startede ikke" er klar til den.
 - **U2 Styrt pr. terræn.** Hvor mange styrt der ender med udgåelse, afhænger af terrænet: brosten og nedkørsler højest, stigninger lavest. Hyppigheden af styrt er uændret. `mechanics/incidents.ts` (`crashSeriousShareFor`).
 - **U3 Hjælperen stiger af.** I et endagsløb kan en hjælper der er langt efter vinderen stige af (`kind='withdrawal'`). Kaptajner stiger aldrig af. Afgøres efter tidsgrænsen.
 

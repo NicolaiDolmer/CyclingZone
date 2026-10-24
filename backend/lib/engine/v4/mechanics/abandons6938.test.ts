@@ -1,6 +1,6 @@
 // backend/lib/engine/v4/mechanics/abandons6938.test.ts
-// #6938 (KUN s5_profiles_v3, slukket): U1 ikke-start, U2 styrt-udgang pr. terraen,
-// U3 hjaelper stiger af i endagsloeb. Spec: docs/superpowers/specs/
+// #6938 (KUN s5_profiles_v3, slukket): U2 styrt-udgang pr. terraen og U3 hjaelper
+// stiger af i endagsloeb (U1 er erstattet af sygdom, egen PR). Spec: docs/superpowers/specs/
 // 2026-10-23-6804-v3-tilvalg-design.md §2.2.
 
 import { test } from "node:test";
@@ -10,15 +10,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  appendNonStarterResults,
   applyHelperWithdrawals,
   HELPER_WITHDRAWAL_V3_TUNING,
   helperWithdrawalProbability,
-  NON_START_V3_TUNING,
-  nonStartIncidents,
-  nonStartProbability,
-  nonStartRaceContext,
-  rollNonStarters,
 } from "./abandons.ts";
 import { CRASH_ABANDON_V3_TUNING, crashSeriousShareFor, resolveIncident } from "./incidents.ts";
 import { simulateStageV4 } from "../index.ts";
@@ -49,120 +43,6 @@ const entrant = (over: Partial<Entrant> = {}): Pick<Entrant, "condition" | "form
   role: "helper",
   ...over,
 });
-
-// ── U1: ikke-start ───────────────────────────────────────────────────────────
-
-test("#6938 U1: kun et etapeloeb fra etape 2 har en ikke-start-kontekst", () => {
-  assert.equal(nonStartRaceContext(null), null);
-  assert.equal(nonStartRaceContext({ status: "one_day" }), null);
-  assert.equal(nonStartRaceContext({ status: "first_stage", stage_number: 1 }), null);
-  assert.equal(nonStartRaceContext({ status: "missing", stage_number: 4 }), null);
-  assert.equal(nonStartRaceContext(standings(["a", "b"], 1)), null);
-  assert.equal(nonStartRaceContext({ ...standings(["a"], 1), first_stage: true } as unknown as GcContext), null);
-  assert.deepEqual(nonStartRaceContext(standings(["a", "b"], 10)), { stageNumber: 10, totalStages: 21, previousProfile: "mountain" });
-  // Uden stages_remaining og etapeliste: mindst dagens etapenummer, ingen kendt gaarsdag.
-  assert.deepEqual(nonStartRaceContext({ status: "standings", stage_number: 3, leader_id: null, standings: [] }), {
-    stageNumber: 3,
-    totalStages: 3,
-    previousProfile: null,
-  });
-});
-
-test("#6938 U1: risikoen er 0 under traethedsgulvet og monoton i traethed, form, laengde og gaarsdagens profil", () => {
-  const long = { stageNumber: 10, totalStages: 21, previousProfile: null };
-  // Lige under gulvet (lidt mere frisk end graensen) er risikoen praecis 0.
-  const belowFloor = 1 - NON_START_V3_TUNING.fatigueFloor + 0.01;
-  assert.equal(nonStartProbability(entrant({ condition: belowFloor }), long), 0);
-  assert.equal(nonStartProbability(entrant({ condition: 1 }), long), 0);
-  let previous = 0;
-  for (const condition of [0.55, 0.4, 0.25, 0.1, 0]) {
-    const p = nonStartProbability(entrant({ condition }), long);
-    assert.ok(p > previous, `condition ${condition}: ${p} > ${previous}`);
-    previous = p;
-  }
-  assert.ok(previous <= NON_START_V3_TUNING.maxPerStage * NON_START_V3_TUNING.formFactorRange[1] * 1.6 + 1e-12);
-  assert.ok(nonStartProbability(entrant({ form: 20 }), long) > nonStartProbability(entrant({ form: 50 }), long));
-  assert.ok(nonStartProbability(entrant({ form: 50 }), long) > nonStartProbability(entrant({ form: 90 }), long));
-  const short = { ...long, totalStages: 5 };
-  assert.ok(nonStartProbability(entrant(), long) > nonStartProbability(entrant(), short));
-  const afterMountain = { ...long, previousProfile: "high_mountain" as const };
-  assert.ok(nonStartProbability(entrant(), afterMountain) > nonStartProbability(entrant(), long));
-});
-
-test("#6938 U1/G17: en kaptajn har aldrig hoejere risiko end en hjaelper med samme traethed og form", () => {
-  const race = { stageNumber: 15, totalStages: 21, previousProfile: "mountain" as const };
-  for (const condition of [0.5, 0.3, 0.1, 0]) {
-    const helper = nonStartProbability(entrant({ condition, role: "helper" }), race);
-    for (const role of ["captain", "sprint_captain"] as const) {
-      assert.ok(nonStartProbability(entrant({ condition, role }), race) < helper || helper === 0, role);
-    }
-  }
-});
-
-test("#6938 U1: lodtraekningen er seedet, uafhaengig af startlistens raekkefoelge og holder loftet", () => {
-  const startlist: Entrant[] = Array.from({ length: 40 }, (_, i) => ({
-    ...(fixture("flat-massespurt").startlist[0] as Entrant),
-    rider_id: `r${String(i).padStart(2, "0")}`,
-    role: "helper",
-    condition: 0,
-    form: 0,
-  }));
-  const gc = standings(startlist.map((e) => e.rider_id), 18);
-  const a = rollNonStarters(startlist, gc, "seed-6938");
-  const b = rollNonStarters([...startlist].reverse(), gc, "seed-6938");
-  assert.deepEqual(a, b);
-  assert.ok(a.length <= Math.ceil(NON_START_V3_TUNING.maxFieldShare * startlist.length));
-  // Et loft paa 0 ryttere giver ingen ikke-startere; mindst to starter altid.
-  assert.deepEqual(rollNonStarters(startlist, gc, "seed-6938", { ...NON_START_V3_TUNING, maxFieldShare: 0 }), []);
-  const two = startlist.slice(0, 2);
-  assert.deepEqual(rollNonStarters(two, gc, "x", { ...NON_START_V3_TUNING, maxPerStage: 1, maxFieldShare: 1 }), []);
-  const many = rollNonStarters(startlist, gc, "seed-6938", { ...NON_START_V3_TUNING, maxPerStage: 1, maxFieldShare: 0.5 });
-  assert.equal(many.length, 20, "loftet er en haard graense");
-  assert.deepEqual(rollNonStarters(startlist, { status: "one_day" }, "seed-6938"), []);
-});
-
-test("#6938 U1: ikke-starterne staar sidst som udgaaede, uden skade", () => {
-  const results: StageResult[] = [
-    { rider_id: "a", rank: 1, time_seconds: 100, group_id: "g", status: "finished" },
-    { rider_id: "b", rank: 2, time_seconds: 130, group_id: "g", status: "finished" },
-  ];
-  const out = appendNonStarterResults(results, ["c"], 3600);
-  assert.deepEqual(out.map((r) => [r.rider_id, r.rank, r.status]), [["a", 1, "finished"], ["b", 2, "finished"], ["c", 3, "abandoned"]]);
-  assert.equal(out[2]!.time_seconds, 3730);
-  assert.deepEqual(nonStartIncidents(["c"]), [
-    { rider_id: "c", km: 0, kind: "illness", severity: null, outcome: "abandoned", time_loss_seconds: null, injury_days: null, helper_assist: false },
-  ]);
-});
-
-test("#6938 U1: motoren tager ikke-starterne ud af etapen under s5_profiles_v3 og kun dér", () => {
-  const base = fixture("flat-massespurt");
-  const tired = base.startlist.map((e) => ({ ...e, condition: 0, form: 0 }));
-  const ids = tired.map((e) => e.rider_id);
-  const gc = standings(ids, 19);
-  // Et seed hvor mindst én ikke starter (loftet for 16 ryttere er 1).
-  let seed = "";
-  for (let i = 0; i < 400 && !seed; i++) {
-    if (rollNonStarters(tired, gc, `u1-${i}`).length > 0) seed = `u1-${i}`;
-  }
-  assert.ok(seed, "der findes et seed med en ikke-starter");
-  const input: StageInput = { ...base, startlist: tired, seed, rules_revision: "s5_profiles_v3", gc_context: gc };
-  const out = simulateStageV4(input);
-  const nonStarters = rollNonStarters(tired, gc, seed);
-  assert.deepEqual(out.results.map((r) => r.rider_id).sort(), [...ids].sort(), "resultatet er stadig en komplet permutation");
-  assert.deepEqual(out.results.map((r) => r.rank), out.results.map((_, i) => i + 1));
-  for (const id of nonStarters) {
-    const row = out.results.find((r) => r.rider_id === id)!;
-    assert.equal(row.status, "abandoned");
-    assert.equal(row.injury_days ?? null, null);
-    assert.ok(out.incidents?.some((inc) => inc.rider_id === id && inc.kind === "illness" && inc.outcome === "abandoned" && inc.injury_days === null));
-    assert.ok(!out.timeline.events.some((e) => Array.isArray(e.params?.rider_ids) && (e.params.rider_ids as string[]).includes(id)), "ikke-starteren koerer ikke");
-  }
-  // Samme input under s5_profiles_v2: ingen ikke-start.
-  const v2 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" });
-  assert.ok(!v2.incidents?.some((inc) => (inc.kind as string) === "illness"));
-});
-
-// ── U2: styrt-udgang pr. terraen ────────────────────────────────────────────
 
 test("#6938 U2: andelen af styrt der udgaar kommer fra terraenet kun under s5_profiles_v3", () => {
   for (const kind of ["flat", "rolling", "climb", "descent", "cobbles"] as const) {
