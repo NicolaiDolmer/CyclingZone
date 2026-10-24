@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isBoardGoalAchieved, satisfactionToModifier, getPlanDuration, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "./boardUtils.js";
+import { isBoardGoalAchieved, satisfactionToModifier, getPlanDuration, computeOverallBoardSatisfaction } from "./boardUtils.js";
 // #2596 · Drift-guard: satisfactionToModifier (bånd >=80/60/40/20, ellers
 // 0.80) er duplikeret i frontend (boardUtils.js) og backend
 // (boardEvaluation.js — den autoritative kilde for board.budget_modifier),
@@ -155,19 +155,6 @@ test("getPlanDuration · 1/3/5", () => {
   assert.equal(getPlanDuration("1yr"), 1);
   assert.equal(getPlanDuration("3yr"), 3);
   assert.equal(getPlanDuration("5yr"), 5);
-});
-
-// #1451 · In-season trend-pil fra seneste løbs-event (modsat den sæson-slut-
-// baserede getSatisfactionTrend). Seneste event (nyeste created_at) styrer pilen.
-test("getEventSatisfactionTrend: seneste event styrer pilen", () => {
-  const events = [
-    { created_at: "2026-06-18T10:00:00Z", satisfaction_delta: 3 },
-    { created_at: "2026-06-17T10:00:00Z", satisfaction_delta: -2 },
-  ];
-  assert.equal(getEventSatisfactionTrend(events).key, "up");
-});
-test("getEventSatisfactionTrend: tom liste → null", () => {
-  assert.equal(getEventSatisfactionTrend([]), null);
 });
 
 // #1830 · Board-bred tilfredshed — ÉN delt kilde for Dashboard + Bestyrelse.

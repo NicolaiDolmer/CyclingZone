@@ -9,23 +9,6 @@ export function getPlanDuration(planType) {
 }
 
 /**
- * #1451 · Trend-pil fra det seneste løbs-event (in-season, modsat den
- * sæson-slut-baserede getSatisfactionTrend i BoardPage). Returnerer null når
- * ingen events. Farverne matcher getSatisfactionTrend.
- * #3422: `glyph` (var ▲/▼/→ rå unicode) fjernet — feltet var dødt, render
- * bruger altid et stroke-ikon via `key`, aldrig glyph direkte.
- */
-export function getEventSatisfactionTrend(events) {
-  if (!events?.length) return null;
-  const latest = events.reduce((a, b) =>
-    (b.created_at ?? "") > (a.created_at ?? "") ? b : a);
-  const delta = latest?.satisfaction_delta ?? 0;
-  if (delta > 0) return { color: "text-cz-success", key: "up", delta };
-  if (delta < 0) return { color: "text-cz-danger", key: "down", delta };
-  return { color: "text-cz-3", key: "flat", delta: 0 };
-}
-
-/**
  * #1830 · Board-wide tilfredshed — ÉN delt kilde for både Dashboard-kortet og
  * Bestyrelse-sidens drivers-panel, så de aldrig kan divergere (fx 65% vs 67%).
  *
