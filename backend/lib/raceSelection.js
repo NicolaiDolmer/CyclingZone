@@ -2,7 +2,8 @@
 // #1307: manager-udtagelse — ren validering + DB-operationer (kaldes fra api.js).
 // Fejl returneres som snake_case-koder (frontend oversætter; mønster fra training-ruterne).
 
-import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
+import { selectionSizeForRace } from "./raceAutopick.js";
+import { buildRouteMatch, ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRosterVisibilityFilter, isRiderInjured, raceSelectionReferenceDateStr, raceSquadOf, isWithinRaceAgeLimit, loadRaceSeasonNumber, RIDER_OVER_RACE_AGE_ERROR } from "./riderEligibility.js";
@@ -366,8 +367,10 @@ export async function saveSelectionBulk({ supabase, teamId, changes, autoRelease
 
 // Ren mapping af evner+kondition+profiler → riderRows (testbar uden DB).
 // suitability = løb-snit (0-100); stageSuitability = per-etape (0-100) til S4 rute-match.
+// #6207: begge fra routeMatch.js (ét tal fra motoren, samme som sæsonmatrix og Taktik).
 // Ingen evner → begge null (graceful degrade på klienten).
-export function buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr }) {
+export function buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr, race = null }) {
+  const routeMatch = buildRouteMatch({ race, stages });
   return riders.map((r) => {
     const cond = conditionByRider.get(r.id);
     const ab = abilityByRider.get(r.id);
@@ -378,8 +381,8 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       // #1747: ryttertype (top-2) til visning i udtagelses-panelet. null = endnu ikke beregnet.
       primaryType: r.primary_type ?? null,
       secondaryType: r.secondary_type ?? null,
-      suitability: hasFit ? Math.round(suitabilityScore(ab, stages) * 100) : null,
-      stageSuitability: hasFit ? stageSuitabilityScores(ab, stages) : null,
+      suitability: hasFit ? routeMatch.race(ab) : null,
+      stageSuitability: hasFit ? routeMatch.stagesList(ab) : null,
       // S5: aggression (0-99) — driver udbruds-CHANCEN i motoren (raceSimulator.aggressionScore).
       // Surfaces så HunterExplainer kan rangere jæger-kandidater. null = endnu ikke beregnet.
       aggression: ab?.aggression ?? null,
@@ -429,7 +432,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     applyRosterVisibilityFilter(
       supabase.from("riders").select(riderColumns).eq("team_id", teamId), { squad: raceSquad }
     ),
-    supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
+    supabase.from("race_stage_profiles").select(ROUTE_MATCH_STAGE_COLUMNS)
       .eq("race_id", race.id).order("stage_number", { ascending: true }),
     supabase.from("race_entries").select("rider_id, race_role, is_auto_filled")
       .eq("race_id", race.id).eq("team_id", teamId),
@@ -461,7 +464,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   // uafhængige, afgørende bagstopper på selve løbsdagen — se dets egen kommentar.
   const todayStr = raceSelectionReferenceDateStr(race, copenhagenDateString());
 
-  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr })
+  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr, race })
     // #6139: panelet graaner en laast rytter op-front (han kan hverken ind eller ud).
     .map((row) => ({ ...row, trainNowLocked: trainNowLock.riderIds.has(row.id) }))
     // #6964: for gammel til ungdomsløbet — vises, men kan ikke udtages.
