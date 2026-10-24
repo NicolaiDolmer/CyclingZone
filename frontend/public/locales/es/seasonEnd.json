@@ -82,6 +82,8 @@
     "rank": "#",
     "team": "Equipo",
     "stageWins": "Victorias de etapa",
+    "gcWins": "Victorias GC",
+    "jerseys": "Maillots",
     "points": "Puntos",
     "progression": "Evolución"
   },
