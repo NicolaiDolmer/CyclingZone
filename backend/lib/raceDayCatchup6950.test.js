@@ -9,6 +9,7 @@ import {
   decisionBonusShare,
   fieldLevelMedian,
   levelBonusShare,
+  raceDayCatchupAbilityMultiplier,
   raceDayCatchupMultiplier,
   raceDayCatchupTickOverrides,
 } from "./raceDayCatchup6950.js";
@@ -20,6 +21,7 @@ const CFG = Object.freeze({
   supplement: 0.5,
   levelBonusMax: 0.2,
   decisionBonusMax: 0.1,
+  droppedInFinalShare: 0.4,
   easyEdge: -10,
   plateauStart: -2,
   plateauEnd: 4,
@@ -32,6 +34,9 @@ test("config: mangler eller ugyldig → kaster (ingen standardtal i repoet)", ()
   assert.throws(() => assertCatchupConfig({ ...CFG, levelBonusMax: -0.1 }), /levelBonusMax must be >= 0/);
   assert.throws(() => assertCatchupConfig({ ...CFG, plateauStart: -20 }), /zone/);
   assert.throws(() => assertCatchupConfig({ ...CFG, hardEdge: 4 }), /zone/);
+  assert.throws(() => assertCatchupConfig({ ...CFG, droppedInFinalShare: 0 }), /droppedInFinalShare/);
+  assert.throws(() => assertCatchupConfig({ ...CFG, droppedInFinalShare: 1 }), /droppedInFinalShare/);
+  assert.throws(() => decisionBonusShare(RACE_DAY_DECISION.NONE), /config missing/);
   assert.throws(() => raceDayCatchupMultiplier({ riderLevel: 50, fieldLevel: 50 }), /config missing/);
   const frozen = assertCatchupConfig({ ...CFG, extra: 1 });
   assert.ok(Object.isFrozen(frozen));
@@ -79,12 +84,12 @@ test("ukendt niveau (rytter eller felt) → ingen niveau-bonus, fail-safe", () =
 });
 
 test("S14 afgoerelsen: med i afgoerelsen og hjaelper i finalen fuld, faldet fra mellem, ellers 0", () => {
-  assert.equal(decisionBonusShare(RACE_DAY_DECISION.IN_DECISION), 1);
-  assert.equal(decisionBonusShare(RACE_DAY_DECISION.HELPER_IN_FINAL), 1);
-  assert.equal(decisionBonusShare(RACE_DAY_DECISION.DROPPED_IN_FINAL), 0.5);
-  assert.equal(decisionBonusShare(RACE_DAY_DECISION.NONE), 0);
-  assert.equal(decisionBonusShare(undefined), 0);
-  assert.equal(decisionBonusShare("unknown"), 0);
+  assert.equal(decisionBonusShare(RACE_DAY_DECISION.IN_DECISION, CFG), 1);
+  assert.equal(decisionBonusShare(RACE_DAY_DECISION.HELPER_IN_FINAL, CFG), 1);
+  assert.equal(decisionBonusShare(RACE_DAY_DECISION.DROPPED_IN_FINAL, CFG), CFG.droppedInFinalShare);
+  assert.equal(decisionBonusShare(RACE_DAY_DECISION.NONE, CFG), 0);
+  assert.equal(decisionBonusShare(undefined, CFG), 0);
+  assert.equal(decisionBonusShare("unknown", CFG), 0);
 });
 
 test("G2 lokalt: multiplikatoren er aldrig under basis (>= 1) for noget input", () => {
@@ -151,7 +156,11 @@ function raceTick(extra) {
 }
 
 test("S13: med catch-up-overrides giver rigt og fattigt hold PRAECIS samme loebsdag", () => {
-  const overrides = raceDayCatchupTickOverrides({ riderLevel: 50, fieldLevel: 52, cfg: CFG });
+  const overrides = raceDayCatchupTickOverrides();
+  // Kontrol: uden overrides giver pengene i dag et rigt hold mere paa loebsdagen.
+  const richToday = raceTick({ staff: RICH_COACH, facilityTier: 5 });
+  const poorToday = raceTick({ staff: null, facilityTier: 0 });
+  assert.ok(richToday.score > poorToday.score, "kontrol: pengene virker paa loebsdagen i dag");
   const rich = raceTick({ staff: RICH_COACH, facilityTier: 5, ...overrides });
   const poor = raceTick({ staff: null, facilityTier: 0, ...overrides });
   assert.deepEqual(rich.progress, poor.progress);
@@ -160,9 +169,20 @@ test("S13: med catch-up-overrides giver rigt og fattigt hold PRAECIS samme loebs
   assert.ok(Object.isFrozen(overrides));
 });
 
-test("catch-up-multiplikatoren skalerer loebsdagens fremdrift og bevarer +1-loftet", () => {
-  const base = raceTick({ academyRateMult: 1 });
-  const boosted = raceTick(raceDayCatchupTickOverrides({ riderLevel: 50, fieldLevel: 51, decision: RACE_DAY_DECISION.IN_DECISION, cfg: CFG }));
-  assert.ok(boosted.score > base.score, "loebets ekstra skal give mere end basis");
-  for (const gain of Object.values(boosted.gains)) assert.ok(gain <= 1, "+1 pr. evne pr. loebsdag");
+test("S14: loebets ekstra rammer KUN etapens profil-evner; off-fokus faar basis", () => {
+  const { focusAbilities } = raceDayProgram("mountain");
+  const args = { riderLevel: 50, fieldLevel: 51, decision: RACE_DAY_DECISION.IN_DECISION, cfg: CFG };
+  const full = raceDayCatchupMultiplier(args);
+  assert.ok(full > 1);
+  for (const ability of VISIBLE_ABILITIES) {
+    const m = raceDayCatchupAbilityMultiplier({ ability, focusAbilities, ...args });
+    assert.equal(m, focusAbilities.includes(ability) ? full : 1, ability);
+  }
+  // Afgoerelsen flytter kun profil-evnerne.
+  const offFocus = VISIBLE_ABILITIES.find((a) => !focusAbilities.includes(a));
+  for (const decision of Object.values(RACE_DAY_DECISION)) {
+    assert.equal(raceDayCatchupAbilityMultiplier({ ability: offFocus, focusAbilities, ...args, decision }), 1);
+  }
+  // Uden config kaster ogsaa off-fokus-grenen (ingen stille neutral-sti).
+  assert.throws(() => raceDayCatchupAbilityMultiplier({ ability: offFocus, focusAbilities }), /config missing/);
 });

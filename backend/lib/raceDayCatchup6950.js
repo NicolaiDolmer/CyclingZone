@@ -19,16 +19,17 @@
 // HVAD MODULET ER: rene funktioner, ingen DB, ingen flag-laesning, ingen kaldere
 // endnu. Motoren (dailyTrainingEngine.js, loebs-grenen med raceDayProgram) faar
 // en tynd kobling bag et slukket flag i en senere PR, naar flag-kataloget og
-// #7075 er merget (se PR-body). Koblingen er tiltaenkt saadan:
+// #7075 er merget (se PR-body).
 //
-//   applyDailyTick({ ...sharedTickArgs, program: raceDayProgram(...),
-//     hardDailyCap, ...raceDayCatchupTickOverrides({ riderLevel, fieldLevel,
-//     decision, finished, cfg }) })
-//
-// HVORFOR academyRateMult: det er applyDailyTick's eneste "ekstra led, default
-// 1.0"-multiplikator, ganget SIDST i begge grene af dailyAbilityDelta. Saa
-// loebets ekstra bliver en ren skalering af samme kaede (fremdrifts-bar,
-// carry-over og +1-loftet arves uaendret), uden en kopi af formlen.
+// KOBLINGEN HAR TO DELE, og de maa kun taendes SAMMEN:
+//   1. raceDayCatchupTickOverrides(): staff og facilityTier ud af loebsdagen (S13).
+//   2. raceDayCatchupAbilityMultiplier(): loebets ekstra, KUN i etapens
+//      profil-evner (S14: "ekstra udbytte i etapens evner"). Off-fokus-evnerne
+//      faar basis uaendret. applyDailyTick har i dag intet evne-bevidst led
+//      (academyRateMult skalerer ALLE evner og er derfor forkert her); leddet
+//      skal laegges i dailyAbilityDelta for fokus-evner, uden for
+//      traeningsscore-koblingen (del 2-spec §5), i koblings-PR'en.
+// Del 1 alene giver et rigt hold mindre ud af loebsdagen end i dag og bryder G2.
 //
 // TAL (hard rule 17): konfigurationen har INGEN standardvaerdier i repoet.
 // Stoerrelserne kalibreres i del 2-harnessen (G1-G8) og leveres fra den private
@@ -43,20 +44,11 @@ export const RACE_DAY_DECISION = Object.freeze({
   NONE: "none",
 });
 
-// Andel af afgoerelses-bonussen pr. kategori. Ikke balance-tal men ejerens ord:
-// "med i afgoerelsen" = fuld, "hjaelpere der arbejder i finalen taeller med" =
-// fuld, "mellem for dem der faldt fra i finalen" = halv.
-const DECISION_SHARE = Object.freeze({
-  [RACE_DAY_DECISION.IN_DECISION]: 1,
-  [RACE_DAY_DECISION.HELPER_IN_FINAL]: 1,
-  [RACE_DAY_DECISION.DROPPED_IN_FINAL]: 0.5,
-  [RACE_DAY_DECISION.NONE]: 0,
-});
-
 const CONFIG_KEYS = Object.freeze([
   "supplement",
   "levelBonusMax",
   "decisionBonusMax",
+  "droppedInFinalShare",
   "easyEdge",
   "plateauStart",
   "plateauEnd",
@@ -70,6 +62,8 @@ const CONFIG_KEYS = Object.freeze([
  *   supplement        loebets ekstra oven paa basis (>= 0), ens for alle hold
  *   levelBonusMax     niveau-bonussens top (>= 0)
  *   decisionBonusMax  afgoerelses-bonussens top (>= 0)
+ *   droppedInFinalShare  andel af afgoerelses-bonussen for "faldt fra i
+ *                     finalen" (ejerens "mellem"), strengt mellem 0 og 1
  *   easyEdge < plateauStart <= plateauEnd < hardEdge
  *                     afstand felt minus rytter; bonus 0 under easyEdge og over
  *                     hardEdge, fuld mellem plateauStart og plateauEnd
@@ -81,6 +75,9 @@ export function assertCatchupConfig(cfg) {
   }
   for (const key of ["supplement", "levelBonusMax", "decisionBonusMax"]) {
     if (cfg[key] < 0) throw new Error(`race-day catch-up: config.${key} must be >= 0`);
+  }
+  if (!(cfg.droppedInFinalShare > 0 && cfg.droppedInFinalShare < 1)) {
+    throw new Error("race-day catch-up: config.droppedInFinalShare must be strictly between 0 and 1");
   }
   if (!(cfg.easyEdge < cfg.plateauStart && cfg.plateauStart <= cfg.plateauEnd && cfg.plateauEnd < cfg.hardEdge)) {
     throw new Error("race-day catch-up: zone must satisfy easyEdge < plateauStart <= plateauEnd < hardEdge");
@@ -133,16 +130,24 @@ export function levelBonusShare({ riderLevel, fieldLevel, cfg }) {
   return 1 - smoothstep(c.plateauEnd, c.hardEdge, gap);
 }
 
-/** Afgoerelses-bonussens andel (0-1). Ukendt kategori → 0 (fail-safe). */
-export function decisionBonusShare(decision) {
-  return DECISION_SHARE[decision] ?? 0;
+/**
+ * Afgoerelses-bonussens andel (0-1). Ejerens ord (S14): med i afgoerelsen = fuld,
+ * hjaelpere der arbejder i finalen "taeller med" = fuld, faldet fra i finalen =
+ * "mellem" (andelen er privat konfiguration). Ukendt kategori → 0 (fail-safe).
+ */
+export function decisionBonusShare(decision, cfg) {
+  const c = assertCatchupConfig(cfg);
+  if (decision === RACE_DAY_DECISION.IN_DECISION || decision === RACE_DAY_DECISION.HELPER_IN_FINAL) return 1;
+  if (decision === RACE_DAY_DECISION.DROPPED_IN_FINAL) return c.droppedInFinalShare;
+  return 0;
 }
 
 /**
- * Loebsdagens samlede multiplikator oven paa basis (>= 1, aldrig under basis).
+ * Loebets ekstra som multiplikator (>= 1, aldrig under basis).
  *
  *   1 + supplement + levelBonusMax * niveau-andel + decisionBonusMax * afgoerelses-andel
  *
+ * Gaelder KUN etapens profil-evner (se raceDayCatchupAbilityMultiplier).
  * Udgaaet rytter (finished === false, S16): 1 = kun basis.
  * Pengene indgaar ikke (S13): samme input giver samme multiplikator for alle hold.
  */
@@ -152,18 +157,27 @@ export function raceDayCatchupMultiplier({ riderLevel, fieldLevel, decision = RA
   return 1
     + c.supplement
     + c.levelBonusMax * levelBonusShare({ riderLevel, fieldLevel, cfg: c })
-    + c.decisionBonusMax * decisionBonusShare(decision);
+    + c.decisionBonusMax * decisionBonusShare(decision, c);
 }
 
 /**
- * Overrides til applyDailyTick paa en loebsdag med catch-up taendt.
- * staff og facilityTier nulstilles (S13: pengene loefter kun traeningsdage);
- * academyRateMult baerer loebets ekstra (se docblokken oeverst).
+ * Multiplikatoren for én evne: loebets ekstra i etapens profil-evner
+ * (program.focusAbilities fra raceDayProgram), 1 for alle andre evner.
  */
-export function raceDayCatchupTickOverrides(args) {
-  return Object.freeze({
-    staff: null,
-    facilityTier: null,
-    academyRateMult: raceDayCatchupMultiplier(args),
-  });
+export function raceDayCatchupAbilityMultiplier({ ability, focusAbilities, ...args }) {
+  const focus = Array.isArray(focusAbilities) ? focusAbilities : [];
+  if (!focus.includes(ability)) {
+    assertCatchupConfig(args.cfg);
+    return 1;
+  }
+  return raceDayCatchupMultiplier(args);
+}
+
+/**
+ * Pengedelen af koblingen (S13): staff og facilityTier ud af loebsdagen.
+ * Maa KUN bruges sammen med raceDayCatchupAbilityMultiplier (se docblokken
+ * oeverst); alene giver den et rigt hold mindre end i dag (G2).
+ */
+export function raceDayCatchupTickOverrides() {
+  return Object.freeze({ staff: null, facilityTier: null });
 }
