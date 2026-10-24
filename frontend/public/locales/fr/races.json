@@ -140,6 +140,10 @@
         "gap": "L'écart avec {group, select, rest {le peloton} other {les poursuivants}} {dir, select, grew {augmente} other {diminue}} de {before} à {after}",
         "split": "{count, plural, one {Un groupe se détache} other {# groupes se détachent}}",
         "dropped": "{count, plural, one {{names} est lâché de l'échappée} other {{names} sont lâchés de l'échappée}}",
+        "formedAhead": "{count, plural, one {# coureur s'échappe devant le peloton} other {# coureurs s'échappent devant le peloton}}",
+        "caughtAhead": "{count, plural, one {# coureur du groupe devant le peloton est repris} other {# coureurs du groupe devant le peloton sont repris}}",
+        "survivedAhead": "Le groupe devant le peloton tient jusqu'à l'arrivée",
+        "droppedAhead": "{count, plural, one {{names} est lâché du groupe devant le peloton} other {{names} sont lâchés du groupe devant le peloton}}",
         "joined": "{count, plural, one {Deux groupes se rejoignent} other {Les groupes se rejoignent # fois}}",
         "gcLead": "{name} prend la tête du classement général",
         "crack": "{name} craque",
@@ -994,6 +998,10 @@
       "free_role": "rôle libre"
     }
   },
+  "stageOrders": {
+    "title": "Tes consignes",
+    "roleDefaults": "rien d'enregistré, chaque coureur a suivi son rôle"
+  },
   "racePage": {
     "tabsAria": "Sections de la course",
     "tab": {
@@ -1382,6 +1390,10 @@
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {est repris} other {sont repris}} par le peloton.",
         "breakaway_survived": "L'échappée résiste au peloton jusqu'à la ligne.",
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",
+        "group_ahead_formed": "{riders} {count, plural, one {s'échappe} other {s'échappent}} dans un groupe devant le peloton.",
+        "group_ahead_caught": "Le groupe devant le peloton est repris : {riders}.",
+        "group_ahead_survived": "Le groupe devant le peloton tient jusqu'à la ligne.",
+        "group_ahead_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} du groupe devant le peloton.",
         "incident": "{kind, select, mechanical {{rider} est victime d'un problème mécanique.} other {{rider} chute.}}",
         "incident_crash_time_loss": "{rider} chute et perd {seconds} s.",
         "incident_crash_hard": "{rider} chute lourdement : {seconds} s perdues, et {days, plural, one {# jour} other {# jours}} d'absence.",

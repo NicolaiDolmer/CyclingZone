@@ -140,6 +140,10 @@
         "gap": "De voorsprong op {group, select, rest {het peloton} other {de achtervolgers}} {dir, select, grew {groeit} other {krimpt}} van {before} naar {after}",
         "split": "{count, plural, one {Een groep splitst af} other {# groepen splitsen af}}",
         "dropped": "{count, plural, one {{names} moet lossen uit de ontsnapping} other {{names} moeten lossen uit de ontsnapping}}",
+        "formedAhead": "{count, plural, one {# renner rijdt weg voor het peloton} other {# renners rijden weg voor het peloton}}",
+        "caughtAhead": "{count, plural, one {# renner uit de groep voor het peloton wordt ingelopen} other {# renners uit de groep voor het peloton worden ingelopen}}",
+        "survivedAhead": "De groep voor het peloton houdt stand tot de finish",
+        "droppedAhead": "{count, plural, one {{names} moet lossen uit de groep voor het peloton} other {{names} moeten lossen uit de groep voor het peloton}}",
         "joined": "{count, plural, one {Twee groepen komen samen} other {Groepen komen # keer samen}}",
         "gcLead": "{name} pakt de leiding in het algemeen klassement",
         "crack": "{name} klapt",
@@ -994,6 +998,10 @@
       "free_role": "vrije rol"
     }
   },
+  "stageOrders": {
+    "title": "Je orders",
+    "roleDefaults": "niets opgeslagen, dus elke renner reed zijn rol"
+  },
   "racePage": {
     "tabsAria": "Koersonderdelen",
     "tab": {
@@ -1382,6 +1390,10 @@
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door het peloton.",
         "breakaway_survived": "De ontsnapping houdt het peloton tot aan de streep van zich af.",
         "breakaway_dropped": "{riders} {count, plural, one {moet} other {moeten}} de ontsnapping laten gaan.",
+        "group_ahead_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg in een groep voor het peloton.",
+        "group_ahead_caught": "De groep voor het peloton wordt ingelopen: {riders}.",
+        "group_ahead_survived": "De groep voor het peloton houdt stand tot de streep.",
+        "group_ahead_dropped": "{riders} {count, plural, one {moet} other {moeten}} lossen uit de groep voor het peloton.",
         "incident": "{kind, select, mechanical {{rider} gaat onderuit door materiaalpech.} other {{rider} gaat onderuit in een valpartij.}}",
         "incident_crash_time_loss": "{rider} gaat onderuit en verliest {seconds} sec.",
         "incident_crash_hard": "{rider} gaat hard onderuit: {seconds} sec. verloren, en {days, plural, one {# dag} other {# dagen}} aan de kant.",
