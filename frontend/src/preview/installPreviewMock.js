@@ -9,6 +9,7 @@ import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, a
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
+import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
@@ -318,6 +319,14 @@ export function installPreviewMock() {
       }
       if (method === "POST" && /\/api\/development\/transition\/dismiss$/.test(url)) {
         return jsonResponse({ ok: true });
+      }
+
+      // #6855: Kontrakter-fanens quote + batch-forlængelse.
+      if (/\/api\/riders\/extend-contracts/.test(url)) {
+        let body = null;
+        if (init && typeof init.body === "string") { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = contractsBatchMockRoute(method, new URL(url, window.location.origin).pathname, body);
+        if (res) return jsonResponse(res.body, res.status);
       }
 
       // Statefuld Scouting-central-mock (#2244/#2644): rout /api/scouting/* +

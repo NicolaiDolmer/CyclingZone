@@ -39,7 +39,8 @@
     "squad": "Plantilla ({count})",
     "development": "Desarrollo",
     "stats": "Estadísticas",
-    "transfers": "Historial de fichajes"
+    "transfers": "Historial de fichajes",
+    "contracts": "Contratos"
   },
   "development": {
     "headers": {
@@ -321,5 +322,49 @@
     "discordOpenAria": "Abrir el perfil de Discord de {handle}",
     "discordCopyAria": "Copiar el nombre de usuario de Discord {handle}",
     "discordCopied": "Copiado"
+  },
+  "contracts": {
+    "headers": {
+      "seasons": "Temporadas",
+      "salary": "Salario actual / nuevo",
+      "newContract": "Nuevo contrato"
+    },
+    "selectRider": "Seleccionar a {name}",
+    "selectGroup": "Seleccionar todos: {group}",
+    "seasonsFor": "Temporadas para ampliar a {name}",
+    "seasonsCount": "{count}",
+    "seasonsMax": "{count} (máx.)",
+    "noContract": "Sin contrato",
+    "group": {
+      "expiring": "Vence esta temporada",
+      "season": "Vence tras la temporada {season}",
+      "atCap": "En el límite",
+      "atCapHint": "Ya llega 3 temporadas por delante. Se podrá ampliar de nuevo cuando cambie la temporada."
+    },
+    "bar": {
+      "none": "Marca los ciclistas que quieres ampliar.",
+      "selected": "{count, plural, one {# ciclista seleccionado} other {# ciclistas seleccionados}}",
+      "salaryDelta": "Salario {value} CZ$ por temporada",
+      "seasonsLabel": "Temporadas",
+      "extend": "{count, plural, =0 {Ampliar contratos} one {Ampliar # contrato} other {Ampliar # contratos}}"
+    },
+    "summary": {
+      "title": "Ampliar contratos",
+      "cancel": "Cancelar",
+      "confirm": "{count, plural, one {Ampliar # contrato} other {Ampliar # contratos}}",
+      "loadError": "No se pudo cargar el resumen. No se ha cambiado nada.",
+      "saveError": "No se pudieron ampliar los contratos. No se ha cambiado nada.",
+      "teamSalary": "Salario del equipo por temporada",
+      "salaryCap": "Tope salarial de la directiva",
+      "noCap": "Sin tope",
+      "withinCap": "Dentro del tope",
+      "overCap": "Por encima del tope de {cap} CZ$. No se ampliará nada"
+    },
+    "done": "{count, plural, one {# contrato ampliado.} other {# contratos ampliados.}}",
+    "loadErrorTitle": "No se pudieron cargar tus contratos",
+    "loadErrorBody": "No se ha perdido nada. Tus contratos no han cambiado.",
+    "retry": "Reintentar",
+    "emptyTitle": "Ficha ciclistas para gestionar sus contratos",
+    "emptyBody": "Tus ciclistas aparecen aquí, agrupados según cuándo vence su contrato."
   }
 }
