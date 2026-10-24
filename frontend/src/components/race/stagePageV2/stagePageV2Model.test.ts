@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   elevationSeries, elevationAt, gradeBand, colouredSegments, climbDetail, sortedClimbs,
   surfaceOf, dayDemands, defaultStage, stagePhase, shortName, formatGap, myBestByStage,
-  yourDay, DAY_TOP_COUNT, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage,
+  yourDay, DAY_TOP_COUNT, lineupFor, tacticsProgress, favouritesFor, winningMargin, tacticsStartStage, todaysStage, todaysStages,
   activeRiders, profileScale, favouriteTerrain, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
@@ -107,6 +107,17 @@ test("defaultStage: i dag (dansk tid), ellers senest koerte, ellers 1", () => {
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-14T23:30:00Z") }), 3);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 2, schedule, now: new Date("2026-10-20T08:00:00Z") }), 2);
   assert.equal(defaultStage({ totalStages: 3, stagesCompleted: 0, schedule: [], now: new Date("2026-10-14T08:00:00Z") }), 1);
+});
+
+test("todaysStages: alle dagens etaper faar 'I dag' (Danmark Rundt 24/10: etape 2 og 3 samme dato)", () => {
+  const schedule = [
+    { stage_number: 1, scheduled_at: "2026-10-23T16:00:00Z" },
+    { stage_number: 2, scheduled_at: "2026-10-24T10:00:00Z" },
+    { stage_number: 3, scheduled_at: "2026-10-24T14:00:00Z" },
+    { stage_number: 4, scheduled_at: "2026-10-25T11:00:00Z" },
+  ];
+  assert.deepEqual(todaysStages({ totalStages: 4, schedule, now: new Date("2026-10-24T14:30:00Z") }), [2, 3]);
+  assert.deepEqual(todaysStages({ totalStages: 4, schedule, now: new Date("2026-10-26T08:00:00Z") }), []);
 });
 
 test("todaysStage: kun en etape der koeres i dag, aldrig fallbacken", () => {

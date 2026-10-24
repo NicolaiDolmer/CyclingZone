@@ -1,6 +1,7 @@
 // Beta-sprog: registrering, synlighed, engelsk fallback og lazy-load — Refs #6802.
 //
-// fr/es/nl er beta-sprog, synlige for alle (#7087). De strukturelle vagter daekker HVER entry i LANGUAGES.
+// fr/es/nl var beta-sprog og er live for alle fra 24/10 (#7087). Beta-mekanismen (flag, detektor,
+// Beta-maerke) bevares til naeste sprog; de strukturelle vagter daekker HVER entry i LANGUAGES.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -139,29 +140,29 @@ test("regionale koder falder tilbage via basis-sproget", async () => {
   assert.equal(i.t("only"), "Only EN");
 });
 
-// ── fr/es/nl som skjulte beta-sprog (#6836) ────────────────────────────────
+// ── fr/es/nl live for alle (#6836, #7087) ────────────────────────────────
 
 const REGISTERED_BETA = ["fr", "es", "nl"];
 
-test("fr/es/nl er registreret som beta og aldrig offentlige", () => {
+test("fr/es/nl er live (#7087): registreret, offentlige og uden beta-maerke", () => {
   for (const code of REGISTERED_BETA) {
     const entry = LANGUAGES.find((l) => l.code === code);
     assert.ok(entry, `${code} mangler i LANGUAGES`);
-    assert.equal(entry.beta, true, `${code} skal vaere beta: true`);
-    assert.equal(isBetaLang(code), true);
-    assert.equal(isBetaLang(`${code}-XX`), true);
+    assert.equal(entry.beta, false, `${code} skal vaere beta: false`);
+    assert.equal(isBetaLang(code), false);
+    assert.equal(isBetaLang(`${code}-XX`), false);
     assert.ok(SUPPORTED_LANGS.includes(code));
-    assert.ok(!PUBLIC_LANGS.includes(code), `${code} maa ikke vaere i PUBLIC_LANGS`);
+    assert.ok(PUBLIC_LANGS.includes(code), `${code} skal vaere i PUBLIC_LANGS`);
   }
-  assert.deepEqual(PUBLIC_LANGS, ["en", "da"]);
+  assert.deepEqual(PUBLIC_LANGS, ["en", "da", "fr", "es", "nl"]);
 });
 
-test("browser-detektion vaelger aldrig fr/es/nl, selv med en fransk/spansk/hollandsk browser", () => {
-  assert.deepEqual(publicLanguageCandidates(["fr-FR", "es-ES", "nl-NL", "da-DK"]), ["da-DK"]);
-  assert.deepEqual(publicLanguageCandidates(["fr", "es", "nl"]), []);
+test("browser-detektion kan vaelge fr/es/nl for en fransk/spansk/hollandsk browser", () => {
+  assert.deepEqual(publicLanguageCandidates(["fr-FR", "es-ES", "nl-NL", "da-DK"]), ["fr-FR", "es-ES", "nl-NL", "da-DK"]);
+  assert.deepEqual(publicLanguageCandidates(["fr", "es", "nl"]), ["fr", "es", "nl"]);
 });
 
-test("sprogvaelgeren viser fr/es/nl for alle med Beta-maerke og engelsk-fallback-note (#7087)", () => {
+test("sprogvaelgeren viser alle sprog for alle uden adgangsgate; Beta-maerket styres af beta-flaget (#7087)", () => {
   const src = readFileSync(join(HERE, "../components/LanguageSwitcher.jsx"), "utf8");
   assert.doesNotMatch(src, /languageAccess|useBetaLanguageAccess/, "ingen adgangsgate");
   assert.match(src, /toOptions\(LANGUAGES\)/);
