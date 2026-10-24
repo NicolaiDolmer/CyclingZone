@@ -90,6 +90,15 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
       const extra = gc ? { gc_context: gc } : {};
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
       const v3 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v3" });
+      if (gc?.status === "one_day") {
+        // #6938 U3 (v3, kun endagsloeb): en sat hjaelper kan stige af. Kun de ryttere afviger;
+        // alle andres tid og status er de samme som under v2.
+        const off = new Set((v3.incidents ?? []).filter((i) => i.kind === "withdrawal").map((i) => i.rider_id));
+        assert.ok((v3.incidents ?? []).filter((i) => i.kind !== "withdrawal").length === (v2.incidents ?? []).length, `${name}: kun hjaelpere der stiger af er nye`);
+        const keep = (out: ReturnType<typeof simulateStageV4>) => out.results.filter((r) => !off.has(r.rider_id)).map((r) => [r.rider_id, r.time_seconds, r.status]);
+        assert.deepEqual(keep(v3), keep(v2), `${name} endagsloeb`);
+        continue;
+      }
       assert.equal(JSON.stringify(v3), JSON.stringify(v2), `${name} ${gc?.status ?? "uden gc"}`);
     }
   }
