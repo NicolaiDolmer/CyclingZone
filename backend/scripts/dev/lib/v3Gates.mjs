@@ -151,10 +151,15 @@ export function measureG19(raceResults, revision, contexts) {
   // Codex: en manglende loebskontekst er manglende evidens (MANGLER), ikke "ingen etape" (N/A).
   const missingContext = new Set(seeds.filter((x) => !x.ctx).map((x) => x.raceId)).size;
   let qualifying = 0;
+  // Codex P2 (#7152): hver division med kvalificerende etaper skal have mindst én brugbar
+  // maaling; ellers kan en anden divisions maalinger give PASS uden evidens.
+  const qualifyingDivisions = new Set();
   for (const x of seeds) {
     const set = x.ctx?.mountainNonSummitStages;
     if (!set?.size) continue;
-    qualifying += (x.seed.rows ?? []).filter((r) => set.has(r.stage)).length;
+    const q = (x.seed.rows ?? []).filter((r) => set.has(r.stage)).length;
+    qualifying += q;
+    if (q) qualifyingDivisions.add(x.ctx.divisionId ?? "ukendt");
     for (const r of x.seed.rows ?? []) {
       if (!set.has(r.stage) || r.breakawayWon === true || num(r.gapTo10) === null) continue;
       const key = x.ctx.divisionId ?? "ukendt";
@@ -165,6 +170,8 @@ export function measureG19(raceResults, revision, contexts) {
   }
   if (missingContext) return { missingContext, n: all.length };
   if (!all.length) return { n: 0, qualifying };
+  const missingDivisions = [...qualifyingDivisions].filter((k) => !byDivision.has(k));
+  if (missingDivisions.length) return { n: all.length, qualifying, missingDivisions };
   return { n: all.length, qualifying, median: median(all), byDivision: Object.fromEntries([...byDivision].map(([k, xs]) => [k, { n: xs.length, median: median(xs) }])) };
 }
 
@@ -246,6 +253,7 @@ export function evaluateV3Gates({ raceResults, revision, contexts = new Map(), b
   if (g19.missingContext) out.push(gateResult(by.G19, GATE_STATUS.MISSING, g19, `${g19.missingContext} loeb uden loebskontekst (cache.json)`));
   else if (!g19.qualifying) out.push(gateResult(by.G19, GATE_STATUS.NA, null, "ingen bjergetape uden topankomst i koerslen"));
   else if (!g19.n) out.push(gateResult(by.G19, GATE_STATUS.MISSING, g19, "bjergetaper uden topankomst, men intet brugbart nr. 10"));
+  else if (g19.missingDivisions?.length) out.push(gateResult(by.G19, GATE_STATUS.MISSING, g19, `ingen brugbar maaling i division ${g19.missingDivisions.join(", ")}`));
   else {
     const band = b.G19?.gapTo10Median;
     const checks = Object.entries(g19.byDivision).map(([d, v]) => ({ what: `division ${d}: nr. 10 (median)`, ok: inBand(v.median, band) }));

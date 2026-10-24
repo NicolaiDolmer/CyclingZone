@@ -134,6 +134,12 @@ test("G19: nr. 10 paa bjerg uden topankomst pr. division; udbrudssejre og andre 
   assert.equal(noCtx.status, GATE_STATUS.MISSING, "manglende loebskontekst er manglende evidens (Codex)");
   const noGap = [raceResult("r1", 5, [{ rows: [{ stage: 3, gapTo10: null, breakawayWon: false }] }])];
   assert.equal(evaluateV3Gates({ raceResults: noGap, revision: REV, contexts, bands: ALL_BANDS }).gates.find((x) => x.id === "G19").status, GATE_STATUS.MISSING);
+  // Codex P2 (#7152): gyldig maaling i d1, men kun null i d2 -> MANGLER, aldrig PASS.
+  const halfMissing = [raceResult("r1", 5, [{ rows: [{ stage: 3, gapTo10: 60, breakawayWon: false }] }]),
+    raceResult("r2", 5, [{ rows: [{ stage: 3, gapTo10: null, breakawayWon: false }] }])];
+  const hm = evaluateV3Gates({ raceResults: halfMissing, revision: REV, contexts, bands: ALL_BANDS }).gates.find((x) => x.id === "G19");
+  assert.equal(hm.status, GATE_STATUS.MISSING);
+  assert.match(hm.why, /d2/);
 });
 
 test("G2-flad: over oevre zone uden 'ingen jagt-interesse' og over haard graense", () => {
