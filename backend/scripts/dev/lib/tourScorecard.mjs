@@ -18,6 +18,7 @@ import { ANCHOR_BANDS, isShortUphillFinish } from "../../lib/headToHeadAnchors.j
 import { mean, median, spearmanCorrelation } from "../../lib/headToHeadStats.js";
 import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
+import { createJerseyTally } from "./jerseyTally.mjs"; // #6804 v3 G16/G18
 import { isOrdersGcRulesRevision, isS5ProfilesV2OrLater } from "../../../lib/raceEngineRulesRevision.ts";
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
 import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
@@ -710,10 +711,14 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const rows = [];
     let gcWeek1 = null;
     const seedTag = `${seedPrefix}-${s}`;
+    const jerseys = createJerseyTally(); // #6804 v3 G16/G18
     const final = runStagesInOrder({
       v4, data, revision, seedTag, stages, entrants: all,
       onStage: ({ profile, res, gcBefore, gcAfter, entrants }) => {
         const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider, revision });
+        jerseys.addStage({ profile, ranked: res.ranked, passages: res.passages });
+        // #2757 S0: spurtfinalens top 10 (sprinterrangering mod resultat i testporten).
+        if (isBunchSprintStage(profile)) m.sprintTop10 = res.ranked.slice(0, 10).map((r) => r.rider_id);
         if (leadoutPair && isBunchSprintStage(profile)) {
           const teams = leadoutTeams(data.orders, profile.stage_number);
           if (teams.size) {
@@ -731,7 +736,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
         rows.push(m);
       },
     });
-    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length });
+    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, ...jerseys.winners(final) });
   }
   return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision) };
 }
