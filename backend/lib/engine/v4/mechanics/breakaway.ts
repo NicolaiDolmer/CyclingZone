@@ -2238,6 +2238,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // klemmes intet, og filmen faar aarsagen (uden interesse dækker P2's haendelse ovenfor).
     const climbChaseLeash = p2Interest && s5V3ClimbChaseApplies({ p2Lead, segmentKind: ctx.segment.kind, letGoKm, chaseKm })
       ? s5V3ClimbChaseLeashSeconds(ctx.route.profile_type) : null;
+    // Forspringet ved segmentets start (foer terraenets bevaegelse), saa "krydser snoren" kan ses.
+    const entrySeparation = (groupId: string): number => {
+      const entry = ctx.sharedGroupTime?.entryGroups;
+      const e = entry?.find((g) => g.id === groupId);
+      const b = entry?.find((g) => g.id === breakaway.id);
+      return e && b ? e.gap_seconds - b.gap_seconds : separation;
+    };
     if (p2Interest && climbChaseLeash !== null) {
       const leash = climbChaseLeash;
       const climbers = climbChaseClimbers({ teamIds: p2Interest.teamIds, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, riders: state.riders });
@@ -2253,7 +2260,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
           const own = planByBreakaway.get(breakaway.id);
           if (own) planByBreakaway.set(breakaway.id, { ...own, chaserWork: mergeWork(own.chaserWork, climbWork) });
         }
-      } else if (p2Interest.teamIds.length > 0 && separation <= leash && grown - chaseClosingSeconds > leash) {
+      } else if (p2Interest.teamIds.length > 0 && entrySeparation(chaseGroup.id) <= leash && grown - chaseClosingSeconds > leash) {
         events.push({ km: round2(ctx.segment.to_km), type: "breakaway_unchased", params: { group_id: breakaway.id, reason: "no_riders" } });
       }
     }
@@ -2297,7 +2304,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       const field = climbChaseFieldBehind(groups, breakaway.id, chaseGroup.id, newChaseGap);
       if (field) {
         const sep = field.gap_seconds - newBreakawayGap;
-        const climbers = climbChaseClimbers({ teamIds: p2Interest.teamIds, chaseGroupRiderIds: field.rider_ids, entrants: ctx.entrants, riders: state.riders });
+        // Feltets egen interesse (ikke den mellemliggende jagtgruppes): de hold der har ryttere i feltet.
+        const fieldInterest = realisticLeadInterest({ chaseGroup: field, breakaway, chasePlan, fieldRiderIds, excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ctx, finaleWeightScale: p1FinaleWeightScale });
+        const climbers = climbChaseClimbers({ teamIds: fieldInterest.teamIds, chaseGroupRiderIds: field.rider_ids, entrants: ctx.entrants, riders: state.riders });
         if (climbers.size > 0 && sep > climbChaseLeash) {
           const target = Math.max(newChaseGap, newBreakawayGap + climbChaseLeash);
           if (target < field.gap_seconds) {
@@ -2311,7 +2320,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
               ? { ...prior, plan: { ...prior.plan, chaserWork: mergeWork(prior.plan.chaserWork, climbWork) }, km: Math.max(prior.km, chaseKm) }
               : { plan: { ...chasePlan, chaserWork: climbWork }, km: chaseKm });
           }
-        } else if (climbers.size === 0 && p2Interest.teamIds.length > 0 && sep > climbChaseLeash && field.gap_seconds - breakaway.gap_seconds <= climbChaseLeash) {
+        } else if (climbers.size === 0 && fieldInterest.teamIds.length > 0 && sep > climbChaseLeash && entrySeparation(field.id) <= climbChaseLeash) {
           events.push({ km: round2(ctx.segment.to_km), type: "breakaway_unchased", params: { group_id: breakaway.id, reason: "no_riders" } });
         }
       }
