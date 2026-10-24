@@ -52,7 +52,7 @@
 //   <out-dir>/ten-season-sim-<dato>.json  rå tal
 //   <out-dir>/snapshot-<dato>.json        øjebliksbilledet (kun ved prod-kørsel)
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -220,9 +220,9 @@ export function buildWorld(snapshot) {
   }
   const abilityByRider = new Map(snapshot.abilities.map((a) => [a.rider_id, a]));
   const load = snapshot.load ?? {};
-  const totalRaceDays = Number(snapshot.season?.race_days_total) || 0;
-  const done = Number(snapshot.season?.race_days_completed) || 0;
-  const scale = done > 0 ? 1 / done : (totalRaceDays > 0 ? 1 / totalRaceDays : 0);
+  // seasons.race_days_* tæller kalenderdatoer; hver dato bærer raceDaysPerDate løbsdage.
+  const done = (Number(snapshot.season?.race_days_completed) || 0) * TRAINING_RACE_DAY_CONFIG.raceDaysPerDate;
+  const scale = done > 0 ? 1 / done : 0;
   const riders = [];
   for (const r of snapshot.riders) {
     const ab = abilityByRider.get(r.id);
@@ -416,7 +416,7 @@ function seasonStats(world, seasonNumber, label) {
       n: ratings.length, mean: round(mean), sd: round(sd),
       p10: round(quantile(ratings, 0.1)), p50: round(quantile(ratings, 0.5)), p90: round(quantile(ratings, 0.9)),
       p99: round(quantile(ratings, 0.99)), max: ratings.at(-1) ?? null,
-      ge75: ratings.filter((x) => x >= 75).length, ge80: ratings.filter((x) => x >= 80).length,
+      ge70: ratings.filter((x) => x >= 70).length, ge80: ratings.filter((x) => x >= 80).length,
       ge85: ratings.filter((x) => x >= 85).length, ge90: ratings.filter((x) => x >= 90).length,
     },
     top50: {
@@ -503,7 +503,8 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   world.bNorm = bNormalizer(world.riders.filter((r) => r.teamId != null).map((r) => ageForSeason(r.birthdate, s0)), opts.bReferenceAge);
   const result = { variant: variant.name, start: seasonStats(world, s0, "start"), seasons: [], transitions: [] };
   // Første skifte: den aktive sæsons målte løbsdage (fremskrevet til hel sæson).
-  const firstLoad = new Map(world.riders.map((r) => [r.id, Math.round((r.raceShare ?? 0) * (Number(snapshot.season.race_days_total) || opts.raceDaysPerSeason))]));
+  const measuredSeasonRaceDays = (Number(snapshot.season.race_days_total) || 0) * opts.raceDaysPerDate || opts.raceDaysPerSeason;
+  const firstLoad = new Map(world.riders.map((r) => [r.id, Math.round((r.raceShare ?? 0) * measuredSeasonRaceDays)]));
   result.transitions.push(transition(world, s0, opts, { firstTransition: true, loadOverride: firstLoad }));
   for (let i = 1; i <= opts.seasons; i++) {
     const season = s0 + i;
@@ -621,12 +622,12 @@ function renderCard(snapshot, results, opts, date) {
   L.push("");
   L.push("## Ratingfordeling pr. sæson (ryttere på hold, bedste rolle)");
   L.push("");
-  L.push("| Variant | Tidspunkt | N | Snit | SD | P10 | P50 | P90 | P99 | Max | ≥80 | ≥85 | ≥90 |");
-  L.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+  L.push("| Variant | Tidspunkt | N | Snit | SD | P10 | P50 | P90 | P99 | Max | ≥70 | ≥80 | ≥85 | ≥90 |");
+  L.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
   for (const r of results) {
     for (const s of [r.start, ...r.seasons]) {
       const x = s.rating;
-      L.push(`| ${r.variant} | ${s.label} | ${x.n} | ${x.mean} | ${x.sd} | ${x.p10} | ${x.p50} | ${x.p90} | ${x.p99} | ${x.max} | ${x.ge80} | ${x.ge85} | ${x.ge90} |`);
+      L.push(`| ${r.variant} | ${s.label} | ${x.n} | ${x.mean} | ${x.sd} | ${x.p10} | ${x.p50} | ${x.p90} | ${x.p99} | ${x.max} | ${x.ge70} | ${x.ge80} | ${x.ge85} | ${x.ge90} |`);
     }
   }
   L.push("");
@@ -711,16 +712,29 @@ async function main() {
     console.log(`[s25] øjebliksbillede gemt privat: ${join(outDir, `snapshot-${date}.json`)}`);
   }
   if (limitTeams) snapshot = limitSnapshotTeams(snapshot, limitTeams);
-  const results = [];
+  // Hver variant gemmes for sig i runs-<dato>/, og kortet bygges af ALLE varianter
+  // dér. Så kan varianterne køres i hver sin proces (ca. 8 min pr. stk.) og ende
+  // på ét kort.
+  const suffix = limitTeams ? `-hold${limitTeams}` : "";
+  const runsDir = join(outDir, `runs-${date}${suffix}`);
+  mkdirSync(runsDir, { recursive: true });
   for (const variant of variantList(opts)) {
     const t0 = Date.now();
-    results.push(runVariant(snapshot, variant, opts));
+    const result = runVariant(snapshot, variant, opts);
+    writeFileSync(join(runsDir, `${variant.name}.json`), JSON.stringify(result, null, 2) + "\n");
     console.log(`[s25] ${variant.name} færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
   }
-  const suffix = limitTeams ? `-hold${limitTeams}` : "";
+  const results = orderResults(readdirSync(runsDir).filter((f) => f.endsWith(".json"))
+    .map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8"))));
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.md`), renderCard(snapshot, results, opts, date));
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.json`), JSON.stringify({ date, opts, results }, null, 2) + "\n");
-  console.log(`[s25] privat kort: ${join(outDir, `ten-season-sim-${date}${suffix}.md`)}`);
+  console.log(`[s25] privat kort (${results.length} varianter): ${join(outDir, `ten-season-sim-${date}${suffix}.md`)}`);
+}
+
+/** Fast rækkefølge på kortet: nu, nu_maks1, derefter B efter stigende skala. */
+export function orderResults(results) {
+  const rank = (name) => (name === "nu" ? -2 : name === "nu_maks1" ? -1 : Number(name.split("@")[1]) || 0);
+  return [...results].sort((a, b) => rank(a.variant) - rank(b.variant));
 }
 
 const isMain = process.argv[1]
