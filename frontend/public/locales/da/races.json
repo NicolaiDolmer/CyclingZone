@@ -1434,7 +1434,9 @@
       "title": "Udgåede",
       "crash": "Styrt",
       "mechanical": "Mekanisk defekt",
-      "injury": "Ikke-starter"
+      "injury": "Ikke-starter",
+      "illness": "Syg, startede ikke",
+      "withdrawal": "Stod af"
     },
     "why": {
       "title": "Det store billede",

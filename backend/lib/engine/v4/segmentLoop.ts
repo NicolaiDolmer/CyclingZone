@@ -88,7 +88,7 @@ import {
 } from "./mechanics/incidents.ts";
 import { weatherCpMultiplier, weatherCpPenalty, weatherTechniqueProxy } from "./mechanics/weather.ts";
 import { isLetGoChaseGroup, ownRidersOnWheelRaw } from "./mechanics/breakaway.ts";
-import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV4OrLater, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, sharedTimeModelGeneration, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { findChaseGroup, isMorningRegroupCatch, noteFormationRiders } from "./mechanics/chaseGroup.ts";
 import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
@@ -777,6 +777,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "s5_profiles_v1") return "s5_profiles_v1"; // #6369: tom, slukket (= official_times_v4)
   if (raw === "official_times_v5") return "official_times_v5"; // #6462: = official_times_v4 i motoren (togreglen bor i ordre-adapteren)
   if (raw === "s5_profiles_v2") return "s5_profiles_v2"; // #6156: slukket; = s5_profiles_v1 i motoren (formtoppen bor i broen)
+  if (raw === "s5_profiles_v3") return "s5_profiles_v3"; // #6804: slukket; v3-tilvalgene
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -1094,6 +1095,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(isS5ProfilesV1OrLater(rulesRevision) ? { s5ProfilesV1: true as const } : {}),
       // #6748 (KUN s5_profiles_v2, slukket): udbrudsopfoelgningen (breakaway.ts).
       ...(isS5ProfilesV2OrLater(rulesRevision) ? { s5ProfilesV2: true as const } : {}),
+      // #6938 (KUN s5_profiles_v3, slukket): styrt-udgang pr. terraen (mechanics/incidents.ts).
+      ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
       state = result.state;

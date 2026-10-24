@@ -59,7 +59,7 @@
 // samlede form) + udbrudsopfoelgningen (#6748). Aktuel for nye loeb fra ejerens
 // ordrette "taend" (taend-PR'en, #6818); races_engine_rules_revision_check goer
 // vaerdien lovlig via 2026-10-17-6818-engine-rules-revision-s5-v2.sql.
-export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"] as const;
+export const RACE_RULES_REVISIONS = ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2", "s5_profiles_v3"] as const;
 export type RaceRulesRevision = (typeof RACE_RULES_REVISIONS)[number];
 
 export const LEGACY_RULES_REVISION: RaceRulesRevision = "legacy";
@@ -88,21 +88,26 @@ const ORDERS_GC_GENERATION: Readonly<Record<RaceRulesRevision, number>> = Object
   official_times_v5: 3,
   // #6156: s5_profiles_v1 + formtoppe i v4 (broen); same v3 mechanics.
   s5_profiles_v2: 3,
+  // #6804: s5_profiles_v2 + v3-tilvalgene (slukket); same v3 mechanics.
+  s5_profiles_v3: 3,
 });
 
-const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"]);
+const OFFICIAL_TIMES_REVISIONS: ReadonlySet<unknown> = new Set(["official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2", "s5_profiles_v3"]);
 
 /** #6369: revisionerne der arver HELE official_times_v4-pakken (v4 selv + S5; #6462: + v5; #6156: + S5 v2). */
-const OFFICIAL_TIMES_V4_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"]);
+const OFFICIAL_TIMES_V4_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2", "s5_profiles_v3"]);
 
 /** #6462: revisionerne der arver togreglen (official_times_v5 selv + S5 v1 og v2). */
-const OFFICIAL_TIMES_V5_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v5", "s5_profiles_v1", "s5_profiles_v2"]);
+const OFFICIAL_TIMES_V5_LINEAGE: ReadonlySet<unknown> = new Set(["official_times_v5", "s5_profiles_v1", "s5_profiles_v2", "s5_profiles_v3"]);
 
 /** #6156: revisionerne der arver HELE s5_profiles_v1-pakken (v1 selv + v2). */
-const S5_PROFILES_V1_LINEAGE: ReadonlySet<unknown> = new Set(["s5_profiles_v1", "s5_profiles_v2"]);
+const S5_PROFILES_V1_LINEAGE: ReadonlySet<unknown> = new Set(["s5_profiles_v1", "s5_profiles_v2", "s5_profiles_v3"]);
 
 /** #6156: revisionerne med formtoppe i v4 (s5_profiles_v2 og senere). */
-const S5_PROFILES_V2_LINEAGE: ReadonlySet<unknown> = new Set(["s5_profiles_v2"]);
+const S5_PROFILES_V2_LINEAGE: ReadonlySet<unknown> = new Set(["s5_profiles_v2", "s5_profiles_v3"]);
+
+/** #6804: revisionerne med v3-tilvalgene (s5_profiles_v3, slukket). */
+const S5_PROFILES_V3_LINEAGE: ReadonlySet<unknown> = new Set(["s5_profiles_v3"]);
 
 /**
  * #6200: the shared time model's generation. 3 = official_times_v3 OR LATER
@@ -158,6 +163,15 @@ export function isS5ProfilesV1OrLater(revision: unknown): boolean {
  */
 export function isS5ProfilesV2OrLater(revision: unknown): boolean {
   return S5_PROFILES_V2_LINEAGE.has(revision);
+}
+
+/**
+ * #6804 (slukket): s5_profiles_v3 = HELE s5_profiles_v2-pakken + v3-tilvalgene
+ * (spec 2026-10-23-6804-v3-tilvalg-design.md). Ikke aktuel; migrationen
+ * 2026-10-23-6804-engine-rules-revision-s5-v3.sql goer vaerdien lovlig.
+ */
+export function isS5ProfilesV3OrLater(revision: unknown): boolean {
+  return S5_PROFILES_V3_LINEAGE.has(revision);
 }
 
 /** Only the future pinned official-times revisions store uncapped official stage gaps. */

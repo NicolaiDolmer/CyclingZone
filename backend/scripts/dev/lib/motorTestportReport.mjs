@@ -186,6 +186,78 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
   return agg;
 }
 
+// ── #6938 G17: udgaaede pr. loebsgruppe ─────────────────────────────────────
+
+/**
+ * Loebsgrupperne G17 maales i (etaper fra-til). Graenserne er strukturelle
+ * (endagsloeb, korte etapeloeb, ugeloeb, Grand Tours), ikke balance; baandene
+ * pr. gruppe er private (thresholds.abandonG17Bands, hard rule 17).
+ */
+export const ABANDON_RACE_GROUPS = Object.freeze([
+  ["one_day", 1, 1],
+  ["short", 2, 4],
+  ["week", 5, 10],
+  ["grand_tour", 11, Infinity],
+]);
+
+/** Loebsgruppen for et loeb med `stages` etaper, eller null. */
+export function abandonRaceGroup(stages) {
+  const n = Number(stages);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return ABANDON_RACE_GROUPS.find(([, lo, hi]) => n >= lo && n <= hi)?.[0] ?? null;
+}
+
+/**
+ * G17 (spec 2026-10-23-6804-v3-tilvalg-design.md §2.2) for EN revision: andelen af
+ * starterne der ikke er i slutklassementet, pr. loebsgruppe, og kaptajner mod
+ * hjaelpere. Laeser `perSeed[].abandons` (tourScorecard.abandonCounts); seeds uden
+ * feltet (aeldre scorecards) springes over.
+ *
+ * Dom pr. gruppe (kun naar et privat baand {min, max} er givet): PASS inden for
+ * baandet, ellers FAIL. Kaptajnreglen: FAIL naar kaptajnernes andel er hoejere end
+ * hjaelpernes (ellers rammer det spillernes loeb for haardt), N/A uden begge roller.
+ */
+export function abandonGateG17(raceResults, revision, { bands = null } = {}) {
+  const groups = {};
+  for (const [key] of ABANDON_RACE_GROUPS) {
+    groups[key] = { races: 0, seeds: 0, starters: 0, out: 0, captains: 0, captainsOut: 0, helpers: 0, helpersOut: 0 };
+  }
+  for (const rr of raceResults) {
+    const run = rr?.runs?.[revision];
+    const key = abandonRaceGroup(rr?.stages);
+    if (!run || !key) continue;
+    const g = groups[key];
+    let counted = false;
+    for (const seed of run.perSeed ?? []) {
+      const a = seed?.abandons;
+      if (!a) continue;
+      counted = true;
+      g.seeds += 1;
+      g.starters += Number(a.starters) || 0;
+      g.out += Number(a.out) || 0;
+      g.captains += Number(a.startersByRole?.captain) || 0;
+      g.captainsOut += Number(a.outByRole?.captain) || 0;
+      g.helpers += Number(a.startersByRole?.helper) || 0;
+      g.helpersOut += Number(a.outByRole?.helper) || 0;
+    }
+    if (counted) g.races += 1;
+  }
+  const out = {};
+  for (const [key, g] of Object.entries(groups)) {
+    const outShare = share(g.out, g.starters);
+    const captainOutShare = share(g.captainsOut, g.captains);
+    const helperOutShare = share(g.helpersOut, g.helpers);
+    const band = bands?.[key] ?? null;
+    const bandVerdict = outShare === null ? "N/A"
+      : band && (Number.isFinite(Number(band.min)) || Number.isFinite(Number(band.max)))
+        ? (outShare >= (Number(band.min) || 0) && outShare <= (Number.isFinite(Number(band.max)) ? Number(band.max) : 1) ? "PASS" : "FAIL")
+        : "TODO";
+    const captainVerdict = captainOutShare === null || helperOutShare === null ? "N/A" : captainOutShare <= helperOutShare ? "PASS" : "FAIL";
+    out[key] = { ...g, outShare, captainOutShare, helperOutShare, verdicts: { band: bandVerdict, captainsNotAboveHelpers: captainVerdict } };
+  }
+  return out;
+}
+
 /** Pr. loeb: domme og haard-gate-hits under begge revisioner (til tabellen "pr. loeb"). */
 export function perRaceRows(raceResults, baseline, candidate) {
   const pick = (run) => {
@@ -241,6 +313,11 @@ export function buildTestportCard({ raceResults, baseline, candidate, benchByRev
     verdict: { failDelta: cand.counts.FAIL - base.counts.FAIL, passDelta: cand.counts.PASS - base.counts.PASS, hardGateRegressions: regressions },
     perRace: perRaceRows(results, baseline, candidate),
     bench: { baseline: benchByRevision[baseline] ?? null, candidate: benchByRevision[candidate] ?? null },
+    // #6938 G17: udgaaede pr. loebsgruppe (baandene er private).
+    g17: {
+      baseline: abandonGateG17(results, baseline, { bands: thresholds?.abandonG17Bands ?? null }),
+      candidate: abandonGateG17(results, candidate, { bands: thresholds?.abandonG17Bands ?? null }),
+    },
   };
 }
 
@@ -341,6 +418,14 @@ export function renderTestportMarkdown(card) {
   lines.push("", "## Side om side", "", ...table(["Maaling", card.baseline, card.candidate, "delta"], sideBySideRows(card)));
   lines.push("", "## Haarde gates", "", ...table(["Gate", ...[card.baseline, card.candidate].flatMap((r) => [`${r} hits`, `${r} loeb ramt`, `${r} loeb FAIL`])],
     HARD_GATES.map(([k, label]) => [label, ...[b, c].flatMap((a) => [fmtN(a.hardGates[k].total, 0), String(a.hardGates[k].racesHit), String(a.hardGates[k].racesFail)])])));
+  if (card.g17) {
+    lines.push("", "## G17 udgaaede pr. loebsgruppe (#6938)", "", ...table(
+      ["Gruppe", ...[card.baseline, card.candidate].flatMap((r) => [`${r} seeds`, `${r} udgaaet`, `${r} kaptajner`, `${r} hjaelpere`, `${r} dom`])],
+      ABANDON_RACE_GROUPS.map(([key]) => [key, ...[card.g17.baseline[key], card.g17.candidate[key]].flatMap((g) => (g
+        ? [String(g.seeds), fmtPct(g.outShare), fmtPct(g.captainOutShare), fmtPct(g.helperOutShare), `${g.verdicts.band}/${g.verdicts.captainsNotAboveHelpers}`]
+        : ["-", "-", "-", "-", "-"]))]),
+    ));
+  }
   lines.push("", "## Udbrud pr. profiltype (vejetaper)", "");
   const types = [...new Set([...Object.keys(b.byProfileType), ...Object.keys(c.byProfileType)])].sort();
   lines.push(...table(["Profil", ...[card.baseline, card.candidate].flatMap((r) => [`${r} n`, `${r} udbrud vandt`, `${r} str.`, `${r} nr. 10 hentet`])],
@@ -373,6 +458,7 @@ export function renderTestportMarkdown(card) {
     "- GC-vinder fra udbrud: etapeloebets slutvinder sad i dagens udbrud paa mindst én etape (sad i), eller vandt en etape fra udbruddet.",
     "- Tidlig indhentning: morgenudbruddet hentet inden for motorens reformations-graense af etapen (S5_REFORMATION_TUNING.maxStageFraction); nyt udbrud = breakaway_formed med reformation.",
     "- Nr. 10 hentet: tidsgab vinder til nr. 10 paa de seeds hvor udbruddet IKKE vandt (som scorecardet).",
+    "- G17 (#6938): andel af starterne uden slutklassement (udgaaet, ikke-start, uden for tidsgraensen) pr. loebsgruppe; dom = privat baand / kaptajner (captain, sprint_captain) ikke over hjaelpere. U1 maales kun med --track-fatigue.",
     "");
   return `${lines.join("\n")}\n`;
 }

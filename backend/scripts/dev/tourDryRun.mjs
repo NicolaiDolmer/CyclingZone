@@ -21,6 +21,7 @@
 //   --seeds=<n>                         seeds pr. revision (default 5)
 //   --no-leadout-pair                   spring den parrede sprinttog-maaling over
 //   --no-legacy-ref                     spring legacy-referencen over (udbrudsmaal 3, #5578)
+//   --track-fatigue                     traethed og form mellem etaperne (#6984-modellen), saa U1 maales (#6938)
 //   --out-dir=<dir>                     default balance-internals/tour-6285
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -52,6 +53,7 @@ export function parseArgs(argv) {
     seeds,
     leadoutPair: !argv.includes("--no-leadout-pair"),
     legacyRef: !argv.includes("--no-legacy-ref"),
+    trackFatigue: argv.includes("--track-fatigue"),
     cache: get("cache"),
     saveCache: get("save-cache"),
     fixture: get("fixture"),
@@ -150,7 +152,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const { loadRaceEngineV4 } = await import("../../lib/raceEngineV4Bridge.js");
   const v4 = await loadRaceEngineV4();
-  const runs = opts.revisions.map((revision) => runTour({ v4, data, revision, seeds: opts.seeds, leadoutPair: opts.leadoutPair }));
+  const runs = opts.revisions.map((revision) => runTour({ v4, data, revision, seeds: opts.seeds, leadoutPair: opts.leadoutPair, trackFatigue: opts.trackFatigue }));
   if (opts.legacyRef) attachLegacyReference(runs, () => runTour({ v4, data, revision: "legacy", seeds: opts.seeds, leadoutPair: false }));
   const dropped = runs[0]?.droppedWithoutAbilities ?? 0;
   if (dropped > 0) console.warn(`ADVARSEL: ${dropped} ryttere paa startlisten mangler evner og er IKKE koert (feltet er mindre end i spillet).`);

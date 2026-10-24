@@ -371,7 +371,10 @@ export type StageResult = {
 //   alvorligt styrt -> udgaar (abandoned) + skadedage, SJAELDENT
 //   mekanisk uheld  -> ALTID kun tidstab (aldrig abandoned, aldrig skade);
 //                      en hjaelper taet paa giver hurtigere hjulskift
-export type IncidentKind = "crash" | "mechanical";
+// #6938 (ADDITIVT, KUN s5_profiles_v3, mechanics/abandons.ts): "illness" = startede
+// ikke (traethed/form, U1), "withdrawal" = en sat hjaelper steg af i et endagsloeb
+// (U3). Begge er altid udfaldet "abandoned", aldrig skade, aldrig tidstab.
+export type IncidentKind = "crash" | "mechanical" | "illness" | "withdrawal";
 export type IncidentSeverity = "light" | "hard" | "serious";
 export type IncidentOutcome = "time_loss" | "protected_three_km_rule" | "abandoned";
 
@@ -768,6 +771,8 @@ export type SegmentHookContext = {
   s5ProfilesV1?: true;
   // #6748 (ADDITIVT og VALGFRIT, KUN s5_profiles_v2, slukket): udbrudsopfoelgningen. Udeladt = v1.
   s5ProfilesV2?: true;
+  // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
+  s5ProfilesV3?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

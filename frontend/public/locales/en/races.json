@@ -1434,7 +1434,9 @@
       "title": "Abandons",
       "crash": "Crash",
       "mechanical": "Mechanical",
-      "injury": "Non-starter"
+      "injury": "Non-starter",
+      "illness": "Ill, did not start",
+      "withdrawal": "Abandoned"
     },
     "why": {
       "title": "The bigger picture",

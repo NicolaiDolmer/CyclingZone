@@ -1702,7 +1702,8 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
 //
 // #4520: eksplicit kind→nøgle-map. Den gamle binære "crash ellers mechanical"
 // mærkede #4418's ikke-startere (kind='injury') som mekanisk defekt.
-const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury" };
+// #6938: illness (startede ikke) og withdrawal (hjaelper steg af i et endagsloeb).
+const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury", illness: "illness", withdrawal: "withdrawal" };
 
 function DnfSection({ incidents, scopeType, stageNumber, t }) {
   const rows = useMemo(() => {

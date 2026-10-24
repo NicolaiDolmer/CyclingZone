@@ -45,6 +45,8 @@
 //   --intent-rates=<fil>     satserne fra en tidligere koersel (breakaway-intent-rates.json);
 //                            kraeves med --from-dir, ellers laeses de read-only fra prod. #6804 P0
 //   --intent-season=<n>      satserne fra saeson n (default: seneste afsluttede). #6804 P0
+//   --track-fatigue          traethed og form mellem etaperne (#6984-modellen), saa G17 ogsaa
+//                            maaler U1 (ikke-start af traethed). #6938
 //   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
 //                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //
@@ -123,6 +125,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     routesFrom: get("routes-from"),
     season,
     timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
+    trackFatigue: flag("track-fatigue"),
   };
 }
 
@@ -210,10 +213,11 @@ export function splitByStartField(ids, withField) {
  * (--compare=none). En eksisterende eksport laeses kun (ingen --save-cache);
  * ellers hentes loebet én gang og gemmes i loebsmappen til genkoersler.
  */
-export function tourDryRunArgs({ raceId, candidate, baseline, seeds, raceDir, cachePath, saveCache = true }) {
+export function tourDryRunArgs({ raceId, candidate, baseline, seeds, raceDir, cachePath, saveCache = true, trackFatigue = false }) {
   return [
     TOUR_DRY_RUN, `--race=${raceId}`, `--revision=${candidate}`, `--compare=${candidate === baseline ? "none" : baseline}`,
     `--seeds=${seeds}`, "--no-legacy-ref", `--cache=${cachePath}`, ...(saveCache ? [`--save-cache=${cachePath}`] : []), `--out-dir=${raceDir}`,
+    ...(trackFatigue ? ["--track-fatigue"] : []),
   ];
 }
 
@@ -229,7 +233,7 @@ export function planTasks({ raceIds, opts, outDir, fromDir = null, prebuilt = ne
       const exported = fromDir && !isPrebuilt ? path.join(fromDir, raceId, "cache.json") : null;
       const fromExport = Boolean(exported && existsSync(exported));
       const cachePath = fromExport ? exported : path.join(dir, "cache.json");
-      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt }) });
+      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt, trackFatigue: opts.trackFatigue === true }) });
     }
   }
   if (opts.bench) {
