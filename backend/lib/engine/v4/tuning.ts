@@ -279,7 +279,7 @@ export const TTT_EXTRA_TUNING = deepFreeze(tttExtra);
 // importerer denne direkte (samme moenster som finale.ts <- FINALE_EXTRA_TUNING).
 const leadoutExtra = {
   maxScoreBonus: 0.12, // haardt loft paa finale-placerings-score-bonussen (samme skala som finale.ts's wprimeReserveWeight=0.15 — bounded, aldrig deterministisk sejr, mor-spec §4 M6)
-  deliveryScoreCostV3: 0.5, // #6937 (KUN s5_profiles_v3): lead-outens pris i placerings-scoren naar kaptajnen er i finalen, skaleret med puljens niveau (finaleLevelScale)
+  deliveryScoreCostV3: 0.25, // #6937 (KUN s5_profiles_v3): lead-outens pris i placerings-scoren naar kaptajnen er i finalen, skaleret med puljens niveau (finaleLevelScale)
   fullTrainSize: 3, // antal leadout-ryttere i kontendentpuljen der giver fuld stoerrelses-multiplikator (aftagende marginalnytte derover, jf. trainSizeFactor)
 };
 
