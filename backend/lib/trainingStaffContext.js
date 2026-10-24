@@ -64,11 +64,13 @@ function loadError(label, res) {
  *   forbigående fejl ikke vælter en hel side.
  * @throws {TrainingStaffContextRetryError} ved forbigående DB-/gateway-fejl, kun med retryOnTransient.
  */
-export async function loadTrainingStaffContext(supabase, teamId, { retryOnTransient = false } = {}) {
+// #6984: `track` vælger sporet (default "training" = uændret); medicin-afdelingen
+// bruger samme loader med track "medical" (facilitet + medicinchef).
+export async function loadTrainingStaffContext(supabase, teamId, { retryOnTransient = false, track = "training" } = {}) {
   try {
     const [facRes, staffRes] = await Promise.all([
-      supabase.from("team_facilities").select("track, tier").eq("team_id", teamId).eq("track", "training"),
-      supabase.from("team_staff").select("id, name, role, tier, status").eq("team_id", teamId).eq("role", "training").eq("status", "active"),
+      supabase.from("team_facilities").select("track, tier").eq("team_id", teamId).eq("track", track),
+      supabase.from("team_staff").select("id, name, role, tier, status").eq("team_id", teamId).eq("role", track).eq("status", "active"),
     ]);
     if (facRes.error) throw loadError("team_facilities load", facRes);
     if (staffRes.error) throw loadError("team_staff load", staffRes);

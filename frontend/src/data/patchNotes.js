@@ -1,5 +1,321 @@
 export const PATCHES = [
   {
+    "version": "7.374",
+    "date": "2026-10-23",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Smarter racing from the next stage race",
+          "body": "Riders who are high in the GC, or strong enough to get there, now almost never join the morning breakaway. Who counts as a GC threat depends on the rest of the race, so a time trialist matters more before a time trial. Races that have already started keep their rules."
+        },
+        "da": {
+          "title": "Klogere løb fra næste etapeløb",
+          "body": "Ryttere der ligger højt i klassementet, eller er stærke nok til at komme der, går nu næsten aldrig med i morgenudbruddet. Hvem der er en klassementstrussel, afhænger af resten af løbet, så en enkeltstartsrytter tæller mere før en enkeltstart. Løb der allerede er startet, beholder deres regler."
+        },
+        "refs": [
+          6818,
+          6748
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "One prognosis for your academy riders",
+          "body": "Your own academy riders now show the same prognosis everywhere: academy, My Team, the rider profile and training. The Scouting tab shows the steps, where the rider is now and how many training days are left to the next step."
+        },
+        "da": {
+          "title": "Én prognose for dine akademiryttere",
+          "body": "Dine egne akademiryttere viser nu samme prognose overalt: akademiet, Mit Hold, rytterprofilen og træning. Scouting-fanen viser trinnene, hvor rytteren står nu, og hvor mange træningsdage der er til næste trin."
+        },
+        "refs": [
+          6985,
+          6987
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Injury messages say when the rider finished",
+          "body": "After a hard crash, a rider can finish the stage and still be injured. The message now says so, instead of sounding like he abandoned."
+        },
+        "da": {
+          "title": "Skadebeskeden siger, når rytteren kørte færdig",
+          "body": "Efter et hårdt styrt kan en rytter køre etapen færdig og stadig være skadet. Beskeden siger det nu i stedet for at lyde, som om han udgik."
+        },
+        "refs": [
+          7042
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "App",
+        "en": {
+          "title": "The mobile menu stays open",
+          "body": "On slow phones the menu could close right after you opened it. It now only closes when you pick a page."
+        },
+        "da": {
+          "title": "Mobilmenuen bliver åben",
+          "body": "På langsomme telefoner kunne menuen lukke lige efter, at du åbnede den. Nu lukker den kun, når du vælger en side."
+        },
+        "refs": [
+          7009,
+          7010
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No youth classification in U23 and junior races",
+          "body": "Everyone in a U23 or junior field is young already, so the youth classification only copied the overall one. It is gone from these races, also from races already ridden. Senior races keep it."
+        },
+        "da": {
+          "title": "Intet ungdomsklassement i U23- og juniorløb",
+          "body": "Alle i et U23- eller juniorfelt er i forvejen unge, så ungdomsklassementet var bare en kopi af det samlede. Det er væk fra disse løb, også fra løb der allerede er kørt. Seniorløb beholder det."
+        },
+        "refs": [
+          7031
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "App",
+        "en": {
+          "title": "Race pages work in Firefox again",
+          "body": "Some race pages crashed in Firefox with a \"too much recursion\" error. They now load normally."
+        },
+        "da": {
+          "title": "Løbssider virker igen i Firefox",
+          "body": "Nogle løbssider gik ned i Firefox med fejlen \"too much recursion\". Nu indlæses de normalt."
+        },
+        "refs": [
+          6698
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "One icon per stage type, everywhere",
+          "body": "Every stage type now has its own coloured icon, the same on the calendar, the race page, planning and team selection. The colour shows how hard the terrain is, and the name is always there when you hover or tap."
+        },
+        "da": {
+          "title": "Ét ikon pr. etapetype, overalt",
+          "body": "Hver etapetype har nu sit eget farvede ikon, det samme i kalenderen, på løbssiden, i planlægningen og i holdudtagelsen. Farven viser hvor hårdt terrænet er, og navnet står der altid, når du holder musen over eller trykker."
+        },
+        "refs": [
+          6683
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "stage_page_v2",
+        "topic": "Races",
+        "en": {
+          "title": "Top 5 after a stage on desktop",
+          "body": "After a stage has been ridden, \"Your day\" now shows the top 5 on desktop. Mobile keeps the top 3."
+        },
+        "da": {
+          "title": "Top 5 efter en etape på computer",
+          "body": "Efter en kørt etape viser \"Din dag\" nu top 5 på computer. Mobil beholder top 3."
+        },
+        "refs": [
+          6570
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "A clear notice when races are paused",
+          "body": "When races are paused, the race page and your dashboard now say so."
+        },
+        "da": {
+          "title": "Tydelig besked når løbene er sat på pause",
+          "body": "Når løbene er sat på pause, står det nu på løbssiden og på dit dashboard."
+        },
+        "refs": [
+          6970
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Race film for one-day races",
+          "body": "One-day races now get \"The story of the stage\" and the race film on the results tab, like stage races already had."
+        },
+        "da": {
+          "title": "Løbsfilm til endagsløb",
+          "body": "Endagsløb får nu \"The story of the stage\" og løbsfilmen på resultatfanen, som etapeløb allerede havde."
+        },
+        "refs": [
+          6512
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "CZ Pro",
+        "en": {
+          "title": "CZ Pro: season history and saved filters",
+          "body": "With CZ Pro you can follow a rider's development across seasons on the Development tab and save your searches in the rider database. The new /pro page shows both with example data. Founder status stays as a badge; the Pro features need an active CZ Pro subscription."
+        },
+        "da": {
+          "title": "CZ Pro: sæsonhistorik og gemte filtre",
+          "body": "Med CZ Pro kan du følge en rytters udvikling på tværs af sæsoner på Udvikling-fanen og gemme dine søgninger i rytterdatabasen. Den nye /pro-side viser begge med eksempeldata. Founder-status bliver som mærke; Pro-funktionerne kræver et aktivt CZ Pro-abonnement."
+        },
+        "refs": [
+          2806
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Lineup and tactics lock together",
+          "body": "Your lineup and your tactics for a race now lock at the same moment, when the race starts, also during a pause."
+        },
+        "da": {
+          "title": "Trup og taktik låser samtidig",
+          "body": "Din trup og din taktik til et løb låser nu på samme tidspunkt, når løbet starter, også i en pause."
+        },
+        "refs": [
+          6959
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta",
+        "topic": "Races",
+        "en": {
+          "title": "Favourites follow the stage profile",
+          "body": "On the new stage page, the favourites are picked by the stage: sprinters on flat stages, climbers and GC riders in the mountains."
+        },
+        "da": {
+          "title": "Favoritter følger etapens profil",
+          "body": "På den nye etapeside vælges favoritterne efter etapen: sprintere på flade etaper, klatrere og klassementsryttere i bjergene."
+        },
+        "refs": [
+          6939
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Filter by contract expiry",
+          "body": "The rider list can now show riders whose contract runs out in a given season, or riders without a contract."
+        },
+        "da": {
+          "title": "Filtrér efter kontraktudløb",
+          "body": "Rytterlisten kan nu vise ryttere, hvis kontrakt udløber i en bestemt sæson, eller ryttere uden kontrakt."
+        },
+        "refs": [
+          6967
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "The right buying price in transfer history",
+          "body": "Riders bought long ago no longer show \"Unknown\" as their buying price."
+        },
+        "da": {
+          "title": "Den rigtige købspris i transferhistorikken",
+          "body": "Ryttere, der er købt for længe siden, viser ikke længere \"Unknown\" som købspris."
+        },
+        "refs": [
+          6965
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Clearer vision milestones",
+          "body": "Each milestone is one clear sentence, and you can see how many you have reached."
+        },
+        "da": {
+          "title": "Tydeligere milepæle i visionen",
+          "body": "Hver milepæl er én klar sætning, og du kan se, hvor mange du har nået."
+        },
+        "refs": [
+          6991
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "The U25 goal counts your youngest riders",
+          "body": "Riders under 23 now count towards the board's U25 goal."
+        },
+        "da": {
+          "title": "U25-målet tæller dine yngste ryttere",
+          "body": "Ryttere under 23 tæller nu med i bestyrelsens U25-mål."
+        },
+        "refs": [
+          6990
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Club",
+        "en": {
+          "title": "A candidate on your facility's tier",
+          "body": "When you hire staff, at least one candidate per role is now on your facility's tier."
+        },
+        "da": {
+          "title": "En kandidat på facilitetens niveau",
+          "body": "Når du ansætter personale, er mindst én kandidat pr. rolle nu på facilitetens niveau."
+        },
+        "refs": [
+          6974
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.373",
     "date": "2026-10-21",
     "changes": [

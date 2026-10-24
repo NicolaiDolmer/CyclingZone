@@ -1,6 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { classifyPrFiles } from './merge-queue-files.mjs';
+import { classifyPrFiles, mustRunAlone, needsRailwayVerification } from './merge-queue-files.mjs';
+
+test('needsRailwayVerification: samme praedikat som verifikatoren (backend eller cron-paavirkende), Codex P1 #7104', () => {
+  assert.equal(needsRailwayVerification(['backend/routes/api.js']), true);
+  assert.equal(needsRailwayVerification(['package.json']), true, 'rod-pakker paavirker alle cron-jobs');
+  assert.equal(needsRailwayVerification(['frontend/src/App.jsx']), false);
+  assert.equal(needsRailwayVerification(['docs/x.md']), false);
+  assert.equal(needsRailwayVerification([]), true, 'ukendt = fail-safe');
+});
+
+test('mustRunAlone: migrationer og race-motoren koerer alene; tests og frontend gaar i tog (ejer 23/10)', () => {
+  assert.equal(mustRunAlone(['database/2026-10-23-x.sql']), true);
+  assert.equal(mustRunAlone(['backend/lib/engine/v4/groups.ts']), true);
+  assert.equal(mustRunAlone(['backend/lib/raceEngineV4Bridge.js']), true);
+  assert.equal(mustRunAlone(['backend/lib/raceRunner.js']), true);
+  assert.equal(mustRunAlone(['backend/lib/engine/v4/groups.test.ts']), false, 'kun tests = ikke solo');
+  assert.equal(mustRunAlone(['backend/routes/api.js', 'frontend/src/App.jsx']), false);
+  assert.equal(mustRunAlone([]), true, 'ukendt filliste = alene');
+  assert.equal(mustRunAlone(null), true);
+});
 
 // Ejer 10/10 (valg B): kun aendret PRODUKTIONSKODE i backend/ skal vente paa
 // deploy-verifikation alene; tests, dev-scripts og docs gor ikke.

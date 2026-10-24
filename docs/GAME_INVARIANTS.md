@@ -185,8 +185,11 @@ i stedet AFTER ROW WHEN (OLD.team_id IS DISTINCT FROM NEW.team_id), uden
 transition tables. Uændret hold udløser ingen M1-triggerfunktion.
 Processoren deler cz-ranking-refresh-låsen og validerer coordinatorens lease,
 erstatter berørte bidrag og genberegner gamle/nye nøgler transaktionelt.
-Transfers fordeles til løbsposter med gammelt hold; repair/backfill fordeles til
-samme begrænsede kø. En fejl ruller også claim/sletning af køposter tilbage.
+Transfers (M1.5, #6765) genberegner kun hold-rollups fra ranking_race_contrib:
+gammelt og nuværende hold for rytterens ejer-tilskrevne bidrag, plus alle sæsoner
+hvor det gamle hold har en summary; ingen rå race_results-læsning. Repair/backfill
+fordeles til samme kø. Et claim tager højst p_max_items (valgt én gang i en
+MATERIALIZED CTE). En fejl ruller også claim/sletning af køposter tilbage.
 DDL-backfill køres efter migrationens commit, aldrig under trigger-installationens
 stærke tabellåse. Sletning, genkørsel, metadataændring og TRUNCATE er kø-hændelser.
 
@@ -217,7 +220,10 @@ En forfalden kontrol i vinduet udsættes til næste tilladte pas. Staging kan
 bruge RANKING_SHADOW_PARITY_EVERY_PASS=true, men det overstyrer aldrig flag
 eller aftenvinduet. Hver kørsel logger queue_length ved start, pass_ms,
 enabled og status, også mens flaget er off. Kø over 10.000 eller samlet
-pass-tid over 20 sekunder udløser Sentry med begge mål.
+pass-tid over 20 sekunder udløser Sentry med begge mål. Et pas dræner op til
+20 batches eller 8 sekunder med lease-fornyelse mellem batches (M1.5); resten
+bliver i køen. Ældste køpost over 30 minutter, mens flaget er on/beta, udløser
+Sentry (queue-stall).
 Supabase-branch-bevis: audits/2026-10-19-6765-operational-readiness.md.
 M2 kræver stadig
 staging T7 og designets særskilte observations-/ejerporte.

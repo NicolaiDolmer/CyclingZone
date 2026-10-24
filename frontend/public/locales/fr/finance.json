@@ -9,8 +9,7 @@
     "overview": "Aperçu",
     "loans": "Emprunts",
     "history": "Historique",
-    "sponsors": "Sponsor",
-    "seasonSwitch": "Changement de saison"
+    "sponsors": "Sponsor"
   },
   "loanSummary": {
     "active": "{count, plural, one {# emprunt actif} other {# emprunts actifs}}",
@@ -222,68 +221,6 @@
     },
     "showTour": "Fais-moi visiter",
     "skip": "Passer"
-  },
-  "seasonSwitch": {
-    "loading": "Chargement du règlement du changement de saison…",
-    "receipt": {
-      "title": "Règlement saison {current} -> {next}",
-      "subtitle": "Ce qui arrive à ton solde quand les comptes se ferment et que la saison {next} démarre, dans l'ordre exact où le jeu le prélève.",
-      "balanceAfter": "Solde : {value} CZ$",
-      "step": {
-        "books_close": {
-          "label": "Clôture des comptes",
-          "detail": "Ton solde tel qu'il est à l'instant, reporté dans le changement."
-        },
-        "sponsor": {
-          "label": "Arrivée du sponsor",
-          "detail": "Base {base} + prime de performance {variable} selon le rang/les points de la saison dernière, créditées ensemble en un seul paiement au début de la saison."
-        },
-        "loan_interest": {
-          "label": "Intérêts d'emprunt",
-          "detail": "Intérêts sur la dette restante de tes emprunts actifs, calculés juste après l'arrivée du paiement du sponsor. Ajoutés à l'emprunt lui-même, pas déduits de ton solde."
-        },
-        "salary": {
-          "label": "Les salaires de la saison {next} sont prélevés",
-          "detail": "Recalculés selon les règles de la saison {next} à partir de la valeur de production actuelle de chaque coureur le jour du changement, et non des chiffres de contrat figés de la saison dernière."
-        },
-        "academy_drift": {
-          "label": "Entretien de l'académie",
-          "detail": "Coût de dérive de début de saison pour tes places d'académie."
-        },
-        "upkeep": {
-          "label": "Entretien de la division",
-          "detail": "Coût fixe défini par ta division, prélevé au début de la saison."
-        },
-        "facility_upkeep": {
-          "label": "Entretien des installations",
-          "detail": "Entretien de début de saison pour les pistes d'installation que tu as construites."
-        },
-        "staff_salary": {
-          "label": "Salaires du staff",
-          "detail": "Salaires de début de saison pour le staff que tu as recruté."
-        },
-        "start_s3": {
-          "label": "Tu démarres la saison prochaine avec",
-          "detail": "Ton solde après tous les prélèvements de début de saison ci-dessus."
-        }
-      }
-    },
-    "footnote": "Aperçu du règlement, pas une garantie. Les gains et le revenu de sponsor par étape n'y sont pas inclus, car ils dépendent de courses pas encore disputées, pas plus que tout ce qui est conditionnel, comme les intérêts d'emprunt d'urgence si ton solde devient négatif ou une vente forcée si ta dette dépasse le plafond. Les déplacements du recruteur, les transferts, les achats d'installations, les changements de staff et les signatures à l'académie n'y sont pas inclus non plus, car rien de tout cela n'est connu à l'avance.",
-    "footnoteLink": "Qu'est-ce qui est inclus exactement ?",
-    "salaryTable": {
-      "title": "Salaires : contrat actuel contre saison prochaine",
-      "subtitle": "Le salaire de contrat figé de chaque coureur sous contrat, à côté de ce que la formule de la saison {next} leur donnerait aujourd'hui.",
-      "empty": "Aucun coureur sous contrat.",
-      "header": {
-        "rider": "Coureur",
-        "contract": "Contrat (S{current})",
-        "projection": "Projection S{next}",
-        "delta": "Écart"
-      },
-      "total": "Total",
-      "viewAll": "Voir les {count} coureurs",
-      "showLess": "Afficher moins"
-    }
   },
   "report": {
     "season": "Saison {n}",

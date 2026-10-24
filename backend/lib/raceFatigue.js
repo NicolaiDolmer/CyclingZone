@@ -12,6 +12,10 @@ import { effortFatigueMultiplier } from "./raceRoles.js";
 import { nextFatigue, RACE_DAY_ENGINE_RECOVERY_CONFIG } from "./riderCondition.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isS5ProfilesV1OrLater } from "./raceEngineRulesRevision.ts";
+import { stageLoadV2, enteringFatigueV2 } from "./conditionModelV2.js";
+import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from "./supabasePagination.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
+import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
 
 const RACE_FATIGUE_BY_PROFILE = {
   flat:          10,
@@ -146,7 +150,26 @@ export async function applyRaceFatigue({ supabase, riderIds, profileType, now = 
 // #5928: under s5_profiles_v1 (og KUN dér) vokser etapens belastning med etapens
 // plads i løbet og med det arbejde rytteren faktisk lavede (se stageRaceConditionLoad).
 // `work` = { stageNumber, efforts?, exposure? } fra raceRunner; udeladt = kun etapens plads.
-export function raceConditionLoads(riderIds, profileType, effortByRider = null, rulesRevision = null, work = null) {
+// #6984: `conditionV2` = { distanceKm, seasonRaceDaysByRider } når condition_model_v2 er
+// on (kaldestedet læser flaget). Så gælder v2-belastningen for ALLE løb; null = uændret.
+export function raceConditionLoads(riderIds, profileType, effortByRider = null, rulesRevision = null, work = null, conditionV2 = null) {
+  if (conditionV2) {
+    return [...new Set(riderIds)].map((riderId) => ({
+      rider_id: riderId,
+      load: stageLoadV2({
+        profileType,
+        distanceKm: conditionV2.distanceKm ?? null,
+        stageNumber: work?.stageNumber ?? 1,
+        effort: work?.efforts?.get(riderId) ?? effortByRider?.get(riderId) ?? "normal",
+        exposure: work?.caught?.has(String(riderId))
+          ? { ...(work?.exposure?.get(riderId) ?? { front: 0, shelter: 0 }), caught: true }
+          : work?.exposure?.get(riderId) ?? null,
+        // Løbsdage FØR denne etape + denne etape selv.
+        seasonRaceDays: (Number(conditionV2.seasonRaceDaysByRider?.get(riderId)) || 0) + 1,
+        rulesRevision,
+      }),
+    }));
+  }
   if (isS5ProfilesV1OrLater(rulesRevision)) {
     return [...new Set(riderIds)].map((riderId) => ({
       rider_id: riderId,
@@ -274,7 +297,27 @@ export function stageConditionWork({ rulesRevision, stageNumber, profileType, v4
     stageNumber,
     efforts: v4Result.efforts instanceof Map ? v4Result.efforts : null,
     exposure: stageWorkExposure(v4Result.v4Output, profileType),
+    // #6984: kun v2 læser det (hentet udbrud koster et tillæg); v1 ignorerer feltet.
+    caught: stageCaughtBreakaway(v4Result.v4Output, profileType),
   };
+}
+
+/**
+ * #6984 REN: morgenudbruddets ryttere, som motoren selv registrerede som hentet.
+ * Kilden er deltagelseshistorikken fra tidslinjens events (deriveParticipationHistory),
+ * den samme som race_results.breakaway_caught. Gruppe-snapshots bruges IKKE: det sidste
+ * tages efter finalen, hvor front-gruppen samles om til placeringsgrupper, så et udbrud
+ * der holdt hjem ville ligne et hentet. Ingen tidslinje = ingen markering (konservativt);
+ * frontarbejdet tæller stadig via stageWorkExposure.
+ * @returns {Set<string>}
+ */
+export function stageCaughtBreakaway(v4Output, profileType = null) {
+  const caught = new Set();
+  const events = v4Output?.timeline?.events;
+  if (!Array.isArray(events) || TIME_TRIAL_PROFILES.has(profileType)) return caught;
+  const history = deriveParticipationHistory(events, (v4Output?.results ?? []).map((r) => r.rider_id));
+  for (const id of history.morningRiderIds) if (history.riders.get(id)?.caught === true) caught.add(String(id));
+  return caught;
 }
 
 /**
@@ -378,4 +421,83 @@ export async function applyGrandTourRestDayFatigue({ supabase, riderIds, restDay
   if (upErr) throw new Error(`rider_condition upsert (GT hviledags-restitution): ${upErr.message}`);
 
   return { updated: rows.length, fatigueByRider: new Map(rows.map((r) => [r.rider_id, r.fatigue])) };
+}
+
+/**
+ * #6984 (B3): løbsdage pr. rytter i sæsonen FØR denne etape, fra belastnings-ledgeren
+ * (samme kilde som Udvikling 2.0's løbsbremse). Distinkte game_days; aliaser
+ * (duplicate_of_race_id) og etapen selv (retry) tælles ikke. Paginering: et GT-felt
+ * har tusindvis af rækker.
+ * @returns {Promise<Map<string, number>>}
+ */
+export async function loadSeasonRaceDaysByRider({ supabase, seasonId, riderIds, excludeRaceId = null, excludeStageNumber = null }) {
+  const ids = [...new Set((riderIds ?? []).map(String))];
+  const out = new Map(ids.map((id) => [id, 0]));
+  if (!seasonId || !ids.length) return out;
+  const daysByRider = new Map();
+  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+    const rows = await fetchAllRows(() => supabase.from("training_race_loads")
+      .select("rider_id, game_day, race_id, stage_number")
+      .eq("season_id", seasonId)
+      .in("rider_id", chunk)
+      .is("duplicate_of_race_id", null)
+      .order("rider_id").order("game_day").order("race_id").order("stage_number"));
+    for (const row of rows) {
+      if (excludeRaceId && row.race_id === excludeRaceId && Number(row.stage_number) === Number(excludeStageNumber)) continue;
+      const key = String(row.rider_id);
+      if (!daysByRider.has(key)) daysByRider.set(key, new Set());
+      daysByRider.get(key).add(Number(row.game_day));
+    }
+  }
+  for (const [id, days] of daysByRider) out.set(id, days.size);
+  return out;
+}
+
+/**
+ * #6984 (B2): træthed ved etapens start, når rytteren allerede har kørt etaper samme
+ * dato. rider_condition er åbningen (aftenen før); datoens endnu ikke afregnede
+ * belastninger (consumed_at null, kun originaler, tidligere løbsdage) lægges oven i
+ * med v2's døgnregnestykke. Muterer `entrant.fatigue`; ryttere uden condition-række
+ * røres ikke (neutral i motoren som i dag). Kaldes kun under v2 + regel-revision.
+ * @returns {Promise<number>} antal ryttere hvis træthed blev hævet
+ */
+export async function applySameDateEnteringFatigueV2({ supabase, raceId, stageNumber, entrants, medicalBonusByTeam = new Map() }) {
+  const withCondition = (entrants ?? []).filter((e) => Number.isFinite(Number(e.fatigue)));
+  if (!withCondition.length) return 0;
+  const { data: sched, error: schedErr } = await supabase.from("race_stage_schedule")
+    .select("game_day, scheduled_at").eq("race_id", raceId).eq("stage_number", stageNumber).maybeSingle();
+  if (schedErr) throw new Error(`race_stage_schedule (same-date fatigue): ${schedErr.message}`);
+  const gameDay = Number(sched?.game_day);
+  if (!Number.isInteger(gameDay) || !sched?.scheduled_at) return 0;
+  // Samme dato som ledgerens tick_date (dansk kalenderdato for etapens start).
+  const tickDate = copenhagenDateString(new Date(sched.scheduled_at));
+  const ids = withCondition.map((e) => e.rider_id);
+  const rows = [];
+  for (let i = 0; i < ids.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    // pagination-safe: ≤100 ryttere × højst 4 tidligere løbsdage samme dato.
+    const { data, error } = await supabase.from("training_race_loads")
+      .select("rider_id, game_day, load")
+      .in("rider_id", ids.slice(i, i + SUPABASE_IN_CHUNK_SIZE))
+      .eq("tick_date", tickDate).lt("game_day", gameDay)
+      .is("consumed_at", null).is("duplicate_of_race_id", null)
+      .order("game_day");
+    if (error) throw new Error(`training_race_loads (same-date fatigue): ${error.message}`);
+    rows.push(...(data ?? []));
+  }
+  const loadsByRider = new Map();
+  for (const row of rows.slice().sort((a, b) => Number(a.game_day) - Number(b.game_day))) {
+    const key = String(row.rider_id);
+    if (!loadsByRider.has(key)) loadsByRider.set(key, []);
+    loadsByRider.get(key).push(Number(row.load) || 0);
+  }
+  let raised = 0;
+  for (const e of withCondition) {
+    const prior = loadsByRider.get(String(e.rider_id));
+    if (!prior?.length) continue;
+    const next = enteringFatigueV2({ openingFatigue: Number(e.fatigue), priorLoadsToday: prior, recoveryAbility: e.abilities?.recovery ?? 50, medicalBonus: medicalBonusByTeam.get(e.team_id) ?? 0 });
+    if (next !== Number(e.fatigue)) raised++;
+    e.fatigue = next;
+  }
+  return raised;
 }
