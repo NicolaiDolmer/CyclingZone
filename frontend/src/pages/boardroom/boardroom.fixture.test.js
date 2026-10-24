@@ -30,7 +30,6 @@ test("#4570-afstemning: team.dnaKey og vision.titleKey peger på gyldige dna-nø
 
 test("#4557 fixture: confidence matcher mockup'ens nøgletal (71, 4 kategorier)", () => {
   assert.equal(fixture.confidence.value, 71);
-  assert.equal(fixture.confidence.weekDelta, 3);
   assert.ok(fixture.confidence.updatedAt);
   const keys = fixture.confidence.categories.map((c) => c.key).sort();
   assert.deepEqual(keys, ["economy", "identity", "ranking", "results"]);

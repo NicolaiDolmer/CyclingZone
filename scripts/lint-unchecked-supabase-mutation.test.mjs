@@ -152,9 +152,9 @@ test("test-filer scannes ikke (de må gerne fyre-og-glemme)", () => {
 
 // ── Regression: de sites #2974 rettede må ikke komme tilbage ─────────────────
 
-test("raceRunner.js og pcmResultsImport.js har ingen utjekkede mutationer (#2974)", async () => {
+test("raceRunner.js har ingen utjekkede mutationer (#2974; pcmResultsImport.js slettet i #7082)", async () => {
   const { readFileSync } = await import("node:fs");
-  for (const rel of ["backend/lib/raceRunner.js", "backend/lib/pcmResultsImport.js"]) {
+  for (const rel of ["backend/lib/raceRunner.js"]) {
     const src = readFileSync(resolve(ROOT, rel), "utf8");
     const findings = findUncheckedMutations(src);
     const unexpected = findings.filter((f) => f.method === "delete" || f.method === "update");

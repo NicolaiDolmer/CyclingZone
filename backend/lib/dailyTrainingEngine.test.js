@@ -1864,19 +1864,30 @@ test("#4846 (flag on): +1-loftet pr. evne gælder pr. løbsdag (#4801)", async (
   const on = await runDay(onState);
 
   const maxGain = (r) => Math.max(0, ...Object.values(r.report.riders[0].gains));
+  // #6210-flaget slukket (default): kalenderdags-stien er uaendret (bit-identisk med foer #7075).
   assert.ok(maxGain(off) >= 2, `uden loft skal mindst én evne stige 2+ (var ${maxGain(off)})`);
   assert.equal(maxGain(on), 1, "med løbsdags-ticket er loftet +1 pr. evne pr. løbsdag");
+
+  // #6210-flaget taendt: kalenderdags-stien faar ogsaa dato-loftet, og det klippede point baeres videre.
+  const capState = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: fatProgress })] });
+  capState.app_config = [...(capState.app_config ?? []), { key: "ability_cap_per_date_enabled", value: "on" }];
+  const capped = await runDay(capState);
+  assert.equal(maxGain(capped), 1, "kalenderdags-stien er klippet til +1 pr. evne pr. dato (#6210, flag on)");
+  assert.ok(Object.values(capped.report.riders[0].gains_deferred_by_date_cap ?? {}).some((n) => n > 0), "det klippede point baeres videre, ikke tabt");
 });
 
 test("#4846 (flag on): historik-snapshot skrives pr. løbsdag uden tavs kassering", async () => {
   // Historik skrives kun de ticks hvor rytteren FAKTISK faar en hel evne-gevinst,
   // saa progress saettes taet paa 1 foer hver af de to loebsdage.
-  const nearlyThere = () => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 0.99]));
-  const state = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: nearlyThere() })] });
+  // #6210: maks +1 pr. evne pr. DATO, saa de to loebsdage samme dato poppe i hver
+  // sin halvdel af evnerne (ellers klipper dato-loftet loebsdag 13's point).
+  const half = Math.ceil(VISIBLE_ABILITIES.length / 2);
+  const nearlyThere = (keys) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, keys.includes(k) ? 0.9999 : 0]));
+  const state = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: nearlyThere(VISIBLE_ABILITIES.slice(0, half)) })] });
   seedRaceDayTick(state, { gameDay: 12 });
 
   await runDay(state, { gameDay: 12 });
-  state.rider_derived_abilities[0].ability_progress = nearlyThere();
+  state.rider_derived_abilities[0].ability_progress = nearlyThere(VISIBLE_ABILITIES.slice(half));
   await runDay(state, { gameDay: 13 });
 
   const rows = state.rider_ability_race_day_history ?? [];
