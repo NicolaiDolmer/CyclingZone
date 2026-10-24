@@ -12,7 +12,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { allOutDemandMultiplier, applyEffortToDemand, EFFORT_COST_TUNING, effortDemandMultiplier } from "./effortCost.ts";
+import { allOutDemandMultiplier, applyEffortToDemand, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
+import { RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
 import type { EffortLevel } from "../types.ts";
 
 test("effortDemandMultiplier: protect > normal > save (raceRoles FATIGUE_MULTIPLIER-anker: 1.2 / 1.0 / 0.7)", () => {
@@ -154,4 +155,48 @@ test("#4632: applyEffortToDemand aendrer aldrig fortegn paa nogen af de fem trin
     assert.equal(applyEffortToDemand(-3, level), 0, level);
     assert.ok(applyEffortToDemand(1.5, level) > 0, level);
   }
+});
+
+// ── #6641: kalibreringen bag s5_profiles_v3 (slukket) ──────────────────────────
+test("#6641: alle kendte revisioner faar den uaendrede tuning (samme objekt = bit-identisk)", () => {
+  for (const revision of [...RACE_RULES_REVISIONS, null, undefined]) {
+    assert.equal(effortCostTuningFor(revision), EFFORT_COST_TUNING, String(revision));
+    assert.equal(isEffortCalibration6641Revision(revision), false, String(revision));
+  }
+});
+
+test("#6641: s5_profiles_v3 faar den kalibrerede tuning", () => {
+  assert.equal(isEffortCalibration6641Revision("s5_profiles_v3"), true);
+  assert.equal(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
+});
+
+test("#6641: femtrins-ordenen holder i den kalibrerede tuning paa ALLE segment-terraener", () => {
+  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+  for (const kind of ["flat", "rolling", "climb", "descent", "cobbles", null] as const) {
+    const values = scale.map((level) => effortDemandMultiplier(level, EFFORT_COST_TUNING_6641, kind));
+    for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${kind}: ${scale[i]} <= ${scale[i - 1]}`);
+  }
+  assert.equal(effortDemandMultiplier("normal", EFFORT_COST_TUNING_6641), 1, "normal er stadig neutral");
+});
+
+test("#6641: retningen af kalibreringen — all_out og protect billigere, save taettere paa normal, grupetto uroert", () => {
+  const old = EFFORT_COST_TUNING;
+  const cal = EFFORT_COST_TUNING_6641;
+  assert.ok(cal.demandMultiplierAllOut < old.demandMultiplierAllOut, "all_out op ad stigningen var en faelde");
+  assert.ok(cal.demandMultiplierProtect < old.demandMultiplierProtect);
+  assert.ok(cal.demandMultiplierSave > old.demandMultiplierSave && cal.demandMultiplierSave < 1, "save sparer stadig, men mindre");
+  assert.equal(cal.demandMultiplierGrupetto, old.demandMultiplierGrupetto);
+  assert.ok(allOutDemandMultiplier("climb", cal) > 1, "all_out koster stadig mere end normal (ingen gratis all-out)");
+});
+
+test("#6641: all_out-tabellen pr. segment-terraen foelger samme regel (flad/rullende dyrere end stigningen)", () => {
+  const cal = EFFORT_COST_TUNING_6641;
+  assert.deepEqual(Object.keys(cal.demandMultiplierAllOutBySegmentKind ?? {}).sort(), ["flat", "rolling"]);
+  assert.ok(allOutDemandMultiplier("flat", cal) > cal.demandMultiplierAllOut);
+  assert.ok(allOutDemandMultiplier("rolling", cal) > cal.demandMultiplierAllOut);
+  // Samme andel af gruppens tempo som i den gamle tuning: forholdet flad/stigning er uaendret.
+  const ratioOld = allOutDemandMultiplier("flat", EFFORT_COST_TUNING) / EFFORT_COST_TUNING.demandMultiplierAllOut;
+  const ratioNew = allOutDemandMultiplier("flat", cal) / cal.demandMultiplierAllOut;
+  assert.ok(Math.abs(ratioOld - ratioNew) < 1e-12);
+  assert.ok(Object.isFrozen(cal) && Object.isFrozen(cal.demandMultiplierAllOutBySegmentKind));
 });

@@ -108,7 +108,7 @@ export function withTwins(field, templates) {
   return { ...field, entries, abilities, teams };
 }
 
-function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, templates }) {
+function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, templates, fatigueRevision = null }) {
   const raceId = `${race.id}:${seasonId}`;
   const profiles = stages.map((p) => ({ ...p, race_id: raceId }));
   const twinField = withTwins(field, templates);
@@ -157,6 +157,17 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
       const loads = model === "v2"
         ? raceConditionLoads(ids, profile.profile_type, null, revision, work ?? { stageNumber: profile.stage_number }, { distanceKm: profile.distance_km ?? null, seasonRaceDaysByRider: new Map(ids.map((id) => [id, EFFORT_6641_CONFIG.seasonRaceDays])) })
         : raceConditionLoads(ids, profile.profile_type, new Map(ids.map((id) => [id, effortOf(id)])), revision, work);
+      // --fatigue-revision: tvillingernes indsats-faktor fra en anden revision (fx den
+      // slukkede s5_profiles_v3), mens belastningens oevrige led foelger `revision`.
+      if (fatigueRevision && fatigueRevision !== revision && !TT.has(profile.profile_type)) {
+        for (const l of loads) {
+          if (!twinIds.has(l.rider_id)) continue;
+          const e = effortOf(l.rider_id);
+          const from = effortFatigueMultiplier(e, { profileType: profile.profile_type, rulesRevision: revision });
+          const to = effortFatigueMultiplier(e, { profileType: profile.profile_type, rulesRevision: fatigueRevision });
+          if (from > 0) l.load = l.load * (to / from);
+        }
+      }
       for (const { rider_id, load } of loads) {
         if (!loadsToday.has(rider_id)) loadsToday.set(rider_id, []);
         loadsToday.get(rider_id).push(load);
@@ -280,7 +291,7 @@ export function fiveMountainRace(allRaces) {
   return { seasonId: "s5-dryrun-syn", race: { id: "syn-5mtn", name: "syn", race_type: "stage", stages: 5 }, stages, grandTour: false };
 }
 
-export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 12, revision = "s5_profiles_v2", models = MODELS, classes = null } = {}) {
+export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 12, revision = "s5_profiles_v2", models = MODELS, classes = null, fatigueRevision = null } = {}) {
   const v4 = await loadRaceEngineV4();
   const field = loadBenchField();
   const templates = pickTemplates(field.abilities);
@@ -302,7 +313,7 @@ export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 1
     raceMeta.push({ cls: r.cls, stages: r.stages.length, grandTour: r.grandTour, profiles: r.stages.map((s) => s.profile_type) });
     for (const model of models) {
       for (let s = 1; s <= simSeeds; s++) {
-        const run = runRace({ v4, field, race: r.race, stages: r.stages, seasonId: r.seasonId, simSeed: s, revision, model, templates });
+        const run = runRace({ v4, field, race: r.race, stages: r.stages, seasonId: r.seasonId, simSeed: s, revision, model, templates, fatigueRevision });
         for (const row of summarizeRun(run)) records.push({ ...row, model, raceClass: r.cls, race: r.race.id, seed: s });
       }
     }
@@ -310,9 +321,10 @@ export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 1
   }
   process.stderr.write("\n");
   return {
-    config: { genSeeds, simSeeds, maxRaces, revision, models, ...EFFORT_6641_CONFIG },
+    config: { genSeeds, simSeeds, maxRaces, revision, fatigueRevision, models, ...EFFORT_6641_CONFIG },
     multipliers: {
-      fatigue: Object.fromEntries(EFFORTS.map((e) => [e, effortFatigueMultiplier(e, { rulesRevision: revision })])),
+      fatigue: Object.fromEntries(EFFORTS.map((e) => [e, effortFatigueMultiplier(e, { rulesRevision: fatigueRevision ?? revision })])),
+      grupettoByProfile: Object.fromEntries(["flat", "rolling", "hilly", "mountain", "high_mountain"].map((p) => [p, effortFatigueMultiplier("grupetto", { profileType: p, rulesRevision: fatigueRevision ?? revision })])),
       development: Object.fromEntries(EFFORTS.map((e) => [e, effortDevelopmentMultiplier(e)])),
     },
     races: raceMeta,
@@ -343,6 +355,7 @@ if (isMain) {
     revision: arg("revision", "s5_profiles_v2"),
     models: arg("models", MODELS.join(",")).split(","),
     classes: arg("classes", null)?.split(",") ?? null,
+    fatigueRevision: arg("fatigue-revision", null),
   });
   const label = arg("label", "baseline");
   const out = arg("out", null);
