@@ -223,10 +223,18 @@ export function buildWorld(snapshot) {
       facilityTier: snapshot.staffByTeam?.[t.id]?.facilityTier ?? 0, staff: snapshot.staffByTeam?.[t.id]?.staff ?? null });
   }
   const abilityByRider = new Map(snapshot.abilities.map((a) => [a.rider_id, a]));
+  // Belastningen er hentet for hele sæsonen: en rytter der mangler i den, kørte 0
+  // løbsdage (computeSeasonLoad laver kun rækker for ryttere med resultater).
+  // Mangler belastningen helt (ukendt dækning), udfyldes med medianen senere.
+  const loadKnown = snapshot.load != null && typeof snapshot.load === "object";
   const load = snapshot.load ?? {};
   // seasons.race_days_* tæller kalenderdatoer; hver dato bærer raceDaysPerDate løbsdage.
   const done = (Number(snapshot.season?.race_days_completed) || 0) * TRAINING_RACE_DAY_CONFIG.raceDaysPerDate;
   const scale = done > 0 ? 1 / done : 0;
+  const shareFor = (measured) => {
+    if (!loadKnown || !(scale > 0)) return null;
+    return Math.min(1, (Number(measured?.raceDays) || 0) * scale);
+  };
   const riders = [];
   for (const r of snapshot.riders) {
     const ab = abilityByRider.get(r.id);
@@ -241,8 +249,9 @@ export function buildWorld(snapshot) {
       teamId: team?.active ? team.id : null,
       division: team?.active ? team.division : null,
       abilities, progress: { ...(ab.ability_progress ?? {}) },
-      // andel af løbsdagene: målt (kørte dage / kørte løbsdage i sæsonen), ellers udfyldes senere
-      raceShare: measured && scale > 0 ? Math.min(1, (Number(measured.raceDays) || 0) * scale) : null,
+      // andel af løbsdagene: målt (kørte dage / kørte løbsdage i sæsonen; 0 hvis han
+      // ikke kørte), eller null ved ukendt dækning (udfyldes med medianen senere)
+      raceShare: shareFor(measured),
       frozenRow: { retirement_notice_season: r.retirement_notice_season ?? null,
         retirement_notice_after_season: r.retirement_notice_after_season ?? null },
       inflow: false, retired: false, trajectory: [], seasonRaceDays: 0,
@@ -488,7 +497,7 @@ export function milestoneStats(riders) {
   return out;
 }
 
-/** "90 efter ca. 9 sæsoner for et stort talent": rating efter 9 sæsoner for pot ≥ 5.5 der startede ≤ 18. */
+/** Stort talent: rating efter 9 sæsoner for pot ≥ 5.5 der startede ≤ 19 (Discord-pejlemærke 2/10). */
 export function bigTalentAfterNine(riders, startSeason) {
   const list = [];
   for (const r of riders) {
@@ -521,16 +530,19 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
     simulateSeason(world, season, variant, opts);
     recordTrajectories(world, season);
     result.seasons.push(seasonStats(world, season, `S${season} slut`));
+    // De nye unge måles på samme tidspunkt som resten af slut-tallene: før det
+    // sidste skifte (ellers ville pensioner, aldring og nye erstatninger tælle med).
+    if (i === opts.seasons) {
+      result.inflowEnd = seasonStats({ ...world, riders: world.riders.filter((r) => r.inflow) }, season, "nye unge ved slut").rating;
+    }
     result.transitions.push(transition(world, season, opts));
   }
   result.milestones = milestoneStats(world.riders);
   result.bigTalent = bigTalentAfterNine(world.riders, s0);
-  result.inflowEnd = seasonStats(
-    { ...world, riders: world.riders.filter((r) => r.inflow) }, s0 + opts.seasons, "nye unge ved slut",
-  ).rating;
   result.bNorm = world.bNorm;
   result.dateCap = world.dateCap;
   result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge };
+  result.fingerprint = runFingerprint(snapshot, opts);
   result.raceShares = { young: round(shares.youngMedian, 3), old: round(shares.oldMedian, 3) };
   return result;
 }
@@ -614,12 +626,13 @@ function renderCard(snapshot, results, opts, date) {
   L.push("");
   L.push(`Øjebliksbillede: aktiv sæson ${snapshot.season.number}, taget ${snapshot.takenAt}. Simuleret: S${Number(snapshot.season.number) + 1} til S${Number(snapshot.season.number) + opts.seasons}, ${opts.raceDaysPerSeason} løbsdage pr. sæson (${opts.raceDaysPerDate} pr. dato). Assistenten styrer alle hold. Aldring = Udvikling 2.0 (#6499).`);
   L.push(`Varianter: ${v.join(" · ")}. B-normalisering (B@1): ${round(results.find((r) => r.variant.startsWith("B"))?.bNorm ?? NaN, 3) ?? "-"}. Løbsdags-andel uden måling (ung/ældre): ${results[0].raceShares.young} / ${results[0].raceShares.old}.`);
-  const bp = results.find((r) => r.variant.startsWith("B"))?.params;
-  if (bp) L.push(`B-proxy-parametre: dagsstøj ±${bp.bNoiseSpan}, fast vækstfraktion fra alder ${bp.bReferenceAge}.`);
+  for (const r of results.filter((x) => x.variant.startsWith("B") && x.params)) {
+    L.push(`${r.variant}: dagsstøj ±${r.params.bNoiseSpan}, fast vækstfraktion fra alder ${r.params.bReferenceAge}.`);
+  }
   L.push("");
   L.push("## Overblik");
   L.push("");
-  L.push("| Variant | % ved 22 (mål ~60) | % ved 25 (mål ~85) | Topalder | Max-rating slut | P99 slut | Top 50 ≤ 23 år slut | Pensioneret i alt | Nye unge i alt |");
+  L.push("| Variant | % ved 22 | % ved 25 | Topalder | Max-rating slut | P99 slut | Top 50 ≤ 23 år slut | Pensioneret i alt | Nye unge i alt |");
   L.push("|---|---|---|---|---|---|---|---|---|");
   for (const r of results) {
     const m = r.milestones.alle ?? {};
@@ -628,7 +641,7 @@ function renderCard(snapshot, results, opts, date) {
     L.push(`| ${r.variant} | ${m.pct22 ?? "-"} | ${m.pct25 ?? "-"} | ${m.peakAgeMedian ?? "-"} | ${end?.rating.max ?? "-"} | ${end?.rating.p99 ?? "-"} | ${end?.top50.le23 ?? "-"} | ${sum("retired")} | ${sum("inflow")} |`);
   }
   L.push("");
-  L.push("## D1-milepæle (mål: ca. 60 % ved 22, ca. 85 % ved 25, top 27-28)");
+  L.push("## D1-milepæle (målene står i D-058, spec 2026-10-03-udvikling-2-design.md)");
   L.push("Median af rytterens rating ved alderen i % af hans observerede karrieretop. Kun ryttere hvis bane dækker 22 til mindst 27.");
   L.push("");
   L.push("| Variant | Gruppe | N | % ved 22 | % ved 25 | Topalder (median) | Top 27-28 (%) | Top ≤ 24 (%) | Top-rating (median) |");
@@ -639,7 +652,7 @@ function renderCard(snapshot, results, opts, date) {
     }
   }
   L.push("");
-  L.push("## Stort talent efter 9 sæsoner (pot ≥ 5,5, startede ≤ 19; jeppek 2/10: \"90 efter ca. 9 sæsoner er fint\")");
+  L.push("## Stort talent efter 9 sæsoner (pot ≥ 5,5, startede ≤ 19; jeppeks Discord-pejlemærke 2/10)");
   L.push("");
   L.push("| Variant | N | Median | P90 | Max | ≥ 90 |");
   L.push("|---|---|---|---|---|---|");
@@ -758,11 +771,24 @@ async function main() {
     writeFileSync(join(runsDir, `${variant.name}.json`), JSON.stringify(result, null, 2) + "\n");
     console.log(`[s25] ${variant.name} færdig (${Math.round((Date.now() - t0) / 1000)} s)`);
   }
-  const results = orderResults(readdirSync(runsDir).filter((f) => f.endsWith(".json"))
-    .map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8"))));
+  // Kun kørsler på samme billede og samme sæson-parametre kommer på samme kort.
+  const fingerprint = runFingerprint(snapshot, opts);
+  const all = readdirSync(runsDir).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
+  const results = orderResults(all.filter((r) => r.fingerprint === fingerprint));
+  const skipped = all.filter((r) => r.fingerprint !== fingerprint).map((r) => r.variant);
+  if (skipped.length) console.warn(`[s25] springer varianter over fra et andet billede eller andre parametre: ${skipped.join(", ")}`);
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.md`), renderCard(snapshot, results, opts, date));
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.json`), JSON.stringify({ date, opts, results }, null, 2) + "\n");
   console.log(`[s25] privat kort (${results.length} varianter): ${join(outDir, `ten-season-sim-${date}${suffix}.md`)}`);
+}
+
+/**
+ * Fingeraftryk for en kørsel: samme billede og samme sæson-parametre. B's egne
+ * parametre (støj, referencealder) står pr. variant i `params` og på kortet.
+ */
+export function runFingerprint(snapshot, opts) {
+  return [snapshot?.takenAt ?? "?", snapshot?.season?.number ?? "?", snapshot?.riders?.length ?? 0,
+    opts.seasons, opts.raceDaysPerSeason, opts.raceDaysPerDate].join("|");
 }
 
 /** Fast rækkefølge på kortet: nu, nu_maks1, derefter B efter stigende skala. */

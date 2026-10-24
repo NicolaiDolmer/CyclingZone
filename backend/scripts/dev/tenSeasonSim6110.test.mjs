@@ -7,8 +7,8 @@ import { applyDailyTick, resolveProgram } from "../../lib/dailyTraining.js";
 import { buildCapsForRider } from "../../lib/riderProgression.js";
 import { ageForSeason } from "../../lib/riderSeasonAge.js";
 import {
-  SIM_DEFAULTS, applyTickB, bNormalizer, birthdateForAge, capGainsPerDate, limitSnapshotTeams,
-  milestoneStats, orderResults, quantile, raceSlot, runVariant, variantList,
+  SIM_DEFAULTS, applyTickB, bNormalizer, birthdateForAge, buildWorld, capGainsPerDate, limitSnapshotTeams,
+  milestoneStats, orderResults, quantile, raceSlot, runFingerprint, runVariant, variantList,
 } from "./tenSeasonSim6110.mjs";
 
 const flatAbilities = (v) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, v]));
@@ -143,6 +143,23 @@ test("runVariant: et hold udvikler sig med dagens motor (samme tick som produkti
     state = r;
   }
   assert.ok(gained > 0);
+});
+
+test("buildWorld: en rytter uden løbsdage i en hentet sæson har andel 0, ukendt dækning giver null", () => {
+  const snap = syntheticSnapshot();
+  const world = buildWorld(snap);
+  assert.equal(world.riders.find((r) => r.id === "r1").raceShare, 0, "kørte ikke: 0, ikke medianen");
+  assert.equal(world.riders.find((r) => r.id === "r0").raceShare, 0.5, "70 af 28 datoer × 5 løbsdage");
+  const unknown = buildWorld({ ...snap, load: undefined });
+  assert.equal(unknown.riders.find((r) => r.id === "r1").raceShare, null);
+});
+
+test("runFingerprint: skifter med billede og sæson-parametre", () => {
+  const snap = syntheticSnapshot();
+  const a = runFingerprint(snap, SIM_DEFAULTS);
+  assert.equal(runFingerprint(snap, { ...SIM_DEFAULTS, bNoiseSpan: 0.9 }), a, "B's støj er pr. variant, ikke i aftrykket");
+  assert.notEqual(runFingerprint(snap, { ...SIM_DEFAULTS, raceDaysPerSeason: 140 }), a);
+  assert.notEqual(runFingerprint({ ...snap, takenAt: "andet" }, SIM_DEFAULTS), a);
 });
 
 test("limitSnapshotTeams: beholder kun de første aktive hold og deres ryttere", () => {
