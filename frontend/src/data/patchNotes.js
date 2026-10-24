@@ -1,5 +1,96 @@
 export const PATCHES = [
   {
+    "version": "7.377",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The new stage page for everyone",
+          "body": "Every stage now has its own page with stage tabs, the real elevation profile, a replay of the stage and your day at a glance. It is no longer limited to the beta group."
+        },
+        "da": {
+          "title": "Den nye etapeside for alle",
+          "body": "Hver etape har nu sin egen side med etapefaner, den rigtige højdeprofil, en genafspilning af etapen og jeres dag samlet ét sted. Den er ikke længere kun for beta-gruppen."
+        },
+        "refs": [
+          6570
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "More varied stage races in season 5",
+          "body": "Every stage race in season 5 now has at least one flat stage, so sprinters have a chance. Many stage races also got a more varied order of the same stages instead of the same climbing pattern every time."
+        },
+        "da": {
+          "title": "Mere varierede etapeløb i sæson 5",
+          "body": "Alle etapeløb i sæson 5 har nu mindst én flad etape, så sprinterne har en chance. Mange etapeløb har også fået de samme etaper i en mere varieret rækkefølge i stedet for det samme stigende mønster hver gang."
+        },
+        "refs": [
+          2757
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "One route match number everywhere",
+          "body": "The same rider in the same race now gets the same route match in team selection, Plan day, Tactics, the season matrix and the planner. The number is based on what the race engine actually rewards on each stage."
+        },
+        "da": {
+          "title": "Ét rutematch-tal overalt",
+          "body": "Samme rytter i samme løb får nu samme rutematch i holdudtagelsen, Planlæg dag, Taktik, sæsonmatrixen og planlæggeren. Tallet bygger på det, løbsmotoren faktisk belønner på hver etape."
+        },
+        "refs": [
+          6207
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The breakaway's lead in the race film",
+          "body": "The curve under the race film shows the breakaway's lead over the chase, and the dot now shows the lead as a number while you scrub through the stage."
+        },
+        "da": {
+          "title": "Udbruddets forspring i løbsfilmen",
+          "body": "Kurven under løbsfilmen viser udbruddets forspring på jagten, og prikken viser nu forspringet i tal, mens I spoler gennem etapen."
+        },
+        "refs": [
+          6803
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Small squads keep their stage race",
+          "body": "If some of your riders race elsewhere on the first day of a stage race, your team still starts it with the free riders, at least 4. This only applies on such overlap days."
+        },
+        "da": {
+          "title": "Små hold mister ikke deres etapeløb",
+          "body": "Kører nogle af jeres ryttere et andet løb på et etapeløbs første dag, starter holdet stadig med de frie ryttere, mindst 4. Det gælder kun på sådanne overlap-dage."
+        },
+        "refs": [
+          6739
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.376",
     "date": "2026-10-24",
     "changes": [
