@@ -682,6 +682,11 @@ const BREAKAWAY_NEUTRAL_KINDS: ReadonlySet<SegmentKind> = new Set(["flat", "roll
  * Eksporteret for testbarhed af netop koblingen, samme praecedens som
  * `groupDraftSpeedGain`. Returnerer samme Map naar intet aendres.
  */
+/** #6814: dagens udbrud (samme praedikat som neutralizeBreakawayTempoDrift). */
+function isPursuedEscape(group: RaceGroup): boolean {
+  return group.kind === "breakaway" && group.origin === "breakaway";
+}
+
 export function neutralizeBreakawayTempoDrift(
   groups: readonly RaceGroup[],
   tempoByGroup: Map<string, GroupTempo>,
@@ -832,6 +837,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   const timeline: TimelineEvent[] = [];
   const groupSnapshots: SegmentGroupSnapshot[] = [];
   const lastEmittedGap = new Map<string, number>();
+  // #6814 (KUN s5_profiles_v3, slukket): udbruddets afstand til den gruppe der
+  // faktisk jager det, paa `gap_update` (chase_group_id + separation_seconds),
+  // saa loebsfilmens gab-kurve har noget at tegne. Kun tidslinje-events.
+  const pursuitSamples = isS5ProfilesV3OrLater(rulesRevision);
+  const lastEmittedSeparation = new Map<string, { sep: number; chaseId: string }>();
   let frontElapsedSeconds = 0;
 
   pushEvent(timeline, 0, "stage_start", {
@@ -1219,6 +1229,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     state = { ...state, groups: rebaselineGroups(state.groups) };
 
     // 4b. Sammensmelt grupper der er kommet inden for merge-taerskel.
+    const preMergeGroups = state.groups;
     const baseMerge = mergeGroupsDetailed(state.groups, sharedGroupTime ? GROUP_CLOCK_CONTACT_EPSILON : tuning.groups.mergeThresholdSeconds);
     // #5813: afhaengte halegrupper samles i én grupetto (se tailGrupettoMerge).
     const tailMerge = sharedGroupTime ? {groups:baseMerge.groups,merges:[] as GroupMerge[]} : tailGrupettoMerge(baseMerge.groups, segment.kind, isLastSegment);
@@ -1260,11 +1271,44 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     }
 
     for (const g of mergedGroups) {
+      if (pursuitSamples && isPursuedEscape(g)) {
+        const chase = findChaseGroup(mergedGroups, g);
+        if (chase) {
+          const sep = round2(chase.gap_seconds - g.gap_seconds);
+          const prev = lastEmittedSeparation.get(g.id);
+          if (!prev || prev.chaseId !== chase.id || Math.abs(sep - prev.sep) >= tuning.groups.gapUpdateThresholdSeconds) {
+            pushEvent(timeline, segment.to_km, "gap_update", { group_id: g.id, gap_seconds: round2(g.gap_seconds), chase_group_id: chase.id, separation_seconds: sep });
+            lastEmittedSeparation.set(g.id, { sep, chaseId: chase.id });
+            lastEmittedGap.set(g.id, g.gap_seconds);
+            continue;
+          }
+        }
+      }
       if (g.gap_seconds === 0) continue;
       const last = lastEmittedGap.get(g.id);
       if (last === undefined || Math.abs(g.gap_seconds - last) >= tuning.groups.gapUpdateThresholdSeconds) {
         pushEvent(timeline, segment.to_km, "gap_update", { group_id: g.id, gap_seconds: round2(g.gap_seconds) });
         lastEmittedGap.set(g.id, g.gap_seconds);
+      }
+    }
+    // #6814: et hentet udbrud findes ikke laengere efter merget, saa dets sidste
+    // jagt-punkt kommer fra motorens egen indhentning i segmentet: samme
+    // jagtgruppe som breakaway_caught og afstand 0 (hullet er lukket). Kun for et
+    // udbrud der allerede har jagt-punkter. Gab til fronten = jagtgruppens.
+    if (pursuitSamples) {
+      for (const caught of timeline.slice(segmentEventStart)) {
+        if (caught.type !== "breakaway_caught") continue;
+        const escapeId = caught.params?.group_id;
+        const chaseId = caught.params?.chase_group_id;
+        if (typeof escapeId !== "string" || typeof chaseId !== "string" || !lastEmittedSeparation.has(escapeId)) continue;
+        if (mergedGroups.some((g) => g.id === escapeId && isPursuedEscape(g))) continue; // stadig et udbrud: punktet ovenfor gaelder
+        const chase = mergedGroups.find((g) => g.id === chaseId) ?? preMergeGroups.find((g) => g.id === chaseId);
+        if (chase) pushEvent(timeline, segment.to_km, "gap_update", { group_id: escapeId, gap_seconds: round2(chase.gap_seconds), chase_group_id: chaseId, separation_seconds: 0 });
+        lastEmittedSeparation.delete(escapeId);
+      }
+      // Udbrud der er forsvundet uden indhentning (fx slaaet sammen med et andet udbrud).
+      for (const id of [...lastEmittedSeparation.keys()]) {
+        if (!mergedGroups.some((g) => g.id === id && isPursuedEscape(g))) lastEmittedSeparation.delete(id);
       }
     }
 
