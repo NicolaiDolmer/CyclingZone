@@ -4,6 +4,23 @@ export const PATCHES = [
     "date": "2026-10-24",
     "changes": [
       {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "French, Spanish and Dutch for everyone",
+          "body": "French, Spanish and Dutch are no longer in beta. Your browser's language is picked automatically, and you can switch language at any time."
+        },
+        "da": {
+          "title": "Fransk, spansk og hollandsk for alle",
+          "body": "Fransk, spansk og hollandsk er ikke længere i beta. Jeres browsers sprog vælges automatisk, og I kan skifte sprog når som helst."
+        },
+        "refs": [
+          7087
+        ]
+      },
+      {
         "category": "new",
         "audience": "player",
         "rollout": "live",
