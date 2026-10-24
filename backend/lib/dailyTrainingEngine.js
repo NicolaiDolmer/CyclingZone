@@ -69,6 +69,7 @@ import {
   injuryEndGameDay, injuryRaceDaysLeft, isInjuredOnRaceDay, resolveInjuryEndDates,
   loadTeamDivisionId,
 } from "./injuryRaceDays.js";
+import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -1560,6 +1561,8 @@ export async function runTeamTrainingDay({
     }, executedBy === 'manager');
     if (error) throw new Error(`daily condition commit: ${error.message}`);
     if (data?.held === true) throw reservationHeldError(teamId, tickDate);
+    // #7086: kun et tick der faktisk blev afregnet nu; kaster aldrig.
+    if (data?.already_ran !== true) await notifyTrainingInjuries({ supabase, teamId, reportRiders, conditionUpserts, now });
     return { alreadyRan: data?.already_ran === true, tickDate, gameDay: raceDay, squad: squadKey, report:data?.report??report,workStatus:data?.work_status??null };
   }
   // Fra dette punkt er writes i gang: ved fejl bevares reservationen BEVIDST (blokeret dag er
@@ -1672,5 +1675,7 @@ export async function runTeamTrainingDay({
   );
   if (updateError) throw new Error(`training_day_runs update: ${updateError.message}`);
 
+  // #7086: efter writes; en genkørsel returnerede alreadyRan ved reservationen. Kaster aldrig.
+  await notifyTrainingInjuries({ supabase, teamId, reportRiders, conditionUpserts, now });
   return { alreadyRan: false, tickDate, gameDay: useRaceDayKey ? raceDay : null, squad: squadKey, report };
 }

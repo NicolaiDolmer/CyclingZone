@@ -43,8 +43,11 @@ const ABILITY_SET = new Set(ABILITY_KEYS);
 // wall-clock CURRENT_YEAR. `null` (sæson endnu ikke hentet) → alders-/U23-/
 // U25-filtrene matcher intet (bedre end at filtrere forkert) i stedet for at
 // gætte med dags dato.
-export function useClientRiderFilters(riders = [], seasonYear = null) {
-  const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
+// #6855: `initialFilters` (valgfri) lader en side starte med fx en sortering
+// læst fra URL'en, så den overlever navigation væk og tilbage.
+/** @param {Record<string, unknown> | null} [initialFilters] */
+export function useClientRiderFilters(riders = [], seasonYear = null, initialFilters = null) {
+  const [filters, setFilters] = useState(() => ({ ...DEFAULT_FILTERS, ...(initialFilters || {}) }));
 
   function onChange(key, value) {
     setFilters(f => ({ ...f, [key]: value }));
