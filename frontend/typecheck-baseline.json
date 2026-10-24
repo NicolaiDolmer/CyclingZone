@@ -381,8 +381,8 @@
   },
   "../backend/lib/raceStageProfileGenerator.js": {
     "TS18048": 3,
-    "TS2322": 3,
-    "TS2339": 16,
+    "TS2322": 2,
+    "TS2339": 5,
     "TS2345": 3,
     "TS2353": 2,
     "TS2740": 1
@@ -1496,8 +1496,7 @@
     "TS2339": 21
   },
   "src/lib/boardUtils.test.js": {
-    "TS2345": 4,
-    "TS2531": 1
+    "TS2345": 4
   },
   "src/lib/boardWizardNav.js": {
     "TS2339": 8

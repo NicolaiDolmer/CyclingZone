@@ -777,7 +777,7 @@ export function normalizeRulesRevision(raw: unknown): RulesRevision {
   if (raw === "s5_profiles_v1") return "s5_profiles_v1"; // #6369: tom, slukket (= official_times_v4)
   if (raw === "official_times_v5") return "official_times_v5"; // #6462: = official_times_v4 i motoren (togreglen bor i ordre-adapteren)
   if (raw === "s5_profiles_v2") return "s5_profiles_v2"; // #6156: slukket; = s5_profiles_v1 i motoren (formtoppen bor i broen)
-  if (raw === "s5_profiles_v3") return "s5_profiles_v3"; // #6804: slukket; v3-tilvalgene
+  if (raw === "s5_profiles_v3") return "s5_profiles_v3"; // #6804: slukket; = s5_profiles_v2 + udbrudspakken trin 2 (isS5ProfilesV3OrLater)
   throw new Error(`race engine v4: ukendt rules_revision ${JSON.stringify(raw)}`);
 }
 
@@ -889,7 +889,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     let tempoByGroup = new Map<string, GroupTempo>();
     // #6187 (KUN orders_gc_v3): egne udbrydere paa hjul foerer ikke (mechanics/breakaway.ts).
     // #5978: hooket faar samme saet (ctx.ownRidersOnWheel), ikke et nyt fra hook-tidspunktet.
-    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km, tuning, ...(sharedGroupTime ? { sharedGroupTime: true as const } : {}) }) : undefined;
+    const onWheelAtStart = ordersGcV3 ? ownRidersOnWheelRaw({ groups: state.groups, riders: state.riders, entrants: entrantsById, gcContext: input.gc_context ?? null, route, km: segment.from_km, tuning, ...(sharedGroupTime ? { sharedGroupTime: true as const } : {}), ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}) }) : undefined;
     const wheelSitterIds = onWheelAtStart ? new Set(onWheelAtStart.flatMap((w) => w.rider_ids)) : undefined;
     for (const group of state.groups) {
       const tempo = computeGroupTempo(
@@ -1095,6 +1095,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       ...(isS5ProfilesV1OrLater(rulesRevision) ? { s5ProfilesV1: true as const } : {}),
       // #6748 (KUN s5_profiles_v2, slukket): udbrudsopfoelgningen (breakaway.ts).
       ...(isS5ProfilesV2OrLater(rulesRevision) ? { s5ProfilesV2: true as const } : {}),
+      // #6804 (KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts).
       // #6938 (KUN s5_profiles_v3, slukket): styrt-udgang pr. terraen (mechanics/incidents.ts).
       ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
     };

@@ -368,8 +368,8 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // fjernet i #1532 (PCM udfases). Backend-endpoints bevares bevidst indtil
   // forever-relaunch-vinduet — legacyRiderRetirement + adminRouteOwnership.test.js
   // afhænger af dem. Intentional orphaned, ikke drift; slettes i WS2-followup.
+  // POST /admin/import-results-pcm slettet 2026-10-24 (#7082).
   "POST /admin/approve-results",
-  "POST /admin/import-results-pcm",
   // CZ Pro billing: Alunta-webhook er EKSTERN (kaldes af Alunta efter betaling,
   // ikke af frontend). Intentional orphaned, ikke drift (#1903).
   "POST /billing/alunta-webhook",

@@ -303,6 +303,21 @@ export function todaysStage({ totalStages, schedule, now }: { totalStages: numbe
   return todays.length ? Math.min(...todays) : null;
 }
 
+/**
+ * Alle etaper der koeres i dag (dansk tid), sorteret. Ejer 24/10: et etapeloeb kan have
+ * flere etaper samme dato, og striben markerer dem alle med "I dag", ikke kun den foerste.
+ */
+export function todaysStages({ totalStages, schedule, now }: { totalStages: number; schedule: ScheduleRow[]; now: Date }): number[] {
+  const today = copenhagenDay(now);
+  return [...new Set((schedule || [])
+    .filter((s) => {
+      const d = new Date(s.scheduled_at);
+      return !Number.isNaN(d.getTime()) && copenhagenDay(d) === today;
+    })
+    .map((s) => s.stage_number)
+    .filter((n) => n >= 1 && n <= totalStages))].sort((a, b) => a - b);
+}
+
 export function stagePhase(stageNumber: number, stagesCompleted: number): "before" | "after" {
   return stageNumber <= stagesCompleted ? "after" : "before";
 }

@@ -46,7 +46,7 @@ Autoritativ beskrivelse af alle sæson- og markedshændelsers rækkefølge. Kild
 
 ## 2. Resultatimport og -godkendelse
 
-**Trigger:** `POST /api/admin/import-results-pcm` (PCM-fallback) ELLER `POST /api/admin/approve-results` (Excel-/Sheets-import fjernet 2026-06-12, #1179/#1180)
+**Trigger:** race-motoren ELLER `POST /api/admin/approve-results` (Excel-/Sheets-import fjernet 2026-06-12, #1179/#1180; PCM-importen fjernet 2026-10-24, #7082)
 
 ```
 1. Parsér PCM-eksport (SpreadsheetML 2003):

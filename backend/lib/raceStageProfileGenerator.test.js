@@ -41,7 +41,20 @@ import {
   raceIdentityFor,
   signatureLockFor,
   s5StageRaceFillerSlots,
+  A2_FLAT_POSITION_WEIGHTS,
+  A2_REPLACEABLE_TYPES,
+  flatStagePositionBucket,
+  signatureStageNumbers,
+  isSummitFinishStage,
+  a2FlatStageCandidates,
+  chooseA2FlatStage,
+  buildA2FlatStage,
+  ensureFlatStageS5,
+  chooseStageOrderVariation,
+  applyStageOrder,
+  varyStageOrderS5,
 } from "./raceStageProfileGenerator.js";
+import { isAscendingOrder, measureOrderVariation } from "./stageOrderVariationGate.js";
 import { createHash } from "node:crypto";
 import { RACE_IDENTITY_TYPES, TIER_IDENTITY_DISTRIBUTION } from "./raceIdentityTypes.js";
 import { IDENTITY_GOLDEN_CASES } from "./__fixtures__/identityGoldenCases.js";
@@ -1022,6 +1035,9 @@ test("#4539 grand_tour (21, uændret): kan stadig få 2 TT, men de er ALDRIG et 
 
 // ═══ #6359 S5-modellen (profileModel: "s5") ══════════════════════════════════════════
 const S5 = { profileModel: "s5" };
+// #2757 A2: identitets-mekanikken (garantier, filler, kvoter) testes på output før A2-swappet;
+// A2 selv testes for sig (se "#2757 A2"-testene nederst).
+const S5_PRE_A2 = { profileModel: "s5", a2FlatStage: false };
 const S5_SEEDS = 25;
 function s5Races() {
   const races = [];
@@ -1067,8 +1083,11 @@ test("#6359 S5 bevarer v5's typer og rækkefølge for alle andre løb end Grand 
     for (let s = 0; s < 6; s++) {
       const race = raceFor(spec, s);
       const v5 = generateRaceStageProfiles(race).map((p) => p.profile_type);
-      const s5 = generateRaceStageProfiles(race, S5).map((p) => p.profile_type);
+      // #2757: rækkefølge-variationen lægges ovenpå; pass 1 (typerne og crescendo-rækkefølgen) er v5's.
+      const s5 = generateRaceStageProfiles(race, { ...S5, orderVariation: false }).map((p) => p.profile_type);
       assert.deepEqual(s5, v5, `${spec.archetype}/${spec.stages} s${s}`);
+      const varied = generateRaceStageProfiles(race, S5).map((p) => p.profile_type);
+      assert.deepEqual(varied.slice().sort(), v5.slice().sort(), `${spec.archetype}/${spec.stages} s${s}: samme etapetyper`);
     }
   }
 });
@@ -1188,7 +1207,8 @@ function fingerprint({ withIdentity }) {
         season_id: `season-${s}`, name: s % 2 ? "Giro test" : "Ronde test", race_class: spec.race_type === "single" && s % 3 === 0 ? "Monuments" : null,
       };
       out.v5.update(JSON.stringify(generateRaceStageProfiles(withIdentity ? withIdentity(race, n) : race)));
-      out.s5.update(JSON.stringify(generateRaceStageProfiles(race, { profileModel: "s5" })));
+      // #2757: rækkefølge-variationen er en bevidst ændring ovenpå (testet for sig nederst).
+      out.s5.update(JSON.stringify(generateRaceStageProfiles(race, { profileModel: "s5", orderVariation: false })));
       n += 1;
     }
   }
@@ -1271,7 +1291,7 @@ test("#6857 property: 8 typer × 3-8 etaper × 200 sæsoner — garantier, fille
     const allowed = new Set([...profile.guarantees, ...profile.filler.map((it) => it.value)]);
     for (let stages = 3; stages <= 8; stages++) {
       for (let s = 0; s < 200; s++) {
-        const ps = generateRaceStageProfiles(idRace(type, stages, s), S5);
+        const ps = generateRaceStageProfiles(idRace(type, stages, s), S5_PRE_A2);
         const seq = ps.map((p) => p.profile_type);
         const where = `${type}/${stages} s${s}: ${seq.join(" ")}`;
         assert.equal(ps.length, stages, where);
@@ -1509,7 +1529,7 @@ test("#6857 s5StageRaceFillerSlots: et typet løb følger typens liste, og garan
         const filler = IDENTITY_PROFILES[type].filler.map((it) => it.value);
         for (const o of slots.options) assert.ok(filler.includes(o) || slots.natural.includes(o), `${where}: option ${o}`);
         const multiset = (xs) => [...xs].sort().join(",");
-        assert.equal(multiset([...slots.guaranteed, ...slots.natural]), multiset(generateRaceStageProfiles(race, S5).map((p) => p.profile_type)), where);
+        assert.equal(multiset([...slots.guaranteed, ...slots.natural]), multiset(generateRaceStageProfiles(race, S5_PRE_A2).map((p) => p.profile_type)), where);
         // Det naturlige træk som fillerTypes er bit-identisk med intet fillerTypes.
         if (slots.natural.length) assert.deepEqual(generateRaceStageProfiles(race, { ...S5, fillerTypes: slots.natural }), generateRaceStageProfiles(race, S5), where);
       }
@@ -1706,4 +1726,160 @@ test("#6995 monument med rampe-afslutning uden målstigning kaster i stedet for 
   const noSummit = { ...DOYENNE, climbs: [DOYENNE.climbs[0]] };
   assert.throws(() => generateRaceStageProfiles(monument(0, noSummit), S5), /needs a summit_finish climb/);
   assert.throws(() => generateRaceStageProfiles(monument(0, { ...DOYENNE, sprints: [] }), S5), /needs a finish sprint/);
+});
+
+// ── #2757 A2: ethvert S5-etapeløb har mindst én flad etape ────────────────────────────
+
+test("#2757 A2 placerings-kasser: første, sidste og tredjedele imellem", () => {
+  assert.equal(flatStagePositionBucket(0, 5), "first");
+  assert.equal(flatStagePositionBucket(4, 5), "last");
+  assert.equal(flatStagePositionBucket(1, 7), "early");
+  assert.equal(flatStagePositionBucket(3, 7), "middle");
+  assert.equal(flatStagePositionBucket(5, 7), "late");
+  for (const b of ["first", "early", "middle", "late", "last"]) assert.ok(A2_FLAT_POSITION_WEIGHTS[b] > 0, b);
+});
+
+test("#2757 A2 kandidater: kun bakket/kuperet, aldrig signatur-etapen eller en topankomst", () => {
+  const sig = { features: [{ kind: "climb", name: "Muro Test", category: "3", length_km: 2, avg_gradient: 9, stage_hint: "any", summit_finish: false }] };
+  const stages = [
+    { stage_number: 1, profile_type: "rolling", finale_type: "flat_sprint", climbs: [] },
+    { stage_number: 2, profile_type: "hilly", finale_type: "descent", climbs: [{ name: "Muro Test", summit_finish: false }] },
+    { stage_number: 3, profile_type: "hilly", finale_type: "wall_finish", climbs: [{ name: "Cima X", summit_finish: true }] },
+    { stage_number: 4, profile_type: "medium_mountain", finale_type: "flat_sprint", climbs: [] },
+    { stage_number: 5, profile_type: "hilly", finale_type: "flat_sprint", climbs: [] },
+    { stage_number: 6, profile_type: "itt", finale_type: "solo_tt", climbs: [] },
+  ];
+  assert.deepEqual([...signatureStageNumbers(sig, stages)], [2]);
+  assert.equal(isSummitFinishStage(stages[2]), true);
+  assert.equal(isSummitFinishStage({ finale_type: "long_climb", climbs: [] }), true);
+  assert.deepEqual(a2FlatStageCandidates(stages, { signature: sig }), [1, 5]);
+  assert.deepEqual([...A2_REPLACEABLE_TYPES], ["rolling", "hilly"]);
+  const race = { id: "a2", external_id: "a2", race_type: "stage_race", stages: 6, signature: sig, season_id: "s5", name: "Ronde test" };
+  const pick = chooseA2FlatStage(race, stages);
+  assert.ok([1, 5].includes(pick.stageNumber), `valgt ${pick.stageNumber}`);
+  assert.deepEqual(chooseA2FlatStage(race, stages), pick, "deterministisk");
+  assert.equal(chooseA2FlatStage(race, [...stages, { stage_number: 7, profile_type: "flat" }]).stageNumber, null, "har allerede en flad etape");
+  assert.equal(chooseA2FlatStage({ ...race, race_type: "single" }, stages).stageNumber, null, "endagsløb røres ikke");
+  assert.equal(chooseA2FlatStage(race, stages.filter((s) => ![1, 5].includes(s.stage_number))).reason, "no_candidate");
+});
+
+test("#2757 A2 property: hvert S5-etapeløb får én rigtig flad etape; alt andet er bit-identisk med før A2", () => {
+  const races = [];
+  for (const type of RACE_IDENTITY_TYPES) for (let stages = 3; stages <= 8; stages++) for (let s = 0; s < 60; s++) races.push(idRace(type, stages, s));
+  for (const spec of s5Races()) if (spec.race_type === "stage_race") for (let s = 0; s < S5_SEEDS; s++) races.push(raceFor(spec, s));
+  let swapped = 0;
+  const buckets = new Set();
+  for (const race of races) {
+    const before = generateRaceStageProfiles(race, S5_PRE_A2);
+    const after = generateRaceStageProfiles(race, S5);
+    const where = `${race.race_identity_type ?? race.terrain_archetype}/${race.stages} ${race.season_id}: ${before.map((p) => p.profile_type).join(" ")}`;
+    assert.equal(after.length, before.length, where);
+    const diff = after.map((p, i) => (JSON.stringify(p) === JSON.stringify(before[i]) ? null : i)).filter((i) => i !== null);
+    if (before.some((p) => p.profile_type === "flat")) { assert.deepEqual(diff, [], `${where}: løb med flad etape røres ikke`); continue; }
+    const { stageNumber, candidates } = chooseA2FlatStage(race, before);
+    if (stageNumber == null) { assert.deepEqual(diff, [], where); assert.deepEqual(candidates, [], where); continue; }
+    swapped += 1;
+    assert.deepEqual(diff, [stageNumber - 1], `${where}: kun den valgte etape ændres`);
+    const old = before[stageNumber - 1];
+    const neu = after[stageNumber - 1];
+    assert.ok(A2_REPLACEABLE_TYPES.includes(old.profile_type), `${where}: ${old.profile_type} erstattet`);
+    assert.ok(!signatureStageNumbers(race.signature, before).has(stageNumber), `${where}: signatur-etapen`);
+    assert.equal(isSummitFinishStage(old), false, `${where}: topankomst`);
+    assert.equal(neu.profile_type, "flat", where);
+    assert.equal(deriveTerrainType(neu.climbs), "flat", `${where}: ruten er flad efter B+`);
+    assert.ok(isFinishAllowed("flat", neu.finale_type), `${where}: ${neu.finale_type}`);
+    assert.equal(neu.generator_version, old.generator_version, where);
+    assert.ok(neu.distance_km > 0 && Array.isArray(neu.sprints) && neu.sprints.some((s) => s.kind === "finish"), `${where}: rute med målspurt`);
+    assert.deepEqual(checkStage(neu).violations.filter((v) => !KNOWN_ELEVATION_SUM.test(v)), [], `${where}: benchmark-gatens etape-tjek`);
+    assert.deepEqual(ensureFlatStageS5(race, before), after, `${where}: ensureFlatStageS5 = generatorens output`);
+    assert.deepEqual(buildA2FlatStage(race, stageNumber, { generatorVersion: old.generator_version }), neu, where);
+    buckets.add(flatStagePositionBucket(stageNumber - 1, before.length));
+  }
+  assert.ok(swapped > 50, `for få løb uden flad etape i stikprøven (${swapped})`);
+  assert.ok(buckets.size >= 3, `placeringen varierer for lidt: ${[...buckets].join(", ")}`);
+});
+
+// ── #2757 rækkefølge-variation ──────────────────────────────────────────────────────
+
+const S5_PRE_ORDER = { profileModel: "s5", a2FlatStage: false, orderVariation: false };
+
+test("#2757 skabelonen (bakket, kuperet, mellembjerg, kuperet) får ny rækkefølge af samme etaper", () => {
+  const race = { id: "ov", external_id: "ov-1", race_type: "stage_race", stages: 4, season_id: "s5" };
+  const stages = ["rolling", "hilly", "medium_mountain", "hilly"].map((t, i) => ({ stage_number: i + 1, profile_type: t, finale_type: "punch", climbs: [], id: `row-${i}` }));
+  assert.equal(isAscendingOrder(stages.map((s) => s.profile_type)), true);
+  const pick = chooseStageOrderVariation(race, stages);
+  assert.equal(pick.reason, "reordered");
+  assert.deepEqual(pick.fixed, [3, 4], "kongeetapen og finalen står fast");
+  assert.deepEqual(pick.order, [2, 1, 3, 4]);
+  const out = applyStageOrder(stages, pick.order);
+  assert.deepEqual(out.map((s) => s.stage_number), [1, 2, 3, 4]);
+  assert.deepEqual(out.map((s) => s.id), ["row-1", "row-0", "row-2", "row-3"], "samme etaper, kun nyt nummer");
+  assert.equal(isAscendingOrder(out.map((s) => s.profile_type)), false);
+  assert.deepEqual(chooseStageOrderVariation(race, stages), pick, "deterministisk");
+  assert.throws(() => applyStageOrder(stages, [1, 1, 3, 4]), /not a permutation/);
+});
+
+test("#2757 variationen rører ikke varierede løb, Grand Tours, endagsløb, tidskørsler eller signaturen", () => {
+  const base = { id: "ov", external_id: "ov-2", race_type: "stage_race", season_id: "s5" };
+  const mk = (types, extra = {}) => types.map((t, i) => ({ stage_number: i + 1, profile_type: t, finale_type: null, climbs: [], ...extra[i] }));
+  assert.equal(chooseStageOrderVariation(base, mk(["hilly", "flat", "mountain", "flat", "hilly"])).reason, "varied");
+  assert.equal(chooseStageOrderVariation({ ...base, race_type: "single" }, mk(["hilly"])).reason, "not_stage_race");
+  assert.equal(chooseStageOrderVariation({ ...base, race_class: "TourFrance" }, mk(["flat", "hilly", "mountain", "hilly"])).reason, "grand_tour");
+  const itt = mk(["itt", "flat", "rolling", "hilly", "mountain", "hilly"]);
+  const pickItt = chooseStageOrderVariation(base, itt);
+  assert.equal(pickItt.order?.[0], 1, "prologen står fast");
+  const sig = { features: [{ kind: "climb", name: "Sig", category: "3", length_km: 2, avg_gradient: 6, stage_hint: "any", summit_finish: false }] };
+  const withSig = mk(["rolling", "flat", "hilly", "medium_mountain", "hilly"], { 2: { climbs: [{ name: "Sig" }] } });
+  const pickSig = chooseStageOrderVariation({ ...base, signature: sig }, withSig);
+  assert.ok(pickSig.fixed.includes(3), "signatur-etapen står fast");
+  if (pickSig.order) assert.equal(pickSig.order[2], 3);
+});
+
+test("#2757 property: generatoren giver samme etaper (multisæt, indhold) i en rækkefølge uden skabelonen, og samme kvote-input", () => {
+  const races = [];
+  for (const type of RACE_IDENTITY_TYPES) for (let stages = 3; stages <= 8; stages++) for (let s = 0; s < 30; s++) races.push(idRace(type, stages, s));
+  for (const spec of s5Races()) if (spec.race_type === "stage_race") for (let s = 0; s < S5_SEEDS; s++) races.push(raceFor(spec, s));
+  let reordered = 0;
+  const before = [];
+  const after = [];
+  for (const race of races) {
+    const crescendo = generateRaceStageProfiles(race, S5_PRE_ORDER);
+    const varied = generateRaceStageProfiles(race, { profileModel: "s5", a2FlatStage: false });
+    const where = `${race.race_identity_type ?? race.terrain_archetype}/${race.stages} ${race.season_id}: ${crescendo.map((p) => p.profile_type).join(" ")}`;
+    assert.deepEqual(varied, varyStageOrderS5(race, crescendo), where);
+    const strip = (ps) => ps.map((p) => JSON.stringify({ ...p, stage_number: 0 })).sort();
+    assert.deepEqual(strip(varied), strip(crescendo), `${where}: samme etaper`);
+    assert.deepEqual(varied.map((p) => p.stage_number), crescendo.map((p) => p.stage_number), where);
+    for (const n of signatureStageNumbers(race.signature, crescendo)) {
+      assert.equal(JSON.stringify(varied[n - 1]), JSON.stringify(crescendo[n - 1]), `${where}: signatur-etapen ${n} står fast`);
+    }
+    assert.equal(JSON.stringify(varied.at(-1)), JSON.stringify(crescendo.at(-1)), `${where}: finalen står fast`);
+    if (JSON.stringify(varied) !== JSON.stringify(crescendo)) {
+      reordered += 1;
+      assert.equal(isAscendingOrder(varied.map((p) => p.profile_type)), false, `${where}: stadig skabelonen`);
+      // Codex P2: højst to ens etapetyper i træk, eller løbets eget længste løb (CALENDAR_RULES §7f).
+      const run = (ts) => ts.reduce((acc, t, i) => { acc.cur = i && t === ts[i - 1] ? acc.cur + 1 : 1; acc.max = Math.max(acc.max, acc.cur); return acc; }, { cur: 0, max: 0 }).max;
+      assert.ok(run(varied.map((p) => p.profile_type)) <= Math.max(2, run(crescendo.map((p) => p.profile_type))), `${where}: for mange ens i træk`);
+    }
+    if (race.terrain_archetype !== "grand_tour") {
+      before.push({ key: where, types: crescendo.map((p) => p.profile_type) });
+      after.push({ key: where, types: varied.map((p) => p.profile_type) });
+    }
+  }
+  assert.ok(reordered > 100, `for få løb fik ny rækkefølge (${reordered})`);
+  const mb = measureOrderVariation(before);
+  const ma = measureOrderVariation(after);
+  assert.ok(ma.ascendingShare < mb.ascendingShare, "andelen med fast stigende rækkefølge falder");
+  assert.ok(ma.positionDistance <= mb.positionDistance, "fordelingen pr. placering kommer ikke længere fra rigtige etapeløb");
+});
+
+test("#2757 kvoten: s5StageRaceFillerSlots og divisionens kvote er uændrede af rækkefølgen", () => {
+  for (const type of RACE_IDENTITY_TYPES) {
+    for (let s = 0; s < 10; s++) {
+      const race = idRace(type, 6, s);
+      const slots = s5StageRaceFillerSlots(race);
+      const varied = generateRaceStageProfiles(race, { profileModel: "s5", a2FlatStage: false }).map((p) => p.profile_type).sort();
+      assert.deepEqual(varied, [...slots.guaranteed, ...slots.natural].sort(), `${type} s${s}`);
+    }
+  }
 });

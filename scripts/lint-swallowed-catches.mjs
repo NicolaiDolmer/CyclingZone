@@ -158,7 +158,6 @@ const BASELINE = {
   "backend/lib/responseCache.js": 4,
   "backend/cron.js": 3,
   "backend/lib/raceRunner.js": 3,
-  "backend/lib/pcmResultsImport.js": 3,
   "backend/lib/discordDmDelivery.js": 3,
   "backend/lib/auctionFinalization.js": 3,
   "backend/lib/stageScheduler.js": 2,

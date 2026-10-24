@@ -88,7 +88,7 @@ import { ownRiderIdsForOneDay } from "../lib/oneDayTimeline.ts"; // #6512
 import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
-import { defaultStage, resolveV2Tab, todaysStage } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
+import { defaultStage, resolveV2Tab, todaysStages } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
 import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfilesQuery.ts"; // #6570
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -752,7 +752,7 @@ export default function RaceDetailPage() {
   );
   // Kun en etape der faktisk koeres i dag faar "Today"-maerket (ikke fallbacken).
   const v2TodayStage = useMemo(
-    () => todaysStage({ totalStages: v2Total, schedule, now: new Date(nowMs) }),
+    () => todaysStages({ totalStages: v2Total, schedule, now: new Date(nowMs) }),
     [v2Total, schedule, nowMs],
   );
   // Etapen guld-knappen "Set tactics for stage N" naevner; null = Tactics-fanen
@@ -1055,6 +1055,9 @@ export default function RaceDetailPage() {
   const totalStages = race.stages ?? 1;
   const ridden = race.stages_completed ?? 0;
   const runningStage = Math.min(totalStages, ridden + 1);
+  // Ejer 24/10: "kører" kun mens etapen faktisk køres. Mellem to etaper (næste start
+  // ligger ude i fremtiden) siger chippen hvornår den næste etape starter.
+  const nextStageLater = nextStart && nextStart.stageNumber === runningStage && nextStart.date.getTime() > nowMs;
   const focusStage = phase === "before" ? scheduledStage : runningStage;
   const focusProfile = profileByStage[focusStage] ?? null;
   // #4979: Hold-fanens profil-raekke findes FOER og UNDER loebet, hvor der er en
@@ -1121,7 +1124,7 @@ export default function RaceDetailPage() {
       ...(race.race_type === "stage_race" ? [{
         label: t("racePage.hero.stageLabel"),
         value: `${focusStage} / ${totalStages}`,
-        sub: phase === "during" ? t("racePage.hero.racingNow") : t("racePage.hero.notStarted"),
+        sub: phase === "during" ? (nextStageLater ? t("racePage.hero.nextStageSub") : t("racePage.hero.racingNow")) : t("racePage.hero.notStarted"),
       }] : [{
         label: t("detail.stat.status"),
         value: t(`status.${ds}`),
@@ -1147,7 +1150,9 @@ export default function RaceDetailPage() {
 
   // Status-chippen i hero'ens højre hjørne: ÉN sætning om hvor løbet er.
   const statusChip = phase === "during" && race.race_type === "stage_race"
-    ? { live: true, text: t("racePage.hero.chipStageOnRoad", { number: runningStage }) }
+    ? (nextStageLater
+      ? { live: false, text: t("racePage.hero.chipNextStage", { number: runningStage, time: formatStageTime(nextStart.date, locale) }) }
+      : { live: true, text: t("racePage.hero.chipStageOnRoad", { number: runningStage }) })
     : phase === "during"
       ? { live: true, text: t("racePage.hero.chipRacing") }
       : phase === "after"

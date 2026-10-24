@@ -292,6 +292,7 @@ import { isRaceDayIntentionEnabled } from "../lib/raceIntentionFlag.js"; // #463
 import { buildCalendarModel, toCalendarWireEntry, toCopenhagenISODate, buildGameDayDateMap } from "../lib/raceCalendar.js";
 import { snapPeakWindow, lastStageDate, isPlanLocked, canCreatePeakPlan, serializePlan, recommendFocusForDemand, buildSuggestedTrainingBlock, MAX_PEAK_PLANS_PER_SEASON, PEAK_WINDOW_RADIUS_DAYS } from "../lib/riderPeakPlans.js";
 import { dateStringToOrdinal, loadTargetRaceDemands, loadPeakPlans, resolvePeakTrainingQualities, aggregateDemandVector } from "../lib/racePeakPlans.js";
+import { buildRouteMatch, raceRouteVector, routeMatchRevisionFor, ROUTE_MATCH_STAGE_COLUMNS } from "../lib/routeMatch.js"; // #6207
 import { RACE_V3_TUNING, validEffortsFor } from "../lib/raceRoles.js";
 import { peakStatus, stageProfileStrip, raceProfileSummary, countRivalPeaks, teamDivisionKnownForSeason, peakValueFormPoints, findPaybackCollisions, raceCardPeakOverlay } from "../lib/plannerBoard.js";
 import { suggestPeaksForRider, shouldRecommendNoPeak, buildNoPeakSuggestion } from "../lib/peakSuggestions.js";
@@ -299,6 +300,7 @@ import { peakTargetRaceStarted, plannerSquadFor } from "../lib/peakTargetScope.j
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
+import { buildNextScheduledUpdates } from "../lib/nextScheduledUpdates.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
@@ -481,9 +483,7 @@ import {
   buildRaceResultsFromPending,
   rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
-import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
 import { getResultWebhooksAndLabel, sendWebhook } from "../lib/discordNotifier.js";
-import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
 import { generateRaceStageProfiles, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
@@ -4342,7 +4342,7 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     // #5517: seniorkalenderen — ungdomspuljer og ungdomsløb holdes ude (squads.withSeniorSquadScope).
     const [racesRes, divisionsRes] = await Promise.all([
       withSeniorSquadScope((senior) => senior(supabase.from("races")
-        .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id, game_day_start"))
+        .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id, game_day_start, engine_rules_revision"))
         .eq("season_id", season.id)),
       withSeniorSquadScope((senior) => senior(supabase.from("league_divisions").select("id, tier, pool_index, label")).order("tier").order("pool_index")),
     ]);
@@ -4353,7 +4353,8 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
 
     const [scheduleRows, fullProfiles] = await Promise.all([
       fetchAllScheduleRowsWithGameDay(supabase, allRaceIds),
-      fetchAllStageProfiles(supabase, allRaceIds, "race_id, stage_number, profile_type, finale_type, demand_vector"),
+      // #6207: rute-match-kolonnerne (motorens rute) — demandVector nedenfor er motorens løbsvektor.
+      fetchAllStageProfiles(supabase, allRaceIds, ROUTE_MATCH_STAGE_COLUMNS),
     ]);
     // #4245: løbsdage pr. løb = distinkte game_day. Afledt af de allerede hentede
     // scheduleRows, intet ekstra DB-kald. Går med i racesOut nedenfor, så
@@ -4384,9 +4385,12 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
     }
     const stripByRace = new Map();
     const demandByRace = new Map();
+    const routeVectorByRace = new Map(); // #6207: rute-matchens løbsvektor (routeMatch.js)
+    const raceRowById = new Map(raceList.map((r) => [r.id, r]));
     for (const [rid, rows] of profByRace) {
       stripByRace.set(rid, stageProfileStrip(rows));
       demandByRace.set(rid, aggregateDemandVector(rows.map((x) => ({ demand_vector: x.demand_vector }))));
+      routeVectorByRace.set(rid, raceRouteVector(rows, routeMatchRevisionFor(raceRowById.get(rid))));
     }
 
     // Rival-neutralisering: alle sæsonens peak-planer m. holds-tilhør → distinkte
@@ -4509,7 +4513,9 @@ router.get("/peak-plans/board", requireAuth, async (req, res) => {
           terrainProfile: e.terrainProfile, // #6683: løbets dominerende profile_type (ét farvet ikon pr. etapetype)
           stageProfiles: strip,
           profileSummary: raceProfileSummary(strip),
-          demandVector: demandByRace.get(e.id) || null,
+          // #6207: motorens løbsvektor, så planner-skuffens rute-match er samme tal
+          // som holdudtagelsen og sæsonmatrixen (fokus-anbefalingen bruger stadig demandByRace).
+          demandVector: routeVectorByRace.get(e.id) || null,
           rivalPeakCount: rivalCounts.get(e.id) || 0,
         };
       });
@@ -4746,7 +4752,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
       // frosset trup client-side (fjernelse er stadig altid tilladt, se PUT /selection).
       // #4701: scheduled_for skal med — getSelectionContext vurderer skadesstatus mod
       // LØBETS startdato, ikke "nu" (raceSelectionReferenceDateStr, riderEligibility.js).
-      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id, scheduled_for, squad")
+      .select("id, name, race_type, race_class, stages, stages_completed, status, season_id, league_division_id, scheduled_for, squad, engine_rules_revision")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5139,7 +5145,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     // #5517: seniorløbene (squads.withSeniorSquadScope).
     const { data: raceRows, error: racesErr } = await withSeniorSquadScope((senior) => senior(supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id"))
+      .select("id, name, race_type, race_class, stages, status, stages_completed, league_division_id, engine_rules_revision"))
       .eq("season_id", season.id));
     if (racesErr) throw new Error(`races (selection/season): ${racesErr.message}`);
     const allRaceIds = (raceRows || []).map((r) => r.id);
@@ -5197,7 +5203,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
     const [abilitiesRes, conditionRes, profileRows] = await Promise.all([
       riderIds.length ? supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIds) : Promise.resolve({ data: [] }),
       riderIds.length ? supabase.from("rider_condition").select("rider_id, injured_until").in("rider_id", riderIds) : Promise.resolve({ data: [] }),
-      fetchAllStageProfiles(supabase, ownRaceIds, "race_id, stage_number, demand_vector"),
+      fetchAllStageProfiles(supabase, ownRaceIds, ROUTE_MATCH_STAGE_COLUMNS), // #6207
     ]);
     if (abilitiesRes.error) throw new Error(`rider_derived_abilities (selection/season): ${abilitiesRes.error.message}`);
     if (conditionRes.error) throw new Error(`rider_condition (selection/season): ${conditionRes.error.message}`);
@@ -5210,8 +5216,14 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       if (!profByRace.has(row.race_id)) profByRace.set(row.race_id, []);
       profByRace.get(row.race_id).push(row);
     }
+    // #6207: ét rute-match-tal fra motoren (routeMatch.js). Tallet pr. rytter x løb
+    // sendes færdigt (rider.routeMatch); vektoren kun til forklaringen i popoveren.
+    const ownRaceRowById = new Map(ownRaceRows.map((r) => [r.id, r]));
+    const routeMatchByRace = new Map();
     for (const race of races) {
-      race.demandVector = aggregateDemandVector(profByRace.get(race.id) || []);
+      const rm = buildRouteMatch({ race: ownRaceRowById.get(race.id), stages: profByRace.get(race.id) || [] });
+      routeMatchByRace.set(race.id, rm);
+      race.demandVector = rm.raceVector;
     }
 
     const riders = teamRiders.map((r) => {
@@ -5222,6 +5234,8 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
         primaryType: r.primary_type ?? null,
         secondaryType: r.secondary_type ?? null,
         abilities: ab ? Object.fromEntries(RACE_SIM_ABILITY_KEYS.map((k) => [k, ab[k] ?? null])) : null,
+        // #6207: { [raceId]: 0-100 } — samme tal som holdudtagelsen og Taktik.
+        routeMatch: ab ? Object.fromEntries(races.map((race) => [race.id, routeMatchByRace.get(race.id)?.race(ab) ?? null])) : null,
         injured: isRiderInjured(conditionByRider.get(r.id)?.injured_until ?? null, todayStr),
         // #4119: solgt, men kører løbet færdigt for dette hold. Vises, kan ikke udtages.
         outgoing: Boolean(r.pending_team_id),
@@ -5314,7 +5328,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       .from("races")
       // #4701: scheduled_for skal med — getSelectionContext (kaldt pr. kolonne nedenfor)
       // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
-      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text), scheduled_for"))
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text), scheduled_for, engine_rules_revision"))
       .eq("season_id", season.id));
     if (racesErr) throw new Error(`races (distribution): ${racesErr.message}`);
     const raceIds = (races || []).map((r) => r.id);
@@ -6329,7 +6343,7 @@ router.get("/races/:raceId/stage-roles", requireAuth, async (req, res) => {
     ]);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed, squad, scheduled_for")
+      .select("id, status, stages, stages_completed, squad, scheduled_for, engine_rules_revision")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6369,7 +6383,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
   try {
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed")
+      .select("id, status, stages, stages_completed, engine_rules_revision")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -9558,7 +9572,7 @@ router.post("/admin/riders/:id/retirement", requireAdmin, adminWriteLimiter, asy
 
 // POST /api/admin/import-results (Excel-upload) fjernet 2026-06-12 (#1180 pkt 3,
 // jf. #1179-kill-listen) — manuel resultat-upload døde med egen race-motor.
-// PCM-importen (/admin/import-results-pcm) er bevidst bevaret som nød-fallback.
+// PCM-importen (/admin/import-results-pcm) fjernet 2026-10-24 (#7082).
 
 // POST /api/admin/approve-results — approve pending race result submission
 router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (req, res) => {
@@ -9695,7 +9709,14 @@ router.get("/inbox/pending", requireAuth, async (req, res) => {
 
   try {
     const result = await getPendingInboxItems({ supabase, teamId: req.team.id });
-    res.json(result);
+    // #6962: næste ugentlige opdateringer til Dashboard "Næste træk". Best-effort:
+    // en fejl her må aldrig fælde pending-listen.
+    let next_updates = null;
+    try {
+      const academyIntakeScheduled = (await isAcademyEnabled(supabase)) && !(await isAcademyIntakePullEnabled(supabase));
+      next_updates = buildNextScheduledUpdates({ now: new Date(), academyIntakeScheduled });
+    } catch { /* best-effort: next_updates er kun pynt paa kortet; pending-listen skal altid svare */ }
+    res.json({ ...result, next_updates });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -15027,52 +15048,8 @@ router.post("/admin/discord/sync-division-roles", requireAdmin, adminWriteLimite
 // rytteres stats med et gammelt PCM-ark (spillet ejer selv stats efter #677),
 // og Sheets-resultatimport døde med egen race-motor jf. #1179-kill-listen.
 
-// POST /api/admin/import-results-pcm — importer PCM-resultatfiler (SpreadsheetML 2003).
-// Multi-fil pr. løb; body.dry_run="true" giver preview uden DB-writes. Felt-navn: "files".
-// GC-timing + hold-alias + eksakt navne-match håndteres i pcmResultsImport-pipelinen.
-router.post(
-  "/admin/import-results-pcm",
-  requireAdmin,
-  adminWriteLimiter,
-  adminImportUploadMultipleFiles,
-  async (req, res) => {
-    const files = (req.files || []).map((f) => ({
-      filename: f.originalname,
-      buffer: f.buffer,
-    }));
-    if (!files.length) {
-      return res.status(400).json({ error: "Ingen filer uploadet" });
-    }
-    const dryRun = req.body?.dry_run === "true" || req.body?.dry_run === true;
-
-    // Detaljeret Discord-notifikation pr. importeret løb (kun ved rigtig import).
-    const notifyDiscord = dryRun
-      ? null
-      : async ({ race, preview, resultRows }) => {
-          const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
-          if (!urls.length) return;
-          const embed = buildPcmImportEmbed({ race, preview, resultRows, divisionLabel: label });
-          for (const url of urls) {
-            await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
-          }
-        };
-
-    try {
-      const result = await importPcmResults({
-        supabase,
-        files,
-        dryRun,
-        ensureSeasonStandings,
-        updateStandings,
-        notifyDiscord,
-        adminUserId: req.user.id,
-      });
-      res.json(result);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  },
-);
+// POST /api/admin/import-results-pcm (PCM-nødimport) fjernet 2026-10-24 (#7082):
+// ejer-beslutning, PCM-resultatimporten skal aldrig bruges igen.
 
 // GET /api/admin/race-engine-status — flag-state + scheduled løb med readiness (#1102)
 router.get("/admin/race-engine-status", requireAdmin, async (req, res) => {

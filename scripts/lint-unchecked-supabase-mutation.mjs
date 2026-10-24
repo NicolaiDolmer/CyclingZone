@@ -198,7 +198,6 @@ const BASELINE = {
   "backend/lib/backfillCores.js": 1,
   "backend/lib/boardAutoAccept.js": 1,
   "backend/lib/contractSeed.js": 1,
-  "backend/lib/pcmResultsImport.js": 1,
   "backend/lib/prizePayoutEngine.js": 1,
   "backend/lib/riderValueRefresh.js": 1,
 };
