@@ -80,9 +80,9 @@ export async function loadSeasonStandingDivisions({ supabase, seasonId }) {
 // #6924: ordinary teams parked by the season-end parking sweep (after the cutoff).
 // On the final date they were still active, so the date counts them.
 async function loadTeamsParkedAfter({ supabase, cutoff }) {
-  const rows = await fetchAllRows(() => supabase.from('teams').select('id').gte('parked_at', cutoff.toISOString())
-    .eq('is_bank', false).eq('is_frozen', false).eq('is_test_account', false).order('id'));
-  return rows.map(row => row.id);
+  const rows = await fetchAllRows(() => supabase.from('teams').select('id,is_bank,is_frozen,is_test_account')
+    .gte('parked_at', cutoff.toISOString()).order('id'));
+  return rows.filter(row => !row.is_bank && !row.is_frozen && !row.is_test_account).map(row => row.id);
 }
 
 // #6924: a team that only started (or came back) after the cutoff was not in this season.
