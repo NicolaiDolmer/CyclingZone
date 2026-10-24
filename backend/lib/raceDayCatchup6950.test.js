@@ -41,7 +41,7 @@ test("config: mangler eller ugyldig → kaster (ingen standardtal i repoet)", ()
 test("feltets niveau = median af alle startere; ugyldige ignoreres; tomt → null", () => {
   assert.equal(fieldLevelMedian([60, 40, 50]), 50);
   assert.equal(fieldLevelMedian([40, 50, 60, 70]), 55);
-  assert.equal(fieldLevelMedian([50, null, "x", NaN, 70]), 60);
+  assert.equal(fieldLevelMedian([50, null, "", "x", NaN, undefined, 70]), 60);
   assert.equal(fieldLevelMedian([]), null);
   assert.equal(fieldLevelMedian(undefined), null);
 });

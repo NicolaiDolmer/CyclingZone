@@ -96,6 +96,8 @@ export function assertCatchupConfig(cfg) {
  */
 export function fieldLevelMedian(levels) {
   const values = (Array.isArray(levels) ? levels : [])
+    // Number(null) og Number("") er 0: en manglende rating maa ikke traekke feltet ned.
+    .filter((v) => v != null && v !== "")
     .map(Number)
     .filter(Number.isFinite)
     .sort((a, b) => a - b);
