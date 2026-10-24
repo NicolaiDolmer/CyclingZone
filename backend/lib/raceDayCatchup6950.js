@@ -143,9 +143,9 @@ export function decisionBonusShare(decision, cfg) {
 }
 
 /**
- * Loebets ekstra som multiplikator (>= 1, aldrig under basis).
- *
- *   1 + supplement + levelBonusMax * niveau-andel + decisionBonusMax * afgoerelses-andel
+ * Loebets ekstra som multiplikator (>= 1, aldrig under basis). Den bygges af et fast
+ * tillaeg, en bonus for passende svaerhed og en bonus for at vaere med i afgoerelsen.
+ * Den praecise sammensaetning og alle vaegte er privat (hard rule 17, balance-internals/).
  *
  * Gaelder KUN etapens profil-evner (se raceDayCatchupAbilityMultiplier).
  * Udgaaet rytter (finished === false, S16): 1 = kun basis.
