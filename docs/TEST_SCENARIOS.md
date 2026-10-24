@@ -48,7 +48,6 @@
 - `POST /api/admin/seasons/:id/rebuild-standings` kan genopbygge standings for en aktiv eller afsluttet sæson ud fra persistede løbsresultater
 - Season end opdaterer alt
 - Season end bruger den delte board-engine og opdaterer `satisfaction` + `budget_modifier` konsistent
-- `POST /api/admin/import-results-pcm` recalculerer standings og prize-transaktioner via samme shared runtime-path (`applyRaceResults`) som `POST /api/admin/approve-results` (Excel-/Sheets-import fjernet 2026-06-12, #1179/#1180)
 
 ### Board
 - `POST /api/board/proposal` må ikke generere `min_riders` uden for divisionens min/max-grænser
@@ -94,7 +93,7 @@
 - `GET /api/board/status` returnerer board-outlook/personality fra den delte board-engine
 - `GET /api/board/status` returnerer også `identity_profile`, så Board-siden ikke skal udlede holdspecialisering lokalt
 - `GET /api/board/status` returnerer også `request_status` og `request_options`, så Board-siden ikke bygger request-state lokalt
-- `approve-results` og `import-results-pcm` bruger samme finance-type (`prize`) og samme standings-recalculation
+- `approve-results` og race-motoren bruger samme finance-type (`prize`) og samme standings-recalculation
 - Shared notification-writer deduplikerer nylige identiske payloads, så samme event ikke indsættes igen ved cron/retries
 
 ---
