@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {1 subasta termina en menos de una hora} other {# subastas terminan en menos de una hora}}",
     "squadSelectionMissing": "Falta la selección de la plantilla para {race}",
     "notTrainedToday": "Hoy no has entrenado",
-    "boardPlanMissing": "Aún no has negociado ningún plan con la directiva"
+    "boardPlanMissing": "Aún no has negociado ningún plan con la directiva",
+    "nextValueUpdate": "Próxima actualización de valores: {when}",
+    "nextAcademyIntake": "Próxima captación de la academia: {when}"
   },
   "seasonStart": {
     "title": "Temporada {number}: ponte en marcha",
