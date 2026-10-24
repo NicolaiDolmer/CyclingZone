@@ -56,3 +56,9 @@ test("G11: aggregeret pr. etapeloebsgruppe (GT og korte), endagsloeb maales ikke
   assert.match(md, /gt tidlig GC-indhentning/);
   assert.match(md, /stage_race yo-yo/);
 });
+
+test("G11 (Codex #7171): en reaktion der starter i indhentningens segment taeller (motoren skriver indhentningen foerst)", () => {
+  const ev = [formed(5, ["a"]), caught(early, ["a"], ["T1"]), reaction(early, "T1", "started")];
+  assert.equal(gcChaseCatchFacts(ev, D).gcEarlyCatch, true);
+  assert.equal(gcChaseCatchFacts([formed(5, ["a"]), caught(early, ["a"], ["T1"]), reaction(early + 5, "T1", "started")], D).gcEarlyCatch, false, "en senere start taeller ikke");
+});

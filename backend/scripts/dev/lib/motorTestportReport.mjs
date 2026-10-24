@@ -9,6 +9,8 @@
 import { raceGroupOf } from "./breakawayIntent.mjs";
 import { SHORT_STAGE_RACE_GROUPS, shortStageRaceGroup, withShortRaceGapBands } from "./tourScorecard.mjs";
 
+import { evaluateV3Gates, measureSprintFinale, v3GatesApply } from "./v3Gates.mjs";
+
 /** Tidskoersler: ingen udbrud, ingen favoritter at doemme. */
 export const TIME_TRIAL_CLASSES = Object.freeze(["itt", "itt_hilly", "ttt"]);
 const isRoad = (row) => !TIME_TRIAL_CLASSES.includes(row?.cls ?? row?.profile_type);
@@ -351,7 +353,7 @@ export function benchView(json) {
  * Hele kortet: baseline og kandidat side om side + bench. `meta` er koerslens
  * parametre (seeds, parallel, kilde, fejlede loeb ...), skrives som de er.
  */
-export function buildTestportCard({ raceResults, baseline, candidate, benchByRevision = {}, meta = {}, thresholds = {} }) {
+export function buildTestportCard({ raceResults, baseline, candidate, benchByRevision = {}, meta = {}, thresholds = {}, contexts = new Map() }) {
   // #6804 P7: et kort etapeloebs scorecard (koert uden de private baand) doemmes her mod M2-baandene.
   const results = raceResults.filter(Boolean).map((rr) => withGapBands(rr, thresholds?.shortStageRaceGapBands));
   const base = aggregateRevision(results, baseline, thresholds);
@@ -372,6 +374,15 @@ export function buildTestportCard({ raceResults, baseline, candidate, benchByRev
     verdict: { failDelta: cand.counts.FAIL - base.counts.FAIL, passDelta: cand.counts.PASS - base.counts.PASS, hardGateRegressions: regressions },
     perRace: perRaceRows(results, baseline, candidate),
     bench: { baseline: benchByRevision[baseline] ?? null, candidate: benchByRevision[candidate] ?? null },
+    // #6804 v3 (ejer valg 8 A): G16-G19 + G2-flad blokerer taendingen. Doemt for begge
+    // revisioner; kun kandidatens dom blokerer, og kun naar kandidaten er v3 eller senere.
+    v3Gates: {
+      applies: v3GatesApply(candidate),
+      baseline: evaluateV3Gates({ raceResults: results, revision: baseline, contexts, bands: thresholds.v3Gates ?? null }),
+      candidate: evaluateV3Gates({ raceResults: results, revision: candidate, contexts, bands: thresholds.v3Gates ?? null }),
+    },
+    // #2757 S0: spurtfinalen (maaling, ingen gate).
+    sprintFinale: { baseline: measureSprintFinale(results, baseline, contexts), candidate: measureSprintFinale(results, candidate, contexts) },
   };
 }
 
@@ -499,6 +510,54 @@ export function raceGroupMarkdown(card) {
   return out;
 }
 
+/** #6804: kortets dom-linje for v3-gaterne (G16-G19 + G2-flad). */
+export function v3GateLine(card) {
+  const v = card.v3Gates;
+  if (!v?.candidate) return "- v3-gaterne: ikke doemt.";
+  if (!v.applies) return `- v3-gaterne (G16-G19, G2-flad) blokerer kun en v3-kandidat; ${card.candidate} er ikke v3, dommen vises til orientering.`;
+  return v.candidate.blocked
+    ? `- **TAEND-GATE v3 BLOKERET:** ${v.candidate.reasons.join("; ")}.`
+    : "- Taend-gaten for v3: G16-G19 og G2-flad er groenne.";
+}
+
+/** Vaerdien af en v3-gate som kort tekst (tal kun i det private kort). */
+export function v3GateValueText(g) {
+  const x = g?.value;
+  if (!x) return "-";
+  switch (g.id) {
+    case "G16": return [...Object.entries(x.byGroup ?? {}).filter(([, v]) => v.n).map(([k, v]) => `${k} ${fmtPct(v.gcAlsoKom)} (n ${v.n})`), `udbrudspoint ${x.komFromBreak ? fmtPct(x.komFromBreak.share) : "-"}`].join(" · ");
+    case "G17": return [...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.share)}`), `kaptajn ${fmtPct(x.captainRate)} / hjaelper ${fmtPct(x.helperRate)}`].join(" · ");
+    case "G18": return `sprinter ${fmtPct(x.sprinterWins)} · klassementsvinder ${fmtPct(x.gcWinnerWins)} (n ${x.n}, ${x.races} loeb)`;
+    case "G19": return `samlet ${fmtS(x.median)} (n ${x.n}) · ${Object.entries(x.byDivision ?? {}).map(([d, v]) => `${String(d).slice(0, 8)} ${fmtS(v.median)}`).join(" · ")}`;
+    case "G2F": return `${x.n} etaper · over oevre zone uden jagt-interesse ${x.overUpperWithoutUnchased ?? "-"} · over haard graense ${x.overHardMax ?? "-"}`;
+    default: return "-";
+  }
+}
+
+function v3GateSection(card) {
+  const v = card.v3Gates;
+  if (!v?.candidate) return [];
+  const byId = (side) => Object.fromEntries((v[side]?.gates ?? []).map((g) => [g.id, g]));
+  const b = byId("baseline");
+  return ["", `## Taend-gaten for v3 (#6804, ejer valg 8 A: blokerende)${v.applies ? "" : " - til orientering"}`, "",
+    ...table(["Gate", `${card.baseline} dom`, `${card.baseline} vaerdi`, `${card.candidate} dom`, `${card.candidate} vaerdi`, "Hvorfor (kandidat)"],
+      (v.candidate.gates ?? []).map((g) => [`${g.id} ${g.issue}: ${g.label}`, b[g.id]?.status ?? "-", v3GateValueText(b[g.id]), g.status, v3GateValueText(g), g.why ?? "-"])),
+    "", "MANGLER = ingen maaling i scorecardet (motor-sporets felt er ikke leveret endnu) eller intet privat baand; det blokerer som FAIL."];
+}
+
+/** #2757 S0: spurtfinalens maaling, baseline og kandidat side om side. */
+function sprintFinaleSection(card) {
+  const s = card.sprintFinale;
+  if (!s?.baseline && !s?.candidate) return ["", "## #2757 S0: spurtfinalen", "", "Ingen spurtfinaler i koerslen (eller ingen loebskontekst/sprintTop10 i scorecardet)."];
+  const keys = [...new Set([...Object.keys(s.baseline ?? {}), ...Object.keys(s.candidate ?? {})])].sort((a, b) => (a === "alle" ? -1 : b === "alle" ? 1 : a.localeCompare(b)));
+  const cells = (x) => (x ? [String(x.n), fmtPct(x.bestSprinterWins), fmtPct(x.top3Wins), fmtN(x.winnerSprintRankMedian), fmtPct(x.roleShares?.sprint_captain ?? 0), fmtPct(x.helperBeatOwnSprintCaptain), fmtN(x.top10MeanRankDiffMedian), fmtPct(x.top5SprintersInTop10Median)] : Array(8).fill("-"));
+  const head = ["n", "bedste sprinter vandt", "top 3 vandt", "vinderens sprint-rang (median)", "sprint-kaptajn vandt", "hjaelper slog egen sprint-kaptajn", "top 10: afvigelse sprint-rang mod plads (median)", "feltets 5 bedste i top 10 (median)"];
+  const sides = card.sameRevision ? [["baseline", card.baseline]] : [["baseline", card.baseline], ["candidate", card.candidate]];
+  return ["", "## #2757 S0: spurtfinalen (maaling, ingen gate)",
+    ...sides.flatMap(([side, rev]) => ["", `### ${rev}`, "", ...table(["Udsnit", ...head], keys.map((k) => [k, ...cells(s[side]?.[k])]))]),
+    "", "Spurtfinale = flad eller brosten vej-etape (massespurt-etape i scorecardet) hvor udbruddet ikke vandt. Sprint-rang = plads i feltet efter evnen sprint (1 = bedst)."];
+}
+
 /** Markdown-kortet (privat, balance-internals). */
 export function renderTestportMarkdown(card) {
   const b = card.revisions.baseline;
@@ -520,6 +579,8 @@ export function renderTestportMarkdown(card) {
   lines.push(`- FAIL: ${c.counts.FAIL} mod ${b.counts.FAIL} (${fmtDelta(b.counts.FAIL, c.counts.FAIL, (x) => fmtN(x, 0))}); PASS ${fmtDelta(b.counts.PASS, c.counts.PASS, (x) => fmtN(x, 0))}.`);
   const reg = card.verdict.hardGateRegressions;
   lines.push(reg.length ? `- Haarde gates VAERRE under kandidaten: ${reg.map((r) => `${r.label} ${r.baseline} -> ${r.candidate}`).join("; ")}.` : "- Ingen haard gate er vaerre under kandidaten.");
+  lines.push(v3GateLine(card));
+  lines.push(...v3GateSection(card), ...sprintFinaleSection(card));
   lines.push("", "## Side om side", "", ...table(["Maaling", card.baseline, card.candidate, "delta"], sideBySideRows(card)));
   lines.push("", "## Haarde gates", "", ...table(["Gate", ...[card.baseline, card.candidate].flatMap((r) => [`${r} hits`, `${r} loeb ramt`, `${r} loeb FAIL`])],
     HARD_GATES.map(([k, label]) => [label, ...[b, c].flatMap((a) => [fmtN(a.hardGates[k].total, 0), String(a.hardGates[k].racesHit), String(a.hardGates[k].racesFail)])])));
@@ -579,6 +640,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;pad
 <p>${inputLines(card.meta ?? {}).map(esc).join("<br>")}</p>
 ${(card.meta?.failedRaces?.length || card.meta?.missingScorecards?.length || card.meta?.pendingTasks?.length) ? `<p class="bad">UFULDSTAENDIG: ${card.meta?.failedRaces?.length ?? 0} opgaver fejlede, ${card.meta?.missingScorecards?.length ?? 0} scorecards mangler, ${card.meta?.pendingTasks?.length ?? 0} opgaver venter</p>` : ""}
 <p class="${reg.length ? "bad" : "ok"}">${reg.length ? `Haarde gates vaerre: ${esc(reg.map((r) => r.label).join(", "))}` : "Ingen haard gate er vaerre under kandidaten"} · FAIL-delta ${esc(String(card.verdict.failDelta))}</p>
+${card.v3Gates?.applies ? `<p class="${card.v3Gates.candidate.blocked ? "bad" : "ok"}">${esc(v3GateLine(card).replace(/^- /, "").replace(/\*\*/g, ""))}</p>` : ""}
 <table><thead><tr><th>Maaling</th><th class="n">${esc(card.baseline)}</th><th class="n">${esc(card.candidate)}</th><th class="n">delta</th></tr></thead><tbody>${rows}</tbody></table>
 </body></html>`;
 }

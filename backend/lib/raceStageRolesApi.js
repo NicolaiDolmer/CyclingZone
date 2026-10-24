@@ -14,7 +14,7 @@
 
 import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
-import { suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
+import { buildRouteMatch, ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js"; // #6207
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
@@ -301,7 +301,7 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
       // .catch: samme ærlige degradering som de to andre (fetchAllRows kaster,
       // hvor PostgREST-klienten returnerer {error}).
       fetchAllRows(() => supabase.from("race_stage_profiles")
-        .select("stage_number, profile_type, demand_vector")
+        .select(ROUTE_MATCH_STAGE_COLUMNS)
         .eq("race_id", race.id)
         .order("stage_number", { ascending: true })).catch(() => null),
     ]);
@@ -309,18 +309,12 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
     // fladen — den er stadig fuldt brugbar uden kolonnerne.
     const stages = profileRows || [];
     if (!abilitiesRes.error && stages.length) {
-      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, Math.round(suitabilityScore(ab, stages) * 100)]));
-      // Nøglet på stage_number, ikke på arrayets indeks: rækkerne er sorteret
-      // efter stage_number, men et løb kan mangle en profil-række, og så ville
-      // et indeks-array tavst forskyde alle etaper efter hullet.
-      stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => {
-        const perStage = stageSuitabilityScores(ab, stages);
-        const byStage = {};
-        stages.forEach((s, i) => {
-          if (s?.stage_number != null && Number.isFinite(perStage[i])) byStage[s.stage_number] = perStage[i];
-        });
-        return [ab.rider_id, byStage];
-      }));
+      // #6207: samme tal som holdudtagelsen og sæsonmatrixen (routeMatch.js).
+      const routeMatch = buildRouteMatch({ race, stages });
+      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, routeMatch.race(ab)]));
+      // Nøglet på stage_number, ikke på arrayets indeks: et løb kan mangle en
+      // profil-række, og så ville et indeks-array tavst forskyde etaperne.
+      stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, routeMatch.stagesByNumber(ab)]));
     }
     if (!conditionRes.error) {
       conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));

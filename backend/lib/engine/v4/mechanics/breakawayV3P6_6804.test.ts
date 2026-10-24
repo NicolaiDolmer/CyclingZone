@@ -239,3 +239,29 @@ test("#6804 P6: v3 er deterministisk paa en etape i et etapeloeb med klassement"
     assert.equal(run(), run(), name);
   }
 });
+
+test("#6804 P6.3 (Codex #7171): v2 maaler foerste etape paa den faste klassementsevne, ogsaa med loebets etaper i konteksten", () => {
+  // Klatrere (svag paa enkeltstart) mod enkeltstartere (svag paa klatring): loebets bjergetaper vender raekkefoelgen.
+  const mk = (id: string, team: string, climbing: number, tt: number): Entrant => ({ ...entrant(id, team, 45, "captain"), abilities: { ...entrant(id, team, 45).abilities, climbing, time_trial: tt } });
+  const entrants: Record<string, Entrant> = {};
+  for (let i = 0; i < 24; i++) entrants[`c${i}`] = mk(`c${i}`, `C${i}`, 85, 40);
+  for (let i = 0; i < 24; i++) entrants[`t${i}`] = mk(`t${i}`, `T${i}`, 60, 92);
+  for (let i = 0; i < 20; i++) entrants[`f${i}`] = entrant(`f${i}`, `F${i % 5}`, 40);
+  const ids = Object.keys(entrants);
+  const base = { status: "standings", stage_number: 1, leader_id: null, threat_model: "s5", first_stage: true, stages_remaining: 6,
+    standings: ids.map((rider_id) => ({ rider_id, rank: 1, gap_seconds: 0 })) };
+  const plain = normalizeGcContext(base);
+  const withStages = normalizeGcContext({ ...base, race_gc_stages: [1, 2, 3, 4, 5, 6, 7].map((n) => ({ stage_number: n, profile_type: "high_mountain", demand: { climbing: 1 } })) });
+  const groupsFor = (lead: number): RaceGroup[] => [
+    { id: "breakaway-0", kind: "breakaway", rider_ids: ["f0"], gap_seconds: 0, cohesion: 1 },
+    { id: "peloton-0", kind: "peloton", rider_ids: ids.filter((id) => id !== "f0"), gap_seconds: lead, cohesion: 1 },
+  ];
+  const run = (gcContext: GcContext, id: string) => assessGcThreat({ gcContext, groups: groupsFor(120), entrants, route: FLAT, protectedRiderId: id, km: 150,
+    ownTeamId: entrants[id].team_id ?? undefined, skipOwnRiderGroups: true, dangerModel: { stagesRemaining: 6, tuning: DANGER } }).reason;
+  let differsUnderStages = 0;
+  for (const id of ids.filter((x) => x !== "f0")) {
+    assert.equal(run(withStages, id), run(plain, id), `${id}: v2 uaendret`);
+    if (assessGcThreat({ gcContext: withStages, groups: groupsFor(120), entrants, route: FLAT, protectedRiderId: id, km: 150, ownTeamId: entrants[id].team_id ?? undefined, skipOwnRiderGroups: true, dangerModel: { stagesRemaining: 6, tuning: DANGER, s5V3: true } }).reason !== run(plain, id)) differsUnderStages++;
+  }
+  assert.ok(differsUnderStages > 0, "fixturen kan skelne: under v3 flytter loebets etaper hvem der forsvarer");
+});

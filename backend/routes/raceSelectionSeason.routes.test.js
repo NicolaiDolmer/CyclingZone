@@ -62,9 +62,13 @@ test("trupstørrelse pr. løb kommer fra selectionSizeForRace (samme klasser som
   assert.match(block, /sizeMax/);
 });
 
-test("rute-match-demand kommer fra aggregateDemandVector (delt med peak-plans/board)", () => {
+test("#6207: rute-matchen kommer fra motoren (routeMatch.js), samme vektor som peak-plans/board", () => {
   const block = routeBlock('router.get("/races/selection/season"', 8000);
-  assert.match(block, /aggregateDemandVector\(profByRace\.get\(race\.id\) \|\| \[\]\)/);
+  assert.match(block, /buildRouteMatch\(\{ race: ownRaceRowById\.get\(race\.id\), stages: profByRace\.get\(race\.id\) \|\| \[\] \}\)/);
+  assert.match(block, /race\.demandVector = rm\.raceVector/);
+  assert.match(block, /fetchAllStageProfiles\(supabase, ownRaceIds, ROUTE_MATCH_STAGE_COLUMNS\)/);
+  const board = routeBlock('router.get("/peak-plans/board"', 30000);
+  assert.match(board, /demandVector: routeVectorByRace\.get\(e\.id\) \|\| null/);
 });
 
 test("entries returnerer rider_id + race_role pr. løb (fetchTeamRaceEntriesWithRider)", () => {

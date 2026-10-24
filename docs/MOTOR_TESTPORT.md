@@ -69,6 +69,20 @@ Testporten og Tour-gennemtesten kører som udgangspunkt uden rytternes form: eks
 
 `tourScorecard.splitEntrants` tager `form` og `peakWindows` med, når startlisten har dem; uden dem er motor-input byte-identisk med før. Kode: `formTestData.mjs`, `formTestCaches.mjs`. Test: `formTest.test.mjs`.
 
+## Tænd-gaten for v3: G16-G19 og G2 på flad (#6804, ejer valg 8 A)
+
+Kortet dømmer v3-tilvalgenes gates for begge revisioner (spec `docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md` §2 og §5). De **blokerer** kun en kandidat fra `s5_profiles_v3` og frem: en gate der er FAIL eller MANGLER giver "TAEND-GATE v3 BLOKERET" på kortet og exit 1. For andre kandidater vises dommen til orientering.
+
+- **G16 (#6937) bjergtrøjen:** pr. løbsgruppe (etapeløb, Grand Tour) hvor ofte klassementsvinderen også vinder bjergtrøjen, og hvor ofte bjergtrøjens vinder har udbrudspoint.
+- **G17 (#6938) udgåede:** andelen af startere der udgår pr. løbsgruppe; kaptajner udgår ikke oftere end hjælpere.
+- **G18 (#2757) pointtrøjen:** i etapeløb med nok flade etaper vinder en sprinter (sprint-kaptajn eller en af feltets bedste sprintere) trøjen, og klassementsvinderen sjældent.
+- **G19 (#6486) bjerg uden topankomst:** nr. 10 (median, etaper hvor udbruddet ikke vandt) inden for loftet i hver division. Ingen sådan etape i kørslen = N/A.
+- **G2 på flad (#6912):** ingen flad eller rullende etape over den øvre zone uden "ingen jagt-interesse", og ingen over den hårde grænse.
+
+Fail closed: mangler målingen i scorecardet (et motor-spors felt er ikke leveret endnu) eller det private bånd, står gaten som MANGLER. Feltkontrakten pr. seed og etape står øverst i `lib/v3Gates.mjs`; `pointsWinner`/`komWinner` (`lib/jerseyTally.mjs`, samme akkumulering som raceRunner) og `sprintTop10` skrives af `tourScorecard.runTour`. Båndene ligger i den private tærskelfil under nøglen `v3Gates` (hard rule 17). Løbskonteksten (roller, sprint-rang, flade etaper, bjerg uden topankomst, division) læses fra løbets `cache.json`; eksportens mappe gemmes som `cacheDir` i `testport-meta.json`, så `--report-only` finder den igen.
+
+**#2757 S0, spurtfinalen (måling, ingen gate):** på flade og brostens-etaper med massespurt hvor udbruddet ikke vandt: hvor ofte feltets bedste sprinter (og top 3) vinder, vinderens sprint-rang, vinderens rolle, hvor ofte en hjælper på sprint-kaptajnens hold vinder foran ham (holdordrernes lead-out-markering er ikke i scorecardet), og hvor godt top 10 følger sprint-evnen. Pr. terræn og løbsgruppe. Tallene står kun på det private kort.
+
 ## Hvad den gør
 
 1. **Kommende løb:** ikke afsluttede løb uden kørt etape (dem en ny revision binder til), eller en eksport/id-liste.
