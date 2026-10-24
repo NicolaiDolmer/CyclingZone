@@ -45,7 +45,7 @@
  * logger dog et eksplicit season-end-verificeret JA/NEJ-warn, #2361).
  */
 
-import { copenhagenDateString } from './copenhagenTime.js';
+import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { isTrainingDateTeam, loadTrainingDateTeams, trainingDateBounds } from './trainingDateReadiness.js';
 
 import { FIRST_PROMOTION_RELEGATION_SEASON } from "./economyConstants.js";
@@ -315,11 +315,46 @@ export function formatForceOverrideDescription(failedCritical) {
   return `Sæson-transition FORCED med rød readiness-gate (${failedCritical.join(", ")})`;
 }
 /**
+ * #6924: the evening run (loadTrainingDateIndex) settles a date from this
+ * Copenhagen hour. Before it, the date's training is not due yet.
+ */
+export const TRAINING_DATE_SETTLEMENT_HOUR = 20;
+
+/**
+ * #6898/#6924: a season's final training date. Shared by the season-end gate and
+ * the evening run, so both agree on which date closes the season.
+ * end_date is null while a season is active and is also written at cutover.
+ * The scheduled season calendar is the training axis's date authority.
+ * Returns null when the calendar has no valid stage; a read failure throws.
+ */
+export async function loadFinalTrainingDate({ supabase, seasonId }) {
+  // pagination-safe: one maximum timestamp, scoped by the season through races.
+  const { data: lastStages, error: calendarError } = await supabase
+    .from('race_stage_schedule')
+    .select('scheduled_at,races!inner(season_id)')
+    .eq('races.season_id', seasonId)
+    .not('scheduled_at', 'is', null)
+    .order('scheduled_at', { ascending: false })
+    .limit(1);
+  if (calendarError) throw new Error(`Kunne ikke læse sidste træningsdato fra sæsonens løbskalender: ${calendarError.message}`);
+  const scheduledAt = Array.isArray(lastStages) ? lastStages[0]?.scheduled_at : null;
+  const lastInstant = scheduledAt == null ? null : new Date(scheduledAt);
+  return lastInstant && Number.isFinite(lastInstant.getTime()) ? copenhagenDateString(lastInstant) : null;
+}
+
+/**
  * #6898: read-only fail-closed proof before season-end removes the active season.
  * The final civil date comes from the season's calendar, never end_date or today's index:
  * an empty training_date_work result is not evidence of completed training.
  * Existing registered work always counts, including parked/disappeared teams.
  * Unregistered population mirrors loadTrainingDateContext/currentIds.
+ *
+ * #6924 (owner decision B, 20/10): the evening run also settles the final date of
+ * a season that has just left `active` (loadTrainingDateIndex). So on the final
+ * date itself, before the evening run is due, unsettled training no longer
+ * blocks: the result is `deferred` and the season can end at any time that day.
+ * From the evening run's hour, and on any later day, proof is required as before:
+ * by then unsettled work means the run failed, not that it has yet to run.
  */
 export async function assessFinalTrainingDateSettlement({ supabase, season, now } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -327,20 +362,7 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) throw new Error("Explicit valid now required");
   if (season.number === 0) return { blocked: false, tick_date: null, detail: null, blockers: [] };
 
-  // end_date is null while S4 is active and is also written at cutover.
-  // The scheduled season calendar is the training axis's date authority.
-  // pagination-safe: one maximum timestamp, scoped by the season through races.
-  const { data: lastStages, error: calendarError } = await supabase
-    .from('race_stage_schedule')
-    .select('scheduled_at,races!inner(season_id)')
-    .eq('races.season_id', season.id)
-    .not('scheduled_at', 'is', null)
-    .order('scheduled_at', { ascending: false })
-    .limit(1);
-  if (calendarError) throw new Error(`Kunne ikke læse sidste træningsdato fra sæsonens løbskalender: ${calendarError.message}`);
-  const scheduledAt = Array.isArray(lastStages) ? lastStages[0]?.scheduled_at : null;
-  const lastInstant = scheduledAt == null ? null : new Date(scheduledAt);
-  const tickDate = lastInstant && Number.isFinite(lastInstant.getTime()) ? copenhagenDateString(lastInstant) : null;
+  const tickDate = await loadFinalTrainingDate({ supabase, seasonId: season.id });
   if (!tickDate) {
     return { blocked: true, tick_date: null, blockers: [],
       detail: "Sæsonen kan ikke afsluttes: sidste træningsdato kan ikke findes i sæsonens løbskalender (ingen gyldig planlagt etape)" };
@@ -381,6 +403,11 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
   for (const team of missingTeams) {
     if (!team.league_division_id && legacySettled.has(team.id)) continue;
     blockers.push({ team_id: team.id, reason: 'missing_registration' });
+  }
+  // #6924: today's final date is not due yet; the evening run settles it after season-end.
+  if (blockers.length && tickDate === copenhagenDateString(now) && copenhagenHour(now) < TRAINING_DATE_SETTLEMENT_HOUR) {
+    return { blocked: false, deferred: true, tick_date: tickDate, blockers,
+      detail: `Træning ${tickDate} er ikke afregnet endnu (${blockers.length} hold). Aftenkørslen kl. ${TRAINING_DATE_SETTLEMENT_HOUR} afregner den, også efter sæsonafslutningen.` };
   }
   return { blocked: blockers.length > 0, tick_date: tickDate, blockers,
     detail: blockers.length ? `Sæsonen kan ikke afsluttes: træning ${tickDate} er ikke fuldt afregnet. ` +
