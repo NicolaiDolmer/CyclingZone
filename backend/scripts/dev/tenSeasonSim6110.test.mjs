@@ -7,9 +7,12 @@ import { applyDailyTick, resolveProgram } from "../../lib/dailyTraining.js";
 import { buildCapsForRider } from "../../lib/riderProgression.js";
 import { ageForSeason } from "../../lib/riderSeasonAge.js";
 import {
-  SIM_DEFAULTS, applyTickB, bNormalizer, birthdateForAge, buildWorld, capGainsPerDate, limitSnapshotTeams,
+  SIM_DEFAULTS, applyTickB, birthdateForAge, buildWorld, capGainsPerDate, limitSnapshotTeams,
   milestoneStats, orderResults, quantile, raceSlot, runFingerprint, runVariant, variantList,
 } from "./tenSeasonSim6110.mjs";
+
+// Syntetisk normalisering til tests; den rigtige er privat (balance-internals, hard rule 17).
+const STUB_B_NORM = () => 1;
 
 const flatAbilities = (v) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, v]));
 
@@ -58,10 +61,8 @@ test("applyTickB: +1-loftet holder, hviledag giver intet, deterministisk", () =>
   assert.deepEqual(rest.gains, {});
 });
 
-test("bNormalizer: 1 for en bestand paa referencealderen, stoerre for unge", () => {
-  assert.equal(bNormalizer([23, 23], 23), 1);
-  assert.ok(bNormalizer([17, 18], 23) > 1);
-  assert.equal(bNormalizer([], 23), 1);
+test("B-normaliseringen er privat: uden injiceret funktion kaster runVariant (hard rule 17, Codex P1)", () => {
+  assert.throws(() => runVariant(syntheticSnapshot(), { name: "nu", kind: "nu", capPerDate: false }, { ...SIM_DEFAULTS, seasons: 1, raceDaysPerSeason: 5 }), /B-normaliseringen mangler/);
 });
 
 test("milestoneStats: procent af top ved 22 og 25, kun baner der daekker 22-27", () => {
@@ -113,7 +114,7 @@ function syntheticSnapshot() {
 }
 
 test("runVariant: kortet fyldes for en lille verden (nu og B)", () => {
-  const opts = { ...SIM_DEFAULTS, seasons: 3, raceDaysPerSeason: 20 };
+  const opts = { ...SIM_DEFAULTS, seasons: 3, raceDaysPerSeason: 20, bNormalizer: STUB_B_NORM };
   for (const variant of variantList({ ...opts, variants: ["nu_maks1", "B"], bScales: [1] })) {
     const res = runVariant(syntheticSnapshot(), variant, opts);
     assert.equal(res.seasons.length, 3);
@@ -127,7 +128,7 @@ test("runVariant: kortet fyldes for en lille verden (nu og B)", () => {
 
 test("runVariant: et hold udvikler sig med dagens motor (samme tick som produktionen)", () => {
   const snap = syntheticSnapshot();
-  const res = runVariant(snap, { name: "nu", kind: "nu", capPerDate: false }, { ...SIM_DEFAULTS, seasons: 1, raceDaysPerSeason: 40 });
+  const res = runVariant(snap, { name: "nu", kind: "nu", capPerDate: false }, { ...SIM_DEFAULTS, seasons: 1, raceDaysPerSeason: 40, bNormalizer: STUB_B_NORM });
   assert.ok(res.seasons[0].rating.mean >= res.start.rating.mean - 5, "ingen kollaps i første sæson");
   // Sanity: produktionens tick giver gevinst for en ung rytter langt under loftet.
   const ab = flatAbilities(10);

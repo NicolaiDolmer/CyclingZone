@@ -55,16 +55,15 @@
 
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
 import {
-  DAILY_TRAINING_CONFIG, applyDailyTick, dailyAbilityDelta, growthFractionForAge, resolveProgram,
+  DAILY_TRAINING_CONFIG, applyDailyTick, dailyAbilityDelta, resolveProgram,
 } from "../../lib/dailyTraining.js";
 import {
   buildCapsForRider, developRiderSeasonV2, seededUnitMixed, youthRateForPotential,
 } from "../../lib/riderProgression.js";
-import { youthMultiplier } from "../../lib/academyFlag.js";
 import { facilityTrainingMultiplier } from "../../lib/staffTrainingBonus.js";
 import { riderLevelBand, normalizeLevelBands } from "../../lib/staffAbilityConstants.js";
 import { deriveStaffAbilities } from "../../lib/staffAbilityDerivation.js";
@@ -191,12 +190,19 @@ export function applyTickB({
   return { abilities: nextAbilities, progress: nextProgress, gains };
 }
 
-/** Normaliseringen for B@1: startbestandens snit af dagens alders-led delt med B's faste led. */
-export function bNormalizer(ages, referenceAge) {
-  const valid = ages.filter(Number.isFinite);
-  if (!valid.length) return 1;
-  const now = valid.reduce((s, a) => s + growthFractionForAge(a) * youthMultiplier(a), 0) / valid.length;
-  return now / growthFractionForAge(referenceAge);
+/**
+ * Normaliseringen for B@1 er privat (hard rule 17, Codex P1 #7154): den ligger i
+ * balance-internals/6110/s25-b-normalizer.mjs (gitignoreret) og injiceres via
+ * opts.bNormalizer: (ages, referenceAge) => tal. Mangler den, kaster harnessen, så en
+ * kørsel aldrig stille regner B uden den rigtige normalisering.
+ */
+export const PRIVATE_B_NORMALIZER_PATH = ["balance-internals", "6110", "s25-b-normalizer.mjs"];
+
+function requireBNormalizer(opts) {
+  if (typeof opts?.bNormalizer !== "function") {
+    throw new Error(`B-normaliseringen mangler: læg den private fil ${PRIVATE_B_NORMALIZER_PATH.join("/")} (hard rule 17) eller injicér opts.bNormalizer`);
+  }
+  return opts.bNormalizer;
 }
 
 /** Seedet: kører rytteren på denne løbsdag, og hvilken profil? */
@@ -504,7 +510,11 @@ export function bigTalentAfterNine(riders, startSeason) {
     if (r.inflow || r.potentiale < 5.5) continue;
     const t0 = r.trajectory.find((x) => x.season === startSeason + 1);
     const t9 = r.trajectory.find((x) => x.season === startSeason + 9);
-    if (!t0 || !t9 || t0.age > 19) continue;
+    // Codex P2 (#7154): "startede ≤ 19" måles på alderen i startbilledet (første
+    // registrerede punkt er efter det første skifte, altså et år ældre).
+    const startEntry = r.trajectory.find((x) => x.season === startSeason);
+    const startAge = startEntry ? startEntry.age : (t0 ? t0.age - 1 : null);
+    if (!t0 || !t9 || startAge == null || startAge > 19) continue;
     list.push(t9.rating);
   }
   const s = list.sort((a, b) => a - b);
@@ -518,7 +528,7 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   const s0 = world.startSeason;
   const shares = fillMissingRaceShares(world.riders, s0);
   world.youngRaceShare = shares.youngMedian;
-  world.bNorm = bNormalizer(world.riders.filter((r) => r.teamId != null).map((r) => ageForSeason(r.birthdate, s0)), opts.bReferenceAge);
+  world.bNorm = requireBNormalizer(opts)(world.riders.filter((r) => r.teamId != null).map((r) => ageForSeason(r.birthdate, s0)), opts.bReferenceAge);
   world.dateCap = { over: 0, clipped: 0 };
   const result = { variant: variant.name, start: seasonStats(world, s0, "start"), seasons: [], transitions: [] };
   // Første skifte: den aktive sæsons målte løbsdage (fremskrevet til hel sæson).
@@ -759,6 +769,9 @@ async function main() {
     console.log(`[s25] øjebliksbillede gemt privat: ${join(outDir, `snapshot-${date}.json`)}`);
   }
   if (limitTeams) snapshot = limitSnapshotTeams(snapshot, limitTeams);
+  // Hard rule 17: B-normaliseringen hentes fra den private fil (gitignoreret).
+  const privateNorm = await import(pathToFileURL(join(REPO, ...PRIVATE_B_NORMALIZER_PATH)).href).catch(() => null);
+  if (typeof privateNorm?.bNormalizer === "function") opts.bNormalizer = privateNorm.bNormalizer;
   // Hver variant gemmes for sig i runs-<dato>/, og kortet bygges af ALLE varianter
   // dér. Så kan varianterne køres i hver sin proces (ca. 8 min pr. stk.) og ende
   // på ét kort.
