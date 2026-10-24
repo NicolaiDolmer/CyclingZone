@@ -1,6 +1,6 @@
 # Træn nu = hele dagen i ét klik (#6461, design 23/10 2026)
 
-> **Status: undersøgelse + design, venter på ejerens valg (valg-kort i §8).** Ingen kode i denne PR.
+> **Status: ejer-beslutning 24/10: B (hele dagen for alle i klikket), designet og bygget samlet med løbsmotoren og form/træthed 2.0 (#6984) nu, ikke A som mellemtrin.** Ingen kode i denne PR. §7's forudsætninger (fælles lås, målt baseline før første PR, hard rule 36) gælder uændret, og B's motor-del kræver motor-review.
 > Bygges tidligst efter skiftet 25/10 (ejer-kommentar 20/10 på #6461).
 > Bygger på: [`2026-09-29-traen-nu-og-prognose-design.md`](2026-09-29-traen-nu-og-prognose-design.md) (beslutning 1-9, I1-I5),
 > [`TRAINING_RULES.md` §13.3b](../../TRAINING_RULES.md) (realisme-reglen 18/9) og MASTERPLAN Nu 4 ("Træn nu = hele dagen i ét klik").
@@ -144,6 +144,8 @@ Test: en samtidighedstest for hver udtagelsesvej mod klikket. Vejene er løbssta
 **Ejeren ser på preview (Android):** et hold med både løbsryttere og ryttere uden løb trykker "Træn nu"; ryttere uden løb viser 5 af 5 felter og opdateret træthed og form med det samme, løbsryttere står som "venter på løbet", og et gentaget klik ændrer intet. Aftenkørslen afregner bagefter kun løbsrytterne.
 
 ## 8. Valg-kort til ejeren
+
+> **Besluttet 24/10 (ejer):** B, samlet med #6984 og motoren, med bedste langsigtede løsning nu. Kortet nedenfor er bevaret som beslutningsgrundlag.
 
 **Træn nu: hvor meget skal ét klik klare?**
 
