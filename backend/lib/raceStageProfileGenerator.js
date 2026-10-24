@@ -2327,7 +2327,7 @@ export function varyStageOrderS5(race, stages) {
  *   season_variant (#3347, default 0) er tier-trækkets re-draw-tæller: 0 giver præcis
  *   samme output som før #3347; n > 0 er det n'te deterministiske gen-træk. Vælges af
  *   resolveSeasonDrawVariants (raceRouteRealismDraw.js) — sæt den ALDRIG ad-hoc.
- * @param {{seed?:number, archetypeProfiles?:object, profileModel?:string, allowTtt?:boolean}} [opts]
+ * @param {{seed?:number, archetypeProfiles?:object, profileModel?:string, allowTtt?:boolean, fillerTypes?:string[]|null, identityProfiles?:Record<string, any>, a2FlatStage?:boolean, orderVariation?:boolean}} [opts]
  *   seed              override-seed (default: stableSeed(seedIdentityFor(race)))
  *   archetypeProfiles override af ARCHETYPE_PROFILES — oprindelig KUN til kalibrerings-/
  *                     analyse-harnesses (#3295). #4103 (31/8) genbruger samme parameter i

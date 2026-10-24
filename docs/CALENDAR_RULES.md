@@ -1271,6 +1271,15 @@ Et etapeløb uden flad etape giver sprinteren ingen dag at vinde pointtrøjen p�
 
 **S5's skrevne ruter** rettes på stedet med `backend/scripts/s5FlatStageA2_2757.js` (samme funktioner, på løbets egen sæson-variant). Dry-run er standard: før/efter-rapport, ét billede af alle berørte løb, gaterne (§5, rolling-båndet og §6b før/efter, kun nye brud blokerer; placerings-gaterne; benchmark-gatens etape-tjek; `calendarInvariantsCiGate4123`) og `backup.sql`/`restore.sql`, alt i `balance-internals/2757-a2/`. Apply kræver ejerens godkendelse af billedet: `--apply --owner-go --backup-table=backup_2757_race_stage_profiles_YYYYMMDD --plan-hash=<hash> --plan-file=<dry-runnets a2-dry-run.json>`. Apply bruger den godkendte plan (bygger den aldrig om), opdaterer kun den valgte etape pr. løb på samme række, nægter at skrive hvis en etape er ændret siden dry-runnet, og er genoptagelig.
 
+### 7f. Variation i etaperækkefølgen (ejer 24/10, [#2757](https://github.com/NicolaiDolmer/CyclingZone/issues/2757))
+
+Crescendo-sorteringen gav mange S5-etapeløb samme faste stigende skabelon. Reglen gælder S5-modellen for alle etapeløb uden for Grand Tours, før A2 (§7e).
+
+- **Hvornår:** når løbets rækkefølge er den faste stigende skabelon (`stageOrderVariationGate.isAscendingOrder`: vejetaperne før finalen bliver aldrig lettere i researchens grove klasser flad/kuperet/bjerg).
+- **Hvad:** de samme etaper i en ny rækkefølge (samme indhold, kun nyt etapenummer). Finalen, tidskørslerne, signatur-etaperne og kongeetapen (den seneste af løbets hårdeste etaper) står fast. Den nye rækkefølge er ikke skabelonen, har ikke flere ens etaper i træk end før og åbner ikke med en bjergetape, medmindre løbet gjorde det. Valget er deterministisk pr. løb (egen rng-strøm; puljerne kører samme rute, #2276) og vægtet efter etapetypernes placering i rigtige en-uges-løb ([research](research/2026-08-04-stage-race-structure/)). Typerne, kvoterne og kalenderen er uændrede.
+- **Gaten** (`stageOrderVariationGate.js`) måler på sæsonens ruter: andelen med fast stigende rækkefølge, andelen med samme rækkefølge pr. etapeantal, antal forskellige rækkefølger og etapetypernes fordeling pr. placering mod rigtige etapeløb. Båndene er private (`balance-internals/2757-a2/`).
+- **Kode:** `raceStageProfileGenerator.chooseStageOrderVariation` / `applyStageOrder` / `varyStageOrderS5` (`orderVariation: false` giver crescendo-rækkefølgen). `s5FlatStageA2_2757.js` bruger samme funktion på S5's skrevne ruter og skriver det nye indhold pr. plads (samme række, samme etapenummer-plads), så datoerne pr. etape står; managerplaner (etaperoller, holdordrer) på en ændret etape blokerer.
+
 ---
 
 ## 8. Rytterbinding og trupkrav
