@@ -588,12 +588,12 @@ features:
     area: training
     title_en: Set the training day for several riders at once
     title_da: Sæt træningsdagen for flere ryttere på én gang
-    state: beta
+    state: live
     flag: training_bulk_day
     ssot: docs/TRAINING_RULES.md
     epic: 6523
-    verified: 2026-10-15
-    note: PR #6533 (12/10); beta siden 15/10 10:16 UTC efter ejer-go på før/efter-billedet (læst tilbage i prod).
+    verified: 2026-10-24
+    note: PR #6533 (12/10); beta 15/10; on for alle 24/10 17:30 UTC efter ejer-ja (#7153, læst tilbage i prod).
 
   # --- academy -------------------------------------------------------------
   - id: academy
@@ -766,13 +766,12 @@ features:
     area: academy
     title_en: Awaiting promotion instead of auto-sale when the next squad is full
     title_da: Afventer oprykning i stedet for automatisk salg ved fuld trup
-    state: building
+    state: live
+    flag: promotion_pending_enabled
     ssot: docs/YOUTH_RULES.md
     epic: 5833
-    verified: 2026-10-16
-    decision: ejer-beslutning
-    decide_by: 2026-10-24
-    note: "#6710 plan-PR 1. Flag-nøgle promotion_pending_enabled (oprettes off af migrationen); flyttes til flag-feltet når rækken findes i prod."
+    verified: 2026-10-24
+    note: "#6710 plan-PR 1. promotion_pending_enabled on 24/10 17:27 UTC efter ejer-ja (#7153, læst tilbage i prod)."
 
   # --- economy -------------------------------------------------------------
   - id: economy-no-upkeep
@@ -1025,11 +1024,11 @@ features:
     area: comms
     title_en: Push notifications
     title_da: Push-notifikationer
-    state: beta
+    state: live
     flag: push_enabled
     epic: 6590
-    verified: 2026-10-19
-    note: push_enabled = beta i prod 19/10 (ejer-go 18/10+19/10); VAPID-nøgler i Infisical prod + Railway; ejerens Android abonnerer (19/10).
+    verified: 2026-10-24
+    note: push_enabled beta 19/10; on for alle 24/10 17:29 UTC efter ejer-ja (#7153, læst tilbage i prod). VAPID-nøgler i Infisical prod + Railway.
     roadmap_en: "Push notifications on your phone: outbid in the last minute, one race summary per race day, and offers waiting for you. Never between 22:00 and 08:00, at most 6 a day."
     roadmap_da: "Push-notifikationer på telefonen: overbudt i sidste minut, ét løbsresumé pr. løbsdag og tilbud, der venter på dig. Aldrig mellem 22 og 08, højst 6 om dagen."
 
