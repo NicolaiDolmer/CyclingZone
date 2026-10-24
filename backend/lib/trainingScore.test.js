@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 
 import {
   computeTrainingScore, trainingScoreFactors, scoreFromRelativeQuality,
-  buildTrainingScoreView, TRAINING_SCORE_CONFIG, SCORE_FACTOR_KEYS,
+  buildTrainingScoreView, TRAINING_SCORE_CONFIG, SCORE_FACTOR_KEYS, HIDDEN_CONTRIBUTION_KEYS,
 } from "./trainingScore.js";
 import { applyDailyTick, dailyAbilityDelta } from "./dailyTraining.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -228,4 +228,25 @@ test("view: flere loebsdage samme kalenderdato sorteres paa game_day, og 'i dag'
 test("view: tom raekkeliste giver et tomt objekt, ikke et kast", () => {
   assert.deepEqual(buildTrainingScoreView([], { today: "2026-09-12" }), {});
   assert.deepEqual(buildTrainingScoreView(null), {});
+});
+
+test("view (#6110): talent og dagens tilfaeldighed forlader aldrig serveren", () => {
+  const rows = [{
+    rider_id: "r1", tick_date: "2026-10-23", score: 68, session: "vo2max", was_race_day: false,
+    contributions: [
+      { key: "potential", points: 7, direction: "up" },
+      { key: "condition", points: -3, direction: "down" },
+      { key: "noise", points: 1, direction: "up" },
+      { key: "coach", points: 2, direction: "up" },
+    ],
+  }];
+  const view = buildTrainingScoreView(rows, { today: "2026-10-23" });
+  const keys = view.r1.contributions.map((c) => c.key);
+  for (const hidden of HIDDEN_CONTRIBUTION_KEYS) assert.ok(!keys.includes(hidden), `${hidden} maa ikke sendes`);
+  assert.deepEqual(view.r1.contributions, [
+    { key: "condition", points: -3, direction: "down" },
+    { key: "coach", points: 2, direction: "up" },
+  ]);
+  assert.ok(!JSON.stringify(view).includes("potential"));
+  assert.ok(!JSON.stringify(view).includes("noise"));
 });

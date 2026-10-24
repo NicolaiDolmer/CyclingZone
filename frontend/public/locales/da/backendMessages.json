@@ -576,7 +576,7 @@
     },
     "careerMilestone": {
       "maidenWin": {
-        "title": "Første sejr",
+        "title": "Rytterens første sejr",
         "message": "{rider} vandt sin første professionelle sejr: {race}."
       },
       "firstPodium": {
@@ -652,7 +652,8 @@
       "message": "{rider} styrtede i {race} og er skadet til {until}.",
       "messageMissed": "{rider} styrtede i {race} og er skadet til {until}. Han kører ikke {missed}.",
       "messageFinished": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until}.",
-      "messageFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until} og kører ikke {missed}."
+      "messageFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until} og kører ikke {missed}.",
+      "messageTraining": "{rider} blev skadet i træningen og er ude til {until}."
     },
     "teamDidNotStart": {
       "title": "Dit hold stillede ikke op",

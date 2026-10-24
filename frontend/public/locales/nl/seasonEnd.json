@@ -82,6 +82,8 @@
     "rank": "#",
     "team": "Team",
     "stageWins": "Etappezeges",
+    "gcWins": "Klassementszeges",
+    "jerseys": "Truien",
     "points": "Punten",
     "progression": "Trend"
   },
