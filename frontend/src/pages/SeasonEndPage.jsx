@@ -162,7 +162,7 @@ export default function SeasonEndPage() {
   const [pointsByTeam, setPointsByTeam] = useState({});
   // #6961 · trøjevindere pr. hold. null = ikke hentet / fejlet → kolonnen skjules
   // i stedet for at vise et forkert 0 (best-effort, vælter aldrig resten af siden).
-  const [jerseyByTeam, setJerseyByTeam] = useState(null);
+  const [jerseyByTeam, setJerseyByTeam] = useState(/** @type {Record<string, { total?: number }> | null} */ (null));
   const jerseySeasonRef = useRef(null);
   const [winners, setWinners] = useState({ prize: null, biggestTransfer: null, mostActive: null, stageKing: null, classicKing: null });
   // #2863 Blokken har sin EGEN state, adskilt fra `error` ovenfor. Blokken er
