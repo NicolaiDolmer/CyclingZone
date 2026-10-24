@@ -17,6 +17,7 @@
 // CLI: node scripts/merge-queue-files.mjs <json-array-af-stier>  -> JSON paa stdout.
 
 import { needsFrontendBuild } from '../frontend/scripts/vercel-build-decision.ts';
+import { deploymentImpact } from './ci/cron-deploy-verification.mjs';
 
 const NON_PROD_BACKEND = [
   /\.test\.(?:[cm]?js|ts|tsx)$/,
@@ -41,6 +42,30 @@ export function classifyPrFiles(paths) {
   return { touchesBackend, touchesRailway };
 }
 
+// Ejer 23/10: deploy-PR'er maa koere i tog (op til -MaxDeployBatch), men migrationer
+// og race-motoren koerer altid ALENE med deres egen deploy-verifikation.
+// Ukendt filliste = alene (fail-safe).
+const SOLO = [
+  /^database\//,
+  /^supabase\/migrations\//,
+  /^backend\/lib\/engine\//,
+  /^backend\/lib\/raceEngine/,
+  /^backend\/lib\/raceRunner/,
+];
+export function mustRunAlone(paths) {
+  if (!Array.isArray(paths) || paths.length === 0 || paths.some((p) => typeof p !== 'string')) return true;
+  return paths.some((p) => SOLO.some((re) => re.test(p)) && !NON_PROD_BACKEND.some((re) => re.test(p)));
+}
+
+// Codex P1 #7104: samme Railway-praedikat som verifikatoren (deploy-verify.yml ->
+// deploymentImpact): backend-stier ELLER filer der paavirker cron-jobs. Et merge-tog
+// maa kun fortsaette, hvis den sidste PR selv kraever Railway-verifikation, naar toget gor.
+// Ukendt filliste = true (fail-safe).
+export function needsRailwayVerification(paths) {
+  if (!Array.isArray(paths) || paths.length === 0 || paths.some((p) => typeof p !== 'string')) return true;
+  try { return deploymentImpact(paths.map((filename) => ({ filename, status: 'modified' }))).needRailway; } catch { return true; }
+}
+
 // Ukendt filliste = true (samme fail-safe som ovenfor).
 export function touchesVercel(paths) {
   if (!Array.isArray(paths) || paths.length === 0 || paths.some((p) => typeof p !== 'string')) return true;
@@ -50,5 +75,5 @@ export function touchesVercel(paths) {
 if (import.meta.url === `file:///${process.argv[1]?.replaceAll('\\', '/')}` || process.argv[1]?.endsWith('merge-queue-files.mjs')) {
   let paths = null;
   try { paths = JSON.parse(process.argv[2] ?? 'null'); } catch { paths = null; }
-  process.stdout.write(JSON.stringify({ ...classifyPrFiles(paths), touchesVercel: touchesVercel(paths) }));
+  process.stdout.write(JSON.stringify({ ...classifyPrFiles(paths), touchesVercel: touchesVercel(paths), solo: mustRunAlone(paths), needRailway: needsRailwayVerification(paths) }));
 }

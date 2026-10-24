@@ -1,7 +1,7 @@
 {
   "metaTitle": "Pásate a CZ Pro",
-  "title": "Hazte Founder",
-  "subtitle": "Apoya el desarrollo del juego y asegura tu estatus Founder. El juego gratuito sigue siendo totalmente competitivo. Pro es una insignia y una identidad, nunca una ventaja.",
+  "title": "CZ Pro",
+  "subtitle": "Sigue a tus corredores a lo largo de las temporadas. Guarda las búsquedas que vuelves a usar.",
   "monthly": "Mensual",
   "semiannual": "6 meses",
   "monthlyPrice": "6,49 €/mes",
@@ -28,18 +28,36 @@
     "message": "No pude cargar los datos de tu suscripción. No se ha perdido nada y tu cuenta no se ve afectada.",
     "retry": "Reintentar"
   },
+  "benefits": {
+    "title": "Lo que añade Pro",
+    "exampleLabel": "Datos de ejemplo",
+    "history": {
+      "tab": "Historial de temporadas",
+      "headline": "Sigue a tu corredor a lo largo de las temporadas",
+      "body": "Cada habilidad, temporada a temporada, en la pestaña Desarrollo del corredor.",
+      "sampleCaption": "Corredor inventado, no de tu partida",
+      "sampleAria": "Gráfico de ejemplo: escalada, tempo, contrarreloj y resistencia de un corredor inventado durante tres temporadas y ahora."
+    },
+    "filters": {
+      "tab": "Filtros guardados",
+      "headline": "Usa esta búsqueda otra vez con un clic",
+      "body": "Ponle nombre a una búsqueda en la base de datos de corredores y recupérala cuando la necesites. Hasta {max} filtros, guardados en este navegador.",
+      "sampleCaption": "Filtros de ejemplo",
+      "examples": {
+        "youngClimbers": "Escaladores jóvenes",
+        "sprintersU25": "Sprinters sub-25",
+        "cheapTimeTrial": "Contrarrelojistas baratos"
+      }
+    }
+  },
   "founderMark": {
     "label": "Founder",
     "aria": "Founder n.º {n} de {cap}",
     "heroLine": "Founder n.º {n} de {cap}"
   },
-  "gate": {
-    "note": "Pro muestra esto en todas las temporadas, no solo en la actual.",
-    "cta": "Ver Pro"
-  },
   "riderHistory": {
     "title": "Historial de temporadas",
-    "cta": "Ver Pro",
+    "cta": "Ver historial de temporadas con Pro",
     "note": "Pro muestra todas las habilidades de todas las temporadas, no solo de la actual.",
     "ceilingLegend": "Tope de la escala (99)",
     "empty": "Aún no hay historial de temporadas registrado.",
@@ -49,7 +67,8 @@
     "retry": "Reintentar",
     "emptyTitle": "Aún no hay habilidades registradas",
     "checkAgain": "Comprobar de nuevo",
-    "now": "Ahora"
+    "now": "Ahora",
+    "upsellTitle": "Sigue a tu corredor a lo largo de las temporadas"
   },
   "savedFilters": {
     "title": "Filtros guardados",
@@ -59,8 +78,8 @@
     "cancel": "Cancelar",
     "remove": "Quitar",
     "empty": "Aún no hay filtros guardados.",
-    "note": "Pro te permite guardar filtros con nombre y volver a ellos con un solo clic.",
-    "cta": "Ver Pro",
+    "note": "Usa esta búsqueda otra vez con un clic.",
+    "cta": "Guardar filtros con Pro",
     "removeNamed": "Quitar {name}",
     "duplicate": "Ya tienes un filtro con ese nombre.",
     "limit": "Has guardado {max} filtros, el máximo. Quita uno para guardar uno nuevo.",

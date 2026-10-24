@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, loadStartDaySpentRiderIds } from "./raceStartOutlook.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 test("teamWillStart: tre udtagne og ingen frie ryttere stiller ikke op (#5945)", () => {
@@ -104,4 +104,36 @@ test("teamWillStart: regel B, skade efter udtagelsen holder holdet i loebet (#67
   assert.equal(teamWillStart({ entryCount: 0, injuredEntryCount: 6, freeEligibleCount: 0 }).starts, false);
   // Alle skadede, 2 frie: assistenten fylder, holdet starter med 2.
   assert.equal(teamWillStart({ entryCount: 0, injuredEntryCount: 6, freeEligibleCount: 2 }).starts, true);
+});
+
+test("teamWillStart: overlap-dag (#6739 regel A) - mindst 4 frie, resten i et andet løb samme dag", () => {
+  // 4 udtaget, 8 i et andet løb: starter med 4.
+  assert.deepEqual(teamWillStart({ entryCount: 4, overlapCount: 8 }), { starts: true, min: MIN_RACE_ENTRIES, reason: null });
+  // 3 udtaget + 2 frie = 5, resten i et andet løb: starter med 5.
+  assert.equal(teamWillStart({ entryCount: 3, freeEligibleCount: 2, overlapCount: 7 }).starts, true);
+  // 3 frie i alt: under 4, starter ikke.
+  assert.deepEqual(teamWillStart({ entryCount: 3, overlapCount: 9 }), { starts: false, min: MIN_RACE_ENTRIES, reason: "below_min" });
+  // Ikke-overlap-dag: 5 frie og ingen i andre løb -> starter ikke (gulvet 6).
+  assert.equal(teamWillStart({ entryCount: 5, overlapCount: 0 }).starts, false);
+  // Overlap, men holdet havde aldrig 6: 4 udtaget + 1 i et andet løb = 5.
+  assert.equal(teamWillStart({ entryCount: 4, overlapCount: 1 }).starts, false);
+});
+
+test("teamWillStart: skade + overlap (#6739 + #6740)", () => {
+  // 4 raske, 1 skadet, 1 brugt i et andet løb: starter med 4.
+  assert.equal(teamWillStart({ entryCount: 4, injuredEntryCount: 1, overlapCount: 1 }).starts, true);
+  // 3 raske, 2 skadede, 1 brugt: under 4 og regel B ser 5 -> starter ikke.
+  assert.equal(teamWillStart({ entryCount: 3, injuredEntryCount: 2, overlapCount: 1 }).starts, false);
+  // Efter start afgør feltet stadig svaret.
+  assert.equal(teamWillStart({ entryCount: 4, overlapCount: 8, stagesCompleted: 1, inField: false }).starts, false);
+});
+
+test("loadStartDaySpentRiderIds: filtrerer til startdagen; fejl = tomt sæt, strict kaster (#6739)", async () => {
+  const sb = (result) => ({ from: () => ({ select: () => ({ eq: async () => result }) }) });
+  const spentRows = [{ rider_id: "a", game_day: 10 }, { rider_id: "b", game_day: 11 }];
+  const ok = await loadStartDaySpentRiderIds({ supabase: sb({ data: [{ game_day: 10 }, { game_day: 11 }], error: null }), raceId: "r", spentRows });
+  assert.deepEqual([...ok], ["a"]);
+  assert.equal((await loadStartDaySpentRiderIds({ supabase: sb({ data: null, error: { message: "x" } }), raceId: "r", spentRows })).size, 0);
+  await assert.rejects(loadStartDaySpentRiderIds({ supabase: sb({ data: null, error: { message: "x" } }), raceId: "r", spentRows, strict: true }));
+  assert.equal((await loadStartDaySpentRiderIds({ supabase: null, raceId: "r", spentRows: [] })).size, 0, "ingen spent: ingen læsning");
 });

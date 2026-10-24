@@ -63,6 +63,8 @@
     "rank": "#",
     "team": "Team",
     "stageWins": "Stage wins",
+    "gcWins": "GC wins",
+    "jerseys": "Jerseys",
     "points": "Points",
     "progression": "Trend"
   },

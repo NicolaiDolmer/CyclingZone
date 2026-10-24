@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {1 auktion slutter inden for en time} other {# auktioner slutter inden for en time}}",
     "squadSelectionMissing": "Holdudtagelse mangler til {race}",
     "notTrainedToday": "Du har ikke trænet i dag",
-    "boardPlanMissing": "Ingen bestyrelsesplan forhandlet endnu"
+    "boardPlanMissing": "Ingen bestyrelsesplan forhandlet endnu",
+    "nextValueUpdate": "Næste værdiopdatering: {when}",
+    "nextAcademyIntake": "Næste akademi-intake: {when}"
   },
   "seasonStart": {
     "title": "Sæson {number}: kom i gang",
@@ -197,7 +199,7 @@
       "unknownRider": "Din rytter",
       "viewRace": "Se løbet",
       "headline": {
-        "maidenWin": "Første sejr",
+        "maidenWin": "Rytterens første sejr",
         "firstPodium": "Første podie",
         "firstJersey": "Første trøje",
         "clubMilestoneWin": "Klub-milepæl"

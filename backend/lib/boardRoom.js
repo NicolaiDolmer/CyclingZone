@@ -122,7 +122,7 @@ import { getArchetypeByKey } from "./boardArchetypes.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { generateBoardMemberNames } from "./boardMandateNames.js";
 import { resolveGoalOwnerArchetypeKey } from "./boardMembers.js";
-import { buildGoalKey, evaluateGoalProgress, parseBoardGoals } from "./boardGoals.js";
+import { buildGoalKey, countU25RidersForBoard, evaluateGoalProgress, parseBoardGoals } from "./boardGoals.js";
 import { buildBoardEvalContext, loadGoalContextForBoard } from "./boardGoalContext.js";
 // #1237 · nettostilling-hjælpere (activeDebt/wageBillPerSeason) til
 // no_outstanding_debt (scoreFinanceHealthGoal, boardUtils.js).
@@ -142,13 +142,12 @@ import { captureException } from "./sentry.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
 
 const MINUTES_LIMIT = 10;
-const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så weekDelta + mood har nok historik
+const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så mood har nok historik
 const MOOD_WINDOW = 5;
 // Højst ét bonustilbud pr. hold pr. sæson (BOARD_RULES §4, expires_at_season_id-
 // guarden), men vi henter et par rækker så sæson-filtreringen i deriveBonusOffer
 // har noget at vælge imellem ved sæsonskifte.
 const BONUS_OFFER_FETCH_LIMIT = 4;
-const WEEK_DELTA_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 // #4578 · Rang-orden for goal_states's `status`, brugt af `deriveGoalMovements`
 // til at afgøre om et mål er flyttet sig OP eller NED siden sin forrige kendte
@@ -691,14 +690,8 @@ export async function buildBoardRoomPayload({
     .filter((key) => categoryScores[key] != null)
     .map((key) => ({ key, score: Number(categoryScores[key]) }));
 
-  const now = Date.now();
-  const weekDelta = events
-    .filter((e) => now - new Date(e.created_at).getTime() <= WEEK_DELTA_WINDOW_MS)
-    .reduce((sum, e) => sum + Number(e.satisfaction_delta ?? 0), 0);
-
   const confidence = {
     value: relation?.confidence ?? null,
-    weekDelta: relation ? weekDelta : null,
     updatedAt: relation?.last_event_at ?? relation?.updated_at ?? null,
     categories,
     consequence: deriveConsequenceLine(consequences),
@@ -877,6 +870,7 @@ export async function buildBoardRoomPayload({
       wageBillPerSeason: sumRiderSalaries(riders),
       currentSponsorIncome: teamRes.data?.sponsor_income ?? null,
       goalContext,
+      seasonNumber: currentSeasonNumber,
       extra: { assignedMembers, reputationEnabled },
     });
 
@@ -1044,6 +1038,10 @@ export async function buildBoardRoomPayload({
           },
           status,
           isCurrentSeason,
+          // #6990/#6991 · "x af 6" på tælle-milepæle. Samme tæller som målets evaluering.
+          progress: milestone.goal?.type === "min_u25_riders"
+            ? { current: countU25RidersForBoard(riders, currentSeasonNumber), target: milestone.goal?.target ?? null }
+            : null,
         };
       }),
     };

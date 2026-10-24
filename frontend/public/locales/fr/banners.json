@@ -52,5 +52,10 @@
     "regionAriaLabel": "État du service",
     "dismissAriaLabel": "Fermer l'avis",
     "knownIssuesLink": "Problèmes connus"
+  },
+  "racePaused": {
+    "title": "En pause.",
+    "newStart": "Nouveau départ {time}.",
+    "newStartUnknown": "Le nouvel horaire de départ sera annoncé."
   }
 }

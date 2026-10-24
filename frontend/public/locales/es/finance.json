@@ -9,8 +9,7 @@
     "overview": "Resumen",
     "loans": "Préstamos",
     "history": "Historial",
-    "sponsors": "Patrocinador",
-    "seasonSwitch": "Cambio de temporada"
+    "sponsors": "Patrocinador"
   },
   "loanSummary": {
     "active": "{count, plural, one {1 préstamo activo} other {# préstamos activos}}",
@@ -222,68 +221,6 @@
     },
     "showTour": "Enséñame el juego",
     "skip": "Saltar"
-  },
-  "seasonSwitch": {
-    "loading": "Cargando la liquidación del cambio de temporada…",
-    "receipt": {
-      "title": "Liquidación de la temporada {current} -> {next}",
-      "subtitle": "Lo que le pasa a tu saldo cuando se cierran las cuentas y empieza la temporada {next}, en el mismo orden en que el juego lo cobra realmente.",
-      "balanceAfter": "Saldo: {value} CZ$",
-      "step": {
-        "books_close": {
-          "label": "Cierre de cuentas",
-          "detail": "Tu saldo tal como está ahora mismo, trasladado al cambio."
-        },
-        "sponsor": {
-          "label": "Llega el patrocinio",
-          "detail": "Base {base} + prima de rendimiento {variable} según el puesto/puntos de la temporada pasada, abonadas juntas en un solo pago al inicio de la temporada."
-        },
-        "loan_interest": {
-          "label": "Intereses de los préstamos",
-          "detail": "Intereses sobre la deuda pendiente de tus préstamos activos, calculados justo después de que llegue el pago del patrocinio. Se suman al propio préstamo, no se descuentan de tu saldo."
-        },
-        "salary": {
-          "label": "Se cobran los salarios de la temporada {next}",
-          "detail": "Recalculados con las reglas de la temporada {next} a partir del valor de producción actual de cada ciclista el día del cambio, no con las cifras fijadas de los contratos de la temporada pasada."
-        },
-        "academy_drift": {
-          "label": "Mantenimiento de la academia",
-          "detail": "Coste de inicio de temporada de tus plazas de la academia."
-        },
-        "upkeep": {
-          "label": "Mantenimiento de la división",
-          "detail": "Coste fijo según tu división, cobrado al inicio de la temporada."
-        },
-        "facility_upkeep": {
-          "label": "Mantenimiento de instalaciones",
-          "detail": "Mantenimiento de inicio de temporada de las líneas de instalaciones que has construido."
-        },
-        "staff_salary": {
-          "label": "Salarios del personal técnico",
-          "detail": "Salarios de inicio de temporada del personal técnico que has contratado."
-        },
-        "start_s3": {
-          "label": "Empiezas la próxima temporada con",
-          "detail": "Tu saldo después de todos los cargos de inicio de temporada de arriba."
-        }
-      }
-    },
-    "footnote": "Vista previa de la liquidación, no una garantía. No se incluyen los premios en metálico ni los ingresos de patrocinio por etapa, porque dependen de carreras que aún no se han corrido, ni nada condicional, como los intereses del préstamo de emergencia si tu saldo se vuelve negativo o una venta forzosa si tu deuda supera el tope. Tampoco se incluyen los viajes del ojeador, los fichajes, las mejoras de instalaciones, los cambios de personal técnico ni los fichajes para la academia, porque nada de eso se sabe de antemano.",
-    "footnoteLink": "¿Qué se incluye exactamente?",
-    "salaryTable": {
-      "title": "Salarios: contrato actual frente a la próxima temporada",
-      "subtitle": "El salario fijado en el contrato de cada ciclista firmado junto a lo que la fórmula de la temporada {next} le asignaría hoy.",
-      "empty": "No hay ciclistas con contrato.",
-      "header": {
-        "rider": "Ciclista",
-        "contract": "Contrato (T{current})",
-        "projection": "Proyección T{next}",
-        "delta": "Cambio"
-      },
-      "total": "Total",
-      "viewAll": "Ver los {count} ciclistas",
-      "showLess": "Mostrar menos"
-    }
   },
   "report": {
     "season": "Temporada {n}",

@@ -67,10 +67,16 @@
     },
     "favourites": {
       "title": "Favoritter",
-      "foot": "Ud fra løbet indtil nu. Rutematch kun for dine egne ryttere.",
+      "foot": "Følger etapens profil, ud fra løbet indtil nu. Rutematch kun for dine egne ryttere.",
       "leadsOverall": "Fører samlet",
       "overall": "#{rank} samlet, {gap}",
       "wonStage": "Vandt etape {number}",
+      "placed": {
+        "flat": "Top 10 på {count, plural, one {# flad etape} other {# flade etaper}}",
+        "hilly": "Top 10 på {count, plural, one {# kuperet etape} other {# kuperede etaper}}",
+        "mountain": "Top 10 på {count, plural, one {# bjergetape} other {# bjergetaper}}",
+        "itt": "Top 10 på {count, plural, one {# enkeltstart} other {# enkeltstarter}}"
+      },
       "you": "Dig"
     },
     "story": {
@@ -109,7 +115,7 @@
         "caught": "{count, plural, one {# rytter fra udbruddet bliver hentet} other {# ryttere fra udbruddet bliver hentet}}",
         "survived": "Udbruddet holder hele vejen til mål",
         "attack": "{names} angriber",
-        "attackGain": "{names} angriber og vinder {gain}",
+        "attackGain": "{names} angriber og tager {gain} på feltet",
         "attackAnon": "Et sent angreb",
         "incident": "{name} {kind, select, crash {styrter} mechanical {får defekt} other {har et uheld}}{outcome, select, abandoned { og udgår} loss { og taber {loss}} other {}}",
         "climb": "Toppen af {name}",
@@ -131,8 +137,9 @@
         "leading": "I front",
         "first": "Først over",
         "top": "Top {name}",
+        "topOfPlace": "Top af {place}",
         "climb": "stigning",
-        "sprint": "Spurt",
+        "sprint": "Indlagt spurt",
         "finish": "Mål",
         "none": "Ingen stigninger, spurter eller mål i løbsloggen."
       },
@@ -143,7 +150,7 @@
         "caught": "Udbruddet var hentet ved km {km}.",
         "survived": "{names} holdt hele vejen til mål.",
         "attack": "{names} angreb ved km {km}.",
-        "attackGain": "{names} angreb ved km {km} og vandt {gain}.",
+        "attackGain": "{names} angreb ved km {km} og tog {gain} på feltet.",
         "winner": "{winner} vandt.",
         "winnerGap": "{winner} vandt, {gap} foran {second}.",
         "winnerSame": "{winner} vandt foran {second} på samme tid.",
@@ -185,7 +192,7 @@
       "classAria": "Klassement",
       "stage": "Etape",
       "overall": "Samlet",
-      "top3": "Top 3",
+      "topN": "Top {count}",
       "yourRiders": "Dine ryttere",
       "noRiders": "Ingen af dine ryttere er med i resultatet.",
       "bestOverall": "Din bedste samlet",
@@ -722,6 +729,23 @@
     "whyBest": "Denne {bucket}-etape belønner dit stærkeste fit: {name}.",
     "form": "Form",
     "fatigue": "Træthed",
+    "doctor": {
+      "label": "Læge",
+      "hint": "Holdlægens vurdering af hver rytter. En bedre medicinsk afdeling giver en skarpere vurdering.",
+      "assessment": {
+        "fresh": "Frisk",
+        "ready": "Klar",
+        "tired": "Træt",
+        "rest": "Bør hvile",
+        "injured": "Skadet"
+      },
+      "season": {
+        "ready": "Klar til denne og resten af sæsonen.",
+        "ready_but_spent_later": "Klar nu, men kørt flad til den tredje Grand Tour.",
+        "already_heavy": "Har kørt meget i år. Hver etape koster mere nu.",
+        "rest_first": "Giv ham hvile før denne."
+      }
+    },
     "injured": "Skadet",
     "overAge": "Over aldersgrænsen",
     "boundIn": "Kører {race}",
@@ -974,11 +998,13 @@
       "stageWins": "Etapesejre",
       "finishers": "Gennemførte",
       "notStarted": "Ikke startet",
+      "nextStageSub": "Næste etape",
       "racingNow": "Kører nu",
       "allRidden": "Alle etaper kørt",
       "squadLockedIn": "Truppen er sat",
       "squadFrozen": "Truppen er frosset",
       "abandons": "{count, plural, one {# udgået} other {# udgåede}}",
+      "chipNextStage": "Næste: etape {number} · {time}",
       "chipStageOnRoad": "Etape {number} kører",
       "chipRacing": "På vejen",
       "chipFinished": "Slut",

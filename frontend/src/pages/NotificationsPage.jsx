@@ -111,7 +111,7 @@ const TYPE_CONFIG = {
   // #2524: rytteren er væk (slettet/forladt spillet) — ingen deep-link ind i en
   // rytterprofil der ikke findes længere, kun ind i selve ønskelisten.
   watchlist_departed:        { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/watchlist" },
-  contract_expiring:         { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/team" },
+  contract_expiring:         { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/team?tab=contracts" }, // #6855
   new_race:                  { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/races" },
   race_result:               { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
   stage_result:              { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
@@ -206,7 +206,7 @@ const TYPE_CONFIG = {
   market_value_level_correction: { Icon: CoinIcon,     color: "text-cz-info",     bg: "bg-cz-info/8 border-cz-info/15",     link: "/dashboard" },
   race_results_imported:     { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
   rider_retired:             { Icon: FlagIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/team" },
-  squad_below_minimum:       { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/team" },
+  squad_below_minimum:       { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/team?tab=contracts" }, // #6855
   squad_enforced:            { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/team" },
 };
 

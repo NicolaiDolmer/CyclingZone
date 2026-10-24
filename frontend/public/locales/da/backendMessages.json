@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "Resultat er klar",
-      "message": "{race} er kørt. Se resultatet."
+      "message": "{race} er kørt. Se resultatet.",
+      "messageBest": "{race} er kørt. Dine bedste: {riders}."
     },
     "firstRaceResult": {
       "title": "Dit første løb er kørt",
-      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig."
+      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig.",
+      "messageBest": "{race} er kørt. Dine bedste: {riders}."
     },
     "stageResult": {
       "title": "Etaperesultat er klar",
@@ -297,8 +299,8 @@
     },
     "seasonTransitionRisk": {
       "title": "Sæsonskifte: kontrakt- og pensionsrisiko",
-      "messageBoth": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber, og {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Forlæng en rytters kontrakt fra hans profil før skiftet for at undgå frigivelse. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
-      "messageExpiringOnly": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber. Forlæng deres kontrakt fra rytterens profil før skiftet for at beholde dem.",
+      "messageBoth": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber, og {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Forlæng kontrakterne før skiftet på fanen Kontrakter på Mit hold, hvor du kan forlænge flere ryttere med 1 til 3 sæsoner ad gangen. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
+      "messageExpiringOnly": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber. Forlæng dem før skiftet på fanen Kontrakter på Mit hold, hvor du kan forlænge flere ryttere med 1 til 3 sæsoner ad gangen.",
       "messageRetirementOnly": "Din trup er berørt af det kommende sæsonskifte: {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter."
     },
     "watchlistDeparted": {
@@ -574,7 +576,7 @@
     },
     "careerMilestone": {
       "maidenWin": {
-        "title": "Første sejr",
+        "title": "Rytterens første sejr",
         "message": "{rider} vandt sin første professionelle sejr: {race}."
       },
       "firstPodium": {
@@ -650,7 +652,8 @@
       "message": "{rider} styrtede i {race} og er skadet til {until}.",
       "messageMissed": "{rider} styrtede i {race} og er skadet til {until}. Han kører ikke {missed}.",
       "messageFinished": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until}.",
-      "messageFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until} og kører ikke {missed}."
+      "messageFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until} og kører ikke {missed}.",
+      "messageTraining": "{rider} blev skadet i træningen og er ude til {until}."
     },
     "teamDidNotStart": {
       "title": "Dit hold stillede ikke op",

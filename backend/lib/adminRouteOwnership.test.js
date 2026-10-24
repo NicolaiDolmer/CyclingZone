@@ -21,8 +21,8 @@ test("admin season routes live only in the api router", () => {
 
 // #1180 pkt 3+4 / #1179 / #1207 (2026-06-12): manuel resultatimport (Excel + Sheets),
 // dyn_cyclist-stats-sync og UCI-sheets-sync er pensioneret efter relaunch til fiktive
-// ryttere med egen race-motor. PCM-importen (/admin/import-results-pcm) er den eneste
-// bevidst bevarede import-fallback (epic #1105). Forward-guard: ruterne må ikke genopstå.
+// ryttere med egen race-motor. PCM-importen (/admin/import-results-pcm) fulgte efter
+// 2026-10-24 (#7082, ejer-beslutning). Forward-guard: ruterne må ikke genopstå.
 test("pensionerede import-/sync-routes må ikke genopstå (#1179/#1207)", () => {
   assert.doesNotMatch(apiSource, /router\.post\(\s*"\/admin\/import-results"\s*,/);
   assert.doesNotMatch(apiSource, /"\/admin\/import-results-sheets"/);
@@ -30,8 +30,7 @@ test("pensionerede import-/sync-routes må ikke genopstå (#1179/#1207)", () => 
   assert.doesNotMatch(serverSource, /app\.post\("\/api\/admin\/sync-uci"/);
   assert.doesNotMatch(apiSource, /"\/admin\/sync-uci"/);
 
-  // PCM-fallback skal bestå indtil #1021 (fuld motor) er modnet post-launch.
-  assert.match(apiSource, /router\.post\(\s*"\/admin\/import-results-pcm"/);
+  assert.doesNotMatch(apiSource, /router\.post\(\s*"\/admin\/import-results-pcm"/);
 });
 
 // Security-hardening (2026-06-20, security-audit): forward-guard mod en fremtidig

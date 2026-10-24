@@ -84,10 +84,16 @@
     },
     "favourites": {
       "title": "Favorieten",
-      "foot": "Gebaseerd op deze koers tot nu toe. Parcoursmatch alleen voor je eigen renners.",
+      "foot": "Volgt het etappeprofiel, gebaseerd op deze koers tot nu toe. Parcoursmatch alleen voor je eigen renners.",
       "leadsOverall": "Aan de leiding in het klassement",
       "overall": "#{rank} in het klassement, {gap}",
       "wonStage": "Won etappe {number}",
+      "placed": {
+        "flat": "Top 10 in {count, plural, one {# vlakke etappe} other {# vlakke etappes}}",
+        "hilly": "Top 10 in {count, plural, one {# heuvelachtige etappe} other {# heuvelachtige etappes}}",
+        "mountain": "Top 10 in {count, plural, one {# bergetappe} other {# bergetappes}}",
+        "itt": "Top 10 in {count, plural, one {# tijdrit} other {# tijdritten}}"
+      },
       "you": "Jij"
     },
     "story": {
@@ -148,8 +154,9 @@
         "leading": "Aan kop",
         "first": "Eerst over de top",
         "top": "Top {name}",
+        "topOfPlace": "Top van {place}",
         "climb": "klim",
-        "sprint": "Sprint",
+        "sprint": "Tussensprint",
         "finish": "Finish",
         "none": "Geen klimmen, sprints of finish in het koerslogboek."
       },
@@ -160,7 +167,7 @@
         "caught": "De ontsnapping werd bij km {km} ingehaald.",
         "survived": "{names} bleven uit de greep tot de finish.",
         "attack": "{names} viel aan bij km {km}.",
-        "attackGain": "{names} viel aan bij km {km} en won {gain}.",
+        "attackGain": "{names} viel aan bij km {km} en pakte {gain} op het peloton.",
         "winner": "{winner} won.",
         "winnerGap": "{winner} won, {gap} voor {second}.",
         "winnerSame": "{winner} won voor {second} op dezelfde tijd.",
@@ -202,7 +209,7 @@
       "classAria": "Klassement",
       "stage": "Etappe",
       "overall": "Algemeen",
-      "top3": "Top 3",
+      "topN": "Top {count}",
       "yourRiders": "Jouw renners",
       "noRiders": "Geen van je renners staat in deze uitslag.",
       "bestOverall": "Jouw beste in het klassement",
@@ -739,6 +746,23 @@
     "whyBest": "Deze {bucket}-etappe beloont je sterkste match: {name}.",
     "form": "Vorm",
     "fatigue": "Vermoeidheid",
+    "doctor": {
+      "label": "Arts",
+      "hint": "Het oordeel van de ploegarts over elke renner. Een betere medische afdeling geeft een scherper oordeel.",
+      "assessment": {
+        "fresh": "Fris",
+        "ready": "Klaar",
+        "tired": "Moe",
+        "rest": "Moet rusten",
+        "injured": "Geblesseerd"
+      },
+      "season": {
+        "ready": "Klaar voor deze en de rest van het seizoen.",
+        "ready_but_spent_later": "Nu klaar, maar leeg tegen de derde grote ronde.",
+        "already_heavy": "Heeft dit seizoen veel gekoerst. Elke etappe kost nu meer.",
+        "rest_first": "Geef hem rust voor deze."
+      }
+    },
     "injured": "Geblesseerd",
     "overAge": "Te oud",
     "boundIn": "Rijdt {race}",
@@ -991,11 +1015,13 @@
       "stageWins": "Etappezeges",
       "finishers": "Finishers",
       "notStarted": "Nog niet gestart",
+      "nextStageSub": "Volgende etappe",
       "racingNow": "Nu in koers",
       "allRidden": "Alles gereden",
       "squadLockedIn": "Selectie vergrendeld",
       "squadFrozen": "Selectie bevroren",
       "abandons": "{count, plural, one {# opgave} other {# opgaven}}",
+      "chipNextStage": "Volgende: etappe {number} · {time}",
       "chipStageOnRoad": "Etappe {number} onderweg",
       "chipRacing": "Onderweg",
       "chipFinished": "Afgelopen",

@@ -24,9 +24,9 @@ test("Development-fanen renderes med holdets nuvaerende trup + delt scouting-hoo
   );
 });
 
-test("fanerne staar i raekkefoelgen Squad, Development, Stats, Transfers", () => {
+test("fanerne staar i raekkefoelgen Squad, Contracts (#6855), Development, Stats, Transfers", () => {
   const tabsBlock = src.match(/const tabs = \[[\s\S]*?\];/);
   assert.ok(tabsBlock, "tabs-arrayet skal findes");
   const keys = [...tabsBlock[0].matchAll(/key: "(\w+)"/g)].map((m) => m[1]);
-  assert.deepEqual(keys, ["squad", "development", "stats", "transfers"]);
+  assert.deepEqual(keys, ["squad", "contracts", "development", "stats", "transfers"]);
 });

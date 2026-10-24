@@ -15,10 +15,31 @@
 
 import { copenhagenMidnightUTC, copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter, isRiderInjured, raceSquadOf } from "./riderEligibility.js";
-import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies, loadStartDaySpentRiderIds } from "./raceStartOutlook.js";
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { loadTrainNowLocksForRaces } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
+import { raceBindingWindow } from "./raceBinding.js"; // #6739
+
+/** #6739: binding-vinduet pr. løb (game_day-nøgler, som motoren). Map<raceId, window>. */
+async function loadRaceWindows({ supabase, raceIds }) {
+  const out = new Map();
+  if (!raceIds?.length) return out;
+  // pagination-safe: få løb pr. hold pr. dag, hvert med ≤ ~21 etaper.
+  const { data, error } = await supabase.from("race_stage_schedule")
+    .select("race_id, game_day, scheduled_at").in("race_id", raceIds);
+  if (error) throw new Error(`race_stage_schedule (windows): ${error.message ?? error}`);
+  const byRace = new Map();
+  for (const row of data ?? []) {
+    if (!byRace.has(row.race_id)) byRace.set(row.race_id, []);
+    byRace.get(row.race_id).push(row);
+  }
+  for (const [id, rows] of byRace) {
+    const w = raceBindingWindow(rows);
+    if (w) out.set(id, w);
+  }
+  return out;
+}
 
 // Ren sammenkobling — INGEN I/O. Holdets (race_id, rider_id)-entries krydses mod
 // mængden af race_id'er der har en etape planlagt i dag, og løbsnavnet slås op.
@@ -82,7 +103,7 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
     const raceIdsNeeded = [...new Set((entryRows ?? []).filter((e) => todaySet.has(e.race_id)).map((e) => e.race_id))];
     if (!raceIdsNeeded.length) return {};
 
-    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name, stages_completed, squad").in("id", raceIdsNeeded);
+    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name, stages_completed, squad, stages").in("id", raceIdsNeeded);
     if (raceErr) return {};
 
     const raceNameById = new Map((raceRows ?? []).map((r) => [r.id, r.name]));
@@ -150,10 +171,14 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
     // best-effort for sig: svigter den, gælder reglen fra før #6740 for netop den del.
     const raceIds = [...entriesByRace.keys()];
     const startedIds = raceIds.filter((id) => (stagesCompletedByRace.get(id) ?? 0) > 0);
-    const [withdrawnIds, inFieldByRace, lockByRace] = await Promise.all([
+    const [withdrawnIds, inFieldByRace, lockByRace, windowByRace] = await Promise.all([
       loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds }).catch(() => new Set()),
       startedIds.length ? loadTeamsInStartedField({ supabase, raceIds: startedIds, teamId }).catch(() => new Map()) : new Map(),
       loadTrainNowLocksForRaces({ supabase, raceIds, riderIds: conditionIds, teamId }).catch(() => new Map()),
+      // #6739 (Codex P2): overlap måles på startens game_day, som motoren
+      // (startDayOverlapRiderIds), ikke på kalenderdagen. Svigter opslaget, tæller ingen
+      // binding som overlap (samme retning som motoren: holdet stiller ikke op).
+      loadRaceWindows({ supabase, raceIds }).catch(() => new Map()),
     ]);
     for (const [raceId, entered] of entriesByRace) {
       const stagesCompleted = stagesCompletedByRace.get(raceId) ?? 0;
@@ -172,11 +197,23 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
         if (otherId === raceId || withdrawnIds.has(otherId)) continue;
         for (const id of otherRiders) boundElsewhere.add(id);
       }
+      // Bundet på netop løbets startdag: kun andre løb hvis vindue rummer startens game_day.
+      const startDay = windowByRace.get(raceId)?.start;
+      const boundAtStart = new Set();
+      if (Number.isFinite(startDay)) {
+        for (const [otherId, otherRiders] of entriesByRace) {
+          if (otherId === raceId || withdrawnIds.has(otherId)) continue;
+          if (!windowByRace.get(otherId)?.days?.includes(startDay)) continue;
+          for (const id of otherRiders) boundAtStart.add(id);
+        }
+      }
       const locked = lockByRace.get(raceId)?.riderIds ?? new Set();
       // #6740 (Codex P2): en rytter der allerede har brugt løbsdagen fjernes af motoren før
       // regel B og fyldes aldrig ind. Best-effort: svigter opslaget, tæller ingen som spent.
-      const spent = new Set((await loadSpentRaceDays({ supabase, raceId, riderIds: [...new Set([...entered, ...roster])] })
-        .catch(() => [])).map((row) => row.rider_id));
+      const spentRows = await loadSpentRaceDays({ supabase, raceId, riderIds: [...new Set([...entered, ...roster])] }).catch(() => []);
+      const spent = new Set(spentRows.map((row) => row.rider_id));
+      // #6739: kun spent på startdagen er overlap (regel A, kun etapeløb).
+      const spentStart = overlapRuleApplies(raceById.get(raceId)) ? await loadStartDaySpentRiderIds({ supabase, raceId, spentRows }) : new Set();
       const freeEligibleCount = roster.filter((id) => !entered.has(id) && !injured.has(id) && !boundElsewhere.has(id)
         && !locked.has(id) && !spent.has(id)).length;
       // #6740: kun udtagne der stadig er i løbets trup og ikke har brugt dagen tæller, som i
@@ -189,6 +226,9 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
         // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
         injuredEntryCount: keptEntered.filter((id) => injured.has(id)).length,
         freeEligibleCount, stagesCompleted,
+        // #6739 regel A: ryttere i et andet løb i dag (eller som har kørt det) giver start med mindst 4.
+        overlapCount: !overlapRuleApplies(raceById.get(raceId)) ? 0 : roster.filter((id) => (entered.has(id) ? spentStart.has(id)
+          : !injured.has(id) && !locked.has(id) && (boundAtStart.has(id) || spentStart.has(id)))).length,
       });
       starts.set(raceId, willStart);
     }

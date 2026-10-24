@@ -186,7 +186,9 @@ export function makeS5TierProfileGenerator({ tier, seedRaces, archetypeProfiles 
     /** @type {Array<any>} */
     const slots = [];
     for (const race of races) {
-      for (const p of generateRaceStageProfiles(race, { ...opts, profileModel: "s5" })) counts[p.profile_type] = (counts[p.profile_type] ?? 0) + 1;
+      // #2757 A2: kvoten fordeler filler-pladserne (før A2); tællingen skal være samme model som
+      // pladserne, ellers optimerer den mod et multisæt den ikke styrer. A2 lægges på bagefter.
+      for (const p of generateRaceStageProfiles(race, /** @type {any} */ ({ ...opts, profileModel: "s5", a2FlatStage: false }))) counts[p.profile_type] = (counts[p.profile_type] ?? 0) + 1;
       const s = s5StageRaceFillerSlots(race, opts);
       if (s && s.natural.length) slots.push({ id: race.id, ...s });
     }

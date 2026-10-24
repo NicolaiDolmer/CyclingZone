@@ -63,11 +63,15 @@ function createErroringSupabase(errorTable, errorObj = { message: "boom" }) {
       or() { return chain; },
       in() { return chain; },
       eq() { return chain; },
-      order() {
-        if (table === errorTable) {
-          return Promise.resolve({ data: null, error: errorObj });
-        }
-        return Promise.resolve({ data: [], error: null });
+      // order() kan awaites direkte (riderHistory) eller fortsaettes med .range()
+      // (teamTransferHistory pagineres, #6965) — begge giver samme resultat.
+      order() { return chain; },
+      range() { return chain; },
+      then(resolve, reject) {
+        const res = table === errorTable
+          ? { data: null, error: errorObj }
+          : { data: [], error: null };
+        return Promise.resolve(res).then(resolve, reject);
       },
     };
     return chain;

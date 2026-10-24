@@ -14,8 +14,9 @@ import { statColor, statTextColor } from "../../lib/statColor";
 import { RIDER_TYPE_KEYS } from "../../lib/riderTypeKeys";
 import { Flag } from "../Flag";
 import { StarIcon, FlagIcon, CheckIcon, ArrowDownIcon } from "../ui";
-import TerrainGlyph from "../calendar/TerrainGlyph.jsx";
-import { toTerrainBucket } from "../../lib/terrainBucket";
+import TerrainTypeGlyph from "../race/TerrainTypeGlyph.jsx";
+import { terrainDisplayType } from "../../lib/terrainTypeIcons";
+import { bucketProfileType } from "../../lib/racePeek.ts";
 import { CZ, dateToOrdinal, monthTicks, statusMeta, riderShortName, formatRaceDateLabel, formatOrdinalShort } from "./plannerShared";
 import { isPeakTargetOpen, isYouthPlannerRider } from "./plannerSquadModel";
 
@@ -30,7 +31,7 @@ const CX = RAIL, CW = VBW - RAIL - RRAIL;
 const AXIS = 48, LANE = 64, TOP_PAD = 10, BOT_PAD = 12;
 
 export default function MasterCanvas({ riders: allRiders, races, today, leadupDays, filter, selectedRaceId, selectedRiderId, onSelectRace, onSelectRider, onRetarget, onCreatePeak }) {
-  const { t } = useTranslation(["planner", "riderTypes"]);
+  const { t } = useTranslation(["planner", "riderTypes", "races"]);
   const svgRef = useRef(null);
   const [drag, setDrag] = useState(null); // { planId, riderId, previewOrd }
   const months = t("months", { returnObjects: true });
@@ -161,37 +162,30 @@ export default function MasterCanvas({ riders: allRiders, races, today, leadupDa
         const targeted = (riders || []).some((rd) => rd.peaks.some((p) => !p.isSuggestion && p.targetRaceId === r.id));
         const gap = i === 0 || rx - x(visRaces[i - 1].ord) > 34;
         const active = r.id === selectedRaceId;
-        // #4143 v2: r.terrain kommer fra samme kalender-model som CalendarPage.jsx
-        // (buildCalendarModel, backend/lib/raceCalendar.js) og bør derfor allerede
-        // være en af TerrainGlyph's buckets — men backend har mindst ét andet
-        // terræn-vokabular for samme data (plannerBoard.js's terrainKey(), som
-        // kalder samme bucket "flat" i stedet for "sprint"). toTerrainBucket() er
-        // den defensive normalisering (lib/terrainBucket.ts), delt med kalenderen,
-        // så glyffen aldrig falder tilbage til en forkert silhuet.
-        const terrainBucket = toTerrainBucket(r.terrain);
-        const terrainLabel = t(`terrain.${terrainBucket}`);
+        // #6683: r.terrainProfile er løbets dominerende profile_type fra samme kalender-model
+        // som CalendarPage.jsx (buildCalendarModel, backend/lib/raceCalendar.js); mangler den
+        // (ældre svar), tegnes den grove kategori. Samme ikon + navn som resten af appen.
+        const terrainType = r.terrainProfile || bucketProfileType(r.terrain);
+        const terrainLabel = t(`races:detail.profileType.${terrainDisplayType(terrainType) || "flat"}`);
         return (
           <g key={r.id}>
             <line x1={rx} y1={AXIS} x2={rx} y2={H} stroke={targeted ? CZ.goldDeep : CZ.border} strokeWidth={targeted ? 1.2 : 1} strokeDasharray="1 3" opacity={targeted ? 0.6 : 0.5} />
-            {/* #4143 v2 (ejeren afviste bogstavkoder 3/9): samme miniature-
-                terræn-silhuet som kalenderen (TerrainGlyph, components/calendar/
-                TerrainGlyph.jsx), indlejret via foreignObject — samme mønster
-                som Flag/StarIcon længere nede i dette canvas. Glyffen bærer sin
-                egen title/aria-label (terrænnavnet); hit-området nedenfor bærer
-                stadig den fulde navn · dato · terræn-label. */}
+            {/* #6683: samme farvede streg-ikon som kalenderen og etapesiden
+                (TerrainTypeGlyph), indlejret via foreignObject — samme mønster som
+                Flag/StarIcon længere nede i dette canvas. Glyffen bærer sin egen
+                aria-label (typens navn); hit-området nedenfor bærer stadig den fulde
+                navn · dato · terræn-label. */}
             {gap && (
-              <foreignObject x={rx - 10} y={AXIS - 24} width="20" height="13" pointerEvents="none">
+              <foreignObject x={rx - 11} y={AXIS - 30} width="22" height="18" pointerEvents="none">
                 <div
                   xmlns="http://www.w3.org/1999/xhtml"
                   title={terrainLabel}
-                  aria-label={terrainLabel}
-                  role="img"
                   style={{
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    width: "100%", height: "100%", color: CZ.ink, pointerEvents: "auto",
+                    width: "100%", height: "100%", pointerEvents: "auto",
                   }}
                 >
-                  <TerrainGlyph bucket={terrainBucket} width={20} height={12} />
+                  <TerrainTypeGlyph profileType={terrainType} size={18} />
                 </div>
               </foreignObject>
             )}

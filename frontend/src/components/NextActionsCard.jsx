@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { formatDate } from "../lib/intl.js";
 import { Card, ExchangeIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon, ChevronRightIcon } from "./ui";
 
 /**
@@ -49,6 +50,13 @@ export default function NextActionsCard({
   if (urgentAuctionCount > 0)
     items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
 
+  // #6962: næste ugentlige opdateringer (serverens tider, vist i dansk tid).
+  const fmtWhen = (iso) => formatDate(iso, /** @type {any} */ (null), {
+    timeZone: "Europe/Copenhagen", weekday: "long", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const valueWhen = fmtWhen(pending?.next_updates?.value_update_at);
+  const intakeWhen = fmtWhen(pending?.next_updates?.academy_intake_at);
+
   return (
     <Card className="p-4">
       {/* #2849 — titlen følger SectionHeader-opskriften (15px/600), ikke den
@@ -88,6 +96,13 @@ export default function NextActionsCard({
             </li>
           ))}
         </ul>
+      )}
+
+      {(valueWhen || intakeWhen) && (
+        <div className="mt-3 space-y-0.5 border-t border-cz-border pt-3 text-xs text-cz-3">
+          {valueWhen && <p>{t("nextActions.nextValueUpdate", { when: valueWhen })}</p>}
+          {intakeWhen && <p>{t("nextActions.nextAcademyIntake", { when: intakeWhen })}</p>}
+        </div>
       )}
     </Card>
   );

@@ -222,6 +222,12 @@ export const BOARD_IDENTITY_RIDER_SELECT = [
   "firstname",
   "lastname",
   "is_u25",
+  // #6990 · birthdate så U25-målet kan udledes af sæsonalder (riderSeasonAge) i stedet
+  // for den lagrede is_u25-kolonne, som kan stå forkert for helt unge ryttere.
+  "birthdate",
+  // #6990 · trup, så U25-målet kun tæller seniortruppen (squads.isSeniorSquadRider).
+  "squad",
+  "is_academy",
   "salary",
   "market_value",
   "uci_points",
@@ -279,3 +285,19 @@ export const BOARD_REQUEST_DEFINITIONS = {
     tradeoff_preview: "Hvis de siger ja, skruer de typisk op for det sportslige pres i stedet.",
   },
 };
+
+// Ejer-beslutning 11/6: ±5 point pr. løbsweekend (nedad-bevægelse). Bevaret som
+// downside-grænsen — hårde konsekvenser er checkpoint-gatede og kalibreret mod
+// denne værdi (boardSatisfactionHarness.js's konsekvens-rate-gate), så en
+// hurtigere NEDAD-bevægelse ville alene forøge antallet af hold der rammer
+// hårde lag (verificeret empirisk: ±8 symmetrisk gav 22-32% mod målet ≤10%).
+export const WEEKEND_SATISFACTION_CLAMP = 5;
+
+// #2309 · "Hurtigere tilfredsheds-respons" — ejer-ønske: boardet skal reagere
+// hurtigere på FREMGANG end den nuværende ±5-clamp tillader, uden at gøre
+// nedturen hårdere (det ville modarbejde konsekvens-rate-gaten, se ovenfor).
+// Asymmetrisk clamp: opad-bevægelse (holdet præsterer over sin løbende
+// tilfredshed) får en højere grænse end nedad. Effekt: et hold der vender en
+// dårlig start indhenter boardets tillid ~60% hurtigere, mens en katastrofe-
+// weekend stadig kun kan koste holdet op til ±5 point (uændret risiko-profil).
+export const WEEKEND_SATISFACTION_CLAMP_UP = 8;

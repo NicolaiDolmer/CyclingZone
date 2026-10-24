@@ -593,6 +593,23 @@ og dykket i tilbagebetalingen bagefter, som eget led oven i formen og uden forms
 samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
 Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
 
+### 5.3b Form og træthed 2.0 (`condition_model_v2`, #6984, **slukket**)
+
+Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`](superpowers/specs/2026-10-20-6984-form-traethed-design.md) (indført i docs-PR #6986, der merges før denne kode-PR). Bag flaget `condition_model_v2` (ingen app_config-række = off; kræver `training_condition_per_date`). Flag off = §5.1-5.3 uændret.
+
+| Regel | Kode |
+|---|---|
+| B1: hver etape er et helt døgn: belastning lægges til og én restitution trækkes fra pr. etape i rækkefølge; de frie pladser regnes som i dag (sum/5 og en femtedel restitution pr. plads) | `conditionModelV2.settleDateFatigueV2`, kaldt fra `trainingDateCondition.settleTrainingDateCondition` (`modelV2`) |
+| §5.4: recovery-evnen styrer også den proportionale andel; en middel-rytter (49,5) restituerer præcis som i dag | `conditionModelV2.recoveryV2` |
+| §5.2 + B3 + §5.5: etapens belastning = profil × længde × indsats × arbejde (inkl. hentet udbrud) × etapens plads × sæsonens løbsdage; frosset ved etapen som i dag | `conditionModelV2.stageLoadV2`, `raceFatigue.raceConditionLoads(..., conditionV2)`, `raceRunner.freezeConditionLoadSnapshots`, `raceFatigue.loadSeasonRaceDaysByRider` |
+| B4: inaktivitet og overbelastning koster form, passende belastning bygger den; de sidste point mod toppen kommer langsommere | `conditionModelV2.nextFormV2` |
+| Ugeprognosen bruger samme v2-afregning (I5), inkl. medicin | `trainingWeekPlanForecast.js` |
+| Medicin M1 (ejer 20/10): holdets medicinske afdeling forstærker rytterens recovery-evne i restitutionen (kun evne-leddene, ikke gulvet) | `medicalEffects.medicalRecoveryMultiplier`, `conditionModelV2.recoveryV2` |
+| Medicin M2/M3 i træning: lavere trænings-skaderisiko og kortere skade | `conditionModelV2.settleTrainingDateConditionV2` |
+| Medicin-bonus pr. hold: afdelingens niveau og chefens samlede styrke (`effectiveBonus("medical", …)`); hold uden afdeling = ingen effekt; sporet er live i klubben præcis når flaget er on | `medicalEffects.loadTeamMedicalBonus`, `facilityConstants.isTrackEffectLive` |
+
+Konstanterne står i `CONDITION_V2_CONFIG`; målinger og kalibrering kun i `balance-internals/6984/` (hard rule 17). Tænding: S5-start på ordret ejer-go efter harnessen (`backend/scripts/dev/conditionModelV2Harness6984.mjs`).
+
 ### 5.4 Skader fra træning
 
 | Regel | Kilde |
@@ -665,7 +682,10 @@ prod 24/8 (#4192): 1.520 ryttere på 103 hold stod på Hvile OG var tilmeldt et 
 **Reglen nu (ejer 24/9, [#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850), S1
 valgt efter simuleringen i PR #5640):** planen er IKKE input. En rytter der kører en etape på en
 løbsdag udvikler sig som efter et **mellem-pas** i de evner etapens profil kræver, under reglen
-**maks +1 pr. evne pr. løbsdag**, og resten af fremdriften bæres videre.
+**maks +1 pr. evne pr. løbsdag**, og resten af fremdriften bæres videre. Oven på det gælder
+**maks +1 pr. evne pr. rytter pr. dato** ([#6210](https://github.com/NicolaiDolmer/CyclingZone/issues/6210), bag flaget `ability_cap_per_date_enabled`, slukket indtil Udvikling 2.0 tændes): på tværs af datoens løbsdage, alle stier (Train now, aftenens
+kørsel, kalenderdags-faldet) og et holdskifte samme dato på live-stien (reserve-stien: #7084). Et klippet point bæres videre på
+fremdriftsbaren til næste dato (`capTickGainsPerDate`, `dailyTrainingEngine.js`).
 
 | Del | Mekanisme | Hvor |
 |---|---|---|

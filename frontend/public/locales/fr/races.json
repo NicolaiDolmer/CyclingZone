@@ -84,10 +84,16 @@
     },
     "favourites": {
       "title": "Favoris",
-      "foot": "D'après cette course jusqu'ici. Adéquation au parcours uniquement pour tes propres coureurs.",
+      "foot": "Suit le profil de l'étape, d'après cette course jusqu'ici. Adéquation au parcours uniquement pour tes propres coureurs.",
       "leadsOverall": "Mène au général",
       "overall": "n° {rank} au général, {gap}",
       "wonStage": "A gagné l'étape {number}",
+      "placed": {
+        "flat": "Top 10 sur {count, plural, one {# étape plate} other {# étapes plates}}",
+        "hilly": "Top 10 sur {count, plural, one {# étape vallonnée} other {# étapes vallonnées}}",
+        "mountain": "Top 10 sur {count, plural, one {# étape de montagne} other {# étapes de montagne}}",
+        "itt": "Top 10 sur {count, plural, one {# contre-la-montre} other {# contre-la-montre}}"
+      },
       "you": "Toi"
     },
     "story": {
@@ -148,8 +154,9 @@
         "leading": "En tête",
         "first": "Premier au sommet",
         "top": "Sommet {name}",
+        "topOfPlace": "Sommet de {place}",
         "climb": "col",
-        "sprint": "Sprint",
+        "sprint": "Sprint intermédiaire",
         "finish": "Arrivée",
         "none": "Aucun col, sprint ni arrivée dans le journal de course."
       },
@@ -202,7 +209,7 @@
       "classAria": "Classement",
       "stage": "Étape",
       "overall": "Général",
-      "top3": "Top 3",
+      "topN": "Top {count}",
       "yourRiders": "Tes coureurs",
       "noRiders": "Aucun de tes coureurs n'est dans ce résultat.",
       "bestOverall": "Ton meilleur au général",
@@ -739,6 +746,23 @@
     "whyBest": "Cette étape de type {bucket} récompense ton meilleur choix : {name}.",
     "form": "Forme",
     "fatigue": "Fatigue",
+    "doctor": {
+      "label": "Médecin",
+      "hint": "L'avis du médecin de l'équipe sur chaque coureur. Un meilleur service médical donne un avis plus précis.",
+      "assessment": {
+        "fresh": "Frais",
+        "ready": "Prêt",
+        "tired": "Fatigué",
+        "rest": "Doit se reposer",
+        "injured": "Blessé"
+      },
+      "season": {
+        "ready": "Prêt pour celui-ci et le reste de la saison.",
+        "ready_but_spent_later": "Prêt maintenant, mais à bout de forces au troisième Grand Tour.",
+        "already_heavy": "Il a beaucoup couru cette saison. Chaque étape coûte plus cher maintenant.",
+        "rest_first": "Fais-le se reposer avant celui-ci."
+      }
+    },
     "injured": "Blessé",
     "overAge": "Âge dépassé",
     "boundIn": "Court {race}",
@@ -991,11 +1015,13 @@
       "stageWins": "Victoires d'étape",
       "finishers": "Arrivés",
       "notStarted": "Pas commencée",
+      "nextStageSub": "Prochaine étape",
       "racingNow": "En course",
       "allRidden": "Toutes courues",
       "squadLockedIn": "Effectif verrouillé",
       "squadFrozen": "Effectif gelé",
       "abandons": "{count, plural, one {# abandon} other {# abandons}}",
+      "chipNextStage": "Prochaine : étape {number} · {time}",
       "chipStageOnRoad": "Étape {number} en cours",
       "chipRacing": "En course",
       "chipFinished": "Terminée",

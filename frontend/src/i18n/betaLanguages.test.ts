@@ -1,8 +1,7 @@
 // Beta-sprog: registrering, synlighed, engelsk fallback og lazy-load — Refs #6802.
 //
-// Der er ingen beta-sprog registreret i dag (fr/es/nl kommer i opfoelgere).
-// Testene beviser derfor kontrakten med syntetiske sprog, og at HVER fremtidig
-// entry i LANGUAGES automatisk er daekket af de strukturelle vagter.
+// fr/es/nl var beta-sprog og er live for alle fra 24/10 (#7087). Beta-mekanismen (flag, detektor,
+// Beta-maerke) bevares til naeste sprog; de strukturelle vagter daekker HVER entry i LANGUAGES.
 
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -16,25 +15,12 @@ import {
   SUPPORTED_LANGS,
   PUBLIC_LANGS,
   DEFAULT_LANG,
-  HAS_BETA_LANGS,
   isBetaLang,
 } from "./languages.js";
 import { LAZY_BUNDLE_LANGS, bundleKey } from "./localeBundleBackend.js";
 import { publicLanguageCandidates } from "./publicLanguageDetector.ts";
-import {
-  hasBetaLanguageAccess,
-  selectableLanguages,
-  languageToRevertTo,
-} from "../lib/languageAccess.ts";
-
 const HERE = dirname(fileURLToPath(import.meta.url));
 const read = (rel: string) => readFileSync(join(HERE, rel), "utf8");
-
-const SYNTHETIC: { code: string; flag: string; beta: boolean }[] = [
-  { code: "en", flag: "gb", beta: false },
-  { code: "da", flag: "dk", beta: false },
-  { code: "xx", flag: "un", beta: true },
-];
 
 // ── languages.js ────────────────────────────────────────────────────────────
 
@@ -51,7 +37,6 @@ test("standardsproget og de to nuvaerende sprog er offentlige", () => {
 
 test("SUPPORTED_LANGS rummer ogsaa beta-sprog (DB-constraint + i18n kender dem)", () => {
   for (const l of LANGUAGES) assert.ok(SUPPORTED_LANGS.includes(l.code));
-  assert.equal(HAS_BETA_LANGS, LANGUAGES.some((l) => l.beta === true));
 });
 
 test("isBetaLang: basis-kode, case-insensitiv, ukendt og ikke-streng er aldrig beta", () => {
@@ -59,37 +44,6 @@ test("isBetaLang: basis-kode, case-insensitiv, ukendt og ikke-streng er aldrig b
   assert.equal(isBetaLang("zz"), false);
   assert.equal(isBetaLang(undefined), false);
   assert.equal(isBetaLang(null), false);
-});
-
-// ── adgang (ejer + beta-tester) ─────────────────────────────────────────────
-
-test("beta-adgang er fail-closed: kun et aegte true giver adgang", () => {
-  assert.equal(hasBetaLanguageAccess({ isBetaTester: true }), true);
-  assert.equal(hasBetaLanguageAccess({ isOwner: true }), true);
-  assert.equal(hasBetaLanguageAccess({ isBetaTester: false, isOwner: false }), false);
-  assert.equal(hasBetaLanguageAccess({ isBetaTester: "true", isOwner: 1 }), false);
-  assert.equal(hasBetaLanguageAccess({}), false);
-  assert.equal(hasBetaLanguageAccess(), false);
-});
-
-test("sprogvaelgeren viser kun beta-sprog naar adgangen er bekraeftet", () => {
-  assert.deepEqual(selectableLanguages(SYNTHETIC, true).map((l) => l.code), ["en", "da", "xx"]);
-  assert.deepEqual(selectableLanguages(SYNTHETIC, false).map((l) => l.code), ["en", "da"]);
-  assert.deepEqual(selectableLanguages(SYNTHETIC, null).map((l) => l.code), ["en", "da"]);
-});
-
-test("languageToRevertTo ruller kun tilbage naar mangel paa adgang er KENDT", () => {
-  // Intet beta-sprog er registreret i dag, saa brug det statiske isBetaLang-svar:
-  // et offentligt sprog rulles aldrig tilbage uanset adgang.
-  assert.equal(languageToRevertTo("da", false), null);
-  assert.equal(languageToRevertTo("en", null), null);
-  assert.equal(languageToRevertTo("da", true), null);
-  // null = ikke afgjort => aldrig tilbagerulning (ellers kastes testere til EN ved hver load).
-  for (const l of LANGUAGES.filter((x) => x.beta)) {
-    assert.equal(languageToRevertTo(l.code, null), null);
-    assert.equal(languageToRevertTo(l.code, true), null);
-    assert.equal(languageToRevertTo(l.code, false), DEFAULT_LANG);
-  }
 });
 
 // ── detektion ───────────────────────────────────────────────────────────────
@@ -186,34 +140,39 @@ test("regionale koder falder tilbage via basis-sproget", async () => {
   assert.equal(i.t("only"), "Only EN");
 });
 
-// ── fr/es/nl som skjulte beta-sprog (#6836) ────────────────────────────────
+// ── fr/es/nl live for alle (#6836, #7087) ────────────────────────────────
 
 const REGISTERED_BETA = ["fr", "es", "nl"];
 
-test("fr/es/nl er registreret som beta og aldrig offentlige", () => {
+test("fr/es/nl er live (#7087): registreret, offentlige og uden beta-maerke", () => {
   for (const code of REGISTERED_BETA) {
     const entry = LANGUAGES.find((l) => l.code === code);
     assert.ok(entry, `${code} mangler i LANGUAGES`);
-    assert.equal(entry.beta, true, `${code} skal vaere beta: true`);
-    assert.equal(isBetaLang(code), true);
-    assert.equal(isBetaLang(`${code}-XX`), true);
+    assert.equal(entry.beta, false, `${code} skal vaere beta: false`);
+    assert.equal(isBetaLang(code), false);
+    assert.equal(isBetaLang(`${code}-XX`), false);
     assert.ok(SUPPORTED_LANGS.includes(code));
-    assert.ok(!PUBLIC_LANGS.includes(code), `${code} maa ikke vaere i PUBLIC_LANGS`);
+    assert.ok(PUBLIC_LANGS.includes(code), `${code} skal vaere i PUBLIC_LANGS`);
   }
-  assert.deepEqual(PUBLIC_LANGS, ["en", "da"]);
-  assert.equal(HAS_BETA_LANGS, true);
+  assert.deepEqual(PUBLIC_LANGS, ["en", "da", "fr", "es", "nl"]);
 });
 
-test("browser-detektion vaelger aldrig fr/es/nl, selv med en fransk/spansk/hollandsk browser", () => {
-  assert.deepEqual(publicLanguageCandidates(["fr-FR", "es-ES", "nl-NL", "da-DK"]), ["da-DK"]);
-  assert.deepEqual(publicLanguageCandidates(["fr", "es", "nl"]), []);
+test("browser-detektion kan vaelge fr/es/nl for en fransk/spansk/hollandsk browser", () => {
+  assert.deepEqual(publicLanguageCandidates(["fr-FR", "es-ES", "nl-NL", "da-DK"]), ["fr-FR", "es-ES", "nl-NL", "da-DK"]);
+  assert.deepEqual(publicLanguageCandidates(["fr", "es", "nl"]), ["fr", "es", "nl"]);
 });
 
-test("sprogvaelgeren skjuler fr/es/nl for almindelige spillere og viser dem for testere", () => {
-  assert.deepEqual(selectableLanguages(LANGUAGES, false).map((l) => l.code), ["en", "da"]);
-  assert.deepEqual(selectableLanguages(LANGUAGES, null).map((l) => l.code), ["en", "da"]);
-  assert.deepEqual(selectableLanguages(LANGUAGES, true).map((l) => l.code), ["en", "da", "fr", "es", "nl"]);
-  for (const code of REGISTERED_BETA) assert.equal(languageToRevertTo(code, false), DEFAULT_LANG);
+test("sprogvaelgeren viser alle sprog for alle uden adgangsgate; Beta-maerket styres af beta-flaget (#7087)", () => {
+  const src = readFileSync(join(HERE, "../components/LanguageSwitcher.jsx"), "utf8");
+  assert.doesNotMatch(src, /languageAccess|useBetaLanguageAccess/, "ingen adgangsgate");
+  assert.match(src, /toOptions\(LANGUAGES\)/);
+  assert.match(src, /language.betaBadge/);
+  assert.match(src, /language.betaNote/);
+  const dir = join(HERE, "../../public/locales");
+  for (const lng of ["en", "da", ...REGISTERED_BETA]) {
+    const common = JSON.parse(readFileSync(join(dir, lng, "common.json"), "utf8"));
+    for (const k of ["betaBadge", "betaNote"]) assert.equal(typeof common.language?.[k], "string", `${lng}/common.json mangler language.${k}`);
+  }
 });
 
 test("sprognavne-noegler language.<kode> findes i alle fem sprog (switcherens fallback-noegle)", () => {

@@ -202,11 +202,14 @@ export const EFFECT_LIVE_BY_TRACK = Object.freeze({
 // (PROFILE_TIERS i academyIntakeProfile.ts), ikke de gamle "ekstra slots" ovenfor.
 /**
  * @param {string} track
- * @param {{ academyIntakePullEnabled?: boolean }} [flags]
+ * @param {{ academyIntakePullEnabled?: boolean, conditionModelV2?: boolean }} [flags]
  * @returns {boolean}
  */
-export function isTrackEffectLive(track, { academyIntakePullEnabled = false } = {}) {
+// #6984: medicin-sporet åbner SAMMEN med Form og træthed 2.0 (condition_model_v2);
+// effekten (M1-M3, medicalEffects.js) findes kun under det flag.
+export function isTrackEffectLive(track, { academyIntakePullEnabled = false, conditionModelV2 = false } = {}) {
   if (track === "academy") return academyIntakePullEnabled === true;
+  if (track === "medical") return conditionModelV2 === true;
   return /** @type {Record<string, boolean>} */ (EFFECT_LIVE_BY_TRACK)[track] ?? false;
 }
 

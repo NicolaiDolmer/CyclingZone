@@ -21,7 +21,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readOnlyDb } from "./lib/motorTestportInputs.mjs";
 import { prodDb } from "./motorTestport.mjs";
-import { RACE_FORM_PEAKS_FLAG_KEY, isRaceFormPeaksEnabled } from "../../lib/raceEngineFlag.js";
+import { RACE_FORM_PEAKS_FLAG_KEY } from "../../lib/raceEngineFlag.js";
+import { evaluateFlagStage } from "../../lib/featureStage.js";
 
 export const S5_V2_MIGRATION = "2026-10-17-6818-engine-rules-revision-s5-v2.sql";
 
@@ -31,6 +32,16 @@ export const S5_V2_MIGRATION = "2026-10-17-6818-engine-rules-revision-s5-v2.sql"
  */
 export function migrationRow(rows, file = S5_V2_MIGRATION) {
   return (rows ?? []).find((r) => typeof r?.filename === "string" && r.filename.replace(/\\/g, "/").split("/").pop() === file) ?? null;
+}
+
+/**
+ * race_form_peaks evalueret som spillets isRaceFormPeaksEnabled (evaluateFlagStage uden opts), men en
+ * laesefejl kaster i stedet for stille at blive til "slukket" (spillets readFlagStage sluger fejl).
+ */
+export async function readFormPeaksEnabled(db) {
+  const { data, error } = await db.from("app_config").select("value").eq("key", RACE_FORM_PEAKS_FLAG_KEY).maybeSingle();
+  if (error) throw new Error(`app_config (${RACE_FORM_PEAKS_FLAG_KEY}): ${error.message}`);
+  return evaluateFlagStage(data?.value ?? null);
 }
 
 /** Ren dom over de indsamlede fakta. */
@@ -50,7 +61,8 @@ export async function main() {
   const { data: migRows, error: mErr } = await db.from("schema_migrations").select("filename, applied_at").in("filename", [S5_V2_MIGRATION, `database/${S5_V2_MIGRATION}`]);
   if (mErr) throw new Error(`schema_migrations: ${mErr.message}`);
   const mig = migrationRow(migRows);
-  const formPeaksEnabled = await isRaceFormPeaksEnabled(db);
+  // En laesefejl maa aldrig ligne en groen "slukket" (Codex paa #7058).
+  const formPeaksEnabled = await readFormPeaksEnabled(db);
   const { count: boundToV2, error: bErr } = await db.from("races").select("id", { count: "exact", head: true }).eq("engine_rules_revision", "s5_profiles_v2");
   if (bErr) throw new Error(`races (v2): ${bErr.message}`);
   const { data: seasons, error: sErr } = await db.from("seasons").select("id, number, status, start_date").in("number", [4, 5]);
