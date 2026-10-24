@@ -16,7 +16,6 @@ import {
   FlagIcon,
   ArrowDownIcon,
   LightningIcon,
-  MinusIcon,
   Portal,
   PageLoader,
   Button,
@@ -217,7 +216,7 @@ function riderName(res) {
 }
 
 // #6185: ikon-FORM + tone pr. tilstand (klassenavne ordret, så Tailwinds scanner finder dem).
-const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon, bolt: LightningIcon, none: MinusIcon };
+const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon, bolt: LightningIcon };
 const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger", later: "text-cz-2" };
 
 // #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, et andet tryk på samme markør skjuler den, hover virker

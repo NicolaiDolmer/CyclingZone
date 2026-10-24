@@ -198,12 +198,11 @@ test("#6185 B1 Penisola with the finish order: dropped riders behind a non-escap
   for (const row of rows.filter((r) => (PENISOLA_CAUGHT as readonly string[]).includes(r.rider_id))) assert.equal(labelOf(row, history), "detail.breakaway.caught", row.rider_id);
 });
 
-test("#7092 morning break, later attack and no involvement get three different icons", () => {
+test("#7092 morning break and later attack get different icons; no involvement shows nothing", () => {
   const history = historyForStage(timeline, 6, ["morning", "attacker", "passive"]);
   const kinds = (id: string) => breakawayMarkerEntries(participationForResult({ rider_id: id }, history)!).map((e) => `${e.kind}:${e.icon}`);
   assert.deepEqual(kinds("morning"), ["morning:flag"]);
   assert.deepEqual(kinds("attacker"), ["later:bolt"]);
-  assert.deepEqual(kinds("passive"), ["none:none"]);
-  // Without a verified timeline "none" is never claimed.
+  assert.deepEqual(kinds("passive"), []);
   assert.deepEqual(breakawayMarkerEntries(participationForResult({ rider_id: "p", in_breakaway: false }, null)!), []);
 });
