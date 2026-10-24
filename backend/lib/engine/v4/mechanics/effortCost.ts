@@ -65,6 +65,7 @@
 
 import type { EffortLevel, SegmentKind } from "../types.ts";
 import { EFFORT_COST_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 /**
  * Tuning-formen EFFORT_COST_EXTRA_TUNING (tuning.ts) implementerer. Holdt her
@@ -107,13 +108,9 @@ export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze
   }) as Readonly<Partial<Record<SegmentKind, number>>>,
 });
 
-/**
- * #6641: revisionen der baerer kalibreringen. s5_profiles_v3 er endnu ikke en
- * kendt revision paa main (taend-PR'en for v3 optager den, #6804); indtil da er
- * dette altid false i motoren. Spoerges her, ikke paa strengen ved kaldstedet.
- */
+/** #6641: revisionen der baerer kalibreringen (s5_profiles_v3 og senere, slukket). */
 export function isEffortCalibration6641Revision(revision: unknown): boolean {
-  return revision === "s5_profiles_v3";
+  return isS5ProfilesV3OrLater(revision);
 }
 
 /** #6641: prisen for et loeb bundet til `revision`. Aeldre revisioner: uaendret tuning. */
