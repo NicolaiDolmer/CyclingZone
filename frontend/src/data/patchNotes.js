@@ -1,5 +1,79 @@
 export const PATCHES = [
   {
+    "version": "7.376",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "French, Spanish and Dutch for everyone",
+          "body": "French, Spanish and Dutch are no longer in beta. Your browser's language is picked automatically, and you can switch language at any time."
+        },
+        "da": {
+          "title": "Fransk, spansk og hollandsk for alle",
+          "body": "Fransk, spansk og hollandsk er ikke længere i beta. Jeres browsers sprog vælges automatisk, og I kan skifte sprog når som helst."
+        },
+        "refs": [
+          7087
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Awaiting promotion instead of a forced sale",
+          "body": "When a rider is too old for his squad and the next squad is full, he is no longer sold. He stays with you as awaiting promotion, and you move him up from the squad page when there is room. As before, he is sold if there is room but your balance is negative."
+        },
+        "da": {
+          "title": "Afventer oprykning i stedet for tvunget salg",
+          "body": "Når en rytter er for gammel til sin trup, og den næste trup er fuld, bliver han ikke længere solgt. Han bliver hos jer som afventer oprykning, og I rykker ham op fra trupsiden, når der er plads. Som før bliver han solgt, hvis der er plads, men saldoen er negativ."
+        },
+        "refs": [
+          6710
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Push notifications for everyone",
+          "body": "Everyone can now turn on push notifications on the profile page. You choose the categories yourself. At most 6 a day, and never between 22:00 and 08:00."
+        },
+        "da": {
+          "title": "Push-beskeder for alle",
+          "body": "Alle kan nu slå push-beskeder til på profilsiden. I vælger selv kategorierne. Højst 6 om dagen og aldrig mellem 22 og 08."
+        },
+        "refs": [
+          6590
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Set the training day for many riders, for everyone",
+          "body": "On the Today tab of Daily training, one line sets today's session for all riders in the view, or only the ones you tick. It is no longer limited to the beta group."
+        },
+        "da": {
+          "title": "Sæt træningsdagen for mange ryttere, for alle",
+          "body": "På fanen I dag under Daglig træning sætter én linje dagens træning for alle ryttere i visningen eller kun dem, I markerer. Den er ikke længere kun for beta-gruppen."
+        },
+        "refs": [
+          6523
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.375",
     "date": "2026-10-24",
     "changes": [
