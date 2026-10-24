@@ -631,6 +631,10 @@ trænings- og løbsskader i denne optælling.
 
 ---
 
+### 5.4b Sygdom af langvarig ekstrem træthed (#6938, **slukket**)
+
+Kun når `condition_model_v2` er on OG løbsmotoren kører `s5_profiles_v3` (tændes med v3, ejer 24/10). Ved aftenens afregning kan en rask rytter, der ikke blev skadet samme dag, blive syg, hvis hans træthed har været ekstrem flere afregnede dage i træk (inkl. dagens). Under en minimumsstime er risikoen 0; den stiger med stimens længde og med hvor langt over grænsen trætheden ligger, og har et loft pr. dag. Den medicinske afdeling sænker risikoen. Rullet er seedet pr. (rytter, dato). En syg rytter får `rider_condition.injury_cause = 'illness'` og er ude nogle løbsdage (samme løbsdagsakse som træningsskaden), uden evneskade. Han starter ikke og står som "Syg, startede ikke" (`race_incidents.kind = 'illness'`), og holdet får lægens besked i indbakken. Historikken læses fra `training_condition_settlements` på rytternes id'er (primærnøglen). Kode: `backend/lib/conditionIllness.js`, koblet i `dailyTrainingEngine.js`. Tal privat (hard rule 17).
+
 ## 6. Træning og løbsdage
 
 ### 6.1 Datosat tilstand, ikke en permanent regel

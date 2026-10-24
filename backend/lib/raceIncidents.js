@@ -172,12 +172,14 @@ export async function loadAbandonedRiderIds({ supabase, raceId }) {
  * @returns {Promise<number>} antal skrevne raekker
  */
 export async function persistInjuryWithdrawals({ supabase, raceId, stageNumber, riderIds = [] }) {
+  // #6938: en syg rytter (rider_condition.injury_cause='illness') er 'illness' ("Syg,
+  // startede ikke"), ikke 'injury'. Begge arter slettes, saa en genkoersel er idempotent.
   const { error: deleteError } = await supabase
     .from("race_incidents")
     .delete()
     .eq("race_id", raceId)
     .eq("stage_number", stageNumber)
-    .eq("kind", "injury");
+    .in("kind", ["injury", "illness"]);
   if (deleteError) {
     throw new Error(
       `race_incidents (injury-withdrawal delete) race ${raceId} etape ${stageNumber}: ${deleteError.message}`
@@ -185,11 +187,17 @@ export async function persistInjuryWithdrawals({ supabase, raceId, stageNumber, 
   }
   const unique = [...new Set(riderIds.filter(Boolean))];
   if (!unique.length) return 0;
+  const { data: causes, error: causeError } = await supabase
+    .from("rider_condition")
+    .select("rider_id, injury_cause")
+    .in("rider_id", unique);
+  if (causeError) throw new Error(`rider_condition (injury cause): ${causeError.message}`);
+  const illIds = new Set((causes ?? []).filter((c) => c.injury_cause === "illness").map((c) => c.rider_id));
   const rows = unique.map((riderId) => ({
     race_id: raceId,
     stage_number: stageNumber,
     rider_id: riderId,
-    kind: "injury",
+    kind: illIds.has(riderId) ? "illness" : "injury",
     outcome: "abandon",
     time_loss_seconds: null,
     injury_days: null,

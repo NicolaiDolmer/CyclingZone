@@ -647,6 +647,10 @@
       "message": "{count, plural, one {{senderName} har skrevet til dig} other {# nye beskeder fra {senderName}}}",
       "messageUnknownSender": "{count, plural, one {En anden manager har skrevet til dig} other {# nye beskeder fra en anden manager}}"
     },
+    "riderIll": {
+      "title": "Rytter syg",
+      "message": "Lægen melder, at {rider} er syg efter flere dage med ekstrem træthed og er ude til {until}."
+    },
     "riderInjured": {
       "title": "Rytter skadet",
       "message": "{rider} styrtede i {race} og er skadet til {until}.",
