@@ -29,8 +29,11 @@ import {
   ittReferenceByKind,
   ittSpeedKmh,
   ittStageNoise,
+  ittTerrainWeight,
+  S5_V3_ITT_TERRAIN_WEIGHT,
   simulateIndividualTimeTrialStage,
 } from "./individualTimeTrial.ts";
+import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 
 // ── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -545,4 +548,86 @@ test("#6349: aeldre revisioner er uaendrede (v2, v1, orders_gc og legacy = ingen
       assert.deepEqual(simulateStageV4({ ...base, rules_revision: rev }), legacy, `${profileType} under ${rev}`);
     }
   }
+});
+
+// ── 8. #6595 (KUN s5_profiles_v3): enkeltstartens egen terraen-vaegt ─────────
+//
+// Fejlen (staff 13/10 + 14/10, maalt 24/10 mod Touren og Giroen): en flad
+// enkeltstart i en Grand Tour spredte feltet tydeligt mindre end i virkeligheden,
+// fordi fart-formlen brugte vejetapens terraen-vaegt, der daemper styrke paa
+// fladt terraen for at afspejle laeet i en gruppe. Mod uret er der intet laee.
+// Under s5_profiles_v3 faar fladt og rullende terraen mere vaegt; alt andet er
+// som foer, og aeldre revisioner er byte-identiske.
+
+const V3 = "s5_profiles_v3";
+const NOISELESS = { ittTuning: NO_NOISE, incidentsTuning: NO_INCIDENTS };
+// s5_profiles_v3 = hele s5_profiles_v2-pakken + v3-tilvalgene. Etape-testene
+// isolerer DENNE rettelse: s5_profiles_v2 med og uden v3's terraen-vaegt, saa de
+// ikke afhaenger af hvornaar taend-PR'en optager v3 i revisionernes slaegtslinjer.
+const ROAD_WEIGHT = { rulesRevision: "s5_profiles_v2" };
+const V3_WEIGHT = { rulesRevision: "s5_profiles_v2", ittTerrainWeight: S5_V3_ITT_TERRAIN_WEIGHT };
+
+test("#6595: aeldre revisioner bruger vejetapens terraen-vaegt (samme objekt, byte-identisk)", () => {
+  for (const rev of [undefined, null, "legacy", "official_times_v3", "official_times_v4", "official_times_v5", "s5_profiles_v1", "s5_profiles_v2"]) {
+    assert.equal(ittTerrainWeight(rev), STRENGTH_SPEED_EXTRA_TUNING.terrainWeight, String(rev));
+  }
+  assert.equal(ittTerrainWeight(V3), S5_V3_ITT_TERRAIN_WEIGHT);
+  // Default-parameteren er vejetapens vaegt: kald uden vaegt = kald med den.
+  for (const kind of ["flat", "rolling", "climb", "descent", "cobbles"] as const) {
+    assert.equal(ittSpeedKmh(0.62, 0.55, kind, RACE_V4_TUNING), ittSpeedKmh(0.62, 0.55, kind, RACE_V4_TUNING, INDIVIDUAL_TIME_TRIAL_TUNING, STRENGTH_SPEED_EXTRA_TUNING.terrainWeight));
+  }
+});
+
+test("#6595: s5_profiles_v1 og v2 giver praecis samme enkeltstart som foer (flad og kuperet)", () => {
+  for (const [profileType, segs] of [["itt", undefined], ["itt_hilly", HILLY_SEGMENTS]] as const) {
+    const r = route(profileType, segs);
+    const v1 = simulateIndividualTimeTrialStage(r, field(30), "v6595", RACE_V4_TUNING, { rulesRevision: "s5_profiles_v1" });
+    const v2 = simulateIndividualTimeTrialStage(r, field(30), "v6595", RACE_V4_TUNING, { rulesRevision: "s5_profiles_v2" });
+    assert.deepEqual(v2.results.map((x) => x.time_seconds), v1.results.map((x) => x.time_seconds), profileType);
+    const v3 = simulateIndividualTimeTrialStage(r, field(30), "v6595", RACE_V4_TUNING, { rulesRevision: V3 });
+    assert.notDeepEqual(v3.results.map((x) => x.time_seconds), v2.results.map((x) => x.time_seconds), `${profileType}: v3 skal aendre tiderne`);
+  }
+});
+
+test("#6595 v3: kun fladt og rullende faar mere vaegt; stigning, nedkoersel og brosten er vejetapens", () => {
+  const road = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
+  assert.ok(S5_V3_ITT_TERRAIN_WEIGHT.flat > road.flat);
+  assert.ok(S5_V3_ITT_TERRAIN_WEIGHT.rolling > road.rolling);
+  for (const kind of ["climb", "descent", "cobbles"] as const) assert.equal(S5_V3_ITT_TERRAIN_WEIGHT[kind], road[kind], kind);
+  // Fladt vejer stadig mindre end op ad bakke: styrke betyder mest paa stigningen.
+  assert.ok(S5_V3_ITT_TERRAIN_WEIGHT.flat < S5_V3_ITT_TERRAIN_WEIGHT.rolling && S5_V3_ITT_TERRAIN_WEIGHT.rolling < road.climb);
+});
+
+test("#6595 v3: farten er stadig stigende i evne paa hvert terraen (styrke straffes aldrig)", () => {
+  for (const kind of ["flat", "rolling", "climb", "descent", "cobbles"] as const) {
+    let previous = -Infinity;
+    for (let c = -0.2; c <= 1.0; c += 0.05) {
+      const v = ittSpeedKmh(c, 0.5, kind, RACE_V4_TUNING, INDIVIDUAL_TIME_TRIAL_TUNING, S5_V3_ITT_TERRAIN_WEIGHT);
+      assert.ok(v >= previous, `${kind}: fart faldt ved evne ${c.toFixed(2)}`);
+      previous = v;
+    }
+  }
+});
+
+test("#6595 v3: en flad enkeltstart spreder feltet mere, med praecis samme raekkefoelge uden stoej", () => {
+  const list = field(30);
+  const flat = route("itt", [{ kind: "flat", from_km: 0, to_km: 30 }]);
+  const v2 = simulateIndividualTimeTrialStage(flat, list, "spread", NO_DAYFORM, { ...NOISELESS, ...ROAD_WEIGHT });
+  const v3 = simulateIndividualTimeTrialStage(flat, list, "spread", NO_DAYFORM, { ...NOISELESS, ...V3_WEIGHT });
+  assert.deepEqual(v3.results.map((r) => r.rider_id), v2.results.map((r) => r.rider_id), "evnen afgoer stadig raekkefoelgen");
+  const gap10 = (out: StageOutput) => out.results[9].time_seconds - out.results[0].time_seconds;
+  assert.ok(gap10(v3) > 1.3 * gap10(v2), `top-10-gab ${gap10(v3).toFixed(1)} s under v3 mod ${gap10(v2).toFixed(1)} s under v2`);
+  assert.ok(v3.results.every((r) => r.status !== "otl"), "ingen rytter uden for tidsgraensen paa en normal enkeltstart");
+});
+
+test("#6595 v3: tempo-rytteren henter mere ind paa klatreren paa fladt; bjergenkeltstarten er stadig klatrerens", () => {
+  const pair = [rider("tt", 55, { time_trial: 80, climbing: 60 }), rider("climber", 55, { time_trial: 60, climbing: 80 }), ...field(20)];
+  const gap = (segs: Segment[] | undefined, opts: typeof ROAD_WEIGHT | typeof V3_WEIGHT) => {
+    const out = simulateIndividualTimeTrialStage(route("itt", segs), pair, "pair", NO_DAYFORM, { ...NOISELESS, ...opts });
+    const t = new Map(out.results.map((r) => [r.rider_id, r.time_seconds]));
+    return t.get("climber")! - t.get("tt")!;
+  };
+  assert.ok(gap(undefined, ROAD_WEIGHT) > 0, "fladt: tempo-rytteren er foran ogsaa foer");
+  assert.ok(gap(undefined, V3_WEIGHT) > 1.3 * gap(undefined, ROAD_WEIGHT), "fladt: tempo-rytterens forspring vokser under v3");
+  assert.ok(gap(MOUNTAIN_ITT_SEGMENTS, V3_WEIGHT) < 0, "bjergenkeltstart: klatreren er stadig hurtigst");
 });

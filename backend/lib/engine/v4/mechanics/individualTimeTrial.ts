@@ -440,6 +440,8 @@ export type IndividualTimeTrialOptions = TeamTimeTrialOptions & {
   ittTuning?: IndividualTimeTrialTuning;
   /** #6349: loebets regel-revision. Kun official_times_v3 blander evnen efter stigningsandelen. */
   rulesRevision?: unknown;
+  /** #6595: terraen-vaegten i fart-formlen (tests/bench); default ittTerrainWeight(rulesRevision). */
+  ittTerrainWeight?: Readonly<Record<SegmentKind, number>>;
 };
 
 /**
@@ -473,7 +475,7 @@ export function simulateIndividualTimeTrialStage(
       ...(isS5ProfilesV2OrLater(options.rulesRevision) ? { incidentStartFloor: true as const } : {}),
     },
     // #6595: kun s5_profiles_v3 faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, ittTerrainWeight(options.rulesRevision)),
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision)),
   );
   return output;
 }
