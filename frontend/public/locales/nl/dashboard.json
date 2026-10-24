@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {1 veiling eindigt binnen het uur} other {# veilingen eindigen binnen het uur}}",
     "squadSelectionMissing": "Selectie ontbreekt voor {race}",
     "notTrainedToday": "Je hebt vandaag niet getraind",
-    "boardPlanMissing": "Nog geen bestuursplan onderhandeld"
+    "boardPlanMissing": "Nog geen bestuursplan onderhandeld",
+    "nextValueUpdate": "Volgende waarde-update: {when}",
+    "nextAcademyIntake": "Volgende academie-instroom: {when}"
   },
   "seasonStart": {
     "title": "Seizoen {number}: aan de slag",

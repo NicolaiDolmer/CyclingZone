@@ -40,7 +40,8 @@ function Mini({ profile, active }: { profile: StageProfile | null; active: boole
 export interface StageStripV2Props {
   stages: StripStage[];
   selected: number;
-  today: number | null;
+  /** Dagens etape(r). Ejer 24/10: flere etaper samme dato faar alle "I dag". */
+  today: number | number[] | null;
   ridden: number;
   onSelect: (n: number) => void;
 }
@@ -64,7 +65,7 @@ export default function StageStripV2({ stages, selected, today, ridden, onSelect
     <div ref={listRef} className="flex gap-2 overflow-x-auto pb-0.5" role="group" aria-label={t("stagePageV2.stripAria")}>
       {stages.map((s) => {
         const active = s.number === selected;
-        const isToday = s.number === today;
+        const isToday = Array.isArray(today) ? today.includes(s.number) : s.number === today;
         const typeKey = s.profile ? profileLabelKey(s.profile.profile_type) : null;
         const resultLine = s.number <= ridden
           ? (s.myBest ? t("stagePageV2.stripResult", { name: shortName(s.myBest.name), rank: s.myBest.rank }) : t("stagePageV2.stripRidden"))
