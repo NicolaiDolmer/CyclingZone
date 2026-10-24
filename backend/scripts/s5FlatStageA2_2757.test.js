@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 
 import {
   parseArgs, expandSnapshot, buildA2Plan, evaluateGates, buildBackupSql, buildRestoreSql, diffAgainstCurrent,
-  applyPlan, postVerify, renderA2Html, renderA2Markdown, writeContent, violationKey, detectSeasonVariant, approvedPlanFrom, liveStateViolations, planHashOf,
+  applyPlan, postVerify, renderA2Html, renderA2Markdown, writeContent, violationKey, detectSeasonVariant, approvedPlanFrom, liveStateViolations, planHashOf, planSlots, planRoutes,
   INPUT_FORMAT, A2_WRITE_COLUMNS,
 } from "./s5FlatStageA2_2757.js";
 
@@ -14,6 +14,8 @@ const RACE_A2 = "22222222-2222-4222-8222-222222222222";
 const RACE_B = "33333333-3333-4333-8333-333333333333";
 const POOL_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const POOL_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+// Test-bånd (ikke de rigtige; de står privat i balance-internals/2757-a2/).
+const BANDS = Object.freeze({ ascendingShareMax: 1, identicalShareMax: 1, distinctShareMin: 0, positionDistanceMax: 1, minRoutesPerStageCount: 2 });
 const SIG = { features: [{ kind: "climb", name: "Muro Test", category: "3", length_km: 2.4, avg_gradient: 7.5, stage_hint: "any", summit_finish: false }] };
 
 function snapshot(overrides = {}) {
@@ -92,17 +94,17 @@ test("buildA2Plan: kun løb uden flad etape; aldrig signatur-etapen eller topank
 test("evaluateGates: grøn på et sundt snapshot; et startet løb eller en claim blokerer", () => {
   const input = expandSnapshot(snapshot());
   const plan = buildA2Plan(input);
-  const gates = evaluateGates({ input, plan });
+  const gates = evaluateGates({ input, plan, orderBands: BANDS });
   assert.equal(gates.ok, true, gates.violations.join(" · "));
   assert.equal(gates.tiers.length, 1);
   assert.equal(gates.tiers[0].after.familyCounts.flat_sprint, gates.tiers[0].before.familyCounts.flat_sprint + 1);
   const started = snapshot();
   started.races[0].stages_completed = 1;
   const s = expandSnapshot(started);
-  assert.equal(evaluateGates({ input: s, plan: buildA2Plan(s) }).ok, false);
+  assert.equal(evaluateGates({ input: s, plan: buildA2Plan(s), orderBands: BANDS }).ok, false);
   const claimed = expandSnapshot(snapshot({ claims: [{ race_id: RACE_A2, stage_index: 0 }] }));
-  assert.match(evaluateGates({ input: claimed, plan: buildA2Plan(claimed) }).violations.join(" "), /claims/);
-  assert.match(evaluateGates({ input, plan, ciGate: { ok: false, pass: 1, fail: 1, skipped: 0 } }).violations.join(" "), /calendarInvariantsCiGate4123/);
+  assert.match(evaluateGates({ input: claimed, plan: buildA2Plan(claimed), orderBands: BANDS }).violations.join(" "), /claims/);
+  assert.match(evaluateGates({ input, plan, orderBands: BANDS, ciGate: { ok: false, pass: 1, fail: 1, skipped: 0 } }).violations.join(" "), /calendarInvariantsCiGate4123/);
   // Brud der fandtes før A2 (her: det lille syntetiske løbssæt under gulvene) er ikke nye, selv om tallet flytter sig.
   assert.deepEqual(gates.tiers[0].newViolations, []);
   assert.ok(gates.tiers[0].before.violations.length > 0);
@@ -113,14 +115,14 @@ test("evaluateGates: grøn på et sundt snapshot; et startet løb eller en claim
 test("backup.sql har RLS og dækker præcis etape-pladserne; restore lægger dem tilbage på samme plads", () => {
   const plan = buildA2Plan(expandSnapshot(snapshot()));
   const table = "backup_2757_race_stage_profiles_20261024";
-  const sql = buildBackupSql(table, plan.items);
+  const sql = buildBackupSql(table, planSlots(plan));
   assert.match(sql, /enable row level security/);
   assert.match(sql, /grant select on table public\.backup_2757_race_stage_profiles_20261024 to service_role/);
   assert.match(sql, new RegExp(`'${RACE_A1}'::uuid, ${plan.items[0].stage_number}`));
   assert.match(sql, /on conflict \(race_id, stage_number\) do nothing/);
-  assert.throws(() => buildBackupSql("backup_x", plan.items), /ugyldigt backup-navn/);
-  assert.throws(() => buildBackupSql(table, [{ ...plan.items[0], race_id: "k1" }]), /uuid/);
-  const restore = buildRestoreSql(table, plan.items);
+  assert.throws(() => buildBackupSql("backup_x", planSlots(plan)), /ugyldigt backup-navn/);
+  assert.throws(() => buildBackupSql(table, [{ ...planSlots(plan)[0], race_id: "k1" }]), /uuid/);
+  const restore = buildRestoreSql(table, planSlots(plan));
   assert.match(restore, /update public\.race_stage_profiles p/);
   assert.match(restore, /elevation_profile = b\.elevation_profile/);
 });
@@ -162,13 +164,15 @@ test("apply: kræver backup, skriver kun den valgte etape, er idempotent og post
 test("rapport og billede: løbsnavne, før/efter og den nye etape markeret", () => {
   const input = expandSnapshot(snapshot());
   const plan = buildA2Plan(input);
-  const gates = evaluateGates({ input, plan });
+  const gates = evaluateGates({ input, plan, orderBands: BANDS });
   const html = renderA2Html({ plan, gates, generatedAt: "2026-10-24T12:00:00Z" });
   assert.match(html, /Ronde Test/);
-  assert.match(html, /pulje 1\/2/);
-  assert.equal((html.match(/class="st ch"/g) ?? []).length, 2, "én markeret etape pr. løb");
+  assert.match(html, /2 puljer/);
+  assert.equal(planRoutes(plan).length, 1, "puljerne samlet pr. rute");
+  assert.equal((html.match(/class="st ch"/g) ?? []).length, 1, "én markeret etape pr. rute");
   const md = renderA2Markdown({ input, plan, gates, generatedAt: "2026-10-24T12:00:00Z" });
-  assert.match(md, /\*\*2 løb\*\* \(1 ruter/);
+  assert.match(md, /\*\*1 ruter\*\* \(2 løb/);
+  assert.match(md, /## Rækkefølge-gaten/);
   assert.match(md, /## Placering af flade etaper/);
 });
 
@@ -190,7 +194,7 @@ test("apply genoptager den godkendte plan efter en delvis kørsel og nægter at 
   assert.equal(planHashOf(approved.items), plan.planHash);
   assert.throws(() => approvedPlanFrom(doc, "b".repeat(64)), /hash/);
   const tampered = JSON.parse(JSON.stringify(doc));
-  tampered.plan.items[0].content.distance_km = 1;
+  tampered.plan.items[0].writes[0].content.distance_km = 1;
   assert.throws(() => approvedPlanFrom(tampered, plan.planHash), /hash/);
   // Delvis kørsel: kun den første etape blev skrevet, så fejlede forbindelsen.
   const db = fakeDb(input);
@@ -243,4 +247,82 @@ test("liveStateViolations: et startet løb, en claim eller et manglende løb sto
   assert.match(liveStateViolations(started, plan).join(" "), /startet/);
   assert.match(liveStateViolations({ ...input, claims: [{ race_id: RACE_A1, stage_index: 0 }] }, plan).join(" "), /claims/);
   assert.match(liveStateViolations({ ...input, races: input.races.filter((r) => r.id !== RACE_A2) }, plan).join(" "), /findes ikke/);
+});
+
+// ── #2757 rækkefølge-variation ──────────────────────────────────────────────────────
+
+const RACE_C1 = "44444444-4444-4444-8444-444444444444";
+const RACE_C2 = "55555555-5555-4555-8555-555555555555";
+const POOL_C = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const fullRow = (stage, type, km, extra = {}) => ({
+  stage_number: stage, profile_type: type, finale_type: "flat_sprint", demand_vector: { sprint: 1 }, generator_version: 7, is_manual: false,
+  distance_km: km, elevation_gain_m: km * 10, climbs: [], sprints: [], sectors: [], segments: [{ km }], weather: { t: km }, elevation_profile: [km], ...extra,
+});
+
+/** Snapshottet + en rute med fast stigende skabelon (ingen flad etape) i begge puljer, med fulde rækker. */
+function withTemplateRoute(overrides = {}) {
+  const base = snapshot();
+  const route = [fullRow(1, "rolling", 151), fullRow(2, "rolling", 152), fullRow(3, "hilly", 153), fullRow(4, "medium_mountain", 154), fullRow(5, "hilly", 155)];
+  const race = (id, div) => ({ id, name: "Giro Skabelon", race_type: "stage_race", race_class: "ProSeries", stages: 5, stages_completed: 0, pool_race_id: POOL_C, league_division_id: div, engine_rules_revision: null, route: "C", game_days: [20, 21, 22, 23, 24], first_date: "2026-11-01" });
+  return {
+    ...base,
+    races: [...base.races, race(RACE_C1, 4), race(RACE_C2, 5)],
+    catalog: [...base.catalog, { id: POOL_C, external_id: "cz-test-c", name: "Giro Skabelon", race_type: "stage_race", race_class: "ProSeries", terrain_archetype: "hilly_tour", race_identity_type: "hilly", signature: null }],
+    routes: { ...base.routes, C: route },
+    ...overrides,
+  };
+}
+
+test("#2757 plan: skabelon-ruten får ny rækkefølge af de samme etaper (samme indhold, kun ny plads), derefter A2", () => {
+  const input = expandSnapshot(withTemplateRoute());
+  const plan = buildA2Plan(input);
+  assert.deepEqual(plan.planErrors, []);
+  const [c1, c2] = plan.items.filter((it) => it.pool_race_id === POOL_C);
+  assert.ok(c1.order, "ruten får en ny rækkefølge");
+  assert.deepEqual(c1.order, c2.order, "puljerne kører samme rute (#2276)");
+  assert.deepEqual(c1.writes, c2.writes.map((w) => ({ ...w })), "samme skrivninger i begge puljer");
+  assert.equal(c1.order[4], 5, "finalen står fast");
+  assert.equal(c1.order[3], 4, "kongeetapen står fast");
+  assert.deepEqual([...c1.order].sort(), [1, 2, 3, 4, 5]);
+  const types = c1.after.map((p) => p.profile_type);
+  assert.ok(c1.stage_number != null && types[c1.stage_number - 1] === "flat", "A2's flade etape ligger ovenpå");
+  const rows = input.profiles.filter((p) => p.race_id === RACE_C1).sort((a, b) => a.stage_number - b.stage_number);
+  for (const w of c1.writes) {
+    if (w.source_stage_number == null) { assert.equal(w.content.profile_type, "flat"); continue; }
+    assert.deepEqual(w.content, writeContent(rows[w.source_stage_number - 1]), `plads ${w.stage_number}: hele etapen fra plads ${w.source_stage_number}`);
+    assert.notEqual(w.source_stage_number, w.stage_number);
+  }
+  const gates = evaluateGates({ input, plan, orderBands: BANDS });
+  assert.equal(gates.ok, true, gates.violations.join(" · "));
+  assert.ok(gates.order.after.ascending < gates.order.before.ascending, "færre ruter med fast stigende rækkefølge");
+  assert.ok(gates.order.violationsBefore.length === 0 && gates.order.violationsAfter.length === 0);
+  const strict = evaluateGates({ input, plan, orderBands: { ...BANDS, distinctShareMin: 2 } });
+  assert.match(strict.violations.join(" "), /rækkefølge-gaten/);
+  assert.throws(() => evaluateGates({ input, plan }), /order-variation band/);
+});
+
+test("#2757 apply: en ny rækkefølge skrives plads for plads, kan genoptages, og post-verify holder", async () => {
+  const input = expandSnapshot(withTemplateRoute());
+  const plan = buildA2Plan(input);
+  const db = fakeDb(input);
+  const slots = planSlots(plan);
+  const failing = { ...db, updateStage: async (raceId, stageNumber, content) => { if (db.writes.length === 3) throw new Error("netværk"); return db.updateStage(raceId, stageNumber, content); } };
+  await assert.rejects(applyPlan({ db: failing, plan, backupTable: "backup_2757_race_stage_profiles_20261024" }), /netværk/);
+  const res = await applyPlan({ db, plan, backupTable: "backup_2757_race_stage_profiles_20261024" });
+  assert.deepEqual(res, { written: slots.length - 3, skipped: 3 });
+  assert.equal((await postVerify({ db, plan })).ok, true);
+  const c1 = db.rows.filter((r) => r.race_id === RACE_C1).sort((a, b) => a.stage_number - b.stage_number);
+  const item = plan.items.find((it) => it.race_id === RACE_C1);
+  assert.deepEqual(c1.map((r) => r.profile_type), item.after.map((p) => p.profile_type));
+  assert.deepEqual(c1.map((r) => r.id), fakeDb(input).rows.filter((r) => r.race_id === RACE_C1).sort((x, y) => x.stage_number - y.stage_number).map((r) => r.id), "samme række-id'er pr. plads");
+});
+
+test("#2757 managerplaner (etaperoller/holdordrer) på en ændret etape blokerer; uden fulde rækker kan ruten ikke flyttes", () => {
+  const input = expandSnapshot(withTemplateRoute({ stage_plans: [{ race_id: RACE_C1, stage_number: 1, kind: "race_stage_roles" }] }));
+  const plan = buildA2Plan(input);
+  assert.match(evaluateGates({ input, plan, orderBands: BANDS }).violations.join(" "), /etaperoller eller holdordrer/);
+  assert.match(liveStateViolations(input, plan).join(" "), /etaperoller\/holdordrer/);
+  const thin = withTemplateRoute();
+  thin.routes.C = thin.routes.C.map((r) => ({ ...r, segments: undefined, weather: undefined, elevation_profile: undefined }));
+  assert.match(buildA2Plan(expandSnapshot(thin)).planErrors.join(" "), /fulde etaperækker mangler/);
 });
