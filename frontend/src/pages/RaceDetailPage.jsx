@@ -303,7 +303,7 @@ function BreakawayMarker({ result, t, history = null }) {
         const EntryIcon = BREAKAWAY_MARKER_ICON[entry.icon] ?? FlagIcon;
         const label = entry.kind === "morning" ? `${markerLabel}: ${t(entry.labelKey)}` : t(entry.labelKey);
         return (
-          <MarkerTip key={entry.kind} label={label} className={entry.kind === "none" ? "text-cz-3 opacity-50" : BREAKAWAY_MARKER_TONE[entry.tone]}>
+          <MarkerTip key={entry.kind} label={label} className={BREAKAWAY_MARKER_TONE[entry.tone]}>
             <EntryIcon size={15} aria-hidden="true" />
           </MarkerTip>
         );
