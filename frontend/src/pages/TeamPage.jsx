@@ -1146,8 +1146,10 @@ export function TeamPage() {
   // #4068: loadAll memoized — deps er de to loadere den kalder (selv memoized
   // ovenfor med tomme deps, altså i praksis stabile), så identiteten er stabil
   // på tværs af renders og mount-effekten nedenfor kan liste den korrekt.
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  // #6855: { silent: true } genindlæser uden PageLoader, så en åben fane (Kontrakter)
+  // ikke afmonteres og mister sin kvittering eller advarsel.
+  const loadAll = useCallback(async (/** @type {{ silent?: boolean } | undefined} */ opts = undefined) => {
+    if (opts?.silent !== true) setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setLoading(false); return; }
@@ -1308,7 +1310,7 @@ export function TeamPage() {
           squadFilter={squadFilter} reputationOn={reputationOn} />
       )}
       {activeTab === "contracts" && (
-        <ContractsTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} onChanged={loadAll} />
+        <ContractsTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} onChanged={() => loadAll({ silent: true })} />
       )}
       {activeTab === "development" && (
         <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />

@@ -15,7 +15,7 @@
 //
 // TASTE: T2-tabeller (DataTable, dense), hairlines, én gold primary pr. view
 // (bundlinjens knap; vinduet er sin egen flade), stroke-ikoner, tabulære tal.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useSearchParams } from "react-router";
@@ -169,6 +169,9 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
   const [common, setCommon] = useState<number>(1);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [saving, setSaving] = useState(false);
+  // Tæller for quote-kald: et svar gælder kun, hvis opsummeringen ikke er lukket eller genåbnet siden.
+  const quoteReq = useRef(0);
+  const closeSummary = () => { quoteReq.current += 1; setSummary(null); };
   const [notice, setNotice] = useState<string | null>(null);
 
   // Quoten hentes for alle ryttere med 1 sæson: løn efter forlængelse er den
@@ -289,9 +292,11 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
   }
 
   async function openSummary() {
+    const req = ++quoteReq.current;
     setSummary({ status: "loading" });
     try {
       const res = await postJson("/api/riders/extend-contracts/quote", { items: buildItems(selection, common) });
+      if (req !== quoteReq.current) return;
       if (!res.ok) {
         const body = (res.data ?? {}) as ApiErrorBody;
         setSummary({ status: "error", message: resolveApiError(body, tr, t("contracts.summary.loadError")), errors: [] });
@@ -299,6 +304,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
       }
       setSummary({ status: "ready", data: res.data as QuoteResponse });
     } catch {
+      if (req !== quoteReq.current) return;
       setSummary({ status: "error", message: t("contracts.summary.loadError"), errors: [] });
     }
   }
@@ -570,14 +576,14 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
 
       <Modal
         open={summary != null}
-        onClose={() => { if (!saving) setSummary(null); }}
+        onClose={() => { if (!saving) closeSummary(); }}
         title={t("contracts.summary.title")}
         titleId="contracts-summary-title"
         closeLabel={t("contracts.summary.cancel")}
         size="lg"
         footer={
           <>
-            <Button variant="secondary" size="sm" disabled={saving} onClick={() => setSummary(null)}>{t("contracts.summary.cancel")}</Button>
+            <Button variant="secondary" size="sm" disabled={saving} onClick={closeSummary}>{t("contracts.summary.cancel")}</Button>
             <Button size="sm" loading={saving} disabled={!summaryData || blocked} onClick={confirmExtend} data-testid="contracts-confirm">
               {t("contracts.summary.confirm", { count: summaryData?.riders.length ?? totals.count })}
             </Button>
