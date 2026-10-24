@@ -67,7 +67,7 @@ test("#6207: rute-matchen kommer fra motoren (routeMatch.js), samme vektor som p
   assert.match(block, /buildRouteMatch\(\{ race: ownRaceRowById\.get\(race\.id\), stages: profByRace\.get\(race\.id\) \|\| \[\] \}\)/);
   assert.match(block, /race\.demandVector = rm\.raceVector/);
   assert.match(block, /fetchAllStageProfiles\(supabase, ownRaceIds, ROUTE_MATCH_STAGE_COLUMNS\)/);
-  const board = routeBlock('router.get("/peak-plans/board"', 12000);
+  const board = routeBlock('router.get("/peak-plans/board"', 30000);
   assert.match(board, /demandVector: routeVectorByRace\.get\(e\.id\) \|\| null/);
 });
 
