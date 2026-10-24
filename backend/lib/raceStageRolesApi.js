@@ -14,12 +14,12 @@
 
 import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
-import { suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
+import { buildRouteMatch, ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js"; // #6207
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
-import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies, loadStartDaySpentRiderIds } from "./raceStartOutlook.js";
 import { splitWithdrawals } from "./raceWithdrawal.js"; // #6740
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
@@ -81,8 +81,10 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
     // som motoren fjerner.
     // #6740 (Codex P2): en rytter der allerede har brugt løbsdagen fjernes også før regel B
     // og fyldes aldrig ind. Best-effort: svigter opslaget, tæller ingen som spent.
-    const spent = new Set((await loadSpentRaceDays({ supabase, raceId: race.id, riderIds: [...new Set([...entryRiderIds, ...rosterIds])] })
-      .catch(() => [])).map((row) => row.rider_id));
+    const spentRows = await loadSpentRaceDays({ supabase, raceId: race.id, riderIds: [...new Set([...entryRiderIds, ...rosterIds])] }).catch(() => []);
+    const spent = new Set(spentRows.map((row) => row.rider_id));
+    // #6739: kun spent på startdagen er overlap (regel A, kun etapeløb).
+    const spentStart = overlapRuleApplies(race) ? await loadStartDaySpentRiderIds({ supabase, raceId: race.id, spentRows }) : new Set();
     const rosterSet = new Set(rosterIds);
     const keptEntryIds = [...new Set(entryRiderIds)].filter((id) => rosterSet.has(id) && !spent.has(id));
     return teamWillStart({
@@ -90,6 +92,9 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
       // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
       injuredEntryCount: keptEntryIds.filter((id) => injuredIds.has(id)).length,
       freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id) && !spent.has(id)).length,
+      // #6739 regel A: ryttere der har kørt et andet løb samme løbsdag giver start med mindst 4
+      // (bundne ryttere tælles allerede som frie her, se BEVIDST KONSERVATIVT ovenfor).
+      overlapCount: rosterIds.filter((id) => spentStart.has(id) && (entered.has(id) || (!injuredIds.has(id) && !locked.has(id)))).length,
       stagesCompleted,
     });
   } catch {
@@ -296,7 +301,7 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
       // .catch: samme ærlige degradering som de to andre (fetchAllRows kaster,
       // hvor PostgREST-klienten returnerer {error}).
       fetchAllRows(() => supabase.from("race_stage_profiles")
-        .select("stage_number, profile_type, demand_vector")
+        .select(ROUTE_MATCH_STAGE_COLUMNS)
         .eq("race_id", race.id)
         .order("stage_number", { ascending: true })).catch(() => null),
     ]);
@@ -304,18 +309,12 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
     // fladen — den er stadig fuldt brugbar uden kolonnerne.
     const stages = profileRows || [];
     if (!abilitiesRes.error && stages.length) {
-      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, Math.round(suitabilityScore(ab, stages) * 100)]));
-      // Nøglet på stage_number, ikke på arrayets indeks: rækkerne er sorteret
-      // efter stage_number, men et løb kan mangle en profil-række, og så ville
-      // et indeks-array tavst forskyde alle etaper efter hullet.
-      stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => {
-        const perStage = stageSuitabilityScores(ab, stages);
-        const byStage = {};
-        stages.forEach((s, i) => {
-          if (s?.stage_number != null && Number.isFinite(perStage[i])) byStage[s.stage_number] = perStage[i];
-        });
-        return [ab.rider_id, byStage];
-      }));
+      // #6207: samme tal som holdudtagelsen og sæsonmatrixen (routeMatch.js).
+      const routeMatch = buildRouteMatch({ race, stages });
+      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, routeMatch.race(ab)]));
+      // Nøglet på stage_number, ikke på arrayets indeks: et løb kan mangle en
+      // profil-række, og så ville et indeks-array tavst forskyde etaperne.
+      stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, routeMatch.stagesByNumber(ab)]));
     }
     if (!conditionRes.error) {
       conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));

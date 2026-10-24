@@ -1,5 +1,363 @@
 export const PATCHES = [
   {
+    "version": "7.377",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The new stage page for everyone",
+          "body": "Every stage now has its own page with stage tabs, the real elevation profile, a replay of the stage and your day at a glance. It is no longer limited to the beta group."
+        },
+        "da": {
+          "title": "Den nye etapeside for alle",
+          "body": "Hver etape har nu sin egen side med etapefaner, den rigtige højdeprofil, en genafspilning af etapen og jeres dag samlet ét sted. Den er ikke længere kun for beta-gruppen."
+        },
+        "refs": [
+          6570
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "More varied stage races in season 5",
+          "body": "Every stage race in season 5 now has at least one flat stage, so sprinters have a chance. Many stage races also got a more varied order of the same stages instead of the same climbing pattern every time."
+        },
+        "da": {
+          "title": "Mere varierede etapeløb i sæson 5",
+          "body": "Alle etapeløb i sæson 5 har nu mindst én flad etape, så sprinterne har en chance. Mange etapeløb har også fået de samme etaper i en mere varieret rækkefølge i stedet for det samme stigende mønster hver gang."
+        },
+        "refs": [
+          2757
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "One route match number everywhere",
+          "body": "The same rider in the same race now gets the same route match in team selection, Plan day, Tactics, the season matrix and the planner. The number is based on what the race engine actually rewards on each stage."
+        },
+        "da": {
+          "title": "Ét rutematch-tal overalt",
+          "body": "Samme rytter i samme løb får nu samme rutematch i holdudtagelsen, Planlæg dag, Taktik, sæsonmatrixen og planlæggeren. Tallet bygger på det, løbsmotoren faktisk belønner på hver etape."
+        },
+        "refs": [
+          6207
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The breakaway's lead in the race film",
+          "body": "The curve under the race film shows the breakaway's lead over the chase, and the dot now shows the lead as a number while you scrub through the stage."
+        },
+        "da": {
+          "title": "Udbruddets forspring i løbsfilmen",
+          "body": "Kurven under løbsfilmen viser udbruddets forspring på jagten, og prikken viser nu forspringet i tal, mens I spoler gennem etapen."
+        },
+        "refs": [
+          6803
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Small squads keep their stage race",
+          "body": "If some of your riders race elsewhere on the first day of a stage race, your team still starts it with the free riders, at least 4. This only applies on such overlap days."
+        },
+        "da": {
+          "title": "Små hold mister ikke deres etapeløb",
+          "body": "Kører nogle af jeres ryttere et andet løb på et etapeløbs første dag, starter holdet stadig med de frie ryttere, mindst 4. Det gælder kun på sådanne overlap-dage."
+        },
+        "refs": [
+          6739
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.376",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "French, Spanish and Dutch for everyone",
+          "body": "French, Spanish and Dutch are no longer in beta. Your browser's language is picked automatically, and you can switch language at any time."
+        },
+        "da": {
+          "title": "Fransk, spansk og hollandsk for alle",
+          "body": "Fransk, spansk og hollandsk er ikke længere i beta. Jeres browsers sprog vælges automatisk, og I kan skifte sprog når som helst."
+        },
+        "refs": [
+          7087
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Awaiting promotion instead of a forced sale",
+          "body": "When a rider is too old for his squad and the next squad is full, he is no longer sold. He stays with you as awaiting promotion, and you move him up from the squad page when there is room. As before, he is sold if there is room but your balance is negative."
+        },
+        "da": {
+          "title": "Afventer oprykning i stedet for tvunget salg",
+          "body": "Når en rytter er for gammel til sin trup, og den næste trup er fuld, bliver han ikke længere solgt. Han bliver hos jer som afventer oprykning, og I rykker ham op fra trupsiden, når der er plads. Som før bliver han solgt, hvis der er plads, men saldoen er negativ."
+        },
+        "refs": [
+          6710
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Push notifications for everyone",
+          "body": "Everyone can now turn on push notifications on the profile page. You choose the categories yourself. At most 6 a day, and never between 22:00 and 08:00."
+        },
+        "da": {
+          "title": "Push-beskeder for alle",
+          "body": "Alle kan nu slå push-beskeder til på profilsiden. I vælger selv kategorierne. Højst 6 om dagen og aldrig mellem 22 og 08."
+        },
+        "refs": [
+          6590
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Set the training day for many riders, for everyone",
+          "body": "On the Today tab of Daily training, one line sets today's session for all riders in the view, or only the ones you tick. It is no longer limited to the beta group."
+        },
+        "da": {
+          "title": "Sæt træningsdagen for mange ryttere, for alle",
+          "body": "På fanen I dag under Daglig træning sætter én linje dagens træning for alle ryttere i visningen eller kun dem, I markerer. Den er ikke længere kun for beta-gruppen."
+        },
+        "refs": [
+          6523
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.375",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Team",
+        "en": {
+          "title": "Extend several contracts at once",
+          "body": "My Team has a new Contracts tab. Tick the riders you want to keep, choose 1, 2 or 3 seasons, and check the summary with new wages before anything is saved. Your sorting is remembered when you open a rider and go back."
+        },
+        "da": {
+          "title": "Forlæng flere kontrakter på én gang",
+          "body": "Mit Hold har fået en Kontrakter-fane. Sæt flueben ved de ryttere, du vil beholde, vælg 1, 2 eller 3 sæsoner, og se opsummeringen med de nye lønninger, før noget gemmes. Din sortering huskes, når du går ind på en rytter og tilbage."
+        },
+        "refs": [
+          6855
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Inbox message when a rider gets injured in training",
+          "body": "Until now you only got a message when a rider crashed in a race. You now also get one when a rider is injured in training, with the date he is back."
+        },
+        "da": {
+          "title": "Besked i indbakken når en rytter skades i træning",
+          "body": "Indtil nu fik du kun besked, når en rytter styrtede i et løb. Nu får du også besked, når en rytter bliver skadet i træning, med datoen for hvornår han er tilbage."
+        },
+        "refs": [
+          7086
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "One-day race messages show your result",
+          "body": "After a one-day race, the inbox message shows your best placed riders and links straight to the result, also on mobile."
+        },
+        "da": {
+          "title": "Beskeden efter endagsløb viser dit resultat",
+          "body": "Efter et endagsløb viser beskeden i indbakken dine bedst placerede ryttere og linker direkte til resultatet, også på mobil."
+        },
+        "refs": [
+          7085
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "French, Spanish and Dutch in beta",
+          "body": "Everyone can now choose French, Spanish or Dutch in the language menu. They are marked Beta: some text still shows in English while I finish the translations."
+        },
+        "da": {
+          "title": "Fransk, spansk og hollandsk i beta",
+          "body": "Alle kan nu vælge fransk, spansk eller hollandsk i sprogmenuen. De er mærket Beta: noget tekst vises stadig på engelsk, mens jeg gør oversættelserne færdige."
+        },
+        "refs": [
+          7087
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Team",
+        "en": {
+          "title": "Nationality flags on mobile",
+          "body": "On mobile, My Team now shows each rider's nationality as a flag, and the Abilities tab shows the nation too."
+        },
+        "da": {
+          "title": "Nationalitetsflag på mobil",
+          "body": "På mobil viser Mit Hold nu hver rytters nationalitet som et flag, og Evner-fanen viser også nationen."
+        },
+        "refs": [
+          7032
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Clearer breakaway icons",
+          "body": "Results now show a flag for riders in the morning breakaway and a bolt for riders who attacked later. Hover an icon to see what it means."
+        },
+        "da": {
+          "title": "Tydeligere udbrudsikoner",
+          "body": "Resultaterne viser nu et flag ved ryttere i morgenudbruddet og et lyn ved ryttere, der angreb senere. Hold musen over et ikon for at se, hvad det betyder."
+        },
+        "refs": [
+          7092
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "GC wins and jerseys in the season overview",
+          "body": "The season overview now shows each team's overall GC wins and jerseys won, next to stage and classic wins."
+        },
+        "da": {
+          "title": "GC-sejre og trøjer i sæsonoversigten",
+          "body": "Sæsonoversigten viser nu hvert holds samlede sejre og vundne trøjer ved siden af etape- og klassikersejre."
+        },
+        "refs": [
+          6961
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "See when values and academy intake update",
+          "body": "The dashboard now shows when the next market value update and the next academy intake happen."
+        },
+        "da": {
+          "title": "Se hvornår værdier og akademi-intake opdateres",
+          "body": "Dashboardet viser nu, hvornår den næste opdatering af markedsværdier og det næste akademi-intake sker."
+        },
+        "refs": [
+          6962
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "\"Rider's first win\"",
+          "body": "The milestone for a rider's first career win is now called \"Rider's first win\", so it is not mistaken for a win this season."
+        },
+        "da": {
+          "title": "\"Rytterens første sejr\"",
+          "body": "Milepælen for en rytters første sejr i karrieren hedder nu \"Rytterens første sejr\", så den ikke forveksles med en sejr i denne sæson."
+        },
+        "refs": [
+          6975
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "Season change settlement removed",
+          "body": "I removed the season change settlement from Finance. It showed next season's wages as a fixed cost, which was misleading. Wages are still paid by contract, as before."
+        },
+        "da": {
+          "title": "Afregningen ved sæsonskiftet er fjernet",
+          "body": "Jeg har fjernet afregningen ved sæsonskiftet fra Økonomi. Den viste næste sæsons løn som en fast udgift, og det var misvisende. Lønnen udbetales stadig efter kontrakterne som før."
+        },
+        "refs": [
+          7033
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board room shows no wrong numbers",
+          "body": "I removed the weekly confidence change and the standing trend arrow, which showed wrong numbers. Confidence, targets and cards are unchanged."
+        },
+        "da": {
+          "title": "Bestyrelsen viser ikke længere forkerte tal",
+          "body": "Jeg har fjernet den ugentlige ændring i tillid og trend-pilen ved stillingen, fordi de viste forkerte tal. Tillid, mål og kort er uændrede."
+        },
+        "refs": [
+          6935
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.374",
     "date": "2026-10-23",
     "changes": [
