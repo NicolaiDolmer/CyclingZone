@@ -1,10 +1,11 @@
 // #2757 A2: s5FlatStageA2_2757.js på syntetiske snapshots (ingen prod, ingen tal fra spillet).
 import test from "node:test";
+import { generateRaceStageProfiles } from "../lib/raceStageProfileGenerator.js";
 import assert from "node:assert/strict";
 
 import {
   parseArgs, expandSnapshot, buildA2Plan, evaluateGates, buildBackupSql, buildRestoreSql, diffAgainstCurrent,
-  applyPlan, postVerify, renderA2Html, renderA2Markdown, writeContent, violationKey, INPUT_FORMAT, A2_WRITE_COLUMNS,
+  applyPlan, postVerify, renderA2Html, renderA2Markdown, writeContent, violationKey, detectSeasonVariant, INPUT_FORMAT, A2_WRITE_COLUMNS,
 } from "./s5FlatStageA2_2757.js";
 
 const RACE_A1 = "11111111-1111-4111-8111-111111111111";
@@ -168,4 +169,14 @@ test("rapport og billede: løbsnavne, før/efter og den nye etape markeret", () 
   const md = renderA2Markdown({ input, plan, gates, generatedAt: "2026-10-24T12:00:00Z" });
   assert.match(md, /\*\*2 løb\*\* \(1 ruter/);
   assert.match(md, /## Placering af flade etaper/);
+});
+
+test("detectSeasonVariant: finder divisionens gen-træk ud fra de skrevne ruter; ukendte ruter giver null", () => {
+  const seed = { id: POOL_A, name: "Ronde Test", race_type: "stage_race", stages: 5, external_id: "cz-test-a", terrain_archetype: "hilly_tour", race_class: "ProSeries", season_id: "00000000-0000-0000-0000-000000000005", race_identity_type: "hilly", signature: null };
+  for (const v of [0, 2]) {
+    const rows = generateRaceStageProfiles({ ...seed, season_variant: v }, { profileModel: "s5", a2FlatStage: false });
+    assert.equal(detectSeasonVariant(seed, rows), v);
+  }
+  const odd = generateRaceStageProfiles({ ...seed, season_variant: 0 }, { profileModel: "s5", a2FlatStage: false }).map((p) => ({ ...p, distance_km: 1 }));
+  assert.equal(detectSeasonVariant(seed, odd), null);
 });

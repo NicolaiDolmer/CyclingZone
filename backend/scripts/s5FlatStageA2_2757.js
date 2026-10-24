@@ -43,7 +43,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
 
 import {
-  chooseA2FlatStage, buildA2FlatStage, flatStagePositionBucket, A2_FLAT_POSITION_WEIGHTS, toStageProfileRow,
+  generateRaceStageProfiles, chooseA2FlatStage, buildA2FlatStage, flatStagePositionBucket, A2_FLAT_POSITION_WEIGHTS, toStageProfileRow,
 } from "../lib/raceStageProfileGenerator.js";
 import {
   computeTierCoverageStats, detectCoverageViolations, detectTerrainBandViolations,
@@ -230,6 +230,32 @@ export function writeContent(row) {
   return Object.fromEntries(A2_WRITE_COLUMNS.map((c) => [c, row?.[c] ?? null]));
 }
 
+export const MAX_SEASON_VARIANT = 5;
+
+/**
+ * Divisionens sæson-variant (#3347's gen-træk) for et skrevet løb: den variant hvor generatoren
+ * giver præcis de skrevne ruter (distance + højdemeter) på etaper med samme type og afslutning.
+ * Ruterne seedes på variant-aksen, så den flade etape bygges på samme akse som resten af løbet.
+ * null = ingen variant passer (rapporteres; der bygges på variant 0).
+ * @param {any} seed seedRaceFor-formen @param {any[]} rows de skrevne etaper
+ */
+export function detectSeasonVariant(seed, rows, maxVariant = MAX_SEASON_VARIANT) {
+  for (let v = 0; v <= maxVariant; v++) {
+    let gen;
+    try { gen = generateRaceStageProfiles({ ...seed, season_variant: v }, { profileModel: "s5", a2FlatStage: false }); } catch { continue; }
+    let same = 0;
+    let differ = 0;
+    rows.forEach((r, i) => {
+      const p = gen[i];
+      if (!p || p.profile_type !== r.profile_type || p.finale_type !== r.finale_type || r.distance_km == null) return;
+      if (Number(p.distance_km) === Number(r.distance_km) && Number(p.elevation_gain_m) === Number(r.elevation_gain_m)) same += 1;
+      else differ += 1;
+    });
+    if (same > 0 && differ === 0) return v;
+  }
+  return null;
+}
+
 /**
  * Hvert S5-etapeløb uden flad etape: den valgte etape og den nye flade etape.
  * @param {Awaited<ReturnType<typeof loadA2Input>>} input
@@ -251,7 +277,9 @@ export function buildA2Plan(input) {
     if (rows.some((p) => p.profile_type === "flat")) continue;
     const cat = catalogById.get(race.pool_race_id);
     if (!cat) { planErrors.push(`løb ${race.id} (${race.name}): katalog-løbet ${race.pool_race_id} mangler`); continue; }
-    const seed = seedRaceFor(race, cat, season.id, 0);
+    const seed0 = seedRaceFor(race, cat, season.id, 0);
+    const detected = detectSeasonVariant(seed0, rows);
+    const seed = { ...seed0, season_variant: detected ?? 0 };
     const pick = chooseA2FlatStage(seed, rows);
     const tier = tierByDivision.get(race.league_division_id) ?? null;
     if (pick.stageNumber == null) { unresolved.push({ race_id: race.id, name: race.name, tier, reason: pick.reason }); continue; }
@@ -260,7 +288,7 @@ export function buildA2Plan(input) {
     const content = writeContent(toStageProfileRow(race.id, stage));
     const item = {
       race_id: race.id, name: race.name, tier, league_division_id: race.league_division_id, pool_race_id: race.pool_race_id,
-      stages: rows.length, stage_number: pick.stageNumber, candidates: pick.candidates,
+      stages: rows.length, stage_number: pick.stageNumber, candidates: pick.candidates, season_variant: seed.season_variant, variant_detected: detected != null,
       bucket: flatStagePositionBucket(pick.stageNumber - 1, rows.length),
       before: rows.map((p) => ({ stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, distance_km: p.distance_km ?? null, elevation_gain_m: p.elevation_gain_m ?? null })),
       old: { profile_type: old.profile_type, finale_type: old.finale_type, distance_km: old.distance_km ?? null, elevation_gain_m: old.elevation_gain_m ?? null, climbs: (old.climbs ?? []).length },
@@ -387,6 +415,9 @@ export function evaluateGates({ input, plan, ciGate = null }) {
   add("sæsonen er S5", input.season?.number === TARGET_SEASON_NUMBER, `sæson ${input.season?.number}`);
   add("planen kunne bygges", plan.planErrors.length === 0, plan.planErrors.slice(0, 5).join(" · "));
   add("alle etapeløb uden flad etape har en lovlig etape", plan.unresolved.length === 0, plan.unresolved.map((u) => `${u.name} (${u.reason})`).join(" · "));
+  // Rapporteres (blokerer ikke): uden fundet variant bygges etapen på variant 0, stadig en gyldig flad etape.
+  const noVariant = plan.items.filter((it) => !it.variant_detected);
+  add("løbenes sæson-variant genskabt af generatoren (rutens seed-akse)", true, noVariant.length ? `ikke fundet for ${noVariant.length} løb (bygget på variant 0): ${[...new Set(noVariant.map((it) => it.name))].join(", ")}` : `fundet for alle ${plan.items.length} løb`);
   const bench = plan.items.filter((it) => it.benchmark.length);
   add("benchmark-gatens etape-tjek på hver ny flad etape", bench.length === 0, bench.map((it) => `${it.name} e${it.stage_number}: ${it.benchmark.join("; ")}`).join(" · "));
   const added = tiers.flatMap((t) => t.newViolations);
@@ -588,13 +619,13 @@ export function renderA2Markdown({ input, plan, gates, generatedAt }) {
     const pct = (o) => `${o[k]} (${((100 * o[k]) / tot(o)).toFixed(0)} %)`;
     lines.push(`| ${k} | ${pct(rw)} | ${pct(gates.positions.before)} | ${pct(gates.positions.after)} |`);
   }
-  lines.push("", "## Løbene", "", "| Løb | Div | Pulje | Etape | Før (type/afslutning, km, hm) | Efter (km, hm, stigninger, afslutning) | Kandidater |", "|---|---|---|---|---|---|---|");
+  lines.push("", "## Løbene", "", "| Løb | Div | Pulje | Etape | Før (type/afslutning, km, hm) | Efter (km, hm, stigninger, afslutning) | Kandidater | Variant |", "|---|---|---|---|---|---|---|---|");
   for (const it of plan.items) {
     const c = it.content;
-    lines.push(`| ${it.name} | D${it.tier} | ${it.league_division_id} | ${it.stage_number}/${it.stages} (${it.bucket}) | ${it.old.profile_type}/${it.old.finale_type}, ${it.old.distance_km ?? "-"} km, ${it.old.elevation_gain_m ?? "-"} hm, ${it.old.climbs} stign. | flat, ${c.distance_km} km, ${c.elevation_gain_m} hm, ${(c.climbs ?? []).length} stign., ${c.finale_type} | ${it.candidates.join(", ")} |`);
+    lines.push(`| ${it.name} | D${it.tier} | ${it.league_division_id} | ${it.stage_number}/${it.stages} (${it.bucket}) | ${it.old.profile_type}/${it.old.finale_type}, ${it.old.distance_km ?? "-"} km, ${it.old.elevation_gain_m ?? "-"} hm, ${it.old.climbs} stign. | flat, ${c.distance_km} km, ${c.elevation_gain_m} hm, ${(c.climbs ?? []).length} stign., ${c.finale_type} | ${it.candidates.join(", ")} | ${it.season_variant}${it.variant_detected ? "" : " (ikke fundet)"} |`);
   }
   if (plan.unresolved.length) { lines.push("", "## Uden lovlig etape", ""); for (const u of plan.unresolved) lines.push(`- ${u.name} (D${u.tier}): ${u.reason}`); }
-  lines.push("", "Etapen vælges deterministisk pr. katalog-løb (generatorens chooseA2FlatStage), vægtet efter flade etapers placering i rigtige en-uges-løb. Ruten bygges af buildA2FlatStage (sæson-variant 0).");
+  lines.push("", "Etapen vælges deterministisk pr. katalog-løb (generatorens chooseA2FlatStage), vægtet efter flade etapers placering i rigtige en-uges-løb. Ruten bygges af buildA2FlatStage på løbets egen sæson-variant (fundet ved at genskabe de skrevne ruter; ikke fundet = variant 0, se gaterne).");
   return `${lines.join("\n")}\n`;
 }
 
