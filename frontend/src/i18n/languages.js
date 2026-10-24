@@ -9,10 +9,10 @@
 // constraint-config.sql, som holder samme liste og skal udvides sammen med
 // denne fil).
 //
-// #6802: `beta: true` skjuler sproget for almindelige spillere. Et beta-sprog er
-// kun valgbart i sprogvaelgeren for ejer + beta-testere (lib/languageAccess.js),
-// og browser-detektionen vaelger det ALDRIG automatisk (i18n/index.js). Et
-// sprog uden `beta` (eller med `beta: false`) er offentligt. Et registreret
+// #7087: `beta: true` maerker sproget som tidlig fase. Det er valgbart for ALLE i
+// sprogvaelgeren (med et Beta-maerke og en note om at manglende tekster vises paa
+// engelsk), men browser-detektionen vaelger det ALDRIG automatisk (i18n/index.js),
+// og landing-toggle viser kun sprog uden `beta`. Et registreret
 // beta-sprog skal bestaa paritetsgaten (#6597) og have en lazy bundle i
 // localeBundleBackend.js (testet), saa EN/DA-bundlen aldrig vokser.
 //
@@ -21,7 +21,7 @@
 export const LANGUAGES = [
   { code: "en", label: "English", nativeLabel: "English", flag: "gb", beta: false },
   { code: "da", label: "Danish", nativeLabel: "Dansk", flag: "dk", beta: false },
-  // #6836: fr/es/nl er skjulte beta-sprog (ejer + beta-testere), aldrig offentlige.
+  // #6836/#7087: fr/es/nl er beta-sprog: synlige for alle med Beta-maerke, aldrig auto-valgt.
   { code: "fr", label: "French", nativeLabel: "Français", flag: "fr", beta: true },
   { code: "es", label: "Spanish", nativeLabel: "Español", flag: "es", beta: true },
   { code: "nl", label: "Dutch", nativeLabel: "Nederlands", flag: "nl", beta: true },
@@ -41,9 +41,6 @@ export function isBetaLang(code) {
   const base = code.trim().toLowerCase().split("-")[0];
   return LANGUAGES.some((l) => l.code === base && l.beta === true);
 }
-
-/** Findes der overhovedet et beta-sprog? Falsk i dag => ingen netvaerkskald. */
-export const HAS_BETA_LANGS = LANGUAGES.some((l) => l.beta === true);
 
 
 // Pseudo-locale til layout-stress-test (?pseudo=1) — findes ikke som en rigtig

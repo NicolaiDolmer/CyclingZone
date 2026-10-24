@@ -77,7 +77,7 @@ test("evne-tilstanden viser alle 15 evner + rating, uden de beskrivende kolonner
   assert.match(src, /const abilityColumns = STATS\.map\(/, "evne-kolonnerne skal bygges af den delte STATS-liste (alle 15)");
   assert.match(
     src,
-    /const abilityModeColumns = \[nameColumn, ratingColumn, typeColumn, \.\.\.abilityColumns\]/,
+    /const abilityModeColumns = \[nationColumn, nameColumn, ratingColumn, typeColumn, \.\.\.abilityColumns\]/,
     "evne-tilstanden = navn + rating + type + de 15 evner; værdi/løn/status/kontrakt/handling er byttet ud",
   );
   assert.match(src, /tableMode === "abilities" \? abilityModeColumns : overviewColumns/);

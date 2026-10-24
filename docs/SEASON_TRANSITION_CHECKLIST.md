@@ -119,6 +119,28 @@ Fordelingen er `pyramidCompression.js` (unit-testet, deterministisk tiebreak: po
 
 **Rollback herfra:** intet kørt endnu — ejeren kan stadig aflyse alt (så gælder motorens regler: fjern flaget i skridt 3 og kør drejebogens gamle flow).
 
+### Skridt 2c — Info-banner op (#6973) (lige før "Afslut sæson") [EJER-GO: prod-skrivning og spillertekst]
+
+**Hvem:** Claude. Skrives med service role (Supabase MCP/SQL-editor); der er ingen admin-side til `ops_notices`. Banneret (`RaceControlBanner`, læser via `frontend/src/lib/opsNotices.js`) viser rækker med `active=true`, `starts_at <= now()` og `ends_at` tom/fremtidig. Ingen nedetidsside. Opret banneret FØR skridt 3, så spillere der åbner appen mens skiftet kører, ser det. **Bannerets levetid (kun hentning ved sideindlæsning):** `RaceControlBanner` henter notices én gang, når appen åbnes, og tjekker ikke `ends_at` bagefter. Sessioner der var åbne før insert, ser det ikke; sessioner der var åbne ved nedtagning, beholder det til næste genindlæsning (`ends_at` skjuler det kun for nye sideindlæsninger). Verificér derfor synlighed og fjernelse i en FRISK session/privat vindue, ikke i en åben fane.
+
+
+```sql
+-- Opret (starts_at/ends_at er timestamptz; ends_at er kun sikkerhedsnet).
+insert into ops_notices (severity, title_en, title_da, body_en, body_da, active, starts_at, ends_at)
+values (
+  'info',
+  'Season change in progress',
+  'Sæsonskifte i gang',
+  'The season change is running. Some pages may look odd for a short while. Nothing is lost. Reload the page once the season change is done to clear this notice.',
+  'Sæsonskiftet kører. Nogle sider kan se mærkelige ud et kort stykke tid. Intet går tabt. Genindlæs siden, når skiftet er færdigt, for at fjerne beskeden.',
+  true,
+  now(),
+  now() + interval '4 hours'
+)
+returning id;
+-- Gem id'et til oprydning. Verificér: select id, severity, active, starts_at, ends_at from ops_notices where title_en = 'Season change in progress';
+```
+
 ### Skridt 3 — "Afslut sæson" MED movement-skip (søndag ~17:45, EFTER ejer-ja)
 
 **Hvem:** Claude sætter flaget (efter aftale), ejeren klikker **⏹ Afslut** på `/admin/season` (eller Claude via `POST /api/admin/seasons/00000000-0000-0000-0000-000000000001/end` med ejerens go).
@@ -335,7 +357,12 @@ Idempotent (UNIQUE på `user_id, achievement_id`) — re-run er sikkert. Vil eje
 3. Sentry: ingen nye events med `phase:`-tags fra transitionen.
 4. Stage-scheduler-log (Railway): næste tick melder "0 due" — første etape er først 09:00.
 5. **Gentag afstemningen fra skridt 1b** (`mv_points` = `raw_points` for S1). Det er den sidste gate før managerne møder listerne mandag morgen, og den er hurtig. Kør derefter `database/2026-07-26-2863-season-honours.sql` (#2863, bevidst FØRST her: listerne giver ingen mening før sæsonen er lukket) og åbn `/seasons` for den afsluttede sæson: "Sæsonens bedste ryttere" skal vise to navne, ikke en fejl-tilstand.
-6. Kør post-cutover-tjeklisten **#2846**.
+6. **Fjern info-banneret (#6973) [EJER-GO, samme go som opret]:**
+   ```sql
+   update ops_notices set active = false, ends_at = now() where id = '<id fra insert>' and title_en = 'Season change in progress';
+   ```
+   Verificér `select count(*) from ops_notices where title_en = 'Season change in progress' and active;` = 0. Er transitionen ikke færdig, lad banneret stå (`ends_at` lukker det selv).
+7. Kør post-cutover-tjeklisten **#2846**.
 
 ### Skridt 8 — Aftenvagt (mandag 17:45–18:30 — dag 1 retimet til 18:00-20:40, ejer-valg 26/7)
 

@@ -574,7 +574,7 @@
     },
     "careerMilestone": {
       "maidenWin": {
-        "title": "Maiden victory",
+        "title": "Rider's first win",
         "message": "{rider} won their first professional race: {race}."
       },
       "firstPodium": {
@@ -650,7 +650,8 @@
       "message": "{rider} crashed in {race} and is injured until {until}.",
       "messageMissed": "{rider} crashed in {race} and is injured until {until}. He will not ride {missed}.",
       "messageFinished": "{rider} crashed in {race} but finished the stage. He is injured until {until}.",
-      "messageFinishedMissed": "{rider} crashed in {race} but finished the stage. He is injured until {until} and will not ride {missed}."
+      "messageFinishedMissed": "{rider} crashed in {race} but finished the stage. He is injured until {until} and will not ride {missed}.",
+      "messageTraining": "{rider} was injured in training and is out until {until}."
     },
     "teamDidNotStart": {
       "title": "Your team did not start",

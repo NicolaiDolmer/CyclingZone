@@ -14,8 +14,8 @@ import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
 import {
   FlagIcon,
-  ArrowUpIcon,
   ArrowDownIcon,
+  LightningIcon,
   Portal,
   PageLoader,
   Button,
@@ -67,7 +67,7 @@ import {
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
+import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerEntries, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
 import { raceHasYouthClassification, withoutHiddenYouthClassification, isHiddenYouthCareerEvent } from "../lib/youthClassification.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
@@ -216,8 +216,8 @@ function riderName(res) {
 }
 
 // #6185: ikon-FORM + tone pr. tilstand (klassenavne ordret, så Tailwinds scanner finder dem).
-const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon };
-const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger" };
+const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon, bolt: LightningIcon };
+const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger", later: "text-cz-2" };
 
 // #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, et andet tryk på samme markør skjuler den, hover virker
 // på desktop. Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal
@@ -296,22 +296,18 @@ function BreakawayMarker({ result, t, history = null }) {
   const participation = participationForResult(result, history);
   if (!participation) return null;
   const markerLabel = t(participation.verified ? "detail.breakaway.label" : "detail.breakaway.legacyLabel");
-  // #6185: tre tilstande (indhentet / sat af / holdt hjem) — se breakawayMarkerState.
-  const markerState = breakawayMarkerState(participation);
-  const label = t(markerState.labelKey);
-  const StateIcon = BREAKAWAY_MARKER_ICON[markerState.icon] ?? FlagIcon;
+  // #7092: tre læsninger med hver sin ikon-form (morgenudbrud / senere angreb / intet udbrud), se breakawayMarkerEntries.
   return (
     <>
-      {participation.morning && (
-        <MarkerTip label={`${markerLabel}: ${label}`} className={BREAKAWAY_MARKER_TONE[markerState.tone]}>
-          <StateIcon size={15} aria-hidden="true" />
-        </MarkerTip>
-      )}
-      {participation.laterAttack && (
-        <MarkerTip label={t("detail.breakaway.laterAttack")} className="text-cz-2">
-          <ArrowUpIcon size={15} aria-hidden="true" />
-        </MarkerTip>
-      )}
+      {breakawayMarkerEntries(participation).map((entry) => {
+        const EntryIcon = BREAKAWAY_MARKER_ICON[entry.icon] ?? FlagIcon;
+        const label = entry.kind === "morning" ? `${markerLabel}: ${t(entry.labelKey)}` : t(entry.labelKey);
+        return (
+          <MarkerTip key={entry.kind} label={label} className={BREAKAWAY_MARKER_TONE[entry.tone]}>
+            <EntryIcon size={15} aria-hidden="true" />
+          </MarkerTip>
+        );
+      })}
     </>
   );
 }
@@ -376,12 +372,17 @@ function HeroStatBlock({ label, value, sub, last = false }) {
 // Intentions-halvdelen (#4632) er ikke gated og vises altid.
 const TACTICS_V4_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_PREVIEW_MOCK;
 
+/**
+ * #7095: races-raekken som loadRace() selecter den (smal projektion + joinet season).
+ * @typedef {Pick<import("../types/database.types").Tables<"races">, "id" | "name" | "race_type" | "race_class" | "stages" | "stages_completed" | "edition_year" | "status" | "engine_rules_revision" | "squad"> & { season: { id: string, number: number } | null }} RaceDetailRow
+ */
+
 export default function RaceDetailPage() {
   const { t, i18n } = useTranslation("races");
   const { raceId } = useParams();
   const location = useLocation();
 
-  const [race, setRace] = useState(/** @type {any} */ (null)); // Supabase-raekken; any saa nye race.*-brug ikke regner typen som null
+  const [race, setRace] = useState(/** @type {RaceDetailRow | null} */ (null)); // #7095: Supabase-raekken med joinet season
   const [allResults, setResults] = useState([]);
   // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i løb afviklet før reglen.
   const results = useMemo(() => withoutHiddenYouthClassification(allResults, race?.squad), [allResults, race?.squad]);
@@ -1011,7 +1012,7 @@ export default function RaceDetailPage() {
     </div>
   );
 
-  if (notFound) return (
+  if (notFound || !race) return ( // #7095: !race snaever race til RaceDetailRow nedenfor
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"><ChevronLeftIcon size={13} aria-hidden="true" />{backLabel}</Link>
       {/* #4625/#4628: EmptyState kræver en vej videre (TASTE fork 4) — en tom
@@ -1889,7 +1890,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = null, passages, stageRoles = null, rulesRevision = null, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t }) {
   // #7031: U23-/juniorløb har ingen Ungdom-fane.
   const classTabs = raceHasYouthClassification(raceSquad) ? STAGE_CLASS_TABS : STAGE_CLASS_TABS.filter((k) => k !== "young");
   const [classTab, setClassTab] = useState("stage");
@@ -2197,7 +2198,7 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = null, participationHistory = null }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = /** @type {string | undefined} */ (undefined), participationHistory = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement

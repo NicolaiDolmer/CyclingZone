@@ -290,6 +290,20 @@ function gameDayOf(row) {
   return Number.isFinite(n) ? n : -1;
 }
 
+// #6110 (ejer 23/10): talentet og dagens tilfaeldighed maa aldrig forlade serveren.
+// Med begge synlige kunne talent-leddet aflaeses for egne ryttere (ogsaa akademiets
+// nye unge, hvor potentialet skal "laeres gennem traening"). Linjen "traekker op/ned"
+// viste ogsaa "Talentet +N" direkte paa skaermen. De oevrige bidrag (pas, fokus, form,
+// traener, facilitet, alder) er ting manageren selv paavirker og beholdes uaendret.
+export const HIDDEN_CONTRIBUTION_KEYS = Object.freeze(["potential", "noise"]);
+
+export function publicContributions(contributions) {
+  if (!Array.isArray(contributions)) return null;
+  return contributions
+    .filter((c) => c && !HIDDEN_CONTRIBUTION_KEYS.includes(c.key))
+    .map((c) => ({ key: c.key, points: c.points, direction: c.direction }));
+}
+
 export function buildTrainingScoreView(rows, {
   today = null,
   sparkDays = TRAINING_SCORE_VIEW.sparkDays,
@@ -342,7 +356,7 @@ export function buildTrainingScoreView(rows, {
       avg: withNumber.length ? Math.round(sum / withNumber.length) : null,
       best: withNumber.length ? Math.max(...withNumber.map((r) => Number(r.score))) : null,
       days: withNumber.length,
-      contributions: Array.isArray(todayRow?.contributions) ? todayRow.contributions : null,
+      contributions: publicContributions(todayRow?.contributions),
     };
   }
   return out;

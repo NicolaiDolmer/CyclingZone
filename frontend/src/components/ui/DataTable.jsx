@@ -646,6 +646,8 @@ function MobileFullTable({
 // hverken tegner noget eller aendrer `textContent` — teksten er den samme for
 // skaermlaesere, tests og tekst-vagten. Refs #5383.
 function withBreakHints(value) {
+  // #7032: foldValue maa ogsaa returnere en node (fx et flag) — kun tekst brydes.
+  if (typeof value !== "string") return value;
   const parts = String(value).split("/");
   if (parts.length === 1) return value;
   // Brydningen ligger EFTER skraastregen, saa "SPURT/" bliver staaende paa den

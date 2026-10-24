@@ -748,15 +748,21 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // kontrakt · handling); Mit holds tre ekstra kolonner (rating, popularitet,
   // status) sættes ind uden at bryde den delrækkefølge. Akademiet er IKKE rørt
   // i denne PR — kun Mit hold flytter sig.
+  // #7032: nation som flag (delt NationCell) baade i desktop-kolonnen og i
+  // mobil-folden (foer stod der kun tre bogstaver under navnet). Samme kolonne
+  // genbruges i evne-tilstanden, saa nationen ikke forsvinder dér.
+  const nationColumn = {
+    key: "nation",
+    header: t("squad.headers.nation"),
+    sortKey: "nationality_code",
+    fold: true,
+    foldValue: (r) => (getCountryCode3(r.nationality_code)
+      ? <NationCell key="nation" code={r.nationality_code} />
+      : "—"),
+    render: (r) => <NationCell code={r.nationality_code} />,
+  };
   const overviewColumns = [
-    {
-      key: "nation",
-      header: t("squad.headers.nation"),
-      sortKey: "nationality_code",
-      fold: true,
-      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
-      render: (r) => <NationCell code={r.nationality_code} />,
-    },
+    nationColumn,
     nameColumn,
     ratingColumn,
     typeColumn,
@@ -876,7 +882,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // Evne-tilstand: navn (sticky) + rating + type + de 15 evner. Med tight-gutteren
   // er det ~830px på desktop → ingen vandret scroll, og typen beholder sin egen
   // kolonne i stedet for at ligge under navnet.
-  const abilityModeColumns = [nameColumn, ratingColumn, typeColumn, ...abilityColumns];
+  const abilityModeColumns = [nationColumn, nameColumn, ratingColumn, typeColumn, ...abilityColumns];
   const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
 
   // D-047 (#5102): Mit holds tre standardkolonner paa mobil. Ejer-beslutning
