@@ -376,12 +376,17 @@ function HeroStatBlock({ label, value, sub, last = false }) {
 // Intentions-halvdelen (#4632) er ikke gated og vises altid.
 const TACTICS_V4_PREVIEW = import.meta.env.DEV || import.meta.env.VITE_PREVIEW_MOCK;
 
+/**
+ * #7095: races-raekken som loadRace() selecter den (smal projektion + joinet season).
+ * @typedef {Pick<import("../types/database.types").Tables<"races">, "id" | "name" | "race_type" | "race_class" | "stages" | "stages_completed" | "edition_year" | "status" | "engine_rules_revision" | "squad"> & { season: { id: string, number: number } | null }} RaceDetailRow
+ */
+
 export default function RaceDetailPage() {
   const { t, i18n } = useTranslation("races");
   const { raceId } = useParams();
   const location = useLocation();
 
-  const [race, setRace] = useState(/** @type {any} */ (null)); // Supabase-raekken; any saa nye race.*-brug ikke regner typen som null
+  const [race, setRace] = useState(/** @type {RaceDetailRow | null} */ (null)); // #7095: Supabase-raekken med joinet season
   const [allResults, setResults] = useState([]);
   // #7031: intet ungdomsklassement i U23-/juniorløb, heller ikke i løb afviklet før reglen.
   const results = useMemo(() => withoutHiddenYouthClassification(allResults, race?.squad), [allResults, race?.squad]);
@@ -1011,7 +1016,7 @@ export default function RaceDetailPage() {
     </div>
   );
 
-  if (notFound) return (
+  if (notFound || !race) return ( // #7095: !race snaever race til RaceDetailRow nedenfor
     <div className="max-w-5xl mx-auto pt-4 md:pt-6 px-4 md:px-8">
       <Link to={backTo} className="inline-flex items-center gap-1 text-xs font-medium text-cz-2 hover:text-cz-1 transition-colors mb-3"><ChevronLeftIcon size={13} aria-hidden="true" />{backLabel}</Link>
       {/* #4625/#4628: EmptyState kræver en vej videre (TASTE fork 4) — en tom
@@ -1889,7 +1894,7 @@ function LiveOverallTab({ byType, stage, filterRows, myTeamId, myOwnTeamId, mome
   );
 }
 
-function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = null, passages, stageRoles = null, rulesRevision = null, t }) {
+function StageTab({ stage, results, stagePointsRows, profile, profileByStage, filterRows, myTeamId, myOwnTeamId, incidents, moments, riderNameById, teamNameById, raceId, raceName, raceSquad = /** @type {string | undefined} */ (undefined), passages, stageRoles = null, rulesRevision = /** @type {string | null} */ (null), t }) {
   // #7031: U23-/juniorløb har ingen Ungdom-fane.
   const classTabs = raceHasYouthClassification(raceSquad) ? STAGE_CLASS_TABS : STAGE_CLASS_TABS.filter((k) => k !== "young");
   const [classTab, setClassTab] = useState("stage");
@@ -2197,7 +2202,7 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = null, participationHistory = null }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = /** @type {string | undefined} */ (undefined), participationHistory = null }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
