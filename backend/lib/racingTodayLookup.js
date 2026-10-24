@@ -15,7 +15,7 @@
 
 import { copenhagenMidnightUTC, copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter, isRiderInjured, raceSquadOf } from "./riderEligibility.js";
-import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies } from "./raceStartOutlook.js";
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
 import { loadTrainNowLocksForRaces } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
@@ -82,7 +82,7 @@ export async function loadRacingTodayByRider(supabase, teamId, riderIds, now = n
     const raceIdsNeeded = [...new Set((entryRows ?? []).filter((e) => todaySet.has(e.race_id)).map((e) => e.race_id))];
     if (!raceIdsNeeded.length) return {};
 
-    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name, stages_completed, squad").in("id", raceIdsNeeded);
+    const { data: raceRows, error: raceErr } = await supabase.from("races").select("id, name, stages_completed, squad, stages").in("id", raceIdsNeeded);
     if (raceErr) return {};
 
     const raceNameById = new Map((raceRows ?? []).map((r) => [r.id, r.name]));
@@ -190,7 +190,7 @@ async function loadStartsByRaceId({ supabase, now, teamId, entryRows, raceRows, 
         injuredEntryCount: keptEntered.filter((id) => injured.has(id)).length,
         freeEligibleCount, stagesCompleted,
         // #6739 regel A: ryttere i et andet løb i dag (eller som har kørt det) giver start med mindst 4.
-        overlapCount: roster.filter((id) => (entered.has(id) ? spent.has(id)
+        overlapCount: !overlapRuleApplies(raceById.get(raceId)) ? 0 : roster.filter((id) => (entered.has(id) ? spent.has(id)
           : !injured.has(id) && !locked.has(id) && (boundElsewhere.has(id) || spent.has(id)))).length,
       });
       starts.set(raceId, willStart);

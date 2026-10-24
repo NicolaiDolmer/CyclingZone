@@ -358,7 +358,7 @@ test("loadRacingTodayByRider: overlap-dag, 4 udtaget og resten i et andet løb i
   const today = new Date("2026-10-28T08:00:00Z");
   const base = {
     sched: [{ race_id: "race-a" }, { race_id: "race-b" }],
-    races: [{ id: "race-a", name: "Race A", stages_completed: 0 }, { id: "race-b", name: "Race B", stages_completed: 0 }],
+    races: [{ id: "race-a", name: "Race A", stages_completed: 0, stages: 3 }, { id: "race-b", name: "Race B", stages_completed: 0, stages: 5 }],
     riders: ids.map((id) => ({ id, squad: "senior" })), withdrawals: [], locks: [],
   };
   const four = await loadRacingTodayByRider(fakeSupabase({ ...base, entries: [
@@ -371,6 +371,13 @@ test("loadRacingTodayByRider: overlap-dag, 4 udtaget og resten i et andet løb i
     ...ids.slice(3).map((rider_id) => ({ race_id: "race-b", rider_id })),
   ] }), "team-1", ids, today);
   assert.equal(three["rider-1"], undefined, "3 frie: under 4, holdet stiller ikke op");
+  const oneDay = await loadRacingTodayByRider(fakeSupabase({ ...base,
+    races: [{ id: "race-a", name: "Race A", stages_completed: 0, stages: 1 }, { id: "race-b", name: "Race B", stages_completed: 0, stages: 5 }],
+    entries: [
+      ...ids.slice(0, 4).map((rider_id) => ({ race_id: "race-a", rider_id })),
+      ...ids.slice(4).map((rider_id) => ({ race_id: "race-b", rider_id })),
+    ] }), "team-1", ids, today);
+  assert.equal(oneDay["rider-1"], undefined, "endagsløb: gulvet 6 gælder uændret");
 });
 
 test("computeRacingTodayByRider: en skadet udtaget rytter løber ikke, selv om holdet starter (regel B, #6740)", () => {

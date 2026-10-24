@@ -19,7 +19,8 @@
 // Ren funktion, ingen I/O. Kaster aldrig.
 
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
-import { overlapStartsShort } from "./raceFieldIntegrity.js";
+import { overlapStartsShort, overlapRuleApplies } from "./raceFieldIntegrity.js";
+export { overlapRuleApplies }; // #6739: udsigternes kaldere afgør om løbet er et etapeløb
 
 /**
  * #6740 (regel B, ejer 16/10): et hold der kun er under gulvet fordi udtagne ryttere

@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
-  OVERLAP_MIN_START, overlapStartsShort, startDayOverlapRiderIds, addRidersByTeam, overlapShortTeamIds, teamStartsShortOnOverlap } from "./raceFieldIntegrity.js";
+  OVERLAP_MIN_START, overlapStartsShort, startDayOverlapRiderIds, addRidersByTeam, overlapShortTeamIds, teamStartsShortOnOverlap, overlapRuleApplies } from "./raceFieldIntegrity.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 // ── #1844: feltet må ikke ændre sig mellem etaper ──────────────────────────────
@@ -151,6 +151,14 @@ test("overlapStartsShort: mindst 4, under 6, og kun når overlap forklarer mangl
   assert.equal(overlapStartsShort({ starters: 6, overlap: 3 }), false, "på gulvet: ingen undtagelse nødvendig");
   assert.equal(overlapStartsShort({ starters: 4, overlap: 1, injured: 1 }), true, "skade + overlap");
   assert.equal(overlapStartsShort({ starters: 4, overlap: 0, injured: 2 }), false, "kun skade: regel B alene");
+});
+
+test("overlapRuleApplies: kun etapeløb; ukendt løbstype = gulvet (fejl lukket)", () => {
+  assert.equal(overlapRuleApplies({ race_type: "stage_race", stages: 5 }), true);
+  assert.equal(overlapRuleApplies({ stages: 3 }), true);
+  assert.equal(overlapRuleApplies({ race_type: "single", stages: 1 }), false);
+  assert.equal(overlapRuleApplies({}), false);
+  assert.equal(overlapRuleApplies(null), false);
 });
 
 test("startDayOverlapRiderIds: brugte ryttere + bundet på startdagen, ikke senere i løbet", () => {

@@ -164,6 +164,15 @@ export function injuryShortTeamIds({ entries = [], injuredEntries = [], minEntri
 export const OVERLAP_MIN_START = 4;
 
 /**
+ * #6739: reglen gælder etapeløb (ejer-beslutningen handler om at miste hele etapeløbet).
+ * Endagsløb følger gulvet uændret. `race_type` eller `stages` afgør; mangler begge,
+ * gælder gulvet (fejl lukket).
+ */
+export function overlapRuleApplies(race) {
+  return race?.race_type === "stage_race" || Number(race?.stages) > 1;
+}
+
+/**
  * #6739: ren regel. Holdet starter med `starters` ryttere, hvis det har mindst
  * `overlapMin`, og det kun er under gulvet fordi ryttere kører et andet løb samme
  * løbsdag. `injured` (skadede udtagne, regel B) tæller med som tabt af en undtaget

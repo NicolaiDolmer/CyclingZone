@@ -48,7 +48,7 @@ function makeFilterAwareSupabase(canned = {}) {
 
 const ABIL = { sprint: 60, climbing: 60, time_trial: 60, one_day: 60, gc: 60, hills: 60, cobbles: 60, aggression: 60 };
 const INJURED_UNTIL = "2999-01-01";
-const RACE = { id: "race-a", season_id: "s1" };
+const RACE = { id: "race-a", season_id: "s1", race_type: "stage_race", stages: 3 };
 const STAGES = [{ stage_number: 1, profile_type: "hilly", demand_vector: { hilly: 1 } }];
 // Etapeløbet kører løbsdag 10-12; det andet løb ligger på `otherDay` (default startdagen).
 const SCHEDULE = [10, 11, 12].map((game_day, i) => ({ race_id: RACE.id, stage_number: i + 1, game_day, scheduled_at: `2026-10-${28 + i}T15:00:00Z` }));
@@ -80,7 +80,7 @@ function canned(teams, { otherDay = 10 } = {}) {
 async function startField(teams, opts = {}) {
   const dropped = [];
   const entrants = await loadEntrantsForRace({
-    supabase: makeFilterAwareSupabase(canned(teams, opts)), race: RACE, stages: STAGES,
+    supabase: makeFilterAwareSupabase(canned(teams, opts)), race: opts.race ?? RACE, stages: STAGES,
     allowAutofill: true, persist: false, onTeamsDropped: (ids) => dropped.push(...ids),
   });
   const countByTeam = {};
@@ -105,6 +105,11 @@ test("overlap-dag: 3 frie -> starter ikke (under 4)", async () => {
 
 test("ikke-overlap-dag: 5 frie og ingen i andre løb -> starter ikke (gulvet 6 uændret)", async () => {
   const { countByTeam } = await startField({ A: { entered: 5 } });
+  assert.equal(countByTeam.A, undefined);
+});
+
+test("endagsløb: reglen gælder kun etapeløb -> 4 frie på en overlap-dag starter ikke", async () => {
+  const { countByTeam } = await startField({ A: { entered: 4, busy: 8 } }, { race: { id: RACE.id, season_id: "s1", race_type: "single", stages: 1 } });
   assert.equal(countByTeam.A, undefined);
 });
 

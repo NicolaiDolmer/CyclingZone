@@ -126,7 +126,7 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
-  addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds } from "./raceFieldIntegrity.js"; // #6739
+  addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds, overlapRuleApplies } from "./raceFieldIntegrity.js"; // #6739
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadSpentRaceDays } from './raceSpentDays.js';
@@ -1735,11 +1735,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     : new Set();
   overlap.injuredEntries = injuredEntries;
   const autopicked = allowAutofill
-    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist, injuryShortTeamIds: injuryShort, overlap })
+    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist, injuryShortTeamIds: injuryShort, overlap: overlapRuleApplies(race) ? overlap : null })
     : [];
   let entries = [...existingEntries, ...autopicked];
-  // #6739 (ejer-beslutning A 24/10): kort fordi ryttere kører et andet løb på startdagen.
-  const overlapShort = allowAutofill ? overlapShortTeamIds({ entries, overlapRidersByTeam: overlap.ridersByTeam, injuredEntries }) : new Set();
+  // #6739 (ejer-beslutning A 24/10): kort fordi ryttere kører et andet løb på startdagen (etapeløb).
+  const overlapShort = allowAutofill && overlapRuleApplies(race) ? overlapShortTeamIds({ entries, overlapRidersByTeam: overlap.ridersByTeam, injuredEntries }) : new Set();
   // #4295 (ejer-beslutning 27/8): GULVET. Et hold skal have mindst 6 ryttere for at
   // stille op. Kører EFTER redningen ovenfor, så et hold der kunne fyldes op til 6 er
   // fyldt op FØR gulvet måles — ellers ville et hold med 3 gemte ryttere ryge ud af et

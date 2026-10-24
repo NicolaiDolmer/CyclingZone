@@ -120,9 +120,12 @@ test("regel B: en skadet rytter der OGSÅ har brugt løbsdagen tæller ikke som 
   // skade-kort. Regel A (#6739) kræver mindst 4 -> gulvet gælder.
   const spentToo = await startField({ A: { entered: 6, injured: 3 } }, { race, spent: ["A-r0"] });
   assert.equal(spentToo.countByTeam.A, undefined);
-  // #6739 (regel A): med 5 raske tilbage kørte A-r0 et andet løb samme løbsdag (overlap),
-  // så holdet starter med de 5.
-  const overlapDay = await startField({ A: { entered: 6, injured: 1 } }, { race, spent: ["A-r0"] });
+  // Endagsløb: regel A (#6739) gælder kun etapeløb, så 5 raske + spent-skadet = gulvet.
+  const oneDay = await startField({ A: { entered: 6, injured: 1 } }, { race, spent: ["A-r0"] });
+  assert.equal(oneDay.countByTeam.A, undefined);
+  // #6739 (regel A, etapeløb): A-r0 kørte et andet løb samme løbsdag (overlap), så holdet
+  // starter med de 5 raske.
+  const overlapDay = await startField({ A: { entered: 6, injured: 1 } }, { race: { ...race, race_type: "stage_race", stages: 3 }, spent: ["A-r0"] });
   assert.equal(overlapDay.countByTeam.A, 5);
   // Kontrol: samme hold uden spent starter med 5.
   const injuredOnly = await startField({ A: { entered: 6, injured: 1 } }, { race });

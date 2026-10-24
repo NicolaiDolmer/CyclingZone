@@ -19,7 +19,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
-import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies } from "./raceStartOutlook.js";
 import { splitWithdrawals } from "./raceWithdrawal.js"; // #6740
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
@@ -92,7 +92,7 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
       freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id) && !spent.has(id)).length,
       // #6739 regel A: ryttere der har kørt et andet løb samme løbsdag giver start med mindst 4
       // (bundne ryttere tælles allerede som frie her, se BEVIDST KONSERVATIVT ovenfor).
-      overlapCount: rosterIds.filter((id) => spent.has(id) && (entered.has(id) || (!injuredIds.has(id) && !locked.has(id)))).length,
+      overlapCount: !overlapRuleApplies(race) ? 0 : rosterIds.filter((id) => spent.has(id) && (entered.has(id) || (!injuredIds.has(id) && !locked.has(id)))).length,
       stagesCompleted,
     });
   } catch {
