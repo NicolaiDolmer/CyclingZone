@@ -299,7 +299,7 @@ export function isGrandTourRace(race) {
  * hashen af pladsens nuværende indhold. En plads hvis indhold ikke ændres, skrives ikke.
  * @param {Awaited<ReturnType<typeof loadA2Input>>} input
  */
-export function buildA2Plan(input) {
+export function buildA2Plan(input, { orderVariation = true } = {}) {
   const { season, divisions, races, catalog, profiles } = input;
   const planErrors = [];
   const tierByDivision = new Map(divisions.map((d) => [d.id, d.tier]));
@@ -320,11 +320,11 @@ export function buildA2Plan(input) {
     if (!cat) { if (!hasFlat) planErrors.push(`løb ${race.id} (${race.name}): katalog-løbet ${race.pool_race_id} mangler`); continue; }
     const seed0 = seedRaceFor(race, cat, season.id, 0);
     const tier = tierByDivision.get(race.league_division_id) ?? null;
-    if (hasFlat && !isAscendingOrder(rows.map((p) => p.profile_type))) continue;
+    if (hasFlat && (!orderVariation || !isAscendingOrder(rows.map((p) => p.profile_type)))) continue;
     const detected = detectSeasonVariant(seed0, rows);
     const seed = { ...seed0, season_variant: detected ?? 0 };
     // Samme seed som generatoren (løbets sæson-variant), så puljerne og generatoren giver samme rækkefølge.
-    const variation = chooseStageOrderVariation(seed, rows);
+    const variation = orderVariation ? chooseStageOrderVariation(seed, rows) : { order: null, fixed: [] };
     if (!variation.order && hasFlat) continue;
     const ordered = variation.order ? applyStageOrder(rows, variation.order) : rows;
     const pick = hasFlat ? { stageNumber: null, candidates: [], reason: "has_flat" } : chooseA2FlatStage(seed, ordered);
@@ -480,8 +480,11 @@ export function orderRoutes(input, profiles) {
 export function orderVariationFor(input, plan, bands) {
   const before = measureOrderVariation(orderRoutes(input, input.profiles), { minRoutesPerStageCount: bands.minRoutesPerStageCount });
   const after = measureOrderVariation(orderRoutes(input, profilesAfter(input, plan)), { minRoutesPerStageCount: bands.minRoutesPerStageCount });
+  // A2 alene (uden ny rækkefølge): sammenligningen for placerings-fordelingen, fordi A2 selv ændrer
+  // sammensætningen (flere flade etaper); variationen må ikke trække fordelingen længere væk.
+  const a2Only = measureOrderVariation(orderRoutes(input, profilesAfter(input, buildA2Plan(input, { orderVariation: false }))), { minRoutesPerStageCount: bands.minRoutesPerStageCount });
   return {
-    before, after,
+    before, after, a2Only,
     violationsBefore: detectOrderVariationViolations(before, bands),
     violationsAfter: detectOrderVariationViolations(after, bands),
   };
@@ -539,6 +542,8 @@ export function evaluateGates({ input, plan, ciGate = null, orderBands }) {
   const order = orderVariationFor(input, plan, orderBands);
   add("rækkefølge-gaten (variation på tværs af S5's ruter) efter planen", order.violationsAfter.length === 0,
     order.violationsAfter.length ? order.violationsAfter.join(" · ") : `${order.violationsBefore.length} brud før, 0 efter`);
+  add("ny rækkefølge trækker ikke etapetyperne pr. placering længere fra rigtige etapeløb end A2 alene", order.after.positionDistance <= order.a2Only.positionDistance + 1e-9,
+    `før ${order.before.positionDistance.toFixed(3)} · A2 alene ${order.a2Only.positionDistance.toFixed(3)} · efter ${order.after.positionDistance.toFixed(3)}`);
   const stillTemplate = order.after.ascendingKeys.length;
   add("ruter der stadig har fast stigende rækkefølge (ingen lovlig ny rækkefølge; rapporteres)", true, `${stillTemplate} ruter`);
   const changedSlots = new Set(planSlots(plan).map((s) => `${s.race_id}|${s.stage_number}`));

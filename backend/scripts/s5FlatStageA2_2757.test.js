@@ -15,7 +15,7 @@ const RACE_B = "33333333-3333-4333-8333-333333333333";
 const POOL_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const POOL_B = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 // Test-bånd (ikke de rigtige; de står privat i balance-internals/2757-a2/).
-const BANDS = Object.freeze({ ascendingShareMax: 1, identicalShareMax: 1, distinctShareMin: 0, positionDistanceMax: 1, minRoutesPerStageCount: 2 });
+const BANDS = Object.freeze({ ascendingShareMax: 1, identicalShareMax: 1, identicalCountFloor: 2, distinctShareMin: 0, positionDistanceMax: 1, minRoutesPerStageCount: 2 });
 const SIG = { features: [{ kind: "climb", name: "Muro Test", category: "3", length_km: 2.4, avg_gradient: 7.5, stage_hint: "any", summit_finish: false }] };
 
 function snapshot(overrides = {}) {

@@ -6,7 +6,7 @@ import {
 } from "./stageOrderVariationGate.js";
 
 // Test-bånd (ikke de rigtige; de står privat i balance-internals/2757-a2/).
-const BANDS = Object.freeze({ ascendingShareMax: 0.5, identicalShareMax: 0.5, distinctShareMin: 0.5, positionDistanceMax: 0.9, minRoutesPerStageCount: 2 });
+const BANDS = Object.freeze({ ascendingShareMax: 0.5, identicalShareMax: 0.5, identicalCountFloor: 1, distinctShareMin: 0.5, positionDistanceMax: 0.9, minRoutesPerStageCount: 2 });
 
 test("#2757 isAscendingOrder: crescendo-skabelonen genkendes, finalen og tidskørsler tæller ikke", () => {
   assert.equal(isAscendingOrder(["rolling", "hilly", "medium_mountain", "hilly"]), true, "ejerens skabelon");

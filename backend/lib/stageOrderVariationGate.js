@@ -146,7 +146,7 @@ export function positionDistance(a, b) {
  * @param {any} bands
  */
 export function assertOrderVariationBands(bands) {
-  for (const k of ["ascendingShareMax", "identicalShareMax", "distinctShareMin", "positionDistanceMax", "minRoutesPerStageCount"]) {
+  for (const k of ["ascendingShareMax", "identicalShareMax", "identicalCountFloor", "distinctShareMin", "positionDistanceMax", "minRoutesPerStageCount"]) {
     if (typeof bands?.[k] !== "number" || !Number.isFinite(bands[k])) throw new Error(`order-variation band "${k}" is missing or not a number (#2757)`);
   }
   return bands;
@@ -155,7 +155,8 @@ export function assertOrderVariationBands(bands) {
 /**
  * Gaten: brud som tekst (tom liste = grøn).
  * @param {ReturnType<typeof measureOrderVariation>} m
- * @param {{ ascendingShareMax: number, identicalShareMax: number, distinctShareMin: number, positionDistanceMax: number, minRoutesPerStageCount: number }} bands
+ * @param {{ ascendingShareMax: number, identicalShareMax: number, identicalCountFloor: number, distinctShareMin: number, positionDistanceMax: number, minRoutesPerStageCount: number }} bands
+ *   identicalCountFloor: så mange ruter med samme rækkefølge er altid tilladt (rigtige løb har også par).
  */
 export function detectOrderVariationViolations(m, bands) {
   assertOrderVariationBands(bands);
@@ -163,7 +164,7 @@ export function detectOrderVariationViolations(m, bands) {
   const pct = (x) => `${(100 * x).toFixed(0)} %`;
   if (m.ascendingShare > bands.ascendingShareMax) out.push(`ascending template order: ${m.ascending} of ${m.routes} routes (${pct(m.ascendingShare)})`);
   for (const s of m.byStageCount) {
-    if (s.routes < bands.minRoutesPerStageCount || s.maxIdentical < 2) continue;
+    if (s.routes < bands.minRoutesPerStageCount || s.maxIdentical <= bands.identicalCountFloor) continue;
     if (s.share > bands.identicalShareMax) out.push(`${s.stages} stages: ${s.maxIdentical} of ${s.routes} routes share the order ${s.sequence}`);
   }
   if (m.distinctShare < bands.distinctShareMin) out.push(`only ${m.distinct} distinct orders across ${m.routes} routes`);
