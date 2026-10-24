@@ -126,7 +126,8 @@ import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFi
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
-  addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds, overlapRuleApplies } from "./raceFieldIntegrity.js"; // #6739
+  addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds, overlapRuleApplies, startDaySpentRiderIds } from "./raceFieldIntegrity.js"; // #6739
+import { loadStartDaySpentRiderIds } from "./raceStartOutlook.js"; // #6739
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadSpentRaceDays } from './raceSpentDays.js';
@@ -1234,6 +1235,7 @@ export async function fillMissingTeamEntries({
   // #4759: injicérbar for test (samme mønster som notificationService.js's
   // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
   notify = notifyAssistantFilledSquad,
+  today = null, // #6739 (AGENTS 16): injicérbar dag (YYYY-MM-DD) til skadefilteret; null = Copenhagen-dag nu
 }) {
   // #2962: ufiltreret teams-select (kun test-konto-filtreret, ellers ALLE hold) —
   // 155 rækker 25/7, samme #2951-klasse (vokser med hver signup). Pagineret via
@@ -1367,7 +1369,7 @@ export async function fillMissingTeamEntries({
 
   // Spec 6.5 (#1306) / #3896: skadede ryttere (kanonisk isRiderInjured) må ikke
   // auto-fyldes i startfeltet.
-  const todayStr = copenhagenDateString();
+  const todayStr = today ?? copenhagenDateString();
   const { data: injured, error: injErr } = await applyInjuredFilter(
     supabase.from("rider_condition").select("rider_id"), todayStr
   );
@@ -1421,8 +1423,9 @@ export async function fillMissingTeamEntries({
   const { thisWindow, otherRacesByTeam } = await loadFieldBindingContext({
     supabase, race, teamIds: [...byTeam.keys()],
   });
-  const spentRiderIds=new Set(race.season_id && thisWindow
-    ? (await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...byTeam.values()].flat().map(row=>row.rider_id)})).map(row=>row.rider_id) : []);
+  const spentRows=race.season_id && thisWindow
+    ? await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...byTeam.values()].flat().map(row=>row.rider_id)}) : [];
+  const spentRiderIds=new Set(spentRows.map(row=>row.rider_id));
   for (const [teamId, teamRiders] of byTeam) {
     const available = excludeBoundRiders({
       riders: teamRiders.filter(row=>!spentRiderIds.has(row.rider_id)), thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [],
@@ -1447,7 +1450,7 @@ export async function fillMissingTeamEntries({
     // binder rytterne på løbsdagen for et startfelt de aldrig kommer i.
     // #6740: et skade-kort hold starter alligevel (regel B), så dér skrives det der kan.
     // #6739: et overlap-kort hold (mindst 4, resten kører et andet løb på startdagen) også.
-    if (overlap) addRidersByTeam(overlap.ridersByTeam, teamId, startDayOverlapRiderIds({ riders: teamRiders, spentRiderIds, thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [] }));
+    if (overlap) addRidersByTeam(overlap.ridersByTeam, teamId, startDayOverlapRiderIds({ riders: teamRiders, spentRiderIds: startDaySpentRiderIds(spentRows, thisWindow?.start), thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [] }));
     const overlapShort = overlap != null && teamStartsShortOnOverlap({ teamId, overlapRidersByTeam: overlap.ridersByTeam, injuredEntries: overlap.injuredEntries,
       starterIds: new Set([...(riderIdsByTeam.get(teamId) ?? []), ...picks.map((p) => p.rider_id)]) });
     if (existingCount + picks.length < MIN_RACE_ENTRIES && !injuryShortTeamIds.has(teamId) && !overlapShort) continue;
@@ -1611,7 +1614,7 @@ export async function resolveRaceSquad({ supabase, race }) {
 // med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
 // stages bruges af autopick til egnethedsscore (suitabilityScore pr. terrain).
-export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true, onTeamsDropped = null }) {
+export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true, onTeamsDropped = null, today = null }) {
   // #4357: Postgres garanterer INGEN rækkefølge uden ORDER BY — kan skifte efter
   // updates/vacuum/planændring. Selve motoren (buildTeamContext) er nu FØRSTE-
   // vinder-deterministisk uafhængigt af denne rækkefølge (se raceSimulator.js), men
@@ -1684,7 +1687,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     if (condErr) throw new Error(`rider_condition (injured): ${condErr.message}`);
     const injuredUntilByRider = new Map((conditions || []).map((c) => [c.rider_id, c.injured_until]));
     const fit = new Set(filterOutInjuredEntries({
-      entries: existingEntries, injuredUntilByRider, todayStr: copenhagenDateString(),
+      entries: existingEntries, injuredUntilByRider, todayStr: today ?? copenhagenDateString(),
     }));
     injuredEntries = existingEntries.filter((e) => !fit.has(e));
     existingEntries = existingEntries.filter((e) => fit.has(e));
@@ -1715,8 +1718,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // rører stadig kun de raske, som før.
   const overlap = { ridersByTeam: new Map(), injuredEntries: [] }; // #6739: overlap-regnskabet (regel A)
   if(allowAutofill && race.season_id && !race.finalize_state && !(Number(race.stages_completed)>0) && (existingEntries.length || injuredEntries.length)) {
-    const spent=new Set((await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...existingEntries,...injuredEntries].map(row=>row.rider_id)})).map(row=>row.rider_id));
-    for (const row of [...existingEntries, ...injuredEntries]) if (spent.has(row.rider_id)) addRidersByTeam(overlap.ridersByTeam, row.team_id, [row.rider_id]); // #6739
+    const spentRows=await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...existingEntries,...injuredEntries].map(row=>row.rider_id)});
+    const spent=new Set(spentRows.map(row=>row.rider_id));
+    // #6739: kun spent PÅ startdagen er overlap (Codex P2); spent-filteret nedenfor er uændret.
+    const spentStart = overlapRuleApplies(race) ? await loadStartDaySpentRiderIds({ supabase, raceId: race.id, spentRows, strict: true }) : new Set();
+    for (const row of [...existingEntries, ...injuredEntries]) if (spentStart.has(row.rider_id)) addRidersByTeam(overlap.ridersByTeam, row.team_id, [row.rider_id]);
     const spentFit=existingEntries.filter(row=>spent.has(row.rider_id)).map(row=>row.rider_id);
     if(persist && spentFit.length>0) {
       // Lock/check the fresh race row: never delete recorded participants based
@@ -1735,7 +1741,7 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     : new Set();
   overlap.injuredEntries = injuredEntries;
   const autopicked = allowAutofill
-    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist, injuryShortTeamIds: injuryShort, overlap: overlapRuleApplies(race) ? overlap : null })
+    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist, injuryShortTeamIds: injuryShort, overlap: overlapRuleApplies(race) ? overlap : null, today })
     : [];
   let entries = [...existingEntries, ...autopicked];
   // #6739 (ejer-beslutning A 24/10): kort fordi ryttere kører et andet løb på startdagen (etapeløb).

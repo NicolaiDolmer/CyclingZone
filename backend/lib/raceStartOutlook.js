@@ -19,7 +19,7 @@
 // Ren funktion, ingen I/O. Kaster aldrig.
 
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
-import { overlapStartsShort, overlapRuleApplies } from "./raceFieldIntegrity.js";
+import { overlapStartsShort, overlapRuleApplies, startGameDay, startDaySpentRiderIds } from "./raceFieldIntegrity.js";
 export { overlapRuleApplies }; // #6739: udsigternes kaldere afgør om løbet er et etapeløb
 
 /**
@@ -51,6 +51,24 @@ export function teamWillStart({ entryCount = 0, injuredEntryCount = 0, freeEligi
   const shortByOverlap = overlapStartsShort({ starters: picked + free, overlap: overlapCount, injured, minEntries: min });
   const starts = picked + free >= min || shortByInjury || shortByOverlap;
   return { starts, min, reason: starts ? null : "below_min" };
+}
+
+/**
+ * #6739 (Codex P2): ryttere i `spentRows` (loadSpentRaceDays) der kørte et andet løb PÅ
+ * løbets startdag. Læser kun etape-rækkerne når der er spent-rækker. `strict` (motoren)
+ * kaster ved DB-fejl; ellers (udsigterne) giver en fejl et tomt sæt: intet overlap.
+ */
+export async function loadStartDaySpentRiderIds({ supabase, raceId, spentRows, strict = false }) {
+  if (!spentRows?.length) return new Set();
+  try {
+    // pagination-safe: ét løbs etaper (≤ ~21 rækker).
+    const { data, error } = await supabase.from("race_stage_schedule").select("game_day").eq("race_id", raceId);
+    if (error) throw new Error(`race_stage_schedule (start day): ${error.message ?? error}`);
+    return startDaySpentRiderIds(spentRows, startGameDay(data ?? []));
+  } catch (err) {
+    if (strict) throw err;
+    return new Set();
+  }
 }
 
 /**

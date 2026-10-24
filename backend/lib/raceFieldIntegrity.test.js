@@ -3,7 +3,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
-  OVERLAP_MIN_START, overlapStartsShort, startDayOverlapRiderIds, addRidersByTeam, overlapShortTeamIds, teamStartsShortOnOverlap, overlapRuleApplies } from "./raceFieldIntegrity.js";
+  OVERLAP_MIN_START, overlapStartsShort, startDayOverlapRiderIds, addRidersByTeam, overlapShortTeamIds, teamStartsShortOnOverlap, overlapRuleApplies, startGameDay, startDaySpentRiderIds } from "./raceFieldIntegrity.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 // ── #1844: feltet må ikke ændre sig mellem etaper ──────────────────────────────
@@ -188,4 +188,13 @@ test("overlapShortTeamIds: tæller hver rytter én gang og ignorerer hold uden o
   assert.deepEqual([...out].sort(), ["tI", "tO"]);
   assert.equal(teamStartsShortOnOverlap({ teamId: "tO", starterIds: new Set(team("tO", 4).map((e) => e.rider_id)), overlapRidersByTeam }), true);
   assert.equal(overlapShortTeamIds({ entries, overlapRidersByTeam: new Map() }).size, 0);
+});
+
+test("startGameDay + startDaySpentRiderIds: kun spent på etape 1's løbsdag (Codex P2, #6739)", () => {
+  assert.equal(startGameDay([{ game_day: 12 }, { game_day: 10 }, { game_day: 11 }]), 10);
+  assert.equal(startGameDay([{ game_day: 10 }, { game_day: null }]), null, "delvist backfillet: ukendt dag");
+  assert.equal(startGameDay([]), null);
+  const rows = [{ rider_id: "a", game_day: 10 }, { rider_id: "b", game_day: 11 }];
+  assert.deepEqual([...startDaySpentRiderIds(rows, 10)], ["a"]);
+  assert.equal(startDaySpentRiderIds(rows, null).size, 0, "ukendt startdag: intet overlap");
 });

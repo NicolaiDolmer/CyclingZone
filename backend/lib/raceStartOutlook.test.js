@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, loadStartDaySpentRiderIds } from "./raceStartOutlook.js";
 import { MIN_RACE_ENTRIES } from "./raceAutopick.js";
 
 test("teamWillStart: tre udtagne og ingen frie ryttere stiller ikke op (#5945)", () => {
@@ -126,4 +126,14 @@ test("teamWillStart: skade + overlap (#6739 + #6740)", () => {
   assert.equal(teamWillStart({ entryCount: 3, injuredEntryCount: 2, overlapCount: 1 }).starts, false);
   // Efter start afgør feltet stadig svaret.
   assert.equal(teamWillStart({ entryCount: 4, overlapCount: 8, stagesCompleted: 1, inField: false }).starts, false);
+});
+
+test("loadStartDaySpentRiderIds: filtrerer til startdagen; fejl = tomt sæt, strict kaster (#6739)", async () => {
+  const sb = (result) => ({ from: () => ({ select: () => ({ eq: async () => result }) }) });
+  const spentRows = [{ rider_id: "a", game_day: 10 }, { rider_id: "b", game_day: 11 }];
+  const ok = await loadStartDaySpentRiderIds({ supabase: sb({ data: [{ game_day: 10 }, { game_day: 11 }], error: null }), raceId: "r", spentRows });
+  assert.deepEqual([...ok], ["a"]);
+  assert.equal((await loadStartDaySpentRiderIds({ supabase: sb({ data: null, error: { message: "x" } }), raceId: "r", spentRows })).size, 0);
+  await assert.rejects(loadStartDaySpentRiderIds({ supabase: sb({ data: null, error: { message: "x" } }), raceId: "r", spentRows, strict: true }));
+  assert.equal((await loadStartDaySpentRiderIds({ supabase: null, raceId: "r", spentRows: [] })).size, 0, "ingen spent: ingen læsning");
 });

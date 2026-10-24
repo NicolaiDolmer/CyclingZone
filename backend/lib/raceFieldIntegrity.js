@@ -190,6 +190,30 @@ export function overlapStartsShort({ starters = 0, overlap = 0, injured = 0, min
 }
 
 /**
+ * #6739: løbets startdag (game_day for etape 1) fra løbets etape-rækker. Mangler en
+ * række game_day, er dagen ukendt (null): så tæller ingen spent-række som overlap.
+ */
+export function startGameDay(scheduleRows = []) {
+  const days = (scheduleRows ?? []).map((r) => r?.game_day);
+  if (!days.length || !days.every((d) => Number.isFinite(d))) return null;
+  return Math.min(...days);
+}
+
+/**
+ * #6739 (Codex P2): kun spent-rækker PÅ startdagen er overlap. loadSpentRaceDays dækker
+ * hele løbets vindue; et forsinket etapeløb kan have ryttere der kørte et andet løb på en
+ * senere dag i vinduet, og det er ikke startdagens overlap. Spent-filteret selv er uændret.
+ *
+ * @param {Array<{rider_id:string, game_day:number}>} rows
+ * @param {number|null} startDay
+ * @returns {Set<string>}
+ */
+export function startDaySpentRiderIds(rows = [], startDay = null) {
+  if (!Number.isFinite(startDay)) return new Set();
+  return new Set((rows ?? []).filter((r) => r?.game_day === startDay).map((r) => r.rider_id));
+}
+
+/**
  * #6739: hvilke af `riders` er optaget af et andet løb på løbets STARTDAG? Enten har de
  * allerede kørt et andet løb samme løbsdag (`spentRiderIds`, raceSpentDays), eller de
  * står i et andet løb, hvis vindue rummer startdagen (`thisWindow.start`). En binding

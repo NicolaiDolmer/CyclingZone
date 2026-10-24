@@ -41,13 +41,15 @@ function makeFilterAwareSupabase(canned = {}) {
     return b;
   }
   const rpc = (name, args) => Promise.resolve(name === "find_spent_race_days"
-    ? { data: (args.p_rider_ids || []).filter((id) => (canned.spent || []).includes(id)).map((rider_id) => ({ rider_id, race_id: "race-other", game_day: 10 })), error: null }
+    ? { data: (args.p_rider_ids || []).filter((id) => (canned.spent || []).includes(id)).map((rider_id) => ({ rider_id, race_id: "race-other", game_day: canned.spentDay ?? 10 })), error: null }
     : { error: null });
   return { from, rpc };
 }
 
 const ABIL = { sprint: 60, climbing: 60, time_trial: 60, one_day: 60, gc: 60, hills: 60, cobbles: 60, aggression: 60 };
-const INJURED_UNTIL = "2999-01-01";
+// AGENTS 16: fast dag injiceres i loadEntrantsForRace (today); skaden løber til 30/10.
+const TODAY = "2026-10-28";
+const INJURED_UNTIL = "2026-10-30";
 const RACE = { id: "race-a", season_id: "s1", race_type: "stage_race", stages: 3 };
 const STAGES = [{ stage_number: 1, profile_type: "hilly", demand_vector: { hilly: 1 } }];
 // Etapeløbet kører løbsdag 10-12; det andet løb ligger på `otherDay` (default startdagen).
@@ -55,7 +57,7 @@ const SCHEDULE = [10, 11, 12].map((game_day, i) => ({ race_id: RACE.id, stage_nu
 
 // Hold: { entered, injured, spentSel, free, busy, ai }. Rækkefølge pr. hold:
 // udtagne (de første `injured` skadede, de næste `spentSel` brugt), så frie, så busy.
-function canned(teams, { otherDay = 10 } = {}) {
+function canned(teams, { otherDay = 10, spentDay = 10 } = {}) {
   const out = {
     race_entries: [], riders: [], rider_derived_abilities: [], rider_condition: [], teams: [], race_withdrawals: [],
     race_stage_schedule: [...SCHEDULE, { race_id: "race-other", stage_number: 5, game_day: otherDay, scheduled_at: "2026-10-28T12:00:00Z" }],
@@ -74,14 +76,14 @@ function canned(teams, { otherDay = 10 } = {}) {
       if (i >= entered + free) out.race_entries.push({ race_id: "race-other", rider_id: id, team_id: teamId, race_role: "helper" });
     }
   }
-  return { ...out, spent };
+  return { ...out, spent, spentDay };
 }
 
 async function startField(teams, opts = {}) {
   const dropped = [];
   const entrants = await loadEntrantsForRace({
     supabase: makeFilterAwareSupabase(canned(teams, opts)), race: opts.race ?? RACE, stages: STAGES,
-    allowAutofill: true, persist: false, onTeamsDropped: (ids) => dropped.push(...ids),
+    allowAutofill: true, persist: false, onTeamsDropped: (ids) => dropped.push(...ids), today: TODAY,
   });
   const countByTeam = {};
   for (const e of entrants) countByTeam[e.team_id] = (countByTeam[e.team_id] ?? 0) + 1;
@@ -132,6 +134,11 @@ test("udtagne der allerede har kørt et andet løb samme løbsdag (6 udtaget, 2 
   const { countByTeam, entrants } = await startField({ A: { entered: 6, spentSel: 2 } });
   assert.equal(countByTeam.A, 4);
   assert.ok(!entrants.some((e) => e.rider_id === "A-r0" || e.rider_id === "A-r1"), "de brugte ryttere starter ikke");
+});
+
+test("spent på en senere dag i etapeløbets vindue er ikke startdagens overlap (Codex P2) -> starter ikke", async () => {
+  const { countByTeam } = await startField({ A: { entered: 6, spentSel: 2 } }, { spentDay: 11 });
+  assert.equal(countByTeam.A, undefined);
 });
 
 test("AI-hold uden udtagelse: 4 frie, resten i et andet løb samme dag -> assistenten stiller 4", async () => {

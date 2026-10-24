@@ -686,7 +686,7 @@ test("getStageRolesContext (#6740): en udtaget rytter der har brugt løbsdagen r
 });
 
 test("getStageRolesContext (#6739): 2 udtagne har kørt et andet løb samme løbsdag -> starter med 4 (regel A)", async () => {
-  const schedule = [{ race_id: "race-1", stage_number: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
+  const schedule = [{ race_id: "race-1", stage_number: 1, game_day: 1, scheduled_at: "2999-01-01T17:00:00Z" }];
   const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
   const ctx = await getStageRolesContext({
     supabase: makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)), spent: ["r5", "r6"] }),

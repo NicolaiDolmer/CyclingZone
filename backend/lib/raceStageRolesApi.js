@@ -19,7 +19,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
-import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies, loadStartDaySpentRiderIds } from "./raceStartOutlook.js";
 import { splitWithdrawals } from "./raceWithdrawal.js"; // #6740
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
@@ -81,8 +81,10 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
     // som motoren fjerner.
     // #6740 (Codex P2): en rytter der allerede har brugt løbsdagen fjernes også før regel B
     // og fyldes aldrig ind. Best-effort: svigter opslaget, tæller ingen som spent.
-    const spent = new Set((await loadSpentRaceDays({ supabase, raceId: race.id, riderIds: [...new Set([...entryRiderIds, ...rosterIds])] })
-      .catch(() => [])).map((row) => row.rider_id));
+    const spentRows = await loadSpentRaceDays({ supabase, raceId: race.id, riderIds: [...new Set([...entryRiderIds, ...rosterIds])] }).catch(() => []);
+    const spent = new Set(spentRows.map((row) => row.rider_id));
+    // #6739: kun spent på startdagen er overlap (regel A, kun etapeløb).
+    const spentStart = overlapRuleApplies(race) ? await loadStartDaySpentRiderIds({ supabase, raceId: race.id, spentRows }) : new Set();
     const rosterSet = new Set(rosterIds);
     const keptEntryIds = [...new Set(entryRiderIds)].filter((id) => rosterSet.has(id) && !spent.has(id));
     return teamWillStart({
@@ -92,7 +94,7 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
       freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id) && !spent.has(id)).length,
       // #6739 regel A: ryttere der har kørt et andet løb samme løbsdag giver start med mindst 4
       // (bundne ryttere tælles allerede som frie her, se BEVIDST KONSERVATIVT ovenfor).
-      overlapCount: !overlapRuleApplies(race) ? 0 : rosterIds.filter((id) => spent.has(id) && (entered.has(id) || (!injuredIds.has(id) && !locked.has(id)))).length,
+      overlapCount: rosterIds.filter((id) => spentStart.has(id) && (entered.has(id) || (!injuredIds.has(id) && !locked.has(id)))).length,
       stagesCompleted,
     });
   } catch {

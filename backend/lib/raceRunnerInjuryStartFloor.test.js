@@ -65,10 +65,10 @@ function canned(teams) {
   return out;
 }
 
-async function startField(teams, { race = RACE, spent = [] } = {}) {
+async function startField(teams, { race = RACE, spent = [], schedule = [] } = {}) {
   const dropped = [];
   const entrants = await loadEntrantsForRace({
-    supabase: makeFilterAwareSupabase({ ...canned(teams), spent }), race, stages: STAGES,
+    supabase: makeFilterAwareSupabase({ ...canned(teams), spent, race_stage_schedule: schedule }), race, stages: STAGES,
     allowAutofill: true, persist: false, onTeamsDropped: (ids) => dropped.push(...ids),
   });
   const countByTeam = {};
@@ -125,7 +125,8 @@ test("regel B: en skadet rytter der OGSÅ har brugt løbsdagen tæller ikke som 
   assert.equal(oneDay.countByTeam.A, undefined);
   // #6739 (regel A, etapeløb): A-r0 kørte et andet løb samme løbsdag (overlap), så holdet
   // starter med de 5 raske.
-  const overlapDay = await startField({ A: { entered: 6, injured: 1 } }, { race: { ...race, race_type: "stage_race", stages: 3 }, spent: ["A-r0"] });
+  const overlapDay = await startField({ A: { entered: 6, injured: 1 } }, { race: { ...race, race_type: "stage_race", stages: 3 }, spent: ["A-r0"],
+    schedule: [{ race_id: RACE.id, stage_number: 1, game_day: 1, scheduled_at: "2026-10-28T15:00:00Z" }] });
   assert.equal(overlapDay.countByTeam.A, 5);
   // Kontrol: samme hold uden spent starter med 5.
   const injuredOnly = await startField({ A: { entered: 6, injured: 1 } }, { race });
