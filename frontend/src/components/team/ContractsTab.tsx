@@ -422,6 +422,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
           <span onClick={(e: MouseEvent) => e.stopPropagation()}>
             <Select
               size="sm"
+              className="min-w-24"
               value={String(granted)}
               aria-label={t("contracts.seasonsFor", { name: row.name })}
               onChange={(e) => setOwnSeasons(row.id, Number(e.target.value))}
@@ -542,7 +543,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
 
       {/* Bundlinjen: antal valgte + lønsum-ændring pr. sæson + fælles valg + ÉN gold primary. */}
       <div className="sticky bottom-20 md:bottom-2 z-sticky mt-4 flex flex-wrap items-center gap-3 rounded-cz border border-cz-border bg-cz-card px-4 py-3" data-testid="contracts-bar">
-        <div className="min-w-0 flex-1 text-sm" role="status">
+        <div className="w-full min-w-0 text-sm sm:w-auto sm:flex-1" role="status">
           {totals.count > 0 ? (
             <span className="text-cz-1">
               {t("contracts.bar.selected", { count: totals.count })}
