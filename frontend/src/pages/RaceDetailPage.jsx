@@ -1351,6 +1351,7 @@ export default function RaceDetailPage() {
                     stageLabel={race.name} startlist={oneDayStartlist}
                     ownRiderIds={oneDayOwnRiderIds} effortByRider={undefined} onToggleFinalKm={undefined}
                   />
+                  {(oneDayTimeline?.timeline_version ?? 1) >= 2 && <StageOrdersRecap raceId={race.id} stageNumber={1} riderIds={oneDayOwnRiderIds ?? []} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profileByStage[1]?.profile_type ?? null} stageRoles={stageRoles} ranAt={oneDayTimeline?.created_at ?? null} />}
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
                   <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
