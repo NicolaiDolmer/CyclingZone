@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import {
   ROUTES_FORMAT, applyRoutes, assertRoutesCover, createProdSource, entriesFromStaged, loadRoutesDir,
-  prepareInputs, readOnlyDb, validateRouteDoc, withField,
+  prepareInputs, readOnlyDb, restrictToStartedTeams, validateRouteDoc, withField,
 } from "./motorTestportInputs.mjs";
 import { inputLines } from "./motorTestportReport.mjs";
 
@@ -604,6 +604,39 @@ test("#6804 P0 createProdSource.breakawayIntentRates: seneste afsluttede saeson 
   await assert.rejects(src.breakawayIntentRates({ minCellTeamStages: 5 }), /now/);
   assert.ok(!rates.rows.some((r) => r.group === "stage_race"), "u23 taeller ikke");
   assert.deepEqual(log, [], "ingen skrivning");
+});
+
+test("#7077 breakawayIntentRates: afmeldt hold (ikke i etape 1's entrant_snapshot) taeller hverken i entries eller ordrer", async () => {
+  const tables = {
+    seasons: [{ id: "s4", number: 4, status: "completed" }],
+    race_stage_profiles: [],
+    races: [{ id: "r1", season_id: "s4", status: "completed", squad: "senior", league_division_id: 1, stages: 21 }],
+    race_entries: [
+      { race_id: "r1", rider_id: "a", team_id: "hStart", race_role: "hunter" },
+      { race_id: "r1", rider_id: "b", team_id: "hDrop", race_role: "hunter" },
+      { race_id: "r1", rider_id: "c", team_id: "hDrop", race_role: "free_role" },
+    ],
+    race_team_orders: [
+      { race_id: "r1", team_id: "hStart", stage_number: 2, riders: [{ rider_id: "a", try_break: true }] },
+      { race_id: "r1", team_id: "hDrop", stage_number: 2, riders: [{ rider_id: "b", try_break: true }] },
+    ],
+    race_simulation_runs: [
+      { race_id: "r1", stage_number: 1, entrant_snapshot: ["a"] },
+      { race_id: "r1", stage_number: 2, entrant_snapshot: ["a", "b"] },
+    ],
+    teams: [{ id: "hStart", is_ai: false }, { id: "hDrop", is_ai: false }],
+  };
+  const src = createProdSource(fakeDb(tables), { log: () => {} });
+  const rates = await src.breakawayIntentRates({ now: new Date("2026-10-21T10:00:00Z"), minCellTeamStages: 5 });
+  const gt = rates.rows.find((r) => r.division === "1" && r.group === "gt");
+  assert.deepEqual([gt.humanTeamRaces, gt.hunters, gt.freeRoles, gt.tryBreakRiders], [1, 1, 0, 1]);
+});
+
+test("#7077 restrictToStartedTeams: loeb uden snapshot lades uroert", () => {
+  const entries = [{ race_id: "x", rider_id: "a", team_id: "t" }];
+  const orders = [{ race_id: "x", team_id: "t", stage_number: 1 }];
+  const out = restrictToStartedTeams({ entries, orders, startRuns: [] });
+  assert.deepEqual(out, { entries, orders });
 });
 
 test("#6804 P0 (review P2) prepareInputs: en eksport der allerede har udbrudsvilje faar den ikke igen; andre satser afvises", async () => {
