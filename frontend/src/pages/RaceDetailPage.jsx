@@ -14,8 +14,8 @@ import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
 import {
   FlagIcon,
-  ArrowUpIcon,
   ArrowDownIcon,
+  LightningIcon,
   Portal,
   PageLoader,
   Button,
@@ -67,7 +67,7 @@ import {
 } from "../lib/racePageTabs.js";
 import { useStageRoles } from "../hooks/useStageRoles.js";
 import { useStageTimeline } from "../hooks/useStageTimeline.js";
-import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerState, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
+import { historyForStage, participationForResult, participationFlagsForResult, breakawayMarkerEntries, withFinishSafetyNet } from "../lib/raceParticipationMarkers.ts";
 import { raceHasYouthClassification, withoutHiddenYouthClassification, isHiddenYouthCareerEvent } from "../lib/youthClassification.ts";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { whyBeatsForStage, storyTagsForRider, momentsForStage } from "../lib/raceStageMoments.js";
@@ -216,8 +216,8 @@ function riderName(res) {
 }
 
 // #6185: ikon-FORM + tone pr. tilstand (klassenavne ordret, så Tailwinds scanner finder dem).
-const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon };
-const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger" };
+const BREAKAWAY_MARKER_ICON = { flag: FlagIcon, dropped: ArrowDownIcon, bolt: LightningIcon };
+const BREAKAWAY_MARKER_TONE = { accent: "text-cz-accent-t", muted: "text-cz-3", danger: "text-cz-danger", later: "text-cz-2" };
 
 // #6185: markøren er tap-tilgængelig på touch: et tryk viser teksten, et andet tryk på samme markør skjuler den, hover virker
 // på desktop. Boblen bruger Tooltip-stilen (tooltipClass) men renderes i en Portal
@@ -296,22 +296,18 @@ function BreakawayMarker({ result, t, history = null }) {
   const participation = participationForResult(result, history);
   if (!participation) return null;
   const markerLabel = t(participation.verified ? "detail.breakaway.label" : "detail.breakaway.legacyLabel");
-  // #6185: tre tilstande (indhentet / sat af / holdt hjem) — se breakawayMarkerState.
-  const markerState = breakawayMarkerState(participation);
-  const label = t(markerState.labelKey);
-  const StateIcon = BREAKAWAY_MARKER_ICON[markerState.icon] ?? FlagIcon;
+  // #7092: tre læsninger med hver sin ikon-form (morgenudbrud / senere angreb / intet udbrud), se breakawayMarkerEntries.
   return (
     <>
-      {participation.morning && (
-        <MarkerTip label={`${markerLabel}: ${label}`} className={BREAKAWAY_MARKER_TONE[markerState.tone]}>
-          <StateIcon size={15} aria-hidden="true" />
-        </MarkerTip>
-      )}
-      {participation.laterAttack && (
-        <MarkerTip label={t("detail.breakaway.laterAttack")} className="text-cz-2">
-          <ArrowUpIcon size={15} aria-hidden="true" />
-        </MarkerTip>
-      )}
+      {breakawayMarkerEntries(participation).map((entry) => {
+        const EntryIcon = BREAKAWAY_MARKER_ICON[entry.icon] ?? FlagIcon;
+        const label = entry.kind === "morning" ? `${markerLabel}: ${t(entry.labelKey)}` : t(entry.labelKey);
+        return (
+          <MarkerTip key={entry.kind} label={label} className={BREAKAWAY_MARKER_TONE[entry.tone]}>
+            <EntryIcon size={15} aria-hidden="true" />
+          </MarkerTip>
+        );
+      })}
     </>
   );
 }
