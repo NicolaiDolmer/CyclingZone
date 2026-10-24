@@ -27,11 +27,11 @@ export const PATCHES = [
         "topic": "Academy",
         "en": {
           "title": "Awaiting promotion instead of a forced sale",
-          "body": "When a rider is too old for his squad and the next squad is full, he is no longer sold. He stays with you as awaiting promotion, and you move him up from the squad page when there is room. With a negative balance and no room, he is still sold."
+          "body": "When a rider is too old for his squad and the next squad is full, he is no longer sold. He stays with you as awaiting promotion, and you move him up from the squad page when there is room. As before, he is sold if there is room but your balance is negative."
         },
         "da": {
           "title": "Afventer oprykning i stedet for tvunget salg",
-          "body": "Når en rytter er for gammel til sin trup, og den næste trup er fuld, bliver han ikke længere solgt. Han bliver hos jer som afventer oprykning, og I rykker ham op fra trupsiden, når der er plads. Med negativ saldo og ingen plads bliver han stadig solgt."
+          "body": "Når en rytter er for gammel til sin trup, og den næste trup er fuld, bliver han ikke længere solgt. Han bliver hos jer som afventer oprykning, og I rykker ham op fra trupsiden, når der er plads. Som før bliver han solgt, hvis der er plads, men saldoen er negativ."
         },
         "refs": [
           6710
