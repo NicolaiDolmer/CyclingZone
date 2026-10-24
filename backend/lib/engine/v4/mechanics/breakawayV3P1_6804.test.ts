@@ -80,7 +80,11 @@ test("#6804 P1.1: finaleWeightScale skalerer kun etapeinteressen; udeladt = bit-
   assert.ok(ordered.total >= half.total);
 });
 
-test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement", () => {
+// #6937 B2 (v3, alle loeb): favoritterne kaemper ikke om bjergpoint undervejs, saa kun
+// bjergpassagerne maa afvige fra v2 uden etapeloebs-klassement; tider og resultater er ens.
+const withoutKomPassages = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, passages: undefined, passage_totals: undefined, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "kom_passage") } });
+
+test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement (bortset fra #6937's bjergpassager)", () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
   assert.ok(names.length > 0);
@@ -90,7 +94,8 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
       const extra = gc ? { gc_context: gc } : {};
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
       const v3 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v3" });
-      assert.equal(JSON.stringify(v3), JSON.stringify(v2), `${name} ${gc?.status ?? "uden gc"}`);
+      assert.equal(JSON.stringify(withoutKomPassages(v3)), JSON.stringify(withoutKomPassages(v2)), `${name} ${gc?.status ?? "uden gc"}`);
+      assert.equal(JSON.stringify(v3.results), JSON.stringify(v2.results), `${name}: resultaterne er ens`);
     }
   }
 });
