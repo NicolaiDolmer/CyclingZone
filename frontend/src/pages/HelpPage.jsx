@@ -615,7 +615,6 @@ const FAQ_KEYS = [
   "sponsorAmountVariesByClub",
   "seasonFinanceReport",
   "forecastCalculation",
-  "seasonSwitchSettlement",
   "standingsUpdate",
   "adminFinishWithPending",
   "boardSatisfaction",

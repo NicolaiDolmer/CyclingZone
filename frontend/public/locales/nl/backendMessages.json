@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "De koersuitslag is binnen",
-      "message": "{race} is gereden. Bekijk de uitslag."
+      "message": "{race} is gereden. Bekijk de uitslag.",
+      "messageBest": "{race} is gereden. Je beste renners: {riders}."
     },
     "firstRaceResult": {
       "title": "Je eerste koers zit erop",
-      "message": "{race} is gereden. Kijk hoe je renners het deden."
+      "message": "{race} is gereden. Kijk hoe je renners het deden.",
+      "messageBest": "{race} is gereden. Je beste renners: {riders}."
     },
     "stageResult": {
       "title": "De etappeuitslag is binnen",
@@ -297,8 +299,8 @@
     },
     "seasonTransitionRisk": {
       "title": "Seizoenswissel: contract- en pensioenrisico",
-      "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng het contract van een renner vanaf zijn profiel vóór de wissel om te voorkomen dat hij vertrekt. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
-      "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng hun contract vanaf het profiel van de renner vóór de wissel om ze te houden.",
+      "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng de contracten vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
+      "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng ze vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen.",
       "messageRetirementOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers."
     },
     "watchlistDeparted": {
@@ -650,7 +652,8 @@
       "message": "{rider} viel in {race} en is geblesseerd tot {until}.",
       "messageMissed": "{rider} viel in {race} en is geblesseerd tot {until}. Hij rijdt {missed} niet.",
       "messageFinished": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until}.",
-      "messageFinishedMissed": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until} en rijdt {missed} niet."
+      "messageFinishedMissed": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until} en rijdt {missed} niet.",
+      "messageTraining": "{rider} raakte geblesseerd op training en is uitgeschakeld tot {until}."
     },
     "teamDidNotStart": {
       "title": "Je team is niet gestart",

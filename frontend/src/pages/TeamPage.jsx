@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
@@ -40,6 +40,8 @@ import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractAc
 import { currentSquadOf, hasMoveTarget } from "../lib/squadTarget.ts"; // #5748
 import { extendCapGate } from "../lib/extendCapGate.js";
 import { cycleSortState } from "../lib/riderSort";
+import ContractsTab from "../components/team/ContractsTab.tsx"; // #6855
+import { readSquadSort, writeSortParams, SQUAD_SORT_PARAM, SQUAD_DIR_PARAM } from "../components/team/contractsTabModel.ts"; // #6855
 import { useRiderReputation } from "../lib/useRiderReputation.ts";
 import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputationView.ts";
 import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
@@ -643,7 +645,9 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
       _scoutMid: scoutSortValue(scouting.estimateFor(r.id)),
       _ovr: riderOverallRating(r),
     }));
-  const riderFilters = useClientRiderFilters(displayRidersBase, seasonYear);
+  // #6855: sorteringen står i URL'en (sort/dir), så den huskes efter et klik ind på en rytter og tilbage.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const riderFilters = useClientRiderFilters(displayRidersBase, seasonYear, readSquadSort(searchParams));
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
   const sortDir = riderFilters.filters.sort_dir;
@@ -652,6 +656,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
     const next = cycleSortState({ sort, dir: sortDir }, key);
     riderFilters.onChange("sort", next.sort);
     riderFilters.onChange("sort_dir", next.dir);
+    setSearchParams((prev) => writeSortParams(prev, SQUAD_SORT_PARAM, SQUAD_DIR_PARAM, next), { replace: true });
   }
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
@@ -748,15 +753,21 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // kontrakt · handling); Mit holds tre ekstra kolonner (rating, popularitet,
   // status) sættes ind uden at bryde den delrækkefølge. Akademiet er IKKE rørt
   // i denne PR — kun Mit hold flytter sig.
+  // #7032: nation som flag (delt NationCell) baade i desktop-kolonnen og i
+  // mobil-folden (foer stod der kun tre bogstaver under navnet). Samme kolonne
+  // genbruges i evne-tilstanden, saa nationen ikke forsvinder dér.
+  const nationColumn = {
+    key: "nation",
+    header: t("squad.headers.nation"),
+    sortKey: "nationality_code",
+    fold: true,
+    foldValue: (r) => (getCountryCode3(r.nationality_code)
+      ? <NationCell key="nation" code={r.nationality_code} />
+      : "—"),
+    render: (r) => <NationCell code={r.nationality_code} />,
+  };
   const overviewColumns = [
-    {
-      key: "nation",
-      header: t("squad.headers.nation"),
-      sortKey: "nationality_code",
-      fold: true,
-      foldValue: (r) => getCountryCode3(r.nationality_code) || "—",
-      render: (r) => <NationCell code={r.nationality_code} />,
-    },
+    nationColumn,
     nameColumn,
     ratingColumn,
     typeColumn,
@@ -876,7 +887,7 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   // Evne-tilstand: navn (sticky) + rating + type + de 15 evner. Med tight-gutteren
   // er det ~830px på desktop → ingen vandret scroll, og typen beholder sin egen
   // kolonne i stedet for at ligge under navnet.
-  const abilityModeColumns = [nameColumn, ratingColumn, typeColumn, ...abilityColumns];
+  const abilityModeColumns = [nationColumn, nameColumn, ratingColumn, typeColumn, ...abilityColumns];
   const columns = tableMode === "abilities" ? abilityModeColumns : overviewColumns;
 
   // D-047 (#5102): Mit holds tre standardkolonner paa mobil. Ejer-beslutning
@@ -997,6 +1008,8 @@ function SquadTab({ riders, scouting, onSelectRider, ownAuctions, ownTransferLis
   );
 }
 
+const TEAM_TABS = ["squad", "contracts", "development", "stats", "transfers"]; // #6855
+
 export function TeamPage() {
   const { t } = useTranslation("team");
   const scouting = useScouting();
@@ -1010,7 +1023,11 @@ export function TeamPage() {
   const activeSeasonNumber = seasonNumberFromReferenceYear(seasonYear);
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
-  const [activeTab, setActiveTab] = useState("squad");
+  // #6855: fanen står i URL'en (?tab=), så "tilbage" fra en rytter lander på samme fane.
+  const [tabParams, setTabParams] = useSearchParams();
+  const requestedTab = tabParams.get("tab") ?? "";
+  const activeTab = TEAM_TABS.includes(requestedTab) ? requestedTab : "squad";
+  const setActiveTab = (key) => setTabParams((prev) => { const next = new URLSearchParams(prev); next.set("tab", key); return next; }, { replace: true });
   // #5075: gruppe-filteret boede tidligere kun i SquadTab — Stats-fanen
   // manglede dermed helt til-/fravalget af akademiryttere. Løftet herop, så
   // Trup- og Stats-fanen deler PRÆCIS samme state i stedet for at hver fane
@@ -1135,8 +1152,10 @@ export function TeamPage() {
   // #4068: loadAll memoized — deps er de to loadere den kalder (selv memoized
   // ovenfor med tomme deps, altså i praksis stabile), så identiteten er stabil
   // på tværs af renders og mount-effekten nedenfor kan liste den korrekt.
-  const loadAll = useCallback(async () => {
-    setLoading(true);
+  // #6855: { silent: true } genindlæser uden PageLoader, så en åben fane (Kontrakter)
+  // ikke afmonteres og mister sin kvittering eller advarsel.
+  const loadAll = useCallback(async (/** @type {{ silent?: boolean } | undefined} */ opts = undefined) => {
+    if (opts?.silent !== true) setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
     if (!user) { setLoading(false); return; }
@@ -1204,6 +1223,7 @@ export function TeamPage() {
     // #1929: squad-fane-tælleren matcher senior-tabellens indhold — akademiryttere
     // er splittet ud i egen sektion, så de tælles ikke i "Squad (N)".
     { key: "squad", label: t("tabs.squad", { count: currentRiders.filter(r => !r.is_academy).length }) },
+    { key: "contracts", label: t("tabs.contracts") }, // #6855
     // #3979 (ejer-beslutning 19/8, "Begge, A foerst" superseded samme
     // eftermiddag af "bundles med #3798"): sorterbar udviklings-status-tabel
     // ved siden af Squad — samme trup, ny visning (rating/prognose/loft).
@@ -1294,6 +1314,9 @@ export function TeamPage() {
       {activeTab === "squad" && (
         <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} ownAuctions={ownAuctions} ownTransferListings={ownTransferListings} seasonYear={seasonYear} activeSeasonNumber={activeSeasonNumber}
           squadFilter={squadFilter} reputationOn={reputationOn} />
+      )}
+      {activeTab === "contracts" && (
+        <ContractsTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} onChanged={() => loadAll({ silent: true })} />
       )}
       {activeTab === "development" && (
         <TeamDevelopmentTab riders={currentRiders} scouting={scouting} seasonYear={seasonYear} />

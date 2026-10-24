@@ -43,13 +43,14 @@
     "",
     "18/10 (#5792): natkoerslen var roed 11.-18/10 uden en eneste fejlet test.",
     "Vaekst-alarmen maalte desktop-chromium 12,5-13,8 min og mobile-webkit",
-    "18,7-20,4 min samlet; planen loeftet til 3 og 4 laner som anbefalet."
+    "18,7-20,4 min samlet; planen loeftet til 3 og 4 laner som anbefalet.",
+    "24/10 (#7134): mobile-chromium maalte 12 min 23 s paa 2 laner; loeftet til 3."
   ],
   "targetSecondsPerShard": 360,
   "ceilingSecondsPerShard": 600,
   "projects": [
     { "project": "desktop-chromium", "browser": "chromium", "shards": 3 },
-    { "project": "mobile-chromium", "browser": "chromium", "shards": 2 },
+    { "project": "mobile-chromium", "browser": "chromium", "shards": 3 },
     { "project": "mobile-webkit", "browser": "webkit", "shards": 4 }
   ]
 }

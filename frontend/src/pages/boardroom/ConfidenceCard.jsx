@@ -3,7 +3,7 @@ import { Section, SectionHeader, ProgressMeter } from "../../components/ui";
 import { appendDate, formatWeekdayShortDate } from "./boardroomFormat.js";
 
 // #4557 · Boardroom · Tillidskort (Main.dc.html §1). Stort tabular-nums-tal +
-// ugedelta, 4 kategorimetre (gold fyld, amber under ~60 pr. mockup) og en
+// (#6935: ugedelta fjernet), 4 kategorimetre (gold fyld, amber under ~60 pr. mockup) og en
 // konsekvens-forklaringslinje under hairline. Ingen egen loading/error —
 // BoardroomPage swapper hele kort-kroppen ét niveau op (canonical states).
 // #4557 (overblik + faner) · `lastMovement` er referatets NYESTE raekke
@@ -13,14 +13,7 @@ import { appendDate, formatWeekdayShortDate } from "./boardroomFormat.js";
 // data (TASTE P11), praecis som GoalReceipt allerede goer det pr. maal.
 export default function ConfidenceCard({ confidence, lastMovement = null }) {
   const { t } = useTranslation("board");
-  const { value, weekDelta, updatedAt, categories = [], consequence } = confidence;
-
-  const deltaClass = weekDelta > 0 ? "text-cz-success" : weekDelta < 0 ? "text-cz-danger" : "text-cz-3";
-  const deltaText = weekDelta > 0
-    ? t("boardroom.confidence.weekDeltaUp", { delta: weekDelta })
-    : weekDelta < 0
-      ? t("boardroom.confidence.weekDeltaDown", { delta: weekDelta })
-      : t("boardroom.confidence.weekDeltaFlat");
+  const { value, updatedAt, categories = [], consequence } = confidence;
 
   return (
     <Section>
@@ -35,7 +28,6 @@ export default function ConfidenceCard({ confidence, lastMovement = null }) {
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
         <div className="flex items-baseline gap-2.5">
           <span className="font-data text-[44px] font-bold leading-none tabular-nums text-cz-1">{value}</span>
-          <span className={`text-[13px] font-semibold tabular-nums ${deltaClass}`}>{deltaText}</span>
         </div>
         <div className="grid flex-1 grid-cols-2 gap-3.5 sm:grid-cols-4">
           {categories.map((cat) => {

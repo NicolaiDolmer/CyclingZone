@@ -164,11 +164,6 @@
       "good": "Bien",
       "great": "Muy bien",
       "outstanding": "Sobresaliente"
-    },
-    "trend": {
-      "up": "La satisfacción sube",
-      "down": "La satisfacción baja",
-      "flat": "Satisfacción estable"
     }
   },
   "changeKind": {
@@ -1807,9 +1802,6 @@
     "confidence": {
       "cardTitle": "Confianza de la directiva",
       "updated": "Actualizado el {date}",
-      "weekDeltaUp": "+{delta} esta semana",
-      "weekDeltaDown": "{delta} esta semana",
-      "weekDeltaFlat": "Sin cambios esta semana",
       "categories": {
         "results": "Resultados",
         "economy": "Economía",

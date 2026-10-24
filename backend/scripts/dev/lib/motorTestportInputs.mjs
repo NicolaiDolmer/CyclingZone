@@ -383,13 +383,13 @@ const CHUNK = 200;
 const PAGE = 1000;
 
 /** Alle raekker for `ids` i chunks af CHUNK, pagineret med .range() i sider af PAGE. */
-async function selectByIds(db, table, columns, column, ids, orderBy) {
+async function selectByIds(db, table, columns, column, ids, orderBy, refine = (q) => q) {
   const out = [];
   for (let i = 0; i < ids.length; i += CHUNK) {
     const chunk = ids.slice(i, i + CHUNK);
     // pagination-safe: .range() i sider af PAGE med stabil ORDER BY
     for (let from = 0; ; from += PAGE) {
-      let q = db.from(table).select(columns).in(column, chunk);
+      let q = refine(db.from(table).select(columns).in(column, chunk));
       for (const col of orderBy) q = q.order(col, { ascending: true });
       const { data, error } = await q.range(from, from + PAGE - 1);
       if (error) throw new Error(`${table}: ${error.message}`);
@@ -398,6 +398,29 @@ async function selectByIds(db, table, columns, column, ids, orderBy) {
     }
   }
   return out;
+}
+
+/**
+ * #7077: afgraens entries/ordrer til hold med mindst en rytter i etape 1's entrant_snapshot.
+ * Loeb uden snapshot (aeldre data) lades uroert, saa intet loeb forsvinder lydloest.
+ */
+export function restrictToStartedTeams({ entries, orders, startRuns }) {
+  const starters = new Map();
+  for (const run of startRuns) {
+    if (!Array.isArray(run.entrant_snapshot)) continue;
+    starters.set(run.race_id, new Set(run.entrant_snapshot.map((x) => (typeof x === "string" ? x : x?.rider_id)).filter(Boolean)));
+  }
+  const startedTeams = new Map();
+  const keptEntries = entries.filter((e) => {
+    const set = starters.get(e.race_id);
+    if (!set) return true;
+    if (!set.has(e.rider_id)) return false;
+    if (!startedTeams.has(e.race_id)) startedTeams.set(e.race_id, new Set());
+    startedTeams.get(e.race_id).add(e.team_id);
+    return true;
+  });
+  const keptOrders = orders.filter((o) => !starters.has(o.race_id) || startedTeams.get(o.race_id)?.has(o.team_id));
+  return { entries: keptEntries, orders: keptOrders };
 }
 
 const groupBy = (rows, key) => {
@@ -586,8 +609,11 @@ export function createProdSource(db, { generatorRunner = null, log = console.log
         if (!data || data.length < PAGE) break;
       }
       const ids = races.map((r) => r.id);
-      const entries = await selectByIds(db, "race_entries", "race_id, rider_id, team_id, race_role", "race_id", ids, ["race_id", "rider_id"]);
-      const orders = await selectByIds(db, "race_team_orders", "race_id, team_id, stage_number, riders", "race_id", ids, ["race_id", "team_id", "stage_number"]);
+      const allEntries = await selectByIds(db, "race_entries", "race_id, rider_id, team_id, race_role", "race_id", ids, ["race_id", "rider_id"]);
+      const allOrders = await selectByIds(db, "race_team_orders", "race_id, team_id, stage_number, riders", "race_id", ids, ["race_id", "team_id", "stage_number"]);
+      // #7077: kun hold der faktisk startede (rytter i etape 1's entrant_snapshot) taeller; afmeldte hold er staaende entries.
+      const startRuns = await selectByIds(db, "race_simulation_runs", "race_id, stage_number, entrant_snapshot", "race_id", ids, ["race_id", "stage_number"], (q) => q.eq("stage_number", 1));
+      const { entries, orders } = restrictToStartedTeams({ entries: allEntries, orders: allOrders, startRuns });
       const profiles = await selectByIds(db, "race_stage_profiles", "race_id, stage_number, profile_type", "race_id", ids, ["race_id", "stage_number"]);
       const teams = await teamsFor(entries.map((e) => e.team_id));
       return { ...aggregateIntentRates({ races, entries, teams, orders, profiles, minCellTeamStages, seasonId, generatedAt: now.toISOString() }), seasonNumber: seasons[0].number };

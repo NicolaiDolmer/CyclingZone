@@ -668,9 +668,6 @@
     "TS2739": 7,
     "TS2741": 2
   },
-  "src/components/FinanceSeasonSwitchPanel.jsx": {
-    "TS2322": 1
-  },
   "src/components/ForumHighlightsCard.jsx": {
     "TS2322": 2,
     "TS2339": 10,
@@ -687,7 +684,7 @@
   "src/components/LanguageSwitcher.jsx": {
     "TS18048": 2,
     "TS2339": 8,
-    "TS2349": 2,
+    "TS2349": 1,
     "TS2353": 1
   },
   "src/components/Layout.jsx": {
@@ -868,14 +865,12 @@
     "TS18046": 1,
     "TS2322": 2,
     "TS2339": 3,
-    "TS2739": 8,
     "TS2741": 5
   },
   "src/components/admin/growth/GrowthNpsTab.jsx": {
     "TS18046": 1,
     "TS2322": 2,
     "TS2339": 3,
-    "TS2739": 4,
     "TS2741": 5
   },
   "src/components/admin/growth/GrowthOverviewTab.jsx": {
@@ -1501,8 +1496,7 @@
     "TS2339": 21
   },
   "src/lib/boardUtils.test.js": {
-    "TS2345": 4,
-    "TS2531": 1
+    "TS2345": 4
   },
   "src/lib/boardWizardNav.js": {
     "TS2339": 8
@@ -2321,7 +2315,6 @@
     "TS18046": 1,
     "TS2322": 3,
     "TS2339": 13,
-    "TS2739": 15,
     "TS2741": 4
   },
   "src/pages/AdminFairplayPage.jsx": {
@@ -2337,7 +2330,6 @@
     "TS18046": 1,
     "TS2322": 3,
     "TS2339": 3,
-    "TS2739": 5,
     "TS2741": 1
   },
   "src/pages/AdminSprintMetricsPage.jsx": {
@@ -2346,7 +2338,6 @@
     "TS2322": 2,
     "TS2339": 24,
     "TS2345": 1,
-    "TS2739": 7,
     "TS2741": 2
   },
   "src/pages/AdminSurveyResultsPage.jsx": {
@@ -2373,7 +2364,7 @@
     "TS2345": 3,
     "TS2362": 1,
     "TS2363": 1,
-    "TS2739": 7,
+    "TS2739": 1,
     "TS2741": 2
   },
   "src/pages/AuctionsPage.jsx": {
@@ -2481,7 +2472,7 @@
   },
   "src/pages/KitchenSinkPage.jsx": {
     "TS2322": 13,
-    "TS2739": 6,
+    "TS2739": 2,
     "TS2741": 34,
     "TS2786": 1
   },
@@ -2510,7 +2501,7 @@
     "TS2345": 2,
     "TS2362": 1,
     "TS2363": 1,
-    "TS2739": 7,
+    "TS2739": 3,
     "TS2741": 2
   },
   "src/pages/NotificationsPage.jsx": {
@@ -2636,8 +2627,7 @@
   },
   "src/pages/RulesPage.jsx": {
     "TS2322": 1,
-    "TS2339": 1,
-    "TS2739": 1
+    "TS2339": 1
   },
   "src/pages/ScoutingCentralPage.jsx": {
     "TS18047": 1,
@@ -2652,7 +2642,6 @@
     "TS2339": 98,
     "TS2345": 11,
     "TS2353": 4,
-    "TS2739": 5,
     "TS2741": 1
   },
   "src/pages/SeasonExperiencePreviewPage.jsx": {
@@ -2672,7 +2661,6 @@
     "TS2322": 18,
     "TS2339": 29,
     "TS2345": 5,
-    "TS2739": 8,
     "TS2741": 3
   },
   "src/pages/StaffOverviewPage.jsx": {

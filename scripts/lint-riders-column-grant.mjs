@@ -131,6 +131,10 @@ export const ALLOWLIST_HIDDEN_COLUMNS = {
     'player-facing surface reads it. Migration header ' +
     '(2026-07-05-daily-training-season-budget-cap.sql) documents "BEVIDST INGEN ' +
     'grant (fail-closed)".',
+  'rider_training_scores.contributions':
+    '#6110 (ejer 23/10) — traeningsscorens bidrag med point, herunder talentet og ' +
+    'dagens tilfaeldighed; et oracle for rytterens skjulte talent. API-et sender kun ' +
+    'de tilladte bidrag (trainingScore.js publicContributions).',
   'rider_derived_abilities.season_budget_season':
     '#2082/#1938 — same as season_budget_baseline (paired bookkeeping column, same ' +
     'migration, same documented fail-closed rationale).',
