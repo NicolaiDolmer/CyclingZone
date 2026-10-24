@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   shortDayMonth, buildRiderInjuredNotification, buildTeamDidNotStartNotification,
   racesMissedByInjury, notifyRaceInjuries, notifyTeamsDidNotStart, RACE_AVAILABILITY_NOTIFICATION_TYPE,
+  buildTrainingInjuryNotification, newTrainingInjuries, notifyTrainingInjuries,
 } from "./raceAvailabilityNotifications.js";
 import { NOTIFICATION_TYPES } from "./notificationTypes.js";
 import { notStartedTeams } from "./raceRunner.js";
@@ -191,4 +192,120 @@ test("notifyTeamsDidNotStart: én fejlende modtager stopper ikke de oevrige (rev
   });
   assert.equal(out.sent, 2);
   assert.deepEqual(sent, ["csc", "talent"]);
+});
+
+// ── #7086: træningsskader ────────────────────────────────────────────────────
+
+test("buildTrainingInjuryNotification #7086: årsag træning, intet løb, link til rytteren", () => {
+  const n = buildTrainingInjuryNotification({ riderId: "rider-a", riderName: "Rytter A", injuredUntil: "2026-10-19" });
+  assert.equal(n.type, "selection_warning");
+  assert.equal(n.title, "Rider injured");
+  assert.equal(n.message, "Rytter A was injured in training and is out until 19/10.");
+  assert.equal(n.relatedId, "rider-a", "dedup er pr. rytter");
+  assert.equal(n.metadata.riderId, "rider-a", "frontend deep-linker til rytterprofilen");
+  assert.equal(n.metadata.raceId, undefined, "ingen løbs-link");
+  assert.equal(n.metadata.titleCode, "notif.riderInjured.title");
+  assert.equal(n.metadata.messageCode, "notif.riderInjured.messageTraining");
+  assert.deepEqual(n.metadata.messageParams, { rider: "Rytter A", until: "19/10" });
+});
+
+test("riderInjured.messageTraining #7086: findes i hvert bundlet sprog med {rider} + {until} og uden {race}", async () => {
+  const { readFileSync } = await import("node:fs");
+  const bundle = JSON.parse(readFileSync(new URL("./locales/backendMessages.generated.json", import.meta.url), "utf8"));
+  for (const [lang, msgs] of Object.entries(bundle)) {
+    const text = msgs["notif.riderInjured.messageTraining"];
+    assert.ok(text, `${lang}: notif.riderInjured.messageTraining mangler`);
+    for (const p of ["{rider}", "{until}"]) assert.ok(text.includes(p), `${lang} mangler ${p}`);
+    for (const p of ["{race}", "{missed}"]) assert.ok(!text.includes(p), `${lang} maa ikke have ${p}`);
+  }
+  assert.equal(bundle.da["notif.riderInjured.messageTraining"], "{rider} blev skadet i træningen og er ude til {until}.");
+});
+
+test("newTrainingInjuries #7086: kun skader rullet i dette tick, dato fra condition-raekken, ingen overståede", () => {
+  const out = newTrainingInjuries({
+    today: "2026-10-16",
+    reportRiders: [
+      { rider_id: "new", name: "Ny Skade", injury_days: 3 },
+      { rider_id: "ongoing", name: "Allerede Skadet", injured: true, injury_days: 0 },
+      { rider_id: "healthy", name: "Rask", injury_days: 0 },
+      { rider_id: "stale", name: "Gammel Dato", injury_days: 1 },
+      { rider_id: "nocond", name: "Ingen Raekke", injury_days: 2 },
+    ],
+    conditionUpserts: [
+      { rider_id: "new", injured_until: "2026-10-21" },
+      { rider_id: "ongoing", injured_until: "2026-10-18" },
+      { rider_id: "healthy", injured_until: null },
+      { rider_id: "stale", injured_until: "2026-10-12" },
+    ],
+  });
+  assert.deepEqual(out, [{ riderId: "new", riderName: "Ny Skade", injuredUntil: "2026-10-21" }]);
+});
+
+test("notifyTrainingInjuries #7086: én besked pr. ny skade til holdets ejer", async () => {
+  const calls = [];
+  const out = await notifyTrainingInjuries({
+    supabase: {}, teamId: "team-a", now: NOW,
+    reportRiders: [{ rider_id: "r1", name: "A B", injury_days: 2 }, { rider_id: "r2", name: "C D", injury_days: 0 }],
+    conditionUpserts: [{ rider_id: "r1", injured_until: "2026-10-18" }, { rider_id: "r2", injured_until: null }],
+    notify: async (args) => { calls.push(args); return { delivered: true }; },
+  });
+  assert.equal(out.sent, 1);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].teamId, "team-a");
+  assert.equal(calls[0].message, "A B was injured in training and is out until 18/10.");
+  assert.equal(calls[0].relatedId, "r1");
+});
+
+test("notifyTrainingInjuries #7086: ingen nye skader -> intet kald", async () => {
+  let called = false;
+  const out = await notifyTrainingInjuries({
+    supabase: {}, teamId: "team-a", now: NOW, reportRiders: [{ rider_id: "r1", injury_days: 0 }], conditionUpserts: [],
+    notify: async () => { called = true; return { delivered: true }; },
+  });
+  assert.equal(out.sent, 0);
+  assert.equal(called, false);
+});
+
+test("notifyTrainingInjuries #7086: kaster aldrig, og én fejl stopper ikke de øvrige", async () => {
+  const sent = [];
+  const out = await notifyTrainingInjuries({
+    supabase: {}, teamId: "team-a", now: NOW,
+    reportRiders: [{ rider_id: "bad", name: "X", injury_days: 1 }, { rider_id: "ok", name: "Y", injury_days: 1 }],
+    conditionUpserts: [{ rider_id: "bad", injured_until: "2026-10-18" }, { rider_id: "ok", injured_until: "2026-10-18" }],
+    notify: async (args) => { if (args.relatedId === "bad") throw new Error("insert failed"); sent.push(args.relatedId); return { delivered: true }; },
+  });
+  assert.equal(out.sent, 1);
+  assert.deepEqual(sent, ["ok"]);
+  const broken = await notifyTrainingInjuries({ supabase: {}, teamId: "team-a", now: NOW, reportRiders: null, conditionUpserts: { not: "an array" } });
+  assert.equal(broken.sent, 0, "selv ugyldigt input kaster ikke");
+});
+
+// Lille notifications-mock til den ægte notifyTeamOwner/notifyUser-dedup.
+function dedupSupabase({ userId = "user-a" } = {}) {
+  const rows = [];
+  const query = (table, filters = []) => ({
+    select: () => query(table, filters),
+    eq: (c, v) => query(table, [...filters, (r) => r[c] === v]),
+    is: (c, v) => query(table, [...filters, (r) => (r[c] ?? null) === v]),
+    gte: (c, v) => query(table, [...filters, (r) => r[c] >= v]),
+    order: () => query(table, filters),
+    limit: (n) => Promise.resolve({ data: rows.filter((r) => filters.every((f) => f(r))).slice(0, n), error: null }),
+    single: () => Promise.resolve({ data: { user_id: userId }, error: null }),
+    insert: (row) => { rows.push({ ...row, created_at: NOW.toISOString() }); return Promise.resolve({ error: null }); },
+  });
+  return { rows, from: (table) => query(table) };
+}
+
+test("notifyTrainingInjuries #7086: samme skade sendt to gange giver én besked (dedup i notifyUser)", async () => {
+  const supabase = dedupSupabase();
+  const args = {
+    supabase, teamId: "team-dedup", now: NOW,
+    reportRiders: [{ rider_id: "r1", name: "A B", injury_days: 2 }],
+    conditionUpserts: [{ rider_id: "r1", injured_until: "2026-10-18" }],
+  };
+  assert.equal((await notifyTrainingInjuries(args)).sent, 1);
+  assert.equal((await notifyTrainingInjuries(args)).sent, 0, "genkørsel samme dag sender ikke igen");
+  assert.equal(supabase.rows.length, 1);
+  assert.equal(supabase.rows[0].type, "selection_warning");
+  assert.equal(supabase.rows[0].related_id, "r1");
 });
