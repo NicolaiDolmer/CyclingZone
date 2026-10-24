@@ -49,6 +49,36 @@ export function kmToX(km, distanceKm, plotWidth) {
   return (clamped / distanceKm) * plotWidth;
 }
 
+/**
+ * #6814/#6803: motoren (v3) skriver selv et sidste jagtpunkt ved indhentningen
+ * (samme km, separation 0). Kurven faar da ét nul-punkt, ikke to oven i hinanden.
+ */
+function pushCaughtAt(curve, km) {
+  const last = curve[curve.length - 1];
+  if (last && last.km === km) last.gapSeconds = 0;
+  else curve.push({ km, gapSeconds: 0 });
+}
+
+/**
+ * #6803: udbruddets forspring paa jagten ved en scrub-position (km): seneste
+ * kendte kurvepunkt op til km (trin-funktion, samme "afspillet"-regel som feedet).
+ * null foer kurvens foerste punkt eller uden kurve; 0 mellem to udbrud.
+ */
+export function gapAtKm(gapCurve, km) {
+  let last = null;
+  for (const p of gapCurve ?? []) {
+    if (p.km > km) break;
+    last = p.gapSeconds;
+  }
+  return last;
+}
+
+/** Forspring som "M:SS" (tabelcifre i visningen), samme afrunding som formatGap. */
+export function formatLead(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
 export function xToKm(x, distanceKm, plotWidth) {
   if (!plotWidth || plotWidth <= 0) return 0;
   const frac = Math.max(0, Math.min(x / plotWidth, 1));
@@ -134,7 +164,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
         && (toKm == null || event.km <= toKm))
         .map(event => ({ km: event.km, gapSeconds: Number(event.params.separation_seconds) }));
       gapCurve = explicitPoints(escapeId, null, catchKm);
-      if (gapCurve.length && catchKm != null) gapCurve.push({ km: catchKm, gapSeconds: 0 });
+      if (gapCurve.length && catchKm != null) pushCaughtAt(gapCurve, catchKm);
       // #6803: S5's nye udbrud efter en tidlig indhentning (#6369) har sit eget
       // gruppe-id og sin egen indhentning; kurven følger det samme sted, med nul
       // mellem de to udbrud. Uden nyt udbrud er løkken tom: etapen er uændret.
@@ -150,7 +180,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
           // (Codex #6809): ellers starter filmens markoer paa foerste positive hul.
           if (lastKm == null ? points[0].km > newKm : newKm > lastKm) gapCurve.push({ km: newKm, gapSeconds: 0 });
           gapCurve.push(...points);
-          if (newCatchKm != null) gapCurve.push({ km: newCatchKm, gapSeconds: 0 });
+          if (newCatchKm != null) pushCaughtAt(gapCurve, newCatchKm);
         }
       }
     }
