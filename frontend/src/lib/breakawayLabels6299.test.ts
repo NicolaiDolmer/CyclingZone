@@ -87,7 +87,7 @@ test("breakawayFilmCopy fjerner aktoer-varianten for en gruppe foran feltet", ()
 
 test("filmens feed baerer maerkningen", () => {
   const built = buildFilmTimeline({ events: EVENTS, distanceKm: 151 });
-  const survived = built.feedEvents.filter((e: { type: string }) => e.type === "breakaway_survived");
+  const survived = built.feedEvents.filter((e: { type?: string }) => e.type === "breakaway_survived");
   assert.ok(survived.some((e: unknown) => breakawayLabelOf(e)?.label === "group_ahead"));
 });
 

@@ -63,7 +63,7 @@ export function stageOrdersRecap({
   if (!ids.length) return null;
 
   const saved = (context.orders ?? []).find((o) => Number(o.stage_number) === stageNumber) ?? null;
-  const defaultOrder = trainDefaultForStage(context.defaultOrder ?? null, { profileType, flatOnly: context.sprintTrainFlatOnly === true });
+  const defaultOrder = trainDefaultForStage(context.defaultOrder ?? null, { profileType: profileType as null, flatOnly: context.sprintTrainFlatOnly === true }); // JS-default (null) styrer den infererede type
   const order = mergeOrderWithRoster(
     saved ?? (defaultOrder ? { breakaway_stance: defaultOrder.breakaway_stance, riders: [] } : defaultTeamOrder(ids)),
     ids,
