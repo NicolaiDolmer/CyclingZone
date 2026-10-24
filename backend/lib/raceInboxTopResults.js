@@ -70,7 +70,7 @@ export async function fetchRaceTopResults({ supabase, race }) {
     if (error) throw error;
     return summarizeTopResultsByUser(data);
   } catch (err) {
-    console.error(`  ⚠️  top-resultater-opslag fejlede (race ${race?.id}) — falder tilbage til standard-copy:`, err?.message || err);
+    console.error(`  ⚠️  top-resultater-opslag fejlede (race ${race?.id}) — falder tilbage til standard-copy:`, /** @type {any} */ (err)?.message || err);
     captureException(err, { tags: { flow: "notifications", stage: "race-result-top" }, raceId: race?.id });
     return new Map();
   }
