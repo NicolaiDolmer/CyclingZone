@@ -66,7 +66,9 @@
     "fr": "Français",
     "es": "Español",
     "nl": "Nederlands",
-    "switchTooltip": "Taal wijzigen"
+    "switchTooltip": "Taal wijzigen",
+    "betaBadge": "Bèta",
+    "betaNote": "Ontbrekende teksten worden in het Engels getoond."
   },
   "actions": {
     "cancel": "Annuleren",
