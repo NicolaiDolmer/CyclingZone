@@ -11,7 +11,7 @@ import {
   routeMatchScore,
   stageRouteVector,
 } from "./routeMatch.js";
-import { CURRENT_RACE_RULES_REVISION } from "./raceEngineRulesRevision.ts";
+import { CURRENT_RACE_RULES_REVISION, LEGACY_RULES_REVISION } from "./raceEngineRulesRevision.ts";
 import { riderSuitability, SUITABILITY_ABILITY_KEYS } from "../../frontend/src/lib/suitability.js";
 
 const TERRAIN = { flat: 0.4, sprint: 0.3, positioning: 0.2, endurance: 0.1, randomness: 0.5 };
@@ -98,8 +98,23 @@ test("ingen data giver null, aldrig et opfundet tal", () => {
   assert.equal(routeMatchScore(null, { flat: 1 }), null);
 });
 
-test("revisionen: et bundet løb bruger sin egen, et ukendt eller nyt løb den aktuelle", () => {
+test("revisionen følger surfaceRulesRevision: bundet, legacy for startet uden revision, aktuel for nyt løb", () => {
   assert.equal(routeMatchRevisionFor(null), CURRENT_RACE_RULES_REVISION);
-  assert.equal(routeMatchRevisionFor({ engine_rules_revision: "findes_ikke" }), CURRENT_RACE_RULES_REVISION);
-  assert.equal(routeMatchRevisionFor({ engine_rules_revision: CURRENT_RACE_RULES_REVISION }), CURRENT_RACE_RULES_REVISION);
+  assert.equal(routeMatchRevisionFor({ stages_completed: 0, engine_rules_revision: null }), CURRENT_RACE_RULES_REVISION);
+  assert.equal(routeMatchRevisionFor({ stages_completed: 3, engine_rules_revision: null }), LEGACY_RULES_REVISION);
+  assert.equal(routeMatchRevisionFor({ stages_completed: 0, engine_rules_revision: "findes_ikke" }), LEGACY_RULES_REVISION);
+  assert.equal(routeMatchRevisionFor({ stages_completed: 2, engine_rules_revision: CURRENT_RACE_RULES_REVISION }), CURRENT_RACE_RULES_REVISION);
+});
+
+test("holdtidskørsel regnes på motorens fysiologi: tempo og udholdenhed tæller, ikke kun tidskørsel", () => {
+  const ttt = stage(5, "ttt", "solo_tt", { time_trial: 1 }, {
+    distance_km: 30,
+    segments: [{ kind: "flat", from_km: 0, to_km: 20 }, { kind: "climb", from_km: 20, to_km: 30, category: "3", avg_gradient: 5 }],
+  });
+  const v = stageRouteVector(ttt, CURRENT_RACE_RULES_REVISION);
+  assert.ok(v.tempo > 0 && v.endurance > 0, "tempo og udholdenhed skal indgå");
+  assert.ok(v.climbing > 0 && v.time_trial > 0, "terrænets egne evner skal indgå");
+  const motor = { ...rider(0), tempo: 90, endurance: 90, time_trial: 40 };
+  const ttOnly = { ...rider(0), tempo: 40, endurance: 40, time_trial: 90 };
+  assert.ok(routeMatchScore(motor, v) > routeMatchScore(ttOnly, v));
 });

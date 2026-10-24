@@ -11,8 +11,9 @@
 //
 // Nu: ét sted, bygget på motorens egne krav til etapen under løbets regel-
 // revision (raceEngineRulesRevision.ts). Motoren læses, ændres aldrig:
-//   - Enkeltstart (itt/itt_hilly/ttt): motorens tidskørsels-evne (ittAbilityTuning
+//   - Enkeltstart (itt/itt_hilly): motorens tidskørsels-evne (ittAbilityTuning
 //     + ittClimbShare, samme blanding som individualTimeTrial.ittAbilityScore).
+//   - Holdtidskørsel (ttt): motorens fysiologi (deriveCp pr. segment).
 //   - Alle andre etaper: motorens finale-krav (samme opslag som finale.ts:
 //     nedkørselsfinalen, S5-grundsæt + hybrid, finale-tabellen, feltets finale
 //     bag et udbrud, brostens-justering) blandet med etapens terræn-krav
@@ -28,9 +29,9 @@
 // snittet af de (urundede) etapetal: hver etape tæller lige meget, fordi hver
 // etape er en chance for et resultat. Rundes først til sidst.
 //
-// Versionering: vektoren afhænger af revisionen (et løb der er startet, bruger
-// sin bundne revision; et ikke-startet løb den revision det vil blive bundet til,
-// CURRENT_RACE_RULES_REVISION). En regel-ændring i motoren slår derfor igennem
+// Versionering: vektoren afhænger af revisionen (surfaceRulesRevision: et løb
+// der er startet, bruger sin bundne revision eller legacy; et ikke-startet løb
+// den revision det vil blive bundet til). En regel-ændring i motoren slår derfor igennem
 // automatisk, og ROUTE_MATCH_MODEL_VERSION bumpes kun når DENNE fils model ændres.
 //
 // REN: ingen IO. Kaldstederne henter rækkerne.
@@ -43,10 +44,9 @@ import { cobbledFinaleDemandVector } from "./engine/v4/mechanics/cobbles.ts";
 import { ittAbilityTuning, ittClimbShare } from "./engine/v4/mechanics/individualTimeTrial.ts";
 import { TIME_MODEL_V3_TUNING } from "./engine/v4/mechanics/timeModel.ts";
 import {
-  CURRENT_RACE_RULES_REVISION,
-  isKnownRulesRevision,
   isOrdersGcV3OrLater,
   isS5ProfilesV1OrLater,
+  surfaceRulesRevision,
   usesSharedGroupTime,
 } from "./raceEngineRulesRevision.ts";
 
@@ -70,16 +70,18 @@ export const ROUTE_MATCH_ABILITY_KEYS = Object.freeze([
 const KEY_SET = new Set(ROUTE_MATCH_ABILITY_KEYS);
 const ABILITY_MAX = 99;
 
-// Finalens andel af en vej-etapes vektor; resten er terrænet. Valgt ud fra
-// målingen mod S4-resultater (balance-internals/6207/, privat).
+// Finalens andel af en vej-etapes vektor; resten er terrænet.
 export const ROUTE_MATCH_FINALE_SHARE = 0.25;
 
-const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+const INDIVIDUAL_TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly"]);
 
-/** Revisionen et løb regnes under: den bundne, ellers den et nyt løb bindes til. */
+/**
+ * Revisionen et løb regnes under: samme afgørelse som de øvrige flader
+ * (surfaceRulesRevision). Et startet løb uden gemt revision er legacy, en ukendt
+ * gemt revision også; et ikke-startet løb får den revision det vil blive bundet til.
+ */
 export function routeMatchRevisionFor(race) {
-  const bound = race?.engine_rules_revision;
-  return isKnownRulesRevision(bound) ? bound : CURRENT_RACE_RULES_REVISION;
+  return surfaceRulesRevision({ race, storedRevision: race?.engine_rules_revision ?? null });
 }
 
 function normalized(vector) {
@@ -115,6 +117,27 @@ function timeTrialVector(route, revision) {
   return share > 0 ? blend(climb, tt, share) : tt;
 }
 
+/**
+ * Holdtidskørslen: motoren kører den på fysiologien (teamTimeTrial.ts →
+ * physiology.deriveCp), ikke på enkeltstartens evne. Vektoren er deriveCp's vægte
+ * pr. segment, vægtet med segmentets længde: tempo og udholdenhed overalt,
+ * klatring på stigninger og tidskørsel på flade stykker.
+ */
+function teamTimeTrialVector(route) {
+  const w = RACE_V4_TUNING.physiology.cpWeights;
+  const out = {};
+  const add = (k, v) => { if (v > 0) out[k] = (out[k] || 0) + v; };
+  for (const s of route.segments || []) {
+    const km = Math.max(0, Number(s.to_km) - Number(s.from_km));
+    if (!(km > 0)) continue;
+    add("tempo", w.tempo * km);
+    add("endurance", w.endurance * km);
+    if (s.kind === "climb") add("climbing", w.climbSpec * km);
+    if (s.kind === "flat") add("time_trial", w.tt * km);
+  }
+  return normalized(out);
+}
+
 /** Motorens finale-krav for etapen (samme opslag som finale.ts's placerings-opgør). */
 function finaleVector(route, revision) {
   const table = RACE_V4_TUNING.finale.demandVectorByFinaleType;
@@ -136,7 +159,7 @@ function finaleVector(route, revision) {
  * Motorens krav til én etape som evne-vektor (sum 1), eller null uden data.
  * @param {object} stageRow race_stage_profiles-række (profile_type, finale_type, demand_vector, segments, ...)
  * @param {string} revision regel-revisionen løbet regnes under
- * @param {{finaleShare?: number}} [opts] kun til målingen; produktionen bruger default
+ * @param {{finaleShare?: number}} [opts] kun til tests; produktionen bruger default
  */
 export function stageRouteVector(stageRow, revision, { finaleShare = ROUTE_MATCH_FINALE_SHARE } = {}) {
   if (!stageRow) return null;
@@ -150,7 +173,8 @@ export function stageRouteVector(stageRow, revision, { finaleShare = ROUTE_MATCH
     // skal stadig kunne vise de øvrige etaper.
     return terrain;
   }
-  if (TIME_TRIAL_PROFILES.has(stageRow.profile_type)) return timeTrialVector(route, revision);
+  if (stageRow.profile_type === "ttt") return teamTimeTrialVector(route) ?? terrain;
+  if (INDIVIDUAL_TIME_TRIAL_PROFILES.has(stageRow.profile_type)) return timeTrialVector(route, revision);
   const finale = finaleVector(route, revision);
   if (!finale) return terrain;
   if (!terrain) return finale;
