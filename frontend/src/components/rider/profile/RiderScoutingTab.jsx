@@ -21,6 +21,8 @@ import { apiFetch } from "../../../lib/apiFetch.ts"; // #5242: Retry-After-respe
 import { statPlateStyle } from "../../../lib/statColor";
 import { useScoutCountdown, scoutReadyClock } from "../../../lib/scoutCountdown";
 import { useBestRoleDisplay } from "../../../lib/useBestRoleDisplay.js";
+import { potentialFromReport, potentialRowFromReport } from "../../../lib/potentialDisplay6853";
+import PotentialRoleBox from "../PotentialRoleBox";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -383,6 +385,10 @@ export default function RiderScoutingTab({ rider, scouting }) {
   // et estimat bevægede sig. Mangler den (ældre payload), falder kortet tilbage
   // til den flade liste af otte, som før.
   const primaryRow = primaryKey ? orderedTypes.find((r) => r.key === primaryKey) : null;
+  // #6853: det store potentiale-tal står på serverens valgte rolle (bedste rolle
+  // med flaget tændt, ellers den naturlige) — samme tal som Mit hold og akademiet.
+  const potentialRow = potentialRowFromReport(report) ?? primaryRow;
+  const potentialShown = potentialFromReport(report);
   // #5435 (D-049, spec §2): med kontakten tændt deles listen i anlæggets to
   // roller ("His natural roles") og de seks andre, og loft-tallene er ude
   // (ejer 21/9). Den naturlige sekundærrolle er rytterens persisterede
@@ -446,9 +452,14 @@ export default function RiderScoutingTab({ rider, scouting }) {
                 holdes op mod noget. Faldbacken beholder dem for payloads uden
                 prognose-bånd. */}
             <div className="mt-1">
-              {primaryRow ? (
-                <span className="font-mono tabular-nums text-[17px] text-cz-1">
-                  {primaryRow.progLo ?? primaryRow.ceilLo}–{primaryRow.progHi ?? primaryRow.ceilHi}
+              {potentialRow ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="font-mono tabular-nums text-[17px] text-cz-1">
+                    {potentialRow.progLo ?? potentialRow.ceilLo}–{potentialRow.progHi ?? potentialRow.ceilHi}
+                  </span>
+                  {potentialShown?.showRole && (
+                    <PotentialRoleBox role={potentialShown.role} lo={potentialShown.lo} hi={potentialShown.hi} variant="full" />
+                  )}
                 </span>
               ) : stars ? (
                 <PotentialeStars range={stars} />
@@ -476,16 +487,16 @@ export default function RiderScoutingTab({ rider, scouting }) {
         {/* #4039 (ejer-godkendt mockup): verdiktet skal stå SOM TEKST, ikke kun
             som det skraverede bånd nedenfor — samme tal som båndet (progLo/
             progHi/loft), ingen ny information, ingen #1162-lækage. */}
-        {verdict && primaryRow
-          && Number.isFinite(primaryRow.progLo ?? primaryRow.ceilLo)
-          && Number.isFinite(primaryRow.progHi ?? primaryRow.ceilHi)
-          && (bestRoleOn || Number.isFinite(primaryRow.loft)) && (
+        {verdict && potentialRow
+          && Number.isFinite(potentialRow.progLo ?? potentialRow.ceilLo)
+          && Number.isFinite(potentialRow.progHi ?? potentialRow.ceilHi)
+          && (bestRoleOn || Number.isFinite(potentialRow.loft)) && (
           <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-3 mb-0 max-w-prose">
-            {/* #5435: uden loft-tal i den nye visning. */}
+            {/* #5435: uden loft-tal i den nye visning. #6853: samme rolle som tallet. */}
             {t(bestRoleOn ? "profile.scouting.verdictTextNoLoft" : "profile.scouting.verdictText", {
-              progLo: primaryRow.progLo ?? primaryRow.ceilLo,
-              progHi: primaryRow.progHi ?? primaryRow.ceilHi,
-              loft: primaryRow.loft,
+              progLo: potentialRow.progLo ?? potentialRow.ceilLo,
+              progHi: potentialRow.progHi ?? potentialRow.ceilHi,
+              loft: potentialRow.loft,
             })}
           </p>
         )}
