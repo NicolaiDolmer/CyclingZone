@@ -127,8 +127,13 @@ test("G19: nr. 10 paa bjerg uden topankomst pr. division; udbrudssejre og andre 
   const g = evaluateV3Gates({ raceResults: rr, revision: REV, contexts, bands: ALL_BANDS }).gates.find((x) => x.id === "G19");
   assert.equal(g.status, GATE_STATUS.FAIL);
   assert.match(g.why, /d2/);
-  const none = evaluateV3Gates({ raceResults: rr, revision: REV, contexts: new Map(), bands: ALL_BANDS }).gates.find((x) => x.id === "G19");
+  const noStages = new Map([["r1", ctx({ mountainNonSummitStages: new Set() })], ["r2", ctx({ mountainNonSummitStages: new Set() })]]);
+  const none = evaluateV3Gates({ raceResults: rr, revision: REV, contexts: noStages, bands: ALL_BANDS }).gates.find((x) => x.id === "G19");
   assert.equal(none.status, GATE_STATUS.NA, "ingen bjergetape uden topankomst = N/A, ikke blokerende");
+  const noCtx = evaluateV3Gates({ raceResults: rr, revision: REV, contexts: new Map(), bands: ALL_BANDS }).gates.find((x) => x.id === "G19");
+  assert.equal(noCtx.status, GATE_STATUS.MISSING, "manglende loebskontekst er manglende evidens (Codex)");
+  const noGap = [raceResult("r1", 5, [{ rows: [{ stage: 3, gapTo10: null, breakawayWon: false }] }])];
+  assert.equal(evaluateV3Gates({ raceResults: noGap, revision: REV, contexts, bands: ALL_BANDS }).gates.find((x) => x.id === "G19").status, GATE_STATUS.MISSING);
 });
 
 test("G2-flad: over oevre zone uden 'ingen jagt-interesse' og over haard graense", () => {
@@ -177,7 +182,7 @@ test("S0: vinderens sprint-rang, rolle, lead-out der slog egen kaptajn og top 10
   assert.equal(s.alle.n, 3);
   assert.equal(s.alle.bestSprinterWins, 1 / 3);
   assert.equal(s.alle.top3Wins, 2 / 3);
-  assert.equal(s.alle.leadoutBeatOwnCaptain, 1 / 3);
+  assert.equal(s.alle.helperBeatOwnSprintCaptain, 1 / 3);
   assert.equal(s["terraen:flat"].n, 2);
   assert.equal(s["terraen:flat"].top10MeanRankDiffMedian, 1 / 3, "median af [0, 2/3]");
   assert.equal(s["terraen:cobbles"].roleShares.captain, 1);
@@ -211,4 +216,21 @@ test("createJerseyTally: passager naar de findes, ellers classPointsForRank; vin
   assert.equal(w.pointsWinner, "c", "b fuldfoerte ikke; c har 25 mod a's 4 + 20");
   assert.equal(w.komWinner, "c");
   assert.deepEqual(createJerseyTally().winners([{ rider_id: "a" }]), { pointsWinner: null, komWinner: null });
+});
+
+test("Codex: G17 taeller sprint-kaptajner som kaptajner og kun helper som hjaelpere", () => {
+  const abandons = { starters: 10, out: 2, byRole: { sprint_captain: { starters: 1, out: 1 }, captain: { starters: 1, out: 0 }, helper: { starters: 6, out: 1 }, hunter: { starters: 2, out: 0 } } };
+  const m = measureG17([raceResult("r1", 5, [{ abandons }])], REV, new Map([["r1", ctx()]]));
+  assert.equal(m.captainRate, 0.5);
+  assert.equal(m.helperRate, 1 / 6);
+});
+
+test("Codex: G2-flad uden brugbare forspring eller uden oevre zone for et maalt terraen er MANGLER", () => {
+  const nulls = [raceResult("r1", 5, [{ rows: [{ profile_type: "flat", breakawayMaxLead: null }] }])];
+  assert.equal(evaluateV3Gates({ raceResults: nulls, revision: REV, bands: ALL_BANDS }).gates.find((g) => g.id === "G2F").status, GATE_STATUS.MISSING);
+  const rolling = [raceResult("r1", 5, [{ rows: [{ profile_type: "rolling", breakawayMaxLead: 100, breakawayUnchased: false }] }])];
+  const bands = { ...ALL_BANDS, G2F: { upperZoneSeconds: { flat: 300 }, hardMaxSeconds: 600 } };
+  const g = evaluateV3Gates({ raceResults: rolling, revision: REV, bands }).gates.find((x) => x.id === "G2F");
+  assert.equal(g.status, GATE_STATUS.MISSING);
+  assert.match(g.why, /rolling/);
 });

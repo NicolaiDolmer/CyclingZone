@@ -36,6 +36,8 @@ export const V3_GATES = Object.freeze([
 ]);
 
 const STAGE_RACE_GROUPS = ["stage_race", "gt"];
+const CAPTAIN_ROLES = new Set(["captain", "sprint_captain"]);
+const SUPPORT_ROLES = new Set(["helper", "hunter", "free_role"]);
 const share = (hits, n) => (n > 0 ? hits / n : null);
 const has = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 const num = (v) => (v === null || v === undefined || !Number.isFinite(Number(v)) ? null : Number(v));
@@ -105,15 +107,17 @@ export function measureG17(raceResults, revision, contexts) {
     g.out += Number(x.seed.abandons.out) || 0;
   }
   for (const g of Object.values(byGroup)) g.share = share(g.out, g.starters);
-  const roles = { captain: { starters: 0, out: 0 }, other: { starters: 0, out: 0 } };
+  // Codex: begge kaptajn-roller er kaptajner; hjaelper-kohorten er rollen helper (eksplicit).
+  const roles = { captain: { starters: 0, out: 0 }, helper: { starters: 0, out: 0 } };
   for (const x of seeds) {
     for (const [role, c] of Object.entries(x.seed.abandons.byRole ?? {})) {
-      const k = role === "captain" ? "captain" : "other";
+      const k = CAPTAIN_ROLES.has(role) ? "captain" : role === "helper" ? "helper" : null;
+      if (!k) continue;
       roles[k].starters += Number(c?.starters) || 0;
       roles[k].out += Number(c?.out) || 0;
     }
   }
-  return { byGroup, captainRate: share(roles.captain.out, roles.captain.starters), helperRate: share(roles.other.out, roles.other.starters), roles };
+  return { byGroup, captainRate: share(roles.captain.out, roles.captain.starters), helperRate: share(roles.helper.out, roles.helper.starters), roles };
 }
 
 /** Er rytteren en sprinter: sprint-kaptajn eller blandt feltets `topSprinters` bedste sprintere (privat antal). */
@@ -143,9 +147,14 @@ export function measureG18(raceResults, revision, contexts, { minFlatStages, top
 export function measureG19(raceResults, revision, contexts) {
   const byDivision = new Map();
   const all = [];
-  for (const x of seedsOf(raceResults, revision, contexts)) {
+  const seeds = seedsOf(raceResults, revision, contexts);
+  // Codex: en manglende loebskontekst er manglende evidens (MANGLER), ikke "ingen etape" (N/A).
+  const missingContext = new Set(seeds.filter((x) => !x.ctx).map((x) => x.raceId)).size;
+  let qualifying = 0;
+  for (const x of seeds) {
     const set = x.ctx?.mountainNonSummitStages;
     if (!set?.size) continue;
+    qualifying += (x.seed.rows ?? []).filter((r) => set.has(r.stage)).length;
     for (const r of x.seed.rows ?? []) {
       if (!set.has(r.stage) || r.breakawayWon === true || num(r.gapTo10) === null) continue;
       const key = x.ctx.divisionId ?? "ukendt";
@@ -154,8 +163,9 @@ export function measureG19(raceResults, revision, contexts) {
       all.push(Number(r.gapTo10));
     }
   }
-  if (!all.length) return null;
-  return { n: all.length, median: median(all), byDivision: Object.fromEntries([...byDivision].map(([k, xs]) => [k, { n: xs.length, median: median(xs) }])) };
+  if (missingContext) return { missingContext, n: all.length };
+  if (!all.length) return { n: 0, qualifying };
+  return { n: all.length, qualifying, median: median(all), byDivision: Object.fromEntries([...byDivision].map(([k, xs]) => [k, { n: xs.length, median: median(xs) }])) };
 }
 
 /** G2-flad: flade og rullende vejetaper hvor udbruddets stoerste forspring passerer den oevre zone uden "ingen jagt-interesse", eller den haarde graense. */
@@ -164,16 +174,19 @@ export function measureG2F(raceResults, revision, contexts, { upperZoneSeconds =
     .filter((r) => (r.profile_type === "flat" || r.profile_type === "rolling") && has(r, "breakawayMaxLead"));
   if (!rows.length) return null;
   if (!upperZoneSeconds || !Number.isFinite(hardMaxSeconds)) return { n: rows.length, overUpperWithoutUnchased: null, overHardMax: null };
+  // Codex: kun brugbare maalinger taeller, og hvert maalt terraen skal have sin oevre zone.
+  const usable = rows.filter((r) => num(r.breakawayMaxLead) !== null);
+  if (!usable.length) return null;
+  const missingZone = [...new Set(usable.map((r) => r.profile_type))].filter((t) => num(upperZoneSeconds[t]) === null);
+  if (missingZone.length) return { n: usable.length, missingZone, overUpperWithoutUnchased: null, overHardMax: null };
   let overUpper = 0;
   let overHard = 0;
-  for (const r of rows) {
-    const lead = num(r.breakawayMaxLead);
-    if (lead === null) continue;
-    const zone = num(upperZoneSeconds[r.profile_type]);
-    if (zone !== null && lead > zone && r.breakawayUnchased !== true) overUpper += 1;
+  for (const r of usable) {
+    const lead = Number(r.breakawayMaxLead);
+    if (lead > Number(upperZoneSeconds[r.profile_type]) && r.breakawayUnchased !== true) overUpper += 1;
     if (lead > hardMaxSeconds) overHard += 1;
   }
-  return { n: rows.length, overUpperWithoutUnchased: overUpper, overHardMax: overHard };
+  return { n: usable.length, overUpperWithoutUnchased: overUpper, overHardMax: overHard };
 }
 
 // ── Domme ────────────────────────────────────────────────────────────────────
@@ -230,7 +243,9 @@ export function evaluateV3Gates({ raceResults, revision, contexts = new Map(), b
   }
 
   const g19 = measureG19(raceResults, revision, contexts);
-  if (!g19) out.push(gateResult(by.G19, GATE_STATUS.NA, null, "ingen bjergetape uden topankomst i koerslen"));
+  if (g19.missingContext) out.push(gateResult(by.G19, GATE_STATUS.MISSING, g19, `${g19.missingContext} loeb uden loebskontekst (cache.json)`));
+  else if (!g19.qualifying) out.push(gateResult(by.G19, GATE_STATUS.NA, null, "ingen bjergetape uden topankomst i koerslen"));
+  else if (!g19.n) out.push(gateResult(by.G19, GATE_STATUS.MISSING, g19, "bjergetaper uden topankomst, men intet brugbart nr. 10"));
   else {
     const band = b.G19?.gapTo10Median;
     const checks = Object.entries(g19.byDivision).map(([d, v]) => ({ what: `division ${d}: nr. 10 (median)`, ok: inBand(v.median, band) }));
@@ -240,7 +255,7 @@ export function evaluateV3Gates({ raceResults, revision, contexts = new Map(), b
 
   const g2f = measureG2F(raceResults, revision, contexts, { upperZoneSeconds: b.G2F?.upperZoneSeconds ?? null, hardMaxSeconds: num(b.G2F?.hardMaxSeconds) ?? NaN });
   if (!g2f) out.push(gateResult(by.G2F, GATE_STATUS.MISSING, null, "ingen maaling (breakawayMaxLead mangler i scorecardet)"));
-  else if (g2f.overUpperWithoutUnchased === null) out.push(gateResult(by.G2F, GATE_STATUS.MISSING, g2f, "privat baand mangler (upperZoneSeconds/hardMaxSeconds)"));
+  else if (g2f.overUpperWithoutUnchased === null) out.push(gateResult(by.G2F, GATE_STATUS.MISSING, g2f, g2f.missingZone ? `privat oevre zone mangler for ${g2f.missingZone.join(", ")}` : "privat baand mangler (upperZoneSeconds/hardMaxSeconds)"));
   else {
     const j = judgeChecks([
       { what: "over den oevre zone uden 'ingen jagt-interesse'", ok: g2f.overUpperWithoutUnchased === 0 },
@@ -270,13 +285,14 @@ export function isSprintFinishRow(r) {
  * S0 (ingen motorændring, kun maaling): hvem vinder spurtfinalerne, og hvor godt
  * foelger resultatet sprint-evnen. Pr. terraen (flat/cobbles) og loebsgruppe.
  *  - vinderens sprint-rang i feltet (1 = feltets bedste sprinter): andel 1, top 3, top 10, median
- *  - vinderens rolle; lead-out der slog sin egen sprint-kaptajn
+ *  - vinderens rolle; en hjaelper paa sprint-kaptajnens hold der vandt foran ham (holdordrernes
+ *    lead-out-markering er ikke i scorecardet, saa det er hjaelperen, ikke praecist lead-out-rytteren)
  *  - top 10: middel |sprint-rang - placering| for de 10 forreste, og andel af feltets 5 bedste sprintere i top 10
  */
 export function measureSprintFinale(raceResults, revision, contexts) {
   const buckets = new Map();
   const bucket = (k) => {
-    if (!buckets.has(k)) buckets.set(k, { n: 0, winnerRanks: [], roles: {}, leadoutBeatOwnCaptain: 0, rankDiffs: [], top5InTop10: [], unknownWinner: 0 });
+    if (!buckets.has(k)) buckets.set(k, { n: 0, winnerRanks: [], roles: {}, helperBeatOwnSprintCaptain: 0, rankDiffs: [], top5InTop10: [], unknownWinner: 0 });
     return buckets.get(k);
   };
   for (const x of seedsOf(raceResults, revision, contexts)) {
@@ -292,9 +308,11 @@ export function measureSprintFinale(raceResults, revision, contexts) {
         const role = x.ctx.roleByRider?.get?.(w) ?? "none";
         b.roles[role] = (b.roles[role] ?? 0) + 1;
         const team = x.ctx.teamByRider?.get?.(w);
-        if (role !== "sprint_captain" && team != null) {
+        // Codex: holdordrernes lead-out-markering er ikke i scorecardet; maalingen er derfor
+        // "en hjaelper (helper/hunter/free_role) paa sprint-kaptajnens hold vandt foran ham".
+        if (SUPPORT_ROLES.has(role) && team != null) {
           const ownCaptainBehind = r.sprintTop10.slice(1).some((id) => x.ctx.teamByRider.get(id) === team && x.ctx.roleByRider.get(id) === "sprint_captain");
-          if (ownCaptainBehind) b.leadoutBeatOwnCaptain += 1;
+          if (ownCaptainBehind) b.helperBeatOwnSprintCaptain += 1;
         }
         const diffs = r.sprintTop10.map((id, i) => { const sr = x.ctx.sprintRankByRider?.get?.(id); return Number.isFinite(sr) ? Math.abs(sr - (i + 1)) : null; }).filter((v) => v !== null);
         if (diffs.length) b.rankDiffs.push(diffs.reduce((a, c) => a + c, 0) / diffs.length);
@@ -314,7 +332,7 @@ export function measureSprintFinale(raceResults, revision, contexts) {
       winnerSprintRankMedian: median(b.winnerRanks),
       unknownWinner: b.unknownWinner,
       roleShares: Object.fromEntries(Object.entries(b.roles).sort().map(([role, c]) => [role, share(c, b.n)])),
-      leadoutBeatOwnCaptain: share(b.leadoutBeatOwnCaptain, b.n),
+      helperBeatOwnSprintCaptain: share(b.helperBeatOwnSprintCaptain, b.n),
       top10MeanRankDiffMedian: median(b.rankDiffs),
       top5SprintersInTop10Median: median(b.top5InTop10),
     };

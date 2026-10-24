@@ -81,7 +81,7 @@ Kortet dømmer v3-tilvalgenes gates for begge revisioner (spec `docs/superpowers
 
 Fail closed: mangler målingen i scorecardet (et motor-spors felt er ikke leveret endnu) eller det private bånd, står gaten som MANGLER. Feltkontrakten pr. seed og etape står øverst i `lib/v3Gates.mjs`; `pointsWinner`/`komWinner` (`lib/jerseyTally.mjs`, samme akkumulering som raceRunner) og `sprintTop10` skrives af `tourScorecard.runTour`. Båndene ligger i den private tærskelfil under nøglen `v3Gates` (hard rule 17). Løbskonteksten (roller, sprint-rang, flade etaper, bjerg uden topankomst, division) læses fra løbets `cache.json`; eksportens mappe gemmes som `cacheDir` i `testport-meta.json`, så `--report-only` finder den igen.
 
-**#2757 S0, spurtfinalen (måling, ingen gate):** på flade og brostens-etaper med massespurt hvor udbruddet ikke vandt: hvor ofte feltets bedste sprinter (og top 3) vinder, vinderens sprint-rang, vinderens rolle, hvor ofte en lead-out slår sin egen sprint-kaptajn, og hvor godt top 10 følger sprint-evnen. Pr. terræn og løbsgruppe. Tallene står kun på det private kort.
+**#2757 S0, spurtfinalen (måling, ingen gate):** på flade og brostens-etaper med massespurt hvor udbruddet ikke vandt: hvor ofte feltets bedste sprinter (og top 3) vinder, vinderens sprint-rang, vinderens rolle, hvor ofte en hjælper på sprint-kaptajnens hold vinder foran ham (holdordrernes lead-out-markering er ikke i scorecardet), og hvor godt top 10 følger sprint-evnen. Pr. terræn og løbsgruppe. Tallene står kun på det private kort.
 
 ## Hvad den gør
 

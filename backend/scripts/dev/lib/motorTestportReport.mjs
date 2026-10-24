@@ -368,8 +368,8 @@ function sprintFinaleSection(card) {
   const s = card.sprintFinale;
   if (!s?.baseline && !s?.candidate) return ["", "## #2757 S0: spurtfinalen", "", "Ingen spurtfinaler i koerslen (eller ingen loebskontekst/sprintTop10 i scorecardet)."];
   const keys = [...new Set([...Object.keys(s.baseline ?? {}), ...Object.keys(s.candidate ?? {})])].sort((a, b) => (a === "alle" ? -1 : b === "alle" ? 1 : a.localeCompare(b)));
-  const cells = (x) => (x ? [String(x.n), fmtPct(x.bestSprinterWins), fmtPct(x.top3Wins), fmtN(x.winnerSprintRankMedian), fmtPct(x.roleShares?.sprint_captain ?? 0), fmtPct(x.leadoutBeatOwnCaptain), fmtN(x.top10MeanRankDiffMedian), fmtPct(x.top5SprintersInTop10Median)] : Array(8).fill("-"));
-  const head = ["n", "bedste sprinter vandt", "top 3 vandt", "vinderens sprint-rang (median)", "sprint-kaptajn vandt", "lead-out slog egen kaptajn", "top 10: afvigelse sprint-rang mod plads (median)", "feltets 5 bedste i top 10 (median)"];
+  const cells = (x) => (x ? [String(x.n), fmtPct(x.bestSprinterWins), fmtPct(x.top3Wins), fmtN(x.winnerSprintRankMedian), fmtPct(x.roleShares?.sprint_captain ?? 0), fmtPct(x.helperBeatOwnSprintCaptain), fmtN(x.top10MeanRankDiffMedian), fmtPct(x.top5SprintersInTop10Median)] : Array(8).fill("-"));
+  const head = ["n", "bedste sprinter vandt", "top 3 vandt", "vinderens sprint-rang (median)", "sprint-kaptajn vandt", "hjaelper slog egen sprint-kaptajn", "top 10: afvigelse sprint-rang mod plads (median)", "feltets 5 bedste i top 10 (median)"];
   const sides = card.sameRevision ? [["baseline", card.baseline]] : [["baseline", card.baseline], ["candidate", card.candidate]];
   return ["", "## #2757 S0: spurtfinalen (maaling, ingen gate)",
     ...sides.flatMap(([side, rev]) => ["", `### ${rev}`, "", ...table(["Udsnit", ...head], keys.map((k) => [k, ...cells(s[side]?.[k])]))]),
