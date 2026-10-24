@@ -698,8 +698,8 @@ function toStage(rng, profileType, stageNumber, race, isStageRace) {
  * Ren og deterministisk: samme løbssæt i vilkårlig rækkefølge giver samme resultat.
  * Inputtet muteres ikke; uændrede etaper genbruges som samme objekter.
  *
- * @param {Array<Array<object>>} stagesByRace  generateRaceStageProfiles-output pr. løb
- * @returns {Array<Array<object>>} samme form og rækkefølge
+ * @param {Array<Array<any>>} stagesByRace  generateRaceStageProfiles-output pr. løb
+ * @returns {Array<Array<any>>} samme form og rækkefølge
  */
 export function balanceFinaleQuotas(stagesByRace = []) {
   const groupsByProfile = new Map();
@@ -820,6 +820,7 @@ function chooseRoundingsWithinBands(groups, fixedClassCounts, totalStages) {
   // afrundingen koster mindst, i stedet for det der tilfældigvis står først i rækkefølgen.
   let best = score();
   for (let step = 0; step < 64 && best.violation > eps; step++) {
+    /** @type {any} */
     let move = null;
     for (const g of groups) {
       const current = g.counts;

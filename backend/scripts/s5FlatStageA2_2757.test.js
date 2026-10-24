@@ -210,6 +210,30 @@ test("apply genoptager den godkendte plan efter en delvis kørsel og nægter at 
   assert.equal(drifted.writes.length, 0);
 });
 
+test("Codex P2: en etape ændret efter dry-run (kun stigninger) skrives ikke over", async () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  const db = fakeDb(input);
+  const slot = db.rows.find((r) => r.race_id === RACE_A1 && r.stage_number === plan.items[0].stage_number);
+  // Samme type, afslutning, distance og højdemeter, men en anden stigningsliste.
+  slot.climbs = [...(slot.climbs ?? []), { name: "Ny stigning", km: 1, category: 4 }];
+  assert.equal(diffAgainstCurrent(plan, db.rows).drift.length, 1);
+  await assert.rejects(applyPlan({ db, plan, backupTable: "backup_2757_race_stage_profiles_20261024" }), /ændret siden/);
+  assert.equal(db.writes.length, 0);
+});
+
+test("Codex P2: post-verify fejler på en flad etape med forkert indhold (drift tæller som afvigelse)", async () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  const db = fakeDb(input);
+  await applyPlan({ db, plan, backupTable: "backup_2757_race_stage_profiles_20261024" });
+  const slot = db.rows.find((r) => r.race_id === RACE_A1 && r.stage_number === plan.items[0].stage_number);
+  slot.distance_km = 1;
+  const verify = await postVerify({ db, plan });
+  assert.equal(verify.ok, false);
+  assert.equal(verify.mismatched, 1);
+});
+
 test("liveStateViolations: et startet løb, en claim eller et manglende løb stopper apply", () => {
   const input = expandSnapshot(snapshot());
   const plan = buildA2Plan(input);

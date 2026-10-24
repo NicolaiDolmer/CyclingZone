@@ -294,6 +294,9 @@ export function buildA2Plan(input) {
       bucket: flatStagePositionBucket(pick.stageNumber - 1, rows.length),
       before: rows.map((p) => ({ stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, distance_km: p.distance_km ?? null, elevation_gain_m: p.elevation_gain_m ?? null })),
       old: { profile_type: old.profile_type, finale_type: old.finale_type, distance_km: old.distance_km ?? null, elevation_gain_m: old.elevation_gain_m ?? null, climbs: (old.climbs ?? []).length },
+      // Codex P2 (#7156): hele den oprindelige etape gemmes som hash, så apply nægter at skrive
+      // over en etape der er ændret siden dry-run, også i stigninger, spurter, vejr og segmenter.
+      old_content_hash: sha256(canonicalJson(writeContent(old))),
       content,
       benchmark: checkStage({ ...content, stage_number: pick.stageNumber }).violations,
     };
@@ -516,8 +519,10 @@ export function diffAgainstCurrent(plan, currentRows) {
   for (const it of plan.items) {
     const row = cur.get(`${it.race_id}|${it.stage_number}`);
     if (row && canonicalJson(writeContent(row)) === canonicalJson(it.content)) done.push(it);
-    else if (row && row.profile_type === it.old?.profile_type && row.finale_type === it.old?.finale_type
-      && same(row.distance_km, it.old?.distance_km) && same(row.elevation_gain_m, it.old?.elevation_gain_m)) toWrite.push(it);
+    else if (row && (it.old_content_hash
+      ? sha256(canonicalJson(writeContent(row))) === it.old_content_hash
+      : row.profile_type === it.old?.profile_type && row.finale_type === it.old?.finale_type
+        && same(row.distance_km, it.old?.distance_km) && same(row.elevation_gain_m, it.old?.elevation_gain_m))) toWrite.push(it);
     else drift.push(it);
   }
   return { toWrite, done, drift };
@@ -582,10 +587,13 @@ export async function applyPlan({ db, plan, backupTable, log = () => {} }) {
 export async function postVerify({ db, plan }) {
   const ids = [...new Set(plan.items.map((it) => it.race_id))];
   const rows = ids.length ? await db.fullProfilesOf(ids) : [];
-  const { toWrite } = diffAgainstCurrent(plan, rows);
+  // Codex P2 (#7156): både ikke-skrevne (toWrite) og afvigende (drift) pladser er fejl. En flad
+  // etape med forkert distance eller forkerte stigninger er ikke den godkendte etape.
+  const { toWrite, drift } = diffAgainstCurrent(plan, rows);
+  const mismatched = toWrite.length + drift.length;
   const byRace = groupBy(rows, "race_id");
   const noFlat = ids.filter((id) => !(byRace.get(id) ?? []).some((r) => r.profile_type === "flat"));
-  return { ok: toWrite.length === 0 && noFlat.length === 0, mismatched: toWrite.length, noFlat: noFlat.length };
+  return { ok: mismatched === 0 && noFlat.length === 0, mismatched, noFlat: noFlat.length };
 }
 
 // ── Rapport og billede ────────────────────────────────────────────────────────────────
