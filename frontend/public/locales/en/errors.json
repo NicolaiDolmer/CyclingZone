@@ -285,6 +285,7 @@
     "contract_batch_duplicate": "The same rider was picked twice",
     "contract_batch_rejected": "Some contracts can't be extended. Nothing was changed",
     "contract_batch_salary_cap": "These extensions would take your total salary over the board's cap of {cap} CZ$. Nothing was changed",
-    "contract_batch_write_failed": "Something went wrong saving a contract. Nothing was changed"
+    "contract_batch_write_failed": "Something went wrong saving a contract. Nothing was changed",
+    "contract_batch_partial": "Some contracts changed while extending, and not every change could be undone. Check the riders below"
   }
 }

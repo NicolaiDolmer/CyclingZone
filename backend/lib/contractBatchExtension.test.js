@@ -47,7 +47,7 @@ function singleExtensionsInARow(r, n, currentSeason) {
 }
 
 // ── Lille in-memory Supabase-mock (kun de kæder modulet bruger) ─────────────
-function makeDb({ riders = [], season = 4, consequences = [], failUpdateFor = null } = {}) {
+function makeDb({ riders = [], season = 4, consequences = [], failUpdateFor = null, onUpdate = null } = {}) {
   const tables = {
     riders: riders.map((r) => ({ ...r })),
     seasons: [{ number: season, status: "active" }],
@@ -82,7 +82,9 @@ function makeDb({ riders = [], season = 4, consequences = [], failUpdateFor = nu
             }
             for (const row of rows) Object.assign(row, patch);
             updates.push({ table, patch, ids: rows.map((r) => r.id) });
-            resolve({ data: rows.map((r) => ({ id: r.id })), error: null });
+            const ids = rows.map((r) => ({ id: r.id }));
+            if (onUpdate) for (const row of rows) onUpdate(row);
+            resolve({ data: ids, error: null });
             return;
           }
           resolve({ data: rows.map((r) => ({ ...r })), error: null });
@@ -282,4 +284,19 @@ test("apply: gentaget kald planlægger fra den nye tilstand, aldrig fra den gaml
   const second = await applyBatchExtension({ supabase: db, teamId: TEAM, body, deps: noCap });
   assert.equal(second.status, 200);
   assert.equal(db.tables.riders[0].contract_end_season, 6);
+});
+
+test("apply: kan tilbagerulningen ikke gennemføres (samtidig ændring), siges det ærligt med de berørte ryttere", async () => {
+  let interfered = false;
+  const db = makeDb({
+    riders: [rider({ id: "a" }), rider({ id: "b" })],
+    failUpdateFor: "b",
+    // En anden forespørgsel forlænger a igen lige efter vores skrivning.
+    onUpdate: (row) => { if (row.id === "a" && !interfered) { interfered = true; row.contract_end_season = 6; } },
+  });
+  const res = await applyBatchExtension({ supabase: db, teamId: TEAM, body: { items: [{ riderId: "a", seasons: 1 }, { riderId: "b", seasons: 1 }] }, deps: noCap });
+  assert.equal(res.status, 409);
+  assert.equal(res.body.errorCode, "contract_batch_partial");
+  assert.deepEqual(res.body.errors.map((e) => [e.riderId, e.errorCode]), [["b", "rider_state_changed"], ["a", "contract_batch_partial"]]);
+  assert.ok(res.writeError, "logges til Sentry via routen");
 });

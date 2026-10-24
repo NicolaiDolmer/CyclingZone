@@ -21,6 +21,9 @@
 // er én betinget UPDATE pr. rytter (team_id + den gamle udløbssæson skal stadig
 // matche, så et dobbeltklik ikke kan forlænge to gange). Går en af dem tabt
 // undervejs, rulles de allerede skrevne tilbage til deres gamle værdier.
+// Grænse: uden DB-transaktion (ingen migration i #6855) kan en samtidig
+// ændring forhindre tilbagerulningen; så svarer vi contract_batch_partial med
+// de berørte ryttere i stedet for at påstå at intet er ændret.
 //
 // Logikken bor her (ikke i api.js), så routen kun er en tynd kobling (#5997).
 
@@ -297,13 +300,29 @@ export async function applyBatchExtension({ supabase, teamId, body, deps = {} })
     query = eqOrIs(query, "contract_end_season", p.currentEndSeason);
     const { data, error } = await query.select("id");
     if (error || !data || data.length === 0) {
-      await rollbackApplied({ supabase, teamId, applied });
+      const notRolledBack = await rollbackApplied({ supabase, teamId, applied });
+      const failed = { riderId: p.riderId, errorCode: error ? "contract_batch_write_failed" : "rider_state_changed" };
+      if (notRolledBack.length > 0) {
+        // Uden en DB-transaktion (ingen migration i #6855) kan en samtidig
+        // ændring forhindre tilbagerulningen. Så siger svaret det ærligt og
+        // navngiver de ryttere der stadig er forlænget, i stedet for at love
+        // at intet er ændret. Logges til Sentry via writeError.
+        return {
+          status: 409,
+          body: {
+            error: "Some contracts changed while extending, and not every change could be undone",
+            errorCode: "contract_batch_partial",
+            errors: [failed, ...notRolledBack.map((riderId) => ({ riderId, errorCode: "contract_batch_partial" }))],
+          },
+          writeError: error ?? new Error(`rollback incomplete for ${notRolledBack.length} rider(s)`),
+        };
+      }
       return {
         status: error ? 500 : 409,
         body: {
           error: "A contract changed while extending. Nothing was changed",
           errorCode: "contract_batch_rejected",
-          errors: [{ riderId: p.riderId, errorCode: error ? "contract_batch_write_failed" : "rider_state_changed" }],
+          errors: [failed],
         },
         writeError: error ?? null,
       };
@@ -318,12 +337,13 @@ export async function applyBatchExtension({ supabase, teamId, body, deps = {} })
 }
 
 // Kompenserende tilbagerulning: sæt de allerede forlængede ryttere tilbage til
-// deres gamle værdier (betinget på at det stadig er VORES nye udløbssæson der
-// står der). Fejl her kastes, så routen logger dem; spilleren får stadig 409.
+// deres gamle værdier, betinget på at det stadig er VORES nye udløbssæson der
+// står der. Returnerer de rytter-id'er der IKKE kunne rulles tilbage (fejl,
+// eller en samtidig ændring så ingen række matchede).
 async function rollbackApplied({ supabase, teamId, applied }) {
-  const failures = [];
+  const notRolledBack = [];
   for (const p of applied) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("riders")
       .update({
         salary: p.previousSalary,
@@ -334,9 +354,7 @@ async function rollbackApplied({ supabase, teamId, applied }) {
       .eq("team_id", teamId)
       .eq("contract_end_season", p.newEndSeason)
       .select("id");
-    if (error) failures.push(`${p.riderId}: ${error.message}`);
+    if (error || !data || data.length === 0) notRolledBack.push(p.riderId);
   }
-  if (failures.length > 0) {
-    throw new Error(`contractBatchExtension rollback failed: ${failures.join("; ")}`);
-  }
+  return notRolledBack;
 }

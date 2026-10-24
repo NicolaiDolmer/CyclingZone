@@ -285,6 +285,7 @@
     "contract_batch_duplicate": "Le même coureur a été choisi deux fois",
     "contract_batch_rejected": "Certains contrats ne peuvent pas être prolongés. Rien n'a été modifié",
     "contract_batch_salary_cap": "Ces prolongations feraient passer ton salaire total au-dessus du plafond du conseil de {cap} CZ$. Rien n'a été modifié",
-    "contract_batch_write_failed": "Un problème est survenu en enregistrant un contrat. Rien n'a été modifié"
+    "contract_batch_write_failed": "Un problème est survenu en enregistrant un contrat. Rien n'a été modifié",
+    "contract_batch_partial": "Certains contrats ont changé pendant la prolongation et tout n'a pas pu être annulé. Vérifie les coureurs ci-dessous"
   }
 }

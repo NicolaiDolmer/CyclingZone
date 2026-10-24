@@ -285,6 +285,7 @@
     "contract_batch_duplicate": "Den samme rytter er valgt to gange",
     "contract_batch_rejected": "Nogle kontrakter kan ikke forlænges. Intet er ændret",
     "contract_batch_salary_cap": "Forlængelserne ville tage holdets samlede løn over bestyrelsens loft på {cap} CZ$. Intet er ændret",
-    "contract_batch_write_failed": "Noget gik galt, da en kontrakt skulle gemmes. Intet er ændret"
+    "contract_batch_write_failed": "Noget gik galt, da en kontrakt skulle gemmes. Intet er ændret",
+    "contract_batch_partial": "Nogle kontrakter ændrede sig undervejs, og ikke alt kunne rulles tilbage. Tjek rytterne nedenfor"
   }
 }

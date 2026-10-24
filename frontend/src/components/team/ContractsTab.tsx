@@ -314,6 +314,8 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
           message: resolveApiError(body, tr, t("contracts.summary.saveError")),
           errors: Array.isArray(body.errors) ? body.errors : [],
         });
+        // Kunne en tilbagerulning ikke gennemføres, er nogle kontrakter ændret: hent friske tal.
+        if (body.errorCode === "contract_batch_partial") onChanged?.();
         return;
       }
       setSummary(null);

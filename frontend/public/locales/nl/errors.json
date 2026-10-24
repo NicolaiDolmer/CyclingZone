@@ -285,6 +285,7 @@
     "contract_batch_duplicate": "Dezelfde renner is twee keer gekozen",
     "contract_batch_rejected": "Sommige contracten kunnen niet worden verlengd. Er is niets gewijzigd",
     "contract_batch_salary_cap": "Deze verlengingen zouden je totale salaris boven het plafond van het bestuur van {cap} CZ$ brengen. Er is niets gewijzigd",
-    "contract_batch_write_failed": "Er ging iets mis bij het opslaan van een contract. Er is niets gewijzigd"
+    "contract_batch_write_failed": "Er ging iets mis bij het opslaan van een contract. Er is niets gewijzigd",
+    "contract_batch_partial": "Sommige contracten veranderden tijdens het verlengen en niet alles kon worden teruggedraaid. Controleer de renners hieronder"
   }
 }
