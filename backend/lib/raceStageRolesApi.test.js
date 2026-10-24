@@ -690,7 +690,8 @@ test("getStageRolesContext (#6739): 2 udtagne har kørt et andet løb samme løb
   const lockRow = (id) => ({ rider_id: id, tick_date: "2999-01-01", team_id: "team-1", pressed_at: "2999-01-01T07:04:00Z" });
   const ctx = await getStageRolesContext({
     supabase: makeContextSupabase({ entries: SIX_ENTRIES, riders: OUTLOOK_RIDERS, schedule, locks: OUTLOOK_RIDERS.map((r) => lockRow(r.id)), spent: ["r5", "r6"] }),
-    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1",
+    // Codex P1 (#7159): fast ur, som nabotesten (AGENTS.md rule 16).
+    race: { id: "race-1", stages: 6, stages_completed: 0 }, teamId: "team-1", now: NOW_6740,
   });
   assert.deepEqual(ctx.start_outlook, { starts: true, min: 6, reason: null });
 });
