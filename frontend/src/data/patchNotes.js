@@ -172,6 +172,23 @@ export const PATCHES = [
         "refs": [
           7033
         ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board room shows no wrong numbers",
+          "body": "I removed the weekly confidence change and the standing trend arrow, which showed wrong numbers. Confidence, targets and cards are unchanged."
+        },
+        "da": {
+          "title": "Bestyrelsen viser ikke længere forkerte tal",
+          "body": "Jeg har fjernet den ugentlige ændring i tillid og trend-pilen ved stillingen, fordi de viste forkerte tal. Tillid, mål og kort er uændrede."
+        },
+        "refs": [
+          6935
+        ]
       }
     ]
   },
