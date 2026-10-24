@@ -19,13 +19,14 @@ test("holdsiden: fanen og truppens sortering står i URL'en (bugfix: nulstilles 
   const team = readFileSync(join(__dirname, "../../pages/TeamPage.jsx"), "utf8");
   assert.match(team, /useClientRiderFilters\(displayRidersBase, seasonYear, readSquadSort\(searchParams\)\)/);
   assert.match(team, /writeSortParams\(prev, SQUAD_SORT_PARAM, SQUAD_DIR_PARAM, next\)/);
-  assert.match(team, /TEAM_TABS\.includes\(tabParams\.get\("tab"\)\)/);
+  assert.match(team, /const requestedTab = tabParams\.get\("tab"\) \?\? "";/);
+  assert.match(team, /TEAM_TABS\.includes\(requestedTab\)/);
   assert.match(team, /\{ key: "contracts", label: t\("tabs\.contracts"\) \}/);
 });
 
 test("tal kommer fra backendens quote, ikke fra en frontend-kopi af løn-formlen", () => {
   assert.match(src, /riders\/extend-contracts\/quote/);
-  assert.match(src, /"riders\/extend-contracts"/);
+  assert.match(src, /"\/api\/riders\/extend-contracts"/);
   assert.doesNotMatch(src, /computeContractExtension|computeFrozenSalary|SALARY_RATE/);
 });
 

@@ -1019,7 +1019,8 @@ export function TeamPage() {
   const [riders, setRiders] = useState([]);
   // #6855: fanen står i URL'en (?tab=), så "tilbage" fra en rytter lander på samme fane.
   const [tabParams, setTabParams] = useSearchParams();
-  const activeTab = TEAM_TABS.includes(tabParams.get("tab")) ? tabParams.get("tab") : "squad";
+  const requestedTab = tabParams.get("tab") ?? "";
+  const activeTab = TEAM_TABS.includes(requestedTab) ? requestedTab : "squad";
   const setActiveTab = (key) => setTabParams((prev) => { const next = new URLSearchParams(prev); next.set("tab", key); return next; }, { replace: true });
   // #5075: gruppe-filteret boede tidligere kun i SquadTab — Stats-fanen
   // manglede dermed helt til-/fravalget af akademiryttere. Løftet herop, så

@@ -324,7 +324,7 @@ export function installPreviewMock() {
       // #6855: Kontrakter-fanens quote + batch-forlængelse.
       if (/\/api\/riders\/extend-contracts/.test(url)) {
         let body = null;
-        if (init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        if (init && typeof init.body === "string") { try { body = JSON.parse(init.body); } catch { body = null; } }
         const res = contractsBatchMockRoute(method, new URL(url, window.location.origin).pathname, body);
         if (res) return jsonResponse(res.body, res.status);
       }

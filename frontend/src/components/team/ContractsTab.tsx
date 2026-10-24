@@ -145,10 +145,11 @@ type Summary =
   | { status: "error"; message: string; errors: QuoteError[] }
   | { status: "ready"; data: QuoteResponse };
 
+// Fuld literal sti ("/api/..."), så feature-liveness-audittens Detector B kan matche kaldet.
 async function postJson(path: string, body: unknown): Promise<{ ok: boolean; status: number; data: unknown }> {
   const headers = await authHeaders();
   if (!headers) return { ok: false, status: 401, data: { errorCode: "session_expired" } };
-  const res = await apiFetch(`${API}/api/${path}`, { method: "POST", headers, body: JSON.stringify(body) });
+  const res = await apiFetch(`${API}${path}`, { method: "POST", headers, body: JSON.stringify(body) });
   if (res.networkError) return { ok: false, status: 0, data: { errorCode: "network" } };
   return { ok: res.ok, status: res.status, data: res.data };
 }
@@ -181,7 +182,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
     }
     setBase({ status: "loading" });
     try {
-      const res = await postJson("riders/extend-contracts/quote", {
+      const res = await postJson("/api/riders/extend-contracts/quote", {
         items: riders.map((r) => ({ riderId: r.id, seasons: 1 })),
       });
       if (!res.ok) { setBase({ status: "error" }); return; }
@@ -290,7 +291,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
   async function openSummary() {
     setSummary({ status: "loading" });
     try {
-      const res = await postJson("riders/extend-contracts/quote", { items: buildItems(selection, common) });
+      const res = await postJson("/api/riders/extend-contracts/quote", { items: buildItems(selection, common) });
       if (!res.ok) {
         const body = (res.data ?? {}) as ApiErrorBody;
         setSummary({ status: "error", message: resolveApiError(body, tr, t("contracts.summary.loadError")), errors: [] });
@@ -306,7 +307,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
     setSaving(true);
     try {
       const items = buildItems(selection, common);
-      const res = await postJson("riders/extend-contracts", { items });
+      const res = await postJson("/api/riders/extend-contracts", { items });
       const body = (res.data ?? {}) as ApiErrorBody;
       if (!res.ok) {
         setSummary({

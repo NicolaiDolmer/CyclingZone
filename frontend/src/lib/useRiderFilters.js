@@ -45,6 +45,7 @@ const ABILITY_SET = new Set(ABILITY_KEYS);
 // gætte med dags dato.
 // #6855: `initialFilters` (valgfri) lader en side starte med fx en sortering
 // læst fra URL'en, så den overlever navigation væk og tilbage.
+/** @param {Record<string, unknown> | null} [initialFilters] */
 export function useClientRiderFilters(riders = [], seasonYear = null, initialFilters = null) {
   const [filters, setFilters] = useState(() => ({ ...DEFAULT_FILTERS, ...(initialFilters || {}) }));
 
