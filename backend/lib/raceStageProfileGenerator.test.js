@@ -1857,6 +1857,9 @@ test("#2757 property: generatoren giver samme etaper (multisæt, indhold) i en r
     if (JSON.stringify(varied) !== JSON.stringify(crescendo)) {
       reordered += 1;
       assert.equal(isAscendingOrder(varied.map((p) => p.profile_type)), false, `${where}: stadig skabelonen`);
+      // Codex P2: højst to ens etapetyper i træk, eller løbets eget længste løb (CALENDAR_RULES §7f).
+      const run = (ts) => ts.reduce((acc, t, i) => { acc.cur = i && t === ts[i - 1] ? acc.cur + 1 : 1; acc.max = Math.max(acc.max, acc.cur); return acc; }, { cur: 0, max: 0 }).max;
+      assert.ok(run(varied.map((p) => p.profile_type)) <= Math.max(2, run(crescendo.map((p) => p.profile_type))), `${where}: for mange ens i træk`);
     }
     if (race.terrain_archetype !== "grand_tour") {
       before.push({ key: where, types: crescendo.map((p) => p.profile_type) });

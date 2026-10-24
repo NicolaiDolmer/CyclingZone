@@ -2189,7 +2189,7 @@ export function ensureFlatStageS5(race, stages) {
 // samme indhold, kun nyt etapenummer. Fast står: finalen (sidste etape), tidskørslerne,
 // signatur-etaperne (#6857) og kongeetapen (den seneste af løbets hårdeste etaper, så GC
 // stadig afgøres sent som i rigtige en-uges-løb). Resten stilles i en rækkefølge der ikke er
-// skabelonen, uden flere ens etaper i træk end før og uden bjergetape som åbning (medmindre
+// skabelonen, med højst to ens etapetyper i træk (eller løbets eget længste løb) og uden bjergetape som åbning (medmindre
 // løbet åbnede sådan), valgt deterministisk pr. løb (egen rng-strøm) og vægtet efter hvor
 // etapetyperne ligger i rigtige en-uges-løb. Samme funktion bruges af s5FlatStageA2_2757.js på
 // S5's skrevne ruter, så generator og prod følger samme regel. A2 lægges ovenpå bagefter.
