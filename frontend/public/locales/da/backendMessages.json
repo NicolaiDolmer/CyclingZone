@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "Resultat er klar",
-      "message": "{race} er kørt. Se resultatet."
+      "message": "{race} er kørt. Se resultatet.",
+      "messageBest": "{race} er kørt. Dine bedste: {riders}."
     },
     "firstRaceResult": {
       "title": "Dit første løb er kørt",
-      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig."
+      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig.",
+      "messageBest": "{race} er kørt. Dine bedste: {riders}."
     },
     "stageResult": {
       "title": "Etaperesultat er klar",
