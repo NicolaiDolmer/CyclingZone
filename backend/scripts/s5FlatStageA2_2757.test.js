@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 
 import {
   parseArgs, expandSnapshot, buildA2Plan, evaluateGates, buildBackupSql, buildRestoreSql, diffAgainstCurrent,
-  applyPlan, postVerify, renderA2Html, renderA2Markdown, writeContent, violationKey, detectSeasonVariant, INPUT_FORMAT, A2_WRITE_COLUMNS,
+  applyPlan, postVerify, renderA2Html, renderA2Markdown, writeContent, violationKey, detectSeasonVariant, approvedPlanFrom, liveStateViolations, planHashOf,
+  INPUT_FORMAT, A2_WRITE_COLUMNS,
 } from "./s5FlatStageA2_2757.js";
 
 const RACE_A1 = "11111111-1111-4111-8111-111111111111";
@@ -179,4 +180,43 @@ test("detectSeasonVariant: finder divisionens gen-træk ud fra de skrevne ruter;
   }
   const odd = generateRaceStageProfiles({ ...seed, season_variant: 0 }, { profileModel: "s5", a2FlatStage: false }).map((p) => ({ ...p, distance_km: 1 }));
   assert.equal(detectSeasonVariant(seed, odd), null);
+});
+
+test("apply genoptager den godkendte plan efter en delvis kørsel og nægter at skrive ved drift", async () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  const doc = JSON.parse(JSON.stringify({ planHash: plan.planHash, gates: { ok: true }, plan }));
+  const approved = approvedPlanFrom(doc, plan.planHash);
+  assert.equal(planHashOf(approved.items), plan.planHash);
+  assert.throws(() => approvedPlanFrom(doc, "b".repeat(64)), /hash/);
+  const tampered = JSON.parse(JSON.stringify(doc));
+  tampered.plan.items[0].content.distance_km = 1;
+  assert.throws(() => approvedPlanFrom(tampered, plan.planHash), /hash/);
+  // Delvis kørsel: kun den første etape blev skrevet, så fejlede forbindelsen.
+  const db = fakeDb(input);
+  const failing = { ...db, updateStage: async (raceId, stageNumber, content) => { if (db.writes.length) throw new Error("netværk"); return db.updateStage(raceId, stageNumber, content); } };
+  await assert.rejects(applyPlan({ db: failing, plan: approved, backupTable: "backup_2757_race_stage_profiles_20261024" }), /netværk/);
+  assert.equal(db.writes.length, 1);
+  // Planen bygget om fra prod nu ville være en anden (løbet har en flad etape), men den godkendte genoptages.
+  const rebuilt = buildA2Plan({ ...input, profiles: db.rows });
+  assert.notEqual(rebuilt.planHash, plan.planHash);
+  assert.deepEqual(await applyPlan({ db, plan: approved, backupTable: "backup_2757_race_stage_profiles_20261024" }), { written: 1, skipped: 1 });
+  assert.equal((await postVerify({ db, plan: approved })).ok, true);
+  // Drift: en etape der hverken er dry-runnets eller planens, stopper alt.
+  const drifted = fakeDb(input);
+  const slot = drifted.rows.find((r) => r.race_id === RACE_A2 && r.stage_number === plan.items[1].stage_number);
+  slot.profile_type = "medium_mountain";
+  await assert.rejects(applyPlan({ db: drifted, plan: approved, backupTable: "backup_2757_race_stage_profiles_20261024" }), /ændret siden/);
+  assert.equal(drifted.writes.length, 0);
+});
+
+test("liveStateViolations: et startet løb, en claim eller et manglende løb stopper apply", () => {
+  const input = expandSnapshot(snapshot());
+  const plan = buildA2Plan(input);
+  assert.deepEqual(liveStateViolations(input, plan), []);
+  const started = expandSnapshot(snapshot());
+  started.races[0].stages_completed = 2;
+  assert.match(liveStateViolations(started, plan).join(" "), /startet/);
+  assert.match(liveStateViolations({ ...input, claims: [{ race_id: RACE_A1, stage_index: 0 }] }, plan).join(" "), /claims/);
+  assert.match(liveStateViolations({ ...input, races: input.races.filter((r) => r.id !== RACE_A2) }, plan).join(" "), /findes ikke/);
 });

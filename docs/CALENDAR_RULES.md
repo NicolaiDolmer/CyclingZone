@@ -1258,6 +1258,19 @@ S5-kalenderen var skrevet (15/10), før løbsidentiteten (type, signatur, hånds
 
 **Motoren testes på de foreslåede ruter før apply** (ejer 19/10): `--routes-out=<mappe>` skriver én fil pr. løb i testportens format `cz-race-routes/v1` (`docs/MOTOR_TESTPORT.md`, "Foreslåede ruter", #6909) med præcis de rækker `--apply` ville skrive, og en `manifest.json`. Testporten læser mappen med `--routes-from`.
 
+## 7e. Ethvert etapeløb har mindst én flad etape (A2, ejer 24/10, [#2757](https://github.com/NicolaiDolmer/CyclingZone/issues/2757))
+
+Et etapeløb uden flad etape giver sprinteren ingen dag at vinde pointtrøjen på. Reglen gælder S5-modellen (`profileModel: "s5"`) for alle etapeløb, også ungdomskalendere og fremtidige sæsoner. v5 er uændret.
+
+- **Hvornår:** kun når løbet efter generatorens egne trin (identitet, Grand Tour-kvote eller arketype + divisionens filler-kvote) ingen flad etape har. Grand Tours og typer der garanterer en flad etape, rammes derfor sjældent eller aldrig.
+- **Hvilken etape:** en bakket eller kuperet etape (`rolling`/`hilly`), aldrig signatur-etapen (stigningen/sektoren med signaturens navn, eller tidskørslen for en enkeltstarts-signatur) og aldrig en topankomst (`long_climb` eller en stigning med top på stregen). Har løbet ingen sådan etape, forbliver det uden flad etape (rapporteres af tørkørslen).
+- **Placeringen varierer:** valget er deterministisk pr. løb (seed-nøgle + egen rng-strøm, så alle andre etaper er bit-identiske) og vægtet efter hvor flade etaper ligger i rigtige en-uges-løb ([research](research/2026-08-04-stage-race-structure/)): etape 1, første tredjedel, midten, sidste tredjedel og sidste etape.
+- **Etapen er en rigtig flad etape:** ny rute fra S5-rutegeneratoren på etapens egen rute-strøm (distance, højdemeter, stigninger, spurter, segmenter, vejr, højdeprofil), afslutning inden for matrixen for flad. Løbets `generator_version` bevares.
+- **Divisionens terræn-kvote** (§7c) fordeler filler-pladserne på før-A2-modellen og tæller derfor også før A2; A2 lægges på bagefter. Dæknings-gaterne (§5, rolling-båndet, §6b) dømmer det faktiske output med A2.
+- **Kode:** `raceStageProfileGenerator.chooseA2FlatStage` / `buildA2FlatStage` / `ensureFlatStageS5` (`a2FlatStage: false` giver før-A2-output til tests).
+
+**S5's skrevne ruter** rettes på stedet med `backend/scripts/s5FlatStageA2_2757.js` (samme funktioner, på løbets egen sæson-variant). Dry-run er standard: før/efter-rapport, ét billede af alle berørte løb, gaterne (§5, rolling-båndet og §6b før/efter, kun nye brud blokerer; placerings-gaterne; benchmark-gatens etape-tjek; `calendarInvariantsCiGate4123`) og `backup.sql`/`restore.sql`, alt i `balance-internals/2757-a2/`. Apply kræver ejerens godkendelse af billedet: `--apply --owner-go --backup-table=backup_2757_race_stage_profiles_YYYYMMDD --plan-hash=<hash> --plan-file=<dry-runnets a2-dry-run.json>`. Apply bruger den godkendte plan (bygger den aldrig om), opdaterer kun den valgte etape pr. løb på samme række, nægter at skrive hvis en etape er ændret siden dry-runnet, og er genoptagelig.
+
 ---
 
 ## 8. Rytterbinding og trupkrav

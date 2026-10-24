@@ -19,11 +19,13 @@
 //      restore.sql til balance-internals/2757-a2/ (gitignoreret, hard rule 17).
 //
 // --apply (FØRST efter ejerens godkendelse af billedet) kræver --apply --owner-go
-// --backup-table=backup_2757_race_stage_profiles_YYYYMMDD --plan-hash=<dry-runnets hash>. Apply
-// genlæser prod, kræver samme plan-hash, at backup-tabellen (med RLS) dækker hver etape-plads der
-// skrives, og at ingen af løbene er startet. Den opdaterer kun den valgte etape pr. løb (UPDATE på
-// (race_id, stage_number), samme række-id) og post-verificerer. Idempotent: en etape der allerede
-// er planen, springes over.
+// --backup-table=backup_2757_race_stage_profiles_YYYYMMDD --plan-hash=<dry-runnets hash> [--plan-file=
+// <dry-runnets a2-dry-run.json>]. Apply bruger den GODKENDTE plan fra filen (bygger den aldrig om),
+// kræver at hashen passer, at dry-runnets gater var grønne, at løbene stadig ikke er startet (læst
+// fra prod nu), at backup-tabellen (med RLS) dækker hver etape-plads, og at hver etape enten stadig
+// er dry-runnets etape eller allerede planen (ellers skrives intet). Den opdaterer kun den valgte
+// etape pr. løb (UPDATE på (race_id, stage_number), samme række-id) og post-verificerer.
+// Idempotent og genoptagelig: samme kommando igen springer de skrevne etaper over.
 //
 //   infisical run --env=prod --silent -- node backend/scripts/s5FlatStageA2_2757.js [--out=...]
 //   node backend/scripts/s5FlatStageA2_2757.js --input=balance-internals/2757-a2/input.json
@@ -92,12 +94,12 @@ function groupBy(rows, key) {
 
 // ── Argumenter ────────────────────────────────────────────────────────────────────────
 
-const VALUE_FLAGS = new Set(["season", "input", "out", "backup-table", "plan-hash", "playwright"]);
+const VALUE_FLAGS = new Set(["season", "input", "out", "backup-table", "plan-hash", "plan-file", "playwright"]);
 const BOOL_FLAGS = new Set(["apply", "owner-go", "no-png", "no-ci-gate"]);
 
 /** @param {string[]} argv process.argv.slice(2) */
 export function parseArgs(argv = []) {
-  const o = { apply: false, ownerGo: false, noPng: false, noCiGate: false, season: TARGET_SEASON_NUMBER, input: null, out: null, backupTable: null, planHash: null, playwright: null };
+  const o = { apply: false, ownerGo: false, noPng: false, noCiGate: false, season: TARGET_SEASON_NUMBER, input: null, out: null, backupTable: null, planHash: null, planFile: null, playwright: null };
   const camel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -124,7 +126,7 @@ export function parseArgs(argv = []) {
     if (!o.planHash || !/^[0-9a-f]{64}$/.test(o.planHash)) throw new Error("--apply kræver --plan-hash=<dry-runnets plan-hash>");
   } else {
     if (o.ownerGo) throw new Error("--owner-go hører kun til --apply");
-    if (o.backupTable || o.planHash) throw new Error("--backup-table/--plan-hash hører kun til --apply");
+    if (o.backupTable || o.planHash || o.planFile) throw new Error("--backup-table/--plan-hash/--plan-file hører kun til --apply");
   }
   return o;
 }
@@ -303,7 +305,7 @@ export function buildA2Plan(input) {
     items.push(item);
   }
   items.sort((a, b) => (a.tier - b.tier) || a.name.localeCompare(b.name) || (a.league_division_id - b.league_division_id) || a.race_id.localeCompare(b.race_id));
-  const planHash = sha256(canonicalJson(items.map((it) => ({ race_id: it.race_id, stage_number: it.stage_number, content: it.content }))));
+  const planHash = planHashOf(items);
   return { seasonId: season.id, items, unresolved, planErrors, planHash, routes: byRoute.size };
 }
 
@@ -501,23 +503,69 @@ commit;
 }
 
 /** Hvilke etaper skal skrives? En etape der allerede er planen, springes over (idempotent). */
+/**
+ * Hver plan-etape mod databasen lige nu: `done` = allerede planen, `toWrite` = stadig den etape
+ * dry-runnet så (type, afslutning, distance, højdemeter), `drift` = hverken eller (ændret siden).
+ */
 export function diffAgainstCurrent(plan, currentRows) {
   const cur = new Map(currentRows.map((r) => [`${r.race_id}|${r.stage_number}`, r]));
   const toWrite = [];
   const done = [];
+  const drift = [];
+  const same = (a, b) => (a == null && b == null) || (a != null && b != null && Number(a) === Number(b));
   for (const it of plan.items) {
     const row = cur.get(`${it.race_id}|${it.stage_number}`);
     if (row && canonicalJson(writeContent(row)) === canonicalJson(it.content)) done.push(it);
-    else toWrite.push(it);
+    else if (row && row.profile_type === it.old?.profile_type && row.finale_type === it.old?.finale_type
+      && same(row.distance_km, it.old?.distance_km) && same(row.elevation_gain_m, it.old?.elevation_gain_m)) toWrite.push(it);
+    else drift.push(it);
   }
-  return { toWrite, done };
+  return { toWrite, done, drift };
 }
 
-/** UPDATE pr. etape; backuppen skal dække hver plads først. */
+/** Plan-hashen over planens etaper (race_id, etape, indhold). */
+export function planHashOf(items) {
+  return sha256(canonicalJson(items.map((it) => ({ race_id: it.race_id, stage_number: it.stage_number, content: it.content }))));
+}
+
+/**
+ * Den godkendte plan fra dry-runnets a2-dry-run.json. Apply bygger ALDRIG planen om fra prod:
+ * efter en delvis kørsel har løbene allerede en flad etape, og en genberegnet plan ville se
+ * anderledes ud. Hashen over etaperne skal være præcis den ejeren godkendte.
+ * @param {any} doc  a2-dry-run.json @param {string} expectedHash
+ */
+export function approvedPlanFrom(doc, expectedHash) {
+  const items = doc?.plan?.items;
+  if (!Array.isArray(items) || !items.length) throw new Error("plan-filen har ingen etaper");
+  const hash = planHashOf(items);
+  if (hash !== expectedHash || doc.planHash !== expectedHash) throw new Error(`plan-filens hash er ${hash}, ikke ${expectedHash}. Intet skrevet.`);
+  return { ...doc.plan, items, planHash: hash };
+}
+
+/** Løbstilstanden for planens løb, læst fra prod lige før apply (tom liste = grøn). */
+export function liveStateViolations(input, plan) {
+  const ids = new Set(plan.items.map((it) => it.race_id));
+  const races = input.races.filter((r) => ids.has(r.id));
+  const out = [];
+  if (input.season?.number !== TARGET_SEASON_NUMBER) out.push(`sæsonen er ${input.season?.number}, ikke ${TARGET_SEASON_NUMBER}`);
+  if (races.length !== ids.size) out.push(`${ids.size - races.length} af planens løb findes ikke i S5`);
+  const started = races.filter((r) => Number(r.stages_completed ?? 0) !== 0);
+  if (started.length) out.push(`${started.length} løb er startet`);
+  const claims = (input.claims ?? []).filter((c) => ids.has(c.race_id));
+  if (claims.length) out.push(`${claims.length} claims på løbene`);
+  const bound = races.filter((r) => r.engine_rules_revision != null);
+  if (bound.length) out.push(`${bound.length} løb er bundet til en motor-revision`);
+  const manual = input.profiles.filter((p) => ids.has(p.race_id) && p.is_manual === true);
+  if (manual.length) out.push(`${manual.length} håndredigerede profiler`);
+  return out;
+}
+
+/** UPDATE pr. etape; backuppen skal dække hver plads først, og ingen etape må have flyttet sig. */
 export async function applyPlan({ db, plan, backupTable, log = () => {} }) {
   const ids = [...new Set(plan.items.map((it) => it.race_id))];
   const current = ids.length ? await db.fullProfilesOf(ids) : [];
-  const { toWrite, done } = diffAgainstCurrent(plan, current);
+  const { toWrite, done, drift } = diffAgainstCurrent(plan, current);
+  if (drift.length) throw new Error(`${drift.length} etaper er hverken dry-runnets etape eller planen (ændret siden): ${drift.map((it) => `${it.name} e${it.stage_number}`).join(", ")}. Intet skrevet.`);
   if (done.length) log(`${done.length} etaper er allerede planen (springes over)`);
   if (!toWrite.length) return { written: 0, skipped: done.length };
   const covered = await db.backupSlots(backupTable, [...new Set(toWrite.map((it) => it.race_id))]);
@@ -677,46 +725,53 @@ async function main() {
   const db = raw ? createSupabaseA2Db(opts.apply ? raw : createReadOnlyClient(raw)) : null;
   const input = opts.input ? expandSnapshot(JSON.parse(readFileSync(resolve(opts.input), "utf8"))) : await loadA2Input(db, opts.season);
   log(`Kilde: ${input.source} · ${input.races.length} seniorløb · ${input.profiles.length} profilrækker`);
+
+  if (opts.apply) {
+    // ── APPLY: den godkendte plan (dry-runnets fil), aldrig en genberegnet ──
+    const planFile = resolve(opts.planFile ?? join(outDir, "a2-dry-run.json"));
+    const doc = JSON.parse(readFileSync(planFile, "utf8"));
+    if (doc?.gates?.ok !== true) throw new Error(`dry-runnets gater var ikke grønne (${planFile}). Intet skrevet.`);
+    const plan = approvedPlanFrom(doc, opts.planHash);
+    log(`Godkendt plan: ${plan.items.length} etaper fra ${planFile}`);
+    const state = liveStateViolations(input, plan);
+    if (state.length) throw new Error(`løbstilstanden er ændret: ${state.join(" · ")}. Intet skrevet.`);
+    const res = await applyPlan({ db, plan, backupTable: opts.backupTable, log });
+    log(`Skrevet: ${res.written} etaper · allerede planen: ${res.skipped}`);
+    const verify = await postVerify({ db, plan });
+    log(`${mark(verify.ok)} post-verify: ${verify.mismatched} etaper afviger fra planen, ${verify.noFlat} løb uden flad etape`);
+    if (!verify.ok) {
+      console.error(`❌ post-verify fejlede. Kør samme kommando igen (den genoptager), eller rul tilbage med restore.sql (ejer-gated).`);
+      process.exitCode = 1;
+    }
+    return;
+  }
+
   const plan = buildA2Plan(input);
-  const ciGate = opts.noCiGate || opts.apply ? null : runCiGate();
+  const ciGate = opts.noCiGate ? null : runCiGate();
   const gates = evaluateGates({ input, plan, ciGate });
   for (const c of gates.checks) log(`${mark(c.ok)} ${c.name}${c.detail ? ` (${c.detail})` : ""}`);
   log(`Plan: ${plan.items.length} løb (${plan.routes} ruter) · plan-hash ${plan.planHash}`);
 
-  if (!opts.apply) {
-    mkdirSync(outDir, { recursive: true });
-    const table = `backup_2757_race_stage_profiles_${day.replace(/-/g, "")}`;
-    writeFileSync(join(outDir, "a2-dry-run.md"), renderA2Markdown({ input, plan, gates, generatedAt }), "utf8");
-    writeFileSync(join(outDir, "a2-dry-run.json"), `${JSON.stringify({ generatedAt, source: input.source, planHash: plan.planHash, gates, plan }, null, 2)}\n`, "utf8");
-    if (plan.items.length) {
-      writeFileSync(join(outDir, "backup.sql"), buildBackupSql(table, plan.items), "utf8");
-      writeFileSync(join(outDir, "restore.sql"), buildRestoreSql(table, plan.items), "utf8");
-    }
-    const html = renderA2Html({ plan, gates, generatedAt });
-    writeFileSync(join(outDir, "a2-flad-etape.html"), html, "utf8");
-    if (!opts.noPng) {
-      const pw = opts.playwright ?? join(REPO_ROOT, "frontend", "node_modules", "@playwright", "test", "index.mjs");
-      const why = await renderPng(html, join(outDir, "a2-flad-etape.png"), pw);
-      log(why ? `⚠ PNG ikke lavet: ${why}` : `Billede: ${join(outDir, "a2-flad-etape.png")}`);
-    }
-    log(`Rapport: ${join(outDir, "a2-dry-run.md")}`);
-    log(`Apply (KUN efter ejerens godkendelse af billedet; kør backup.sql først):`);
-    log(`  infisical run --env=prod --silent -- node backend/scripts/s5FlatStageA2_2757.js --apply --owner-go --backup-table=${table} --plan-hash=${plan.planHash}`);
-    process.exitCode = gates.ok ? 0 : 1;
-    return;
+  mkdirSync(outDir, { recursive: true });
+  const table = `backup_2757_race_stage_profiles_${day.replace(/-/g, "")}`;
+  const planPath = join(outDir, "a2-dry-run.json");
+  writeFileSync(join(outDir, "a2-dry-run.md"), renderA2Markdown({ input, plan, gates, generatedAt }), "utf8");
+  writeFileSync(planPath, `${JSON.stringify({ generatedAt, source: input.source, planHash: plan.planHash, gates, plan }, null, 2)}\n`, "utf8");
+  if (plan.items.length) {
+    writeFileSync(join(outDir, "backup.sql"), buildBackupSql(table, plan.items), "utf8");
+    writeFileSync(join(outDir, "restore.sql"), buildRestoreSql(table, plan.items), "utf8");
   }
-
-  // ── APPLY ──
-  if (!gates.ok) throw new Error(`gaterne er røde, intet skrevet: ${gates.violations.join(" · ")}`);
-  if (plan.planHash !== opts.planHash) throw new Error(`plan-hashen er ${plan.planHash}, ikke ${opts.planHash}: noget har flyttet sig siden dry-runnet. Kør dry-runnet igen. Intet skrevet.`);
-  const res = await applyPlan({ db, plan, backupTable: opts.backupTable, log });
-  log(`Skrevet: ${res.written} etaper · allerede planen: ${res.skipped}`);
-  const verify = await postVerify({ db, plan });
-  log(`${mark(verify.ok)} post-verify: ${verify.mismatched} etaper afviger fra planen, ${verify.noFlat} løb uden flad etape`);
-  if (!verify.ok) {
-    console.error(`❌ post-verify fejlede. Rul tilbage med restore.sql fra dry-runnet (ejer-gated).`);
-    process.exitCode = 1;
+  const html = renderA2Html({ plan, gates, generatedAt });
+  writeFileSync(join(outDir, "a2-flad-etape.html"), html, "utf8");
+  if (!opts.noPng) {
+    const pw = opts.playwright ?? join(REPO_ROOT, "frontend", "node_modules", "@playwright", "test", "index.mjs");
+    const why = await renderPng(html, join(outDir, "a2-flad-etape.png"), pw);
+    log(why ? `⚠ PNG ikke lavet: ${why}` : `Billede: ${join(outDir, "a2-flad-etape.png")}`);
   }
+  log(`Rapport: ${join(outDir, "a2-dry-run.md")}`);
+  log(`Apply (KUN efter ejerens godkendelse af billedet; kør backup.sql først):`);
+  log(`  infisical run --env=prod --silent -- node backend/scripts/s5FlatStageA2_2757.js --apply --owner-go --backup-table=${table} --plan-hash=${plan.planHash} --plan-file=${planPath}`);
+  process.exitCode = gates.ok ? 0 : 1;
 }
 
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
