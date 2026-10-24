@@ -302,7 +302,10 @@ export type KnownTimelineEventType =
   | "finale_attack"
   | "sprint_decided"
   | "finish"
-  | "gc_change";
+  | "gc_change"
+  // #6804 P2 (ADDITIV, KUN s5_profiles_v3): forspringet vokser forbi det feltet tolererer,
+  // fordi intet hold vil jage (mechanics/breakawayV3_6804.ts). params: { group_id }.
+  | "breakaway_unchased";
 
 export type TimelineEvent = {
   km: number; // [0, distance_km], 2 decimaler
@@ -768,6 +771,8 @@ export type SegmentHookContext = {
   s5ProfilesV1?: true;
   // #6748 (ADDITIVT og VALGFRIT, KUN s5_profiles_v2, slukket): udbrudsopfoelgningen. Udeladt = v1.
   s5ProfilesV2?: true;
+  // #6804 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts). Udeladt = v2.
+  s5ProfilesV3?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

@@ -65,10 +65,10 @@ function canned(teams) {
   return out;
 }
 
-async function startField(teams, { race = RACE, spent = [] } = {}) {
+async function startField(teams, { race = RACE, spent = [], schedule = [] } = {}) {
   const dropped = [];
   const entrants = await loadEntrantsForRace({
-    supabase: makeFilterAwareSupabase({ ...canned(teams), spent }), race, stages: STAGES,
+    supabase: makeFilterAwareSupabase({ ...canned(teams), spent, race_stage_schedule: schedule }), race, stages: STAGES,
     allowAutofill: true, persist: false, onTeamsDropped: (ids) => dropped.push(...ids),
   });
   const countByTeam = {};
@@ -116,9 +116,18 @@ test("regel B: alle udtagne skadede, 2 frie -> assistenten redder holdet med 2 (
 
 test("regel B: en skadet rytter der OGSÅ har brugt løbsdagen tæller ikke som skade (Codex P1)", async () => {
   const race = { ...RACE, season_id: "s1" };
-  // 6 udtaget, A-r0 skadet og spent: 5 raske + 0 skadede der tæller = 5 -> gulvet gælder.
-  const spentToo = await startField({ A: { entered: 6, injured: 1 } }, { race, spent: ["A-r0"] });
+  // 6 udtaget, 3 skadede, A-r0 også spent: regel B ser 3 raske + 2 skadede = 5 -> ikke
+  // skade-kort. Regel A (#6739) kræver mindst 4 -> gulvet gælder.
+  const spentToo = await startField({ A: { entered: 6, injured: 3 } }, { race, spent: ["A-r0"] });
   assert.equal(spentToo.countByTeam.A, undefined);
+  // Endagsløb: regel A (#6739) gælder kun etapeløb, så 5 raske + spent-skadet = gulvet.
+  const oneDay = await startField({ A: { entered: 6, injured: 1 } }, { race, spent: ["A-r0"] });
+  assert.equal(oneDay.countByTeam.A, undefined);
+  // #6739 (regel A, etapeløb): A-r0 kørte et andet løb samme løbsdag (overlap), så holdet
+  // starter med de 5 raske.
+  const overlapDay = await startField({ A: { entered: 6, injured: 1 } }, { race: { ...race, race_type: "stage_race", stages: 3 }, spent: ["A-r0"],
+    schedule: [{ race_id: RACE.id, stage_number: 1, game_day: 1, scheduled_at: "2026-10-28T15:00:00Z" }] });
+  assert.equal(overlapDay.countByTeam.A, 5);
   // Kontrol: samme hold uden spent starter med 5.
   const injuredOnly = await startField({ A: { entered: 6, injured: 1 } }, { race });
   assert.equal(injuredOnly.countByTeam.A, 5);
