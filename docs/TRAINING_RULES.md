@@ -39,6 +39,29 @@ et skifte. Admin får dato, hold og årsag før første irreversible handling. D
 ikke kl. 20-reglen eller udbyttet ved manuel træning. Faste tests bruger
 25/10/2026 kl. 20 Copenhagen (19:00Z); databaseopslag er lokale syntetiske fixtures.
 
+### Skiftet er afkoblet fra aftenkørslen (#6924, ejer-beslutning B 20/10)
+
+Aftenkørslen (`loadTrainingDateIndex`) afregner også sidste træningsdato i den senest
+afsluttede sæson (`status = completed`), som en almindelig dato og ikke som historisk
+review. Vinduet er fra datoens kl. 20 til og med dagen efter; derefter gælder den
+gamle regel (uafregnet arbejde går til `historical_season_requires_review`). Datoen er
+den samme som gatens (`loadFinalTrainingDate`). Præcis én afregning sikres af det
+varige arbejde: `complete`/`needs_reconciliation` springes over, og kvitteringer er
+pr. løbsdag.
+
+Afregningen ser sæsonen, som den var ved skæringstidspunktet: sæsonafslutningens claim
+(`season_end_claims.claimed_at`), ellers transitionens `end_date`, ellers datoens slut.
+Holdets løbsdage følger puljen i sæsonens `season_standings` (op/nedrykning skriver
+`teams.league_division_id` om). Hold parkeret af sæsonafslutningen afregnes for datoen.
+Ryttere oprettet efter skæringstidspunktet og hold startet eller vendt tilbage efter det
+hører til den nye sæson. Ryttere, der forlader holdet ved skiftet (frigivet eller
+pensioneret) før aftenkørslen, afregnes ikke på datoen.
+
+Gaten er lempet tilsvarende: på selve sidste dato før kl. 20 blokerer uafregnet træning
+ikke længere. Resultatet er `deferred` med dato og hold, og sæsonen kan afsluttes når
+som helst den dag. Fra kl. 20 og alle senere dage kræves bevis som før, fordi uafregnet
+arbejde så betyder en fejl i kørslen. Læsefejl og manglende kalender fejler fortsat lukket.
+
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 
 Ejeren har godkendt beregning af dokumenterede manglende slots med nuværende
