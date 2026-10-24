@@ -10,7 +10,6 @@
     "backend/lib/economyEngine.js": 1,
     "backend/lib/fictionalRiderGenerator.js": 4,
     "backend/lib/loanEngine.js": 3,
-    "backend/lib/pcmResultsImport.js": 4,
     "backend/lib/prizePayoutEngine.js": 2,
     "backend/lib/racePoolImport.js": 2,
     "backend/lib/raceSimulator.js": 2,

@@ -480,9 +480,7 @@ import {
   buildRaceResultsFromPending,
   rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
-import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
 import { getResultWebhooksAndLabel, sendWebhook } from "../lib/discordNotifier.js";
-import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
 import { generateRaceStageProfiles, toStageProfileRow } from "../lib/raceStageProfileGenerator.js";
@@ -9540,7 +9538,7 @@ router.post("/admin/riders/:id/retirement", requireAdmin, adminWriteLimiter, asy
 
 // POST /api/admin/import-results (Excel-upload) fjernet 2026-06-12 (#1180 pkt 3,
 // jf. #1179-kill-listen) — manuel resultat-upload døde med egen race-motor.
-// PCM-importen (/admin/import-results-pcm) er bevidst bevaret som nød-fallback.
+// PCM-importen (/admin/import-results-pcm) fjernet 2026-10-24 (#7082).
 
 // POST /api/admin/approve-results — approve pending race result submission
 router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (req, res) => {
@@ -15009,52 +15007,8 @@ router.post("/admin/discord/sync-division-roles", requireAdmin, adminWriteLimite
 // rytteres stats med et gammelt PCM-ark (spillet ejer selv stats efter #677),
 // og Sheets-resultatimport døde med egen race-motor jf. #1179-kill-listen.
 
-// POST /api/admin/import-results-pcm — importer PCM-resultatfiler (SpreadsheetML 2003).
-// Multi-fil pr. løb; body.dry_run="true" giver preview uden DB-writes. Felt-navn: "files".
-// GC-timing + hold-alias + eksakt navne-match håndteres i pcmResultsImport-pipelinen.
-router.post(
-  "/admin/import-results-pcm",
-  requireAdmin,
-  adminWriteLimiter,
-  adminImportUploadMultipleFiles,
-  async (req, res) => {
-    const files = (req.files || []).map((f) => ({
-      filename: f.originalname,
-      buffer: f.buffer,
-    }));
-    if (!files.length) {
-      return res.status(400).json({ error: "Ingen filer uploadet" });
-    }
-    const dryRun = req.body?.dry_run === "true" || req.body?.dry_run === true;
-
-    // Detaljeret Discord-notifikation pr. importeret løb (kun ved rigtig import).
-    const notifyDiscord = dryRun
-      ? null
-      : async ({ race, preview, resultRows }) => {
-          const { urls, label } = await getResultWebhooksAndLabel(race.league_division_id);
-          if (!urls.length) return;
-          const embed = buildPcmImportEmbed({ race, preview, resultRows, divisionLabel: label });
-          for (const url of urls) {
-            await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
-          }
-        };
-
-    try {
-      const result = await importPcmResults({
-        supabase,
-        files,
-        dryRun,
-        ensureSeasonStandings,
-        updateStandings,
-        notifyDiscord,
-        adminUserId: req.user.id,
-      });
-      res.json(result);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  },
-);
+// POST /api/admin/import-results-pcm (PCM-nødimport) fjernet 2026-10-24 (#7082):
+// ejer-beslutning, PCM-resultatimporten skal aldrig bruges igen.
 
 // GET /api/admin/race-engine-status — flag-state + scheduled løb med readiness (#1102)
 router.get("/admin/race-engine-status", requireAdmin, async (req, res) => {
