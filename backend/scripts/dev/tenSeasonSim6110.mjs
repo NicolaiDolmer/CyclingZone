@@ -45,6 +45,7 @@
 // Genkør på gemt billede (ingen prod-kald):
 //   node scripts/dev/tenSeasonSim6110.mjs --snapshot <fil>
 // Flag: --seasons 10 --race-days 160 --b-scales 0.75,1,1.25 --variants nu,nu_maks1,B
+//       --render-only (byg kortet af allerede koerte varianter i runs-<dato>/)
 //       --out-dir <mappe> (default <repo>/balance-internals/6110/s25) --limit-teams N
 //
 // Output (gitignoreret, må aldrig committes):
@@ -610,6 +611,17 @@ function renderCard(snapshot, results, opts, date) {
   L.push(`Øjebliksbillede: aktiv sæson ${snapshot.season.number}, taget ${snapshot.takenAt}. Simuleret: S${Number(snapshot.season.number) + 1} til S${Number(snapshot.season.number) + opts.seasons}, ${opts.raceDaysPerSeason} løbsdage pr. sæson (${opts.raceDaysPerDate} pr. dato). Assistenten styrer alle hold. Aldring = Udvikling 2.0 (#6499).`);
   L.push(`Varianter: ${v.join(" · ")}. B-normalisering (B@1): ${round(results.find((r) => r.variant.startsWith("B"))?.bNorm ?? NaN, 3) ?? "-"}. Løbsdags-andel uden måling (ung/ældre): ${results[0].raceShares.young} / ${results[0].raceShares.old}.`);
   L.push("");
+  L.push("## Overblik");
+  L.push("");
+  L.push("| Variant | % ved 22 (mål ~60) | % ved 25 (mål ~85) | Topalder | Max-rating slut | P99 slut | Top 50 ≤ 23 år slut | Pensioneret i alt | Nye unge i alt |");
+  L.push("|---|---|---|---|---|---|---|---|---|");
+  for (const r of results) {
+    const m = r.milestones.alle ?? {};
+    const end = r.seasons.at(-1);
+    const sum = (k) => r.transitions.reduce((s, t) => s + (t[k] ?? 0), 0);
+    L.push(`| ${r.variant} | ${m.pct22 ?? "-"} | ${m.pct25 ?? "-"} | ${m.peakAgeMedian ?? "-"} | ${end?.rating.max ?? "-"} | ${end?.rating.p99 ?? "-"} | ${end?.top50.le23 ?? "-"} | ${sum("retired")} | ${sum("inflow")} |`);
+  }
+  L.push("");
   L.push("## D1-milepæle (mål: ca. 60 % ved 22, ca. 85 % ved 25, top 27-28)");
   L.push("Median af rytterens rating ved alderen i % af hans observerede karrieretop. Kun ryttere hvis bane dækker 22 til mindst 27.");
   L.push("");
@@ -732,7 +744,7 @@ async function main() {
   const suffix = limitTeams ? `-hold${limitTeams}` : "";
   const runsDir = join(outDir, `runs-${date}${suffix}`);
   mkdirSync(runsDir, { recursive: true });
-  for (const variant of variantList(opts)) {
+  for (const variant of process.argv.includes("--render-only") ? [] : variantList(opts)) {
     const t0 = Date.now();
     const result = runVariant(snapshot, variant, opts);
     writeFileSync(join(runsDir, `${variant.name}.json`), JSON.stringify(result, null, 2) + "\n");
