@@ -15,7 +15,8 @@
 // Kilden til tider er motorens egen kodning (engine/v4, official_times_v2+):
 //   - `gap_update` udsendes pr. gruppe BAG fronten, kun når hullet har flyttet
 //     sig siden sidste melding (segmentLoop.ts). En gruppe uden ny melding har
-//     derfor stadig sit sidst meldte hul ("carried").
+//     derfor stadig sit sidst meldte hul ("carried"). Under s5_profiles_v3 melder
+//     et førende udbrud sig også på gab 0, med jagtafstand (#6814).
 //   - `params.exact_time` er gruppens ankomsttid (s siden start) på
 //     `params.exact_km` (exactPlace.ts). Førerens tid på et tjekpunkt er derfor
 //     exact_time - gap_seconds for enhver melding på det km.

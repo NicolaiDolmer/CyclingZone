@@ -287,6 +287,8 @@ Gælder med S5-revisionen (aktuel fra ejerens "tænd" 17/10); `official_times_v5
 
 Forspring der opstår af terrænet (udbruddet klatrer hurtigere end feltet) er ikke lad-gå-fasen og loftes ikke af P2.
 
+**Jagtafstand i løbsfilmen (#6814).** Dagens udbrud melder sin afstand til den gruppe der faktisk jager det på `gap_update` (`chase_group_id`, `separation_seconds`), også når udbruddet fører. Jagtgruppen er den samme som ved indhentningen (`findChaseGroup`), og et hentet udbrud får et sidste punkt på 0 med indhentningens jagtgruppe. Kun tidslinje-events: tider, grupper og resultater er uændrede. Det giver løbsfilmens gab-kurve noget at tegne. Test: `gapUpdatePursuit6814.test.ts`.
+
 Kode: `mechanics/breakawayV3_6804.ts`, `mechanics/gcThreat.ts` (`DangerModel.s5V3`), `progressChase` i `mechanics/breakaway.ts`. Test: `mechanics/breakawayV3P1_6804.test.ts`, `mechanics/breakawayV3P2_6804.test.ts`, `mechanics/breakawayV3P6_6804.test.ts`, `s5ProfilesV3Revision6804.test.ts`. Måling: testporten (`docs/MOTOR_TESTPORT.md`, G2 for forspringet, G11 for klassementsjagten).
 
 ## Udbruddets størrelse følger etapens profil under `orders_gc_v3` (#6201)
