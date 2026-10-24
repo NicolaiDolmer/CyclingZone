@@ -251,11 +251,13 @@
     },
     "raceResult": {
       "title": "Le résultat de la course est tombé",
-      "message": "{race} a été disputée. Voir le résultat."
+      "message": "{race} a été disputée. Voir le résultat.",
+      "messageBest": "{race} a été courue. Tes meilleurs : {riders}."
     },
     "firstRaceResult": {
       "title": "Ta première course est dans les annales",
-      "message": "{race} a été disputée. Vois comment tes coureurs s'en sont sortis."
+      "message": "{race} a été disputée. Vois comment tes coureurs s'en sont sortis.",
+      "messageBest": "{race} a été courue. Tes meilleurs : {riders}."
     },
     "stageResult": {
       "title": "Le résultat de l'étape est tombé",
