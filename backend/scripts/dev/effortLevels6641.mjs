@@ -280,7 +280,7 @@ export function fiveMountainRace(allRaces) {
   return { seasonId: "s5-dryrun-syn", race: { id: "syn-5mtn", name: "syn", race_type: "stage", stages: 5 }, stages, grandTour: false };
 }
 
-export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 12, revision = "s5_profiles_v2", models = MODELS } = {}) {
+export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 12, revision = "s5_profiles_v2", models = MODELS, classes = null } = {}) {
   const v4 = await loadRaceEngineV4();
   const field = loadBenchField();
   const templates = pickTemplates(field.abilities);
@@ -294,7 +294,8 @@ export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 1
     for (const c of ["mountain", "mixed", "flat"]) if (byClass[c][i] && picked.length < maxRaces) picked.push(byClass[c][i]);
   }
   const syn = fiveMountainRace(all);
-  const races = syn ? [{ ...syn, cls: "5mtn" }, ...picked.map((r) => ({ ...r, cls: raceClass(r.stages) }))] : picked.map((r) => ({ ...r, cls: raceClass(r.stages) }));
+  const races = (syn ? [{ ...syn, cls: "5mtn" }, ...picked.map((r) => ({ ...r, cls: raceClass(r.stages) }))] : picked.map((r) => ({ ...r, cls: raceClass(r.stages) })))
+    .filter((r) => !classes || classes.includes(r.cls));
   const records = [];
   const raceMeta = [];
   for (const r of races) {
@@ -341,6 +342,7 @@ if (isMain) {
     maxRaces: Number(arg("max-races", "12")),
     revision: arg("revision", "s5_profiles_v2"),
     models: arg("models", MODELS.join(",")).split(","),
+    classes: arg("classes", null)?.split(",") ?? null,
   });
   const label = arg("label", "baseline");
   const out = arg("out", null);
