@@ -297,8 +297,8 @@
     },
     "seasonTransitionRisk": {
       "title": "Seizoenswissel: contract- en pensioenrisico",
-      "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng het contract van een renner vanaf zijn profiel vóór de wissel om te voorkomen dat hij vertrekt. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
-      "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng hun contract vanaf het profiel van de renner vóór de wissel om ze te houden.",
+      "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng de contracten vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
+      "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng ze vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen.",
       "messageRetirementOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers."
     },
     "watchlistDeparted": {

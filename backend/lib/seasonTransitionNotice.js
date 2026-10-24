@@ -29,6 +29,8 @@ import { applySeniorSquadFilter } from "./squads.js";
 // findes IKKE i constrainten — INSERT afvises (#2700, opdaget ved --live 26/7).
 export const SEASON_TRANSITION_RISK_TYPE = "contract_expiring";
 
+// #6774/#6855: teksten peger på Kontrakter-fanen (Mit hold), hvor flere ryttere
+// kan forlænges 1-3 sæsoner ad gangen; notifikationens link er /team?tab=contracts.
 // EN-first (#1068). DA-oversættelse + i18n-koder ligger i backendMessages.json
 // (notif.seasonTransitionRisk.*) — samme messageBoth/messageExpiringOnly/
 // messageRetirementOnly-mønster som boardT1Reminder (messageSingle/messageMulti).
@@ -36,13 +38,13 @@ function buildMessage({ expiringCount, retirementRiskCount }) {
   if (expiringCount > 0 && retirementRiskCount > 0) {
     return {
       messageCode: "notif.seasonTransitionRisk.messageBoth",
-      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires, and ${retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend a rider's contract from his profile before the change to prevent release; retirement can't be prevented, but you can bid for replacements once the season changes.`,
+      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires, and ${retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend contracts before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once. Retirement can't be prevented, but you can bid for replacements once the season changes.`,
     };
   }
   if (expiringCount > 0) {
     return {
       messageCode: "notif.seasonTransitionRisk.messageExpiringOnly",
-      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires. Extend their contract from the rider's profile before the change to keep them.`,
+      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires. Extend them before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once.`,
     };
   }
   return {
