@@ -125,7 +125,8 @@ import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
-import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds } from "./raceFieldIntegrity.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
+  addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds } from "./raceFieldIntegrity.js"; // #6739
 import { applyRiderEligibilityFilter, filterEligibleEntries, applyInjuredFilter, filterOutInjuredEntries, partitionMissingByInjury, raceSquadOf, ANY_SQUAD, loadRaceSeasonNumber } from "./riderEligibility.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { loadSpentRaceDays } from './raceSpentDays.js';
@@ -1227,6 +1228,9 @@ export async function fillMissingTeamEntries({
   // injuryShortTeamIds). Assistenten fylder dem med de frie ryttere den har, også når
   // 6 ikke nås, for holdet starter alligevel (regel B).
   injuryShortTeamIds = new Set(),
+  // #6739: { ridersByTeam, injuredEntries } fra loadEntrantsForRace. Fyldes her med de
+  // ryttere der kører et andet løb på startdagen; et overlap-kort hold skrives med mindst 4.
+  overlap = null,
   // #4759: injicérbar for test (samme mønster som notificationService.js's
   // `notify`-parametre) — default rammer den rigtige notifikationsfunktion i drift.
   notify = notifyAssistantFilledSquad,
@@ -1442,7 +1446,11 @@ export async function fillMissingTeamEntries({
     // stiller det ikke op alligevel — og så skal der ikke skrives auto-entries der
     // binder rytterne på løbsdagen for et startfelt de aldrig kommer i.
     // #6740: et skade-kort hold starter alligevel (regel B), så dér skrives det der kan.
-    if (existingCount + picks.length < MIN_RACE_ENTRIES && !injuryShortTeamIds.has(teamId)) continue;
+    // #6739: et overlap-kort hold (mindst 4, resten kører et andet løb på startdagen) også.
+    if (overlap) addRidersByTeam(overlap.ridersByTeam, teamId, startDayOverlapRiderIds({ riders: teamRiders, spentRiderIds, thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [] }));
+    const overlapShort = overlap != null && teamStartsShortOnOverlap({ teamId, overlapRidersByTeam: overlap.ridersByTeam, injuredEntries: overlap.injuredEntries,
+      starterIds: new Set([...(riderIdsByTeam.get(teamId) ?? []), ...picks.map((p) => p.rider_id)]) });
+    if (existingCount + picks.length < MIN_RACE_ENTRIES && !injuryShortTeamIds.has(teamId) && !overlapShort) continue;
     if (!picks.length) continue;
     // #4759: kun den FULDE udtagelse (existingCount===0) er "assistenten udtog
     // dit hold, du havde intet inde" — en redning der topper en delvis trup op
@@ -1705,8 +1713,10 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // #6740 (Codex P1): de skadede udtagne tjekkes også, så en rytter der både er skadet og
   // har brugt løbsdagen ikke tæller som skade i regel B nedenfor. Oprydningen (prune)
   // rører stadig kun de raske, som før.
+  const overlap = { ridersByTeam: new Map(), injuredEntries: [] }; // #6739: overlap-regnskabet (regel A)
   if(allowAutofill && race.season_id && !race.finalize_state && !(Number(race.stages_completed)>0) && (existingEntries.length || injuredEntries.length)) {
     const spent=new Set((await loadSpentRaceDays({supabase,raceId:race.id,riderIds:[...existingEntries,...injuredEntries].map(row=>row.rider_id)})).map(row=>row.rider_id));
+    for (const row of [...existingEntries, ...injuredEntries]) if (spent.has(row.rider_id)) addRidersByTeam(overlap.ridersByTeam, row.team_id, [row.rider_id]); // #6739
     const spentFit=existingEntries.filter(row=>spent.has(row.rider_id)).map(row=>row.rider_id);
     if(persist && spentFit.length>0) {
       // Lock/check the fresh race row: never delete recorded participants based
@@ -1723,10 +1733,13 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   const injuryShort = allowAutofill
     ? injuryShortTeamIds({ entries: existingEntries, injuredEntries })
     : new Set();
+  overlap.injuredEntries = injuredEntries;
   const autopicked = allowAutofill
-    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist, injuryShortTeamIds: injuryShort })
+    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist, injuryShortTeamIds: injuryShort, overlap })
     : [];
   let entries = [...existingEntries, ...autopicked];
+  // #6739 (ejer-beslutning A 24/10): kort fordi ryttere kører et andet løb på startdagen.
+  const overlapShort = allowAutofill ? overlapShortTeamIds({ entries, overlapRidersByTeam: overlap.ridersByTeam, injuredEntries }) : new Set();
   // #4295 (ejer-beslutning 27/8): GULVET. Et hold skal have mindst 6 ryttere for at
   // stille op. Kører EFTER redningen ovenfor, så et hold der kunne fyldes op til 6 er
   // fyldt op FØR gulvet måles — ellers ville et hold med 3 gemte ryttere ryge ud af et
@@ -1738,9 +1751,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // STILLER OP, ikke hvem der stadig er i løbet på etape 4.
   if (allowAutofill) {
     // #6740: skade-korte hold starter med de raske ryttere de har (mindst 1).
-    const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries, exemptTeamIds: injuryShort });
+    const { kept, droppedTeamIds } = filterTeamsBelowMinimumEntries({ entries, exemptTeamIds: new Set([...injuryShort, ...overlapShort]) });
     const keptTeamIds = new Set(kept.map((e) => e.team_id));
     const startsShort = [...injuryShort].filter((id) => keptTeamIds.has(id));
+    const overlapStarts = [...overlapShort].filter((id) => keptTeamIds.has(id) && !injuryShort.has(id));
+    if (overlapStarts.length) console.log(`[race ${race.id}] ${overlapStarts.length} hold starter under ${MIN_RACE_ENTRIES} ryttere: ryttere kører et andet løb samme løbsdag (#6739)`);
     if (startsShort.length) {
       console.log(
         `[race ${race.id}] ${startsShort.length} hold starter under ${MIN_RACE_ENTRIES} ryttere: udtagne ryttere skadet efter udtagelsen (#6740)`

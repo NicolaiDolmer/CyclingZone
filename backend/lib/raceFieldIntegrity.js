@@ -98,6 +98,8 @@ export function filterEntriesToRaceDivision({ entries = [], teamDivisionById = n
  * #6740 (ejer-beslutning B 16/10): `exemptTeamIds` er hold der kun er under gulvet
  * fordi udtagne ryttere blev skadet efter udtagelsen (se injuryShortTeamIds). De
  * starter med de raske ryttere de har tilbage, mindst 1.
+ * #6739 (ejer-beslutning A 24/10): også hold der kun er under gulvet fordi ryttere kører
+ * et andet løb på startdagen (overlapShortTeamIds, mindst OVERLAP_MIN_START).
  *
  * @param {{ entries: Array<{team_id:string, rider_id:string}>, minEntries?: number,
  *   exemptTeamIds?: Set<string> }} args
@@ -150,6 +152,94 @@ export function injuryShortTeamIds({ entries = [], injuredEntries = [], minEntri
     const fitLeft = keptIds.size;
     const injuredOnly = [...injuredIds].filter((id) => !keptIds.has(id)).length;
     if (fitLeft < minEntries && fitLeft + injuredOnly >= minEntries) out.add(teamId);
+  }
+  return out;
+}
+
+/**
+ * #6739 (ejer-beslutning A 24/10, N = 4): mindste startfelt for et hold, der kun er under
+ * gulvet fordi dets ryttere kører et andet løb på løbets startdag (overlap, fx sidste
+ * etape af et andet etapeløb). Gulvet (MIN_RACE_ENTRIES) gælder uændret alle andre dage.
+ */
+export const OVERLAP_MIN_START = 4;
+
+/**
+ * #6739: ren regel. Holdet starter med `starters` ryttere, hvis det har mindst
+ * `overlapMin`, og det kun er under gulvet fordi ryttere kører et andet løb samme
+ * løbsdag. `injured` (skadede udtagne, regel B) tæller med som tabt af en undtaget
+ * grund, men kun når mindst én rytter er optaget af overlap: uden overlap gælder
+ * regel B alene.
+ *
+ * @param {{ starters?: number, overlap?: number, injured?: number, minEntries?: number, overlapMin?: number }} args
+ * @returns {boolean}
+ */
+export function overlapStartsShort({ starters = 0, overlap = 0, injured = 0, minEntries = MIN_RACE_ENTRIES, overlapMin = OVERLAP_MIN_START } = {}) {
+  const s = Math.max(0, Number(starters) || 0);
+  const o = Math.max(0, Number(overlap) || 0);
+  const i = Math.max(0, Number(injured) || 0);
+  return o > 0 && s >= overlapMin && s < minEntries && s + o + i >= minEntries;
+}
+
+/**
+ * #6739: hvilke af `riders` er optaget af et andet løb på løbets STARTDAG? Enten har de
+ * allerede kørt et andet løb samme løbsdag (`spentRiderIds`, raceSpentDays), eller de
+ * står i et andet løb, hvis vindue rummer startdagen (`thisWindow.start`). En binding
+ * senere i et etapeløb er managerens eget valg, ikke kalenderens fælde, og tæller ikke.
+ *
+ * @param {{ riders: Array<{rider_id:string}>, spentRiderIds?: Set<string>,
+ *   thisWindow?: {start:number}|null, otherRaces?: Array<{window, riderIds}> }} args
+ * @returns {Set<string>} rider_id
+ */
+export function startDayOverlapRiderIds({ riders = [], spentRiderIds = new Set(), thisWindow = null, otherRaces = [] }) {
+  const ids = riders.map((r) => r.rider_id);
+  const out = new Set(ids.filter((id) => spentRiderIds.has(id)));
+  if (thisWindow && Number.isFinite(thisWindow.start) && otherRaces.length) {
+    const startDay = { start: thisWindow.start, end: thisWindow.start, days: [thisWindow.start] };
+    for (const id of findRiderBindingConflicts({ riderIds: ids, thisWindow: startDay, otherRaces })) out.add(id);
+  }
+  return out;
+}
+
+/**
+ * #6739: tilføj ryttere til et Map<team_id, Set<rider_id>> (overlap-regnskabet, der
+ * bygges op i loadEntrantsForRace og fillMissingTeamEntries).
+ */
+export function addRidersByTeam(map, teamId, riderIds) {
+  if (!teamId) return map;
+  if (!map.has(teamId)) map.set(teamId, new Set());
+  for (const id of riderIds) map.get(teamId).add(id);
+  return map;
+}
+
+/**
+ * #6739: tal til overlapStartsShort for ét hold. Starterne trækkes fra overlap- og
+ * skadesættene, så en rytter aldrig tæller to gange.
+ */
+export function overlapCountsForTeam({ teamId, starterIds = new Set(), overlapRidersByTeam = new Map(), injuredEntries = [] }) {
+  const overlapIds = [...(overlapRidersByTeam.get(teamId) ?? [])].filter((id) => !starterIds.has(id));
+  const overlapSet = new Set(overlapIds);
+  const injured = new Set(injuredEntries.filter((e) => e.team_id === teamId && !starterIds.has(e.rider_id) && !overlapSet.has(e.rider_id))
+    .map((e) => e.rider_id));
+  return { starters: starterIds.size, overlap: overlapSet.size, injured: injured.size };
+}
+
+/** #6739: overlapStartsShort for ét hold, givet holdets startere. */
+export function teamStartsShortOnOverlap({ teamId, starterIds = new Set(), overlapRidersByTeam = new Map(), injuredEntries = [] }) {
+  return overlapStartsShort(overlapCountsForTeam({ teamId, starterIds, overlapRidersByTeam, injuredEntries }));
+}
+
+/**
+ * #6739: hold i `entries` (startfeltet efter assistentens opfyldning) der starter under
+ * gulvet efter overlap-reglen. Kalderen undtager dem fra filterTeamsBelowMinimumEntries.
+ *
+ * @returns {Set<string>} team_id
+ */
+export function overlapShortTeamIds({ entries = [], overlapRidersByTeam = new Map(), injuredEntries = [], minEntries = MIN_RACE_ENTRIES, overlapMin = OVERLAP_MIN_START }) {
+  const out = new Set();
+  if (!overlapRidersByTeam.size) return out;
+  for (const [teamId, starterIds] of uniqueRidersByTeam(entries)) {
+    const counts = overlapCountsForTeam({ teamId, starterIds, overlapRidersByTeam, injuredEntries });
+    if (overlapStartsShort({ ...counts, minEntries, overlapMin })) out.add(teamId);
   }
   return out;
 }
