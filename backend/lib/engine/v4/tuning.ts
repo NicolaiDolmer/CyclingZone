@@ -1595,3 +1595,74 @@ export type MountainSelectionV2Knobs = {
 
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
 export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);
+
+// ── #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2 ────────────────
+// Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md (oven paa
+// 2026-10-17-6804-hilly-breakaway-design.md P1-P5). Ét trin pr. commit; ingen aeldre
+// revision laeser noget herfra (mechanics/breakawayV3_6804.ts, gcThreat.ts). Tallene er kalibreret
+// privat mod testporten (balance-internals/6804/, hard rule 17); ingen tal i kommentarer.
+const s5V3Breakaway = {
+  // P1 "slank B" (ejer 18/10): jagten paa kuperet i ETAPELOEB (endagsloeb uaendret: de
+  // vinder allerede for ofte paa kuperet, G14). Tre knapper, alle kun paa `hillyProfiles`:
+  p1: {
+    hillyProfiles: ["hilly"] as readonly ProfileType[],
+    // 1. Finalevaegten (etapeinteressen) ganges med en faktor pr. afslutning. Ordenen i
+    //    udbruddets favoer (spurt < bakke/mur < nedkoersel, K2) bevares: spurten beholder
+    //    den hoejeste vaegt, nedkoerslen roeres ikke.
+    finaleWeightFactorByFinale: {
+      flat_sprint: 0.6,
+      uphill_sprint: 0.6,
+      bunch_sprint: 0.6,
+      reduced_sprint: 0.6,
+      wall_finish: 0.8,
+      punch: 0.8,
+    } as Partial<Record<import("./types.ts").FinaleType, number>>,
+    // 2. Jagtens lukning foer finalestigningen er daempet (samme knap som bjerg); en
+    //    GC-reaktion jager stadig uden daempning.
+    preFinalChaseClosingScale: 0.6,
+    // 3. Lad-gaa-loftet ganges med denne faktor (lavere loft i etapeloeb).
+    letGoMaxGapScale: 0.85,
+  },
+  // P6 (ejer-beslutning 4 = A, 21/10): klassementskontrol paa snor i ETAPELOEB (endagsloeb
+  // uaendret). Ingen ny tilfaeldighed; alle fire punkter flytter kun eksisterende led.
+  p6: {
+    // 1. Foer finalen holder en reagerende klassementsjagt forspringet paa det holdet
+    //    tolererer (snoren, #5978) i stedet for at hente. Finalen = de sidste km til maal;
+    //    dér hentes der som foer. Under den mindste snor er snoren brudt: der hentes.
+    controlFinaleKm: 35,
+    minLeashSeconds: 45,
+    // 2. Den fremskrevne gevinst paa resten af etapen taeller fuldt naar der hoejst er
+    //    dette tilbage; laengere ude vaegtes den ned (aldrig under gulvet).
+    projectionFullKm: 50,
+    projectionMinWeight: 0.3,
+    // 3. Korte etapeloeb (hoejst saa mange etaper): et hold har kun noget at forsvare naar
+    //    dets klassementsrytter er blandt feltets bedste paa klassementsevne OG placeringen
+    //    giver en reel chance (foereren har altid troejen at forsvare).
+    shortRaceMaxStages: 8,
+    contenderAbilityRank: 100,
+  },
+  // P2 (#6912, K3): realistisk forspring i ETAPELOEB (endagsloeb uaendret: deres eget loft,
+  // #6428). Ikke en klemme paa uret: naar forspringet naar det feltet tolererer, slutter
+  // lad-gaa-fasen, og jagten (de interesserede hold) tager over. Kun paa profiler med
+  // etapeinteressen (BREAKAWAY_CHASE_V3_TUNING.profileTypes).
+  p2: {
+    // Det forspring feltet tolererer pr. profil, naar mindst et hold har etape- eller
+    // klassementsinteresse (mellemzonen). Udeladt profil = `interestedLeadSecondsDefault`.
+    interestedLeadSecondsByProfile: {
+      flat: 360,
+      rolling: 420,
+      hilly: 480,
+      mountain: 720,
+      high_mountain: 540,
+    } as Partial<Record<ProfileType, number>>,
+    interestedLeadSecondsDefault: 420,
+    // Uden jagt-interesse hos noget hold: den sjaeldne oevre zone, aldrig over den haarde graense.
+    unchasedLeadSeconds: 780,
+    // Automatisk jagt baerer arbejde: et interesseret hold uden ordre/reaktion jager med
+    // arbejde i forhold til interessen, maalt mod en fuld ordre (teamSignalWeight x maxTeamSignal).
+    autoChaseWorkScale: 1,
+  },
+};
+
+/** #6804 s5_profiles_v3-udbrudspakken (deep-frosset). Se kommentaren ovenfor. */
+export const S5_V3_BREAKAWAY_TUNING = deepFreeze(s5V3Breakaway);
