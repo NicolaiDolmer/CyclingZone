@@ -74,7 +74,7 @@ export function rankByCompDesc(entrants, compMap) {
  * @param {Array<{rider_id:string}>} entrants  dagens felt (kun ryttere der stadig koerer)
  * @param {Map<string,number>} pointsComp
  * @param {Map<string,number>} komComp
- * @param {{komHunters?: number}} [opts]  #6937 B1: antal bjergjaegere (kun s5_profiles_v3; 0/udeladt = ingen noegle)
+ * @param {{komHunters?: number}} [opts]  bjergjaegere (issue 6937 B1, kun s5_profiles_v3; 0/udeladt = ingen noegle)
  * @returns {{points: string|null, kom: string|null, komHunters?: string[]}}
  */
 export function jerseyLeadersFromComps(entrants, pointsComp, komComp, { komHunters = 0 } = {}) {
