@@ -233,6 +233,22 @@ test("mobil 375: kortet staar oeverst uden vandret scroll", async ({ page }) => 
   await page.screenshot({ path: evidenceShotPath("pr-screens/6110/after-375.png") });
 });
 
+test("mobil 375 flag ON: den gamle assistent-linje er skjult, Select riders staar", async ({ page }) => {
+  await openTraining(page, { decisionCard: true, width: 375, height: 812 });
+  await expect(page.getByTestId("daily-decision")).toBeVisible();
+  await expect(page.getByTestId("training-assistant-row")).toHaveCount(0);
+  await expect(page.getByTestId("training-mobile-select-riders")).toBeVisible();
+  await page.screenshot({ path: evidenceShotPath("pr-screens/6110-mobile/after-375.png") });
+});
+
+test("mobil 375 flag OFF: assistent-linjen staar som foer", async ({ page }) => {
+  await openTraining(page, { decisionCard: false, width: 375, height: 812 });
+  await expect(page.getByTestId("daily-decision")).toHaveCount(0);
+  await expect(page.getByTestId("training-assistant-row")).toBeVisible();
+  await expect(page.getByTestId("training-mobile-select-riders")).toBeVisible();
+  await page.screenshot({ path: evidenceShotPath("pr-screens/6110-mobile/before-375.png") });
+});
+
 test("mobil 375 uden flag: foer-billede", async ({ page }) => {
   await openTraining(page, { decisionCard: false, width: 375, height: 812 });
   await expect(page.getByTestId("daily-decision")).toHaveCount(0);
