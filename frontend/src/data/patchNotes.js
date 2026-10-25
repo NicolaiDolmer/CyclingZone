@@ -40,6 +40,23 @@ export const PATCHES = [
         ]
       },
       {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "New academy candidates every Sunday",
+          "body": "The academy week now runs Sunday to Saturday. A new intake opens every Sunday, and you can bring it in any day until Saturday 23:59."
+        },
+        "da": {
+          "title": "Nye akademi-kandidater hver søndag",
+          "body": "Akademiets uge går nu fra søndag til lørdag. Et nyt kuld åbner hver søndag, og I kan hente det hver dag frem til lørdag kl. 23:59."
+        },
+        "refs": [
+          6666
+        ]
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "rollout": "live",
