@@ -43,6 +43,10 @@ export function useTraining() {
   const [dailyReceiptEnabled, setDailyReceiptEnabled] = useState(false);
   // #6523: true = Today-fanen faar "saet dagen for flere"-linjen. Default false.
   const [bulkDay, setBulkDay] = useState(false);
+  // #6110 S26: true = Today-fanen faar "Dagens beslutning"-kortet. Default false.
+  const [decisionCard, setDecisionCard] = useState(false);
+  // #6110 S26: { <rider_id>: dage i traek >= 70 } | null (kun med flaget on; null = vis streg).
+  const [fatigueDays70, setFatigueDays70] = useState(/** @type {Record<string, number> | null} */ (null));
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
@@ -87,6 +91,8 @@ export function useTraining() {
         // visning, ikke en halv ny flade.
         setMobileTable(data.mobileTable === true);
         setBulkDay(data.bulkDay === true);
+        setDecisionCard(/** @type {{ decisionCard?: boolean }} */ (data).decisionCard === true);
+        setFatigueDays70(/** @type {{ fatigueDays70?: Record<string, number> }} */ (data).fatigueDays70 ?? null);
       }
     } catch {
       /* netværk — behold tidligere state */
@@ -305,7 +311,7 @@ export function useTraining() {
   return {
     slots, plans, teamId, enabled, todayRun, condition, progress, capped, trainability, smartDefaultFocus, trainingScore,
     weekPlan, savingWeekPlan, loading, savingId, running, bulkApplying,
-    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, bulkDay, dailyReceiptEnabled,
+    riderWeekPlans, savingRiderWeekPlanId, racingToday, dayClose, mobileTable, bulkDay, decisionCard, fatigueDays70, dailyReceiptEnabled,
     setPlan, setPlanBulk, clearPlan, planFor, runToday, refresh, setWeekPlan, clearWeekPlan,
     setRiderWeekPlan, clearRiderWeekPlan,
   };
