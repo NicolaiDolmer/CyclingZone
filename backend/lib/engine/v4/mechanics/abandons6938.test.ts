@@ -14,6 +14,7 @@ import {
   HELPER_WITHDRAWAL_V3_TUNING,
   helperWithdrawalProbability,
 } from "./abandons.ts";
+import { applyStageRaceWithdrawals, STAGE_RACE_WITHDRAWAL_V3_TUNING } from "./abandon6938StageRace.ts";
 import { CRASH_ABANDON_V3_TUNING, crashSeriousShareFor, resolveIncident } from "./incidents.ts";
 import { simulateStageV4 } from "../index.ts";
 import { INCIDENTS_EXTRA_TUNING } from "../tuning.ts";
@@ -108,10 +109,13 @@ test("#6938 U3: kun sate hjaelpere i et endagsloeb stiger af; de staar sidst, ud
   assert.deepEqual(out.incidents, [
     { rider_id: "h2", km: 200, kind: "withdrawal", severity: null, outcome: "abandoned", time_loss_seconds: null, injury_days: null, helper_assist: false },
   ]);
-  // Etapeloeb: ingen.
-  const stageRace = applyHelperWithdrawals(results, entrants, { seed: "s", distanceKm: 200, gc: standings(["cap"], 3), tuning: all });
-  assert.deepEqual(stageRace.results, results);
-  assert.deepEqual(stageRace.incidents, []);
+  // Etapeloeb: U3's regel gaelder ikke; U4 (abandon6938StageRace.ts) afgoer i stedet.
+  const gc = standings(["cap"], 3);
+  const stageRace = applyHelperWithdrawals(results, entrants, { seed: "s", distanceKm: 200, gc, tuning: all });
+  assert.deepEqual(stageRace, applyStageRaceWithdrawals(results, entrants, { seed: "s", distanceKm: 200, gc }));
+  const none = applyStageRaceWithdrawals(results, entrants, { seed: "s", distanceKm: 200, gc, tuning: { ...STAGE_RACE_WITHDRAWAL_V3_TUNING, baseShare: 0, wearShare: 0 } });
+  assert.deepEqual(none.results, results);
+  assert.deepEqual(none.incidents, []);
 });
 
 test("#6938 U3: motoren lader kun sate hjaelpere stige af, kun under s5_profiles_v3 og kun i endagsloeb", () => {
