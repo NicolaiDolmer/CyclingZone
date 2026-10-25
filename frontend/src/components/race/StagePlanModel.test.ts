@@ -2,6 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  clearRiderPlan,
   nextLeg,
   removeLeg,
   setLegTask,
@@ -56,6 +57,8 @@ test("#7003: gem udleder de gamle felter; kopi til naeste etape tager ikke plane
   assert.deepEqual(withStagePlanFields(order).riders![0], { rider_id: "a", effort: "normal", try_break: false, leadout: false, plan: HELPER });
   assert.deepEqual(withStagePlanFields(order).riders![1], { rider_id: "b", effort: "save" });
   assert.deepEqual(withoutStagePlans(order).riders![0], { rider_id: "a", effort: "all_out", try_break: true, leadout: false });
+  // Rydning genskaber rollens felter (ingen skjulte overstyringer fra planen).
+  assert.deepEqual(clearRiderPlan(order, "a", { rider_id: "a", effort: "normal", try_break: false, leadout: true }).riders![0], { rider_id: "a", effort: "normal", try_break: false, leadout: true, plan: null });
 });
 
 test("#7003: opsummeringen efter etapen laeses af stage_plan_leg-events", () => {

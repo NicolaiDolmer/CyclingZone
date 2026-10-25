@@ -95,7 +95,7 @@ import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhase
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
-import { advanceStagePlan, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts } from "../../stagePlanEngine.ts"; // #7003
+import { advanceStagePlan, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -883,7 +883,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     const segment = segments[segmentIndex];
     // #7003: opgaveskift ved segmentets start (forrige segments udgang), og segmentets indsats.
     if (stagePlan) {
-      timeline.push(...advanceStagePlan(stagePlan, { state, segment, segmentIndex, entrants: baseEntrantsById }));
+      timeline.push(...advanceStagePlan(stagePlan, { state, segment, segmentIndex, isLastSegment: segmentIndex === segments.length - 1, entrants: baseEntrantsById }));
       entrantsById = stagePlanEntrants(stagePlan, baseEntrantsById);
     }
     // #6200 (KUN official_times_v3): stykket uden stigning efter nedkoerslen mod maal.
@@ -1348,7 +1348,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
 
   // Tid-tildeling: rent gruppe-princip (mor-spec SS3.2).
   state = { ...state, riders: applyGroupTimes(state.groups, state.riders, frontElapsedSeconds) };
-  if (stagePlan) state = { ...state, stage_plan_efforts: stagePlanFinalEfforts(stagePlan) }; // #7003: juryen
+  if (stagePlan) state = { ...state, stage_plan_efforts: stagePlanFinalEfforts(stagePlan), stage_plan_load_efforts: stagePlanLoadEfforts(stagePlan) }; // #7003: juryen + traetheden
 
   return { state, timeline, groupSnapshots, finaleTrace };
 }

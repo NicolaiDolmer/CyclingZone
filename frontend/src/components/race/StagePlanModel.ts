@@ -335,6 +335,19 @@ export function setRiderPlan<T extends Order>(order: T, riderId: string, plan: S
   };
 }
 
+/**
+ * Fjern rytterens plan og genskab rollens standardfelter (effort, udbrud, tog), saa
+ * de felter planen udledte ikke bliver liggende som skjulte overstyringer.
+ */
+export function clearRiderPlan<T extends Order>(order: T, riderId: string, roleDefault: Record<string, unknown> | null | undefined): T {
+  const defaults: Record<string, unknown> = {};
+  for (const key of ["effort", "try_break", "leadout"]) if (roleDefault && key in roleDefault) defaults[key] = roleDefault[key];
+  return {
+    ...order,
+    riders: (order?.riders ?? []).map((r) => (r.rider_id === riderId ? { ...r, ...defaults, plan: null } : r)),
+  };
+}
+
 export type StagePlanRecapItem = {
   task: StagePlanTask;
   status: "done" | "to_finish" | "skipped" | "not_reached" | "abandoned";

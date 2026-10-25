@@ -208,3 +208,24 @@ test("#7003: juryen ser indsatsen i rytterens sidste led", () => {
   assert.equal(loop.state.stage_plan_efforts?.[rider.rider_id], "grupetto");
   assert.equal(runSegmentLoop(mountainInput("s5_profiles_v3"), DEFAULT_MECHANIC_HOOKS).state.stage_plan_efforts, undefined);
 });
+
+test("#7003: et punkt inde i etapens sidste segment skifter ved segmentets start (sidste led koeres altid)", () => {
+  const route = mountainInput("s5_profiles_v3").route;
+  const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }];
+  const rt = createStagePlanRuntime([planOrder("A", [{ rider_id: "cap", legs }])], route, ENTRANTS)!;
+  const pel: RaceGroup = { id: "p0", kind: "peloton", rider_ids: ["cap", "h1", "hun", "x"], gap_seconds: 0, cohesion: 1 };
+  // Et langt sidste segment, hvor de sidste km begynder efter midten.
+  const last = { kind: "climb" as const, from_km: route.distance_km - 30, to_km: route.distance_km, category: "1" as const, avg_gradient: 7, top_elevation_m: 1800 };
+  assert.deepEqual(advanceStagePlan(rt, { state: stateWith([pel]), segment: last, segmentIndex: 5, entrants: ENTRANTS }), [], "midt i etapen: midtpunkt-reglen");
+  const ev = advanceStagePlan(rt, { state: stateWith([pel]), segment: last, segmentIndex: 5, isLastSegment: true, entrants: ENTRANTS });
+  assert.deepEqual(ev.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["cap", "attack", "final_km"]]);
+});
+
+test("#7003: etapens traethed regnes paa den haardeste indsats rytteren faktisk koerte", () => {
+  const input = mountainInput("s5_profiles_v3");
+  const rider = input.startlist.find((e) => e.role === "captain")!;
+  const order = planOrder(teamOf(input, rider.rider_id), [{ rider_id: rider.rider_id, legs: [{ task: "stay_sheltered" }, { task: "attack", from: { at: "kom", kom_index: 0 } }] }]);
+  const out = simulateStageV4(mountainInput("s5_profiles_v3", [order]));
+  assert.equal(out.stage_plan_load_efforts?.[rider.rider_id], "all_out");
+  assert.equal(simulateStageV4(mountainInput("s5_profiles_v3")).stage_plan_load_efforts, undefined);
+});
