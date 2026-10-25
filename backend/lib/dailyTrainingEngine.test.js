@@ -3297,3 +3297,34 @@ for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper'])
     else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
   });
 }
+
+// ── #6641 variant B: loebsdagens intention som udbytte-modifikator ──────────────
+test("#6641 variant B: intentionen skalerer loebsdagens udbytte kun naar race_day_intention_enabled er on", async () => {
+  const progressAfter = async ({ intention, effort }) => {
+    const state = seedState({
+      conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+      plans: [REST_PLAN],
+      abilities: [makeAbilityRow("r1", { ability_progress: {} })],
+    });
+    seedRaceDayTick(state, { gameDay: 12 });
+    seedFlags(state, { engine: "on", development: "on" });
+    state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+    if (intention) state.app_config.push({ key: "race_day_intention_enabled", value: intention });
+    seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+    state.race_stage_roles = effort ? [{ race_id: "race-1", stage_number: 1, rider_id: "r1", race_role: "helper", effort }] : [];
+    const result = await runDay(state, { gameDay: 12 });
+    assert.equal(result.report.riders[0].race_day, true);
+    return Number(state.rider_derived_abilities[0].ability_progress?.climbing ?? 0) + Number(result.report.riders[0].gains?.climbing ?? 0);
+  };
+  const none = await progressAfter({ intention: null, effort: null });
+  // Flag off: et gemt valg aendrer intet (variant A, bit-identisk).
+  assert.equal(await progressAfter({ intention: null, effort: "all_out" }), none);
+  assert.equal(await progressAfter({ intention: "off", effort: "grupetto" }), none);
+  // Flag on: trappen virker; normal og intet valg er variant A.
+  const allOut = await progressAfter({ intention: "on", effort: "all_out" });
+  const grupetto = await progressAfter({ intention: "on", effort: "grupetto" });
+  assert.equal(await progressAfter({ intention: "on", effort: "normal" }), none);
+  assert.equal(await progressAfter({ intention: "on", effort: null }), none);
+  assert.ok(allOut > none, `all_out ${allOut} skal give mere end ${none}`);
+  assert.ok(grupetto < none, `grupetto ${grupetto} skal give mindre end ${none}`);
+});

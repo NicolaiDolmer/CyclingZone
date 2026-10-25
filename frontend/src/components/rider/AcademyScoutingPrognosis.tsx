@@ -3,6 +3,8 @@ import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router";
 import { SectionAction, SectionHeader } from "../ui";
 import type { AcademyPrognosis } from "./AcademyPrognosisCell";
+import PotentialRoleBox from "./PotentialRoleBox";
+import { potentialFromAcademy } from "../../lib/potentialDisplay6853";
 
 const stages = ["learning", "broad", "narrow", "final"] as const;
 // The shared JSX primitives infer their default props too narrowly for TSX.
@@ -13,6 +15,7 @@ export default function AcademyScoutingPrognosis({ prognosis }: { prognosis: Aca
   const { t } = useTranslation("academy");
   const current = stages.findIndex(stage => stage === prognosis.stage);
   const band = prognosis.band && Number.isFinite(prognosis.band.lo) && Number.isFinite(prognosis.band.hi) ? prognosis.band : null;
+  const display = potentialFromAcademy(prognosis); // #6853: typeboks ved bedste rolle
   return (
     <div data-testid="academy-scouting-prognosis">
       <ReportHeader
@@ -34,6 +37,7 @@ export default function AcademyScoutingPrognosis({ prognosis }: { prognosis: Aca
           <dt className="text-2xs text-cz-3">{t("prognosis.report.forecast")}</dt>
           <dd data-testid="academy-scouting-band" className="mt-1 font-data text-sm text-cz-1 tabular-nums">
             {band ? t("prognosis.report.range", { lo: band.lo, hi: band.hi }) : t("prognosis.report.noEstimate")}
+            {display?.showRole && <PotentialRoleBox role={display.role} lo={display.lo} hi={display.hi} variant="full" className="ms-2 align-middle" />}
           </dd>
         </div>
         <div>

@@ -350,6 +350,30 @@ base(gap, alder)  ×  fokus-multiplikator  ×  rolle-rate  ×  kondition
 - **Dagsstøjen** er seeded på `(rytter, dato)` (`dtick:`-namespace), ikke tilfældig
   (`dailyTraining.js:193`). Samme rytter samme dag giver samme støj ved gen-kørsel.
 
+### 2.1b Kurve B (D-058, [#3564](https://github.com/NicolaiDolmer/CyclingZone/issues/3564), bag flaget `development_curve_b`, **slukket**)
+
+Reglen når flaget tændes: **udviklingen styres af niveau og potentiale, ikke af alder.** Kurve B
+erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
+
+- **Niveau:** hvert point koster mere jo tættere evnen er på toppen af skalaen. Lave niveauer er
+  billige, de sidste point er dyre, og forskellen mellem lavt og højt niveau er større end i dag.
+- **Blødt loft fra potentialet (D1b, S2):** rolleklassens loft fordeler niveauet over evnerne,
+  potentialet skalerer det. Tæt på det bløde loft aftager fremdriften glidende (ingen mur);
+  en evne over sit bløde loft står stille og falder aldrig.
+- **Belastningsevne:** de helt unge tåler ikke fuld træning og går langsommere på samme niveau.
+  Belastningen stiger glidende til fuld og står derefter fast. Alder giver aldrig ekstra fart.
+- **Potentiale = fart:** uændret gennem træningsscorens talent-led.
+- **Alderens turbo er ude:** alderstabellen og ungdomstillægget indgår ikke i udviklingen.
+  Udviklingen drives af en alders-neutral træningsscore; den viste træningsscore er uændret.
+- **Uændret:** maks +1 pr. evne pr. løbsdag og pr. dato (§6.2), fremdriften bæres videre, loftet
+  klipper, og løbsdagen går gennem samme kæde.
+- **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens
+  tal er private og ligger i serverens miljø, ikke i koden; tændt uden gyldige tal kører dagens
+  model. Tændes kun af ejeren efter en ny 10-sæsoners-kørsel med den rigtige kurve.
+
+Kode: `developmentCurveB.ts` (kurven), `developmentCurveBFlag.ts` (flag og tal),
+`dailyAbilityDelta`/`applyDailyTick` (`dailyTraining.js`). Gates: `scripts/dev/developmentCurveBHarness3564.mjs`.
+
 ### 2.2 Fra delta til point: hvordan vækst-cappet håndhæves
 
 Deltaen er en lille float. Den lægges i en fremdrifts-bar pr. evne
@@ -699,7 +723,7 @@ fremdriftsbaren til næste dato (`capTickGainsPerDate`, `dailyTrainingEngine.js`
 | Hvem kørte | `race_results (result_type='stage')` ⋈ `race_stage_schedule` på `(race_id, stage_number)` hvor `game_day` = løbsdagen, scoped hold → division → sæsonens løb. IKKE `race_entry_days`: bindingen slettes når løbet er `completed`, og så fik racere før almindelig træning oven i løbet. Fejlet opslag kaster (som bindingen) | `raceDayStageLookup.js` |
 | Træthed | uændret: `effectiveIntensity = "race"` giver 0 trænings-load; løbets træthed lægges af `raceRunner.applyRaceFatigue`. Ingen skaderisiko fra træning | `dailyTrainingEngine.js`, `raceFatigue.js` |
 | Score og historik | `rider_training_scores`: `score: null, was_race_day: true, session: "race_day"`. `rider_ability_race_day_history.source = "race_development"` | `dailyTrainingEngine.js` |
-| Variant B (senere) | dagens intention (#4632, grupetto → all-out) lægges ovenpå som modifikator når `race_day_intention_enabled` og v4 er on; sømmen (`effortDevelopmentMultiplier`) står i `applyRaceDevelopmentTick` | `dailyTraining.js`, `raceRoles.js` |
+| Variant B ([#6641](https://github.com/NicolaiDolmer/CyclingZone/issues/6641), bag flaget) | dagens intention (#4632, grupetto → all-out) ganges sidst på løbsdagens udbytte (`applyDailyTick`s ekstra multiplikator-led, `raceDayIntentionYieldMultiplier` = `effortDevelopmentMultiplier`), KUN når `race_day_intention_enabled` er on. Kilden er den samme som motoren kørte på: holdordren vinder, etape-rækken (`race_stage_roles.effort`) er fallback, en ordre på `normal` er ikke et valg (`raceDayIntentionYield.js`, `raceStageRoles.orderEffortByRiderForStage`). Flag off, ingen intention, AI-hold eller et fejlet opslag giver 1,0 = variant A (bit-identisk) | `dailyTrainingEngine.js`, `raceDayIntentionYield.js`, `raceRoles.js` |
 
 **Flag:** `race_day_development_enabled` flippes direkte off → on 28/9 sammen med
 `training_tick_per_race_day` (ejer-go). Motoren læser flaget uden `engineWrite`, så `beta` er off i

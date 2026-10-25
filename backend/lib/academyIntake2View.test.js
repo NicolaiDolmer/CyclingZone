@@ -112,3 +112,12 @@ test("rosterPrognosis: baandet snaevrer ind med traeningsloebsdage paa holdet", 
   assert.equal(final.band.role, "climber");
   assert.ok(final.band.hi - final.band.lo <= broad.band.hi - broad.band.lo, "endeligt baand er aldrig bredere end det brede");
 });
+
+test("#6853 rosterPrognosis: flaget taendt viser rollen med hoejest potentiale og maerker baandet", () => {
+  const off = rosterPrognosis({ ...base, daysOnTeam: KNOWLEDGE_DAYS.final });
+  const on = rosterPrognosis({ ...base, daysOnTeam: KNOWLEDGE_DAYS.final, bestRole: true });
+  assert.equal(off.band.role, "climber");
+  assert.equal(off.band.bestRole, undefined);
+  assert.equal(on.band.bestRole, true);
+  assert.ok(on.band.lo + on.band.hi >= off.band.lo + off.band.hi, "bedste rolle er aldrig under den naturlige");
+});

@@ -70,6 +70,8 @@ import {
   loadTeamDivisionId,
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
+import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
+import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
 import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 
@@ -832,6 +834,7 @@ export async function runTeamTrainingDay({
   // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
   // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
   const racedRiderProfileByRider = new Map();
+  let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
   if (useRaceDayKey) {
     // #4850 C2: etape-opslaget er en REGEL-GATE paa loebsdags-aksen (samme kontrakt
     // som bindingen ovenfor): svaret afgoer om rytteren maa traene i dag. Et gaet
@@ -849,6 +852,10 @@ export async function runTeamTrainingDay({
     for (const [riderId, stage] of raceDayResult.data ?? new Map()) {
       racedRiderIds.add(riderId);
       racedRiderProfileByRider.set(riderId, stage.profileType ?? RACE_DAY_FALLBACK_PROFILE);
+    }
+    // #6641 variant B: managerens intention for etapen skalerer loebsdagens udbytte (flag off = tomt kort = 1,0).
+    if (raceDayDevelopmentOn && racedRiderIds.size > 0 && await isRaceDayIntentionEnabled(supabase)) {
+      raceDayEffortByRider = await loadRaceDayEffortByRider({ supabase, stageByRider: raceDayResult.data });
     }
   } else if (raceDayDevelopmentOn) {
     if (raceDayResult.error) {
@@ -1193,13 +1200,14 @@ export async function runTeamTrainingDay({
         // ALTID paa loebs-grenen, ogsaa paa den gamle kalenderdags-sti, hvor
         // hardDailyCap ellers er undefined. Profil-fallback 'rolling' er sat ovenfor.
         //
-        // #4632 SEAM (variant B, dagens intention): effort-modifikatoren lever i
-        // applyRaceDevelopmentTick (dailyTraining.js) og laegges ovenpaa naar
-        // race_day_intention_enabled og v4 taendes. Den sendes BEVIDST IKKE her.
+        // #6641 (variant B, ejer 24/9): dagens intention ganges sidst i kaeden via
+        // applyDailyTick's ekstra multiplikator-led (default 1,0). Kun paa loebsdags-
+        // aksen og kun med race_day_intention_enabled on; ellers 1,0 = variant A.
         tickResult = applyDailyTick({
           ...sharedTickArgs,
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
           hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
+          academyRateMult: raceDayIntentionYieldMultiplier(raceDayEffortByRider.get(rider.id)),
         });
       } else {
         tickResult = applyDailyTick(sharedTickArgs);

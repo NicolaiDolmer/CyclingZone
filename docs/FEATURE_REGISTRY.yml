@@ -595,6 +595,17 @@ features:
     verified: 2026-10-24
     note: PR #6533 (12/10); beta 15/10; on for alle 24/10 17:30 UTC efter ejer-ja (#7153, læst tilbage i prod).
 
+  - id: training-decision-card
+    area: training
+    title_en: Today's decision card on the Training page
+    title_da: Dagens beslutning-kort på træningssiden
+    state: building
+    epic: 6110
+    verified: 2026-10-25
+    note: PR #7179 (S26). Stadie-flag training_decision_card seedes off af migrationen (apply efter merge); ejer flytter til beta efter billeder.
+    decision: ejer-beslutning
+    decide_by: 2026-11-01
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy
@@ -761,6 +772,19 @@ features:
     verified: 2026-10-23
     decision: taend
     decide_by: 2026-10-25
+
+  - id: development-curve-b
+    area: training
+    title_en: Development curve B (level and potential drive development, not age)
+    title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
+    state: dormant
+    flag: development_curve_b
+    ssot: docs/TRAINING_RULES.md
+    epic: 3564
+    note: Ejer, efter ny 10-sæsoners-kørsel med den rigtige kurve; kræver private params i serverens miljø.
+    verified: 2026-10-25
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
 
   - id: promotion-pending
     area: academy
