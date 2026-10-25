@@ -14,7 +14,7 @@ import { loadScout } from "./scoutAssignmentService.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
-import { knowledgeStage, learningSpeed, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
+import { KNOWLEDGE_DAYS, knowledgeStage, learningSpeed, loadPullSignedRiderIds, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
 import type { KnowledgeStageKey } from "./academyProspectKnowledge.ts";
 import { loadAcademyProfileState, profileOptions } from "./academyIntakeProfile.ts";
 import type { ResolvedProfile } from "./academyIntakeProfile.ts";
@@ -138,11 +138,12 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
     .map((item) => item.riderId ?? item.rider?.id)
     .filter(Boolean) as string[];
   const abilityIds = [...new Set([...riderIds, ...pullIds])];
-  const [profileState, staffCtx, scout, daysByRider, potRes, abRes] = await Promise.all([
+  const [profileState, staffCtx, scout, daysByRider, pulledIds, potRes, abRes] = await Promise.all([
     loadAcademyProfileState(supabase, { teamId, now }),
     loadTrainingStaffContext(supabase, teamId),
     riderIds.length > 0 ? loadScout(teamId, supabase) : null,
     loadTrainingDaysOnTeam(supabase, { teamId, riderIds }),
+    loadPullSignedRiderIds(supabase, { teamId, riderIds }),
     riderIds.length > 0
       ? supabase.from("riders").select("id, potentiale, birthdate, primary_type, secondary_type").in("id", riderIds).limit(riderIds.length)
       : { data: [] },
@@ -164,7 +165,8 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
         rider,
         abilities: abById.get(rider.id),
         potRow: potById.get(rider.id),
-        daysOnTeam: daysByRider.get(rider.id) ?? 0,
+        // #7195: ryttere holdet havde før Optag 2.0, er fuldt kendt (samme som den normale scoutrapport).
+        daysOnTeam: pulledIds.has(rider.id) ? (daysByRider.get(rider.id) ?? 0) : Math.max(KNOWLEDGE_DAYS.final, daysByRider.get(rider.id) ?? 0),
         speed,
         seasonNumber,
         teamId,

@@ -1,7 +1,7 @@
 // Own academy riders share the academy's training-based knowledge on every surface.
 import { rosterPrognosis } from "./academyIntake2View.ts";
 import type { RosterPrognosis } from "./academyIntake2View.ts";
-import { learningSpeed, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
+import { learningSpeed, loadPullSignedRiderIds, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
@@ -25,7 +25,11 @@ export async function loadAcademyPrognoses(supabase: any, { enabled, teamId, rid
   enabled: boolean; teamId: string; riders: Row[]; abilitiesByRider: Map<string, Row>;
   seasonNumber: number; scout: unknown; bestRole?: boolean;
 }): Promise<Map<string, RosterPrognosis>> {
-  const academy = enabled ? riders.filter((r) => r.team_id === teamId && r.is_academy === true) : [];
+  const ownAcademy = enabled ? riders.filter((r) => r.team_id === teamId && r.is_academy === true) : [];
+  if (!ownAcademy.length) return new Map();
+  // #7195: kun Optag 2.0-ryttere; ryttere holdet havde før, får den normale scoutrapport.
+  const pulled = await loadPullSignedRiderIds(supabase, { teamId, riderIds: ownAcademy.map((r) => r.id) });
+  const academy = ownAcademy.filter((r) => pulled.has(r.id));
   if (!academy.length) return new Map();
   const [staff, days] = await Promise.all([
     loadTrainingStaffContext(supabase, teamId),
