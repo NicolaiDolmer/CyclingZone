@@ -59,9 +59,10 @@ export function createJerseyLeaderTracker(revision, isStageRace) {
  * segmentets sammensmeltning, der koerer EFTER passagen; sad rytteren i udbruddet ved
  * segmentets start og blev han smeltet sammen ved segmentets slut (`group_merged`),
  * sad han der stadig ved passagen. Udbrud = en gruppe af arten
- * "breakaway" (kun udbruds-mekanikken laver dem), eller en solo-gruppe hvis rytter
- * var med i et `breakaway_formed` (en udbryder der er koert fra sit udbrud). En
- * finale-angriber fra feltet taeller ikke. Topankomsten taeller ogsaa, naar
+ * "breakaway" (kun udbruds-mekanikken laver dem), eller en gruppe af en anden art
+ * (solo, chase, finalens placeringsgruppe) der kun bestaar af ryttere fra udbruddet i
+ * snapshottet foer og ligger foran feltet (en udbryder der er koert fra sit udbrud,
+ * eller et udbrud der er splittet). En finale-angriber fra feltet taeller ikke. Topankomsten taeller ogsaa, naar
  * udbryderen vinder den fra udbruddet. REN; Map rider_id -> point.
  */
 export function breakawayKomPointsOfStage(v4Output) {
@@ -73,13 +74,23 @@ export function breakawayKomPointsOfStage(v4Output) {
   // Codex #7208: udbruds-status foelges snapshot for snapshot. En solo-gruppe er kun
   // udbrud, hvis rytteren sad i udbruddet i snapshottet foer (en udbryder der er koert
   // fra sit udbrud); en hentet udbryder der senere angriber solo fra feltet, taeller ikke.
+  // Codex (lokal runde 2): oprindelsen foelger rytterne gennem et skifte af gruppe-art.
+  // En gruppe der KUN bestaar af ryttere der var i udbrud i snapshottet foer (et split
+  // til "chase", eller finalens placeringsgruppe "peloton" med kun overlevende
+  // udbrydere), er stadig udbrud, saa laenge den ligger foran den forreste gruppe med en
+  // rytter udefra. Status nulstilles foerst ved en reel indhentning (gruppen faar
+  // ryttere udefra), ikke ved et nyt navn.
   const escapeAt = [];
   for (let i = 0; i < snaps.length; i++) {
     const before = i > 0 ? escapeAt[i - 1] : null;
+    const wasEscape = (id) => (before ? before.has(id) : formed.has(id));
+    const groups = snaps[i]?.groups ?? [];
+    const pure = (g) => (g.rider_ids ?? []).length > 0 && (g.rider_ids ?? []).every(wasEscape);
+    const frontGap = Math.min(...groups.filter((g) => g.kind !== "breakaway" && !pure(g)).map((g) => Number(g.gap_seconds)).filter(Number.isFinite));
     const ids = new Set();
-    for (const g of snaps[i]?.groups ?? []) {
+    for (const g of groups) {
       if (g.kind === "breakaway") for (const id of g.rider_ids ?? []) ids.add(id);
-      else if (g.kind === "solo") for (const id of g.rider_ids ?? []) if (before ? before.has(id) : formed.has(id)) ids.add(id);
+      else if ((g.kind === "solo" || before) && pure(g) && !(Number(g.gap_seconds) >= frontGap)) for (const id of g.rider_ids) ids.add(id);
     }
     escapeAt.push(ids);
   }

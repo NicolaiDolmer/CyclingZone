@@ -96,6 +96,28 @@ test("#6937 (Codex #7208): en hentet udbryder der senere angriber solo fra felte
   assert.deepEqual(Object.fromEntries(breakawayKomPointsOfStage(out)), { brk: 5 });
 });
 
+test("#6937 (Codex): udbruddet bevarer sin oprindelse gennem et split til chase og finalens placeringsgruppe", () => {
+  const out = {
+    timeline: { events: [{ type: "breakaway_formed", km: 5, params: { rider_ids: ["b1", "b2", "b3"] } }] },
+    groupSnapshots: [
+      { km: 40, groups: [{ kind: "breakaway", rider_ids: ["b1", "b2", "b3"], gap_seconds: 0 }, { kind: "peloton", rider_ids: ["fav", "h"], gap_seconds: 180 }] },
+      // Udbruddet splitter paa stigningen: b2+b3 bliver en chase-gruppe, stadig foran feltet.
+      { km: 80, groups: [{ kind: "solo", rider_ids: ["b1"], gap_seconds: 0 }, { kind: "chase", rider_ids: ["b2", "b3"], gap_seconds: 30 }, { kind: "peloton", rider_ids: ["fav", "h"], gap_seconds: 150 }] },
+      // Finalen: de overlevende udbrydere deler en placeringsgruppe kaldet "peloton"; b3 er sat af bag feltet.
+      { km: 120, groups: [{ kind: "peloton", rider_ids: ["b1", "b2"], gap_seconds: 0 }, { kind: "peloton", rider_ids: ["fav", "h"], gap_seconds: 40 }, { kind: "solo", rider_ids: ["b3"], gap_seconds: 90 }] },
+    ],
+    passages: [kom(75, [["b1", 10], ["b2", 6], ["b3", 4]]), kom(120, [["b1", 20], ["b2", 15], ["fav", 12], ["b3", 2]])],
+  };
+  assert.deepEqual(Object.fromEntries(breakawayKomPointsOfStage(out)), { b1: 30, b2: 21, b3: 4 });
+  // En chase-gruppe med en rytter udefra er en indhentning: oprindelsen nulstilles.
+  const bridged = structuredClone(out);
+  bridged.groupSnapshots[1].groups[1].rider_ids = ["b2", "b3", "h"];
+  bridged.groupSnapshots[1].groups[2].rider_ids = ["fav"];
+  bridged.groupSnapshots[2].groups[0].rider_ids = ["b1"];
+  bridged.groupSnapshots[2].groups[1].rider_ids = ["b2", "fav", "h"];
+  assert.deepEqual(Object.fromEntries(breakawayKomPointsOfStage(bridged)), { b1: 30 });
+});
+
 test("#6937 (Codex): troejefoerer-trackeren bruger passagerne, ellers den generiske fallback; bjergjaegere kun under v3", () => {
   const res = (perRider) => ({ ranked: [{ rider_id: "a", rank: 1 }, { rider_id: "b", rank: 2 }], passages: perRider ? { perRider: new Map(perRider) } : null });
   const v3 = createJerseyLeaderTracker("s5_profiles_v3", true);
