@@ -1001,7 +1001,9 @@
   },
   "stageOrders": {
     "title": "Tes consignes",
-    "roleDefaults": "rien d'enregistré, chaque coureur a suivi son rôle"
+    "roleDefaults": "rien d'enregistré, chaque coureur a suivi son rôle",
+    "stanceAuto": "Automatique",
+    "roleDefaultShort": "standard du rôle"
   },
   "racePage": {
     "tabsAria": "Sections de la course",

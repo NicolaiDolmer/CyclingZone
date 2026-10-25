@@ -1001,7 +1001,9 @@
   },
   "stageOrders": {
     "title": "Tus órdenes",
-    "roleDefaults": "nada guardado, así que cada corredor siguió su rol"
+    "roleDefaults": "nada guardado, así que cada corredor siguió su rol",
+    "stanceAuto": "Automática",
+    "roleDefaultShort": "estándar del rol"
   },
   "racePage": {
     "tabsAria": "Secciones de la carrera",

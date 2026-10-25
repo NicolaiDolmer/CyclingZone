@@ -1001,7 +1001,9 @@
   },
   "stageOrders": {
     "title": "Je orders",
-    "roleDefaults": "niets opgeslagen, dus elke renner reed zijn rol"
+    "roleDefaults": "niets opgeslagen, dus elke renner reed zijn rol",
+    "stanceAuto": "Automatisch",
+    "roleDefaultShort": "standaard van de rol"
   },
   "racePage": {
     "tabsAria": "Koersonderdelen",
