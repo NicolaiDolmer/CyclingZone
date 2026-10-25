@@ -705,7 +705,7 @@ export async function runTeamTrainingDay({
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_engine_enabled') : isRaceDayEngineEnabled(supabase),
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_development_enabled') : isRaceDayDevelopmentEnabled(supabase),
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
-    loadDevelopmentCurveB({ supabase }),
+    loadDevelopmentCurveB({ supabase, strict: conditionPerDate }),
   ]);
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
