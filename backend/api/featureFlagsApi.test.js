@@ -125,6 +125,14 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -171,6 +179,14 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
   });
 });
 
@@ -225,6 +241,14 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -240,6 +264,14 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
   });
 });
 
