@@ -2236,7 +2236,8 @@ export function startCron() {
   );
 
   // #6666/#7177: akademi-påmindelser, lør+søn fra 10:00 hver hele time (modulets
-  // gate: søndag fra 10, lørdag fra 18). Dedup er tjek-og-send, derfor deploy-frist.
+  // gate: søndag fra 10, lørdag fra 18). Claim-først pr. (hold, uge, påmindelse);
+  // deploy-fristen er et ekstra lag mod to processer i samme sekund.
   startWallClockSchedule(
     trackedTick("academy-pull-reminder", runAcademyPullReminderCron),
     CRON_MONITOR_ACADEMY_REMINDER.wallClock,

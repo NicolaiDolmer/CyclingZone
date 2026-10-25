@@ -11,23 +11,44 @@ import {
 } from "./academyReminder.ts";
 import { ACADEMY_REMINDER_WALL_CLOCK } from "./cronMonitorRegistry.js";
 
-// Mini-supabase: teams og academy_intake_ticks som in-memory rækker. Filtrene
-// (eq/is/not) anvendes rigtigt, så testen fanger forkerte hold-udvælgelser.
-function buildSupabase({ teams = [], ticks = [] } = {}) {
+// Mini-supabase: teams, academy_intake_ticks og academy_gift_claims som in-memory
+// rækker. Filtrene (eq/is/not) anvendes rigtigt, så testen fanger forkerte
+// hold-udvælgelser; claims har PK (team_id, batch) som i databasen.
+function buildSupabase({ teams = [], ticks = [], claims = [], failClaimDelete = false } = {}) {
   const log = { reads: [] };
-  const rowsFor = (table) => (table === "teams" ? teams : table === "academy_intake_ticks" ? ticks : []);
+  const tables = { teams, academy_intake_ticks: ticks, academy_gift_claims: claims };
   return {
     log,
+    claims,
     from(table) {
       log.reads.push(table);
-      let rows = rowsFor(table);
+      const all = tables[table] ?? [];
+      let rows = all;
+      let op = "select";
+      let upserted = [];
       const api = {
         select() { return api; },
         eq(col, val) { rows = rows.filter((r) => r[col] === val); return api; },
         is(col, val) { rows = rows.filter((r) => (r[col] ?? null) === val); return api; },
-        not(col, op, val) { rows = rows.filter((r) => (r[col] ?? null) !== val); return api; },
+        not(col, _op, val) { rows = rows.filter((r) => (r[col] ?? null) !== val); return api; },
         order() { return api; },
         range(from, to) { return Promise.resolve({ data: rows.slice(from, to + 1), error: null }); },
+        upsert(row) {
+          op = "upsert";
+          const dup = all.some((r) => r.team_id === row.team_id && r.batch === row.batch);
+          if (!dup) { all.push({ ...row }); upserted = [{ team_id: row.team_id }]; }
+          return api;
+        },
+        delete() { op = "delete"; return api; },
+        then(resolve, reject) {
+          if (op === "upsert") return Promise.resolve({ data: upserted, error: null }).then(resolve, reject);
+          if (op === "delete") {
+            if (failClaimDelete) return Promise.resolve({ error: { message: "delete failed" } }).then(resolve, reject);
+            for (const r of rows) all.splice(all.indexOf(r), 1);
+            return Promise.resolve({ error: null }).then(resolve, reject);
+          }
+          return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+        },
       };
       return api;
     },
@@ -177,7 +198,6 @@ test("idempotens: højst én af hver pr. hold pr. uge, og næste uge sendes igen
   for (let h = 1; h <= 13; h++) {
     const r = await run(sb, { notify: n.fn, now: new Date(SUN_10.getTime() + h * hour) });
     assert.equal(r.ran && r.reminded, 0, `søndag +${h} t`);
-    assert.equal(r.ran && r.deduped, 2);
   }
   // Lørdag 18:00-23:00 i samme uge: én 'udløber'-påmindelse pr. hold.
   for (let h = 0; h <= 5; h++) {
@@ -191,6 +211,60 @@ test("idempotens: højst én af hver pr. hold pr. uge, og næste uge sendes igen
   const next = await run(sb, { notify: n.fn, now: new Date(SUN_10.getTime() + 7 * 24 * hour) });
   assert.equal(next.ran && next.reminded, 2);
   assert.equal(next.ran && next.weekKey, "2026-11-07");
+});
+
+test("varigt claim: sletter manageren påmindelsen i indbakken, sendes den ikke igen samme uge (Codex P2)", async () => {
+  const sb = buildSupabase({ teams: [human("h1")] });
+  const sent = [];
+  // Notify uden dedup-hukommelse = indbakken er tømt mellem kørslerne.
+  const notify = async (a) => { sent.push(a); return { delivered: true }; };
+  const hour = 60 * 60 * 1000;
+  for (let h = 0; h <= 13; h++) await run(sb, { notify, now: new Date(SUN_10.getTime() + h * hour) });
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sb.claims.map((c) => c.batch), [`pull-reminder:ready:${WEEK_KEY}`]);
+  await run(sb, { notify, now: SAT_18 });
+  await run(sb, { notify, now: new Date(SAT_18.getTime() + hour) });
+  assert.equal(sent.length, 2, "lørdagens påmindelse har sit eget claim");
+  await run(sb, { notify, now: new Date(SUN_10.getTime() + 7 * 24 * hour) });
+  assert.equal(sent.length, 3, "næste uge har en ny nøgle");
+});
+
+test("claimet af en parallel kørsel: ingen levering", async () => {
+  const sb = buildSupabase({ teams: [human("h1")], claims: [] });
+  let notes = 0;
+  // Claimet dukker op mellem forhånds-opslaget og upsert'en (anden proces).
+  const realFrom = sb.from.bind(sb);
+  sb.from = (table) => {
+    const q = realFrom(table);
+    if (table === "academy_gift_claims") {
+      const up = q.upsert.bind(q);
+      q.upsert = (row) => { sb.claims.push({ ...row }); return up(row); };
+    }
+    return q;
+  };
+  const r = await run(sb, { notify: async () => { notes += 1; return { delivered: true }; } });
+  assert.equal(notes, 0);
+  assert.equal(r.ran && r.deduped, 1);
+});
+
+test("fejlet levering fjerner claimet, så næste time prøver igen", async () => {
+  const sb = buildSupabase({ teams: [human("h1")] });
+  let fail = true;
+  const sent = [];
+  const notify = async (a) => { if (fail) throw new Error("db down"); sent.push(a); return { delivered: true }; };
+  const r1 = await run(sb, { notify });
+  assert.equal(r1.ran && r1.errors.length, 1);
+  assert.equal(sb.claims.length, 0);
+  fail = false;
+  const r2 = await run(sb, { notify, now: new Date(SUN_10.getTime() + 60 * 60 * 1000) });
+  assert.equal(r2.ran && r2.reminded, 1);
+  assert.equal(sent.length, 1);
+});
+
+test("kan claimet ikke fjernes efter en fejl, står det i fejlbeskeden", async () => {
+  const sb = buildSupabase({ teams: [human("h1")], failClaimDelete: true });
+  const r = await run(sb, { notify: async () => { throw new Error("boom"); } });
+  assert.match(r.ran ? r.errors[0] : "", /claim not released/);
 });
 
 test("hold der henter efter søndagens påmindelse, får ingen påmindelse lørdag", async () => {

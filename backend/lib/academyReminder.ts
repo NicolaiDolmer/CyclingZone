@@ -11,15 +11,18 @@
 //
 // Begge går kun til aktive menneskehold (aktiv manager, ikke parkeret, sat-op
 // akademi) der ikke har hentet ugens kuld. Højst én af hver pr. hold pr. uge:
-// cron'en kører hver hele time i vinduet, og notifikations-dedup (samme type,
-// titel og tekst til samme bruger inden for REMINDER_DEDUPE_WINDOW_MS) holder
-// genforsøgene samme dag ude, mens næste uges påmindelse (7 døgn senere) går
-// igennem.
+// cron'en kører hver hele time i vinduet, så hver levering claimes FØRST i
+// academy_gift_claims (PK team_id+batch, samme claim-først-mønster som
+// board-gave-kuldet) med batch "pull-reminder:<kind>:<ugens lørdag>". Claimet er
+// varigt: sletter manageren påmindelsen i indbakken, sendes den ikke igen samme
+// uge (Codex P2). Fejler leveringen, fjernes claimet, så næste time prøver igen.
+// Notifikations-dedup (REMINDER_DEDUPE_WINDOW_MS) står som andet lag.
 //
 // Bag flaget academy_pull_reminder_enabled (seedet OFF, fail-safe OFF) OG
 // academy_intake_pull_enabled. Uden for vinduet eller med et flag slukket læses
 // og skrives intet om hold.
 import { copenhagenDateString, copenhagenHour, copenhagenWeekdayKey } from "./copenhagenTime.js";
+import { fetchAllRows } from "./supabasePagination.js";
 import { currentIntakeWeekKey } from "./academyIntakePull.js";
 import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
 import { isAcademyPullReminderEnabled } from "./academyReminderFlag.ts";
@@ -54,6 +57,32 @@ export const REMINDER_COPY: Record<AcademyReminderKind, { title: string; message
     messageCode: "notif.academyPullReminderExpiring.message",
   },
 };
+
+/** Claim-nøgle i academy_gift_claims.batch: én pr. (påmindelse, uge). */
+export function reminderClaimBatch(kind: AcademyReminderKind, weekKey: string): string {
+  return `pull-reminder:${kind}:${weekKey}`;
+}
+
+async function fetchClaimedTeamIds(supabase: Db, batch: string): Promise<Set<string>> {
+  const rows: Array<{ team_id: string }> = await fetchAllRows(() => supabase
+    .from("academy_gift_claims").select("team_id").eq("batch", batch).order("team_id"));
+  return new Set(rows.map((r) => r.team_id));
+}
+
+/** Claim-først: true = dette kald ejer leveringen; false = allerede claimet (parallel kørsel). */
+async function claimReminder(supabase: Db, teamId: string, batch: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("academy_gift_claims")
+    .upsert({ team_id: teamId, batch }, { onConflict: "team_id,batch", ignoreDuplicates: true })
+    .select("team_id");
+  if (error) throw new Error(`claim: ${error.message}`);
+  return Boolean(data?.length);
+}
+
+async function releaseReminderClaim(supabase: Db, teamId: string, batch: string): Promise<string | null> {
+  const { error } = await supabase.from("academy_gift_claims").delete().eq("team_id", teamId).eq("batch", batch);
+  return error ? error.message : null;
+}
 
 /** Hvilken påmindelse (om nogen) gælder lige nu, i dansk tid. */
 export function academyReminderKind(now: Date = new Date()): AcademyReminderKind | null {
@@ -91,15 +120,21 @@ export async function runAcademyPullReminderSweep({
   if (!(await isPullEnabled(supabase))) return { ran: false, reason: "pull_flag_off" };
 
   const weekKey = currentIntakeWeekKey(now);
+  const batch = reminderClaimBatch(kind, weekKey);
   const pulled = await fetchPulledTeamIds(supabase, weekKey);
-  const pending = (await fetchEligibleTeamIds(supabase, { isAi: false })).filter((id) => !pulled.has(id));
+  const claimed = await fetchClaimedTeamIds(supabase, batch);
+  const pending = (await fetchEligibleTeamIds(supabase, { isAi: false }))
+    .filter((id) => !pulled.has(id) && !claimed.has(id));
   const copy = REMINDER_COPY[kind];
   const errors: string[] = [];
   let reminded = 0;
   let deduped = 0;
 
   for (const teamId of pending) {
+    let owned = false;
     try {
+      owned = await claimReminder(supabase, teamId, batch);
+      if (!owned) { deduped += 1; continue; }
       const r = (await notify({
         supabase,
         teamId,
@@ -115,7 +150,9 @@ export async function runAcademyPullReminderSweep({
       else if (r?.deduped) deduped += 1;
     } catch (e: unknown) {
       // best-effort: samles i errors[], som cron.js captures i Sentry; én mislykket påmindelse stopper ikke de andre.
-      errors.push(`reminder ${teamId}: ${e instanceof Error ? e.message : String(e)}`);
+      // Claimet fjernes igen, så næste times kørsel kan levere påmindelsen.
+      const releaseErr = owned ? await releaseReminderClaim(supabase, teamId, batch) : null;
+      errors.push(`reminder ${teamId}: ${e instanceof Error ? e.message : String(e)}${releaseErr ? ` (claim not released: ${releaseErr})` : ""}`);
     }
   }
 
