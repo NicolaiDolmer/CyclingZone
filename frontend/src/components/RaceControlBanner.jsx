@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
+  bannerNoticesForPath,
   fetchActiveOpsNotices,
   pickNoticeCopy,
   SEVERITY_META,
@@ -32,7 +33,9 @@ export default function RaceControlBanner() {
     return () => { active = false; };
   }, []);
 
-  const visible = notices.filter(
+  // #7153: sæsonskiftet står i "Næste træk" på dashboardet, ikke også her.
+  const { pathname } = useLocation();
+  const visible = bannerNoticesForPath(notices, pathname).filter(
     (n) => n.severity === "incident" || !readOpsNoticeDismissed(n.id)
   );
   void dismissTick;

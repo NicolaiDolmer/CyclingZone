@@ -61,11 +61,20 @@ export const SEVERITY_META = {
 // change tonight, ...", "Season change in progress"). Ingen ny kolonne/migration.
 export const SEASON_CHANGE_TITLE_PREFIX = "season change";
 
+export function isSeasonChangeNotice(notice) {
+  return String(notice?.title_en || "").trim().toLowerCase().startsWith(SEASON_CHANGE_TITLE_PREFIX);
+}
+
 export function pickSeasonChangeNotice(notices) {
-  for (const n of notices || []) {
-    if (String(n?.title_en || "").trim().toLowerCase().startsWith(SEASON_CHANGE_TITLE_PREFIX)) return n;
-  }
+  for (const n of notices || []) if (isSeasonChangeNotice(n)) return n;
   return null;
+}
+
+// Ejer 25/10: på dashboardet står sæsonskiftet i "Næste træk", så topbanneret
+// viser det ikke dér (samme information to gange). Alle andre sider: uændret.
+export function bannerNoticesForPath(notices, pathname) {
+  const onDashboard = pathname === "/dashboard";
+  return (notices || []).filter((n) => !(onDashboard && isSeasonChangeNotice(n)));
 }
 
 // Vaelger EN/DA-copy efter spillerens sprog, med fallback til den anden hvis

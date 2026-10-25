@@ -4,6 +4,7 @@ import {
   SEVERITY_META,
   pickNoticeCopy,
   pickSeasonChangeNotice,
+  bannerNoticesForPath,
   opsNoticeDismissKey,
   readOpsNoticeDismissed,
   writeOpsNoticeDismissed,
@@ -71,4 +72,14 @@ test("pickSeasonChangeNotice (#7153): finder sæsonskifte-banneret på den engel
   assert.equal(pickSeasonChangeNotice([{ id: "d", title_en: "  season CHANGE in progress" }])?.id, "d");
   assert.equal(pickSeasonChangeNotice([{ id: "e", title_en: "Race control" }]), null);
   assert.equal(pickSeasonChangeNotice(null), null);
+});
+
+test("bannerNoticesForPath (#7153): sæsonskiftet vises ikke i topbanneret på dashboardet, men på andre sider", () => {
+  const notices = [
+    { id: "s", title_en: "Season change tonight, 20:30-22:30" },
+    { id: "i", title_en: "Race delay on stage 3" },
+  ];
+  assert.deepEqual(bannerNoticesForPath(notices, "/dashboard").map((n) => n.id), ["i"]);
+  assert.deepEqual(bannerNoticesForPath(notices, "/training").map((n) => n.id), ["s", "i"]);
+  assert.deepEqual(bannerNoticesForPath(null, "/dashboard"), []);
 });
