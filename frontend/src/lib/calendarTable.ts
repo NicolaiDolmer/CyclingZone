@@ -27,6 +27,8 @@ export interface CalendarTableEntry extends CalendarEntryLike {
   raceType?: string | null;
   stages?: number | null;
   terrain?: string | null;
+  /** Kalenderens kategori pr. etape (backend raceCalendar.js), når etapeplanen mangler. */
+  terrainStages?: (string | null)[] | null;
   division?: number | null;
   poolId?: number | null;
   poolLabel?: string | null;
@@ -83,9 +85,13 @@ export function buildCalendarTableRows(
   const list = entries || [];
   return list.map((e) => {
     const schedule = [...(e.stageSchedule || [])].sort((a, b) => (a.stage ?? 0) - (b.stage ?? 0));
+    // Etapeplanen først; ellers kalenderens kategori pr. etape; ellers løbets grove kategori.
+    const buckets = (e.terrainStages || []).filter((b): b is string => Boolean(b));
     const stageTypes = schedule.length
       ? schedule.map((s) => stageTypeOf(s, e.terrain))
-      : [bucketProfileType(e.terrain)];
+      : buckets.length
+        ? buckets.map((b) => bucketProfileType(b))
+        : [bucketProfileType(e.terrain)];
     const range = raceDateRange(e);
     const first = schedule.find((s) => s.date) ?? null;
     const kinds = TERRAIN_KINDS.filter((k) => stageTypes.some((pt) => terrainKind(pt) === k));

@@ -11,6 +11,7 @@ import {
   effectiveCalendarView,
 } from "./calendarTable.ts";
 import type { CalendarTableEntry } from "./calendarTable.ts";
+import { bucketProfileType } from "./racePeek.ts";
 
 const TODAY = "2026-10-27";
 
@@ -67,6 +68,15 @@ test("#6683 rækker: manglende profile_type falder tilbage til kalender-kategori
   assert.deepEqual(r5.stageTypes, ["mountain"]);
   assert.equal(r5.start, "2026-10-26");
   assert.equal(r5.startTime, null);
+});
+
+test("#6683 rækker: uden etapeplan bruges kalenderens kategori pr. etape (terrainStages)", () => {
+  const [row] = buildCalendarTableRows([
+    { id: "t", name: "Tour", raceType: "stage_race", stages: 3, date: "2026-11-01", terrain: "mountain", terrainStages: ["mountain", null, "sprint"] },
+  ], TODAY);
+  assert.deepEqual(row.stageTypes, [bucketProfileType("mountain"), bucketProfileType("sprint")]);
+  assert.deepEqual(row.kinds, ["mountain", "sprint"]);
+  assert.equal(row.stages, 3);
 });
 
 test("#6683 holdstatus = myRaceStatus (samme regel som status-prikken og løbskortet)", () => {
