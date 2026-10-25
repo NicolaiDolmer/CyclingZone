@@ -77,6 +77,7 @@ export async function runAcademyWeeklyPullSweep({
       const r = await pullFn(supabase, { teamId, now });
       if (r?.ok && !r.alreadyPulled) aiPulled += 1;
     } catch (e) {
+      // best-effort: samles i errors[], som cron.js captures i Sentry; ét holds fejl må ikke stoppe de andre.
       errors.push(`ai-pull ${teamId}: ${e?.message ?? e}`);
     }
   }
@@ -103,6 +104,7 @@ export async function runAcademyWeeklyPullSweep({
         });
         if (r?.delivered) reminded += 1;
       } catch (e) {
+        // best-effort: samles i errors[], som cron.js captures i Sentry; en mislykket påmindelse ruller intet tilbage.
         errors.push(`reminder ${teamId}: ${e?.message ?? e}`);
       }
     }
