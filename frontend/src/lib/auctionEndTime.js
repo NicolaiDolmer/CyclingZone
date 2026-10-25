@@ -73,11 +73,15 @@ export function getEndTimeIssue(wall, now = new Date(), cfg = {}) {
   return null;
 }
 
-// Standard-forslaget i vælgeren: 12 timer frem, trukket ind i vinduet hvis det
+// Standard-forslaget i vælgeren: lidt over 12 timer frem, trukket ind i vinduet hvis det
 // lander om natten. 12 er valgt så auktionen spænder over to forskellige
 // tidspunkter af døgnet — det er dét der giver en budgiver nummer to en chance.
 export function defaultEndWallClock(now = new Date(), cfg = {}) {
-  const candidate = new Date(new Date(now).getTime() + 12 * 3600000);
+  // #7220: 5 minutters luft og rundet OP til næste kvarter, så forslaget stadig
+  // er mindst 12 timer frem, når spilleren trykker start (sekunder ryger ellers
+  // i vægur-formatet, og fri-transfer-gulvet afviser 11:59:30).
+  const QUARTER = 15 * 60000;
+  const candidate = new Date(Math.ceil((new Date(now).getTime() + 12 * 3600000 + 5 * 60000) / QUARTER) * QUARTER);
   let wall = utcToGameWallClock(candidate);
   const { openHour, closeHour } = windowHoursForWallClock(wall, cfg);
   const [hh, mm] = wall.slice(11, 16).split(":").map(Number);

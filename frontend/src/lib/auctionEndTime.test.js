@@ -84,9 +84,9 @@ test("getEndTimeIssue: tom værdi → invalid_end_time", () => {
   assert.equal(getEndTimeIssue("", new Date(), PROD).code, "invalid_end_time");
 });
 
-test("defaultEndWallClock: 12 timer frem når det lander i vinduet", () => {
+test("defaultEndWallClock: 12 timer frem + luft, rundet op til kvarter, når det lander i vinduet", () => {
   const now = gameWallClockToUTC("2026-08-15T10:00");
-  assert.equal(defaultEndWallClock(now, PROD), "2026-08-15T22:00");
+  assert.equal(defaultEndWallClock(now, PROD), "2026-08-15T22:15");
 });
 
 test("defaultEndWallClock: trækkes ind i vinduet når 12 timer frem er nat", () => {
@@ -121,4 +121,13 @@ test("defaultEndWallClock: forslaget er gyldigt med 12-timers-gulvet hele døgne
     const now = gameWallClockToUTC(`2026-08-15T${String(hour).padStart(2, "0")}:00`);
     assert.equal(getEndTimeIssue(defaultEndWallClock(now, cfg), now, cfg), null, `fejlede ved kl. ${hour}`);
   }
+});
+
+test("defaultEndWallClock: sekunder i nu gør aldrig forslaget under 12 timer (#7220, Codex)", () => {
+  const cfg = { ...PROD, min_hours: FREE_AGENT_MIN_HOURS };
+  const now = new Date(gameWallClockToUTC("2026-08-15T10:00").getTime() + 30500);
+  const wall = defaultEndWallClock(now, cfg);
+  assert.equal(getEndTimeIssue(wall, now, cfg), null);
+  // og det holder stadig et par minutter senere, når spilleren trykker start
+  assert.equal(getEndTimeIssue(wall, new Date(now.getTime() + 4 * 60000), cfg), null);
 });
