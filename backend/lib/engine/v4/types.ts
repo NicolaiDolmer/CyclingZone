@@ -710,6 +710,8 @@ export type EngineState = {
   finish_descent_regroup?: Record<string, { topGapSeconds: number; closedSeconds: number }>;
   // #6185 del 2 (ADDITIVT, valgfrit, KUN orders_gc_v3): udbrydere der er meldt sat af (mechanics/chaseGroup.ts).
   breakaway_dropped_ids?: string[];
+  // #7003 (ADDITIVT, valgfrit, KUN s5_profiles_v3 + etapeplan): indsatsen i rytterens sidste led (juryen).
+  stage_plan_efforts?: Record<string, EffortLevel>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
