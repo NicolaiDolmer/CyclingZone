@@ -339,7 +339,7 @@
       "expiring": "Expire cette saison",
       "season": "Expire après la saison {season}",
       "atCap": "À la limite",
-      "atCapHint": "Court déjà 3 saisons à l'avance. Pourra être prolongé à nouveau au changement de saison."
+      "atCapHint": "Court déjà aussi loin que permis. Pourra être prolongé à nouveau au changement de saison."
     },
     "bar": {
       "none": "Coche les coureurs que tu veux prolonger.",

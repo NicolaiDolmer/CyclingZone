@@ -55,6 +55,27 @@
   "primary": {
     "setDays": "Dagen instellen voor {n, plural, one {# renner} other {# renners}}"
   },
+  "decision": {
+    "title": "Beslissing van vandaag",
+    "recovery": "actief herstel vandaag",
+    "reason": "Vermoeidheid {fatigue} met een zware dag gepland. Het blessurerisico is verhoogd.",
+    "use": "Gebruik",
+    "useAria": "Zet {name} op actief herstel",
+    "useAll": "Gebruik alle {n} suggesties",
+    "none": "Geen renner heeft vandaag een aanpassing nodig.",
+    "failed": "Opslaan mislukt. Probeer het opnieuw.",
+    "segLabel": "Renners filteren",
+    "segAll": "Alle {n}",
+    "segTraining": "Training {n}",
+    "segRacing": "Wedstrijd {n}",
+    "segTired": "Vermoeidheid {from}+ {n}",
+    "colDays70": "Dagen {from}+",
+    "days70Hint": "Dagen op rij met vermoeidheid van {from} of hoger",
+    "colAssistant": "Assistent",
+    "assistantRecovery": "Actief herstel",
+    "agrees": "Eens",
+    "raceChip": "Wedstrijd"
+  },
   "overview": {
     "label": "Vandaag in één oogopslag",
     "needsDay": "Heeft een dag nodig",

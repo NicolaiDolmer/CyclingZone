@@ -7,7 +7,8 @@
 // bor kun gruppering, sortering, URL-parametre og summering af de tal.
 
 export const MAX_SEASONS_AHEAD = 3; // spejler CONTRACT.MAX_EXTENSION_SEASONS_AHEAD (backend afgør)
-export const SEASON_CHOICES = [1, 2, 3] as const;
+// #7138: loftet er indeværende sæson + 1 (gulv S6), så højst 2 i ét hug.
+export const SEASON_CHOICES = [1, 2] as const;
 
 export type ContractsSortKey = "name" | "ovr" | "potential" | "age" | "contract" | "salary" | "value";
 export type SortDir = "asc" | "desc";

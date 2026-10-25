@@ -51,14 +51,14 @@
   "intakePull": {
     "title": "This week's intake",
     "description": "Your academy has a new group of candidates. You see age, nationality, type and current abilities. Potential is learned through training once they sign.",
-    "deadlineNote": "Available until Sunday 23:59",
+    "deadlineNote": "Available until Saturday 23:59",
     "pullBtn": "Bring in this week's intake",
     "pulling": "Bringing them in...",
     "provisionalValue": "Provisional value",
     "wageOneSeason": "Wage (1 season)",
     "valuationNote": "Full valuation on Sunday",
     "abilitiesNow": "Abilities now",
-    "emptyAfterPull": "No candidates left to review. Next week's intake opens Monday.",
+    "emptyAfterPull": "No candidates left to review. Next week's intake opens Sunday.",
     "errorFailed": "Could not bring in this week's intake. Please try again."
   },
   "potentialLearned": "Learned through training",

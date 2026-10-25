@@ -55,7 +55,8 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
-import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { applyHelperWithdrawals } from "./mechanics/abandons.ts";
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 
@@ -306,7 +307,13 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     // Ejer 28/9: ungdomsloeb har en mildere graense (timeLimitTuningFor).
     tuning: timeLimitTuningFor(input.squad),
   });
-  const results = timeLimit.results;
+  // #6938 U3 (KUN s5_profiles_v3, slukket, kun endagsloeb): en sat hjaelper
+  // (langt efter, ingen opgave) kan stige af. Efter tidsgraensen, saa en
+  // OTL-rytter beholder sin udfaldsklasse; foer finish-eventet og passagerne.
+  const withdrawals = isS5ProfilesV3OrLater(input.rules_revision)
+    ? applyHelperWithdrawals(timeLimit.results, input.startlist, { seed: input.seed, distanceKm: input.route.distance_km, gc: input.gc_context })
+    : null;
+  const results = withdrawals ? withdrawals.results : timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km, sortedTimeline);
   const winnerId = results[0]?.rider_id ?? null;
   // #6748 (KUN s5_profiles_v2): ogsaa en sejr fra et stykke af udbruddet (chaseGroup.ts).
@@ -375,7 +382,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     results,
     loads,
     groupSnapshots,
-    incidents: buildIncidents(state),
+    incidents: withdrawals?.incidents.length ? [...buildIncidents(state), ...withdrawals.incidents] : buildIncidents(state),
     passages,
     // #5582 (ejer 23/9, UCI 2.6.032): en genindsat rytter (juryen eller en
     // reddet grupetto) mister sine point i point- og bjergkonkurrencen.

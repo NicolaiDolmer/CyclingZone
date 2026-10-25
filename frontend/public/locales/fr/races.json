@@ -1469,7 +1469,9 @@
       "title": "Abandons",
       "crash": "Chute",
       "mechanical": "Mécanique",
-      "injury": "Non-partant"
+      "injury": "Non-partant",
+      "illness": "Malade, non-partant",
+      "withdrawal": "Abandon"
     },
     "why": {
       "title": "Vue d'ensemble",

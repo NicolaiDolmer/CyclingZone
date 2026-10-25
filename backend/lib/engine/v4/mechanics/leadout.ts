@@ -306,3 +306,46 @@ export function applyLeadoutScoreBonuses(
     return { ...entry, score: entry.score + clamp(bonus, 0, tuning.maxScoreBonus) };
   });
 }
+
+// ── #6937 (KUN s5_profiles_v3): lead-outens pris ──────────────────────────────
+//
+// EJER 24/10: lead-out-rytteren slog for ofte sin egen sprinter. I virkeligheden
+// sker det sjaeldent: lead-outen braender sin spurt af paa at aflevere kaptajnen
+// og saetter sig op foer stregen. Det skal haenge sammen med evnerne: den bedste
+// sprinter slutter oftest bedst, og en lead-out der er daarligere end sin
+// sprintkaptajn maa kun sjaeldent slaa ham.
+//
+// REGLEN: naar holdets kaptajn (ordrens maal) er med i finalens frontpulje, betaler
+// hver af hans lead-out-ryttere i puljen en fast pris i placerings-scoren. Prisen er
+// den samme for alle (ingen rng, ingen evne-tabel), saa en lead-out der er klart
+// bedre end kaptajnen (et forkert valgt maal) stadig kan slaa ham, mens en
+// daarligere kun goer det paa en meget god dag mod kaptajnens meget daarlige.
+// Er kaptajnen ikke i puljen (sat af, styrtet), koerer lead-outen sin egen spurt:
+// ingen pris. Prisen roerer ikke kaptajnens egen score.
+
+/**
+ * Returnerer en NY liste (input muteres aldrig) hvor hver tilstedevaerende
+ * lead-out-rytter med kaptajnen i `contenderIds` har scoren saenket med `cost`
+ * (>= 0; ugyldig = 0). En rytter der selv er maal for en ordre med kaptajnen i
+ * puljen (data-fejl: to hold peger paa hinanden) betaler aldrig. Prisen
+ * betales hoejst én gang pr. rytter.
+ */
+export function applyLeadoutDeliveryCost(
+  scored: readonly ScoredRiderLike[],
+  leadoutOrders: readonly LeadoutOrder[],
+  contenderIds: ReadonlySet<string>,
+  cost: number,
+): ScoredRiderLike[] {
+  const price = Number.isFinite(cost) ? Math.max(0, cost) : 0;
+  if (!(price > 0) || leadoutOrders.length === 0) return scored.map((s) => ({ ...s }));
+  const captains = new Set(leadoutOrders.filter((o) => contenderIds.has(o.captain_rider_id)).map((o) => o.captain_rider_id));
+  const delivering = new Set<string>();
+  for (const order of leadoutOrders) {
+    if (!captains.has(order.captain_rider_id)) continue;
+    for (const id of order.leadout_rider_ids) {
+      if (contenderIds.has(id) && !captains.has(id)) delivering.add(id);
+    }
+  }
+  if (delivering.size === 0) return scored.map((s) => ({ ...s }));
+  return scored.map((s) => (delivering.has(s.riderId) ? { ...s, score: s.score - price } : { ...s }));
+}

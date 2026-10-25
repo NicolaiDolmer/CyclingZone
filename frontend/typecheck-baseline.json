@@ -723,7 +723,6 @@
     "TS2741": 1
   },
   "src/components/RaceControlBanner.jsx": {
-    "TS2339": 2,
     "TS2345": 1
   },
   "src/components/RiderFilters.jsx": {
@@ -2721,7 +2720,7 @@
     "TS18049": 2,
     "TS2322": 12,
     "TS2339": 95,
-    "TS2345": 10,
+    "TS2345": 9,
     "TS2353": 13,
     "TS2739": 4,
     "TS2741": 3
@@ -2858,7 +2857,7 @@
     "TS2769": 1
   },
   "src/pages/helpFlagGates.js": {
-    "TS2345": 2
+    "TS2345": 1
   },
   "src/preview/betaAccessMock.js": {
     "TS2322": 3

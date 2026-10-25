@@ -159,3 +159,40 @@ export function s5V3AutoChaseIntensity(teamInterest: number, fullOrderForce: num
   if (!(teamInterest > 0) || !(fullOrderForce > 0)) return 0;
   return Math.max(0, Math.min(1, (teamInterest / fullOrderForce) * S5_V3_BREAKAWAY_TUNING.p2.autoChaseWorkScale));
 }
+
+// ── P2.4 klatre-jagten (design 2026-10-23-6804-v3-climb-chase-design.md) ─────────────────
+// Kun hvor P2 gaelder, kun paa en stigning og kun naar lad-gaa-fasen er slut for udbruddet.
+// Hold med effektiv interesse (interesse OG koerende ryttere i jagtgruppen) holder forspringet
+// paa snoren med deres klatrere: en kontrol, aldrig en hentning, og aldrig oveni den
+// almindelige lukning. Uden effektiv interesse klemmes intet, og filmen faar en aarsag.
+
+/** P2.4 gaelder paa dette segment: P2 gaelder, segmentet er en stigning, og lad-gaa-fasen er slut. */
+export function s5V3ClimbChaseApplies(input: { p2Lead: boolean; segmentKind: string; letGoKm: number; chaseKm: number }): boolean {
+  return input.p2Lead && S5_V3_BREAKAWAY_TUNING.p2.climbChaseSegmentKinds.includes(input.segmentKind) && !(input.letGoKm > 0) && input.chaseKm > 0;
+}
+
+/** P2.4: klatre-jagtens snor for profilen. */
+export function s5V3ClimbChaseLeashSeconds(profileType: ProfileType): number {
+  const t = S5_V3_BREAKAWAY_TUNING.p2;
+  return t.climbChaseLeadSecondsByProfile[profileType] ?? t.climbChaseLeadSecondsDefault;
+}
+
+/**
+ * P2.4: segmentets lukning med klatre-jagten. Den almindelige lukning gaelder som foer; ligger
+ * forspringet efter den stadig over snoren, lukker klatre-jagten resten ned TIL snoren (aldrig
+ * under). `extra` er den del klatre-jagten selv bar (0 = den almindelige lukning var nok).
+ */
+export function s5V3ClimbChaseClosing(input: { grownSeconds: number; baseClosingSeconds: number; leashSeconds: number }): { closing: number; extra: number } {
+  const base = Math.max(0, input.baseClosingSeconds);
+  const needed = input.grownSeconds - input.leashSeconds;
+  if (!(needed > base)) return { closing: base, extra: 0 };
+  return { closing: needed, extra: needed - base };
+}
+
+/** P2.4: arbejds-intensiteten (0..1) for den lukning klatre-jagten bar, maalt mod en fuld ordre. */
+export function s5V3ClimbChaseIntensity(input: { extraClosingSeconds: number; chaseKm: number; closingSecondsPerKmPerUnit: number; fullOrderForce: number; teams: number }): number {
+  const perUnit = input.chaseKm * input.closingSecondsPerKmPerUnit;
+  if (!(input.extraClosingSeconds > 0) || !(perUnit > 0) || !(input.fullOrderForce > 0) || !(input.teams > 0)) return 0;
+  const advantage = input.extraClosingSeconds / perUnit / input.teams;
+  return Math.max(0, Math.min(1, (advantage / input.fullOrderForce) * S5_V3_BREAKAWAY_TUNING.p2.climbChaseWorkScale));
+}

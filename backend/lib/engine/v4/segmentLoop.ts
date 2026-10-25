@@ -75,7 +75,7 @@ import {
 } from "./tuning.ts";
 import type { GroupTempoModel } from "./tuning.ts";
 import { applyDistanceFatigueToCp } from "./mechanics/distanceFatigue.ts";
-import { applyEffortToDemand } from "./mechanics/effortCost.ts";
+import { applyEffortToDemand, effortCostTuningFor, type EffortCostTuning } from "./mechanics/effortCost.ts";
 import { grupettoAllowedDtSeconds, grupettoPaceFloorFactor } from "./mechanics/grupettoPace.ts";
 import { timeLimitFactorFor, timeLimitTuningFor } from "./mechanics/timeLimit.ts";
 import {
@@ -94,6 +94,7 @@ import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
+import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -576,6 +577,7 @@ function tickGroupRiders(
   tempo: GroupTempo,
   tuning: EngineTuning,
   recordPace = false,
+  effortTuning?: EffortCostTuning, // #6641: indsatstrinnenes pris for loebets revision (udeladt = uaendret)
 ): Record<string, RiderState> {
   const next: Record<string, RiderState> = {};
   // #4604 (bjerg-anker): kravet er RELATIVT til gruppens kollektive CP — den
@@ -629,7 +631,7 @@ function tickGroupRiders(
     // all_out-trinnet er terraen-afhaengigt (mechanics/effortCost.ts's hoved):
     // prisen foelger terraenet under hjulene, ikke etapens profil. De fire
     // andre trin er terraen-uafhaengige, saa det flytter kun all_out-ryttere.
-    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort, undefined, segment.kind);
+    const demand = applyEffortToDemand(groupDemand * positionFactor, entrant.effort, effortTuning, segment.kind);
     const rechargeRate = deriveRechargeRate(entrant.abilities, tuning.physiology);
     // #4030 fixture-fund: sub-tick i stedet for ét Euler-skridt over hele
     // segmentet (tuning.ts's PHYSIOLOGY_SUBTICK_TUNING, physiology.ts's
@@ -957,7 +959,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     for (const group of state.groups) {
       const tempo = tempoByGroup.get(group.id);
       if (!tempo) continue;
-      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, sharedGroupTime);
+      const patch = tickGroupRiders(group, state.riders, entrantsById, segment, tempo, tuning, sharedGroupTime, effortCostTuningFor(rulesRevision));
       nextRiders = { ...nextRiders, ...patch };
     }
     const ridersBeforeTick = state.riders; // #5582: jagtens om-tick starter herfra
@@ -1001,6 +1003,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
             chaseTempo,
             tuning,
             sharedGroupTime,
+            effortCostTuningFor(rulesRevision),
           );
           const wprimeAfter = group.rider_ids.filter((id) => patch[id]).map((id) => patch[id].wprime);
           holdsPace = incidentChaseHoldsPace(isIncidentChasePacedSegment(segment.kind), wprimeAfter);
@@ -1034,6 +1037,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // intet ved tempo (loftet gaelder fra toppen til stregen); ellers dalen.
     if (runInAfterFinishDescent) tempoByGroup = runInOpenOnlyTempo(state.groups, tempoByGroup, state.incident_chasers);
     else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
+    // #6486 (KUN s5_profiles_v3, slukket): grupper samler sig efter sidste top paa bjerg uden topankomst.
+    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
@@ -1106,6 +1111,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // #6748 (KUN s5_profiles_v2, slukket): udbrudsopfoelgningen (breakaway.ts).
       ...(isS5ProfilesV2OrLater(rulesRevision) ? { s5ProfilesV2: true as const } : {}),
       // #6804 (KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts).
+      // #6938 (KUN s5_profiles_v3, slukket): styrt-udgang pr. terraen (mechanics/incidents.ts).
+      // #6937 (KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen + lead-outens pris.
       ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {

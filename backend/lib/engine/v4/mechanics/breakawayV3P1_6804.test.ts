@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isStageRaceGcContext, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale } from "./breakawayV3_6804.ts";
 import { stageWinChaseForceV3 } from "./breakaway.ts";
+import { descentRegroup6486OnRoute } from "./descentRegroup6486.ts";
 import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
 import { simulateStageV4 } from "../index.ts";
 import type { Entrant, GcContext } from "../types.ts";
@@ -82,19 +83,32 @@ test("#6804 P1.1: finaleWeightScale skalerer kun etapeinteressen; udeladt = bit-
 
 // #6814 (v3): udbruddets jagt-punkter (gap_update med jagtafstand) er den eneste tilladte forskel;
 // de er kun tidslinje-events, saa resten af outputtet er stadig byte-identisk med v2.
-const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update") } });
+// #6937 B2 (v3, alle loeb): favoritterne kaemper ikke om bjergpoint undervejs, saa ogsaa bjergpassagerne
+// maa afvige (tider og resultater er ens).
+const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, passages: undefined, passage_totals: undefined, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update" && e.type !== "kom_passage") } });
 
-test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement (bortset fra #6814's gap_update)", () => {
+test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement (bortset fra #6814's gap_update og #6937's bjergpassager)", () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
   assert.ok(names.length > 0);
   for (const name of names) {
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
+    if (descentRegroup6486OnRoute(input.route)) continue; // #6486: v3 samler bjerg uden topankomst (descentRegroup6486.test.ts)
     for (const gc of [undefined, oneDay]) {
       const extra = gc ? { gc_context: gc } : {};
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
       const v3 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v3" });
+      if (gc?.status === "one_day") {
+        // #6938 U3 (v3, kun endagsloeb): en sat hjaelper kan stige af. Kun de ryttere afviger;
+        // alle andres tid og status er de samme som under v2.
+        const off = new Set((v3.incidents ?? []).filter((i) => i.kind === "withdrawal").map((i) => i.rider_id));
+        assert.ok((v3.incidents ?? []).filter((i) => i.kind !== "withdrawal").length === (v2.incidents ?? []).length, `${name}: kun hjaelpere der stiger af er nye`);
+        const keep = (out: ReturnType<typeof simulateStageV4>) => out.results.filter((r) => !off.has(r.rider_id)).map((r) => [r.rider_id, r.time_seconds, r.status]);
+        assert.deepEqual(keep(v3), keep(v2), `${name} endagsloeb`);
+        continue;
+      }
       assert.equal(JSON.stringify(withoutGapUpdates(v3)), JSON.stringify(withoutGapUpdates(v2)), `${name} ${gc?.status ?? "uden gc"}`);
+      assert.equal(JSON.stringify(v3.results), JSON.stringify(v2.results), `${name}: resultaterne er ens`);
       // Kun udbruddets jagt-punkter er nye; alle v2's gap_update findes uaendret eller er erstattet af et jagt-punkt paa samme km.
       const pursuitKeys = new Set(v3.timeline.events.filter((e) => e.type === "gap_update" && typeof e.params?.chase_group_id === "string").map((e) => `${e.params.group_id}@${e.km}`));
       const v3Plain = new Set(v3.timeline.events.filter((e) => e.type === "gap_update" && typeof e.params?.chase_group_id !== "string").map((e) => JSON.stringify(e)));

@@ -1469,7 +1469,9 @@
       "title": "Opgaven",
       "crash": "Valpartij",
       "mechanical": "Materiaalpech",
-      "injury": "Niet gestart"
+      "injury": "Niet gestart",
+      "illness": "Ziek, niet gestart",
+      "withdrawal": "Afgestapt"
     },
     "why": {
       "title": "Het grotere plaatje",

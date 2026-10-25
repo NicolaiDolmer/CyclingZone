@@ -121,6 +121,7 @@ export const SUNDAY_START_WALL_CLOCK = Object.freeze({ weekdays: ["sun"], hour: 
 export const EMAIL_HEALTH_WALL_CLOCK = Object.freeze({ hour: 8, minute: 0, repeatHourly: true }); // EMAIL_HEALTH_HOUR_COPENHAGEN
 export const EMAIL_RACE_DIGEST_WALL_CLOCK = Object.freeze({ hour: 19, minute: 0, repeatHourly: true }); // DIGEST_HOUR_COPENHAGEN
 export const DISCORD_RACE_DIGEST_WALL_CLOCK = Object.freeze({ hour: 20, minute: 0, repeatHourly: true }); // DISCORD_DIGEST_HOUR_COPENHAGEN
+export const ACADEMY_REMINDER_WALL_CLOCK = Object.freeze({ weekdays: ["sun", "sat"], hour: 10, minute: 0, repeatHourly: true }); // #7177: REMINDER_READY_HOUR; loerdagens kl. 18 er modulets egen gate
 
 // Sentry-crontab-monitor for et vaegur-skema. Udebliver det faste tidspunkt, fyrer
 // Sentry MISSED efter checkinMargin (ejer-krav #6858: lille margin, 15 min).
@@ -143,6 +144,7 @@ export const CRON_MONITOR_SUNDAY_START = wallClockMonitorConfig(SUNDAY_START_WAL
 export const CRON_MONITOR_EMAIL_HEALTH = wallClockMonitorConfig(EMAIL_HEALTH_WALL_CLOCK); // "0 8 * * *"
 export const CRON_MONITOR_EMAIL_RACE_DIGEST = wallClockMonitorConfig(EMAIL_RACE_DIGEST_WALL_CLOCK); // "0 19 * * *"
 export const CRON_MONITOR_DISCORD_RACE_DIGEST = wallClockMonitorConfig(DISCORD_RACE_DIGEST_WALL_CLOCK); // "0 20 * * *"
+export const CRON_MONITOR_ACADEMY_REMINDER = wallClockMonitorConfig(ACADEMY_REMINDER_WALL_CLOCK); // "0 10 * * 0,6", kun skema (ingen Sentry-monitor, se UNMONITORED_CRON_TICKS)
 
 // ─── ALL_CRON_MONITORS ─────────────────────────────────────────────────────
 // Deploy-grace: boot-priming af cron-monitors (#2440). Rod-årsag: hver Railway-
@@ -292,4 +294,8 @@ export const UNMONITORED_CRON_TICKS = [
   // alarmere naar databasen er nede (cron_checkins ligger i databasen). Dens
   // daekning udefra er databasevagten (scripts/ops/db-watchdog.mjs).
   "outage monitor",
+  // #7177: akademi-påmindelserne er flag-gated (startstadie off) og dedupet pr.
+  // uge. En ny Sentry-cron-monitor er en ny løbende udgift; fejl når Sentry via
+  // trackedTick + captureException i cron-funktionen.
+  "academy-pull-reminder",
 ];

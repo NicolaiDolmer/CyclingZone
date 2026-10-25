@@ -339,7 +339,7 @@
       "expiring": "Udløber denne sæson",
       "season": "Udløber efter sæson {season}",
       "atCap": "Ved loftet",
-      "atCapHint": "Løber allerede 3 sæsoner frem. Kan forlænges igen, når sæsonen skifter."
+      "atCapHint": "Løber allerede så langt, som det er tilladt. Kan forlænges igen, når sæsonen skifter."
     },
     "bar": {
       "none": "Sæt flueben ved de ryttere, du vil forlænge.",

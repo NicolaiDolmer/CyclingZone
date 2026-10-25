@@ -193,9 +193,11 @@ function windowBoundsForEnd(end, cfg) {
  * @param {Date|string} endsAt - det valgte sluttidspunkt
  * @param {Date} now - referencetidspunkt (oprettelsen)
  * @param {object} cfg - auktions-timing-config
+ * @param {{minHours?: number}} [opts] - #7220: højere gulv end CUSTOM_END_MIN_HOURS,
+ *   fx FREE_AGENT_MIN_DURATION_HOURS når rytteren er fri transfer.
  * @returns {{code: string} & Record<string, unknown> | null}
  */
-export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT_AUCTION_CONFIG) {
+export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT_AUCTION_CONFIG, { minHours } = {}) {
   // `new Date(null)` er epoch 1970, ikke en ugyldig dato — så tomme værdier skal
   // afvises eksplicit, ellers slipper de igennem som "for tidligt".
   if (endsAt === null || endsAt === undefined || endsAt === "") {
@@ -205,8 +207,9 @@ export function getCustomAuctionEndIssue(endsAt, now = new Date(), cfg = DEFAULT
   if (Number.isNaN(end.getTime())) return { code: "invalid_end_time" };
 
   const aheadMs = end.getTime() - new Date(now).getTime();
-  if (aheadMs < CUSTOM_END_MIN_HOURS * 60 * 60 * 1000) {
-    return { code: "end_too_soon", minHours: CUSTOM_END_MIN_HOURS };
+  const floorHours = Math.max(CUSTOM_END_MIN_HOURS, minHours ?? 0);
+  if (aheadMs < floorHours * 60 * 60 * 1000) {
+    return { code: "end_too_soon", minHours: floorHours };
   }
   if (aheadMs > CUSTOM_END_MAX_HOURS * 60 * 60 * 1000) {
     return { code: "end_too_late", maxHours: CUSTOM_END_MAX_HOURS };

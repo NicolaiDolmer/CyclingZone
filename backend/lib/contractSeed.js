@@ -20,7 +20,12 @@ export const CONTRACT = Object.freeze({
   // manager spamme /extend-contract og låse lav løn helt til sæson 11+.
   // Loftet er relativt til NUVÆRENDE sæson (ikke rytterens eksisterende
   // udløbssæson), så gentagne kald aldrig flytter horisonten længere ud.
-  MAX_EXTENSION_SEASONS_AHEAD: 3,
+  // #7138 (ejer 23/10 + 25/10): højst indeværende sæson + 1 ("i S5 en kontrakt
+  // i S5 og S6, udløber mellem S6 og S7").
+  MAX_EXTENSION_SEASONS_AHEAD: 1,
+  // #7138 (ejer 25/10): forlængelser lavet i aftenens S4-afslutning dækker S5 og
+  // S6, så loftet er aldrig under S6. Fra S5 er current + 1 >= 6 og gulvet uden effekt.
+  MIN_EXTENSION_END_SEASON: 6,
 });
 
 // Frossen løn (#1309 + #2594 løn-decoupling): løn prissætter NUTIDEN —
@@ -181,7 +186,8 @@ export function computeContractExtension({
 // Kaldes fra både GET /extend-quote (preview) og POST /extend-contract
 // (håndhævelse), så de aldrig kan komme ud af sync.
 export function maxAllowedContractEndSeason(currentSeason) {
-  return (Number(currentSeason) || 1) + CONTRACT.MAX_EXTENSION_SEASONS_AHEAD;
+  const current = Number(currentSeason) || 1;
+  return Math.max(current + CONTRACT.MAX_EXTENSION_SEASONS_AHEAD, CONTRACT.MIN_EXTENSION_END_SEASON);
 }
 
 // #3186: loftet var usynligt indtil spilleren blev afvist (Sentry CYCLINGZONE-45,
@@ -198,13 +204,12 @@ export function contractExtensionCapInfo(contractEndSeason, currentSeason) {
   const end = Number(contractEndSeason);
   const anchoredEnd = Number.isFinite(end) ? Math.max(end, current) : current;
   const remainingExtensions = Math.max(0, maxSeason - anchoredEnd);
-  const usedExtensions = Math.max(
-    0,
-    Math.min(CONTRACT.MAX_EXTENSION_SEASONS_AHEAD, CONTRACT.MAX_EXTENSION_SEASONS_AHEAD - remainingExtensions)
-  );
+  // #7138: tælleren følger det faktiske loft (gulvet kan give mere end AHEAD).
+  const maxExtensions = Math.max(0, maxSeason - current);
+  const usedExtensions = Math.max(0, Math.min(maxExtensions, maxExtensions - remainingExtensions));
   return {
     maxSeason,
-    maxExtensions: CONTRACT.MAX_EXTENSION_SEASONS_AHEAD,
+    maxExtensions,
     usedExtensions,
     remainingExtensions,
   };

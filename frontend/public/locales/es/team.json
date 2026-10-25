@@ -339,7 +339,7 @@
       "expiring": "Vence esta temporada",
       "season": "Vence tras la temporada {season}",
       "atCap": "En el límite",
-      "atCapHint": "Ya llega 3 temporadas por delante. Se podrá ampliar de nuevo cuando cambie la temporada."
+      "atCapHint": "Ya llega hasta donde se permite. Se podrá ampliar de nuevo cuando cambie la temporada."
     },
     "bar": {
       "none": "Marca los ciclistas que quieres ampliar.",
