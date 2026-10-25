@@ -61,7 +61,6 @@ export interface AcademyWeeklyPullDeps {
   isPullEnabled?: (sb: Db) => Promise<boolean>;
   pullFn?: (sb: Db, args: { teamId: string; now: Date }) => Promise<{ ok?: boolean; alreadyPulled?: boolean } | null | undefined>;
   // notifyTeamOwner's JSDoc typer metadata for snævert; samme `any`-grænse som academyBoardGift.ts.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- notifyTeamOwner er utypet JS med smalle inferred params
   notify?: (args: any) => Promise<unknown>;
   maxAiPulls?: number;
 }
