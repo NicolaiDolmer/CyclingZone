@@ -36,6 +36,7 @@ import type {
 import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
 import { applyLeadoutDeliveryCost, applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
+import { rollInGcCaptainsOnBunchSprint } from "./mechanics/pointsJersey2757.ts";
 import { classifyRoadWinType } from "./winType.ts";
 import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
@@ -801,6 +802,8 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       b.score - a.score ||
       baselineTieBreak(a.riderId, b.riderId),
   );
+  // #2757 G18 (KUN s5_profiles_v3): klassementskaptajnen spurter ikke i den flade massespurt.
+  if (ctx.s5ProfilesV3 === true) scored.splice(0, scored.length, ...rollInGcCaptainsOnBunchSprint(scored, { finaleType: route.finale_type, roleOf: (id) => entrants[id]?.role, isEscape: (id) => escapeRiderIds.has(id), jitter: (id) => rngFor("gc_captain_roll_in_2757", id)() }));
 
   // Kontendere uden entrant-raekke (data-drift opstroems) faar ingen score og
   // ville ellers falde helt ud af opgoerelsen — og dermed ud af feltet. De
