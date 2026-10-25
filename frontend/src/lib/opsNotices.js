@@ -72,9 +72,11 @@ export function pickSeasonChangeNotice(notices) {
 
 // Ejer 25/10: på dashboardet står sæsonskiftet i "Næste træk", så topbanneret
 // viser det ikke dér (samme information to gange). Alle andre sider: uændret.
-export function bannerNoticesForPath(notices, pathname) {
-  const onDashboard = pathname === "/dashboard";
-  return (notices || []).filter((n) => !(onDashboard && isSeasonChangeNotice(n)));
+// Har spilleren skjult "Næste træk" på dashboardet, bliver banneret, ellers
+// ville sæsonskiftet slet ikke stå på dashboardet.
+export function bannerNoticesForPath(notices, pathname, nextActionsVisible = true) {
+  const hideSeasonChange = pathname === "/dashboard" && nextActionsVisible;
+  return (notices || []).filter((n) => !(hideSeasonChange && isSeasonChangeNotice(n)));
 }
 
 // Vaelger EN/DA-copy efter spillerens sprog, med fallback til den anden hvis

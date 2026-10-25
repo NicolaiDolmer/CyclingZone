@@ -83,3 +83,12 @@ test("bannerNoticesForPath (#7153): sæsonskiftet vises ikke i topbanneret på d
   assert.deepEqual(bannerNoticesForPath(notices, "/training").map((n) => n.id), ["s", "i"]);
   assert.deepEqual(bannerNoticesForPath(null, "/dashboard"), []);
 });
+
+test("bannerNoticesForPath (#7153, Codex P2): har spilleren skjult Næste træk, bliver sæsonskiftet i topbanneret", () => {
+  const notices = [
+    { id: "s", title_en: "Season change tonight, 20:30-22:30" },
+    { id: "i", title_en: "Race engine paused" },
+  ];
+  assert.deepEqual(bannerNoticesForPath(notices, "/dashboard", false).map((n) => n.id), ["s", "i"]);
+  assert.deepEqual(bannerNoticesForPath(notices, "/dashboard", true).map((n) => n.id), ["i"]);
+});

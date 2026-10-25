@@ -10,6 +10,7 @@ import {
   writeOpsNoticeDismissed,
 } from "../lib/opsNotices.js";
 import { AlertTriangleIcon, InfoIcon, XIcon } from "./ui/icons";
+import { loadLayout } from "../lib/useDashboardLayout.js";
 
 const SEVERITY_ICON = { info: InfoIcon, warning: AlertTriangleIcon, incident: AlertTriangleIcon };
 
@@ -33,9 +34,11 @@ export default function RaceControlBanner() {
     return () => { active = false; };
   }, []);
 
-  // #7153: sæsonskiftet står i "Næste træk" på dashboardet, ikke også her.
+  // #7153: sæsonskiftet står i "Næste træk" på dashboardet, ikke også her,
+  // medmindre spilleren har skjult "Næste træk" (så bliver banneret).
   const { pathname } = useLocation();
-  const visible = bannerNoticesForPath(notices, pathname).filter(
+  const nextActionsVisible = loadLayout().nextActions !== false;
+  const visible = bannerNoticesForPath(notices, pathname, nextActionsVisible).filter(
     (n) => n.severity === "incident" || !readOpsNoticeDismissed(n.id)
   );
   void dismissTick;
