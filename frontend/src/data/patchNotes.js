@@ -1,5 +1,99 @@
 export const PATCHES = [
   {
+    "version": "7.380",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "Free agent auctions always run at least 12 hours",
+          "body": "An auction on a free agent now runs for at least 12 hours, also when you pick the end time yourself, so nobody misses a rider because they were asleep or at work. Flash auctions are only for your own riders. Auctions on your own riders work as before."
+        },
+        "da": {
+          "title": "Auktioner på frie ryttere kører altid mindst 12 timer",
+          "body": "En auktion på en fri rytter kører nu mindst 12 timer, også når du selv vælger sluttidspunktet, så ingen går glip af en rytter, fordi de sov eller var på arbejde. Flash-auktioner kan kun bruges på dine egne ryttere. Auktioner på dine egne ryttere virker som før."
+        },
+        "refs": [
+          7220
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "flag": "development_curve_b",
+        "topic": "Training",
+        "en": {
+          "title": "Development follows level and potential",
+          "body": "How fast an ability grows now depends on how high it already is and on the rider's potential. The higher an ability, the harder it is to raise, and potential decides how high the rider can go. Age decides how much training a young rider can take. An ability still rises by at most one point per day. Help explains it under Training."
+        },
+        "da": {
+          "title": "Udviklingen følger niveau og potentiale",
+          "body": "Hvor hurtigt en evne vokser, afhænger nu af, hvor høj den allerede er, og af rytterens potentiale. Jo højere en evne er, jo sværere er den at hæve, og potentialet bestemmer, hvor højt rytteren kan nå. Alderen bestemmer, hvor meget træning en ung rytter kan tåle. En evne stiger stadig højst ét point om dagen. Hjælp forklarer det under Træning."
+        },
+        "refs": [
+          6110,
+          3564
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "Form and fatigue 2.0",
+          "body": "A stage now costs fatigue by its type, its length and the work your rider does, and every stage counts as a full day, also when he races twice on the same day. The more race days in the season, the more each one costs, and his recovery decides how fast the fatigue goes away. Form drops both when a rider sits idle and when he's overloaded."
+        },
+        "da": {
+          "title": "Form og træthed 2.0",
+          "body": "En etape koster nu træthed efter type, længde og det arbejde, din rytter laver, og hver etape tæller som en hel dag, også når han kører to gange samme dag. Jo flere løbsdage i sæsonen, jo mere koster hver, og hans restitution afgør, hvor hurtigt trætheden forsvinder. Formen falder både, når en rytter står stille, og når han er overbelastet."
+        },
+        "refs": [
+          6984
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
+        "flag": "potential_single_number",
+        "topic": "Riders",
+        "en": {
+          "title": "Potential shown the same way for everyone",
+          "body": "Potential is now shown the same way for all managers on My Team, in the academy, on the rider profile and on the Scouting tab: for the role where the rider can go highest, with a small box saying which role."
+        },
+        "da": {
+          "title": "Potentialet vises ens for alle",
+          "body": "Potentialet vises nu ens for alle managere på Mit hold, i akademiet, på rytterprofilen og på Scouting-fanen: for den rolle, hvor rytteren kan nå højest, med en lille boks der viser hvilken rolle."
+        },
+        "refs": [
+          6853
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Club",
+        "en": {
+          "title": "The medical department is open",
+          "body": "You can now build a medical department in Club and hire a team doctor. It helps your riders recover, gives fewer and shorter injuries, and your team doctor gives a short read on each rider when you pick riders for a race. The better the department, the bigger the effect."
+        },
+        "da": {
+          "title": "Den medicinske afdeling er åben",
+          "body": "Du kan nu bygge en medicinsk afdeling i Klub og ansætte en holdlæge. Den hjælper dine ryttere med at restituere, giver færre og kortere skader, og holdlægen giver en kort vurdering af hver rytter, når du udtager ryttere til et løb. Jo bedre afdeling, jo større effekt."
+        },
+        "refs": [
+          6984
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.379",
     "date": "2026-10-25",
     "changes": [
