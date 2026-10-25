@@ -56,7 +56,10 @@ import { useIsMobileViewport, useMediaQuery } from "../hooks/useMediaQuery.ts";
 import TrainingOverview from "../components/training/TrainingOverview.tsx";
 // #6110 S26: "Dagens beslutning" oeverst (beta-flag training_decision_card).
 import DailyDecision from "../components/training/DailyDecision.tsx";
-import { buildDailyDecision } from "../components/training/DailyDecisionModel.ts";
+import { buildAllDecisions, MAX_DECISION_SUGGESTIONS } from "../components/training/DailyDecisionModel.ts";
+// #6110 S26: holdtabellen "retning B" under kortet (samme flag).
+import TrainingTeamTableB from "../components/training/TrainingTeamTableB.tsx";
+import { assistantKindFor, daysOverLimit } from "../components/training/TrainingTeamTableBModel.ts";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import FatigueRuleSummary from "../components/training/FatigueRuleSummary.tsx";
@@ -1231,9 +1234,12 @@ export default function TrainingPage() {
   // #6110 S26: forslagene afledes af samme condition/plan/loeb som resten af siden.
   // Efter "Train now"/afregning er dagen laast (todayRun): kortet staar ikke
   // og tilbyder en aendring der ville ramme i morgen, ikke i dag.
-  const decisionCardOn = training.decisionCard === true && !runGate.trainedToday;
-  const decisionRows = decisionCardOn
-    ? buildDailyDecision({
+  // Holdtabellen B staar hele dagen med flaget (ogsaa efter "Train now"); kortet
+  // og assistentens bud kun foer dagen er laast.
+  const decisionFlagOn = training.decisionCard === true;
+  const decisionCardOn = decisionFlagOn && !runGate.trainedToday;
+  const decisionAll = decisionCardOn
+    ? buildAllDecisions({
       // riders er utypet (never) i checkJs; samme any-graense som resten af siden.
       riderIds: /** @type {Array<{ id: string }>} */ (riders).map((r) => r.id),
       condition: (id) => condition[id],
@@ -1247,11 +1253,13 @@ export default function TrainingPage() {
         const type = plan?.focus ? dayTypeForProgram(plan) : null;
         return type === "rest" || type === "recovery";
       },
-    }).map((s) => {
-      const r = /** @type {{ firstname?: string, lastname?: string } | undefined} */ (riderByIdMap.get(s.riderId));
-      return { ...s, name: `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim() };
     })
     : [];
+  const decisionSuggestedIds = new Set(decisionAll.map((s) => s.riderId));
+  const decisionRows = decisionAll.slice(0, MAX_DECISION_SUGGESTIONS).map((s) => {
+    const r = /** @type {{ firstname?: string, lastname?: string } | undefined} */ (riderByIdMap.get(s.riderId));
+    return { ...s, name: `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim() };
+  });
   const raceNames = [...new Set(overview.racing.map((id) => racingToday[id]?.race).filter(Boolean))];
   const overviewCells = [
     {
@@ -1906,6 +1914,21 @@ export default function TrainingPage() {
     });
   }
 
+  // #6110 S26: rækkerne til holdtabel B = de samme rækker + dage 70+, løbsdag og
+  // assistentens bud (samme forslag som kortet, men for alle ryttere).
+  function teamRowsFor(list) {
+    return todayRowsFor(list).map((row) => ({
+      ...row,
+      daysOver: daysOverLimit(training.fatigueDays70, row.id),
+      race: racingTodayFor(row.id) ? (racingToday[row.id]?.race ?? "") : null,
+      assistant: assistantKindFor({
+        noDay: row.noDay,
+        suggested: decisionSuggestedIds.has(row.id),
+        decided: decisionCardOn,
+      }),
+    }));
+  }
+
   // Status der betyder noget FOR DAGEN (skade, høj skaderisiko) står under
   // navnet; akademi, kontrakt og pension står i kortet.
   function renderRowStatus(riderId) {
@@ -2165,14 +2188,44 @@ export default function TrainingPage() {
 
   // ── #5485: fanen Today på desktop ─────────────────────────────────────────
   function renderDesktopToday() {
+    // #6110 S26: med flaget on er holdtabellen B (kolonner + assistent) den eneste tabel.
+    const rowsFor = decisionFlagOn ? teamRowsFor : todayRowsFor;
     const groupsForTable = groupByType
       ? groupRidersByType(visibleRiders).map((group) => ({
           key: group.type,
           label: groupLabel(group.type),
           count: t("groupCount", { n: group.riders.length }),
-          rows: todayRowsFor(group.riders),
+          rows: rowsFor(group.riders),
         }))
       : null;
+    const renderTodayDay = (riderId, isFirst) => {
+      const rider = riderByIdMap.get(riderId);
+      return (
+        <TrainingDaySelect
+          riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
+          plan={planFor(riderId)}
+          busy={savingId === riderId || bulkApplying}
+          error={planActionError?.riderId === riderId ? planActionError.error : null}
+          onChoose={(choice) => handleDayChoice(riderId, choice)}
+          dataTour={isFirst ? "training-focus" : undefined}
+          justSaved={lingerIds.has(riderId)}
+        />
+      );
+    };
+    // Segmenterne bruger overblikkets filter (samme tilstand og samme rytterlister).
+    const segmentsNode = decisionFlagOn ? (
+      <Segmented
+        label={t("decision.segLabel")}
+        value={overviewFilter ?? "all"}
+        onChange={(next) => setOverviewFilter(next === "all" ? null : next)}
+        options={[
+          { value: "all", label: t("decision.segAll", { n: riders.length }) },
+          { value: "training", label: t("decision.segTraining", { n: overview.training.length }) },
+          { value: "racing", label: t("decision.segRacing", { n: overview.racing.length }) },
+          { value: "tired", label: t("decision.segTired", { from: TIRED_FATIGUE_FROM, n: overview.tired.length }) },
+        ]}
+      />
+    ) : null;
     const toolbar = (
       <>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -2197,6 +2250,8 @@ export default function TrainingPage() {
                 {t("today.clear")}
               </Button>
             </>
+          ) : segmentsNode && overviewFilter !== "needsDay" ? (
+            segmentsNode
           ) : activeFilterLabel ? (
             <>
               <span className="text-[13px] text-cz-2">{t("overview.showing", { label: activeFilterLabel })}</span>
@@ -2303,6 +2358,35 @@ export default function TrainingPage() {
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
         ) : (
           <div ref={rosterTableRef}>
+            {decisionFlagOn ? (
+              <TrainingTeamTableB
+                bulkBar={bulkBar}
+                onSetGroup={bulkDayFlag ? handleSetGroup : undefined}
+                setForGroupLabel={t("today.setForGroup")}
+                rows={groupsForTable ? [] : rowsFor(visibleRiders)}
+                groups={groupsForTable}
+                showScore={scoreVisible}
+                sort={rosterSort.sort}
+                sortDir={rosterSort.sortDir}
+                onSort={rosterSort.handleSort}
+                selected={selected}
+                allSelected={allSelected}
+                onToggleSelect={toggleSelect}
+                onToggleAll={toggleSelectAll}
+                openId={openRiderId}
+                onToggleOpen={(riderId) => setOpenRiderId((prev) => (prev === riderId ? null : riderId))}
+                renderDay={renderTodayDay}
+                renderReset={renderResetFor}
+                renderDetail={renderRiderCard}
+                renderStatus={renderRowStatus}
+                renderNoDay={renderNoDay}
+                onUse={(riderId) => handlePlanChange(riderId, "recovery", null)}
+                toolbar={toolbar}
+                forecastSettled={fatigueForecast.settled}
+                limit={TIRED_FATIGUE_FROM}
+                empty={visibleRiders.length === 0 ? <p className="text-sm text-cz-3">{t("overview.emptyFiltered")}</p> : null}
+              />
+            ) : (
             <TrainingTodayTable
               bulkBar={bulkBar}
               onSetGroup={bulkDayFlag ? handleSetGroup : undefined}
@@ -2322,20 +2406,7 @@ export default function TrainingPage() {
               onToggleAll={toggleSelectAll}
               openId={openRiderId}
               onToggleOpen={(riderId) => setOpenRiderId((prev) => (prev === riderId ? null : riderId))}
-              renderDay={(riderId, isFirst) => {
-                const rider = riderByIdMap.get(riderId);
-                return (
-                  <TrainingDaySelect
-                    riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
-                    plan={planFor(riderId)}
-                    busy={savingId === riderId || bulkApplying}
-                    error={planActionError?.riderId === riderId ? planActionError.error : null}
-                    onChoose={(choice) => handleDayChoice(riderId, choice)}
-                    dataTour={isFirst ? "training-focus" : undefined}
-                    justSaved={lingerIds.has(riderId)}
-                  />
-                );
-              }}
+              renderDay={renderTodayDay}
               renderReset={renderResetFor}
               renderDetail={renderRiderCard}
               renderStatus={renderRowStatus}
@@ -2344,6 +2415,7 @@ export default function TrainingPage() {
               forecastSettled={fatigueForecast.settled}
               empty={visibleRiders.length === 0 ? <p className="text-sm text-cz-3">{t("overview.emptyFiltered")}</p> : null}
             />
+            )}
           </div>
         )}
         {!ridersLoading && riders.length > 0 && (

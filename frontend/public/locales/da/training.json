@@ -62,7 +62,18 @@
     "use": "Brug",
     "useAria": "Sæt {name} til aktiv restitution",
     "useAll": "Brug alle {n} forslag",
-    "none": "Ingen ryttere har brug for en ændring i dag."
+    "none": "Ingen ryttere har brug for en ændring i dag.",
+    "segLabel": "Filtrér ryttere",
+    "segAll": "Alle {n}",
+    "segTraining": "Træner {n}",
+    "segRacing": "Løb {n}",
+    "segTired": "Træthed {from}+ {n}",
+    "colDays70": "Dage {from}+",
+    "days70Hint": "Afregnede dage i træk med træthed på {from} eller mere",
+    "colAssistant": "Assistent",
+    "assistantRecovery": "Aktiv restitution",
+    "agrees": "Enig",
+    "raceChip": "Løb"
   },
   "overview": {
     "label": "Dagen på et blik",

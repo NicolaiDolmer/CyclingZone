@@ -38,6 +38,12 @@ export type DecisionInput = {
 // Traetteste foerst, hoejst tre. Samme input giver altid samme raekkefoelge
 // (tie-break paa id), saa kortet ikke hopper mellem to renders.
 export function buildDailyDecision(input: DecisionInput): DecisionSuggestion[] {
+  return buildAllDecisions(input).slice(0, MAX_DECISION_SUGGESTIONS);
+}
+
+// Alle forslag (ingen loft), traetteste foerst. Holdtabellens Assistent-kolonne
+// (#6110 S26, retning B) viser et forslag pr. rytter; kortet viser kun de foerste.
+export function buildAllDecisions(input: DecisionInput): DecisionSuggestion[] {
   const out: DecisionSuggestion[] = [];
   for (const riderId of input.riderIds) {
     if (input.isRacing(riderId) || input.isInjured(riderId) || input.isEasyDay(riderId)) continue;
@@ -49,5 +55,5 @@ export function buildDailyDecision(input: DecisionInput): DecisionSuggestion[] {
     out.push({ riderId, dayType: "recovery", fatigue });
   }
   out.sort((a, b) => b.fatigue - a.fatigue || (a.riderId < b.riderId ? -1 : 1));
-  return out.slice(0, MAX_DECISION_SUGGESTIONS);
+  return out;
 }

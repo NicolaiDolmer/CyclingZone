@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildDailyDecision, DECISION_RISK_FROM, MAX_DECISION_SUGGESTIONS } from "./DailyDecisionModel.ts";
+import { buildAllDecisions, buildDailyDecision, DECISION_RISK_FROM, MAX_DECISION_SUGGESTIONS } from "./DailyDecisionModel.ts";
 
 type Row = { fatigue: number; risk: number; racing?: boolean; injured?: boolean; easy?: boolean };
 
@@ -48,4 +48,18 @@ test("manglende condition eller ikke-tal giver intet forslag", () => {
     isEasyDay: () => false,
   });
   assert.deepEqual(out, []);
+});
+
+test("buildAllDecisions har intet loeft; kortet (buildDailyDecision) viser de foerste tre", () => {
+  const rows: Record<string, Row> = {};
+  for (const [i, id] of ["a", "b", "c", "d", "e"].entries()) rows[id] = { fatigue: 90 - i, risk: 0.3 };
+  const input = {
+    riderIds: Object.keys(rows),
+    condition: (id: string) => rows[id],
+    isRacing: () => false,
+    isInjured: () => false,
+    isEasyDay: () => false,
+  };
+  assert.equal(buildAllDecisions(input).length, 5);
+  assert.deepEqual(buildDailyDecision(input).map((s) => s.riderId), ["a", "b", "c"]);
 });
