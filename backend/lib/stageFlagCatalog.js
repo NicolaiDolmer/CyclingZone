@@ -79,6 +79,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
   // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
+  // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
+  { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },

@@ -266,6 +266,19 @@ features:
     verified: 2026-10-24
     note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168.
 
+  - id: stage-plan-v1
+    area: race-day
+    title_en: Stage plan along the route
+    title_da: Etapeplan langs ruten
+    state: dormant
+    flag: stage_plan_v1
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7003
+    verified: 2026-10-25
+    note: Seedet off; kun s5_profiles_v3-løb. Ejeren tænder.
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+
   - id: race-library-v2
     area: stats
     title_en: Calendar race card and race history library
