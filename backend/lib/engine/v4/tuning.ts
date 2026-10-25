@@ -1673,3 +1673,13 @@ const s5V3Breakaway = {
 
 /** #6804 s5_profiles_v3-udbrudspakken (deep-frosset). Se kommentaren ovenfor. */
 export const S5_V3_BREAKAWAY_TUNING = deepFreeze(s5V3Breakaway);
+
+// #7160 (KUN s5_profiles_v3, SLUKKET): favoritholdene lader et ufarligt udbrud gaa paa bjerg
+// (mechanics/breakawayInterest7160.ts). START-KANDIDATER: kalibreres bagefter i testporten med
+// prod-startlister (balance-internals/7160/, hard rule 17); ingen tal i kommentarer.
+export const S5_V3_MOUNTAIN_LET_GO_7160_TUNING = deepFreeze({
+  profiles: ["mountain", "high_mountain"] as readonly ProfileType[],
+  gcRiderMaxRank: 10, // holdets bedste mand i jagtgruppen er klassementsrytter: hoejst denne plads
+  harmlessGcGapSeconds: 600, // ufarligt: hver udbryder mindst saa langt efter holdets klassementsrytter
+  gcTeamInterestScale: 0.5, // faktor paa et saadant holds etapeinteresse, i (0, 1]
+});

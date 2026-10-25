@@ -55,6 +55,27 @@
   "primary": {
     "setDays": "Fixer les jours pour {n, plural, one {# coureur} other {# coureurs}}"
   },
+  "decision": {
+    "title": "Décision du jour",
+    "recovery": "récupération active aujourd'hui",
+    "reason": "Fatigue {fatigue} avec une journée dure prévue. Le risque de blessure est élevé.",
+    "use": "Utiliser",
+    "useAria": "Mettre {name} en récupération active",
+    "useAll": "Utiliser les {n} suggestions",
+    "none": "Aucun coureur n'a besoin d'un changement aujourd'hui.",
+    "failed": "Enregistrement impossible. Réessaie.",
+    "segLabel": "Filtrer les coureurs",
+    "segAll": "Tous {n}",
+    "segTraining": "Entraînement {n}",
+    "segRacing": "Course {n}",
+    "segTired": "Fatigue {from}+ {n}",
+    "colDays70": "Jours {from}+",
+    "days70Hint": "Jours consécutifs avec une fatigue de {from} ou plus",
+    "colAssistant": "Assistant",
+    "assistantRecovery": "Récupération active",
+    "agrees": "D'accord",
+    "raceChip": "Course"
+  },
   "overview": {
     "label": "Aujourd'hui en un coup d'œil",
     "needsDay": "A besoin d'un jour",

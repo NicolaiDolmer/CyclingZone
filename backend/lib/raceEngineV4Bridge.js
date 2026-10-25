@@ -1,5 +1,5 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
-import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
 import { peakComponentForStage } from "./racePeaks.js";
 import { scoreComponentToFormPoints } from "./plannerBoard.js";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
@@ -622,6 +622,8 @@ export function buildV4StageInput({
       ...(isS5ProfilesV2OrLater(rulesRevision)
         ? { gc_context: withRaceGcStages(withS5ThreatModel(buildGcContext({ isStageRace, stageNumber, standings: gcStandings, starterIds: rosterForOrders.map((r) => r.rider_id) }), rosterForOrders), raceGcStagesFor(raceStages, modules.route.routeFromStageProfileRow)) }
         : {}),
+      // #2757 S1 (KUN s5_profiles_v3): pointtroejens foerer, saa hans hold kan sende en pointjaeger.
+      ...(isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders?.points ? { points_leader_rider_id: String(jerseyLeaders.points) } : {}),
     },
   });
   // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe);

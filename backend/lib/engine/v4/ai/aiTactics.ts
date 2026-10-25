@@ -47,7 +47,7 @@
 import type { AbilityKey, FinaleType, ProfileType, RiderRole } from "../types.ts";
 import type { BreakawayStance, EffortLevel, TeamOrder, TeamOrderRider } from "./teamOrderContract.ts";
 import { validateTeamOrder } from "./teamOrderContract.ts";
-import { isOrdersGcV2OrLater, isOrdersGcV3OrLater, sharedTimeModelGeneration } from "../../../raceEngineRulesRevision.ts";
+import { isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV3OrLater, sharedTimeModelGeneration } from "../../../raceEngineRulesRevision.ts";
 
 export type AiRosterEntrant = {
   rider_id: string;
@@ -98,6 +98,11 @@ export type AiTacticsInput = {
    * aldrig et udbrudsforsoeg; naeste passende rytter tager pladsen. Udeladt = uaendret.
    */
   break_blocked_rider_ids?: ReadonlySet<string>;
+  /**
+   * #2757 S1 (VALGFRIT, KUN s5_profiles_v3): pointtroejens foerer foer etapen. Hans hold
+   * kan sende en pointjaeger i udbrud paa en kuperet etape. Udeladt = uaendret.
+   */
+  points_leader_rider_id?: string | null;
 };
 
 export type AiTacticsReasons = {
@@ -156,6 +161,37 @@ export const AI_TACTICS_TUNING = Object.freeze({
   /** #6201 R2a (KUN official_times_v3): angribere et hold sender paa kuperet/rullende. */
   V3_ATTACKERS_ON_HILLY_DAY: 1,
 });
+
+/**
+ * #2757 S1 (KUN s5_profiles_v3): holdets pointjaeger paa en kuperet etape i et etapeloeb, eller
+ * null. Kun et hold med en sprint-kaptajn eller pointtroejens foerer; kun hvis holdet ikke
+ * allerede sender en rytter der er staerk nok i spurten. REN og deterministisk.
+ */
+function v3PointsHunter(args: {
+  input: AiTacticsInput;
+  demand: TerrainDemand;
+  field: readonly AiFieldRider[];
+  noBreakIds: ReadonlySet<string>;
+  breakCandidates: readonly BreakScoreEntry[];
+}): string | null {
+  const { input, demand, field, noBreakIds, breakCandidates } = args;
+  if (input.race?.is_stage_race !== true || demand === "climb" || input.route.profile_type !== "hilly") return null;
+  const leaderId = input.points_leader_rider_id ?? null;
+  const motivated = input.roster.some((r) => r.role === "sprint_captain") || (leaderId !== null && input.roster.some((r) => r.rider_id === leaderId));
+  if (!motivated || breakCandidates.length >= AI_TACTICS_TUNING.V3_MAX_BREAK_CANDIDATES) return null;
+  const rankCap = Math.max(1, Math.ceil(field.length * AI_TACTICS_TUNING.V2_BREAK_CANDIDATE_FIELD_SHARE));
+  const fieldScores = field.map((r) => breakScore(r.abilities, "sprint"));
+  const suitable = (r: AiRosterEntrant) => fieldRank(breakScore(r.abilities, "sprint"), fieldScores) <= rankCap;
+  const byId = new Map(input.roster.map((r) => [r.rider_id, r]));
+  if (breakCandidates.some((c) => { const r = byId.get(c.riderId); return r !== undefined && suitable(r); })) return null;
+  const taken = new Set(breakCandidates.map((c) => c.riderId));
+  const pick = input.roster
+    .filter((r) => !noBreakIds.has(r.rider_id) && !taken.has(r.rider_id))
+    .filter((r) => r.role === "hunter" || r.role === "free_role" || r.role === "helper")
+    .filter(suitable)
+    .sort((a, b) => breakScore(b.abilities, "sprint") - breakScore(a.abilities, "sprint") || a.rider_id.localeCompare(b.rider_id))[0];
+  return pick?.rider_id ?? null;
+}
 
 /**
  * #6201 R2a (KUN official_times_v3): holdets ekstra udbrudskandidater paa
@@ -408,6 +444,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
   // udbruddet som rollens standard; en fri rytter kun paa en let_go-dag og kun
   // naar hans udbruds-score er i feltets top-andel.
   let breakCandidates: BreakScoreEntry[] = [];
+  let pointsHunterId: string | null = null;
   if (stance !== "chase") {
     // #6818: blokerede ryttere er ikke kandidater; listerne nedenfor fyldes saa af de naeste.
     const blocked = input.break_blocked_rider_ids;
@@ -477,6 +514,19 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     if (sharedTimeModelGeneration(input.rules_revision) === 3) {
       breakCandidates = v3ExtraBreakCandidates({ input, demand, primaryAbility, field, fieldPrimary, grupettoIds: noBreakIds, breakCandidates });
     }
+    // #2757 S1 (KUN s5_profiles_v3, ejer 24/10 valg 3 A): paa en kuperet etape i et etapeloeb
+    // kan et hold med en sprint-kaptajn eller pointtroejens foerer sende en pointjaeger i
+    // morgenudbruddet for at tage den indlagte spurt. Samme kandidater som ovenfor (hunter,
+    // fri rolle eller hjaelper, aldrig kaptajn, sprint-kaptajn eller grupetto, kun i feltets
+    // passende top-andel), maalt paa spurt + aggression. Hoejst én, inden for
+    // V3_MAX_BREAK_CANDIDATES. Aldrig en garanti: motoren afgoer stadig hvem der kommer afsted.
+    if (isS5ProfilesV3OrLater(input.rules_revision)) {
+      pointsHunterId = v3PointsHunter({ input, demand, field, noBreakIds, breakCandidates });
+      if (pointsHunterId) {
+        const hunter = input.roster.find((r) => r.rider_id === pointsHunterId)!;
+        breakCandidates = [...breakCandidates, { riderId: pointsHunterId, score: breakScore(hunter.abilities, "sprint") }];
+      }
+    }
   }
   const breakScoreById = new Map(breakCandidates.map((c) => [c.riderId, c.score]));
 
@@ -531,7 +581,9 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     }
 
     const tryBreak = breakScoreById.has(entrant.rider_id);
-    if (tryBreak) {
+    if (tryBreak && entrant.rider_id === pointsHunterId) {
+      reason += ` Pointjagt: ${roleLabel(entrant.role)} gaar i udbrud for at tage den indlagte spurt.`;
+    } else if (tryBreak) {
       reason += ` Udbrudsforsoeg: ${roleLabel(entrant.role)} med udbruds-score ${breakScoreById.get(entrant.rider_id)} (aggression+${primaryAbility}) mens holdet ikke selv jager.`;
     }
 
