@@ -632,17 +632,19 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
   stages.forEach((profile, index) => {
     const gcBefore = index === 0 ? [] : rankByCumTimeAsc(inRace, cumTime, posSum);
     const res = simulate({ v4, data, stages, profile, entrants: inRace, revision, gcStandings: passGc ? gcBefore : null, seedTag });
-    // #6938 (opt-in): traethed og form mellem etaperne efter #6984's model, saa
-    // U1 (ikke-start) kan maales. Udeladt = feltet koerer friskt hele loebet (som foer).
-    if (trackFatigue) inRace = inRace.map((e) => afterStageCondition(e, profile, revision));
+    // #6938 (Codex P2): onStage faar feltet SOM DET KOERTE etapen (tilstanden foer etapen),
+    // saa en parret genkoersel (sprinttoget) kun maaler ordren, ikke traethedens fremskrivning.
+    const stageEntrants = inRace;
     const bonus = (id) => res.passages?.perRider?.get(id)?.bonus_seconds ?? 0;
     for (const r of res.ranked) {
       addTo(cumTime, r.rider_id, r.stageGap - bonus(r.rider_id));
       addTo(posSum, r.rider_id, r.rank);
     }
-    const stageEntrants = inRace;
     const rankedIds = new Set(res.ranked.map((r) => r.rider_id));
     inRace = inRace.filter((e) => rankedIds.has(e.rider_id));
+    // #6938 (opt-in): traethed og form mellem etaperne efter #6984's model, saa
+    // U1 (ikke-start) kan maales. Udeladt = feltet koerer friskt hele loebet (som foer).
+    if (trackFatigue) inRace = inRace.map((e) => afterStageCondition(e, profile, revision));
     gcAfter = rankByCumTimeAsc(inRace, cumTime, posSum);
     onStage?.({ profile, index, res, gcBefore, gcAfter, entrants: stageEntrants });
   });

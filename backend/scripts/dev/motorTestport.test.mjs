@@ -379,6 +379,31 @@ test("#6909 assertSameRun: andet syntetisk felt, rute-mappe eller saeson er en a
   assertSameRun({ candidate: "c", baseline: "b", seeds: 2 }, { candidate: "c", baseline: "b", seeds: 2, benchScope: "all", syntheticField: null, routesFrom: null, season: null }, "OUT");
 });
 
+test("#6938 assertSameRun: med og uden --track-fatigue er to forskellige koersler; aeldre meta = uden", () => {
+  const prev = { candidate: "c", baseline: "b", seeds: 2, benchScope: "all" };
+  assertSameRun(prev, { ...prev }, "OUT");
+  assertSameRun(prev, { ...prev, trackFatigue: false }, "OUT");
+  assert.throws(() => assertSameRun(prev, { ...prev, trackFatigue: true }, "OUT"), /anden koersel/);
+  assertSameRun({ ...prev, trackFatigue: true }, { ...prev, trackFatigue: true }, "OUT");
+  assert.throws(() => assertSameRun({ ...prev, trackFatigue: true }, { ...prev, trackFatigue: false }, "OUT"), /anden koersel.*med traethed/);
+});
+
+test("#6938 main: --track-fatigue gemmes i meta, og samme --out uden flaget afvises", async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "testport-fatigue-"));
+  const prevExit = process.exitCode;
+  try {
+    const out = path.join(root, "balance-internals", "run");
+    const base = ["--candidate=rev", "--baseline=rev", "--bench-only", "--no-bench", `--out=${out}`, "--no-png"];
+    await main([...base, "--track-fatigue"]);
+    assert.equal(JSON.parse(readFileSync(path.join(out, "testport-meta.json"), "utf8")).trackFatigue, true);
+    await main([...base, "--track-fatigue"]);
+    await assert.rejects(() => main(base), /anden koersel/);
+  } finally {
+    process.exitCode = prevExit;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("#6909 main: --from-dir + --routes-from + --synthetic-field=bench bygger cachen og skriver kilderne paa kortet", async () => {
   const root = mkdtempSync(path.join(tmpdir(), "testport-6909-"));
   const prevExit = process.exitCode;

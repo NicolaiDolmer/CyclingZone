@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { ABANDON_RACE_GROUPS, abandonGateG17, abandonRaceGroup, buildTestportCard, renderTestportMarkdown } from "./motorTestportReport.mjs";
-import { abandonCounts, afterStageCondition } from "./tourScorecard.mjs";
+import { abandonCounts, afterStageCondition, runStagesInOrder } from "./tourScorecard.mjs";
 
 const seed = (starters, out, captains, captainsOut, helpers, helpersOut) => ({
   abandons: {
@@ -80,4 +80,21 @@ test("#6938: testportens traethed stiger efter en haard etape og formen foelger 
   assert.ok(mountain.fatigue >= 0 && mountain.fatigue <= 100);
   assert.equal(typeof mountain.form, "number");
   assert.equal(rider.fatigue, 30, "input muteres ikke");
+});
+
+test("#6938 (Codex P2): med --track-fatigue faar onStage feltet SOM DET KOERTE etapen, ikke tilstanden efter", () => {
+  const simulated = [];
+  const v4 = {
+    simulateStage: (input) => {
+      simulated.push(input.entrants.map((e) => [e.rider_id, e.fatigue, e.form]));
+      return { ranked: input.entrants.map((e, i) => ({ rider_id: e.rider_id, rank: i + 1, stageGap: i })), passages: null, v4Output: { results: [] }, timeline: null };
+    },
+  };
+  const data = { race: { id: "r" }, orders: [], profiles: [1, 2, 3].map((n) => ({ stage_number: n, profile_type: "high_mountain", distance_km: 200 })) };
+  const entrants = ["a", "b"].map((id) => ({ rider_id: id, team_id: "t", fatigue: 20, form: 60, effort: "normal", abilities: { recovery: 50 } }));
+  const seen = [];
+  runStagesInOrder({ v4, data, revision: "orders_gc_v2", seedTag: "x", entrants, trackFatigue: true, onStage: ({ entrants: e }) => seen.push(e.map((x) => [x.rider_id, x.fatigue, x.form])) });
+  assert.equal(seen.length, 3);
+  assert.deepEqual(seen, simulated, "onStage-feltet er det motoren fik paa etapen");
+  assert.ok(simulated[1][0][1] > simulated[0][0][1], "traetheden foeres videre til naeste etape");
 });

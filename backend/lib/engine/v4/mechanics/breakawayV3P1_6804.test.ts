@@ -80,7 +80,11 @@ test("#6804 P1.1: finaleWeightScale skalerer kun etapeinteressen; udeladt = bit-
   assert.ok(ordered.total >= half.total);
 });
 
-test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement", () => {
+// #6814 (v3): udbruddets jagt-punkter (gap_update med jagtafstand) er den eneste tilladte forskel;
+// de er kun tidslinje-events, saa resten af outputtet er stadig byte-identisk med v2.
+const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update") } });
+
+test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement (bortset fra #6814's gap_update)", () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
   assert.ok(names.length > 0);
@@ -99,7 +103,13 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
         assert.deepEqual(keep(v3), keep(v2), `${name} endagsloeb`);
         continue;
       }
-      assert.equal(JSON.stringify(v3), JSON.stringify(v2), `${name} ${gc?.status ?? "uden gc"}`);
+      assert.equal(JSON.stringify(withoutGapUpdates(v3)), JSON.stringify(withoutGapUpdates(v2)), `${name} ${gc?.status ?? "uden gc"}`);
+      // Kun udbruddets jagt-punkter er nye; alle v2's gap_update findes uaendret eller er erstattet af et jagt-punkt paa samme km.
+      const pursuitKeys = new Set(v3.timeline.events.filter((e) => e.type === "gap_update" && typeof e.params?.chase_group_id === "string").map((e) => `${e.params.group_id}@${e.km}`));
+      const v3Plain = new Set(v3.timeline.events.filter((e) => e.type === "gap_update" && typeof e.params?.chase_group_id !== "string").map((e) => JSON.stringify(e)));
+      for (const e of v2.timeline.events.filter((x) => x.type === "gap_update")) {
+        assert.ok(v3Plain.has(JSON.stringify(e)) || pursuitKeys.has(`${e.params.group_id}@${e.km}`), `${name}: v2's gap_update ${e.params.group_id}@${e.km}`);
+      }
     }
   }
 });
