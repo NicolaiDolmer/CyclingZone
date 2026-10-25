@@ -655,6 +655,10 @@
       "message": "{count, plural, one {{senderName} stuurde je een bericht} other {# nieuwe berichten van {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Een andere manager stuurde je een bericht} other {# nieuwe berichten van een andere manager}}"
     },
+    "riderIll": {
+      "title": "Renner ziek",
+      "message": "De arts meldt dat {rider} ziek is na meerdere dagen extreme vermoeidheid en tot {until} uitvalt."
+    },
     "riderInjured": {
       "title": "Renner geblesseerd",
       "message": "{rider} viel in {race} en is geblesseerd tot {until}.",
