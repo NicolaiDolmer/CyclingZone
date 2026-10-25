@@ -34,36 +34,44 @@ import {
   triggerKey,
   triggerOptions,
   validateStagePlanLegs,
-} from "./StagePlanModel.js";
+} from "./StagePlanModel.ts";
+import type { StagePlanLeg, StagePlanRecapItem, StagePlanRole, StagePlanRoute, StagePlanTask, StagePlanTrigger } from "./StagePlanModel.ts";
+
+type TFn = (key: string, opts?: Record<string, unknown>) => string;
+type PlanRider = { rider_id: string; name?: string | null; abandoned?: boolean };
+type PlanOrderRider = { rider_id: string; plan?: StagePlanLeg[] | null };
+type PlanOrder = { riders?: PlanOrderRider[] } & Record<string, unknown>;
+type StageProfile = { climbs?: unknown; distance_km?: unknown; profile_type?: unknown } & Record<string, unknown>;
+type TimelineEvent = { type?: unknown; km?: unknown; params?: Record<string, unknown> | null };
 
 const API = import.meta.env.VITE_API_URL;
 
 /** Etapens rute til planen: profilens egne felter (samme som serveren laeser). */
-function routeForProfile(profile) {
+function routeForProfile(profile: StageProfile | null | undefined): StagePlanRoute {
   if (!profile) return stagePlanRouteFromRaw(null);
   if (Array.isArray(profile.climbs)) return stagePlanRouteFromRaw(profile);
   // Uden raa climbs: bygget af profilens vejpunkter (samme index-regel).
-  const climbs = [];
-  for (const w of waypointsFor(profile).filter((p) => p.kind === "kom")) {
-    climbs[w.index] = { name: w.name, crest_km: w.km, category: w.category, summit_finish: w.summit_finish };
+  const climbs: unknown[] = [];
+  for (const w of (waypointsFor(profile) as Array<Record<string, unknown>>).filter((p) => p.kind === "kom")) {
+    climbs[w.index as number] = { name: w.name, crest_km: w.km, category: w.category, summit_finish: w.summit_finish };
   }
   return stagePlanRouteFromRaw({ distance_km: profile.distance_km, profile_type: profile.profile_type, climbs });
 }
 
-function climbLabel(t, route, komIndex) {
+function climbLabel(t: TFn, route: StagePlanRoute, komIndex: number): string {
   const climb = route.climbs.find((c) => c.index === komIndex);
   if (!climb) return "—";
   return climb.name || t("stagePlan.climbFallback", { category: climb.category });
 }
 
-function triggerLabel(t, route, from, previousTask) {
+function triggerLabel(t: TFn, route: StagePlanRoute, from: StagePlanTrigger | undefined, previousTask: StagePlanTask | undefined): string {
   if (!from) return "";
   if (from.at === "kom") return t("stagePlan.from.kom", { climb: climbLabel(t, route, from.kom_index) });
   if (from.at === "dropped" && previousTask === "breakaway") return t("stagePlan.from.caught");
   return t(`stagePlan.from.${from.at}`);
 }
 
-function TaskChip({ t, task, dashed = false, compact = false }) {
+function TaskChip({ t, task, dashed = false, compact = false }: { t: TFn; task: StagePlanTask; dashed?: boolean; compact?: boolean }) {
   return (
     <span
       className={`inline-flex items-center rounded-cz border px-2 py-0.5 text-2xs font-medium whitespace-nowrap ${
@@ -76,7 +84,7 @@ function TaskChip({ t, task, dashed = false, compact = false }) {
 }
 
 /** Kaeden som chips. `compact` = mobil: én linje, kun opgaverne. */
-function PlanChain({ t, legs, route, dashed = false, compact = false }) {
+function PlanChain({ t, legs, route, dashed = false, compact = false }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; dashed?: boolean; compact?: boolean }) {
   return (
     <span className={`flex items-center gap-1.5 ${compact ? "min-w-0 overflow-hidden" : "flex-wrap"}`}>
       {legs.map((leg, i) => (
@@ -92,7 +100,7 @@ function PlanChain({ t, legs, route, dashed = false, compact = false }) {
   );
 }
 
-function recapLine(t, route, legs, item, i) {
+function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], item: StagePlanRecapItem, i: number): string {
   if (item.status === "skipped") return t("stagePlan.recap.skipped");
   if (item.status === "not_reached") return t("stagePlan.recap.notReached");
   const km = item.endKm == null ? null : Math.round(item.endKm);
@@ -104,7 +112,7 @@ function recapLine(t, route, legs, item, i) {
 }
 
 /** Efter etapen: hvad rytteren faktisk gjorde i hvert led. */
-function PlanRecap({ t, legs, route, events, riderId }) {
+function PlanRecap({ t, legs, route, events, riderId }: { t: TFn; legs: StagePlanLeg[]; route: StagePlanRoute; events: TimelineEvent[]; riderId: string }) {
   const items = stagePlanRecap(legs, events, riderId);
   return (
     <ul className="space-y-1">
@@ -128,7 +136,10 @@ function PlanRecap({ t, legs, route, events, riderId }) {
 }
 
 /** Editoren for én rytter: ét trin pr. linje, kun gyldige valg. */
-function PlanEditor({ t, riderName, legs, role, route, suggestion, disabled, onChange, onClear }) {
+function PlanEditor({ t, riderName, legs, role, route, suggestion, disabled, onChange, onClear }: {
+  t: TFn; riderName?: string | null; legs: StagePlanLeg[]; role: StagePlanRole; route: StagePlanRoute;
+  suggestion: StagePlanLeg[] | null; disabled: boolean; onChange: (legs: StagePlanLeg[]) => void; onClear: () => void;
+}) {
   const addable = nextLeg(legs, role, route);
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
@@ -152,7 +163,7 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, disabled, onC
                     size="sm"
                     disabled={disabled}
                     value={triggerKey(leg.from)}
-                    onChange={(e) => {
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                       const from = triggers.find((f) => triggerKey(f) === e.target.value);
                       if (from) onChange(setLegTrigger(legs, i, from, role, route));
                     }}
@@ -171,7 +182,7 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, disabled, onC
                   size="sm"
                   disabled={disabled}
                   value={leg.task}
-                  onChange={(e) => onChange(setLegTask(legs, i, e.target.value, role, route))}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => onChange(setLegTask(legs, i, e.target.value as StagePlanTask, role, route))}
                 >
                   {tasks.map((task) => (
                     <option key={task} value={task}>{t(`stagePlan.task.${task}`)}</option>
@@ -230,8 +241,8 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, disabled, onC
 }
 
 /** Tidslinjen for en koert etape (kun til opsummeringen). null = henter/ikke klar. */
-function useStageTimeline(raceId, stageNumber, enabled) {
-  const [state, setState] = useState({ key: null, events: null });
+function useStageTimeline(raceId: string, stageNumber: number, enabled: boolean): TimelineEvent[] | null {
+  const [state, setState] = useState<{ key: string | null; events: TimelineEvent[] | null }>({ key: null, events: null });
   const key = enabled ? `${raceId}:${stageNumber}` : null;
   useEffect(() => {
     if (!key) return undefined;
@@ -239,8 +250,8 @@ function useStageTimeline(raceId, stageNumber, enabled) {
     (async () => {
       const headers = await authHeaders({ json: false });
       if (!headers) return;
-      const res = await apiFetch(`${API}/api/races/${raceId}/timeline?stage=${stageNumber}`, { headers }); // catch-ok: ikke-ok = ingen opsummering
-      if (active) setState({ key, events: res.ok && Array.isArray(res.data?.events) ? res.data.events : [] });
+      const res = (await apiFetch(`${API}/api/races/${raceId}/timeline?stage=${stageNumber}`, { headers })) as unknown as { ok: boolean; data?: { events?: unknown } | null }; // catch-ok: ikke-ok = ingen opsummering
+      if (active) setState({ key, events: res.ok && Array.isArray(res.data?.events) ? (res.data?.events as TimelineEvent[]) : [] });
     })().catch(() => { if (active) setState({ key, events: [] }); });
     return () => { active = false; };
   }, [key, raceId, stageNumber]);
@@ -264,18 +275,35 @@ export default function StagePlanBoard({
   renderRoleCell,
   rolePickerFor,
   onEditorOpen,
+}: {
+  t: TFn;
+  raceId: string;
+  activeStage: number;
+  isOneDay: boolean;
+  riders: PlanRider[];
+  roleFor: (rider: PlanRider) => unknown;
+  order: PlanOrder;
+  onChangeOrder: (transform: (order: PlanOrder) => PlanOrder) => void;
+  profile?: StageProfile | null;
+  stageLocked: boolean;
+  stageCompleted: boolean;
+  saving: boolean;
+  teamHasSprintCaptain: boolean;
+  renderRoleCell: (rider: PlanRider) => React.ReactNode;
+  rolePickerFor?: (rider: PlanRider) => React.ReactNode;
+  onEditorOpen?: () => void;
 }) {
-  const [openId, setOpenId] = useState(null);
+  const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => routeForProfile(profile), [profile]);
   const events = useStageTimeline(raceId, activeStage, stageCompleted);
-  const planByRider = new Map((order?.riders ?? []).map((r) => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
+  const planByRider = new Map<string, StagePlanLeg[] | null>((order?.riders ?? []).map((r): [string, StagePlanLeg[] | null] => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
   const timeTrial = route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt";
 
-  const suggestionFor = (rider) => suggestStagePlan({ role: planRole(roleFor(rider)), route, teamHasSprintCaptain });
-  const editable = (rider) => !stageLocked && !rider.abandoned && !timeTrial;
+  const suggestionFor = (rider: PlanRider) => suggestStagePlan({ role: planRole(roleFor(rider)), route, teamHasSprintCaptain });
+  const editable = (rider: PlanRider) => !stageLocked && !rider.abandoned && !timeTrial;
   const missing = riders.filter((r) => editable(r) && !planByRider.get(r.rider_id));
 
-  function setPlan(riderId, plan) {
+  function setPlan(riderId: string, plan: StagePlanLeg[] | null) {
     onChangeOrder((o) => setRiderPlan(o, riderId, plan));
   }
   function applyAssistant() {
@@ -284,14 +312,14 @@ export default function StagePlanBoard({
       return legs ? setRiderPlan(acc, r.rider_id, legs) : acc;
     }, o));
   }
-  function toggle(riderId) {
+  function toggle(riderId: string) {
     setOpenId((cur) => (cur === riderId ? null : riderId));
     onEditorOpen?.();
   }
 
   const planColumn = isOneDay ? t("stagePlan.colPlanRaceDay") : t("stagePlan.colPlan", { number: activeStage });
 
-  function renderPlanCell(rider, { compact = false } = {}) {
+  function renderPlanCell(rider: PlanRider, { compact = false }: { compact?: boolean } = {}) {
     const legs = planByRider.get(rider.rider_id);
     const role = planRole(roleFor(rider));
     if (timeTrial) return <span className="text-xs text-cz-3">{t("stagePlan.timeTrial")}</span>;
@@ -340,7 +368,7 @@ export default function StagePlanBoard({
     );
   }
 
-  function renderEditor(rider) {
+  function renderEditor(rider: PlanRider) {
     const role = planRole(roleFor(rider));
     const suggestion = suggestionFor(rider);
     const legs = planByRider.get(rider.rider_id) ?? suggestion ?? [];

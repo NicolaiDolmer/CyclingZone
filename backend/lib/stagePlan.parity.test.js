@@ -1,9 +1,9 @@
-// #7003: frontendens kopi af etapeplanens kontrakt (StagePlanModel.js) skal give
+// #7003: frontendens kopi af etapeplanens kontrakt (StagePlanModel.ts) skal give
 // samme svar som SSOT'en (stagePlan.ts) over et gitter af roller, ruter og kaeder.
 import test from "node:test";
 import assert from "node:assert/strict";
 import * as backend from "./stagePlan.ts";
-import * as frontend from "../../frontend/src/components/race/StagePlanModel.js";
+import * as frontend from "../../frontend/src/components/race/StagePlanModel.ts";
 
 const ROLES = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
 const PROFILES = ["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "cobbles", "itt", null];

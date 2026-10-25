@@ -33,14 +33,16 @@ const STAGE_2_PLANS = {
 };
 
 /** team-orders-svaret med planen slaaet til og etape 2's gemte planer. */
-export function withStagePlanPreview(body) {
-  const stage2 = (body.orders ?? []).find((o) => o.stage_number === 2);
+type OrderRow = { stage_number: number } & Record<string, unknown>;
+
+export function withStagePlanPreview<T extends { orders?: OrderRow[] }>(body: T): T & { stage_plan_enabled: true } {
+  const stage2 = (body.orders ?? []).find((o: OrderRow) => o.stage_number === 2);
   const riders = Object.entries(STAGE_2_PLANS).map(([rider_id, plan]) => ({ rider_id, effort: "normal", try_break: false, leadout: false, plan }));
   return {
     ...body,
     stage_plan_enabled: true,
     orders: [
-      ...(body.orders ?? []).filter((o) => o.stage_number !== 2),
+      ...(body.orders ?? []).filter((o: OrderRow) => o.stage_number !== 2),
       { ...(stage2 ?? { stage_number: 2, breakaway_stance: "neutral", locked_at: null, updated_at: "2026-09-05T09:00:00.000Z" }), riders },
     ],
   };

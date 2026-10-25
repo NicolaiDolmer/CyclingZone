@@ -115,8 +115,8 @@ import {
 import { defaultOrderForStage, fetchTeamOrders, orderForStage, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
-import StagePlanBoard from "./StagePlanBoard.jsx"; // #7003
-import { withStagePlanFields, withoutStagePlans } from "./StagePlanModel.js"; // #7003
+import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
+import { withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 
 const API = import.meta.env.VITE_API_URL;
 

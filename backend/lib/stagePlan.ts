@@ -31,7 +31,7 @@
 //
 // Fog of war: ingen tal paa skaermen. Effort-oversaettelsen er enum til enum.
 //
-// Frontend-kopien bor i frontend/src/components/race/StagePlanModel.js og holdes
+// Frontend-kopien bor i frontend/src/components/race/StagePlanModel.ts og holdes
 // lig denne fil af stagePlan.parity.test.js.
 
 export const STAGE_PLAN_MAX_LEGS = 3;
