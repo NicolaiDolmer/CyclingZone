@@ -98,6 +98,11 @@ const AI_GC_KEYS: readonly AbilityKey[] = ["climbing", "tempo", "time_trial"];
 export const SHARED_CAPTAIN_AI_TUNING = Object.freeze({
   /** Kandidatens klassementsevne som andel af kaptajnens, for at blive delt kaptajn. */
   closeToCaptainShare: 0.95,
+  /**
+   * Holdets stoerrelse i loebet, for at AI'en deler kaptajnrollen: kun et hold med
+   * hjaelpere nok til to (grand tour-stoerrelse). Et lille hold koerer for én.
+   */
+  minRosterSize: 7,
 });
 
 /** Roller AI'en kan goere til delt kaptajn (ikke jaeger, ikke spurtkaptajn). */
@@ -115,7 +120,7 @@ function gcAbility(abilities: Readonly<Partial<Record<AbilityKey, number>>> | nu
 
 /**
  * #5981 (KUN s5_profiles_v3, KUN etapeloeb): AI-holdets delte kaptajn, eller
- * null. Holdet skal have en kaptajn (en delt kaptajn kraever en kaptajn), ingen
+ * null. Holdet skal vaere stort nok til to ledere (minRosterSize), have en kaptajn (en delt kaptajn kraever en kaptajn), ingen
  * delt kaptajn i forvejen, og holdets bedste hjaelper/fri rolle paa
  * klassementsevne skal ligge taet paa kaptajnen. Deterministisk: lige evne
  * afgoeres paa rider_id. Evnerne er loebets faste, saa valget er det samme paa
@@ -126,6 +131,7 @@ export function aiCoCaptainId(
   abilitiesOf: (riderId: string) => Readonly<Partial<Record<AbilityKey, number>>> | null | undefined,
   tuning: typeof SHARED_CAPTAIN_AI_TUNING = SHARED_CAPTAIN_AI_TUNING,
 ): string | null {
+  if (roster.length < tuning.minRosterSize) return null;
   if (roster.some((r) => r.role === CO_CAPTAIN_ROLE)) return null;
   const captain = roster.find((r) => r.role === "captain");
   if (!captain) return null;
