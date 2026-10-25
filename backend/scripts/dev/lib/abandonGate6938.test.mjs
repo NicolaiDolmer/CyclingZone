@@ -108,3 +108,26 @@ test("#6938 G17 (Codex #7178): abandonCounts leverer kontraktens byRole (v3Gates
   const abandons = abandonCounts(entrants, [{ rider_id: "a" }, { rider_id: "c" }]);
   assert.deepEqual(abandons.byRole, { captain: { starters: 2, out: 1 }, helper: { starters: 2, out: 1 } });
 });
+
+test("#6938 (Codex #7178): med --track-fatigue kan langvarig ekstrem traethed goere en rytter syg; han starter ikke og er ude", () => {
+  const run = (startFatigue, { profileType = "high_mountain", effort = "all_out", recovery = 20 } = {}) => {
+    const simulated = [];
+    const v4 = {
+      simulateStage: (input) => {
+        simulated.push(input.entrants.map((e) => e.rider_id));
+        return { ranked: input.entrants.map((e, i) => ({ rider_id: e.rider_id, rank: i + 1, stageGap: i })), passages: null, v4Output: { results: [] }, timeline: null };
+      },
+    };
+    const data = { race: { id: "r" }, orders: [], profiles: Array.from({ length: 12 }, (_, i) => ({ stage_number: i + 1, profile_type: profileType, distance_km: 220 })) };
+    const entrants = Array.from({ length: 40 }, (_, i) => ({ rider_id: `r${i}`, team_id: "t", fatigue: startFatigue, form: 60, effort, abilities: { recovery } }));
+    const final = runStagesInOrder({ v4, data, revision: "orders_gc_v2", seedTag: "ill", entrants, trackFatigue: true });
+    return { simulated, final, entrants };
+  };
+  const tired = run(100);
+  const out = tired.entrants.length - tired.final.length;
+  assert.ok(out > 0, "ekstremt traette ryttere i mange dage bliver syge");
+  assert.ok(tired.simulated.at(-1).length < tired.simulated[0].length, "en syg rytter starter ikke de senere etaper");
+  assert.equal(abandonCounts(tired.entrants, tired.final).out, out, "G17 taeller dem som udgaaede");
+  const fresh = run(0, { profileType: "flat", effort: "save", recovery: 90 });
+  assert.equal(fresh.final.length, fresh.entrants.length, "uden ekstrem traethed bliver ingen syge");
+});
