@@ -723,7 +723,6 @@
     "TS2741": 1
   },
   "src/components/RaceControlBanner.jsx": {
-    "TS2339": 2,
     "TS2345": 1
   },
   "src/components/RiderFilters.jsx": {
