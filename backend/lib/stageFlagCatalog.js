@@ -79,6 +79,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
   // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
+  // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
+  { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -120,6 +122,11 @@ export const STAGE_FLAGS = Object.freeze([
   // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
   // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
   { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
+  // #6950 (Udvikling 2.0): Udviklingsscore B i motoren (developmentScoreWiring.js) og
+  // catch-up via løb (raceCatchUpWiring.js). Fail-safe OFF; "beta" læses som off; tal i
+  // serverens miljø; kræver ability_cap_per_date_enabled. Ejer-only flip.
+  { key: "development_score_v2", area: "training", label: "Udvikling 2.0 — Udviklingsscore B styrer dagens udvikling" },
+  { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
