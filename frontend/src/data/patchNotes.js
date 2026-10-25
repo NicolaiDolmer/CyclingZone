@@ -1,5 +1,46 @@
 export const PATCHES = [
   {
+    "version": "7.381",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy contracts run out like other contracts",
+          "body": "At the season change, academy riders whose contract ended in season 4 left your academy, like any other rider. Riders you brought in during the last 7 days were extended to season 5. Keep a rider by extending him on the Contracts tab."
+        },
+        "da": {
+          "title": "Akademikontrakter udløber som andre kontrakter",
+          "body": "Ved sæsonskiftet forlod akademiryttere, hvis kontrakt udløb i sæson 4, dit akademi, ligesom andre ryttere. Ryttere, du har hentet inden for de sidste 7 dage, blev forlænget til sæson 5. Behold en rytter ved at forlænge ham på Kontrakter-fanen."
+        },
+        "refs": [
+          7153
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Inactive teams are parked",
+          "body": "Teams whose manager had not logged in for 30 days and had not signed up for season 5 were parked at the season change. A parked team keeps its riders and money, and its staff were let go."
+        },
+        "da": {
+          "title": "Inaktive hold er parkeret",
+          "body": "Hold, hvis manager ikke havde logget ind i 30 dage og ikke havde tilmeldt sig sæson 5, blev parkeret ved sæsonskiftet. Et parkeret hold beholder ryttere og penge, og personalet er opsagt."
+        },
+        "refs": [
+          4592,
+          7153
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.380",
     "date": "2026-10-25",
     "changes": [
@@ -146,24 +187,6 @@ export const PATCHES = [
         },
         "refs": [
           5842
-        ]
-      },
-      {
-        "category": "improved",
-        "audience": "player",
-        "rollout": "beta",
-        "flag": "potential_single_number",
-        "topic": "Riders",
-        "en": {
-          "title": "Potential shown the same way everywhere",
-          "body": "My Team, the academy, the rider profile and the Scouting tab now show a rider's potential the same way: for the role where he can go highest, with a small box saying which role."
-        },
-        "da": {
-          "title": "Potentialet vises ens overalt",
-          "body": "Mit hold, akademiet, rytterprofilen og Scouting-fanen viser nu en rytters potentiale på samme måde: for den rolle, hvor han kan nå højest, med en lille boks der viser hvilken rolle."
-        },
-        "refs": [
-          6853
         ]
       },
       {
