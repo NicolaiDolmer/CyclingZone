@@ -28,7 +28,6 @@
 // Logikken bor her (ikke i api.js), så routen kun er en tynd kobling (#5997).
 
 import {
-  CONTRACT,
   computeContractExtension,
   maxAllowedContractEndSeason,
   contractExtensionCapInfo,
