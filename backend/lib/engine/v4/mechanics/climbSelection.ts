@@ -328,9 +328,9 @@ function computeSelections(
       scoreTriggered: noisyScore > splitThreshold,
       wprimeForced: wprimeCategoryAllowed && wprimeDepletionForcesSplit(riderState.wprime, severity, wprimeMinSeverity),
       effortForced: grupettoDropBackForced(entrant.effort, groupHasRacers),
-      // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts).
-      deficit01: deficit01 * climbGapEffortFactor(ctx.rulesRevision, effortFactor),
-      energyDeficit01: energyDeficit * climbGapEffortFactor(ctx.rulesRevision, effortFactor),
+      // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
+      deficit01: deficit01 * climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortFactor),
+      energyDeficit01: energyDeficit * climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortFactor),
     });
   }
   return selections;

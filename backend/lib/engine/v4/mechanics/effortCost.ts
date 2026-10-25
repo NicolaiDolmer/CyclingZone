@@ -122,10 +122,11 @@ export function isEffortCalibration6641Revision(revision: unknown): boolean {
  * kunne kun koste. Her ganges den SAMME faktor paa underskuddet bag hullet: all_out
  * graver dybere og taber mindre tid paa dagen (betalt med reserven undervejs og
  * traetheden bagefter), save giver slip og taber lidt. Normal er praecis 1.
- * Alle aeldre revisioner: 1 (bit-identisk).
+ * Kaldes med hook-kontekstens s5ProfilesV3-flag (sat af segmentLoop via
+ * isS5ProfilesV3OrLater). Alle aeldre revisioner: 1 (bit-identisk).
  */
-export function climbGapEffortFactor(revision: unknown, effortScoreFactor: number): number {
-  if (!isEffortCalibration6641Revision(revision) || !Number.isFinite(effortScoreFactor)) return 1;
+export function climbGapEffortFactor(s5ProfilesV3: boolean, effortScoreFactor: number): number {
+  if (s5ProfilesV3 !== true || !Number.isFinite(effortScoreFactor)) return 1;
   return Math.max(0, effortScoreFactor);
 }
 

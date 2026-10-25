@@ -93,7 +93,17 @@ export const twinId = (level, effort) => `twin6641-${level}-${effort}`;
 // Kontrol-tvilling: endnu en normal-kopi med eget rider-id (egen rng). Dens afstand til
 // normal-tvillingen er maalingens stoej, saa et trin kun tolkes naar det slaar stoejen.
 export const CONTROL = "ctrl";
-const effortOfTwin = (tag) => (tag === CONTROL ? "normal" : tag);
+// Blandet plan (ejer 25/10, "intet trin alene giver 100 %"): spar paa de flade dage,
+// normal paa de kuperede, alt ud i bjergene. Slaar planen normal hele vejen, er det
+// fordi valget pr. etape betyder noget, ikke ét trin.
+export const MIX = "mix";
+export function mixEffortFor(profileType) {
+  if (FLAT.has(profileType)) return "save";
+  if (profileType === "mountain" || profileType === "high_mountain") return "all_out";
+  return "normal";
+}
+const effortOfTwin = (tag, profileType = null) => (tag === CONTROL ? "normal" : tag === MIX ? mixEffortFor(profileType) : tag);
+const ARMS = Object.freeze([...EFFORTS, CONTROL, MIX]);
 
 /** Feltet + 15 tvillinger (ren). */
 export function withTwins(field, templates) {
@@ -102,7 +112,7 @@ export function withTwins(field, templates) {
   const teams = [...field.teams];
   for (const [level, tpl] of Object.entries(templates)) {
     const { rider_id: _r, ...ab } = tpl;
-    for (const effort of [...EFFORTS, CONTROL]) {
+    for (const effort of ARMS) {
       const id = twinId(level, effort);
       const teamId = `team-${id}`;
       entries.push({ rider_id: id, team_id: teamId, race_role: "free_role" });
@@ -124,7 +134,7 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
   const twinIds = new Set();
   for (const e of entrants) {
     const m = /^twin6641-(\w+)-(\w+)$/.exec(e.rider_id);
-    if (m) { e.effort = effortOfTwin(m[2]); twinIds.add(e.rider_id); }
+    if (m) { e.effort = effortOfTwin(m[2], sorted[0]?.profile_type); twinIds.add(e.rider_id); }
   }
   const recovery = new Map(twinField.abilities.map((a) => [a.rider_id, Number(a.recovery) || 50]));
   const effortOf = (id) => entrants.find((e) => e.rider_id === id)?.effort ?? "normal";
@@ -136,6 +146,7 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
   let currentDate = dateIdx[0];
   const enter = (index) => {
     for (const e of entrants) {
+      if (e.rider_id.endsWith(`-${MIX}`)) e.effort = mixEffortFor(sorted[index].profile_type);
       if (model === "legacy") e.fatigue = legacySeq.get(e.rider_id)[index];
       else if (model === "v2") e.fatigue = enteringFatigueV2({ openingFatigue: cond.get(e.rider_id).fatigue, priorLoadsToday: loadsToday.get(e.rider_id) ?? [], recoveryAbility: recovery.get(e.rider_id) });
       else e.fatigue = cond.get(e.rider_id).fatigue;
@@ -226,7 +237,7 @@ function runDays({ v4, field, race, stages, seasonId, simSeed, revision, templat
     const entrants = splitEntrants(data).entrants;
     for (const e of entrants) {
       const m = /^twin6641-(\w+)-(\w+)$/.exec(e.rider_id);
-      if (m) e.effort = effortOfTwin(m[2]);
+      if (m) e.effort = effortOfTwin(m[2], profile.profile_type);
       e.fatigue = EFFORT_6641_CONFIG.startFatigue;
     }
     const res = v4.simulateStage({
@@ -277,7 +288,7 @@ export function summarizeRun(run) {
   const rows = [];
   for (const level of Object.keys(LEVELS)) {
     const normalId = twinId(level, "normal");
-    for (const effort of [...EFFORTS, CONTROL]) {
+    for (const effort of ARMS) {
       const id = twinId(level, effort);
       const byClass = {};
       let entering = [];
@@ -380,7 +391,8 @@ export function realismSummary(records) {
  *  1. all_out vinder tid paa dagen (friske ben) og er mere traet bagefter.
  *  2. save taber lidt tid paa dagen og er friskere bagefter.
  *  3. normal har den bedste samlede tid over et helt etapeloeb.
- *  4. intet trin alene rammer traethedsloftet (100 %).
+ *  4. intet trin alene giver 100 %: den blandede plan (MIX) slaar normal hele vejen.
+ *  (Traethedsloftet rapporteres ved siden af: noLevelHits100 er information, ikke en retning.)
  */
 export function realismChecks(summary, model = "v2") {
   const by = Object.fromEntries(summary.filter((s) => s.model === model).map((s) => [s.effort, s]));
@@ -395,6 +407,7 @@ export function realismChecks(summary, model = "v2") {
     saveLosesDayLittle: (dayOf(by.save) ?? 0) > 0 && (dayOf(by.save) ?? 0) < (dayOf(by.grupetto) ?? Infinity),
     saveFresherAfter: (by.save?.fatigueNextDayVsNormal ?? 0) < 0,
     normalBestTotal: others.every((e) => by[e].totalDtVsNormal != null && by[e].totalDtVsNormal > 0),
+    mixBeatsNormalTotal: by[MIX]?.totalDtVsNormal != null && by[MIX].totalDtVsNormal < 0,
     noLevelHits100: EFFORTS.every((e) => !by[e] || by[e].shareHit100 === 0),
   };
 }
