@@ -1,5 +1,224 @@
 export const PATCHES = [
   {
+    "version": "7.379",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Contracts",
+        "en": {
+          "title": "Contracts can be extended to the end of next season",
+          "body": "You can now extend a contract until the end of next season at most. At tonight's season change that means season 6. Riders whose contract already runs further keep it. On the Contracts tab you choose 1 or 2 seasons."
+        },
+        "da": {
+          "title": "Kontrakter kan forlænges til udgangen af næste sæson",
+          "body": "Du kan nu højst forlænge en kontrakt til udgangen af næste sæson. Ved sæsonskiftet i aften betyder det sæson 6. Ryttere, hvis kontrakt allerede løber længere, beholder den. På Kontrakter-fanen vælger du 1 eller 2 sæsoner."
+        },
+        "refs": [
+          7138
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The season change in Next moves",
+          "body": "While a season change is coming up or running, the Next moves card on the dashboard shows it, so the same notice isn't shown twice at the top of the page. If you have hidden Next moves, the banner at the top stays."
+        },
+        "da": {
+          "title": "Sæsonskiftet i Næste træk",
+          "body": "Når et sæsonskifte er på vej eller i gang, står det i Næste træk-kortet på dashboardet, så samme besked ikke står to gange øverst på siden. Har du skjult Næste træk, bliver banneret øverst stående."
+        },
+        "refs": [
+          7153
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider values update right after the season change",
+          "body": "On a season change day, rider values now update as soon as the change is complete, once, based on the new season's ages and abilities. Before, they waited for the next full hour. Values still don't move during the change itself."
+        },
+        "da": {
+          "title": "Rytterværdierne opdateres lige efter sæsonskiftet",
+          "body": "På en dag med sæsonskifte opdateres rytterværdierne nu, så snart skiftet er færdigt, én gang, ud fra den nye sæsons alder og evner. Før ventede de til næste hele time. Værdierne flytter sig stadig ikke under selve skiftet."
+        },
+        "refs": [
+          5842
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "potential_single_number",
+        "topic": "Riders",
+        "en": {
+          "title": "Potential shown the same way everywhere",
+          "body": "My Team, the academy, the rider profile and the Scouting tab now show a rider's potential the same way: for the role where he can go highest, with a small box saying which role."
+        },
+        "da": {
+          "title": "Potentialet vises ens overalt",
+          "body": "Mit hold, akademiet, rytterprofilen og Scouting-fanen viser nu en rytters potentiale på samme måde: for den rolle, hvor han kan nå højest, med en lille boks der viser hvilken rolle."
+        },
+        "refs": [
+          6853
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "training_decision_card",
+        "topic": "Training",
+        "en": {
+          "title": "Today's decision on the Training page",
+          "body": "At the top of the Today tab, the assistant suggests what your tired riders should do today, with a Use button for each suggestion. On a computer, the team table also shows how many days in a row each rider has been on high fatigue."
+        },
+        "da": {
+          "title": "Dagens beslutning på træningssiden",
+          "body": "Øverst på I dag-fanen foreslår assistenten, hvad dine trætte ryttere skal lave i dag, med en Brug-knap til hvert forslag. På computer viser holdtabellen også, hvor mange dage i træk hver rytter har haft høj træthed."
+        },
+        "refs": [
+          6110
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board confidence no longer drifts after every race",
+          "body": "The board's confidence took the same verdict again each time a race finished, so a small minus could add up to 0. It now counts each verdict once, and the numbers were recalculated on 24 October, so the annual review at the season change uses the right values."
+        },
+        "da": {
+          "title": "Bestyrelsens tillid driver ikke længere efter hvert løb",
+          "body": "Bestyrelsens tillid tog samme dom igen, hver gang et løb sluttede, så et lille minus kunne løbe op til 0. Nu tæller hver dom én gang, og tallene blev genberegnet 24. oktober, så årsmødet ved sæsonskiftet bruger de rigtige værdier."
+        },
+        "refs": [
+          7088,
+          7100
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Protect and save orders now reach the race",
+          "body": "Orders to protect a rider or save energy were saved but didn't change how the rider raced. The race engine now uses them."
+        },
+        "da": {
+          "title": "Ordrer om at beskytte og spare virker nu i løbet",
+          "body": "Ordrer om at beskytte en rytter eller spare kræfter blev gemt, men ændrede ikke, hvordan rytteren kørte. Løbsmotoren bruger dem nu."
+        },
+        "refs": [
+          6652
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "The same training per day, whatever the season length",
+          "body": "What a rider gains from a training day no longer depends on how many race days the season has. A long season and a short season give the same per day."
+        },
+        "da": {
+          "title": "Samme træning pr. dag, uanset sæsonens længde",
+          "body": "Det, en rytter får ud af en træningsdag, afhænger ikke længere af, hvor mange løbsdage sæsonen har. En lang og en kort sæson giver det samme pr. dag."
+        },
+        "refs": [
+          6715
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Calendar",
+        "en": {
+          "title": "U23 and junior in season 5",
+          "body": "From season 5, U23 gets more race days than junior, and the youth groups are merged into fewer, fuller groups after tonight's season change. AI youth teams sit at the same level as yours, and a new or returning team never lands in a closed group."
+        },
+        "da": {
+          "title": "U23 og junior i sæson 5",
+          "body": "Fra sæson 5 får U23 flere løbsdage end junior, og ungdomsgrupperne samles i færre og fyldigere grupper efter sæsonskiftet i aften. AI-ungdomshold ligger på samme niveau som dine, og et nyt eller tilbagevendende hold havner aldrig i en lukket gruppe."
+        },
+        "refs": [
+          6667,
+          6670,
+          6671,
+          7037,
+          7040
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "More on the new stage page",
+          "body": "The stage page now marks every stage of the day as Today, shows the next stage, translates the time checks, and says how much time a group took on the bunch."
+        },
+        "da": {
+          "title": "Mere på den nye etapeside",
+          "body": "Etapesiden markerer nu alle dagens etaper som I dag, viser næste etape, oversætter mellemtiderne og siger, hvor meget tid en gruppe tog på feltet."
+        },
+        "refs": [
+          7168
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Numbers and dates in your language",
+          "body": "Numbers and dates now follow the language you play in, and pages keep their layout with longer texts."
+        },
+        "da": {
+          "title": "Tal og datoer på dit sprog",
+          "body": "Tal og datoer følger nu det sprog, du spiller på, og siderne holder deres layout med længere tekster."
+        },
+        "refs": [
+          6790,
+          6808
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Train now recovers on its own",
+          "body": "A Train now that got stuck halfway now sorts itself out, and pressing it while the evening run is busy gives a clear message instead of an error."
+        },
+        "da": {
+          "title": "Træn nu retter sig selv",
+          "body": "Et Træn nu, der hang halvvejs, ordner nu sig selv, og et tryk mens aftenkørslen er i gang giver en tydelig besked i stedet for en fejl."
+        },
+        "refs": [
+          6791,
+          6822
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.378",
     "date": "2026-10-25",
     "changes": [
@@ -50,7 +269,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Nye akademi-kandidater hver søndag",
-          "body": "Akademiets uge går nu fra søndag til lørdag. Et nyt kuld åbner hver søndag, og I kan hente det hver dag frem til lørdag kl. 23:59."
+          "body": "Akademiets uge går nu fra søndag til lørdag. Et nyt kuld åbner hver søndag, og du kan hente det hver dag frem til lørdag kl. 23:59."
         },
         "refs": [
           6666
@@ -66,8 +285,8 @@ export const PATCHES = [
           "body": "Only riders you signed through the new weekly intake have the prognosis that gets sharper with training. Academy riders you already had show the normal scout report with every rider type again."
         },
         "da": {
-          "title": "Scouting viser igen alle ryttertyper for jeres ældre akademiryttere",
-          "body": "Kun ryttere, I har hentet via det nye ugentlige optag, har prognosen, der bliver skarpere med træning. Akademiryttere, I havde i forvejen, viser igen den normale scoutrapport med alle ryttertyper."
+          "title": "Scouting viser igen alle ryttertyper for dine ældre akademiryttere",
+          "body": "Kun ryttere, du har hentet via det nye ugentlige optag, har prognosen, der bliver skarpere med træning. Akademiryttere, du havde i forvejen, viser igen den normale scoutrapport med alle ryttertyper."
         },
         "refs": [
           7195
@@ -84,7 +303,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Næste sæsons løn viser det, der står i kontrakterne",
-          "body": "Prognosen på Økonomi viste næste sæsons løn, som om al løn blev genberegnet ved sæsonskiftet. Det bliver den ikke: I betaler lønnen i kontrakten. Prognosen viser nu det, og en rytter, hvis kontrakt udløber, står med den løn, han får, hvis I forlænger ham."
+          "body": "Prognosen på Økonomi viste næste sæsons løn, som om al løn blev genberegnet ved sæsonskiftet. Det bliver den ikke: du betaler lønnen i kontrakten. Prognosen viser nu det, og en rytter, hvis kontrakt udløber, står med den løn, han får, hvis du forlænger ham."
         },
         "refs": [
           7196
@@ -101,7 +320,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Hjælp om sæsonskiftet er rettet",
-          "body": "Hjælp siger nu, at rytterværdierne opdateres næste gang ved den normale søndagsopdatering, og at den nye sæson starter efter pausen mellem sæsonerne, som I har stemt om."
+          "body": "Hjælp siger nu, at rytterværdierne opdateres næste gang ved den normale søndagsopdatering, og at den nye sæson starter efter pausen mellem sæsonerne, som managerne har stemt om."
         },
         "refs": [
           7196
