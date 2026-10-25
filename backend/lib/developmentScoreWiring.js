@@ -34,13 +34,13 @@
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { readConditionWriterFlag } from "./trainingDateConditionFlag.js";
-import {
-  DEVELOPMENT_SCORE_V2_FLAG_KEY, assertDevelopmentScoreParams, developmentDay,
-} from "./developmentScore.ts";
+import { assertDevelopmentScoreParams, developmentDay } from "./developmentScore.ts";
 import { raceDayProgram, RACE_DAY_FALLBACK_PROFILE } from "./raceDayYield.js";
 import { raceCatchUpTickArgs } from "./raceCatchUpWiring.js";
 
-export { DEVELOPMENT_SCORE_V2_FLAG_KEY };
+// Samme noegle som developmentScore.ts eksporterer (testen laaser det). Den staar som
+// literal her, saa flag-katalogets scanner (stageFlagCatalog.test.js) kan finde den.
+export const DEVELOPMENT_SCORE_V2_FLAG_KEY = "development_score_v2";
 export const DEVELOPMENT_SCORE_V2_PARAMS_ENV = "DEVELOPMENT_SCORE_V2_PARAMS";
 const LOG_TAG = "[development-score-b]";
 
