@@ -20,6 +20,10 @@ VALUES (
 )
 ON CONFLICT (key) DO NOTHING;
 
+-- #6342: fail fast instead of queueing behind live traffic on the existing tables
+-- (training_train_now_locks, race_entries). Safe to re-trigger.
+SET lock_timeout = '3s';
+
 ALTER TABLE public.training_train_now_locks ADD COLUMN IF NOT EXISTS whole_day_at timestamptz;
 GRANT UPDATE (whole_day_at) ON public.training_train_now_locks TO service_role;
 
