@@ -1387,6 +1387,18 @@
         "title": "Min rytters evne er holdt op med at stige",
         "text": "Det er nu usædvanligt. Hver evne har stadig et livstidsloft sat af hans type, men ryttere ankommer ikke længere bare derhen. Hvor tæt en rytter kommer, og på hvilke evner, afgøres af hvordan du træner ham. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder i stedet for at vokse, og det han har er det han beholder. Eller også ligger evnen allerede over hvad hans type ville bygge op af sig selv, hvilket sker for ryttere der er båret over fra en tidligere udgave af spillet. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Hver evne har sin egen linje på træningssiden og på rytterprofilen, og en færdig evne står som færdig hvor de andre viser fremdrift. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet i sig selv, som aldrig vises som et tal noget sted i spillet, og fremgangen aftager naturligt jo tættere rytteren kommer, så en værdi der står stille i nogle dage ikke nødvendigvis betyder at den er færdig."
       },
+      "typeGatingCurveB": {
+        "title": "Hvorfor vokser et fokus hurtigere for nogle ryttere?",
+        "text": "Hver rytter har en primær OG en sekundær type (sprinter, klatrer, tidskører, klassementsrytter og så videre) samt et potentiale, alt fastlagt da rytteren blev skabt. Typen afgør hvilke evner der kan nå højest: en evne hans primære type er bygget til når højest og vokser hurtigst, og hans sekundære type ligger tæt på. Positionering og taktik er håndværk: ingen fødes med dem, så alle ryttere kan nå et ordentligt niveau, men de bygges langsomt op. En evne uden for begge hans roller bliver lav og vokser langsomt, og en evne hans type direkte modarbejder rykker sig knap nok. Hver type dækker flere evner end den, den er opkaldt efter: en GC-type dækker også enkeltstart. Potentialet afgør hvor højt han samlet kan nå, og et større talent kommer også hurtigere derhen. Hvert point koster mere jo højere evnen allerede er, så de sidste point kommer langsomst. Tjek begge type-mærker før du vælger fokus. Tempoet justeres løbende som en del af balanceringen af spillet, så den daglige fremgang kan føles anderledes fra én opdatering til den næste."
+      },
+      "ceilingReachedCurveB": {
+        "title": "Min rytters evne er holdt op med at stige",
+        "text": "Fremgangen aftager jo højere en evne allerede er, og jo tættere den kommer på det loft, hans type og potentiale sætter, så en værdi der står stille i nogle dage betyder ikke nødvendigvis, at den er færdig. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder ved sæsonskiftet i stedet for at vokse. Eller også ligger evnen allerede over det loft, hans potentiale sætter, hvilket kan ske for ryttere der udviklede sig under den tidligere træningsmodel. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet, som aldrig vises som et tal noget sted i spillet."
+      },
+      "longTermGrowthCurveB": {
+        "title": "Udvikling på lang sigt",
+        "text": "Tre ting afgør hvor en evne ender. Typen afgør hvilke evner der kan nå højest. Potentialet afgør hvor højt: et større talent har et højere loft og udvikler sig også hurtigere. Og selve niveauet: hvert point koster mere jo højere evnen allerede er, så en rytter rykker hurtigt på et lavt niveau og langsomt nær toppen. Alder får ingen til at udvikle sig hurtigere. De yngste ryttere tåler endnu ikke fuld træning, så på samme niveau rykker de lidt langsommere, indtil de gør. Tæt på loftet aftager fremgangen glidende, og træning kan aldrig skubbe nogen forbi det."
+      },
       "trainToday": {
         "title": "Kør dagens træning nu",
         "text": "Træning kører én gang pr. løbsdag, efter dagens sidste løb og fra kl. 20. Du kan selv køre passet, når det åbner, eller lade assistenten køre det samme pas automatisk. Et klik giver ikke ekstra udbytte."
@@ -1557,6 +1569,10 @@
       "dailyTrainingBoost": {
         "title": "Daglig træning i akademiet",
         "text": "Akademi-ryttere følger nøjagtig samme træningsmodel som din seniortrup. Der findes ikke et særskilt akademi-system og ingen skjult bremse på hvor hurtigt de forbedrer sig: sæt et fokus og en intensitet, og gevinsterne samler sig dag for dag på samme måde. Den eneste rigtige forskel er alder. Ryttere under 22 får et ekstra ungdoms-boost der aftager frem mod 22. Deres type sætter hvor højt hver evne i sidste ende kan nå, og deres potentiale sætter hvor hurtigt de kommer derhen, så et større talent udvikler sig hurtigere mod samme loft, mens et mindre talent vokser langsommere til en solid hjælperytter."
+      },
+      "dailyTrainingBoostCurveB": {
+        "title": "Daglig træning i akademiet",
+        "text": "Akademi-ryttere følger nøjagtig samme træningsmodel som din seniortrup. Der findes ikke et særskilt akademi-system: sæt et fokus og en intensitet, og gevinsterne samler sig dag for dag på samme måde. Lave evner er billige at bygge, så en ung rytter rykker stadig hurtigt i starten. Alder giver ingen ekstra fart. Den eneste forskel er, at de yngste ryttere endnu ikke tåler fuld træning, så de udvikler sig lidt langsommere end en ældre rytter på samme niveau, indtil de gør. Typen afgør hvilke evner der kan nå højest, og potentialet afgør hvor højt de kommer og hvor hurtigt, så et større talent når højere og kommer hurtigere derhen, mens et mindre talent vokser til en solid hjælperytter."
       },
       "youthAuctions": {
         "title": "Ungdomsauktioner",
@@ -2280,6 +2296,10 @@
     "teamworkLeadershipTrainingFaq": {
       "q": "Hvad styrer, hvor hurtigt Holdarbejde og Lederskab bliver trænet, og har de skjult potentiale?",
       "a": "Holdarbejde og Lederskab trænes gennem det samme daglige system som alle andre evner: jo større afstanden er mellem, hvor rytteren står nu, og hans loft for evnen, jo hurtigere vokser den, og det bremser op jo tættere han kommer på toppen. Potentiale rører ikke loftet for nogen evne, heller ikke Holdarbejde og Lederskab; det styrer kun, hvor hurtigt det gab lukkes. Selve loftet kommer fra typen: de fleste evner har et loft formet af, hvor central evnen er for rytterens type, så en klatrers klatre-loft ligger langt over en sprinters. Holdarbejde og Lederskab virker ikke sådan: alle ryttere træner mod det samme fælles loft, uanset type. Så nej, der er ikke skjult ekstra plads på de to for en rytter med højt potentiale; potentiale gør træningen hurtigere på hver evne, også Holdarbejde og Lederskab, det løfter bare aldrig loftet."
+    },
+    "teamworkLeadershipTrainingCurveBFaq": {
+      "q": "Hvad styrer, hvor hurtigt Holdarbejde og Lederskab bliver trænet, og har de skjult potentiale?",
+      "a": "Holdarbejde og Lederskab trænes gennem det samme daglige system som alle andre evner: hvert point koster mere jo højere evnen allerede er, og fremgangen aftager jo tættere rytteren kommer på sit loft. De fleste evner har et loft formet af, hvor central evnen er for rytterens type, så en klatrers klatre-loft ligger langt over en sprinters. Holdarbejde og Lederskab virker ikke sådan: alle ryttere træner mod det samme fælles loft, uanset type. Potentialet afgør derefter, hvor højt en rytter kan nå, og hvor hurtigt han kommer derhen, på hver evne, også Holdarbejde og Lederskab. Så ja, en rytter med højt potentiale har også mere plads på de to."
     },
     "riderPoolNationalityFaq": {
       "q": "Hvorfor er nogle nationer som Sydkorea, Kina og Japan så synlige i rytterpuljen?",
