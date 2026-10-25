@@ -7473,7 +7473,9 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #2884: et valgt sluttidspunkt bruges som det står — der akkumuleres ikke
   // aktive timer. Uden et valg falder vi tilbage til den globale varighed.
   if (ends_at) {
-    const endIssue = getCustomAuctionEndIssue(ends_at, new Date(), auctionCfg);
+    // #7220 (ejer 25/10): en fri-transfer-rytter kan heller ikke med et valgt
+    // sluttidspunkt sælges på under FREE_AGENT_MIN_DURATION_HOURS.
+    const endIssue = getCustomAuctionEndIssue(ends_at, new Date(), auctionCfg, rider.team_id ? {} : { minHours: FREE_AGENT_MIN_DURATION_HOURS });
     if (endIssue) {
       if (endIssue.code === "invalid_end_time") {
         return res.status(400).json({ error: "Invalid end time", errorCode: "auction_end_invalid" });
@@ -7499,8 +7501,11 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #4004: free-agent-auktion (ingen ejer bag rytteren) uden et valgt
   // sluttidspunkt får samme 12t-gulv som de automatiske free-agent-flows
   // (academyGraduation.js/youthMarket.js) — se FREE_AGENT_MIN_DURATION_HOURS.
-  // Rammer ikke flash (egen faste 30-min-model) eller et eksplicit valgt
-  // ends_at (spillerens valg respekteres altid).
+  // Et valgt ends_at er allerede holdt mod samme gulv ovenfor, og flash (fast
+  // 30 min) afvises for fri-transfer-ryttere, så gulvet gælder altid (#7220).
+  if (flash_auction && !rider.team_id) {
+    return res.status(400).json({ error: `An auction must run for at least ${FREE_AGENT_MIN_DURATION_HOURS} hour`, errorCode: "auction_end_too_soon", errorParams: { minHours: FREE_AGENT_MIN_DURATION_HOURS } });
+  }
   const calculatedEnd = flash_auction
     ? new Date(Date.now() + 30 * 60 * 1000)
     : ends_at
