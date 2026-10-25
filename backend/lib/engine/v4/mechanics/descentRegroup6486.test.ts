@@ -102,8 +102,11 @@ test("#6486: among the engine fixtures only the descent finish is a non-summit m
   const v2 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" });
   const v3 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" });
   assert.equal(JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" })), JSON.stringify(v3), "deterministic");
-  // Up to and including the last top the race is the same (gap_update aside, #6814).
-  const upToTop = (out: StageOutput) => JSON.stringify(out.timeline.events.filter((e) => e.km <= lastTopKm && e.type !== "gap_update"));
+  // Up to and including the last top the race is the same. Other v3 features change their own
+  // events there on purpose: gap_update (#6814) and the KOM points in the favourites' group
+  // (#6937), so they are left out; the groups, splits and times before the top must match.
+  const OTHER_V3_EVENTS = new Set(["gap_update", "kom_passage"]);
+  const upToTop = (out: StageOutput) => JSON.stringify(out.timeline.events.filter((e) => e.km <= lastTopKm && !OTHER_V3_EVENTS.has(e.type)));
   assert.equal(upToTop(v3), upToTop(v2));
   assert.deepEqual(v3.results.map((r) => r.rider_id).sort(), v2.results.map((r) => r.rider_id).sort(), "same riders");
   // Nobody finishes further behind the winner than under v2: gaps only shrink.
@@ -175,10 +178,14 @@ test("#6486: on the D3 fixture (last top far from the line, short run-in) nr. 10
   }
 });
 
-test("#6486: summit finishes are untouched under s5_profiles_v3 (same results as s5_profiles_v2)", async () => {
+test("#6486: summit finishes are untouched by the descent regroup (the rule never applies on any segment)", () => {
+  // Hele motoren under v3 maa godt aendre en topankomst (andre v3-spor: indsatstrin #6641,
+  // klatre-jagten, bjergpoint); D3-reglen maa ikke. Den goer intet, naar den ikke gaelder.
   const data = JSON.parse(readFileSync(GIRO, "utf8"));
-  const summit = data.profiles.find((p: { stage_number: number }) => p.stage_number === 13);
-  const v2 = await favouritesNr10(summit, "s5_profiles_v2");
-  const v3 = await favouritesNr10(summit, "s5_profiles_v3");
-  assert.deepEqual(v3.outputs, v2.outputs);
+  for (const n of [12, 13]) {
+    const summit = data.profiles.find((p: { stage_number: number }) => p.stage_number === n);
+    assert.equal(descentRegroup6486OnRoute(summit), false, `e${n} er en topankomst`);
+    const segs = (summit.segments ?? []) as Segment[];
+    for (let i = 0; i < segs.length; i++) assert.equal(descentRegroup6486Applies({ ...summit, segments: segs }, i), false, `e${n} segment ${i}`);
+  }
 });
