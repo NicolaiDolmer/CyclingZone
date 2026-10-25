@@ -553,7 +553,8 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   result.bigTalent = bigTalentAfterNine(world.riders, s0);
   result.bNorm = world.bNorm;
   result.dateCap = world.dateCap;
-  result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge };
+  result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge,
+    curveB: variant.kind === "curveB" ? opts.curveB ?? null : null }; // #3564: kortet blander aldrig to kalibreringer
   result.fingerprint = runFingerprint(snapshot, opts);
   result.raceShares = { young: round(shares.youngMedian, 3), old: round(shares.oldMedian, 3) };
   return result;
@@ -796,8 +797,9 @@ async function main() {
   // Kun kørsler på samme billede og samme sæson-parametre kommer på samme kort.
   const fingerprint = runFingerprint(snapshot, opts);
   const all = readdirSync(runsDir).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
-  const results = orderResults(all.filter((r) => r.fingerprint === fingerprint));
-  const skipped = all.filter((r) => r.fingerprint !== fingerprint).map((r) => r.variant);
+  const sameCurve = (r) => r.variant !== "kurveB" || JSON.stringify(r.params?.curveB ?? null) === JSON.stringify(opts.curveB ?? null);
+  const results = orderResults(all.filter((r) => r.fingerprint === fingerprint && sameCurve(r)));
+  const skipped = all.filter((r) => r.fingerprint !== fingerprint || !sameCurve(r)).map((r) => r.variant);
   if (skipped.length) console.warn(`[s25] springer varianter over fra et andet billede eller andre parametre: ${skipped.join(", ")}`);
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.md`), renderCard(snapshot, results, opts, date));
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.json`), JSON.stringify({ date, opts, results }, null, 2) + "\n");

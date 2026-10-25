@@ -53,15 +53,15 @@ export interface DevelopmentCurveBParams {
   // Basis-fremdrift pr. sæson (i evne-point) ved niveau 0, fuld belastning og
   // fuld afstand til loftet. Deles med tick-delerens antal pr. sæson.
   rate: number;
-  // Niveau-leddet: (1 - niveau/100)^levelExponent. Større = stejlere top.
+  // Niveau-leddets stejlhed. Større = dyrere top.
   levelExponent: number;
-  // Blødt loft: (afstand/blødt loft)^capExponent. 0 = ingen opbremsning før loftet.
+  // Hvor tidligt fremdriften aftager mod det bløde loft. 0 = ingen opbremsning før loftet.
   capExponent: number;
   // Belastningsevne efter alder: `floor` til og med `fromAge`, glidende op til 1
   // ved `fullAge`, derefter 1.
   load: { fromAge: number; fullAge: number; floor: number };
   // Det bløde loft som andel af rolleklassens loft, pr. potentiale 1..6
-  // (lineært imellem). Udeladt = det hårde loft er også det bløde.
+  // (glidende imellem). Udeladt = det hårde loft er også det bløde.
   potentialCeiling?: readonly number[] | null;
 }
 
@@ -114,7 +114,7 @@ export function curveBLoadCapacity(age: number | null | undefined, params: Devel
   if (age <= fromAge) return floor;
   if (age >= fullAge) return 1;
   const t = (age - fromAge) / (fullAge - fromAge);
-  // Glidende (smoothstep): ingen knæk ved nogen fødselsdag.
+  // Glidende: ingen knæk ved nogen fødselsdag.
   const s = t * t * (3 - 2 * t);
   return floor + (1 - floor) * s;
 }
