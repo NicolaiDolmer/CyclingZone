@@ -166,6 +166,26 @@ export function runCohort(cohort, { curveB, shares, opts = HARNESS_DEFAULTS, end
 
 // ── Målinger ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Oplysning til G1c (ikke en gate): andel af ryttere hvis rating ved 28 er højst ét
+ * synligt point under karrierens top. Den strenge topalder (første alder med max)
+ * flytter sig et år for et enkelt point sent i plateauet; tallet her viser hvor
+ * meget af toppen der reelt er nået ved 27-28.
+ */
+export function topReachedBy28(riders) {
+  let n = 0;
+  let within1 = 0;
+  for (const r of riders) {
+    const t = r.trajectory ?? [];
+    const at28 = t.find((x) => x.age === 28)?.rating;
+    if (at28 == null) continue;
+    const peak = Math.max(...t.map((x) => x.rating ?? -Infinity));
+    n += 1;
+    if (peak - at28 <= 1) within1 += 1;
+  }
+  return n ? round((100 * within1) / n, 1) : null;
+}
+
 /** G2: top 50 i et felt i ligevægt: hver rytter ses ved én seedet alder i hans bane. */
 export function steadyStateTop50(riders, { minAge = HARNESS_DEFAULTS.startAge, size = 50 } = {}) {
   const pool = [];
@@ -230,6 +250,7 @@ export function measureModel({ curveB, cohort, existing, priv, opts = HARNESS_DE
   return {
     milestones: milestoneStats(life.riders),
     top50: steadyStateTop50(life.riders),
+    topBy28: topReachedBy28(life.riders),
     totals: life.totals,
     existing: existingRun,
     difficulty: {
@@ -302,12 +323,12 @@ function arg(argv, name, fallback) {
 
 function summaryLine(label, res) {
   const m = res.milestones.alle ?? {};
-  return `| ${label} | ${m.n ?? "-"} | ${m.pct22 ?? "-"} | ${m.pct25 ?? "-"} | ${m.peakAgeMedian ?? "-"} | ${m.peakAt27to28 ?? "-"} | ${m.peakMedian ?? "-"} | ${res.top50.medianAge} | ${res.top50.le23} | ${res.top50.ge31} | ${res.totals.ratingDrops + res.existing.ratingDrops} | ${res.totals.overPerDate + res.totals.overPerTick} | ${res.difficulty.curveB} / ${res.difficulty.today} |`;
+  return `| ${label} | ${m.n ?? "-"} | ${m.pct22 ?? "-"} | ${m.pct25 ?? "-"} | ${m.peakAgeMedian ?? "-"} | ${m.peakAt27to28 ?? "-"} | ${m.peakMedian ?? "-"} | ${res.topBy28} | ${res.top50.medianAge} | ${res.top50.le23} | ${res.top50.ge31} | ${res.totals.ratingDrops + res.existing.ratingDrops} | ${res.totals.overPerDate + res.totals.overPerTick} | ${res.difficulty.curveB} / ${res.difficulty.today} |`;
 }
 
 const TABLE_HEAD = [
-  "| Model | N | % ved 22 | % ved 25 | Topalder | Top 27-28 (%) | Top-rating (median) | Top 50 median-alder | Top 50 ≤ 23 | Top 50 ≥ 31 | Ratingfald | Over +1 | Sværhed lav/høj (B / i dag) |",
-  "|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+  "| Model | N | % ved 22 | % ved 25 | Topalder | Top 27-28 (%) | Top-rating (median) | Toppen nået ved 28 (±1, %) | Top 50 median-alder | Top 50 ≤ 23 | Top 50 ≥ 31 | Ratingfald | Over +1 | Sværhed lav/høj (B / i dag) |",
+  "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
 ];
 
 async function main() {
@@ -355,7 +376,7 @@ async function main() {
       const gates = evaluateGates({ ...res, existing: { ratingDrops: 0 } }, priv.harness);
       rows.push({ params: c, res: { milestones: res.milestones, top50: res.top50, totals: res.totals, difficulty: res.difficulty }, pass: gates.filter((x) => x.pass).length });
       const m = res.milestones.alle ?? {};
-      console.log(JSON.stringify(c), m.pct22, m.pct25, m.peakAgeMedian, res.top50.medianAge, res.top50.le23, `${gates.filter((x) => x.pass).length}/${gates.length}`);
+      console.log(JSON.stringify(c), m.pct22, m.pct25, m.peakAgeMedian, m.peakAt27to28, m.peakMedian, res.topBy28, res.top50.medianAge, res.top50.le23, `${gates.filter((x) => x.pass).length}/${gates.length}`);
     }
     writeFileSync(join(outDir, `calibrate-${date}.json`), JSON.stringify(rows, null, 2) + "\n");
     return;

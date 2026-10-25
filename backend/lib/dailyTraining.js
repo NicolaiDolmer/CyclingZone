@@ -165,7 +165,7 @@ export function dailyAbilityDelta({
   const cfg = DAILY_TRAINING_CONFIG;
   const divisor = Number.isFinite(budgetDivisor) && budgetDivisor > 0 ? budgetDivisor : cfg.daysPerSeason;
   const base = curveB
-    ? curveBBase({ current, cap, age, divisor }, curveB)
+    ? curveBBase({ current, cap, age, divisor, potentiale }, curveB)
     : (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / divisor;
   // ── DEN ANDEN KNAP (#3709 trin 4, spec §2.2) ──────────────────────────────
   // Indtil nu satte loftet både hvor højt en evne kunne komme OG hvor hurtigt,
