@@ -113,6 +113,37 @@ test("#5981: en etape-override til delt kaptajn kraever en kaptajn paa etapen", 
   assert.deepEqual(abandonedCaptain, { ok: true, errors: [] }, "en udgaaet basis-kaptajn blokerer ikke arven");
 });
 
+test("#5981: en arvet delt kaptajn kraever ogsaa en kaptajn naar kun kaptajnen overrides (effektive roller)", () => {
+  const withBaseCo = { ...STAGE_BASE, coCaptainAllowed: true, baseRoleByRider: new Map([["r1", "captain"], ["r2", "co_captain"]]) };
+  const demoted = validateStageRoleOverrides({
+    ...withBaseCo,
+    overrides: [{ stage_number: 1, rider_id: "r1", race_role: "helper", effort: "normal" }],
+  });
+  assert.ok(demoted.errors.includes("stage_roles_co_captain_requires_captain"), "urort basis-co_captain uden kaptajn afvises");
+  const moved = validateStageRoleOverrides({
+    ...withBaseCo,
+    overrides: [
+      { stage_number: 1, rider_id: "r1", race_role: "helper", effort: "normal" },
+      { stage_number: 1, rider_id: "r3", race_role: "captain", effort: "normal" },
+    ],
+  });
+  assert.deepEqual(moved, { ok: true, errors: [] }, "kaptajnen flyttet til en anden rytter er fint");
+  const coAlsoDemoted = validateStageRoleOverrides({
+    ...withBaseCo,
+    overrides: [
+      { stage_number: 1, rider_id: "r1", race_role: "helper", effort: "normal" },
+      { stage_number: 1, rider_id: "r2", race_role: "helper", effort: "normal" },
+    ],
+  });
+  assert.ok(!coAlsoDemoted.errors.includes("stage_roles_co_captain_requires_captain"), "ingen effektiv delt kaptajn, intet krav");
+  const coAbandoned = validateStageRoleOverrides({
+    ...withBaseCo,
+    abandonedRiderIds: new Set(["r2"]),
+    overrides: [{ stage_number: 1, rider_id: "r1", race_role: "helper", effort: "normal" }],
+  });
+  assert.ok(!coAbandoned.errors.includes("stage_roles_co_captain_requires_captain"), "en udgaaet delt kaptajn koerer ikke");
+});
+
 test("#5981: ved afvikling vinder etapens delte kaptajn over basis-rollen (hoejst én effektiv)", () => {
   const entrants = [
     { rider_id: "r1", team_id: "T", race_role: "captain" },

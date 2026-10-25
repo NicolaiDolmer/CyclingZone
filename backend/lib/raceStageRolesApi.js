@@ -229,13 +229,15 @@ export function validateStageRoleOverrides({
   });
   if (roleOverlap) errors.push("stage_roles_role_overlap");
 
-  // #5981: en override der GOER en rytter til delt kaptajn kraever en kaptajn paa etapen
-  // (override eller basis-rolle; en udgaaet basis-kaptajn taeller, saa arven efter et styrt
-  // ikke blokeres). Samme regel som validateSelection.
+  // #5981: en EFFEKTIV delt kaptajn (override eller urørt, ikke-udgaaet basis-rolle) kraever
+  // en kaptajn paa etapen (override eller basis-rolle; en udgaaet basis-kaptajn taeller, saa
+  // arven efter et styrt ikke blokeres). Samme regel som validateSelection.
   const coWithoutCaptain = stagesInBody.some((stageNumber) => {
     const rowsForStage = overrides.filter((o) => o?.stage_number === stageNumber);
-    if (!rowsForStage.some((o) => o?.race_role === "co_captain")) return false;
     const overriddenRiders = new Set(rowsForStage.map((o) => o?.rider_id));
+    const inheritedCo = [...teamRiderIds].some((riderId) =>
+      !overriddenRiders.has(riderId) && !abandonedRiderIds.has(riderId) && baseRoleByRider.get(riderId) === "co_captain");
+    if (!inheritedCo && !rowsForStage.some((o) => o?.race_role === "co_captain")) return false;
     if (rowsForStage.some((o) => o?.race_role === "captain")) return false;
     for (const riderId of teamRiderIds) {
       if (!overriddenRiders.has(riderId) && baseRoleByRider.get(riderId) === "captain") return false;
