@@ -89,6 +89,14 @@ export function descentRegroup6486Applies(
   return (t.secondsPerKmByKind[seg.kind] ?? 0) > 0;
 }
 
+/** Gaelder reglen paa mindst ét segment af ruten? */
+export function descentRegroup6486OnRoute(
+  route: { profile_type?: ProfileType; segments: readonly Pick<Segment, "kind">[] },
+  t: DescentRegroup6486Tuning = DESCENT_REGROUP_6486_TUNING,
+): boolean {
+  return (route.segments ?? []).some((_, i) => descentRegroup6486Applies(route, i, t));
+}
+
 /** Samarbejdet i en gruppe paa `riders` ryttere (andel af den fulde gruppes fart). */
 export function cooperationShare(riders: number, t: DescentRegroup6486Tuning = DESCENT_REGROUP_6486_TUNING): number {
   const n = Math.max(1, Math.floor(Number(riders) || 1));

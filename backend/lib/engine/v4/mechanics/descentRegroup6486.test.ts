@@ -6,7 +6,8 @@
 // (TOUR_BENCHMARKS, mountain_non_summit), de maalte tal ligger privat.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { simulateStageV4 } from "../index.ts";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { __resetRaceEngineV4Cache, loadRaceEngineV4 } from "../../../raceEngineV4Bridge.js";
@@ -16,6 +17,7 @@ import {
   closingSecondsPerKm,
   cooperationShare,
   descentRegroup6486Applies,
+  descentRegroup6486OnRoute,
   descentRegroupTempo6486,
   DESCENT_REGROUP_6486_TUNING as T,
   regroupClosingSeconds,
@@ -87,6 +89,29 @@ test("#6486: the tempo layer only makes a group faster, leaves the breakaway and
   // A group that already rides faster keeps its own tempo.
   const fast = new Map(tempo); fast.set("ch", { dtSeconds: 500 });
   assert.equal(descentRegroupTempo6486(groups, fast, nonSummit, 3, undefined).get("ch")?.dtSeconds, 500);
+});
+
+test("#6486: among the engine fixtures only the descent finish is a non-summit mountain stage; there v3 changes only times and groups after the last top", () => {
+  const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
+  const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
+  const applies = names.filter((n) => descentRegroup6486OnRoute(JSON.parse(readFileSync(path.join(dir, n, "input.json"), "utf8")).route));
+  assert.deepEqual(applies, ["nedkoerselsfinale"]);
+  const input = JSON.parse(readFileSync(path.join(dir, "nedkoerselsfinale", "input.json"), "utf8"));
+  const lastTopKm = Math.max(...input.route.segments.filter((s: Segment) => s.kind === "climb").map((s: Segment) => s.to_km));
+  const v2 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" });
+  const v3 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" });
+  assert.equal(JSON.stringify(simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" })), JSON.stringify(v3), "deterministic");
+  // Up to and including the last top the race is the same (gap_update aside, #6814).
+  const upToTop = (out: StageOutput) => JSON.stringify(out.timeline.events.filter((e) => e.km <= lastTopKm && e.type !== "gap_update"));
+  assert.equal(upToTop(v3), upToTop(v2));
+  assert.deepEqual(v3.results.map((r) => r.rider_id).sort(), v2.results.map((r) => r.rider_id).sort(), "same riders");
+  // Nobody finishes further behind the winner than under v2: gaps only shrink.
+  const behind = (out: StageOutput) => {
+    const fin = out.results.filter((r) => r.status === "finished");
+    const best = Math.min(...fin.map((r) => r.time_seconds));
+    return Math.max(...fin.map((r) => r.time_seconds - best));
+  };
+  assert.ok(behind(v3) <= behind(v2) + 1e-6);
 });
 
 // ── Hele motoren: D3-fixturen, foer (s5_profiles_v2) og efter (s5_profiles_v3) ──
