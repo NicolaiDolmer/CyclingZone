@@ -74,9 +74,26 @@ test("#6937 (Codex): udbruddet der smeltes sammen EFTER passagen i samme segment
     passages: [kom(55, [["brk", 10], ["fav", 6]])],
   };
   assert.deepEqual(Object.fromEntries(breakawayKomPointsOfStage(out)), { brk: 10 });
+  // Codex #7208: en topankomst (sidste snapshot) faar ikke tilbagefoeringen; maalordenen afgoer den.
+  const summit = { ...out, passages: [kom(60, [["brk", 20]])] };
+  assert.equal(breakawayKomPointsOfStage(summit).size, 0);
   // Uden sammensmeltningen ved segmentets slut (hentet af jagten foer passagen) taeller det ikke.
   const caught = { ...out, timeline: { events: out.timeline.events.slice(0, 1) } };
   assert.equal(breakawayKomPointsOfStage(caught).size, 0);
+});
+
+test("#6937 (Codex #7208): en hentet udbryder der senere angriber solo fra feltet, er ikke i udbrud", () => {
+  const out = {
+    timeline: { events: [{ type: "breakaway_formed", km: 5, params: { rider_ids: ["brk"] } }] },
+    groupSnapshots: [
+      { km: 30, groups: [{ kind: "breakaway", rider_ids: ["brk"] }, { kind: "peloton", rider_ids: ["fav"] }] },
+      { km: 60, groups: [{ kind: "peloton", rider_ids: ["brk", "fav"] }] },
+      { km: 90, groups: [{ kind: "solo", rider_ids: ["brk"] }, { kind: "peloton", rider_ids: ["fav"] }] },
+      { km: 150, groups: [{ kind: "peloton", rider_ids: ["brk", "fav"] }] },
+    ],
+    passages: [kom(25, [["brk", 5]]), kom(85, [["brk", 10]])],
+  };
+  assert.deepEqual(Object.fromEntries(breakawayKomPointsOfStage(out)), { brk: 5 });
 });
 
 test("#6937 (Codex): troejefoerer-trackeren bruger passagerne, ellers den generiske fallback; bjergjaegere kun under v3", () => {

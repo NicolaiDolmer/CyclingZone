@@ -70,22 +70,31 @@ export function breakawayKomPointsOfStage(v4Output) {
   if (!snaps.length) return out;
   const events = v4Output?.timeline?.events ?? [];
   const formed = new Set(events.filter((e) => e?.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
-  const breakIds = (snap) => {
+  // Codex #7208: udbruds-status foelges snapshot for snapshot. En solo-gruppe er kun
+  // udbrud, hvis rytteren sad i udbruddet i snapshottet foer (en udbryder der er koert
+  // fra sit udbrud); en hentet udbryder der senere angriber solo fra feltet, taeller ikke.
+  const escapeAt = [];
+  for (let i = 0; i < snaps.length; i++) {
+    const before = i > 0 ? escapeAt[i - 1] : null;
     const ids = new Set();
-    for (const g of snap?.groups ?? []) {
+    for (const g of snaps[i]?.groups ?? []) {
       if (g.kind === "breakaway") for (const id of g.rider_ids ?? []) ids.add(id);
-      else if (g.kind === "solo") for (const id of g.rider_ids ?? []) if (formed.has(id)) ids.add(id);
+      else if (g.kind === "solo") for (const id of g.rider_ids ?? []) if (before ? before.has(id) : formed.has(id)) ids.add(id);
     }
-    return ids;
-  };
+    escapeAt.push(ids);
+  }
+  const finishKm = Number(snaps[snaps.length - 1].km);
   for (const p of v4Output?.passages ?? []) {
     if (p?.kind !== "kom") continue;
-    const at = snaps.findIndex((s) => Number(s.km) >= Number(p.km) - 1e-6);
-    const snap = at >= 0 ? snaps[at] : snaps[snaps.length - 1];
-    const inBreak = breakIds(snap);
-    if (at > 0) {
+    const found = snaps.findIndex((s) => Number(s.km) >= Number(p.km) - 1e-6);
+    const at = found >= 0 ? found : snaps.length - 1;
+    const snap = snaps[at];
+    const inBreak = new Set(escapeAt[at]);
+    // Codex #7208: topankomsten afgoeres af maalordenen efter finalen, ikke foer
+    // sammensmeltningen; kun en top undervejs faar den tilbagefoering.
+    if (at > 0 && Number(p.km) < finishKm - 0.05) {
       const mergedAtEnd = new Set(events.filter((e) => e?.type === "group_merged" && Math.abs(Number(e.km) - Number(snap.km)) < 1e-6).flatMap((e) => e.params?.rider_ids ?? []));
-      for (const id of breakIds(snaps[at - 1])) if (mergedAtEnd.has(id)) inBreak.add(id);
+      for (const id of escapeAt[at - 1]) if (mergedAtEnd.has(id)) inBreak.add(id);
     }
     for (const r of p.results ?? []) {
       const pts = Number(r.points) || 0;
