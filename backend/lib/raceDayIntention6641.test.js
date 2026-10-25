@@ -4,13 +4,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 import { effortFatigueMultiplier, GRUPETTO_FATIGUE_BY_PROFILE_6940, RACE_V3_TUNING } from "./raceRoles.js";
-import { RACE_RULES_REVISIONS } from "./raceEngineRulesRevision.ts";
+import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "./raceEngineRulesRevision.ts";
 import { loadRaceDayEffortByRider, raceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js";
 
 const PROFILES = ["flat", "rolling", "hilly", "classic", "cobbles", "gravel", "medium_mountain", "mountain", "high_mountain", "itt", null, "unknown"];
 
-test("#6940: alle kendte revisioner beholder den faste grupetto-traethed (bit-identisk)", () => {
-  for (const rulesRevision of [...RACE_RULES_REVISIONS, null]) {
+test("#6940: alle revisioner foer s5_profiles_v3 beholder den faste grupetto-traethed (bit-identisk)", () => {
+  for (const rulesRevision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null]) {
     for (const profileType of PROFILES) {
       assert.equal(effortFatigueMultiplier("grupetto", { profileType, rulesRevision }), RACE_V3_TUNING.FATIGUE_MULTIPLIER_GRUPETTO, `${rulesRevision}/${profileType}`);
     }

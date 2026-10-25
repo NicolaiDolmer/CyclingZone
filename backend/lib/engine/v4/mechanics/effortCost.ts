@@ -62,6 +62,19 @@
 // kan koste), og loefter save mod normal. Ordenen grupetto < save < normal <
 // protect < all_out og all_out-tabellen pr. segment-terraen er uaendrede.
 // Alle aeldre revisioner beholder EFFORT_COST_EXTRA_TUNING bit-identisk.
+//
+// #6641 ejer 25/10 ("som i virkeligheden"): alt ud vinder tid PAA DAGEN og koster
+// traethed bagefter; spar taber lidt tid og giver friskere ben; normal er bedst
+// summeret over et helt etapeloeb, og intet trin alene giver 100 % (en plan med
+// valg pr. etape slaar normal hele vejen). Maalt under condition v2 med en
+// dags-maaling (hver etape alene, friske ben), en kontrol-tvilling for stoejen og
+// udbrudsdage holdt ude. Fund: prisen alene kunne ikke goere all_out til en
+// gevinst, fordi hullet paa den afgoerende stigning under official_times-linjens
+// tidsmodel kun laeser evne og reserve. climbGapEffortFactor nedenfor laegger
+// #5580's stignings-lettelse paa hullet (kun s5_profiles_v3), og prisen er sat
+// saa gevinsten paa dagen betales af traetheden over loebet. Retningerne er
+// laast i effortCost.test.ts, segmentLoop.effortCost.test.ts og
+// backend/scripts/dev/effortLevels6641.test.mjs; tallene i balance-internals/6641/.
 
 import type { EffortLevel, SegmentKind } from "../types.ts";
 import { EFFORT_COST_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
