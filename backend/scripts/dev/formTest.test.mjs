@@ -63,7 +63,7 @@ test("#6818 peakPlanDiagnostics: S5-planer foer S5-start, maal i anden saeson, S
     { season_id: "s4", target_race_id: null, window_start: "2026-10-01", window_end: "2026-10-02", created_at: "2026-09-30T10:00:00Z" },
   ];
   const d = peakPlanDiagnostics({ plans, seasons, raceSeason: new Map([["x5", "s5"]]) });
-  assert.deepEqual(d, { perSeason: { 5: 2, 4: 2 }, s5PlansCreatedBeforeS5Start: 1, s5WindowsStartingBeforeS5Start: 0, targetInOtherSeason: 1, targetMissing: 1, s4WindowsEndingAfterS4End: 1, s4WindowsEndingAfterS5Start: 1 });
+  assert.deepEqual(d, { perSeason: { 5: 2, 4: 2 }, s5PlansCreatedBeforeS5Start: 1, s5WindowsStartingBeforeS5Start: 0, targetInOtherSeason: 1, targetMissing: 1, s4WindowsEndingAfterS4End: 1, s4WindowsEndingAfterS5Start: 1, s4PaybackReachingS5: 0 });
 });
 
 test("#6818 peakPlanDiagnostics: antal ryttere og hold pr. fund (riderTeam), S5-vindue foer S5-start", () => {
@@ -81,6 +81,19 @@ test("#6818 peakPlanDiagnostics: antal ryttere og hold pr. fund (riderTeam), S5-
   assert.deepEqual(d.scope.targetInOtherSeason, { plans: 3, riders: 3, teams: 2 });
   assert.deepEqual(d.scope.s5WindowsStartingBeforeS5Start, { plans: 1, riders: 1, teams: 1 });
   assert.equal(peakPlanDiagnostics({ plans, seasons, raceSeason: new Map() }).scope, undefined, "uden riderTeam: ingen scope");
+});
+
+test("#6818 peakPlanDiagnostics: S4-vinduer hvis payback naar ind i S5 (kun med paybackDays)", () => {
+  const seasons = [{ id: "s4", number: 4, start_date: "2026-09-28", end_date: "2026-10-25" }, { id: "s5", number: 5, start_date: "2026-10-28", end_date: null }];
+  const plans = [
+    { rider_id: "a", season_id: "s4", target_race_id: "x4", window_start: "2026-10-20", window_end: "2026-10-24", created_at: "2026-10-01T10:00:00Z" }, // 24+5 >= 28
+    { rider_id: "b", season_id: "s4", target_race_id: "x4", window_start: "2026-10-10", window_end: "2026-10-14", created_at: "2026-10-01T10:00:00Z" }, // 14+5 < 28
+    { rider_id: "c", season_id: "s4", target_race_id: "x4", window_start: "2026-10-26", window_end: "2026-10-29", created_at: "2026-10-01T10:00:00Z" }, // selve vinduet i S5: anden kategori
+  ];
+  const d = peakPlanDiagnostics({ plans, seasons, raceSeason: new Map(), paybackDays: 5 });
+  assert.equal(d.s4PaybackReachingS5, 1);
+  assert.equal(d.s4WindowsEndingAfterS5Start, 1);
+  assert.equal(peakPlanDiagnostics({ plans, seasons, raceSeason: new Map() }).s4PaybackReachingS5, 0, "uden paybackDays taelles intet");
 });
 
 test("#6818 begge scripts skriver kun under balance-internals (hard rule 17)", () => {

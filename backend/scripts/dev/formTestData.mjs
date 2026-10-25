@@ -30,6 +30,7 @@ import { readOnlyDb } from "./lib/motorTestportInputs.mjs";
 import { copenhagenDate } from "./lib/motorTestportReport.mjs";
 import { assertPrivateOutDir, prodDb } from "./motorTestport.mjs";
 import { dateStringToOrdinal, loadPeakPlans, loadStageDayOrdinals, resolvePeakTrainingQualities } from "../../lib/racePeakPlans.js";
+import { RACE_V3_TUNING } from "../../lib/raceRoles.js";
 
 const IN_CHUNK = 200;
 
@@ -78,15 +79,17 @@ async function allRows(db, table, columns) {
   return rows;
 }
 
-export const DIAGNOSTIC_KEYS = ["s5PlansCreatedBeforeS5Start", "s5WindowsStartingBeforeS5Start", "targetInOtherSeason", "targetMissing", "s4WindowsEndingAfterS4End", "s4WindowsEndingAfterS5Start"];
+export const DIAGNOSTIC_KEYS = ["s5PlansCreatedBeforeS5Start", "s5WindowsStartingBeforeS5Start", "targetInOtherSeason", "targetMissing", "s4WindowsEndingAfterS4End", "s4WindowsEndingAfterS5Start", "s4PaybackReachingS5"];
 
 /**
  * #6158-tjek paa alle formtoppe (rene tal, ingen ryttere i outputtet). Ren.
  * `riderTeam` (rider_id -> team_id, valgfri) giver antal ryttere og hold pr. fund
  * (`scope`), saa en reparationsplan kan naevne hvor mange managere den rammer.
  * Holdet er rytterens NUVAERENDE hold, ikke holdet da toppen blev planlagt.
+ * `paybackDays` (valgfri): S4-vinduer hvis formdyk efter vinduet (payback) naar ind
+ * i S5. Motoren laeser kun loebets egen saesons toppe, saa det dyk rammer aldrig et S5-loeb.
  */
-export function peakPlanDiagnostics({ plans, seasons, raceSeason, riderTeam = null }) {
+export function peakPlanDiagnostics({ plans, seasons, raceSeason, riderTeam = null, paybackDays = null }) {
   const byId = new Map(seasons.map((s) => [s.id, s]));
   const num = (id) => byId.get(id)?.number ?? null;
   const s5 = seasons.find((s) => s.number === 5) ?? null;
@@ -107,6 +110,9 @@ export function peakPlanDiagnostics({ plans, seasons, raceSeason, riderTeam = nu
     if (s4 && p.season_id === s4.id) {
       if (s4.end_date && p.window_end > s4.end_date) hit("s4WindowsEndingAfterS4End", p);
       if (s5?.start_date && p.window_end >= s5.start_date) hit("s4WindowsEndingAfterS5Start", p);
+      const endOrd = dateStringToOrdinal(p.window_end);
+      const s5Ord = s5?.start_date ? dateStringToOrdinal(s5.start_date) : null;
+      if (paybackDays != null && endOrd != null && s5Ord != null && endOrd < s5Ord && endOrd + paybackDays >= s5Ord) hit("s4PaybackReachingS5", p);
     }
   }
   if (riderTeam) {
@@ -165,7 +171,7 @@ export async function main(argv = process.argv.slice(2)) {
   const targetRaces = await selectIn(db, "races", "id, season_id", "id", targetIds);
   const planRiders = await selectIn(db, "riders", "id, team_id", "id", allPlans.map((p) => p.rider_id).filter(Boolean));
   const riderTeam = new Map(planRiders.map((r) => [r.id, r.team_id ?? null]));
-  const diagnostics = peakPlanDiagnostics({ plans: allPlans, seasons, raceSeason: new Map(targetRaces.map((r) => [r.id, r.season_id])), riderTeam });
+  const diagnostics = peakPlanDiagnostics({ plans: allPlans, seasons, raceSeason: new Map(targetRaces.map((r) => [r.id, r.season_id])), riderTeam, paybackDays: RACE_V3_TUNING.PEAK_PAYBACK_DAYS });
 
   const result = {
     format: "cz-form-test-data/v1",
