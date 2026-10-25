@@ -78,24 +78,43 @@ async function allRows(db, table, columns) {
   return rows;
 }
 
-/** #6158-tjek paa alle formtoppe (rene tal, ingen ryttere). Ren. */
-export function peakPlanDiagnostics({ plans, seasons, raceSeason }) {
+export const DIAGNOSTIC_KEYS = ["s5PlansCreatedBeforeS5Start", "s5WindowsStartingBeforeS5Start", "targetInOtherSeason", "targetMissing", "s4WindowsEndingAfterS4End", "s4WindowsEndingAfterS5Start"];
+
+/**
+ * #6158-tjek paa alle formtoppe (rene tal, ingen ryttere i outputtet). Ren.
+ * `riderTeam` (rider_id -> team_id, valgfri) giver antal ryttere og hold pr. fund
+ * (`scope`), saa en reparationsplan kan naevne hvor mange managere den rammer.
+ * Holdet er rytterens NUVAERENDE hold, ikke holdet da toppen blev planlagt.
+ */
+export function peakPlanDiagnostics({ plans, seasons, raceSeason, riderTeam = null }) {
   const byId = new Map(seasons.map((s) => [s.id, s]));
   const num = (id) => byId.get(id)?.number ?? null;
   const s5 = seasons.find((s) => s.number === 5) ?? null;
   const s4 = seasons.find((s) => s.number === 4) ?? null;
-  const out = { perSeason: {}, s5PlansCreatedBeforeS5Start: 0, targetInOtherSeason: 0, targetMissing: 0, s4WindowsEndingAfterS4End: 0, s4WindowsEndingAfterS5Start: 0 };
+  const out = { perSeason: {}, ...Object.fromEntries(DIAGNOSTIC_KEYS.map((k) => [k, 0])) };
+  const hits = Object.fromEntries(DIAGNOSTIC_KEYS.map((k) => [k, []]));
+  const hit = (key, p) => { out[key] += 1; hits[key].push(p); };
   for (const p of plans) {
     const n = String(num(p.season_id));
     out.perSeason[n] = (out.perSeason[n] ?? 0) + 1;
-    // created_at er UTC; sammenlign paa den danske dato (start_date er en dansk kalenderdag).
-    if (s5 && p.season_id === s5.id && s5.start_date && p.created_at && copenhagenDate(new Date(p.created_at)) < s5.start_date) out.s5PlansCreatedBeforeS5Start += 1;
-    if (!p.target_race_id) out.targetMissing += 1;
-    else if (raceSeason.has(p.target_race_id) && raceSeason.get(p.target_race_id) !== p.season_id) out.targetInOtherSeason += 1;
-    if (s4 && p.season_id === s4.id) {
-      if (s4.end_date && p.window_end > s4.end_date) out.s4WindowsEndingAfterS4End += 1;
-      if (s5?.start_date && p.window_end >= s5.start_date) out.s4WindowsEndingAfterS5Start += 1;
+    if (s5 && p.season_id === s5.id && s5.start_date) {
+      // created_at er UTC; sammenlign paa den danske dato (start_date er en dansk kalenderdag).
+      if (p.created_at && copenhagenDate(new Date(p.created_at)) < s5.start_date) hit("s5PlansCreatedBeforeS5Start", p);
+      if (p.window_start && p.window_start < s5.start_date) hit("s5WindowsStartingBeforeS5Start", p);
     }
+    if (!p.target_race_id) hit("targetMissing", p);
+    else if (raceSeason.has(p.target_race_id) && raceSeason.get(p.target_race_id) !== p.season_id) hit("targetInOtherSeason", p);
+    if (s4 && p.season_id === s4.id) {
+      if (s4.end_date && p.window_end > s4.end_date) hit("s4WindowsEndingAfterS4End", p);
+      if (s5?.start_date && p.window_end >= s5.start_date) hit("s4WindowsEndingAfterS5Start", p);
+    }
+  }
+  if (riderTeam) {
+    out.scope = Object.fromEntries(DIAGNOSTIC_KEYS.map((k) => {
+      const riders = new Set(hits[k].map((p) => p.rider_id).filter(Boolean));
+      const teams = new Set([...riders].map((r) => riderTeam.get(r)).filter(Boolean));
+      return [k, { plans: hits[k].length, riders: riders.size, teams: teams.size }];
+    }));
   }
   return out;
 }
@@ -141,10 +160,12 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   // #6158: alle formtoppe (kun taelling, ingen ryttere i rapporten).
-  const allPlans = await allRows(db, "rider_peak_plans", "id, season_id, target_race_id, window_start, window_end, created_at");
+  const allPlans = await allRows(db, "rider_peak_plans", "id, rider_id, season_id, target_race_id, window_start, window_end, created_at");
   const targetIds = [...new Set(allPlans.map((p) => p.target_race_id).filter(Boolean))];
   const targetRaces = await selectIn(db, "races", "id, season_id", "id", targetIds);
-  const diagnostics = peakPlanDiagnostics({ plans: allPlans, seasons, raceSeason: new Map(targetRaces.map((r) => [r.id, r.season_id])) });
+  const planRiders = await selectIn(db, "riders", "id, team_id", "id", allPlans.map((p) => p.rider_id).filter(Boolean));
+  const riderTeam = new Map(planRiders.map((r) => [r.id, r.team_id ?? null]));
+  const diagnostics = peakPlanDiagnostics({ plans: allPlans, seasons, raceSeason: new Map(targetRaces.map((r) => [r.id, r.season_id])), riderTeam });
 
   const result = {
     format: "cz-form-test-data/v1",
