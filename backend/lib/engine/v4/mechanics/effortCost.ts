@@ -113,6 +113,22 @@ export function isEffortCalibration6641Revision(revision: unknown): boolean {
   return isS5ProfilesV3OrLater(revision);
 }
 
+/**
+ * #6641 (ejer 25/10, "som i virkeligheden", KUN s5_profiles_v3, slukket): GEVINSTEN
+ * paa den afgoerende stigning. Under tidsmodellen fra official_times-linjen afgoeres
+ * hullet paa en topankomst af rytterens eget underskud (evne + reserve,
+ * timeModel.climbSplitGapSeconds), ikke af split-scoren, saa stignings-lettelsen fra
+ * #5580 (climbScoreRelief x rest-reserve) naaede aldrig hullet: en hoejere indsats
+ * kunne kun koste. Her ganges den SAMME faktor paa underskuddet bag hullet: all_out
+ * graver dybere og taber mindre tid paa dagen (betalt med reserven undervejs og
+ * traetheden bagefter), save giver slip og taber lidt. Normal er praecis 1.
+ * Alle aeldre revisioner: 1 (bit-identisk).
+ */
+export function climbGapEffortFactor(revision: unknown, effortScoreFactor: number): number {
+  if (!isEffortCalibration6641Revision(revision) || !Number.isFinite(effortScoreFactor)) return 1;
+  return Math.max(0, effortScoreFactor);
+}
+
 /** #6641: prisen for et loeb bundet til `revision`. Aeldre revisioner: uaendret tuning. */
 export function effortCostTuningFor(revision: unknown): EffortCostTuning {
   return isEffortCalibration6641Revision(revision) ? EFFORT_COST_TUNING_6641 : EFFORT_COST_EXTRA_TUNING;

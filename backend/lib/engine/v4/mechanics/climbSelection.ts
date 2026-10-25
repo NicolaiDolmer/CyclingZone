@@ -43,6 +43,7 @@ import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSev
 import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
+import { climbGapEffortFactor } from "./effortCost.ts"; // #6641
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
 // etapens) og tuning; ren funktion af feltets klatre-evner.
@@ -327,8 +328,9 @@ function computeSelections(
       scoreTriggered: noisyScore > splitThreshold,
       wprimeForced: wprimeCategoryAllowed && wprimeDepletionForcesSplit(riderState.wprime, severity, wprimeMinSeverity),
       effortForced: grupettoDropBackForced(entrant.effort, groupHasRacers),
-      deficit01,
-      energyDeficit01: energyDeficit,
+      // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts).
+      deficit01: deficit01 * climbGapEffortFactor(ctx.rulesRevision, effortFactor),
+      energyDeficit01: energyDeficit * climbGapEffortFactor(ctx.rulesRevision, effortFactor),
     });
   }
   return selections;
