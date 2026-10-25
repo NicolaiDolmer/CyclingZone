@@ -1342,6 +1342,18 @@
         "title": "Age, peak and decline",
         "text": "Every rider peaks at 28, regardless of type. From the season after he turns 29, his abilities decline instead of growing, and that only happens at the season change, never during the season itself. The decline isn't fixed: it grows the longer he's past his peak. For the first three years past peak (ages 29 to 31) his signature abilities drop by roughly 1 point per season. From the fourth to the sixth year past peak (32 to 34) that rises to roughly 1.8 points per season, and from the seventh year onward (35+) to roughly 2.6 points per season. Not every ability falls at the same speed: a rider's signature abilities, the ones his primary type is built around, fall at the full rate above. Every other ability, including the craft skills Positioning and Tactics, falls more slowly, roughly 70 percent of that rate. That's a speed difference, not a delayed start: every ability begins declining the same season."
       },
+      "agingV2": {
+        "title": "Age and decline",
+        "text": "Riders hold their level until 30. From the season after that, their physical abilities and cobbles drop a little at each season change, and the drop grows the further past 30 they are. Technique, tactics and the other mental abilities never drop. Racing slows the decline: every race day in the season that just ended counts, and a hard training day counts half. A rider with a full season of racing behind him keeps most of his legs. Nobody grows at the season change itself; your riders develop through their daily training."
+      },
+      "aiRidersV2": {
+        "title": "AI riders and free agents",
+        "text": "Riders on AI teams and riders without a contract don't develop. They still age like everyone else. When one of them joins your team, he starts developing through your training from the next day."
+      },
+      "potentialBestRole": {
+        "title": "Potential across the game",
+        "text": "My Team, the academy, the rider profile and the Scouting tab show a rider's potential the same way. It's shown for the role where he can go highest, with a small box next to it saying which role that is. It's still an estimate: a better scout, or more training days on your team for your own riders, makes it sharper."
+      },
       "trainingFocus": {
         "title": "Training focus",
         "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique, Aero or Race craft). The effort comes with the session type and is not a separate choice: intervals, threshold and sprint are hard, tempo is medium, the rest are easy. Trained abilities develop faster toward their ceiling through the daily training that runs each evening, while other abilities grow a little more slowly. Hard sessions build more fatigue but carry no risk of losing progress. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money. Riders who race develop from the race instead of their planned session, including single-day races. Selected riders who do not start follow their programme, subject to injuries. Fatigue, form and training injury risk are assessed from the day's combined race and training activity at the evening update. Gaps between stages do not add extra recovery. Hard training remains more tiring than normal training."
@@ -1430,6 +1442,14 @@
       "trainingScore": {
         "title": "The training score",
         "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number. Today's number appears once today's session has run, and until then the column shows the latest one in grey. Only you can see the scores for your own riders."
+      },
+      "maxOnePerDay": {
+        "title": "At most +1 per ability per day",
+        "text": "An ability can grow by at most 1 point per day, across training and race days. Progress above that isn't lost: it carries over to the next day."
+      },
+      "todaysDecision": {
+        "title": "Today's decision (beta)",
+        "text": "At the top of the Today tab, the assistant suggests up to three changes for today: active recovery for tired riders who have a hard day planned and a raised injury risk. Use applies it to that rider. Riders who race today, are injured, already have an easy day, or follow their own week plan or a training group get no suggestion. Once today's training has run, the card is hidden."
       },
       "longTermGrowth": {
         "title": "Long-term growth",

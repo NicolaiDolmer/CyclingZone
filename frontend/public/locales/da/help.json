@@ -1342,6 +1342,18 @@
         "title": "Alder, peak og aldersnedgang",
         "text": "Alle ryttere topper ved 28 år, uanset type. Fra og med sæsonen efter han fylder 29, falder hans evner i stedet for at vokse, og det sker kun ved sæsonskiftet, ikke løbende i løbet af sæsonen. Faldet er ikke fast: det stiger jo længere han er forbi toppen. De første tre år efter toppen (29 til 31 år) falder hans speciale-evner cirka 1 point pr. sæson. Fra det fjerde til det sjette år forbi toppen (32 til 34 år) stiger faldet til cirka 1,8 point pr. sæson, og fra det syvende år og frem (35+ år) til cirka 2,6 point pr. sæson. Ikke alle evner falder lige hurtigt: rytterens speciale-evner, dem hans primære type er bygget om, falder med den fulde hastighed ovenfor. Alle andre evner, inklusive håndværket Positionering og Taktik, falder langsommere, cirka 70 procent af den hastighed. Det er en fart-forskel, ikke en udskudt start: alle evner begynder at falde samme sæson."
       },
+      "agingV2": {
+        "title": "Alder og tilbagegang",
+        "text": "Ryttere holder deres niveau til og med 30 år. Fra sæsonen efter falder de fysiske evner og brosten lidt ved hvert sæsonskifte, og faldet bliver større, jo længere de er forbi 30. Teknik, taktik og de andre mentale evner falder aldrig. Løb bremser faldet: hver løbsdag i den sæson, der lige er slut, tæller med, og en hård træningsdag tæller halvt. En rytter med en hel sæson af løb bag sig beholder det meste af sine ben. Ingen vokser ved selve sæsonskiftet; dine ryttere udvikler sig gennem den daglige træning."
+      },
+      "aiRidersV2": {
+        "title": "AI-ryttere og frie ryttere",
+        "text": "Ryttere på AI-hold og ryttere uden kontrakt udvikler sig ikke. De ældes stadig som alle andre. Når en af dem kommer på dit hold, begynder han at udvikle sig gennem din træning fra næste dag."
+      },
+      "potentialBestRole": {
+        "title": "Potentiale i hele spillet",
+        "text": "Mit hold, akademiet, rytterprofilen og Scouting-fanen viser en rytters potentiale på samme måde. Det vises for den rolle, hvor han kan nå højest, med en lille boks ved siden af, der siger hvilken rolle det er. Det er stadig et skøn: en bedre scout, eller flere træningsdage på dit hold for dine egne ryttere, gør det skarpere."
+      },
       "trainingFocus": {
         "title": "Træningsfokus",
         "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik, Aero eller Løbslære). Belastningen følger sessionstypen og er ikke et selvstændigt valg: intervaller, tærskel og sprint er hårde, tempo er mellem, resten er lette. Trænede evner udvikler sig hurtigere mod deres loft gennem den daglige træning, der kører hver aften, mens øvrige evner vokser en anelse langsommere. Hårde sessioner bygger mere træthed op, men har ingen risiko for at miste fremgang. Du kan sætte træningsfokus på så mange ryttere du vil; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge. Ryttere, der kører løb, udvikler sig fra løbet i stedet for det planlagte pas, også ved endagsløb. Udtagne ryttere, der ikke starter, følger deres program under hensyn til skader. Træthed, form og risiko for træningsskader vurderes ud fra dagens samlede løbs- og træningsaktivitet ved aftenopgørelsen. Huller mellem etaper giver ikke ekstra restitution. Hård træning er fortsat mere belastende end normal træning."
@@ -1430,6 +1442,14 @@
       "trainingScore": {
         "title": "Træningsscoren",
         "text": "Hvert pas en rytter gennemfører får en træningsscore fra 1 til 99. Den måler KVALITETEN af passet, ikke hvad rytteren fik ud af det: hvor krævende passet var, hvor godt det ramte rytterens styrker, rytterens form og træthed den dag, træneren og faciliteterne bag, rytterens talent og alder, og dagen selv. Scoren er det, der driver udviklingen: et bedre pas rykker evnerne mere. Den afhænger ikke af, hvor tæt en evne er på sit loft, så en rytter der næsten er færdig i sine fokus-evner, får stadig en ærlig aflæsning af, hvor godt passet var. Hviledage får ingen score, for der var intet pas at måle. På en dag hvor et løb træder i stedet for passet, står der 'Løb' i kolonnen i stedet for et tal. Dagens tal kommer når dagens pas er kørt, og indtil da viser kolonnen det seneste tal i gråt. Kun du kan se scorerne for dine egne ryttere."
+      },
+      "maxOnePerDay": {
+        "title": "Højst +1 pr. evne pr. dag",
+        "text": "En evne kan vokse højst 1 point pr. dag, på tværs af træning og løbsdage. Fremgang ud over det går ikke tabt: den flytter med til næste dag."
+      },
+      "todaysDecision": {
+        "title": "Dagens beslutning (beta)",
+        "text": "Øverst på fanen I dag foreslår assistenten op til tre ændringer for i dag: aktiv restitution til trætte ryttere, der har en hård dag planlagt og forhøjet skaderisiko. Brug lægger den ind for rytteren. Ryttere der kører løb i dag, er skadede, allerede har en let dag, eller følger deres egen ugeplan eller en træningsgruppe, får intet forslag. Når dagens træning er kørt, skjules kortet."
       },
       "longTermGrowth": {
         "title": "Udvikling på lang sigt",
