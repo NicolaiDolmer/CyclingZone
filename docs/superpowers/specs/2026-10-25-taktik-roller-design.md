@@ -169,3 +169,18 @@ Målt i harnesset på samme population og seeds som testporten (`docs/MOTOR_TEST
 **Målinger:** beskyttelses-gabet pr. rolle (`headToHeadTeamPlay`) med den delte kaptajn som egen kolonne; holdets samlede bonus mod det betalte (bevarelse); andel holdkammerater i top 10 (holddominans må ikke stige mærkbart); udbrudsforsøg pr. rolle (delt kaptajn uden ordre = nul). Ejeren ser billedet før tænd.
 
 **Hvad testen ikke dækker:** at spillerne forstår rollen. Det måles efter beta via Discord og "Dine ordrer"-kortet.
+
+## 11. Ejer-beslutninger 25/10 (chatten, ordret valgt)
+
+1. Hjælp i samme gruppe: **kaptajnen først**, og det hjælperne har tilovers, går til den delte kaptajn.
+2. Arbejd/angrib på fladen: **Etapeplan langs ruten** (ny, erstatter A og B i §8 punkt 2). Ejeren bad om en blanding af "opgave + når han er sat" og "plan i faser", kronologisk rigtig og realistisk, og valgte derefter etapeplanen (`pr-screens/7003/etapeplan-valg.png`):
+   - Hver rytter har en kort kæde af opgaver, der skifter ved rutens rigtige punkter: en kategoriseret stigning, de sidste km, eller "når han er sat". Ikke faste faser.
+   - Assistenten udfylder planen ud fra rolle og rute. De fleste managers trykker bare "Brug".
+   - Kun logiske skift kan vælges: grupetto kan ikke komme før arbejdet, og udbrud kan kun være første opgave. Indsatsen følger opgaven.
+   - Efter etapen viser løbet, hvad rytteren faktisk gjorde i hvert led (samme visning som ordre-opsummeringen i #6299).
+   - Mobil: kæden vises på én linje pr. rytter, og et tryk åbner redigering.
+3. Kun spurtkaptajn som leder: **ja**.
+4. Delte kaptajner pr. hold: **højst én**.
+5. Delt kaptajn med i **samme tænding som v3** (`s5_profiles_v3`). Testporten måler den før tænd, og rollen kan tages ud uden at stoppe resten af v3.
+
+Byggeplanen i §9 justeres til etapeplanen: motoren skal kunne skifte en rytters opgave ved et rutepunkt eller ved "sat" (kronologisk, ingen smuthuller), og skiftene skal kunne vises efter etapen.
