@@ -266,7 +266,10 @@ function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLin
   const sorted = [...lines].sort((a, b) => a.km - b.km);
   const out: StoryLine[] = [];
   for (const line of sorted) {
-    const last = out[out.length - 1];
+    // #6299: morgenudbruddet og "gruppen foran" klynges aldrig sammen (data.ahead).
+    const ahead = line.data.ahead === true;
+    let last: StoryLine | undefined;
+    for (let i = out.length - 1; i >= 0; i--) if ((out[i].data.ahead === true) === ahead) { last = out[i]; break; }
     const lastKm = last ? Math.max(last.km, last.kmTo ?? last.km) : 0;
     if (last && line.km - lastKm <= CLUSTER_KM && line.km - last.km <= CLUSTER_MAX_SPAN_KM) {
       const ids = [...new Set([...last.riderIds, ...line.riderIds])];

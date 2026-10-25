@@ -33,9 +33,14 @@ export interface RecapRider {
   effort: string;
   tryBreak: boolean;
   leadout: boolean;
+  /** true = etapens rolle er skiftet uden gemt valg for udbrud/tog: motoren
+   *  brugte den nye rolles standard, som fladen ikke kender (Codex #7161). */
+  roleDefault: boolean;
 }
 
 export interface StageOrdersRecap {
+  /** "auto" = ingen gemt ordre: motoren valgte selv holdningen (humanDefaultOrderV3
+   *  kan jagte), så fladen påstår ikke "neutral" (Codex #7161). */
   stance: string;
   /** true = holdet gemte en ordre for etapen; false = rollernes standard. */
   saved: boolean;
@@ -79,17 +84,29 @@ export function stageOrdersRecap({
     if (Number(o.stage_number) === stageNumber && o.race_role) stageRole.set(String(o.rider_id), o.race_role);
   }
 
+  const savedRiders = new Map<string, { try_break?: boolean; leadout?: boolean }>();
+  for (const r of ((saved?.riders ?? []) as Array<{ rider_id?: string; try_break?: boolean; leadout?: boolean }>)) {
+    if (r?.rider_id) savedRiders.set(String(r.rider_id), r);
+  }
   const riders: RecapRider[] = (order.riders as Array<{ rider_id: string; try_break?: boolean; leadout?: boolean }>).map((r) => {
     const id = String(r.rider_id);
+    const own = savedRiders.get(id);
+    // Standardordren er bygget på holdudtagelsens rolle. Er etapens rolle skiftet,
+    // kørte motoren den NYE rolles standard; den kender fladen ikke, så felter
+    // uden eget gemt valg vises ikke (hellere intet end forkert).
+    const roleChanged = stageRole.has(id) && stageRole.get(id) !== (baseRole.get(id) ?? null);
+    const tryKnown = !roleChanged || typeof own?.try_break === "boolean";
+    const leadKnown = !roleChanged || typeof own?.leadout === "boolean";
     return {
       riderId: id,
       name: nameOf(id) ?? null,
       role: stageRole.get(id) ?? baseRole.get(id) ?? null,
       effort: efforts.get(id) ?? "normal",
-      tryBreak: r.try_break === true,
-      leadout: r.leadout === true,
+      tryBreak: tryKnown && r.try_break === true,
+      leadout: leadKnown && r.leadout === true,
+      roleDefault: !tryKnown || !leadKnown,
     };
   });
   riders.sort((a, b) => (ROLE_ORDER[a.role ?? ""] ?? 5) - (ROLE_ORDER[b.role ?? ""] ?? 5) || String(a.name ?? "").localeCompare(String(b.name ?? "")));
-  return { stance: String(order.breakaway_stance ?? "neutral"), saved: Boolean(saved), riders };
+  return { stance: saved ? String(order.breakaway_stance ?? "neutral") : "auto", saved: Boolean(saved), riders };
 }

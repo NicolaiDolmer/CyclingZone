@@ -36,17 +36,18 @@ test("gemt etape-ordre: lagt oven paa rollens standard, rolle-raekkefoelge og ho
   assert.equal(recap?.stance, "chase");
   assert.equal(recap?.saved, true);
   assert.deepEqual(recap?.riders, [
-    { riderId: "cap", name: "Alpha", role: "captain", effort: "protect", tryBreak: true, leadout: false },
-    { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", tryBreak: false, leadout: false },
-    { riderId: "hel", name: "Charlie", role: "helper", effort: "normal", tryBreak: false, leadout: true },
+    { riderId: "cap", name: "Alpha", role: "captain", effort: "protect", tryBreak: true, leadout: false, roleDefault: false },
+    { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", tryBreak: false, leadout: false, roleDefault: false },
+    { riderId: "hel", name: "Charlie", role: "helper", effort: "normal", tryBreak: false, leadout: true, roleDefault: false },
   ]);
 });
 
 test("ingen gemt ordre = rollernes standard (T4)", () => {
   const recap = stageOrdersRecap({ context: CONTEXT, stageNumber: 2, riderIds: ["hun"], nameOf });
   assert.equal(recap?.saved, false);
-  assert.equal(recap?.stance, "neutral");
-  assert.deepEqual(recap?.riders[0], { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", tryBreak: true, leadout: false });
+  // Motoren valgte selv holdningen (humanDefaultOrderV3 kan jagte): fladen siger "auto", ikke "neutral".
+  assert.equal(recap?.stance, "auto");
+  assert.deepEqual(recap?.riders[0], { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", tryBreak: true, leadout: false, roleDefault: false });
 });
 
 test("toget er kun standard paa en flad etape naar loebets revision siger det (#6462)", () => {
@@ -62,6 +63,22 @@ test("etapens rolle-override vinder over holdudtagelsen; stage-roles-indsats er 
   });
   assert.equal(recap?.riders[0].role, "hunter");
   assert.equal(recap?.riders[0].effort, "save");
+  // Hjaelperens tog-standard gaelder ikke laengere; den nye rolles standard kender fladen ikke.
+  assert.equal(recap?.riders[0].leadout, false);
+  assert.equal(recap?.riders[0].tryBreak, false);
+  assert.equal(recap?.riders[0].roleDefault, true);
+});
+
+test("rolle-override med gemt valg viser det gemte valg", () => {
+  const ctx = { ...CONTEXT, orders: [{ stage_number: 2, breakaway_stance: "let_go", riders: [{ rider_id: "hel", try_break: true, leadout: false }] }] };
+  const recap = stageOrdersRecap({
+    context: ctx, stageNumber: 2, riderIds: ["hel"],
+    stageRoles: { overrides: [{ stage_number: 2, rider_id: "hel", race_role: "hunter" }] },
+  });
+  assert.equal(recap?.stance, "let_go");
+  assert.equal(recap?.riders[0].tryBreak, true);
+  assert.equal(recap?.riders[0].leadout, false);
+  assert.equal(recap?.riders[0].roleDefault, false);
 });
 
 test("uden svar eller uden ryttere vises intet", () => {

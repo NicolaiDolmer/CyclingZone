@@ -52,12 +52,14 @@ export default function StageOrdersRecap({
   );
   if (!recap || !recap.riders.length) return null;
 
-  const stance = STANCE_KEYS.has(recap.stance) ? recap.stance : "neutral";
+  const stanceText = recap.stance === "auto"
+    ? t("stageOrders.stanceAuto")
+    : t(`tacticsOrders.breakaway.${STANCE_KEYS.has(recap.stance) ? recap.stance : "neutral"}`);
   return (
     <Section aria-label={t("stageOrders.title")}>
       <SectionHeader title={t("stageOrders.title")} meta={t("tacticsOrders.locked")} />
       <p className="mb-2 text-sm text-cz-2">
-        {t("tacticsOrders.breakawayLabel")}: <span className="font-semibold text-cz-1">{t(`tacticsOrders.breakaway.${stance}`)}</span>
+        {t("tacticsOrders.breakawayLabel")}: <span className="font-semibold text-cz-1">{stanceText}</span>
         {!recap.saved && <span className="text-cz-3"> · {t("stageOrders.roleDefaults")}</span>}
       </p>
       <ul>
@@ -67,6 +69,7 @@ export default function StageOrdersRecap({
             t(`tacticsOrders.effort.${EFFORT_KEYS.has(r.effort) ? r.effort : "normal"}`),
             r.tryBreak ? t("tacticsOrders.tryBreak") : null,
             r.leadout ? t("tacticsOrders.leadout") : null,
+            r.roleDefault ? t("stageOrders.roleDefaultShort") : null,
           ].filter(Boolean);
           return (
             <li key={r.riderId} className="flex min-h-11 flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-cz-border py-2 first:border-t-0">

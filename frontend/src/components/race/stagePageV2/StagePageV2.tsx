@@ -19,6 +19,7 @@ import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
 import { asStory } from "./raceStoryModel.ts";
 import StageOrdersRecap from "../../stageOrders/StageOrdersRecap.tsx"; // #6299
 import { ownRiderIdsForStage } from "../../../lib/stageSplitTimes.ts";
+import { ownRiderIdsForOneDay } from "../../../lib/oneDayTimeline.ts";
 
 export interface StagePageV2Props {
   isStageRace: boolean;
@@ -82,7 +83,11 @@ export default function StagePageV2(props: StagePageV2Props) {
   const story = useMemo(() => asStory((timeline as { story?: unknown } | null)?.story), [timeline]);
   // #6299 (b): egne rytteres laaste ordre paa en koert v4-etape.
   const ranTimeline = timeline as { timeline_version?: number; created_at?: string | null } | null;
-  const ownStageRiders = useMemo(() => ownRiderIdsForStage(results, selectedStage, myTeamId), [results, selectedStage, myTeamId]);
+  // Endagsloeb gemmer resultatet som `gc`-raekker (#6512), saa de skal have endags-opslaget.
+  const ownStageRiders = useMemo(
+    () => (isStageRace ? ownRiderIdsForStage(results, selectedStage, myTeamId) : ownRiderIdsForOneDay(results, myTeamId)),
+    [isStageRace, results, selectedStage, myTeamId],
+  );
   const nameOfRider = useMemo(() => (id: string) => nameById.get(id) || null, [nameById]);
 
   // Den ene guld-knap: taktik for den etape der er aaben. Foer etapen = den

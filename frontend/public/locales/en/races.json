@@ -984,7 +984,9 @@
   },
   "stageOrders": {
     "title": "Your orders",
-    "roleDefaults": "nothing saved, so each rider rode his role"
+    "roleDefaults": "nothing saved, so each rider rode his role",
+    "stanceAuto": "Automatic",
+    "roleDefaultShort": "role's default"
   },
   "racePage": {
     "tabsAria": "Race sections",

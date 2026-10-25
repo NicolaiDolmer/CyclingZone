@@ -984,7 +984,9 @@
   },
   "stageOrders": {
     "title": "Dine ordrer",
-    "roleDefaults": "intet gemt, så hver rytter kørte sin rolle"
+    "roleDefaults": "intet gemt, så hver rytter kørte sin rolle",
+    "stanceAuto": "Automatisk",
+    "roleDefaultShort": "rollens standard"
   },
   "racePage": {
     "tabsAria": "Løbets afsnit",
