@@ -59,7 +59,7 @@ export function validateDevelopmentScoreWiringParams(raw) {
   if (!raw || typeof raw !== "object") return null;
   try {
     assertDevelopmentScoreParams(raw.score);
-  } catch {
+  } catch { // best-effort: ugyldige params = null = dagens model (fail-safe), loaderen advarer
     return null;
   }
   const table = raw.talentByPotentiale;
@@ -82,7 +82,7 @@ export function developmentScoreParamsFromEnv(env = process.env) {
   if (typeof raw !== "string" || raw.trim() === "") return null;
   try {
     return validateDevelopmentScoreWiringParams(JSON.parse(raw));
-  } catch {
+  } catch { // best-effort: ugyldig JSON = null = dagens model (fail-safe), loaderen advarer
     return null;
   }
 }

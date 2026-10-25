@@ -43,7 +43,7 @@ export function raceCatchUpParamsFromEnv(env = process.env) {
   if (typeof raw !== "string" || raw.trim() === "") return null;
   try {
     return assertCatchupConfig(JSON.parse(raw));
-  } catch {
+  } catch { // best-effort: ugyldig JSON/config = null = dagens model (fail-safe), loaderen advarer
     return null;
   }
 }
