@@ -27,6 +27,8 @@ function toContractRider(rider) {
     effort: rider.effort,
     try_break: rider.try_break === true,
     leadout: rider.leadout === true,
+    // #7003: etapeplanen sendes kun naar rytteren har en (serveren gater feltet).
+    ...(Array.isArray(rider.plan) && rider.plan.length ? { plan: rider.plan } : {}),
   };
 }
 
@@ -63,6 +65,7 @@ export async function fetchTeamOrders({ raceId }) {
     sprintTrainFlatOnly: body.sprint_train_flat_only === true,
     orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
+    stagePlanEnabled: body.stage_plan_enabled === true, // #7003
   };
 }
 
