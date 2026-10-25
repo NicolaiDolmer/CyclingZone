@@ -376,7 +376,7 @@ export default function StagePlanBoard({
 
       {/* Desktop: tabel. Under sm: én linje pr. rytter (ingen vandret scroll, #1834). */}
       <div className="hidden sm:block">
-        <table className="w-full text-sm">
+        <table data-sort-exempt="Etapeplan: rytterne i taktik-fanens raekkefoelge (sorteres dér)" className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRider")}</th>
