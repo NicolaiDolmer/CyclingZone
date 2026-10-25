@@ -336,7 +336,7 @@ function StageTerrain({ row }) {
 // (samme regel som løbskortet, racePeek.raceTerrain), så kolonnen forbliver smal.
 function CompactTerrain({ row }) {
   if (!row.stageRace) {
-    return <TerrainTypeGlyph profileType={row.stageTypes[0]} size={16} showLabel className="gap-1 text-cz-2" labelClassName="text-2xs" />;
+    return <TerrainTypeGlyph profileType={row.stageTypes[0]} size={16} showLabel className="gap-1 whitespace-nowrap text-cz-2" labelClassName="text-2xs" />;
   }
   return (
     <span className="flex items-center gap-0.5">
