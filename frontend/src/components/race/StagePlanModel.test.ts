@@ -13,14 +13,15 @@ import {
   validateStagePlanLegs,
   withStagePlanFields,
   withoutStagePlans,
-} from "./StagePlanModel.js";
+} from "./StagePlanModel.ts";
+import type { StagePlanLeg } from "./StagePlanModel.ts";
 
 const ROUTE = stagePlanRouteFromRaw({
   distance_km: 150,
   profile_type: "mountain",
   climbs: [{ name: "Col A", crest_km: 60, category: "2" }, { name: "Col B", crest_km: 110, category: "1" }],
 });
-const HELPER = [
+const HELPER: StagePlanLeg[] = [
   { task: "shelter_leader" },
   { task: "tempo", from: { at: "kom", kom_index: 0 } },
   { task: "grupetto", from: { at: "dropped" } },
@@ -51,10 +52,10 @@ test("#7003: et valg der goer resten ugyldig, klipper kaeden til det gyldige pra
 });
 
 test("#7003: gem udleder de gamle felter; kopi til naeste etape tager ikke planen med", () => {
-  const order = { breakaway_stance: "neutral", riders: [{ rider_id: "a", effort: "all_out", try_break: true, leadout: false, plan: HELPER }, { rider_id: "b", effort: "save" }] };
-  assert.deepEqual(withStagePlanFields(order).riders[0], { rider_id: "a", effort: "normal", try_break: false, leadout: false, plan: HELPER });
-  assert.deepEqual(withStagePlanFields(order).riders[1], { rider_id: "b", effort: "save" });
-  assert.deepEqual(withoutStagePlans(order).riders[0], { rider_id: "a", effort: "all_out", try_break: true, leadout: false });
+  const order: { breakaway_stance: string; riders: Array<Record<string, unknown> & { rider_id: string; plan?: StagePlanLeg[] }> } = { breakaway_stance: "neutral", riders: [{ rider_id: "a", effort: "all_out", try_break: true, leadout: false, plan: HELPER }, { rider_id: "b", effort: "save" }] };
+  assert.deepEqual(withStagePlanFields(order).riders![0], { rider_id: "a", effort: "normal", try_break: false, leadout: false, plan: HELPER });
+  assert.deepEqual(withStagePlanFields(order).riders![1], { rider_id: "b", effort: "save" });
+  assert.deepEqual(withoutStagePlans(order).riders![0], { rider_id: "a", effort: "all_out", try_break: true, leadout: false });
 });
 
 test("#7003: opsummeringen efter etapen laeses af stage_plan_leg-events", () => {

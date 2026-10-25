@@ -22,9 +22,22 @@ export const STAGE_PLAN_TASKS = Object.freeze([
   "sprint_train",
   "grupetto",
   "ride_in",
-]);
+] as const);
 
-export const TASK_EFFORT = Object.freeze({
+export type StagePlanTask = (typeof STAGE_PLAN_TASKS)[number];
+export type StagePlanRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
+export type StagePlanEffort = "grupetto" | "save" | "normal" | "protect" | "all_out";
+export type StagePlanTrigger = { at: "kom"; kom_index: number } | { at: "final_km" } | { at: "dropped" };
+export type StagePlanLeg = { task: StagePlanTask; from?: StagePlanTrigger };
+export type StagePlanClimb = { index: number; km: number; name: string | null; category: string };
+export type StagePlanRoute = {
+  distance_km: number;
+  profile_type: string | null;
+  climbs: readonly StagePlanClimb[];
+  summit_finish?: boolean;
+};
+
+export const TASK_EFFORT: Readonly<Record<StagePlanTask, StagePlanEffort>> = Object.freeze({
   breakaway: "normal",
   stay_sheltered: "save",
   shelter_leader: "normal",
@@ -37,10 +50,10 @@ export const TASK_EFFORT = Object.freeze({
   ride_in: "save",
 });
 
-const ALL_ROLES = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
-const LEADERS = ["captain", "sprint_captain"];
+const ALL_ROLES: StagePlanRole[] = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
+const LEADERS: StagePlanRole[] = ["captain", "sprint_captain"];
 
-export const TASK_ROLES = Object.freeze({
+export const TASK_ROLES: Readonly<Record<StagePlanTask, readonly StagePlanRole[]>> = Object.freeze({
   breakaway: ALL_ROLES,
   stay_sheltered: ALL_ROLES,
   shelter_leader: ["helper", "hunter"],
@@ -53,24 +66,27 @@ export const TASK_ROLES = Object.freeze({
   ride_in: ALL_ROLES,
 });
 
-export const TERMINAL_TASKS = new Set(["sprint_train", "grupetto", "ride_in"]);
+export const TERMINAL_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["sprint_train", "grupetto", "ride_in"]);
 
 const CATEGORIES = new Set(["HC", "1", "2", "3", "4"]);
 const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
 
-export function isStagePlanTask(value) {
-  return typeof value === "string" && STAGE_PLAN_TASKS.includes(value);
+type Rec = Record<string, unknown>;
+
+export function isStagePlanTask(value: unknown): value is StagePlanTask {
+  return typeof value === "string" && (STAGE_PLAN_TASKS as readonly string[]).includes(value);
 }
 
-export function isTimeTrialProfile(profileType) {
+export function isTimeTrialProfile(profileType: unknown): boolean {
   return typeof profileType === "string" && TIME_TRIAL_PROFILES.has(profileType);
 }
 
-export function stagePlanClimbsFromRaw(rawClimbs, distanceKm) {
-  const list = Array.isArray(rawClimbs) ? rawClimbs : [];
-  const out = [];
-  list.forEach((climb, index) => {
-    if (!climb || typeof climb !== "object") return;
+export function stagePlanClimbsFromRaw(rawClimbs: unknown, distanceKm: number): StagePlanClimb[] {
+  const list: unknown[] = Array.isArray(rawClimbs) ? rawClimbs : [];
+  const out: StagePlanClimb[] = [];
+  list.forEach((c, index) => {
+    if (!c || typeof c !== "object") return;
+    const climb = c as Rec;
     const km = Number(climb.crest_km ?? climb.km);
     const category = String(climb.category ?? "");
     if (!Number.isFinite(km) || !CATEGORIES.has(category)) return;
@@ -81,19 +97,19 @@ export function stagePlanClimbsFromRaw(rawClimbs, distanceKm) {
   return out.sort((a, b) => a.km - b.km || a.index - b.index);
 }
 
-export function stagePlanRouteFromRaw(raw) {
+export function stagePlanRouteFromRaw(raw: { distance_km?: unknown; profile_type?: unknown; climbs?: unknown } | null | undefined): StagePlanRoute {
   const distance = Number(raw?.distance_km);
   const distanceKm = Number.isFinite(distance) && distance > 0 ? distance : 0;
-  const rawClimbs = Array.isArray(raw?.climbs) ? raw.climbs : [];
+  const rawClimbs: unknown[] = Array.isArray(raw?.climbs) ? (raw?.climbs as unknown[]) : [];
   return {
     distance_km: distanceKm,
     profile_type: typeof raw?.profile_type === "string" ? raw.profile_type : null,
     climbs: stagePlanClimbsFromRaw(rawClimbs, distanceKm),
-    summit_finish: rawClimbs.some((c) => !!c && typeof c === "object" && c.summit_finish === true),
+    summit_finish: rawClimbs.some((c) => !!c && typeof c === "object" && (c as Rec).summit_finish === true),
   };
 }
 
-export function triggerKm(trigger, route) {
+export function triggerKm(trigger: StagePlanTrigger | undefined, route: StagePlanRoute): number | null {
   if (!trigger) return null;
   if (trigger.at === "final_km") return Math.max(0, route.distance_km - STAGE_PLAN_FINAL_KM);
   if (trigger.at === "kom") {
@@ -103,13 +119,13 @@ export function triggerKm(trigger, route) {
   return null;
 }
 
-export function validateStagePlanLegs(legs, role, route) {
+export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route: StagePlanRoute): string | null {
   if (isTimeTrialProfile(route.profile_type)) return "stage_plan_time_trial";
   if (!Array.isArray(legs) || legs.length === 0) return "stage_plan_empty";
   if (legs.length > STAGE_PLAN_MAX_LEGS) return "stage_plan_too_many_legs";
   let lastKm = -Infinity;
   for (let i = 0; i < legs.length; i++) {
-    const leg = legs[i];
+    const leg = legs[i] as Rec | null;
     if (!leg || typeof leg !== "object" || Array.isArray(leg)) return "stage_plan_invalid_leg";
     if (Object.keys(leg).some((k) => k !== "task" && k !== "from")) return "stage_plan_invalid_leg";
     const task = leg.task;
@@ -117,26 +133,27 @@ export function validateStagePlanLegs(legs, role, route) {
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
     if (task === "breakaway" && i > 0) return "stage_plan_breakaway_not_first";
     if (TERMINAL_TASKS.has(task) && i < legs.length - 1) return "stage_plan_terminal_not_last";
-    if (i > 0 && legs[i - 1].task === task) return "stage_plan_repeat_task";
+    if (i > 0 && (legs[i - 1] as Rec).task === task) return "stage_plan_repeat_task";
     const from = leg.from;
     if (i === 0) {
       if (from !== undefined) return "stage_plan_first_has_trigger";
       continue;
     }
     if (!from || typeof from !== "object" || Array.isArray(from)) return "stage_plan_missing_trigger";
-    if (from.at === "dropped") {
-      if (Object.keys(from).length !== 1) return "stage_plan_unknown_trigger";
+    const trig = from as Rec;
+    if (trig.at === "dropped") {
+      if (Object.keys(trig).length !== 1) return "stage_plan_unknown_trigger";
       if (i < legs.length - 1) return "stage_plan_dropped_not_last";
       if (task === "sprint_train") return "stage_plan_train_after_dropped";
       continue;
     }
-    let km;
-    if (from.at === "final_km") {
-      if (Object.keys(from).length !== 1) return "stage_plan_unknown_trigger";
+    let km: number | null;
+    if (trig.at === "final_km") {
+      if (Object.keys(trig).length !== 1) return "stage_plan_unknown_trigger";
       km = triggerKm({ at: "final_km" }, route);
-    } else if (from.at === "kom") {
-      if (Object.keys(from).length !== 2 || !Number.isInteger(from.kom_index)) return "stage_plan_unknown_trigger";
-      km = triggerKm({ at: "kom", kom_index: from.kom_index }, route);
+    } else if (trig.at === "kom") {
+      if (Object.keys(trig).length !== 2 || !Number.isInteger(trig.kom_index)) return "stage_plan_unknown_trigger";
+      km = triggerKm({ at: "kom", kom_index: trig.kom_index as number }, route);
       if (km === null) return "stage_plan_unknown_climb";
     } else {
       return "stage_plan_unknown_trigger";
@@ -147,7 +164,7 @@ export function validateStagePlanLegs(legs, role, route) {
   return null;
 }
 
-export function legacyOrderFromPlan(legs) {
+export function legacyOrderFromPlan(legs: readonly StagePlanLeg[]): { effort: StagePlanEffort; try_break: boolean; leadout: boolean } {
   return {
     effort: TASK_EFFORT[legs[0].task],
     try_break: legs[0].task === "breakaway",
@@ -155,7 +172,7 @@ export function legacyOrderFromPlan(legs) {
   };
 }
 
-function bucketOf(profileType) {
+function bucketOf(profileType: string | null): "flat" | "hilly" | "mountain" | "high" {
   switch (profileType) {
     case "flat":
       return "flat";
@@ -169,19 +186,21 @@ function bucketOf(profileType) {
   }
 }
 
-export function suggestStagePlan({ role, route, teamHasSprintCaptain }) {
-  if (isTimeTrialProfile(route.profile_type)) return null;
-  const legs = suggestionFor({ role, route, teamHasSprintCaptain });
-  return validateStagePlanLegs(legs, role, route) === null ? legs : [legs[0]];
+type SuggestArgs = { role: StagePlanRole; route: StagePlanRoute; teamHasSprintCaptain: boolean };
+
+export function suggestStagePlan(args: SuggestArgs): StagePlanLeg[] | null {
+  if (isTimeTrialProfile(args.route.profile_type)) return null;
+  const legs = suggestionFor(args);
+  return validateStagePlanLegs(legs, args.role, args.route) === null ? legs : [legs[0]];
 }
 
-function suggestionFor({ role, route, teamHasSprintCaptain }) {
+function suggestionFor({ role, route, teamHasSprintCaptain }: SuggestArgs): StagePlanLeg[] {
   const bucket = bucketOf(route.profile_type);
   const climbs = [...route.climbs].sort((a, b) => a.km - b.km);
-  const lastClimbFrom = route.summit_finish
+  const lastClimbFrom: StagePlanTrigger | null = route.summit_finish
     ? (climbs.length >= 1 ? { at: "kom", kom_index: climbs[climbs.length - 1].index } : null)
     : (climbs.length >= 2 ? { at: "kom", kom_index: climbs[climbs.length - 2].index } : null);
-  const attackFrom = lastClimbFrom ?? { at: "final_km" };
+  const attackFrom: StagePlanTrigger = lastClimbFrom ?? { at: "final_km" };
   const flatFinale = bucket === "flat";
   const sprintStage = flatFinale && teamHasSprintCaptain;
 
@@ -216,13 +235,13 @@ function suggestionFor({ role, route, teamHasSprintCaptain }) {
 
 // ── UI-hjaelpere (kun frontend) ──────────────────────────────────────────────
 
-const KNOWN_ROLES = new Set(ALL_ROLES);
-export function planRole(role) {
-  return KNOWN_ROLES.has(role) ? role : "free_role";
+const KNOWN_ROLES = new Set<string>(ALL_ROLES);
+export function planRole(role: unknown): StagePlanRole {
+  return typeof role === "string" && KNOWN_ROLES.has(role) ? (role as StagePlanRole) : "free_role";
 }
 
 /** Laengste gyldige praefiks (mindst foerste led). Bruges efter hvert valg. */
-export function repairLegs(legs, role, route) {
+export function repairLegs(legs: StagePlanLeg[], role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
   for (let n = legs.length; n >= 1; n--) {
     const prefix = legs.slice(0, n);
     if (validateStagePlanLegs(prefix, role, route) === null) return prefix;
@@ -231,65 +250,64 @@ export function repairLegs(legs, role, route) {
 }
 
 /** De opgaver led `i` kan faa (praefikset til og med leddet skal vaere gyldigt). */
-export function taskOptions(legs, i, role, route) {
+export function taskOptions(legs: StagePlanLeg[], i: number, role: StagePlanRole, route: StagePlanRoute): StagePlanTask[] {
   return STAGE_PLAN_TASKS.filter((task) => {
-    const prefix = [...legs.slice(0, i), { ...(legs[i] ?? {}), task }];
-    if (i === 0) delete prefix[0].from;
-    return validateStagePlanLegs(prefix, role, route) === null;
+    const leg: StagePlanLeg = i === 0 ? { task } : { ...(legs[i] ?? {}), task };
+    return validateStagePlanLegs([...legs.slice(0, i), leg], role, route) === null;
   });
 }
 
 /** Alle skift-punkter paa ruten i rutens orden, som de kan staa paa et led. */
-export function allTriggers(route) {
+export function allTriggers(route: StagePlanRoute): StagePlanTrigger[] {
   return [
-    ...route.climbs.map((c) => ({ at: "kom", kom_index: c.index })),
+    ...route.climbs.map((c): StagePlanTrigger => ({ at: "kom", kom_index: c.index })),
     { at: "final_km" },
     { at: "dropped" },
   ];
 }
 
-export function triggerKey(trigger) {
+export function triggerKey(trigger: StagePlanTrigger | undefined): string {
   if (!trigger) return "";
   return trigger.at === "kom" ? `kom:${trigger.kom_index}` : trigger.at;
 }
 
 /** De skift-punkter led `i` (> 0) kan faa. */
-export function triggerOptions(legs, i, role, route) {
+export function triggerOptions(legs: StagePlanLeg[], i: number, role: StagePlanRole, route: StagePlanRoute): StagePlanTrigger[] {
   return allTriggers(route).filter((from) => {
     const prefix = [...legs.slice(0, i), { ...legs[i], from }];
     return validateStagePlanLegs(prefix, role, route) === null;
   });
 }
 
-export function setLegTask(legs, i, task, role, route) {
-  const next = legs.map((l, j) => (j === i ? { ...l, task } : l));
-  return repairLegs(next, role, route);
+export function setLegTask(legs: StagePlanLeg[], i: number, task: StagePlanTask, role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
+  return repairLegs(legs.map((l, j) => (j === i ? { ...l, task } : l)), role, route);
 }
 
-export function setLegTrigger(legs, i, from, role, route) {
-  const next = legs.map((l, j) => (j === i ? { ...l, from } : l));
-  return repairLegs(next, role, route);
+export function setLegTrigger(legs: StagePlanLeg[], i: number, from: StagePlanTrigger, role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
+  return repairLegs(legs.map((l, j) => (j === i ? { ...l, from } : l)), role, route);
 }
 
-export function removeLeg(legs, i, role, route) {
+export function removeLeg(legs: StagePlanLeg[], i: number, role: StagePlanRole, route: StagePlanRoute): StagePlanLeg[] {
   if (i === 0 || legs.length <= 1) return legs;
   return repairLegs(legs.filter((_, j) => j !== i), role, route);
 }
 
 /** Naeste led der kan tilfoejes (foerste gyldige opgave + skift-punkt), eller null. */
-export function nextLeg(legs, role, route) {
+export function nextLeg(legs: StagePlanLeg[], role: StagePlanRole, route: StagePlanRoute): StagePlanLeg | null {
   if (legs.length >= STAGE_PLAN_MAX_LEGS) return null;
   for (const from of allTriggers(route)) {
     for (const task of STAGE_PLAN_TASKS) {
-      const candidate = [...legs, { task, from }];
-      if (validateStagePlanLegs(candidate, role, route) === null) return { task, from };
+      if (validateStagePlanLegs([...legs, { task, from }], role, route) === null) return { task, from };
     }
   }
   return null;
 }
 
+type OrderRider = Rec & { rider_id: string; plan?: StagePlanLeg[] | null };
+type Order = Rec & { riders?: OrderRider[] };
+
 /** Ordren med planernes felter: de gamle felter udledes af kaeden (samme regel som serveren). */
-export function withStagePlanFields(order) {
+export function withStagePlanFields<T extends Order>(order: T): T {
   return {
     ...order,
     riders: (order?.riders ?? []).map((r) => (Array.isArray(r.plan) && r.plan.length
@@ -299,46 +317,53 @@ export function withStagePlanFields(order) {
 }
 
 /** Kopi til en anden etape: planer haenger paa ruten og kopieres ikke med. */
-export function withoutStagePlans(order) {
+export function withoutStagePlans<T extends Order>(order: T): T {
   return {
     ...order,
     riders: (order?.riders ?? []).map((r) => {
       if (!("plan" in r)) return r;
       const { plan: _plan, ...rest } = r;
-      return rest;
+      return rest as OrderRider;
     }),
   };
 }
 
-export function setRiderPlan(order, riderId, plan) {
+export function setRiderPlan<T extends Order>(order: T, riderId: string, plan: StagePlanLeg[] | null): T {
   return {
     ...order,
     riders: (order?.riders ?? []).map((r) => (r.rider_id === riderId ? { ...r, plan } : r)),
   };
 }
 
+export type StagePlanRecapItem = {
+  task: StagePlanTask;
+  status: "done" | "to_finish" | "skipped" | "not_reached" | "abandoned";
+  endReason: string | null;
+  endKm: number | null;
+  fromKm: number | null;
+};
+
+type TimelineEventLike = { type?: unknown; km?: unknown; params?: Rec | null };
+
 /**
  * Hvad rytteren faktisk gjorde i hvert led, ud fra tidslinjens stage_plan_leg-
  * events (motoren skriver et pr. skift) og et evt. udgaaet-uheld.
- * Returnerer et element pr. led: { task, status, endReason, endKm, fromKm }.
- *   status: "done" (redet og afsluttet), "to_finish" (sidste redne led),
- *           "skipped" (sprunget over: han blev sat foer), "not_reached",
- *           "abandoned" (udgik i dette led).
  */
-export function stagePlanRecap(legs, events, riderId) {
-  const switches = (events ?? [])
+export function stagePlanRecap(legs: readonly StagePlanLeg[], events: readonly TimelineEventLike[] | null | undefined, riderId: string): StagePlanRecapItem[] {
+  const list = events ?? [];
+  const switches = list
     .filter((e) => e?.type === "stage_plan_leg" && e.params?.rider_id === riderId)
-    .map((e) => ({ km: Number(e.km), leg: Number(e.params.leg), reason: e.params.reason }))
+    .map((e) => ({ km: Number(e.km), leg: Number(e.params?.leg), reason: String(e.params?.reason ?? "") }))
     .sort((a, b) => a.km - b.km);
-  const abandon = (events ?? []).find((e) => e?.type === "incident" && e.params?.rider_id === riderId && e.params?.outcome === "abandoned");
-  const reached = new Map([[0, 0]]);
+  const abandon = list.find((e) => e?.type === "incident" && e.params?.rider_id === riderId && e.params?.outcome === "abandoned");
+  const reached = new Map<number, number>([[0, 0]]);
   for (const s of switches) reached.set(s.leg, s.km);
   const lastReached = Math.max(...reached.keys());
-  return legs.map((leg, i) => {
+  return legs.map((leg, i): StagePlanRecapItem => {
     if (!reached.has(i)) {
       return { task: leg.task, status: i < lastReached ? "skipped" : "not_reached", endReason: null, endKm: null, fromKm: null };
     }
-    const fromKm = reached.get(i);
+    const fromKm = reached.get(i) ?? 0;
     const nextSwitch = switches.find((s) => s.leg > i);
     if (nextSwitch) return { task: leg.task, status: "done", endReason: nextSwitch.reason, endKm: nextSwitch.km, fromKm };
     if (abandon) return { task: leg.task, status: "abandoned", endReason: "abandoned", endKm: Number(abandon.km), fromKm };

@@ -17,7 +17,7 @@
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { defaultTeamOrder, mergeOrderWithRoster, trainDefaultForStage } from "./tacticsPlan.js";
-import { withStagePlanFields } from "../components/race/StagePlanModel.js"; // #7003
+import { withStagePlanFields } from "../components/race/StagePlanModel.ts"; // #7003
 
 const API = import.meta.env.VITE_API_URL;
 
