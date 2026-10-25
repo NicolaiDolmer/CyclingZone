@@ -74,7 +74,8 @@ import {
 } from "../ai/teamOrderContract.ts";
 import { TEAM_TACTICS_ORDER_KIND, s5MorningGcBlockedRiders } from "../mechanics/breakaway.ts";
 import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
-import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater } from "../../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { stagePlanOrderFromRow } from "../../../stagePlanEngine.ts"; // #7003
 
 export type { BreakawayStance, TeamTacticsOrder };
 
@@ -359,6 +360,9 @@ export function buildStageOrderPlan(args: {
       for (const rider of order.riders) aiEffortByRider.set(rider.rider_id, rider.effort);
     }
     orders.push(toEngineTeamOrder(order));
+    // #7003 (KUN s5_profiles_v3): etapeplanen langs ruten som egen ordre-art.
+    const stagePlanOrder = stagePlanOrderFromRow(teamId, row, context?.rules_revision, isS5ProfilesV3OrLater);
+    if (stagePlanOrder) orders.push(stagePlanOrder);
     // #6434 (KUN official_times_v3): togets maal kan ogsaa vaere en kaptajn med
     // sprinterprofil paa en flad etape (sprintTrainLeadoutOrder, #6352), for
     // menneske- og AI-hold. Aeldre revisioner: den gamle regel, uaendret.

@@ -396,7 +396,7 @@ function juryInputFor(input: StageInput, state: SegmentLoopResult["state"]): Tim
   const effortByRider: Record<string, StageInput["startlist"][number]["effort"]> = {};
   const teamByRider: Record<string, string | null | undefined> = {};
   for (const entrant of input.startlist) {
-    effortByRider[entrant.rider_id] = entrant.effort;
+    effortByRider[entrant.rider_id] = state.stage_plan_efforts?.[entrant.rider_id] ?? entrant.effort; // #7003
     teamByRider[entrant.rider_id] = entrant.team_id;
   }
   return {
