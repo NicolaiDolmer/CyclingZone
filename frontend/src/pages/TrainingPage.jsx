@@ -1234,7 +1234,8 @@ export default function TrainingPage() {
   const decisionCardOn = training.decisionCard === true && !runGate.trainedToday;
   const decisionRows = decisionCardOn
     ? buildDailyDecision({
-      riderIds: riders.map((r) => r.id),
+      // riders er utypet (never) i checkJs; samme any-graense som resten af siden.
+      riderIds: /** @type {Array<{ id: string }>} */ (riders).map((r) => r.id),
       condition: (id) => condition[id],
       isRacing: racingTodayFor,
       isInjured: (id) => injuryTimeLeft(condition[id], today).count > 0,
@@ -1247,7 +1248,7 @@ export default function TrainingPage() {
         return type === "rest" || type === "recovery";
       },
     }).map((s) => {
-      const r = riderByIdMap.get(s.riderId);
+      const r = /** @type {{ firstname?: string, lastname?: string } | undefined} */ (riderByIdMap.get(s.riderId));
       return { ...s, name: `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim() };
     })
     : [];

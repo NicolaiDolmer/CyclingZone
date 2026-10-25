@@ -603,6 +603,8 @@ features:
     epic: 6110
     verified: 2026-10-25
     note: PR #7179 (S26). Stadie-flag training_decision_card seedes off af migrationen (apply efter merge); ejer flytter til beta efter billeder.
+    decision: ejer-beslutning
+    decide_by: 2026-11-01
 
   # --- academy -------------------------------------------------------------
   - id: academy

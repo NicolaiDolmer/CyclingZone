@@ -89,7 +89,7 @@ export function useTraining() {
         // visning, ikke en halv ny flade.
         setMobileTable(data.mobileTable === true);
         setBulkDay(data.bulkDay === true);
-        setDecisionCard(data.decisionCard === true);
+        setDecisionCard(/** @type {{ decisionCard?: boolean }} */ (data).decisionCard === true);
       }
     } catch {
       /* netværk — behold tidligere state */
