@@ -1820,6 +1820,9 @@ export default function TrainingPage() {
           indgangen til hurtig hvile ikke skubber tabellen ned (mindst 8 ryttere
           på første skærm, 390 × 844). Kun telefonens tabel-visning. */}
       <div className="flex items-stretch gap-2">
+      {/* #6110 S26 (ejer 25/10, valg A): vises Dagens beslutning, skjules den
+          gamle assistent-linje. Select riders bliver staaende. */}
+      {!(decisionCardOn && !ridersLoading) && (
       <button
         type="button"
         onClick={handleOpenAssistantPanel}
@@ -1833,6 +1836,7 @@ export default function TrainingPage() {
         </span>
         <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
       </button>
+      )}
       {phoneTodayView && activeTab === "today" && !mobilePickMode && (
         <Button
           type="button"
