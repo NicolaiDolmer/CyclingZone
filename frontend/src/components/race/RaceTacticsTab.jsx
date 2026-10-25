@@ -116,7 +116,7 @@ import { defaultOrderForStage, fetchTeamOrders, orderForStage, saveTacticsCard }
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
-import { withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
+import { stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -677,7 +677,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const sprintCaptain = riders.find((r) => roleFor(r) === "sprint_captain") || null;
   const orderByRider = new Map((order.riders ?? []).map((r) => [r.rider_id, r]));
   // #7003: etapeplanen langs ruten (serverens svar: flag + femtrins-indsats + s5_profiles_v3).
-  const stagePlanOn = showOrders && orders?.stagePlanEnabled === true;
+  // Enkeltstart/holdtidskoersel beholder de almindelige indsats-kontroller.
+  const stagePlanOn = showOrders && stagePlanReplacesControls(orders?.stagePlanEnabled === true, stageProfileType);
   const leadoutCount = ((stagePlanOn ? withStagePlanFields(order) : order).riders ?? []).filter((r) => r.leadout).length; // #7003: planens tog
 
   // Én rytters intention på den åbne etape. Låste etaper har ingen draft-celle
