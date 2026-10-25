@@ -6,7 +6,7 @@ import test from "node:test";
 import express from "express";
 
 import { createFeatureFlagsRouter, readPlayerFeatureFlags } from "./featureFlagsApi.js";
-import { PLAYER_VISIBLE_FLAG_KEYS, isStageFlagKey } from "../lib/stageFlagCatalog.js";
+import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS, isStageFlagKey } from "../lib/stageFlagCatalog.js";
 
 // app_config-raekker. Ogsaa noegler der ALDRIG maa forlade serveren ad denne
 // vej: et tal, en anden tre-tilstand og et ops-flag.
@@ -282,6 +282,17 @@ test("batch-laesning: malformet DB-svar giver aldrig adgang", async () => {
   assert.ok(Object.values(flags).every((value) => value === false));
   assert.equal(failures.length, 1);
   assert.match(failures[0].message, /invalid app_config response/);
+});
+
+test("#3564: development_curve_b er binaert, beta er off ogsaa for beta-gruppen", async () => {
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("development_curve_b"));
+  for (const key of PLAYER_VISIBLE_BINARY_FLAG_KEYS) assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(key), key);
+  const beta = fakeSupabase({ development_curve_b: "beta", race_engine_v4: "beta" });
+  const asTester = await readPlayerFeatureFlags(beta, { isBetaTester: true });
+  assert.equal(asTester.development_curve_b, false, "motoren laeser beta som off, saa Hjaelp skal ogsaa");
+  assert.equal(asTester.race_engine_v4, true, "andre flag beholder beta-evalueringen");
+  const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on" }));
+  assert.equal(on.development_curve_b, true);
 });
 
 test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste", async () => {

@@ -78,7 +78,8 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
     const stage = flags.find((f) => f.key === key)?.stage;
-    return [key, stage === "on" || stage === "beta"];
+    // #3564: binaere flag (PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden): beta = off.
+    return [key, stage === "on" || (stage === "beta" && key !== "development_curve_b")];
   }));
 }
 

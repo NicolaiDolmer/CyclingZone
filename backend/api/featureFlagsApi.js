@@ -29,7 +29,7 @@
 import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { evaluateFlagStage } from "../lib/featureStage.js";
-import { PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
+import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
 
 /**
  * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
@@ -51,7 +51,10 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
     stages = new Map();
     reportError(error, { tags: { route: "/feature-flags", read: "app_config" } });
   }
-  return Object.fromEntries(keys.map((key) => [key, evaluateFlagStage(stages.get(key), { isBetaTester })]));
+  // #3564: et binaert flag evalueres som for en anonym viewer (kun "on" er true).
+  return Object.fromEntries(keys.map((key) => [key, evaluateFlagStage(stages.get(key), {
+    isBetaTester: PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(key) ? false : isBetaTester,
+  })]));
 }
 
 /**
