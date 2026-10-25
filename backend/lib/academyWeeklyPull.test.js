@@ -34,38 +34,35 @@ const base = { is_bank: false, is_frozen: false, is_test_account: false, retired
 const ai = (id) => ({ ...base, id, is_ai: true, user_id: null });
 const human = (id) => ({ ...base, id, is_ai: false, user_id: `u-${id}`, academy_intake_seeded_at: "2026-01-01" });
 
-// 2026-10-25 er en søndag; 2026-10-26 (mandag 00:30 lokal) er en ny uge.
+// Ugen er søndag-lørdag (#7185); nøglen er lørdagen. Onsdag 21/10 hører til ugen
+// der slutter lørdag 24/10; søndag 25/10 starter ugen der slutter 31/10.
 const SUNDAY = new Date("2026-10-25T10:00:00Z");
-const MONDAY_AFTER_MIDNIGHT = new Date("2026-10-25T23:30:00Z"); // 00:30 mandag 26/10 i København (CET)
+const SUNDAY_AFTER_MIDNIGHT = new Date("2026-10-24T22:30:00Z"); // 00:30 søndag 25/10 i København (CEST)
 const WEDNESDAY = new Date("2026-10-21T10:00:00Z");
 
 function harness(sb, overrides = {}) {
   const pulls = [];
-  const notes = [];
   return {
     pulls,
-    notes,
     run: (opts = {}) => runAcademyWeeklyPullSweep({
       supabase: sb,
       now: SUNDAY,
-      isAssistEnabled: async () => true,
+      isAiPullEnabled: async () => true,
       isPullEnabled: async () => true,
       pullFn: async (_s, a) => { pulls.push(a); return { ok: true, alreadyPulled: false, candidates: [] }; },
-      notify: async (a) => { notes.push(a); return { delivered: true }; },
       ...overrides,
       ...opts,
     }),
   };
 }
 
-test("flag slukket = ingen ændring: hverken læsning, pull eller påmindelse", async () => {
+test("AI-flaget slukket = ingen ændring: hverken læsning eller pull", async () => {
   const sb = buildSupabase({ teams: [ai("a1"), human("h1")] });
-  const h = harness(sb, { isAssistEnabled: async () => false });
+  const h = harness(sb, { isAiPullEnabled: async () => false });
   const r = await h.run();
   assert.deepEqual(r, { ran: false, reason: "flag_off" });
   assert.equal(sb.log.reads.length, 0);
   assert.equal(h.pulls.length, 0);
-  assert.equal(h.notes.length, 0);
 });
 
 test("pull-flaget slukket = ingen ændring", async () => {
@@ -73,7 +70,7 @@ test("pull-flaget slukket = ingen ændring", async () => {
   const h = harness(sb, { isPullEnabled: async () => false });
   const r = await h.run();
   assert.deepEqual(r, { ran: false, reason: "pull_flag_off" });
-  assert.equal(h.pulls.length + h.notes.length, 0);
+  assert.equal(h.pulls.length, 0);
 });
 
 test("AI-hold henter selv; menneskehold, banker, frosne, testhold og pensionerede røres ikke af pull", async () => {
@@ -89,13 +86,13 @@ test("AI-hold henter selv; menneskehold, banker, frosne, testhold og pensionered
   const r = await h.run({ now: WEDNESDAY });
   assert.deepEqual(h.pulls.map((p) => p.teamId).sort(), ["a1", "a2"]);
   assert.equal(r.aiPulled, 2);
-  assert.equal(r.weekSunday, "2026-10-25");
+  assert.equal(r.weekKey, "2026-10-24");
 });
 
 test("idempotens: hold med ugens claim hoppes over, og alreadyPulled tæller ikke", async () => {
   const sb = buildSupabase({
     teams: [ai("a1"), ai("a2")],
-    ticks: [{ team_id: "a1", tick_date: "2026-10-25" }, { team_id: "a2", tick_date: "2026-10-18" }],
+    ticks: [{ team_id: "a1", tick_date: "2026-10-24" }, { team_id: "a2", tick_date: "2026-10-17" }],
   });
   const h = harness(sb, { now: WEDNESDAY });
   await h.run({ now: WEDNESDAY });
@@ -107,17 +104,17 @@ test("idempotens: hold med ugens claim hoppes over, og alreadyPulled tæller ikk
   assert.equal(r2.aiPulled, 0);
 });
 
-test("ugegrænse: søndag 23:30 lokal tilhører ugen der slutter den dag, mandag 00:30 den næste", async () => {
-  const sb = buildSupabase({ teams: [ai("a1")], ticks: [{ team_id: "a1", tick_date: "2026-10-25" }] });
-  const sun = harness(sb);
-  const r1 = await sun.run({ now: new Date("2026-10-25T21:30:00Z") }); // 23:30 søndag i København (CET)
-  assert.equal(r1.weekSunday, "2026-10-25");
-  assert.equal(sun.pulls.length, 0); // allerede hentet i den uge
+test("ugegrænse: lørdag 23:30 lokal tilhører ugen der slutter den dag, søndag 00:30 den næste", async () => {
+  const sb = buildSupabase({ teams: [ai("a1")], ticks: [{ team_id: "a1", tick_date: "2026-10-24" }] });
+  const sat = harness(sb);
+  const r1 = await sat.run({ now: new Date("2026-10-24T21:30:00Z") }); // 23:30 lørdag i København (CEST)
+  assert.equal(r1.weekKey, "2026-10-24");
+  assert.equal(sat.pulls.length, 0); // allerede hentet i den uge
 
-  const mon = harness(sb);
-  const r2 = await mon.run({ now: MONDAY_AFTER_MIDNIGHT });
-  assert.equal(r2.weekSunday, "2026-11-01");
-  assert.deepEqual(mon.pulls.map((p) => p.teamId), ["a1"]); // ny uge, nyt kuld
+  const sun = harness(sb);
+  const r2 = await sun.run({ now: SUNDAY_AFTER_MIDNIGHT });
+  assert.equal(r2.weekKey, "2026-10-31");
+  assert.deepEqual(sun.pulls.map((p) => p.teamId), ["a1"]); // ny uge, nyt kuld
 });
 
 test("loft pr. kørsel: højst MAX_AI_PULLS_PER_RUN, resten rapporteres", async () => {
@@ -138,47 +135,4 @@ test("ét AI-holds fejl vælter ikke de andre og samles i errors", async () => {
   assert.equal(r.aiPulled, 1);
   assert.equal(r.errors.length, 1);
   assert.match(r.errors[0], /a1/);
-});
-
-test("påmindelse: kun søndag, kun menneskehold uden hentning, med akademi, aktive", async () => {
-  const sb = buildSupabase({
-    teams: [
-      human("h-needs"),
-      human("h-pulled"),
-      { ...human("h-parked"), parked_at: "2026-09-01" },
-      { ...human("h-noacademy"), academy_intake_seeded_at: null },
-      { ...human("h-nouser"), user_id: null },
-      ai("a1"),
-    ],
-    ticks: [{ team_id: "h-pulled", tick_date: "2026-10-25" }],
-  });
-  const h = harness(sb);
-  const r = await h.run();
-  assert.deepEqual(h.notes.map((n) => n.teamId), ["h-needs"]);
-  assert.equal(r.reminded, 1);
-  const n = h.notes[0];
-  assert.equal(n.type, "academy_intake_ready");
-  assert.equal(n.metadata.titleCode, "notif.academyPullReminder.title");
-  assert.ok(n.dedupeWindowMs < 7 * 24 * 60 * 60 * 1000, "dedup-vinduet må ikke dække næste uges påmindelse");
-});
-
-test("ingen påmindelse på andre dage end søndag", async () => {
-  const sb = buildSupabase({ teams: [human("h1")] });
-  const h = harness(sb, { now: WEDNESDAY });
-  const r = await h.run({ now: WEDNESDAY });
-  assert.equal(h.notes.length, 0);
-  assert.equal(r.reminded, 0);
-});
-
-test("idempotent påmindelse: deduperet notifikation tæller ikke, og en fejl samles", async () => {
-  const sb = buildSupabase({ teams: [human("h1"), human("h2")] });
-  const h = harness(sb, {
-    notify: async (a) => {
-      if (a.teamId === "h2") throw new Error("nope");
-      return { delivered: false, deduped: true };
-    },
-  });
-  const r = await h.run();
-  assert.equal(r.reminded, 0);
-  assert.equal(r.errors.length, 1);
 });

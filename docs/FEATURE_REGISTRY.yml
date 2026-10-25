@@ -655,18 +655,31 @@ features:
     verified: 2026-10-16
     note: "Erstatter søndagsdrip (#3550). Tændt med Akademi 2.0 (#6666) på ejerens \"tænd\" 16/10; flag on læst i prod 16/10."
 
-  - id: academy-weekly-pull-assist
+  - id: academy-pull-reminder
     area: academy
-    title_en: Academy weekly pull assist
-    title_da: Hjælp til ugens akademi-kuld
+    title_en: Academy intake reminders
+    title_da: Påmindelser om ugens akademi-kuld
     state: dormant
-    flag: academy_weekly_pull_assist_enabled
+    flag: academy_pull_reminder_enabled
     ssot: docs/YOUTH_RULES.md
     epic: 6666
     verified: 2026-10-25
-    note: "AI-hold henter selv ugens kuld; menneskehold uden hentning får én påmindelse søndag (#6666). Slukket, kører i søndagens akademi-cron. Tænd er ejer-go."
+    note: "Søn kl. 10 + lør kl. 18 til hold uden hentning (#7177). Ejeren tænder."
     decision: taend
     decide_by: 2026-11-08
+
+  - id: academy-ai-weekly-pull
+    area: academy
+    title_en: AI academy pull
+    title_da: AI-hold henter ugens akademi-kuld
+    state: dormant
+    flag: academy_ai_weekly_pull_enabled
+    ssot: docs/YOUTH_RULES.md
+    epic: 6666
+    verified: 2026-10-25
+    note: "Slukket; ejer 25/10: kun påmindelsen nu."
+    decision: ejer-beslutning
+    decide_by: 2026-12-31
 
   - id: season-academy-intake
     area: academy
