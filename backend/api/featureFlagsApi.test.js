@@ -291,8 +291,23 @@ test("#3564: development_curve_b er binaert, beta er off ogsaa for beta-gruppen"
   const asTester = await readPlayerFeatureFlags(beta, { isBetaTester: true });
   assert.equal(asTester.development_curve_b, false, "motoren laeser beta som off, saa Hjaelp skal ogsaa");
   assert.equal(asTester.race_engine_v4, true, "andre flag beholder beta-evalueringen");
-  const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on" }));
+  const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on" }), { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } });
   assert.equal(on.development_curve_b, true);
+});
+
+// Syntetiske testparams (ikke kalibreringen, hard rule 17).
+const CURVE_B_TEST_PARAMS = JSON.stringify({
+  rate: 10, levelExponent: 2, capExponent: 0.5,
+  load: { fromAge: 16, fullAge: 24, floor: 0.5 },
+  potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+});
+
+test("Codex #7192: development_curve_b on uden gyldige params er false, som motorens fail-safe", async () => {
+  const db = fakeSupabase({ development_curve_b: "on" });
+  assert.equal((await readPlayerFeatureFlags(db, { env: {} })).development_curve_b, false, "params mangler");
+  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: "{not json" } })).development_curve_b, false, "ugyldig JSON");
+  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: "{}" } })).development_curve_b, false, "ugyldige params");
+  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } })).development_curve_b, true);
 });
 
 test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste", async () => {

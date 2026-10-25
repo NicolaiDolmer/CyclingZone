@@ -30,6 +30,7 @@ import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { evaluateFlagStage } from "../lib/featureStage.js";
 import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
+import { DEVELOPMENT_CURVE_B_FLAG_KEY, curveBParamsFromEnv } from "../lib/developmentCurveBFlag.ts";
 
 /**
  * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
@@ -39,7 +40,7 @@ import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../li
  * ses ved næste request. Databasefejl lukker alle flag og rapporteres særskilt
  * fra et bevidst off; en manglende række er stadig off.
  */
-export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {} } = {}) {
+export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {}, env = process.env } = {}) {
   const keys = PLAYER_VISIBLE_FLAG_KEYS;
   let stages;
   try {
@@ -52,9 +53,14 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
     reportError(error, { tags: { route: "/feature-flags", read: "app_config" } });
   }
   // #3564: et binaert flag evalueres som for en anonym viewer (kun "on" er true).
-  return Object.fromEntries(keys.map((key) => [key, evaluateFlagStage(stages.get(key), {
+  const flags = Object.fromEntries(keys.map((key) => [key, evaluateFlagStage(stages.get(key), {
     isBetaTester: PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(key) ? false : isBetaTester,
   })]));
+  // Codex #7192: kurve B er kun reelt taendt, naar motoren ogsaa har gyldige params
+  // (loadDevelopmentCurveB falder ellers tilbage til dagens model). Hjaelp foelger
+  // motoren, saa teksten aldrig beskriver en kurve der ikke koerer.
+  if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !curveBParamsFromEnv(env)) flags[DEVELOPMENT_CURVE_B_FLAG_KEY] = false;
+  return flags;
 }
 
 /**
