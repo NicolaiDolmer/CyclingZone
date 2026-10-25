@@ -26,7 +26,9 @@
 //   4. POTENTIALE = FART: potentialets fart kommer fra den eksisterende kæde
 //      (træningsscorens talent-led). Kurven rører den ikke.
 // Alderens turbo (alderstabellen og ungdomstillægget) indgår ikke, når kurven er
-// sendt med. Det sker i dailyAbilityDelta via `curveBYouthNeutralizer`.
+// sendt med: dailyAbilityDelta dropper alderstabellen og ungdomstillægget, og
+// applyDailyTick driver udviklingen med en alders-neutral træningsscore (den
+// viste score er uændret).
 //
 // ═══ TAL ═════════════════════════════════════════════════════════════════════
 // Alle kalibrerings-tal er PRIVATE (hard rule 17, balance-internals/6110/) og
@@ -34,8 +36,6 @@
 // findes kurven ikke, og dailyAbilityDelta kører dagens model.
 //
 // Ren funktion: ingen DB, ingen Date, ingen Math.random.
-
-import { youthMultiplier } from "./academyFlag.js";
 
 // Skalaens top. Evner går til 99; kurven regner mod 100, så 99 aldrig koster
 // uendeligt (fremdriften forbliver positiv under loftet).
@@ -122,14 +122,4 @@ export function curveBBase(
   const value = (params.rate * curveBLevelCost(c, params) * curveBCapSoftness(c, top, params)
     * curveBLoadCapacity(age, params)) / divisor;
   return value > 0 ? value : 0;
-}
-
-/**
- * Fjerner alderens ungdomstillæg fra en faktor-kæde, der allerede har det ganget
- * ind (træningsscorens rytter-led). Kurve B har belastningsevnen i stedet, så
- * alder må ikke tælle to gange og aldrig som turbo. Tillægget er altid >= 1.
- */
-export function curveBYouthNeutralizer(age: number | null | undefined): number {
-  const y = youthMultiplier(age);
-  return Number.isFinite(y) && y > 0 ? 1 / y : 1;
 }

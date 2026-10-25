@@ -11,7 +11,8 @@ import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingB
 import { effortDevelopmentMultiplier } from "./raceRoles.js";
 import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js";
 // #3564 kurve B (D-058): rent modul, kun aktivt naar `curveB` sendes med (flag development_curve_b).
-import { curveBBase, curveBYouthNeutralizer } from "./developmentCurveB.ts";
+// Under kurven skal `riderQualityMult` vaere alders-neutral; applyDailyTick/applyRaceDevelopmentTick sikrer det.
+import { curveBBase } from "./developmentCurveB.ts";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -201,7 +202,7 @@ export function dailyAbilityDelta({
   // enhver caller der ikke sender `riderQualityMult` er bit-identisk.
   if (Number.isFinite(riderQualityMult) && riderQualityMult >= 0) {
     return base * mult * roleRate * riderQualityMult
-      * staffBonus * academyRateMult * (curveB ? curveBYouthNeutralizer(age) : 1);
+      * staffBonus * academyRateMult;
   }
   // academyRateMult (#2437) ganges SIDST i kæden — samme "ekstra multiplikator-led,
   // default 1.0" kontrakt som staffBonus/facilityMult. Interim-knap: ingen kalder i
@@ -285,11 +286,15 @@ export function applyDailyTick({
   // loftet kan ikke laengere faa 0 efter et perfekt pas — spec §4.1, gate G4.
   // null paa hviledage (ingen kvalitet at maale) ⇒ rytter-leddet falder tilbage
   // til den gamle inline-kaede, og alle deltaer er alligevel 0.
-  const trainingScore = computeTrainingScore({
+  const scoreInput = {
     program, age, potentiale, conditionMult, noise,
     staff, facilityTier, riderLevel, primaryType, secondaryType, trainingCfg,
-  }, scoreCfg);
-  const riderQualityMult = trainingScore?.deltaQualityMult ?? null;
+  };
+  const trainingScore = computeTrainingScore(scoreInput, scoreCfg);
+  // #3564: under kurve B driver en alders-neutral score udviklingen (alder er ikke
+  // en turbo, kun belastningsevne). Den viste score er uaendret.
+  const riderQualityMult = (curveB ? computeTrainingScore({ ...scoreInput, age: null }, scoreCfg) : trainingScore)
+    ?.deltaQualityMult ?? null;
 
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);
@@ -386,11 +391,14 @@ export function applyRaceDevelopmentTick({
   // traeningsdag — ellers ville en loebsdag og en traeningsdag for samme rytter
   // bruge to forskellige delta-modeller. Selve TALLET vises ikke paa loebsdage
   // (fladen skriver "loeb", spec §4.4), men det driver udviklingen.
-  const trainingScore = computeTrainingScore({
+  const scoreInput = {
     program, age, potentiale, conditionMult, noise,
     staff, facilityTier, riderLevel, primaryType, secondaryType,
-  });
-  const riderQualityMult = trainingScore?.deltaQualityMult ?? null;
+  };
+  const trainingScore = computeTrainingScore(scoreInput);
+  // #3564: samme alders-neutrale udviklings-score som applyDailyTick under kurve B.
+  const riderQualityMult = (curveB ? computeTrainingScore({ ...scoreInput, age: null }) : trainingScore)
+    ?.deltaQualityMult ?? null;
 
   let replacedTotal = 0;
   for (const ability of VISIBLE_ABILITIES) {
