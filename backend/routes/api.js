@@ -11039,7 +11039,7 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
         // falder hver rytter tavst tilbage på CONTRACT.BASE_VALUE_FALLBACK og
         // prognosen viser et velformet, plausibelt og forkert tal.
         .from("riders")
-        .select("id, salary, prize_earnings_bonus, current_production_value")
+        .select("id, salary, prize_earnings_bonus, current_production_value, contract_end_season")
         .eq("team_id", teamId),
       supabase
         .from("loans")
@@ -11248,7 +11248,7 @@ router.get("/finance/season-switch-preview", requireAuth, async (req, res) => {
       // pagination-safe: one team's own roster, bounded by squad cap (<40)
       supabase
         .from("riders")
-        .select("id, firstname, lastname, salary, prize_earnings_bonus, current_production_value")
+        .select("id, firstname, lastname, salary, prize_earnings_bonus, current_production_value, contract_end_season")
         .eq("team_id", teamId)
         .or("is_retired.is.null,is_retired.eq.false"),
       supabase.from("loans").select("amount_remaining, interest_rate").eq("team_id", teamId).eq("status", "active"),
