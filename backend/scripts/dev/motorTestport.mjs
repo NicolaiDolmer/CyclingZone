@@ -382,9 +382,11 @@ export function assertSameRun(prev, opts, outDir) {
     && (prev.breakawayIntent?.mode ?? "none") === (opts.breakawayIntent ?? "none")
     && (prev.routesFrom ?? null) === (opts.routesFrom ?? null)
     && (prev.routesSignature ?? null) === (opts.routesSignature ?? null)
-    && (prev.season ?? null) === (opts.season ?? null);
+    && (prev.season ?? null) === (opts.season ?? null)
+    // #6938 (Codex P2): med/uden traethed mellem etaperne er to forskellige koersler; aeldre meta = uden.
+    && (prev.trackFatigue === true) === (opts.trackFatigue === true);
   if (!same) {
-    const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null].filter(Boolean);
+    const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null, prev.trackFatigue === true ? "med traethed" : null].filter(Boolean);
     throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds, bench ${prev.benchScope}${input.length ? `, ${input.join(", ")}` : ""}). Brug en ny --out.`);
   }
 }
@@ -586,7 +588,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
-    syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, field: inputs.field, routes: inputs.routes,
+    syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, trackFatigue: opts.trackFatigue === true, field: inputs.field, routes: inputs.routes,
     // #6804/#2757: eksportens mappe, saa kortet (ogsaa --report-only) finder loebenes cache.json.
     cacheDir: fromDir ?? prev?.cacheDir ?? null,
   };
