@@ -773,6 +773,19 @@ features:
     decision: taend
     decide_by: 2026-10-25
 
+  - id: development-curve-b
+    area: training
+    title_en: Development curve B (level and potential drive development, not age)
+    title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
+    state: dormant
+    flag: development_curve_b
+    ssot: docs/TRAINING_RULES.md
+    epic: 3564
+    note: Ejer, efter ny 10-sæsoners-kørsel med den rigtige kurve; kræver private params i serverens miljø.
+    verified: 2026-10-25
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+
   - id: promotion-pending
     area: academy
     title_en: Awaiting promotion instead of auto-sale when the next squad is full
