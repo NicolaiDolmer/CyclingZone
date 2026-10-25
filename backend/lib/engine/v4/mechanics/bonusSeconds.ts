@@ -415,6 +415,8 @@ export function buildFinishPassages(args: {
   profileType: ProfileType | string | null | undefined;
   finaleType: FinaleType | null;
   tuning: Pick<BonusSecondsTuning, "finishSeconds">;
+  /** #6937 (KUN s5_profiles_v3, ejer 25/10): topankomsten giver stigningens almindelige point. Udeladt = dobbelt som foer. */
+  summitFinishSingle?: true;
 }): StagePassage[] {
   const finishOrder = [...args.results]
     .filter((r) => r.status === "finished")
@@ -434,7 +436,7 @@ export function buildFinishPassages(args: {
       km: wp.km,
       category: wp.category ?? null,
       order: finishOrder,
-      pointScale: komPointScale(wp.category ?? null, true),
+      pointScale: komPointScale(wp.category ?? null, args.summitFinishSingle !== true),
     });
     if (passage) passages.push(passage);
   }

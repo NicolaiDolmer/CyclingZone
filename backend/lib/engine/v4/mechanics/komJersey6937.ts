@@ -4,21 +4,33 @@
 //
 // Rod-aarsagen (maalt): bjergpointene undervejs gaar mest til udbrud, men til en
 // ny rytter hver dag, saa ingen samler nok til at slaa klassementsvinderens
-// topankomst-point (ejer-laast skala, maalorden). I virkeligheden er det de
+// topankomst-point (dobbelt skala, maalorden; se 4.). I virkeligheden er det de
 // samme faa ryttere der gaar efter troejen dag efter dag. Derfor:
 //   1. Bjergjaegerne foer etapen = de forreste i bjergkonkurrencen (point > 0),
 //      som runneren sender med i `jersey_leaders.kom_hunters` (broen: kun v3). Kaptajner er aldrig
 //      jaegere: de koerer for klassementet (som B2).
 //   2. En jaeger kaemper om hver bjergtop undervejs, ogsaa i feltet (som
-//      troejefoereren goer i dag). Topankomsten er uaendret (maalordenen).
+//      troejefoereren goer i dag). Topankomsten afgoeres af maalordenen.
 //   3. Et AI-hold der ikke selv jager, sender sin jaeger i morgenudbruddet paa en
 //      dag med bjergpoint undervejs (bjerg/kuperet). Aldrig en garanti: motoren
 //      afgoer stadig hvem der kommer afsted. Menneskeholdenes ordrer er uroerte.
-// Skalaerne roeres ikke. v1/v2 og aeldre: intet her kaldes (bit-identisk).
+//   4. Ejer 25/10: topankomsten giver stigningens almindelige point, ikke dobbelt
+//      (summitFinishSingleFor). v1/v2 og aeldre: intet her kaldes (bit-identisk).
 //
 // REN: ingen IO, ingen rng. Refs #6937 #6804
 
 import type { Entrant, JerseyLeaders } from "../types.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+
+/**
+ * #6937 (KUN s5_profiles_v3, ejer 25/10 ordret: "Ja: almindelige point paa
+ * topankomst"): en topankomst giver samme bjergpoint som stigningen ellers ville,
+ * ikke dobbelt (som Giroen og Vueltaen). Aeldre revisioner: dobbelt som foer.
+ * Bruges af alle tre maalpassage-veje (vejetape, holdtidskoersel, enkeltstart).
+ */
+export function summitFinishSingleFor(rulesRevision: unknown): { summitFinishSingle?: true } {
+  return isS5ProfilesV3OrLater(rulesRevision) ? { summitFinishSingle: true } : {};
+}
 
 // Hvor mange af konkurrencens forreste der er jaegere, bestemmer runneren
 // (raceClassifications.KOM_HUNTERS_TOP_N, via jerseyLeadersFromComps).

@@ -51,6 +51,7 @@ import {
 // i segment-loopet men en hel ALTERNATIV etape-model (ét hold = én gruppe der
 // koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
 import { simulateTeamTimeTrialStage } from "./mechanics/teamTimeTrial.ts";
+import { summitFinishSingleFor } from "./mechanics/komJersey6937.ts";
 import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
@@ -241,7 +242,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) {
       // #7008 (KUN s5_profiles_v2): intet uheld lige efter starten.
-      const tttOptions = isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {};
+      const tttOptions = { ...(isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {}), ...summitFinishSingleFor(input.rules_revision) };
       return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning, tttOptions), trace: TIME_TRIAL_TRACE };
     }
   }
@@ -361,6 +362,8 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     profileType: input.route.profile_type,
     finaleType: input.route.finale_type,
     tuning: input.tuning.bonusSeconds,
+    // #6937 (KUN s5_profiles_v3, ejer 25/10): topankomstens almindelige point.
+    ...summitFinishSingleFor(input.rules_revision),
   });
   const passages: StagePassage[] = clampPassageBonusToPerRiderCap(
     sortPassages([...(state.stage_passages ?? []), ...finishPassages]),

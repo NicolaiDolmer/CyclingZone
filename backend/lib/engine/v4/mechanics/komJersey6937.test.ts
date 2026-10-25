@@ -9,14 +9,18 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { computePassageOrder, KOM_FAVOURITE_ROLL_OVER_ROLES, passagesHook } from "./bonusSeconds.ts";
-import { aiKomHunterForBreak, komHunterSet } from "./komJersey6937.ts";
+import { buildFinishPassages, computePassageOrder, KOM_FAVOURITE_ROLL_OVER_ROLES, komPointScale, passagesHook } from "./bonusSeconds.ts";
+import { aiKomHunterForBreak, komHunterSet, summitFinishSingleFor } from "./komJersey6937.ts";
+import { simulateStageV4 } from "../index.ts";
 import { generateAiTeamOrder } from "../ai/aiTactics.ts";
 import { jerseyLeadersFromComps } from "../../../raceClassifications.js";
 import { boundRngFor } from "../rng.ts";
 import { BONUS_SECONDS_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
-import type { AbilityKey, Entrant, EngineState, RaceGroup, RiderRole, RiderState, RouteV2, SegmentHookContext, Waypoint } from "../types.ts";
+import type { AbilityKey, Entrant, EngineState, FinaleType, RaceGroup, RiderRole, RiderState, RouteV2, SegmentHookContext, StageInput, StageResult, Waypoint } from "../types.ts";
 
 const ABILITY_KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch",
@@ -157,4 +161,55 @@ test("#6937 B1: runneren giver bjergkonkurrencens forreste med point kun naar ka
   const kom = new Map([["a", 5], ["b", 12], ["c", 0]]);
   assert.deepEqual(jerseyLeadersFromComps(entrants, new Map(), kom), { points: null, kom: "b" }, "uden valget: uaendret form (checksum)");
   assert.deepEqual(jerseyLeadersFromComps(entrants, new Map(), kom, { komHunters: 5 }).komHunters, ["b", "a"]);
+});
+
+// ── Topankomsten: almindelige point (ejer 25/10) ─────────────────────────────
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const fixture = (name: string): StageInput =>
+  JSON.parse(readFileSync(path.join(HERE, "..", "fixtures", name, "input.json"), "utf8")) as StageInput;
+const finished = (id: string, rank: number): StageResult => ({ rider_id: id, rank, time_seconds: rank, group_id: "peloton-0", status: "finished" });
+const summitKomPoints = (out: { passages?: readonly { kind: string; km: number; results: readonly { points: number }[] }[] }, km: number) =>
+  out.passages?.find((p) => p.kind === "kom" && p.km === km)?.results.map((r) => r.points).filter((p) => p > 0);
+
+test("#6937: topankomsten giver stigningens almindelige point kun under s5_profiles_v3", () => {
+  assert.deepEqual(summitFinishSingleFor("s5_profiles_v3"), { summitFinishSingle: true });
+  for (const rev of ["s5_profiles_v2", "s5_profiles_v1", "official_times_v5", "legacy", undefined]) {
+    assert.deepEqual(summitFinishSingleFor(rev), {}, `${String(rev)}: uaendret (dobbelt)`);
+  }
+  const args = {
+    results: ["a", "b", "c"].map((id, i) => finished(id, i + 1)),
+    waypoints: [{ kind: "kom", index: 0, name: "Top", km: 180, category: "HC", summit_finish: true }, { kind: "finish", index: 1, name: "Maal", km: 180 }] as Waypoint[],
+    distanceKm: 180,
+    profileType: "high_mountain",
+    finaleType: "long_climb" as FinaleType,
+    tuning: RACE_V4_TUNING.bonusSeconds,
+  };
+  const pts = (p: ReturnType<typeof buildFinishPassages>) => p.find((x) => x.kind === "kom")?.results.map((r) => r.points);
+  assert.deepEqual(pts(buildFinishPassages(args)), komPointScale("HC", true).slice(0, 3), "udeladt: dobbelt som foer");
+  assert.deepEqual(pts(buildFinishPassages({ ...args, summitFinishSingle: true })), komPointScale("HC", false).slice(0, 3));
+  assert.notDeepEqual(komPointScale("HC", true), komPointScale("HC", false), "skalaen er stadig dobbelt for aeldre revisioner");
+});
+
+test("#6937: vejetapen og enkeltstarten giver almindelige topankomst-point under v3, dobbelt under v2", () => {
+  const road = fixture("bjerg-selektion");
+  const roadSummitKm = road.route.distance_km;
+  road.route.waypoints = [
+    ...road.route.waypoints.filter((w) => w.kind !== "finish"),
+    { kind: "kom", index: 1, name: "Topankomst", km: roadSummitKm, category: "1", summit_finish: true },
+    { kind: "finish", index: 2, name: "Bjergmaal", km: roadSummitKm, summit_finish: true },
+  ] as Waypoint[];
+  const itt = fixture("itt-solo");
+  const ittKm = itt.route.distance_km;
+  itt.route.waypoints = [
+    { kind: "kom", index: 0, name: "Topankomst", km: ittKm, category: "1", summit_finish: true },
+    { kind: "finish", index: 1, name: "Maal", km: ittKm, summit_finish: true },
+  ] as Waypoint[];
+  for (const [input, km] of [[road, roadSummitKm], [itt, ittKm]] as const) {
+    const v2 = summitKomPoints(simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" }), km);
+    const v3 = summitKomPoints(simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" }), km);
+    assert.ok(v2 && v2.length > 0 && v3 && v3.length > 0, "topankomsten skal give en kom-passage");
+    assert.deepEqual(v2, komPointScale("1", true).slice(0, v2.length), "v2: dobbelt (uaendret)");
+    assert.deepEqual(v3, komPointScale("1", false).slice(0, v3.length), "v3: stigningens almindelige point");
+  }
 });
