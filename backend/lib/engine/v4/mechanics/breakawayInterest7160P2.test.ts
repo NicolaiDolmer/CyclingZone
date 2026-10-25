@@ -1,18 +1,17 @@
-// #7160 valg A (KUN s5_profiles_v3, slukket): "ufarligt udbrud != interesse" i P2's lad-gaa-loft.
-// Kontrakter, ingen balance-tal (hard rule 17): et klassementsholds etapeinteresse bag et
-// ufarligt udbrud taeller ikke i P2, holdets positive signal (ordre/reaktion) goer stadig, et
-// farligt udbrud er uroert, og uden reglen er P2 identisk.
+// #7160 valg A2 (KUN s5_profiles_v3, slukket): P2's snor gaelder ikke paa bjerg, naar udbruddet er
+// ufarligt for klassementet. Kontrakter, ingen balance-tal (hard rule 17): P2 slaas fra kun naar
+// udbruddet er ufarligt for HVERT klassementshold i jagtgruppen; et farligt udbrud (for bare ét
+// hold) og alt uden reglen er uroert, og breakaway.ts gaar gennem reglen.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { s5V3P2CountedStageInterest } from "./breakawayInterest7160P2.ts";
+import { s5V3P2OffForHarmlessBreak } from "./breakawayInterest7160P2.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts";
-import { s5V3InterestedTeamIds, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { normalizeGcContext } from "./gcThreat.ts";
 import { S5_V3_MOUNTAIN_LET_GO_7160_TUNING as T } from "../tuning.ts";
-import type { AbilityKey, Entrant, GcContext, GcStanding } from "../types.ts";
+import type { AbilityKey, Entrant, GcContext, GcStanding, ProfileType } from "../types.ts";
 
 const KEYS: AbilityKey[] = [
   "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch", "endurance",
@@ -43,50 +42,50 @@ function gaps(extra: Record<string, number> = {}): Record<string, number> {
   for (let i = 0; i < T.gcRiderMaxRank; i++) base[`fill${i}`] = 200 + i;
   return { ...base, c1: 400, c2: 450, d1: FAR, d2: FAR + 10, ...extra };
 }
-const harmlessFor = (gc: GcContext, breakawayRiderIds: string[]) => s5V3MountainLetGoInterestScale({
-  s5ProfilesV3: true, profileType: "mountain", gcContext: gc, chaseGroupRiderIds: CHASE, breakawayRiderIds, entrants: ENTRANTS,
-});
+function p2Off(gc: GcContext, breakawayRiderIds: string[], opts: { chase?: string[]; profileType?: ProfileType; s5ProfilesV3?: boolean } = {}): boolean {
+  const chaseGroupRiderIds = opts.chase ?? CHASE;
+  const harmlessGcTeams = s5V3MountainLetGoInterestScale({
+    s5ProfilesV3: opts.s5ProfilesV3 ?? true, profileType: opts.profileType ?? "mountain", gcContext: gc, chaseGroupRiderIds, breakawayRiderIds, entrants: ENTRANTS,
+  });
+  return s5V3P2OffForHarmlessBreak({ harmlessGcTeams, chaseGroupRiderIds, entrants: ENTRANTS, gcContext: gc });
+}
 
-test("#7160 valg A: uden hold er etapeinteressen den samme map (P2 identisk)", () => {
-  const interest = new Map([["A", 1], ["C", 2]]);
-  assert.equal(s5V3P2CountedStageInterest(interest, undefined), interest);
-  assert.equal(s5V3P2CountedStageInterest(interest, new Map()), interest);
-});
-
-test("#7160 valg A: kun klassementsholdene bag et ufarligt udbrud tages ud; resten og input er uroert", () => {
-  const interest = new Map([["A", 1], ["B", 0.5], ["C", 2]]);
-  const counted = s5V3P2CountedStageInterest(interest, new Map([["A", 0.5], ["B", 0.5]]));
-  assert.deepEqual([...counted], [["C", 2]]);
-  assert.deepEqual([...interest], [["A", 1], ["B", 0.5], ["C", 2]], "input muteres ikke");
-});
-
-test("#7160 valg A: ufarligt udbrud -> klassementsholdene er ikke P2-interesserede; et signal goer dem det stadig", () => {
+test("#7160 valg A2: uden #7176's hold (reglen gaelder ikke) er P2 uroert", () => {
   const gc = standings(gaps());
-  const harmless = harmlessFor(gc, ["d1"]);
-  assert.deepEqual(harmless && [...harmless.keys()], ["A", "B"]);
-  const interestByTeam = new Map([["A", 1], ["B", 1]]);
-  const counted = s5V3P2CountedStageInterest(interestByTeam, harmless);
-  assert.deepEqual(s5V3InterestedTeamIds({ interestByTeam: counted }), [], "kun klassementsholdenes etapeinteresse: ingen interesse");
-  // Ingen interesse -> den oevre zone; med interesse -> mellemzonen (som P2 i dag).
-  assert.ok(s5V3RealisticLeadCeilingSeconds("mountain", false) > s5V3RealisticLeadCeilingSeconds("mountain", true));
-  // En "jag"-ordre/reaktion (positivt signal) taeller stadig.
-  assert.deepEqual(s5V3InterestedTeamIds({ interestByTeam: counted, teamSignals: new Map([["B", 1]]) }), ["B"]);
-  // "Lad gaa" (negativt signal) taeller aldrig.
-  assert.deepEqual(s5V3InterestedTeamIds({ interestByTeam: counted, teamSignals: new Map([["A", -1]]) }), []);
-  // Et hold uden klassementsrytter (C) med etapeinteresse er stadig interesseret.
-  assert.deepEqual(s5V3InterestedTeamIds({ interestByTeam: s5V3P2CountedStageInterest(new Map([["A", 1], ["C", 1]]), harmless) }), ["C"]);
+  assert.equal(s5V3P2OffForHarmlessBreak({ harmlessGcTeams: undefined, chaseGroupRiderIds: CHASE, entrants: ENTRANTS, gcContext: gc }), false);
+  assert.equal(s5V3P2OffForHarmlessBreak({ harmlessGcTeams: new Map(), chaseGroupRiderIds: CHASE, entrants: ENTRANTS, gcContext: gc }), false);
+  assert.equal(s5V3P2OffForHarmlessBreak({ harmlessGcTeams: new Map([["A", 0.5]]), chaseGroupRiderIds: CHASE, entrants: ENTRANTS, gcContext: null }), false);
+  assert.equal(p2Off(gc, ["d1"], { s5ProfilesV3: false }), false, "aeldre revisioner");
+  assert.equal(p2Off(gc, ["d1"], { profileType: "hilly" }), false, "uden for bjerg");
+  assert.equal(p2Off(normalizeGcContext({ status: "one_day" }), ["d1"]), false, "endagsloeb");
 });
 
-test("#7160 valg A: et farligt udbrud jages som foer (ingen hold tages ud)", () => {
-  const close = standings(gaps({ d1: 10 }));
-  assert.equal(harmlessFor(close, ["d1"]), undefined, "udbryder taet paa klassementet");
-  assert.equal(harmlessFor(standings(gaps()), ["d1", "ghost"]), undefined, "udbryder uden plads i klassementet");
-  const interestByTeam = new Map([["A", 1], ["B", 1]]);
-  assert.deepEqual(s5V3InterestedTeamIds({ interestByTeam: s5V3P2CountedStageInterest(interestByTeam, harmlessFor(close, ["d1"])) }), ["A", "B"]);
+test("#7160 valg A2: ufarligt udbrud for hvert klassementshold -> P2 slaas fra paa bjerg og hoejfjeld", () => {
+  const gc = standings(gaps());
+  assert.equal(p2Off(gc, ["d1"]), true);
+  assert.equal(p2Off(gc, ["d1"], { profileType: "high_mountain" }), true);
 });
 
-test("#7160 valg A: P2's interesse i breakaway.ts gaar gennem reglen (wiring-guard)", () => {
+test("#7160 valg A2: farligt udbrud jages med P2 som foer", () => {
+  assert.equal(p2Off(standings(gaps({ d1: 10 })), ["d1"]), false, "udbryder taet paa klassementet");
+  assert.equal(p2Off(standings(gaps()), ["d1", "ghost"]), false, "udbryder uden plads i klassementet");
+});
+
+test("#7160 valg A2: farligt for bare ét klassementshold -> P2 som foer", () => {
+  // B's klassementsrytter ligger langt nede; udbryderen er langt efter A, men taet paa B.
+  const bFar = T.harmlessGcGapSeconds * 2;
+  const deeper: Record<string, number> = { b1: bFar, b2: bFar + 5, d1: bFar + 1, c1: bFar * 10, c2: bFar * 10 + 1, d2: bFar * 20 };
+  for (let i = 0; i < T.gcRiderMaxRank; i++) deeper[`fill${i}`] = bFar + 100 + i;
+  const gc = standings(gaps(deeper));
+  const harmless = s5V3MountainLetGoInterestScale({ s5ProfilesV3: true, profileType: "mountain", gcContext: gc, chaseGroupRiderIds: CHASE, breakawayRiderIds: ["d1"], entrants: ENTRANTS });
+  assert.ok(harmless?.has("A") && !harmless.has("B"), "ufarligt for A, farligt for B");
+  assert.equal(p2Off(gc, ["d1"]), false);
+  // Uden B i jagtgruppen er udbruddet ufarligt for hvert klassementshold der jager.
+  assert.equal(p2Off(gc, ["d1"], { chase: CHASE.filter((id) => !id.startsWith("b")) }), true);
+});
+
+test("#7160 valg A2: P2 i breakaway.ts gaar gennem reglen, og valg A's interesse-filter er vaek (wiring-guard)", () => {
   const src = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "breakaway.ts"), "utf8");
-  const fn = src.slice(src.indexOf("function realisticLeadInterest("), src.indexOf("function withAutoChaseWork("));
-  assert.match(fn, /s5V3InterestedTeamIds\(\{\s*interestByTeam:\s*s5V3P2CountedStageInterest\(interestByTeam,\s*input\.teamInterestScale\)/);
+  assert.match(src, /const p2Interest = p2Lead && !s5V3P2OffForHarmlessBreak\(\{ harmlessGcTeams: mountainLetGo,/);
+  assert.doesNotMatch(src, /s5V3P2CountedStageInterest/);
 });

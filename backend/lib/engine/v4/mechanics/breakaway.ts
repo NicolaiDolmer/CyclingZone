@@ -126,7 +126,7 @@ import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
-import { s5V3P2CountedStageInterest } from "./breakawayInterest7160P2.ts"; // #7160 valg A
+import { s5V3P2OffForHarmlessBreak } from "./breakawayInterest7160P2.ts"; // #7160 valg A2
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1779,8 +1779,7 @@ function realisticLeadInterest(input: {
     ...(input.finaleWeightScale !== 1 ? { finaleWeightScale: input.finaleWeightScale } : {}),
     ...(input.teamInterestScale ? { teamInterestScale: input.teamInterestScale } : {}),
   });
-  // #7160 valg A: et klassementsholds etapeinteresse bag et ufarligt udbrud er ikke P2-interesse.
-  return { interestByTeam, teamIds: s5V3InterestedTeamIds({ interestByTeam: s5V3P2CountedStageInterest(interestByTeam, input.teamInterestScale), teamSignals, excludedTeamIds: input.excludedTeamIds }) };
+  return { interestByTeam, teamIds: s5V3InterestedTeamIds({ interestByTeam, teamSignals, excludedTeamIds: input.excludedTeamIds }) };
 }
 
 /**
@@ -2027,7 +2026,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #6804 P2: hvilke hold har jagt-interesse i DETTE udbrud (etapeinteresse eller positivt signal)?
     // #7160 (KUN s5_profiles_v3, bjerg i etapeloeb): klassementshold vaegter etapeinteressen ned bag et ufarligt udbrud.
     const mountainLetGo = chaseV3 ? s5V3MountainLetGoInterestScale({ s5ProfilesV3: ctx.s5ProfilesV3, profileType: ctx.route.profile_type, gcContext: normalizedGc, chaseGroupRiderIds: chaseGroup.rider_ids, breakawayRiderIds: breakaway.rider_ids, entrants: ctx.entrants }) : undefined;
-    const p2Interest = p2Lead ? realisticLeadInterest({ chaseGroup, breakaway, chasePlan, fieldRiderIds, excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ctx, finaleWeightScale: p1FinaleWeightScale, ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) }) : null;
+    // #7160 valg A2: P2's snor gaelder ikke paa bjerg, naar udbruddet er ufarligt for hvert klassementshold i jagtgruppen.
+    const p2Interest = p2Lead && !s5V3P2OffForHarmlessBreak({ harmlessGcTeams: mountainLetGo, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, gcContext: normalizedGc }) ? realisticLeadInterest({ chaseGroup, breakaway, chasePlan, fieldRiderIds, excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ctx, finaleWeightScale: p1FinaleWeightScale, ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) }) : null;
     // #6187: en jagt-ordre der ikke koeres, fordi holdet har egen mand foran.
     if (ownAheadTeamIds) {
       for (const order of parsedOrders) {
