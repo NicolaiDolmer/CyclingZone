@@ -9,29 +9,35 @@ import { fileURLToPath } from "node:url";
 import { HELP_BLOCK_FLAGS, HELP_FAQ_FLAGS, isHelpBlockVisible, isHelpFaqVisible } from "./helpFlagGates.js";
 import { PLAYER_VISIBLE_FLAG_KEYS } from "../../../backend/lib/stageFlagCatalog.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const source = readFileSync(join(__dirname, "HelpPage.jsx"), "utf8");
-const locale = (lang) =>
-  JSON.parse(readFileSync(join(__dirname, "../../public/locales", lang, "help.json"), "utf8"));
+type Gate = { flag: string; when: boolean };
+type Text = { title?: string; text?: string; q?: string; a?: string };
+type Help = { sections: Record<string, Record<string, Text>>; faq: Record<string, Text> };
+
+const here = dirname(fileURLToPath(import.meta.url));
+const source = readFileSync(join(here, "HelpPage.jsx"), "utf8");
+const locale = (lang: string): Help =>
+  JSON.parse(readFileSync(join(here, "..", "..", "public", "locales", lang, "help.json"), "utf8"));
+const BLOCK_GATES = HELP_BLOCK_FLAGS as Record<string, Record<string, Gate>>;
+const FAQ_GATES = HELP_FAQ_FLAGS as Record<string, Gate>;
 
 const FLAG = "development_curve_b";
-const BLOCK_TWINS = [
+const BLOCK_TWINS: Array<[string, string]> = [
   ["dailytraining", "longTermGrowth"],
   ["dailytraining", "typeGating"],
   ["dailytraining", "ceilingReached"],
   ["academy", "dailyTrainingBoost"],
 ];
-const FAQ_TWINS = [["teamworkLeadershipTrainingFaq", "teamworkLeadershipTrainingCurveBFaq"]];
+const FAQ_TWINS: Array<[string, string]> = [["teamworkLeadershipTrainingFaq", "teamworkLeadershipTrainingCurveBFaq"]];
 
 test("kurve B-flaget er spillersynligt (ellers forbliver tvillingerne skjult for evigt)", () => {
-  assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(FLAG));
+  assert.ok((PLAYER_VISIBLE_FLAG_KEYS as readonly string[]).includes(FLAG));
 });
 
 test("blok-tvillingerne: off viser dagens tekst, on viser kurve B, aldrig begge", () => {
   for (const [section, id] of BLOCK_TWINS) {
     const curveB = `${id}CurveB`;
-    assert.deepEqual(HELP_BLOCK_FLAGS[section][id], { flag: FLAG, when: false }, `${section}.${id}`);
-    assert.deepEqual(HELP_BLOCK_FLAGS[section][curveB], { flag: FLAG, when: true }, `${section}.${curveB}`);
+    assert.deepEqual(BLOCK_GATES[section][id], { flag: FLAG, when: false }, `${section}.${id}`);
+    assert.deepEqual(BLOCK_GATES[section][curveB], { flag: FLAG, when: true }, `${section}.${curveB}`);
     assert.equal(isHelpBlockVisible(section, id, { [FLAG]: false }), true);
     assert.equal(isHelpBlockVisible(section, curveB, { [FLAG]: false }), false);
     assert.equal(isHelpBlockVisible(section, id, { [FLAG]: true }), false);
@@ -47,8 +53,8 @@ test("blok-tvillingerne: off viser dagens tekst, on viser kurve B, aldrig begge"
 
 test("FAQ-tvillingen foelger samme kontakt", () => {
   for (const [off, on] of FAQ_TWINS) {
-    assert.deepEqual(HELP_FAQ_FLAGS[off], { flag: FLAG, when: false });
-    assert.deepEqual(HELP_FAQ_FLAGS[on], { flag: FLAG, when: true });
+    assert.deepEqual(FAQ_GATES[off], { flag: FLAG, when: false });
+    assert.deepEqual(FAQ_GATES[on], { flag: FLAG, when: true });
     assert.equal(isHelpFaqVisible(off, { [FLAG]: false }), true);
     assert.equal(isHelpFaqVisible(on, { [FLAG]: false }), false);
     assert.equal(isHelpFaqVisible(off, { [FLAG]: true }), false);
@@ -70,11 +76,11 @@ test("teksterne findes paa alle sprog og naevner ingen tal (hard rule 17)", () =
     for (const [section, id] of BLOCK_TWINS) {
       const block = h.sections[section][`${id}CurveB`];
       assert.ok(block?.title && block?.text, `${lang}: ${section}.${id}CurveB mangler`);
-      assert.doesNotMatch(block.text, /\d/, `${lang}: ${section}.${id}CurveB indeholder et tal`);
+      assert.doesNotMatch(String(block.text), /\d/, `${lang}: ${section}.${id}CurveB indeholder et tal`);
     }
     for (const [, on] of FAQ_TWINS) {
       assert.ok(h.faq[on]?.q && h.faq[on]?.a, `${lang}: faq.${on} mangler`);
-      assert.doesNotMatch(h.faq[on].a, /\d/, `${lang}: faq.${on} indeholder et tal`);
+      assert.doesNotMatch(String(h.faq[on].a), /\d/, `${lang}: faq.${on} indeholder et tal`);
     }
   }
 });
