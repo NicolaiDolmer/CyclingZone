@@ -232,9 +232,13 @@
       "title": "Nieuw academietalent is aangekomen",
       "message": "Nieuwe kandidaten wachten in je academie - contracteer of wijs ze af."
     },
-    "academyPullReminder": {
-      "title": "Je academieweek eindigt vanavond",
-      "message": "Je hebt de kandidaten van deze week nog niet opgehaald. Haal ze op vóór middernacht, anders is de lichting weg."
+    "academyPullReminderReady": {
+      "title": "Nieuwe academiekandidaten staan klaar",
+      "message": "De lichting van deze week wacht in je academie. Haal ze op vóór zaterdag middernacht."
+    },
+    "academyPullReminderExpiring": {
+      "title": "De academielichting van deze week verloopt vannacht",
+      "message": "Je hebt de kandidaten van deze week nog niet opgehaald. Doe het vóór middernacht, anders is de lichting weg."
     },
     "seasonStarted": {
       "title": "Seizoen {number} is begonnen",

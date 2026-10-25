@@ -232,9 +232,13 @@
       "title": "New academy talent has arrived",
       "message": "New candidates are waiting in your academy - sign or reject them."
     },
-    "academyPullReminder": {
-      "title": "Your academy week ends tonight",
-      "message": "You haven't collected this week's candidates yet. Pull them before midnight or the batch is gone."
+    "academyPullReminderReady": {
+      "title": "New academy candidates are ready",
+      "message": "This week's intake is waiting in your academy. Bring it in before Saturday at midnight."
+    },
+    "academyPullReminderExpiring": {
+      "title": "This week's academy intake expires tonight",
+      "message": "You haven't brought in this week's candidates yet. Do it before midnight, or the intake is gone."
     },
     "seasonStarted": {
       "title": "Season {number} has started",
