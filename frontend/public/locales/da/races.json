@@ -183,6 +183,10 @@
         "gap": "Hullet til {group, select, rest {feltet} other {jagten}} {dir, select, grew {vokser} other {skrumper}} fra {before} til {after}",
         "split": "{count, plural, one {En gruppe bliver sat} other {# grupper bliver sat}}",
         "dropped": "{count, plural, one {{names} bliver sat af udbruddet} other {{names} bliver sat af udbruddet}}",
+        "formedAhead": "{count, plural, one {# rytter kører væk foran feltet} other {# ryttere kører væk foran feltet}}",
+        "caughtAhead": "{count, plural, one {# rytter fra gruppen foran feltet bliver hentet} other {# ryttere fra gruppen foran feltet bliver hentet}}",
+        "survivedAhead": "Gruppen foran feltet holder hele vejen til mål",
+        "droppedAhead": "{count, plural, one {{names} bliver sat af gruppen foran feltet} other {{names} bliver sat af gruppen foran feltet}}",
         "joined": "{count, plural, one {To grupper samles} other {Grupper samles # gange}}",
         "gcLead": "{name} overtager føringen samlet",
         "crack": "{name} knækker",
@@ -1038,6 +1042,12 @@
       "free_role": "fri rolle"
     }
   },
+  "stageOrders": {
+    "title": "Dine ordrer",
+    "roleDefaults": "intet gemt, så hver rytter kørte sin rolle",
+    "stanceAuto": "Automatisk",
+    "roleDefaultShort": "rollens standard"
+  },
   "racePage": {
     "tabsAria": "Løbets afsnit",
     "tab": {
@@ -1429,6 +1439,10 @@
         "breakaway_caught_by_peloton": "{riders} bliver indhentet af feltet.",
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
         "breakaway_dropped": "{riders} {count, plural, one {bliver} other {bliver}} sat af fra udbruddet.",
+        "group_ahead_formed": "{riders} kører væk i en gruppe foran feltet.",
+        "group_ahead_caught": "Gruppen foran feltet bliver hentet: {riders}.",
+        "group_ahead_survived": "Gruppen foran feltet holder hele vejen til stregen.",
+        "group_ahead_dropped": "{riders} bliver sat af fra gruppen foran feltet.",
         "incident": "{kind, select, mechanical {{rider} går ned med en mekanisk fejl.} other {{rider} vælter.}}",
         "incident_crash_time_loss": "{rider} vælter og taber {seconds} sek.",
         "incident_crash_hard": "{rider} vælter hårdt: {seconds} sek. tabt, og {days, plural, one {# dag} other {# dage}} på sidelinjen.",

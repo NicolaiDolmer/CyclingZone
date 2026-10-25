@@ -355,3 +355,19 @@ test("buildReport: din rytter vandt en sparsom etape: nr. 2 og 3 fylder op (Code
   const report = buildReport(s, curateMoments(s, c), c);
   assert.deepEqual(report.map((r) => r.key), ["mineWon", "placedGap", "thirdGap"]);
 });
+
+test("#6299 (Codex #7161): morgenudbruddet og gruppen foran klynges aldrig sammen", () => {
+  const s = story();
+  const morningCaught = s.moments.find((m) => m.key === "story.breakaway_caught");
+  assert.ok(morningCaught, "fixturens udbrud hentes");
+  s.breakaway = { ...(s.breakaway ?? {}), morning_rider_ids: ["b1", "b2", "b3", "m1"] } as typeof s.breakaway;
+  // En senere gruppe (ikke morgenudbruddet) hentes 1 km efter: inden for klynge-vinduet.
+  s.moments.push({ ...morningCaught, km: morningCaught.km + 1, km_span: undefined, data: { ...morningCaught.data, rider_ids: ["x1", "x2"] } });
+  const caught = curateMoments(s, cast(), 99).filter((l) => l.kind === "caught");
+  const ahead = caught.filter((l) => l.data.ahead === true);
+  const morning = caught.filter((l) => l.data.ahead !== true);
+  assert.equal(ahead.length, 1, caught.map((l) => `${l.km}:${l.riderIds.join("+")}`).join(","));
+  assert.equal(morning.length, 1);
+  assert.ok(!morning[0].riderIds.includes("x1"));
+  assert.ok(!ahead[0].riderIds.includes("b1"));
+});

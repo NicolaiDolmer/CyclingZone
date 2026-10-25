@@ -27,6 +27,7 @@ import { useStageTimeline } from "../../hooks/useStageTimeline.js";
 import { selectStoryEvents } from "../../lib/stageTimelineStory.js";
 import { describeEvent } from "../../lib/stageTimelineFilm.js";
 import { honestTimelineEvents, filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6294/#6350
+import { labelBreakawayEvents } from "../../lib/breakawayLabels6299.ts";
 import { lazyWithRetry } from "../../lib/lazyWithRetry.js";
 
 // #5014: lazyWithRetry (ikke bart React.lazy) — se lib/lazyWithRetry.js for
@@ -59,7 +60,7 @@ export default function StoryOfTheStageSection({
   const timeline = suppliedTimeline === undefined ? fetchedTimeline : suppliedTimeline;
   const [playerOpen, setPlayerOpen] = useState(false);
 
-  const story = timeline?.events?.length ? selectStoryEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version, startlist })) : [];
+  const story = timeline?.events?.length ? selectStoryEvents(labelBreakawayEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version, startlist }), timeline.events)) : []; // #6299
   if (!story.length && !finalKmAvailable) return null;
 
   return (
