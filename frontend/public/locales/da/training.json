@@ -63,6 +63,7 @@
     "useAria": "Sæt {name} til aktiv restitution",
     "useAll": "Brug alle {n} forslag",
     "none": "Ingen ryttere har brug for en ændring i dag.",
+    "failed": "Kunne ikke gemme. Prøv igen.",
     "segLabel": "Filtrér ryttere",
     "segAll": "Alle {n}",
     "segTraining": "Træner {n}",

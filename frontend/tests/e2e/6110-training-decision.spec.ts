@@ -74,7 +74,7 @@ function preflight(route: Route) {
 
 type PlanBody = { dayType: string; session: string | null };
 
-async function openTraining(page: Page, { decisionCard, width = 1440, height = 900, ownWeekPlanFor = [] }: { decisionCard: boolean; width?: number; height?: number; ownWeekPlanFor?: string[] }) {
+async function openTraining(page: Page, { decisionCard, width = 1440, height = 900, ownWeekPlanFor = [], failSave = false }: { decisionCard: boolean; width?: number; height?: number; ownWeekPlanFor?: string[]; failSave?: boolean }) {
   const posts: Array<PlanBody & { riderId: string }> = [];
   const me = trainingMe(decisionCard, ownWeekPlanFor);
   await page.setViewportSize({ width, height });
@@ -92,7 +92,11 @@ async function openTraining(page: Page, { decisionCard, width = 1440, height = 9
     const body = route.request().postDataJSON() as PlanBody;
     const riderId = route.request().url().split("/").pop() as string;
     posts.push({ riderId, ...body });
-    return json(route, { ok: true, plan: { focus: "restitution", intensity: "recovery" }, slots: me.slots });
+    if (failSave) return json(route, { error: "failed" }, 500);
+    // Som serveren: planen skrives, og skaaderisikoen regnes ud fra den nye dag.
+    me.plans[riderId] = { focus: "restitution", intensity: "recovery" };
+    me.condition[riderId].risk = 0;
+    return json(route, { ok: true, plan: me.plans[riderId], slots: me.slots });
   });
   await login(page);
   await page.addInitScript(() => window.localStorage.setItem("cz_lang", "en"));
@@ -182,6 +186,25 @@ test("Use all skriver for alle viste forslag og kortet skrumper til en linje", a
   expect(posts.map((p) => p.riderId).sort()).toEqual([SQUAD[0].id, SQUAD[1].id].sort());
   await expect(page.getByTestId("daily-decision-none")).toBeVisible();
   await expect(rows(page)).toHaveCount(0);
+});
+
+test("en mislykket gemning vises i kortet, ogsaa naar rytterens raekke er filtreret vaek", async ({ page }) => {
+  await openTraining(page, { decisionCard: true, failSave: true });
+  // Rytter 0 er traet; filtrer til Racing, saa hans raekke (og dagsvaelger) ikke staar paa skaermen.
+  await page.getByRole("button", { name: /^Racing 1/ }).click();
+  await expect(teamRows(page)).toHaveCount(1);
+  await rows(page).nth(0).getByTestId("daily-decision-use").click();
+  await expect(page.getByTestId("daily-decision-failed")).toBeVisible();
+  // Forslaget staar stadig (intet blev gemt).
+  await expect(rows(page)).toHaveCount(2);
+});
+
+test("risikoen hentes igen efter en aendring: forslaget forsvinder og raekken er enig", async ({ page }) => {
+  const posts = await openTraining(page, { decisionCard: true });
+  await rows(page).nth(0).getByTestId("daily-decision-use").click();
+  await expect.poll(() => posts.length).toBe(1);
+  await expect(teamRows(page).nth(0).getByTestId("training-assistant-cell")).toContainText("Agrees");
+  await expect(teamRows(page).nth(0)).not.toContainText("High injury risk");
 });
 
 test("rytter med egen ugeplan faar intet forslag (hans egen dag vinder over holdets)", async ({ page }) => {

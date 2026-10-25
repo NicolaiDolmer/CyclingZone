@@ -26,13 +26,21 @@ export default function DailyDecision({
 }) {
   const { t } = useTranslation("training");
   const [busy, setBusy] = useState<ReadonlySet<string>>(() => new Set());
+  // Rytterens egen raekke kan vaere filtreret vaek, saa fejlen vises ogsaa her.
+  const [failed, setFailed] = useState(false);
 
   async function use(list: DecisionRow[]) {
     setBusy((prev) => new Set([...prev, ...list.map((r) => r.riderId)]));
+    setFailed(false);
     try {
       // Stop ved foerste fejl: handlePlanChange viser fejlen paa den rytter, og et
       // senere vellykket kald maa ikke rydde den.
-      for (const row of list) if ((await onUse(row)) === false) break;
+      for (const row of list) {
+        if ((await onUse(row)) === false) {
+          setFailed(true);
+          break;
+        }
+      }
     } finally {
       setBusy((prev) => {
         const next = new Set(prev);
@@ -62,6 +70,11 @@ export default function DailyDecision({
           </button>
         )}
       </div>
+      {failed && (
+        <p role="alert" data-testid="daily-decision-failed" className="px-4 pt-1 text-xs text-cz-danger">
+          {t("decision.failed")}
+        </p>
+      )}
       {rows.length === 0 ? (
         <p className="flex items-center gap-2 px-4 pb-3 pt-1.5 text-xs text-cz-2" data-testid="daily-decision-none">
           <CheckIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />

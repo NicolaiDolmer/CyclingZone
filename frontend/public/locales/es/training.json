@@ -63,6 +63,7 @@
     "useAria": "Poner a {name} en recuperación activa",
     "useAll": "Usar las {n} sugerencias",
     "none": "Ningún ciclista necesita un cambio hoy.",
+    "failed": "No se pudo guardar. Inténtalo de nuevo.",
     "segLabel": "Filtrar ciclistas",
     "segAll": "Todos {n}",
     "segTraining": "Entrenan {n}",

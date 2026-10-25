@@ -63,6 +63,7 @@
     "useAria": "Set {name} to active recovery",
     "useAll": "Use all {n} suggestions",
     "none": "No rider needs a change today.",
+    "failed": "Could not save. Try again.",
     "segLabel": "Filter riders",
     "segAll": "All {n}",
     "segTraining": "Training {n}",

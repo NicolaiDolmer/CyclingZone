@@ -63,6 +63,7 @@
     "useAria": "Zet {name} op actief herstel",
     "useAll": "Gebruik alle {n} suggesties",
     "none": "Geen renner heeft vandaag een aanpassing nodig.",
+    "failed": "Opslaan mislukt. Probeer het opnieuw.",
     "segLabel": "Renners filteren",
     "segAll": "Alle {n}",
     "segTraining": "Training {n}",

@@ -642,6 +642,10 @@ export default function TrainingPage() {
       return false;
     }
     lingerAfterSave(riderId);
+    // #6110 S26 (Codex P2): skaaderisikoen regnes paa serveren ud fra dagens plan;
+    // kortet og assistent-kolonnen bruger den, saa den hentes igen efter en aendring
+    // (ellers staar et forslag/"Agrees" fra den gamle dag).
+    if (training.decisionCard === true) await training.refresh();
     return true;
   }
   async function handleClearPlan(riderId) {

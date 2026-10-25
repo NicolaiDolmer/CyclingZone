@@ -63,6 +63,7 @@
     "useAria": "Mettre {name} en récupération active",
     "useAll": "Utiliser les {n} suggestions",
     "none": "Aucun coureur n'a besoin d'un changement aujourd'hui.",
+    "failed": "Enregistrement impossible. Réessaie.",
     "segLabel": "Filtrer les coureurs",
     "segAll": "Tous {n}",
     "segTraining": "Entraînement {n}",
