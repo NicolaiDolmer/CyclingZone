@@ -10,10 +10,11 @@
 // feltets tid, mens sprinterne kaemper om spurten og pointene.
 //
 // To adfaerdsregler, begge kun under s5_profiles_v3 (aeldre revisioner er bit-identiske):
-//   1. Massespurten: en klassementskaptajn (rolle "captain") i feltets maalpulje spurter
-//      ikke. Han ruller i maal bag spurtens front, paa SAMME tid (massefinalen deler én
-//      tid), saa klassementet roeres kun af de bonussekunder han ikke laengere tager.
-//      En kaptajn i dagens udbrud koerer stadig om sejren (udbruddet afgoer det selv).
+//   1. Massespurten: en klassementskaptajn (rolle "captain") i feltet spurter ikke, hverken
+//      om sejren eller bag et overlevende udbrud. Han ruller i maal bag spurtens front, paa
+//      SAMME tid (feltet deler én tid), saa klassementet roeres kun af de bonussekunder han
+//      ikke laengere tager. En kaptajn i et overlevende udbrud eller en lille gruppe koerer
+//      stadig om sejren; er hans udbrud hentet, sidder han i feltet.
 //      Kun den flade massespurt: en stigende spurt og en punch-/bjergfinale er et
 //      klassementsterraen, hvor favoritterne ogsaa i virkeligheden koerer om sejren.
 //   2. Indlagte spurter: foerer en klassementskaptajn pointkonkurrencen, forsvarer han
@@ -60,19 +61,20 @@ export function isBunchSprintFinale(finaleType: FinaleType | null | undefined): 
 }
 
 /**
- * Regel 1: maalpuljens raekkefoelge med klassementskaptajnerne rullet ind bag
- * spurtens front. Hver kaptajn (ikke i udbruddet, `isEscape`) faar en plads blandt
- * de oevrige: efter de forreste `rollInAfter`, plus et seedet stykke af `spread`
- * (`jitter(riderId)` i [0, 1), udeladt = 0). Alle andre bevarer deres indbyrdes
- * raekkefoelge; kaptajner med samme maalplads beholder deres. Er feltet kortere,
- * kommer kaptajnen sidst blandt de oevrige. Ikke en massespurt = uaendret (ny kopi).
+ * Regel 1: en maalpuljes raekkefoelge med klassementskaptajnerne rullet ind bag
+ * spurtens front. Kalderen afgoer om puljen er FELTET (finale.ts: felt-stor pulje,
+ * `isBunchSizedChaseGroup`): et overlevende udbrud eller en lille gruppe koerer om
+ * sejren, ogsaa kaptajnen i den; en kaptajn hvis udbrud blev hentet, sidder i feltet.
+ * Hver kaptajn faar en plads blandt de oevrige: efter de forreste `rollInAfter`, plus
+ * et seedet stykke af `spread` (`jitter(riderId)` i [0, 1), udeladt = 0). Alle andre
+ * bevarer deres indbyrdes raekkefoelge; kaptajner med samme maalplads beholder deres.
+ * Er puljen kortere, kommer kaptajnen sidst. Ikke en massespurt = uaendret (ny kopi).
  */
 export function rollInGcCaptainsOnBunchSprint<T extends { riderId: string }>(
   ordered: readonly T[],
   args: {
     finaleType: FinaleType | null | undefined;
     roleOf: (riderId: string) => string | null | undefined;
-    isEscape: (riderId: string) => boolean;
     jitter?: (riderId: string) => number;
     rollInAfter?: number;
     spread?: number;
@@ -84,7 +86,7 @@ export function rollInGcCaptainsOnBunchSprint<T extends { riderId: string }>(
   const sprinting: T[] = [];
   const rolling: Array<{ entry: T; target: number; order: number }> = [];
   for (const entry of ordered) {
-    if (args.roleOf(entry.riderId) === GC_CAPTAIN_ROLE && !args.isEscape(entry.riderId)) {
+    if (args.roleOf(entry.riderId) === GC_CAPTAIN_ROLE) {
       const u = Math.min(Math.max(Number(args.jitter?.(entry.riderId) ?? 0) || 0, 0), 0.999999);
       rolling.push({ entry, target: rollInAfter + Math.floor(u * spread), order: rolling.length });
     } else sprinting.push(entry);

@@ -802,8 +802,12 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       b.score - a.score ||
       baselineTieBreak(a.riderId, b.riderId),
   );
-  // #2757 G18 (KUN s5_profiles_v3, etapeloeb): klassementskaptajnen spurter ikke i den flade massespurt.
-  if (gcCaptainRollInApplies(ctx)) scored.splice(0, scored.length, ...rollInGcCaptainsOnBunchSprint(scored, { finaleType: route.finale_type, roleOf: (id) => entrants[id]?.role, isEscape: (id) => escapeRiderIds.has(id), jitter: (id) => rngFor("gc_captain_roll_in_2757", id)() }));
+  // #2757 G18 (KUN s5_profiles_v3, etapeloeb): klassementskaptajnen spurter ikke i feltets flade massespurt.
+  const rollIn2757 = <T extends { riderId: string }>(pool: T[]): T[] =>
+    gcCaptainRollInApplies(ctx) && isBunchSizedChaseGroup(pool.length, fieldSize, extra.bunchCatchMinFieldFraction, extra.bunchCatchMinRiders)
+      ? rollInGcCaptainsOnBunchSprint(pool, { finaleType: fieldFinaleType ?? route.finale_type, roleOf: (id) => entrants[id]?.role, jitter: (id) => rngFor("gc_captain_roll_in_2757", id)() })
+      : pool;
+  if (gcCaptainRollInApplies(ctx)) scored.splice(0, scored.length, ...rollIn2757(scored));
 
   // Kontendere uden entrant-raekke (data-drift opstroems) faar ingen score og
   // ville ellers falde helt ud af opgoerelsen — og dermed ud af feltet. De
@@ -1064,12 +1068,14 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   );
   const finishOrder: string[] = [
     ...placementGroups.flatMap((g) => g.rider_ids),
-    ...orderedSurvivors.flatMap((g) =>
-      [...g.rider_ids].sort((a, b) =>
+    ...orderedSurvivors.flatMap((g) => {
+      const byScore = [...g.rider_ids].sort((a, b) =>
         (adjustedScores.get(b) ?? -Infinity) - (adjustedScores.get(a) ?? -Infinity) ||
         baselineTieBreak(a, b),
-      ),
-    ),
+      );
+      // #2757 G18: ogsaa feltet bag et overlevende udbrud (samme gruppetid, kun raekkefoelgen).
+      return gcCaptainRollInApplies(ctx) ? rollIn2757(byScore.map((riderId) => ({ riderId }))).map((s) => s.riderId) : byScore;
+    }),
   ];
 
   // #6200: bogen fra nedkoerslens regruppering er brugt op her (types.ts).

@@ -27,7 +27,6 @@ const ids = (xs: Array<{ riderId: string }>) => xs.map((x) => x.riderId);
 const field = (n: number, captainsAt: number[] = []) =>
   Array.from({ length: n }, (_, i) => ({ riderId: captainsAt.includes(i) ? `cap${i}` : `r${i}`, score: n - i }));
 const roleOf = (id: string) => (id.startsWith("cap") ? GC_CAPTAIN_ROLE : "helper");
-const noEscape = () => false;
 
 test("#2757: kun den flade massespurt (flat_sprint, bunch_sprint)", () => {
   assert.deepEqual([...BUNCH_SPRINT_FINALES].sort(), ["bunch_sprint", "flat_sprint"]);
@@ -39,13 +38,13 @@ test("#2757: kun den flade massespurt (flat_sprint, bunch_sprint)", () => {
 test("#2757: ikke en massespurt = raekkefoelgen uaendret", () => {
   const ordered = field(30, [0, 1]);
   for (const finaleType of ["uphill_sprint", "long_climb", null] as Array<FinaleType | null>) {
-    assert.deepEqual(ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType, roleOf, isEscape: noEscape })), ids(ordered));
+    assert.deepEqual(ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType, roleOf })), ids(ordered));
   }
 });
 
 test("#2757: i massespurten ruller kaptajnen ind bag spurtens front; resten bevarer sin raekkefoelge", () => {
   const ordered = field(40, [0, 3]);
-  const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "flat_sprint", roleOf, isEscape: noEscape }));
+  const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "flat_sprint", roleOf }));
   assert.equal(got.length, ordered.length);
   assert.deepEqual(new Set(got), new Set(ids(ordered)), "ingen rytter tabt eller dubleret");
   assert.equal(got.indexOf("cap0"), GC_CAPTAIN_ROLL_IN_AFTER);
@@ -58,32 +57,21 @@ test("#2757: i massespurten ruller kaptajnen ind bag spurtens front; resten beva
 test("#2757: den seedede spredning laegger kaptajnen inde i feltet, aldrig i spurtens front", () => {
   const ordered = field(80, [0]);
   for (const u of [0, 0.25, 0.5, 0.999, 1, -1, Number.NaN]) {
-    const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "bunch_sprint", roleOf, isEscape: noEscape, jitter: () => u }));
+    const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "bunch_sprint", roleOf, jitter: () => u }));
     const at = got.indexOf("cap0");
     assert.ok(at >= GC_CAPTAIN_ROLL_IN_AFTER && at < GC_CAPTAIN_ROLL_IN_AFTER + GC_CAPTAIN_ROLL_IN_SPREAD, `u=${u} -> ${at}`);
   }
 });
 
-test("#2757: en kaptajn i dagens udbrud og andre roller koerer om sejren som foer", () => {
-  const ordered = [{ riderId: "capEsc" }, { riderId: "spr" }, { riderId: "cap" }];
-  const got = ids(rollInGcCaptainsOnBunchSprint(ordered, {
-    finaleType: "flat_sprint",
-    roleOf: (id) => (id.startsWith("cap") ? "captain" : "sprint_captain"),
-    isEscape: (id) => id === "capEsc",
-    rollInAfter: 1,
-  }));
-  assert.deepEqual(got, ["capEsc", "cap", "spr"], "udbruddets kaptajn beholder sejren; feltets kaptajn ruller ind bag spurtens front");
-});
-
 test("#2757: et kort felt: kaptajnen kommer sidst blandt de oevrige, ingen rytter tabes", () => {
   const ordered = field(5, [0, 2]);
-  const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "flat_sprint", roleOf, isEscape: noEscape }));
+  const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "flat_sprint", roleOf }));
   assert.deepEqual(got, ["r1", "r3", "r4", "cap0", "cap2"]);
 });
 
 test("#2757: en sprint-kaptajn er spurteren og ruller aldrig ind", () => {
   const ordered = [{ riderId: "a" }, { riderId: "b" }];
-  const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "flat_sprint", roleOf: () => "sprint_captain", isEscape: noEscape, rollInAfter: 0 }));
+  const got = ids(rollInGcCaptainsOnBunchSprint(ordered, { finaleType: "flat_sprint", roleOf: () => "sprint_captain", rollInAfter: 0 }));
   assert.deepEqual(got, ["a", "b"]);
 });
 
@@ -152,7 +140,11 @@ test("#2757: regel 1 gaelder kun under v3 i et etapeloeb", () => {
   assert.equal(gcCaptainRollInApplies({ gcContext: STAGE_RACE }), false);
 });
 
-function finishOrder(finaleType: FinaleType, v3: boolean, captainInBreak = false, gcContext: GcContext | null = STAGE_RACE): string[] {
+/** Udbrud: hvem sidder i det, og hvor langt foran feltet (stort = overlever, lille = hentes i finalen). */
+type BreakScene = { riders: string[]; pelotonGap: number } | null;
+const CAPTAIN_IN_BREAK: BreakScene = { riders: ["cap", "r39"], pelotonGap: 600 };
+
+function finishOrder(finaleType: FinaleType, v3: boolean, breakaway: BreakScene = null, gcContext: GcContext | null = STAGE_RACE): string[] {
   const entrants: Record<string, Entrant> = { cap: entrant("cap", 99, "captain") };
   for (let i = 0; i < 40; i++) entrants[`r${i}`] = entrant(`r${i}`, 80 - i, i === 0 ? "sprint_captain" : "helper");
   const ids = Object.keys(entrants);
@@ -160,10 +152,10 @@ function finishOrder(finaleType: FinaleType, v3: boolean, captainInBreak = false
     rider_id: id, group_id: "peloton-0", cp: 0.5, wprimeMax: 1, wprime: 1, dayform: 0,
     seconds_over_cp: 0, work_norm: 0, incidents: 0, status: "racing", time_seconds: 0,
   } as RiderState]));
-  const groups: RaceGroup[] = captainInBreak
+  const groups: RaceGroup[] = breakaway
     ? [
-      { id: "break-0", kind: "breakaway", origin: "breakaway", rider_ids: ["cap", "r39"], gap_seconds: 0, cohesion: 1 } as RaceGroup,
-      { id: "peloton-0", kind: "peloton", rider_ids: ids.filter((id) => id !== "cap" && id !== "r39"), gap_seconds: 600, cohesion: 1 },
+      { id: "break-0", kind: "breakaway", origin: "breakaway", rider_ids: breakaway.riders, gap_seconds: 0, cohesion: 1 } as RaceGroup,
+      { id: "peloton-0", kind: "peloton", rider_ids: ids.filter((id) => !breakaway.riders.includes(id)), gap_seconds: breakaway.pelotonGap, cohesion: 1 },
     ]
     : [{ id: "peloton-0", kind: "peloton", rider_ids: ids, gap_seconds: 0, cohesion: 1 }];
   const state: EngineState = { km: 140, groups, riders, virtual_gc: Object.fromEntries(ids.map((id) => [id, 0])) };
@@ -194,13 +186,33 @@ test("#2757: under v3 er andre finaler end den flade massespurt uaendrede", () =
 
 test("#2757: under v3 i et endagsloeb (eller uden klassement) koerer kaptajnen om sejren som foer", () => {
   for (const gc of [{ status: "one_day" } as GcContext, null]) {
-    assert.deepEqual(finishOrder("flat_sprint", true, false, gc), finishOrder("flat_sprint", false, false, gc), String(gc?.status));
+    assert.deepEqual(finishOrder("flat_sprint", true, null, gc), finishOrder("flat_sprint", false, null, gc), String(gc?.status));
   }
 });
 
-test("#2757: under v3 koerer en kaptajn i udbruddet stadig om sejren", () => {
-  assert.equal(finishOrder("flat_sprint", true, true)[0], finishOrder("flat_sprint", false, true)[0]);
-  assert.ok(finishOrder("flat_sprint", true, true).indexOf("cap") <= 1);
+test("#2757: under v3 koerer en kaptajn i et overlevende udbrud stadig om sejren", () => {
+  assert.equal(finishOrder("flat_sprint", false, CAPTAIN_IN_BREAK)[0], "cap");
+  assert.equal(finishOrder("flat_sprint", true, CAPTAIN_IN_BREAK)[0], "cap");
+});
+
+test("#2757 (Codex): under v3 spurter kaptajnen heller ikke i feltet bag et overlevende udbrud", () => {
+  const scene: BreakScene = { riders: ["r39"], pelotonGap: 600 };
+  const before = finishOrder("flat_sprint", false, scene);
+  const after = finishOrder("flat_sprint", true, scene);
+  assert.equal(before[0], "r39", "udbruddet overlever");
+  assert.equal(before[1], "cap", "uden v3 vinder kaptajnen feltets spurt bag udbruddet");
+  assert.equal(after[0], "r39");
+  assert.equal(after[1], "r0", "under v3 vinder sprinteren feltets spurt");
+  assert.ok(after.indexOf("cap") > GC_CAPTAIN_ROLL_IN_AFTER, `kaptajnen paa ${after.indexOf("cap")}`);
+});
+
+test("#2757 (Codex): under v3 sidder en kaptajn hvis udbrud hentes i finalen i feltet", () => {
+  const scene: BreakScene = { riders: ["cap", "r39"], pelotonGap: 1 };
+  const before = finishOrder("flat_sprint", false, scene);
+  const after = finishOrder("flat_sprint", true, scene);
+  assert.equal(before[0], "cap", "uden v3 vinder kaptajnen den samlede spurt");
+  assert.equal(after.length, 41);
+  assert.ok(after.indexOf("cap") >= GC_CAPTAIN_ROLL_IN_AFTER, `kaptajnen paa ${after.indexOf("cap")}`);
 });
 
 test("#2757: under v3 spurter sprinteren; kaptajnen forsvarer ikke pointtroejen i feltet", () => {
