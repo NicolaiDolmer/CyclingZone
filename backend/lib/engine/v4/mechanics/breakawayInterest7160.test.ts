@@ -137,7 +137,7 @@ test("#7160: kun etapeinteressen skaleres pr. hold; udeladt/tom = bit-identisk; 
   assert.ok(adv(new Map([["A", 0.25], ["B", 0.25]])) <= adv(new Map([["A", 0.5], ["B", 0.5]])));
 });
 
-test("#7160: v3 paa en bjergetape i et etapeloeb med klassement er deterministisk, og v2 laeser intet herfra", () => {
+test("#7160: v3 (og v2) paa en bjergetape i et etapeloeb med klassement er deterministisk", () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures", "bjerg-selektion");
   const input = JSON.parse(readFileSync(path.join(dir, "input.json"), "utf8"));
   const teams = ["A", "B", "C", "D", "E"];
