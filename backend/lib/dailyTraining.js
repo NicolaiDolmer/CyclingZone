@@ -260,6 +260,9 @@ export function applyDailyTick({
   // ovenfor (#3709 trin 4): gate G1 kraever en FOER/EFTER-maaling, og "foer" er
   // koblingen med gamma = 0. En gate man ikke kan koere er ikke en gate.
   scoreCfg = TRAINING_SCORE_CONFIG,
+  // #6950: Udviklingsscore B ({ score, devMult, kind }, developmentScoreWiring.js) og
+  // catch-up via loeb ({ evne: multiplikator }, raceCatchUpWiring.js). Udeladt = bit-identisk.
+  developmentScore = null, abilityYieldMult = null,
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const seedScope = tickSeedKey ?? dateStr;
@@ -283,15 +286,21 @@ export function applyDailyTick({
     staff, facilityTier, riderLevel, primaryType, secondaryType, trainingCfg,
   }, scoreCfg);
   const riderQualityMult = trainingScore?.deltaQualityMult ?? null;
+  // #6950: under Udviklingsscore B er devMult rytter-leddet (S22), og traeneren staar i
+  // scoren, saa han ganges ikke ogsaa pr. evne (staff null = bonus 1).
+  const scoreB = trainingScore && Number.isFinite(developmentScore?.devMult) && developmentScore.devMult >= 0
+    ? developmentScore : null;
 
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
-    const delta = dailyAbilityDelta({
+    const rawDelta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, noise, potentiale,
-      staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
-      budgetDivisor, riderQualityMult,
+      staff: scoreB ? null : staff, facilityTier: scoreB ? null : facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
+      budgetDivisor, riderQualityMult: scoreB ? scoreB.devMult : riderQualityMult,
     });
+    // #6950: catch-up-tillaegget ganges paa delta'en, uden for scorekoblingen (del 2 §5).
+    const delta = abilityYieldMult?.[ability] > 0 ? rawDelta * abilityYieldMult[ability] : rawDelta;
     if (delta <= 0) continue;
     score += delta;
     let bar = Number(nextProgress[ability] ?? 0) + delta;
@@ -318,7 +327,8 @@ export function applyDailyTick({
     // rapport-feltet frontend allerede laeser. Det NYE tal er `trainingScore`.
     score: Math.round(score * 100) / 100,
     // #4851: passets kvalitet 1-99 + faktorerne bag. null paa hviledage.
-    trainingScore,
+    // #6950: under Udviklingsscore B er tallet scorens, og ingen bidrag gemmes (S10).
+    trainingScore: scoreB ? { ...trainingScore, score: scoreB.score, contributions: null } : trainingScore,
     noise,
     status: noise > 1.05 ? "over" : noise < 0.95 ? "under" : "normal",
   };

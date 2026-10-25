@@ -72,6 +72,8 @@ import {
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
+import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
+import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -703,13 +705,19 @@ export async function runTeamTrainingDay({
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_development_enabled') : isRaceDayDevelopmentEnabled(supabase),
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
   ]);
+  // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
+  const [developmentScoreB, raceCatchUp] = await Promise.all([
+    loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),
+    loadRaceCatchUp({ supabase, strict: conditionPerDate, capPerDateOn }),
+  ]);
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
   // fra en manager. Derfor kastes der (reservationen slettes i catch'en nedenfor),
   // og naeste sweep proever igen. ASCII-only besked (intern ops-fejl).
+  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt.
   let developmentAllowed = true;
-  if (developmentV2On) {
+  if (developmentV2On || developmentScoreB || raceCatchUp) {
     const { data: teamRow, error: teamError } = await supabase
       .from("teams")
       .select("id, user_id, is_ai, is_bank, is_test_account")
@@ -1172,9 +1180,10 @@ export async function runTeamTrainingDay({
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
           hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
           academyRateMult: raceDayIntentionYieldMultiplier(raceDayEffortByRider.get(rider.id)),
+          ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
         });
       } else {
-        tickResult = applyDailyTick(sharedTickArgs);
+        tickResult = applyDailyTick({ ...sharedTickArgs, ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs }) }); // #6950
       }
       // #6500 D6: ikke-managerhold beholder tick'ets score, status og
       // traeningsscore-detalje, men evnerne og fremdriften staar stille. Ved at
