@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-101 poster: live 80 · dormant 5 · building 7 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+102 poster: live 80 · dormant 5 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -51,6 +51,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Max +1 per ability per date (`ability-cap-per-date`) | dormant | `ability_cap_per_date_enabled` | - | #6110 | 2026-10-23 | Ejer, med Udvikling 2.0. |
+| Today's decision card on the Training page (`training-decision-card`) | building | - | - | #6110 | 2026-10-25 | PR #7179 (S26). Stadie-flag training_decision_card seedes off af migrationen (apply efter merge); ejer flytter til beta efter billeder. |
 
 ## academy
 

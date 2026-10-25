@@ -263,7 +263,10 @@ import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #651
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
+import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
+import { loadFatigueStreaks } from "../lib/trainingFatigueStreak.js"; // #6110 S26
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
+import { displayPotentialBand, bestPotentialBand, isPotentialBestRoleEnabled } from "../lib/potentialDisplayBand.js"; // #6853
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
 import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/youthSquadRoster.js"; // #5519
@@ -1098,6 +1101,17 @@ async function isViewerBetaTester(req) {
     .eq("id", req.user.id)
     .single();
   return u?.role === "admin" || u?.is_beta_tester === true;
+}
+
+// #6853: potentialet vises for den rolle med højest potentiale (flag
+// potential_single_number). Fejl i beta-opslaget = slukket (dagens visning).
+async function viewerPotentialBestRole(req) {
+  try {
+    return await isPotentialBestRoleEnabled(supabase, { isBetaTester: await isViewerBetaTester(req) });
+  } catch (err) {
+    captureException(err);
+    return false;
+  }
 }
 
 // ── Auction config helper ─────────────────────────────────────────────────────
@@ -2392,7 +2406,7 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
     // Caps forlader stadig ALDRIG serveren (#1162): kun det maskerede bånd gør.
     // #3014 · ids kan have op til 500 rytter-ids (grænsen ovenfor) — 500 UUID'er
     // ≈ 18,5 KB, over PostgRESTs ~16 KB URL-længde-cap. Chunket via fetchAllRowsChunkedIn.
-    const [{ state }, scout, riders, abilityRows, seasonNumber] = await Promise.all([
+    const [{ state }, scout, riders, abilityRows, seasonNumber, bestRole] = await Promise.all([
       loadScoutState(req.team.id),
       loadScout(req.team.id, supabase),
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
@@ -2400,12 +2414,13 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
       fetchAllRowsChunkedIn(ids, (chunk) => supabase
         .from("rider_derived_abilities").select("*").in("rider_id", chunk).order("rider_id")),
       getActiveSeasonNumber(),
+      viewerPotentialBestRole(req),
     ]);
     const abilitiesByRider = new Map((abilityRows ?? []).map((row) => [row.rider_id, row]));
     const academyPrognoses = await loadAcademyPrognoses(supabase, {
       enabled: (riders ?? []).some((r) => r.team_id === req.team.id && r.is_academy)
         && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
-      riders: riders ?? [], abilitiesByRider, seasonNumber, scout,
+      riders: riders ?? [], abilitiesByRider, seasonNumber, scout, bestRole,
     });
     // #3213: holdets ægte spejder driver rest-båndets gulv (#2244) — uden den
     // faldt beregningen tavst tilbage til DEFAULT_SCOUT for alle hold.
@@ -2440,9 +2455,12 @@ router.post("/scouting/estimates", requireAuth, presencePulseLimiter, async (req
             teamId: req.team.id,
             scout,
           });
-          const band = bands.find((b) => b.key === rider.primary_type) ?? null;
+          // #6853: én regel for hvilken rolle der vises (potentialDisplayBand.js).
+          const band = displayPotentialBand(bands, rider.primary_type, { bestRole });
           if (band && band.progLo != null) {
             estimate.role = band.key;
+            // #6853: klienten viser typeboksen ved tallet, kun når flaget er tændt.
+            if (bestRole) estimate.bestRole = true;
             estimate.now = band.now;
             // #3746: `ceil` er en ALIAS for prognose-båndet (samme tal som `prog`)
             // — kun for at holde ældre klient-kald kompatible. Kilden er ikke
@@ -2767,10 +2785,11 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
     if (abErr) throw new Error(abErr.message);
 
+    const bestRole = await viewerPotentialBestRole(req); // #6853
     const academyPrognoses = await loadAcademyPrognoses(supabase, {
       enabled: own && rider.is_academy && await isAcademyKnowledgeEnabled(supabase), teamId: req.team.id,
       riders: [rider], abilitiesByRider: new Map([[rider.id, ab]]),
-      seasonNumber: await getActiveSeasonNumber(), scout,
+      seasonNumber: await getActiveSeasonNumber(), scout, bestRole,
     });
     if (academyPrognoses.has(rider.id)) {
       return res.json({ own: true, ...academyEstimate(academyPrognoses.get(rider.id)) });
@@ -2804,6 +2823,9 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       const bestProg = types.reduce(
         (a, b) => ((b.progLo + b.progHi) > (a.progLo + a.progHi) ? b : a), types[0],
       );
+      // #6853: rollen hvis potentiale står som rapportens store tal. Samme regel
+      // som tabellerne (potentialDisplayBand.js); slukket = den naturlige rolle.
+      const displayKey = bestRole ? (bestPotentialBand(types, rider.primary_type)?.key ?? null) : null;
       // Forventet værdi fra SYNLIGE evner (ingen potentiale-input → ingen lækage).
       // #2594: v4 kræver alder (sæson-forankret); potentiale strippes EKSPLICIT så
       // det maskerede "expected"-tal ikke lækker skjult potentiale via NPV'en.
@@ -2836,6 +2858,7 @@ router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
       return res.json({
         level, maxLevel: state.maxLevel, own,
         primaryKey: rider.primary_type ?? null,
+        ...(displayKey ? { displayKey } : {}),
         stars: starsMasked, types, verdict,
         precision: scoutPrecisionInfo(level, state.maxLevel, scout),
         value: expected != null ? { market: rider.market_value, expected } : null,
@@ -2973,7 +2996,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage, dailyReceiptStage, bulkDayStage,
+      mobileTableStage, dailyReceiptStage, bulkDayStage, decisionCardStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -2987,6 +3010,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
       readFlagStage(supabase, TRAINING_BULK_DAY_FLAG_KEY), // #6523
+      readFlagStage(supabase, TRAINING_DECISION_FLAG_KEY), // #6110 S26
     ]);
     // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
     // gaten staar lukket her ogsaa: fladen viser "sat paa pause".
@@ -3008,6 +3032,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
     const dailyReceiptEnabled = evaluateFlagStage(dailyReceiptStage, { isBetaTester });
     const bulkDay = evaluateFlagStage(bulkDayStage, { isBetaTester }); // #6523: bar boolean
+    const decisionCard = evaluateFlagStage(decisionCardStage, { isBetaTester }); // #6110 S26: bar boolean
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -3043,7 +3068,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       new Date(Date.now() - TRAINING_SCORE_VIEW.windowDays * 86_400_000),
     );
     const [
-      todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult,
+      todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult, fatigueStreaks,
     ] = await Promise.all([
       activeSeasonId
         ? fetchAllRows(() => supabase
@@ -3116,6 +3141,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
           .order("tick_date", { ascending: false })
           .order("id", { ascending: true })).then((data) => ({ data }))
         : Promise.resolve({ data: [] }),
+      // #6110 S26: "Dage 70+" til holdtabellen, kun med flaget on (fail-safe, null ved fejl).
+      decisionCard ? loadFatigueStreaks(supabase, { riderIds, seasonId: activeSeasonId }) : Promise.resolve(null),
     ]);
 
     if (todayRunResult.error) throw new Error(todayRunResult.error.message);
@@ -3196,6 +3223,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
       bulkDay,
+      decisionCard,
+      ...(fatigueStreaks ? { fatigueDays70: fatigueStreaks } : {}),
       dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer
@@ -18925,7 +18954,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       : false;
     // #6666 Optag 2.0 (samme flag): potentiale læres gennem træning + akademiets profil.
     const intake2 = intakePullEnabled
-      ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: graduationSeasonNumber })
+      ? await buildIntake2View(supabase, { teamId, roster, intake, seasonNumber: graduationSeasonNumber, bestRole: await viewerPotentialBestRole(req) })
       : null;
 
     res.json({

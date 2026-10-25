@@ -21,9 +21,9 @@ export function academyEstimate(prognosis: RosterPrognosis) {
   return { academyPrognosis: prognosis };
 }
 
-export async function loadAcademyPrognoses(supabase: any, { enabled, teamId, riders, abilitiesByRider, seasonNumber, scout }: {
+export async function loadAcademyPrognoses(supabase: any, { enabled, teamId, riders, abilitiesByRider, seasonNumber, scout, bestRole = false }: {
   enabled: boolean; teamId: string; riders: Row[]; abilitiesByRider: Map<string, Row>;
-  seasonNumber: number; scout: unknown;
+  seasonNumber: number; scout: unknown; bestRole?: boolean;
 }): Promise<Map<string, RosterPrognosis>> {
   const academy = enabled ? riders.filter((r) => r.team_id === teamId && r.is_academy === true) : [];
   if (!academy.length) return new Map();
@@ -34,6 +34,6 @@ export async function loadAcademyPrognoses(supabase: any, { enabled, teamId, rid
   const speed = learningSpeed(staff);
   return new Map(academy.map((rider) => [rider.id, rosterPrognosis({
     rider: rider as any, abilities: abilitiesByRider.get(rider.id), potRow: rider as any,
-    daysOnTeam: days.get(rider.id) ?? 0, speed, seasonNumber, teamId, scout,
+    daysOnTeam: days.get(rider.id) ?? 0, speed, seasonNumber, teamId, scout, bestRole,
   })]));
 }

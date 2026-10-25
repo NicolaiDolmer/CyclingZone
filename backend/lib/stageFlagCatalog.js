@@ -42,6 +42,8 @@ export const STAGE_FLAGS = Object.freeze([
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   { key: "training_bulk_day", area: "training", label: "Træning — sæt dagen for flere ryttere" },
+  // #6110 S26: "Dagens beslutning"-kortet oeverst paa Today-fanen. Seedet off.
+  { key: "training_decision_card", area: "training", label: "Træning — Dagens beslutning (kort øverst)" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4847: "Train now" uden bonus. Kraever training_condition_per_date.
@@ -112,6 +114,10 @@ export const STAGE_FLAGS = Object.freeze([
   // #6210: maks +1 pr. evne pr. rytter pr. dato (dailyTrainingEngine.js). Fail-safe
   // OFF; tændes med Udvikling 2.0. Ejer-only flip.
   { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
+  // #6853/#5764 (spec 6110 §8): paraply-flaget for potentiale-visningen i
+  // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
+  // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
+  { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },

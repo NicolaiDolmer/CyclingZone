@@ -776,6 +776,7 @@ export type SegmentHookContext = {
   s5ProfilesV2?: true;
   // #6804 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts). Udeladt = v2.
   // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
+  // #6937 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen og lead-outens pris. Udeladt = v2.
   s5ProfilesV3?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
