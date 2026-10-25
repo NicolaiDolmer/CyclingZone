@@ -331,7 +331,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // null = henter, false = hentningen fejlede. At skelne dem er hele pointen:
   // en fejlet fetch maa ikke vises som "ingen taktik sat" (#2849).
   const [roles, setRoles] = useState(null);
-  const [orders, setOrders] = useState(null);
+  // #7003: typet efter fetchTeamOrders-svaret, saa checkJs kender felterne (fx stagePlanEnabled).
+  const [orders, setOrders] = useState(/** @type {Awaited<ReturnType<typeof fetchTeamOrders>>} */ (null));
   const [draftMatrix, setDraftMatrix] = useState({});
   const [initialMatrix, setInitialMatrix] = useState({});
   const [ordersByStage, setOrdersByStage] = useState({});
@@ -358,7 +359,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const headers = await authHeaders({ json: false });
     if (!headers) { setRoles(false); return; }
     let rolesBody = null;
-    let orderCtx = null;
+    let orderCtx = /** @type {Awaited<ReturnType<typeof fetchTeamOrders>>} */ (null); // #7003
     try {
       // #6462: togreglen for loebet kommer med team-orders-svaret (sprintTrainFlatOnly):
       // motorens revision, ogsaa for et loeb der endnu ikke er bundet.
