@@ -88,7 +88,7 @@ export function jerseyLeadersFromComps(entrants, pointsComp, komComp, { komHunte
 }
 
 /** #6937 B1: hvor mange af bjergkonkurrencens forreste der er bjergjaegere (engine/v4/mechanics/komJersey6937.ts). */
-export const KOM_HUNTERS_TOP_N = 3;
+export const KOM_HUNTERS_TOP_N = 5;
 
 // Placering der mangler (rytter uden placering i opslaget) sorteres sidst. Et
 // stort endeligt tal i stedet for Infinity, saa summer og differenser aldrig
