@@ -4,20 +4,26 @@
 > Kilde: `gh pr list` / `gh issue list` (live) + [`docs/FEATURE_REGISTRY.yml`](FEATURE_REGISTRY.yml)
 > Regenerér: `node scripts/generate-status-board.mjs`
 
-101 features i FEATURE_REGISTRY.yml: live 79 · beta 1 · dormant 5 · building 7 · spec 1 · idea 2 · retired 6.
+101 features i FEATURE_REGISTRY.yml: live 80 · dormant 5 · building 7 · spec 1 · idea 2 · retired 6.
 
 ## 1) Lige nu (merge-koe)
 Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fejlet check. "DIRTY" er en aegte merge-konflikt (`mergeStateStatus`). GitHubs `mergeStateStatus: BLOCKED` (manglende review) taeller IKKE alene som roed (se slutrapport).
 
 - #6636 feat(race-library): upcoming races and scoped edition history (6d) — DIRTY
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (3d) — DIRTY
-- #7157 feat(6110): Udviklingsscore B, modul bag development_score_v2 (byggetrin a) (0d) — groen
+- #7174 feat(motor-v3): klatre-jagten holder forspringet på snoren på stigningerne (#6804 P2.4),… (0d) — roed
 - #7158 feat(6950): catch-up via løb som rent modul (S13, S14, S16), uden kaldere (0d) — roed
 - #7154 feat(6110): S25 - 10-sæsoners-simulering før tænding (dev-harness) (0d) — roed
-- #7150 feat(motor-v3): flere udgåede - sygdom af træthed, styrt pr. terræn, hjælper stiger af (#… (0d) — DIRTY
 - #7155 feat(motor v3): bjergpoint i favoritgruppen + lead-out slår sjældent sin sprinter (#6937) (0d) — roed
-- #7171 feat(engine): #6804 v3-basen P7+P1+P6+P2, G2/G11 og S0 (slukket s5_profiles_v3), genetabl… (0d) — DIRTY
-- #7172 docs(patch): 7.377 aftenens ændringer 24/10 + etapeside 2.0 live i registret (0d) — roed
+- #7176 feat(motor-v3): favoritholdene lader ufarlige udbrud gå på bjergetaper (#7160), slukket s… (0d) — roed
+- #7177 feat(academy): AI-hold henter ugens kuld + paamindelse til mennesker (#6666), slukket (0d) — roed
+- #7175 feat(motor-v3): grupper samler sig paa nedkoersel mod maal (#6486 D3), slukket s5_profile… (0d) — roed
+- #7166 feat(udvikling): potentiale som ét tal overalt, bedste rolle + typeboks (#6853) (0d) — roed
+- #7163 feat(motor): de 5 indsatstrin kalibreret som i virkeligheden under s5_profiles_v3 + varia… (0d) — roed
+- #7161 feat(løbsfilm): kun morgenudbruddet hedder udbrud + egen ordre efter etapen (#6299) (0d) — groen
+- #7178 feat(6938): sygdom af langvarig ekstrem træthed (U1-erstatning), slukket v3 + condition v… (0d) — roed
+- #7150 feat(motor-v3): flere udgåede - styrt pr. terræn og hjælper stiger af (#6938), U1 erstatt… (0d) — roed
+- #7179 feat(training): Dagens beslutning oeverst paa traeningssiden, bag beta-flag (#6110 S26) (0d) — roed
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -35,42 +41,48 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2236 Organic community outreach — Reddit + Discord posting (110d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (103d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (100d)
-- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (97d)
-- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (93d)
+- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (98d)
+- #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (94d)
 - …og 67 mere
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
 - #7101 feat(bestyrelse): U23-/juniorresultater i vurderingen af ungdomsarbejdet (Refs #7096) (0d) — roed
-- #7172 docs(patch): 7.377 aftenens ændringer 24/10 + etapeside 2.0 live i registret (0d) — roed
+- #7177 feat(academy): AI-hold henter ugens kuld + paamindelse til mennesker (#6666), slukket (0d) — roed
+- #7166 feat(udvikling): potentiale som ét tal overalt, bedste rolle + typeboks (#6853) (0d) — roed
+- #7161 feat(løbsfilm): kun morgenudbruddet hedder udbrud + egen ordre efter etapen (#6299) (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
 
 - #6634 docs: implementeringsplan for løbsbibliotek med kommende løb og historik (10d) — groen
-- #7151 feat(motor-v3): udbrud på flad/rullende, pointjægere i udbrud, jagtafstand på gap_update… (0d) — groen
 - #7143 [merge efter 25/10] fix(training): aftenkørslen afregner sidste dato i netop afsluttet sæ… (0d) — groen
-- #7164 feat(motor): GT-enkeltstart mod bjergetaper målt mod virkeligheden (#6595) (0d) — groen
-- #7166 feat(udvikling): potentiale som ét tal overalt, bedste rolle + typeboks (#6853) (0d) — DIRTY
-- #7163 feat(motor): de 5 indsatstrin kalibreret + gruppetto-ordre (bag slukket flag) (0d) — groen
-- #7161 feat(løbsfilm): kun morgenudbruddet hedder udbrud + egen ordre efter etapen (#6299) (0d) — groen
+- #7164 feat(motor): GT-enkeltstart mod bjergetaper målt mod virkeligheden (#6595) (0d) — DIRTY
 - #7101 feat(bestyrelse): U23-/juniorresultater i vurderingen af ungdomsarbejdet (Refs #7096) (0d) — roed
 
 **Ikke-draft med roed tilstand:**
 
+- #7174 feat(motor-v3): klatre-jagten holder forspringet på snoren på stigningerne (#6804 P2.4),… (0d) — roed
 - #7158 feat(6950): catch-up via løb som rent modul (S13, S14, S16), uden kaldere (0d) — roed
 - #7154 feat(6110): S25 - 10-sæsoners-simulering før tænding (dev-harness) (0d) — roed
 - #7155 feat(motor v3): bjergpoint i favoritgruppen + lead-out slår sjældent sin sprinter (#6937) (0d) — roed
-- #7172 docs(patch): 7.377 aftenens ændringer 24/10 + etapeside 2.0 live i registret (0d) — roed
+- #7176 feat(motor-v3): favoritholdene lader ufarlige udbrud gå på bjergetaper (#7160), slukket s… (0d) — roed
+- #7177 feat(academy): AI-hold henter ugens kuld + paamindelse til mennesker (#6666), slukket (0d) — roed
+- #7175 feat(motor-v3): grupper samler sig paa nedkoersel mod maal (#6486 D3), slukket s5_profile… (0d) — roed
+- #7166 feat(udvikling): potentiale som ét tal overalt, bedste rolle + typeboks (#6853) (0d) — roed
+- #7163 feat(motor): de 5 indsatstrin kalibreret som i virkeligheden under s5_profiles_v3 + varia… (0d) — roed
+- #7178 feat(6938): sygdom af langvarig ekstrem træthed (U1-erstatning), slukket v3 + condition v… (0d) — roed
+- #7150 feat(motor-v3): flere udgåede - styrt pr. terræn og hjælper stiger af (#6938), U1 erstatt… (0d) — roed
+- #7179 feat(training): Dagens beslutning oeverst paa traeningssiden, bag beta-flag (#6110 S26) (0d) — roed
 
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
 
-- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (151d)
+- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (152d)
 - #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (126d)
-- #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (122d)
+- #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (123d)
 - #2557 [balance/HØJ] LIVE drift i race v3: hold-dominans (share4+) RØD 3 dage i træk + favorit-w… (99d)
-- #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (97d)
+- #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (98d)
 - #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (95d)
 - #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (93d)
 - #2840 Løn skal være dagsbaseret (rigtige dage) — engangstræk ved sæsonstart gør sent købte rytt… (93d)
@@ -81,13 +93,13 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (78d)
 - #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (76d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (68d)
-- …og 782 mere
+- …og 784 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
 
 - #5947 [bug] Udviklingshistorikken: gårsdagens stigninger mangler hos nogle ryttere, andre steg… (25d)
-- #6456 [motor] Tidsgab nr. 10 på bjergetaper uden topankomst og uden nedkørselsfinale har intet… (13d)
+- #6456 [motor] Tidsgab nr. 10 på bjergetaper uden topankomst og uden nedkørselsfinale har intet… (14d)
 - #5842 [bug] Ejer-direktiv 27/9: rytterværdierne ændrede sig søndag ved sæsonskiftet - det må de… (26d)
 - #6668 [S5] AI-ungdom løftes til menneskeholdenes niveau + menneskehold samles i færre grupper (… (9d)
 - #5928 [bug/HØJ] Træthed og form flytter sig 5x pr. dato: konstanterne er kalibreret til ét tick… (25d)
