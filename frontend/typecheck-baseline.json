@@ -2858,7 +2858,7 @@
     "TS2769": 1
   },
   "src/pages/helpFlagGates.js": {
-    "TS2345": 2
+    "TS2345": 1
   },
   "src/preview/betaAccessMock.js": {
     "TS2322": 3

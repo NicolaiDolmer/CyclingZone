@@ -349,6 +349,10 @@ const SECTION_DEFS = [
       { id: "typeOverview", kind: "textRows" },
       { id: "development", kind: "text" },
       { id: "agingAndDecline", kind: "text" },
+      // #6110 Udvikling 2.0 del 1 (HELP_BLOCK_FLAGS.riders): ny aldring + AI/frie ryttere.
+      { id: "agingV2", kind: "text" },
+      { id: "aiRidersV2", kind: "text" },
+      { id: "potentialBestRole", kind: "text", flag: "potential_single_number" },
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
       { id: "u25u23", kind: "text" },
@@ -400,6 +404,8 @@ const SECTION_DEFS = [
       // HELP_BLOCK_FLAGS — ingen off-tvilling), saa blokken foerst er synlig
       // naar training_score_visible er beta (viewer i beta-gruppen) eller on.
       { id: "trainingScore", kind: "text", flag: "training_score_visible" },
+      { id: "maxOnePerDay", kind: "text", flag: "ability_cap_per_date_enabled" },
+      { id: "todaysDecision", kind: "text", flag: "training_decision_card" },
       { id: "longTermGrowth", kind: "text" },
       // #4066: wired in — the type-gating percentages and the "why did my
       // ability stop rising" FAQ both elaborate on longTermGrowth directly

@@ -72,6 +72,10 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "stage_page_v2", // 7.361
   "training_bulk_day", // 7.361
   "academy_intake_pull_enabled", // #6666
+  "development_v2_aging_enabled", // #6110 Hjaelp
+  "potential_single_number", // #6110 Hjaelp
+  "ability_cap_per_date_enabled", // #6110 Hjaelp
+  "training_decision_card", // #6110 Hjaelp
 ];
 
 function playerFlags() {

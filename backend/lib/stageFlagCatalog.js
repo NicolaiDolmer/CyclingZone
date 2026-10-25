@@ -200,4 +200,11 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // "Now for everyone", naar kontakterne er on for alle.
   "stage_page_v2",
   "training_bulk_day",
+  // #6110 Udvikling 2.0 del 1: HelpPage gater de nye blokke paa disse flag, saa
+  // Hjaelp foerst beskriver aldring, potentiale, maks +1 og Dagens beslutning
+  // naar de er taendt for spilleren.
+  "development_v2_aging_enabled",
+  "potential_single_number",
+  "ability_cap_per_date_enabled",
+  "training_decision_card",
 ]);
