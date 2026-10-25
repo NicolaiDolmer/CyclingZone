@@ -89,5 +89,60 @@
     "editSquad": "Selectie aanpassen",
     "openRace": "Koers openen",
     "terrainCount": "{type} ×{count}"
+  },
+  "view": {
+    "label": "Weergave",
+    "calendar": "Kalender",
+    "table": "Tabel"
+  },
+  "table": {
+    "label": "Seizoenstabel",
+    "search": "Koersen zoeken",
+    "type": "Koerstype",
+    "allTypes": "Alle koerstypes",
+    "typeOption": {
+      "single": "Eendagskoersen",
+      "stage_race": "Etappekoersen"
+    },
+    "rowType": {
+      "single": "Eendagskoers",
+      "stage_race": "Etappekoers"
+    },
+    "class": "Klasse",
+    "allClasses": "Alle klassen",
+    "terrain": "Terrein",
+    "allTerrain": "Alle terreinen",
+    "more": "Meer filters",
+    "needsSquadOnly": "Alleen koersen zonder selectie",
+    "count": "{count, plural, one {# koers} other {# koersen}}",
+    "cols": {
+      "race": "Koers",
+      "dates": "Data",
+      "start": "Start",
+      "terrain": "Terrein",
+      "stages": "Etappes",
+      "class": "Klasse",
+      "squad": "Jouw selectie",
+      "squadShort": "Selectie",
+      "open": "Openen"
+    },
+    "openRace": "{name} openen",
+    "squad": {
+      "selected": "Selectie klaar",
+      "missing": "Selectie nodig",
+      "gtBound": "Grand Tour"
+    },
+    "squadShort": {
+      "selected": "Klaar",
+      "missing": "Nodig",
+      "gtBound": "GT"
+    },
+    "empty": {
+      "title": "Wis de filters om meer koersen te zien",
+      "desc": "Geen koers dit seizoen past bij je zoekopdracht en filters.",
+      "clear": "Filters wissen",
+      "noneTitle": "Kies Alle teams om het hele seizoen te zien",
+      "noneDesc": "Geen koers dit seizoen past bij deze weergave."
+    }
   }
 }

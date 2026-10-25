@@ -89,5 +89,60 @@
     "editSquad": "Modifier l'effectif",
     "openRace": "Ouvrir la course",
     "terrainCount": "{type} ×{count}"
+  },
+  "view": {
+    "label": "Affichage",
+    "calendar": "Calendrier",
+    "table": "Tableau"
+  },
+  "table": {
+    "label": "Tableau de la saison",
+    "search": "Rechercher une course",
+    "type": "Type de course",
+    "allTypes": "Tous les types",
+    "typeOption": {
+      "single": "Courses d'un jour",
+      "stage_race": "Courses par étapes"
+    },
+    "rowType": {
+      "single": "Course d'un jour",
+      "stage_race": "Course par étapes"
+    },
+    "class": "Classe",
+    "allClasses": "Toutes les classes",
+    "terrain": "Terrain",
+    "allTerrain": "Tous les terrains",
+    "more": "Plus de filtres",
+    "needsSquadOnly": "Seulement les courses sans effectif",
+    "count": "{count, plural, one {# course} other {# courses}}",
+    "cols": {
+      "race": "Course",
+      "dates": "Dates",
+      "start": "Départ",
+      "terrain": "Terrain",
+      "stages": "Étapes",
+      "class": "Classe",
+      "squad": "Ton effectif",
+      "squadShort": "Effectif",
+      "open": "Ouvrir"
+    },
+    "openRace": "Ouvrir {name}",
+    "squad": {
+      "selected": "Effectif prêt",
+      "missing": "Effectif à choisir",
+      "gtBound": "Grand Tour"
+    },
+    "squadShort": {
+      "selected": "Prêt",
+      "missing": "À choisir",
+      "gtBound": "GT"
+    },
+    "empty": {
+      "title": "Efface les filtres pour voir plus de courses",
+      "desc": "Aucune course de la saison ne correspond à ta recherche et à tes filtres.",
+      "clear": "Effacer les filtres",
+      "noneTitle": "Passe à Toutes les équipes pour voir toute la saison",
+      "noneDesc": "Aucune course de la saison ne correspond à cet affichage."
+    }
   }
 }
