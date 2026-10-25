@@ -35,7 +35,7 @@ import { computeBidRoom } from "../lib/auctionBidRoom";
 import { fetchAcademySquadCounts, EMPTY_SQUAD_COUNTS } from "../lib/squadCaps.ts"; // #5568
 import { BidRoomBlockNotice, BidDestinationHint } from "../components/AuctionBidRoomNotice";
 import { useAuctionEndTimeSelector } from "../lib/useAuctionEndTimeSelector.js";
-import { formatHour } from "../lib/auctionEndTime.js";
+import { FREE_AGENT_MIN_HOURS, formatHour } from "../lib/auctionEndTime.js";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
@@ -729,7 +729,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   // vælge den. active=open: intet netværkskald før panelet rent faktisk er
   // foldet ud.
   const { auctionWindow, endWall, setEndWall, endTimeIssue, endHours, endsAtIso } =
-    useAuctionEndTimeSelector({ active: open });
+    useAuctionEndTimeSelector({ active: open, minHours: rider?.team_id ? null : FREE_AGENT_MIN_HOURS });
 
   // Egne ryttere: pris må være mellem 0 og Værdi (ikke over). AI/fri rytter: Værdi er gulvet.
   // price === null (ugyldigt/ikke-parsbart format, #3495) tælles altid som fejl
@@ -771,7 +771,8 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
       </button>
       {open && (
         <div className={ACTION_PANEL}>
-          {ddActive && (
+          {/* #7220: flash (30 min) findes ikke for fri-transfer-ryttere. */}
+          {ddActive && rider?.team_id && (
             <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}

@@ -16,19 +16,16 @@
 //        haardt felt.
 //   S16  Udgaaet rytter: kun basis, ikke loebets ekstra.
 //
-// HVAD MODULET ER: rene funktioner, ingen DB, ingen flag-laesning, ingen kaldere
-// endnu. Motoren (dailyTrainingEngine.js, loebs-grenen med raceDayProgram) faar
-// en tynd kobling bag et slukket flag i en senere PR, naar flag-kataloget og
-// #7075 er merget (se PR-body).
+// HVAD MODULET ER: rene funktioner, ingen DB, ingen flag-laesning. Motoren
+// (dailyTrainingEngine.js, loebs-grenen med raceDayProgram) kalder dem gennem
+// raceCatchUpWiring.js bag flaget race_day_catchup_enabled (slukket).
 //
 // KOBLINGEN HAR TO DELE, og de maa kun taendes SAMMEN:
 //   1. raceDayCatchupTickOverrides(): staff og facilityTier ud af loebsdagen (S13).
 //   2. raceDayCatchupAbilityMultiplier(): loebets ekstra, KUN i etapens
 //      profil-evner (S14: "ekstra udbytte i etapens evner"). Off-fokus-evnerne
-//      faar basis uaendret. applyDailyTick har i dag intet evne-bevidst led
-//      (academyRateMult skalerer ALLE evner og er derfor forkert her); leddet
-//      skal laegges i dailyAbilityDelta for fokus-evner, uden for
-//      traeningsscore-koblingen (del 2-spec §5), i koblings-PR'en.
+//      faar basis uaendret. Leddet er applyDailyTick's `abilityYieldMult` (pr.
+//      evne, ganget paa delta'en uden for traeningsscore-koblingen, del 2-spec §5).
 // Del 1 alene giver et rigt hold mindre ud af loebsdagen end i dag og bryder G2.
 //
 // TAL (hard rule 17): konfigurationen har INGEN standardvaerdier i repoet.
