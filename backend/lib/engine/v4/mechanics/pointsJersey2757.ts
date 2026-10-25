@@ -16,9 +16,10 @@
 //      En kaptajn i dagens udbrud koerer stadig om sejren (udbruddet afgoer det selv).
 //      Kun den flade massespurt: en stigende spurt og en punch-/bjergfinale er et
 //      klassementsterraen, hvor favoritterne ogsaa i virkeligheden koerer om sejren.
-//   2. Indlagte spurter: en klassementskaptajn i en lille favoritgruppe (ikke udbruddet)
-//      ruller over stregen bag dem der spurter (som #6937 B2 for bjergtoppene), og
-//      foerer han pointkonkurrencen, forsvarer han den ikke i feltets indlagte spurter.
+//   2. Indlagte spurter: foerer en klassementskaptajn pointkonkurrencen, forsvarer han
+//      den ikke i feltets indlagte spurter (pointfoereren "kaemper altid", #5914, gaelder
+//      ikke ham). I en lille gruppe kaemper han som foer: dér er bonussekunderne
+//      klassementets, og den post er lille i maalingen.
 //
 // Point-skalaerne er ejer-laaste og roeres ikke: det er HVEM der kaemper der aendres.
 //
@@ -44,9 +45,6 @@ export const GC_CAPTAIN_ROLL_IN_AFTER = 20;
  * placeringer efter spurtens front, saa han ikke staar paa samme plads hver dag.
  */
 export const GC_CAPTAIN_ROLL_IN_SPREAD = 20;
-
-/** Roller der ruller over en indlagt spurt i en lille favoritgruppe (ikke udbruddet). */
-export const INTERMEDIATE_SPRINT_ROLL_OVER_ROLES_V3: readonly string[] = Object.freeze([GC_CAPTAIN_ROLE]);
 
 export function isBunchSprintFinale(finaleType: FinaleType | null | undefined): boolean {
   return finaleType != null && BUNCH_SPRINT_FINALES.includes(finaleType);

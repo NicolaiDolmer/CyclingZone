@@ -51,7 +51,7 @@ import type {
 import { gaussian } from "../rng.ts";
 import { komPassageEvent, intermediateSprintEvent } from "../timeline.ts";
 import { BONUS_SECONDS_EXTRA_TUNING } from "../tuning.ts";
-import { INTERMEDIATE_SPRINT_ROLL_OVER_ROLES_V3, intermediateSprintLeaderV3 } from "./pointsJersey2757.ts";
+import { intermediateSprintLeaderV3 } from "./pointsJersey2757.ts";
 import type { BonusSecondsTuning } from "../types.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -358,9 +358,7 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
         jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.s5ProfilesV3 === true ? intermediateSprintLeaderV3(ctx.jerseyLeaders?.points, entrants) : ctx.jerseyLeaders?.points) ?? null,
         // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
         // topankomsten afgoeres af maalordenen og er uaendret.
-        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES } : {}),
-        ...(!isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: INTERMEDIATE_SPRINT_ROLL_OVER_ROLES_V3 } : {}),
-      },
+        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES } : {}),      },
     });
     const passage = buildPassage({
       kind: wp.kind as StagePassage["kind"],
