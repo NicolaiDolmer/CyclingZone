@@ -4,6 +4,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeTeamOrder, validateTeamOrder } from "./raceTeamOrdersApi.js";
 import {
+  STAGE_PLAN_FLAG_KEY,
+  isStagePlanEnabled,
   loadStagePlanContext,
   orderHasStagePlan,
   stagePlanRevisionOk,
@@ -68,6 +70,19 @@ test("#7003: planen kraever s5_profiles_v3 (gemt revision, ellers den aktuelle f
   assert.equal(stagePlanRevisionOk({ engine_rules_revision: null, stages_completed: 3 }), false);
   assert.equal(orderHasStagePlan({ riders: [{ rider_id: "a" }] }), false);
   assert.equal(orderHasStagePlan({ riders: [{ rider_id: "a", plan: null }] }), true);
+});
+
+function flagClient(value) {
+  return { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: value === undefined ? null : { value }, error: null }) }) }) }) };
+}
+
+test("#7003: stage_plan_v1 er slukket som default; on aabner for alle, beta kun for beta-testere", async () => {
+  assert.equal(STAGE_PLAN_FLAG_KEY, "stage_plan_v1");
+  assert.equal(await isStagePlanEnabled(flagClient(undefined)), false, "manglende raekke = off");
+  assert.equal(await isStagePlanEnabled(flagClient("off")), false);
+  assert.equal(await isStagePlanEnabled(flagClient("on")), true);
+  assert.equal(await isStagePlanEnabled(flagClient("beta")), false);
+  assert.equal(await isStagePlanEnabled(flagClient("beta"), { isBetaTester: true }), true);
 });
 
 function fakeSupabase({ profile, stageRoles }) {

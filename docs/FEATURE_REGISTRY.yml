@@ -279,15 +279,6 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-10-25
 
-  - id: tactics-stage-plan
-    area: race-day
-    title_en: Stage plan
-    title_da: Etapeplan
-    state: dormant
-    epic: 7003
-    verified: 2026-10-25
-    note: stage_plan_v1 seedes off; kun under s5_profiles_v3.
-
   - id: race-day-development
     area: race-day
     title_en: Race day development
