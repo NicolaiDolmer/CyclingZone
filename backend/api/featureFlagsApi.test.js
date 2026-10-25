@@ -6,7 +6,7 @@ import test from "node:test";
 import express from "express";
 
 import { createFeatureFlagsRouter, readPlayerFeatureFlags } from "./featureFlagsApi.js";
-import { PLAYER_VISIBLE_FLAG_KEYS, isStageFlagKey } from "../lib/stageFlagCatalog.js";
+import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS, isStageFlagKey } from "../lib/stageFlagCatalog.js";
 
 // app_config-raekker. Ogsaa noegler der ALDRIG maa forlade serveren ad denne
 // vej: et tal, en anden tre-tilstand og et ops-flag.
@@ -122,6 +122,7 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
@@ -176,6 +177,7 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
@@ -238,6 +240,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
@@ -261,6 +264,7 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
@@ -310,6 +314,32 @@ test("batch-laesning: malformet DB-svar giver aldrig adgang", async () => {
   assert.ok(Object.values(flags).every((value) => value === false));
   assert.equal(failures.length, 1);
   assert.match(failures[0].message, /invalid app_config response/);
+});
+
+test("#3564: development_curve_b er binaert, beta er off ogsaa for beta-gruppen", async () => {
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("development_curve_b"));
+  for (const key of PLAYER_VISIBLE_BINARY_FLAG_KEYS) assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(key), key);
+  const beta = fakeSupabase({ development_curve_b: "beta", race_engine_v4: "beta" });
+  const asTester = await readPlayerFeatureFlags(beta, { isBetaTester: true });
+  assert.equal(asTester.development_curve_b, false, "motoren laeser beta som off, saa Hjaelp skal ogsaa");
+  assert.equal(asTester.race_engine_v4, true, "andre flag beholder beta-evalueringen");
+  const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on" }), { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } });
+  assert.equal(on.development_curve_b, true);
+});
+
+// Syntetiske testparams (ikke kalibreringen, hard rule 17).
+const CURVE_B_TEST_PARAMS = JSON.stringify({
+  rate: 10, levelExponent: 2, capExponent: 0.5,
+  load: { fromAge: 16, fullAge: 24, floor: 0.5 },
+  potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+});
+
+test("Codex #7192: development_curve_b on uden gyldige params er false, som motorens fail-safe", async () => {
+  const db = fakeSupabase({ development_curve_b: "on" });
+  assert.equal((await readPlayerFeatureFlags(db, { env: {} })).development_curve_b, false, "params mangler");
+  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: "{not json" } })).development_curve_b, false, "ugyldig JSON");
+  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: "{}" } })).development_curve_b, false, "ugyldige params");
+  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } })).development_curve_b, true);
 });
 
 test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste", async () => {

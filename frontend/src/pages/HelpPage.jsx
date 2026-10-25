@@ -407,11 +407,15 @@ const SECTION_DEFS = [
       { id: "maxOnePerDay", kind: "text", flag: "ability_cap_per_date_enabled" },
       { id: "todaysDecision", kind: "text", flag: "training_decision_card" },
       { id: "longTermGrowth", kind: "text" },
+      { id: "longTermGrowthCurveB", kind: "text" },
       // #4066: wired in — the type-gating percentages and the "why did my
       // ability stop rising" FAQ both elaborate on longTermGrowth directly
       // above.
+      // #3564 kurve B: hver *CurveB er on-tvilling til blokken lige foer (HELP_BLOCK_FLAGS.dailytraining).
       { id: "typeGating", kind: "text" },
+      { id: "typeGatingCurveB", kind: "text" },
       { id: "ceilingReached", kind: "text" },
+      { id: "ceilingReachedCurveB", kind: "text" },
       { id: "readingReport", kind: "text" },
       // #3721: wired in — the copy already lived in help.json (translated,
       // en+da) but was never listed here, so the "Weekly rhythm" panel and its
@@ -436,6 +440,7 @@ const SECTION_DEFS = [
       { id: "signingProspects", kind: "steps" },
       { id: "academySize", kind: "text" },
       { id: "dailyTrainingBoost", kind: "text" },
+      { id: "dailyTrainingBoostCurveB", kind: "text" }, // #3564 kurve B (HELP_BLOCK_FLAGS.academy)
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
@@ -683,6 +688,7 @@ const FAQ_KEYS = [
   // og faar derfor ikke en duplikeret FAQ-entry her.
   "sharpFlatTrainingDaysFaq",
   "teamworkLeadershipTrainingFaq",
+  "teamworkLeadershipTrainingCurveBFaq", // #3564 kurve B (HELP_FAQ_FLAGS)
   "riderPoolNationalityFaq",
   "retirementAgeWindowFaq",
   "scoutCancelRefundFaq",

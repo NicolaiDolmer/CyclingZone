@@ -1399,6 +1399,18 @@
         "title": "My rider's ability has stopped rising",
         "text": "That is now unusual. Every ability still has a lifetime ceiling set by his type, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type would build on its own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress. The number next to an ability is always its current value, never the ceiling itself, which is never shown as a number anywhere in the game, and progress naturally slows the closer a rider gets, so a value that holds still for a few days doesn't necessarily mean it's finished."
       },
+      "typeGatingCurveB": {
+        "title": "Why does a focus grow faster for some riders?",
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a potential, all set when the rider is created. His type decides which abilities can go highest: an ability his primary type is built for reaches highest and builds fastest, and his secondary type is close behind. Positioning and tactics are craft: nobody is born with them, so every rider can reach a decent level, but they build slowly. An ability outside both his roles stays low and builds slowly, and one his type actively works against barely moves at all. Each type covers several abilities, not only the one in its name: a GC type also covers time trial. His potential decides how high he can go overall, and a bigger talent also gets there faster. Every point costs more the higher an ability already is, so the last points come slowest. Check both type badges before picking a focus. The pace is adjusted from time to time as part of game balancing, so daily progress can feel different from one update to the next."
+      },
+      "ceilingReachedCurveB": {
+        "title": "My rider's ability has stopped rising",
+        "text": "Progress slows the higher an ability already is and the closer it gets to the ceiling his type and potential set, so a value that holds still for a few days doesn't necessarily mean it's finished. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline at the season change instead of growing. Or the ability already sits above the ceiling his potential sets, which can happen for riders who developed under the earlier training model. Nothing is taken away from him, it simply won't climb further. The number next to an ability is always its current value, never the ceiling, which is never shown as a number anywhere in the game."
+      },
+      "longTermGrowthCurveB": {
+        "title": "Long-term growth",
+        "text": "Three things decide where an ability ends up. His type decides which abilities can go highest. His potential decides how high: a bigger talent has a higher ceiling and also develops faster. And the level itself: every point costs more the higher the ability already is, so a rider moves quickly at a low level and slowly near the top. Age doesn't make anyone develop faster. The youngest riders can't yet take a full training load, so at the same level they move a little slower until they can. Close to his ceiling the progress fades gradually, and training can never push anyone past it."
+      },
       "trainToday": {
         "title": "Run today's training now",
         "text": "Training runs once per race day, after the day's last race and from 20:00. You can run it when it opens, or let your assistant run the same session automatically. Clicking gives no extra gains."
@@ -1577,6 +1589,10 @@
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
         "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system and no hidden brake on how fast they improve: set a focus and an intensity, and gains accumulate day by day in the same way. The one real difference is age. Riders under 22 get an extra youth boost that fades as they approach 22. Their type sets how high each ability can ultimately reach, and their potential sets how fast they get there, so a bigger talent develops quicker toward the same ceiling, while a smaller talent grows more slowly into a solid domestique."
+      },
+      "dailyTrainingBoostCurveB": {
+        "title": "Daily training in the academy",
+        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system: set a focus and an intensity, and gains accumulate day by day in the same way. Low abilities are cheap to build, so a young rider still moves quickly at first. Age gives no extra speed. The one difference is that the youngest riders can't yet take a full training load, so they develop a little slower than an older rider at the same level until they can. Their type decides which abilities can go highest, and their potential decides how high they go and how fast, so a bigger talent goes higher and gets there sooner, while a smaller talent grows into a solid domestique."
       },
       "youthAuctions": {
         "title": "Youth auctions",
@@ -2300,6 +2316,10 @@
     "teamworkLeadershipTrainingFaq": {
       "q": "What controls how fast Teamwork and Leadership train, and do they have hidden potential?",
       "a": "Teamwork and Leadership train through the same daily system as every other ability: the bigger the gap between where a rider is now and his ceiling for that ability, the faster it grows, slowing down as he approaches the top. Potential doesn't touch the ceiling for any ability, Teamwork and Leadership included; it only controls how fast that gap closes. The ceiling itself comes from type: most abilities get a ceiling shaped by how central that ability is to your rider's type, so a climber's climbing ceiling sits far above a sprinter's. Teamwork and Leadership don't work that way: every rider trains toward the same shared ceiling regardless of type. So no, there's no hidden extra headroom on these two for a high-potential rider; potential speeds up training on every ability, Teamwork and Leadership included, it just never raises the ceiling."
+    },
+    "teamworkLeadershipTrainingCurveBFaq": {
+      "q": "What controls how fast Teamwork and Leadership train, and do they have hidden potential?",
+      "a": "Teamwork and Leadership train through the same daily system as every other ability: every point costs more the higher the ability already is, and progress fades as the rider gets close to his ceiling. Most abilities get a ceiling shaped by how central that ability is to your rider's type, so a climber's climbing ceiling sits far above a sprinter's. Teamwork and Leadership don't work that way: every rider trains toward the same shared ceiling regardless of type. His potential then decides how high he can go and how fast he gets there, on every ability, Teamwork and Leadership included. So yes, a high-potential rider has more room on these two as well."
     },
     "riderPoolNationalityFaq": {
       "q": "Why are some nations like South Korea, China and Japan so visible in the rider pool?",

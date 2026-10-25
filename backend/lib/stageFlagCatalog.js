@@ -191,6 +191,9 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // maerket skifter til "Now for everyone" naar kontakten er on for alle.
   "rider_best_role_display",
   "training_programs",
+  // #3564: HelpPage viser kurve B-tvillingerne (HELP_BLOCK_FLAGS/HELP_FAQ_FLAGS) paa dette flag.
+  // Binaert (se PLAYER_VISIBLE_BINARY_FLAG_KEYS): "beta" er off, ogsaa for beta-gruppen.
+  "development_curve_b",
   // 7.361: beta-noterne for etapeside 2.0 og bulk-dag skifter til
   // "Now for everyone", naar kontakterne er on for alle.
   "stage_page_v2",
@@ -203,3 +206,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "ability_cap_per_date_enabled",
   "training_decision_card",
 ]);
+
+// #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
+// "beta" = off). Endpointet svarer derfor false for ALLE viewers paa "beta", saa
+// en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b"]);
