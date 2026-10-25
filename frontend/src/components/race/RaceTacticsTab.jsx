@@ -612,7 +612,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // spilleren faktisk kunne se og røre.
       // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
       // #7003: med etapeplanen foelger indsatsen opgaven (planens felter vinder over intentionen).
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: (orders?.stagePlanEnabled === true ? withStagePlanFields : withoutStagePlans)(withIntentionEfforts(order, (riderId) => intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }))) });
+      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId })), stagePlan: orders?.stagePlanEnabled === true });
       setStatus("saved");
       setOpenRiderId(null);
       setOpenRoleRiderId(null);
