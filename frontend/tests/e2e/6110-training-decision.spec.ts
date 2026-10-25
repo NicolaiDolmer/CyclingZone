@@ -1,5 +1,7 @@
-// #6110 S26 - "Dagens beslutning" oeverst paa Today-fanen, bag training_decision_card
-// (serveren leverer `decisionCard` som en bar boolean).
+// #6110 S26 - "Dagens beslutning" oeverst paa Today-fanen, og holdtabel B under den,
+// bag training_decision_card (serveren leverer `decisionCard` som en bar boolean).
+// Holdtabel B (desktop) afloeser den gamle tabel med flaget on: kolonner for dage 70+ og
+// assistentens bud, segmenter der deler overblikkets filter. Telefonen er uaendret.
 //
 // Guarden holder paa det kortet LOVER:
 //   1) Flag ON: kortet staar over overblikket med forslag for de traette ryttere
@@ -41,6 +43,10 @@ function trainingMe(decisionCard: boolean, ownWeekPlanFor: string[] = []) {
     betaTester: true,
     mobileTable: true,
     decisionCard,
+    // Retning B: dage i traek paa/over traethedsgraensen (kun med flaget on, som serveren).
+    ...(decisionCard ? { fatigueDays70: { [SQUAD[0].id]: 6, [SQUAD[2].id]: 3 } } : {}),
+    // Rytter 5 koerer loeb i dag (Racing-segmentet og loebsmaerket).
+    racingToday: { [SQUAD[5].id]: { race: "Test Classic" } },
     teamId: TEST_TEAM.id,
     slots: { total: null, used: SQUAD.length, remaining: null },
     focuses: ["tempo", "endurance", "threshold"],
@@ -110,7 +116,53 @@ test("flag ON: kortet staar oeverst med forslag for de traette, traetteste foers
   const cardY = (await card.boundingBox())!.y;
   const overviewY = (await page.getByTestId("training-overview").boundingBox())!.y;
   expect(cardY).toBeLessThan(overviewY);
+});
+
+const teamRows = (page: Page) => page.getByTestId("training-team-row");
+
+test("flag ON: holdtabel B staar under kortet med kolonnerne, uden sygdomsrisiko", async ({ page }) => {
+  await openTraining(page, { decisionCard: true, height: 1250 });
+  const table = page.getByTestId("training-team-table");
+  await expect(table).toBeVisible();
+  // Flag ON = B i stedet for den gamle tabel.
+  await expect(page.getByTestId("training-today-table")).toHaveCount(0);
+  await expect(teamRows(page)).toHaveCount(6);
+  const heads = await table.locator("thead th").allInnerTexts();
+  const head = heads.join(" | ").toLowerCase();
+  for (const label of ["rider", "form", "fatigue now", "days 70+", "assistant"]) expect(head).toContain(label);
+  expect(head).not.toContain("illness");
+  expect(head).not.toContain("sickness");
+  // Under kortet.
+  const cardBox = (await page.getByTestId("daily-decision").boundingBox())!;
+  const tableBox = (await table.boundingBox())!;
+  expect(tableBox.y).toBeGreaterThan(cardBox.y + cardBox.height - 1);
+  // Dage 70+: tal fra serveren, 0 hvor rytteren ikke er med, og rytterens status-badge bevares.
+  await expect(teamRows(page).nth(0).getByTestId("training-days-over")).toHaveText("6");
+  await expect(teamRows(page).nth(3).getByTestId("training-days-over")).toHaveText("0");
+  await expect(teamRows(page).nth(0)).toContainText("High injury risk");
+  // Assistent: forslag har Use, de andre er enige; loebsrytteren har et loebsmaerke.
+  await expect(teamRows(page).nth(0).getByTestId("training-team-use")).toBeVisible();
+  await expect(teamRows(page).nth(3).getByTestId("training-assistant-cell")).toContainText("Agrees");
+  await expect(teamRows(page).nth(5).getByTestId("training-race-chip")).toBeVisible();
   await page.screenshot({ path: evidenceShotPath("pr-screens/6110/after-desktop.png") });
+});
+
+test("holdtabel B: Use i raekken skriver aktiv restitution for netop den rytter", async ({ page }) => {
+  const posts = await openTraining(page, { decisionCard: true });
+  await teamRows(page).nth(1).getByTestId("training-team-use").click();
+  await expect.poll(() => posts.length).toBe(1);
+  expect(posts[0]).toMatchObject({ riderId: SQUAD[1].id, dayType: "recovery", session: null });
+  await expect(teamRows(page).nth(1).getByTestId("training-assistant-cell")).toContainText("Agrees");
+});
+
+test("holdtabel B: segmenterne deler overblikkets filter", async ({ page }) => {
+  await openTraining(page, { decisionCard: true });
+  await page.getByRole("button", { name: /^Fatigue 70\+ 3/ }).click();
+  await expect(teamRows(page)).toHaveCount(3);
+  await page.getByRole("button", { name: /^Racing 1/ }).click();
+  await expect(teamRows(page)).toHaveCount(1);
+  await page.getByRole("button", { name: /^All 6/ }).click();
+  await expect(teamRows(page)).toHaveCount(6);
 });
 
 test("Use skriver aktiv restitution for netop den rytter", async ({ page }) => {
@@ -141,6 +193,9 @@ test("rytter med egen ugeplan faar intet forslag (hans egen dag vinder over hold
 test("flag OFF: den gamle visning, intet kort", async ({ page }) => {
   await openTraining(page, { decisionCard: false });
   await expect(page.getByTestId("daily-decision")).toHaveCount(0);
+  // Den gamle tabel, ingen holdtabel B.
+  await expect(page.getByTestId("training-today-table")).toBeVisible();
+  await expect(page.getByTestId("training-team-table")).toHaveCount(0);
   await page.screenshot({ path: evidenceShotPath("pr-screens/6110/before-desktop.png") });
 });
 
@@ -148,6 +203,8 @@ test("mobil 375: kortet staar oeverst uden vandret scroll", async ({ page }) => 
   await openTraining(page, { decisionCard: true, width: 375, height: 812 });
   await expect(page.getByTestId("daily-decision")).toBeVisible();
   await expect(rows(page)).toHaveCount(2);
+  // Telefonen bruger sin egen raekke (mobilstandarden), ikke holdtabel B.
+  await expect(page.getByTestId("training-team-table")).toHaveCount(0);
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
   await page.screenshot({ path: evidenceShotPath("pr-screens/6110/after-375.png") });

@@ -2189,7 +2189,7 @@ export default function TrainingPage() {
   // ── #5485: fanen Today på desktop ─────────────────────────────────────────
   function renderDesktopToday() {
     // #6110 S26: med flaget on er holdtabellen B (kolonner + assistent) den eneste tabel.
-    const rowsFor = decisionFlagOn ? teamRowsFor : todayRowsFor;
+    const rowsFor = /** @type {(list: any[]) => any[]} */ (decisionFlagOn ? teamRowsFor : todayRowsFor);
     const groupsForTable = groupByType
       ? groupRidersByType(visibleRiders).map((group) => ({
           key: group.type,
@@ -2198,6 +2198,7 @@ export default function TrainingPage() {
           rows: rowsFor(group.riders),
         }))
       : null;
+    const toggleOpenRider = (riderId) => setOpenRiderId((prev) => (prev === riderId ? null : riderId));
     const renderTodayDay = (riderId, isFirst) => {
       const rider = riderByIdMap.get(riderId);
       return (
@@ -2205,7 +2206,7 @@ export default function TrainingPage() {
           riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
           plan={planFor(riderId)}
           busy={savingId === riderId || bulkApplying}
-          error={planActionError?.riderId === riderId ? planActionError.error : null}
+          error={planActionError && planActionError.riderId === riderId ? planActionError.error : null}
           onChoose={(choice) => handleDayChoice(riderId, choice)}
           dataTour={isFirst ? "training-focus" : undefined}
           justSaved={lingerIds.has(riderId)}
@@ -2217,7 +2218,7 @@ export default function TrainingPage() {
       <Segmented
         label={t("decision.segLabel")}
         value={overviewFilter ?? "all"}
-        onChange={(next) => setOverviewFilter(next === "all" ? null : next)}
+        onChange={(next) => setOverviewFilter(next === "all" ? null : /** @type {any} */ (next))}
         options={[
           { value: "all", label: t("decision.segAll", { n: riders.length }) },
           { value: "training", label: t("decision.segTraining", { n: overview.training.length }) },
@@ -2374,7 +2375,7 @@ export default function TrainingPage() {
                 onToggleSelect={toggleSelect}
                 onToggleAll={toggleSelectAll}
                 openId={openRiderId}
-                onToggleOpen={(riderId) => setOpenRiderId((prev) => (prev === riderId ? null : riderId))}
+                onToggleOpen={toggleOpenRider}
                 renderDay={renderTodayDay}
                 renderReset={renderResetFor}
                 renderDetail={renderRiderCard}
@@ -2405,7 +2406,7 @@ export default function TrainingPage() {
               onToggleSelect={toggleSelect}
               onToggleAll={toggleSelectAll}
               openId={openRiderId}
-              onToggleOpen={(riderId) => setOpenRiderId((prev) => (prev === riderId ? null : riderId))}
+              onToggleOpen={toggleOpenRider}
               renderDay={renderTodayDay}
               renderReset={renderResetFor}
               renderDetail={renderRiderCard}

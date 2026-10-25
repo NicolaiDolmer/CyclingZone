@@ -46,7 +46,7 @@ export function useTraining() {
   // #6110 S26: true = Today-fanen faar "Dagens beslutning"-kortet. Default false.
   const [decisionCard, setDecisionCard] = useState(false);
   // #6110 S26: { <rider_id>: dage i traek >= 70 } | null (kun med flaget on; null = vis streg).
-  const [fatigueDays70, setFatigueDays70] = useState(null);
+  const [fatigueDays70, setFatigueDays70] = useState(/** @type {Record<string, number> | null} */ (null));
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null); // rytter under aktiv save/clear
   const [running, setRunning] = useState(false);  // runToday kører
