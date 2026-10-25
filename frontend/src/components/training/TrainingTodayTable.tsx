@@ -56,13 +56,13 @@ export type TodayRow = {
   fatigueTonight?: { value: number; tone: "ok" | "warn" | "risk" } | null;
 };
 
-const TONIGHT_TEXT = { ok: "text-cz-success", warn: "text-cz-warning", risk: "text-cz-danger" } as const;
+export const TONIGHT_TEXT = { ok: "text-cz-success", warn: "text-cz-warning", risk: "text-cz-danger" } as const;
 
 export type TodayGroup = { key: string; label: string; count: string; rows: TodayRow[] };
 
 type SortDir = "asc" | "desc";
 
-function Meter({ value, warn, tone }: { value: number | null; warn: boolean; tone: "form" | "fatigue" }) {
+export function Meter({ value, warn, tone }: { value: number | null; warn: boolean; tone: "form" | "fatigue" }) {
   const pct = Math.max(0, Math.min(100, Number(value ?? 0)));
   const fill = warn ? "bg-cz-warning" : tone === "form" ? "bg-cz-info" : "bg-cz-1";
   return (

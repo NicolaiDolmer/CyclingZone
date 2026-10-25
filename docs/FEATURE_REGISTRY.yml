@@ -595,6 +595,17 @@ features:
     verified: 2026-10-24
     note: PR #6533 (12/10); beta 15/10; on for alle 24/10 17:30 UTC efter ejer-ja (#7153, læst tilbage i prod).
 
+  - id: training-decision-card
+    area: training
+    title_en: Today's decision card on the Training page
+    title_da: Dagens beslutning-kort på træningssiden
+    state: building
+    epic: 6110
+    verified: 2026-10-25
+    note: PR #7179 (S26). Stadie-flag training_decision_card seedes off af migrationen (apply efter merge); ejer flytter til beta efter billeder.
+    decision: ejer-beslutning
+    decide_by: 2026-11-01
+
   # --- academy -------------------------------------------------------------
   - id: academy
     area: academy

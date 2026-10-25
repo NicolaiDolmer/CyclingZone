@@ -29,6 +29,8 @@ import PotentialeStars from "../PotentialeStars";
 import { SearchIcon } from "../ui";
 import { potentialLabelKey } from "../../lib/scouting";
 import { useScoutCountdown, scoutReadyClock } from "../../lib/scoutCountdown";
+import { potentialFromEstimate } from "../../lib/potentialDisplay6853";
+import PotentialRoleBox from "./PotentialRoleBox";
 
 // #2796: `labelAsTitle` videresendes til PotentialeStars — tætte tabel-celler
 // (akademi-rosteret) viser stjernerne alene og lægger den kvalitative label i
@@ -240,6 +242,10 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
       <span className="inline-flex items-center gap-2 flex-wrap">
         <PotentialBand band={band} role={estimate.role} loft={estimate.loft} pastPeak={estimate.pastPeak === true}
           label={labelAsTitle ? label : null} large={large} t={t} />
+        {/* #6853: typeboksen når tallet er rollen med højest potentiale. */}
+        {potentialFromEstimate(estimate)?.showRole && (
+          <PotentialRoleBox role={estimate.role} lo={band.lo} hi={band.hi} variant={large ? "full" : "short"} />
+        )}
         {!labelAsTitle && label && <span className="text-2xs text-cz-3">{label}</span>}
         {!hideLevel && level > 0 && (
           <span className="text-3xs font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>

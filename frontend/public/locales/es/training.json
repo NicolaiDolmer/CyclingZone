@@ -55,6 +55,27 @@
   "primary": {
     "setDays": "Fijar días para {n, plural, one {# ciclista} other {# ciclistas}}"
   },
+  "decision": {
+    "title": "Decisión de hoy",
+    "recovery": "recuperación activa hoy",
+    "reason": "Fatiga {fatigue} con un día duro planificado. El riesgo de lesión es elevado.",
+    "use": "Usar",
+    "useAria": "Poner a {name} en recuperación activa",
+    "useAll": "Usar las {n} sugerencias",
+    "none": "Ningún ciclista necesita un cambio hoy.",
+    "failed": "No se pudo guardar. Inténtalo de nuevo.",
+    "segLabel": "Filtrar ciclistas",
+    "segAll": "Todos {n}",
+    "segTraining": "Entrenan {n}",
+    "segRacing": "Carrera {n}",
+    "segTired": "Fatiga {from}+ {n}",
+    "colDays70": "Días {from}+",
+    "days70Hint": "Días seguidos con fatiga de {from} o más",
+    "colAssistant": "Asistente",
+    "assistantRecovery": "Recuperación activa",
+    "agrees": "De acuerdo",
+    "raceChip": "Carrera"
+  },
   "overview": {
     "label": "Hoy de un vistazo",
     "needsDay": "Necesita un día",
