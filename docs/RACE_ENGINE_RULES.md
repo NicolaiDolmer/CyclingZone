@@ -626,11 +626,12 @@ Reglen bor i `mechanics/incidents.ts` (jagt-blokken) og kobles i `segmentLoop.ts
 
 ### Udgåede under `s5_profiles_v3` (slukket, [#6938](https://github.com/NicolaiDolmer/CyclingZone/issues/6938))
 
-Ejer 15/10: der udgår for få ryttere. Spec: `docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md` §2.2. Kun under den slukkede revision `s5_profiles_v3`; ældre revisioner er bit-identiske. Ingen af de tre veje giver skade (skade-reglen nedenfor gælder uændret), og ingen giver straf: rytteren er ude af løbet og står som udgået i resultatet.
+Ejer 15/10: der udgår for få ryttere. Spec: `docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md` §2.2. Kun under den slukkede revision `s5_profiles_v3`; ældre revisioner er bit-identiske. Ingen af vejene giver skade (skade-reglen nedenfor gælder uændret), og ingen giver straf: rytteren er ude af løbet og står som udgået i resultatet.
 
 - **U1 (erstattet, ejer 24/10).** "Ikke-start af træthed" er erstattet af sygdom af langvarig ekstrem træthed: kun ekstremt trætte ryttere flere dage i træk, risikoen stiger med varighed og grad, rytteren starter ikke og er ude nogle dage uden evneskade, lægen giver besked i indbakken, og den medicinske afdeling sænker risikoen. Den afgøres i den daglige afregning (`docs/TRAINING_RULES.md` §5.4b, `conditionIllness.js`), ikke i løbsmotoren. Raceruneren skriver en syg ikke-starter som `race_incidents.kind='illness'` ("Syg, startede ikke").
 - **U2 Styrt pr. terræn.** Hvor mange styrt der ender med udgåelse, afhænger af terrænet: brosten og nedkørsler højest, stigninger lavest. Hyppigheden af styrt er uændret. `mechanics/incidents.ts` (`crashSeriousShareFor`).
 - **U3 Hjælperen stiger af.** I et endagsløb kan en hjælper der er langt efter vinderen stige af (`kind='withdrawal'`). Kaptajner stiger aldrig af. Afgøres efter tidsgrænsen.
+- **U4 Slidt og sat i et etapeløb.** I et etapeløb kan en rytter uden kaptajnrolle (hjælper, jæger, fri rolle) der kommer i mål langt efter vinderen stige af (`kind='withdrawal'`). Risikoen stiger med hullet og med slidet (dag-til-dag-tilstanden), har et loft pr. etape og er mindre pr. etape jo længere løbet er. Ryttere fremme i klassementet og kaptajner stiger aldrig af. `mechanics/abandon6938StageRace.ts`.
 
 Tallene er startgæt og kalibreres mod G17 (udgåede pr. løbsgruppe inden for et privat bånd; kaptajner udgår ikke oftere end hjælpere), målt med `motorTestport.mjs --track-fatigue`. Tænding er ejer-only.
 
