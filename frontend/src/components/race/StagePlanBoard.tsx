@@ -21,6 +21,7 @@ import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import { Button, CheckIcon, ChevronRightIcon, LockIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
+  clearRiderPlan,
   nextLeg,
   planRole,
   removeLeg,
@@ -275,6 +276,7 @@ export default function StagePlanBoard({
   renderRoleCell,
   rolePickerFor,
   onEditorOpen,
+  roleDefaultFor,
 }: {
   t: TFn;
   raceId: string;
@@ -292,6 +294,7 @@ export default function StagePlanBoard({
   renderRoleCell: (rider: PlanRider) => React.ReactNode;
   rolePickerFor?: (rider: PlanRider) => React.ReactNode;
   onEditorOpen?: () => void;
+  roleDefaultFor?: (riderId: string) => Record<string, unknown> | null;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => routeForProfile(profile), [profile]);
@@ -383,7 +386,7 @@ export default function StagePlanBoard({
         suggestion={suggestion}
         disabled={saving}
         onChange={(next) => setPlan(rider.rider_id, next)}
-        onClear={() => { setPlan(rider.rider_id, null); setOpenId(null); }}
+        onClear={() => { onChangeOrder((o) => clearRiderPlan(o, rider.rider_id, roleDefaultFor?.(rider.rider_id))); setOpenId(null); }}
       />
     );
   }

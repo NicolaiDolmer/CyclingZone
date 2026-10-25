@@ -61,6 +61,8 @@ export type StagePlanRuntime = {
   current: Map<string, number>;
   /** Ryttere der har vaeret i et udbrud paa etapen (hentet vs. kom ikke med). */
   everInEscape: Set<string>;
+  /** De led hver rytter faktisk har redet (foerste led altid). */
+  ridden: Map<string, Set<number>>;
   riderIds: string[];
 };
 
@@ -126,7 +128,7 @@ export function createStagePlanRuntime(
   }
   if (legs.size === 0) return null;
   const riderIds = [...legs.keys()].sort();
-  return { legs, current: new Map(riderIds.map((id) => [id, 0])), everInEscape: new Set(), riderIds };
+  return { legs, current: new Map(riderIds.map((id) => [id, 0])), everInEscape: new Set(), ridden: new Map(riderIds.map((id) => [id, new Set([0])])), riderIds };
 }
 
 function isEscape(group: RaceGroup): boolean {
@@ -171,12 +173,14 @@ export function isRiderDropped(riderId: string, state: EngineState, entrants: Re
  */
 export function advanceStagePlan(
   rt: StagePlanRuntime,
-  args: { state: EngineState; segment: Segment; segmentIndex: number; entrants: Readonly<Record<string, Entrant>> },
+  args: { state: EngineState; segment: Segment; segmentIndex: number; isLastSegment?: boolean; entrants: Readonly<Record<string, Entrant>> },
 ): TimelineEvent[] {
-  const { state, segment, segmentIndex, entrants } = args;
+  const { state, segment, segmentIndex, isLastSegment = false, entrants } = args;
   const events: TimelineEvent[] = [];
   if (segmentIndex === 0) return events;
-  const switchPointKm = segment.from_km + (segment.to_km - segment.from_km) / 2;
+  // Etapens sidste segment: et punkt inde i det skifter ved segmentets start (der kommer
+  // intet senere segment at skifte paa), saa et gyldigt sidste led altid koeres.
+  const switchPointKm = isLastSegment ? segment.to_km - 1e-9 : segment.from_km + (segment.to_km - segment.from_km) / 2;
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
@@ -201,6 +205,7 @@ export function advanceStagePlan(
     }
     if (next === cur || reason === null) continue;
     rt.current.set(riderId, next);
+    rt.ridden.get(riderId)?.add(next);
     events.push({
       km: Math.round(segment.from_km * 100) / 100,
       type: STAGE_PLAN_LEG_EVENT,
@@ -221,6 +226,24 @@ export function stagePlanEntrants(
     if (!entrant) continue;
     const effort = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].effort;
     if (effort !== entrant.effort) out[riderId] = { ...entrant, effort };
+  }
+  return out;
+}
+
+const EFFORT_RANK: Readonly<Record<EffortLevel, number>> = { grupetto: 0, save: 1, normal: 2, protect: 3, all_out: 4 };
+
+/**
+ * Etapens belastning (traethed bagefter, model C) kender kun EN indsats pr. rytter.
+ * Med en plan er det den haardeste indsats han faktisk har koert: et sent angreb
+ * kan aldrig koeres paa et tidligt leds billige traethed (intet smuthul).
+ */
+export function stagePlanLoadEfforts(rt: StagePlanRuntime): Record<string, EffortLevel> {
+  const out: Record<string, EffortLevel> = {};
+  for (const riderId of rt.riderIds) {
+    const legs = rt.legs.get(riderId)!;
+    let best: EffortLevel = legs[0].effort;
+    for (const idx of rt.ridden.get(riderId) ?? []) if (EFFORT_RANK[legs[idx].effort] > EFFORT_RANK[best]) best = legs[idx].effort;
+    out[riderId] = best;
   }
   return out;
 }

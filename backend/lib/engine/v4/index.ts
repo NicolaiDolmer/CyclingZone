@@ -387,6 +387,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     // #5582 (ejer 23/9, UCI 2.6.032): en genindsat rytter (juryen eller en
     // reddet grupetto) mister sine point i point- og bjergkonkurrencen.
     passage_totals: applyReinstatementPointPenalty(passageTotals(passages), reinstatedRiderIdsOf(timeLimit)),
+    ...(state.stage_plan_load_efforts ? { stage_plan_load_efforts: state.stage_plan_load_efforts } : {}), // #7003
   };
   return { output, trace: { breakaway_win: breakawayWin } };
 }

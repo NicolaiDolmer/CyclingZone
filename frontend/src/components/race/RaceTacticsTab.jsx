@@ -997,6 +997,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             ? <RolePicker t={t} riderName={rider.name} {...rolePickerScope} value={roleFor(rider)} disabled={saving} onPick={(role) => pickRole(rider.rider_id, role)} />
             : null)}
           onEditorOpen={() => setOpenRoleRiderId(null)}
+          roleDefaultFor={(id) => roleDefaultFor(defaultOrderForStage(orders, profileByStage[activeStage]?.profile_type), id)}
         />
       )}
       {/* Desktop: tabel. Under sm: stablede kort (samme indhold, ingen vandret
