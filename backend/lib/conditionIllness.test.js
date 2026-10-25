@@ -1,4 +1,5 @@
 // #6938 sygdom af langvarig ekstrem traethed: kontrakter (ingen kalibrerede tal i assertions).
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { assessIllness, extremeFatigueStreak, ILLNESS_CONFIG as C, illnessRisk, rollIllness } from "./conditionIllness.js";
@@ -39,4 +40,12 @@ test("rullet er seedet pr. rytter og dato, og varigheden ligger i spaendet", () 
 
 test("assessIllness: en rask, kun moderat traet rytter bliver aldrig syg", () => {
   for (let i = 0; i < 100; i++) assert.equal(assessIllness({ riderId: `m${i}`, dateStr: "2026-11-02", fatigues: [70, 75, 80, 80, 80] }).ill, false);
+});
+
+test("Codex #7178: dailyTrainingEngine ruller kun sygdom paa datoens afregnende tick", () => {
+  const src = readFileSync(new URL("./dailyTrainingEngine.js", import.meta.url), "utf8");
+  const call = src.indexOf("assessIllness({");
+  const gate = src.lastIndexOf("if (illnessOn", call);
+  assert.ok(call > 0 && gate > 0, "sygdomsrullet findes");
+  assert.match(src.slice(gate, call), /\(!conditionPerDate \|\| settlesCondition\)/, "samme gate som conditionUpserts");
 });

@@ -21,7 +21,7 @@ export const ILLNESS_CONFIG = Object.freeze({
   riskPerFatiguePoint: 0.002,
   // Loft pr. dag.
   maxRisk: 0.12,
-  // Medicinsk afdeling: risiko x (1 - medicalShare x bonus).
+  // Medicinsk afdelings andel af virkningen (formlen er privat, hard rule 17).
   medicalShare: 0.5,
   // Loebsdage ude (seedet mellem min og max, inkl.).
   minDays: 2,

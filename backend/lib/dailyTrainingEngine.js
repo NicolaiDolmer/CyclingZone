@@ -1330,7 +1330,9 @@ export async function runTeamTrainingDay({
     // rask rytter, der ikke blev skadet i dag. Stimen regnes paa de
     // afregnede dage foer i dag plus dagens traethed efter afregningen (conditionIllness.js).
     let illnessDays = 0;
-    if (illnessOn && !injuredToday && !newlyInjured) {
+    // Codex #7178: kun paa datoens afregnende tick (samme gate som conditionUpserts), ellers
+    // skrives en sygdom i rapporten paa et tick hvor tilstanden ikke afregnes.
+    if (illnessOn && (!conditionPerDate || settlesCondition) && !injuredToday && !newlyInjured) {
       const illness = assessIllness({ riderId: rider.id, dateStr: seedScope, fatigues: [newFatigue, ...(illnessHistoryByRider.get(rider.id) ?? [])], medicalBonus: teamMedicalBonus });
       if (illness.ill) {
         illnessDays = illness.days;
