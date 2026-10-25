@@ -210,7 +210,7 @@ export function steadyStateTop50(riders, { minAge = HARNESS_DEFAULTS.startAge, s
 export function difficultyRatio({ curveB, low, high, cap, age }) {
   const program = resolveProgram(null, "climber");
   const arg = (current) => ({
-    ability: "climbing", current, cap, age, program, conditionMult: 1, noise: 1, potentiale: 4,
+    ability: "climbing", current, cap, age, program, conditionMult: 1, noise: 1, potentiale: 6,
     primaryType: "climber", secondaryType: null, curveB,
   });
   const lo = dailyAbilityDelta(arg(low));
