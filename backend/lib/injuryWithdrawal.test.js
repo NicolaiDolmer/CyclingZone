@@ -36,21 +36,31 @@ test("partitionMissingByInjury: tom liste giver to tomme spande", () => {
 });
 
 // Minimal supabase-stub: registrerer delete-filtre og indsatte raekker.
-function stubSupabase() {
+function stubSupabase(causes = []) {
   const calls = { deletes: [], inserted: null };
   return {
     calls,
-    from() {
+    from(table) {
       const filters = {};
       const chain = {
         delete() { chain._op = "delete"; return chain; },
+        select() { chain._op = "select"; return chain; },
         eq(col, val) {
           filters[col] = val;
           if (chain._op === "delete") calls.deletes.push({ ...filters });
           return chain;
         },
+        in(col, vals) {
+          filters[col] = vals;
+          if (chain._op === "delete") calls.deletes.push({ ...filters });
+          return chain;
+        },
         insert(rows) { calls.inserted = rows; return Promise.resolve({ error: null }); },
-        then(res) { return Promise.resolve({ error: null }).then(res); },
+        then(res) {
+          // #6938: rider_condition-opslaget svarer med rytternes injury_cause.
+          const data = chain._op === "select" && table === "rider_condition" ? causes : null;
+          return Promise.resolve({ data, error: null }).then(res);
+        },
       };
       return chain;
     },
@@ -75,7 +85,7 @@ test("persistInjuryWithdrawals: delete er scopet til kind=injury paa netop denne
   const last = supabase.calls.deletes.at(-1);
   // Uden kind-scopingen ville simuleringens egne crash/mechanical-raekker for
   // samme etape blive slettet af denne skriver.
-  assert.deepEqual(last, { race_id: "race-1", stage_number: 4, kind: "injury" });
+  assert.deepEqual(last, { race_id: "race-1", stage_number: 4, kind: ["injury", "illness"] });
 });
 
 test("persistInjuryWithdrawals: tom liste rydder stadig op og indsaetter intet", async () => {
@@ -86,4 +96,10 @@ test("persistInjuryWithdrawals: tom liste rydder stadig op og indsaetter intet",
   // Oprydningen SKAL koere: en rytter der var skadet ved forrige koersel af samme
   // etape, men er rask nu, maa ikke staa tilbage som udgaaet.
   assert.equal(supabase.calls.deletes.length, 3);
+});
+
+test("#6938 persistInjuryWithdrawals: en syg rytter (injury_cause='illness') skrives som kind=illness", async () => {
+  const supabase = stubSupabase([{ rider_id: "syg", injury_cause: "illness" }, { rider_id: "skadet", injury_cause: "training_overload" }]);
+  await persistInjuryWithdrawals({ supabase, raceId: "race-1", stageNumber: 2, riderIds: ["syg", "skadet"] });
+  assert.deepEqual(supabase.calls.inserted.map((r) => [r.rider_id, r.kind, r.injury_days]), [["syg", "illness", null], ["skadet", "injury", null]]);
 });
