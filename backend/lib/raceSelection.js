@@ -13,10 +13,19 @@ import { loadRaceTrainNowLock, trainNowSelectionViolations } from "./trainNowLoc
 import { isTeamSquadTrainOnly, TRAIN_ONLY_SELECTION_ERROR } from "./youthRaceOptOut.ts";
 import { loadRidersAlreadyRacedInSpan } from "./raceDayRiddenGuard.js";
 import { isRiderDayInvariantViolation, teamInRacePool, teamInRaceSquadPool, findRiderBindingConflicts, windowsOverlap } from "./raceBinding.js";
+import { isS5ProfilesV3OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
+
+// #5981: kender loebets regel-revision den delte kaptajn (s5_profiles_v3+)? Et loeb uden
+// bundet revision faar den aktuelle (surfaceRulesRevision). Fail-closed: ukendt = nej.
+export function raceAllowsCoCaptain(race) {
+  return isS5ProfilesV3OrLater(surfaceRulesRevision({ race, storedRevision: race?.engine_rules_revision ?? null }));
+}
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
   teamRiderIds, injuredRiderIds, sizeRule,
+  // #5981: delt kaptajn (hoejst én — ét id). Kun tilladt i loeb paa s5_profiles_v3+ (coCaptainAllowed).
+  coCaptainId = null, coCaptainAllowed = false,
 }) {
   const errors = [];
   // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller.
@@ -38,16 +47,21 @@ export function validateSelection({
 
   // Kaptajn kræves kun når der ER manuelt udtagne ryttere (en tom trup = ren auto-udtagelse).
   // En tom trup må dog ikke bære en forældet kaptajn-reference uden for trupperne (input-hul).
+  // #6321 (ejer 25/10): lederen er kaptajn ELLER spurtkaptajn. Et sprinterhold maa stille op
+  // med sprinteren som eneste leder (motoren beskytter ham allerede, teamPlay.protectedRoleOrder).
   if (riderIds.length === 0) {
     if (captainId) errors.push("selection_captain_not_selected");
   } else {
-    if (!captainId) errors.push("selection_captain_required");
-    else if (!unique.has(captainId)) errors.push("selection_captain_not_selected");
+    if (!captainId && !sprintCaptainId) errors.push("selection_captain_required");
+    else if (captainId && !unique.has(captainId)) errors.push("selection_captain_not_selected");
   }
 
-  for (const roleId of [sprintCaptainId, hunterId]) {
+  for (const roleId of [sprintCaptainId, hunterId, coCaptainId]) {
     if (roleId && !unique.has(roleId)) errors.push("selection_role_not_selected");
   }
+  // #5981: delt kaptajn kun i loeb der kender rollen, og kun paa et hold der ogsaa har en kaptajn.
+  if (coCaptainId && !coCaptainAllowed) errors.push("selection_co_captain_not_available");
+  else if (coCaptainId && !captainId) errors.push("selection_co_captain_requires_captain");
   // free_role_ids (#2376): flere ryttere kan dele rollen (additiv udvidelse af den ellers
   // én-rytter-pr-rolle-kontrakt) — dedupliceres ved indgang så en dublet-id i inputtet aldrig
   // selv tæller som et overlap. Hver id skal være i den valgte trup, ligesom de øvrige roller.
@@ -55,7 +69,7 @@ export function validateSelection({
   for (const id of freeRoleIdSet) {
     if (!unique.has(id)) { errors.push("selection_role_not_selected"); break; }
   }
-  const roleIds = [captainId, sprintCaptainId, hunterId].filter(Boolean);
+  const roleIds = [captainId, sprintCaptainId, hunterId, coCaptainId].filter(Boolean);
   if (new Set(roleIds).size !== roleIds.length) errors.push("selection_role_overlap");
   // free_role må ikke overlappe captain/sprint_captain/hunter — én rolle pr. rytter.
   for (const id of freeRoleIdSet) {
@@ -67,9 +81,10 @@ export function validateSelection({
 
 // #1146: eksporteret så bulk-endpointets rpcChanges-bygger (api.js) kan genbruge PRÆCIS
 // samme rolle-mapping som saveSelection nedenfor — ingen anden kopi af denne switch.
-export function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet }) {
+export function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId = null }) {
   if (riderId === captainId) return "captain";
   if (riderId === sprintCaptainId) return "sprint_captain";
+  if (coCaptainId && riderId === coCaptainId) return "co_captain"; // #5981
   if (riderId === hunterId) return "hunter";
   if (freeRoleIdSet?.has(riderId)) return "free_role";
   return "helper";
@@ -78,7 +93,7 @@ export function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRol
 // Gem udtagelsen atomisk: erstat holdets entries for løbet i ÉN transaktion via
 // replace_race_selection-RPC'en (#2173). Enten gemmes hele truppen, eller intet
 // ændres — ingen delete-uden-insert-degradering, ingen delvist gemt trup.
-export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [] }) {
+export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [], coCaptainId = null }) {
   // Forward-guard (#2074): nægt delete-then-insert hvis løbets felt er LÅST
   // (stages_completed>0). Rute-laget gater allerede, men guarden gør invarianten lokal
   // til mutationen så en fremtidig kalder ikke kan nulstille et aktivt startfelt.
@@ -95,7 +110,7 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
   const freeRoleIdSet = new Set(freeRoleIds);
   const rows = riderIds.map((rider_id) => ({
     race_id: race.id, rider_id, team_id: teamId,
-    race_role: roleFor(rider_id, { captainId, sprintCaptainId, hunterId, freeRoleIdSet }),
+    race_role: roleFor(rider_id, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId }),
     is_auto_filled: false,
   }));
   const { error: rpcErr } = await supabase.rpc("replace_race_selection", {
@@ -149,7 +164,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 409, error: "selection_wrong_pool" };
   }
 
-  const { rider_ids: riderIdsBody = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [] } = body || {};
+  const { rider_ids: riderIdsBody = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [], co_captain_id: coCaptainId = null } = body || {};
   if (!Array.isArray(riderIdsBody) || !Array.isArray(freeRoleIds)) {
     return { ok: false, status: 400, error: "selection_invalid_body" };
   }
@@ -210,6 +225,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
 
   const result = validateSelection({
     riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
+    coCaptainId, coCaptainAllowed: raceAllowsCoCaptain(race),
     // #4119: udgaaende ryttere er MED i ctx.riders (de skal vises), men maa ikke
     // udtages til nye loeb — #2579's gate flyttet hertil fra selve synligheden.
     teamRiderIds: new Set(ctx.riders.filter((r) => !r.outgoing).map((r) => r.id)),
@@ -223,7 +239,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   if (raced.error) return { ok: false, status: 503, error: "selection_lookup_failed" };
   if (raced.data.size) return { ok: false, status: 409, error: "selection_rider_bound", bound_rider_ids: [...raced.data] };
 
-  return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, ctx };
+  return { ok: true, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, ctx };
 }
 
 // #5405: maa der SKRIVES udtagelse i et loeb der hoerer til en saeson med DENNE status?
@@ -485,6 +501,8 @@ export async function getSelectionContext({ supabase, race, teamId }) {
         hunter_id: entries.find((e) => e.race_role === "hunter")?.rider_id ?? null,
         // #2376: free_role kan gælde FLERE ryttere → array (additiv, ikke ét *_id-felt).
         free_role_ids: entries.filter((e) => e.race_role === "free_role").map((e) => e.rider_id),
+        // #5981: kun naar holdet har en delt kaptajn (ellers uaendret form).
+        ...(entries.some((e) => e.race_role === "co_captain") ? { co_captain_id: entries.find((e) => e.race_role === "co_captain").rider_id } : {}),
         is_auto_filled: entries.every((e) => e.is_auto_filled),
         // #3041: kun de MANUELT udtagne af rider_ids — bruges til at bygge binding-map'et,
         // så et auto-udtaget pick (der viger automatisk ved gem, #2637) heller ikke låser

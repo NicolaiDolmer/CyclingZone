@@ -274,7 +274,7 @@ import { buildYouthSquadsPayload, YOUTH_SQUAD_ROSTER_COLUMNS } from "../lib/yout
 import { buildTrainingScoreView, TRAINING_SCORE_VIEW } from "../lib/trainingScore.js";
 import { loadRacingTodayByRider } from "../lib/racingTodayLookup.js";
 import { computeRiderValueTrend } from "../lib/riderValueTrend.js";
-import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor } from "../lib/raceSelection.js";
+import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelectionBulk, classifyBulkSelectionConflicts, roleFor as selectionRoleFor, raceAllowsCoCaptain } from "../lib/raceSelection.js";
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
@@ -5802,7 +5802,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       // udelukke forrige-sæsons entries fra binding (game_day er sæson-relativt).
       // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
       // vurderer skadesstatus mod LØBETS startdato, ikke "nu".
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad")
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad, engine_rules_revision") // #5981: engine_rules_revision (delt kaptajn)
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -5841,7 +5841,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         prepared.errors ? { error: prepared.error, errors: prepared.errors } : { error: prepared.error }
       );
     }
-    const { captainId, sprintCaptainId, hunterId, freeRoleIds } = prepared;
+    const { captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared;
     riderIds = prepared.riderIds;
     ctx = prepared.ctx;
 
@@ -5927,7 +5927,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_race_started" });
     }
     await saveSelection({
-      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
+      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId,
     });
     // #2599: en manuel udtagelse med ≥1 rytter er en aktiv genindtræden — en evt. tidligere
     // "Ryd dag/alt"-markering for netop dette (race,team)-par er nu forældet. Best-effort:
@@ -6025,7 +6025,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       // #4701: scheduled_for SKAL med — prepareSelectionChange → getSelectionContext
       // vurderer skadesstatus mod LØBETS startdato, ikke "nu" (samme regel som
       // single-endpointet ovenfor, så matrixens "Gem plan" ikke afviger).
-      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad")
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad, engine_rules_revision") // #5981: engine_rules_revision (delt kaptajn)
       .in("id", raceIds);
     if (racesErr) return res.status(500).json({ error: racesErr.message });
     const raceById = new Map((raceRows || []).map((r) => [r.id, r]));
@@ -6120,12 +6120,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     // dobbeltbooking-check udskudt til batchens afslutning (database/2026-08-27-1146-
     // selection-bulk-rpc.sql — samme mønster som apply_race_entry_unit_batch, #3934).
     const rpcChanges = changes.map((c) => {
-      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds } = prepared.get(c.raceId);
+      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared.get(c.raceId);
       const freeRoleIdSet = new Set(freeRoleIds);
       return {
         race_id: c.raceId,
         rider_ids: riderIds,
-        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet })),
+        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId })),
       };
     });
 
@@ -6439,6 +6439,7 @@ router.put("/races/:raceId/stage-roles", requireAuth, marketWriteLimiter, async 
     const result = validateStageRoleOverrides({
       overrides: scope.overrides,
       intentionEnabled,
+      coCaptainAllowed: raceAllowsCoCaptain(race), // #5981
       raceCompleted: race.status === "completed",
       stageCount: ctx.stage_count,
       stagesCompleted: ctx.stages_completed,
