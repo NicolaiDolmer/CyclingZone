@@ -11,8 +11,16 @@ import {
   DEVELOPMENT_CURVE_B_FLAG_KEY, DEVELOPMENT_CURVE_B_PARAMS_ENV, curveBParamsFromEnv,
   isDevelopmentCurveBEnabled, loadDevelopmentCurveB,
 } from "./developmentCurveBFlag.ts";
-import { applyDailyTick, applyRaceDevelopmentTick, dailyAbilityDelta, resolveProgram } from "./dailyTraining.js";
-import { capTickGainsPerDate } from "./dailyTrainingEngine.js";
+import * as dt from "./dailyTraining.js";
+import * as engine from "./dailyTrainingEngine.js";
+
+// JS-modulerne har ingen typer; deres JSDoc-defaults (null) ville ellers afvise kurven.
+type AnyFn = (args: Record<string, unknown>) => any;
+const dailyAbilityDelta = dt.dailyAbilityDelta as unknown as AnyFn;
+const applyDailyTick = dt.applyDailyTick as unknown as AnyFn;
+const applyRaceDevelopmentTick = dt.applyRaceDevelopmentTick as unknown as AnyFn;
+const resolveProgram = dt.resolveProgram as unknown as (plan: unknown, type: string) => Record<string, unknown>;
+const capTickGainsPerDate = engine.capTickGainsPerDate as unknown as AnyFn;
 import { STAGE_FLAGS } from "./stageFlagCatalog.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
