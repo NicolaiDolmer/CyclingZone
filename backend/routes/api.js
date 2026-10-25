@@ -264,6 +264,7 @@ import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
 import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
+import { loadFatigueStreaks } from "../lib/trainingFatigueStreak.js"; // #6110 S26
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
@@ -3046,7 +3047,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       new Date(Date.now() - TRAINING_SCORE_VIEW.windowDays * 86_400_000),
     );
     const [
-      todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult,
+      todayRunResult, conditionResult, progressResult, weekPlanResult, racingToday, scoreResult, fatigueStreaks,
     ] = await Promise.all([
       activeSeasonId
         ? fetchAllRows(() => supabase
@@ -3119,6 +3120,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
           .order("tick_date", { ascending: false })
           .order("id", { ascending: true })).then((data) => ({ data }))
         : Promise.resolve({ data: [] }),
+      // #6110 S26: "Dage 70+" til holdtabellen, kun med flaget on (fail-safe, null ved fejl).
+      decisionCard ? loadFatigueStreaks(supabase, { riderIds, seasonId: activeSeasonId }) : Promise.resolve(null),
     ]);
 
     if (todayRunResult.error) throw new Error(todayRunResult.error.message);
@@ -3200,6 +3203,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       mobileTable,
       bulkDay,
       decisionCard,
+      ...(fatigueStreaks ? { fatigueDays70: fatigueStreaks } : {}),
       dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer

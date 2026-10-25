@@ -58,7 +58,7 @@ test("wiring: /api/training/me laeser flaget server-side og sender en bar boolea
 
 test("wiring: klienten normaliserer et manglende felt til false", () => {
   const useTrainingSource = readFileSync(resolve(__dirname, "../../frontend/src/lib/useTraining.js"), "utf8");
-  assert.match(useTrainingSource, /setDecisionCard\(data\.decisionCard === true\)/);
+  assert.match(useTrainingSource, /setDecisionCard\([^\n]*\.decisionCard === true\)/);
 });
 
 test("migration: raekken oprettes idempotent i stadie off", () => {
