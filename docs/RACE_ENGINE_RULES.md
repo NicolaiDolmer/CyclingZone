@@ -385,10 +385,10 @@ Motoren har to frosne grænseflader. De må ikke forveksles, og ingen af dem må
 
 ## 1. Rolle-vokabularet (kanonisk, ikke til forhandling)
 
-Fem værdier. De er defineret i den frosne kontrakt — `backend/lib/engine/v4/types.ts:35`:
+Seks værdier (den sjette, `co_captain`, siden #5981). De er defineret i den frosne kontrakt — `backend/lib/engine/v4/types.ts`:
 
 ```ts
-export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
+export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role" | "co_captain";
 ```
 
 Samme fem står i `race_entries.race_role` og `race_stage_roles.race_role`, skrevet 69.962 gange i prod.
@@ -400,8 +400,11 @@ Samme fem står i `race_entries.race_role` og `race_stage_roles.race_role`, skre
 | `hunter` | Breakaway hunter | Prioriterer udbrud |
 | `helper` | Domestique | Arbejder for kaptajnen |
 | `free_role` | Free role | Ingen bundet opgave |
+| `co_captain` | Shared captain | Delt kaptajn, kun under `s5_profiles_v3` (slukket, [#5981](https://github.com/NicolaiDolmer/CyclingZone/issues/5981)) |
 
-**Enhver flade der viser eller sætter en rolle bruger disse fem.** Opfind aldrig et sjette ord, og oversæt aldrig til et andet sæt i en ny flade. `race_stage_roles` udfases efter v4-flippet; `race_entries.race_role` består.
+**Delt kaptajn (`co_captain`, ejer 5/10 + 25/10, slukket med `s5_profiles_v3`).** Den sjette rolle, højst én pr. hold og kun på et hold med en kaptajn. Han er beskyttet, betaler ingen hjælperpris og arbejder aldrig. I samme gruppe får kaptajnen hjælpen først, og det hjælperne har tilovers, går til den delte kaptajn; de to får tilsammen aldrig mere end hjælperne betalte (§2e). Sidder de i hver sin gruppe, kører hver gruppes hjælpere for lederen i deres gruppe, og er kaptajnen ude, får den delte kaptajn hele hjælpen. Morgenudbrud kun med ordre, `protect` = følg angreb, aldrig jagt-arbejder (som kaptajnen); i endagsløb forsvarer holdet den af lederne der passer bedst til ruten. AI-hold i etapeløb får en delt kaptajn når holdet er stort nok og nummer to i klassementsevne ligger tæt på kaptajnen. API'et afviser rollen i løb på ældre revisioner; en stray række køres uden beskyttelse og uden spontane udbrud. Kode: `mechanics/sharedCaptain.ts`. **Spurtkaptajn som eneste leder** (#6321, ejer 25/10): udtagelsen kræver en kaptajn *eller* en spurtkaptajn; motoren beskytter ham allerede (`protectedRoleOrder`).
+
+**Enhver flade der viser eller sætter en rolle bruger disse seks** (`co_captain` kun i løb på `s5_profiles_v3`). Opfind aldrig et sjette ord, og oversæt aldrig til et andet sæt i en ny flade. `race_stage_roles` udfases efter v4-flippet; `race_entries.race_role` består.
 
 ---
 
