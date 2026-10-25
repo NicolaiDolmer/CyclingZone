@@ -60,8 +60,8 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| AI academy pull (`academy-ai-weekly-pull`) | dormant | `academy_ai_weekly_pull_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Ejer 25/10: ikke nu. |
-| Academy reminders (`academy-pull-reminder`) | dormant | `academy_pull_reminder_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Søn 10 + lør 18 (#7177); ejeren tænder. |
+| AI academy pull (`academy-ai-weekly-pull`) | dormant | - | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Flag academy_ai_weekly_pull_enabled; ikke nu. |
+| Academy reminders (`academy-pull-reminder`) | dormant | - | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Flag academy_pull_reminder_enabled; ejeren tænder (#7177). |
 | Season academy intake (`season-academy-intake`) | dormant | `season_academy_intake_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #2911 | 2026-10-15 | Sikkerhedsventil efter ejer-beslutning (#2911); off i prod (læst 15/10), kun ejeren flipper. |
 | Three squads (`three-squads`) | spec | - | [YOUTH_RULES](YOUTH_RULES.md) | #2492 | 2026-09-06 | Slice 0 er leveret; resten er spec. |
 

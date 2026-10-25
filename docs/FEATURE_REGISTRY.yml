@@ -660,11 +660,10 @@ features:
     title_en: Academy reminders
     title_da: Påmindelser om ugens akademi-kuld
     state: dormant
-    flag: academy_pull_reminder_enabled
     ssot: docs/YOUTH_RULES.md
     epic: 6666
     verified: 2026-10-25
-    note: "Søn 10 + lør 18 (#7177); ejeren tænder."
+    note: "Flag academy_pull_reminder_enabled; ejeren tænder (#7177)."
     decision: taend
     decide_by: 2026-11-08
 
@@ -673,11 +672,10 @@ features:
     title_en: AI academy pull
     title_da: AI-hold henter ugens akademi-kuld
     state: dormant
-    flag: academy_ai_weekly_pull_enabled
     ssot: docs/YOUTH_RULES.md
     epic: 6666
     verified: 2026-10-25
-    note: "Ejer 25/10: ikke nu."
+    note: "Flag academy_ai_weekly_pull_enabled; ikke nu."
     decision: ejer-beslutning
     decide_by: 2026-12-31
 
