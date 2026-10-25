@@ -48,6 +48,7 @@ Felterne er uændrede: `effort` (fem trin), `try_break`, `leadout` pr. rytter pr
 | Arbejd (`protect` for hjælper/jæger) + Forsøg udbrud | **Udelukket** | En hjælper i udbruddet kan ikke trække for kaptajnen i feltet. Han betaler for arbejde han ikke kan levere |
 | Sprinttog + Forsøg udbrud | **Udelukket** | Lead-out-folk sidder i feltet til finalen. Ingen hold sender toget i morgenudbrud |
 | Togets mål (spurtkaptajnen) i sit eget tog | **Udelukket** | Han er den der bliver trukket frem |
+| Fri rolle i sprinttoget | **Tilbydes ikke** | En fri rolle kan selv forsøge udbrud på normal (låst 30/9), og motorens udbrudstilladelse kigger ikke på toget. Lead-out-folk er hjælpere i virkeligheden. Så toget er kun for hjælper og jæger, og ingen motor-ændring er nødvendig |
 | Spar + Forsøg udbrud | Tilladt | Låst 30/9: forsøget koster normal pris |
 | Alt ud + Forsøg udbrud | Tilladt | Klassisk "alt eller intet"-dag |
 | Følg angrebene (`protect` for leder) + Forsøg udbrud | Tilladt | En kaptajn kan gå med i et langt angreb |
@@ -70,13 +71,20 @@ En mål-ordre siger **hvad** rytteren skal i dag; indsatsen siger **hvor hårdt*
 | Opgave (EN / DA) | Hvem kan vælge den | Felterne |
 |---|---|---|
 | Ride for the leader / Kør for lederen | hjælper, jæger | `try_break=false`, `leadout=false` |
-| Sprint train / Sprinttog | hjælper, jæger, fri rolle (ikke togets mål) | `leadout=true`, `try_break=false` |
+| Sprint train / Sprinttog | hjælper, jæger (ikke fri rolle, se §3) | `leadout=true`, `try_break=false` |
 | Try the break / Forsøg udbrud | alle | `try_break=true`, `leadout=false` |
 | Ride for a result / Kør for resultat | kaptajn, delt kaptajn, spurtkaptajn | `try_break=false`, `leadout=false` |
 | Free race / Frit løb | fri rolle | `try_break=false`, `leadout=false` (fri rolle kan stadig selv forsøge på normal, låst) |
 | Grupetto / Grupetto | alle undtagen kaptajn | `effort=grupetto`, `try_break=false`, `leadout=false` |
 
-Indsatsen vælges ved siden af (spar, normal, hårdt, alt ud) og er låst når opgaven er Grupetto. Senere opgaver fra Holdmødet (#5573, trøjejagt, angrebspunkt) kan lægges ind som nye punkter i samme liste uden at fladen skifter form. Trøjejagt er **ikke** med nu: motoren har den ikke (P11, intet opdigtet).
+Indsatsen vælges ved siden af (spar, normal, hårdt, alt ud) og er låst når opgaven er Grupetto. "Hårdt" er enum'et `protect`. Opgaven og indsatsen kan stadig modsige hinanden for en hjælper eller jæger, så to indsatstrin spærres efter opgaven (fladen gråer trinnet med en kort grund, og API'et afviser kombinationen, samme regler som §3):
+
+| Opgave for hjælper/jæger | Spærret indsats | Hvorfor |
+|---|---|---|
+| Forsøg udbrud | Hårdt | `protect` betyder "arbejd for lederen" for en hjælper; i udbruddet kan han ikke (§3) |
+| Kør for lederen | Alt ud | `all_out` fjerner hjælperens arbejde for lederen (RULES §2e); den hjælper der vil køre for sig selv, vælger en anden opgave |
+
+For ledere og fri rolle er alle fire trin åbne: deres `protect` er "følg angrebene"/"kør offensivt", ikke arbejde. Senere opgaver fra Holdmødet (#5573, trøjejagt, angrebspunkt) kan lægges ind som nye punkter i samme liste uden at fladen skifter form. Trøjejagt er **ikke** med nu: motoren har den ikke (P11, intet opdigtet).
 
 ## 5. Delt kaptajn i motoren
 
@@ -108,7 +116,7 @@ Holdudtagelsen kræver i dag en kaptajn. Forslaget: den kræver **en leder**, dv
 Begge bruger fanens skelet fra 6/9 (T3-side, Taktik-fanen, én guldknap "Save stage N", hairlines, 5 px radius, ingen tal). De adskiller sig kun i rytter-rækken.
 
 - **Variant A, "Samme række, spærrede modsætninger":** intentions-chippen og pillerne "Try the break" og "Sprint train" bliver. Trinnet `protect` hedder Arbejd/Følg angrebene/Kør offensivt efter rollen. En pille der modsiger et andet valg er grå med en låse-ikon-linje ("Not with Work"). Mindst at bygge.
-- **Variant B, "Dagens opgave":** én vælger "Task" pr. rytter (tabellen i §4) + indsats ved siden af (spar, normal, hårdt, alt ud). Modsætninger kan ikke opstå. Lidt mere at bygge, men samme felter bag, og den kan bære Holdmødets opgaver senere.
+- **Variant B, "Dagens opgave":** én vælger "Task" pr. rytter (tabellen i §4) + indsats ved siden af (spar, normal, hårdt, alt ud). Opgaverne udelukker hinanden af sig selv, og de to indsatstrin der modsiger opgaven, er grå (§4). Lidt mere at bygge, men samme felter bag, og den kan bære Holdmødets opgaver senere.
 
 Filer: `pr-screens/7003/a-desktop-1440.png`, `a-mobile-390.png`, `b-desktop-1440.png`, `b-mobile-390.png`, og `oversigt.png` (begge side om side til telefonen). Tegnede mockups med opdigtede navne, ikke skærmbilleder af spillet. Den rigtige flade skal godkendes på preview før merge.
 
@@ -119,7 +127,7 @@ Filer: `pr-screens/7003/a-desktop-1440.png`, `a-mobile-390.png`, `b-desktop-1440
    **Anbefaling A.** Det er det egomadsen og ejeren beskrev: en mellemting mellem kaptajn og hjælper. Et stort hold med mange hjælpere kan beskytte to, et lille kan ikke, ligesom i virkeligheden. Med B bliver rollen bare "to kaptajner", og kaptajnen mister værdi.
 2. **Hvordan skal arbejd og angrib deles op på fladen?**
    A: Samme række som i dag, ordet følger rollen, og modsatte knapper bliver grå. B: "Dagens opgave": ét valg pr. rytter for hvad han skal, og indsatsen ved siden af.
-   **Anbefaling B.** Modsætninger kan slet ikke vælges, rækken bliver kortere på mobil, og det er samme felter bag, så motoren røres ikke. Holdmødets kommende opgaver får plads uden ny flade. A er kun bedre hvis det skal være live i morgen.
+   **Anbefaling B.** Udbrud, tog og grupetto kan slet ikke vælges sammen, kun to indsatstrin skal spærres, rækken bliver kortere på mobil, og det er samme felter bag, så motoren røres ikke. Holdmødets kommende opgaver får plads uden ny flade. A er kun bedre hvis det skal være live i morgen.
 3. **Må et hold stille op med kun en spurtkaptajn som leder (ingen kaptajn)?**
    A: Ja. B: Nej, kaptajn kræves stadig.
    **Anbefaling A.** Et sprinterhold i et fladt endagsløb har i virkeligheden kun sprinteren som leder. I dag må spillerne sætte en falsk kaptajn for at få toget til at virke. Motoren kan det allerede.
