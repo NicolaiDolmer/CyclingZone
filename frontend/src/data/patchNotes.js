@@ -1,5 +1,66 @@
 export const PATCHES = [
   {
+    "version": "7.380",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "flag": "development_curve_b",
+        "topic": "Training",
+        "en": {
+          "title": "Development follows level and potential",
+          "body": "How fast an ability grows now depends on how high it already is and on the rider's potential. The higher an ability, the harder it is to raise, and potential decides how high the rider can go. Age decides how much training a young rider can take. An ability still rises by at most one point per day. Help explains it under Training."
+        },
+        "da": {
+          "title": "Udviklingen følger niveau og potentiale",
+          "body": "Hvor hurtigt en evne vokser, afhænger nu af, hvor høj den allerede er, og af rytterens potentiale. Jo højere en evne er, jo sværere er den at hæve, og potentialet bestemmer, hvor højt rytteren kan nå. Alderen bestemmer, hvor meget træning en ung rytter kan tåle. En evne stiger stadig højst ét point om dagen. Hjælp forklarer det under Træning."
+        },
+        "refs": [
+          6110,
+          3564
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "flag": "condition_model_v2",
+        "topic": "Training",
+        "en": {
+          "title": "Form and fatigue 2.0",
+          "body": "A rider who races more than once on the same day now starts the next stage with the fatigue from the earlier one."
+        },
+        "da": {
+          "title": "Form og træthed 2.0",
+          "body": "En rytter, der kører flere gange samme dag, starter nu næste etape med trætheden fra den forrige."
+        },
+        "refs": [
+          6984
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
+        "flag": "potential_single_number",
+        "topic": "Riders",
+        "en": {
+          "title": "Potential shown the same way for everyone",
+          "body": "Potential is now shown the same way for all managers on My Team, in the academy, on the rider profile and on the Scouting tab: for the role where the rider can go highest, with a small box saying which role."
+        },
+        "da": {
+          "title": "Potentialet vises ens for alle",
+          "body": "Potentialet vises nu ens for alle managere på Mit hold, i akademiet, på rytterprofilen og på Scouting-fanen: for den rolle, hvor rytteren kan nå højest, med en lille boks der viser hvilken rolle."
+        },
+        "refs": [
+          6853
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.379",
     "date": "2026-10-25",
     "changes": [
