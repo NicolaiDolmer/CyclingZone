@@ -221,6 +221,17 @@ test("#7003: et punkt inde i etapens sidste segment skifter ved segmentets start
   assert.deepEqual(ev.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["cap", "attack", "final_km"]]);
 });
 
+test("#7003: en etape i ét eneste segment koerer stadig planens rutepunkter (aldrig 'sat' ved start)", () => {
+  const route = mountainInput("s5_profiles_v3").route;
+  const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }];
+  const brkLegs: StagePlanLeg[] = [{ task: "breakaway" }, { task: "ride_in", from: { at: "dropped" } }];
+  const rt = createStagePlanRuntime([planOrder("A", [{ rider_id: "cap", legs }, { rider_id: "hun", legs: brkLegs }])], route, ENTRANTS)!;
+  const pel: RaceGroup = { id: "p0", kind: "peloton", rider_ids: ["cap", "h1", "hun", "x"], gap_seconds: 0, cohesion: 1 };
+  const only = { kind: "flat" as const, from_km: 0, to_km: route.distance_km };
+  const ev = advanceStagePlan(rt, { state: stateWith([pel]), segment: only, segmentIndex: 0, isLastSegment: true, entrants: ENTRANTS });
+  assert.deepEqual(ev.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["cap", "attack", "final_km"]], "udbryderen er ikke 'kom ikke med' foer starten");
+});
+
 test("#7003: etapens traethed regnes paa den haardeste indsats rytteren faktisk koerte", () => {
   const input = mountainInput("s5_profiles_v3");
   const rider = input.startlist.find((e) => e.role === "captain")!;

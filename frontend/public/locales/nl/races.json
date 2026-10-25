@@ -6,6 +6,8 @@
     "suggestion": "Voorstel",
     "noPlan": "Nog geen plan. Hij rijdt volgens zijn rol.",
     "noPlanLocked": "Geen plan. Hij reed volgens zijn rol.",
+    "noPlanOrders": "Nog geen plan. Hij rijdt op wat je instelde: {orders}.",
+    "noPlanOrdersLocked": "Geen plan. Hij reed op wat je instelde: {orders}.",
     "noFit": "Dit plan past niet meer bij zijn rol. Kies een nieuw.",
     "colPlan": "Plan voor etappe {number}",
     "colPlanRaceDay": "Plan voor de koers",

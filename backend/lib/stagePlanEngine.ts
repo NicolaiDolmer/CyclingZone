@@ -19,7 +19,9 @@
 //          Motoren springer direkte til sat-leddet, uanset hvor langt kaeden er.
 //        - rutepunkt (top af en stigning / de sidste km): naar mindst halvdelen af
 //          segmentet ligger efter punktet. Flere punkter kan passeres i samme
-//          segment; kaeden rykker saa frem led for led i orden.
+//          segment; kaeden rykker saa frem led for led i orden. I etapens sidste
+//          segment skifter et punkt inde i det ved segmentets start; er etapen kun
+//          ét segment, gaelder det ogsaa segment 1 (kun rutepunkter, aldrig "sat").
 //   4. Opgavens indsats (TASK_EFFORT) erstatter rytterens `effort` for segmentet.
 //      Intet andet felt paa rytteren roeres. Udbrudsforsoeg og sprinttog kommer
 //      fra de udledte ordre-felter (stagePlan.legacyOrderFromPlan), som motoren
@@ -177,7 +179,12 @@ export function advanceStagePlan(
 ): TimelineEvent[] {
   const { state, segment, segmentIndex, isLastSegment = false, entrants } = args;
   const events: TimelineEvent[] = [];
-  if (segmentIndex === 0) return events;
+  // Foerste segment: intet forrige segment at laese tilstanden af. Er det OGSAA etapens
+  // eneste segment (en flad etape kan genereres som ét stykke), gaelder sidste-segment-
+  // reglen nedenfor for rutepunkterne, ellers ville et gyldigt led aldrig koeres. "Sat"
+  // afgoeres aldrig ved start (ingen grupper endnu).
+  if (segmentIndex === 0 && !isLastSegment) return events;
+  const atStart = segmentIndex === 0;
   // Etapens sidste segment: et punkt inde i det skifter ved segmentets start (der kommer
   // intet senere segment at skifte paa), saa et gyldigt sidste led altid koeres.
   const switchPointKm = isLastSegment ? segment.to_km - 1e-9 : segment.from_km + (segment.to_km - segment.from_km) / 2;
@@ -194,7 +201,7 @@ export function advanceStagePlan(
     const dropped = breakawayLeg ? !inEscape : isRiderDropped(riderId, state, entrants);
     let next = cur;
     let reason: StagePlanSwitchReason | null = null;
-    if (droppedIdx > cur && dropped) {
+    if (!atStart && droppedIdx > cur && dropped) {
       next = droppedIdx;
       reason = breakawayLeg ? (rt.everInEscape.has(riderId) ? "caught" : "missed_break") : "dropped";
     } else {

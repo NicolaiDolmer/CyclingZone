@@ -6,6 +6,8 @@
     "suggestion": "Suggestion",
     "noPlan": "No plan yet. He rides on his role.",
     "noPlanLocked": "No plan. He rode on his role.",
+    "noPlanOrders": "No plan yet. He rides on what you set: {orders}.",
+    "noPlanOrdersLocked": "No plan. He rode on what you set: {orders}.",
     "noFit": "This plan no longer fits his role. Pick a new one.",
     "colPlan": "Plan for stage {number}",
     "colPlanRaceDay": "Plan for the race",

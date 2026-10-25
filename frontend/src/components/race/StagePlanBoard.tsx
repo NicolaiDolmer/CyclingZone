@@ -22,6 +22,7 @@ import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import { Button, CheckIcon, ChevronRightIcon, LockIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
+  fallbackOrderKeys,
   nextLeg,
   planRole,
   removeLeg,
@@ -40,7 +41,7 @@ import type { StagePlanLeg, StagePlanRecapItem, StagePlanRole, StagePlanRoute, S
 
 type TFn = (key: string, opts?: Record<string, unknown>) => string;
 type PlanRider = { rider_id: string; name?: string | null; abandoned?: boolean };
-type PlanOrderRider = { rider_id: string; plan?: StagePlanLeg[] | null };
+type PlanOrderRider = { rider_id: string; plan?: StagePlanLeg[] | null } & Record<string, unknown>;
 type PlanOrder = { riders?: PlanOrderRider[] } & Record<string, unknown>;
 type StageProfile = { climbs?: unknown; distance_km?: unknown; profile_type?: unknown } & Record<string, unknown>;
 type TimelineEvent = { type?: unknown; km?: unknown; params?: Record<string, unknown> | null };
@@ -277,6 +278,7 @@ export default function StagePlanBoard({
   rolePickerFor,
   onEditorOpen,
   roleDefaultFor,
+  effortFor,
 }: {
   t: TFn;
   raceId: string;
@@ -295,6 +297,8 @@ export default function StagePlanBoard({
   rolePickerFor?: (rider: PlanRider) => React.ReactNode;
   onEditorOpen?: () => void;
   roleDefaultFor?: (riderId: string) => Record<string, unknown> | null;
+  /** Dagens indsats (intentionen) for en rytter uden plan. */
+  effortFor?: (rider: PlanRider) => unknown;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => routeForProfile(profile), [profile]);
@@ -321,6 +325,15 @@ export default function StagePlanBoard({
   }
 
   const planColumn = isOneDay ? t("stagePlan.colPlanRaceDay") : t("stagePlan.colPlan", { number: activeStage });
+  // Uden plan: "efter sin rolle" kun naar det er sandt; ellers de valg han faktisk koerer paa.
+  const orderRiderById = new Map((order?.riders ?? []).map((r) => [r.rider_id, r]));
+  const ownOrderKeys = (rider: PlanRider) => fallbackOrderKeys(effortFor?.(rider), orderRiderById.get(rider.rider_id), roleDefaultFor?.(rider.rider_id));
+  const hasOwnOrders = (rider: PlanRider) => ownOrderKeys(rider).length > 0;
+  function noPlanText(rider: PlanRider, locked: boolean) {
+    const keys = ownOrderKeys(rider);
+    if (!keys.length) return t(locked ? "stagePlan.noPlanLocked" : "stagePlan.noPlan");
+    return t(locked ? "stagePlan.noPlanOrdersLocked" : "stagePlan.noPlanOrders", { orders: keys.map((k) => t(k)).join(", ") });
+  }
 
   function renderPlanCell(rider: PlanRider, { compact = false }: { compact?: boolean } = {}) {
     const legs = planByRider.get(rider.rider_id);
@@ -351,7 +364,7 @@ export default function StagePlanBoard({
       return (
         <span className="inline-flex items-center gap-1 text-3xs text-cz-3">
           <LockIcon size={11} aria-hidden="true" />
-          {t(stageCompleted ? "stagePlan.noPlanLocked" : "stagePlan.noPlan")}
+          {noPlanText(rider, stageCompleted)}
         </span>
       );
     }
@@ -366,7 +379,8 @@ export default function StagePlanBoard({
             <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} />
           </span>
         )}
-        {!compact && <p className="mt-1 text-3xs text-cz-3">{t("stagePlan.noPlan")}</p>}
+        {/* Mobil: kun naar han koerer paa egne valg (ellers fylder forslaget linjen). */}
+        {(!compact || hasOwnOrders(rider)) && <p className="mt-1 text-3xs text-cz-3">{noPlanText(rider, false)}</p>}
       </>
     );
   }

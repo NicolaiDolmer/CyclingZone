@@ -6,6 +6,8 @@
     "suggestion": "Suggestion",
     "noPlan": "Pas encore de plan. Il court selon son rôle.",
     "noPlanLocked": "Pas de plan. Il a couru selon son rôle.",
+    "noPlanOrders": "Pas encore de plan. Il court avec tes consignes : {orders}.",
+    "noPlanOrdersLocked": "Pas de plan. Il a couru avec tes consignes : {orders}.",
     "noFit": "Ce plan ne correspond plus à son rôle. Choisis-en un nouveau.",
     "colPlan": "Plan pour l'étape {number}",
     "colPlanRaceDay": "Plan pour la course",

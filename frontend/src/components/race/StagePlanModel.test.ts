@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   clearRiderPlan,
+  fallbackOrderKeys,
   nextLeg,
   removeLeg,
   setLegTask,
@@ -82,6 +83,20 @@ test("#7003: opsummeringen efter etapen laeses af stage_plan_leg-events", () => 
   ]);
   const quit = [{ type: "incident", km: 80, params: { rider_id: "a", outcome: "abandoned" } }];
   assert.deepEqual(stagePlanRecap(HELPER, quit, "a").map((i) => i.status), ["abandoned", "not_reached", "not_reached"]);
+});
+
+test("#7003: rytter uden plan: boardet viser de valg han koerer paa, naar de ikke er rollens", () => {
+  const helperDefault = { effort: "protect", try_break: false, leadout: false };
+  assert.deepEqual(fallbackOrderKeys("normal", { rider_id: "a", try_break: false, leadout: false }, helperDefault), [], "helt paa rollen");
+  assert.deepEqual(fallbackOrderKeys(undefined, { rider_id: "a" }, null), [], "intet sat = rollen");
+  assert.deepEqual(fallbackOrderKeys("normal", { rider_id: "a", try_break: true }, helperDefault), ["intention.step.normal", "tacticsOrders.tryBreak"]);
+  assert.deepEqual(fallbackOrderKeys("all_out", { rider_id: "a", leadout: true }, { leadout: true }), ["intention.step.all_out", "tacticsOrders.leadout"]);
+  // Rollens eget udbrudsforsoeg er ikke et eget valg; at slaa det fra er.
+  assert.deepEqual(fallbackOrderKeys("normal", { rider_id: "h", try_break: true }, { try_break: true }), []);
+  assert.deepEqual(fallbackOrderKeys("normal", { rider_id: "h", try_break: false }, { try_break: true }), ["intention.step.normal"]);
+  const board = readFileSync(new URL("./StagePlanBoard.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(board, /t\(stageCompleted \? "stagePlan\.noPlanLocked" : "stagePlan\.noPlan"\)/, "teksten gaar gennem fallbackOrderKeys");
+  assert.match(readFileSync(new URL("./RaceTacticsTab.jsx", import.meta.url), "utf8"), /effortFor=\{effortFor\}/);
 });
 
 test("#7003: enkeltstart og holdtidskoersel beholder de almindelige indsats-kontroller", () => {

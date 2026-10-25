@@ -325,6 +325,21 @@ export function withStagePlanFields<T extends Order>(order: T): T {
   };
 }
 
+/**
+ * En rytter uden plan koerer paa sine almindelige valg: dagens indsats (intentionen,
+ * standard "normal") og ordrens udbrud/tog. Afviger de fra rollens standard, skal
+ * boardet sige hvad han faktisk koerer paa, ikke "efter sin rolle". Returnerer
+ * i18n-noegler (races-namespace), eller [] naar han koerer helt paa rollen.
+ */
+export function fallbackOrderKeys(effort: unknown, rider: Rec | null | undefined, roleDefault: Rec | null | undefined): string[] {
+  const eff = typeof effort === "string" && effort ? effort : "normal";
+  const tryBreak = rider?.["try_break"] === true;
+  const leadout = rider?.["leadout"] === true;
+  const custom = eff !== "normal" || tryBreak !== (roleDefault?.["try_break"] === true) || leadout !== (roleDefault?.["leadout"] === true);
+  if (!custom) return [];
+  return [`intention.step.${eff}`, ...(tryBreak ? ["tacticsOrders.tryBreak"] : []), ...(leadout ? ["tacticsOrders.leadout"] : [])];
+}
+
 /** Kopi til en anden etape: planer haenger paa ruten og kopieres ikke med. */
 export function withoutStagePlans<T extends Order>(order: T): T {
   return {
