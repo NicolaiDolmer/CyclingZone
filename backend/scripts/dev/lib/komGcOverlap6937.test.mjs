@@ -2,7 +2,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { accumulateKomStage, breakawayKomPointsOfStage, emptyKomAccount, komGcOverlap, komWinnerOf, stageRaceJerseyOutcome } from "./komGcOverlap6937.mjs";
+import { accumulateKomStage, breakawayKomPointsOfStage, createJerseyLeaderTracker, emptyKomAccount, komGcOverlap, komWinnerOf, stageRaceJerseyOutcome } from "./komGcOverlap6937.mjs";
 
 const kom = (km, results) => ({ kind: "kom", km, results: results.map(([rider_id, points]) => ({ rider_id, points })) });
 
@@ -59,4 +59,36 @@ test("#6937 G16-kontrakt: udbrudspoint er bjergpoint taget mens rytteren sad i d
   assert.deepEqual(Object.fromEntries(m), { brk: 15, brk2: 6 });
   assert.equal(breakawayKomPointsOfStage(null).size, 0);
   assert.equal(breakawayKomPointsOfStage({ passages: out.passages }).size, 0, "uden gruppebillede kan intet maales");
+});
+
+test("#6937 (Codex): udbruddet der smeltes sammen EFTER passagen i samme segment, tog pointene i udbrud", () => {
+  const out = {
+    timeline: { events: [
+      { type: "breakaway_formed", km: 5, params: { rider_ids: ["brk"] } },
+      { type: "group_merged", km: 60, params: { group_id: "b", into_group_id: "p", rider_ids: ["brk"] } },
+    ] },
+    groupSnapshots: [
+      { km: 40, groups: [{ kind: "breakaway", rider_ids: ["brk"] }, { kind: "peloton", rider_ids: ["fav"] }] },
+      { km: 60, groups: [{ kind: "peloton", rider_ids: ["brk", "fav"] }] },
+    ],
+    passages: [kom(55, [["brk", 10], ["fav", 6]])],
+  };
+  assert.deepEqual(Object.fromEntries(breakawayKomPointsOfStage(out)), { brk: 10 });
+  // Uden sammensmeltningen ved segmentets slut (hentet af jagten foer passagen) taeller det ikke.
+  const caught = { ...out, timeline: { events: out.timeline.events.slice(0, 1) } };
+  assert.equal(breakawayKomPointsOfStage(caught).size, 0);
+});
+
+test("#6937 (Codex): troejefoerer-trackeren bruger passagerne, ellers den generiske fallback; bjergjaegere kun under v3", () => {
+  const res = (perRider) => ({ ranked: [{ rider_id: "a", rank: 1 }, { rider_id: "b", rank: 2 }], passages: perRider ? { perRider: new Map(perRider) } : null });
+  const v3 = createJerseyLeaderTracker("s5_profiles_v3", true);
+  assert.equal(v3.leadersFor([{ rider_id: "a" }]), null, "foer foerste etape: ingen foerer");
+  v3.addStage(res([["a", { sprint_points: 0, kom_points: 2 }], ["b", { sprint_points: 5, kom_points: 4 }]]), { profile_type: "mountain" });
+  assert.deepEqual(v3.leadersFor([{ rider_id: "a" }, { rider_id: "b" }]), { points: "b", kom: "b", komHunters: ["b", "a"] });
+  const v2 = createJerseyLeaderTracker("s5_profiles_v2", true);
+  v2.addStage(res(null), { profile_type: "mountain" });
+  const l = v2.leadersFor([{ rider_id: "a" }, { rider_id: "b" }]);
+  assert.equal(l.kom, "a", "fallback: bjergpoint paa en klatreprofil");
+  assert.equal("komHunters" in l, false, "under v2 ingen bjergjaegere");
+  assert.equal(createJerseyLeaderTracker("s5_profiles_v3", false).leadersFor([{ rider_id: "a" }]), null, "endagsloeb: ingen foerere");
 });

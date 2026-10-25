@@ -14,7 +14,7 @@
 // (balance-internals/), aldrig i repoet.
 //
 // Refs #6937 #6804
-import { KOM_HUNTERS_TOP_N, jerseyLeadersFromComps } from "../../../lib/raceClassifications.js";
+import { CLIMB_PROFILES, KOM_HUNTERS_TOP_N, classPointsForRank, jerseyLeadersFromComps } from "../../../lib/raceClassifications.js";
 import { isS5ProfilesV3OrLater } from "../../../lib/raceEngineRulesRevision.ts";
 
 /**
@@ -33,12 +33,19 @@ export function createJerseyLeaderTracker(revision, isStageRace) {
       const leaders = jerseyLeadersFromComps(entrants, points, kom, { komHunters });
       return leaders.points || leaders.kom ? leaders : null;
     },
-    addStage(res) {
+    /** Codex: uden passager (rute uden data) den generiske point-fallback, som jerseyTally/raceRunner. */
+    addStage(res, profile = null) {
+      const perRider = res?.passages?.perRider ?? null;
+      const add = (m, id, v) => m.set(id, (m.get(id) ?? 0) + (Number(v) || 0));
       for (const r of res?.ranked ?? []) {
-        const agg = res.passages?.perRider?.get(r.rider_id);
-        if (!agg) continue;
-        points.set(r.rider_id, (points.get(r.rider_id) ?? 0) + (Number(agg.sprint_points) || 0));
-        kom.set(r.rider_id, (kom.get(r.rider_id) ?? 0) + (Number(agg.kom_points) || 0));
+        if (perRider) {
+          const agg = perRider.get(r.rider_id);
+          add(points, r.rider_id, agg?.sprint_points);
+          add(kom, r.rider_id, agg?.kom_points);
+        } else {
+          add(points, r.rider_id, classPointsForRank(r.rank));
+          if (CLIMB_PROFILES.has(profile?.profile_type)) add(kom, r.rider_id, classPointsForRank(r.rank));
+        }
       }
     },
   };
@@ -48,7 +55,10 @@ export function createJerseyLeaderTracker(revision, isStageRace) {
  * G16-kontrakten (v3Gates: `komWinnerBreakawayPoints`): bjergpoint pr. rytter paa én
  * etape, taget MENS han sad i dagens udbrud. Motorens eget gruppebillede afgoer det:
  * passagen opgoeres i sit segment, og segmentets gruppe-snapshot (det foerste med
- * km >= passagens km) viser hvor rytteren sad. Udbrud = en gruppe af arten
+ * km >= passagens km) viser hvor rytteren sad. Codex: snapshottet tages efter
+ * segmentets sammensmeltning, der koerer EFTER passagen; sad rytteren i udbruddet ved
+ * segmentets start og blev han smeltet sammen ved segmentets slut (`group_merged`),
+ * sad han der stadig ved passagen. Udbrud = en gruppe af arten
  * "breakaway" (kun udbruds-mekanikken laver dem), eller en solo-gruppe hvis rytter
  * var med i et `breakaway_formed` (en udbryder der er koert fra sit udbrud). En
  * finale-angriber fra feltet taeller ikke. Topankomsten taeller ogsaa, naar
@@ -58,14 +68,24 @@ export function breakawayKomPointsOfStage(v4Output) {
   const out = new Map();
   const snaps = (v4Output?.groupSnapshots ?? []).slice().sort((a, b) => Number(a.km) - Number(b.km));
   if (!snaps.length) return out;
-  const formed = new Set((v4Output?.timeline?.events ?? []).filter((e) => e?.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
+  const events = v4Output?.timeline?.events ?? [];
+  const formed = new Set(events.filter((e) => e?.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
+  const breakIds = (snap) => {
+    const ids = new Set();
+    for (const g of snap?.groups ?? []) {
+      if (g.kind === "breakaway") for (const id of g.rider_ids ?? []) ids.add(id);
+      else if (g.kind === "solo") for (const id of g.rider_ids ?? []) if (formed.has(id)) ids.add(id);
+    }
+    return ids;
+  };
   for (const p of v4Output?.passages ?? []) {
     if (p?.kind !== "kom") continue;
-    const snap = snaps.find((s) => Number(s.km) >= Number(p.km) - 1e-6) ?? snaps[snaps.length - 1];
-    const inBreak = new Set();
-    for (const g of snap.groups ?? []) {
-      if (g.kind === "breakaway") for (const id of g.rider_ids ?? []) inBreak.add(id);
-      else if (g.kind === "solo") for (const id of g.rider_ids ?? []) if (formed.has(id)) inBreak.add(id);
+    const at = snaps.findIndex((s) => Number(s.km) >= Number(p.km) - 1e-6);
+    const snap = at >= 0 ? snaps[at] : snaps[snaps.length - 1];
+    const inBreak = breakIds(snap);
+    if (at > 0) {
+      const mergedAtEnd = new Set(events.filter((e) => e?.type === "group_merged" && Math.abs(Number(e.km) - Number(snap.km)) < 1e-6).flatMap((e) => e.params?.rider_ids ?? []));
+      for (const id of breakIds(snaps[at - 1])) if (mergedAtEnd.has(id)) inBreak.add(id);
     }
     for (const r of p.results ?? []) {
       const pts = Number(r.points) || 0;

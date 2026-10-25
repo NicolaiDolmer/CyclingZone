@@ -638,7 +638,7 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
     const gcBefore = index === 0 ? [] : rankByCumTimeAsc(inRace, cumTime, posSum);
     const jerseyLeaders = jerseyTracker.leadersFor(inRace);
     const res = simulate({ v4, data, stages, profile, entrants: inRace, revision, gcStandings: passGc ? gcBefore : null, seedTag, jerseyLeaders });
-    jerseyTracker.addStage(res);
+    jerseyTracker.addStage(res, profile);
     // #6938 (Codex P2): onStage faar feltet SOM DET KOERTE etapen (tilstanden foer etapen),
     // saa en parret genkoersel (sprinttoget) kun maaler ordren, ikke traethedens fremskrivning.
     const stageEntrants = inRace;
