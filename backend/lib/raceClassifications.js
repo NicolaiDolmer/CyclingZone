@@ -76,13 +76,19 @@ export function rankByCompDesc(entrants, compMap) {
  * @param {Map<string,number>} komComp
  * @returns {{points: string|null, kom: string|null}}
  */
-export function jerseyLeadersFromComps(entrants, pointsComp, komComp) {
+export function jerseyLeadersFromComps(entrants, pointsComp, komComp, { komHunters = 0 } = {}) {
   const leaderOf = (comp) => {
     const top = rankByCompDesc(entrants, comp)[0];
     return top && top.score > 0 ? top.rider_id : null;
   };
-  return { points: leaderOf(pointsComp), kom: leaderOf(komComp) };
+  const leaders = { points: leaderOf(pointsComp), kom: leaderOf(komComp) };
+  // #6937 B1 (KUN s5_profiles_v3, kalderen gater): bjergkonkurrencens forreste med point.
+  if (komHunters > 0) leaders.komHunters = rankByCompDesc(entrants, komComp).filter((r) => r.score > 0).slice(0, komHunters).map((r) => r.rider_id);
+  return leaders;
 }
+
+/** #6937 B1: hvor mange af bjergkonkurrencens forreste der er bjergjaegere (engine/v4/mechanics/komJersey6937.ts). */
+export const KOM_HUNTERS_TOP_N = 3;
 
 // Placering der mangler (rytter uden placering i opslaget) sorteres sidst. Et
 // stort endeligt tal i stedet for Infinity, saa summer og differenser aldrig

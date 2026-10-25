@@ -14,6 +14,35 @@
 // (balance-internals/), aldrig i repoet.
 //
 // Refs #6937 #6804
+import { KOM_HUNTERS_TOP_N, jerseyLeadersFromComps } from "../../../lib/raceClassifications.js";
+import { isS5ProfilesV3OrLater } from "../../../lib/raceEngineRulesRevision.ts";
+
+/**
+ * Prod-paritet (#5914 + #6937 B1): troejefoererne foer hver etape, som raceRunner
+ * sender dem til motoren i et etapeloeb (jerseyLeadersFromComps paa konkurrencerne
+ * efter de foregaaende etaper), og under s5_profiles_v3 ogsaa bjergjaegerne.
+ * `addStage(res)` efter etapen (broens svar), `leadersFor(entrants)` foer den.
+ */
+export function createJerseyLeaderTracker(revision, isStageRace) {
+  const points = new Map();
+  const kom = new Map();
+  const komHunters = isS5ProfilesV3OrLater(revision) ? KOM_HUNTERS_TOP_N : 0;
+  return {
+    leadersFor(entrants) {
+      if (!isStageRace) return null;
+      const leaders = jerseyLeadersFromComps(entrants, points, kom, { komHunters });
+      return leaders.points || leaders.kom ? leaders : null;
+    },
+    addStage(res) {
+      for (const r of res?.ranked ?? []) {
+        const agg = res.passages?.perRider?.get(r.rider_id);
+        if (!agg) continue;
+        points.set(r.rider_id, (points.get(r.rider_id) ?? 0) + (Number(agg.sprint_points) || 0));
+        kom.set(r.rider_id, (kom.get(r.rider_id) ?? 0) + (Number(agg.kom_points) || 0));
+      }
+    },
+  };
+}
 
 /**
  * G16-kontrakten (v3Gates: `komWinnerBreakawayPoints`): bjergpoint pr. rytter paa én

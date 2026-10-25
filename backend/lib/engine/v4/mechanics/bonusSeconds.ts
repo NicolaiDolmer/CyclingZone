@@ -51,6 +51,7 @@ import type {
 import { gaussian } from "../rng.ts";
 import { komPassageEvent, intermediateSprintEvent } from "../timeline.ts";
 import { BONUS_SECONDS_EXTRA_TUNING } from "../tuning.ts";
+import { komHunterSet } from "./komJersey6937.ts"; // #6937 B1
 import type { BonusSecondsTuning } from "../types.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -170,6 +171,8 @@ export type PassageContest = {
   // favoritgruppe) ruller over toppen bag dem der kaemper. Udeladt = alle i en lille
   // gruppe kaemper (#5914, bit-identisk).
   smallGroupRollOverRoles?: readonly string[];
+  // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne kaemper i enhver gruppe (komJersey6937.ts).
+  extraContenderIds?: ReadonlySet<string>;
 };
 
 /**
@@ -241,7 +244,8 @@ export function computePassageOrder(
     const contends = !contest
       || (smallGroup && !rollsOver)
       || contest.contenderRoles.includes(String(entrant?.role ?? ""))
-      || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id);
+      || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id)
+      || contest.extraContenderIds?.has(rider.rider_id) === true;
     scored.push({
       riderId: rider.rider_id,
       gap: group?.gap ?? Number.MAX_SAFE_INTEGER,
@@ -356,7 +360,7 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
         jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.jerseyLeaders?.points) ?? null,
         // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
         // topankomsten afgoeres af maalordenen og er uaendret.
-        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES } : {}),
+        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES, extraContenderIds: komHunterSet(ctx.jerseyLeaders, entrants) } : {}),
       },
     });
     const passage = buildPassage({

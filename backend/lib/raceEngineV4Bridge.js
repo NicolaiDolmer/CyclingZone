@@ -624,6 +624,8 @@ export function buildV4StageInput({
         : {}),
       // #2757 S1 (KUN s5_profiles_v3): pointtroejens foerer, saa hans hold kan sende en pointjaeger.
       ...(isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders?.points ? { points_leader_rider_id: String(jerseyLeaders.points) } : {}),
+      // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne, saa et AI-hold kan sende sin i udbrud.
+      ...(isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders?.komHunters?.length ? { kom_hunter_rider_ids: jerseyLeaders.komHunters.map(String) } : {}),
     },
   });
   // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe);
@@ -639,6 +641,8 @@ export function buildV4StageInput({
   // #5914: kun naar der ER en foerer — et input uden foerere er uaendret.
   if (jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom)) {
     input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
+    // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne kaemper om bjergtoppene undervejs.
+    if (isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders.komHunters?.length) input.jersey_leaders.kom_hunters = jerseyLeaders.komHunters.map(String);
   }
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
   if (isOrdersGcRulesRevision(rulesRevision)) {
