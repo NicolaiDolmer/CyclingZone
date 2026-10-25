@@ -281,6 +281,8 @@ function roleLabel(role: RiderRole): string {
       return "sprint-kaptajn";
     case "helper":
       return "hjaelper";
+    case "co_captain":
+      return "delt kaptajn";
     default:
       return role;
   }
@@ -570,6 +572,10 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     } else if (isOtherCaptain) {
       effort = "save";
       reason = `Spares: ${terrainLabel} er ikke denne kaptajn-rolles speciale — kraefter gemmes til en etape der passer bedre.`;
+    } else if (entrant.role === "co_captain") {
+      // #5981 (KUN s5_profiles_v3): delt kaptajn arbejder aldrig; han gemmer sig som kaptajnen.
+      effort = "normal";
+      reason = `Delt kaptajn: koerer sit eget klassement; hjaelperne koerer for ${leaderNoun} foerst.`;
     } else if (entrant.role === "helper" && stance === "chase") {
       effort = "protect";
       reason = `Arbejd eller angrib: arbejder ved ${leaderNoun}, som holdet koerer for paa ${terrainLabel}.`;

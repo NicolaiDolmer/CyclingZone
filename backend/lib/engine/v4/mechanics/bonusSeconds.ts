@@ -176,7 +176,7 @@ export type PassageContest = {
  * #6937 B2 (KUN s5_profiles_v3): kaptajnerne i en favoritgruppe spurter ikke om
  * bjergpoint undervejs (de koerer for dagen og klassementet, ikke for troejen).
  */
-export const KOM_FAVOURITE_ROLL_OVER_ROLES: readonly string[] = Object.freeze(["captain", "sprint_captain"]);
+export const KOM_FAVOURITE_ROLL_OVER_ROLES: readonly string[] = Object.freeze(["captain", "sprint_captain", "co_captain"]); // #5981
 
 /** #6937: dagens udbrud (samme definition som finale.ts's isEscapeGroup og groups.ts's escapeGroupOf). */
 function isEscapeGroupLike(group: { kind?: string; origin?: string }): boolean {

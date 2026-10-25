@@ -271,6 +271,9 @@ export const FLAT_LEADOUT_PROFILES = Object.freeze(new Set(["flat"]));
 
 export const VALID_RACE_ROLES = Object.freeze([
   "captain", "sprint_captain", "helper", "hunter", "free_role",
+  // #5981: delt kaptajn. Kun i loeb bundet til s5_profiles_v3+; API'et afviser den ellers
+  // (raceSelection.js / raceStageRolesApi.js). Gammel motor: som fri rolle, intet holdbidrag.
+  "co_captain",
 ]);
 // De TRE oprindelige effort-værdier (S1/S3). Uændret liste — den er stadig det
 // gyldige vokabular når `race_day_intention_enabled` er OFF, så et UI der er

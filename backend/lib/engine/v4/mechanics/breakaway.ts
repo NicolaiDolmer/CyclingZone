@@ -234,7 +234,7 @@ export function computeJoinScore(
 }
 
 /** Roller der er holdets leder (modtager arbejdet) og dermed kan "angribe" paa protect. */
-const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981: delt kaptajn som kaptajnen
 
 /**
  * #5580 (M1 punkt 3, ejer 23/9 valg 1c: `protect` = "arbejd eller angrib"):
@@ -855,7 +855,7 @@ export function letGoBalanceFor(
  * En leder trækker ikke jagten: kaptajnen og sprint-kaptajnen er dem holdet
  * jager FOR (samme rolle-skel som M16's WORKER_ROLES/protectedRoleOrder).
  */
-const CHASE_EXEMPT_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const CHASE_EXEMPT_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981
 
 function teamIdOf(entrant: Entrant | undefined): string | null {
   const raw = entrant?.team_id;
