@@ -14,6 +14,7 @@ import {
   isOfficialTimesV4OrLater,
   isS5ProfilesV1OrLater,
   isS5ProfilesV2OrLater,
+  isS5ProfilesV3OrLater,
   isOfficialTimesV5OrLater,
   surfaceRulesRevision,
   ordersGcGeneration,
@@ -247,6 +248,7 @@ test("#6084: orders_gc_v2 is a known revision and the current one for new races"
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
   assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2", "s5_profiles_v3"]);
   // #6818: nye loeb bindes til s5_profiles_v2; loeb bundet til v2/v3/v4/v5/S5 v1 beholder deres.
+  // #6938: s5_profiles_v3 er kendt men slukket (aldrig aktuel foer ejerens taend).
   assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v2");
 });
 
@@ -795,5 +797,20 @@ test("#6156: the v4 engine gives byte-identical StageOutput under s5_profiles_v2
     const v2 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" });
     // #6748: v2's udbrudsopfoelgning kan tilfoeje udfald i tidslinjen; alt andet er byte-identisk.
     assert.equal(JSON.stringify({ ...v2, timeline: null }), JSON.stringify({ ...v1, timeline: null }), name);
+  }
+});
+
+// ── #6938 (slukket): s5_profiles_v3 er kendt, arver hele s5_profiles_v2, og er ikke aktuel ──
+test("#6938: s5_profiles_v3 is known, not current, and inherits the whole s5_profiles_v2 package", () => {
+  const revision = "s5_profiles_v3";
+  assert.equal(isKnownRulesRevision(revision), true);
+  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision);
+  for (const helper of [ordersGcGeneration, sharedTimeModelGeneration, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater,
+    isOfficialTimesV3OrLater, isOfficialTimesV4OrLater, isOfficialTimesV5OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, preservesOfficialStageTimes, usesSharedGroupTime]) {
+    assert.equal(helper(revision), helper("s5_profiles_v2"), helper.name);
+  }
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isS5ProfilesV3OrLater), RACE_RULES_REVISIONS.map((r) => r === "s5_profiles_v3"));
+  for (const unknown of [null, undefined, "", "s5_profiles_v2", "s5_profiles_v3 ", 3]) {
+    assert.equal(isS5ProfilesV3OrLater(unknown), false);
   }
 });
