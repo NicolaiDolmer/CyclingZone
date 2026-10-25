@@ -46,6 +46,7 @@ import { isRiderInjured, raceSquadOf } from "./riderEligibility.js"; // #6740
 import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
+import { isTrainNowWholeDayEnabled, settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
@@ -258,6 +259,7 @@ export async function runTrainNow({
   // races it showed: a race that fell below the floor since then is asked about again.
   confirmedShortRaceIds = [],
   loadShortRaces = defaultLoadShortRaces,
+  isWholeDayEnabled = isTrainNowWholeDayEnabled, // #6461 B
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
@@ -338,6 +340,11 @@ export async function runTrainNow({
   const { settleNow, afterRace } = splitTrainNowRiders({
     riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
   });
+  // #6461 B (flag training_train_now_whole_day, seeded off): the whole known date per rider.
+  if (await isWholeDayEnabled(supabase, { isBetaTester })) {
+    return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay,
+      readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
+  }
 
   // 4) Settle the date's race days, final day excluded (I4), in order.
   const settledDays = [];

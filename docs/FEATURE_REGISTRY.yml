@@ -573,6 +573,17 @@ features:
     verified: 2026-10-14
     note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
 
+  - id: training-train-now-whole-day
+    area: training
+    title_en: Train now settles the whole day in one press
+    title_da: Træn nu afregner hele dagen i ét klik
+    state: building
+    epic: 6461
+    verified: 2026-10-25
+    note: PR #7191 (B fase 1). Stadie-flag training_train_now_whole_day seedes off af migrationen (apply efter merge); dormant med flag efter apply, tænding kun på ejer-go.
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+
   - id: training-groups
     area: training
     title_en: Training groups
