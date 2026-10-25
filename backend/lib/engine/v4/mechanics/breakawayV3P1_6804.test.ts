@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isStageRaceGcContext, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale } from "./breakawayV3_6804.ts";
 import { stageWinChaseForceV3 } from "./breakaway.ts";
+import { descentRegroup6486OnRoute } from "./descentRegroup6486.ts";
 import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
 import { simulateStageV4 } from "../index.ts";
 import type { Entrant, GcContext } from "../types.ts";
@@ -92,6 +93,7 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
   assert.ok(names.length > 0);
   for (const name of names) {
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
+    if (descentRegroup6486OnRoute(input.route)) continue; // #6486: v3 samler bjerg uden topankomst (descentRegroup6486.test.ts)
     for (const gc of [undefined, oneDay]) {
       const extra = gc ? { gc_context: gc } : {};
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
