@@ -14,6 +14,10 @@
 -- Applies af CI ved merge (.github/workflows/auto-migrate.yml). Ingen agent har
 -- koert SQL mod prod for denne fil.
 
+-- Lock safety (#6342, docs/MIGRATIONS.md): giv op hurtigt i stedet for at blokere
+-- spillernes laesninger; auto-migrate kan koeres igen.
+SET lock_timeout = '3s';
+
 -- ── 1) race_entries.race_role: + 'co_captain' ─────────────────────────────────
 ALTER TABLE public.race_entries
   DROP CONSTRAINT IF EXISTS race_entries_race_role_check;
@@ -22,8 +26,9 @@ ALTER TABLE public.race_entries
   ADD CONSTRAINT race_entries_race_role_check
     CHECK (race_role IN ('captain', 'sprint_captain', 'hunter', 'helper', 'free_role', 'co_captain'));
 
--- Hoejst én delt kaptajn pr. (loeb, hold), som de andre leder-roller.
-CREATE UNIQUE INDEX IF NOT EXISTS uq_race_entries_co_captain
+-- Hoejst én delt kaptajn pr. (loeb, hold), som de andre leder-roller. CONCURRENTLY
+-- (top-level, uden transaktion): blokerer ikke skrivninger til race_entries.
+CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_race_entries_co_captain
   ON public.race_entries(race_id, team_id) WHERE race_role = 'co_captain';
 
 COMMENT ON COLUMN public.race_entries.race_role IS
