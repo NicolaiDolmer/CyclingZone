@@ -279,6 +279,7 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
+import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
@@ -6513,6 +6514,9 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #6462: toget er kun standard paa flade etaper under loebets revision
       // (gemt, ellers den motoren binder ved foerste claim). Fladen spejler det.
       sprint_train_flat_only: sprintTrainFlatOnlyForRace(race),
+      // #7003: etapeplanen langs ruten (flag + femtrins-indsats + s5_profiles_v3). Kun en boolean.
+      stage_plan_enabled: intentionEnabled && stagePlanRevisionOk(race)
+        && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true }),
     });
   } catch (err) {
     captureException(err);
@@ -6527,7 +6531,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     const stageNumber = Number(req.params.stageNumber);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed")
+      .select("id, status, stages, stages_completed, engine_rules_revision")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6535,9 +6539,16 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
     const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
+    // #7003: planen tages kun imod naar flag, femtrins-indsats og revision tillader den.
+    const stagePlan = orderHasStagePlan(req.body) && intentionEnabled && stagePlanRevisionOk(race)
+      && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
+      && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
+      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
+      : null;
     const result = validateTeamOrder({
       order: req.body || {},
       intentionEnabled,
+      stagePlan,
       raceCompleted: ctx.race_completed,
       stageNumber,
       stageCount: ctx.stage_count,
