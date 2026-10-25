@@ -232,6 +232,10 @@
       "title": "Nyt akademi-talent er ankommet",
       "message": "Nye kandidater venter i dit akademi - signér eller afvis dem."
     },
+    "academyPullReminder": {
+      "title": "Ugens akademi-kuld udløber i nat",
+      "message": "Du har ikke hentet ugens kandidater endnu. Hent dem inden midnat, ellers er kuldet væk."
+    },
     "seasonStarted": {
       "title": "Sæson {number} er begyndt",
       "message": "En ny sæson er begyndt. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson.",

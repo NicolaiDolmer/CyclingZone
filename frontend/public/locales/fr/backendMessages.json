@@ -232,6 +232,10 @@
       "title": "Un nouveau talent est arrivé à l'académie",
       "message": "De nouveaux candidats attendent dans ton académie - signe-les ou refuse-les."
     },
+    "academyPullReminder": {
+      "title": "Ta semaine d'académie se termine ce soir",
+      "message": "Tu n'as pas encore récupéré les candidats de la semaine. Récupère-les avant minuit, sinon le lot disparaît."
+    },
     "seasonStarted": {
       "title": "La saison {number} a commencé",
       "message": "Une nouvelle saison a commencé. Regarde ton tableau de bord pour les objectifs de ta direction et ton effectif pour la saison à venir.",

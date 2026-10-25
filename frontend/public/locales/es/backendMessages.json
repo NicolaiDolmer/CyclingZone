@@ -232,6 +232,10 @@
       "title": "Ha llegado talento nuevo a la academia",
       "message": "Hay candidatos nuevos esperando en tu academia - ficha o rechaza."
     },
+    "academyPullReminder": {
+      "title": "Tu semana de academia termina esta noche",
+      "message": "Aún no has recogido a los candidatos de esta semana. Recógelos antes de medianoche o el lote se pierde."
+    },
     "seasonStarted": {
       "title": "Ha empezado la temporada {number}",
       "message": "Ha empezado una temporada nueva. Mira tu panel para ver los objetivos de tu directiva y tu plantilla para la temporada que viene.",

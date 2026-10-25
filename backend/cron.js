@@ -81,6 +81,7 @@ import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
+import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.js";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
@@ -1123,7 +1124,17 @@ async function runSundayIntakeTickCron() {
     // når flaget flippes til "on" i cutover-drejebogen, bliver denne cron en no-op
     // og holdene henter i stedet selv via POST /api/academy/intake/pull. Fail-safe
     // OFF (seedet), så uændret adfærd indtil flippet (punkt 7).
-    if (await isAcademyIntakePullEnabled(supabase)) return;
+    if (await isAcademyIntakePullEnabled(supabase)) {
+      // #6666: AI-hold henter selv + påmindelse til menneskehold (flag-gated, fail-safe OFF).
+      const w = await runAcademyWeeklyPullSweep({ supabase, now: new Date() });
+      if (w.ran && (w.aiPulled > 0 || w.reminded > 0)) {
+        console.log(`🎓 Ugens akademi: ${w.aiPulled} AI-hold hentede (${w.aiRemaining} tilbage), ${w.reminded} påmindelser (${w.weekSunday})`);
+      }
+      if (w.ran && w.errors.length) {
+        sentryCapture(new Error(`academy weekly pull partial failures: ${w.errors.join("; ")}`), { tags: { cron: "academy weekly pull" } });
+      }
+      return;
+    }
     const r = await runSundayIntakeTick({ supabase, now: new Date() });
     if (r.ran && r.candidates > 0) {
       console.log(`🎓 Søndags-drip: ${r.candidates} akademi-kandidater til ${r.teams} hold (${r.tickDate})`);
