@@ -71,6 +71,7 @@ import {
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
+import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
@@ -698,10 +699,13 @@ export async function runTeamTrainingDay({
   // (recovery-konstanterne nedenfor); D1+D2 — lookuppet, "race"-intensiteten og
   // udviklings-tick'et — hænger på `raceDayDevelopmentOn`. Læses parallelt: to
   // uafhængige app_config-opslag uden indbyrdes rækkefølge.
-  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On] = await Promise.all([
+  // #3564: kurve B (development_curve_b + private params fra miljoeet). null =
+  // dagens model, bit-identisk; ogsaa naar flaget er on men params mangler.
+  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB] = await Promise.all([
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_engine_enabled') : isRaceDayEngineEnabled(supabase),
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_development_enabled') : isRaceDayDevelopmentEnabled(supabase),
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
+    loadDevelopmentCurveB({ supabase }),
   ]);
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
@@ -1154,6 +1158,8 @@ export async function runTeamTrainingDay({
         tickSeedKey,
         budgetDivisor,
         hardDailyCap,
+        // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
+        curveB,
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
