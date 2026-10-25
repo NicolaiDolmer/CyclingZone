@@ -26,7 +26,8 @@
 //
 // Koer:
 //   node backend/scripts/dev/effortLevels6641.mjs --out=balance-internals/6641 [--label=baseline]
-//     [--sim-seeds=2] [--gen-seeds=1] [--max-races=12] [--revision=s5_profiles_v2]
+//     [--sim-seeds=2] [--gen-seeds=1] [--max-races=12] [--revision=s5_profiles_v2] [--models=v2]
+//     [--days-only | --no-days]   (dags-maalingen: hver vej-etape alene, friske ben)
 // Kandidat-traethed (raceRoles' env-knapper) koeres med RACE_INTENTION_FATIGUE_* i env.
 //
 // Refs #6641 #6940 #4914
@@ -203,6 +204,59 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
   return { perStage, finalFatigue, nStages: sorted.length, nDates: Math.max(...dateIdx) - Math.min(...dateIdx) + 1 };
 }
 
+/**
+ * Ejer 25/10 "tid paa DAGEN": hver vej-etape koeres ALENE med alle tvillinger paa
+ * samme friske ben (start-traetheden), saa forskellen mod normal-tvillingen er
+ * trinnets virkning paa netop den dag, uden ophobet traethed fra loebet.
+ * Returnerer [{ cls, level, effort, dt }] (sekunder mod normal, < 0 = hurtigere).
+ */
+function runDays({ v4, field, race, stages, seasonId, simSeed, revision, templates }) {
+  const raceId = `${race.id}:${seasonId}`;
+  const profiles = stages.map((p) => ({ ...p, race_id: raceId }));
+  const twinField = withTwins(field, templates);
+  const data = { ...twinField, race: { ...twinField.race, id: raceId, stages: profiles.length }, profiles };
+  const sorted = sortedStages(data);
+  const out = [];
+  for (const profile of sorted) {
+    if (TT.has(profile.profile_type)) continue;
+    const entrants = splitEntrants(data).entrants;
+    for (const e of entrants) {
+      const m = /^twin6641-(\w+)-(\w+)$/.exec(e.rider_id);
+      if (m) e.effort = m[2];
+      e.fatigue = EFFORT_6641_CONFIG.startFatigue;
+    }
+    const res = v4.simulateStage({
+      entrants, stageProfile: profile, seedString: `${data.race.id}:${profile.stage_number}:e6641day-${simSeed}`, stageNumber: profile.stage_number,
+      teamOrderRows: data.orders, isStageRace: sorted.length > 1, raceStages: sorted, squad: data.race.squad ?? null, rulesRevision: revision, gcStandings: null,
+    });
+    const fin = new Map((res.v4Output?.results ?? []).filter((r) => r.status === "finished").map((r) => [r.rider_id, Number(r.time_seconds)]));
+    for (const level of Object.keys(LEVELS)) {
+      const nt = fin.get(twinId(level, "normal"));
+      for (const effort of EFFORTS) {
+        const t = fin.get(twinId(level, effort));
+        out.push({ cls: stageClass(profile.profile_type), level, effort, dt: t != null && nt != null ? t - nt : null, out: t == null });
+      }
+    }
+  }
+  return out;
+}
+
+/** Dags-maalingen pr. trin over alle etaper, plus pr. terraen-klasse (ren). */
+export function summarizeDays(dayRows) {
+  const out = [];
+  for (const effort of EFFORTS) {
+    const xs = dayRows.filter((r) => r.effort === effort);
+    const dt = xs.map((x) => x.dt).filter((v) => v != null);
+    const byCls = {};
+    for (const c of ["flat", "hilly", "mountain"]) {
+      const d = xs.filter((x) => x.cls === c).map((x) => x.dt).filter((v) => v != null);
+      if (d.length) byCls[c] = r1(mean(d));
+    }
+    out.push({ effort, n: dt.length, dayDt: r1(mean(dt)), byCls, outShare: r1(xs.length ? 100 * xs.filter((x) => x.out).length / xs.length : 0) });
+  }
+  return out;
+}
+
 /** Samler ét loebs koersel til raekker pr. (niveau, trin) (ren). */
 export function summarizeRun(run) {
   const rows = [];
@@ -219,10 +273,28 @@ export function summarizeRun(run) {
       let out = false;
       let lastGc = null;
       let lastNormalGc = null;
+      // Ejer 25/10 ("som i virkeligheden"): tid paa DAGEN (foerste vej-etape, alle
+      // tvillinger med samme ben), traethed dagen efter (indgangs-traethed mod
+      // normal fra etape 2) og samlet tid over hele loebet mod normal.
+      let freshDt = null;
+      const roadDt = [];
+      const fatigueVsNormal = [];
+      let totalDt = 0;
+      let totalComplete = true;
       for (const s of run.perStage) {
         const t = s.twins[id];
         const n = s.twins[normalId];
-        if (!t) continue;
+        if (!t) { totalComplete = false; continue; }
+        if (t.time != null && n?.time != null) {
+          totalDt += t.time - n.time;
+          if (s.cls !== "tt") {
+            roadDt.push(t.time - n.time);
+            if (freshDt == null) freshDt = t.time - n.time;
+          }
+        } else {
+          totalComplete = false;
+        }
+        if (s !== run.perStage[0] && Number.isFinite(t.entering) && Number.isFinite(n?.entering)) fatigueVsNormal.push(t.entering - n.entering);
         if (t.out) out = true;
         if (Number.isFinite(t.entering)) {
           entering.push(t.entering);
@@ -244,10 +316,79 @@ export function summarizeRun(run) {
         byClass: Object.fromEntries(Object.entries(byClass).map(([k, v]) => [k, { n: v.dt.length, dtMean: mean(v.dt), placesGainedMean: mean(v.drank) }])),
         meanEntering: mean(entering), maxEntering, stagesAt90, firstAt100, breaks, out,
         finalFatigue: run.finalFatigue.get(id), gcRank: lastGc, gcRankVsNormal: lastGc != null && lastNormalGc != null ? lastNormalGc - lastGc : null,
+        freshDt, roadDtMean: mean(roadDt), fatigueVsNormal: mean(fatigueVsNormal),
+        finalFatigueVsNormal: Number.isFinite(run.finalFatigue.get(id)) && Number.isFinite(run.finalFatigue.get(normalId)) ? run.finalFatigue.get(id) - run.finalFatigue.get(normalId) : null,
+        totalDt: totalComplete ? totalDt : null,
       });
     }
   }
   return rows;
+}
+
+/** De tre "som i virkeligheden"-maal for en gruppe raekker (ren). */
+export function realismMetrics(xs) {
+  const pick = (k) => xs.map((x) => x[k]).filter((v) => v != null && Number.isFinite(v));
+  return {
+    dayDtFresh: r1(mean(pick("freshDt"))),
+    dayDtRoad: r1(mean(pick("roadDtMean"))),
+    fatigueNextDayVsNormal: r1(mean(pick("fatigueVsNormal"))),
+    finalFatigueVsNormal: r1(mean(pick("finalFatigueVsNormal"))),
+    totalDtVsNormal: r1(mean(pick("totalDt"))),
+  };
+}
+
+/**
+ * Ejer 25/10: ét tal pr. (model, trin) over alle loeb, niveauer og frø (ren).
+ * Fortegn: tid < 0 = hurtigere end normal-tvillingen; traethed > 0 = mere traet.
+ */
+export function realismSummary(records) {
+  const groups = new Map();
+  for (const r of records) {
+    const key = `${r.model}|${r.effort}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
+  const out = [];
+  for (const [key, xs] of groups) {
+    const [model, effort] = key.split("|");
+    out.push({
+      model, effort, runs: xs.length, ...realismMetrics(xs),
+      shareHit100: r1(100 * xs.filter((x) => x.firstAt100 != null).length / xs.length),
+      outShare: r1(100 * xs.filter((x) => x.out).length / xs.length),
+    });
+  }
+  return out.sort((a, b) => a.model.localeCompare(b.model) || EFFORTS.indexOf(a.effort) - EFFORTS.indexOf(b.effort));
+}
+
+/**
+ * Ejer 25/10, de fire retninger "som i virkeligheden" (ren, til tests og rapport):
+ *  1. all_out vinder tid paa dagen (friske ben) og er mere traet bagefter.
+ *  2. save taber lidt tid paa dagen og er friskere bagefter.
+ *  3. normal har den bedste samlede tid over et helt etapeloeb.
+ *  4. intet trin alene rammer traethedsloftet (100 %).
+ */
+export function realismChecks(summary, model = "v2") {
+  const by = Object.fromEntries(summary.filter((s) => s.model === model).map((s) => [s.effort, s]));
+  const n = by.normal;
+  if (!n) return null;
+  const others = EFFORTS.filter((e) => e !== "normal" && by[e]);
+  const dayOf = (row) => row?.dayDt ?? row?.dayDtFresh ?? null;
+  return {
+    allOutWinsDay: (dayOf(by.all_out) ?? 0) < 0,
+    allOutCostsFatigue: (by.all_out?.fatigueNextDayVsNormal ?? 0) > 0,
+    // "lidt": save taber tid, men mindre end grupetto (der giver slip helt).
+    saveLosesDayLittle: (dayOf(by.save) ?? 0) > 0 && (dayOf(by.save) ?? 0) < (dayOf(by.grupetto) ?? Infinity),
+    saveFresherAfter: (by.save?.fatigueNextDayVsNormal ?? 0) < 0,
+    normalBestTotal: others.every((e) => by[e].totalDtVsNormal != null && by[e].totalDtVsNormal > 0),
+    noLevelHits100: EFFORTS.every((e) => !by[e] || by[e].shareHit100 === 0),
+  };
+}
+
+/** Fletter dags-maalingen (runDays) ind i realism-raekkerne som `dayDt` (ren). */
+export function withDays(summary, daySummary) {
+  if (!daySummary) return summary;
+  const by = new Map(daySummary.map((d) => [d.effort, d]));
+  return summary.map((s) => ({ ...s, dayDt: by.get(s.effort)?.dayDt ?? null, dayByCls: by.get(s.effort)?.byCls ?? null }));
 }
 
 /** Aggregat pr. (model, loebsklasse, niveau, trin) (ren). */
@@ -278,6 +419,7 @@ export function aggregate(records) {
       outShare: r1(100 * xs.filter((x) => x.out).length / xs.length),
       finalFatigue: r1(mean(xs.map((x) => x.finalFatigue).filter((v) => v != null))),
       gcPlacesVsNormal: r1(mean(xs.map((x) => x.gcRankVsNormal).filter((v) => v != null))),
+      ...realismMetrics(xs),
     });
   }
   return out.sort((a, b) => a.model.localeCompare(b.model) || a.raceClass.localeCompare(b.raceClass) || a.level.localeCompare(b.level) || EFFORTS.indexOf(a.effort) - EFFORTS.indexOf(b.effort));
@@ -291,7 +433,7 @@ export function fiveMountainRace(allRaces) {
   return { seasonId: "s5-dryrun-syn", race: { id: "syn-5mtn", name: "syn", race_type: "stage", stages: 5 }, stages, grandTour: false };
 }
 
-export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 12, revision = "s5_profiles_v2", models = MODELS, classes = null, fatigueRevision = null } = {}) {
+export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 12, revision = "s5_profiles_v2", models = MODELS, classes = null, fatigueRevision = null, days = true } = {}) {
   const v4 = await loadRaceEngineV4();
   const field = loadBenchField();
   const templates = pickTemplates(field.abilities);
@@ -308,9 +450,11 @@ export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 1
   const races = (syn ? [{ ...syn, cls: "5mtn" }, ...picked.map((r) => ({ ...r, cls: raceClass(r.stages) }))] : picked.map((r) => ({ ...r, cls: raceClass(r.stages) })))
     .filter((r) => !classes || classes.includes(r.cls));
   const records = [];
+  const dayRows = [];
   const raceMeta = [];
   for (const r of races) {
     raceMeta.push({ cls: r.cls, stages: r.stages.length, grandTour: r.grandTour, profiles: r.stages.map((s) => s.profile_type) });
+    if (days) for (let s = 1; s <= simSeeds; s++) dayRows.push(...runDays({ v4, field, race: r.race, stages: r.stages, seasonId: r.seasonId, simSeed: s, revision, templates }));
     for (const model of models) {
       for (let s = 1; s <= simSeeds; s++) {
         const run = runRace({ v4, field, race: r.race, stages: r.stages, seasonId: r.seasonId, simSeed: s, revision, model, templates, fatigueRevision });
@@ -329,6 +473,8 @@ export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 1
     },
     races: raceMeta,
     aggregate: aggregate(records),
+    days: days ? summarizeDays(dayRows) : null,
+    realism: withDays(realismSummary(records), days ? summarizeDays(dayRows) : null),
     records,
   };
 }
@@ -336,6 +482,16 @@ export async function runEffortLevels({ genSeeds = 1, simSeeds = 2, maxRaces = 1
 /** Kort markdown-tabel (privat). */
 export function renderMarkdown(res, label) {
   const lines = [`# #6641 indsatstrin: ${label}`, "", `revision ${res.config.revision} · ${res.races.length} loeb · ${res.config.simSeeds} seeds · start-traethed ${res.config.startFatigue}`, ""];
+  lines.push("## Som i virkeligheden (ejer 25/10): alle loeb, niveauer og froe", "", "tid i s mod normal-tvillingen (< 0 = hurtigere), traethed i point mod normal (> 0 = mere traet)", "");
+  lines.push("| model | trin | tid paa dagen (etape alene, friske ben) | dagen fladt/kuperet/bjerg | tid 1. vej-etape i loebet | tid pr. vej-etape | traethed dagen efter | slut-traethed | samlet tid hele loebet | ramte 100 % | ude % |");
+  lines.push("|---|---|---|---|---|---|---|---|---|---|---|");
+  for (const s of res.realism ?? []) lines.push(`| ${s.model} | ${s.effort} | ${s.dayDt ?? ""} | ${s.dayByCls ? [s.dayByCls.flat, s.dayByCls.hilly, s.dayByCls.mountain].map((v) => v ?? "-").join(" / ") : ""} | ${s.dayDtFresh ?? ""} | ${s.dayDtRoad ?? ""} | ${s.fatigueNextDayVsNormal ?? ""} | ${s.finalFatigueVsNormal ?? ""} | ${s.totalDtVsNormal ?? ""} | ${s.shareHit100} | ${s.outShare} |`);
+  for (const m of new Set((res.realism ?? []).map((s) => s.model))) lines.push("", `${m}: ${JSON.stringify(realismChecks(res.realism, m))}`);
+  if (res.days) {
+    lines.push("", "## Dagen alene (hver vej-etape for sig, friske ben)", "", "| trin | etaper | tid mod normal | fladt | kuperet | bjerg | ude % |", "|---|---|---|---|---|---|---|");
+    for (const d of res.days) lines.push(`| ${d.effort} | ${d.n} | ${d.dayDt ?? ""} | ${d.byCls.flat ?? ""} | ${d.byCls.hilly ?? ""} | ${d.byCls.mountain ?? ""} | ${d.outShare} |`);
+  }
+  lines.push("", "## Detalje", "");
   lines.push("| model | loeb | niveau | trin | s/etape fladt | s/etape kuperet | s/etape bjerg | pladser/etape bjerg | GC-pladser | snit-traethed ind | max | etaper >=90 | ramte 100 % | udbrud/loeb | ude % | slut-traethed |");
   lines.push("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
   for (const a of res.aggregate) {
@@ -353,7 +509,8 @@ if (isMain) {
     simSeeds: Number(arg("sim-seeds", "2")),
     maxRaces: Number(arg("max-races", "12")),
     revision: arg("revision", "s5_profiles_v2"),
-    models: arg("models", MODELS.join(",")).split(","),
+    models: process.argv.includes("--days-only") ? [] : arg("models", MODELS.join(",")).split(","),
+    days: !process.argv.includes("--no-days"),
     classes: arg("classes", null)?.split(",") ?? null,
     fatigueRevision: arg("fatigue-revision", null),
   });
