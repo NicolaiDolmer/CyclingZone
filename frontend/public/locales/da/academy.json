@@ -51,14 +51,14 @@
   "intakePull": {
     "title": "Ugens kandidater",
     "description": "Dit akademi har et nyt kuld kandidater. Du ser alder, nationalitet, type og nuværende evner. Potentialet lærer du gennem træning, når de har skrevet under.",
-    "deadlineNote": "Tilgængelig indtil søndag kl. 23:59",
+    "deadlineNote": "Tilgængelig indtil lørdag kl. 23:59",
     "pullBtn": "Hent ugens kandidater",
     "pulling": "Henter...",
     "provisionalValue": "Provisorisk værdi",
     "wageOneSeason": "Løn (1 sæson)",
     "valuationNote": "Fuld værdisætning søndag",
     "abilitiesNow": "Evner nu",
-    "emptyAfterPull": "Ingen kandidater tilbage at tage stilling til. Næste uges kuld åbner mandag.",
+    "emptyAfterPull": "Ingen kandidater tilbage at tage stilling til. Næste uges kuld åbner søndag.",
     "errorFailed": "Kunne ikke hente ugens kandidater. Prøv igen."
   },
   "potentialLearned": "Læres gennem træning",

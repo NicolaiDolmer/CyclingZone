@@ -96,3 +96,26 @@ export async function loadTrainingDaysOnTeam(
   }));
   return out;
 }
+
+/**
+ * #7195: kun ryttere hentet via Optag 2.0 (academy_intake.source = 'pull',
+ * signeret til dette hold) har den gradvise prognose. Ryttere holdet havde
+ * før, viser den normale scoutrapport. Fejl i opslaget kastes (fail closed),
+ * så en netværksfejl aldrig giver en ny rytter den fulde rapport.
+ */
+export async function loadPullSignedRiderIds(
+  supabase: Db,
+  { teamId, riderIds }: { teamId: string; riderIds: (string | null | undefined)[] | null | undefined },
+): Promise<Set<string>> {
+  const ids = [...new Set((riderIds ?? []).filter((id): id is string => Boolean(id)))];
+  if (!ids.length) return new Set();
+  const { data, error } = await supabase
+    .from("academy_intake")
+    .select("rider_id")
+    .eq("team_id", teamId)
+    .eq("source", "pull")
+    .eq("status", "signed")
+    .in("rider_id", ids);
+  if (error) throw new Error(`academy-knowledge pull origin: ${error.message}`);
+  return new Set((data ?? []).map((row: { rider_id: string }) => row.rider_id));
+}

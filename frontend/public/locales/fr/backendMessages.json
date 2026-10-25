@@ -647,6 +647,10 @@
       "message": "{count, plural, one {{senderName} t'a envoyé un message} other {# nouveaux messages de {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Un autre manager t'a envoyé un message} other {# nouveaux messages d'un autre manager}}"
     },
+    "riderIll": {
+      "title": "Coureur malade",
+      "message": "Le médecin indique que {rider} est malade après plusieurs jours de fatigue extrême et est absent jusqu'au {until}."
+    },
     "riderInjured": {
       "title": "Coureur blessé",
       "message": "{rider} a chuté à {race} et est blessé jusqu'au {until}.",

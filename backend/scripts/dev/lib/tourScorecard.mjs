@@ -23,6 +23,7 @@ import { isOrdersGcRulesRevision, isS5ProfilesV2OrLater } from "../../../lib/rac
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
 import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
 import { nextFormV2, recoveryV2, stageLoadV2 } from "../../../lib/conditionModelV2.js";
+import { assessIllness } from "../../../lib/conditionIllness.js"; // #6938 sygdom i --track-fatigue
 // Loebsfilmens egen afledning (samme kode som spillerne ser): "hvor tabte
 // rytterne tid" og om tidslinjen overhovedet baerer v4's gruppe-gab.
 import { buildOwnTimeLoss, hasGroupGaps } from "../../../../frontend/src/lib/stageSplitTimes.ts";
@@ -629,6 +630,8 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
   const passGc = isOrdersGcRulesRevision(revision) && stages.length > 1;
   let inRace = entrants;
   let gcAfter = [];
+  // #6938 (Codex #7178): traethedshistorik pr. rytter (nyeste foerst) til sygdommen.
+  const fatigueHistory = new Map();
   stages.forEach((profile, index) => {
     const gcBefore = index === 0 ? [] : rankByCumTimeAsc(inRace, cumTime, posSum);
     const res = simulate({ v4, data, stages, profile, entrants: inRace, revision, gcStandings: passGc ? gcBefore : null, seedTag });
@@ -644,7 +647,18 @@ export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedS
     inRace = inRace.filter((e) => rankedIds.has(e.rider_id));
     // #6938 (opt-in): traethed og form mellem etaperne efter #6984's model, saa
     // U1 (ikke-start) kan maales. Udeladt = feltet koerer friskt hele loebet (som foer).
-    if (trackFatigue) inRace = inRace.map((e) => afterStageCondition(e, profile, revision));
+    if (trackFatigue) {
+      inRace = inRace.map((e) => afterStageCondition(e, profile, revision));
+      // #6938 (Codex #7178): samme sygdomsvurdering som aftenens afregning
+      // (dailyTrainingEngine), seedet pr. (rytter, seed, etape). En syg rytter starter
+      // ikke naeste etape og er ude af klassementet, saa G17 taeller ham som udgaaet.
+      // Medicinsk afdeling kendes ikke i testporten (bonus 0 = konservativt).
+      inRace = inRace.filter((e) => {
+        const history = [e.fatigue, ...(fatigueHistory.get(e.rider_id) ?? [])];
+        fatigueHistory.set(e.rider_id, history);
+        return !assessIllness({ riderId: e.rider_id, dateStr: `${seedTag}:${profile.stage_number}`, fatigues: history }).ill;
+      });
+    }
     gcAfter = rankByCumTimeAsc(inRace, cumTime, posSum);
     onStage?.({ profile, index, res, gcBefore, gcAfter, entrants: stageEntrants });
   });
