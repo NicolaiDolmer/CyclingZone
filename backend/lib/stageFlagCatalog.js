@@ -114,6 +114,8 @@ export const STAGE_FLAGS = Object.freeze([
   // #6210: maks +1 pr. evne pr. rytter pr. dato (dailyTrainingEngine.js). Fail-safe
   // OFF; tændes med Udvikling 2.0. Ejer-only flip.
   { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
+  // #3564: kurve B (D-058, developmentCurveBFlag.ts). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
+  { key: "development_curve_b", area: "training", label: "Udvikling 2.0 — kurve B (niveau og potentiale styrer, ikke alder)" },
   // #6853/#5764 (spec 6110 §8): paraply-flaget for potentiale-visningen i
   // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
   // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
