@@ -54,7 +54,7 @@ export async function fetchTeamOrders({ raceId }) {
     const body = res.data || {};
     throw new Error(body.error || `team_orders_fetch_failed_${res.status}`);
   }
-  const body = res.data ?? {};
+  const body = /** @type {Record<string, any>} */ (res.data ?? {}); // #7003: checkJs kender ikke svarets form
   return {
     stages: body.stages ?? [],
     stageCount: body.stage_count ?? (body.stages?.length ?? 0),
