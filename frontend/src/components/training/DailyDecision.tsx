@@ -20,7 +20,7 @@ export default function DailyDecision({
   compact = false,
 }: {
   rows: DecisionRow[];
-  // Skriver rytterens dag via den eksisterende hurtig-skift-sti. Returnerer naar gemt.
+  // Skriver rytterens dag via den eksisterende plan-sti. Returnerer false ved fejl.
   onUse: (row: DecisionRow) => Promise<unknown> | unknown;
   compact?: boolean;
 }) {
@@ -30,7 +30,9 @@ export default function DailyDecision({
   async function use(list: DecisionRow[]) {
     setBusy((prev) => new Set([...prev, ...list.map((r) => r.riderId)]));
     try {
-      for (const row of list) await onUse(row);
+      // Stop ved foerste fejl: handlePlanChange viser fejlen paa den rytter, og et
+      // senere vellykket kald maa ikke rydde den.
+      for (const row of list) if ((await onUse(row)) === false) break;
     } finally {
       setBusy((prev) => {
         const next = new Set(prev);

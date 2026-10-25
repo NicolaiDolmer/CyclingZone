@@ -29,7 +29,7 @@ const SQUAD = FIRST.map((firstname, i) => ({
 const FATIGUE = [86, 78, 82, 40, 30, 20];
 const RISK = [0.2, 0.12, 0, 0, 0, 0];
 
-function trainingMe(decisionCard: boolean) {
+function trainingMe(decisionCard: boolean, ownWeekPlanFor: string[] = []) {
   const plans: Record<string, { focus: string; intensity: string }> = {};
   const condition: Record<string, { form: number; fatigue: number; injured_until: null; risk: number }> = {};
   for (const [i, rider] of SQUAD.entries()) {
@@ -52,7 +52,7 @@ function trainingMe(decisionCard: boolean) {
     trainability: {},
     smartDefaultFocus: {},
     weekPlan: null,
-    riderWeekPlans: {},
+    riderWeekPlans: Object.fromEntries(ownWeekPlanFor.map((id) => [id, { mon: { intensity: "easy" } }])),
     todayRun: null,
   };
 }
@@ -68,9 +68,9 @@ function preflight(route: Route) {
 
 type PlanBody = { dayType: string; session: string | null };
 
-async function openTraining(page: Page, { decisionCard, width = 1440, height = 900 }: { decisionCard: boolean; width?: number; height?: number }) {
+async function openTraining(page: Page, { decisionCard, width = 1440, height = 900, ownWeekPlanFor = [] }: { decisionCard: boolean; width?: number; height?: number; ownWeekPlanFor?: string[] }) {
   const posts: Array<PlanBody & { riderId: string }> = [];
-  const me = trainingMe(decisionCard);
+  const me = trainingMe(decisionCard, ownWeekPlanFor);
   await page.setViewportSize({ width, height });
   await stabilizePage(page);
   await installNetworkMocks(page);
@@ -130,6 +130,12 @@ test("Use all skriver for alle viste forslag og kortet skrumper til en linje", a
   expect(posts.map((p) => p.riderId).sort()).toEqual([SQUAD[0].id, SQUAD[1].id].sort());
   await expect(page.getByTestId("daily-decision-none")).toBeVisible();
   await expect(rows(page)).toHaveCount(0);
+});
+
+test("rytter med egen ugeplan faar intet forslag (hans egen dag vinder over holdets)", async ({ page }) => {
+  await openTraining(page, { decisionCard: true, ownWeekPlanFor: [SQUAD[0].id] });
+  await expect(rows(page)).toHaveCount(1);
+  await expect(rows(page).nth(0)).toContainText("Tom Van Aerde");
 });
 
 test("flag OFF: den gamle visning, intet kort", async ({ page }) => {

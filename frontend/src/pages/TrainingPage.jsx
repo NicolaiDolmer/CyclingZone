@@ -1229,14 +1229,19 @@ export default function TrainingPage() {
     return rest > 0 ? `${names.join(", ")} ${t("overview.more", { n: rest })}` : names.join(", ");
   };
   // #6110 S26: forslagene afledes af samme condition/plan/loeb som resten af siden.
-  const decisionCardOn = training.decisionCard === true;
+  // Efter "Train now"/afregning er dagen laast (todayRun): kortet staar ikke
+  // og tilbyder en aendring der ville ramme i morgen, ikke i dag.
+  const decisionCardOn = training.decisionCard === true && !runGate.trainedToday;
   const decisionRows = decisionCardOn
     ? buildDailyDecision({
       riderIds: riders.map((r) => r.id),
       condition: (id) => condition[id],
       isRacing: racingTodayFor,
       isInjured: (id) => injuryTimeLeft(condition[id], today).count > 0,
+      // En rytter med egen ugeplan eller i en traeningsgruppe styres dér: en
+      // dag skrevet i holdets plan ville tabe til hans egen dag, saa ingen forslag.
       isEasyDay: (id) => {
+        if (assistantOwnPlanIds.has(id) || assistantGroupFollowerIds.has(id)) return true;
         const plan = planFor(id);
         const type = plan?.focus ? dayTypeForProgram(plan) : null;
         return type === "rest" || type === "recovery";
@@ -2455,7 +2460,7 @@ export default function TrainingPage() {
         <DailyDecision
           rows={decisionRows}
           compact={phoneLayout}
-          onUse={(row) => handleDayQuickChange(row.riderId, row.dayType, null)}
+          onUse={(row) => handlePlanChange(row.riderId, row.dayType, null)}
         />
       )}
       {/* #5485 (aendring 1): overblikket øverst. Et tryk filtrerer tabellen. */}
