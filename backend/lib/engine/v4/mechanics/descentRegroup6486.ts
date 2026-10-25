@@ -217,7 +217,9 @@ export function descentRegroupTempo6486<T extends { dtSeconds: number }>(
       // Ankomst = gap + dt, saa hullet til gruppen foran krymper med `close`. Codex-review:
       // en lang kaede maa aldrig summere til en ugyldig (for kort) tid, saa en gruppe koerer
       // hoejst `maxSpeedGainShare` hurtigere end sin egen fart (gruppen bag maaler mod den).
-      const target = Math.max(reference.dt - close, own.dtSeconds * (1 - t.maxSpeedGainShare));
+      // Loftet er paa FARTEN: v' <= v * (1 + andel) <=> dt' >= dt / (1 + andel). (dt * (1 - andel)
+      // ville give mere end andelen i fart; Codex #7175.)
+      const target = Math.max(reference.dt - close, own.dtSeconds / (1 + t.maxSpeedGainShare));
       if (close > 0 && own.dtSeconds > target) {
         out ??= new Map(tempoByGroup);
         out.set(group.id, { ...own, dtSeconds: target });

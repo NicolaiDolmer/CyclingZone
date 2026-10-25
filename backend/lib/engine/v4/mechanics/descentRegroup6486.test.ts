@@ -123,7 +123,10 @@ test("#6486: a long chain of groups never sums to an invalid traversal; every gr
   let prevArrival = -Infinity;
   for (const x of groups) {
     const dt = out.get(x.id)?.dtSeconds ?? NaN;
-    assert.ok(Number.isFinite(dt) && dt >= 900 * (1 - T.maxSpeedGainShare) - 1e-9, `${x.id}: ${dt}`);
+    assert.ok(Number.isFinite(dt) && dt > 0, `${x.id}: ${dt}`);
+    // Loftet er paa farten (Codex #7175): fart-forholdet egen tid / ny tid maa aldrig
+    // overstige 1 + maxSpeedGainShare.
+    assert.ok(900 / dt <= 1 + T.maxSpeedGainShare + 1e-9, `${x.id}: speed ratio ${900 / dt}`);
     const arrival = x.gap_seconds + dt;
     assert.ok(arrival >= prevArrival - 1e-9, `${x.id} never passes the group ahead`);
     prevArrival = arrival;
