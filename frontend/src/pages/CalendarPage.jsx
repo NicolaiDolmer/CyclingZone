@@ -403,7 +403,7 @@ export default function CalendarPage() {
           to stay legible; audit #2849 flagged this grid as missing an overflow-wrap). */}
       {view === "table" ? (
         <CalendarTable
-          entries={data.entries} todayIso={todayISO} division={activeDivision} poolId={activePool}
+          entries={/** @type {any} */ (data).entries} todayIso={todayISO} division={activeDivision} poolId={activePool}
           mineOnly={effectiveMineOnly} showMineToggle={!divisionPending && effectiveTab !== "mine"} onMineOnlyChange={setMineOnly}
           divisionPending={divisionPending} onShowAll={effectiveTab !== "all" ? () => setTab("all") : null}
         />
