@@ -49,8 +49,18 @@
 // bjergetape koster som fladt. Segment-terraener der ikke staar i tabellen
 // beholder den faelles vaerdi, saa bjerg-armen er uroert.
 
+//
+// #6641 (KUN s5_profiles_v3, slukket): de fem trin har egne priser under v3, og
+// climbGapEffortFactor nedenfor lader indsatsen virke paa hullet paa stigningen.
+// Ordenen grupetto < save < normal < protect < all_out og all_out-tabellen pr.
+// segment-terraen er uaendrede. Alle aeldre revisioner beholder
+// EFFORT_COST_EXTRA_TUNING bit-identisk. Retningerne er laast i effortCost.test.ts,
+// segmentLoop.effortCost.test.ts og backend/scripts/dev/effortLevels6641.test.mjs;
+// maalinger og begrundelser er private (hard rule 17, balance-internals/6641/).
+
 import type { EffortLevel, SegmentKind } from "../types.ts";
-import { EFFORT_COST_EXTRA_TUNING } from "../tuning.ts";
+import { EFFORT_COST_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 /**
  * Tuning-formen EFFORT_COST_EXTRA_TUNING (tuning.ts) implementerer. Holdt her
@@ -70,6 +80,55 @@ export type EffortCostTuning = {
 };
 
 export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
+
+// #6641: den kalibrerede all_out-vaerdi op ad en stigning. Flade og rullende
+// segmenter afledes som foer (#4914): samme andel af gruppens tempo som
+// stigningen giver, regnet af terraenernes baseDemand.
+const CALIBRATED_ALL_OUT_6641 = 1.11;
+function calibratedAllOutMatchingClimb(kind: SegmentKind): number {
+  const demand = RACE_V4_TUNING.terrain.baseDemand;
+  return CALIBRATED_ALL_OUT_6641 * (demand.climb / demand[kind]);
+}
+
+/** #6641: de fem trins pris under s5_profiles_v3 (deep-frosset). Se filhovedet. */
+export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze({
+  demandMultiplierGrupetto: 0.5,
+  demandMultiplierSave: 0.9,
+  demandMultiplierNormal: 1.0,
+  demandMultiplierProtect: 1.05,
+  demandMultiplierAllOut: CALIBRATED_ALL_OUT_6641,
+  demandMultiplierAllOutBySegmentKind: Object.freeze({
+    flat: calibratedAllOutMatchingClimb("flat"),
+    rolling: calibratedAllOutMatchingClimb("rolling"),
+  }) as Readonly<Partial<Record<SegmentKind, number>>>,
+});
+
+/** #6641: revisionen der baerer kalibreringen (s5_profiles_v3 og senere, slukket). */
+export function isEffortCalibration6641Revision(revision: unknown): boolean {
+  return isS5ProfilesV3OrLater(revision);
+}
+
+/**
+ * #6641 (ejer 25/10, "som i virkeligheden", KUN s5_profiles_v3, slukket): GEVINSTEN
+ * paa den afgoerende stigning. Under tidsmodellen fra official_times-linjen afgoeres
+ * hullet paa en topankomst af rytterens eget underskud (evne + reserve,
+ * timeModel.climbSplitGapSeconds), ikke af split-scoren, saa stignings-lettelsen fra
+ * #5580 (climbScoreRelief x rest-reserve) naaede aldrig hullet: en hoejere indsats
+ * kunne kun koste. Her ganges den SAMME faktor paa underskuddet bag hullet: all_out
+ * graver dybere og taber mindre tid paa dagen (betalt med reserven undervejs og
+ * traetheden bagefter), save giver slip og taber lidt. Normal er praecis 1.
+ * Kaldes med hook-kontekstens s5ProfilesV3-flag (sat af segmentLoop via
+ * isS5ProfilesV3OrLater). Alle aeldre revisioner: 1 (bit-identisk).
+ */
+export function climbGapEffortFactor(s5ProfilesV3: boolean, effortScoreFactor: number): number {
+  if (s5ProfilesV3 !== true || !Number.isFinite(effortScoreFactor)) return 1;
+  return Math.max(0, effortScoreFactor);
+}
+
+/** #6641: prisen for et loeb bundet til `revision`. Aeldre revisioner: uaendret tuning. */
+export function effortCostTuningFor(revision: unknown): EffortCostTuning {
+  return isEffortCalibration6641Revision(revision) ? EFFORT_COST_TUNING_6641 : EFFORT_COST_EXTRA_TUNING;
+}
 
 /**
  * all_out-multiplikatoren for et givet segment-terraen (#4914, #5580).
