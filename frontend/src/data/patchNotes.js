@@ -73,6 +73,23 @@ export const PATCHES = [
         "refs": [
           6853
         ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Club",
+        "en": {
+          "title": "The medical department is open",
+          "body": "You can now build a medical department in Club and hire a team doctor. It helps your riders recover, gives fewer and shorter injuries, and your team doctor gives a short read on each rider when you pick riders for a race. The better the department, the bigger the effect."
+        },
+        "da": {
+          "title": "Den medicinske afdeling er åben",
+          "body": "Du kan nu bygge en medicinsk afdeling i Klub og ansætte en holdlæge. Den hjælper dine ryttere med at restituere, giver færre og kortere skader, og holdlægen giver en kort vurdering af hver rytter, når du udtager ryttere til et løb. Jo bedre afdeling, jo større effekt."
+        },
+        "refs": [
+          6984
+        ]
       }
     ]
   },
