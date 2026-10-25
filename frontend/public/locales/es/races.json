@@ -1455,7 +1455,9 @@
       "title": "Abandonos",
       "crash": "Caída",
       "mechanical": "Problema mecánico",
-      "injury": "No tomó la salida"
+      "injury": "No tomó la salida",
+      "illness": "Enfermo, no tomó la salida",
+      "withdrawal": "Abandonó"
     },
     "why": {
       "title": "El panorama general",
