@@ -26,7 +26,6 @@ export const PATCHES = [
         "category": "new",
         "audience": "player",
         "rollout": "switched_on",
-        "flag": "condition_model_v2",
         "topic": "Training",
         "en": {
           "title": "Form and fatigue 2.0",
