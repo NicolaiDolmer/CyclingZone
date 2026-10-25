@@ -166,7 +166,22 @@ export type PassageContest = {
   openContestMaxGroupSize: number;
   // Foereren af den konkurrence passagen giver point til (kaemper altid).
   jerseyLeaderId?: string | null;
+  // #6937 B2 (KUN s5_profiles_v3): roller der i en lille gruppe UDEN udbrydere (en
+  // favoritgruppe) ruller over toppen bag dem der kaemper. Udeladt = alle i en lille
+  // gruppe kaemper (#5914, bit-identisk).
+  smallGroupRollOverRoles?: readonly string[];
 };
+
+/**
+ * #6937 B2 (KUN s5_profiles_v3): kaptajnerne i en favoritgruppe spurter ikke om
+ * bjergpoint undervejs (de koerer for dagen og klassementet, ikke for troejen).
+ */
+export const KOM_FAVOURITE_ROLL_OVER_ROLES: readonly string[] = Object.freeze(["captain", "sprint_captain"]);
+
+/** #6937: dagens udbrud (samme definition som finale.ts's isEscapeGroup og groups.ts's escapeGroupOf). */
+function isEscapeGroupLike(group: { kind?: string; origin?: string }): boolean {
+  return group.origin === "breakaway" && (group.kind === "breakaway" || group.kind === "solo");
+}
 
 /**
  * Rytter -> den gruppe han FAKTISK sidder i lige nu.
@@ -178,10 +193,11 @@ export type PassageContest = {
  * 5 minutter foran kunne tabe en indlagt spurt til feltet. Sandheden midt i
  * loebet er `state.groups[].rider_ids`.
  */
-export function liveGroupByRider(state: EngineState): Map<string, { gap: number; size: number }> {
-  const byRider = new Map<string, { gap: number; size: number }>();
+export function liveGroupByRider(state: EngineState): Map<string, { gap: number; size: number; escape: boolean }> {
+  const byRider = new Map<string, { gap: number; size: number; escape: boolean }>();
   for (const g of state.groups) {
-    for (const riderId of g.rider_ids) byRider.set(riderId, { gap: g.gap_seconds, size: g.rider_ids.length });
+    const escape = isEscapeGroupLike(g);
+    for (const riderId of g.rider_ids) byRider.set(riderId, { gap: g.gap_seconds, size: g.rider_ids.length, escape });
   }
   return byRider;
 }
@@ -216,8 +232,14 @@ export function computePassageOrder(
     // Kaemper han om passagen? En lille gruppe koerer samlet; i feltet kun
     // pointjaegerne og troejefoereren. Resten ruller igennem BAG kaemperne i
     // samme gruppe (de passerer stadig stregen, saa restpladser uddeles).
+    // #6937 B2 (KUN s5_profiles_v3): i en lille favoritgruppe (ikke dagens udbrud)
+    // ruller kaptajnerne over toppen; de kaemper kun som troejefoerer.
+    const smallGroup = (group?.size ?? Number.MAX_SAFE_INTEGER) <= (contest?.openContestMaxGroupSize ?? 0);
+    const rollsOver = smallGroup
+      && group?.escape !== true
+      && (contest?.smallGroupRollOverRoles ?? []).includes(String(entrant?.role ?? ""));
     const contends = !contest
-      || (group?.size ?? Number.MAX_SAFE_INTEGER) <= contest.openContestMaxGroupSize
+      || (smallGroup && !rollsOver)
       || contest.contenderRoles.includes(String(entrant?.role ?? ""))
       || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id);
     scored.push({
@@ -332,6 +354,9 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
         contenderRoles: isKom ? extra.komContenderRoles : extra.intermediateSprintContenderRoles,
         openContestMaxGroupSize: extra.passageOpenContestMaxGroupSize,
         jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.jerseyLeaders?.points) ?? null,
+        // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
+        // topankomsten afgoeres af maalordenen og er uaendret.
+        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES } : {}),
       },
     });
     const passage = buildPassage({

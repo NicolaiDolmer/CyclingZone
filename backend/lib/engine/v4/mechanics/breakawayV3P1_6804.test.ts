@@ -82,9 +82,11 @@ test("#6804 P1.1: finaleWeightScale skalerer kun etapeinteressen; udeladt = bit-
 
 // #6814 (v3): udbruddets jagt-punkter (gap_update med jagtafstand) er den eneste tilladte forskel;
 // de er kun tidslinje-events, saa resten af outputtet er stadig byte-identisk med v2.
-const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update") } });
+// #6937 B2 (v3, alle loeb): favoritterne kaemper ikke om bjergpoint undervejs, saa ogsaa bjergpassagerne
+// maa afvige (tider og resultater er ens).
+const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, passages: undefined, passage_totals: undefined, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update" && e.type !== "kom_passage") } });
 
-test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement (bortset fra #6814's gap_update)", () => {
+test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement (bortset fra #6814's gap_update og #6937's bjergpassager)", () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
   assert.ok(names.length > 0);
@@ -95,6 +97,7 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
       const v3 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v3" });
       assert.equal(JSON.stringify(withoutGapUpdates(v3)), JSON.stringify(withoutGapUpdates(v2)), `${name} ${gc?.status ?? "uden gc"}`);
+      assert.equal(JSON.stringify(v3.results), JSON.stringify(v2.results), `${name}: resultaterne er ens`);
       // Kun udbruddets jagt-punkter er nye; alle v2's gap_update findes uaendret eller er erstattet af et jagt-punkt paa samme km.
       const pursuitKeys = new Set(v3.timeline.events.filter((e) => e.type === "gap_update" && typeof e.params?.chase_group_id === "string").map((e) => `${e.params.group_id}@${e.km}`));
       const v3Plain = new Set(v3.timeline.events.filter((e) => e.type === "gap_update" && typeof e.params?.chase_group_id !== "string").map((e) => JSON.stringify(e)));
