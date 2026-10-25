@@ -786,6 +786,32 @@ features:
     decision: ejer-beslutning
     decide_by: 2026-11-08
 
+  - id: development-score-b-engine
+    area: training
+    title_en: Development Score B in the engine
+    title_da: Udviklingsscore B i motoren
+    state: dormant
+    flag: development_score_v2
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    note: Ejer, med Udvikling 2.0.
+    verified: 2026-10-25
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+
+  - id: race-day-catchup
+    area: training
+    title_en: Catch-up via racing
+    title_da: Catch-up via løb
+    state: dormant
+    flag: race_day_catchup_enabled
+    ssot: docs/TRAINING_RULES.md
+    epic: 6950
+    note: Ejer, med Udvikling 2.0.
+    verified: 2026-10-25
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+
   - id: promotion-pending
     area: academy
     title_en: Awaiting promotion instead of auto-sale when the next squad is full

@@ -743,7 +743,8 @@ Tallene står aldrig i repoet (hard rule 17).
 
 - **`development_score_v2`** (`developmentScoreWiring.js`): dagens Udviklingsscore ER udviklingen (S22).
   Scorens udviklings-led erstatter rytter-leddet på både trænings- og løbsdage; form, træthed, kondition
-  og alder indgår ikke (S29). Træneren og faciliteten tæller kun gennem scoren på træningsdage og aldrig
+  og alder indgår ikke (S29). Intensiteten tæller kun gennem scoren; passet afgør stadig, hvilke evner der
+  vokser. Træneren og faciliteten tæller kun gennem scoren på træningsdage og aldrig
   på løbsdage (S13). Løbsdagens score bygges som en hård dag over etapens evner plus løbets tillæg;
   afgørelses- og niveau-bonus (S14) og udgået rytter (S16) venter på data fra løbsmotoren. Træningsdagens tal gemmes uden bidrag (S10);
   løbsdagens tal skrives først med score-skrivningen for løbsdage.

@@ -15,6 +15,7 @@ import {
 } from "./raceCatchUpWiring.js";
 import { isStageFlagKey } from "./stageFlagCatalog.js";
 import { applyDailyTick } from "./dailyTraining.js";
+import { TRAINING_FOCUSES } from "./training.js";
 import { raceDayProgram } from "./raceDayYield.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { SCORE_PARAMS, CATCHUP_PARAMS } from "./developmentScoreWiring.fixtures.js";
@@ -193,6 +194,18 @@ test("#6950 applyDailyTick S22: devMult er rytter-leddet; kondition og traener p
   }
   assert.equal(a.trainingScore.score, 60, "det viste tal er scorens");
   assert.equal(a.trainingScore.contributions, null, "S10: ingen bidrag");
+});
+
+test("#6950 applyDailyTick: under scoren taeller intensiteten kun gennem scoren (samme score = samme fokus-udvikling)", () => {
+  const day = { score: 60, devMult: 0.2, kind: "training" };
+  const hard = applyDailyTick({ ...TICK_BASE, developmentScore: day });
+  const easy = applyDailyTick({ ...TICK_BASE, program: { ...TICK_BASE.program, intensity: "easy" }, developmentScore: day });
+  const focus = TRAINING_FOCUSES.vo2max;
+  assert.ok(focus.length > 0);
+  for (const k of focus) assert.ok(Math.abs((hard.progress[k] ?? 0) - (easy.progress[k] ?? 0)) < 1e-12, k);
+  const todayHard = applyDailyTick(TICK_BASE);
+  const todayEasy = applyDailyTick({ ...TICK_BASE, program: { ...TICK_BASE.program, intensity: "easy" } });
+  assert.notDeepEqual(todayHard.progress, todayEasy.progress, "forudsaetning: i dag giver intensiteten forskel");
 });
 
 test("#6950 applyDailyTick: catch-up-tillaegget ganges kun paa de evner der staar i kortet", () => {

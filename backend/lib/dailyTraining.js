@@ -304,15 +304,19 @@ export function applyDailyTick({
   // scoren = dagens kvalitetsled.
   const scoreB = trainingScore && Number.isFinite(developmentScore?.devMult) && developmentScore.devMult >= 0
     ? developmentScore : null;
+  // Intensiteten staar ogsaa i scoren; abilityMult beholder kun fordelingen over evnerne.
+  const scoreBGrowth = scoreB ? Number(trainingCfg.focusGrowthMult?.[program?.intensity]) : NaN;
+  const scoreBScale = Number.isFinite(scoreBGrowth) && scoreBGrowth > 0 ? 1 / scoreBGrowth : 1;
 
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
-    const rawDelta = dailyAbilityDelta({
+    const tickDelta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, noise, potentiale,
       staff: scoreB ? null : staff, facilityTier: scoreB ? null : facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
       budgetDivisor, riderQualityMult: scoreB ? scoreB.devMult : riderQualityMult, curveB,
     });
+    const rawDelta = scoreB ? tickDelta * scoreBScale : tickDelta;
     // #6950: catch-up-tillaegget ganges paa delta'en, uden for scorekoblingen (del 2 §5).
     const delta = abilityYieldMult?.[ability] > 0 ? rawDelta * abilityYieldMult[ability] : rawDelta;
     if (delta <= 0) continue;
