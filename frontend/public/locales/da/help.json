@@ -1344,7 +1344,7 @@
       },
       "agingV2": {
         "title": "Alder og tilbagegang",
-        "text": "Ryttere holder deres niveau til og med 30 år. Fra sæsonen efter falder de fysiske evner og brosten lidt ved hvert sæsonskifte, og faldet bliver større, jo længere de er forbi 30. Teknik, taktik og de andre mentale evner falder aldrig. Løb bremser faldet: hver løbsdag i den sæson, der lige er slut, tæller med, og en hård træningsdag tæller halvt. En rytter med en hel sæson af løb bag sig beholder det meste af sine ben. Ingen vokser ved selve sæsonskiftet; dine ryttere udvikler sig gennem den daglige træning."
+        "text": "Ryttere holder deres niveau til og med 30 år. Fra sæsonen efter falder de fysiske evner og brosten lidt ved hvert sæsonskifte, og faldet bliver større, jo længere de er forbi 30. Teknik, taktik og de andre mentale evner falder aldrig. Løb bremser faldet: hver løbsdag i den sæson, der lige er slut, tæller med, og hårde træningsdage hjælper også. En rytter med en hel sæson af løb bag sig beholder det meste af sine ben. Ingen vokser ved selve sæsonskiftet; dine ryttere udvikler sig gennem den daglige træning."
       },
       "aiRidersV2": {
         "title": "AI-ryttere og frie ryttere",
@@ -1453,7 +1453,7 @@
       },
       "longTermGrowth": {
         "title": "Udvikling på lang sigt",
-        "text": "To ting afgør hvor en evne ender: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Hvor højt kommer fra rytterens type: hver type har sit eget loft for hver evne. Hvor hurtigt kommer fra hans potentiale: et større talent udvikler sig hurtigere mod samme loft, men potentialet hæver ikke selve loftet. Det er derfor en rytter ikke længere ankommer til sit loft bare ved at eksistere længe nok. Loftet er hvad han kunne være blevet; din træning afgør hvor tæt han kommer, og på hvilke evner han kommer tæt på. Ryttere topper stadig omkring 27-28 år og falder derefter, og træning kan aldrig skubbe nogen forbi hans loft."
+        "text": "To ting afgør hvor en evne ender: hvor højt den kan nå, og hvor hurtigt den kommer derhen. Hvor højt kommer fra rytterens type: hver type har sit eget loft for hver evne. Hvor hurtigt kommer fra hans potentiale: et større talent udvikler sig hurtigere mod samme loft, men potentialet hæver ikke selve loftet. Det er derfor en rytter ikke længere ankommer til sit loft bare ved at eksistere længe nok. Loftet er hvad han kunne være blevet; din træning afgør hvor tæt han kommer, og på hvilke evner han kommer tæt på. Ryttere falder med alderen (se Alder og tilbagegang under Ryttere), og træning kan aldrig skubbe nogen forbi hans loft."
       },
       "readingReport": {
         "title": "Sådan læser du træningsrapporten",

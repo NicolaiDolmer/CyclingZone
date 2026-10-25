@@ -1344,7 +1344,7 @@
       },
       "agingV2": {
         "title": "Edad y declive",
-        "text": "Los ciclistas mantienen su nivel hasta los 30. A partir de la temporada siguiente, sus capacidades físicas y el pavé bajan un poco en cada cambio de temporada, y la bajada crece cuanto más pasan de los 30. La técnica, la táctica y las demás capacidades mentales nunca bajan. Correr frena el declive: cada día de carrera de la temporada que acaba de terminar cuenta, y un día de entrenamiento duro cuenta la mitad. Un ciclista con una temporada completa de carreras conserva casi todas sus piernas. Nadie crece en el propio cambio de temporada; tus ciclistas se desarrollan con su entrenamiento diario."
+        "text": "Los ciclistas mantienen su nivel hasta los 30. A partir de la temporada siguiente, sus capacidades físicas y el pavé bajan un poco en cada cambio de temporada, y la bajada crece cuanto más pasan de los 30. La técnica, la táctica y las demás capacidades mentales nunca bajan. Correr frena el declive: cada día de carrera de la temporada que acaba de terminar cuenta, y los días de entrenamiento duro también ayudan. Un ciclista con una temporada completa de carreras conserva casi todas sus piernas. Nadie crece en el propio cambio de temporada; tus ciclistas se desarrollan con su entrenamiento diario."
       },
       "aiRidersV2": {
         "title": "Ciclistas de la IA y agentes libres",
@@ -1453,7 +1453,7 @@
       },
       "longTermGrowth": {
         "title": "Crecimiento a largo plazo",
-        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores siguen alcanzando su mejor momento hacia los 27-28 años y declinan después, y el entrenamiento nunca puede llevar a nadie por encima de su techo."
+        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores declinan con la edad (mira Edad y declive en Corredores), y el entrenamiento nunca puede llevar a nadie por encima de su techo."
       },
       "readingReport": {
         "title": "Leer el informe de entrenamiento",

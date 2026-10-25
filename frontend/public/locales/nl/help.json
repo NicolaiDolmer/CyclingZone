@@ -1344,7 +1344,7 @@
       },
       "agingV2": {
         "title": "Leeftijd en achteruitgang",
-        "text": "Renners houden hun niveau tot en met 30. Vanaf het seizoen daarna gaan hun fysieke vaardigheden en kasseien bij elke seizoenswissel een beetje achteruit, en dat wordt meer naarmate ze verder voorbij de 30 zijn. Techniek, tactiek en de andere mentale vaardigheden gaan nooit achteruit. Koersen remt de achteruitgang af: elke koersdag in het net afgelopen seizoen telt mee, en een zware trainingsdag telt half. Een renner met een volledig koersseizoen achter de rug houdt het meeste van zijn benen. Niemand groeit bij de seizoenswissel zelf; je renners ontwikkelen zich via hun dagelijkse training."
+        "text": "Renners houden hun niveau tot en met 30. Vanaf het seizoen daarna gaan hun fysieke vaardigheden en kasseien bij elke seizoenswissel een beetje achteruit, en dat wordt meer naarmate ze verder voorbij de 30 zijn. Techniek, tactiek en de andere mentale vaardigheden gaan nooit achteruit. Koersen remt de achteruitgang af: elke koersdag in het net afgelopen seizoen telt mee, en zware trainingsdagen helpen ook. Een renner met een volledig koersseizoen achter de rug houdt het meeste van zijn benen. Niemand groeit bij de seizoenswissel zelf; je renners ontwikkelen zich via hun dagelijkse training."
       },
       "aiRidersV2": {
         "title": "AI-renners en vrije renners",
@@ -1453,7 +1453,7 @@
       },
       "longTermGrowth": {
         "title": "Groei op lange termijn",
-        "text": "Twee aparte dingen bepalen waar een vaardigheid uitkomt: hoe hoog die kan komen, en hoe snel hij daar komt. Hoe hoog komt van het type van de renner: elk type heeft zijn eigen plafond per vaardigheid. Hoe snel komt van zijn potentieel: een groter talent ontwikkelt zich sneller richting hetzelfde plafond, maar potentieel verhoogt het plafond zelf niet. Daarom bereikt een renner zijn plafond niet meer alleen doordat hij lang genoeg bestaat. Het plafond is wat hij had kunnen worden; jouw training bepaalt hoe dichtbij hij komt, en bij welke vaardigheden. Renners pieken nog steeds rond 27-28 jaar en gaan daarna achteruit, en training kan niemand ooit boven zijn plafond uittillen."
+        "text": "Twee aparte dingen bepalen waar een vaardigheid uitkomt: hoe hoog die kan komen, en hoe snel hij daar komt. Hoe hoog komt van het type van de renner: elk type heeft zijn eigen plafond per vaardigheid. Hoe snel komt van zijn potentieel: een groter talent ontwikkelt zich sneller richting hetzelfde plafond, maar potentieel verhoogt het plafond zelf niet. Daarom bereikt een renner zijn plafond niet meer alleen doordat hij lang genoeg bestaat. Het plafond is wat hij had kunnen worden; jouw training bepaalt hoe dichtbij hij komt, en bij welke vaardigheden. Renners gaan met de leeftijd achteruit (zie Leeftijd en achteruitgang bij Renners), en training kan niemand ooit boven zijn plafond uittillen."
       },
       "readingReport": {
         "title": "Het trainingsrapport lezen",

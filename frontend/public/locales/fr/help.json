@@ -1344,7 +1344,7 @@
       },
       "agingV2": {
         "title": "Âge et déclin",
-        "text": "Les coureurs gardent leur niveau jusqu'à 30 ans. À partir de la saison suivante, leurs capacités physiques et les pavés baissent un peu à chaque changement de saison, et la baisse augmente à mesure qu'ils s'éloignent de 30 ans. La technique, la tactique et les autres capacités mentales ne baissent jamais. Courir freine le déclin : chaque jour de course de la saison qui vient de se terminer compte, et un jour d'entraînement dur compte pour moitié. Un coureur avec une saison complète de courses derrière lui garde l'essentiel de ses jambes. Personne ne progresse au changement de saison lui-même ; tes coureurs progressent grâce à l'entraînement quotidien."
+        "text": "Les coureurs gardent leur niveau jusqu'à 30 ans. À partir de la saison suivante, leurs capacités physiques et les pavés baissent un peu à chaque changement de saison, et la baisse augmente à mesure qu'ils s'éloignent de 30 ans. La technique, la tactique et les autres capacités mentales ne baissent jamais. Courir freine le déclin : chaque jour de course de la saison qui vient de se terminer compte, et les jours d'entraînement dur aident aussi. Un coureur avec une saison complète de courses derrière lui garde l'essentiel de ses jambes. Personne ne progresse au changement de saison lui-même ; tes coureurs progressent grâce à l'entraînement quotidien."
       },
       "aiRidersV2": {
         "title": "Coureurs de l'IA et agents libres",
@@ -1453,7 +1453,7 @@
       },
       "longTermGrowth": {
         "title": "Progression à long terme",
-        "text": "Deux choses distinctes décident où une capacité finit : jusqu'où elle peut monter, et à quelle vitesse elle y arrive. Jusqu'où vient du type du coureur : chaque type a son propre plafond pour chaque capacité. La vitesse vient de son potentiel : un plus grand talent progresse plus vite vers le même plafond, mais le potentiel ne relève pas le plafond. C'est pourquoi un coureur n'atteint plus son plafond simplement en existant assez longtemps. Le plafond est ce qu'il aurait pu devenir ; votre entraînement décide à quel point il s'en approche, et sur quelles capacités. Les coureurs atteignent toujours leur sommet vers 27-28 ans et déclinent ensuite, et l'entraînement ne peut jamais pousser quelqu'un au-delà de son plafond."
+        "text": "Deux choses distinctes décident où une capacité finit : jusqu'où elle peut monter, et à quelle vitesse elle y arrive. Jusqu'où vient du type du coureur : chaque type a son propre plafond pour chaque capacité. La vitesse vient de son potentiel : un plus grand talent progresse plus vite vers le même plafond, mais le potentiel ne relève pas le plafond. C'est pourquoi un coureur n'atteint plus son plafond simplement en existant assez longtemps. Le plafond est ce qu'il aurait pu devenir ; votre entraînement décide à quel point il s'en approche, et sur quelles capacités. Les coureurs déclinent avec l'âge (voir Âge et déclin dans Coureurs), et l'entraînement ne peut jamais pousser quelqu'un au-delà de son plafond."
       },
       "readingReport": {
         "title": "Lire le rapport d'entraînement",

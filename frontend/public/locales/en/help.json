@@ -1344,7 +1344,7 @@
       },
       "agingV2": {
         "title": "Age and decline",
-        "text": "Riders hold their level until 30. From the season after that, their physical abilities and cobbles drop a little at each season change, and the drop grows the further past 30 they are. Technique, tactics and the other mental abilities never drop. Racing slows the decline: every race day in the season that just ended counts, and a hard training day counts half. A rider with a full season of racing behind him keeps most of his legs. Nobody grows at the season change itself; your riders develop through their daily training."
+        "text": "Riders hold their level until 30. From the season after that, their physical abilities and cobbles drop a little at each season change, and the drop grows the further past 30 they are. Technique, tactics and the other mental abilities never drop. Racing slows the decline: every race day in the season that just ended counts, and hard training days help too. A rider with a full season of racing behind him keeps most of his legs. Nobody grows at the season change itself; your riders develop through their daily training."
       },
       "aiRidersV2": {
         "title": "AI riders and free agents",
@@ -1453,7 +1453,7 @@
       },
       "longTermGrowth": {
         "title": "Long-term growth",
-        "text": "Two separate things decide where an ability ends up: how high it can reach, and how fast it gets there. How high comes from the rider's type: each type has its own ceiling for each ability. How fast comes from his potential: a bigger talent develops faster toward the same ceiling, but potential does not raise the ceiling itself. This is why a rider no longer arrives at his ceiling just by existing long enough. The ceiling is what he could have become; your training decides how close he gets, and which abilities he gets close on. Riders still peak around age 27-28 and decline after that, and training can never push anyone past his ceiling."
+        "text": "Two separate things decide where an ability ends up: how high it can reach, and how fast it gets there. How high comes from the rider's type: each type has its own ceiling for each ability. How fast comes from his potential: a bigger talent develops faster toward the same ceiling, but potential does not raise the ceiling itself. This is why a rider no longer arrives at his ceiling just by existing long enough. The ceiling is what he could have become; your training decides how close he gets, and which abilities he gets close on. Riders decline with age (see Age and decline under Riders), and training can never push anyone past his ceiling."
       },
       "readingReport": {
         "title": "Reading the training report",
