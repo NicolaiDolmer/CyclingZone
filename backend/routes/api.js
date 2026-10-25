@@ -83,6 +83,7 @@ import {
   resolveTransitionSourceSeason,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
+import { runValuesAfterTransition } from "../lib/sundayValueSweep.js"; // #5842
 import {
   assessFinalTrainingDateSettlement,
   assessSeasonEndBlockers,
@@ -14697,6 +14698,12 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
     });
 
     res.json(result);
+    // #5842 (ejer 25/10): værdierne opdateres straks efter et fuldført skifte, ikke
+    // ved næste hele time. Samme claim pr. søndag = højst én gang. Efter svaret, så
+    // skiftets HTTP-kald ikke forlænges; timetikket er sikkerhedsnettet.
+    if (!dryRun && result?.ok) {
+      void runValuesAfterTransition({ supabase, now: new Date(), log: console.log });
+    }
   } catch (e) {
     // Expected guard refusal: no transition or force audit was performed.
     if (e?.code === 'training_settlement_blocked') {
