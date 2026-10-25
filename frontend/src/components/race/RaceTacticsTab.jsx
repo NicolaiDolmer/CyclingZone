@@ -677,7 +677,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const orderByRider = new Map((order.riders ?? []).map((r) => [r.rider_id, r]));
   // #7003: etapeplanen langs ruten (serverens svar: flag + femtrins-indsats + s5_profiles_v3).
   const stagePlanOn = showOrders && orders?.stagePlanEnabled === true;
-  const leadoutCount = (order.riders ?? []).filter((r) => r.leadout).length;
+  const leadoutCount = ((stagePlanOn ? withStagePlanFields(order) : order).riders ?? []).filter((r) => r.leadout).length; // #7003: planens tog
 
   // Én rytters intention på den åbne etape. Låste etaper har ingen draft-celle
   // (buildDraftMatrix dækker kun de redigerbare) — de læses direkte af de
