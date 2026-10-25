@@ -17,6 +17,8 @@
 // udviklingen). Scorens loebsdag bygger allerede S13 og S14 ind (ingen traener og
 // facilitet, tillaeg, afgoerelse, niveau). Catch-up-koblingen giver da ingen
 // ekstra multiplikator, ellers ville loebets ekstra blive talt to gange.
+// Scorens tillaeg holdes ogsaa paa etapens profil-evner: off-fokus-evnerne faar
+// basis-dagens devMult (developmentTickArgs: `offFocusDevMult`).
 //
 // ═══ GULV ════════════════════════════════════════════════════════════════════
 // Koblingen taendes kun sammen med maks +1 pr. evne pr. dato (#7075), af samme

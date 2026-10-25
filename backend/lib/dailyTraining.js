@@ -268,7 +268,7 @@ export function applyDailyTick({
   // koblingen med gamma = 0. En gate man ikke kan koere er ikke en gate.
   scoreCfg = TRAINING_SCORE_CONFIG,
   curveB = null, // #3564: sendes uændret videre til dailyAbilityDelta
-  // #6950: Udviklingsscore B ({ score, devMult, kind }, developmentScoreWiring.js) og
+  // #6950: Udviklingsscore B ({ score, devMult, kind, offFocusDevMult? }, developmentScoreWiring.js) og
   // catch-up via loeb ({ evne: multiplikator }, raceCatchUpWiring.js). Udeladt = bit-identisk.
   developmentScore = null, abilityYieldMult = null,
 }) {
@@ -305,18 +305,23 @@ export function applyDailyTick({
   const scoreB = trainingScore && Number.isFinite(developmentScore?.devMult) && developmentScore.devMult >= 0
     ? developmentScore : null;
   // Intensiteten staar ogsaa i scoren; abilityMult beholder kun fordelingen over evnerne.
+  // Kun fokus-evner baerer intensitetens multiplikator (off-fokus har sin faste), saa kun de normaliseres.
   const scoreBGrowth = scoreB ? Number(trainingCfg.focusGrowthMult?.[program?.intensity]) : NaN;
   const scoreBScale = Number.isFinite(scoreBGrowth) && scoreBGrowth > 0 ? 1 / scoreBGrowth : 1;
+  const scoreBFocus = scoreB ? (program?.focusAbilities ?? TRAINING_FOCUSES[program?.focus] ?? []) : null;
+  // Loebsdag: loebets tillaeg kun i etapens profil-evner; off-fokus faar basis (offFocusDevMult).
+  const scoreBOffFocusMult = Number.isFinite(scoreB?.offFocusDevMult) && scoreB.offFocusDevMult >= 0 ? scoreB.offFocusDevMult : scoreB?.devMult;
 
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
+    const scoreBInFocus = scoreBFocus?.includes(ability) ?? false;
     const tickDelta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, noise, potentiale,
       staff: scoreB ? null : staff, facilityTier: scoreB ? null : facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
-      budgetDivisor, riderQualityMult: scoreB ? scoreB.devMult : riderQualityMult, curveB,
+      budgetDivisor, riderQualityMult: scoreB ? (scoreBInFocus ? scoreB.devMult : scoreBOffFocusMult) : riderQualityMult, curveB,
     });
-    const rawDelta = scoreB ? tickDelta * scoreBScale : tickDelta;
+    const rawDelta = scoreBInFocus ? tickDelta * scoreBScale : tickDelta;
     // #6950: catch-up-tillaegget ganges paa delta'en, uden for scorekoblingen (del 2 §5).
     const delta = abilityYieldMult?.[ability] > 0 ? rawDelta * abilityYieldMult[ability] : rawDelta;
     if (delta <= 0) continue;

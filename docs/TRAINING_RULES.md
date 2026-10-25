@@ -750,6 +750,7 @@ Tallene står aldrig i repoet (hard rule 17).
   og alder indgår ikke (S29). Intensiteten tæller kun gennem scoren; passet afgør stadig, hvilke evner der
   vokser. Træneren og faciliteten tæller kun gennem scoren på træningsdage og aldrig
   på løbsdage (S13). Løbsdagens score bygges som en hård dag over etapens evner plus løbets tillæg;
+  tillægget lander kun i etapens profil-evner, off-fokus-evnerne får basis-dagens udvikling (S14);
   afgørelses- og niveau-bonus (S14) og udgået rytter (S16) venter på data fra løbsmotoren. Træningsdagens tal gemmes uden bidrag (S10);
   løbsdagens tal skrives først med score-skrivningen for løbsdage.
   Indtil grundtalentet findes, oversættes potentialet til talent-leddet via en privat, rangbevarende tabel.

@@ -188,7 +188,7 @@ export function developmentTickArgs({
   if (!developmentScoreB && !raceCatchUp) return {};
   const profile = profileType ?? RACE_DAY_FALLBACK_PROFILE;
   const program = racedToday ? raceDayProgram(profile) : tickArgs.program;
-  const developmentScore = developmentScoreDayForTick({
+  const dayInput = {
     params: developmentScoreB,
     riderId: tickArgs.riderId,
     dayKey,
@@ -201,9 +201,16 @@ export function developmentTickArgs({
     facilityTier: tickArgs.facilityTier ?? null,
     riderLevel: tickArgs.riderLevel ?? null,
     profileType: profile,
-  });
+  };
+  const developmentScore = developmentScoreDayForTick(dayInput);
   const catchUp = raceCatchUpTickArgs({
     cfg: raceCatchUp, racedToday, developmentScoreOn: !!developmentScoreB, program,
   });
-  return developmentScore ? { ...catchUp, developmentScore } : catchUp;
+  if (!developmentScore) return catchUp;
+  if (developmentScore.kind !== "race") return { ...catchUp, developmentScore };
+  // S14 (teknisk design §3): loebets tillaeg (etape, afgoerelse, niveau) lander KUN i
+  // etapens profil-evner. Off-fokus-evnerne faar basis-dagens devMult: samme rytter,
+  // dato og stoej, men uden tillaeg (= S16's "kun basis"). Den viste score er uaendret.
+  const baseDay = developmentScoreDayForTick({ ...dayInput, finished: false });
+  return { ...catchUp, developmentScore: { ...developmentScore, offFocusDevMult: baseDay?.devMult ?? developmentScore.devMult } };
 }

@@ -203,6 +203,10 @@ test("#6950 applyDailyTick: under scoren taeller intensiteten kun gennem scoren 
   const focus = TRAINING_FOCUSES.vo2max;
   assert.ok(focus.length > 0);
   for (const k of focus) assert.ok(Math.abs((hard.progress[k] ?? 0) - (easy.progress[k] ?? 0)) < 1e-12, k);
+  // Codex P2 (PR #7194): off-fokus-evnerne maa heller ikke afhaenge af intensiteten.
+  const offFocus = VISIBLE_ABILITIES.filter((k) => !focus.includes(k));
+  assert.ok(offFocus.some((k) => (hard.progress[k] ?? 0) > 0), "forudsaetning: off-fokus vokser");
+  for (const k of offFocus) assert.ok(Math.abs((hard.progress[k] ?? 0) - (easy.progress[k] ?? 0)) < 1e-12, `off-fokus ${k}`);
   const todayHard = applyDailyTick(TICK_BASE);
   const todayEasy = applyDailyTick({ ...TICK_BASE, program: { ...TICK_BASE.program, intensity: "easy" } });
   assert.notDeepEqual(todayHard.progress, todayEasy.progress, "forudsaetning: i dag giver intensiteten forskel");
@@ -214,4 +218,33 @@ test("#6950 applyDailyTick: catch-up-tillaegget ganges kun paa de evner der staa
   const boosted = applyDailyTick({ ...TICK_BASE, program, abilityYieldMult: { climbing: 1.5 } });
   assert.ok(Math.abs(boosted.progress.climbing - 1.5 * base.progress.climbing) < 1e-9);
   for (const k of VISIBLE_ABILITIES) if (k !== "climbing") assert.equal(boosted.progress[k], base.progress[k]);
+});
+
+test("#6950 S14 (Codex P2, PR #7194): under scoren lander loebets tillaeg kun i etapens profil-evner, ogsaa med begge flag on", () => {
+  const program = raceDayProgram("mountain");
+  const bigBonus = validateDevelopmentScoreWiringParams({
+    ...SCORE_PARAMS, score: { ...SCORE_PARAMS.score, race: { ...SCORE_PARAMS.score.race, stageBonus: 1.8 } },
+  });
+  const raceTick = (params, raceCatchUp = null) => applyDailyTick({
+    ...TICK_BASE, program,
+    ...developmentTickArgs({ developmentScoreB: params, raceCatchUp, dayKey: "d1", tickArgs: { ...TICK_BASE, program }, racedToday: true, profileType: "mountain" }),
+  });
+  const offFocus = VISIBLE_ABILITIES.filter((k) => !program.focusAbilities.includes(k));
+  assert.ok(offFocus.length > 0);
+  for (const catchUp of [null, CATCHUP_PARAMS]) {
+    const small = raceTick(PARAMS, catchUp);
+    const big = raceTick(bigBonus, catchUp);
+    assert.ok(big.trainingScore.score > small.trainingScore.score, "forudsaetning: stoerre tillaeg = hoejere score");
+    assert.ok(offFocus.some((k) => (small.progress[k] ?? 0) > 0), "forudsaetning: off-fokus vokser paa loebsdagen");
+    for (const k of offFocus) assert.equal(big.progress[k], small.progress[k], `off-fokus ${k} roeres ikke af tillaegget`);
+    for (const k of program.focusAbilities) assert.ok((big.progress[k] ?? 0) > (small.progress[k] ?? 0), `profil-evnen ${k} faar tillaegget`);
+  }
+  // Off-fokus faar praecis basis-dagen (S16's "kun basis"): samme devMult som en udgaaet rytter.
+  const args = developmentTickArgs({ developmentScoreB: PARAMS, dayKey: "d1", tickArgs: TICK_ARGS, racedToday: true, profileType: "mountain" });
+  const dnf = developmentScoreDayForTick({ params: PARAMS, ...TICK_ARGS, dayKey: "d1", racedToday: true, program, profileType: "mountain", finished: false });
+  assert.equal(args.developmentScore.offFocusDevMult, dnf.devMult);
+  assert.ok(args.developmentScore.devMult > args.developmentScore.offFocusDevMult);
+  // Traeningsdagen har ingen off-fokus-split.
+  const training = developmentTickArgs({ developmentScoreB: PARAMS, dayKey: "d1", tickArgs: TICK_ARGS });
+  assert.ok(!("offFocusDevMult" in training.developmentScore));
 });
