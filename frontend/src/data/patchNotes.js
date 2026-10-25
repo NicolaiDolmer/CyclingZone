@@ -4,6 +4,23 @@ export const PATCHES = [
     "date": "2026-10-25",
     "changes": [
       {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "Free agent auctions always run at least 12 hours",
+          "body": "An auction on a free agent now runs for at least 12 hours, also when you pick the end time yourself, so nobody misses a rider because they were asleep or at work. Flash auctions are only for your own riders. Auctions on your own riders work as before."
+        },
+        "da": {
+          "title": "Auktioner på frie ryttere kører altid mindst 12 timer",
+          "body": "En auktion på en fri rytter kører nu mindst 12 timer, også når du selv vælger sluttidspunktet, så ingen går glip af en rytter, fordi de sov eller var på arbejde. Flash-auktioner kan kun bruges på dine egne ryttere. Auktioner på dine egne ryttere virker som før."
+        },
+        "refs": [
+          7220
+        ]
+      },
+      {
         "category": "new",
         "audience": "player",
         "rollout": "switched_on",
