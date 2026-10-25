@@ -263,6 +263,7 @@ import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #651
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
 import { TRAINING_MOBILE_TABLE_FLAG_KEY } from "../lib/trainingMobileTableFlag.js";
 import { TRAINING_BULK_DAY_FLAG_KEY } from "../lib/trainingBulkDayFlag.js";
+import { TRAINING_DECISION_FLAG_KEY } from "../lib/trainingDecisionFlag.js"; // #6110 S26
 import { isRiderBestRoleDisplayEnabled } from "../lib/riderBestRoleDisplayFlag.js";
 import { readReputationStage, isReputationReadEnabled } from "../lib/reputationFlag.js";
 import { isYouthSquadPagesEnabled } from "../lib/youthSquadPagesFlag.js"; // #5519
@@ -2973,7 +2974,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const teamId = req.team.id;
     const [
       { activeSeasonId, state }, isBetaTester, stage, raceDayDevelopmentStage, trainingScoreStage,
-      mobileTableStage, dailyReceiptStage, bulkDayStage,
+      mobileTableStage, dailyReceiptStage, bulkDayStage, decisionCardStage,
     ] = await Promise.all([
       loadTrainingState(teamId),
       isViewerBetaTester(req),
@@ -2987,6 +2988,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       readFlagStage(supabase, TRAINING_MOBILE_TABLE_FLAG_KEY),
       readFlagStage(supabase, TRAINING_DAILY_RECEIPT_FLAG_KEY),
       readFlagStage(supabase, TRAINING_BULK_DAY_FLAG_KEY), // #6523
+      readFlagStage(supabase, TRAINING_DECISION_FLAG_KEY), // #6110 S26
     ]);
     // #6811 P2: et parkeret hold traener ikke (POST svarer 409 team_parked), saa
     // gaten staar lukket her ogsaa: fladen viser "sat paa pause".
@@ -3008,6 +3010,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const mobileTable = evaluateFlagStage(mobileTableStage, { isBetaTester });
     const dailyReceiptEnabled = evaluateFlagStage(dailyReceiptStage, { isBetaTester });
     const bulkDay = evaluateFlagStage(bulkDayStage, { isBetaTester }); // #6523: bar boolean
+    const decisionCard = evaluateFlagStage(decisionCardStage, { isBetaTester }); // #6110 S26: bar boolean
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     // secondary_type: #3195 — trainability-signalet skal kende BEGGE anlægs-
@@ -3196,6 +3199,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       // mobil-visning der står i prod i dag. Se trainingMobileTableFlag.js.
       mobileTable,
       bulkDay,
+      decisionCard,
       dailyReceiptEnabled,
       // #3459 V3: feltet udelades HELT (ikke bare {}) når flaget er off — spejler
       // hvordan andre gated felter i denne response håndteres, ingen ny consumer

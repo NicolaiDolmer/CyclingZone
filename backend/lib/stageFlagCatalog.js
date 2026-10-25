@@ -42,6 +42,8 @@ export const STAGE_FLAGS = Object.freeze([
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   { key: "training_bulk_day", area: "training", label: "Træning — sæt dagen for flere ryttere" },
+  // #6110 S26: "Dagens beslutning"-kortet oeverst paa Today-fanen. Seedet off.
+  { key: "training_decision_card", area: "training", label: "Træning — Dagens beslutning (kort øverst)" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4847: "Train now" uden bonus. Kraever training_condition_per_date.

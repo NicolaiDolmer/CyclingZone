@@ -54,6 +54,9 @@ import { useIsMobileViewport, useMediaQuery } from "../hooks/useMediaQuery.ts";
 // #5485 (ejer-go 23/9): overblik oeverst, een guld-knap der skifter med
 // situationen, een dagsvaelger pr. rytter og rytterens kort under raekken.
 import TrainingOverview from "../components/training/TrainingOverview.tsx";
+// #6110 S26: "Dagens beslutning" oeverst (beta-flag training_decision_card).
+import DailyDecision from "../components/training/DailyDecision.tsx";
+import { buildDailyDecision } from "../components/training/DailyDecisionModel.ts";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import FatigueRuleSummary from "../components/training/FatigueRuleSummary.tsx";
@@ -1225,6 +1228,24 @@ export default function TrainingPage() {
     const rest = ids.length - names.length;
     return rest > 0 ? `${names.join(", ")} ${t("overview.more", { n: rest })}` : names.join(", ");
   };
+  // #6110 S26: forslagene afledes af samme condition/plan/loeb som resten af siden.
+  const decisionCardOn = training.decisionCard === true;
+  const decisionRows = decisionCardOn
+    ? buildDailyDecision({
+      riderIds: riders.map((r) => r.id),
+      condition: (id) => condition[id],
+      isRacing: racingTodayFor,
+      isInjured: (id) => injuryTimeLeft(condition[id], today).count > 0,
+      isEasyDay: (id) => {
+        const plan = planFor(id);
+        const type = plan?.focus ? dayTypeForProgram(plan) : null;
+        return type === "rest" || type === "recovery";
+      },
+    }).map((s) => {
+      const r = riderByIdMap.get(s.riderId);
+      return { ...s, name: `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim() };
+    })
+    : [];
   const raceNames = [...new Set(overview.racing.map((id) => racingToday[id]?.race).filter(Boolean))];
   const overviewCells = [
     {
@@ -2430,6 +2451,13 @@ export default function TrainingPage() {
 
       <TabPanel value="today">
       <div className="space-y-3">
+      {decisionCardOn && !ridersLoading && (
+        <DailyDecision
+          rows={decisionRows}
+          compact={phoneLayout}
+          onUse={(row) => handleDayQuickChange(row.riderId, row.dayType, null)}
+        />
+      )}
       {/* #5485 (aendring 1): overblikket øverst. Et tryk filtrerer tabellen. */}
       <div data-tour={phoneLayout ? tourAnchor("status") : undefined}>
         <TrainingOverview

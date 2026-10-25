@@ -55,6 +55,15 @@
   "primary": {
     "setDays": "Sæt dag for {n, plural, one {# rytter} other {# ryttere}}"
   },
+  "decision": {
+    "title": "Dagens beslutning",
+    "recovery": "aktiv restitution i dag",
+    "reason": "Træthed {{fatigue}} og en hård dag planlagt. Skaderisikoen er forhøjet.",
+    "use": "Brug",
+    "useAria": "Sæt {{name}} til aktiv restitution",
+    "useAll": "Brug alle {{n}} forslag",
+    "none": "Ingen ryttere har brug for en ændring i dag."
+  },
   "overview": {
     "label": "Dagen på et blik",
     "needsDay": "Mangler en dag",

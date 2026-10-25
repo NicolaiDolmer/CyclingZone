@@ -55,6 +55,15 @@
   "primary": {
     "setDays": "Set days for {n, plural, one {# rider} other {# riders}}"
   },
+  "decision": {
+    "title": "Today's decision",
+    "recovery": "active recovery today",
+    "reason": "Fatigue {{fatigue}} with a hard day planned. Injury risk is raised.",
+    "use": "Use",
+    "useAria": "Set {{name}} to active recovery",
+    "useAll": "Use all {{n}} suggestions",
+    "none": "No rider needs a change today."
+  },
   "overview": {
     "label": "Today at a glance",
     "needsDay": "Needs a day",
