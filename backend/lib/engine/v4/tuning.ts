@@ -1661,6 +1661,14 @@ const s5V3Breakaway = {
     // Automatisk jagt baerer arbejde: et interesseret hold uden ordre/reaktion jager med
     // arbejde i forhold til interessen, maalt mod en fuld ordre (teamSignalWeight x maxTeamSignal).
     autoChaseWorkScale: 1,
+    // P2.4 klatre-jagten (#6804, design 2026-10-23-6804-v3-climb-chase-design.md): snoren paa
+    // en stigning efter lad-gaa-fasen pr. profil, de segmenttyper der taeller som stigning,
+    // og arbejdets pris i forhold til en fuld ordre. Kalibreres i testporten (G2, G1', G11).
+    climbChaseLeadSecondsByProfile: {} as Partial<Record<ProfileType, number>>,
+    climbChaseLeadSecondsDefault: 780,
+    climbChaseSegmentKinds: ["climb"] as readonly string[],
+    climbChaseRidersPerTeam: 2,
+    climbChaseWorkScale: 1,
   },
 };
 
