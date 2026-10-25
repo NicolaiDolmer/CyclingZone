@@ -12,7 +12,7 @@ import { effortDevelopmentMultiplier } from "./raceRoles.js";
 import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js";
 // #3564 kurve B (D-058): rent modul, kun aktivt naar `curveB` sendes med (flag development_curve_b).
 // Under kurven skal `riderQualityMult` vaere alders-neutral; applyDailyTick/applyRaceDevelopmentTick sikrer det.
-import { curveBBase } from "./developmentCurveB.ts";
+import { curveBBase, curveBSoftCeiling } from "./developmentCurveB.ts";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -428,19 +428,25 @@ export function applyRaceDevelopmentTick({
     if (!Number.isFinite(current)) continue;
     const cap = caps?.[ability];
     if (cap != null && current >= cap) continue; // på cap — intet at vinde, budget tabes (ikke omfordelt)
+    // #3564: under kurve B gælder det bløde loft også her, som i dailyAbilityDelta
+    // (curveBBase = 0 på eller over loftet, og uden hårdt loft). Ellers kunne en
+    // evne over sit bløde loft få løbsdagens fordelte point.
+    const softCeiling = curveB ? (cap == null ? current : curveBSoftCeiling(cap, potentiale, curveB)) : Infinity;
+    if (current >= softCeiling) continue;
     score += perAbility;
     let bar = Number(nextProgress[ability] ?? 0) + perAbility;
     while (
       bar >= 1
       && (gains[ability] ?? 0) < dailyCeiling
       && current + (gains[ability] ?? 0) < Math.min(99, cap ?? 99)
+      && current + (gains[ability] ?? 0) < softCeiling
     ) {
       bar -= 1;
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
     nextProgress[ability] = settleProgressBar({
-      bar, gained: gains[ability] ?? 0, current, cap, dailyCeiling,
+      bar, gained: gains[ability] ?? 0, current, cap: Number.isFinite(softCeiling) ? Math.min(cap ?? 99, softCeiling) : cap, dailyCeiling,
     });
   }
 

@@ -124,6 +124,31 @@ test("flag off: udeladt kurve og curveB null er bit-identiske (dagens model)", (
   );
 });
 
+test("kurve B på løbsdagen: en evne over sit bløde loft får ingen fordelte point (Codex P2)", () => {
+  // potentiale 1 => blødt loft = 0,5 x hårdt loft (80) = 40 i testens params.
+  const full = (v: number) => Object.fromEntries(VISIBLE_ABILITIES.map((k: string) => [k, v]));
+  const base = {
+    riderId: "r1", dateStr: "2026-10-25", age: 24, caps: full(80), progress: full(0.99),
+    program: resolveProgram(null, "climber"), conditionMult: 1, potentiale: 1,
+    primaryType: "climber", secondaryType: null, hardDailyCap: 1, profileType: "mountain",
+  };
+  const over = { ...base, abilities: full(45) };
+  // Dagens model giver point her (under det hårde loft), så testen kan fejle.
+  assert.ok(Object.keys(applyRaceDevelopmentTick(over).gains).length > 0);
+  const withCurve = applyRaceDevelopmentTick({ ...over, curveB: PARAMS });
+  assert.deepEqual(withCurve.gains, {});
+  assert.deepEqual(withCurve.abilities, over.abilities);
+  for (const v of Object.values(withCurve.progress) as number[]) assert.ok(v < 1);
+  // Under det bløde loft giver løbsdagen stadig point, aldrig over loftet og højst +1.
+  const under = applyRaceDevelopmentTick({ ...base, abilities: full(20), curveB: PARAMS });
+  const gained = Object.entries(under.gains) as [string, number][];
+  assert.ok(gained.length > 0);
+  for (const [k, g] of gained) {
+    assert.equal(g, 1);
+    assert.ok(under.abilities[k] <= 40, `${k} over det bløde loft`);
+  }
+});
+
 test("kurve B i dailyAbilityDelta: alderstabel og ungdomstillæg er ude, kun belastningsevnen bremser", () => {
   const d16 = dailyAbilityDelta(deltaArgs({ age: 16, curveB: PARAMS }));
   const d26 = dailyAbilityDelta(deltaArgs({ age: 26, curveB: PARAMS }));
