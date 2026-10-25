@@ -111,7 +111,7 @@ test("#6938 U4: kun sate ryttere uden kaptajnrolle og uden for klassementets top
   const first = applyStageRaceWithdrawals(results, entrants, {
     seed: "s",
     distanceKm: 150,
-    gc: { ...standings(results.map((r) => r.rider_id), 1, 4), first_stage: true } as GcContext,
+    gc: { ...standings(results.map((r) => r.rider_id), 1, 4), first_stage: true } as unknown as GcContext,
     tuning: all,
   });
   assert.ok(first.incidents.some((i) => i.rider_id === "gcHelper"));
