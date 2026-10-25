@@ -8,6 +8,7 @@ import { validateSelection, roleFor, raceAllowsCoCaptain } from "./raceSelection
 import { validateStageRoleOverrides } from "./raceStageRolesApi.js";
 import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 import { buildV4StageInput } from "./raceEngineV4Bridge.js";
+import { resolveStageEntrants } from "./raceStageRoles.js";
 
 const base = {
   riderIds: ["r1", "r2", "r3", "r4", "r5", "r6"],
@@ -93,7 +94,36 @@ test("#5981 broen: planens aiRoleByRider giver motoren rollen; uden den er rolle
 
 // ── Etape-roller ─────────────────────────────────────────────────────────────
 
-const STAGE_BASE = { stageCount: 5, stagesCompleted: 0, teamRiderIds: new Set(["r1", "r2", "r3"]) };
+const STAGE_BASE = { stageCount: 5, stagesCompleted: 0, teamRiderIds: new Set(["r1", "r2", "r3"]), baseRoleByRider: new Map([["r1", "captain"]]) };
+
+test("#5981: en etape-override til delt kaptajn kraever en kaptajn paa etapen", () => {
+  const sprintOnly = validateStageRoleOverrides({
+    ...STAGE_BASE,
+    coCaptainAllowed: true,
+    baseRoleByRider: new Map([["r1", "sprint_captain"]]),
+    overrides: [{ stage_number: 1, rider_id: "r2", race_role: "co_captain", effort: "normal" }],
+  });
+  assert.ok(sprintOnly.errors.includes("stage_roles_co_captain_requires_captain"));
+  const abandonedCaptain = validateStageRoleOverrides({
+    ...STAGE_BASE,
+    coCaptainAllowed: true,
+    abandonedRiderIds: new Set(["r1"]),
+    overrides: [{ stage_number: 1, rider_id: "r2", race_role: "co_captain", effort: "normal" }],
+  });
+  assert.deepEqual(abandonedCaptain, { ok: true, errors: [] }, "en udgaaet basis-kaptajn blokerer ikke arven");
+});
+
+test("#5981: ved afvikling vinder etapens delte kaptajn over basis-rollen (hoejst én effektiv)", () => {
+  const entrants = [
+    { rider_id: "r1", team_id: "T", race_role: "captain" },
+    { rider_id: "r2", team_id: "T", race_role: "co_captain" },
+    { rider_id: "r3", team_id: "T", race_role: "helper" },
+  ];
+  const { entrants: out } = resolveStageEntrants(entrants, new Map([["r3", { race_role: "co_captain", effort: "normal" }]]));
+  const roles = Object.fromEntries(out.map((e) => [e.rider_id, e.race_role]));
+  assert.equal(roles.r3, "co_captain");
+  assert.notEqual(roles.r2, "co_captain");
+});
 
 test("#5981: en etape-override til co_captain afvises i et aeldre loeb", () => {
   const r = validateStageRoleOverrides({ ...STAGE_BASE, overrides: [{ stage_number: 1, rider_id: "r2", race_role: "co_captain", effort: "normal" }] });
