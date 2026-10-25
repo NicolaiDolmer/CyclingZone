@@ -711,6 +711,28 @@ en rytter der kørte får hvile (intet tick, score-række "løb", kun restitutio
 reglen bag `training_tick_per_race_day`. `raceDayProfileMatchFaq` (ikke flag-gated) siger stadig
 "planlagt til sæson 4" og skal skrives om i flip-PR'en.
 
+### 6.3 Udviklingsscore B og catch-up via løb i motoren (#6950, bag to slukkede flag)
+
+To flag, begge **slukket**, ejer-only, og begge kræver `ability_cap_per_date_enabled`. Uden dato-loftet,
+uden gyldige tal i serverens miljø eller med flaget på `beta` kører motoren dagens model, bit-identisk.
+Tallene står aldrig i repoet (hard rule 17).
+
+- **`development_score_v2`** (`developmentScoreWiring.js`): dagens Udviklingsscore ER udviklingen (S22).
+  Scorens udviklings-led erstatter rytter-leddet på både trænings- og løbsdage; form, træthed, kondition
+  og alder indgår ikke (S29). Træneren og faciliteten tæller kun gennem scoren på træningsdage og aldrig
+  på løbsdage (S13). Løbsdagens score bygges som en hård dag over etapens evner plus løbets tillæg;
+  afgørelses- og niveau-bonus (S14) og udgået rytter (S16) venter på data fra løbsmotoren. Træningsdagens tal gemmes uden bidrag (S10);
+  løbsdagens tal skrives først med score-skrivningen for løbsdage.
+  Indtil grundtalentet findes, oversættes potentialet til talent-leddet via en privat, rangbevarende tabel.
+- **`race_day_catchup_enabled`** (`raceCatchUpWiring.js`, regler i `raceDayCatchup6950.js`): på en
+  løbsdag tages træner og facilitet ud af tick'et (S13), og løbets ekstra lægges kun på etapens
+  profil-evner, uden for scorekoblingen. Træningsdage røres ikke.
+- **Sammen:** er begge tændt, ejer scoren løbsdagen, og catch-up giver intet ekstra oven i (ingen
+  dobbelt-tælling). Med kurve B (#3564) bestemmer kurven hvor meget et point koster, og scoren er dagens
+  kvalitetsled.
+- **D6:** med et af flagene tændt udvikler AI-hold, bank, testkonti og hold uden manager sig ikke, også
+  uden `development_v2_aging_enabled`. Frie ryttere har intet hold og trænes ikke.
+
 ---
 
 ## 7. Hvad træneren og faciliteten påvirker
