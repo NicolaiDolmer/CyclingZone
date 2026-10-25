@@ -620,6 +620,16 @@ To ting er absolutte:
 
 Reglen bor i `mechanics/incidents.ts` (jagt-blokken) og kobles i `segmentLoop.ts`. En etape uden uheld er bit-identisk. Konstanterne er startgæt og kalibreres i harnesset; målingen før/efter ligger privat under `balance-internals/`.
 
+### Udgåede under `s5_profiles_v3` (slukket, [#6938](https://github.com/NicolaiDolmer/CyclingZone/issues/6938))
+
+Ejer 15/10: der udgår for få ryttere. Spec: `docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md` §2.2. Kun under den slukkede revision `s5_profiles_v3`; ældre revisioner er bit-identiske. Ingen af de tre veje giver skade (skade-reglen nedenfor gælder uændret), og ingen giver straf: rytteren er ude af løbet og står som udgået i resultatet.
+
+- **U1 (erstattet, ejer 24/10).** "Ikke-start af træthed" er erstattet af sygdom af langvarig ekstrem træthed: kun ekstremt trætte ryttere flere dage i træk, risikoen stiger med varighed og grad, rytteren starter ikke og er ude nogle dage uden evneskade, lægen giver besked i indbakken, og den medicinske afdeling sænker risikoen. Den bygges i sin egen PR (`conditionIllness`); `race_incidents.kind='illness'` og mærkaten "Syg, startede ikke" er klar til den.
+- **U2 Styrt pr. terræn.** Hvor mange styrt der ender med udgåelse, afhænger af terrænet: brosten og nedkørsler højest, stigninger lavest. Hyppigheden af styrt er uændret. `mechanics/incidents.ts` (`crashSeriousShareFor`).
+- **U3 Hjælperen stiger af.** I et endagsløb kan en hjælper der er langt efter vinderen stige af (`kind='withdrawal'`). Kaptajner stiger aldrig af. Afgøres efter tidsgrænsen.
+
+Tallene er startgæt og kalibreres mod G17 (udgåede pr. løbsgruppe inden for et privat bånd; kaptajner udgår ikke oftere end hjælpere), målt med `motorTestport.mjs --track-fatigue`. Tænding er ejer-only.
+
 **Nedkørsels-styrt har et gulv (#4905, ejer 6/9).** Descent attack-risikoen (`mechanics/descent.ts`, koblet til M3's angreb) dæmpes af descending-evnen MULTIPLIKATIVT med et gulv (`DESCENT_EXTRA_TUNING.incidentRiskFloorFraction`, `tuning.ts`) i stedet for den gamle subtraktive form, der kunne ramme PRÆCIS 0 for enhver descending-evne ≥ ~67 — netop de ryttere der altid angriber på en nedkørsel. Uden gulvet var nedkørselsstyrt statistisk usynlige, også i regn, selvom M11 forstærker basis-risikoen der. Målt i `backend/scripts/v4DescentIncidents.js`.
 
 ### v3 — den binære model (gælder indtil flip)
