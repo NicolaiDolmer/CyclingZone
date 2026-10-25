@@ -1883,7 +1883,7 @@
     },
     "auctionExpiry": {
       "q": "Wanneer verloopt een veiling?",
-      "a": "Wanneer je je eigen renner aanbiedt, kies je de exacte tijd waarop de veiling eindigt, van 1 tot 48 uur vooruit. Een veiling van een transfervrije renner (geen team) loopt standaard minstens 12 actieve uren: wie hem ook start, en wat de renner ook transfervrij maakte (zelf gestart, de bank, de academie of de jeugdmarkt), zodat je geen jong talent mist alleen omdat je sliep of aan het werk was. De enige uitzondering is een Flitsveiling, die altijd precies 30 minuten duurt. Nachtelijke uren tellen niet mee: het actieve venster is elke dag van 08:00 tot 24:00. Voorbeeld: een veiling gestart om 19:40 eindigt dezelfde avond om 20:40. Een veiling gestart om 23:30 eindigt de volgende ochtend om 08:30."
+      "a": "Wanneer je je eigen renner aanbiedt, kies je de exacte tijd waarop de veiling eindigt, van 1 tot 48 uur vooruit. Een veiling van een transfervrije renner (geen team) loopt altijd minstens 12 uur, ook als je zelf de eindtijd kiest: wie hem ook start, en wat de renner ook transfervrij maakte (zelf gestart, de bank, de academie of de jeugdmarkt), zodat je geen jong talent mist alleen omdat je sliep of aan het werk was. Flitsveilingen (30 minuten) zijn alleen voor je eigen renners. Nachtelijke uren tellen niet mee: het actieve venster is elke dag van 08:00 tot 24:00. Voorbeeld: een veiling gestart om 19:40 eindigt dezelfde avond om 20:40. Een veiling gestart om 23:30 eindigt de volgende ochtend om 08:30."
     },
     "flashAuction": {
       "q": "Wat is een Flitsveiling?",

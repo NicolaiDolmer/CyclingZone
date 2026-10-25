@@ -8,6 +8,7 @@ import {
   CUSTOM_END_MAX_HOURS,
   CUSTOM_END_MIN_HOURS,
   DEFAULT_AUCTION_CONFIG,
+  FREE_AGENT_MIN_DURATION_HOURS,
   getCustomAuctionEndIssue,
   getAuctionSeasonBoundaryIssue,
   isLateBidTriggerError,
@@ -534,6 +535,27 @@ test("getCustomAuctionEndIssue: præcis 1 time frem → gyldigt (grænsen er ink
   const now = iso("2026-05-08T08:00:00.000Z");
   const end = iso("2026-05-08T09:00:00.000Z");
   assert.equal(getCustomAuctionEndIssue(end, now, PROD_CFG), null);
+});
+
+// #7220: fri-transfer-ryttere — et valgt sluttidspunkt holdes mod 12-timers-gulvet.
+test("getCustomAuctionEndIssue: minHours 12 afviser 1 time frem med minHours 12", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-08T09:00:00.000Z");
+  const issue = getCustomAuctionEndIssue(end, now, PROD_CFG, { minHours: FREE_AGENT_MIN_DURATION_HOURS });
+  assert.equal(issue.code, "end_too_soon");
+  assert.equal(issue.minHours, FREE_AGENT_MIN_DURATION_HOURS);
+});
+
+test("getCustomAuctionEndIssue: minHours 12 — præcis 12 timer frem er gyldigt", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-08T20:00:00.000Z");
+  assert.equal(getCustomAuctionEndIssue(end, now, PROD_CFG, { minHours: FREE_AGENT_MIN_DURATION_HOURS }), null);
+});
+
+test("getCustomAuctionEndIssue: minHours under 1 sænker ikke gulvet", () => {
+  const now = iso("2026-05-08T08:00:00.000Z");
+  const end = iso("2026-05-08T08:30:00.000Z");
+  assert.equal(getCustomAuctionEndIssue(end, now, PROD_CFG, { minHours: 0 }).minHours, CUSTOM_END_MIN_HOURS);
 });
 
 test("getCustomAuctionEndIssue: over 48 timer frem → end_too_late", () => {

@@ -1883,7 +1883,7 @@
     },
     "auctionExpiry": {
       "q": "Quand une enchère expire-t-elle ?",
-      "a": "Quand tu mets ton propre coureur en vente, tu choisis l'heure exacte de fin de l'enchère, de 1 à 48 heures à l'avance. Une enchère sur un coureur libre (sans équipe) dure au moins 12 heures actives par défaut : quel que soit celui qui la lance, et quelle que soit la raison pour laquelle le coureur est libre (lancée par toi, la banque, l'académie ou le marché des jeunes), pour que tu ne rates pas un jeune talent juste parce que tu dormais ou travaillais. La seule exception est l'enchère flash, qui dure toujours exactement 30 minutes. Les heures de nuit ne comptent pas : la plage active va de 08:00 à 24:00 tous les jours. Exemple : une enchère lancée à 19:40 se termine le même soir à 20:40. Une enchère lancée à 23:30 se termine le lendemain matin à 08:30."
+      "a": "Quand tu mets ton propre coureur en vente, tu choisis l'heure exacte de fin de l'enchère, de 1 à 48 heures à l'avance. Une enchère sur un coureur libre (sans équipe) dure toujours au moins 12 heures, même si tu choisis toi-même l'heure de fin : quel que soit celui qui la lance, et quelle que soit la raison pour laquelle le coureur est libre (lancée par toi, la banque, l'académie ou le marché des jeunes), pour que tu ne rates pas un jeune talent juste parce que tu dormais ou travaillais. Les enchères flash (30 minutes) sont réservées à tes propres coureurs. Les heures de nuit ne comptent pas : la plage active va de 08:00 à 24:00 tous les jours. Exemple : une enchère lancée à 19:40 se termine le même soir à 20:40. Une enchère lancée à 23:30 se termine le lendemain matin à 08:30."
     },
     "flashAuction": {
       "q": "Qu'est-ce qu'une enchère flash ?",
