@@ -28,7 +28,6 @@
 // Logikken bor her (ikke i api.js), så routen kun er en tynd kobling (#5997).
 
 import {
-  CONTRACT,
   computeContractExtension,
   maxAllowedContractEndSeason,
   contractExtensionCapInfo,
@@ -45,7 +44,9 @@ export const MAX_BATCH_RIDERS = 100;
 // Et hold har langt under 1000 ryttere; loftet gør forespørgslen begrænset
 // (PostgREST-loftet, #3331), og rammes det, kastes der i stedet for at tælle forkert.
 const TEAM_RIDER_LIMIT = 1000;
-export const MAX_SEASONS_PER_REQUEST = CONTRACT.MAX_EXTENSION_SEASONS_AHEAD;
+// #7138: højst 2 sæsoner pr. anmodning (S5 + S6 fra aftenens S4-afslutning); det
+// egentlige loft er maxAllowedContractEndSeason, som klipper pr. rytter.
+export const MAX_SEASONS_PER_REQUEST = 2;
 
 const RIDER_SELECT =
   "id, firstname, lastname, team_id, is_retired, salary, current_production_value, contract_length, contract_end_season";

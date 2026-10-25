@@ -339,7 +339,7 @@
       "expiring": "Expires this season",
       "season": "Expires after season {season}",
       "atCap": "At the limit",
-      "atCapHint": "Already runs 3 seasons ahead. Can be extended again when the season changes."
+      "atCapHint": "Already runs as far as allowed. Can be extended again when the season changes."
     },
     "bar": {
       "none": "Tick the riders you want to extend.",

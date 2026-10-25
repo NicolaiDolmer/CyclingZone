@@ -339,7 +339,7 @@
       "expiring": "Loopt dit seizoen af",
       "season": "Loopt af na seizoen {season}",
       "atCap": "Aan de grens",
-      "atCapHint": "Loopt al 3 seizoenen vooruit. Kan opnieuw worden verlengd zodra het seizoen wisselt."
+      "atCapHint": "Loopt al zo ver als toegestaan. Kan opnieuw worden verlengd zodra het seizoen wisselt."
     },
     "bar": {
       "none": "Vink de renners aan die je wilt verlengen.",
