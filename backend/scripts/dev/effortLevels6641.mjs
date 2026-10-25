@@ -103,7 +103,7 @@ export function mixEffortFor(profileType) {
   return "normal";
 }
 const effortOfTwin = (tag, profileType = null) => (tag === CONTROL ? "normal" : tag === MIX ? mixEffortFor(profileType) : tag);
-const ARMS = Object.freeze([...EFFORTS, CONTROL, MIX]);
+export const ARMS = Object.freeze([...EFFORTS, CONTROL, MIX]);
 
 /** Feltet + 15 tvillinger (ren). */
 export function withTwins(field, templates) {

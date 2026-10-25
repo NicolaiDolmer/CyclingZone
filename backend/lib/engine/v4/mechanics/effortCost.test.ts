@@ -12,8 +12,9 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { allOutDemandMultiplier, applyEffortToDemand, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
-import { RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
+import { allOutDemandMultiplier, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
+import { effortClimbScoreFactor } from "./climbSelection.ts";
+import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
 import type { EffortLevel } from "../types.ts";
 
 test("effortDemandMultiplier: protect > normal > save (raceRoles FATIGUE_MULTIPLIER-anker: 1.2 / 1.0 / 0.7)", () => {
@@ -158,8 +159,8 @@ test("#4632: applyEffortToDemand aendrer aldrig fortegn paa nogen af de fem trin
 });
 
 // ── #6641: kalibreringen bag s5_profiles_v3 (slukket) ──────────────────────────
-test("#6641: alle kendte revisioner faar den uaendrede tuning (samme objekt = bit-identisk)", () => {
-  for (const revision of [...RACE_RULES_REVISIONS, null, undefined]) {
+test("#6641: alle revisioner foer s5_profiles_v3 faar den uaendrede tuning (samme objekt = bit-identisk)", () => {
+  for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
     assert.equal(effortCostTuningFor(revision), EFFORT_COST_TUNING, String(revision));
     assert.equal(isEffortCalibration6641Revision(revision), false, String(revision));
   }
@@ -177,6 +178,27 @@ test("#6641: femtrins-ordenen holder i den kalibrerede tuning paa ALLE segment-t
     for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${kind}: ${scale[i]} <= ${scale[i - 1]}`);
   }
   assert.equal(effortDemandMultiplier("normal", EFFORT_COST_TUNING_6641), 1, "normal er stadig neutral");
+});
+
+test("#6641: gevinsten paa hullet er 1 uden for s5_profiles_v3 (aeldre revisioner bit-identiske)", () => {
+  for (const level of ["grupetto", "save", "normal", "protect", "all_out"] as EffortLevel[]) {
+    for (const reserve of [0, 0.5, 1]) {
+      assert.equal(climbGapEffortFactor(false, effortClimbScoreFactor(level, reserve)), 1, `${level}/${reserve}`);
+    }
+  }
+  assert.equal(climbGapEffortFactor(true, Number.NaN), 1);
+});
+
+test("#6641 (ejer 25/10, som i virkeligheden): all_out graver dybere, save giver slip, normal er neutral", () => {
+  const gap = (level: EffortLevel, reserve: number) => climbGapEffortFactor(true, effortClimbScoreFactor(level, reserve));
+  for (const reserve of [0.25, 0.5, 1]) {
+    assert.equal(gap("normal", reserve), 1, "normal er praecis neutral");
+    assert.ok(gap("all_out", reserve) < gap("protect", reserve) && gap("protect", reserve) < 1, `${reserve}: all_out < protect < normal paa hullet`);
+    assert.ok(gap("save", reserve) > 1, `${reserve}: save taber lidt paa hullet`);
+  }
+  // Gevinsten er betalt med reserven: tom reserve = ingen gevinst.
+  assert.equal(gap("all_out", 0), 1);
+  assert.ok(gap("all_out", 1) < gap("all_out", 0.5), "jo mere i tanken, jo dybere kan han grave");
 });
 
 test("#6641: retningen af kalibreringen — all_out og protect billigere, save taettere paa normal, grupetto uroert", () => {

@@ -89,7 +89,7 @@ export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
 // #6641: den kalibrerede all_out-vaerdi op ad en stigning. Flade og rullende
 // segmenter afledes som foer (#4914): samme andel af gruppens tempo som
 // stigningen giver, regnet af terraenernes baseDemand.
-const CALIBRATED_ALL_OUT_6641 = 1.15;
+const CALIBRATED_ALL_OUT_6641 = 1.1;
 function calibratedAllOutMatchingClimb(kind: SegmentKind): number {
   const demand = RACE_V4_TUNING.terrain.baseDemand;
   return CALIBRATED_ALL_OUT_6641 * (demand.climb / demand[kind]);
@@ -98,9 +98,9 @@ function calibratedAllOutMatchingClimb(kind: SegmentKind): number {
 /** #6641: de fem trins pris under s5_profiles_v3 (deep-frosset). Se filhovedet. */
 export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze({
   demandMultiplierGrupetto: 0.5,
-  demandMultiplierSave: 0.85,
+  demandMultiplierSave: 0.9,
   demandMultiplierNormal: 1.0,
-  demandMultiplierProtect: 1.1,
+  demandMultiplierProtect: 1.05,
   demandMultiplierAllOut: CALIBRATED_ALL_OUT_6641,
   demandMultiplierAllOutBySegmentKind: Object.freeze({
     flat: calibratedAllOutMatchingClimb("flat"),
