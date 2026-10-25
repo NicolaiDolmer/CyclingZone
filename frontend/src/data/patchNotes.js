@@ -1,5 +1,45 @@
 export const PATCHES = [
   {
+    "version": "7.379",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Contracts",
+        "en": {
+          "title": "Contract extensions reach one season ahead",
+          "body": "You can extend a contract to at most next season. Tonight, as Season 4 ends, that means up to Season 6."
+        },
+        "da": {
+          "title": "Kontraktforlængelser når én sæson frem",
+          "body": "I kan højst forlænge en kontrakt til næste sæson. I aften, når Sæson 4 slutter, betyder det til og med Sæson 6."
+        },
+        "refs": [
+          7138
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The season change in Next moves",
+          "body": "The dashboard card shows the season change times while it's coming up."
+        },
+        "da": {
+          "title": "Sæsonskiftet i Næste træk",
+          "body": "Kortet på dashboardet viser tiderne for sæsonskiftet, mens det er på vej."
+        },
+        "refs": [
+          7153
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.378",
     "date": "2026-10-25",
     "changes": [
