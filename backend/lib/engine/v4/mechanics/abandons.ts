@@ -20,6 +20,7 @@
 
 import type { Entrant, GcContext, ProfileType, StageIncident, StageResult } from "../types.ts";
 import { rngFor } from "../rng.ts";
+import { applyStageRaceWithdrawals, isStageRaceContext } from "./abandon6938StageRace.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -71,6 +72,8 @@ export function applyHelperWithdrawals(
   options: { seed: string; distanceKm: number; gc: GcContext | null | undefined; tuning?: HelperWithdrawalTuning },
 ): { results: StageResult[]; incidents: StageIncident[] } {
   const tuning = options.tuning ?? HELPER_WITHDRAWAL_V3_TUNING;
+  // #6938 U4 (G17): i etapeloeb gaelder abandon6938StageRace.ts (slidt + sat, uden kaptajnrolle).
+  if (isStageRaceContext(options.gc)) return applyStageRaceWithdrawals(results, entrants, { seed: options.seed, distanceKm: options.distanceKm, gc: options.gc });
   if (options.gc?.status !== "one_day" || results.length === 0) return { results: [...results], incidents: [] };
   const roleByRider = new Map(entrants.map((e) => [e.rider_id, e.role as string]));
   const winnerTime = Number(results.find((r) => r.status === "finished")?.time_seconds);
