@@ -1039,8 +1039,8 @@
           "La fatigue repasse à 0 pour chaque coureur.",
           "Les blessures ne sont PAS remises à zéro. Elles sont reportées telles quelles.",
           "Les plans de pic ne sont pas touchés par le changement.",
-          "Les salaires de la saison sont payés pendant le changement. Les valeurs des coureurs ne bougent pas pendant le changement lui-même : elles se mettent à jour une seule fois, lors de la mise à jour du dimanche suivant la fin du changement.",
-          "Le premier jour de course de la nouvelle saison est le lendemain du changement. Sa première étape démarre au moins 24 heures après la dernière étape de l'ancienne saison, tu as donc le temps de choisir tes effectifs de course."
+          "Les salaires de la saison sont payés pendant le changement. Les valeurs des coureurs ne bougent pas pendant le changement lui-même : elles se mettent à jour la prochaine fois, lors de la mise à jour normale du dimanche.",
+          "La nouvelle saison commence après une courte pause entre les saisons, votée par les managers. La date de la première étape figure au calendrier des courses, tu as donc le temps de choisir tes équipes."
         ]
       }
     },

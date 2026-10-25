@@ -227,22 +227,24 @@ export function computeFinanceForecast({
   const realizedPrize = Math.max(0, Math.round(Number(realizedSeasonPrize) || 0));
   const projectedPrize = Math.max(rollingPrize, realizedPrize);
 
-  // #3989 (ejer-beslutning 20/8): fra sæson 3 og frem prissættes lønnen efter
-  // rytterens NUVÆRENDE leverance (current_production_value × den globale sats)
-  // — UANSET hvad riders.salary står på lige nu, fordi hele populationen
-  // genberegnes ved cutover. For sæson < 3 er status quo korrekt: kontrakterne
-  // er frosne ved signering (#1309), så sum(rider.salary) ER det der trækkes.
-  //
-  // Bemærk at prognosen bevidst BRUGER spillets egen computeFrozenSalary frem
-  // for en lokal kopi af formlen. #3899's forrige forsøg havde sin egen
-  // markedsværdi-kurve i et separat modul, og resultatet var en prognose der
-  // viste 3-5x for høje lønninger uden at nogen formel var "forkert" (#3986).
+  // #3989 (ejer 20/8) prissatte fra sæson 3 lønnen efter leverance, fordi hele
+  // populationen blev genberegnet ved S3-cutover. #7196 (ejer 25/10): det sker
+  // ikke længere. Lønnen er frosset ved signering, og lønkørslen trækker
+  // riders.salary. Prognosen viser derfor kontraktens løn. En rytter, hvis
+  // kontrakt udløber før target-sæsonen, står med forlængelsens løn
+  // (computeFrozenSalary, samme funktion som computeContractExtension), så
+  // tallet svarer til at beholde den nuværende trup.
   const usesNewWageSystem = Number.isInteger(seasonNumber) && seasonNumber >= NEW_WAGE_SYSTEM_SEASON;
+  const riderSalaryForSeason = (r) => {
+    const end = Number(r?.contract_end_season);
+    const expiresBefore = Number.isFinite(end) && Number.isInteger(seasonNumber) && end < seasonNumber;
+    if (expiresBefore || !Number.isFinite(Number(r?.salary))) {
+      return computeFrozenSalary({ current_production_value: r?.current_production_value });
+    }
+    return Number(r.salary) || 0;
+  };
   const totalSalary = usesNewWageSystem
-    ? (riders || []).reduce(
-        (sum, r) => sum + computeFrozenSalary({ current_production_value: r?.current_production_value }),
-        0
-      )
+    ? (riders || []).reduce((sum, r) => sum + riderSalaryForSeason(r), 0)
     : (riders || []).reduce((sum, r) => sum + (r?.salary || 0), 0);
   const projectedSalary = -totalSalary || 0;
 
@@ -423,7 +425,7 @@ export function computeFinanceForecast({
       team_balance: startingBalance,
       total_salary: totalSalary,
       // #3899: hvilket lønsystem der faktisk blev brugt til denne sæson-projektion.
-      salary_basis: usesNewWageSystem ? "production_s3" : "status_quo",
+      salary_basis: usesNewWageSystem ? "contracts" : "status_quo",
       total_debt: totalDebt,
       debt_ceiling: debtCeiling,
       debt_ratio: debtRatio,
