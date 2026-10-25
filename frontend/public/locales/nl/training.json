@@ -55,6 +55,15 @@
   "primary": {
     "setDays": "Dagen instellen voor {n, plural, one {# renner} other {# renners}}"
   },
+  "decision": {
+    "title": "Beslissing van vandaag",
+    "recovery": "actief herstel vandaag",
+    "reason": "Vermoeidheid {fatigue} met een zware dag gepland. Het blessurerisico is verhoogd.",
+    "use": "Gebruik",
+    "useAria": "Zet {name} op actief herstel",
+    "useAll": "Gebruik alle {n} suggesties",
+    "none": "Geen renner heeft vandaag een aanpassing nodig."
+  },
   "overview": {
     "label": "Vandaag in één oogopslag",
     "needsDay": "Heeft een dag nodig",

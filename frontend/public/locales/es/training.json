@@ -55,6 +55,15 @@
   "primary": {
     "setDays": "Fijar días para {n, plural, one {# ciclista} other {# ciclistas}}"
   },
+  "decision": {
+    "title": "Decisión de hoy",
+    "recovery": "recuperación activa hoy",
+    "reason": "Fatiga {fatigue} con un día duro planificado. El riesgo de lesión es elevado.",
+    "use": "Usar",
+    "useAria": "Poner a {name} en recuperación activa",
+    "useAll": "Usar las {n} sugerencias",
+    "none": "Ningún ciclista necesita un cambio hoy."
+  },
   "overview": {
     "label": "Hoy de un vistazo",
     "needsDay": "Necesita un día",
