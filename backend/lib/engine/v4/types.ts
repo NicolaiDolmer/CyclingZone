@@ -476,6 +476,9 @@ export type StageOutput = {
   // race_stage_passages skriver pr. passage.
   passages?: StagePassage[];
   passage_totals?: RiderPassageTotals[];
+  // #7003 (ADDITIVT, valgfrit, KUN s5_profiles_v3 med en etapeplan): indsatsen etapens
+  // traethed bagefter regnes paa for ryttere med en plan. Udeladt uden plan.
+  stage_plan_load_efforts?: Record<string, EffortLevel>;
 };
 
 // ── EngineTuning (§4-5, default+konstanter i tuning.ts) ───────────────────────
@@ -711,6 +714,10 @@ export type EngineState = {
   finish_descent_regroup?: Record<string, { topGapSeconds: number; closedSeconds: number }>;
   // #6185 del 2 (ADDITIVT, valgfrit, KUN orders_gc_v3): udbrydere der er meldt sat af (mechanics/chaseGroup.ts).
   breakaway_dropped_ids?: string[];
+  // #7003 (ADDITIVT, valgfrit, KUN s5_profiles_v3 + etapeplan): indsatsen i rytterens sidste led (juryen).
+  stage_plan_efforts?: Record<string, EffortLevel>;
+  // #7003: den haardeste indsats rytteren koerte i planen (etapens traethed bagefter).
+  stage_plan_load_efforts?: Record<string, EffortLevel>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────

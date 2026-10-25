@@ -279,6 +279,7 @@ import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
 import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
+import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
 import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
@@ -6514,6 +6515,9 @@ router.get("/races/:raceId/team-orders", requireAuth, async (req, res) => {
       // #6462: toget er kun standard paa flade etaper under loebets revision
       // (gemt, ellers den motoren binder ved foerste claim). Fladen spejler det.
       sprint_train_flat_only: sprintTrainFlatOnlyForRace(race),
+      // #7003: etapeplanen langs ruten (flag + femtrins-indsats + s5_profiles_v3). Kun en boolean.
+      stage_plan_enabled: intentionEnabled && stagePlanRevisionOk(race)
+        && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true }),
     });
   } catch (err) {
     captureException(err);
@@ -6528,7 +6532,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
     const stageNumber = Number(req.params.stageNumber);
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, status, stages, stages_completed")
+      .select("id, status, stages, stages_completed, engine_rules_revision")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
@@ -6536,9 +6540,16 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
 
     const ctx = await getTeamOrdersContext({ supabase, race, teamId: req.team.id });
     const intentionEnabled = await isRaceDayIntentionEnabled(supabase); // #4632
+    // #7003: planen tages kun imod naar flag, femtrins-indsats og revision tillader den.
+    const stagePlan = orderHasStagePlan(req.body) && intentionEnabled && stagePlanRevisionOk(race)
+      && Number.isInteger(stageNumber) && stageNumber >= 1 && stageNumber <= ctx.stage_count
+      && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
+      ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
+      : null;
     const result = validateTeamOrder({
       order: req.body || {},
       intentionEnabled,
+      stagePlan,
       raceCompleted: ctx.race_completed,
       stageNumber,
       stageCount: ctx.stage_count,
@@ -7474,7 +7485,9 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #2884: et valgt sluttidspunkt bruges som det står — der akkumuleres ikke
   // aktive timer. Uden et valg falder vi tilbage til den globale varighed.
   if (ends_at) {
-    const endIssue = getCustomAuctionEndIssue(ends_at, new Date(), auctionCfg);
+    // #7220 (ejer 25/10): en fri-transfer-rytter kan heller ikke med et valgt
+    // sluttidspunkt sælges på under FREE_AGENT_MIN_DURATION_HOURS.
+    const endIssue = getCustomAuctionEndIssue(ends_at, new Date(), auctionCfg, rider.team_id ? {} : { minHours: FREE_AGENT_MIN_DURATION_HOURS });
     if (endIssue) {
       if (endIssue.code === "invalid_end_time") {
         return res.status(400).json({ error: "Invalid end time", errorCode: "auction_end_invalid" });
@@ -7500,8 +7513,11 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #4004: free-agent-auktion (ingen ejer bag rytteren) uden et valgt
   // sluttidspunkt får samme 12t-gulv som de automatiske free-agent-flows
   // (academyGraduation.js/youthMarket.js) — se FREE_AGENT_MIN_DURATION_HOURS.
-  // Rammer ikke flash (egen faste 30-min-model) eller et eksplicit valgt
-  // ends_at (spillerens valg respekteres altid).
+  // Et valgt ends_at er allerede holdt mod samme gulv ovenfor, og flash (fast
+  // 30 min) afvises for fri-transfer-ryttere, så gulvet gælder altid (#7220).
+  if (flash_auction && !rider.team_id) {
+    return res.status(400).json({ error: `An auction must run for at least ${FREE_AGENT_MIN_DURATION_HOURS} hour`, errorCode: "auction_end_too_soon", errorParams: { minHours: FREE_AGENT_MIN_DURATION_HOURS } });
+  }
   const calculatedEnd = flash_auction
     ? new Date(Date.now() + 30 * 60 * 1000)
     : ends_at

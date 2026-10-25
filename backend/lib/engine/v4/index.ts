@@ -387,6 +387,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     // #5582 (ejer 23/9, UCI 2.6.032): en genindsat rytter (juryen eller en
     // reddet grupetto) mister sine point i point- og bjergkonkurrencen.
     passage_totals: applyReinstatementPointPenalty(passageTotals(passages), reinstatedRiderIdsOf(timeLimit)),
+    ...(state.stage_plan_load_efforts ? { stage_plan_load_efforts: state.stage_plan_load_efforts } : {}), // #7003
   };
   return { output, trace: { breakaway_win: breakawayWin } };
 }
@@ -396,7 +397,7 @@ function juryInputFor(input: StageInput, state: SegmentLoopResult["state"]): Tim
   const effortByRider: Record<string, StageInput["startlist"][number]["effort"]> = {};
   const teamByRider: Record<string, string | null | undefined> = {};
   for (const entrant of input.startlist) {
-    effortByRider[entrant.rider_id] = entrant.effort;
+    effortByRider[entrant.rider_id] = state.stage_plan_efforts?.[entrant.rider_id] ?? entrant.effort; // #7003
     teamByRider[entrant.rider_id] = entrant.team_id;
   }
   return {
