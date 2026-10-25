@@ -13,7 +13,7 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 
 import { allOutDemandMultiplier, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
-import { effortClimbScoreFactor } from "./climbSelection.ts";
+import { decidingClimbSelectionsOnTheDay, effortClimbScoreFactor } from "./climbSelection.ts";
 import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
 import type { EffortLevel } from "../types.ts";
 
@@ -221,4 +221,18 @@ test("#6641: all_out-tabellen pr. segment-terraen foelger samme regel (flad/rull
   const ratioNew = allOutDemandMultiplier("flat", cal) / cal.demandMultiplierAllOut;
   assert.ok(Math.abs(ratioOld - ratioNew) < 1e-12);
   assert.ok(Object.isFrozen(cal) && Object.isFrozen(cal.demandMultiplierAllOutBySegmentKind));
+});
+
+test("#6641: gevinsten overlever nedkoerselsfinalens genberegnede underskud (dagsform + angreb)", () => {
+  const sel = (riderId: string, gapEffortFactor?: number) => ({ riderId, baseScore: 0, scoreTriggered: false, wprimeForced: false, effortForced: false, deficit01: 0, energyDeficit01: 0, ...(gapEffortFactor === undefined ? {} : { gapEffortFactor }) });
+  const climbing: Record<string, number> = { best: 80, a: 60, b: 60 };
+  const t = { descentFinishClimbDayformWeight: 0.1, descentFinishClimbAttackWindowSeconds: 0, descentFinishClimbAttackDayformWeight: 0 };
+  const out = decidingClimbSelectionsOnTheDay([sel("best"), sel("a", 0.5), sel("b")], (id) => climbing[id]!, () => 0, (d) => d * 100, t);
+  const a = out.find((s) => s.riderId === "a")!.deficit01;
+  const b = out.find((s) => s.riderId === "b")!.deficit01;
+  assert.ok(b > 0);
+  assert.ok(Math.abs(a - b * 0.5) < 1e-12, "faktoren gaelder ogsaa paa det genberegnede underskud");
+  // Uden faktor (alle aeldre revisioner) er resultatet det gamle.
+  const old = decidingClimbSelectionsOnTheDay([sel("best"), sel("a"), sel("b")], (id) => climbing[id]!, () => 0, (d) => d * 100, t);
+  assert.equal(old.find((s) => s.riderId === "a")!.deficit01, b);
 });

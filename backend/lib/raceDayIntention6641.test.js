@@ -61,6 +61,26 @@ test("#6641 variant B: kun raekken for den etape rytteren koerte i dag taeller",
   assert.deepEqual([...out.entries()], [["r1", "all_out"]]);
 });
 
+test("#6641 variant B: holdordren vinder over etape-raekken (samme kilde som motoren), en ordre paa normal goer ikke", () => {
+  const stageByRider = new Map([
+    ["r1", { raceId: "A", stageNumber: 3 }],
+    ["r2", { raceId: "A", stageNumber: 3 }],
+    ["r3", { raceId: "A", stageNumber: 3 }],
+  ]);
+  const roles = [
+    { race_id: "A", stage_number: 3, rider_id: "r1", effort: "all_out" },
+    { race_id: "A", stage_number: 3, rider_id: "r2", effort: "save" },
+  ];
+  const orders = [
+    { race_id: "A", stage_number: 3, riders: [{ rider_id: "r1", effort: "grupetto" }, { rider_id: "r2", effort: "normal" }, { rider_id: "r3", effort: "protect" }] },
+    { race_id: "A", stage_number: 2, riders: [{ rider_id: "r2", effort: "all_out" }] }, // en anden etape
+  ];
+  const out = raceDayEffortByRider(stageByRider, roles, orders);
+  assert.equal(out.get("r1"), "grupetto", "ordren vinder");
+  assert.equal(out.get("r2"), "save", "ordre paa normal er ikke et valg: etape-raekken staar");
+  assert.equal(out.get("r3"), "protect", "ordre uden etape-raekke");
+});
+
 function fakeSupabase(result) {
   const calls = [];
   const builder = {
@@ -76,6 +96,7 @@ test("#6641 variant B: opslaget laeser race_stage_roles for dagens loeb og rytte
   const out = await loadRaceDayEffortByRider({ supabase, stageByRider: new Map([["r1", { raceId: "A", stageNumber: 3 }]]) });
   assert.equal(out.get("r1"), "protect");
   assert.deepEqual(supabase.calls[0], ["from", "race_stage_roles"]);
+  assert.ok(supabase.calls.some((c) => c[0] === "from" && c[1] === "race_team_orders"), "ordren hentes ogsaa");
 });
 
 test("#6641 variant B: fejl i opslaget og ingen loebsdag giver et tomt kort (= variant A)", async () => {

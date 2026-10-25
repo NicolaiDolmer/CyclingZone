@@ -190,6 +190,7 @@ type RiderSelection = {
   effortForced: boolean; // #4914: grupetto-rytter falder tilbage (kun model "effort_weighted") — rytterens EGET valg, uafhaengig af rank-guard
   deficit01: number; // #6199: klatre-underskud mod gruppens bedste klatrer (0-1)
   energyDeficit01: number; // #6199: energi-underskud (0-1, tom reserve = 1)
+  gapEffortFactor?: number; // #6641 (KUN s5_profiles_v3): indsatsens faktor paa hullet; udeladt = 1
 };
 
 /** Klatre-underskud (0-1, normaliseret) relativt til gruppens staerkeste klatrer. */
@@ -318,6 +319,8 @@ function computeSelections(
     const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
+    // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
+    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortFactor);
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
@@ -328,9 +331,9 @@ function computeSelections(
       scoreTriggered: noisyScore > splitThreshold,
       wprimeForced: wprimeCategoryAllowed && wprimeDepletionForcesSplit(riderState.wprime, severity, wprimeMinSeverity),
       effortForced: grupettoDropBackForced(entrant.effort, groupHasRacers),
-      // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-      deficit01: deficit01 * climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortFactor),
-      energyDeficit01: energyDeficit * climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortFactor),
+      deficit01: deficit01 * gapFactor,
+      energyDeficit01: energyDeficit * gapFactor,
+      ...(gapFactor !== 1 ? { gapEffortFactor: gapFactor } : {}),
     });
   }
   return selections;
@@ -472,7 +475,8 @@ export function decidingClimbSelectionsOnTheDay(
   let out: RiderSelection[] = [...selections];
   if (t.descentFinishClimbDayformWeight > 0) {
     const day = deficitsOnTheDay(out, climbingOf, dayformOf, t.descentFinishClimbDayformWeight);
-    out = out.map((s) => ({ ...s, deficit01: day.get(s.riderId) ?? s.deficit01 }));
+    // #6641: et genberegnet underskud faar indsatsens faktor igen (udeladt = 1, bit-identisk).
+    out = out.map((s) => { const d = day.get(s.riderId); return { ...s, deficit01: d === undefined ? s.deficit01 : d * (s.gapEffortFactor ?? 1) }; });
   }
   const window = t.descentFinishClimbAttackWindowSeconds;
   if (!(window > 0) || !(t.descentFinishClimbAttackDayformWeight > 0)) return out;
@@ -483,7 +487,7 @@ export function decidingClimbSelectionsOnTheDay(
     const raw = attack.get(s.riderId);
     if (raw === undefined) return s;
     // Hullet holdes inden for vinduet (gapOf er monotont i underskuddet).
-    let deficit = raw;
+    let deficit = raw * (s.gapEffortFactor ?? 1); // #6641: samme faktor paa angrebs-underskuddet
     if (gapOf(deficit, s.energyDeficit01) > window) {
       let lo = 0;
       let hi = deficit;

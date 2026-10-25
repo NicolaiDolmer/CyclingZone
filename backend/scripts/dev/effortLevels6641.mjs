@@ -141,7 +141,8 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
   const cond = new Map(entrants.map((e) => [e.rider_id, { fatigue: EFFORT_6641_CONFIG.startFatigue, form: 50 }]));
   const loadsToday = new Map();
   // legacy: hele sekvensen er en ren funktion af profilerne og trinnet.
-  const legacySeq = new Map(entrants.map((e) => [e.rider_id, stageEnteringFatigues(EFFORT_6641_CONFIG.startFatigue, sorted.map((s) => s.profile_type), { effort: e.effort, rulesRevision: revision })]));
+  // Den blandede plan skifter trin pr. etape, saa dens sekvens faar trinnet pr. etape.
+  const legacySeq = new Map(entrants.map((e) => [e.rider_id, stageEnteringFatigues(EFFORT_6641_CONFIG.startFatigue, sorted.map((s) => s.profile_type), e.rider_id.endsWith(`-${MIX}`) ? { efforts: sorted.map((s) => mixEffortFor(s.profile_type)), rulesRevision: revision } : { effort: e.effort, rulesRevision: revision })]));
   const perStage = [];
   let currentDate = dateIdx[0];
   const enter = (index) => {
@@ -150,6 +151,9 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
       if (model === "legacy") e.fatigue = legacySeq.get(e.rider_id)[index];
       else if (model === "v2") e.fatigue = enteringFatigueV2({ openingFatigue: cond.get(e.rider_id).fatigue, priorLoadsToday: loadsToday.get(e.rider_id) ?? [], recoveryAbility: recovery.get(e.rider_id) });
       else e.fatigue = cond.get(e.rider_id).fatigue;
+      // Formen fra afregningen koeres med ind i naeste etape (raceRunner baerer
+      // rider_condition.form paa entrant.form, raceEngineV4Bridge.riderFormForV4).
+      if (model !== "legacy") e.form = cond.get(e.rider_id).form;
     }
   };
   const settle = (ids) => {

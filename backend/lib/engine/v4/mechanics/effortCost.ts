@@ -102,7 +102,7 @@ export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
 // #6641: den kalibrerede all_out-vaerdi op ad en stigning. Flade og rullende
 // segmenter afledes som foer (#4914): samme andel af gruppens tempo som
 // stigningen giver, regnet af terraenernes baseDemand.
-const CALIBRATED_ALL_OUT_6641 = 1.1;
+const CALIBRATED_ALL_OUT_6641 = 1.11;
 function calibratedAllOutMatchingClimb(kind: SegmentKind): number {
   const demand = RACE_V4_TUNING.terrain.baseDemand;
   return CALIBRATED_ALL_OUT_6641 * (demand.climb / demand[kind]);
