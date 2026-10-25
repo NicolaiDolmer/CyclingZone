@@ -320,7 +320,7 @@ export default function StagePlanBoard({
       return (
         <span className="inline-flex items-center gap-1 text-3xs text-cz-3">
           <LockIcon size={11} aria-hidden="true" />
-          {t("stagePlan.noPlan")}
+          {t(stageCompleted ? "stagePlan.noPlanLocked" : "stagePlan.noPlan")}
         </span>
       );
     }
@@ -329,7 +329,9 @@ export default function StagePlanBoard({
       <>
         {suggestion && (
           <span className={`flex items-center gap-1.5 ${compact ? "min-w-0" : ""}`}>
-            <span className="text-3xs uppercase tracking-wider text-cz-3 shrink-0">{t("stagePlan.suggestion")}</span>
+            {compact
+              ? <span className="sr-only">{t("stagePlan.suggestion")}</span>
+              : <span className="text-3xs uppercase tracking-wider text-cz-3 shrink-0">{t("stagePlan.suggestion")}</span>}
             <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} />
           </span>
         )}
