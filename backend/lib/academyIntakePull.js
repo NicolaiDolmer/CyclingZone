@@ -2,13 +2,13 @@
 // #3550 — ungdomspakken (løn-design-session 19/8, ejer-beslutning). Erstatter det
 // løbende søndags-drip (sundayIntakeTick.js) med en PULL-mekanik: ét kuld pr. hold
 // pr. uge, hentet med en knap i stedet for auto-genereret. Henter holdet ikke inden
-// ugens udløb (søndag 23:59 Europe/Copenhagen), genereres kuldet ALDRIG og forfalder
+// ugens udløb (lørdag 23:59 Europe/Copenhagen, ejer 25/10), genereres kuldet ALDRIG og forfalder
 // stille — ingen rider-rows, ingen auktioner. Signup-seedingen af det allerførste
 // kuld for nye hold (runAcademyIntakeForTeam) er UBERØRT af denne fil.
 //
 // Genbruger den delte kerne (seedAcademyCohortForTeam) + samme claim-tabel som det
 // gamle drip (academy_intake_ticks, PK team_id+tick_date) — men "tick_date" er her
-// UGENS søndag (kan claimes en hvilken som helst dag i ugen), ikke selve kørselsdagen.
+// UGENS LØRDAG (kan claimes en hvilken som helst dag i ugen), ikke selve kørselsdagen.
 // Flag-gated: academy_intake_pull_enabled (academyIntakePullFlag.js), seedet OFF —
 // cron.js's søndags-drip fortsætter uændret indtil flaget flippes ved cutover.
 import {
@@ -55,13 +55,15 @@ async function applyProvisionalValues(supabase, riderIds, rng) {
 }
 
 // ── Uge-bucket (Europe/Copenhagen, kalenderdag-baseret) ───────────────────────
-// "Ugen" er Mandag-Søndag; nøglen er datoen for den søndag der AFSLUTTER ugen
-// "nu" falder i. Er det allerede søndag (en hvilken som helst time før 23:59:59
-// lokal tid), returneres DAGENS dato — bucket'en flipper først når det bliver
-// mandag 00:00 Europe/Copenhagen, hvilket ER "søndag 23:59"-deadline'en (ejer-
-// beslutning punkt 1): ingen separat tidspunkt-udregning nødvendig, kun kalender-
-// dagen. Konstrueret via UTC-kalenderaritmetik (Date.UTC på Y-M-D-dele hentet via
-// Intl for Europe/Copenhagen) for at undgå DST-fælder i direkte Date-aritmetik.
+// Ejer 25/10 (#6666/#7153): "der skal komme nye hver søndag". Ugen er derfor
+// SØNDAG-LØRDAG; nøglen er datoen for den LØRDAG der afslutter ugen "nu" falder
+// i. Er det lørdag (en hvilken som helst time før 23:59:59 lokal tid), returneres
+// DAGENS dato; bucket'en flipper søndag 00:00 Europe/Copenhagen, som er lørdag
+// 23:59-fristen. Lørdags-nøglen kolliderer aldrig med rækker fra den gamle
+// mandag-søndag-model (de er nøglet på en søndag), så et hold der hentede i den
+// gamle uge, kan hente den nye uges kuld fra søndag. Konstrueret via UTC-
+// kalenderaritmetik (Date.UTC på Y-M-D-dele hentet via Intl for Europe/Copenhagen)
+// for at undgå DST-fælder i direkte Date-aritmetik.
 export function copenhagenDateParts(now = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit",
@@ -70,12 +72,12 @@ export function copenhagenDateParts(now = new Date()) {
   return { year: get("year"), month: get("month"), day: get("day") };
 }
 
-export function currentIntakeWeekSunday(now = new Date()) {
+export function currentIntakeWeekKey(now = new Date()) {
   const { year, month, day } = copenhagenDateParts(now);
   const cal = new Date(Date.UTC(year, month - 1, day));
   const dow = cal.getUTCDay(); // 0=søn..6=lør
-  const daysUntilSunday = (7 - dow) % 7; // 0 hvis allerede søndag
-  cal.setUTCDate(cal.getUTCDate() + daysUntilSunday);
+  const daysUntilSaturday = 6 - dow; // 0 hvis allerede lørdag, 6 hvis søndag
+  cal.setUTCDate(cal.getUTCDate() + daysUntilSaturday);
   return cal.toISOString().slice(0, 10); // YYYY-MM-DD
 }
 
@@ -87,12 +89,12 @@ export function currentIntakeWeekSunday(now = new Date()) {
 export async function hasPulledThisWeek(supabase, { teamId, now = new Date() } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
-  const weekSunday = currentIntakeWeekSunday(now);
+  const weekKey = currentIntakeWeekKey(now);
   const { data, error } = await supabase
     .from("academy_intake_ticks")
     .select("team_id")
     .eq("team_id", teamId)
-    .eq("tick_date", weekSunday)
+    .eq("tick_date", weekKey)
     .maybeSingle();
   if (error) throw new Error(`academy-intake-pull status: ${error.message}`);
   return Boolean(data);
@@ -101,9 +103,9 @@ export async function hasPulledThisWeek(supabase, { teamId, now = new Date() } =
 /**
  * Hent (generér) ét akademi-kuld for ét hold — den manager-udløste erstatning
  * for søndags-drippet. Idempotent pr. (hold, uge) via academy_intake_ticks-claim
- * (samme tabel/PK som det gamle drip, men tick_date = UGENS søndag).
+ * (samme tabel/PK som det gamle drip, men tick_date = UGENS lørdag).
  *
- * @returns {Promise<{ok:true, alreadyPulled:boolean, weekSunday:string, candidates:string[]}
+ * @returns {Promise<{ok:true, alreadyPulled:boolean, weekKey:string, candidates:string[]}
  *   | {ok:false, reason:string}>}
  */
 export async function pullWeeklyAcademyIntake(supabase, {
@@ -123,17 +125,17 @@ export async function pullWeeklyAcademyIntake(supabase, {
   const season = await fetchActiveSeason(supabase);
   if (!season) return { ok: false, reason: "no_active_season" };
 
-  const weekSunday = currentIntakeWeekSunday(now);
+  const weekKey = currentIntakeWeekKey(now);
 
   // Claim-FØRST (samme TOCTOU-forsvar som sundayIntakeTick): PK-kollision på
   // (team_id, tick_date) betyder "allerede hentet denne uge" — idempotent mod
   // dobbeltklik OG mod at prøve igen efter at have signet/afvist alle kandidater.
   const { data: claim, error: claimErr } = await supabase
     .from("academy_intake_ticks")
-    .upsert({ team_id: teamId, tick_date: weekSunday }, { onConflict: "team_id,tick_date", ignoreDuplicates: true })
+    .upsert({ team_id: teamId, tick_date: weekKey }, { onConflict: "team_id,tick_date", ignoreDuplicates: true })
     .select("team_id");
   if (claimErr) throw new Error(`academy-intake-pull claim: ${claimErr.message}`);
-  if (!claim?.length) return { ok: true, alreadyPulled: true, weekSunday, candidates: [] };
+  if (!claim?.length) return { ok: true, alreadyPulled: true, weekKey, candidates: [] };
 
   // #6666 (CodeRabbit Major): claim + kuld + derive + provisoriske værdier er ÉN
   // handling. Fejler et trin efter claimet, fjernes kuldets rækker OG claimet før
@@ -149,7 +151,7 @@ export async function pullWeeklyAcademyIntake(supabase, {
 
     const referenceYear = referenceYearForSeason(season);
     const existingNames = await fetchExistingFoldedRiderNames(supabase);
-    const rng = makeRng(((seed >>> 0) ^ hashStringToSeed(`${teamId}:${weekSunday}`)) >>> 0);
+    const rng = makeRng(((seed >>> 0) ^ hashStringToSeed(`${teamId}:${weekKey}`)) >>> 0);
 
     // #6666 punkt 4: akademi-facilitetens niveau afgør kuldets størrelse og hvor
     // meget den AKTIVE profil (den der er trådt i kraft, punkt 5) må overvægte.
@@ -180,11 +182,11 @@ export async function pullWeeklyAcademyIntake(supabase, {
     // de efterladte ryttere; så ryddes de her, og lykkes det ikke, beholdes claimet.
     const orphanIds = /** @type {any} */ (err)?.orphanRiderIds;
     const ids = newIds.length > 0 ? newIds : (Array.isArray(orphanIds) ? orphanIds : []);
-    await rollbackPull(supabase, { teamId, weekSunday, riderIds: ids, cause: err });
+    await rollbackPull(supabase, { teamId, weekKey, riderIds: ids, cause: err });
     throw err;
   }
 
-  return { ok: true, alreadyPulled: false, weekSunday, candidates: newIds };
+  return { ok: true, alreadyPulled: false, weekKey, candidates: newIds };
 }
 
 /**
@@ -195,9 +197,9 @@ export async function pullWeeklyAcademyIntake(supabase, {
  * så begge årsager, så den kan ryddes manuelt.
  *
  * @param {any} supabase
- * @param {{ teamId: string, weekSunday: string, riderIds: string[], cause: unknown }} ctx
+ * @param {{ teamId: string, weekKey: string, riderIds: string[], cause: unknown }} ctx
  */
-async function rollbackPull(supabase, { teamId, weekSunday, riderIds, cause }) {
+async function rollbackPull(supabase, { teamId, weekKey, riderIds, cause }) {
   const failures = [];
   let keepClaim = false;
   if (riderIds.length > 0) {
@@ -221,10 +223,10 @@ async function rollbackPull(supabase, { teamId, weekSunday, riderIds, cause }) {
   }
   if (failures.length === 0 && !keepClaim) {
     const { error: claimErr } = await supabase
-      .from("academy_intake_ticks").delete().eq("team_id", teamId).eq("tick_date", weekSunday);
+      .from("academy_intake_ticks").delete().eq("team_id", teamId).eq("tick_date", weekKey);
     if (claimErr) failures.push(`claim: ${claimErr.message}`);
   }
   if (failures.length > 0 && cause instanceof Error) {
-    cause.message = `${cause.message} (academy-intake-pull rollback incomplete for team ${teamId}, week ${weekSunday}: ${failures.join("; ")})`;
+    cause.message = `${cause.message} (academy-intake-pull rollback incomplete for team ${teamId}, week ${weekKey}: ${failures.join("; ")})`;
   }
 }

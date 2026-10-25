@@ -125,6 +125,7 @@ import { mountainSelectionKnobsFor, phaseChaseClosingScale, phaseLetGoMaxGapScal
 import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
+import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1194,6 +1195,8 @@ export type StageWinChaseV3Input = {
   excludedTeamIds?: ReadonlySet<string>;
   /** #6804 P1 (KUN s5_profiles_v3, kuperet etapeloeb): faktor paa finalevaegten. Udeladt = 1 (bit-identisk). */
   finaleWeightScale?: number;
+  /** #7160 (KUN s5_profiles_v3, bjerg i etapeloeb): faktor pr. hold paa etapeinteressen. Udeladt = 1 (bit-identisk). */
+  teamInterestScale?: ReadonlyMap<string, number>;
 };
 
 /**
@@ -1236,7 +1239,7 @@ export function stageWinChaseForceV3(input: StageWinChaseV3Input & {
   for (const { id, ability } of ranked) {
     const teamId = teamIdOf(input.entrants[id]);
     if (!teamId || input.excludedTeamIds?.has(teamId)) continue;
-    interestByTeam.set(teamId, (interestByTeam.get(teamId) ?? 0) + unit * ability);
+    interestByTeam.set(teamId, (interestByTeam.get(teamId) ?? 0) + unit * ability * (input.teamInterestScale?.get(teamId) ?? 1)); // #7160: x1 er eksakt
   }
   let interest = 0;
   let orderExcess = 0;
@@ -1761,6 +1764,7 @@ function realisticLeadInterest(input: {
   excludedTeamIds: ReadonlySet<string>;
   ctx: BreakawayHookContext;
   finaleWeightScale: number;
+  teamInterestScale?: ReadonlyMap<string, number>; // #7160
 }): { interestByTeam: Map<string, number>; teamIds: string[] } {
   const teamSignals = input.chasePlan.teamSignals ?? new Map<string, number>();
   const { interestByTeam } = stageWinChaseForceV3({
@@ -1772,6 +1776,7 @@ function realisticLeadInterest(input: {
     teamSignals,
     excludedTeamIds: input.excludedTeamIds,
     ...(input.finaleWeightScale !== 1 ? { finaleWeightScale: input.finaleWeightScale } : {}),
+    ...(input.teamInterestScale ? { teamInterestScale: input.teamInterestScale } : {}),
   });
   return { interestByTeam, teamIds: s5V3InterestedTeamIds({ interestByTeam, teamSignals, excludedTeamIds: input.excludedTeamIds }) };
 }
@@ -2018,7 +2023,9 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // lukke, og et blindt kald ville emittere et falsk breakaway_caught.
     if (breakaway.gap_seconds > chaseGroup.gap_seconds) continue;
     // #6804 P2: hvilke hold har jagt-interesse i DETTE udbrud (etapeinteresse eller positivt signal)?
-    const p2Interest = p2Lead ? realisticLeadInterest({ chaseGroup, breakaway, chasePlan, fieldRiderIds, excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ctx, finaleWeightScale: p1FinaleWeightScale }) : null;
+    // #7160 (KUN s5_profiles_v3, bjerg i etapeloeb): klassementshold vaegter etapeinteressen ned bag et ufarligt udbrud.
+    const mountainLetGo = chaseV3 ? s5V3MountainLetGoInterestScale({ s5ProfilesV3: ctx.s5ProfilesV3, profileType: ctx.route.profile_type, gcContext: normalizedGc, chaseGroupRiderIds: chaseGroup.rider_ids, breakawayRiderIds: breakaway.rider_ids, entrants: ctx.entrants }) : undefined;
+    const p2Interest = p2Lead ? realisticLeadInterest({ chaseGroup, breakaway, chasePlan, fieldRiderIds, excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ctx, finaleWeightScale: p1FinaleWeightScale, ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) }) : null;
     // #6187: en jagt-ordre der ikke koeres, fordi holdet har egen mand foran.
     if (ownAheadTeamIds) {
       for (const order of parsedOrders) {
@@ -2123,7 +2130,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
       ...(breakaway.rider_ids.some((id) => wheelSitterIds.has(id)) ? { pullingBreakawayRiderIds: breakaway.rider_ids.filter((id) => !wheelSitterIds.has(id)) } : {}),
       ...(gcAbilityOf ? { gcAbilityOf } : {}),
       // #6441: et hold med egen koerende mand i udbruddet har ingen etapeinteresse i at jage det.
-      ...(chaseV3 ? { officialTimesV3: { profileType: ctx.route.profile_type, teamSignals: plan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ...(p1FinaleWeightScale !== 1 ? { finaleWeightScale: p1FinaleWeightScale } : {}) } } : {}),
+      ...(chaseV3 ? { officialTimesV3: { profileType: ctx.route.profile_type, teamSignals: plan.teamSignals ?? new Map<string, number>(), excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ...(p1FinaleWeightScale !== 1 ? { finaleWeightScale: p1FinaleWeightScale } : {}), ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) } } : {}),
     });
     const netAdvantage = advantageOf(chasePlan);
     // WIRING-GUARD (#4615): jagt-interessen kan KUN lukke et hul, aldrig aabne
