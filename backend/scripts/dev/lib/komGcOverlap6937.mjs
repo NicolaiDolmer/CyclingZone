@@ -15,6 +15,37 @@
 //
 // Refs #6937 #6804
 
+/**
+ * G16-kontrakten (v3Gates: `komWinnerBreakawayPoints`): bjergpoint pr. rytter paa én
+ * etape, taget MENS han sad i dagens udbrud. Motorens eget gruppebillede afgoer det:
+ * passagen opgoeres i sit segment, og segmentets gruppe-snapshot (det foerste med
+ * km >= passagens km) viser hvor rytteren sad. Udbrud = en gruppe af arten
+ * "breakaway" (kun udbruds-mekanikken laver dem), eller en solo-gruppe hvis rytter
+ * var med i et `breakaway_formed` (en udbryder der er koert fra sit udbrud). En
+ * finale-angriber fra feltet taeller ikke. Topankomsten taeller ogsaa, naar
+ * udbryderen vinder den fra udbruddet. REN; Map rider_id -> point.
+ */
+export function breakawayKomPointsOfStage(v4Output) {
+  const out = new Map();
+  const snaps = (v4Output?.groupSnapshots ?? []).slice().sort((a, b) => Number(a.km) - Number(b.km));
+  if (!snaps.length) return out;
+  const formed = new Set((v4Output?.timeline?.events ?? []).filter((e) => e?.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []));
+  for (const p of v4Output?.passages ?? []) {
+    if (p?.kind !== "kom") continue;
+    const snap = snaps.find((s) => Number(s.km) >= Number(p.km) - 1e-6) ?? snaps[snaps.length - 1];
+    const inBreak = new Set();
+    for (const g of snap.groups ?? []) {
+      if (g.kind === "breakaway") for (const id of g.rider_ids ?? []) inBreak.add(id);
+      else if (g.kind === "solo") for (const id of g.rider_ids ?? []) if (formed.has(id)) inBreak.add(id);
+    }
+    for (const r of p.results ?? []) {
+      const pts = Number(r.points) || 0;
+      if (pts > 0 && inBreak.has(r.rider_id)) out.set(r.rider_id, (out.get(r.rider_id) ?? 0) + pts);
+    }
+  }
+  return out;
+}
+
 /** Tom bjergkonto for ét etapeloeb. */
 export function emptyKomAccount() {
   return { points: new Map(), breakawayPoints: new Map(), summitPoints: new Map() };

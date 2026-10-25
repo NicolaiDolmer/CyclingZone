@@ -19,6 +19,7 @@ import { mean, median, spearmanCorrelation } from "../../lib/headToHeadStats.js"
 import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
 import { createJerseyTally } from "./jerseyTally.mjs"; // #6804 v3 G16/G18
+import { breakawayKomPointsOfStage } from "./komGcOverlap6937.mjs"; // #6937 G16
 import { isOrdersGcRulesRevision, isS5ProfilesV2OrLater } from "../../../lib/raceEngineRulesRevision.ts";
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
 import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
@@ -932,6 +933,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const pointsByRider = new Map(); // #2757 S0
     const seedTag = `${seedPrefix}-${s}`;
     const jerseys = createJerseyTally(); // #6804 v3 G16/G18
+    const komBreakPts = new Map(); // #6937 G16: bjergpoint taget i udbrud
     const final = runStagesInOrder({
       v4, data, revision, seedTag, stages, entrants: all, trackFatigue,
       onStage: ({ profile, res, gcBefore, gcAfter, entrants }) => {
@@ -942,6 +944,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
           if (Number(t.sprint_points) > 0) pointsByRider.set(t.rider_id, (pointsByRider.get(t.rider_id) ?? 0) + Number(t.sprint_points));
         }
         jerseys.addStage({ profile, ranked: res.ranked, passages: res.passages });
+        for (const [id, pts] of breakawayKomPointsOfStage(res.v4Output)) komBreakPts.set(id, (komBreakPts.get(id) ?? 0) + pts); // #6937 G16
         // #2757 S0: spurtfinalens top 10 (sprinterrangering mod resultat i testporten).
         if (isBunchSprintStage(profile)) m.sprintTop10 = res.ranked.slice(0, 10).map((r) => r.rider_id);
         if (leadoutPair && isBunchSprintStage(profile)) {
@@ -965,7 +968,9 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const finisherIds = new Set(final.map((r) => r.rider_id));
     const pj = stages.length > 1 ? pointsJerseyWinner(new Map([...pointsByRider].filter(([id]) => finisherIds.has(id)))) : null;
     const pointsJersey = pj ? { riderId: pj.riderId, role: roleByRider.get(pj.riderId) ?? null, sprintRank: sprintRankIn(pj.riderId, riderIds, abilitiesById), isGcWinner: pj.riderId === (final[0]?.rider_id ?? null) } : null;
-    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, abandons: abandonCounts(all, final), ...jerseys.winners(final), ...(pointsJersey ? { pointsJersey } : {}) });
+    const jw = jerseys.winners(final);
+    const komWinnerBreakawayPoints = jw.komWinner ? komBreakPts.get(jw.komWinner) ?? 0 : null; // #6937 G16
+    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, abandons: abandonCounts(all, final), ...jw, komWinnerBreakawayPoints, ...(pointsJersey ? { pointsJersey } : {}) });
   }
   return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision, { shortRaceGapBands }) };
 }
