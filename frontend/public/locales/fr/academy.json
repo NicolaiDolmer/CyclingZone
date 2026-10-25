@@ -51,14 +51,14 @@
   "intakePull": {
     "title": "Le recrutement de cette semaine",
     "description": "Ton académie a un nouveau groupe de candidats. Tu vois l'âge, la nationalité, le type et les aptitudes actuelles. Le potentiel se découvre par l'entraînement une fois qu'ils ont signé.",
-    "deadlineNote": "Disponible jusqu'à dimanche 23:59",
+    "deadlineNote": "Disponible jusqu'à samedi 23:59",
     "pullBtn": "Faire venir le recrutement de cette semaine",
     "pulling": "On les fait venir...",
     "provisionalValue": "Valeur provisoire",
     "wageOneSeason": "Salaire (1 saison)",
     "valuationNote": "Évaluation complète dimanche",
     "abilitiesNow": "Aptitudes actuelles",
-    "emptyAfterPull": "Plus de candidats à examiner. Le recrutement de la semaine prochaine ouvre lundi.",
+    "emptyAfterPull": "Plus de candidats à examiner. Le recrutement de la semaine prochaine ouvre dimanche.",
     "errorFailed": "Impossible de faire venir le recrutement de cette semaine. Réessaie."
   },
   "potentialLearned": "Découvert par l'entraînement",

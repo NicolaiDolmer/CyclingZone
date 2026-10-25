@@ -1342,6 +1342,18 @@
         "title": "Edad, pico y declive",
         "text": "Todos los ciclistas alcanzan su pico a los 28 años, sea cual sea su tipo. A partir de la temporada posterior a la que cumple 29, sus habilidades decaen en lugar de crecer, y eso solo ocurre en el cambio de temporada, nunca durante la propia temporada. El declive no es fijo: crece cuanto más tiempo lleva pasado su pico. Durante los tres primeros años después del pico (de 29 a 31 años) sus habilidades principales bajan aproximadamente 1 punto por temporada. Del cuarto al sexto año después del pico (de 32 a 34) sube a unos 1,8 puntos por temporada, y desde el séptimo año (35+) a unos 2,6 puntos por temporada. No todas las habilidades caen a la misma velocidad: las habilidades principales de un ciclista, aquellas en torno a las que se construye su tipo principal, caen al ritmo completo de arriba. Todas las demás habilidades, incluidas las de oficio Colocación y Táctica, caen más despacio, aproximadamente el 70 por ciento de ese ritmo. Es una diferencia de velocidad, no un inicio retrasado: todas las habilidades empiezan a decaer en la misma temporada."
       },
+      "agingV2": {
+        "title": "Edad y declive",
+        "text": "Los ciclistas mantienen su nivel hasta los 30. A partir de la temporada siguiente, sus capacidades físicas y el pavé bajan un poco en cada cambio de temporada, y la bajada crece cuanto más pasan de los 30. La técnica, la táctica y las demás capacidades mentales nunca bajan. Correr frena el declive: cada día de carrera de la temporada que acaba de terminar cuenta, y los días de entrenamiento duro también ayudan. Un ciclista con una temporada completa de carreras conserva casi todas sus piernas. Nadie crece en el propio cambio de temporada; tus ciclistas se desarrollan con su entrenamiento diario."
+      },
+      "aiRidersV2": {
+        "title": "Ciclistas de la IA y agentes libres",
+        "text": "Los ciclistas de equipos de la IA y los que no tienen contrato no se desarrollan. Siguen envejeciendo como todos. Cuando uno de ellos llega a tu equipo, empieza a desarrollarse con tu entrenamiento desde el día siguiente."
+      },
+      "potentialBestRole": {
+        "title": "El potencial en todo el juego",
+        "text": "Mi equipo, la academia, el perfil del ciclista y la pestaña de Ojeo muestran el potencial de la misma forma. Se muestra para el rol en el que puede llegar más alto, con una pequeña caja al lado que dice qué rol es. Sigue siendo una estimación: un mejor ojeador, o más días de entrenamiento en tu equipo para tus propios ciclistas, la afinan."
+      },
       "trainingFocus": {
         "title": "Enfoque de entrenamiento",
         "text": "Desde el perfil de uno de tus propios ciclistas puedes fijar un enfoque de entrenamiento para toda la temporada: una dirección (VO2max, Umbral/CRI, Sprint, Resistencia, Técnica, Aerodinámica o Lectura de carrera). El esfuerzo viene con el tipo de sesión y no es una elección aparte: los intervalos, el umbral y el sprint son duros, el tempo es medio y el resto son suaves. Las habilidades entrenadas se desarrollan más rápido hacia su techo mediante el entrenamiento diario que se ejecuta cada tarde, mientras que las demás habilidades crecen algo más despacio. Las sesiones duras acumulan más fatiga pero no conllevan ningún riesgo de perder progreso. Puedes fijar un enfoque de entrenamiento en tantos ciclistas como quieras; cambiar un enfoque existente no cuesta nada. El entrenamiento es gratuito y no cuesta dinero. Los ciclistas que corren se desarrollan con la carrera en lugar de con su sesión prevista, incluidas las carreras de un día. Los ciclistas seleccionados que no toman la salida siguen su programa, salvo lesiones. La fatiga, la forma y el riesgo de lesión por entrenamiento se evalúan a partir de la actividad combinada de carrera y entrenamiento del día en la actualización de la tarde. Los huecos entre etapas no añaden recuperación extra. El entrenamiento duro sigue siendo más cansado que el normal."
@@ -1431,9 +1443,17 @@
         "title": "La puntuación de entrenamiento",
         "text": "Cada sesión que completa un ciclista recibe una puntuación de entrenamiento de 1 a 99. Mide la CALIDAD de esa sesión, no lo que el ciclista sacó de ella: lo exigente que fue la sesión, lo bien que encajó con los puntos fuertes del ciclista, la forma y la fatiga del ciclista ese día, el entrenador y las instalaciones que la respaldan, el talento y la edad del ciclista, y el propio día. La puntuación es lo que impulsa el desarrollo: una sesión mejor mueve más las habilidades. No depende de lo cerca que esté una habilidad de su techo, así que un ciclista que casi ha terminado sus habilidades de enfoque sigue obteniendo una lectura honesta de lo buena que fue la sesión. Los días de descanso no reciben puntuación, porque no hubo sesión que medir. En un día en que una carrera ocupa el lugar de la sesión, la columna muestra “Carrera” en lugar de un número. El número de hoy aparece una vez que se ha ejecutado la sesión de hoy, y hasta entonces la columna muestra la última en gris. Solo tú puedes ver las puntuaciones de tus propios ciclistas."
       },
+      "maxOnePerDay": {
+        "title": "Como máximo +1 por capacidad al día",
+        "text": "Una capacidad puede subir como máximo 1 punto al día, sumando entrenamiento y días de carrera. Lo que pase de ahí no se pierde: pasa al día siguiente."
+      },
+      "todaysDecision": {
+        "title": "La decisión de hoy (beta)",
+        "text": "Arriba en la pestaña Hoy, el asistente sugiere hasta tres cambios para hoy: recuperación activa para ciclistas cansados con un día duro previsto y más riesgo de lesión. Usar lo aplica a ese ciclista. Los que corren hoy, están lesionados, ya tienen un día suave o siguen su propio plan semanal o un grupo de entrenamiento no reciben sugerencia. Cuando ya se ha hecho el entrenamiento de hoy, la tarjeta se oculta."
+      },
       "longTermGrowth": {
         "title": "Crecimiento a largo plazo",
-        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores siguen alcanzando su mejor momento hacia los 27-28 años y declinan después, y el entrenamiento nunca puede llevar a nadie por encima de su techo."
+        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores declinan con la edad (mira Edad y declive en Corredores), y el entrenamiento nunca puede llevar a nadie por encima de su techo."
       },
       "readingReport": {
         "title": "Leer el informe de entrenamiento",

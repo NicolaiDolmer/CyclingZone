@@ -232,6 +232,14 @@
       "title": "Un nouveau talent est arrivé à l'académie",
       "message": "De nouveaux candidats attendent dans ton académie - signe-les ou refuse-les."
     },
+    "academyPullReminderReady": {
+      "title": "De nouveaux candidats t'attendent à l'académie",
+      "message": "Le lot de la semaine t'attend dans ton académie. Récupère-le avant samedi minuit."
+    },
+    "academyPullReminderExpiring": {
+      "title": "Le lot d'académie de la semaine expire cette nuit",
+      "message": "Tu n'as pas encore récupéré les candidats de la semaine. Fais-le avant minuit, sinon le lot disparaît."
+    },
     "seasonStarted": {
       "title": "La saison {number} a commencé",
       "message": "Une nouvelle saison a commencé. Regarde ton tableau de bord pour les objectifs de ta direction et ton effectif pour la saison à venir.",
@@ -646,6 +654,10 @@
       "title": "{count, plural, one {Nouveau message} other {# nouveaux messages}}",
       "message": "{count, plural, one {{senderName} t'a envoyé un message} other {# nouveaux messages de {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Un autre manager t'a envoyé un message} other {# nouveaux messages d'un autre manager}}"
+    },
+    "riderIll": {
+      "title": "Coureur malade",
+      "message": "Le médecin indique que {rider} est malade après plusieurs jours de fatigue extrême et est absent jusqu'au {until}."
     },
     "riderInjured": {
       "title": "Coureur blessé",

@@ -232,6 +232,14 @@
       "title": "Ha llegado talento nuevo a la academia",
       "message": "Hay candidatos nuevos esperando en tu academia - ficha o rechaza."
     },
+    "academyPullReminderReady": {
+      "title": "Tienes nuevos candidatos en la academia",
+      "message": "El lote de esta semana te espera en tu academia. Recógelo antes del sábado a medianoche."
+    },
+    "academyPullReminderExpiring": {
+      "title": "El lote de academia de esta semana caduca esta noche",
+      "message": "Aún no has recogido a los candidatos de esta semana. Hazlo antes de medianoche o el lote se pierde."
+    },
     "seasonStarted": {
       "title": "Ha empezado la temporada {number}",
       "message": "Ha empezado una temporada nueva. Mira tu panel para ver los objetivos de tu directiva y tu plantilla para la temporada que viene.",
@@ -646,6 +654,10 @@
       "title": "{count, plural, one {Mensaje nuevo} other {# mensajes nuevos}}",
       "message": "{count, plural, one {{senderName} te ha enviado un mensaje} other {# mensajes nuevos de {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Otro mánager te ha enviado un mensaje} other {# mensajes nuevos de otro mánager}}"
+    },
+    "riderIll": {
+      "title": "Corredor enfermo",
+      "message": "El médico dice que {rider} está enfermo tras varios días de fatiga extrema y está de baja hasta el {until}."
     },
     "riderInjured": {
       "title": "Ciclista lesionado",

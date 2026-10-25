@@ -71,7 +71,10 @@ import {
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
+import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
+import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
+import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -268,6 +271,36 @@ async function runBatched(items, concurrency, fn) {
 
 // Beregn injured_until-dato: tickDate (YYYY-MM-DD) + days → YYYY-MM-DD.
 // Noon UTC undgår DST-kanttilfælde ved dato-aritmetik.
+/**
+ * #6938: rytternes traethed de seneste afregnede dage foer `tickDate`, nyeste foerst, pr. rytter.
+ * Kun afregnede dage (status complete); en manglende dag bryder stimen (conditionIllness).
+ */
+export async function loadIllnessFatigueHistory(supabase, riderIds, tickDate) {
+  if (!riderIds?.length) return new Map();
+  const from = addDaysToDate(tickDate, -ILLNESS_HISTORY_DAYS);
+  // Paa rytter-id (primaernoeglen rider_id, season_id, tick_date): tabellen har intet index paa team_id.
+  const { data, error } = await supabase
+    .from("training_condition_settlements")
+    .select("rider_id, tick_date, fatigue:applied_condition->>fatigue")
+    .in("rider_id", riderIds)
+    .eq("status", "complete")
+    .gte("tick_date", from)
+    .lt("tick_date", tickDate)
+    .order("tick_date", { ascending: false });
+  if (error) throw new Error(`training_condition_settlements (illness history): ${error.message}`);
+  const byRider = new Map();
+  const lastDate = new Map();
+  for (const row of data ?? []) {
+    const prev = lastDate.get(row.rider_id) ?? tickDate;
+    // Kun dage i traek: en dag mangler -> stimen stopper der.
+    if (addDaysToDate(row.tick_date, 1) !== prev) continue;
+    byRider.set(row.rider_id, [...(byRider.get(row.rider_id) ?? []), Number(row.fatigue)]);
+    lastDate.set(row.rider_id, row.tick_date);
+  }
+  return byRider;
+}
+const ILLNESS_HISTORY_DAYS = 14;
+
 function addDaysToDate(dateStr, days) {
   const d = new Date(dateStr + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
@@ -698,10 +731,13 @@ export async function runTeamTrainingDay({
   // (recovery-konstanterne nedenfor); D1+D2 — lookuppet, "race"-intensiteten og
   // udviklings-tick'et — hænger på `raceDayDevelopmentOn`. Læses parallelt: to
   // uafhængige app_config-opslag uden indbyrdes rækkefølge.
-  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On] = await Promise.all([
+  // #3564: kurve B (development_curve_b + private params fra miljoeet). null =
+  // dagens model, bit-identisk; ogsaa naar flaget er on men params mangler.
+  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB] = await Promise.all([
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_engine_enabled') : isRaceDayEngineEnabled(supabase),
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_development_enabled') : isRaceDayDevelopmentEnabled(supabase),
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
+    loadDevelopmentCurveB({ supabase, strict: conditionPerDate }),
   ]);
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
@@ -917,6 +953,10 @@ export async function runTeamTrainingDay({
     await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true });
   // #6984 M1-M3: medicinsk afdeling, kun under condition_model_v2 (ellers ingen read).
   const teamMedicalBonus = conditionModelV2On ? await loadTeamMedicalBonus(supabase, teamId, { retryOnTransient: true }) : 0;
+  // #6938: sygdom af langvarig ekstrem traethed. Kun under condition_model_v2 OG naar
+  // loebsmotoren koerer s5_profiles_v3 (taendes med v3). Ellers ingen read (bit-identisk).
+  const illnessOn = conditionModelV2On && isS5ProfilesV3OrLater(CURRENT_RACE_RULES_REVISION);
+  const illnessHistoryByRider = illnessOn ? await loadIllnessFatigueHistory(supabase, riders.map((r) => r.id), tickDate) : new Map();
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   abilityUpdates = []; // { riderId, patch }
@@ -1154,6 +1194,8 @@ export async function runTeamTrainingDay({
         tickSeedKey,
         budgetDivisor,
         hardDailyCap,
+        // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
+        curveB,
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -1296,6 +1338,26 @@ export async function runTeamTrainingDay({
     } else if (cond.injured_until && cond.injured_until < tickDate) {
       newInjuredUntil = null;
       newInjuryCause = null;
+    }
+
+    // #6938: sygdom (efter oprydningen af en udloebet skade, saa den ikke nulstilles). Kun for en
+    // rask rytter, der ikke blev skadet i dag. Stimen regnes paa de
+    // afregnede dage foer i dag plus dagens traethed efter afregningen (conditionIllness.js).
+    let illnessDays = 0;
+    // Codex #7178: kun paa datoens afregnende tick (samme gate som conditionUpserts), ellers
+    // skrives en sygdom i rapporten paa et tick hvor tilstanden ikke afregnes.
+    if (illnessOn && (!conditionPerDate || settlesCondition) && !injuredToday && !newlyInjured) {
+      const illness = assessIllness({ riderId: rider.id, dateStr: seedScope, fatigues: [newFatigue, ...(illnessHistoryByRider.get(rider.id) ?? [])], medicalBonus: teamMedicalBonus });
+      if (illness.ill) {
+        illnessDays = illness.days;
+        newlyInjured = true;
+        newInjuredUntil = addDaysToDate(tickDate, illness.days);
+        newInjuryCause = "illness";
+        if (useRaceDayKey) {
+          newInjuryEndGameDay = injuryEndGameDay({ gameDay: raceDay, days: illness.days, seasonNumber });
+          newInjurySeasonId = newInjuryEndGameDay == null ? null : seasonId;
+        }
+      }
     }
 
     // Saml ability-patch: gains fra tick + opdateret progress + evt. initierede caps.
@@ -1459,6 +1521,8 @@ export async function runTeamTrainingDay({
       fatigue_delta: newFatigue - preFatigue,
       injured: injuredToday || newlyInjured,
       injury_days: injuryDays,
+      // #6938: syg i dag (loebsdage ude). Kun naar sygdom er taendt; 0 ellers.
+      ...(illnessDays > 0 ? { illness_days: illnessDays } : {}),
       focus: program.focus,
       intensity: effectiveIntensity,
       focus_source: plan ? "plan" : "auto",
