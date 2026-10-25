@@ -18,7 +18,7 @@ import {
 import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
 import { myRaceStatus, bucketProfileType } from "../lib/racePeek.ts"; // #6514
 import RacePeekCard from "../components/calendar/RacePeekCard.tsx"; // #6514
-import CalendarTable, { CalendarViewSwitch } from "../components/calendar/CalendarTable.jsx"; // #6683
+import CalendarTable, { CalendarViewSwitch } from "../components/calendar/CalendarTable.tsx"; // #6683
 import { effectiveCalendarView } from "../lib/calendarTable.ts"; // #6683
 
 const API = import.meta.env.VITE_API_URL;
