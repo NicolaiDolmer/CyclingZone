@@ -69,6 +69,7 @@ test("#6938 G17: abandonCounts taeller startere og udgaaede pr. rollegruppe", ()
     out: 2,
     startersByRole: { captain: 2, helper: 2, other: 1 },
     outByRole: { captain: 1, helper: 1 },
+    byRole: { captain: { starters: 2, out: 1 }, helper: { starters: 2, out: 1 }, other: { starters: 1, out: 0 } },
   });
 });
 
@@ -97,4 +98,13 @@ test("#6938 (Codex P2): med --track-fatigue faar onStage feltet SOM DET KOERTE e
   assert.equal(seen.length, 3);
   assert.deepEqual(seen, simulated, "onStage-feltet er det motoren fik paa etapen");
   assert.ok(simulated[1][0][1] > simulated[0][0][1], "traetheden foeres videre til naeste etape");
+});
+
+test("#6938 G17 (Codex #7178): abandonCounts leverer kontraktens byRole (v3Gates.measureG17)", () => {
+  const entrants = [
+    { rider_id: "a", race_role: "captain" }, { rider_id: "b", race_role: "sprint_captain" },
+    { rider_id: "c", race_role: "helper" }, { rider_id: "d", race_role: "helper" },
+  ];
+  const abandons = abandonCounts(entrants, [{ rider_id: "a" }, { rider_id: "c" }]);
+  assert.deepEqual(abandons.byRole, { captain: { starters: 2, out: 1 }, helper: { starters: 2, out: 1 } });
 });
