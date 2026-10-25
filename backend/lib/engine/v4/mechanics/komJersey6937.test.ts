@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { buildFinishPassages, computePassageOrder, KOM_FAVOURITE_ROLL_OVER_ROLES, komPointScale, passagesHook } from "./bonusSeconds.ts";
-import { aiKomHunterForBreak, komHunterSet, summitFinishSingleFor } from "./komJersey6937.ts";
+import { aiKomHunterForBreak, eligibleKomHunters, komHunterSet, summitFinishSingleFor } from "./komJersey6937.ts";
 import { simulateStageV4 } from "../index.ts";
 import { generateAiTeamOrder } from "../ai/aiTactics.ts";
 import { jerseyLeadersFromComps } from "../../../raceClassifications.js";
@@ -75,6 +75,20 @@ test("#6937 B1: bjergjaegerne er kun ikke-kaptajner, der er med i dagens felt", 
   const set = komHunterSet({ kom: "capA", kom_hunters: ["capA", "hunt", "ghost", "brk2"] }, scene.entrants);
   assert.deepEqual([...set].sort(), ["brk2", "hunt"]);
   assert.equal(komHunterSet(null, scene.entrants).size, 0);
+});
+
+test("#6937 (ejer 25/10, Bjergtroeje-jaeger): en klassementsrytter er aldrig bjergjaeger; de naeste i konkurrencen er", () => {
+  const scene = pelotonScene();
+  const leaders = { kom: "hunt", kom_hunters: ["hunt", "brk1"] };
+  // "hunt" foerer klassementet: han koerer for det, ikke for bjergtroejen.
+  const gc = { status: "standings", stage_number: 3, leader_id: "hunt", standings: [{ rider_id: "hunt", rank: 1, gap_seconds: 0 }] };
+  assert.deepEqual([...komHunterSet(leaders, scene.entrants, gc)], ["brk1"]);
+  assert.deepEqual([...komHunterSet(leaders, scene.entrants)].sort(), ["brk1", "hunt"], "uden en stilling: som foer");
+  assert.deepEqual([...komHunterSet(leaders, scene.entrants, { status: "first_stage", stage_number: 1 })].sort(), ["brk1", "hunt"]);
+  // Ren udvaelgelse: konkurrencens orden bevares, ukendte/kaptajner/klassementsryttere ude.
+  const roles: Record<string, string> = { a: "helper", b: "captain", c: "helper", d: "free_role" };
+  assert.deepEqual(eligibleKomHunters(["a", "b", "x", "c", "d"], (id) => roles[id], new Set(["c"])), ["a", "d"]);
+  assert.deepEqual(eligibleKomHunters(null, (id) => roles[id], new Set()), []);
 });
 
 test("#6937 B1: jaegeren kaemper i feltet og tager toppen foran gruppens oevrige; udbruddet er stadig foran", () => {
