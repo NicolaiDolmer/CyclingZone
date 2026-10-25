@@ -11,6 +11,7 @@ import {
   GC_CAPTAIN_ROLE,
   GC_CAPTAIN_ROLL_IN_AFTER,
   GC_CAPTAIN_ROLL_IN_SPREAD,
+  gcCaptainRollInApplies,
   intermediateSprintLeaderV3,
   isBunchSprintFinale,
   rollInGcCaptainsOnBunchSprint,
@@ -20,7 +21,7 @@ import { finaleHook } from "../finale.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { boundRngFor } from "../rng.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
-import type { AbilityKey, Entrant, EngineState, FinaleType, RaceGroup, RiderRole, RiderState, RouteV2, Segment, SegmentHookContext, Waypoint } from "../types.ts";
+import type { AbilityKey, Entrant, EngineState, FinaleType, GcContext, RaceGroup, RiderRole, RiderState, RouteV2, Segment, SegmentHookContext, Waypoint } from "../types.ts";
 
 const ids = (xs: Array<{ riderId: string }>) => xs.map((x) => x.riderId);
 const field = (n: number, captainsAt: number[] = []) =>
@@ -140,7 +141,18 @@ test("#2757: uden v3 forsvarer kaptajnen som pointfoerer den indlagte spurt (#59
 
 // ── finaleHook: den flade massespurt ──────────────────────────────────────────
 
-function finishOrder(finaleType: FinaleType, v3: boolean, captainInBreak = false): string[] {
+const STAGE_RACE: GcContext = { status: "first_stage", stage_number: 1 };
+
+test("#2757: regel 1 gaelder kun under v3 i et etapeloeb", () => {
+  assert.equal(gcCaptainRollInApplies({ s5ProfilesV3: true, gcContext: STAGE_RACE }), true);
+  assert.equal(gcCaptainRollInApplies({ s5ProfilesV3: true, gcContext: { status: "standings", stage_number: 3, leader_id: null, standings: [] } }), true);
+  assert.equal(gcCaptainRollInApplies({ s5ProfilesV3: true, gcContext: { status: "one_day" } }), false);
+  assert.equal(gcCaptainRollInApplies({ s5ProfilesV3: true, gcContext: { status: "missing" } }), false);
+  assert.equal(gcCaptainRollInApplies({ s5ProfilesV3: true }), false);
+  assert.equal(gcCaptainRollInApplies({ gcContext: STAGE_RACE }), false);
+});
+
+function finishOrder(finaleType: FinaleType, v3: boolean, captainInBreak = false, gcContext: GcContext | null = STAGE_RACE): string[] {
   const entrants: Record<string, Entrant> = { cap: entrant("cap", 99, "captain") };
   for (let i = 0; i < 40; i++) entrants[`r${i}`] = entrant(`r${i}`, 80 - i, i === 0 ? "sprint_captain" : "helper");
   const ids = Object.keys(entrants);
@@ -157,7 +169,7 @@ function finishOrder(finaleType: FinaleType, v3: boolean, captainInBreak = false
   const state: EngineState = { km: 140, groups, riders, virtual_gc: Object.fromEntries(ids.map((id) => [id, 0])) };
   const segment = { kind: "flat", from_km: 140, to_km: 150 } as Segment;
   const route = { distance_km: 150, profile_type: "flat", finale_type: finaleType, segments: [segment], weather: { kind: "sun", wind_exposure: 0.1 }, waypoints: [] } as unknown as RouteV2;
-  const ctx = { ...makeHookCtx({ segment, route, entrants, tuning: RACE_V4_TUNING, seed: "2757-finale", orders: [] }), ...(v3 ? { s5ProfilesV3: true as const } : {}) };
+  const ctx = { ...makeHookCtx({ segment, route, entrants, tuning: RACE_V4_TUNING, seed: "2757-finale", orders: [] }), gcContext, ...(v3 ? { s5ProfilesV3: true as const } : {}) };
   return finaleHook(state, ctx).state.finish_order ?? [];
 }
 
@@ -178,6 +190,12 @@ test("#2757: under v3 spurter kaptajnen ikke i massespurten; han ruller ind i fe
 
 test("#2757: under v3 er andre finaler end den flade massespurt uaendrede", () => {
   for (const f of ["uphill_sprint", "punch", "long_climb"] as FinaleType[]) assert.deepEqual(finishOrder(f, true), finishOrder(f, false), f);
+});
+
+test("#2757: under v3 i et endagsloeb (eller uden klassement) koerer kaptajnen om sejren som foer", () => {
+  for (const gc of [{ status: "one_day" } as GcContext, null]) {
+    assert.deepEqual(finishOrder("flat_sprint", true, false, gc), finishOrder("flat_sprint", false, false, gc), String(gc?.status));
+  }
 });
 
 test("#2757: under v3 koerer en kaptajn i udbruddet stadig om sejren", () => {

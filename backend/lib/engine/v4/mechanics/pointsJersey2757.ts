@@ -25,7 +25,16 @@
 //
 // REN: ingen IO, ingen rng, intet input muteres.
 
-import type { Entrant, FinaleType } from "../types.ts";
+import type { Entrant, FinaleType, GcContext } from "../types.ts";
+import { isStageRaceGcContext } from "./breakawayV3_6804.ts";
+
+/**
+ * Regel 1 gaelder: s5_profiles_v3 og et etapeloeb (klassement eller 1. etape). I et
+ * endagsloeb er der intet klassement at koere for: kaptajnen koerer om sejren som foer.
+ */
+export function gcCaptainRollInApplies(ctx: { s5ProfilesV3?: true; gcContext?: GcContext | null }): boolean {
+  return ctx.s5ProfilesV3 === true && isStageRaceGcContext(ctx.gcContext);
+}
 
 /** Klassementskaptajnens rolle. En sprint-kaptajn ("sprint_captain") er netop spurteren. */
 export const GC_CAPTAIN_ROLE = "captain";
