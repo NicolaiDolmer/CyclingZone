@@ -30,11 +30,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Form and fatigue 2.0",
-          "body": "A rider who races more than once on the same day now starts the next stage with the fatigue from the earlier one."
+          "body": "A stage now costs fatigue by its type, its length and the work your rider does, and every stage counts as a full day, also when he races twice on the same day. The more race days in the season, the more each one costs, and his recovery decides how fast the fatigue goes away. Form drops both when a rider sits idle and when he's overloaded."
         },
         "da": {
           "title": "Form og træthed 2.0",
-          "body": "En rytter, der kører flere gange samme dag, starter nu næste etape med trætheden fra den forrige."
+          "body": "En etape koster nu træthed efter type, længde og det arbejde, din rytter laver, og hver etape tæller som en hel dag, også når han kører to gange samme dag. Jo flere løbsdage i sæsonen, jo mere koster hver, og hans restitution afgør, hvor hurtigt trætheden forsvinder. Formen falder både, når en rytter står stille, og når han er overbelastet."
         },
         "refs": [
           6984
