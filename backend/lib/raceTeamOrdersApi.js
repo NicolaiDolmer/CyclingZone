@@ -34,6 +34,7 @@ import {
 import { validEffortsFor } from "./raceRoles.js";
 import { isStageLocked } from "./raceStartLock.js";
 import { isOfficialTimesV5OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
+import { validateRiderPlans, withStagePlan } from "./stagePlanApi.js"; // #7003
 
 export const VALID_BREAKAWAY_STANCES = [...BREAKAWAY_STANCE_VALUES];
 
@@ -93,6 +94,8 @@ export function validateTeamOrder({
   // raceStageRolesApi.validateStageRoleOverrides) — glemt flag = dagens
   // tre-vaerdi-vokabular, aldrig det udvidede.
   intentionEnabled = false,
+  // #7003: etapeplanens kontekst (stagePlanApi.loadStagePlanContext). null = `plan` er et ukendt felt.
+  stagePlan = null,
 }) {
   if (raceCompleted) return { ok: false, errors: ["team_orders_race_completed"] };
   if (!Number.isInteger(stageNumber) || stageNumber < 1 || stageNumber > stageCount) {
@@ -125,10 +128,12 @@ export function validateTeamOrder({
   // Ingen side-kanaler: præcis kontraktens felter, hverken flere eller andre.
   for (const r of riders) {
     const unknown = Object.keys(r ?? {}).some(
-      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k),
+      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k) && !(stagePlan && k === "plan"),
     );
     if (unknown) { errors.push("team_orders_unknown_field"); break; }
   }
+  const planError = stagePlan ? validateRiderPlans(riders, stagePlan) : null; // #7003
+  if (planError) errors.push(planError);
   // #4632: femtrins-intentionen bag flag — se raceStageRolesApi.js. Begge
   // skrivestier deler ET vokabular (validEffortsFor) saa de aldrig kan diverge.
   const validEfforts = validEffortsFor(intentionEnabled);
@@ -161,12 +166,12 @@ export function validateTeamOrder({
 export function normalizeTeamOrder(order) {
   return {
     breakaway_stance: order.breakaway_stance ?? "neutral",
-    riders: (order.riders ?? []).map((r) => ({
+    riders: (order.riders ?? []).map((r) => withStagePlan({
       rider_id: r.rider_id,
       effort: r.effort,
       try_break: r.try_break === true,
       leadout: r.leadout === true,
-    })),
+    }, r)), // #7003: planens felter udledes af kaeden (kun naar validateTeamOrder tog imod en plan)
   };
 }
 

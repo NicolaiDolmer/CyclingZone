@@ -95,6 +95,7 @@ import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhase
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
+import { advanceStagePlan, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -819,8 +820,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // kort stykke uden stigning (finishDescentIndexFor). Ellers etapens sidste segment.
   const finishDescentIndex = timeModelV3 ? finishDescentIndexFor(route, loopTimeModel) : route.segments.length - 1;
   const finalClimbStart = finalClimbStartIndex(route.segments);
-  const entrantsById: Record<string, Entrant> = {};
+  let entrantsById: Record<string, Entrant> = {};
   for (const entrant of startlist) entrantsById[entrant.rider_id] = entrant;
+  // #7003 (KUN s5_profiles_v3, slukket): etapeplanen langs ruten (lib/stagePlanEngine.ts). Uden plan: null, loopet uroert.
+  const baseEntrantsById = entrantsById;
+  const stagePlan = isS5ProfilesV3OrLater(rulesRevision) ? createStagePlanRuntime(orders, route, baseEntrantsById) : null;
 
   const rngForFn = boundRngFor(seed);
   // #4885: feltets reference-CP pr. terraen — fart-modellens nulpunkt. Regnet
@@ -877,6 +881,11 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   const morningRiderIds = new Set<string>();
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
+    // #7003: opgaveskift ved segmentets start (forrige segments udgang), og segmentets indsats.
+    if (stagePlan) {
+      timeline.push(...advanceStagePlan(stagePlan, { state, segment, segmentIndex, isLastSegment: segmentIndex === segments.length - 1, entrants: baseEntrantsById }));
+      entrantsById = stagePlanEntrants(stagePlan, baseEntrantsById);
+    }
     // #6200 (KUN official_times_v3): stykket uden stigning efter nedkoerslen mod maal.
     const runInAfterFinishDescent = timeModelV3 && finishDescentIndex >= 0 && segmentIndex > finishDescentIndex;
     if (segmentIndex === segments.length - 1) lastSegmentEntryGroups = state.groups;
@@ -1339,6 +1348,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
 
   // Tid-tildeling: rent gruppe-princip (mor-spec SS3.2).
   state = { ...state, riders: applyGroupTimes(state.groups, state.riders, frontElapsedSeconds) };
+  if (stagePlan) state = { ...state, stage_plan_efforts: stagePlanFinalEfforts(stagePlan), stage_plan_load_efforts: stagePlanLoadEfforts(stagePlan) }; // #7003: juryen + traetheden
 
   return { state, timeline, groupSnapshots, finaleTrace };
 }

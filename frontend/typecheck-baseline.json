@@ -1076,7 +1076,7 @@
   "src/components/race/RaceTacticsTab.jsx": {
     "TS18047": 6,
     "TS2322": 8,
-    "TS2339": 35,
+    "TS2339": 30,
     "TS2345": 5,
     "TS2464": 1,
     "TS2538": 3
@@ -2115,7 +2115,7 @@
     "TS2741": 1
   },
   "src/lib/tacticsOrdersAdapter.js": {
-    "TS2339": 12
+    "TS2339": 2
   },
   "src/lib/tacticsPlan.js": {
     "TS2339": 1
