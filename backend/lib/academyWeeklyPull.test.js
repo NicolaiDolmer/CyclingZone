@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runAcademyWeeklyPullSweep, MAX_AI_PULLS_PER_RUN } from "./academyWeeklyPull.js";
+import { runAcademyWeeklyPullSweep, MAX_AI_PULLS_PER_RUN } from "./academyWeeklyPull.ts";
 
 // Mini-supabase: teams og academy_intake_ticks som in-memory rækker. Filtrene
 // (eq/is/not) anvendes rigtigt, så testen fanger forkerte hold-udvælgelser.

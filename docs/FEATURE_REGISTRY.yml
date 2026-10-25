@@ -654,6 +654,8 @@ features:
     epic: 6666
     verified: 2026-10-25
     note: "AI-hold henter selv ugens kuld; menneskehold uden hentning får én påmindelse søndag (#6666). Slukket, kører i søndagens akademi-cron. Tænd er ejer-go."
+    decision: taend
+    decide_by: 2026-11-08
 
   - id: season-academy-intake
     area: academy

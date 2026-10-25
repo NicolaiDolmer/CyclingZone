@@ -6,6 +6,7 @@ import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 
 export const ACADEMY_WEEKLY_PULL_ASSIST_FLAG_KEY = "academy_weekly_pull_assist_enabled";
 
-export async function isAcademyWeeklyPullAssistEnabled(supabase, opts = {}) {
+// Supabase-klienten er utypet i kernen (samme som academyBoardGift.ts); `any` ved grænsen.
+export async function isAcademyWeeklyPullAssistEnabled(supabase: any, opts: Record<string, unknown> = {}): Promise<boolean> {
   return evaluateFlagStage(await readFlagStage(supabase, ACADEMY_WEEKLY_PULL_ASSIST_FLAG_KEY), opts);
 }

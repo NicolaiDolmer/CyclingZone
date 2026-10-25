@@ -1,10 +1,10 @@
-// backend/lib/academyWeeklyPull.js
+// backend/lib/academyWeeklyPull.ts
 // #6666 — ugens akademi-sweep. Efter omlægningen til ugens kuld (pull, man-søn)
 // hentede kun de menneskehold der selv trykkede på knappen; AI-holdene har aldrig
 // haft en kaldesti (det gamle søndags-drip filtrerede is_ai=false væk), og
 // menneskehold fik ingen besked om at ugen var ved at løbe ud.
 //
-// Bag flaget academy_weekly_pull_assist_enabled (seedet/fail-safe OFF) gør
+// Bag flaget academy_weekly_pull_assist_enabled (seedet OFF i database/2026-10-25-6666-academy-weekly-pull-assist-flag.sql, fail-safe OFF) gør
 // sweep'en to ting, begge idempotente pr. (hold, uge):
 //   1. AI-hold henter selv ugens kuld via SAMME pullWeeklyAcademyIntake som
 //      menneskene bruger (samme claim i academy_intake_ticks, samme regler).
@@ -17,15 +17,18 @@
 import { fetchAllRows } from "./supabasePagination.js";
 import { currentIntakeWeekSunday, pullWeeklyAcademyIntake } from "./academyIntakePull.js";
 import { isAcademyIntakePullEnabled } from "./academyIntakePullFlag.js";
-import { isAcademyWeeklyPullAssistEnabled } from "./academyWeeklyPullFlag.js";
+import { isAcademyWeeklyPullAssistEnabled } from "./academyWeeklyPullFlag.ts";
 import { notifyTeamOwner } from "./notificationService.js";
 import { isCopenhagenSunday } from "./sundayIntakeTick.js";
+
+// Supabase-klienten er utypet i kernen (samme som academyBoardGift.ts); `any` ved grænsen.
+type Db = any;
 
 export const MAX_AI_PULLS_PER_RUN = 20;
 export const REMINDER_DEDUPE_WINDOW_MS = 6 * 24 * 60 * 60 * 1000;
 
-async function fetchTeamIds(supabase, { isAi }) {
-  const rows = await fetchAllRows(() => {
+async function fetchTeamIds(supabase: Db, { isAi }: { isAi: boolean }): Promise<string[]> {
+  const rows: Array<{ id: string }> = await fetchAllRows(() => {
     let q = supabase.from("teams").select("id")
       .eq("is_ai", isAi)
       .eq("is_bank", false)
@@ -41,16 +44,28 @@ async function fetchTeamIds(supabase, { isAi }) {
   return rows.map((r) => r.id);
 }
 
-async function fetchPulledTeamIds(supabase, weekSunday) {
-  const rows = await fetchAllRows(() => supabase
+async function fetchPulledTeamIds(supabase: Db, weekSunday: string): Promise<Set<string>> {
+  const rows: Array<{ team_id: string }> = await fetchAllRows(() => supabase
     .from("academy_intake_ticks").select("team_id").eq("tick_date", weekSunday).order("team_id"));
   return new Set(rows.map((r) => r.team_id));
 }
 
-/**
- * @returns {Promise<{ran:false, reason:string} | {ran:true, weekSunday:string,
- *   aiPulled:number, aiRemaining:number, reminded:number, errors:string[]}>}
- */
+export type AcademyWeeklyPullResult =
+  | { ran: false; reason: string }
+  | { ran: true; weekSunday: string; aiPulled: number; aiRemaining: number; reminded: number; errors: string[] };
+
+export interface AcademyWeeklyPullDeps {
+  supabase: Db;
+  now?: Date;
+  isAssistEnabled?: (sb: Db) => Promise<boolean>;
+  isPullEnabled?: (sb: Db) => Promise<boolean>;
+  pullFn?: (sb: Db, args: { teamId: string; now: Date }) => Promise<{ ok?: boolean; alreadyPulled?: boolean } | null | undefined>;
+  // notifyTeamOwner's JSDoc typer metadata for snævert; samme `any`-grænse som academyBoardGift.ts.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- notifyTeamOwner er utypet JS med smalle inferred params
+  notify?: (args: any) => Promise<unknown>;
+  maxAiPulls?: number;
+}
+
 export async function runAcademyWeeklyPullSweep({
   supabase,
   now = new Date(),
@@ -59,14 +74,14 @@ export async function runAcademyWeeklyPullSweep({
   pullFn = pullWeeklyAcademyIntake,
   notify = notifyTeamOwner,
   maxAiPulls = MAX_AI_PULLS_PER_RUN,
-} = {}) {
+}: AcademyWeeklyPullDeps): Promise<AcademyWeeklyPullResult> {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!(await isAssistEnabled(supabase))) return { ran: false, reason: "flag_off" };
   if (!(await isPullEnabled(supabase))) return { ran: false, reason: "pull_flag_off" };
 
   const weekSunday = currentIntakeWeekSunday(now);
   const pulled = await fetchPulledTeamIds(supabase, weekSunday);
-  const errors = [];
+  const errors: string[] = [];
 
   // 1. AI-hold henter selv. Claimet i pullFn er den egentlige idempotens;
   // tick-opslaget ovenfor sparer blot de dyre kald for hold der allerede har hentet.
@@ -76,9 +91,9 @@ export async function runAcademyWeeklyPullSweep({
     try {
       const r = await pullFn(supabase, { teamId, now });
       if (r?.ok && !r.alreadyPulled) aiPulled += 1;
-    } catch (e) {
+    } catch (e: unknown) {
       // best-effort: samles i errors[], som cron.js captures i Sentry; ét holds fejl må ikke stoppe de andre.
-      errors.push(`ai-pull ${teamId}: ${e?.message ?? e}`);
+      errors.push(`ai-pull ${teamId}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -102,10 +117,10 @@ export async function runAcademyWeeklyPullSweep({
           dedupeWindowMs: REMINDER_DEDUPE_WINDOW_MS,
           now,
         });
-        if (r?.delivered) reminded += 1;
-      } catch (e) {
+        if ((r as { delivered?: boolean } | null | undefined)?.delivered) reminded += 1;
+      } catch (e: unknown) {
         // best-effort: samles i errors[], som cron.js captures i Sentry; en mislykket påmindelse ruller intet tilbage.
-        errors.push(`reminder ${teamId}: ${e?.message ?? e}`);
+        errors.push(`reminder ${teamId}: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
   }

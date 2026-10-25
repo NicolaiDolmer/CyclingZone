@@ -16,7 +16,7 @@
     "en fil under 'konverter naar du roerer'. Raekkefoelge + opskrift:",
     "docs/TYPESCRIPT_DIRECTION.md."
   ],
-  "generatedAt": "2026-09-28",
+  "generatedAt": "2026-10-25",
   "tsconfig": "backend/tsconfig.core.json",
   "areas": {
     "economy": {
@@ -27,12 +27,13 @@
         "lib/salaryDecoupling*"
       ],
       "jsFileCount": 5,
-      "tsErrorCount": 305,
+      "tsErrorCount": 294,
       "files": {
         "lib/economyAdminDashboard.js": 4,
         "lib/economyConstants.js": 0,
-        "lib/economyEngine.js": 217,
-        "lib/financeForecast.js": 57,
+        "lib/economyEngine.js": 216,
+        "lib/economyNoUpkeepFlag.ts": 0,
+        "lib/financeForecast.js": 47,
         "lib/salaryDecoupling.js": 27
       }
     },
@@ -42,11 +43,11 @@
         "lib/auction*"
       ],
       "jsFileCount": 4,
-      "tsErrorCount": 168,
+      "tsErrorCount": 167,
       "files": {
         "lib/auctionCancellation.js": 10,
         "lib/auctionEngine.js": 28,
-        "lib/auctionFinalization.js": 88,
+        "lib/auctionFinalization.js": 87,
         "lib/auctionRules.js": 42
       }
     },
@@ -56,26 +57,32 @@
         "lib/academy*"
       ],
       "jsFileCount": 15,
-      "tsErrorCount": 264,
+      "tsErrorCount": 259,
       "files": {
         "lib/academyBoardGift.ts": 0,
+        "lib/academyDisclosure.ts": 0,
         "lib/academyDriftFlag.ts": 0,
         "lib/academyFlag.js": 4,
         "lib/academyGenerator.js": 28,
-        "lib/academyGraduation.js": 100,
+        "lib/academyGraduation.js": 96,
         "lib/academyGraduationSweep.js": 6,
         "lib/academyHealSweep.js": 4,
-        "lib/academyIntake.js": 60,
+        "lib/academyIntake.js": 59,
+        "lib/academyIntake2View.ts": 0,
         "lib/academyIntakeExpiryFlag.js": 1,
         "lib/academyIntakeExpirySweep.js": 5,
+        "lib/academyIntakeProfile.ts": 0,
         "lib/academyIntakePull.js": 10,
         "lib/academyIntakePullFlag.js": 1,
         "lib/academyIntakeReconcile.js": 9,
         "lib/academyIntakeSource.ts": 0,
         "lib/academyOfferProtection.js": 4,
         "lib/academyPnl.js": 17,
+        "lib/academyProspectKnowledge.ts": 0,
         "lib/academySigningDefer.js": 6,
-        "lib/academyTransfer.js": 9
+        "lib/academyTransfer.js": 9,
+        "lib/academyWeeklyPull.ts": 0,
+        "lib/academyWeeklyPullFlag.ts": 0
       }
     },
     "ownership": {
@@ -117,16 +124,16 @@
         "lib/raceCalendarScheduling*"
       ],
       "jsFileCount": 3,
-      "tsErrorCount": 46,
+      "tsErrorCount": 45,
       "files": {
         "lib/raceCalendarScheduling.js": 18,
-        "lib/stageScheduler.js": 27,
+        "lib/stageScheduler.js": 26,
         "lib/stageSchedulerFlag.js": 1
       }
     }
   },
   "totals": {
     "jsFileCount": 35,
-    "tsErrorCount": 1042
+    "tsErrorCount": 1024
   }
 }

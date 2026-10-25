@@ -81,7 +81,7 @@ import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
-import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.js";
+import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.ts";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
