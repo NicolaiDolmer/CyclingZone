@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { authHeaders } from "../lib/supabase"; // #4348: kanonisk kopi
@@ -18,10 +18,13 @@ import {
 import { useRaceLibraryV2 } from "../lib/raceLibraryV2Flag.ts"; // #6514
 import { myRaceStatus, bucketProfileType } from "../lib/racePeek.ts"; // #6514
 import RacePeekCard from "../components/calendar/RacePeekCard.tsx"; // #6514
-import CalendarTable, { CalendarViewSwitch } from "../components/calendar/CalendarTable.tsx"; // #6683
+import CalendarViewSwitch from "../components/calendar/CalendarViewSwitch.tsx"; // #6683
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { effectiveCalendarView } from "../lib/calendarTable.ts"; // #6683
 
 const API = import.meta.env.VITE_API_URL;
+// #6683 (ejer 25/10): tabellen hentes foerst naar den vises, saa kalenderens bundle ikke vokser.
+const CalendarTable = lazyWithRetry(() => import("../components/calendar/CalendarTable.tsx"));
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 // #6683: forklaringen viser ALLE etapetyper med deres ene ikon (samme som chippen, etapesiden
@@ -402,11 +405,13 @@ export default function CalendarPage() {
           never scroll horizontally on mobile (7 columns need a real minimum width
           to stay legible; audit #2849 flagged this grid as missing an overflow-wrap). */}
       {view === "table" ? (
+        <Suspense fallback={<PageLoader label={t("loadingAria")} />}>
         <CalendarTable
           entries={/** @type {any} */ (data).entries} todayIso={todayISO} division={activeDivision} poolId={activePool}
           mineOnly={effectiveMineOnly} showMineToggle={!divisionPending && effectiveTab !== "mine"} onMineOnlyChange={setMineOnly}
           divisionPending={divisionPending} onShowAll={effectiveTab !== "all" ? () => setTab("all") : null}
         />
+        </Suspense>
       ) : (
       <div className="overflow-x-auto">
         <div className="min-w-[630px]">

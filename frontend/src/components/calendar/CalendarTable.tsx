@@ -8,8 +8,7 @@ import CheckboxBase from "../ui/Checkbox.jsx";
 import SelectBase from "../ui/Select.jsx";
 import ButtonBase from "../ui/Button.jsx";
 import EmptyStateBase from "../ui/EmptyState.jsx";
-import SegmentedBase from "../ui/Segmented.jsx";
-import { ChevronRightIcon, CalendarIcon, TableIcon } from "../ui/icons/index.jsx";
+import { ChevronRightIcon, CalendarIcon } from "../ui/icons/index.jsx";
 import { buttonClass } from "../ui/buttonStyles.js";
 import TerrainTypeGlyphBase from "../race/TerrainTypeGlyph.jsx";
 import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
@@ -24,7 +23,7 @@ import {
   classOptions,
   terrainOptions,
 } from "../../lib/calendarTable.ts";
-import type { CalendarTableEntry, CalendarTableRow, CalendarView, SortDir } from "../../lib/calendarTable.ts";
+import type { CalendarTableEntry, CalendarTableRow, SortDir } from "../../lib/calendarTable.ts";
 
 // ── Typer for de .jsx-primitiver tabellen bruger ─────────────────────────────
 // Uden dem udleder TS props af default-VÆRDIERNE (`search = null` bliver til
@@ -82,16 +81,8 @@ interface CheckboxProps {
 }
 interface ButtonProps { variant?: "primary" | "secondary" | "ghost" | "danger"; size?: "sm" | "md"; onClick?: () => void; children?: ReactNode }
 interface EmptyStateProps { title: string; description?: string; action?: ReactNode; icon?: ReactNode }
-interface SegmentedProps {
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-  options: { value: string; label: ReactNode }[];
-  className?: string;
-}
 interface StatusBadgeProps { state: string; emphasis?: boolean; className?: string; children?: ReactNode }
 interface TerrainTypeGlyphProps { profileType: string | null | undefined; size?: number; showLabel?: boolean; className?: string; labelClassName?: string }
-type IconComponent = ComponentType<{ size?: number; "aria-hidden"?: boolean | "true" }>;
 
 const FilterBar = FilterBarBase as unknown as ComponentType<FilterBarProps>;
 const DataTable = DataTableBase as unknown as ComponentType<DataTableProps>;
@@ -100,7 +91,6 @@ const Checkbox = CheckboxBase as unknown as ComponentType<CheckboxProps>;
 const Select = SelectBase as unknown as ComponentType<SelectProps>;
 const Button = ButtonBase as unknown as ComponentType<ButtonProps>;
 const EmptyState = EmptyStateBase as unknown as ComponentType<EmptyStateProps>;
-const Segmented = SegmentedBase as unknown as ComponentType<SegmentedProps>;
 const TerrainTypeGlyph = TerrainTypeGlyphBase as unknown as ComponentType<TerrainTypeGlyphProps>;
 
 interface CalendarTableProps {
@@ -380,38 +370,6 @@ export default function CalendarTable({
         sortDir={sort.dir}
         onSort={(key: string) => setSort((s) => nextSort(s, key))}
         empty={empty}
-      />
-    </div>
-  );
-}
-
-// ── skifter ──────────────────────────────────────────────────────────────────
-// "Kalender | Tabel" er den kanoniske Segmented (guld-tekst paa aktivt segment,
-// ingen guld-knap). `full`: mobilens segment i fuld bredde oeverst (begge mockups).
-export function CalendarViewSwitch({ t, view, onChange, className = "", full = false }: {
-  t: Translate;
-  view: CalendarView;
-  onChange: (next: CalendarView) => void;
-  className?: string;
-  full?: boolean;
-}) {
-  const item = (Icon: IconComponent, label: string) => (
-    <span className="inline-flex items-center justify-center gap-1.5">
-      <Icon size={14} aria-hidden="true" />
-      {label}
-    </span>
-  );
-  return (
-    <div className={className} data-testid="calendar-view-switch">
-      <Segmented
-        label={t("view.label")}
-        value={view}
-        onChange={(next: string) => onChange(next === "table" ? "table" : "calendar")}
-        className={full ? "w-full *:flex-1" : ""}
-        options={[
-          { value: "calendar", label: item(CalendarIcon, t("view.calendar")) },
-          { value: "table", label: item(TableIcon, t("view.table")) },
-        ]}
       />
     </div>
   );
