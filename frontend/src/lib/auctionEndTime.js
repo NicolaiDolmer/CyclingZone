@@ -11,6 +11,8 @@
 export const GAME_TIMEZONE = "Europe/Copenhagen";
 export const DEFAULT_MIN_HOURS = 1;
 export const DEFAULT_MAX_HOURS = 48;
+// #7220: spejler backendens FREE_AGENT_MIN_DURATION_HOURS (auctionEngine.js).
+export const FREE_AGENT_MIN_HOURS = 12;
 
 // #2884: vindues-timerne står som tal i configen (8, 24). Vist rå bliver det
 // "8:00-24:00" ved siden af tabular tal — nul-udfyldt matcher resten af fladen.

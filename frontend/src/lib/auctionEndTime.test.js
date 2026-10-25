@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   defaultEndWallClock,
+  FREE_AGENT_MIN_HOURS,
   gameWallClockToUTC,
   getEndTimeIssue,
   utcToGameWallClock,
@@ -100,5 +101,24 @@ test("defaultEndWallClock: forslaget er altid gyldigt hen over døgnet", () => {
     const now = gameWallClockToUTC(`2026-08-15T${String(hour).padStart(2, "0")}:00`);
     const wall = defaultEndWallClock(now, PROD);
     assert.equal(getEndTimeIssue(wall, now, PROD), null, `fejlede ved kl. ${hour}`);
+  }
+});
+
+// #7220: fri-transfer-rytter — vælgeren holder 12-timers-gulvet, og standard-
+// forslaget opfylder det altid (det flyttes kun senere, aldrig tidligere).
+test("getEndTimeIssue: fri transfer afviser under 12 timer", () => {
+  const now = gameWallClockToUTC("2026-08-15T10:00");
+  const issue = getEndTimeIssue("2026-08-15T21:00", now, { ...PROD, min_hours: FREE_AGENT_MIN_HOURS });
+  assert.ok(issue);
+  assert.equal(issue.code, "end_too_soon");
+  assert.equal(issue.minHours, FREE_AGENT_MIN_HOURS);
+  assert.equal(getEndTimeIssue("2026-08-15T22:00", now, { ...PROD, min_hours: FREE_AGENT_MIN_HOURS }), null);
+});
+
+test("defaultEndWallClock: forslaget er gyldigt med 12-timers-gulvet hele døgnet", () => {
+  const cfg = { ...PROD, min_hours: FREE_AGENT_MIN_HOURS };
+  for (let hour = 0; hour < 24; hour++) {
+    const now = gameWallClockToUTC(`2026-08-15T${String(hour).padStart(2, "0")}:00`);
+    assert.equal(getEndTimeIssue(defaultEndWallClock(now, cfg), now, cfg), null, `fejlede ved kl. ${hour}`);
   }
 });
