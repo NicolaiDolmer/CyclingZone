@@ -73,6 +73,7 @@ import {
   type TeamOrder as TeamTacticsOrder,
 } from "../ai/teamOrderContract.ts";
 import { TEAM_TACTICS_ORDER_KIND, s5MorningGcBlockedRiders } from "../mechanics/breakaway.ts";
+import { eligibleKomHunters } from "../mechanics/komJersey6937.ts"; // #6937
 import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
 import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater } from "../../../raceEngineRulesRevision.ts";
 
@@ -330,6 +331,8 @@ export function buildStageOrderPlan(args: {
     )
     : null;
   const trainByDefault = trainIsDefaultOnStage(context);
+  // #6937 (KUN s5_profiles_v3, ejer 25/10): jaegerne = de forreste der hverken er kaptajn eller klassementsrytter.
+  const komHunterIds = context?.kom_hunter_rider_ids?.length ? eligibleKomHunters(context.kom_hunter_rider_ids, (id) => { const r = roster.find((x) => String(x.rider_id) === id); return r ? toRole(r.role) : undefined; }, breakBlocked ?? new Set()) : null;
 
   const orders: EngineTeamOrder[] = [];
   const aiEffortByRider = new Map<string, EffortLevel>();
@@ -349,7 +352,7 @@ export function buildStageOrderPlan(args: {
           ...(context.rules_revision ? { rules_revision: context.rules_revision } : {}),
           ...(breakBlocked ? { break_blocked_rider_ids: breakBlocked } : {}),
           ...(context.points_leader_rider_id ? { points_leader_rider_id: context.points_leader_rider_id } : {}),
-          ...(context.kom_hunter_rider_ids?.length ? { kom_hunter_rider_ids: context.kom_hunter_rider_ids } : {}),
+          ...(komHunterIds?.length ? { kom_hunter_rider_ids: komHunterIds } : {}),
         }).order
       : v3HumanStance
         ? humanDefaultOrderV3(teamId, teamRoster, context.route, field, rawAbilitiesByRider)

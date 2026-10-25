@@ -16,11 +16,17 @@
 //      afgoer stadig hvem der kommer afsted. Menneskeholdenes ordrer er uroerte.
 //   4. Ejer 25/10: topankomsten giver stigningens almindelige point, ikke dobbelt
 //      (summitFinishSingleFor). v1/v2 og aeldre: intet her kaldes (bit-identisk).
+//   5. Ejer 25/10 ordret ("Bjergtroeje-jaeger"): jaegeren er den der foerer eller
+//      jager bjergtroejen, taet paa i bjergkonkurrencen og IKKE klassementsrytter.
+//      Runneren sender konkurrencens forreste; motoren og AI'en tager de forreste af
+//      dem der hverken er kaptajn eller klassementsrytter (samme graense som #6818's
+//      morgenblokering, s5MorningGcBlockedRiders).
 //
 // REN: ingen IO, ingen rng. Refs #6937 #6804
 
 import type { Entrant, JerseyLeaders } from "../types.ts";
 import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { s5MorningGcBlockedRiders } from "./breakaway.ts";
 
 /**
  * #6937 (KUN s5_profiles_v3, ejer 25/10 ordret: "Ja: almindelige point paa
@@ -41,17 +47,39 @@ export const KOM_JERSEY_6937_TUNING = Object.freeze({
   hunterBreakProfiles: Object.freeze(["mountain", "high_mountain", "medium_mountain", "hilly"]) as readonly string[],
 });
 
-/** Motor-siden: dagens bjergjaegere (kaptajner fraregnet). Tom uden input. */
+/**
+ * Ejer 25/10 ("Bjergtroeje-jaeger"): de forreste i bjergkonkurrencen (`ids` i
+ * konkurrencens orden) der er med i dagens felt (`roleOf` kender dem), ikke er kaptajn
+ * og ikke er klassementsrytter (`gcRiderIds`), i konkurrencens orden. REN.
+ */
+export function eligibleKomHunters(
+  ids: readonly string[] | null | undefined,
+  roleOf: (id: string) => string | null | undefined,
+  gcRiderIds: ReadonlySet<string>,
+): string[] {
+  const out: string[] = [];
+  for (const id of ids ?? []) {
+    const role = roleOf(id);
+    if (role === undefined || KOM_JERSEY_6937_TUNING.neverHunterRoles.includes(String(role)) || gcRiderIds.has(id)) continue;
+    out.push(id);
+  }
+  return out;
+}
+
+/** Klassementsrytterne (#6818's morgenblokering) ud fra GC-konteksten; tom uden en stilling. */
+export function komHunterGcRiders(gcContext: unknown, entrants: Readonly<Record<string, Entrant>>): ReadonlySet<string> {
+  return gcContext ? s5MorningGcBlockedRiders({ gcContext: gcContext as never, entrants }, Object.keys(entrants)) : new Set<string>();
+}
+
+/** Motor-siden: dagens bjergjaegere (kaptajner og klassementsryttere fraregnet). Tom uden input. */
 export function komHunterSet(
   jerseyLeaders: JerseyLeaders | null | undefined,
   entrants: Readonly<Record<string, Entrant>>,
+  gcContext?: unknown,
 ): ReadonlySet<string> {
-  const out = new Set<string>();
-  for (const id of jerseyLeaders?.kom_hunters ?? []) {
-    const role = String(entrants[id]?.role ?? "");
-    if (entrants[id] && !KOM_JERSEY_6937_TUNING.neverHunterRoles.includes(role)) out.add(id);
-  }
-  return out;
+  if (!jerseyLeaders?.kom_hunters?.length) return new Set<string>();
+  const roleOf = (id: string) => (entrants[id] ? String(entrants[id].role ?? "") : undefined);
+  return new Set(eligibleKomHunters(jerseyLeaders.kom_hunters, roleOf, komHunterGcRiders(gcContext, entrants)));
 }
 
 /**

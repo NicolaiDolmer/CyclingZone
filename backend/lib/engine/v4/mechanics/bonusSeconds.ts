@@ -373,7 +373,7 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
         jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.jerseyLeaders?.points) ?? null,
         // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
         // topankomsten afgoeres af maalordenen og er uaendret.
-        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES, komHunterIds: komHunterSet(ctx.jerseyLeaders, entrants), rollOverBehindGroup: true } : {}),
+        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES, komHunterIds: komHunterSet(ctx.jerseyLeaders, entrants, ctx.gcContext), rollOverBehindGroup: true } : {}),
       },
     });
     const passage = buildPassage({
