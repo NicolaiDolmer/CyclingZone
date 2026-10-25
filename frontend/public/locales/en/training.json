@@ -58,10 +58,10 @@
   "decision": {
     "title": "Today's decision",
     "recovery": "active recovery today",
-    "reason": "Fatigue {{fatigue}} with a hard day planned. Injury risk is raised.",
+    "reason": "Fatigue {fatigue} with a hard day planned. Injury risk is raised.",
     "use": "Use",
-    "useAria": "Set {{name}} to active recovery",
-    "useAll": "Use all {{n}} suggestions",
+    "useAria": "Set {name} to active recovery",
+    "useAll": "Use all {n} suggestions",
     "none": "No rider needs a change today."
   },
   "overview": {

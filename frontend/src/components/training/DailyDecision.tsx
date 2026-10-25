@@ -71,7 +71,7 @@ export default function DailyDecision({
             <li key={row.riderId} data-testid="daily-decision-row" className="flex items-center gap-3 px-4 py-2.5">
               <AlertTriangleIcon size={16} className="flex-none text-cz-warning" aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13px] font-semibold text-cz-1">
+                <div className={`text-[13px] font-semibold text-cz-1 ${compact ? "" : "truncate"}`}>
                   <RiderLink id={row.riderId} className="hover:text-cz-accent-t">{row.name}</RiderLink>
                   <span className="font-normal text-cz-2">{`: ${t("decision.recovery")}`}</span>
                 </div>
