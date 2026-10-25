@@ -3,12 +3,9 @@
 // etapeloeb. Spec: docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md §2.2
 // (G17: udgaaede pr. loebsgruppe; kaptajner udgaar ikke oftere end hjaelpere).
 //
-// HVORFOR. Testporten 25/10 (s5_profiles_v3, traethed mellem etaperne) viste at
-// motorens veje ud (styrt, tidsgraensen, sygdom) kun tager en lille brøkdel af
-// feltet i etapeloeb, og at de rammer kaptajnerne (isaer spurtkaptajnerne paa
-// bjergetaperne) mindst lige saa haardt som hjaelperne. I virkeligheden er det
-// hjaelperne der staar af: de har lavet arbejdet, er slidte, og naar de ruller
-// ind langt efter paa en haard etape uden en opgave tilbage, stiger de af.
+// HVORFOR. I virkeligheden er det hjaelperne der staar af i etapeloeb: de har lavet
+// arbejdet, er slidte, og naar de ruller ind langt efter paa en haard etape uden en
+// opgave tilbage, stiger de af. Maalingen bag ligger privat (balance-internals/6938/).
 //
 // REGLEN (pr. etape, efter tidsgraensen, samme kaldssted som U3):
 //   - kun i etapeloeb (klassementskonteksten er et klassement eller etape 1),
