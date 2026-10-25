@@ -81,6 +81,15 @@ export function isTimeTrialProfile(profileType: unknown): boolean {
   return typeof profileType === "string" && TIME_TRIAL_PROFILES.has(profileType);
 }
 
+/**
+ * Erstatter etapeplanen taktiktabellen paa denne etape? Aldrig paa en enkeltstart eller
+ * holdtidskoersel: motoren bruger indsatsen dér, og de almindelige kontroller (og gemte
+ * valg) skal blive staaende.
+ */
+export function stagePlanReplacesControls(enabled: boolean, profileType: unknown): boolean {
+  return enabled === true && !isTimeTrialProfile(profileType);
+}
+
 export function stagePlanClimbsFromRaw(rawClimbs: unknown, distanceKm: number): StagePlanClimb[] {
   const list: unknown[] = Array.isArray(rawClimbs) ? rawClimbs : [];
   const out: StagePlanClimb[] = [];

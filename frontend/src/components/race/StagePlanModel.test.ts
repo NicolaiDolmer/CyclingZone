@@ -1,6 +1,7 @@
 // #7003: etapeplanens UI-hjaelpere (kun gyldige valg, reparation, opsummering efter etapen).
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   clearRiderPlan,
   nextLeg,
@@ -8,6 +9,7 @@ import {
   setLegTask,
   setLegTrigger,
   stagePlanRecap,
+  stagePlanReplacesControls,
   stagePlanRouteFromRaw,
   taskOptions,
   triggerOptions,
@@ -80,4 +82,14 @@ test("#7003: opsummeringen efter etapen laeses af stage_plan_leg-events", () => 
   ]);
   const quit = [{ type: "incident", km: 80, params: { rider_id: "a", outcome: "abandoned" } }];
   assert.deepEqual(stagePlanRecap(HELPER, quit, "a").map((i) => i.status), ["abandoned", "not_reached", "not_reached"]);
+});
+
+test("#7003: enkeltstart og holdtidskoersel beholder de almindelige indsats-kontroller", () => {
+  for (const tt of ["itt", "itt_hilly", "ttt"]) assert.equal(stagePlanReplacesControls(true, tt), false, tt);
+  for (const road of ["flat", "rolling", "hilly", "mountain", undefined]) assert.equal(stagePlanReplacesControls(true, road), true, String(road));
+  assert.equal(stagePlanReplacesControls(false, "mountain"), false);
+  // Taktik-fanen gater boardet (og skjuler tabellen) paa netop denne regel for den aabne etape.
+  const tab = readFileSync(new URL("./RaceTacticsTab.jsx", import.meta.url), "utf8");
+  assert.match(tab, /const stagePlanOn = showOrders && stagePlanReplacesControls\(orders\?\.stagePlanEnabled === true, stageProfileType\);/);
+  assert.match(tab, /const stageProfileType = profileByStage\[activeStage\]\?\.profile_type;/);
 });
