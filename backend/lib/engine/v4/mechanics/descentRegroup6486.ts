@@ -20,7 +20,9 @@
 // regnet i smaa skridt inde i segmentet. Et hul kan kun krympe, aldrig mere end
 // hullet, og raekkefoelgen er uaendret.
 //
-// Uroert: dagens udbrud (M5 ejer det hul, #5812), grupper i en uheldsjagt,
+// En gruppe koerer aldrig mere end et fysisk loft hurtigere end sin egen fart.
+//
+// Uroert: ethvert stykke af dagens udbrud (M5 ejer det hul, #5812), grupper i en uheldsjagt,
 // topankomster (etapen slutter paa en stigning), alt foer sidste stigning, og
 // alle profiler uden for bjerg/hoejfjeld. Alle aeldre revisioner kalder aldrig
 // modulet (segmentLoop.ts gater paa isS5ProfilesV3OrLater): bit-identiske.
@@ -51,6 +53,8 @@ export type DescentRegroup6486Tuning = {
   sizeRatioFloor: number;
   /** Skridtlaengde (km) inde i et segment, saa grupper der samles jager videre sammen. */
   stepKm: number;
+  /** Hoejeste andel en gruppe kan koere hurtigere end sin egen fart paa segmentet (fysisk loft, < 1). */
+  maxSpeedGainShare: number;
 };
 
 /** #6486 (KUN s5_profiles_v3, deep-frosset). */
@@ -62,6 +66,7 @@ export const DESCENT_REGROUP_6486_TUNING: DescentRegroup6486Tuning = deepFreeze(
   fullCooperationRiders: 5,
   sizeRatioFloor: 0.4,
   stepKm: 1,
+  maxSpeedGainShare: 0.15,
 });
 
 /** Indekset for etapens sidste stigning, eller -1. */
@@ -175,7 +180,9 @@ export function regroupClosingSeconds(
   return out;
 }
 
-const isEscape = (g: Pick<RaceGroup, "kind" | "origin">): boolean => g.origin === "breakaway" && (g.kind === "breakaway" || g.kind === "solo");
+// Codex-review: ethvert stykke af morgenudbruddet (ogsaa en "chase"-gruppe der er
+// splittet ud af det paa en stigning) ejes af M5, aldrig kun breakaway/solo.
+const isMorningBreakawayPiece = (g: Pick<RaceGroup, "origin">): boolean => g.origin === "breakaway";
 
 /**
  * Tempo-laget i segment-loopet: en gruppe inden for raekkevidde koerer segmentet
@@ -197,7 +204,7 @@ export function descentRegroupTempo6486<T extends { dtSeconds: number }>(
   const lengthKm = Number.isFinite(seg.from_km) && Number.isFinite(seg.to_km) ? Math.max(0, (seg.to_km as number) - (seg.from_km as number)) : 0;
   const inIncident = (g: RaceGroup) => incidentChasers !== undefined && g.rider_ids.some((id) => incidentChasers[id] !== undefined);
   const chainGroups = [...groups]
-    .filter((g) => !isEscape(g) && !inIncident(g) && g.rider_ids.length > 0 && tempoByGroup.has(g.id))
+    .filter((g) => !isMorningBreakawayPiece(g) && !inIncident(g) && g.rider_ids.length > 0 && tempoByGroup.has(g.id))
     .sort((a, b) => a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
   if (chainGroups.length < 2) return tempoByGroup;
   const closing = regroupClosingSeconds(chainGroups.map((g) => ({ id: g.id, gap: g.gap_seconds, riders: g.rider_ids.length })), seg.kind, lengthKm, t);
@@ -207,8 +214,10 @@ export function descentRegroupTempo6486<T extends { dtSeconds: number }>(
     const own = (out ?? tempoByGroup).get(group.id) as T;
     if (reference !== null) {
       const close = closing.get(group.id) ?? 0;
-      // Ankomst = gap + dt, saa hullet til gruppen foran krymper med `close`.
-      const target = reference.dt - close;
+      // Ankomst = gap + dt, saa hullet til gruppen foran krymper med `close`. Codex-review:
+      // en lang kaede maa aldrig summere til en ugyldig (for kort) tid, saa en gruppe koerer
+      // hoejst `maxSpeedGainShare` hurtigere end sin egen fart (gruppen bag maaler mod den).
+      const target = Math.max(reference.dt - close, own.dtSeconds * (1 - t.maxSpeedGainShare));
       if (close > 0 && own.dtSeconds > target) {
         out ??= new Map(tempoByGroup);
         out.set(group.id, { ...own, dtSeconds: target });

@@ -76,11 +76,12 @@ const g = (id: string, gap: number, riders: number, extra: Partial<RaceGroup> = 
   ({ id, kind: "chase", rider_ids: Array.from({ length: riders }, (_, i) => `${id}${i}`), gap_seconds: gap, cohesion: 1, ...extra });
 
 test("#6486: the tempo layer only makes a group faster, leaves the breakaway and an incident chase alone, and returns the same Map without effect", () => {
-  const groups = [g("brk", 0, 2, { kind: "breakaway", origin: "breakaway" }), g("fav", 60, 3, { kind: "peloton" }), g("ch", 80, 5), g("inc", 85, 1)];
+  const groups = [g("brk", 0, 2, { kind: "breakaway", origin: "breakaway" }), g("brkPiece", 10, 3, { origin: "breakaway" }), g("fav", 60, 3, { kind: "peloton" }), g("ch", 80, 5), g("inc", 85, 1)];
   const tempo = new Map(groups.map((x) => [x.id, { dtSeconds: 600 }]));
   const out = descentRegroupTempo6486(groups, tempo, nonSummit, 3, { inc0: {} });
   assert.notEqual(out, tempo);
   assert.equal(out.get("brk")?.dtSeconds, 600);
+  assert.equal(out.get("brkPiece")?.dtSeconds, 600, "a chase piece split from the breakaway is still M5's");
   assert.equal(out.get("fav")?.dtSeconds, 600);
   assert.ok((out.get("ch")?.dtSeconds ?? 600) < 600);
   assert.ok(600 - (out.get("ch")?.dtSeconds ?? 0) <= 20, "never more than the hole");
@@ -112,6 +113,21 @@ test("#6486: among the engine fixtures only the descent finish is a non-summit m
     return Math.max(...fin.map((r) => r.time_seconds - best));
   };
   assert.ok(behind(v3) <= behind(v2) + 1e-6);
+});
+
+test("#6486: a long chain of groups never sums to an invalid traversal; every group stays within its physical bound and keeps the order", () => {
+  const long = { profile_type: "mountain" as const, segments: [flat(0, 100), climb(100, 115), descent(115, 130)] };
+  const groups = Array.from({ length: 110 }, (_, i) => g(`s${String(i).padStart(3, "0")}`, i * 10, 1));
+  const tempo = new Map(groups.map((x) => [x.id, { dtSeconds: 900 }]));
+  const out = descentRegroupTempo6486(groups, tempo, long, 2, undefined);
+  let prevArrival = -Infinity;
+  for (const x of groups) {
+    const dt = out.get(x.id)?.dtSeconds ?? NaN;
+    assert.ok(Number.isFinite(dt) && dt >= 900 * (1 - T.maxSpeedGainShare) - 1e-9, `${x.id}: ${dt}`);
+    const arrival = x.gap_seconds + dt;
+    assert.ok(arrival >= prevArrival - 1e-9, `${x.id} never passes the group ahead`);
+    prevArrival = arrival;
+  }
 });
 
 // ── Hele motoren: D3-fixturen, foer (s5_profiles_v2) og efter (s5_profiles_v3) ──
