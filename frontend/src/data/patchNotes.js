@@ -1,5 +1,115 @@
 export const PATCHES = [
   {
+    "version": "7.378",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Riders",
+        "en": {
+          "title": "Riders hold their level longer",
+          "body": "Riders now hold their level through age 30. After that, physical abilities and cobbles drop a little at each season change, and racing slows the drop. Technique and tactics never drop. Riders on AI teams and free agents no longer develop, but they still age. This applies from tonight's season change."
+        },
+        "da": {
+          "title": "Ryttere holder niveauet længere",
+          "body": "Ryttere holder nu deres niveau til og med 30. Derefter falder de fysiske evner og brosten lidt ved hvert sæsonskifte, og løb bremser faldet. Teknik og taktik falder aldrig. Ryttere på AI-hold og frie ryttere udvikler sig ikke længere, men de bliver stadig ældre. Det gælder fra sæsonskiftet i aften."
+        },
+        "refs": [
+          6499,
+          6110
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "At most +1 per ability per day",
+          "body": "An ability can now grow by at most 1 point per day, across training and race days. Progress above that isn't lost: it carries over to the next day."
+        },
+        "da": {
+          "title": "Højst +1 pr. evne pr. dag",
+          "body": "En evne kan nu højst stige 1 point pr. dag, på tværs af træning og løbsdage. Fremgang ud over det går ikke tabt: den føres videre til næste dag."
+        },
+        "refs": [
+          7075,
+          6210
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "New academy candidates every Sunday",
+          "body": "The academy week now runs Sunday to Saturday. A new intake opens every Sunday, and you can bring it in any day until Saturday 23:59."
+        },
+        "da": {
+          "title": "Nye akademi-kandidater hver søndag",
+          "body": "Akademiets uge går nu fra søndag til lørdag. Et nyt kuld åbner hver søndag, og I kan hente det hver dag frem til lørdag kl. 23:59."
+        },
+        "refs": [
+          6666
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting shows every rider type again for your older academy riders",
+          "body": "Only riders you signed through the new weekly intake have the prognosis that gets sharper with training. Academy riders you already had show the normal scout report with every rider type again."
+        },
+        "da": {
+          "title": "Scouting viser igen alle ryttertyper for jeres ældre akademiryttere",
+          "body": "Kun ryttere, I har hentet via det nye ugentlige optag, har prognosen, der bliver skarpere med træning. Akademiryttere, I havde i forvejen, viser igen den normale scoutrapport med alle ryttertyper."
+        },
+        "refs": [
+          7195
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "Next season's wages show what your contracts say",
+          "body": "The forecast on the Finance page showed next season's wages as if every wage was recalculated at the season change. It isn't: you pay the wage in the contract. The forecast now shows that, and a rider whose contract runs out is shown at the wage he gets if you extend him."
+        },
+        "da": {
+          "title": "Næste sæsons løn viser det, der står i kontrakterne",
+          "body": "Prognosen på Økonomi viste næste sæsons løn, som om al løn blev genberegnet ved sæsonskiftet. Det bliver den ikke: I betaler lønnen i kontrakten. Prognosen viser nu det, og en rytter, hvis kontrakt udløber, står med den løn, han får, hvis I forlænger ham."
+        },
+        "refs": [
+          7196
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Help on the season change corrected",
+          "body": "Help now says that rider values update next time at the normal Sunday update, and that the new season starts after the break between seasons that you voted on."
+        },
+        "da": {
+          "title": "Hjælp om sæsonskiftet er rettet",
+          "body": "Hjælp siger nu, at rytterværdierne opdateres næste gang ved den normale søndagsopdatering, og at den nye sæson starter efter pausen mellem sæsonerne, som I har stemt om."
+        },
+        "refs": [
+          7196
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.377",
     "date": "2026-10-24",
     "changes": [
