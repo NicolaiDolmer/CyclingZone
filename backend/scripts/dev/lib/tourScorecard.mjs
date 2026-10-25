@@ -679,7 +679,11 @@ export function abandonCounts(entrants, finalStandings) {
     out += 1;
     outByRole[group] = (outByRole[group] ?? 0) + 1;
   }
-  return { starters: entrants.length, out, startersByRole, outByRole };
+  // Codex #7178: aktiverings-gaten (v3Gates.measureG17) laeser kontrakten
+  // `byRole[rolle] = { starters, out }`; testport-rapporten laeser de to flade maps.
+  const byRole = {};
+  for (const [group, starters] of Object.entries(startersByRole)) byRole[group] = { starters, out: outByRole[group] ?? 0 };
+  return { starters: entrants.length, out, startersByRole, outByRole, byRole };
 }
 
 /**
