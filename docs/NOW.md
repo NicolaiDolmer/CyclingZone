@@ -8,7 +8,7 @@
 >
 > **🎯 Next action (25/10 morgen, efter natbølgen PC1):** (1) **Ejerens markør** (én kommando i morgenkortet) på 12 KLAR-PR'er: #7174 #7155 #7150 #7178 #7175 #7176 #7163 #7158 #7154 #7177 #7166 #7179; derefter `scripts/merge-queue.ps1` én ad gangen (motor først: D3 → bjergudbrud → indsatstrin → udgåede → sygdom). #7161 (lav risiko, grøn) merges **efter skiftet**. (2) **S5-skiftet 25/10 kl. 20:30** efter [drejebogen](runbooks/2026-10-25-s4-s5-drejebog.md); Udvikling 2.0/Form 2.0 kun på ordret "tænd" (tænd-kort i morgenkortet: det meste af Udvikling 2.0 er IKKE bygget); ingen backend-merges 19:00-22:30. (3) Ejer-spørgsmål: P2 på bjerg (#7176/#7160), tolkning af "intet trin til 100 %" (#6641). (4) v3 tændes kun på ordret "tænd" efter testport G16-G19 + G2F. A2-rollback: OneDrive `private-handoffs/2757-a2-2026-10-24/dolmerpc-apply-2410/restore.sql`.
 
-> **25/10 nat (PC1, natbølge):** 7 spor bygget (wave.js), 0 merget (alt venter på markør). Rutematch #6207 ens på alle flader. Discord-udspil v3 rettet til kun det der kan tændes. Status på #7153.
+> **25/10 nat (PC1, natbølge):** 7 spor bygget (wave.js), 0 merget (alt venter på markør). Status på #7153.
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
@@ -26,4 +26,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (natbølgen PC1 afsluttet 25/10 ca. 04:30).
+> **🤖 Working agent:** 2 sessioner 25/10: **PC1** merge-kø + migrationer + skiftet; **DolmerPC** ejer-beslutninger + byg, kun PR'er (PC1 merger). Koordinering #7153.
