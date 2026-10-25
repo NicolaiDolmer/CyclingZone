@@ -73,6 +73,24 @@ export const PATCHES = [
         ]
       },
       {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "training_decision_card",
+        "topic": "Training",
+        "en": {
+          "title": "Today's decision on the Training page",
+          "body": "At the top of the Today tab, the assistant suggests what your tired riders should do today, with a Use button for each suggestion. On a computer, the team table also shows how many days in a row each rider has been on high fatigue."
+        },
+        "da": {
+          "title": "Dagens beslutning på træningssiden",
+          "body": "Øverst på I dag-fanen foreslår assistenten, hvad dine trætte ryttere skal lave i dag, med en Brug-knap til hvert forslag. På computer viser holdtabellen også, hvor mange dage i træk hver rytter har haft høj træthed."
+        },
+        "refs": [
+          6110
+        ]
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "rollout": "live",
@@ -135,7 +153,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "U23 og junior i sæson 5",
-          "body": "Fra sæson 5 får U23 flere løbsdage end junior, og ungdomsgrupperne samles i færre og fyldigere grupper efter sæsonskiftet i aften. AI-ungdomshold ligger på samme niveau som jeres, og et nyt eller tilbagevendende hold havner aldrig i en lukket gruppe."
+          "body": "Fra sæson 5 får U23 flere løbsdage end junior, og ungdomsgrupperne samles i færre og fyldigere grupper efter sæsonskiftet i aften. AI-ungdomshold ligger på samme niveau som dine, og et nyt eller tilbagevendende hold havner aldrig i en lukket gruppe."
         },
         "refs": [
           6667,
@@ -251,7 +269,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Nye akademi-kandidater hver søndag",
-          "body": "Akademiets uge går nu fra søndag til lørdag. Et nyt kuld åbner hver søndag, og I kan hente det hver dag frem til lørdag kl. 23:59."
+          "body": "Akademiets uge går nu fra søndag til lørdag. Et nyt kuld åbner hver søndag, og du kan hente det hver dag frem til lørdag kl. 23:59."
         },
         "refs": [
           6666
@@ -267,8 +285,8 @@ export const PATCHES = [
           "body": "Only riders you signed through the new weekly intake have the prognosis that gets sharper with training. Academy riders you already had show the normal scout report with every rider type again."
         },
         "da": {
-          "title": "Scouting viser igen alle ryttertyper for jeres ældre akademiryttere",
-          "body": "Kun ryttere, I har hentet via det nye ugentlige optag, har prognosen, der bliver skarpere med træning. Akademiryttere, I havde i forvejen, viser igen den normale scoutrapport med alle ryttertyper."
+          "title": "Scouting viser igen alle ryttertyper for dine ældre akademiryttere",
+          "body": "Kun ryttere, du har hentet via det nye ugentlige optag, har prognosen, der bliver skarpere med træning. Akademiryttere, du havde i forvejen, viser igen den normale scoutrapport med alle ryttertyper."
         },
         "refs": [
           7195
@@ -285,7 +303,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Næste sæsons løn viser det, der står i kontrakterne",
-          "body": "Prognosen på Økonomi viste næste sæsons løn, som om al løn blev genberegnet ved sæsonskiftet. Det bliver den ikke: I betaler lønnen i kontrakten. Prognosen viser nu det, og en rytter, hvis kontrakt udløber, står med den løn, han får, hvis I forlænger ham."
+          "body": "Prognosen på Økonomi viste næste sæsons løn, som om al løn blev genberegnet ved sæsonskiftet. Det bliver den ikke: du betaler lønnen i kontrakten. Prognosen viser nu det, og en rytter, hvis kontrakt udløber, står med den løn, han får, hvis du forlænger ham."
         },
         "refs": [
           7196
@@ -302,7 +320,7 @@ export const PATCHES = [
         },
         "da": {
           "title": "Hjælp om sæsonskiftet er rettet",
-          "body": "Hjælp siger nu, at rytterværdierne opdateres næste gang ved den normale søndagsopdatering, og at den nye sæson starter efter pausen mellem sæsonerne, som I har stemt om."
+          "body": "Hjælp siger nu, at rytterværdierne opdateres næste gang ved den normale søndagsopdatering, og at den nye sæson starter efter pausen mellem sæsonerne, som managerne har stemt om."
         },
         "refs": [
           7196
