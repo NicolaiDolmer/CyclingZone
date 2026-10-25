@@ -126,6 +126,7 @@ import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
+import { s5V3P2CountedStageInterest } from "./breakawayInterest7160P2.ts"; // #7160 valg A
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1778,7 +1779,8 @@ function realisticLeadInterest(input: {
     ...(input.finaleWeightScale !== 1 ? { finaleWeightScale: input.finaleWeightScale } : {}),
     ...(input.teamInterestScale ? { teamInterestScale: input.teamInterestScale } : {}),
   });
-  return { interestByTeam, teamIds: s5V3InterestedTeamIds({ interestByTeam, teamSignals, excludedTeamIds: input.excludedTeamIds }) };
+  // #7160 valg A: et klassementsholds etapeinteresse bag et ufarligt udbrud er ikke P2-interesse.
+  return { interestByTeam, teamIds: s5V3InterestedTeamIds({ interestByTeam: s5V3P2CountedStageInterest(interestByTeam, input.teamInterestScale), teamSignals, excludedTeamIds: input.excludedTeamIds }) };
 }
 
 /**
