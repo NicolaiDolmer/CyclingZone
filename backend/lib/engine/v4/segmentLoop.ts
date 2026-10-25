@@ -94,6 +94,7 @@ import { annotateExactPlaces } from "./exactPlace.ts";
 import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhaseFor, phaseClimbNeutralShare } from "./mechanics/mountainSelection.ts";
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
+import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1034,6 +1035,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     // intet ved tempo (loftet gaelder fra toppen til stregen); ellers dalen.
     if (runInAfterFinishDescent) tempoByGroup = runInOpenOnlyTempo(state.groups, tempoByGroup, state.incident_chasers);
     else if (ordersGcV3) tempoByGroup = valleyRegroupTempoV3(state.groups, tempoByGroup, segments, segmentIndex, state.incident_chasers, loopTimeModel);
+    // #6486 (KUN s5_profiles_v3, slukket): grupper samler sig efter sidste top paa bjerg uden topankomst.
+    if (isS5ProfilesV3OrLater(rulesRevision)) tempoByGroup = descentRegroupTempo6486(state.groups, tempoByGroup, route, segmentIndex, state.incident_chasers);
 
     // 4a. Gap-bogfoering: fronten (mindste gap_seconds) er referencen; andre
     // gruppers gap opdateres med (dtGruppe - dtFront), floor 0.
