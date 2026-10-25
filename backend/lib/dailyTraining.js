@@ -10,6 +10,8 @@ import { youthMultiplier } from "./academyFlag.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 import { effortDevelopmentMultiplier } from "./raceRoles.js";
 import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js";
+// #3564 kurve B (D-058): rent modul, kun aktivt naar `curveB` sendes med (flag development_curve_b).
+import { curveBBase, curveBYouthNeutralizer } from "./developmentCurveB.ts";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -152,6 +154,8 @@ export function dailyAbilityDelta({
   staff = null, facilityTier = null, riderLevel = null, academyRateMult = 1.0,
   primaryType = null, secondaryType = null, trainingCfg = TRAINING_CONFIG,
   budgetDivisor = null, riderQualityMult = null,
+  // #3564: validerede kurve B-params (developmentCurveB.ts). Udeladt/null = dagens model, bit-identisk.
+  curveB = null,
 }) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
@@ -159,7 +163,9 @@ export function dailyAbilityDelta({
   if (mult === 0) return 0;
   const cfg = DAILY_TRAINING_CONFIG;
   const divisor = Number.isFinite(budgetDivisor) && budgetDivisor > 0 ? budgetDivisor : cfg.daysPerSeason;
-  const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / divisor;
+  const base = curveB
+    ? curveBBase({ current, cap, age, divisor }, curveB)
+    : (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / divisor;
   // ── DEN ANDEN KNAP (#3709 trin 4, spec §2.2) ──────────────────────────────
   // Indtil nu satte loftet både hvor højt en evne kunne komme OG hvor hurtigt,
   // fordi `base` er gap-proportional. Rolle-raten er den knap der skiller de to
@@ -195,12 +201,12 @@ export function dailyAbilityDelta({
   // enhver caller der ikke sender `riderQualityMult` er bit-identisk.
   if (Number.isFinite(riderQualityMult) && riderQualityMult >= 0) {
     return base * mult * roleRate * riderQualityMult
-      * staffBonus * academyRateMult;
+      * staffBonus * academyRateMult * (curveB ? curveBYouthNeutralizer(age) : 1);
   }
   // academyRateMult (#2437) ganges SIDST i kæden — samme "ekstra multiplikator-led,
   // default 1.0" kontrakt som staffBonus/facilityMult. Interim-knap: ingen kalder i
   // dagens prod sender den, så udeladt = uændret adfærd.
-  return base * mult * roleRate * conditionMult * youthMultiplier(age) * youthRateForPotential(potentiale)
+  return base * mult * roleRate * conditionMult * (curveB ? 1 : youthMultiplier(age)) * youthRateForPotential(potentiale)
     * noise * staffBonus * facilityMult * academyRateMult;
 }
 
@@ -260,6 +266,7 @@ export function applyDailyTick({
   // ovenfor (#3709 trin 4): gate G1 kraever en FOER/EFTER-maaling, og "foer" er
   // koblingen med gamma = 0. En gate man ikke kan koere er ikke en gate.
   scoreCfg = TRAINING_SCORE_CONFIG,
+  curveB = null, // #3564: sendes uændret videre til dailyAbilityDelta
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const seedScope = tickSeedKey ?? dateStr;
@@ -290,7 +297,7 @@ export function applyDailyTick({
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, noise, potentiale,
       staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
-      budgetDivisor, riderQualityMult,
+      budgetDivisor, riderQualityMult, curveB,
     });
     if (delta <= 0) continue;
     score += delta;
@@ -360,6 +367,7 @@ export function applyRaceDevelopmentTick({
   // race_day_intention_enabled er on. Udeladt/null/ukendt vaerdi =>
   // effortDevelopmentMultiplier() giver 1.0 => BIT-IDENTISK med foer #4632.
   effort = null,
+  curveB = null, // #3564: samme kontrakt som applyDailyTick
 }) {
   const cfg = DAILY_TRAINING_CONFIG;
   // Egen seed-namespace ("rtick" vs. "dtick") — samme (rider,dato)-par kan ALDRIG
@@ -391,7 +399,7 @@ export function applyRaceDevelopmentTick({
     replacedTotal += dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, noise, potentiale,
       staff, facilityTier, riderLevel, academyRateMult, primaryType, secondaryType,
-      budgetDivisor, riderQualityMult,
+      budgetDivisor, riderQualityMult, curveB,
     });
   }
 
