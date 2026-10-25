@@ -167,6 +167,8 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
     loadsToday.clear();
   };
   enter(0);
+  // Saesonens loebsdage FOER hver etape pr. rytter (Codex #7163).
+  const seasonRaceDays = new Map();
   const enteringByStage = [];
   runStagesInOrder({
     v4, data, revision, seedTag: `e6641-${simSeed}`, stages: sorted, entrants,
@@ -175,8 +177,11 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
       const ids = started.map((e) => e.rider_id);
       const work = stageConditionWork({ rulesRevision: revision, stageNumber: profile.stage_number, profileType: profile.profile_type, v4Result: res });
       const loads = model === "v2"
-        ? raceConditionLoads(ids, profile.profile_type, null, revision, work ?? { stageNumber: profile.stage_number }, { distanceKm: profile.distance_km ?? null, seasonRaceDaysByRider: new Map(ids.map((id) => [id, EFFORT_6641_CONFIG.seasonRaceDays])) })
+        ? raceConditionLoads(ids, profile.profile_type, null, revision, work ?? { stageNumber: profile.stage_number }, { distanceKm: profile.distance_km ?? null, seasonRaceDaysByRider: new Map(ids.map((id) => [id, seasonRaceDays.get(id) ?? EFFORT_6641_CONFIG.seasonRaceDays])) })
         : raceConditionLoads(ids, profile.profile_type, new Map(ids.map((id) => [id, effortOf(id)])), revision, work);
+      // Codex #7163: som prod (raceRunner.loadSeasonRaceDaysByRider) taeller hver koert
+      // etape med i saesonens loebsdage, saa saesonbelastningen vokser gennem loebet.
+      for (const id of ids) seasonRaceDays.set(id, (seasonRaceDays.get(id) ?? EFFORT_6641_CONFIG.seasonRaceDays) + 1);
       // --fatigue-revision: tvillingernes indsats-faktor fra en anden revision (fx den
       // slukkede s5_profiles_v3), mens belastningens oevrige led foelger `revision`.
       if (fatigueRevision && fatigueRevision !== revision && !TT.has(profile.profile_type)) {
