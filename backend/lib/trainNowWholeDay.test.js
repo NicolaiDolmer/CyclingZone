@@ -3,8 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  planWholeDayPress, riderWaitsForOpenSlot, settleWholeDayPress, loadBoundGameDaysByRider,
-  isTrainNowWholeDayEnabled, TRAIN_NOW_WHOLE_DAY_FLAG_KEY,
+  planWholeDayPress, settleWholeDayPress, isTrainNowWholeDayEnabled, TRAIN_NOW_WHOLE_DAY_FLAG_KEY,
 } from "./trainNowWholeDay.js";
 import { runTrainNow, TRAIN_NOW_FLAG_KEY } from "./trainNow.js";
 import { TRAINING_RESERVATION_HELD } from "./dailyTrainingEngine.js";
@@ -19,74 +18,24 @@ test("plan: a rider without an open race slot gets the whole date (all five, con
   assert.deepEqual(plan.runs.map((run) => run.gameDay), DAYS);
 });
 
-test("plan: race rider before his race gets the training slots before the race, nothing after it", () => {
-  const plan = planWholeDayPress({ gameDays: DAYS, riderIds: ["racer"], unresolvedSlotsByRider: { racer: [slot(13)] } });
-  assert.deepEqual(plan.daysByRider.racer, [11, 12]);
-  assert.deepEqual(plan.partialRiderIds, ["racer"]);
-  assert.deepEqual(plan.wholeDateRiderIds, []);
-});
-
 test("plan: race rider whose race has already run has no open slot and gets the whole date", () => {
   // readiness drops a slot once its load and result exist; the plan sees no open slot.
   const plan = planWholeDayPress({ gameDays: DAYS, riderIds: ["ran"], unresolvedSlotsByRider: { ran: [] } });
   assert.deepEqual(plan.daysByRider.ran, DAYS);
 });
 
-test("plan: several race days on the date - the first open slot ends the prefix", () => {
-  const plan = planWholeDayPress({ gameDays: DAYS, riderIds: ["gt"], unresolvedSlotsByRider: { gt: [slot(14), slot(12)] } });
-  assert.deepEqual(plan.daysByRider.gt, [11]);
+test("plan: race rider before his race waits for the whole date (no early growth before his race, I1)", () => {
+  const plan = planWholeDayPress({ gameDays: DAYS, riderIds: ["racer", "gt"], unresolvedSlotsByRider: { racer: [slot(13)], gt: [slot(12), slot(14)] } });
+  assert.deepEqual(plan.daysByRider, { racer: [], gt: [] });
+  assert.deepEqual(plan.waitingRiderIds, ["racer", "gt"]);
+  assert.deepEqual(plan.runs, []);
 });
 
-test("plan: a bound slot before the race waits (it can still turn into rest or a free slot)", () => {
+test("plan: mixed squad - five runs in race-day order with only the whole-date riders", () => {
   const plan = planWholeDayPress({
-    gameDays: DAYS, riderIds: ["stage"], unresolvedSlotsByRider: { stage: [slot(14)] }, boundGameDaysByRider: { stage: [12, 13, 14] },
+    gameDays: [15, 11, 13, 12, 14], riderIds: ["free", "racer"], unresolvedSlotsByRider: new Map([["racer", [slot(13)]]]),
   });
-  assert.deepEqual(plan.daysByRider.stage, [11]);
-});
-
-test("plan: race on the first race day or an unknown slot day waits completely", () => {
-  const plan = planWholeDayPress({
-    gameDays: DAYS, riderIds: ["early", "odd"], unresolvedSlotsByRider: { early: [slot(11)], odd: [{ raceId: "x", stageNumber: 1, gameDay: null }] },
-  });
-  assert.deepEqual(plan.daysByRider, { early: [], odd: [] });
-  assert.deepEqual(plan.waitingRiderIds, ["early", "odd"]);
-});
-
-test("plan: mixed squad - runs are in race-day order and each lists exactly its riders", () => {
-  const plan = planWholeDayPress({
-    gameDays: DAYS, riderIds: ["free", "racer"], unresolvedSlotsByRider: { racer: [slot(13)] },
-  });
-  assert.deepEqual(plan.runs, [
-    { gameDay: 11, riderIds: ["free", "racer"] }, { gameDay: 12, riderIds: ["free", "racer"] },
-    { gameDay: 13, riderIds: ["free"] }, { gameDay: 14, riderIds: ["free"] }, { gameDay: 15, riderIds: ["free"] },
-  ]);
-});
-
-test("engine rule: flag off (default) keeps the old 'any open slot waits' exactly", () => {
-  assert.equal(riderWaitsForOpenSlot(undefined, 11), false);
-  assert.equal(riderWaitsForOpenSlot([], 11), false);
-  assert.equal(riderWaitsForOpenSlot([slot(15)], 11), true);
-  assert.equal(riderWaitsForOpenSlot([slot(11)], 15), true);
-});
-
-test("engine rule: B press settles only slots before the first open slot", () => {
-  assert.equal(riderWaitsForOpenSlot([slot(13)], 12, true), false);
-  assert.equal(riderWaitsForOpenSlot([slot(13)], 13, true), true);
-  assert.equal(riderWaitsForOpenSlot([slot(13)], 14, true), true);
-  assert.equal(riderWaitsForOpenSlot([{ gameDay: "x" }], 11, true), true);
-});
-
-test("binding loader: per race day, and an unknown binding fails the press", async () => {
-  const calls = [];
-  const out = await loadBoundGameDaysByRider({
-    supabase: {}, seasonId: "s", riderIds: ["a"], gameDays: [12, 11],
-    loadBound: async ({ gameDay }) => { calls.push(gameDay); return { data: new Set(gameDay === 12 ? ["a"] : []), error: null }; },
-  });
-  assert.deepEqual(calls, [11, 12]);
-  assert.deepEqual(out, { a: [12] });
-  await assert.rejects(loadBoundGameDaysByRider({
-    supabase: {}, seasonId: "s", riderIds: ["a"], gameDays: [11], loadBound: async () => ({ data: null, error: new Error("boom") }),
-  }), /binding/);
+  assert.deepEqual(plan.runs, DAYS.map((gameDay) => ({ gameDay, riderIds: ["free"] })));
 });
 
 function lockTable() {
@@ -108,7 +57,6 @@ function lockTable() {
 const pressArgs = (over = {}) => ({
   team: { id: "team-a" }, season: { id: "season-1", number: 5 }, now: new Date("2026-10-26T07:00:00Z"), tickDate: "2026-10-26",
   work: { game_days: DAYS }, pressedAt: "2026-10-26T07:00:00Z",
-  loadBoundDays: async () => ({}),
   ...over,
 });
 
@@ -119,16 +67,15 @@ test("press: marks the whole-date riders BEFORE settling, re-reads entries, then
   const result = await settleWholeDayPress(pressArgs({
     supabase, available: ["free", "racer"], readiness,
     readReadiness: async () => { events.push(`reread after ${updates.length} mark(s)`); return readiness; },
-    runDay: async (args) => { events.push(`day ${args.gameDay}: ${args.eligibleRiderIds.join(",")}`); assert.equal(args.settleBeforeUnresolved, true); },
+    runDay: async (args) => { events.push(`day ${args.gameDay}: ${args.eligibleRiderIds.join(",")}`); assert.equal(args.deadlineReached, false); },
   }));
   assert.equal(result.status, 200);
   assert.deepEqual(updates.map((u) => [u.patch.whole_day_at != null, u.filters.rider_id]), [[true, ["free"]]]);
   assert.deepEqual(events, [
-    "reread after 1 mark(s)", "day 11: free,racer", "day 12: free,racer", "day 13: free", "day 14: free", "day 15: free",
+    "reread after 1 mark(s)", "day 11: free", "day 12: free", "day 13: free", "day 14: free", "day 15: free",
   ]);
   assert.deepEqual(result.body.wholeDayRiderIds, ["free"]);
   assert.deepEqual(result.body.afterRaceRiderIds, ["racer"]);
-  assert.deepEqual(result.body.settledGameDaysByRider, { free: DAYS, racer: [11, 12] });
 });
 
 test("press: a rider entered in the window (before the mark) is unmarked and waits for his race (never both)", async () => {
@@ -143,8 +90,8 @@ test("press: a rider entered in the window (before the mark) is unmarked and wai
   assert.deepEqual(updates.map((u) => [u.patch.whole_day_at == null ? "unmark" : "mark", u.filters.rider_id]), [
     ["mark", ["free", "late"]], ["unmark", ["late"]],
   ]);
-  assert.deepEqual(runs.filter(([day]) => day >= 14).map(([, ids]) => ids), [["free"], ["free"]]);
-  assert.deepEqual(result.body.settledGameDaysByRider.late, [11, 12, 13]);
+  assert.deepEqual(runs.map(([, ids]) => ids), DAYS.map(() => ["free"]));
+  assert.deepEqual(result.body.afterRaceRiderIds, ["late"]);
 });
 
 test("press: the evening run holding a race day answers 409 training_in_progress, locked", async () => {
@@ -234,7 +181,7 @@ test("runTrainNow: flag on (or beta for a beta tester) settles all five race day
     const { result, calls } = await press(pressState(value), { isBetaTester: beta });
     assert.equal(result.status, 200);
     assert.deepEqual(calls.map((c) => c.gameDay), DAYS);
-    assert.ok(calls.every((c) => c.b === true && c.ids.join() === "r1,r2"));
+    assert.ok(calls.every((c) => c.ids.join() === "r1,r2"));
     assert.equal(result.body.wholeDay, true);
   }
 });

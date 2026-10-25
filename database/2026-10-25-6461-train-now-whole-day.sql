@@ -16,7 +16,7 @@ INSERT INTO public.app_config (key, value, description)
 VALUES (
   'training_train_now_whole_day',
   '"off"'::jsonb,
-  'Stage flag (off|beta|on) for "Train now" variant B (#6461): the press settles each rider''s whole known date, including the date''s one fatigue/form settlement for riders without an open race slot; race riders get their training slots before the race, and the race is added as its own line when it has run. Requires training_train_now. off = the press as before.'
+  'Stage flag (off|beta|on) for "Train now" variant B phase 1 (#6461): the press settles the whole date (all five race days and the date''s one fatigue/form settlement) for every rider without an open race slot; race riders still wait for their race. Requires training_train_now. off = the press as before.'
 )
 ON CONFLICT (key) DO NOTHING;
 

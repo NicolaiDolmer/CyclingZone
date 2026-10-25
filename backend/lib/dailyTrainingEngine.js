@@ -72,7 +72,6 @@ import {
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
-import { riderWaitsForOpenSlot } from "./trainNowWholeDayRule.js"; // #6461 B
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -434,8 +433,6 @@ export async function runTeamTrainingDay({
   dateGameDays = null,
   tickDateOverride = null, eligibleRiderIds = null, unresolvedSlotsByRider = {},
   deadlineAt = null, deadlineReached = false,
-  // #6461 B: only the whole-day press sends true (training slots before an open race slot).
-  settleBeforeUnresolved = false,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
@@ -616,7 +613,7 @@ export async function runTeamTrainingDay({
     }
     const eligible=new Set(eligibleRiderIds??dateWork.expected_rider_ids);
     riders=riders.filter(rider=>eligible.has(rider.id)&&dateWork.expected_rider_ids.includes(rider.id)&&!(dateWork.quarantined_rider_ids??[]).includes(rider.id));
-    if(!deadlineReached) riders=riders.filter(rider=>!riderWaitsForOpenSlot(unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(rider.id) : unresolvedSlotsByRider[rider.id],raceDay,settleBeforeUnresolved));
+    if(!deadlineReached) riders=riders.filter(rider=>(unresolvedSlotsByRider instanceof Map ? unresolvedSlotsByRider.get(rider.id) : unresolvedSlotsByRider[rider.id])?.length ? false : true);
     const {data:receipts,error:receiptError}=await supabase.from('training_rider_ticks').select('*')
       .eq('season_id',seasonId).in('game_day',dateDays).in('rider_id',riders.map(rider=>rider.id));
     if(receiptError) throw new Error(`training rider receipts: ${receiptError.message}`);

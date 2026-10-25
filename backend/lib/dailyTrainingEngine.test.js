@@ -3336,7 +3336,7 @@ test('#6461 B I1: whole-date press (five race days at 06:00) is bit-identical to
   const pressed = trainNowFixture();
   const automatic = trainNowFixture();
   for (const gameDay of TRAIN_NOW_DAYS) {
-    await runDay(pressed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, settleBeforeUnresolved: true });
+    await runDay(pressed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
     await runDay(automatic, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
   }
   assert.deepEqual(pressed.rider_derived_abilities, automatic.rider_derived_abilities, 'same growth');
@@ -3348,26 +3348,22 @@ test('#6461 B I1: whole-date press (five race days at 06:00) is bit-identical to
 
 test('#6461 B I2: double press and the evening run after a whole-date press change nothing', async () => {
   const state = trainNowFixture();
-  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, settleBeforeUnresolved: true });
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
   const after = structuredClone({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition) });
   for (const gameDay of TRAIN_NOW_DAYS) {
-    assert.equal((await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, settleBeforeUnresolved: true })).alreadyRan, true);
+    assert.equal((await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING })).alreadyRan, true);
     assert.equal((await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING })).alreadyRan, true);
   }
   assert.deepEqual({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition) }, after);
   assert.equal(state.training_rider_ticks.length, 10);
 });
 
-test('#6461 B: a race rider settles his training slots before the open race slot, never the slot itself; flag off waits', async () => {
+test('#6461 B: a race rider with an open slot gets nothing at the press (no growth before his race); the free rider gets the whole date', async () => {
   const open = { r1: [{ raceId: 'race-x', stageNumber: 1, gameDay: 3 }] };
-  const b = trainNowFixture();
-  for (const gameDay of [1, 2, 3]) {
-    await runDay(b, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, unresolvedSlotsByRider: open, settleBeforeUnresolved: true });
-  }
-  const r1Days = b.training_rider_ticks.filter((row) => row.rider_id === 'r1').map((row) => row.game_day);
-  assert.deepEqual(r1Days, [1, 2]);
-  assert.deepEqual(withoutClock(b.rider_condition), withoutClock(trainNowFixture().rider_condition), 'no condition write before the race');
-  const old = trainNowFixture();
-  await runDay(old, { gameDay: 1, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, unresolvedSlotsByRider: open });
-  assert.deepEqual(old.training_rider_ticks.filter((row) => row.rider_id === 'r1'), [], 'flag off: the race rider waits for the whole date');
+  const state = trainNowFixture();
+  const abilitiesBefore = structuredClone(state.rider_derived_abilities.find((row) => row.rider_id === 'r1'));
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r2'], unresolvedSlotsByRider: open });
+  assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r1'), [], 'race rider waits');
+  assert.deepEqual(state.rider_derived_abilities.find((row) => row.rider_id === 'r1'), abilitiesBefore, 'no ability write before his race');
+  assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r2').map((row) => row.game_day), TRAIN_NOW_DAYS);
 });
