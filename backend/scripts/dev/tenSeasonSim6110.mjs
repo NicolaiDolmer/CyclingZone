@@ -94,7 +94,8 @@ export const SIM_DEFAULTS = Object.freeze({
   bNoiseSpan: DAILY_TRAINING_CONFIG.noiseSpan,
   bReferenceAge: 23,
   inflowAgeBand: Object.freeze({ min: 17, max: 19 }),
-  variants: Object.freeze(["nu", "nu_maks1", "B"]),
+  // #3564: den rigtige kurve B (kurveB) erstatter B-proxyen som standard; "B" kan stadig vælges.
+  variants: Object.freeze(["nu", "nu_maks1", "kurveB"]),
 });
 
 // Løbsprofiler en løbsdag trækkes fra (ligeligt; kalenderens faktiske mix er ikke modelleret).
@@ -324,6 +325,7 @@ function simulateSeason(world, seasonNumber, variant, opts) {
             progress: r.progress, program: tickProgram, conditionMult: 1, potentiale: r.potentiale,
             hardDailyCap: opts.abilityCapPerRaceDay, staff: team.staff, facilityTier: team.facilityTier,
             riderLevel, primaryType: r.primary_type, secondaryType: r.secondary_type, budgetDivisor: divisor,
+            curveB: variant.kind === "curveB" ? opts.curveB : null, // #3564: den rigtige kurve B
           });
         }
         if (variant.capPerDate) {
@@ -551,7 +553,8 @@ export function runVariant(snapshot, variant, opts = SIM_DEFAULTS) {
   result.bigTalent = bigTalentAfterNine(world.riders, s0);
   result.bNorm = world.bNorm;
   result.dateCap = world.dateCap;
-  result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge };
+  result.params = { raceDaysPerSeason: opts.raceDaysPerSeason, bNoiseSpan: opts.bNoiseSpan, bReferenceAge: opts.bReferenceAge,
+    curveB: variant.kind === "curveB" ? opts.curveB ?? null : null }; // #3564: kortet blander aldrig to kalibreringer
   result.fingerprint = runFingerprint(snapshot, opts);
   result.raceShares = { young: round(shares.youngMedian, 3), old: round(shares.oldMedian, 3) };
   return result;
@@ -563,6 +566,8 @@ export function variantList(opts = SIM_DEFAULTS) {
     if (v === "nu") list.push({ name: "nu", kind: "nu", capPerDate: false });
     else if (v === "nu_maks1") list.push({ name: "nu_maks1", kind: "nu", capPerDate: true });
     else if (v === "B") for (const s of opts.bScales) list.push({ name: `B@${s}`, kind: "B", capPerDate: true, scale: s });
+    // #3564: kurve B (developmentCurveB.ts) med private params, + maks +1 pr. dato.
+    else if (v === "kurveB") list.push({ name: "kurveB", kind: "curveB", capPerDate: true });
   }
   return list;
 }
@@ -727,6 +732,7 @@ function renderCard(snapshot, results, opts, date) {
   L.push("- Form og træthed er neutrale (conditionMult 1); ingen skader; assistenten træner normal intensitet hver dag (0 hårde dage i aldrings-bremsen).");
   L.push("- Ingen transfers, kontrakter, akademi-gradueringer eller oprykning; trupperne holdes ved at hvert hold erstatter sine pensionister med generatorens unge.");
   L.push("- B er en proxy (byggetrin 7 er ikke bygget): ingen ny niveau-kurve (D1), ingen belastningsevne for de helt unge, ingen løbsdags-score (S14). Udskiftes når developmentScore findes.");
+  L.push("- kurveB er den rigtige kurve (#3564, developmentCurveB.ts, private params) gennem applyDailyTick; træningsscoren er dagens (Udviklingsscore B er ikke med).");
   L.push("- Det bløde loft pr. evne (byggetrin 14), fart pr. klasse (15) og træningskatalog v3 (16) er ikke med; lofterne er dagens buildCapsForRider.");
   L.push("- #7075-reglen er gengivet i scriptet (PR'en er ikke merget).");
   return L.join("\n") + "\n";
@@ -772,6 +778,10 @@ async function main() {
   // Hard rule 17: B-normaliseringen hentes fra den private fil (gitignoreret).
   const privateNorm = await import(pathToFileURL(join(REPO, ...PRIVATE_B_NORMALIZER_PATH)).href).catch(() => null);
   if (typeof privateNorm?.bNormalizer === "function") opts.bNormalizer = privateNorm.bNormalizer;
+  // #3564: kurve B's private params (developmentCurveBHarness3564.loadPrivateParams).
+  if (opts.variants.includes("kurveB")) opts.curveB = (await import("./developmentCurveBHarness3564.mjs").then((m) => m.loadPrivateParams())).curveB;
+  // Uden B-proxy i kørslen bruges normaliseringen ikke; den private fil er så ikke nødvendig.
+  if (!opts.bNormalizer && !variantList(opts).some((v) => v.kind === "B")) opts.bNormalizer = () => null;
   // Hver variant gemmes for sig i runs-<dato>/, og kortet bygges af ALLE varianter
   // dér. Så kan varianterne køres i hver sin proces (ca. 8 min pr. stk.) og ende
   // på ét kort.
@@ -787,8 +797,9 @@ async function main() {
   // Kun kørsler på samme billede og samme sæson-parametre kommer på samme kort.
   const fingerprint = runFingerprint(snapshot, opts);
   const all = readdirSync(runsDir).filter((f) => f.endsWith(".json")).map((f) => JSON.parse(readFileSync(join(runsDir, f), "utf8")));
-  const results = orderResults(all.filter((r) => r.fingerprint === fingerprint));
-  const skipped = all.filter((r) => r.fingerprint !== fingerprint).map((r) => r.variant);
+  const sameCurve = (r) => r.variant !== "kurveB" || JSON.stringify(r.params?.curveB ?? null) === JSON.stringify(opts.curveB ?? null);
+  const results = orderResults(all.filter((r) => r.fingerprint === fingerprint && sameCurve(r)));
+  const skipped = all.filter((r) => r.fingerprint !== fingerprint || !sameCurve(r)).map((r) => r.variant);
   if (skipped.length) console.warn(`[s25] springer varianter over fra et andet billede eller andre parametre: ${skipped.join(", ")}`);
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.md`), renderCard(snapshot, results, opts, date));
   writeFileSync(join(outDir, `ten-season-sim-${date}${suffix}.json`), JSON.stringify({ date, opts, results }, null, 2) + "\n");

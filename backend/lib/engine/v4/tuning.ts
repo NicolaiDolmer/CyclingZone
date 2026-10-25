@@ -279,6 +279,7 @@ export const TTT_EXTRA_TUNING = deepFreeze(tttExtra);
 // importerer denne direkte (samme moenster som finale.ts <- FINALE_EXTRA_TUNING).
 const leadoutExtra = {
   maxScoreBonus: 0.12, // haardt loft paa finale-placerings-score-bonussen (samme skala som finale.ts's wprimeReserveWeight=0.15 — bounded, aldrig deterministisk sejr, mor-spec §4 M6)
+  deliveryScoreCostV3: 0.25, // #6937 (KUN s5_profiles_v3): lead-outens pris i placerings-scoren naar kaptajnen er i finalen, skaleret med puljens niveau (finaleLevelScale)
   fullTrainSize: 3, // antal leadout-ryttere i kontendentpuljen der giver fuld stoerrelses-multiplikator (aftagende marginalnytte derover, jf. trainSizeFactor)
 };
 
@@ -1660,6 +1661,14 @@ const s5V3Breakaway = {
     // Automatisk jagt baerer arbejde: et interesseret hold uden ordre/reaktion jager med
     // arbejde i forhold til interessen, maalt mod en fuld ordre (teamSignalWeight x maxTeamSignal).
     autoChaseWorkScale: 1,
+    // P2.4 klatre-jagten (#6804, design 2026-10-23-6804-v3-climb-chase-design.md): snoren paa
+    // en stigning efter lad-gaa-fasen pr. profil, de segmenttyper der taeller som stigning,
+    // og arbejdets pris i forhold til en fuld ordre. Kalibreres i testporten (G2, G1', G11).
+    climbChaseLeadSecondsByProfile: {} as Partial<Record<ProfileType, number>>,
+    climbChaseLeadSecondsDefault: 780,
+    climbChaseSegmentKinds: ["climb"] as readonly string[],
+    climbChaseRidersPerTeam: 2,
+    climbChaseWorkScale: 1,
   },
 };
 

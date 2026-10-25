@@ -34,7 +34,7 @@ import type {
   TimelineEvent,
 } from "./types.ts";
 import { EFFORT_GAIN_EXTRA_TUNING, FINALE_EXTRA_TUNING, LEADOUT_EXTRA_TUNING } from "./tuning.ts";
-import { applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
+import { applyLeadoutDeliveryCost, applyLeadoutScoreBonuses, parseLeadoutOrders } from "./mechanics/leadout.ts";
 import { cobbledFinaleDemandVector } from "./mechanics/cobbles.ts";
 import { classifyRoadWinType } from "./winType.ts";
 import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
@@ -782,9 +782,15 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
   // efterrationalisere en allerede afgjort raekkefolge. Ingen ordre = ingen
   // aendring (T4-defaultet: passivitet straffes ikke).
   const contenderIdSet = new Set(contenderIds);
+  const leadoutOrders = parseLeadoutOrders(ctx.orders);
+  // #6937 (KUN s5_profiles_v3): lead-outen saetter sig op naar kaptajnen er afleveret
+  // (mechanics/leadout.ts applyLeadoutDeliveryCost). Prisen foelger puljens niveau.
+  const deliveredScored = ctx.s5ProfilesV3 === true
+    ? applyLeadoutDeliveryCost(baseScored, leadoutOrders, contenderIdSet, LEADOUT_EXTRA_TUNING.deliveryScoreCostV3 * levelScale)
+    : baseScored;
   const scored: ScoredRider[] = applyLeadoutScoreBonuses(
-    baseScored,
-    parseLeadoutOrders(ctx.orders),
+    deliveredScored,
+    leadoutOrders,
     contenderIdSet,
     entrants,
     state.riders,

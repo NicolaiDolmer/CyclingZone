@@ -1039,8 +1039,8 @@
           "La fatiga se restablece a 0 para todos los ciclistas.",
           "Las lesiones NO se restablecen. Pasan sin cambios.",
           "Los planes de pico de forma no se ven afectados por el cambio.",
-          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan una sola vez, en la actualización del domingo posterior a que se complete el cambio.",
-          "El primer día de carrera de la nueva temporada es el día después del cambio. Su primera etapa empieza al menos 24 horas después de la última etapa de la temporada anterior, así que tienes tiempo para elegir tus plantillas de carrera."
+          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan la próxima vez, en la actualización normal del domingo.",
+          "La nueva temporada empieza tras una breve pausa entre temporadas, que los mánagers votaron. La fecha de la primera etapa está en el calendario de carreras, así que tienes tiempo para elegir tus equipos."
         ]
       }
     },

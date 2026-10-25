@@ -45,6 +45,8 @@
 //   --intent-rates=<fil>     satserne fra en tidligere koersel (breakaway-intent-rates.json);
 //                            kraeves med --from-dir, ellers laeses de read-only fra prod. #6804 P0
 //   --intent-season=<n>      satserne fra saeson n (default: seneste afsluttede). #6804 P0
+//   --track-fatigue          traethed og form mellem etaperne (#6984-modellen), saa G17 ogsaa
+//                            giver G17 realistisk traethed mellem etaperne (og sygdom, naar den bygges). #6938
 //   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
 //                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //
@@ -125,6 +127,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     routesFrom: get("routes-from"),
     season,
     timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
+    trackFatigue: flag("track-fatigue"),
   };
 }
 
@@ -212,10 +215,11 @@ export function splitByStartField(ids, withField) {
  * (--compare=none). En eksisterende eksport laeses kun (ingen --save-cache);
  * ellers hentes loebet én gang og gemmes i loebsmappen til genkoersler.
  */
-export function tourDryRunArgs({ raceId, candidate, baseline, seeds, raceDir, cachePath, saveCache = true }) {
+export function tourDryRunArgs({ raceId, candidate, baseline, seeds, raceDir, cachePath, saveCache = true, trackFatigue = false }) {
   return [
     TOUR_DRY_RUN, `--race=${raceId}`, `--revision=${candidate}`, `--compare=${candidate === baseline ? "none" : baseline}`,
     `--seeds=${seeds}`, "--no-legacy-ref", `--cache=${cachePath}`, ...(saveCache ? [`--save-cache=${cachePath}`] : []), `--out-dir=${raceDir}`,
+    ...(trackFatigue ? ["--track-fatigue"] : []),
   ];
 }
 
@@ -231,7 +235,7 @@ export function planTasks({ raceIds, opts, outDir, fromDir = null, prebuilt = ne
       const exported = fromDir && !isPrebuilt ? path.join(fromDir, raceId, "cache.json") : null;
       const fromExport = Boolean(exported && existsSync(exported));
       const cachePath = fromExport ? exported : path.join(dir, "cache.json");
-      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt }) });
+      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt, trackFatigue: opts.trackFatigue === true }) });
     }
   }
   if (opts.bench) {
@@ -378,9 +382,11 @@ export function assertSameRun(prev, opts, outDir) {
     && (prev.breakawayIntent?.mode ?? "none") === (opts.breakawayIntent ?? "none")
     && (prev.routesFrom ?? null) === (opts.routesFrom ?? null)
     && (prev.routesSignature ?? null) === (opts.routesSignature ?? null)
-    && (prev.season ?? null) === (opts.season ?? null);
+    && (prev.season ?? null) === (opts.season ?? null)
+    // #6938 (Codex P2): med/uden traethed mellem etaperne er to forskellige koersler; aeldre meta = uden.
+    && (prev.trackFatigue === true) === (opts.trackFatigue === true);
   if (!same) {
-    const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null].filter(Boolean);
+    const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null, prev.trackFatigue === true ? "med traethed" : null].filter(Boolean);
     throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds, bench ${prev.benchScope}${input.length ? `, ${input.join(", ")}` : ""}). Brug en ny --out.`);
   }
 }
@@ -582,7 +588,7 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
-    syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, field: inputs.field, routes: inputs.routes,
+    syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, trackFatigue: opts.trackFatigue === true, field: inputs.field, routes: inputs.routes,
     // #6804/#2757: eksportens mappe, saa kortet (ogsaa --report-only) finder loebenes cache.json.
     cacheDir: fromDir ?? prev?.cacheDir ?? null,
   };

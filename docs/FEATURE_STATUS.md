@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-104 poster: live 80 · dormant 7 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+105 poster: live 80 · dormant 8 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -51,6 +51,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | Max +1 per ability per date (`ability-cap-per-date`) | dormant | `ability_cap_per_date_enabled` | - | #6110 | 2026-10-23 | Ejer, med Udvikling 2.0. |
+| Development curve B (level and potential drive development, not age) (`development-curve-b`) | dormant | `development_curve_b` | [TRAINING_RULES](TRAINING_RULES.md) | #3564 | 2026-10-25 | Ejer, efter ny 10-sæsoners-kørsel med den rigtige kurve; kræver private params i serverens miljø. |
 | Today's decision card on the Training page (`training-decision-card`) | building | - | - | #6110 | 2026-10-25 | PR #7179 (S26). Stadie-flag training_decision_card seedes off af migrationen (apply efter merge); ejer flytter til beta efter billeder. |
 
 ## academy
@@ -59,8 +60,8 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 | --- | --- | --- | --- | --- | --- | --- |
-| AI academy pull (`academy-ai-weekly-pull`) | dormant | `academy_ai_weekly_pull_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Slukket; ejer 25/10: kun påmindelsen nu. |
-| Academy intake reminders (`academy-pull-reminder`) | dormant | `academy_pull_reminder_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Søn kl. 10 + lør kl. 18 til hold uden hentning (#7177). Ejeren tænder. |
+| AI academy pull (`academy-ai-weekly-pull`) | dormant | `academy_ai_weekly_pull_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Ejer 25/10: ikke nu. |
+| Academy reminders (`academy-pull-reminder`) | dormant | `academy_pull_reminder_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #6666 | 2026-10-25 | Søn 10 + lør 18 (#7177); ejeren tænder. |
 | Season academy intake (`season-academy-intake`) | dormant | `season_academy_intake_enabled` | [YOUTH_RULES](YOUTH_RULES.md) | #2911 | 2026-10-15 | Sikkerhedsventil efter ejer-beslutning (#2911); off i prod (læst 15/10), kun ejeren flipper. |
 | Three squads (`three-squads`) | spec | - | [YOUTH_RULES](YOUTH_RULES.md) | #2492 | 2026-09-06 | Slice 0 er leveret; resten er spec. |
 

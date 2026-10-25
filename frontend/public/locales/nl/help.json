@@ -1039,8 +1039,8 @@
           "Vermoeidheid gaat voor elke renner terug naar 0.",
           "Blessures worden NIET gereset. Ze gaan ongewijzigd mee.",
           "Piekplannen worden niet geraakt door de wissel.",
-          "Seizoenslonen worden tijdens de wissel betaald. Rennerswaarden bewegen niet tijdens de wissel zelf: ze worden eenmalig bijgewerkt, in de zondagse update nadat de wissel is voltooid.",
-          "De eerste koersdag van het nieuwe seizoen is de dag na de wissel. De eerste etappe begint minstens 24 uur na de laatste etappe van het oude seizoen, dus je hebt tijd om je koersselecties te kiezen."
+          "Seizoenslonen worden tijdens de wissel betaald. Rennerswaarden bewegen niet tijdens de wissel zelf: ze worden de volgende keer bijgewerkt, bij de normale zondagse update.",
+          "Het nieuwe seizoen begint na een korte pauze tussen de seizoenen, waarover de managers hebben gestemd. De datum van de eerste etappe staat op de koerskalender, dus je hebt tijd om je selecties te kiezen."
         ]
       }
     },
