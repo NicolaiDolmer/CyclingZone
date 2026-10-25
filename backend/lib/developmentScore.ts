@@ -4,10 +4,9 @@
 // og samlet design §5 + §13 (S9, S10, S11, S13, S14, S16, S22, S29).
 //
 // ═══ STATUS ══════════════════════════════════════════════════════════════════
-// Ingen kaldere endnu. Modulet ligger bag flaget `development_score_v2` (slukket),
-// og intet i spillet læser det: motoren, aftenkørslen, Train now og API'et kører
-// uændret på `trainingScore.js`. Første brugere er 10-sæsoners-simuleringen (S25)
-// og harnessen for H6b. Kobling til motor, skrivning og API kommer i PR (b)-(d).
+// Bag flaget `development_score_v2` (slukket). Motoren kalder modulet gennem
+// developmentScoreWiring.js (#6950, PR (c)); slukket kører alt uændret på
+// `trainingScore.js`. Løbsdagens score-skrivning og API'et kommer i PR (b) og (d).
 //
 // ═══ KONTRAKTEN ══════════════════════════════════════════════════════════════
 //   developmentDay(input, params) -> null | { score: 1..99, devMult, kind }
@@ -47,8 +46,7 @@ import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingB
 import { dayTypeForProgram } from "./trainingDayTypes.js";
 import { raceDayFocusAbilities } from "./raceDayYield.js";
 
-// Flaget findes endnu ikke i stageFlagCatalog.js (låst fil mens #7075 er åben).
-// Linjen tilføjes i den PR, der giver modulet sin første kalder.
+// Flaget står i stageFlagCatalog.js; motor-kaldet bor i developmentScoreWiring.js (#6950).
 export const DEVELOPMENT_SCORE_V2_FLAG_KEY = "development_score_v2";
 
 export const DEVELOPMENT_SCORE_MIN = 1;

@@ -52,6 +52,8 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | --- | --- | --- | --- | --- | --- | --- |
 | Max +1 per ability per date (`ability-cap-per-date`) | dormant | `ability_cap_per_date_enabled` | - | #6110 | 2026-10-23 | Ejer, med Udvikling 2.0. |
 | Development curve B (level and potential drive development, not age) (`development-curve-b`) | dormant | `development_curve_b` | [TRAINING_RULES](TRAINING_RULES.md) | #3564 | 2026-10-25 | Ejer, efter ny 10-sæsoners-kørsel med den rigtige kurve; kræver private params i serverens miljø. |
+| Development Score B in the engine (`development-score-b-engine`) | dormant | `development_score_v2` | [TRAINING_RULES](TRAINING_RULES.md) | #6110 | 2026-10-25 | Ejer, med Udvikling 2.0. |
+| Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Today's decision card on the Training page (`training-decision-card`) | building | - | - | #6110 | 2026-10-25 | PR #7179 (S26). Stadie-flag training_decision_card seedes off af migrationen (apply efter merge); ejer flytter til beta efter billeder. |
 
 ## academy

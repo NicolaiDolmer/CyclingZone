@@ -18,7 +18,16 @@ import {
 // active=false undlader at fetche vinduet — bruges af RiderStatsPage's
 // AuctionButton så et lukket/uåbnet auktions-panel ikke laver et netværkskald
 // ingen ser. TeamPage's modal er altid "aktiv" fra mount (default true).
-export function useAuctionEndTimeSelector({ active = true } = {}) {
+// #7220: minHours løfter gulvet for fri-transfer-ryttere (12 t, samme som
+// serverens FREE_AGENT_MIN_DURATION_HOURS), så fejlen vises før POST'en.
+// #7220: løfter vinduets min_hours til minHours (aldrig ned).
+/** @param {any} cfg @param {number | null | undefined} minHours */
+function withMinHours(cfg, minHours) {
+  return minHours != null ? { ...cfg, min_hours: Math.max(cfg.min_hours ?? 0, minHours) } : cfg;
+}
+
+/** @param {{ active?: boolean, minHours?: number | null }} [opts] */
+export function useAuctionEndTimeSelector({ active = true, minHours = null } = {}) {
   const [auctionWindow, setAuctionWindow] = useState(null);
   const [endWall, setEndWall] = useState("");
 
@@ -45,7 +54,7 @@ export function useAuctionEndTimeSelector({ active = true } = {}) {
   }, [active, auctionWindow]);
 
   const endTimeIssue = auctionWindow && endWall
-    ? getEndTimeIssue(endWall, new Date(), auctionWindow)
+    ? getEndTimeIssue(endWall, new Date(), withMinHours(auctionWindow, minHours))
     : null;
   const endHours = endWall ? windowHoursForWallClock(endWall, auctionWindow || {}) : null;
   // null når feltet endnu ikke er klar/gyldigt — kalderen sender da IKKE
