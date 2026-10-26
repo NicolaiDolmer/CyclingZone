@@ -410,17 +410,34 @@ function runChaseDay(ctx) {
     const team = cloneTeam(members, prefix);
     const row = twinRow(`team-${prefix}`, profile.stage_number, [], stance);
     const o = outcome(simulate(v4, data, stages, profile, [...rest, ...team], [...others, row], `chs-${seed}`, revision));
-    const bw = breakawayWin(o.out);
-    const formed = (o.out?.timeline?.events ?? []).some((e) => e.type === "breakaway_formed");
-    return { won: bw.won ? 1 : 0, formed };
+    return { won: breakawayWin(o.out).won ? 1 : 0, ...breakLead(o) };
   };
   const chase = run("t7266-chs", "chase");
   const neutral = run("t7266-chs", "neutral");
   const letGo = run("t7266-chs", "let_go");
   const ctrl = run("t7266-chsc", "neutral");
   if (!(chase.formed || neutral.formed || letGo.formed)) return;
-  rec({ exp: "chase", arm: "chase_vs_let_go", level: "team", metric: "break_won", dOn: chase.won - letGo.won, dCtrl: ctrl.won - neutral.won });
-  rec({ exp: "chase", arm: "chase_vs_neutral", level: "team", metric: "break_won", dOn: chase.won - neutral.won, dCtrl: ctrl.won - neutral.won });
+  const d = (a, b) => (a != null && b != null ? a - b : null);
+  for (const [arm, other] of [["chase_vs_let_go", letGo], ["chase_vs_neutral", neutral]]) {
+    rec({ exp: "chase", arm, level: "team", metric: "break_won", dOn: chase.won - other.won, dCtrl: ctrl.won - neutral.won });
+    rec({ exp: "chase", arm, level: "team", metric: "break_lead", dOn: d(chase.lead, other.lead), dCtrl: d(ctrl.lead, neutral.lead) });
+  }
+}
+
+/**
+ * Udbruddets forspring i maal: bedste rytter uden for morgenudbruddet minus bedste
+ * udbryder (> 0 = udbruddet foran). null uden udbrud eller uden maal-tider.
+ */
+export function breakLead(o) {
+  const formedIds = new Set((o.out?.timeline?.events ?? []).filter((e) => e.type === "breakaway_formed").flatMap((e) => e.params?.rider_ids ?? []).map(String));
+  if (!formedIds.size) return { formed: false, lead: null };
+  let bestBreak = Infinity;
+  let bestOther = Infinity;
+  for (const [id, t] of o.fin) {
+    if (formedIds.has(String(id))) bestBreak = Math.min(bestBreak, t);
+    else bestOther = Math.min(bestOther, t);
+  }
+  return { formed: true, lead: Number.isFinite(bestBreak) && Number.isFinite(bestOther) ? bestOther - bestBreak : null };
 }
 
 /** Holdet til delt kaptajn: 7-8 ryttere, kaptajn = bedste klassementsrytter, kandidat = naestbedste. */
@@ -489,6 +506,8 @@ export const CHECKS = Object.freeze([
   { exp: "train", arm: "sprint_train", metric: "captain_rank", sign: -1, scope: ["flat"], what: "sprinttog giver spurtkaptajnen en bedre placering" },
   { exp: "chase", arm: "chase_vs_let_go", metric: "break_won", sign: -1, scope: ["flat", "hilly", "mountain"], what: "jag giver faerre udbrudssejre end lad gaa" },
   { exp: "chase", arm: "chase_vs_neutral", metric: "break_won", sign: -1, scope: ["flat", "hilly", "mountain"], what: "jag giver faerre udbrudssejre end neutral" },
+  { exp: "chase", arm: "chase_vs_let_go", metric: "break_lead", sign: -1, scope: ["flat", "hilly", "mountain"], what: "jag giver udbruddet et mindre forspring i maal end lad gaa" },
+  { exp: "chase", arm: "chase_vs_neutral", metric: "break_lead", sign: -1, scope: ["flat", "hilly", "mountain"], what: "jag giver udbruddet et mindre forspring i maal end neutral" },
   { exp: "cocaptain", arm: "co_captain", metric: "co_gc_rank", sign: -1, scope: ["race"], what: "delt kaptajn ligger bedre i klassementet end som hjaelper" },
   { exp: "cocaptain", arm: "co_captain", metric: "co_stage_rank", sign: -1, scope: ["race"], what: "delt kaptajn (endagsloeb) placerer sig bedre end som hjaelper" },
   { exp: "cocaptain", arm: "co_captain", metric: "captain_gc_rank", sign: 1, scope: ["race"], what: "kaptajnen taber hoejst lidt (information, ikke gate)", info: true },
@@ -586,6 +605,16 @@ export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, se
   return { config: { revision, seeds, caps, experiments, noiseZ: NOISE_Z, minField: MIN_FIELD }, races: meta, summary, invariants: inv, api, findings: findings(summary, inv, api), records };
 }
 
+/** Flere koerslers resultater (fx én pr. gruppe) samlet til ét (ren). */
+export function mergeResults(results) {
+  const records = results.flatMap((r) => r.records ?? []);
+  const api = results.find((r) => r.api)?.api ?? null;
+  const summary = summarize(records);
+  const inv = invariants(records);
+  const config = { ...(results[0]?.config ?? {}), caps: Object.assign({}, ...results.map((r) => r.config?.caps ?? {})) };
+  return { config, races: results.flatMap((r) => r.races ?? []), summary, invariants: inv, api, findings: findings(summary, inv, api), records };
+}
+
 const fmt = (st) => (st && st.n ? `${st.directionOk ? "ja" : "NEJ"} / ${st.beatsNoise ? "ja" : "nej"} (n ${st.n}, ${st.meanOn} mod ${st.meanCtrl}, z ${st.z})` : "-");
 
 /** Privat markdown (tal). */
@@ -620,11 +649,15 @@ if (isMain) {
   const caps = capsArg ? Object.fromEntries(capsArg.split(",").map((kv) => { const [k, v] = kv.split(":"); return [k, Number(v)]; })) : DEFAULT_GROUP_CAPS;
   const fromDir = arg("from-dir", null);
   const experiments = arg("experiments", EXPERIMENTS.join(",")).split(",");
-  if (!fromDir && experiments.some((e) => e !== "api")) throw new Error("--from-dir=<eksport>/races kraeves");
-  const res = await runTacticsEffects({ fromDir, caps, seeds: Number(arg("seeds", "2")), revision: arg("revision", REVISION), experiments });
+  const out = arg("out", null);
+  const merge = arg("merge", null);
+  if (merge && !out) throw new Error("--merge kraever --out (mappen med de enkelte koersler)");
+  if (!merge && !fromDir && experiments.some((e) => e !== "api")) throw new Error("--from-dir=<eksport>/races kraeves");
+  const res = merge
+    ? mergeResults(merge.split(",").map((l) => JSON.parse(readFileSync(path.join(path.resolve(REPO_ROOT, out), `tactics-effects-${l}.json`), "utf8"))))
+    : await runTacticsEffects({ fromDir, caps, seeds: Number(arg("seeds", "2")), revision: arg("revision", REVISION), experiments });
   const label = arg("label", "v3");
   const md = renderMarkdown(res, label);
-  const out = arg("out", null);
   if (out) {
     const dir = path.resolve(REPO_ROOT, out);
     mkdirSync(dir, { recursive: true });
