@@ -276,6 +276,8 @@ export type TeamReactionState = {
 export type JerseyLeaders = {
   points?: string | null;
   kom?: string | null;
+  // #6937 B1 (KUN s5_profiles_v3): bjergkonkurrencens forreste foer etapen (mechanics/komJersey6937.ts).
+  kom_hunters?: readonly string[] | null;
 };
 
 // #2410-taksonomien er AABEN for tilfoejelser (forward-kompatibel: ukendte typer

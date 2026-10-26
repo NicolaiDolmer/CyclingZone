@@ -51,6 +51,7 @@ import type {
 import { gaussian } from "../rng.ts";
 import { komPassageEvent, intermediateSprintEvent } from "../timeline.ts";
 import { BONUS_SECONDS_EXTRA_TUNING } from "../tuning.ts";
+import { komHunterSet } from "./komJersey6937.ts"; // #6937 B1
 import { intermediateSprintLeaderV3 } from "./pointsJersey2757.ts";
 import type { BonusSecondsTuning } from "../types.ts";
 
@@ -171,6 +172,13 @@ export type PassageContest = {
   // favoritgruppe) ruller over toppen bag dem der kaemper. Udeladt = alle i en lille
   // gruppe kaemper (#5914, bit-identisk).
   smallGroupRollOverRoles?: readonly string[];
+  // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne kaemper i enhver gruppe og tager pointene
+  // foran gruppens oevrige kaempere (komJersey6937.ts). Udeladt = ingen jaegere.
+  komHunterIds?: ReadonlySet<string>;
+  // #6937 B2 strammet (KUN s5_profiles_v3): rollover-rollerne ruller over i enhver gruppe uden
+  // for dagens udbrud, ogsaa som troejefoerer, og passerer bag gruppens oevrige ryttere i
+  // tilfaeldig orden (evnen afgoer ikke en top de ikke koerer om). Udeladt = #7155.
+  rollOverBehindGroup?: boolean;
 };
 
 /**
@@ -217,7 +225,7 @@ export function computePassageOrder(
 ): string[] {
   const groupOf = liveGroupByRider(state);
   const contest = args.contest;
-  const scored: Array<{ riderId: string; gap: number; contends: boolean; score: number }> = [];
+  const scored: Array<{ riderId: string; gap: number; contends: boolean; first: boolean; back: boolean; score: number }> = [];
   for (const rider of Object.values(state.riders)) {
     if (rider.status === "abandoned") continue;
     const entrant = entrants[rider.rider_id];
@@ -236,23 +244,32 @@ export function computePassageOrder(
     // #6937 B2 (KUN s5_profiles_v3): i en lille favoritgruppe (ikke dagens udbrud)
     // ruller kaptajnerne over toppen; de kaemper kun som troejefoerer.
     const smallGroup = (group?.size ?? Number.MAX_SAFE_INTEGER) <= (contest?.openContestMaxGroupSize ?? 0);
-    const rollsOver = smallGroup
+    // #6937 B2 strammet (KUN s5_profiles_v3): i enhver gruppe uden for dagens udbrud.
+    const behind = contest?.rollOverBehindGroup === true;
+    const rollsOver = (smallGroup || behind)
       && group?.escape !== true
       && (contest?.smallGroupRollOverRoles ?? []).includes(String(entrant?.role ?? ""));
+    const hunter = contest?.komHunterIds?.has(rider.rider_id) === true; // #6937 B1
     const contends = !contest
       || (smallGroup && !rollsOver)
       || contest.contenderRoles.includes(String(entrant?.role ?? ""))
-      || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id);
+      || (contest.jerseyLeaderId != null && contest.jerseyLeaderId === rider.rider_id && !(behind && rollsOver))
+      || hunter;
+    const back = behind && rollsOver && !contends;
     scored.push({
       riderId: rider.rider_id,
       gap: group?.gap ?? Number.MAX_SAFE_INTEGER,
       contends,
-      score: base + noise,
+      first: hunter,
+      back,
+      score: back ? noise : base + noise,
     });
   }
   return scored
     .sort((a, b) => a.gap - b.gap
       || Number(b.contends) - Number(a.contends)
+      || Number(b.first) - Number(a.first)
+      || Number(a.back) - Number(b.back)
       || b.score - a.score
       || a.riderId.localeCompare(b.riderId))
     .map((s) => s.riderId);
@@ -358,7 +375,8 @@ export const passagesHook = (state: EngineState, ctx: SegmentHookContext): Segme
         jerseyLeaderId: (isKom ? ctx.jerseyLeaders?.kom : ctx.s5ProfilesV3 === true ? intermediateSprintLeaderV3(ctx.jerseyLeaders?.points, entrants) : ctx.jerseyLeaders?.points) ?? null,
         // #6937 B2 (KUN s5_profiles_v3, ejer 24/10 valg A): kun bjergtoppe undervejs;
         // topankomsten afgoeres af maalordenen og er uaendret.
-        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES } : {}),      },
+        ...(isKom && ctx.s5ProfilesV3 === true ? { smallGroupRollOverRoles: KOM_FAVOURITE_ROLL_OVER_ROLES, komHunterIds: komHunterSet(ctx.jerseyLeaders, entrants, ctx.gcContext), rollOverBehindGroup: true } : {}),
+      },
     });
     const passage = buildPassage({
       kind: wp.kind as StagePassage["kind"],
@@ -399,6 +417,8 @@ export function buildFinishPassages(args: {
   profileType: ProfileType | string | null | undefined;
   finaleType: FinaleType | null;
   tuning: Pick<BonusSecondsTuning, "finishSeconds">;
+  /** #6937 (KUN s5_profiles_v3, ejer 25/10): topankomsten giver stigningens almindelige point. Udeladt = dobbelt som foer. */
+  summitFinishSingle?: true;
 }): StagePassage[] {
   const finishOrder = [...args.results]
     .filter((r) => r.status === "finished")
@@ -418,7 +438,7 @@ export function buildFinishPassages(args: {
       km: wp.km,
       category: wp.category ?? null,
       order: finishOrder,
-      pointScale: komPointScale(wp.category ?? null, true),
+      pointScale: komPointScale(wp.category ?? null, args.summitFinishSingle !== true),
     });
     if (passage) passages.push(passage);
   }
