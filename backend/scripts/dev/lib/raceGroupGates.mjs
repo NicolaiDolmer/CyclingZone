@@ -245,7 +245,7 @@ export function raceGroupGateSection(card) {
   const v = card?.raceGroupGates;
   if (!v?.candidate) return [];
   const b = Object.fromEntries((v.baseline?.checks ?? []).map((c) => [c.id, c]));
-  const cell = (c) => (c ? `${pct(c.share)} (${c.hits}/${c.n}, ${c.races} loeb)` : "-");
+  const cell = (c) => (c?.n ? `${pct(c.share)} (${c.hits}/${c.n}, ${c.races} loeb)` : "-");
   const out = ["", `## Løbsgrupper (ejer 26/10)${v.applies ? " - blokerende" : " - til orientering (blokerer fra kandidater efter s5_profiles_v3)"}`, "",
     "Fire grupper: endagsloeb, monumenter (race_class Monuments), korte etapeloeb (2-14 etaper), Grand Tours (15+). Dom mod de private baand (`raceGroupBands`); \"-\" = intet baand.", "",
     ...table(["Kontrol", `${card.baseline} vaerdi`, `${card.baseline} dom`, `${card.candidate} vaerdi`, `${card.candidate} dom`, "Hvorfor (kandidat)"],
