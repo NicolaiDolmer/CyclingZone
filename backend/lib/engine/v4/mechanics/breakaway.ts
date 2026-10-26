@@ -127,7 +127,7 @@ import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s5V3ClimbChaseIntensity, s5V3ClimbChaseLeashSeconds, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
 import { s5V3P2OffForHarmlessBreak } from "./breakawayInterest7160P2.ts"; // #7160 valg A2
-import { projectedTopRiders, stageFavourites, stageFavouriteSpontaneousScale } from "./gcBreakawayLeash7258.ts"; // #7258
+import { projectedTopRiders, s5V3ProjectedControlTargetSeconds, stageFavourites, stageFavouriteSpontaneousScale } from "./gcBreakawayLeash7258.ts"; // #7258
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -2286,9 +2286,18 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // paa snoren i stedet for at hente. Reaktionernes ekstra lukning bringer forspringet ned
     // til det de reagerende hold tolererer for truslen i DETTE udbrud, aldrig under; resten af
     // feltets jagt (fx etapeinteressen) virker som foer. En brudt snor (for kort) henter.
-    const p6Target = p6Control && reactions && reactions.size > 0 && !s5V3InControlFinale(ctx.route.distance_km, ctx.segment.to_km)
-      ? s5V3ControlTargetSeconds((gcSetup?.decisions ?? []).filter((d) => d.plan.intensity > 0 && d.threat.chase_group_id === chaseGroup.id && inBreak(d)).map((d) => d.threat.tolerated_lead_seconds))
-      : null;
+    // #7258: reagerer holdene kun paa fremskrevne trusler (svagere ryttere der kun vinder loebet med
+    // forspringet), holdes snoren ogsaa i finalen og brydes aldrig: udbruddet maa vinde etapen, men
+    // ikke klassementet (gcBreakawayLeash7258.ts).
+    const p6Decisions = p6Control && reactions && reactions.size > 0
+      ? (gcSetup?.decisions ?? []).filter((d) => d.plan.intensity > 0 && d.threat.chase_group_id === chaseGroup.id && inBreak(d))
+      : [];
+    const p6Projected = p6Decisions.length > 0 && p6Decisions.every((d) => d.threat.leash_projected === true);
+    const p6Target = p6Projected
+      ? s5V3ProjectedControlTargetSeconds(p6Decisions.map((d) => d.threat.tolerated_lead_seconds))
+      : p6Decisions.length > 0 && !s5V3InControlFinale(ctx.route.distance_km, ctx.segment.to_km)
+        ? s5V3ControlTargetSeconds(p6Decisions.map((d) => d.threat.tolerated_lead_seconds))
+        : null;
     let chaseClosingSeconds = p6Target !== null
       ? s5V3ControlledClosing({ fullClosing: netClosingSeconds, baseClosing: closingOf(advantageOf(chasePlanWith(false)), false), gapSeconds: grown, targetSeconds: p6Target })
       : netClosingSeconds;

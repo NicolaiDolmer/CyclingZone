@@ -1703,6 +1703,12 @@ export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
   // Snoren paa en svagere udbryder der fremskrevet kan vinde loebet: hans afstand plus det
   // fremskrevne tab plus dette tillaeg (minus snorens almindelige margin).
   projectedAllowanceSeconds: 60,
+  // Holder jagten kun fremskrevne trusler paa snor, brydes snoren aldrig (ogsaa i finalen):
+  // forspringet holdes mindst paa dette.
+  projectedMinLeashSeconds: 30,
+  // Kun hold hvis klassementsrytter er blandt de bedste paa fremskrevet slutklassement (eller
+  // foereren) holder en fremskreven trussel paa snor.
+  projectedContenderTopN: 5,
   // (C) Dagens favoritter: de bedste paa dagens finale-evne (finalens demand_vector) i feltet.
   stageFavouriteTopN: 5,
   // (C) Et spontant morgenudbrudsforsoeg fra en af dagens favoritter ganges med denne faktor.

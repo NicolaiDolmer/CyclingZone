@@ -57,6 +57,18 @@ export function projectedGainSeconds(gc: GcContext | null | undefined, strengthR
   return (ratio - 1) * remainingLossWeightSeconds(gc);
 }
 
+/**
+ * Snoren jagten holder et udbrud paa, naar holdene kun reagerer paa fremskrevne trusler: det
+ * mindste tolererede forspring, aldrig under projectedMinLeashSeconds (snoren brydes ikke; det
+ * lille forspring er det feltet uanset giver). null uden tolerance.
+ */
+export function s5V3ProjectedControlTargetSeconds(toleratedSeconds: readonly (number | undefined)[]): number | null {
+  const finite = toleratedSeconds.filter((s): s is number => typeof s === "number" && Number.isFinite(s));
+  if (finite.length === 0) return null;
+  const floor = S5_V3_GC_LEASH_7258_TUNING.projectedMinLeashSeconds;
+  return Math.max(Number.isFinite(floor) && floor > 0 ? floor : 0, Math.min(...finite));
+}
+
 /** Tillaegget paa snoren for en fremskrevet trussel (ugyldig tuning = 0). */
 export function projectedAllowanceSeconds(): number {
   const a = S5_V3_GC_LEASH_7258_TUNING.projectedAllowanceSeconds;
@@ -88,6 +100,34 @@ export function projectedTopRiders(input: {
   projected.sort((a, b) => a.t - b.t || a.id.localeCompare(b.id));
   for (const p of projected.slice(0, input.topN)) out.add(p.id);
   return out;
+}
+
+const CONTENDER_CACHE = new WeakMap<object, Map<string, Set<string>>>();
+
+/**
+ * Er holdets klassementsrytter en reel kandidat til at vinde loebet: blandt de
+ * `projectedContenderTopN` bedste paa fremskrevet slutklassement (eller foereren)? Kun de hold
+ * holder en fremskreven trussel paa snor: et udbrud der kun truer en 8.-plads afgoer ikke loebet.
+ * Gemt pr. startfelt og klassement (samme svar hele etapen).
+ */
+export function isProjectedContender(gc: GcContext | null | undefined, entrants: Readonly<Record<string, Entrant>>, riderId: string, abilityOf: ((entrant: Entrant | undefined) => number) | null, syntheticFirstStage: boolean): boolean {
+  if (!gc || gc.status !== "standings") return false;
+  if (gc.leader_id === riderId && !syntheticFirstStage) return true;
+  const topN = S5_V3_GC_LEASH_7258_TUNING.projectedContenderTopN;
+  if (!(topN > 0)) return true;
+  const key = `${gc.stage_number}:${gc.standings.length}:${gc.leader_id ?? ""}:${gc.standings[0]?.rider_id ?? ""}`;
+  let byKey = CONTENDER_CACHE.get(entrants);
+  if (!byKey) { byKey = new Map(); CONTENDER_CACHE.set(entrants, byKey); }
+  let top = byKey.get(key);
+  if (!top) {
+    const racing = new Set(gc.standings.map((s) => s.rider_id).filter((id) => entrants[id] !== undefined));
+    top = syntheticFirstStage && abilityOf
+      // Foerste etape (alle lige): de bedste paa loebsspecifik klassementsevne.
+      ? new Set([...racing].sort((a, b) => abilityOf(entrants[b]) - abilityOf(entrants[a]) || a.localeCompare(b)).slice(0, topN))
+      : projectedTopRiders({ gc, entrants, racingRiderIds: racing, abilityOf, topN, syntheticFirstStage: false });
+    byKey.set(key, top);
+  }
+  return top.size === 0 || top.has(riderId);
 }
 
 /** (C) Rytterens evne paa dagens finale (sum af krav-vaegt x normaliseret evne), som gcThreat.routeAbility. */

@@ -22,7 +22,7 @@
 
 import type { AbilityKey, Entrant, GcContext, GcStageDemand, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
 import { s5V3ContenderAbilityRank, s5V3IsShortStageRace, s5V3ProjectionWeight } from "./breakawayV3_6804.ts";
-import { projectedAllowanceSeconds, projectedLossSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
+import { isProjectedContender, projectedAllowanceSeconds, projectedLossSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
 
 export type GcThreatSeverity = "none" | "moderate" | "serious";
 
@@ -94,6 +94,12 @@ export type GcThreat = {
    * jo farligere, jo haardere jagt. Udeladt = alle aeldre revisioner (bit-identisk).
    */
   danger?: number;
+  /**
+   * #7258 (KUN s5_profiles_v3): alle de ryttere holdet reagerer paa er fremskrevne trusler
+   * (svagere ryttere der kun kan vinde loebet med forspringet). Jagten holder dem paa snoren,
+   * ogsaa i finalen, i stedet for at hente (breakaway.ts). Udeladt = som foer.
+   */
+  leash_projected?: true;
 };
 
 /**
@@ -640,9 +646,11 @@ export function assessGcThreat(input: {
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
   // #6804 P6.2 (KUN v3): gevinsten paa resten af etapen taeller fuldt foerst naar den kan realiseres.
   const projectionWeight = v3 ? s5V3ProjectionWeight(Math.max(0, Number(input.route.distance_km) - input.km)) : 1;
+  // #7258: kun et hold hvis klassementsrytter kan vinde loebet (fremskrevet top eller foereren) holder en fremskreven trussel paa snor.
+  const projectedLeash = v3 && input.formationProbe !== true && isProjectedContender(gcContext, input.entrants, protectedId, raceGcAbilityModel(gcContext), firstStage);
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number; projected?: true };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   // #6187: under orders_gc_v3 taeller holdets egne ryttere aldrig (og med
@@ -678,7 +686,7 @@ export function assessGcThreat(input: {
       // #7258 (KUN v3, ikke ved dannelsens proeve): en svagere rytter uden fare (dangerOf = 0) er
       // stadig en trussel naar han fremskrevet (afstand + tab paa resten af loebet) kan staa foran
       // holdets klassementsrytter ved loebets slutning. Snoren er den fremskrevne afstand.
-      const projectedDistance = v3 && input.formationProbe !== true && !ranked && riderDanger === 0
+      const projectedDistance = projectedLeash && !ranked && riderDanger === 0
         ? deficit + projectedLossSeconds(gcContext, strengthRaw) + projectedAllowanceSeconds()
         : null;
       const todayGain = terrainGain > 0 ? terrainGain * projectionWeight : terrainGain;
@@ -723,6 +731,7 @@ export function assessGcThreat(input: {
       // #5578 (KUN official_times_v2): de forreste holder altid snoren, og den er hoejst loftet lang.
       candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival,
         leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}),
+        ...(projectedDistance !== null ? { projected: true as const } : {}),
         ...(riderDanger !== undefined ? { danger: riderDanger } : {}) });
     }
   }
@@ -777,7 +786,7 @@ function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean; fo
  */
 function withLeash(
   threat: GcThreat,
-  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number }>,
+  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number; projected?: true }>,
   leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds,
 ): GcThreat {
   const held = counted.filter((c) => holdsLeash(c, leashMarginSeconds));
@@ -793,6 +802,7 @@ function withLeash(
     leash_hold: held.length > 0,
     ...(held.length > 0 ? { leash_rider_ids: held.map((c) => c.riderId).sort() } : {}),
     ...(dangers.length > 0 ? { danger: Math.max(...dangers) } : {}),
+    ...(limiting.length > 0 && limiting.every((c) => c.projected === true) ? { leash_projected: true as const } : {}), // #7258
   };
 }
 
