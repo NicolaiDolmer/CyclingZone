@@ -22,7 +22,7 @@
 
 import type { AbilityKey, Entrant, GcContext, GcStageDemand, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
 import { s5V3ContenderAbilityRank, s5V3IsShortStageRace, s5V3ProjectionWeight } from "./breakawayV3_6804.ts";
-import { isProjectedContender, projectedAllowanceSeconds, projectedLossSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
+import { isProjectedContender, projectedAllowanceSeconds, projectedGapToWinnerSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
 
 export type GcThreatSeverity = "none" | "moderate" | "serious";
 
@@ -688,9 +688,12 @@ export function assessGcThreat(input: {
       // #7258 (KUN v3, ikke ved dannelsens proeve): en svagere rytter uden fare (dangerOf = 0) er
       // stadig en trussel naar han fremskrevet (afstand + tab paa resten af loebet) kan staa foran
       // holdets klassementsrytter ved loebets slutning. Snoren er den fremskrevne afstand.
-      const projectedDistance = projectedLeash && !ranked && riderDanger === 0
-        ? deficit + projectedLossSeconds(gcContext, strengthRaw) + projectedAllowanceSeconds()
+      // Afstanden maales til den fremskrevne VINDER (ikke til holdets egen rytter): et udbrud maa gerne
+      // flytte pladserne bag ham, men en rytter i det maa ikke kunne vinde loebet.
+      const gapToWinner = projectedLeash && !ranked && riderDanger === 0
+        ? projectedGapToWinnerSeconds(gcContext, input.entrants, riderId, raceModel, firstStage)
         : null;
+      const projectedDistance = gapToWinner !== null ? gapToWinner + projectedAllowanceSeconds() : null;
       const todayGain = terrainGain > 0 ? terrainGain * projectionWeight : terrainGain;
       const margin = projectedDistance !== null
         ? projectedDistance - lead - todayGain
