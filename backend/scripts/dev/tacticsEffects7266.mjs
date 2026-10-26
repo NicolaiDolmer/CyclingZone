@@ -164,6 +164,11 @@ export function effectStats(dOn, dCtrl, sign) {
   const mOn = mean(on);
   const mCtrl = mean(ctrl) ?? 0;
   if (mOn == null) return { n: 0, nCtrl: ctrl.length, meanOn: null, meanCtrl: r2(mCtrl), z: null, directionOk: null, wrong: null, beatsNoise: null };
+  // Codex P2: under to gyldige maalinger i en arm kan stoejen ikke estimeres; det er
+  // utilstraekkeligt grundlag, ikke nul stoej, saa ordren erklaeres aldrig maerkbar.
+  if (on.length < 2 || ctrl.length < 2) {
+    return { n: on.length, nCtrl: ctrl.length, meanOn: r2(mOn), meanCtrl: r2(mCtrl), z: null, directionOk: sign * mOn > 0, wrong: sign * mOn < 0, beatsNoise: false, insufficient: true };
+  }
   const se = Math.sqrt(variance(on, mOn) / on.length + (ctrl.length ? variance(ctrl, mCtrl) / ctrl.length : 0));
   const diff = sign * (mOn - mCtrl);
   const z = se > 0 ? diff / se : diff > 0 ? Infinity : 0;

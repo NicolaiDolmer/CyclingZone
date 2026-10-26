@@ -182,3 +182,9 @@ for (const a of api.filter((x) => x.expectReject)) {
     assert.equal(byId.get(a.id).rejected, true);
   });
 }
+
+test("Codex P2: for faa gyldige maalinger giver aldrig 'maerkbar'", () => {
+  assert.equal(effectStats([-1], [0], -1).beatsNoise, false);
+  assert.equal(effectStats([-1], [0], -1).insufficient, true);
+  assert.equal(effectStats([-1, -1], [null, null], -1).beatsNoise, false);
+});
