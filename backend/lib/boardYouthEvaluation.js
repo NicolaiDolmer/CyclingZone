@@ -55,6 +55,7 @@ export function parseYouthMoodTuning(raw) {
   try {
     parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
   } catch {
+    // best-effort: ugyldig JSON fejler valid-checken herunder, som rapporterer én gang.
     parsed = null;
   }
   const podiumWeight = Number(parsed?.podiumWeight);
