@@ -26,6 +26,9 @@ export function validateSelection({
   teamRiderIds, injuredRiderIds, sizeRule,
   // #5981: delt kaptajn (hoejst én — ét id). Kun tilladt i loeb paa s5_profiles_v3+ (coCaptainAllowed).
   coCaptainId = null, coCaptainAllowed = false,
+  // #6321: spurtkaptajnen som eneste leder. Samme revisions-gate som den delte kaptajn
+  // (s5_profiles_v3+); aeldre loeb kraever stadig en kaptajn, saa intet aendres foer v3.
+  sprintLeaderAllowed = false,
 }) {
   const errors = [];
   // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller.
@@ -52,7 +55,7 @@ export function validateSelection({
   if (riderIds.length === 0) {
     if (captainId) errors.push("selection_captain_not_selected");
   } else {
-    if (!captainId && !sprintCaptainId) errors.push("selection_captain_required");
+    if (!captainId && !(sprintCaptainId && sprintLeaderAllowed)) errors.push("selection_captain_required");
     else if (captainId && !unique.has(captainId)) errors.push("selection_captain_not_selected");
   }
 
@@ -226,6 +229,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   const result = validateSelection({
     riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds,
     coCaptainId, coCaptainAllowed: raceAllowsCoCaptain(race),
+    sprintLeaderAllowed: raceAllowsCoCaptain(race), // #6321: samme v3-gate
     // #4119: udgaaende ryttere er MED i ctx.riders (de skal vises), men maa ikke
     // udtages til nye loeb — #2579's gate flyttet hertil fra selve synligheden.
     teamRiderIds: new Set(ctx.riders.filter((r) => !r.outgoing).map((r) => r.id)),

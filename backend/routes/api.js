@@ -4843,7 +4843,8 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     const doctor = eligible ? await loadDoctorReportForSelection({ supabase, race, teamId: req.team.id, riders: ctx.riders }) : null;
     // #6959: trup-låsen (samme regel som taktikken) så panelet kan vise den, også i en pause.
     const lineupLocked = await isRaceLineupLockedNow({ supabase, race, now: new Date() });
-    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, lineup_locked: lineupLocked, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled, doctor });
+    // #6321: klienten skal kende v3-gaten, saa den aldrig afviser et gem serveren accepterer (#4295).
+    res.json({ enabled: true, eligible, withdrawn, did_not_start: didNotStart, race, lineup_locked: lineupLocked, ...ctx, bound_riders: boundRiders, race_v3_enabled: raceV3Enabled, doctor, sprint_leader_allowed: raceAllowsCoCaptain(race) });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

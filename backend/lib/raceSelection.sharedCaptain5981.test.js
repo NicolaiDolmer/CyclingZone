@@ -20,8 +20,17 @@ const base = {
   sizeRule: { min: 6, max: 8 },
 };
 
-test("#6321: kun en spurtkaptajn som leder er en gyldig udtagelse", () => {
-  assert.deepEqual(validateSelection({ ...base, captainId: null, sprintCaptainId: "r2" }), { ok: true, errors: [] });
+test("#6321: kun en spurtkaptajn som leder er en gyldig udtagelse i et v3-loeb", () => {
+  assert.deepEqual(validateSelection({ ...base, captainId: null, sprintCaptainId: "r2", sprintLeaderAllowed: true }), { ok: true, errors: [] });
+});
+
+test("#6321: i et aeldre loeb (foer v3) kraever en spurtkaptajn stadig en kaptajn", () => {
+  assert.ok(validateSelection({ ...base, captainId: null, sprintCaptainId: "r2" }).errors.includes("selection_captain_required"));
+});
+
+test("#6321: v3-gaten er den samme som den delte kaptajns (raceAllowsCoCaptain)", () => {
+  assert.equal(raceAllowsCoCaptain({ engine_rules_revision: "s5_profiles_v2" }), false);
+  assert.equal(raceAllowsCoCaptain({ engine_rules_revision: "s5_profiles_v3" }), true);
 });
 
 test("#6321: uden kaptajn OG uden spurtkaptajn kraeves stadig en leder", () => {
@@ -29,7 +38,7 @@ test("#6321: uden kaptajn OG uden spurtkaptajn kraeves stadig en leder", () => {
 });
 
 test("#6321: en spurtkaptajn uden for truppen er stadig en fejl", () => {
-  assert.ok(validateSelection({ ...base, captainId: null, sprintCaptainId: "r7" }).errors.includes("selection_role_not_selected"));
+  assert.ok(validateSelection({ ...base, captainId: null, sprintCaptainId: "r7", sprintLeaderAllowed: true }).errors.includes("selection_role_not_selected"));
 });
 
 test("#5981: delt kaptajn er gyldig i et loeb der kender rollen, med en kaptajn", () => {
