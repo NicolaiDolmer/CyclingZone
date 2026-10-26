@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   kmToX, xToKm, buildFilmTimeline, eventsPlayedUpTo, describeEvent, climbMarkerHeight, altitudeAtKm,
-  collectRiderIds,
+  collectRiderIds, storyEventsWithCauses,
 } from "./stageTimelineFilm.js";
 import { buildProfileSeries } from "./stageRouteProfile.js";
 import {
@@ -500,5 +500,92 @@ test('#6185 del 2: breakaway_dropped gets its own short line in EN and DA, witho
     const text = JSON.parse(readFileSync(join(localesDir, lang, 'races.json'), 'utf8')).detail.film.event.breakaway_dropped;
     assert.ok(text, lang + ': missing detail.film.event.breakaway_dropped');
     assert.ok(!/\{(seconds|gap|km)\}|%/.test(text), lang + ': no numbers (fog of war)');
+  }
+});
+
+// ── #6469: hvorfor udbruddet holdt/blev hentet + egen "Alt ud" ────────────────
+
+const CAUSE_TIMELINE = [
+  { km: 0, type: "stage_start", params: { field_count: 120, profile_type: "hilly", distance_km: 160 } },
+  { km: 12, type: "breakaway_formed", params: { group_id: "breakaway-0", rider_ids: ["rider-1", "rider-2"] } },
+  { km: 40, type: "own_riders_ahead", params: { team_id: "team-a", group_id: "breakaway-0", rider_ids: ["rider-2"], reason: "on_wheel" } },
+  { km: 70, type: "breakaway_unchased", params: { group_id: "breakaway-0" } },
+  { km: 150, type: "kom_passage", params: { name: "Côte Finale", category: "3", top: [{ rider_id: "rider-1" }] } },
+  { km: 160, type: "breakaway_survived", params: { group_id: "breakaway-0", rider_ids: ["rider-1"] } },
+  { km: 160, type: "finish", params: { top: [{ rider_id: "rider-1", rank: 1, gap: 0 }, { rider_id: "rider-3", rank: 2, gap: 90 }], win_type: "solo_win" } },
+];
+const TEAMS = new Map([["team-a", "Hold A"], ["team-b", "Hold B"]]);
+
+test("#6469: filmen siger hvorfor udbruddet holdt, lige efter udfaldet, uden tal", () => {
+  const built = buildFilmTimeline({ events: CAUSE_TIMELINE, distanceKm: 160 });
+  const types = built.feedEvents.map((e) => e.type);
+  const at = types.indexOf("breakaway_survived");
+  assert.deepEqual(types.slice(at, at + 3), ["breakaway_survived", "breakaway_cause", "breakaway_cause"]);
+  const lines = built.feedEvents.slice(at + 1, at + 3).map((e) => describeEvent(e, { riderNameById: riderNameByIdFixture(), teamNameById: TEAMS }));
+  assert.deepEqual(lines, [
+    { key: "cause.unchased", params: {} },
+    { key: "cause.own_riders_ahead", params: { teams: "Hold A", teamCount: 1, teamsHead: "", teamLast: "Hold A" } },
+  ]);
+  // Holdnavnet kan ikke slås op: linjen springes over (aldrig et råt id).
+  assert.equal(describeEvent(built.feedEvents[at + 2], { teamNameById: new Map() }), null);
+  // Kurven og stignings-markørerne er uændrede af de nye linjer.
+  assert.deepEqual(built.climbMarkers, [{ km: 150, category: "3", name: "Côte Finale" }]);
+});
+
+test("#6469: hentet udbrud: holdet jagede for sin klassementsrytter", () => {
+  const caught = [
+    CAUSE_TIMELINE[0], CAUSE_TIMELINE[1],
+    { km: 60, type: "gc_reaction", params: { team_id: "team-b", status: "started", reason: "threat", protected_rider_id: "rider-4", rider_ids: ["rider-1"] } },
+    { km: 120, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["rider-1", "rider-2"], chase_group_id: "peloton-0", chase_group_kind: "peloton", chasing_team_ids: ["team-b"] } },
+  ];
+  const cause = buildFilmTimeline({ events: caught, distanceKm: 160 }).feedEvents.find((e) => e.type === "breakaway_cause");
+  assert.deepEqual(describeEvent(cause, { riderNameById: riderNameByIdFixture(), teamNameById: TEAMS }), {
+    key: "cause.gc_threat",
+    params: { teams: "Hold B", teamCount: 1, teamsHead: "", teamLast: "Hold B", rider: "Jonas Berg", threats: "Ada Pedersen", threatCount: 1 },
+  });
+});
+
+test("#6469: spillerens egen 'Alt ud' nævnes kun når udfaldet viser det", () => {
+  const effortByRider = new Map([["rider-1", "all_out"]]);
+  const withOrder = buildFilmTimeline({ events: CAUSE_TIMELINE, distanceKm: 160, ownRiderIds: ["rider-1"], effortByRider });
+  const line = withOrder.feedEvents.find((e) => e.type === "order_impact");
+  assert.deepEqual(describeEvent(line, { riderNameById: riderNameByIdFixture() }), { key: "order.all_out_stayed_away", params: { rider: "Ada Pedersen" } });
+  assert.equal(buildFilmTimeline({ events: CAUSE_TIMELINE, distanceKm: 160, ownRiderIds: ["rider-1"] }).feedEvents.some((e) => e.type === "order_impact"), false, "uden ordre-data");
+  assert.equal(buildFilmTimeline({ events: CAUSE_TIMELINE, distanceKm: 160, ownRiderIds: [], effortByRider }).feedEvents.some((e) => e.type === "order_impact"), false, "aldrig andres ryttere");
+});
+
+test("#6469: etapehistorien får årsagerne til de udfald den viser, og kun dem", () => {
+  const story = [CAUSE_TIMELINE[1], CAUSE_TIMELINE[5], CAUSE_TIMELINE[6]];
+  const out = storyEventsWithCauses(story, CAUSE_TIMELINE);
+  assert.deepEqual(out.map((e) => e.type), ["breakaway_formed", "breakaway_survived", "breakaway_cause", "breakaway_cause", "finish"]);
+  const withoutOutcome = storyEventsWithCauses([CAUSE_TIMELINE[1], CAUSE_TIMELINE[6]], CAUSE_TIMELINE);
+  assert.deepEqual(withoutOutcome.map((e) => e.type), ["breakaway_formed", "finish"], "udfaldet er ikke med: årsagerne heller ikke");
+  assert.deepEqual(storyEventsWithCauses([], CAUSE_TIMELINE), []);
+});
+
+test("#6469: årsags- og ordre-nøglerne findes i alle fem sprog, parser som ICU og viser ingen tal", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const { IntlMessageFormat } = await import("intl-messageformat");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  const keysOf = (lang) => {
+    const ev = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8")).detail.film.event;
+    return { cause: ev.cause, order: ev.order };
+  };
+  const en = keysOf("en");
+  const params = { teams: "A, B", teamCount: 2, teamsHead: "A", teamLast: "B", climb: "Col", rider: "R", threats: "T", threatCount: 1 };
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const doc = keysOf(lang);
+    for (const group of ["cause", "order"]) {
+      assert.deepEqual(Object.keys(doc[group] ?? {}).sort(), Object.keys(en[group]).sort(), `${lang}: ${group}-nøglerne matcher EN`);
+      for (const [key, text] of Object.entries(doc[group])) {
+        assert.ok(!/\{(seconds|gap|km|gapSeconds)\}|%|—/.test(text), `${lang}.${group}.${key}: ingen tal, intet em-dash`);
+        for (const n of [1, 2]) {
+          const out = new IntlMessageFormat(text, lang).format({ ...params, teamCount: n, threatCount: n });
+          assert.ok(typeof out === "string" && out.length > 0 && !out.includes("{"), `${lang}.${group}.${key} (${n})`);
+        }
+      }
+    }
   }
 });
