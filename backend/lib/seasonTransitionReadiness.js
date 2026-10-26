@@ -181,8 +181,9 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
   // #7282 (ejer 26/10): ingen saesonpause. Dagene foer naeste saesons foerste loeb
   // traenes som brodatoer (trainingDateReadiness.bridgeGameDays), saa et hul koster
   // ikke traening, men der er dage uden loeb. Advarsel i `warnings`, ingen spaerre.
-  const { data: nextSeason } = await supabase
+  const { data: nextSeason, error: nextSeasonError } = await supabase
     .from("seasons").select("start_date").eq("number", season.number + 1).maybeSingle();
+  if (nextSeasonError) throw new Error(`Kunne ikke læse næste sæson: ${nextSeasonError.message}`);
   const lastDate = season.end_date ? String(season.end_date).slice(0, 10) : null;
   const nextStart = nextSeason?.start_date ? String(nextSeason.start_date).slice(0, 10) : null;
   const breakDays = lastDate && nextStart
