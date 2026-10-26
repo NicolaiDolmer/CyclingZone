@@ -226,7 +226,7 @@ export function storyEventsWithCauses(storyEvents, allEvents, { ownRiderIds = []
   const out = [];
   let following = false;
   for (const event of withNarrativeCauses(allEvents || [], { ownRiderIds, effortByRider })) {
-    if (NARRATIVE_TYPES.has(event?.type)) {
+    if (NARRATIVE_TYPES.has(String(event?.type ?? ""))) {
       if (following) out.push(event);
       continue;
     }
