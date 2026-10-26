@@ -483,7 +483,11 @@ export function milestoneStats(riders) {
     if (!(peak.rating > 0)) continue;
     const r22 = at(22);
     const r25 = at(25);
-    for (const key of ["alle", band(r.potentiale)]) {
+    // Ryttere hvis hele bane fra 18 ligger i simuleringen: kun de viser kurvens fulde
+    // virkning ved 22 og 25 (aeldre ryttere er udviklet under den gamle model).
+    const keys = ["alle", band(r.potentiale)];
+    if (minAge <= 18) keys.push("fuld bane (start <= 18)");
+    for (const key of keys) {
       const g = (groups[key] ??= { n: 0, pct22: [], pct25: [], peakAge: [], peak: [] });
       g.n += 1;
       if (r22 != null) g.pct22.push((100 * r22) / peak.rating);
