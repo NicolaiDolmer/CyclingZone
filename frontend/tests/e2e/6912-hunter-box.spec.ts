@@ -9,6 +9,7 @@
 // Screenshots (mobil 375px) tages FOER assertions, saa samme spec giver foer- og
 // efter-billeder: SHOT_PHASE=before|after (default after), gemt under
 // test-results/evidence/6912/ (ikke committet).
+import type { Page } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
 import { corsHeaders, evidenceShotPath, installNetworkMocks, json, login, stabilizePage } from "./fixtures.js";
 
@@ -83,7 +84,7 @@ const DISTRIBUTION = {
   bindingMap: {},
 };
 
-function mockApi(page, pattern, body) {
+function mockApi(page: Page, pattern: string, body: unknown) {
   return page.route(pattern, (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
@@ -91,7 +92,7 @@ function mockApi(page, pattern, body) {
   });
 }
 
-async function setup(page) {
+async function setup(page: Page) {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await page.route("**/rest/v1/races**", (route) => {
