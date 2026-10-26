@@ -237,6 +237,8 @@ Indtil tier-modellen findes, må spillet vise strukturen, men aldrig lade som om
 
 ---
 
+Teknisk læsekontrakt (#7231/#7223): graduerings-beskeders backfill opdeler ID-filtre og paginerer hvert opslag. Træningskendskab tælles samlet pr. trup med holdafgrænset historik; manglende dage er nul, og læsefejl må ikke blive til fuldt kendskab. Graduation Day genbruger sidens eksisterende truptal. Aldersregler, frister og beskedtekst er uændrede.
+
 ## 5. Slices (epic #2492, rækkefølge ejer-godkendt 2/9)
 
 | Slice | Indhold | Gate |

@@ -12,13 +12,13 @@ import { translate } from "./i18nServer.js";
 //
 // Hard rule 16: ingen vægur-tid — `now` injiceres i hver test.
 
-function tableQuery(getRows, extra = {}) {
+function tableQuery(getRows, extra = {}, onIn = () => {}) {
   const filters = [];
   const b = {
     select() { return b; },
     eq(col, val) { filters.push((r) => (r[col] ?? null) === val); return b; },
     not(col, op, val) { if (op === "is") filters.push((r) => (r[col] ?? null) !== val); return b; },
-    in(col, vals) { filters.push((r) => vals.includes(r[col])); return b; },
+    in(col, vals) { onIn(col, vals); filters.push((r) => vals.includes(r[col])); return b; },
     order() { return b; },
     range(from, to) {
       return Promise.resolve({ data: apply().slice(from, to + 1), error: null });
@@ -39,8 +39,13 @@ function makeMock({
   teams = [{ id: "t-human", user_id: "u-human" }, { id: "t-other", user_id: "u-other" }],
   notifications = [],
   insertError = null,
+  maxInIds = Infinity,
 } = {}) {
-  const rec = { inserts: [] };
+  const rec = { inserts: [], inQueries: [] };
+  const query = (table, rows, extra) => tableQuery(rows, extra, (col, ids) => {
+    rec.inQueries.push({ table, col, count: ids.length });
+    if (ids.length > maxInIds) throw new Error("Bad Request: oversized URL filter");
+  });
   const supabase = {
     from(table) {
       if (table === "seasons") {
@@ -53,10 +58,10 @@ function makeMock({
         };
         return b;
       }
-      if (table === "riders") return tableQuery(() => riders);
-      if (table === "auctions") return tableQuery(() => auctions);
-      if (table === "teams") return tableQuery(() => teams);
-      if (table === "notifications") return tableQuery(() => notifications);
+      if (table === "riders") return query(table, () => riders);
+      if (table === "auctions") return query(table, () => auctions);
+      if (table === "teams") return query(table, () => teams);
+      if (table === "notifications") return query(table, () => notifications);
       if (table === "academy_graduation") {
         return tableQuery(() => graduations, {
           insert(row) {
@@ -146,6 +151,38 @@ test("sweep: finder rytter uden grad-række og opretter ÉN pending-række + not
   assert.equal(notify.calls[0].metadata.riderId, "r-missed");
   assert.equal(notify.calls[0].metadata.titleCode, "notif.academyGraduationReady.title");
   assert.equal(notify.calls[0].metadata.messageCode, "notif.academyGraduationReady.message");
+});
+
+test("findPendingWithoutNotification: season-sized UUID filters stay bounded and retain every missing owner", async () => {
+  const uuid = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+  const riders = Array.from({ length: 626 }, (_, i) => ({ id: uuid(i + 1), firstname: "Fixture", lastname: String(i) }));
+  const teams = riders.map((_, i) => ({ id: uuid(10000 + i), user_id: i === 300 ? null : uuid(20000 + i) }));
+  const graduations = riders.map((r, i) => ({ id: uuid(30000 + i), rider_id: r.id, team_id: teams[i].id, season_id: "s5", status: "pending" }));
+  const notifications = riders.flatMap((r, i) => [0, 300, 625].includes(i) ? [] : [{
+    related_id: r.id, user_id: teams[i].user_id, type: "academy_graduation_ready",
+  }]);
+  // Delivered to a previous owner is still missing for the current owner.
+  notifications.push({ related_id: riders[0].id, user_id: "previous-owner", type: "academy_graduation_ready" });
+  const mock = makeMock({ riders, teams, graduations, notifications, maxInIds: 100 });
+  const missing = await findPendingWithoutNotification(mock.supabase, { seasonId: "s5" });
+  assert.deepEqual(missing.map((m) => m.riderId), [riders[0].id, riders[625].id]);
+  assert.equal(missing[1].name, "Fixture 625");
+  for (const table of ["teams", "riders", "notifications"]) {
+    assert.ok(mock.rec.inQueries.filter((q) => q.table === table).length > 1, `${table} must not use one oversized request`);
+  }
+});
+
+test("findPendingWithoutNotification: notifications paginate within each bounded filter", async () => {
+  const mock = makeMock({
+    riders: [MISSED],
+    graduations: [{ id: "g-open", rider_id: MISSED.id, team_id: MISSED.team_id, season_id: "s5", status: "pending" }],
+    notifications: [
+      ...Array.from({ length: 1000 }, () => ({ user_id: "previous-owner", related_id: MISSED.id, type: "academy_graduation_ready" })),
+      { user_id: "u-human", related_id: MISSED.id, type: "academy_graduation_ready" },
+    ],
+    maxInIds: 100,
+  });
+  assert.deepEqual(await findPendingWithoutNotification(mock.supabase, { seasonId: "s5" }), []);
 });
 
 test("notifikations-copy: title + message kommer fra backendMessages, ikke fra en haandskrevet streng", () => {
