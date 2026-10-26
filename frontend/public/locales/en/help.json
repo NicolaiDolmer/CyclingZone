@@ -1571,7 +1571,7 @@
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
-        "text": "After you sign an academy rider, you learn his forecast through training days on your team. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range."
+        "text": "After you sign an academy rider, his forecast improves with recorded training and race days on your team. Days since signing alone do not count, and simply leaving him on the team for a week does not complete the forecast. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training or race days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range. The Sunday update sets his market value; it does not complete his potential forecast."
       },
       "signingProspects": {
         "title": "Signing prospects",
