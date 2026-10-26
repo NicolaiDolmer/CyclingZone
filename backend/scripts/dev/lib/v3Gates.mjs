@@ -34,6 +34,8 @@ export const V3_GATES = Object.freeze([
   { id: "G19", issue: "#6486", label: "bjerg uden topankomst: nr. 10 inden for loftet i alle divisioner" },
   { id: "G2F", issue: "#6912", label: "forspring paa flad/rullende: intet over den oevre zone uden jagt-interesse, intet over den haarde graense" },
   { id: "gcFromBreakaway", issue: "#7258", label: "klassementet afgoeres sjaeldent af et morgenudbrud; klassementsvinderen vinder meget sjaeldent en etape fra udbrud" },
+  { id: "stageFavouriteInBreakaway", issue: "#7258 S3", label: "endagsloeb: dagens favorit sidder sjaeldent i morgenudbruddet" },
+  { id: "gcFavouriteInBreakaway", issue: "#7258 S4", label: "etapeloeb: en fremskrevet klassementsfavorit sidder sjaeldent i morgenudbruddet" },
 ]);
 
 const STAGE_RACE_GROUPS = ["stage_race", "gt"];
@@ -242,6 +244,91 @@ export function measureGcFromBreakaway(raceResults, revision, contexts) {
   return { ...withShares(count(seeds)), byGroup, favourites };
 }
 
+/** #7258 S3/S4: loebsgruppen med monumenter (motorTestport.loadRaceContexts saetter ctx.raceGroup, #7214). */
+function favouriteRaceGroupOf(x) {
+  return x.ctx?.raceGroup ?? x.group;
+}
+
+const TT_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+
+/**
+ * #7258 S3/S4 (maaling): favoritter i morgenudbruddet pr. loebsgruppe. Pr. vejetape i
+ * `groups`: er der et morgenudbrud (rows[].breakawayMorningRiderIds, tom = intet udbrud), og
+ * sidder en favorit i det (`isHit(row, x)`; null = ingen favorit-maaling for etapen = MANGLER).
+ * Returnerer pr. gruppe { roadStages, breakaways, hits, share (af morgenudbrud; 0 uden udbrud),
+ * shareOfRoadStages, missing, races } + "alle". Grupper uden loeb udelades.
+ */
+function measureFavouriteInBreakaway(raceResults, revision, contexts, groups, isHit) {
+  const byGroup = {};
+  for (const x of seedsOf(raceResults, revision, contexts)) {
+    const g = favouriteRaceGroupOf(x);
+    if (!groups.includes(g)) continue;
+    const c = (byGroup[g] ??= { roadStages: 0, breakaways: 0, hits: 0, missing: 0, races: new Set() });
+    c.races.add(x.raceId);
+    for (const r of x.seed?.rows ?? []) {
+      if (TT_PROFILES.has(r?.profile_type)) continue;
+      const ids = r?.breakawayMorningRiderIds;
+      const hit = Array.isArray(ids) ? isHit(r, x, ids) : null;
+      if (hit === null) { c.missing += 1; continue; }
+      c.roadStages += 1;
+      if (ids.length > 0) c.breakaways += 1;
+      if (hit) c.hits += 1;
+    }
+  }
+  const finish = (c) => ({ roadStages: c.roadStages, breakaways: c.breakaways, hits: c.hits, missing: c.missing, races: c.races.size,
+    share: c.roadStages > 0 ? (c.breakaways > 0 ? c.hits / c.breakaways : 0) : null, shareOfRoadStages: share(c.hits, c.roadStages) });
+  const out = {};
+  for (const g of groups) if (byGroup[g]) out[g] = finish(byGroup[g]);
+  const all = Object.values(byGroup);
+  if (!all.length) return null;
+  const sum = (k) => all.reduce((n, c) => n + c[k], 0);
+  return { byGroup: out, alle: finish({ roadStages: sum("roadStages"), breakaways: sum("breakaways"), hits: sum("hits"), missing: sum("missing"), races: new Set(all.flatMap((c) => [...c.races])) }) };
+}
+
+/**
+ * #7258 S3: endagsloeb og monumenter. Dagens favorit = #7214's definition (ctx.favourites.stageFav:
+ * en af startfeltets 3 staerkeste til ruten efter raceAutopick.suitabilityScore). null uden kontekst.
+ */
+export function measureStageFavouriteInBreakaway(raceResults, revision, contexts) {
+  return measureFavouriteInBreakaway(raceResults, revision, contexts, ["one_day", "monument"], (r, x, ids) => {
+    const fav = x.ctx?.favourites?.stageFav?.get?.(r.stage) ?? null;
+    if (!fav) return null;
+    return ids.some((id) => fav.has(id));
+  });
+}
+
+/**
+ * #7258 S4: korte etapeloeb og Grand Tours. Favorit = den faelles fremskrivnings favoritter
+ * (gcBreakawayLeash7258.projectedGcFavourites, maalt i tourScorecard som rows[].breakawayGcFavourite).
+ */
+export function measureGcFavouriteInBreakaway(raceResults, revision, contexts) {
+  return measureFavouriteInBreakaway(raceResults, revision, contexts, ["stage_race", "gt"], (r) => {
+    const n = num(r.breakawayGcFavourite);
+    return n === null ? null : n > 0;
+  });
+}
+
+/** #7258 S3/S4: den private graense for en gruppe: maxShareByGroup.<gruppe>, ellers maxShare. */
+function favouriteBandFor(band, group) {
+  const v = num(band?.maxShareByGroup?.[group]) ?? num(band?.maxShare);
+  return v === null ? null : { max: v };
+}
+
+/** #7258 S3/S4: dom pr. gruppe; MANGLER ved manglende maaling eller graense, N/A uden loeb i gruppen. */
+function judgeFavouriteGate(gate, m, band, groups) {
+  if (!m) return gateResult(gate, GATE_STATUS.NA, null, "ingen loeb i gruppen i koerslen");
+  const checks = [];
+  for (const g of groups) {
+    const x = m.byGroup[g];
+    if (!x) continue;
+    if (x.missing > 0) { checks.push({ what: `${g}: ${x.missing} vejetaper uden favorit-maaling`, ok: null }); continue; }
+    checks.push({ what: `${g}: favorit i morgenudbruddet`, ok: inBand(x.share, favouriteBandFor(band, g)) });
+  }
+  if (!checks.length) return gateResult(gate, GATE_STATUS.NA, m, "ingen loeb i gruppen i koerslen");
+  const j = judgeChecks(checks);
+  return gateResult(gate, j.status, m, j.failed.join("; ") || null);
+}
+
 // ── Domme ────────────────────────────────────────────────────────────────────
 
 function gateResult(gate, status, value, why) {
@@ -329,6 +416,10 @@ export function evaluateV3Gates({ raceResults, revision, contexts = new Map(), b
     ]);
     out.push(gateResult(by.gcFromBreakaway, j.status, gfb, j.failed.join("; ") || null));
   }
+
+  // #7258 S3/S4 (ejer 26/10): haarde gates, fail closed (graenserne er private).
+  out.push(judgeFavouriteGate(by.stageFavouriteInBreakaway, measureStageFavouriteInBreakaway(raceResults, revision, contexts), b.stageFavouriteInBreakaway, ["one_day", "monument"]));
+  out.push(judgeFavouriteGate(by.gcFavouriteInBreakaway, measureGcFavouriteInBreakaway(raceResults, revision, contexts), b.gcFavouriteInBreakaway, ["stage_race", "gt"]));
 
   const blocking = out.filter((g) => g.status === GATE_STATUS.FAIL || g.status === GATE_STATUS.MISSING);
   return { gates: out, blocked: blocking.length > 0, reasons: blocking.map((g) => `${g.id} ${g.status}${g.why ? ` (${g.why})` : ""}`) };

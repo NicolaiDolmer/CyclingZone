@@ -618,6 +618,8 @@ export function v3GateValueText(g) {
     case "G18": return `sprinter ${fmtPct(x.sprinterWins)} · klassementsvinder ${fmtPct(x.gcWinnerWins)} (n ${x.n}, ${x.races} loeb)`;
     case "G19": return `samlet ${fmtS(x.median)} (n ${x.n}) · ${Object.entries(x.byDivision ?? {}).map(([d, v]) => `${String(d).slice(0, 8)} ${fmtS(v.median)}`).join(" · ")}`;
     case "gcFromBreakaway": return [`afgjort af udbrud ${fmtPct(x.decidedShare)} · vandt fra udbrud ${fmtPct(x.wonShare)} (n ${x.n})`, ...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.decidedShare)}/${fmtPct(v.wonShare)}`), ...Object.entries(x.favourites ?? {}).map(([k, v]) => `${k}: GC-fav ${fmtPct(v.gcFavShare)}, etapefav ${fmtPct(v.stageFavShare)} af ${v.breakaways} udbrud`)].join(" · "); // #7258
+    case "stageFavouriteInBreakaway": // #7258 S3
+    case "gcFavouriteInBreakaway": return Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.share)} af ${v.breakaways} morgenudbrud (${fmtPct(v.shareOfRoadStages)} af ${v.roadStages} vejetaper, ${v.races} loeb)`).join(" · ") || "-"; // #7258 S4
     case "G2F": return `${x.n} etaper · over oevre zone uden jagt-interesse ${x.overUpperWithoutUnchased ?? "-"} · over haard graense ${x.overHardMax ?? "-"}`;
     default: return "-";
   }

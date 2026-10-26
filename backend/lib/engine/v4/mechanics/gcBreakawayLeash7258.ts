@@ -121,13 +121,33 @@ export function isProjectedContender(gc: GcContext | null | undefined, entrants:
   let top = byKey.get(key);
   if (!top) {
     const racing = new Set(gc.standings.map((s) => s.rider_id).filter((id) => entrants[id] !== undefined));
-    top = syntheticFirstStage && abilityOf
-      // Foerste etape (alle lige): de bedste paa loebsspecifik klassementsevne.
-      ? new Set([...racing].sort((a, b) => abilityOf(entrants[b]) - abilityOf(entrants[a]) || a.localeCompare(b)).slice(0, topN))
-      : projectedTopRiders({ gc, entrants, racingRiderIds: racing, abilityOf, topN, syntheticFirstStage: false });
+    top = projectedGcFavourites({ gc, entrants, racingRiderIds: racing, abilityOf, topN, syntheticFirstStage });
     byKey.set(key, top);
   }
   return top.size === 0 || top.has(riderId);
+}
+
+/**
+ * Den faelles fremskrivnings favoritter: feltets `topN` bedste paa fremskrevet slutklassement
+ * (projectedTopRiders); paa det syntetiske foerste-etape-klassement (alle lige) de bedste paa
+ * loebsspecifik klassementsevne. Samme funktion bruges af snoren (isProjectedContender) og af
+ * testportens maaling (S4, tourScorecard), saa motor og maaling er enige om hvem der er farlig.
+ */
+export function projectedGcFavourites(input: {
+  gc: GcContext | null | undefined;
+  entrants: Readonly<Record<string, Entrant>>;
+  racingRiderIds: ReadonlySet<string>;
+  abilityOf: ((entrant: Entrant | undefined) => number) | null;
+  topN: number;
+  syntheticFirstStage: boolean;
+}): Set<string> {
+  const { gc, entrants, racingRiderIds, abilityOf, topN } = input;
+  if (!gc || gc.status !== "standings" || !abilityOf || !(topN > 0)) return new Set();
+  if (input.syntheticFirstStage) {
+    const ids = gc.standings.map((s) => s.rider_id).filter((id) => racingRiderIds.has(id));
+    return new Set(ids.sort((a, b) => abilityOf(entrants[b]) - abilityOf(entrants[a]) || a.localeCompare(b)).slice(0, topN));
+  }
+  return projectedTopRiders({ gc, entrants, racingRiderIds, abilityOf, topN, syntheticFirstStage: false });
 }
 
 /** (C) Rytterens evne paa dagens finale (sum af krav-vaegt x normaliseret evne), som gcThreat.routeAbility. */

@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  breakawayRaceGroupOf, evaluateV3Gates, GATE_STATUS, inBand, measureGcFromBreakaway, isSprinter, measureG16, measureG17, measureG18, measureG19, measureG2F,
+  breakawayRaceGroupOf, evaluateV3Gates, GATE_STATUS, inBand, measureGcFavouriteInBreakaway, measureGcFromBreakaway, measureStageFavouriteInBreakaway, isSprinter, measureG16, measureG17, measureG18, measureG19, measureG2F,
   measureSprintFinale, raceContextFromCache, raceGroupOfStages, V3_GATES, v3GatesApply,
 } from "./v3Gates.mjs";
 import { createJerseyTally } from "./jerseyTally.mjs";
@@ -29,6 +29,8 @@ const ALL_BANDS = {
   G19: { gapTo10Median: { max: 100 } },
   G2F: { upperZoneSeconds: { flat: 300, rolling: 400 }, hardMaxSeconds: 600 },
   gcFromBreakaway: { maxGcWinnerInBreakawayShare: 0.5, maxGcWinnerWonFromBreakawayShare: 0.5 },
+  stageFavouriteInBreakaway: { maxShare: 0.5 },
+  gcFavouriteInBreakaway: { maxShare: 0.5 },
 };
 
 test("raceGroupOfStages og inBand", () => {
@@ -162,11 +164,13 @@ test("alle gates groenne = ikke blokeret", () => {
   const seeds = [
     { gcWinner: "gc", komWinner: "x", komWinnerBreakawayPoints: 5, pointsWinner: "spr",
       abandons: { starters: 10, out: 1, byRole: { captain: { starters: 2, out: 0 }, helper: { starters: 8, out: 1 } } },
-      rows: [{ stage: 1, profile_type: "flat", breakawayMaxLead: 200, breakawayUnchased: false }, { stage: 3, gapTo10: 50, breakawayWon: false }],
+      rows: [{ stage: 1, profile_type: "flat", breakawayMaxLead: 200, breakawayUnchased: false, breakawayMorningRiderIds: ["x"], breakawayGcFavourite: 0 },
+        { stage: 3, gapTo10: 50, breakawayWon: false, breakawayMorningRiderIds: [], breakawayGcFavourite: 0 }],
       gcWinnerBreak: { decisive: false, wonFromBreak: false } },
   ];
   const res = evaluateV3Gates({ raceResults: [raceResult("r1", 5, seeds)], revision: REV, contexts: new Map([["r1", ctx()]]), bands: ALL_BANDS });
-  assert.deepEqual(res.gates.map((g) => g.status), ["PASS", "PASS", "PASS", "PASS", "PASS", "PASS"]);
+  // S3 er N/A: ingen endagsloeb i koerslen (blokerer ikke).
+  assert.deepEqual(res.gates.map((g) => g.status), ["PASS", "PASS", "PASS", "PASS", "PASS", "PASS", "N/A", "PASS"]);
   assert.equal(res.blocked, false);
   assert.deepEqual(res.reasons, []);
 });
@@ -204,6 +208,57 @@ test("#7258 gcFromBreakaway doemmes mod de private graenser og fejler lukket", (
   assert.equal(judge(null).status, GATE_STATUS.MISSING);
   const noMeasure = evaluateV3Gates({ raceResults: [raceResult("r1", 5, [{ gcWinner: "gc" }])], revision: REV, contexts: new Map(), bands: ALL_BANDS }).gates.find((g) => g.id === "gcFromBreakaway");
   assert.equal(noMeasure.status, GATE_STATUS.MISSING, "uden gcWinnerBreak i scorecardet: MANGLER");
+});
+
+test("#7258 S3: dagens favorit i endagsloebets morgenudbrud, pr. gruppe (endagsloeb/monument), fail closed", () => {
+  const fav = (ids) => ({ stageFav: new Map([[1, new Set(ids)]]) });
+  const oneDay = (id, group, favIds) => [id, { ...ctx({ stages: 1, group: "one_day" }), raceGroup: group, favourites: fav(favIds) }];
+  const row = (ids) => ({ stage: 1, profile_type: "hilly", breakawayMorningRiderIds: ids });
+  const rr = [
+    raceResult("od", 1, [{ rows: [row(["f1", "x"])] }, { rows: [row(["x"])] }, { rows: [row([])] }]),
+    raceResult("mon", 1, [{ rows: [row(["y"])] }]),
+    raceResult("tt", 1, [{ rows: [{ stage: 1, profile_type: "itt" }] }]),
+  ];
+  const contexts = new Map([oneDay("od", "one_day", ["f1"]), oneDay("mon", "monument", ["f2"]), oneDay("tt", "one_day", ["f1"])]);
+  const m = measureStageFavouriteInBreakaway(rr, REV, contexts);
+  assert.equal(m.byGroup.one_day.breakaways, 2);
+  assert.equal(m.byGroup.one_day.roadStages, 3, "tidskoersel taeller ikke");
+  assert.equal(m.byGroup.one_day.share, 0.5, "andel af morgenudbrud");
+  assert.equal(m.byGroup.one_day.shareOfRoadStages, 1 / 3);
+  assert.equal(m.byGroup.monument.share, 0);
+  const judge = (band) => evaluateV3Gates({ raceResults: rr, revision: REV, contexts, bands: { stageFavouriteInBreakaway: band } }).gates.find((g) => g.id === "stageFavouriteInBreakaway");
+  assert.equal(judge({ maxShare: 0.5 }).status, GATE_STATUS.PASS);
+  assert.equal(judge({ maxShare: 0.4 }).status, GATE_STATUS.FAIL);
+  assert.equal(judge({ maxShare: 0.4, maxShareByGroup: { one_day: 0.6 } }).status, GATE_STATUS.PASS, "gruppens egen graense vinder");
+  assert.equal(judge({ maxShareByGroup: { one_day: 0.6 } }).status, GATE_STATUS.MISSING, "monument uden graense blokerer");
+  assert.equal(judge(undefined).status, GATE_STATUS.MISSING);
+  const noFav = measureStageFavouriteInBreakaway(rr, REV, new Map([oneDay("od", "one_day", ["f1"])]));
+  assert.equal(noFav.byGroup.monument, undefined, "uden kontekst er monumentet et endagsloeb");
+  assert.equal(noFav.byGroup.one_day.missing, 1, "... uden favoritter (MANGLER, aldrig gaettet)");
+  const missing = evaluateV3Gates({ raceResults: rr, revision: REV, contexts: new Map(), bands: { stageFavouriteInBreakaway: { maxShare: 1 } } }).gates.find((g) => g.id === "stageFavouriteInBreakaway");
+  assert.equal(missing.status, GATE_STATUS.MISSING, "uden favoritter (cache.json): MANGLER");
+});
+
+test("#7258 S4: fremskrevet klassementsfavorit i etapeloebets morgenudbrud, fail closed", () => {
+  const rows = [
+    { stage: 1, profile_type: "flat", breakawayMorningRiderIds: ["a"], breakawayGcFavourite: 1 },
+    { stage: 2, profile_type: "mountain", breakawayMorningRiderIds: ["b", "c"], breakawayGcFavourite: 0 },
+    { stage: 3, profile_type: "itt" },
+    { stage: 4, profile_type: "hilly", breakawayMorningRiderIds: [], breakawayGcFavourite: 0 },
+  ];
+  const rr = [raceResult("s", 5, [{ rows }]), raceResult("g", 21, [{ rows: [rows[1]] }]), raceResult("od", 1, [{ rows: [rows[0]] }])];
+  const m = measureGcFavouriteInBreakaway(rr, REV, new Map());
+  assert.equal(m.byGroup.stage_race.share, 0.5);
+  assert.equal(m.byGroup.stage_race.roadStages, 3);
+  assert.equal(m.byGroup.gt.share, 0);
+  assert.equal(m.byGroup.one_day, undefined, "endagsloeb er ikke med i S4");
+  const judge = (band, results = rr) => evaluateV3Gates({ raceResults: results, revision: REV, contexts: new Map(), bands: { gcFavouriteInBreakaway: band } }).gates.find((g) => g.id === "gcFavouriteInBreakaway");
+  assert.equal(judge({ maxShare: 0.5 }).status, GATE_STATUS.PASS);
+  assert.equal(judge({ maxShare: 0.25 }).status, GATE_STATUS.FAIL);
+  assert.equal(judge(null).status, GATE_STATUS.MISSING);
+  const unmeasured = [raceResult("s", 5, [{ rows: [{ stage: 1, profile_type: "flat", breakawayMorningRiderIds: ["a"], breakawayGcFavourite: null }] }])];
+  assert.equal(judge({ maxShare: 1 }, unmeasured).status, GATE_STATUS.MISSING, "uden fremskrivning: MANGLER");
+  assert.equal(judge({ maxShare: 1 }, [raceResult("od", 1, [{ rows: [rows[0]] }])]).status, GATE_STATUS.NA, "kun endagsloeb: N/A");
 });
 
 test("manglende privat baand blokerer (fail closed)", () => {
