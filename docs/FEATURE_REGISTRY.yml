@@ -120,14 +120,13 @@ features:
 
   - id: race-engine-s5-profiles
     area: race-engine
-    title_en: S5 engine rules (s5_profiles_v2)
-    title_da: S5-motorregler (s5_profiles_v2)
+    title_en: S5 engine rules (s5_profiles_v3)
+    title_da: S5-motorregler (s5_profiles_v3)
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
-    epic: 6369
-    verified: 2026-10-17
-    note: "CURRENT_RACE_RULES_REVISION = s5_profiles_v2 fra tænd-PR'en #6818 (ejer-go; s5_profiles_v1 var aktuel fra 17/10, #6369): løb hvis første etape claimes efter deploy binder til S5 v2 (formtoppe i v4 #6156 + udbrudsopfølgningen #6748), startede løb beholder deres revision; rollback = revert af konstanten."
-
+    epic: 6804
+    verified: 2026-10-26
+    note: "CURRENT_RACE_RULES_REVISION = s5_profiles_v3 fra tænd-PR'en (ejer-go 26/10; v2 var aktuel fra 23/10, #6818): løb hvis første etape claimes efter deploy binder til v3; startede løb beholder deres revision; rollback = revert af konstanten."
   - id: race-notify-outbox
     area: race-engine
     title_en: Async delivery of race result posts
