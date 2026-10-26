@@ -242,7 +242,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) {
       // #7008 (KUN s5_profiles_v2): intet uheld lige efter starten.
-      const tttOptions = { ...(isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {}), ...summitFinishSingleFor(input.rules_revision) };
+      const tttOptions = { ...(isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {}), ...summitFinishSingleFor(input.rules_revision), ...(isS5ProfilesV3OrLater(input.rules_revision) ? { dayForm6649: true as const } : {}) }; // #6649
       return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning, tttOptions), trace: TIME_TRIAL_TRACE };
     }
   }
