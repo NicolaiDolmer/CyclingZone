@@ -143,7 +143,7 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
       .then((rows) => ({ data: rows, error: null }), (e) => ({ data: null, error: e })),
     supabase
       .from("seasons")
-      .select("id, number, status")
+      .select("id, number, status, end_date")
       .eq("id", fromSeasonId)
       .maybeSingle(),
     loadEmptyPoolFilter({ supabase })
@@ -178,6 +178,17 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
     ? null
     : `${violations} hold er uden for divisionens trup-grænser (inkl. udskudte transfers): ${shownTeams} — ret trupperne før skiftet`;
 
+  // #7282 (ejer 26/10): ingen saesonpause. Dagene foer naeste saesons foerste loeb
+  // traenes som brodatoer (trainingDateReadiness.bridgeGameDays), saa et hul koster
+  // ikke traening, men der er dage uden loeb. Advarsel i `warnings`, ingen spaerre.
+  const { data: nextSeason } = await supabase
+    .from("seasons").select("start_date").eq("number", season.number + 1).maybeSingle();
+  const lastDate = season.end_date ? String(season.end_date).slice(0, 10) : null;
+  const nextStart = nextSeason?.start_date ? String(nextSeason.start_date).slice(0, 10) : null;
+  const breakDays = lastDate && nextStart
+    ? Math.round((Date.parse(`${nextStart}T12:00:00Z`) - Date.parse(`${lastDate}T12:00:00Z`)) / 86400000) - 1
+    : 0;
+
   const checks = {
     season_end_completed: {
       ok: seasonEndCompleted,
@@ -210,7 +221,11 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
     .filter(([, c]) => c.critical && !c.ok)
     .map(([key]) => key);
 
-  return { ready: failed_critical.length === 0, checks, failed_critical };
+  const warnings = breakDays > 0
+    ? [{ key: "season_break", detail: `${breakDays} dag(e) uden løb mellem sæson ${season.number} og ${season.number + 1} — rytterne træner, men der er ingen løb` }]
+    : [];
+
+  return { ready: failed_critical.length === 0, checks, failed_critical, warnings };
 }
 
 /**

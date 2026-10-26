@@ -50,7 +50,15 @@ export async function loadTrainingDateIndex({ supabase, now }) {
   if (active) {
     const first = activation?.value;
     if (typeof first !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(first)) throw new Error('Missing authoritative condition activation date');
-    const start = [first, String(active.start_date).slice(0, 10)].sort().at(-1);
+    // #7282: no season break. The dates after the previous season's last date are this
+    // season's bridge dates (trainingDateReadiness.bridgeGameDays), so they start the range.
+    const previous = Number(active.number) > 1
+      ? await checked(supabase.from('seasons').select('end_date').eq('number', Number(active.number) - 1).maybeSingle(), 'previous season end')
+      : null;
+    active.previous_end_date = previous?.end_date ?? null;
+    const seasonStart = String(active.start_date).slice(0, 10);
+    const bridgeStart = active.previous_end_date ? nextCivilDate(String(active.previous_end_date).slice(0, 10)) : seasonStart;
+    const start = [first, [bridgeStart, seasonStart].sort()[0]].sort().at(-1);
     const end = copenhagenHour(now) >= 20 ? today : new Date(Date.parse(`${today}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
     for (let date = start; date <= end && date <= String(active.end_date).slice(0, 10); date = nextCivilDate(date)) {
       if (!jobs.has(`${active.id}:${date}`)) jobs.set(`${active.id}:${date}`, { season: active, tickDate: date });

@@ -67,3 +67,15 @@ test("summarizeTransitionReadiness — ikke-kritisk fail blokerer ikke men vises
   assert.equal(row.ok, false);
   assert.deepEqual(gate.failed, []);
 });
+
+test("#7282: advarsler vises som gul linje og blokerer ikke", () => {
+  const gate = summarizeTransitionReadiness({
+    checks: { all_races_completed: { ok: true, critical: true, detail: null } },
+    warnings: [{ key: "season_break", detail: "2 dag(e) uden løb" }],
+  });
+  assert.equal(gate.blocked, false);
+  const row = gate.rows.find((r) => r.key === "season_break");
+  assert.equal(row.ok, false);
+  assert.equal(row.critical, false);
+  assert.equal(row.label, "Ingen dage uden løb før næste sæson");
+});
