@@ -77,7 +77,7 @@ export function resolveStageEntrant(entrant, overridesForStage, orderEffortByRid
 // _sprint_captain/_hunter, database/2026-06-12-race-entries-roles.sql) og samme
 // tre som gemme-guarden i raceStageRolesApi.validateStageRoleOverrides tæller.
 // `helper`/`free_role` er ikke eksklusive.
-export const EXCLUSIVE_STAGE_ROLES = Object.freeze(["captain", "sprint_captain", "hunter"]);
+export const EXCLUSIVE_STAGE_ROLES = Object.freeze(["captain", "sprint_captain", "hunter", "co_captain"]); // #5981: hoejst én delt kaptajn
 // Rollen en degraderet indehaver falder til. RACE_ENGINE_RULES.md §1 (rolle-
 // vokabularet, kanonisk): `helper` = "Domestique — arbejder for kaptajnen".
 // Samme degraderings-mål som entry-generatorens rolle-oprydning bruger

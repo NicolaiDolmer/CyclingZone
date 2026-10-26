@@ -81,6 +81,7 @@ export const RIDER_ROLE_VALUES: readonly RiderRole[] = Object.freeze([
   "helper",
   "hunter",
   "free_role",
+  "co_captain", // #5981 (KUN s5_profiles_v3): delt kaptajn
 ]);
 
 /** De ENESTE felter en TeamOrder maa baere. */

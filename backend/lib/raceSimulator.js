@@ -318,7 +318,7 @@ export function buildTeamContext({ entrants, terrainById, captureExceptionFn = c
     // aldrig utilsigtet tælle som helper-arbejde bare fordi v3 er slukket) — derfor
     // ubetinget skip her. flag-off er stadig bit-identisk for AL data uden free_role
     // (dvs. alt pre-S1-data), som er den eneste determinisme-garanti spec §5 kræver.
-    else if (e.race_role === "free_role") continue;
+    else if (e.race_role === "free_role" || e.race_role === "co_captain") continue; // #5981: delt kaptajn = fri rolle i den gamle motor
     else t.helpers.push(e); // helper + hunter arbejder begge for lederen
   }
   const ctx = new Map();
