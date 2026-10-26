@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/luxuryHelper5982.test.ts
-// #5982 (KUN s5_profiles_v3, slukket): sidste mand (luksushjaelperen) i motoren.
+// #5982 (KUN s5_profiles_v3): sidste mand (luksushjaelperen) i motoren.
 // Garantierne testes som skala-uafhaengige udsagn (som teamPlay.test.ts og
 // sharedCaptain.test.ts), aldrig som forventede tal: tuning-tallene og
 // maalingerne ligger privat (private-handoffs/5982/).

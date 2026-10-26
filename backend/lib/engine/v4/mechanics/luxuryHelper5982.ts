@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/luxuryHelper5982.ts
-// #5982 (KUN s5_profiles_v3, SLUKKET): SIDSTE MAND — luksushjaelperen.
+// #5982 (KUN s5_profiles_v3, aktuel fra 26/10): SIDSTE MAND — luksushjaelperen.
 //
 // SSOT: docs/RACE_ENGINE_RULES.md §1 ("Sidste mand") + §2e (holdspil), spec
 // docs/superpowers/specs/2026-10-25-taktik-roller-design.md (§5, §9, §11) og
