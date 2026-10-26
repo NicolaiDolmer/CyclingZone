@@ -3368,6 +3368,57 @@ test('#6461 B: a race rider with an open slot gets nothing at the press (no grow
   assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r2').map((row) => row.game_day), TRAIN_NOW_DAYS);
 });
 
+// ── #6461 B loopholes: train + undo, double development, rider bought mid-day ──
+const pressWholeDate = async (state, extra = {}) => {
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, ...extra });
+};
+const snapshot = (state) => structuredClone({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition), s: state.rider_training_scores, n: state.training_rider_ticks.length });
+
+test('#6461 B loophole train + undo: changing the plan after a whole-date press and pressing again changes nothing', async () => {
+  const state = trainNowFixture();
+  await pressWholeDate(state);
+  const after = snapshot(state);
+  // "Undo": the manager swaps both riders to another focus and intensity, then presses again.
+  for (const plan of state.training_plans) Object.assign(plan, { focus: 'endurance', intensity: 'easy' });
+  await pressWholeDate(state);
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  assert.deepEqual(snapshot(state), after);
+});
+
+test('#6461 B loophole double development: old press (four days), flag flipped on, B press, evening = one evening settlement', async () => {
+  const mixed = trainNowFixture();
+  const automatic = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS.slice(0, -1)) await runDay(mixed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+  await pressWholeDate(mixed); // the B press after the flip: days 1-4 are alreadyRan, day 5 settles once
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(mixed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(automatic, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  assert.deepEqual(mixed.rider_derived_abilities, automatic.rider_derived_abilities, 'growth once');
+  assert.deepEqual(withoutClock(mixed.rider_condition), withoutClock(automatic.rider_condition), 'condition once');
+  assert.deepEqual(mixed.rider_training_scores, automatic.rider_training_scores, 'session scores once');
+  assert.equal(mixed.training_rider_ticks.length, 10);
+});
+
+test('#6461 B loophole rider bought mid-day: the buyer running the date gives the rider no second development', async () => {
+  const state = trainNowFixture();
+  await pressWholeDate(state);
+  const after = snapshot(state);
+  // r1 is sold after the seller's whole-date press; the buyer settles its own date.
+  state.riders.find((row) => row.id === 'r1').team_id = 'team-buyer';
+  state.training_plans.push({ rider_id: 'r1', team_id: 'team-buyer', season_id: SEASON_ID, focus: 'sprint', intensity: 'hard' });
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(state, { teamId: 'team-buyer', gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r1'] });
+  }
+  assert.deepEqual(snapshot(state), after);
+  assert.ok(state.training_rider_ticks.filter((row) => row.rider_id === 'r1').every((row) => row.team_id === TEAM_ID), 'receipts stay with the seller');
+  // Control: without the seller's press the buyer's run does develop him (the test is not vacuous).
+  const control = trainNowFixture();
+  control.riders.find((row) => row.id === 'r1').team_id = 'team-buyer';
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(control, { teamId: 'team-buyer', gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r1'] });
+  }
+  assert.equal(control.training_rider_ticks.filter((row) => row.rider_id === 'r1' && row.team_id === 'team-buyer').length, 5);
+});
+
 // ── #3564 kurve B: kald-stedet ───────────────────────────────────────────────
 // Syntetiske testparams (ikke kalibreringen, hard rule 17). Testen laaser kun
 // koblingen: flag off eller manglende params = dagens model, on + params = kurven.
