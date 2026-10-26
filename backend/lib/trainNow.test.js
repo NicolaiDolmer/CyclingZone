@@ -672,3 +672,15 @@ test("#7282: with the earlier bridge date registered, the bridge date can be pre
   assert.equal(result.status, 200);
   assert.deepEqual(calls.map((c) => c.gameDay), [-5, -4, -3, -2]);
 });
+
+test("#7282: the first race date is also blocked while a bridge date is unregistered", async () => {
+  const state = baseState();
+  const { deps, calls, supabase } = bridgeHarness(state, true);
+  const ctx = fakeContext(); // race date: positive race days
+  const result = await runTrainNow({ ...deps, now: new Date("2026-10-28T09:00:00Z"), loadContext: async () => ctx });
+  assert.deepEqual([result.status, result.body.error], [409, "previous_date_open"], "27/10 is not registered");
+  assert.equal(calls.length + supabase.writes.length, 0);
+  state.training_date_work.push({ team_id: TEAM.id, season_id: "s5", tick_date: "2026-10-27", status: "complete" });
+  const pressed = await runTrainNow({ ...deps, now: new Date("2026-10-28T09:00:00Z"), loadContext: async () => ctx });
+  assert.equal(pressed.status, 200, "the whole bridge registered: the race date can be pressed");
+});
