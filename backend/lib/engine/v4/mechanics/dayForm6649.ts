@@ -28,7 +28,8 @@
 // kalibreres mod det private baand (v3Gates.bestRiderWinShare, hard rule 17)
 // med backend/scripts/dev/dayForm6649.mjs. De bor her, ikke i tuning.ts.
 
-import type { Entrant, EngineTuning, RiderState, RouteV2, TimelineEvent } from "../types.ts";
+import type { Entrant, EngineTuning, RiderState, RouteV2, StageInput, TimelineEvent } from "../types.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import { deriveCp, formCpModifier, formPeakCpModifier, FORM_CP_TUNING } from "../physiology.ts";
 import { gaussian, rngFor } from "../rng.ts";
 import { makeEvent } from "../timeline.ts";
@@ -190,6 +191,14 @@ export function dayForm6649For(
   }
   if (reason && delta > -t.eventThreshold) reason = null;
   return { delta, reason, weather: reason === "weather" ? weather.kind : null };
+}
+
+/**
+ * Er dagsformen taendt for etapen: KUN s5_profiles_v3, og kun naar broen har sat
+ * `day_form_6649` (rigtige loeb). Haandbyggede fixtures og alle aeldre revisioner: nej.
+ */
+export function dayForm6649On(input: Pick<StageInput, "rules_revision" | "day_form_6649">): boolean {
+  return input.day_form_6649 === true && isS5ProfilesV3OrLater(input.rules_revision);
 }
 
 /**

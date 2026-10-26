@@ -442,7 +442,7 @@ export function simulateIndividualTimeTrialStage(
       timeLimitTuning: options.timeLimitTuning,
       ...(isS5ProfilesV2OrLater(options.rulesRevision) ? { incidentStartFloor: true as const } : {}),
       ...summitFinishSingleFor(options.rulesRevision),
-      ...(isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
+      ...(options.dayForm6649 && isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
     },
     individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare),
   );

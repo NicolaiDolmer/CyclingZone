@@ -649,6 +649,7 @@ export function buildV4StageInput({
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
   if (isOrdersGcRulesRevision(rulesRevision)) {
     input.rules_revision = rulesRevision;
+    if (isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true; // #6649: dagsform med forklaring
     // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
     input.gc_context = buildGcContext({
       isStageRace,

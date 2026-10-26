@@ -16,6 +16,8 @@ import {
   DAY_FORM_6649_TUNING as T,
   dayForm6649Events,
   dayForm6649For,
+  dayForm6649FinaleScale,
+  dayForm6649On,
   weatherStress,
 } from "./dayForm6649.ts";
 
@@ -130,7 +132,7 @@ test("#6649: a full stage under s5_profiles_v3 runs with the new day form; s5_pr
   const v2b = simulateStageV4({ ...input, startlist, rules_revision: "s5_profiles_v2" } as StageInput);
   assert.deepEqual(v2a, v2b);
   assert.equal(v2a.timeline.events.filter((e) => e.type === "bad_day").length, 0);
-  const v3 = simulateStageV4({ ...input, startlist, rules_revision: "s5_profiles_v3" } as StageInput);
+  const v3 = simulateStageV4({ ...input, startlist, rules_revision: "s5_profiles_v3", day_form_6649: true } as StageInput);
   assert.equal(v3.results.length, startlist.length);
   const finish = v3.timeline.events.findIndex((e) => e.type === "finish");
   for (const [i, e] of v3.timeline.events.entries()) if (e.type === "bad_day") assert.ok(i < finish, "named before the finish line closes the log");
@@ -140,7 +142,27 @@ test("#6649: an individual time trial under s5_profiles_v3 gets the day form too
   const input = fixture("itt-solo");
   const startlist = input.startlist.map((e) => ({ ...e, condition: 0.1, form: 20 }));
   const v2 = simulateStageV4({ ...input, startlist, rules_revision: "s5_profiles_v2" } as StageInput);
-  const v3 = simulateStageV4({ ...input, startlist, rules_revision: "s5_profiles_v3" } as StageInput);
+  const v3 = simulateStageV4({ ...input, startlist, rules_revision: "s5_profiles_v3", day_form_6649: true } as StageInput);
   assert.equal(v3.results.length, v2.results.length);
   assert.notDeepEqual(v3.results.map((r) => r.time_seconds), v2.results.map((r) => r.time_seconds), "the day form reaches the time trial");
+});
+
+test("#6649: the day form needs both s5_profiles_v3 and the bridge flag; without the flag v3 is exactly as before", () => {
+  assert.equal(dayForm6649On({ rules_revision: "s5_profiles_v3", day_form_6649: true }), true);
+  assert.equal(dayForm6649On({ rules_revision: "s5_profiles_v3" }), false);
+  assert.equal(dayForm6649On({ rules_revision: "s5_profiles_v2", day_form_6649: true }), false);
+  assert.equal(dayForm6649On({ rules_revision: null, day_form_6649: true }), false);
+  for (const name of ["bjerg-selektion", "flat-massespurt", "itt-solo"]) {
+    const input = fixture(name);
+    const plain = simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" } as StageInput);
+    const nullFlag = simulateStageV4({ ...input, rules_revision: "s5_profiles_v3", day_form_6649: null } as StageInput);
+    assert.equal(JSON.stringify(nullFlag), JSON.stringify(plain), `${name}: no flag = unchanged`);
+    const on = simulateStageV4({ ...input, rules_revision: "s5_profiles_v3", day_form_6649: true } as StageInput);
+    assert.notEqual(JSON.stringify(on), JSON.stringify(plain), `${name}: the flag turns it on`);
+  }
+});
+
+test("#6649: the mass-sprint finale reads less of the day form, and only when the day form is on", () => {
+  assert.equal(dayForm6649FinaleScale(false), 1);
+  assert.ok(dayForm6649FinaleScale(true) > 0 && dayForm6649FinaleScale(true) < 1);
 });

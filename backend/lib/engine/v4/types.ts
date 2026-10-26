@@ -225,6 +225,10 @@ export type StageInput = {
   // (mechanics/gcThreat.ts); legacy ignorerer feltet helt. Udeladt under
   // orders_gc_v1 = "missing" (aerlig diagnose, aldrig et opdigtet nul-hul).
   gc_context?: GcContext | null;
+  // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3): broen taender dagsformen med
+  // forklaring (mechanics/dayForm6649.ts) for rigtige loeb, der baerer rytternes
+  // tilstand. Udeladt = den gamle dagsform (haandbyggede fixtures er uaendrede).
+  day_form_6649?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -788,6 +792,8 @@ export type SegmentHookContext = {
   // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
   // #6937 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen og lead-outens pris. Udeladt = v2.
   s5ProfilesV3?: true;
+  // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.day_form_6649): dagsformen med forklaring. Udeladt = som foer.
+  dayForm6649?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

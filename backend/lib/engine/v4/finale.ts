@@ -710,7 +710,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       demandVectorOf(riderId),
       extra.wprimeReserveWeight,
       entrant.effort,
-      entrant.effort === "grupetto" ? 0 : (state.riders[riderId]?.dayform ?? 0) * dayForm6649FinaleScale(ctx.s5ProfilesV3 === true && isMassFinishRoute(route)), // #6649
+      entrant.effort === "grupetto" ? 0 : (state.riders[riderId]?.dayform ?? 0) * dayForm6649FinaleScale(ctx.dayForm6649 === true && isMassFinishRoute(route)), // #6649
       dayformWeight,
       extra.dayformScoreClamp,
       modifierScaleOf(riderId),

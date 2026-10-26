@@ -58,6 +58,7 @@ import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
 import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
 import { applyHelperWithdrawals } from "./mechanics/abandons.ts";
+import { dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 
@@ -242,7 +243,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) {
       // #7008 (KUN s5_profiles_v2): intet uheld lige efter starten.
-      const tttOptions = { ...(isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {}), ...summitFinishSingleFor(input.rules_revision), ...(isS5ProfilesV3OrLater(input.rules_revision) ? { dayForm6649: true as const } : {}) }; // #6649
+      const tttOptions = { ...(isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {}), ...summitFinishSingleFor(input.rules_revision), ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}) }; // #6649
       return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning, tttOptions), trace: TIME_TRIAL_TRACE };
     }
   }
@@ -258,7 +259,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
   if (isIndividualTimeTrial(input.route.profile_type)) {
     return {
-      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision }),
+      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}) }), // #6649
       trace: TIME_TRIAL_TRACE,
     };
   }
