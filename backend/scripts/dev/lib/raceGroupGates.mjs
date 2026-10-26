@@ -48,7 +48,6 @@ export const FAVOURITE_TOP_N = 3;
 const NO_FAVOURITE_PROFILES = new Set(["ttt"]);
 /** Tidskoersler i udbrudsmaalingen (som motorTestportReport.TIME_TRIAL_CLASSES). */
 const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
-const STAGE_RACE_GROUPS = new Set(["stage_race", "gt"]);
 
 /**
  * Kontrollerne. `key` er noeglen under raceGroupBands.favouriteWinShare (eller
