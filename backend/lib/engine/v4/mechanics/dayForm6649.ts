@@ -42,7 +42,10 @@ export type BadDayWeather = "rain" | "wind" | "heat";
 
 export const DAY_FORM_6649_TUNING = Object.freeze({
   // 1. Dagens ben (normaliseret CP).
-  legsSd: 0.018, // grund-spredning; samme anker som den gamle dagsform (tuning.dayform.sd)
+  legsSd: 0.032, // grund-spredning (kalibreret, balance-internals/6649)
+  // Massespurten: dagsformen er udholdenhed og vejer mindre i en spurt end paa en
+  // stigning eller i en enkeltstart. Finalens score laeser dagsformen ganget med denne.
+  massFinishFinaleScale: 0.56,
   downFormMax: 0.6, // ned-siden vokser op til +60 % ved formskalaens bund
   downFatigueMax: 1.0, // ... og op til +100 % ved fuld traethed (condition 0)
   downWeatherMax: 0.5, // ... og op til +50 % i det haardeste vejr for en rytter uden vejr-teknik
@@ -70,7 +73,7 @@ export const DAY_FORM_6649_TUNING = Object.freeze({
   heatMinClimbShare: 0.25,
   // Loebsloggen: hvem der naevnes. Kun dagens reelle kandidater, og kun en tydelig nedtur.
   eventCandidates: 10,
-  eventThreshold: 0.035,
+  eventThreshold: 0.06,
 });
 
 export type DayForm6649Tuning = typeof DAY_FORM_6649_TUNING;
@@ -180,6 +183,14 @@ export function dayForm6649For(
   }
   if (reason && delta > -t.eventThreshold) reason = null;
   return { delta, reason, weather: reason === "weather" ? weather.kind : null };
+}
+
+/**
+ * Krog i finale.ts: hvor meget af dagsformen finalens placerings-score laeser.
+ * 1 udenfor en massespurt og under alle aeldre revisioner (x * 1 er eksakt: bit-identisk).
+ */
+export function dayForm6649FinaleScale(massFinishUnderV3: boolean, t: DayForm6649Tuning = DAY_FORM_6649_TUNING): number {
+  return massFinishUnderV3 ? t.massFinishFinaleScale : 1;
 }
 
 /** Den nye RiderState.dayform: dagsformen + formens og formtoppens faste led (som groups.ts). */
