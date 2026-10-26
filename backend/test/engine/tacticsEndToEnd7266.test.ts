@@ -146,7 +146,7 @@ test("#7266 e2e: sprinttoget (leadout i race_team_orders) giver spurtkaptajnen e
       gains.push(without - withTrain);
     }
   }
-  assert.ok(sum(gains) > 0, `toget skal samlet give placeringer (par: ${gains.join(",")})`);
+  assert.ok(sum(gains) > 0, `toget skal samlet give placeringer (detaljer: koer scripts/dev/tacticsEffects7266.mjs, tal kun i balance-internals)`);
 });
 
 // ── 4. Jagt-stance ──────────────────────────────────────────────────────────
@@ -187,7 +187,7 @@ test("#7266 e2e: jagt-stance i race_team_orders giver udbruddet et mindre forspr
     }
   }
   assert.ok(diffs.length > 0, "der skal vaere udbrud at maale paa");
-  assert.ok(sum(diffs) < 0, `jag skal samlet give et mindre forspring end lad gaa (par: ${diffs.map(Math.round).join(",")})`);
+  assert.ok(sum(diffs) < 0, `jag skal samlet give et mindre forspring end lad gaa (detaljer: koer scripts/dev/tacticsEffects7266.mjs, tal kun i balance-internals)`);
 });
 
 // ── 5. Delt kaptajn (race_stage_roles) ──────────────────────────────────────
@@ -206,7 +206,7 @@ test("#7266 e2e: delt kaptajn fra race_stage_roles paa et hold med 8 ryttere pla
       gains.push(run("helper") - run("co_captain"));
     }
   }
-  assert.ok(sum(gains) > 0, `delt kaptajn skal samlet placere sig bedre end som hjaelper (par: ${gains.join(",")})`);
+  assert.ok(sum(gains) > 0, `delt kaptajn skal samlet placere sig bedre end som hjaelper (detaljer: koer scripts/dev/tacticsEffects7266.mjs, tal kun i balance-internals)`);
 });
 
 // ── 6. Etapeplanen (stage_plan_v1-motoren) ──────────────────────────────────
@@ -240,7 +240,7 @@ test("#7266 e2e: etapeplanen skifter ved de sidste km, koster det haardeste led,
       if (a != null && b != null) signs.push(Math.sign(a - b));
     }
   }
-  assert.ok(sum(signs) < 0, `angrebet fra de sidste km skal oftere ende foran end bag (fortegn: ${signs.join(",")})`);
+  assert.ok(sum(signs) < 0, `angrebet fra de sidste km skal oftere ende foran end bag (detaljer: koer scripts/dev/tacticsEffects7266.mjs, tal kun i balance-internals)`);
 });
 
 test("#7266 e2e: etapeplanen skifter til grupetto naar hjaelperen er sat, og han ruller ind bag tvillingen", () => {
@@ -265,5 +265,5 @@ test("#7266 e2e: etapeplanen skifter til grupetto naar hjaelperen er sat, og han
     }
   }
   assert.ok(fired > 0, "skiftet ved \"sat\" skal ske paa hoejfjeldet");
-  assert.ok(sum(signs) > 0, `grupetto efter "sat" skal oftere ende bag end foran (fortegn: ${signs.join(",")})`);
+  assert.ok(sum(signs) > 0, `grupetto efter "sat" skal oftere ende bag end foran (detaljer: koer scripts/dev/tacticsEffects7266.mjs, tal kun i balance-internals)`);
 });

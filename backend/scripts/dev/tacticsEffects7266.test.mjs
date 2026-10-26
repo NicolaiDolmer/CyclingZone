@@ -172,10 +172,13 @@ test("#7266 API: etapeplanens spaerrede modsaetninger afvises, og en gyldig kaed
 });
 
 // Fund #7266 (26/10): den klassiske ordre-raekke afviser endnu ikke par. 3's modsaetninger,
-// og en plan med udbrud efterfulgt af sprinttog tages imod. Testene bliver gates, naar API'et
-// haandhaever reglerne (spec par. 9 raekke 2).
-for (const id of ["grupetto_plus_try_break", "grupetto_plus_sprint_train", "work_plus_try_break", "sprint_train_plus_try_break", "plan_breakaway_then_sprint_train"]) {
-  test(`#7266 API: ${id} afvises`, { todo: byId.get(id).rejected ? false : "fund #7266: API'et tager imod kombinationen" }, () => {
-    assert.equal(byId.get(id).rejected, true);
+// og en plan med udbrud efterfulgt af sprinttog tages imod. KENDTE_AABNE er listen over de
+// kombinationer der er aabne lige nu; fjern en kombination fra listen i samme PR som API'et
+// begynder at afvise den, saa testen bliver en gate (spec par. 9 raekke 2).
+const KENDTE_AABNE = new Set(["grupetto_plus_try_break", "grupetto_plus_sprint_train", "work_plus_try_break", "sprint_train_plus_try_break", "plan_breakaway_then_sprint_train"]);
+for (const a of api.filter((x) => x.expectReject)) {
+  const todo = KENDTE_AABNE.has(a.id) ? "fund #7266: API'et tager imod kombinationen" : false;
+  test(`#7266 API: ${a.id} afvises`, { todo }, () => {
+    assert.equal(byId.get(a.id).rejected, true);
   });
 }

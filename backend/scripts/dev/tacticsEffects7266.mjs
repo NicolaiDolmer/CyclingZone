@@ -68,6 +68,8 @@ export const NOISE_Z = 2;
 export const MIN_FIELD = 90;
 /** Sprinttogets maal: feltets sprinter nr. SPRINTER_INDEX + 1. */
 export const SPRINTER_INDEX = 4;
+/** Fast ur til API-tjekket (ingen vaegur i tests); etapen er aldrig laast (scheduledAt null). */
+export const API_CHECK_NOW = new Date("2026-01-01T00:00:00Z");
 const TT = new Set(["itt", "itt_hilly", "ttt"]);
 const GT_CLASSES = new Set(["GiroVuelta", "TourFrance"]);
 
@@ -175,7 +177,7 @@ export function effectStats(dOn, dCtrl, sign) {
  */
 export function apiContradictionChecks() {
   const ids = new Set(["h1", "h2", "s1", "c1"]);
-  const base = { raceCompleted: false, stageNumber: 1, stageCount: 3, stagesCompleted: 0, scheduledAt: null, teamRiderIds: ids, intentionEnabled: true };
+  const base = { raceCompleted: false, stageNumber: 1, stageCount: 3, stagesCompleted: 0, scheduledAt: null, teamRiderIds: ids, intentionEnabled: true, now: API_CHECK_NOW };
   const classic = (id, rider) => {
     const res = validateTeamOrder({ ...base, order: { breakaway_stance: "neutral", riders: [{ rider_id: "h1", effort: "normal", try_break: false, leadout: false, ...rider }] } });
     return { id, path: "classic", expectReject: true, rejected: !res.ok, error: res.errors[0] ?? null };
