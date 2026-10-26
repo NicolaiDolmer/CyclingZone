@@ -60,7 +60,7 @@ async function fetchTeamAuctionCommitment(supabase, teamId) {
   return computeWorstCaseCommitment({ leadingAuctions, allMyProxies });
 }
 
-const NOOP = async () => {};
+const NOOP = /** @type {(...args: unknown[]) => Promise<void>} */ (async () => {});
 const ACTIVE_MARKET_STATUSES = ["pending", "countered", "awaiting_confirmation"];
 
 // 07d Fase B / #240: Slå aktiv sæson op så transfer/swap-callsites kan stamp'e

@@ -672,6 +672,10 @@ export async function releaseUnsoldGraduate(supabase, {
 }
 
 /**
+ * @typedef {{id:string, team_id:string|null, is_academy:boolean, firstname:string|null, lastname:string|null,
+ * current_production_value:number|null, salary:number|null, contract_length:number|null, contract_end_season:number|null}} PromotionRider
+ */
+/**
  * #4495 (reparation, 5/9) — fuldfør en promovering der blev haengende: en
  * akademirytter med en AFSLUTTET 'promoted' grad-raekke, hvor is_academy=false-
  * flippet paa selve rytter-raekken af en eller anden grund aldrig naaede at ske
@@ -688,10 +692,10 @@ export async function releaseUnsoldGraduate(supabase, {
  * @throws 'squad_cap_violation' hvis der ikke er plads i seniortruppen (samme
  *   fejl som resolveGraduation's promote-gren — ingen automatisk fallback her,
  *   det er en ejer-beslutning at traeffe paa reparations-listen, se scriptet).
- * @returns {Promise<{completed:boolean, riderId:string, reason?:string, salary?:number}>}
+ * @returns {Promise<{completed:boolean, riderId:string, reason?:string, salary?:number|null}>}
  */
 export async function completeStuckPromotion(supabase, {
-  teamId, riderId, rider = null, seasonNumber,
+  teamId, riderId, rider = /** @type {PromotionRider|null} */ (null), seasonNumber,
   getMarketState = getTeamMarketState, notify = notifyTeamOwner, notification = null, now = new Date(),
   clearEntriesOutsideSquad = clearOffSquadEntriesSafe,
 } = {}) {

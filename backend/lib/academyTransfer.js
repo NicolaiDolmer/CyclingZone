@@ -239,7 +239,7 @@ export function demoteTargetSquad(rider, seasonNumber, requestedSquad) {
  * - ok=false → kast named error; ok=true → notify 'academy_demoted'.
  *
  * @param {any} supabase
- * @param {{teamId:string, riderId:string, seasonNumber:number, targetSquad?:"junior"|"u23", notify?:Function}} args
+ * @param {{teamId:string, riderId:string, seasonNumber:number, targetSquad?:"junior"|"u23", now?:Date, notify?:import("./notificationService.js").ContractNoticeNotify}} args
  *   targetSquad: kun moveRider sætter den; uden den afgør sæsonalderen truppen.
  * @throws 'rider_not_found' | 'not_owned' | 'already_academy' | 'not_u23'
  *         | 'too_old_for_squad' | 'rider_on_market' | 'rider_listed'

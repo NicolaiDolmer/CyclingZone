@@ -472,6 +472,8 @@ async function fetchIntakeRowForSigning(supabase, { teamId, riderId }) {
  * @param {string} opts.teamId
  * @param {string} opts.riderId
  * @param {number} opts.seasonNumber   — aktiv sæsons nummer (bruges til contract_end_season)
+ * @param {Date} [opts.now]
+ * @param {import("./notificationService.js").ContractNoticeNotify} [opts.notify]
  * @returns {Promise<{riderId, salary, fee, contractEndSeason}>}
  * @throws {Error} 'not_offered' | 'academy_full' | 'insufficient_balance' | 'already_assigned'
  */

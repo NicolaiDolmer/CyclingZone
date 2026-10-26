@@ -208,10 +208,19 @@ test("#5864: U23, junior og akademi med udløbet kontrakt frigives ved sæsonski
   assert.equal(db.rider("h-u23-nocontract").team_id, "H");
 
   assert.equal(stats.youthNormalized, 3, "kun akademiryttere tælles som normaliseret");
-  // Notifikation til ejeren for hver frigivet rytter på menneskeholdet.
-  const notified = calls.map((c) => c.relatedId).sort();
-  assert.deepEqual(notified, ["h-acad-senior-squad", "h-jun-exp", "h-sen-exp", "h-u23-exp", "h-u23-plain-exp"]);
-  assert.ok(calls.every((c) => c.userId === "user-H" && c.type === "contract_expired_release"));
+  // One owner summary retains every released rider and their original squad.
+  assert.equal(calls.length, 1);
+  const [summary] = calls;
+  assert.equal(summary.userId, "user-H");
+  assert.equal(summary.type, "contract_expired_release");
+  assert.equal(summary.relatedId, null);
+  assert.equal(summary.metadata.messageCode, "notif.contractReleasedSummary.message");
+  const roster = summary.metadata.messageParams.contractRiders;
+  assert.deepEqual(roster.map((row) => row.rider).sort(), [
+    "F h-acad-senior-squad", "F h-jun-exp", "F h-sen-exp", "F h-u23-exp", "F h-u23-plain-exp",
+  ]);
+  assert.deepEqual(roster.map((row) => row.squad).sort(), ["academy", "junior", "senior", "u23", "u23"]);
+  assert.equal(stats.notified, calls.length);
 });
 
 test("#5864: race-entry-oprydning og opslags-lukning gælder også ungdom; historik bevares", async () => {
