@@ -266,7 +266,7 @@ export function oneDayProtectedRider(input: {
   return pick && pick.ability >= GC_THREAT_V3_TUNING.oneDayCanWinShare * best ? pick.id : null;
 }
 
-const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981: delt kaptajn som kaptajnen
 
 /** #5978: har holdets GC-rytter noget at forsvare (KUN orders_gc_v3)? */
 function hasSomethingToDefend(standing: GcStanding, isLeader: boolean, stagesRemaining: number, t: GcDangerTuning): boolean {

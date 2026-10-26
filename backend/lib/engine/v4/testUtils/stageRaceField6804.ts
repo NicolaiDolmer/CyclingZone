@@ -25,7 +25,8 @@ export function stageRaceRuns(rulesRevision: string, profiles: readonly string[]
       roster: field.map((rider) => ({ team_id: rider.team_id as string, rider_id: rider.rider_id, role: rider.role, is_ai: true, abilities: rider.abilities })),
       context: { route: { profile_type: route.profile_type, finale_type: route.finale_type ?? null }, race: { is_stage_race: true, later_stages: [] }, rules_revision: rulesRevision },
     } as Parameters<typeof buildStageOrderPlan>[0]);
-    const startlist = field.map((rider) => ({ ...rider, effort: plan.aiEffortByRider.get(rider.rider_id) ?? rider.effort }));
+    // #5981: AI-holdenes delte kaptajn (plan.aiRoleByRider), som broen giver motoren.
+    const startlist = field.map((rider) => ({ ...rider, role: plan.aiRoleByRider?.get(rider.rider_id) ?? rider.role, effort: plan.aiEffortByRider.get(rider.rider_id) ?? rider.effort }));
     for (const seed of seeds) {
       const input = { route, startlist, orders: plan.orders, seed: `${seed}:${row.stage_number ?? 1}`, tuning: RACE_V4_TUNING, rules_revision: rulesRevision, gc_context: FIRST_STAGE_GC } as StageInput;
       out.push({ key: `${row.profile_type}#${row.stage_number ?? 1}@${seed}`, route, output: simulateStageV4(input) });
