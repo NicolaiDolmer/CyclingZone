@@ -400,7 +400,7 @@ import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import { scoutBandAge, resolveScoutBandSeasonNumber } from "../lib/scoutBandAge.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
-  resolveRetirementNotice,
+  resolveRetirementNoticeForDisplay,
 } from "../lib/retirementNotice.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
@@ -16958,7 +16958,7 @@ router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
   // opdateres foerst efter merge (auto-migrate.yml applier migrationen).
   const { data: rider, error } = await supabase
     .from("riders")
-    .select(`id, birthdate, ${RETIREMENT_NOTICE_COLUMNS}`)
+    .select(`id, birthdate, is_retired, ${RETIREMENT_NOTICE_COLUMNS}`)
     .eq("id", req.params.id)
     .maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
@@ -16969,16 +16969,9 @@ router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
   // (lazy freeze) — så en senere ændring af hash-funktionen bag rullet ikke kan
   // flytte varslet midt i en sæson, sådan som #4990 gjorde 7/9.
   const seasonNumber = await getActiveSeasonNumber();
-  const notice = await resolveRetirementNotice(supabase, rider, seasonNumber);
-  // Svarformen er UÆNDRET fra #2748. Et udkast lagde `notice_season` og
-  // `notice_given_at` på, men banner-linjen der skulle vise dem sagde intet nyt
-  // (notice_season ER den aktive sæson, som allerede står i sætningen ovenover),
-  // og `given_at` er tidspunktet frysningen blev SKREVET — for de backfill'ede
-  // rækker ops-kørslens tidsstempel, ikke "da varslet blev givet". At vise det
-  // ville modsige "Announced his retirement at the season start". Felterne er
-  // derfor holdt ude af kontrakten indtil der findes en flade der faktisk har
-  // brug for dem (review-fund #5073).
-  res.json({ announced_retirement: notice.announced });
+  const notice = await resolveRetirementNoticeForDisplay(supabase, rider, seasonNumber);
+  // The notice carries its own season; frontend season reads can be newer.
+  res.json({ announced_retirement: notice.announced, retirement_after_season: notice.announced ? notice.season : null });
 });
 
 // POST /api/riders/:id/view — vis rytter-profil, log besøg (#963) + trigger evt. transferrygte

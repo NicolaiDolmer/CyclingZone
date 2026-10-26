@@ -211,6 +211,9 @@ se noten ovenfor.
 
 ---
 
+
+**Pensionsvarsel ved sæsonskifte (#7235).** Visningskanalen bruger varslets egen sæson, også når næste sæson allerede er aktiv, mens pensionstrinnet stadig arbejder. Et uafviklet frosset ja bevares; garanteret pension uden gemt rul læses for den afsluttede sæson. Et frosset nej bliver ikke et gammelt ja. Allerede pensionerede ryttere får intet nyt varsel. API-svaret bærer `retirement_after_season` sammen med `announced_retirement`, og profilen bruger samme svargrundlag. Cutover-resolveren og pensionsreglerne er uændrede.
+
 ## 7. Specialiserings-gabet mellem bedste og næstbedste evne
 
 Ejeren har et mål for hvor stort gabet mellem en rytters bedste og næstbedste evne bør være ved 28 år, og fravalgte eksplicit et højere niveau fordi det gør ryttere skrøbelige og straffer små trupper (kolliderer med [[project_no_punishment_for_strength]]). **Målt i prod 24/8 er gabet et flercifret multiplum af målet** fra midt-20'erne og op — se audit-filens §B13 for de faktiske tal. Verifikations-kravet fra 11/8 (kør harnesset mod ægte population + race-motoren FØR konstanterne låses) er aldrig indfriet.
