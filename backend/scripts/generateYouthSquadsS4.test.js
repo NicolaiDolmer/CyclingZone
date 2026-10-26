@@ -751,23 +751,55 @@ test("#6668: et løft over værdiloftet afvises før første skrivning (ingen ha
   assert.match(liftBlockedReason({ totals: { overValueCap: 2 } }), /apply blokeret før første skrivning/);
 });
 
-test("planYouthLift: når ingen kandidat når rangorden-gulvet, afvises løftet i stedet for at udsende en rytter under gulvet (#6668)", async () => {
+test("planYouthLift: en svag kandidat begrænses af den stærkeres mulige løft (#6668)", () => {
   const all = existingAiRiders();
   const age = ageForSeason(all[0].birthdate, S + 1);
   const pair = all.filter((r) => ageForSeason(r.birthdate, S + 1) === age).slice(0, 2);
   assert.equal(pair.length, 2);
   const [weak, strong] = [{ ...pair[0], level: 10 }, { ...pair[1], level: 20 }];
   const profile = buildHumanLevelProfile(humanRows({ ages: [age - 1], lo: 80, hi: 99 }), { season: S + 1 });
-  // Svagest løftes højt; næste rytters kandidater når aldrig gulvet.
+  // Svagestes nærmeste kandidat ville gøre den stærkeres løft umuligt.
   const rankCandidates = ({ row }) => [{ birth: row.archetype_draw.birth, level: row.id === weak.id ? 92 : 36, distance: 0 }];
   const lift = planYouthLift({
     riders: [weak, strong], teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S + 1, levelProfile: profile, ...MODELS, rankCandidates,
   });
-  assert.equal(lift.totals.rankFloorUnmet, 1);
-  const bad = lift.rows.find((r) => r.riderId === strong.id);
-  assert.equal(bad.rankFloorUnmet, true);
-  assert.equal(bad.changed, false);
-  assert.match(liftBlockedReason(lift), /rangordenen/);
-  assert.match(liftBlockedReason(lift), /før første skrivning/);
-  await assert.rejects(applyLift({ from: () => { throw new Error("må ikke skrive"); } }, lift, { ...MODELS }), /rangordenen/);
+  assert.equal(lift.totals.rankFloorUnmet, 0);
+  const lower = lift.rows.find((r) => r.riderId === weak.id);
+  const upper = lift.rows.find((r) => r.riderId === strong.id);
+  assert.equal(lower.changed, false);
+  assert.equal(lower.noFeasibleLift, true);
+  assert.ok(lower.after <= upper.after);
+  assert.equal(liftBlockedReason(lift), null);
+});
+
+test("S5: kun den konkrete ungdomstrup med en aktiv gruppetilknytning fødes eller løftes", () => {
+  const teams = TEAMS.map((t, i) => ({ ...t, youthSquads: i === 0 ? ["u23"] : [] }));
+  const fresh = plan({ teams, groupedOnly: true });
+  assert.ok(fresh.rows.length > 0);
+  assert.ok(fresh.rows.every((r) => r.teamId === teams[0].id && r.squad === "u23"));
+  const riders = existingAiRiders();
+  const lift = planYouthLift({
+    riders, teamsById: new Map(teams.map((t) => [t.id, t])), targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S }),
+    groupedOnly: true, ...MODELS,
+  });
+  assert.ok(lift.rows.length > 0);
+  assert.ok(lift.rows.every((r) => r.teamId === teams[0].id && r.squad === "u23"));
+  assert.ok(lift.skipped.noGroup > 0);
+});
+
+test("S5: loftet begrænser kandidatvalget uden sænkning eller omvendt rangorden", () => {
+  const teams = TEAMS.map((t) => ({ ...t, tier: 2 }));
+  const models = { valuationModel: loadValuationModelById("v6"), productionValuationModel: MODEL };
+  const riders = existingAiRiders();
+  const lift = planYouthLift({
+    riders, teamsById: new Map(teams.map((t) => [t.id, t])), targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({ lo: 80, hi: 99 }), { season: S }), ...models,
+  });
+  assert.equal(lift.totals.overValueCap, 0);
+  assert.ok(lift.rows.every((r) => r.after >= r.before));
+  for (const age of new Set(lift.rows.map((r) => r.age))) {
+    const rows = lift.rows.filter((r) => r.age === age);
+    assert.ok(rows.every((r, i) => i === 0 || r.after >= rows[i - 1].after));
+  }
 });
