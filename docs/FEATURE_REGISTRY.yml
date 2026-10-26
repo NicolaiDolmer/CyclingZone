@@ -98,13 +98,12 @@ features:
     area: race-engine
     title_en: Form peaks in races
     title_da: Formtoppe i løbene
-    state: building
+    state: live
+    flag: race_form_peaks
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6156
-    verified: 2026-10-19
-    note: Flaget oprettes off ved merge.
-    decision: taend
-    decide_by: 2026-10-25
+    verified: 2026-10-26
+    note: On 26/10 09:23 efter ejer-go (formtest #6818), læst tilbage i prod.
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
 
@@ -791,36 +790,32 @@ features:
     area: season
     title_en: Development 2.0 part 1 (decline at season change, only manager teams develop)
     title_da: Udvikling 2.0 del 1 (tilbagegang ved sæsonskiftet, kun managerhold udvikler sig)
-    state: dormant
+    state: live
     flag: development_v2_aging_enabled
     epic: 6499
-    verified: 2026-10-15
-    note: PR #6501. Ejer flipper ved skiftet 25/10.
+    verified: 2026-10-26
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
 
   - id: ability-cap-per-date
     area: training
     title_en: Max +1 per ability per date
     title_da: Maks +1 pr. evne pr. dato
-    state: dormant
+    state: live
     flag: ability_cap_per_date_enabled
     epic: 6110
-    note: Ejer, med Udvikling 2.0.
-    verified: 2026-10-23
-    decision: taend
-    decide_by: 2026-10-25
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
+    verified: 2026-10-26
 
   - id: development-curve-b
     area: training
     title_en: Development curve B (level and potential drive development, not age)
     title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
-    state: dormant
+    state: live
     flag: development_curve_b
     ssot: docs/TRAINING_RULES.md
     epic: 3564
-    note: Ejer, efter ny 10-sæsoners-kørsel med den rigtige kurve; kræver private params i serverens miljø.
-    verified: 2026-10-25
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
+    verified: 2026-10-26
 
   - id: development-score-b-engine
     area: training
