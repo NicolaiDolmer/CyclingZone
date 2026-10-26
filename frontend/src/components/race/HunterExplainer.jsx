@@ -42,7 +42,7 @@ export default function HunterExplainer({
   // #6912 B: motorens chance for løbets næste etape. Backend svarer available:false
   // når flaget er slukket eller motoren ikke kan stå inde for tallet; så vises intet.
   const { raceId } = useParams();
-  const [outlook, setOutlook] = useState(null);
+  const [outlook, setOutlook] = useState(/** @type {import("../../lib/breakawayOutlook.ts").BreakawayOutlook | null} */ (null));
   useEffect(() => {
     if (!raceId) { setOutlook(null); return undefined; }
     let alive = true;
@@ -51,7 +51,7 @@ export default function HunterExplainer({
         const headers = await authHeaders();
         if (!headers) return;
         const res = await apiFetch(`/api/races/${raceId}/breakaway-outlook`, { headers });
-        if (alive) setOutlook(res.ok ? res.data : null);
+        if (alive) setOutlook(res.ok ? /** @type {import("../../lib/breakawayOutlook.ts").BreakawayOutlook} */ (res.data) : null);
       } catch {
         // best-effort: uden svar vises blot ingen chance (linjen over står alene).
         if (alive) setOutlook(null);
