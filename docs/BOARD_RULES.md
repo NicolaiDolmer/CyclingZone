@@ -460,7 +460,7 @@ policy-akse `youth_focus = high`) holdets **U23- og juniorresultater** som input
 
 - **Kun Boardroom-visningen.** Ungdomsresultater tæller aldrig i seniormål (`onlySeniorRaceRows`, #5537), i
   mål-evalueringen, i tilliden (`board_relations.confidence`), i referatet eller i formandens citat.
-- **Hvad tæller:** podier (etape eller samlet, endagsløb inkl.) i et ungdomsløb (`races.squad` u23/junior) i
+- **Hvad tæller:** podier (etape eller samlet, endagsløb inkl.) og slut-trøjer (kun sejr i points/mountain/young) i et ungdomsløb (`races.squad` u23/junior) i
   den **indeværende sæson**. Samme regel i alle divisioner.
 - **Ét nik pr. løb**, uanset hvor mange etaper eller podier holdet tog i det.
 - **Større plus ved sejr:** vandt holdet en etape, det samlede resultat eller slut-trøjen, vejer løbet tungere

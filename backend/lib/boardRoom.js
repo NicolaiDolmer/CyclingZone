@@ -150,6 +150,7 @@ import {
 // #7096 · Ungdomsevalueringen bor i boardYouthEvaluation.js; re-eksporteret her,
 // så Boardroom-kalderne og testene har ét indgangspunkt.
 export {
+  YOUTH_JERSEY_TYPES,
   YOUTH_PODIUM_MAX_RANK,
   YOUTH_RESULT_TYPES,
   deriveYouthResultMoodEvents,

@@ -9,6 +9,7 @@ import {
   loadYouthRaceResultsForBoard,
   YOUTH_PODIUM_MAX_RANK,
   YOUTH_RESULT_TYPES,
+  YOUTH_JERSEY_TYPES,
 } from "./boardRoom.js";
 import {
   YOUTH_RESULT_SOURCE,
@@ -75,7 +76,7 @@ test("seniorløb, ukendt trup, andre resultat-typer og placeringer uden for podi
     row({ raceId: "senior", squad: "senior", at: "2026-10-10T00:00:00Z" }),
     { race_id: "no-squad", result_type: "stage", rank: 1, imported_at: "2026-10-10T00:00:00Z", races: {} },
     { race_id: "no-races", result_type: "stage", rank: 1, imported_at: "2026-10-10T00:00:00Z" },
-    row({ raceId: "jersey", resultType: "points", at: "2026-10-10T00:00:00Z" }),
+    row({ raceId: "jersey-2nd", resultType: "points", rank: 2, at: "2026-10-10T00:00:00Z" }),
     row({ raceId: "leader", resultType: "leader", at: "2026-10-10T00:00:00Z" }),
     row({ raceId: "fourth", rank: 4, at: "2026-10-10T00:00:00Z" }),
     row({ raceId: "rank-zero", rank: 0, at: "2026-10-10T00:00:00Z" }),
@@ -142,7 +143,7 @@ test("loadYouthRaceResultsForBoard filtrerer på hold, sæson, ungdomstrup, resu
   const filters = supabase.calls.slice(2);
   assert.deepEqual(filters, [
     ["eq", "team_id", TEAM_ID],
-    ["in", "result_type", ["stage", "gc"]],
+    ["in", "result_type", ["stage", "gc", "points", "mountain", "young"]],
     ["lte", "rank", 3],
     ["eq", "races.season_id", "s3"],
     ["in", "races.squad", ["junior", "u23"]],
@@ -302,6 +303,31 @@ test("sejr eller slut-trøje giver sejrsvægten, rent podie podievægten", () =>
   assert.equal(delta([row({ raceId: "r", resultType: "gc", rank: 3, at: "2026-10-10T00:00:00Z" })]), TUNING.podiumWeight);
   assert.equal(delta([row({ raceId: "r", resultType: "stage", rank: 1, at: "2026-10-10T00:00:00Z" })]), TUNING.winWeight);
   assert.equal(delta([row({ raceId: "r", resultType: "gc", rank: 1, at: "2026-10-10T00:00:00Z" })]), TUNING.winWeight);
+});
+
+test("slut-trøje (rank 1) giver sejrsvægten alene; plads 2-3 i trøjen tæller ikke", () => {
+  assert.deepEqual([...YOUTH_JERSEY_TYPES], ["points", "mountain", "young"]);
+  const talent = [MEMBERS[1]];
+  for (const resultType of YOUTH_JERSEY_TYPES) {
+    const events = deriveYouthResultMoodEvents({
+      rows: [row({ raceId: "r", resultType, rank: 1, at: "2026-10-10T00:00:00Z" })],
+      assignedMembers: talent,
+      tuning: TUNING,
+    });
+    assert.equal(events.length, 1, resultType);
+    assert.equal(events[0].satisfaction_delta, TUNING.winWeight, resultType);
+  }
+  // Trøje-sejr oven på et rent etapepodie løfter løbet til sejrsvægten, stadig ét nik.
+  const combined = deriveYouthResultMoodEvents({
+    rows: [
+      row({ raceId: "r", resultType: "stage", rank: 2, at: "2026-10-10T00:00:00Z" }),
+      row({ raceId: "r", resultType: "mountain", rank: 1, at: "2026-10-12T00:00:00Z" }),
+    ],
+    assignedMembers: talent,
+    tuning: TUNING,
+  });
+  assert.equal(combined.length, 1);
+  assert.equal(combined[0].satisfaction_delta, TUNING.winWeight);
 });
 
 test("sejren tæller uanset om den ligger før eller efter løbets seneste podie, og stadig kun ét nik", () => {
