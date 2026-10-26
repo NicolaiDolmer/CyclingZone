@@ -66,7 +66,13 @@ export function formatBackendParams(params, t = null) {
   if (!params || typeof params !== "object") return {};
   const out = {};
   for (const [k, v] of Object.entries(params)) {
-    if (v == null) {
+    if (k === "contractRiders" && Array.isArray(v)) {
+      out[k] = v.map((row) => t ? t(row.value == null ? "notif.contractRoster.entryUnknown" : "notif.contractRoster.entry", {
+        rider: row.rider,
+        squad: t(`notif.contractSquad.${row.squad}`),
+        value: formatNumber(row.value),
+      }) : `${row.rider} (${row.squad}), ${formatNumber(row.value)} CZ$`).join("\n");
+    } else if (v == null) {
       out[k] = v;
     } else if (k.endsWith("Key") && k.length > 3 && typeof v === "string") {
       const resolved = t ? t(v) : v;

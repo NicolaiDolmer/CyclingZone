@@ -274,7 +274,8 @@
     },
     "contractExpiring": {
       "title": "Kontrakt udløber",
-      "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}."
+      "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}.",
+      "squadMessage": "{rider} ({squad}) har en kontrakt, der udløber ved udgangen af sæson {season}. Forlæng den på fanen Kontrakter under Mit hold."
     },
     "contractExpiredRelease": {
       "title": "Rytter frigivet: kontrakt udløbet",
@@ -309,7 +310,9 @@
       "title": "Sæsonskifte: kontrakt- og pensionsrisiko",
       "messageBoth": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber, og {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Forlæng kontrakterne før skiftet på fanen Kontrakter på Mit hold, hvor du kan forlænge flere ryttere med 1 til 3 sæsoner ad gangen. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
       "messageExpiringOnly": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber. Forlæng dem før skiftet på fanen Kontrakter på Mit hold, hvor du kan forlænge flere ryttere med 1 til 3 sæsoner ad gangen.",
-      "messageRetirementOnly": "Din trup er berørt af det kommende sæsonskifte: {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter."
+      "messageRetirementOnly": "Din trup er berørt af det kommende sæsonskifte: {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
+      "messageBothWithRoster": "{expiringCount} kontrakter udløber ved sæsonskiftet, og {retirementRiskCount} andre ryttere kan gå på pension. Forlæng kontrakter på fanen Kontrakter under Mit hold.\n{contractRiders}",
+      "messageExpiringOnlyWithRoster": "{expiringCount} kontrakter udløber ved sæsonskiftet. Forlæng dem på fanen Kontrakter under Mit hold.\n{contractRiders}"
     },
     "watchlistDeparted": {
       "title": "Rytter har forladt spillet",
@@ -688,6 +691,24 @@
     "squadEnforced": {
       "title": "Holdstørrelse håndhævet",
       "message": "{purchasedCount, plural, =0 {} one {Auto-købte # rytter: {purchasedNames}\n} other {Auto-købte # ryttere: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rytter kommer til holdet, når hans igangværende etapeløb er slut: {deferredNames}\n} other {# ryttere kommer til holdet, når deres igangværende etapeløb er slut: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-solgte # rytter: {soldNames}\n} other {Auto-solgte # ryttere: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rytter i et igangværende etapeløb sælges i stedet efter løbet\n} other {# ryttere i et igangværende etapeløb sælges i stedet efter løbet\n}}Bøde: {fine} CZ$ · Fradrag: {points} point"
+    },
+    "contractSquad": {
+      "senior": "Senior",
+      "u23": "U23",
+      "junior": "Junior",
+      "academy": "Akademi"
+    },
+    "contractRoster": {
+      "entry": "{rider} ({squad}), {value} CZ$",
+      "entryUnknown": "{rider} ({squad}), værdi ukendt"
+    },
+    "contractExpiringSummary": {
+      "title": "Kontrakter udløber",
+      "message": "Disse kontrakter udløber ved udgangen af sæson {season}. Forlæng dem på fanen Kontrakter under Mit hold.\n{contractRiders}"
+    },
+    "contractReleasedSummary": {
+      "title": "Ryttere frigivet: kontrakter udløbet",
+      "message": "Disse ryttere blev frie agenter, da deres kontrakter udløb ved udgangen af sæson {season}. Gennemgå dine resterende kontrakter under Mit hold.\n{contractRiders}"
     }
   },
   "error": {
