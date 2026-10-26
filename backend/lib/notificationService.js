@@ -319,10 +319,10 @@ export async function emitContractExpiringNotifications({
   supabase,
   seasonNumber,
   notify = notifyUser,
-  fetchOwnedExpiringRiders = defaultFetchOwnedExpiringRiders,
+  fetchOwnedExpiringRiders: fetchRiders = fetchOwnedExpiringRiders,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
-  const riders = await fetchOwnedExpiringRiders({ supabase, seasonNumber });
+  const riders = await fetchRiders({ supabase, seasonNumber });
   const eligible = (riders || []).filter((r) => r.user_id && r.id);
   stats.eligible = eligible.length;
 
@@ -353,7 +353,7 @@ export async function emitContractExpiringNotifications({
  * user_id (kun menneske-, ikke-frosne hold). Standard-implementering; injicérbar
  * i test for at undgå DB.
  */
-async function defaultFetchOwnedExpiringRiders({ supabase, seasonNumber }) {
+export async function fetchOwnedExpiringRiders({ supabase, seasonNumber }) {
   // #7246: pagineret. Uden .range() stoppede PostgREST tavst ved 1.000 rækker, så ~45 %
   // af managerne aldrig fik varsel ved S4→S5 (frigivelsen bruger fetchAllRows og ramte alle).
   let data;
