@@ -36,7 +36,7 @@
 //   2) demote(): skrev ubetinget en frisk akademi-kontrakt forankret i den
 //      aktuelle sæson og forkortede dermed enhver kontrakt med udløb længere ude.
 
-import { notifyTeamOwner } from "./notificationService.js";
+import { notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { computeFrozenSalary, computeContractEndSeason, contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -156,6 +156,10 @@ export async function promote(supabase, {
     ...contractPatch,
   }).eq("id", riderId);
   if (error) throw new Error(`promote update: ${error.message}`);
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId, seasonNumber, now, notify,
+    rider: { ...rider, ...contractPatch, squad: "senior", is_academy: false },
+  });
 
   // #5903: rytteren er nu senior; hans kommende ungdomsløb ryddes. Samme regel
   // som moveRider() (#5843) og graduerings-stierne; kaster aldrig.
@@ -243,7 +247,7 @@ export function demoteTargetSquad(rider, seasonNumber, requestedSquad) {
  * @returns {Promise<{riderId:string, action:'demoted', squad:string, newSalary:number, racesCleared:number, racesOngoing:number}>}
  */
 export async function demote(supabase, {
-  teamId, riderId, seasonNumber, targetSquad: requestedSquad, notify = notifyTeamOwner,
+  teamId, riderId, seasonNumber, targetSquad: requestedSquad, notify = notifyTeamOwner, now = new Date(),
   // Standard-{} er kun et værn mod et manglende argument; felterne er påkrævede.
 } = /** @type {any} */ ({})) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -305,6 +309,10 @@ export async function demote(supabase, {
   // #5432: squad skrives nu af RPC'en i SAMME række-skrivning som is_academy
   // (før: en separat, ikke-atomisk UPDATE herfra efter RPC-kaldet).
 
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId, seasonNumber, now, notify,
+    rider: { ...rider, contract_end_season: contractEnd, squad: targetSquad, is_academy: true },
+  });
   const name = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   await notify({
     supabase, teamId, type: "academy_demoted", relatedId: riderId,
@@ -470,7 +478,7 @@ export async function moveRider(supabase, {
   // schema-columns-ok: riders.squad tilføjes af database/2026-09-15-4619-riders-squad.sql
   // (#4619); schema-snapshot.json er ikke refreshet siden.
   const { data: rider, error } = await supabase.from("riders")
-    .select("id, team_id, is_academy, squad, birthdate")
+    .select("id, team_id, is_academy, squad, birthdate, firstname, lastname, contract_end_season")
     .eq("id", riderId).maybeSingle();
   if (error) throw new Error(`moveRider rider lookup: ${error.message}`);
   if (!rider) throw new Error("rider_not_found");
@@ -503,10 +511,14 @@ export async function moveRider(supabase, {
     } else if (fromSquad === DEFAULT_SQUAD) {
       // isSquad() ovenfor + targetSquad !== senior: kun junior/u23 når hertil.
       const youthSquad = /** @type {"junior"|"u23"} */ (targetSquad);
-      const res = await demote(supabase, { teamId, riderId, seasonNumber, targetSquad: youthSquad, notify });
+      const res = await demote(supabase, { teamId, riderId, seasonNumber, targetSquad: youthSquad, notify, now });
       result = { ...res, from: fromSquad, to: targetSquad };
     } else {
       result = await moveWithinAcademy(supabase, { teamId, riderId, fromSquad, targetSquad, direction, now });
+      await notifyIfContractExpiresThisSeason({
+        supabase, teamId, seasonNumber, now, notify,
+        rider: { ...rider, squad: targetSquad, is_academy: true },
+      });
     }
   } catch (err) {
     throw normalizeMoveError(err);

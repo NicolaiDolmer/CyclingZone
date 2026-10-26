@@ -19,7 +19,7 @@ import { contractOnAcquirePatch } from "./contractSeed.js";
 import { resolvePendingGraduationOnSale } from "./academyGraduation.js";
 import { seniorSquadPatch } from "./squads.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
-import { buildContractExpiringNotification } from "./notificationService.js";
+import { notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { buildKeyedNotification } from "./notificationKeys.js";
 import {
   buildSwapCancelledStaleNotification,
@@ -465,7 +465,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       // udløber i indeværende sæson.
       // #3650: is_academy med så et salg af en akademi-rytter (listet direkte
       // fra akademiet) kan graduere ham atomisk ved handlens gennemførelse.
-      .select("id, firstname, lastname, team_id, salary, base_value, market_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy")
+      .select("id, firstname, lastname, team_id, salary, base_value, market_value, prize_earnings_bonus, current_production_value, contract_end_season, is_academy, squad")
       .eq("id", offer.rider_id)
   );
   const [buyerState, sellerState, buyerCommitment, activeSeasonNumber] = await Promise.all([
@@ -714,37 +714,12 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   await notifyTeamOwner(offer.buyer_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
   await notifyTeamOwner(offer.seller_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
 
-  // #1836 · køb-trigger: hvis den købte rytters kontrakt udløber i NUVÆRENDE
-  // sæson, advar køberen med det samme. contract_end_season kan netop være sat
-  // af transferContractPatch (kontraktløs free agent → standard-kontrakt), så vi
-  // læser den effektive værdi.
-  const buyerContractEndSeason =
-    transferContractPatch.contract_end_season ?? rider.contract_end_season;
-  if (buyerContractEndSeason === activeSeasonNumber) {
-    const expiring = buildContractExpiringNotification({
-      riderName: `${rider.firstname} ${rider.lastname}`,
-      riderId: rider.id,
-      seasonNumber: activeSeasonNumber,
-    });
-    // #1872: ikke-fatal — et notifikations-throw må aldrig rulle en committet
-    // transfer-execution tilbage. Samme klasse-fejl som auktion-finalize (#1872);
-    // sluges + logges. Se .claude/learnings/2026-06-25-contract-expiring-*.
-    try {
-      await notifyTeamOwner(
-        offer.buyer_team_id,
-        expiring.type,
-        expiring.title,
-        expiring.message,
-        expiring.relatedId,
-        expiring.metadata
-      );
-    } catch (notifyErr) {
-      console.error(
-        `  ⚠️  Kontraktudløb-notifikation fejlede for transfer ${offer.id} (ikke-fatal):`,
-        notifyErr.message
-      );
-    }
-  }
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId: offer.buyer_team_id, seasonNumber: activeSeasonNumber,
+    rider: { ...rider, ...transferContractPatch, ...graduatePatch },
+    notify: ({ teamId, type, title, message, relatedId, metadata }) =>
+      notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
+  });
 
   await notifyDiscordHistory({
     riderName: `${rider.firstname} ${rider.lastname}`,
@@ -1083,6 +1058,18 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   });
   await notifyTeamOwner(swap.proposing_team_id, swapCompletedPayload.type, swapCompletedPayload.title, swapCompletedPayload.message, swap.id, swapCompletedPayload.metadata);
   await notifyTeamOwner(swap.receiving_team_id, swapCompletedPayload.type, swapCompletedPayload.title, swapCompletedPayload.message, swap.id, swapCompletedPayload.metadata);
+  for (const [acquired, patch, squadPatch, teamId] of [
+    [offered, offeredContractPatch, offeredGraduatePatch, swap.receiving_team_id],
+    [requested, requestedContractPatch, requestedGraduatePatch, swap.proposing_team_id],
+  ]) {
+    await notifyIfContractExpiresThisSeason({
+      supabase, teamId, seasonNumber: swapSeasonNumber,
+      rider: { ...acquired, ...patch, ...squadPatch },
+      notify: ({ teamId, type, title, message, relatedId, metadata }) =>
+        notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
+    });
+  }
+
 
   await notifyDiscordHistory({
     offeredName: `${offered.firstname} ${offered.lastname}`,

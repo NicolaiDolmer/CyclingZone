@@ -7,6 +7,7 @@ import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize, isHeadlineAboutOwnRiders } from "./raceNarrativeNotification.js";
 import { fetchRaceTopResults, formatTopResults } from "./raceInboxTopResults.js";
+import { buildContractRosterNotification, contractNoticeRider } from "./contractNoticeRoster.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -289,20 +290,40 @@ export const CONTRACT_EXPIRING_TYPE = "contract_expiring";
  * EN-first fallback (#1068: ingen rå dansk i backend). Locale-aware rendering
  * sker via backendMessages-koderne i metadata (#666).
  */
-export function buildContractExpiringNotification({ riderName, riderId, seasonNumber }) {
+export function buildContractExpiringNotification({ riderName, riderId, seasonNumber, squad = "senior" }) {
   return {
     type: CONTRACT_EXPIRING_TYPE,
     title: "Contract expiring",
-    message: `${riderName}'s contract expires at the end of season ${seasonNumber}.`,
+    message: `${riderName} (${squad}) has a contract expiring at the end of season ${seasonNumber}. Extend it on the Contracts tab on My Team.`,
     relatedId: riderId ?? null,
     metadata: {
       riderId: riderId ?? null,
       titleCode: "notif.contractExpiring.title",
       titleParams: {},
-      messageCode: "notif.contractExpiring.message",
-      messageParams: { rider: riderName, season: seasonNumber },
+      messageCode: "notif.contractExpiring.squadMessage",
+      messageParams: { rider: riderName, season: seasonNumber, squadKey: `notif.contractSquad.${squad}` },
     },
   };
+}
+
+// Acquisition and squad changes share the same eligibility and non-fatal delivery.
+export async function notifyIfContractExpiresThisSeason({
+  supabase, rider, teamId = rider?.team_id, seasonNumber, now, notify = notifyTeamOwner,
+}) {
+  if (!teamId || !rider?.id || !Number.isFinite(seasonNumber) || rider.contract_end_season !== seasonNumber) {
+    return { delivered: false, reason: "not_expiring" };
+  }
+  const row = contractNoticeRider(rider);
+  const payload = buildContractExpiringNotification({
+    riderName: row.rider, riderId: rider.id, seasonNumber, squad: row.squad,
+  });
+  try {
+    return await notify({ supabase, teamId, now, ...payload });
+  } catch (err) {
+    console.error("Contract expiry notice failed after acquisition or squad change:", err?.message || err);
+    captureException(err, { tags: { flow: "notifications", stage: "contract-expiring" } });
+    return { delivered: false, failed: true };
+  }
 }
 
 /**
@@ -325,14 +346,15 @@ export async function emitContractExpiringNotifications({
   const riders = await fetchRiders({ supabase, seasonNumber });
   const eligible = (riders || []).filter((r) => r.user_id && r.id);
   stats.eligible = eligible.length;
-
+  const teams = new Map();
   for (const rider of eligible) {
-    const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
-    const payload = buildContractExpiringNotification({
-      riderName,
-      riderId: rider.id,
-      seasonNumber,
-    });
+    const key = rider.team_id ?? rider.user_id;
+    if (!teams.has(key)) teams.set(key, []);
+    teams.get(key).push(rider);
+  }
+  for (const teamRiders of teams.values()) {
+    const rider = teamRiders[0];
+    const payload = buildContractRosterNotification({ riders: teamRiders, seasonNumber });
     try {
       const res = await notify({ supabase, userId: rider.user_id, ...payload });
       if (res?.delivered) stats.delivered += 1;
@@ -353,24 +375,30 @@ export async function emitContractExpiringNotifications({
  * user_id (kun menneske-, ikke-frosne hold). Standard-implementering; injicérbar
  * i test for at undgå DB.
  */
-export async function fetchOwnedExpiringRiders({ supabase, seasonNumber }) {
+export async function fetchOwnedExpiringRiders({ supabase, seasonNumber, includeOverdue = false }) {
   // #7246: pagineret. Uden .range() stoppede PostgREST tavst ved 1.000 rækker, så ~45 %
   // af managerne aldrig fik varsel ved S4→S5 (frigivelsen bruger fetchAllRows og ramte alle).
   let data;
   try {
-    data = await fetchAllRows(() => supabase
+    data = await fetchAllRows(() => {
+      const query = supabase
       .from("riders")
-      .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
-      .eq("contract_end_season", seasonNumber)
+      .select("id, firstname, lastname, team_id, squad, is_academy, market_value, birthdate, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen, is_bank, is_test_account)")
       .not("team_id", "is", null)
       .eq("team.is_ai", false)
       .eq("team.is_frozen", false)
-      .order("id"));
+      .eq("team.is_bank", false)
+      .eq("team.is_test_account", false)
+      .eq("is_retired", false)
+      .order("id");
+      return includeOverdue ? query.lte("contract_end_season", seasonNumber) : query.eq("contract_end_season", seasonNumber);
+    });
   } catch (err) {
     const error = /** @type {Error} */ (err);
     throw new Error(`Could not load owned expiring-contract riders: ${error.message}`, { cause: err });
   }
   return (data || []).map((r) => ({
+    ...r,
     id: r.id,
     firstname: r.firstname,
     lastname: r.lastname,

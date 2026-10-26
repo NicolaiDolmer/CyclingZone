@@ -113,6 +113,14 @@ er den billigste måde at gøre kategorien synlig på.
 
 ### 2.3 In-app indbakke og notifikationer 📄
 
+Kontraktvarsler (#7249, ejerens design-go 26/10) bruger eksisterende typer
+`contract_expiring` og `contract_expired_release`. Sæsonskiftet sender én samlet besked
+pr. hold og type med rytternavn, trup og markedsværdi, samt link til Kontrakter-fanen.
+Erhvervelse og trupflyt bruger ét fælles varsel ved udløb i indeværende sæson.
+Alle fem locales har samme indhold, EN først; trupnavne og beløb lokaliseres i indbakken.
+Før-skifte-varslet dækker alle trupper; automatisk planlægning af det bygges separat i #7250.
+Ingen nye e-mail-, push- eller dashboard-kanaler indgår i denne ændring.
+
 Typen `admin_notice` er den generiske ejer-til-alle-kanal (`backend/lib/notificationTypes.js`). Den er
 dyr at bruge for tit og umulig at trække tilbage. Brug den kun til noget der ikke må gå tabt: en
 sæsonovergang, en beklagelse, en invitation der har en deadline. Discord-invitationen i indbakken er

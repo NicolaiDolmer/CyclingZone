@@ -182,6 +182,7 @@ async function executeAutoPurchase({
   seasonId,
   createEmergencyLoanFn,
   now,
+  notifyTeamOwner,
 }) {
   const price = Math.round((rider.market_value || 0) * SQUAD_PURCHASE_MARKUP);
 
@@ -250,6 +251,13 @@ async function executeAutoPurchase({
       .eq("id", rider.id)
   );
 
+  const { notifyIfContractExpiresThisSeason } = await import("./notificationService.js");
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId: team.id, seasonNumber: activeSeasonNumber, now,
+    rider: { ...rider, ...contractPatch },
+    notify: ({ teamId, type, title, message, relatedId, metadata }) =>
+      notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
+  });
   return {
     riderId: rider.id,
     riderName: `${rider.firstname} ${rider.lastname}`,
@@ -446,6 +454,7 @@ export async function enforceTeamSquadCompliance({
         seasonId,
         createEmergencyLoanFn,
         now,
+        notifyTeamOwner,
       });
       purchases.push(result);
     }
