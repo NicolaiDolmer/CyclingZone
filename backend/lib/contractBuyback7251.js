@@ -103,7 +103,9 @@ export async function loadBuybackCandidates({ supabase, team, now = new Date() }
     for (const a of auctions) onAuction.add(a.rider_id);
   }
 
+  // Allerede købt tilbage: rytteren er på holdet igen og skal ikke stå som "signet af andre".
   return riders
+    .filter((r) => r.team_id !== team.id)
     .map((r) => {
       const releasedAt = releasedAtByRider.get(r.id);
       const deadline = new Date(new Date(releasedAt).getTime() + BUYBACK_7251.windowDays * DAY_MS).toISOString();

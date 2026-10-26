@@ -104,6 +104,8 @@ test("gen-signering: 1 sæson, normal løn, ingen pris; afvist for varslet rytte
   assert.equal(r1.contract_length, 1);
   assert.equal(r1.salary, res.salary);
   assert.ok(!supabase.updates.some((u) => u.table === "teams"), "ingen pris/balance-ændring");
+  const after = await loadBuybackCandidates({ supabase, team: { id: "t1", user_id: "u1" }, now: NOW });
+  assert.ok(!after.some((c) => c.id === "r1"), "købt tilbage = ude af listen, ikke \"signet af andre\"");
   await assert.rejects(
     buybackRider({ supabase, team: { id: "t1", user_id: "u1" }, riderId: "r2", now: NOW }),
     (err) => err instanceof BuybackError && err.code === "buyback_not_eligible",
