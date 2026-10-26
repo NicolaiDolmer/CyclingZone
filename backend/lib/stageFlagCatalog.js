@@ -212,6 +212,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "potential_single_number",
   "ability_cap_per_date_enabled",
   "training_decision_card",
+  // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
+  "race_day_intention_enabled",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

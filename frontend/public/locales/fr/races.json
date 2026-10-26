@@ -954,6 +954,13 @@
       "protect": "travailler ou attaquer",
       "all_out": "à fond"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Travailler", "why": "Roule pour le leader. Vraie fatigue.", "today": "travaille pour le leader" },
+        "follow": { "step": "Suivre les attaques", "why": "Répond à chaque attaque. Coûte plus de jambes.", "today": "suit les attaques" },
+        "free": { "step": "Rouler à l'offensive", "why": "Met la pression dans les montées et au final.", "today": "roule à l'offensive" }
+      }
+    },
     "roleWord": {
       "captain": "leader",
       "sprint_captain": "leader sprint",

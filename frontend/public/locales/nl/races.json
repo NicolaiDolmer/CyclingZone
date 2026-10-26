@@ -954,6 +954,13 @@
       "protect": "werken of aanvallen",
       "all_out": "volle inzet"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Werken", "why": "Rijdt voor de kopman. Echte vermoeidheid.", "today": "werkt voor de kopman" },
+        "follow": { "step": "Aanvallen volgen", "why": "Reageert op elke aanval. Kost meer krachten.", "today": "volgt de aanvallen" },
+        "free": { "step": "Offensief rijden", "why": "Zet druk op de klimmen en in de finale.", "today": "rijdt offensief" }
+      }
+    },
     "roleWord": {
       "captain": "kopman",
       "sprint_captain": "sprintkopman",
