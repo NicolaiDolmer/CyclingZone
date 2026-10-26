@@ -102,8 +102,12 @@ export function routeFavourites(cache, { suitability, topN = FAVOURITE_TOP_N } =
   const stageFav = new Map(profiles.map((p) => [p.stage_number, NO_FAVOURITE_PROFILES.has(p.profile_type) ? null : top([p])]));
   const multi = profiles.length > 1;
   // Samlet klassement: som assistentens kaptajnvalg (raceAutopick.gcStages): uden de flade etaper.
-  const gcStages = multi ? (profiles.filter((p) => p.profile_type !== "flat").length ? profiles.filter((p) => p.profile_type !== "flat") : profiles) : profiles;
-  return { raceFav: top(gcStages.filter((p) => !NO_FAVOURITE_PROFILES.has(p.profile_type))), stageFav };
+  // Codex P2: frasortér holdtidskørsel (o.l.) FØR flad-fallbacken, så et løb med kun flade
+  // etaper + en TTT stadig får en favorit i stedet for MANGLER.
+  const eligible = profiles.filter((p) => !NO_FAVOURITE_PROFILES.has(p.profile_type));
+  const nonFlat = eligible.filter((p) => p.profile_type !== "flat");
+  const gcStages = multi && nonFlat.length ? nonFlat : eligible;
+  return { raceFav: top(gcStages), stageFav };
 }
 
 /** Loebets gruppe: kontekstens (cache.json) foerst, ellers scorecardets etaper + race_class. */

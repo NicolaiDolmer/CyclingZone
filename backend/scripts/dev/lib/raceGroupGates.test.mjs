@@ -172,3 +172,20 @@ test("motorTestportReport: monument er egen udbrudsgruppe; samlet baand fra race
   assert.ok(card.raceGroupGates?.candidate);
   assert.match(renderTestportMarkdown(card), /## Løbsgrupper \(ejer 26\/10\)/);
 });
+
+test("Codex P2: kun flade etaper + holdtidskørsel giver stadig en klassementsfavorit", async () => {
+  const { routeFavourites } = await import("./raceGroupGates.mjs");
+  const dv = { sprint: 1 };
+  const cache = {
+    profiles: [
+      { stage_number: 1, profile_type: "ttt", demand_vector: dv },
+      { stage_number: 2, profile_type: "flat", demand_vector: dv },
+      { stage_number: 3, profile_type: "flat", demand_vector: dv },
+    ],
+    abilities: [{ rider_id: "a" }, { rider_id: "b" }, { rider_id: "c" }, { rider_id: "d" }],
+    entries: [{ rider_id: "a" }, { rider_id: "b" }, { rider_id: "c" }, { rider_id: "d" }],
+  };
+  const { raceFav } = routeFavourites(cache, { suitability: (ab) => ({ a: 4, b: 3, c: 2, d: 1 })[ab.rider_id] });
+  assert.ok(raceFav, "ikke MANGLER");
+  assert.deepEqual([...raceFav].sort(), ["a", "b", "c"]);
+});
