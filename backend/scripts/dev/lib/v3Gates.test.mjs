@@ -3,7 +3,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  evaluateV3Gates, GATE_STATUS, inBand, isSprinter, measureG16, measureG17, measureG18, measureG19, measureG2F,
+  breakawayRaceGroupOf, evaluateV3Gates, GATE_STATUS, inBand, measureGcFromBreakaway, isSprinter, measureG16, measureG17, measureG18, measureG19, measureG2F,
   measureSprintFinale, raceContextFromCache, raceGroupOfStages, V3_GATES, v3GatesApply,
 } from "./v3Gates.mjs";
 import { createJerseyTally } from "./jerseyTally.mjs";
@@ -28,6 +28,7 @@ const ALL_BANDS = {
   G18: { minFlatStages: 2, topSprinters: 2, sprinterWins: { min: 0.5 }, gcWinnerWins: { max: 0.25 } },
   G19: { gapTo10Median: { max: 100 } },
   G2F: { upperZoneSeconds: { flat: 300, rolling: 400 }, hardMaxSeconds: 600 },
+  gcFromBreakaway: { maxGcWinnerInBreakawayShare: 0.5, maxGcWinnerWonFromBreakawayShare: 0.5 },
 };
 
 test("raceGroupOfStages og inBand", () => {
@@ -161,12 +162,48 @@ test("alle gates groenne = ikke blokeret", () => {
   const seeds = [
     { gcWinner: "gc", komWinner: "x", komWinnerBreakawayPoints: 5, pointsWinner: "spr",
       abandons: { starters: 10, out: 1, byRole: { captain: { starters: 2, out: 0 }, helper: { starters: 8, out: 1 } } },
-      rows: [{ stage: 1, profile_type: "flat", breakawayMaxLead: 200, breakawayUnchased: false }, { stage: 3, gapTo10: 50, breakawayWon: false }] },
+      rows: [{ stage: 1, profile_type: "flat", breakawayMaxLead: 200, breakawayUnchased: false }, { stage: 3, gapTo10: 50, breakawayWon: false }],
+      gcWinnerBreak: { decisive: false, wonFromBreak: false } },
   ];
   const res = evaluateV3Gates({ raceResults: [raceResult("r1", 5, seeds)], revision: REV, contexts: new Map([["r1", ctx()]]), bands: ALL_BANDS });
-  assert.deepEqual(res.gates.map((g) => g.status), ["PASS", "PASS", "PASS", "PASS", "PASS"]);
+  assert.deepEqual(res.gates.map((g) => g.status), ["PASS", "PASS", "PASS", "PASS", "PASS", "PASS"]);
   assert.equal(res.blocked, false);
   assert.deepEqual(res.reasons, []);
+});
+
+test("#7258 gcFromBreakaway: andele samlet og pr. loebsgruppe, favoritter i udbrud", () => {
+  const seed = (decisive, wonFromBreak, rows = []) => ({ gcWinner: "gc", rows, gcWinnerBreak: { decisive, wonFromBreak } });
+  const rr = [
+    raceResult("short", 3, [seed(true, true), seed(false, false)]),
+    raceResult("week", 7, [seed(false, false, [{ breakawayGcFav: 1, breakawayStageFav: 0 }, { breakawayGcFav: 0, breakawayStageFav: 2 }, { breakawayGcFav: null, breakawayStageFav: null }])]),
+    raceResult("oneday", 1, [{ gcWinner: "x", rows: [{ breakawayGcFav: 0, breakawayStageFav: 1 }] }]),
+  ];
+  const m = measureGcFromBreakaway(rr, REV, new Map());
+  assert.equal(m.n, 3, "endagsloeb taeller ikke i klassementsandelen");
+  assert.equal(m.decidedShare, 1 / 3);
+  assert.equal(m.wonShare, 1 / 3);
+  assert.equal(m.byGroup.short.decidedShare, 0.5);
+  assert.equal(m.byGroup.week.decidedShare, 0);
+  assert.equal(m.byGroup.gt, undefined);
+  assert.deepEqual(m.favourites.week, { breakaways: 2, withGcFav: 1, withStageFav: 1, gcFavShare: 0.5, stageFavShare: 0.5 });
+  assert.equal(m.favourites.one_day.stageFavShare, 1);
+  assert.equal(breakawayRaceGroupOf(1), "one_day");
+  assert.equal(breakawayRaceGroupOf(4), "short");
+  assert.equal(breakawayRaceGroupOf(10), "week");
+  assert.equal(breakawayRaceGroupOf(21), "gt");
+});
+
+test("#7258 gcFromBreakaway doemmes mod de private graenser og fejler lukket", () => {
+  const rr = [raceResult("r1", 5, [{ gcWinner: "gc", gcWinnerBreak: { decisive: true, wonFromBreak: false } }, { gcWinner: "gc", gcWinnerBreak: { decisive: false, wonFromBreak: false } }])];
+  const judge = (bands) => evaluateV3Gates({ raceResults: rr, revision: REV, contexts: new Map([["r1", ctx()]]), bands }).gates.find((g) => g.id === "gcFromBreakaway");
+  assert.equal(judge({ gcFromBreakaway: { maxGcWinnerInBreakawayShare: 0.5, maxGcWinnerWonFromBreakawayShare: 0 } }).status, GATE_STATUS.PASS);
+  const fail = judge({ gcFromBreakaway: { maxGcWinnerInBreakawayShare: 0.4, maxGcWinnerWonFromBreakawayShare: 0 } });
+  assert.equal(fail.status, GATE_STATUS.FAIL);
+  assert.match(fail.why, /afgjorde/);
+  assert.equal(judge({ gcFromBreakaway: { maxGcWinnerInBreakawayShare: 0.5 } }).status, GATE_STATUS.MISSING, "en manglende graense blokerer");
+  assert.equal(judge(null).status, GATE_STATUS.MISSING);
+  const noMeasure = evaluateV3Gates({ raceResults: [raceResult("r1", 5, [{ gcWinner: "gc" }])], revision: REV, contexts: new Map(), bands: ALL_BANDS }).gates.find((g) => g.id === "gcFromBreakaway");
+  assert.equal(noMeasure.status, GATE_STATUS.MISSING, "uden gcWinnerBreak i scorecardet: MANGLER");
 });
 
 test("manglende privat baand blokerer (fail closed)", () => {

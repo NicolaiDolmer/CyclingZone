@@ -33,6 +33,7 @@ export const V3_GATES = Object.freeze([
   { id: "G18", issue: "#2757", label: "pointtroeje: en sprinter vinder i loeb med flere flade etaper; klassementsvinderen sjaeldent" },
   { id: "G19", issue: "#6486", label: "bjerg uden topankomst: nr. 10 inden for loftet i alle divisioner" },
   { id: "G2F", issue: "#6912", label: "forspring paa flad/rullende: intet over den oevre zone uden jagt-interesse, intet over den haarde graense" },
+  { id: "gcFromBreakaway", issue: "#7258", label: "klassementet afgoeres sjaeldent af et morgenudbrud; klassementsvinderen vinder meget sjaeldent en etape fra udbrud" },
 ]);
 
 const STAGE_RACE_GROUPS = ["stage_race", "gt"];
@@ -196,6 +197,51 @@ export function measureG2F(raceResults, revision, contexts, { upperZoneSeconds =
   return { n: usable.length, overUpperWithoutUnchased: overUpper, overHardMax: overHard };
 }
 
+/** #7258: loebsgruppen til udbrudsmaalingerne (strukturelle graenser, ikke balance). */
+export function breakawayRaceGroupOf(stages) {
+  const n = Number(stages) || 1;
+  return n <= 1 ? "one_day" : n <= 4 ? "short" : n >= 15 ? "gt" : "week";
+}
+
+/**
+ * #7258 gcFromBreakaway: andelen af etapeloeb x seeds hvor et morgenudbrud afgjorde
+ * klassementet (seed.gcWinnerBreak.decisive, gcFromBreakaway7258.mjs), og hvor
+ * klassementsvinderen vandt en etape fra udbrud (wonFromBreak). Samlet og pr.
+ * loebsgruppe. Desuden (maaling, ingen dom, #7258 B/C): andelen af dannede
+ * morgenudbrud med en klassementsfavorit (rows[].breakawayGcFav > 0) og med en
+ * etapefavorit (rows[].breakawayStageFav > 0), pr. loebsgruppe inkl. endagsloeb.
+ * null uden maaling (gcWinnerBreak mangler i alle seeds).
+ */
+export function measureGcFromBreakaway(raceResults, revision, contexts) {
+  const all = seedsOf(raceResults, revision, contexts);
+  const seeds = all.filter((x) => Number(x.stages) > 1 && x.seed?.gcWinnerBreak);
+  if (!seeds.length) return null;
+  const count = (xs) => ({
+    n: xs.length,
+    decided: xs.filter((x) => x.seed.gcWinnerBreak.decisive === true).length,
+    won: xs.filter((x) => x.seed.gcWinnerBreak.wonFromBreak === true).length,
+  });
+  const withShares = (c) => ({ ...c, decidedShare: share(c.decided, c.n), wonShare: share(c.won, c.n) });
+  const byGroup = {};
+  for (const g of ["short", "week", "gt"]) {
+    const xs = seeds.filter((x) => breakawayRaceGroupOf(x.stages) === g);
+    if (xs.length) byGroup[g] = withShares(count(xs));
+  }
+  const favourites = {};
+  for (const x of all) {
+    const g = breakawayRaceGroupOf(x.stages);
+    for (const r of x.seed?.rows ?? []) {
+      if (num(r.breakawayGcFav) === null && num(r.breakawayStageFav) === null) continue;
+      const f = (favourites[g] ??= { breakaways: 0, withGcFav: 0, withStageFav: 0 });
+      f.breakaways += 1;
+      if (Number(r.breakawayGcFav) > 0) f.withGcFav += 1;
+      if (Number(r.breakawayStageFav) > 0) f.withStageFav += 1;
+    }
+  }
+  for (const f of Object.values(favourites)) { f.gcFavShare = share(f.withGcFav, f.breakaways); f.stageFavShare = share(f.withStageFav, f.breakaways); }
+  return { ...withShares(count(seeds)), byGroup, favourites };
+}
+
 // ── Domme ────────────────────────────────────────────────────────────────────
 
 function gateResult(gate, status, value, why) {
@@ -270,6 +316,18 @@ export function evaluateV3Gates({ raceResults, revision, contexts = new Map(), b
       { what: "over den haarde graense", ok: g2f.overHardMax === 0 },
     ]);
     out.push(gateResult(by.G2F, j.status, g2f, j.failed.join("; ") || null));
+  }
+
+  // #7258: fail closed. Ingen maaling eller ingen private graenser = MANGLER.
+  const gfb = measureGcFromBreakaway(raceResults, revision, contexts);
+  const gfbBand = b.gcFromBreakaway ?? {};
+  if (!gfb) out.push(gateResult(by.gcFromBreakaway, GATE_STATUS.MISSING, null, "ingen maaling (gcWinnerBreak mangler i scorecardet)"));
+  else {
+    const j = judgeChecks([
+      { what: "klassementsvinderen i et udbrud der afgjorde loebet", ok: inBand(gfb.decidedShare, num(gfbBand.maxGcWinnerInBreakawayShare) === null ? null : { max: Number(gfbBand.maxGcWinnerInBreakawayShare) }) },
+      { what: "klassementsvinderen vandt en etape fra udbrud", ok: inBand(gfb.wonShare, num(gfbBand.maxGcWinnerWonFromBreakawayShare) === null ? null : { max: Number(gfbBand.maxGcWinnerWonFromBreakawayShare) }) },
+    ]);
+    out.push(gateResult(by.gcFromBreakaway, j.status, gfb, j.failed.join("; ") || null));
   }
 
   const blocking = out.filter((g) => g.status === GATE_STATUS.FAIL || g.status === GATE_STATUS.MISSING);

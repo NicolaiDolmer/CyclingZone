@@ -126,7 +126,7 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
   const itt = [];
   const gcFinal = [];
   const gcMargin = [];
-  const gcSeeds = { n: 0, member: 0, wonFromBreak: 0, known: false };
+  const gcSeeds = { n: 0, member: 0, wonFromBreak: 0, known: false, decided: 0, decidedKnown: 0 }; // #7258 decided
   for (const rr of raceResults) {
     const run = rr?.runs?.[revision];
     if (!run) { agg.missing += 1; continue; }
@@ -157,6 +157,8 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
         gcSeeds.n += 1;
         if (sr.some((r) => (r.breakawayRiderIds ?? []).includes(s.gcWinner))) gcSeeds.member += 1;
         if (sr.some((r) => r.breakawayWon === true && r.winnerId === s.gcWinner)) gcSeeds.wonFromBreak += 1;
+        // #7258: kun et morgenudbrud der faktisk afgjorde klassementet (gcFromBreakaway7258.mjs).
+        if (s.gcWinnerBreak) { gcSeeds.decidedKnown += 1; if (s.gcWinnerBreak.decisive) gcSeeds.decided += 1; }
       }
     }
   }
@@ -179,7 +181,8 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
     agg.favouriteBreakawayWins = { count: fav, ofBreakawayWins: share(fav, wins.length), breakawayWins: wins.length, ofRoadRuns: share(fav, road.length) };
   }
   if (gcSeeds.known) {
-    agg.gcWinnerFromBreak = { seeds: gcSeeds.n, member: gcSeeds.member, memberShare: share(gcSeeds.member, gcSeeds.n), wonFromBreak: gcSeeds.wonFromBreak, wonFromBreakShare: share(gcSeeds.wonFromBreak, gcSeeds.n) };
+    agg.gcWinnerFromBreak = { seeds: gcSeeds.n, member: gcSeeds.member, memberShare: share(gcSeeds.member, gcSeeds.n), wonFromBreak: gcSeeds.wonFromBreak, wonFromBreakShare: share(gcSeeds.wonFromBreak, gcSeeds.n),
+      ...(gcSeeds.decidedKnown ? { decided: gcSeeds.decided, decidedShare: share(gcSeeds.decided, gcSeeds.decidedKnown) } : {}) };
   }
   if (road.some((r) => has(r, "earlyCatch"))) {
     const withBreak = road.filter((r) => (r.breakawayRiderIds ?? []).length > 0);
@@ -507,6 +510,7 @@ export function sideBySideRows(card) {
   add("favorit-udbrudssejre (kaptajn vandt fra udbrud)", (a) => a.favouriteBreakawayWins?.count, (x) => fmtN(x, 0));
   add("favorit-udbrudssejre (andel af udbrudssejre)", (a) => a.favouriteBreakawayWins?.ofBreakawayWins, fmtPct);
   add("GC-vinder sad i udbrud (andel af etapeloeb x seeds)", (a) => a.gcWinnerFromBreak?.memberShare, fmtPct);
+  add("GC-vinder i et udbrud der afgjorde loebet (andel, #7258)", (a) => a.gcWinnerFromBreak?.decidedShare, fmtPct);
   add("GC-vinder vandt en etape fra udbrud (andel)", (a) => a.gcWinnerFromBreak?.wonFromBreakShare, fmtPct);
   add("tidlige indhentninger (andel af udbrud)", (a) => a.earlyCatches?.ofBreakaways, fmtPct);
   add("tidlige indhentninger med nyt udbrud (andel)", (a) => a.earlyCatches?.reformedShare, fmtPct);
@@ -606,6 +610,7 @@ export function v3GateValueText(g) {
     case "G17": return [...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.share)}`), `kaptajn ${fmtPct(x.captainRate)} / hjaelper ${fmtPct(x.helperRate)}`].join(" · ");
     case "G18": return `sprinter ${fmtPct(x.sprinterWins)} · klassementsvinder ${fmtPct(x.gcWinnerWins)} (n ${x.n}, ${x.races} loeb)`;
     case "G19": return `samlet ${fmtS(x.median)} (n ${x.n}) · ${Object.entries(x.byDivision ?? {}).map(([d, v]) => `${String(d).slice(0, 8)} ${fmtS(v.median)}`).join(" · ")}`;
+    case "gcFromBreakaway": return [`afgjort af udbrud ${fmtPct(x.decidedShare)} · vandt fra udbrud ${fmtPct(x.wonShare)} (n ${x.n})`, ...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.decidedShare)}/${fmtPct(v.wonShare)}`), ...Object.entries(x.favourites ?? {}).map(([k, v]) => `${k}: GC-fav ${fmtPct(v.gcFavShare)}, etapefav ${fmtPct(v.stageFavShare)} af ${v.breakaways} udbrud`)].join(" · "); // #7258
     case "G2F": return `${x.n} etaper · over oevre zone uden jagt-interesse ${x.overUpperWithoutUnchased ?? "-"} · over haard graense ${x.overHardMax ?? "-"}`;
     default: return "-";
   }
