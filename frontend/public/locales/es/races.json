@@ -946,6 +946,13 @@
       "protect": "trabajar o atacar",
       "all_out": "a tope"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Trabajar", "why": "Rueda para el jefe de filas. Fatiga real.", "today": "trabaja para el jefe de filas" },
+        "follow": { "step": "Seguir los ataques", "why": "Responde a cada ataque. Cuesta más fuerzas.", "today": "sigue los ataques" },
+        "free": { "step": "Correr a la ofensiva", "why": "Aprieta en las subidas y en el final.", "today": "corre a la ofensiva" }
+      }
+    },
     "roleWord": {
       "captain": "jefe de filas",
       "sprint_captain": "jefe de filas de sprint",

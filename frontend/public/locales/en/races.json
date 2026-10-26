@@ -929,6 +929,13 @@
       "protect": "work or attack",
       "all_out": "all out"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Work", "why": "Rides for the leader. Real fatigue.", "today": "works for the leader" },
+        "follow": { "step": "Follow the moves", "why": "Answers every attack. Costs more legs.", "today": "follows the moves" },
+        "free": { "step": "Ride aggressively", "why": "Presses on the climbs and in the finale.", "today": "rides aggressively" }
+      }
+    },
     "roleWord": {
       "captain": "captain",
       "sprint_captain": "sprint captain",

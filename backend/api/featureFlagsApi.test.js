@@ -134,6 +134,8 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     ability_cap_per_date_enabled: false,
 
     training_decision_card: false,
+
+    race_day_intention_enabled: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -189,6 +191,8 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     ability_cap_per_date_enabled: false,
 
     training_decision_card: false,
+
+    race_day_intention_enabled: false,
   });
 });
 
@@ -252,6 +256,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     ability_cap_per_date_enabled: false,
 
     training_decision_card: false,
+
+    race_day_intention_enabled: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -276,6 +282,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     ability_cap_per_date_enabled: false,
 
     training_decision_card: false,
+
+    race_day_intention_enabled: false,
   });
 });
 

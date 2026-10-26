@@ -929,6 +929,13 @@
       "protect": "arbejd eller angrib",
       "all_out": "alt ud"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Arbejd", "why": "Kører for lederen. Rigtig træthed.", "today": "arbejder for lederen" },
+        "follow": { "step": "Følg angrebene", "why": "Svarer på hvert angreb. Koster flere kræfter.", "today": "følger angrebene" },
+        "free": { "step": "Kør offensivt", "why": "Presser på stigningerne og i finalen.", "today": "kører offensivt" }
+      }
+    },
     "roleWord": {
       "captain": "kaptajn",
       "sprint_captain": "spurtkaptajn",
