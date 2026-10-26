@@ -366,8 +366,9 @@ export async function fetchOwnedExpiringRiders({ supabase, seasonNumber }) {
       .eq("team.is_ai", false)
       .eq("team.is_frozen", false)
       .order("id"));
-  } catch (error) {
-    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`, { cause: error });
+  } catch (err) {
+    const error = /** @type {Error} */ (err);
+    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`, { cause: err });
   }
   return (data || []).map((r) => ({
     id: r.id,
