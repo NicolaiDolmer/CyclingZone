@@ -1,4 +1,4 @@
-type RetirementStatus = {
+export type RetirementStatus = {
   announced_retirement?: unknown;
   retirement_after_season?: unknown;
 };

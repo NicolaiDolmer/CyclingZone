@@ -888,7 +888,7 @@ export default function RiderStatsPage() {
   // fordi selve beslutningen kræver den SAMME seedede motor-logik som backend
   // bruger ved cutover (announcedRetirementAfterSeason, riderProgression.js) og
   // derfor ikke kan genberegnes rent i klienten.
-  const [retirementStatus, setRetirementStatus] = useState(null);
+  const [retirementStatus, setRetirementStatus] = useState(/** @type {import("../lib/retirementNotice.ts").RetirementStatus | null} */ (null));
   const announcedRetirement = Boolean(retirementStatus?.announced_retirement);
   const [visits, setVisits]                 = useState(null);
   const [seasonRows, setSeasonRows]         = useState([]);
