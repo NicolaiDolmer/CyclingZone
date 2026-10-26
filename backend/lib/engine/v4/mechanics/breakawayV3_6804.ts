@@ -148,6 +148,8 @@ export function s5V3InterestedTeamIds(input: {
 export function s5V3RealisticLeadCeilingSeconds(profileType: ProfileType, interested: boolean): number {
   const t = S5_V3_BREAKAWAY_TUNING.p2;
   if (!interested) return t.unchasedLeadSeconds;
+  const ov = process.env.CZ_P2 ? JSON.parse(process.env.CZ_P2) : null;
+  if (ov && ov[profileType] != null) return ov[profileType];
   return t.interestedLeadSecondsByProfile[profileType] ?? t.interestedLeadSecondsDefault;
 }
 
@@ -168,6 +170,7 @@ export function s5V3AutoChaseIntensity(teamInterest: number, fullOrderForce: num
 
 /** P2.4 gaelder paa dette segment: P2 gaelder, segmentet er en stigning, og lad-gaa-fasen er slut. */
 export function s5V3ClimbChaseApplies(input: { p2Lead: boolean; segmentKind: string; letGoKm: number; chaseKm: number }): boolean {
+  if (String(process.env.CZ_ABL ?? "").includes("climb")) return false;
   return input.p2Lead && S5_V3_BREAKAWAY_TUNING.p2.climbChaseSegmentKinds.includes(input.segmentKind) && !(input.letGoKm > 0) && input.chaseKm > 0;
 }
 

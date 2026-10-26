@@ -1939,7 +1939,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   const normalizedGc = ctx.s5ProfilesV2 === true ? normalizeGcContext(ctx.gcContext) : null;
   const gcAbilityOf = normalizedGc ? raceGcAbilityModel(normalizedGc) : null;
   // #6804 P1 (KUN s5_profiles_v3, slukket): jagten paa kuperet i etapeloeb (breakawayV3_6804.ts).
-  const p1Hilly = s5V3HillyChaseApplies({ s5ProfilesV3: ctx.s5ProfilesV3, profileType: ctx.route.profile_type, gcContext: normalizedGc });
+  const p1Hilly = !String(process.env.CZ_ABL ?? "").includes("p1") && s5V3HillyChaseApplies({ s5ProfilesV3: ctx.s5ProfilesV3, profileType: ctx.route.profile_type, gcContext: normalizedGc });
   const p1FinaleWeightScale = s5V3FinaleWeightScale(p1Hilly, ctx.route.finale_type);
   const events: TimelineEvent[] = [];
   const breakawayGroups = findBreakawayGroups(state.groups);
@@ -1947,7 +1947,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // ogsaa naar udbruddet er vaek (indhentet): bogfoeringen koerer da alene.
   const gcContext = gcReactionActive(ctx) ? normalizeGcContext(ctx.gcContext) : null;
   // #6804 P6.1 (KUN s5_profiles_v3): klassementskontrol paa snor, kun i etapeloeb (endagsloeb uaendret).
-  const p6Control = ctx.s5ProfilesV3 === true && gcContext?.status === "standings";
+  const p6Control = !String(process.env.CZ_ABL ?? "").includes("p6") && ctx.s5ProfilesV3 === true && gcContext?.status === "standings";
   const anyReacting = Object.values(state.team_reactions ?? {}).some((r) => r.status === "reacting");
   const gcSetup = gcContext && (breakawayGroups.length > 0 || anyReacting) ? gcReactionSetup(state, ctx, gcContext) : null;
   if (breakawayGroups.length === 0) {
@@ -1988,7 +1988,7 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // uden daempning foer finalen og v3's lodtraekning paa jagt-gulvet.
   const chaseV3 = ctx.sharedGroupTime?.timeModelGeneration === 3 && BREAKAWAY_CHASE_V3_TUNING.profileTypes.includes(ctx.route.profile_type);
   // #6804 P2 (KUN s5_profiles_v3, etapeloeb): realistisk forspring (breakawayV3_6804.ts).
-  const p2Lead = s5V3RealisticLeadApplies({ s5ProfilesV3: ctx.s5ProfilesV3, chaseV3, gcContext: normalizedGc });
+  const p2Lead = !String(process.env.CZ_ABL ?? "").includes("p2") && s5V3RealisticLeadApplies({ s5ProfilesV3: ctx.s5ProfilesV3, chaseV3, gcContext: normalizedGc });
 
   // #6187 (KUN orders_gc_v3): et hold foerer aldrig jagten paa en gruppe med
   // egen mand i, og dets udbrydere sidder paa hjul ved en trussel mod holdets
