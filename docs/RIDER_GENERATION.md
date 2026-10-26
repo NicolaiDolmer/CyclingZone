@@ -303,6 +303,8 @@ Kontrakten i §8b2/§8b3 (U23-båndet for U23, akademibåndet for juniorer) er i
 
 Gruppernes størrelse (`seedYouthPools.js --regroup`) ændrer ikke hvordan ryttere fødes og er beskrevet i `YOUTH_RULES.md`.
 
+S5-rettelsen til #6668: `--lift-existing` afgrænser både nye kuld og eksisterende løft til truppens egen aktive ungdomsgruppe. Rangordenen planlægges stærkest først, og de eksisterende markørers evneloft kan bruges på alle søgte voksen-tiers, så diskrete kandidater ikke driver ranggulvet op over værdiloftet. Uden en lovlig kandidat bevares rytteren uændret og tælles særskilt i dry-run. Værdiloftet ændres ikke; gruppemålinger gemmes privat med `--out`.
+
 ## 8c. Den synlige test af generatoren ([#5283](https://github.com/NicolaiDolmer/CyclingZone/issues/5283))
 
 **Ejer-krav 15/9, ordret** (ved merge-go på PR #5278): *"Vi skal have lavet test inden naeste gang der laves nye ryttere, for at se at rytter generatoren virker ordentligt."* Gaten ligger FØR U23-ryttere genereres til AI-holdene ved S4-cutover ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md)).

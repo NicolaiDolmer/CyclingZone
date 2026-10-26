@@ -25,6 +25,8 @@ import {
   liftBlockedReason,
   summarizeExistingByTeam,
   summarizeLevels,
+  summarizeYouthGroups,
+  loadActiveAiTeams,
 } from "./generateYouthSquadsS4.js";
 import {
   mirrorPool,
@@ -802,4 +804,41 @@ test("S5: loftet begrænser kandidatvalget uden sænkning eller omvendt rangorde
     const rows = lift.rows.filter((r) => r.age === age);
     assert.ok(rows.every((r, i) => i === 0 || r.after >= rows[i - 1].after));
   }
+});
+
+test("S5: kun eksisterende, aktive grupper med den rigtige trup giver medlemskab", async () => {
+  const db = makeStore({
+    teams: [
+      { id: "a", is_ai: true, league_division_id: "senior", u23_league_division_id: "u23", junior_league_division_id: "closed" },
+      { id: "b", is_ai: true, league_division_id: "senior", u23_league_division_id: "junior", junior_league_division_id: "missing" },
+    ],
+    league_divisions: [
+      { id: "senior", squad: "senior", tier: 2, pool_index: 1 },
+      { id: "u23", squad: "u23", tier: 1, pool_index: 1 },
+      { id: "junior", squad: "junior", tier: 1, pool_index: 2 },
+      { id: "closed", squad: "junior", tier: 1, pool_index: 3, retired_at: "2026-10-25" },
+    ],
+  });
+  const teams = await loadActiveAiTeams(db);
+  assert.deepEqual(teams.find((t) => t.id === "a").youthSquads, ["u23"]);
+  assert.deepEqual(teams.find((t) => t.id === "b").youthSquads, []);
+  const report = summarizeYouthGroups({
+    teams, plan: { rows: [] }, lift: { rows: [
+      { teamId: "a", squad: "u23", before: 10, after: 20, changed: false },
+      { teamId: "a", squad: "junior", before: 90, after: 99, changed: false },
+    ] },
+  });
+  assert.equal(report.length, 1);
+  assert.equal(report[0].riders, 1);
+  assert.equal(report[0].before.mean, 10);
+  assert.equal(report[0].after.mean, 20);
+  assert.equal(report[0].maxOverCap, 0);
+  assert.deepEqual(db.writes, { inserts: [], updates: [], upserts: [] });
+});
+
+test("S5: de søgte voksen-tiers kan ramme et afgrænset mål uden stigende ranggulv", () => {
+  const row = plan().rows[0].payload;
+  const age = ageForSeason(row.birthdate, S);
+  const natural = rankBirthCandidates({ row, seed: row.archetype_draw.birth.seed, age, target: 60 });
+  assert.ok(natural.some((c) => c.birth.tier !== "domestique" && c.birth.cap === 60 && c.level === 60));
 });

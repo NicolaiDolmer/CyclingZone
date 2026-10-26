@@ -397,7 +397,7 @@ export function rankBirthCandidates({ row, seed, age, target, tries = LEVEL_MATC
     const recipes = [
       nativeMarker(s, age),
       ...LEVEL_MATCH_ADULT_TIERS.map((tier) => makeBirthMarker({ tier, seed: s, age })),
-      makeBirthMarker({ tier: LEVEL_MATCH_ADULT_TIERS[0], seed: s, age, cap: target }),
+      ...LEVEL_MATCH_ADULT_TIERS.map((tier) => makeBirthMarker({ tier, seed: s, age, cap: target })),
     ];
     recipes.forEach((birth, r) => {
       const level = levelFor(birth);
@@ -635,7 +635,7 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
         continue;
       }
       const ranked = rankCandidates({
-        row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target,
+        row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target: Math.min(target, ceiling),
       }).filter((c) => c.level > e.level && c.level <= ceiling);
       const pick = chooseBirth({
         payload: e.rider,
@@ -808,6 +808,10 @@ export async function loadActiveAiTeams(supabase) {
       id: t.id, name: t.name, tier: tierByPool.get(t.league_division_id),
       youthSquads: ["u23", "junior"].filter((squad) => pools.some((p) => p.id === t[`${squad}_league_division_id`] && p.squad === squad && !p.retired_at)),
       youthPools: Object.fromEntries(["u23", "junior"].map((squad) => [squad, t[`${squad}_league_division_id`]])),
+      youthPoolLabels: Object.fromEntries(["u23", "junior"].map((squad) => {
+        const pool = pools.find((p) => p.id === t[`${squad}_league_division_id`]);
+        return [squad, pool ? `${squad} D${pool.tier} G${pool.pool_index}` : null];
+      })),
     }));
 }
 
@@ -1161,6 +1165,41 @@ export function renderLevelMarkdown(levels, lift) {
   return L.join("\n");
 }
 
+/** Privat gruppemåling af de planlagte AI-ryttere; ingen identiteter i rapporten. */
+export function summarizeYouthGroups({ teams, plan, lift }) {
+  const groups = new Map();
+  for (const team of teams) {
+    for (const squad of team.youthSquads ?? []) {
+      const id = team.youthPools[squad];
+      if (!groups.has(id)) groups.set(id, { group: team.youthPoolLabels[squad], teams: new Set(), rows: [], fresh: [] });
+      const group = groups.get(id);
+      group.teams.add(team.id);
+      group.rows.push(...(lift?.rows ?? []).filter((r) => r.teamId === team.id && r.squad === squad));
+      group.fresh.push(...plan.rows.filter((r) => r.teamId === team.id && r.squad === squad));
+    }
+  }
+  return [...groups.values()].map(({ group, teams: members, rows, fresh }) => ({
+    group, teams: members.size, riders: rows.length, newRiders: fresh.length,
+    changed: rows.filter((r) => r.changed).length,
+    noFeasibleLift: rows.filter((r) => r.noFeasibleLift).length,
+    before: describe(rows.map((r) => r.before)),
+    after: describe([...rows.map((r) => r.after), ...fresh.map((r) => levelOf(r.mirror.abilities))]),
+    maxOverCap: Math.max(0, ...[...rows.filter((r) => r.changed), ...fresh].map((r) => {
+      const cap = aiValueCapForTier(teams.find((t) => t.id === r.teamId).tier);
+      return cap == null ? 0 : r.mirror.base_value - cap;
+    })),
+  })).sort((a, b) => a.group.localeCompare(b.group));
+}
+
+export function renderYouthGroupsMarkdown(groups) {
+  const lines = ["## AI pr. aktiv ungdomsgruppe (kun løftsberettigede ryttere)", "",
+    "| Gruppe | AI-hold | Ryttere før | Nye | Løft | Uden muligt løft | Niveau før (gns/median) | Niveau efter (gns/median) | Max over værdiloft (ændrede/nye) |",
+    "|---|---:|---:|---:|---:|---:|---|---|---:|"];
+  const level = (x) => x.n ? `${x.mean.toFixed(1)} / ${fmt(x.median)}` : "-";
+  for (const g of groups) lines.push(`| ${g.group} | ${g.teams} | ${g.riders} | ${g.newRiders} | ${g.changed} | ${g.noFeasibleLift} | ${level(g.before)} | ${level(g.after)} | ${g.maxOverCap} |`);
+  return lines.join("\n") + "\n";
+}
+
 async function main() {
   let args;
   try {
@@ -1235,9 +1274,10 @@ async function main() {
     ...population.load,
     aiSeniorBestAbility: await loadAiSeniorBestAbility(supabase, population.aiSeniorIds),
   });
+  const groups = args.liftExisting ? summarizeYouthGroups({ teams, plan, lift }) : [];
 
   if (args.json) {
-    console.log(JSON.stringify({ ...summary, lift: lift?.totals ?? null, levels }, null, 2));
+    console.log(JSON.stringify({ ...summary, lift: lift?.totals ?? null, levels, groups }, null, 2));
   } else {
     console.log("");
     console.log(`#5518 A6 - AI-ungdomstrupper til S${plan.targetSeason} (${args.apply ? "APPLY" : "DRY-RUN, read-only"})`);
@@ -1258,7 +1298,7 @@ async function main() {
   }
   if (args.out) {
     mkdirSync(dirname(args.out), { recursive: true });
-    writeFileSync(args.out, renderMarkdown(plan, summary) + (levels ? `\n${renderLevelMarkdown(levels, lift ?? { rows: [], totals: { riders: 0, changed: 0, overValueCap: 0 }, skipped: {} })}` : ""));
+    writeFileSync(args.out, renderMarkdown(plan, summary) + (levels ? `\n${renderLevelMarkdown(levels, lift ?? { rows: [], totals: { riders: 0, changed: 0, overValueCap: 0 }, skipped: {} })}` : "") + (groups.length ? `\n${renderYouthGroupsMarkdown(groups)}` : ""));
     console.log(`  rapport skrevet: ${relative(REPO_ROOT, args.out)}`);
   }
 
