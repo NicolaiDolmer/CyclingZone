@@ -12,6 +12,7 @@
 
 import { ABILITY_REGISTRY } from "../../../abilityRegistry.js";
 import { VALID_RACE_ROLES } from "../../../raceRoles.js";
+import { LUXURY_HELPER_ROLE } from "../mechanics/luxuryHelper5982.ts"; // #5982
 import type { AbilityKey, EffortLevel, Entrant, RiderRole } from "../types.ts";
 
 // abilityRegistry.js's REGISTRY_ABILITY_KEYS er allerede de 15 noegler i
@@ -71,6 +72,7 @@ export function normalizeTeamId(teamId: unknown): string | null {
 
 /** Ukendt/manglende rolle -> "free_role" (VALID_RACE_ROLES's laveste-antagelse-rolle). */
 export function normalizeRole(role: unknown): RiderRole {
+  if (role === LUXURY_HELPER_ROLE) return "helper"; // #5982: sidste mand er en hjaelper i motoren (+ markoeren nedenfor)
   return typeof role === "string" && VALID_ROLE_SET.has(role) ? (role as RiderRole) : "free_role";
 }
 
@@ -115,6 +117,7 @@ export function entrantFromAbilitiesRow(row: AbilitiesRow, opts: EntrantAdapterO
     // rider_derived_abilities har ingen team_id-kolonne, men en kalder der
     // beriger raekken (harness, tests) slipper for at sende feltet to gange.
     team_id: normalizeTeamId(opts.teamId ?? row.team_id),
+    ...(opts.role === LUXURY_HELPER_ROLE ? { luxury_helper: true as const } : {}), // #5982
   };
 }
 

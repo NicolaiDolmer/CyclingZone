@@ -84,6 +84,7 @@ import type {
 } from "../types.ts";
 import { TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { protectedRoleOrderWithCoCaptain, splitLeaderBonus } from "./sharedCaptain.ts";
+import { applyLastManWork, lastManView } from "./luxuryHelper5982.ts"; // #5982
 
 export { TEAM_PLAY_EXTRA_TUNING as TEAM_PLAY_TUNING };
 
@@ -376,11 +377,14 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
   const profileType = ctx.route.profile_type;
   const ordersGcV3 = ctx.ordersGcV3 === true;
   const coCaptain = ctx.s5ProfilesV3 === true; // #5981: delt kaptajn (sharedCaptain.ts)
+  // #5982 (KUN s5_profiles_v3): sidste mand (luxuryHelper5982.ts). Uden en: null og ctx.entrants (byte-identisk).
+  const lastMan = coCaptain ? lastManView(state, ctx) : null;
+  const entrants = lastMan?.entrants ?? ctx.entrants;
   /** rider_id -> signeret CP-fraktion dette segment (negativ = pris, positiv = lae). */
   const deltas = new Map<string, number>();
 
   for (const group of state.groups) {
-    for (const team of buildGroupTeamContexts(group, ctx.entrants, state.riders, profileType, coCaptain)) {
+    for (const team of buildGroupTeamContexts(group, entrants, state.riders, profileType, coCaptain)) {
       if (team.workerIds.length === 0) continue;
 
       // 1. Hjaelperne betaler. Prisen er en andel af DERES EGEN CP (garanti 4,
@@ -392,7 +396,7 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
       let fullPricePaid = 0;
       let fullPriceCount = 0;
       for (const workerId of team.workerIds) {
-        const entrant = ctx.entrants[workerId];
+        const entrant = entrants[workerId];
         if (!entrant) continue;
         const fraction = baseCostFraction(entrant.role, profileType, tuning);
         if (fraction <= 0) continue;
@@ -416,7 +420,7 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
       // #5580 (M1 punkt 5): en hjaelper paa `all_out` arbejder for sig selv
       // (prisen er 0 ovenfor) og taeller derfor heller ikke som stoette. Foer
       // gav han kaptajnen laeskaerm gratis via antallet i supportShare.
-      const share = supportShare(countSupportingWorkers(team.workerIds, ctx.entrants), tuning);
+      const share = supportShare(countSupportingWorkers(team.workerIds, entrants), tuning);
       if (share <= 0) continue;
 
       // Garanti 1 (bevarelse): bonussen kan aldrig overstige det holdet
@@ -441,6 +445,7 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
     }
   }
 
+  if (lastMan) applyLastManWork(lastMan, deltas, state, ctx, baseCostFraction("helper", profileType, tuning), (e) => helperCostMultiplier(e, tuning), tuning); // #5982
   if (deltas.size === 0) return { state, events: [] };
 
   const riders: Record<string, RiderState> = { ...state.riders };

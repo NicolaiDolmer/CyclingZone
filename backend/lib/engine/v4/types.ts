@@ -178,6 +178,9 @@ export type Entrant = {
   // led oven i formen. Klemmes IKKE af formens 0-100-skala, saa en rytter med form 100
   // ogsaa faar sin top. Udeladt = ingen top/dyk paa dagen (byte-identisk med foer).
   form_peak_points?: number | null;
+  // #5982 (valgfrit, KUN s5_profiles_v3): sidste mand (mechanics/luxuryHelper5982.ts). Rollen er "helper";
+  // entrantAdapter saetter markoeren fra race_role 'luxury_helper'. Udeladt = byte-identisk med foer.
+  luxury_helper?: true;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
