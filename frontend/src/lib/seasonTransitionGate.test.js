@@ -75,6 +75,7 @@ test("#7282: advarsler vises som gul linje og blokerer ikke", () => {
   });
   assert.equal(gate.blocked, false);
   const row = gate.rows.find((r) => r.key === "season_break");
+  assert.ok(row);
   assert.equal(row.ok, false);
   assert.equal(row.critical, false);
   assert.equal(row.label, "Ingen dage uden løb før næste sæson");
