@@ -355,3 +355,8 @@ En ny rytters PRIMÆRE type har to mulige kilder (`primaryTypeMode` i `generateF
 - [`GAME_INVARIANTS.md`](GAME_INVARIANTS.md) — rytter-økonomi: værdi, løn, kontrakter, præmier
 - [`MASTERPLAN.md`](MASTERPLAN.md) — prioriteret kø
 - Issues: [#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669) (navne-pools), [#1420](https://github.com/NicolaiDolmer/CyclingZone/issues/1420) (mix-presets), [#1688](https://github.com/NicolaiDolmer/CyclingZone/issues/1688) (AI-fyld), [#2065](https://github.com/NicolaiDolmer/CyclingZone/issues/2065) (værdiloft-incident), [#4172](https://github.com/NicolaiDolmer/CyclingZone/issues/4172) (D4-spredning), [#4178](https://github.com/NicolaiDolmer/CyclingZone/issues/4178) (navne-udvidelse + dette dokument)
+
+
+### Reference ceiling for the pending AI youth lift (#6668, owner 26/10)
+
+Each planned lift is limited by an age-specific upper reference from human youth teams. The policy is supplied from a private `balance-internals/` file with `--level-policy`; its calibration and measurements remain private. Existing riders already above that reference stay unchanged and receive no further lift (owner clarification 26/10). No rider is lowered. Missing reference data or a changed/new rider exceeding the reference blocks apply before the first write. Dry-run reports distinguish those existing exceptions from violations. Apply still requires the owner's explicit go after reviewing the fresh private report. Wave patch notes are collected at close-out.

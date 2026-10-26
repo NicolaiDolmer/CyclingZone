@@ -294,3 +294,8 @@ Hver slice = egen spec der citerer denne fil, egen PR, egen sim hvor markeret. I
 **Kode (verificér altid mod denne):** `backend/lib/academyFlag.js` · `academyIntake.js` · `academyGraduation.js` · `academyGraduationSweep.js` · `academyTransfer.js` · `stuckAcademyGraduates.js` · `sundayIntakeTick.js` · `academyIntakeExpirySweep.js` · `academyPnl.js` · `riderSeasonAge.js` · `frontend/src/pages/AcademyPage.jsx` · `database/2026-06-25-academy-promote-demote.sql`
 
 **Design:** `docs/design/PAGE_TEMPLATES.md` (bindende) · `docs/design/youth-tiers/` (wireframes + brief)
+
+
+### Reference ceiling for the pending AI youth lift (#6668, owner 26/10)
+
+Each planned lift is limited by an age-specific upper reference from human youth teams. The policy is supplied from a private `balance-internals/` file with `--level-policy`; its calibration and measurements remain private. Existing riders already above that reference stay unchanged and receive no further lift (owner clarification 26/10). No rider is lowered. Missing reference data or a changed/new rider exceeding the reference blocks apply before the first write. Dry-run reports distinguish those existing exceptions from violations. Apply still requires the owner's explicit go after reviewing the fresh private report. Wave patch notes are collected at close-out.

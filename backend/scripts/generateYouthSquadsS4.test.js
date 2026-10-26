@@ -842,3 +842,66 @@ test("S5: de søgte voksen-tiers kan ramme et afgrænset mål uden stigende rang
   const natural = rankBirthCandidates({ row, seed: row.archetype_draw.birth.seed, age, target: 60 });
   assert.ok(natural.some((c) => c.birth.tier !== "domestique" && c.birth.cap === 60 && c.level === 60));
 });
+
+test("reference ceiling uses an interpolated quantile and rejects an invalid policy", async () => {
+  const { buildLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  assert.equal(buildLevelCeilings(new Map([[18, [10, 20, 30, 40]]]), { upperQuantile: 0.5 }).get(18), 25);
+  assert.throws(() => buildLevelCeilings(new Map(), { upperQuantile: NaN }), /upperQuantile/);
+});
+
+test("reference ceiling bounds the selected birth and blocks changed outliers before writes", async () => {
+  const { auditYouthLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  const riders = existingAiRiders();
+  const ages = [...new Set(riders.map(r => ageForSeason(r.birthdate, S)))];
+  const levelCeilings = new Map(ages.map(age => [age, 30]));
+  const teamsById = new Map(TEAMS.map(t => [t.id, t]));
+  const lift = planYouthLift({ riders, teamsById, targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({lo: 65, hi: 90}), {season: S}), levelCeilings, ...MODELS });
+  assert.ok(lift.rows.filter(r => r.changed).length);
+  for (const r of lift.rows.filter(r => r.changed)) {
+    assert.ok(r.after <= levelCeilings.get(r.age));
+    assert.equal(r.after, levelOf(r.mirror.abilities));
+  }
+  const row = riders[0];
+  const audit = auditYouthLevelCeilings({riders: [{...row, level: 80}], lift: {rows: [{riderId: row.id, after: 81, changed: true}]}, newRows: [], levelCeilings, targetSeason: S});
+  assert.equal(audit.violations.length, 1);
+  assert.match(liftBlockedReason({totals: {}, ceilingAudit: audit}), /reference/);
+});
+
+test("missing reference data and a fresh birth above the ceiling fail closed", async () => {
+  const { auditYouthLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  const row = existingAiRiders()[0];
+  const age = ageForSeason(row.birthdate, S);
+  const missing = auditYouthLevelCeilings({riders: [{...row, level: 10}], lift: {rows: []}, newRows: [], levelCeilings: new Map(), targetSeason: S});
+  assert.equal(missing.missing.length, 1);
+  const fresh = auditYouthLevelCeilings({riders: [], lift: {rows: []}, newRows: [{age, mirror: {abilities: {climbing: 40}}}], levelCeilings: new Map([[age, 20]]), targetSeason: S});
+  assert.equal(fresh.violations.length, 1);
+});
+
+
+test("existing riders above the reference remain unchanged, never lowered or raised", async () => {
+  const { auditYouthLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  const riders = existingAiRiders().map(r => ({...r, level: 80}));
+  const ages = [...new Set(riders.map(r => ageForSeason(r.birthdate, S)))];
+  const levelCeilings = new Map(ages.map(a => [a, 30]));
+  const lift = planYouthLift({riders, teamsById: new Map(TEAMS.map(t => [t.id, t])), targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({lo: 65, hi: 90}), {season: S}), levelCeilings, ...MODELS});
+  assert.ok(lift.rows.every(r => !r.changed && r.after === r.before));
+  const audit = auditYouthLevelCeilings({riders, lift, newRows: [], levelCeilings, targetSeason: S});
+  assert.equal(audit.violations.length, 0);
+  assert.equal(audit.existingAbove.length, riders.length);
+});
+
+
+test("a private level policy cannot be silently ignored outside lift mode", () => {
+  assert.throws(() => parseArgs(["--juniors=0", "--match-human-level", "--level-policy=balance-internals/test.json"]), /requires --lift-existing/);
+});
+
+test("private markdown records missing reference, violations and unchanged exceptions", async () => {
+  const { renderCeilingAudit } = await import("./generateYouthSquadsS4.js");
+  const text = renderCeilingAudit({checked: 12, missing: [{}], violations: [], existingAbove: [{age: 18, level: 40, ceiling: 30}]});
+  assert.match(text, /missing: 1/);
+  assert.match(text, /violations: 0/);
+  assert.match(text, /existingAbove: 1/);
+  assert.match(text, /40/);
+});

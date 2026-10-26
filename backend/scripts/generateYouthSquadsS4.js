@@ -232,7 +232,10 @@ export function parseArgs(argv) {
   const liftExisting = flag("lift-existing");
   const matchHumanLevel = flag("match-human-level") || liftExisting;
 
-  return { juniors, apply, ownerGo, json: get("json") === true, season, seed: seed >>> 0, out, matchHumanLevel, liftExisting };
+  const policyRaw = get("level-policy");
+  if (policyRaw !== undefined && !liftExisting) throw new Error("--level-policy requires --lift-existing");
+  const levelPolicy = policyRaw === undefined ? null : assertBalanceInternalsPath(policyRaw, { flag: "--level-policy" });
+  return { levelPolicy, juniors, apply, ownerGo, json: get("json") === true, season, seed: seed >>> 0, out, matchHumanLevel, liftExisting };
 }
 
 /**
@@ -355,6 +358,44 @@ export function levelQuantile(sorted, u) {
   return sorted[i];
 }
 
+/** Upper reference policy is supplied privately; no balance setting is embedded here. */
+export function buildLevelCeilings(profile, { upperQuantile } = {}) {
+  if (!Number.isFinite(upperQuantile) || upperQuantile < 0 || upperQuantile > 1) {
+    throw new Error("Private level policy requires upperQuantile in [0,1]");
+  }
+  return new Map([...profile].map(([age, levels]) => {
+    const xs = levels.filter(Number.isFinite).slice().sort((a, b) => a - b);
+    if (!xs.length) throw new Error("Empty human reference age");
+    const index = (xs.length - 1) * upperQuantile;
+    return [age, xs[Math.floor(index)] + (xs[Math.ceil(index)] - xs[Math.floor(index)]) * (index % 1)];
+  }));
+}
+
+/** Audit the complete scoped population, including unchanged/unmarked riders and fresh births. */
+export function auditYouthLevelCeilings({ riders, lift, newRows, levelCeilings, targetSeason }) {
+  const selected = new Map((lift?.rows ?? []).map(r => [r.riderId, r]));
+  const rows = riders.map(r => ({ riderId: r.id, age: ageForSeason(r.birthdate, targetSeason), level: selected.get(r.id)?.after ?? r.level, before: r.level, changed: selected.get(r.id)?.changed === true }));
+  rows.push(...newRows.map(r => ({ age: r.age, level: levelOf(r.mirror.abilities) })));
+  const missing = [], violations = [], existingAbove = [];
+  for (const row of rows) {
+    const ceiling = levelCeilings.get(row.age);
+    if (!Number.isFinite(ceiling) || !Number.isFinite(row.level)) missing.push(row);
+    else if (row.level > ceiling) {
+      if (!row.changed && row.level === row.before) existingAbove.push({ ...row, ceiling });
+      else violations.push({ ...row, ceiling });
+    }
+  }
+  return { checked: rows.length, missing, violations, existingAbove };
+}
+
+/** Private report: make approved exceptions distinguishable from blocked plans. */
+export function renderCeilingAudit(audit) {
+  if (!audit) return "";
+  return "\n## Human reference audit\n\n"
+    + `checked: ${audit.checked} · missing: ${audit.missing.length} · violations: ${audit.violations.length} · existingAbove: ${audit.existingAbove.length}\n\n`
+    + "```json\n" + JSON.stringify(audit, null, 2) + "\n```\n";
+}
+
 /** Truppens eget fødsels-bånd for en alder (samme valg som planen altid har truffet). */
 function nativeMarker(seed, age) {
   return age >= U23_BIRTH_AGE_MIN && age <= U23_BIRTH_AGE_MAX
@@ -413,11 +454,13 @@ export function rankBirthCandidates({ row, seed, age, target, tries = LEVEL_MATC
  * hver kandidat der prøves. Ligger alle over loftet, returneres den bedste med
  * `overValueCap: true`, så apply-gaten blokerer som før.
  */
-function chooseBirth({ payload, candidates, valueCap, mirrorOpts, idHint }) {
+function chooseBirth({ payload, candidates, valueCap, mirrorOpts, idHint, levelCeiling = Infinity, levelFloor = -Infinity }) {
   let first = null;
   for (const c of candidates) {
     const draw = { primary: payload.archetype_draw.primary, secondary: payload.archetype_draw.secondary ?? null, birth: c.birth };
     const mirror = mirrorDerive({ ...payload, archetype_draw: draw, id: idHint }, mirrorOpts);
+    const actualLevel = levelOf(mirror.abilities);
+    if (actualLevel > levelCeiling || actualLevel <= levelFloor) continue;
     const over = valueCap != null && mirror.base_value != null && mirror.base_value > valueCap;
     const pick = { draw, mirror, level: c.level, overValueCap: over };
     if (!first) first = pick;
@@ -589,7 +632,7 @@ export function planYouthSquads({
  * @param {number} args.targetSeason
  * @param {Map<number,number[]>} args.levelProfile  fra buildHumanLevelProfile
  */
-export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel, groupedOnly = false, rankCandidates = rankBirthCandidates }) {
+export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel, groupedOnly = false, rankCandidates = rankBirthCandidates, levelCeilings = null }) {
   if (!(levelProfile instanceof Map)) throw new Error("planYouthLift: levelProfile er påkrævet");
   const mirrorOpts = { seasonNumber: targetSeason, valuationModel, productionValuationModel };
   const eligible = [];
@@ -623,15 +666,17 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
     // valgte niveau. Et fremadgående gulv kan ellers ratchette op, når de
     // diskrete kandidater overskyder målet, indtil næste hold rammer værdiloftet.
     // Den uændrede rytter er altid et sikkert alternativ inden for rangordenen.
-    let ceiling = Infinity;
+    let ceiling = levelCeilings ? levelCeilings.get(age) : Infinity;
+    if (!Number.isFinite(ceiling) && levelCeilings) throw new Error("Missing human reference ceiling for age");
     const ageRows = [];
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
-      const target = levelQuantile(profile, (i + 0.5) / list.length);
-      const base = { riderId: e.rider.id, teamId: e.rider.team_id, squad: e.rider.squad, age, before: e.level, target };
+      const rawTarget = levelQuantile(profile, (i + 0.5) / list.length);
+      const target = rawTarget == null ? null : Math.min(rawTarget, ceiling);
+      const base = { riderId: e.rider.id, teamId: e.rider.team_id, squad: e.rider.squad, age, before: e.level, target, ...(levelCeilings ? { referenceCeiling: levelCeilings.get(age) } : {}) };
       if (target == null || target <= e.level) {
         ageRows.push({ ...base, after: e.level, changed: false, overValueCap: false });
-        ceiling = e.level;
+        ceiling = Math.min(ceiling, e.level);
         continue;
       }
       const ranked = rankCandidates({
@@ -643,16 +688,18 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
         valueCap: aiValueCapForTier(e.team.tier),
         mirrorOpts,
         idHint: e.rider.id,
+        levelCeiling: levelCeilings ? ceiling : Infinity,
+        levelFloor: levelCeilings ? e.level : -Infinity,
       });
       if (!pick || pick.overValueCap) {
         ageRows.push({ ...base, after: e.level, changed: false, overValueCap: false, noFeasibleLift: true });
-        ceiling = e.level;
+        ceiling = Math.min(ceiling, e.level);
         continue;
       }
-      ceiling = pick.level;
+      ceiling = levelCeilings ? levelOf(pick.mirror.abilities) : pick.level;
       ageRows.push({
         ...base,
-        after: pick.level,
+        after: levelCeilings ? levelOf(pick.mirror.abilities) : pick.level,
         changed: true,
         overValueCap: pick.overValueCap,
         // Kun fødsels-markøren skiftes; resten af archetype_draw bevares.
@@ -1005,6 +1052,9 @@ export async function loadLevelInputs(supabase, aiTeamIds) {
 
 /** Grund til at et løft ikke må anvendes (null = ok). Tjekkes FØR applyPlan skriver nye kuld (#6668). */
 export function liftBlockedReason(lift) {
+  if (lift?.ceilingAudit && (lift.ceilingAudit.missing.length || lift.ceilingAudit.violations.length)) {
+    return "STOP: human reference ceiling not satisfied; apply blocked before first write";
+  }
   if (lift?.totals?.rankFloorUnmet > 0) {
     return `STOP: ${lift.totals.rankFloorUnmet} løft kan ikke bevare rangordenen (ingen kandidat når gulvet) — apply blokeret før første skrivning (#6668).`;
   }
@@ -1111,6 +1161,7 @@ export async function applyLift(supabase, lift, {
   log = console.log,
   writeRestore = () => {},
 } = {}) {
+  if (liftBlockedReason(lift)) throw new Error(liftBlockedReason(lift));
   if (lift.totals.overValueCap > 0) {
     throw new Error(`STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret (#2065)`);
   }
@@ -1136,10 +1187,13 @@ export async function applyLift(supabase, lift, {
     .in("id", chunk)
     .order("id"));
   const byId = new Map(persisted.map((r) => [r.id, r]));
+  const persistedLevels = changed.some(r => Number.isFinite(r.referenceCeiling)) ? await loadLevels(supabase, ids) : null;
   const mismatches = [];
   for (const r of changed) {
     const p = byId.get(r.riderId);
-    if (!p || p.base_value !== r.mirror.base_value || p.primary_type !== r.mirror.primary_type) {
+    if (!p || p.base_value !== r.mirror.base_value || p.primary_type !== r.mirror.primary_type
+      || (Number.isFinite(r.referenceCeiling) && (!Number.isFinite(persistedLevels?.get(r.riderId))
+        || persistedLevels.get(r.riderId) > r.referenceCeiling || persistedLevels.get(r.riderId) < r.before))) {
       // rider-type-write-ok: afvigelses-rapport (læst tilbage efter derive), skrives aldrig til riders.
       mismatches.push({ id: r.riderId, expected: { base_value: r.mirror.base_value, primary_type: r.mirror.primary_type }, got: p ?? null });
     }
@@ -1238,12 +1292,16 @@ async function main() {
   const valuationModel = await loadValuationModel(supabase) ?? loadValuationModelById(DEFAULT_VALUATION_MODEL_ID);
   const productionValuationModel = await loadProductionValueModel(supabase);
 
+  if (args.liftExisting && !args.levelPolicy) throw new Error("--lift-existing requires --level-policy from balance-internals");
+  const levelPolicy = args.levelPolicy ? JSON.parse(readFileSync(args.levelPolicy, "utf8")) : null;
+  if (levelPolicy) buildLevelCeilings(new Map(), levelPolicy);
   const activeTeams = await loadActiveAiTeams(supabase);
   const teams = args.liftExisting ? activeTeams.filter((t) => t.youthSquads.length > 0) : activeTeams;
   const population = await loadPopulation(supabase, teams.map((t) => t.id));
   // #6668: menneskeholdenes ungdoms-niveau pr. alder (målsæsonens alders-akse).
   const levelInputs = args.matchHumanLevel ? await loadLevelInputs(supabase, teams.map((t) => t.id)) : null;
   const levelProfile = levelInputs ? buildHumanLevelProfile(levelInputs.humanRows, { season: args.season }) : null;
+  const levelCeilings = levelPolicy ? buildLevelCeilings(buildHumanLevelProfile(levelInputs.humanRows, { season: args.season, minSamples: 1 }), levelPolicy) : null;
   const plan = planYouthSquads({
     teams,
     juniorsPerTeam: args.juniors,
@@ -1265,8 +1323,13 @@ async function main() {
       valuationModel,
       productionValuationModel,
       groupedOnly: true,
+      levelCeilings,
     })
     : null;
+  if (lift && levelCeilings) {
+    const scopedRiders = levelInputs.aiRiders.filter(r => teams.find(t => t.id === r.team_id)?.youthSquads.includes(r.squad));
+    lift.ceilingAudit = auditYouthLevelCeilings({ riders: scopedRiders, lift, newRows: plan.rows, levelCeilings, targetSeason: args.season });
+  }
   const levels = levelProfile
     ? summarizeLevels({ humanProfile: levelProfile, lift: lift ?? { rows: [] }, newRows: plan.rows })
     : null;
@@ -1277,7 +1340,7 @@ async function main() {
   const groups = args.liftExisting ? summarizeYouthGroups({ teams, plan, lift }) : [];
 
   if (args.json) {
-    console.log(JSON.stringify({ ...summary, lift: lift?.totals ?? null, levels, groups }, null, 2));
+    console.log(JSON.stringify({ ...summary, lift: lift?.totals ?? null, ceilingAudit: lift?.ceilingAudit ?? null, levels, groups }, null, 2));
   } else {
     console.log("");
     console.log(`#5518 A6 - AI-ungdomstrupper til S${plan.targetSeason} (${args.apply ? "APPLY" : "DRY-RUN, read-only"})`);
@@ -1298,7 +1361,7 @@ async function main() {
   }
   if (args.out) {
     mkdirSync(dirname(args.out), { recursive: true });
-    writeFileSync(args.out, renderMarkdown(plan, summary) + (levels ? `\n${renderLevelMarkdown(levels, lift ?? { rows: [], totals: { riders: 0, changed: 0, overValueCap: 0 }, skipped: {} })}` : "") + (groups.length ? `\n${renderYouthGroupsMarkdown(groups)}` : ""));
+    writeFileSync(args.out, renderMarkdown(plan, summary) + (levels ? `\n${renderLevelMarkdown(levels, lift ?? { rows: [], totals: { riders: 0, changed: 0, overValueCap: 0 }, skipped: {} })}` : "") + (groups.length ? `\n${renderYouthGroupsMarkdown(groups)}` : "") + renderCeilingAudit(lift?.ceilingAudit));
     console.log(`  rapport skrevet: ${relative(REPO_ROOT, args.out)}`);
   }
 
