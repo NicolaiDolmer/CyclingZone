@@ -230,7 +230,7 @@ function buildNotificationCopy({ eventType, riderName, raceName, params }) {
   switch (eventType) {
     case CAREER_EVENT_TYPES.MAIDEN_WIN:
       return {
-        title: "Maiden victory",
+        title: "Rider's first win",
         message: race ? `${rider} won their first professional race: ${race}.` : `${rider} won their first professional race.`,
         titleCode: "notif.careerMilestone.maidenWin.title",
         messageCode: "notif.careerMilestone.maidenWin.message",

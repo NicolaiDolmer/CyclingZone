@@ -77,7 +77,7 @@ test("data genbruges fra useScouting — ingen ny fetch-logik, kun requestEstima
 });
 
 test("ryttere uden bånd viser 'no forecast yet' i muted, ingen tankestreg i selve teksten", () => {
-  const projectedBlock = src.match(/key: "projected",[\s\S]{0,700}?\n {4}\},/);
+  const projectedBlock = src.match(/key: "projected",[\s\S]{0,1200}?\n {4}\},/);
   assert.ok(projectedBlock, "projected-kolonnen skal findes");
   assert.match(projectedBlock[0], /development\.noForecast/, "no-bånd-grenen skal bruge development.noForecast-nøglen");
   assert.match(projectedBlock[0], /text-cz-3/, "no-bånd-teksten skal være muted (text-cz-3)");

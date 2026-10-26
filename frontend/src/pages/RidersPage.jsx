@@ -23,7 +23,7 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
 import { useScouting } from "../lib/useScouting.js";
 import TeamCell from "../components/rider/TeamCell";
-import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
+import { ageBadgeKey, getRiderAge, seasonNumberFromReferenceYear } from "../lib/riderAge";
 import { useActiveSeasonYear } from "../hooks/useActiveSeasonYear.js";
 import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import RidersEmptyState from "../components/RidersEmptyState";
@@ -718,6 +718,7 @@ export default function RidersPage() {
           showTeamFilter={false}
           nationalities={nationalities}
           showAiToggle={true}
+          contractSeasonNumber={seasonNumberFromReferenceYear(seasonYear)}
         />
       </div>
 

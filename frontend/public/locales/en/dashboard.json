@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {1 auction ends within the hour} other {# auctions end within the hour}}",
     "squadSelectionMissing": "Squad selection missing for {race}",
     "notTrainedToday": "You have not trained today",
-    "boardPlanMissing": "No board plan negotiated yet"
+    "boardPlanMissing": "No board plan negotiated yet",
+    "nextValueUpdate": "Next value update: {when}",
+    "nextAcademyIntake": "Next academy intake: {when}"
   },
   "seasonStart": {
     "title": "Season {number}: get started",
@@ -197,7 +199,7 @@
       "unknownRider": "Your rider",
       "viewRace": "View race",
       "headline": {
-        "maidenWin": "Maiden victory",
+        "maidenWin": "Rider's first win",
         "firstPodium": "First podium",
         "firstJersey": "First jersey",
         "clubMilestoneWin": "Club milestone"
@@ -431,8 +433,8 @@
       "byDivision": "Set by your division, not your squad"
     },
     "salaryDetail": {
-      "productionS3": "Season 3 wage system. Your current contracts are locked and unchanged.",
-      "seasonSwitch": "Season {next} recalculates every wage from delivery at cutover. Your current contracts are already signed, so this season's number stays locked until then."
+      "productionS3": "Wages from your contracts. A rider whose contract runs out is shown at his extension wage.",
+      "seasonSwitch": "Season {next} wages are the wages in your contracts. A rider whose contract runs out is shown at the wage he gets if you extend him."
     },
     "loanInterestDetail": "Interest accrued on your active loans' outstanding debt. Added to the loan itself, not deducted from net.",
     "assumption": "Assumes your current squad, no transfers, and the season {next} wage system.",

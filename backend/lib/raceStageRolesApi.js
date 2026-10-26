@@ -14,12 +14,12 @@
 
 import { VALID_RACE_ROLES, validEffortsFor } from "./raceRoles.js";
 import { loadAbandonedRiderIds } from "./raceIncidents.js";
-import { suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
+import { buildRouteMatch, ROUTE_MATCH_STAGE_COLUMNS } from "./routeMatch.js"; // #6207
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { isStageLocked } from "./raceTeamOrdersApi.js";
 import { stageVersions } from "./stageRolesWriteScope.ts";
-import { teamWillStart, loadTeamsInStartedField } from "./raceStartOutlook.js";
+import { teamWillStart, loadTeamsInStartedField, overlapRuleApplies, loadStartDaySpentRiderIds } from "./raceStartOutlook.js";
 import { splitWithdrawals } from "./raceWithdrawal.js"; // #6740
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
@@ -81,8 +81,10 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
     // som motoren fjerner.
     // #6740 (Codex P2): en rytter der allerede har brugt løbsdagen fjernes også før regel B
     // og fyldes aldrig ind. Best-effort: svigter opslaget, tæller ingen som spent.
-    const spent = new Set((await loadSpentRaceDays({ supabase, raceId: race.id, riderIds: [...new Set([...entryRiderIds, ...rosterIds])] })
-      .catch(() => [])).map((row) => row.rider_id));
+    const spentRows = await loadSpentRaceDays({ supabase, raceId: race.id, riderIds: [...new Set([...entryRiderIds, ...rosterIds])] }).catch(() => []);
+    const spent = new Set(spentRows.map((row) => row.rider_id));
+    // #6739: kun spent på startdagen er overlap (regel A, kun etapeløb).
+    const spentStart = overlapRuleApplies(race) ? await loadStartDaySpentRiderIds({ supabase, raceId: race.id, spentRows }) : new Set();
     const rosterSet = new Set(rosterIds);
     const keptEntryIds = [...new Set(entryRiderIds)].filter((id) => rosterSet.has(id) && !spent.has(id));
     return teamWillStart({
@@ -90,6 +92,9 @@ async function loadStartOutlook({ supabase, race, teamId, entryRiderIds, now = n
       // #6740 regel B: skadede udtagne holder holdet i løbet med de raske der er tilbage.
       injuredEntryCount: keptEntryIds.filter((id) => injuredIds.has(id)).length,
       freeEligibleCount: rosterIds.filter((id) => !entered.has(id) && !injuredIds.has(id) && !locked.has(id) && !spent.has(id)).length,
+      // #6739 regel A: ryttere der har kørt et andet løb samme løbsdag giver start med mindst 4
+      // (bundne ryttere tælles allerede som frie her, se BEVIDST KONSERVATIVT ovenfor).
+      overlapCount: rosterIds.filter((id) => spentStart.has(id) && (entered.has(id) || (!injuredIds.has(id) && !locked.has(id)))).length,
       stagesCompleted,
     });
   } catch {
@@ -126,6 +131,8 @@ export function validateStageRoleOverrides({
   // #4632: race_day_intention_enabled. Default FALSE — en kalder der glemmer at
   // sende flaget får dagens tre-værdi-vokabular, aldrig det udvidede.
   intentionEnabled = false,
+  // #5981: delt kaptajn kun i loeb paa s5_profiles_v3+ (raceSelection.raceAllowsCoCaptain). Default FALSE.
+  coCaptainAllowed = false,
 }) {
   if (raceCompleted) return { ok: false, errors: ["stage_roles_race_completed"] };
   if (!Array.isArray(overrides)) return { ok: false, errors: ["stage_roles_invalid_body"] };
@@ -152,6 +159,8 @@ export function validateStageRoleOverrides({
   }
   for (const o of overrides) {
     if (!VALID_RACE_ROLES.includes(o?.race_role)) { errors.push("stage_roles_invalid_role"); break; }
+    // #5981: et aeldre loeb kender ikke rollen; samme fejlkode som en ukendt rolle.
+    if (o?.race_role === "co_captain" && !coCaptainAllowed) { errors.push("stage_roles_invalid_role"); break; }
   }
   // #4632: femtrins-intentionen bag flag. Off = PRÆCIS dagens tre værdier, så
   // et UI der er deployet før flag-flippet ikke kan gemme 'grupetto'/'all_out'
@@ -204,7 +213,7 @@ export function validateStageRoleOverrides({
   const roleOverlap = stagesInBody.some((stageNumber) => {
     const rowsForStage = overrides.filter((o) => o?.stage_number === stageNumber);
     const overriddenRiders = new Set(rowsForStage.map((o) => o?.rider_id));
-    return ["captain", "sprint_captain", "hunter"].some((role) => {
+    return ["captain", "sprint_captain", "hunter", "co_captain"].some((role) => { // #5981: hoejst én delt kaptajn
       let count = rowsForStage.filter((o) => o?.race_role === role).length;
       // Ryttere UDEN override på etapen beholder deres basis-rolle —
       // medmindre de er udgået, for så tæller de slet ikke (#5202).
@@ -219,6 +228,23 @@ export function validateStageRoleOverrides({
     });
   });
   if (roleOverlap) errors.push("stage_roles_role_overlap");
+
+  // #5981: en EFFEKTIV delt kaptajn (override eller urørt, ikke-udgaaet basis-rolle) kraever
+  // en kaptajn paa etapen (override eller basis-rolle; en udgaaet basis-kaptajn taeller, saa
+  // arven efter et styrt ikke blokeres). Samme regel som validateSelection.
+  const coWithoutCaptain = stagesInBody.some((stageNumber) => {
+    const rowsForStage = overrides.filter((o) => o?.stage_number === stageNumber);
+    const overriddenRiders = new Set(rowsForStage.map((o) => o?.rider_id));
+    const inheritedCo = [...teamRiderIds].some((riderId) =>
+      !overriddenRiders.has(riderId) && !abandonedRiderIds.has(riderId) && baseRoleByRider.get(riderId) === "co_captain");
+    if (!inheritedCo && !rowsForStage.some((o) => o?.race_role === "co_captain")) return false;
+    if (rowsForStage.some((o) => o?.race_role === "captain")) return false;
+    for (const riderId of teamRiderIds) {
+      if (!overriddenRiders.has(riderId) && baseRoleByRider.get(riderId) === "captain") return false;
+    }
+    return true;
+  });
+  if (coWithoutCaptain) errors.push("stage_roles_co_captain_requires_captain");
 
   // Dublet (stage, rider) i body.
   const keys = overrides.map((o) => `${o?.stage_number}:${o?.rider_id}`);
@@ -296,7 +322,7 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
       // .catch: samme ærlige degradering som de to andre (fetchAllRows kaster,
       // hvor PostgREST-klienten returnerer {error}).
       fetchAllRows(() => supabase.from("race_stage_profiles")
-        .select("stage_number, profile_type, demand_vector")
+        .select(ROUTE_MATCH_STAGE_COLUMNS)
         .eq("race_id", race.id)
         .order("stage_number", { ascending: true })).catch(() => null),
     ]);
@@ -304,18 +330,12 @@ export async function getStageRolesContext({ supabase, race, teamId, now = new D
     // fladen — den er stadig fuldt brugbar uden kolonnerne.
     const stages = profileRows || [];
     if (!abilitiesRes.error && stages.length) {
-      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, Math.round(suitabilityScore(ab, stages) * 100)]));
-      // Nøglet på stage_number, ikke på arrayets indeks: rækkerne er sorteret
-      // efter stage_number, men et løb kan mangle en profil-række, og så ville
-      // et indeks-array tavst forskyde alle etaper efter hullet.
-      stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => {
-        const perStage = stageSuitabilityScores(ab, stages);
-        const byStage = {};
-        stages.forEach((s, i) => {
-          if (s?.stage_number != null && Number.isFinite(perStage[i])) byStage[s.stage_number] = perStage[i];
-        });
-        return [ab.rider_id, byStage];
-      }));
+      // #6207: samme tal som holdudtagelsen og sæsonmatrixen (routeMatch.js).
+      const routeMatch = buildRouteMatch({ race, stages });
+      fitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, routeMatch.race(ab)]));
+      // Nøglet på stage_number, ikke på arrayets indeks: et løb kan mangle en
+      // profil-række, og så ville et indeks-array tavst forskyde etaperne.
+      stageFitByRider = new Map((abilitiesRes.data || []).map((ab) => [ab.rider_id, routeMatch.stagesByNumber(ab)]));
     }
     if (!conditionRes.error) {
       conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));

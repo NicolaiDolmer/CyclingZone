@@ -6,6 +6,7 @@ export { buildKeyedNotification };
 import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize, isHeadlineAboutOwnRiders } from "./raceNarrativeNotification.js";
+import { fetchRaceTopResults, formatTopResults } from "./raceInboxTopResults.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -318,10 +319,10 @@ export async function emitContractExpiringNotifications({
   supabase,
   seasonNumber,
   notify = notifyUser,
-  fetchOwnedExpiringRiders = defaultFetchOwnedExpiringRiders,
+  fetchOwnedExpiringRiders: fetchRiders = fetchOwnedExpiringRiders,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
-  const riders = await fetchOwnedExpiringRiders({ supabase, seasonNumber });
+  const riders = await fetchRiders({ supabase, seasonNumber });
   const eligible = (riders || []).filter((r) => r.user_id && r.id);
   stats.eligible = eligible.length;
 
@@ -352,16 +353,22 @@ export async function emitContractExpiringNotifications({
  * user_id (kun menneske-, ikke-frosne hold). Standard-implementering; injicérbar
  * i test for at undgå DB.
  */
-async function defaultFetchOwnedExpiringRiders({ supabase, seasonNumber }) {
-  const { data, error } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
-    .eq("contract_end_season", seasonNumber)
-    .not("team_id", "is", null)
-    .eq("team.is_ai", false)
-    .eq("team.is_frozen", false);
-  if (error) {
-    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`);
+export async function fetchOwnedExpiringRiders({ supabase, seasonNumber }) {
+  // #7246: pagineret. Uden .range() stoppede PostgREST tavst ved 1.000 rækker, så ~45 %
+  // af managerne aldrig fik varsel ved S4→S5 (frigivelsen bruger fetchAllRows og ramte alle).
+  let data;
+  try {
+    data = await fetchAllRows(() => supabase
+      .from("riders")
+      .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
+      .eq("contract_end_season", seasonNumber)
+      .not("team_id", "is", null)
+      .eq("team.is_ai", false)
+      .eq("team.is_frozen", false)
+      .order("id"));
+  } catch (err) {
+    const error = /** @type {Error} */ (err);
+    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`, { cause: err });
   }
   return (data || []).map((r) => ({
     id: r.id,
@@ -401,6 +408,8 @@ export async function emitRaceResultNotifications({
   // Returnerer null (ærlig degradering) for gamle/PCM-løb eller når v3 var
   // slukket for etapen — i så fald er adfærden UÆNDRET fra før #3399.
   fetchRaceNarrative = buildRaceResultNarrative,
+  // #7085: managerens bedste ryttere (op til 3) i selve beskeden.
+  fetchTopResults = fetchRaceTopResults,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
   if (!race?.id) return stats;
@@ -416,8 +425,11 @@ export async function emitRaceResultNotifications({
   // related_id)-dedup'en (24t, notifyUser).
   const firstTimers = await fetchFirstTimeManagers({ supabase, race, userIds: eligible });
   const narrative = await fetchRaceNarrative({ supabase, race });
+  const topResults = await fetchTopResults({ supabase, race });
   for (const userId of eligible) {
     const isFirst = firstTimers.has(userId);
+    // #7085: "Your best: Rider (#2), Rider (#5)" — null => uændret copy.
+    const topText = formatTopResults(topResults?.get(userId));
     // #3399: narrativ tilstand kræver BÅDE en rubrik OG et personligt resultat
     // for DENNE manager — delvis data (fx rubrik uden ranks) degraderer helt
     // til standard-copy i stedet for en halv/inkonsistent besked.
@@ -436,12 +448,16 @@ export async function emitRaceResultNotifications({
           ? narrative.headlineText
           : (isFirst ? "Your first race is in the books" : "Race result is in"),
         message: useNarrative
-          ? (isFirst
-              ? `${raceName} has been run. ${capitalize(personalText)}. See how your riders did.`
-              : `${raceName} has been run. ${capitalize(personalText)}.`)
-          : (isFirst
-              ? `${raceName} has been run. See how your riders did.`
-              : `${raceName} has been run. View the result.`),
+          ? (topText
+              ? `${raceName} has been run. Your best: ${topText}.`
+              : (isFirst
+                  ? `${raceName} has been run. ${capitalize(personalText)}. See how your riders did.`
+                  : `${raceName} has been run. ${capitalize(personalText)}.`))
+          : (topText
+              ? `${raceName} has been run. Your best: ${topText}.`
+              : (isFirst
+                  ? `${raceName} has been run. See how your riders did.`
+                  : `${raceName} has been run. View the result.`)),
         relatedId: race.id,
         // #3399: narrativ tekst er dynamisk (rytternavne/ranks pr. løb) og har
         // intet i18n-katalog-opslag (samme EN-first-afgrænsning som
@@ -456,8 +472,10 @@ export async function emitRaceResultNotifications({
               raceId: race.id,
               titleCode: isFirst ? "notif.firstRaceResult.title" : "notif.raceResult.title",
               titleParams: {},
-              messageCode: isFirst ? "notif.firstRaceResult.message" : "notif.raceResult.message",
-              messageParams: { race: raceName },
+              messageCode: topText
+                ? (isFirst ? "notif.firstRaceResult.messageBest" : "notif.raceResult.messageBest")
+                : (isFirst ? "notif.firstRaceResult.message" : "notif.raceResult.message"),
+              messageParams: topText ? { race: raceName, riders: topText } : { race: raceName },
             },
       });
       if (res?.delivered) stats.delivered += 1;

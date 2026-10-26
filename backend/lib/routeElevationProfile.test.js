@@ -22,7 +22,9 @@ const SWEEP = [];
 for (const sid of SEEDS) {
   for (const c of CATALOG) {
     const race = { ...c, season_id: sid };
-    for (const stage of generateRaceStageProfiles(race, { profileModel: "s5" })) SWEEP.push({ race, stage });
+    // #2757: rækkefølge-variationen flytter hele etaper (højdeprofilen er seedet på etapens
+    // oprindelige nummer), så determinismen pr. etapenummer måles på crescendo-rækkefølgen.
+    for (const stage of generateRaceStageProfiles(race, { profileModel: "s5", orderVariation: false })) SWEEP.push({ race, stage });
   }
 }
 const label = ({ race, stage }) => `${race.name} etape ${stage.stage_number} (${race.season_id}, ${stage.profile_type})`;

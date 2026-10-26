@@ -32,7 +32,8 @@ export type AbilityKey =
   | "tactics";
 
 // ── Rytterrolle (kopi af raceRoles.js VALID_RACE_ROLES) ───────────────────────
-export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
+// #5981 (KUN s5_profiles_v3, slukket): "co_captain" = delt kaptajn (mechanics/sharedCaptain.ts).
+export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role" | "co_captain";
 
 // M12 (effort-styring, ejer-valg 20/8 §4). WIRET 6/9 (#4632, model C):
 // segmentLoop.ts's `tickGroupRiders` ganger mechanics/effortCost.ts's
@@ -276,6 +277,8 @@ export type TeamReactionState = {
 export type JerseyLeaders = {
   points?: string | null;
   kom?: string | null;
+  // #6937 B1 (KUN s5_profiles_v3): bjergkonkurrencens forreste foer etapen (mechanics/komJersey6937.ts).
+  kom_hunters?: readonly string[] | null;
 };
 
 // #2410-taksonomien er AABEN for tilfoejelser (forward-kompatibel: ukendte typer
@@ -302,7 +305,10 @@ export type KnownTimelineEventType =
   | "finale_attack"
   | "sprint_decided"
   | "finish"
-  | "gc_change";
+  | "gc_change"
+  // #6804 P2 (ADDITIV, KUN s5_profiles_v3): forspringet vokser forbi det feltet tolererer,
+  // fordi intet hold vil jage (mechanics/breakawayV3_6804.ts). params: { group_id }.
+  | "breakaway_unchased";
 
 export type TimelineEvent = {
   km: number; // [0, distance_km], 2 decimaler
@@ -371,7 +377,10 @@ export type StageResult = {
 //   alvorligt styrt -> udgaar (abandoned) + skadedage, SJAELDENT
 //   mekanisk uheld  -> ALTID kun tidstab (aldrig abandoned, aldrig skade);
 //                      en hjaelper taet paa giver hurtigere hjulskift
-export type IncidentKind = "crash" | "mechanical";
+// #6938 (ADDITIVT, KUN s5_profiles_v3, mechanics/abandons.ts): "illness" = startede
+// ikke (traethed/form, U1), "withdrawal" = en sat hjaelper steg af i et endagsloeb
+// (U3). Begge er altid udfaldet "abandoned", aldrig skade, aldrig tidstab.
+export type IncidentKind = "crash" | "mechanical" | "illness" | "withdrawal";
 export type IncidentSeverity = "light" | "hard" | "serious";
 export type IncidentOutcome = "time_loss" | "protected_three_km_rule" | "abandoned";
 
@@ -469,6 +478,9 @@ export type StageOutput = {
   // race_stage_passages skriver pr. passage.
   passages?: StagePassage[];
   passage_totals?: RiderPassageTotals[];
+  // #7003 (ADDITIVT, valgfrit, KUN s5_profiles_v3 med en etapeplan): indsatsen etapens
+  // traethed bagefter regnes paa for ryttere med en plan. Udeladt uden plan.
+  stage_plan_load_efforts?: Record<string, EffortLevel>;
 };
 
 // ── EngineTuning (§4-5, default+konstanter i tuning.ts) ───────────────────────
@@ -704,6 +716,10 @@ export type EngineState = {
   finish_descent_regroup?: Record<string, { topGapSeconds: number; closedSeconds: number }>;
   // #6185 del 2 (ADDITIVT, valgfrit, KUN orders_gc_v3): udbrydere der er meldt sat af (mechanics/chaseGroup.ts).
   breakaway_dropped_ids?: string[];
+  // #7003 (ADDITIVT, valgfrit, KUN s5_profiles_v3 + etapeplan): indsatsen i rytterens sidste led (juryen).
+  stage_plan_efforts?: Record<string, EffortLevel>;
+  // #7003: den haardeste indsats rytteren koerte i planen (etapens traethed bagefter).
+  stage_plan_load_efforts?: Record<string, EffortLevel>;
 };
 
 // ── Mekanik-hooks (§8 byggeplan: Fase B plugger disse ind) ────────────────────
@@ -768,6 +784,10 @@ export type SegmentHookContext = {
   s5ProfilesV1?: true;
   // #6748 (ADDITIVT og VALGFRIT, KUN s5_profiles_v2, slukket): udbrudsopfoelgningen. Udeladt = v1.
   s5ProfilesV2?: true;
+  // #6804 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): udbrudspakken trin 2 (breakawayV3_6804.ts). Udeladt = v2.
+  // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
+  // #6937 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen og lead-outens pris. Udeladt = v2.
+  s5ProfilesV3?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

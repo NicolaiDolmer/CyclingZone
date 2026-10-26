@@ -30,21 +30,10 @@
 import { evaluateBoardSeason, satisfactionToModifier } from "./boardEvaluation.js";
 import { clamp, clampSatisfaction, roundNumber } from "./boardUtils.js";
 
-// Ejer-beslutning 11/6: ±5 point pr. løbsweekend (nedad-bevægelse). Bevaret som
-// downside-grænsen — hårde konsekvenser er checkpoint-gatede og kalibreret mod
-// denne værdi (boardSatisfactionHarness.js's konsekvens-rate-gate), så en
-// hurtigere NEDAD-bevægelse ville alene forøge antallet af hold der rammer
-// hårde lag (verificeret empirisk: ±8 symmetrisk gav 22-32% mod målet ≤10%).
-export const WEEKEND_SATISFACTION_CLAMP = 5;
-
-// #2309 · "Hurtigere tilfredsheds-respons" — ejer-ønske: boardet skal reagere
-// hurtigere på FREMGANG end den nuværende ±5-clamp tillader, uden at gøre
-// nedturen hårdere (det ville modarbejde konsekvens-rate-gaten, se ovenfor).
-// Asymmetrisk clamp: opad-bevægelse (holdet præsterer over sin løbende
-// tilfredshed) får en højere grænse end nedad. Effekt: et hold der vender en
-// dårlig start indhenter boardets tillid ~60% hurtigere, mens en katastrofe-
-// weekend stadig kun kan koste holdet op til ±5 point (uændret risiko-profil).
-export const WEEKEND_SATISFACTION_CLAMP_UP = 8;
+// #7088: konstanterne bor i boardConstants.js, saa boardMandateEngine kan bruge dem
+// uden at traekke denne fil ind i frontend-typecheck-grafen. Re-eksporteres uaendret.
+import { WEEKEND_SATISFACTION_CLAMP, WEEKEND_SATISFACTION_CLAMP_UP } from "./boardConstants.js";
+export { WEEKEND_SATISFACTION_CLAMP, WEEKEND_SATISFACTION_CLAMP_UP };
 
 /**
  * #1451 · "Hvorfor"-kategori for et weekend-event. Positiv bevægelse drives af

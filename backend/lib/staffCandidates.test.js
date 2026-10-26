@@ -47,6 +47,77 @@ test("excludeNames tomt/udeladt → uændret adfærd (bagudkompatibel default)",
   assert.deepEqual(generateStaffCandidates(ARGS), generateStaffCandidates(ARGS));
 });
 
+// ── #6974: mindst én kandidat præcis på facilitetens tier ──
+const ROLES = ["training", "scouting", "medical", "academy", "commercial"];
+const teamIdFor = (t) => `00000000-0000-4000-8000-${String(t).padStart(12, "0")}`;
+
+test("#6974: mindst én kandidat pr. rolle er på facilitetens tier, for alle roller og tiers", () => {
+  for (const role of ROLES) {
+    for (let facilityTier = 1; facilityTier <= 5; facilityTier++) {
+      for (let t = 0; t < 30; t++) {
+        for (const seasonNumber of [1, 2, 7]) {
+          const args = { teamId: teamIdFor(t), seasonNumber, role, facilityTier };
+          const cands = generateStaffCandidates(args);
+          assert.equal(cands.length, 3);
+          assert.ok(cands.every((c) => c.tier >= 1 && c.tier <= facilityTier), `tier over loftet: ${JSON.stringify(args)}`);
+          assert.ok(cands.some((c) => c.tier === facilityTier), `ingen kandidat på loftet: ${JSON.stringify(args)}`);
+        }
+      }
+    }
+  }
+});
+
+test("#6974: tier 1 og 0 uændret (alle kandidater er tier 1)", () => {
+  for (const facilityTier of [0, 1]) {
+    for (const c of generateStaffCandidates({ ...ARGS, facilityTier })) assert.equal(c.tier, 1);
+  }
+});
+
+test("#6974: garantien er deterministisk og løftet plads er profil-konsistent", () => {
+  for (let t = 0; t < 30; t++) {
+    const args = { teamId: teamIdFor(t), seasonNumber: 3, role: "scouting", facilityTier: 5 };
+    const a = generateStaffCandidates(args);
+    assert.deepEqual(a, generateStaffCandidates(args));
+    for (const c of a) {
+      const p = deriveStaffAbilities({ role: c.role, tier: c.tier, name: c.name });
+      assert.equal(c.overall, p.overall, "overall skal følge den (evt. løftede) tier");
+      assert.equal(c.salary, staffSalaryFor(c.overall));
+    }
+  }
+});
+
+test("#6974: kun tiers ændres af garantien, navnene er de samme som uden loft-krav", () => {
+  // Samme navne-strøm uanset loft: en pulje på tier 5 og tier 2 deler navne.
+  for (let t = 0; t < 30; t++) {
+    const base = { teamId: teamIdFor(t), seasonNumber: 3, role: "medical" };
+    const names5 = generateStaffCandidates({ ...base, facilityTier: 5 }).map((c) => c.name);
+    const names2 = generateStaffCandidates({ ...base, facilityTier: 2 }).map((c) => c.name);
+    assert.deepEqual(names5, names2);
+  }
+});
+
+test("#6974: den løftede plads varierer på tværs af hold (ikke altid samme position)", () => {
+  const liftedSlots = new Set();
+  for (let t = 0; t < 200; t++) {
+    const cands = generateStaffCandidates({ teamId: teamIdFor(t), seasonNumber: 3, role: "training", facilityTier: 5 });
+    const top = cands.filter((c) => c.tier === 5);
+    if (top.length === 1) liftedSlots.add(cands.indexOf(top[0]));
+  }
+  assert.equal(liftedSlots.size, 3, "topkandidaten skal kunne stå på alle tre pladser");
+});
+
+test("#6974: garantien holder når fyrede/ansatte navne udelukkes, og de optræder aldrig", () => {
+  for (let t = 0; t < 30; t++) {
+    const args = { teamId: teamIdFor(t), seasonNumber: 3, role: "training", facilityTier: 4 };
+    const full = generateStaffCandidates(args);
+    const topNames = full.filter((c) => c.tier === 4).map((c) => c.name);
+    const filtered = generateStaffCandidates({ ...args, excludeNames: new Set(topNames) });
+    assert.equal(filtered.length, 3);
+    assert.ok(filtered.every((c) => !topNames.includes(c.name)), "udelukket navn optræder");
+    assert.ok(filtered.some((c) => c.tier === 4), "ingen kandidat på loftet efter udelukkelse");
+  }
+});
+
 // ── #2216 A4: kandidater beriges med overall + topSpecialization til visning ──
 
 test("kandidater har overall (fra derivation) + topSpecialization, deterministisk", () => {

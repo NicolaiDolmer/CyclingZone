@@ -355,3 +355,28 @@ export function sundaySweepSummaryLine({ valueRefresh, phase } = {}) {
   const cpv = valueRefresh?.productionChanged ?? "?";
   return `sunday-value-sweep: model ${model} · phase step ${step} · production_value changed: ${cpv}`;
 }
+
+/**
+ * #5842 (ejer 25/10): "opdateres hurtigst muligt og kun én gang". Kaldes af
+ * skifte-ruten lige efter et fuldført (ikke dry-run) sæsonskifte, så værdierne
+ * skrives straks i stedet for ved næste hele time. Samme runSundayValueSweep med
+ * samme gate og samme run_date-claim: højst én skrivning pr. søndag, og en dag
+ * der ikke er søndag (eller før 14:00) er en no-op. Timetikket er stadig
+ * sikkerhedsnettet, hvis dette kald fejler. Kaster aldrig: fejl rapporteres.
+ */
+export async function runValuesAfterTransition({
+  supabase,
+  now,
+  runSweep = runSundayValueSweep,
+  captureExceptionFn = captureException,
+  log = noop,
+} = {}) {
+  try {
+    const result = await runSweep({ supabase, now, log });
+    log(`[sunday-value] efter saesonskifte: ${JSON.stringify({ ran: result?.ran ?? false, skipped: result?.skipped ?? null })}`);
+    return result;
+  } catch (err) {
+    captureExceptionFn(err, { tags: { flow: "sunday_value", stage: "after_transition" } });
+    return { ran: false, skipped: "error_after_transition" };
+  }
+}

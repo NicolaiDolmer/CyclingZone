@@ -19,7 +19,7 @@
 // / RACE_V3_TEAM_RACE_WEIGHT) så scripts/sweepS1WorkCost.mjs kan køre et
 // joint grid i child-processer UDEN at redigere denne fil pr. celle. Prod/CI
 // sætter ALDRIG disse envs → tallene nedenfor er de gældende. Ingen secrets.
-import { isOrdersGcRulesRevision } from "./raceEngineRulesRevision.ts";
+import { isOrdersGcRulesRevision, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 
 const envNum = (name, def) => {
   const raw = process.env[name];
@@ -271,6 +271,9 @@ export const FLAT_LEADOUT_PROFILES = Object.freeze(new Set(["flat"]));
 
 export const VALID_RACE_ROLES = Object.freeze([
   "captain", "sprint_captain", "helper", "hunter", "free_role",
+  // #5981: delt kaptajn. Kun i loeb bundet til s5_profiles_v3+; API'et afviser den ellers
+  // (raceSelection.js / raceStageRolesApi.js). Gammel motor: som fri rolle, intet holdbidrag.
+  "co_captain",
 ]);
 // De TRE oprindelige effort-værdier (S1/S3). Uændret liste — den er stadig det
 // gyldige vokabular når `race_day_intention_enabled` er OFF, så et UI der er
@@ -393,7 +396,7 @@ function effortCostMultiplier(effort = "normal") {
 export function effortFatigueMultiplier(effort = "normal", { profileType = null, rulesRevision = null } = {}) {
   if (effort === "protect") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_PROTECT;
   if (effort === "save") return saveFatigueMultiplier(profileType, rulesRevision);
-  if (effort === "grupetto") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_GRUPETTO;
+  if (effort === "grupetto") return grupettoFatigueMultiplier(profileType, rulesRevision);
   if (effort === "all_out") return RACE_V3_TUNING.FATIGUE_MULTIPLIER_ALL_OUT;
   return RACE_V3_TUNING.FATIGUE_MULTIPLIER_NORMAL;
 }
@@ -423,6 +426,33 @@ function saveFatigueMultiplier(profileType, rulesRevision) {
   if (!Number.isFinite(m)) return legacy;
   // Trappen må ikke vende: grupetto <= save < normal.
   return Math.min(RACE_V3_TUNING.FATIGUE_MULTIPLIER_NORMAL, Math.max(RACE_V3_TUNING.FATIGUE_MULTIPLIER_GRUPETTO, m));
+}
+
+/**
+ * #6940 (ejer 1/10, KUN s5_profiles_v3, slukket): grupettoens besparelse følger
+ * etapetypen. På en flad etape kører grupettoen næsten som feltet og sparer lidt,
+ * i bjergene sparer den mest. Trappen vendes aldrig: grupetto sparer mindst lige
+ * så meget som save på samme profil. Ukendt profil og alle ældre revisioner: den
+ * faste FATIGUE_MULTIPLIER_GRUPETTO (bit-identisk).
+ */
+export const GRUPETTO_FATIGUE_BY_PROFILE_6940 = Object.freeze({
+  flat: 0.9,
+  rolling: 0.8,
+  hilly: 0.65,
+  classic: 0.65,
+  cobbles: 0.65,
+  gravel: 0.65,
+  medium_mountain: 0.55,
+  mountain: 0.5,
+  high_mountain: 0.5,
+});
+
+function grupettoFatigueMultiplier(profileType, rulesRevision) {
+  const legacy = RACE_V3_TUNING.FATIGUE_MULTIPLIER_GRUPETTO;
+  if (!isS5ProfilesV3OrLater(rulesRevision)) return legacy;
+  const m = GRUPETTO_FATIGUE_BY_PROFILE_6940[profileType];
+  if (!Number.isFinite(m)) return legacy;
+  return Math.min(m, saveFatigueMultiplier(profileType, rulesRevision));
 }
 
 /**

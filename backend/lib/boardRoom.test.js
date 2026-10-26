@@ -157,7 +157,6 @@ test("tomme skygge-tabeller: enabled:true, mandate:null, vision:null, tom minute
   assert.deepEqual(payload.board.members, []);
   assert.equal(payload.board.chairmanQuote, null);
   assert.equal(payload.confidence.value, null);
-  assert.equal(payload.confidence.weekDelta, null);
   assert.deepEqual(payload.confidence.categories, []);
   assert.deepEqual(payload.confidence.consequence, { active: false, lineKey: null, lineParams: {} });
 });

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   copenhagenDateParts,
-  currentIntakeWeekSunday,
+  currentIntakeWeekKey,
   hasPulledThisWeek,
   pullWeeklyAcademyIntake,
   INTAKE_PULL_VALUE_MIN,
@@ -151,29 +151,40 @@ function buildMockSupabase({
 
 // ─── Uge-bucket (Europe/Copenhagen) ─────────────────────────────────────────────
 
-test("currentIntakeWeekSunday: en søndag-formiddag giver SAMME dags dato", () => {
-  // 2026-08-16 er en søndag. 10:00 UTC = 12:00 CEST (Europe/Copenhagen, UTC+2 i august).
-  const week = currentIntakeWeekSunday(new Date("2026-08-16T10:00:00Z"));
-  assert.equal(week, "2026-08-16");
+test("currentIntakeWeekKey: ugen er søndag-lørdag; nøglen er lørdagen der afslutter ugen (ejer 25/10)", () => {
+  // 2026-08-16 er en søndag: en NY uge starter, nøglen er lørdag 2026-08-22.
+  assert.equal(currentIntakeWeekKey(new Date("2026-08-16T10:00:00Z")), "2026-08-22");
+  // Onsdag 2026-08-19 → samme uge.
+  assert.equal(currentIntakeWeekKey(new Date("2026-08-19T10:00:00Z")), "2026-08-22");
+  // Lørdag formiddag → dagens dato.
+  assert.equal(currentIntakeWeekKey(new Date("2026-08-22T10:00:00Z")), "2026-08-22");
 });
 
-test("currentIntakeWeekSunday: onsdag giver den KOMMENDE søndag samme uge", () => {
-  // 2026-08-19 er en onsdag → kommende søndag er 2026-08-23.
-  const week = currentIntakeWeekSunday(new Date("2026-08-19T10:00:00Z"));
-  assert.equal(week, "2026-08-23");
+test("currentIntakeWeekKey: lørdag 23:50 er samme uge, søndag 00:05 er en ny uge (CEST)", () => {
+  // 21:50 UTC lørdag = 23:50 CEST: fristen er ikke passeret.
+  assert.equal(currentIntakeWeekKey(new Date("2026-08-22T21:50:00Z")), "2026-08-22");
+  // 22:05 UTC lørdag = 00:05 CEST søndag: ny uge.
+  assert.equal(currentIntakeWeekKey(new Date("2026-08-22T22:05:00Z")), "2026-08-29");
 });
 
-test("currentIntakeWeekSunday: sen søndag aften (23:50 CEST) er STADIG samme uges bucket", () => {
-  // 21:50 UTC = 23:50 CEST samme dag — deadline er endnu ikke passeret.
-  const week = currentIntakeWeekSunday(new Date("2026-08-16T21:50:00Z"));
-  assert.equal(week, "2026-08-16");
+test("currentIntakeWeekKey: vintertid (CET) og DST-skiftet 25/10 2026", () => {
+  // 25/10 2026 kl. 03:00 CEST går uret til 02:00 CET. Søndag 25/10 er en ny uge hele dagen.
+  assert.equal(currentIntakeWeekKey(new Date("2026-10-24T21:59:00Z")), "2026-10-24", "lørdag 23:59 CEST");
+  assert.equal(currentIntakeWeekKey(new Date("2026-10-24T22:00:00Z")), "2026-10-31", "søndag 00:00 CEST");
+  assert.equal(currentIntakeWeekKey(new Date("2026-10-25T09:00:00Z")), "2026-10-31", "søndag formiddag CET");
+  // Lørdag 31/10 23:59 CET = 22:59 UTC; søndag 1/11 00:00 CET = 23:00 UTC.
+  assert.equal(currentIntakeWeekKey(new Date("2026-10-31T22:59:00Z")), "2026-10-31");
+  assert.equal(currentIntakeWeekKey(new Date("2026-10-31T23:00:00Z")), "2026-11-07");
 });
 
-test("currentIntakeWeekSunday: lige efter midnat mandag (00:05 CEST) er NÆSTE søndag — deadline passeret", () => {
-  // 2026-08-16 23:59:59 CEST er deadline (ejer-beslutning punkt 1). 22:05 UTC
-  // samme dag = 00:05 CEST mandag → ugen er rullet videre, bucket'en flipper.
-  const week = currentIntakeWeekSunday(new Date("2026-08-16T22:05:00Z"));
-  assert.equal(week, "2026-08-23", "en ny uges bucket — mandagens kuld hentes ikke ved at klikke tirsdag på sidste uges tilbud");
+test("currentIntakeWeekKey: en række fra den gamle mandag-søndag-model blokerer ikke den nye uge", () => {
+  // Den gamle model nøglede ugen 19-25/10 på søndag 2026-10-25. Den nye uge fra
+  // søndag 25/10 har nøglen lørdag 2026-10-31: forskellige nøgler, ingen kollision.
+  assert.notEqual(currentIntakeWeekKey(new Date("2026-10-25T09:00:00Z")), "2026-10-25");
+  for (let d = 0; d < 14; d++) {
+    const key = currentIntakeWeekKey(new Date(Date.UTC(2026, 9, 20 + d, 12)));
+    assert.equal(new Date(`${key}T12:00:00Z`).getUTCDay(), 6, `${key} er en lørdag`);
+  }
 });
 
 test("copenhagenDateParts: kalenderdato-dele i Europe/Copenhagen", () => {
@@ -182,7 +193,7 @@ test("copenhagenDateParts: kalenderdato-dele i Europe/Copenhagen", () => {
 
 // ─── hasPulledThisWeek ───────────────────────────────────────────────────────────
 
-test("hasPulledThisWeek: true når claim-rækken findes for ugens søndag", async () => {
+test("hasPulledThisWeek: true når claim-rækken findes for ugens lørdag", async () => {
   const supabase = buildMockSupabase({ claimed: true });
   const result = await hasPulledThisWeek(supabase, { teamId: "team-A", now: new Date("2026-08-19T10:00:00Z") });
   assert.equal(result, true);
@@ -312,7 +323,7 @@ test("pullWeeklyAcademyIntake: claimer FØR generering (claim-first TOCTOU-forsv
   });
   assert.equal(supabase._capture.upserts.length, 1);
   assert.equal(supabase._capture.upserts[0].row.team_id, "team-A");
-  assert.equal(supabase._capture.upserts[0].row.tick_date, "2026-08-23", "claim på UGENS søndag, ikke kørselsdagen");
+  assert.equal(supabase._capture.upserts[0].row.tick_date, "2026-08-22", "claim på UGENS lørdag, ikke kørselsdagen");
   assert.deepEqual(supabase._capture.upserts[0].opts, { onConflict: "team_id,tick_date", ignoreDuplicates: true });
 });
 
@@ -337,7 +348,7 @@ test("pullWeeklyAcademyIntake: tomt kuld (identityBasis udelukker alt — edge c
 // uge kan hentes igen.
 
 const PULL_NOW = new Date("2026-08-19T10:00:00Z");
-const PULL_WEEK = "2026-08-23";
+const PULL_WEEK = "2026-08-22";
 
 function pullOpts(overrides = {}) {
   return {

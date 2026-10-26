@@ -115,6 +115,8 @@ import {
 import { defaultOrderForStage, fetchTeamOrders, orderForStage, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
+import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
+import { stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -329,7 +331,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // null = henter, false = hentningen fejlede. At skelne dem er hele pointen:
   // en fejlet fetch maa ikke vises som "ingen taktik sat" (#2849).
   const [roles, setRoles] = useState(null);
-  const [orders, setOrders] = useState(null);
+  // #7003: typet efter fetchTeamOrders-svaret, saa checkJs kender felterne (fx stagePlanEnabled).
+  const [orders, setOrders] = useState(/** @type {Awaited<ReturnType<typeof fetchTeamOrders>>} */ (null));
   const [draftMatrix, setDraftMatrix] = useState({});
   const [initialMatrix, setInitialMatrix] = useState({});
   const [ordersByStage, setOrdersByStage] = useState({});
@@ -356,7 +359,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const headers = await authHeaders({ json: false });
     if (!headers) { setRoles(false); return; }
     let rolesBody = null;
-    let orderCtx = null;
+    let orderCtx = /** @type {Awaited<ReturnType<typeof fetchTeamOrders>>} */ (null); // #7003
     try {
       // #6462: togreglen for loebet kommer med team-orders-svaret (sprintTrainFlatOnly):
       // motorens revision, ogsaa for et loeb der endnu ikke er bundet.
@@ -556,7 +559,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     // Ordrerne kopieres med: "kopiér til etape N+1" skal flytte HELE dagens
     // plan, ikke halvdelen af den. Etapen der kopieres TIL skal stadig gemmes
     // selv (den er en anden etapes PUT).
-    setOrdersByStage((cur) => ({ ...cur, [nextStage]: { ...(cur[activeStage] ?? order) } }));
+    setOrdersByStage((cur) => ({ ...cur, [nextStage]: withoutStagePlans(cur[activeStage] ?? order) })); // #7003: planen haenger paa ruten
     if (status !== "idle") setStatus("idle");
   }
 
@@ -609,7 +612,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // over når ordre-halvdelen er gated væk — så gemmer fanen kun det
       // spilleren faktisk kunne se og røre.
       // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId })) });
+      // #7003: med etapeplanen foelger indsatsen opgaven (planens felter vinder over intentionen).
+      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId })), stagePlan: orders?.stagePlanEnabled === true });
       setStatus("saved");
       setOpenRiderId(null);
       setOpenRoleRiderId(null);
@@ -672,7 +676,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const teamHasSprintCaptain = hasSprintCaptain(riders.map((r) => ({ role: roleFor(r) })));
   const sprintCaptain = riders.find((r) => roleFor(r) === "sprint_captain") || null;
   const orderByRider = new Map((order.riders ?? []).map((r) => [r.rider_id, r]));
-  const leadoutCount = (order.riders ?? []).filter((r) => r.leadout).length;
+  // #7003: etapeplanen langs ruten (serverens svar: flag + femtrins-indsats + s5_profiles_v3).
+  // Enkeltstart/holdtidskoersel beholder de almindelige indsats-kontroller.
+  const stagePlanOn = showOrders && stagePlanReplacesControls(orders?.stagePlanEnabled === true, stageProfileType);
+  const leadoutCount = ((stagePlanOn ? withStagePlanFields(order) : order).riders ?? []).filter((r) => r.leadout).length; // #7003: planens tog
 
   // Én rytters intention på den åbne etape. Låste etaper har ingen draft-celle
   // (buildDraftMatrix dækker kun de redigerbare) — de læses direkte af de
@@ -971,8 +978,34 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       </div>
       )}
 
+      {/* #7003: etapeplanen erstatter intentions- og ordre-kolonnerne, naar den er slaaet til. */}
+      {stagePlanOn && (
+        <StagePlanBoard
+          t={t}
+          raceId={raceId}
+          activeStage={activeStage}
+          isOneDay={isOneDay}
+          riders={visibleRiders}
+          roleFor={roleFor}
+          order={order}
+          onChangeOrder={updateOrder}
+          profile={profileByStage[activeStage]}
+          stageLocked={stageLocked}
+          stageCompleted={activeStage <= stagesCompleted}
+          saving={saving}
+          teamHasSprintCaptain={teamHasSprintCaptain}
+          renderRoleCell={renderRoleCell}
+          rolePickerFor={(rider) => (openRoleRiderId === rider.rider_id && !rider.abandoned && !stageLocked
+            ? <RolePicker t={t} riderName={rider.name} {...rolePickerScope} value={roleFor(rider)} disabled={saving} onPick={(role) => pickRole(rider.rider_id, role)} />
+            : null)}
+          onEditorOpen={() => setOpenRoleRiderId(null)}
+          roleDefaultFor={(id) => roleDefaultFor(defaultOrderForStage(orders, profileByStage[activeStage]?.profile_type), id)}
+          effortFor={effortFor}
+        />
+      )}
       {/* Desktop: tabel. Under sm: stablede kort (samme indhold, ingen vandret
           scroll — siden må aldrig overflowe på mobil, #1834). */}
+      {!stagePlanOn && (
       <div className="hidden sm:block overflow-x-auto">
         {/* #4992: tabellen er sorterbar paa PRAECIS een kolonne (rute-match for
             den aabne etape). De oevrige headers er bevidst inaktive: rytter/
@@ -1041,7 +1074,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           </tbody>
         </table>
       </div>
+      )}
 
+      {!stagePlanOn && (
       <ul className="sm:hidden divide-y divide-cz-border">
         {visibleRiders.map((rider) => {
           const editable = !rider.abandoned && !stageLocked;
@@ -1091,6 +1126,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           );
         })}
       </ul>
+      )}
 
       {stageLocked ? (
         <p className="px-4 py-3 border-t border-cz-border text-3xs text-cz-3 flex items-center gap-1.5">

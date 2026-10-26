@@ -1,4 +1,64 @@
 {
+  "stagePlan": {
+    "title": "Etappeplan",
+    "help": "Elke renner krijgt een kort plan langs het parcours. De taak wisselt bij een klim, in de laatste 10 km of als hij gelost wordt.",
+    "useAssistant": "Gebruik het plan van de assistent",
+    "suggestion": "Voorstel",
+    "noPlan": "Nog geen plan. Hij rijdt volgens zijn rol.",
+    "noPlanLocked": "Geen plan. Hij reed volgens zijn rol.",
+    "noPlanOrders": "Nog geen plan. Hij rijdt op wat je instelde: {orders}.",
+    "noPlanOrdersLocked": "Geen plan. Hij reed op wat je instelde: {orders}.",
+    "noFit": "Dit plan past niet meer bij zijn rol. Kies een nieuw.",
+    "colPlan": "Plan voor etappe {number}",
+    "colPlanRaceDay": "Plan voor de koers",
+    "change": "Wijzigen",
+    "setPlan": "Plan instellen",
+    "close": "Sluiten",
+    "tapToEdit": "Tik om te wijzigen",
+    "editTitle": "Plan voor {name}",
+    "stepLabel": "Stap {number}",
+    "taskLabel": "Taak",
+    "switchLabel": "Wissel",
+    "addStep": "Stap toevoegen",
+    "removeStepAria": "Stap {number} van {name} verwijderen",
+    "useSuggestion": "Gebruik het voorstel",
+    "clearPlan": "Plan verwijderen",
+    "effortNote": "De inspanning volgt de taak.",
+    "rulesNote": "De vlucht kan alleen de eerste taak zijn. Gruppetto, binnenrijden en de sprinttrein komen altijd als laatste.",
+    "timeTrial": "Geen etappeplan in een tijdrit.",
+    "task": {
+      "breakaway": "Mee in de vlucht",
+      "stay_sheltered": "Uit de wind blijven",
+      "shelter_leader": "Kopman vooraan houden",
+      "tempo": "Tempo maken",
+      "follow_moves": "Aanvallen volgen",
+      "attack": "Aanvallen",
+      "ride_for_result": "Rijden voor een uitslag",
+      "sprint_train": "Sprinttrein",
+      "grupetto": "Gruppetto",
+      "ride_in": "Binnenrijden"
+    },
+    "from": {
+      "kom": "na {climb}",
+      "final_km": "laatste 10 km",
+      "dropped": "als hij gelost is",
+      "caught": "als hij gegrepen is"
+    },
+    "climbFallback": "klim van cat. {category}",
+    "recap": {
+      "title": "Wat hij deed",
+      "kom": "tot de top van {climb}",
+      "final_km": "tot de laatste 10 km",
+      "dropped": "tot hij gelost werd op km {km}",
+      "caught": "tot hij gegrepen werd op km {km}",
+      "missed_break": "zat niet mee in de vlucht",
+      "finish": "tot de finish",
+      "abandoned": "gaf op bij km {km}",
+      "skipped": "overgeslagen, hij was al gelost",
+      "notReached": "niet bereikt",
+      "pending": "De koersfilm van deze etappe is nog niet klaar."
+    }
+  },
   "stagePageV2": {
     "tabsAria": "Koersweergaven",
     "tab": {
@@ -84,10 +144,16 @@
     },
     "favourites": {
       "title": "Favorieten",
-      "foot": "Gebaseerd op deze koers tot nu toe. Parcoursmatch alleen voor je eigen renners.",
+      "foot": "Volgt het etappeprofiel, gebaseerd op deze koers tot nu toe. Parcoursmatch alleen voor je eigen renners.",
       "leadsOverall": "Aan de leiding in het klassement",
       "overall": "#{rank} in het klassement, {gap}",
       "wonStage": "Won etappe {number}",
+      "placed": {
+        "flat": "Top 10 in {count, plural, one {# vlakke etappe} other {# vlakke etappes}}",
+        "hilly": "Top 10 in {count, plural, one {# heuvelachtige etappe} other {# heuvelachtige etappes}}",
+        "mountain": "Top 10 in {count, plural, one {# bergetappe} other {# bergetappes}}",
+        "itt": "Top 10 in {count, plural, one {# tijdrit} other {# tijdritten}}"
+      },
       "you": "Jij"
     },
     "story": {
@@ -134,6 +200,10 @@
         "gap": "De voorsprong op {group, select, rest {het peloton} other {de achtervolgers}} {dir, select, grew {groeit} other {krimpt}} van {before} naar {after}",
         "split": "{count, plural, one {Een groep splitst af} other {# groepen splitsen af}}",
         "dropped": "{count, plural, one {{names} moet lossen uit de ontsnapping} other {{names} moeten lossen uit de ontsnapping}}",
+        "formedAhead": "{count, plural, one {# renner rijdt weg voor het peloton} other {# renners rijden weg voor het peloton}}",
+        "caughtAhead": "{count, plural, one {# renner uit de groep voor het peloton wordt ingelopen} other {# renners uit de groep voor het peloton worden ingelopen}}",
+        "survivedAhead": "De groep voor het peloton houdt stand tot de finish",
+        "droppedAhead": "{count, plural, one {{names} moet lossen uit de groep voor het peloton} other {{names} moeten lossen uit de groep voor het peloton}}",
         "joined": "{count, plural, one {Twee groepen komen samen} other {Groepen komen # keer samen}}",
         "gcLead": "{name} pakt de leiding in het algemeen klassement",
         "crack": "{name} klapt",
@@ -148,8 +218,9 @@
         "leading": "Aan kop",
         "first": "Eerst over de top",
         "top": "Top {name}",
+        "topOfPlace": "Top van {place}",
         "climb": "klim",
-        "sprint": "Sprint",
+        "sprint": "Tussensprint",
         "finish": "Finish",
         "none": "Geen klimmen, sprints of finish in het koerslogboek."
       },
@@ -160,7 +231,7 @@
         "caught": "De ontsnapping werd bij km {km} ingehaald.",
         "survived": "{names} bleven uit de greep tot de finish.",
         "attack": "{names} viel aan bij km {km}.",
-        "attackGain": "{names} viel aan bij km {km} en won {gain}.",
+        "attackGain": "{names} viel aan bij km {km} en pakte {gain} op het peloton.",
         "winner": "{winner} won.",
         "winnerGap": "{winner} won, {gap} voor {second}.",
         "winnerSame": "{winner} won voor {second} op dezelfde tijd.",
@@ -739,6 +810,23 @@
     "whyBest": "Deze {bucket}-etappe beloont je sterkste match: {name}.",
     "form": "Vorm",
     "fatigue": "Vermoeidheid",
+    "doctor": {
+      "label": "Arts",
+      "hint": "Het oordeel van de ploegarts over elke renner. Een betere medische afdeling geeft een scherper oordeel.",
+      "assessment": {
+        "fresh": "Fris",
+        "ready": "Klaar",
+        "tired": "Moe",
+        "rest": "Moet rusten",
+        "injured": "Geblesseerd"
+      },
+      "season": {
+        "ready": "Klaar voor deze en de rest van het seizoen.",
+        "ready_but_spent_later": "Nu klaar, maar leeg tegen de derde grote ronde.",
+        "already_heavy": "Heeft dit seizoen veel gekoerst. Elke etappe kost nu meer.",
+        "rest_first": "Geef hem rust voor deze."
+      }
+    },
     "injured": "Geblesseerd",
     "overAge": "Te oud",
     "boundIn": "Rijdt {race}",
@@ -971,6 +1059,12 @@
       "free_role": "vrije rol"
     }
   },
+  "stageOrders": {
+    "title": "Je orders",
+    "roleDefaults": "niets opgeslagen, dus elke renner reed zijn rol",
+    "stanceAuto": "Automatisch",
+    "roleDefaultShort": "standaard van de rol"
+  },
   "racePage": {
     "tabsAria": "Koersonderdelen",
     "tab": {
@@ -991,11 +1085,13 @@
       "stageWins": "Etappezeges",
       "finishers": "Finishers",
       "notStarted": "Nog niet gestart",
+      "nextStageSub": "Volgende etappe",
       "racingNow": "Nu in koers",
       "allRidden": "Alles gereden",
       "squadLockedIn": "Selectie vergrendeld",
       "squadFrozen": "Selectie bevroren",
       "abandons": "{count, plural, one {# opgave} other {# opgaven}}",
+      "chipNextStage": "Volgende: etappe {number} · {time}",
       "chipStageOnRoad": "Etappe {number} onderweg",
       "chipRacing": "Onderweg",
       "chipFinished": "Afgelopen",
@@ -1315,7 +1411,8 @@
       "watchButton": "De koersfilm bekijken",
       "title": "Koersfilm",
       "km": "km {value}",
-      "gapCurveTitle": "Achterstand op het peloton",
+      "gapCurveTitle": "Voorsprong op de achtervolgers",
+      "gapNow": "Voorsprong {gap}",
       "scrubberLabel": "Door de etappe scrollen",
       "replay": "Opnieuw afspelen",
       "play": "Afspelen",
@@ -1359,6 +1456,10 @@
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door het peloton.",
         "breakaway_survived": "De ontsnapping houdt het peloton tot aan de streep van zich af.",
         "breakaway_dropped": "{riders} {count, plural, one {moet} other {moeten}} de ontsnapping laten gaan.",
+        "group_ahead_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg in een groep voor het peloton.",
+        "group_ahead_caught": "De groep voor het peloton wordt ingelopen: {riders}.",
+        "group_ahead_survived": "De groep voor het peloton houdt stand tot de streep.",
+        "group_ahead_dropped": "{riders} {count, plural, one {moet} other {moeten}} lossen uit de groep voor het peloton.",
         "incident": "{kind, select, mechanical {{rider} gaat onderuit door materiaalpech.} other {{rider} gaat onderuit in een valpartij.}}",
         "incident_crash_time_loss": "{rider} gaat onderuit en verliest {seconds} sec.",
         "incident_crash_hard": "{rider} gaat hard onderuit: {seconds} sec. verloren, en {days, plural, one {# dag} other {# dagen}} aan de kant.",
@@ -1428,7 +1529,9 @@
       "title": "Opgaven",
       "crash": "Valpartij",
       "mechanical": "Materiaalpech",
-      "injury": "Niet gestart"
+      "injury": "Niet gestart",
+      "illness": "Ziek, niet gestart",
+      "withdrawal": "Afgestapt"
     },
     "why": {
       "title": "Het grotere plaatje",

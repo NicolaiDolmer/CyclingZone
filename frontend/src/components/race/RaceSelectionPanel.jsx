@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import DoctorNote from "./DoctorNote";
 import { authHeaders } from "../../lib/supabase"; // #4348: kanonisk kopi
 import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { toggleRider, validateSelectionClient, partialSquadOutlook, MIN_RACE_ENTRIES } from "../../lib/raceSelectionLogic.js";
@@ -64,7 +65,7 @@ export default function RaceSelectionPanel({
   // #3809: fulde evne-navne til kolonne-tooltips (samme mønster som TeamPage's
   // SquadTab tRider-brug til de forkortede kolonne-headers).
   const { t: tRider } = useTranslation("rider");
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(/** @type {any} */ (null)); // selection-svaret; any saa data?.size-snaevringen ikke goer typen til never
   const [sel, setSel] = useState(EMPTY_SELECTION);
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
@@ -119,7 +120,7 @@ export default function RaceSelectionPanel({
   // bart `data` ville kaste TypeError og hvidskaerme siden i det oejeblik flaget slukkes.
   // Latent ogsaa foer #4295; lukket her fordi den er gratis at lukke.
   const earlyClientErrors = data?.size
-    ? validateSelectionClient({ ...sel, size: data.size })
+    ? validateSelectionClient({ ...sel, size: data.size, sprintLeaderAllowed: data.sprint_leader_allowed === true })
     : [];
   const earlySaveBlockReason = earlyClientErrors.length > 0
     ? t(`selection.errors.${earlyClientErrors[0]}`, { min: data?.size?.min, max: data?.size?.max })
@@ -277,7 +278,7 @@ export default function RaceSelectionPanel({
   // #4295: antal blokerer aldrig nedad. Klienten spejler nu backenden præcist (kun over
   // feltstørrelsen + kaptajn + rolle-overlap), så en delvis trup altid kan gemmes, også
   // ved en førstegangs-udtagelse, som var netop den tilstand "Ryd alt" efterlader.
-  const clientErrors = validateSelectionClient({ ...sel, size });
+  const clientErrors = validateSelectionClient({ ...sel, size, sprintLeaderAllowed: data?.sprint_leader_allowed === true }); // #6321
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
   const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
@@ -730,6 +731,13 @@ export default function RaceSelectionPanel({
                         <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.fatigue")}</span>
                         <span className="font-mono tabular-nums text-cz-2">{rider.fatigue ?? "—"}</span>
                       </span>
+                      {/* #6984 M4/M8: holdlægens ord (kun når backend sender dem). */}
+                      {data?.doctor?.riders?.[rider.id] && (
+                        <span className="inline-flex items-center gap-1">
+                          <span className="text-cz-3 uppercase text-3xs tracking-wide">{t("selection.doctor.label")}</span>
+                          <DoctorNote entry={data.doctor.riders[rider.id]} />
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -770,6 +778,9 @@ export default function RaceSelectionPanel({
                     className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.form")}</SortTh>
                   <SortTh sortKey="fatigue" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
                     className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.fatigue")}</SortTh>
+                  {data?.doctor && (
+                    <th className="px-4 py-3 text-right font-medium text-xs uppercase" title={t("selection.doctor.hint")}>{t("selection.doctor.label")}</th>
+                  )}
                 </>
               )}
             </tr>
@@ -852,6 +863,9 @@ export default function RaceSelectionPanel({
                       </td>
                       <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.form ?? "—"}</td>
                       <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.fatigue ?? "—"}</td>
+                      {data?.doctor && (
+                        <td className="px-4 py-2.5 text-right"><DoctorNote entry={data.doctor.riders?.[rider.id]} /></td>
+                      )}
                     </>
                   )}
                 </tr>

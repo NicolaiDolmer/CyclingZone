@@ -27,6 +27,7 @@ import { errorMiddleware, shouldReportToSentry } from "./lib/errorMiddleware.js"
 import { normalizeRequestBody } from "./lib/normalizeRequestBody.js";
 import apiRoutes from "./routes/api.js";
 import { createComebackRouter } from "./routes/comeback.js"; // #5643
+import { createContractBuybackRouter } from "./routes/contractBuyback.js"; // #7251
 import { createBoardVerdictRouter } from "./routes/boardVerdict.js"; // #5753
 import { createPublicStageRouteRouter } from "./routes/publicStageRoute.js"; // #6574
 import { startCron, awaitCronsIdle, getCronInFlight, stopCronScheduling } from "./cron.js";
@@ -78,6 +79,12 @@ app.use(normalizeRequestBody);
 // #5643: POST /api/season/comeback (parkeret hold tilbage efter Global Rank). Egen
 // route-fil, monteret FØR apiRoutes, fordi routes/api.js er låst af en anden bølge.
 app.use("/api/season/comeback", createComebackRouter({
+  supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+    auth: { persistSession: false },
+  }),
+}));
+// #7251: tilbagekøbsret for ryttere frigivet uden varsel ved S4→S5. Egen fil, FØR apiRoutes.
+app.use("/api/contracts/buyback", createContractBuybackRouter({
   supabase: createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false },
   }),

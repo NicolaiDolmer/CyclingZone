@@ -164,11 +164,6 @@
       "good": "Good",
       "great": "Great",
       "outstanding": "Outstanding"
-    },
-    "trend": {
-      "up": "Satisfaction trending up",
-      "down": "Satisfaction trending down",
-      "flat": "Satisfaction steady"
     }
   },
   "changeKind": {
@@ -1807,9 +1802,6 @@
     "confidence": {
       "cardTitle": "Board confidence",
       "updated": "Updated {date}",
-      "weekDeltaUp": "+{delta} this week",
-      "weekDeltaDown": "{delta} this week",
-      "weekDeltaFlat": "No change this week",
       "categories": {
         "results": "Results",
         "economy": "Economy",
@@ -1876,6 +1868,7 @@
       "meta": "{seasons, plural, one {1-season plan} other {#-season plan}}",
       "seasonLabel": "Season {season}",
       "currentSeasonLabel": "Season {season} · You are here",
+      "progress": "{done} of {total} milestones reached",
       "countsAt": "Reach it by the end of season {season}. If you get there earlier, it counts at the end of that season.",
       "milestoneProgress": "{current} of {target}",
       "helpLink": "How milestones count",

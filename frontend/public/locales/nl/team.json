@@ -39,7 +39,8 @@
     "squad": "Selectie ({count})",
     "development": "Ontwikkeling",
     "stats": "Statistieken",
-    "transfers": "Transfergeschiedenis"
+    "transfers": "Transfergeschiedenis",
+    "contracts": "Contracten"
   },
   "development": {
     "headers": {
@@ -321,5 +322,73 @@
     "discordOpenAria": "Het Discord-profiel van {handle} openen",
     "discordCopyAria": "Discord-gebruikersnaam {handle} kopiëren",
     "discordCopied": "Gekopieerd"
+  },
+  "contracts": {
+    "headers": {
+      "seasons": "Seizoenen",
+      "salary": "Salaris nu / nieuw",
+      "newContract": "Nieuw contract"
+    },
+    "selectRider": "{name} selecteren",
+    "selectGroup": "Alles selecteren: {group}",
+    "seasonsFor": "Seizoenen om {name} te verlengen",
+    "seasonsCount": "{count}",
+    "seasonsMax": "{count} (max)",
+    "noContract": "Geen contract",
+    "group": {
+      "expiring": "Loopt dit seizoen af",
+      "season": "Loopt af na seizoen {season}",
+      "atCap": "Aan de grens",
+      "atCapHint": "Loopt al zo ver als toegestaan. Kan opnieuw worden verlengd zodra het seizoen wisselt."
+    },
+    "bar": {
+      "none": "Vink de renners aan die je wilt verlengen.",
+      "selected": "{count, plural, one {# renner geselecteerd} other {# renners geselecteerd}}",
+      "salaryDelta": "Salaris {value} CZ$ per seizoen",
+      "seasonsLabel": "Seizoenen",
+      "extend": "{count, plural, =0 {Contracten verlengen} one {# contract verlengen} other {# contracten verlengen}}"
+    },
+    "summary": {
+      "title": "Contracten verlengen",
+      "cancel": "Annuleren",
+      "confirm": "{count, plural, one {# contract verlengen} other {# contracten verlengen}}",
+      "loadError": "Het overzicht kon niet worden geladen. Er is niets gewijzigd.",
+      "saveError": "De contracten konden niet worden verlengd. Er is niets gewijzigd.",
+      "teamSalary": "Teamsalaris per seizoen",
+      "salaryCap": "Salarisplafond van het bestuur",
+      "noCap": "Geen plafond",
+      "withinCap": "Onder het plafond",
+      "overCap": "Boven het plafond van {cap} CZ$. Er wordt niets verlengd"
+    },
+    "done": "{count, plural, one {# contract verlengd.} other {# contracten verlengd.}}",
+    "loadErrorTitle": "Je contracten konden niet worden geladen",
+    "loadErrorBody": "Er is niets verloren. Je contracten zijn ongewijzigd.",
+    "retry": "Opnieuw proberen",
+    "emptyTitle": "Contracteer renners om hun contracten te beheren",
+    "emptyBody": "Je renners verschijnen hier, gegroepeerd op wanneer hun contract afloopt.",
+    "buyback": {
+      "title": "Haal je renners terug",
+      "intro": "Deze renners verlieten je ploeg bij de seizoenswissel zonder de contractmelding die je had moeten krijgen. Contracteer ze opnieuw binnen 7 dagen: normaal salaris, 1 seizoen, geen tekengeld.",
+      "squad": "Selectie",
+      "deadline": "Tot",
+      "sign": "Opnieuw contracteren",
+      "signAria": "{name} opnieuw contracteren",
+      "done": "{name} is terug in je ploeg.",
+      "squads": {
+        "senior": "Senior",
+        "u23": "U23",
+        "junior": "Junior"
+      },
+      "errors": {
+        "buyback_not_eligible": "Valt er niet onder",
+        "buyback_rider_not_free": "Getekend door een andere ploeg",
+        "buyback_rider_retired": "Gestopt",
+        "buyback_rider_on_auction": "In veiling",
+        "buyback_expired": "De 7 dagen zijn voorbij",
+        "buyback_squad_full": "Je selectie is vol",
+        "buyback_no_team": "Je hebt een ploeg nodig",
+        "buyback_failed": "Kon hem niet opnieuw contracteren. Probeer het opnieuw."
+      }
+    }
   }
 }

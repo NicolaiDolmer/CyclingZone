@@ -1,4 +1,64 @@
 {
+  "stagePlan": {
+    "title": "Stage plan",
+    "help": "Each rider gets a short plan along the route. The task switches at a climb, in the last 10 km or when he is dropped.",
+    "useAssistant": "Use the assistant's plan",
+    "suggestion": "Suggestion",
+    "noPlan": "No plan yet. He rides on his role.",
+    "noPlanLocked": "No plan. He rode on his role.",
+    "noPlanOrders": "No plan yet. He rides on what you set: {orders}.",
+    "noPlanOrdersLocked": "No plan. He rode on what you set: {orders}.",
+    "noFit": "This plan no longer fits his role. Pick a new one.",
+    "colPlan": "Plan for stage {number}",
+    "colPlanRaceDay": "Plan for the race",
+    "change": "Change",
+    "setPlan": "Set plan",
+    "close": "Close",
+    "tapToEdit": "Tap to change",
+    "editTitle": "Plan for {name}",
+    "stepLabel": "Step {number}",
+    "taskLabel": "Task",
+    "switchLabel": "Switch",
+    "addStep": "Add a step",
+    "removeStepAria": "Remove step {number} for {name}",
+    "useSuggestion": "Use the suggestion",
+    "clearPlan": "Remove the plan",
+    "effortNote": "The effort follows the task.",
+    "rulesNote": "The break can only be the first task. Grupetto, riding in and the sprint train always come last.",
+    "timeTrial": "No stage plan on a time trial.",
+    "task": {
+      "breakaway": "Go in the break",
+      "stay_sheltered": "Stay sheltered",
+      "shelter_leader": "Keep the leader up front",
+      "tempo": "Set the tempo",
+      "follow_moves": "Follow the moves",
+      "attack": "Attack",
+      "ride_for_result": "Ride for a result",
+      "sprint_train": "Sprint train",
+      "grupetto": "Grupetto",
+      "ride_in": "Ride to the finish"
+    },
+    "from": {
+      "kom": "after {climb}",
+      "final_km": "last 10 km",
+      "dropped": "when dropped",
+      "caught": "when caught"
+    },
+    "climbFallback": "cat. {category} climb",
+    "recap": {
+      "title": "What he did",
+      "kom": "until the top of {climb}",
+      "final_km": "until the last 10 km",
+      "dropped": "until he was dropped at km {km}",
+      "caught": "until he was caught at km {km}",
+      "missed_break": "did not make the break",
+      "finish": "to the finish",
+      "abandoned": "abandoned at km {km}",
+      "skipped": "skipped, he was dropped before",
+      "notReached": "not reached",
+      "pending": "The race film for this stage is not ready yet."
+    }
+  },
   "stagePageV2": {
     "tabsAria": "Race views",
     "tab": { "stage": "Stage", "standings": "Standings", "team": "Team", "tactics": "Tactics" },
@@ -67,10 +127,16 @@
     },
     "favourites": {
       "title": "Favourites",
-      "foot": "Based on this race so far. Route fit only for your own riders.",
+      "foot": "Follows the stage profile, from results in this race so far. Route fit only for your own riders.",
       "leadsOverall": "Leads the overall",
       "overall": "#{rank} overall, {gap}",
       "wonStage": "Won stage {number}",
+      "placed": {
+        "flat": "Top 10 on {count, plural, one {# flat stage} other {# flat stages}}",
+        "hilly": "Top 10 on {count, plural, one {# hilly stage} other {# hilly stages}}",
+        "mountain": "Top 10 on {count, plural, one {# mountain stage} other {# mountain stages}}",
+        "itt": "Top 10 on {count, plural, one {# time trial} other {# time trials}}"
+      },
       "you": "You"
     },
     "story": {
@@ -117,6 +183,10 @@
         "gap": "The gap to {group, select, rest {the peloton} other {the chase}} {dir, select, grew {grows} other {shrinks}} from {before} to {after}",
         "split": "{count, plural, one {A group splits off} other {# groups split off}}",
         "dropped": "{count, plural, one {{names} is dropped from the break} other {{names} are dropped from the break}}",
+        "formedAhead": "{count, plural, one {# rider goes clear ahead of the peloton} other {# riders go clear ahead of the peloton}}",
+        "caughtAhead": "{count, plural, one {# rider from the group ahead of the peloton is caught} other {# riders from the group ahead of the peloton are caught}}",
+        "survivedAhead": "The group ahead of the peloton stays away to the finish",
+        "droppedAhead": "{count, plural, one {{names} is dropped from the group ahead of the peloton} other {{names} are dropped from the group ahead of the peloton}}",
         "joined": "{count, plural, one {Two groups come together} other {Groups come together # times}}",
         "gcLead": "{name} takes the overall lead",
         "crack": "{name} cracks",
@@ -131,8 +201,9 @@
         "leading": "Leading",
         "first": "First over",
         "top": "Top {name}",
+        "topOfPlace": "Top of {place}",
         "climb": "climb",
-        "sprint": "Sprint",
+        "sprint": "Intermediate sprint",
         "finish": "Finish",
         "none": "No climbs, sprints or finish in the race log."
       },
@@ -143,7 +214,7 @@
         "caught": "The break was caught by km {km}.",
         "survived": "{names} stayed away to the finish.",
         "attack": "{names} attacked at km {km}.",
-        "attackGain": "{names} attacked at km {km} and gained {gain}.",
+        "attackGain": "{names} attacked at km {km} and gained {gain} on the bunch.",
         "winner": "{winner} won.",
         "winnerGap": "{winner} won, {gap} ahead of {second}.",
         "winnerSame": "{winner} won ahead of {second} on the same time.",
@@ -722,6 +793,23 @@
     "whyBest": "This {bucket} stage rewards your strongest fit: {name}.",
     "form": "Form",
     "fatigue": "Fatigue",
+    "doctor": {
+      "label": "Doctor",
+      "hint": "Your team doctor's read on each rider. A better medical department gives a sharper read.",
+      "assessment": {
+        "fresh": "Fresh",
+        "ready": "Good to go",
+        "tired": "Tired",
+        "rest": "Needs rest",
+        "injured": "Injured"
+      },
+      "season": {
+        "ready": "Ready for this one and the rest of the season.",
+        "ready_but_spent_later": "Ready now, but running on empty by the third Grand Tour.",
+        "already_heavy": "Has raced a lot this season. Every stage costs more now.",
+        "rest_first": "Give him rest before this one."
+      }
+    },
     "injured": "Injured",
     "overAge": "Over age limit",
     "boundIn": "Riding {race}",
@@ -954,6 +1042,12 @@
       "free_role": "free role"
     }
   },
+  "stageOrders": {
+    "title": "Your orders",
+    "roleDefaults": "nothing saved, so each rider rode his role",
+    "stanceAuto": "Automatic",
+    "roleDefaultShort": "role's default"
+  },
   "racePage": {
     "tabsAria": "Race sections",
     "tab": {
@@ -974,11 +1068,13 @@
       "stageWins": "Stage wins",
       "finishers": "Finishers",
       "notStarted": "Not started",
+      "nextStageSub": "Next stage",
       "racingNow": "Racing now",
       "allRidden": "All ridden",
       "squadLockedIn": "Squad locked in",
       "squadFrozen": "Squad frozen",
       "abandons": "{count, plural, one {# abandon} other {# abandons}}",
+      "chipNextStage": "Next: stage {number} · {time}",
       "chipStageOnRoad": "Stage {number} on the road",
       "chipRacing": "On the road",
       "chipFinished": "Finished",
@@ -1298,7 +1394,8 @@
       "watchButton": "Watch the race film",
       "title": "Race film",
       "km": "km {value}",
-      "gapCurveTitle": "Gap to the peloton",
+      "gapCurveTitle": "Lead over the chase",
+      "gapNow": "Lead {gap}",
       "scrubberLabel": "Scrub through the stage",
       "replay": "Replay",
       "play": "Play",
@@ -1342,6 +1439,10 @@
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {is} other {are}} caught by the peloton.",
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
+        "group_ahead_formed": "{riders} {count, plural, one {goes} other {go}} clear in a group ahead of the peloton.",
+        "group_ahead_caught": "The group ahead of the peloton is caught: {riders}.",
+        "group_ahead_survived": "The group ahead of the peloton stays away to the line.",
+        "group_ahead_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the group ahead of the peloton.",
         "incident": "{kind, select, mechanical {{rider} goes down with a mechanical.} other {{rider} goes down in a crash.}}",
         "incident_crash_time_loss": "{rider} goes down and loses {seconds} sec.",
         "incident_crash_hard": "{rider} goes down hard: {seconds} sec. lost, and {days, plural, one {# day} other {# days}} on the sidelines.",
@@ -1411,7 +1512,9 @@
       "title": "Abandons",
       "crash": "Crash",
       "mechanical": "Mechanical",
-      "injury": "Non-starter"
+      "injury": "Non-starter",
+      "illness": "Ill, did not start",
+      "withdrawal": "Abandoned"
     },
     "why": {
       "title": "The bigger picture",

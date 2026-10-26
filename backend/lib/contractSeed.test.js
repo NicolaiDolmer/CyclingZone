@@ -274,112 +274,87 @@ test("computeContractExtension: allerede på MAX_LENGTH(3) → clampes, crasher 
 // ── maxAllowedContractEndSeason + gentagne forlængelser (#3143) ─────────────
 // Hidtil intet loft på antal forlængelser pr. rytter: kun contract_length blev
 // clampet (1-3), men contract_end_season kunne flyttes ubegrænset langt frem
-// via gentagne kald. Loftet er currentSeason + MAX_EXTENSION_SEASONS_AHEAD.
+// via gentagne kald. Loftet er maxAllowedContractEndSeason (#7138: current + 1, gulv S6).
 
-test("maxAllowedContractEndSeason = currentSeason + MAX_EXTENSION_SEASONS_AHEAD", () => {
-  assert.equal(CONTRACT.MAX_EXTENSION_SEASONS_AHEAD, 3);
-  assert.equal(maxAllowedContractEndSeason(1), 4);
-  assert.equal(maxAllowedContractEndSeason(7), 10);
-  // NULL/manglende currentSeason → gulv på sæson 1 (samme mønster som ellers i filen)
-  assert.equal(maxAllowedContractEndSeason(null), 4);
-  assert.equal(maxAllowedContractEndSeason(undefined), 4);
+test("maxAllowedContractEndSeason (#7138): indeværende sæson + 1, aldrig under S6", () => {
+  assert.equal(CONTRACT.MAX_EXTENSION_SEASONS_AHEAD, 1);
+  assert.equal(CONTRACT.MIN_EXTENSION_END_SEASON, 6);
+  // Ejer 25/10: i aftenens S4-afslutning må kontrakter gå til slut S6 (S5 + S6).
+  assert.equal(maxAllowedContractEndSeason(4), 6);
+  // "I S5 en kontrakt i S5 og S6, udløber mellem S6 og S7."
+  assert.equal(maxAllowedContractEndSeason(5), 6);
+  assert.equal(maxAllowedContractEndSeason(6), 7);
+  assert.equal(maxAllowedContractEndSeason(10), 11);
+  // NULL/manglende currentSeason → gulvet.
+  assert.equal(maxAllowedContractEndSeason(null), 6);
+  assert.equal(maxAllowedContractEndSeason(undefined), 6);
 });
 
 test("computeContractExtension: en enkelt forlængelse inden for loftet er tilladt", () => {
-  const currentSeason = 5;
+  const currentSeason = 6;
   const next = computeContractExtension({
     current_production_value: 200_000,
-    contract_end_season: 6, // 1 sæson foran current
+    contract_end_season: 6, // udløber i indeværende sæson
     contract_length: 1,
     currentSeason,
   });
-  assert.equal(next.contract_end_season, 7); // 6 + 1 = 7 ≤ currentSeason(5) + 3 = 8
+  assert.equal(next.contract_end_season, 7); // 6 + 1 = 7 ≤ 6 + 1
   assert.ok(next.contract_end_season <= maxAllowedContractEndSeason(currentSeason));
 });
 
 test("computeContractExtension: en forlængelse der ville overskride loftet beregnes stadig (afvisning sker i routen, ikke helperen)", () => {
-  const currentSeason = 5;
-  // Rytteren står allerede på loftet (end = current + 3 = 8) — endnu et kald
-  // ville flytte den forbi loftet, hvilket routen skal afvise.
+  const currentSeason = 6;
+  // Rytteren står allerede på loftet (end = 7) — endnu et kald ville flytte den
+  // forbi loftet, hvilket routen skal afvise.
   const next = computeContractExtension({
     current_production_value: 200_000,
-    contract_end_season: 8,
-    contract_length: 3,
+    contract_end_season: 7,
+    contract_length: 2,
     currentSeason,
   });
-  assert.equal(next.contract_end_season, 9); // > maxAllowedContractEndSeason(5) = 8
+  assert.equal(next.contract_end_season, 8); // > maxAllowedContractEndSeason(6) = 7
   assert.ok(next.contract_end_season > maxAllowedContractEndSeason(currentSeason));
 });
 
-test("gentagne forlængelser kan aldrig flytte contract_end_season forbi currentSeason + 3, hvis loftet håndhæves pr. kald", () => {
-  // Simulerer routens loop: forsøg en forlængelse; hvis den ville overskride
-  // loftet, afvises den (rider forbliver uændret) i stedet for at anvendes.
-  // Dette beviser invarianten uafhængigt af HTTP-laget.
-  const currentSeason = 3;
-  const maxEnd = maxAllowedContractEndSeason(currentSeason); // 6
-  let rider = { current_production_value: 100_000, contract_end_season: null, contract_length: null };
-
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const next = computeContractExtension({ ...rider, currentSeason });
-    if (next.contract_end_season > maxEnd) {
-      // Routen afviser — rytterens kontrakt forbliver uændret.
-      continue;
+test("gentagne forlængelser kan aldrig flytte contract_end_season forbi loftet, hvis loftet håndhæves pr. kald", () => {
+  for (const currentSeason of [4, 5, 8]) {
+    const maxEnd = maxAllowedContractEndSeason(currentSeason);
+    let rider = { current_production_value: 100_000, contract_end_season: null, contract_length: null };
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const next = computeContractExtension({ ...rider, currentSeason });
+      if (next.contract_end_season > maxEnd) continue; // routen afviser
+      rider = { ...rider, contract_end_season: next.contract_end_season, contract_length: next.contract_length };
     }
-    rider = { ...rider, contract_end_season: next.contract_end_season, contract_length: next.contract_length };
+    assert.equal(rider.contract_end_season, maxEnd, `S${currentSeason}: konvergerer til loftet, ikke forbi det`);
   }
-
-  assert.ok(rider.contract_end_season <= maxEnd, `contract_end_season (${rider.contract_end_season}) overskred loftet (${maxEnd})`);
-  assert.equal(rider.contract_end_season, maxEnd); // konvergerer til loftet, ikke forbi det
 });
 
-// ── contractExtensionCapInfo (#3186) ────────────────────────────────────────
-// Loftet var usynligt indtil afvisning (Sentry CYCLINGZONE-45). Denne helper
-// udleder en "X/3 brugt"-tæller UI'et kan vise FØR spilleren handler.
+// ── contractExtensionCapInfo (#3186, #7138) ─────────────────────────────────
+// Tælleren følger det faktiske loft: maxExtensions = loft - indeværende sæson.
 
-test("contractExtensionCapInfo: kontraktløs/udløbet rytter (NULL end) → 0/3 brugt, 3 tilbage", () => {
-  const info = contractExtensionCapInfo(null, 5);
-  assert.equal(info.maxSeason, 8); // 5 + 3
-  assert.equal(info.maxExtensions, 3);
+test("contractExtensionCapInfo: S4-afslutningen (gulv S6) giver 2 forlængelser til en rytter der udløber nu", () => {
+  const info = contractExtensionCapInfo(4, 4);
+  assert.equal(info.maxSeason, 6);
+  assert.equal(info.maxExtensions, 2);
   assert.equal(info.usedExtensions, 0);
-  assert.equal(info.remainingExtensions, 3);
+  assert.equal(info.remainingExtensions, 2);
 });
 
-test("contractExtensionCapInfo: tæller stiger 1 ad gangen i takt med gentagne forlængelser, konvergerer på 3/3", () => {
-  const currentSeason = 3;
-  let end = null;
-  const seen = [];
-  for (let i = 0; i < 3; i++) {
-    seen.push(contractExtensionCapInfo(end, currentSeason).usedExtensions);
-    // simulér den næste forlængelse (samme anker-logik som computeContractExtension)
-    const anchor = Number.isFinite(Number(end)) ? Math.max(Number(end), currentSeason) : currentSeason;
-    end = anchor + 1;
-  }
-  assert.deepEqual(seen, [0, 1, 2]);
-  const final = contractExtensionCapInfo(end, currentSeason);
-  assert.equal(final.usedExtensions, 3);
-  assert.equal(final.remainingExtensions, 0);
-  assert.equal(end, maxAllowedContractEndSeason(currentSeason)); // 3 + 3 = 6
-});
-
-test("contractExtensionCapInfo: en frisk flerårig signing kan allerede stå på 2/3 uden et eneste extend-klik", () => {
-  // 3-sæsons kontrakt signeret i indeværende sæson: end = currentSeason + 2.
-  const currentSeason = 10;
-  const info = contractExtensionCapInfo(currentSeason + 2, currentSeason);
-  assert.equal(info.usedExtensions, 2); // maxSeason(13) - end(12) = 1 tilbage → 2 brugt
-  assert.equal(info.remainingExtensions, 1);
+test("contractExtensionCapInfo: fra S5 er der højst 1 forlængelse", () => {
+  assert.deepEqual(contractExtensionCapInfo(5, 5), { maxSeason: 6, maxExtensions: 1, usedExtensions: 0, remainingExtensions: 1 });
+  assert.deepEqual(contractExtensionCapInfo(null, 7), { maxSeason: 8, maxExtensions: 1, usedExtensions: 0, remainingExtensions: 1 });
+  assert.deepEqual(contractExtensionCapInfo(8, 7), { maxSeason: 8, maxExtensions: 1, usedExtensions: 1, remainingExtensions: 0 });
 });
 
 test("contractExtensionCapInfo: usedExtensions clampes til [0, maxExtensions] selv forbi loftet", () => {
-  // Data der (i teorien) allerede ligger forbi loftet må ikke give negativ remaining
-  // eller usedExtensions > max — grænserne holder uanset input.
-  const info = contractExtensionCapInfo(999, 1);
+  const info = contractExtensionCapInfo(999, 7);
   assert.equal(info.remainingExtensions, 0);
-  assert.equal(info.usedExtensions, 3);
+  assert.equal(info.usedExtensions, info.maxExtensions);
 });
 
-test("contractExtensionCapInfo: NULL/manglende currentSeason → gulv på sæson 1 (samme mønster som maxAllowedContractEndSeason)", () => {
+test("contractExtensionCapInfo: NULL/manglende currentSeason → gulvet (samme mønster som maxAllowedContractEndSeason)", () => {
   const info = contractExtensionCapInfo(null, null);
-  assert.equal(info.maxSeason, 4);
+  assert.equal(info.maxSeason, 6);
   assert.equal(info.usedExtensions, 0);
 });
 

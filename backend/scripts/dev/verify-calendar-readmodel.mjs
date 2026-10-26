@@ -21,7 +21,7 @@ for (let i = 0; i < ids.length; i += 50) {
 }
 const { data: divisions } = await supabase.from("league_divisions").select("id, tier, pool_index, label");
 
-const model = buildCalendarModel({ races, scheduleRows: sched, profileRows: profs, divisions, teamDivisionId: 4 });
+const model = buildCalendarModel({ now: new Date(), races, scheduleRows: sched, profileRows: profs, divisions, teamDivisionId: 4 });
 
 // Eksempel: et div-1 Grand Tour + et div-3 etapeløb + et monument.
 const gt = model.entries.find((e) => e.stages === 21);

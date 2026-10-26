@@ -36,6 +36,8 @@ export default function VisionCard({ vision }) {
 
   const milestones = vision.milestones || [];
   const { seasons } = visionSpan(vision);
+  // #6991 · Fremdrift som "4 af 6": antal naaede milepaele af alle.
+  const reached = milestones.filter((m) => m.status === "achieved").length;
   // #4570-afstemning: backend sender `vision.titleKey` = "vision.title.<dnaKey>"
   // (narrativt klub-navn, "The Nordic project"-stil). Falder til den generiske
   // "Club vision" hvis nøglen mangler eller intet oversat indhold findes endnu.
@@ -55,6 +57,11 @@ export default function VisionCard({ vision }) {
           saetninger ("Finish ahead of at least 12 other managers in the
           division") blev hver titel en smal soejle paa fem linjer. Fra sm og op
           er gitteret uaendret. */}
+      {milestones.length > 0 && (
+        <p data-testid="vision-progress" className="mt-1 text-xs tabular-nums text-cz-2">
+          {t("boardroom.vision.progress", { done: reached, total: milestones.length })}
+        </p>
+      )}
       <div className="relative pt-2">
         <div className="absolute bottom-2 left-[7.5px] top-4 w-px bg-cz-border sm:hidden" aria-hidden="true" />
         <div className="absolute left-10 right-10 top-[17px] hidden h-px bg-cz-border sm:block" aria-hidden="true" />

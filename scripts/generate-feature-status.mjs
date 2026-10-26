@@ -282,7 +282,8 @@ export function render(entries) {
     }
     if (nonLiveRows.length > 0) {
       out.push("| Feature | State | Flag | SSOT | Epic | Verified | Note |");
-      out.push("| --- | --- | --- | --- | --- | --- | --- |");
+      // Kort delimiter-raekke (gyldig GFM): ~6 tok pr. tabel under 3.000-loftet (#7003).
+      out.push("|-|-|-|-|-|-|-|");
       out.push(...nonLiveRows);
       out.push("");
     }

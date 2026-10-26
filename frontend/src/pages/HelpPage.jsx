@@ -349,6 +349,10 @@ const SECTION_DEFS = [
       { id: "typeOverview", kind: "textRows" },
       { id: "development", kind: "text" },
       { id: "agingAndDecline", kind: "text" },
+      // #6110 Udvikling 2.0 del 1 (HELP_BLOCK_FLAGS.riders): ny aldring + AI/frie ryttere.
+      { id: "agingV2", kind: "text" },
+      { id: "aiRidersV2", kind: "text" },
+      { id: "potentialBestRole", kind: "text", flag: "potential_single_number" },
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
       { id: "u25u23", kind: "text" },
@@ -400,12 +404,18 @@ const SECTION_DEFS = [
       // HELP_BLOCK_FLAGS — ingen off-tvilling), saa blokken foerst er synlig
       // naar training_score_visible er beta (viewer i beta-gruppen) eller on.
       { id: "trainingScore", kind: "text", flag: "training_score_visible" },
+      { id: "maxOnePerDay", kind: "text", flag: "ability_cap_per_date_enabled" },
+      { id: "todaysDecision", kind: "text", flag: "training_decision_card" },
       { id: "longTermGrowth", kind: "text" },
+      { id: "longTermGrowthCurveB", kind: "text" },
       // #4066: wired in — the type-gating percentages and the "why did my
       // ability stop rising" FAQ both elaborate on longTermGrowth directly
       // above.
+      // #3564 kurve B: hver *CurveB er on-tvilling til blokken lige foer (HELP_BLOCK_FLAGS.dailytraining).
       { id: "typeGating", kind: "text" },
+      { id: "typeGatingCurveB", kind: "text" },
       { id: "ceilingReached", kind: "text" },
+      { id: "ceilingReachedCurveB", kind: "text" },
       { id: "readingReport", kind: "text" },
       // #3721: wired in — the copy already lived in help.json (translated,
       // en+da) but was never listed here, so the "Weekly rhythm" panel and its
@@ -430,6 +440,7 @@ const SECTION_DEFS = [
       { id: "signingProspects", kind: "steps" },
       { id: "academySize", kind: "text" },
       { id: "dailyTrainingBoost", kind: "text" },
+      { id: "dailyTrainingBoostCurveB", kind: "text" }, // #3564 kurve B (HELP_BLOCK_FLAGS.academy)
       { id: "youthAuctions", kind: "text" },
       { id: "upkeepCost", kind: "text" },
       { id: "graduation", kind: "text" },
@@ -615,7 +626,6 @@ const FAQ_KEYS = [
   "sponsorAmountVariesByClub",
   "seasonFinanceReport",
   "forecastCalculation",
-  "seasonSwitchSettlement",
   "standingsUpdate",
   "adminFinishWithPending",
   "boardSatisfaction",
@@ -678,9 +688,17 @@ const FAQ_KEYS = [
   // og faar derfor ikke en duplikeret FAQ-entry her.
   "sharpFlatTrainingDaysFaq",
   "teamworkLeadershipTrainingFaq",
+  "teamworkLeadershipTrainingCurveBFaq", // #3564 kurve B (HELP_FAQ_FLAGS)
   "riderPoolNationalityFaq",
   "retirementAgeWindowFaq",
   "scoutCancelRefundFaq",
+  // #6979: spoergsmaal der gaar igen (transferrygte, frie seniorer, egen division,
+  // svagheder, loebstraethed), verificeret mod koden.
+  "transferRumourFaq",
+  "freeSeniorAuctionFaq",
+  "ownDivisionCalendarFaq",
+  "trainWeaknessesFaq",
+  "raceFatigueSameFatigueFaq",
 ];
 
 function buildSections(t, vars, flags) {

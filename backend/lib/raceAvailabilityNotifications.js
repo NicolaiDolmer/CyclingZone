@@ -60,6 +60,109 @@ export function buildRiderInjuredNotification({ riderName, raceName, raceId, inj
   };
 }
 
+/**
+ * #7086 (ejer 22/10): træningsvarianten. Samme titel og type som løbsstyrtet, men
+ * årsagen er træning, der er intet løb, og linket går til rytteren (metadata.riderId
+ * vinder i frontendens notificationLink.js før selection_warnings løbs-regel).
+ * relatedId = rytteren, så dedup'en (type+title+message+related_id) er pr. rytter.
+ * @param {{ riderId: string, riderName?: string|null, injuredUntil: string }} args
+ */
+export function buildTrainingInjuryNotification({ riderId, riderName, injuredUntil }) {
+  const rider = riderName || "A rider";
+  const until = shortDayMonth(injuredUntil) ?? injuredUntil;
+  return {
+    type: RACE_AVAILABILITY_NOTIFICATION_TYPE,
+    title: "Rider injured",
+    message: `${rider} was injured in training and is out until ${until}.`,
+    relatedId: riderId ?? null,
+    metadata: {
+      riderId: riderId ?? null,
+      titleCode: "notif.riderInjured.title",
+      titleParams: {},
+      messageCode: "notif.riderInjured.messageTraining",
+      messageParams: { rider, until },
+    },
+  };
+}
+
+/** #6938: lægens besked når en rytter bliver syg af langvarig ekstrem træthed. */
+export function buildRiderIllNotification({ riderId, riderName, injuredUntil }) {
+  const rider = riderName || "A rider";
+  const until = shortDayMonth(injuredUntil) ?? injuredUntil;
+  return {
+    type: RACE_AVAILABILITY_NOTIFICATION_TYPE,
+    title: "Rider ill",
+    message: `The doctor says ${rider} is ill after several days of extreme fatigue and is out until ${until}.`,
+    relatedId: riderId ?? null,
+    metadata: {
+      riderId: riderId ?? null,
+      titleCode: "notif.riderIll.title",
+      titleParams: {},
+      messageCode: "notif.riderIll.message",
+      messageParams: { rider, until },
+    },
+  };
+}
+
+/** PURE (#6938): de NYE sygdomme i ét afregnet tick (illness_days > 0), med datoen fra condition-raekken. */
+export function newTrainingIllnesses({ reportRiders, conditionUpserts, today }) {
+  const untilByRider = new Map((conditionUpserts ?? []).map((c) => [c?.rider_id, c?.injured_until ?? null]));
+  const out = [];
+  for (const r of reportRiders ?? []) {
+    if (!r?.rider_id || !(Number(r.illness_days) > 0)) continue;
+    const injuredUntil = untilByRider.get(r.rider_id);
+    if (!injuredUntil || (today && injuredUntil < today)) continue;
+    out.push({ riderId: r.rider_id, riderName: r.name || null, injuredUntil });
+  }
+  return out;
+}
+
+/**
+ * PURE (#7086): de NYE træningsskader i ét afregnet træningstick. En ny skade er en
+ * rapportlinje med injury_days > 0 (sat KUN når skaden blev rullet i dette tick; en
+ * igangværende skade har 0). Datoen læses fra condition-raekken, fordi #5462 kan
+ * have rykket den til slut-løbsdagens dato efter løkken. En skade der allerede er
+ * overstået i dag (en sen afregning af en gammel dato) giver ingen besked.
+ * @param {{ reportRiders: Array<{rider_id, name?, injury_days?}>,
+ *   conditionUpserts: Array<{rider_id, injured_until}>, today: string }} args
+ */
+export function newTrainingInjuries({ reportRiders, conditionUpserts, today }) {
+  const untilByRider = new Map((conditionUpserts ?? []).map((c) => [c?.rider_id, c?.injured_until ?? null]));
+  const out = [];
+  for (const r of reportRiders ?? []) {
+    if (!r?.rider_id || !(Number(r.injury_days) > 0)) continue;
+    const injuredUntil = untilByRider.get(r.rider_id);
+    if (!injuredUntil || (today && injuredUntil < today)) continue;
+    out.push({ riderId: r.rider_id, riderName: r.name || null, injuredUntil });
+  }
+  return out;
+}
+
+/**
+ * #7086: én besked pr. ny træningsskade til holdets ejer (AI-hold har ingen ejer:
+ * no-op i notifyTeamOwner). Kaldes af dailyTrainingEngine EFTER træningsdagens
+ * writes er landet og kun når tick'et ikke allerede var kørt, så en genkørsel aldrig
+ * sender igen; dedup'en i notifyUser (24 t, samme rytter + dato) er anden linje.
+ * Kaster ALDRIG: en fejlet besked må ikke vælte en afregnet træningsdag.
+ */
+export async function notifyTrainingInjuries({ supabase, teamId, reportRiders, conditionUpserts, notify = notifyTeamOwner, now = new Date() }) {
+  let sent = 0;
+  try {
+    const injuries = newTrainingInjuries({ reportRiders, conditionUpserts, today: copenhagenDateString(now) });
+    for (const injury of injuries) {
+      const payload = buildTrainingInjuryNotification(injury);
+      if (await deliverOne({ notify, supabase, teamId, now, payload, flow: "training-day", stage: "training-injury-notice" })) sent += 1;
+    }
+    // #6938: syg af langvarig ekstrem træthed (kun når sygdom er tændt; ellers ingen illness_days).
+    for (const illness of newTrainingIllnesses({ reportRiders, conditionUpserts, today: copenhagenDateString(now) })) {
+      if (await deliverOne({ notify, supabase, teamId, now, payload: buildRiderIllNotification(illness), flow: "training-day", stage: "training-illness-notice" })) sent += 1;
+    }
+  } catch (err) {
+    captureException(err, { tags: { flow: "training-day", stage: "training-injury-notice" }, teamId });
+  }
+  return { sent };
+}
+
 /** @param {{ raceId: string, raceName?: string|null, min?: number }} args */
 export function buildTeamDidNotStartNotification({ raceId, raceName, min = MIN_RACE_ENTRIES }) {
   const race = raceName || "your race";
@@ -165,12 +268,12 @@ export async function notifyRaceInjuries({ supabase, race, injuryRows, finishedR
 
 // Én modtagers fejl (ejer-opslag, insert) må aldrig koste de øvrige managers deres
 // besked (review #6742): fanget og sendt til Sentry pr. modtager, løkken fortsætter.
-async function deliverOne({ notify, supabase, teamId, now, payload, raceId }) {
+async function deliverOne({ notify, supabase, teamId, now, payload, raceId, flow = "race-run", stage = "race-availability-notice" }) {
   try {
     const result = await notify({ supabase, teamId, now, ...payload });
     return Boolean(result?.delivered);
   } catch (err) {
-    captureException(err, { tags: { flow: "race-run", stage: "race-availability-notice" }, raceId, teamId });
+    captureException(err, { tags: { flow, stage }, raceId, teamId });
     return false;
   }
 }

@@ -19,7 +19,11 @@
     "team": "Team",
     "teamAll": "Alle teams",
     "min": "Min",
-    "max": "Max"
+    "max": "Max",
+    "contractBy": "Contract loopt af uiterlijk in seizoen",
+    "contractAny": "Elk contract",
+    "contractNone": "Geen contract",
+    "contractSeason": "Seizoen {season}"
   },
   "toggles": {
     "freeAgent": "Transfervrij",
@@ -60,6 +64,10 @@
     },
     "teamSelected": "Team geselecteerd",
     "statRange": "{label} {min}-{max}",
-    "remove": "Filter verwijderen: {label}"
+    "remove": "Filter verwijderen: {label}",
+    "contract": {
+      "by": "Contract ≤ seizoen {season}",
+      "none": "Geen contract"
+    }
   }
 }

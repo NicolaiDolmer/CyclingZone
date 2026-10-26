@@ -55,6 +55,27 @@
   "primary": {
     "setDays": "Set days for {n, plural, one {# rider} other {# riders}}"
   },
+  "decision": {
+    "title": "Today's decision",
+    "recovery": "active recovery today",
+    "reason": "Fatigue {fatigue} with a hard day planned. Injury risk is raised.",
+    "use": "Use",
+    "useAria": "Set {name} to active recovery",
+    "useAll": "Use all {n} suggestions",
+    "none": "No rider needs a change today.",
+    "failed": "Could not save. Try again.",
+    "segLabel": "Filter riders",
+    "segAll": "All {n}",
+    "segTraining": "Training {n}",
+    "segRacing": "Racing {n}",
+    "segTired": "Fatigue {from}+ {n}",
+    "colDays70": "Days {from}+",
+    "days70Hint": "Settled days in a row at fatigue {from} or more",
+    "colAssistant": "Assistant",
+    "assistantRecovery": "Active recovery",
+    "agrees": "Agrees",
+    "raceChip": "Race"
+  },
   "overview": {
     "label": "Today at a glance",
     "needsDay": "Needs a day",

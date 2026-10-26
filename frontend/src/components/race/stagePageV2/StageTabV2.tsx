@@ -96,6 +96,8 @@ export interface StageTabV2Props {
   profile: StageProfile | null;
   results: ResultRow[];
   stagePointRows: ResultRow[];
+  /** #6939: etapernes profiler, saa favoritterne vaelges efter etapens profil. */
+  profileByStage?: Record<number, StageProfile>;
   stageLoaded: boolean;
   /** Erstatter "Your day" naar etapens resultater ikke kunne hentes (#6570). */
   stageErrorSlot: ReactNode;
@@ -110,7 +112,7 @@ export interface StageTabV2Props {
 }
 
 export default function StageTabV2({
-  stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, stageLoaded, stageErrorSlot, myTeamId,
+  stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
   stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState, story = null,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
@@ -121,7 +123,7 @@ export default function StageTabV2({
   const riders = useMemo(() => (stageRoles ? stageRoles.riders ?? [] : []), [stageRoles]);
   const overrides = stageRoles ? stageRoles.overrides ?? [] : [];
   const lineup = lineupFor(riders, overrides, stageNumber);
-  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted);
+  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted, profileByStage);
   const fitById = new Map(lineup.map((r) => [r.riderId, r.fit]));
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));

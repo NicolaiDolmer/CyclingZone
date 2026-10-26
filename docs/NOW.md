@@ -6,9 +6,9 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · **forsiden #6665:** ejeren siger selv hvornår.
 >
-> **🎯 Next action (23/10, efter morgenkort):** ejer-beslutninger: aldring S5 køres ved skiftet (#6499) · "Afventer oprykning" tændes før transition + #7036 samme dag (#6710) · #7031-nulstilling KØRT 07:42 (backup i balance-internals/7031) · motor v2: tænd-tjek rettet, merge-kæde `6820,7021` efter #6820-gaten · migrationer #7065 #7012 merges · v3: jagt på stigningerne (design → byg, #6804). **Railway bygger igen** (main live via GitHub-source, 2f42d9c88 kl. 05:07), så GHCR-trin 1 er overflødigt. Merge-kæde i gang: 7073 7083 7076 7059 7055 → 7067 7074 7066 → 7065 7012 → 6820 7021. Venter: #7075 (ikke valgt endnu), #7063 #7064 #7068 #7080 #7036 (Codex), #7079 (P1: vægte i klienten). **S5-skiftet 25/10 kl. 20:30** følger [drejebogen](runbooks/2026-10-25-s4-s5-drejebog.md).
->
-> **Nat 22-23/10 (PC1):** merget #7043 #7045 #7060 #7081 #7061 #7044 + designs #7056 #7013 #7048 #7069 #7070. Venter på ejer: 16 spillervendte PR'er (galleri), migrationer #7065 #7057 #7012, valg-kort #7071 #7072. Undersøgt: #5965 (ingen ændring anbefalet), #6514, #6975.
+> **🎯 Next action (26/10, efter PC1-natten):** Morgenkort i `pr-screens/morgen-26-10/` + status på #7153. **Før ons 28/10 kl. 11:00:** (1) tænd v3 `s5_profiles_v3` (d3-gaten IKKE BLOKERET; kun G16, godkendt 25/10; tjek G19 div. 1 6:17 på S5) (2) tænd `race_form_peaks` (moderat effekt, 0 data at reparere) (3) #7205 delt kaptajn: go til migration + #6321 ikke bag flag (4) #6668 AI-ungdomsløft før ons 14:30 (5) #7223 genstart + CYCLINGZONE-AQ. Merget i nat: #7161 #7208 #7217 #7227. Overvåg ons 20:00: første afregning med Form 2.0 + kurve B.
+
+> **26/10 nat (PC1):** 2 baner (v3-testport + formtest) + #7217 lazy-tabel. 5 PR'er merget, intet tændt. Status på #7153.
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
@@ -26,4 +26,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Ingen aktiv session. Koordinering #7153.

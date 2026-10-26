@@ -89,6 +89,9 @@ checks compare both EXCEPT ALL directions and report drift to Sentry, daily per
 backend client outside 19-22 Europe/Copenhagen. The staging every-pass override
 also respects the peak window. Every invocation logs queue length/pass duration;
 queue >10,000 or pass >20s alarms in Sentry. No reader swap is included.
+M1.5 recomputes rider transfers from contribution rows only, bounds each claim
+to p_max_items, drains up to 20 batches/8s per pass and alarms on a queue head
+older than 30 minutes while enabled.
 
 ### Spillersynlige feature-flags (#4948, #6103)
 GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`
@@ -220,7 +223,6 @@ POST /api/admin/race-pool/import-csv      multipart-CSV → seed/opdatér `race_
 GET  /api/admin/seasons/:id/race-selection/preview
 POST /api/admin/seasons/:id/race-selection  { pool_race_ids[], replace?: bool } — bind pool-løb til sæson
 GET  /api/races                           q, season, class, status (søgbar liste på tværs af sæsoner)
-POST /api/admin/import-results-pcm        multipart: files[] (PCM-fallback, epic #1105)
 POST /api/admin/seasons/:id/start
 POST /api/admin/seasons/:id/end
 POST /api/admin/seasons/:id/rebuild-standings
@@ -245,7 +247,7 @@ POST /api/admin/beta/full-reset           { clear_transactions?, reset_mode? }
 ```
 
 Season flow notes:
-- `POST /api/admin/import-results-pcm` og `POST /api/admin/approve-results` deler samme result-write path via `backend/lib/raceResultsEngine.js` (Excel-/Sheets-import + dyn_cyclist-/UCI-sync fjernet 2026-06-12, #1179/#1180/#1207)
+- `POST /api/admin/approve-results` og race-motoren deler samme result-write path via `backend/lib/raceResultsEngine.js` (Excel-/Sheets-import + dyn_cyclist-/UCI-sync fjernet 2026-06-12, #1179/#1180/#1207; PCM-importen fjernet 2026-10-24, #7082)
 - Result-finalisering skriver `race_results`, bogfører prize-transaktioner med gyldig finance-type og recalculerer derefter `season_standings` fra persisted data
 - `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
 - `POST /api/admin/seasons/:id/rebuild-standings` er repair-pathen for aktive/afsluttede sæsoner, hvis standings skal genopbygges fra persisted `race_results`
@@ -264,7 +266,7 @@ Season flow notes:
 - Transfer window og squad limit håndhæves ved finalisering, ikke kun ved oprettelse eller bud
 
 ### Sæsonflow
-- Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, derefter race-motoren (`POST /api/admin/simulate-race`), `POST /api/admin/import-results-pcm` (fallback) eller `POST /api/admin/approve-results`, og til sidst `POST /api/admin/seasons/:id/end`
+- Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, derefter race-motoren (`POST /api/admin/simulate-race`) eller `POST /api/admin/approve-results`, og til sidst `POST /api/admin/seasons/:id/end`
 - De admin-entrypoints ejes nu kun af `backend/routes/api.js`, så season-flowets guardrails ikke kan drive mellem router og bootstrap-server
 - Den kanoniske season engine ligger i `backend/lib/economyEngine.js`
 - `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra og persisterer også `rank_in_division`

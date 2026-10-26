@@ -91,9 +91,16 @@ const FAQ_PAIRS: Array<[string, string]> = [
 
 const blockVisible = (id: string, flags: Flags) => isHelpBlockVisible("dailytraining", id, flags);
 const faqVisible = (id: string, flags: Flags) => isHelpFaqVisible(id, flags);
+// #3564: andre kontakter (fx development_curve_b) gater ogsaa dele af dailytraining og
+// FAQ'en. Denne fil vogter kun loebsdags-kontakten, saa dele bag et andet flag springes over.
+type Gate = { flag: string; when: boolean };
+const BLOCK_GATES = HELP_BLOCK_FLAGS.dailytraining as Record<string, Gate>;
+const FAQ_GATES = HELP_FAQ_FLAGS as Record<string, Gate>;
+const otherBlockGate = (id: string) => Object.hasOwn(BLOCK_GATES, id) && BLOCK_GATES[id].flag !== FLAG;
+const otherFaqGate = (id: string) => Object.hasOwn(FAQ_GATES, id) && FAQ_GATES[id].flag !== FLAG;
 
 test("flag off: dailytraining viser praecis de blokke den viser i dag", () => {
-  const blocks = dailyTrainingBlocks();
+  const blocks = dailyTrainingBlocks().filter((id) => !otherBlockGate(id));
   const expected = blocks.filter((id) => !ON_ONLY_BLOCKS.includes(id));
   assert.deepEqual(blocks.filter((id) => blockVisible(id, OFF)), expected);
   // Fejlsvaret er off (fail-safe) og skal give samme hjaelp.
@@ -104,7 +111,7 @@ test("flag off: dailytraining viser praecis de blokke den viser i dag", () => {
 });
 
 test("flag off: FAQ'en er praecis dagens liste, i dagens raekkefoelge", () => {
-  const keys = faqKeys();
+  const keys = faqKeys().filter((id) => !otherFaqGate(id));
   const expected = keys.filter((id) => !ON_ONLY_FAQS.includes(id));
   assert.deepEqual(keys.filter((id) => faqVisible(id, OFF)), expected);
   assert.deepEqual(keys.filter((id) => faqVisible(id, {})), expected);
@@ -114,9 +121,9 @@ test("flag off: FAQ'en er praecis dagens liste, i dagens raekkefoelge", () => {
 });
 
 test("de gatede dele er praecis de forventede (ingen eksisterende del er skjult ved en fejl)", () => {
-  const gatedBlocks = Object.keys(HELP_BLOCK_FLAGS.dailytraining).sort();
+  const gatedBlocks = Object.keys(HELP_BLOCK_FLAGS.dailytraining).filter((id) => !otherBlockGate(id)).sort();
   assert.deepEqual(gatedBlocks, [...ON_ONLY_BLOCKS, ...BLOCK_PAIRS.map(([off]) => off)].sort());
-  const gatedFaqs = Object.keys(HELP_FAQ_FLAGS).sort();
+  const gatedFaqs = Object.keys(HELP_FAQ_FLAGS).filter((id) => !otherFaqGate(id)).sort();
   assert.deepEqual(gatedFaqs, [...ON_ONLY_FAQS, ...FAQ_PAIRS.map(([off]) => off)].sort());
   // Flaget skal med i krydstjekket mod backendens allowlist (HelpPage.flagGates.test.js).
   const gateKeys: string[] = helpGateFlagKeys();
@@ -142,11 +149,11 @@ test("et off/on-par staar aldrig side om side, i nogen flag-tilstand", () => {
   // Staerkere: de synlige gatede dele beskriver altid EEN model, aldrig en blanding.
   for (const [label, flags] of STATES) {
     const models = new Set<boolean>();
-    for (const [id, gate] of Object.entries(HELP_BLOCK_FLAGS.dailytraining)) {
-      if (blockVisible(id, flags)) models.add(gate.when);
+    for (const [id, gate] of Object.entries(BLOCK_GATES)) {
+      if (gate.flag === FLAG && blockVisible(id, flags)) models.add(gate.when);
     }
-    for (const [id, gate] of Object.entries(HELP_FAQ_FLAGS)) {
-      if (faqVisible(id, flags)) models.add(gate.when);
+    for (const [id, gate] of Object.entries(FAQ_GATES)) {
+      if (gate.flag === FLAG && faqVisible(id, flags)) models.add(gate.when);
     }
     assert.ok(models.size <= 1, `${label}: hjaelpen blander kalenderdags- og loebsdags-modellen`);
   }

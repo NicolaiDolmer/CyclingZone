@@ -189,13 +189,13 @@ test("extend-quote-routen sender extensionCap med i svaret i begge grene (tillad
   assert.match(block.slice(capBranchIdx, successJsonIdx), /extensionCap/, "den afviste gren (409) skal også indeholde extensionCap");
 });
 
-test("contractExtensionCapInfo udleder brugte/tilbageværende forlængelser fra currentSeason + MAX_EXTENSION_SEASONS_AHEAD (behaviour, spejler contractSeed.test.js)", () => {
+test("contractExtensionCapInfo udleder brugte/tilbageværende forlængelser fra loftet (#7138: current + 1, gulv S6) (behaviour, spejler contractSeed.test.js)", () => {
   // Samme statiske-adfærds-dobbelt-bevis-stil som capBehaviour ovenfor.
-  assert.deepEqual(contractExtensionCapInfo(null, 5), {
-    maxSeason: 8, maxExtensions: 3, usedExtensions: 0, remainingExtensions: 3,
+  assert.deepEqual(contractExtensionCapInfo(null, 7), {
+    maxSeason: 8, maxExtensions: 1, usedExtensions: 0, remainingExtensions: 1,
   });
-  assert.deepEqual(contractExtensionCapInfo(8, 5), {
-    maxSeason: 8, maxExtensions: 3, usedExtensions: 3, remainingExtensions: 0,
+  assert.deepEqual(contractExtensionCapInfo(8, 7), {
+    maxSeason: 8, maxExtensions: 1, usedExtensions: 1, remainingExtensions: 0,
   });
 });
 
@@ -218,15 +218,15 @@ test("contractExtensionCapError afviser med 409 + errorParams.maxSeason, tillade
       : { blocked: true, status: 409, errorCode: "contract_extension_cap_reached", maxSeason };
   }
   // Under loftet → tilladt.
-  assert.equal(capBehaviour(4, 1).blocked, false); // 4 ≤ 1+3
+  assert.equal(capBehaviour(7, 7).blocked, false); // 7 ≤ 7+1
   // Præcis på loftet → tilladt (grænsen selv er OK, kun FORBI er blokeret).
-  assert.equal(capBehaviour(4, 1).blocked, false);
+  assert.equal(capBehaviour(8, 7).blocked, false);
   // Forbi loftet → afvist med 409 + korrekt fejlkode.
-  const blocked = capBehaviour(5, 1);
+  const blocked = capBehaviour(9, 7);
   assert.equal(blocked.blocked, true);
   assert.equal(blocked.status, 409);
   assert.equal(blocked.errorCode, "contract_extension_cap_reached");
-  assert.equal(blocked.maxSeason, 4);
+  assert.equal(blocked.maxSeason, 8);
 });
 
 // ── Invariant 4: behaviour — genskab guard-prædikaterne ─────────────────────

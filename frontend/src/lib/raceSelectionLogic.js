@@ -43,7 +43,8 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
 // KONTRAKTEN (#4295): klienten må ALDRIG afvise et gem serveren ville acceptere.
 // Præcis tre ting blokerer:
 //   selection_wrong_size       → flere ryttere end feltstørrelsen (size.max)
-//   selection_captain_required → ingen kaptajn blandt de udtagne
+//   selection_captain_required → ingen kaptajn blandt de udtagne (i v3-loeb maa
+//                                spurtkaptajnen vaere eneste leder, #6321)
 //   selection_role_overlap     → samme rytter i to roller
 // ANTAL blokerer aldrig nedad. En DELVIS TRUP ER ALTID LOVLIG (ejer 28/6): er truppen
 // ikke fuld ved race-tid, top-fylder raceEntryGenerator gabet fra holdets ledige ryttere.
@@ -68,14 +69,16 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
 // RaceSelectionPanel (`selection.partialHint`), bygget på ryttere der faktisk er frie til
 // DETTE løb (ikke bundet, ikke skadet). Den hører ikke hjemme her: denne funktion afgør
 // om der MÅ gemmes, ikke hvad der er klogt at gemme.
-export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size }) {
+export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, sprintLeaderAllowed = false }) {
   const errors = [];
   if (riderIds.length > size.max) errors.push("selection_wrong_size");
   // BEVIDST divergens der står tilbage efter #4295: backenden kræver kun kaptajn når
   // riderIds.length > 0 (raceSelection.js:36-41), klienten kræver den altid. En helt tom
   // trup (ren auto-udtagelse) kan derfor ikke gemmes fra løbssiden. Uden for #4295's
   // scope: det er en ejer-beslutning, ikke en overset fejl.
-  if (!captainId) errors.push("selection_captain_required");
+  // #6321: i loeb paa s5_profiles_v3+ maa spurtkaptajnen vaere eneste leder; serveren
+  // sender `sprint_leader_allowed` (samme gate som raceSelection.validateSelection).
+  if (!captainId && !(sprintCaptainId && sprintLeaderAllowed)) errors.push("selection_captain_required");
   const roles = [captainId, sprintCaptainId, hunterId].filter(Boolean);
   if (new Set(roles).size !== roles.length) errors.push("selection_role_overlap");
   return errors;

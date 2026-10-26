@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {1 subasta termina en menos de una hora} other {# subastas terminan en menos de una hora}}",
     "squadSelectionMissing": "Falta la selección de la plantilla para {race}",
     "notTrainedToday": "Hoy no has entrenado",
-    "boardPlanMissing": "Aún no has negociado ningún plan con la directiva"
+    "boardPlanMissing": "Aún no has negociado ningún plan con la directiva",
+    "nextValueUpdate": "Próxima actualización de valores: {when}",
+    "nextAcademyIntake": "Próxima captación de la academia: {when}"
   },
   "seasonStart": {
     "title": "Temporada {number}: ponte en marcha",
@@ -431,8 +433,8 @@
       "byDivision": "Fijado por tu división, no por tu plantilla"
     },
     "salaryDetail": {
-      "productionS3": "Sistema salarial de la temporada 3. Tus contratos actuales están fijados y no cambian.",
-      "seasonSwitch": "La temporada {next} recalcula cada salario a partir del rendimiento en el momento del cambio. Tus contratos actuales ya están firmados, así que la cifra de esta temporada queda fijada hasta entonces."
+      "productionS3": "Salarios de tus contratos. Un ciclista cuyo contrato termina aparece con su salario de renovación.",
+      "seasonSwitch": "Los salarios de la temporada {next} son los de tus contratos. Un ciclista cuyo contrato termina aparece con el salario que tendrá si lo renuevas."
     },
     "loanInterestDetail": "Intereses acumulados sobre la deuda pendiente de tus préstamos activos. Se suman al propio préstamo, no se descuentan del neto.",
     "assumption": "Supone tu plantilla actual, sin fichajes, y el sistema salarial de la temporada {next}.",

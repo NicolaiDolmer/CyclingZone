@@ -59,18 +59,34 @@ function hashString(s) {
 // se Discord-evidens i issuet). rand()-strømmen forbliver uændret for
 // IKKE-ekskluderede navne (samme behandling som usedNames-dedup), så en tom/
 // udeladt excludeNames giver 100% samme output som før.
+//
+// #6974 (ejer-beslutning 23/10): mindst én kandidat i puljen er PRÆCIS på
+// facilitetens tier. Navne og tiers trækkes som før; mangler puljen en kandidat
+// på loftet, løftes én plads til loftet. Hvilken plads vælges af en SEPARAT
+// seeded strøm (samme (teamId, season, role)), så hovedstrømmen er uændret og
+// pladsen ikke er fast (position/navn afslører ikke garantien). Garantien gælder
+// den viste pulje efter excludeNames, så den holder også når en fyret/ansat
+// topkandidat er udelukket. Tier 1 (og 0) er uændret: alle er allerede på loftet.
 export function generateStaffCandidates({ teamId, seasonNumber, role, facilityTier, excludeNames }) {
-  const rand = mulberry32(hashString(`${teamId}:${seasonNumber}:${role}`));
+  const seedKey = `${teamId}:${seasonNumber}:${role}`;
+  const rand = mulberry32(hashString(seedKey));
   // facilityTier 0 giver stadig tier-1-kandidater (teaser i UI); selve ansættelsen blokeres af validateHire (staff-tier > facilitets-tier).
   const maxTier = Math.max(1, Math.min(5, facilityTier));
   const excluded = excludeNames instanceof Set ? excludeNames : new Set(excludeNames ?? []);
-  const candidates = [];
+  const drawn = [];
   const usedNames = new Set();
-  while (candidates.length < 3) {
+  while (drawn.length < 3) {
     const name = pickStaffName(rand);
     if (usedNames.has(name) || excluded.has(name)) continue;
     usedNames.add(name);
-    const tier = 1 + Math.floor(rand() * maxTier);
+    drawn.push({ name, tier: 1 + Math.floor(rand() * maxTier) });
+  }
+  if (!drawn.some((d) => d.tier === maxTier)) {
+    const slotRand = mulberry32(hashString(`${seedKey}:ceiling`));
+    drawn[Math.floor(slotRand() * drawn.length)].tier = maxTier;
+  }
+  const candidates = [];
+  for (const { name, tier } of drawn) {
     // #2216 A4: berig med afledt overall + top-specialisering til UI-visning/
     // -sammenligning. Deterministisk (samme (role,tier,name) → samme profil).
     const profile = deriveStaffAbilities({ role, tier, name });

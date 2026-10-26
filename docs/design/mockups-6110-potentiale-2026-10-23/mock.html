@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8"><title>Potentiale som ét tal</title>
+<style>
+:root{--bg-body:#f4f2ec;--bg-card:#fcfbf7;--bg-subtle:#ece9e1;--border:#e5e0d5;--text-1:#0e0f15;--text-2:#4c4a5e;--text-3:#67657e;--accent:#e8c547;--accent-t:#a07800;--success:#15772f;--warning:#9a5b00;--danger:#a81e1e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg-body);font-family:'DM Sans',Segoe UI,Arial,sans-serif;color:var(--text-1)}
+#w{width:1440px;padding:28px 32px 36px}
+.data{font-family:'Inter Tight',Segoe UI,Arial,sans-serif;font-variant-numeric:tabular-nums}
+h1{font-family:'Inter Tight',Segoe UI,sans-serif;font-size:22px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--text-2);font-size:14px;margin:0 0 22px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}
+.colh{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);font-weight:600;margin-bottom:8px}
+.colh b{color:var(--text-1)}
+.lbl{font-size:13px;font-weight:700;margin:0 0 8px;color:var(--text-2)}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:18px 20px}
+.hero{border-top:2px solid var(--accent)}
+.name{font-family:'Bebas Neue',Impact,sans-serif;font-size:36px;line-height:.92;letter-spacing:.01em}
+.meta{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3);margin-top:6px}
+.stats{display:flex;gap:30px;border-top:1px solid var(--border);margin-top:14px;padding-top:14px}
+.sl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3)}
+.sv{font-size:20px;font-weight:650;margin-top:3px}
+.plate{display:inline-block;background:#d8e9d0;padding:0 7px;border-radius:5px}
+.ss{font-size:11px;color:var(--text-3);margin-top:3px}
+.word{font-size:11px;font-weight:600;padding:1px 7px;border:1px solid var(--border);border-radius:5px;color:var(--text-2);margin-left:6px;vertical-align:3px}
+.w-sure{color:var(--success);border-color:rgba(21,119,47,.35)}
+.w-fair{color:var(--text-2)}
+.w-unsure{color:var(--warning);border-color:rgba(154,91,0,.35)}
+.band{font-size:15px;font-weight:600}
+.row{display:flex;justify-content:space-between;align-items:baseline;padding:10px 0;border-top:1px solid var(--border);font-size:13.5px}
+.row:first-child{border-top:0}
+.k{color:var(--text-2)}
+.btn2{display:inline-block;font-size:12px;font-weight:500;border:1px solid #827f96;border-radius:5px;padding:5px 10px;color:var(--text-1);background:#fff}
+.meter{display:flex;gap:3px;margin:10px 0 4px}
+.meter span{flex:1;height:6px;background:var(--bg-subtle);border-radius:3px}
+.meter span.on{background:var(--text-1)}
+.mlab{display:flex;justify-content:space-between;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-3)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);text-align:left;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:8px;border-bottom:1px solid var(--border)}
+td.n,th.n{text-align:right}
+.muted{color:var(--text-3)}
+.note{font-size:12.5px;color:var(--text-2);margin-top:10px;line-height:1.45}
+.ann{font-size:12.5px;color:var(--text-2);margin:8px 2px 0;line-height:1.45}
+.ann b{color:var(--text-1)}
+.strike{color:var(--text-3)}
+.big{font-size:34px;font-weight:700}
+</style></head><body><div id="w">
+<h1>Potentiale som ét tal: tre flader før og efter (#6110)</h1>
+<p class="sub">Til venstre: i dag (et interval). Til højre: forslaget (ét skønnet tal plus et ord for, hvor sikkert skønnet er). Alle tal i billedet er illustrationer.</p>
+
+<div class="grid">
+ <div class="colh">I dag</div><div class="colh"><b>Forslag</b> · ét tal + sikkerhed som ord</div>
+
+ <!-- 1 hero -->
+ <div>
+  <div class="lbl">1 · Rytterprofil, hero (fremmed rytter, scoutet 1 gang)</div>
+  <div class="card hero">
+   <div class="name">LARS HOLM</div><div class="meta">21 år · Danmark · Bjergrytter</div>
+   <div class="stats">
+    <div><div class="sl">Rating</div><div class="sv data"><span class="plate">61</span></div></div>
+    <div><div class="sl">Scouted projection</div><div class="sv data band">66–82</div><div class="ss data">loft 85</div></div>
+    <div><div class="sl">Værdi</div><div class="sv data">1.840.000 CZ$</div></div>
+    <div><div class="sl">Kontrakt</div><div class="sv data">2027</div></div>
+   </div>
+  </div>
+ </div>
+ <div>
+  <div class="lbl">1 · Rytterprofil, hero (samme rytter)</div>
+  <div class="card hero">
+   <div class="name">LARS HOLM</div><div class="meta">21 år · Danmark · Bjergrytter</div>
+   <div class="stats">
+    <div><div class="sl">Rating</div><div class="sv data"><span class="plate">61</span></div></div>
+    <div><div class="sl">Potentiale</div><div class="sv data">74<span class="word w-unsure">Usikker</span></div><div class="ss">Scoutet 1 gang</div></div>
+    <div><div class="sl">Værdi</div><div class="sv data">1.840.000 CZ$</div></div>
+    <div><div class="sl">Kontrakt</div><div class="sv data">2027</div></div>
+   </div>
+  </div>
+  <p class="ann"><b>Ét tal i samme skala som rating.</b> Ordet siger, hvor meget man kan stole på det. Intet interval, ingen loft-linje.</p>
+ </div>
+
+ <!-- 2 scouting tab -->
+ <div>
+  <div class="lbl">2 · Rytterprofil, fanen Scouting</div>
+  <div class="card">
+   <div class="row"><span class="k">Scoutens vurdering</span><span class="data band">66–82 · Høj</span></div>
+   <div class="row"><span class="k">Sikkerhed</span><span>Lav (niveau 1/3)</span></div>
+   <div class="row"><span class="k">Næste niveau</span><span class="data">smallere bånd</span></div>
+   <div class="row"><span class="k">Kilde</span><span>M. Rasmussen, scout</span></div>
+   <div style="margin-top:12px"><span class="btn2">Scout igen</span></div>
+  </div>
+ </div>
+ <div>
+  <div class="lbl">2 · Rytterprofil, fanen Scouting</div>
+  <div class="card">
+   <div style="display:flex;align-items:baseline;gap:10px"><span class="data big">74</span><span class="word w-unsure" style="vertical-align:0">Usikker</span></div>
+   <div class="meter"><span class="on"></span><span></span><span></span></div>
+   <div class="mlab"><span>Usikker</span><span>Rimelig</span><span>Sikker</span></div>
+   <div class="row" style="margin-top:8px"><span class="k">Bygger på</span><span>1 kig af M. Rasmussen (scout 3/5)</span></div>
+   <div class="row"><span class="k">Endnu et kig</span><span>gør skønnet mere sikkert</span></div>
+   <div style="margin-top:12px"><span class="btn2">Scout igen</span></div>
+   <p class="note">Et skøn, ikke et facit. Selv en sikker vurdering kan ramme lidt ved siden af.</p>
+  </div>
+  <p class="ann"><b>Tallet flytter sig kun, når der kommer ny viden</b> (et nyt kig eller en bedre scout), og det glider mod det rigtige. Det hopper ikke ved hver visning.</p>
+ </div>
+
+ <!-- 3 academy -->
+ <div>
+  <div class="lbl">3 · Akademi, egne unge</div>
+  <div class="card" style="padding:6px 12px 10px">
+   <table>
+    <tr><th>Rytter</th><th class="n">Alder</th><th class="n">Rating</th><th>Prognose</th></tr>
+    <tr><td>J. Berg</td><td class="n data">16</td><td class="n data">24</td><td class="muted">Læres gennem træning · 9 dage</td></tr>
+    <tr><td>T. Nyborg</td><td class="n data">17</td><td class="n data">31</td><td class="data">42–71 · Groft</td></tr>
+    <tr><td>E. Vinter</td><td class="n data">18</td><td class="n data">38</td><td class="data">55–66 · Skarpere</td></tr>
+    <tr><td>K. Ravn</td><td class="n data">19</td><td class="n data">44</td><td class="data">60–63 · Endelig</td></tr>
+   </table>
+  </div>
+ </div>
+ <div>
+  <div class="lbl">3 · Akademi, egne unge</div>
+  <div class="card" style="padding:6px 12px 10px">
+   <table>
+    <tr><th>Rytter</th><th class="n">Alder</th><th class="n">Rating</th><th class="n">Potentiale</th></tr>
+    <tr><td>J. Berg</td><td class="n data">16</td><td class="n data">24</td><td class="n muted">Læres · 3 af 5 træninger</td></tr>
+    <tr><td>T. Nyborg</td><td class="n data">17</td><td class="n data">31</td><td class="n data">58<span class="word w-unsure">Usikker</span></td></tr>
+    <tr><td>E. Vinter</td><td class="n data">18</td><td class="n data">38</td><td class="n data">61<span class="word w-fair">Rimelig</span></td></tr>
+    <tr><td>K. Ravn</td><td class="n data">19</td><td class="n data">44</td><td class="n data">62<span class="word w-sure">Sikker</span></td></tr>
+   </table>
+  </div>
+  <p class="ann"><b>Samme tal som på rytterprofilen.</b> Ingen prognose før 5 træninger (ejer 11/10). Derefter bliver ordet mere sikkert, jo længere rytteren har trænet hos dig. Bedre trænere gør det hurtigere.</p>
+ </div>
+</div>
+</div></body></html>

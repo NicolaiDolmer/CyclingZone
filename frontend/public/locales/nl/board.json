@@ -164,11 +164,6 @@
       "good": "Goed",
       "great": "Zeer goed",
       "outstanding": "Uitmuntend"
-    },
-    "trend": {
-      "up": "Tevredenheid stijgt",
-      "down": "Tevredenheid daalt",
-      "flat": "Tevredenheid stabiel"
     }
   },
   "changeKind": {
@@ -1807,9 +1802,6 @@
     "confidence": {
       "cardTitle": "Vertrouwen van het bestuur",
       "updated": "Bijgewerkt {date}",
-      "weekDeltaUp": "+{delta} deze week",
-      "weekDeltaDown": "{delta} deze week",
-      "weekDeltaFlat": "Geen verandering deze week",
       "categories": {
         "results": "Resultaten",
         "economy": "Economie",
@@ -1890,7 +1882,8 @@
         "promotionPush": "Promotieronde",
         "monumentPodium": "Monument-podium",
         "clubRankingTop30": "Top 30 van de clubranglijst"
-      }
+      },
+      "progress": "{done} van {total} mijlpalen gehaald"
     },
     "board": {
       "cardTitle": "Het bestuur",

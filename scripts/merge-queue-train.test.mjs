@@ -147,7 +147,7 @@ test('PR-CI keeps runners free: stale PR runs are cancelled and e2e shards run o
   assert.match(jobBlock(smoke, 'changes'), /grep -E '\^\(frontend\//);
 });
 
-test('train: a deployment-affecting PR always ends the train (Codex P1)', () => {
+test('train: deploy-PRs run in trains of -MaxDeployBatch; migrations and the race engine run alone (owner 23/10)', () => {
   const r = psFunctions(['Test-MergeWithNext'], `
     $a = Test-MergeWithNext $false 0 4 0 5 $false
     $b = Test-MergeWithNext $false 0 4 0 5 $true
@@ -156,19 +156,24 @@ test('train: a deployment-affecting PR always ends the train (Codex P1)', () => 
   `);
   assert.deepEqual(r, [true, false, false]);
   const queueText = read('./merge-queue.ps1');
-  assert.match(queueText, /if \(\$entryBackend -or \$entryRailway -or \$entryVercel\) \{ \$batchWithNext = \$false \}/);
+  assert.match(queueText, /\[int\] \$MaxDeployBatch = 3/);
+  assert.match(queueText, /if \(\$entrySolo -or \$nextSolo -or \(\$entryDeploys -and \(\$script:trainDeploys \+ 1\) -ge \$MaxDeployBatch\)\) \{ \$batchWithNext = \$false \}/);
+  // En solo-PR merges aldrig ind i et aabent tog: den stilles efter toget.
+  assert.match(queueText, /\(\$entrySolo -or -not \$coversTrain\)\) \{[\s\S]*?Close-OpenTrain/);
+  // Togets taeller nulstilles naar toget er verificeret.
+  assert.match(queueText, /\$script:batchShas = @\(\)\n\s*\$script:trainDeploys = 0/);
 });
 
 test('plan entry: an incomplete file list (100-file cap) fails closed as deploy-affecting (Codex P1)', () => {
   const queueText = read('./merge-queue.ps1');
-  assert.match(queueText, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid'/);
+  assert.match(queueText, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid,mergeStateStatus'/);
   assert.match(queueText, /\$listComplete = \(\$changed -gt 0\) -and \(\$fileCount -ge \$changed\)/);
   // Codex P1 (#6861): rename origins count too - the paginated REST list carries previous_filename.
   assert.match(queueText, /pulls\/\$number\/files", '--paginate'/);
   assert.match(queueText, /\.previous_filename \/\/ ""/);
   assert.match(queueText, /if \(\$cols\.Count -gt 1 -and \$cols\[1\]\) \{ \$paths \+= \$cols\[1\] \}/);
   assert.match(queueText, /\$filesKnown = \$listComplete/);
-  assert.match(queueText, /if \(-not \$filesKnown\) \{ \$touchesBackend = \$true; \$touchesRailway = \$true; \$touchesVercel = \$true \}/);
+  assert.match(queueText, /if \(-not \$filesKnown\) \{ \$touchesBackend = \$true; \$touchesRailway = \$true; \$touchesVercel = \$true; \$solo = \$true; \$needRailway = \$true \}/);
 });
 
 test('#6861 (Codex P1/P2): the head is re-validated right before merging, and the stall default exceeds the longest valid step', () => {
@@ -176,6 +181,6 @@ test('#6861 (Codex P1/P2): the head is re-validated right before merging, and th
   const recheck = q.indexOf('$recheck = Get-PrPlanEntry $n');
   assert.ok(recheck > 0 && recheck < q.indexOf("guarded-merge --pr"), 'recheck happens before the merge call');
   assert.match(q, /\$recheck\.headSha -ne \$fresh\.headSha/);
-  assert.match(q, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid'/);
+  assert.match(q, /'--json', 'files,changedFiles,title,mergeable,isDraft,headRefOid,mergeStateStatus'/);
   assert.match(q, /\[int\] \$StallMinutes = 45,/);
 });

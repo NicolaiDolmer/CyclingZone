@@ -15,6 +15,7 @@
 import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs } from "../../../../../backend/lib/raceStory.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
 import type { ResultRow, RoleRider } from "./stagePageV2Model.ts";
+import { labelStoryLine, morningFromStory } from "../../../lib/breakawayLabels6299.ts"; // #6299
 
 // ── Kontraktens former (spec §3) ───────────────────────────────────────────
 
@@ -265,7 +266,10 @@ function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLin
   const sorted = [...lines].sort((a, b) => a.km - b.km);
   const out: StoryLine[] = [];
   for (const line of sorted) {
-    const last = out[out.length - 1];
+    // #6299: morgenudbruddet og "gruppen foran" klynges aldrig sammen (data.ahead).
+    const ahead = line.data.ahead === true;
+    let last: StoryLine | undefined;
+    for (let i = out.length - 1; i >= 0; i--) if ((out[i].data.ahead === true) === ahead) { last = out[i]; break; }
     const lastKm = last ? Math.max(last.km, last.kmTo ?? last.km) : 0;
     if (last && line.km - lastKm <= CLUSTER_KM && line.km - last.km <= CLUSTER_MAX_SPAN_KM) {
       const ids = [...new Set([...last.riderIds, ...line.riderIds])];
@@ -300,17 +304,18 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
   const dropped: StoryLine[] = [];
   const finishKm = story.distance_km ?? Math.max(0, ...story.moments.map((m) => m.km));
   const sprint = story.moments.find((m) => m.type === "sprint_decided");
+  const morning = morningFromStory(story); // #6299: kun udbruddet hedder udbrud
 
   for (const m of story.moments) {
     switch (m.key) {
       case "story.breakaway_formed":
-        single.push(baseLine(m, "formed", 1, cast));
+        single.push(labelStoryLine(baseLine(m, "formed", 1, cast), morning));
         break;
       case "story.breakaway_caught":
-        caught.push(baseLine(m, "caught", 1, cast));
+        caught.push(labelStoryLine(baseLine(m, "caught", 1, cast), morning));
         break;
       case "story.breakaway_survived":
-        single.push(baseLine(m, "survived", 1, cast));
+        single.push(labelStoryLine(baseLine(m, "survived", 1, cast), morning));
         break;
       case "story.finale_attack":
         single.push(baseLine(m, "attack", 2, cast, { gain: num(m.data.gained_seconds) }));
@@ -369,7 +374,7 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
         break;
       }
       case "story.breakaway_dropped": {
-        const line = baseLine(m, "dropped", 5, cast);
+        const line = labelStoryLine(baseLine(m, "dropped", 5, cast), morning);
         if (line.mineIds.length) dropped.push(line);
         break;
       }

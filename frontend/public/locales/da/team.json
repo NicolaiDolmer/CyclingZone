@@ -39,7 +39,8 @@
     "squad": "Trup ({count})",
     "development": "Udvikling",
     "stats": "Statistik",
-    "transfers": "Transferhistorik"
+    "transfers": "Transferhistorik",
+    "contracts": "Kontrakter"
   },
   "development": {
     "headers": {
@@ -321,5 +322,73 @@
     "discordOpenAria": "Åbn {handle}s Discord-profil",
     "discordCopyAria": "Kopiér Discord-brugernavn {handle}",
     "discordCopied": "Kopieret"
+  },
+  "contracts": {
+    "headers": {
+      "seasons": "Sæsoner",
+      "salary": "Løn nu / ny",
+      "newContract": "Ny kontrakt"
+    },
+    "selectRider": "Vælg {name}",
+    "selectGroup": "Vælg alle: {group}",
+    "seasonsFor": "Sæsoner at forlænge {name}",
+    "seasonsCount": "{count}",
+    "seasonsMax": "{count} (maks)",
+    "noContract": "Ingen kontrakt",
+    "group": {
+      "expiring": "Udløber denne sæson",
+      "season": "Udløber efter sæson {season}",
+      "atCap": "Ved loftet",
+      "atCapHint": "Løber allerede så langt, som det er tilladt. Kan forlænges igen, når sæsonen skifter."
+    },
+    "bar": {
+      "none": "Sæt flueben ved de ryttere, du vil forlænge.",
+      "selected": "{count, plural, one {# rytter valgt} other {# ryttere valgt}}",
+      "salaryDelta": "Løn {value} CZ$ pr. sæson",
+      "seasonsLabel": "Sæsoner",
+      "extend": "{count, plural, =0 {Forlæng kontrakter} one {Forlæng # kontrakt} other {Forlæng # kontrakter}}"
+    },
+    "summary": {
+      "title": "Forlæng kontrakter",
+      "cancel": "Annullér",
+      "confirm": "{count, plural, one {Forlæng # kontrakt} other {Forlæng # kontrakter}}",
+      "loadError": "Opsummeringen kunne ikke hentes. Intet er ændret.",
+      "saveError": "Kontrakterne kunne ikke forlænges. Intet er ændret.",
+      "teamSalary": "Holdets løn pr. sæson",
+      "salaryCap": "Bestyrelsens lønloft",
+      "noCap": "Intet loft sat",
+      "withinCap": "Under loftet",
+      "overCap": "Over loftet på {cap} CZ$. Intet bliver forlænget"
+    },
+    "done": "{count, plural, one {# kontrakt forlænget.} other {# kontrakter forlænget.}}",
+    "loadErrorTitle": "Dine kontrakter kunne ikke hentes",
+    "loadErrorBody": "Intet er tabt. Dine kontrakter er uændrede.",
+    "retry": "Prøv igen",
+    "emptyTitle": "Skriv kontrakt med ryttere for at styre dem her",
+    "emptyBody": "Dine ryttere vises her, grupperet efter hvornår kontrakten udløber.",
+    "buyback": {
+      "title": "Få dine ryttere tilbage",
+      "intro": "Disse ryttere forlod dit hold ved sæsonskiftet uden det kontraktvarsel, du skulle have haft. Sign dem igen inden for 7 dage: normal løn, 1 sæson, intet signing fee.",
+      "squad": "Trup",
+      "deadline": "Indtil",
+      "sign": "Sign igen",
+      "signAria": "Sign {name} igen",
+      "done": "{name} er tilbage på dit hold.",
+      "squads": {
+        "senior": "Senior",
+        "u23": "U23",
+        "junior": "Junior"
+      },
+      "errors": {
+        "buyback_not_eligible": "Ikke omfattet",
+        "buyback_rider_not_free": "Signet af et andet hold",
+        "buyback_rider_retired": "Stoppet",
+        "buyback_rider_on_auction": "På auktion",
+        "buyback_expired": "De 7 dage er gået",
+        "buyback_squad_full": "Din trup er fuld",
+        "buyback_no_team": "Du skal have et hold",
+        "buyback_failed": "Kunne ikke signe ham igen. Prøv igen."
+      }
+    }
   }
 }

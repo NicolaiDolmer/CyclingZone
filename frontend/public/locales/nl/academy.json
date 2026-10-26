@@ -51,14 +51,14 @@
   "intakePull": {
     "title": "De instroom van deze week",
     "description": "Je academie heeft een nieuwe groep kandidaten. Je ziet leeftijd, nationaliteit, type en huidige vaardigheden. Potentieel leer je kennen via training zodra ze tekenen.",
-    "deadlineNote": "Beschikbaar tot zondag 23:59",
+    "deadlineNote": "Beschikbaar tot zaterdag 23:59",
     "pullBtn": "Haal de instroom van deze week binnen",
     "pulling": "Binnenhalen...",
     "provisionalValue": "Voorlopige waarde",
     "wageOneSeason": "Loon (1 seizoen)",
     "valuationNote": "Volledige waardering op zondag",
     "abilitiesNow": "Vaardigheden nu",
-    "emptyAfterPull": "Geen kandidaten meer om te bekijken. De instroom van volgende week opent maandag.",
+    "emptyAfterPull": "Geen kandidaten meer om te bekijken. De instroom van volgende week opent zondag.",
     "errorFailed": "De instroom van deze week kon niet worden binnengehaald. Probeer het opnieuw."
   },
   "potentialLearned": "Leer je kennen via training",

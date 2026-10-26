@@ -10,18 +10,18 @@
 
 Kun det der ødelægger spillet i dag. Tomt = godt.
 
-- **Stabilitet ved 10x:** aftenafregningen #6490 → job-kø #6491 + direkte Postgres #6492 (spec #6655) · ranglisten genberegner hele historikken #6765 (design #6849) · løbssiden crasher i Firefox #6698.
-- **Sikkerhed (Railway-hændelse 21/10, ejer 22/10):** nøglerotation #7029 (fase 1 Supabase/Alunta gjort; tilbagekald + Resend/Discord/VAPID fortsætter, også fre-søn (ejer 22/10: ingen frys)) · deploy uden Railway-builds #7034 (vent til lør aften → image → Pro 1 md.).
-- **Løbsmotoren:** bjergetaper pr. division #6456 · D3-rute #6486 · enkeltstart for tæt #6645 · udbrud vinder kuperet endagsløb #6428 · **v2 (ejer 19/10): testport grøn (#6909) → tænd v2 #6820 på ordret "tænd", deploy før 28/10 11:00 (+ #7026/#7008)** · v3: udbrudspakken #6804 · **formtoppe #6156 tændes ved S5-skiftet via `race_form_peaks` (ejer 22/10).**
-- **Spillerne må aldrig se forkert information (ejer 20/10):** fjern nu, rigtig løsning bagefter. Rytterkortet #6934 · oprydning i hele spillet #6935.
+- **Stabilitet ved 10x:** aftenafregningen #6490 (ejer 24/10: meget høj prioritet, følges til dørs; parallel-knappen måles → job-kø #6491 + direkte Postgres #6492, design #7070) · ranglisten #6765 (M1.5 merget, skyggen tændes efter skiftet).
+- **Sikkerhed:** nøglerotation #7029 (tilbagekald + Resend/Discord/VAPID; webhook-secret efter 25/10) · #7034 klar som nødvej.
+- **Løbsmotoren v3 live senest tirsdag 27/10 (ejer 24/10, alle valg på #6804):** udbrud og forspring #6912 · pointjagt #2757 · bjergpoint #6937 · lead-out · udgåede + sygdom #6938 · GT-enkeltstart #6595 · bjergudbrud #7160 (valg A2 25/10, PR #7181) · 5 indsatstrin kalibreret #6641 (merget) · D3 #6486 (motor) · blokerende gates (grænsefilen deles fra DolmerPC før testporten kan give grøn) · løbsfilmen med motoren (#6814 #6803) · formtoppe #6156 + Form 2.0 #6984 tændes efter verificeret skifte på ordret "tænd". v2 kører også S4 (ejer 24/10).
+- **Spillerne må aldrig se forkert information (ejer 20/10):** #6935 rest (PR #7145) · rytterkortets forrige værdi #6934 (afventer ejer) · ét rutematch-tal #6207.
 
-## 🟠 Nu · højst 5 (ejer-godkendt 20/10)
+## 🟠 Nu · højst 5 (ejer-godkendt 20/10, opdateret 25/10)
 
-1. **S5-sæsonskifte uden fejl 25/10, ca. kl. 20:30 (#6898), efter [drejebogen](runbooks/2026-10-25-s4-s5-drejebog.md):** leverede rettelser verificeres ved skiftet (#6771 #6964 #6946 #6773) · ungdom S5 #6667: regroup + kalender søndag efter parkering, løft efter skiftet · **ingen ungdomsklassement i U23/junior #7031 (ejer 22/10: før 28/10)** · afventer oprykning #6710 (+ hjælp #7036) og aldring #6499 på ordret go efter prøvekørsel 23/10 · server-test #5904 · AI-pensionering #7039 rettet 22/10. Afkobling fra aftenkørslen efter 25/10 #6924.
-2. **S5-ruter → motorpakken:** løbsidentitet #6857 (L1-L4 leveret) → tænd v2 #6820 (Brand) → udbrudspakken #6804 kalibreret på de nye ruter · **løbsfilm-pakken samlet (ejer 22/10): jagtafstand #6814 + gab-kurve #6803 + film til endagsløb #6512**.
-3. **Udvikling 2.0 #6110 + form/træthed 2.0 #6984:** del 1 #6499 prøvekørsel 23/10, tænding kun på ordret go (effekt 25/10) · del 2 en søndag i S5 med catch-up via løb #6950 og "Udviklingsscore" · #6984 (ejer 20/10, startet straks, langt før Giroen 1/11): målt baseline → design → byg bag flag.
-4. **Alt lovet til spillerne, dato først (#6947):** #6210 maks +1 (PR #6248) · #5947 historik · #5965 · #3984 (19/8+15/9) · #4714 (4/10) · meldt til S5: TTT #3463, taktik #5575 lag 2-4, U23 del 2 #4620, omdømme #4957 #5106 · Discord: Træn nu = hele dagen i ét klik #6461 · taktik og trup låses samtidig #6959 · Hjælp-fejl #6979 · trøjer/udgåede/favoritter #6937-#6939 #2757.
-5. **Beta → live:** løbskort/Løbshistorik (`race_library_v2`) tændes sammen med ikoner + Kalender | Tabel #6683 · etapeside v2, træning for flere ryttere, push: gennemtest og tænd på ejer-go.
+1. **S5-skifte 25/10 ca. 20:30 (#6898) efter [drejebogen](runbooks/2026-10-25-s4-s5-drejebog.md):** ruter låst og testet lørdag aften (A2 + variation #2757) · intet kalender-script mod senior · Afventer oprykning #6710 tændt (ejer 24/10) · aldring #6499 + ungdom #6667 på "kør" · akademiryttere hentet i S4 forlænges én sæson + advarsel til alle før 20:30 (ejer 25/10, #7153) · forlængelse højst indeværende + 1 #7138 · akademiugen søndag-lørdag + påmindelser #6666 · "Næste træk" viser sæsonskiftet #7153 · #5904 dispenseret · små hold min. 4 #6739 før 28/10 · #6924 efter skiftet.
+2. **Udvikling 2.0 #6110 live søndag (ejer 24/10):** aldring · maks +1 #7075 · Hjælp følger flagene #7183 · ny træningsside (beslutningskort øverst + tabel, beta) · byggerækkefølge (ejer 25/10): 1) kurve B #3564 → 2) potentiale ét tal #6853 → 3) catch-up #6950 + Udviklingsscore → 4) Træn nu B #6461 som separat tænding (samlet design 24/10: kronologisk, ingen smuthuller).
+3. **Taktik, roller og ruter færdige i dag sammen med Udvikling 2.0 (ejer 25/10):** samlet design (delt kaptajn, beskyttet rytter, mål-ordrer) · udbrud-navne + ordre bagefter #6299 (PR #7161 klar, ud efter skiftet: intet nyt synligt før skiftet).
+4. **Alt lovet, dato først (#6947):** TTT #3463 · U23 del 2 #4620 · omdømme #4957 #5106 · indstillinger #3984 (A) · 12-timers auktion #4714 · bestyrelsen #7101 (A) + gennemgang #7167.
+5. **Beta → live (ejer 24/10):** push, træning for flere ryttere og fr/es/nl live nu · etapeside v2 efter ejerens gennemgang · næste beta: Form 2.0 · løbskort/historik + Kalender | Tabel #6683 · Udviklingsscore + træningsside · catch-up/Træn nu.
 
 ## 💰 Forretning · fast torsdag (SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
 

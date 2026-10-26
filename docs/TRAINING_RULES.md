@@ -350,6 +350,30 @@ base(gap, alder)  ×  fokus-multiplikator  ×  rolle-rate  ×  kondition
 - **Dagsstøjen** er seeded på `(rytter, dato)` (`dtick:`-namespace), ikke tilfældig
   (`dailyTraining.js:193`). Samme rytter samme dag giver samme støj ved gen-kørsel.
 
+### 2.1b Kurve B (D-058, [#3564](https://github.com/NicolaiDolmer/CyclingZone/issues/3564), bag flaget `development_curve_b`, **slukket**)
+
+Reglen når flaget tændes: **udviklingen styres af niveau og potentiale, ikke af alder.** Kurve B
+erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
+
+- **Niveau:** hvert point koster mere jo tættere evnen er på toppen af skalaen. Lave niveauer er
+  billige, de sidste point er dyre, og forskellen mellem lavt og højt niveau er større end i dag.
+- **Blødt loft fra potentialet (D1b, S2):** rolleklassens loft fordeler niveauet over evnerne,
+  potentialet skalerer det. Tæt på det bløde loft aftager fremdriften glidende (ingen mur);
+  en evne over sit bløde loft står stille og falder aldrig.
+- **Belastningsevne:** de helt unge tåler ikke fuld træning og går langsommere på samme niveau.
+  Belastningen stiger glidende til fuld og står derefter fast. Alder giver aldrig ekstra fart.
+- **Potentiale = fart:** uændret gennem træningsscorens talent-led.
+- **Alderens turbo er ude:** alderstabellen og ungdomstillægget indgår ikke i udviklingen.
+  Udviklingen drives af en alders-neutral træningsscore; den viste træningsscore er uændret.
+- **Uændret:** maks +1 pr. evne pr. løbsdag og pr. dato (§6.2), fremdriften bæres videre, loftet
+  klipper, og løbsdagen går gennem samme kæde.
+- **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens
+  tal er private og ligger i serverens miljø, ikke i koden; tændt uden gyldige tal kører dagens
+  model. Tændes kun af ejeren efter en ny 10-sæsoners-kørsel med den rigtige kurve.
+
+Kode: `developmentCurveB.ts` (kurven), `developmentCurveBFlag.ts` (flag og tal),
+`dailyAbilityDelta`/`applyDailyTick` (`dailyTraining.js`). Gates: `scripts/dev/developmentCurveBHarness3564.mjs`.
+
 ### 2.2 Fra delta til point: hvordan vækst-cappet håndhæves
 
 Deltaen er en lille float. Den lægges i en fremdrifts-bar pr. evne
@@ -593,6 +617,23 @@ og dykket i tilbagebetalingen bagefter, som eget led oven i formen og uden forms
 samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
 Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
 
+### 5.3b Form og træthed 2.0 (`condition_model_v2`, #6984, **slukket**)
+
+Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`](superpowers/specs/2026-10-20-6984-form-traethed-design.md) (indført i docs-PR #6986, der merges før denne kode-PR). Bag flaget `condition_model_v2` (ingen app_config-række = off; kræver `training_condition_per_date`). Flag off = §5.1-5.3 uændret.
+
+| Regel | Kode |
+|---|---|
+| B1: hver etape er et helt døgn: belastning lægges til og én restitution trækkes fra pr. etape i rækkefølge; de frie pladser regnes som i dag (sum/5 og en femtedel restitution pr. plads) | `conditionModelV2.settleDateFatigueV2`, kaldt fra `trainingDateCondition.settleTrainingDateCondition` (`modelV2`) |
+| §5.4: recovery-evnen styrer også den proportionale andel; en middel-rytter (49,5) restituerer præcis som i dag | `conditionModelV2.recoveryV2` |
+| §5.2 + B3 + §5.5: etapens belastning = profil × længde × indsats × arbejde (inkl. hentet udbrud) × etapens plads × sæsonens løbsdage; frosset ved etapen som i dag | `conditionModelV2.stageLoadV2`, `raceFatigue.raceConditionLoads(..., conditionV2)`, `raceRunner.freezeConditionLoadSnapshots`, `raceFatigue.loadSeasonRaceDaysByRider` |
+| B4: inaktivitet og overbelastning koster form, passende belastning bygger den; de sidste point mod toppen kommer langsommere | `conditionModelV2.nextFormV2` |
+| Ugeprognosen bruger samme v2-afregning (I5), inkl. medicin | `trainingWeekPlanForecast.js` |
+| Medicin M1 (ejer 20/10): holdets medicinske afdeling forstærker rytterens recovery-evne i restitutionen (kun evne-leddene, ikke gulvet) | `medicalEffects.medicalRecoveryMultiplier`, `conditionModelV2.recoveryV2` |
+| Medicin M2/M3 i træning: lavere trænings-skaderisiko og kortere skade | `conditionModelV2.settleTrainingDateConditionV2` |
+| Medicin-bonus pr. hold: afdelingens niveau og chefens samlede styrke (`effectiveBonus("medical", …)`); hold uden afdeling = ingen effekt; sporet er live i klubben præcis når flaget er on | `medicalEffects.loadTeamMedicalBonus`, `facilityConstants.isTrackEffectLive` |
+
+Konstanterne står i `CONDITION_V2_CONFIG`; målinger og kalibrering kun i `balance-internals/6984/` (hard rule 17). Tænding: S5-start på ordret ejer-go efter harnessen (`backend/scripts/dev/conditionModelV2Harness6984.mjs`).
+
 ### 5.4 Skader fra træning
 
 | Regel | Kilde |
@@ -613,6 +654,10 @@ intensitet, så spilleren kan se risikoen før dagen køres (`backend/routes/api
 trænings- og løbsskader i denne optælling.
 
 ---
+
+### 5.4b Sygdom af langvarig ekstrem træthed (#6938, **slukket**)
+
+Kun når `condition_model_v2` er on OG løbsmotoren kører `s5_profiles_v3` (tændt med v3 26/10, ejer 24/10). Ved aftenens afregning kan en rask rytter, der ikke blev skadet samme dag, blive syg, hvis hans træthed har været ekstrem flere afregnede dage i træk (inkl. dagens). Under en minimumsstime er risikoen 0; den stiger med stimens længde og med hvor langt over grænsen trætheden ligger, og har et loft pr. dag. Den medicinske afdeling sænker risikoen. Rullet er seedet pr. (rytter, dato). En syg rytter får `rider_condition.injury_cause = 'illness'` og er ude nogle løbsdage (samme løbsdagsakse som træningsskaden), uden evneskade. Han starter ikke og står som "Syg, startede ikke" (`race_incidents.kind = 'illness'`), og holdet får lægens besked i indbakken. Historikken læses fra `training_condition_settlements` på rytternes id'er (primærnøglen). Kode: `backend/lib/conditionIllness.js`, koblet i `dailyTrainingEngine.js`. Tal privat (hard rule 17).
 
 ## 6. Træning og løbsdage
 
@@ -665,7 +710,10 @@ prod 24/8 (#4192): 1.520 ryttere på 103 hold stod på Hvile OG var tilmeldt et 
 **Reglen nu (ejer 24/9, [#4850](https://github.com/NicolaiDolmer/CyclingZone/issues/4850), S1
 valgt efter simuleringen i PR #5640):** planen er IKKE input. En rytter der kører en etape på en
 løbsdag udvikler sig som efter et **mellem-pas** i de evner etapens profil kræver, under reglen
-**maks +1 pr. evne pr. løbsdag**, og resten af fremdriften bæres videre.
+**maks +1 pr. evne pr. løbsdag**, og resten af fremdriften bæres videre. Oven på det gælder
+**maks +1 pr. evne pr. rytter pr. dato** ([#6210](https://github.com/NicolaiDolmer/CyclingZone/issues/6210), bag flaget `ability_cap_per_date_enabled`, slukket indtil Udvikling 2.0 tændes): på tværs af datoens løbsdage, alle stier (Train now, aftenens
+kørsel, kalenderdags-faldet) og et holdskifte samme dato på live-stien (reserve-stien: #7084). Et klippet point bæres videre på
+fremdriftsbaren til næste dato (`capTickGainsPerDate`, `dailyTrainingEngine.js`).
 
 | Del | Mekanisme | Hvor |
 |---|---|---|
@@ -675,7 +723,7 @@ løbsdag udvikler sig som efter et **mellem-pas** i de evner etapens profil kræ
 | Hvem kørte | `race_results (result_type='stage')` ⋈ `race_stage_schedule` på `(race_id, stage_number)` hvor `game_day` = løbsdagen, scoped hold → division → sæsonens løb. IKKE `race_entry_days`: bindingen slettes når løbet er `completed`, og så fik racere før almindelig træning oven i løbet. Fejlet opslag kaster (som bindingen) | `raceDayStageLookup.js` |
 | Træthed | uændret: `effectiveIntensity = "race"` giver 0 trænings-load; løbets træthed lægges af `raceRunner.applyRaceFatigue`. Ingen skaderisiko fra træning | `dailyTrainingEngine.js`, `raceFatigue.js` |
 | Score og historik | `rider_training_scores`: `score: null, was_race_day: true, session: "race_day"`. `rider_ability_race_day_history.source = "race_development"` | `dailyTrainingEngine.js` |
-| Variant B (senere) | dagens intention (#4632, grupetto → all-out) lægges ovenpå som modifikator når `race_day_intention_enabled` og v4 er on; sømmen (`effortDevelopmentMultiplier`) står i `applyRaceDevelopmentTick` | `dailyTraining.js`, `raceRoles.js` |
+| Variant B ([#6641](https://github.com/NicolaiDolmer/CyclingZone/issues/6641), bag flaget) | dagens intention (#4632, grupetto → all-out) ganges sidst på løbsdagens udbytte (`applyDailyTick`s ekstra multiplikator-led, `raceDayIntentionYieldMultiplier` = `effortDevelopmentMultiplier`), KUN når `race_day_intention_enabled` er on. Kilden er den samme som motoren kørte på: holdordren vinder, etape-rækken (`race_stage_roles.effort`) er fallback, en ordre på `normal` er ikke et valg (`raceDayIntentionYield.js`, `raceStageRoles.orderEffortByRiderForStage`). Flag off, ingen intention, AI-hold eller et fejlet opslag giver 1,0 = variant A (bit-identisk) | `dailyTrainingEngine.js`, `raceDayIntentionYield.js`, `raceRoles.js` |
 
 **Flag:** `race_day_development_enabled` flippes direkte off → on 28/9 sammen med
 `training_tick_per_race_day` (ejer-go). Motoren læser flaget uden `engineWrite`, så `beta` er off i
@@ -690,6 +738,30 @@ en rytter der kørte får hvile (intet tick, score-række "løb", kun restitutio
 `raceDayAcademyPerRaceDayFaq`, `multipleStagesTrainingFaq`, `stageRaceRestDayFaq`) beskriver
 reglen bag `training_tick_per_race_day`. `raceDayProfileMatchFaq` (ikke flag-gated) siger stadig
 "planlagt til sæson 4" og skal skrives om i flip-PR'en.
+
+### 6.3 Udviklingsscore B og catch-up via løb i motoren (#6950, bag to slukkede flag)
+
+To flag, begge **slukket**, ejer-only, og begge kræver `ability_cap_per_date_enabled`. Uden dato-loftet,
+uden gyldige tal i serverens miljø eller med flaget på `beta` kører motoren dagens model, bit-identisk.
+Tallene står aldrig i repoet (hard rule 17).
+
+- **`development_score_v2`** (`developmentScoreWiring.js`): dagens Udviklingsscore ER udviklingen (S22).
+  Scorens udviklings-led erstatter rytter-leddet på både trænings- og løbsdage; form, træthed, kondition
+  og alder indgår ikke (S29). Intensiteten tæller kun gennem scoren; passet afgør stadig, hvilke evner der
+  vokser. Træneren og faciliteten tæller kun gennem scoren på træningsdage og aldrig
+  på løbsdage (S13). Løbsdagens score bygges som en hård dag over etapens evner plus løbets tillæg;
+  tillægget lander kun i etapens profil-evner, off-fokus-evnerne får basis-dagens udvikling (S14);
+  afgørelses- og niveau-bonus (S14) og udgået rytter (S16) venter på data fra løbsmotoren. Træningsdagens tal gemmes uden bidrag (S10);
+  løbsdagens tal skrives først med score-skrivningen for løbsdage.
+  Indtil grundtalentet findes, oversættes potentialet til talent-leddet via en privat, rangbevarende tabel.
+- **`race_day_catchup_enabled`** (`raceCatchUpWiring.js`, regler i `raceDayCatchup6950.js`): på en
+  løbsdag tages træner og facilitet ud af tick'et (S13), og løbets ekstra lægges kun på etapens
+  profil-evner, uden for scorekoblingen. Træningsdage røres ikke.
+- **Sammen:** er begge tændt, ejer scoren løbsdagen, og catch-up giver intet ekstra oven i (ingen
+  dobbelt-tælling). Med kurve B (#3564) bestemmer kurven hvor meget et point koster, og scoren er dagens
+  kvalitetsled.
+- **D6:** med et af flagene tændt udvikler AI-hold, bank, testkonti og hold uden manager sig ikke, også
+  uden `development_v2_aging_enabled`. Frie ryttere har intet hold og trænes ikke.
 
 ---
 
