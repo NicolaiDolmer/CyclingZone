@@ -144,3 +144,30 @@ test("jaeger-kortet i rolle-menuen paa Planlaegning har ingen udbrudschance-chip
 
   await expect(hunterCard.getByText("Udbruds-chance", { exact: false })).toHaveCount(0);
 });
+
+// #6912 B: motorens chance for løbets næste etape, når backend kan stå inde for tallet.
+const OUTLOOK_ROUTE = "**/api/races/" + RACE_ID + "/breakaway-outlook";
+const TEAM_TAB_URL = "/races/" + RACE_ID + "?tab=team";
+test("jaeger-boksen viser motorens chance som 'cirka k af n' + aarsag naar backend svarer (#6912 B)", async ({ page }) => {
+  await setup(page);
+  await mockApi(page, OUTLOOK_ROUTE, {
+    available: true, runs: 40, odds: { about: [1, 3] }, chase: { kind: "fewChase" }, profileType: PROFILE.profile_type,
+  });
+  await page.goto(TEAM_TAB_URL);
+  await expect(page.getByTestId("race-selection-panel")).toBeVisible();
+
+  const outlook = page.getByTestId("hunter-breakaway-outlook");
+  await expect(outlook).toHaveText("Motorens bud: udbruddet holder hjem cirka 1 af 3 gange. Et eller to hold har som regel grund til at jage det.");
+  const hunterBox = page.locator("section").filter({ has: page.getByRole("heading", { name: "Vælg din udbrudsjæger" }) }).last();
+  await hunterBox.scrollIntoViewIfNeeded();
+  await hunterBox.screenshot({ path: evidenceShotPath("docs/screenshots/6912/hunter-box-outlook-375.png") });
+});
+
+test("jaeger-boksen viser ingen chance naar backend ikke kan staa inde for tallet (#6912 B)", async ({ page }) => {
+  await setup(page);
+  await mockApi(page, OUTLOOK_ROUTE, { available: false, reason: "old_rules" });
+  await page.goto(TEAM_TAB_URL);
+  await expect(page.getByTestId("race-selection-panel")).toBeVisible();
+  await expect(page.getByText("Jægeren prøver at komme med i morgenudbruddet.", { exact: false })).toBeVisible();
+  await expect(page.getByTestId("hunter-breakaway-outlook")).toHaveCount(0);
+});

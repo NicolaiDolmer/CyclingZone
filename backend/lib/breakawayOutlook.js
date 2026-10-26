@@ -152,7 +152,8 @@ export async function computeBreakawayOutlook({ race, runDryStage, resolveRaceEn
     const res = engine.simulateStage({ ...captured, seedString: outlookSeedString(race.id, captured.stageNumber, k) });
     samples.push(sampleFromStageResult(res));
   }
-  return { ...summarizeOutlook(samples), stageNumber: captured.stageNumber, profileType };
+  // Etapenummeret kun for etapeløb; et endagsløb har kun én etape at tale om.
+  return { ...summarizeOutlook(samples), ...(totalStages > 1 ? { stageNumber: captured.stageNumber } : {}), profileType };
 }
 
 // ── Cache + single-flight: én beregning pr. (løb, næste etape) ad gangen, genbrugt i

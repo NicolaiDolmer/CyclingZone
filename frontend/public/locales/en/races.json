@@ -530,6 +530,17 @@
     },
     "hunterExplainer": {
       "dayLine": "Your hunter tries to get into the morning breakaway. Whether it stays away is decided by the peloton on the day.",
+      "outlook": {
+        "about": "Engine forecast: the breakaway stays away about {{k}} in {{n}} times.",
+        "under": "Engine forecast: the breakaway stays away less than {{k}} in {{n}} times.",
+        "over": "Engine forecast: the breakaway stays away more than {{k}} in {{n}} times.",
+        "stage": "Stage {{stage}}",
+        "reason": {
+          "nobodyChases": "Few teams have a reason to chase it.",
+          "fewChase": "One or two teams usually have a reason to chase it.",
+          "manyChase": "Several teams usually have a reason to chase it."
+        }
+      },
       "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
       "noCandidates": "Pick riders for this race to see your best hunters.",
       "aggression": "Aggression",

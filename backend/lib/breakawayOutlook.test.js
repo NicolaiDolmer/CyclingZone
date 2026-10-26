@@ -1,5 +1,6 @@
 // #6912 B: motorens udbrudschance. Rene dele + orkestreringen med en falsk motor.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -13,6 +14,8 @@ import {
   sampleFromStageResult,
   summarizeOutlook,
 } from "./breakawayOutlook.js";
+import { loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
+import { splitEntrants, sortedStages } from "../scripts/dev/lib/tourScorecard.mjs";
 
 // ── oddsFraction ────────────────────────────────────────────────────────────
 test("oddsFraction: 0 sejre er 'under 1 af 10', aldrig 'nul'", () => {
@@ -168,4 +171,29 @@ test("getBreakawayOutlookCached: udløbet TTL beregner forfra; fejl caches ikke"
   await assert.rejects(getBreakawayOutlookCached({ race: RACE, compute: async () => { throw new Error("boom"); } }));
   await getBreakawayOutlookCached({ race: RACE, compute });
   assert.equal(n, 3);
+});
+
+// ── Den rigtige v4-motor: udfaldets form (vinderens dom + fangst-events) læses korrekt ──
+test("computeBreakawayOutlook: rigtig v4-motor på et anonymiseret felt giver et kendt udfald i hver kørsel", async () => {
+  const data = JSON.parse(readFileSync(new URL("../scripts/baselines/giro-field-6088-2026-10-02.json", import.meta.url), "utf8"));
+  const profile = sortedStages(data).find((p) => p.profile_type === "mountain");
+  const { entrants } = splitEntrants(data);
+  const engine = await loadRaceEngineV4();
+  const out = await computeBreakawayOutlook({
+    race: { id: "outlook-real", stages: 1, stages_completed: 0, status: "scheduled" },
+    seeds: 4,
+    resolveRaceEngineV4: async () => ({ v4Engine: engine, teamOrderRows: [] }),
+    runDryStage: async ({ resolveV4Engine }) => {
+      const { v4Engine } = await resolveV4Engine({});
+      v4Engine.simulateStage({
+        entrants, stageProfile: profile, seedString: "REAL", stageNumber: profile.stage_number,
+        teamOrderRows: [], isStageRace: false, raceStages: [profile], squad: null, rulesRevision: "s5_profiles_v3",
+      });
+    },
+  });
+  assert.equal(out.available, true, JSON.stringify(out));
+  assert.equal(out.runs, 4);
+  assert.ok(out.odds && (out.odds.about || out.odds.under || out.odds.over));
+  assert.ok(["nobodyChases", "fewChase", "manyChase"].includes(out.chase.kind));
+  assert.equal("stageNumber" in out, false, "endagsløb: intet etapenummer");
 });
