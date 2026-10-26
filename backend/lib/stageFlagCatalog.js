@@ -213,10 +213,11 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "ability_cap_per_date_enabled",
   "training_decision_card",
   // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
+  // Binaert som stage-roles-API'et (isRaceDayIntentionEnabled uden viewer): "beta" er off.
   "race_day_intention_enabled",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
 // "beta" = off). Endpointet svarer derfor false for ALLE viewers paa "beta", saa
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "race_day_intention_enabled"]);
