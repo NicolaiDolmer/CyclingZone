@@ -3237,6 +3237,9 @@ export async function simulateStageByIndex({
   // hvilket ER kill-switchen: slukkes flaget midt i et etapeløb, kører næste
   // etape v3, og klassementet akkumuleres uændret fra race_results.
   checkV4Enabled = isRaceEngineV4Enabled,
+  // #6912 B: injectable, default den ægte resolveRaceEngineV4. Udbrudsprognosen
+  // (breakawayOutlook.js) pakker motoren ind i dryRun for at fange etapens input.
+  resolveV4Engine = resolveRaceEngineV4,
   // #5955: injectable, default binder/læser races.engine_rules_revision (kun under v4).
   bindRulesRevision = bindRaceRulesRevision,
   // S3 (#2034): injectable, default læser race_stage_roles. Kun kaldt når v3=true.
@@ -3466,7 +3469,7 @@ export async function simulateStageByIndex({
     // #2410: samme engangs-læsning som v3 ovenfor, UAFHÆNGIGT flag.
     const timelineEnabled = await checkTimelineEnabled(supabase);
     // #3855/#4707: løbsmotor v4 — se simulateRace' tilsvarende note.
-    const { v4Engine, teamOrderRows } = await resolveRaceEngineV4({ supabase, race, checkV4Enabled });
+    const { v4Engine, teamOrderRows } = await resolveV4Engine({ supabase, race, checkV4Enabled });
     // #5955: løbets taktiske regel-revision bindes ved FØRSTE etape (stageIndex 0,
     // intet afviklet, ikke en genoptagelse) og genbruges på alle senere etaper,
     // retries og genstarter. Kun under v4; en ukendt revision kaster.
