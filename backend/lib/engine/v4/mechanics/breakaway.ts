@@ -78,7 +78,7 @@ import type {
 } from "../types.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { fieldFinaleTypeBehindBreakaway, isBunchCatchRoute } from "../finale.ts";
-import { BREAKAWAY_CHASE_V3_TUNING, BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, S5_PROFILES_TUNING, S5_V3_BREAKAWAY_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { BREAKAWAY_CHASE_V3_TUNING, BREAKAWAY_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, S5_PROFILES_TUNING, S5_V3_BREAKAWAY_TUNING, S5_V3_GC_LEASH_7258_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { helperCostMultiplier } from "./teamPlay.ts";
 import {
   applySmallBreakPullCost,
@@ -127,6 +127,7 @@ import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s5V3ClimbChaseIntensity, s5V3ClimbChaseLeashSeconds, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
 import { s5V3P2OffForHarmlessBreak } from "./breakawayInterest7160P2.ts"; // #7160 valg A2
+import { projectedTopRiders, stageFavourites, stageFavouriteSpontaneousScale } from "./gcBreakawayLeash7258.ts"; // #7258
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -503,6 +504,12 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
   // kan komme til det, gaar ikke i morgenudbrud. Forsoeget blokeres (ingen ordre, ingen
   // spontan chance); rytteren bliver i feltet og kan stadig arbejde imod andres forsoeg.
   const gcBlocked = ctx.s5ProfilesV2 === true ? s5MorningGcBlockedRiders(ctx, sourceGroup.rider_ids) : null;
+  // #7258 (KUN s5_profiles_v3): (B) ogsaa feltets bedste paa FREMSKREVET slutklassement
+  // (evne x resterende etaper) blokeres; (C) dagens favoritter forsoeger sjaeldent spontant og
+  // moeder alle andre holds modstand (gcBreakawayLeash7258.ts).
+  const v3Formation = ctx.s5ProfilesV3 === true ? s5V3FormationGuards7258(ctx, sourceGroup.rider_ids) : null;
+  if (gcBlocked && v3Formation) for (const id of v3Formation.projectedTop) gcBlocked.add(id);
+  const favouriteScale = stageFavouriteSpontaneousScale();
   const formationRiders: FormationRider[] = [];
   for (const riderId of sourceGroup.rider_ids) {
     const entrant = ctx.entrants[riderId];
@@ -511,6 +518,7 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     const strength = computeJoinScore(entrant.abilities, false, 0);
     const factor = riderState.team_cp_factor;
     const blocked = gcBlocked?.has(riderId) === true;
+    const favourite = v3Formation?.favourites.has(riderId) === true; // #7258 (C)
     formationRiders.push({
       rider_id: riderId,
       team_id: teamIdOf(entrant),
@@ -518,7 +526,7 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
       effort: entrant.effort,
       tryBreak: blocked ? false : tryBreakByRider.get(riderId),
       strength,
-      spontaneousChance: blocked ? 0 : joinProbability(strength),
+      spontaneousChance: blocked ? 0 : favourite ? joinProbability(strength) * favouriteScale : joinProbability(strength),
       engine: collectiveAbility([riderId], ctx.entrants, CHASE_ENGINE_KEYS),
       freshness: clamp(Number.isFinite(factor) ? (factor as number) : 1, 0, 1),
     });
@@ -532,9 +540,13 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
   // #5978 (KUN orders_gc_v3): et forsoeg fra en farlig rytter moeder haardere
   // modreaktion fra de hold der har noget at forsvare (gcThreat.formationDangerTeams).
   const gcContext = ctx.ordersGcV3 === true ? normalizeGcContext(ctx.gcContext) : null;
-  const dangerTeams = gcContext && (gcContext.status === "standings" || gcContext.status === "one_day")
+  const gcDangerTeams = gcContext && (gcContext.status === "standings" || gcContext.status === "one_day")
     ? formationDangerLookup(state, ctx, gcContext, sourceGroup)
     : undefined;
+  // #7258 (C): et forsoeg fra en af dagens favoritter er farligt for alle andre hold (fuld fare).
+  const dangerTeams = v3Formation && v3Formation.favourites.size > 0
+    ? withStageFavouriteDanger(gcDangerTeams, v3Formation.favourites, sourceGroup, ctx.entrants)
+    : gcDangerTeams;
   const formation = resolveMorningBreakFormation({
     riders: formationRiders,
     stances,
@@ -608,6 +620,45 @@ function formationDangerLookup(
     gcContext, riderId, teamIds, groups: [sourceGroup], entrants: ctx.entrants, route: ctx.route,
     km: ctx.route.segments[0]?.from_km ?? 0, racingRiderIds, dangerModel,
   });
+}
+
+/**
+ * #7258 (KUN s5_profiles_v3): dannelsens to vagter.
+ *  - projectedTop (B): feltets bedste paa fremskrevet slutklassement (etapeloeb med stilling).
+ *  - favourites (C): dagens favoritter paa finalens krav (demand_vector), endagsloeb og etapeloeb.
+ * Eksporteret for kontrakt-tests.
+ */
+export function s5V3FormationGuards7258(ctx: Pick<BreakawayHookContext, "gcContext" | "entrants" | "route" | "tuning">, sourceRiderIds: readonly string[]): { projectedTop: Set<string>; favourites: Set<string> } {
+  const gc = normalizeGcContext(ctx.gcContext);
+  const racing = new Set(sourceRiderIds);
+  const projectedTop = projectedTopRiders({
+    gc, entrants: ctx.entrants, racingRiderIds: racing, abilityOf: raceGcAbilityModel(gc),
+    topN: S5_V3_GC_LEASH_7258_TUNING.projectedExcludeTopN, syntheticFirstStage: gc.status === "standings" && isSyntheticFirstStage(gc),
+  });
+  const finaleType = ctx.route.finale_type === "breakaway" ? fieldFinaleTypeBehindBreakaway(ctx.route) : ctx.route.finale_type;
+  const demand = finaleType ? ctx.tuning.finale.demandVectorByFinaleType[finaleType] : undefined;
+  return { projectedTop, favourites: stageFavourites({ riderIds: sourceRiderIds, entrants: ctx.entrants, demand }) };
+}
+
+/**
+ * #7258 (C): dannelsens fare-opslag hvor et forsoeg fra en af dagens favoritter er farligt for
+ * alle andre hold i kildegruppen med fuld fare (1). Andre forsoeg som `base` (eller intet).
+ */
+function withStageFavouriteDanger(
+  base: ((riderId: string) => readonly string[]) | undefined,
+  favourites: ReadonlySet<string>,
+  sourceGroup: RaceGroup,
+  entrants: Readonly<Record<string, Entrant>>,
+): (riderId: string) => readonly string[] {
+  const teamIds = [...new Set(sourceGroup.rider_ids.map((id) => teamIdOf(entrants[id])).filter((id): id is string => !!id))].sort((a, b) => a.localeCompare(b));
+  return (riderId: string) => {
+    const prior = base ? base(riderId) : [];
+    if (!favourites.has(riderId)) return prior;
+    const own = teamIdOf(entrants[riderId]);
+    const out = [...new Set([...prior, ...teamIds.filter((t) => t !== own)])].sort((a, b) => a.localeCompare(b)) as string[] & { danger?: ReadonlyMap<string, number> };
+    out.danger = new Map(out.map((t) => [t, 1]));
+    return out;
+  };
 }
 
 /**

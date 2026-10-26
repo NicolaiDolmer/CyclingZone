@@ -22,6 +22,7 @@
 
 import type { AbilityKey, Entrant, GcContext, GcStageDemand, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
 import { s5V3ContenderAbilityRank, s5V3IsShortStageRace, s5V3ProjectionWeight } from "./breakawayV3_6804.ts";
+import { projectedAllowanceSeconds, projectedLossSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
 
 export type GcThreatSeverity = "none" | "moderate" | "serious";
 
@@ -566,6 +567,11 @@ export function assessGcThreat(input: {
    * orders_gc_v1/v2-vurderingen, bit-identisk.
    */
   dangerModel?: DangerModel;
+  /**
+   * #7258: vurderingen er dannelsens proeve (formationDangerTeams, forspring 0). Fremskrivningen
+   * af en svagere rytter (snoren) bruges da ikke; dannelsen har sin egen regel (breakaway.ts).
+   */
+  formationProbe?: true;
 }): GcThreat {
   const tuning = GC_THREAT_TUNING;
   const gcContext = input.gcContext ?? null;
@@ -669,10 +675,21 @@ export function assessGcThreat(input: {
       // fra: hans afstand plus et tillaeg der skrumper til 0 jo farligere han er.
       const riderDanger = s5 ? (ranked ? 1 : dangerOf(strengthRaw)) : undefined;
       const distance = riderDanger !== undefined ? deficit + (1 - riderDanger) * S5_GC_THREAT_TUNING.dangerAllowanceSeconds : deficit;
-      const margin = (cap !== null ? Math.min(distance, cap) : distance) - lead - potential;
-      const isRival = riderDanger !== undefined
-        ? riderDanger > 0
-        : ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
+      // #7258 (KUN v3, ikke ved dannelsens proeve): en svagere rytter uden fare (dangerOf = 0) er
+      // stadig en trussel naar han fremskrevet (afstand + tab paa resten af loebet) kan staa foran
+      // holdets klassementsrytter ved loebets slutning. Snoren er den fremskrevne afstand.
+      const projectedDistance = v3 && input.formationProbe !== true && !ranked && riderDanger === 0
+        ? deficit + projectedLossSeconds(gcContext, strengthRaw) + projectedAllowanceSeconds()
+        : null;
+      const todayGain = terrainGain > 0 ? terrainGain * projectionWeight : terrainGain;
+      const margin = projectedDistance !== null
+        ? projectedDistance - lead - todayGain
+        : (cap !== null ? Math.min(distance, cap) : distance) - lead - potential;
+      const isRival = projectedDistance !== null
+        ? true
+        : riderDanger !== undefined
+          ? riderDanger > 0
+          : ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
       let severity: GcThreatSeverity;
       let reason: GcThreatReason;
       if (margin <= 0) {
@@ -700,7 +717,9 @@ export function assessGcThreat(input: {
       const allowance = model !== undefined && isLeader && !isRival ? danger.jerseyAllowanceSeconds?.[input.route.profile_type] : undefined;
       // #5978 (S5): en svagere rytters forventede tidstab paa de kommende etaper
       // giver ham laengere snor (orders_gc_v3 talte kun en staerkeres gevinst med).
-      const leashRoom = allowance !== undefined ? Math.max(0, deficit) + allowance : distance - (s5 ? future : Math.max(0, future)) - danger.leashMarginSeconds;
+      const leashRoom = projectedDistance !== null
+        ? projectedDistance - danger.leashMarginSeconds // #7258
+        : allowance !== undefined ? Math.max(0, deficit) + allowance : distance - (s5 ? future : Math.max(0, future)) - danger.leashMarginSeconds;
       // #5578 (KUN official_times_v2): de forreste holder altid snoren, og den er hoejst loftet lang.
       candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival,
         leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}),
@@ -989,7 +1008,7 @@ export function formationDangerTeams(input: {
     }
     const threat = assessGcThreat({
       gcContext, groups, entrants: input.entrants, route: input.route, protectedRiderId, km: input.km,
-      racingRiderIds: input.racingRiderIds, ownTeamId: teamId, dangerModel: input.dangerModel,
+      racingRiderIds: input.racingRiderIds, ownTeamId: teamId, dangerModel: input.dangerModel, formationProbe: true,
     });
     if (threat.leash_hold === true || threat.severity !== "none") {
       out.push(teamId);

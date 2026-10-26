@@ -1684,3 +1684,30 @@ export const S5_V3_MOUNTAIN_LET_GO_7160_TUNING = deepFreeze({
   harmlessGcGapSeconds: 600, // ufarligt: hver udbryder mindst saa langt efter holdets klassementsrytter
   gcTeamInterestScale: 0.5, // faktor paa et saadant holds etapeinteresse, i (0, 1]
 });
+
+// #7258 (KUN s5_profiles_v3): klassementet afgoeres ikke af et udbrud; farlige udbrud paa snor
+// (mechanics/gcBreakawayLeash7258.ts). Fremskrivningen = evne x resterende etaper: det tidstab
+// motoren faktisk giver en svagere klassementsrytter pr. etapetype. Kalibreret privat mod
+// motorens egne etaper (balance-internals/7258/, hard rule 17); ingen tal i kommentarer.
+export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
+  // Sekunder en rytter taber pr. etape pr. enhed manglende loebsspecifik klassementsevne
+  // (1 - styrkeforhold), pr. profil. Udeladt profil = intet tab (motoren samler feltet).
+  lossSecondsPerAbilityByProfile: {
+    mountain: 220,
+    high_mountain: 360,
+    itt_hilly: 160,
+    itt: 20,
+  } as Partial<Record<ProfileType, number>>,
+  // Styrkeforholdet i fremskrivningen, nedad: en meget svag rytter taber ikke uendeligt.
+  minStrengthRatio: 0.5,
+  // Snoren paa en svagere udbryder der fremskrevet kan vinde loebet: hans afstand plus det
+  // fremskrevne tab plus dette tillaeg (minus snorens almindelige margin).
+  projectedAllowanceSeconds: 60,
+  // (C) Dagens favoritter: de bedste paa dagens finale-evne (finalens demand_vector) i feltet.
+  stageFavouriteTopN: 5,
+  // (C) Et spontant morgenudbrudsforsoeg fra en af dagens favoritter ganges med denne faktor.
+  stageFavouriteSpontaneousScale: 0.25,
+  // (B) Feltets bedste paa fremskrevet slutklassement (afstand + fremskrevet tab) gaar ikke i
+  // morgenudbrud (samme antal som stillingens top, S5_MORNING_GC_EXCLUSION).
+  projectedExcludeTopN: 10,
+});
