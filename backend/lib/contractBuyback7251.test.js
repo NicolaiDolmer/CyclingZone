@@ -35,6 +35,7 @@ function fakeSupabase(tables) {
       eq(col, val) { rows = rows.filter((r) => r[col] === val); return b; },
       is(col, val) { rows = rows.filter((r) => (r[col] ?? null) === val); return b; },
       in(col, vals) { rows = rows.filter((r) => vals.includes(r[col])); return b; },
+      or() { return b; }, ilike() { return b; }, filter() { return b; }, match() { return b; },
       gte(col, val) { rows = rows.filter((r) => r[col] >= val); return b; },
       lt(col, val) { rows = rows.filter((r) => r[col] < val); return b; },
       not() { return b; }, neq() { return b; }, order() { return b; }, limit() { return b; }, range() { return b; },
@@ -105,4 +106,26 @@ test("gen-signering: 1 sæson, normal løn, ingen pris; afvist for varslet rytte
     buybackRider({ supabase, team: { id: "t1", user_id: "u1" }, riderId: "r2", now: NOW }),
     (err) => err instanceof BuybackError && err.code === "buyback_not_eligible",
   );
+});
+
+test("review-fund: ungdomsrytter får squad + is_academy sammen; forlænget auktion blokerer; varsel sendes", async () => {
+  const w = world();
+  w.riders.find((r) => r.id === "r1").squad = "u23";
+  w.auctions.push({ id: "a1", rider_id: "r3x", status: "extended" });
+  const supabase = fakeSupabase(w);
+  await buybackRider({ supabase, team: { id: "t1", user_id: "u1" }, riderId: "r1", now: NOW });
+  const r1 = w.riders.find((r) => r.id === "r1");
+  assert.equal(r1.squad, "u23");
+  assert.equal(r1.is_academy, true, "ungdomstrup = is_academy true (squads.js)");
+  assert.ok(supabase.inserts.some((i) => i.table === "notifications" && i.row.type === "contract_expiring"), "varsel for den nye kontrakt");
+  const own = supabase.inserts.find((i) => i.table === "rider_ownership_events");
+  if (own) {
+    assert.equal(own.row.actor_type, "api");
+    assert.equal(own.row.related_entity_type, "manual");
+  }
+
+  const w2 = world();
+  w2.auctions.push({ id: "a2", rider_id: "r1", status: "extended" });
+  const list = await loadBuybackCandidates({ supabase: fakeSupabase(w2), team: { id: "t1", user_id: "u1" }, now: NOW });
+  assert.equal(list.find((c) => c.id === "r1").blocked, "buyback_rider_on_auction");
 });

@@ -12,7 +12,8 @@
 // auktion, og inden for 7 dage efter frigivelsen.
 import { computeFrozenSalary, computeContractEndSeason } from "./contractSeed.js";
 import { getTeamMarketState, getIncomingSquadViolation, expectMutationAffectingRows } from "./marketUtils.js";
-import { SQUAD_CAPS, isYouthSquad } from "./squads.js";
+import { SQUAD_CAPS, isYouthSquad, seniorSquadPatch } from "./squads.js";
+import { buildContractExpiringNotification, notifyUser } from "./notificationService.js";
 import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 
@@ -87,7 +88,7 @@ export async function loadBuybackCandidates({ supabase, team, now = new Date() }
       fetchAllRows(() => supabase.from("riders")
         .select("id, firstname, lastname, team_id, pending_team_id, is_retired, squad, current_production_value")
         .in("id", chunk).order("id")),
-      fetchAllRows(() => supabase.from("auctions").select("id, rider_id").eq("status", "active").in("rider_id", chunk).order("id")),
+      fetchAllRows(() => supabase.from("auctions").select("id, rider_id").in("status", ["active", "extended"]).in("rider_id", chunk).order("id")),
     ]);
     for (const n of notes) if (String(n.message || "").endsWith(suffix)) warned.add(n.related_id);
     riders.push(...riderRows);
@@ -146,7 +147,8 @@ export async function buybackRider({ supabase, team, riderId, now = new Date() }
       salary: candidate.salary,
       contract_length: BUYBACK_7251.contractLength,
       contract_end_season: computeContractEndSeason(seasonNumber, BUYBACK_7251.contractLength),
-      ...(isYouthSquad(candidate.squad) ? {} : { is_academy: false }),
+      // squads.js: squad og is_academy skrives altid sammen (is_academy = squad <> senior).
+      ...(isYouthSquad(candidate.squad) ? { squad: candidate.squad, is_academy: true } : seniorSquadPatch()),
     }).eq("id", riderId).is("team_id", null).is("pending_team_id", null),
     { context: `buyback_7251 team=${team.id} rider=${riderId}` },
   ).catch((err) => { throw new BuybackError("buyback_rider_not_free", 409, { cause: err }); });
@@ -158,11 +160,19 @@ export async function buybackRider({ supabase, team, riderId, now = new Date() }
     fromTeamId: null,
     toTeamId: team.id,
     reason: RIDER_OWNERSHIP_REASON.FREE_AGENT_SIGNING,
-    relatedEntityType: "contract_buyback_7251",
-    actorType: "user",
+    // CHECK-constraints (#3582): entitet manual, aktør api; kilden står i idempotency-nøglen.
+    relatedEntityType: "manual",
+    actorType: "api",
     actorId: team.user_id,
     occurredAt: acquiredAt,
     idempotencyKey: `ownership:buyback7251:${team.id}:${riderId}`,
   });
-  return { rider_id: riderId, salary: candidate.salary, contract_end_season: computeContractEndSeason(seasonNumber, BUYBACK_7251.contractLength) };
+  // Kontrakten udløber i den aktive sæson: varsl straks (samme besked som auktionsstien),
+  // så den tilbagekøbte rytter aldrig igen forsvinder ved næste skifte uden varsel.
+  const endSeason = computeContractEndSeason(seasonNumber, BUYBACK_7251.contractLength);
+  try {
+    const riderName = `${candidate.firstname ?? ""} ${candidate.lastname ?? ""}`.trim();
+    await notifyUser({ supabase, userId: team.user_id, ...buildContractExpiringNotification({ riderName, riderId, seasonNumber: endSeason }) });
+  } catch { /* best-effort: selve signeringen er gennemført */ }
+  return { rider_id: riderId, salary: candidate.salary, contract_end_season: endSeason };
 }
