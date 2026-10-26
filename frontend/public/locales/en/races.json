@@ -752,6 +752,8 @@
     "minHint": "Minimum {min} riders to start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
+    "coCaptain": "Shared captain (optional)",
+    "coCaptainHint": "Protected like the captain. The captain gets help first.",
     "hunter": "Breakaway hunter",
     "freeRole": "Free role",
     "noRole": "None",
@@ -850,6 +852,8 @@
       "move_failed": "Couldn't move the rider. Try again.",
       "selection_captain_required": "Pick a captain among your selected riders.",
       "selection_captain_not_selected": "Your captain must be one of the selected riders.",
+      "selection_co_captain_not_available": "Shared captain isn't available in this race.",
+      "selection_co_captain_requires_captain": "A shared captain needs a captain. Pick a captain first.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
       "selection_role_overlap": "Captain, sprint captain and hunter must be different riders.",
       "selection_rider_injured": "Injured riders can't be selected.",
@@ -940,6 +944,7 @@
     "roleWord": {
       "captain": "captain",
       "sprint_captain": "sprint captain",
+      "co_captain": "shared captain",
       "helper": "rider",
       "hunter": "hunter",
       "free_role": "free role"
@@ -951,6 +956,7 @@
       "stage_roles_invalid_role": "One of the roles isn't valid.",
       "stage_roles_invalid_effort": "One of the intentions isn't valid.",
       "stage_roles_role_overlap": "Only one rider can be captain, only one can be sprint captain, and only one can be breakaway hunter, per stage.",
+      "stage_roles_co_captain_requires_captain": "A shared captain needs a captain on the same stage.",
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
       "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given an intention anymore.",
       "stage_roles_race_completed": "This race is finished, so the intentions can't be changed anymore.",

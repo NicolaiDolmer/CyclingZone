@@ -769,6 +769,8 @@
     "minHint": "Minimaal {min} renners om te starten.",
     "captain": "Kopman",
     "sprintCaptain": "Sprintkopman (optioneel)",
+    "coCaptain": "Gedeelde kopman (optioneel)",
+    "coCaptainHint": "Beschermd zoals de kopman. De kopman krijgt eerst hulp.",
     "hunter": "Ontsnappingsjager",
     "freeRole": "Vrije rol",
     "noRole": "Geen",
@@ -867,6 +869,8 @@
       "move_failed": "De renner kon niet worden verplaatst. Probeer het opnieuw.",
       "selection_captain_required": "Kies een kopman uit je geselecteerde renners.",
       "selection_captain_not_selected": "Je kopman moet een van de geselecteerde renners zijn.",
+      "selection_co_captain_not_available": "Een gedeelde kopman is niet mogelijk in deze koers.",
+      "selection_co_captain_requires_captain": "Een gedeelde kopman heeft een kopman nodig. Kies eerst een kopman.",
       "selection_role_not_selected": "Renners met een rol moeten deel uitmaken van de selectie.",
       "selection_role_overlap": "Kopman, sprintkopman en jager moeten verschillende renners zijn.",
       "selection_rider_injured": "Geblesseerde renners kunnen niet worden geselecteerd.",
@@ -957,6 +961,7 @@
     "roleWord": {
       "captain": "kopman",
       "sprint_captain": "sprintkopman",
+      "co_captain": "gedeelde kopman",
       "helper": "renner",
       "hunter": "jager",
       "free_role": "vrije rol"
@@ -968,6 +973,7 @@
       "stage_roles_invalid_role": "Een van de rollen is niet geldig.",
       "stage_roles_invalid_effort": "Een van de intenties is niet geldig.",
       "stage_roles_role_overlap": "Per etappe kan maar één renner kopman zijn, maar één sprintkopman en maar één ontsnappingsjager.",
+      "stage_roles_co_captain_requires_captain": "Een gedeelde kopman heeft een kopman nodig in dezelfde etappe.",
       "stage_roles_duplicate": "Dezelfde renner komt twee keer voor in dezelfde etappe.",
       "stage_roles_rider_abandoned": "Een van de renners is uit de koers en kan geen intentie meer krijgen.",
       "stage_roles_race_completed": "Deze koers is afgelopen, dus de intenties kunnen niet meer worden gewijzigd.",

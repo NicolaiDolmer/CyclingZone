@@ -769,6 +769,8 @@
     "minHint": "Mínimo {min} ciclistas para tomar la salida.",
     "captain": "Jefe de filas",
     "sprintCaptain": "Jefe de filas de sprint (opcional)",
+    "coCaptain": "Jefe de filas compartido (opcional)",
+    "coCaptainHint": "Protegido como el jefe de filas. El jefe de filas recibe ayuda primero.",
     "hunter": "Cazador de escapadas",
     "freeRole": "Rol libre",
     "noRole": "Ninguno",
@@ -867,6 +869,8 @@
       "move_failed": "No se pudo mover al ciclista. Inténtalo de nuevo.",
       "selection_captain_required": "Elige un jefe de filas entre tus ciclistas seleccionados.",
       "selection_captain_not_selected": "Tu jefe de filas debe ser uno de los ciclistas seleccionados.",
+      "selection_co_captain_not_available": "El jefe de filas compartido no está disponible en esta carrera.",
+      "selection_co_captain_requires_captain": "Un jefe de filas compartido necesita un jefe de filas. Elige primero un jefe de filas.",
       "selection_role_not_selected": "Los ciclistas con rol deben formar parte de la selección.",
       "selection_role_overlap": "El jefe de filas, el jefe de filas de sprint y el cazador deben ser ciclistas distintos.",
       "selection_rider_injured": "No se puede seleccionar a ciclistas lesionados.",
@@ -957,6 +961,7 @@
     "roleWord": {
       "captain": "jefe de filas",
       "sprint_captain": "jefe de filas de sprint",
+      "co_captain": "jefe de filas compartido",
       "helper": "gregario",
       "hunter": "cazador",
       "free_role": "rol libre"
@@ -968,6 +973,7 @@
       "stage_roles_invalid_role": "Uno de los roles no es válido.",
       "stage_roles_invalid_effort": "Una de las intenciones no es válida.",
       "stage_roles_role_overlap": "Solo un ciclista puede ser jefe de filas, solo uno jefe de filas de sprint y solo uno cazador de escapadas, por etapa.",
+      "stage_roles_co_captain_requires_captain": "Un jefe de filas compartido necesita un jefe de filas en la misma etapa.",
       "stage_roles_duplicate": "El mismo ciclista aparece dos veces para la misma etapa.",
       "stage_roles_rider_abandoned": "Uno de los ciclistas está fuera de la carrera y ya no se le puede dar una intención.",
       "stage_roles_race_completed": "Esta carrera ha terminado, así que las intenciones ya no se pueden cambiar.",
