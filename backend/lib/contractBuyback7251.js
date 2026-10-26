@@ -146,7 +146,6 @@ export async function buybackRider({ supabase, team, riderId, now = new Date() }
   const acquiredAt = now.toISOString();
   // team_id IS NULL i WHERE: en samtidig handel (auktion/anden manager) vinder, og vi
   // ser 0 rækker i stedet for at overskrive den (expectMutationAffectingRows kaster).
-  // error-ok: expectMutationAffectingRows tjekker selv error OG 0 ramte rækker og kaster.
   await expectMutationAffectingRows(
     supabase.from("riders").update({
       team_id: team.id,
@@ -159,7 +158,7 @@ export async function buybackRider({ supabase, team, riderId, now = new Date() }
       ...(isYouthSquad(candidate.squad) ? { squad: candidate.squad, is_academy: true } : seniorSquadPatch()),
     }).eq("id", riderId).is("team_id", null).is("pending_team_id", null),
     { context: `buyback_7251 team=${team.id} rider=${riderId}` },
-  ).catch((err) => { throw new BuybackError("buyback_rider_not_free", 409, { cause: err }); });
+  ).catch((err) => { throw new BuybackError("buyback_rider_not_free", 409, { cause: err }); }); // error-ok: expectMutationAffectingRows tjekker selv error og 0 rækker
 
   await recordRiderOwnershipEvent(supabase, {
     riderId,
