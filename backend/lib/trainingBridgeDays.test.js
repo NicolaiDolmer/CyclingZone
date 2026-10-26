@@ -7,7 +7,7 @@
 // (registerWork/runDay) og loebsdags-spaendene er injiceret.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bridgeGameDays, loadSeasonBridgeBounds, loadTrainingDateContext, BRIDGE_SLOTS_PER_DATE } from './trainingDateReadiness.js';
+import { bridgeGameDays, loadSeasonBridgeBounds, loadTrainingDateContext, trainingDateDeadline, BRIDGE_SLOTS_PER_DATE } from './trainingDateReadiness.js';
 import { loadTrainingDateIndex, runNormalizedTrainingDateSweep, __resetNormalizedTrainingDateCacheForTests } from './trainingDateClose.js';
 
 const S4 = { id: 's4', number: 4, status: 'completed', start_date: '2026-09-28', end_date: '2026-10-25' };
@@ -64,7 +64,7 @@ function scenario() {
     races: [], race_stage_schedule: [], training_race_loads: [],
     work: [],
   };
-  const ran = [];
+  const ran = [], registrations = [], quarantined = [];
   const options = {
     supabase: fakeClient(state), elapsedClock: () => 0, logger: { error() {} },
     loadIndex: loadTrainingDateIndex,
@@ -72,10 +72,17 @@ function scenario() {
     // Broens datoer har ingen etaper og dermed ingen spaend.
     loadDaySpans: async () => new Map(),
     loadWorkRows: async ({ tickDate }) => state.work.filter(row => row.tick_date === tickDate),
-    registerWork: async ({ teamId, seasonId, tickDate, gameDays, riderIds }) => {
-      const row = { team_id: teamId, season_id: seasonId, tick_date: tickDate, game_days: gameDays, expected_rider_ids: riderIds, status: 'pending' };
+    // Spejler RPC'erne: register_training_date_work gemmer kun snapshot foer fristen;
+    // register_training_bridge_date_work (lateBridge) gemmer det ogsaa efter.
+    registerWork: async ({ teamId, seasonId, tickDate, gameDays, riderIds, now, lateBridge }) => {
+      registrations.push({ teamId, tickDate, lateBridge: Boolean(lateBridge) });
+      if (lateBridge && state.bridgeRpcMissing) return null;
+      const inTime = now < trainingDateDeadline(tickDate);
+      const opening_conditions = inTime || lateBridge ? Object.fromEntries(riderIds.map(id => [id, { form: 50, fatigue: 0 }])) : {};
+      const row = { team_id: teamId, season_id: seasonId, tick_date: tickDate, game_days: gameDays, expected_rider_ids: riderIds, status: 'pending', opening_conditions };
       state.work.push(row); return row;
     },
+    quarantineRiders: async ({ teamId, tickDate, riderIds }) => { quarantined.push({ teamId, tickDate, riderIds }); },
     runDay: async ({ teamId, seasonId, tickDateOverride, gameDay, dateGameDays }) => {
       ran.push({ teamId, seasonId, tickDate: tickDateOverride, gameDay, dateGameDays });
       const row = state.work.find(r => r.team_id === teamId && r.tick_date === tickDateOverride);
@@ -84,7 +91,7 @@ function scenario() {
     },
     dispatchAlarms: async () => ({ dates: 0, failed: 0 }),
   };
-  return { state, ran, options };
+  return { state, ran, registrations, quarantined, options };
 }
 
 test('indexet starter dagen efter forrige saesons sidste dato', async () => {
@@ -100,7 +107,7 @@ test('indexet starter dagen efter forrige saesons sidste dato', async () => {
 
 test('sweepen giver alle divisioner 5 traeninger pr. brodato, 26/10 indhentes, praecis een gang', async () => {
   __resetNormalizedTrainingDateCacheForTests();
-  const { state, ran, options } = scenario();
+  const { state, ran, registrations, quarantined, options } = scenario();
   const summary = await runNormalizedTrainingDateSweep({ ...options, now: new Date('2026-10-27T20:00:00Z') });
   assert.equal(summary.failed, 0);
   for (const teamId of ['A', 'B']) {
@@ -111,6 +118,10 @@ test('sweepen giver alle divisioner 5 traeninger pr. brodato, 26/10 indhentes, p
   // Programslottet regnes fra datoens egne dage (manageren valgte program, slot 0-4).
   assert.deepEqual(ran.find(r => r.gameDay === -1).dateGameDays, [-5, -4, -3, -2, -1]);
   assert.ok(state.work.every(row => row.status === 'complete'));
+  // 26/10 indhentes efter sin frist (27/10 kl. 02) via bro-RPC'en; 27/10 er inden fristen.
+  assert.ok(registrations.filter(r => r.tickDate === '2026-10-26').every(r => r.lateBridge));
+  assert.ok(registrations.filter(r => r.tickDate === '2026-10-27').every(r => !r.lateBridge));
+  assert.deepEqual(quarantined, [], 'ingen ryttere i karantaene');
   // Genstart af processen: ingen nye traeninger.
   __resetNormalizedTrainingDateCacheForTests();
   const before = ran.length;
@@ -137,4 +148,18 @@ test('Traen nu (saeson kun med id/number) slaar broens graenser op selv', async 
   });
   assert.deepEqual(context.gameDaysByDivision.get('d1'), [-5, -4, -3, -2, -1]);
   assert.deepEqual(context.gameDaysByDivision.get('d4'), [-5, -4, -3, -2, -1]);
+});
+
+test('deploy-vinduet: uden bro-RPC registreres den sene brodato ikke og proeves igen', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const { state, ran, options } = scenario();
+  state.bridgeRpcMissing = true;
+  const summary = await runNormalizedTrainingDateSweep({ ...options, now: new Date('2026-10-27T20:00:00Z') });
+  assert.equal(summary.failed, 0);
+  assert.equal(state.work.some(row => row.tick_date === '2026-10-26'), false, 'ingen tom, frosset dato');
+  assert.equal(ran.some(r => r.tickDate === '2026-10-26'), false);
+  // Naeste tick efter migrationen: 26/10 afregnes (cachen holdt datoen aaben).
+  state.bridgeRpcMissing = false;
+  await runNormalizedTrainingDateSweep({ ...options, now: new Date('2026-10-27T20:05:00Z') });
+  assert.deepEqual(ran.filter(r => r.teamId === 'A' && r.tickDate === '2026-10-26').map(r => r.gameDay), [-10, -9, -8, -7, -6]);
 });
