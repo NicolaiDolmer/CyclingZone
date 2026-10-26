@@ -210,6 +210,9 @@ export async function runNormalizedTrainingDateSweep({
   const index = await loadIndex({ supabase, now });
   const summary = { ran: false, tickDate: index.today, gameDays: [], divisions: 0, planned: 0, swept: 0, alreadyRan: 0, failed: 0, failures: [], pending: 0, quarantined: 0, departed: 0, durationMs: 0 };
   const allDays = new Set(), divisions = new Set();
+  // #7282: a team whose late bridge date waits for the bridge RPC registers no later
+  // date in this pass; a later row would stop the bridge RPC from keeping its snapshot.
+  const deferredBridgeTeams = new Set();
   let settledToday = false;
   for (const job of index.jobs) {
     const dateKey = `${job.season.id}:${job.tickDate}`;
@@ -256,13 +259,14 @@ export async function runNormalizedTrainingDateSweep({
         return;
       }
       if (!days?.length) return;
+      if (deferredBridgeTeams.has(team.id) && !workByTeam.has(team.id)) { waitingForDate = true; return; }
       let tracked = workByTeam.has(team.id);
       // #6609: failure identity carries the race day being settled (or the date race days when it fails before the loop).
       let failingGameDay = null;
       try {
         const lateBridge = !workByTeam.has(team.id) && days.every(day => day < 0) && now >= trainingDateDeadline(job.tickDate);
         const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge });
-        if (!work) { waitingForDate = true; return; }
+        if (!work) { deferredBridgeTeams.add(team.id); waitingForDate = true; return; }
         tracked = true;
         const remaining = work.expected_rider_ids.filter(id => !(work.quarantined_rider_ids ?? []).includes(id));
         // #6439 (owner 10/10): training follows the rider. A rider who changed team

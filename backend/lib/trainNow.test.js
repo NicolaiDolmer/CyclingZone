@@ -645,3 +645,30 @@ test("#6839: any other engine error still throws (route answers 500 + Sentry)", 
   deps.runDay = async () => { throw new Error("boom"); };
   await assert.rejects(runTrainNow(deps), /boom/);
 });
+
+// #7282: a bridge date (negative race days) may not be pressed while an earlier bridge
+// date of the same season has no registered work: the sweep still has to catch it up.
+function bridgeHarness(state, earlierRegistered) {
+  state.seasons = [{ id: "s4", number: 4, end_date: "2026-10-25" }, { id: "s5", number: 5, start_date: "2026-10-28" }];
+  if (earlierRegistered) state.training_date_work.push({ team_id: TEAM.id, season_id: "s5", tick_date: "2026-10-26", status: "complete" });
+  const h = harness(state);
+  const ctx = fakeContext();
+  ctx.stages = []; ctx.races = []; ctx.entries = [];
+  ctx.gameDaysByDivision = new Map([[TEAM.league_division_id, [-5, -4, -3, -2, -1]]]);
+  return { ...h, deps: { ...h.deps, season: { id: "s5", number: 5 }, now: new Date("2026-10-27T09:00:00Z"), loadContext: async () => ctx } };
+}
+
+test("#7282: an unregistered earlier bridge date blocks the press", async () => {
+  const { deps, calls, supabase } = bridgeHarness(baseState(), false);
+  const result = await runTrainNow(deps);
+  assert.deepEqual([result.status, result.body.error], [409, "previous_date_open"]);
+  assert.equal(calls.length + supabase.writes.length, 0);
+});
+
+test("#7282: with the earlier bridge date registered, the bridge date can be pressed", async () => {
+  const state = baseState();
+  const { deps, calls } = bridgeHarness(state, true);
+  const result = await runTrainNow(deps);
+  assert.equal(result.status, 200);
+  assert.deepEqual(calls.map((c) => c.gameDay), [-5, -4, -3, -2]);
+});

@@ -78,7 +78,9 @@ function scenario() {
       registrations.push({ teamId, tickDate, lateBridge: Boolean(lateBridge) });
       if (lateBridge && state.bridgeRpcMissing) return null;
       const inTime = now < trainingDateDeadline(tickDate);
-      const opening_conditions = inTime || lateBridge ? Object.fromEntries(riderIds.map(id => [id, { form: 50, fatigue: 0 }])) : {};
+      // Bro-RPC'ens kronologi-vagt: senere arbejde paa holdet => intet snapshot.
+      const laterWork = state.work.some(row => row.team_id === teamId && row.tick_date > tickDate);
+      const opening_conditions = inTime || (lateBridge && !laterWork) ? Object.fromEntries(riderIds.map(id => [id, { form: 50, fatigue: 0 }])) : {};
       const row = { team_id: teamId, season_id: seasonId, tick_date: tickDate, game_days: gameDays, expected_rider_ids: riderIds, status: 'pending', opening_conditions };
       state.work.push(row); return row;
     },
@@ -152,14 +154,17 @@ test('Traen nu (saeson kun med id/number) slaar broens graenser op selv', async 
 
 test('deploy-vinduet: uden bro-RPC registreres den sene brodato ikke og proeves igen', async () => {
   __resetNormalizedTrainingDateCacheForTests();
-  const { state, ran, options } = scenario();
+  const { state, ran, quarantined, options } = scenario();
   state.bridgeRpcMissing = true;
   const summary = await runNormalizedTrainingDateSweep({ ...options, now: new Date('2026-10-27T20:00:00Z') });
   assert.equal(summary.failed, 0);
   assert.equal(state.work.some(row => row.tick_date === '2026-10-26'), false, 'ingen tom, frosset dato');
   assert.equal(ran.some(r => r.tickDate === '2026-10-26'), false);
+  assert.equal(state.work.some(row => row.tick_date === '2026-10-27'), false, 'senere dato holdes tilbage');
   // Naeste tick efter migrationen: 26/10 afregnes (cachen holdt datoen aaben).
   state.bridgeRpcMissing = false;
   await runNormalizedTrainingDateSweep({ ...options, now: new Date('2026-10-27T20:05:00Z') });
   assert.deepEqual(ran.filter(r => r.teamId === 'A' && r.tickDate === '2026-10-26').map(r => r.gameDay), [-10, -9, -8, -7, -6]);
+  assert.deepEqual(ran.filter(r => r.teamId === 'A' && r.tickDate === '2026-10-27').map(r => r.gameDay), [-5, -4, -3, -2, -1]);
+  assert.deepEqual(quarantined, [], 'ingen ryttere i karantaene efter indhentning');
 });
