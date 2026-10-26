@@ -96,6 +96,7 @@ import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRe
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
 import { advanceStagePlan, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
+import { applyDayForm6649, dayForm6649Events } from "./mechanics/dayForm6649.ts"; // #6649
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -836,7 +837,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   let state: EngineState = {
     km: 0,
     groups: initGroups(startlist),
-    riders: initRiderStates(startlist, tuning, seed),
+    riders: applyDayForm6649(initRiderStates(startlist, tuning, seed), startlist, route, seed, isS5ProfilesV3OrLater(rulesRevision)), // #6649 (KUN s5_profiles_v3)
     virtual_gc: virtualGc,
   };
 
@@ -1349,6 +1350,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // Tid-tildeling: rent gruppe-princip (mor-spec SS3.2).
   state = { ...state, riders: applyGroupTimes(state.groups, state.riders, frontElapsedSeconds) };
   if (stagePlan) state = { ...state, stage_plan_efforts: stagePlanFinalEfforts(stagePlan), stage_plan_load_efforts: stagePlanLoadEfforts(stagePlan) }; // #7003: juryen + traetheden
+  if (isS5ProfilesV3OrLater(rulesRevision)) timeline.push(...dayForm6649Events(startlist, route, seed, tuning)); // #6649: "havde en daarlig dag", ved maal
 
   return { state, timeline, groupSnapshots, finaleTrace };
 }

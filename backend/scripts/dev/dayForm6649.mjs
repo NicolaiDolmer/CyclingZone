@@ -144,8 +144,9 @@ export function summarize(cells, band = null) {
   return rows;
 }
 
-function readRace(dir, revision) {
-  const cachePath = path.join(dir, "cache.json");
+function readRace(dir, revision, cacheDir = null) {
+  const local = path.join(dir, "cache.json");
+  const cachePath = existsSync(local) || !cacheDir ? local : path.join(cacheDir, path.basename(dir), "cache.json");
   if (!existsSync(cachePath)) return null;
   const resultFile = readdirSync(dir).find((f) => f.endsWith(".json") && f !== "cache.json");
   if (!resultFile) return null;
@@ -164,7 +165,8 @@ function parseArgs(argv) {
   if (!dir) throw new Error("--dir=<eksportens races-mappe> kraeves");
   const out = get("out");
   if (out && !path.resolve(out).split(path.sep).includes("balance-internals")) throw new Error("--out skal ligge under balance-internals/ (hard rule 17)");
-  return { dir, revision: get("revision", "s5_profiles_v3"), thresholds: get("thresholds"), out };
+  // --cache-dir: eksportens races-mappe naar en motorTestport-koersel med --from-dir ikke kopierede cache.json.
+  return { dir, revision: get("revision", "s5_profiles_v3"), thresholds: get("thresholds"), out, cacheDir: get("cache-dir") };
 }
 
 export function run(argv) {
@@ -175,7 +177,7 @@ export function run(argv) {
   let skipped = 0;
   for (const id of readdirSync(opts.dir)) {
     const dir = path.join(opts.dir, id);
-    const race = readRace(dir, opts.revision);
+    const race = readRace(dir, opts.revision, opts.cacheDir);
     if (!race) { skipped += 1; continue; }
     tallyRace(raceContext(race.cache), race.run, cells);
     races += 1;
