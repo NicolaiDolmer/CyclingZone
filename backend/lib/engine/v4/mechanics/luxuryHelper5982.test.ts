@@ -136,6 +136,12 @@ function runTeamPlay(specs: Spec[], opts: RunOpts = {}): Array<Record<string, nu
 /** Faktoren FOER segment `index` (efter det forrige). */
 const before = (trace: Array<Record<string, number>>, index: number, id: string) => (index === 0 ? 1 : trace[index - 1][id]);
 
+/** Segmentet hvor arbejdsvinduet foran stigningen begynder. */
+function windowStart(climb: number, route: RouteV2 = MOUNTAIN): number {
+  const w = lastManWindow(route, climb)!;
+  return route.segments.findIndex((s) => s.from_km <= w.fromKm && w.fromKm < s.to_km);
+}
+
 // Et lille hold: kaptajnen og én arbejder (tvillingen: sidste mand vs hjaelper).
 const small = (lastMan: boolean, extra: Partial<Spec> = {}): Spec[] => [
   { id: "cap", role: "captain" },
@@ -217,12 +223,16 @@ test("#5982: planKomIndex laeser kun rytterens eget holds etapeplan", () => {
   assert.equal(planKomIndex([], "x", "A"), null);
 });
 
-test("#5982: arbejdsvinduet er segmentet op til foden plus stigningen", () => {
+test("#5982: arbejdsvinduet er de sidste km op til foden af stigningen", () => {
   const w = lastManWindow(MOUNTAIN, DEFAULT_CLIMB)!;
-  assert.equal(w.start, DEFAULT_CLIMB - 1);
   assert.equal(w.climb, DEFAULT_CLIMB);
+  assert.equal(w.toKm, MOUNTAIN_SEGMENTS[DEFAULT_CLIMB].from_km, "vinduet slutter ved foden");
+  assert.equal(w.toKm - w.fromKm, LAST_MAN_TUNING.approachKm);
   assert.ok(w.beforeShare > 0 && w.windowShare > 0 && w.beforeShare + w.windowShare <= 1 + 1e-12);
   assert.equal(lastManWindow(MOUNTAIN, 0), null, "et ikke-stigningssegment giver intet vindue");
+  const climbAtStart = { ...MOUNTAIN, segments: [{ kind: "climb", from_km: 0, to_km: 8, category: "3", avg_gradient: 5, top_elevation_m: 600 }, ...MOUNTAIN_SEGMENTS.slice(1)] } as RouteV2;
+  const atStart = lastManWindow(climbAtStart, 0)!;
+  assert.deepEqual([atStart.fromKm, atStart.toKm], [0, 8], "uden tilloeb er vinduet selve stigningen");
 });
 
 // ── Byte-identitet ───────────────────────────────────────────────────────────
@@ -262,14 +272,15 @@ for (const [name, specs] of [["lille hold", small], ["fuld stab", full]] as cons
   test(`#5982 tvilling (${name}): mindre traethed foer den afgoerende stigning`, () => {
     const lm = runTeamPlay(specs(true));
     const helper = runTeamPlay(specs(false));
-    const start = lastManWindow(MOUNTAIN, DEFAULT_CLIMB)!.start;
+    const start = windowStart(DEFAULT_CLIMB);
     assert.ok(before(lm, start, "x") > before(helper, start, "x"), `sidste mand friskere ved vinduet: ${before(lm, start, "x")} vs ${before(helper, start, "x")}`);
   });
 
   test(`#5982 tvilling (${name}): kaptajnen faar maalbart mere hjaelp paa den afgoerende stigning`, () => {
     const lm = runTeamPlay(specs(true));
     const helper = runTeamPlay(specs(false));
-    const { start, climb } = lastManWindow(MOUNTAIN, DEFAULT_CLIMB)!;
+    const start = windowStart(DEFAULT_CLIMB);
+    const climb = DEFAULT_CLIMB;
     // Hjaelpen der virker PAA stigningen, er den der er givet paa vej ind i den
     // (team_cp_factor laeses af naeste segments tick): kaptajnens faktor ved foden.
     const gainLm = before(lm, climb, "cap") - before(lm, start, "cap");
@@ -299,7 +310,7 @@ test("#5982 bounded: kaptajnens faktor holder sig under holdspillets loft ogsaa 
   for (const row of runTeamPlay(full(true))) {
     assert.ok(row.cap <= 1 + TEAM_PLAY_EXTRA_TUNING.captainMaxBonusFraction + 1e-12);
   }
-  assert.ok(LAST_MAN_TUNING.ceilingShareOfCaptainMax > 0 && LAST_MAN_TUNING.maxConcentration >= 1);
+  assert.ok(LAST_MAN_TUNING.ceilingShareOfCaptainMax > 0 && LAST_MAN_TUNING.approachKm > 0);
 });
 
 // ── Eget loeb ────────────────────────────────────────────────────────────────
@@ -328,8 +339,7 @@ test("#5982 eget loeb: den delte kaptajn overtager hjaelperne, ikke sidste mand"
 
 test("#5982 spurtkaptajn som eneste leder: sidste mand koerer for ham", () => {
   const lm = runTeamPlay([{ id: "spr", role: "sprint_captain" }, { id: "x", role: "helper", lastMan: true }]);
-  const { start, climb } = lastManWindow(MOUNTAIN, DEFAULT_CLIMB)!;
-  assert.ok(before(lm, climb, "spr") > before(lm, start, "spr"));
+  assert.ok(before(lm, DEFAULT_CLIMB, "spr") > before(lm, windowStart(DEFAULT_CLIMB), "spr"));
 });
 
 // ── Etapeplanen vaelger stigningen ───────────────────────────────────────────
@@ -340,12 +350,19 @@ test("#5982: etapeplanens rutepunkt flytter arbejdet til den valgte stigning", (
     params: { riders: [{ rider_id: "x", legs: [{ task: "stay_sheltered" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }] }] },
   }];
   const planned = runTeamPlay(small(true), { orders });
-  const early = lastManWindow(MOUNTAIN, EARLY_CLIMB)!;
-  const late = lastManWindow(MOUNTAIN, DEFAULT_CLIMB)!;
-  const gainEarly = before(planned, early.climb, "cap") - before(planned, early.start, "cap");
+  const earlyStart = windowStart(EARLY_CLIMB);
+  const gainEarly = before(planned, EARLY_CLIMB, "cap") - before(planned, earlyStart, "cap");
   const defaultRun = runTeamPlay(small(true));
-  const gainEarlyDefault = before(defaultRun, early.climb, "cap") - before(defaultRun, early.start, "cap");
+  const gainEarlyDefault = before(defaultRun, EARLY_CLIMB, "cap") - before(defaultRun, earlyStart, "cap");
   assert.ok(gainEarly > gainEarlyDefault, "mere hjaelp ind i den valgte (tidlige) stigning");
-  // Efter sit arbejde ruller han i maal: ingen pris paa slutstigningen.
-  assert.equal(planned[late.climb].x, planned[late.start - 1].x);
+  // Efter sit arbejde er han toemt og ruller i maal: ingen pris resten af etapen, heller ikke paa slutstigningen.
+  for (let i = EARLY_CLIMB; i < planned.length; i++) assert.equal(planned[i].x, planned[EARLY_CLIMB - 1].x, `segment ${i}`);
+});
+
+test("#5982: sidste mand bruger hele sit budget naar kaptajnen er med hele dagen (ingen gratis personlig gevinst)", () => {
+  for (const specs of [small, full]) {
+    const last = runTeamPlay(specs(true)).at(-1)!;
+    const helper = runTeamPlay(specs(false)).at(-1)!;
+    assert.ok(Math.abs((1 - last.x) - (1 - helper.x)) < 1e-9, `samme samlede pris: ${1 - last.x} vs ${1 - helper.x}`);
+  }
 });

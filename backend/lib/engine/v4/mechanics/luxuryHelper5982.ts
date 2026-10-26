@@ -25,14 +25,16 @@
 //      vilkaar som en spar-hjaelper).
 //   2. ARBEJDET: den afgoerende stigning. Default er rutens SIDSTE kategoriserede
 //      stigning; etapeplanens rutepunkt (stage_plan-ordren, #7003) kan pege paa
-//      en anden. Arbejdsvinduet er segmentet op til foden af stigningen plus
-//      selve stigningen: v4's holdspil betales FREMAD (team_cp_factor laeses af
-//      naeste segments tick), saa den hjaelp der virker PAA stigningen, er den
-//      han giver paa vej ind i den. Han bruger her de kraefter han sparede: hans
-//      samlede pris over etapen er aldrig stoerre end en almindelig hjaelpers paa
-//      samme indsats, men den falder samlet i vinduet. Kaptajnens laeskaerm fra
-//      ham har sit eget loft (LAST_MAN_TUNING), oven paa holdets.
-//   3. EFTER arbejdet: han er faerdig og ruller i maal (ingen pris, ingen stoette).
+//      en anden. v4's holdspil betales FREMAD (team_cp_factor laeses af naeste
+//      segments tick, og klatre-selektionen laeser reserven fra det tick), saa
+//      den hjaelp der virker PAA stigningen, er den han giver paa vej ind i den.
+//      Arbejdsvinduet er derfor de sidste km op til foden (approachKm): han
+//      foerer kaptajnen ind paa stigningen og saetter tempoet. Her bruger han
+//      ALT det han sparede: hans samlede pris over etapen er den samme som en
+//      almindelig hjaelpers paa samme indsats, men den falder samlet i vinduet.
+//      Kaptajnens laeskaerm fra ham har sit eget loft (LAST_MAN_TUNING), oven paa
+//      holdets, og holdspillets samlede loft gaelder uaendret.
+//   3. EFTER arbejdet: han er toemt og ruller i maal (ingen pris, ingen stoette).
 //
 // EGET LOEB: sidder kaptajnen ikke i hans gruppe (sat, knaekket, styrtet,
 // udgaaet), koerer han sit eget loeb: ingen pris og ingen stoette, som en fri
@@ -68,8 +70,8 @@ export const LUXURY_HELPER_ROLE = "luxury_helper" as const;
 
 /** #5982 (KUN s5_profiles_v3, deep-frosset). Kalibrering: private-handoffs/5982/. */
 export const LAST_MAN_TUNING = Object.freeze({
-  /** Hoejeste pris pr. km i vinduet, som multiplum af en almindelig hjaelpers pris pr. km paa samme indsats. */
-  maxConcentration: 4,
+  /** Arbejdsvinduet: de sidste km op til foden af den afgoerende stigning. */
+  approachKm: 10,
   /** Hans laeskaerm til kaptajnen over hele vinduet, som andel af kaptajnens etape-loft (captainMaxBonusFraction). */
   ceilingShareOfCaptainMax: 0.5,
   /** Et rutepunkt (kom-vejpunkt) matcher en stigning naar toppen ligger hoejst saa mange km fra det. */
@@ -142,24 +144,38 @@ export function decisiveClimbIndex(
 }
 
 export type LastManWindow = {
-  /** Foerste segment i arbejdsvinduet (segmentet op til foden, eller stigningen selv hvis den er foerst). */
-  start: number;
-  /** Den afgoerende stigning (sidste segment i vinduet). */
+  /** Den afgoerende stigning (indeks i route.segments). */
   climb: number;
+  /** Arbejdsvinduet i km: [fromKm, toKm]. toKm er foden af stigningen. */
+  fromKm: number;
+  toKm: number;
   /** Andel af etapens km FOER vinduet. */
   beforeShare: number;
   /** Andel af etapens km I vinduet. */
   windowShare: number;
 };
 
-/** Arbejdsvinduet omkring den afgoerende stigning (km-andele af hele etapen). */
-export function lastManWindow(route: RouteV2, climbIndex: number): LastManWindow | null {
+/**
+ * Arbejdsvinduet foran den afgoerende stigning: de sidste `approachKm` op til
+ * foden. Starter stigningen ved km 0 (intet tilloeb), er vinduet selve
+ * stigningen, saa hans arbejde aldrig forsvinder.
+ */
+export function lastManWindow(route: RouteV2, climbIndex: number, tuning: LastManTuning = LAST_MAN_TUNING): LastManWindow | null {
   if (!isClimbIndex(route, climbIndex) || !(route.distance_km > 0)) return null;
-  const start = climbIndex > 0 ? climbIndex - 1 : climbIndex;
-  const from = route.segments[start].from_km;
-  const to = route.segments[climbIndex].to_km;
+  const climb = route.segments[climbIndex];
+  let fromKm = Math.max(0, climb.from_km - Math.max(0, tuning.approachKm));
+  let toKm = climb.from_km;
+  if (!(toKm > fromKm)) {
+    fromKm = climb.from_km;
+    toKm = climb.to_km;
+  }
   const share = (km: number) => Math.max(0, Math.min(1, km / route.distance_km));
-  return { start, climb: climbIndex, beforeShare: share(from), windowShare: share(to - from) };
+  return { climb: climbIndex, fromKm, toKm, beforeShare: share(fromKm), windowShare: share(toKm - fromKm) };
+}
+
+/** Km af [from, to] der ligger inden for [lo, hi]. */
+function overlapKm(from: number, to: number, lo: number, hi: number): number {
+  return Math.max(0, Math.min(to, hi) - Math.max(from, lo));
 }
 
 /** Holdets kaptajn (eller spurtkaptajnen paa et hold uden kaptajn), uanset status. */
@@ -187,13 +203,13 @@ export type LastManView = {
  * feltet ingen sidste mand har (holdspillet er da byte-identisk). Visningen
  * aendrer KUN sidste mands egen raekke:
  *   - foer vinduet, kaptajnen i gruppen: indsats "save" (han sparer sig).
- *   - i vinduet, kaptajnen i gruppen: ude af holdets arbejdspulje; hans arbejde
- *     regnes af applyLastManWork.
+ *   - segmentet roerer vinduet, kaptajnen i gruppen: ude af holdets arbejds-
+ *     pulje; hans arbejde regnes af applyLastManWork.
  *   - efter vinduet, eller kaptajnen ikke i gruppen: "free_role" i holdspillet
  *     (ingen pris, ingen stoette).
  *   - "Alt ud", eller ingen stigning paa ruten: uaendret (som en hjaelper).
  */
-export function lastManView(state: EngineState, ctx: SegmentHookContext): LastManView | null {
+export function lastManView(state: EngineState, ctx: SegmentHookContext, tuning: LastManTuning = LAST_MAN_TUNING): LastManView | null {
   const entrants = ctx.entrants;
   const seenTeams = new Set<string>();
   let view: Record<string, Entrant> | null = null;
@@ -206,7 +222,7 @@ export function lastManView(state: EngineState, ctx: SegmentHookContext): LastMa
     seenTeams.add(teamId);
     view ??= { ...entrants };
     if (entrant.effort === "all_out") continue;
-    const window = lastManWindow(ctx.route, decisiveClimbIndex(ctx.route, planKomIndex(ctx.orders, riderId, teamId)));
+    const window = lastManWindow(ctx.route, decisiveClimbIndex(ctx.route, planKomIndex(ctx.orders, riderId, teamId), tuning), tuning);
     if (!window) continue;
     const captainId = lastManCaptainId(teamId, entrants);
     const ownGroup = groupOf(state.groups, riderId);
@@ -215,10 +231,10 @@ export function lastManView(state: EngineState, ctx: SegmentHookContext): LastMa
       && state.riders[captainId]?.status === "racing"
       && ownGroup !== undefined
       && groupOf(state.groups, captainId)?.id === ownGroup.id;
-    const index = ctx.segmentIndex;
-    if (withCaptain && index < window.start) {
+    const { from_km: segFrom, to_km: segTo } = ctx.segment;
+    if (withCaptain && segTo <= window.fromKm) {
       view[riderId] = { ...entrant, effort: "save" };
-    } else if (withCaptain && index <= window.climb) {
+    } else if (withCaptain && overlapKm(segFrom, segTo, window.fromKm, window.toKm) > 0) {
       view[riderId] = { ...entrant, role: "free_role" };
       working.push({ riderId, captainId: captainId as string, window });
     } else {
@@ -246,9 +262,8 @@ export function applyLastManWork(
   tuning: LastManTuning = LAST_MAN_TUNING,
 ): void {
   const distanceKm = ctx.route.distance_km;
-  const segmentKm = Math.max(0, ctx.segment.to_km - ctx.segment.from_km);
-  const segmentShare = distanceKm > 0 ? Math.max(0, Math.min(1, segmentKm / distanceKm)) : 0;
-  if (!(segmentShare > 0) || !(helperBase > 0)) return;
+  if (!(distanceKm > 0) || !(helperBase > 0)) return;
+  const { from_km: segFrom, to_km: segTo } = ctx.segment;
   const efficiency = Math.max(0, Math.min(1, teamTuning.transferEfficiency));
   for (const worker of view.working) {
     const { window } = worker;
@@ -257,12 +272,14 @@ export function applyLastManWork(
     const saved = Math.min(full, Math.max(0, costMultiplier("save")));
     // Budgettet er en almindelig hjaelpers dag paa samme indsats minus det han brugte foer vinduet.
     const budget = Math.max(0, helperBase * full - helperBase * saved * window.beforeShare);
-    const rate = Math.min(budget / window.windowShare, helperBase * full * Math.max(0, tuning.maxConcentration));
-    const paid = Math.max(0, rate * segmentShare);
+    const windowPart = overlapKm(segFrom, segTo, window.fromKm, window.toKm) / distanceKm;
+    const beforePart = overlapKm(segFrom, segTo, 0, window.fromKm) / distanceKm;
+    const paidWork = Math.max(0, (budget / window.windowShare) * windowPart);
+    const paid = paidWork + Math.max(0, helperBase * saved * beforePart);
     if (!(paid > 0)) continue;
     deltas.set(worker.riderId, (deltas.get(worker.riderId) ?? 0) - paid);
-    const ceiling = Math.max(0, teamTuning.captainMaxBonusFraction * tuning.ceilingShareOfCaptainMax * (segmentShare / window.windowShare));
-    const bonus = Math.max(0, Math.min(paid * efficiency, ceiling));
+    const ceiling = Math.max(0, teamTuning.captainMaxBonusFraction * tuning.ceilingShareOfCaptainMax * (windowPart / window.windowShare));
+    const bonus = Math.max(0, Math.min(paidWork * efficiency, ceiling));
     if (bonus > 0) deltas.set(worker.captainId, (deltas.get(worker.captainId) ?? 0) + bonus);
   }
 }
