@@ -117,6 +117,13 @@ test("evaluateRaceGroupGates: PASS/FAIL mod baandet, '-' uden baand, N/A uden lo
   const missing = evaluateRaceGroupGates({ raceResults: results, revision: CAND, contexts: new Map(), bands });
   assert.equal(missing.checks.find((c) => c.id === "monument").status, "MANGLER");
   assert.equal(bandFor(check("monument_breakaway"), bands), bands.monumentBreakawayWinShare);
+  // Codex P2: en vejetape uden breakawayWon er MANGLER (fail closed), ikke N/A.
+  const noBw = [rr("mon", 1, "Monuments", { [CAND]: [{ seed: 1, gcWinner: "e", rows: [{ stage: 1, profile_type: "flat", cls: "flat", winnerId: "e" }] }] })];
+  const evNoBw = evaluateRaceGroupGates({ raceResults: noBw, revision: CAND, contexts, bands });
+  assert.equal(evNoBw.checks.find((c) => c.id === "monument_breakaway").status, "MANGLER");
+  // Et loeb i gruppen uden seeds er ogsaa manglende evidens.
+  const noSeeds = evaluateRaceGroupGates({ raceResults: [rr("mon", 1, "Monuments", { [CAND]: [] })], revision: CAND, contexts, bands });
+  assert.equal(noSeeds.checks.find((c) => c.id === "monument").status, "MANGLER");
 });
 
 test("buildRaceGroupCard + sektion: v3 selv blokeres ikke, kandidater efter v3 gør; tal kun i kortet", () => {

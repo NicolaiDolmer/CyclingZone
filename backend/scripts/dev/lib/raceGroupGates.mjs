@@ -132,7 +132,9 @@ export function measureCheck(check, raceResults, revision, contexts = new Map())
     for (const seed of run.perSeed ?? []) {
       if (check.kind === "breakaway") {
         for (const r of seed.rows ?? []) {
-          if (TIME_TRIALS.has(r.cls ?? r.profile_type) || typeof r.breakawayWon !== "boolean") continue;
+          if (TIME_TRIALS.has(r.cls ?? r.profile_type)) continue;
+          // Codex P2: en vejetape uden breakawayWon er manglende evidens (MANGLER), ikke "ingen etape".
+          if (typeof r.breakawayWon !== "boolean") { missing += 1; continue; }
           n += 1;
           if (r.breakawayWon) hits += 1;
         }
@@ -177,7 +179,8 @@ export function evaluateRaceGroupGates({ raceResults, revision, contexts = new M
     const m = measureCheck(check, raceResults, revision, contexts);
     let status;
     let why = null;
-    if (m.missing > 0) { status = GATE_STATUS.MISSING; why = `${m.missing} ${check.kind === "stage" ? "etaper" : "seeds"} uden favoritter eller vinder (cache.json/scorecard)`; }
+    if (m.missing > 0) { status = GATE_STATUS.MISSING; why = check.kind === "breakaway" ? `${m.missing} vejetaper uden breakawayWon (scorecard)` : `${m.missing} ${check.kind === "stage" ? "etaper" : "seeds"} uden favoritter eller vinder (cache.json/scorecard)`; }
+    else if (m.n === 0 && m.races > 0) { status = GATE_STATUS.MISSING; why = `${m.races} loeb i gruppen, men ingen maaling`; }
     else if (m.n === 0) { status = GATE_STATUS.NA; why = "gruppen er ikke i koerslen"; }
     else {
       const ok = inBand(m.share, bandFor(check, bands));
