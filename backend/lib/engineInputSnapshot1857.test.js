@@ -85,7 +85,9 @@ async function roundTrip(recorder, opts = {}) {
 // ── Codec ──────────────────────────────────────────────────────────────────
 
 test("codec: Map/Set/NaN/±Infinity/-0/undefined/BigInt/Date/huller/$t-nøgler overlever tabsfrit", () => {
-  const sparse = [1, , 3]; // eslint-disable-line no-sparse-arrays
+  const sparse = new Array(3); // hul på index 1
+  sparse[0] = 1;
+  sparse[2] = 3;
   const value = {
     m: new Map([["a", 1], [2, { x: new Set([1, 2]) }]]),
     nums: [NaN, Infinity, -Infinity, -0, 0, 1.5],
