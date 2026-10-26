@@ -310,7 +310,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.ts";
-import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
+import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
 import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/promotionPendingAction.js"; // #6710
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
@@ -18918,19 +18918,12 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // senior mod divisionens cap. Tælles kun når der faktisk er en pending
     // graduering — ellers er det en gratis forespørgsel pr. sidevisning.
     //
-    // Tælles med countSquadMembers — SAMME funktion `hasRoomInTargetSquad`
-    // bruger på skrive-siden, så fladen og motoren ikke kan blive uenige om
-    // hvor mange der er i truppen. Den er en `head: true`-optælling, så der
-    // hentes ingen rækker (ingen pagination-overflade) og ingen ukendt kolonne
-    // læses ud.
+    // youthSquadRooms ovenfor bruger allerede countSquadMembers, samme
+    // tælling som skrive-siden. Genbrug resultatet frem for nye parallelle HEADs.
     const youthSquadCounts = { junior: 0, u23: 0 };
     if ((gradRows ?? []).length > 0) {
-      const [juniorCount, u23Count] = await Promise.all([
-        countSquadMembers(supabase, { teamId, squad: "junior" }),
-        countSquadMembers(supabase, { teamId, squad: "u23" }),
-      ]);
-      youthSquadCounts.junior = juniorCount;
-      youthSquadCounts.u23 = u23Count;
+      youthSquadCounts.junior = squads.junior.used;
+      youthSquadCounts.u23 = squads.u23.used;
     }
 
     // #5943: sæson-alder (ageForSeason), ikke wall-clock — ellers står en rytter
