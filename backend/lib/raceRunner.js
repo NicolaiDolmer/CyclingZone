@@ -2587,7 +2587,6 @@ export async function simulateRace({
   // dækkede. Idempotent PR. ETAPE uændret: kun de etaper denne afvikling faktisk
   // dækker slettes, så en gen-afvikling ikke wiper andre etaper.
   const stagesInRun = [...new Set(resultRows.map((r) => r.stage_number))];
-  await persistEngineInputSnapshots({ supabase, race, recorder: engineInputRecorder }); // #1857: kaster aldrig
 
   if (trainingOwnsRecovery) {
     await freezeConditionLoadSnapshots({supabase,race,runs,stages,v3,stageRoleOverrides,v4Engine,teamOrderRows,rulesRevision});
@@ -2608,6 +2607,7 @@ export async function simulateRace({
     ensureSeasonStandings,
     updateStandings,
   });
+  await persistEngineInputSnapshots({ supabase, race, recorder: engineInputRecorder }); // #1857: først efter committede resultater; kaster aldrig
   await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
 
   // #5675 (CodeRabbit-fund, Y7-opfølgning): ungdomsstillingen genberegnes samme
@@ -3659,6 +3659,8 @@ export async function simulateStageByIndex({
       // Markeringen skrives KUN når låsen blev vundet: en taber har ikke skrevet
       // noget og må ikke efterlade en markering der ser ud som halvt arbejde.
       if (lockWon) await markFinalizeStep("write");
+      // #1857: kun den run der selv skrev etapens resultater gemmer inputtet (aldrig en genoptagelse). Kaster aldrig.
+      if (lockWon) await persistEngineInputSnapshots({ supabase, race, recorder: engineInputRecorder });
     }
     if (!lockWon) {
       // Konkurrerende run vandt (eller stages_completed er allerede forbi denne etape).
@@ -3669,8 +3671,6 @@ export async function simulateStageByIndex({
         rowsImported: 0, rows: 0, entrants: entrants.length, stages: totalStages,
       };
     }
-    // #1857: kun den run der vandt etape-låsen gemmer inputtet bag de skrevne resultater. Kaster aldrig.
-    await persistEngineInputSnapshots({ supabase, race, recorder: engineInputRecorder });
     applied = { rowsImported };
     // #6514 (Codex-fund): kalenderen udleder lineupFrozen af stages_completed, saa den
     // cachede kalender skal toemmes naar en etape er committet, ellers viser
