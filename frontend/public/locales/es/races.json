@@ -548,10 +548,10 @@
     "hunterExplainer": {
       "dayLine": "Tu cazador intenta meterse en la escapada de la mañana. Si llega o no, lo decide el pelotón el día de la carrera.",
       "outlook": {
-        "about": "Previsión del motor: la escapada llega unas {{k}} de cada {{n}} veces.",
-        "under": "Previsión del motor: la escapada llega menos de {{k}} de cada {{n}} veces.",
-        "over": "Previsión del motor: la escapada llega más de {{k}} de cada {{n}} veces.",
-        "stage": "Etapa {{stage}}",
+        "about": "Previsión del motor: la escapada llega unas {k} de cada {n} veces.",
+        "under": "Previsión del motor: la escapada llega menos de {k} de cada {n} veces.",
+        "over": "Previsión del motor: la escapada llega más de {k} de cada {n} veces.",
+        "stage": "Etapa {stage}",
         "reason": {
           "nobodyChases": "Pocos equipos tienen motivos para perseguirla.",
           "fewChase": "Uno o dos equipos suelen tener motivos para perseguirla.",

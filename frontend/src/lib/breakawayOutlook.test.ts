@@ -37,7 +37,7 @@ for (const lng of ["en", "da", "fr", "es", "nl"]) {
     for (const k of ["about", "under", "over", "stage"]) assert.ok(typeof o[k] === "string" && o[k].trim(), `${lng}:${k}`);
     for (const r of ["nobodyChases", "fewChase", "manyChase"]) assert.ok(typeof o.reason[r] === "string" && o.reason[r].trim(), `${lng}:reason.${r}`);
     for (const k of ["about", "under", "over"]) {
-      assert.ok(o[k].includes("{{k}}") && o[k].includes("{{n}}"), `${lng}:${k} skal bruge {{k}} og {{n}}`);
+      assert.ok(o[k].includes("{k}") && o[k].includes("{n}"), `${lng}:${k} skal bruge {k} og {n}`);
     }
   });
 }

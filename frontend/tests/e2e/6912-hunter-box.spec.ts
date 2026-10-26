@@ -163,6 +163,20 @@ test("jaeger-boksen viser motorens chance som 'cirka k af n' + aarsag naar backe
   await hunterBox.screenshot({ path: evidenceShotPath("docs/screenshots/6912/hunter-box-outlook-375.png") });
 });
 
+test("etapeloeb: chancen gaelder naeste etape og siger hvilken (#6912 B)", async ({ page }) => {
+  await setup(page);
+  await mockApi(page, OUTLOOK_ROUTE, {
+    available: true, runs: 40, odds: { under: [1, 10] }, chase: { kind: "manyChase" }, stageNumber: 3, profileType: "flat",
+  });
+  await page.goto(TEAM_TAB_URL);
+  await expect(page.getByTestId("race-selection-panel")).toBeVisible();
+  const outlook = page.getByTestId("hunter-breakaway-outlook");
+  await expect(outlook).toHaveText("Etape 3 · Motorens bud: udbruddet holder hjem under 1 af 10 gange. Flere hold har som regel grund til at jage det.");
+  const hunterBox = page.locator("section").filter({ has: page.getByRole("heading", { name: "Vælg din udbrudsjæger" }) }).last();
+  await hunterBox.scrollIntoViewIfNeeded();
+  await hunterBox.screenshot({ path: evidenceShotPath("docs/screenshots/6912/hunter-box-outlook-stage-375.png") });
+});
+
 test("jaeger-boksen viser ingen chance naar backend ikke kan staa inde for tallet (#6912 B)", async ({ page }) => {
   await setup(page);
   await mockApi(page, OUTLOOK_ROUTE, { available: false, reason: "old_rules" });

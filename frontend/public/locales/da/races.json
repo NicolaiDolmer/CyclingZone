@@ -531,10 +531,10 @@
     "hunterExplainer": {
       "dayLine": "Jægeren prøver at komme med i morgenudbruddet. Om det holder hjem, afgøres af feltet på dagen.",
       "outlook": {
-        "about": "Motorens bud: udbruddet holder hjem cirka {{k}} af {{n}} gange.",
-        "under": "Motorens bud: udbruddet holder hjem under {{k}} af {{n}} gange.",
-        "over": "Motorens bud: udbruddet holder hjem over {{k}} af {{n}} gange.",
-        "stage": "Etape {{stage}}",
+        "about": "Motorens bud: udbruddet holder hjem cirka {k} af {n} gange.",
+        "under": "Motorens bud: udbruddet holder hjem under {k} af {n} gange.",
+        "over": "Motorens bud: udbruddet holder hjem over {k} af {n} gange.",
+        "stage": "Etape {stage}",
         "reason": {
           "nobodyChases": "Få hold har grund til at jage det.",
           "fewChase": "Et eller to hold har som regel grund til at jage det.",
