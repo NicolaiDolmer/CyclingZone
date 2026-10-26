@@ -283,7 +283,7 @@ function runEffortDay(ctx) {
     const cid = `t7266-eff-${level}-ctrl`;
     const breakDay = (id) => o.breakIds.has(id) || o.breakIds.has(nid);
     const dt = (id) => (o.fin.has(id) && o.fin.has(nid) && !breakDay(id) ? o.fin.get(id) - o.fin.get(nid) : null);
-    const dl = (id) => (loads.has(id) && loads.has(nid) ? loads.get(id) - loads.get(nid) : null);
+    const dl = (id) => (loads.has(id) && loads.has(nid) && !breakDay(id) ? loads.get(id) - loads.get(nid) : null);
     for (const effort of EFFORTS) {
       if (effort === "normal") continue;
       const id = `t7266-eff-${level}-${effort}`;
