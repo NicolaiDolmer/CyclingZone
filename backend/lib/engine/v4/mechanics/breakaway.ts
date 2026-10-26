@@ -526,12 +526,15 @@ function attemptOrderedFormation(state: EngineState, ctx: BreakawayHookContext):
     const factor = riderState.team_cp_factor;
     const blocked = gcBlocked?.has(riderId) === true;
     const favourite = v3Formation?.favourites.has(riderId) === true; // #7258 (C)
+    // #7258 (C): en af dagens favoritter gaar sjaeldent i morgenudbrud, ogsaa med en udbrudsordre (eller
+    // som jaeger): ordren gaelder kun med samme faktor som et spontant forsoeg (egen stream, deterministisk).
+    const orderHeld = !favourite || ctx.rngFor("breakaway_favourite_order", riderId)() < favouriteScale;
     formationRiders.push({
       rider_id: riderId,
       team_id: teamIdOf(entrant),
       role: entrant.role,
       effort: entrant.effort,
-      tryBreak: blocked ? false : tryBreakByRider.get(riderId),
+      tryBreak: blocked || !orderHeld ? false : tryBreakByRider.get(riderId),
       strength,
       spontaneousChance: blocked ? 0 : favourite ? joinProbability(strength) * favouriteScale : joinProbability(strength),
       engine: collectiveAbility([riderId], ctx.entrants, CHASE_ENGINE_KEYS),
