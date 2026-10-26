@@ -319,10 +319,10 @@ export async function emitContractExpiringNotifications({
   supabase,
   seasonNumber,
   notify = notifyUser,
-  fetchOwnedExpiringRiders = defaultFetchOwnedExpiringRiders,
+  fetchOwnedExpiringRiders: fetchRiders = fetchOwnedExpiringRiders,
 }) {
   const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
-  const riders = await fetchOwnedExpiringRiders({ supabase, seasonNumber });
+  const riders = await fetchRiders({ supabase, seasonNumber });
   const eligible = (riders || []).filter((r) => r.user_id && r.id);
   stats.eligible = eligible.length;
 
@@ -353,16 +353,22 @@ export async function emitContractExpiringNotifications({
  * user_id (kun menneske-, ikke-frosne hold). Standard-implementering; injicérbar
  * i test for at undgå DB.
  */
-async function defaultFetchOwnedExpiringRiders({ supabase, seasonNumber }) {
-  const { data, error } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
-    .eq("contract_end_season", seasonNumber)
-    .not("team_id", "is", null)
-    .eq("team.is_ai", false)
-    .eq("team.is_frozen", false);
-  if (error) {
-    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`);
+export async function fetchOwnedExpiringRiders({ supabase, seasonNumber }) {
+  // #7246: pagineret. Uden .range() stoppede PostgREST tavst ved 1.000 rækker, så ~45 %
+  // af managerne aldrig fik varsel ved S4→S5 (frigivelsen bruger fetchAllRows og ramte alle).
+  let data;
+  try {
+    data = await fetchAllRows(() => supabase
+      .from("riders")
+      .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
+      .eq("contract_end_season", seasonNumber)
+      .not("team_id", "is", null)
+      .eq("team.is_ai", false)
+      .eq("team.is_frozen", false)
+      .order("id"));
+  } catch (err) {
+    const error = /** @type {Error} */ (err);
+    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`, { cause: err });
   }
   return (data || []).map((r) => ({
     id: r.id,

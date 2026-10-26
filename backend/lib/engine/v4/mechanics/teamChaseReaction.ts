@@ -58,7 +58,7 @@ export function dangerScaledIntensity(base: number, danger: number | undefined):
 }
 
 /** En leder trækker ikke (samme rolle-skel som breakaway.ts's CHASE_EXEMPT_ROLES). */
-const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981: delt kaptajn som kaptajnen
 
 export const IDLE_TEAM_REACTION: TeamReactionState = Object.freeze({
   status: "idle",

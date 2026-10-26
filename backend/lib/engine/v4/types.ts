@@ -32,7 +32,8 @@ export type AbilityKey =
   | "tactics";
 
 // ── Rytterrolle (kopi af raceRoles.js VALID_RACE_ROLES) ───────────────────────
-export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
+// #5981 (KUN s5_profiles_v3, slukket): "co_captain" = delt kaptajn (mechanics/sharedCaptain.ts).
+export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role" | "co_captain";
 
 // M12 (effort-styring, ejer-valg 20/8 §4). WIRET 6/9 (#4632, model C):
 // segmentLoop.ts's `tickGroupRiders` ganger mechanics/effortCost.ts's

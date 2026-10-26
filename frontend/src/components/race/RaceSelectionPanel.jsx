@@ -120,7 +120,7 @@ export default function RaceSelectionPanel({
   // bart `data` ville kaste TypeError og hvidskaerme siden i det oejeblik flaget slukkes.
   // Latent ogsaa foer #4295; lukket her fordi den er gratis at lukke.
   const earlyClientErrors = data?.size
-    ? validateSelectionClient({ ...sel, size: data.size })
+    ? validateSelectionClient({ ...sel, size: data.size, sprintLeaderAllowed: data.sprint_leader_allowed === true })
     : [];
   const earlySaveBlockReason = earlyClientErrors.length > 0
     ? t(`selection.errors.${earlyClientErrors[0]}`, { min: data?.size?.min, max: data?.size?.max })
@@ -278,7 +278,7 @@ export default function RaceSelectionPanel({
   // #4295: antal blokerer aldrig nedad. Klienten spejler nu backenden præcist (kun over
   // feltstørrelsen + kaptajn + rolle-overlap), så en delvis trup altid kan gemmes, også
   // ved en førstegangs-udtagelse, som var netop den tilstand "Ryd alt" efterlader.
-  const clientErrors = validateSelectionClient({ ...sel, size });
+  const clientErrors = validateSelectionClient({ ...sel, size, sprintLeaderAllowed: data?.sprint_leader_allowed === true }); // #6321
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
   const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
