@@ -1,0 +1,168 @@
+// #7251 · Tilbagekøbsret for ryttere frigivet UDEN varsel ved S4→S5.
+//
+// Ejer 26/10 (valg A): ved S4→S5 stoppede kontraktvarslet ved PostgREST's
+// 1.000-loft (#7246), så ~45 % af managerne aldrig fik "Contract expiring".
+// Frigivelsen var korrekt. Kompensationen er en ret, ikke en massemutation:
+// rytteren kan i 7 dage gen-signes af sit tidligere hold til normal løn, 1 sæson,
+// uden signing fee. Manageren vælger selv.
+//
+// Hvem: frigivet fra holdet i S4→S5-vinduet (rider_ownership_events reason
+// "release"), uden en contract_expiring-besked for sæson 4 til holdets manager,
+// stadig fri (team_id og pending_team_id null), ikke pensioneret, ikke på en aktiv
+// auktion, og inden for 7 dage efter frigivelsen.
+import { computeFrozenSalary, computeContractEndSeason } from "./contractSeed.js";
+import { getTeamMarketState, getIncomingSquadViolation, expectMutationAffectingRows } from "./marketUtils.js";
+import { SQUAD_CAPS, isYouthSquad } from "./squads.js";
+import { recordRiderOwnershipEvent, RIDER_OWNERSHIP_REASON } from "./riderOwnershipAudit.js";
+import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
+
+export const BUYBACK_7251 = Object.freeze({
+  // S4→S5-skiftet kørte 25/10 kl. 21:51 (Copenhagen). Vinduet dækker frigivelses-fasen.
+  releasedFromIso: "2026-10-25T18:00:00Z",
+  releasedToIso: "2026-10-26T00:00:00Z",
+  windowDays: 7,
+  warnedSeasonNumber: 4,
+  contractLength: 1,
+});
+
+export class BuybackError extends Error {
+  constructor(code, status = 400, options = undefined) {
+    super(code, options);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Ren regel: må rytteren købes tilbage nu? Returnerer null eller en blokerings-kode. */
+export function buybackBlockReason({ rider, releasedAt, warned, onActiveAuction, now }) {
+  if (warned) return "buyback_not_eligible";
+  if (!rider || rider.team_id != null || rider.pending_team_id != null) return "buyback_rider_not_free";
+  if (rider.is_retired) return "buyback_rider_retired";
+  if (onActiveAuction) return "buyback_rider_on_auction";
+  const deadline = new Date(new Date(releasedAt).getTime() + BUYBACK_7251.windowDays * DAY_MS);
+  if (!(now < deadline)) return "buyback_expired";
+  return null;
+}
+
+async function activeSeasonNumber(supabase) {
+  const { data, error } = await supabase
+    .from("seasons").select("number").eq("status", "active")
+    .order("number", { ascending: false }).limit(1).maybeSingle();
+  if (error) throw error;
+  if (!data?.number) throw new BuybackError("buyback_no_active_season", 409);
+  return data.number;
+}
+
+/**
+ * Holdets tilbagekøbs-kandidater: alle ryttere frigivet uden varsel i vinduet, med
+ * deadline og en evt. blokerings-kode (så UI'et kan vise hvorfor en knap er slået fra).
+ */
+export async function loadBuybackCandidates({ supabase, team, now = new Date() }) {
+  if (!team?.id || !team?.user_id) return [];
+  const events = await fetchAllRows(() => supabase
+    .from("rider_ownership_events")
+    .select("id, rider_id, occurred_at")
+    .eq("from_team_id", team.id)
+    .eq("reason", RIDER_OWNERSHIP_REASON.RELEASE)
+    .is("to_team_id", null)
+    .gte("occurred_at", BUYBACK_7251.releasedFromIso)
+    .lt("occurred_at", BUYBACK_7251.releasedToIso)
+    .order("id"));
+  const releasedAtByRider = new Map();
+  for (const e of events) releasedAtByRider.set(e.rider_id, e.occurred_at);
+  const riderIds = [...releasedAtByRider.keys()];
+  if (riderIds.length === 0) return [];
+
+  const warned = new Set();
+  const riders = [];
+  const onAuction = new Set();
+  const suffix = `end of season ${BUYBACK_7251.warnedSeasonNumber}.`;
+  for (let i = 0; i < riderIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const chunk = riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
+    const [notes, riderRows, auctions] = await Promise.all([
+      fetchAllRows(() => supabase.from("notifications").select("id, related_id, message")
+        .eq("user_id", team.user_id).eq("type", "contract_expiring").in("related_id", chunk).order("id")),
+      fetchAllRows(() => supabase.from("riders")
+        .select("id, firstname, lastname, team_id, pending_team_id, is_retired, squad, current_production_value")
+        .in("id", chunk).order("id")),
+      fetchAllRows(() => supabase.from("auctions").select("id, rider_id").eq("status", "active").in("rider_id", chunk).order("id")),
+    ]);
+    for (const n of notes) if (String(n.message || "").endsWith(suffix)) warned.add(n.related_id);
+    riders.push(...riderRows);
+    for (const a of auctions) onAuction.add(a.rider_id);
+  }
+
+  return riders
+    .filter((r) => !warned.has(r.id))
+    .map((r) => {
+      const releasedAt = releasedAtByRider.get(r.id);
+      const deadline = new Date(new Date(releasedAt).getTime() + BUYBACK_7251.windowDays * DAY_MS).toISOString();
+      return {
+        id: r.id,
+        firstname: r.firstname,
+        lastname: r.lastname,
+        squad: r.squad,
+        salary: computeFrozenSalary(r),
+        released_at: releasedAt,
+        deadline,
+        blocked: buybackBlockReason({ rider: r, releasedAt, warned: false, onActiveAuction: onAuction.has(r.id), now }),
+      };
+    })
+    .sort((a, b) => `${a.lastname}${a.firstname}`.localeCompare(`${b.lastname}${b.firstname}`));
+}
+
+async function assertSquadRoom({ supabase, teamId, squad }) {
+  if (isYouthSquad(squad)) {
+    const cap = SQUAD_CAPS[squad];
+    const { count, error } = await supabase.from("riders").select("id", { count: "exact", head: true })
+      .eq("team_id", teamId).eq("squad", squad).eq("is_retired", false);
+    if (error) throw error;
+    if (cap != null && (count ?? 0) + 1 > cap) throw new BuybackError("buyback_squad_full", 409);
+    return;
+  }
+  const state = await getTeamMarketState(supabase, teamId);
+  if (getIncomingSquadViolation(state, { softCapBuffer: 0 })) throw new BuybackError("buyback_squad_full", 409);
+}
+
+/** Gen-sign én rytter for holdet. Kaster BuybackError med en kode ved afvisning. */
+export async function buybackRider({ supabase, team, riderId, now = new Date() }) {
+  const candidates = await loadBuybackCandidates({ supabase, team, now });
+  const candidate = candidates.find((c) => c.id === riderId);
+  if (!candidate) throw new BuybackError("buyback_not_eligible", 404);
+  if (candidate.blocked) throw new BuybackError(candidate.blocked, 409);
+  await assertSquadRoom({ supabase, teamId: team.id, squad: candidate.squad });
+
+  const seasonNumber = await activeSeasonNumber(supabase);
+  const acquiredAt = now.toISOString();
+  // team_id IS NULL i WHERE: en samtidig handel (auktion/anden manager) vinder, og vi
+  // ser 0 rækker i stedet for at overskrive den (expectMutationAffectingRows kaster).
+  await expectMutationAffectingRows(
+    supabase.from("riders").update({
+      team_id: team.id,
+      pending_team_id: null,
+      acquired_at: acquiredAt,
+      salary: candidate.salary,
+      contract_length: BUYBACK_7251.contractLength,
+      contract_end_season: computeContractEndSeason(seasonNumber, BUYBACK_7251.contractLength),
+      ...(isYouthSquad(candidate.squad) ? {} : { is_academy: false }),
+    }).eq("id", riderId).is("team_id", null).is("pending_team_id", null),
+    { context: `buyback_7251 team=${team.id} rider=${riderId}` },
+  ).catch((err) => { throw new BuybackError("buyback_rider_not_free", 409, { cause: err }); });
+
+  await recordRiderOwnershipEvent(supabase, {
+    riderId,
+    riderFirstname: candidate.firstname,
+    riderLastname: candidate.lastname,
+    fromTeamId: null,
+    toTeamId: team.id,
+    reason: RIDER_OWNERSHIP_REASON.FREE_AGENT_SIGNING,
+    relatedEntityType: "contract_buyback_7251",
+    actorType: "user",
+    actorId: team.user_id,
+    occurredAt: acquiredAt,
+    idempotencyKey: `ownership:buyback7251:${team.id}:${riderId}`,
+  });
+  return { rider_id: riderId, salary: candidate.salary, contract_end_season: computeContractEndSeason(seasonNumber, BUYBACK_7251.contractLength) };
+}
