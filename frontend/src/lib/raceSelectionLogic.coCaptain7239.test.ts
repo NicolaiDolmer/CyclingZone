@@ -2,11 +2,17 @@
 // overlever et gem fra panelet og fra boardet.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { resolveBoardRoles, toggleRider, validateSelectionClient } from "./raceSelectionLogic.js";
+import * as logic from "./raceSelectionLogic.js";
+
+// JS-modulet har null-defaults (TS udleder dem som null); testen kalder det løst typet.
+type Fn<R> = (...args: unknown[]) => R;
+const resolveBoardRoles = logic.resolveBoardRoles as unknown as Fn<Record<string, unknown>>;
+const toggleRider = logic.toggleRider as unknown as Fn<Record<string, unknown>>;
+const validateSelectionClient = logic.validateSelectionClient as unknown as Fn<string[]>;
 
 const ids = ["a", "b", "c", "d", "e", "f"];
-const suit = { a: 40, b: 90, c: 70, d: 60, e: 50, f: 30 };
-const suitabilityOf = (id) => suit[id];
+const suit: Record<string, number> = { a: 40, b: 90, c: 70, d: 60, e: 50, f: 30 };
+const suitabilityOf = (id: string) => suit[id];
 
 test("#7239: spurtkaptajn som eneste leder i et v3-loeb faar IKKE en kaptajn tilfoejet", () => {
   const out = resolveBoardRoles({ riderIds: ids, sprintCaptainId: "b", sprintLeaderAllowed: true, suitabilityOf });
