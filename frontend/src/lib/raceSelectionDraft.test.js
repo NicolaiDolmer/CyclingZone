@@ -93,7 +93,7 @@ test("reconcile af et tomt udkast giver den tomme udtagelse", () => {
 test("#7239: den delte kaptajn huskes i udkastet og nulstilles hvis han faldt ud", () => {
   const draft = { ...DRAFT, riderIds: ["r1", "r2", "r3", "r4"], coCaptainId: "r4" };
   rememberSelectionDraft("race-co", draft);
-  assert.equal(readSelectionDraft("race-co").coCaptainId, "r4");
+  assert.equal(readSelectionDraft("race-co")?.coCaptainId, "r4");
   forgetSelectionDraft("race-co");
   assert.equal(reconcileSelectionDraft(draft, [{ id: "r1" }, { id: "r4" }]).coCaptainId, "r4");
   assert.equal(reconcileSelectionDraft(draft, [{ id: "r1" }]).coCaptainId, null);

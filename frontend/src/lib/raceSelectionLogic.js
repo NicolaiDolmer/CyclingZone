@@ -24,6 +24,10 @@ export function toggleRider(state, riderId, max) {
 // kaptajn i stilhed. Mangler kaptajnen, og holdet har en delt kaptajn, rykker han op
 // som kaptajn (en delt kaptajn kraever en kaptajn). Ellers vaelges en kaptajn efter
 // fortjeneste (#2028), og rollerne holdes distinkte (backend afviser overlap).
+/**
+ * @param {{ riderIds?: any[], captainId?: any, sprintCaptainId?: any, hunterId?: any, coCaptainId?: any,
+ *   freeRoleIds?: any[], sprintLeaderAllowed?: boolean, suitabilityOf?: (id: any) => any }} args
+ */
 export function resolveBoardRoles({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, coCaptainId = null, freeRoleIds = [],
   sprintLeaderAllowed = false, suitabilityOf,
@@ -60,6 +64,7 @@ export function resolveBoardRoles({
 // hele feltet. Tiebreak: rider_id asc (deterministisk). Tom trup → null.
 // `suitabilityOf(id)` → 0-100 (eller null/undefined når ukendt → behandles som lavest).
 // Spejler race-enginens egen GC-fallback (raceAutopick.resolveCaptain: stærkeste rytter).
+/** @param {{ riderIds?: any[], sprintId?: any, hunterId?: any, suitabilityOf?: (id: any) => any }} args */
 export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId = null, suitabilityOf }) {
   if (!riderIds.length) return null;
   const eligible = riderIds.filter((id) => id !== sprintId && id !== hunterId);

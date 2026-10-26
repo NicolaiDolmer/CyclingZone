@@ -158,7 +158,7 @@ export default function RaceSelectionPanel({
       if (!headers) return false;
       const res = await apiFetch(`${API}/api/races/${raceId}/selection`, { headers });
       if (!res.ok) return false; // dækker også limited/unauthorized
-      const body = res.data;
+      const body = /** @type {any} */ (res.data);
       if (requestGeneration !== generationRef.current) return false;
       setData(body);
       // #5098: et ugemt udkast vinder over serverens gemte udtagelse — det er
@@ -1115,6 +1115,7 @@ function SelectionSortControl({ sort, onSort, fitLabel, t, viewMode, tRider }) {
   );
 }
 
+/** @param {{ label: any, value: any, riders: any[], emptyLabel: any, disabled?: boolean, onChange: (v: any) => void, hint?: any }} props */
 function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange, hint = null }) {
   return (
     <label className="flex flex-col gap-1 text-xs text-cz-3">
