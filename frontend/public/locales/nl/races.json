@@ -545,16 +545,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Kans op ontsnapping",
-      "high": "Hoog",
-      "medium": "Gemiddeld",
-      "low": "Laag",
-      "none": "Geen",
-      "tooltip": "Hoe groot de kans is dat een ontsnapping op dit terrein wegblijft. De jager is altijd een kandidaat voor de ontsnapping."
-    },
     "hunterExplainer": {
-      "strengthLine": "Op het terrein van deze koers heeft een ontsnapping een {strength} kans om weg te blijven.",
+      "dayLine": "Je jager probeert mee te gaan in de vroege ontsnapping. Of die wegblijft, beslist het peloton op de dag zelf.",
       "candidatesHint": "Gerangschikt op agressie: de drang om aan te vallen en je aan een aanval te committeren.",
       "noCandidates": "Kies renners voor deze koers om je beste jagers te zien.",
       "aggression": "Agressie",

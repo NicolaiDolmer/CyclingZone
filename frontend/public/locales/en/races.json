@@ -528,16 +528,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Breakaway odds",
-      "high": "High",
-      "medium": "Medium",
-      "low": "Low",
-      "none": "None",
-      "tooltip": "How likely a breakaway is to stay away on this terrain. The hunter is always a breakaway candidate."
-    },
     "hunterExplainer": {
-      "strengthLine": "On this race's terrain, a breakaway has {strength} odds of staying away.",
+      "dayLine": "Your hunter tries to get into the morning breakaway. Whether it stays away is decided by the peloton on the day.",
       "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
       "noCandidates": "Pick riders for this race to see your best hunters.",
       "aggression": "Aggression",

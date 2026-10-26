@@ -528,16 +528,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Udbruds-chance",
-      "high": "Høj",
-      "medium": "Middel",
-      "low": "Lav",
-      "none": "Ingen",
-      "tooltip": "Hvor sandsynligt et udbrud er at holde hjem på dette terræn. Jægeren er altid udbruds-kandidat."
-    },
     "hunterExplainer": {
-      "strengthLine": "På dette løbs terræn har et udbrud {strength} chance for at holde hjem.",
+      "dayLine": "Jægeren prøver at komme med i morgenudbruddet. Om det holder hjem, afgøres af feltet på dagen.",
       "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
       "aggression": "Aggression",

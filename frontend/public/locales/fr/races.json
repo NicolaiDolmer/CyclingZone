@@ -545,16 +545,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Chances de l'échappée",
-      "high": "Élevées",
-      "medium": "Moyennes",
-      "low": "Faibles",
-      "none": "Aucune",
-      "tooltip": "La probabilité qu'une échappée tienne sur ce terrain. Le chasseur d'échappée est toujours candidat à l'échappée."
-    },
     "hunterExplainer": {
-      "strengthLine": "Sur le terrain de cette course, une échappée a des chances {strength} de tenir.",
+      "dayLine": "Ton chasseur tente de prendre l'échappée matinale. C'est le peloton qui décide, le jour même, si elle va au bout.",
       "candidatesHint": "Classés par agressivité : l'envie d'attaquer et de s'engager dans une action.",
       "noCandidates": "Choisis des coureurs pour cette course pour voir tes meilleurs chasseurs.",
       "aggression": "Agressivité",
