@@ -67,8 +67,8 @@ test("#6368 lag 3: hjaelper paa Arbejd angriber naar kaptajnen er sat (ikke i gr
   assert.equal(attackerOf(attack(specs, true)), "help");
   // Kaptajn ude af loebet taeller som sat.
   const { state, entrants } = field([...FILLER, { id: "cap", role: "captain", team: "ta" }, { id: "help", role: "helper", team: "ta", boost: 30 }]);
-  const dnf = { ...state, riders: { ...state.riders, cap: { ...state.riders.cap, status: "dnf" } } } as EngineState;
-  assert.equal(lateAttackRoleAllowed("help", state.groups[0].rider_ids, dnf, entrants), true);
+  const abandoned ={ ...state, riders: { ...state.riders, cap: { ...state.riders.cap, status: "abandoned" as const } } } as EngineState;
+  assert.equal(lateAttackRoleAllowed("help", state.groups[0].rider_ids, abandoned, entrants), true);
   assert.equal(lateAttackRoleAllowed("help", state.groups[0].rider_ids, state, entrants), false);
 });
 
