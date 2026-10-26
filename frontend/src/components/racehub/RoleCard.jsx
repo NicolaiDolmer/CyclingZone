@@ -6,6 +6,7 @@
 import { useTranslation } from "react-i18next";
 import { roleHint } from "../../lib/roleHint.js";
 
+/** @param {{ role: any, active: any, onClick: any, terrainBucket: any, disabled?: boolean, profileType?: any, finaleType?: any }} props  profileType/finaleType ignoreres (#6912 S7 A) */
 export default function RoleCard({ role, active, onClick, terrainBucket, disabled = false }) {
   const { t } = useTranslation("races");
   const hint = roleHint(role, terrainBucket);

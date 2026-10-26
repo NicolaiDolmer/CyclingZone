@@ -13,6 +13,7 @@ import { InfoIcon } from "../ui/index.js";
 
 // #6912: en evt. `breakawayStrength`-prop fra kalderen ignoreres; den kom fra en fast
 // tabel, ikke fra motoren. Udbruds-signalet vises på alle etaper med morgenudbrud.
+/** @param {{ rider: any, profileType?: any, className?: string, breakawayStrength?: any }} props  breakawayStrength ignoreres (#6912 S7 A) */
 export default function RiderFitInsight({ rider, profileType, className = "" }) {
   const { t } = useTranslation("races");
   const breakawayStrength = stageHasBreakaway(profileType) ? "possible" : "none";

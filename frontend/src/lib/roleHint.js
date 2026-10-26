@@ -35,7 +35,14 @@ export function stageHasBreakaway(profileType) {
 
 // Overgang (#6912): RaceSelectionPanel (ejet af et andet spor) kalder stadig denne og
 // sender værdien til RiderFitInsight, som ignorerer den. Slettes sammen med det kald.
-export function hunterBreakawayStrength() {
+/**
+ * #6912 S7 A: tallet fra den faste tabel er fjernet. Signaturen beholdes, saa kaldere
+ * (RaceSelectionPanel, ejet af #7239) ikke skal aendres endnu; argumenterne ignoreres.
+ * @param {unknown} [_profileType]
+ * @param {unknown} [_finaleType]
+ * @returns {null}
+ */
+export function hunterBreakawayStrength(_profileType, _finaleType) {
   return null;
 }
 
