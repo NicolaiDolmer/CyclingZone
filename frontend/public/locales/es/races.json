@@ -869,6 +869,7 @@
       "selection_captain_not_selected": "Tu jefe de filas debe ser uno de los ciclistas seleccionados.",
       "selection_role_not_selected": "Los ciclistas con rol deben formar parte de la selección.",
       "selection_role_overlap": "El jefe de filas, el jefe de filas de sprint y el cazador deben ser ciclistas distintos.",
+      "selection_luxury_helper_not_available": "El último hombre no está disponible en esta carrera.",
       "selection_rider_injured": "No se puede seleccionar a ciclistas lesionados.",
       "selection_rider_over_age": "No se puede seleccionar a ciclistas que superan el límite de edad de la carrera.",
       "selection_rider_not_on_team": "Solo puedes seleccionar a tus propios ciclistas.",
@@ -959,7 +960,8 @@
       "sprint_captain": "jefe de filas de sprint",
       "helper": "gregario",
       "hunter": "cazador",
-      "free_role": "rol libre"
+      "free_role": "rol libre",
+      "luxury_helper": "último hombre"
     },
     "errors": {
       "stage_roles_invalid_body": "No se pudieron guardar las intenciones. Inténtalo de nuevo.",
@@ -1024,7 +1026,8 @@
       "sprint_captain": "Jefe de filas de sprint",
       "hunter": "Cazador de escapadas",
       "helper": "Gregario",
-      "free_role": "Rol libre"
+      "free_role": "Rol libre",
+      "luxury_helper": "Último hombre"
     },
     "save": "Guardar tácticas",
     "saving": "Guardando…",
@@ -1056,7 +1059,8 @@
       "sprint_captain": "jefe de filas de sprint",
       "hunter": "cazador de escapadas",
       "helper": "gregario",
-      "free_role": "rol libre"
+      "free_role": "rol libre",
+      "luxury_helper": "último hombre"
     }
   },
   "stageOrders": {
@@ -1136,7 +1140,8 @@
         "sprint_captain": "Recibe el tren de sprint y el lanzamiento.",
         "hunter": "Sale a la caza de la escapada.",
         "helper": "Trabaja para los líderes.",
-        "free_role": "Corre su propia carrera."
+        "free_role": "Corre su propia carrera.",
+        "luxury_helper": "Se reserva y luego trabaja para el capitán en la subida decisiva."
       }
     },
     "team": {

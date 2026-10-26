@@ -869,6 +869,7 @@
       "selection_captain_not_selected": "Je kopman moet een van de geselecteerde renners zijn.",
       "selection_role_not_selected": "Renners met een rol moeten deel uitmaken van de selectie.",
       "selection_role_overlap": "Kopman, sprintkopman en jager moeten verschillende renners zijn.",
+      "selection_luxury_helper_not_available": "Laatste man is niet beschikbaar in deze koers.",
       "selection_rider_injured": "Geblesseerde renners kunnen niet worden geselecteerd.",
       "selection_rider_over_age": "Renners boven de leeftijdsgrens van de koers kunnen niet worden geselecteerd.",
       "selection_rider_not_on_team": "Je kunt alleen je eigen renners selecteren.",
@@ -959,7 +960,8 @@
       "sprint_captain": "sprintkopman",
       "helper": "renner",
       "hunter": "jager",
-      "free_role": "vrije rol"
+      "free_role": "vrije rol",
+      "luxury_helper": "laatste man"
     },
     "errors": {
       "stage_roles_invalid_body": "De intenties konden niet worden opgeslagen. Probeer het opnieuw.",
@@ -1024,7 +1026,8 @@
       "sprint_captain": "Sprintkopman",
       "hunter": "Ontsnappingsjager",
       "helper": "Knecht",
-      "free_role": "Vrije rol"
+      "free_role": "Vrije rol",
+      "luxury_helper": "Laatste man"
     },
     "save": "Tactiek opslaan",
     "saving": "Opslaan…",
@@ -1056,7 +1059,8 @@
       "sprint_captain": "sprintkopman",
       "hunter": "ontsnappingsjager",
       "helper": "knecht",
-      "free_role": "vrije rol"
+      "free_role": "vrije rol",
+      "luxury_helper": "laatste man"
     }
   },
   "stageOrders": {
@@ -1136,7 +1140,8 @@
         "sprint_captain": "Hij krijgt de sprinttrein en de lead-out.",
         "hunter": "Hij gaat op jacht naar de ontsnapping.",
         "helper": "Hij werkt voor de leiders.",
-        "free_role": "Hij rijdt zijn eigen koers."
+        "free_role": "Hij rijdt zijn eigen koers.",
+        "luxury_helper": "Hij spaart zich en werkt daarna voor de kopman op de beslissende klim."
       }
     },
     "team": {

@@ -161,6 +161,8 @@ export function validateStageRoleOverrides({
     if (!VALID_RACE_ROLES.includes(o?.race_role)) { errors.push("stage_roles_invalid_role"); break; }
     // #5981: et aeldre loeb kender ikke rollen; samme fejlkode som en ukendt rolle.
     if (o?.race_role === "co_captain" && !coCaptainAllowed) { errors.push("stage_roles_invalid_role"); break; }
+    // #5982: sidste mand har samme v3-gate (coCaptainAllowed = raceAllowsCoCaptain).
+    if (o?.race_role === "luxury_helper" && !coCaptainAllowed) { errors.push("stage_roles_invalid_role"); break; }
   }
   // #4632: femtrins-intentionen bag flag. Off = PRÆCIS dagens tre værdier, så
   // et UI der er deployet før flag-flippet ikke kan gemme 'grupetto'/'all_out'
@@ -213,7 +215,7 @@ export function validateStageRoleOverrides({
   const roleOverlap = stagesInBody.some((stageNumber) => {
     const rowsForStage = overrides.filter((o) => o?.stage_number === stageNumber);
     const overriddenRiders = new Set(rowsForStage.map((o) => o?.rider_id));
-    return ["captain", "sprint_captain", "hunter", "co_captain"].some((role) => { // #5981: hoejst én delt kaptajn
+    return ["captain", "sprint_captain", "hunter", "co_captain", "luxury_helper"].some((role) => { // #5981/#5982: hoejst én delt kaptajn / sidste mand
       let count = rowsForStage.filter((o) => o?.race_role === role).length;
       // Ryttere UDEN override på etapen beholder deres basis-rolle —
       // medmindre de er udgået, for så tæller de slet ikke (#5202).

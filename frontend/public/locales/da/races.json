@@ -852,6 +852,7 @@
       "selection_captain_not_selected": "Kaptajnen skal være blandt de udtagne ryttere.",
       "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
       "selection_role_overlap": "Kaptajn, spurt-kaptajn og jæger skal være forskellige ryttere.",
+      "selection_luxury_helper_not_available": "Sidste mand findes ikke i dette løb.",
       "selection_rider_injured": "Skadede ryttere kan ikke udtages.",
       "selection_rider_over_age": "Ryttere over løbets aldersgrænse kan ikke udtages.",
       "selection_rider_not_on_team": "Du kan kun udtage dine egne ryttere.",
@@ -942,7 +943,8 @@
       "sprint_captain": "spurtkaptajn",
       "helper": "rytter",
       "hunter": "jæger",
-      "free_role": "fri rolle"
+      "free_role": "fri rolle",
+      "luxury_helper": "sidste mand"
     },
     "errors": {
       "stage_roles_invalid_body": "Kunne ikke gemme intentionerne. Prøv igen.",
@@ -1007,7 +1009,8 @@
       "sprint_captain": "Spurt-kaptajn",
       "hunter": "Udbrudsjæger",
       "helper": "Hjælper",
-      "free_role": "Fri rolle"
+      "free_role": "Fri rolle",
+      "luxury_helper": "Sidste mand"
     },
     "save": "Gem taktik",
     "saving": "Gemmer…",
@@ -1039,7 +1042,8 @@
       "sprint_captain": "spurt-kaptajn",
       "hunter": "udbrudsjæger",
       "helper": "hjælper",
-      "free_role": "fri rolle"
+      "free_role": "fri rolle",
+      "luxury_helper": "sidste mand"
     }
   },
   "stageOrders": {
@@ -1119,7 +1123,8 @@
         "sprint_captain": "Han får sprint-toget og optrækket.",
         "hunter": "Han jagter udbruddet.",
         "helper": "Han arbejder for lederne.",
-        "free_role": "Han kører sit eget løb."
+        "free_role": "Han kører sit eget løb.",
+        "luxury_helper": "Han sparer sig og arbejder for kaptajnen på den afgørende stigning."
       }
     },
     "team": {

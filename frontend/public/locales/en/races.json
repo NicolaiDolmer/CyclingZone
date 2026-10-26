@@ -852,6 +852,7 @@
       "selection_captain_not_selected": "Your captain must be one of the selected riders.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
       "selection_role_overlap": "Captain, sprint captain and hunter must be different riders.",
+      "selection_luxury_helper_not_available": "Last man isn't available in this race.",
       "selection_rider_injured": "Injured riders can't be selected.",
       "selection_rider_over_age": "Riders over the race's age limit can't be selected.",
       "selection_rider_not_on_team": "You can only select your own riders.",
@@ -942,7 +943,8 @@
       "sprint_captain": "sprint captain",
       "helper": "rider",
       "hunter": "hunter",
-      "free_role": "free role"
+      "free_role": "free role",
+      "luxury_helper": "last man"
     },
     "errors": {
       "stage_roles_invalid_body": "Couldn't save the intentions. Try again.",
@@ -1007,7 +1009,8 @@
       "sprint_captain": "Sprint captain",
       "hunter": "Breakaway hunter",
       "helper": "Domestique",
-      "free_role": "Free role"
+      "free_role": "Free role",
+      "luxury_helper": "Last man"
     },
     "save": "Save tactics",
     "saving": "Saving…",
@@ -1039,7 +1042,8 @@
       "sprint_captain": "sprint captain",
       "hunter": "breakaway hunter",
       "helper": "domestique",
-      "free_role": "free role"
+      "free_role": "free role",
+      "luxury_helper": "last man"
     }
   },
   "stageOrders": {
@@ -1119,7 +1123,8 @@
         "sprint_captain": "He gets the sprint train and the lead out.",
         "hunter": "He goes hunting for the breakaway.",
         "helper": "He works for the leaders.",
-        "free_role": "He rides his own race."
+        "free_role": "He rides his own race.",
+        "luxury_helper": "He saves himself, then works for the captain on the decisive climb."
       }
     },
     "team": {
