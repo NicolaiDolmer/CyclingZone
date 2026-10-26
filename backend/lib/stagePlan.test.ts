@@ -71,6 +71,9 @@ test("#7003: kun logiske skift (hver regel har sin fejlkode)", () => {
     ["helper", [{ task: "tempo" }, { task: "grupetto", from: { at: "kom", kom_index: 2 } }], "stage_plan_unknown_climb"],
     ["helper", [{ task: "shelter_leader" }, { task: "tempo", from: { at: "dropped" } }, { task: "grupetto", from: { at: "final_km" } }], "stage_plan_dropped_not_last"],
     ["helper", [{ task: "shelter_leader" }, { task: "sprint_train", from: { at: "dropped" } }], "stage_plan_train_after_dropped"],
+    // #7003 fund 3 (#7266): udbrud efterfulgt af sprinttog, ogsaa med et led imellem.
+    ["hunter", [{ task: "breakaway" }, { task: "sprint_train", from: { at: "final_km" } }], "stage_plan_train_after_breakaway"],
+    ["helper", [{ task: "breakaway" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }, { task: "sprint_train", from: { at: "final_km" } }], "stage_plan_train_after_breakaway"],
     // Kronologi: Col B (km 120) kan ikke komme foer Col A (km 70); de sidste km kan ikke komme foer en stigning.
     ["helper", [{ task: "shelter_leader" }, { task: "tempo", from: { at: "kom", kom_index: 1 } }, { task: "grupetto", from: { at: "kom", kom_index: 0 } }], "stage_plan_not_chronological"],
     ["captain", [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "final_km" } }, { task: "attack", from: { at: "kom", kom_index: 1 } }], "stage_plan_not_chronological"],

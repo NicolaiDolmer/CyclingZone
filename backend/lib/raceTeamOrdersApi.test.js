@@ -36,7 +36,8 @@ const validOrder = {
   breakaway_stance: "chase",
   riders: [
     { rider_id: "r1", effort: "protect", try_break: false },
-    { rider_id: "r2", effort: "normal", try_break: true, leadout: true },
+    { rider_id: "r2", effort: "normal", try_break: true, leadout: false },
+    { rider_id: "r3", effort: "normal", try_break: false, leadout: true }, // #7003: tog og udbrud er to ryttere
   ],
 };
 

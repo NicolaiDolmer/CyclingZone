@@ -19,6 +19,7 @@
 //   - Grupetto, kør i mål og sprinttog er slut-opgaver: kun sidste led. Derfor kan
 //     grupetto aldrig komme foer arbejdet.
 //   - Sprinttog kan ikke starte "naar han er sat" (en sat rytter trækker ikke spurten).
+//   - Sprinttog kan ikke foelge udbrud (#7003, spec §3: toget sidder i feltet til finalen).
 //   - Opgaven skal passe til rollen (kaptajnen koerer aldrig grupetto).
 //   - Indsatsen foelger opgaven (TASK_EFFORT); spilleren vaelger den ikke ved siden af.
 //
@@ -182,6 +183,7 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
     if (task === "breakaway" && i > 0) return "stage_plan_breakaway_not_first";
     if (TERMINAL_TASKS.has(task) && i < legs.length - 1) return "stage_plan_terminal_not_last";
+    if (task === "sprint_train" && i > 0 && (legs[0] as Record<string, unknown>)["task"] === "breakaway") return "stage_plan_train_after_breakaway"; // #7003 fund 3
     if (i > 0 && (legs[i - 1] as Record<string, unknown>)["task"] === task) return "stage_plan_repeat_task";
     const from = leg["from"];
     if (i === 0) {

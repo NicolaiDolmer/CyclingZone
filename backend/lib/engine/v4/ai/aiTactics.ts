@@ -607,7 +607,9 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
 
     // M6: rollens standard (hjaelperen koerer i sprint-kaptajnens tog), men en
     // grupetto-rytter er ikke med i nogen finale.
-    const leadout = entrant.role === "helper" && teamHasSprintCaptain && effort !== "grupetto";
+    // #7003 (KUN s5_profiles_v3, spec §3): en udbrudsrytter koerer ikke ogsaa i toget.
+    const leadout = entrant.role === "helper" && teamHasSprintCaptain && effort !== "grupetto"
+      && !(tryBreak && isS5ProfilesV3OrLater(input.rules_revision));
 
     riders.push({ rider_id: entrant.rider_id, effort, try_break: tryBreak, leadout });
     riderReasons[entrant.rider_id] = reason;
