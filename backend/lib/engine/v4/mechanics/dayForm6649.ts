@@ -42,12 +42,12 @@ export type BadDayWeather = "rain" | "wind" | "heat";
 
 export const DAY_FORM_6649_TUNING = Object.freeze({
   // 1. Dagens ben (normaliseret CP).
-  legsSd: 0.032, // grund-spredning (kalibreret, balance-internals/6649)
+  legsSd: 0.025, // grund-spredning (kalibreret, balance-internals/6649)
   // Massespurten: dagsformen er udholdenhed og vejer mindre i en spurt end paa en
   // stigning eller i en enkeltstart. Finalens score laeser dagsformen ganget med denne.
   massFinishFinaleScale: 0.56,
   downFormMax: 0.6, // ned-siden vokser op til +60 % ved formskalaens bund
-  downFatigueMax: 1.0, // ... og op til +100 % ved fuld traethed (condition 0)
+  downFatigueMax: 2.0, // ... og op til +100 % ved fuld traethed (condition 0)
   downWeatherMax: 0.5, // ... og op til +50 % i det haardeste vejr for en rytter uden vejr-teknik
   fatigueFree: 0.25, // traethed (1 - condition) under denne taeller ikke
   // 2. Den daarlige dag.
@@ -56,7 +56,7 @@ export const DAY_FORM_6649_TUNING = Object.freeze({
   badDayFormMultHigh: 2 / 3, // ... og ned ved hoej form (form >= formHigh)
   formLow: 40,
   formHigh: 70,
-  badDayFatigueP: 0.06, // ekstra risiko ved fuld traethed (lineaert fra fatigueFree)
+  badDayFatigueP: 0.1, // ekstra risiko ved fuld traethed (lineaert fra fatigueFree)
   badDayWeatherP: 0.03, // ekstra risiko i det haardeste vejr uden vejr-teknik
   badDayMin: 0.05, // nedturens stoerrelse (normaliseret CP), uniform i [min, max]
   badDayMax: 0.1,

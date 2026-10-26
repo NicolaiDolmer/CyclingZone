@@ -116,6 +116,25 @@ export function tallyRace(ctx, run, cells) {
   }
 }
 
+/**
+ * Vagten fra #7258 (v3Gates.gcFromBreakaway): andelen af etapeloeb hvor
+ * klassementsvinderen sad i et morgenudbrud paa mindst én etape ("member"), og
+ * hvor han sad i et udbrud der holdt hjem ("won"). Dagsformen maa ikke forvaerre den.
+ */
+export function tallyGcFromBreakaway(ctx, run, acc) {
+  if (ctx.stages <= 1) return;
+  const key = ctx.stages >= 15 ? "gt" : "stage_race";
+  const cell = acc.get(key) ?? { n: 0, member: 0, won: 0 };
+  for (const seed of run?.perSeed ?? []) {
+    if (!seed.gcWinner) continue;
+    const rows = (seed.rows ?? []).filter((r) => (r.breakawayRiderIds ?? []).includes(seed.gcWinner));
+    cell.n += 1;
+    if (rows.length) cell.member += 1;
+    if (rows.some((r) => r.breakawayWon === true)) cell.won += 1;
+  }
+  acc.set(key, cell);
+}
+
 /** Alle-trupper-grupperne (praefikset fjernet) oven i pr.-trup-grupperne. */
 export function withAllSquads(cells) {
   const out = new Map(cells);
@@ -173,16 +192,20 @@ export function run(argv) {
   const opts = parseArgs(argv);
   const band = opts.thresholds ? JSON.parse(readFileSync(opts.thresholds, "utf8"))?.v3Gates?.bestRiderWinShare ?? null : null;
   const cells = new Map();
+  const gcBreak = new Map();
   let races = 0;
   let skipped = 0;
   for (const id of readdirSync(opts.dir)) {
     const dir = path.join(opts.dir, id);
     const race = readRace(dir, opts.revision, opts.cacheDir);
     if (!race) { skipped += 1; continue; }
-    tallyRace(raceContext(race.cache), race.run, cells);
+    const ctx = raceContext(race.cache);
+    tallyRace(ctx, race.run, cells);
+    tallyGcFromBreakaway(ctx, race.run, gcBreak);
     races += 1;
   }
-  const report = { issue: 6649, revision: opts.revision, source: opts.dir, races, skipped, band, groups: summarize(cells, band) };
+  const gcFromBreakaway = Object.fromEntries([...gcBreak].map(([k, c]) => [k, { ...c, memberShare: c.n ? c.member / c.n : null, wonShare: c.n ? c.won / c.n : null }]));
+  const report = { issue: 6649, revision: opts.revision, source: opts.dir, races, skipped, band, groups: summarize(cells, band), gcFromBreakaway };
   if (opts.out) {
     mkdirSync(path.dirname(opts.out), { recursive: true });
     writeFileSync(opts.out, `${JSON.stringify(report, null, 2)}\n`);
@@ -197,5 +220,8 @@ if (isMain) {
   console.log(`#6649 bedste rytter (${report.revision}): ${report.races} loeb, ${report.skipped} sprunget over`);
   for (const [key, r] of Object.entries(report.groups)) {
     console.log(`${key.padEnd(24)} n ${String(r.n).padStart(5)} · bedste ${pct(r.bestShare).padStart(8)} · favorit ${pct(r.favouriteShare).padStart(8)}${r.inBand === null ? "" : r.inBand ? " · I BAAND" : " · UDE"}`);
+  }
+  for (const [key, c] of Object.entries(report.gcFromBreakaway)) {
+    console.log(`gcFromBreakaway ${key.padEnd(10)} n ${String(c.n).padStart(5)} · i udbrud ${pct(c.memberShare).padStart(8)} · vandt fra udbrud ${pct(c.wonShare).padStart(8)}`);
   }
 }
