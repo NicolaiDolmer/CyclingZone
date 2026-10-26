@@ -79,11 +79,13 @@ function world() {
     auctions: [],
     teams: [{ id: "t1", user_id: "u1", name: "T1", balance: 0, division: 3, created_at: "2026-01-01" }],
     seasons: [{ number: 5, status: "active" }],
+    // Fast snapshot (26/10): r2 fik varsel og er derfor ikke med.
+    app_config: [{ key: "buyback_7251_snapshot", value: { pairs: [["t1", "r1"], ["t1", "r3"], ["t2", "r4"]] } }],
     rider_ownership_events_written: [],
   };
 }
 
-test("kandidater: kun eget holds ryttere frigivet uden varsel; varslede er ude, signede er blokeret", async () => {
+test("kandidater: kun eget holds ryttere i snapshottet; varslede er ude, signede er blokeret", async () => {
   const supabase = fakeSupabase(world());
   const list = await loadBuybackCandidates({ supabase, team: { id: "t1", user_id: "u1" }, now: NOW });
   assert.deepEqual(list.map((c) => c.id), ["r1", "r3"], "r2 havde varsel, r4 er et andet holds");
@@ -128,4 +130,18 @@ test("review-fund: ungdomsrytter får squad + is_academy sammen; forlænget aukt
   w2.auctions.push({ id: "a2", rider_id: "r1", status: "extended" });
   const list = await loadBuybackCandidates({ supabase: fakeSupabase(w2), team: { id: "t1", user_id: "u1" }, now: NOW });
   assert.equal(list.find((c) => c.id === "r1").blocked, "buyback_rider_on_auction");
+});
+
+test("Codex P1: et slettet varsel giver ikke retten; snapshottet afgør", async () => {
+  const w = world();
+  w.notifications = []; // manageren har slettet varslet for r2
+  const list = await loadBuybackCandidates({ supabase: fakeSupabase(w), team: { id: "t1", user_id: "u1" }, now: NOW });
+  assert.ok(!list.some((c) => c.id === "r2"), "r2 er ikke i snapshottet");
+});
+
+test("uden snapshot: ingen kandidater (fail closed)", async () => {
+  const w = world();
+  w.app_config = [];
+  const list = await loadBuybackCandidates({ supabase: fakeSupabase(w), team: { id: "t1", user_id: "u1" }, now: NOW });
+  assert.deepEqual(list, []);
 });

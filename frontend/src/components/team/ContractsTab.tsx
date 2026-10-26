@@ -492,7 +492,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
   if (rows.length === 0) {
     return (
       <>
-      <BuybackPanel onSigned={() => void loadBase()} />
+      <BuybackPanel onSigned={() => onChanged?.()} />
       <EmptyState
         icon={<BriefcaseIcon size={26} aria-hidden="true" />}
         title={t("contracts.emptyTitle")}
@@ -509,7 +509,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
 
   return (
     <div data-testid="contracts-tab">
-      <BuybackPanel onSigned={() => void loadBase()} />
+      <BuybackPanel onSigned={() => onChanged?.()} />
       <div className="flex flex-col gap-[14px]">
         {groups.map((group) => {
           const selectable = group.rows.filter((r) => r.maxSeasons > 0);

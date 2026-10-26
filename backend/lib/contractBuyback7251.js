@@ -6,10 +6,11 @@
 // rytteren kan i 7 dage gen-signes af sit tidligere hold til normal løn, 1 sæson,
 // uden signing fee. Manageren vælger selv.
 //
-// Hvem: frigivet fra holdet i S4→S5-vinduet (rider_ownership_events reason
-// "release"), uden en contract_expiring-besked for sæson 4 til holdets manager,
-// stadig fri (team_id og pending_team_id null), ikke pensioneret, ikke på en aktiv
-// auktion, og inden for 7 dage efter frigivelsen.
+// Hvem: (hold, rytter) i det FASTE snapshot `app_config.buyback_7251_snapshot`, taget
+// 26/10 fra frigivelserne i S4→S5-vinduet uden en contract_expiring-besked for sæson 4.
+// Snapshottet (ikke den levende indbakke) afgør retten, så en manager ikke kan slette et
+// varsel og dermed få retten (Codex P1). Derudover: stadig fri (team_id og
+// pending_team_id null), ikke pensioneret, ikke på en aktiv auktion, inden for 7 dage.
 import { computeFrozenSalary, computeContractEndSeason } from "./contractSeed.js";
 import { getTeamMarketState, getIncomingSquadViolation, expectMutationAffectingRows } from "./marketUtils.js";
 import { SQUAD_CAPS, isYouthSquad, seniorSquadPatch } from "./squads.js";
@@ -25,6 +26,16 @@ export const BUYBACK_7251 = Object.freeze({
   warnedSeasonNumber: 4,
   contractLength: 1,
 });
+
+export const BUYBACK_7251_SNAPSHOT_KEY = "buyback_7251_snapshot";
+
+/** Snapshottets rytter-id'er for holdet. Mangler snapshottet: tom liste (fail closed). */
+async function loadSnapshotRiderIds({ supabase, teamId }) {
+  const { data, error } = await supabase.from("app_config").select("value").eq("key", BUYBACK_7251_SNAPSHOT_KEY).maybeSingle();
+  if (error) throw error;
+  const pairs = Array.isArray(data?.value?.pairs) ? data.value.pairs : [];
+  return new Set(pairs.filter((p) => Array.isArray(p) && p[0] === teamId).map((p) => p[1]));
+}
 
 export class BuybackError extends Error {
   constructor(code, status = 400, options = undefined) {
@@ -62,6 +73,8 @@ async function activeSeasonNumber(supabase) {
  */
 export async function loadBuybackCandidates({ supabase, team, now = new Date() }) {
   if (!team?.id || !team?.user_id) return [];
+  const entitled = await loadSnapshotRiderIds({ supabase, teamId: team.id });
+  if (entitled.size === 0) return [];
   const events = await fetchAllRows(() => supabase
     .from("rider_ownership_events")
     .select("id, rider_id, occurred_at")
@@ -72,31 +85,25 @@ export async function loadBuybackCandidates({ supabase, team, now = new Date() }
     .lt("occurred_at", BUYBACK_7251.releasedToIso)
     .order("id"));
   const releasedAtByRider = new Map();
-  for (const e of events) releasedAtByRider.set(e.rider_id, e.occurred_at);
+  for (const e of events) if (entitled.has(e.rider_id)) releasedAtByRider.set(e.rider_id, e.occurred_at);
   const riderIds = [...releasedAtByRider.keys()];
   if (riderIds.length === 0) return [];
 
-  const warned = new Set();
   const riders = [];
   const onAuction = new Set();
-  const suffix = `end of season ${BUYBACK_7251.warnedSeasonNumber}.`;
   for (let i = 0; i < riderIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
     const chunk = riderIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE);
-    const [notes, riderRows, auctions] = await Promise.all([
-      fetchAllRows(() => supabase.from("notifications").select("id, related_id, message")
-        .eq("user_id", team.user_id).eq("type", "contract_expiring").in("related_id", chunk).order("id")),
+    const [riderRows, auctions] = await Promise.all([
       fetchAllRows(() => supabase.from("riders")
         .select("id, firstname, lastname, team_id, pending_team_id, is_retired, squad, current_production_value")
         .in("id", chunk).order("id")),
       fetchAllRows(() => supabase.from("auctions").select("id, rider_id").in("status", ["active", "extended"]).in("rider_id", chunk).order("id")),
     ]);
-    for (const n of notes) if (String(n.message || "").endsWith(suffix)) warned.add(n.related_id);
     riders.push(...riderRows);
     for (const a of auctions) onAuction.add(a.rider_id);
   }
 
   return riders
-    .filter((r) => !warned.has(r.id))
     .map((r) => {
       const releasedAt = releasedAtByRider.get(r.id);
       const deadline = new Date(new Date(releasedAt).getTime() + BUYBACK_7251.windowDays * DAY_MS).toISOString();

@@ -8,13 +8,13 @@
 import express from "express";
 import { createRequireAuth } from "./comeback.js";
 import { loadBuybackCandidates, buybackRider, BuybackError } from "../lib/contractBuyback7251.js";
-import { marketWriteLimiter } from "../lib/rateLimiters.js";
+import { marketWriteLimiter, presencePulseLimiter } from "../lib/rateLimiters.js";
 import { captureException } from "../lib/sentry.js";
 
-export function createContractBuybackRouter({ supabase, requireAuth = createRequireAuth({ supabase }), writeLimiter = marketWriteLimiter }) {
+export function createContractBuybackRouter({ supabase, requireAuth = createRequireAuth({ supabase }), writeLimiter = marketWriteLimiter, readLimiter = presencePulseLimiter }) {
   const router = express.Router();
 
-  router.get("/", requireAuth, async (req, res) => {
+  router.get("/", requireAuth, readLimiter, async (req, res) => {
     if (!req.team) return res.json({ candidates: [] });
     try {
       const candidates = await loadBuybackCandidates({ supabase, team: req.team });
