@@ -52,7 +52,7 @@ const API = import.meta.env.VITE_API_URL;
 // OBLIGATORISK (GET → state → PUT uændret, filtreret til ryttere stadig i truppen) så et
 // gem fra dette panel ikke wiper free_role'r sat af boardet. Panelet har intet fuldt
 // redigerings-UI for rollen (rollens editor er boardets rollekort); den vises kun som badge.
-const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [] };
+const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [], coCaptainId: null };
 
 export default function RaceSelectionPanel({
   raceId,
@@ -175,6 +175,7 @@ export default function RaceSelectionPanel({
           sprintCaptainId: body.selection.sprint_captain_id ?? null,
           hunterId: body.selection.hunter_id ?? null,
           freeRoleIds: body.selection.free_role_ids ?? [],
+          coCaptainId: body.selection.co_captain_id ?? null, // #7239
         });
       }
       return true;
@@ -408,7 +409,17 @@ export default function RaceSelectionPanel({
   }
 
   function setRole(key, value) {
-    update({ ...sel, [key]: riderIdFromValue(value) });
+    const riderId = riderIdFromValue(value);
+    const next = { ...sel, [key]: riderId };
+    // #7239: én rolle pr. rytter. Får en rytter en ny rolle, slippes hans gamle, så
+    // panelet aldrig selv laver et rolle-overlap (fx kaptajnen valgt som delt kaptajn).
+    if (riderId != null) {
+      for (const other of ["captainId", "sprintCaptainId", "hunterId", "coCaptainId"]) {
+        if (other !== key && next[other] === riderId) next[other] = null;
+      }
+      next.freeRoleIds = (next.freeRoleIds || []).filter((id) => id !== riderId);
+    }
+    update(next);
   }
 
   async function save() {
@@ -433,6 +444,8 @@ export default function RaceSelectionPanel({
     // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
     // efterlader et forældet id i arrayet.
     const freeRoleIds = (sel.freeRoleIds || []).filter((id) => sel.riderIds.includes(id));
+    // #7239: den delte kaptajn sendes altid med, så et gem herfra aldrig nulstiller ham.
+    const coCaptainId = sel.coCaptainId != null && sel.riderIds.includes(sel.coCaptainId) ? sel.coCaptainId : null;
     try {
       const res = await apiFetch(`${API}/api/races/${raceId}/selection`, {
         method: "PUT",
@@ -443,6 +456,7 @@ export default function RaceSelectionPanel({
           sprint_captain_id: sel.sprintCaptainId,
           hunter_id: sel.hunterId,
           free_role_ids: freeRoleIds,
+          co_captain_id: coCaptainId,
         }),
       });
       const body = res.data || {};
@@ -474,6 +488,7 @@ export default function RaceSelectionPanel({
               sprint_captain_id: sel.sprintCaptainId,
               hunter_id: sel.hunterId,
               free_role_ids: freeRoleIds,
+              ...(coCaptainId != null ? { co_captain_id: coCaptainId } : {}),
               is_auto_filled: false,
             },
           }
@@ -894,6 +909,20 @@ export default function RaceSelectionPanel({
             disabled={busy || fullyTrainNowLocked}
             onChange={(v) => setRole("sprintCaptainId", v)}
           />
+          {/* #7239 (#5981): delt kaptajn, kun i løb der kender rollen (samme v3-gate som
+              spurtkaptajn alene). Kræver en kaptajn; uden kaptajn er vælgeren låst og
+              linjen siger hvorfor. Kaptajnen kan ikke vælges her (én rolle pr. rytter). */}
+          {data.sprint_leader_allowed === true && (
+            <RoleSelect
+              label={t("selection.coCaptain")}
+              value={sel.coCaptainId}
+              riders={selectedRiders.filter((r) => r.id !== sel.captainId)}
+              emptyLabel={t("selection.noRole")}
+              disabled={busy || fullyTrainNowLocked || (!sel.captainId && !sel.coCaptainId)}
+              onChange={(v) => setRole("coCaptainId", v)}
+              hint={sel.captainId ? t("selection.coCaptainHint") : t("selection.errors.selection_co_captain_requires_captain")}
+            />
+          )}
           {/* #1884: jaeger-dropdownen er VAEK herfra — valget bor i
               HunterExplainer nedenfor, hvor forklaringen af rollen og
               aggressions-rangeringen allerede stod. Een kilde til valget. */}
@@ -1086,7 +1115,7 @@ function SelectionSortControl({ sort, onSort, fitLabel, t, viewMode, tRider }) {
   );
 }
 
-function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange }) {
+function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange, hint = null }) {
   return (
     <label className="flex flex-col gap-1 text-xs text-cz-3">
       {label}
@@ -1101,6 +1130,7 @@ function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange }) {
           <option key={r.id} value={String(r.id)}>{r.name}</option>
         ))}
       </select>
+      {hint && <span className="text-2xs text-cz-3 leading-snug max-w-[220px]">{hint}</span>}
     </label>
   );
 }
