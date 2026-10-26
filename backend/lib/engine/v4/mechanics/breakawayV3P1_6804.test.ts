@@ -106,8 +106,8 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
         const morning = (out: ReturnType<typeof simulateStageV4>) => (out.timeline.events.find((e) => e.type === "breakaway_formed" && e.params?.reformation !== true)?.params?.rider_ids ?? []) as string[];
         if (JSON.stringify(morning(v3)) !== JSON.stringify(morning(v2))) {
           const entrants = Object.fromEntries(input.startlist.map((e: Entrant) => [e.rider_id, e]));
-          const fav = s5V3FormationGuards7258({ gcContext: oneDay, entrants, route: input.route, tuning: RACE_V4_TUNING }, Object.keys(entrants)).favourites;
-          const favIn = (ids: string[]) => ids.filter((id) => fav.has(id)).length;
+          const fav: Set<string> = s5V3FormationGuards7258({ gcContext: oneDay, entrants, route: input.route, tuning: RACE_V4_TUNING }, Object.keys(entrants)).favourites;
+          const favIn = (ids: string[]): number => ids.filter((id) => fav.has(id)).length;
           assert.ok(favIn(morning(v3)) <= favIn(morning(v2)), `${name}: v3 har ikke flere af dagens favoritter i morgenudbruddet`);
           continue;
         }
