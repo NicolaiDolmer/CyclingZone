@@ -20,7 +20,7 @@ name: Weekly Engine Drift
 # UDEN at sende noget.
 #
 # Tidszone: GitHub cron er UTC. Mandag 07:00 i Europe/Copenhagen er 05:00 UTC om sommeren og
-# 06:00 UTC om vinteren, saa begge tider er planlagt og "Tjek dansk tid"-trinnet lader kun
+# 06:00 UTC om vinteren, saa begge tider er planlagt og "gate"-jobbet lader kun
 # den der rammer klokken 07 koere. workflow_dispatch springer tjekket over.
 
 on:
@@ -46,9 +46,11 @@ permissions:
   contents: read
 
 jobs:
-  report:
+  gate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 2
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
     steps:
       - name: Tjek dansk tid
         id: gate
@@ -65,13 +67,17 @@ jobs:
             echo "Ikke 07 dansk tid, springer over (den anden cron tager den)."
           fi
 
+  report:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        if: steps.gate.outputs.run == 'true'
         with:
           persist-credentials: false
 
       - name: Setup Node.js
-        if: steps.gate.outputs.run == 'true'
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
@@ -79,12 +85,10 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        if: steps.gate.outputs.run == 'true'
         run: npm ci
         working-directory: backend
 
       - name: Weekly engine drift report
-        if: steps.gate.outputs.run == 'true'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
