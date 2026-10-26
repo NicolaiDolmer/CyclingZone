@@ -23,7 +23,9 @@
 --
 -- Mangler funktionen (deploy-vinduet foer auto-migrate), registrerer backend IKKE en
 -- brodato efter fristen (backend/lib/trainingDateClose.js), saa ingen dato fryses tom.
--- Idempotent: CREATE OR REPLACE.
+-- Idempotent: CREATE OR REPLACE. Funktion og rettigheder i een transaktion (#6342).
+
+BEGIN;
 
 CREATE OR REPLACE FUNCTION public.register_training_bridge_date_work(p_team_id uuid, p_season_id uuid, p_tick_date date, p_game_days integer[], p_expected_rider_ids uuid[], p_deadline_at timestamp with time zone DEFAULT NULL::timestamp with time zone, p_registered_at timestamp with time zone DEFAULT clock_timestamp())
  RETURNS jsonb
@@ -57,3 +59,5 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.register_training_bridge_date_work(uuid,uuid,date,integer[],uuid[],timestamptz,timestamptz) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.register_training_bridge_date_work(uuid,uuid,date,integer[],uuid[],timestamptz,timestamptz) TO service_role;
+
+COMMIT;
