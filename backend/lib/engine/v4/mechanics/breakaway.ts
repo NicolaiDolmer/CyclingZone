@@ -417,6 +417,12 @@ function withS5Reformation(result: SegmentHookResult, ctx: BreakawayHookContext)
   // #6748 (KUN s5_profiles_v2): paa foerste etape udelukkes feltets bedste paa klassementsevne.
   const v2Exclusion = ctx.s5ProfilesV2 === true ? { abilityOnFirstStage: true, racingRiderIds: new Set(result.state.groups.flatMap((g) => g.rider_ids)) } : undefined;
   const excluded = new Set([...last, ...s5ReformationExcludedRiders(normalizeGcContext(ctx.gcContext), ctx.entrants, S5_REFORMATION_TUNING.excludeGcRankAtMost, v2Exclusion)]);
+  // #7258 (KUN s5_profiles_v3): det nye udbrud efter en tidlig indhentning holder samme vagter som
+  // morgenudbruddet: feltets bedste paa fremskrevet slutklassement og dagens favoritter er ikke med.
+  if (ctx.s5ProfilesV3 === true) {
+    const guards = s5V3FormationGuards7258(ctx, result.state.groups.flatMap((g) => g.rider_ids));
+    for (const id of [...guards.projectedTop, ...guards.favourites]) excluded.add(id);
+  }
   const formed = attemptFormation(result.state, ctx, flattenTryBreakRiderIds(parseBreakawayOrders(ctx.orders)), { excluded, km });
   // #6748 (KUN s5_profiles_v2): det nye udbrud er sin egen formation (raceParticipationHistory.ts).
   const events = ctx.s5ProfilesV2 === true
