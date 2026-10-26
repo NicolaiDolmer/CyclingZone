@@ -146,6 +146,7 @@ export async function buybackRider({ supabase, team, riderId, now = new Date() }
   const acquiredAt = now.toISOString();
   // team_id IS NULL i WHERE: en samtidig handel (auktion/anden manager) vinder, og vi
   // ser 0 rækker i stedet for at overskrive den (expectMutationAffectingRows kaster).
+  // error-ok: expectMutationAffectingRows tjekker selv error OG 0 ramte rækker og kaster.
   await expectMutationAffectingRows(
     supabase.from("riders").update({
       team_id: team.id,
