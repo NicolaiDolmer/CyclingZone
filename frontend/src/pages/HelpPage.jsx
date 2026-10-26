@@ -541,7 +541,7 @@ const SECTION_DEFS = [
       { id: "crashesAndIncidents", kind: "text" },
       { id: "timeLimitAndGrupetto", kind: "text" },
       { id: "teamwork", kind: "text" },
-      { id: "teamworkThreeSteps", kind: "text" }, // #6746: teamwork uden "alt ud" (intention off)
+      { id: "teamworkAllOut", kind: "text" }, // #6746: "alt ud" findes kun med intentions-flaget
       { id: "weatherAndCobbles", kind: "text" },
     ],
   },

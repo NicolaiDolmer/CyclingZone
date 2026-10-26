@@ -1800,11 +1800,11 @@
       },
       "teamwork": {
         "title": "Teamwork on the road",
-        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
-      },
-      "teamworkThreeSteps": {
-        "title": "Teamwork on the road",
         "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+      },
+      "teamworkAllOut": {
+        "title": "All out and teamwork",
+        "text": "Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead."
       },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",

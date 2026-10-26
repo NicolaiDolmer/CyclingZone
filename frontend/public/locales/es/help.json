@@ -1800,11 +1800,11 @@
       },
       "teamwork": {
         "title": "Trabajo en equipo en la carretera",
-        "text": "Tu jefe de filas, o tu jefe de filas de sprint en una etapa llana, está protegido por el trabajo que pone el resto del equipo. Un gregario o un cazador de escapadas paga esa protección con su propio esfuerzo; un ciclista con rol libre ni ayuda ni paga. El impulso está acotado para que nunca se dispare, y solo cuenta cuando al menos un compañero sigue corriendo cerca de él. Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo. Un gregario en Ir tranquilo paga menos pero da menos apoyo a tu jefe de filas. Trabajar para el equipo nunca sale gratis, y ninguna combinación de rol e intención puede convertirlo en una bonificación añadida a la propia habilidad de un ciclista."
-      },
-      "teamworkThreeSteps": {
-        "title": "Trabajo en equipo en la carretera",
         "text": "Tu jefe de filas, o tu jefe de filas de sprint en una etapa llana, está protegido por el trabajo que pone el resto del equipo. Un gregario o un cazador de escapadas paga esa protección con su propio esfuerzo; un ciclista con rol libre ni ayuda ni paga. El impulso está acotado para que nunca se dispare, y solo cuenta cuando al menos un compañero sigue corriendo cerca de él. Un gregario en Ir tranquilo paga menos pero da menos apoyo a tu jefe de filas. Trabajar para el equipo nunca sale gratis, y ninguna combinación de rol e intención puede convertirlo en una bonificación añadida a la propia habilidad de un ciclista."
+      },
+      "teamworkAllOut": {
+        "title": "A tope y trabajo en equipo",
+        "text": "Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo."
       },
       "weatherAndCobbles": {
         "title": "Clima y adoquines",

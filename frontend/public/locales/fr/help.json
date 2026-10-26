@@ -1800,11 +1800,11 @@
       },
       "teamwork": {
         "title": "Le travail d'équipe sur la route",
-        "text": "Ton leader, ou ton leader sprint sur une étape de plat, est protégé par le travail que fournit le reste de l'équipe. Un équipier ou un chasseur d'échappée paie cette protection de son propre effort ; un coureur en rôle libre n'aide ni ne paie. Le coup de pouce est borné pour ne jamais s'emballer, et il ne compte que si au moins un coéquipier roule encore près de lui. Mets un coureur à fond et il cesse complètement de payer ce prix, car il dépense tout pour lui-même. Un équipier en Rouler tranquille paie moins mais donne moins de soutien à ton leader. Travailler pour l'équipe n'est jamais gratuit, et aucune combinaison de rôle et de consigne ne peut le transformer en bonus par-dessus les propres aptitudes d'un coureur."
-      },
-      "teamworkThreeSteps": {
-        "title": "Le travail d'équipe sur la route",
         "text": "Ton leader, ou ton leader sprint sur une étape de plat, est protégé par le travail que fournit le reste de l'équipe. Un équipier ou un chasseur d'échappée paie cette protection de son propre effort ; un coureur en rôle libre n'aide ni ne paie. Le coup de pouce est borné pour ne jamais s'emballer, et il ne compte que si au moins un coéquipier roule encore près de lui. Un équipier en Rouler tranquille paie moins mais donne moins de soutien à ton leader. Travailler pour l'équipe n'est jamais gratuit, et aucune combinaison de rôle et de consigne ne peut le transformer en bonus par-dessus les propres aptitudes d'un coureur."
+      },
+      "teamworkAllOut": {
+        "title": "À fond et travail d'équipe",
+        "text": "Mets un coureur à fond et il cesse complètement de payer ce prix, car il dépense tout pour lui-même."
       },
       "weatherAndCobbles": {
         "title": "Météo et pavés",

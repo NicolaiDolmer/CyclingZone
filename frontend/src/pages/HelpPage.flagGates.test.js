@@ -185,17 +185,17 @@ test("HelpPage bruger ÉN mekanisme: ingen hardkodede gates eller saerkald tilba
 });
 
 // #6746: indsatstrin-afsnittet. Fem trin og tre trin staar aldrig side om side, og
-// "alt ud" (grupetto/alt ud findes kun med intentions-flaget) staar kun i holdspil-
-// afsnittet naar flaget er on. Mens svaret hentes er begge sider skjult.
+// "alt ud" (findes kun med intentions-flaget) har sit eget holdspil-afsnit, kun naar
+// flaget er on. Mens svaret hentes er de gatede blokke skjult.
 test("#6746: indsatstrin og holdspil foelger race_day_intention_enabled som par", () => {
-  const IDS = { raceSelection: ["effortSteps", "effortStepsThree"], raceDay: ["teamwork", "teamworkThreeSteps"] };
+  const IDS = { raceSelection: ["effortSteps", "effortStepsThree"], raceDay: ["teamwork", "teamworkAllOut"] };
   const visible = (section, flags) => IDS[section].filter((id) => isHelpBlockVisible(section, id, flags));
   const on = { race_day_intention_enabled: true };
   const off = { race_day_intention_enabled: false };
   assert.deepEqual(visible("raceSelection", on), ["effortSteps"]);
   assert.deepEqual(visible("raceSelection", off), ["effortStepsThree"]);
-  assert.deepEqual(visible("raceDay", on), ["teamwork"]);
-  assert.deepEqual(visible("raceDay", off), ["teamworkThreeSteps"]);
+  assert.deepEqual(visible("raceDay", on), ["teamwork", "teamworkAllOut"]);
+  assert.deepEqual(visible("raceDay", off), ["teamwork"]);
   assert.deepEqual(visible("raceSelection", null), []);
-  assert.deepEqual(visible("raceDay", null), []);
+  assert.deepEqual(visible("raceDay", null), ["teamwork"]);
 });

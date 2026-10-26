@@ -1800,11 +1800,11 @@
       },
       "teamwork": {
         "title": "Teamwerk onderweg",
-        "text": "Je kopman, of je sprintkopman in een vlakke etappe, wordt beschermd door het werk dat de rest van het team levert. Een knecht of ontsnappingsjager betaalt voor die bescherming met zijn eigen inspanning; een renner met een vrije rol helpt niet en betaalt niet. De boost is begrensd zodat hij nooit op hol slaat, en hij telt alleen als minstens één ploeggenoot nog in zijn buurt rijdt. Zet een renner op volle inzet en hij stopt helemaal met die prijs betalen, omdat hij alles aan zichzelf besteedt. Een knecht op Rustig rijden betaalt minder maar geeft je kopman minder steun. Werken voor het team is nooit gratis, en geen enkele combinatie van rol en intentie kan het veranderen in een bonus bovenop de eigen vaardigheid van een renner."
-      },
-      "teamworkThreeSteps": {
-        "title": "Teamwerk onderweg",
         "text": "Je kopman, of je sprintkopman in een vlakke etappe, wordt beschermd door het werk dat de rest van het team levert. Een knecht of ontsnappingsjager betaalt voor die bescherming met zijn eigen inspanning; een renner met een vrije rol helpt niet en betaalt niet. De boost is begrensd zodat hij nooit op hol slaat, en hij telt alleen als minstens één ploeggenoot nog in zijn buurt rijdt. Een knecht op Rustig rijden betaalt minder maar geeft je kopman minder steun. Werken voor het team is nooit gratis, en geen enkele combinatie van rol en intentie kan het veranderen in een bonus bovenop de eigen vaardigheid van een renner."
+      },
+      "teamworkAllOut": {
+        "title": "Volle inzet en teamwerk",
+        "text": "Zet een renner op volle inzet en hij stopt helemaal met die prijs betalen, omdat hij alles aan zichzelf besteedt."
       },
       "weatherAndCobbles": {
         "title": "Weer en kasseien",

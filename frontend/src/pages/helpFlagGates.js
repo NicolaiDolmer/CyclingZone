@@ -84,8 +84,7 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     effortStepsThree: INTENTION_OFF,
   }),
   raceDay: Object.freeze({
-    teamwork: INTENTION_ON,
-    teamworkThreeSteps: INTENTION_OFF,
+    teamworkAllOut: INTENTION_ON,
   }),
   academy: Object.freeze({
     dailyTrainingBoost: CURVE_B_OFF,

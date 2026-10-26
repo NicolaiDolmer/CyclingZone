@@ -1800,11 +1800,11 @@
       },
       "teamwork": {
         "title": "Holdspil på vejen",
-        "text": "Din kaptajn, eller din spurt-kaptajn på en flad etape, beskyttes af det arbejde resten af holdet lægger i det. En hjælper eller en udbruds-jæger betaler for den beskyttelse med sin egen kraft; en rytter i fri rolle hverken hjælper eller betaler. Boosten har et loft, så den aldrig løber løbsk, og den tæller kun, når mindst én holdkammerat stadig kører tæt på ham. Sætter du en rytter til alt ud, holder han op med at betale den pris, fordi han bruger alt på sig selv i stedet. En hjælper på Kør roligt betaler mindre, men giver din kaptajn mindre støtte. At arbejde for holdet er aldrig gratis, og ingen kombination af rolle og intention kan gøre det til en bonus oven i rytterens egen evne."
-      },
-      "teamworkThreeSteps": {
-        "title": "Holdspil på vejen",
         "text": "Din kaptajn, eller din spurt-kaptajn på en flad etape, beskyttes af det arbejde resten af holdet lægger i det. En hjælper eller en udbruds-jæger betaler for den beskyttelse med sin egen kraft; en rytter i fri rolle hverken hjælper eller betaler. Boosten har et loft, så den aldrig løber løbsk, og den tæller kun, når mindst én holdkammerat stadig kører tæt på ham. En hjælper på Kør roligt betaler mindre, men giver din kaptajn mindre støtte. At arbejde for holdet er aldrig gratis, og ingen kombination af rolle og intention kan gøre det til en bonus oven i rytterens egen evne."
+      },
+      "teamworkAllOut": {
+        "title": "Alt ud og holdspil",
+        "text": "Sætter du en rytter til alt ud, holder han op med at betale den pris, fordi han bruger alt på sig selv i stedet."
       },
       "weatherAndCobbles": {
         "title": "Vejr og brosten",
