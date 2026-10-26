@@ -197,3 +197,28 @@ export async function resolveRetirementNotice(supabase, riderRow, season, cfg = 
     return resolved;
   }
 }
+
+/**
+ * #7235: A display read must not move an outstanding promise into the next
+ * season while cutover has activated it but not retired the rider yet.
+ * Cutover itself keeps using resolveNoticeFromRow with its explicit season.
+ */
+export async function resolveRetirementNoticeForDisplay(supabase, riderRow, season, cfg = PROGRESSION_CONFIG) {
+  const active = Number(season);
+  if (!riderRow || riderRow.is_retired === true || !Number.isInteger(active) || active < 1) {
+    return { announced: false, season: null, givenAt: null, frozen: false, shouldFreeze: false };
+  }
+  const promised = Number(riderRow.retirement_notice_after_season);
+  if (Number.isInteger(promised) && promised > 0 && promised <= active && frozenNoticeFor(riderRow, promised) === true) {
+    return resolveNoticeFromRow(riderRow, promised, cfg);
+  }
+  // Guaranteed retirement has no lazy-frozen roll. Keep its completed-season
+  // answer during the same interval, respecting any explicitly frozen no.
+  const previous = active - 1;
+  const previousAge = ageForSeason(riderRow.birthdate, previous);
+  if (previous > 0 && previousAge != null && previousAge >= cfg.retirement.guaranteedAge) {
+    const notice = resolveNoticeFromRow(riderRow, previous, cfg);
+    if (notice.announced) return notice;
+  }
+  return resolveRetirementNotice(supabase, riderRow, active, cfg);
+}
