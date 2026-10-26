@@ -14,6 +14,7 @@ import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { formatNumber } from "../../lib/intl";
 import { intlLocale } from "../../lib/intlLocale.ts";
+import { useIsMobileViewport } from "../../hooks/useMediaQuery.ts";
 
 const API = import.meta.env.VITE_API_URL;
 const Button = ButtonJs as unknown as (p: { variant?: string; size?: string; onClick?: () => void; disabled?: boolean; children?: ReactNode; "aria-label"?: string }) => ReactNode;
@@ -28,6 +29,7 @@ export default function BuybackPanel({ onSigned }: { onSigned?: () => void }) {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const isMobile = useIsMobileViewport();
 
   const load = useCallback(async () => {
     const headers = await authHeaders();
@@ -60,7 +62,7 @@ export default function BuybackPanel({ onSigned }: { onSigned?: () => void }) {
   const columns: DataTableColumn<Candidate>[] = [
     { key: "rider", header: t("squad.headers.rider"), render: (c) => `${c.firstname ?? ""} ${c.lastname ?? ""}`.trim() },
     { key: "squad", header: t("contracts.buyback.squad"), render: (c) => t(`contracts.buyback.squads.${c.squad ?? "senior"}`, { defaultValue: c.squad ?? "" }) },
-    { key: "salary", header: t("contracts.headers.salary"), numeric: true, render: (c) => <span className="tabular-nums">{formatNumber(c.salary)}</span> },
+    { key: "salary", header: t("squad.headers.salary"), numeric: true, render: (c) => <span className="tabular-nums">{formatNumber(c.salary)}</span> },
     { key: "deadline", header: t("contracts.buyback.deadline"), numeric: true, render: (c) => <span className="tabular-nums">{fmtDate(c.deadline)}</span> },
     {
       key: "action", header: "", render: (c) => c.blocked
@@ -69,10 +71,29 @@ export default function BuybackPanel({ onSigned }: { onSigned?: () => void }) {
     },
   ];
 
+  const name = (c: Candidate) => `${c.firstname ?? ""} ${c.lastname ?? ""}`.trim();
+  const squadLabel = (c: Candidate) => t(`contracts.buyback.squads.${c.squad ?? "senior"}`, { defaultValue: c.squad ?? "" });
+  // Mobil: én linje pr. rytter (navn + grå underlinje + knap), så ingen kolonne skubber knappen ud.
+  const mobileList = (
+    <ul className="rounded-[5px] border border-cz-border bg-cz-card divide-y divide-cz-border" aria-label={t("contracts.buyback.title")}>
+      {candidates.map((c) => (
+        <li key={c.id} className="flex items-center justify-between gap-3 px-3 py-[10px]">
+          <div className="min-w-0">
+            <div className="text-[14px] truncate">{name(c)}</div>
+            <div className="text-[12px] text-cz-3 tabular-nums">{squadLabel(c)} · {formatNumber(c.salary)} · {t("contracts.buyback.deadline")} {fmtDate(c.deadline)}</div>
+          </div>
+          {c.blocked
+            ? <span className="text-cz-3 text-[12px] text-right shrink-0 max-w-[40%]">{t(`contracts.buyback.errors.${c.blocked}`, { defaultValue: "" })}</span>
+            : <div className="shrink-0"><Button variant="secondary" size="sm" disabled={busyId !== null} onClick={() => void sign(c)} aria-label={t("contracts.buyback.signAria", { name: name(c) })}>{t("contracts.buyback.sign")}</Button></div>}
+        </li>
+      ))}
+    </ul>
+  );
+
   return (
     <section className="mb-[14px]" data-testid="contracts-buyback">
       <p className="text-[13px] text-cz-2 mb-[8px]">{t("contracts.buyback.intro")}</p>
-      <DataTable label={t("contracts.buyback.title")} columns={columns} rows={candidates} rowKey={(c) => c.id} dense mobileDefaults={["salary", "action"]} />
+      {isMobile ? mobileList : <DataTable label={t("contracts.buyback.title")} columns={columns} rows={candidates} rowKey={(c) => c.id} dense />}
       {message && <p className="text-[13px] mt-[6px]" role="status">{message}</p>}
     </section>
   );
