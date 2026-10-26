@@ -354,15 +354,20 @@ export async function emitContractExpiringNotifications({
  * i test for at undgå DB.
  */
 async function defaultFetchOwnedExpiringRiders({ supabase, seasonNumber }) {
-  const { data, error } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
-    .eq("contract_end_season", seasonNumber)
-    .not("team_id", "is", null)
-    .eq("team.is_ai", false)
-    .eq("team.is_frozen", false);
-  if (error) {
-    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`);
+  // #7246: pagineret. Uden .range() stoppede PostgREST tavst ved 1.000 rækker, så ~45 %
+  // af managerne aldrig fik varsel ved S4→S5 (frigivelsen bruger fetchAllRows og ramte alle).
+  let data;
+  try {
+    data = await fetchAllRows(() => supabase
+      .from("riders")
+      .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
+      .eq("contract_end_season", seasonNumber)
+      .not("team_id", "is", null)
+      .eq("team.is_ai", false)
+      .eq("team.is_frozen", false)
+      .order("id"));
+  } catch (error) {
+    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`, { cause: error });
   }
   return (data || []).map((r) => ({
     id: r.id,

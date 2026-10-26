@@ -32,9 +32,6 @@
     "backend/lib/newAccountGates.js": {
       "race_entries": 1
     },
-    "backend/lib/notificationService.js": {
-      "riders": 1
-    },
     "backend/lib/raceBinding.js": {
       "race_stage_schedule": 2,
       "race_entries": 1
