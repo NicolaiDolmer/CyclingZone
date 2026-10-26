@@ -42,13 +42,18 @@ export type BadDayWeather = "rain" | "wind" | "heat";
 
 export const DAY_FORM_6649_TUNING = Object.freeze({
   // 1. Dagens ben (normaliseret CP).
-  legsSd: 0.025, // grund-spredning (kalibreret, balance-internals/6649)
+  // En daarlig dag er hyppigere og stoerre end en super-dag: ned-siden er bredere
+  // end op-siden. Ellers vinder udbryderne paa deres gode dage, ikke favoritterne
+  // paa deres daarlige (maalt, balance-internals/6649). Udsvinget centreres, saa
+  // en neutral rytter i gennemsnit hverken vinder eller taber.
+  legsUpSd: 0.012, // op-sidens spredning
+  legsSd: 0.034, // ned-sidens grund-spredning (kalibreret, balance-internals/6649)
   // Massespurten: dagsformen er udholdenhed og vejer mindre i en spurt end paa en
   // stigning eller i en enkeltstart. Finalens score laeser dagsformen ganget med denne.
   massFinishFinaleScale: 0.56,
-  downFormMax: 0.6, // ned-siden vokser op til +60 % ved formskalaens bund
-  downFatigueMax: 2.0, // ... og op til +100 % ved fuld traethed (condition 0)
-  downWeatherMax: 0.5, // ... og op til +50 % i det haardeste vejr for en rytter uden vejr-teknik
+  downFormMax: 0.6, // ned-siden vokser med lav form (fuldt ved formskalaens bund)
+  downFatigueMax: 2.0, // ... med traethed (fuldt ved condition 0)
+  downWeatherMax: 0.5, // ... og med haardt vejr for en rytter uden vejr-teknik
   fatigueFree: 0.25, // traethed (1 - condition) under denne taeller ikke
   // 2. Den daarlige dag.
   badDayFormP: 0.03, // risiko ved neutral form (samme anker som den gamle jour sans)
@@ -156,7 +161,9 @@ export function dayForm6649For(
   // 1. Dagens ben.
   const z = gaussian(rng, 0, 1);
   const down = { form: t.downFormMax * formDeficit(form), fatigue: t.downFatigueMax * fatigue01, weather: t.downWeatherMax * weather01 };
-  const legs = z >= 0 ? z * t.legsSd : z * t.legsSd * (1 + down.form + down.fatigue + down.weather);
+  // Centreret om en neutral rytters forventning (E[max(z,0)] = E[-min(z,0)] = 1/sqrt(2 pi)).
+  const center = (t.legsUpSd - t.legsSd) / Math.sqrt(2 * Math.PI);
+  const legs = (z >= 0 ? z * t.legsUpSd : z * t.legsSd * (1 + down.form + down.fatigue + down.weather)) - center;
   // 2 + 3. Sygdom og den daarlige dag deler én lodtraekning: [sygdom | form | traethed | vejr | ingenting].
   const pIllness = t.illnessP + t.illnessFatigueP * fatigue01 * fatigue01;
   const pForm = t.badDayFormP * formMult(form, t);
