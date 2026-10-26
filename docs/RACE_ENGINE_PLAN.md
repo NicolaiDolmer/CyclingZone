@@ -21,7 +21,7 @@
 |---|---|---|
 | 26/10 | Klassementsvinder fra udbrud: hård gate med to private grænser (sad i udbrud / vandt etape fra udbrud) | #7258 |
 | 26/10 | Farlige udbrud holdes på snor, også når rytteren først *ventes* at komme frem senere i løbet. Lukker rivalgrænsen fra #5978-tjeklisten (6/10) | #7258 |
-| 26/10 | Én fælles fremskrivning (tid + løbsevne × resterende etaper) bruges i blokering, snor, #7160 og testport | #7258, #5978, #6818 |
+| 26/10 | Én fælles fremskrivning af klassementet ud fra tid, løbsevne og de resterende etaper bruges i blokering, snor, #7160 og testport | #7258, #5978, #6818 |
 | 26/10 | S1: U23 og juniorer får fire egne testgrupper (U23 endags/etape, junior endags/etape) | Designbord |
 | 26/10 | S2: grænser for ungdom fra et referencesæt af rigtige løb, godkendt af ejeren | Designbord, Codex C4 |
 | 26/10 | S3: dagens favorit i endagsløb i morgenudbruddet: hård gate, privat loft | #7258 |
