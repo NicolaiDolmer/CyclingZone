@@ -69,7 +69,7 @@ import {
   breakawayStanceLabelKey,
   isOrdersGcRevision,
   ordersVisible,
-  raceRulesRevision,
+  surfaceRaceRulesRevision,
 } from "../../lib/ordersGcSurface.ts";
 import { apiFetch } from "../../lib/apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { profileLabelKey } from "../../lib/stageProfileConfig.js";
@@ -312,10 +312,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const settle = (revision) => { if (active) setRevisionRead({ raceId, revision }); };
     supabase
       .from("races")
-      .select("engine_rules_revision")
+      .select("engine_rules_revision, stages_completed")
       .eq("id", raceId)
       .maybeSingle()
-      .then(({ data, error }) => settle(error ? "legacy" : raceRulesRevision(data?.engine_rules_revision)),
+      .then(({ data, error }) => settle(error ? "legacy" : surfaceRaceRulesRevision(data?.engine_rules_revision, data?.stages_completed)),
         () => settle("legacy"));
     return () => { active = false; };
   }, [raceId]);

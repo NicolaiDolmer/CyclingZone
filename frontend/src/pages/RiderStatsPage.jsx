@@ -1,3 +1,4 @@
+import { retirementBannerSeason } from "../lib/retirementNotice.ts";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
@@ -887,7 +888,8 @@ export default function RiderStatsPage() {
   // fordi selve beslutningen kræver den SAMME seedede motor-logik som backend
   // bruger ved cutover (announcedRetirementAfterSeason, riderProgression.js) og
   // derfor ikke kan genberegnes rent i klienten.
-  const [announcedRetirement, setAnnouncedRetirement] = useState(false);
+  const [retirementStatus, setRetirementStatus] = useState(/** @type {import("../lib/retirementNotice.ts").RetirementStatus | null} */ (null));
+  const announcedRetirement = Boolean(retirementStatus?.announced_retirement);
   const [visits, setVisits]                 = useState(null);
   const [seasonRows, setSeasonRows]         = useState([]);
   const [reputationEvents, setReputationEvents] = useState([]);
@@ -1061,14 +1063,14 @@ export default function RiderStatsPage() {
   const loadRetirementStatus = useCallback(async () => {
     const fetchId = id;
     retirementStatusFetchIdRef.current = fetchId;
-    setAnnouncedRetirement(false);
+    setRetirementStatus(null);
     try {
       const h = await authHeaders();
       if (!h) return; // #4347/#4348: ingen session — banneret vises bare ikke
       const res = await apiFetch(`${API}/api/riders/${fetchId}/retirement-status`, { headers: h });
       const data = res.data || {};
       if (retirementStatusFetchIdRef.current !== fetchId) return;
-      setAnnouncedRetirement(Boolean(data.announced_retirement));
+      setRetirementStatus(data);
     } catch { /* non-critical: banneret vises bare ikke for den nye rytter */ }
   }, [id]);
 
@@ -1875,7 +1877,7 @@ export default function RiderStatsPage() {
       valueDelta: computeBidValueDelta(transferListing.asking_price, rider),
     };
   } else if (announcedRetirement) {
-    statusBanner = { kind: "finalSeason", season: seasonNumberFromReferenceYear(seasonYear) };
+    statusBanner = { kind: "finalSeason", season: retirementBannerSeason(retirementStatus, seasonNumberFromReferenceYear(seasonYear)) };
   }
   // Switcher: rytterens position i det viste holds trup.
   const rosterIdx = roster.findIndex((r) => String(r.id) === String(rider.id));
