@@ -165,3 +165,39 @@ test("køb-trigger: notificér KUN når kontrakt udløber i indeværende sæson"
   assert.equal(fires(5), false, "udløber næste år → ingen notifikation");
   assert.equal(fires(3), false, "allerede udløbet/ældre → ingen notifikation");
 });
+
+// ─── #7246 · default-fetchen paginerer forbi PostgREST's 1.000-loft ───────────
+
+function cappedRidersSupabase(total, rowCap = 1000) {
+  const all = Array.from({ length: total }, (_, i) => ({
+    id: `r-${String(i).padStart(5, "0")}`, firstname: "F", lastname: `L${i}`, team: { user_id: `u-${i % 50}`, is_ai: false, is_frozen: false },
+  }));
+  return {
+    from(table) {
+      assert.equal(table, "riders");
+      const q = { range: null };
+      const builder = {
+        select() { return builder; }, eq() { return builder; }, not() { return builder; }, order() { return builder; },
+        range(from, to) { q.range = [from, to]; return builder; },
+        then(resolve) {
+          // PostgREST max-rows: uden .range() højst rowCap rækker (prod = 1000).
+          const data = q.range ? all.slice(q.range[0], q.range[1] + 1) : all.slice(0, rowCap);
+          return Promise.resolve({ data, error: null }).then(resolve);
+        },
+      };
+      return builder;
+    },
+  };
+}
+
+test("#7246: alle 1.515 udløbende ryttere får varsel, ikke kun de første 1.000", async () => {
+  const sent = [];
+  const stats = await emitContractExpiringNotifications({
+    supabase: cappedRidersSupabase(1515),
+    seasonNumber: 5,
+    notify: async ({ relatedId }) => { sent.push(relatedId); return { delivered: true }; },
+  });
+  assert.equal(stats.eligible, 1515);
+  assert.equal(stats.delivered, 1515);
+  assert.equal(new Set(sent).size, 1515, "ingen dubletter på tværs af sider");
+});

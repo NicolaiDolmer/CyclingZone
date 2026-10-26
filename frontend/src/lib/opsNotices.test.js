@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   SEVERITY_META,
   pickNoticeCopy,
+  pickSeasonChangeNotice,
+  bannerNoticesForPath,
   opsNoticeDismissKey,
   readOpsNoticeDismissed,
   writeOpsNoticeDismissed,
@@ -58,4 +60,35 @@ test("readOpsNoticeDismissed/writeOpsNoticeDismissed: round-trip via localStorag
 test("readOpsNoticeDismissed: uden id eller uden localStorage fejler stille (false)", () => {
   assert.equal(readOpsNoticeDismissed(null), false);
   assert.equal(readOpsNoticeDismissed(undefined), false);
+});
+
+test("pickSeasonChangeNotice (#7153): finder sæsonskifte-banneret på den engelske titel", () => {
+  const notices = [
+    { id: "a", title_en: "Race delay on stage 3" },
+    { id: "b", title_en: "Season change tonight, 20:30-22:30" },
+    { id: "c", title_en: "Season change in progress" },
+  ];
+  assert.equal(pickSeasonChangeNotice(notices)?.id, "b");
+  assert.equal(pickSeasonChangeNotice([{ id: "d", title_en: "  season CHANGE in progress" }])?.id, "d");
+  assert.equal(pickSeasonChangeNotice([{ id: "e", title_en: "Race control" }]), null);
+  assert.equal(pickSeasonChangeNotice(null), null);
+});
+
+test("bannerNoticesForPath (#7153): sæsonskiftet vises ikke i topbanneret på dashboardet, men på andre sider", () => {
+  const notices = [
+    { id: "s", title_en: "Season change tonight, 20:30-22:30" },
+    { id: "i", title_en: "Race delay on stage 3" },
+  ];
+  assert.deepEqual(bannerNoticesForPath(notices, "/dashboard").map((n) => n.id), ["i"]);
+  assert.deepEqual(bannerNoticesForPath(notices, "/training").map((n) => n.id), ["s", "i"]);
+  assert.deepEqual(bannerNoticesForPath(null, "/dashboard"), []);
+});
+
+test("bannerNoticesForPath (#7153, Codex P2): har spilleren skjult Næste træk, bliver sæsonskiftet i topbanneret", () => {
+  const notices = [
+    { id: "s", title_en: "Season change tonight, 20:30-22:30" },
+    { id: "i", title_en: "Race engine paused" },
+  ];
+  assert.deepEqual(bannerNoticesForPath(notices, "/dashboard", false).map((n) => n.id), ["s", "i"]);
+  assert.deepEqual(bannerNoticesForPath(notices, "/dashboard", true).map((n) => n.id), ["i"]);
 });

@@ -81,6 +81,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
   // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
+  // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
+  { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -122,6 +124,11 @@ export const STAGE_FLAGS = Object.freeze([
   // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
   // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
   { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
+  // #6950 (Udvikling 2.0): Udviklingsscore B i motoren (developmentScoreWiring.js) og
+  // catch-up via løb (raceCatchUpWiring.js). Fail-safe OFF; "beta" læses som off; tal i
+  // serverens miljø; kræver ability_cap_per_date_enabled. Ejer-only flip.
+  { key: "development_score_v2", area: "training", label: "Udvikling 2.0 — Udviklingsscore B styrer dagens udvikling" },
+  { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
@@ -193,8 +200,23 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // maerket skifter til "Now for everyone" naar kontakten er on for alle.
   "rider_best_role_display",
   "training_programs",
+  // #3564: HelpPage viser kurve B-tvillingerne (HELP_BLOCK_FLAGS/HELP_FAQ_FLAGS) paa dette flag.
+  // Binaert (se PLAYER_VISIBLE_BINARY_FLAG_KEYS): "beta" er off, ogsaa for beta-gruppen.
+  "development_curve_b",
   // 7.361: beta-noterne for etapeside 2.0 og bulk-dag skifter til
   // "Now for everyone", naar kontakterne er on for alle.
   "stage_page_v2",
   "training_bulk_day",
+  // #6110 Udvikling 2.0 del 1: HelpPage gater de nye blokke paa disse flag, saa
+  // Hjaelp foerst beskriver aldring, potentiale, maks +1 og Dagens beslutning
+  // naar de er taendt for spilleren.
+  "development_v2_aging_enabled",
+  "potential_single_number",
+  "ability_cap_per_date_enabled",
+  "training_decision_card",
 ]);
+
+// #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
+// "beta" = off). Endpointet svarer derfor false for ALLE viewers paa "beta", saa
+// en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b"]);

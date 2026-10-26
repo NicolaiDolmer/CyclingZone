@@ -357,6 +357,9 @@ export async function runAdminSimulateStage({
 
 // S4 (#1176): kind → short EN reason text til DNF-linjen.
 function incidentKindLabel(kind) {
+  // #6938: v3's to nye veje ud (s5_profiles_v3) maa ikke staa som "mechanical".
+  if (kind === "illness") return "ill, did not start";
+  if (kind === "withdrawal") return "abandoned";
   return kind === "crash" ? "crash" : "mechanical";
 }
 

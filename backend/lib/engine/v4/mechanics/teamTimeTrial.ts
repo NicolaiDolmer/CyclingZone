@@ -166,6 +166,8 @@ export type TeamTimeTrialOptions = {
   /** #7008 (KUN s5_profiles_v2): intet uheld lige efter starten (incidentKmSpan). Udeladt = som foer. */
   incidentStartFloor?: true;
   timeLimitTuning?: TimeLimitTuning;
+  /** #6937 (KUN s5_profiles_v3): topankomstens almindelige point (komJersey6937.summitFinishSingleFor). Udeladt = som foer. */
+  summitFinishSingle?: true;
 };
 
 // ── Rotation (work-rotation i holdet, #2412: "roller faar mening") ────────────
@@ -969,6 +971,7 @@ export function runTimeTrialStage(
         profileType: route.profile_type,
         finaleType: route.finale_type,
         tuning: tuning.bonusSeconds,
+        ...(options.summitFinishSingle ? { summitFinishSingle: true as const } : {}),
       }),
     ]),
   );

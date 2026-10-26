@@ -32,7 +32,7 @@ import type { AbilityKey, Entrant, EngineState, RiderRole, RiderState, RouteV2, 
 
 // ── 1. Ejer-matricen ─────────────────────────────────────────────────────────
 
-const ROLES: RiderRole[] = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
+const ROLES: RiderRole[] = ["captain", "sprint_captain", "helper", "hunter", "free_role", "co_captain"];
 const EFFORTS = ["normal", "save", "grupetto"] as const;
 const ORDERS = [true, false, undefined] as const;
 
@@ -42,6 +42,7 @@ function expected(role: RiderRole, effort: string, tryBreak: boolean | undefined
     case "captain":
     case "sprint_captain":
     case "helper":
+    case "co_captain": // #5981: kun med ordre, som kaptajnen
       return tryBreak === true;
     case "hunter":
       return tryBreak !== false;

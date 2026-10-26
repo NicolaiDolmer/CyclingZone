@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
+  bannerNoticesForPath,
   fetchActiveOpsNotices,
   pickNoticeCopy,
   SEVERITY_META,
@@ -9,6 +10,7 @@ import {
   writeOpsNoticeDismissed,
 } from "../lib/opsNotices.js";
 import { AlertTriangleIcon, InfoIcon, XIcon } from "./ui/icons";
+import { loadLayout } from "../lib/useDashboardLayout.js";
 
 const SEVERITY_ICON = { info: InfoIcon, warning: AlertTriangleIcon, incident: AlertTriangleIcon };
 
@@ -32,7 +34,11 @@ export default function RaceControlBanner() {
     return () => { active = false; };
   }, []);
 
-  const visible = notices.filter(
+  // #7153: sæsonskiftet står i "Næste træk" på dashboardet, ikke også her,
+  // medmindre spilleren har skjult "Næste træk" (så bliver banneret).
+  const { pathname } = useLocation();
+  const nextActionsVisible = loadLayout().nextActions !== false;
+  const visible = bannerNoticesForPath(notices, pathname, nextActionsVisible).filter(
     (n) => n.severity === "incident" || !readOpsNoticeDismissed(n.id)
   );
   void dismissTick;

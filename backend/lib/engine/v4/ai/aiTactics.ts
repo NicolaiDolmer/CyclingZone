@@ -47,6 +47,7 @@
 import type { AbilityKey, FinaleType, ProfileType, RiderRole } from "../types.ts";
 import type { BreakawayStance, EffortLevel, TeamOrder, TeamOrderRider } from "./teamOrderContract.ts";
 import { validateTeamOrder } from "./teamOrderContract.ts";
+import { aiKomHunterForBreak } from "../mechanics/komJersey6937.ts"; // #6937 B1
 import { isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV3OrLater, sharedTimeModelGeneration } from "../../../raceEngineRulesRevision.ts";
 
 export type AiRosterEntrant = {
@@ -103,6 +104,8 @@ export type AiTacticsInput = {
    * kan sende en pointjaeger i udbrud paa en kuperet etape. Udeladt = uaendret.
    */
   points_leader_rider_id?: string | null;
+  /** #6937 B1 (VALGFRIT, KUN s5_profiles_v3): bjergkonkurrencens forreste foer etapen (komJersey6937.ts). */
+  kom_hunter_rider_ids?: readonly string[] | null;
 };
 
 export type AiTacticsReasons = {
@@ -281,6 +284,8 @@ function roleLabel(role: RiderRole): string {
       return "sprint-kaptajn";
     case "helper":
       return "hjaelper";
+    case "co_captain":
+      return "delt kaptajn";
     default:
       return role;
   }
@@ -445,6 +450,7 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
   // naar hans udbruds-score er i feltets top-andel.
   let breakCandidates: BreakScoreEntry[] = [];
   let pointsHunterId: string | null = null;
+  let komHunterId: string | null = null; // #6937 B1
   if (stance !== "chase") {
     // #6818: blokerede ryttere er ikke kandidater; listerne nedenfor fyldes saa af de naeste.
     const blocked = input.break_blocked_rider_ids;
@@ -526,6 +532,12 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
         const hunter = input.roster.find((r) => r.rider_id === pointsHunterId)!;
         breakCandidates = [...breakCandidates, { riderId: pointsHunterId, score: breakScore(hunter.abilities, "sprint") }];
       }
+      // #6937 B1 (KUN s5_profiles_v3): holdets bjergjaeger gaar i udbrud paa en dag med bjergpoint undervejs.
+      komHunterId = aiKomHunterForBreak({ profileType: input.route.profile_type, isStageRace: input.race?.is_stage_race === true, roster: input.roster, komHunterIds: input.kom_hunter_rider_ids, noBreakIds });
+      if (komHunterId && !breakCandidates.some((c) => c.riderId === komHunterId)) {
+        const kh = input.roster.find((r) => r.rider_id === komHunterId)!;
+        breakCandidates = [{ riderId: komHunterId, score: breakScore(kh.abilities, primaryAbility) }, ...breakCandidates].slice(0, AI_TACTICS_TUNING.V3_MAX_BREAK_CANDIDATES);
+      }
     }
   }
   const breakScoreById = new Map(breakCandidates.map((c) => [c.riderId, c.score]));
@@ -570,6 +582,10 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     } else if (isOtherCaptain) {
       effort = "save";
       reason = `Spares: ${terrainLabel} er ikke denne kaptajn-rolles speciale — kraefter gemmes til en etape der passer bedre.`;
+    } else if (entrant.role === "co_captain") {
+      // #5981 (KUN s5_profiles_v3): delt kaptajn arbejder aldrig; han gemmer sig som kaptajnen.
+      effort = "normal";
+      reason = `Delt kaptajn: koerer sit eget klassement; hjaelperne koerer for ${leaderNoun} foerst.`;
     } else if (entrant.role === "helper" && stance === "chase") {
       effort = "protect";
       reason = `Arbejd eller angrib: arbejder ved ${leaderNoun}, som holdet koerer for paa ${terrainLabel}.`;
@@ -581,7 +597,9 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     }
 
     const tryBreak = breakScoreById.has(entrant.rider_id);
-    if (tryBreak && entrant.rider_id === pointsHunterId) {
+    if (tryBreak && entrant.rider_id === komHunterId) {
+      reason += ` Bjergjagt: ${roleLabel(entrant.role)} gaar i udbrud for bjergpointene undervejs.`;
+    } else if (tryBreak && entrant.rider_id === pointsHunterId) {
       reason += ` Pointjagt: ${roleLabel(entrant.role)} gaar i udbrud for at tage den indlagte spurt.`;
     } else if (tryBreak) {
       reason += ` Udbrudsforsoeg: ${roleLabel(entrant.role)} med udbruds-score ${breakScoreById.get(entrant.rider_id)} (aggression+${primaryAbility}) mens holdet ikke selv jager.`;

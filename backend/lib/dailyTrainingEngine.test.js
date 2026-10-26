@@ -3367,3 +3367,58 @@ test('#6461 B: a race rider with an open slot gets nothing at the press (no grow
   assert.deepEqual(state.rider_derived_abilities.find((row) => row.rider_id === 'r1'), abilitiesBefore, 'no ability write before his race');
   assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r2').map((row) => row.game_day), TRAIN_NOW_DAYS);
 });
+
+// ── #3564 kurve B: kald-stedet ───────────────────────────────────────────────
+// Syntetiske testparams (ikke kalibreringen, hard rule 17). Testen laaser kun
+// koblingen: flag off eller manglende params = dagens model, on + params = kurven.
+const CURVE_B_TEST_PARAMS = JSON.stringify({
+  rate: 10, levelExponent: 2, capExponent: 0.5,
+  load: { fromAge: 16, fullAge: 24, floor: 0.5 },
+  potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+});
+
+async function runCurveBDay({ flag = null, params = undefined } = {}) {
+  const state = seedState({
+    abilities: [makeAbilityRow("r1", { ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  if (flag != null) state.app_config = [{ key: "development_curve_b", value: flag }];
+  const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  if (params === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  else process.env.DEVELOPMENT_CURVE_B_PARAMS = params;
+  const warn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args.join(" "));
+  try {
+    await runTeamTrainingDay({
+      supabase: createMockSupabase(state), teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "manager", now: NOW,
+    });
+  } finally {
+    console.warn = warn;
+    if (prev === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+    else process.env.DEVELOPMENT_CURVE_B_PARAMS = prev;
+  }
+  const row = state.rider_derived_abilities.find((r) => r.rider_id === "r1");
+  return { row: JSON.parse(JSON.stringify(row)), warnings };
+}
+
+test("#3564 kald-sted: flag off = dagens model, ogsaa med params i miljoeet", async () => {
+  const today = await runCurveBDay();
+  const offWithParams = await runCurveBDay({ flag: "off", params: CURVE_B_TEST_PARAMS });
+  assert.deepEqual(offWithParams.row, today.row);
+});
+
+test("#3564 kald-sted: flag on uden params = dagens model + advarsel uden tal", async () => {
+  const today = await runCurveBDay();
+  const onNoParams = await runCurveBDay({ flag: "on" });
+  assert.deepEqual(onNoParams.row, today.row);
+  assert.ok(onNoParams.warnings.some((w) => w.includes("[curve-b]")), "advarsel i loggen");
+  assert.ok(!onNoParams.warnings.some((w) => w.includes("levelExponent")), "advarslen viser aldrig params");
+});
+
+test("#3564 kald-sted: flag on + gyldige params sender kurven ind i tick'et", async () => {
+  const today = await runCurveBDay();
+  const curve = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  assert.notDeepEqual(curve.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
+});

@@ -167,6 +167,22 @@ test("#4879 udgåede OG OTL-ryttere får INGEN etaperække (race_results har ing
   assert.deepEqual(ranked.map((r) => r.rank), [1], "1..N uden huller");
 });
 
+test("#6938 broen skriver v3's ikke-start (illness) og hjaelperen der stiger af (withdrawal) som udgaaelser uden skade", () => {
+  const rows = incidentRowsFromV4Output(v4Output({
+    incidents: [
+      inc({ rider_id: "ill", km: 0, kind: "illness", severity: null, outcome: "abandoned", time_loss_seconds: null, injury_days: null }),
+      inc({ rider_id: "off", km: 210, kind: "withdrawal", severity: null, outcome: "abandoned", time_loss_seconds: null, injury_days: null }),
+    ],
+    results: [res("ill", "abandoned"), res("off", "abandoned")],
+  }));
+  assert.deepEqual(rows, [
+    { rider_id: "ill", kind: "illness", severity: null, outcome: "abandon", time_loss_seconds: null, injury_days: null },
+    { rider_id: "off", kind: "withdrawal", severity: null, outcome: "abandon", time_loss_seconds: null, injury_days: null },
+  ]);
+  // #4520: ingen af dem skader rytteren.
+  assert.deepEqual(incidentInjuryUpsertRows({ todayStr: "2026-10-24", incidents: rows }), []);
+});
+
 // ── (1b) skadedagene lander PÅ rytteren, som v3 gør det ─────────────────────
 
 test("#4520 skadereglen: kun styrt skader — v3-grenen er uændret, v4's trappe er dækket", () => {

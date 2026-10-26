@@ -27,6 +27,7 @@ import { groupRepeatedFeedEvents, describeGroupedEvent } from "./stageTimelineGr
 // indhentninger, ærlige km-spænd). filmKmValue skriver "km A-B"-værdien.
 import { honestTimelineEvents, exactEventKm } from "./stageTimelineKmSpan.ts";
 export { filmKmValue } from "./stageTimelineKmSpan.ts";
+import { labelBreakawayEvents, breakawayFilmCopy, breakawayLabelOf } from "./breakawayLabels6299.ts"; // #6299: kun udbruddet hedder udbrud
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -130,7 +131,7 @@ function isTimeTrialStage(events) {
 export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], timelineVersion = null, startlist = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
-  const sorted = honestTimelineEvents(events, { timelineVersion, startlist });
+  const sorted = labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events);
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
@@ -308,12 +309,15 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (event.grouped) {
     return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
   }
-  const p = event.params || {};
+  // #6299: en mærket udbruds-hændelse nævner kun udbrydderne, eller hedder "gruppe foran feltet".
+  const copy = breakawayFilmCopy(event, event.type);
+  const p = breakawayLabelOf(event) ? { ...event.params, rider_ids: copy.riderIds } : event.params || {};
   const breakawayParams = () => {
     const names = resolvedRiderNames(p.rider_ids, riderNameById);
     if (!names.length) return null;
     return { riders: names.join(", "), count: names.length };
   };
+  if (copy.ahead) { const params = breakawayParams(); return params ? { key: copy.key, params } : null; }
   switch (event.type) {
     case "stage_start":
       return {

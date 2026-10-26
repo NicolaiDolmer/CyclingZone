@@ -204,3 +204,20 @@ test("flag: nøglen står i stage-kataloget; kun on tænder; params kræves fra 
   assert.ok(warnings.every((w) => !/\d/.test(w)), "tallene logges aldrig");
   assert.equal(curveBParamsFromEnv({ [DEVELOPMENT_CURVE_B_PARAMS_ENV]: JSON.stringify({ ...RAW, rate: -1 }) }), null);
 });
+
+test("flag: strict (loebsdags-datoens atomare sti) kaster ved DB-fejl; ikke-strict falder tilbage til dagens model", async () => {
+  const failing = {
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "timeout" } }) }) }) }),
+  };
+  const env = { [DEVELOPMENT_CURVE_B_PARAMS_ENV]: JSON.stringify(RAW) };
+  const log = { warn: () => {} };
+  await assert.rejects(() => loadDevelopmentCurveB({ supabase: failing, env, log, strict: true }), /timeout/);
+  assert.equal(await loadDevelopmentCurveB({ supabase: failing, env, log }), null);
+  // Strict aendrer ikke den dokumenterede fallback: slukket flag og manglende params = dagens model.
+  const client = (value: unknown) => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value }, error: null }) }) }) }),
+  });
+  assert.equal(await loadDevelopmentCurveB({ supabase: client("off"), env, log, strict: true }), null);
+  assert.equal(await loadDevelopmentCurveB({ supabase: client("on"), env: {}, log, strict: true }), null);
+  assert.deepEqual(await loadDevelopmentCurveB({ supabase: client("on"), env, log, strict: true }), PARAMS);
+});

@@ -82,6 +82,7 @@ import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
+import StageOrdersRecap from "../components/stageOrders/StageOrdersRecap.tsx"; // #6299
 import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
 import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
 import { ownRiderIdsForOneDay } from "../lib/oneDayTimeline.ts"; // #6512
@@ -1355,6 +1356,7 @@ export default function RaceDetailPage() {
                     stageLabel={race.name} startlist={oneDayStartlist}
                     ownRiderIds={oneDayOwnRiderIds} effortByRider={undefined} onToggleFinalKm={undefined}
                   />
+                  {(oneDayTimeline?.timeline_version ?? 1) >= 2 && <StageOrdersRecap raceId={race.id} stageNumber={1} riderIds={oneDayOwnRiderIds ?? []} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profileByStage[1]?.profile_type ?? null} stageRoles={stageRoles} ranAt={oneDayTimeline?.created_at ?? null} />}
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
                   <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
@@ -1707,7 +1709,8 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
 //
 // #4520: eksplicit kind→nøgle-map. Den gamle binære "crash ellers mechanical"
 // mærkede #4418's ikke-startere (kind='injury') som mekanisk defekt.
-const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury" };
+// #6938: illness (startede ikke) og withdrawal (hjaelper steg af i et endagsloeb).
+const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury", illness: "illness", withdrawal: "withdrawal" };
 
 function DnfSection({ incidents, scopeType, stageNumber, t }) {
   const rows = useMemo(() => {
@@ -2053,6 +2056,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             profileType={profile?.profile_type ?? null} startlist={stageStartlist} t={t}
           />
           <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+          {isV4Timeline && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
           {jerseys.length > 0 && (

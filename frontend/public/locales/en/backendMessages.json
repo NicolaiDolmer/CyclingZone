@@ -232,6 +232,14 @@
       "title": "New academy talent has arrived",
       "message": "New candidates are waiting in your academy - sign or reject them."
     },
+    "academyPullReminderReady": {
+      "title": "New academy candidates are ready",
+      "message": "This week's intake is waiting in your academy. Bring it in before Saturday at midnight."
+    },
+    "academyPullReminderExpiring": {
+      "title": "This week's academy intake expires tonight",
+      "message": "You haven't brought in this week's candidates yet. Do it before midnight, or the intake is gone."
+    },
     "seasonStarted": {
       "title": "Season {number} has started",
       "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead.",
@@ -646,6 +654,10 @@
       "title": "{count, plural, one {New message} other {# new messages}}",
       "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Another manager sent you a message} other {# new messages from another manager}}"
+    },
+    "riderIll": {
+      "title": "Rider ill",
+      "message": "The doctor says {rider} is ill after several days of extreme fatigue and is out until {until}."
     },
     "riderInjured": {
       "title": "Rider injured",

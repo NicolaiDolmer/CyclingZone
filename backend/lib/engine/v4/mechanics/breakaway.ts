@@ -126,6 +126,7 @@ import { rollingLetGoBalance } from "./rollingBreakaway.ts";
 import { lateAttack } from "./lateAttack.ts";
 import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s5V3ClimbChaseIntensity, s5V3ClimbChaseLeashSeconds, s5V3ControlledClosing, s5V3ControlTargetSeconds, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3InControlFinale, s5V3InterestedTeamIds, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale, s5V3RealisticLeadApplies, s5V3RealisticLeadCeilingSeconds } from "./breakawayV3_6804.ts";
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
+import { s5V3P2OffForHarmlessBreak } from "./breakawayInterest7160P2.ts"; // #7160 valg A2
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -234,7 +235,7 @@ export function computeJoinScore(
 }
 
 /** Roller der er holdets leder (modtager arbejdet) og dermed kan "angribe" paa protect. */
-const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981: delt kaptajn som kaptajnen
 
 /**
  * #5580 (M1 punkt 3, ejer 23/9 valg 1c: `protect` = "arbejd eller angrib"):
@@ -855,7 +856,7 @@ export function letGoBalanceFor(
  * En leder trækker ikke jagten: kaptajnen og sprint-kaptajnen er dem holdet
  * jager FOR (samme rolle-skel som M16's WORKER_ROLES/protectedRoleOrder).
  */
-const CHASE_EXEMPT_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const CHASE_EXEMPT_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981
 
 function teamIdOf(entrant: Entrant | undefined): string | null {
   const raw = entrant?.team_id;
@@ -2067,7 +2068,8 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // #6804 P2: hvilke hold har jagt-interesse i DETTE udbrud (etapeinteresse eller positivt signal)?
     // #7160 (KUN s5_profiles_v3, bjerg i etapeloeb): klassementshold vaegter etapeinteressen ned bag et ufarligt udbrud.
     const mountainLetGo = chaseV3 ? s5V3MountainLetGoInterestScale({ s5ProfilesV3: ctx.s5ProfilesV3, profileType: ctx.route.profile_type, gcContext: normalizedGc, chaseGroupRiderIds: chaseGroup.rider_ids, breakawayRiderIds: breakaway.rider_ids, entrants: ctx.entrants }) : undefined;
-    const p2Interest = p2Lead ? realisticLeadInterest({ chaseGroup, breakaway, chasePlan, fieldRiderIds, excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ctx, finaleWeightScale: p1FinaleWeightScale, ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) }) : null;
+    // #7160 valg A2: P2's snor gaelder ikke paa bjerg, naar udbruddet er ufarligt for hvert klassementshold i jagtgruppen.
+    const p2Interest = p2Lead && !s5V3P2OffForHarmlessBreak({ harmlessGcTeams: mountainLetGo, chaseGroupRiderIds: chaseGroup.rider_ids, entrants: ctx.entrants, gcContext: normalizedGc }) ? realisticLeadInterest({ chaseGroup, breakaway, chasePlan, fieldRiderIds, excludedTeamIds: ownAheadTeamIds ?? racingTeamIdsIn(breakaway, state.riders, ctx.entrants), ctx, finaleWeightScale: p1FinaleWeightScale, ...(mountainLetGo ? { teamInterestScale: mountainLetGo } : {}) }) : null;
     // #6187: en jagt-ordre der ikke koeres, fordi holdet har egen mand foran.
     if (ownAheadTeamIds) {
       for (const order of parsedOrders) {

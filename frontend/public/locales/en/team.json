@@ -339,7 +339,7 @@
       "expiring": "Expires this season",
       "season": "Expires after season {season}",
       "atCap": "At the limit",
-      "atCapHint": "Already runs 3 seasons ahead. Can be extended again when the season changes."
+      "atCapHint": "Already runs as far as allowed. Can be extended again when the season changes."
     },
     "bar": {
       "none": "Tick the riders you want to extend.",
@@ -365,6 +365,30 @@
     "loadErrorBody": "Nothing was lost. Your contracts are unchanged.",
     "retry": "Try again",
     "emptyTitle": "Sign riders to manage their contracts",
-    "emptyBody": "Riders you own show up here, grouped by when their contract expires."
+    "emptyBody": "Riders you own show up here, grouped by when their contract expires.",
+    "buyback": {
+      "title": "Get your riders back",
+      "intro": "These riders left your team at the season change without the contract warning you should have had. Sign them again within 7 days: normal salary, 1 season, no signing fee.",
+      "squad": "Squad",
+      "deadline": "Until",
+      "sign": "Sign again",
+      "signAria": "Sign {name} again",
+      "done": "{name} is back on your team.",
+      "squads": {
+        "senior": "Senior",
+        "u23": "U23",
+        "junior": "Junior"
+      },
+      "errors": {
+        "buyback_not_eligible": "Not covered",
+        "buyback_rider_not_free": "Signed by another team",
+        "buyback_rider_retired": "Retired",
+        "buyback_rider_on_auction": "On auction",
+        "buyback_expired": "The 7 days have passed",
+        "buyback_squad_full": "Your squad is full",
+        "buyback_no_team": "You need a team",
+        "buyback_failed": "Could not sign him again. Try again."
+      }
+    }
   }
 }

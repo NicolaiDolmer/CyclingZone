@@ -98,13 +98,12 @@ features:
     area: race-engine
     title_en: Form peaks in races
     title_da: Formtoppe i løbene
-    state: building
+    state: live
+    flag: race_form_peaks
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6156
-    verified: 2026-10-19
-    note: Flaget oprettes off ved merge.
-    decision: taend
-    decide_by: 2026-10-25
+    verified: 2026-10-26
+    note: On 26/10 09:23 efter ejer-go (formtest #6818), læst tilbage i prod.
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
 
@@ -120,14 +119,13 @@ features:
 
   - id: race-engine-s5-profiles
     area: race-engine
-    title_en: S5 engine rules (s5_profiles_v2)
-    title_da: S5-motorregler (s5_profiles_v2)
+    title_en: S5 engine rules (s5_profiles_v3)
+    title_da: S5-motorregler (s5_profiles_v3)
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
-    epic: 6369
-    verified: 2026-10-17
-    note: "CURRENT_RACE_RULES_REVISION = s5_profiles_v2 fra tænd-PR'en #6818 (ejer-go; s5_profiles_v1 var aktuel fra 17/10, #6369): løb hvis første etape claimes efter deploy binder til S5 v2 (formtoppe i v4 #6156 + udbrudsopfølgningen #6748), startede løb beholder deres revision; rollback = revert af konstanten."
-
+    epic: 6804
+    verified: 2026-10-26
+    note: "CURRENT_RACE_RULES_REVISION = s5_profiles_v3 fra tænd-PR'en (ejer-go 26/10; v2 var aktuel fra 23/10, #6818): løb hvis første etape claimes efter deploy binder til v3; startede løb beholder deres revision; rollback = revert af konstanten."
   - id: race-notify-outbox
     area: race-engine
     title_en: Async delivery of race result posts
@@ -265,6 +263,19 @@ features:
     epic: 6570
     verified: 2026-10-24
     note: PR #6633; beta 15/10; on for alle 24/10 19:48 UTC efter ejerens gennemgang (#7153, læst i prod). Rettelser #7168.
+
+  - id: stage-plan-v1
+    area: race-day
+    title_en: Stage plan along the route
+    title_da: Etapeplan langs ruten
+    state: dormant
+    flag: stage_plan_v1
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7003
+    verified: 2026-10-25
+    note: Seedet off; kun s5_profiles_v3-løb. Ejeren tænder.
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
 
   - id: race-library-v2
     area: stats
@@ -573,17 +584,6 @@ features:
     verified: 2026-10-14
     note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
 
-  - id: training-train-now-whole-day
-    area: training
-    title_en: Train now settles the whole day in one press
-    title_da: Træn nu afregner hele dagen i ét klik
-    state: building
-    epic: 6461
-    verified: 2026-10-25
-    note: PR #7191 (B fase 1). Stadie-flag training_train_now_whole_day seedes off af migrationen (apply efter merge); dormant med flag efter apply, tænding kun på ejer-go.
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
-
   - id: training-groups
     area: training
     title_en: Training groups
@@ -665,6 +665,30 @@ features:
     epic: 3550
     verified: 2026-10-16
     note: "Erstatter søndagsdrip (#3550). Tændt med Akademi 2.0 (#6666) på ejerens \"tænd\" 16/10; flag on læst i prod 16/10."
+
+  - id: academy-pull-reminder
+    area: academy
+    title_en: Academy reminders
+    title_da: Påmindelser om ugens akademi-kuld
+    state: dormant
+    ssot: docs/YOUTH_RULES.md
+    epic: 6666
+    verified: 2026-10-25
+    note: "Flag academy_pull_reminder_enabled; ejeren tænder (#7177)."
+    decision: taend
+    decide_by: 2026-11-08
+
+  - id: academy-ai-weekly-pull
+    area: academy
+    title_en: AI academy pull
+    title_da: AI-hold henter ugens akademi-kuld
+    state: dormant
+    ssot: docs/YOUTH_RULES.md
+    epic: 6666
+    verified: 2026-10-25
+    note: "Flag academy_ai_weekly_pull_enabled; ikke nu."
+    decision: ejer-beslutning
+    decide_by: 2026-12-31
 
   - id: season-academy-intake
     area: academy
@@ -766,33 +790,55 @@ features:
     area: season
     title_en: Development 2.0 part 1 (decline at season change, only manager teams develop)
     title_da: Udvikling 2.0 del 1 (tilbagegang ved sæsonskiftet, kun managerhold udvikler sig)
-    state: dormant
+    state: live
     flag: development_v2_aging_enabled
     epic: 6499
-    verified: 2026-10-15
-    note: PR #6501. Ejer flipper ved skiftet 25/10.
+    verified: 2026-10-26
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
 
   - id: ability-cap-per-date
     area: training
     title_en: Max +1 per ability per date
     title_da: Maks +1 pr. evne pr. dato
-    state: dormant
+    state: live
     flag: ability_cap_per_date_enabled
     epic: 6110
-    note: Ejer, med Udvikling 2.0.
-    verified: 2026-10-23
-    decision: taend
-    decide_by: 2026-10-25
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
+    verified: 2026-10-26
 
   - id: development-curve-b
     area: training
     title_en: Development curve B (level and potential drive development, not age)
     title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
-    state: dormant
+    state: live
     flag: development_curve_b
     ssot: docs/TRAINING_RULES.md
     epic: 3564
-    note: Ejer, efter ny 10-sæsoners-kørsel med den rigtige kurve; kræver private params i serverens miljø.
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
+    verified: 2026-10-26
+
+  - id: development-score-b-engine
+    area: training
+    title_en: Development Score B in the engine
+    title_da: Udviklingsscore B i motoren
+    state: dormant
+    flag: development_score_v2
+    ssot: docs/TRAINING_RULES.md
+    epic: 6110
+    note: Ejer, med Udvikling 2.0.
+    verified: 2026-10-25
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+
+  - id: race-day-catchup
+    area: training
+    title_en: Catch-up via racing
+    title_da: Catch-up via løb
+    state: dormant
+    flag: race_day_catchup_enabled
+    ssot: docs/TRAINING_RULES.md
+    epic: 6950
+    note: Ejer, med Udvikling 2.0.
     verified: 2026-10-25
     decision: ejer-beslutning
     decide_by: 2026-11-08

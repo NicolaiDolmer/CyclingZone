@@ -71,6 +71,7 @@ import {
   resolveRaceRulesRevision,
   isOrdersGcRulesRevision,
   isS5ProfilesV2OrLater,
+  isS5ProfilesV3OrLater,
 } from "./raceEngineRulesRevision.ts";
 // #2410 (event-log S1): deterministisk etape-tidslinje-generator — REN funktion,
 // samme build-trin som moments/passages (data er i memory). Bag flag
@@ -158,7 +159,10 @@ import {
   filterCompletedEntrants,
   dailyTeamPlacesFromStageRows,
   jerseyLeadersFromComps,
+  KOM_HUNTERS_TOP_N,
 } from "./raceClassifications.js";
+// #6937 B1 (KUN s5_profiles_v3): bjergjaegerne foer etapen (raceClassifications.jerseyLeadersFromComps).
+const komHunterOpts = (rev) => (isS5ProfilesV3OrLater(rev) ? { komHunters: KOM_HUNTERS_TOP_N } : undefined);
 // Sub-2 (#2770): passage-lag — ren efterbehandling af simulateStage-output
 // (mellemsprint/KOM-konkurrencer + bonussekunder). Kaldes med SAMME seed som
 // simulateStage; motoren selv læser aldrig rutefelterne (bit-identisk).
@@ -607,7 +611,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     // (pushIndiv, computePassages, akkumulering, klassementer) er uændret.
     // #5914: troejefoererne FOER denne etape (pointsComp/komComp holder
     // totalerne efter de foregaaende etaper i denne loop-instans).
-    const jerseyLeaders = v4Engine && isStageRace ? jerseyLeadersFromComps(stageEntrants, pointsComp, komComp) : null;
+    const jerseyLeaders = v4Engine && isStageRace ? jerseyLeadersFromComps(stageEntrants, pointsComp, komComp, komHunterOpts(rulesRevision)) : null;
     // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape); legacy-kaldet er uændret.
     const gcStandings = v4Engine && isStageRace && isOrdersGcRulesRevision(rulesRevision) ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
     const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = v4Engine
@@ -2952,7 +2956,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
         stageRows: priorStageRows,
         profileTypeByStage: new Map(stagesSorted.map((s) => [s.stage_number || 1, s.profile_type])),
       });
-      return jerseyLeadersFromComps(simEntrants, priorComps.pointsComp, priorComps.komComp);
+      return jerseyLeadersFromComps(simEntrants, priorComps.pointsComp, priorComps.komComp, komHunterOpts(rulesRevision));
     })()
     : null;
   // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape, null = mangler); legacy-kaldet er uændret.

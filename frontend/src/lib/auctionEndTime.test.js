@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   defaultEndWallClock,
+  FREE_AGENT_MIN_HOURS,
   gameWallClockToUTC,
   getEndTimeIssue,
   utcToGameWallClock,
@@ -83,9 +84,9 @@ test("getEndTimeIssue: tom værdi → invalid_end_time", () => {
   assert.equal(getEndTimeIssue("", new Date(), PROD).code, "invalid_end_time");
 });
 
-test("defaultEndWallClock: 12 timer frem når det lander i vinduet", () => {
+test("defaultEndWallClock: 12 timer frem + luft, rundet op til kvarter, når det lander i vinduet", () => {
   const now = gameWallClockToUTC("2026-08-15T10:00");
-  assert.equal(defaultEndWallClock(now, PROD), "2026-08-15T22:00");
+  assert.equal(defaultEndWallClock(now, PROD), "2026-08-15T22:15");
 });
 
 test("defaultEndWallClock: trækkes ind i vinduet når 12 timer frem er nat", () => {
@@ -101,4 +102,32 @@ test("defaultEndWallClock: forslaget er altid gyldigt hen over døgnet", () => {
     const wall = defaultEndWallClock(now, PROD);
     assert.equal(getEndTimeIssue(wall, now, PROD), null, `fejlede ved kl. ${hour}`);
   }
+});
+
+// #7220: fri-transfer-rytter — vælgeren holder 12-timers-gulvet, og standard-
+// forslaget opfylder det altid (det flyttes kun senere, aldrig tidligere).
+test("getEndTimeIssue: fri transfer afviser under 12 timer", () => {
+  const now = gameWallClockToUTC("2026-08-15T10:00");
+  const issue = getEndTimeIssue("2026-08-15T21:00", now, { ...PROD, min_hours: FREE_AGENT_MIN_HOURS });
+  assert.ok(issue);
+  assert.equal(issue.code, "end_too_soon");
+  assert.equal(issue.minHours, FREE_AGENT_MIN_HOURS);
+  assert.equal(getEndTimeIssue("2026-08-15T22:00", now, { ...PROD, min_hours: FREE_AGENT_MIN_HOURS }), null);
+});
+
+test("defaultEndWallClock: forslaget er gyldigt med 12-timers-gulvet hele døgnet", () => {
+  const cfg = { ...PROD, min_hours: FREE_AGENT_MIN_HOURS };
+  for (let hour = 0; hour < 24; hour++) {
+    const now = gameWallClockToUTC(`2026-08-15T${String(hour).padStart(2, "0")}:00`);
+    assert.equal(getEndTimeIssue(defaultEndWallClock(now, cfg), now, cfg), null, `fejlede ved kl. ${hour}`);
+  }
+});
+
+test("defaultEndWallClock: sekunder i nu gør aldrig forslaget under 12 timer (#7220, Codex)", () => {
+  const cfg = { ...PROD, min_hours: FREE_AGENT_MIN_HOURS };
+  const now = new Date(gameWallClockToUTC("2026-08-15T10:00").getTime() + 30500);
+  const wall = defaultEndWallClock(now, cfg);
+  assert.equal(getEndTimeIssue(wall, now, cfg), null);
+  // og det holder stadig et par minutter senere, når spilleren trykker start
+  assert.equal(getEndTimeIssue(wall, new Date(now.getTime() + 4 * 60000), cfg), null);
 });

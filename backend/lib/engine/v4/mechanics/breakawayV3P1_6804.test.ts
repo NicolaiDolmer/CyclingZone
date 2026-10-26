@@ -8,6 +8,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isStageRaceGcContext, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale } from "./breakawayV3_6804.ts";
 import { stageWinChaseForceV3 } from "./breakaway.ts";
+import { descentRegroup6486OnRoute } from "./descentRegroup6486.ts";
 import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
 import { simulateStageV4 } from "../index.ts";
 import type { Entrant, GcContext } from "../types.ts";
@@ -92,10 +93,20 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
   assert.ok(names.length > 0);
   for (const name of names) {
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
+    if (descentRegroup6486OnRoute(input.route)) continue; // #6486: v3 samler bjerg uden topankomst (descentRegroup6486.test.ts)
     for (const gc of [undefined, oneDay]) {
       const extra = gc ? { gc_context: gc } : {};
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
       const v3 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v3" });
+      if (gc?.status === "one_day") {
+        // #6938 U3 (v3, kun endagsloeb): en sat hjaelper kan stige af. Kun de ryttere afviger;
+        // alle andres tid og status er de samme som under v2.
+        const off = new Set((v3.incidents ?? []).filter((i) => i.kind === "withdrawal").map((i) => i.rider_id));
+        assert.ok((v3.incidents ?? []).filter((i) => i.kind !== "withdrawal").length === (v2.incidents ?? []).length, `${name}: kun hjaelpere der stiger af er nye`);
+        const keep = (out: ReturnType<typeof simulateStageV4>) => out.results.filter((r) => !off.has(r.rider_id)).map((r) => [r.rider_id, r.time_seconds, r.status]);
+        assert.deepEqual(keep(v3), keep(v2), `${name} endagsloeb`);
+        continue;
+      }
       assert.equal(JSON.stringify(withoutGapUpdates(v3)), JSON.stringify(withoutGapUpdates(v2)), `${name} ${gc?.status ?? "uden gc"}`);
       assert.equal(JSON.stringify(v3.results), JSON.stringify(v2.results), `${name}: resultaterne er ens`);
       // Kun udbruddets jagt-punkter er nye; alle v2's gap_update findes uaendret eller er erstattet af et jagt-punkt paa samme km.

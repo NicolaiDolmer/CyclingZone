@@ -19,9 +19,12 @@ import { mean, median, spearmanCorrelation } from "../../lib/headToHeadStats.js"
 import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
 import { createJerseyTally } from "./jerseyTally.mjs"; // #6804 v3 G16/G18
+import { breakawayKomPointsOfStage, createJerseyLeaderTracker } from "./komGcOverlap6937.mjs"; // #6937 G16
 import { isOrdersGcRulesRevision, isS5ProfilesV2OrLater } from "../../../lib/raceEngineRulesRevision.ts";
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
 import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
+import { nextFormV2, recoveryV2, stageLoadV2 } from "../../../lib/conditionModelV2.js";
+import { assessIllness } from "../../../lib/conditionIllness.js"; // #6938 sygdom i --track-fatigue
 // Loebsfilmens egen afledning (samme kode som spillerne ser): "hvor tabte
 // rytterne tid" og om tidslinjen overhovedet baerer v4's gruppe-gab.
 import { buildOwnTimeLoss, hasGroupGaps } from "../../../../frontend/src/lib/stageSplitTimes.ts";
@@ -599,11 +602,11 @@ export function sortedStages(data) {
   return data.profiles.slice().sort((a, b) => a.stage_number - b.stage_number);
 }
 
-function simulate({ v4, data, stages, profile, entrants, revision, gcStandings, seedTag, orders }) {
+function simulate({ v4, data, stages, profile, entrants, revision, gcStandings, seedTag, orders, jerseyLeaders = null }) {
   return v4.simulateStage({
     entrants, stageProfile: profile, seedString: `${data.race.id}:${profile.stage_number}:${seedTag}`, stageNumber: profile.stage_number,
     teamOrderRows: orders ?? data.orders, isStageRace: stages.length > 1, raceStages: stages, squad: data.race.squad ?? null,
-    rulesRevision: revision, gcStandings,
+    rulesRevision: revision, gcStandings, jerseyLeaders, // #5914/#6937: troejefoererne som i raceRunner
   });
 }
 
@@ -622,27 +625,83 @@ const addTo = (m, k, v) => m.set(k, (m.get(k) ?? 0) + v);
  * (res er hele broens svar; gem kun det der skal bruges).
  * Returnerer slutklassementet.
  */
-export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedStages(data), entrants = splitEntrants(data).entrants, onStage = null }) {
+export function runStagesInOrder({ v4, data, revision, seedTag, stages = sortedStages(data), entrants = splitEntrants(data).entrants, onStage = null, trackFatigue = false }) {
   const cumTime = new Map();
   const posSum = new Map();
   const passGc = isOrdersGcRulesRevision(revision) && stages.length > 1;
   let inRace = entrants;
   let gcAfter = [];
+  // #6938 (Codex #7178): traethedshistorik pr. rytter (nyeste foerst) til sygdommen.
+  const fatigueHistory = new Map();
+  const jerseyTracker = createJerseyLeaderTracker(revision, stages.length > 1); // #5914/#6937 prod-paritet
   stages.forEach((profile, index) => {
     const gcBefore = index === 0 ? [] : rankByCumTimeAsc(inRace, cumTime, posSum);
-    const res = simulate({ v4, data, stages, profile, entrants: inRace, revision, gcStandings: passGc ? gcBefore : null, seedTag });
+    const jerseyLeaders = jerseyTracker.leadersFor(inRace);
+    const res = simulate({ v4, data, stages, profile, entrants: inRace, revision, gcStandings: passGc ? gcBefore : null, seedTag, jerseyLeaders });
+    jerseyTracker.addStage(res, profile);
+    // #6938 (Codex P2): onStage faar feltet SOM DET KOERTE etapen (tilstanden foer etapen),
+    // saa en parret genkoersel (sprinttoget) kun maaler ordren, ikke traethedens fremskrivning.
+    const stageEntrants = inRace;
     const bonus = (id) => res.passages?.perRider?.get(id)?.bonus_seconds ?? 0;
     for (const r of res.ranked) {
       addTo(cumTime, r.rider_id, r.stageGap - bonus(r.rider_id));
       addTo(posSum, r.rider_id, r.rank);
     }
-    const stageEntrants = inRace;
     const rankedIds = new Set(res.ranked.map((r) => r.rider_id));
     inRace = inRace.filter((e) => rankedIds.has(e.rider_id));
+    // #6938 (opt-in): traethed og form mellem etaperne efter #6984's model, saa
+    // U1 (ikke-start) kan maales. Udeladt = feltet koerer friskt hele loebet (som foer).
+    if (trackFatigue) {
+      inRace = inRace.map((e) => afterStageCondition(e, profile, revision));
+      // #6938 (Codex #7178): samme sygdomsvurdering som aftenens afregning
+      // (dailyTrainingEngine), seedet pr. (rytter, seed, etape). En syg rytter starter
+      // ikke naeste etape og er ude af klassementet, saa G17 taeller ham som udgaaet.
+      // Medicinsk afdeling kendes ikke i testporten (bonus 0 = konservativt).
+      inRace = inRace.filter((e) => {
+        const history = [e.fatigue, ...(fatigueHistory.get(e.rider_id) ?? [])];
+        fatigueHistory.set(e.rider_id, history);
+        return !assessIllness({ riderId: e.rider_id, dateStr: `${seedTag}:${profile.stage_number}`, fatigues: history }).ill;
+      });
+    }
     gcAfter = rankByCumTimeAsc(inRace, cumTime, posSum);
-    onStage?.({ profile, index, res, gcBefore, gcAfter, entrants: stageEntrants });
+    onStage?.({ profile, index, res, gcBefore, gcAfter, entrants: stageEntrants, jerseyLeaders });
   });
   return gcAfter;
+}
+
+/**
+ * #6938: én rytters traethed og form efter en etape under #6984's model (Form og
+ * traethed 2.0): etapens belastning lagt til, ét doegns restitution trukket fra.
+ * REN; entrant-objektet kopieres.
+ */
+export function afterStageCondition(entrant, profile, revision = null) {
+  const fatigue = Math.max(0, Math.min(100, Number(entrant.fatigue) || 0));
+  const load = stageLoadV2({ profileType: profile.profile_type, distanceKm: profile.distance_km ?? null, stageNumber: profile.stage_number ?? 1, effort: entrant.effort ?? "normal", rulesRevision: revision });
+  const next = Math.max(0, Math.min(100, fatigue + load - recoveryV2({ fatigue, recoveryAbility: entrant.abilities?.recovery ?? 50 })));
+  return { ...entrant, fatigue: Math.round(next), form: nextFormV2({ form: entrant.form ?? 50, fatigue: next }) };
+}
+
+/** #6938 G17: kaptajner og hjaelpere i udgaaede-maalingen (race_role). */
+const G17_ROLES = Object.freeze({ captain: "captain", sprint_captain: "captain", helper: "helper" });
+
+/** #6938 G17: startere og udgaaede (uden slutklassement) pr. rollegruppe for ét seed. */
+export function abandonCounts(entrants, finalStandings) {
+  const finished = new Set((finalStandings ?? []).map((r) => r.rider_id));
+  const startersByRole = {};
+  const outByRole = {};
+  let out = 0;
+  for (const e of entrants) {
+    const group = G17_ROLES[e.race_role] ?? "other";
+    startersByRole[group] = (startersByRole[group] ?? 0) + 1;
+    if (finished.has(e.rider_id)) continue;
+    out += 1;
+    outByRole[group] = (outByRole[group] ?? 0) + 1;
+  }
+  // Codex #7178: aktiverings-gaten (v3Gates.measureG17) laeser kontrakten
+  // `byRole[rolle] = { starters, out }`; testport-rapporten laeser de to flade maps.
+  const byRole = {};
+  for (const [group, starters] of Object.entries(startersByRole)) byRole[group] = { starters, out: outByRole[group] ?? 0 };
+  return { starters: entrants.length, out, startersByRole, outByRole, byRole };
 }
 
 /**
@@ -862,7 +921,7 @@ export function leadoutEffect({ withRes, withoutRes, entrants, teams }) {
  * Hele loebet under én revision over `seeds` seeds. Klassementet akkumuleres
  * pr. seed som i spillet (runStagesInOrder).
  */
-export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, seedPrefix = "tour6285", shortRaceGapBands = null }) {
+export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, seedPrefix = "tour6285", shortRaceGapBands = null, trackFatigue = false }) {
   const stages = sortedStages(data);
   const { entrants: all, droppedWithoutAbilities } = splitEntrants(data);
   const abilitiesById = new Map(data.abilities.map((a) => [a.rider_id, a]));
@@ -877,9 +936,10 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const pointsByRider = new Map(); // #2757 S0
     const seedTag = `${seedPrefix}-${s}`;
     const jerseys = createJerseyTally(); // #6804 v3 G16/G18
+    const komBreakPts = new Map(); // #6937 G16: bjergpoint taget i udbrud
     const final = runStagesInOrder({
-      v4, data, revision, seedTag, stages, entrants: all,
-      onStage: ({ profile, res, gcBefore, gcAfter, entrants }) => {
+      v4, data, revision, seedTag, stages, entrants: all, trackFatigue,
+      onStage: ({ profile, res, gcBefore, gcAfter, entrants, jerseyLeaders }) => {
         const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider, revision });
         // #2757 S0: vinderens plads paa sprint-evne + pointtroejens regnskab (motorens passage-point).
         m.winnerSprintRank = sprintRankIn(m.winnerId, riderIds, abilitiesById);
@@ -887,13 +947,14 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
           if (Number(t.sprint_points) > 0) pointsByRider.set(t.rider_id, (pointsByRider.get(t.rider_id) ?? 0) + Number(t.sprint_points));
         }
         jerseys.addStage({ profile, ranked: res.ranked, passages: res.passages });
+        for (const [id, pts] of breakawayKomPointsOfStage(res.v4Output)) komBreakPts.set(id, (komBreakPts.get(id) ?? 0) + pts); // #6937 G16
         // #2757 S0: spurtfinalens top 10 (sprinterrangering mod resultat i testporten).
         if (isBunchSprintStage(profile)) m.sprintTop10 = res.ranked.slice(0, 10).map((r) => r.rider_id);
         if (leadoutPair && isBunchSprintStage(profile)) {
           const teams = leadoutTeams(data.orders, profile.stage_number);
           if (teams.size) {
             const gcStandings = isOrdersGcRulesRevision(revision) && stages.length > 1 ? gcBefore : null;
-            const withoutRes = simulate({ v4, data, stages, profile, entrants, revision, gcStandings, seedTag, orders: ordersWithoutLeadout(data.orders, profile.stage_number) });
+            const withoutRes = simulate({ v4, data, stages, profile, entrants, revision, gcStandings, seedTag, orders: ordersWithoutLeadout(data.orders, profile.stage_number), jerseyLeaders });
             const eff = leadoutEffect({ withRes: res, withoutRes, entrants, teams });
             if (eff) m.leadout = eff;
           }
@@ -910,7 +971,9 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const finisherIds = new Set(final.map((r) => r.rider_id));
     const pj = stages.length > 1 ? pointsJerseyWinner(new Map([...pointsByRider].filter(([id]) => finisherIds.has(id)))) : null;
     const pointsJersey = pj ? { riderId: pj.riderId, role: roleByRider.get(pj.riderId) ?? null, sprintRank: sprintRankIn(pj.riderId, riderIds, abilitiesById), isGcWinner: pj.riderId === (final[0]?.rider_id ?? null) } : null;
-    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, ...jerseys.winners(final), ...(pointsJersey ? { pointsJersey } : {}) });
+    const jw = jerseys.winners(final);
+    const komWinnerBreakawayPoints = jw.komWinner ? komBreakPts.get(jw.komWinner) ?? 0 : null; // #6937 G16
+    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, abandons: abandonCounts(all, final), ...jw, komWinnerBreakawayPoints, ...(pointsJersey ? { pointsJersey } : {}) });
   }
   return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision, { shortRaceGapBands }) };
 }

@@ -271,8 +271,16 @@ export function isOrdersGcV3OrLater(value: unknown): boolean {
  * 2026-10-17-6818-engine-rules-revision-s5-v2.sql SKAL vaere applied foer foerste
  * claim; ellers fejler bindingen hoejlydt paa CHECK-constrainten. Rollback =
  * revert af denne konstant (migrationen kan blive staaende).
+ *
+ * "s5_profiles_v3" fra ejerens go 26/10 (#6804): hele S5 v2 + v3-tilvalgene
+ * (bjergtroeje G16, udgaaede G17 inkl. sygdom fra traethed, pointtroeje G18,
+ * bjerg uden topankomst G19, udbrud paa flad G2, jagtafstand i loebsfilmen) er
+ * aktuel for ALLE loeb hvis foerste etape claimes efter deploy. Loeb der allerede
+ * er bundet til s5_profiles_v2 (eller aeldre) faerdiggoeres paa den. CHECK-
+ * constrainten tillader allerede s5_profiles_v3 i prod (laest 26/10). Rollback =
+ * revert af denne konstant.
  */
-export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "s5_profiles_v2";
+export const CURRENT_RACE_RULES_REVISION: RaceRulesRevision = "s5_profiles_v3";
 
 export class RaceRulesRevisionError extends Error {
   readonly revision: unknown;

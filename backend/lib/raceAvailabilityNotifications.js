@@ -85,6 +85,38 @@ export function buildTrainingInjuryNotification({ riderId, riderName, injuredUnt
   };
 }
 
+/** #6938: lægens besked når en rytter bliver syg af langvarig ekstrem træthed. */
+export function buildRiderIllNotification({ riderId, riderName, injuredUntil }) {
+  const rider = riderName || "A rider";
+  const until = shortDayMonth(injuredUntil) ?? injuredUntil;
+  return {
+    type: RACE_AVAILABILITY_NOTIFICATION_TYPE,
+    title: "Rider ill",
+    message: `The doctor says ${rider} is ill after several days of extreme fatigue and is out until ${until}.`,
+    relatedId: riderId ?? null,
+    metadata: {
+      riderId: riderId ?? null,
+      titleCode: "notif.riderIll.title",
+      titleParams: {},
+      messageCode: "notif.riderIll.message",
+      messageParams: { rider, until },
+    },
+  };
+}
+
+/** PURE (#6938): de NYE sygdomme i ét afregnet tick (illness_days > 0), med datoen fra condition-raekken. */
+export function newTrainingIllnesses({ reportRiders, conditionUpserts, today }) {
+  const untilByRider = new Map((conditionUpserts ?? []).map((c) => [c?.rider_id, c?.injured_until ?? null]));
+  const out = [];
+  for (const r of reportRiders ?? []) {
+    if (!r?.rider_id || !(Number(r.illness_days) > 0)) continue;
+    const injuredUntil = untilByRider.get(r.rider_id);
+    if (!injuredUntil || (today && injuredUntil < today)) continue;
+    out.push({ riderId: r.rider_id, riderName: r.name || null, injuredUntil });
+  }
+  return out;
+}
+
 /**
  * PURE (#7086): de NYE træningsskader i ét afregnet træningstick. En ny skade er en
  * rapportlinje med injury_days > 0 (sat KUN når skaden blev rullet i dette tick; en
@@ -120,6 +152,10 @@ export async function notifyTrainingInjuries({ supabase, teamId, reportRiders, c
     for (const injury of injuries) {
       const payload = buildTrainingInjuryNotification(injury);
       if (await deliverOne({ notify, supabase, teamId, now, payload, flow: "training-day", stage: "training-injury-notice" })) sent += 1;
+    }
+    // #6938: syg af langvarig ekstrem træthed (kun når sygdom er tændt; ellers ingen illness_days).
+    for (const illness of newTrainingIllnesses({ reportRiders, conditionUpserts, today: copenhagenDateString(now) })) {
+      if (await deliverOne({ notify, supabase, teamId, now, payload: buildRiderIllNotification(illness), flow: "training-day", stage: "training-illness-notice" })) sent += 1;
     }
   } catch (err) {
     captureException(err, { tags: { flow: "training-day", stage: "training-injury-notice" }, teamId });

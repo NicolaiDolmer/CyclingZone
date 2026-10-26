@@ -81,8 +81,8 @@ test("#6937: v3-adfaerden gaelder kun s5_profiles_v3; v1, v2 og alt andet er uro
   }
 });
 
-test("#6937 B2: kaptajnerne er rollerne der ruller over (kaptajn og sprint-kaptajn)", () => {
-  assert.deepEqual([...KOM_FAVOURITE_ROLL_OVER_ROLES].sort(), ["captain", "sprint_captain"]);
+test("#6937 B2: kaptajnerne er rollerne der ruller over (kaptajn, sprint-kaptajn og delt kaptajn #5981)", () => {
+  assert.deepEqual([...KOM_FAVOURITE_ROLL_OVER_ROLES].sort(), ["captain", "co_captain", "sprint_captain"]);
 });
 
 test("#6937 B2: uden v3 kaemper hele den lille gruppe (#5914): kaptajnerne tager toppen paa evne", () => {

@@ -23,9 +23,9 @@ export function useStoryText(cast: Cast) {
     const name = names || t("stagePageV2.story.aRider");
     const d = line.data;
     switch (line.kind) {
-      case "formed": return t("stagePageV2.story.line.formed", { count: line.count });
-      case "caught": return t("stagePageV2.story.line.caught", { count: Number(d.riders ?? line.count) });
-      case "survived": return t("stagePageV2.story.line.survived");
+      case "formed": return t(d.ahead ? "stagePageV2.story.line.formedAhead" : "stagePageV2.story.line.formed", { count: line.count }); // #6299
+      case "caught": return t(d.ahead ? "stagePageV2.story.line.caughtAhead" : "stagePageV2.story.line.caught", { count: Number(d.riders ?? line.count) });
+      case "survived": return t(d.ahead ? "stagePageV2.story.line.survivedAhead" : "stagePageV2.story.line.survived");
       case "attack": {
         const gain = typeof d.gain === "number" && d.gain >= 1 ? formatClock(d.gain) : null;
         if (!names) return t("stagePageV2.story.line.attackAnon");
@@ -53,7 +53,7 @@ export function useStoryText(cast: Cast) {
           after: formatClock(Number(d.after)),
         });
       case "split": return t("stagePageV2.story.line.split", { count: line.count });
-      case "dropped": return t("stagePageV2.story.line.dropped", { count: line.riderIds.length, names: name });
+      case "dropped": return t(d.ahead ? "stagePageV2.story.line.droppedAhead" : "stagePageV2.story.line.dropped", { count: line.riderIds.length, names: name });
       case "joined": return t("stagePageV2.story.line.joined", { count: line.count });
       case "gcLead": return t("stagePageV2.story.line.gcLead", { name });
       case "crack": return t("stagePageV2.story.line.crack", { name });

@@ -286,7 +286,7 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
     const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessTransitionReadiness',
       'transitionToNextSeason', 'formatForceOverrideDescription', 'TRANSITION_BLOCKED_ERROR',
       'ADMIN_ACTION_TYPE', 'captureException', 'logTransitionPhaseSafe', 'TRANSITION_PHASE_STATUS',
-      'captureApiRouteError', routeSource.slice(bodyStart, bodyEnd));
+      'captureApiRouteError', 'runValuesAfterTransition', routeSource.slice(bodyStart, bodyEnd));
     const transitionSource = readFileSync(new URL('./seasonTransition.js', import.meta.url), 'utf8');
     const transitionStart = transitionSource.indexOf('export async function transitionToNextSeason(');
     const prefix = transitionSource.slice(transitionStart, transitionSource.indexOf('  const log = [];', transitionStart))
@@ -294,7 +294,7 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
     const runTransition = new AsyncFunction('buildTransitionPlan', 'assessFinalTrainingDateSettlement', 'args', 'writeSentinel',
       prefix + '\nreturn writeSentinel();\n}\nreturn transitionToNextSeason(args);');
     const audit = [], order = [];
-    let transitionWrites = 0, settlementReads = 0, guardDetail = null, status = 200, response;
+    let transitionWrites = 0, settlementReads = 0, guardDetail = null, status = 200, response, valueRuns = 0;
     const fixture = client();
     const supabase = { from(table) {
       if (table === 'admin_log') return { async insert(row) {
@@ -321,7 +321,8 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
       async () => ({ ready: false, failed_critical: ['season_end_completed'] }), transition,
       readiness.formatForceOverrideDescription, readiness.TRANSITION_BLOCKED_ERROR,
       { MANUAL_OVERRIDE: 'manual_override' }, () => {},
-      async () => { audit.push({ action_type: 'failed' }); }, { FAILED: 'failed' }, () => {});
+      async () => { audit.push({ action_type: 'failed' }); }, { FAILED: 'failed' }, () => {},
+      async () => { valueRuns++; return { ran: false }; });
     if (['pending', 'partial', 'missing'].includes(scenario)) {
       assert.equal(status, 400);
       assert.equal(response.error, guardDetail);
@@ -333,10 +334,13 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
       assert.equal(audit.filter(row => row.action_type === 'manual_override').length, 1);
       assert.deepEqual(order, ['settlement', 'manual_override', 'transition_write']);
       assert.equal(transitionWrites, 1);
+      // #5842 (ejer 25/10): værdierne startes straks efter et fuldført skifte.
+      assert.equal(valueRuns, 1);
     } else if (scenario === 'dry_run') {
       assert.equal(status, 200);
       assert.equal(audit.length, 0);
       assert.equal(transitionWrites, 0);
+      assert.equal(valueRuns, 0, 'dry-run starter aldrig værdikørslen');
     } else {
       assert.equal(status, 500);
       assert.match(response.error, /fixture audit failure/);
