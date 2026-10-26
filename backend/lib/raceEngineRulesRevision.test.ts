@@ -14,6 +14,7 @@ import {
   isOfficialTimesV4OrLater,
   isS5ProfilesV1OrLater,
   isS5ProfilesV2OrLater,
+  isS5ProfilesV3OrLater,
   isOfficialTimesV5OrLater,
   surfaceRulesRevision,
   ordersGcGeneration,
@@ -245,8 +246,9 @@ test("bridge: legacy leaves StageInput unchanged, orders_gc_v1 is carried, unkno
 
 test("#6084: orders_gc_v2 is a known revision and the current one for new races", () => {
   assert.equal(isKnownRulesRevision("orders_gc_v2"), true);
-  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"]);
+  assert.deepEqual([...RACE_RULES_REVISIONS], ["legacy", "orders_gc_v1", "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2", "s5_profiles_v3"]);
   // #6818: nye loeb bindes til s5_profiles_v2; loeb bundet til v2/v3/v4/v5/S5 v1 beholder deres.
+  // #6938: s5_profiles_v3 er kendt men slukket (aldrig aktuel foer ejerens taend).
   assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v2");
 });
 
@@ -279,13 +281,13 @@ test("#6284/#6199: the v3 migration excludes official_times; the official-times 
   const check = sql.match(/IN \(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   const allowed = check[1].split(",").map((s) => s.trim().replace(/'/g, ""));
-  assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && !revision.startsWith("official_times_") && revision !== "s5_profiles_v1" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(allowed, RACE_RULES_REVISIONS.filter((revision) => !revision.startsWith("official_times_") && revision !== "s5_profiles_v1" && revision !== "s5_profiles_v2" && revision !== "s5_profiles_v3"));
   const migration = readFileSync(new URL("../../database/2026-10-08-race-engine-rules-revision-official-times.sql", import.meta.url), "utf8");
   const migrated = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(migrated);
   // #6200: official_times_v3 got its own migration (#6452); #6464: official_times_v4
   // is switched off and needs its own migration in the flip PR.
-  assert.deepEqual(migrated[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "official_times_v3" && revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(migrated[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v3" && revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2" && revision !== "s5_profiles_v3"));
   // Idempotent and additive: the constraint is replaced, never a row update.
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
@@ -303,10 +305,10 @@ test("#6187: orders_gc_v3 is known but never current (official_times_v2 includes
 });
 
 test("#6187/#6284: orders_gc is a lineage; official times branches from v2 without v3 mechanics", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 2, 3, 3, 3, 3, 3, 3]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true, true, true, true, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true, true, true, true, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, false, true, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(ordersGcGeneration), [0, 1, 2, 3, 2, 3, 3, 3, 3, 3, 3, 3]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcRulesRevision), [false, true, true, true, true, true, true, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV2OrLater), [false, false, true, true, true, true, true, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOrdersGcV3OrLater), [false, false, false, true, false, true, true, true, true, true, true, true]);
   for (const unknown of [null, undefined, "", "orders_gc_v9", 3]) {
     assert.equal(ordersGcGeneration(unknown), 0);
     assert.equal(isOrdersGcRulesRevision(unknown), false);
@@ -334,8 +336,8 @@ test("#6199: official_times_v2 is the full v3 lineage plus official times and th
 });
 
 test("#6199: official times and the shared clock belong to exactly the official-times revisions", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(preservesOfficialStageTimes), [false, false, false, false, true, true, true, true, true, true, true]);
-  assert.deepEqual(RACE_RULES_REVISIONS.map(usesSharedGroupTime), [false, false, false, false, true, true, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(preservesOfficialStageTimes), [false, false, false, false, true, true, true, true, true, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(usesSharedGroupTime), [false, false, false, false, true, true, true, true, true, true, true, true]);
   for (const unknown of [null, undefined, "", "official_times_v9", "orders_gc_v3 ", 3]) {
     assert.equal(preservesOfficialStageTimes(unknown), false);
     assert.equal(usesSharedGroupTime(unknown), false);
@@ -365,7 +367,7 @@ test("#6452: the v3 migration allows every known revision, additively and idempo
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6464: official_times_v4 came later, with its own migration (test below).
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v4" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2" && revision !== "s5_profiles_v3"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
 });
@@ -376,7 +378,7 @@ test("#6464: the v4 migration allows every revision known at the v4 taend, addit
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6369: s5_profiles_v1 is switched off; its CHECK extension belongs to the flip PR.
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "s5_profiles_v1" && revision !== "official_times_v5" && revision !== "s5_profiles_v2" && revision !== "s5_profiles_v3"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   assert.doesNotMatch(migration, /\bUPDATE\b|\bDELETE\b|\bINSERT\b/i);
@@ -522,8 +524,8 @@ test("#6369: s5_profiles_v1 is known, was current from its taend until #6818, an
 });
 
 test("#6369/#6156: isS5ProfilesV1OrLater is true for exactly s5_profiles_v1 and s5_profiles_v2", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isS5ProfilesV1OrLater), [false, false, false, false, false, false, false, false, true, false, true]);
-  for (const unknown of [null, undefined, "", "s5_profiles_v3", "s5_profiles_v1 ", 3]) {
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isS5ProfilesV1OrLater), [false, false, false, false, false, false, false, false, true, false, true, true]);
+  for (const unknown of [null, undefined, "", "s5_profiles_v9", "s5_profiles_v1 ", 3]) {
     assert.equal(isS5ProfilesV1OrLater(unknown), false);
   }
 });
@@ -557,7 +559,7 @@ test("#6369: the S5 migration allows every revision known before official_times_
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6462: official_times_v5 came later, with its own migration (test below).
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "official_times_v5" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "official_times_v5" && revision !== "s5_profiles_v2" && revision !== "s5_profiles_v3"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   // Hot table: add NOT VALID (no scan under ACCESS EXCLUSIVE), validate as its own statement.
@@ -605,7 +607,7 @@ test("#6462: official_times_v5 is known, was current from its taend until #6369,
 });
 
 test("#6462: isOfficialTimesV5OrLater is true for exactly official_times_v5 and s5_profiles_v1/v2", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isOfficialTimesV5OrLater), [false, false, false, false, false, false, false, false, true, true, true]);
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isOfficialTimesV5OrLater), [false, false, false, false, false, false, false, false, true, true, true, true]);
   for (const unknown of [null, undefined, "", "official_times_v6", "official_times_v5 ", 5]) {
     assert.equal(isOfficialTimesV5OrLater(unknown), false);
   }
@@ -644,7 +646,7 @@ test("#6462: the official_times_v5 migration allows every revision known before 
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
   // #6818: s5_profiles_v2 came later, with its own migration (#6818 tests below).
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3" && revision !== "s5_profiles_v2"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "s5_profiles_v2" && revision !== "s5_profiles_v3"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   assert.match(migration, /\)\)\s*NOT VALID;/);
@@ -681,7 +683,7 @@ test("#6156/#6818: s5_profiles_v2 is known, current since the owner's taend, and
 });
 
 test("#6156: isS5ProfilesV2OrLater is true for exactly s5_profiles_v2", () => {
-  assert.deepEqual(RACE_RULES_REVISIONS.map(isS5ProfilesV2OrLater), RACE_RULES_REVISIONS.map((r) => r === "s5_profiles_v2"));
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isS5ProfilesV2OrLater), RACE_RULES_REVISIONS.map((r) => r === "s5_profiles_v2" || r === "s5_profiles_v3"));
   for (const unknown of [null, undefined, "", "s5_profiles_v1", "s5_profiles_v2 ", 2]) {
     assert.equal(isS5ProfilesV2OrLater(unknown), false);
   }
@@ -713,7 +715,7 @@ test("#6818: the s5_profiles_v2 migration allows every known revision, additivel
   const migration = await readS5V2Migration();
   const check = migration.match(/IN\s*\(([^)]*)\)/);
   assert.ok(check, "CHECK-listen findes");
-  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => (revision as string) !== "s5_profiles_v3"));
+  assert.deepEqual(check[1].split(",").map((s) => s.trim().replace(/'/g, "")), RACE_RULES_REVISIONS.filter((revision) => revision !== "s5_profiles_v3"));
   assert.match(migration, /DROP CONSTRAINT IF EXISTS races_engine_rules_revision_check/);
   assert.match(migration, /lock_timeout/);
   // Hot table: add NOT VALID (no scan under ACCESS EXCLUSIVE), validate as its own statement.
@@ -795,5 +797,20 @@ test("#6156: the v4 engine gives byte-identical StageOutput under s5_profiles_v2
     const v2 = simulateStageV4({ ...input, rules_revision: "s5_profiles_v2" });
     // #6748: v2's udbrudsopfoelgning kan tilfoeje udfald i tidslinjen; alt andet er byte-identisk.
     assert.equal(JSON.stringify({ ...v2, timeline: null }), JSON.stringify({ ...v1, timeline: null }), name);
+  }
+});
+
+// ── #6938 (slukket): s5_profiles_v3 er kendt, arver hele s5_profiles_v2, og er ikke aktuel ──
+test("#6938: s5_profiles_v3 is known, not current, and inherits the whole s5_profiles_v2 package", () => {
+  const revision = "s5_profiles_v3";
+  assert.equal(isKnownRulesRevision(revision), true);
+  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision);
+  for (const helper of [ordersGcGeneration, sharedTimeModelGeneration, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater,
+    isOfficialTimesV3OrLater, isOfficialTimesV4OrLater, isOfficialTimesV5OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, preservesOfficialStageTimes, usesSharedGroupTime]) {
+    assert.equal(helper(revision), helper("s5_profiles_v2"), helper.name);
+  }
+  assert.deepEqual(RACE_RULES_REVISIONS.map(isS5ProfilesV3OrLater), RACE_RULES_REVISIONS.map((r) => r === "s5_profiles_v3"));
+  for (const unknown of [null, undefined, "", "s5_profiles_v2", "s5_profiles_v3 ", 3]) {
+    assert.equal(isS5ProfilesV3OrLater(unknown), false);
   }
 });

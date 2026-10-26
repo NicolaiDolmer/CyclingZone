@@ -1864,19 +1864,30 @@ test("#4846 (flag on): +1-loftet pr. evne gælder pr. løbsdag (#4801)", async (
   const on = await runDay(onState);
 
   const maxGain = (r) => Math.max(0, ...Object.values(r.report.riders[0].gains));
+  // #6210-flaget slukket (default): kalenderdags-stien er uaendret (bit-identisk med foer #7075).
   assert.ok(maxGain(off) >= 2, `uden loft skal mindst én evne stige 2+ (var ${maxGain(off)})`);
   assert.equal(maxGain(on), 1, "med løbsdags-ticket er loftet +1 pr. evne pr. løbsdag");
+
+  // #6210-flaget taendt: kalenderdags-stien faar ogsaa dato-loftet, og det klippede point baeres videre.
+  const capState = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: fatProgress })] });
+  capState.app_config = [...(capState.app_config ?? []), { key: "ability_cap_per_date_enabled", value: "on" }];
+  const capped = await runDay(capState);
+  assert.equal(maxGain(capped), 1, "kalenderdags-stien er klippet til +1 pr. evne pr. dato (#6210, flag on)");
+  assert.ok(Object.values(capped.report.riders[0].gains_deferred_by_date_cap ?? {}).some((n) => n > 0), "det klippede point baeres videre, ikke tabt");
 });
 
 test("#4846 (flag on): historik-snapshot skrives pr. løbsdag uden tavs kassering", async () => {
   // Historik skrives kun de ticks hvor rytteren FAKTISK faar en hel evne-gevinst,
   // saa progress saettes taet paa 1 foer hver af de to loebsdage.
-  const nearlyThere = () => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 0.99]));
-  const state = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: nearlyThere() })] });
+  // #6210: maks +1 pr. evne pr. DATO, saa de to loebsdage samme dato poppe i hver
+  // sin halvdel af evnerne (ellers klipper dato-loftet loebsdag 13's point).
+  const half = Math.ceil(VISIBLE_ABILITIES.length / 2);
+  const nearlyThere = (keys) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, keys.includes(k) ? 0.9999 : 0]));
+  const state = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: nearlyThere(VISIBLE_ABILITIES.slice(0, half)) })] });
   seedRaceDayTick(state, { gameDay: 12 });
 
   await runDay(state, { gameDay: 12 });
-  state.rider_derived_abilities[0].ability_progress = nearlyThere();
+  state.rider_derived_abilities[0].ability_progress = nearlyThere(VISIBLE_ABILITIES.slice(half));
   await runDay(state, { gameDay: 13 });
 
   const rows = state.rider_ability_race_day_history ?? [];
@@ -3286,3 +3297,89 @@ for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper'])
     else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
   });
 }
+
+// ── #6641 variant B: loebsdagens intention som udbytte-modifikator ──────────────
+test("#6641 variant B: intentionen skalerer loebsdagens udbytte kun naar race_day_intention_enabled er on", async () => {
+  const progressAfter = async ({ intention, effort }) => {
+    const state = seedState({
+      conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+      plans: [REST_PLAN],
+      abilities: [makeAbilityRow("r1", { ability_progress: {} })],
+    });
+    seedRaceDayTick(state, { gameDay: 12 });
+    seedFlags(state, { engine: "on", development: "on" });
+    state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+    if (intention) state.app_config.push({ key: "race_day_intention_enabled", value: intention });
+    seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+    state.race_stage_roles = effort ? [{ race_id: "race-1", stage_number: 1, rider_id: "r1", race_role: "helper", effort }] : [];
+    const result = await runDay(state, { gameDay: 12 });
+    assert.equal(result.report.riders[0].race_day, true);
+    return Number(state.rider_derived_abilities[0].ability_progress?.climbing ?? 0) + Number(result.report.riders[0].gains?.climbing ?? 0);
+  };
+  const none = await progressAfter({ intention: null, effort: null });
+  // Flag off: et gemt valg aendrer intet (variant A, bit-identisk).
+  assert.equal(await progressAfter({ intention: null, effort: "all_out" }), none);
+  assert.equal(await progressAfter({ intention: "off", effort: "grupetto" }), none);
+  // Flag on: trappen virker; normal og intet valg er variant A.
+  const allOut = await progressAfter({ intention: "on", effort: "all_out" });
+  const grupetto = await progressAfter({ intention: "on", effort: "grupetto" });
+  assert.equal(await progressAfter({ intention: "on", effort: "normal" }), none);
+  assert.equal(await progressAfter({ intention: "on", effort: null }), none);
+  assert.ok(allOut > none, `all_out ${allOut} skal give mere end ${none}`);
+  assert.ok(grupetto < none, `grupetto ${grupetto} skal give mindre end ${none}`);
+});
+
+// ── #3564 kurve B: kald-stedet ───────────────────────────────────────────────
+// Syntetiske testparams (ikke kalibreringen, hard rule 17). Testen laaser kun
+// koblingen: flag off eller manglende params = dagens model, on + params = kurven.
+const CURVE_B_TEST_PARAMS = JSON.stringify({
+  rate: 10, levelExponent: 2, capExponent: 0.5,
+  load: { fromAge: 16, fullAge: 24, floor: 0.5 },
+  potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+});
+
+async function runCurveBDay({ flag = null, params = undefined } = {}) {
+  const state = seedState({
+    abilities: [makeAbilityRow("r1", { ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  if (flag != null) state.app_config = [{ key: "development_curve_b", value: flag }];
+  const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  if (params === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  else process.env.DEVELOPMENT_CURVE_B_PARAMS = params;
+  const warn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args.join(" "));
+  try {
+    await runTeamTrainingDay({
+      supabase: createMockSupabase(state), teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "manager", now: NOW,
+    });
+  } finally {
+    console.warn = warn;
+    if (prev === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+    else process.env.DEVELOPMENT_CURVE_B_PARAMS = prev;
+  }
+  const row = state.rider_derived_abilities.find((r) => r.rider_id === "r1");
+  return { row: JSON.parse(JSON.stringify(row)), warnings };
+}
+
+test("#3564 kald-sted: flag off = dagens model, ogsaa med params i miljoeet", async () => {
+  const today = await runCurveBDay();
+  const offWithParams = await runCurveBDay({ flag: "off", params: CURVE_B_TEST_PARAMS });
+  assert.deepEqual(offWithParams.row, today.row);
+});
+
+test("#3564 kald-sted: flag on uden params = dagens model + advarsel uden tal", async () => {
+  const today = await runCurveBDay();
+  const onNoParams = await runCurveBDay({ flag: "on" });
+  assert.deepEqual(onNoParams.row, today.row);
+  assert.ok(onNoParams.warnings.some((w) => w.includes("[curve-b]")), "advarsel i loggen");
+  assert.ok(!onNoParams.warnings.some((w) => w.includes("levelExponent")), "advarslen viser aldrig params");
+});
+
+test("#3564 kald-sted: flag on + gyldige params sender kurven ind i tick'et", async () => {
+  const today = await runCurveBDay();
+  const curve = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  assert.notDeepEqual(curve.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
+});

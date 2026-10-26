@@ -232,6 +232,14 @@
       "title": "New academy talent has arrived",
       "message": "New candidates are waiting in your academy - sign or reject them."
     },
+    "academyPullReminderReady": {
+      "title": "New academy candidates are ready",
+      "message": "This week's intake is waiting in your academy. Bring it in before Saturday at midnight."
+    },
+    "academyPullReminderExpiring": {
+      "title": "This week's academy intake expires tonight",
+      "message": "You haven't brought in this week's candidates yet. Do it before midnight, or the intake is gone."
+    },
     "seasonStarted": {
       "title": "Season {number} has started",
       "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead.",
@@ -251,11 +259,13 @@
     },
     "raceResult": {
       "title": "Race result is in",
-      "message": "{race} has been run. View the result."
+      "message": "{race} has been run. View the result.",
+      "messageBest": "{race} has been run. Your best: {riders}."
     },
     "firstRaceResult": {
       "title": "Your first race is in the books",
-      "message": "{race} has been run. See how your riders did."
+      "message": "{race} has been run. See how your riders did.",
+      "messageBest": "{race} has been run. Your best: {riders}."
     },
     "stageResult": {
       "title": "Stage result is in",
@@ -297,8 +307,8 @@
     },
     "seasonTransitionRisk": {
       "title": "Season change: contract and retirement risk",
-      "messageBoth": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires, and {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend a rider's contract from his profile before the change to prevent release; retirement can't be prevented, but you can bid for replacements once the season changes.",
-      "messageExpiringOnly": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires. Extend their contract from the rider's profile before the change to keep them.",
+      "messageBoth": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires, and {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend contracts before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once. Retirement can't be prevented, but you can bid for replacements once the season changes.",
+      "messageExpiringOnly": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires. Extend them before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once.",
       "messageRetirementOnly": "Your squad is affected by the upcoming season change: {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Retirement can't be prevented, but you can bid for replacements once the season changes."
     },
     "watchlistDeparted": {
@@ -644,6 +654,10 @@
       "title": "{count, plural, one {New message} other {# new messages}}",
       "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Another manager sent you a message} other {# new messages from another manager}}"
+    },
+    "riderIll": {
+      "title": "Rider ill",
+      "message": "The doctor says {rider} is ill after several days of extreme fatigue and is out until {until}."
     },
     "riderInjured": {
       "title": "Rider injured",

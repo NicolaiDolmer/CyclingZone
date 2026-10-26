@@ -299,14 +299,24 @@ function StorySection({ story, lines, cast, km, onJump }: { story: RaceStory; li
   );
 }
 
+// Rute-generatorens engelske standardnavne (raceRouteGenerator.js: default-praefikser og
+// den indlagte spurt). Kun de oversaettes; lokale stednavne er rigtige navne.
+const GENERIC_SPRINT = /^intermediate sprint$/i;
+const GENERIC_CLIMB = /^(?:climb|ascent|hill) of (.+)$/i;
+
 function SplitTable({ rows, cast, me, precise }: { rows: SplitRow[]; cast: Cast; me: string | null; precise: boolean }) {
   const { t } = useTranslation("races");
   const meName = me ? cast.nameOf(me) : null;
-  const pointName = (r: SplitRow) => r.kind === "finish"
-    ? t("stagePageV2.story.splits.finish")
-    : r.kind === "sprint"
-      ? r.name ?? t("stagePageV2.story.splits.sprint")
+  // Ejer 24/10: rute-generatorens engelske standardnavne ("Intermediate Sprint", "Climb of X",
+  // "Ascent of X", "Hill of X") oversaettes; rigtige stednavne (fx "Côte de X") vises uaendret.
+  const pointName = (r: SplitRow) => {
+    if (r.kind === "finish") return t("stagePageV2.story.splits.finish");
+    if (r.kind === "sprint") return !r.name || GENERIC_SPRINT.test(r.name) ? t("stagePageV2.story.splits.sprint") : r.name;
+    const place = r.name ? GENERIC_CLIMB.exec(r.name)?.[1] : null;
+    return place
+      ? t("stagePageV2.story.splits.topOfPlace", { place })
       : t("stagePageV2.story.splits.top", { name: r.name ?? t("stagePageV2.story.splits.climb") });
+  };
   const leading = (r: SplitRow) => {
     if (isPeloton(r.leaderIsRest, r.leaderSize)) return t("stagePageV2.story.group.peloton");
     return namesList(r.leaderIds, cast, 2, r.leaderSize) || (r.leaderSize ? t("stagePageV2.story.group.riders", { count: r.leaderSize }) : "-");

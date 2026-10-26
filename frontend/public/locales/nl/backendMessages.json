@@ -232,6 +232,14 @@
       "title": "Nieuw academietalent is aangekomen",
       "message": "Nieuwe kandidaten wachten in je academie - contracteer of wijs ze af."
     },
+    "academyPullReminderReady": {
+      "title": "Nieuwe academiekandidaten staan klaar",
+      "message": "De lichting van deze week wacht in je academie. Haal ze op vóór zaterdag middernacht."
+    },
+    "academyPullReminderExpiring": {
+      "title": "De academielichting van deze week verloopt vannacht",
+      "message": "Je hebt de kandidaten van deze week nog niet opgehaald. Doe het vóór middernacht, anders is de lichting weg."
+    },
     "seasonStarted": {
       "title": "Seizoen {number} is begonnen",
       "message": "Een nieuw seizoen is begonnen. Bekijk je dashboard voor de doelen van je bestuur en je selectie voor het seizoen dat komt.",
@@ -251,11 +259,13 @@
     },
     "raceResult": {
       "title": "De koersuitslag is binnen",
-      "message": "{race} is gereden. Bekijk de uitslag."
+      "message": "{race} is gereden. Bekijk de uitslag.",
+      "messageBest": "{race} is gereden. Je beste renners: {riders}."
     },
     "firstRaceResult": {
       "title": "Je eerste koers zit erop",
-      "message": "{race} is gereden. Kijk hoe je renners het deden."
+      "message": "{race} is gereden. Kijk hoe je renners het deden.",
+      "messageBest": "{race} is gereden. Je beste renners: {riders}."
     },
     "stageResult": {
       "title": "De etappeuitslag is binnen",
@@ -297,8 +307,8 @@
     },
     "seasonTransitionRisk": {
       "title": "Seizoenswissel: contract- en pensioenrisico",
-      "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng het contract van een renner vanaf zijn profiel vóór de wissel om te voorkomen dat hij vertrekt. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
-      "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng hun contract vanaf het profiel van de renner vóór de wissel om ze te houden.",
+      "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng de contracten vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
+      "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng ze vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen.",
       "messageRetirementOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers."
     },
     "watchlistDeparted": {
@@ -644,6 +654,10 @@
       "title": "{count, plural, one {Nieuw bericht} other {# nieuwe berichten}}",
       "message": "{count, plural, one {{senderName} stuurde je een bericht} other {# nieuwe berichten van {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Een andere manager stuurde je een bericht} other {# nieuwe berichten van een andere manager}}"
+    },
+    "riderIll": {
+      "title": "Renner ziek",
+      "message": "De arts meldt dat {rider} ziek is na meerdere dagen extreme vermoeidheid en tot {until} uitvalt."
     },
     "riderInjured": {
       "title": "Renner geblesseerd",

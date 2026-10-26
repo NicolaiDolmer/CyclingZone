@@ -39,7 +39,8 @@
     "squad": "Effectif ({count})",
     "development": "Progression",
     "stats": "Stats",
-    "transfers": "Historique des transferts"
+    "transfers": "Historique des transferts",
+    "contracts": "Contrats"
   },
   "development": {
     "headers": {
@@ -321,5 +322,49 @@
     "discordOpenAria": "Ouvrir le profil Discord de {handle}",
     "discordCopyAria": "Copier le nom d'utilisateur Discord {handle}",
     "discordCopied": "Copié"
+  },
+  "contracts": {
+    "headers": {
+      "seasons": "Saisons",
+      "salary": "Salaire actuel / nouveau",
+      "newContract": "Nouveau contrat"
+    },
+    "selectRider": "Sélectionner {name}",
+    "selectGroup": "Tout sélectionner : {group}",
+    "seasonsFor": "Saisons de prolongation pour {name}",
+    "seasonsCount": "{count}",
+    "seasonsMax": "{count} (max)",
+    "noContract": "Pas de contrat",
+    "group": {
+      "expiring": "Expire cette saison",
+      "season": "Expire après la saison {season}",
+      "atCap": "À la limite",
+      "atCapHint": "Court déjà aussi loin que permis. Pourra être prolongé à nouveau au changement de saison."
+    },
+    "bar": {
+      "none": "Coche les coureurs que tu veux prolonger.",
+      "selected": "{count, plural, one {# coureur sélectionné} other {# coureurs sélectionnés}}",
+      "salaryDelta": "Salaire {value} CZ$ par saison",
+      "seasonsLabel": "Saisons",
+      "extend": "{count, plural, =0 {Prolonger les contrats} one {Prolonger # contrat} other {Prolonger # contrats}}"
+    },
+    "summary": {
+      "title": "Prolonger les contrats",
+      "cancel": "Annuler",
+      "confirm": "{count, plural, one {Prolonger # contrat} other {Prolonger # contrats}}",
+      "loadError": "Impossible de charger le récapitulatif. Rien n'a été modifié.",
+      "saveError": "Impossible de prolonger les contrats. Rien n'a été modifié.",
+      "teamSalary": "Salaire de l'équipe par saison",
+      "salaryCap": "Plafond salarial du conseil",
+      "noCap": "Aucun plafond",
+      "withinCap": "Sous le plafond",
+      "overCap": "Au-dessus du plafond de {cap} CZ$. Rien ne sera prolongé"
+    },
+    "done": "{count, plural, one {# contrat prolongé.} other {# contrats prolongés.}}",
+    "loadErrorTitle": "Impossible de charger tes contrats",
+    "loadErrorBody": "Rien n'est perdu. Tes contrats sont inchangés.",
+    "retry": "Réessayer",
+    "emptyTitle": "Recrute des coureurs pour gérer leurs contrats",
+    "emptyBody": "Tes coureurs apparaissent ici, regroupés selon la fin de leur contrat."
   }
 }

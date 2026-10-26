@@ -25,12 +25,15 @@ import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
 const rider = { id: "academy", team_id: "own", is_academy: true, potentiale: 4,
   birthdate: "2010-06-15", primary_type: "climber", secondary_type: "gc" };
 const abilities = Object.fromEntries(REGISTRY_ABILITY_KEYS.map((k) => [k, 35]));
-function database(days: number, fail = false) {
+// #7195: pulled = rytterne der er hentet via Optag 2.0 (academy_intake source 'pull').
+function database(days: number, fail = false, pulled: string[] = ["academy"], pullFail = false) {
   return { from(table: string) {
     const result = table === "rider_training_scores"
       ? { count: days, error: fail ? { message: "unavailable" } : null }
-      : { data: [], error: null };
-    const query: any = { select() { return query; }, eq() { return query; },
+      : table === "academy_intake"
+        ? { data: pulled.map((rider_id) => ({ rider_id })), error: pullFail ? { message: "pull origin unavailable" } : null }
+        : { data: [], error: null };
+    const query: any = { select() { return query; }, eq() { return query; }, in() { return query; },
       then(resolve: any) { return Promise.resolve(result).then(resolve); } };
     return query;
   } };
@@ -58,4 +61,14 @@ for (const value of [null, "unknown"]) {
 }
 test("flag network failure cannot reopen full scouting", async () => {
   await assert.rejects(isAcademyKnowledgeEnabled({ from() { throw new Error("offline"); } }), /flag unavailable/);
+});
+
+test("#7195: en rytter holdet havde før Optag 2.0, får den normale scoutrapport, ikke den gradvise prognose", async () => {
+  const result = await loadAcademyPrognoses(database(0, false, []), { enabled: true, teamId: "own",
+    riders: [rider], abilitiesByRider: new Map([[rider.id, abilities]]), seasonNumber: 4, scout: null });
+  assert.equal(result.has(rider.id), false);
+});
+test("#7195: fejler opslaget af Optag 2.0-oprindelse, falder det ikke tilbage til den fulde scoutrapport", async () => {
+  await assert.rejects(loadAcademyPrognoses(database(0, false, [], true), { enabled: true, teamId: "own",
+    riders: [rider], abilitiesByRider: new Map([[rider.id, abilities]]), seasonNumber: 4, scout: null }), /pull origin unavailable/);
 });

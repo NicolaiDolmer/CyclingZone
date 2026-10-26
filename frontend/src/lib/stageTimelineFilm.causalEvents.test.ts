@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { describeEvent, buildFilmTimeline } from "./stageTimelineFilm.js";
+import { describeEvent, buildFilmTimeline, gapAtKm, formatLead } from "./stageTimelineFilm.js";
 import { selectStoryEvents } from "./stageTimelineStory.js";
 const names = new Map([["a", "Rider A"], ["b", "Rider B"]]);
 
@@ -122,4 +122,35 @@ test("#6803 a later-only curve starts at zero where the new break forms", () => 
   assert.deepEqual(buildFilmTimeline({ events }).gapCurve, [
     { km: 23, gapSeconds: 0 }, { km: 30, gapSeconds: 80 }, { km: 50, gapSeconds: 35 }, { km: 74, gapSeconds: 0 },
   ]);
+});
+
+// #6814 kontrakt (motor v3, løbsfilm-pakken §3A): et sidste jagtpunkt ved indhentningen, samme km, separation 0.
+const withTerminalSamples = (): Ev[] => twoBreaks().flatMap((e) => (e.type === "breakaway_caught"
+  ? [{ km: e.km, type: "gap_update", params: { group_id: e.params?.group_id, gap_seconds: 0, chase_group_id: e.params?.chase_group_id, separation_seconds: 0 } }, e]
+  : [e]));
+
+test("#6803 the engine's own catch sample gives one zero point per break, not two", () => {
+  assert.deepEqual(buildFilmTimeline({ events: withTerminalSamples() }).gapCurve, [
+    { km: 14, gapSeconds: 50 }, { km: 18, gapSeconds: 0 },
+    { km: 23, gapSeconds: 0 }, { km: 30, gapSeconds: 80 }, { km: 50, gapSeconds: 35 }, { km: 74, gapSeconds: 0 },
+  ]);
+});
+
+test("#6803 gapAtKm reads the lead over the chase at the scrub position", () => {
+  const curve = buildFilmTimeline({ events: withTerminalSamples() }).gapCurve;
+  assert.equal(gapAtKm(curve, 5), null, "before the first break there is no lead");
+  assert.equal(gapAtKm(curve, 15), 50);
+  assert.equal(gapAtKm(curve, 20), 0, "between the two breaks");
+  assert.equal(gapAtKm(curve, 49.9), 80);
+  assert.equal(gapAtKm(curve, 60), 35);
+  assert.equal(gapAtKm(curve, 120), 0);
+  assert.equal(gapAtKm([], 10), null);
+  assert.equal(gapAtKm(null, 10), null);
+});
+
+test("#6803 formatLead shows minutes and seconds", () => {
+  assert.equal(formatLead(0), "0:00");
+  assert.equal(formatLead(65.4), "1:05");
+  assert.equal(formatLead(-3), "0:00");
+  assert.equal(formatLead(612), "10:12");
 });

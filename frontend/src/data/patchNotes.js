@@ -1,5 +1,809 @@
 export const PATCHES = [
   {
+    "version": "7.381",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy contracts run out like other contracts",
+          "body": "At the season change, academy riders whose contract ended in season 4 left your academy, like any other rider. Riders you brought in during the last 7 days were extended to season 5. Keep a rider by extending him on the Contracts tab."
+        },
+        "da": {
+          "title": "Akademikontrakter udløber som andre kontrakter",
+          "body": "Ved sæsonskiftet forlod akademiryttere, hvis kontrakt udløb i sæson 4, dit akademi, ligesom andre ryttere. Ryttere, du har hentet inden for de sidste 7 dage, blev forlænget til sæson 5. Behold en rytter ved at forlænge ham på Kontrakter-fanen."
+        },
+        "refs": [
+          7153
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "Inactive teams are parked",
+          "body": "Teams whose manager had not logged in for 30 days and had not signed up for season 5 were parked at the season change. A parked team keeps its riders and money, and its staff were let go."
+        },
+        "da": {
+          "title": "Inaktive hold er parkeret",
+          "body": "Hold, hvis manager ikke havde logget ind i 30 dage og ikke havde tilmeldt sig sæson 5, blev parkeret ved sæsonskiftet. Et parkeret hold beholder ryttere og penge, og personalet er opsagt."
+        },
+        "refs": [
+          4592,
+          7153
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.380",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "Free agent auctions always run at least 12 hours",
+          "body": "An auction on a free agent now runs for at least 12 hours, also when you pick the end time yourself, so nobody misses a rider because they were asleep or at work. Flash auctions are only for your own riders. Auctions on your own riders work as before."
+        },
+        "da": {
+          "title": "Auktioner på frie ryttere kører altid mindst 12 timer",
+          "body": "En auktion på en fri rytter kører nu mindst 12 timer, også når du selv vælger sluttidspunktet, så ingen går glip af en rytter, fordi de sov eller var på arbejde. Flash-auktioner kan kun bruges på dine egne ryttere. Auktioner på dine egne ryttere virker som før."
+        },
+        "refs": [
+          7220
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "flag": "development_curve_b",
+        "topic": "Training",
+        "en": {
+          "title": "Development follows level and potential",
+          "body": "How fast an ability grows now depends on how high it already is and on the rider's potential. The higher an ability, the harder it is to raise, and potential decides how high the rider can go. Age decides how much training a young rider can take. An ability still rises by at most one point per day. Help explains it under Training."
+        },
+        "da": {
+          "title": "Udviklingen følger niveau og potentiale",
+          "body": "Hvor hurtigt en evne vokser, afhænger nu af, hvor høj den allerede er, og af rytterens potentiale. Jo højere en evne er, jo sværere er den at hæve, og potentialet bestemmer, hvor højt rytteren kan nå. Alderen bestemmer, hvor meget træning en ung rytter kan tåle. En evne stiger stadig højst ét point om dagen. Hjælp forklarer det under Træning."
+        },
+        "refs": [
+          6110,
+          3564
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "Form and fatigue 2.0",
+          "body": "A stage now costs fatigue by its type, its length and the work your rider does, and every stage counts as a full day, also when he races twice on the same day. The more race days in the season, the more each one costs, and his recovery decides how fast the fatigue goes away. Form drops both when a rider sits idle and when he's overloaded."
+        },
+        "da": {
+          "title": "Form og træthed 2.0",
+          "body": "En etape koster nu træthed efter type, længde og det arbejde, din rytter laver, og hver etape tæller som en hel dag, også når han kører to gange samme dag. Jo flere løbsdage i sæsonen, jo mere koster hver, og hans restitution afgør, hvor hurtigt trætheden forsvinder. Formen falder både, når en rytter står stille, og når han er overbelastet."
+        },
+        "refs": [
+          6984
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "beta_to_live",
+        "flag": "potential_single_number",
+        "topic": "Riders",
+        "en": {
+          "title": "Potential shown the same way for everyone",
+          "body": "Potential is now shown the same way for all managers on My Team, in the academy, on the rider profile and on the Scouting tab: for the role where the rider can go highest, with a small box saying which role."
+        },
+        "da": {
+          "title": "Potentialet vises ens for alle",
+          "body": "Potentialet vises nu ens for alle managere på Mit hold, i akademiet, på rytterprofilen og på Scouting-fanen: for den rolle, hvor rytteren kan nå højest, med en lille boks der viser hvilken rolle."
+        },
+        "refs": [
+          6853
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Club",
+        "en": {
+          "title": "The medical department is open",
+          "body": "You can now build a medical department in Club and hire a team doctor. It helps your riders recover, gives fewer and shorter injuries, and your team doctor gives a short read on each rider when you pick riders for a race. The better the department, the bigger the effect."
+        },
+        "da": {
+          "title": "Den medicinske afdeling er åben",
+          "body": "Du kan nu bygge en medicinsk afdeling i Klub og ansætte en holdlæge. Den hjælper dine ryttere med at restituere, giver færre og kortere skader, og holdlægen giver en kort vurdering af hver rytter, når du udtager ryttere til et løb. Jo bedre afdeling, jo større effekt."
+        },
+        "refs": [
+          6984
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.379",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Contracts",
+        "en": {
+          "title": "Contracts can be extended to the end of next season",
+          "body": "You can now extend a contract until the end of next season at most. At tonight's season change that means season 6. Riders whose contract already runs further keep it. On the Contracts tab you choose 1 or 2 seasons."
+        },
+        "da": {
+          "title": "Kontrakter kan forlænges til udgangen af næste sæson",
+          "body": "Du kan nu højst forlænge en kontrakt til udgangen af næste sæson. Ved sæsonskiftet i aften betyder det sæson 6. Ryttere, hvis kontrakt allerede løber længere, beholder den. På Kontrakter-fanen vælger du 1 eller 2 sæsoner."
+        },
+        "refs": [
+          7138
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "The season change in Next moves",
+          "body": "While a season change is coming up or running, the Next moves card on the dashboard shows it, so the same notice isn't shown twice at the top of the page. If you have hidden Next moves, the banner at the top stays."
+        },
+        "da": {
+          "title": "Sæsonskiftet i Næste træk",
+          "body": "Når et sæsonskifte er på vej eller i gang, står det i Næste træk-kortet på dashboardet, så samme besked ikke står to gange øverst på siden. Har du skjult Næste træk, bliver banneret øverst stående."
+        },
+        "refs": [
+          7153
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider values update right after the season change",
+          "body": "On a season change day, rider values now update as soon as the change is complete, once, based on the new season's ages and abilities. Before, they waited for the next full hour. Values still don't move during the change itself."
+        },
+        "da": {
+          "title": "Rytterværdierne opdateres lige efter sæsonskiftet",
+          "body": "På en dag med sæsonskifte opdateres rytterværdierne nu, så snart skiftet er færdigt, én gang, ud fra den nye sæsons alder og evner. Før ventede de til næste hele time. Værdierne flytter sig stadig ikke under selve skiftet."
+        },
+        "refs": [
+          5842
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "beta",
+        "flag": "training_decision_card",
+        "topic": "Training",
+        "en": {
+          "title": "Today's decision on the Training page",
+          "body": "At the top of the Today tab, the assistant suggests what your tired riders should do today, with a Use button for each suggestion. On a computer, the team table also shows how many days in a row each rider has been on high fatigue."
+        },
+        "da": {
+          "title": "Dagens beslutning på træningssiden",
+          "body": "Øverst på I dag-fanen foreslår assistenten, hvad dine trætte ryttere skal lave i dag, med en Brug-knap til hvert forslag. På computer viser holdtabellen også, hvor mange dage i træk hver rytter har haft høj træthed."
+        },
+        "refs": [
+          6110
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board confidence no longer drifts after every race",
+          "body": "The board's confidence took the same verdict again each time a race finished, so a small minus could add up to 0. It now counts each verdict once, and the numbers were recalculated on 24 October, so the annual review at the season change uses the right values."
+        },
+        "da": {
+          "title": "Bestyrelsens tillid driver ikke længere efter hvert løb",
+          "body": "Bestyrelsens tillid tog samme dom igen, hver gang et løb sluttede, så et lille minus kunne løbe op til 0. Nu tæller hver dom én gang, og tallene blev genberegnet 24. oktober, så årsmødet ved sæsonskiftet bruger de rigtige værdier."
+        },
+        "refs": [
+          7088,
+          7100
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Protect and save orders now reach the race",
+          "body": "Orders to protect a rider or save energy were saved but didn't change how the rider raced. The race engine now uses them."
+        },
+        "da": {
+          "title": "Ordrer om at beskytte og spare virker nu i løbet",
+          "body": "Ordrer om at beskytte en rytter eller spare kræfter blev gemt, men ændrede ikke, hvordan rytteren kørte. Løbsmotoren bruger dem nu."
+        },
+        "refs": [
+          6652
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "The same training per day, whatever the season length",
+          "body": "What a rider gains from a training day no longer depends on how many race days the season has. A long season and a short season give the same per day."
+        },
+        "da": {
+          "title": "Samme træning pr. dag, uanset sæsonens længde",
+          "body": "Det, en rytter får ud af en træningsdag, afhænger ikke længere af, hvor mange løbsdage sæsonen har. En lang og en kort sæson giver det samme pr. dag."
+        },
+        "refs": [
+          6715
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Calendar",
+        "en": {
+          "title": "U23 and junior in season 5",
+          "body": "From season 5, U23 gets more race days than junior, and the youth groups are merged into fewer, fuller groups after tonight's season change. AI youth teams sit at the same level as yours, and a new or returning team never lands in a closed group."
+        },
+        "da": {
+          "title": "U23 og junior i sæson 5",
+          "body": "Fra sæson 5 får U23 flere løbsdage end junior, og ungdomsgrupperne samles i færre og fyldigere grupper efter sæsonskiftet i aften. AI-ungdomshold ligger på samme niveau som dine, og et nyt eller tilbagevendende hold havner aldrig i en lukket gruppe."
+        },
+        "refs": [
+          6667,
+          6670,
+          6671,
+          7037,
+          7040
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "More on the new stage page",
+          "body": "The stage page now marks every stage of the day as Today, shows the next stage, translates the time checks, and says how much time a group took on the bunch."
+        },
+        "da": {
+          "title": "Mere på den nye etapeside",
+          "body": "Etapesiden markerer nu alle dagens etaper som I dag, viser næste etape, oversætter mellemtiderne og siger, hvor meget tid en gruppe tog på feltet."
+        },
+        "refs": [
+          7168
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "Numbers and dates in your language",
+          "body": "Numbers and dates now follow the language you play in, and pages keep their layout with longer texts."
+        },
+        "da": {
+          "title": "Tal og datoer på dit sprog",
+          "body": "Tal og datoer følger nu det sprog, du spiller på, og siderne holder deres layout med længere tekster."
+        },
+        "refs": [
+          6790,
+          6808
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Train now recovers on its own",
+          "body": "A Train now that got stuck halfway now sorts itself out, and pressing it while the evening run is busy gives a clear message instead of an error."
+        },
+        "da": {
+          "title": "Træn nu retter sig selv",
+          "body": "Et Træn nu, der hang halvvejs, ordner nu sig selv, og et tryk mens aftenkørslen er i gang giver en tydelig besked i stedet for en fejl."
+        },
+        "refs": [
+          6791,
+          6822
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.378",
+    "date": "2026-10-25",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Riders",
+        "en": {
+          "title": "Riders hold their level longer",
+          "body": "Riders now hold their level through age 30. After that, physical abilities and cobbles drop a little at each season change, and racing slows the drop. Technique and tactics never drop. Riders on AI teams and free agents no longer develop, but they still age. This applies from tonight's season change."
+        },
+        "da": {
+          "title": "Ryttere holder niveauet længere",
+          "body": "Ryttere holder nu deres niveau til og med 30. Derefter falder de fysiske evner og brosten lidt ved hvert sæsonskifte, og løb bremser faldet. Teknik og taktik falder aldrig. Ryttere på AI-hold og frie ryttere udvikler sig ikke længere, men de bliver stadig ældre. Det gælder fra sæsonskiftet i aften."
+        },
+        "refs": [
+          6499,
+          6110
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "At most +1 per ability per day",
+          "body": "An ability can now grow by at most 1 point per day, across training and race days. Progress above that isn't lost: it carries over to the next day."
+        },
+        "da": {
+          "title": "Højst +1 pr. evne pr. dag",
+          "body": "En evne kan nu højst stige 1 point pr. dag, på tværs af træning og løbsdage. Fremgang ud over det går ikke tabt: den føres videre til næste dag."
+        },
+        "refs": [
+          7075,
+          6210
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "New academy candidates every Sunday",
+          "body": "The academy week now runs Sunday to Saturday. A new intake opens every Sunday, and you can bring it in any day until Saturday 23:59."
+        },
+        "da": {
+          "title": "Nye akademi-kandidater hver søndag",
+          "body": "Akademiets uge går nu fra søndag til lørdag. Et nyt kuld åbner hver søndag, og du kan hente det hver dag frem til lørdag kl. 23:59."
+        },
+        "refs": [
+          6666
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Scouting",
+        "en": {
+          "title": "Scouting shows every rider type again for your older academy riders",
+          "body": "Only riders you signed through the new weekly intake have the prognosis that gets sharper with training. Academy riders you already had show the normal scout report with every rider type again."
+        },
+        "da": {
+          "title": "Scouting viser igen alle ryttertyper for dine ældre akademiryttere",
+          "body": "Kun ryttere, du har hentet via det nye ugentlige optag, har prognosen, der bliver skarpere med træning. Akademiryttere, du havde i forvejen, viser igen den normale scoutrapport med alle ryttertyper."
+        },
+        "refs": [
+          7195
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "Next season's wages show what your contracts say",
+          "body": "The forecast on the Finance page showed next season's wages as if every wage was recalculated at the season change. It isn't: you pay the wage in the contract. The forecast now shows that, and a rider whose contract runs out is shown at the wage he gets if you extend him."
+        },
+        "da": {
+          "title": "Næste sæsons løn viser det, der står i kontrakterne",
+          "body": "Prognosen på Økonomi viste næste sæsons løn, som om al løn blev genberegnet ved sæsonskiftet. Det bliver den ikke: du betaler lønnen i kontrakten. Prognosen viser nu det, og en rytter, hvis kontrakt udløber, står med den løn, han får, hvis du forlænger ham."
+        },
+        "refs": [
+          7196
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Help",
+        "en": {
+          "title": "Help on the season change corrected",
+          "body": "Help now says that rider values update next time at the normal Sunday update, and that the new season starts after the break between seasons that you voted on."
+        },
+        "da": {
+          "title": "Hjælp om sæsonskiftet er rettet",
+          "body": "Hjælp siger nu, at rytterværdierne opdateres næste gang ved den normale søndagsopdatering, og at den nye sæson starter efter pausen mellem sæsonerne, som managerne har stemt om."
+        },
+        "refs": [
+          7196
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.377",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The new stage page for everyone",
+          "body": "Every stage now has its own page with stage tabs, the real elevation profile, a replay of the stage and your day at a glance. It is no longer limited to the beta group."
+        },
+        "da": {
+          "title": "Den nye etapeside for alle",
+          "body": "Hver etape har nu sin egen side med etapefaner, den rigtige højdeprofil, en genafspilning af etapen og jeres dag samlet ét sted. Den er ikke længere kun for beta-gruppen."
+        },
+        "refs": [
+          6570
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "More varied stage races in season 5",
+          "body": "Every stage race in season 5 now has at least one flat stage, so sprinters have a chance. Many stage races also got a more varied order of the same stages instead of the same climbing pattern every time."
+        },
+        "da": {
+          "title": "Mere varierede etapeløb i sæson 5",
+          "body": "Alle etapeløb i sæson 5 har nu mindst én flad etape, så sprinterne har en chance. Mange etapeløb har også fået de samme etaper i en mere varieret rækkefølge i stedet for det samme stigende mønster hver gang."
+        },
+        "refs": [
+          2757
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Planning",
+        "en": {
+          "title": "One route match number everywhere",
+          "body": "The same rider in the same race now gets the same route match in team selection, Plan day, Tactics, the season matrix and the planner. The number is based on what the race engine actually rewards on each stage."
+        },
+        "da": {
+          "title": "Ét rutematch-tal overalt",
+          "body": "Samme rytter i samme løb får nu samme rutematch i holdudtagelsen, Planlæg dag, Taktik, sæsonmatrixen og planlæggeren. Tallet bygger på det, løbsmotoren faktisk belønner på hver etape."
+        },
+        "refs": [
+          6207
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The breakaway's lead in the race film",
+          "body": "The curve under the race film shows the breakaway's lead over the chase, and the dot now shows the lead as a number while you scrub through the stage."
+        },
+        "da": {
+          "title": "Udbruddets forspring i løbsfilmen",
+          "body": "Kurven under løbsfilmen viser udbruddets forspring på jagten, og prikken viser nu forspringet i tal, mens I spoler gennem etapen."
+        },
+        "refs": [
+          6803
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Small squads keep their stage race",
+          "body": "If some of your riders race elsewhere on the first day of a stage race, your team still starts it with the free riders, at least 4. This only applies on such overlap days."
+        },
+        "da": {
+          "title": "Små hold mister ikke deres etapeløb",
+          "body": "Kører nogle af jeres ryttere et andet løb på et etapeløbs første dag, starter holdet stadig med de frie ryttere, mindst 4. Det gælder kun på sådanne overlap-dage."
+        },
+        "refs": [
+          6739
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.376",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "French, Spanish and Dutch for everyone",
+          "body": "French, Spanish and Dutch are no longer in beta. Your browser's language is picked automatically, and you can switch language at any time."
+        },
+        "da": {
+          "title": "Fransk, spansk og hollandsk for alle",
+          "body": "Fransk, spansk og hollandsk er ikke længere i beta. Jeres browsers sprog vælges automatisk, og I kan skifte sprog når som helst."
+        },
+        "refs": [
+          7087
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Awaiting promotion instead of a forced sale",
+          "body": "When a rider is too old for his squad and the next squad is full, he is no longer sold. He stays with you as awaiting promotion, and you move him up from the squad page when there is room. As before, he is sold if there is room but your balance is negative."
+        },
+        "da": {
+          "title": "Afventer oprykning i stedet for tvunget salg",
+          "body": "Når en rytter er for gammel til sin trup, og den næste trup er fuld, bliver han ikke længere solgt. Han bliver hos jer som afventer oprykning, og I rykker ham op fra trupsiden, når der er plads. Som før bliver han solgt, hvis der er plads, men saldoen er negativ."
+        },
+        "refs": [
+          6710
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Push notifications for everyone",
+          "body": "Everyone can now turn on push notifications on the profile page. You choose the categories yourself. At most 6 a day, and never between 22:00 and 08:00."
+        },
+        "da": {
+          "title": "Push-beskeder for alle",
+          "body": "Alle kan nu slå push-beskeder til på profilsiden. I vælger selv kategorierne. Højst 6 om dagen og aldrig mellem 22 og 08."
+        },
+        "refs": [
+          6590
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Set the training day for many riders, for everyone",
+          "body": "On the Today tab of Daily training, one line sets today's session for all riders in the view, or only the ones you tick. It is no longer limited to the beta group."
+        },
+        "da": {
+          "title": "Sæt træningsdagen for mange ryttere, for alle",
+          "body": "På fanen I dag under Daglig træning sætter én linje dagens træning for alle ryttere i visningen eller kun dem, I markerer. Den er ikke længere kun for beta-gruppen."
+        },
+        "refs": [
+          6523
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.375",
+    "date": "2026-10-24",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Team",
+        "en": {
+          "title": "Extend several contracts at once",
+          "body": "My Team has a new Contracts tab. Tick the riders you want to keep, choose 1, 2 or 3 seasons, and check the summary with new wages before anything is saved. Your sorting is remembered when you open a rider and go back."
+        },
+        "da": {
+          "title": "Forlæng flere kontrakter på én gang",
+          "body": "Mit Hold har fået en Kontrakter-fane. Sæt flueben ved de ryttere, du vil beholde, vælg 1, 2 eller 3 sæsoner, og se opsummeringen med de nye lønninger, før noget gemmes. Din sortering huskes, når du går ind på en rytter og tilbage."
+        },
+        "refs": [
+          6855
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "Inbox message when a rider gets injured in training",
+          "body": "Until now you only got a message when a rider crashed in a race. You now also get one when a rider is injured in training, with the date he is back."
+        },
+        "da": {
+          "title": "Besked i indbakken når en rytter skades i træning",
+          "body": "Indtil nu fik du kun besked, når en rytter styrtede i et løb. Nu får du også besked, når en rytter bliver skadet i træning, med datoen for hvornår han er tilbage."
+        },
+        "refs": [
+          7086
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Notifications",
+        "en": {
+          "title": "One-day race messages show your result",
+          "body": "After a one-day race, the inbox message shows your best placed riders and links straight to the result, also on mobile."
+        },
+        "da": {
+          "title": "Beskeden efter endagsløb viser dit resultat",
+          "body": "Efter et endagsløb viser beskeden i indbakken dine bedst placerede ryttere og linker direkte til resultatet, også på mobil."
+        },
+        "refs": [
+          7085
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Interface",
+        "en": {
+          "title": "French, Spanish and Dutch in beta",
+          "body": "Everyone can now choose French, Spanish or Dutch in the language menu. They are marked Beta: some text still shows in English while I finish the translations."
+        },
+        "da": {
+          "title": "Fransk, spansk og hollandsk i beta",
+          "body": "Alle kan nu vælge fransk, spansk eller hollandsk i sprogmenuen. De er mærket Beta: noget tekst vises stadig på engelsk, mens jeg gør oversættelserne færdige."
+        },
+        "refs": [
+          7087
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Team",
+        "en": {
+          "title": "Nationality flags on mobile",
+          "body": "On mobile, My Team now shows each rider's nationality as a flag, and the Abilities tab shows the nation too."
+        },
+        "da": {
+          "title": "Nationalitetsflag på mobil",
+          "body": "På mobil viser Mit Hold nu hver rytters nationalitet som et flag, og Evner-fanen viser også nationen."
+        },
+        "refs": [
+          7032
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Clearer breakaway icons",
+          "body": "Results now show a flag for riders in the morning breakaway and a bolt for riders who attacked later. Hover an icon to see what it means."
+        },
+        "da": {
+          "title": "Tydeligere udbrudsikoner",
+          "body": "Resultaterne viser nu et flag ved ryttere i morgenudbruddet og et lyn ved ryttere, der angreb senere. Hold musen over et ikon for at se, hvad det betyder."
+        },
+        "refs": [
+          7092
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Season",
+        "en": {
+          "title": "GC wins and jerseys in the season overview",
+          "body": "The season overview now shows each team's overall GC wins and jerseys won, next to stage and classic wins."
+        },
+        "da": {
+          "title": "GC-sejre og trøjer i sæsonoversigten",
+          "body": "Sæsonoversigten viser nu hvert holds samlede sejre og vundne trøjer ved siden af etape- og klassikersejre."
+        },
+        "refs": [
+          6961
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "See when values and academy intake update",
+          "body": "The dashboard now shows when the next market value update and the next academy intake happen."
+        },
+        "da": {
+          "title": "Se hvornår værdier og akademi-intake opdateres",
+          "body": "Dashboardet viser nu, hvornår den næste opdatering af markedsværdier og det næste akademi-intake sker."
+        },
+        "refs": [
+          6962
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "\"Rider's first win\"",
+          "body": "The milestone for a rider's first career win is now called \"Rider's first win\", so it is not mistaken for a win this season."
+        },
+        "da": {
+          "title": "\"Rytterens første sejr\"",
+          "body": "Milepælen for en rytters første sejr i karrieren hedder nu \"Rytterens første sejr\", så den ikke forveksles med en sejr i denne sæson."
+        },
+        "refs": [
+          6975
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Finance",
+        "en": {
+          "title": "Season change settlement removed",
+          "body": "I removed the season change settlement from Finance. It showed next season's wages as a fixed cost, which was misleading. Wages are still paid by contract, as before."
+        },
+        "da": {
+          "title": "Afregningen ved sæsonskiftet er fjernet",
+          "body": "Jeg har fjernet afregningen ved sæsonskiftet fra Økonomi. Den viste næste sæsons løn som en fast udgift, og det var misvisende. Lønnen udbetales stadig efter kontrakterne som før."
+        },
+        "refs": [
+          7033
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board room shows no wrong numbers",
+          "body": "I removed the weekly confidence change and the standing trend arrow, which showed wrong numbers. Confidence, targets and cards are unchanged."
+        },
+        "da": {
+          "title": "Bestyrelsen viser ikke længere forkerte tal",
+          "body": "Jeg har fjernet den ugentlige ændring i tillid og trend-pilen ved stillingen, fordi de viste forkerte tal. Tillid, mål og kort er uændrede."
+        },
+        "refs": [
+          6935
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.374",
     "date": "2026-10-23",
     "changes": [

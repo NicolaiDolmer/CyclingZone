@@ -27,6 +27,7 @@ import { groupRepeatedFeedEvents, describeGroupedEvent } from "./stageTimelineGr
 // indhentninger, ærlige km-spænd). filmKmValue skriver "km A-B"-værdien.
 import { honestTimelineEvents, exactEventKm } from "./stageTimelineKmSpan.ts";
 export { filmKmValue } from "./stageTimelineKmSpan.ts";
+import { labelBreakawayEvents, breakawayFilmCopy, breakawayLabelOf } from "./breakawayLabels6299.ts"; // #6299: kun udbruddet hedder udbrud
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -47,6 +48,36 @@ export function kmToX(km, distanceKm, plotWidth) {
   if (!distanceKm || distanceKm <= 0) return 0;
   const clamped = Math.max(0, Math.min(km, distanceKm));
   return (clamped / distanceKm) * plotWidth;
+}
+
+/**
+ * #6814/#6803: motoren (v3) skriver selv et sidste jagtpunkt ved indhentningen
+ * (samme km, separation 0). Kurven faar da ét nul-punkt, ikke to oven i hinanden.
+ */
+function pushCaughtAt(curve, km) {
+  const last = curve[curve.length - 1];
+  if (last && last.km === km) last.gapSeconds = 0;
+  else curve.push({ km, gapSeconds: 0 });
+}
+
+/**
+ * #6803: udbruddets forspring paa jagten ved en scrub-position (km): seneste
+ * kendte kurvepunkt op til km (trin-funktion, samme "afspillet"-regel som feedet).
+ * null foer kurvens foerste punkt eller uden kurve; 0 mellem to udbrud.
+ */
+export function gapAtKm(gapCurve, km) {
+  let last = null;
+  for (const p of gapCurve ?? []) {
+    if (p.km > km) break;
+    last = p.gapSeconds;
+  }
+  return last;
+}
+
+/** Forspring som "M:SS" (tabelcifre i visningen), samme afrunding som formatGap. */
+export function formatLead(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 export function xToKm(x, distanceKm, plotWidth) {
@@ -100,7 +131,7 @@ function isTimeTrialStage(events) {
 export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], timelineVersion = null, startlist = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
-  const sorted = honestTimelineEvents(events, { timelineVersion, startlist });
+  const sorted = labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events);
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
@@ -134,7 +165,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
         && (toKm == null || event.km <= toKm))
         .map(event => ({ km: event.km, gapSeconds: Number(event.params.separation_seconds) }));
       gapCurve = explicitPoints(escapeId, null, catchKm);
-      if (gapCurve.length && catchKm != null) gapCurve.push({ km: catchKm, gapSeconds: 0 });
+      if (gapCurve.length && catchKm != null) pushCaughtAt(gapCurve, catchKm);
       // #6803: S5's nye udbrud efter en tidlig indhentning (#6369) har sit eget
       // gruppe-id og sin egen indhentning; kurven følger det samme sted, med nul
       // mellem de to udbrud. Uden nyt udbrud er løkken tom: etapen er uændret.
@@ -150,7 +181,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
           // (Codex #6809): ellers starter filmens markoer paa foerste positive hul.
           if (lastKm == null ? points[0].km > newKm : newKm > lastKm) gapCurve.push({ km: newKm, gapSeconds: 0 });
           gapCurve.push(...points);
-          if (newCatchKm != null) gapCurve.push({ km: newCatchKm, gapSeconds: 0 });
+          if (newCatchKm != null) pushCaughtAt(gapCurve, newCatchKm);
         }
       }
     }
@@ -278,12 +309,15 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (event.grouped) {
     return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
   }
-  const p = event.params || {};
+  // #6299: en mærket udbruds-hændelse nævner kun udbrydderne, eller hedder "gruppe foran feltet".
+  const copy = breakawayFilmCopy(event, event.type);
+  const p = breakawayLabelOf(event) ? { ...event.params, rider_ids: copy.riderIds } : event.params || {};
   const breakawayParams = () => {
     const names = resolvedRiderNames(p.rider_ids, riderNameById);
     if (!names.length) return null;
     return { riders: names.join(", "), count: names.length };
   };
+  if (copy.ahead) { const params = breakawayParams(); return params ? { key: copy.key, params } : null; }
   switch (event.type) {
     case "stage_start":
       return {

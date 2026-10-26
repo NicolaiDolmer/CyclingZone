@@ -55,6 +55,30 @@ export const SEVERITY_META = {
   },
 };
 
+// #7153 (ejer 25/10): sæsonskifte-banneret vises også som en linje i "Næste træk"
+// på dashboardet. ops_notices har ingen kategori; et sæsonskifte genkendes på at
+// den engelske titel starter med "Season change" (drejebogens tekster: "Season
+// change tonight, ...", "Season change in progress"). Ingen ny kolonne/migration.
+export const SEASON_CHANGE_TITLE_PREFIX = "season change";
+
+export function isSeasonChangeNotice(notice) {
+  return String(notice?.title_en || "").trim().toLowerCase().startsWith(SEASON_CHANGE_TITLE_PREFIX);
+}
+
+export function pickSeasonChangeNotice(notices) {
+  for (const n of notices || []) if (isSeasonChangeNotice(n)) return n;
+  return null;
+}
+
+// Ejer 25/10: på dashboardet står sæsonskiftet i "Næste træk", så topbanneret
+// viser det ikke dér (samme information to gange). Alle andre sider: uændret.
+// Har spilleren skjult "Næste træk" på dashboardet, bliver banneret, ellers
+// ville sæsonskiftet slet ikke stå på dashboardet.
+export function bannerNoticesForPath(notices, pathname, nextActionsVisible = true) {
+  const hideSeasonChange = pathname === "/dashboard" && nextActionsVisible;
+  return (notices || []).filter((n) => !(hideSeasonChange && isSeasonChangeNotice(n)));
+}
+
 // Vaelger EN/DA-copy efter spillerens sprog, med fallback til den anden hvis
 // den valgte er tom (redaktionel garde — begge felter er NOT NULL i DB, men
 // en tom streng skal ikke give et blankt banner).

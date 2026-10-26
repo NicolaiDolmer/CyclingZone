@@ -82,13 +82,14 @@ import TerrainTypeGlyph from "../components/race/TerrainTypeGlyph.jsx";
 import StageProfileCard from "../components/race/StageProfileCard.jsx";
 import LegacyStageProfileCard from "../components/race/LegacyStageProfileCard.jsx";
 import StoryOfTheStageSection from "../components/race/StoryOfTheStageSection.jsx";
+import StageOrdersRecap from "../components/stageOrders/StageOrdersRecap.tsx"; // #6299
 import StageSplitTimes from "../components/race/StageSplitTimes.jsx"; // #6080
 import { ownRiderIdsForStage, effectiveEffortByRider } from "../lib/stageSplitTimes.ts"; // #6080
 import { ownRiderIdsForOneDay } from "../lib/oneDayTimeline.ts"; // #6512
 import { fetchTeamOrders } from "../lib/tacticsOrdersAdapter.js"; // #6080: v4-ordrens effort vinder
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { useStagePageV2 } from "../lib/stagePageV2Flag.ts"; // #6570
-import { defaultStage, resolveV2Tab, todaysStage } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
+import { defaultStage, resolveV2Tab, todaysStages } from "../components/race/stagePageV2/stagePageV2Model.ts"; // #6570
 import { fetchStageProfiles } from "../components/race/stagePageV2/stageProfilesQuery.ts"; // #6570
 
 // #3914: FinalKilometrePlayback vises nu bag en stille knap (StoryOfTheStage-
@@ -752,7 +753,7 @@ export default function RaceDetailPage() {
   );
   // Kun en etape der faktisk koeres i dag faar "Today"-maerket (ikke fallbacken).
   const v2TodayStage = useMemo(
-    () => todaysStage({ totalStages: v2Total, schedule, now: new Date(nowMs) }),
+    () => todaysStages({ totalStages: v2Total, schedule, now: new Date(nowMs) }),
     [v2Total, schedule, nowMs],
   );
   // Etapen guld-knappen "Set tactics for stage N" naevner; null = Tactics-fanen
@@ -1055,6 +1056,9 @@ export default function RaceDetailPage() {
   const totalStages = race.stages ?? 1;
   const ridden = race.stages_completed ?? 0;
   const runningStage = Math.min(totalStages, ridden + 1);
+  // Ejer 24/10: "kører" kun mens etapen faktisk køres. Mellem to etaper (næste start
+  // ligger ude i fremtiden) siger chippen hvornår den næste etape starter.
+  const nextStageLater = nextStart && nextStart.stageNumber === runningStage && nextStart.date.getTime() > nowMs;
   const focusStage = phase === "before" ? scheduledStage : runningStage;
   const focusProfile = profileByStage[focusStage] ?? null;
   // #4979: Hold-fanens profil-raekke findes FOER og UNDER loebet, hvor der er en
@@ -1121,7 +1125,7 @@ export default function RaceDetailPage() {
       ...(race.race_type === "stage_race" ? [{
         label: t("racePage.hero.stageLabel"),
         value: `${focusStage} / ${totalStages}`,
-        sub: phase === "during" ? t("racePage.hero.racingNow") : t("racePage.hero.notStarted"),
+        sub: phase === "during" ? (nextStageLater ? t("racePage.hero.nextStageSub") : t("racePage.hero.racingNow")) : t("racePage.hero.notStarted"),
       }] : [{
         label: t("detail.stat.status"),
         value: t(`status.${ds}`),
@@ -1147,7 +1151,9 @@ export default function RaceDetailPage() {
 
   // Status-chippen i hero'ens højre hjørne: ÉN sætning om hvor løbet er.
   const statusChip = phase === "during" && race.race_type === "stage_race"
-    ? { live: true, text: t("racePage.hero.chipStageOnRoad", { number: runningStage }) }
+    ? (nextStageLater
+      ? { live: false, text: t("racePage.hero.chipNextStage", { number: runningStage, time: formatStageTime(nextStart.date, locale) }) }
+      : { live: true, text: t("racePage.hero.chipStageOnRoad", { number: runningStage }) })
     : phase === "during"
       ? { live: true, text: t("racePage.hero.chipRacing") }
       : phase === "after"
@@ -1350,6 +1356,7 @@ export default function RaceDetailPage() {
                     stageLabel={race.name} startlist={oneDayStartlist}
                     ownRiderIds={oneDayOwnRiderIds} effortByRider={undefined} onToggleFinalKm={undefined}
                   />
+                  {(oneDayTimeline?.timeline_version ?? 1) >= 2 && <StageOrdersRecap raceId={race.id} stageNumber={1} riderIds={oneDayOwnRiderIds ?? []} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profileByStage[1]?.profile_type ?? null} stageRoles={stageRoles} ranAt={oneDayTimeline?.created_at ?? null} />}
                   {/* #4373: endagsløb har præcis ÉN etape, så dens profil ER
                       løbets disciplin — en enkeltstart må ikke omtales som spurt. */}
                   <RaceRecap results={oneDayResults} scopeType="overall" incidents={incidents} profileType={profileByStage[1]?.profile_type ?? null} timelineEvents={oneDayTimeline?.events} teamNameById={teamNameById} startlist={oneDayStartlist} />
@@ -1702,7 +1709,8 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
 //
 // #4520: eksplicit kind→nøgle-map. Den gamle binære "crash ellers mechanical"
 // mærkede #4418's ikke-startere (kind='injury') som mekanisk defekt.
-const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury" };
+// #6938: illness (startede ikke) og withdrawal (hjaelper steg af i et endagsloeb).
+const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury", illness: "illness", withdrawal: "withdrawal" };
 
 function DnfSection({ incidents, scopeType, stageNumber, t }) {
   const rows = useMemo(() => {
@@ -2048,6 +2056,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             profileType={profile?.profile_type ?? null} startlist={stageStartlist} t={t}
           />
           <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
+          {isV4Timeline && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
           <WhyPanel moments={moments} stageNumber={stage} mode="full" riderNameById={riderNameById} t={t} />
           <DnfSection incidents={incidents} scopeType="stage" stageNumber={stage} t={t} />
           {jerseys.length > 0 && (

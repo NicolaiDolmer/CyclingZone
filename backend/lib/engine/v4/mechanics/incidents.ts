@@ -276,7 +276,7 @@ export type ResolvedIncident = {
  */
 export function resolveIncident(
   rolls: IncidentRolls,
-  context: { protectedByRule: boolean; helperNearby: boolean },
+  context: { protectedByRule: boolean; helperNearby: boolean; seriousShare?: number },
   tuning: IncidentsTuning,
 ): ResolvedIncident {
   const spanValue = (range: readonly [number, number], u: number): number => range[0] + u * (range[1] - range[0]);
@@ -297,7 +297,10 @@ export function resolveIncident(
   }
 
   // ── Styrt: alvorstrinnet afgoeres af sin EGEN lodtraekning. ──────────────
-  const { hard, serious } = tuning.crashSeverityShares;
+  // #6938 U2 (KUN s5_profiles_v3): andelen af styrt der ender med udgaaelse
+  // kommer fra terraenet (crashSeriousShareFor); udeladt = tuningens egen.
+  const { hard } = tuning.crashSeverityShares;
+  const serious = context.seriousShare ?? tuning.crashSeverityShares.serious;
   const severity: IncidentSeverity =
     rolls.severity < serious ? "serious" : rolls.severity < serious + hard ? "hard" : "light";
 
@@ -343,7 +346,7 @@ export function resolveIncident(
  */
 export function resolveCrashIncident(
   rolls: Omit<IncidentRolls, "kind">,
-  context: { protectedByRule: boolean; helperNearby: boolean },
+  context: { protectedByRule: boolean; helperNearby: boolean; seriousShare?: number },
   tuning: IncidentsTuning,
 ): ResolvedIncident {
   return resolveIncident({ ...rolls, kind: 1 }, context, tuning);
@@ -660,6 +663,39 @@ export function incidentKmAt(span: { fromKm: number; toKm: number }, kmFrac: num
   return round2(span.fromKm + kmFrac * (span.toKm - span.fromKm));
 }
 
+// ── #6938 U2: styrt-udgang pr. terraen (KUN s5_profiles_v3, slukket) ─────────
+//
+// Baselinen (spec 2026-10-23-6804-v3-tilvalg-design.md §2.2): styrt-udgang er
+// naesten fraevaerende paa alle terraener, fordi "alvorligt" er én fast andel
+// af ALLE styrt. Under v3 afgoer segmentets terraen andelen: brosten og
+// nedkoersler hoejest (hoej fart, ujaevnt underlag), stigning lavest (lav fart).
+// Hyppigheden af styrt er uaendret; kun hvor mange af dem der ender loebet.
+// Trappen er ellers den samme (skadedage, 3 km-reglen, mekanisk = kun tid).
+// Startgaet; kalibreres mod G17's private baand (balance-internals/).
+export const CRASH_ABANDON_V3_TUNING = Object.freeze({
+  seriousShareByKind: Object.freeze({
+    flat: 0.1,
+    rolling: 0.1,
+    climb: 0.06,
+    descent: 0.2,
+    cobbles: 0.2,
+  }) as Readonly<Record<SegmentKind, number>>,
+});
+
+/**
+ * #6938 U2: andelen af styrt paa dette terraen der ender med udgaaelse, eller
+ * undefined (tuningens egen fælles andel) naar v3 ikke er taendt. REN.
+ */
+export function crashSeriousShareFor(
+  segmentKind: SegmentKind,
+  s5ProfilesV3: boolean,
+  tuning: { seriousShareByKind: Readonly<Record<SegmentKind, number>> } = CRASH_ABANDON_V3_TUNING,
+): number | undefined {
+  if (!s5ProfilesV3) return undefined;
+  const share = tuning.seriousShareByKind[segmentKind];
+  return Number.isFinite(share) ? clamp(share, 0, 1) : undefined;
+}
+
 export function createIncidentHook(
   tuning: IncidentsTuning,
 ): (state: EngineState, ctx: SegmentHookContext) => SegmentHookResult {
@@ -676,6 +712,8 @@ export function createIncidentHook(
     if (lengthFactor <= 0) return { state, events };
     const span = incidentKmSpan(segment, ctx.s5ProfilesV2 === true);
     if (!span) return { state, events };
+    // #6938 U2 (KUN s5_profiles_v3): undefined = fælles andel, byte-identisk.
+    const seriousShare = crashSeriousShareFor(segment.kind, ctx.s5ProfilesV3 === true);
 
     // Kandidaterne behandles i STABIL rider_id-orden paa tvaers af ALLE grupper
     // (ikke gruppe-for-gruppe), saa etape-loftet fordeles uafhaengigt af hvilken
@@ -717,7 +755,7 @@ export function createIncidentHook(
           magnitude: rngFor("incident_time_loss", riderId)(),
           injury: rngFor("incident_injury", riderId)(),
         },
-        { protectedByRule, helperNearby },
+        seriousShare === undefined ? { protectedByRule, helperNearby } : { protectedByRule, helperNearby, seriousShare },
         tuning,
       );
 

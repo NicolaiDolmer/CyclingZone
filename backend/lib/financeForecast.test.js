@@ -4,7 +4,6 @@ import {
   computeFinanceForecast,
   computeMultiSeasonForecast,
   FORECAST_THRESHOLDS,
-  NEW_WAGE_SYSTEM_SEASON,
 } from "./financeForecast.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 import {
@@ -743,21 +742,22 @@ test("computeFinanceForecast (#3899): sæson < 3 bruger status quo (sum af rider
   assert.equal(result.inputs.salary_basis, "status_quo");
 });
 
-test("computeFinanceForecast (#3989): sæson >= 3 prissætter efter current_production_value, ikke riders.salary", () => {
+test("computeFinanceForecast (#7196): sæson >= 3 viser kontraktens løn, og udløbende kontrakter vises med forlængelsens løn", () => {
   const cpv = 200_000;
-  const expectedPerRider = computeFrozenSalary({ current_production_value: cpv });
+  const extension = computeFrozenSalary({ current_production_value: cpv });
   const result = computeFinanceForecast({
     team: { division: 2, sponsor_income: 240_000 },
     riders: [
-      { salary: 999_999, prize_earnings_bonus: 0, current_production_value: cpv }, // salary ignoreres >= S3
-      { salary: 999_999, prize_earnings_bonus: 0, current_production_value: cpv },
+      // Kontrakten løber ind i target-sæsonen: kontraktens løn, ikke en genberegning.
+      { salary: 55_000, prize_earnings_bonus: 0, current_production_value: cpv, contract_end_season: 5 },
+      // Kontrakten udløber før target-sæsonen: lønnen ved en forlængelse.
+      { salary: 999_999, prize_earnings_bonus: 0, current_production_value: cpv, contract_end_season: 4 },
     ],
     debtCeiling: 900_000,
-    targetSeasonNumber: NEW_WAGE_SYSTEM_SEASON,
+    targetSeasonNumber: 5,
   });
-  assert.equal(result.inputs.salary_basis, "production_s3");
-  assert.equal(result.projected_salary, -2 * expectedPerRider);
-  assert.notEqual(result.projected_salary, -2 * 999_999, "må IKKE bruge riders.salary i sæson 3+");
+  assert.equal(result.inputs.salary_basis, "contracts");
+  assert.equal(result.projected_salary, -(55_000 + extension));
 });
 
 test("computeFinanceForecast (#3989): markedsværdi påvirker IKKE lønprognosen", () => {
@@ -909,11 +909,11 @@ test("computeMultiSeasonForecast (#3899): lønsystemet skifter til markedsformle
   assert.equal(s2.season_number, 2);
   assert.equal(s2.inputs.salary_basis, "status_quo");
   assert.equal(s3.season_number, 3);
-  assert.equal(s3.inputs.salary_basis, "production_s3");
+  assert.equal(s3.inputs.salary_basis, "contracts");
   assert.equal(s4.season_number, 4);
-  assert.equal(s4.inputs.salary_basis, "production_s3");
-  // Ved cpv = 100.000 koster rytteren præcis 100.000 × den globale sats.
-  assert.equal(s3.projected_salary, -computeFrozenSalary({ current_production_value: 100_000 }));
+  assert.equal(s4.inputs.salary_basis, "contracts");
+  // #7196: uden kendt udløbssæson er kontraktens løn den, der trækkes.
+  assert.equal(s3.projected_salary, -10_000);
 });
 
 test("#5940: a strong club keeps upside over its own estimate", () => {

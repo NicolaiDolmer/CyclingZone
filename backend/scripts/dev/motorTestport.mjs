@@ -45,6 +45,8 @@
 //   --intent-rates=<fil>     satserne fra en tidligere koersel (breakaway-intent-rates.json);
 //                            kraeves med --from-dir, ellers laeses de read-only fra prod. #6804 P0
 //   --intent-season=<n>      satserne fra saeson n (default: seneste afsluttede). #6804 P0
+//   --track-fatigue          traethed og form mellem etaperne (#6984-modellen), saa G17 ogsaa
+//                            giver G17 realistisk traethed mellem etaperne (og sygdom, naar den bygges). #6938
 //   --time-budget=<min>      start ingen nye opgaver efter <min> minutter; koer samme kommando
 //                            igen for at genoptage (lange koersler i korte, forgrunds-bidder). #6909
 //
@@ -55,6 +57,8 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { benchView, buildTestportCard, copenhagenDate, raceResultFromDryRun, renderTestportHtml, renderTestportMarkdown } from "./lib/motorTestportReport.mjs";
 import { SYNTHETIC_KINDS, assertRoutesCover, createProdSource, loadRoutesDir, prepareInputs } from "./lib/motorTestportInputs.mjs";
+import { raceContextFromCache } from "./lib/v3Gates.mjs";
+import { isMountainNonSummit } from "./lib/tourScorecard.mjs";
 import { INTENT_MODES, ratesSignature, validateRates } from "./lib/breakawayIntent.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -123,6 +127,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     routesFrom: get("routes-from"),
     season,
     timeBudgetMin: get("time-budget") === null ? null : int("time-budget", 1),
+    trackFatigue: flag("track-fatigue"),
   };
 }
 
@@ -210,10 +215,11 @@ export function splitByStartField(ids, withField) {
  * (--compare=none). En eksisterende eksport laeses kun (ingen --save-cache);
  * ellers hentes loebet én gang og gemmes i loebsmappen til genkoersler.
  */
-export function tourDryRunArgs({ raceId, candidate, baseline, seeds, raceDir, cachePath, saveCache = true }) {
+export function tourDryRunArgs({ raceId, candidate, baseline, seeds, raceDir, cachePath, saveCache = true, trackFatigue = false }) {
   return [
     TOUR_DRY_RUN, `--race=${raceId}`, `--revision=${candidate}`, `--compare=${candidate === baseline ? "none" : baseline}`,
     `--seeds=${seeds}`, "--no-legacy-ref", `--cache=${cachePath}`, ...(saveCache ? [`--save-cache=${cachePath}`] : []), `--out-dir=${raceDir}`,
+    ...(trackFatigue ? ["--track-fatigue"] : []),
   ];
 }
 
@@ -229,7 +235,7 @@ export function planTasks({ raceIds, opts, outDir, fromDir = null, prebuilt = ne
       const exported = fromDir && !isPrebuilt ? path.join(fromDir, raceId, "cache.json") : null;
       const fromExport = Boolean(exported && existsSync(exported));
       const cachePath = fromExport ? exported : path.join(dir, "cache.json");
-      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt }) });
+      tasks.push({ kind: "race", id: raceId, dir, args: tourDryRunArgs({ raceId, candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, raceDir: dir, cachePath, saveCache: !fromExport && !isPrebuilt, trackFatigue: opts.trackFatigue === true }) });
     }
   }
   if (opts.bench) {
@@ -376,11 +382,35 @@ export function assertSameRun(prev, opts, outDir) {
     && (prev.breakawayIntent?.mode ?? "none") === (opts.breakawayIntent ?? "none")
     && (prev.routesFrom ?? null) === (opts.routesFrom ?? null)
     && (prev.routesSignature ?? null) === (opts.routesSignature ?? null)
-    && (prev.season ?? null) === (opts.season ?? null);
+    && (prev.season ?? null) === (opts.season ?? null)
+    // #6938 (Codex P2): med/uden traethed mellem etaperne er to forskellige koersler; aeldre meta = uden.
+    && (prev.trackFatigue === true) === (opts.trackFatigue === true);
   if (!same) {
-    const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null].filter(Boolean);
+    const input = [prev.syntheticField ? `syntetisk felt ${prev.syntheticField}` : null, prev.routesFrom ? `ruter ${prev.routesFrom}` : null, prev.season ? `saeson ${prev.season}` : null, prev.trackFatigue === true ? "med traethed" : null].filter(Boolean);
     throw new Error(`${outDir} er en anden koersel (${prev.baseline} -> ${prev.candidate}, ${prev.seeds} seeds, bench ${prev.benchScope}${input.length ? `, ${input.join(", ")}` : ""}). Brug en ny --out.`);
   }
+}
+
+/**
+ * #6804/#2757: loebskonteksten til v3-gaterne og S0 (startliste, roller, sprint-
+ * rang, etaper) fra loebets cache.json: loebsmappens egen (forbygget/gemt) foerst,
+ * ellers eksportens (`cacheDir`). Et loeb uden laesbar cache faar ingen kontekst
+ * (gaterne der kraever den er da MANGLER, aldrig gaettet).
+ */
+export function loadRaceContexts({ outDir, raceIds, cacheDir = null }) {
+  const contexts = new Map();
+  for (const id of raceIds) {
+    const candidates = [path.join(outDir, "races", id, "cache.json"), ...(cacheDir ? [path.join(cacheDir, id, "cache.json")] : [])];
+    const file = candidates.find((f) => existsSync(f));
+    if (!file) continue;
+    try {
+      const ctx = raceContextFromCache(JSON.parse(readFileSync(file, "utf8")), { isMountainNonSummit });
+      if (ctx) contexts.set(id, ctx);
+    } catch (err) {
+      console.warn(`motor-testport: cache for ${id} kunne ikke laeses (${err.message}); loebet faar ingen kontekst til v3-gaterne/S0.`);
+    }
+  }
+  return contexts;
 }
 
 export function collectCard({ outDir, baseline, candidate, meta, benchScope = meta?.benchScope ?? "all", thresholds = {} }) {
@@ -406,7 +436,8 @@ export function collectCard({ outDir, baseline, candidate, meta, benchScope = me
     const file = path.join(outDir, "bench", revision, `motor-bench-${benchScope}.json`);
     if (existsSync(file)) benchByRevision[revision] = benchView(JSON.parse(readFileSync(file, "utf8")));
   }
-  return buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, missingScorecards }, thresholds });
+  const contexts = loadRaceContexts({ outDir, raceIds: raceResults.map((r) => r.raceId).filter(Boolean), cacheDir: meta?.cacheDir ?? null });
+  return buildTestportCard({ raceResults, baseline, candidate, benchByRevision, meta: { ...meta, missingScorecards }, thresholds, contexts });
 }
 
 /** PNG af kortets overblik via Playwright fra frontend/node_modules. Best-effort. */
@@ -557,7 +588,9 @@ export async function main(argv = process.argv.slice(2), { now, clock, monotonic
   const thresholds = prev ? resolveReportThresholds(prev, opts) : loadThresholds(abs(opts.thresholds));
   const meta = {
     candidate: opts.candidate, baseline: opts.baseline, seeds: opts.seeds, parallel: opts.parallel, source, limit: opts.limit ?? prev?.limit ?? null, benchScope: opts.benchScope, thresholdsFile: resolveThresholdsFile(prev, opts), thresholds,
-    syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, field: inputs.field, routes: inputs.routes,
+    syntheticField: opts.syntheticField, breakawayIntent: breakawayIntentMeta ?? { mode: opts.breakawayIntent ?? "none" }, routesFrom: opts.routesFrom, routesSignature: opts.routesSignature ?? null, season: opts.season, trackFatigue: opts.trackFatigue === true, field: inputs.field, routes: inputs.routes,
+    // #6804/#2757: eksportens mappe, saa kortet (ogsaa --report-only) finder loebenes cache.json.
+    cacheDir: fromDir ?? prev?.cacheDir ?? null,
   };
   writeFileSync(metaFile, JSON.stringify(meta, null, 2));
 
@@ -593,7 +626,10 @@ async function writeCard({ card, outDir, png, failed }) {
   }
   const missing = card.meta?.missingScorecards ?? [];
   console.log(`Kort: ${path.join(outDir, "testport.md")} (+ .json${png ? ", .png" : ""}) · ${card.races} loeb${failed.length ? ` · ${failed.length} opgaver FEJLEDE` : ""}${missing.length ? ` · ${missing.length} scorecards mangler` : ""}${pending.length ? ` · ${pending.length} opgaver venter (tidsbudget)` : ""}`);
-  if (failed.length || missing.length || pending.length) process.exitCode = 1;
+  // #6804 (ejer valg 8 A): en v3-kandidat med en roed eller manglende G16-G19/G2-flad er blokeret.
+  const v3Blocked = Boolean(card.v3Gates?.applies && card.v3Gates.candidate?.blocked);
+  if (v3Blocked) console.log(`TAEND-GATE v3 BLOKERET: ${card.v3Gates.candidate.reasons.join("; ")}`);
+  if (failed.length || missing.length || pending.length || v3Blocked) process.exitCode = 1;
   return { card, outDir, failed };
 }
 

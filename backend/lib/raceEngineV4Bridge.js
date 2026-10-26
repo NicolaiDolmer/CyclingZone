@@ -1,5 +1,5 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
-import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
 import { peakComponentForStage } from "./racePeaks.js";
 import { scoreComponentToFormPoints } from "./plannerBoard.js";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
@@ -622,6 +622,10 @@ export function buildV4StageInput({
       ...(isS5ProfilesV2OrLater(rulesRevision)
         ? { gc_context: withRaceGcStages(withS5ThreatModel(buildGcContext({ isStageRace, stageNumber, standings: gcStandings, starterIds: rosterForOrders.map((r) => r.rider_id) }), rosterForOrders), raceGcStagesFor(raceStages, modules.route.routeFromStageProfileRow)) }
         : {}),
+      // #2757 S1 (KUN s5_profiles_v3): pointtroejens foerer, saa hans hold kan sende en pointjaeger.
+      ...(isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders?.points ? { points_leader_rider_id: String(jerseyLeaders.points) } : {}),
+      // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne, saa et AI-hold kan sende sin i udbrud.
+      ...(isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders?.komHunters?.length ? { kom_hunter_rider_ids: jerseyLeaders.komHunters.map(String) } : {}),
     },
   });
   // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe);
@@ -637,6 +641,8 @@ export function buildV4StageInput({
   // #5914: kun naar der ER en foerer — et input uden foerere er uaendret.
   if (jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom)) {
     input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
+    // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne kaemper om bjergtoppene undervejs.
+    if (isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders.komHunters?.length) input.jersey_leaders.kom_hunters = jerseyLeaders.komHunters.map(String);
   }
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
   if (isOrdersGcRulesRevision(rulesRevision)) {
@@ -751,7 +757,8 @@ export function createRaceEngineV4Adapter(modules) {
         v4Output,
         // #5928: the effort the engine actually raced each rider on (AI orders included),
         // so the stage's fatigue load follows the same intent as the race itself.
-        efforts: new Map(input.startlist.map((e) => [String(e.rider_id), e.effort])),
+        // #7003: med en etapeplan er det den haardeste indsats rytteren faktisk koerte.
+        efforts: new Map(input.startlist.map((e) => [String(e.rider_id), v4Output.stage_plan_load_efforts?.[e.rider_id] ?? e.effort])),
       };
     },
   };

@@ -70,6 +70,8 @@ Alle gates antager at det destruktive forever-reset (spec §8) er kørt, så pop
 
 ## Gate C — resultat-pipeline + `/admin/import-results-pcm` slettes (efter WS1 bevist på beta #1596)
 
+**STATUS 2026-10-24 (#7082):** leveret efter ejer-beslutning (importen skal aldrig bruges igen). `pcmResultsImport.js`, `pcmResultsParser.js`, `pcmTeamAliases.js`, `pcmRiderAliases.js`, `adminImportUpload.js` (+ tests), ruten og `scripts/import_race_results.py` er slettet. `pcmRiderMatcher.js` er bevaret som ren fold-util (`foldName`/`foldNameNordic`); flyt til et neutralt navne-modul er stadig åbent.
+
 ### Hvad skal være sandt
 1. **WS1 Fase 3 stage-automatisering er aktiveret på beta og bevist** (#1596): løb afvikles automatisk + præmier udbetales + sæson-skift kører ≥1 fuld cyklus uden manuel indgriben (forever-gate §6.1). Indtil da er `POST /admin/import-results-pcm` den ENESTE manuelle løbsresultat-recovery-sti — derfor må den ikke fjernes.
 2. **`foldNameNordic`-afhængigheden er løst.** `pcmRiderMatcher.js` eksporterer `foldNameNordic`, som bruges af IKKE-PCM-kode: `academyIntake.js`, `fictionalRiderGenerator.js`, `relaunchOrchestrator.js`, `starterSquadAllocator.js`, `generateFictionalRiders.js`, `gateMutationAudit.js`. Før `pcmRiderMatcher.js` slettes, skal `foldNameNordic` (+ evt. `foldName`) flyttes til et neutralt navne-util-modul (fx `backend/lib/nameNormalization.js`) og importerne opdateres. **Dette flyt kan ske NU** (uafhængigt af gaten) for at af-koble den ikke-PCM-brug fra PCM-pipelinen.

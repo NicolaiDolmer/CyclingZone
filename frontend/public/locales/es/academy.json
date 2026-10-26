@@ -51,14 +51,14 @@
   "intakePull": {
     "title": "La cantera de esta semana",
     "description": "Tu academia tiene un grupo nuevo de candidatos. Ves la edad, la nacionalidad, el tipo y las habilidades actuales. El potencial se descubre con el entrenamiento una vez que fichan.",
-    "deadlineNote": "Disponible hasta el domingo a las 23:59",
+    "deadlineNote": "Disponible hasta el sábado a las 23:59",
     "pullBtn": "Traer la cantera de esta semana",
     "pulling": "Trayéndolos...",
     "provisionalValue": "Valor provisional",
     "wageOneSeason": "Salario (1 temporada)",
     "valuationNote": "Valoración completa el domingo",
     "abilitiesNow": "Habilidades ahora",
-    "emptyAfterPull": "No quedan candidatos por revisar. La cantera de la próxima semana abre el lunes.",
+    "emptyAfterPull": "No quedan candidatos por revisar. La cantera de la próxima semana abre el domingo.",
     "errorFailed": "No se pudo traer la cantera de esta semana. Inténtalo de nuevo."
   },
   "potentialLearned": "Se descubre con el entrenamiento",

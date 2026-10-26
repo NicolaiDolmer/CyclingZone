@@ -232,6 +232,14 @@
       "title": "Ha llegado talento nuevo a la academia",
       "message": "Hay candidatos nuevos esperando en tu academia - ficha o rechaza."
     },
+    "academyPullReminderReady": {
+      "title": "Tienes nuevos candidatos en la academia",
+      "message": "El lote de esta semana te espera en tu academia. Recógelo antes del sábado a medianoche."
+    },
+    "academyPullReminderExpiring": {
+      "title": "El lote de academia de esta semana caduca esta noche",
+      "message": "Aún no has recogido a los candidatos de esta semana. Hazlo antes de medianoche o el lote se pierde."
+    },
     "seasonStarted": {
       "title": "Ha empezado la temporada {number}",
       "message": "Ha empezado una temporada nueva. Mira tu panel para ver los objetivos de tu directiva y tu plantilla para la temporada que viene.",
@@ -251,11 +259,13 @@
     },
     "raceResult": {
       "title": "Ya está el resultado de la carrera",
-      "message": "Se ha corrido {race}. Ver el resultado."
+      "message": "Se ha corrido {race}. Ver el resultado.",
+      "messageBest": "{race} ya se ha corrido. Tus mejores: {riders}."
     },
     "firstRaceResult": {
       "title": "Tu primera carrera ya es historia",
-      "message": "Se ha corrido {race}. Mira cómo les fue a tus ciclistas."
+      "message": "Se ha corrido {race}. Mira cómo les fue a tus ciclistas.",
+      "messageBest": "{race} ya se ha corrido. Tus mejores: {riders}."
     },
     "stageResult": {
       "title": "Ya está el resultado de la etapa",
@@ -297,8 +307,8 @@
     },
     "seasonTransitionRisk": {
       "title": "Cambio de temporada: riesgo de contrato y de retirada",
-      "messageBoth": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca, y {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. Amplía el contrato de un ciclista desde su perfil antes del cambio para evitar que lo liberen; la retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada.",
-      "messageExpiringOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca. Amplía su contrato desde el perfil del ciclista antes del cambio para conservarlos.",
+      "messageBoth": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca, y {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. Amplía los contratos antes del cambio en la pestaña Contratos de Mi equipo, donde puedes ampliar varios ciclistas de 1 a 3 temporadas a la vez. La retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada.",
+      "messageExpiringOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca. Amplíalos antes del cambio en la pestaña Contratos de Mi equipo, donde puedes ampliar varios ciclistas de 1 a 3 temporadas a la vez.",
       "messageRetirementOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. La retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada."
     },
     "watchlistDeparted": {
@@ -644,6 +654,10 @@
       "title": "{count, plural, one {Mensaje nuevo} other {# mensajes nuevos}}",
       "message": "{count, plural, one {{senderName} te ha enviado un mensaje} other {# mensajes nuevos de {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Otro mánager te ha enviado un mensaje} other {# mensajes nuevos de otro mánager}}"
+    },
+    "riderIll": {
+      "title": "Corredor enfermo",
+      "message": "El médico dice que {rider} está enfermo tras varios días de fatiga extrema y está de baja hasta el {until}."
     },
     "riderInjured": {
       "title": "Ciclista lesionado",

@@ -39,7 +39,8 @@
     "squad": "Squad ({count})",
     "development": "Development",
     "stats": "Stats",
-    "transfers": "Transfer history"
+    "transfers": "Transfer history",
+    "contracts": "Contracts"
   },
   "development": {
     "headers": {
@@ -321,5 +322,49 @@
     "discordOpenAria": "Open {handle}'s Discord profile",
     "discordCopyAria": "Copy Discord username {handle}",
     "discordCopied": "Copied"
+  },
+  "contracts": {
+    "headers": {
+      "seasons": "Seasons",
+      "salary": "Salary now / new",
+      "newContract": "New contract"
+    },
+    "selectRider": "Select {name}",
+    "selectGroup": "Select all: {group}",
+    "seasonsFor": "Seasons to extend {name}",
+    "seasonsCount": "{count}",
+    "seasonsMax": "{count} (max)",
+    "noContract": "No contract",
+    "group": {
+      "expiring": "Expires this season",
+      "season": "Expires after season {season}",
+      "atCap": "At the limit",
+      "atCapHint": "Already runs as far as allowed. Can be extended again when the season changes."
+    },
+    "bar": {
+      "none": "Tick the riders you want to extend.",
+      "selected": "{count, plural, one {# rider selected} other {# riders selected}}",
+      "salaryDelta": "Salary {value} CZ$ per season",
+      "seasonsLabel": "Seasons",
+      "extend": "{count, plural, =0 {Extend contracts} one {Extend # contract} other {Extend # contracts}}"
+    },
+    "summary": {
+      "title": "Extend contracts",
+      "cancel": "Cancel",
+      "confirm": "{count, plural, one {Extend # contract} other {Extend # contracts}}",
+      "loadError": "Couldn't load the summary. Nothing was changed.",
+      "saveError": "Couldn't extend the contracts. Nothing was changed.",
+      "teamSalary": "Team salary per season",
+      "salaryCap": "Board salary cap",
+      "noCap": "No cap set",
+      "withinCap": "Within the cap",
+      "overCap": "Over the cap of {cap} CZ$. Nothing will be extended"
+    },
+    "done": "{count, plural, one {# contract extended.} other {# contracts extended.}}",
+    "loadErrorTitle": "Couldn't load your contracts",
+    "loadErrorBody": "Nothing was lost. Your contracts are unchanged.",
+    "retry": "Try again",
+    "emptyTitle": "Sign riders to manage their contracts",
+    "emptyBody": "Riders you own show up here, grouped by when their contract expires."
   }
 }

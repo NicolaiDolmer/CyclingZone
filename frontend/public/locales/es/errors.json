@@ -278,6 +278,14 @@
     "beta_invalid_payload": "No se pudo leer ese ajuste de la beta.",
     "flag_unknown": "Esa función no existe.",
     "flag_invalid_stage": "Una función solo puede estar desactivada, en beta o activada.",
-    "flag_boolean_only": "Este interruptor es solo de encendido/apagado y no tiene fase beta."
+    "flag_boolean_only": "Este interruptor es solo de encendido/apagado y no tiene fase beta.",
+    "contract_batch_empty": "Elige al menos un ciclista para ampliar",
+    "contract_batch_too_large": "Puedes ampliar como máximo {max} contratos a la vez",
+    "contract_batch_invalid": "Cada ciclista se puede ampliar de 1 a {max} temporadas",
+    "contract_batch_duplicate": "Se ha elegido el mismo ciclista dos veces",
+    "contract_batch_rejected": "Algunos contratos no se pueden ampliar. No se ha cambiado nada",
+    "contract_batch_salary_cap": "Estas ampliaciones llevarían tu salario total por encima del tope de la directiva de {cap} CZ$. No se ha cambiado nada",
+    "contract_batch_write_failed": "Algo salió mal al guardar un contrato. No se ha cambiado nada",
+    "contract_batch_partial": "Algunos contratos cambiaron durante la ampliación y no todo se pudo deshacer. Revisa los ciclistas de abajo"
   }
 }

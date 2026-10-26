@@ -13,7 +13,7 @@
 // Degraderer til FallbackFilmScrubber (simpel km-akse) for legacy-etaper
 // uden rutedata (hasRouteData false) — fallback, ikke standard.
 import { buildProfileSeries, hasRouteData } from "../../lib/stageRouteProfile.js";
-import { kmToX, altitudeAtKm, climbMarkerHeight } from "../../lib/stageTimelineFilm.js";
+import { kmToX, altitudeAtKm, climbMarkerHeight, gapAtKm, formatLead } from "../../lib/stageTimelineFilm.js";
 import { formatNumber } from "../../lib/intl.js";
 
 const WIDTH = 820;
@@ -159,23 +159,23 @@ function SilhouetteScrubber({ profile, feedEvents, catchKm, gapCurve, scrubKm, d
         {t("detail.film.km", { value: formatNumber(distanceKm) })}
       </text>
 
-      <GapCurveLayer gapCurve={gapCurve || []} distanceKm={distanceKm} progressX={progressX} uid={uid} t={t} />
+      <GapCurveLayer gapCurve={gapCurve || []} distanceKm={distanceKm} progressX={progressX} scrubKm={scrubKm} uid={uid} t={t} />
     </svg>
   );
 }
 
-function GapCurveLayer({ gapCurve, distanceKm, progressX, uid, t }) {
+function GapCurveLayer({ gapCurve, distanceKm, progressX, scrubKm, uid, t }) {
   if (!gapCurve.length) return null;
   const maxGap = Math.max(...gapCurve.map((p) => p.gapSeconds), 30) * 1.15;
   const y = (gap) => CURVE_BASE_Y - (gap / maxGap) * CURVE_H;
   const points = gapCurve.map((p) => `${X(p.km, distanceKm).toFixed(1)},${y(p.gapSeconds).toFixed(1)}`).join(" ");
-  const curveScrubY = (() => {
-    // Trin-funktion: seneste kendte gap-punkt op til scrub-positionen (samme
-    // "afspillet"-logik som event-feedet — kurven springer ikke i fremtiden).
-    let last = gapCurve[0].gapSeconds;
-    for (const p of gapCurve) { if (X(p.km, distanceKm) <= progressX) last = p.gapSeconds; else break; }
-    return y(last);
-  })();
+  // Trin-funktion: seneste kendte gap-punkt op til scrub-positionen (samme
+  // "afspillet"-logik som event-feedet — kurven springer ikke i fremtiden).
+  // #6803: tallet ved prikken er udbruddets forspring paa jagten lige nu.
+  const gapNow = gapAtKm(gapCurve, scrubKm);
+  const curveScrubY = y(gapNow ?? gapCurve[0].gapSeconds);
+  const showGap = gapNow != null && gapNow > 0;
+  const nearEnd = progressX > WIDTH - PAD - 90;
   return (
     <g>
       <text x={PAD} y={CURVE_TOP - 4} className="text-3xs fill-cz-3 font-data" fontSize="10" style={{ letterSpacing: "0.08em" }}>
@@ -187,6 +187,12 @@ function GapCurveLayer({ gapCurve, distanceKm, progressX, uid, t }) {
         <polyline points={points} fill="none" stroke="rgb(var(--accent))" strokeWidth="2" />
       </g>
       <circle cx={progressX} cy={curveScrubY} r="3.2" fill="rgb(var(--accent))" stroke="var(--bg-card)" strokeWidth="1" />
+      {showGap && (
+        <text x={nearEnd ? progressX - 7 : progressX + 7} y={Math.max(CURVE_TOP + 8, curveScrubY - 5)} textAnchor={nearEnd ? "end" : "start"}
+          fontSize="10" fontWeight="600" className="text-3xs fill-cz-1 font-data tabular-nums">
+          {t("detail.film.gapNow", { gap: formatLead(gapNow) })}
+        </text>
+      )}
     </g>
   );
 }

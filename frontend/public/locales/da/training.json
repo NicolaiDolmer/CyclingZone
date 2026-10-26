@@ -55,6 +55,27 @@
   "primary": {
     "setDays": "Sæt dag for {n, plural, one {# rytter} other {# ryttere}}"
   },
+  "decision": {
+    "title": "Dagens beslutning",
+    "recovery": "aktiv restitution i dag",
+    "reason": "Træthed {fatigue} og en hård dag planlagt. Skaderisikoen er forhøjet.",
+    "use": "Brug",
+    "useAria": "Sæt {name} til aktiv restitution",
+    "useAll": "Brug alle {n} forslag",
+    "none": "Ingen ryttere har brug for en ændring i dag.",
+    "failed": "Kunne ikke gemme. Prøv igen.",
+    "segLabel": "Filtrér ryttere",
+    "segAll": "Alle {n}",
+    "segTraining": "Træner {n}",
+    "segRacing": "Løb {n}",
+    "segTired": "Træthed {from}+ {n}",
+    "colDays70": "Dage {from}+",
+    "days70Hint": "Afregnede dage i træk med træthed på {from} eller mere",
+    "colAssistant": "Assistent",
+    "assistantRecovery": "Aktiv restitution",
+    "agrees": "Enig",
+    "raceChip": "Løb"
+  },
   "overview": {
     "label": "Dagen på et blik",
     "needsDay": "Mangler en dag",

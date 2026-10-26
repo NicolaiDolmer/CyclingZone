@@ -70,6 +70,13 @@ import {
   loadTeamDivisionId,
 } from "./injuryRaceDays.js";
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
+import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
+import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
+import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
+import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
+import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
+import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
+import { CURRENT_RACE_RULES_REVISION, isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 
 // #4847: standard-truppen paa training_day_runs.squad. Kolonnen har DEFAULT 'senior'
 // i skemaet (database/2026-09-15-4847-training-day-close-trigger.sql); konstanten her
@@ -228,6 +235,17 @@ async function assertRaceDayReservationSettled({ supabase, runRowFilter, teamId,
 // developmentV2Flag.js, og denne laesning flyttes dertil ved en senere refaktor.
 export const DEVELOPMENT_V2_AGING_FLAG_KEY = "development_v2_aging_enabled";
 
+// #6210/#7075: maks +1 pr. evne pr. DATO (paa tvaers af datoens loebsdage og stier).
+// Leveres med Udvikling 2.0 (ejer 23/10) og taendes samme soendag som resten.
+// Slukket (default, fail-safe) = bit-identisk med foer, ogsaa i DB-kaldene: datoens
+// andre rapporter hentes kun naar flaget er taendt. Kun "on" taender (beta = off).
+export const ABILITY_CAP_PER_DATE_FLAG_KEY = "ability_cap_per_date_enabled";
+
+async function isAbilityCapPerDateEnabled(supabase, { strict = false } = {}) {
+  if (strict) return readConditionWriterFlag(supabase, ABILITY_CAP_PER_DATE_FLAG_KEY);
+  return evaluateFlagStage(await readFlagStage(supabase, ABILITY_CAP_PER_DATE_FLAG_KEY));
+}
+
 async function isDevelopmentV2AgingEnabled(supabase, { strict = false } = {}) {
   // strict = loebsdags-datoens atomare sti: en fejlet laesning kaster (som de
   // oevrige flag der laeses dér), i stedet for at blive tolket som "off".
@@ -255,10 +273,89 @@ async function runBatched(items, concurrency, fn) {
 
 // Beregn injured_until-dato: tickDate (YYYY-MM-DD) + days → YYYY-MM-DD.
 // Noon UTC undgår DST-kanttilfælde ved dato-aritmetik.
+/**
+ * #6938: rytternes traethed de seneste afregnede dage foer `tickDate`, nyeste foerst, pr. rytter.
+ * Kun afregnede dage (status complete); en manglende dag bryder stimen (conditionIllness).
+ */
+export async function loadIllnessFatigueHistory(supabase, riderIds, tickDate) {
+  if (!riderIds?.length) return new Map();
+  const from = addDaysToDate(tickDate, -ILLNESS_HISTORY_DAYS);
+  // Paa rytter-id (primaernoeglen rider_id, season_id, tick_date): tabellen har intet index paa team_id.
+  const { data, error } = await supabase
+    .from("training_condition_settlements")
+    .select("rider_id, tick_date, fatigue:applied_condition->>fatigue")
+    .in("rider_id", riderIds)
+    .eq("status", "complete")
+    .gte("tick_date", from)
+    .lt("tick_date", tickDate)
+    .order("tick_date", { ascending: false });
+  if (error) throw new Error(`training_condition_settlements (illness history): ${error.message}`);
+  const byRider = new Map();
+  const lastDate = new Map();
+  for (const row of data ?? []) {
+    const prev = lastDate.get(row.rider_id) ?? tickDate;
+    // Kun dage i traek: en dag mangler -> stimen stopper der.
+    if (addDaysToDate(row.tick_date, 1) !== prev) continue;
+    byRider.set(row.rider_id, [...(byRider.get(row.rider_id) ?? []), Number(row.fatigue)]);
+    lastDate.set(row.rider_id, row.tick_date);
+  }
+  return byRider;
+}
+const ILLNESS_HISTORY_DAYS = 14;
+
 function addDaysToDate(dateStr, days) {
   const d = new Date(dateStr + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+// #6210 (doktrin, MASTERPLAN): maks +1 pr. evne pr. rytter pr. DATO. En dato baerer
+// flere loebsdage, og hvert loebsdags-tick har sit eget +1-loft (#4801), saa to
+// stier samme dato (Train now om morgenen, aftenens sweep, en loebsdag som tick)
+// kunne hver give et point i samme evne. Vaernet sidder HER, i den ene funktion
+// alle tre stier gaar igennem (runTeamTrainingDay), lige foer skrivningen.
+export const ABILITY_GAIN_CAP_PER_DATE = 1;
+
+/** PURE: summer allerede krediterede hele point pr. evne fra datoens tidligere rapporter. */
+export function sumDateGains(reportRows = []) {
+  const used = {};
+  for (const row of reportRows) {
+    for (const [ability, n] of Object.entries(row?.gains ?? {})) {
+      const points = Number(n);
+      if (Number.isFinite(points) && points > 0) used[ability] = (used[ability] ?? 0) + points;
+    }
+  }
+  return used;
+}
+
+/**
+ * PURE: klip et ticks gevinster saa evnen hoejst stiger ABILITY_GAIN_CAP_PER_DATE
+ * paa datoen. Et klippet point gaar ikke tabt: det laegges tilbage paa fremdrifts-
+ * baren og baeres til naeste dato, samme carry-over som loebsdags-loftet (#4750).
+ * Muterer ikke input. Uden klip returneres samme objekt.
+ */
+export function capTickGainsPerDate({ tickResult, abilities, usedGains = {}, cap = ABILITY_GAIN_CAP_PER_DATE }) {
+  if (!tickResult?.gains) return tickResult;
+  let next = null;
+  for (const [ability, n] of Object.entries(tickResult.gains)) {
+    const gained = Number(n) || 0;
+    const allowance = Math.max(0, cap - (Number(usedGains[ability]) || 0));
+    if (gained <= allowance) continue;
+    next ??= {
+      ...tickResult,
+      abilities: { ...tickResult.abilities },
+      progress: { ...tickResult.progress },
+      gains: { ...tickResult.gains },
+      capped_by_date: {},
+    };
+    const excess = gained - allowance;
+    next.abilities[ability] = Number(abilities?.[ability] ?? 0) + allowance;
+    next.progress[ability] = Number(next.progress[ability] ?? 0) + excess;
+    if (allowance > 0) next.gains[ability] = allowance;
+    else delete next.gains[ability];
+    next.capped_by_date[ability] = excess;
+  }
+  return next ?? tickResult;
 }
 
 // #6009: matcher etape-opslagets etape den kanoniske belastning for loebsdagen?
@@ -588,6 +685,31 @@ export async function runTeamTrainingDay({
   }
 
   const riderIds = riders.map((r) => r.id);
+  // #6210: datoens andre rapporter. Et kalenderdags-tick (game_day NULL, fx fail-
+  // safe-faldet uden division) taeller altid med. Datoens andre loebsdage taeller
+  // herfra kun uden dato-kvitteringer; med conditionPerDate er kilden kvitteringerne
+  // (dateReceipts, rytter-noeglet), saa de ikke taelles to gange.
+  // #6210: datoens tidligere gevinster. Opslaget er hold-scopet (indekset leder med team_id;
+  // aftenafregningen kalder dette pr. hold pr. loebsdag, saa en scanning paa tvaers af hold er
+  // for dyr, Codex P1 paa #7075). Et holdskifte samme dato daekkes paa live-stien af
+  // dato-kvitteringerne (training_rider_ticks, rytter-noeglet, laest paa tvaers af hold).
+  // Kalenderdags-stien (useRaceDayKey=false: rollback eller fallback) laeser ogsaa.
+  const capPerDateOn = await isAbilityCapPerDateEnabled(supabase, { strict: conditionPerDate });
+  let sameDateRunReports = [];
+  if (capPerDateOn) {
+    let query = supabase.from("training_day_runs").select("game_day, season_id, squad, report")
+      .eq("team_id", teamId).eq("tick_date", tickDate);
+    // Med dato-kvitteringer kommer loebsdagene derfra; kun kalenderdags-raekker her.
+    if (conditionPerDate) query = query.is("game_day", null);
+    const { data, error } = await query;
+    if (error) throw new Error(`same-date training reports: ${error.message}`);
+    const isThisRun = (row) => (useRaceDayKey
+      ? Number(row.game_day) === raceDay && (row.squad ?? TRAINING_DAY_RUN_DEFAULT_SQUAD) === squadKey
+      : row.game_day == null);
+    sameDateRunReports = (data ?? []).filter((row) => !isThisRun(row) && (row.game_day == null
+      || (!conditionPerDate && row.season_id === seasonId)))
+      .flatMap((row) => row.report?.riders ?? []);
+  }
   if (conditionPerDate) {
     const { data, error } = await supabase.from('training_race_loads')
       // Full ledger records keep this reader compatible before the recovery
@@ -611,18 +733,27 @@ export async function runTeamTrainingDay({
   // (recovery-konstanterne nedenfor); D1+D2 — lookuppet, "race"-intensiteten og
   // udviklings-tick'et — hænger på `raceDayDevelopmentOn`. Læses parallelt: to
   // uafhængige app_config-opslag uden indbyrdes rækkefølge.
-  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On] = await Promise.all([
+  // #3564: kurve B (development_curve_b + private params fra miljoeet). null =
+  // dagens model, bit-identisk; ogsaa naar flaget er on men params mangler.
+  const [raceDayEngineOn, raceDayDevelopmentOn, developmentV2On, curveB] = await Promise.all([
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_engine_enabled') : isRaceDayEngineEnabled(supabase),
     conditionPerDate ? readConditionWriterFlag(supabase, 'race_day_development_enabled') : isRaceDayDevelopmentEnabled(supabase),
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
+    loadDevelopmentCurveB({ supabase, strict: conditionPerDate }),
+  ]);
+  // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
+  const [developmentScoreB, raceCatchUp] = await Promise.all([
+    loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),
+    loadRaceCatchUp({ supabase, strict: conditionPerDate, capPerDateOn }),
   ]);
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
   // fra en manager. Derfor kastes der (reservationen slettes i catch'en nedenfor),
   // og naeste sweep proever igen. ASCII-only besked (intern ops-fejl).
+  // #6950: D6 gaelder ogsaa naar Udviklingsscore B eller catch-up er taendt.
   let developmentAllowed = true;
-  if (developmentV2On) {
+  if (developmentV2On || developmentScoreB || raceCatchUp) {
     const { data: teamRow, error: teamError } = await supabase
       .from("teams")
       .select("id, user_id, is_ai, is_bank, is_test_account")
@@ -715,6 +846,7 @@ export async function runTeamTrainingDay({
   // — sat eksplicit nedenfor, IKKE først inde i applyRaceDevelopmentTick, så en
   // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
   const racedRiderProfileByRider = new Map();
+  let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
   if (useRaceDayKey) {
     // #4850 C2: etape-opslaget er en REGEL-GATE paa loebsdags-aksen (samme kontrakt
     // som bindingen ovenfor): svaret afgoer om rytteren maa traene i dag. Et gaet
@@ -732,6 +864,10 @@ export async function runTeamTrainingDay({
     for (const [riderId, stage] of raceDayResult.data ?? new Map()) {
       racedRiderIds.add(riderId);
       racedRiderProfileByRider.set(riderId, stage.profileType ?? RACE_DAY_FALLBACK_PROFILE);
+    }
+    // #6641 variant B: managerens intention for etapen skalerer loebsdagens udbytte (flag off = tomt kort = 1,0).
+    if (raceDayDevelopmentOn && racedRiderIds.size > 0 && await isRaceDayIntentionEnabled(supabase)) {
+      raceDayEffortByRider = await loadRaceDayEffortByRider({ supabase, stageByRider: raceDayResult.data });
     }
   } else if (raceDayDevelopmentOn) {
     if (raceDayResult.error) {
@@ -825,6 +961,10 @@ export async function runTeamTrainingDay({
     await loadTrainingStaffContext(supabase, teamId, { retryOnTransient: true });
   // #6984 M1-M3: medicinsk afdeling, kun under condition_model_v2 (ellers ingen read).
   const teamMedicalBonus = conditionModelV2On ? await loadTeamMedicalBonus(supabase, teamId, { retryOnTransient: true }) : 0;
+  // #6938: sygdom af langvarig ekstrem traethed. Kun under condition_model_v2 OG naar
+  // loebsmotoren koerer s5_profiles_v3 (taendes med v3). Ellers ingen read (bit-identisk).
+  const illnessOn = conditionModelV2On && isS5ProfilesV3OrLater(CURRENT_RACE_RULES_REVISION);
+  const illnessHistoryByRider = illnessOn ? await loadIllnessFatigueHistory(supabase, riders.map((r) => r.id), tickDate) : new Map();
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   abilityUpdates = []; // { riderId, patch }
@@ -1062,6 +1202,8 @@ export async function runTeamTrainingDay({
         tickSeedKey,
         budgetDivisor,
         hardDailyCap,
+        // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
+        curveB,
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -1072,16 +1214,18 @@ export async function runTeamTrainingDay({
         // ALTID paa loebs-grenen, ogsaa paa den gamle kalenderdags-sti, hvor
         // hardDailyCap ellers er undefined. Profil-fallback 'rolling' er sat ovenfor.
         //
-        // #4632 SEAM (variant B, dagens intention): effort-modifikatoren lever i
-        // applyRaceDevelopmentTick (dailyTraining.js) og laegges ovenpaa naar
-        // race_day_intention_enabled og v4 taendes. Den sendes BEVIDST IKKE her.
+        // #6641 (variant B, ejer 24/9): dagens intention ganges sidst i kaeden via
+        // applyDailyTick's ekstra multiplikator-led (default 1,0). Kun paa loebsdags-
+        // aksen og kun med race_day_intention_enabled on; ellers 1,0 = variant A.
         tickResult = applyDailyTick({
           ...sharedTickArgs,
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
           hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
+          academyRateMult: raceDayIntentionYieldMultiplier(raceDayEffortByRider.get(rider.id)),
+          ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
         });
       } else {
-        tickResult = applyDailyTick(sharedTickArgs);
+        tickResult = applyDailyTick({ ...sharedTickArgs, ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs }) }); // #6950
       }
       // #6500 D6: ikke-managerhold beholder tick'ets score, status og
       // traeningsscore-detalje, men evnerne og fremdriften staar stille. Ved at
@@ -1090,6 +1234,23 @@ export async function runTeamTrainingDay({
       // forbrugere (patch, historik, rapport) ser automatisk "ingen gevinst".
       if (!developmentAllowed) {
         tickResult = { ...tickResult, abilities: { ...abilities }, gains: {}, progress: preProgress };
+      } else if (!capPerDateOn) {
+        // #6210-flaget slukket: ingen dato-loft (bit-identisk med foer #7075).
+      } else if (useRaceDayKey) {
+        // #6210: maks +1 pr. evne pr. dato, paa tvaers af datoens loebsdage og stier.
+        // Kalenderdags-stien faar samme loft i else-grenen nedenfor. Et
+        // ikke-managerhold (ovenfor) faar ingen gevinst, saa vaernet er kun noedvendigt her.
+        const usedGains = sumDateGains([
+          ...(conditionPerDate ? dateReceipts.filter((row) => row.rider_id === rider.id
+            && row.tick_date === tickDate && row.game_day !== raceDay).map((row) => row.report) : []),
+          ...sameDateRunReports.filter((row) => row.rider_id === rider.id),
+        ]);
+        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
+      } else {
+        // #6210 (Codex P1): kalenderdags-stien (flag slukket, rollback eller loebsdags-fallback)
+        // faar samme dato-loft, inkl. gevinster fra datoens tidligere loebsdags-ticks.
+        const usedGains = sumDateGains(sameDateRunReports.filter((row) => row.rider_id === rider.id));
+        tickResult = capTickGainsPerDate({ tickResult, abilities, usedGains });
       }
     }
 
@@ -1186,6 +1347,26 @@ export async function runTeamTrainingDay({
     } else if (cond.injured_until && cond.injured_until < tickDate) {
       newInjuredUntil = null;
       newInjuryCause = null;
+    }
+
+    // #6938: sygdom (efter oprydningen af en udloebet skade, saa den ikke nulstilles). Kun for en
+    // rask rytter, der ikke blev skadet i dag. Stimen regnes paa de
+    // afregnede dage foer i dag plus dagens traethed efter afregningen (conditionIllness.js).
+    let illnessDays = 0;
+    // Codex #7178: kun paa datoens afregnende tick (samme gate som conditionUpserts), ellers
+    // skrives en sygdom i rapporten paa et tick hvor tilstanden ikke afregnes.
+    if (illnessOn && (!conditionPerDate || settlesCondition) && !injuredToday && !newlyInjured) {
+      const illness = assessIllness({ riderId: rider.id, dateStr: seedScope, fatigues: [newFatigue, ...(illnessHistoryByRider.get(rider.id) ?? [])], medicalBonus: teamMedicalBonus });
+      if (illness.ill) {
+        illnessDays = illness.days;
+        newlyInjured = true;
+        newInjuredUntil = addDaysToDate(tickDate, illness.days);
+        newInjuryCause = "illness";
+        if (useRaceDayKey) {
+          newInjuryEndGameDay = injuryEndGameDay({ gameDay: raceDay, days: illness.days, seasonNumber });
+          newInjurySeasonId = newInjuryEndGameDay == null ? null : seasonId;
+        }
+      }
     }
 
     // Saml ability-patch: gains fra tick + opdateret progress + evt. initierede caps.
@@ -1337,6 +1518,8 @@ export async function runTeamTrainingDay({
       score: tickResult?.score ?? 0,
       gains: tickResult?.gains ?? {},
       gains_detail: gainsDetail,
+      // #6210: point udskudt til naeste dato af dato-loftet (kun naar det bandt).
+      ...(tickResult?.capped_by_date ? { gains_deferred_by_date_cap: tickResult.capped_by_date } : {}),
       // #3924 trin 2: pre-tick fremdrift — kun til frontend-udledning af dagens
       // bidrag til "på vej mod næste point"-baren, aldrig til ny trænings-logik.
       progress_before: preProgress,
@@ -1347,6 +1530,8 @@ export async function runTeamTrainingDay({
       fatigue_delta: newFatigue - preFatigue,
       injured: injuredToday || newlyInjured,
       injury_days: injuryDays,
+      // #6938: syg i dag (loebsdage ude). Kun naar sygdom er taendt; 0 ellers.
+      ...(illnessDays > 0 ? { illness_days: illnessDays } : {}),
       focus: program.focus,
       intensity: effectiveIntensity,
       focus_source: plan ? "plan" : "auto",

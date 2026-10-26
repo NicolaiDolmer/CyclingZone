@@ -1,4 +1,64 @@
 {
+  "stagePlan": {
+    "title": "Plan d'étape",
+    "help": "Chaque coureur a un court plan le long du parcours. La tâche change à une montée, dans les 10 derniers km ou quand il est lâché.",
+    "useAssistant": "Utiliser le plan de l'assistant",
+    "suggestion": "Suggestion",
+    "noPlan": "Pas encore de plan. Il court selon son rôle.",
+    "noPlanLocked": "Pas de plan. Il a couru selon son rôle.",
+    "noPlanOrders": "Pas encore de plan. Il court avec tes consignes : {orders}.",
+    "noPlanOrdersLocked": "Pas de plan. Il a couru avec tes consignes : {orders}.",
+    "noFit": "Ce plan ne correspond plus à son rôle. Choisis-en un nouveau.",
+    "colPlan": "Plan pour l'étape {number}",
+    "colPlanRaceDay": "Plan pour la course",
+    "change": "Modifier",
+    "setPlan": "Définir le plan",
+    "close": "Fermer",
+    "tapToEdit": "Touche pour modifier",
+    "editTitle": "Plan pour {name}",
+    "stepLabel": "Étape {number} du plan",
+    "taskLabel": "Tâche",
+    "switchLabel": "Changement",
+    "addStep": "Ajouter une étape",
+    "removeStepAria": "Retirer l'étape {number} pour {name}",
+    "useSuggestion": "Utiliser la suggestion",
+    "clearPlan": "Retirer le plan",
+    "effortNote": "L'effort suit la tâche.",
+    "rulesNote": "L'échappée ne peut être que la première tâche. Le gruppetto, rentrer et le train de sprint viennent toujours en dernier.",
+    "timeTrial": "Pas de plan d'étape sur un contre-la-montre.",
+    "task": {
+      "breakaway": "Prendre l'échappée",
+      "stay_sheltered": "Rester à l'abri",
+      "shelter_leader": "Garder le leader devant",
+      "tempo": "Imprimer le tempo",
+      "follow_moves": "Suivre les attaques",
+      "attack": "Attaquer",
+      "ride_for_result": "Courir pour un résultat",
+      "sprint_train": "Train de sprint",
+      "grupetto": "Gruppetto",
+      "ride_in": "Rentrer à l'arrivée"
+    },
+    "from": {
+      "kom": "après {climb}",
+      "final_km": "10 derniers km",
+      "dropped": "quand il est lâché",
+      "caught": "quand il est repris"
+    },
+    "climbFallback": "montée de cat. {category}",
+    "recap": {
+      "title": "Ce qu'il a fait",
+      "kom": "jusqu'au sommet de {climb}",
+      "final_km": "jusqu'aux 10 derniers km",
+      "dropped": "jusqu'à être lâché au km {km}",
+      "caught": "jusqu'à être repris au km {km}",
+      "missed_break": "n'a pas pris l'échappée",
+      "finish": "jusqu'à l'arrivée",
+      "abandoned": "abandon au km {km}",
+      "skipped": "sautée, il a été lâché avant",
+      "notReached": "pas atteinte",
+      "pending": "Le film de l'étape n'est pas encore prêt."
+    }
+  },
   "stagePageV2": {
     "tabsAria": "Vues de la course",
     "tab": {
@@ -140,6 +200,10 @@
         "gap": "L'écart avec {group, select, rest {le peloton} other {les poursuivants}} {dir, select, grew {augmente} other {diminue}} de {before} à {after}",
         "split": "{count, plural, one {Un groupe se détache} other {# groupes se détachent}}",
         "dropped": "{count, plural, one {{names} est lâché de l'échappée} other {{names} sont lâchés de l'échappée}}",
+        "formedAhead": "{count, plural, one {# coureur s'échappe devant le peloton} other {# coureurs s'échappent devant le peloton}}",
+        "caughtAhead": "{count, plural, one {# coureur du groupe devant le peloton est repris} other {# coureurs du groupe devant le peloton sont repris}}",
+        "survivedAhead": "Le groupe devant le peloton tient jusqu'à l'arrivée",
+        "droppedAhead": "{count, plural, one {{names} est lâché du groupe devant le peloton} other {{names} sont lâchés du groupe devant le peloton}}",
         "joined": "{count, plural, one {Deux groupes se rejoignent} other {Les groupes se rejoignent # fois}}",
         "gcLead": "{name} prend la tête du classement général",
         "crack": "{name} craque",
@@ -154,8 +218,9 @@
         "leading": "En tête",
         "first": "Premier au sommet",
         "top": "Sommet {name}",
+        "topOfPlace": "Sommet de {place}",
         "climb": "col",
-        "sprint": "Sprint",
+        "sprint": "Sprint intermédiaire",
         "finish": "Arrivée",
         "none": "Aucun col, sprint ni arrivée dans le journal de course."
       },
@@ -994,6 +1059,12 @@
       "free_role": "rôle libre"
     }
   },
+  "stageOrders": {
+    "title": "Tes consignes",
+    "roleDefaults": "rien d'enregistré, chaque coureur a suivi son rôle",
+    "stanceAuto": "Automatique",
+    "roleDefaultShort": "standard du rôle"
+  },
   "racePage": {
     "tabsAria": "Sections de la course",
     "tab": {
@@ -1014,11 +1085,13 @@
       "stageWins": "Victoires d'étape",
       "finishers": "Arrivés",
       "notStarted": "Pas commencée",
+      "nextStageSub": "Prochaine étape",
       "racingNow": "En course",
       "allRidden": "Toutes courues",
       "squadLockedIn": "Effectif verrouillé",
       "squadFrozen": "Effectif gelé",
       "abandons": "{count, plural, one {# abandon} other {# abandons}}",
+      "chipNextStage": "Prochaine : étape {number} · {time}",
       "chipStageOnRoad": "Étape {number} en cours",
       "chipRacing": "En course",
       "chipFinished": "Terminée",
@@ -1338,7 +1411,8 @@
       "watchButton": "Regarder le film de la course",
       "title": "Film de la course",
       "km": "km {value}",
-      "gapCurveTitle": "Écart avec le peloton",
+      "gapCurveTitle": "Avance sur les poursuivants",
+      "gapNow": "Avance {gap}",
       "scrubberLabel": "Parcourir l'étape",
       "replay": "Rejouer",
       "play": "Lecture",
@@ -1382,6 +1456,10 @@
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {est repris} other {sont repris}} par le peloton.",
         "breakaway_survived": "L'échappée résiste au peloton jusqu'à la ligne.",
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",
+        "group_ahead_formed": "{riders} {count, plural, one {s'échappe} other {s'échappent}} dans un groupe devant le peloton.",
+        "group_ahead_caught": "Le groupe devant le peloton est repris : {riders}.",
+        "group_ahead_survived": "Le groupe devant le peloton tient jusqu'à la ligne.",
+        "group_ahead_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} du groupe devant le peloton.",
         "incident": "{kind, select, mechanical {{rider} est victime d'un problème mécanique.} other {{rider} chute.}}",
         "incident_crash_time_loss": "{rider} chute et perd {seconds} s.",
         "incident_crash_hard": "{rider} chute lourdement : {seconds} s perdues, et {days, plural, one {# jour} other {# jours}} d'absence.",
@@ -1451,7 +1529,9 @@
       "title": "Abandons",
       "crash": "Chute",
       "mechanical": "Mécanique",
-      "injury": "Non-partant"
+      "injury": "Non-partant",
+      "illness": "Malade, non-partant",
+      "withdrawal": "Abandon"
     },
     "why": {
       "title": "Vue d'ensemble",

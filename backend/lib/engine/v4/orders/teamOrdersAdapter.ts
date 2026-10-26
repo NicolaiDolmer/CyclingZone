@@ -73,8 +73,10 @@ import {
   type TeamOrder as TeamTacticsOrder,
 } from "../ai/teamOrderContract.ts";
 import { TEAM_TACTICS_ORDER_KIND, s5MorningGcBlockedRiders } from "../mechanics/breakaway.ts";
+import { eligibleKomHunters } from "../mechanics/komJersey6937.ts"; // #6937
 import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
-import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater } from "../../../raceEngineRulesRevision.ts";
+import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { stagePlanOrderFromRow } from "../../../stagePlanEngine.ts"; // #7003
 
 export type { BreakawayStance, TeamTacticsOrder };
 
@@ -111,6 +113,10 @@ export type StageOrderContext = {
    * men naeste passende rytter. Udeladt = uaendret.
    */
   gc_context?: unknown;
+  /** #2757 S1 (VALGFRIT, KUN s5_profiles_v3): pointtroejens foerer foer etapen, videre til M14. */
+  points_leader_rider_id?: string | null;
+  /** #6937 B1 (VALGFRIT, KUN s5_profiles_v3): bjergjaegerne foer etapen, videre til M14. */
+  kom_hunter_rider_ids?: readonly string[] | null;
 };
 
 export type StageOrderPlan = {
@@ -326,6 +332,8 @@ export function buildStageOrderPlan(args: {
     )
     : null;
   const trainByDefault = trainIsDefaultOnStage(context);
+  // #6937 (KUN s5_profiles_v3, ejer 25/10): jaegerne = de forreste der hverken er kaptajn eller klassementsrytter.
+  const komHunterIds = context?.kom_hunter_rider_ids?.length ? eligibleKomHunters(context.kom_hunter_rider_ids, (id) => { const r = roster.find((x) => String(x.rider_id) === id); return r ? toRole(r.role) : undefined; }, breakBlocked ?? new Set()) : null;
 
   const orders: EngineTeamOrder[] = [];
   const aiEffortByRider = new Map<string, EffortLevel>();
@@ -344,6 +352,8 @@ export function buildStageOrderPlan(args: {
           race: context.race,
           ...(context.rules_revision ? { rules_revision: context.rules_revision } : {}),
           ...(breakBlocked ? { break_blocked_rider_ids: breakBlocked } : {}),
+          ...(context.points_leader_rider_id ? { points_leader_rider_id: context.points_leader_rider_id } : {}),
+          ...(komHunterIds?.length ? { kom_hunter_rider_ids: komHunterIds } : {}),
         }).order
       : v3HumanStance
         ? humanDefaultOrderV3(teamId, teamRoster, context.route, field, rawAbilitiesByRider)
@@ -356,6 +366,9 @@ export function buildStageOrderPlan(args: {
       for (const rider of order.riders) aiEffortByRider.set(rider.rider_id, rider.effort);
     }
     orders.push(toEngineTeamOrder(order));
+    // #7003 (KUN s5_profiles_v3): etapeplanen langs ruten som egen ordre-art.
+    const stagePlanOrder = stagePlanOrderFromRow(teamId, row, context?.rules_revision, isS5ProfilesV3OrLater);
+    if (stagePlanOrder) orders.push(stagePlanOrder);
     // #6434 (KUN official_times_v3): togets maal kan ogsaa vaere en kaptajn med
     // sprinterprofil paa en flad etape (sprintTrainLeadoutOrder, #6352), for
     // menneske- og AI-hold. Aeldre revisioner: den gamle regel, uaendret.

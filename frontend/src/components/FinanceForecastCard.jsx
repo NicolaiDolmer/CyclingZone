@@ -197,7 +197,7 @@ export default function FinanceForecastCard({
   // tekst uændret.
   const salaryDetail = hasSeasonSwitch
     ? t("forecast.salaryDetail.seasonSwitch", { next: nextSeasonNumber ?? "?" })
-    : forecast.inputs?.salary_basis === "production_s3"
+    : ["contracts", "production_s3"].includes(forecast.inputs?.salary_basis)
       ? t("forecast.salaryDetail.productionS3")
       : undefined;
   // #4385: med upkeep_per_race_day on er upkeep "Rejse og personale" pr.
