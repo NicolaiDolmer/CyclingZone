@@ -101,13 +101,14 @@ test("#6469: hoejst to aarsager pr. udbrud, de vigtigste foerst; nyt udbrud faar
 test("#6469: spillerens egen 'Alt ud' ses kun naar udfaldet viser det, kun for egne ryttere", () => {
   const finish = ev(150, "finish", { top: [{ rider_id: "w", rank: 1, gap: 0 }, { rider_id: "ada", rank: 2, gap: 0 }, { rider_id: "q", rank: 3, gap: 40 }] });
   const climb = ev(140, "kom_passage", { name: "Sidste top" });
-  const effort = new Map([["ada", "all_out"], ["bo", "save"], ["a", "all_out"]]);
+  const effort = new Map([["ada", "all_out"], ["bo", "save"], ["a", "all_out"], ["cy", "protect"]]);
   const events = [formed, survived(120, ["a"]), climb, finish];
   assert.deepEqual(
     deriveOrderImpacts(events, { ownRiderIds: ["ada", "bo", "a"], effortByRider: effort }).map(({ kind, rider_id, climb_name }) => ({ kind, rider_id, climb_name })),
     [{ kind: "all_out_stayed_away", rider_id: "a", climb_name: undefined }, { kind: "all_out_held_on", rider_id: "ada", climb_name: "Sidste top" }],
   );
   assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["bo"], effortByRider: effort }), [], "spar kraefter: intet udsagn");
+  assert.deepEqual(deriveOrderImpacts([formed, survived(120, ["cy"]), climb, finish], { ownRiderIds: ["cy"], effortByRider: effort }), [], "arbejd eller angrib er ikke 'alt ud'");
   assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: [], effortByRider: effort }), [], "andres ryttere: aldrig");
   assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["ada"], effortByRider: null }), [], "ingen ordre-data");
   // Hele feltet i samme tid (massespurt) er ikke at "holde hjul".

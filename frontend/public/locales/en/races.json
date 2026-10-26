@@ -1438,6 +1438,25 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {is} other {are}} caught. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} did the chasing.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {is} other {are}} caught by the peloton.",
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
+        "cause": {
+          "unchased": "Nobody wanted to chase, so the break got all the room it needed.",
+          "no_chasers": "The teams that wanted to chase had no riders left to do it.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} never chased: it had} other {{teamsHead} and {teamLast} never chased: they had}} riders in the break.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} had spent what it could} other {{teamsHead} and {teamLast} had spent what they could}} on the chase.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast} had} other {{teamsHead} and {teamLast} had}} no free riders to chase with.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast} only rode} other {{teamsHead} and {teamLast} only rode}} to protect the GC and let the stage go.",
+          "chase_faded_climb": "The chase faded after {climb}, and the gap grew again.",
+          "chase_faded": "The chase faded, and the gap grew again.",
+          "chase_too_late": "The chase closed in, but ran out of road.",
+          "gap_never_closed": "The chase never brought the gap down.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast} chased} other {{teamsHead} and {teamLast} chased}} because {threats} {threatCount, plural, one {was a threat} other {were a threat}} to {rider} in the GC.",
+          "closed_on_climb": "The gap came down on {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} rode all out on your orders and stayed away to the line.",
+          "all_out_held_on_climb": "{rider} rode all out on your orders and held the wheel over {climb}.",
+          "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
         "group_ahead_formed": "{riders} {count, plural, one {goes} other {go}} clear in a group ahead of the peloton.",
         "group_ahead_caught": "The group ahead of the peloton is caught: {riders}.",

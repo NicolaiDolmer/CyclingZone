@@ -58,7 +58,9 @@ export const MAX_CAUSES_PER_BREAKAWAY = 2;
 /** Visnings-tolerance (sekunder) for "afstanden flyttede sig" i tidslinjens egne maalinger. */
 const GAP_MOVE_EPSILON_SECONDS = 1;
 
-const ALL_OUT_EFFORTS: ReadonlySet<string> = new Set(["all_out", "protect"]);
+// Kun "Alt ud": teksten siger "koerte alt ud paa din ordre". "Arbejd eller angrib" er
+// en anden ordre (arbejde for kaptajnen) og faar ikke samme saetning.
+const ALL_OUT_EFFORTS: ReadonlySet<string> = new Set(["all_out"]);
 
 function ids(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.length > 0) : [];
@@ -244,7 +246,7 @@ export function deriveBreakawayStories(events: readonly NarrativeEvent[] = []): 
 export type OrderImpact = { kind: "all_out_stayed_away" | "all_out_held_on"; rider_id: string; climb_name?: string };
 
 /**
- * Hvor spillerens egen indsats-ordre ("Alt ud"/"Arbejd eller angrib") ses i udfaldet:
+ * Hvor spillerens egen indsats-ordre "Alt ud" ses i udfaldet:
  * - rytteren var i et udbrud der holdt hjem, og kom selv hjem med det;
  * - ellers kom rytteren i maal i samme tid som vinderen paa en etape hvor feltet blev
  *   splittet (nogen i top-listen tabte tid), og etapen havde en stigning: "holdt hjul".

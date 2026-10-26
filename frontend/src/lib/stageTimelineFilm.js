@@ -28,6 +28,9 @@ import { groupRepeatedFeedEvents, describeGroupedEvent } from "./stageTimelineGr
 import { honestTimelineEvents, exactEventKm } from "./stageTimelineKmSpan.ts";
 export { filmKmValue } from "./stageTimelineKmSpan.ts";
 import { labelBreakawayEvents, breakawayFilmCopy, breakawayLabelOf } from "./breakawayLabels6299.ts"; // #6299: kun udbruddet hedder udbrud
+// #6469: hvorfor udbruddet holdt/blev hentet + spillerens egen "Alt ud" i udfaldet.
+// Ren afledning af tidslinjen; samme modul som backendens kontrakt-tests (G7).
+import { withNarrativeCauses } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -127,11 +130,12 @@ function isTimeTrialStage(events) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], timelineVersion = null, startlist = null } = {}) {
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], effortByRider = null, timelineVersion = null, startlist = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
-  const sorted = labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events);
+  // #6469: årsagslinjer (og egne "Alt ud"-linjer) lige efter det udfald de forklarer.
+  const sorted = withNarrativeCauses(labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events), { ownRiderIds, effortByRider });
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
@@ -207,6 +211,77 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
 export function eventsPlayedUpTo(feedEvents, scrubKm) {
   const played = (feedEvents || []).filter((e) => (e?.km ?? 0) <= scrubKm);
   return played.slice().reverse();
+}
+
+const NARRATIVE_TYPES = new Set(["breakaway_cause", "order_impact"]);
+
+/**
+ * #6469: etapehistoriens udvalgte hændelser (selectStoryEvents) med årsagslinjerne
+ * til de udfald der er med, lige efter dem. `allEvents` er den liste udvalget er
+ * taget fra (samme objekter); årsagerne udledes af hele etapen, ikke kun udvalget.
+ */
+export function storyEventsWithCauses(storyEvents, allEvents, { ownRiderIds = [], effortByRider = null } = {}) {
+  const picked = new Set(storyEvents || []);
+  if (!picked.size) return [];
+  const out = [];
+  let following = false;
+  for (const event of withNarrativeCauses(allEvents || [], { ownRiderIds, effortByRider })) {
+    if (NARRATIVE_TYPES.has(event?.type)) {
+      if (following) out.push(event);
+      continue;
+    }
+    following = picked.has(event);
+    if (following) out.push(event);
+  }
+  return out;
+}
+
+// #6469: hold-navne som i aktør-linjen (catchActor): sidste hold for sig, så
+// oversættelsen selv sætter "and"/"og" ind. null når intet navn kan slås op.
+function teamListParams(teamIds, teamNameById) {
+  const teams = (teamIds || []).map((id) => (id == null ? null : teamNameById?.get?.(String(id)) || null)).filter(Boolean);
+  if (!teams.length) return null;
+  return { teams: teams.join(", "), teamCount: teams.length, teamsHead: teams.slice(0, -1).join(", "), teamLast: teams[teams.length - 1] };
+}
+
+const TEAM_CAUSES = new Set(["own_riders_ahead", "reaction_spent", "no_free_riders", "gc_contained"]);
+
+function describeCause(p, riderNameById, teamNameById) {
+  const cause = String(p.cause ?? "");
+  if (TEAM_CAUSES.has(cause)) {
+    const teams = teamListParams(p.team_ids, teamNameById);
+    return teams ? { key: `cause.${cause}`, params: teams } : null;
+  }
+  switch (cause) {
+    case "unchased":
+    case "no_chasers":
+    case "chase_too_late":
+    case "gap_never_closed":
+      return { key: `cause.${cause}`, params: {} };
+    case "chase_faded":
+      return p.climb_name ? { key: "cause.chase_faded_climb", params: { climb: p.climb_name } } : { key: "cause.chase_faded", params: {} };
+    case "closed_on_climb":
+      return p.climb_name ? { key: "cause.closed_on_climb", params: { climb: p.climb_name } } : null;
+    case "gc_threat": {
+      const teams = teamListParams(p.team_ids, teamNameById);
+      const rider = riderName(p.protected_rider_id, riderNameById);
+      const threats = resolvedRiderNames(p.rider_ids, riderNameById);
+      if (!teams || !rider || !threats.length) return null;
+      return { key: "cause.gc_threat", params: { ...teams, rider, threats: threats.join(", "), threatCount: threats.length } };
+    }
+    default:
+      return null;
+  }
+}
+
+function describeOrderImpact(p, riderNameById) {
+  const rider = riderName(p.rider_id, riderNameById);
+  if (!rider) return null;
+  if (p.kind === "all_out_stayed_away") return { key: "order.all_out_stayed_away", params: { rider } };
+  if (p.kind === "all_out_held_on") {
+    return p.climb_name ? { key: "order.all_out_held_on_climb", params: { rider, climb: p.climb_name } } : { key: "order.all_out_held_on", params: { rider } };
+  }
+  return null;
 }
 
 // #4373: itt_win/ttt_win er tidskørslernes EGNE win_types (backend/lib/
@@ -441,6 +516,10 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
     case "gc_context":
     case "own_riders_ahead": // #6187 (orders_gc_v3)
       return describeGcReactionEvent(event, (id) => riderName(id, riderNameById));
+    case "breakaway_cause": // #6469: afledt af tidslinjen (narrativeCauses6469.ts), aldrig tal
+      return describeCause(p, riderNameById, teamNameById);
+    case "order_impact": // #6469: kun spillerens egne ryttere og egen ordre
+      return describeOrderImpact(p, riderNameById);
     default:
       return null;
   }
