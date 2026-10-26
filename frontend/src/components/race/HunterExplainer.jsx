@@ -44,7 +44,7 @@ export default function HunterExplainer({
   const { raceId } = useParams();
   const [outlook, setOutlook] = useState(null);
   useEffect(() => {
-    if (!raceId || isTimeTrial) { setOutlook(null); return undefined; }
+    if (!raceId) { setOutlook(null); return undefined; }
     let alive = true;
     (async () => {
       try {
@@ -58,8 +58,9 @@ export default function HunterExplainer({
       }
     })();
     return () => { alive = false; };
-  }, [raceId, isTimeTrial]);
-  const line = isTimeTrial ? null : outlookLine(outlook);
+  }, [raceId]);
+  // Backend afgør selv om NÆSTE etape har et udbrud; den valgte etape kan være en anden.
+  const line = outlookLine(outlook);
 
   // #1884: HELE den udtagne trup skal kunne vaelges (dropdownen kunne det), ikke
   // kun de tre bedste. Rangeringen er stadig aggression desc — den er selve

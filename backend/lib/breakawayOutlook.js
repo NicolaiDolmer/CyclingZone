@@ -159,17 +159,32 @@ export async function computeBreakawayOutlook({ race, runDryStage, resolveRaceEn
 // ── Cache + single-flight: én beregning pr. (løb, næste etape) ad gangen, genbrugt i
 // OUTLOOK_CACHE_TTL_MS. Nøglen indeholder stages_completed, så en kørt etape giver en
 // ny prognose for den næste.
+//
+// Arbejdsloft på tværs af løb (Codex-review): én prognose kører ad gangen i hele
+// processen, og højst OUTLOOK_MAX_QUEUED løb står i kø. Er køen fuld, svares
+// { available: false, reason: "busy" } uden cache, så næste visning prøver igen.
+export const OUTLOOK_MAX_QUEUED = 6;
 const cache = new Map();
+let workChain = Promise.resolve();
+let queued = 0;
+
+function runSerialized(compute) {
+  queued += 1;
+  const run = workChain.then(() => compute());
+  workChain = run.then(() => {}, () => {}).finally(() => { queued -= 1; });
+  return run;
+}
 
 export function outlookCacheKey(race) {
   return `${race?.id}:${Number(race?.stages_completed) || 0}`;
 }
 
-export async function getBreakawayOutlookCached({ race, compute, now = Date.now, ttlMs = OUTLOOK_CACHE_TTL_MS }) {
+export async function getBreakawayOutlookCached({ race, compute, now = Date.now, ttlMs = OUTLOOK_CACHE_TTL_MS, maxQueued = OUTLOOK_MAX_QUEUED }) {
   const key = outlookCacheKey(race);
   const hit = cache.get(key);
   if (hit && (hit.pending || now() - hit.at < ttlMs)) return hit.pending ?? hit.value;
-  const pending = compute().then(
+  if (queued >= maxQueued) return { available: false, reason: "busy" };
+  const pending = runSerialized(compute).then(
     (value) => { cache.set(key, { at: now(), value }); return value; },
     (err) => { cache.delete(key); throw err; },
   );
@@ -179,4 +194,6 @@ export async function getBreakawayOutlookCached({ race, compute, now = Date.now,
 
 export function __resetBreakawayOutlookCache() {
   cache.clear();
+  workChain = Promise.resolve();
+  queued = 0;
 }

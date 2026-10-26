@@ -81,6 +81,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
   // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
+  // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
+  { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
