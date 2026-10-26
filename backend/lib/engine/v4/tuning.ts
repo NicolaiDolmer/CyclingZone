@@ -1702,7 +1702,7 @@ export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
   minStrengthRatio: 0.5,
   // Snoren paa en svagere udbryder der fremskrevet kan vinde loebet: hans afstand plus det
   // fremskrevne tab plus dette tillaeg (minus snorens almindelige margin).
-  projectedAllowanceSeconds: 60,
+  projectedAllowanceSeconds: 150,
   // Holder jagten kun fremskrevne trusler paa snor, brydes snoren aldrig (ogsaa i finalen):
   // forspringet holdes mindst paa dette.
   projectedMinLeashSeconds: 30,
