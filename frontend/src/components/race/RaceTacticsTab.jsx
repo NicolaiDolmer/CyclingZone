@@ -124,6 +124,7 @@ const API = import.meta.env.VITE_API_URL;
 // er SSOT'ens ord — "Domestique", ikke "Rider", jf. RACE_ENGINE_RULES §1).
 const ROLE_KEY = {
   captain: "captain",
+  co_captain: "co_captain", // #7239
   sprint_captain: "sprint_captain",
   hunter: "hunter",
   helper: "helper",
@@ -210,7 +211,7 @@ function IntentionPicker({ t, riderName, scopeLabel, steps, value, disabled, onP
 // #6095 (beta, ejer 4/10): med `scopeChoice` vælger manageren først hvilke etaper
 // valget gælder: "etape N og løbet ud" (forvalgt) eller "kun etape N". Tidligere
 // etaper røres aldrig. Uden flaget: præcis den gamle vælger.
-function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeChoice = false, scope = "rest", onScope, stageNumber }) {
+function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeChoice = false, scope = "rest", onScope, stageNumber, coCaptainOn = false }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -249,6 +250,7 @@ function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeCho
         </div>
       )}
       {SELECTABLE_ROLES.map((role) => {
+        if (role === "co_captain" && !coCaptainOn && value !== "co_captain") return null; // #7239
         const on = role === value;
         return (
           <button
@@ -701,6 +703,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #6095 (beta): manageren vælger selv "etape N og løbet ud" / "kun etape N".
   // Endagsløb har kun én etape, så valget giver ingen mening dér.
   const scopeChoice = roles.role_scope_choice === true && !isOneDay;
+  // #7239: delt kaptajn tilbydes kun når holdet har en i udtagelsen. Udtagelsen er
+  // gated til løb der kender rollen (sprint_leader_allowed), så det samme gælder her,
+  // og en etape-rolle kan altid sættes tilbage til delt kaptajn.
+  const coCaptainOn = riders.some((r) => baseRoleForRider(r) === "co_captain");
   const rolePickerScope = scopeChoice
     ? {
       scopeNote: t("intention.stage", { number: activeStage }),
@@ -708,8 +714,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       scope: roleScopeChoice,
       onScope: setRoleScopeChoice,
       stageNumber: activeStage,
+      coCaptainOn,
     }
-    : { scopeNote: roleScopeNote };
+    : { scopeNote: roleScopeNote, coCaptainOn };
 
   // Rene render-funktioner, IKKE nestede komponenter: en komponent defineret
   // inde i render remountes ved hver tastetryk-render (React ser en ny type),

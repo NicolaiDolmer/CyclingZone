@@ -471,6 +471,7 @@
       "hint": "Tryk på en ordre for at ændre rytterens rolle",
       "captain": "Kaptajn",
       "sprintCaptain": "Sprint-kaptajn",
+      "coCaptain": "Delt kaptajn",
       "hunter": "Udbrudsjæger",
       "rider": "Kun rytter"
     },
@@ -1010,6 +1011,7 @@
     "tryBreakAria": "{name} forsøger at komme med i udbruddet",
     "roleLabel": {
       "captain": "Kaptajn",
+      "co_captain": "Delt kaptajn",
       "sprint_captain": "Spurt-kaptajn",
       "hunter": "Udbrudsjæger",
       "helper": "Hjælper",
@@ -1122,6 +1124,7 @@
       "roleExclusiveNoteScoped": "Én kaptajn, én spurtkaptajn og én udbrudsjæger ad gangen. Rytteren der havde rollen bliver domestik på de samme etaper. Tidligere etaper beholder deres roller.",
       "roleWhy": {
         "captain": "Holdet kører for ham, og han får beskyttelsen.",
+        "co_captain": "Beskyttet som kaptajnen. Kaptajnen får hjælp først.",
         "sprint_captain": "Han får sprint-toget og optrækket.",
         "hunter": "Han jagter udbruddet.",
         "helper": "Han arbejder for lederne.",

@@ -488,6 +488,7 @@
       "hint": "Tik op een opdracht om de rol van de renner te wijzigen",
       "captain": "Kopman",
       "sprintCaptain": "Sprintkopman",
+      "coCaptain": "Gedeelde kopman",
       "hunter": "Ontsnappingsjager",
       "rider": "Alleen renner"
     },
@@ -1027,6 +1028,7 @@
     "tryBreakAria": "{name} probeert de ontsnapping",
     "roleLabel": {
       "captain": "Kopman",
+      "co_captain": "Gedeelde kopman",
       "sprint_captain": "Sprintkopman",
       "hunter": "Ontsnappingsjager",
       "helper": "Knecht",
@@ -1139,6 +1141,7 @@
       "roleExclusiveNoteScoped": "Eén kopman, één sprintkopman en één ontsnappingsjager tegelijk. De renner die de rol had, wordt in dezelfde etappes knecht. Eerdere etappes behouden hun rollen.",
       "roleWhy": {
         "captain": "De ploeg rijdt voor hem en hij krijgt de bescherming.",
+        "co_captain": "Beschermd zoals de kopman. De kopman krijgt eerst hulp.",
         "sprint_captain": "Hij krijgt de sprinttrein en de lead-out.",
         "hunter": "Hij gaat op jacht naar de ontsnapping.",
         "helper": "Hij werkt voor de leiders.",

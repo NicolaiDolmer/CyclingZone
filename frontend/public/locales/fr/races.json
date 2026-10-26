@@ -488,6 +488,7 @@
       "hint": "Touche une consigne pour changer le rôle du coureur",
       "captain": "Leader",
       "sprintCaptain": "Leader sprint",
+      "coCaptain": "Co-leader",
       "hunter": "Chasseur d'échappée",
       "rider": "Équipier"
     },
@@ -1027,6 +1028,7 @@
     "tryBreakAria": "{name} tente l'échappée",
     "roleLabel": {
       "captain": "Leader",
+      "co_captain": "Co-leader",
       "sprint_captain": "Leader sprint",
       "hunter": "Chasseur d'échappée",
       "helper": "Équipier",
@@ -1139,6 +1141,7 @@
       "roleExclusiveNoteScoped": "Un leader, un leader sprint et un chasseur d'échappée à la fois. Le coureur qui avait le rôle devient équipier sur les mêmes étapes. Les étapes précédentes gardent leurs rôles.",
       "roleWhy": {
         "captain": "L'équipe roule pour lui et il est protégé.",
+        "co_captain": "Protégé comme le leader. Le leader est aidé en premier.",
         "sprint_captain": "Il a le train de sprint et le lancement.",
         "hunter": "Il part à la chasse de l'échappée.",
         "helper": "Il travaille pour les leaders.",

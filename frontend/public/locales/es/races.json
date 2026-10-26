@@ -488,6 +488,7 @@
       "hint": "Toca una orden para cambiar el rol del ciclista",
       "captain": "Jefe de filas",
       "sprintCaptain": "Jefe de filas de sprint",
+      "coCaptain": "Jefe de filas compartido",
       "hunter": "Cazador de escapadas",
       "rider": "Solo ciclista"
     },
@@ -1027,6 +1028,7 @@
     "tryBreakAria": "{name} intenta la escapada",
     "roleLabel": {
       "captain": "Jefe de filas",
+      "co_captain": "Jefe de filas compartido",
       "sprint_captain": "Jefe de filas de sprint",
       "hunter": "Cazador de escapadas",
       "helper": "Gregario",
@@ -1139,6 +1141,7 @@
       "roleExclusiveNoteScoped": "Un jefe de filas, un jefe de filas de sprint y un cazador de escapadas a la vez. El ciclista que tenía el rol pasa a ser gregario en las mismas etapas. Las etapas anteriores conservan sus roles.",
       "roleWhy": {
         "captain": "El equipo corre para él y recibe la protección.",
+        "co_captain": "Protegido como el jefe de filas. El jefe de filas recibe ayuda primero.",
         "sprint_captain": "Recibe el tren de sprint y el lanzamiento.",
         "hunter": "Sale a la caza de la escapada.",
         "helper": "Trabaja para los líderes.",

@@ -471,6 +471,7 @@
       "hint": "Tap an order to change the rider's role",
       "captain": "Captain",
       "sprintCaptain": "Sprint captain",
+      "coCaptain": "Shared captain",
       "hunter": "Breakaway hunter",
       "rider": "Rider only"
     },
@@ -1010,6 +1011,7 @@
     "tryBreakAria": "{name} tries for the breakaway",
     "roleLabel": {
       "captain": "Captain",
+      "co_captain": "Shared captain",
       "sprint_captain": "Sprint captain",
       "hunter": "Breakaway hunter",
       "helper": "Domestique",
@@ -1122,6 +1124,7 @@
       "roleExclusiveNoteScoped": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique on the same stages. Earlier stages keep their roles.",
       "roleWhy": {
         "captain": "The team rides for him and he gets the protection.",
+        "co_captain": "Protected like the captain. The captain gets help first.",
         "sprint_captain": "He gets the sprint train and the lead out.",
         "hunter": "He goes hunting for the breakaway.",
         "helper": "He works for the leaders.",
