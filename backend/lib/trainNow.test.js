@@ -684,3 +684,21 @@ test("#7282: the first race date is also blocked while a bridge date is unregist
   const pressed = await runTrainNow({ ...deps, now: new Date("2026-10-28T09:00:00Z"), loadContext: async () => ctx });
   assert.equal(pressed.status, 200, "the whole bridge registered: the race date can be pressed");
 });
+
+test("#7282: bridge dates the team was not eligible for are no prerequisite", async () => {
+  // Team created 28/10: the sweep never registers 26-27/10 for it.
+  const created = { ...TEAM, created_at: "2026-10-28T08:00:00Z" };
+  const state = baseState();
+  const { deps } = bridgeHarness(state, false);
+  const ctx = fakeContext();
+  ctx.teams = [created];
+  const result = await runTrainNow({ ...deps, team: created, now: new Date("2026-10-28T09:00:00Z"), loadContext: async () => ctx });
+  assert.equal(result.status, 200);
+  // A rider bought on 28/10 does not make 27/10 a date for the team either.
+  const empty = baseState();
+  const h = bridgeHarness(empty, false);
+  const later = fakeContext();
+  later.riders = later.riders.map((rider) => ({ ...rider, acquired_at: "2026-10-28T07:00:00Z" }));
+  const pressed = await runTrainNow({ ...h.deps, now: new Date("2026-10-28T09:00:00Z"), loadContext: async () => later });
+  assert.equal(pressed.status, 200);
+});
