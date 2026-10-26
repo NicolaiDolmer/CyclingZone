@@ -127,6 +127,7 @@ export function climbGapEffortFactor(s5ProfilesV3: boolean, effortScoreFactor: n
 
 /** #6641: prisen for et loeb bundet til `revision`. Aeldre revisioner: uaendret tuning. */
 export function effortCostTuningFor(revision: unknown): EffortCostTuning {
+  if (isEffortCalibration6641Revision(revision) && (globalThis as any).__tune6641) return (globalThis as any).__tune6641; // DIAG-6641 (fjernes)
   return isEffortCalibration6641Revision(revision) ? EFFORT_COST_TUNING_6641 : EFFORT_COST_EXTRA_TUNING;
 }
 

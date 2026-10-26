@@ -335,6 +335,7 @@ function computeSelections(
       energyDeficit01: energyDeficit * gapFactor,
       ...(gapFactor !== 1 ? { gapEffortFactor: gapFactor } : {}),
     });
+    (globalThis as any).__diag6641?.({ riderId, km: ctx.segment.from_km, segIndex: ctx.segmentIndex, kind: ctx.segment.kind, sev: severity, ed: energyDeficit, d: deficit01, ef: effortFactor, sc: noisyScore, thr: splitThreshold, trig: noisyScore > splitThreshold, wf: wprimeCategoryAllowed && wprimeDepletionForcesSplit(riderState.wprime, severity, wprimeMinSeverity), phase, summit: isSummitFinishClimb(ctx), gs: group.rider_ids.length, gk: group.kind }); // DIAG-6641 (fjernes)
   }
   return selections;
 }
