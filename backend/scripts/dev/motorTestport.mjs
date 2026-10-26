@@ -60,6 +60,8 @@ import { SYNTHETIC_KINDS, assertRoutesCover, createProdSource, loadRoutesDir, pr
 import { raceContextFromCache } from "./lib/v3Gates.mjs";
 import { isMountainNonSummit } from "./lib/tourScorecard.mjs";
 import { INTENT_MODES, ratesSignature, validateRates } from "./lib/breakawayIntent.mjs";
+import { raceGroupOf, routeFavourites } from "./lib/raceGroupGates.mjs"; // #7214
+import { suitabilityScore } from "../../lib/raceAutopick.js"; // #7214: spillets egnethed (favoritter til ruten)
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -404,8 +406,15 @@ export function loadRaceContexts({ outDir, raceIds, cacheDir = null }) {
     const file = candidates.find((f) => existsSync(f));
     if (!file) continue;
     try {
-      const ctx = raceContextFromCache(JSON.parse(readFileSync(file, "utf8")), { isMountainNonSummit });
-      if (ctx) contexts.set(id, ctx);
+      const cache = JSON.parse(readFileSync(file, "utf8"));
+      const ctx = raceContextFromCache(cache, { isMountainNonSummit });
+      if (ctx) {
+        // #7214: loebsgruppe med monumenter + favoritterne til ruten. ctx.group (v3-gaterne) er uaendret.
+        ctx.raceClass = cache.race?.race_class ?? null;
+        ctx.raceGroup = raceGroupOf({ stages: ctx.stages, raceClass: ctx.raceClass });
+        ctx.favourites = routeFavourites(cache, { suitability: suitabilityScore });
+        contexts.set(id, ctx);
+      }
     } catch (err) {
       console.warn(`motor-testport: cache for ${id} kunne ikke laeses (${err.message}); loebet faar ingen kontekst til v3-gaterne/S0.`);
     }
@@ -629,7 +638,10 @@ async function writeCard({ card, outDir, png, failed }) {
   // #6804 (ejer valg 8 A): en v3-kandidat med en roed eller manglende G16-G19/G2-flad er blokeret.
   const v3Blocked = Boolean(card.v3Gates?.applies && card.v3Gates.candidate?.blocked);
   if (v3Blocked) console.log(`TAEND-GATE v3 BLOKERET: ${card.v3Gates.candidate.reasons.join("; ")}`);
-  if (failed.length || missing.length || pending.length || v3Blocked) process.exitCode = 1;
+  // #7214 (ejer 26/10): loebsgruppe-gaten blokerer kun kandidater efter s5_profiles_v3.
+  const groupBlocked = Boolean(card.raceGroupGates?.applies && card.raceGroupGates.candidate?.blocked);
+  if (groupBlocked) console.log(`LOEBSGRUPPE-GATE BLOKERET: ${card.raceGroupGates.candidate.reasons.join("; ")}`);
+  if (failed.length || missing.length || pending.length || v3Blocked || groupBlocked) process.exitCode = 1;
   return { card, outDir, failed };
 }
 
