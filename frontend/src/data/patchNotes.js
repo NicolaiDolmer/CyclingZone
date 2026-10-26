@@ -1,5 +1,168 @@
 export const PATCHES = [
   {
+    "version": "7.383",
+    "date": "2026-10-26",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Each effort level has its job",
+          "body": "From the first stage of season 5, All out gains time on the day and costs fatigue afterwards. Save loses a little time and gives fresher legs the next day. Normal is best over a whole stage race if you never change it, but a plan per stage beats it: save on the flat, all out in the mountains."
+        },
+        "da": {
+          "title": "Hvert indsatstrin har sin opgave",
+          "body": "Fra første etape i sæson 5 vinder Alt ud tid på dagen og koster træthed bagefter. Spar taber lidt tid og giver friskere ben dagen efter. Normal er bedst over et helt etapeløb, hvis du aldrig skifter, men en plan pr. etape slår det: spar på fladt, alt ud i bjergene."
+        },
+        "refs": [
+          6641,
+          7163
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The lead-out rarely beats his sprinter",
+          "body": "A lead-out rider spends his sprint on delivering the captain, so the best sprinter in your train usually finishes best. A lead-out who is clearly faster than his captain can still win."
+        },
+        "da": {
+          "title": "Lead-outen slår sjældent sin sprinter",
+          "body": "En lead-out-rytter bruger sin spurt på at aflevere kaptajnen, så den bedste sprinter i toget oftest slutter bedst. En lead-out, der er klart hurtigere end sin kaptajn, kan stadig vinde."
+        },
+        "refs": [
+          6937,
+          6552
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "New finishes race like the real thing",
+          "body": "Season 5 stages can end on a wall, a short hill, an uphill sprint or a medium mountain. Each has its own kind of winner and its own gaps at the finish: a wall splits the riders, an uphill sprint keeps them close. In a mountain one-day race the breakaway can now be caught."
+        },
+        "da": {
+          "title": "Nye afslutninger kører som i virkeligheden",
+          "body": "Etaper i sæson 5 kan slutte på en mur, en kort bakke, en stigende spurt eller et mellembjerg. Hver har sin egen type vinder og sine egne tidsgab i mål: en mur splitter rytterne, en stigende spurt holder dem samlet. I et bjerg-endagsløb kan udbruddet nu hentes."
+        },
+        "refs": [
+          6363,
+          6369
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No crashes right after the start",
+          "body": "A crash can no longer happen in the first kilometre of a stage, so the race film never shows time lost before the race has begun."
+        },
+        "da": {
+          "title": "Ingen styrt lige efter starten",
+          "body": "Et styrt kan ikke længere ske på etapens første kilometer, så løbsfilmen viser aldrig tid tabt, før løbet er gået i gang."
+        },
+        "refs": [
+          7008
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board and scouting dates",
+          "body": "During the season change the board room shows the new season. Scout missions count days on Danish time, also across the change to winter time."
+        },
+        "da": {
+          "title": "Bestyrelse og scoutdatoer",
+          "body": "Under sæsonskiftet viser bestyrelseslokalet den nye sæson. Scoutmissioner tæller dage på dansk tid, også hen over skiftet til vintertid."
+        },
+        "refs": [
+          6862
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Today's decision is on for everyone",
+          "body": "The Today's decision card on the Training page is now on for every manager. It finds riders with high fatigue and a hard day planned and suggests active recovery. Use one suggestion or all of them in one click."
+        },
+        "da": {
+          "title": "Dagens beslutning er nu for alle",
+          "body": "Kortet Dagens beslutning på træningssiden er nu tændt for alle managere. Det finder ryttere med høj træthed og en hård dag planlagt og foreslår aktiv restitution. Brug ét forslag eller dem alle med ét klik."
+        },
+        "refs": [
+          6110
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "A reminder about this week's academy intake",
+          "body": "If you haven't brought in this week's academy candidates, you get a message on Sunday when they are ready and on Saturday evening before they expire at midnight."
+        },
+        "da": {
+          "title": "Påmindelse om ugens akademi-kuld",
+          "body": "Har du ikke hentet ugens akademi-kandidater, får du en besked søndag, når de er klar, og lørdag aften, før de udløber ved midnat."
+        },
+        "refs": [
+          6666,
+          7177
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Only the morning breakaway is called the breakaway",
+          "body": "When the morning breakaway is caught and a later group stays away, that group is now called the group ahead of the peloton in the result, the race film and the recap."
+        },
+        "da": {
+          "title": "Kun morgenudbruddet hedder udbrud",
+          "body": "Når morgenudbruddet er hentet, og en senere gruppe holder hjem, hedder den gruppe nu gruppen foran feltet i resultatet, løbsfilmen og referatet."
+        },
+        "refs": [
+          6299
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your orders after the stage",
+          "body": "After a stage, a Your orders card shows your team's breakaway stance and each of your riders' role, effort, breakaway attempt and sprint train. Only your own team. Also on one-day race results."
+        },
+        "da": {
+          "title": "Dine ordrer efter etapen",
+          "body": "Efter en etape viser kortet Dine ordrer holdets udbrudsstrategi og hver af dine rytteres rolle, indsats, udbrudsforsøg og sprinttog. Kun dit eget hold. Også på endagsløbets resultat."
+        },
+        "refs": [
+          6299
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.382",
     "date": "2026-10-26",
     "changes": [
@@ -28,11 +191,11 @@ export const PATCHES = [
         "topic": "Race engine",
         "en": {
           "title": "Races closer to real cycling",
-          "body": "From the first stage of season 5: the mountains jersey goes to riders who hunt it, and a summit finish gives normal mountain points. Sprinters win the points jersey more often. On flat stages the peloton chases a breakaway that matters. After the last climb on a mountain stage, groups come back together on the descent. Riders abandon now and then from crashes or fatigue, mostly helpers. The race film shows the gap to the chase."
+          "body": "From the first stage of season 5: the mountains jersey goes to riders who hunt it, and a summit finish gives normal mountain points. Sprinters win the points jersey more often, and GC captains no longer sprint in bunch finishes. In stage races the peloton lets the breakaway go until the gap gets too big, then the teams with an interest chase, and GC teams keep a dangerous breakaway on a leash instead of catching it early. On mountain stages the favourites let a breakaway with no GC danger go, and some teams send a rider in the breakaway on hilly stages to take the intermediate sprint. After the last climb on a mountain stage, groups come back together on the descent. Riders abandon now and then from crashes or fatigue, mostly helpers."
         },
         "da": {
           "title": "Løbene ligner rigtig cykelsport mere",
-          "body": "Fra første etape i sæson 5: bjergtrøjen går til ryttere, der jagter den, og et topmål giver almindelige bjergpoint. Sprinterne vinder oftere pointtrøjen. På flade etaper jagter feltet et udbrud, der betyder noget. Efter sidste stigning på en bjergetape samler grupperne sig på nedkørslen. Ryttere udgår nu og da efter styrt eller træthed, mest hjælpere. Løbsfilmen viser afstanden til jagten."
+          "body": "Fra første etape i sæson 5: bjergtrøjen går til ryttere, der jagter den, og et topmål giver almindelige bjergpoint. Sprinterne vinder oftere pointtrøjen, og klassementskaptajner spurter ikke længere i massespurter. I etapeløb lader feltet udbruddet gå, til hullet bliver for stort, og så jagter de hold, der har interesse, og klassementsholdene holder et farligt udbrud på snor i stedet for at hente det tidligt. På bjergetaper lader favoritterne et udbrud uden klassementsfare gå, og på kuperede etaper sender nogle hold en rytter i udbruddet for at tage den indlagte spurt. Efter sidste stigning på en bjergetape samler grupperne sig på nedkørslen. Ryttere udgår nu og da efter styrt eller træthed, mest hjælpere."
         },
         "refs": [
           6804,

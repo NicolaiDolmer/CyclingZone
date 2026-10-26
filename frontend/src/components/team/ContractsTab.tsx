@@ -30,6 +30,7 @@ import {
 } from "../ui/index.js";
 import { DataTable, EmptyState, ErrorState, RiderLink, Segmented, Select, type DataTableColumn } from "../squad/squadUi.ts";
 import ScoutablePotentialeJs from "../rider/ScoutablePotentiale.jsx";
+import BuybackPanel from "./BuybackPanel.tsx"; // #7251
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { resolveApiError } from "../../lib/apiError.js";
@@ -490,12 +491,15 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
   }
   if (rows.length === 0) {
     return (
+      <>
+      <BuybackPanel onSigned={() => onChanged?.()} />
       <EmptyState
         icon={<BriefcaseIcon size={26} aria-hidden="true" />}
         title={t("contracts.emptyTitle")}
         description={t("contracts.emptyBody")}
         action={<Link to="/riders" className={`${buttonClass({ variant: "secondary", size: "sm" })} inline-flex`}>{t("squad.emptyStateCta")}</Link>}
       />
+      </>
     );
   }
 
@@ -505,6 +509,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
 
   return (
     <div data-testid="contracts-tab">
+      <BuybackPanel onSigned={() => onChanged?.()} />
       <div className="flex flex-col gap-[14px]">
         {groups.map((group) => {
           const selectable = group.rows.filter((r) => r.maxSeasons > 0);
