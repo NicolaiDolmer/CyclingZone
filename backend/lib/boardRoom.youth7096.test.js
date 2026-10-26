@@ -10,12 +10,22 @@ import {
   YOUTH_PODIUM_MAX_RANK,
   YOUTH_RESULT_TYPES,
 } from "./boardRoom.js";
+import {
+  YOUTH_RESULT_SOURCE,
+  YOUTH_TUNING_ENV,
+  parseYouthMoodTuning,
+  readYouthMoodTuning,
+} from "./boardYouthEvaluation.js";
 
 // #7096 · Ejer 23/10: U23-/juniorresultater tæller i bestyrelsens vurdering af
 // ungdomsarbejdet (de ungdomsfokuserede medlemmers stemning), aldrig i
 // seniormålene. Alle tider er faste strenge (hard rule 16: intet vægur).
+// Design-go 24/10 (mulighed A): ét nik pr. løb, større plus ved sejr/slut-trøje,
+// loft for ungdomsandelen i vinduet. De rigtige tal er private (regel 17); alle
+// tal her er SYNTETISKE og siger intet om live-tuningen.
 
 const TEAM_ID = "team-youth";
+const TUNING = Object.freeze({ podiumWeight: 2, winWeight: 5, windowCap: 2 });
 
 const MEMBERS = [
   { team_id: TEAM_ID, archetype_key: "talentspejderen", selection_kind: "identity", alignment_score: 3, is_chairman: true },
@@ -49,7 +59,7 @@ test("ét dominerende ungdomsetapeløb giver ét input pr. ungdomsmedlem, ikke �
   }
   rows.push(row({ raceId: "u23-tour", resultType: "gc", at: "2026-10-18T12:00:00Z" }));
 
-  const events = deriveYouthResultMoodEvents({ rows, assignedMembers: MEMBERS });
+  const events = deriveYouthResultMoodEvents({ rows, assignedMembers: MEMBERS, tuning: TUNING });
   assert.equal(events.length, 2);
   assert.deepEqual(events.map((e) => e.ownerArchetypeKey).sort(), ["talentspejderen", "ungdomsidealisten"]);
   for (const event of events) {
@@ -72,7 +82,7 @@ test("seniorløb, ukendt trup, andre resultat-typer og placeringer uden for podi
     row({ raceId: "no-time", at: null }),
     row({ raceId: null, at: "2026-10-10T00:00:00Z" }),
   ];
-  assert.deepEqual(deriveYouthResultMoodEvents({ rows, assignedMembers: MEMBERS }), []);
+  assert.deepEqual(deriveYouthResultMoodEvents({ rows, assignedMembers: MEMBERS, tuning: TUNING }), []);
 });
 
 test("junior- og U23-podier tæller, nyeste løb først", () => {
@@ -82,6 +92,7 @@ test("junior- og U23-podier tæller, nyeste løb først", () => {
   ];
   const events = deriveYouthResultMoodEvents({
     rows,
+    tuning: TUNING,
     assignedMembers: [MEMBERS[1]],
   });
   assert.deepEqual(events.map((e) => e.raceId), ["u23-classic", "junior-classic"]);
@@ -89,8 +100,8 @@ test("junior- og U23-podier tæller, nyeste løb først", () => {
 
 test("ingen ungdomsfokuserede medlemmer → ingen input", () => {
   const rows = [row({ raceId: "u23-tour", at: "2026-10-18T12:00:00Z" })];
-  assert.deepEqual(deriveYouthResultMoodEvents({ rows, assignedMembers: [MEMBERS[2], MEMBERS[3]] }), []);
-  assert.deepEqual(deriveYouthResultMoodEvents({ rows, assignedMembers: [] }), []);
+  assert.deepEqual(deriveYouthResultMoodEvents({ rows, assignedMembers: [MEMBERS[2], MEMBERS[3]], tuning: TUNING }), []);
+  assert.deepEqual(deriveYouthResultMoodEvents({ rows, assignedMembers: [], tuning: TUNING }), []);
   assert.deepEqual(deriveYouthResultMoodEvents(), []);
 });
 
@@ -98,6 +109,7 @@ test("ungdomsinput løfter kun ungdomsmedlemmets stemning, ikke de andres", () =
   const events = deriveYouthResultMoodEvents({
     rows: [row({ raceId: "u23-tour", at: "2026-10-18T12:00:00Z" })],
     assignedMembers: MEMBERS,
+    tuning: TUNING,
   });
   assert.equal(deriveMemberMood({ ownedEvents: events, archetypeKey: "ungdomsidealisten" }), "positive");
   assert.equal(deriveMemberMood({ ownedEvents: events, archetypeKey: "pragmatikeren" }), "neutral");
@@ -222,6 +234,7 @@ test("aggregator: ungdomsresultater gør ungdomsmedlemmerne positive, resten uæ
   const payload = await buildBoardRoomPayload({
     supabase: makeSupabase(tables()),
     teamId: TEAM_ID,
+    youthTuning: TUNING,
     loadYouthResults: async (args) => {
       calls.push(args.seasonId);
       return [row({ raceId: "u23-tour", resultType: "gc", at: "2026-10-18T12:00:00Z" })];
@@ -248,6 +261,7 @@ test("aggregator: seniormålet stage_wins tæller ikke ungdomssejre", async () =
       }],
     })),
     teamId: TEAM_ID,
+    youthTuning: TUNING,
     loadGoalContext: async () => ({}),
     loadYouthResults: async () => [row({ raceId: "u23-tour", at: "2026-10-18T12:00:00Z" })],
   });
@@ -260,6 +274,7 @@ test("aggregator: fejlet ungdomslæsning koster kun inputtet, ikke siden", async
   const payload = await buildBoardRoomPayload({
     supabase: makeSupabase(tables()),
     teamId: TEAM_ID,
+    youthTuning: TUNING,
     loadYouthResults: async () => { throw new Error("boom"); },
   });
   assert.equal(payload.enabled, true);
@@ -271,7 +286,82 @@ test("aggregator: uden aktiv sæson kaldes loaderen ikke", async () => {
   const payload = await buildBoardRoomPayload({
     supabase: makeSupabase(tables({ seasons: [] })),
     teamId: TEAM_ID,
+    youthTuning: TUNING,
     loadYouthResults: async () => { called = true; return []; },
+  });
+  assert.equal(called, false);
+  assert.equal(moodOf(payload, "ungdomsidealisten"), "neutral");
+});
+
+// ── Design-go 24/10 (mulighed A): sejr-plus, loft, privat kilde ─────────────
+
+test("sejr eller slut-trøje giver sejrsvægten, rent podie podievægten", () => {
+  const talent = [MEMBERS[1]];
+  const delta = (rows) => deriveYouthResultMoodEvents({ rows, assignedMembers: talent, tuning: TUNING })[0].satisfaction_delta;
+  assert.equal(delta([row({ raceId: "r", rank: 2, at: "2026-10-10T00:00:00Z" })]), TUNING.podiumWeight);
+  assert.equal(delta([row({ raceId: "r", resultType: "gc", rank: 3, at: "2026-10-10T00:00:00Z" })]), TUNING.podiumWeight);
+  assert.equal(delta([row({ raceId: "r", resultType: "stage", rank: 1, at: "2026-10-10T00:00:00Z" })]), TUNING.winWeight);
+  assert.equal(delta([row({ raceId: "r", resultType: "gc", rank: 1, at: "2026-10-10T00:00:00Z" })]), TUNING.winWeight);
+});
+
+test("sejren tæller uanset om den ligger før eller efter løbets seneste podie, og stadig kun ét nik", () => {
+  const rows = [
+    row({ raceId: "r", resultType: "stage", rank: 1, at: "2026-10-10T00:00:00Z" }),
+    row({ raceId: "r", resultType: "gc", rank: 3, at: "2026-10-12T00:00:00Z" }),
+  ];
+  const events = deriveYouthResultMoodEvents({ rows, assignedMembers: [MEMBERS[1]], tuning: TUNING });
+  assert.equal(events.length, 1);
+  assert.equal(events[0].satisfaction_delta, TUNING.winWeight);
+  assert.equal(events[0].created_at, "2026-10-12T00:00:00Z");
+  const reversed = deriveYouthResultMoodEvents({ rows: [...rows].reverse(), assignedMembers: [MEMBERS[1]], tuning: TUNING });
+  assert.deepEqual(reversed, events);
+});
+
+test("sejrsplusset kan opveje mål-bevægelser som et podie ikke kan", () => {
+  const negative = (n) => Array.from({ length: n }, () => ({ ownerArchetypeKey: "ungdomsidealisten", satisfaction_delta: -1 }));
+  const mood = (youthRow) => {
+    const youth = deriveYouthResultMoodEvents({ rows: [youthRow], assignedMembers: [MEMBERS[1]], tuning: TUNING });
+    return deriveMemberMood({ ownedEvents: [...youth, ...negative(3)], archetypeKey: "ungdomsidealisten" });
+  };
+  assert.equal(mood(row({ raceId: "r", rank: 2, at: "2026-10-10T00:00:00Z" })), "negative");
+  assert.equal(mood(row({ raceId: "r", rank: 1, at: "2026-10-10T00:00:00Z" })), "positive");
+});
+
+test("loftet begrænser ungdomsandelen i vinduet; resten af pladserne går til øvrige events", () => {
+  const youth = Array.from({ length: 4 }, () => ({ ownerArchetypeKey: "ungdomsidealisten", satisfaction_delta: 2, source: YOUTH_RESULT_SOURCE }));
+  const older = Array.from({ length: 4 }, () => ({ ownerArchetypeKey: "ungdomsidealisten", satisfaction_delta: -2 }));
+  const ownedEvents = [...youth, ...older];
+  assert.equal(deriveMemberMood({ ownedEvents, archetypeKey: "ungdomsidealisten" }), "positive", "uden loft fylder ungdom de fem pladser");
+  assert.equal(
+    deriveMemberMood({ ownedEvents, archetypeKey: "ungdomsidealisten", youthWindowCap: TUNING.windowCap }),
+    "negative",
+    "med loft: 2 ungdoms-events + 3 øvrige",
+  );
+});
+
+test("privat kilde: gyldig JSON læses, mangler/ugyldig → null (fail-closed)", () => {
+  assert.deepEqual(parseYouthMoodTuning(JSON.stringify(TUNING)), TUNING);
+  assert.deepEqual(readYouthMoodTuning({ [YOUTH_TUNING_ENV]: JSON.stringify(TUNING) }), TUNING);
+  assert.equal(readYouthMoodTuning({}), null);
+  assert.equal(parseYouthMoodTuning(""), null);
+  assert.equal(parseYouthMoodTuning("ikke json"), null);
+  assert.equal(parseYouthMoodTuning(JSON.stringify({ podiumWeight: 2, winWeight: 1, windowCap: 2 })), null, "sejr må ikke veje mindre end podie");
+  assert.equal(parseYouthMoodTuning(JSON.stringify({ podiumWeight: 0, winWeight: 1, windowCap: 2 })), null);
+  assert.equal(parseYouthMoodTuning(JSON.stringify({ podiumWeight: 2, winWeight: 5, windowCap: 0 })), null);
+  assert.equal(parseYouthMoodTuning(JSON.stringify({ podiumWeight: 2, winWeight: 5, windowCap: 1.5 })), null);
+});
+
+test("uden tuning: ingen ungdoms-events og ingen læsning af race_results", async () => {
+  assert.deepEqual(
+    deriveYouthResultMoodEvents({ rows: [row({ raceId: "r", at: "2026-10-10T00:00:00Z" })], assignedMembers: MEMBERS, tuning: null }),
+    [],
+  );
+  let called = false;
+  const payload = await buildBoardRoomPayload({
+    supabase: makeSupabase(tables()),
+    teamId: TEAM_ID,
+    youthTuning: null,
+    loadYouthResults: async () => { called = true; return [row({ raceId: "r", at: "2026-10-10T00:00:00Z" })]; },
   });
   assert.equal(called, false);
   assert.equal(moodOf(payload, "ungdomsidealisten"), "neutral");

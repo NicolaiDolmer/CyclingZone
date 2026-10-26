@@ -140,8 +140,22 @@ import { computeBonusOfferProgress, computePassiveModifierInfo } from "./boardTr
 import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.js";
 import { captureException } from "./sentry.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
-import { SQUADS, isYouthSquad } from "./squads.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import {
+  YOUTH_RESULT_SOURCE,
+  deriveYouthResultMoodEvents,
+  loadYouthRaceResultsForBoard,
+  readYouthMoodTuning,
+} from "./boardYouthEvaluation.js";
+
+// #7096 · Ungdomsevalueringen bor i boardYouthEvaluation.js; re-eksporteret her,
+// så Boardroom-kalderne og testene har ét indgangspunkt.
+export {
+  YOUTH_PODIUM_MAX_RANK,
+  YOUTH_RESULT_TYPES,
+  deriveYouthResultMoodEvents,
+  isYouthFocusedArchetype,
+  loadYouthRaceResultsForBoard,
+} from "./boardYouthEvaluation.js";
 
 const MINUTES_LIMIT = 10;
 const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så mood har nok historik
@@ -292,122 +306,29 @@ export function resolveEventSpeaker({ row, chairmanArchetypeKey, movements = [] 
  * -sorteret (nyeste først) af kalderen. Kalderen lægger også mål-bevægelser
  * (#4578) og, for ungdomsfokuserede medlemmer, holdets ungdomsresultater
  * (#7096, `deriveYouthResultMoodEvents`) i samme pulje.
+ *
+ * `youthWindowCap` (#7096, fra den private tuning) begrænser hvor mange
+ * ungdomsresultat-events der kan fylde de 5 pladser: de nyeste op til loftet
+ * tæller, ældre ungdomsevents springes over, og pladserne går i stedet til
+ * medlemmets øvrige events. Uden loft (null) gælder vinduet som hidtil.
  */
-export function deriveMemberMood({ ownedEvents = [], archetypeKey } = {}) {
-  const relevant = (ownedEvents || [])
-    .filter((e) => e.ownerArchetypeKey === archetypeKey)
-    .slice(0, MOOD_WINDOW);
+export function deriveMemberMood({ ownedEvents = [], archetypeKey, youthWindowCap = null } = {}) {
+  const owned = (ownedEvents || []).filter((e) => e.ownerArchetypeKey === archetypeKey);
+  const relevant = [];
+  let youthTaken = 0;
+  for (const event of owned) {
+    if (relevant.length >= MOOD_WINDOW) break;
+    if (youthWindowCap != null && event.source === YOUTH_RESULT_SOURCE) {
+      if (youthTaken >= youthWindowCap) continue;
+      youthTaken += 1;
+    }
+    relevant.push(event);
+  }
   if (!relevant.length) return "neutral";
   const sum = relevant.reduce((acc, e) => acc + Number(e.satisfaction_delta ?? 0), 0);
   if (sum > 0) return "positive";
   if (sum < 0) return "negative";
   return "neutral";
-}
-
-// ---------------------------------------------------------------------------
-// #7096 · Ungdomsresultater i bestyrelsens vurdering af ungdomsarbejdet
-// ---------------------------------------------------------------------------
-//
-// Ejer 23/10: U23- og juniorresultater tæller i bestyrelsens vurdering af
-// UNGDOMSARBEJDET, men ALDRIG i seniormålene. Seniormålene (stage_wins,
-// placering osv.) læser fortsat kun seniorløb (boardGoalContext.js'
-// onlySeniorRaceRows, #5537) — intet i denne blok rører den sti, mål-
-// evalueringen eller tilliden (board_relations.confidence).
-//
-// Her får de ungdomsfokuserede medlemmer (arketypens policy_axes.youth_focus
-// = "high") holdets ungdomsresultater i indeværende sæson som input til deres
-// stemning (deriveMemberMood). Ét løb giver højst ÉT positivt input, uanset
-// hvor mange etaper/podier holdet tog i det, så ét dominerende ungdomsetapeløb
-// ikke fylder hele stemningsvinduet alene. Inputtet følger samme fortegns-
-// konvention som mål-bevægelserne (#4578): kun fortegnet tæller i
-// deriveMemberMood's sum.
-
-// Resultat-typer der tæller: etaperesultater og det samlede resultat. "gc" på et
-// endagsløb er selve løbsresultatet (samme skel som boardGoalContext.js/
-// riderPalmares.js), så sejre, podier og samlede placeringer dækkes af de to.
-export const YOUTH_RESULT_TYPES = Object.freeze(["stage", "gc"]);
-// Podiet: definitionen, ikke et balance-tal.
-export const YOUTH_PODIUM_MAX_RANK = 3;
-// Ungdomstrupperne (squads.js er SSOT for trup-værdierne).
-const YOUTH_RACE_SQUADS = Object.freeze(SQUADS.filter((squad) => isYouthSquad(squad)));
-
-/** Har arketypen ungdomsfokus som grundholdning (policy-aksen youth_focus)? */
-export function isYouthFocusedArchetype(archetypeKey) {
-  return getArchetypeByKey(archetypeKey)?.policy_axes?.youth_focus === "high";
-}
-
-/**
- * Rene stemnings-input fra holdets ungdomsresultater.
- *
- * `rows` er race_results-rækker (`race_id`, `result_type`, `rank`,
- * `imported_at`, indlejret `races: { squad }`). Kun rækker fra et ungdomsløb
- * (races.squad u23/junior) med et podie (rank 1-3) på etapen eller samlet
- * tæller. Seniorrækker og rækker uden kendt trup ignoreres altid, så en
- * seniorsejr aldrig dobbelttælles her.
- *
- * Returnerer ét event pr. (løb, ungdomsfokuseret medlem), dateret ved løbets
- * seneste tællende resultat, nyeste først. Ingen ungdomsfokuserede medlemmer
- * eller ingen tællende rækker → tom liste.
- */
-export function deriveYouthResultMoodEvents({ rows = [], assignedMembers = [] } = {}) {
-  const youthMemberKeys = [...new Set((assignedMembers || [])
-    .map((m) => m?.archetype_key)
-    .filter((key) => key && isYouthFocusedArchetype(key)))];
-  if (!youthMemberKeys.length) return [];
-
-  const latestByRace = new Map();
-  for (const row of rows || []) {
-    if (!row?.race_id) continue;
-    if (!isYouthSquad(row?.races?.squad)) continue;
-    if (!YOUTH_RESULT_TYPES.includes(row.result_type)) continue;
-    const rank = Number(row.rank);
-    if (!Number.isInteger(rank) || rank < 1 || rank > YOUTH_PODIUM_MAX_RANK) continue;
-    const at = row.imported_at ?? null;
-    const atMs = at ? new Date(at).getTime() : NaN;
-    if (!Number.isFinite(atMs)) continue;
-    const previous = latestByRace.get(row.race_id);
-    if (!previous || atMs > previous.atMs) latestByRace.set(row.race_id, { at, atMs });
-  }
-
-  const events = [];
-  for (const [raceId, { at, atMs }] of latestByRace) {
-    for (const ownerArchetypeKey of youthMemberKeys) {
-      events.push({
-        ownerArchetypeKey,
-        satisfaction_delta: 1,
-        created_at: at,
-        source: "youth_result",
-        raceId,
-        _atMs: atMs,
-      });
-    }
-  }
-  return events
-    .sort((a, b) => b._atMs - a._atMs || String(a.raceId).localeCompare(String(b.raceId)))
-    .map(({ _atMs, ...event }) => event);
-}
-
-/**
- * Læser holdets ungdomsresultater (podier på etaper og samlet) i én sæson.
- * Kun ungdomsløb (indlejret races.squad), kun den givne sæson. Kaster ved en
- * fejlet læsning; kalderen afgør om det er best-effort.
- */
-export async function loadYouthRaceResultsForBoard({ supabase, teamId, seasonId } = {}) {
-  if (!supabase?.from || !teamId || !seasonId) return [];
-  try {
-    // Pagineret (PostgREST-loftet, #3331): et hold med et fuldt ungdomsprogram
-    // kan nærme sig loftet over en hel sæson. Stabil rækkefølge på id.
-    return await fetchAllRows(() => supabase.from("race_results")
-      .select("id, race_id, result_type, rank, imported_at, races!inner(squad, season_id)")
-      .eq("team_id", teamId)
-      .in("result_type", [...YOUTH_RESULT_TYPES])
-      .lte("rank", YOUTH_PODIUM_MAX_RANK)
-      .eq("races.season_id", seasonId)
-      .in("races.squad", [...YOUTH_RACE_SQUADS])
-      .order("id", { ascending: true }));
-  } catch (err) {
-    throw new Error(`race_results (youth) lookup failed: ${err?.message ?? err}`, { cause: err });
-  }
 }
 
 /**
@@ -611,6 +532,9 @@ export async function buildBoardRoomPayload({
   loadGoalContext = loadGoalContextForBoard,
   // #7096 · injicerbar KUN til test, samme mønster som loadGoalContext.
   loadYouthResults = loadYouthRaceResultsForBoard,
+  // #7096 · vægte/loft fra den private runtime-kilde (fail-closed: null = ungdoms-
+  // inputtet er slået fra). Injicerbar til test med syntetiske tal.
+  youthTuning = readYouthMoodTuning(),
 } = {}) {
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
@@ -637,7 +561,7 @@ export async function buildBoardRoomPayload({
   // medlemmers stemning). Best-effort: en fejlet læsning koster kun dette input,
   // aldrig siden, og påvirker hverken mål, tillid eller seniormål.
   const youthResultsPromise = activeSeasonPromise
-    .then((season) => (season?.id
+    .then((season) => (season?.id && youthTuning
       ? loadYouthResults({ supabase, teamId, seasonId: season.id })
       : []))
     .catch((err) => {
@@ -855,6 +779,7 @@ export async function buildBoardRoomPayload({
   const youthResultMoodEvents = deriveYouthResultMoodEvents({
     rows: youthResultRows ?? [],
     assignedMembers,
+    tuning: youthTuning,
   });
   const moodEvents = [...milestoneEventsWithOwner, ...movementMoodEvents, ...youthResultMoodEvents]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -866,7 +791,11 @@ export async function buildBoardRoomPayload({
       name: named?.full_name ?? null,
       initials: named?.initials ?? null,
       role: deriveMemberRole({ archetypeKey: m.archetype_key, isChairman: m.is_chairman }),
-      mood: deriveMemberMood({ ownedEvents: moodEvents, archetypeKey: m.archetype_key }),
+      mood: deriveMemberMood({
+        ownedEvents: moodEvents,
+        archetypeKey: m.archetype_key,
+        youthWindowCap: youthTuning?.windowCap ?? null,
+      }),
       // Samme tal for alle medlemmer i denne runde (ejer-godkendt forenkling,
       // 1/9-tillæg) — se deriveFoundingSeasonNumber.
       sinceSeason,
