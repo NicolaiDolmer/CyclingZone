@@ -545,16 +545,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Opciones de la escapada",
-      "high": "Altas",
-      "medium": "Medias",
-      "low": "Bajas",
-      "none": "Ninguna",
-      "tooltip": "Qué probabilidad hay de que una escapada llegue en este terreno. El cazador siempre es candidato a la escapada."
-    },
     "hunterExplainer": {
-      "strengthLine": "En el terreno de esta carrera, una escapada tiene opciones {strength} de llegar.",
+      "dayLine": "Tu cazador intenta meterse en la escapada de la mañana. Si llega o no, lo decide el pelotón el día de la carrera.",
       "candidatesHint": "Ordenados por agresividad: las ganas de atacar y de comprometerse con un movimiento.",
       "noCandidates": "Elige ciclistas para esta carrera para ver a tus mejores cazadores.",
       "aggression": "Agresividad",
