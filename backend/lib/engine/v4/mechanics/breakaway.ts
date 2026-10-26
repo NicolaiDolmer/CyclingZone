@@ -649,7 +649,9 @@ export function s5V3FormationGuards7258(ctx: Pick<BreakawayHookContext, "gcConte
   // Dagens favoritter maales paa det krav finalen faktisk afgoeres paa under S5 (s5FinaleDemandVector,
   // som finale.ts), ellers finaletypens grundkrav.
   const demand = (finaleType ? s5FinaleDemandVector({ ...ctx.route, finale_type: finaleType }) : null) ?? (finaleType ? ctx.tuning.finale.demandVectorByFinaleType[finaleType] : undefined);
-  return { projectedTop, favourites: stageFavourites({ riderIds: sourceRiderIds, entrants: ctx.entrants, demand }) };
+  // Kun naar loebet er kendt (endagsloeb eller etapeloeb med stilling); uden gc-kontekst er dannelsen som v2.
+  const known = gc.status === "one_day" || gc.status === "standings";
+  return { projectedTop, favourites: known ? stageFavourites({ riderIds: sourceRiderIds, entrants: ctx.entrants, demand }) : new Set<string>() };
 }
 
 /**
