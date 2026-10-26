@@ -141,6 +141,7 @@ export function runRecordedEngineCall(recorder, meta, args, call) {
     };
     recorder.calls.push(entry);
   } catch (err) {
+    // best-effort: buildRaceResults er synkron; fejlen sendes til Sentry af persistEngineInputSnapshots.
     recorder.errors.push(err);
     entry = null;
   }
@@ -149,6 +150,7 @@ export function runRecordedEngineCall(recorder, meta, args, call) {
     try {
       entry.outputSha256 = hashEngineOutput(result);
     } catch (err) {
+      // best-effort: samme vej til Sentry som ovenfor (persistEngineInputSnapshots).
       recorder.errors.push(err);
     }
   }
