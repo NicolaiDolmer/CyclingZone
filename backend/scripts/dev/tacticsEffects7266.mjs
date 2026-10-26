@@ -585,7 +585,7 @@ export function findings(summary, inv, api) {
 
 // ── Hovedloekken ────────────────────────────────────────────────────────────
 
-export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, seeds = 2, revision = REVISION, experiments = EXPERIMENTS, log = (s) => process.stderr.write(s) } = {}) {
+export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, seeds = 2, seedStart = 1, revision = REVISION, experiments = EXPERIMENTS, log = (s) => process.stderr.write(s) } = {}) {
   const api = experiments.includes("api") ? apiContradictionChecks() : null;
   const simExps = experiments.filter((e) => e !== "api");
   const records = [];
@@ -601,7 +601,7 @@ export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, se
       const field = splitEntrants(data).entrants;
       const templates = pickTemplates(data.abilities.filter((a) => field.some((e) => e.rider_id === a.rider_id)));
       meta.push({ race: pr.id, group: pr.group, stages: stages.length, field: field.length, filled });
-      for (let seed = 1; seed <= seeds; seed++) {
+      for (let seed = seedStart; seed < seedStart + seeds; seed++) {
         for (const profile of stages) {
           const cls = stageClass(profile.profile_type);
           const rec = (r) => records.push({ ...r, group: pr.group, cls: r.cls ?? cls, race: pr.id, stage: profile.stage_number, seed });
@@ -622,7 +622,7 @@ export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, se
   }
   const summary = summarize(records);
   const inv = invariants(records);
-  return { config: { revision, seeds, caps, experiments, noiseZ: NOISE_Z, minField: MIN_FIELD }, races: meta, summary, invariants: inv, api, findings: findings(summary, inv, api), records };
+  return { config: { revision, seeds, seedStart, caps, experiments, noiseZ: NOISE_Z, minField: MIN_FIELD }, races: meta, summary, invariants: inv, api, findings: findings(summary, inv, api), records };
 }
 
 /** Flere koerslers resultater (fx én pr. gruppe) samlet til ét (ren). */
@@ -677,7 +677,7 @@ if (isMain) {
   if (!merge && !fromDir && experiments.some((e) => e !== "api")) throw new Error("--from-dir=<eksport>/races kraeves");
   const res = merge
     ? mergeResults(merge.split(",").map((l) => JSON.parse(readFileSync(path.join(path.resolve(REPO_ROOT, out), `tactics-effects-${l}.json`), "utf8"))))
-    : await runTacticsEffects({ fromDir, caps, seeds: Number(arg("seeds", "2")), revision: arg("revision", REVISION), experiments });
+    : await runTacticsEffects({ fromDir, caps, seeds: Number(arg("seeds", "2")), seedStart: Number(arg("seed-start", "1")), revision: arg("revision", REVISION), experiments });
   const label = arg("label", "v3");
   const md = renderMarkdown(res, label);
   if (out) {
