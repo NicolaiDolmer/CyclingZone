@@ -83,7 +83,14 @@ function uniq(list: readonly string[]): string[] {
   return [...new Set(list)];
 }
 
-type Window = { from: number; to: number; groupId: string | null; riders: ReadonlySet<string> };
+// groupIds: udbruddets gruppe-id og udfaldets (et afsat/delt udbrud holder hjem under
+// et nyt id, #6185); riders: udbrydderne fra dannelsen.
+type Window = { from: number; to: number; groupIds: ReadonlySet<string>; riders: ReadonlySet<string> };
+
+const inGroup = (w: Window, e: NarrativeEvent): boolean => {
+  const gid = str(e?.params?.group_id);
+  return gid !== null && w.groupIds.has(gid);
+};
 
 function inWindow(events: readonly NarrativeEvent[], w: Window): NarrativeEvent[] {
   return events.slice(w.from, w.to + 1);
@@ -98,10 +105,10 @@ function inWindow(events: readonly NarrativeEvent[], w: Window): NarrativeEvent[
 function separationSeries(events: readonly NarrativeEvent[], w: Window, chaseId: string): Array<{ km: number; seconds: number }> {
   const slice = inWindow(events, w);
   const explicit = slice
-    .filter((e) => e?.type === "gap_update" && str(e.params?.group_id) === w.groupId && num(e.params?.separation_seconds) !== null)
+    .filter((e) => e?.type === "gap_update" && inGroup(w, e) && num(e.params?.separation_seconds) !== null)
     .map((e) => ({ km: raceKm(e), seconds: num(e?.params?.separation_seconds) as number }));
   if (explicit.length) return explicit;
-  if (!w.groupId) return [];
+  if (!w.groupIds.size) return [];
   let breakGap = 0;
   let chaseGap: number | null = null;
   const out: Array<{ km: number; seconds: number }> = [];
@@ -109,8 +116,9 @@ function separationSeries(events: readonly NarrativeEvent[], w: Window, chaseId:
     if (e?.type !== "gap_update") continue;
     const gid = str(e.params?.group_id);
     const gap = num(e.params?.gap_seconds);
-    if (gap === null || (gid !== w.groupId && gid !== chaseId)) continue;
-    if (gid === w.groupId) breakGap = gap;
+    const own = inGroup(w, e);
+    if (gap === null || (!own && gid !== chaseId)) continue;
+    if (own) breakGap = gap;
     else chaseGap = gap;
     if (chaseGap !== null) out.push({ km: raceKm(e), seconds: Math.max(0, chaseGap - breakGap) });
   }
@@ -124,16 +132,21 @@ function climbBetween(events: readonly NarrativeEvent[], w: Window, fromKm: numb
 
 function curveCauseHeld(series: ReadonlyArray<{ km: number; seconds: number }>, events: readonly NarrativeEvent[], w: Window): BreakawayCause | null {
   if (series.length < 2) return null;
-  const first = series[0].seconds;
-  let minIndex = 0;
-  for (let i = 1; i < series.length; i++) if (series[i].seconds < series[minIndex].seconds) minIndex = i;
-  const min = series[minIndex].seconds;
+  // Jagtens stoerste indhentning: faldet fra hidtil stoerste afstand til et senere punkt
+  // (ikke kun fra den foerste maaling: 100 -> 300 -> 150 er ogsaa at lukke ind).
+  let peak = series[0].seconds;
+  let troughIndex = -1;
+  let bestDrop = GAP_MOVE_EPSILON_SECONDS;
+  for (let i = 1; i < series.length; i++) {
+    peak = Math.max(peak, series[i - 1].seconds);
+    if (peak - series[i].seconds > bestDrop) { bestDrop = peak - series[i].seconds; troughIndex = i; }
+  }
+  const closedIn = troughIndex >= 0;
   const last = series[series.length - 1].seconds;
-  const closedIn = first - min > GAP_MOVE_EPSILON_SECONDS;
-  if (closedIn && last - min > GAP_MOVE_EPSILON_SECONDS) {
-    // Afstanden voksede igen efter laveste punkt. Stigningen naevnes kun, naar dens top
+  if (closedIn && troughIndex < series.length - 1 && last - series[troughIndex].seconds > GAP_MOVE_EPSILON_SECONDS) {
+    // Afstanden voksede igen efter bunden. Stigningen naevnes kun, naar dens top
     // ligger i stykket omkring vendepunktet (fra maalingen foer til maalingen efter).
-    const climb = climbBetween(events, w, minIndex > 0 ? series[minIndex - 1].km : -Infinity, series[minIndex + 1].km);
+    const climb = climbBetween(events, w, series[troughIndex - 1].km, series[troughIndex + 1].km);
     return climb ? { kind: "chase_faded", climb_name: climb } : { kind: "chase_faded" };
   }
   if (closedIn) return { kind: "chase_too_late" };
@@ -166,11 +179,11 @@ function teamsWith(reactions: readonly NarrativeEvent[], status: string, reason?
 function heldCauses(events: readonly NarrativeEvent[], w: Window, chaseId: string): BreakawayCause[] {
   const slice = inWindow(events, w);
   const causes: BreakawayCause[] = [];
-  const unchased = slice.filter((e) => e?.type === "breakaway_unchased" && str(e.params?.group_id) === w.groupId);
+  const unchased = slice.filter((e) => e?.type === "breakaway_unchased" && inGroup(w, e));
   if (unchased.some((e) => e?.params?.reason === undefined || e?.params?.reason === null)) causes.push({ kind: "unchased" });
   if (unchased.some((e) => e?.params?.reason === "no_riders")) causes.push({ kind: "no_chasers" });
   const ownAhead = uniq(slice
-    .filter((e) => e?.type === "own_riders_ahead" && (str(e.params?.group_id) === w.groupId || ids(e.params?.rider_ids).some((id) => w.riders.has(id))))
+    .filter((e) => e?.type === "own_riders_ahead" && (inGroup(w, e) || ids(e.params?.rider_ids).some((id) => w.riders.has(id))))
     .map((e) => str(e?.params?.team_id))
     .filter((id): id is string => id !== null));
   if (ownAhead.length) causes.push({ kind: "own_riders_ahead", team_ids: ownAhead });
@@ -208,25 +221,32 @@ function caughtCauses(events: readonly NarrativeEvent[], w: Window, caught: Narr
 
 /**
  * Hvert udbrud paa etapen (morgen-udbruddet og nye udbrud efter en indhentning) med
- * sit udfald og dets aarsager, i tidslinjens raekkefoelge. Input skal vaere sorteret
+ * sit udfald og dets aarsager. Input skal vaere i loebets raekkefoelge (motorens km)
  * og uden "indhentninger" der kun er en samling inden i udbruddet (frontend:
- * `withoutRegroupCatches`). Udbrud uden udfald i tidslinjen udelades.
+ * `honestTimelineEvents`/`withoutRegroupCatches`). Hvert udfald (hentet / holdt hjem)
+ * hoerer til den seneste dannelse foer det, hvis ryttere det roerer: et udbrud der
+ * deler sig, kan saaledes baade blive hentet og holde hjem (to historier).
+ * Dannelser uden udfald, og udfald uden dannelse (fx et senere angreb), udelades.
  */
 export function deriveBreakawayStories(events: readonly NarrativeEvent[] = []): BreakawayStory[] {
   const stories: BreakawayStory[] = [];
-  const claimed = new Set<number>();
-  events.forEach((formed, from) => {
-    if (formed?.type !== "breakaway_formed") return;
-    const groupId = str(formed.params?.group_id);
-    const riders = new Set(ids(formed.params?.rider_ids));
+  events.forEach((outcome, to) => {
+    if (outcome?.type !== "breakaway_caught" && outcome?.type !== "breakaway_survived") return;
+    const outcomeRiders = ids(outcome.params?.rider_ids);
+    const outcomeGroup = str(outcome.params?.group_id);
+    let from = -1;
+    for (let i = to - 1; i >= 0; i--) {
+      const e = events[i];
+      if (e?.type !== "breakaway_formed") continue;
+      const formedIds = new Set(ids(e.params?.rider_ids));
+      if ((outcomeGroup !== null && str(e.params?.group_id) === outcomeGroup) || outcomeRiders.some((id) => formedIds.has(id))) { from = i; break; }
+    }
+    if (from < 0) return;
+    const formed = events[from];
+    const groupId = str(formed?.params?.group_id);
+    const riders = new Set(ids(formed?.params?.rider_ids));
     if (!riders.size) return;
-    const to = events.findIndex((e, i) => i > from && !claimed.has(i)
-      && (e?.type === "breakaway_caught" || e?.type === "breakaway_survived")
-      && (groupId && str(e.params?.group_id) ? str(e.params?.group_id) === groupId : ids(e?.params?.rider_ids).some((id) => riders.has(id))));
-    if (to < 0) return;
-    claimed.add(to);
-    const outcome = events[to];
-    const w: Window = { from, to, groupId, riders };
+    const w: Window = { from, to, groupIds: new Set([groupId, outcomeGroup].filter((g): g is string => g !== null)), riders };
     const chaseId = str(outcome?.params?.chase_group_id) ?? "peloton-0";
     const held = outcome?.type === "breakaway_survived";
     const causes = held ? heldCauses(events, w, chaseId) : caughtCauses(events, w, outcome, chaseId);
@@ -249,7 +269,9 @@ export type OrderImpact = { kind: "all_out_stayed_away" | "all_out_held_on"; rid
  * Hvor spillerens egen indsats-ordre "Alt ud" ses i udfaldet:
  * - rytteren var i et udbrud der holdt hjem, og kom selv hjem med det;
  * - ellers kom rytteren i maal i samme tid som vinderen paa en etape hvor feltet blev
- *   splittet (nogen i top-listen tabte tid), og etapen havde en stigning: "holdt hjul".
+ *   splittet (nogen i top-listen tabte tid): "blev i den forreste gruppe". Stigningen
+ *   naevnes kun, naar rytteren selv staar blandt de foerste over etapens sidste top
+ *   (kom_passage.top): maaltiden alene siger intet om hvad der skete paa stigningen.
  * Kun egne ryttere med en ordre fra spilleren selv; ingen ordre, intet udsagn.
  */
 export function deriveOrderImpacts(
@@ -274,12 +296,13 @@ export function deriveOrderImpacts(
   const top = finishIndex >= 0 ? (Array.isArray(events[finishIndex]?.params?.top) ? events[finishIndex]?.params?.top as Array<Record<string, unknown>> : []) : [];
   const selective = top.some((t) => (num(t?.gap) ?? 0) > GAP_MOVE_EPSILON_SECONDS);
   const lastClimb = [...events].reverse().find((e) => e?.type === "kom_passage");
-  if (selective && lastClimb) {
+  const overTop = new Set((Array.isArray(lastClimb?.params?.top) ? lastClimb?.params?.top as Array<Record<string, unknown>> : []).map((t) => t?.rider_id));
+  if (selective) {
     for (const id of allOut) {
       const row = top.find((t) => t?.rider_id === id);
       if (used.has(id) || !row || (num(row.gap) ?? Infinity) > GAP_MOVE_EPSILON_SECONDS) continue;
       used.add(id);
-      const climb = str(lastClimb.params?.name);
+      const climb = overTop.has(id) ? str(lastClimb?.params?.name) : null;
       out.push({ kind: "all_out_held_on", rider_id: id, ...(climb ? { climb_name: climb } : {}), km: num(events[finishIndex]?.km) ?? 0, after_index: finishIndex });
     }
   }
@@ -297,7 +320,13 @@ export function withNarrativeCauses<T extends NarrativeEvent>(
   events: readonly T[] = [],
   opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null } = {},
 ): Array<T | NarrativeLine> {
-  const stories = deriveBreakawayStories(events);
+  // Aarsagerne udledes i loebets egen raekkefoelge (motorens km: `recorded_km` naar et
+  // film-spaend har flyttet `km`), og linjerne saettes efter udfaldet der hvor listen
+  // viser det. Ellers kan et spaend lukke vinduet foer de maalinger der forklarer det.
+  const order = events.map((e, i) => ({ e, i })).sort((a, b) => raceKm(a.e) - raceKm(b.e) || a.i - b.i);
+  const chrono = order.map(({ e }) => e);
+  const original = (chronoIndex: number) => order[chronoIndex].i;
+  const stories = deriveBreakawayStories(chrono);
   const extra = new Map<number, NarrativeLine[]>();
   const add = (index: number, e: NarrativeLine) => {
     if (!extra.has(index)) extra.set(index, []);
@@ -305,12 +334,12 @@ export function withNarrativeCauses<T extends NarrativeEvent>(
   };
   for (const story of stories) {
     for (const { kind, ...rest } of story.causes) {
-      add(story.outcome_index, { km: story.outcome_km, type: "breakaway_cause", params: { group_id: story.group_id, outcome: story.outcome, cause: kind, ...rest } });
+      add(original(story.outcome_index), { km: story.outcome_km, type: "breakaway_cause", params: { group_id: story.group_id, outcome: story.outcome, cause: kind, ...rest } });
     }
   }
-  for (const impact of deriveOrderImpacts(events, { ...opts, stories })) {
+  for (const impact of deriveOrderImpacts(chrono, { ...opts, stories })) {
     const { km, after_index, ...params } = impact;
-    add(after_index, { km, type: "order_impact", params });
+    add(original(after_index), { km, type: "order_impact", params });
   }
   if (!extra.size) return [...events];
   return events.flatMap((e, i) => [e, ...(extra.get(i) ?? [])]);

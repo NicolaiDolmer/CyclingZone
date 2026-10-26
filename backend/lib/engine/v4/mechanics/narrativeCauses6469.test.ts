@@ -49,6 +49,9 @@ test("#6469: jagten doede ud efter en stigning (tidslinjens egen afstand)", () =
   assert.deepEqual(deriveBreakawayStories(flat)[0].causes, [{ kind: "chase_faded" }]);
   assert.deepEqual(kinds([formed, sep(40, 300), sep(80, 200), sep(140, 90), survived()]), ["chase_too_late"]);
   assert.deepEqual(kinds([formed, sep(40, 100), sep(80, 300), survived()]), ["gap_never_closed"], "kun som sidste udvej");
+  // Lukket ind fra en top midtvejs (ikke under foerste maaling) er stadig at lukke ind (Codex-fund).
+  assert.deepEqual(kinds([formed, sep(40, 100), sep(80, 300), sep(140, 150), survived()]), ["chase_too_late"]);
+  assert.deepEqual(kinds([formed, sep(40, 100), sep(80, 300), sep(100, 150), sep(140, 320), survived()]), ["chase_faded"]);
   assert.deepEqual(kinds([formed, survived()]), [], "ingen maaling, ingen haendelse: ingen aarsag (aerlig)");
 });
 
@@ -98,9 +101,40 @@ test("#6469: hoejst to aarsager pr. udbrud, de vigtigste foerst; nyt udbrud faar
   assert.deepEqual(stories[1].causes, [{ kind: "unchased" }]);
 });
 
+test("#6469: et udbrud der deler sig, kan baade blive hentet og holde hjem (Codex-fund)", () => {
+  const events = [
+    formed,
+    ev(60, "breakaway_dropped", { group_id: "chase-1", from_group_id: "breakaway-0", rider_ids: ["b"] }),
+    ev(70, "breakaway_unchased", { group_id: "breakaway-0" }),
+    ev(90, "breakaway_caught", { group_id: "chase-1", rider_ids: ["b"] }),
+    ev(150, "breakaway_survived", { group_id: "breakaway-0", rider_ids: ["a"] }),
+  ];
+  const stories = deriveBreakawayStories(events);
+  assert.deepEqual(stories.map((s) => [s.outcome, s.survivor_ids]), [["caught", []], ["held", ["a"]]]);
+  assert.deepEqual(stories[1].causes, [{ kind: "unchased" }]);
+  // Overlever under et nyt gruppe-id: stadig dagens udbrud, og spillerens "Alt ud" ses.
+  const renamed = [formed, ev(60, "peloton_splits", { group_id: "split-9", rider_ids: ["a"] }), ev(150, "breakaway_survived", { group_id: "split-9", rider_ids: ["a"] })];
+  assert.deepEqual(deriveOrderImpacts(renamed, { ownRiderIds: ["a"], effortByRider: new Map([["a", "all_out"]]) }).map((o) => o.kind), ["all_out_stayed_away"]);
+});
+
+test("#6469: aarsagerne udledes i loebets raekkefoelge, selv naar filmen har flyttet udfaldet til et km-spaend (Codex-fund)", () => {
+  // Filmens liste: indhentningen staar ved spaendets start (km 100), motoren skrev den ved km 130.
+  const shown = [
+    formed,
+    sep(40, 300),
+    { km: 100, recorded_km: 130, type: "breakaway_caught", params: { group_id: "breakaway-0", rider_ids: ["a", "b"] } },
+    sep(112, 250),
+    ev(120, "kom_passage", { name: "Col Z" }),
+    sep(128, 40),
+  ];
+  const out = withNarrativeCauses(shown);
+  const at = out.findIndex((e) => e?.type === "breakaway_caught");
+  assert.deepEqual(out[at + 1]?.params, { group_id: "breakaway-0", outcome: "caught", cause: "closed_on_climb", climb_name: "Col Z" });
+});
+
 test("#6469: spillerens egen 'Alt ud' ses kun naar udfaldet viser det, kun for egne ryttere", () => {
   const finish = ev(150, "finish", { top: [{ rider_id: "w", rank: 1, gap: 0 }, { rider_id: "ada", rank: 2, gap: 0 }, { rider_id: "q", rank: 3, gap: 40 }] });
-  const climb = ev(140, "kom_passage", { name: "Sidste top" });
+  const climb = ev(140, "kom_passage", { name: "Sidste top", top: [{ rider_id: "w" }, { rider_id: "ada" }] });
   const effort = new Map([["ada", "all_out"], ["bo", "save"], ["a", "all_out"], ["cy", "protect"]]);
   const events = [formed, survived(120, ["a"]), climb, finish];
   assert.deepEqual(
@@ -111,6 +145,9 @@ test("#6469: spillerens egen 'Alt ud' ses kun naar udfaldet viser det, kun for e
   assert.deepEqual(deriveOrderImpacts([formed, survived(120, ["cy"]), climb, finish], { ownRiderIds: ["cy"], effortByRider: effort }), [], "arbejd eller angrib er ikke 'alt ud'");
   assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: [], effortByRider: effort }), [], "andres ryttere: aldrig");
   assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["ada"], effortByRider: null }), [], "ingen ordre-data");
+  // Ikke blandt de foerste over toppen: kun udfaldet siges, aldrig stigningen (Codex-fund).
+  const otherTop = ev(140, "kom_passage", { name: "Sidste top", top: [{ rider_id: "w" }] });
+  assert.deepEqual(deriveOrderImpacts([otherTop, finish], { ownRiderIds: ["ada"], effortByRider: effort }).map(({ kind, climb_name }) => [kind, climb_name]), [["all_out_held_on", undefined]]);
   // Hele feltet i samme tid (massespurt) er ikke at "holde hjul".
   const bunch = ev(150, "finish", { top: [{ rider_id: "w", rank: 1, gap: 0 }, { rider_id: "ada", rank: 2, gap: 0 }] });
   assert.deepEqual(deriveOrderImpacts([climb, bunch], { ownRiderIds: ["ada"], effortByRider: effort }), []);

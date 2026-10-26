@@ -1471,7 +1471,7 @@
         },
         "order": {
           "all_out_stayed_away": "{rider} a roulé à fond sur ton ordre et a tenu jusqu'à la ligne.",
-          "all_out_held_on_climb": "{rider} a roulé à fond sur ton ordre et a tenu la roue dans {climb}.",
+          "all_out_held_on_climb": "{rider} a roulé à fond sur ton ordre et a passé {climb} avec les premiers.",
           "all_out_held_on": "{rider} a roulé à fond sur ton ordre et est resté dans le groupe de tête."
         },
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",

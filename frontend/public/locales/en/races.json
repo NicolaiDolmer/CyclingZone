@@ -1454,7 +1454,7 @@
         },
         "order": {
           "all_out_stayed_away": "{rider} rode all out on your orders and stayed away to the line.",
-          "all_out_held_on_climb": "{rider} rode all out on your orders and held the wheel over {climb}.",
+          "all_out_held_on_climb": "{rider} rode all out on your orders and stayed with the front over {climb}.",
           "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group."
         },
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
