@@ -132,7 +132,7 @@ test("#7258: kun en reel kandidat (fremskrevet top eller foereren) holder en fre
 
 const MOUNTAIN_ROUTE: RouteV2 = {
   distance_km: 180, profile_type: "mountain", finale_type: "long_climb",
-  segments: [{ kind: "flat", from_km: 0, to_km: 120 }, { kind: "climb", from_km: 120, to_km: 180, gradient_pct: 7 } as RouteV2["segments"][number]],
+  segments: [{ kind: "flat", from_km: 0, to_km: 120 }, { kind: "climb", from_km: 120, to_km: 180, gradient_pct: 7 } as unknown as RouteV2["segments"][number]],
   weather: { kind: "sun", wind_exposure: 0 }, waypoints: [],
 } as RouteV2;
 const FLAT_ROUTE: RouteV2 = {
