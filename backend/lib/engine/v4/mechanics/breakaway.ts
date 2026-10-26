@@ -128,6 +128,7 @@ import { s5V3AutoChaseIntensity, s5V3ClimbChaseApplies, s5V3ClimbChaseClosing, s
 import { s5V3MountainLetGoInterestScale } from "./breakawayInterest7160.ts"; // #7160
 import { s5V3P2OffForHarmlessBreak } from "./breakawayInterest7160P2.ts"; // #7160 valg A2
 import { projectedTopRiders, s5V3ProjectedControlTargetSeconds, stageFavourites, stageFavouriteSpontaneousScale } from "./gcBreakawayLeash7258.ts"; // #7258
+import { s5FinaleDemandVector } from "../s5Profiles.ts"; // #7258 (C)
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -642,7 +643,9 @@ export function s5V3FormationGuards7258(ctx: Pick<BreakawayHookContext, "gcConte
     topN: S5_V3_GC_LEASH_7258_TUNING.projectedExcludeTopN, syntheticFirstStage: gc.status === "standings" && isSyntheticFirstStage(gc),
   });
   const finaleType = ctx.route.finale_type === "breakaway" ? fieldFinaleTypeBehindBreakaway(ctx.route) : ctx.route.finale_type;
-  const demand = finaleType ? ctx.tuning.finale.demandVectorByFinaleType[finaleType] : undefined;
+  // Dagens favoritter maales paa det krav finalen faktisk afgoeres paa under S5 (s5FinaleDemandVector,
+  // som finale.ts), ellers finaletypens grundkrav.
+  const demand = (finaleType ? s5FinaleDemandVector({ ...ctx.route, finale_type: finaleType }) : null) ?? (finaleType ? ctx.tuning.finale.demandVectorByFinaleType[finaleType] : undefined);
   return { projectedTop, favourites: stageFavourites({ riderIds: sourceRiderIds, entrants: ctx.entrants, demand }) };
 }
 

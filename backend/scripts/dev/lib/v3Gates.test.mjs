@@ -227,10 +227,10 @@ test("#7258 S3: dagens favorit i endagsloebets morgenudbrud, pr. gruppe (endagsl
   assert.equal(m.byGroup.one_day.shareOfRoadStages, 1 / 3);
   assert.equal(m.byGroup.monument.share, 0);
   const judge = (band) => evaluateV3Gates({ raceResults: rr, revision: REV, contexts, bands: { stageFavouriteInBreakaway: band } }).gates.find((g) => g.id === "stageFavouriteInBreakaway");
-  assert.equal(judge({ maxShare: 0.5 }).status, GATE_STATUS.PASS);
-  assert.equal(judge({ maxShare: 0.4 }).status, GATE_STATUS.FAIL);
-  assert.equal(judge({ maxShare: 0.4, maxShareByGroup: { one_day: 0.6 } }).status, GATE_STATUS.PASS, "gruppens egen graense vinder");
-  assert.equal(judge({ maxShareByGroup: { one_day: 0.6 } }).status, GATE_STATUS.MISSING, "monument uden graense blokerer");
+  assert.equal(judge({ maxShare: 0.4 }).status, GATE_STATUS.PASS, "doemmes paa andelen af vejetaper");
+  assert.equal(judge({ maxShare: 0.3 }).status, GATE_STATUS.FAIL);
+  assert.equal(judge({ maxShare: 0.3, maxShareByGroup: { one_day: 0.4 } }).status, GATE_STATUS.PASS, "gruppens egen graense vinder");
+  assert.equal(judge({ maxShareByGroup: { one_day: 0.4 } }).status, GATE_STATUS.MISSING, "monument uden graense blokerer");
   assert.equal(judge(undefined).status, GATE_STATUS.MISSING);
   const noFav = measureStageFavouriteInBreakaway(rr, REV, new Map([oneDay("od", "one_day", ["f1"])]));
   assert.equal(noFav.byGroup.monument, undefined, "uden kontekst er monumentet et endagsloeb");

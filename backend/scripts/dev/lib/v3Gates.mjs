@@ -314,7 +314,7 @@ function favouriteBandFor(band, group) {
   return v === null ? null : { max: v };
 }
 
-/** #7258 S3/S4: dom pr. gruppe; MANGLER ved manglende maaling eller graense, N/A uden loeb i gruppen. */
+/** #7258 S3/S4: dom pr. gruppe paa andelen af VEJETAPER med en favorit i morgenudbruddet (taerskelfilens scope); MANGLER ved manglende maaling eller graense, N/A uden loeb i gruppen. */
 function judgeFavouriteGate(gate, m, band, groups) {
   if (!m) return gateResult(gate, GATE_STATUS.NA, null, "ingen loeb i gruppen i koerslen");
   const checks = [];
@@ -322,7 +322,7 @@ function judgeFavouriteGate(gate, m, band, groups) {
     const x = m.byGroup[g];
     if (!x) continue;
     if (x.missing > 0) { checks.push({ what: `${g}: ${x.missing} vejetaper uden favorit-maaling`, ok: null }); continue; }
-    checks.push({ what: `${g}: favorit i morgenudbruddet`, ok: inBand(x.share, favouriteBandFor(band, g)) });
+    checks.push({ what: `${g}: favorit i morgenudbruddet (andel af vejetaper)`, ok: inBand(x.shareOfRoadStages, favouriteBandFor(band, g)) });
   }
   if (!checks.length) return gateResult(gate, GATE_STATUS.NA, m, "ingen loeb i gruppen i koerslen");
   const j = judgeChecks(checks);
