@@ -208,6 +208,11 @@ test("#7258 gcFromBreakaway doemmes mod de private graenser og fejler lukket", (
   assert.equal(judge(null).status, GATE_STATUS.MISSING);
   const noMeasure = evaluateV3Gates({ raceResults: [raceResult("r1", 5, [{ gcWinner: "gc" }])], revision: REV, contexts: new Map(), bands: ALL_BANDS }).gates.find((g) => g.id === "gcFromBreakaway");
   assert.equal(noMeasure.status, GATE_STATUS.MISSING, "uden gcWinnerBreak i scorecardet: MANGLER");
+  // Codex (#7258): et blandet kort (maalt + umaalt seed) maa ikke bestaa paa ufuldstaendig evidens.
+  const mixed = [raceResult("r1", 5, [{ gcWinner: "gc", gcWinnerBreak: { decisive: false, wonFromBreak: false } }, { gcWinner: "gc" }])];
+  const mixedGate = evaluateV3Gates({ raceResults: mixed, revision: REV, contexts: new Map([["r1", ctx()]]), bands: ALL_BANDS }).gates.find((g) => g.id === "gcFromBreakaway");
+  assert.equal(mixedGate.status, GATE_STATUS.MISSING);
+  assert.equal(mixedGate.value.missing, 1);
 });
 
 test("#7258 S3: dagens favorit i endagsloebets morgenudbrud, pr. gruppe (endagsloeb/monument), fail closed", () => {

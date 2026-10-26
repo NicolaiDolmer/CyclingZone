@@ -216,7 +216,11 @@ export function breakawayRaceGroupOf(stages) {
  */
 export function measureGcFromBreakaway(raceResults, revision, contexts) {
   const all = seedsOf(raceResults, revision, contexts);
-  const seeds = all.filter((x) => Number(x.stages) > 1 && x.seed?.gcWinnerBreak);
+  const stageRace = all.filter((x) => Number(x.stages) > 1);
+  // Codex (#7258): et etapeloebs-seed uden begge maalinger taelles som manglende, aldrig tabt af naevneren.
+  const measured = (x) => typeof x.seed?.gcWinnerBreak?.decisive === "boolean" && typeof x.seed?.gcWinnerBreak?.wonFromBreak === "boolean";
+  const seeds = stageRace.filter(measured);
+  const missing = stageRace.length - seeds.length;
   if (!seeds.length) return null;
   const count = (xs) => ({
     n: xs.length,
@@ -241,7 +245,7 @@ export function measureGcFromBreakaway(raceResults, revision, contexts) {
     }
   }
   for (const f of Object.values(favourites)) { f.gcFavShare = share(f.withGcFav, f.breakaways); f.stageFavShare = share(f.withStageFav, f.breakaways); }
-  return { ...withShares(count(seeds)), byGroup, favourites };
+  return { ...withShares(count(seeds)), missing, byGroup, favourites };
 }
 
 /** #7258 S3/S4: loebsgruppen med monumenter (motorTestport.loadRaceContexts saetter ctx.raceGroup, #7214). */
@@ -409,6 +413,7 @@ export function evaluateV3Gates({ raceResults, revision, contexts = new Map(), b
   const gfb = measureGcFromBreakaway(raceResults, revision, contexts);
   const gfbBand = b.gcFromBreakaway ?? {};
   if (!gfb) out.push(gateResult(by.gcFromBreakaway, GATE_STATUS.MISSING, null, "ingen maaling (gcWinnerBreak mangler i scorecardet)"));
+  else if (gfb.missing > 0) out.push(gateResult(by.gcFromBreakaway, GATE_STATUS.MISSING, gfb, `${gfb.missing} etapeloebs-seeds uden gcWinnerBreak (scorecard)`));
   else {
     const j = judgeChecks([
       { what: "klassementsvinderen i et udbrud der afgjorde loebet", ok: inBand(gfb.decidedShare, num(gfbBand.maxGcWinnerInBreakawayShare) === null ? null : { max: Number(gfbBand.maxGcWinnerInBreakawayShare) }) },

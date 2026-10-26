@@ -120,13 +120,15 @@ type LeashField = { top: Set<string>; gaps: Map<string, number>; winner: number 
 const FIELD_CACHE = new WeakMap<object, Map<string, LeashField>>();
 
 /** Fremskrivningen for dagens felt (alle i stillingen der starter), gemt pr. startfelt og klassement. */
-function leashField(gc: GcContext & { status: "standings" }, entrants: Readonly<Record<string, Entrant>>, abilityOf: ((entrant: Entrant | undefined) => number) | null, syntheticFirstStage: boolean): LeashField {
-  const key = `${gc.stage_number}:${gc.standings.length}:${gc.leader_id ?? ""}:${gc.standings[0]?.rider_id ?? ""}:${syntheticFirstStage ? 1 : 0}`;
+function leashField(gc: GcContext & { status: "standings" }, entrants: Readonly<Record<string, Entrant>>, abilityOf: ((entrant: Entrant | undefined) => number) | null, syntheticFirstStage: boolean, racingRiderIds?: ReadonlySet<string>): LeashField {
+  // Kun ryttere der stadig koerer (Codex #7258: en udgaaet favorit maa ikke staa som fremskrevet vinder).
+  const ids = gc.standings.map((s) => s.rider_id).filter((id) => entrants[id] !== undefined && (!racingRiderIds || racingRiderIds.has(id)));
+  const key = `${gc.stage_number}:${gc.leader_id ?? ""}:${syntheticFirstStage ? 1 : 0}:${ids.join(",")}`;
   let byKey = FIELD_CACHE.get(entrants);
   if (!byKey) { byKey = new Map(); FIELD_CACHE.set(entrants, byKey); }
   let field = byKey.get(key);
   if (!field) {
-    const racing = new Set(gc.standings.map((s) => s.rider_id).filter((id) => entrants[id] !== undefined));
+    const racing = new Set(ids);
     const top = projectedGcFavourites({ gc, entrants, racingRiderIds: racing, abilityOf, topN: S5_V3_GC_LEASH_7258_TUNING.projectedContenderTopN, syntheticFirstStage });
     const gaps = projectedFinalGaps({ gc, entrants, racingRiderIds: racing, abilityOf });
     field = { top, gaps, winner: gaps.size > 0 ? Math.min(...gaps.values()) : null };
@@ -140,11 +142,11 @@ function leashField(gc: GcContext & { status: "standings" }, entrants: Readonly<
  * `projectedContenderTopN` bedste paa fremskrevet slutklassement (eller foereren)? Kun de hold
  * holder en fremskreven trussel paa snor: et udbrud der kun truer en 8.-plads afgoer ikke loebet.
  */
-export function isProjectedContender(gc: GcContext | null | undefined, entrants: Readonly<Record<string, Entrant>>, riderId: string, abilityOf: ((entrant: Entrant | undefined) => number) | null, syntheticFirstStage: boolean): boolean {
+export function isProjectedContender(gc: GcContext | null | undefined, entrants: Readonly<Record<string, Entrant>>, riderId: string, abilityOf: ((entrant: Entrant | undefined) => number) | null, syntheticFirstStage: boolean, racingRiderIds?: ReadonlySet<string>): boolean {
   if (!gc || gc.status !== "standings") return false;
   if (gc.leader_id === riderId && !syntheticFirstStage) return true;
   if (!(S5_V3_GC_LEASH_7258_TUNING.projectedContenderTopN > 0)) return true;
-  const top = leashField(gc, entrants, abilityOf, syntheticFirstStage).top;
+  const top = leashField(gc, entrants, abilityOf, syntheticFirstStage, racingRiderIds).top;
   return top.size === 0 || top.has(riderId);
 }
 
@@ -153,9 +155,9 @@ export function isProjectedContender(gc: GcContext | null | undefined, entrants:
  * slutning (>= 0). Det er den afstand et udbrud med ham maa faa, foer han kan vinde LOEBET
  * (ikke blot passere et bestemt holds rytter). null uden fremskrivning eller uden rytteren.
  */
-export function projectedGapToWinnerSeconds(gc: GcContext | null | undefined, entrants: Readonly<Record<string, Entrant>>, riderId: string, abilityOf: ((entrant: Entrant | undefined) => number) | null, syntheticFirstStage: boolean): number | null {
+export function projectedGapToWinnerSeconds(gc: GcContext | null | undefined, entrants: Readonly<Record<string, Entrant>>, riderId: string, abilityOf: ((entrant: Entrant | undefined) => number) | null, syntheticFirstStage: boolean, racingRiderIds?: ReadonlySet<string>): number | null {
   if (!gc || gc.status !== "standings" || !abilityOf) return null;
-  const field = leashField(gc, entrants, abilityOf, syntheticFirstStage);
+  const field = leashField(gc, entrants, abilityOf, syntheticFirstStage, racingRiderIds);
   const own = field.gaps.get(riderId);
   if (own === undefined || field.winner === null) return null;
   return Math.max(0, own - field.winner);

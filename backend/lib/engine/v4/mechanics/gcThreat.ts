@@ -649,7 +649,7 @@ export function assessGcThreat(input: {
   // #7258: kun et hold hvis klassementsrytter kan vinde loebet (fremskrevet top eller foereren) holder en fremskreven trussel paa snor.
   // Fremskrivningen kraever loebets etaper (#6818); uden dem ved motoren intet om resten af loebet, og vurderingen er som foer.
   const raceModel = v3 && input.formationProbe !== true ? raceGcAbilityModel(gcContext) : null;
-  const projectedLeash = raceModel !== null && isProjectedContender(gcContext, input.entrants, protectedId, raceModel, firstStage);
+  const projectedLeash = raceModel !== null && isProjectedContender(gcContext, input.entrants, protectedId, raceModel, firstStage, input.racingRiderIds);
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
   type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number; projected?: true };
@@ -691,7 +691,7 @@ export function assessGcThreat(input: {
       // Afstanden maales til den fremskrevne VINDER (ikke til holdets egen rytter): et udbrud maa gerne
       // flytte pladserne bag ham, men en rytter i det maa ikke kunne vinde loebet.
       const gapToWinner = projectedLeash && !ranked && riderDanger === 0
-        ? projectedGapToWinnerSeconds(gcContext, input.entrants, riderId, raceModel, firstStage)
+        ? projectedGapToWinnerSeconds(gcContext, input.entrants, riderId, raceModel, firstStage, input.racingRiderIds)
         : null;
       const projectedDistance = gapToWinner !== null ? gapToWinner + projectedAllowanceSeconds() : null;
       const todayGain = terrainGain > 0 ? terrainGain * projectionWeight : terrainGain;

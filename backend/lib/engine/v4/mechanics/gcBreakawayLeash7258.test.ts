@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import {
   isProjectedContender,
   projectedGainSeconds,
+  projectedGapToWinnerSeconds,
   projectedGcFavourites,
   projectedLossSeconds,
   projectedTopRiders,
@@ -126,6 +127,18 @@ test("#7258: kun en reel kandidat (fremskrevet top eller foereren) holder en fre
   assert.equal(isProjectedContender(gc, FIELD, "climber", abilityOf, false), true);
   assert.equal(isProjectedContender(gc, FIELD, "f11", abilityOf, false), false, "fyldrytter langt nede");
   assert.equal(isProjectedContender({ status: "one_day" }, FIELD, "climber", abilityOf, false), false);
+});
+
+test("#7258 (Codex): en udgaaet favorit er ikke den fremskrevne vinder; kun de ryttere der koerer taeller", () => {
+  const gc = gcOf(standingsWith({ leaderWeak: 0, mid: 30, climber: 240 }), 3, MOUNTAIN_RACE);
+  const abilityOf = raceGcAbilityModel(gc);
+  const all = new Set(Object.keys(FIELD));
+  const withoutClimber = new Set([...all].filter((id) => id !== "climber"));
+  const withClimber = projectedGapToWinnerSeconds(gc, FIELD, "mid", abilityOf, false, all)!;
+  const afterAbandon = projectedGapToWinnerSeconds(gc, FIELD, "mid", abilityOf, false, withoutClimber)!;
+  assert.ok(afterAbandon <= withClimber, "uden klatreren er vinderen en anden, og ingen ligger laengere efter ham");
+  assert.equal(projectedGapToWinnerSeconds(gc, FIELD, "climber", abilityOf, false, withoutClimber), null, "den udgaaede har ingen fremskrivning");
+  assert.equal(isProjectedContender(gc, FIELD, "mid", abilityOf, false, withoutClimber), true);
 });
 
 // ── Snoren (gcThreat) ────────────────────────────────────────────────────────
