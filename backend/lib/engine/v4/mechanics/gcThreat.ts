@@ -647,7 +647,9 @@ export function assessGcThreat(input: {
   // #6804 P6.2 (KUN v3): gevinsten paa resten af etapen taeller fuldt foerst naar den kan realiseres.
   const projectionWeight = v3 ? s5V3ProjectionWeight(Math.max(0, Number(input.route.distance_km) - input.km)) : 1;
   // #7258: kun et hold hvis klassementsrytter kan vinde loebet (fremskrevet top eller foereren) holder en fremskreven trussel paa snor.
-  const projectedLeash = v3 && input.formationProbe !== true && isProjectedContender(gcContext, input.entrants, protectedId, raceGcAbilityModel(gcContext), firstStage);
+  // Fremskrivningen kraever loebets etaper (#6818); uden dem ved motoren intet om resten af loebet, og vurderingen er som foer.
+  const raceModel = v3 && input.formationProbe !== true ? raceGcAbilityModel(gcContext) : null;
+  const projectedLeash = raceModel !== null && isProjectedContender(gcContext, input.entrants, protectedId, raceModel, firstStage);
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
   type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number; projected?: true };
