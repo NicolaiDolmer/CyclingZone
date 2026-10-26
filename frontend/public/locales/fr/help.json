@@ -1571,7 +1571,7 @@
       },
       "prognosisTraining": {
         "title": "Découvrir le potentiel d'un jeune talent",
-        "text": "Après avoir recruté un coureur de l’académie, tu découvres sa prévision grâce aux jours d’entraînement dans ton équipe. Au début, il n’y a pas d’estimation, puis une fourchette de note initiale, plus précise et enfin finale. L’onglet de recrutement montre l’étape actuelle, la fourchette révélée et les jours d’entraînement avant la prochaine étape. Un meilleur encadrement et de meilleures installations d’entraînement te font avancer plus vite. Ils ne changent pas son talent, et même la prévision finale reste une fourchette."
+        "text": "Après la signature d'un jeune coureur, sa prévision s'affine avec les jours d'entraînement et de course enregistrés dans ton équipe. Le temps écoulé depuis la signature ne suffit pas : une semaine dans ton équipe ne donne pas à elle seule une prévision complète. Il n'y a d'abord aucune estimation, puis une fourchette approximative, plus précise et enfin définitive. L'onglet Recrutement montre l'étape actuelle, la fourchette révélée et les jours d'entraînement ou de course avant l'étape suivante. De meilleurs entraîneurs et installations permettent d'avancer plus vite. Ils ne changent pas son talent, et même la prévision définitive reste une fourchette. La mise à jour du dimanche fixe sa valeur marchande ; elle ne complète pas sa prévision de potentiel."
       },
       "signingProspects": {
         "title": "Signer des jeunes talents",

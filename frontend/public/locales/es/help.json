@@ -1571,7 +1571,7 @@
       },
       "prognosisTraining": {
         "title": "Descubrir el potencial de una promesa",
-        "text": "Tras fichar a un ciclista de la academia, conoces su pronóstico a través de los días de entrenamiento en tu equipo. Al principio no hay estimación; después llega un intervalo de valoración inicial, luego uno más preciso y por último el definitivo. La pestaña de scouting muestra la etapa actual, el intervalo revelado y los días de entrenamiento hasta la próxima etapa. Un mejor cuerpo técnico y mejores instalaciones de entrenamiento te ayudan a avanzar antes. No cambian su talento, y hasta el pronóstico final sigue siendo un intervalo."
+        "text": "Tras fichar a un ciclista de la academia, su previsión mejora con los días de entrenamiento y carrera registrados en tu equipo. El tiempo desde el fichaje no cuenta por sí solo: dejarlo una semana en el equipo no completa la previsión. Primero no hay estimación, después aparece un intervalo aproximado, otro más preciso y finalmente el definitivo. La pestaña Ojeo muestra la etapa actual, el intervalo revelado y los días de entrenamiento o carrera hasta la siguiente etapa. Mejores entrenadores e instalaciones permiten avanzar antes. No cambian su talento, y la previsión definitiva sigue siendo un intervalo. La actualización del domingo fija su valor de mercado; no completa su previsión de potencial."
       },
       "signingProspects": {
         "title": "Fichar promesas",
