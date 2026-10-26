@@ -1,5 +1,67 @@
 export const PATCHES = [
   {
+    "version": "7.382",
+    "date": "2026-10-26",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Form peaks count in races",
+          "body": "A form window you plan in the Form plan now lifts your rider in the races inside the window, with a small dip afterwards. Riders outside a window race as before."
+        },
+        "da": {
+          "title": "Formtoppe tæller i løbene",
+          "body": "Et formvindue, du planlægger i Formplan, løfter nu din rytter i løbene inde i vinduet, med et lille dyk bagefter. Ryttere uden for et vindue kører som før."
+        },
+        "refs": [
+          6156,
+          6818
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Race engine",
+        "en": {
+          "title": "Races closer to real cycling",
+          "body": "From the first stage of season 5: the mountains jersey goes to riders who hunt it, and a summit finish gives normal mountain points. Sprinters win the points jersey more often. On flat stages the peloton chases a breakaway that matters. After the last climb on a mountain stage, groups come back together on the descent. Riders abandon now and then from crashes or fatigue, mostly helpers. The race film shows the gap to the chase."
+        },
+        "da": {
+          "title": "Løbene ligner rigtig cykelsport mere",
+          "body": "Fra første etape i sæson 5: bjergtrøjen går til ryttere, der jagter den, og et topmål giver almindelige bjergpoint. Sprinterne vinder oftere pointtrøjen. På flade etaper jagter feltet et udbrud, der betyder noget. Efter sidste stigning på en bjergetape samler grupperne sig på nedkørslen. Ryttere udgår nu og da efter styrt eller træthed, mest hjælpere. Løbsfilmen viser afstanden til jagten."
+        },
+        "refs": [
+          6804,
+          6937,
+          6938,
+          2757,
+          6486
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Extreme fatigue can make a rider ill",
+          "body": "A rider whose fatigue has been extreme several days in a row can fall ill at the evening update. He misses a few race days and you get a message from the doctor. A medical department lowers the risk."
+        },
+        "da": {
+          "title": "Ekstrem træthed kan gøre en rytter syg",
+          "body": "En rytter, hvis træthed har været ekstrem flere dage i træk, kan blive syg ved aftenens opdatering. Han misser nogle løbsdage, og du får besked fra lægen. En medicinsk afdeling sænker risikoen."
+        },
+        "refs": [
+          6938
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.381",
     "date": "2026-10-25",
     "changes": [
