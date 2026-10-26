@@ -327,13 +327,12 @@ export async function notifyIfContractExpiresThisSeason({
 }
 
 /**
- * #1836 · Sæsonskift-trigger: for hver ejet rytter hvis contract_end_season =
- * den kommende sæson, send en kontraktudløb-notifikation til ejeren.
+ * Sæsonstart: én samlet besked pr. hold med alle ejede trupper hvis kontrakt
+ * udløber i den kommende sæson. eligible tæller ryttere; levering tæller beskeder.
  *
- * Samme menneske-manager-diskriminator som resten af motoren (is_ai=false,
- * is_frozen=false; akademi-/free-agent-ryttere har team_id der ikke matcher et
- * menneske-hold og udelukkes via joinen). notifyUser dedup'er per (manager,
- * rytter, sæson) inden for 24t. Fejl pr. notifikation isoleres (tælles, stopper
+ * Gameplay-ejendomsfilter som ungdomsfrigivelsen; usignerede kandidater og frie
+ * ryttere udelukkes via ejerskabs-joinen. Eksisterende notifyUser-dedup bevares.
+ * Fejl pr. notifikation isoleres (tælles, stopper
  * ikke resten). `notify` + `fetchOwnedExpiringRiders` er injicerbare for test.
  */
 export async function emitContractExpiringNotifications({
