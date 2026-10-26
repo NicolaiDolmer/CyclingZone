@@ -66,10 +66,14 @@ export const LEVELS = Object.freeze({ mid: 0.5, strong: 0.9, top: 0.99 });
 export const NOISE_Z = 2;
 /** Felter under denne stoerrelse fyldes op (GT/monumenter i eksporten). */
 export const MIN_FIELD = 90;
+/** Sprinttogets maal: feltets sprinter nr. SPRINTER_INDEX + 1. */
+export const SPRINTER_INDEX = 4;
 const TT = new Set(["itt", "itt_hilly", "ttt"]);
 const GT_CLASSES = new Set(["GiroVuelta", "TourFrance"]);
 
 const mean = (xs) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+/** Fortegn for en tidsforskel: -1 hurtigere, 0 samme tid, +1 langsommere (null bevares). */
+export const sgn = (x) => (x == null || !Number.isFinite(x) ? null : Math.sign(x));
 const r2 = (x) => (x == null || !Number.isFinite(x) ? null : Math.round(x * 100) / 100);
 
 // ── Rene hjaelpere ──────────────────────────────────────────────────────────
@@ -157,12 +161,12 @@ export function effectStats(dOn, dCtrl, sign) {
   const variance = (xs, m) => (xs.length > 1 ? xs.reduce((s, x) => s + (x - m) ** 2, 0) / (xs.length - 1) : 0);
   const mOn = mean(on);
   const mCtrl = mean(ctrl) ?? 0;
-  if (mOn == null) return { n: 0, nCtrl: ctrl.length, meanOn: null, meanCtrl: r2(mCtrl), z: null, directionOk: null, beatsNoise: null };
+  if (mOn == null) return { n: 0, nCtrl: ctrl.length, meanOn: null, meanCtrl: r2(mCtrl), z: null, directionOk: null, wrong: null, beatsNoise: null };
   const se = Math.sqrt(variance(on, mOn) / on.length + (ctrl.length ? variance(ctrl, mCtrl) / ctrl.length : 0));
   const diff = sign * (mOn - mCtrl);
   const z = se > 0 ? diff / se : diff > 0 ? Infinity : 0;
   const directionOk = sign * mOn > 0;
-  return { n: on.length, nCtrl: ctrl.length, meanOn: r2(mOn), meanCtrl: r2(mCtrl), z: Number.isFinite(z) ? r2(z) : z, directionOk, beatsNoise: directionOk && z >= NOISE_Z };
+  return { n: on.length, nCtrl: ctrl.length, meanOn: r2(mOn), meanCtrl: r2(mCtrl), z: Number.isFinite(z) ? r2(z) : z, directionOk, wrong: sign * mOn < 0, beatsNoise: directionOk && z >= NOISE_Z };
 }
 
 /**
@@ -284,6 +288,7 @@ function runEffortDay(ctx) {
       if (effort === "normal") continue;
       const id = `t7266-eff-${level}-${effort}`;
       rec({ exp: "effort", arm: effort, level, metric: "time", dOn: dt(id), dCtrl: dt(cid) });
+      rec({ exp: "effort", arm: effort, level, metric: "time_sign", dOn: sgn(dt(id)), dCtrl: sgn(dt(cid)) });
       rec({ exp: "effort", arm: effort, level, metric: "load", dOn: dl(id), dCtrl: dl(cid) });
     }
   }
@@ -345,6 +350,7 @@ function runOrdersDay(ctx) {
         const dt = (id) => (o.fin.has(id) && o.fin.has(off) ? o.fin.get(id) - o.fin.get(off) : null);
         const fired = (id) => bit(o.legEvents.some((e) => e.params?.rider_id === id && e.params?.reason === p.reason));
         rec({ exp: "plan", arm: kind, level, metric: "time", dOn: dt(on), dCtrl: dt(ctrl) });
+        rec({ exp: "plan", arm: kind, level, metric: "time_sign", dOn: sgn(dt(on)), dCtrl: sgn(dt(ctrl)) });
         rec({ exp: "plan", arm: kind, level, metric: "switch_fired", dOn: fired(on) - fired(off), dCtrl: fired(ctrl) - fired(off) });
       }
     }
@@ -360,7 +366,9 @@ function cloneTeam(members, prefix) {
 function runTrainDay(ctx) {
   const { v4, data, stages, profile, field, templates, seed, revision, rec } = ctx;
   if (TT.has(profile.profile_type) || !isBunchSprintStage(profile)) return;
-  const sprinter = field.slice().sort((a, b) => sprintStrength(b.abilities) - sprintStrength(a.abilities) || a.rider_id.localeCompare(b.rider_id))[0];
+  // Feltets femtebedste sprinter: plads til at vinde placeringer (den bedste vinder ofte alligevel).
+  const bySprint = field.slice().sort((a, b) => sprintStrength(b.abilities) - sprintStrength(a.abilities) || a.rider_id.localeCompare(b.rider_id));
+  const sprinter = bySprint[Math.min(SPRINTER_INDEX, bySprint.length - 1)];
   const helperTpl = templates.mid;
   const { rider_id: _r, ...helperAb } = helperTpl;
   const members = [{ race_role: "sprint_captain", effort: "normal", abilities: sprinter.abilities }];
@@ -491,6 +499,9 @@ export const CHECKS = Object.freeze([
   { exp: "effort", arm: "save", metric: "time", sign: 1, scope: ["hilly", "mountain"], what: "spar taber lidt tid paa dagen" },
   { exp: "effort", arm: "protect", metric: "time", sign: -1, scope: ["hilly", "mountain"], what: "beskyt/koer offensivt (fri rolle) presser og vinder tid" },
   { exp: "effort", arm: "all_out", metric: "time", sign: -1, scope: ["hilly", "mountain"], what: "alt ud vinder tid paa dagen" },
+  { exp: "effort", arm: "save", metric: "time_sign", sign: 1, scope: ["hilly", "mountain"], what: "spar: oftere bag end foran normal-tvillingen" },
+  { exp: "effort", arm: "protect", metric: "time_sign", sign: -1, scope: ["hilly", "mountain"], what: "beskyt/koer offensivt: oftere foran end bag normal-tvillingen" },
+  { exp: "effort", arm: "all_out", metric: "time_sign", sign: -1, scope: ["hilly", "mountain"], what: "alt ud: oftere foran end bag normal-tvillingen" },
   { exp: "effort", arm: "grupetto", metric: "load", sign: -1, scope: ["flat", "hilly", "mountain"], what: "grupetto koster mindre traethed" },
   { exp: "effort", arm: "save", metric: "load", sign: -1, scope: ["flat", "hilly", "mountain"], what: "spar koster mindre traethed" },
   { exp: "effort", arm: "protect", metric: "load", sign: 1, scope: ["flat", "hilly", "mountain"], what: "beskyt koster mere traethed" },
@@ -499,6 +510,9 @@ export const CHECKS = Object.freeze([
   { exp: "break", arm: "try_break", metric: "in_break", sign: 1, scope: ["flat", "hilly", "mountain"], what: "Forsoeg udbrud giver flere dage i udbruddet" },
   { exp: "plan", arm: "final", metric: "time", sign: -1, scope: ["hilly", "mountain"], what: "plan: angreb fra de sidste km vinder tid mod spar hele dagen" },
   { exp: "plan", arm: "final", metric: "switch_fired", sign: 1, scope: ["flat", "hilly", "mountain"], what: "plan: skiftet ved de sidste km sker" },
+  { exp: "plan", arm: "final", metric: "time_sign", sign: -1, scope: ["hilly", "mountain"], what: "plan: angreb fra de sidste km oftere foran end bag" },
+  { exp: "plan", arm: "kom", metric: "time_sign", sign: -1, scope: ["hilly", "mountain"], what: "plan: angreb fra stigningens top oftere foran end bag" },
+  { exp: "plan", arm: "dropped", metric: "time_sign", sign: 1, scope: ["mountain"], what: "plan: grupetto naar han er sat oftere bag end foran" },
   { exp: "plan", arm: "kom", metric: "time", sign: -1, scope: ["hilly", "mountain"], what: "plan: angreb fra toppen af sidste stigning vinder tid" },
   { exp: "plan", arm: "kom", metric: "switch_fired", sign: 1, scope: ["flat", "hilly", "mountain"], what: "plan: skiftet ved stigningens top sker" },
   { exp: "plan", arm: "dropped", metric: "time", sign: 1, scope: ["mountain"], what: "plan: grupetto naar han er sat ruller ind (taber tid)" },
@@ -534,8 +548,13 @@ export function summarize(records) {
       const rows = xs.filter((r) => r.cls === c);
       if (rows.length) byClass[c] = stat(rows);
     }
+    const byLevel = {};
+    for (const lv of [...Object.keys(LEVELS), "team"]) {
+      const rows = xs.filter((r) => r.level === lv && inScope(r));
+      if (rows.length) byLevel[lv] = stat(rows);
+    }
     const scoped = stat(xs.filter(inScope));
-    out.push({ ...check, scoped, byGroup, byClass, all: stat(xs) });
+    out.push({ ...check, scoped, byGroup, byClass, byLevel, all: stat(xs) });
   }
   return out;
 }
@@ -552,10 +571,11 @@ export function findings(summary, inv, api) {
   for (const s of summary) {
     if (s.info) continue;
     if (s.scoped.n === 0) continue;
-    if (!s.scoped.directionOk) out.push({ kind: "wrong_direction", exp: s.exp, arm: s.arm, metric: s.metric, what: s.what });
+    if (s.scoped.wrong) out.push({ kind: "wrong_direction", exp: s.exp, arm: s.arm, metric: s.metric, what: s.what });
+    else if (!s.scoped.directionOk) out.push({ kind: "no_effect", exp: s.exp, arm: s.arm, metric: s.metric, what: s.what });
     else if (!s.scoped.beatsNoise) out.push({ kind: "not_noticeable", exp: s.exp, arm: s.arm, metric: s.metric, what: s.what });
     for (const [g, st] of Object.entries(s.byGroup)) {
-      if (st.n >= 8 && st.directionOk === false) out.push({ kind: "wrong_direction_in_group", group: g, exp: s.exp, arm: s.arm, metric: s.metric, what: s.what });
+      if (st.n >= 8 && st.wrong) out.push({ kind: "wrong_direction_in_group", group: g, exp: s.exp, arm: s.arm, metric: s.metric, what: s.what });
     }
   }
   for (const i of inv) if (i.violations > 0) out.push({ kind: "invariant_broken", id: i.id });
@@ -630,6 +650,8 @@ export function renderMarkdown(res, label) {
   for (const s of res.summary) L.push(`| ${s.exp}/${s.arm} | ${s.metric} | ${GROUPS.map((g) => fmt(s.byGroup[g])).join(" | ")} |`);
   L.push("", "## Pr. etapeklasse (alle grupper)", "", "| ordre | maaling | flad | kuperet | bjerg | loeb |", "|---|---|---|---|---|---|");
   for (const s of res.summary) L.push(`| ${s.exp}/${s.arm} | ${s.metric} | ${["flat", "hilly", "mountain", "race"].map((c) => fmt(s.byClass[c])).join(" | ")} |`);
+  L.push("", "## Pr. rytterniveau (i scope, kun enkeltryttere)", "", "| ordre | maaling | midt | staerk | top |", "|---|---|---|---|---|");
+  for (const s of res.summary) if (s.byLevel && !s.byLevel.team) L.push(`| ${s.exp}/${s.arm} | ${s.metric} | ${Object.keys(LEVELS).map((lv) => fmt(s.byLevel[lv])).join(" | ")} |`);
   L.push("", "## Invarianter", "");
   for (const i of res.invariants) L.push(`- ${i.id}: ${i.violations} brud i ${i.n} maalinger`);
   if (res.api) {
