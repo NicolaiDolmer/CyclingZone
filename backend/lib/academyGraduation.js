@@ -820,7 +820,7 @@ export async function resolveUnsoldGraduate(supabase, {
       const name = `${target.firstname} ${target.lastname}`;
       try {
         const res = await completeStuckPromotion(supabase, {
-          teamId, riderId: id, rider: target, seasonNumber, getMarketState, notify,
+          teamId, riderId: id, rider: target, seasonNumber, getMarketState, notify, now,
           notification: {
             title: "Academy graduate promoted",
             message: `${name} drew no bids, so he moves up to your senior squad.`,
