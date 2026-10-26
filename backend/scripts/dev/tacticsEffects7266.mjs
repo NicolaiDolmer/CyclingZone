@@ -29,7 +29,7 @@
 //   API: spaerrede modsaetninger (spec 2026-10-25-taktik-roller-design.md par. 3 + 11) sendt
 //   gennem validateTeamOrder (klassisk) og validateRiderPlans (etapeplan).
 //
-// Smaa felter (GT/monumenter i eksporten har kun de tilmeldte hold) fyldes op med hele hold
+// Smaa seniorfelter (GT/monumenter i eksporten har kun de tilmeldte hold) fyldes op med hele hold
 // fra et andet seniorloeb i eksporten (nye id'er, AI-hold), saa udbrud og jagt har et felt.
 //
 // HARD RULE 17: maalte tal skrives KUN til balance-internals/ (gitignoreret). Offline:
@@ -596,7 +596,8 @@ export async function runTacticsEffects({ fromDir, caps = DEFAULT_GROUP_CAPS, se
     const donors = all.filter((r) => r.group !== "youth" && (r.data.entries?.length ?? 0) >= 100).map((r) => r.data);
     const picked = selectRaces(all, caps);
     for (const pr of picked) {
-      const { data, filled } = fillField(pr.data, donors);
+      // U23/junior fyldes ikke med seniorhold (deres felter er mindre i forvejen).
+      const { data, filled } = pr.group === "youth" ? { data: pr.data, filled: 0 } : fillField(pr.data, donors);
       const stages = sortedStages(data);
       const field = splitEntrants(data).entrants;
       const templates = pickTemplates(data.abilities.filter((a) => field.some((e) => e.rider_id === a.rider_id)));
@@ -632,7 +633,9 @@ export function mergeResults(results) {
   const summary = summarize(records);
   const inv = invariants(records);
   const config = { ...(results[0]?.config ?? {}), caps: Object.assign({}, ...results.map((r) => r.config?.caps ?? {})) };
-  return { config, races: results.flatMap((r) => r.races ?? []), summary, invariants: inv, api, findings: findings(summary, inv, api), records };
+  // Samme loeb i flere koersler (fx en dybere sprinttog-koersel) taeller én gang i oversigten.
+  const races = [...new Map(results.flatMap((r) => r.races ?? []).map((x) => [x.race, x])).values()];
+  return { config, races, summary, invariants: inv, api, findings: findings(summary, inv, api), records };
 }
 
 const fmt = (st) => (st && st.n ? `${st.directionOk ? "ja" : "NEJ"} / ${st.beatsNoise ? "ja" : "nej"} (n ${st.n}, ${st.meanOn} mod ${st.meanCtrl}, z ${st.z})` : "-");
