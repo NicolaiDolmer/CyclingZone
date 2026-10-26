@@ -291,13 +291,15 @@ export function deriveOrderImpacts(
  * (`order_impact`) indsat lige efter den hændelse de forklarer, paa samme km.
  * Nye objekter; input muteres ikke. Uden udbrud og uden ordrer: samme indhold.
  */
-export function withNarrativeCauses(
-  events: readonly NarrativeEvent[] = [],
+export type NarrativeLine = { km: number; type: "breakaway_cause" | "order_impact"; params: Record<string, unknown> };
+
+export function withNarrativeCauses<T extends NarrativeEvent>(
+  events: readonly T[] = [],
   opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null } = {},
-): NarrativeEvent[] {
+): Array<T | NarrativeLine> {
   const stories = deriveBreakawayStories(events);
-  const extra = new Map<number, NarrativeEvent[]>();
-  const add = (index: number, e: NarrativeEvent) => {
+  const extra = new Map<number, NarrativeLine[]>();
+  const add = (index: number, e: NarrativeLine) => {
     if (!extra.has(index)) extra.set(index, []);
     extra.get(index)!.push(e);
   };
