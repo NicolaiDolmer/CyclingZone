@@ -70,7 +70,8 @@ test("press: marks the whole-date riders BEFORE settling, re-reads entries, then
     runDay: async (args) => { events.push(`day ${args.gameDay}: ${args.eligibleRiderIds.join(",")}`); assert.equal(args.deadlineReached, false); },
   }));
   assert.equal(result.status, 200);
-  assert.deepEqual(updates.map((u) => [u.patch.whole_day_at != null, u.filters.rider_id]), [[true, ["free"]]]);
+  // Mark the whole-date rider; the waiting race rider is cleared of any stale mark.
+  assert.deepEqual(updates.map((u) => [u.patch.whole_day_at != null, u.filters.rider_id]), [[true, ["free"]], [false, ["racer"]]]);
   assert.deepEqual(events, [
     "reread after 1 mark(s)", "day 11: free", "day 12: free", "day 13: free", "day 14: free", "day 15: free",
   ]);
@@ -92,6 +93,31 @@ test("press: a rider entered in the window (before the mark) is unmarked and wai
   ]);
   assert.deepEqual(runs.map(([, ids]) => ids), DAYS.map(() => ["free"]));
   assert.deepEqual(result.body.afterRaceRiderIds, ["late"]);
+});
+
+test("press retry (Codex P1): a stale mark from a failed press is cleared for a rider the retry already sees as waiting", async () => {
+  // First press: "late" entered in the window, marked, then the reread threw. Retry: the
+  // first readiness already shows his race, so he is never in this press's mark list.
+  const { supabase, updates } = lockTable();
+  const readiness = { unresolvedSlotsByRider: { late: [slot(14)] }, deadlineAt: new Date("2026-10-27T01:00:00Z") };
+  const result = await settleWholeDayPress(pressArgs({
+    supabase, available: ["free", "late"], readiness, readReadiness: async () => readiness, runDay: async () => {},
+  }));
+  assert.equal(result.status, 200);
+  assert.deepEqual(updates.map((u) => [u.patch.whole_day_at == null ? "unmark" : "mark", u.filters.rider_id]), [
+    ["mark", ["free"]], ["unmark", ["late"]],
+  ]);
+});
+
+test("press: a failing reread leaves no settled day (the retry starts over from the mark)", async () => {
+  const { supabase } = lockTable();
+  const readiness = { unresolvedSlotsByRider: {}, deadlineAt: new Date("2026-10-27T01:00:00Z") };
+  let runs = 0;
+  await assert.rejects(settleWholeDayPress(pressArgs({
+    supabase, available: ["free"], readiness,
+    readReadiness: async () => { throw new Error("network"); }, runDay: async () => { runs += 1; },
+  })), /network/);
+  assert.equal(runs, 0);
 });
 
 test("press: the evening run holding a race day answers 409 training_in_progress, locked", async () => {
@@ -149,18 +175,28 @@ function pressState(wholeDay) {
   };
 }
 
-async function press(state, { isBetaTester = false } = {}) {
+async function press(state, {
+  isBetaTester = false,
+  riders = [{ id: "r1", team_id: "team-a" }, { id: "r2", team_id: "team-a" }],
+  // The real register_training_date_work leaves out a rider another team's open date
+  // already claims (#6439); `claimedElsewhere` stands in for that.
+  claimedElsewhere = [],
+} = {}) {
   const calls = [];
   const supabase = fakeSupabase(state);
   const context = {
-    riders: [{ id: "r1", team_id: "team-a" }, { id: "r2", team_id: "team-a" }],
-    gameDaysByDivision: new Map([["div-1", DAYS]]), stages: [], races: [], runs: [], entries: [], results: [], incidents: [], loads: [],
+    riders, gameDaysByDivision: new Map([["div-1", DAYS]]), stages: [], races: [], runs: [], entries: [], results: [], incidents: [], loads: [],
   };
   const result = await runTrainNow({
     supabase, team: { id: "team-a", league_division_id: "div-1" }, season: { id: "season-1", number: 5 },
     now: new Date("2026-10-26T07:00:00Z"), isBetaTester,
     loadDaySpans: async () => [], loadContext: async () => context, loadShortRaces: async () => [],
-    registerWork: async ({ riderIds, gameDays }) => ({ status: "pending", game_days: gameDays, expected_rider_ids: riderIds, quarantined_rider_ids: [], opening_conditions: { r1: {}, r2: {} } }),
+    registerWork: async ({ riderIds, gameDays }) => {
+      const expected = riderIds.filter((id) => !claimedElsewhere.includes(id));
+      const work = { status: "pending", game_days: gameDays, expected_rider_ids: expected, quarantined_rider_ids: [], opening_conditions: Object.fromEntries(expected.map((id) => [id, {}])) };
+      state.training_date_work.push({ team_id: "team-a", season_id: "season-1", tick_date: "2026-10-26", ...work });
+      return work;
+    },
     runDay: async (args) => { calls.push({ gameDay: args.gameDay, ids: args.eligibleRiderIds, b: args.settleBeforeUnresolved }); },
   });
   return { result, calls };
@@ -184,6 +220,40 @@ test("runTrainNow: flag on (or beta for a beta tester) settles all five race day
     assert.ok(calls.every((c) => c.ids.join() === "r1,r2"));
     assert.equal(result.body.wholeDay, true);
   }
+});
+
+// ── Loopholes (#6461 brief) through runTrainNow with B on ───────────────────────
+const marksIn = (state) => (state.__updates ?? []).filter((u) => u.table === "training_train_now_locks" && u.patch.whole_day_at != null);
+
+test("loophole rider bought mid-day: a rider the seller's open date claims is never settled or marked by the buyer", async () => {
+  const state = pressState("on");
+  const { result, calls } = await press(state, {
+    riders: [{ id: "r1", team_id: "team-a" }, { id: "bought", team_id: "team-a", acquired_at: "2026-10-26T06:30:00Z" }],
+    claimedElsewhere: ["bought"],
+  });
+  assert.equal(result.status, 200);
+  assert.ok(calls.every((c) => c.ids.join() === "r1"), "only the buyer's own frozen roster");
+  assert.deepEqual(result.body.wholeDayRiderIds, ["r1"]);
+  assert.equal(marksIn(state).length, 1);
+});
+
+test("loophole rider bought after the buyer pressed: the frozen roster never widens on a second press", async () => {
+  const state = pressState("on");
+  await press(state);
+  const { result, calls } = await press(state, {
+    riders: [{ id: "r1", team_id: "team-a" }, { id: "r2", team_id: "team-a" }, { id: "late-buy", team_id: "team-a", acquired_at: "2026-10-26T12:00:00Z" }],
+  });
+  assert.equal(result.status, 200);
+  assert.ok(calls.every((c) => !c.ids.includes("late-buy")), "the new rider waits for his own date work");
+  assert.deepEqual(result.body.wholeDayRiderIds, ["r1", "r2"]);
+});
+
+test("loophole double development: a second B press repeats the same days for the same riders (the engine answers alreadyRan)", async () => {
+  const state = pressState("on");
+  const first = await press(state);
+  const second = await press(state);
+  assert.deepEqual(second.calls.map((c) => [c.gameDay, c.ids.join()]), first.calls.map((c) => [c.gameDay, c.ids.join()]));
+  assert.ok(second.calls.every((c) => c.ids.join() === "r1,r2"));
 });
 
 test("flag reader: absent key is off", async () => {

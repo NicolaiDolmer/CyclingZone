@@ -39,10 +39,15 @@ beforeEach(async () => {
     INSERT INTO race_stage_schedule VALUES('${race}',1,'2026-10-26T15:00:00Z');`);
 });
 
+// Fixed fixture clock (rule 16): the press at 07:00 Copenhagen on 2026-10-26. Neither the
+// guard nor these tests read the database's wall clock.
+const MARKED_AT = "'2026-10-26T06:00:00Z'";
+const buyer = "00000000-0000-0000-0000-000000000006";
 const entries = async () => (await db.query("SELECT rider_id FROM race_entries ORDER BY rider_id")).rows.map((r) => r.rider_id);
-const lock = (id, marked) => db.exec(`INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id,whole_day_at)
-  VALUES('${id}','2026-10-26','${season}','${team}',${marked ? "now()" : "NULL"})`);
+const lock = (id, marked, tickDate = "2026-10-26") => db.exec(`INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id,whole_day_at)
+  VALUES('${id}','${tickDate}','${season}','${team}',${marked ? MARKED_AT : "NULL"})`);
 const enter = (...ids) => db.exec(`INSERT INTO race_entries(race_id,rider_id,team_id) VALUES ${ids.map((id) => `('${race}','${id}','${team}')`).join(",")}`);
+const flag = (value) => db.exec(`UPDATE app_config SET value='"${value}"' WHERE key='training_train_now_whole_day'`);
 
 test("migration: seeds the flag off, is idempotent, adds the mark column", async () => {
   const { rows } = await db.query("SELECT value #>> '{}' AS v FROM app_config WHERE key='training_train_now_whole_day'");
@@ -65,11 +70,40 @@ test("a marked rider is dropped from an insert into a race with a stage still to
 });
 
 test("the mark protects even after the flag is switched off again (the mark, not the flag, decides)", async () => {
-  // Today's local date, so the fast path's "recent mark" window always covers it.
-  await db.exec(`UPDATE race_stage_schedule SET scheduled_at=((now() AT TIME ZONE 'Europe/Copenhagen')::date + time '12:00') AT TIME ZONE 'Europe/Copenhagen';
-    INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id,whole_day_at)
-      VALUES('${rider}',(now() AT TIME ZONE 'Europe/Copenhagen')::date,'${season}','${team}',now());`);
+  // Fixed dates: the guard's fast path reads the race's stage dates, never now().
+  await lock(rider, true);
   await enter(rider);
+  assert.deepEqual(await entries(), []);
+});
+
+test("flag off: a mark on another date than the race's open stages never blocks (fast path, no clock)", async () => {
+  await lock(rider, true, "2026-10-20");
+  await enter(rider);
+  assert.deepEqual(await entries(), [rider]);
+});
+
+// ── Loopholes (#6461 brief): train + undo, double development, rider bought mid-day ──
+test("loophole train + undo: entered, taken out, pressed (whole date), put back in the race -> dropped", async () => {
+  await flag("on");
+  await enter(rider);
+  await db.exec(`DELETE FROM race_entries WHERE rider_id='${rider}'`); // the manager takes him out
+  await lock(rider, true); // the press finds him free and settles his whole date
+  await enter(rider); // "undo": back into today's race after the training
+  assert.deepEqual(await entries(), [], "no race on top of a whole trained date");
+});
+
+test("loophole double development: the guard holds for every open stage date of a multi-date race", async () => {
+  await flag("on");
+  await db.exec(`INSERT INTO race_stage_schedule VALUES('${race}',2,'2026-10-27T15:00:00Z')`);
+  await lock(rider, true, "2026-10-27"); // marked on the second stage's date only
+  await enter(rider);
+  assert.deepEqual(await entries(), [], "a mark on any open stage date blocks the insert");
+});
+
+test("loophole rider bought mid-day: the mark follows the rider, not the team (buyer cannot race him today)", async () => {
+  await flag("on");
+  await lock(rider, true); // the selling team pressed and settled his whole date
+  await db.exec(`INSERT INTO race_entries(race_id,rider_id,team_id) VALUES('${race}','${rider}','${buyer}')`);
   assert.deepEqual(await entries(), []);
 });
 
@@ -81,8 +115,8 @@ test("stage already run on the marked date: a re-save (delete + insert) keeps th
 });
 
 test("a mark on another date does not block a race on this date; an unmarked lock never blocks", async () => {
-  await db.exec(`UPDATE app_config SET value='"on"' WHERE key='training_train_now_whole_day';
-    INSERT INTO training_train_now_locks(rider_id,tick_date,season_id,team_id,whole_day_at) VALUES('${rider}','2026-10-25','${season}','${team}',now());`);
+  await flag("on");
+  await lock(rider, true, "2026-10-25");
   await lock(other, false);
   await enter(rider, other);
   assert.deepEqual(await entries(), [rider, other]);

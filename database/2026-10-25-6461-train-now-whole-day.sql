@@ -48,11 +48,15 @@ CREATE OR REPLACE FUNCTION public.race_entries_train_now_whole_day_guard()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=public,pg_temp AS $$
 DECLARE v_date date;
 BEGIN
-  -- Fast path: flag off and no recent mark for this rider. Marks exist only after a
-  -- B press, so with the flag off this is one indexed lookup and no lock.
+  -- Fast path: flag off and no mark for this rider on a date where this race still has
+  -- a stage to run. Marks exist only after a B press, so with the flag off this is one
+  -- indexed lookup and no lock. No wall clock: the race's own stage dates decide
+  -- (Codex P1 on PR #7191, rule 16), so the result is the same whenever it runs.
   IF COALESCE((SELECT value #>> '{}' FROM public.app_config WHERE key='training_train_now_whole_day'),'off') NOT IN ('beta','on')
-    AND NOT EXISTS(SELECT 1 FROM public.training_train_now_locks l WHERE l.rider_id=NEW.rider_id AND l.whole_day_at IS NOT NULL
-      AND l.tick_date>=((now() AT TIME ZONE 'Europe/Copenhagen')::date-1)) THEN
+    AND NOT EXISTS(SELECT 1 FROM public.training_train_now_locks l
+      JOIN public.race_stage_schedule s ON s.race_id=NEW.race_id AND (s.scheduled_at AT TIME ZONE 'Europe/Copenhagen')::date=l.tick_date
+      JOIN public.races r ON r.id=s.race_id AND s.stage_number>COALESCE(r.stages_completed,0)
+      WHERE l.rider_id=NEW.rider_id AND l.whole_day_at IS NOT NULL) THEN
     RETURN NEW;
   END IF;
   FOR v_date IN

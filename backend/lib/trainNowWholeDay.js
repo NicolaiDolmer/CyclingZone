@@ -75,13 +75,19 @@ export async function settleWholeDayPress({
   const slipped = plan.wholeDateRiderIds.filter((id) => slotsOf(after.unresolvedSlotsByRider, id).length);
   const unresolvedSlotsByRider = { ...readiness.unresolvedSlotsByRider };
   if (slipped.length) {
-    // Entered in the window: he is a race rider now and waits for his race. Unmark him
-    // so a later save of his race can never skip him.
-    const { error } = await supabase.from(TRAIN_NOW_LOCK_TABLE).update({ whole_day_at: null })
-      .eq("tick_date", tickDate).in("rider_id", slipped);
-    if (error) throw new Error(`train-now whole-day unmark: ${error.message ?? error}`);
+    // Entered in the window: he is a race rider now and waits for his race.
     for (const id of slipped) unresolvedSlotsByRider[id] = slotsOf(after.unresolvedSlotsByRider, id);
     plan = planWholeDayPress({ gameDays: work.game_days, riderIds: available, unresolvedSlotsByRider });
+  }
+  // Every waiting rider is unmarked, not only the ones caught in this reread: a press
+  // that marked a rider and then failed (reread or unmark) leaves a stale mark, and the
+  // retry already sees him as a race rider. A marked race rider would be skipped by the
+  // database on his next race save (Codex P1 on PR #7191). Only a waiting rider is
+  // unmarked: no press settles a day for him before his race, so the mark protects nothing.
+  if (plan.waitingRiderIds.length) {
+    const { error } = await supabase.from(TRAIN_NOW_LOCK_TABLE).update({ whole_day_at: null })
+      .eq("tick_date", tickDate).in("rider_id", plan.waitingRiderIds);
+    if (error) throw new Error(`train-now whole-day unmark: ${error.message ?? error}`);
   }
 
   const settledDays = [];
