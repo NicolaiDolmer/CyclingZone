@@ -137,7 +137,8 @@ test("jaeger-kortet i rolle-menuen paa Planlaegning har ingen udbrudschance-chip
   const hunterCard = board.getByRole("button", { name: /Udbrudsjæger/ });
   await expect(hunterCard).toBeVisible();
   const menu = board.locator("div.absolute").filter({ has: page.getByRole("button", { name: /Udbrudsjæger/ }) });
-  await menu.scrollIntoViewIfNeeded();
+  // Midt i skaermen, saa den faste bundmenu ikke daekker jaeger-kortet.
+  await menu.evaluate((el) => el.scrollIntoView({ block: "center" }));
   await menu.screenshot({ path: evidenceShotPath(`docs/screenshots/6912/role-menu-375-${PHASE}.png`) });
 
   await expect(hunterCard.getByText("Udbruds-chance", { exact: false })).toHaveCount(0);
