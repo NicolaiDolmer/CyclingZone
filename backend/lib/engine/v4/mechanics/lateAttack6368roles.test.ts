@@ -94,11 +94,13 @@ test("#6368 lag 3: jaegeren angriber ikke sent; den bedste tilladte rytter gaar 
   assert.ok(Number(weakHunter.events[0].params.gained_seconds) <= Number(noHunter.events[0].params.gained_seconds), "nr. 2 er den staerkeste anden rytter");
 });
 
-test("#6368 lag 3: hjaelper uden hold-id eller uden kaptajn paa holdet bliver hos gruppen", () => {
+test("#6368 lag 3: hjaelper uden hold-id bliver hos gruppen; uden kaptajn i feltet er han fri", () => {
   const noTeam = field([...FILLER, { id: "help", role: "helper", team: null, boost: 30 }]);
   assert.equal(lateAttackRoleAllowed("help", noTeam.state.groups[0].rider_ids, noTeam.state, noTeam.entrants), false);
-  const noCaptain = field([...FILLER, { id: "help", role: "helper", team: "ta", boost: 30 }, { id: "sc", role: "sprint_captain", team: "ta" }]);
-  assert.equal(lateAttackRoleAllowed("help", noCaptain.state.groups[0].rider_ids, noCaptain.state, noCaptain.entrants), false);
+  // Kaptajnen udgik paa en tidligere etape og er ikke laengere paa startlisten (raceRunner).
+  const captainGone = field([...FILLER, { id: "help", role: "helper", team: "ta", boost: 30 }, { id: "sc", role: "sprint_captain", team: "ta" }]);
+  assert.equal(lateAttackRoleAllowed("help", captainGone.state.groups[0].rider_ids, captainGone.state, captainGone.entrants), true);
+  assert.equal(attackerOf(attack([...FILLER, { id: "help", role: "helper", team: "ta", boost: 30, effort: "protect" }], true)), "help");
   // Delt kaptajn binder ogsaa hjaelperen.
   const co = field([...FILLER, { id: "help", role: "helper", team: "ta", boost: 30 }, { id: "co", role: "co_captain", team: "ta" }]);
   assert.equal(lateAttackRoleAllowed("help", co.state.groups[0].rider_ids, co.state, co.entrants), false);

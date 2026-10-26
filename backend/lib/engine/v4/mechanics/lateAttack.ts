@@ -103,9 +103,9 @@ function favouriteGroup(state: EngineState, entrants: Readonly<Record<string, En
 
 /**
  * #6368 lag 3 (KUN s5_profiles_v3): maa rytteren angribe sent fra denne gruppe?
- * Ledere og fri rolle: ja. Hjaelper: kun naar holdet har en kaptajn i loebet og
- * ingen af holdets kaptajner koerer i gruppen (sat eller ude). Uden hold-id kan
- * kaptajnen ikke findes, og hjaelperen bliver hos gruppen. Jaeger: nej.
+ * Ledere og fri rolle: ja. Hjaelper: kun naar ingen af holdets kaptajner (kaptajn
+ * eller delt kaptajn) koerer i gruppen: sat, udgaaet eller ikke med. Uden hold-id
+ * kan kaptajnen ikke findes, og hjaelperen bliver hos gruppen. Jaeger: nej.
  */
 export function lateAttackRoleAllowed(riderId: string, groupRiderIds: readonly string[], state: Pick<EngineState, "riders">, entrants: Readonly<Record<string, Entrant>>): boolean {
   const entrant = entrants[riderId];
@@ -114,10 +114,12 @@ export function lateAttackRoleAllowed(riderId: string, groupRiderIds: readonly s
   if (entrant.role !== "helper") return false;
   const teamId = entrant.team_id;
   if (!teamId) return false;
-  const captains = Object.values(entrants).filter((e) => e.team_id === teamId && TEAM_CAPTAIN_ROLES.has(e.role));
-  if (captains.length === 0) return false;
-  const inGroup = new Set(groupRiderIds);
-  return !captains.some((c) => inGroup.has(c.rider_id) && state.riders[c.rider_id]?.status === "racing");
+  // En kaptajn der udgik paa en tidligere etape er ikke paa startlisten laengere
+  // (raceRunner), saa "ingen kaptajn i feltet" taeller som sat, ikke som bundet.
+  return !groupRiderIds.some((id) => {
+    const e = entrants[id];
+    return e?.team_id === teamId && TEAM_CAPTAIN_ROLES.has(e.role) && state.riders[id]?.status === "racing";
+  });
 }
 
 /**
