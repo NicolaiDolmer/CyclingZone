@@ -208,7 +208,7 @@ test("taktik: etape-vælger, femtrins-vælger og et gem der ikke taber andre eta
   // saetning i ord. Kun én vaelger kan vaere aaben ad gangen, saa trinnene
   // slaas op paa kortet som helhed.
   await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
-  for (const label of ["Grupetto", "Kør roligt", "Normal", "Arbejd eller angrib", "Alt ud"]) {
+  for (const label of ["Grupetto", "Kør roligt", "Normal", "(?:Arbejd|Følg angrebene)", "Alt ud"]) {
     await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
   }
   await expect(visible(panel.getByText("Rollens standard", { exact: true }))).toBeVisible();
@@ -333,7 +333,7 @@ test("taktik: flaget OFF giver TRE trin på fanen", async ({ page }) => {
 
   await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
 
-  for (const label of ["Kør roligt", "Normal", "Arbejd eller angrib"]) {
+  for (const label of ["Kør roligt", "Normal", "(?:Arbejd|Følg angrebene)"]) {
     await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
   }
   // De to yderpunkter findes ikke når flaget er off — fanen må ikke tilbyde et
