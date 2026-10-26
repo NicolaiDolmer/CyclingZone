@@ -41,6 +41,21 @@ export function raceRulesRevision(raw: unknown): RulesRevision {
   return ORDERS_GC_LINEAGE.has(raw) ? ORDERS_GC_REVISION : "legacy";
 }
 
+/**
+ * Taktikfanens revision for et løb, samme regel som backendens
+ * surfaceRulesRevision (raceEngineRulesRevision.ts): en gemt revision vinder.
+ * Uden gemt revision binder løbet den aktuelle revision ved første etape, så et
+ * løb der ikke er startet (stages_completed 0/tom) vises med den aktuelle
+ * revisions ordrer. Den aktuelle revision ligger altid i ordre-linjen
+ * (s5_profiles_v3 fra 26/10). Et startet løb uden revision er legacy.
+ */
+export function surfaceRaceRulesRevision(raw: unknown, stagesCompleted: unknown): RulesRevision {
+  if (raw !== null && raw !== undefined) return raceRulesRevision(raw);
+  if (stagesCompleted === null || stagesCompleted === undefined) return ORDERS_GC_REVISION;
+  const n = Number(stagesCompleted);
+  return Number.isFinite(n) && n === 0 ? ORDERS_GC_REVISION : "legacy";
+}
+
 export function isOrdersGcRevision(raw: unknown): boolean {
   return raceRulesRevision(raw) === ORDERS_GC_REVISION;
 }

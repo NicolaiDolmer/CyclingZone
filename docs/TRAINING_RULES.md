@@ -350,9 +350,9 @@ base(gap, alder)  ×  fokus-multiplikator  ×  rolle-rate  ×  kondition
 - **Dagsstøjen** er seeded på `(rytter, dato)` (`dtick:`-namespace), ikke tilfældig
   (`dailyTraining.js:193`). Samme rytter samme dag giver samme støj ved gen-kørsel.
 
-### 2.1b Kurve B (D-058, [#3564](https://github.com/NicolaiDolmer/CyclingZone/issues/3564), bag flaget `development_curve_b`, **slukket**)
+### 2.1b Kurve B (D-058, [#3564](https://github.com/NicolaiDolmer/CyclingZone/issues/3564), bag flaget `development_curve_b`, **tændt 25/10**)
 
-Reglen når flaget tændes: **udviklingen styres af niveau og potentiale, ikke af alder.** Kurve B
+Reglen (gælder siden S5-skiftet 25/10, ejer-go #7153; flaget `on` i prod, læst 26/10): **udviklingen styres af niveau og potentiale, ikke af alder.** Kurve B
 erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
 
 - **Niveau:** hvert point koster mere jo tættere evnen er på toppen af skalaen. Lave niveauer er
@@ -369,7 +369,7 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
   klipper, og løbsdagen går gennem samme kæde.
 - **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens
   tal er private og ligger i serverens miljø, ikke i koden; tændt uden gyldige tal kører dagens
-  model. Tændes kun af ejeren efter en ny 10-sæsoners-kørsel med den rigtige kurve.
+  model. Blev tændt af ejeren efter en ny 10-sæsoners-kørsel med den rigtige kurve.
 
 Kode: `developmentCurveB.ts` (kurven), `developmentCurveBFlag.ts` (flag og tal),
 `dailyAbilityDelta`/`applyDailyTick` (`dailyTraining.js`). Gates: `scripts/dev/developmentCurveBHarness3564.mjs`.
@@ -608,7 +608,7 @@ et øjebliksbillede af hele bestanden.
 som v3-kaldet i `raceSimulator.js` bruger i stedet for den lavere `FORM_RACE_WEIGHT`-konstant
 fra v1-stien — formen er altså ikke en neutral 0-stub på løbsdage.
 
-**Formtoppe i løbsmotor v4 (#6156, `s5_profiles_v2`, aktuel fra ejerens "tænd" #6818; toppen kræver også flaget `app_config.race_form_peaks`, slukket indtil sæsonskiftet 25/10).** Under v4
+**Formtoppe i løbsmotor v4 (#6156, `s5_profiles_v2`, aktuel fra ejerens "tænd" #6818; toppen kræver også flaget `app_config.race_form_peaks`, tændt 26/10 efter ejer-go, #7230).** Under v4
 nåede formen motoren fra `official_times_v3` til og med `s5_profiles_v1` uden top. Under
 `s5_profiles_v2` med flaget tændt virker formtoppe i løb igen for alle løb hvis første etape claimes efter tændingen
 (løb bundet til en ældre revision kører færdig uden top): rytteren får toppens tillæg i peak-vinduet
@@ -617,9 +617,9 @@ og dykket i tilbagebetalingen bagefter, som eget led oven i formen og uden forms
 samme som formplanlæggeren viser (vinduets træningskvalitet, `plannerBoard.peakValueFormPoints`).
 Reglen i motoren står i [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) ("Formtoppe i v4").
 
-### 5.3b Form og træthed 2.0 (`condition_model_v2`, #6984, **slukket**)
+### 5.3b Form og træthed 2.0 (`condition_model_v2`, #6984, **tændt med vilje siden 25/10**)
 
-Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`](superpowers/specs/2026-10-20-6984-form-traethed-design.md) (indført i docs-PR #6986, der merges før denne kode-PR). Bag flaget `condition_model_v2` (ingen app_config-række = off; kræver `training_condition_per_date`). Flag off = §5.1-5.3 uændret.
+Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`](superpowers/specs/2026-10-20-6984-form-traethed-design.md). Bag flaget `condition_model_v2` (ingen app_config-række = off; kræver `training_condition_per_date`). Flaget er `on` i prod (læst 26/10; tændt ved S5-skiftet 25/10, bekræftet af ejeren 26/10). Flag off = §5.1-5.3 uændret (fail-safe).
 
 | Regel | Kode |
 |---|---|
@@ -655,7 +655,7 @@ trænings- og løbsskader i denne optælling.
 
 ---
 
-### 5.4b Sygdom af langvarig ekstrem træthed (#6938, **slukket**)
+### 5.4b Sygdom af langvarig ekstrem træthed (#6938, **live**: `condition_model_v2` er tændt og motoren kører `s5_profiles_v3`)
 
 Kun når `condition_model_v2` er on OG løbsmotoren kører `s5_profiles_v3` (tændt med v3 26/10, ejer 24/10). Ved aftenens afregning kan en rask rytter, der ikke blev skadet samme dag, blive syg, hvis hans træthed har været ekstrem flere afregnede dage i træk (inkl. dagens). Under en minimumsstime er risikoen 0; den stiger med stimens længde og med hvor langt over grænsen trætheden ligger, og har et loft pr. dag. Den medicinske afdeling sænker risikoen. Rullet er seedet pr. (rytter, dato). En syg rytter får `rider_condition.injury_cause = 'illness'` og er ude nogle løbsdage (samme løbsdagsakse som træningsskaden), uden evneskade. Han starter ikke og står som "Syg, startede ikke" (`race_incidents.kind = 'illness'`), og holdet får lægens besked i indbakken. Historikken læses fra `training_condition_settlements` på rytternes id'er (primærnøglen). Kode: `backend/lib/conditionIllness.js`, koblet i `dailyTrainingEngine.js`. Tal privat (hard rule 17).
 
@@ -711,7 +711,7 @@ prod 24/8 (#4192): 1.520 ryttere på 103 hold stod på Hvile OG var tilmeldt et 
 valgt efter simuleringen i PR #5640):** planen er IKKE input. En rytter der kører en etape på en
 løbsdag udvikler sig som efter et **mellem-pas** i de evner etapens profil kræver, under reglen
 **maks +1 pr. evne pr. løbsdag**, og resten af fremdriften bæres videre. Oven på det gælder
-**maks +1 pr. evne pr. rytter pr. dato** ([#6210](https://github.com/NicolaiDolmer/CyclingZone/issues/6210), bag flaget `ability_cap_per_date_enabled`, slukket indtil Udvikling 2.0 tændes): på tværs af datoens løbsdage, alle stier (Train now, aftenens
+**maks +1 pr. evne pr. rytter pr. dato** ([#6210](https://github.com/NicolaiDolmer/CyclingZone/issues/6210), bag flaget `ability_cap_per_date_enabled`, tændt ved S5-skiftet 25/10 sammen med Udvikling 2.0 del 1): på tværs af datoens løbsdage, alle stier (Train now, aftenens
 kørsel, kalenderdags-faldet) og et holdskifte samme dato på live-stien (reserve-stien: #7084). Et klippet point bæres videre på
 fremdriftsbaren til næste dato (`capTickGainsPerDate`, `dailyTrainingEngine.js`).
 
