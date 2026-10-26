@@ -13,7 +13,9 @@
   - #7239 (PR #7265): delt kaptajn i appen.
   - #7266: motortests af spillernes ordrer.
   - #6746: rollebevidste taktiktekster.
-- **Klar til merge:** #7264 (ordrer kan sættes før løbsstart).
+- **Merget 26/10:** #7264 (ordrer kan sættes før løbsstart), #7270 (bundle-budget), #7263 (docs-modsigelser).
+- **Før onsdag kl. 11 (i merge-køen):** #7259 (ejer-go 26/10: "mellem nu + opfølgning"), #7265 delt kaptajn, #7268 sande tekster, #7271 fjern Breakaway odds, #7273 genafspilning.
+- **Tirsdag (taktik-pakken):** #7267 motortests, #7272 dagsform, #7275 fortælling, #7276 luksushjælper, #7277 motorberegnet udbrudschance, #7278 sent soloangreb, ugentlig motor-rapport, Alt ud-kalibrering, spærrede modsatte ordrer.
 - **Parkeret:** #7240 (v3.1-tuning alene øgede klassementsvindere fra udbrud; vurderes i #7258).
 
 ## 2. Beslutningslog
@@ -29,6 +31,20 @@
 | 26/10 | S5: antal ryttere fra samme hold i udbrud følger udbruddets størrelse; andre hold jager hårdere ved overvægt | #6804 P3.3, #6912 |
 | 26/10 | Femtrins-indsatsen tændes før onsdag, men samtidig med resten af taktik-pakken og efter grønne motortests | #7266 |
 | 26/10 | Form og træthed 2.0 (`condition_model_v2`) er tændt med vilje | ejer i chat |
+| 26/10 | S6 dagsform: den bedste vinder som i virkeligheden pr. løbsgruppe; dårlig dag (træthed, form, sygdom, vejr) vises i løbsloggen. Bygges nu | #6649 |
+| 26/10 | S7 Breakaway odds: fjern tallet fra den faste tabel nu (A), motorberegnet chance pr. løb til taktik-pakken (B) | #6912 |
+| 26/10 | S8 alle løb gemmer motorens fulde input privat, så prod-etaper kan genafspilles | #1857 |
+| 26/10 | S9 filmen og etapeteksten siger, hvorfor udbruddet holdt, og hvornår spillerens ordre gjorde forskellen | #6469 |
+| 26/10 | S10 luksushjælper = kaptajnens sidste mand; ingen separat løjtnant (delt kaptajn dækker overtagelsen) | #5982, #5981 |
+| 26/10 | Taktiklag 1-2: angrebspunkt og følg rival som opgaver i etapeplanen | #5573 |
+| 26/10 | Taktiklag 3: sent soloangreb kun for ledere og fri rolle; hjælper på Arbejd kun når kaptajnen er sat | #6368 |
+| 26/10 | Taktiklag 4: hvis-så-ordrer som faste skabeloner i etapeplanen | #5574 |
+| 26/10 | Taktiklag 5: trøjejagt som både løbsmål og opgave pr. etape | #4822 |
+| 26/10 | Taktiklag 6: sidevind og vifter med "hold kaptajnen fremme" i etapeplanen | #2476 |
+| 26/10 | Feltet får en tredje jagt-måde: "begræns tiden" | #7258 |
+| 26/10 | S13 G17 måler kun styrt, sygdom og træthed mod virkeligheden; flere udgåede i GT | #6938 |
+| 26/10 | S14 ugentlig motor-rapport på spillede løb mod gates, med alarm | #2557 |
+| 26/10 | #7259 tændes med mellem snor; opfølgning bringer udbrudssejre på bjerg og mellembjerg tilbage | #7258 |
 | 25/10 | Arbejd/angrib løses af etapeplanen langs ruten; ordet følger rollen; modsatte valg spærres | spec 2026-10-25-taktik-roller-design.md §11 |
 | 25/10 | Delt kaptajn med i v3; højst én pr. hold; hjælp går til kaptajnen først | samme spec §11 |
 | 19/10 | Klassementsfavoritter og etapens favoritter er sjældent med i udbrud | #6804 punkt 4, spec 2026-10-17 P3 |
@@ -45,31 +61,31 @@
 ## 4. Backlog: motor (fra gennemgangen 26/10, #7260)
 | Punkt | Kilde | Status |
 |---|---|---|
-| Hold-overvægt i udbrud (S5) | spec 17/10 P3.3/P3.4, #6912 | Ikke bygget, besluttet |
-| Feltet kan "begrænse tiden" i stedet for alt eller intet | Discord 25/10 | Nyt designspørgsmål |
-| Dagsform / "dårlig dag" (forudsigelighed) | #6649 | Kun design |
-| Gem hele motorens input privat, så prod-etaper kan genafspilles | #1857, #5978 30/9 | Ikke bygget |
-| Fortælling: hvorfor holdt udbruddet (`chase_faded`, årsag pr. sejr) | spec 21/10 + 17/10 P5 | Ikke bygget |
+| Hold-overvægt i udbrud (S5) | spec 17/10 P3.3/P3.4, #6912 | Besluttet; bygges efter #7259 |
+| Feltet kan "begrænse tiden" i stedet for alt eller intet | Discord 25/10, #7258 | Besluttet; bygges efter #7259 |
+| Dagsform / "dårlig dag" (forudsigelighed) | #6649 | Bygges (PR #7272) |
+| Gem hele motorens input privat, så prod-etaper kan genafspilles | #1857 | Klar (PR #7273) |
+| Fortælling: hvorfor holdt udbruddet (`chase_faded`, årsag pr. sejr) | #6469 | Bygges (PR #7275) |
 | Kuperet enkeltstart: tidshul skaleret efter feltet | spec 21/10 P8 (ejer A) | Ikke bygget |
 | Gruppetto-ordre (sparer kræfter pr. etapetype) | #6940 | Motor bygget, følger taktik-pakken |
 | Sprintkaptajn slutter efter egen togfører | #6552 | Åben fejl |
 | Enkeltstart vægter for lidt mod bjerg i GT | #6595, PR #7164 | PR åben (konflikt) |
 | Dronningeetaper for spredte i division 1 | #7236 | Åben |
 | Holdtidskørsel: regler siger "scores ikke", benchen kører TTT | CALENDAR_RULES §969, #3463 | Skal verificeres |
-| Sent soloangreb er live i v3, men docs siger slukket; hjælper på Arbejd kan angribe | #6368, lateAttack.ts | Modsigelse + ejerbeslutning |
+| Sent soloangreb kun for ledere og fri rolle | #6368 | Besluttet; bygges (PR #7278) |
 | Assistenten giver aldrig jæger/fri rolle | raceAutopick.js | Ikke bygget |
-| Beskyttet løjtnant / luksushjælper | #5981, #5982 | Design |
-| Holdmødet lag 3 (angrebspunkt, følg rytter, trøjejagt) og lag 4 (hvis-så-ordrer) | #5573, #5574 | Design |
-| Sidevind og vifter | #2476 | Ikke bygget |
-| Drift-vagt: ugentlig rapport på spillede løb mod grænserne | #2557 del D | Ikke bygget |
+| Luksushjælper = sidste mand | #5982 | Bygges (PR #7276) |
+| Angrebspunkt, følg rival, hvis-så, trøjejagt | #5573, #5574, #4822 | Besluttet; bygges efter #7265 |
+| Sidevind og vifter | #2476 | Besluttet; bygges efter etapeplan-sporene |
+| Drift-vagt: ugentlig rapport på spillede løb mod grænserne | #2557 | Bygges |
 | Testportens domme FAIL i begge revisioner | #6908 | Åben |
-| G17 udgåede: gaten fejler, selv om udgåede er godkendt | #6938 | Grænser skal tjekkes mod virkeligheden |
-| "Breakaway odds" i UI kommer fra en fast tabel | #6912, roleHint.js | Forkert info, skal fjernes eller beregnes |
+| G17 udgåede: kun styrt/sygdom/træthed; flere udgåede i GT | #6938 | Besluttet; bygges efter #7259 |
+| "Breakaway odds" fra fast tabel → motorberegnet chance | #6912 | A klar (PR #7271), B bygges (PR #7277) |
 
 ## 5. Backlog: taktik og roller (fra gennemgangen 26/10)
 | Punkt | Kilde | Status |
 |---|---|---|
-| Ordre-kolonnen skjult før løbsstart | #7264 | Rettet, i merge |
+| Ordre-kolonnen skjult før løbsstart | #7264 | Merget 26/10 |
 | AI har grupetto/protect, mennesker kun 3 trin | RULES §2 M14 | Løses af taktik-pakken |
 | Patch note 7.383 lover Alt ud | patchNotes.js | Bliver sand ved taktik-pakken |
 | Delt kaptajn ikke målt på hold med 7-8 ryttere; ingen ende-til-ende-test | PR #7205 | #7266 |
