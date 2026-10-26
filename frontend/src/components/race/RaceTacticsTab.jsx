@@ -132,8 +132,8 @@ const ROLE_KEY = {
 const roleKey = (role) => ROLE_KEY[role] || "helper";
 
 // #6746: trinnet "protect" hedder efter rollen (spec taktik-roller §3): Arbejd for
-// hjælper/jæger, Følg angrebene for kaptajn og spurtkaptajn, Kør offensivt for fri rolle.
-const PROTECT_VARIANT = { captain: "follow", sprint_captain: "follow", free_role: "free" };
+// hjælper/jæger, Følg angrebene for kaptajn, delt kaptajn og spurtkaptajn, Kør offensivt for fri rolle.
+const PROTECT_VARIANT = { captain: "follow", co_captain: "follow", sprint_captain: "follow", free_role: "free" };
 const protectText = (t, role, part) => t(`intention.byRole.protect.${PROTECT_VARIANT[role] || "work"}.${part}`);
 
 function stageLockTime(scheduledAt) {
