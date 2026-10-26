@@ -61,6 +61,9 @@ const RAW_KEYS = new Set([
  *   "planLabel.3yr"` bliver til `planLabel: "3-year plan"`. Lader backend
  *   referere genbrugte labels (planLabel, midMessage, layer-label, ...)
  *   uden at duplikere strenge i alle message-templates.
+ * @param {object|null|undefined} params
+ * @param {((key: string, params?: Record<string, unknown>) => string)|null} [t]
+ * @returns {Record<string, unknown>}
  */
 export function formatBackendParams(params, t = null) {
   if (!params || typeof params !== "object") return {};

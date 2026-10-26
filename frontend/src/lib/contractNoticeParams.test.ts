@@ -14,6 +14,7 @@ test("structured contract lists translate each squad without changing rider name
     { rider: "Rider B", squad: "u23", value: 2300 },
   ] }, t);
   assert.equal(result.season, "5");
+  assert.ok(typeof result.contractRiders === "string");
   assert.match(result.contractRiders, /Rider A \(Juniors-local\)/);
   assert.match(result.contractRiders, /\nRider B \(U23-local\)/);
 });
