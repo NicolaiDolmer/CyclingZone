@@ -306,7 +306,7 @@ test("main: Discord-fejl giver exit 3; alt groent giver exit 0; dry-run sender i
   assert.equal(await main({ ...base, env: okEnv, fetchFn: async () => ({ ok: false }) }), 3);
   assert.equal(await main({ ...base, env: okEnv, fetchFn: async () => ({ ok: true }) }), 0);
   let n = 0;
-  const { DISCORD_OPS_WEBHOOK_URL, ...noHook } = okEnv;
+  const { DISCORD_OPS_WEBHOOK_URL: _hook, ...noHook } = okEnv;
   assert.equal(await main({ ...base, env: { ...noHook, WEEKLY_DRIFT_DRY_RUN: "1" }, fetchFn: async () => { n += 1; return { ok: true }; } }), 0);
   assert.equal(n, 0);
 });
