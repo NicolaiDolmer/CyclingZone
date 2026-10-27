@@ -263,6 +263,12 @@ export function codexSeverity(body) {
   return String(body || "").match(/!\[(P[0-3]) Badge\]/)?.[1] || null;
 }
 
+/** CodeRabbit's bot-authored severity header, metadata only; Codex policy is unchanged. */
+export function codeRabbitSeverity(body) {
+  const header = String(body || '').split(/\r?\n/).find(line => line.startsWith('**') && line.includes('** ·'));
+  const severity = header?.replace(/<[^>]*>/g, '').match(/\b(Critical|Major|Minor|Trivial)\*\*/i)?.[1]?.toLowerCase();
+  return ({critical:'P0',major:'P1',minor:'P2',trivial:'P3'})[severity] ?? null;
+}
 /** Blokerer et uloest Codex-fund merge? Kun P0, P1 og ukendt grad. */
 export function isBlockingSeverity(severity) {
   return severity == null || severity === "P0" || severity === "P1";
@@ -510,7 +516,7 @@ function fetchThreads(repo, pr) {
     const args = ["api", "graphql", "-f", `query=${q}`, "-f", `o=${owner}`, "-f", `n=${name}`, "-F", `pr=${pr}`];
     if (cursor) args.push("-f", `c=${cursor}`);
     const conn = ghJson(args).data.repository.pullRequest.reviewThreads;
-    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
+    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), rabbitSeverity: login(t.comments.nodes[0]?.author?.login) === CODERABBIT_LOGIN ? codeRabbitSeverity(t.comments.nodes[0]?.body) : null, commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
     if (!conn.pageInfo.hasNextPage) break;
     cursor = conn.pageInfo.endCursor;
   }

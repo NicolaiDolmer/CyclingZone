@@ -6,3 +6,4 @@ Rettelse: læs liga-checket fra pagineret REST check-runs på PR'ens HEAD. Kræv
 
 Bevis: ny regression først rød (manglende REST-funktion), derefter 13 grønne klassifikationsscenarier og real Get-PrPlanEntry-test uden liga-check i rollup. Køens regressioner: 65/65. Ingen spillerændring; patch note er derfor undtaget. Ingen produktionsdata ændret.
 CodeRabbit-review på f4dbcb0cd fandt et yderligere læserace før auditten: required checks kunne gælde et tidligere HEAD. Ny regression blev set rød og derefter grøn; start-HEAD skal nu også være gyldigt og matche metadata-HEAD.
+Ejer godkendte derefter en lukket CodeRabbit-erstatning for kun #7313/#7311 (27/10), med HEAD-bundet ejerbeslutning og udløb ved deadline. Standardgaten er uændret. Negative tests dækker forkert repo/PR/SHA, udløb, manglende ejer/Codex, ukendt eller skippet CodeRabbit-resultat og åbne tråde; kø-integration beviser, at required CI fortsat blokerer.

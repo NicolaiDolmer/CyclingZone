@@ -83,6 +83,8 @@ param(
   [Parameter(Mandatory)]
   [string] $Pr,
   [switch] $DryRun,
+  # Owner approval 27/10: real CodeRabbit instead of Claude for #7313/#7311 only.
+  [switch] $CodeRabbitNight,
   [int] $MinWaitMinutesNoBackend = 3,
   # Ejer 8/10: en raekke af PR'er der ikke roerer backend/ merges efter
   # hinanden, og CI (main) ventes kun EEN gang paa den sidste merge-SHA (den
@@ -131,6 +133,9 @@ $ErrorActionPreference = "Stop"
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
 
+if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumbers | Where-Object { $_ -notin @(7313,7311) }).Count -gt 0)) {
+  throw 'CodeRabbitNight er kun ejer-godkendt for #7313/#7311 i CyclingZone.'
+}
 # #5562: en koerende boelge blokerer ikke laengere alle merges - kun PR'er hvis
 # filer overlapper boelgens aktive ownership (se assert-merge-allowed i
 # wave-policy.mjs). En legacy/ulaeselig markoer eller en uden ownership
@@ -143,6 +148,7 @@ function Get-PrPlanEntry([int]$number) {
   $checksExit = 0
   $checksSummary = "ukendt"
   $auditHead = $null
+  $reviewDeadlineMs = 0
   # Bind required checks and the review gate to the same HEAD as the audit and metadata.
   $startHead = ((Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'headRefOid', '--jq', '.headRefOid') -TolerateFailure) -join '').Trim()
   try {
@@ -175,8 +181,18 @@ function Get-PrPlanEntry([int]$number) {
         # #6654: review-gate (rule 35) stopper koeen ogsaa foer ejeren goer den
         # required. Rod/mangler = stop, afventer = vent (scripts/lib/league-check.ps1).
         $gateCode = Get-ReviewGateCheckExitCode -Checks $allChecks
+        if ($CodeRabbitNight) {
+          $gateCode = 1
+          $rabbitOutput = @(& node (Join-Path $PSScriptRoot 'lib/review-coderabbit-night.mjs') --pr "$number" --head $auditHead)
+          $rabbitExit = $LASTEXITCODE
+          if ($rabbitExit -eq 0 -and $rabbitOutput.Count -eq 1) {
+            $rabbit = $rabbitOutput[0] | ConvertFrom-Json
+            if ($rabbit.ok -and $rabbit.secondReviewer -eq 'CodeRabbit' -and $rabbit.headSha -eq $auditHead -and [long]$rabbit.expiresAt -gt 0) { $gateCode = 0; $reviewDeadlineMs = [long]$rabbit.expiresAt }
+          }
+          Write-Host "      PR #${number}: ejerautoriseret CodeRabbit-erstatning (kun #7313/#7311, udloeber 28/10 kl. 11)."
+        }
         $checksExit = $(if ($leagueCode -eq 1 -or $gateCode -eq 1) { 1 } elseif ($leagueCode -eq 8 -or $gateCode -eq 8) { 8 } else { 0 })
-        if (@($allChecks | Where-Object { Test-TrustedReviewGateCheck $_ }).Count -eq 0) {
+        if (-not $CodeRabbitNight -and @($allChecks | Where-Object { Test-TrustedReviewGateCheck $_ }).Count -eq 0) {
           Write-Host "      (PR #${number}: intet review-gate-check fra pull_request_target - push et commit eller skift en label for at starte det, #6654)" -ForegroundColor DarkYellow
         }
       }
@@ -262,6 +278,7 @@ function Get-PrPlanEntry([int]$number) {
     mergeable      = $mergeable
     isDraft        = $isDraft
     headSha        = $headSha
+    reviewDeadlineUtc = if ($reviewDeadlineMs -gt 0) { [datetimeoffset]::FromUnixTimeMilliseconds($reviewDeadlineMs).ToString('o') } else { $null }
     mergeState     = $mergeState
     solo           = $solo
     needRailway    = $needRailway
@@ -1026,8 +1043,19 @@ for ($idx = 0; $idx -lt $plan.Count; $idx++) {
     Exit-Queue 1
   }
   # #6861 (Codex P1): merge laast til det hoved, der netop er genvalideret.
-  & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo --head $recheck.headSha
-  if ($LASTEXITCODE -ne 0) {
+  $previousReviewDeadline = $env:CZ_MERGE_REVIEW_DEADLINE_UTC
+  $guardedMergeExit = 1
+  try {
+    if ($CodeRabbitNight) {
+      if (-not $recheck.reviewDeadlineUtc) { throw 'CodeRabbit review deadline missing' }
+      $env:CZ_MERGE_REVIEW_DEADLINE_UTC = $recheck.reviewDeadlineUtc
+    }
+    & node (Join-Path $PSScriptRoot 'wave-policy.mjs') guarded-merge --pr "$n" --repo $Repo --head $recheck.headSha
+    $guardedMergeExit = $LASTEXITCODE
+  } finally {
+    $env:CZ_MERGE_REVIEW_DEADLINE_UTC = $previousReviewDeadline
+  }
+  if ($guardedMergeExit -ne 0) {
     Write-Host "STOP: Merge af PR #$n fejlede eller boelgelaasen blev afvist." -ForegroundColor Red
     Exit-Queue 1
   }

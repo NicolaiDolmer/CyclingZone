@@ -1,3 +1,4 @@
+import { evaluateCodeRabbitNight } from './lib/review-coderabbit-night.mjs';
 // node --test scripts/review-gate.test.mjs  (#6654)
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -24,6 +25,7 @@ import {
   parseCodexReviewedCommit,
   parseCodexReviewState,
   codexStatusToState,
+  codeRabbitSeverity,
   pickGateRun,
   gateRunsPath,
   gateRunName,
@@ -894,3 +896,47 @@ test("superseded: en traad paa selve HEAD eller uden kendt commit blokerer altid
   assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [headP1], headSha: HEAD }).codex.unresolved, 1);
   assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [{ ...oldP1, commit: null }], headSha: HEAD }).codex.unresolved, 1);
 });
+
+// Explicit owner's one-night exception; no general policy replacement.
+const nightNow = Date.parse('2026-10-27T22:00:00Z');
+const nightCheck = (patch={}) => ({name:'CodeRabbit',head_sha:HEAD,app:{slug:'coderabbitai'},status:'completed',conclusion:'success',output:{summary:'Result: Success - Review completed\nRun ID: test'},...patch});
+const nightReview = (patch={}) => ({user:{login:'coderabbitai[bot]',type:'Bot'},commit_id:HEAD,state:'COMMENTED',submitted_at:'2026-10-27T22:00:00Z',body:'<!-- coderabbit-ai-generated:v1 -->\n**Actionable comments posted: 0**',...patch});
+const nightData = (patch={}) => ({number:7313,author:'x',headSha:HEAD,files:['backend/lib/engine/v4/a.ts'],comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute: pr=7313 sha=${HEAD} -->`}],reviews:[],threads:[],...patch});
+const nightInput = (patch={}) => ({data:nightData(),checkRuns:[nightCheck()],rabbitReviews:[nightReview()],now:nightNow,repo:'NicolaiDolmer/CyclingZone',...patch});
+test('night CodeRabbit: exact owner-authorized PR/HEAD, both actual reviews, completed check pass',()=>assert.equal(evaluateCodeRabbitNight(nightInput()).ok,true));
+for(const [name,patch] of [
+ ['other PR',{data:nightData({number:7314})}],
+ ['other repository',{repo:'other/repo'}],
+ ['expired',{now:Date.parse('2026-10-28T10:00:00Z')}],
+ ['missing time',{now:undefined}],
+ ['missing owner mandate',{data:nightData({comments:[codexDone,cleanReceipt(HEAD)]})}],
+ ['missing Codex',{data:nightData({comments:[{association:'OWNER',body:`<!-- coderabbit-substitute: pr=7313 sha=${HEAD} -->`}]})}],
+ ['draft',{data:nightData({draft:true})}],
+ ['stale CodeRabbit',{rabbitReviews:[nightReview({commit_id:OLD})],checkRuns:[nightCheck({head_sha:OLD})]}],
+ ['untrusted bot alone',{rabbitReviews:[nightReview({user:{login:'other',type:'Bot'}})],checkRuns:[]}],
+ ['issues present',{rabbitReviews:[nightReview({body:'**Actionable comments posted: 1**'})]}],
+ ['empty bot reply without completed review',{rabbitReviews:[nightReview({body:''})],checkRuns:[nightCheck({output:{summary:'Reply posted'}})]}],
+ ['no check',{checkRuns:[]}],
+ ['duplicate checks',{checkRuns:[nightCheck(),nightCheck()]}],
+ ['wrong check app',{checkRuns:[nightCheck({app:{slug:'other'}})]}],
+ ['stale check',{checkRuns:[nightCheck({head_sha:OLD})]}],
+ ['running check',{checkRuns:[nightCheck({status:'in_progress',conclusion:null})]}],
+ ['skipped check',{checkRuns:[nightCheck({conclusion:'skipped'})]}],
+ ['open Rabbit thread',{data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD}]})}],
+])test(`night CodeRabbit fails closed: ${name}`,()=>assert.equal(evaluateCodeRabbitNight(nightInput(patch)).ok,false));
+
+test('night CodeRabbit: official zero-issue incremental completion needs no synthetic review receipt',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[]})).ok,true));
+test('night CodeRabbit: skipped success text cannot count as a completed review',()=>assert.equal(evaluateCodeRabbitNight(nightInput({checkRuns:[nightCheck({output:{summary:'Review skipped'}})]})).ok,false));
+test('night CodeRabbit: MEMBER cannot grant the owner exception',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'MEMBER',body:`<!-- coderabbit-substitute: pr=7313 sha=${HEAD} -->`}]})})).ok,false));
+test('night CodeRabbit: the second allowed PR needs its own current-head owner decision',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({number:7311,comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute: pr=7311 sha=${HEAD} -->`}]})})).ok,true));
+test('CodeRabbit severity is read only from its explicit header',()=>{
+ assert.equal(codeRabbitSeverity('**<picture><img src="x"></picture> Minor** · **Functional Correctness**'),'P2');
+ assert.equal(codeRabbitSeverity('**Major** · **Functional Correctness**'),'P1');
+ assert.equal(codeRabbitSeverity('**Critical** · **Security**'),'P0');
+ assert.equal(codeRabbitSeverity('Minor in an ordinary paragraph'),null);
+});
+test('night CodeRabbit preserves owner P2 follow-up policy without changing normal gate',()=>{
+ const r=evaluateCodeRabbitNight(nightInput({data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD,rabbitSeverity:'P2'}]}),rabbitReviews:[nightReview({body:'**Actionable comments posted: 1**'})]}));
+ assert.equal(r.ok,true);assert.equal(r.notes,1);
+});
+test('night CodeRabbit still blocks an explicit Major thread',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD,rabbitSeverity:'P1'}]}),rabbitReviews:[nightReview({body:'**Actionable comments posted: 1**'})]})).ok,false));
