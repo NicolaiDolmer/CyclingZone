@@ -519,3 +519,26 @@ test('#6185 del 2: breakaway_dropped gets its own short line in EN and DA, witho
     assert.ok(!/\{(seconds|gap|km)\}|%/.test(text), lang + ': no numbers (fog of war)');
   }
 });
+
+// #6649 (s5_profiles_v3): "havde en dårlig dag" + årsagen, i alle fem sprog og uden tal.
+test("#6649 describeEvent: bad_day names the rider and the cause; unknown cause or rider gives no line", async () => {
+  const names = new Map([["r1", "Rider One"]]);
+  const ev = (params) => describeEvent({ type: "bad_day", km: 150, params }, { riderNameById: names });
+  assert.deepEqual(ev({ rider_id: "r1", reason: "fatigue" }), { key: "bad_day_fatigue", params: { rider: "Rider One" } });
+  assert.equal(ev({ rider_id: "r1", reason: "weather", weather: "rain" }).key, "bad_day_rain");
+  assert.equal(ev({ rider_id: "r1", reason: "weather" }), null);
+  assert.equal(ev({ rider_id: "r1", reason: "luck" }), null);
+  assert.equal(ev({ rider_id: "nobody", reason: "form" }), null);
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const film = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8")).detail.film.event;
+    for (const cause of ["fatigue", "form", "illness", "rain", "wind", "heat"]) {
+      const text = film[`bad_day_${cause}`];
+      assert.ok(text && text.includes("{rider}"), `${lang}: bad_day_${cause}`);
+      assert.ok(!/[0-9]|%/.test(text), `${lang}: no numbers (fog of war)`);
+    }
+  }
+});

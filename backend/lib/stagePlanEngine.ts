@@ -30,8 +30,11 @@
 //      (rider_id, led, opgave, aarsag). Fog of war: ingen tal ud over km.
 //      Opsummeringen efter etapen laeser kun disse events.
 //
-// Uden en stage_plan-ordre returnerer createStagePlanRuntime null, og loopet er
-// byte-identisk med foer.
+// #5982: en luksushjaelper uden gemt plan faar sin standardplan her
+// (mechanics/luxuryHelper5982.ts, samme forslag som fladen viser).
+//
+// Uden en stage_plan-ordre og uden en luksushjaelper returnerer createStagePlanRuntime
+// null, og loopet er byte-identisk med foer.
 
 import type { EffortLevel, EngineState, Entrant, RaceGroup, RouteV2, Segment, TeamOrder, TimelineEvent } from "./engine/v4/types.ts";
 import {
@@ -43,6 +46,7 @@ import {
   type StagePlanRoute,
   type StagePlanTask,
 } from "./stagePlan.ts";
+import { luxuryHelperDefaultPlans } from "./engine/v4/mechanics/luxuryHelper5982.ts"; // #5982
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
@@ -128,6 +132,11 @@ export function createStagePlanRuntime(
       if (validateStagePlanLegs(plan, role, planRoute) !== null) continue;
       legs.set(riderId, resolveLegs(plan as StagePlanLeg[], planRoute));
     }
+  }
+  // #5982: en luksushjaelper uden gemt plan koerer sin standardplan (rollen er en genvej
+  // til etapeplanen). Uden en luksushjaelper i feltet: ingen aendring (byte-identisk).
+  for (const [riderId, plan] of luxuryHelperDefaultPlans(planRoute, entrants, (id) => legs.has(id))) {
+    legs.set(riderId, resolveLegs(plan, planRoute));
   }
   if (legs.size === 0) return null;
   const riderIds = [...legs.keys()].sort();

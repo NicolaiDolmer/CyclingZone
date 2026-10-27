@@ -260,6 +260,10 @@ S5's trusselsmodel jager et morgenudbrud med en farlig klassementsrytter med det
 
 **Intet uheld lige efter starten under `s5_profiles_v2` ([#7008](https://github.com/NicolaiDolmer/CyclingZone/issues/7008), slukket).** Et uheld (M10, nedkørsel, brosten, holdtidskørsel og enkeltstart) placeres aldrig i etapens første kilometer. Stedet i segmentet er stadig et frit lodtræk, men på det stykke der ligger efter starten; et første segment der slutter inden, giver intet uheld. Lodtrækningerne, rytterne, udfaldene og tidstabene er de samme, så løbsfilmen viser aldrig et tidstab før der er kørt. `s5_profiles_v1` og ældre er byte-identiske. Kode: `incidents.incidentKmSpan`/`incidentKmAt`. Test: `incidents.test.ts`.
 
+## Dagsform ud fra træthed, form, sygdom og vejr under `s5_profiles_v3` (ejer 26-27/10, [#6649](https://github.com/NicolaiDolmer/CyclingZone/issues/6649), **slukket**)
+
+Under `s5_profiles_v3` og kun med `app_config`-rækken `day_form_6649 = "on"` erstatter `engine/v4/mechanics/dayForm6649.ts` den gamle, rent tilfældige dagsform. Pr. rytter og dag: dagens ben (ned-siden bredere end op-siden og større med lav form, træthed og hårdt vejr), en sjælden dårlig dag med én årsag (form, træthed eller vejr) og sygdom. Hver nedtur står i løbsloggen med årsagen. Kontakten læses i `raceRunner` som `race_form_peaks` og indgår i run-identitet og genafspilning; slukket er byte-identisk med main, og ældre revisioner er urørte. Tal og kalibrering er private (`balance-internals/6649/`). Spec: `docs/superpowers/specs/2026-10-26-6649-dagsform-design.md`.
+
 ## Bjerg-endagsløb: udbruddet kan hentes under `s5_profiles_v1` ([#6369](https://github.com/NicolaiDolmer/CyclingZone/issues/6369), ejer-go 16/10)
 
 Bjergets lad-gå-loft er kalibreret på etapeløb, hvor klassementsholdene holder udbruddet i snor. I et endagsløb på en bjergprofil findes det forsvar ikke, så morgenudbruddet fik et forspring, ingen jagt kunne hente. Under `s5_profiles_v1` får et endagsløb (`gcContext.status === "one_day"`) på bjergprofilen derfor et lavere lad-gå-loft; højfjeld, alle andre profiler, alle etapeløb og alle ældre revisioner er urørte. Tallet står privat (`balance-internals/6367/`). Kode: `S5_ONE_DAY_LET_GO_MAX_GAP_SCALE_BY_PROFILE` i `engine/v4/mechanics/timeModel.ts`, ganget på loftet i `progressChase` (`mechanics/breakaway.ts`). Test: `breakawayTargets5578.test.ts` (S5-endagsløb på bjerg mod `official_times_v4`).
@@ -389,7 +393,7 @@ Motoren har to frosne grænseflader. De må ikke forveksles, og ingen af dem må
 
 ## 1. Rolle-vokabularet (kanonisk, ikke til forhandling)
 
-Seks værdier (den sjette, `co_captain`, siden #5981). De er defineret i den frosne kontrakt — `backend/lib/engine/v4/types.ts`:
+Syv værdier (den sjette, `co_captain`, siden #5981; den syvende, `luxury_helper`, siden #5982). De er defineret i den frosne kontrakt — `backend/lib/engine/v4/types.ts` (motoren ser `luxury_helper` som `helper` med markøren `Entrant.luxury_helper`, se nedenfor):
 
 ```ts
 export type RiderRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role" | "co_captain";
@@ -405,10 +409,13 @@ Samme fem står i `race_entries.race_role` og `race_stage_roles.race_role`, skre
 | `helper` | Domestique | Arbejder for kaptajnen |
 | `free_role` | Free role | Ingen bundet opgave |
 | `co_captain` | Shared captain | Delt kaptajn, kun under `s5_profiles_v3` (slukket, [#5981](https://github.com/NicolaiDolmer/CyclingZone/issues/5981)) |
+| `luxury_helper` | Luxury helper | Luksushjælper, kun under `s5_profiles_v3` ([#5982](https://github.com/NicolaiDolmer/CyclingZone/issues/5982)) |
 
 **Delt kaptajn (`co_captain`, ejer 5/10 + 25/10, slukket med `s5_profiles_v3`).** Den sjette rolle, højst én pr. hold og kun på et hold med en kaptajn. Han er beskyttet, betaler ingen hjælperpris og arbejder aldrig. I samme gruppe får kaptajnen hjælpen først, og det hjælperne har tilovers, går til den delte kaptajn; de to får tilsammen aldrig mere end hjælperne betalte (§2e). Sidder de i hver sin gruppe, kører hver gruppes hjælpere for lederen i deres gruppe, og er kaptajnen ude, får den delte kaptajn hele hjælpen. Morgenudbrud kun med ordre, `protect` = følg angreb, aldrig jagt-arbejder (som kaptajnen); i endagsløb forsvarer holdet den af lederne der passer bedst til ruten. AI-hold i etapeløb får en delt kaptajn når holdet er stort nok og nummer to i klassementsevne ligger tæt på kaptajnen. API'et afviser rollen i løb på ældre revisioner; en stray række køres uden beskyttelse og uden spontane udbrud. Kode: `mechanics/sharedCaptain.ts`. **Spurtkaptajn som eneste leder** (#6321, ejer 25/10): udtagelsen kræver en kaptajn *eller* en spurtkaptajn; motoren beskytter ham allerede (`protectedRoleOrder`).
 
-**Enhver flade der viser eller sætter en rolle bruger disse seks** (`co_captain` kun i løb på `s5_profiles_v3`). Opfind aldrig et sjette ord, og oversæt aldrig til et andet sæt i en ny flade. `race_stage_roles` udfases efter v4-flippet; `race_entries.race_role` består.
+**Luksushjælper (`luxury_helper`, EN "Luxury helper", ejer 26/10 designbord S10 + 27/10).** En **genvej til etapeplanen**: en hjælper med standardplanen *Bliv i læ* (spar dig) → *Kør tempo* fra toppen af stigningen før den afgørende (dvs. på den afgørende stigning; ved en topankomst uden tidligere stigning: de sidste km) → *Kør i mål* når han er sat. Højst én pr. hold. Planen er den samme som etapeplanens flade foreslår (`stagePlan.suggestStagePlan` med `luxuryHelper`), og motoren kører den præcis som en gemt plan (`stagePlanEngine.ts`); spilleren kan flytte stigningen eller give ham en anden plan i etapeplanen, og en gemt plan vinder. Ingen afgørende stigning (flad etape, ingen stigning) = hjælperens forslag; enkeltstart = ingen plan. Rollens eneste egen regel er den en plan ikke kan udtrykke: sidder kaptajnen ikke i hans gruppe (sat, knækket, udgået), kører han **sit eget løb** — i holdspillet en fri rolle uden pris og uden støtte; den delte kaptajn dækker overtagelsen af de øvrige hjælpere. I motoren er han en `helper` med markøren `Entrant.luxury_helper` (`adapters/entrantAdapter.ts`), så morgenudbrud, uheld, AI og planens validering behandler ham som en hjælper (`mechanics/luxuryHelper5982.ts`). API'et afviser rollen i løb på ældre revisioner; i ældre revisioner og den gamle motor er han en almindelig hjælper.
+
+**Enhver flade der viser eller sætter en rolle bruger disse syv** (`co_captain` og `luxury_helper` kun i løb på `s5_profiles_v3`). Opfind aldrig et sjette ord, og oversæt aldrig til et andet sæt i en ny flade. `race_stage_roles` udfases efter v4-flippet; `race_entries.race_role` består.
 
 ---
 
@@ -729,7 +736,7 @@ Auditten 5/9: *"Holdspillet findes ikke i v4. Kaptajnbeskyttelse og hjælperstø
 | **Kaptajnen beskyttes** | score-løft, `teamComponent` | CP-faktor **over 1** |
 | **Hjælperen betaler** | negativ score-delta, `workCost` | CP-faktor **under 1** |
 
-Den beskyttede er **sprint-kaptajnen på flade etaper, kaptajnen ellers** — med fald tilbage på den anden, 1:1 med v3. `helper` og `hunter` arbejder; `free_role` bidrager 0 og betaler 0, ubetinget ([#2376](https://github.com/NicolaiDolmer/CyclingZone/issues/2376)). Der skal være mindst én arbejdende holdkammerat i **samme gruppe** — gruppen *er* nærhedsmodellen i v4, samme definition som §2c's *"tæt på"*.
+Den beskyttede er **sprint-kaptajnen på flade etaper, kaptajnen ellers** — med fald tilbage på den anden, 1:1 med v3. Luksushjælperen (`luxury_helper`, #5982, kun `s5_profiles_v3`) betaler og støtter efter sin etapeplan som enhver hjælper, og er en fri rolle når kaptajnen ikke er i hans gruppe (§1). `helper` og `hunter` arbejder; `free_role` bidrager 0 og betaler 0, ubetinget ([#2376](https://github.com/NicolaiDolmer/CyclingZone/issues/2376)). Der skal være mindst én arbejdende holdkammerat i **samme gruppe** — gruppen *er* nærhedsmodellen i v4, samme definition som §2c's *"tæt på"*.
 
 **Valutaen er CP, ikke W'.** Første wiring-forsøg brugte den anaerobe reserve og var *bit-identisk* med og uden hold: siden [#4604](https://github.com/NicolaiDolmer/CyclingZone/issues/4604)'s relative krav-tempo ligger ingen over CP i normaltilstanden, så W' genoplades fuldt hvert segment og enhver delta er visket ud før næste segment læser den. CP er den vedvarende akse — den styrer både gruppens tempo og klatre-selektionen, altså netop de to steder v3's holdspil også slår igennem.
 

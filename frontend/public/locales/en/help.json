@@ -1036,11 +1036,11 @@
         "steps": [
           "Every rider ages up by one year.",
           "Form decays toward 50: about 25% of each rider's end-of-season form carries into the new season.",
-          "Fatigue resets to 0 for every rider.",
+          "New seasons start with a little base fatigue for every rider. Before the first race, rest lowers form, normal training holds it and hard training raises it.",
           "Injuries are NOT reset. They carry over unchanged.",
           "Peak plans are unaffected by the changeover.",
           "Season wages are paid during the changeover. Rider values do not move during the changeover itself: they update next time, at the normal Sunday update.",
-          "The new season starts after a short break between seasons, which the managers voted on. The date of the first stage is on the race calendar, so you have time to pick your squads."
+          "Training continues every day between seasons and counts toward the new season. Your chosen program still applies, missed training is picked up automatically, and Train now also works before the first race. Check the calendar for the first race."
         ]
       }
     },
@@ -1749,7 +1749,7 @@
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
-        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort for the day. The effort steps have their own paragraph just below. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort for the day. The effort steps have their own paragraph just below. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role. Conflicting orders cannot be combined. The explanation beside the choice tells you what to change before saving."
       },
       "effortSteps": {
         "title": "Effort steps",
@@ -1805,6 +1805,10 @@
       "teamworkAllOut": {
         "title": "All out and teamwork",
         "text": "Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead."
+      },
+      "luxuryHelper": {
+        "title": "The luxury helper",
+        "text": "A luxury helper is a domestique with a ready-made stage plan: he saves his legs in the bunch, then rides for your captain on the decisive climb, the last climb of the day. In the stage plan you can move his work to another climb or give him a different plan. If your captain is dropped or out of the race, he rides his own race. A team can have one luxury helper, and only in races on the newest rules."
       },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",

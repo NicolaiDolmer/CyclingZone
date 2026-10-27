@@ -42,6 +42,7 @@ function selectionDirty(draft, serverSel) {
     || (draft.sprint_captain_id ?? null) !== (s.sprint_captain_id ?? null)
     || (draft.hunter_id ?? null) !== (s.hunter_id ?? null)
     || (draft.co_captain_id ?? null) !== (s.co_captain_id ?? null) // #7239
+    || (draft.luxury_helper_id ?? null) !== (s.luxury_helper_id ?? null) // #5982
     || fa !== fb;
 }
 
@@ -298,6 +299,8 @@ export default function RaceHubBoard() {
     free_role_ids: col.selection?.free_role_ids || [],
     // #7239: den delte kaptajn foelger med kladden, saa et gem herfra aldrig nulstiller ham.
     co_captain_id: col.selection?.co_captain_id ?? null,
+    // #5982: luksushjaelperen ligesaa.
+    luxury_helper_id: col.selection?.luxury_helper_id ?? null,
   };
   // Ugemte ændringer (ejer 28/6: INGEN auto-gem — eksplicit Gem-knap).
   const columnDirty = (col) => selectionDirty(drafts[col.id], col.selection);
@@ -335,6 +338,7 @@ export default function RaceHubBoard() {
         riderIds: ids, captainId: sel.captain_id, sprintCaptainId: sel.sprint_captain_id, hunterId: sel.hunter_id,
         coCaptainId: sel.co_captain_id, freeRoleIds: sel.free_role_ids || [],
         sprintLeaderAllowed: col.sprint_leader_allowed === true, suitabilityOf,
+        luxuryHelperId: sel.luxury_helper_id ?? null, // #5982
       });
       const body = { rider_ids: ids, ...roles };
       // #2173: putColumn returnerer et resultat-objekt i stedet for selv at kalde setError.
@@ -452,6 +456,7 @@ export default function RaceHubBoard() {
       hunter_id: cur.hunter_id === riderId ? null : cur.hunter_id,
       free_role_ids: (cur.free_role_ids || []).filter((id) => id !== riderId),
       co_captain_id: cur.co_captain_id === riderId ? null : (cur.co_captain_id ?? null), // #7239
+      luxury_helper_id: cur.luxury_helper_id === riderId ? null : (cur.luxury_helper_id ?? null), // #5982
     });
   };
   // #3428: "Ryd udtagelse" pr. løb — samme kladde-mønster som removeRider,
@@ -469,6 +474,7 @@ export default function RaceHubBoard() {
       captain_id: keep(cur.captain_id), sprint_captain_id: keep(cur.sprint_captain_id), hunter_id: keep(cur.hunter_id),
       free_role_ids: (cur.free_role_ids || []).filter((id) => kept.includes(id)),
       co_captain_id: keep(cur.co_captain_id), // #7239
+      luxury_helper_id: keep(cur.luxury_helper_id), // #5982
     });
   };
 
@@ -491,6 +497,8 @@ export default function RaceHubBoard() {
     if (sprint === riderId) sprint = null;
     if (hunter === riderId) hunter = null;
     if (coCaptain === riderId) coCaptain = null;
+    // #5982: faar luksushjaelperen en anden rolle i boardet, er han ikke laengere luksushjaelper.
+    const luxuryHelper = sel.luxury_helper_id === riderId ? null : (sel.luxury_helper_id ?? null);
     if (role === "captain") captain = riderId;
     else if (role === "sprint_captain") sprint = riderId;
     else if (role === "hunter") hunter = riderId;
@@ -503,7 +511,7 @@ export default function RaceHubBoard() {
     const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
     const roles = resolveBoardRoles({
       riderIds, captainId: captain, sprintCaptainId: sprint, hunterId: hunter, coCaptainId: coCaptain, freeRoleIds,
-      sprintLeaderAllowed: col.sprint_leader_allowed === true, suitabilityOf,
+      sprintLeaderAllowed: col.sprint_leader_allowed === true, suitabilityOf, luxuryHelperId: luxuryHelper,
     });
     commitDraft(col, { rider_ids: riderIds, ...roles });
   }

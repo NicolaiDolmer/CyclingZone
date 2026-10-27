@@ -165,11 +165,12 @@ test("GC_RELEVANT_PROFILES og FLAT_LEADOUT_PROFILES er disjunkte", () => {
 // flade skal fejle her, ikke opdages i prod (modsigelse 3, nu løst).
 // #5981 (ejer 5/10 + 25/10): den sjette rolle, delt kaptajn ('co_captain'), er
 // ejer-besluttet; låsen følger med (RACE_ENGINE_RULES.md §1).
+// #5982 (ejer 26/10, S10): den syvende, luksushjaelper ('luxury_helper'), er ejer-besluttet.
 
-test("VALID_RACE_ROLES er præcis de seks kanoniske værdier fra RACE_ENGINE_RULES.md §1", () => {
+test("VALID_RACE_ROLES er præcis de syv kanoniske værdier fra RACE_ENGINE_RULES.md §1", () => {
   assert.deepEqual(
     [...VALID_RACE_ROLES].sort(),
-    ["captain", "co_captain", "free_role", "helper", "hunter", "sprint_captain"]
+    ["captain", "co_captain", "free_role", "helper", "hunter", "luxury_helper", "sprint_captain"]
   );
 });
 

@@ -8,6 +8,8 @@
     "noPlanLocked": "Pas de plan. Il a couru selon son rôle.",
     "noPlanOrders": "Pas encore de plan. Il court avec tes consignes : {orders}.",
     "noPlanOrdersLocked": "Pas de plan. Il a couru avec tes consignes : {orders}.",
+    "luxuryHelperPlan": "Aucun plan enregistré. En équipier de luxe, il suit la suggestion.",
+    "luxuryHelperPlanLocked": "Aucun plan enregistré. En équipier de luxe, il a suivi la suggestion.",
     "noFit": "Ce plan ne correspond plus à son rôle. Choisis-en un nouveau.",
     "colPlan": "Plan pour l'étape {number}",
     "colPlanRaceDay": "Plan pour la course",
@@ -489,6 +491,7 @@
       "captain": "Leader",
       "sprintCaptain": "Leader sprint",
       "coCaptain": "Co-leader",
+      "luxuryHelper": "Équipier de luxe",
       "hunter": "Chasseur d'échappée",
       "rider": "Équipier"
     },
@@ -764,6 +767,8 @@
     "sprintCaptain": "Leader sprint (facultatif)",
     "coCaptain": "Co-leader (facultatif)",
     "coCaptainHint": "Protégé comme le leader. Le leader est aidé en premier.",
+    "luxuryHelper": "Équipier de luxe (facultatif)",
+    "luxuryHelperHint": "S'économise, puis travaille pour le leader dans l'ascension décisive.",
     "hunter": "Chasseur d'échappée",
     "freeRole": "Rôle libre",
     "noRole": "Aucun",
@@ -866,6 +871,7 @@
       "selection_co_captain_requires_captain": "Un co-leader a besoin d'un leader. Choisis d'abord un leader.",
       "selection_role_not_selected": "Les coureurs à rôle doivent faire partie de la sélection.",
       "selection_role_overlap": "Le leader, le leader sprint et le chasseur d'échappée doivent être des coureurs différents.",
+      "selection_luxury_helper_not_available": "L'équipier de luxe n'est pas disponible dans cette course.",
       "selection_rider_injured": "Les coureurs blessés ne peuvent pas être sélectionnés.",
       "selection_rider_over_age": "Les coureurs au-delà de la limite d'âge de la course ne peuvent pas être sélectionnés.",
       "selection_rider_not_on_team": "Tu ne peux sélectionner que tes propres coureurs.",
@@ -964,7 +970,8 @@
       "co_captain": "co-leader",
       "helper": "équipier",
       "hunter": "chasseur d'échappée",
-      "free_role": "rôle libre"
+      "free_role": "rôle libre",
+      "luxury_helper": "équipier de luxe"
     },
     "errors": {
       "stage_roles_invalid_body": "Impossible d'enregistrer les consignes. Réessaie.",
@@ -978,10 +985,16 @@
       "stage_roles_rider_abandoned": "L'un des coureurs est hors course et ne peut plus recevoir de consigne.",
       "stage_roles_race_completed": "Cette course est terminée, les consignes ne peuvent donc plus être modifiées.",
       "generic": "Impossible d'enregistrer les consignes. Réessaie.",
-      "stage_roles_conflict": "Ta tactique a été modifiée dans une autre fenêtre. La dernière version est chargée. Vérifie-la et enregistre à nouveau."
+      "stage_roles_conflict": "Ta tactique a été modifiée dans une autre fenêtre. La dernière version est chargée. Vérifie-la et enregistre à nouveau.",
+      "team_orders_grupetto_with_break": "Un coureur en Gruppetto ne peut pas tenter l’échappée.",
+      "team_orders_grupetto_with_train": "Un coureur en Gruppetto ne peut pas rouler dans le train du sprint.",
+      "team_orders_work_with_break": "Un coureur qui roule pour le leader ne peut pas tenter l’échappée.",
+      "team_orders_train_with_break": "Un coureur du train du sprint ne peut pas tenter l’échappée."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Pas avec le Gruppetto.", "notWithWork": "Un coureur qui roule pour le leader ne peut pas prendre l’échappée.", "notWithBreak": "Pas pendant qu’il tente l’échappée.", "notWithTrain": "Le train du sprint reste dans le peloton jusqu’au final." },
+    "pickOne": "Choisis-en un",
     "title": "Tactique",
     "locksAt": "Verrouillage {time}",
     "locked": "Verrouillé",
@@ -1031,7 +1044,8 @@
       "sprint_captain": "Leader sprint",
       "hunter": "Chasseur d'échappée",
       "helper": "Équipier",
-      "free_role": "Rôle libre"
+      "free_role": "Rôle libre",
+      "luxury_helper": "Équipier de luxe"
     },
     "save": "Enregistrer la tactique",
     "saving": "Enregistrement…",
@@ -1063,7 +1077,8 @@
       "sprint_captain": "leader sprint",
       "hunter": "chasseur d'échappée",
       "helper": "équipier",
-      "free_role": "rôle libre"
+      "free_role": "rôle libre",
+      "luxury_helper": "équipier de luxe"
     }
   },
   "stageOrders": {
@@ -1144,7 +1159,8 @@
         "sprint_captain": "Il a le train de sprint et le lancement.",
         "hunter": "Il part à la chasse de l'échappée.",
         "helper": "Il travaille pour les leaders.",
-        "free_role": "Il court sa propre course."
+        "free_role": "Il court sa propre course.",
+        "luxury_helper": "Il s'économise, puis travaille pour le leader dans l'ascension décisive. L'ascension se change dans le plan d'étape."
       }
     },
     "team": {
@@ -1479,6 +1495,12 @@
         "favorite_crack_tt": "{rider} faiblit dans la seconde moitié et perd du temps.",
         "all_out_gain": "{rider} se donne à fond dans la dernière ascension et gagne du temps.",
         "all_out_cracked": "{rider} se donne à fond et se vide dans la dernière ascension.",
+        "bad_day_fatigue": "{rider} a connu un jour sans. Les jours difficiles précédents ont laissé des traces.",
+        "bad_day_form": "{rider} a connu un jour sans. Il manquait de forme.",
+        "bad_day_illness": "{rider} a connu un jour sans. Il était malade.",
+        "bad_day_rain": "{rider} a connu un jour sans sous la pluie.",
+        "bad_day_wind": "{rider} a connu un jour sans dans le vent.",
+        "bad_day_heat": "{rider} a connu un jour sans dans la chaleur.",
         "finale_attack": "{rider} attaque dans la finale.",
         "ttt_rider_dropped": "{rider} décroche de son équipe.",
         "sprint_decided": "Ça se joue sur la ligne entre {rider} et les poursuivants.",

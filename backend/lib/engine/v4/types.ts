@@ -178,6 +178,9 @@ export type Entrant = {
   // led oven i formen. Klemmes IKKE af formens 0-100-skala, saa en rytter med form 100
   // ogsaa faar sin top. Udeladt = ingen top/dyk paa dagen (byte-identisk med foer).
   form_peak_points?: number | null;
+  // #5982 (valgfrit, KUN s5_profiles_v3): luksushjaelper (mechanics/luxuryHelper5982.ts). Rollen er "helper";
+  // entrantAdapter saetter markoeren fra race_role 'luxury_helper'. Udeladt = byte-identisk med foer.
+  luxury_helper?: true;
 };
 
 // M5 (udbruds-ordrer)/M6 (leadout)/M14 (AI-taktik). Formen er en AABEN
@@ -225,6 +228,10 @@ export type StageInput = {
   // (mechanics/gcThreat.ts); legacy ignorerer feltet helt. Udeladt under
   // orders_gc_v1 = "missing" (aerlig diagnose, aldrig et opdigtet nul-hul).
   gc_context?: GcContext | null;
+  // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): dagsformen med forklaring
+  // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
+  // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.
+  day_form_6649?: true | null;
 };
 
 /** #5955: taktisk regel-revision. Kun "orders_gc_v1" aktiverer ordrestyret morgenudbrud. */
@@ -793,6 +800,8 @@ export type SegmentHookContext = {
   // #6938 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): v3-tilvalgene (styrt-udgang pr. terraen). Udeladt = v2.
   // #6937 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen og lead-outens pris. Udeladt = v2.
   s5ProfilesV3?: true;
+  // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3 + StageInput.day_form_6649): dagsformen med forklaring. Udeladt = som foer.
+  dayForm6649?: true;
   // #5978 (ADDITIVT og VALGFRIT, KUN orders_gc_v3): hjulsidderne ud fra tilstanden
   // ved segmentets start, samme saet som tempoet blev regnet paa (breakaway.ts).
   ownRidersOnWheel?: ReadonlyArray<{ team_id: string; group_id: string; rider_ids: string[]; protected_rider_id: string }>;

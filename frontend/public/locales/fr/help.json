@@ -1806,6 +1806,10 @@
         "title": "À fond et travail d'équipe",
         "text": "Mets un coureur à fond et il cesse complètement de payer ce prix, car il dépense tout pour lui-même."
       },
+      "luxuryHelper": {
+        "title": "L'équipier de luxe",
+        "text": "Un équipier de luxe est un équipier avec un plan d'étape tout prêt : il s'économise dans le peloton, puis roule pour ton leader dans l'ascension décisive, la dernière de la journée. Dans le plan d'étape, tu peux déplacer son travail vers une autre ascension ou lui donner un autre plan. Si ton leader est lâché ou hors course, il fait sa propre course. Une équipe peut avoir un équipier de luxe, et seulement dans les courses aux règles les plus récentes."
+      },
       "weatherAndCobbles": {
         "title": "Météo et pavés",
         "text": "Chaque étape a sa propre météo, et la page de l'étape l'affiche : sec, pluie ou vent. Le sec est la base calme, rien ne change. La pluie ralentit toute l'étape. Le vent mord surtout là où la route est dégagée ; une ascension est abritée par sa propre pente. Les deux pénalisent le plus les coureurs faibles en descente et en durabilité. La pluie augmente aussi le risque de chute sur les pavés, le gravel et les descentes audacieuses. Quand la pluie ou le vent ont coûté des forces aux coureurs, le récit de la course le dit en une ligne, jamais avec un nombre attaché. Un contre-la-montre par équipes se court sans météo."
