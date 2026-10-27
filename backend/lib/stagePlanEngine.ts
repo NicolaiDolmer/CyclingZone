@@ -68,7 +68,8 @@ export type StagePlanRuntime = {
   riderIds: string[];
 };
 
-const ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "helper", "hunter", "free_role"]);
+// #7239: delt kaptajn valideres som leder (stagePlan.ts), ikke som fri rolle.
+const ROLES: ReadonlySet<string> = new Set(["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"]);
 
 /** Rutens skift-punkter fra motorens egne vejpunkter (samme index som race_stage_profiles.climbs). */
 export function stagePlanRouteFromV4(route: RouteV2): StagePlanRoute {
@@ -147,6 +148,8 @@ function teamLeaderId(riderId: string, state: EngineState, entrants: Readonly<Re
   const racing = (id: string) => state.riders[id]?.status === "racing";
   const teamIds = Object.keys(entrants).filter((id) => entrants[id].team_id === team && racing(id)).sort();
   return teamIds.find((id) => entrants[id].role === "captain")
+    // #7239: er kaptajnen ude, kører holdet for den delte kaptajn (spec §5, "vejen afgør").
+    ?? teamIds.find((id) => entrants[id].role === "co_captain")
     ?? teamIds.find((id) => entrants[id].role === "sprint_captain")
     ?? null;
 }
