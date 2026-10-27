@@ -31,7 +31,7 @@ function copy(sel) {
     hunterId: sel?.hunterId ?? null,
     freeRoleIds: Array.isArray(sel?.freeRoleIds) ? [...sel.freeRoleIds] : [],
     coCaptainId: sel?.coCaptainId ?? null, // #7239: delt kaptajn
-    luxuryHelperId: sel?.luxuryHelperId ?? null, // #5982: luksushjaelper
+    ...(sel?.luxuryHelperId != null ? { luxuryHelperId: sel.luxuryHelperId } : {}), // #5982: luksushjaelper (kun naar sat; ellers uaendret form)
   };
 }
 
