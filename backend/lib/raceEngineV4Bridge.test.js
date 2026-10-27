@@ -850,3 +850,16 @@ test("#6156 buildV4StageInput: s5_profiles_v2 med formPeaks=false ser ALDRIG top
   const on = Object.fromEntries(peakStubInput("s5_profiles_v2").startlist.map((e) => [e.rider_id, e]));
   assert.ok(on.peaking.form_peak_points > 0, "default (flag taendt) laegger stadig toppen paa");
 });
+
+// #6649 (review): dagsformen er SLUKKET. Broen saetter kun day_form_6649 naar kalderen
+// eksplicit beder om det, og kun under s5_profiles_v3; raceRunner sender det aldrig.
+test("#6649 buildV4StageInput: day_form_6649 kun ved eksplicit dayForm6649=true under s5_profiles_v3", () => {
+  const build = (rulesRevision, extra = {}) => buildV4StageInput({
+    modules: PEAK_STUB_MODULES, entrants: PEAK_FIELD, seedString: "race:6649:dayform", stageNumber: 1,
+    stageProfile: { stage_number: 1, profile_type: "mountain", distance_km: 150 },
+    rulesRevision, ...extra,
+  });
+  assert.equal("day_form_6649" in build("s5_profiles_v3"), false, "default: slukket, ogsaa under v3");
+  assert.equal(build("s5_profiles_v3", { dayForm6649: true }).day_form_6649, true);
+  assert.equal("day_form_6649" in build("s5_profiles_v2", { dayForm6649: true }), false, "aeldre revisioner: aldrig");
+});

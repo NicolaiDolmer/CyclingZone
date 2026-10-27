@@ -2,6 +2,12 @@
 
 Ejer 26/10 (designbord S6): dagsform pr. rytter og dag ud fra træthed, form, sygdom og vejr, aldrig ren tilfældighed, og altid forklaret bagefter i løbsloggen ("havde en dårlig dag" + hvorfor). Målbånd "som virkeligheden" pr. løbsgruppe: `v3Gates.bestRiderWinShare` i den private tærskelfil. Ejer-go på tallene før merge.
 
+## Status: ikke klar, slukket
+
+- **Målet er ikke nået.** Gaten (`v3Gates.bestRiderWinShare` grøn i alle løbsgrupper) er ikke grøn: Grand Tours og monumenterne ligger over båndet (§5). PR'en forbliver draft, og #7153 får ikke KLAR, før gaten er grøn og ejeren har sagt go på tallene.
+- **Kontakten er slukket.** Broen (`buildV4StageInput`) sætter kun `day_form_6649`, når kalderen eksplicit sender `dayForm6649: true`, og kun under `s5_profiles_v3`. Intet prod-kaldsted (raceRunner) gør det, så en merge ændrer ingen løb, heller ikke igangværende v3-løb. Tænd er et separat, ejer-gated skridt: et flag i `app_config` læst i raceRunner og båret i run-identiteten og genafspilningen (som `race_form_peaks`), efter ejer-go på tallene og den live effekt.
+- Målingen tænder dagsformen med `CZ_DAY_FORM_6649=1` (kun dev-værktøjet `tourScorecard.mjs`); uden den måler testporten og motor-benchen spillet, som det kører.
+
 Repoet er offentligt (hard rule 17): her står ingen målte tal eller bånd. De ligger i `balance-internals/6649/` og `private-handoffs/6649/result.md`.
 
 ## 1. Målingen
@@ -14,9 +20,9 @@ Repoet er offentligt (hard rule 17): her står ingen målte tal eller bånd. De 
 - **Løbsgrupper**: monument, one_day, stage_race_stage, stage_race_gc, gt_stage, gt_gc, også pr. trup (u23, junior).
 - **Vagter**: G16-G19 fra testporten og `gcFromBreakaway` (klassementsvinderen i et morgenudbrud / vandt fra et udbrud der holdt), som scriptet også måler.
 
-Kontrol: en tvilling på samme kode (main + denne PR), hvor kun broens `day_form_6649` er slået fra. Genmålt 27/10 efter main-merge: tvillingen reproducerer før-målingen, og dagsformens effekt er den samme som 26/10.
+Kontrol: samme kode (main + denne PR) med og uden `CZ_DAY_FORM_6649=1`; uden den er broens `day_form_6649` slået fra. Genmålt 27/10 efter main-merge: tvillingen reproducerer før-målingen, og dagsformens effekt er den samme som 26/10.
 
-Kørsel: `motorTestport.mjs --candidate=s5_profiles_v3 --baseline=s5_profiles_v3 --from-dir=<S5-eksporten> --seeds=8 --track-fatigue --no-bench`, derefter `dayForm6649.mjs --dir=<out>/races --cache-dir=<S5-eksporten>`.
+Kørsel: `CZ_DAY_FORM_6649=1 motorTestport.mjs --candidate=s5_profiles_v3 --baseline=s5_profiles_v3 --from-dir=<S5-eksporten> --seeds=8 --track-fatigue --no-bench`, derefter `dayForm6649.mjs --dir=<out>/races --cache-dir=<S5-eksporten>`.
 
 ### Hvad baseline viste (kvalitativt)
 
@@ -48,7 +54,8 @@ Frontend: `stageTimelineFilm.describeEvent` → `detail.film.event.bad_day_<års
 
 ## 4. Kroge (minimal kobling)
 
-- `segmentLoop.ts`: start-tilstanden (`applyDayForm6649`) og events ved mål (`dayForm6649Events`), begge gated på `isS5ProfilesV3OrLater`.
+- `raceEngineV4Bridge.js`: kontakten `dayForm6649` (default `false`); feltet `day_form_6649` sættes kun ved `true` under v3.
+- `segmentLoop.ts`: start-tilstanden (`applyDayForm6649`) og events ved mål (`dayForm6649Events`), begge gated på `dayForm6649On` (feltet + `isS5ProfilesV3OrLater`).
 - `mechanics/teamTimeTrial.ts` + `individualTimeTrial.ts` + `index.ts`: samme for enkeltstart og holdtidskørsel via optionen `dayForm6649`.
 - `finale.ts`: dagsformens vægt i massespurten (`dayForm6649FinaleScale`, 1 uden for v3 = bit-identisk).
 - `physiology.ts` er ikke ændret; modulet genbruger `deriveCp`, `formCpModifier`, `formPeakCpModifier`.
@@ -64,7 +71,7 @@ Endagsløbenes og de bakkede etapers lave sejrsandel for den bedste skyldes udbr
 ## 6. Kendte grænser
 
 - Testportens endagsløb har ingen træthed eller form på startlisten (kun etapeløbene får det mellem etaperne via `--track-fatigue`). I prod sender broen begge, så træthed og form virker stærkere der end i målingen.
-- `s5_profiles_v3` er den aktuelle revision siden 26/10: en merge ændrer også igangværende v3-løb fra næste etape. Ejer-gated.
+- `s5_profiles_v3` er den aktuelle revision siden 26/10: når kontakten tændes, ændres også igangværende v3-løb fra næste etape. Derfor er tænd ejer-gated og ikke en del af denne PR.
 - Den bedste ud fra `demand_vector` er en tilnærmelse; motoren afgør bjerg via CP og finalen via sin egen efterspørgsel.
 
 Refs #6649 · #7258 (udbrudsvagterne) · #6156 (formtoppe) · #6938 (sygdom af træthed)
