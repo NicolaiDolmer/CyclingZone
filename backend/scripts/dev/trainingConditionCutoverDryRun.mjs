@@ -7,7 +7,7 @@ import { raceFatigueLoad } from '../../lib/raceFatigue.js';
 import { effortFatigueMultiplier } from '../../lib/raceRoles.js';
 import { copenhagenDateString } from '../../lib/copenhagenTime.js';
 import { orderEffortByRiderForStage, resolvedEffortByRiderForStage } from '../../lib/raceStageRoles.js';
-import { seasonResetFatigue } from '../../lib/seasonFatigueReset.js';
+import { SEASON_FATIGUE_RESET, seasonResetFatigue } from '../../lib/seasonFatigueReset.js';
 import { seasonResetForm } from '../../lib/seasonFormReset.js';
 import { settleTrainingDateCondition } from '../../lib/trainingDateCondition.js';
 
@@ -27,7 +27,9 @@ export function replayOpeningFromSeasonReset({ riderId, targetDate, proof, previ
   if (!Number.isFinite(Date.parse(proof.configured_at)) || Date.parse(proof.configured_at) > Date.parse(meta.transition_at)) throw new Error('Historical reset configuration required');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(proof.seasonStartDate)) throw new Error('Canonical season start date required');
   let condition = {
-    fatigue: seasonResetFatigue({ fatigue: previousReport.fatigue, mode: proof.fatigueMode }),
+    // Det niveau resettet faktisk brugte (fase-loggen), ikke dagens konstant (#7282).
+    fatigue: seasonResetFatigue({ fatigue: previousReport.fatigue, mode: proof.fatigueMode,
+      startFatigue: Number.isFinite(reset.startFatigue) ? reset.startFatigue : SEASON_FATIGUE_RESET.LEGACY_SEASON_START_FATIGUE }),
     form: seasonResetForm({ form: previousReport.form, riderId, season: meta.to_season_number, ...proof.formConfig }),
   };
   let date = proof.seasonStartDate;
