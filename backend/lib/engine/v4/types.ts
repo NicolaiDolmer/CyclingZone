@@ -227,7 +227,7 @@ export type StageInput = {
   gc_context?: GcContext | null;
   // #6649 (ADDITIVT og VALGFRIT, KUN s5_profiles_v3, SLUKKET): dagsformen med forklaring
   // (mechanics/dayForm6649.ts). Broen saetter feltet kun naar kalderen eksplicit sender
-  // dayForm6649=true; intet prod-kaldsted goer det endnu (ejer-go). Udeladt = den gamle dagsform.
+  // dayForm6649=true (raceRunner: kun ved app_config day_form_6649 = "on"). Udeladt = den gamle dagsform.
   day_form_6649?: true | null;
 };
 

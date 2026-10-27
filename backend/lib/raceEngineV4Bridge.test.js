@@ -851,8 +851,9 @@ test("#6156 buildV4StageInput: s5_profiles_v2 med formPeaks=false ser ALDRIG top
   assert.ok(on.peaking.form_peak_points > 0, "default (flag taendt) laegger stadig toppen paa");
 });
 
-// #6649 (review): dagsformen er SLUKKET. Broen saetter kun day_form_6649 naar kalderen
-// eksplicit beder om det, og kun under s5_profiles_v3; raceRunner sender det aldrig.
+// #6649 (review): dagsformen er SLUKKET som default. Broen saetter kun day_form_6649 naar
+// kalderen eksplicit beder om det, og kun under s5_profiles_v3; raceRunner sender det kun
+// ved app_config day_form_6649 = "on" (dayForm6649Flag.test.js).
 test("#6649 buildV4StageInput: day_form_6649 kun ved eksplicit dayForm6649=true under s5_profiles_v3", () => {
   const build = (rulesRevision, extra = {}) => buildV4StageInput({
     modules: PEAK_STUB_MODULES, entrants: PEAK_FIELD, seedString: "race:6649:dayform", stageNumber: 1,

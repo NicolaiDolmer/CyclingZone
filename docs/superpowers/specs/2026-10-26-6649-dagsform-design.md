@@ -1,11 +1,14 @@
 # #6649 Dagsform: den bedste vinder som i virkeligheden
 
-Ejer 26/10 (designbord S6): dagsform pr. rytter og dag ud fra træthed, form, sygdom og vejr, aldrig ren tilfældighed, og altid forklaret bagefter i løbsloggen ("havde en dårlig dag" + hvorfor). Målbånd "som virkeligheden" pr. løbsgruppe: `v3Gates.bestRiderWinShare` i den private tærskelfil. Ejer-go på tallene før merge.
+Ejer 26/10 (designbord S6): dagsform pr. rytter og dag ud fra træthed, form, sygdom og vejr, aldrig ren tilfældighed, og altid forklaret bagefter i løbsloggen ("havde en dårlig dag" + hvorfor). Målbånd "som virkeligheden" pr. løbsgruppe: `v3Gates.bestRiderWinShare` i den private tærskelfil. Ejer 27/10: go på dagsformen fra S5's første etape (status nedenfor).
 
-## Status: ikke klar, slukket
+## Status: klar, slukket ved merge
 
-- **Målet er ikke nået.** Gaten (`v3Gates.bestRiderWinShare` grøn i alle løbsgrupper) er ikke grøn: Grand Tours og monumenterne ligger over båndet (§5). PR'en forbliver draft, og #7153 får ikke KLAR, før gaten er grøn og ejeren har sagt go på tallene.
-- **Kontakten er slukket.** Broen (`buildV4StageInput`) sætter kun `day_form_6649`, når kalderen eksplicit sender `dayForm6649: true`, og kun under `s5_profiles_v3`. Intet prod-kaldsted (raceRunner) gør det, så en merge ændrer ingen løb, heller ikke igangværende v3-løb. Tænd er et separat, ejer-gated skridt: et flag i `app_config` læst i raceRunner og båret i run-identiteten og genafspilningen (som `race_form_peaks`), efter ejer-go på tallene og den live effekt.
+- **Ejer 27/10:** dagsformen tændes fra S5's første etape. Grand Tours og monumenterne, der stadig ligger over båndet (§5), er et eget spor; de holder ikke dagsformen tilbage.
+- **Slukket ved merge.** Kontakten er `app_config`-rækken `day_form_6649` (`backend/lib/dayForm6649Flag.js`). Kun den eksakte værdi `"on"` tænder; rækken mangler, `"off"`, `"beta"`, boolean `true` eller en opslagsfejl = slukket. Rækken findes ikke ved merge, så en merge ændrer ingen løb, heller ikke igangværende v3-løb.
+- **Tændes efter merge med ejerens go:** ét `app_config`-skridt, ingen deploy. Rul tilbage ved at sætte rækken til `"off"` eller slette den.
+- **Kæden:** `raceRunner.resolveRaceEngineV4` læser flaget én gang pr. afvikling (whole-race) / pr. etape-invokation (stage-by-stage), som `race_form_peaks`, fail closed. Tændt markerer den motoren; `v4DayForm6649Arg` lægger `dayForm6649: true` i motor-argumenterne og i `input_checksum`, kun under `s5_profiles_v3`. Broen (`buildV4StageInput`) sætter derefter `day_form_6649`. Fordi flaget ligger i argumenterne, genskaber #1857-genafspilningen (`engine_input_snapshots`) det uden ændring i snapshot-formatet.
+- **Slukket = byte-identisk med main:** ingen nøgle i motor-argumenterne, uændret `input_checksum`, samme output (`backend/lib/dayForm6649Flag.test.js`). Tændt under en ældre revision har ingen effekt.
 - Målingen tænder dagsformen med `CZ_DAY_FORM_6649=1` (kun dev-værktøjet `tourScorecard.mjs`); uden den måler testporten og motor-benchen spillet, som det kører.
 
 Repoet er offentligt (hard rule 17): her står ingen målte tal eller bånd. De ligger i `balance-internals/6649/` og `private-handoffs/6649/result.md`.
@@ -54,6 +57,7 @@ Frontend: `stageTimelineFilm.describeEvent` → `detail.film.event.bad_day_<års
 
 ## 4. Kroge (minimal kobling)
 
+- `dayForm6649Flag.js` + `raceRunner.js`: `app_config` `day_form_6649` (kun `"on"`) → `v4Engine.dayForm6649` → `v4DayForm6649Arg` i motor-argumenterne og `input_checksum` (begge stier).
 - `raceEngineV4Bridge.js`: kontakten `dayForm6649` (default `false`); feltet `day_form_6649` sættes kun ved `true` under v3.
 - `segmentLoop.ts`: start-tilstanden (`applyDayForm6649`) og events ved mål (`dayForm6649Events`), begge gated på `dayForm6649On` (feltet + `isS5ProfilesV3OrLater`).
 - `mechanics/teamTimeTrial.ts` + `individualTimeTrial.ts` + `index.ts`: samme for enkeltstart og holdtidskørsel via optionen `dayForm6649`.
@@ -71,7 +75,7 @@ Endagsløbenes og de bakkede etapers lave sejrsandel for den bedste skyldes udbr
 ## 6. Kendte grænser
 
 - Testportens endagsløb har ingen træthed eller form på startlisten (kun etapeløbene får det mellem etaperne via `--track-fatigue`). I prod sender broen begge, så træthed og form virker stærkere der end i målingen.
-- `s5_profiles_v3` er den aktuelle revision siden 26/10: når kontakten tændes, ændres også igangværende v3-løb fra næste etape. Derfor er tænd ejer-gated og ikke en del af denne PR.
+- `s5_profiles_v3` er den aktuelle revision siden 26/10: når kontakten tændes, ændres også igangværende v3-løb fra næste etape (stage-by-stage læser flaget pr. etape). Derfor er tænd ejer-gated og ikke en del af denne PR; ejerens plan er at tænde før S5's første etape.
 - Den bedste ud fra `demand_vector` er en tilnærmelse; motoren afgør bjerg via CP og finalen via sin egen efterspørgsel.
 
 Refs #6649 · #7258 (udbrudsvagterne) · #6156 (formtoppe) · #6938 (sygdom af træthed)

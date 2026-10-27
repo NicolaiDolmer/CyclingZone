@@ -649,9 +649,9 @@ export function buildV4StageInput({
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
   if (isOrdersGcRulesRevision(rulesRevision)) {
     input.rules_revision = rulesRevision;
-    // #6649 (SLUKKET, KUN s5_profiles_v3): dagsformen med forklaring kun naar kalderen
-    // eksplicit sender dayForm6649=true. Intet prod-kaldsted (raceRunner) goer det: taend
-    // kraever ejer-go paa tallene og et flag i run-identiteten (som race_form_peaks).
+    // #6649 (KUN s5_profiles_v3): dagsformen med forklaring kun naar kalderen eksplicit
+    // sender dayForm6649=true. raceRunner goer det kun naar app_config day_form_6649 = "on"
+    // (dayForm6649Flag.js); vaerdien er med i run-identiteten og #1857-genafspilningen.
     if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
     // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
     input.gc_context = buildGcContext({
