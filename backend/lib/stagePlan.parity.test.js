@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import * as backend from "./stagePlan.ts";
 import * as frontend from "../../frontend/src/components/race/StagePlanModel.ts";
 
-const ROLES = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
+const ROLES = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"];
 const PROFILES = ["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "cobbles", "itt", null];
 const CLIMB_SETS = [
   [],

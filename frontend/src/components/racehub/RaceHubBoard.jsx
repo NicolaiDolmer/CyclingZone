@@ -17,7 +17,7 @@ import DivisionStartLists from "./DivisionStartLists.jsx";
 import { draftBindingMap, mergeBindingMaps, findSelectionOverlaps, groupColumnsByGameDay, shouldShowClearAllDialog, raceDayOverlaps, raceDayClashes, toDisplayRaceDay, isTrainNowLockedInColumn, trainNowLockSummary } from "../../lib/raceHubLogic.js";
 import TrainNowLockBanner from "./TrainNowLockBanner.tsx"; // #6383
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
-import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
+import { resolveBoardRoles } from "../../lib/raceSelectionLogic.js";
 import ClearAllDialog from "./ClearAllDialog.jsx";
 import { reportLoadFailure } from "../../lib/actionTelemetry.js";
 import { isJsonContentType, responseContentType } from "../../lib/raceHubResponseGuard.ts";
@@ -41,6 +41,7 @@ function selectionDirty(draft, serverSel) {
     || (draft.captain_id ?? null) !== (s.captain_id ?? null)
     || (draft.sprint_captain_id ?? null) !== (s.sprint_captain_id ?? null)
     || (draft.hunter_id ?? null) !== (s.hunter_id ?? null)
+    || (draft.co_captain_id ?? null) !== (s.co_captain_id ?? null) // #7239
     || fa !== fb;
 }
 
@@ -295,6 +296,8 @@ export default function RaceHubBoard() {
     sprint_captain_id: col.selection?.sprint_captain_id ?? null,
     hunter_id: col.selection?.hunter_id ?? null,
     free_role_ids: col.selection?.free_role_ids || [],
+    // #7239: den delte kaptajn foelger med kladden, saa et gem herfra aldrig nulstiller ham.
+    co_captain_id: col.selection?.co_captain_id ?? null,
   };
   // Ugemte ændringer (ejer 28/6: INGEN auto-gem — eksplicit Gem-knap).
   const columnDirty = (col) => selectionDirty(drafts[col.id], col.selection);
@@ -323,23 +326,17 @@ export default function RaceHubBoard() {
     const putColumn = async (col, ids) => {
       const sel = draftOf(col);
       // Roller skal være distinkte (backend afviser captain==sprint/hunter med role_overlap).
-      // Når fase 1's beholdte sæt IKKE indeholder draft-kaptajnen, vælg en fallback der ikke
-      // kolliderer med sprint/jæger; tvinges vi til ids[0] som er en anden rolle, ryd den rolle.
-      let sprint = ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null;
-      let hunter = ids.includes(sel.hunter_id) ? sel.hunter_id : null;
-      let captain = ids.includes(sel.captain_id) ? sel.captain_id : null;
-      // #2376: free_role_ids filtreres til IDS (den delmængde der rent faktisk gemmes i
-      // denne fase — fase 1 gemmer kun det beholdte sæt, ikke hele kladden).
-      let freeRoles = (sel.free_role_ids || []).filter((id) => ids.includes(id));
-      if (!captain && ids.length) {
-        // #2028: fortjenst-baseret fallback (stærkeste rytter), ikke positionel ids[0].
-        const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
-        captain = pickFallbackCaptain({ riderIds: ids, sprintId: sprint, hunterId: hunter, suitabilityOf });
-        if (captain === sprint) sprint = null;
-        if (captain === hunter) hunter = null;
-        freeRoles = freeRoles.filter((id) => id !== captain);
-      }
-      const body = { rider_ids: ids, captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter, free_role_ids: freeRoles };
+      // Rollerne filtreres til IDS (fase 1 gemmer kun det beholdte sæt, ikke hele kladden).
+      // #7239: en kaptajn tilføjes kun når holdet ellers ikke har en lovlig leder; i v3-løb
+      // er spurtkaptajnen alene lovlig (sprint_leader_allowed), samme regel som panelet.
+      // #2028: fallbacken vælger efter fortjeneste (stærkeste rytter), ikke positionel ids[0].
+      const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
+      const roles = resolveBoardRoles({
+        riderIds: ids, captainId: sel.captain_id, sprintCaptainId: sel.sprint_captain_id, hunterId: sel.hunter_id,
+        coCaptainId: sel.co_captain_id, freeRoleIds: sel.free_role_ids || [],
+        sprintLeaderAllowed: col.sprint_leader_allowed === true, suitabilityOf,
+      });
+      const body = { rider_ids: ids, ...roles };
       // #2173: putColumn returnerer et resultat-objekt i stedet for selv at kalde setError.
       // Én PUT der fejler må IKKE stoppe de andre kolonners gem (det var rod-årsagen: et
       // `break` efterlod resten ugemt, mens KUN én fejl blev vist → manageren troede alt
@@ -454,6 +451,7 @@ export default function RaceHubBoard() {
       sprint_captain_id: cur.sprint_captain_id === riderId ? null : cur.sprint_captain_id,
       hunter_id: cur.hunter_id === riderId ? null : cur.hunter_id,
       free_role_ids: (cur.free_role_ids || []).filter((id) => id !== riderId),
+      co_captain_id: cur.co_captain_id === riderId ? null : (cur.co_captain_id ?? null), // #7239
     });
   };
   // #3428: "Ryd udtagelse" pr. løb — samme kladde-mønster som removeRider,
@@ -470,6 +468,7 @@ export default function RaceHubBoard() {
       rider_ids: kept,
       captain_id: keep(cur.captain_id), sprint_captain_id: keep(cur.sprint_captain_id), hunter_id: keep(cur.hunter_id),
       free_role_ids: (cur.free_role_ids || []).filter((id) => kept.includes(id)),
+      co_captain_id: keep(cur.co_captain_id), // #7239
     });
   };
 
@@ -486,26 +485,27 @@ export default function RaceHubBoard() {
     const riderIds = sel.rider_ids || [];
     if (!riderIds.includes(riderId)) return;
     let captain = sel.captain_id, sprint = sel.sprint_captain_id, hunter = sel.hunter_id;
+    let coCaptain = sel.co_captain_id ?? null;
     let freeRoleIds = (sel.free_role_ids || []).filter((id) => id !== riderId);
     if (captain === riderId) captain = null;
     if (sprint === riderId) sprint = null;
     if (hunter === riderId) hunter = null;
+    if (coCaptain === riderId) coCaptain = null;
     if (role === "captain") captain = riderId;
     else if (role === "sprint_captain") sprint = riderId;
     else if (role === "hunter") hunter = riderId;
+    else if (role === "co_captain") coCaptain = riderId;
     else if (role === "free_role") freeRoleIds = [...freeRoleIds, riderId];
-    // Kaptajn er påkrævet og skal være forskellig fra sprint/jæger/free_role. Find en
-    // rytter uden anden rolle; findes ingen (lille trup hvor alle har en rolle), tag den
-    // første og fjern dens evt. anden rolle, så rollerne forbliver distinkte (ellers role_overlap).
-    if (!captain) {
-      // #2028: fortjenst-baseret fallback (stærkeste rytter), ikke positionel ids[0].
-      const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
-      captain = pickFallbackCaptain({ riderIds, sprintId: sprint, hunterId: hunter, suitabilityOf });
-      if (captain === sprint) sprint = null;
-      if (captain === hunter) hunter = null;
-      freeRoleIds = freeRoleIds.filter((id) => id !== captain);
-    }
-    commitDraft(col, { rider_ids: riderIds, captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter, free_role_ids: freeRoleIds });
+    // Rollerne skal være distinkte (ellers role_overlap). #7239: mangler kaptajnen, vælges
+    // kun en ny når holdet ellers ikke har en lovlig leder; i v3-løb er spurtkaptajnen
+    // alene lovlig (sprint_leader_allowed), samme regel som udtagelsespanelet.
+    // #2028: fallbacken vælger efter fortjeneste (stærkeste rytter), ikke positionel ids[0].
+    const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
+    const roles = resolveBoardRoles({
+      riderIds, captainId: captain, sprintCaptainId: sprint, hunterId: hunter, coCaptainId: coCaptain, freeRoleIds,
+      sprintLeaderAllowed: col.sprint_leader_allowed === true, suitabilityOf,
+    });
+    commitDraft(col, { rider_ids: riderIds, ...roles });
   }
 
   // #4306: en lykkedes afmelding rydder ALTID kolonnens lokale kladde bagefter, ellers

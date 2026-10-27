@@ -28,12 +28,12 @@ const abilities = Object.fromEntries(REGISTRY_ABILITY_KEYS.map((k) => [k, 35]));
 // #7195: pulled = rytterne der er hentet via Optag 2.0 (academy_intake source 'pull').
 function database(days: number, fail = false, pulled: string[] = ["academy"], pullFail = false) {
   return { from(table: string) {
-    const result = table === "rider_training_scores"
-      ? { count: days, error: fail ? { message: "unavailable" } : null }
+    const result = table === "riders"
+      ? { data: [{ id: "academy", rider_training_scores: [{ count: days }] }], error: fail ? { message: "unavailable" } : null }
       : table === "academy_intake"
         ? { data: pulled.map((rider_id) => ({ rider_id })), error: pullFail ? { message: "pull origin unavailable" } : null }
         : { data: [], error: null };
-    const query: any = { select() { return query; }, eq() { return query; }, in() { return query; },
+    const query: any = { select() { return query; }, eq() { return query; }, in() { return query; }, order() { return query; }, range() { return Promise.resolve(result); },
       then(resolve: any) { return Promise.resolve(result).then(resolve); } };
     return query;
   } };

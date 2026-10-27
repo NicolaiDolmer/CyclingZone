@@ -15,6 +15,7 @@ const DRAFT = {
   sprintCaptainId: "r2",
   hunterId: "r3",
   freeRoleIds: ["r2"],
+  coCaptainId: null,
 };
 
 test("udkastet kan læses igen for samme løb (fane-skift-tilfældet)", () => {
@@ -85,6 +86,15 @@ test("reconcile uden rytterliste kaster ikke managerens arbejde væk", () => {
 
 test("reconcile af et tomt udkast giver den tomme udtagelse", () => {
   assert.deepEqual(reconcileSelectionDraft(null, [{ id: "r1" }]), {
-    riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [],
+    riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [], coCaptainId: null,
   });
+});
+
+test("#7239: den delte kaptajn huskes i udkastet og nulstilles hvis han faldt ud", () => {
+  const draft = { ...DRAFT, riderIds: ["r1", "r2", "r3", "r4"], coCaptainId: "r4" };
+  rememberSelectionDraft("race-co", draft);
+  assert.equal(readSelectionDraft("race-co")?.coCaptainId, "r4");
+  forgetSelectionDraft("race-co");
+  assert.equal(reconcileSelectionDraft(draft, [{ id: "r1" }, { id: "r4" }]).coCaptainId, "r4");
+  assert.equal(reconcileSelectionDraft(draft, [{ id: "r1" }]).coCaptainId, null);
 });
