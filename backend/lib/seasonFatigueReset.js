@@ -51,6 +51,9 @@ export const SEASON_FATIGUE_RESET = Object.freeze({
   MODE: "full",
   // Træthed alle ryttere starter sæsonen på (gulv efter nulstillingen). Ejer 27/10, #7282.
   SEASON_START_FATIGUE: 20,
+  // Startniveauet før #7282. Fase-logs uden startFatigue er skrevet med det, så
+  // genafspilning af gamle sæsoner bruger det (aldrig dagens konstant).
+  LEGACY_SEASON_START_FATIGUE: 0,
   REST_DAYS: 3,
   DEFAULT_RECOVERY: 50, // rytter uden abilities-række → neutral recovery
   UPSERT_CHUNK: 500,
@@ -66,7 +69,7 @@ export async function isSeasonFatigueResetEnabled(supabase, opts = {}) {
  * REN KERNE — trætheden en rytter går ind til den nye sæson med.
  * Deterministisk, ingen tilfældighed, ingen DB, ingen Date.
  *
- * @param {{fatigue:number|null, recoveryAbility?:number|null, mode?:string, restDays?:number}} args
+ * @param {{fatigue:number|null, recoveryAbility?:number|null, mode?:string, restDays?:number, startFatigue?:number}} args
  * @returns {number} heltal 0-100
  */
 export function seasonResetFatigue({
@@ -74,6 +77,7 @@ export function seasonResetFatigue({
   recoveryAbility = SEASON_FATIGUE_RESET.DEFAULT_RECOVERY,
   mode = SEASON_FATIGUE_RESET.MODE,
   restDays = SEASON_FATIGUE_RESET.REST_DAYS,
+  startFatigue = SEASON_FATIGUE_RESET.SEASON_START_FATIGUE,
 } = {}) {
   if (!VALID_MODES.has(mode)) throw new Error(`seasonResetFatigue: ukendt mode '${mode}'`);
 
@@ -81,7 +85,7 @@ export function seasonResetFatigue({
   const start = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 0;
 
   if (mode === "off") return start;
-  if (mode === "full") return SEASON_FATIGUE_RESET.SEASON_START_FATIGUE;
+  if (mode === "full") return startFatigue;
 
   const days = Math.max(0, Math.floor(Number(restDays) || 0));
   const rec = Number.isFinite(Number(recoveryAbility))
@@ -173,6 +177,7 @@ export async function applySeasonFatigueReset({
     dryRun,
     mode,
     restDays,
+    startFatigue: SEASON_FATIGUE_RESET.SEASON_START_FATIGUE,
     riders: conditions.length,
     changed,
     avgBefore: Math.round((sumBefore / conditions.length) * 10) / 10,

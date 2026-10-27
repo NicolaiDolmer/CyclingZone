@@ -15,7 +15,13 @@ function resetReplay() {
 }
 
 test('documented reset and subsequent events reconstruct forward without current-fatigue subtraction', () => {
-  assert.deepEqual(replayOpeningFromSeasonReset(resetReplay()), { fatigue: SEASON_FATIGUE_RESET.SEASON_START_FATIGUE, form: 34, source: 'season-reset-forward:reset-log:old-report' });
+  assert.deepEqual(replayOpeningFromSeasonReset(resetReplay()), { fatigue: SEASON_FATIGUE_RESET.LEGACY_SEASON_START_FATIGUE, form: 34, source: 'season-reset-forward:reset-log:old-report' });
+});
+
+test('a reset log that records its start level is replayed at that level, not at the legacy one', () => {
+  const replay = resetReplay();
+  replay.proof.phaseLog.meta.phases[0].startFatigue = SEASON_FATIGUE_RESET.SEASON_START_FATIGUE;
+  assert.equal(replayOpeningFromSeasonReset(replay).fatigue, SEASON_FATIGUE_RESET.SEASON_START_FATIGUE);
 });
 
 test('forward reconstruction rejects failed reset, missing dates and unaccounted race activity', () => {
