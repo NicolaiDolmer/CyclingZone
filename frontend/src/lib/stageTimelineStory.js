@@ -16,6 +16,7 @@ export const STORY_EVENT_WEIGHTS = {
   breakaway_survived: 76,
   sprint_decided: 68,
   favorite_crack: 62,
+  bad_day: 60, // #6649: en favorit med en dårlig dag forklarer hvorfor han ikke vandt
   breakaway_caught: 56,
   breakaway_formed: 42,
   group_merged: 38,

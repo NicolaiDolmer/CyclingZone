@@ -118,6 +118,18 @@ features:
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
 
+  - id: race-day-form-6649
+    area: race-engine
+    title_en: Day form with causes
+    title_da: Dagsform ud fra træthed, form, sygdom og vejr
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6649
+    verified: 2026-10-27
+    decision: taend
+    decide_by: 2026-11-08
+    note: Tændes med ejer-go.
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision
@@ -194,11 +206,12 @@ features:
     area: race-engine
     title_en: Stage intention choice
     title_da: Indsatsvalg pr. etape
-    state: building
+    state: live
+    flag: race_day_intention_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-26
-    note: UI live; tænding afventer ejer-go (#7163 kalibreret).
+    verified: 2026-10-27
+    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
 
   - id: luxury-helper-role
     area: race-engine
@@ -289,13 +302,11 @@ features:
     area: race-day
     title_en: Stage plan along the route
     title_da: Etapeplan langs ruten
-    state: dormant
+    state: live
     flag: stage_plan_v1
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-10-26
-    note: Seedet off; kun v3-løb. Ejeren tænder. #7003 er ikke epic (delt kaptajn).
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
+    verified: 2026-10-27
+    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
 
   - id: race-library-v2
     area: stats
@@ -386,7 +397,7 @@ features:
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
     verified: 2026-10-15
-    note: Afløst af værdimodel v6 (#4449); koden fjernet i #6642.
+    note: Afløst af v6 (#4449).
 
   - id: rider-valuation-v5
     area: market
@@ -464,7 +475,7 @@ features:
     ssot: docs/RIDER_GENERATION.md
     epic: 5327
     verified: 2026-09-23
-    note: 'Kontakt (off) paa start-trup, AI-hold og relaunch. Flip er ejer-gated.'
+    note: Kontakt (off); flip er ejer-gated.
 
   # --- training ------------------------------------------------------------
   - id: daily-training
@@ -738,7 +749,7 @@ features:
     state: building
     ssot: docs/CALENDAR_RULES.md
     verified: 2026-10-26
-    note: Flag auto_calendar_enabled har ingen række i prod (= off).
+    note: Ingen række i prod (= off).
     decision: ejer-beslutning
     decide_by: 2026-11-08
 
@@ -759,7 +770,7 @@ features:
     ssot: docs/SEASON_CUTOVER_RUNBOOK.md
     epic: 1155
     verified: 2026-10-17
-    note: Slukket 8/6 og fjernet 17/10 (#6796); sæsonskiftet er manuel admin-handling.
+    note: Fjernet 17/10 (#6796); sæsonskiftet er manuelt.
 
   - id: season-signup
     area: season
@@ -1223,4 +1234,4 @@ features:
     state: retired
     epic: 2467
     verified: 2026-10-15
-    note: SurveyBanner.jsx slettet (#2467); kun seed-rækker tilbage i app_config.
+    note: SurveyBanner.jsx slettet (#2467).
