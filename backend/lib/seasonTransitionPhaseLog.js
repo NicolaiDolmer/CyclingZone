@@ -50,6 +50,10 @@ function summarizePhases(log) {
     // De additive faser fanger selv deres fejl og lægger { error } i loggen —
     // dem vil vi eksplicit kunne se i admin_log uden at grave i server-loggen.
     if (entry?.error) summary.error = String(entry.error).slice(0, 500);
+    // Bevis for genafspilning: det startniveau trætheds-resettet faktisk brugte (#7282).
+    if (entry?.phase === "season_fatigue_reset" && Number.isFinite(entry?.startFatigue)) {
+      summary.startFatigue = entry.startFatigue;
+    }
     return summary;
   });
 }
