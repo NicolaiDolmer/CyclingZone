@@ -268,6 +268,9 @@ export function isBlockingSeverity(severity) {
   return severity == null || severity === "P0" || severity === "P1";
 }
 
+/** Codex' rene kvittering (ingen fund) paa et review. */
+export const CODEX_CLEAN_RE = /didn['’]t find any major issues/i;
+
 /** "**Reviewed commit:** `fda8692284`" i en Codex-review-krop. */
 export function parseCodexReviewedCommit(body) {
   return String(body || "").match(/reviewed commit:\**\s*`?([0-9a-f]{7,40})/i)?.[1]?.toLowerCase() || null;
@@ -283,9 +286,15 @@ export function parseCodexReviewedCommit(body) {
  *   comments: {author, body}; reviews: {author, body, commit}; threads: {author, isResolved}
  * @returns {{ok: boolean, state: string, unresolved: number, detail: string}}
  */
-export function evaluateCodex({ comments = [], reviews = [], threads = [], headSha = null } = {}) {
+export function evaluateCodex({ comments = [], reviews = [], threads = [], headSha = null, independentlyVerifiedHead = false } = {}) {
   const isCodex = (x) => login(x.author) === CODEX_LOGIN;
-  const open = threads.filter((t) => isCodex(t) && !t.isResolved);
+  // Ejer 27/10: en uloest Codex-traad fra et AELDRE commit er forældet, naar Codex selv har
+  // kvitteret rent ("Didn't find any major issues") paa HEAD OG en uafhaengig Claude-markoer
+  // (clean/notes) gaelder HEAD. Saa skal ejeren aldrig klikke "Resolve" paa rettede fund.
+  const codexCleanOnHead = [...comments, ...reviews].some((c) => isCodex(c) && CODEX_CLEAN_RE.test(String(c.body || ""))
+    && shaMatchesHead(c.commit || parseCodexReviewedCommit(c.body), headSha));
+  const superseded = (t) => independentlyVerifiedHead && codexCleanOnHead && Boolean(t.commit) && !shaMatchesHead(t.commit, headSha);
+  const open = threads.filter((t) => isCodex(t) && !t.isResolved && !superseded(t));
   const unresolved = open.filter((t) => isBlockingSeverity(t.severity ?? codexSeverity(t.body))).length;
   const followUps = open.length - unresolved;
   const followUpNote = followUps > 0 ? ` (${followUps} P2/P3-fund blokerer ikke: saml dem i et opfoelgnings-issue)` : "";
@@ -363,8 +372,13 @@ export function evaluateGate({ author, draft = false, files = [], changedFiles =
   if (draft) {
     return { ok: false, risk, exempt: false, codex: null, claude: null, summary: "draft: gaten evalueres naar PR'en er ready" };
   }
-  const codex = evaluateCodex({ comments, reviews, threads, headSha });
   const claude = evaluateClaude([...comments, ...reviews], risk, headSha);
+  const claudeMarkerOnHead = findClaudeVerdict([...comments, ...reviews].filter((i) => {
+    const m = String(i.body || "").match(CLAUDE_MARKER_RE);
+    return Boolean(m) && shaMatchesHead(m[2], headSha);
+  }));
+  const independentlyVerifiedHead = claudeMarkerOnHead?.verdict === "clean" || claudeMarkerOnHead?.verdict === "notes";
+  const codex = evaluateCodex({ comments, reviews, threads, headSha, independentlyVerifiedHead });
   const ok = codex.ok && claude.ok;
   const summary = `${ok ? "OK" : "BLOKERET"} (${risk.level === "high" ? "hoejrisiko" : "lav risiko"}): Codex - ${codex.detail}; Claude - ${claude.detail}`;
   return { ok, risk, exempt: false, codex, claude, summary };
@@ -492,11 +506,11 @@ function fetchThreads(repo, pr) {
   const threads = [];
   let cursor = null;
   for (let page = 0; page < 20; page += 1) {
-    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body}}}}}}}`;
+    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body originalCommit{oid}}}}}}}}`;
     const args = ["api", "graphql", "-f", `query=${q}`, "-f", `o=${owner}`, "-f", `n=${name}`, "-F", `pr=${pr}`];
     if (cursor) args.push("-f", `c=${cursor}`);
     const conn = ghJson(args).data.repository.pullRequest.reviewThreads;
-    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body) });
+    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
     if (!conn.pageInfo.hasNextPage) break;
     cursor = conn.pageInfo.endCursor;
   }
