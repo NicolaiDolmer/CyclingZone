@@ -5520,6 +5520,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         primaryProfileType: dominantTerrain(profTypes),
         primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
+        sprint_leader_allowed: raceAllowsCoCaptain(race), // #7239: samme v3-gate som udtagelsespanelet
         // #6740: inaktiv for al eksisterende klient-logik (pulje, overlap, binding) ved
         // begge slags afmelding; kolonnens tekst læser did_not_start først.
         withdrawn: withdrawnSet.has(race.id),
