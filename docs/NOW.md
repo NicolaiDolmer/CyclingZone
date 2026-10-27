@@ -6,9 +6,10 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · **forsiden #6665:** ejeren siger selv hvornår.
 >
-> **🎯 Next action (26/10, efter PC1-natten):** Morgenkort i `pr-screens/morgen-26-10/` + status på #7153. **Før ons 28/10 kl. 11:00:** (1) tænd v3 `s5_profiles_v3` (d3-gaten IKKE BLOKERET; kun G16, godkendt 25/10; tjek G19 div. 1 6:17 på S5) (2) tænd `race_form_peaks` (moderat effekt, 0 data at reparere) (3) #7205 delt kaptajn: go til migration + #6321 ikke bag flag (4) #6668 AI-ungdomsløft før ons 14:30 (5) #7223 genstart + CYCLINGZONE-AQ. Merget i nat: #7161 #7208 #7217 #7227. Overvåg ons 20:00: første afregning med Form 2.0 + kurve B.
+> **🎯 Next action (26/10 kl. 23):** v3 er live (#7237); tilbagekøb live (#7251). Merget i aften: #7264 #7270 #7263 #7273 (migration verificeret) #7271 #7242 #7241. **Merge-kø: PC1-sessionen er afsluttet, ingen kø kører; næste Claude-session overtager #7153.** **Før ons 28/10 kl. 11:00:** (1) #7259 klassement/udbrud (ejer-go "mellem nu + opfølgning"; mangler Codex på HEAD) (2) #7265 delt kaptajn (ejer-go; venter på at #7249 frigiver `frontend/typecheck-baseline.json`) (3) #7268 sande tekster (ejer-go) (4) #7269 docs (5) **tirsdag efter kl. 01:** genstart bølgen på taktik-drafts #7267 #7272 #7275 #7276 #7277 #7279 #7280 #7281, kør motortests igen, så ejer-go på samlet tænding af taktik-pakken #7266 (6) #6668/#7245 apply kræver "kør" før ons 14:30 (7) verificér første v3-løb ons 11:05. Plan: [`RACE_ENGINE_PLAN.md`](RACE_ENGINE_PLAN.md).
+>
+> **🤖 Working agent:** Ingen aktiv session (PC1 afsluttet 26/10 kl. 23; DolmerPC kører ingen kø). Koordinering #7153.
 
-> **26/10 nat (PC1):** 2 baner (v3-testport + formtest) + #7217 lazy-tabel. 5 PR'er merget, intet tændt. Status på #7153.
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.

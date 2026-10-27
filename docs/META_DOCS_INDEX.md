@@ -23,6 +23,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/FORUM_RULES.md` | **SSOT for forummet:** diagnosen (usynligt, ikke dødt) · låste designvalg (opbakning ikke emoji, ingen notifikation ved alle opslag) · datamodel + RLS · den åbne Discord-rolle-beslutning (#4235, 15/9) |
 | `docs/CALENDAR_RULES.md` | Kalenderen: de to akser, tæthed, GT-regler, terræn-dækning, komposition |
 | `docs/RACE_ENGINE_RULES.md` | Motoren, ruter og taktik: de to frosne kontrakter, rolle-vokabularet, mekanik-kataloget M1-M14, invarianterne, faserne F0-F6 |
+| `docs/RACE_ENGINE_PLAN.md` | **SSOT for alt planlagt til motor og taktik**: beslutningslog, taktik-pakken, backlog med kilder, tests og spejling mod virkeligheden. Læs FØR motor- eller taktikarbejde |
 | `docs/PLANNING_CENTER_RULES.md` | Holdudtagelse og sæsonplanlægning: IA'en Z1-Z4, skrivevejen og dens rate limit, linserne, assistent-gaten |
 | `docs/ECONOMY_RULES.md` | Økonomi, værdi og løn |
 | `docs/PROGRESSION_RULES.md` | Rytterudvikling, træning, potentiale, lofter, rating, ryttertyper |
