@@ -232,7 +232,10 @@ export function parseArgs(argv) {
   const liftExisting = flag("lift-existing");
   const matchHumanLevel = flag("match-human-level") || liftExisting;
 
-  return { juniors, apply, ownerGo, json: get("json") === true, season, seed: seed >>> 0, out, matchHumanLevel, liftExisting };
+  const policyRaw = get("level-policy");
+  if (policyRaw !== undefined && !liftExisting) throw new Error("--level-policy requires --lift-existing");
+  const levelPolicy = policyRaw === undefined ? null : assertBalanceInternalsPath(policyRaw, { flag: "--level-policy" });
+  return { levelPolicy, juniors, apply, ownerGo, json: get("json") === true, season, seed: seed >>> 0, out, matchHumanLevel, liftExisting };
 }
 
 /**
@@ -355,6 +358,44 @@ export function levelQuantile(sorted, u) {
   return sorted[i];
 }
 
+/** Upper reference policy is supplied privately; no balance setting is embedded here. */
+export function buildLevelCeilings(profile, { upperQuantile } = {}) {
+  if (!Number.isFinite(upperQuantile) || upperQuantile < 0 || upperQuantile > 1) {
+    throw new Error("Private level policy requires upperQuantile in [0,1]");
+  }
+  return new Map([...profile].map(([age, levels]) => {
+    const xs = levels.filter(Number.isFinite).slice().sort((a, b) => a - b);
+    if (!xs.length) throw new Error("Empty human reference age");
+    const index = (xs.length - 1) * upperQuantile;
+    return [age, xs[Math.floor(index)] + (xs[Math.ceil(index)] - xs[Math.floor(index)]) * (index % 1)];
+  }));
+}
+
+/** Audit the complete scoped population, including unchanged/unmarked riders and fresh births. */
+export function auditYouthLevelCeilings({ riders, lift, newRows, levelCeilings, targetSeason }) {
+  const selected = new Map((lift?.rows ?? []).map(r => [r.riderId, r]));
+  const rows = riders.map(r => ({ riderId: r.id, age: ageForSeason(r.birthdate, targetSeason), level: selected.get(r.id)?.after ?? r.level, before: r.level, changed: selected.get(r.id)?.changed === true }));
+  rows.push(...newRows.map(r => ({ age: r.age, level: levelOf(r.mirror.abilities) })));
+  const missing = [], violations = [], existingAbove = [];
+  for (const row of rows) {
+    const ceiling = levelCeilings.get(row.age);
+    if (!Number.isFinite(ceiling) || !Number.isFinite(row.level)) missing.push(row);
+    else if (row.level > ceiling) {
+      if (!row.changed && row.level === row.before) existingAbove.push({ ...row, ceiling });
+      else violations.push({ ...row, ceiling });
+    }
+  }
+  return { checked: rows.length, missing, violations, existingAbove };
+}
+
+/** Private report: make approved exceptions distinguishable from blocked plans. */
+export function renderCeilingAudit(audit) {
+  if (!audit) return "";
+  return "\n## Human reference audit\n\n"
+    + `checked: ${audit.checked} · missing: ${audit.missing.length} · violations: ${audit.violations.length} · existingAbove: ${audit.existingAbove.length}\n\n`
+    + "```json\n" + JSON.stringify(audit, null, 2) + "\n```\n";
+}
+
 /** Truppens eget fødsels-bånd for en alder (samme valg som planen altid har truffet). */
 function nativeMarker(seed, age) {
   return age >= U23_BIRTH_AGE_MIN && age <= U23_BIRTH_AGE_MAX
@@ -397,7 +438,7 @@ export function rankBirthCandidates({ row, seed, age, target, tries = LEVEL_MATC
     const recipes = [
       nativeMarker(s, age),
       ...LEVEL_MATCH_ADULT_TIERS.map((tier) => makeBirthMarker({ tier, seed: s, age })),
-      makeBirthMarker({ tier: LEVEL_MATCH_ADULT_TIERS[0], seed: s, age, cap: target }),
+      ...LEVEL_MATCH_ADULT_TIERS.map((tier) => makeBirthMarker({ tier, seed: s, age, cap: target })),
     ];
     recipes.forEach((birth, r) => {
       const level = levelFor(birth);
@@ -413,11 +454,13 @@ export function rankBirthCandidates({ row, seed, age, target, tries = LEVEL_MATC
  * hver kandidat der prøves. Ligger alle over loftet, returneres den bedste med
  * `overValueCap: true`, så apply-gaten blokerer som før.
  */
-function chooseBirth({ payload, candidates, valueCap, mirrorOpts, idHint }) {
+function chooseBirth({ payload, candidates, valueCap, mirrorOpts, idHint, levelCeiling = Infinity, levelFloor = -Infinity }) {
   let first = null;
   for (const c of candidates) {
     const draw = { primary: payload.archetype_draw.primary, secondary: payload.archetype_draw.secondary ?? null, birth: c.birth };
     const mirror = mirrorDerive({ ...payload, archetype_draw: draw, id: idHint }, mirrorOpts);
+    const actualLevel = levelOf(mirror.abilities);
+    if (actualLevel > levelCeiling || actualLevel <= levelFloor) continue;
     const over = valueCap != null && mirror.base_value != null && mirror.base_value > valueCap;
     const pick = { draw, mirror, level: c.level, overValueCap: over };
     if (!first) first = pick;
@@ -453,6 +496,7 @@ export function planYouthSquads({
   valuationModel,
   productionValuationModel,
   existingByTeam = new Map(),
+  groupedOnly = false,
   levelProfile = null,
 }) {
   if (!Number.isInteger(juniorsPerTeam) || juniorsPerTeam < 0) {
@@ -472,8 +516,8 @@ export function planYouthSquads({
   const skipped = [];
   for (const team of ordered) {
     const existing = existingByTeam.get(team.id) ?? {};
-    const skipU23 = existing.u23Born === true;
-    const skipJuniors = Number(existing.juniors) > 0;
+    const skipU23 = existing.u23Born === true || (groupedOnly && !team.youthSquads?.includes("u23"));
+    const skipJuniors = Number(existing.juniors) > 0 || (groupedOnly && !team.youthSquads?.includes("junior"));
     const shapeRng = makeRng(deriveTeamSeed((base + SHAPE_OFFSET) >>> 0, team.id));
     // Størrelsen trækkes ALTID (også når truppen springes over), så U23-truppens
     // størrelse for et hold er den samme i dry-run, apply og en gentaget kørsel.
@@ -588,14 +632,15 @@ export function planYouthSquads({
  * @param {number} args.targetSeason
  * @param {Map<number,number[]>} args.levelProfile  fra buildHumanLevelProfile
  */
-export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel, rankCandidates = rankBirthCandidates }) {
+export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, valuationModel, productionValuationModel, groupedOnly = false, rankCandidates = rankBirthCandidates, levelCeilings = null }) {
   if (!(levelProfile instanceof Map)) throw new Error("planYouthLift: levelProfile er påkrævet");
   const mirrorOpts = { seasonNumber: targetSeason, valuationModel, productionValuationModel };
   const eligible = [];
-  const skipped = { graduated: 0, noMarker: 0, noTeam: 0 };
+  const skipped = { graduated: 0, noMarker: 0, noTeam: 0, noGroup: 0 };
   for (const r of riders || []) {
     const team = teamsById.get(r.team_id);
     if (!team) { skipped.noTeam++; continue; }
+    if (groupedOnly && !team.youthSquads?.includes(r.squad)) { skipped.noGroup++; continue; }
     const tier = r.archetype_draw?.birth?.tier;
     // Generatorens egne ryttere kendes på truppen: et tidligere løft kan have skiftet markørens tier.
     const generatorBorn = r.squad === "u23" || r.squad === "junior" || tier === "youth" || tier === U23_BIRTH_TIER;
@@ -617,44 +662,44 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
   for (const [age, list] of [...byAge].sort((a, b) => a[0] - b[0])) {
     list.sort((a, b) => (a.level - b.level) || String(a.rider.id).localeCompare(String(b.rider.id)));
     const profile = levelProfile.get(age);
-    // Rangordenen bevares EFTER kandidatvalget: hver rytters nye niveau må ikke ligge
-    // under den foregående (svagere) rytters nye niveau, selv om to nærmeste-kandidat-
-    // søgninger rammer deres stigende mål forskelligt. `floor` er løbende maksimum.
-    let floor = -Infinity;
-    list.forEach((e, i) => {
-      const target = levelQuantile(profile, (i + 0.5) / list.length);
-      const base = { riderId: e.rider.id, teamId: e.rider.team_id, squad: e.rider.squad, age, before: e.level, target };
-      const needsFloor = floor > e.level;
-      if (target == null || (target <= e.level && !needsFloor)) {
-        rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
-        floor = Math.max(floor, e.level);
-        return;
+    // Planlæg stærkest først: en svagere rytter må højst nå den stærkeres
+    // valgte niveau. Et fremadgående gulv kan ellers ratchette op, når de
+    // diskrete kandidater overskyder målet, indtil næste hold rammer værdiloftet.
+    // Den uændrede rytter er altid et sikkert alternativ inden for rangordenen.
+    let ceiling = levelCeilings ? levelCeilings.get(age) : Infinity;
+    if (!Number.isFinite(ceiling) && levelCeilings) throw new Error("Missing human reference ceiling for age");
+    const ageRows = [];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const e = list[i];
+      const rawTarget = levelQuantile(profile, (i + 0.5) / list.length);
+      const target = rawTarget == null ? null : Math.min(rawTarget, ceiling);
+      const base = { riderId: e.rider.id, teamId: e.rider.team_id, squad: e.rider.squad, age, before: e.level, target, ...(levelCeilings ? { referenceCeiling: levelCeilings.get(age) } : {}) };
+      if (target == null || target <= e.level) {
+        ageRows.push({ ...base, after: e.level, changed: false, overValueCap: false });
+        ceiling = Math.min(ceiling, e.level);
+        continue;
       }
       const ranked = rankCandidates({
-        row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target: Math.max(target, floor),
-      }).filter((c) => c.level >= floor);
+        row: e.rider, seed: Number(e.rider.archetype_draw.birth.seed), age, target: Math.min(target, ceiling),
+      }).filter((c) => c.level > e.level && c.level <= ceiling);
       const pick = chooseBirth({
         payload: e.rider,
         candidates: ranked,
         valueCap: aiValueCapForTier(e.team.tier),
         mirrorOpts,
         idHint: e.rider.id,
+        levelCeiling: levelCeilings ? ceiling : Infinity,
+        levelFloor: levelCeilings ? e.level : -Infinity,
       });
-      if (needsFloor && !pick) {
-        // Ingen kandidat når gulvet: rytteren ville stå under en svagere rytters nye niveau.
-        // Det er ikke et gyldigt løft; marker rækken, så apply blokerer (aldrig stille brud på rangordenen).
-        rows.push({ ...base, after: e.level, changed: false, overValueCap: false, rankFloorUnmet: true });
-        return;
+      if (!pick || pick.overValueCap) {
+        ageRows.push({ ...base, after: e.level, changed: false, overValueCap: false, noFeasibleLift: true });
+        ceiling = Math.min(ceiling, e.level);
+        continue;
       }
-      if (!pick || pick.level <= e.level) {
-        rows.push({ ...base, after: e.level, changed: false, overValueCap: false });
-        floor = Math.max(floor, e.level);
-        return;
-      }
-      floor = Math.max(floor, pick.level);
-      rows.push({
+      ceiling = levelCeilings ? levelOf(pick.mirror.abilities) : pick.level;
+      ageRows.push({
         ...base,
-        after: pick.level,
+        after: levelCeilings ? levelOf(pick.mirror.abilities) : pick.level,
         changed: true,
         overValueCap: pick.overValueCap,
         // Kun fødsels-markøren skiftes; resten af archetype_draw bevares.
@@ -662,7 +707,8 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
         previousBirth: e.rider.archetype_draw.birth,
         mirror: pick.mirror,
       });
-    });
+    }
+    rows.push(...ageRows.reverse());
   }
   return {
     targetSeason,
@@ -673,6 +719,7 @@ export function planYouthLift({ riders, teamsById, targetSeason, levelProfile, v
       changed: rows.filter((r) => r.changed).length,
       overValueCap: rows.filter((r) => r.overValueCap).length,
       rankFloorUnmet: rows.filter((r) => r.rankFloorUnmet).length,
+      noFeasibleLift: rows.filter((r) => r.noFeasibleLift).length,
     },
   };
 }
@@ -794,17 +841,25 @@ export function renderMarkdown(plan, summary) {
 export async function loadActiveAiTeams(supabase) {
   const [teams, pools] = await Promise.all([
     fetchAllRows(() => supabase.from("teams")
-      .select("id, name, is_ai, is_bank, is_frozen, is_test_account, league_division_id, pending_removal_at, retired_at, parked_at")
+      .select("id, name, is_ai, is_bank, is_frozen, is_test_account, league_division_id, u23_league_division_id, junior_league_division_id, pending_removal_at, retired_at, parked_at")
       .eq("is_ai", true)
       .order("id")),
-    fetchAllRows(() => supabase.from("league_divisions").select("id, tier, pool_index").order("id")),
+    fetchAllRows(() => supabase.from("league_divisions").select("id, tier, pool_index, squad, retired_at").order("id")),
   ]);
   const tierByPool = new Map(pools.map((p) => [p.id, p.tier]));
   return teams
     .filter((t) => t.is_ai === true && !t.is_bank && !t.is_frozen && !t.is_test_account)
     .filter((t) => t.league_division_id && tierByPool.has(t.league_division_id))
     .filter((t) => !t.pending_removal_at && !t.retired_at && !t.parked_at)
-    .map((t) => ({ id: t.id, name: t.name, tier: tierByPool.get(t.league_division_id) }));
+    .map((t) => ({
+      id: t.id, name: t.name, tier: tierByPool.get(t.league_division_id),
+      youthSquads: ["u23", "junior"].filter((squad) => pools.some((p) => p.id === t[`${squad}_league_division_id`] && p.squad === squad && !p.retired_at)),
+      youthPools: Object.fromEntries(["u23", "junior"].map((squad) => [squad, t[`${squad}_league_division_id`]])),
+      youthPoolLabels: Object.fromEntries(["u23", "junior"].map((squad) => {
+        const pool = pools.find((p) => p.id === t[`${squad}_league_division_id`]);
+        return [squad, pool ? `${squad} D${pool.tier} G${pool.pool_index}` : null];
+      })),
+    }));
 }
 
 /**
@@ -977,7 +1032,7 @@ export async function loadLevelInputs(supabase, aiTeamIds) {
       .select("id, is_ai, is_bank, is_frozen, is_test_account, parked_at, retired_at")
       .order("id")),
     fetchAllRows(() => supabase.from("riders")
-      .select("id, team_id, birthdate, potentiale, squad, is_retired, archetype_draw, generation_tag")
+      .select("id, team_id, birthdate, potentiale, valuation_type, squad, is_retired, archetype_draw, generation_tag")
       .in("squad", ["u23", "junior"])
       .order("id")),
   ]);
@@ -997,6 +1052,9 @@ export async function loadLevelInputs(supabase, aiTeamIds) {
 
 /** Grund til at et løft ikke må anvendes (null = ok). Tjekkes FØR applyPlan skriver nye kuld (#6668). */
 export function liftBlockedReason(lift) {
+  if (lift?.ceilingAudit && (lift.ceilingAudit.missing.length || lift.ceilingAudit.violations.length)) {
+    return "STOP: human reference ceiling not satisfied; apply blocked before first write";
+  }
   if (lift?.totals?.rankFloorUnmet > 0) {
     return `STOP: ${lift.totals.rankFloorUnmet} løft kan ikke bevare rangordenen (ingen kandidat når gulvet) — apply blokeret før første skrivning (#6668).`;
   }
@@ -1103,6 +1161,7 @@ export async function applyLift(supabase, lift, {
   log = console.log,
   writeRestore = () => {},
 } = {}) {
+  if (liftBlockedReason(lift)) throw new Error(liftBlockedReason(lift));
   if (lift.totals.overValueCap > 0) {
     throw new Error(`STOP: ${lift.totals.overValueCap} løft over AI-holdets værdiloft — apply blokeret (#2065)`);
   }
@@ -1128,10 +1187,13 @@ export async function applyLift(supabase, lift, {
     .in("id", chunk)
     .order("id"));
   const byId = new Map(persisted.map((r) => [r.id, r]));
+  const persistedLevels = changed.some(r => Number.isFinite(r.referenceCeiling)) ? await loadLevels(supabase, ids) : null;
   const mismatches = [];
   for (const r of changed) {
     const p = byId.get(r.riderId);
-    if (!p || p.base_value !== r.mirror.base_value || p.primary_type !== r.mirror.primary_type) {
+    if (!p || p.base_value !== r.mirror.base_value || p.primary_type !== r.mirror.primary_type
+      || (Number.isFinite(r.referenceCeiling) && (!Number.isFinite(persistedLevels?.get(r.riderId))
+        || persistedLevels.get(r.riderId) > r.referenceCeiling || persistedLevels.get(r.riderId) < r.before))) {
       // rider-type-write-ok: afvigelses-rapport (læst tilbage efter derive), skrives aldrig til riders.
       mismatches.push({ id: r.riderId, expected: { base_value: r.mirror.base_value, primary_type: r.mirror.primary_type }, got: p ?? null });
     }
@@ -1155,6 +1217,41 @@ export function renderLevelMarkdown(levels, lift) {
   }
   L.push("");
   return L.join("\n");
+}
+
+/** Privat gruppemåling af de planlagte AI-ryttere; ingen identiteter i rapporten. */
+export function summarizeYouthGroups({ teams, plan, lift }) {
+  const groups = new Map();
+  for (const team of teams) {
+    for (const squad of team.youthSquads ?? []) {
+      const id = team.youthPools[squad];
+      if (!groups.has(id)) groups.set(id, { group: team.youthPoolLabels[squad], teams: new Set(), rows: [], fresh: [] });
+      const group = groups.get(id);
+      group.teams.add(team.id);
+      group.rows.push(...(lift?.rows ?? []).filter((r) => r.teamId === team.id && r.squad === squad));
+      group.fresh.push(...plan.rows.filter((r) => r.teamId === team.id && r.squad === squad));
+    }
+  }
+  return [...groups.values()].map(({ group, teams: members, rows, fresh }) => ({
+    group, teams: members.size, riders: rows.length, newRiders: fresh.length,
+    changed: rows.filter((r) => r.changed).length,
+    noFeasibleLift: rows.filter((r) => r.noFeasibleLift).length,
+    before: describe(rows.map((r) => r.before)),
+    after: describe([...rows.map((r) => r.after), ...fresh.map((r) => levelOf(r.mirror.abilities))]),
+    maxOverCap: Math.max(0, ...[...rows.filter((r) => r.changed), ...fresh].map((r) => {
+      const cap = aiValueCapForTier(teams.find((t) => t.id === r.teamId).tier);
+      return cap == null ? 0 : r.mirror.base_value - cap;
+    })),
+  })).sort((a, b) => a.group.localeCompare(b.group));
+}
+
+export function renderYouthGroupsMarkdown(groups) {
+  const lines = ["## AI pr. aktiv ungdomsgruppe (kun løftsberettigede ryttere)", "",
+    "| Gruppe | AI-hold | Ryttere før | Nye | Løft | Uden muligt løft | Niveau før (gns/median) | Niveau efter (gns/median) | Max over værdiloft (ændrede/nye) |",
+    "|---|---:|---:|---:|---:|---:|---|---|---:|"];
+  const level = (x) => x.n ? `${x.mean.toFixed(1)} / ${fmt(x.median)}` : "-";
+  for (const g of groups) lines.push(`| ${g.group} | ${g.teams} | ${g.riders} | ${g.newRiders} | ${g.changed} | ${g.noFeasibleLift} | ${level(g.before)} | ${level(g.after)} | ${g.maxOverCap} |`);
+  return lines.join("\n") + "\n";
 }
 
 async function main() {
@@ -1195,11 +1292,16 @@ async function main() {
   const valuationModel = await loadValuationModel(supabase) ?? loadValuationModelById(DEFAULT_VALUATION_MODEL_ID);
   const productionValuationModel = await loadProductionValueModel(supabase);
 
-  const teams = await loadActiveAiTeams(supabase);
+  if (args.liftExisting && !args.levelPolicy) throw new Error("--lift-existing requires --level-policy from balance-internals");
+  const levelPolicy = args.levelPolicy ? JSON.parse(readFileSync(args.levelPolicy, "utf8")) : null;
+  if (levelPolicy) buildLevelCeilings(new Map(), levelPolicy);
+  const activeTeams = await loadActiveAiTeams(supabase);
+  const teams = args.liftExisting ? activeTeams.filter((t) => t.youthSquads.length > 0) : activeTeams;
   const population = await loadPopulation(supabase, teams.map((t) => t.id));
   // #6668: menneskeholdenes ungdoms-niveau pr. alder (målsæsonens alders-akse).
   const levelInputs = args.matchHumanLevel ? await loadLevelInputs(supabase, teams.map((t) => t.id)) : null;
   const levelProfile = levelInputs ? buildHumanLevelProfile(levelInputs.humanRows, { season: args.season }) : null;
+  const levelCeilings = levelPolicy ? buildLevelCeilings(buildHumanLevelProfile(levelInputs.humanRows, { season: args.season, minSamples: 1 }), levelPolicy) : null;
   const plan = planYouthSquads({
     teams,
     juniorsPerTeam: args.juniors,
@@ -1210,6 +1312,7 @@ async function main() {
     productionValuationModel,
     existingByTeam: population.existingByTeam,
     levelProfile,
+    groupedOnly: args.liftExisting,
   });
   const lift = args.liftExisting
     ? planYouthLift({
@@ -1219,8 +1322,14 @@ async function main() {
       levelProfile,
       valuationModel,
       productionValuationModel,
+      groupedOnly: true,
+      levelCeilings,
     })
     : null;
+  if (lift && levelCeilings) {
+    const scopedRiders = levelInputs.aiRiders.filter(r => teams.find(t => t.id === r.team_id)?.youthSquads.includes(r.squad));
+    lift.ceilingAudit = auditYouthLevelCeilings({ riders: scopedRiders, lift, newRows: plan.rows, levelCeilings, targetSeason: args.season });
+  }
   const levels = levelProfile
     ? summarizeLevels({ humanProfile: levelProfile, lift: lift ?? { rows: [] }, newRows: plan.rows })
     : null;
@@ -1228,9 +1337,10 @@ async function main() {
     ...population.load,
     aiSeniorBestAbility: await loadAiSeniorBestAbility(supabase, population.aiSeniorIds),
   });
+  const groups = args.liftExisting ? summarizeYouthGroups({ teams, plan, lift }) : [];
 
   if (args.json) {
-    console.log(JSON.stringify({ ...summary, lift: lift?.totals ?? null, levels }, null, 2));
+    console.log(JSON.stringify({ ...summary, lift: lift?.totals ?? null, ceilingAudit: lift?.ceilingAudit ?? null, levels, groups }, null, 2));
   } else {
     console.log("");
     console.log(`#5518 A6 - AI-ungdomstrupper til S${plan.targetSeason} (${args.apply ? "APPLY" : "DRY-RUN, read-only"})`);
@@ -1251,7 +1361,7 @@ async function main() {
   }
   if (args.out) {
     mkdirSync(dirname(args.out), { recursive: true });
-    writeFileSync(args.out, renderMarkdown(plan, summary) + (levels ? `\n${renderLevelMarkdown(levels, lift ?? { rows: [], totals: { riders: 0, changed: 0, overValueCap: 0 }, skipped: {} })}` : ""));
+    writeFileSync(args.out, renderMarkdown(plan, summary) + (levels ? `\n${renderLevelMarkdown(levels, lift ?? { rows: [], totals: { riders: 0, changed: 0, overValueCap: 0 }, skipped: {} })}` : "") + (groups.length ? `\n${renderYouthGroupsMarkdown(groups)}` : "") + renderCeilingAudit(lift?.ceilingAudit));
     console.log(`  rapport skrevet: ${relative(REPO_ROOT, args.out)}`);
   }
 
