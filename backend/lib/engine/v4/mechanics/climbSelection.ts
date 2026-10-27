@@ -379,7 +379,7 @@ const SUMMIT_RACE_SHORT_FINISH = Object.freeze({ maxKm: 7, maxGradientPct: 7 });
 // kun ser klatreevnen. KUN laeet (faktor > 1) taeller: hjaelpernes pris roerer ikke
 // selektionen, fordi jagten paa stigningerne bygger paa netop dem (#6804 P2.4). Bounded af
 // teamPlay's loft og gulv; vaegten er SHELTER_CLIMB_WEIGHT_V3.
-export const SHELTER_CLIMB_WEIGHT_V3 = 0.25; // ejer 27/10 (valg "0,25"): hjaelperne ca. dobbelt saa meget vaerd paa bjergene; traetheden bevarer sin effekt
+export const SHELTER_CLIMB_WEIGHT_V3 = 0.25; // ejer-valg 27/10; maaling og begrundelse privat (balance-internals/captain-shelter-27-10)
 export function shelteredClimbing(entrant: Entrant, teamCpFactor: number | undefined, s5ProfilesV3: boolean): number {
   const climbing = entrant.abilities.climbing;
   if (!s5ProfilesV3 || !Number.isFinite(teamCpFactor)) return climbing;
