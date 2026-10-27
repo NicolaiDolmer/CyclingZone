@@ -7,6 +7,7 @@ import {
   TRANSITION_PHASE_LOG_SOURCE,
 } from "./seasonTransitionPhaseLog.js";
 import { transitionToNextSeason } from "./seasonTransition.js";
+import { SEASON_FATIGUE_RESET } from "./seasonFatigueReset.js";
 
 // #2921 · Fase-logning af sæson-transitionen.
 // To ting skal holde:
@@ -87,6 +88,23 @@ test("SLUT-anker bærer fase-navne og de fejl faserne selv fangede", async () =>
   assert.deepEqual(meta.phases, [
     { phase: "insert_next_season" },
     { phase: "global_rank_decay", error: "rpc timeout" },
+    { phase: "sponsor_payout" },
+  ]);
+});
+
+test("SLUT-anker gemmer trætheds-resettets startniveau til genafspilning (#7282)", async () => {
+  const supabase = makeSupabase();
+  await logTransitionPhaseSafe({
+    supabase,
+    status: TRANSITION_PHASE_STATUS.COMPLETED,
+    ...BASE,
+    log: [
+      { phase: "season_fatigue_reset", ran: true, mode: "full", startFatigue: SEASON_FATIGUE_RESET.SEASON_START_FATIGUE, changed: 3 },
+      { phase: "sponsor_payout", startFatigue: 7 },
+    ],
+  });
+  assert.deepEqual(supabase.rows[0].meta.phases, [
+    { phase: "season_fatigue_reset", startFatigue: SEASON_FATIGUE_RESET.SEASON_START_FATIGUE },
     { phase: "sponsor_payout" },
   ]);
 });

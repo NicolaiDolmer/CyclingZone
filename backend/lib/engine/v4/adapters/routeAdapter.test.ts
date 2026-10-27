@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { routeFromStageProfileRow, type StageProfileRow } from "./routeAdapter.ts";
+import { buildElevationProfile } from "../../../routeElevationProfile.js";
 
 // ── Moderne raekke (segments/weather allerede gemt, #3855 F1) ────────────────
 
@@ -303,4 +304,65 @@ test("routeFromStageProfileRow: raekke UDEN egne climbs/sectors bruger stadig de
   const route = routeFromStageProfileRow(row);
   assert.ok(route.segments.length > 0);
   assert.equal(route.segments[route.segments.length - 1].to_km, 160);
+});
+
+// ── #7290: hoejdeprofilens bakker (kontakt, default fra) ─────────────────────
+
+/** En S5-formet flad etape: gemte segmenter + en hoejdeprofil bygget af den rigtige generator. */
+function flatStageWithProfile(): StageProfileRow {
+  const base = {
+    id: "hills-1", race_id: "race-hills-1", stage_number: 3,
+    profile_type: "flat", finale_type: "flat_sprint",
+    distance_km: 180, elevation_gain_m: 1500,
+    climbs: [{ name: "Côte", category: "4", crest_km: 120, length_km: 1.5, avg_gradient: 4.5, summit_finish: false }],
+    sprints: [{ name: "Sprint 1", km: 90, kind: "intermediate" }],
+    sectors: [],
+    segments: [
+      { kind: "flat" as const, from_km: 0, to_km: 118.5 },
+      { kind: "climb" as const, from_km: 118.5, to_km: 120, category: "4" as const, avg_gradient: 4.5, top_elevation_m: 300 },
+      { kind: "descent" as const, from_km: 120, to_km: 122, technicality: 2 as const },
+      { kind: "flat" as const, from_km: 122, to_km: 180 },
+    ],
+    weather: { kind: "sun" as const, wind_exposure: 0.4 },
+  };
+  return { ...base, elevation_profile: buildElevationProfile(base, "race-hills-1:elevation:3") };
+}
+
+test("#7290 kontakten er slukket som default: en raekke med hoejdeprofil giver byte-identisk rute", () => {
+  const row = flatStageWithProfile();
+  const { elevation_profile: _ignored, ...withoutProfile } = row;
+  const off = JSON.stringify(routeFromStageProfileRow(row));
+  assert.equal(off, JSON.stringify(routeFromStageProfileRow(withoutProfile as StageProfileRow)));
+  assert.equal(JSON.stringify(routeFromStageProfileRow(row, { profileHills: false })), off);
+  assert.equal(JSON.stringify(routeFromStageProfileRow(row, {})), off);
+});
+
+test("#7290 markoeren taender afledningen: flade stykker med bakker bliver rolling, resten er uaendret", () => {
+  const row = flatStageWithProfile();
+  const off = routeFromStageProfileRow(row);
+  const on = routeFromStageProfileRow({ ...row, routeProfileHills: true });
+  assert.deepEqual(on, routeFromStageProfileRow(row, { profileHills: true }));
+  // Profilen fra generatoren har bakker paa de flade strækninger.
+  assert.ok(on.segments.some((s) => s.kind === "rolling"), "forventede mindst een bakke");
+  assert.ok(!off.segments.some((s) => s.kind === "rolling"));
+  // Stigning og nedkoersel beholdes 1:1; alt andet end ruten er uaendret.
+  assert.deepEqual(on.segments.filter((s) => s.kind === "climb" || s.kind === "descent"), off.segments.filter((s) => s.kind === "climb" || s.kind === "descent"));
+  assert.deepEqual({ ...on, segments: null }, { ...off, segments: null });
+  // Sammenhaengende og daekker hele distancen; ingen segment over opdelingens loft.
+  assert.equal(on.segments[0].from_km, 0);
+  for (let i = 1; i < on.segments.length; i++) assert.equal(on.segments[i].from_km, on.segments[i - 1].to_km);
+  assert.equal(on.segments.at(-1)!.to_km, 180);
+  for (const s of on.segments) assert.ok(s.to_km - s.from_km <= 25 + 1e-9 || (s.kind !== "flat" && s.kind !== "rolling"));
+  // Deterministisk.
+  assert.equal(JSON.stringify(routeFromStageProfileRow({ ...row, routeProfileHills: true })), JSON.stringify(on));
+});
+
+test("#7290 optionen overstyrer markoeren (profileHills:false = slukket)", () => {
+  const row = { ...flatStageWithProfile(), routeProfileHills: true };
+  assert.deepEqual(routeFromStageProfileRow(row, { profileHills: false }), routeFromStageProfileRow(flatStageWithProfile()));
+});
+
+test("#7290 en raekke uden hoejdeprofil er uaendret selv med kontakten taendt", () => {
+  const { elevation_profile: _ignored, ...row } = flatStageWithProfile();
+  assert.deepEqual(routeFromStageProfileRow(row as StageProfileRow, { profileHills: true }), routeFromStageProfileRow(row as StageProfileRow));
 });
