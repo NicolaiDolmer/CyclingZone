@@ -867,3 +867,30 @@ test("ejer 20/10: kun P0/P1 (og ukendt grad) blokerer; P2/P3 noteres som opfoelg
   const unknown = evaluateCodex({ comments, reviews, threads: [t(null)], headSha: head });
   assert.equal(unknown.ok, false, "ukendt grad blokerer");
 });
+
+// ── Ejer 27/10: forældede Codex-traade blokerer ikke efter ren Codex + Claude-markoer paa HEAD ──
+const cleanReceipt = (commit) => ({ author: CODEX, association: "NONE", body: `<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Nice work!\n\n**Reviewed commit:** \`${commit.slice(0, 10)}\``, at: "2026-10-15T10:30:00Z" });
+const oldP1 = { isResolved: false, author: CODEX, severity: "P1", commit: OLD };
+const headP1 = { isResolved: false, author: CODEX, severity: "P1", commit: HEAD };
+
+test("superseded: P1-traad fra aeldre commit blokerer ikke, naar Codex er ren paa HEAD og Claude-markoeren gaelder HEAD", () => {
+  const r = evaluateGate({ author: "x", files: ["backend/lib/engine/v4/a.ts"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [oldP1], headSha: HEAD });
+  assert.equal(r.codex.unresolved, 0);
+  assert.equal(r.ok, true);
+});
+
+test("superseded: uden Claude-markoer paa HEAD blokerer den gamle traad stadig", () => {
+  const r = evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD)], threads: [oldP1], headSha: HEAD });
+  assert.equal(r.codex.unresolved, 1);
+  assert.equal(r.ok, false);
+});
+
+test("superseded: en blokerende markoer eller en ren kvittering paa et AELDRE commit fjerner ikke traaden", () => {
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("blocking")], threads: [oldP1], headSha: HEAD }).codex.unresolved, 1);
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(OLD), marker("clean")], threads: [oldP1], headSha: HEAD }).codex.unresolved, 1);
+});
+
+test("superseded: en traad paa selve HEAD eller uden kendt commit blokerer altid", () => {
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [headP1], headSha: HEAD }).codex.unresolved, 1);
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [{ ...oldP1, commit: null }], headSha: HEAD }).codex.unresolved, 1);
+});

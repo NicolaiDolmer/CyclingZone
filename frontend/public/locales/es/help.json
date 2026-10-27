@@ -1823,7 +1823,7 @@
     },
     "peakWhatItDoes": {
       "q": "¿Qué hace un pico?",
-      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. Los picos todavía no cuentan en las carreras; las carreras usan su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
+      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. En las carreras, el pico se suma a su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
     },
     "peakTraining": {
       "q": "¿Cómo funciona el entrenamiento de pico?",

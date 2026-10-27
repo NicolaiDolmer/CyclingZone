@@ -304,7 +304,7 @@ function computeSelections(
   for (const riderId of group.rider_ids) {
     const entrant = entrants[riderId];
     if (!entrant) continue;
-    referenceClimbing = Math.max(referenceClimbing, entrant.abilities.climbing);
+    referenceClimbing = Math.max(referenceClimbing, shelteredClimbing(entrant, state.riders[riderId]?.team_cp_factor, ctx.s5ProfilesV3 === true));
     if (entrant.effort !== "grupetto") groupHasRacers = true;
   }
 
@@ -314,7 +314,7 @@ function computeSelections(
     const riderState = state.riders[riderId];
     if (!entrant || !riderState || riderState.status !== "racing") continue;
 
-    const deficit01 = climbDeficit01(referenceClimbing, entrant.abilities.climbing);
+    const deficit01 = climbDeficit01(referenceClimbing, shelteredClimbing(entrant, riderState.team_cp_factor, ctx.s5ProfilesV3 === true));
     const deficitScaled = climbDeficitScaled(deficit01, gradientPct, lengthKm);
     const energyDeficit = energyDeficit01(riderState.wprime, riderState.wprimeMax);
     // Begge led er nu alvors-skalerede (#4604) — se climbSeverity01's docblock.
@@ -386,6 +386,19 @@ function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
  * topankomst (finale_type long_climb, sidste blok af sammenhaengende stigninger)?
  */
 const SUMMIT_RACE_SHORT_FINISH = Object.freeze({ maxKm: 7, maxGradientPct: 7 });
+
+// Kaptajnens lae paa stigningen (KUN s5_profiles_v3, ejer 27/10): holdets arbejde
+// (team_cp_factor fra mechanics/teamPlay.ts) naar ogsaa selektionen, ikke kun tempoet.
+// Uden dette er hjaelpernes stoette naesten usynlig paa bjergene, fordi udskilningen
+// kun ser klatreevnen. KUN laeet (faktor > 1) taeller: hjaelpernes pris roerer ikke
+// selektionen, fordi jagten paa stigningerne bygger paa netop dem (#6804 P2.4). Bounded af
+// teamPlay's loft og gulv; vaegten er SHELTER_CLIMB_WEIGHT_V3.
+export const SHELTER_CLIMB_WEIGHT_V3 = 0.25; // ejer-valg 27/10; maaling og begrundelse privat (balance-internals/captain-shelter-27-10)
+export function shelteredClimbing(entrant: Entrant, teamCpFactor: number | undefined, s5ProfilesV3: boolean): number {
+  const climbing = entrant.abilities.climbing;
+  if (!s5ProfilesV3 || !Number.isFinite(teamCpFactor)) return climbing;
+  return climbing * (1 + SHELTER_CLIMB_WEIGHT_V3 * Math.max(0, (teamCpFactor as number) - 1));
+}
 
 export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "segmentIndex">): boolean {
   const segs = ctx.route.segments ?? [];

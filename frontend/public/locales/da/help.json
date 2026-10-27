@@ -1823,7 +1823,7 @@
     },
     "peakWhatItDoes": {
       "q": "Hvad gør en peak?",
-      "a": "En peak løfter én rytters form for det ene løbsvindue du vælger i Sæsonplanlæggeren. Den kører på en optakt du træner forinden og et dyk bagefter, så den er værd at sætte på et løb du reelt vil vinde, ikke en hel sæson. Hver rytter kan holde op til to peaks ad gangen. Peaks tæller ikke i løbene endnu; løbene bruger hans almindelige form. Se 'Hvordan virker peak-træning?' og 'Koster en peak mig noget bagefter?' nedenfor for præcis hvor meget og hvornår."
+      "a": "En peak løfter én rytters form for det ene løbsvindue du vælger i Sæsonplanlæggeren. Den kører på en optakt du træner forinden og et dyk bagefter, så den er værd at sætte på et løb du reelt vil vinde, ikke en hel sæson. Hver rytter kan holde op til to peaks ad gangen. I løbene lægges peaken oven på hans almindelige form. Se 'Hvordan virker peak-træning?' og 'Koster en peak mig noget bagefter?' nedenfor for præcis hvor meget og hvornår."
     },
     "peakTraining": {
       "q": "Hvordan virker peak-træning?",
