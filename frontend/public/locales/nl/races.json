@@ -488,6 +488,7 @@
       "hint": "Tik op een opdracht om de rol van de renner te wijzigen",
       "captain": "Kopman",
       "sprintCaptain": "Sprintkopman",
+      "coCaptain": "Gedeelde kopman",
       "hunter": "Ontsnappingsjager",
       "rider": "Alleen renner"
     },
@@ -545,16 +546,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Kans op ontsnapping",
-      "high": "Hoog",
-      "medium": "Gemiddeld",
-      "low": "Laag",
-      "none": "Geen",
-      "tooltip": "Hoe groot de kans is dat een ontsnapping op dit terrein wegblijft. De jager is altijd een kandidaat voor de ontsnapping."
-    },
     "hunterExplainer": {
-      "strengthLine": "Op het terrein van deze koers heeft een ontsnapping een {strength} kans om weg te blijven.",
+      "dayLine": "Je jager probeert mee te gaan in de vroege ontsnapping. Of die wegblijft, beslist het peloton op de dag zelf.",
       "candidatesHint": "Gerangschikt op agressie: de drang om aan te vallen en je aan een aanval te committeren.",
       "noCandidates": "Kies renners voor deze koers om je beste jagers te zien.",
       "aggression": "Agressie",
@@ -769,6 +762,8 @@
     "minHint": "Minimaal {min} renners om te starten.",
     "captain": "Kopman",
     "sprintCaptain": "Sprintkopman (optioneel)",
+    "coCaptain": "Gedeelde kopman (optioneel)",
+    "coCaptainHint": "Beschermd zoals de kopman. De kopman krijgt eerst hulp.",
     "hunter": "Ontsnappingsjager",
     "freeRole": "Vrije rol",
     "noRole": "Geen",
@@ -867,6 +862,8 @@
       "move_failed": "De renner kon niet worden verplaatst. Probeer het opnieuw.",
       "selection_captain_required": "Kies een kopman uit je geselecteerde renners.",
       "selection_captain_not_selected": "Je kopman moet een van de geselecteerde renners zijn.",
+      "selection_co_captain_not_available": "Een gedeelde kopman is niet mogelijk in deze koers.",
+      "selection_co_captain_requires_captain": "Een gedeelde kopman heeft een kopman nodig. Kies eerst een kopman.",
       "selection_role_not_selected": "Renners met een rol moeten deel uitmaken van de selectie.",
       "selection_role_overlap": "Kopman, sprintkopman en jager moeten verschillende renners zijn.",
       "selection_luxury_helper_not_available": "Laatste man is niet beschikbaar in deze koers.",
@@ -955,9 +952,17 @@
       "protect": "werken of aanvallen",
       "all_out": "volle inzet"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Werken", "why": "Rijdt voor de kopman. Echte vermoeidheid.", "today": "werkt voor de kopman" },
+        "follow": { "step": "Aanvallen volgen", "why": "Reageert op elke aanval. Kost meer krachten.", "today": "volgt de aanvallen" },
+        "free": { "step": "Offensief rijden", "why": "Zet druk op de klimmen en in de finale.", "today": "rijdt offensief" }
+      }
+    },
     "roleWord": {
       "captain": "kopman",
       "sprint_captain": "sprintkopman",
+      "co_captain": "gedeelde kopman",
       "helper": "renner",
       "hunter": "jager",
       "free_role": "vrije rol",
@@ -970,6 +975,7 @@
       "stage_roles_invalid_role": "Een van de rollen is niet geldig.",
       "stage_roles_invalid_effort": "Een van de intenties is niet geldig.",
       "stage_roles_role_overlap": "Per etappe kan maar één renner kopman zijn, maar één sprintkopman en maar één ontsnappingsjager.",
+      "stage_roles_co_captain_requires_captain": "Een gedeelde kopman heeft een kopman nodig in dezelfde etappe.",
       "stage_roles_duplicate": "Dezelfde renner komt twee keer voor in dezelfde etappe.",
       "stage_roles_rider_abandoned": "Een van de renners is uit de koers en kan geen intentie meer krijgen.",
       "stage_roles_race_completed": "Deze koers is afgelopen, dus de intenties kunnen niet meer worden gewijzigd.",
@@ -1023,6 +1029,7 @@
     "tryBreakAria": "{name} probeert de ontsnapping",
     "roleLabel": {
       "captain": "Kopman",
+      "co_captain": "Gedeelde kopman",
       "sprint_captain": "Sprintkopman",
       "hunter": "Ontsnappingsjager",
       "helper": "Knecht",
@@ -1137,6 +1144,7 @@
       "roleExclusiveNoteScoped": "Eén kopman, één sprintkopman en één ontsnappingsjager tegelijk. De renner die de rol had, wordt in dezelfde etappes knecht. Eerdere etappes behouden hun rollen.",
       "roleWhy": {
         "captain": "De ploeg rijdt voor hem en hij krijgt de bescherming.",
+        "co_captain": "Beschermd zoals de kopman. De kopman krijgt eerst hulp.",
         "sprint_captain": "Hij krijgt de sprinttrein en de lead-out.",
         "hunter": "Hij gaat op jacht naar de ontsnapping.",
         "helper": "Hij werkt voor de leiders.",

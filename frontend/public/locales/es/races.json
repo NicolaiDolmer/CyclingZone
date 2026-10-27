@@ -488,6 +488,7 @@
       "hint": "Toca una orden para cambiar el rol del ciclista",
       "captain": "Jefe de filas",
       "sprintCaptain": "Jefe de filas de sprint",
+      "coCaptain": "Jefe de filas compartido",
       "hunter": "Cazador de escapadas",
       "rider": "Solo ciclista"
     },
@@ -545,16 +546,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Opciones de la escapada",
-      "high": "Altas",
-      "medium": "Medias",
-      "low": "Bajas",
-      "none": "Ninguna",
-      "tooltip": "Qué probabilidad hay de que una escapada llegue en este terreno. El cazador siempre es candidato a la escapada."
-    },
     "hunterExplainer": {
-      "strengthLine": "En el terreno de esta carrera, una escapada tiene opciones {strength} de llegar.",
+      "dayLine": "Tu cazador intenta meterse en la escapada de la mañana. Si llega o no, lo decide el pelotón el día de la carrera.",
       "candidatesHint": "Ordenados por agresividad: las ganas de atacar y de comprometerse con un movimiento.",
       "noCandidates": "Elige ciclistas para esta carrera para ver a tus mejores cazadores.",
       "aggression": "Agresividad",
@@ -769,6 +762,8 @@
     "minHint": "Mínimo {min} ciclistas para tomar la salida.",
     "captain": "Jefe de filas",
     "sprintCaptain": "Jefe de filas de sprint (opcional)",
+    "coCaptain": "Jefe de filas compartido (opcional)",
+    "coCaptainHint": "Protegido como el jefe de filas. El jefe de filas recibe ayuda primero.",
     "hunter": "Cazador de escapadas",
     "freeRole": "Rol libre",
     "noRole": "Ninguno",
@@ -867,6 +862,8 @@
       "move_failed": "No se pudo mover al ciclista. Inténtalo de nuevo.",
       "selection_captain_required": "Elige un jefe de filas entre tus ciclistas seleccionados.",
       "selection_captain_not_selected": "Tu jefe de filas debe ser uno de los ciclistas seleccionados.",
+      "selection_co_captain_not_available": "El jefe de filas compartido no está disponible en esta carrera.",
+      "selection_co_captain_requires_captain": "Un jefe de filas compartido necesita un jefe de filas. Elige primero un jefe de filas.",
       "selection_role_not_selected": "Los ciclistas con rol deben formar parte de la selección.",
       "selection_role_overlap": "El jefe de filas, el jefe de filas de sprint y el cazador deben ser ciclistas distintos.",
       "selection_luxury_helper_not_available": "El último hombre no está disponible en esta carrera.",
@@ -955,9 +952,17 @@
       "protect": "trabajar o atacar",
       "all_out": "a tope"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Trabajar", "why": "Rueda para el jefe de filas. Fatiga real.", "today": "trabaja para el jefe de filas" },
+        "follow": { "step": "Seguir los ataques", "why": "Responde a cada ataque. Cuesta más fuerzas.", "today": "sigue los ataques" },
+        "free": { "step": "Correr a la ofensiva", "why": "Aprieta en las subidas y en el final.", "today": "corre a la ofensiva" }
+      }
+    },
     "roleWord": {
       "captain": "jefe de filas",
       "sprint_captain": "jefe de filas de sprint",
+      "co_captain": "jefe de filas compartido",
       "helper": "gregario",
       "hunter": "cazador",
       "free_role": "rol libre",
@@ -970,6 +975,7 @@
       "stage_roles_invalid_role": "Uno de los roles no es válido.",
       "stage_roles_invalid_effort": "Una de las intenciones no es válida.",
       "stage_roles_role_overlap": "Solo un ciclista puede ser jefe de filas, solo uno jefe de filas de sprint y solo uno cazador de escapadas, por etapa.",
+      "stage_roles_co_captain_requires_captain": "Un jefe de filas compartido necesita un jefe de filas en la misma etapa.",
       "stage_roles_duplicate": "El mismo ciclista aparece dos veces para la misma etapa.",
       "stage_roles_rider_abandoned": "Uno de los ciclistas está fuera de la carrera y ya no se le puede dar una intención.",
       "stage_roles_race_completed": "Esta carrera ha terminado, así que las intenciones ya no se pueden cambiar.",
@@ -1023,6 +1029,7 @@
     "tryBreakAria": "{name} intenta la escapada",
     "roleLabel": {
       "captain": "Jefe de filas",
+      "co_captain": "Jefe de filas compartido",
       "sprint_captain": "Jefe de filas de sprint",
       "hunter": "Cazador de escapadas",
       "helper": "Gregario",
@@ -1137,6 +1144,7 @@
       "roleExclusiveNoteScoped": "Un jefe de filas, un jefe de filas de sprint y un cazador de escapadas a la vez. El ciclista que tenía el rol pasa a ser gregario en las mismas etapas. Las etapas anteriores conservan sus roles.",
       "roleWhy": {
         "captain": "El equipo corre para él y recibe la protección.",
+        "co_captain": "Protegido como el jefe de filas. El jefe de filas recibe ayuda primero.",
         "sprint_captain": "Recibe el tren de sprint y el lanzamiento.",
         "hunter": "Sale a la caza de la escapada.",
         "helper": "Trabaja para los líderes.",

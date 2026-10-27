@@ -471,6 +471,7 @@
       "hint": "Tryk på en ordre for at ændre rytterens rolle",
       "captain": "Kaptajn",
       "sprintCaptain": "Sprint-kaptajn",
+      "coCaptain": "Delt kaptajn",
       "hunter": "Udbrudsjæger",
       "rider": "Kun rytter"
     },
@@ -528,16 +529,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Udbruds-chance",
-      "high": "Høj",
-      "medium": "Middel",
-      "low": "Lav",
-      "none": "Ingen",
-      "tooltip": "Hvor sandsynligt et udbrud er at holde hjem på dette terræn. Jægeren er altid udbruds-kandidat."
-    },
     "hunterExplainer": {
-      "strengthLine": "På dette løbs terræn har et udbrud {strength} chance for at holde hjem.",
+      "dayLine": "Jægeren prøver at komme med i morgenudbruddet. Om det holder hjem, afgøres af feltet på dagen.",
       "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
       "aggression": "Aggression",
@@ -752,6 +745,8 @@
     "minHint": "Mindst {min} ryttere for at stille op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
+    "coCaptain": "Delt kaptajn (valgfri)",
+    "coCaptainHint": "Beskyttet som kaptajnen. Kaptajnen får hjælp først.",
     "hunter": "Udbrudsjæger",
     "freeRole": "Fri rolle",
     "noRole": "Ingen",
@@ -850,6 +845,8 @@
       "move_failed": "Kunne ikke flytte rytteren. Prøv igen.",
       "selection_captain_required": "Vælg en kaptajn blandt de udtagne ryttere.",
       "selection_captain_not_selected": "Kaptajnen skal være blandt de udtagne ryttere.",
+      "selection_co_captain_not_available": "Delt kaptajn findes ikke i dette løb.",
+      "selection_co_captain_requires_captain": "En delt kaptajn kræver en kaptajn. Vælg en kaptajn først.",
       "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
       "selection_role_overlap": "Kaptajn, spurt-kaptajn og jæger skal være forskellige ryttere.",
       "selection_luxury_helper_not_available": "Sidste mand findes ikke i dette løb.",
@@ -938,9 +935,17 @@
       "protect": "arbejd eller angrib",
       "all_out": "alt ud"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Arbejd", "why": "Kører for lederen. Rigtig træthed.", "today": "arbejder for lederen" },
+        "follow": { "step": "Følg angrebene", "why": "Svarer på hvert angreb. Koster flere kræfter.", "today": "følger angrebene" },
+        "free": { "step": "Kør offensivt", "why": "Presser på stigningerne og i finalen.", "today": "kører offensivt" }
+      }
+    },
     "roleWord": {
       "captain": "kaptajn",
       "sprint_captain": "spurtkaptajn",
+      "co_captain": "delt kaptajn",
       "helper": "rytter",
       "hunter": "jæger",
       "free_role": "fri rolle",
@@ -953,6 +958,7 @@
       "stage_roles_invalid_role": "En af rollerne er ugyldig.",
       "stage_roles_invalid_effort": "En af intentionerne er ugyldig.",
       "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, kun én kan være spurtkaptajn, og kun én kan være udbrudsjæger, pr. etape.",
+      "stage_roles_co_captain_requires_captain": "En delt kaptajn kræver en kaptajn på samme etape.",
       "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
       "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere få en intention.",
       "stage_roles_race_completed": "Løbet er afsluttet, så intentionerne kan ikke længere ændres.",
@@ -1006,6 +1012,7 @@
     "tryBreakAria": "{name} forsøger at komme med i udbruddet",
     "roleLabel": {
       "captain": "Kaptajn",
+      "co_captain": "Delt kaptajn",
       "sprint_captain": "Spurt-kaptajn",
       "hunter": "Udbrudsjæger",
       "helper": "Hjælper",
@@ -1120,6 +1127,7 @@
       "roleExclusiveNoteScoped": "Én kaptajn, én spurtkaptajn og én udbrudsjæger ad gangen. Rytteren der havde rollen bliver domestik på de samme etaper. Tidligere etaper beholder deres roller.",
       "roleWhy": {
         "captain": "Holdet kører for ham, og han får beskyttelsen.",
+        "co_captain": "Beskyttet som kaptajnen. Kaptajnen får hjælp først.",
         "sprint_captain": "Han får sprint-toget og optrækket.",
         "hunter": "Han jagter udbruddet.",
         "helper": "Han arbejder for lederne.",

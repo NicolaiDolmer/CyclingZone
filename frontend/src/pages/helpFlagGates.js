@@ -36,6 +36,10 @@ export const HELP_SECTION_FLAGS = Object.freeze({
 const CURVE_B_OFF = Object.freeze({ flag: "development_curve_b", when: false });
 const CURVE_B_ON = Object.freeze({ flag: "development_curve_b", when: true });
 
+// #6746: fem indsatstrin (grupetto, alt ud) findes kun naar race_day_intention_enabled er on.
+const INTENTION_OFF = Object.freeze({ flag: "race_day_intention_enabled", when: false });
+const INTENTION_ON = Object.freeze({ flag: "race_day_intention_enabled", when: true });
+
 const RACE_DAY_TICK_OFF = Object.freeze({ flag: "training_tick_per_race_day", when: false });
 const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", when: true });
 // #6110 (Udvikling 2.0 del 1): den gamle aldrings-tekst og den nye maa aldrig
@@ -74,6 +78,13 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     typeGatingCurveB: CURVE_B_ON,
     ceilingReached: CURVE_B_OFF,
     ceilingReachedCurveB: CURVE_B_ON,
+  }),
+  raceSelection: Object.freeze({
+    effortSteps: INTENTION_ON,
+    effortStepsThree: INTENTION_OFF,
+  }),
+  raceDay: Object.freeze({
+    teamworkAllOut: INTENTION_ON,
   }),
   academy: Object.freeze({
     dailyTrainingBoost: CURVE_B_OFF,

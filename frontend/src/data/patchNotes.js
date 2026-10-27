@@ -1,5 +1,28 @@
 export const PATCHES = [
   {
+    "version": "7.384",
+    "date": "2026-10-26",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Training every day, also between seasons",
+          "body": "There is no break between seasons. The days after a season ends and before the next season's first race are training days: your riders train the program you chose, five times a day, like a race day without races. Monday 26 October is made up."
+        },
+        "da": {
+          "title": "Træning hver dag, også mellem sæsoner",
+          "body": "Der er ingen pause mellem sæsonerne. Dagene efter en sæson slutter og før næste sæsons første løb er træningsdage: dine ryttere træner det program, du har valgt, fem gange om dagen, som en løbsdag uden løb. Mandag 26. oktober bliver indhentet."
+        },
+        "refs": [
+          7282
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.383",
     "date": "2026-10-26",
     "changes": [

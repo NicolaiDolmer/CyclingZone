@@ -21,6 +21,18 @@ export function raceAllowsCoCaptain(race) {
   return isS5ProfilesV3OrLater(surfaceRulesRevision({ race, storedRevision: race?.engine_rules_revision ?? null }));
 }
 
+// #7239: en klient der ikke sender `co_captain_id` (fx saesonmatrixen) maa ikke nulstille
+// holdets delte kaptajn i stilhed. Uden feltet beholdes den gemte, saa laenge han stadig er
+// udtaget, holdet har en kaptajn og han ikke har faaet en anden rolle; ellers null.
+// Sender klienten feltet (ogsaa null), vinder klienten.
+export function keptCoCaptainId({ body, current, riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [], allowed = false }) {
+  if (body && Object.prototype.hasOwnProperty.call(body, "co_captain_id")) return null;
+  const kept = current?.co_captain_id ?? null;
+  if (!kept || !allowed || !captainId || !riderIds.includes(kept)) return null;
+  if ([captainId, sprintCaptainId, hunterId, ...(freeRoleIds || [])].includes(kept)) return null;
+  return kept;
+}
+
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
   teamRiderIds, injuredRiderIds, sizeRule,
@@ -175,7 +187,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 409, error: "selection_wrong_pool" };
   }
 
-  const { rider_ids: riderIdsBody = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [], co_captain_id: coCaptainId = null } = body || {};
+  const { rider_ids: riderIdsBody = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null, free_role_ids: freeRoleIds = [], co_captain_id: coCaptainBody = null } = body || {};
   if (!Array.isArray(riderIdsBody) || !Array.isArray(freeRoleIds)) {
     return { ok: false, status: 400, error: "selection_invalid_body" };
   }
@@ -218,6 +230,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   }
 
   const ctx = await getSelectionContext({ supabase, race, teamId });
+  const coCaptainId = keptCoCaptainId({ body, current: ctx.selection, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, allowed: raceAllowsCoCaptain(race) }) ?? coCaptainBody; // #7239
 
   // #4847 (I3) / #6139: efter et "Train now"-tryk er dagen afgjort for de ryttere der
   // traenede (laase-raekkerne). En laast rytter kan hverken tilfoejes eller fjernes fra

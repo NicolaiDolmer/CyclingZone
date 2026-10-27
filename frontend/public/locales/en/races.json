@@ -471,6 +471,7 @@
       "hint": "Tap an order to change the rider's role",
       "captain": "Captain",
       "sprintCaptain": "Sprint captain",
+      "coCaptain": "Shared captain",
       "hunter": "Breakaway hunter",
       "rider": "Rider only"
     },
@@ -528,16 +529,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Breakaway odds",
-      "high": "High",
-      "medium": "Medium",
-      "low": "Low",
-      "none": "None",
-      "tooltip": "How likely a breakaway is to stay away on this terrain. The hunter is always a breakaway candidate."
-    },
     "hunterExplainer": {
-      "strengthLine": "On this race's terrain, a breakaway has {strength} odds of staying away.",
+      "dayLine": "Your hunter tries to get into the morning breakaway. Whether it stays away is decided by the peloton on the day.",
       "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
       "noCandidates": "Pick riders for this race to see your best hunters.",
       "aggression": "Aggression",
@@ -752,6 +745,8 @@
     "minHint": "Minimum {min} riders to start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
+    "coCaptain": "Shared captain (optional)",
+    "coCaptainHint": "Protected like the captain. The captain gets help first.",
     "hunter": "Breakaway hunter",
     "freeRole": "Free role",
     "noRole": "None",
@@ -850,6 +845,8 @@
       "move_failed": "Couldn't move the rider. Try again.",
       "selection_captain_required": "Pick a captain among your selected riders.",
       "selection_captain_not_selected": "Your captain must be one of the selected riders.",
+      "selection_co_captain_not_available": "Shared captain isn't available in this race.",
+      "selection_co_captain_requires_captain": "A shared captain needs a captain. Pick a captain first.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
       "selection_role_overlap": "Captain, sprint captain and hunter must be different riders.",
       "selection_luxury_helper_not_available": "Last man isn't available in this race.",
@@ -938,9 +935,17 @@
       "protect": "work or attack",
       "all_out": "all out"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Work", "why": "Rides for the leader. Real fatigue.", "today": "works for the leader" },
+        "follow": { "step": "Follow the moves", "why": "Answers every attack. Costs more legs.", "today": "follows the moves" },
+        "free": { "step": "Ride aggressively", "why": "Presses on the climbs and in the finale.", "today": "rides aggressively" }
+      }
+    },
     "roleWord": {
       "captain": "captain",
       "sprint_captain": "sprint captain",
+      "co_captain": "shared captain",
       "helper": "rider",
       "hunter": "hunter",
       "free_role": "free role",
@@ -953,6 +958,7 @@
       "stage_roles_invalid_role": "One of the roles isn't valid.",
       "stage_roles_invalid_effort": "One of the intentions isn't valid.",
       "stage_roles_role_overlap": "Only one rider can be captain, only one can be sprint captain, and only one can be breakaway hunter, per stage.",
+      "stage_roles_co_captain_requires_captain": "A shared captain needs a captain on the same stage.",
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
       "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given an intention anymore.",
       "stage_roles_race_completed": "This race is finished, so the intentions can't be changed anymore.",
@@ -1006,6 +1012,7 @@
     "tryBreakAria": "{name} tries for the breakaway",
     "roleLabel": {
       "captain": "Captain",
+      "co_captain": "Shared captain",
       "sprint_captain": "Sprint captain",
       "hunter": "Breakaway hunter",
       "helper": "Domestique",
@@ -1120,6 +1127,7 @@
       "roleExclusiveNoteScoped": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique on the same stages. Earlier stages keep their roles.",
       "roleWhy": {
         "captain": "The team rides for him and he gets the protection.",
+        "co_captain": "Protected like the captain. The captain gets help first.",
         "sprint_captain": "He gets the sprint train and the lead out.",
         "hunter": "He goes hunting for the breakaway.",
         "helper": "He works for the leaders.",

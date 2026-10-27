@@ -38,7 +38,8 @@ export const STAGE_PLAN_MAX_LEGS = 3;
 /** "De sidste km": skiftet sker ved dette antal km fra maal (spillertekst: "the last 10 km"). */
 export const STAGE_PLAN_FINAL_KM = 10;
 
-export type StagePlanRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
+// #7239: delt kaptajn (#5981) er en leder som kaptajnen, ikke en fri rolle.
+export type StagePlanRole = "captain" | "co_captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
 export type StagePlanEffort = "grupetto" | "save" | "normal" | "protect" | "all_out";
 
 export const STAGE_PLAN_TASKS = Object.freeze([
@@ -69,8 +70,8 @@ export const TASK_EFFORT: Readonly<Record<StagePlanTask, StagePlanEffort>> = Obj
   ride_in: "save",
 });
 
-const ALL_ROLES: readonly StagePlanRole[] = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
-const LEADERS: readonly StagePlanRole[] = ["captain", "sprint_captain"];
+const ALL_ROLES: readonly StagePlanRole[] = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"];
+const LEADERS: readonly StagePlanRole[] = ["captain", "co_captain", "sprint_captain"];
 
 /** Hvem kan faa opgaven. */
 export const TASK_ROLES: Readonly<Record<StagePlanTask, readonly StagePlanRole[]>> = Object.freeze({
@@ -286,6 +287,7 @@ function suggestionFor(args: {
 
   switch (role) {
     case "captain":
+    case "co_captain": // #7239: samme plan som kaptajnen
       if (flatFinale) return [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }];
       return [{ task: "stay_sheltered" }, { task: "attack", from: attackFrom }];
     case "sprint_captain":

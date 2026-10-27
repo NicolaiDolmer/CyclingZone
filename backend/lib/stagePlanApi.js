@@ -32,7 +32,8 @@ export function stagePlanRevisionOk(race) {
   return isS5ProfilesV3OrLater(surfaceRulesRevision({ race, storedRevision: race?.engine_rules_revision }));
 }
 
-const VALID_ROLES = new Set(["captain", "sprint_captain", "helper", "hunter", "free_role"]);
+// #7239: samme roller som motoren (stagePlanEngine.ts), saa en delt kaptajn valideres som leder.
+const VALID_ROLES = new Set(["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"]);
 
 /**
  * Konteksten til at validere planer for EN etape: rutens skift-punkter og rytternes
