@@ -80,6 +80,17 @@ Det der sammenlignes:
 Baseline (kontakt fra) er målt før koden og ligger privat. Resultatet med kontakten til ligger samme
 sted. Ejeren ser tallene og giver go før tænding.
 
+Resultat 27/10 (retninger; tal privat i `private-handoffs/7289/result.md`):
+- Ruterne: de fleste flade etaper får nogle få bakker; kun en lille del af de flade kilometer bliver
+  `rolling`. Kuperet, bjerg og højbjerg er uændrede (allerede `rolling`).
+- Vinderne: sprinternes andel på de flade etaper er uændret inden for støj, også på de flade etaper
+  med mange højdemeter. Bakkede og bjergetaper er uændrede.
+- Gates: ingen gate skifter dom. G16 og G18 er en anelse bedre; G17, G19 og gcFromBreakaway er
+  uændrede inden for støj (gcFromBreakaway et par hit højere i punktestimatet, stadig klart under
+  grænsen).
+- Konsekvens: A gør motorens rute tro mod profilen uden at flytte balancen. Skal bakkerne bide
+  (færre sprintsejre på bakkede flade etaper), er det B, en ny beslutning.
+
 ## 5. Ikke i denne PR
 
 - Koblingen i `raceRunner.js` (flag-opslag, markør, checksum) — efter #6649 er merget.
