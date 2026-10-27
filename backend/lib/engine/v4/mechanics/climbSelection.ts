@@ -662,10 +662,15 @@ export const climbSelectionHook: ClimbSelectionHook = (
     const allOutOn = ctx.s5ProfilesV3 === true && allOut7280Active() && !cohesive && group.kind !== "gruppetto"
       && group.origin !== "breakaway" && (summitRace || isLastClimbBlock7280(ctx));
     const beforeAllOut = selections;
+    let allOutIds: ReadonlySet<string> = new Set();
+    let front7280: FrontAttack7280 | null = null;
     if (allOutOn) {
       const ao = allOutSelections7280(selections, nextState, ctx, gradientPct, lengthKm, climbModel);
       selections = ao.selections;
       events.push(...ao.events);
+      allOutIds = new Set(selections.filter((s) => s.gapShiftSeconds !== undefined).map((s) => s.riderId));
+      // Ejer 27/10: den bedste kan angribe vaek fra fronten (gevinsten klippes ikke ved 0).
+      front7280 = allOutFrontAttack7280(selections, gradientPct, lengthKm, climbModel);
     }
     const splitOf = (sels: RiderSelection[]) => (summitRace
       ? summitRaceSplitRiderIds(sels, gradientPct, lengthKm, climbModel)
@@ -692,6 +697,7 @@ export const climbSelectionHook: ClimbSelectionHook = (
       return ids.filter((id) => id !== bestRiderId);
     };
     splitRiderIds = retainFront(selections, splitRiderIds);
+    if (front7280) { const attackerId = front7280.attackerId; splitRiderIds = splitRiderIds.filter((id) => id !== attackerId); }
 
     // #6199 (KUN orders_gc_v3): de afhaengte falder ikke af som én klump. Hver
     // rytter faar sit eget hul (laengde x stejlhed x evneforskel), og rytterne
@@ -701,12 +707,14 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // falder af den, falder af som én gruppe (gennemsnittet af deres eget hul),
     // ellers deles halen i stumper der hver for sig er for smaa til redningen.
     const parts = splitRiderIds.length > 0 ? partsOf(selections, splitRiderIds) : [];
+    // Ejer 27/10: angriberen splitter FREM med forspringet (negativt hul, rebaselines af segment-loopet).
+    if (front7280 && splitRiderIds.length < group.rider_ids.length - 1) parts.push({ riderIds: [front7280.attackerId], gapSeconds: -front7280.lead });
     // #7280: gevinsten taelles i de grupper motoren faktisk danner (foer/efter alt ud).
     if (allOutOn) {
       const idsBefore = retainFront(beforeAllOut, splitOf(beforeAllOut));
-      nextState = accountAllOut7280(nextState, selections, idsBefore.length > 0 ? partsOf(beforeAllOut, idsBefore) : [], parts);
+      nextState = accountAllOut7280(nextState, selections, idsBefore.length > 0 ? partsOf(beforeAllOut, idsBefore) : [], parts, allOutIds);
     }
-    if (splitRiderIds.length === 0) continue;
+    if (parts.length === 0) continue;
 
     for (const part of parts) {
       const kind = splitKindFor(group.kind, part.riderIds.length);
@@ -824,6 +832,28 @@ function allOutSoloCrack7280(group: RaceGroup, state: EngineState, ctx: SegmentH
   };
 }
 
+type FrontAttack7280 = { lead: number; attackerId: string };
+
+/**
+ * Ejer 27/10 (#6641 valg 2): den bedste rytter i gruppen kan bruge alt ud til at angribe vaek
+ * fra fronten. Uden dette klippes hans gevinst ved hul 0, fordi han allerede sidder forrest.
+ * Bliver en ikke-knaekket alt ud-rytter hurtigere end gruppens front med mindst klyngens
+ * minimum, splitter han frem med forspringet (negativt hul), og resten koerer videre som foer.
+ * Samme pris som al anden alt ud (reserve, knaek, traethed). REN og deterministisk.
+ */
+function allOutFrontAttack7280(selections: RiderSelection[], gradientPct: number, lengthKm: number, t: TimeModelTuning): FrontAttack7280 | null {
+  let attackerId: string | null = null;
+  let min = 0;
+  for (const s of selections) {
+    if (s.allOutCracked || !(typeof s.gapShiftSeconds === "number" && s.gapShiftSeconds < 0)) continue;
+    const raw = climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, t) + s.gapShiftSeconds;
+    if (raw < min || (raw === min && attackerId !== null && s.riderId < attackerId)) { min = raw; attackerId = s.riderId; }
+  }
+  const lead = round2(-min);
+  if (attackerId === null || !(lead >= t.clusterMinSeconds)) return null;
+  return { lead, attackerId };
+}
+
 /**
  * #7280: udvalget paa en sidste stigning der ikke er en topankomst (taerskel-reglen).
  * En knaekket alt ud-rytter saettes af; en alt ud-rytter hvis eget hul (efter
@@ -849,6 +879,7 @@ function accountAllOut7280(
   after: readonly RiderSelection[],
   partsBefore: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>,
   partsAfter: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>,
+  allOutIds: ReadonlySet<string> = new Set(),
 ): EngineState {
   const gapIn = (parts: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>) => {
     const m = new Map<string, number>();
@@ -859,12 +890,12 @@ function accountAllOut7280(
   const g1 = gapIn(partsAfter);
   let riders: EngineState["riders"] | null = null;
   for (const a of after) {
-    if (a.gapShiftSeconds === undefined) continue;
+    if (!allOutIds.has(a.riderId)) continue;
     const rs = state.riders[a.riderId];
     if (!rs) continue;
     const prev = rs.all_out_7280 ?? { gained: 0, cracked: false };
     const cracked = prev.cracked || a.allOutCracked === true;
-    const delta = (g0.get(a.riderId) ?? 0) - (g1.get(a.riderId) ?? 0);
+    const delta = (g0.get(a.riderId) ?? 0) - (g1.get(a.riderId) ?? 0); // angriberen: 0 - (-forspring)
     riders = { ...(riders ?? state.riders), [a.riderId]: { ...rs, all_out_7280: { gained: cracked ? 0 : round2(prev.gained + delta), cracked } } };
   }
   return riders ? { ...state, riders } : state;
