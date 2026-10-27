@@ -5,30 +5,25 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-116 poster: live 89 · dormant 8 · building 10 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+116 poster: live 91 · dormant 7 · building 9 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
 
 ## race-engine
 
-**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Form peaks in races (`race-form-peaks`) 2026-10-26 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
+**live:** Form and fatigue in scoring (`form-and-fatigue`) 2026-09-06 · S5 engine rules (s5_profiles_v3) (`race-engine-s5-profiles`) 2026-10-26 · Race engine v3 (`race-engine-v3`) 2026-10-04 · v3 scoring components (`race-engine-v3-scoring`) 2026-10-04 · Race engine v4 (`race-engine-v4`) 2026-10-04 · Resumable race finalisation (step markers) (`race-finalize-resumable`) 2026-09-25 · Form peaks in races (`race-form-peaks`) 2026-10-26 · Stage intention choice (`race-intention-choice`) 2026-10-27 · Async delivery of race result posts (`race-notify-outbox`) 2026-09-25 · Team selection, captain and breakaway (`team-selection-and-roles`) 2026-09-30
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Luxury helper (`luxury-helper-role`) | building | - | - | #5982 | 2026-10-27 | - |
 | Day form with causes (`race-day-form-6649`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6649 | 2026-10-27 | Tændes med ejer-go. |
 | Profile hills in the race engine (`race-engine-profile-hills`) | building | - | - | #7290 | 2026-10-27 | Kobles efter #6649. |
-| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-26 | UI live; tænding afventer ejer-go (#7163 kalibreret). |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
 
-**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-10-24 · Stage scheduler (`stage-scheduler`) 2026-09-06
-
-| Feature | State | Flag | SSOT | Epic | Verified | Note |
-|-|-|-|-|-|-|-|
-| Stage plan along the route (`stage-plan-v1`) | dormant | `stage_plan_v1` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | - | 2026-10-26 | Seedet off; kun v3-løb. Ejeren tænder. #7003 er ikke epic (delt kaptajn). |
+**live:** Automatic race entries (`auto-entry-generator`) 2026-09-14 · Race day development (`race-day-development`) 2026-09-28 · Race day engine (`race-day-engine`) 2026-09-06 · Race page (`race-detail-page`) 2026-09-07 · Race page as tabs (v2) (`race-page-tabs-v2`) 2026-09-07 · Stage replay and timeline film (`race-replay`) 2026-09-06 · Role picker scope (stage N to the end / stage N only) (`role-scope-choice`) 2026-10-06 · Stage page 2.0 (stage tabs, real elevation profile, your day) (`stage-page-v2`) 2026-10-24 · Stage plan along the route (`stage-plan-v1`) 2026-10-27 · Stage scheduler (`stage-scheduler`) 2026-09-06
 
 ## market
 
