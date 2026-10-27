@@ -110,7 +110,7 @@ export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze
 // den AKTUELLE revision (#7237), saa pakken kan ikke ligge bag revisionen alene;
 // slukket er motoren bit-identisk med main. Taend = ejerens ordrette go i en egen PR.
 //   1+2. Gevinsten: paa den afgoerende stigning (allOutCrack6641.ts), i finalen
-//        (effortFinaleTerm, uaendret) og i enkeltstarten (allOutTimeTrialFactor7280).
+//        (effortFinaleTerm, uaendret) og i enkeltstarten (allOutTimeTrialBonus7280).
 //        Paa transport-terraen koerer alt ud som normal: ingen pris, ingen gevinst.
 //   3.   Prisen: traethed der hober sig op (conditionModelV2.stageLoadV2).
 //   4.   Knaek: med lav reserve kan rytteren blive sat paa den afgoerende stigning.
@@ -128,20 +128,20 @@ export type AllOut7280Tuning = {
   crackMaxProbability: number; // risikoen over hele den afgoerende stigning ved tom reserve
   crackLoss: number; // relativt tab lagt OVEN I hullet naar rytteren knaekker
   fatigueLoad: number; // condition v2: alt ud-dagens belastnings-faktor (ogsaa i enkeltstart)
-  timeTrialGain: number; // enkeltstart: kapacitets-tillaeg ved evne 99
+  timeTrialGain: number; // enkeltstart: tillaeg til kapaciteten (evne-enheder, som dagsformen) ved evne 99
 };
 
 export const ALL_OUT_7280_TUNING: Readonly<AllOut7280Tuning> = Object.freeze({
   transportDemand: 1.0,
   climbDemand: 1.0,
-  gainLoss: 0.03,
+  gainLoss: 0.25,
   levelPower: 3,
-  reserveWprimeWeight: 0.5,
-  crackReserve: 0.65,
-  crackMaxProbability: 0.6,
-  crackLoss: 0.06,
-  fatigueLoad: 1.8,
-  timeTrialGain: 0.01,
+  reserveWprimeWeight: 0.3,
+  crackReserve: 0.7,
+  crackMaxProbability: 1.0,
+  crackLoss: 0.15,
+  fatigueLoad: 2.0,
+  timeTrialGain: 0.15,
 });
 
 // Kun dev-benches (effortLevels6641.mjs, tacticsEffects7266.mjs) maaler med kontakten
@@ -183,14 +183,14 @@ export function effortCostTuning7280(t: Readonly<AllOut7280Tuning> = allOut7280T
 }
 
 /**
- * #7280 (slukket): enkeltstartens gevinst. Kapaciteten ganges med 1 + timeTrialGain x
- * (evne/99): alle vinder, mest de staerke (ejer 27/10 punkt 1). 1 for alle andre trin,
+ * #7280 (slukket): enkeltstartens gevinst. Kapaciteten faar timeTrialGain x
+ * (evne/99) lagt til (som dagsformen): alle vinder, mest de staerke (ejer 27/10 punkt 1). 0 for alle andre trin,
  * og naar pakken ikke er i kraft (bit-identisk).
  */
-export function allOutTimeTrialFactor7280(effort: EffortLevel | undefined, timeTrialAbility: number, on: boolean): number {
-  if (!on || effort !== "all_out") return 1;
+export function allOutTimeTrialBonus7280(effort: EffortLevel | undefined, timeTrialAbility: number, on: boolean): number {
+  if (!on || effort !== "all_out") return 0;
   const level = Number.isFinite(timeTrialAbility) ? Math.max(0, Math.min(99, timeTrialAbility)) / 99 : 0;
-  return 1 + allOut7280Tuning().timeTrialGain * level;
+  return allOut7280Tuning().timeTrialGain * level;
 }
 
 /** #6641: revisionen der baerer kalibreringen (s5_profiles_v3 og senere, slukket). */

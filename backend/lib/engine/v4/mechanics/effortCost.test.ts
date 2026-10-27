@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { ALL_OUT_7280_ACTIVE, ALL_OUT_7280_TUNING, allOut7280Active, allOut7280Tuning, allOutDemandMultiplier, allOutTimeTrialFactor7280, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isAllOut7280On, isEffortCalibration6641Revision, setAllOut7280ForBench } from "./effortCost.ts";
+import { ALL_OUT_7280_ACTIVE, ALL_OUT_7280_TUNING, allOut7280Active, allOut7280Tuning, allOutDemandMultiplier, allOutTimeTrialBonus7280, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isAllOut7280On, isEffortCalibration6641Revision, setAllOut7280ForBench } from "./effortCost.ts";
 import { decidingClimbSelectionsOnTheDay, effortClimbScoreFactor } from "./climbSelection.ts";
 import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
 import type { EffortLevel } from "../types.ts";
@@ -229,7 +229,7 @@ test("#7280: kontakten er slukket, saa den aktuelle revision koerer bit-identisk
   assert.equal(allOut7280Active(), false);
   assert.equal(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
   assert.equal(isAllOut7280On("s5_profiles_v3"), false);
-  assert.equal(allOutTimeTrialFactor7280("all_out", 99, isAllOut7280On("s5_profiles_v3")), 1);
+  assert.equal(allOutTimeTrialBonus7280("all_out", 99, isAllOut7280On("s5_profiles_v3")), 0);
   for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
     assert.equal(effortCostTuningFor(revision, true), EFFORT_COST_TUNING, `${String(revision)}: aeldre revisioner uroert ogsaa med kontakten taendt`);
   }
@@ -256,9 +256,9 @@ test("#7280: bench-setteren taender og nulstiller (kun dev-benches)", () => {
     setAllOut7280ForBench({ active: true, tuning: { timeTrialGain: 0.02 } });
     assert.equal(isAllOut7280On("s5_profiles_v3"), true);
     assert.equal(isAllOut7280On("s5_profiles_v2"), false, "kun s5_profiles_v3 og senere");
-    assert.ok(Math.abs(allOutTimeTrialFactor7280("all_out", 99, true) - 1.02) < 1e-12);
-    assert.ok(allOutTimeTrialFactor7280("all_out", 50, true) < allOutTimeTrialFactor7280("all_out", 90, true), "mest de staerke");
-    assert.equal(allOutTimeTrialFactor7280("normal", 99, true), 1);
+    assert.ok(Math.abs(allOutTimeTrialBonus7280("all_out", 99, true) - 0.02) < 1e-12);
+    assert.ok(allOutTimeTrialBonus7280("all_out", 50, true) < allOutTimeTrialBonus7280("all_out", 90, true), "mest de staerke");
+    assert.equal(allOutTimeTrialBonus7280("normal", 99, true), 0);
     assert.equal(allOut7280Tuning().fatigueLoad, ALL_OUT_7280_TUNING.fatigueLoad);
   } finally {
     setAllOut7280ForBench(null);
