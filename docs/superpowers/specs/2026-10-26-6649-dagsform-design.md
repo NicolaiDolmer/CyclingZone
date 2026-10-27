@@ -14,6 +14,8 @@ Repoet er offentligt (hard rule 17): her står ingen målte tal eller bånd. De 
 - **Løbsgrupper**: monument, one_day, stage_race_stage, stage_race_gc, gt_stage, gt_gc, også pr. trup (u23, junior).
 - **Vagter**: G16-G19 fra testporten og `gcFromBreakaway` (klassementsvinderen i et morgenudbrud / vandt fra et udbrud der holdt), som scriptet også måler.
 
+Kontrol: en tvilling på samme kode (main + denne PR), hvor kun broens `day_form_6649` er slået fra. Genmålt 27/10 efter main-merge: tvillingen reproducerer før-målingen, og dagsformens effekt er den samme som 26/10.
+
 Kørsel: `motorTestport.mjs --candidate=s5_profiles_v3 --baseline=s5_profiles_v3 --from-dir=<S5-eksporten> --seeds=8 --track-fatigue --no-bench`, derefter `dayForm6649.mjs --dir=<out>/races --cache-dir=<S5-eksporten>`.
 
 ### Hvad baseline viste (kvalitativt)
@@ -54,6 +56,8 @@ Frontend: `stageTimelineFilm.describeEvent` → `detail.film.event.bad_day_<års
 Ældre revisioner er bit-identiske (`oldRevisionDigests6199.test.ts` + modulets egne tests).
 
 ## 5. Det modellen ikke løser
+
+Gaten (`bestRiderWinShare` i alle løbsgrupper) er ikke grøn med dagsform alene: Grand Tours (etaper og klassement) og monumenterne ligger stadig over båndet. Et forsøg med en "lang dag" (ned-siden vokser med distancen) og mere dagsform i massespurten flyttede dem næsten ikke og blev rullet tilbage.
 
 Endagsløbenes og de bakkede etapers lave sejrsandel for den bedste skyldes udbrud og finalens regler, ikke dagsform; dagsform kan kun gøre en favorit svagere. Bjerg-dominansen ved store evne-forskelle (især ungdomsfelter og Grand Tours) kræver mere end dagsform alene, uden at udbrud og `gcFromBreakaway` bliver værre. Tallene og de reelle valg ligger til ejeren i `private-handoffs/6649/result.md`.
 
