@@ -22,13 +22,14 @@ export function evaluateCodeRabbitNight({ data, checkRuns = [], rabbitReviews = 
   const reviews = rabbitReviews.filter(r => r.user?.login === 'coderabbitai[bot]' && r.user?.type === 'Bot' && r.commit_id === data.headSha && (String(r.body || '').trim() || r.state !== 'COMMENTED'))
     .sort((a,b) => String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')) || Number(b.id || 0) - Number(a.id || 0));
   const review = reviews[0];
+  if (!review) return fail('manglende CodeRabbit-review paa HEAD');
   const rabbitThreads = (data.threads || []).filter(t => String(t.author || '').replace(/\[bot\]$/, '') === 'coderabbitai');
-  // A zero-issue incremental review may publish only the official completed check.
-  // Empty COMMENTED replies are not review receipts; the app's full-review result is required above.
+  // Require both the official completion check and an actual review receipt.
   if (review) {
     if (!['COMMENTED','APPROVED'].includes(review.state)) return fail('CodeRabbit-review er ikke afsluttet');
     const count = String(review.body || '').match(/\*\*Actionable comments (?:posted|generated):\s*(\d+)\*\*/i);
-    if (!count || rabbitThreads.filter(t => t.commit === data.headSha).length < Number(count[1])) return fail('CodeRabbit-review har ukendt eller ufuldstaendig issue-dom');
+    if (/\b(?:Critical|Major)\b|outside[ -]diff|off[ -]diff/i.test(review.body || '')) return fail('CodeRabbit-body har blokerende eller uklassificerede fund');
+    if (!count || rabbitThreads.filter(t => t.commit === data.headSha).length !== Number(count[1])) return fail('CodeRabbit-review har ukendt eller ufuldstaendig issue-dom');
   }
   const open = rabbitThreads.filter(t => !t.isResolved);
   if (open.some(t => !['P2','P3'].includes(t.rabbitSeverity))) return fail('uloest blokerende/ukendt CodeRabbit-traad');

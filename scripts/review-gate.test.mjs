@@ -925,7 +925,8 @@ for(const [name,patch] of [
  ['open Rabbit thread',{data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD}]})}],
 ])test(`night CodeRabbit fails closed: ${name}`,()=>assert.equal(evaluateCodeRabbitNight(nightInput(patch)).ok,false));
 
-test('night CodeRabbit: official zero-issue incremental completion needs no synthetic review receipt',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[]})).ok,true));
+test('night CodeRabbit: completed check alone cannot replace the review receipt',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[]})).ok,false));
+test('night CodeRabbit blocks body-only Major findings despite matching thread count',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[nightReview({body:'**Actionable comments posted: 0**\nOutside diff range comments: Major finding'})]})).ok,false));
 test('night CodeRabbit: skipped success text cannot count as a completed review',()=>assert.equal(evaluateCodeRabbitNight(nightInput({checkRuns:[nightCheck({output:{summary:'Review skipped'}})]})).ok,false));
 test('night CodeRabbit: MEMBER cannot grant the owner exception',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'MEMBER',body:`<!-- coderabbit-substitute: pr=7313 sha=${HEAD} -->`}]})})).ok,false));
 test('night CodeRabbit: the second allowed PR needs its own current-head owner decision',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({number:7311,comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute: pr=7311 sha=${HEAD} -->`}]})})).ok,true));
