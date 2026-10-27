@@ -64,6 +64,7 @@
 
 import type { EffortLevel, EngineState, Entrant, RaceGroup, RouteV2, SegmentHookContext, TeamOrder } from "../types.ts";
 import { TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { createStagePlanRuntime } from "../../../stagePlanEngine.ts"; // #7003
 
 /** DB/API-rollen. Motoren ser ham som "helper" + markoeren `luxury_helper`. */
 export const LUXURY_HELPER_ROLE = "luxury_helper" as const;
@@ -178,6 +179,55 @@ function overlapKm(from: number, to: number, lo: number, hi: number): number {
   return Math.max(0, Math.min(to, hi) - Math.max(from, lo));
 }
 
+/**
+ * Etapeplanens indsats pr. segment i route.segments for en almindelig hjaelper
+ * med rytterens kaede: samme validering (createStagePlanRuntime) og samme
+ * skifteregel for rutepunkter som stagePlanEngine.advanceStagePlan. "Naar han
+ * er sat" er ikke et rutepunkt og indgaar ikke (sidder han ikke med kaptajnen,
+ * betaler sidste mand intet). null = ingen gyldig plan for rytteren.
+ */
+export function plannedHelperEfforts(
+  orders: readonly TeamOrder[],
+  route: RouteV2,
+  entrants: Readonly<Record<string, Entrant>>,
+  riderId: string,
+): EffortLevel[] | null {
+  const legs = createStagePlanRuntime(orders, route, entrants)?.legs.get(riderId);
+  if (!legs || legs.length === 0) return null;
+  const out: EffortLevel[] = [];
+  let cur = 0;
+  for (let i = 0; i < route.segments.length; i++) {
+    const seg = route.segments[i];
+    const isLast = i === route.segments.length - 1;
+    if (i > 0 || isLast) {
+      const switchPointKm = isLast ? seg.to_km - 1e-9 : seg.from_km + (seg.to_km - seg.from_km) / 2;
+      while (cur + 1 < legs.length && legs[cur + 1].fromKm !== null && (legs[cur + 1].fromKm as number) <= switchPointKm) cur += 1;
+    }
+    out.push(legs[cur].effort);
+  }
+  return out;
+}
+
+/**
+ * En almindelig hjaelpers pris-multiplikator over HELE etapen (km-vaegtet), naar
+ * etapeplanen skifter hans indsats undervejs. null = ingen plan (konstant indsats).
+ */
+function plannedDayMultiplier(
+  ctx: SegmentHookContext,
+  riderId: string,
+  costMultiplier: (effort: EffortLevel | undefined) => number,
+): number | null {
+  const efforts = plannedHelperEfforts(ctx.orders, ctx.route, ctx.entrants, riderId);
+  const distanceKm = ctx.route.distance_km;
+  if (!efforts || !(distanceKm > 0)) return null;
+  let sum = 0;
+  ctx.route.segments.forEach((seg, i) => {
+    const share = Math.max(0, Math.min(1, Math.max(0, seg.to_km - seg.from_km) / distanceKm));
+    sum += share * Math.max(0, costMultiplier(efforts[i]));
+  });
+  return sum;
+}
+
 /** Holdets kaptajn (eller spurtkaptajnen paa et hold uden kaptajn), uanset status. */
 export function lastManCaptainId(teamId: string, entrants: Readonly<Record<string, Entrant>>): string | null {
   const ids = Object.keys(entrants).filter((id) => String(entrants[id].team_id ?? "") === teamId).sort((a, b) => a.localeCompare(b));
@@ -271,7 +321,10 @@ export function applyLastManWork(
     const full = Math.max(0, costMultiplier(ctx.entrants[worker.riderId]?.effort));
     const saved = Math.min(full, Math.max(0, costMultiplier("save")));
     // Budgettet er en almindelig hjaelpers dag paa samme indsats minus det han brugte foer vinduet.
-    const budget = Math.max(0, helperBase * full - helperBase * saved * window.beforeShare);
+    // Med en etapeplan foelger dagen planens indsats segment for segment (skift undervejs), ellers
+    // den aktuelle indsats hele dagen.
+    const day = plannedDayMultiplier(ctx, worker.riderId, costMultiplier) ?? full;
+    const budget = Math.max(0, helperBase * day - helperBase * saved * window.beforeShare);
     const windowPart = overlapKm(segFrom, segTo, window.fromKm, window.toKm) / distanceKm;
     const beforePart = overlapKm(segFrom, segTo, 0, window.fromKm) / distanceKm;
     const paidWork = Math.max(0, (budget / window.windowShare) * windowPart);

@@ -27,6 +27,7 @@ import { buildStageOrderPlan } from "../orders/teamOrdersAdapter.ts";
 import { VALID_RACE_ROLES, workCost } from "../../../raceRoles.js";
 import { RACE_V4_TUNING, TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
+import { advanceStagePlan, createStagePlanRuntime, stagePlanEntrants } from "../../../stagePlanEngine.ts";
 import type {
   AbilityKey,
   EffortLevel,
@@ -117,15 +118,21 @@ function stateOf(specs: Spec[]): EngineState {
   return { groups, riders } as unknown as EngineState;
 }
 
-type RunOpts = { route?: RouteV2; v3?: boolean; orders?: TeamOrder[] };
+type RunOpts = { route?: RouteV2; v3?: boolean; orders?: TeamOrder[]; applyPlan?: boolean };
 
-/** Holdspillet alene over hele ruten (ingen anden mekanik), faktoren efter hvert segment. */
+/**
+ * Holdspillet alene over hele ruten (ingen anden mekanik), faktoren efter hvert segment.
+ * `applyPlan`: etapeplanens indsats skifter undervejs som i segment-loopet (stagePlanEngine).
+ */
 function runTeamPlay(specs: Spec[], opts: RunOpts = {}): Array<Record<string, number>> {
   const route = opts.route ?? MOUNTAIN;
-  const entrants = entrantsOf(specs);
+  const baseEntrants = entrantsOf(specs);
   let state = stateOf(specs);
+  const plan = opts.applyPlan ? createStagePlanRuntime(opts.orders ?? [], route, baseEntrants) : null;
   const trace: Array<Record<string, number>> = [];
   route.segments.forEach((segment, segmentIndex) => {
+    if (plan) advanceStagePlan(plan, { state, segment, segmentIndex, isLastSegment: segmentIndex === route.segments.length - 1, entrants: baseEntrants });
+    const entrants = plan ? stagePlanEntrants(plan, baseEntrants) : baseEntrants;
     const ctx = { ...makeHookCtx({ segment, segmentIndex, route, entrants, tuning: RACE_V4_TUNING, orders: opts.orders ?? [] }), ...(opts.v3 === false ? {} : { s5ProfilesV3: true as const, ordersGcV3: true as const }) };
     state = teamPlayHook(state, ctx).state;
     trace.push(Object.fromEntries(Object.keys(state.riders).map((id) => [id, state.riders[id].team_cp_factor ?? 1])));
@@ -357,6 +364,25 @@ test("#5982: etapeplanens rutepunkt flytter arbejdet til den valgte stigning", (
   assert.ok(gainEarly > gainEarlyDefault, "mere hjaelp ind i den valgte (tidlige) stigning");
   // Efter sit arbejde er han toemt og ruller i maal: ingen pris resten af etapen, heller ikke paa slutstigningen.
   for (let i = EARLY_CLIMB; i < planned.length; i++) assert.equal(planned[i].x, planned[EARLY_CLIMB - 1].x, `segment ${i}`);
+});
+
+test("#5982 tvilling: etapeplanens indsats-skift undervejs — sidste mand betaler aldrig mere end en hjaelper med samme plan", () => {
+  // Codex-fund: "tempo" til en tidlig stigning og derefter "ride_in". Hjaelperen betaler fuld
+  // pris kun til skiftet og derefter den lave; sidste mands budget skal foelge samme plan.
+  const plans: Array<Array<Record<string, unknown>>> = [
+    [{ task: "tempo" }, { task: "ride_in", from: { at: "kom", kom_index: 0 } }],
+    [{ task: "stay_sheltered" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }, { task: "ride_in", from: { at: "final_km" } }],
+    [{ task: "tempo" }, { task: "ride_in", from: { at: "final_km" } }],
+  ];
+  for (const legs of plans) {
+    const orders: TeamOrder[] = [{ team_id: "A", kind: "stage_plan", params: { riders: [{ rider_id: "x", legs }] } }];
+    for (const specs of [small, full]) {
+      const last = runTeamPlay(specs(true), { orders, applyPlan: true }).at(-1)!;
+      const helper = runTeamPlay(specs(false), { orders, applyPlan: true }).at(-1)!;
+      assert.ok(1 - last.x <= 1 - helper.x + 1e-12, `${JSON.stringify(legs)}: pris ${1 - last.x} vs ${1 - helper.x}`);
+      assert.ok(1 - last.x > 0, "han arbejder stadig");
+    }
+  }
 });
 
 test("#5982: sidste mand bruger hele sit budget naar kaptajnen er med hele dagen (ingen gratis personlig gevinst)", () => {
