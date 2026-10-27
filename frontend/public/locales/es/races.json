@@ -8,6 +8,8 @@
     "noPlanLocked": "Sin plan. Corrió según su rol.",
     "noPlanOrders": "Aún sin plan. Corre con lo que fijaste: {orders}.",
     "noPlanOrdersLocked": "Sin plan. Corrió con lo que fijaste: {orders}.",
+    "luxuryHelperPlan": "Sin plan guardado. Como gregario de lujo, sigue la sugerencia.",
+    "luxuryHelperPlanLocked": "Sin plan guardado. Como gregario de lujo, siguió la sugerencia.",
     "noFit": "Este plan ya no encaja con su rol. Elige uno nuevo.",
     "colPlan": "Plan para la etapa {number}",
     "colPlanRaceDay": "Plan para la carrera",
@@ -489,6 +491,7 @@
       "captain": "Jefe de filas",
       "sprintCaptain": "Jefe de filas de sprint",
       "coCaptain": "Jefe de filas compartido",
+      "luxuryHelper": "Gregario de lujo",
       "hunter": "Cazador de escapadas",
       "rider": "Solo ciclista"
     },
@@ -764,6 +767,8 @@
     "sprintCaptain": "Jefe de filas de sprint (opcional)",
     "coCaptain": "Jefe de filas compartido (opcional)",
     "coCaptainHint": "Protegido como el jefe de filas. El jefe de filas recibe ayuda primero.",
+    "luxuryHelper": "Gregario de lujo (opcional)",
+    "luxuryHelperHint": "Se reserva y luego trabaja para el jefe de filas en la subida decisiva.",
     "hunter": "Cazador de escapadas",
     "freeRole": "Rol libre",
     "noRole": "Ninguno",
@@ -866,6 +871,7 @@
       "selection_co_captain_requires_captain": "Un jefe de filas compartido necesita un jefe de filas. Elige primero un jefe de filas.",
       "selection_role_not_selected": "Los ciclistas con rol deben formar parte de la selección.",
       "selection_role_overlap": "El jefe de filas, el jefe de filas de sprint y el cazador deben ser ciclistas distintos.",
+      "selection_luxury_helper_not_available": "El gregario de lujo no está disponible en esta carrera.",
       "selection_rider_injured": "No se puede seleccionar a ciclistas lesionados.",
       "selection_rider_over_age": "No se puede seleccionar a ciclistas que superan el límite de edad de la carrera.",
       "selection_rider_not_on_team": "Solo puedes seleccionar a tus propios ciclistas.",
@@ -964,7 +970,8 @@
       "co_captain": "jefe de filas compartido",
       "helper": "gregario",
       "hunter": "cazador",
-      "free_role": "rol libre"
+      "free_role": "rol libre",
+      "luxury_helper": "gregario de lujo"
     },
     "errors": {
       "stage_roles_invalid_body": "No se pudieron guardar las intenciones. Inténtalo de nuevo.",
@@ -1037,7 +1044,8 @@
       "sprint_captain": "Jefe de filas de sprint",
       "hunter": "Cazador de escapadas",
       "helper": "Gregario",
-      "free_role": "Rol libre"
+      "free_role": "Rol libre",
+      "luxury_helper": "Gregario de lujo"
     },
     "save": "Guardar tácticas",
     "saving": "Guardando…",
@@ -1069,7 +1077,8 @@
       "sprint_captain": "jefe de filas de sprint",
       "hunter": "cazador de escapadas",
       "helper": "gregario",
-      "free_role": "rol libre"
+      "free_role": "rol libre",
+      "luxury_helper": "gregario de lujo"
     }
   },
   "stageOrders": {
@@ -1150,7 +1159,8 @@
         "sprint_captain": "Recibe el tren de sprint y el lanzamiento.",
         "hunter": "Sale a la caza de la escapada.",
         "helper": "Trabaja para los líderes.",
-        "free_role": "Corre su propia carrera."
+        "free_role": "Corre su propia carrera.",
+        "luxury_helper": "Se reserva y luego trabaja para el jefe de filas en la subida decisiva. La subida se cambia en el plan de etapa."
       }
     },
     "team": {

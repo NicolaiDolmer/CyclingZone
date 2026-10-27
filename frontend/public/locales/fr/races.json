@@ -8,6 +8,8 @@
     "noPlanLocked": "Pas de plan. Il a couru selon son rôle.",
     "noPlanOrders": "Pas encore de plan. Il court avec tes consignes : {orders}.",
     "noPlanOrdersLocked": "Pas de plan. Il a couru avec tes consignes : {orders}.",
+    "luxuryHelperPlan": "Aucun plan enregistré. En équipier de luxe, il suit la suggestion.",
+    "luxuryHelperPlanLocked": "Aucun plan enregistré. En équipier de luxe, il a suivi la suggestion.",
     "noFit": "Ce plan ne correspond plus à son rôle. Choisis-en un nouveau.",
     "colPlan": "Plan pour l'étape {number}",
     "colPlanRaceDay": "Plan pour la course",
@@ -489,6 +491,7 @@
       "captain": "Leader",
       "sprintCaptain": "Leader sprint",
       "coCaptain": "Co-leader",
+      "luxuryHelper": "Équipier de luxe",
       "hunter": "Chasseur d'échappée",
       "rider": "Équipier"
     },
@@ -764,6 +767,8 @@
     "sprintCaptain": "Leader sprint (facultatif)",
     "coCaptain": "Co-leader (facultatif)",
     "coCaptainHint": "Protégé comme le leader. Le leader est aidé en premier.",
+    "luxuryHelper": "Équipier de luxe (facultatif)",
+    "luxuryHelperHint": "S'économise, puis travaille pour le leader dans l'ascension décisive.",
     "hunter": "Chasseur d'échappée",
     "freeRole": "Rôle libre",
     "noRole": "Aucun",
@@ -866,6 +871,7 @@
       "selection_co_captain_requires_captain": "Un co-leader a besoin d'un leader. Choisis d'abord un leader.",
       "selection_role_not_selected": "Les coureurs à rôle doivent faire partie de la sélection.",
       "selection_role_overlap": "Le leader, le leader sprint et le chasseur d'échappée doivent être des coureurs différents.",
+      "selection_luxury_helper_not_available": "L'équipier de luxe n'est pas disponible dans cette course.",
       "selection_rider_injured": "Les coureurs blessés ne peuvent pas être sélectionnés.",
       "selection_rider_over_age": "Les coureurs au-delà de la limite d'âge de la course ne peuvent pas être sélectionnés.",
       "selection_rider_not_on_team": "Tu ne peux sélectionner que tes propres coureurs.",
@@ -964,7 +970,8 @@
       "co_captain": "co-leader",
       "helper": "équipier",
       "hunter": "chasseur d'échappée",
-      "free_role": "rôle libre"
+      "free_role": "rôle libre",
+      "luxury_helper": "équipier de luxe"
     },
     "errors": {
       "stage_roles_invalid_body": "Impossible d'enregistrer les consignes. Réessaie.",
@@ -1037,7 +1044,8 @@
       "sprint_captain": "Leader sprint",
       "hunter": "Chasseur d'échappée",
       "helper": "Équipier",
-      "free_role": "Rôle libre"
+      "free_role": "Rôle libre",
+      "luxury_helper": "Équipier de luxe"
     },
     "save": "Enregistrer la tactique",
     "saving": "Enregistrement…",
@@ -1069,7 +1077,8 @@
       "sprint_captain": "leader sprint",
       "hunter": "chasseur d'échappée",
       "helper": "équipier",
-      "free_role": "rôle libre"
+      "free_role": "rôle libre",
+      "luxury_helper": "équipier de luxe"
     }
   },
   "stageOrders": {
@@ -1150,7 +1159,8 @@
         "sprint_captain": "Il a le train de sprint et le lancement.",
         "hunter": "Il part à la chasse de l'échappée.",
         "helper": "Il travaille pour les leaders.",
-        "free_role": "Il court sa propre course."
+        "free_role": "Il court sa propre course.",
+        "luxury_helper": "Il s'économise, puis travaille pour le leader dans l'ascension décisive. L'ascension se change dans le plan d'étape."
       }
     },
     "team": {

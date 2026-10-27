@@ -52,7 +52,7 @@ const API = import.meta.env.VITE_API_URL;
 // OBLIGATORISK (GET → state → PUT uændret, filtreret til ryttere stadig i truppen) så et
 // gem fra dette panel ikke wiper free_role'r sat af boardet. Panelet har intet fuldt
 // redigerings-UI for rollen (rollens editor er boardets rollekort); den vises kun som badge.
-const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [], coCaptainId: null };
+const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [], coCaptainId: null, luxuryHelperId: null };
 
 export default function RaceSelectionPanel({
   raceId,
@@ -176,6 +176,7 @@ export default function RaceSelectionPanel({
           hunterId: body.selection.hunter_id ?? null,
           freeRoleIds: body.selection.free_role_ids ?? [],
           coCaptainId: body.selection.co_captain_id ?? null, // #7239
+          luxuryHelperId: body.selection.luxury_helper_id ?? null, // #5982
         });
       }
       return true;
@@ -414,7 +415,7 @@ export default function RaceSelectionPanel({
     // #7239: én rolle pr. rytter. Får en rytter en ny rolle, slippes hans gamle, så
     // panelet aldrig selv laver et rolle-overlap (fx kaptajnen valgt som delt kaptajn).
     if (riderId != null) {
-      for (const other of ["captainId", "sprintCaptainId", "hunterId", "coCaptainId"]) {
+      for (const other of ["captainId", "sprintCaptainId", "hunterId", "coCaptainId", "luxuryHelperId"]) { // #5982
         if (other !== key && next[other] === riderId) next[other] = null;
       }
       next.freeRoleIds = (next.freeRoleIds || []).filter((id) => id !== riderId);
@@ -446,6 +447,8 @@ export default function RaceSelectionPanel({
     const freeRoleIds = (sel.freeRoleIds || []).filter((id) => sel.riderIds.includes(id));
     // #7239: den delte kaptajn sendes altid med, så et gem herfra aldrig nulstiller ham.
     const coCaptainId = sel.coCaptainId != null && sel.riderIds.includes(sel.coCaptainId) ? sel.coCaptainId : null;
+    // #5982: luksushjaelperen sendes ogsaa altid med (kun i loeb der kender rollen).
+    const luxuryHelperId = data?.sprint_leader_allowed === true && sel.luxuryHelperId != null && sel.riderIds.includes(sel.luxuryHelperId) ? sel.luxuryHelperId : null;
     try {
       const res = await apiFetch(`${API}/api/races/${raceId}/selection`, {
         method: "PUT",
@@ -457,6 +460,7 @@ export default function RaceSelectionPanel({
           hunter_id: sel.hunterId,
           free_role_ids: freeRoleIds,
           co_captain_id: coCaptainId,
+          ...(data?.sprint_leader_allowed === true ? { luxury_helper_id: luxuryHelperId } : {}),
         }),
       });
       const body = res.data || {};
@@ -489,6 +493,7 @@ export default function RaceSelectionPanel({
               hunter_id: sel.hunterId,
               free_role_ids: freeRoleIds,
               ...(coCaptainId != null ? { co_captain_id: coCaptainId } : {}),
+              ...(luxuryHelperId != null ? { luxury_helper_id: luxuryHelperId } : {}),
               is_auto_filled: false,
             },
           }
@@ -921,6 +926,19 @@ export default function RaceSelectionPanel({
               disabled={busy || fullyTrainNowLocked || (!sel.captainId && !sel.coCaptainId)}
               onChange={(v) => setRole("coCaptainId", v)}
               hint={sel.captainId ? t("selection.coCaptainHint") : t("selection.errors.selection_co_captain_requires_captain")}
+            />
+          )}
+          {/* #5982: luksushjaelperen, samme v3-gate. En hjaelper med en faerdig etapeplan; lederne
+              kan ikke vaelges her (én rolle pr. rytter). */}
+          {data.sprint_leader_allowed === true && (
+            <RoleSelect
+              label={t("selection.luxuryHelper")}
+              value={sel.luxuryHelperId}
+              riders={selectedRiders.filter((r) => r.id !== sel.captainId && r.id !== sel.coCaptainId && r.id !== sel.sprintCaptainId)}
+              emptyLabel={t("selection.noRole")}
+              disabled={busy || fullyTrainNowLocked}
+              onChange={(v) => setRole("luxuryHelperId", v)}
+              hint={t("selection.luxuryHelperHint")}
             />
           )}
           {/* #1884: jaeger-dropdownen er VAEK herfra — valget bor i

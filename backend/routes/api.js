@@ -5844,7 +5844,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         prepared.errors ? { error: prepared.error, errors: prepared.errors } : { error: prepared.error }
       );
     }
-    const { captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared;
+    const { captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId } = prepared; // #5982: luxuryHelperId
     riderIds = prepared.riderIds;
     ctx = prepared.ctx;
 
@@ -5930,7 +5930,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_race_started" });
     }
     await saveSelection({
-      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId,
+      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId,
     });
     // #2599: en manuel udtagelse med ≥1 rytter er en aktiv genindtræden — en evt. tidligere
     // "Ryd dag/alt"-markering for netop dette (race,team)-par er nu forældet. Best-effort:
@@ -6123,12 +6123,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     // dobbeltbooking-check udskudt til batchens afslutning (database/2026-08-27-1146-
     // selection-bulk-rpc.sql — samme mønster som apply_race_entry_unit_batch, #3934).
     const rpcChanges = changes.map((c) => {
-      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared.get(c.raceId);
+      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId } = prepared.get(c.raceId); // #5982: luxuryHelperId
       const freeRoleIdSet = new Set(freeRoleIds);
       return {
         race_id: c.raceId,
         rider_ids: riderIds,
-        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId })),
+        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId, luxuryHelperId })),
       };
     });
 

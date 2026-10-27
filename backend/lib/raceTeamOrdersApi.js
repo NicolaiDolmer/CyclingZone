@@ -298,7 +298,8 @@ export async function getTeamOrdersContext({ supabase, race, teamId }) {
     // (#1791): kun enum-værdier, aldrig hvad et valg er værd.
     default_order: defaultTeamOrderForRoster(
       teamId,
-      entries.map((e) => ({ rider_id: e.rider_id, role: e.race_role ?? "free_role" })),
+      // #5982: luksushjaelperen faar en hjaelpers standardordre (samme som motoren, teamOrdersAdapter.toRole).
+      entries.map((e) => ({ rider_id: e.rider_id, role: e.race_role === "luxury_helper" ? "helper" : (e.race_role ?? "free_role") })),
     ),
     stage_count: race.stages ?? 0,
     stages_completed: race.stages_completed ?? 0,

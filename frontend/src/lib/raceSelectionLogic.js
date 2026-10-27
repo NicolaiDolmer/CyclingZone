@@ -14,6 +14,7 @@ export function toggleRider(state, riderId, max) {
     sprintCaptainId: has && state.sprintCaptainId === riderId ? null : state.sprintCaptainId,
     hunterId: has && state.hunterId === riderId ? null : state.hunterId,
     ...(state.coCaptainId !== undefined ? { coCaptainId: has && state.coCaptainId === riderId ? null : state.coCaptainId } : {}),
+    ...(state.luxuryHelperId !== undefined ? { luxuryHelperId: has && state.luxuryHelperId === riderId ? null : state.luxuryHelperId } : {}), // #5982
     ...(Array.isArray(state.freeRoleIds) ? { freeRoleIds: has ? state.freeRoleIds.filter((id) => id !== riderId) : state.freeRoleIds } : {}),
   };
 }
@@ -26,11 +27,11 @@ export function toggleRider(state, riderId, max) {
 // fortjeneste (#2028), og rollerne holdes distinkte (backend afviser overlap).
 /**
  * @param {{ riderIds?: any[], captainId?: any, sprintCaptainId?: any, hunterId?: any, coCaptainId?: any,
- *   freeRoleIds?: any[], sprintLeaderAllowed?: boolean, suitabilityOf?: (id: any) => any }} args
+ *   freeRoleIds?: any[], sprintLeaderAllowed?: boolean, suitabilityOf?: (id: any) => any, luxuryHelperId?: any }} args
  */
 export function resolveBoardRoles({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, coCaptainId = null, freeRoleIds = [],
-  sprintLeaderAllowed = false, suitabilityOf,
+  sprintLeaderAllowed = false, suitabilityOf, luxuryHelperId = undefined,
 }) {
   const inSquad = (id) => (id != null && riderIds.includes(id) ? id : null);
   let captain = inSquad(captainId);
@@ -53,7 +54,14 @@ export function resolveBoardRoles({
   }
   if (coCaptain != null && (coCaptain === captain || coCaptain === sprint || coCaptain === hunter)) coCaptain = null;
   if (coCaptain != null) freeRoles = freeRoles.filter((id) => id !== coCaptain);
-  return { captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter, co_captain_id: coCaptain, free_role_ids: freeRoles };
+  // #5982: luksushjaelperen foelger med (samme v3-gate), medmindre han nu har en anden rolle.
+  // Uden feltet i input er svaret uaendret (serveren beholder da den gemte).
+  const taken = [captain, sprint, hunter, coCaptain, ...freeRoles];
+  const luxury = sprintLeaderAllowed && inSquad(luxuryHelperId) != null && !taken.includes(luxuryHelperId) ? luxuryHelperId : null;
+  return {
+    captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter, co_captain_id: coCaptain, free_role_ids: freeRoles,
+    ...(luxuryHelperId !== undefined ? { luxury_helper_id: luxury } : {}),
+  };
 }
 
 // #2028: vælg en fallback-kaptajn EFTER FORTJENESTE når manageren ikke selv har sat en.
@@ -113,7 +121,7 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
 // RaceSelectionPanel (`selection.partialHint`), bygget på ryttere der faktisk er frie til
 // DETTE løb (ikke bundet, ikke skadet). Den hører ikke hjemme her: denne funktion afgør
 // om der MÅ gemmes, ikke hvad der er klogt at gemme.
-export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, sprintLeaderAllowed = false, coCaptainId = null }) {
+export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, sprintLeaderAllowed = false, coCaptainId = null, luxuryHelperId = null }) {
   const errors = [];
   if (riderIds.length > size.max) errors.push("selection_wrong_size");
   // BEVIDST divergens der står tilbage efter #4295: backenden kræver kun kaptajn når
@@ -126,7 +134,9 @@ export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, 
   // #7239: delt kaptajn (#5981), samme regler og samme v3-gate som serveren.
   if (coCaptainId && !sprintLeaderAllowed) errors.push("selection_co_captain_not_available");
   else if (coCaptainId && !captainId) errors.push("selection_co_captain_requires_captain");
-  const roles = [captainId, sprintCaptainId, hunterId, coCaptainId].filter(Boolean);
+  // #5982: luksushjaelperen, samme v3-gate og én rolle pr. rytter.
+  if (luxuryHelperId && !sprintLeaderAllowed) errors.push("selection_luxury_helper_not_available");
+  const roles = [captainId, sprintCaptainId, hunterId, coCaptainId, luxuryHelperId].filter(Boolean);
   if (new Set(roles).size !== roles.length) errors.push("selection_role_overlap");
   return errors;
 }

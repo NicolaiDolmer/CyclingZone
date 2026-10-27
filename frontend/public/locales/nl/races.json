@@ -8,6 +8,8 @@
     "noPlanLocked": "Geen plan. Hij reed volgens zijn rol.",
     "noPlanOrders": "Nog geen plan. Hij rijdt op wat je instelde: {orders}.",
     "noPlanOrdersLocked": "Geen plan. Hij reed op wat je instelde: {orders}.",
+    "luxuryHelperPlan": "Geen opgeslagen plan. Als luxeknecht rijdt hij het voorstel.",
+    "luxuryHelperPlanLocked": "Geen opgeslagen plan. Als luxeknecht reed hij het voorstel.",
     "noFit": "Dit plan past niet meer bij zijn rol. Kies een nieuw.",
     "colPlan": "Plan voor etappe {number}",
     "colPlanRaceDay": "Plan voor de koers",
@@ -489,6 +491,7 @@
       "captain": "Kopman",
       "sprintCaptain": "Sprintkopman",
       "coCaptain": "Gedeelde kopman",
+      "luxuryHelper": "Luxeknecht",
       "hunter": "Ontsnappingsjager",
       "rider": "Alleen renner"
     },
@@ -764,6 +767,8 @@
     "sprintCaptain": "Sprintkopman (optioneel)",
     "coCaptain": "Gedeelde kopman (optioneel)",
     "coCaptainHint": "Beschermd zoals de kopman. De kopman krijgt eerst hulp.",
+    "luxuryHelper": "Luxeknecht (optioneel)",
+    "luxuryHelperHint": "Spaart zich en werkt daarna voor de kopman op de beslissende klim.",
     "hunter": "Ontsnappingsjager",
     "freeRole": "Vrije rol",
     "noRole": "Geen",
@@ -866,6 +871,7 @@
       "selection_co_captain_requires_captain": "Een gedeelde kopman heeft een kopman nodig. Kies eerst een kopman.",
       "selection_role_not_selected": "Renners met een rol moeten deel uitmaken van de selectie.",
       "selection_role_overlap": "Kopman, sprintkopman en jager moeten verschillende renners zijn.",
+      "selection_luxury_helper_not_available": "Luxeknecht is niet beschikbaar in deze koers.",
       "selection_rider_injured": "Geblesseerde renners kunnen niet worden geselecteerd.",
       "selection_rider_over_age": "Renners boven de leeftijdsgrens van de koers kunnen niet worden geselecteerd.",
       "selection_rider_not_on_team": "Je kunt alleen je eigen renners selecteren.",
@@ -964,7 +970,8 @@
       "co_captain": "gedeelde kopman",
       "helper": "renner",
       "hunter": "jager",
-      "free_role": "vrije rol"
+      "free_role": "vrije rol",
+      "luxury_helper": "luxeknecht"
     },
     "errors": {
       "stage_roles_invalid_body": "De intenties konden niet worden opgeslagen. Probeer het opnieuw.",
@@ -1037,7 +1044,8 @@
       "sprint_captain": "Sprintkopman",
       "hunter": "Ontsnappingsjager",
       "helper": "Knecht",
-      "free_role": "Vrije rol"
+      "free_role": "Vrije rol",
+      "luxury_helper": "Luxeknecht"
     },
     "save": "Tactiek opslaan",
     "saving": "Opslaan…",
@@ -1069,7 +1077,8 @@
       "sprint_captain": "sprintkopman",
       "hunter": "ontsnappingsjager",
       "helper": "knecht",
-      "free_role": "vrije rol"
+      "free_role": "vrije rol",
+      "luxury_helper": "luxeknecht"
     }
   },
   "stageOrders": {
@@ -1150,7 +1159,8 @@
         "sprint_captain": "Hij krijgt de sprinttrein en de lead-out.",
         "hunter": "Hij gaat op jacht naar de ontsnapping.",
         "helper": "Hij werkt voor de leiders.",
-        "free_role": "Hij rijdt zijn eigen koers."
+        "free_role": "Hij rijdt zijn eigen koers.",
+        "luxury_helper": "Hij spaart zich en werkt daarna voor de kopman op de beslissende klim. De klim verander je in het etappeplan."
       }
     },
     "team": {
