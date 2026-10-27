@@ -1,5 +1,46 @@
 export const PATCHES = [
   {
+    "version": "7.385",
+    "date": "2026-10-27",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A little fatigue at the start of a new season",
+          "body": "What changed: New seasons now start with every rider at a small base fatigue instead of zero.\n\nWhat it means for you: You decide the form before the first race: rest lowers it, normal training holds it, hard training raises it."
+        },
+        "da": {
+          "title": "Lidt træthed ved starten af en ny sæson",
+          "body": "Hvad er ændret: Nye sæsoner starter nu med lidt grundtræthed hos alle ryttere i stedet for nul.\n\nHvad betyder det for dig: Du styrer formen før det første løb: hvile sænker den, normal træning holder den, og hård træning hæver den."
+        },
+        "refs": [
+          7288
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Orders that agree",
+          "body": "What changed: Conflicting orders can no longer be selected together. A short line explains why.\n\nWhat it means for you: Choose one of the conflicting orders before you save."
+        },
+        "da": {
+          "title": "Ordrer der passer sammen",
+          "body": "Hvad er ændret: Modsatte ordrer kan ikke længere vælges sammen. En kort linje forklarer hvorfor.\n\nHvad betyder det for dig: Vælg én af de modsatte ordrer, før du gemmer."
+        },
+        "refs": [
+          7003,
+          7281
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.384",
     "date": "2026-10-26",
     "changes": [
@@ -10,11 +51,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Training every day, also between seasons",
-          "body": "There is no break between seasons. The days after a season ends and before the next season's first race are training days: your riders train the program you chose, five times a day, like a race day without races. Monday 26 October is made up."
+          "body": "What changed: Training continues every day between seasons, using the program you chose.\n\nWhat it means for you: Keep planning your training before the first race. Missed training is picked up automatically."
         },
         "da": {
           "title": "Træning hver dag, også mellem sæsoner",
-          "body": "Der er ingen pause mellem sæsonerne. Dagene efter en sæson slutter og før næste sæsons første løb er træningsdage: dine ryttere træner det program, du har valgt, fem gange om dagen, som en løbsdag uden løb. Mandag 26. oktober bliver indhentet."
+          "body": "Hvad er ændret: Træningen fortsætter hver dag mellem sæsonerne med det program, du har valgt.\n\nHvad betyder det for dig: Planlæg også træningen før det første løb. Manglende træning bliver indhentet automatisk."
         },
         "refs": [
           7282
@@ -32,12 +73,12 @@ export const PATCHES = [
         "rollout": "live",
         "topic": "Races",
         "en": {
-          "title": "Each effort level has its job",
-          "body": "From the first stage of season 5, All out gains time on the day and costs fatigue afterwards. Save loses a little time and gives fresher legs the next day. Normal is best over a whole stage race if you never change it, but a plan per stage beats it: save on the flat, all out in the mountains."
+          "title": "All out: correction",
+          "body": "What changed: The earlier note promised a time gain from All out before that change was ready.\n\nWhy: That promise was premature.\n\nWhat it means for you: All out is the hardest effort. It does not guarantee a time gain. A further change is still being tested."
         },
         "da": {
-          "title": "Hvert indsatstrin har sin opgave",
-          "body": "Fra første etape i sæson 5 vinder Alt ud tid på dagen og koster træthed bagefter. Spar taber lidt tid og giver friskere ben dagen efter. Normal er bedst over et helt etapeløb, hvis du aldrig skifter, men en plan pr. etape slår det: spar på fladt, alt ud i bjergene."
+          "title": "Alt ud: rettelse",
+          "body": "Hvad er ændret: Den tidligere note lovede en tidsgevinst med Alt ud, før ændringen var klar.\n\nHvorfor: Det løfte kom for tidligt.\n\nHvad betyder det for dig: Alt ud er den hårdeste indsats. Det garanterer ikke en tidsgevinst. En yderligere ændring bliver stadig testet."
         },
         "refs": [
           6641,
