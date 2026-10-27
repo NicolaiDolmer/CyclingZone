@@ -72,6 +72,15 @@ features:
     verified: 2026-10-04
     note: Hovedkontakt for motoren (flagnavn historisk); etaperne regnes af v4, mens race_engine_v4 er on.
 
+  - id: race-engine-profile-hills
+    area: race-engine
+    title_en: Profile hills in the race engine
+    title_da: Bakker fra højdeprofilen i motoren
+    state: building
+    epic: 7290
+    verified: 2026-10-27
+    note: Nøgle route_profile_hills (mangler = off); kobles efter #6649.
+
   - id: race-engine-v3-scoring
     area: race-engine
     title_en: v3 scoring components
@@ -115,7 +124,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: Frosset prototype; v2-v5 i motoren. v5 aktiv 16/10 til S5 17/10; løb beholder bundet revision.
+    note: Frosset prototype; løb beholder deres bundne revision.
 
   - id: race-engine-s5-profiles
     area: race-engine
@@ -365,7 +374,7 @@ features:
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
     verified: 2026-10-15
-    note: Afløst af værdimodel v6 (#4449); sweep-kode fjernet i #6642. market_value_sweep_enabled står off.
+    note: Afløst af værdimodel v6 (#4449); koden fjernet i #6642.
 
   - id: rider-valuation-v5
     area: market
