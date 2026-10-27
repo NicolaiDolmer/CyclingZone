@@ -1823,7 +1823,7 @@
     },
     "peakWhatItDoes": {
       "q": "What does a peak do?",
-      "a": "A peak lifts one rider's form for a single race window you pick in the Season Planner. It runs on a lead-up you train for beforehand and a dip afterwards, so it is worth setting on a race you actually mean to win, not a whole season. Each rider can hold up to two peaks at a time. Peaks do not count in races yet; races use his normal Form. See 'How does peak training work?' and 'Does a peak cost me anything afterwards?' below for exactly how much and when."
+      "a": "A peak lifts one rider's form for a single race window you pick in the Season Planner. It runs on a lead-up you train for beforehand and a dip afterwards, so it is worth setting on a race you actually mean to win, not a whole season. Each rider can hold up to two peaks at a time. In races the peak comes on top of his normal Form. See 'How does peak training work?' and 'Does a peak cost me anything afterwards?' below for exactly how much and when."
     },
     "peakTraining": {
       "q": "How does peak training work?",
