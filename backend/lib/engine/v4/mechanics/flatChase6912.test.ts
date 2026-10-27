@@ -136,3 +136,11 @@ test("#6912 review: flere jagtgrupper opkraever kun udbruddets arbejde een gang"
   const second = breakawayHook(two.state, two.ctx);
   for (const id of ["e1", "e2"]) assert.equal(second.state.riders[id].team_cp_factor, first.state.riders[id].team_cp_factor);
 });
+
+for (const profile of ["flat", "rolling"] as const) test(`#6912 ${profile}: endagsloeb med reel sprintkaptajn kontrollerer samme faktiske hul`, () => {
+  const { state, ctx, ceiling } = fixture(profile);
+  ctx.gcContext = { status: "one_day" };
+  const result = breakawayHook(state, ctx);
+  assert.ok(result.state.groups.find(g => g.id === "field")!.gap_seconds <= ceiling);
+  assert.ok(result.state.riders.h1.team_cp_factor! < (state.riders.h1.team_cp_factor ?? 1));
+});

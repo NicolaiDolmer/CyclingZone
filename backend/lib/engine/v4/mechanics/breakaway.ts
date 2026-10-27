@@ -2059,7 +2059,11 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
   // uden daempning foer finalen og v3's lodtraekning paa jagt-gulvet.
   const chaseV3 = ctx.sharedGroupTime?.timeModelGeneration === 3 && BREAKAWAY_CHASE_V3_TUNING.profileTypes.includes(ctx.route.profile_type);
   // #6804 P2 (KUN s5_profiles_v3, etapeloeb): realistisk forspring (breakawayV3_6804.ts).
-  const p2Lead = s5V3RealisticLeadApplies({ s5ProfilesV3: ctx.s5ProfilesV3, chaseV3, gcContext: normalizedGc });
+  const p2Lead = s5V3RealisticLeadApplies({ s5ProfilesV3: ctx.s5ProfilesV3, chaseV3, gcContext: normalizedGc })
+    // #6912 (owner mandate 27/10): the flat hard gate also covers one-day races.
+    // Their sprint teams use the same active control; other one-day profiles stay unchanged.
+    || (ctx.s5ProfilesV3 === true && chaseV3 && normalizedGc?.status === "one_day"
+      && (ctx.route.profile_type === "flat" || ctx.route.profile_type === "rolling"));
   const p2Flat = p2Lead && (ctx.route.profile_type === "flat" || ctx.route.profile_type === "rolling");
 
   // #6187 (KUN orders_gc_v3): et hold foerer aldrig jagten paa en gruppe med

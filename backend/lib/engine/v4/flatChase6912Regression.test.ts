@@ -19,3 +19,8 @@ test("#6912: v1/v2 complete stage-race outputs remain byte-identical", () => {
   const actual = Object.fromEntries(["s5_profiles_v1", "s5_profiles_v2"].map(rev => [rev, Object.fromEntries(stageRaceRuns(rev, ["flat", "rolling", "hilly", "mountain", "high_mountain"], ["6912-a", "6912-b"]).map(r => [r.key, digestOf(r.output)]))]));
   assert.deepEqual(actual, expected.oldStageRaces);
 });
+
+test("#6912: v3 one-day hilly/mountain/cobbles/classic outputs remain byte-identical", () => {
+  const actual = Object.fromEntries(stageRaceRuns("s5_profiles_v3", ["hilly", "mountain", "high_mountain", "cobbles", "classic"], ["6912-a", "6912-b"], { status: "one_day" }).map(r => [r.key, digestOf(r.output)]));
+  assert.deepEqual(actual, expected.otherOneDay);
+});
