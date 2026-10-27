@@ -10,8 +10,8 @@
 //   4. Med lav reserve kan rytteren knaekke: under en taerskel vokser risikoen,
 //      seedet pr. rytter og segment (ingen Math.random). Knaekker han, saettes han
 //      af og taber et ekstra relativt tab oven i sit hul.
-//   5. Kun det motoren faktisk gjorde bliver til et event: sekunderne er forskellen
-//      paa det hul motoren ville have givet ham uden alt ud og det han fik.
+//   5. Kun det motoren faktisk gjorde bliver til et event: en gevinst-linje kun naar
+//      motoren tog tid af hans hul i de grupper den dannede (climbSelection.ts), uden tal.
 //
 // Reserven er W'-andelen gange dagens friskhed (Entrant.condition): en traet rytter
 // (traethed der hober sig op, conditionModelV2) har mindre at give af, vinder mindre

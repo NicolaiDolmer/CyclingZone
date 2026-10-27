@@ -332,7 +332,7 @@ function computeSelections(
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    // #7280 (slukket pakke): all_out faar sin gevinst i sekunder paa den afgoerende stigning (applyAllOut7280), ikke her.
+    // #7280 (slukket pakke): all_out faar sin gevinst i sekunder paa den afgoerende stigning (allOutSelections7280), ikke her.
     const gapScoreFactor = allOut7280 ? 1 : effortFactor;
     const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, gapScoreFactor);
 
