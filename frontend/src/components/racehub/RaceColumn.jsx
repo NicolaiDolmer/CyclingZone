@@ -92,6 +92,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
   const orderLabel = (role) => role === "sprint_captain"
     ? t("racehub.role.sprintCaptain")
     : role === "co_captain" ? t("racehub.role.coCaptain") // #7239
+    : role === "luxury_helper" ? t("racehub.role.luxuryHelper") // #5982
     : role ? t(`selection.${ROLE_KEY[role]}`) : t("racehub.column.helperOrder");
   const roleOf = (id) => {
     const s = column.selection;
@@ -99,6 +100,7 @@ export default function RaceColumn({ column, onRemoveRider, onClearSelection, on
     if (id === s.captain_id) return "captain";
     if (id === s.sprint_captain_id) return "sprint_captain";
     if (s.co_captain_id != null && id === s.co_captain_id) return "co_captain"; // #7239
+    if (s.luxury_helper_id != null && id === s.luxury_helper_id) return "luxury_helper"; // #5982
     if (id === s.hunter_id) return "hunter";
     if (s.free_role_ids?.includes(id)) return "free_role";
     return null;

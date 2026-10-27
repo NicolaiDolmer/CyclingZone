@@ -18,7 +18,7 @@
 // ÉT slot: manageren udtager ét løb ad gangen, og et udkast fra et andet løb
 // skal aldrig kunne lægge sig oven i det han står i nu.
 
-/** @typedef {{riderIds: Array<string|number>, captainId: any, sprintCaptainId: any, hunterId: any, freeRoleIds: Array<string|number>, coCaptainId: any}} SelectionDraft */
+/** @typedef {{riderIds: Array<string|number>, captainId: any, sprintCaptainId: any, hunterId: any, freeRoleIds: Array<string|number>, coCaptainId: any, luxuryHelperId?: any}} SelectionDraft */
 
 let slot = null; // { raceId: string, draft: SelectionDraft }
 
@@ -31,6 +31,7 @@ function copy(sel) {
     hunterId: sel?.hunterId ?? null,
     freeRoleIds: Array.isArray(sel?.freeRoleIds) ? [...sel.freeRoleIds] : [],
     coCaptainId: sel?.coCaptainId ?? null, // #7239: delt kaptajn
+    luxuryHelperId: sel?.luxuryHelperId ?? null, // #5982: luksushjaelper
   };
 }
 
@@ -90,7 +91,7 @@ export function reconcileSelectionDraft(draft, riders) {
   next.riderIds = next.riderIds.filter((id) => known.has(id));
   const selected = new Set(next.riderIds);
   next.freeRoleIds = next.freeRoleIds.filter((id) => selected.has(id));
-  for (const key of ["captainId", "sprintCaptainId", "hunterId", "coCaptainId"]) {
+  for (const key of ["captainId", "sprintCaptainId", "hunterId", "coCaptainId", "luxuryHelperId"]) {
     if (next[key] != null && !selected.has(next[key])) next[key] = null;
   }
   return next;

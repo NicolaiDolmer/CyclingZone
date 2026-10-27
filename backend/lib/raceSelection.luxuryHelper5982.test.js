@@ -6,7 +6,7 @@
 //   - et hold uden luksushjaelper gemmer og laeses praecis som foer
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSelection, roleFor } from "./raceSelection.js";
+import { validateSelection, roleFor, keptLuxuryHelperId } from "./raceSelection.js";
 import { validateStageRoleOverrides } from "./raceStageRolesApi.js";
 import { resolveStageEntrants } from "./raceStageRoles.js";
 
@@ -93,4 +93,14 @@ test("#5982: ved afvikling vinder etapens luksushjaelper over basis-rollen (hoej
   const roles = Object.fromEntries(out.map((e) => [e.rider_id, e.race_role]));
   assert.equal(roles.r3, "luxury_helper");
   assert.equal(roles.r2, "helper", "den tidligere luksushjaelper bliver hjaelper paa etapen");
+});
+
+test("#5982: en klient der ikke sender luxury_helper_id (Race Hub, matrixen) nulstiller ikke luksushjaelperen", () => {
+  const keep = { current: { luxury_helper_id: "r2" }, riderIds: ["r1", "r2", "r3"], roleIds: ["r1"], allowed: true };
+  assert.equal(keptLuxuryHelperId({ ...keep, body: { rider_ids: keep.riderIds } }), "r2", "uden feltet beholdes den gemte");
+  assert.equal(keptLuxuryHelperId({ ...keep, body: { luxury_helper_id: null } }), null, "klienten vinder (ogsaa null)");
+  assert.equal(keptLuxuryHelperId({ ...keep, body: { luxury_helper_id: "r3" } }), "r3");
+  assert.equal(keptLuxuryHelperId({ ...keep, body: {}, riderIds: ["r1", "r3"] }), null, "ikke laengere udtaget");
+  assert.equal(keptLuxuryHelperId({ ...keep, body: {}, roleIds: ["r1", "r2"] }), null, "har faaet en anden rolle");
+  assert.equal(keptLuxuryHelperId({ ...keep, body: {}, allowed: false }), null, "aeldre loeb kender ikke rollen");
 });

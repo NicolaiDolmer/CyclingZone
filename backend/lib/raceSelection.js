@@ -33,6 +33,16 @@ export function keptCoCaptainId({ body, current, riderIds = [], captainId = null
   return kept;
 }
 
+// #5982: samme regel for luksushjaelperen (`luxury_helper_id`): en klient der ikke sender
+// feltet (Race Hub, saesonmatrixen) beholder den gemte, saa laenge han stadig er udtaget og
+// ikke har faaet en anden rolle. Sender klienten feltet (ogsaa null), vinder klienten.
+export function keptLuxuryHelperId({ body, current, riderIds = [], roleIds = [], allowed = false }) {
+  if (body && Object.prototype.hasOwnProperty.call(body, "luxury_helper_id")) return body.luxury_helper_id ?? null;
+  const kept = current?.luxury_helper_id ?? null;
+  if (!kept || !allowed || !riderIds.includes(kept) || roleIds.includes(kept)) return null;
+  return kept;
+}
+
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, freeRoleIds = [],
   teamRiderIds, injuredRiderIds, sizeRule,
@@ -192,7 +202,6 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 400, error: "selection_invalid_body" };
   }
   const riderIds = riderIdsBody;
-  const luxuryHelperId = body?.luxury_helper_id ?? null; // #5982: luksushjaelper
 
   // Frys (#1825) i BEGGE retninger (#4534): den tidligere #2637-undtagelse ("ren
   // fjernelse tilladt") lod en spiller trække ryttere ud af et IGANGVÆRENDE løb via
@@ -231,6 +240,8 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
 
   const ctx = await getSelectionContext({ supabase, race, teamId });
   const coCaptainId = keptCoCaptainId({ body, current: ctx.selection, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, allowed: raceAllowsCoCaptain(race) }) ?? coCaptainBody; // #7239
+  // #5982: luksushjaelperen; uden feltet i kroppen beholdes den gemte (samme regel som delt kaptajn).
+  const luxuryHelperId = keptLuxuryHelperId({ body, current: ctx.selection, riderIds, roleIds: [captainId, sprintCaptainId, hunterId, coCaptainId, ...freeRoleIds].filter(Boolean), allowed: raceAllowsCoCaptain(race) });
 
   // #4847 (I3) / #6139: efter et "Train now"-tryk er dagen afgjort for de ryttere der
   // traenede (laase-raekkerne). En laast rytter kan hverken tilfoejes eller fjernes fra
