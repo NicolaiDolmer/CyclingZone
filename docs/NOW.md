@@ -6,9 +6,9 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · **forsiden #6665:** ejeren siger selv hvornår.
 >
-> **🎯 Next action (27/10 kl. 12:30):** Merget i dag: #7245 #7267 #7288 #7291. **Næste (før ons 28/10 kl. 11:00):** (1) #7281 modsatte ordrer: Codex + Claude-markør på HEAD, merge, tænd `stage_plan_v1` + `race_day_intention_enabled` (ejer-go givet) (2) #7276 luksushjælper merges slukket; ejeren beslutter tænding (3) #7272 dagsform: Codex + markør, merge; kobl så #7291's kontakt i raceRunner og tænd A (B = #7293) (4) go-kort #7280 #7292 #7275 #7274 (5) Discord/staff-svar, patch notes, roadmap (6) verificér første v3-løb ons 11:05. Overdragelse: sidste kommentarer på #7153 + OneDrive `private-handoffs/merge-26-10/BESLUTNINGER-26-27-10.md`. Plan: [`RACE_ENGINE_PLAN.md`](RACE_ENGINE_PLAN.md).
+> **🎯 Next action (27/10 22:00):** Live i dag: #7281 #7272 #7303 #7306 #7278 #7191 #7300 #7304 #7307; tændt etapeplan, intention, dagsform, bakker A, Train now 5/5; luksushjælper live (ejer). **Før ons 11:00, én kø ad gangen:** #7309 → #7302 → #7311 tænd Alt ud (rebase, v4 + s5MotorBench) → #7310 patch 7.386 → #7299/#7301. **Codex i nat:** smuthul fri rolle (til 09:00, ellers efter løb, aftalt), kurve "6 kombineret" (prod A til ejer-go), #7275 + #7292 go-kort ca. 08. Aftalt senere: #7274 #7294-#7296 #7284 #7285. Kl. 11:05: verificér første v3-løb.
 >
-> **🤖 Working agent:** Ingen aktiv session (PC1 stoppet 27/10 kl. 12:30 pga. tokens). Koordinering #7153.
+> **🤖 Working agent:** Ingen aktiv session (PC1-Claude stoppet 27/10 kl. 22 pga. tokens; kø #7309 kørte). Koordinering #7153.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
@@ -27,4 +27,4 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session. Koordinering #7153.
+> **🤖 Working agent:** Ingen aktiv session (PC1-Claude stoppet 27/10 kl. 22 pga. tokens; kø #7309 kørte). Koordinering #7153.
