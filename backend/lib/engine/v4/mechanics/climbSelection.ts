@@ -316,11 +316,11 @@ function computeSelections(
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
     // #6079: under orders_gc_v1 bruger save sine egne stignings-tal (tuning.ts).
     const gain = ctx.rulesRevision === "orders_gc_v1" ? ORDERS_GC_V1_CLIMB_GAIN_TUNING : EFFORT_GAIN_EXTRA_TUNING;
-    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
+    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, (ctx.s5ProfilesV3 === true && (globalThis as any).__relief6641) || gain.climbScoreRelief); // DIAG-6641 (fjernes)
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortFactor);
+    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, (globalThis as any).__gapRelief6641 ? effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, (globalThis as any).__gapRelief6641) : effortFactor); // DIAG-6641 (fjernes)
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
