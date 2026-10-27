@@ -43,7 +43,7 @@ import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSev
 import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
-import { climbGapEffortFactor } from "./effortCost.ts"; // #6641
+import { CLIMB_GAP_RELIEF_6641, climbGapEffortFactor } from "./effortCost.ts"; // #6641
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
 // etapens) og tuning; ren funktion af feltets klatre-evner.
@@ -316,11 +316,12 @@ function computeSelections(
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
     // #6079: under orders_gc_v1 bruger save sine egne stignings-tal (tuning.ts).
     const gain = ctx.rulesRevision === "orders_gc_v1" ? ORDERS_GC_V1_CLIMB_GAIN_TUNING : EFFORT_GAIN_EXTRA_TUNING;
-    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, (ctx.s5ProfilesV3 === true && (globalThis as any).__relief6641) || gain.climbScoreRelief); // DIAG-6641 (fjernes)
+    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, (globalThis as any).__gapRelief6641 ? effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, (globalThis as any).__gapRelief6641) : effortFactor); // DIAG-6641 (fjernes)
+    // Hullet har sin egen lettelses-tabel (CLIMB_GAP_RELIEF_6641): all_out graver dybere dér end paa split-scoren.
+    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, CLIMB_GAP_RELIEF_6641));
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
@@ -335,7 +336,6 @@ function computeSelections(
       energyDeficit01: energyDeficit * gapFactor,
       ...(gapFactor !== 1 ? { gapEffortFactor: gapFactor } : {}),
     });
-    (globalThis as any).__diag6641?.({ riderId, km: ctx.segment.from_km, segIndex: ctx.segmentIndex, kind: ctx.segment.kind, sev: severity, ed: energyDeficit, d: deficit01, ef: effortFactor, sc: noisyScore, thr: splitThreshold, trig: noisyScore > splitThreshold, wf: wprimeCategoryAllowed && wprimeDepletionForcesSplit(riderState.wprime, severity, wprimeMinSeverity), phase, summit: isSummitFinishClimb(ctx), gs: group.rider_ids.length, gk: group.kind }); // DIAG-6641 (fjernes)
   }
   return selections;
 }
