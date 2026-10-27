@@ -122,6 +122,8 @@ Kortet viser kandidat og baseline side om side: scorecard-mål (domme pr. målin
 
 Hard rule 17: kortet indeholder målte tal og løbsnavne og skrives kun til `balance-internals/` (default `balance-internals/<issue>/<dato>/`, gitignoreret); scriptet afviser en `--out` uden for en `balance-internals`-mappe. Et forventet løb uden læsbart scorecard eller en fejlet opgave står som advarsel på kortet og giver exit 1. Repoet har værktøjet og definitionerne, aldrig tallene. Testene bruger syntetiske fixtures.
 
+#6912: standardopslaget bruger først worktreeets private tærskelfil og derefter den eksisterende fil i OneDrive-context. `--thresholds` vinder fortsat. G2F tæller hver flad/rullende etape mod `v3Gates.G2F.upperZoneSeconds` og `hardMaxSeconds`; manglende delmålinger blokerer. `breakawayLeadMeasured` skelner observeret intet udbrud fra snapshots uden et målbart felt. Ingen tærskler kopieres ind i repoet.
+
 Balance-tærskler kortet bruger (fx hvornår en udbrudssejr har "stort forspring") ligger i en privat fil, `balance-internals/motor-testport-thresholds.json` (eller `--thresholds=<fil>`), aldrig i koden. Mangler filen, vises de målinger som "-". En `--out`-mappe tilhører én løbsudvælgelse: genoptagelse med samme løb er ok, et andet sæt afvises.
 
 Kode: `backend/scripts/dev/motorTestport.mjs` (kørsel), `backend/scripts/dev/lib/motorTestportReport.mjs` (samling, ren), `backend/scripts/dev/lib/motorTestportInputs.mjs` (syntetisk felt og foreslåede ruter, #6909), `tourScorecard.testportStageFacts` (etapens vinder, udbrudsryttere og tidlig indhentning).
