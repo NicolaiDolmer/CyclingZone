@@ -189,6 +189,16 @@ features:
     verified: 2026-10-26
     note: UI live; flag findes ikke i prod. Kalibreret (#7163); tænding afventer ejer-go.
 
+  - id: last-man-role
+    area: race-engine
+    title_en: Last man
+    title_da: Sidste mand
+    state: building
+    epic: 5982
+    verified: 2026-10-27
+    decision: goer-faerdigt
+    decide_by: 2026-11-15
+
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
     area: race-day
