@@ -143,6 +143,8 @@ function Get-PrPlanEntry([int]$number) {
   $checksExit = 0
   $checksSummary = "ukendt"
   $auditHead = $null
+  # Bind required checks and the review gate to the same HEAD as the audit and metadata.
+  $startHead = ((Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'headRefOid', '--jq', '.headRefOid') -TolerateFailure) -join '').Trim()
   try {
     & gh pr checks $number --repo $Repo --required *> $null
     $checksExit = $LASTEXITCODE
@@ -242,7 +244,7 @@ function Get-PrPlanEntry([int]$number) {
     } catch {}
   }
   # The audit and the metadata must describe the same HEAD, including a push during this read.
-  if ($checksExit -eq 0 -and $auditHead -ne $headSha) {
+  if ($checksExit -eq 0 -and ($startHead -notmatch '^[0-9a-f]{40}$' -or $startHead -ne $headSha -or $auditHead -ne $headSha)) {
     $checksExit = 1
     $checksSummary = "ROED/HEAD skiftede under audit"
   }

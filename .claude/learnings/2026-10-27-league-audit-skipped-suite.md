@@ -5,3 +5,4 @@ Merge-køen for #7309 stoppede med rød/mangler trods grønne required checks og
 Rettelse: læs liga-checket fra pagineret REST check-runs på PR'ens HEAD. Kræv præcis ét check, korrekt SHA, navn, external_id og github-actions samt completed/success. Ukendt eller ugyldigt resultat stopper stadig køen. Review-gate og øvrige checks bruger deres eksisterende kontrol, og HEAD genkontrolleres før merge.
 
 Bevis: ny regression først rød (manglende REST-funktion), derefter 13 grønne klassifikationsscenarier og real Get-PrPlanEntry-test uden liga-check i rollup. Køens regressioner: 65/65. Ingen spillerændring; patch note er derfor undtaget. Ingen produktionsdata ændret.
+CodeRabbit-review på f4dbcb0cd fandt et yderligere læserace før auditten: required checks kunne gælde et tidligere HEAD. Ny regression blev set rød og derefter grøn; start-HEAD skal nu også være gyldigt og matche metadata-HEAD.

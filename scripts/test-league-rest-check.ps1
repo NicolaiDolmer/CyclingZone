@@ -36,14 +36,16 @@ $ast = [Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRo
 $fn = $ast.Find({ param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-PrPlanEntry' }, $true)
 Invoke-Expression $fn.Extent.Text
 $Repo = 'owner/repo'
+$script:gateReads=0
+$script:pushBeforeAudit=$false
 function gh {
   $global:LASTEXITCODE = 0
-  if ($args -contains '--required') { return }
+  if ($args -contains '--required') { $script:gateReads++; return }
   '[{"name":"review-gate","bucket":"pass","startedAt":"2026-10-27T20:00:00Z","event":"pull_request_target"}]'
 }
 function Invoke-GhWithRetry {
   param([string[]]$GhArgs, [switch]$TolerateFailure)
-  if ($GhArgs -contains 'headRefOid') { return $sha }
+  if ($GhArgs -contains 'headRefOid') { if ($script:pushBeforeAudit -and $script:gateReads -eq 0) { return ('c' * 40) }; return $sha }
   if ($GhArgs[0] -eq 'api' -and $GhArgs[1] -like '*check-runs*') {
     if ($GhArgs[1] -notlike "*/commits/$sha/check-runs?*" -or $GhArgs -notcontains '--paginate' -or $GhArgs -notcontains '--slurp') { throw 'Audit request must be pinned and paginated' }
     return ConvertTo-Json -InputObject @(@{check_runs=@($good)}) -Depth 8 -Compress
@@ -63,3 +65,9 @@ $script:metadataHead = 'b' * 40
 $entry = Get-PrPlanEntry 7309
 if ($entry.checksExit -ne 1) { throw 'A push during the audit/metadata read must not certify a different HEAD' }
 Write-Host 'PASS: a HEAD change during audit fails closed.'
+$script:metadataHead=$sha
+$script:gateReads=0
+$script:pushBeforeAudit=$true
+$entry=Get-PrPlanEntry 7309
+if($entry.checksExit -ne 1){throw 'A push between required checks and audit must fail closed (CodeRabbit #7313)'}
+Write-Host 'PASS: a HEAD change between required checks and audit fails closed.'
