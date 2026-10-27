@@ -853,9 +853,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     // #7003 (spec §3): et valg der modsiger rytterens andre ordrer kan ikke slaas til.
     const riderState = { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true };
     const breakBlocked = blockedReasonKey("try_break", riderState, roleFor(rider));
-    const trainBlocked = blockedReasonKey("leadout", riderState, roleFor(rider));
+    // Tog-knappen vises kun paa et hold med spurtkaptajn (og aldrig for ham selv).
+    const trainShown = teamHasSprintCaptain && !isSprintCaptain;
+    const trainBlocked = trainShown ? blockedReasonKey("leadout", riderState, roleFor(rider)) : null;
     const conflict = oppositeOrderError(riderState, roleFor(rider));
-    const reason = breakBlocked || trainBlocked;
+    // En gemt modsaetning forklares med selve reglen; ellers hvorfor en knap er graa.
+    const reason = conflict ? `intention.errors.${conflict}` : breakBlocked || trainBlocked;
     return (
       <span className="flex flex-wrap items-center gap-2">
         {conflict && (
