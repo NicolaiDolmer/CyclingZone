@@ -1493,6 +1493,8 @@
         "incident_protected": "{rider} chute dans les derniers kilomètres, mais garde le temps du groupe.",
         "favorite_crack": "{rider} craque et perd le contact avec la tête.",
         "favorite_crack_tt": "{rider} faiblit dans la seconde moitié et perd du temps.",
+        "all_out_gain": "{rider} se donne à fond dans la dernière ascension et gagne du temps.",
+        "all_out_cracked": "{rider} se donne à fond et se vide dans la dernière ascension.",
         "bad_day_fatigue": "{rider} a connu un jour sans. Les jours difficiles précédents ont laissé des traces.",
         "bad_day_form": "{rider} a connu un jour sans. Il manquait de forme.",
         "bad_day_illness": "{rider} a connu un jour sans. Il était malade.",

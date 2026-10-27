@@ -1493,6 +1493,8 @@
         "incident_protected": "{rider} gaat onderuit binnen de laatste kilometers, maar behoudt de tijd van de groep.",
         "favorite_crack": "{rider} knapt en verliest het contact met de kop.",
         "favorite_crack_tt": "{rider} zakt in de tweede helft in en verliest tijd.",
+        "all_out_gain": "{rider} gaat volle bak op de laatste klim en wint tijd.",
+        "all_out_cracked": "{rider} gaat volle bak en rijdt zich leeg op de laatste klim.",
         "bad_day_fatigue": "{rider} had een slechte dag. De zware dagen ervoor eisten hun tol.",
         "bad_day_form": "{rider} had een slechte dag. Hij miste vorm.",
         "bad_day_illness": "{rider} had een slechte dag. Hij voelde zich ziek.",

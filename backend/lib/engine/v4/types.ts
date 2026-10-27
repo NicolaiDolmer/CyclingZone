@@ -315,7 +315,10 @@ export type KnownTimelineEventType =
   | "gc_change"
   // #6804 P2 (ADDITIV, KUN s5_profiles_v3): forspringet vokser forbi det feltet tolererer,
   // fordi intet hold vil jage (mechanics/breakawayV3_6804.ts). params: { group_id }.
-  | "breakaway_unchased";
+  | "breakaway_unchased"
+  // #6641/#7280 (ADDITIV, slukket alt ud-pakke): params { rider_id }.
+  | "all_out_gain"
+  | "all_out_cracked";
 
 export type TimelineEvent = {
   km: number; // [0, distance_km], 2 decimaler
@@ -628,6 +631,8 @@ export type RiderState = {
   incidents: number; // antal incident-events denne rytter har vaeret part i
   status: RiderStatus;
   time_seconds: number; // kumuleret loebstid ved seneste segment-graense
+  // #6641/#7280 (ADDITIVT, kun den slukkede alt ud-pakke): sekunder vundet / knaek paa den afgoerende stigning.
+  all_out_7280?: Readonly<{ gained: number; cracked: boolean }>;
   // M16 holdspil (#4246, ADDITIVT og VALGFRIT). Multiplikator paa rytterens
   // CP, akkumuleret af mechanics/teamPlay.ts henover segment-loopet:
   // < 1 = han har arbejdet for holdet, > 1 = han er blevet baaret af det.

@@ -157,3 +157,24 @@ test("condition_model_v2: default off, kræver dato-modellen, fejl kaster", asyn
   await assert.rejects(isConditionModelV2Enabled(flagClient({ condition_model_v2: "on" })), /requires training_condition_per_date/);
   await assert.rejects(isConditionModelV2Enabled(flagClient({}, { message: "offline" })), /ownership/);
 });
+
+// #6641/#7280: Alt ud-pakkens traethedspris (slukket kontakt; dev-bench-setteren taender den).
+test('#7280: alt ud koster mere traethed under pakken, ogsaa i enkeltstart; slukket = uaendret', async () => {
+  const { allOutLoadMultiplier7280, stageLoadV2 } = await import('./conditionModelV2.js');
+  const { setAllOut7280ForBench } = await import('./engine/v4/mechanics/effortCost.ts');
+  const load = (effort, profileType, rulesRevision = 's5_profiles_v3') => stageLoadV2({ profileType, distanceKm: 180, effort, rulesRevision });
+  const offMountain = load('all_out', 'mountain');
+  const offItt = load('all_out', 'itt');
+  assert.equal(allOutLoadMultiplier7280('all_out', 's5_profiles_v3'), null);
+  try {
+    setAllOut7280ForBench({ active: true });
+    assert.ok(load('all_out', 'mountain') > offMountain, 'mere traethed paa en vejetape');
+    assert.ok(load('all_out', 'itt') > offItt, 'og i enkeltstarten, hvor alt ud nu vinder tid');
+    assert.equal(load('normal', 'mountain'), stageLoadV2({ profileType: 'mountain', distanceKm: 180, effort: 'normal', rulesRevision: 's5_profiles_v3' }));
+    assert.equal(load('all_out', 'mountain', 's5_profiles_v2'), stageLoadV2({ profileType: 'mountain', distanceKm: 180, effort: 'all_out', rulesRevision: 's5_profiles_v2' }));
+    assert.equal(allOutLoadMultiplier7280('protect', 's5_profiles_v3'), null);
+  } finally {
+    setAllOut7280ForBench(null);
+  }
+  assert.equal(load('all_out', 'mountain'), offMountain);
+});
