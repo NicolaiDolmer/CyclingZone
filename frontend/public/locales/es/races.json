@@ -1477,6 +1477,8 @@
         "incident_protected": "{rider} se cae en los últimos kilómetros, pero conserva el tiempo del grupo.",
         "favorite_crack": "{rider} flaquea y pierde el contacto con la cabeza.",
         "favorite_crack_tt": "{rider} se apaga en la segunda mitad y pierde tiempo.",
+        "all_out_gain": "{rider} lo da todo en la última subida y gana {seconds} s.",
+        "all_out_cracked": "{rider} lo da todo y se queda vacío en la última subida.",
         "finale_attack": "{rider} ataca en el final.",
         "ttt_rider_dropped": "{rider} se descuelga de su equipo.",
         "sprint_decided": "Se decide en la línea entre {rider} y los perseguidores.",

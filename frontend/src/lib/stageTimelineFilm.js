@@ -371,6 +371,14 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
         params: { rider, reason: p.reason || "unexplained" },
       };
     }
+    // #6641/#7280: Alt ud paa den sidste stigning (motoren melder kun det den gjorde).
+    case "all_out_gain":
+    case "all_out_cracked": {
+      const rider = riderName(p.rider_id, riderNameById);
+      const seconds = Math.round(Number(p.seconds));
+      if (!rider || (event.type === "all_out_gain" && !(seconds >= 1))) return null;
+      return { key: event.type, params: event.type === "all_out_gain" ? { rider, seconds } : { rider } };
+    }
     case "group_merged": {
       const params = breakawayParams();
       return params ? { key: params.count > 4 ? "group_merged_many" : "group_merged", params } : null;

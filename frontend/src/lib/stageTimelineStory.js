@@ -16,6 +16,8 @@ export const STORY_EVENT_WEIGHTS = {
   breakaway_survived: 76,
   sprint_decided: 68,
   favorite_crack: 62,
+  all_out_cracked: 58, // #6641/#7280
+  all_out_gain: 30, // #6641/#7280
   breakaway_caught: 56,
   breakaway_formed: 42,
   group_merged: 38,

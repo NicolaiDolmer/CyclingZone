@@ -1460,6 +1460,8 @@
         "incident_protected": "{rider} goes down inside the final kilometres, but keeps the group's time.",
         "favorite_crack": "{rider} cracks and loses contact with the front.",
         "favorite_crack_tt": "{rider} fades in the second half and bleeds time.",
+        "all_out_gain": "{rider} goes all out on the last climb and gains {seconds} sec.",
+        "all_out_cracked": "{rider} goes all out and runs empty on the last climb.",
         "finale_attack": "{rider} attacks in the finale.",
         "ttt_rider_dropped": "{rider} slips off the back of his team.",
         "sprint_decided": "It comes down to the wire between {rider} and the chasers.",
