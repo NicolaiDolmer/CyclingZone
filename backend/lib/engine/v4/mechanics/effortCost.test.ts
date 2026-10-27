@@ -12,8 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { ALL_OUT_7280_ACTIVE, allOutDemandMultiplier, applyEffortToDemand, CLIMB_GAP_RELIEF_7280, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, EFFORT_COST_TUNING_7280, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
-import { EFFORT_GAIN_EXTRA_TUNING } from "../tuning.ts";
+import { ALL_OUT_7280_ACTIVE, ALL_OUT_7280_TUNING, allOut7280Active, allOut7280Tuning, allOutDemandMultiplier, allOutTimeTrialFactor7280, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isAllOut7280On, isEffortCalibration6641Revision, setAllOut7280ForBench } from "./effortCost.ts";
 import { decidingClimbSelectionsOnTheDay, effortClimbScoreFactor } from "./climbSelection.ts";
 import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
 import type { EffortLevel } from "../types.ts";
@@ -224,48 +223,48 @@ test("#6641: all_out-tabellen pr. segment-terraen foelger samme regel (flad/rull
   assert.ok(Object.isFrozen(cal) && Object.isFrozen(cal.demandMultiplierAllOutBySegmentKind));
 });
 
-// ── #7280: "alt ud vinder paa de rigtige felter" bag en SLUKKET kontakt ────────
+// ── #7280: Alt ud efter ejerens design 27/10, bag en SLUKKET kontakt ──────────
 test("#7280: kontakten er slukket, saa den aktuelle revision koerer bit-identisk med main", () => {
-  assert.equal(ALL_OUT_7280_ACTIVE, false, "taend kun med ejerens ordrette go (valg A, 25/10)");
+  assert.equal(ALL_OUT_7280_ACTIVE, false, "taend kun med ejerens ordrette go");
+  assert.equal(allOut7280Active(), false);
   assert.equal(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
-  assert.equal(effortCostTuningFor("s5_profiles_v3", true), EFFORT_COST_TUNING_7280);
+  assert.equal(isAllOut7280On("s5_profiles_v3"), false);
+  assert.equal(allOutTimeTrialFactor7280("all_out", 99, isAllOut7280On("s5_profiles_v3")), 1);
   for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
     assert.equal(effortCostTuningFor(revision, true), EFFORT_COST_TUNING, `${String(revision)}: aeldre revisioner uroert ogsaa med kontakten taendt`);
   }
 });
 
-test("#7280 (taendt): all_out har EEN pris paa alle segment-terraener (flad/rullende toemmer ikke reserven foer finalen)", () => {
-  const cal = EFFORT_COST_TUNING_7280;
-  assert.equal(cal.demandMultiplierAllOutBySegmentKind, undefined, "ingen per-terraen-tabel");
-  for (const kind of ["flat", "rolling", "climb", "descent", "cobbles", null] as const) {
-    assert.equal(allOutDemandMultiplier(kind, cal), cal.demandMultiplierAllOut, String(kind));
-    assert.ok(allOutDemandMultiplier(kind, cal) < allOutDemandMultiplier(kind, EFFORT_COST_TUNING_6641), `${kind}: billigere end den slukkede v3-pris`);
+test("#7280 (taendt): alt ud koerer som normal paa transport-terraenet, de fire andre trin er #6641's", () => {
+  const cal = effortCostTuningFor("s5_profiles_v3", true);
+  for (const kind of ["flat", "rolling", "descent"] as const) {
+    assert.equal(effortDemandMultiplier("all_out", cal, kind), effortDemandMultiplier("normal", cal, kind), `${kind}: ingen pris, ingen gevinst`);
   }
-  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
-  for (const level of scale.slice(0, 4)) {
-    assert.equal(effortDemandMultiplier(level, cal), effortDemandMultiplier(level, EFFORT_COST_TUNING_6641), `${level}: uaendret`);
+  assert.ok(effortDemandMultiplier("all_out", cal, "climb") >= effortDemandMultiplier("normal", cal, "climb"));
+  for (const level of ["grupetto", "save", "normal", "protect"] as EffortLevel[]) {
+    for (const kind of ["flat", "rolling", "climb", "descent", "cobbles", null] as const) {
+      assert.equal(effortDemandMultiplier(level, cal, kind), effortDemandMultiplier(level, EFFORT_COST_TUNING_6641, kind), `${level}/${kind}: uaendret`);
+    }
   }
-  const values = scale.map((level) => effortDemandMultiplier(level, cal, "flat"));
-  for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${scale[i]} <= ${scale[i - 1]}`);
-  assert.ok(Object.isFrozen(cal));
+  // Gulvet: en tabel-vaerdi under normal ignoreres stadig (falder tilbage paa faelles-vaerdien).
+  const broken = { ...cal, demandMultiplierAllOutBySegmentKind: { flat: 0.5 } };
+  assert.equal(allOutDemandMultiplier("flat", broken), cal.demandMultiplierAllOut);
 });
 
-test("#7280 (taendt): hullets lettelses-tabel = split-scorens, kun all_out graver dybere", () => {
-  const score = EFFORT_GAIN_EXTRA_TUNING.climbScoreRelief;
-  for (const level of ["grupetto", "save", "normal", "protect"] as EffortLevel[]) {
-    assert.equal(CLIMB_GAP_RELIEF_7280[level], score[level], level);
+test("#7280: bench-setteren taender og nulstiller (kun dev-benches)", () => {
+  try {
+    setAllOut7280ForBench({ active: true, tuning: { timeTrialGain: 0.02 } });
+    assert.equal(isAllOut7280On("s5_profiles_v3"), true);
+    assert.equal(isAllOut7280On("s5_profiles_v2"), false, "kun s5_profiles_v3 og senere");
+    assert.ok(Math.abs(allOutTimeTrialFactor7280("all_out", 99, true) - 1.02) < 1e-12);
+    assert.ok(allOutTimeTrialFactor7280("all_out", 50, true) < allOutTimeTrialFactor7280("all_out", 90, true), "mest de staerke");
+    assert.equal(allOutTimeTrialFactor7280("normal", 99, true), 1);
+    assert.equal(allOut7280Tuning().fatigueLoad, ALL_OUT_7280_TUNING.fatigueLoad);
+  } finally {
+    setAllOut7280ForBench(null);
   }
-  assert.ok(CLIMB_GAP_RELIEF_7280.all_out > score.all_out, "all_out graver dybere paa hullet");
-  assert.ok(CLIMB_GAP_RELIEF_7280.all_out < 1, "fuld reserve sletter aldrig hele hullet");
-  assert.ok(Object.isFrozen(CLIMB_GAP_RELIEF_7280));
-  const gap = (level: EffortLevel, reserve: number) => climbGapEffortFactor(true, effortClimbScoreFactor(level, reserve, CLIMB_GAP_RELIEF_7280));
-  for (const reserve of [0.25, 0.5, 1]) {
-    assert.equal(gap("normal", reserve), 1);
-    assert.ok(gap("all_out", reserve) < gap("protect", reserve) && gap("protect", reserve) < 1, `${reserve}: all_out < protect < normal`);
-    assert.ok(gap("save", reserve) > 1, `${reserve}: save taber lidt`);
-    assert.ok(gap("all_out", reserve) > 0);
-  }
-  assert.equal(gap("all_out", 0), 1, "tom reserve = ingen gevinst");
+  assert.equal(allOut7280Active(), false);
+  assert.ok(Object.isFrozen(ALL_OUT_7280_TUNING));
 });
 
 test("#6641: gevinsten overlever nedkoerselsfinalens genberegnede underskud (dagsform + angreb)", () => {

@@ -16,6 +16,7 @@ import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 import { CONDITION_CONFIG, RACE_DAY_ENGINE_RECOVERY_CONFIG, injuryRisk, rollInjury } from "./riderCondition.js";
 import { effortFatigueMultiplier } from "./raceRoles.js";
 import { medicalRecoveryMultiplier, medicalTrainingInjuryRisk, medicalInjuryDays } from "./medicalEffects.js";
+import { allOut7280Tuning, isAllOut7280On } from "./engine/v4/mechanics/effortCost.ts";
 
 export const CONDITION_V2_CONFIG = Object.freeze({
   // §5.2: profil-belastning (spillernes rækkefølge, større spænd end v1). Niveauet er
@@ -89,12 +90,24 @@ export function workMultiplierV2(exposure, { profileType = null, cfg = CONDITION
 }
 
 /**
+ * #6641/#7280 (slukket alt ud-pakke, KUN s5_profiles_v3; spec 2026-10-27-6641-alt-ud-design.md):
+ * ejer 27/10 punkt 3, prisen for Alt ud er træthed der hober sig op. Pakkens faktor
+ * erstatter alt ud's indsats-faktor, også i enkeltstarter (dér vinder alt ud nu tid).
+ * `null` = pakken er ikke i kraft eller trinnet er ikke alt ud (bit-identisk).
+ */
+export function allOutLoadMultiplier7280(effort, rulesRevision) {
+  if (effort !== "all_out" || !isAllOut7280On(rulesRevision)) return null;
+  return allOut7280Tuning().fatigueLoad;
+}
+
+/**
  * REN: én rytters belastning for én etape under v2.
  * profil × længde × indsats × arbejde × etapens plads × sæson.
  */
 export function stageLoadV2({ profileType, distanceKm = null, stageNumber = 1, effort = "normal", exposure = null, seasonRaceDays = 0, rulesRevision = null, cfg = CONDITION_V2_CONFIG }) {
   const base = cfg.profileLoad[profileType] ?? cfg.unknownProfileLoad;
-  const effortMult = TIME_TRIAL_PROFILES.has(profileType) ? 1 : effortFatigueMultiplier(effort, { profileType, rulesRevision });
+  const effortMult = allOutLoadMultiplier7280(effort, rulesRevision)
+    ?? (TIME_TRIAL_PROFILES.has(profileType) ? 1 : effortFatigueMultiplier(effort, { profileType, rulesRevision }));
   return base
     * stageLengthMultiplier(profileType, distanceKm, cfg)
     * effortMult

@@ -76,7 +76,7 @@ import { computeFinaleAbilityScore } from "../finale.ts";
 import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
-import { applyEffortToDemand } from "./effortCost.ts";
+import { allOutTimeTrialFactor7280, applyEffortToDemand, isAllOut7280On } from "./effortCost.ts"; // #7280: alt ud-gevinst (slukket)
 import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater } from "../../../raceEngineRulesRevision.ts";
 import { summitFinishSingleFor } from "./komJersey6937.ts";
 import {
@@ -341,8 +341,9 @@ function tickSoloRider(
   tuning: EngineTuning,
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
+  allOut7280 = false,
 ): void {
-  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare);
+  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare) * allOutTimeTrialFactor7280(entrant.effort, entrant.abilities.time_trial, allOut7280);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
   const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning);
   const dtSeconds = speedKmh > 0 ? (distanceKm / speedKmh) * 3600 : 0;
@@ -375,6 +376,7 @@ function individualTimeTrialMode(
   stageNoiseByRider: ReadonlyMap<string, number>,
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
+  allOut7280 = false,
 ): TimeTrialMode {
   return {
     groupPrefix: "itt",
@@ -397,7 +399,7 @@ function individualTimeTrialMode(
         const rider = unit.riders[entrant.rider_id];
         if (!rider || rider.status === "abandoned") continue;
         const noise = stageNoiseByRider.get(entrant.rider_id) ?? 0;
-        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare);
+        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare, allOut7280);
       }
       return [];
     },
@@ -443,7 +445,7 @@ export function simulateIndividualTimeTrialStage(
       ...(isS5ProfilesV2OrLater(options.rulesRevision) ? { incidentStartFloor: true as const } : {}),
       ...summitFinishSingleFor(options.rulesRevision),
     },
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare),
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision)),
   );
   return output;
 }
