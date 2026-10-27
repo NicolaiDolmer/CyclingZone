@@ -81,7 +81,7 @@ features:
     verified: 2026-10-27
     decision: ejer-beslutning
     decide_by: 2026-11-08
-    note: Nøgle route_profile_hills (mangler = off); kobles efter #6649.
+    note: "PR #7291 merget; route_profile_hills mangler (off). Kobling efter #7272; B #7293 måles."
 
   - id: race-engine-v3-scoring
     area: race-engine
@@ -113,8 +113,8 @@ features:
     flag: race_form_peaks
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6156
-    verified: 2026-10-26
-    note: On 26/10 09:23 efter ejer-go (formtest #6818), læst tilbage i prod.
+    verified: 2026-10-27
+    note: "Prod 27/10 on; roadmap-status rettes via #7153."
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
 
@@ -194,11 +194,12 @@ features:
     area: race-engine
     title_en: Stage intention choice
     title_da: Indsatsvalg pr. etape
-    state: building
+    state: live
+    flag: race_day_intention_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-26
-    note: UI live; flag findes ikke i prod. Kalibreret (#7163); tænding afventer ejer-go.
+    verified: 2026-10-27
+    note: "Valg on 27/10, læst i prod; Alt ud #7280 afventer eget go."
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -279,11 +280,11 @@ features:
     area: race-day
     title_en: Stage plan along the route
     title_da: Etapeplan langs ruten
-    state: dormant
+    state: live
     flag: stage_plan_v1
     ssot: docs/RACE_ENGINE_RULES.md
-    verified: 2026-10-26
-    note: Seedet off; kun v3-løb. Ejeren tænder. #7003 er ikke epic (delt kaptajn).
+    verified: 2026-10-27
+    note: "Begge ordreflag on 27/10 kl. 13:48, læst i prod (#7153); #7281 merget."
     decision: ejer-beslutning
     decide_by: 2026-11-08
 
@@ -464,7 +465,8 @@ features:
     state: live
     flag: daily_training_enabled
     ssot: docs/TRAINING_RULES.md
-    verified: 2026-09-06
+    verified: 2026-10-27
+    note: "PR #7283 merget; bro-dage i ny sæson, automatisk indhentning. Kontrol 28/10."
 
   - id: peak-planner
     area: training
@@ -548,7 +550,8 @@ features:
     state: live
     flag: season_fatigue_reset_enabled
     ssot: docs/TRAINING_RULES.md
-    verified: 2026-09-06
+    verified: 2026-10-27
+    note: "PR #7288 merget; fælles start over nul. Historik bruger loggens startFatigue."
 
   - id: training-programs
     area: training
