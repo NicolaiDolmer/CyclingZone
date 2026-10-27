@@ -95,9 +95,10 @@ test("realismChecks: de fire ejer-retninger (25/10) laeses af opsummeringen", ()
     row("all_out", { freshDt: -2, roadDtMean: -1, fatigueVsNormal: 3, finalFatigueVsNormal: 4, totalDt: 3 }),
     row("mix", { freshDt: -1, roadDtMean: -1, fatigueVsNormal: 1, finalFatigueVsNormal: 2, totalDt: -3 }),
     row("queen", { freshDt: 0, roadDtMean: -1, fatigueVsNormal: 0, finalFatigueVsNormal: 1, totalDt: -2 }),
+    row("queenflat", { freshDt: 0, roadDtMean: -1, fatigueVsNormal: 0, finalFatigueVsNormal: 1, totalDt: -2 }),
   ];
   const checks = realismChecks(realismSummary(records), "v2");
-  assert.deepEqual(checks, { allOutWinsDay: true, allOutCostsFatigue: true, saveLosesDayLittle: true, saveFresherAfter: true, normalBestTotal: true, mixBeatsNormalTotal: true, allOutEveryDayBehindNormal: true, queenPlanBeatsNormalTotal: true, noLevelHits100: true });
+  assert.deepEqual(checks, { allOutWinsDay: true, allOutCostsFatigue: true, saveLosesDayLittle: true, saveFresherAfter: true, normalBestTotal: true, mixBeatsNormalTotal: true, allOutEveryDayBehindNormal: true, queenPlanBeatsNormalTotal: true, queenFlatPlanBeatsNormalTotal: true, noLevelHits100: true });
   // Vender en retning, fanges den: all_out der ogsaa vinder samlet er ikke "som i virkeligheden".
   const broken = records.map((r) => (r.effort === "all_out" ? { ...r, totalDt: -5 } : r));
   assert.equal(realismChecks(realismSummary(broken), "v2").normalBestTotal, false);

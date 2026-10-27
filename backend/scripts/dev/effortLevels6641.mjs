@@ -121,14 +121,20 @@ export function queenPlanEfforts(profileTypes) {
   const q = queenStageIndex(profileTypes);
   return profileTypes.map((_, i) => (i === q ? "all_out" : q >= 0 && Math.abs(i - q) === 1 ? "save" : "normal"));
 }
-const effortOfTwin = (tag, profileType = null) => (tag === CONTROL ? "normal" : tag === MIX ? mixEffortFor(profileType) : tag === QUEEN ? "normal" : tag);
+// Variant: spar kun naboetaper der er flade/rullende eller enkeltstarter (en bjergdag paa spar koster tid).
+export const QUEEN_FLAT = "queenflat";
+export function queenFlatPlanEfforts(profileTypes) {
+  return queenPlanEfforts(profileTypes).map((e, i) => (e === "save" && !FLAT.has(profileTypes[i]) && !TT.has(profileTypes[i]) ? "normal" : e));
+}
+const effortOfTwin = (tag, profileType = null) => (tag === CONTROL ? "normal" : tag === MIX ? mixEffortFor(profileType) : tag === QUEEN || tag === QUEEN_FLAT ? "normal" : tag);
 /** Trinnet en tvilling koerer paa etape `index` (ren). */
 function armEffortAt(tag, profileTypes, index) {
   if (tag === QUEEN) return queenPlanEfforts(profileTypes)[index];
+  if (tag === QUEEN_FLAT) return queenFlatPlanEfforts(profileTypes)[index];
   return effortOfTwin(tag, profileTypes[index]);
 }
-const PLAN_ARMS = new Set([MIX, QUEEN]);
-export const ARMS = Object.freeze([...EFFORTS, CONTROL, MIX, QUEEN]);
+const PLAN_ARMS = new Set([MIX, QUEEN, QUEEN_FLAT]);
+export const ARMS = Object.freeze([...EFFORTS, CONTROL, MIX, QUEEN, QUEEN_FLAT]);
 
 /** Feltet + 15 tvillinger (ren). */
 export function withTwins(field, templates) {
@@ -448,6 +454,7 @@ export function realismChecks(summary, model = "v2") {
     // (alt ud paa kongeetapen, spar foer/efter) slaar normal.
     allOutEveryDayBehindNormal: by.all_out?.totalDtVsNormal != null && by.all_out.totalDtVsNormal > 0,
     queenPlanBeatsNormalTotal: by[QUEEN]?.totalDtVsNormal != null && by[QUEEN].totalDtVsNormal < 0,
+    queenFlatPlanBeatsNormalTotal: by[QUEEN_FLAT]?.totalDtVsNormal != null && by[QUEEN_FLAT].totalDtVsNormal < 0,
     noLevelHits100: EFFORTS.every((e) => !by[e] || by[e].shareHit100 === 0),
   };
 }
