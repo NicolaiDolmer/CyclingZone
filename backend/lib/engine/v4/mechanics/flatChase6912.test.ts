@@ -150,7 +150,7 @@ test("#6912: filmen forklarer terraenets overskridelse uden jagt-interesse", () 
   for (const id of state.groups.find(g => g.id === "field")!.rider_ids) entrants[id] = { ...entrants[id], team_id: "sprint-team" };
   ctx.sharedGroupTime = { ...ctx.sharedGroupTime!, entryGroups: state.groups.map(g => g.id === "field" ? { ...g, gap_seconds: ceiling } : g) };
   state.groups.find(g => g.id === "field")!.gap_seconds = ceiling + 1;
-  ctx.segment = { kind: "climb", from_km: 120, to_km: 125, category: "4", avg_gradient: 4 };
+  ctx.segment = { kind: "climb", from_km: 120, to_km: 125, category: "4", avg_gradient: 4, top_elevation_m: 100 };
   ctx.route = { ...ctx.route, segments: [ctx.route.segments[0], ctx.segment] };
   const result = breakawayHook(state, ctx);
   assert.ok(result.events.some(e => e.type === "breakaway_unchased" && e.params.group_id === "escape"), "terraenets hul over snoren skal forklares, selv om lad-gaa-fasen er slut");
@@ -162,7 +162,7 @@ test("#6912: mellemgruppens manglende interesse skjuler ikke feltets jagt", () =
   ctx.sharedGroupTime = { ...ctx.sharedGroupTime!, entryGroups: state.groups.map(g => ({ ...g, gap_seconds: g.id === "escape" ? 0 : ceiling })) };
   state.groups.find(g => g.id === "solo")!.gap_seconds = ceiling + 1;
   state.groups.find(g => g.id === "field")!.gap_seconds = ceiling * 2;
-  ctx.segment = { kind: "descent", from_km: 120, to_km: 125 };
+  ctx.segment = { kind: "descent", from_km: 120, to_km: 125, technicality: 1 };
   ctx.route = { ...ctx.route, segments: [ctx.route.segments[0], ctx.segment] };
   state.finish_descent_regroup = {
     field: { topGapSeconds: ceiling * 2, closedSeconds: Number.MAX_SAFE_INTEGER },
