@@ -18,9 +18,10 @@ test("mode 'off' er identitet (clampet + afrundet)", () => {
   assert.equal(seasonResetFatigue({ fatigue: 42.6, mode: "off" }), 43);
 });
 
-test("mode 'full' sender alle på nul, uanset udgangspunkt", () => {
-  for (const f of [0, 1, 50, 99, 100]) {
-    assert.equal(seasonResetFatigue({ fatigue: f, mode: "full" }), 0);
+test("mode 'full' sender alle på startniveauet 20, uanset udgangspunkt (#7282)", () => {
+  assert.equal(SEASON_FATIGUE_RESET.SEASON_START_FATIGUE, 20);
+  for (const f of [0, 1, 19, 20, 21, 50, 99, 100, null]) {
+    assert.equal(seasonResetFatigue({ fatigue: f, mode: "full" }), 20);
   }
 });
 
@@ -126,7 +127,7 @@ test("apply skriver KUN de ryttere hvis træthed faktisk ændrer sig", async () 
   const { supabase, capture } = buildMockSupabase({
     conditions: [
       { rider_id: "r1", fatigue: 100 },
-      { rider_id: "r2", fatigue: 0 },   // allerede frisk → ingen skrivning
+      { rider_id: "r2", fatigue: 20 },  // allerede på startniveauet → ingen skrivning
       { rider_id: "r3", fatigue: 40 },
     ],
   });
@@ -137,7 +138,7 @@ test("apply skriver KUN de ryttere hvis træthed faktisk ændrer sig", async () 
   assert.equal(res.riders, 3);
   assert.equal(res.changed, 2);
   assert.deepEqual(capture.upserts.map((r) => r.rider_id).sort(), ["r1", "r3"]);
-  assert.ok(capture.upserts.every((r) => r.fatigue === 0));
+  assert.ok(capture.upserts.every((r) => r.fatigue === 20));
   // form/injured_until må ALDRIG være med i payloaden.
   assert.ok(capture.upserts.every((r) => !("form" in r) && !("injured_until" in r)));
 });
@@ -151,7 +152,7 @@ test("apply rapporterer gennemsnittet før og efter", async () => {
   });
   const res = await applySeasonFatigueReset({ supabase, isEnabled: async () => true, mode: "full" });
   assert.equal(res.avgBefore, 75);
-  assert.equal(res.avgAfter, 0);
+  assert.equal(res.avgAfter, 20);
 });
 
 test("dryRun beregner alt, men skriver intet", async () => {
@@ -256,21 +257,21 @@ test("gen-kørsel af hele apply-laget er et no-op: nul skrivninger, changed 0", 
   const { run } = buildStatefulSupabase([
     { rider_id: "r1", fatigue: 100 },
     { rider_id: "r2", fatigue: 63 },
-    { rider_id: "r3", fatigue: 0 },
+    { rider_id: "r3", fatigue: 20 },
   ]);
 
   const first = await run();
   assert.equal(first.ran, true);
   assert.equal(first.riders, 3);
-  assert.equal(first.changed, 2, "r1+r2 ændres, r3 var allerede frisk");
-  assert.equal(first.avgAfter, 0);
+  assert.equal(first.changed, 2, "r1+r2 ændres, r3 var allerede på startniveauet");
+  assert.equal(first.avgAfter, 20);
 
   const second = await run();
   assert.equal(second.ran, true);
   assert.equal(second.riders, 3);
   assert.equal(second.changed, 0, "anden kørsel må ikke ændre noget");
-  assert.equal(second.avgBefore, 0);
-  assert.equal(second.avgAfter, 0);
+  assert.equal(second.avgBefore, 20);
+  assert.equal(second.avgAfter, 20);
 });
 
 test("gen-kørsel skriver bogstaveligt talt nul rækker til databasen", async () => {
@@ -293,5 +294,5 @@ test("gen-kørsel rører ikke form/injured_until — heller ikke i første kørs
   assert.ok(capture.runs[0].written.length === 1 && capture.runs[1].written.length === 0);
   assert.equal(state.get("r1").form, 72, "form må ikke være rørt");
   assert.equal(state.get("r1").injured_until, "2026-08-01", "injured_until må ikke være rørt");
-  assert.equal(state.get("r1").fatigue, 0);
+  assert.equal(state.get("r1").fatigue, 20);
 });

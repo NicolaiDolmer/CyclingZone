@@ -22,7 +22,8 @@ export const SEASON_FATIGUE_RESET_FLAG_KEY = "season_fatigue_reset_enabled";
 
 // Modes:
 //   "off"        → identitet (bruges kun af harness/tests til at måle nul-linjen)
-//   "full"       → alle på 0 (off-season-nulstilling) ← EJER-VALGT 26/7, se nedenfor
+//   "full"       → alle på SEASON_START_FATIGUE (20) efter nulstillingen ← EJER-VALGT 26/7;
+//                  startniveauet 0 → 20 er ejer 27/10 (#7282), se nedenfor
 //   "rest_days"  → N simulerede hviledage gennem DEN ÆGTE daglige model
 //                  (riderCondition.nextFatigue, intensity "rest"), så recovery-evnen
 //                  stadig betyder noget og trætte ryttere ikke bliver gratis friske.
@@ -34,7 +35,12 @@ export const SEASON_FATIGUE_RESET_FLAG_KEY = "season_fatigue_reset_enabled";
 // AI-løftet findes i øvrigt KUN fordi AI-ryttere aldrig restituerer (trainingSweep
 // filtrerer på is_ai = false) — retter vi den bug, forsvinder skævheden af sig selv.
 //
-// IDEMPOTENS: "full" er en idempotent afbildning (f → 0, og 0 → 0), så en gen-kørsel
+// STARTNIVEAU 20 (ejer 27/10, #7282): efter nulstillingen lægges et gulv på 20, så alle
+// ryttere går ind i den nye sæson på 20 og ikke 0. Under condition_model_v2 betyder det
+// at spilleren selv bestemmer formen før første løb (hvile taber, normal holder, hård
+// hæver). Samme flag som nulstillingen.
+//
+// IDEMPOTENS: "full" er en idempotent afbildning (f → 20, og 20 → 20), så en gen-kørsel
 // af sæsonskiftet er et rent no-op på trætheds-siden. Derfor har denne side bevidst
 // INGEN claim-tabel — modsat akademi-optagelsen (#2911), hvor en gen-kørsel ville
 // udstede nye tilbud. Egenskaben er låst af tests i seasonFatigueReset.test.js
@@ -43,6 +49,8 @@ export const SEASON_FATIGUE_RESET_FLAG_KEY = "season_fatigue_reset_enabled";
 // smutte igennem.
 export const SEASON_FATIGUE_RESET = Object.freeze({
   MODE: "full",
+  // Træthed alle ryttere starter sæsonen på (gulv efter nulstillingen). Ejer 27/10, #7282.
+  SEASON_START_FATIGUE: 20,
   REST_DAYS: 3,
   DEFAULT_RECOVERY: 50, // rytter uden abilities-række → neutral recovery
   UPSERT_CHUNK: 500,
@@ -73,7 +81,7 @@ export function seasonResetFatigue({
   const start = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 0;
 
   if (mode === "off") return start;
-  if (mode === "full") return 0;
+  if (mode === "full") return SEASON_FATIGUE_RESET.SEASON_START_FATIGUE;
 
   const days = Math.max(0, Math.floor(Number(restDays) || 0));
   const rec = Number.isFinite(Number(recoveryAbility))
@@ -93,8 +101,8 @@ export function seasonResetFatigue({
  * - Flag-gated (fail-safe off). Kaldes fra seasonStartHooks.js, aldrig direkte
  *   fra transitionen.
  * - IDEMPOTENT i den mode der shippes ("full"): funktionen er en ren afbildning
- *   af den aktuelle træthed, og f → 0 er idempotent (anden kørsel finder alle på
- *   0, skriver nul rækker og rapporterer changed: 0). En operatør der kører
+ *   af den aktuelle træthed, og f → 20 er idempotent (anden kørsel finder alle på
+ *   20, skriver nul rækker og rapporterer changed: 0). En operatør der kører
  *   sæsonskiftet igen "for en sikkerheds skyld" kan derfor ikke gøre skade på
  *   trætheds-siden — derfor ingen claim-tabel her. ("rest_days" er IKKE
  *   idempotent: hver kørsel trækker N hviledage mere fra.)
