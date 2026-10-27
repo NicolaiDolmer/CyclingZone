@@ -46,7 +46,7 @@ export function markStagesForProfileHills(stages, { enabled, rulesRevision }) {
  * andre loeb laeser praecis som foer.
  */
 export async function loadStageElevationProfiles(supabase, raceId) {
-  const { data, error } = await supabase.from("race_stage_profiles").select("stage_number, elevation_profile").eq("race_id", raceId);
+  const { data, error } = await supabase.from("race_stage_profiles").select("stage_number, elevation_profile").eq("race_id", raceId).limit(100); // et loeb har faa etaper (GT = 21)
   if (error) throw new Error(`race_stage_profiles.elevation_profile: ${error.message ?? error}`);
   return new Map((data ?? []).map((r) => [Number(r.stage_number), r.elevation_profile ?? null]));
 }
