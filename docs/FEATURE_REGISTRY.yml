@@ -189,10 +189,10 @@ features:
     verified: 2026-10-26
     note: UI live; flag findes ikke i prod. Kalibreret (#7163); tænding afventer ejer-go.
 
-  - id: last-man-role
+  - id: luxury-helper-role
     area: race-engine
-    title_en: Last man
-    title_da: Sidste mand
+    title_en: Luxury helper
+    title_da: Luksushjælper
     state: building
     epic: 5982
     verified: 2026-10-27

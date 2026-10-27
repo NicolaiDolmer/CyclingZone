@@ -472,6 +472,7 @@
       "captain": "Captain",
       "sprintCaptain": "Sprint captain",
       "coCaptain": "Shared captain",
+      "luxuryHelper": "Luxury helper",
       "hunter": "Breakaway hunter",
       "rider": "Rider only"
     },
@@ -747,6 +748,8 @@
     "sprintCaptain": "Sprint captain (optional)",
     "coCaptain": "Shared captain (optional)",
     "coCaptainHint": "Protected like the captain. The captain gets help first.",
+    "luxuryHelper": "Luxury helper (optional)",
+    "luxuryHelperHint": "Saves himself, then works for the captain on the decisive climb.",
     "hunter": "Breakaway hunter",
     "freeRole": "Free role",
     "noRole": "None",
@@ -849,7 +852,7 @@
       "selection_co_captain_requires_captain": "A shared captain needs a captain. Pick a captain first.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
       "selection_role_overlap": "Captain, sprint captain and hunter must be different riders.",
-      "selection_luxury_helper_not_available": "Last man isn't available in this race.",
+      "selection_luxury_helper_not_available": "Luxury helper isn't available in this race.",
       "selection_rider_injured": "Injured riders can't be selected.",
       "selection_rider_over_age": "Riders over the race's age limit can't be selected.",
       "selection_rider_not_on_team": "You can only select your own riders.",
@@ -949,7 +952,7 @@
       "helper": "rider",
       "hunter": "hunter",
       "free_role": "free role",
-      "luxury_helper": "last man"
+      "luxury_helper": "luxury helper"
     },
     "errors": {
       "stage_roles_invalid_body": "Couldn't save the intentions. Try again.",
@@ -1017,7 +1020,7 @@
       "hunter": "Breakaway hunter",
       "helper": "Domestique",
       "free_role": "Free role",
-      "luxury_helper": "Last man"
+      "luxury_helper": "Luxury helper"
     },
     "save": "Save tactics",
     "saving": "Saving…",
@@ -1050,7 +1053,7 @@
       "hunter": "breakaway hunter",
       "helper": "domestique",
       "free_role": "free role",
-      "luxury_helper": "last man"
+      "luxury_helper": "luxury helper"
     }
   },
   "stageOrders": {
@@ -1132,7 +1135,7 @@
         "hunter": "He goes hunting for the breakaway.",
         "helper": "He works for the leaders.",
         "free_role": "He rides his own race.",
-        "luxury_helper": "He saves himself, then works for the captain on the decisive climb."
+        "luxury_helper": "He saves himself, then works for the captain on the decisive climb. Change the climb in the stage plan."
       }
     },
     "team": {

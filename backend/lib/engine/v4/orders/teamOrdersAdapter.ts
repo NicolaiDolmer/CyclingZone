@@ -134,7 +134,7 @@ const VALID_ROLES: ReadonlySet<string> = new Set(RIDER_ROLE_VALUES);
 
 /** Ukendt/manglende rolle → `free_role` (ingen bunden opgave), aldrig et kast. */
 function toRole(role: string | null | undefined): RiderRole {
-  if (role === "luxury_helper") return "helper"; // #5982: sidste mand faar en hjaelpers ordre-defaults
+  if (role === "luxury_helper") return "helper"; // #5982: luksushjaelper faar en hjaelpers ordre-defaults
   return VALID_ROLES.has(role ?? "") ? (role as RiderRole) : "free_role";
 }
 

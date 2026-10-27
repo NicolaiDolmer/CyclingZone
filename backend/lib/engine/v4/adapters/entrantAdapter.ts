@@ -72,7 +72,7 @@ export function normalizeTeamId(teamId: unknown): string | null {
 
 /** Ukendt/manglende rolle -> "free_role" (VALID_RACE_ROLES's laveste-antagelse-rolle). */
 export function normalizeRole(role: unknown): RiderRole {
-  if (role === LUXURY_HELPER_ROLE) return "helper"; // #5982: sidste mand er en hjaelper i motoren (+ markoeren nedenfor)
+  if (role === LUXURY_HELPER_ROLE) return "helper"; // #5982: luksushjaelper er en hjaelper i motoren (+ markoeren nedenfor)
   return typeof role === "string" && VALID_ROLE_SET.has(role) ? (role as RiderRole) : "free_role";
 }
 

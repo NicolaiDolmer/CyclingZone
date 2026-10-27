@@ -472,6 +472,7 @@
       "captain": "Kaptajn",
       "sprintCaptain": "Sprint-kaptajn",
       "coCaptain": "Delt kaptajn",
+      "luxuryHelper": "Luksushjælper",
       "hunter": "Udbrudsjæger",
       "rider": "Kun rytter"
     },
@@ -747,6 +748,8 @@
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
     "coCaptain": "Delt kaptajn (valgfri)",
     "coCaptainHint": "Beskyttet som kaptajnen. Kaptajnen får hjælp først.",
+    "luxuryHelper": "Luksushjælper (valgfri)",
+    "luxuryHelperHint": "Sparer sig og arbejder for kaptajnen på den afgørende stigning.",
     "hunter": "Udbrudsjæger",
     "freeRole": "Fri rolle",
     "noRole": "Ingen",
@@ -849,7 +852,7 @@
       "selection_co_captain_requires_captain": "En delt kaptajn kræver en kaptajn. Vælg en kaptajn først.",
       "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
       "selection_role_overlap": "Kaptajn, spurt-kaptajn og jæger skal være forskellige ryttere.",
-      "selection_luxury_helper_not_available": "Sidste mand findes ikke i dette løb.",
+      "selection_luxury_helper_not_available": "Luksushjælperen findes ikke i dette løb.",
       "selection_rider_injured": "Skadede ryttere kan ikke udtages.",
       "selection_rider_over_age": "Ryttere over løbets aldersgrænse kan ikke udtages.",
       "selection_rider_not_on_team": "Du kan kun udtage dine egne ryttere.",
@@ -949,7 +952,7 @@
       "helper": "rytter",
       "hunter": "jæger",
       "free_role": "fri rolle",
-      "luxury_helper": "sidste mand"
+      "luxury_helper": "luksushjælper"
     },
     "errors": {
       "stage_roles_invalid_body": "Kunne ikke gemme intentionerne. Prøv igen.",
@@ -1017,7 +1020,7 @@
       "hunter": "Udbrudsjæger",
       "helper": "Hjælper",
       "free_role": "Fri rolle",
-      "luxury_helper": "Sidste mand"
+      "luxury_helper": "Luksushjælper"
     },
     "save": "Gem taktik",
     "saving": "Gemmer…",
@@ -1050,7 +1053,7 @@
       "hunter": "udbrudsjæger",
       "helper": "hjælper",
       "free_role": "fri rolle",
-      "luxury_helper": "sidste mand"
+      "luxury_helper": "luksushjælper"
     }
   },
   "stageOrders": {
@@ -1132,7 +1135,7 @@
         "hunter": "Han jagter udbruddet.",
         "helper": "Han arbejder for lederne.",
         "free_role": "Han kører sit eget løb.",
-        "luxury_helper": "Han sparer sig og arbejder for kaptajnen på den afgørende stigning."
+        "luxury_helper": "Han sparer sig og arbejder for kaptajnen på den afgørende stigning. Stigningen ændrer du i etapeplanen."
       }
     },
     "team": {

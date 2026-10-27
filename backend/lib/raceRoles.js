@@ -274,7 +274,7 @@ export const VALID_RACE_ROLES = Object.freeze([
   // #5981: delt kaptajn. Kun i loeb bundet til s5_profiles_v3+; API'et afviser den ellers
   // (raceSelection.js / raceStageRolesApi.js). Gammel motor: som fri rolle, intet holdbidrag.
   "co_captain",
-  // #5982: sidste mand (luksushjaelperen). Samme v3-gate som den delte kaptajn. Motoren ser
+  // #5982: luksushjaelperen. Samme v3-gate som den delte kaptajn. Motoren ser
   // ham som en hjaelper (+ markoer); gammel motor: en hjaelper med hjaelperens pris.
   "luxury_helper",
 ]);
@@ -318,7 +318,7 @@ export function validEffortsFor(intentionEnabled = false) {
  */
 function baseWorkCost(role, profileType) {
   switch (role) {
-    case "luxury_helper": // #5982: gammel motor koerer sidste mand som en hjaelper (han arbejder, saa han betaler)
+    case "luxury_helper": // #5982: gammel motor koerer luksushjaelper som en hjaelper (han arbejder, saa han betaler)
     case "helper":
       if (GC_RELEVANT_PROFILES.has(profileType)) return RACE_V3_TUNING.WORK_COST_HELPER_GC;
       if (FLAT_LEADOUT_PROFILES.has(profileType)) return RACE_V3_TUNING.WORK_COST_HELPER_FLAT;

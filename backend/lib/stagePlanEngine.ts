@@ -30,8 +30,11 @@
 //      (rider_id, led, opgave, aarsag). Fog of war: ingen tal ud over km.
 //      Opsummeringen efter etapen laeser kun disse events.
 //
-// Uden en stage_plan-ordre returnerer createStagePlanRuntime null, og loopet er
-// byte-identisk med foer.
+// #5982: en luksushjaelper uden gemt plan faar sin standardplan her
+// (mechanics/luxuryHelper5982.ts, samme forslag som fladen viser).
+//
+// Uden en stage_plan-ordre og uden en luksushjaelper returnerer createStagePlanRuntime
+// null, og loopet er byte-identisk med foer.
 
 import type { EffortLevel, EngineState, Entrant, RaceGroup, RouteV2, Segment, TeamOrder, TimelineEvent } from "./engine/v4/types.ts";
 import {

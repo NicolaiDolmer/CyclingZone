@@ -16,7 +16,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Last man (`last-man-role`) | building | - | - | #5982 | 2026-10-27 | - |
+| Luxury helper (`luxury-helper-role`) | building | - | - | #5982 | 2026-10-27 | - |
 | Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-26 | UI live; flag findes ikke i prod. Kalibreret (#7163); tænding afventer ejer-go. |
 | Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype; v2-v5 i motoren. v5 aktiv 16/10 til S5 17/10; løb beholder bundet revision. |
 

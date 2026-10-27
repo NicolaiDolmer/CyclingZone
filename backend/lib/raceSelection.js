@@ -41,7 +41,7 @@ export function validateSelection({
   // #6321: spurtkaptajnen som eneste leder. Samme revisions-gate som den delte kaptajn
   // (s5_profiles_v3+); aeldre loeb kraever stadig en kaptajn, saa intet aendres foer v3.
   sprintLeaderAllowed = false,
-  // #5982: sidste mand (luksushjaelperen, hoejst én — ét id). Samme v3-gate som den delte kaptajn.
+  // #5982: luksushjaelperen (hoejst én — ét id). Samme v3-gate som den delte kaptajn.
   luxuryHelperId = null, luxuryHelperAllowed = false,
 }) {
   const errors = [];
@@ -79,7 +79,7 @@ export function validateSelection({
   // #5981: delt kaptajn kun i loeb der kender rollen, og kun paa et hold der ogsaa har en kaptajn.
   if (coCaptainId && !coCaptainAllowed) errors.push("selection_co_captain_not_available");
   else if (coCaptainId && !captainId) errors.push("selection_co_captain_requires_captain");
-  // #5982: sidste mand kun i loeb der kender rollen, og kun en rytter i truppen.
+  // #5982: luksushjaelper kun i loeb der kender rollen, og kun en rytter i truppen.
   if (luxuryHelperId && !luxuryHelperAllowed) errors.push("selection_luxury_helper_not_available");
   else if (luxuryHelperId && !unique.has(luxuryHelperId)) errors.push("selection_role_not_selected");
   // free_role_ids (#2376): flere ryttere kan dele rollen (additiv udvidelse af den ellers
@@ -95,7 +95,7 @@ export function validateSelection({
   for (const id of freeRoleIdSet) {
     if (roleIds.includes(id)) { errors.push("selection_role_overlap"); break; }
   }
-  // #5982: sidste mand har ingen anden rolle (én rolle pr. rytter).
+  // #5982: luksushjaelper har ingen anden rolle (én rolle pr. rytter).
   if (luxuryHelperId && (roleIds.includes(luxuryHelperId) || freeRoleIdSet.has(luxuryHelperId)) && !errors.includes("selection_role_overlap")) errors.push("selection_role_overlap");
 
   return { ok: errors.length === 0, errors };
@@ -192,7 +192,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
     return { ok: false, status: 400, error: "selection_invalid_body" };
   }
   const riderIds = riderIdsBody;
-  const luxuryHelperId = body?.luxury_helper_id ?? null; // #5982: sidste mand
+  const luxuryHelperId = body?.luxury_helper_id ?? null; // #5982: luksushjaelper
 
   // Frys (#1825) i BEGGE retninger (#4534): den tidligere #2637-undtagelse ("ren
   // fjernelse tilladt") lod en spiller trække ryttere ud af et IGANGVÆRENDE løb via
@@ -530,7 +530,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
         free_role_ids: entries.filter((e) => e.race_role === "free_role").map((e) => e.rider_id),
         // #5981: kun naar holdet har en delt kaptajn (ellers uaendret form).
         ...(entries.some((e) => e.race_role === "co_captain") ? { co_captain_id: entries.find((e) => e.race_role === "co_captain").rider_id } : {}),
-        // #5982: kun naar holdet har en sidste mand (ellers uaendret form).
+        // #5982: kun naar holdet har en luksushjaelper (ellers uaendret form).
         ...(entries.some((e) => e.race_role === "luxury_helper") ? { luxury_helper_id: entries.find((e) => e.race_role === "luxury_helper").rider_id } : {}),
         is_auto_filled: entries.every((e) => e.is_auto_filled),
         // #3041: kun de MANUELT udtagne af rider_ids — bruges til at bygge binding-map'et,

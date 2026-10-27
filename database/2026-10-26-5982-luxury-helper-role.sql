@@ -1,5 +1,5 @@
--- #5982: sidste mand ('luxury_helper', luksushjaelperen) som syvende race_role. ADDITIV.
--- Ejer 26/10 (designbord S10): kaptajnens sidste mand, hoejst én pr. hold, med i
+-- #5982: luksushjaelperen ('luxury_helper') som syvende race_role. ADDITIV.
+-- Ejer 26/10 (designbord S10): kaptajnens luksushjaelper, hoejst én pr. hold, med i
 -- s5_profiles_v3. Spec: docs/superpowers/specs/2026-10-25-taktik-roller-design.md
 -- (§5, §9, §11) og docs/RACE_ENGINE_RULES.md §1.
 --
@@ -35,13 +35,13 @@ ALTER TABLE public.race_entries
 ALTER TABLE public.race_entries
   VALIDATE CONSTRAINT race_entries_race_role_check;
 
--- Hoejst én sidste mand pr. (loeb, hold), som de andre eksklusive roller.
+-- Hoejst én luksushjaelper pr. (loeb, hold), som de andre eksklusive roller.
 -- CONCURRENTLY (top-level, uden transaktion): blokerer ikke skrivninger til race_entries.
 CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS uq_race_entries_luxury_helper
   ON public.race_entries(race_id, team_id) WHERE race_role = 'luxury_helper';
 
 COMMENT ON COLUMN public.race_entries.race_role IS
-  '#1307/#2352/#5981/#5982: captain/sprint_captain/hunter/helper/free_role/co_captain/luxury_helper. Default helper. free_role = 0 work-cost, 0 holdbidrag. co_captain (#5981) = delt kaptajn. luxury_helper (#5982) = sidste mand. Begge kun i loeb paa s5_profiles_v3+ og hoejst én pr. hold.';
+  '#1307/#2352/#5981/#5982: captain/sprint_captain/hunter/helper/free_role/co_captain/luxury_helper. Default helper. free_role = 0 work-cost, 0 holdbidrag. co_captain (#5981) = delt kaptajn. luxury_helper (#5982) = luksushjaelper. Begge kun i loeb paa s5_profiles_v3+ og hoejst én pr. hold.';
 
 -- ── 2) race_stage_roles.race_role: + 'luxury_helper' ──────────────────────────
 ALTER TABLE public.race_stage_roles
