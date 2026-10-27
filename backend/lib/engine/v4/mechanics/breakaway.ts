@@ -2317,9 +2317,13 @@ function progressChase(state: EngineState, ctx: BreakawayHookContext): SegmentHo
     // loftet (fx et nedkoerselsforspring) krympes aldrig af fasen selv.
     const grown = separation >= 0 && separation < letGoCeiling ? Math.min(letGoCeiling, separation + letGoGrowth) : separation;
     // #6804 P2 (K6): forspringet vokser forbi mellemzonen, fordi intet hold vil jage; filmen kan sige det.
-    if (p2Interest && p2Interest.teamIds.length === 0) {
+    if (p2Interest && p2Interest.teamIds.length === 0 && (!flatLead || allowLetGo)) {
       const tolerated = s5V3RealisticLeadCeilingSeconds(ctx.route.profile_type, true);
-      if (separation <= tolerated && grown > tolerated) events.push({ km: round2(ctx.segment.to_km), type: "breakaway_unchased", params: { group_id: breakaway.id } });
+      const entryChase = flatLead ? ctx.sharedGroupTime?.entryGroups.find(g => g.id === chaseGroup.id) : undefined;
+      const entryBreak = flatLead ? ctx.sharedGroupTime?.entryGroups.find(g => g.id === breakaway.id) : undefined;
+      // Terrain can cross the tolerance before this hook's let-go growth.
+      const previousSeparation = entryChase && entryBreak ? entryChase.gap_seconds - entryBreak.gap_seconds : separation;
+      if (flatLead ? Math.min(separation, previousSeparation) <= tolerated + GROUP_CLOCK_CONTACT_EPSILON && grown - tolerated > GROUP_CLOCK_CONTACT_EPSILON : separation <= tolerated && grown > tolerated) events.push({ km: round2(ctx.segment.to_km), type: "breakaway_unchased", params: { group_id: breakaway.id } });
     }
     // #6804 P6.1 (KUN s5_profiles_v3, etapeloeb, foer finalen): klassementsjagten kontrollerer
     // paa snoren i stedet for at hente. Reaktionernes ekstra lukning bringer forspringet ned

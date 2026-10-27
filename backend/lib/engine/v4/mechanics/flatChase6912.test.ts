@@ -144,3 +144,31 @@ for (const profile of ["flat", "rolling"] as const) test(`#6912 ${profile}: enda
   assert.ok(result.state.groups.find(g => g.id === "field")!.gap_seconds <= ceiling);
   assert.ok(result.state.riders.h1.team_cp_factor! < (state.riders.h1.team_cp_factor ?? 1));
 });
+
+test("#6912: filmen forklarer terraenets overskridelse uden jagt-interesse", () => {
+  const { state, ctx, ceiling, entrants } = fixture("flat", { ownAhead: true });
+  for (const id of state.groups.find(g => g.id === "field")!.rider_ids) entrants[id] = { ...entrants[id], team_id: "sprint-team" };
+  ctx.sharedGroupTime = { ...ctx.sharedGroupTime!, entryGroups: state.groups.map(g => g.id === "field" ? { ...g, gap_seconds: ceiling } : g) };
+  state.groups.find(g => g.id === "field")!.gap_seconds = ceiling + 1;
+  ctx.segment = { kind: "climb", from_km: 120, to_km: 125, category: "4", avg_gradient: 4 };
+  ctx.route = { ...ctx.route, segments: [ctx.route.segments[0], ctx.segment] };
+  const result = breakawayHook(state, ctx);
+  assert.ok(result.events.some(e => e.type === "breakaway_unchased" && e.params.group_id === "escape"), "terraenets hul over snoren skal forklares, selv om lad-gaa-fasen er slut");
+});
+
+test("#6912: mellemgruppens manglende interesse skjuler ikke feltets jagt", () => {
+  const { state, ctx, ceiling, entrants } = fixture("flat", { intermediate: true });
+  entrants.solo = { ...entrants.solo, team_id: entrants.e1.team_id };
+  ctx.sharedGroupTime = { ...ctx.sharedGroupTime!, entryGroups: state.groups.map(g => ({ ...g, gap_seconds: g.id === "escape" ? 0 : ceiling })) };
+  state.groups.find(g => g.id === "solo")!.gap_seconds = ceiling + 1;
+  state.groups.find(g => g.id === "field")!.gap_seconds = ceiling * 2;
+  ctx.segment = { kind: "descent", from_km: 120, to_km: 125 };
+  ctx.route = { ...ctx.route, segments: [ctx.route.segments[0], ctx.segment] };
+  state.finish_descent_regroup = {
+    field: { topGapSeconds: ceiling * 2, closedSeconds: Number.MAX_SAFE_INTEGER },
+    solo: { topGapSeconds: ceiling + 1, closedSeconds: Number.MAX_SAFE_INTEGER },
+  };
+  const result = breakawayHook(state, ctx);
+  assert.ok(result.state.riders.h1.team_cp_factor! < (state.riders.h1.team_cp_factor ?? 1), "feltets hjaelper udfoerer jagtarbejde");
+  assert.equal(result.events.some(e => e.type === "breakaway_unchased" && e.params.group_id === "escape"), false, "mellemgruppen maa ikke erklaere hele udbruddet ujaget");
+});
