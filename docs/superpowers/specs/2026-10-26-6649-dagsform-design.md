@@ -27,9 +27,7 @@ Kontrol: samme kode (main + denne PR) med og uden `CZ_DAY_FORM_6649=1`; uden den
 
 Kørsel: `CZ_DAY_FORM_6649=1 motorTestport.mjs --candidate=s5_profiles_v3 --baseline=s5_profiles_v3 --from-dir=<S5-eksporten> --seeds=8 --track-fatigue --no-bench`, derefter `dayForm6649.mjs --dir=<out>/races --cache-dir=<S5-eksporten>`.
 
-### Hvad baseline viste (kvalitativt)
-
-Dominansen er ikke ens fordelt. Bjerg, højfjeld og enkeltstart er for forudsigelige; bakket, bølget, brosten og mellembjerg er det modsatte, fordi udbrud og finalens egne regler afgør dem. Løbsgrupperne ligger derfor på begge sider af båndet: Grand Tours, monumenter og ungdomsetapeløb over, endagsløb under, de korte etapeløb inden for (men kun som gennemsnit af for høj bjerg-dominans og for lav bakke-dominans).
+Baseline, kalibrering og begrundelser for modellens valg er private (hard rule 17): `private-handoffs/6649/spec-kalibrering-og-begrundelser.md` og `private-handoffs/6649/result.md`.
 
 ## 2. Modellen (`backend/lib/engine/v4/mechanics/dayForm6649.ts`)
 
@@ -43,11 +41,9 @@ Pr. rytter og dag, seedet pr. (etape-seed, rider_id) i egen stream:
 
 Vejr: regn og vind rammer efter rytterens vejr-teknik (nedkørsel + holdbarhed, som `mechanics/weather.ts`); hede = sol på en lang, kuperet dag.
 
-Massespurt: dagsformen er udholdenhed og vejer mindre i en spurt end på en stigning eller i en enkeltstart. Finalens score læser dagsformen med en mindre vægt på massespurt-ruter.
+Massespurt: dagsformen er udholdenhed og vejer mindre i en spurt end på en stigning eller i en enkeltstart. Finalens score læser hele `RiderState.dayform` (dagens udsving og formens/formtoppens faste led) med en mindre vægt på massespurt-ruter, kun når kontakten er tændt.
 
-### Hvorfor ned-siden er bredere
-
-Første kalibrering med symmetrisk udsving flyttede kun lidt på bjerg-dominansen, men gav udbryderne flere gode dage: udbrud vandt oftere på bjerg, og klassementsvinderen kom oftere fra et udbrud (`gcFromBreakaway`, #7258's vagt). Med en bred ned-side og smal op-side har favoritterne deres dårlige dage, uden at udbryderne får flere super-dage. Det er også tættest på virkeligheden: en "jour sans" er en nedtur, ikke en lotterigevinst.
+En "jour sans" er en nedtur, ikke en lotterigevinst: derfor er ned-siden bredere end op-siden.
 
 ## 3. Løbsloggen
 
@@ -68,9 +64,7 @@ Frontend: `stageTimelineFilm.describeEvent` → `detail.film.event.bad_day_<års
 
 ## 5. Det modellen ikke løser
 
-Gaten (`bestRiderWinShare` i alle løbsgrupper) er ikke grøn med dagsform alene: Grand Tours (etaper og klassement) og monumenterne ligger stadig over båndet. Et forsøg med en "lang dag" (ned-siden vokser med distancen) og mere dagsform i massespurten flyttede dem næsten ikke og blev rullet tilbage.
-
-Endagsløbenes og de bakkede etapers lave sejrsandel for den bedste skyldes udbrud og finalens regler, ikke dagsform; dagsform kan kun gøre en favorit svagere. Bjerg-dominansen ved store evne-forskelle (især ungdomsfelter og Grand Tours) kræver mere end dagsform alene, uden at udbrud og `gcFromBreakaway` bliver værre. Tallene og de reelle valg ligger til ejeren i `private-handoffs/6649/result.md`.
+Gaten (`bestRiderWinShare` i alle løbsgrupper) er ikke grøn med dagsform alene: Grand Tours (etaper og klassement) og monumenterne er et eget spor (ejer 27/10). Dagsform kan kun gøre en favorit svagere; resten afgøres af udbrud og finalens regler. Målinger og forsøg: `private-handoffs/6649/`.
 
 ## 6. Kendte grænser
 

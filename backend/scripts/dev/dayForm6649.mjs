@@ -34,6 +34,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { latestDryRunJson } from "./motorTestport.mjs"; // nyeste tourDryRun-eksport, ikke den foerste mappe-post
 
 const NON_ABILITY_KEYS = new Set(["randomness"]);
 const GC_SKIP_PROFILES = new Set(["flat", "rolling"]);
@@ -167,10 +168,10 @@ function readRace(dir, revision, cacheDir = null) {
   const local = path.join(dir, "cache.json");
   const cachePath = existsSync(local) || !cacheDir ? local : path.join(cacheDir, path.basename(dir), "cache.json");
   if (!existsSync(cachePath)) return null;
-  const resultFile = readdirSync(dir).find((f) => f.endsWith(".json") && f !== "cache.json");
+  const resultFile = latestDryRunJson(dir);
   if (!resultFile) return null;
   const cache = JSON.parse(readFileSync(cachePath, "utf8"));
-  const result = JSON.parse(readFileSync(path.join(dir, resultFile), "utf8"));
+  const result = JSON.parse(readFileSync(resultFile, "utf8"));
   const run = (result.runs ?? []).find((r) => r.revision === revision);
   return run ? { cache, run } : null;
 }
