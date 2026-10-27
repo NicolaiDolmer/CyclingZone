@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildConditionCutoverProposal, replayOpeningFromSeasonReset } from './trainingConditionCutoverDryRun.mjs';
+import { SEASON_FATIGUE_RESET } from '../../lib/seasonFatigueReset.js';
 
 function resetReplay() {
   return { riderId: 'starter', targetDate: '2026-09-29',
@@ -14,7 +15,7 @@ function resetReplay() {
 }
 
 test('documented reset and subsequent events reconstruct forward without current-fatigue subtraction', () => {
-  assert.deepEqual(replayOpeningFromSeasonReset(resetReplay()), { fatigue: 0, form: 34, source: 'season-reset-forward:reset-log:old-report' });
+  assert.deepEqual(replayOpeningFromSeasonReset(resetReplay()), { fatigue: SEASON_FATIGUE_RESET.SEASON_START_FATIGUE, form: 34, source: 'season-reset-forward:reset-log:old-report' });
 });
 
 test('forward reconstruction rejects failed reset, missing dates and unaccounted race activity', () => {
