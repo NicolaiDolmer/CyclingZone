@@ -5,7 +5,7 @@
 > Regenerér: `node scripts/generate-feature-status.mjs`
 > Flag-gate mod prod: `node scripts/check-feature-registry-flags.mjs`
 
-114 poster: live 89 · dormant 8 · building 8 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
+116 poster: live 89 · dormant 8 · building 10 · spec 1 · idea 2 · retired 6. Tilstand afledes af kode og prod-flag, aldrig af prosa.
 
 Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.
 Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).
@@ -16,9 +16,11 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Day form with causes (`race-day-form-6649`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6649 | 2026-10-27 | Nøgle day_form_6649 (mangler = off); tændes med ejer-go. |
-| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-26 | UI live; flag findes ikke i prod. Kalibreret (#7163); tænding afventer ejer-go. |
-| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype; løb beholder deres bundne revision. |
+| Luxury helper (`luxury-helper-role`) | building | - | - | #5982 | 2026-10-27 | - |
+| Day form with causes (`race-day-form-6649`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6649 | 2026-10-27 | Tændes med ejer-go. |
+| Profile hills in the race engine (`race-engine-profile-hills`) | building | - | - | #7290 | 2026-10-27 | Kobles efter #6649. |
+| Stage intention choice (`race-intention-choice`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6641 | 2026-10-26 | UI live; tænding afventer ejer-go (#7163 kalibreret). |
+| Official time persistence revision (`race-official-times-v1`) | retired | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6284 | 2026-10-16 | Frosset prototype. |
 
 ## race-day
 
@@ -36,7 +38,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 |-|-|-|-|-|-|-|
 | Auction entry gate (`auction-entry-gate`) | dormant | `auction_entry_gate_enabled` | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #3134 | 2026-10-15 | Bygget; #3134 lukket af ejeren 18/8. Flaget står false i prod (læst 15/10); kun ejeren flipper. |
 | AI and unsolicited bids (`ai-unsolicited-bids`) | idea | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1310 | 2026-09-06 | Findes ikke i kode. |
-| Market value blend sweep (`market-value-blend`) | retired | - | [ECONOMY_RULES](ECONOMY_RULES.md) | #3448 | 2026-10-15 | Afløst af værdimodel v6 (#4449); koden fjernet i #6642. |
+| Market value blend sweep (`market-value-blend`) | retired | - | [ECONOMY_RULES](ECONOMY_RULES.md) | #3448 | 2026-10-15 | Afløst af v6 (#4449). |
 | Rider loans (`rider-loans`) | retired | - | [TRANSFER_MARKET_RULES](TRANSFER_MARKET_RULES.md) | #1994 | 2026-09-06 | Afviklet; kun lån findes. |
 
 ## squad
@@ -46,7 +48,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
 | Teamwork and Leadership abilities (`mental-abilities-teamwork-leadership`) | building | - | [holdarbejde-og-lederskab-evner-design](superpowers/specs/2026-09-15-holdarbejde-og-lederskab-evner-design.md) | #1177 | 2026-09-15 | Data-only (#5268), resten senere. |
-| New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off) paa start-trup, AI-hold og relaunch. Flip er ejer-gated. |
+| New riders' primary type from the target distribution (`rider-primary-type-from-distribution`) | building | - | [RIDER_GENERATION](RIDER_GENERATION.md) | #5327 | 2026-09-23 | Kontakt (off); flip er ejer-gated. |
 
 ## training
 
@@ -75,9 +77,9 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Auto-generated season calendar at forever transitions (`auto-calendar`) | building | - | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-10-26 | Flag auto_calendar_enabled har ingen række i prod (= off). |
+| Auto-generated season calendar at forever transitions (`auto-calendar`) | building | - | [CALENDAR_RULES](CALENDAR_RULES.md) | - | 2026-10-26 | Ingen række i prod (= off). |
 | Season documentary (LLM) (`season-documentary-llm`) | building | `season_documentary_llm_enabled` | - | - | 2026-09-06 | - |
-| Automatic season transition cron (`season-auto-transition`) | retired | - | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #1155 | 2026-10-17 | Slukket 8/6 og fjernet 17/10 (#6796); sæsonskiftet er manuel admin-handling. |
+| Automatic season transition cron (`season-auto-transition`) | retired | - | [SEASON_CUTOVER_RUNBOOK](SEASON_CUTOVER_RUNBOOK.md) | #1155 | 2026-10-17 | Fjernet 17/10 (#6796); sæsonskiftet er manuelt. |
 
 ## economy
 
@@ -130,4 +132,4 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Survey banner (`survey-banner`) | retired | - | - | #2467 | 2026-10-15 | SurveyBanner.jsx slettet (#2467); kun seed-rækker tilbage i app_config. |
+| Survey banner (`survey-banner`) | retired | - | - | #2467 | 2026-10-15 | SurveyBanner.jsx slettet (#2467). |

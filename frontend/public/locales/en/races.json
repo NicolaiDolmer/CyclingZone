@@ -8,6 +8,8 @@
     "noPlanLocked": "No plan. He rode on his role.",
     "noPlanOrders": "No plan yet. He rides on what you set: {orders}.",
     "noPlanOrdersLocked": "No plan. He rode on what you set: {orders}.",
+    "luxuryHelperPlan": "No saved plan. As luxury helper he rides the suggestion.",
+    "luxuryHelperPlanLocked": "No saved plan. As luxury helper he rode the suggestion.",
     "noFit": "This plan no longer fits his role. Pick a new one.",
     "colPlan": "Plan for stage {number}",
     "colPlanRaceDay": "Plan for the race",
@@ -472,6 +474,7 @@
       "captain": "Captain",
       "sprintCaptain": "Sprint captain",
       "coCaptain": "Shared captain",
+      "luxuryHelper": "Luxury helper",
       "hunter": "Breakaway hunter",
       "rider": "Rider only"
     },
@@ -747,6 +750,8 @@
     "sprintCaptain": "Sprint captain (optional)",
     "coCaptain": "Shared captain (optional)",
     "coCaptainHint": "Protected like the captain. The captain gets help first.",
+    "luxuryHelper": "Luxury helper (optional)",
+    "luxuryHelperHint": "Saves himself, then works for the captain on the decisive climb.",
     "hunter": "Breakaway hunter",
     "freeRole": "Free role",
     "noRole": "None",
@@ -849,6 +854,7 @@
       "selection_co_captain_requires_captain": "A shared captain needs a captain. Pick a captain first.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
       "selection_role_overlap": "Captain, sprint captain and hunter must be different riders.",
+      "selection_luxury_helper_not_available": "Luxury helper isn't available in this race.",
       "selection_rider_injured": "Injured riders can't be selected.",
       "selection_rider_over_age": "Riders over the race's age limit can't be selected.",
       "selection_rider_not_on_team": "You can only select your own riders.",
@@ -947,7 +953,8 @@
       "co_captain": "shared captain",
       "helper": "rider",
       "hunter": "hunter",
-      "free_role": "free role"
+      "free_role": "free role",
+      "luxury_helper": "luxury helper"
     },
     "errors": {
       "stage_roles_invalid_body": "Couldn't save the intentions. Try again.",
@@ -961,10 +968,16 @@
       "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given an intention anymore.",
       "stage_roles_race_completed": "This race is finished, so the intentions can't be changed anymore.",
       "generic": "Couldn't save the intentions. Try again.",
-      "stage_roles_conflict": "Your tactics were changed in another window. The latest version is loaded. Check it and save again."
+      "stage_roles_conflict": "Your tactics were changed in another window. The latest version is loaded. Check it and save again.",
+      "team_orders_grupetto_with_break": "A rider on Grupetto cannot try the break.",
+      "team_orders_grupetto_with_train": "A rider on Grupetto cannot ride in the sprint train.",
+      "team_orders_work_with_break": "A rider who works for the leader cannot try the break.",
+      "team_orders_train_with_break": "A rider in the sprint train cannot try the break."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Not with Grupetto.", "notWithWork": "A rider who works for the leader cannot join the break.", "notWithBreak": "Not while he tries the break.", "notWithTrain": "The sprint train stays in the bunch for the finale." },
+    "pickOne": "Pick one",
     "title": "Tactics",
     "locksAt": "Locks {time}",
     "locked": "Locked",
@@ -1014,7 +1027,8 @@
       "sprint_captain": "Sprint captain",
       "hunter": "Breakaway hunter",
       "helper": "Domestique",
-      "free_role": "Free role"
+      "free_role": "Free role",
+      "luxury_helper": "Luxury helper"
     },
     "save": "Save tactics",
     "saving": "Saving…",
@@ -1046,7 +1060,8 @@
       "sprint_captain": "sprint captain",
       "hunter": "breakaway hunter",
       "helper": "domestique",
-      "free_role": "free role"
+      "free_role": "free role",
+      "luxury_helper": "luxury helper"
     }
   },
   "stageOrders": {
@@ -1127,7 +1142,8 @@
         "sprint_captain": "He gets the sprint train and the lead out.",
         "hunter": "He goes hunting for the breakaway.",
         "helper": "He works for the leaders.",
-        "free_role": "He rides his own race."
+        "free_role": "He rides his own race.",
+        "luxury_helper": "He saves himself, then works for the captain on the decisive climb. Change the climb in the stage plan."
       }
     },
     "team": {

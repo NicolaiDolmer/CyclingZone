@@ -278,7 +278,7 @@ import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelecti
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
-import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
+import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider } from "../lib/raceTeamOrdersApi.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
@@ -5844,7 +5844,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         prepared.errors ? { error: prepared.error, errors: prepared.errors } : { error: prepared.error }
       );
     }
-    const { captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared;
+    const { captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId } = prepared; // #5982: luxuryHelperId
     riderIds = prepared.riderIds;
     ctx = prepared.ctx;
 
@@ -5930,7 +5930,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       return res.status(409).json({ error: "selection_race_started" });
     }
     await saveSelection({
-      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId,
+      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId,
     });
     // #2599: en manuel udtagelse med ≥1 rytter er en aktiv genindtræden — en evt. tidligere
     // "Ryd dag/alt"-markering for netop dette (race,team)-par er nu forældet. Best-effort:
@@ -6123,12 +6123,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     // dobbeltbooking-check udskudt til batchens afslutning (database/2026-08-27-1146-
     // selection-bulk-rpc.sql — samme mønster som apply_race_entry_unit_batch, #3934).
     const rpcChanges = changes.map((c) => {
-      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared.get(c.raceId);
+      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId } = prepared.get(c.raceId); // #5982: luxuryHelperId
       const freeRoleIdSet = new Set(freeRoleIds);
       return {
         race_id: c.raceId,
         rider_ids: riderIds,
-        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId })),
+        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId, luxuryHelperId })),
       };
     });
 
@@ -6548,10 +6548,12 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
       ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
       : null;
+    const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider }); // #7003
     const result = validateTeamOrder({
       order: req.body || {},
       intentionEnabled,
       stagePlan,
+      roleByRider,
       raceCompleted: ctx.race_completed,
       stageNumber,
       stageCount: ctx.stage_count,

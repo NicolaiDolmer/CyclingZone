@@ -60,9 +60,11 @@ export async function loadStagePlanContext({ supabase, raceId, stageNumber, base
   if (profileRes.error) throw new Error(`race_stage_profiles: ${profileRes.error.message}`);
   if (rolesRes.error) throw new Error(`race_stage_roles: ${rolesRes.error.message}`);
   const roleByRider = new Map();
-  for (const [riderId, role] of baseRoleByRider) roleByRider.set(riderId, VALID_ROLES.has(role) ? role : "free_role");
+  // #5982: luksushjaelperen er en hjaelper i planen (samme som motoren, entrantAdapter.ts).
+  const planRole = (role) => (role === "luxury_helper" ? "helper" : role);
+  for (const [riderId, role] of baseRoleByRider) roleByRider.set(riderId, VALID_ROLES.has(planRole(role)) ? planRole(role) : "free_role");
   for (const row of rolesRes.data || []) {
-    if (VALID_ROLES.has(row.race_role)) roleByRider.set(row.rider_id, row.race_role);
+    if (VALID_ROLES.has(planRole(row.race_role))) roleByRider.set(row.rider_id, planRole(row.race_role));
   }
   return { route: stagePlanRouteFromRaw(profileRes.data), roleByRider, hasRoute: Boolean(profileRes.data) };
 }

@@ -1806,6 +1806,10 @@
         "title": "All out and teamwork",
         "text": "Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead."
       },
+      "luxuryHelper": {
+        "title": "The luxury helper",
+        "text": "A luxury helper is a domestique with a ready-made stage plan: he saves his legs in the bunch, then rides for your captain on the decisive climb, the last climb of the day. In the stage plan you can move his work to another climb or give him a different plan. If your captain is dropped or out of the race, he rides his own race. A team can have one luxury helper, and only in races on the newest rules."
+      },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",
         "text": "Every stage carries its own weather, and the stage page shows it: dry, rain or wind. Dry is the calm baseline, nothing changes. Rain slows the whole stage down. Wind mostly bites where the road is open; a climb is sheltered by its own slope. Both hit riders with weak descending and durability hardest. Rain also raises the risk of a crash on cobbles, gravel and daring descents. When rain or wind cost the riders power, the race story says so in one line, never with a number attached. A team time trial is ridden without weather."
