@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { aggregate, ARMS, EFFORTS, LEVELS, mixEffortFor, pickTemplates, raceClass, realismChecks, realismSummary, stageClass, summarizeDays, summarizeRun, twinId, withTwins } from "./effortLevels6641.mjs";
+import { aggregate, ARMS, EFFORTS, LEVELS, mixEffortFor, queenPlanEfforts, queenStageIndex, pickTemplates, raceClass, realismChecks, realismSummary, stageClass, summarizeDays, summarizeRun, twinId, withTwins } from "./effortLevels6641.mjs";
 
 test("raceClass: bjerg, fladt og blandet ud fra vej-etaperne (enkeltstarter taeller ikke)", () => {
   assert.equal(raceClass([{ profile_type: "mountain" }, { profile_type: "high_mountain" }, { profile_type: "itt" }]), "mountain");
@@ -71,6 +71,13 @@ test("summarizeDays: udbrudsdage taeller ikke i tiden, kun i udbruds-andelen", (
   assert.equal(d.breakShare, 50);
 });
 
+test("queenPlanEfforts: alt ud paa den haardeste etape (ved lige den sidste), spar foer og efter", () => {
+  assert.equal(queenStageIndex(["flat", "mountain", "hilly", "mountain", "flat"]), 3);
+  assert.deepEqual(queenPlanEfforts(["flat", "mountain", "hilly", "high_mountain", "flat"]), ["normal", "normal", "save", "all_out", "save"]);
+  assert.deepEqual(queenPlanEfforts(["itt", "flat"]), ["save", "all_out"]);
+  assert.equal(queenStageIndex(["itt"]), -1);
+});
+
 test("mixEffortFor: spar paa fladt, alt ud i bjergene, normal ellers", () => {
   assert.equal(mixEffortFor("flat"), "save");
   assert.equal(mixEffortFor("high_mountain"), "all_out");
@@ -87,9 +94,10 @@ test("realismChecks: de fire ejer-retninger (25/10) laeses af opsummeringen", ()
     row("protect", { freshDt: 0, roadDtMean: 0, fatigueVsNormal: 1, finalFatigueVsNormal: 2, totalDt: 4 }),
     row("all_out", { freshDt: -2, roadDtMean: -1, fatigueVsNormal: 3, finalFatigueVsNormal: 4, totalDt: 3 }),
     row("mix", { freshDt: -1, roadDtMean: -1, fatigueVsNormal: 1, finalFatigueVsNormal: 2, totalDt: -3 }),
+    row("queen", { freshDt: 0, roadDtMean: -1, fatigueVsNormal: 0, finalFatigueVsNormal: 1, totalDt: -2 }),
   ];
   const checks = realismChecks(realismSummary(records), "v2");
-  assert.deepEqual(checks, { allOutWinsDay: true, allOutCostsFatigue: true, saveLosesDayLittle: true, saveFresherAfter: true, normalBestTotal: true, mixBeatsNormalTotal: true, noLevelHits100: true });
+  assert.deepEqual(checks, { allOutWinsDay: true, allOutCostsFatigue: true, saveLosesDayLittle: true, saveFresherAfter: true, normalBestTotal: true, mixBeatsNormalTotal: true, allOutEveryDayBehindNormal: true, queenPlanBeatsNormalTotal: true, noLevelHits100: true });
   // Vender en retning, fanges den: all_out der ogsaa vinder samlet er ikke "som i virkeligheden".
   const broken = records.map((r) => (r.effort === "all_out" ? { ...r, totalDt: -5 } : r));
   assert.equal(realismChecks(realismSummary(broken), "v2").normalBestTotal, false);

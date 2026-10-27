@@ -102,8 +102,33 @@ export function mixEffortFor(profileType) {
   if (profileType === "mountain" || profileType === "high_mountain") return "all_out";
   return "normal";
 }
-const effortOfTwin = (tag, profileType = null) => (tag === CONTROL ? "normal" : tag === MIX ? mixEffortFor(profileType) : tag);
-export const ARMS = Object.freeze([...EFFORTS, CONTROL, MIX]);
+// Plan pr. etape (ejer 27/10, punkt 3): alt ud paa kongeetapen, spar dagen foer og
+// dagen efter, normal ellers. Slaar planen normal hele vejen, betaler én alt ud-dag sig.
+export const QUEEN = "queen";
+const HARDNESS = Object.freeze({ high_mountain: 6, mountain: 5, medium_mountain: 4, hilly: 3, classic: 3, cobbles: 3, gravel: 3, rolling: 2, flat: 1 });
+/** Kongeetapens indeks: den haardeste vej-etape (ved lige: den sidste). Ren. */
+export function queenStageIndex(profileTypes) {
+  let best = -1;
+  let bestHard = 0;
+  profileTypes.forEach((p, i) => {
+    const h = HARDNESS[p] ?? 0;
+    if (h > 0 && h >= bestHard) { best = i; bestHard = h; }
+  });
+  return best;
+}
+/** Planens trin pr. etape (ren): alt ud paa kongeetapen, spar foer og efter, normal ellers. */
+export function queenPlanEfforts(profileTypes) {
+  const q = queenStageIndex(profileTypes);
+  return profileTypes.map((_, i) => (i === q ? "all_out" : q >= 0 && Math.abs(i - q) === 1 ? "save" : "normal"));
+}
+const effortOfTwin = (tag, profileType = null) => (tag === CONTROL ? "normal" : tag === MIX ? mixEffortFor(profileType) : tag === QUEEN ? "normal" : tag);
+/** Trinnet en tvilling koerer paa etape `index` (ren). */
+function armEffortAt(tag, profileTypes, index) {
+  if (tag === QUEEN) return queenPlanEfforts(profileTypes)[index];
+  return effortOfTwin(tag, profileTypes[index]);
+}
+const PLAN_ARMS = new Set([MIX, QUEEN]);
+export const ARMS = Object.freeze([...EFFORTS, CONTROL, MIX, QUEEN]);
 
 /** Feltet + 15 tvillinger (ren). */
 export function withTwins(field, templates) {
@@ -132,9 +157,11 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
   const dateIdx = stageDateIndex(sorted);
   const entrants = splitEntrants(data).entrants;
   const twinIds = new Set();
+  const profileTypes = sorted.map((s) => s.profile_type);
+  const armOf = new Map();
   for (const e of entrants) {
     const m = /^twin6641-(\w+)-(\w+)$/.exec(e.rider_id);
-    if (m) { e.effort = effortOfTwin(m[2], sorted[0]?.profile_type); twinIds.add(e.rider_id); }
+    if (m) { armOf.set(e.rider_id, m[2]); e.effort = armEffortAt(m[2], profileTypes, 0); twinIds.add(e.rider_id); }
   }
   const recovery = new Map(twinField.abilities.map((a) => [a.rider_id, Number(a.recovery) || 50]));
   const effortOf = (id) => entrants.find((e) => e.rider_id === id)?.effort ?? "normal";
@@ -142,12 +169,12 @@ function runRace({ v4, field, race, stages, seasonId, simSeed, revision, model, 
   const loadsToday = new Map();
   // legacy: hele sekvensen er en ren funktion af profilerne og trinnet.
   // Den blandede plan skifter trin pr. etape, saa dens sekvens faar trinnet pr. etape.
-  const legacySeq = new Map(entrants.map((e) => [e.rider_id, stageEnteringFatigues(EFFORT_6641_CONFIG.startFatigue, sorted.map((s) => s.profile_type), e.rider_id.endsWith(`-${MIX}`) ? { efforts: sorted.map((s) => mixEffortFor(s.profile_type)), rulesRevision: revision } : { effort: e.effort, rulesRevision: revision })]));
+  const legacySeq = new Map(entrants.map((e) => [e.rider_id, stageEnteringFatigues(EFFORT_6641_CONFIG.startFatigue, profileTypes, PLAN_ARMS.has(armOf.get(e.rider_id)) ? { efforts: profileTypes.map((_, i) => armEffortAt(armOf.get(e.rider_id), profileTypes, i)), rulesRevision: revision } : { effort: e.effort, rulesRevision: revision })]));
   const perStage = [];
   let currentDate = dateIdx[0];
   const enter = (index) => {
     for (const e of entrants) {
-      if (e.rider_id.endsWith(`-${MIX}`)) e.effort = mixEffortFor(sorted[index].profile_type);
+      if (PLAN_ARMS.has(armOf.get(e.rider_id))) e.effort = armEffortAt(armOf.get(e.rider_id), profileTypes, index);
       if (model === "legacy") e.fatigue = legacySeq.get(e.rider_id)[index];
       else if (model === "v2") e.fatigue = enteringFatigueV2({ openingFatigue: cond.get(e.rider_id).fatigue, priorLoadsToday: loadsToday.get(e.rider_id) ?? [], recoveryAbility: recovery.get(e.rider_id) });
       else e.fatigue = cond.get(e.rider_id).fatigue;
@@ -417,6 +444,10 @@ export function realismChecks(summary, model = "v2") {
     saveFresherAfter: (by.save?.fatigueNextDayVsNormal ?? 0) < 0,
     normalBestTotal: others.every((e) => by[e].totalDtVsNormal != null && by[e].totalDtVsNormal > 0),
     mixBeatsNormalTotal: by[MIX]?.totalDtVsNormal != null && by[MIX].totalDtVsNormal < 0,
+    // Ejer 27/10 punkt 3: alt ud HVER dag ender bag normal; en plan pr. etape
+    // (alt ud paa kongeetapen, spar foer/efter) slaar normal.
+    allOutEveryDayBehindNormal: by.all_out?.totalDtVsNormal != null && by.all_out.totalDtVsNormal > 0,
+    queenPlanBeatsNormalTotal: by[QUEEN]?.totalDtVsNormal != null && by[QUEEN].totalDtVsNormal < 0,
     noLevelHits100: EFFORTS.every((e) => !by[e] || by[e].shareHit100 === 0),
   };
 }
