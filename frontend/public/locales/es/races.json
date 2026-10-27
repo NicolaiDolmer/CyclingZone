@@ -978,10 +978,16 @@
       "stage_roles_rider_abandoned": "Uno de los ciclistas está fuera de la carrera y ya no se le puede dar una intención.",
       "stage_roles_race_completed": "Esta carrera ha terminado, así que las intenciones ya no se pueden cambiar.",
       "generic": "No se pudieron guardar las intenciones. Inténtalo de nuevo.",
-      "stage_roles_conflict": "Tus tácticas se cambiaron en otra ventana. Se ha cargado la última versión. Compruébala y vuelve a guardar."
+      "stage_roles_conflict": "Tus tácticas se cambiaron en otra ventana. Se ha cargado la última versión. Compruébala y vuelve a guardar.",
+      "team_orders_grupetto_with_break": "Un corredor en la grupeta no puede intentar la fuga.",
+      "team_orders_grupetto_with_train": "Un corredor en la grupeta no puede ir en el tren de sprint.",
+      "team_orders_work_with_break": "Un corredor que trabaja para el líder no puede intentar la fuga.",
+      "team_orders_train_with_break": "Un corredor del tren de sprint no puede intentar la fuga."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "No con Grupeta.", "notWithWork": "Un corredor que trabaja para el líder no puede meterse en la fuga.", "notWithBreak": "No mientras intenta la fuga.", "notWithTrain": "El tren de sprint se queda en el pelotón hasta el final." },
+    "pickOne": "Elige uno",
     "title": "Tácticas",
     "locksAt": "Se bloquea {time}",
     "locked": "Bloqueado",

@@ -117,6 +117,7 @@ import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
 import { stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
+import { blockedReasonKey, oppositeOrderError } from "../../lib/oppositeOrders.js"; // #7003 spec §3
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -165,7 +166,7 @@ function IntentionChip({ t, effort, isDefault, role, muted = false }) {
 }
 
 // Den udfoldede vælger: ét trin pr. linje, én sætning i ord, ingen tal.
-function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick }) {
+function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -176,11 +177,13 @@ function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disable
       </div>
       {steps.map((step) => {
         const on = step === value;
+        const blocked = on ? null : blockedFor(step); // #7003: et valg der modsiger dagens ordre
         return (
           <button
             key={step}
             type="button"
-            disabled={disabled}
+            disabled={disabled || !!blocked}
+            title={blocked ? t(blocked) : undefined}
             aria-pressed={on}
             onClick={() => onPick(step)}
             className={`w-full flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2 text-left border-b border-cz-border last:border-b-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -196,7 +199,9 @@ function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disable
             <span className="text-xs text-cz-2 basis-full sm:basis-auto ps-[26px] sm:ps-0">
               {step === "protect" ? protectText(t, role, "why") : t(`intention.why.${step}`)}
             </span>
-            {step === DEFAULT_EFFORT && (
+            {blocked ? (
+              <span className="text-3xs text-cz-3 basis-full sm:basis-auto ps-[26px] sm:ps-0 sm:ms-auto">{t(blocked)}</span>
+            ) : step === DEFAULT_EFFORT && (
               <span className="text-3xs uppercase tracking-wider text-cz-3 sm:ms-auto whitespace-nowrap">
                 {t("intention.roleDefaultTag")}
               </span>
@@ -287,11 +292,12 @@ function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeCho
   );
 }
 
-function TogglePill({ label, ariaLabel, active, disabled, onClick }) {
+function TogglePill({ label, ariaLabel, active, disabled, onClick, title }) {
   return (
     <button
       type="button"
       disabled={disabled}
+      title={title}
       aria-pressed={active}
       aria-label={ariaLabel}
       onClick={onClick}
@@ -691,6 +697,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // Én rytters intention på den åbne etape. Låste etaper har ingen draft-celle
   // (buildDraftMatrix dækker kun de redigerbare) — de læses direkte af de
   // gemte overrides, så "det du sendte dem ud med" er sandt.
+  // #7003 (spec §3): et indsatstrin der modsiger rytterens udbrud/tog i dag.
+  const effortBlockedKey = (rider, step) => {
+    const ro = orderByRider.get(rider.rider_id) || {};
+    return blockedReasonKey(step, { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true }, roleFor(rider));
+  };
+
   const effortFor = (rider) => (stageLocked
     ? resolveCell({ rider, stageNumber: activeStage, overridesMap: lockedOverrides }).effort
     : intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId: rider.rider_id }));
@@ -838,13 +850,25 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       );
     }
     const isSprintCaptain = roleFor(rider) === "sprint_captain";
+    // #7003 (spec §3): et valg der modsiger rytterens andre ordrer kan ikke slaas til.
+    const riderState = { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true };
+    const breakBlocked = blockedReasonKey("try_break", riderState, roleFor(rider));
+    const trainBlocked = blockedReasonKey("leadout", riderState, roleFor(rider));
+    const conflict = oppositeOrderError(riderState, roleFor(rider));
+    const reason = breakBlocked || trainBlocked;
     return (
       <span className="flex flex-wrap items-center gap-2">
+        {conflict && (
+          <span data-testid="opposite-orders-pick-one" className="text-3xs font-medium uppercase tracking-wide text-cz-warning">
+            {t("tacticsOrders.pickOne")}
+          </span>
+        )}
         <TogglePill
           label={t("tacticsOrders.tryBreak")}
           ariaLabel={t("tacticsOrders.tryBreakAria", { name: rider.name || "—" })}
           active={ro.try_break === true}
-          disabled={saving}
+          disabled={saving || !!breakBlocked}
+          title={breakBlocked ? t(breakBlocked) : undefined}
           onClick={() => updateOrder((o) => toggleTryBreak(o, id))}
         />
         {/* Sprint-toget kan kun sættes når holdet har en spurt-kaptajn at køre
@@ -859,11 +883,13 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
               label={t("tacticsOrders.leadout")}
               ariaLabel={t("tacticsOrders.leadoutAria", { name: rider.name || "—" })}
               active={ro.leadout === true}
-              disabled={saving || isSprintCaptain}
+              disabled={saving || isSprintCaptain || !!trainBlocked}
+              title={trainBlocked ? t(trainBlocked) : undefined}
               onClick={() => updateOrder((o) => toggleLeadout(o, id))}
             />
           </span>
         )}
+        {reason && <span className="basis-full text-3xs text-cz-3">{t(reason)}</span>}
       </span>
     );
   }
@@ -1079,6 +1105,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                           value={effortFor(rider)}
                           disabled={saving}
                           onPick={(step) => pickIntention(rider.rider_id, step)}
+                          blockedFor={(step) => effortBlockedKey(rider, step)}
                         />
                       )}
                     </td>
@@ -1135,6 +1162,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                     value={effortFor(rider)}
                     disabled={saving}
                     onPick={(step) => pickIntention(rider.rider_id, step)}
+                    blockedFor={(step) => effortBlockedKey(rider, step)}
                   />
                 </div>
               )}

@@ -159,7 +159,7 @@ test("#7003: AI-holdene laver ikke modsaetningerne under s5_profiles_v3", () => 
       route: { profile_type, distance_km: 160, climbs: [] },
       roster,
       field,
-      race: { is_stage_race: true, stage_number: 2, total_stages: 5 },
+      race: { is_stage_race: true, stage_number: 2, total_stages: 5, later_stages: [] },
       rules_revision: CURRENT_RACE_RULES_REVISION,
     });
     const roleOf = new Map(roster.map((r) => [r.rider_id, r.role]));
