@@ -320,8 +320,9 @@ function computeSelections(
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    // Hullet har sin egen lettelses-tabel (CLIMB_GAP_RELIEF_6641): all_out graver dybere dér end paa split-scoren.
-    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, CLIMB_GAP_RELIEF_6641));
+    // #7280: all_out graver dybere paa hullet end paa split-scoren (CLIMB_GAP_RELIEF_6641); alle andre trin uaendrede.
+    const gapScoreFactor = entrant.effort === "all_out" ? effortClimbScoreFactor("all_out", 1 - energyDeficit, CLIMB_GAP_RELIEF_6641) : effortFactor;
+    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, gapScoreFactor);
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
