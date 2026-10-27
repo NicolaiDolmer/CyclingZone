@@ -43,7 +43,7 @@ import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSev
 import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
-import { CLIMB_GAP_RELIEF_6641, climbGapEffortFactor } from "./effortCost.ts"; // #6641
+import { ALL_OUT_7280_ACTIVE, CLIMB_GAP_RELIEF_7280, climbGapEffortFactor } from "./effortCost.ts"; // #6641, #7280
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
 // etapens) og tuning; ren funktion af feltets klatre-evner.
@@ -320,8 +320,8 @@ function computeSelections(
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    // #7280: all_out graver dybere paa hullet end paa split-scoren (CLIMB_GAP_RELIEF_6641); alle andre trin uaendrede.
-    const gapScoreFactor = entrant.effort === "all_out" ? effortClimbScoreFactor("all_out", 1 - energyDeficit, CLIMB_GAP_RELIEF_6641) : effortFactor;
+    // #7280 (slukket kontakt, effortCost.ts): all_out graver dybere paa hullet end paa split-scoren; alle andre trin uaendrede.
+    const gapScoreFactor = ALL_OUT_7280_ACTIVE && entrant.effort === "all_out" ? effortClimbScoreFactor("all_out", 1 - energyDeficit, CLIMB_GAP_RELIEF_7280) : effortFactor;
     const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, gapScoreFactor);
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);

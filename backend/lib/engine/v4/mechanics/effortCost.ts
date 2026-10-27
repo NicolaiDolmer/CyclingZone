@@ -52,14 +52,14 @@
 //
 // #6641 (KUN s5_profiles_v3, slukket): de fem trin har egne priser under v3, og
 // climbGapEffortFactor nedenfor lader indsatsen virke paa hullet paa stigningen.
-// Ordenen grupetto < save < normal < protect < all_out er uaendret. all_out har under
-// v3 EEN pris paa alle segment-terraener (se CALIBRATED_ALL_OUT_6641). Alle aeldre revisioner beholder
+// Ordenen grupetto < save < normal < protect < all_out og all_out-tabellen pr.
+// segment-terraen er uaendrede. Alle aeldre revisioner beholder
 // EFFORT_COST_EXTRA_TUNING bit-identisk. Retningerne er laast i effortCost.test.ts,
 // segmentLoop.effortCost.test.ts og backend/scripts/dev/effortLevels6641.test.mjs;
 // maalinger og begrundelser er private (hard rule 17, balance-internals/6641/).
 
 import type { EffortLevel, SegmentKind } from "../types.ts";
-import { EFFORT_COST_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING } from "../tuning.ts";
+import { EFFORT_COST_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
 import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 /**
@@ -81,13 +81,14 @@ export type EffortCostTuning = {
 
 export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
 
-// #6641 (#7280, maalt paa de rigtige S5-felter, #7266 fund 1): den kalibrerede
-// all_out-pris, EEN vaerdi paa alle segment-terraener, lige over protect. Den
-// gamle afledning (flad/rullende "samme andel af gruppens tempo som stigningen",
-// #4914) toemte reserven i feltet laenge foer finalen, saa alt ud tabte tid paa
-// dagen. Rytteren betaler stadig: lidt mere reserve undervejs end protect og den
-// fulde traethed bagefter (raceFatigue, uaendret). Ingen per-terraen-tabel under v3.
-const CALIBRATED_ALL_OUT_6641 = 1.06;
+// #6641: den kalibrerede all_out-vaerdi op ad en stigning. Flade og rullende
+// segmenter afledes som foer (#4914): samme andel af gruppens tempo som
+// stigningen giver, regnet af terraenernes baseDemand.
+const CALIBRATED_ALL_OUT_6641 = 1.11;
+function calibratedAllOutMatchingClimb(kind: SegmentKind): number {
+  const demand = RACE_V4_TUNING.terrain.baseDemand;
+  return CALIBRATED_ALL_OUT_6641 * (demand.climb / demand[kind]);
+}
 
 /** #6641: de fem trins pris under s5_profiles_v3 (deep-frosset). Se filhovedet. */
 export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze({
@@ -96,16 +97,46 @@ export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze
   demandMultiplierNormal: 1.0,
   demandMultiplierProtect: 1.05,
   demandMultiplierAllOut: CALIBRATED_ALL_OUT_6641,
+  demandMultiplierAllOutBySegmentKind: Object.freeze({
+    flat: calibratedAllOutMatchingClimb("flat"),
+    rolling: calibratedAllOutMatchingClimb("rolling"),
+  }) as Readonly<Partial<Record<SegmentKind, number>>>,
+});
+
+// #7280 (SLUKKET, ejer-go kraeves foer taend): "alt ud vinder tid paa de rigtige
+// S5-felter" (#7266 fund 1). s5_profiles_v3 er den AKTUELLE revision (#7237), saa
+// pakken kan ikke ligge bag revisionen alene: paa den syntetiske bench slaar alt
+// ud hver dag normal over et helt etapeloeb, og det strider mod ejerens valg A
+// (25/10: kun en blandet plan maa slaa normal over hele loebet). Derfor bag denne
+// kontakt; slukket er motoren bit-identisk med main. Taend = ejerens ordrette go
+// i en egen PR (kontakten -> true), naar traethedsprisen dagen efter er afgjort.
+export const ALL_OUT_7280_ACTIVE: boolean = false;
+
+// #7280: all_out-prisen med kontakten taendt, EEN vaerdi paa alle segment-terraener,
+// lige over protect. Den gamle afledning (flad/rullende "samme andel af gruppens
+// tempo som stigningen", #4914) toemte reserven i feltet laenge foer finalen, saa
+// alt ud tabte tid paa dagen. Rytteren betaler stadig: lidt mere reserve undervejs
+// end protect og den fulde traethed bagefter (raceFatigue, uaendret).
+const CALIBRATED_ALL_OUT_7280 = 1.06;
+
+/** #7280 (slukket): de fem trins pris under s5_profiles_v3 med kontakten taendt. */
+export const EFFORT_COST_TUNING_7280: Readonly<EffortCostTuning> = Object.freeze({
+  demandMultiplierGrupetto: EFFORT_COST_TUNING_6641.demandMultiplierGrupetto,
+  demandMultiplierSave: EFFORT_COST_TUNING_6641.demandMultiplierSave,
+  demandMultiplierNormal: EFFORT_COST_TUNING_6641.demandMultiplierNormal,
+  demandMultiplierProtect: EFFORT_COST_TUNING_6641.demandMultiplierProtect,
+  demandMultiplierAllOut: CALIBRATED_ALL_OUT_7280,
 });
 
 /**
- * #6641 (#7280, KUN s5_profiles_v3): lettelses-tabellen bag GEVINSTEN paa hullet
- * (climbGapEffortFactor via climbSelection.computeSelections). Samme tal som
- * split-scorens climbScoreRelief (#5580) for alle trin undtagen all_out, der graver
- * dybere paa hullet end paa scoren: paa de rigtige felter vandt alt ud ellers kun
- * tid for de bedste ryttere. Stadig betalt med reserven (tom reserve = ingen gevinst).
+ * #7280 (slukket, KUN s5_profiles_v3): lettelses-tabellen bag GEVINSTEN paa hullet
+ * (climbGapEffortFactor via climbSelection.computeSelections) med kontakten taendt.
+ * Samme tal som split-scorens climbScoreRelief (#5580) for alle trin undtagen
+ * all_out, der graver dybere paa hullet end paa scoren: paa de rigtige felter vandt
+ * alt ud ellers kun tid for de bedste ryttere. Stadig betalt med reserven (tom
+ * reserve = ingen gevinst).
  */
-export const CLIMB_GAP_RELIEF_6641: Readonly<Record<EffortLevel, number>> = Object.freeze({
+export const CLIMB_GAP_RELIEF_7280: Readonly<Record<EffortLevel, number>> = Object.freeze({
   ...EFFORT_GAIN_EXTRA_TUNING.climbScoreRelief,
   all_out: 0.9,
 });
@@ -121,7 +152,8 @@ export function isEffortCalibration6641Revision(revision: unknown): boolean {
  * hullet paa en topankomst af rytterens eget underskud (evne + reserve,
  * timeModel.climbSplitGapSeconds), ikke af split-scoren, saa stignings-lettelsen fra
  * #5580 (climbScoreRelief x rest-reserve) naaede aldrig hullet: en hoejere indsats
- * kunne kun koste. Her ganges samme slags faktor (med CLIMB_GAP_RELIEF_6641) paa underskuddet bag hullet: all_out
+ * kunne kun koste. Her ganges den SAMME faktor paa underskuddet bag hullet (#7280,
+ * slukket: all_out med CLIMB_GAP_RELIEF_7280): all_out
  * graver dybere og taber mindre tid paa dagen (betalt med reserven undervejs og
  * traetheden bagefter), save giver slip og taber lidt. Normal er praecis 1.
  * Kaldes med hook-kontekstens s5ProfilesV3-flag (sat af segmentLoop via
@@ -132,9 +164,14 @@ export function climbGapEffortFactor(s5ProfilesV3: boolean, effortScoreFactor: n
   return Math.max(0, effortScoreFactor);
 }
 
-/** #6641: prisen for et loeb bundet til `revision`. Aeldre revisioner: uaendret tuning. */
-export function effortCostTuningFor(revision: unknown): EffortCostTuning {
-  return isEffortCalibration6641Revision(revision) ? EFFORT_COST_TUNING_6641 : EFFORT_COST_EXTRA_TUNING;
+/**
+ * #6641: prisen for et loeb bundet til `revision`. Aeldre revisioner: uaendret tuning.
+ * #7280: `allOut7280` (default kontakten ALL_OUT_7280_ACTIVE, slukket) vaelger
+ * #7280-prisen under s5_profiles_v3; parameteren findes kun saa testene kan laase begge.
+ */
+export function effortCostTuningFor(revision: unknown, allOut7280: boolean = ALL_OUT_7280_ACTIVE): EffortCostTuning {
+  if (!isEffortCalibration6641Revision(revision)) return EFFORT_COST_EXTRA_TUNING;
+  return allOut7280 ? EFFORT_COST_TUNING_7280 : EFFORT_COST_TUNING_6641;
 }
 
 /**

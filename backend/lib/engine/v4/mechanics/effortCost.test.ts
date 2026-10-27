@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { allOutDemandMultiplier, applyEffortToDemand, CLIMB_GAP_RELIEF_6641, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
+import { ALL_OUT_7280_ACTIVE, allOutDemandMultiplier, applyEffortToDemand, CLIMB_GAP_RELIEF_7280, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, EFFORT_COST_TUNING_7280, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
 import { EFFORT_GAIN_EXTRA_TUNING } from "../tuning.ts";
 import { decidingClimbSelectionsOnTheDay, effortClimbScoreFactor } from "./climbSelection.ts";
 import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
@@ -212,27 +212,53 @@ test("#6641: retningen af kalibreringen — all_out og protect billigere, save t
   assert.ok(allOutDemandMultiplier("climb", cal) > 1, "all_out koster stadig mere end normal (ingen gratis all-out)");
 });
 
-test("#6641 (#7280): under v3 har all_out EEN pris paa alle segment-terraener (flad/rullende toemmer ikke reserven foer finalen)", () => {
+test("#6641: all_out-tabellen pr. segment-terraen foelger samme regel (flad/rullende dyrere end stigningen)", () => {
   const cal = EFFORT_COST_TUNING_6641;
-  assert.equal(cal.demandMultiplierAllOutBySegmentKind, undefined, "ingen per-terraen-tabel under v3");
+  assert.deepEqual(Object.keys(cal.demandMultiplierAllOutBySegmentKind ?? {}).sort(), ["flat", "rolling"]);
+  assert.ok(allOutDemandMultiplier("flat", cal) > cal.demandMultiplierAllOut);
+  assert.ok(allOutDemandMultiplier("rolling", cal) > cal.demandMultiplierAllOut);
+  // Samme andel af gruppens tempo som i den gamle tuning: forholdet flad/stigning er uaendret.
+  const ratioOld = allOutDemandMultiplier("flat", EFFORT_COST_TUNING) / EFFORT_COST_TUNING.demandMultiplierAllOut;
+  const ratioNew = allOutDemandMultiplier("flat", cal) / cal.demandMultiplierAllOut;
+  assert.ok(Math.abs(ratioOld - ratioNew) < 1e-12);
+  assert.ok(Object.isFrozen(cal) && Object.isFrozen(cal.demandMultiplierAllOutBySegmentKind));
+});
+
+// ── #7280: "alt ud vinder paa de rigtige felter" bag en SLUKKET kontakt ────────
+test("#7280: kontakten er slukket, saa den aktuelle revision koerer bit-identisk med main", () => {
+  assert.equal(ALL_OUT_7280_ACTIVE, false, "taend kun med ejerens ordrette go (valg A, 25/10)");
+  assert.equal(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
+  assert.equal(effortCostTuningFor("s5_profiles_v3", true), EFFORT_COST_TUNING_7280);
+  for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
+    assert.equal(effortCostTuningFor(revision, true), EFFORT_COST_TUNING, `${String(revision)}: aeldre revisioner uroert ogsaa med kontakten taendt`);
+  }
+});
+
+test("#7280 (taendt): all_out har EEN pris paa alle segment-terraener (flad/rullende toemmer ikke reserven foer finalen)", () => {
+  const cal = EFFORT_COST_TUNING_7280;
+  assert.equal(cal.demandMultiplierAllOutBySegmentKind, undefined, "ingen per-terraen-tabel");
   for (const kind of ["flat", "rolling", "climb", "descent", "cobbles", null] as const) {
     assert.equal(allOutDemandMultiplier(kind, cal), cal.demandMultiplierAllOut, String(kind));
-    assert.ok(allOutDemandMultiplier(kind, cal) < allOutDemandMultiplier(kind, EFFORT_COST_TUNING), `${kind}: billigere end den gamle tuning`);
+    assert.ok(allOutDemandMultiplier(kind, cal) < allOutDemandMultiplier(kind, EFFORT_COST_TUNING_6641), `${kind}: billigere end den slukkede v3-pris`);
   }
-  // Aeldre revisioner beholder #4914-tabellen (flad/rullende dyrere end stigningen).
-  assert.ok(allOutDemandMultiplier("flat", EFFORT_COST_TUNING) > EFFORT_COST_TUNING.demandMultiplierAllOut);
+  const scale: EffortLevel[] = ["grupetto", "save", "normal", "protect", "all_out"];
+  for (const level of scale.slice(0, 4)) {
+    assert.equal(effortDemandMultiplier(level, cal), effortDemandMultiplier(level, EFFORT_COST_TUNING_6641), `${level}: uaendret`);
+  }
+  const values = scale.map((level) => effortDemandMultiplier(level, cal, "flat"));
+  for (let i = 1; i < values.length; i++) assert.ok(values[i]! > values[i - 1]!, `${scale[i]} <= ${scale[i - 1]}`);
   assert.ok(Object.isFrozen(cal));
 });
 
-test("#6641 (#7280): hullets lettelses-tabel = split-scorens, kun all_out graver dybere", () => {
+test("#7280 (taendt): hullets lettelses-tabel = split-scorens, kun all_out graver dybere", () => {
   const score = EFFORT_GAIN_EXTRA_TUNING.climbScoreRelief;
   for (const level of ["grupetto", "save", "normal", "protect"] as EffortLevel[]) {
-    assert.equal(CLIMB_GAP_RELIEF_6641[level], score[level], level);
+    assert.equal(CLIMB_GAP_RELIEF_7280[level], score[level], level);
   }
-  assert.ok(CLIMB_GAP_RELIEF_6641.all_out > score.all_out, "all_out graver dybere paa hullet");
-  assert.ok(CLIMB_GAP_RELIEF_6641.all_out < 1, "fuld reserve sletter aldrig hele hullet");
-  assert.ok(Object.isFrozen(CLIMB_GAP_RELIEF_6641));
-  const gap = (level: EffortLevel, reserve: number) => climbGapEffortFactor(true, effortClimbScoreFactor(level, reserve, CLIMB_GAP_RELIEF_6641));
+  assert.ok(CLIMB_GAP_RELIEF_7280.all_out > score.all_out, "all_out graver dybere paa hullet");
+  assert.ok(CLIMB_GAP_RELIEF_7280.all_out < 1, "fuld reserve sletter aldrig hele hullet");
+  assert.ok(Object.isFrozen(CLIMB_GAP_RELIEF_7280));
+  const gap = (level: EffortLevel, reserve: number) => climbGapEffortFactor(true, effortClimbScoreFactor(level, reserve, CLIMB_GAP_RELIEF_7280));
   for (const reserve of [0.25, 0.5, 1]) {
     assert.equal(gap("normal", reserve), 1);
     assert.ok(gap("all_out", reserve) < gap("protect", reserve) && gap("protect", reserve) < 1, `${reserve}: all_out < protect < normal`);
