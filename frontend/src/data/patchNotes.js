@@ -6,8 +6,7 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
-        "rollout": "switched_on",
-        "flag": "stage_plan_v1",
+        "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Plan the stage along the route",
@@ -47,8 +46,7 @@ export const PATCHES = [
       {
         "category": "new",
         "audience": "player",
-        "rollout": "switched_on",
-        "flag": "day_form_6649",
+        "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Good days and bad days",
@@ -66,8 +64,7 @@ export const PATCHES = [
       {
         "category": "improved",
         "audience": "player",
-        "rollout": "switched_on",
-        "flag": "route_profile_hills",
+        "rollout": "live",
         "topic": "Races",
         "en": {
           "title": "Hills from the real profile",
@@ -104,8 +101,7 @@ export const PATCHES = [
       {
         "category": "fixed",
         "audience": "player",
-        "rollout": "switched_on",
-        "flag": "training_train_now_whole_day",
+        "rollout": "live",
         "topic": "Training",
         "en": {
           "title": "Train now covers the whole day",
