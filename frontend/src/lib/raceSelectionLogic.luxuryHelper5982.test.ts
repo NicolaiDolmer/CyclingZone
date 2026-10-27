@@ -11,6 +11,7 @@ type Fn<R> = (...args: unknown[]) => R;
 const toggleRider = logic.toggleRider as unknown as Fn<Record<string, unknown>>;
 const validateSelectionClient = logic.validateSelectionClient as unknown as Fn<string[]>;
 const reconcile = draft.reconcileSelectionDraft as unknown as Fn<Record<string, unknown>>;
+const resolveBoardRoles = logic.resolveBoardRoles as unknown as Fn<Record<string, unknown>>;
 
 const size = { min: 1, max: 8 };
 
@@ -36,6 +37,14 @@ test("#5982: udkastet holder kun luksushjaelperen mens han er udtaget", () => {
   const riders = [{ id: "a" }, { id: "b" }];
   assert.equal(reconcile({ riderIds: ["a", "b"], captainId: "a", luxuryHelperId: "b", freeRoleIds: [] }, riders).luxuryHelperId, "b");
   assert.equal(reconcile({ riderIds: ["a"], captainId: "a", luxuryHelperId: "b", freeRoleIds: [] }, riders).luxuryHelperId, null);
+});
+
+test("#5982: Race Hub beholder luksushjaelperen, og en anden rolle til ham fjerner den", () => {
+  const base = { riderIds: ["a", "b", "c"], captainId: "a", sprintLeaderAllowed: true };
+  assert.equal(resolveBoardRoles({ ...base, luxuryHelperId: "b" }).luxury_helper_id, "b");
+  assert.equal(resolveBoardRoles({ ...base, luxuryHelperId: "b", hunterId: "b" }).luxury_helper_id, null, "han er nu jaeger");
+  assert.equal(resolveBoardRoles({ ...base, luxuryHelperId: "b", sprintLeaderAllowed: false }).luxury_helper_id, null, "aeldre loeb");
+  assert.equal("luxury_helper_id" in resolveBoardRoles(base), false, "uden feltet: uaendret svar");
 });
 
 test("#5982: etapeplanen ser luksushjaelperen som hjaelper og foreslaar hans standardplan", () => {
