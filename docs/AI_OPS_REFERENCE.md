@@ -130,6 +130,7 @@ Efter et `git pull` der rører ved en `*package-lock.json`: kør `npm run sync-d
 
 ---
 
+Liga-audit i merge-køen (#7312): `league-size-invariant` læses fra pagineret REST `check-runs` på PR'ens HEAD, fordi `gh pr checks` kan skjule et grønt check i en skipped Actions-suite. Præcis ét check med korrekt SHA, audit-identitet og GitHub Actions-afsender skal være `completed/success`; manglende, tvetydigt eller ugyldigt bevis stopper køen. Øvrige required checks, review-gate og HEAD-kontrol før merge gælder fortsat.
 ## SQL migrations mandat detaljer
 
 _Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._

@@ -142,6 +142,7 @@ function Get-PrPlanEntry([int]$number) {
   # Read-only: PR-metadata + required-checks-status. Sikkert at koere i -DryRun.
   $checksExit = 0
   $checksSummary = "ukendt"
+  $auditHead = $null
   try {
     & gh pr checks $number --repo $Repo --required *> $null
     $checksExit = $LASTEXITCODE
@@ -158,7 +159,17 @@ function Get-PrPlanEntry([int]$number) {
         $checksExit = 1
       } else {
         $allChecks = @(($leagueJson -join "") | ConvertFrom-Json)
-        $leagueCode = Get-LeagueCheckExitCode -Checks $allChecks
+        # #7312: statusCheckRollup hides audits in skipped suites. REST is authoritative.
+        $auditHead = ((Invoke-GhWithRetry @('pr', 'view', "$number", '--repo', $Repo, '--json', 'headRefOid', '--jq', '.headRefOid') -TolerateFailure) -join '').Trim()
+        $leagueCode = 1
+        if ($auditHead -match '^[0-9a-f]{40}$') {
+          $auditJson = Invoke-GhWithRetry @('api', "repos/$Repo/commits/$auditHead/check-runs?check_name=league-size-invariant&filter=latest&per_page=100", '--paginate', '--slurp') -TolerateFailure
+          if ($auditJson) {
+            $auditPages = @(($auditJson -join '') | ConvertFrom-Json)
+            $auditChecks = @($auditPages | ForEach-Object { $_.check_runs } | Where-Object { $null -ne $_ })
+            $leagueCode = Get-LeagueRestCheckExitCode -Checks $auditChecks -HeadSha $auditHead
+          }
+        }
         # #6654: review-gate (rule 35) stopper koeen ogsaa foer ejeren goer den
         # required. Rod/mangler = stop, afventer = vent (scripts/lib/league-check.ps1).
         $gateCode = Get-ReviewGateCheckExitCode -Checks $allChecks
@@ -229,6 +240,11 @@ function Get-PrPlanEntry([int]$number) {
         $filesKnown = $listComplete
       }
     } catch {}
+  }
+  # The audit and the metadata must describe the same HEAD, including a push during this read.
+  if ($checksExit -eq 0 -and $auditHead -ne $headSha) {
+    $checksExit = 1
+    $checksSummary = "ROED/HEAD skiftede under audit"
   }
   # Ukendt filliste maa aldrig batches stille uden deploy-verifikation.
   if (-not $filesKnown) { $touchesBackend = $true; $touchesRailway = $true; $touchesVercel = $true; $solo = $true; $needRailway = $true }
