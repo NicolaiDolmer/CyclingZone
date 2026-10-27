@@ -1823,7 +1823,7 @@
     },
     "peakWhatItDoes": {
       "q": "À quoi sert un pic ?",
-      "a": "Un pic augmente la forme d'un coureur pour une seule fenêtre de course que tu choisis dans le planificateur de saison. Il fonctionne avec une préparation que tu entraînes avant et un creux après, il vaut donc la peine de le fixer sur une course que tu comptes vraiment gagner, pas sur toute une saison. Chaque coureur peut avoir jusqu'à deux pics à la fois. Les pics ne comptent pas encore en course ; les courses utilisent sa forme normale. Voir “Comment fonctionne l'entraînement pour un pic ?” et “Un pic me coûte-t-il quelque chose ensuite ?” ci-dessous pour savoir exactement combien et quand."
+      "a": "Un pic augmente la forme d'un coureur pour une seule fenêtre de course que tu choisis dans le planificateur de saison. Il fonctionne avec une préparation que tu entraînes avant et un creux après, il vaut donc la peine de le fixer sur une course que tu comptes vraiment gagner, pas sur toute une saison. Chaque coureur peut avoir jusqu'à deux pics à la fois. En course, le pic s'ajoute à sa forme normale. Voir “Comment fonctionne l'entraînement pour un pic ?” et “Un pic me coûte-t-il quelque chose ensuite ?” ci-dessous pour savoir exactement combien et quand."
     },
     "peakTraining": {
       "q": "Comment fonctionne l'entraînement pour un pic ?",
