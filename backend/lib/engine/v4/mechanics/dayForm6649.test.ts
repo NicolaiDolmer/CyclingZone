@@ -30,7 +30,15 @@ const route = (kind: "sun" | "overcast" | "rain" | "wind", segments: Segment[] =
   ({ distance_km: segments[segments.length - 1].to_km, segments, weather: { kind, wind_exposure: wind } }) as Pick<RouteV2, "weather" | "segments" | "distance_km">;
 
 const abilities = (v: number) => ({ climbing: v, time_trial: v, sprint: v, punch: v, endurance: v, cobblestone: v, acceleration: v, recovery: v, tactics: v, positioning: v, flat: v, tempo: v, durability: v, aggression: v, descending: v }) as Entrant["abilities"];
-const rider = (id: string, extra: Partial<Entrant> = {}): Entrant => ({ rider_id: id, abilities: abilities(70), role: "free_role", effort: "normal", condition: 1, ...extra });
+// Alle testryttere har SAMME objekt-form: `form` og `form_peak_points` er altid
+// noegler (undefined = ukendt, praecis som et udeladt felt, se riskFormOf).
+// CI 27/10 (run 40484685458, Node 24.21.0): "low form" fejlede én gang paa uaendret
+// kode, der var groen i 6 andre CI-koersler og lokalt. Testen er ren og koerer i egen
+// proces, saa delt tilstand er udelukket; mistanken er V8's optimerende compiler ved
+// skiftet fra en form uden `form` (fresh/tired, 4000 kald) til en med. En fast form
+// fjerner skiftet, saa testen maaler reglen og ikke JIT'en.
+const rider = (id: string, extra: Partial<Entrant> = {}): Entrant => ({ rider_id: id, abilities: abilities(70), role: "free_role", effort: "normal", condition: 1, form: undefined, form_peak_points: undefined, ...extra });
+const show = (s: { bad: number; mean: number }) => `bad=${s.bad} mean=${s.mean}`;
 
 const ids = Array.from({ length: 2000 }, (_, i) => `r${i}`);
 
@@ -66,10 +74,10 @@ test("#6649: tiredness, low form and hard weather each make a bad day more likel
   const highForm = sample((id) => rider(id, { form: 90 }));
   const rain = sample((id) => rider(id, { abilities: abilities(20) }), route("rain"));
   const dry = sample((id) => rider(id, { abilities: abilities(20) }), route("overcast"));
-  assert.ok(tired.bad > fresh.bad && tired.mean < fresh.mean, "tired");
-  assert.ok(lowForm.bad > fresh.bad && lowForm.mean < fresh.mean, "low form");
-  assert.ok(highForm.bad < fresh.bad, "good form protects");
-  assert.ok(rain.bad > dry.bad && rain.mean < dry.mean, "rain");
+  assert.ok(tired.bad > fresh.bad && tired.mean < fresh.mean, `tired: ${show(tired)} vs fresh ${show(fresh)}`);
+  assert.ok(lowForm.bad > fresh.bad && lowForm.mean < fresh.mean, `low form: ${show(lowForm)} vs fresh ${show(fresh)}`);
+  assert.ok(highForm.bad < fresh.bad, `good form protects: ${show(highForm)} vs fresh ${show(fresh)}`);
+  assert.ok(rain.bad > dry.bad && rain.mean < dry.mean, `rain: ${show(rain)} vs dry ${show(dry)}`);
 });
 
 test("#6649: weather technique protects: in the rain a skilled rider has fewer bad days than an unskilled one", () => {
