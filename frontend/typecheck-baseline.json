@@ -2068,14 +2068,10 @@
   "src/lib/stageProfileConfig.test.js": {
     "TS2345": 2
   },
-  "src/lib/stageRouteProfile.js": {
-    "TS2339": 8
-  },
   "src/lib/stageRouteProfile.test.js": {
     "TS18047": 12,
     "TS18048": 7,
-    "TS2339": 18,
-    "TS2345": 1
+    "TS2339": 18
   },
   "src/lib/stageTimelineFilm.js": {
     "TS18048": 5,

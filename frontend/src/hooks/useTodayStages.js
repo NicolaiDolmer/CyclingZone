@@ -10,6 +10,10 @@ import {
 import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
 
 const TODAY_PROFILE_BASE_COLUMNS = "race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors";
+// pagination-safe: filtreret paa MINE dagens race_id'er, hoejst en raekke pr. etape.
+// elevation_profile staar endnu ikke i de genererede typer, derfor any-cast.
+const readTodayProfiles = (cols, raceIds) => /** @type {any} */ (supabase)
+  .from("race_stage_profiles").select(cols).in("race_id", raceIds);
 const TODAY_PROFILE_COLUMNS = `${TODAY_PROFILE_BASE_COLUMNS}, elevation_profile`;
 
 // #3915 — "Today's stages" dashboard strip: data-hentning for DIT holds
@@ -81,17 +85,13 @@ export default function useTodayStages(teamId) {
         // (silhuet-piktogram), IKKE etapens ægte rutedata. Nu hentes de samme felter
         // StageProfileGraph/buildProfileSeries bruger overalt ellers, så dashboardets
         // "dagens etaper" viser SAMME rigtige rute som løbssiden (#4107/#4108).
-        supabase.from("race_stage_profiles")
-          .select(TODAY_PROFILE_COLUMNS)
-          .in("race_id", ownRaceIds),
+        readTodayProfiles(TODAY_PROFILE_COLUMNS, ownRaceIds),
       ]);
       // #7289: elevation_profile med, saa dashboardets miniature tegner samme serie som loebssiden.
       // Kolonnen ikke migreret endnu (42703): laes uden serien, som stageProfilesQuery.ts.
       let profilesRes = firstProfilesRes;
       if (profilesRes.error?.code === "42703") {
-        profilesRes = await supabase.from("race_stage_profiles")
-          .select(TODAY_PROFILE_BASE_COLUMNS)
-          .in("race_id", ownRaceIds);
+        profilesRes = await readTodayProfiles(TODAY_PROFILE_BASE_COLUMNS, ownRaceIds);
       }
       if (racesRes.error) throw racesRes.error;
       if (profilesRes.error) throw profilesRes.error;

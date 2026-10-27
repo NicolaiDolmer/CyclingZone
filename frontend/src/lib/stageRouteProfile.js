@@ -147,7 +147,7 @@ function realProfileSeries(profile) {
   let ascent = 0;
   for (let i = 1; i < ys.length; i++) if (ys[i] > ys[i - 1]) ascent += ys[i] - ys[i - 1];
   const maxY = Math.max(elevationScaleFor(profile.profile_type), Math.max(...ys));
-  return { xs, ys, spans, climbs, maxY, ascent, waveAmplitude: 0, source: "profile" };
+  return { xs, ys, spans, climbs, maxY, ascent, waveAmplitude: 0, source: /** @type {"profile"} */ ("profile") };
 }
 
 /** Syntetisér etapens højdekurve (fallback når elevation_profile mangler). */
@@ -266,7 +266,7 @@ function synthesizeProfileSeries(profile) {
     ascent: ascentAt(s),
     // Bølgens top-til-bund-udsving. Kalibreringens kanariefugl — se testen.
     waveAmplitude: s * 1.85,
-    source: "synthetic",
+    source: /** @type {"synthetic"} */ ("synthetic"),
   };
 }
 
