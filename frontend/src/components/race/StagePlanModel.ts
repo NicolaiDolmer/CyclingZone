@@ -196,7 +196,8 @@ function bucketOf(profileType: string | null): "flat" | "hilly" | "mountain" | "
   }
 }
 
-type SuggestArgs = { role: StagePlanRole; route: StagePlanRoute; teamHasSprintCaptain: boolean };
+// #5982: `luxuryHelper` = rytteren er luksushjaelper (rollen er "helper"); forslaget er hans standardplan.
+type SuggestArgs = { role: StagePlanRole; route: StagePlanRoute; teamHasSprintCaptain: boolean; luxuryHelper?: boolean };
 
 export function suggestStagePlan(args: SuggestArgs): StagePlanLeg[] | null {
   if (isTimeTrialProfile(args.route.profile_type)) return null;
@@ -204,7 +205,7 @@ export function suggestStagePlan(args: SuggestArgs): StagePlanLeg[] | null {
   return validateStagePlanLegs(legs, args.role, args.route) === null ? legs : [legs[0]];
 }
 
-function suggestionFor({ role, route, teamHasSprintCaptain }: SuggestArgs): StagePlanLeg[] {
+function suggestionFor({ role, route, teamHasSprintCaptain, luxuryHelper = false }: SuggestArgs): StagePlanLeg[] {
   const bucket = bucketOf(route.profile_type);
   const climbs = [...route.climbs].sort((a, b) => a.km - b.km);
   const lastClimbFrom: StagePlanTrigger | null = route.summit_finish
@@ -213,6 +214,12 @@ function suggestionFor({ role, route, teamHasSprintCaptain }: SuggestArgs): Stag
   const attackFrom: StagePlanTrigger = lastClimbFrom ?? { at: "final_km" };
   const flatFinale = bucket === "flat";
   const sprintStage = flatFinale && teamHasSprintCaptain;
+
+  // #5982: luksushjaelperens standardplan (spar dig -> tempo paa den afgoerende stigning -> i maal naar sat).
+  const decisiveFrom: StagePlanTrigger | null = lastClimbFrom ?? (route.summit_finish ? { at: "final_km" } : null);
+  if (luxuryHelper && role === "helper" && !flatFinale && decisiveFrom) {
+    return [{ task: "stay_sheltered" }, { task: "tempo", from: decisiveFrom }, { task: "ride_in", from: { at: "dropped" } }];
+  }
 
   switch (role) {
     case "captain":
@@ -248,7 +255,13 @@ function suggestionFor({ role, route, teamHasSprintCaptain }: SuggestArgs): Stag
 
 const KNOWN_ROLES = new Set<string>(ALL_ROLES);
 export function planRole(role: unknown): StagePlanRole {
+  if (role === "luxury_helper") return "helper"; // #5982: luksushjaelperen er en hjaelper i planen
   return typeof role === "string" && KNOWN_ROLES.has(role) ? (role as StagePlanRole) : "free_role";
+}
+
+/** #5982: er rollen luksushjaelper? (forslaget er da hans standardplan). */
+export function isLuxuryHelperRole(role: unknown): boolean {
+  return role === "luxury_helper";
 }
 
 /** Laengste gyldige praefiks (mindst foerste led). Bruges efter hvert valg. */

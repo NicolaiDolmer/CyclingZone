@@ -23,6 +23,7 @@ import { Button, CheckIcon, ChevronRightIcon, LockIcon, MinusIcon, PlusIcon, Sel
 import {
   clearRiderPlan,
   fallbackOrderKeys,
+  isLuxuryHelperRole,
   nextLeg,
   planRole,
   removeLeg,
@@ -306,7 +307,8 @@ export default function StagePlanBoard({
   const planByRider = new Map<string, StagePlanLeg[] | null>((order?.riders ?? []).map((r): [string, StagePlanLeg[] | null] => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
   const timeTrial = route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt";
 
-  const suggestionFor = (rider: PlanRider) => suggestStagePlan({ role: planRole(roleFor(rider)), route, teamHasSprintCaptain });
+  // #5982: luksushjaelperens forslag er hans standardplan (den motoren koerer uden en gemt plan).
+  const suggestionFor = (rider: PlanRider) => suggestStagePlan({ role: planRole(roleFor(rider)), route, teamHasSprintCaptain, luxuryHelper: isLuxuryHelperRole(roleFor(rider)) });
   const editable = (rider: PlanRider) => !stageLocked && !rider.abandoned && !timeTrial;
   const missing = riders.filter((r) => editable(r) && !planByRider.get(r.rider_id));
 

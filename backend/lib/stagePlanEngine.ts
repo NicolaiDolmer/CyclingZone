@@ -43,6 +43,7 @@ import {
   type StagePlanRoute,
   type StagePlanTask,
 } from "./stagePlan.ts";
+import { luxuryHelperDefaultPlans } from "./engine/v4/mechanics/luxuryHelper5982.ts"; // #5982
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
@@ -128,6 +129,11 @@ export function createStagePlanRuntime(
       if (validateStagePlanLegs(plan, role, planRoute) !== null) continue;
       legs.set(riderId, resolveLegs(plan as StagePlanLeg[], planRoute));
     }
+  }
+  // #5982: en luksushjaelper uden gemt plan koerer sin standardplan (rollen er en genvej
+  // til etapeplanen). Uden en luksushjaelper i feltet: ingen aendring (byte-identisk).
+  for (const [riderId, plan] of luxuryHelperDefaultPlans(planRoute, entrants, (id) => legs.has(id))) {
+    legs.set(riderId, resolveLegs(plan, planRoute));
   }
   if (legs.size === 0) return null;
   const riderIds = [...legs.keys()].sort();

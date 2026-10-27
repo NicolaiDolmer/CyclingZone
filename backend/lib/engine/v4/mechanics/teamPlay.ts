@@ -84,7 +84,7 @@ import type {
 } from "../types.ts";
 import { TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
 import { protectedRoleOrderWithCoCaptain, splitLeaderBonus } from "./sharedCaptain.ts";
-import { applyLastManWork, lastManView } from "./luxuryHelper5982.ts"; // #5982
+import { luxuryHelperTeamPlayEntrants } from "./luxuryHelper5982.ts"; // #5982
 
 export { TEAM_PLAY_EXTRA_TUNING as TEAM_PLAY_TUNING };
 
@@ -377,9 +377,9 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
   const profileType = ctx.route.profile_type;
   const ordersGcV3 = ctx.ordersGcV3 === true;
   const coCaptain = ctx.s5ProfilesV3 === true; // #5981: delt kaptajn (sharedCaptain.ts)
-  // #5982 (KUN s5_profiles_v3): sidste mand (luxuryHelper5982.ts). Uden en: null og ctx.entrants (byte-identisk).
-  const lastMan = coCaptain ? lastManView(state, ctx) : null;
-  const entrants = lastMan?.entrants ?? ctx.entrants;
+  // #5982 (KUN s5_profiles_v3): luksushjaelperen koerer eget loeb uden kaptajnen i gruppen
+  // (luxuryHelper5982.ts). Uden en luksushjaelper: ctx.entrants (byte-identisk).
+  const entrants = (coCaptain ? luxuryHelperTeamPlayEntrants(state, ctx) : null) ?? ctx.entrants;
   /** rider_id -> signeret CP-fraktion dette segment (negativ = pris, positiv = lae). */
   const deltas = new Map<string, number>();
 
@@ -445,7 +445,6 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
     }
   }
 
-  if (lastMan) applyLastManWork(lastMan, deltas, state, ctx, baseCostFraction("helper", profileType, tuning), (e) => helperCostMultiplier(e, tuning), tuning); // #5982
   if (deltas.size === 0) return { state, events: [] };
 
   const riders: Record<string, RiderState> = { ...state.riders };
