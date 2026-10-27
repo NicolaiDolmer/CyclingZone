@@ -772,18 +772,26 @@ export function gcChaseCatchFacts(events, distanceKm) {
  */
 export function breakawayLeadFacts(out, fieldMinShare = 0.25) {
   let maxLead = null;
+  let sawBreak = false;
+  let sawField = false;
+  let measuredBreak = false;
   for (const snap of out?.groupSnapshots ?? []) {
     const groups = snap?.groups ?? [];
     const breaks = groups.filter((g) => g.kind === "breakaway");
     const others = groups.filter((g) => g.kind !== "breakaway");
+    sawBreak ||= breaks.length > 0;
+    sawField ||= others.some((g) => (g.rider_ids?.length ?? 0) > 0);
     const total = others.reduce((n, g) => n + (g.rider_ids?.length ?? 0), 0);
     const field = others.filter((g) => (g.rider_ids?.length ?? 0) >= fieldMinShare * total).sort((a, b) => Number(a.gap_seconds) - Number(b.gap_seconds))[0];
     if (!breaks.length || !field) continue;
     const lead = Number(field.gap_seconds) - Math.min(...breaks.map((g) => Number(g.gap_seconds)));
-    if (Number.isFinite(lead) && lead > 0 && (maxLead === null || lead > maxLead)) maxLead = lead;
+    if (Number.isFinite(lead)) {
+      measuredBreak = true;
+      if (lead > 0 && (maxLead === null || lead > maxLead)) maxLead = lead;
+    }
   }
   const unchased = (out?.timeline?.events ?? []).some((e) => e?.type === "breakaway_unchased");
-  return { breakawayMaxLead: maxLead, breakawayUnchased: unchased };
+  return { breakawayMaxLead: maxLead, breakawayUnchased: unchased, breakawayLeadMeasured: measuredBreak || (!sawBreak && sawField) };
 }
 
 /**
