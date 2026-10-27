@@ -488,6 +488,7 @@
       "hint": "Touche une consigne pour changer le rôle du coureur",
       "captain": "Leader",
       "sprintCaptain": "Leader sprint",
+      "coCaptain": "Co-leader",
       "hunter": "Chasseur d'échappée",
       "rider": "Équipier"
     },
@@ -545,16 +546,8 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Chances de l'échappée",
-      "high": "Élevées",
-      "medium": "Moyennes",
-      "low": "Faibles",
-      "none": "Aucune",
-      "tooltip": "La probabilité qu'une échappée tienne sur ce terrain. Le chasseur d'échappée est toujours candidat à l'échappée."
-    },
     "hunterExplainer": {
-      "strengthLine": "Sur le terrain de cette course, une échappée a des chances {strength} de tenir.",
+      "dayLine": "Ton chasseur tente de prendre l'échappée matinale. C'est le peloton qui décide, le jour même, si elle va au bout.",
       "candidatesHint": "Classés par agressivité : l'envie d'attaquer et de s'engager dans une action.",
       "noCandidates": "Choisis des coureurs pour cette course pour voir tes meilleurs chasseurs.",
       "aggression": "Agressivité",
@@ -769,6 +762,8 @@
     "minHint": "Minimum {min} coureurs pour prendre le départ.",
     "captain": "Leader",
     "sprintCaptain": "Leader sprint (facultatif)",
+    "coCaptain": "Co-leader (facultatif)",
+    "coCaptainHint": "Protégé comme le leader. Le leader est aidé en premier.",
     "hunter": "Chasseur d'échappée",
     "freeRole": "Rôle libre",
     "noRole": "Aucun",
@@ -867,6 +862,8 @@
       "move_failed": "Impossible de déplacer le coureur. Réessaie.",
       "selection_captain_required": "Choisis un leader parmi tes coureurs sélectionnés.",
       "selection_captain_not_selected": "Ton leader doit faire partie des coureurs sélectionnés.",
+      "selection_co_captain_not_available": "Le co-leader n'est pas disponible dans cette course.",
+      "selection_co_captain_requires_captain": "Un co-leader a besoin d'un leader. Choisis d'abord un leader.",
       "selection_role_not_selected": "Les coureurs à rôle doivent faire partie de la sélection.",
       "selection_role_overlap": "Le leader, le leader sprint et le chasseur d'échappée doivent être des coureurs différents.",
       "selection_rider_injured": "Les coureurs blessés ne peuvent pas être sélectionnés.",
@@ -954,9 +951,17 @@
       "protect": "travailler ou attaquer",
       "all_out": "à fond"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Travailler", "why": "Roule pour le leader. Vraie fatigue.", "today": "travaille pour le leader" },
+        "follow": { "step": "Suivre les attaques", "why": "Répond à chaque attaque. Coûte plus de jambes.", "today": "suit les attaques" },
+        "free": { "step": "Rouler à l'offensive", "why": "Met la pression dans les montées et au final.", "today": "roule à l'offensive" }
+      }
+    },
     "roleWord": {
       "captain": "leader",
       "sprint_captain": "leader sprint",
+      "co_captain": "co-leader",
       "helper": "équipier",
       "hunter": "chasseur d'échappée",
       "free_role": "rôle libre"
@@ -968,6 +973,7 @@
       "stage_roles_invalid_role": "L'un des rôles n'est pas valide.",
       "stage_roles_invalid_effort": "L'une des consignes n'est pas valide.",
       "stage_roles_role_overlap": "Un seul coureur peut être leader, un seul leader sprint et un seul chasseur d'échappée, par étape.",
+      "stage_roles_co_captain_requires_captain": "Un co-leader a besoin d'un leader sur la même étape.",
       "stage_roles_duplicate": "Le même coureur apparaît deux fois pour la même étape.",
       "stage_roles_rider_abandoned": "L'un des coureurs est hors course et ne peut plus recevoir de consigne.",
       "stage_roles_race_completed": "Cette course est terminée, les consignes ne peuvent donc plus être modifiées.",
@@ -1021,6 +1027,7 @@
     "tryBreakAria": "{name} tente l'échappée",
     "roleLabel": {
       "captain": "Leader",
+      "co_captain": "Co-leader",
       "sprint_captain": "Leader sprint",
       "hunter": "Chasseur d'échappée",
       "helper": "Équipier",
@@ -1133,6 +1140,7 @@
       "roleExclusiveNoteScoped": "Un leader, un leader sprint et un chasseur d'échappée à la fois. Le coureur qui avait le rôle devient équipier sur les mêmes étapes. Les étapes précédentes gardent leurs rôles.",
       "roleWhy": {
         "captain": "L'équipe roule pour lui et il est protégé.",
+        "co_captain": "Protégé comme le leader. Le leader est aidé en premier.",
         "sprint_captain": "Il a le train de sprint et le lancement.",
         "hunter": "Il part à la chasse de l'échappée.",
         "helper": "Il travaille pour les leaders.",

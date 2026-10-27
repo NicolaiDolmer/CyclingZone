@@ -124,12 +124,18 @@ const API = import.meta.env.VITE_API_URL;
 // er SSOT'ens ord — "Domestique", ikke "Rider", jf. RACE_ENGINE_RULES §1).
 const ROLE_KEY = {
   captain: "captain",
+  co_captain: "co_captain", // #7239
   sprint_captain: "sprint_captain",
   hunter: "hunter",
   helper: "helper",
   free_role: "free_role",
 };
 const roleKey = (role) => ROLE_KEY[role] || "helper";
+
+// #6746: trinnet "protect" hedder efter rollen (spec taktik-roller §3): Arbejd for
+// hjælper/jæger, Følg angrebene for kaptajn, delt kaptajn og spurtkaptajn, Kør offensivt for fri rolle.
+const PROTECT_VARIANT = { captain: "follow", co_captain: "follow", sprint_captain: "follow", free_role: "free" };
+const protectText = (t, role, part) => t(`intention.byRole.protect.${PROTECT_VARIANT[role] || "work"}.${part}`);
 
 function stageLockTime(scheduledAt) {
   if (!scheduledAt) return null;
@@ -141,7 +147,7 @@ function stageLockTime(scheduledAt) {
 
 // Chip: valgt intention (guld-tekst på tonet flade) vs. "ikke valgt" (stiplet
 // hairline, dæmpet). To tilstande, ingen tredje.
-function IntentionChip({ t, effort, isDefault, muted = false }) {
+function IntentionChip({ t, effort, isDefault, role, muted = false }) {
   if (isDefault) {
     return (
       <span className="inline-flex items-center rounded-full border border-dashed border-cz-border px-2.5 py-0.5 text-2xs font-medium text-cz-3 whitespace-nowrap">
@@ -153,13 +159,13 @@ function IntentionChip({ t, effort, isDefault, muted = false }) {
     <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-2xs font-semibold whitespace-nowrap ${
       muted ? "border-cz-border bg-cz-subtle text-cz-2" : "border-cz-accent/30 bg-cz-accent/10 text-cz-accent-t"
     }`}>
-      {t(`intention.step.${effort}`)}
+      {effort === "protect" ? protectText(t, role, "step") : t(`intention.step.${effort}`)}
     </span>
   );
 }
 
 // Den udfoldede vælger: ét trin pr. linje, én sætning i ord, ingen tal.
-function IntentionPicker({ t, riderName, scopeLabel, steps, value, disabled, onPick }) {
+function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -185,10 +191,10 @@ function IntentionPicker({ t, riderName, scopeLabel, steps, value, disabled, onP
               {on && <CheckIcon size={14} aria-hidden="true" />}
             </span>
             <span className={`text-xs sm:w-32 shrink-0 ${on ? "font-semibold text-cz-accent-t" : "font-medium text-cz-1"}`}>
-              {t(`intention.step.${step}`)}
+              {step === "protect" ? protectText(t, role, "step") : t(`intention.step.${step}`)}
             </span>
             <span className="text-xs text-cz-2 basis-full sm:basis-auto ps-[26px] sm:ps-0">
-              {t(`intention.why.${step}`)}
+              {step === "protect" ? protectText(t, role, "why") : t(`intention.why.${step}`)}
             </span>
             {step === DEFAULT_EFFORT && (
               <span className="text-3xs uppercase tracking-wider text-cz-3 sm:ms-auto whitespace-nowrap">
@@ -210,7 +216,7 @@ function IntentionPicker({ t, riderName, scopeLabel, steps, value, disabled, onP
 // #6095 (beta, ejer 4/10): med `scopeChoice` vælger manageren først hvilke etaper
 // valget gælder: "etape N og løbet ud" (forvalgt) eller "kun etape N". Tidligere
 // etaper røres aldrig. Uden flaget: præcis den gamle vælger.
-function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeChoice = false, scope = "rest", onScope, stageNumber }) {
+function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeChoice = false, scope = "rest", onScope, stageNumber, coCaptainOn = false }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -249,6 +255,7 @@ function RolePicker({ t, riderName, scopeNote, value, disabled, onPick, scopeCho
         </div>
       )}
       {SELECTABLE_ROLES.map((role) => {
+        if (role === "co_captain" && !coCaptainOn && value !== "co_captain") return null; // #7239
         const on = role === value;
         return (
           <button
@@ -701,6 +708,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #6095 (beta): manageren vælger selv "etape N og løbet ud" / "kun etape N".
   // Endagsløb har kun én etape, så valget giver ingen mening dér.
   const scopeChoice = roles.role_scope_choice === true && !isOneDay;
+  // #7239: delt kaptajn tilbydes kun når holdet har en i udtagelsen. Udtagelsen er
+  // gated til løb der kender rollen (sprint_leader_allowed), så det samme gælder her,
+  // og en etape-rolle kan altid sættes tilbage til delt kaptajn.
+  const coCaptainOn = riders.some((r) => baseRoleForRider(r) === "co_captain");
   const rolePickerScope = scopeChoice
     ? {
       scopeNote: t("intention.stage", { number: activeStage }),
@@ -708,8 +719,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       scope: roleScopeChoice,
       onScope: setRoleScopeChoice,
       stageNumber: activeStage,
+      coCaptainOn,
     }
-    : { scopeNote: roleScopeNote };
+    : { scopeNote: roleScopeNote, coCaptainOn };
 
   // Rene render-funktioner, IKKE nestede komponenter: en komponent defineret
   // inde i render remountes ved hver tastetryk-render (React ser en ny type),
@@ -772,16 +784,18 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const effort = effortFor(rider);
     const isDefault = effort === DEFAULT_EFFORT;
     const open = openRiderId === rider.rider_id;
+    const role = roleFor(rider);
+    const todayText = effort === "protect" ? protectText(t, role, "today") : t(`intention.today.${effort}`);
     if (stageLocked) {
       return (
         <>
-          <IntentionChip t={t} effort={effort} isDefault={isDefault} muted />
+          <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} muted />
           <p className="mt-1 text-3xs text-cz-3">
             {isDefault
               ? t("intention.nothingSet")
               : isOneDay
-                ? t("racePage.tactics.whatYouSetRaceDay", { today: t(`intention.today.${effort}`) })
-                : t("racePage.tactics.whatYouSet", { number: activeStage, today: t(`intention.today.${effort}`) })}
+                ? t("racePage.tactics.whatYouSetRaceDay", { today: todayText })
+                : t("racePage.tactics.whatYouSet", { number: activeStage, today: todayText })}
           </p>
         </>
       );
@@ -789,7 +803,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     return (
       <>
         <div className="flex items-center gap-2.5 flex-wrap">
-          <IntentionChip t={t} effort={effort} isDefault={isDefault} />
+          <IntentionChip t={t} effort={effort} isDefault={isDefault} role={role} />
           <button
             type="button"
             disabled={saving}
@@ -804,8 +818,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           {isDefault
             ? t("intention.nothingSet")
             : t("intention.line", {
-                role: t(`intention.roleWord.${roleFor(rider)}`),
-                today: t(`intention.today.${effort}`),
+                role: t(`intention.roleWord.${role}`),
+                today: todayText,
               })}
         </p>
       </>
@@ -1059,6 +1073,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                         <IntentionPicker
                           t={t}
                           riderName={rider.name}
+                          role={roleFor(rider)}
                           scopeLabel={scopeLabel}
                           steps={steps}
                           value={effortFor(rider)}
@@ -1114,6 +1129,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                   <IntentionPicker
                     t={t}
                     riderName={rider.name}
+                    role={roleFor(rider)}
                     scopeLabel={scopeLabel}
                     steps={steps}
                     value={effortFor(rider)}

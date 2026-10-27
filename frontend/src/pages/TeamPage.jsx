@@ -43,7 +43,7 @@ import { cycleSortState } from "../lib/riderSort";
 import ContractsTab from "../components/team/ContractsTab.tsx"; // #6855
 import { readSquadSort, writeSortParams, SQUAD_SORT_PARAM, SQUAD_DIR_PARAM } from "../components/team/contractsTabModel.ts"; // #6855
 import { useRiderReputation } from "../lib/useRiderReputation.ts";
-import { riderReputationBandKey, riderReputationValue } from "../lib/riderReputationView.ts";
+import { riderReputationBandKey, riderReputationProgress, riderReputationValue } from "../lib/riderReputationView.ts";
 import { AmountInput, PageHeader, Button, BikeIcon, ChevronRightIcon, PageLoader, EmptyState, DataTable, Tabs, TabList, Tab, Segmented } from "../components/ui";
 import { controlClass } from "../components/ui/fieldStyles.js";
 import { buttonClass } from "../components/ui/buttonStyles.js";
@@ -51,9 +51,12 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 function ReputationValue({ rider, enabled, t }) {
   const value = riderReputationValue(rider, enabled);
   const bandKey = riderReputationBandKey(rider, enabled);
+  const displayValue = value == null ? "—" : enabled
+    ? riderReputationProgress(value)?.current ?? Math.floor(value)
+    : Math.round(value);
   return (
     <span className="inline-flex flex-col items-end leading-tight">
-      <span className="text-cz-2 font-mono text-xs">{value == null ? "—" : Math.round(value)}</span>
+      <span className="text-cz-2 font-mono text-xs">{displayValue}</span>
       {enabled && bandKey && <span className="text-cz-3 text-3xs uppercase">{t(`squad.${bandKey}`)}</span>}
     </span>
   );

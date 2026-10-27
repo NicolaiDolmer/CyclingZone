@@ -77,6 +77,7 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "potential_single_number", // #6110 Hjaelp
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
+  "race_day_intention_enabled", // #6746 Hjaelp
 ];
 
 function playerFlags() {
