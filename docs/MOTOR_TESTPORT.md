@@ -127,3 +127,5 @@ Hard rule 17: kortet indeholder målte tal og løbsnavne og skrives kun til `bal
 Balance-tærskler kortet bruger (fx hvornår en udbrudssejr har "stort forspring") ligger i en privat fil, `balance-internals/motor-testport-thresholds.json` (eller `--thresholds=<fil>`), aldrig i koden. Mangler filen, vises de målinger som "-". En `--out`-mappe tilhører én løbsudvælgelse: genoptagelse med samme løb er ok, et andet sæt afvises.
 
 Kode: `backend/scripts/dev/motorTestport.mjs` (kørsel), `backend/scripts/dev/lib/motorTestportReport.mjs` (samling, ren), `backend/scripts/dev/lib/motorTestportInputs.mjs` (syntetisk felt og foreslåede ruter, #6909), `tourScorecard.testportStageFacts` (etapens vinder, udbrudsryttere og tidlig indhentning).
+
+G2F bruger motorens eksisterende `GROUP_CLOCK_CONTACT_EPSILON` ved begge grænser, så flydende-punkt-lighed ikke tælles som et ekstra tidsforspring. Det ændrer ingen private bånd; reelle overskridelser testes fortsat.

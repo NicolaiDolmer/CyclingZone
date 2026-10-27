@@ -1,3 +1,4 @@
+import { GROUP_CLOCK_CONTACT_EPSILON } from "../../../lib/engine/v4/groupClock.ts";
 // #6804 v3-gaterne (G16-G19 + G2-flad) og #2757 S0. Syntetiske fixtures (hard
 // rule 17): ingen maalte tal, baandene her er opdigtede testvaerdier.
 import { test } from "node:test";
@@ -351,4 +352,21 @@ test("#6912 G2F: et maalt snapshot uden udbrud taeller som nul, manglende snapsh
   const m = measureG2F([raceResult("r", 5, [{ rows }])], REV, new Map(), ALL_BANDS.G2F);
   assert.equal(m.n, 1);
   assert.equal(m.overHardMax, 0);
+});
+
+test("#6912 G2F: afrundingsstoej er ikke et overskredet tidsloft", () => {
+  const upper = ALL_BANDS.G2F.upperZoneSeconds.flat;
+  const hard = ALL_BANDS.G2F.hardMaxSeconds;
+  const rows = [
+    { profile_type: "flat", breakawayMaxLead: upper + GROUP_CLOCK_CONTACT_EPSILON / 10, breakawayUnchased: false },
+    { profile_type: "rolling", breakawayMaxLead: hard + GROUP_CLOCK_CONTACT_EPSILON / 10, breakawayUnchased: true },
+  ];
+  const measured = measureG2F([raceResult("r", 5, [{ rows }])], REV, new Map(), ALL_BANDS.G2F);
+  assert.equal(measured.overUpperWithoutUnchased, 0);
+  assert.equal(measured.overHardMax, 0);
+  rows[0].breakawayMaxLead = upper + GROUP_CLOCK_CONTACT_EPSILON * 2;
+  rows[1].breakawayMaxLead = hard + GROUP_CLOCK_CONTACT_EPSILON * 2;
+  const real = measureG2F([raceResult("r", 5, [{ rows }])], REV, new Map(), ALL_BANDS.G2F);
+  assert.equal(real.overUpperWithoutUnchased, 1, "reel overskridelse af oevre zone fanges");
+  assert.equal(real.overHardMax, 1, "reel overskridelse af haard graense fanges");
 });

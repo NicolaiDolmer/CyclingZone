@@ -1,3 +1,4 @@
+import { GROUP_CLOCK_CONTACT_EPSILON } from "../../../lib/engine/v4/groupClock.ts";
 // #6804 motor v3: taend-gatens nye gates (G16-G19 + G2 udvidet til flad) og
 // #2757 S0-maalingen af spurtfinalen. Spec: docs/superpowers/specs/
 // 2026-10-23-6804-v3-tilvalg-design.md §2 og §5. Ejer 24/10 (valg 8 A): gaterne
@@ -195,8 +196,8 @@ export function measureG2F(raceResults, revision, contexts, { upperZoneSeconds =
   let overHard = 0;
   for (const r of usable) {
     const lead = Number(r.breakawayMaxLead);
-    if (lead > Number(upperZoneSeconds[r.profile_type]) && r.breakawayUnchased !== true) overUpper += 1;
-    if (lead > hardMaxSeconds) overHard += 1;
+    if (lead - Number(upperZoneSeconds[r.profile_type]) > GROUP_CLOCK_CONTACT_EPSILON && r.breakawayUnchased !== true) overUpper += 1;
+    if (lead - hardMaxSeconds > GROUP_CLOCK_CONTACT_EPSILON) overHard += 1;
   }
   return { n: usable.length, overUpperWithoutUnchased: overUpper, overHardMax: overHard };
 }
