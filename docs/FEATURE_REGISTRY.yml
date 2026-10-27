@@ -79,6 +79,8 @@ features:
     state: building
     epic: 7290
     verified: 2026-10-27
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
     note: Nøgle route_profile_hills (mangler = off); kobles efter #6649.
 
   - id: race-engine-v3-scoring
