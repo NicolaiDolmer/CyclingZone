@@ -116,13 +116,42 @@ export function hasRouteData(profile) {
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 /**
- * Syntetisér etapens højdekurve.
- * @param {object} profile  race_stage_profiles-række
+ * #7289: EN hoejdeserie for alle flader. Den rigtige serie (elevation_profile,
+ * #6594) naar den findes og er gyldig, ellers dagens syntese. Hold-fanen,
+ * etapestriben, dashboardet, kalenderen og Etaper-fanen kalder alle denne
+ * funktion (direkte eller via stagePageV2Model.elevationSeries), saa samme
+ * etape aldrig tegnes to forskellige steder.
  * @returns {{xs:number[], ys:number[], spans:[number,number][], climbs:object[],
- *            maxY:number, ascent:number, waveAmplitude:number}|null}
+ *            maxY:number, ascent:number, waveAmplitude:number,
+ *            source:"profile"|"synthetic"}|null}
  */
 export function buildProfileSeries(profile) {
   if (!hasRouteData(profile)) return null;
+  return realProfileSeries(profile) ?? synthesizeProfileSeries(profile);
+}
+
+function realProfileSeries(profile) {
+  const ep = profile.elevation_profile;
+  if (!ep || !Array.isArray(ep.h) || ep.h.length < 2 || !ep.h.every((v) => Number.isFinite(v))) return null;
+  const D = Number(profile.distance_km);
+  const step = Number(ep.step_km) > 0 ? Number(ep.step_km) : D / (ep.h.length - 1);
+  const xs = ep.h.map((_, i) => Math.min(D, +(i * step).toFixed(3)));
+  const ys = ep.h.slice();
+  const climbs = (Array.isArray(profile.climbs) ? profile.climbs : [])
+    .slice()
+    .sort((a, b) => Number(a.crest_km) - Number(b.crest_km));
+  const spans = climbs.map((c) => {
+    const crest = Number(c.crest_km);
+    return [Math.max(0, crest - Number(c.length_km)), crest];
+  });
+  let ascent = 0;
+  for (let i = 1; i < ys.length; i++) if (ys[i] > ys[i - 1]) ascent += ys[i] - ys[i - 1];
+  const maxY = Math.max(elevationScaleFor(profile.profile_type), Math.max(...ys));
+  return { xs, ys, spans, climbs, maxY, ascent, waveAmplitude: 0, source: "profile" };
+}
+
+/** Syntetisér etapens højdekurve (fallback når elevation_profile mangler). */
+function synthesizeProfileSeries(profile) {
   const D = Number(profile.distance_km);
   const valley = valleyBaseFor(profile.profile_type);
   const climbs = (Array.isArray(profile.climbs) ? profile.climbs : [])
@@ -237,6 +266,7 @@ export function buildProfileSeries(profile) {
     ascent: ascentAt(s),
     // Bølgens top-til-bund-udsving. Kalibreringens kanariefugl — se testen.
     waveAmplitude: s * 1.85,
+    source: "synthetic",
   };
 }
 

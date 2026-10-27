@@ -9,6 +9,9 @@ import {
 } from "../lib/dashboardTodayStages.js";
 import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
 
+const TODAY_PROFILE_BASE_COLUMNS = "race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors";
+const TODAY_PROFILE_COLUMNS = `${TODAY_PROFILE_BASE_COLUMNS}, elevation_profile`;
+
 // #3915 — "Today's stages" dashboard strip: data-hentning for DIT holds
 // etaper/løb i dag. SELVSTÆNDIG hook (kun teamId som input), samme
 // selv-hentende arkitektur som useHeroAgonyMoment.js (#3397) — Dashboard-
@@ -67,7 +70,7 @@ export default function useTodayStages(teamId) {
       if (!ownRaceIds.length) { setState({ loading: false, cards: [] }); return; }
       const ownSlotRows = (slotRows || []).filter((r) => enteredRaceIds.has(r.race_id));
 
-      const [racesRes, profilesRes] = await Promise.all([
+      const [racesRes, firstProfilesRes] = await Promise.all([
         // "races" er ikke deny-listet (ikke i scripts/lint-pagination-guard.mjs).
         supabase.from("races")
           .select("id, name, race_type, stages, stages_completed, status")
@@ -79,9 +82,17 @@ export default function useTodayStages(teamId) {
         // StageProfileGraph/buildProfileSeries bruger overalt ellers, så dashboardets
         // "dagens etaper" viser SAMME rigtige rute som løbssiden (#4107/#4108).
         supabase.from("race_stage_profiles")
-          .select("race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors")
+          .select(TODAY_PROFILE_COLUMNS)
           .in("race_id", ownRaceIds),
       ]);
+      // #7289: elevation_profile med, saa dashboardets miniature tegner samme serie som loebssiden.
+      // Kolonnen ikke migreret endnu (42703): laes uden serien, som stageProfilesQuery.ts.
+      let profilesRes = firstProfilesRes;
+      if (profilesRes.error?.code === "42703") {
+        profilesRes = await supabase.from("race_stage_profiles")
+          .select(TODAY_PROFILE_BASE_COLUMNS)
+          .in("race_id", ownRaceIds);
+      }
       if (racesRes.error) throw racesRes.error;
       if (profilesRes.error) throw profilesRes.error;
 
