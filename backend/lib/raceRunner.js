@@ -171,6 +171,7 @@ const komHunterOpts = (rev) => (isS5ProfilesV3OrLater(rev) ? { komHunters: KOM_H
 import { computePassages } from "./racePassages.js";
 import { loadOptedOutKeys, optOutKey } from "./youthRaceOptOut.ts";
 import { recordFirstRaceWithOwnSquadInBackground } from "./posthogServer.ts"; // #6278
+import { applyRouteProfileHills } from "./routeProfileHillsFlag.js"; // #7290
 
 // #1995: flush parkerede holdskifter (pending_team_id → team_id) når et etapeløb
 // er finaliseret. Idempotent → sikker ved recovery-genkørsel (bevidst UDEN
@@ -706,6 +707,8 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
         ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
         // #6649: dagsformen aendrer v4's input under s5_profiles_v3; kun da med (slukket = uaendret checksum).
         ...v4DayForm6649Arg(v4Engine, rulesRevision),
+        // #7290: profilens bakker aendrer v4-ruten; kun da med (slukket = uaendret checksum).
+        ...(stage.routeProfileHills === true ? { profileHills: true } : {}),
         // #5914: troejefoererne styrer hvem der kaemper om passagerne -> input.
         // Kun naar en foerer faktisk sendes videre (bagudkompatibel checksum).
         ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
@@ -2567,6 +2570,7 @@ export async function simulateRace({
   const rulesRevision = v4Engine
     ? await bindRulesRevision({ supabase, race, firstStageClaim: true, dryRun })
     : LEGACY_RULES_REVISION;
+  if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
   // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
   // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
   const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
@@ -3046,6 +3050,8 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
         ...(v3 && peakInputs.length && v4Engine?.formPeaks === false && isS5ProfilesV2OrLater(rulesRevision) ? { formPeaks: false } : {}),
         // #6649: dagsformen aendrer v4's input under s5_profiles_v3; kun da med (slukket = uaendret checksum).
         ...v4DayForm6649Arg(v4Engine, rulesRevision),
+        // #7290: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
+        ...(thisStage.routeProfileHills === true ? { profileHills: true } : {}),
       // #5914: se buildRaceResults' tilsvarende note (bagudkompatibel checksum).
       ...(jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom) ? { jerseyLeaders } : {}),
     })),
@@ -3498,6 +3504,7 @@ export async function simulateStageByIndex({
     const rulesRevision = v4Engine
       ? await bindRulesRevision({ supabase, race, firstStageClaim: stageIndex === 0 && completedBefore === 0 && !resuming, dryRun })
       : LEGACY_RULES_REVISION;
+    if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
 
     // #1844: frys feltet til etape-1-snapshot. Et igangværende etapeløbs felt MÅ ikke
     // ændre sig mellem etaper — en rytter der kom ind midt i løbet (manuelt edit pre-#1838,
