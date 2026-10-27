@@ -1477,7 +1477,7 @@
         "incident_protected": "{rider} gaat onderuit binnen de laatste kilometers, maar behoudt de tijd van de groep.",
         "favorite_crack": "{rider} knapt en verliest het contact met de kop.",
         "favorite_crack_tt": "{rider} zakt in de tweede helft in en verliest tijd.",
-        "all_out_gain": "{rider} gaat volle bak op de laatste klim en wint {seconds} sec.",
+        "all_out_gain": "{rider} gaat volle bak op de laatste klim en wint tijd.",
         "all_out_cracked": "{rider} gaat volle bak en rijdt zich leeg op de laatste klim.",
         "finale_attack": "{rider} valt aan in de finale.",
         "ttt_rider_dropped": "{rider} moet zijn ploeg laten gaan.",

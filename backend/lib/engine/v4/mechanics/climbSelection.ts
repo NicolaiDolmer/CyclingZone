@@ -651,19 +651,24 @@ export const climbSelectionHook: ClimbSelectionHook = (
       : guardedSplitRiderIds(sels));
     let splitRiderIds = splitOf(selections);
     if (allOutOn && !summitRace) splitRiderIds = allOutGuardedSplit7280(splitRiderIds, selections, gradientPct, lengthKm, climbModel);
-    if (allOutOn) nextState = accountAllOut7280(nextState, beforeAllOut, selections, splitOf(beforeAllOut), splitRiderIds, gradientPct, lengthKm, climbModel);
-    if (splitRiderIds.length === 0) continue;
-    if (splitRiderIds.length >= group.rider_ids.length) {
-      // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):
-      // ALLE ryttere kan i princippet ramme wprime<=0 samtidig. En gruppe kan
-      // aldrig splitte fra sig selv — behold altid mindst den bedst-
-      // positionerede rytter (laveste baseScore) som gruppens fortsatte front,
-      // saa selektionen stadig differentierer resten (climbDeficitScaled
-      // adskiller ryttere ogsaa naar alle er wprime-tvungne).
-      const bestRiderId = retainedRiderIdWhenAllSplit(selections);
-      splitRiderIds = splitRiderIds.filter((id) => id !== bestRiderId);
-    }
-    if (splitRiderIds.length === 0) continue;
+    const partsOf = (sels: RiderSelection[], ids: string[]) => (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
+      ? clusterSplitRiders(sels.filter((s) => ids.includes(s.riderId)).map((s) => ({
+        riderId: s.riderId,
+        gapSeconds: ownGapSeconds(s, gradientPct, lengthKm, climbModel),
+      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : climbModel)
+      : [{ riderIds: ids, gapSeconds: gapSecondsDeltaFor(sels, ids) }]);
+    // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):
+    // ALLE ryttere kan i princippet ramme wprime<=0 samtidig. En gruppe kan
+    // aldrig splitte fra sig selv — behold altid mindst den bedst-
+    // positionerede rytter (laveste baseScore) som gruppens fortsatte front,
+    // saa selektionen stadig differentierer resten (climbDeficitScaled
+    // adskiller ryttere ogsaa naar alle er wprime-tvungne).
+    const retainFront = (sels: RiderSelection[], ids: string[]): string[] => {
+      if (ids.length === 0 || ids.length < group.rider_ids.length) return ids;
+      const bestRiderId = retainedRiderIdWhenAllSplit(sels);
+      return ids.filter((id) => id !== bestRiderId);
+    };
+    splitRiderIds = retainFront(selections, splitRiderIds);
 
     // #6199 (KUN orders_gc_v3): de afhaengte falder ikke af som én klump. Hver
     // rytter faar sit eget hul (laengde x stejlhed x evneforskel), og rytterne
@@ -672,12 +677,13 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // #6199 (maaling 6/10): en gruppetto deles ikke i flere klynger. De der
     // falder af den, falder af som én gruppe (gennemsnittet af deres eget hul),
     // ellers deles halen i stumper der hver for sig er for smaa til redningen.
-    const parts = ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
-      ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
-        riderId: s.riderId,
-        gapSeconds: ownGapSeconds(s, gradientPct, lengthKm, climbModel),
-      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : climbModel)
-      : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
+    const parts = splitRiderIds.length > 0 ? partsOf(selections, splitRiderIds) : [];
+    // #7280: gevinsten taelles i de grupper motoren faktisk danner (foer/efter alt ud).
+    if (allOutOn) {
+      const idsBefore = retainFront(beforeAllOut, splitOf(beforeAllOut));
+      nextState = accountAllOut7280(nextState, selections, idsBefore.length > 0 ? partsOf(beforeAllOut, idsBefore) : [], parts);
+    }
+    if (splitRiderIds.length === 0) continue;
 
     for (const part of parts) {
       const kind = splitKindFor(group.kind, part.riderIds.length);
@@ -783,38 +789,36 @@ function allOutGuardedSplit7280(splitRiderIds: string[], selections: RiderSelect
 
 /**
  * #7280: det motoren reelt sparede (eller kostede) hver alt ud-rytter paa segmentet:
- * hullet han ville have faaet uden alt ud minus det han fik (0 for en rytter der bliver
- * i gruppen). Lagt sammen i RiderState.all_out_7280; et knaek markeres.
+ * hullet hans gruppe ville have faaet uden alt ud minus det hans gruppe fik (0 for en
+ * rytter der bliver i gruppen). Lagt sammen i RiderState.all_out_7280; et knaek markeres.
  */
 function accountAllOut7280(
   state: EngineState,
-  before: readonly RiderSelection[],
   after: readonly RiderSelection[],
-  splitBefore: readonly string[],
-  splitAfter: readonly string[],
-  gradientPct: number,
-  lengthKm: number,
-  t: TimeModelTuning,
+  partsBefore: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>,
+  partsAfter: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>,
 ): EngineState {
-  const s0 = new Set(splitBefore);
-  const s1 = new Set(splitAfter);
-  const byId = new Map(before.map((s) => [s.riderId, s]));
+  const gapIn = (parts: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>) => {
+    const m = new Map<string, number>();
+    for (const p of parts) for (const id of p.riderIds) m.set(id, p.gapSeconds);
+    return m;
+  };
+  const g0 = gapIn(partsBefore);
+  const g1 = gapIn(partsAfter);
   let riders: EngineState["riders"] | null = null;
   for (const a of after) {
     if (a.gapShiftSeconds === undefined) continue;
-    const b = byId.get(a.riderId);
     const rs = state.riders[a.riderId];
-    if (!b || !rs) continue;
+    if (!rs) continue;
     const prev = rs.all_out_7280 ?? { gained: 0, cracked: false };
-    const g0 = s0.has(b.riderId) ? ownGapSeconds(b, gradientPct, lengthKm, t) : 0;
-    const g1 = s1.has(a.riderId) ? ownGapSeconds(a, gradientPct, lengthKm, t) : 0;
     const cracked = prev.cracked || a.allOutCracked === true;
-    riders = { ...(riders ?? state.riders), [a.riderId]: { ...rs, all_out_7280: { gained: cracked ? 0 : round2(prev.gained + g0 - g1), cracked } } };
+    const delta = (g0.get(a.riderId) ?? 0) - (g1.get(a.riderId) ?? 0);
+    riders = { ...(riders ?? state.riders), [a.riderId]: { ...rs, all_out_7280: { gained: cracked ? 0 : round2(prev.gained + delta), cracked } } };
   }
   return riders ? { ...state, riders } : state;
 }
 
-/** #7280: all_out_gain-events paa den afgoerende stignings sidste segment (hele sekunder, >= 1). */
+/** #7280: all_out_gain-events paa den afgoerende stignings sidste segment (naar han vandt mindst 1 s). */
 function allOutGainEvents7280(state: EngineState, ctx: SegmentHookContext, km: number): TimelineEvent[] {
   const block = climbBlockOf(ctx.route.segments ?? [], ctx.segmentIndex);
   if (!block || block.end !== ctx.segmentIndex) return [];
@@ -822,8 +826,9 @@ function allOutGainEvents7280(state: EngineState, ctx: SegmentHookContext, km: n
   for (const riderId of Object.keys(state.riders).sort()) {
     const ao = state.riders[riderId]?.all_out_7280;
     if (!ao || ao.cracked || state.riders[riderId].status !== "racing") continue;
-    const seconds = Math.round(ao.gained);
-    if (seconds >= 1) events.push({ km: round2(km), type: "all_out_gain", params: { rider_id: riderId, seconds } });
+    // Kun en linje naar motoren reelt tog tid af hans hul. Ingen sekunder i linjen: summen pr.
+    // segment er ikke den samlede gevinst, naar alt ud har flyttet ham til en anden gruppe.
+    if (ao.gained >= 1) events.push({ km: round2(km), type: "all_out_gain", params: { rider_id: riderId } });
   }
   return events;
 }

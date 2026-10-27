@@ -295,17 +295,16 @@ test("#4373: alle nye event-nøgler findes i BEGGE locale-filer", async () => {
 test("#6641/#7280 describeEvent: alt ud-linjen kun med det motoren meldte", async () => {
   const names = new Map([["r1", "Lei Lin"]]);
   const d = (type, params) => describeEvent({ type, km: 170, params }, { riderNameById: names });
-  assert.deepEqual(d("all_out_gain", { rider_id: "r1", seconds: 23 }), { key: "all_out_gain", params: { rider: "Lei Lin", seconds: 23 } });
+  assert.deepEqual(d("all_out_gain", { rider_id: "r1" }), { key: "all_out_gain", params: { rider: "Lei Lin" } });
   assert.deepEqual(d("all_out_cracked", { rider_id: "r1" }), { key: "all_out_cracked", params: { rider: "Lei Lin" } });
-  assert.equal(d("all_out_gain", { rider_id: "r1", seconds: 0 }), null, "ingen gevinst = ingen linje");
-  assert.equal(d("all_out_gain", { rider_id: "ukendt", seconds: 9 }), null);
+  assert.equal(d("all_out_gain", { rider_id: "ukendt" }), null);
   const { readFileSync } = await import("node:fs");
   const { dirname, join } = await import("node:path");
   const { fileURLToPath } = await import("node:url");
   const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
   for (const lang of ["en", "da", "fr", "es", "nl"]) {
     const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
-    assert.match(doc.detail.film.event.all_out_gain, /\{seconds\}/, `${lang}: all_out_gain`);
+    assert.ok(doc.detail.film.event.all_out_gain, `${lang}: all_out_gain`);
     assert.ok(doc.detail.film.event.all_out_cracked, `${lang}: all_out_cracked`);
   }
 });

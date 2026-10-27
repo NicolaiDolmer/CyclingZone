@@ -309,7 +309,7 @@ export type KnownTimelineEventType =
   // #6804 P2 (ADDITIV, KUN s5_profiles_v3): forspringet vokser forbi det feltet tolererer,
   // fordi intet hold vil jage (mechanics/breakawayV3_6804.ts). params: { group_id }.
   | "breakaway_unchased"
-  // #6641/#7280 (ADDITIV, slukket alt ud-pakke): params { rider_id, seconds } / { rider_id }.
+  // #6641/#7280 (ADDITIV, slukket alt ud-pakke): params { rider_id }.
   | "all_out_gain"
   | "all_out_cracked";
 

@@ -375,9 +375,8 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
     case "all_out_gain":
     case "all_out_cracked": {
       const rider = riderName(p.rider_id, riderNameById);
-      const seconds = Math.round(Number(p.seconds));
-      if (!rider || (event.type === "all_out_gain" && !(seconds >= 1))) return null;
-      return { key: event.type, params: event.type === "all_out_gain" ? { rider, seconds } : { rider } };
+      if (!rider) return null;
+      return { key: event.type, params: { rider } };
     }
     case "group_merged": {
       const params = breakawayParams();

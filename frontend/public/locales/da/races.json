@@ -1460,7 +1460,7 @@
         "incident_protected": "{rider} vælter inde på de sidste kilometer, men beholder gruppens tid.",
         "favorite_crack": "{rider} sprækker og mister kontakten til front.",
         "favorite_crack_tt": "{rider} falder fra hinanden på anden halvdel og taber tid.",
-        "all_out_gain": "{rider} kører alt ud på den sidste stigning og vinder {seconds} sek.",
+        "all_out_gain": "{rider} kører alt ud på den sidste stigning og vinder tid.",
         "all_out_cracked": "{rider} kører alt ud og kører sig tom på den sidste stigning.",
         "finale_attack": "{rider} angriber i finalen.",
         "ttt_rider_dropped": "{rider} slipper holdets tempo.",
