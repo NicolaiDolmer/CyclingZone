@@ -49,10 +49,10 @@ for (const width of [1440, 375]) {
           rider_derived_abilities: rider.rider_derived_abilities }],
       }));
       await login(page);
-      for (const [surface, path] of [["team", "/team"], ["development", "/team"], ["hero", "/riders/rider-1"], ["scouting", "/riders/rider-1?tab=scouting"], ["academy", "/academy"], ["training", "/training?tab=development"], ["graduation", "/academy/graduation"]]) {
+      for (const [surface, path] of [["team", "/team"], ["development", "/team?tab=development"], ["hero", "/riders/rider-1"], ["scouting", "/riders/rider-1?tab=scouting"], ["academy", "/academy"], ["training", "/training?tab=development"], ["graduation", "/academy/graduation"]]) {
         await test.step(surface, async () => {
           await page.goto(path);
-          if (surface === "development") await page.getByRole("tab", { name: /^(Development|Udvikling)$/i }).click();
+          if (surface === "development") await expect(page.getByRole("tab", { name: /^(Development|Udvikling)$/i })).toHaveAttribute("aria-selected", "true");
           if (surface === "team" && width === 375) {
             const chip = page.getByRole("button", { name: /^(Potential|Potentiale)$/i }).first();
             await expect(chip).toBeVisible();
@@ -75,9 +75,9 @@ for (const width of [1440, 375]) {
               await expect(progress.locator('[aria-current="step"]')).toHaveAttribute("data-stage", stage.stage);
               await expect(progress.getByRole("listitem")).toHaveText(["1Lærer", "2Groft", "3Skarpere", "4Endeligt"]);
               await expect(report.getByTestId("academy-scouting-band")).toHaveText(stage.band ? `${stage.band.lo}–${stage.band.hi} rating-point` : "Intet bud endnu");
-              await expect(report.getByTestId("academy-scouting-next")).toHaveText(stage.nextStageDays == null ? "Alle trin nået" : `${stage.nextStageDays} træningsdag${stage.nextStageDays === 1 ? "" : "e"}`);
+              await expect(report.getByTestId("academy-scouting-next")).toHaveText(stage.nextStageDays == null ? "Alle trin nået" : `${stage.nextStageDays} trænings- eller løbsdag${stage.nextStageDays === 1 ? "" : "e"}`);
               await expect(report.getByRole("link", { name: "Læs mere" })).toHaveAttribute("href", "/help?section=academy");
-              await expect(report).toContainText("Træningsdage på dit hold gør prognosen skarpere, hurtigere med bedre trænerstab.");
+              await expect(report).toContainText("Registrerede trænings- og løbsdage gør prognosen skarpere. Kalenderdage alene tæller ikke.");
               await report.scrollIntoViewIfNeeded();
               const bounds = await report.boundingBox();
               expect(bounds).not.toBeNull();

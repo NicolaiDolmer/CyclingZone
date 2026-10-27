@@ -125,6 +125,7 @@ import { loadClearedTeamIds } from "./raceEntryClears.js";
 import { loadRaceTrainNowLock } from "./trainNowLock.js"; // #6006/#6139
 import { AUTO_FILL_SOURCES, writeRaceEntriesWithSource } from "./raceEntryAutoFillSource.js";
 import { captureException } from "./sentry.js";
+import { createEngineInputRecorder, runRecordedEngineCall, persistEngineInputSnapshots } from "./engineInputSnapshot1857.js"; // #1857
 import { raceBindingWindow, isRiderDayInvariantViolation, isDrainingAiObligation, isRetiredAiRiderRejection, teamInRaceSquadPool, teamPoolIdForSquad } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision, filterTeamsBelowMinimumEntries, injuryShortTeamIds,
   addRidersByTeam, startDayOverlapRiderIds, teamStartsShortOnOverlap, overlapShortTeamIds, overlapRuleApplies, startDaySpentRiderIds } from "./raceFieldIntegrity.js"; // #6739
@@ -467,7 +468,7 @@ export function youthClassificationRanking({ race, classified, cumTime, posSum }
   return rankByCumTimeAsc(classified.filter((e) => e.is_u25), cumTime, posSum);
 }
 
-export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [], trainingOwnsRecovery = false, rulesRevision = "legacy" }) {
+export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {}, v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [], trainingOwnsRecovery = false, rulesRevision = "legacy", engineInputRecorder = null }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stages.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -614,9 +615,10 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const jerseyLeaders = v4Engine && isStageRace ? jerseyLeadersFromComps(stageEntrants, pointsComp, komComp, komHunterOpts(rulesRevision)) : null;
     // #5978: klassementet FOER etapen, kun under orders_gc_v1 ([] = 1. etape); legacy-kaldet er uændret.
     const gcStandings = v4Engine && isStageRace && isOrdersGcRulesRevision(rulesRevision) ? (stageNumbersSoFar.size ? rankByCumTimeAsc(filterCompletedEntrants(entrants, stagesByRider, stageNumbersSoFar), cumTime, posSum) : []) : null;
-    const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = v4Engine
-      ? v4Engine.simulateStage({ entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}) })
-      : simulateStage({ entrants: stageEntrants, stageProfile: stage, seed, v3 });
+    // #1857: runRecordedEngineCall = præcis call(args) når optageren er null (dryRun/tests).
+    const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
+      ? { entrants: stageEntrants, stageProfile: stage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings ? { gcStandings } : {}) }
+      : { entrants: stageEntrants, stageProfile: stage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
     for (const inc of incidents) {
       allIncidents.push({ stage_number: stageNumber, ...inc });
       if (inc.outcome === "abandon") abandonedSet.add(inc.rider_id);
@@ -2555,7 +2557,8 @@ export async function simulateRace({
   if (v3) await attachPeakContext({ supabase, race, stages, entrants, loadPeakPlansFn, loadStageDayOrdinalsFn, resolveTQsFn });
 
   // #6984: incidents/timelines er `let`: medicin-skridtet efter frysningen (se nedenfor) erstatter dem.
-  let { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision });
+  const engineInputRecorder = dryRun ? null : createEngineInputRecorder({ raceId: race.id }); // #1857
+  let { resultRows, passageRows, runs, incidents, moments, timelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision, engineInputRecorder });
 
   // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
   // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
@@ -2604,6 +2607,7 @@ export async function simulateRace({
     ensureSeasonStandings,
     updateStandings,
   });
+  await persistEngineInputSnapshots({ supabase, race, recorder: engineInputRecorder }); // #1857: først efter committede resultater; kaster aldrig
   await sendDidNotStartNotices({ supabase, race, teamIds: droppedAtStart });
 
   // #5675 (CodeRabbit-fund, Y7-opfølgning): ungdomsstillingen genberegnes samme
@@ -2885,7 +2889,7 @@ async function loadPriorStageRows({ supabase, raceId, beforeStageNumber }) {
  *   der skrev den enkelte etape.
  * @param {Array} [teamOrderRows=[]]  #3855 — se buildRaceResults' jsdoc.
  */
-export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [], rulesRevision = "legacy" }) {
+export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [], v3 = false, stageRoleOverrides, timeline = false, v4Engine = null, teamOrderRows = [], rulesRevision = "legacy", engineInputRecorder = null }) {
   if (!race?.id) throw new Error("race.id required");
   if (!stagesSorted?.length) throw new Error("no stage profiles");
   if (!entrants.length) throw new Error("no entrants");
@@ -2963,9 +2967,10 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const priorGcAcc = v4Engine && isOrdersGcRulesRevision(rulesRevision) && stageIndex > 0 && priorStageRows.length ? accumulateStageRows({ stageRows: priorStageRows }) : null;
   const gcStandings = v4Engine && isOrdersGcRulesRevision(rulesRevision) ? (stageIndex === 0 ? [] : priorGcAcc ? rankByCumTimeAsc(filterCompletedEntrants(simEntrants, priorGcAcc.stagesByRider, priorGcAcc.stageNumbers), priorGcAcc.cumTime, priorGcAcc.posSum) : null) : undefined;
   // Motorvalget (#3855/#4707) — se buildRaceResults' tilsvarende note.
-  const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = v4Engine
-    ? v4Engine.simulateStage({ entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}) })
-    : simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed, v3 });
+  // #1857: se buildRaceResults' tilsvarende note.
+  const { ranked, incidents, timeline: v4Timeline = null, passages: v4Passages = null, v4Output: v4StageOutput = null, efforts: v4StageEfforts = null } = runRecordedEngineCall(engineInputRecorder, { stageNumber, engine: v4Engine ? "v4" : "v3", engineVersion: v4Engine ? ENGINE_VERSION_V4 : (v3 ? ENGINE_VERSION_V3 : ENGINE_VERSION), rulesRevision, seedInput, formPeaksOff: v4Engine?.formPeaks === false }, v4Engine
+    ? { entrants: simEntrants, stageProfile: thisStage, seedString: seedInput, stageNumber, teamOrderRows, isStageRace: true, raceStages: stagesSorted, squad: raceSquadOf(race), jerseyLeaders, ...v4RulesRevisionArg(rulesRevision), ...(gcStandings !== undefined ? { gcStandings } : {}) }
+    : { entrants: simEntrants, stageProfile: thisStage, seed, v3 }, v4Engine ? (a) => v4Engine.simulateStage(a) : simulateStage);
   // S4 (#1176): stemplet med dagens stage_number — additiv, rører ikke resultRows/runs-formen.
   const stampedIncidents = incidents.map((inc) => ({ stage_number: stageNumber, ...inc }));
   // #1499: deskriptive udbruds-etiketter for dagens finish-order (ren read).
@@ -3573,6 +3578,7 @@ export async function simulateStageByIndex({
       await applySameDateEnteringFatigueV2({ supabase, raceId: race.id, stageNumber, entrants, medicalBonusByTeam });
     }
 
+    const engineInputRecorder = dryRun ? null : createEngineInputRecorder({ raceId: race.id }); // #1857
     if (race.race_type === "stage_race") {
       // #2072: simulér KUN dagens etape; klassementer akkumuleres fra de
       // persisterede etaperækker — slut-GC kan aldrig modsige publicerede gaps.
@@ -3581,14 +3587,14 @@ export async function simulateStageByIndex({
         : [];
       ({ resultRows, passageRows, runs, incidents, moments, timelines } = buildStageRowsAccumulated({
         race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows, v3, stageRoleOverrides,
-        timeline: timelineEnabled, v4Engine, teamOrderRows, rulesRevision,
+        timeline: timelineEnabled, v4Engine, teamOrderRows, rulesRevision, engineInputRecorder,
       }));
     } else {
       // Endagsløb (1 etape): buildRaceResults ER allerede én selv-konsistent
       // simulation af præcis denne dag — ingen akkumulering at hente. passageRows
       // er data-gated (Sub-2, #2770): computePassages returnerer altid tomt for
       // isStageRace=false, men filtreres for symmetri/fremtidssikring.
-      const { resultRows: allRows, passageRows: allPassageRows, runs: allRuns, incidents: allIncidents, moments: allMoments, timelines: allTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision });
+      const { resultRows: allRows, passageRows: allPassageRows, runs: allRuns, incidents: allIncidents, moments: allMoments, timelines: allTimelines } = buildRaceResults({ race, stages, entrants, pointsLookup, v3, stageRoleOverrides, timeline: timelineEnabled, v4Engine, teamOrderRows, trainingOwnsRecovery, rulesRevision, engineInputRecorder });
       resultRows = allRows.filter((r) => r.stage_number === stageNumber);
       passageRows = (allPassageRows || []).filter((p) => p.stage_number === stageNumber);
       runs = allRuns.filter((r) => r.stage_number === stageNumber);
@@ -3653,6 +3659,8 @@ export async function simulateStageByIndex({
       // Markeringen skrives KUN når låsen blev vundet: en taber har ikke skrevet
       // noget og må ikke efterlade en markering der ser ud som halvt arbejde.
       if (lockWon) await markFinalizeStep("write");
+      // #1857: kun den run der selv skrev etapens resultater gemmer inputtet (aldrig en genoptagelse). Kaster aldrig.
+      if (lockWon) await persistEngineInputSnapshots({ supabase, race, recorder: engineInputRecorder });
     }
     if (!lockWon) {
       // Konkurrerende run vandt (eller stages_completed er allerede forbi denne etape).

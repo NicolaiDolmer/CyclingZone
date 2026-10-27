@@ -1575,7 +1575,7 @@
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
-        "text": "After you sign an academy rider, you learn his forecast through training days on your team. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range."
+        "text": "After you sign an academy rider, his forecast improves with recorded training and race days on your team. Days since signing alone do not count, and simply leaving him on the team for a week does not complete the forecast. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training or race days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range. The Sunday update sets his market value; it does not complete his potential forecast."
       },
       "signingProspects": {
         "title": "Signing prospects",
@@ -1749,11 +1749,19 @@
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
-        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter tries for the day's breakaway by default and rides harder to stay clear. You can turn that off for a single stage, and a try is never sure. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Aggression makes a rider more likely to get into the break, and a rider on free role also tries more often on his own. In races on the current rules every try costs energy, also when it fails. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
+        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter tries for the day's breakaway by default and rides harder to stay clear. You can turn that off for a single stage, and a try is never sure. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Aggression makes a rider more likely to get into the break, and a rider on free role also tries more often on his own. In races on the current rules every try costs energy, also when it fails. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support. In races on the newest rules, a sprint captain can be your only leader, with no captain. He then gets the team's protection on every stage."
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
-        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: There are three efforts: Ride easy, Normal and Work or attack. Work or attack builds extra fatigue: a helper or hunter works for the team, while a captain or a rider on free role uses it to attack. Ride easy eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort for the day. The effort steps have their own paragraph just below. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
+      },
+      "effortSteps": {
+        "title": "Effort steps",
+        "text": "Every rider gets an effort for the stage you have open. Five steps run from easiest to hardest. Grupetto rides it home in the back group and never earns a result of his own. Ride easy sits in and saves legs for the days that count. Normal is his normal race. The fourth step is named after the job: Work for a domestique or breakaway hunter, who rides for the leader and gets real fatigue; Follow the moves for a captain or sprint captain, who answers every attack and spends more legs; Ride aggressively for a rider on free role, who presses on the climbs and in the finale. All out puts everything on today and is the hardest day on his legs. A harder step always costs more fatigue than an easier one, no matter how strong the rider is. A domestique on All out rides for himself and stops helping the leader."
+      },
+      "effortStepsThree": {
+        "title": "Effort steps",
+        "text": "Every rider gets an effort for the stage you have open. Three steps run from easiest to hardest. Ride easy sits in and saves legs for the days that count. Normal is his normal race. The third step is named after the job: Work for a domestique or breakaway hunter, who rides for the leader and gets real fatigue; Follow the moves for a captain or sprint captain, who answers every attack and spends more legs; Ride aggressively for a rider on free role, who presses on the climbs and in the finale. A harder step always costs more fatigue than an easier one, no matter how strong the rider is."
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",
@@ -1784,7 +1792,7 @@
       "label": "Race day and tactics",
       "roleAndIntention": {
         "title": "Roles and today's intention",
-        "text": "Your role is the job you picked for a rider when you built your team: captain, sprint captain, breakaway hunter, domestique or free role. It lasts the whole race and rarely changes. Intention is different, it is what you ask him for on the stage you have open right now, and if you leave it alone he simply rides his role. Five settings run from easiest to hardest: grupetto, ride easy, normal, work or attack and all out. A harder setting always costs more fatigue than an easier one, no matter how strong the rider is, and grupetto never earns him a result of his own."
+        "text": "Your role is the job you picked for a rider when you built your team: captain, sprint captain, breakaway hunter, domestique or free role. It lasts the whole race and rarely changes. Intention is different, it is what you ask him for on the stage you have open right now, and if you leave it alone he simply rides his role. The steps you can pick are explained under Effort steps."
       },
       "crashesAndIncidents": {
         "title": "Crashes and incidents",
@@ -1796,7 +1804,11 @@
       },
       "teamwork": {
         "title": "Teamwork on the road",
-        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+      },
+      "teamworkAllOut": {
+        "title": "All out and teamwork",
+        "text": "Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead."
       },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",

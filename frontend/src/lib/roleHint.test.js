@@ -5,8 +5,7 @@ import assert from "node:assert/strict";
 import {
   roleHint,
   hunterBreakawayStrength,
-  strengthFromBonus,
-  BREAKAWAY_STRENGTH,
+  stageHasBreakaway,
   ROLE_KEYS,
   ROLE_KEYS_V3,
 } from "./roleHint.js";
@@ -58,83 +57,23 @@ test("roleHint: free_role × alle 5 buckets → gyldige i18n-nøgler", () => {
   }
 });
 
-// ── strengthFromBonus: tærskel-mapping (spejler BREAKAWAY_BONUS-skalaen) ────────
-test("strengthFromBonus: tærskler >=0.30 high · >=0.15 medium · >0 low · 0 none", () => {
-  assert.equal(strengthFromBonus(0.50), "high");
-  assert.equal(strengthFromBonus(0.30), "high");
-  assert.equal(strengthFromBonus(0.29), "medium");
-  assert.equal(strengthFromBonus(0.15), "medium");
-  assert.equal(strengthFromBonus(0.14), "low");
-  assert.equal(strengthFromBonus(0.06), "low");
-  assert.equal(strengthFromBonus(0.0001), "low");
-  assert.equal(strengthFromBonus(0), "none");
+// ── stageHasBreakaway (#6912): morgenudbrud på alle linjeløb, aldrig på tidskørsler ──
+test("stageHasBreakaway: alle linjeløbsprofiler → true (også classic og high_mountain)", () => {
+  for (const p of ["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "cobbles", "gravel", "classic"]) {
+    assert.equal(stageHasBreakaway(p), true, p);
+  }
 });
 
-test("strengthFromBonus: ikke-endelig/negativ → none", () => {
-  assert.equal(strengthFromBonus(null), "none");
-  assert.equal(strengthFromBonus(undefined), "none");
-  assert.equal(strengthFromBonus(NaN), "none");
-  assert.equal(strengthFromBonus(-0.2), "none");
+test("stageHasBreakaway: enkeltstart/holdtidskørsel/ukendt/manglende → false", () => {
+  for (const p of ["itt", "itt_hilly", "ttt", "nonsense", null, undefined]) {
+    assert.equal(stageHasBreakaway(p), false, String(p));
+  }
 });
 
-// ── BREAKAWAY_STRENGTH: alle (profil, finale)-kombinationer mappet korrekt ──────
-// Tabellen SPEJLER backend/lib/raceSimulator.js BREAKAWAY_BONUS. Drift-guard: hvis
-// nogen ændrer backend-værdierne uden at opdatere denne frontend-konstant, fanger
-// disse asserts det (samme mønster som stageTerrain.test.js terrainBucket-mirror).
-test("BREAKAWAY_STRENGTH: spejler raceSimulator BREAKAWAY_BONUS-tærskler eksakt", () => {
-  // flat: alle 0.30 → high
-  assert.equal(BREAKAWAY_STRENGTH.flat.bunch_sprint, "high");
-  assert.equal(BREAKAWAY_STRENGTH.flat.reduced_sprint, "high");
-  assert.equal(BREAKAWAY_STRENGTH.flat._default, "high");
-  // rolling: 0.20 breakaway → medium, 0.17 reduced_sprint → medium, 0.15 bunch_sprint → medium
-  assert.equal(BREAKAWAY_STRENGTH.rolling.breakaway, "medium");
-  assert.equal(BREAKAWAY_STRENGTH.rolling.reduced_sprint, "medium");
-  assert.equal(BREAKAWAY_STRENGTH.rolling.bunch_sprint, "medium");
-  assert.equal(BREAKAWAY_STRENGTH.rolling._default, "medium");
-  // hilly: 0.42/0.40/0.46 → high
-  assert.equal(BREAKAWAY_STRENGTH.hilly.punch, "high");
-  assert.equal(BREAKAWAY_STRENGTH.hilly.reduced_sprint, "high");
-  assert.equal(BREAKAWAY_STRENGTH.hilly.breakaway, "high");
-  assert.equal(BREAKAWAY_STRENGTH.hilly._default, "high");
-  // mountain: descent/breakaway 0.50 → high, long_climb 0.06 → low, _default 0.45 → high
-  assert.equal(BREAKAWAY_STRENGTH.mountain.descent, "high");
-  assert.equal(BREAKAWAY_STRENGTH.mountain.breakaway, "high");
-  assert.equal(BREAKAWAY_STRENGTH.mountain.long_climb, "low");
-  assert.equal(BREAKAWAY_STRENGTH.mountain._default, "high");
-  // high_mountain: descent 0.42 → high, long_climb 0.05 → low, _default 0.08 → low
-  assert.equal(BREAKAWAY_STRENGTH.high_mountain.descent, "high");
-  assert.equal(BREAKAWAY_STRENGTH.high_mountain.long_climb, "low");
-  assert.equal(BREAKAWAY_STRENGTH.high_mountain._default, "low");
-  // cobbles: 0.30 reduced_sprint → high, 0.36 breakaway → high, _default 0.28 → medium
-  assert.equal(BREAKAWAY_STRENGTH.cobbles.reduced_sprint, "high");
-  assert.equal(BREAKAWAY_STRENGTH.cobbles.breakaway, "high");
-  assert.equal(BREAKAWAY_STRENGTH.cobbles._default, "medium");
-});
-
-// ── hunterBreakawayStrength(profileType, finaleType) ────────────────────────────
-test("hunterBreakawayStrength: profil+finale → high/medium/low/none", () => {
-  assert.equal(hunterBreakawayStrength("flat", "bunch_sprint"), "high");
-  assert.equal(hunterBreakawayStrength("rolling", "bunch_sprint"), "medium");
-  assert.equal(hunterBreakawayStrength("mountain", "long_climb"), "low");
-  assert.equal(hunterBreakawayStrength("high_mountain", "long_climb"), "low");
-  assert.equal(hunterBreakawayStrength("high_mountain", null), "low"); // _default 0.08
-  assert.equal(hunterBreakawayStrength("hilly", "breakaway"), "high");
-});
-
-test("hunterBreakawayStrength: manglende finale → profilens _default", () => {
-  assert.equal(hunterBreakawayStrength("flat", null), "high");
-  assert.equal(hunterBreakawayStrength("flat", "unknown_finale"), "high");
-  assert.equal(hunterBreakawayStrength("rolling", undefined), "medium");
-  assert.equal(hunterBreakawayStrength("cobbles", null), "medium");
-});
-
-test("hunterBreakawayStrength: itt/ttt/classic + ukendt profil → none (intet udbrud)", () => {
-  assert.equal(hunterBreakawayStrength("itt", "solo_tt"), "none");
-  assert.equal(hunterBreakawayStrength("ttt", null), "none");
-  assert.equal(hunterBreakawayStrength("classic", "breakaway"), "none");
-  assert.equal(hunterBreakawayStrength("nonsense", null), "none");
-  assert.equal(hunterBreakawayStrength(null, null), "none");
-  assert.equal(hunterBreakawayStrength(undefined, undefined), "none");
+// #6912: overgangs-shim for RaceSelectionPanel; giver aldrig en fast styrke længere.
+test("hunterBreakawayStrength: returnerer aldrig en fast udbrudschance", () => {
+  assert.equal(hunterBreakawayStrength("high_mountain", "long_climb"), null);
+  assert.equal(hunterBreakawayStrength("flat", "bunch_sprint"), null);
 });
 
 // #5289: real resources, with fallback disabled so EN cannot hide a DA gap.

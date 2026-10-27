@@ -1064,7 +1064,6 @@
     "TS2741": 1
   },
   "src/components/race/RaceSelectionPanel.jsx": {
-    "TS18046": 7,
     "TS18047": 3,
     "TS2322": 5,
     "TS2339": 4,
@@ -1822,7 +1821,6 @@
   },
   "src/lib/raceSelectionLogic.test.js": {
     "TS18047": 15,
-    "TS2322": 14,
     "TS2353": 1,
     "TS2531": 5
   },

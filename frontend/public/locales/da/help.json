@@ -1575,7 +1575,7 @@
       },
       "prognosisTraining": {
         "title": "Sådan lærer du et talents potentiale",
-        "text": "Når du har skrevet kontrakt med en akademirytter, lærer du hans prognose gennem træningsdage på dit hold. Først er der intet bud, derefter et groft, et skarpere og et endeligt bånd i rating-point. Scouting-fanen viser det aktuelle trin, det afslørede bånd og træningsdage til næste trin. Bedre trænerstab og træningsfaciliteter hjælper dig hurtigere videre. De ændrer ikke hans talent, og selv den endelige prognose er stadig et bånd."
+        "text": "Når du har skrevet kontrakt med en akademirytter, bliver hans prognose skarpere med registrerede trænings- og løbsdage på dit hold. Dage siden underskrift tæller ikke alene, og en uge på holdet giver ikke i sig selv en fuld prognose. Først er der intet bud, derefter et groft, et skarpere og til sidst et endeligt rating-interval. Scouting-fanen viser det aktuelle trin, det afslørede interval og trænings- eller løbsdage til næste trin. Bedre trænerstab og træningsfaciliteter hjælper dig hurtigere til næste trin. De ændrer ikke hans talent, og selv den endelige prognose er stadig et interval. Søndagsopdateringen fastsætter hans markedsværdi, ikke en fuld prognose for potentialet."
       },
       "signingProspects": {
         "title": "Signering af talenter",
@@ -1749,11 +1749,19 @@
       },
       "roles": {
         "title": "Kaptajn, spurt-kaptajn, udbruds-jæger og fri rolle",
-        "text": "Du giver hver udtaget rytter en rolle med taktik-kort, og hvert kort forklarer hvorfor rollen passer løbets terræn. Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger forsøger dagens udbrud som standard og kører hårdere for at holde sig væk. Du kan slå det fra på en enkelt etape, og et forsøg er aldrig sikkert. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem på dette terræn, og løb-detalje-siden rangerer dine bedste jægere efter aggression, lysten til at angribe. Aggression giver en rytter større chance for at komme med i udbruddet, og en rytter med fri rolle forsøger også oftere på egen hånd. I løb på de nuværende regler koster hvert forsøg kræfter, også når det mislykkes. Holdarbejde har en pris: hjælpere taber placeringer på at arbejde for kaptajnen, og det arbejde er præcis det der køber kaptajnens boost. En rytter i Fri rolle dropper holdarbejdet og kører sit eget løb, uden arbejdsomkostning og uden kaptajnstøtte."
+        "text": "Du giver hver udtaget rytter en rolle med taktik-kort, og hvert kort forklarer hvorfor rollen passer løbets terræn. Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger forsøger dagens udbrud som standard og kører hårdere for at holde sig væk. Du kan slå det fra på en enkelt etape, og et forsøg er aldrig sikkert. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem på dette terræn, og løb-detalje-siden rangerer dine bedste jægere efter aggression, lysten til at angribe. Aggression giver en rytter større chance for at komme med i udbruddet, og en rytter med fri rolle forsøger også oftere på egen hånd. I løb på de nuværende regler koster hvert forsøg kræfter, også når det mislykkes. Holdarbejde har en pris: hjælpere taber placeringer på at arbejde for kaptajnen, og det arbejde er præcis det der køber kaptajnens boost. En rytter i Fri rolle dropper holdarbejdet og kører sit eget løb, uden arbejdsomkostning og uden kaptajnstøtte. I løb på de nyeste regler kan en spurt-kaptajn være din eneste leder, uden kaptajn. Han får så holdets beskyttelse på alle etaper."
       },
       "stageTactics": {
         "title": "Etapeløb: roller og indsats pr. etape",
-        "text": "I etapeløb har løbssiden et taktik-board etape for etape. Kørte etaper er låst og viser hvad der skete; kommende etaper kan stadig ændres mens løbet køres. Hver rytter kan køre en forskellig rolle pr. etape, plus en indsats: Der er tre indsatser: Kør roligt, Normal og Arbejd eller angrib. Arbejd eller angrib bygger ekstra træthed: en hjælper eller udbrudsjæger arbejder for holdet, mens en kaptajn eller en rytter med fri rolle bruger det til at angribe. Kør roligt holder igen for at være friskere til de dage der tæller. Tager en rytter førertrøjen, gør en genvej på løbssidens Hold-fane ham til kaptajn for alle resterende etaper med ét klik mens løbet kører. En anden kaptajn på de samme etaper rykkes ned til hjælper. Etaper hvor du intet sætter, bruger blot rytterens løbsrolle."
+        "text": "I etapeløb har løbssiden et taktik-board etape for etape. Kørte etaper er låst og viser hvad der skete; kommende etaper kan stadig ændres mens løbet køres. Hver rytter kan køre en forskellig rolle pr. etape, plus en indsats for dagen. Indsatstrinnene har deres eget afsnit lige under. Tager en rytter førertrøjen, gør en genvej på løbssidens Hold-fane ham til kaptajn for alle resterende etaper med ét klik mens løbet kører. En anden kaptajn på de samme etaper rykkes ned til hjælper. Etaper hvor du intet sætter, bruger blot rytterens løbsrolle."
+      },
+      "effortSteps": {
+        "title": "Indsatstrin",
+        "text": "Hver rytter får en indsats på den etape, du har åben. Fem trin går fra lettest til hårdest. Grupetto kører den hjem i bagerste gruppe og giver ham aldrig et resultat af egen kraft. Kør roligt ligger i feltet og sparer benene til de dage, der tæller. Normal er hans normale løb. Det fjerde trin hedder efter opgaven: Arbejd for en hjælper eller udbrudsjæger, der kører for lederen og får rigtig træthed; Følg angrebene for en kaptajn eller spurt-kaptajn, der svarer på hvert angreb og bruger flere kræfter; Kør offensivt for en rytter i fri rolle, der presser på stigningerne og i finalen. Alt ud lægger alt på i dag og er den hårdeste dag i benene. Et hårdere trin koster altid mere træthed end et lettere, uanset hvor stærk rytteren er. En hjælper på Alt ud kører for sig selv og holder op med at hjælpe lederen."
+      },
+      "effortStepsThree": {
+        "title": "Indsatstrin",
+        "text": "Hver rytter får en indsats på den etape, du har åben. Tre trin går fra lettest til hårdest. Kør roligt ligger i feltet og sparer benene til de dage, der tæller. Normal er hans normale løb. Det tredje trin hedder efter opgaven: Arbejd for en hjælper eller udbrudsjæger, der kører for lederen og får rigtig træthed; Følg angrebene for en kaptajn eller spurt-kaptajn, der svarer på hvert angreb og bruger flere kræfter; Kør offensivt for en rytter i fri rolle, der presser på stigningerne og i finalen. Et hårdere trin koster altid mere træthed end et lettere, uanset hvor stærk rytteren er."
       },
       "strategy": {
         "title": "Holdstrategi (stående præferencer)",
@@ -1784,7 +1792,7 @@
       "label": "Løbsdag og taktik",
       "roleAndIntention": {
         "title": "Rolle og dagens intention",
-        "text": "Din rolle er den opgave, du gav en rytter, da du satte holdet: kaptajn, spurt-kaptajn, udbruds-jæger, hjælper eller fri rolle. Den gælder hele løbet og skifter sjældent. Intentionen er noget andet: det er, hvad du beder ham om på den etape, du har åben lige nu, og rører du den ikke, kører han bare sin rolle. Fem trin går fra lettest til hårdest: grupetto, kør roligt, normal, arbejd eller angrib og alt ud. Et hårdere trin koster altid mere træthed end et lettere, uanset hvor stærk rytteren er, og grupetto giver ham aldrig et resultat af egen kraft."
+        "text": "Din rolle er den opgave, du gav en rytter, da du satte holdet: kaptajn, spurt-kaptajn, udbruds-jæger, hjælper eller fri rolle. Den gælder hele løbet og skifter sjældent. Intentionen er noget andet: det er, hvad du beder ham om på den etape, du har åben lige nu, og rører du den ikke, kører han bare sin rolle. Trinnene du kan vælge, står under Indsatstrin."
       },
       "crashesAndIncidents": {
         "title": "Styrt og uheld",
@@ -1796,7 +1804,11 @@
       },
       "teamwork": {
         "title": "Holdspil på vejen",
-        "text": "Din kaptajn, eller din spurt-kaptajn på en flad etape, beskyttes af det arbejde resten af holdet lægger i det. En hjælper eller en udbruds-jæger betaler for den beskyttelse med sin egen kraft; en rytter i fri rolle hverken hjælper eller betaler. Boosten har et loft, så den aldrig løber løbsk, og den tæller kun, når mindst én holdkammerat stadig kører tæt på ham. Sætter du en rytter til alt ud, holder han op med at betale den pris, fordi han bruger alt på sig selv i stedet. En hjælper på Kør roligt betaler mindre, men giver din kaptajn mindre støtte. At arbejde for holdet er aldrig gratis, og ingen kombination af rolle og intention kan gøre det til en bonus oven i rytterens egen evne."
+        "text": "Din kaptajn, eller din spurt-kaptajn på en flad etape, beskyttes af det arbejde resten af holdet lægger i det. En hjælper eller en udbruds-jæger betaler for den beskyttelse med sin egen kraft; en rytter i fri rolle hverken hjælper eller betaler. Boosten har et loft, så den aldrig løber løbsk, og den tæller kun, når mindst én holdkammerat stadig kører tæt på ham. En hjælper på Kør roligt betaler mindre, men giver din kaptajn mindre støtte. At arbejde for holdet er aldrig gratis, og ingen kombination af rolle og intention kan gøre det til en bonus oven i rytterens egen evne."
+      },
+      "teamworkAllOut": {
+        "title": "Alt ud og holdspil",
+        "text": "Sætter du en rytter til alt ud, holder han op med at betale den pris, fordi han bruger alt på sig selv i stedet."
       },
       "weatherAndCobbles": {
         "title": "Vejr og brosten",

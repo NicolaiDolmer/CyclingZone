@@ -8,10 +8,15 @@
 // intet nyt tooltip-primitiv.
 import { useTranslation } from "react-i18next";
 import { riderFitDrivers } from "../../lib/selectionDrivers.js";
+import { stageHasBreakaway } from "../../lib/roleHint.js";
 import { InfoIcon } from "../ui/index.js";
 
-export default function RiderFitInsight({ rider, profileType, breakawayStrength, className = "" }) {
+// #6912: en evt. `breakawayStrength`-prop fra kalderen ignoreres; den kom fra en fast
+// tabel, ikke fra motoren. Udbruds-signalet vises på alle etaper med morgenudbrud.
+/** @param {{ rider: any, profileType?: any, className?: string, breakawayStrength?: any }} props  breakawayStrength ignoreres (#6912 S7 A) */
+export default function RiderFitInsight({ rider, profileType, className = "" }) {
   const { t } = useTranslation("races");
+  const breakawayStrength = stageHasBreakaway(profileType) ? "possible" : "none";
   const lines = riderFitDrivers(rider, { profileType, breakawayStrength });
   if (!lines.length) return null;
 

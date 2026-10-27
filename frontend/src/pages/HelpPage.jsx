@@ -513,6 +513,10 @@ const SECTION_DEFS = [
       // translated copy but no reachable docs; it belongs right after
       // roles, since it's the stage-race-specific extension of them.
       { id: "stageTactics", kind: "text" },
+      // #6746: ét sandt afsnit om indsatstrinnene. Fem trin / tre trin er et par
+      // (HELP_BLOCK_FLAGS.raceSelection, race_day_intention_enabled).
+      { id: "effortSteps", kind: "text" },
+      { id: "effortStepsThree", kind: "text" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
@@ -538,6 +542,7 @@ const SECTION_DEFS = [
       { id: "crashesAndIncidents", kind: "text" },
       { id: "timeLimitAndGrupetto", kind: "text" },
       { id: "teamwork", kind: "text" },
+      { id: "teamworkAllOut", kind: "text" }, // #6746: "alt ud" findes kun med intentions-flaget
       { id: "weatherAndCobbles", kind: "text" },
     ],
   },
