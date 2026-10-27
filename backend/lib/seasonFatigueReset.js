@@ -85,7 +85,10 @@ export function seasonResetFatigue({
   const start = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 0;
 
   if (mode === "off") return start;
-  if (mode === "full") return startFatigue;
+  if (mode === "full") {
+    const level = Number(startFatigue);
+    return Number.isFinite(level) ? Math.max(0, Math.min(100, Math.round(level))) : SEASON_FATIGUE_RESET.SEASON_START_FATIGUE;
+  }
 
   const days = Math.max(0, Math.floor(Number(restDays) || 0));
   const rec = Number.isFinite(Number(recoveryAbility))
@@ -177,7 +180,8 @@ export async function applySeasonFatigueReset({
     dryRun,
     mode,
     restDays,
-    startFatigue: SEASON_FATIGUE_RESET.SEASON_START_FATIGUE,
+    // Kun "full" bruger startniveauet; de andre modes rapporterer det ikke (#7282).
+    ...(mode === "full" ? { startFatigue: SEASON_FATIGUE_RESET.SEASON_START_FATIGUE } : {}),
     riders: conditions.length,
     changed,
     avgBefore: Math.round((sumBefore / conditions.length) * 10) / 10,
