@@ -597,7 +597,15 @@ export const climbSelectionHook: ClimbSelectionHook = (
   let localSeq = 0;
 
   for (const group of groupsSorted) {
-    if (group.rider_ids.length < 2) continue;
+    if (group.rider_ids.length < 2) {
+      // #7280 (slukket pakke): ogsaa en alt ud-rytter alene paa den sidste stigning kan knaekke.
+      if (group.rider_ids.length === 1 && ctx.s5ProfilesV3 === true && allOut7280Active()) {
+        const solo = allOutSoloCrack7280(group, nextState, ctx, gradientPct, lengthKm);
+        nextState = solo.state;
+        events.push(...solo.events);
+      }
+      continue;
+    }
 
     const measured = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
     // Post-travel reserve is evidence of sustaining this group's actual pace.
@@ -665,7 +673,9 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // adskiller ryttere ogsaa naar alle er wprime-tvungne).
     const retainFront = (sels: RiderSelection[], ids: string[]): string[] => {
       if (ids.length === 0 || ids.length < group.rider_ids.length) return ids;
-      const bestRiderId = retainedRiderIdWhenAllSplit(sels);
+      // #7280: en knaekket alt ud-rytter er aldrig den der bliver forrest, naar en anden kan.
+      const uncracked = sels.filter((s) => !s.allOutCracked);
+      const bestRiderId = retainedRiderIdWhenAllSplit(uncracked.length > 0 ? uncracked : sels);
       return ids.filter((id) => id !== bestRiderId);
     };
     splitRiderIds = retainFront(selections, splitRiderIds);
@@ -770,6 +780,35 @@ function allOutSelections7280(
     return shift < 0 ? { ...s, gapShiftSeconds: shift } : s;
   });
   return { selections: out, events };
+}
+
+/**
+ * #7280 (slukket pakke): en alt ud-rytter ALENE paa etapens sidste stigning (ingen gruppe at
+ * blive sat af) kan ogsaa knaekke. Samme risiko og samme rng-stroem som i gruppen; knaekker
+ * han, faar hans egen gruppe tabet lagt til sit hul. REN.
+ */
+function allOutSoloCrack7280(group: RaceGroup, state: EngineState, ctx: SegmentHookContext, gradientPct: number, lengthKm: number): { state: EngineState; events: TimelineEvent[] } {
+  const riderId = group.rider_ids[0];
+  const entrant = ctx.entrants[riderId];
+  const rs = state.riders[riderId];
+  if (!entrant || !rs || rs.status !== "racing" || entrant.effort !== "all_out" || rs.all_out_7280?.cracked
+    || group.kind === "gruppetto" || group.origin === "breakaway" || !isLastClimbBlock7280(ctx)) return { state, events: [] };
+  const k = allOut7280Tuning();
+  const block = climbBlockOf(ctx.route.segments ?? [], ctx.segmentIndex);
+  const share = block && block.lengthKm > 0 ? lengthKm / block.lengthKm : 1;
+  const reserve = allOutReserve01(rs.wprime, rs.wprimeMax, entrant.condition, k.reserveWprimeWeight);
+  const p = segmentCrackProbability(allOutCrackProbability(reserve, k), share);
+  if (!(p > 0) || !(ctx.rngFor("allOutCrack7280", riderId)() < p)) return { state, events: [] };
+  const t = timeModelTuningFor(ctx);
+  const loss = round2(climbTimeSeconds(gradientPct, lengthKm, t) * t.climbGapExposure * Math.max(0, k.crackLoss));
+  return {
+    state: {
+      ...state,
+      groups: state.groups.map((g) => (g.id === group.id ? { ...g, gap_seconds: round2(g.gap_seconds + loss) } : g)),
+      riders: { ...state.riders, [riderId]: { ...rs, all_out_7280: { gained: 0, cracked: true } } },
+    },
+    events: [{ km: round2(ctx.segment.to_km), type: "all_out_cracked", params: { rider_id: riderId } }],
+  };
 }
 
 /**

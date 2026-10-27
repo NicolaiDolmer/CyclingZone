@@ -130,3 +130,26 @@ test("taendt: en traet rytter knaekker oftere end en frisk (traethed der hober s
     setAllOut7280ForBench(null);
   }
 });
+
+test('taendt: ogsaa en alt ud-rytter ALENE paa den sidste stigning kan knaekke og taber tid (Codex-fund)', () => {
+  const solo = (seed: string, tuning = {}) => {
+    setAllOut7280ForBench({ active: true, tuning });
+    const input: StageInput = { route: ROUTE, startlist: [{ rider_id: 'solo', abilities: ab(50, 70), role: 'free_role', effort: 'all_out', condition: 0.2 }], orders: [], seed, tuning: RACE_V4_TUNING, rules_revision: 's5_profiles_v3' };
+    return simulateStageV4(input);
+  };
+  try {
+    let cracked = 0;
+    for (const seed of SEEDS) {
+      const out = solo(seed);
+      if (out.timeline.events.some((e) => e.type === 'all_out_cracked')) {
+        cracked++;
+        const calm = solo(seed, { crackMaxProbability: 0 });
+        const time = (o: StageOutput) => Number(o.results[0]?.time_seconds);
+        assert.ok(time(out) > time(calm), 'knaekket alene = langsommere');
+      }
+    }
+    assert.ok(cracked > 0, 'lav reserve alene giver knaek over froeene');
+  } finally {
+    setAllOut7280ForBench(null);
+  }
+});
