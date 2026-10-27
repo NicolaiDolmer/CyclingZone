@@ -25,7 +25,8 @@ export const STAGE_PLAN_TASKS = Object.freeze([
 ] as const);
 
 export type StagePlanTask = (typeof STAGE_PLAN_TASKS)[number];
-export type StagePlanRole = "captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
+// #7239: delt kaptajn (#5981) er en leder som kaptajnen, ikke en fri rolle.
+export type StagePlanRole = "captain" | "co_captain" | "sprint_captain" | "helper" | "hunter" | "free_role";
 export type StagePlanEffort = "grupetto" | "save" | "normal" | "protect" | "all_out";
 export type StagePlanTrigger = { at: "kom"; kom_index: number } | { at: "final_km" } | { at: "dropped" };
 export type StagePlanLeg = { task: StagePlanTask; from?: StagePlanTrigger };
@@ -50,8 +51,8 @@ export const TASK_EFFORT: Readonly<Record<StagePlanTask, StagePlanEffort>> = Obj
   ride_in: "save",
 });
 
-const ALL_ROLES: StagePlanRole[] = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
-const LEADERS: StagePlanRole[] = ["captain", "sprint_captain"];
+const ALL_ROLES: StagePlanRole[] = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"];
+const LEADERS: StagePlanRole[] = ["captain", "co_captain", "sprint_captain"];
 
 export const TASK_ROLES: Readonly<Record<StagePlanTask, readonly StagePlanRole[]>> = Object.freeze({
   breakaway: ALL_ROLES,
@@ -216,6 +217,7 @@ function suggestionFor({ role, route, teamHasSprintCaptain }: SuggestArgs): Stag
 
   switch (role) {
     case "captain":
+    case "co_captain": // #7239: samme plan som kaptajnen
       if (flatFinale) return [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }];
       return [{ task: "stay_sheltered" }, { task: "attack", from: attackFrom }];
     case "sprint_captain":

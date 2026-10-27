@@ -1,8 +1,8 @@
 // Race Hub S5 (Lag 3) — udbrudsjaeger-rollen i udtagelses-panelet.
 // Surfacer den EKSISTERENDE motor-mekanik (raceSimulator: hunter = altid udbruds-
-// kandidat, terraen-kalibreret udbruds-chance): hvor staerk udbruds-chancen er paa
-// dette terraen, og hvilke ryttere der er bedst egnede (rangeret efter aggression —
-// evnen der driver udbruds-CHANCEN). Ingen motor-aendring.
+// kandidat): at jaegeren proever at komme med i morgenudbruddet, og hvilke ryttere
+// der er bedst egnede (rangeret efter aggression). Ingen motor-aendring. #6912: den
+// faste "Breakaway odds"-label er fjernet, fordi den ikke kom fra motoren.
 //
 // #1884 (S5-opfoelgning): jaegeren VAELGES nu her. Foer stod der en separat
 // "Udbruds-jaeger"-dropdown i rolle-raekken OG denne forklaring lige under — to
@@ -13,15 +13,8 @@
 // breakaway...") — fladen holder sig til en linje kontekst.
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { hunterBreakawayStrength } from "../../lib/roleHint.js";
+import { stageHasBreakaway } from "../../lib/roleHint.js";
 import { rankHunterCandidates } from "../../lib/hunterRanking.js";
-
-const STRENGTH_CLASS = {
-  high: "text-cz-accent-t",
-  medium: "text-cz-2",
-  low: "text-cz-3",
-  none: "text-cz-3",
-};
 
 // Raekke-opskrift for baade "ingen jaeger" og rytterne: samme hoejde, samme
 // markering af det valgte (TASTE P8 — eet sprog for status).
@@ -32,14 +25,15 @@ const ROW_OFF = "border-transparent text-cz-1 hover:border-cz-border hover:bg-cz
 export default function HunterExplainer({
   riders = [],
   profileType = null,
-  finaleType = null,
   hunterId = null,
   onSelect = null,
   disabled = false,
 }) {
   const { t } = useTranslation("races");
-  const strength = hunterBreakawayStrength(profileType, finaleType);
-  const strengthWord = t(`racehub.breakawayStrength.${strength}`).toLowerCase();
+  // #6912: ingen fast udbrudschance her (den kom fra en tabel, ikke fra motoren).
+  // Linjeløb: jægeren prøver at komme med, feltet afgør på dagen. Tidskørsel: intet udbrud.
+  // Uden indlæst profil vises linjeløbs-teksten, fordi den er sand for langt de fleste etaper.
+  const isTimeTrial = profileType != null && !stageHasBreakaway(profileType);
 
   // #1884: HELE den udtagne trup skal kunne vaelges (dropdownen kunne det), ikke
   // kun de tre bedste. Rangeringen er stadig aggression desc — den er selve
@@ -59,12 +53,8 @@ export default function HunterExplainer({
   return (
     <section className="bg-cz-subtle border-t border-cz-border px-4 py-3">
       <h3 className="text-xs font-semibold text-cz-1">{t("racehub.hunterExplainer.pickTitle")}</h3>
-      <p className="text-2xs leading-snug mt-1">
-        <span className="text-2xs text-cz-3">{t("racehub.breakawayStrength.label")}: </span>
-        <span className={`text-2xs font-semibold ${STRENGTH_CLASS[strength]}`}>
-          {t(`racehub.breakawayStrength.${strength}`)}
-        </span>
-        <span className="text-2xs text-cz-3"> · {t("racehub.hunterExplainer.strengthLine", { strength: strengthWord })}</span>
+      <p className="text-2xs leading-snug text-cz-3 mt-1">
+        {isTimeTrial ? t("racehub.roleCard.hunter.hint.itt") : t("racehub.hunterExplainer.dayLine")}
       </p>
 
       <div className="mt-2.5">

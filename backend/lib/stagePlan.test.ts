@@ -16,7 +16,7 @@ import {
   type StagePlanRoute,
 } from "./stagePlan.ts";
 
-const ROLES: StagePlanRole[] = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
+const ROLES: StagePlanRole[] = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"];
 const ROUTE: StagePlanRoute = stagePlanRouteFromRaw({
   distance_km: 160,
   profile_type: "mountain",

@@ -189,3 +189,18 @@ test("#5945 start_outlook.starts === false giver banner i stedet for matrix", ()
   assert.ok(bannerAt > 0 && flagOffAt > 0 && bannerAt < flagOffAt, "banneret ligger foer de normale grene");
   assert.ok(matrixAt > 0);
 });
+
+// #6746: trinnet "protect" hedder efter rollen. Alle seks roller er daekket: ledere
+// (ogsaa den delte kaptajn, som aldrig arbejder) foelger angrebene, fri rolle koerer
+// offensivt, resten (hjaelper, jaeger) arbejder. Ingen af dem falder tilbage til det
+// gamle "arbejd eller angrib".
+test("#6746 protect-trinnet er rollebevidst for alle roller", () => {
+  const map = source.match(/const PROTECT_VARIANT = \{([^}]*)\}/)?.[1] ?? "";
+  for (const role of ["captain", "co_captain", "sprint_captain"]) {
+    assert.match(map, new RegExp(`${role}: "follow"`), `${role} skal foelge angrebene`);
+  }
+  assert.match(map, /free_role: "free"/);
+  assert.doesNotMatch(map, /helper|hunter/, "hjaelper og jaeger er default (work)");
+  assert.match(source, /PROTECT_VARIANT\[role\] \|\| "work"/);
+  assert.match(source, /effort === "protect" \? protectText\(t, role, "step"\)/);
+});
