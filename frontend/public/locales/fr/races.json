@@ -978,10 +978,16 @@
       "stage_roles_rider_abandoned": "L'un des coureurs est hors course et ne peut plus recevoir de consigne.",
       "stage_roles_race_completed": "Cette course est terminée, les consignes ne peuvent donc plus être modifiées.",
       "generic": "Impossible d'enregistrer les consignes. Réessaie.",
-      "stage_roles_conflict": "Ta tactique a été modifiée dans une autre fenêtre. La dernière version est chargée. Vérifie-la et enregistre à nouveau."
+      "stage_roles_conflict": "Ta tactique a été modifiée dans une autre fenêtre. La dernière version est chargée. Vérifie-la et enregistre à nouveau.",
+      "team_orders_grupetto_with_break": "Un coureur en Gruppetto ne peut pas tenter l’échappée.",
+      "team_orders_grupetto_with_train": "Un coureur en Gruppetto ne peut pas rouler dans le train du sprint.",
+      "team_orders_work_with_break": "Un coureur qui roule pour le leader ne peut pas tenter l’échappée.",
+      "team_orders_train_with_break": "Un coureur du train du sprint ne peut pas tenter l’échappée."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Pas avec le Gruppetto.", "notWithWork": "Un coureur qui roule pour le leader ne peut pas prendre l’échappée.", "notWithBreak": "Pas pendant qu’il tente l’échappée.", "notWithTrain": "Le train du sprint reste dans le peloton jusqu’au final." },
+    "pickOne": "Choisis-en un",
     "title": "Tactique",
     "locksAt": "Verrouillage {time}",
     "locked": "Verrouillé",

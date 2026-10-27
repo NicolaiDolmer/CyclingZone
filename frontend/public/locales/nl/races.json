@@ -978,10 +978,16 @@
       "stage_roles_rider_abandoned": "Een van de renners is uit de koers en kan geen intentie meer krijgen.",
       "stage_roles_race_completed": "Deze koers is afgelopen, dus de intenties kunnen niet meer worden gewijzigd.",
       "generic": "De intenties konden niet worden opgeslagen. Probeer het opnieuw.",
-      "stage_roles_conflict": "Je tactiek is in een ander venster gewijzigd. De nieuwste versie is geladen. Controleer hem en sla opnieuw op."
+      "stage_roles_conflict": "Je tactiek is in een ander venster gewijzigd. De nieuwste versie is geladen. Controleer hem en sla opnieuw op.",
+      "team_orders_grupetto_with_break": "Een renner in de grupetto kan de vlucht niet proberen.",
+      "team_orders_grupetto_with_train": "Een renner in de grupetto kan niet in de sprinttrein rijden.",
+      "team_orders_work_with_break": "Een renner die voor de kopman werkt, kan de vlucht niet proberen.",
+      "team_orders_train_with_break": "Een renner in de sprinttrein kan de vlucht niet proberen."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Niet met Grupetto.", "notWithWork": "Een renner die voor de kopman werkt, kan niet mee in de vlucht.", "notWithBreak": "Niet terwijl hij de vlucht probeert.", "notWithTrain": "De sprinttrein blijft tot de finale in het peloton." },
+    "pickOne": "Kies er één",
     "title": "Tactiek",
     "locksAt": "Vergrendelt {time}",
     "locked": "Vergrendeld",

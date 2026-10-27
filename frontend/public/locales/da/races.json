@@ -961,10 +961,16 @@
       "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere få en intention.",
       "stage_roles_race_completed": "Løbet er afsluttet, så intentionerne kan ikke længere ændres.",
       "generic": "Kunne ikke gemme intentionerne. Prøv igen.",
-      "stage_roles_conflict": "Taktikken er ændret i et andet vindue. Den nyeste udgave er hentet. Tjek den og gem igen."
+      "stage_roles_conflict": "Taktikken er ændret i et andet vindue. Den nyeste udgave er hentet. Tjek den og gem igen.",
+      "team_orders_grupetto_with_break": "En rytter på Grupetto kan ikke forsøge udbrud.",
+      "team_orders_grupetto_with_train": "En rytter på Grupetto kan ikke køre i sprint-toget.",
+      "team_orders_work_with_break": "En rytter der arbejder for lederen, kan ikke forsøge udbrud.",
+      "team_orders_train_with_break": "En rytter i sprint-toget kan ikke forsøge udbrud."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Ikke sammen med Grupetto.", "notWithWork": "En rytter der arbejder for lederen, kan ikke gå med i udbrud.", "notWithBreak": "Ikke når han forsøger udbrud.", "notWithTrain": "Sprint-toget bliver i feltet til finalen." },
+    "pickOne": "Vælg én",
     "title": "Taktik",
     "locksAt": "Låser {time}",
     "locked": "Låst",
