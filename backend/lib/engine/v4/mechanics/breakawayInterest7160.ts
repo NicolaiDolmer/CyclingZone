@@ -19,6 +19,8 @@
 
 import type { Entrant, GcContext, ProfileType } from "../types.ts";
 import { S5_V3_MOUNTAIN_LET_GO_7160_TUNING } from "../tuning.ts";
+import { raceGcAbilityModel } from "./gcThreat.ts"; // #7258
+import { projectedGainSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
 
 /** Reglen gaelder: v3, en bjergprofil og et etapeloeb med et publiceret klassement. */
 export function s5V3MountainLetGoApplies(input: { s5ProfilesV3?: boolean; profileType: ProfileType; gcContext: GcContext | null | undefined }): boolean {
@@ -56,20 +58,29 @@ export function gcRiderGapByTeam(input: {
   entrants: Readonly<Record<string, Entrant>>;
   gcContext: GcContext;
 }): Map<string, number> {
+  return new Map([...gcRiderByTeam(input)].map(([teamId, r]) => [teamId, r.gap]));
+}
+
+/** #7258: som gcRiderGapByTeam, men med holdets klassementsrytter (team_id -> {riderId, gap}). */
+export function gcRiderByTeam(input: {
+  chaseGroupRiderIds: readonly string[];
+  entrants: Readonly<Record<string, Entrant>>;
+  gcContext: GcContext;
+}): Map<string, { riderId: string; gap: number }> {
   const rows = gcRowsById(input.gcContext);
   const maxRank = S5_V3_MOUNTAIN_LET_GO_7160_TUNING.gcRiderMaxRank;
-  const best = new Map<string, GcRow>();
+  const best = new Map<string, GcRow & { riderId: string }>();
   for (const id of [...input.chaseGroupRiderIds].sort((a, b) => a.localeCompare(b))) {
     const raw = input.entrants[id]?.team_id;
     const teamId = typeof raw === "string" && raw.length > 0 ? raw : null; // samme som breakaway.ts teamIdOf
     const row = rows.get(id);
     if (!teamId || !row) continue;
     const prior = best.get(teamId);
-    if (!prior || row.rank < prior.rank) best.set(teamId, row);
+    if (!prior || row.rank < prior.rank) best.set(teamId, { ...row, riderId: id });
   }
-  const out = new Map<string, number>();
+  const out = new Map<string, { riderId: string; gap: number }>();
   for (const [teamId, row] of [...best].sort(([a], [b]) => a.localeCompare(b))) {
-    if (row.rank <= maxRank) out.set(teamId, row.gap);
+    if (row.rank <= maxRank) out.set(teamId, { riderId: row.riderId, gap: row.gap });
   }
   return out;
 }
@@ -83,13 +94,22 @@ export function breakawayHarmlessFor(input: {
   breakawayRiderIds: readonly string[];
   gcContext: GcContext;
   gcRiderGapSeconds: number;
+  /**
+   * #7258: fremskrivningen. Med holdets klassementsrytter og startfeltet maales afstanden
+   * fremskrevet: en staerkere udbryder (paa loebsspecifik klassementsevne) vinder tid paa resten
+   * af loebet, saa hans afstand taeller kun med det han ikke henter igen. Udeladt = kun tiden.
+   */
+  projection?: { gcRiderId: string; entrants: Readonly<Record<string, Entrant>> };
 }): boolean {
   if (input.breakawayRiderIds.length === 0 || !Number.isFinite(input.gcRiderGapSeconds)) return false;
   const rows = gcRowsById(input.gcContext);
   const margin = S5_V3_MOUNTAIN_LET_GO_7160_TUNING.harmlessGcGapSeconds;
+  const model = input.projection ? raceGcAbilityModel(input.gcContext) : null;
+  const ownAbility = model && input.projection ? model(input.projection.entrants[input.projection.gcRiderId]) : 0;
+  const gainOf = (id: string) => (model && ownAbility > 0 ? projectedGainSeconds(input.gcContext, model(input.projection!.entrants[id]) / ownAbility) : 0);
   return input.breakawayRiderIds.every((id) => {
     const row = rows.get(id);
-    return row !== undefined && row.gap - input.gcRiderGapSeconds >= margin;
+    return row !== undefined && row.gap - input.gcRiderGapSeconds - gainOf(id) >= margin;
   });
 }
 
@@ -111,8 +131,9 @@ export function s5V3MountainLetGoInterestScale(input: {
   const scale = s5V3GcTeamInterestScale();
   if (scale === 1) return undefined;
   const out = new Map<string, number>();
-  for (const [teamId, gap] of gcRiderGapByTeam({ chaseGroupRiderIds: input.chaseGroupRiderIds, entrants: input.entrants, gcContext: gc })) {
-    if (breakawayHarmlessFor({ breakawayRiderIds: input.breakawayRiderIds, gcContext: gc, gcRiderGapSeconds: gap })) out.set(teamId, scale);
+  for (const [teamId, { riderId, gap }] of gcRiderByTeam({ chaseGroupRiderIds: input.chaseGroupRiderIds, entrants: input.entrants, gcContext: gc })) {
+    // #7258: "ufarligt" maales fremskrevet (evne x resterende etaper), ikke kun paa tiden.
+    if (breakawayHarmlessFor({ breakawayRiderIds: input.breakawayRiderIds, gcContext: gc, gcRiderGapSeconds: gap, projection: { gcRiderId: riderId, entrants: input.entrants } })) out.set(teamId, scale);
   }
   return out.size > 0 ? out : undefined;
 }

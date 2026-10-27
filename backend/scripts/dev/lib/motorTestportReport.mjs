@@ -10,6 +10,7 @@ import { raceGroupOf } from "./breakawayIntent.mjs";
 import { SHORT_STAGE_RACE_GROUPS, shortStageRaceGroup, withShortRaceGapBands } from "./tourScorecard.mjs";
 
 import { evaluateV3Gates, measureSprintFinale, v3GatesApply } from "./v3Gates.mjs";
+import { buildRaceGroupCard, MONUMENT_RACE_CLASS, raceGroupGateLine, raceGroupGateSection } from "./raceGroupGates.mjs"; // #7214
 
 /** Tidskoersler: ingen udbrud, ingen favoritter at doemme. */
 export const TIME_TRIAL_CLASSES = Object.freeze(["itt", "itt_hilly", "ttt"]);
@@ -70,6 +71,7 @@ export function raceResultFromDryRun(json) {
     raceId: json.race.id ?? null,
     name: json.race.name ?? json.race.id ?? "?",
     stages: Number(json.race.stages) || Math.max(0, ...json.runs.map((r) => r.summary?.stages?.length ?? 0)),
+    raceClass: json.race.race_class ?? null, // #7214: monumenter er egen loebsgruppe
     runs,
   };
 }
@@ -126,7 +128,7 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
   const itt = [];
   const gcFinal = [];
   const gcMargin = [];
-  const gcSeeds = { n: 0, member: 0, wonFromBreak: 0, known: false };
+  const gcSeeds = { n: 0, member: 0, wonFromBreak: 0, known: false, decided: 0, decidedKnown: 0 }; // #7258 decided
   for (const rr of raceResults) {
     const run = rr?.runs?.[revision];
     if (!run) { agg.missing += 1; continue; }
@@ -157,6 +159,8 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
         gcSeeds.n += 1;
         if (sr.some((r) => (r.breakawayRiderIds ?? []).includes(s.gcWinner))) gcSeeds.member += 1;
         if (sr.some((r) => r.breakawayWon === true && r.winnerId === s.gcWinner)) gcSeeds.wonFromBreak += 1;
+        // #7258: kun et morgenudbrud der faktisk afgjorde klassementet (gcFromBreakaway7258.mjs).
+        if (s.gcWinnerBreak) { gcSeeds.decidedKnown += 1; if (s.gcWinnerBreak.decisive) gcSeeds.decided += 1; }
       }
     }
   }
@@ -179,7 +183,8 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
     agg.favouriteBreakawayWins = { count: fav, ofBreakawayWins: share(fav, wins.length), breakawayWins: wins.length, ofRoadRuns: share(fav, road.length) };
   }
   if (gcSeeds.known) {
-    agg.gcWinnerFromBreak = { seeds: gcSeeds.n, member: gcSeeds.member, memberShare: share(gcSeeds.member, gcSeeds.n), wonFromBreak: gcSeeds.wonFromBreak, wonFromBreakShare: share(gcSeeds.wonFromBreak, gcSeeds.n) };
+    agg.gcWinnerFromBreak = { seeds: gcSeeds.n, member: gcSeeds.member, memberShare: share(gcSeeds.member, gcSeeds.n), wonFromBreak: gcSeeds.wonFromBreak, wonFromBreakShare: share(gcSeeds.wonFromBreak, gcSeeds.n),
+      ...(gcSeeds.decidedKnown ? { decided: gcSeeds.decided, decidedShare: share(gcSeeds.decided, gcSeeds.decidedKnown) } : {}) };
   }
   if (road.some((r) => has(r, "earlyCatch"))) {
     const withBreak = road.filter((r) => (r.breakawayRiderIds ?? []).length > 0);
@@ -273,7 +278,9 @@ export function abandonGateG17(raceResults, revision, { bands = null } = {}) {
 // i gruppen vises kun som information.
 
 /** Loebsgruppe for udbrudsmaalene (samme inddeling som P0-satserne: breakawayIntent.raceGroupOf). */
-export const BREAKAWAY_RACE_GROUPS = Object.freeze(["gt", "stage_race", "one_day"]);
+// #7214 (ejer 26/10): monumenter (endagsloeb med race_class Monuments) er egen gruppe; deres
+// samlede baand er raceGroupBands.monumentBreakawayWinShare, medmindre breakawayGroupTotalBands har et.
+export const BREAKAWAY_RACE_GROUPS = Object.freeze(["gt", "stage_race", "one_day", "monument"]);
 /**
  * #6804 G11: grupperne hvor klassementsjagten maales (etapeloeb). Private lofter (valgfrie):
  *   gcChaseCatchBands: { gt|stage_race: { gcEarlyCatchMaxShare?, yoyoMaxShare? } }
@@ -332,7 +339,8 @@ export function aggregateRaceGroups(raceResults, revision, thresholds = {}) {
   for (const rr of raceResults) {
     const run = rr?.runs?.[revision];
     if (!run) continue;
-    const g = breakawayRaceGroup(rr.stages);
+    const g0 = breakawayRaceGroup(rr.stages);
+    const g = g0 === "one_day" && rr.raceClass === MONUMENT_RACE_CLASS ? "monument" : g0; // #7214
     for (const s of run.perSeed ?? []) for (const r of s.rows ?? []) if (isRoad(r)) rowsByGroup[g].push(r);
     const sg = shortGapGroup(rr.stages);
     if (sg) {
@@ -347,7 +355,7 @@ export function aggregateRaceGroups(raceResults, revision, thresholds = {}) {
   for (const g of BREAKAWAY_RACE_GROUPS) {
     const rows = rowsByGroup[g];
     const total = { ...terrainStats(rows) };
-    total.verdict = bandVerdict(total.breakawayWinShare, totalBands[g]);
+    total.verdict = bandVerdict(total.breakawayWinShare, totalBands[g] ?? (g === "monument" ? thresholds?.raceGroupBands?.monumentBreakawayWinShare : undefined));
     const byTerrain = {};
     for (const t of [...new Set(rows.map((r) => r.profile_type))].sort()) {
       const st = terrainStats(rows.filter((r) => r.profile_type === t));
@@ -460,6 +468,8 @@ export function buildTestportCard({ raceResults, baseline, candidate, benchByRev
     },
     // #2757 S0: spurtfinalen (maaling, ingen gate).
     sprintFinale: { baseline: measureSprintFinale(results, baseline, contexts), candidate: measureSprintFinale(results, candidate, contexts) },
+    // #7214 (ejer 26/10): fire loebsgrupper + favoritsejre; blokerer kun kandidater efter s5_profiles_v3.
+    raceGroupGates: buildRaceGroupCard({ raceResults: results, baseline, candidate, contexts, thresholds }),
   };
 }
 
@@ -507,6 +517,7 @@ export function sideBySideRows(card) {
   add("favorit-udbrudssejre (kaptajn vandt fra udbrud)", (a) => a.favouriteBreakawayWins?.count, (x) => fmtN(x, 0));
   add("favorit-udbrudssejre (andel af udbrudssejre)", (a) => a.favouriteBreakawayWins?.ofBreakawayWins, fmtPct);
   add("GC-vinder sad i udbrud (andel af etapeloeb x seeds)", (a) => a.gcWinnerFromBreak?.memberShare, fmtPct);
+  add("GC-vinder i et udbrud der afgjorde loebet (andel, #7258)", (a) => a.gcWinnerFromBreak?.decidedShare, fmtPct);
   add("GC-vinder vandt en etape fra udbrud (andel)", (a) => a.gcWinnerFromBreak?.wonFromBreakShare, fmtPct);
   add("tidlige indhentninger (andel af udbrud)", (a) => a.earlyCatches?.ofBreakaways, fmtPct);
   add("tidlige indhentninger med nyt udbrud (andel)", (a) => a.earlyCatches?.reformedShare, fmtPct);
@@ -606,6 +617,9 @@ export function v3GateValueText(g) {
     case "G17": return [...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.share)}`), `kaptajn ${fmtPct(x.captainRate)} / hjaelper ${fmtPct(x.helperRate)}`].join(" · ");
     case "G18": return `sprinter ${fmtPct(x.sprinterWins)} · klassementsvinder ${fmtPct(x.gcWinnerWins)} (n ${x.n}, ${x.races} loeb)`;
     case "G19": return `samlet ${fmtS(x.median)} (n ${x.n}) · ${Object.entries(x.byDivision ?? {}).map(([d, v]) => `${String(d).slice(0, 8)} ${fmtS(v.median)}`).join(" · ")}`;
+    case "gcFromBreakaway": return [`afgjort af udbrud ${fmtPct(x.decidedShare)} · vandt fra udbrud ${fmtPct(x.wonShare)} (n ${x.n})`, ...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.decidedShare)}/${fmtPct(v.wonShare)}`), ...Object.entries(x.favourites ?? {}).map(([k, v]) => `${k}: GC-fav ${fmtPct(v.gcFavShare)}, etapefav ${fmtPct(v.stageFavShare)} af ${v.breakaways} udbrud`)].join(" · "); // #7258
+    case "stageFavouriteInBreakaway": // #7258 S3
+    case "gcFavouriteInBreakaway": return Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.share)} af ${v.breakaways} morgenudbrud (${fmtPct(v.shareOfRoadStages)} af ${v.roadStages} vejetaper, ${v.races} loeb)`).join(" · ") || "-"; // #7258 S4
     case "G2F": return `${x.n} etaper · over oevre zone uden jagt-interesse ${x.overUpperWithoutUnchased ?? "-"} · over haard graense ${x.overHardMax ?? "-"}`;
     default: return "-";
   }
@@ -656,8 +670,8 @@ export function renderTestportMarkdown(card) {
   lines.push(`- FAIL: ${c.counts.FAIL} mod ${b.counts.FAIL} (${fmtDelta(b.counts.FAIL, c.counts.FAIL, (x) => fmtN(x, 0))}); PASS ${fmtDelta(b.counts.PASS, c.counts.PASS, (x) => fmtN(x, 0))}.`);
   const reg = card.verdict.hardGateRegressions;
   lines.push(reg.length ? `- Haarde gates VAERRE under kandidaten: ${reg.map((r) => `${r.label} ${r.baseline} -> ${r.candidate}`).join("; ")}.` : "- Ingen haard gate er vaerre under kandidaten.");
-  lines.push(v3GateLine(card));
-  lines.push(...v3GateSection(card), ...sprintFinaleSection(card));
+  lines.push(v3GateLine(card), raceGroupGateLine(card));
+  lines.push(...v3GateSection(card), ...raceGroupGateSection(card), ...sprintFinaleSection(card));
   lines.push("", "## Side om side", "", ...table(["Maaling", card.baseline, card.candidate, "delta"], sideBySideRows(card)));
   lines.push("", "## Haarde gates", "", ...table(["Gate", ...[card.baseline, card.candidate].flatMap((r) => [`${r} hits`, `${r} loeb ramt`, `${r} loeb FAIL`])],
     HARD_GATES.map(([k, label]) => [label, ...[b, c].flatMap((a) => [fmtN(a.hardGates[k].total, 0), String(a.hardGates[k].racesHit), String(a.hardGates[k].racesFail)])])));
@@ -727,6 +741,7 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;pad
 ${(card.meta?.failedRaces?.length || card.meta?.missingScorecards?.length || card.meta?.pendingTasks?.length) ? `<p class="bad">UFULDSTAENDIG: ${card.meta?.failedRaces?.length ?? 0} opgaver fejlede, ${card.meta?.missingScorecards?.length ?? 0} scorecards mangler, ${card.meta?.pendingTasks?.length ?? 0} opgaver venter</p>` : ""}
 <p class="${reg.length ? "bad" : "ok"}">${reg.length ? `Haarde gates vaerre: ${esc(reg.map((r) => r.label).join(", "))}` : "Ingen haard gate er vaerre under kandidaten"} · FAIL-delta ${esc(String(card.verdict.failDelta))}</p>
 ${card.v3Gates?.applies ? `<p class="${card.v3Gates.candidate.blocked ? "bad" : "ok"}">${esc(v3GateLine(card).replace(/^- /, "").replace(/\*\*/g, ""))}</p>` : ""}
+${card.raceGroupGates?.candidate ? `<p class="${card.raceGroupGates.applies && card.raceGroupGates.candidate.blocked ? "bad" : "ok"}">${esc(raceGroupGateLine(card).replace(/^- /, "").replace(/\*\*/g, ""))}</p>` : ""}
 <table><thead><tr><th>Maaling</th><th class="n">${esc(card.baseline)}</th><th class="n">${esc(card.candidate)}</th><th class="n">delta</th></tr></thead><tbody>${rows}</tbody></table>
 </body></html>`;
 }
