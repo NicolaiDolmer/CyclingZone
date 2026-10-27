@@ -8,6 +8,8 @@
     "noPlanLocked": "No plan. He rode on his role.",
     "noPlanOrders": "No plan yet. He rides on what you set: {orders}.",
     "noPlanOrdersLocked": "No plan. He rode on what you set: {orders}.",
+    "luxuryHelperPlan": "No saved plan. As luxury helper he rides the suggestion.",
+    "luxuryHelperPlanLocked": "No saved plan. As luxury helper he rode the suggestion.",
     "noFit": "This plan no longer fits his role. Pick a new one.",
     "colPlan": "Plan for stage {number}",
     "colPlanRaceDay": "Plan for the race",

@@ -8,6 +8,8 @@
     "noPlanLocked": "Pas de plan. Il a couru selon son rôle.",
     "noPlanOrders": "Pas encore de plan. Il court avec tes consignes : {orders}.",
     "noPlanOrdersLocked": "Pas de plan. Il a couru avec tes consignes : {orders}.",
+    "luxuryHelperPlan": "Aucun plan enregistré. En équipier de luxe, il suit la suggestion.",
+    "luxuryHelperPlanLocked": "Aucun plan enregistré. En équipier de luxe, il a suivi la suggestion.",
     "noFit": "Ce plan ne correspond plus à son rôle. Choisis-en un nouveau.",
     "colPlan": "Plan pour l'étape {number}",
     "colPlanRaceDay": "Plan pour la course",

@@ -8,6 +8,8 @@
     "noPlanLocked": "Ingen plan. Han kørte efter sin rolle.",
     "noPlanOrders": "Ingen plan endnu. Han kører på det, du har sat: {orders}.",
     "noPlanOrdersLocked": "Ingen plan. Han kørte på det, du havde sat: {orders}.",
+    "luxuryHelperPlan": "Ingen gemt plan. Som luksushjælper kører han forslaget.",
+    "luxuryHelperPlanLocked": "Ingen gemt plan. Som luksushjælper kørte han forslaget.",
     "noFit": "Planen passer ikke længere til hans rolle. Vælg en ny.",
     "colPlan": "Plan for etape {number}",
     "colPlanRaceDay": "Plan for løbet",

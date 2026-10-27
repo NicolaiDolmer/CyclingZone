@@ -8,6 +8,8 @@
     "noPlanLocked": "Sin plan. Corrió según su rol.",
     "noPlanOrders": "Aún sin plan. Corre con lo que fijaste: {orders}.",
     "noPlanOrdersLocked": "Sin plan. Corrió con lo que fijaste: {orders}.",
+    "luxuryHelperPlan": "Sin plan guardado. Como gregario de lujo, sigue la sugerencia.",
+    "luxuryHelperPlanLocked": "Sin plan guardado. Como gregario de lujo, siguió la sugerencia.",
     "noFit": "Este plan ya no encaja con su rol. Elige uno nuevo.",
     "colPlan": "Plan para la etapa {number}",
     "colPlanRaceDay": "Plan para la carrera",
