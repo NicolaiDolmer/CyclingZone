@@ -123,6 +123,7 @@ export type AllOut7280Tuning = {
   climbDemand: number; // all_out-kravet op ad en stigning og paa brosten
   gainLoss: number; // relativt tab taget af hullet paa den afgoerende stigning ved fuld evne og reserve
   levelPower: number; // evne-vaegt: (1 - underskud til gruppens bedste) ^ levelPower
+  reserveWprimeWeight: number; // W'-andelens vaegt i reserven (resten er dagens friskhed alene)
   crackReserve: number; // under denne reserve (0-1) vokser risikoen for at knaekke
   crackMaxProbability: number; // risikoen over hele den afgoerende stigning ved tom reserve
   crackLoss: number; // relativt tab lagt OVEN I hullet naar rytteren knaekker
@@ -135,8 +136,9 @@ export const ALL_OUT_7280_TUNING: Readonly<AllOut7280Tuning> = Object.freeze({
   climbDemand: 1.0,
   gainLoss: 0.03,
   levelPower: 3,
-  crackReserve: 0.55,
-  crackMaxProbability: 0.5,
+  reserveWprimeWeight: 0.5,
+  crackReserve: 0.65,
+  crackMaxProbability: 0.6,
   crackLoss: 0.06,
   fatigueLoad: 1.8,
   timeTrialGain: 0.01,

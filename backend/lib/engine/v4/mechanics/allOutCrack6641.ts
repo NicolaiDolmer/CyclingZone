@@ -24,11 +24,16 @@ import type { AllOut7280Tuning } from "./effortCost.ts";
 
 const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 
-/** Reserven alt ud regner med (0-1): W'-andel x dagens friskhed. */
-export function allOutReserve01(wprime: number, wprimeMax: number, condition: number): number {
+/**
+ * Reserven alt ud regner med (0-1): dagens friskhed x (W'-andelen vaegtet med
+ * `wprimeWeight`). En frisk rytter paa kanten af feltet har stadig noget at give af;
+ * en traet rytter med tom W' har intet.
+ */
+export function allOutReserve01(wprime: number, wprimeMax: number, condition: number, wprimeWeight = 1): number {
   const w = wprimeMax > 0 && Number.isFinite(wprime) ? clamp(wprime / wprimeMax, 0, 1) : 0;
   const c = Number.isFinite(condition) ? clamp(condition, 0, 1) : 1;
-  return w * c;
+  const k = Number.isFinite(wprimeWeight) ? clamp(wprimeWeight, 0, 1) : 1;
+  return c * (1 - k + k * w);
 }
 
 /** Evne-vaegten (0-1): 1 for gruppens bedste klatrer, faldende med underskuddet. */
@@ -64,12 +69,6 @@ export function segmentCrackProbability(blockProbability: number, segmentShare01
   const s = clamp(Number.isFinite(segmentShare01) ? segmentShare01 : 1, 0, 1);
   if (p <= 0 || s <= 0) return 0;
   return 1 - Math.pow(1 - p, s);
-}
-
-/** Hullet motoren reelt giver: under klyngens minimum (og ikke tvunget af) = 0. */
-export function appliedGapSeconds(gapSeconds: number, forced: boolean, clusterMinSeconds: number): number {
-  const g = Math.max(0, Number.isFinite(gapSeconds) ? gapSeconds : 0);
-  return forced || g >= clusterMinSeconds ? g : 0;
 }
 
 /** Den sammenhaengende stigningsblok segmentet ligger i: [start, end] (indekser). */
