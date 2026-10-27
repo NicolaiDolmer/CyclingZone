@@ -579,9 +579,9 @@ bestyrelses-notifikationer (`.claude/learnings/2026-08-03-ai-rider-recovery-filt
 |---|---|---|
 | Modul | `seasonFatigueReset.js` | `seasonFormReset.js` |
 | Flag / mode | `season_fatigue_reset_enabled` = **on** (sat 26/7 08:59 dansk tid) | `season_form_reset_mode` = **`decay`** (sat 3/8 22:59 dansk tid) |
-| Aktiv mode | `MODE: "full"` - alle ryttere på startniveauet 20 (`SEASON_START_FATIGUE`, ejer 27/10, #7282; før: 0) | mod `decay_target`, med `decay_factor` |
+| Aktiv mode | `MODE: "full"` - alle ryttere på et fælles startniveau over nul (`SEASON_START_FATIGUE`, ejer 27/10, #7282) | mod `decay_target`, med `decay_factor` |
 | Ejer-beslutning | 26/7: valgte "full" selvom harnesset anbefalede `rest_days`/3, fordi princippet "alle starter sæsonen lige" vejede tungere end at AI-hold vandt 3,9 procentpoint af top-10-pladserne | parametrene ligger i `app_config`, ikke i kode |
-| Idempotens | "full" er idempotent (f → 20, 20 → 20), derfor ingen claim-tabel. Låst af test | - |
+| Idempotens | "full" er idempotent (startniveau → startniveau), derfor ingen claim-tabel. Låst af test | - |
 
 Målt i `app_config` 30/8. De øvrige `season_form_reset_*`-parametre står også i `app_config`
 og blev sidst rørt 3/8.
@@ -632,7 +632,7 @@ Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`
 | Medicin M2/M3 i træning: lavere trænings-skaderisiko og kortere skade | `conditionModelV2.settleTrainingDateConditionV2` |
 | Medicin-bonus pr. hold: afdelingens niveau og chefens samlede styrke (`effectiveBonus("medical", …)`); hold uden afdeling = ingen effekt; sporet er live i klubben præcis når flaget er on | `medicalEffects.loadTeamMedicalBonus`, `facilityConstants.isTrackEffectLive` |
 
-Sæsonstart (ejer 27/10, #7282): sæsonskiftet efterlader alle ryttere på træthed 20, ikke 0, så spilleren selv bestemmer formen før første løb (hvile taber, normal holder, hård hæver). Se §5.2.
+Sæsonstart (ejer 27/10, #7282): sæsonskiftet efterlader alle ryttere på et fælles startniveau (`SEASON_START_FATIGUE`), ikke nul, så spilleren selv bestemmer formen før første løb (hvile taber, normal holder, hård hæver). Se §5.2.
 
 Konstanterne står i `CONDITION_V2_CONFIG`; målinger og kalibrering kun i `balance-internals/6984/` (hard rule 17). Tænding: S5-start på ordret ejer-go efter harnessen (`backend/scripts/dev/conditionModelV2Harness6984.mjs`).
 
