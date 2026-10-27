@@ -700,7 +700,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #7003 (spec §3): et indsatstrin der modsiger rytterens udbrud/tog i dag.
   const effortBlockedKey = (rider, step) => {
     const ro = orderByRider.get(rider.rider_id) || {};
-    return blockedReasonKey(step, { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true }, roleFor(rider));
+    return blockedReasonKey(step, { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true }, roleFor(rider), { teamHasSprintCaptain });
   };
 
   const effortFor = (rider) => (stageLocked
@@ -852,11 +852,11 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const isSprintCaptain = roleFor(rider) === "sprint_captain";
     // #7003 (spec §3): et valg der modsiger rytterens andre ordrer kan ikke slaas til.
     const riderState = { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true };
-    const breakBlocked = blockedReasonKey("try_break", riderState, roleFor(rider));
+    const breakBlocked = blockedReasonKey("try_break", riderState, roleFor(rider), { teamHasSprintCaptain });
     // Tog-knappen vises kun paa et hold med spurtkaptajn (og aldrig for ham selv).
     const trainShown = teamHasSprintCaptain && !isSprintCaptain;
-    const trainBlocked = trainShown ? blockedReasonKey("leadout", riderState, roleFor(rider)) : null;
-    const conflict = oppositeOrderError(riderState, roleFor(rider));
+    const trainBlocked = trainShown ? blockedReasonKey("leadout", riderState, roleFor(rider), { teamHasSprintCaptain }) : null;
+    const conflict = oppositeOrderError(riderState, roleFor(rider), { teamHasSprintCaptain });
     // En gemt modsaetning forklares med selve reglen; ellers hvorfor en knap er graa.
     const reason = conflict ? `intention.errors.${conflict}` : breakBlocked || trainBlocked;
     return (

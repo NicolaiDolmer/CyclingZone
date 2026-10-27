@@ -15,10 +15,17 @@
 
 const WORK_ROLES = new Set(["helper", "hunter"]);
 
+// Toget virker kun for et hold med spurtkaptajn og aldrig for ham selv (motoren
+// koerer intet tog uden kaptajn). Et doedt tog-flag spaerrer derfor intet, saa en
+// gemt raekke aldrig laaser rytteren (#7281 review).
+function liveLeadout(rider, role, opts) {
+  return rider?.leadout === true && opts?.teamHasSprintCaptain !== false && role !== "sprint_captain";
+}
+
 /** Foerste modsaetning i en rytters ordre (serverens fejlkode), eller null. */
-export function oppositeOrderError(rider, role) {
+export function oppositeOrderError(rider, role, opts) {
   const tryBreak = rider?.try_break === true;
-  const leadout = rider?.leadout === true;
+  const leadout = liveLeadout(rider, role, opts);
   if (rider?.effort === "grupetto" && tryBreak) return "team_orders_grupetto_with_break";
   if (rider?.effort === "grupetto" && leadout) return "team_orders_grupetto_with_train";
   if (rider?.effort === "protect" && tryBreak && WORK_ROLES.has(role ?? "")) return "team_orders_work_with_break";
@@ -27,9 +34,9 @@ export function oppositeOrderError(rider, role) {
 }
 
 /** Foerste rytter i ordren med en modsaetning: serverens fejlkode, eller null. */
-export function firstOppositeOrderError(riders, roleFor) {
+export function firstOppositeOrderError(riders, roleFor, opts) {
   for (const r of riders ?? []) {
-    const code = oppositeOrderError(r, roleFor(r?.rider_id));
+    const code = oppositeOrderError(r, roleFor(r?.rider_id), opts);
     if (code) return code;
   }
   return null;
@@ -42,11 +49,12 @@ export function firstOppositeOrderError(riders, roleFor) {
  * @param {string} choice
  * @param {{effort?: string, try_break?: boolean, leadout?: boolean}} state rytterens valg i dag
  * @param {string|null|undefined} role rytterens rolle paa etapen
+ * @param {{teamHasSprintCaptain?: boolean}} [opts] holdet har en spurtkaptajn paa etapen
  */
-export function blockedReasonKey(choice, state, role) {
+export function blockedReasonKey(choice, state, role, opts) {
   const effort = state?.effort;
   const tryBreak = state?.try_break === true;
-  const leadout = state?.leadout === true;
+  const leadout = liveLeadout(state, role, opts);
   const works = WORK_ROLES.has(role ?? "");
   if (choice === "try_break") {
     if (tryBreak) return null;
@@ -56,7 +64,7 @@ export function blockedReasonKey(choice, state, role) {
     return null;
   }
   if (choice === "leadout") {
-    if (leadout) return null;
+    if (leadout || !liveLeadout({ leadout: true }, role, opts)) return null; // et doedt tog aendrer intet
     if (effort === "grupetto") return "tacticsOrders.blocked.notWithGrupetto";
     if (tryBreak) return "tacticsOrders.blocked.notWithBreak";
     return null;

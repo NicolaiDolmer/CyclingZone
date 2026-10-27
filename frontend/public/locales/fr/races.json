@@ -987,7 +987,7 @@
   },
   "tacticsOrders": {
     "blocked": { "notWithGrupetto": "Pas avec le Gruppetto.", "notWithWork": "Un coureur qui roule pour le leader ne peut pas prendre l’échappée.", "notWithBreak": "Pas pendant qu’il tente l’échappée.", "notWithTrain": "Le train du sprint reste dans le peloton jusqu’au final." },
-    "pickOne": "Choisissez-en un",
+    "pickOne": "Choisis-en un",
     "title": "Tactique",
     "locksAt": "Verrouillage {time}",
     "locked": "Verrouillé",

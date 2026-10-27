@@ -40,7 +40,8 @@ test("#7003: spec §3's fire modsaetninger afvises, hver med sin egen kode", () 
     ["helper", rider("normal", true, true), "team_orders_train_with_break"],
   ];
   for (const [role, r, code] of cases) {
-    const res = validateTeamOrder(args([r], new Map([["r1", role]])));
+    // Toget er kun levende paa et hold med spurtkaptajn (#7281).
+    const res = validateTeamOrder(args([r], new Map([["r1", role], ["sc", "sprint_captain"]])));
     assert.equal(res.ok, false, JSON.stringify(r));
     assert.equal(res.errors[0], code, JSON.stringify([role, r]));
   }
@@ -80,8 +81,11 @@ test("#7003: fladens kopi giver samme svar som serveren over hele gitteret", () 
     for (const effort of EFFORTS) {
       for (const try_break of [false, true]) {
         for (const leadout of [false, true]) {
-          const r = { effort, try_break, leadout };
-          assert.equal(surface.oppositeOrderError(r, role), oppositeOrderError(r, role), JSON.stringify([role, r]));
+          for (const teamHasSprintCaptain of [true, false]) {
+            const r = { effort, try_break, leadout };
+            const o = { teamHasSprintCaptain };
+            assert.equal(surface.oppositeOrderError(r, role, o), oppositeOrderError(r, role, o), JSON.stringify([role, r, o]));
+          }
         }
       }
     }
@@ -93,17 +97,20 @@ test("#7003: fladen kan aldrig naa en tilstand serveren afviser, og spaerrer kun
     for (const effort of EFFORTS) {
       for (const try_break of [false, true]) {
         for (const leadout of [false, true]) {
+          for (const teamHasSprintCaptain of [true, false]) {
+          const o = { teamHasSprintCaptain };
           const state = { effort, try_break, leadout };
-          if (oppositeOrderError(state, role)) continue; // gyldige udgangspunkter
+          if (oppositeOrderError(state, role, o)) continue; // gyldige udgangspunkter
           const moves = [
             ["try_break", { ...state, try_break: !try_break }],
             ["leadout", { ...state, leadout: !leadout }],
             ...EFFORTS.map((e) => [e, { ...state, effort: e }]),
           ];
           for (const [choice, next] of moves) {
-            const blocked = surface.blockedReasonKey(choice, state, role);
-            const rejected = oppositeOrderError(next, role) !== null;
-            assert.equal(blocked !== null, rejected, JSON.stringify({ role, state, choice, blocked }));
+            const blocked = surface.blockedReasonKey(choice, state, role, o);
+            const rejected = oppositeOrderError(next, role, o) !== null;
+            assert.equal(blocked !== null, rejected, JSON.stringify({ role, state, choice, blocked, o }));
+          }
           }
         }
       }
@@ -112,6 +119,24 @@ test("#7003: fladen kan aldrig naa en tilstand serveren afviser, og spaerrer kun
   // Et valg der allerede staar, kan altid slaas fra (gemte raekker fra foer reglen).
   assert.equal(surface.blockedReasonKey("try_break", { effort: "grupetto", try_break: true, leadout: true }, "helper"), null);
   assert.equal(surface.blockedReasonKey("leadout", { effort: "grupetto", try_break: true, leadout: true }, "helper"), null);
+});
+
+test("#7281: et doedt tog-flag spaerrer intet (holdet uden spurtkaptajn, eller rytteren er spurtkaptajnen)", () => {
+  const helper = { effort: "normal", try_break: false, leadout: true };
+  // Scenarie 1: spurtkaptajnen er gjort til hjaelper, og hjaelperne har stadig leadout fra rollens standard.
+  const none = { teamHasSprintCaptain: false };
+  assert.equal(surface.blockedReasonKey("try_break", helper, "helper", none), null);
+  assert.equal(surface.blockedReasonKey("grupetto", helper, "helper", none), null);
+  assert.equal(surface.oppositeOrderError({ ...helper, try_break: true }, "helper", none), null);
+  assert.equal(oppositeOrderError({ ...helper, try_break: true }, "helper", none), null);
+  assert.equal(oppositeOrderError({ ...helper, effort: "grupetto" }, "helper", none), null);
+  // Scenarie 2: en hjaelper med gemt leadout er blevet spurtkaptajn.
+  const some = { teamHasSprintCaptain: true };
+  assert.equal(surface.blockedReasonKey("try_break", helper, "sprint_captain", some), null);
+  assert.equal(oppositeOrderError({ ...helper, try_break: true }, "sprint_captain", some), null);
+  // Et levende tog spaerrer stadig.
+  assert.equal(surface.blockedReasonKey("try_break", helper, "helper", some), "tacticsOrders.blocked.notWithTrain");
+  assert.equal(oppositeOrderError({ ...helper, try_break: true }, "helper", some), "team_orders_train_with_break");
 });
 
 test("#7003: hver spaerre-linje og hver fejlkode findes i alle fem sprog", () => {

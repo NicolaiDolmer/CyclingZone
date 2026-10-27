@@ -67,6 +67,13 @@ export function neutralTeamOrder() {
 // raceTeamOrdersApi.oppositeOrders7003.test.js.
 const WORK_ROLES = new Set(["helper", "hunter"]);
 
+// Toget virker kun for et hold med spurtkaptajn og aldrig for ham selv (motoren
+// koerer intet tog uden kaptajn). Et doedt tog-flag spaerrer derfor intet, saa en
+// gemt raekke aldrig laaser rytteren (#7281 review).
+function liveLeadout(rider, role, opts) {
+  return rider?.leadout === true && opts?.teamHasSprintCaptain !== false && role !== "sprint_captain";
+}
+
 export const OPPOSITE_ORDER_ERRORS = Object.freeze([
   "team_orders_grupetto_with_break",
   "team_orders_grupetto_with_train",
@@ -78,10 +85,11 @@ export const OPPOSITE_ORDER_ERRORS = Object.freeze([
  * Foerste modsaetning i EN rytters ordre (fejlkode), eller null. Ren.
  * @param {{effort?: string, try_break?: boolean, leadout?: boolean}|null|undefined} rider
  * @param {string|null|undefined} role rytterens rolle paa etapen
+ * @param {{teamHasSprintCaptain?: boolean}} [opts] holdet har en spurtkaptajn paa etapen
  */
-export function oppositeOrderError(rider, role) {
+export function oppositeOrderError(rider, role, opts) {
   const tryBreak = rider?.try_break === true;
-  const leadout = rider?.leadout === true;
+  const leadout = liveLeadout(rider, role, opts);
   if (rider?.effort === "grupetto" && tryBreak) return "team_orders_grupetto_with_break";
   if (rider?.effort === "grupetto" && leadout) return "team_orders_grupetto_with_train";
   if (rider?.effort === "protect" && tryBreak && WORK_ROLES.has(role ?? "")) return "team_orders_work_with_break";
@@ -206,9 +214,10 @@ export function validateTeamOrder({
 
   // #7003: modsatte ordrer. En rytter med etapeplan tjekkes af planens egne regler
   // (de gamle felter udledes af kaeden ved gem), ikke af body-felterne.
+  const teamHasSprintCaptain = [...roleByRider.values()].includes("sprint_captain");
   for (const r of riders) {
     if (stagePlan && Array.isArray(r?.plan) && r.plan.length) continue;
-    const opposite = oppositeOrderError(r, roleByRider.get(r?.rider_id));
+    const opposite = oppositeOrderError(r, roleByRider.get(r?.rider_id), { teamHasSprintCaptain });
     if (opposite) { errors.push(opposite); break; }
   }
 
