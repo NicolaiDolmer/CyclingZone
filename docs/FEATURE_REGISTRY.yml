@@ -213,6 +213,16 @@ features:
     verified: 2026-10-27
     note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
 
+  - id: race-all-out-7280
+    area: race-engine
+    title_en: All out on the decisive climb
+    title_da: Alt ud på den afgørende stigning
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6641
+    verified: 2026-10-27
+    note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
+
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper
