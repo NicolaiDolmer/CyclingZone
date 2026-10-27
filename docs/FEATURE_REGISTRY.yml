@@ -107,6 +107,18 @@ features:
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
 
+  - id: race-day-form-6649
+    area: race-engine
+    title_en: Day form with causes
+    title_da: Dagsform ud fra træthed, form, sygdom og vejr
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6649
+    verified: 2026-10-27
+    decision: taend
+    decide_by: 2026-11-08
+    note: Nøgle day_form_6649 (mangler = off); tændes med ejer-go.
+
   - id: race-official-times-v1
     area: race-engine
     title_en: Official time persistence revision
@@ -115,7 +127,7 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: Frosset prototype; v2-v5 i motoren. v5 aktiv 16/10 til S5 17/10; løb beholder bundet revision.
+    note: Frosset prototype; løb beholder deres bundne revision.
 
   - id: race-engine-s5-profiles
     area: race-engine
@@ -365,7 +377,7 @@ features:
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
     verified: 2026-10-15
-    note: Afløst af værdimodel v6 (#4449); sweep-kode fjernet i #6642. market_value_sweep_enabled står off.
+    note: Afløst af værdimodel v6 (#4449); koden fjernet i #6642.
 
   - id: rider-valuation-v5
     area: market

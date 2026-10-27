@@ -44,9 +44,8 @@ export type BadDayWeather = "rain" | "wind" | "heat";
 export const DAY_FORM_6649_TUNING = Object.freeze({
   // 1. Dagens ben (normaliseret CP).
   // En daarlig dag er hyppigere og stoerre end en super-dag: ned-siden er bredere
-  // end op-siden. Ellers vinder udbryderne paa deres gode dage, ikke favoritterne
-  // paa deres daarlige (maalt, balance-internals/6649). Udsvinget centreres, saa
-  // en neutral rytter i gennemsnit hverken vinder eller taber.
+  // end op-siden (begrundelse privat, balance-internals/6649). Udsvinget centreres,
+  // saa en neutral rytter i gennemsnit hverken vinder eller taber.
   legsUpSd: 0.012, // op-sidens spredning
   legsSd: 0.034, // ned-sidens grund-spredning (kalibreret, balance-internals/6649)
   // Massespurten: dagsformen er udholdenhed og vejer mindre i en spurt end paa en
