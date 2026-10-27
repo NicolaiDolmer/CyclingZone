@@ -40,11 +40,30 @@ export function markStagesForProfileHills(stages, { enabled, rulesRevision }) {
 }
 
 /**
- * Laes flaget og saet markoeren i eet kald (raceRunners kobling). Fail closed.
+ * Hent etapernes hoejdeprofil (#7303 Codex P2): raceRunners STAGE_PROFILE_COLUMNS
+ * indeholder ikke elevation_profile, saa uden dette ville markoeren aendre checksummen
+ * uden at motoren saa en eneste bakke. Hentes KUN naar kontakten er aktiv, saa alle
+ * andre loeb laeser praecis som foer.
+ */
+export async function loadStageElevationProfiles(supabase, raceId) {
+  const { data, error } = await supabase.from("race_stage_profiles").select("stage_number, elevation_profile").eq("race_id", raceId);
+  if (error) throw new Error(`race_stage_profiles.elevation_profile: ${error.message ?? error}`);
+  return new Map((data ?? []).map((r) => [Number(r.stage_number), r.elevation_profile ?? null]));
+}
+
+/**
+ * Laes flaget, hent hoejdeprofilen og saet markoeren i eet kald (raceRunners kobling).
+ * Fail closed: fejler flag- eller profil-opslaget, roeres raekkerne ikke.
  * @returns {Promise<boolean>} om markoeren blev sat
  */
-export async function applyRouteProfileHills({ supabase, stages, rulesRevision, checkEnabled = isRouteProfileHillsEnabled }) {
+export async function applyRouteProfileHills({ supabase, raceId, stages, rulesRevision, checkEnabled = isRouteProfileHillsEnabled, loadElevation = loadStageElevationProfiles }) {
   if (!isS5ProfilesV3OrLater(rulesRevision)) return false;
   const enabled = await Promise.resolve().then(() => checkEnabled(supabase)).catch(() => false);
+  if (!routeProfileHillsActive({ enabled, rulesRevision }) || !Array.isArray(stages)) return false;
+  const byStage = await Promise.resolve().then(() => loadElevation(supabase, raceId)).catch(() => null);
+  if (!(byStage instanceof Map)) return false;
+  for (const stage of stages) {
+    if (stage && typeof stage === "object" && byStage.has(Number(stage.stage_number))) stage.elevation_profile = byStage.get(Number(stage.stage_number));
+  }
   return markStagesForProfileHills(stages, { enabled, rulesRevision });
 }

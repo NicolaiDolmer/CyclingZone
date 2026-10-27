@@ -59,6 +59,14 @@ test("applyRouteProfileHills: laeser ikke flaget under aeldre revisioner og er f
   assert.equal(calls, 0);
   assert.equal(await applyRouteProfileHills({ supabase: null, stages, rulesRevision: "s5_profiles_v3", checkEnabled: async () => { throw new Error("db"); } }), false);
   assert.equal(stages[0][ROUTE_PROFILE_HILLS_ROW_KEY], undefined);
-  assert.equal(await applyRouteProfileHills({ supabase: null, stages, rulesRevision: "s5_profiles_v3", checkEnabled: async () => true }), true);
+  assert.equal(await applyRouteProfileHills({ supabase: null, stages, rulesRevision: "s5_profiles_v3", checkEnabled: async () => true, loadElevation: async () => new Map([[1, { step_km: 1, h: [0, 50] }]]) }), true);
+  assert.deepEqual(stages[0].elevation_profile, { step_km: 1, h: [0, 50] });
   assert.equal(stages[0][ROUTE_PROFILE_HILLS_ROW_KEY], true);
+});
+
+test("applyRouteProfileHills: profil-opslaget fejler -> ingen markoer (#7303 Codex P2)", async () => {
+  const stages = [{ stage_number: 1 }];
+  assert.equal(await applyRouteProfileHills({ supabase: null, raceId: "r", stages, rulesRevision: "s5_profiles_v3", checkEnabled: async () => true, loadElevation: async () => { throw new Error("db"); } }), false);
+  assert.equal(stages[0][ROUTE_PROFILE_HILLS_ROW_KEY], undefined);
+  assert.equal("elevation_profile" in stages[0], false);
 });

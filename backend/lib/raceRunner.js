@@ -2570,7 +2570,7 @@ export async function simulateRace({
   const rulesRevision = v4Engine
     ? await bindRulesRevision({ supabase, race, firstStageClaim: true, dryRun })
     : LEGACY_RULES_REVISION;
-  if (v4Engine) await applyRouteProfileHills({ supabase, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
+  if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
   // S3 (#2034): overrides hentes KUN når v3=true — v3=false undgår DB-kaldet helt
   // og buildRaceResults modtager undefined, hvilket garanterer bit-identisk flag-off.
   const stageRoleOverrides = v3 ? await loadStageRoleOverridesFn({ supabase, raceId: race.id }) : undefined;
@@ -3504,7 +3504,7 @@ export async function simulateStageByIndex({
     const rulesRevision = v4Engine
       ? await bindRulesRevision({ supabase, race, firstStageClaim: stageIndex === 0 && completedBefore === 0 && !resuming, dryRun })
       : LEGACY_RULES_REVISION;
-    if (v4Engine) await applyRouteProfileHills({ supabase, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
+    if (v4Engine) await applyRouteProfileHills({ supabase, raceId: race.id, stages, rulesRevision }); // #7290: kun s5_profiles_v3 + flaget
 
     // #1844: frys feltet til etape-1-snapshot. Et igangværende etapeløbs felt MÅ ikke
     // ændre sig mellem etaper — en rytter der kom ind midt i løbet (manuelt edit pre-#1838,
