@@ -20,6 +20,12 @@ import { ownChaseViolations } from "../ownRiderAhead6187.mjs";
 import { rankByCumTimeAsc } from "../../../lib/raceClassifications.js";
 import { createJerseyTally } from "./jerseyTally.mjs"; // #6804 v3 G16/G18
 import { breakawayKomPointsOfStage, createJerseyLeaderTracker } from "./komGcOverlap6937.mjs"; // #6937 G16
+import { gcStageTimes, gcWinnerBreakFacts } from "./gcFromBreakaway7258.mjs"; // #7258
+import { buildGcContext, raceGcStagesFor, withS5ThreatModel } from "../../../lib/raceEngineV4Bridge.js"; // #7258 faelles fremskrivning
+import { routeFromStageProfileRow } from "../../../lib/engine/v4/adapters/routeAdapter.ts";
+import { abilitiesFromRow } from "../../../lib/engine/v4/adapters/entrantAdapter.ts";
+import { normalizeGcContext, raceGcAbilityModel } from "../../../lib/engine/v4/mechanics/gcThreat.ts";
+import { projectedGcFavourites } from "../../../lib/engine/v4/mechanics/gcBreakawayLeash7258.ts";
 import { isOrdersGcRulesRevision, isS5ProfilesV2OrLater } from "../../../lib/raceEngineRulesRevision.ts";
 import { breakawayMaxSizeV3 } from "../../../lib/engine/v4/mechanics/breakawayPermission.ts";
 import { S5_REFORMATION_TUNING } from "../../../lib/engine/v4/mechanics/breakaway.ts";
@@ -788,14 +794,24 @@ export function breakawayLeadFacts(out, fieldMinShare = 0.25) {
  *    (spurt paa spurtafslutning/flad, punch paa mur/punch/kuperet, ellers klatring).
  *  - maxSameTeam: flest ryttere fra samme hold i udbruddet.
  * Definitionerne er arbejdsvalg (G3's lofter og graenser er private). REN.
+ *
+ * #7258 (B, testporten): i et etapeloeb er "klassementets topN" den FAELLES fremskrivning
+ * (`projectedGc`, projectedGcFavouritesForStage: afstand + loebsevne x resterende etaper),
+ * samme funktion som motorens snor. Desuden (S3/S4):
+ *  - breakawayMorningRiderIds: morgenudbruddets ryttere ([] = intet morgenudbrud).
+ *  - breakawayGcFavourite: udbrydere blandt fremskrivningens GC_FAVOURITE_TOP_N (0 uden
+ *    udbrud, null uden fremskrivning, fx endagsloeb).
  */
-export function breakawayCompositionFacts({ out, profile, gcBefore = null, abilitiesById, teamByRider, riderIds, topN = 5 }) {
+export function breakawayCompositionFacts({ out, profile, gcBefore = null, abilitiesById, teamByRider, riderIds, topN = 5, projectedGc = null }) {
   const events = out?.timeline?.events ?? [];
   const ids = events.find((e) => e.type === "breakaway_formed" && e.params?.reformation !== true)?.params?.rider_ids ?? [];
-  if (!ids.length) return { breakawayGcFav: null, breakawayStageFav: null, breakawayMaxSameTeam: null };
+  const gcFavourites = projectedGc ? new Set([...projectedGc].slice(0, GC_FAVOURITE_TOP_N)) : null;
+  const morning = { breakawayMorningRiderIds: [...ids], breakawayGcFavourite: gcFavourites ? ids.filter((id) => gcFavourites.has(id)).length : null };
+  if (!ids.length) return { breakawayGcFav: null, breakawayStageFav: null, breakawayMaxSameTeam: null, ...morning };
   const ab = (id, keys) => keys.reduce((s, k) => s + Number(abilitiesById?.get(id)?.[k] ?? 0), 0) / keys.length;
   const topBy = (keys) => new Set([...(riderIds ?? [])].filter((id) => abilitiesById?.has(id)).sort((a, b) => ab(b, keys) - ab(a, keys) || a.localeCompare(b)).slice(0, topN));
-  const gcTop = gcBefore?.length ? new Set(gcBefore.slice(0, topN).map((s) => s.rider_id)) : topBy(["climbing", "time_trial"]);
+  const gcTop = projectedGc ? new Set([...projectedGc].slice(0, topN))
+    : gcBefore?.length ? new Set(gcBefore.slice(0, topN).map((s) => s.rider_id)) : topBy(["climbing", "time_trial"]);
   const f = profile?.finale_type ?? null;
   const keys = ["bunch_sprint", "reduced_sprint", "flat_sprint", "uphill_sprint"].includes(f) || (f === null && profile?.profile_type === "flat") ? ["sprint"]
     : ["wall_finish", "punch"].includes(f) || profile?.profile_type === "hilly" ? ["punch"] : ["climbing"];
@@ -809,7 +825,30 @@ export function breakawayCompositionFacts({ out, profile, gcBefore = null, abili
     breakawayGcFav: ids.filter((id) => gcTop.has(id)).length,
     breakawayStageFav: ids.filter((id) => stageTop.has(id)).length,
     breakawayMaxSameTeam: perTeam.size ? Math.max(...perTeam.values()) : 0,
+    ...morning,
   };
+}
+
+/** #7258 S4: en klassementsfavorit = en af den faelles fremskrivnings 3 bedste (som #7214's favorit-antal). */
+export const GC_FAVOURITE_TOP_N = 3;
+
+/**
+ * #7258 (B): den faelles fremskrivning i testporten. Bygger klassementet foer etapen PRAECIS som
+ * broen (buildGcContext + S5-maerker + loebets etaper, #6818) og spoerger motorens egen funktion
+ * (gcBreakawayLeash7258.projectedGcFavourites). Returnerer de `topN` bedste i raekkefoelge (Set),
+ * eller null for endagsloeb og uden loebets etaper/evner. REN.
+ */
+export function projectedGcFavouritesForStage({ profile, raceStages, gcBefore, entrants, topN = 5 }) {
+  if (!Array.isArray(raceStages) || raceStages.length < 2 || !Array.isArray(entrants) || entrants.length === 0) return null;
+  const starterIds = entrants.map((e) => e.rider_id);
+  const base = withS5ThreatModel(buildGcContext({ isStageRace: true, stageNumber: profile?.stage_number, standings: gcBefore ?? [], starterIds }), entrants);
+  const raceGcStages = raceGcStagesFor(raceStages, routeFromStageProfileRow);
+  if (base?.status !== "standings" || !raceGcStages) return null;
+  const gc = normalizeGcContext({ ...base, race_gc_stages: raceGcStages });
+  const abilityOf = raceGcAbilityModel(gc);
+  if (!abilityOf) return null;
+  const byId = Object.fromEntries(entrants.map((e) => [e.rider_id, { rider_id: e.rider_id, team_id: e.team_id ?? null, abilities: abilitiesFromRow(e.abilities ?? {}) }]));
+  return projectedGcFavourites({ gc, entrants: byId, racingRiderIds: new Set(starterIds), abilityOf, topN, syntheticFirstStage: gc.status === "standings" && gc.first_stage === true });
 }
 
 export function testportStageFacts(out, profile, roleByRider = null) {
@@ -828,7 +867,7 @@ export function testportStageFacts(out, profile, roleByRider = null) {
 }
 
 /** Etapens maalinger for ét seed. */
-export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds = null, roleByRider = null, revision = null }) {
+export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds = null, roleByRider = null, revision = null, raceStages = null, entrants = null }) {
   const out = res.v4Output;
   const ranked = res.ranked;
   const cls = profileClass(profile.profile_type);
@@ -861,7 +900,8 @@ export function stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRide
     labelContradictions: labelContradictions(ranked, out, { stepModel: !isS5ProfilesV2OrLater(revision) }).length,
     winType: ranked?.[0]?.win_type ?? null,
     ...(tt ? {} : breakawayLeadFacts(out)), // #6804 G2
-    ...(tt ? {} : breakawayCompositionFacts({ out, profile, gcBefore, abilitiesById, teamByRider, riderIds })), // #6804 G3
+    // #6804 G3; #7258: i etapeloeb maales klassementets favoritter med den faelles fremskrivning.
+    ...(tt ? {} : breakawayCompositionFacts({ out, profile, gcBefore, abilitiesById, teamByRider, riderIds, projectedGc: projectedGcFavouritesForStage({ profile, raceStages, gcBefore, entrants }) })),
     ...(tt ? { winnerId: testportStageFacts(out, profile, roleByRider).winnerId } : testportStageFacts(out, profile, roleByRider)), // #6750
   };
   if (tt) {
@@ -939,10 +979,11 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const seedTag = `${seedPrefix}-${s}`;
     const jerseys = createJerseyTally(); // #6804 v3 G16/G18
     const komBreakPts = new Map(); // #6937 G16: bjergpoint taget i udbrud
+    const gcTimes = []; // #7258: klassementstider pr. etape (afgjorde udbruddet loebet?)
     const final = runStagesInOrder({
       v4, data, revision, seedTag, stages, entrants: all, trackFatigue,
       onStage: ({ profile, res, gcBefore, gcAfter, entrants, jerseyLeaders }) => {
-        const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider, revision });
+        const m = stageMetrics({ res, profile, gcBefore, abilitiesById, teamByRider, riderIds, roleByRider, revision, raceStages: stages, entrants });
         // #2757 S0: vinderens plads paa sprint-evne + pointtroejens regnskab (motorens passage-point).
         m.winnerSprintRank = sprintRankIn(m.winnerId, riderIds, abilitiesById);
         for (const t of res.v4Output?.passage_totals ?? []) {
@@ -966,6 +1007,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
         m.gcLeaderAfter = gcAfter[0]?.rider_id ?? null;
         m.finishers = res.ranked.length;
         if (profile.stage_number === week1Stage) gcWeek1 = m.gcTo10After;
+        if (stages.length > 1) gcTimes.push(gcStageTimes(gcBefore, gcAfter)); // #7258
         rows.push(m);
       },
     });
@@ -975,7 +1017,7 @@ export function runTour({ v4, data, revision, seeds = 5, leadoutPair = true, see
     const pointsJersey = pj ? { riderId: pj.riderId, role: roleByRider.get(pj.riderId) ?? null, sprintRank: sprintRankIn(pj.riderId, riderIds, abilitiesById), isGcWinner: pj.riderId === (final[0]?.rider_id ?? null) } : null;
     const jw = jerseys.winners(final);
     const komWinnerBreakawayPoints = jw.komWinner ? komBreakPts.get(jw.komWinner) ?? 0 : null; // #6937 G16
-    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, abandons: abandonCounts(all, final), ...jw, komWinnerBreakawayPoints, ...(pointsJersey ? { pointsJersey } : {}) });
+    perSeed.push({ seed: s, rows, gcWeek1, gcFinalTo10: gcGapAt(final, 10), gcWinnerMargin: gcGapAt(final, 2), gcWinner: final[0]?.rider_id ?? null, finishers: final.length, abandons: abandonCounts(all, final), ...jw, komWinnerBreakawayPoints, ...(pointsJersey ? { pointsJersey } : {}), ...(stages.length > 1 ? { gcWinnerBreak: gcWinnerBreakFacts({ rows, gcTimes, final }) } : {}) });
   }
   return { revision, seeds, week1Stage, droppedWithoutAbilities, perSeed, summary: summarizeTour(perSeed, stages, revision, { shortRaceGapBands }) };
 }
