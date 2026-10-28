@@ -568,6 +568,9 @@ export function carrySplitsWithSourceAdvance(params: {
     const pieceBefore = byIdBefore.get(split.groupId);
     const pieceAfter = current.find((g) => g.id === split.groupId);
     if (!srcBefore || !srcAfter || !pieceBefore || !pieceAfter || srcBefore.origin === "breakaway") continue;
+    // #6641 (alt ud-angreb, ejer 27/10): et stykke der splittede FREM fra kilden (negativt hul)
+    // er ikke en afsat gruppe; dets forspring maa ikke klemmes ned til kildens hul.
+    if (pieceBefore.gap_seconds < srcBefore.gap_seconds) continue;
     const advance = (beforeFrontSeconds + srcBefore.gap_seconds) - (afterFrontSeconds + srcAfter.gap_seconds);
     if (!(advance > 0)) continue;
     const pieceMoved = (afterFrontSeconds + pieceAfter.gap_seconds) - (beforeFrontSeconds + pieceBefore.gap_seconds);
