@@ -972,3 +972,8 @@ test('night CodeRabbit rejects body-only blockers in a trusted clean-summary eve
  const i=zeroInput({body:zeroSummary().body+'\nMajor body-only finding'});i.rabbitReviews=[nightReview()];
  assert.equal(evaluateCodeRabbitNight(i).ok,false);
 });
+
+test('night CodeRabbit retains an older same-HEAD summary blocker after a newer clean receipt',()=>{
+ const i=zeroInput();i.data.comments.push(zeroSummary({at:'2026-10-27T21:00:00Z',body:zeroSummary().body+'\nMajor body-only finding'}));
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});

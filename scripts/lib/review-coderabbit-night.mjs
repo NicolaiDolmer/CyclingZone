@@ -26,13 +26,15 @@ export function evaluateCodeRabbitNight({ data, checkRuns = [], rabbitReviews = 
     if (c.author !== 'coderabbitai[bot]' || c.authorType !== 'Bot') return false;
     const body = String(c.body || '');
     const reviewed = body.match(/^Reviewing files that changed from the base of the PR and between [a-f0-9]{40} and ([a-f0-9]{40})\.\s*$/m)?.[1];
+    return reviewed === data.headSha;
+  });
+  if (summaryReceipts.some(c => /\b(?:Critical|Major)\b|outside[ -]diff|off[ -]diff/i.test(c.body))) return fail('CodeRabbit-summary har blokerende eller uklassificerede fund');
+  const zeroReceipt = summaryReceipts.find(c => {
     const at = Date.parse(c.at || '');
     const start = Date.parse(check.started_at || '');
     const end = Date.parse(check.completed_at || '');
-    return reviewed === data.headSha && Number.isFinite(at) && Number.isFinite(start) && Number.isFinite(end) && end >= start && at >= start && at <= end + 60000;
+    return /^No actionable comments were generated in the recent review\.\s*$/m.test(c.body) && Number.isFinite(at) && Number.isFinite(start) && Number.isFinite(end) && end >= start && at >= start && at <= end + 60000;
   });
-  if (summaryReceipts.some(c => /\b(?:Critical|Major)\b|outside[ -]diff|off[ -]diff/i.test(c.body))) return fail('CodeRabbit-summary har blokerende eller uklassificerede fund');
-  const zeroReceipt = summaryReceipts.find(c => /^No actionable comments were generated in the recent review\.\s*$/m.test(c.body));
   if (!review && !zeroReceipt) return fail('manglende CodeRabbit-review paa HEAD');
   const rabbitThreads = (data.threads || []).filter(t => String(t.author || '').replace(/\[bot\]$/, '') === 'coderabbitai');
 // Require the official completion check and an actual review or SHA/time-bound zero-issue summary.
