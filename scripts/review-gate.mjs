@@ -512,11 +512,11 @@ function fetchThreads(repo, pr) {
   const threads = [];
   let cursor = null;
   for (let page = 0; page < 20; page += 1) {
-    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body originalCommit{oid}}}}}}}}`;
+    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body pullRequestReview{databaseId} originalCommit{oid}}}}}}}}`;
     const args = ["api", "graphql", "-f", `query=${q}`, "-f", `o=${owner}`, "-f", `n=${name}`, "-F", `pr=${pr}`];
     if (cursor) args.push("-f", `c=${cursor}`);
     const conn = ghJson(args).data.repository.pullRequest.reviewThreads;
-    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), rabbitSeverity: login(t.comments.nodes[0]?.author?.login) === CODERABBIT_LOGIN ? codeRabbitSeverity(t.comments.nodes[0]?.body) : null, commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
+    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), reviewId: t.comments.nodes[0]?.pullRequestReview?.databaseId ?? null, rabbitSeverity: login(t.comments.nodes[0]?.author?.login) === CODERABBIT_LOGIN ? codeRabbitSeverity(t.comments.nodes[0]?.body) : null, commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
     if (!conn.pageInfo.hasNextPage) break;
     cursor = conn.pageInfo.endCursor;
   }

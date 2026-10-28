@@ -25,12 +25,13 @@ export function evaluateCodeRabbitNight({ data, checkRuns = [], rabbitReviews = 
   if (!review) return fail('manglende CodeRabbit-review paa HEAD');
   const rabbitThreads = (data.threads || []).filter(t => String(t.author || '').replace(/\[bot\]$/, '') === 'coderabbitai');
   // Require both the official completion check and an actual review receipt.
-  if (review) {
-    if (!['COMMENTED','APPROVED'].includes(review.state)) return fail('CodeRabbit-review er ikke afsluttet');
-    const count = String(review.body || '').match(/\*\*Actionable comments (?:posted|generated):\s*(\d+)\*\*/i);
-    if (/\b(?:Critical|Major)\b|outside[ -]diff|off[ -]diff/i.test(review.body || '')) return fail('CodeRabbit-body har blokerende eller uklassificerede fund');
-    if (!count || rabbitThreads.filter(t => t.commit === data.headSha).length !== Number(count[1])) return fail('CodeRabbit-review har ukendt eller ufuldstaendig issue-dom');
+  for (const receiptReview of reviews) {
+    if (!['COMMENTED','APPROVED'].includes(receiptReview.state)) return fail('CodeRabbit-review er ikke afsluttet');
+    const count = String(receiptReview.body || '').match(/\*\*Actionable comments (?:posted|generated):\s*(\d+)\*\*/i);
+    if (/\b(?:Critical|Major)\b|outside[ -]diff|off[ -]diff/i.test(receiptReview.body || '')) return fail('CodeRabbit-body har blokerende eller uklassificerede fund');
+    if (!count || rabbitThreads.filter(t => t.commit === data.headSha && t.reviewId === receiptReview.id).length !== Number(count[1])) return fail('CodeRabbit-review har ukendt eller ufuldstaendig issue-dom');
   }
+  if (rabbitThreads.some(t => t.commit === data.headSha && !reviews.some(r => Number.isSafeInteger(r.id) && r.id === t.reviewId))) return fail('CodeRabbit-traad mangler review-kvittering');
   const open = rabbitThreads.filter(t => !t.isResolved);
   if (open.some(t => !['P2','P3'].includes(t.rabbitSeverity))) return fail('uloest blokerende/ukendt CodeRabbit-traad');
   const notes = open.length;
