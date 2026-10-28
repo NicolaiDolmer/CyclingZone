@@ -354,7 +354,7 @@
     "errorTitle": "Udtagelsesmatrixen kunne ikke hentes",
     "empty": "Ingen løb i denne sæson endnu",
     "restDay": "Hviledag",
-    "withdrawnHint": "Du har meldt fra til dette løb. Den gemte opstilling bliver stående, hvis du melder til igen, men rytterne stiller ikke op.",
+    "withdrawnHint": "Gem en ny udtagelse for at annullere udtrækningen og erstatte den gamle udtagelse.",
     "dayAria": "Løbsdag {index}, {date}. Åbn dagens board.",
     "cellEmptyAria": "{rider}, {race}: ikke udtaget. Klik for at tilføje.",
     "cellFilledAria": "{rider}, {race}: {role}. Klik for at skifte.",
@@ -835,6 +835,7 @@
       "title": "Dette løb er i en anden division",
       "note": "Du kan kun udtage hold til løb i din egen division, så der er ingen opstilling at sætte her."
     },
+    "rejoinNote": "Gem en ny udtagelse for at annullere udtrækningen og erstatte den gamle udtagelse.",
     "withdrawnPanel": {
       "title": "Du har meldt fra til dette løb",
       "note": "Holdet stiller frivilligt ikke op, så der er ingen opstilling at sætte. Meld til igen fra løbstavlen, hvis du ombestemmer dig inden start.",
@@ -867,6 +868,7 @@
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
+      "selection_withdrawn_locked": "Du trak holdet ud af løbet. Feltet er låst efter første etape.",
       "selection_withdrawn": "Du er afmeldt dette løb, så der kan ikke gemmes en trup til det.",
       "selection_train_now_locked": "Ryttere der trænede i dag kan ikke sættes ind i eller tages ud af dagens løb.",
       "selection_youth_squad_train_only": "Truppen er sat til Kun træning. Skift den til Kør løb på trup-siden for at tilmelde den.",

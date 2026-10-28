@@ -1115,3 +1115,22 @@ test("#6964 prepareSelectionChange: U23-løb — 23-årig afvises, junior på U2
   });
   assert.equal(junior.ok, true, "juniorer må køre U23 (YOUTH_RULES §2.2)");
 });
+
+test('#7153: manager bulk opts into rejoin RPC and injects request time',async()=>{
+ let called;
+ await saveSelectionBulk({supabase:{rpc:async(name,args)=>{called={name,args};return {error:null};}},teamId:'t',changes:[{race_id:'r',rider_ids:[],roles:[]}],managerSave:true,now:new Date('2026-10-28T10:00:00Z')});
+ assert.equal(called.name,'replace_manager_race_selections');assert.equal(called.args.p_now,'2026-10-28T10:00:00.000Z');
+});
+for(const code of ['selection_withdrawn','selection_withdrawn_locked'])test('#7153 manager RPC error classification: '+code,async()=>{
+ await assert.rejects(saveSelectionBulk({supabase:{rpc:async()=>({error:{message:code}})},teamId:'t',changes:[],managerSave:true,now:new Date('2026-10-28T10:00:00Z')}),err=>err.code===code);
+});
+
+for(const chooseOld of [false,true])test('#7153 withdrawn history is inactive for Train now: choose old='+chooseOld,async()=>{
+ const state={seasons:ACTIVE_SEASONS,riders:['old','fresh'].map(id=>({id,team_id:'t1',is_academy:false,is_retired:false,firstname:id,lastname:'X'})),race_stage_profiles:[],rider_derived_abilities:[],rider_condition:[],
+ race_entries:[{race_id:'race1',team_id:'t1',rider_id:'old',race_role:'captain',is_auto_filled:false}],
+ race_stage_schedule:[{race_id:'race1',stage_number:1,game_day:3,scheduled_at:'2026-10-29T13:00:00Z'}],
+ training_train_now_locks:[{rider_id:'old',team_id:'t1',tick_date:'2026-10-29',pressed_at:'2026-10-29T10:00:00Z'}]};
+ const race={id:'race1',status:'scheduled',stages_completed:0,league_division_id:'d1',race_class:'Class2',season_id:ACTIVE_SEASON_ID};
+ const id=chooseOld?'old':'fresh';const result=await prepareSelectionChange({supabase:makeSelectionSupabase(state),race,teamId:'t1',teamDivisionId:'d1',body:{rider_ids:[id],captain_id:id},now:TEST_NOW_6959,rejoining:true});
+ assert.equal(result.ok,!chooseOld);if(chooseOld)assert.equal(result.error,'selection_train_now_locked');
+});

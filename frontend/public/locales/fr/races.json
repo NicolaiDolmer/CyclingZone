@@ -371,7 +371,7 @@
     "errorTitle": "Impossible de charger la matrice de sélection",
     "empty": "Aucune course cette saison pour l'instant",
     "restDay": "Jour de repos",
-    "withdrawnHint": "Tu t'es retiré de cette course. La composition enregistrée est conservée au cas où tu te réengagerais, mais ces coureurs ne prendront pas le départ.",
+    "withdrawnHint": "Enregistrer une nouvelle sélection annule le retrait et remplace l’ancienne sélection.",
     "dayAria": "Jour de course {index}, {date}. Ouvrir son tableau du jour.",
     "cellEmptyAria": "{rider}, {race} : non sélectionné. Clique pour ajouter.",
     "cellFilledAria": "{rider}, {race} : {role}. Clique pour changer.",
@@ -852,6 +852,7 @@
       "title": "Cette course est dans une autre division",
       "note": "Tu ne peux t'engager que dans les courses de ta propre division, il n'y a donc pas de composition à fixer ici."
     },
+    "rejoinNote": "Enregistrer une nouvelle sélection annule le retrait et remplace l’ancienne sélection.",
     "withdrawnPanel": {
       "title": "Tu t'es retiré de cette course",
       "note": "Ton équipe ne prend volontairement pas le départ, il n'y a donc pas de composition à fixer. Réengage-toi depuis le tableau des courses si tu changes d'avis avant le départ.",
@@ -884,6 +885,7 @@
       "selection_flag_disabled": "La sélection de l'équipe n'est pas encore active.",
       "selection_invalid_body": "Impossible d'enregistrer la sélection. Réessaie.",
       "selection_wrong_pool": "Tu ne peux t'engager que dans les courses de ta propre division.",
+      "selection_withdrawn_locked": "Tu as retiré ton équipe. Le plateau est verrouillé après la première étape.",
       "selection_withdrawn": "Tu t'es retiré de cette course, une composition ne peut donc pas y être enregistrée.",
       "selection_train_now_locked": "Les coureurs qui se sont entraînés aujourd'hui ne peuvent être ni ajoutés ni retirés de la course du jour.",
       "selection_youth_squad_train_only": "Cet effectif est réglé sur Entraînement uniquement. Passe-le sur Engager en course sur la page de l'effectif pour l'engager.",
