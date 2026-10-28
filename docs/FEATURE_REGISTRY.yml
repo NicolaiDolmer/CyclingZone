@@ -76,12 +76,12 @@ features:
     area: race-engine
     title_en: Profile hills in the race engine
     title_da: Bakker fra højdeprofilen i motoren
-    state: building
+    state: live
+    flag: route_profile_hills
+    ssot: docs/RACE_ENGINE_RULES.md
     epic: 7290
-    verified: 2026-10-27
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
-    note: Kobles efter #6649.
+    verified: 2026-10-28
+    note: "route_profile_hills on siden 27/10; læst tilbage i prod 28/10."
 
   - id: race-engine-v3-scoring
     area: race-engine
@@ -113,8 +113,8 @@ features:
     flag: race_form_peaks
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6156
-    verified: 2026-10-26
-    note: On 26/10 09:23 efter ejer-go (formtest #6818), læst tilbage i prod.
+    verified: 2026-10-27
+    note: "Prod 27/10 on; roadmap-status rettes via #7153."
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
 
@@ -495,7 +495,8 @@ features:
     state: live
     flag: daily_training_enabled
     ssot: docs/TRAINING_RULES.md
-    verified: 2026-09-06
+    verified: 2026-10-27
+    note: "PR #7283 merget; bro-dage i ny sæson, automatisk indhentning. Kontrol 28/10."
 
   - id: peak-planner
     area: training
@@ -579,7 +580,8 @@ features:
     state: live
     flag: season_fatigue_reset_enabled
     ssot: docs/TRAINING_RULES.md
-    verified: 2026-09-06
+    verified: 2026-10-27
+    note: "PR #7288 merget; fælles start over nul. Historik bruger loggens startFatigue."
 
   - id: training-programs
     area: training
@@ -865,8 +867,8 @@ features:
     flag: development_curve_b
     ssot: docs/TRAINING_RULES.md
     epic: 3564
-    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
-    verified: 2026-10-26
+    note: "On, læst i prod 27/10; uden belastningsbremse. Videre kalibrering #3564."
+    verified: 2026-10-27
 
   - id: condition-model-v2
     area: training
