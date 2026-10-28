@@ -527,7 +527,7 @@ export function fetchPrData(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   const files = ghLines(`repos/${repo}/pulls/${pr}/files?per_page=100`).map((f) => f.filename);
   const comments = ghLines(`repos/${repo}/issues/${pr}/comments?per_page=100`)
-    .map((c) => ({ author: c.user?.login, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
+    .map((c) => ({ author: c.user?.login, authorType: c.user?.type, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
   const reviews = ghLines(`repos/${repo}/pulls/${pr}/reviews?per_page=100`)
     .map((r) => ({ author: r.user?.login, association: r.author_association, body: r.body, at: r.submitted_at, commit: r.commit_id }));
   return {

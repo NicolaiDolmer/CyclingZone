@@ -22,9 +22,20 @@ export function evaluateCodeRabbitNight({ data, checkRuns = [], rabbitReviews = 
   const reviews = rabbitReviews.filter(r => r.user?.login === 'coderabbitai[bot]' && r.user?.type === 'Bot' && r.commit_id === data.headSha && (String(r.body || '').trim() || r.state !== 'COMMENTED'))
     .sort((a,b) => String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')) || Number(b.id || 0) - Number(a.id || 0));
   const review = reviews[0];
-  if (!review) return fail('manglende CodeRabbit-review paa HEAD');
+  const summaryReceipts = (data.comments || []).filter(c => {
+    if (c.author !== 'coderabbitai[bot]' || c.authorType !== 'Bot') return false;
+    const body = String(c.body || '');
+    const reviewed = body.match(/^Reviewing files that changed from the base of the PR and between [a-f0-9]{40} and ([a-f0-9]{40})\.\s*$/m)?.[1];
+    const at = Date.parse(c.at || '');
+    const start = Date.parse(check.started_at || '');
+    const end = Date.parse(check.completed_at || '');
+    return reviewed === data.headSha && Number.isFinite(at) && Number.isFinite(start) && Number.isFinite(end) && end >= start && at >= start && at <= end + 60000;
+  });
+  if (summaryReceipts.some(c => /\b(?:Critical|Major)\b|outside[ -]diff|off[ -]diff/i.test(c.body))) return fail('CodeRabbit-summary har blokerende eller uklassificerede fund');
+  const zeroReceipt = summaryReceipts.find(c => /^No actionable comments were generated in the recent review\.\s*$/m.test(c.body));
+  if (!review && !zeroReceipt) return fail('manglende CodeRabbit-review paa HEAD');
   const rabbitThreads = (data.threads || []).filter(t => String(t.author || '').replace(/\[bot\]$/, '') === 'coderabbitai');
-  // Require both the official completion check and an actual review receipt.
+// Require the official completion check and an actual review or SHA/time-bound zero-issue summary.
   for (const receiptReview of reviews) {
     if (!['COMMENTED','APPROVED'].includes(receiptReview.state)) return fail('CodeRabbit-review er ikke afsluttet');
     const count = String(receiptReview.body || '').match(/\*\*Actionable comments (?:posted|generated):\s*(\d+)\*\*/i);
@@ -35,7 +46,7 @@ export function evaluateCodeRabbitNight({ data, checkRuns = [], rabbitReviews = 
   const open = rabbitThreads.filter(t => !t.isResolved);
   if (open.some(t => !['P2','P3'].includes(t.rabbitSeverity))) return fail('uloest blokerende/ukendt CodeRabbit-traad');
   const notes = open.length;
-  return { ok: true, secondReviewer: 'CodeRabbit', expiresAt: CODE_RABBIT_NIGHT_END, notes, headSha: data.headSha, codex: native.codex, nativeClaude: native.claude, reviewId: review?.id ?? null, checkId: check.id ?? null, detail: 'Ejerens afgraensede CodeRabbit-erstatning er verificeret paa HEAD' };
+  return { ok: true, secondReviewer: 'CodeRabbit', expiresAt: CODE_RABBIT_NIGHT_END, notes, headSha: data.headSha, codex: native.codex, nativeClaude: native.claude, reviewId: review?.id ?? null, zeroReceipt: Boolean(zeroReceipt), checkId: check.id ?? null, detail: 'Ejerens afgraensede CodeRabbit-erstatning er verificeret paa HEAD' };
 }
 
 function apiRows(path, jq) {

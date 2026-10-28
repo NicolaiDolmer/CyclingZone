@@ -955,3 +955,20 @@ test('night CodeRabbit rejects HEAD threads without an originating review',()=>{
  const data=nightData({threads:[{author:'coderabbitai',commit:HEAD,reviewId:99,isResolved:true,rabbitSeverity:'P2'}]});
  assert.equal(evaluateCodeRabbitNight(nightInput({data})).ok,false);
 });
+
+
+const zeroSummary = (patch={}) => ({author:'coderabbitai[bot]',authorType:'Bot',at:'2026-10-27T22:00:30Z',body:`No actionable comments were generated in the recent review.\nReviewing files that changed from the base of the PR and between ${OLD} and ${HEAD}.`,...patch});
+const zeroInput = (summaryPatch={},checkPatch={}) => nightInput({data:nightData({comments:[...nightData().comments,zeroSummary(summaryPatch)]}),rabbitReviews:[],checkRuns:[nightCheck({started_at:'2026-10-27T22:00:00Z',completed_at:'2026-10-27T22:01:00Z',...checkPatch})]});
+test('night CodeRabbit accepts documented zero-issue bot summary bound to reviewed HEAD and check window',()=>assert.equal(evaluateCodeRabbitNight(zeroInput()).ok,true));
+for(const [name,patch,checkPatch] of [
+ ['human copy',{authorType:'User'}],['other author',{author:'other[bot]'}],['stale head',{body:zeroSummary().body.replaceAll(HEAD,OLD)}],['old summary',{at:'2026-10-27T21:59:59Z'}],['future summary',{at:'2026-10-27T22:02:01Z'}],['missing timestamp',{at:null}],['missing review window',{}, {started_at:null}],['not explicitly clean',{body:zeroSummary().body.replace('No actionable','Some actionable')}],
+])test(`night zero-issue receipt rejects ${name}`,()=>assert.equal(evaluateCodeRabbitNight(zeroInput(patch,checkPatch)).ok,false));
+test('night zero summary never hides an earlier blocking review body',()=>{
+ const i=zeroInput();i.rabbitReviews=[nightReview({body:'**Actionable comments posted: 0**\nMajor body-only finding'})];
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+
+test('night CodeRabbit rejects body-only blockers in a trusted clean-summary even with a clean formal review',()=>{
+ const i=zeroInput({body:zeroSummary().body+'\nMajor body-only finding'});i.rabbitReviews=[nightReview()];
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
