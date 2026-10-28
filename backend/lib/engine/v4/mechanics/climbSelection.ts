@@ -40,10 +40,11 @@ import { CLIMB_SELECTION_EXTRA_TUNING, EFFORT_GAIN_EXTRA_TUNING, GROUP_TEMPO_EFF
 import type { GroupTempoModel } from "../tuning.ts";
 import type { EffortLevel, Entrant } from "../types.ts";
 import { mountainSelectionKnobsFor, phaseSplitThreshold, phaseWprimeForcedMinSeverity, selectionPhaseFor } from "./mountainSelection.ts";
-import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
+import { TIME_MODEL_V3_TUNING, climbGapFieldScale, climbSplitGapSeconds, climbTimeSeconds, clusterSplitRiders, descentFinishDecidingClimbTuning, fieldScaledClimbTuning, finishDescentIndexFor, isDescentFinaleFor, timeModelTuningFor, wprimeForcedCategoryAllowed } from "./timeModel.ts";
 import type { TimeModelTuning } from "./timeModel.ts";
 import { isS5ExplosiveFinaleClimb } from "../s5Profiles.ts";
-import { climbGapEffortFactor } from "./effortCost.ts"; // #6641
+import { allOut7280Active, allOut7280Tuning, climbGapEffortFactor } from "./effortCost.ts"; // #6641, #7280
+import { allOutCrackProbability, allOutGainLoss, allOutReserve01, climbBlockOf, segmentCrackProbability } from "./allOutCrack6641.ts";
 
 // #6464: feltets faktor regnes én gang pr. startliste (entrants-objektet er
 // etapens) og tuning; ren funktion af feltets klatre-evner.
@@ -191,7 +192,15 @@ type RiderSelection = {
   deficit01: number; // #6199: klatre-underskud mod gruppens bedste klatrer (0-1)
   energyDeficit01: number; // #6199: energi-underskud (0-1, tom reserve = 1)
   gapEffortFactor?: number; // #6641 (KUN s5_profiles_v3): indsatsens faktor paa hullet; udeladt = 1
+  gapShiftSeconds?: number; // #7280 (slukket alt ud-pakke): sekunder lagt til (+) / taget af (-) eget hul; udeladt = 0
+  allOutCracked?: true; // #7280: knaekket paa den afgoerende stigning (saettes af)
 };
+
+/** Rytterens eget hul paa den afgoerende stigning, inkl. alt ud-pakkens forskydning (#7280). */
+function ownGapSeconds(s: RiderSelection, gradientPct: number, lengthKm: number, t: TimeModelTuning): number {
+  const gap = climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, t);
+  return s.gapShiftSeconds ? Math.max(0, round2(gap + s.gapShiftSeconds)) : gap;
+}
 
 /** Klatre-underskud (0-1, normaliseret) relativt til gruppens staerkeste klatrer. */
 function climbDeficit01(referenceClimbing: number, climbing: number): number {
@@ -295,7 +304,7 @@ function computeSelections(
   for (const riderId of group.rider_ids) {
     const entrant = entrants[riderId];
     if (!entrant) continue;
-    referenceClimbing = Math.max(referenceClimbing, entrant.abilities.climbing);
+    referenceClimbing = Math.max(referenceClimbing, shelteredClimbing(entrant, state.riders[riderId]?.team_cp_factor, ctx.s5ProfilesV3 === true));
     if (entrant.effort !== "grupetto") groupHasRacers = true;
   }
 
@@ -305,7 +314,7 @@ function computeSelections(
     const riderState = state.riders[riderId];
     if (!entrant || !riderState || riderState.status !== "racing") continue;
 
-    const deficit01 = climbDeficit01(referenceClimbing, entrant.abilities.climbing);
+    const deficit01 = climbDeficit01(referenceClimbing, shelteredClimbing(entrant, riderState.team_cp_factor, ctx.s5ProfilesV3 === true));
     const deficitScaled = climbDeficitScaled(deficit01, gradientPct, lengthKm);
     const energyDeficit = energyDeficit01(riderState.wprime, riderState.wprimeMax);
     // Begge led er nu alvors-skalerede (#4604) — se climbSeverity01's docblock.
@@ -316,11 +325,16 @@ function computeSelections(
     // effortClimbScorePenalty). Normal => faktor 1 og straf 0, dvs. bit-uaendret.
     // #6079: under orders_gc_v1 bruger save sine egne stignings-tal (tuning.ts).
     const gain = ctx.rulesRevision === "orders_gc_v1" ? ORDERS_GC_V1_CLIMB_GAIN_TUNING : EFFORT_GAIN_EXTRA_TUNING;
-    const effortFactor = effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
+    // #7280 (slukket pakke): alt ud holder ikke hjul for enhver pris paa de tidlige stigninger
+    // (det toemte ham foer den afgoerende); dér klatrer han som normal.
+    const allOut7280 = entrant.effort === "all_out" && ctx.s5ProfilesV3 === true && allOut7280Active();
+    const effortFactor = allOut7280 ? 1 : effortClimbScoreFactor(entrant.effort, 1 - energyDeficit, gain.climbScoreRelief);
     const effortPenalty = effortClimbScorePenalty(entrant.effort, severity, deficit01, gain.climbScorePenalty);
     const baseScore = (deficitWeight * deficitScaled + energyDeficitWeight * energyScaled) * effortFactor + effortPenalty;
     // #6641: indsatsens gevinst paa hullet (1 uden for s5_profiles_v3, effortCost.ts; hook-ctx baerer flaget, ikke revisionen).
-    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, effortFactor);
+    // #7280 (slukket pakke): all_out faar sin gevinst i sekunder paa den afgoerende stigning (allOutSelections7280), ikke her.
+    const gapScoreFactor = allOut7280 ? 1 : effortFactor;
+    const gapFactor = climbGapEffortFactor(ctx.s5ProfilesV3 === true, gapScoreFactor);
 
     const noise = gaussian(rngFor("climbSelection", riderId), 0, noiseSdBase * baseScore);
     const noisyScore = baseScore + noise;
@@ -373,6 +387,19 @@ function guardedSplitRiderIds(selections: RiderSelection[]): string[] {
  */
 const SUMMIT_RACE_SHORT_FINISH = Object.freeze({ maxKm: 7, maxGradientPct: 7 });
 
+// Kaptajnens lae paa stigningen (KUN s5_profiles_v3, ejer 27/10): holdets arbejde
+// (team_cp_factor fra mechanics/teamPlay.ts) naar ogsaa selektionen, ikke kun tempoet.
+// Uden dette er hjaelpernes stoette naesten usynlig paa bjergene, fordi udskilningen
+// kun ser klatreevnen. KUN laeet (faktor > 1) taeller: hjaelpernes pris roerer ikke
+// selektionen, fordi jagten paa stigningerne bygger paa netop dem (#6804 P2.4). Bounded af
+// teamPlay's loft og gulv; vaegten er SHELTER_CLIMB_WEIGHT_V3.
+export const SHELTER_CLIMB_WEIGHT_V3 = 0.25; // ejer-valg 27/10; maaling og begrundelse privat (balance-internals/captain-shelter-27-10)
+export function shelteredClimbing(entrant: Entrant, teamCpFactor: number | undefined, s5ProfilesV3: boolean): number {
+  const climbing = entrant.abilities.climbing;
+  if (!s5ProfilesV3 || !Number.isFinite(teamCpFactor)) return climbing;
+  return climbing * (1 + SHELTER_CLIMB_WEIGHT_V3 * Math.max(0, (teamCpFactor as number) - 1));
+}
+
 export function isSummitFinishClimb(ctx: Pick<SegmentHookContext, "route" | "segmentIndex">): boolean {
   const segs = ctx.route.segments ?? [];
   if (ctx.route.finale_type !== "long_climb" || segs.length === 0 || segs[segs.length - 1].kind !== "climb") return false;
@@ -424,8 +451,8 @@ function summitRaceSplitRiderIds(
   t: TimeModelTuning,
 ): string[] {
   return selections
-    .filter((s) => s.wprimeForced || s.effortForced
-      || climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, t) >= t.clusterMinSeconds)
+    .filter((s) => s.wprimeForced || s.effortForced || s.allOutCracked
+      || ownGapSeconds(s, gradientPct, lengthKm, t) >= t.clusterMinSeconds)
     .map((s) => s.riderId)
     .sort();
 }
@@ -583,7 +610,15 @@ export const climbSelectionHook: ClimbSelectionHook = (
   let localSeq = 0;
 
   for (const group of groupsSorted) {
-    if (group.rider_ids.length < 2) continue;
+    if (group.rider_ids.length < 2) {
+      // #7280 (slukket pakke): ogsaa en alt ud-rytter alene paa den sidste stigning kan knaekke.
+      if (group.rider_ids.length === 1 && ctx.s5ProfilesV3 === true && allOut7280Active()) {
+        const solo = allOutSoloCrack7280(group, nextState, ctx, gradientPct, lengthKm);
+        nextState = solo.state;
+        events.push(...solo.events);
+      }
+      continue;
+    }
 
     const measured = computeSelections(group, nextState, ctx, gradientPct, lengthKm);
     // Post-travel reserve is evidence of sustaining this group's actual pace.
@@ -618,26 +653,51 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // ens i alle divisioner. Samme faktor for alle ryttere paa etapen.
     const fieldScale = timeModel.climbGapFieldScaleProfiles.includes(ctx.route.profile_type) ? fieldClimbGapScale(ctx.entrants, timeModel) : 1;
     const climbModel = fieldScaledClimbTuning(descentDecider ? descentFinishDecidingClimbTuning(timeModel) : timeModel, fieldScale);
-    const selections = descentDecider
+    let selections = descentDecider
       ? decidingClimbSelectionsOnTheDay(baseSelections, (id) => ctx.entrants[id]?.abilities.climbing ?? 0,
         (id) => nextState.riders[id]?.dayform ?? 0,
         (deficit, energy) => climbSplitGapSeconds(gradientPct, lengthKm, deficit, energy, climbModel), climbModel)
       : baseSelections;
-    let splitRiderIds = summitRace
-      ? summitRaceSplitRiderIds(selections, gradientPct, lengthKm, climbModel)
-      : guardedSplitRiderIds(selections);
-    if (splitRiderIds.length === 0) continue;
-    if (splitRiderIds.length >= group.rider_ids.length) {
-      // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):
-      // ALLE ryttere kan i princippet ramme wprime<=0 samtidig. En gruppe kan
-      // aldrig splitte fra sig selv — behold altid mindst den bedst-
-      // positionerede rytter (laveste baseScore) som gruppens fortsatte front,
-      // saa selektionen stadig differentierer resten (climbDeficitScaled
-      // adskiller ryttere ogsaa naar alle er wprime-tvungne).
-      const bestRiderId = retainedRiderIdWhenAllSplit(selections);
-      splitRiderIds = splitRiderIds.filter((id) => id !== bestRiderId);
+    // #7280 (slukket pakke, KUN s5_profiles_v3): alt ud paa den afgoerende (sidste) stigning.
+    const allOutOn = ctx.s5ProfilesV3 === true && allOut7280Active() && !cohesive && group.kind !== "gruppetto"
+      && group.origin !== "breakaway" && (summitRace || isLastClimbBlock7280(ctx));
+    const beforeAllOut = selections;
+    let allOutIds: ReadonlySet<string> = new Set();
+    let front7280: FrontAttack7280 | null = null;
+    if (allOutOn) {
+      const ao = allOutSelections7280(selections, nextState, ctx, gradientPct, lengthKm, climbModel);
+      selections = ao.selections;
+      events.push(...ao.events);
+      allOutIds = new Set(selections.filter((s) => s.gapShiftSeconds !== undefined).map((s) => s.riderId));
+      // Ejer 27/10: den bedste kan angribe vaek fra fronten (gevinsten klippes ikke ved 0).
+      front7280 = allOutFrontAttack7280(selections, gradientPct, lengthKm, climbModel);
     }
-    if (splitRiderIds.length === 0) continue;
+    const splitOf = (sels: RiderSelection[]) => (summitRace
+      ? summitRaceSplitRiderIds(sels, gradientPct, lengthKm, climbModel)
+      : guardedSplitRiderIds(sels));
+    let splitRiderIds = splitOf(selections);
+    if (allOutOn && !summitRace) splitRiderIds = allOutGuardedSplit7280(splitRiderIds, selections, gradientPct, lengthKm, climbModel);
+    const partsOf = (sels: RiderSelection[], ids: string[]) => (ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
+      ? clusterSplitRiders(sels.filter((s) => ids.includes(s.riderId)).map((s) => ({
+        riderId: s.riderId,
+        gapSeconds: ownGapSeconds(s, gradientPct, lengthKm, climbModel),
+      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : climbModel)
+      : [{ riderIds: ids, gapSeconds: gapSecondsDeltaFor(sels, ids) }]);
+    // Ekstremt segment (fx laengere hele-etape-klatring i test-harnesset):
+    // ALLE ryttere kan i princippet ramme wprime<=0 samtidig. En gruppe kan
+    // aldrig splitte fra sig selv — behold altid mindst den bedst-
+    // positionerede rytter (laveste baseScore) som gruppens fortsatte front,
+    // saa selektionen stadig differentierer resten (climbDeficitScaled
+    // adskiller ryttere ogsaa naar alle er wprime-tvungne).
+    const retainFront = (sels: RiderSelection[], ids: string[]): string[] => {
+      if (ids.length === 0 || ids.length < group.rider_ids.length) return ids;
+      // #7280: en knaekket alt ud-rytter er aldrig den der bliver forrest, naar en anden kan.
+      const uncracked = sels.filter((s) => !s.allOutCracked);
+      const bestRiderId = retainedRiderIdWhenAllSplit(uncracked.length > 0 ? uncracked : sels);
+      return ids.filter((id) => id !== bestRiderId);
+    };
+    splitRiderIds = retainFront(selections, splitRiderIds);
+    if (front7280) { const attackers = front7280.attackerIds; splitRiderIds = splitRiderIds.filter((id) => !attackers.has(id)); }
 
     // #6199 (KUN orders_gc_v3): de afhaengte falder ikke af som én klump. Hver
     // rytter faar sit eget hul (laengde x stejlhed x evneforskel), og rytterne
@@ -646,12 +706,15 @@ export const climbSelectionHook: ClimbSelectionHook = (
     // #6199 (maaling 6/10): en gruppetto deles ikke i flere klynger. De der
     // falder af den, falder af som én gruppe (gennemsnittet af deres eget hul),
     // ellers deles halen i stumper der hver for sig er for smaa til redningen.
-    const parts = ctx.ordersGcV3 === true || ctx.sharedGroupTime !== undefined
-      ? clusterSplitRiders(selections.filter((s) => splitRiderIds.includes(s.riderId)).map((s) => ({
-        riderId: s.riderId,
-        gapSeconds: climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, climbModel),
-      })), (group.kind === "gruppetto" || cohesive) ? singleClusterTuning(timeModel) : climbModel)
-      : [{ riderIds: splitRiderIds, gapSeconds: gapSecondsDeltaFor(selections, splitRiderIds) }];
+    const parts = splitRiderIds.length > 0 ? partsOf(selections, splitRiderIds) : [];
+    // Ejer 27/10: angriberen splitter FREM med forspringet (negativt hul, rebaselines af segment-loopet).
+    if (front7280 && splitRiderIds.length + front7280.attackerIds.size < group.rider_ids.length) parts.push(...front7280.parts);
+    // #7280: gevinsten taelles i de grupper motoren faktisk danner (foer/efter alt ud).
+    if (allOutOn) {
+      const idsBefore = retainFront(beforeAllOut, splitOf(beforeAllOut));
+      nextState = accountAllOut7280(nextState, selections, idsBefore.length > 0 ? partsOf(beforeAllOut, idsBefore) : [], parts, allOutIds);
+    }
+    if (parts.length === 0) continue;
 
     for (const part of parts) {
       const kind = splitKindFor(group.kind, part.riderIds.length);
@@ -683,5 +746,172 @@ export const climbSelectionHook: ClimbSelectionHook = (
     }
   }
 
+  // #7280: én linje pr. rytter, naar den afgoerende stigning er slut (ogsaa for en
+  // rytter der koerte alene paa de sidste segmenter og derfor ikke blev udvalgt dér).
+  if (ctx.s5ProfilesV3 === true && allOut7280Active()) events.push(...allOutGainEvents7280(nextState, ctx, segment.to_km));
+
   return { state: nextState, events };
 };
+
+/**
+ * #7280 (slukket pakke, KUN s5_profiles_v3): er segmentet en del af etapens SIDSTE
+ * stigning? Paa en topankomst eller foer en nedkoerselsfinale er det den afgoerende
+ * (summitRace); ellers er det finalens sidste bakke/stigning.
+ */
+export function isLastClimbBlock7280(ctx: Pick<SegmentHookContext, "route" | "segmentIndex">): boolean {
+  const segs = ctx.route.segments ?? [];
+  const block = climbBlockOf(segs, ctx.segmentIndex);
+  if (!block) return false;
+  for (let i = block.end + 1; i < segs.length; i++) if (segs[i].kind === "climb") return false;
+  return true;
+}
+
+/**
+ * #7280 (slukket pakke, KUN s5_profiles_v3): alt ud paa et segment af den afgoerende
+ * stigning (spec 2026-10-27-6641-alt-ud-design.md). For hver alt ud-rytter i gruppen:
+ * enten knaekker han (seedet, risikoen vokser under reserve-taersklen) og faar et
+ * ekstra tab, eller ogsaa tages en evne- og reserve-vaegtet del af hans eget hul.
+ * Udvalget selv (hvem der saettes af) afgoeres bagefter af den almindelige regel.
+ * REN: input muteres ikke.
+ */
+function allOutSelections7280(
+  selections: RiderSelection[],
+  state: EngineState,
+  ctx: SegmentHookContext,
+  gradientPct: number,
+  lengthKm: number,
+  t: TimeModelTuning,
+): { selections: RiderSelection[]; events: TimelineEvent[] } {
+  const k = allOut7280Tuning();
+  const block = climbBlockOf(ctx.route.segments ?? [], ctx.segmentIndex);
+  const share = block && block.lengthKm > 0 ? lengthKm / block.lengthKm : 1;
+  const unit = climbTimeSeconds(gradientPct, lengthKm, t) * t.climbGapExposure;
+  const events: TimelineEvent[] = [];
+  const out = selections.map((s) => {
+    const entrant = ctx.entrants[s.riderId];
+    const rs = state.riders[s.riderId];
+    if (!entrant || !rs || entrant.effort !== "all_out" || rs.all_out_7280?.cracked) return s;
+    const reserve = allOutReserve01(rs.wprime, rs.wprimeMax, entrant.condition, k.reserveWprimeWeight);
+    const p = segmentCrackProbability(allOutCrackProbability(reserve, k), share);
+    if (p > 0 && ctx.rngFor("allOutCrack7280", s.riderId)() < p) {
+      events.push({ km: round2(ctx.segment.to_km), type: "all_out_cracked", params: { rider_id: s.riderId } });
+      return { ...s, gapShiftSeconds: round2(unit * Math.max(0, k.crackLoss)), allOutCracked: true as const };
+    }
+    const shift = round2(-unit * allOutGainLoss(s.deficit01, reserve, k));
+    return shift < 0 ? { ...s, gapShiftSeconds: shift } : s;
+  });
+  return { selections: out, events };
+}
+
+/**
+ * #7280 (slukket pakke): en alt ud-rytter ALENE paa etapens sidste stigning (ingen gruppe at
+ * blive sat af) kan ogsaa knaekke. Samme risiko og samme rng-stroem som i gruppen; knaekker
+ * han, faar hans egen gruppe tabet lagt til sit hul. REN.
+ */
+function allOutSoloCrack7280(group: RaceGroup, state: EngineState, ctx: SegmentHookContext, gradientPct: number, lengthKm: number): { state: EngineState; events: TimelineEvent[] } {
+  const riderId = group.rider_ids[0];
+  const entrant = ctx.entrants[riderId];
+  const rs = state.riders[riderId];
+  if (!entrant || !rs || rs.status !== "racing" || entrant.effort !== "all_out" || rs.all_out_7280?.cracked
+    || group.kind === "gruppetto" || group.origin === "breakaway" || !isLastClimbBlock7280(ctx)) return { state, events: [] };
+  const k = allOut7280Tuning();
+  const block = climbBlockOf(ctx.route.segments ?? [], ctx.segmentIndex);
+  const share = block && block.lengthKm > 0 ? lengthKm / block.lengthKm : 1;
+  const reserve = allOutReserve01(rs.wprime, rs.wprimeMax, entrant.condition, k.reserveWprimeWeight);
+  const p = segmentCrackProbability(allOutCrackProbability(reserve, k), share);
+  if (!(p > 0) || !(ctx.rngFor("allOutCrack7280", riderId)() < p)) return { state, events: [] };
+  const t = timeModelTuningFor(ctx);
+  const loss = round2(climbTimeSeconds(gradientPct, lengthKm, t) * t.climbGapExposure * Math.max(0, k.crackLoss));
+  return {
+    state: {
+      ...state,
+      groups: state.groups.map((g) => (g.id === group.id ? { ...g, gap_seconds: round2(g.gap_seconds + loss) } : g)),
+      riders: { ...state.riders, [riderId]: { ...rs, all_out_7280: { gained: 0, cracked: true } } },
+    },
+    events: [{ km: round2(ctx.segment.to_km), type: "all_out_cracked", params: { rider_id: riderId } }],
+  };
+}
+
+type FrontAttack7280 = { attackerIds: ReadonlySet<string>; parts: Array<{ riderIds: string[]; gapSeconds: number }> };
+
+/**
+ * Ejer 27/10 (#6641 valg 2): den bedste rytter i gruppen kan bruge alt ud til at angribe vaek
+ * fra fronten. Uden dette klippes hans gevinst ved hul 0, fordi han allerede sidder forrest.
+ * Bliver en ikke-knaekket alt ud-rytter hurtigere end gruppens front med mindst klyngens
+ * minimum, splitter han frem med forspringet (negativt hul), og resten koerer videre som foer.
+ * Samme pris som al anden alt ud (reserve, knaek, traethed). REN og deterministisk.
+ */
+function allOutFrontAttack7280(selections: RiderSelection[], gradientPct: number, lengthKm: number, t: TimeModelTuning): FrontAttack7280 | null {
+  // Codex P2 (#7309): ALLE ikke-knaekkede alt ud-ryttere foran fronten angriber (ikke kun den
+  // foerste paa rytter-id), samlet i klynger efter deres egen tid, saa lige staerke koerer sammen.
+  const ahead: Array<{ riderId: string; gapSeconds: number }> = [];
+  for (const s of selections) {
+    if (s.allOutCracked || !(typeof s.gapShiftSeconds === "number" && s.gapShiftSeconds < 0)) continue;
+    const raw = round2(climbSplitGapSeconds(gradientPct, lengthKm, s.deficit01, s.energyDeficit01, t) + s.gapShiftSeconds);
+    if (raw <= -t.clusterMinSeconds) ahead.push({ riderId: s.riderId, gapSeconds: raw });
+  }
+  if (ahead.length === 0) return null;
+  return { attackerIds: new Set(ahead.map((a) => a.riderId)), parts: clusterSplitRiders(ahead, t) };
+}
+
+/**
+ * #7280: udvalget paa en sidste stigning der ikke er en topankomst (taerskel-reglen).
+ * En knaekket alt ud-rytter saettes af; en alt ud-rytter hvis eget hul (efter
+ * gevinsten) er under klyngens minimum, bliver i gruppen, medmindre reserven tvinger ham.
+ */
+function allOutGuardedSplit7280(splitRiderIds: string[], selections: RiderSelection[], gradientPct: number, lengthKm: number, t: TimeModelTuning): string[] {
+  const split = new Set(splitRiderIds);
+  for (const s of selections) {
+    if (s.allOutCracked) split.add(s.riderId);
+    else if (s.gapShiftSeconds !== undefined && split.has(s.riderId) && !s.wprimeForced && !s.effortForced
+      && ownGapSeconds(s, gradientPct, lengthKm, t) < t.clusterMinSeconds) split.delete(s.riderId);
+  }
+  return [...split].sort();
+}
+
+/**
+ * #7280: det motoren reelt sparede (eller kostede) hver alt ud-rytter paa segmentet:
+ * hullet hans gruppe ville have faaet uden alt ud minus det hans gruppe fik (0 for en
+ * rytter der bliver i gruppen). Lagt sammen i RiderState.all_out_7280; et knaek markeres.
+ */
+function accountAllOut7280(
+  state: EngineState,
+  after: readonly RiderSelection[],
+  partsBefore: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>,
+  partsAfter: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>,
+  allOutIds: ReadonlySet<string> = new Set(),
+): EngineState {
+  const gapIn = (parts: ReadonlyArray<{ riderIds: string[]; gapSeconds: number }>) => {
+    const m = new Map<string, number>();
+    for (const p of parts) for (const id of p.riderIds) m.set(id, p.gapSeconds);
+    return m;
+  };
+  const g0 = gapIn(partsBefore);
+  const g1 = gapIn(partsAfter);
+  let riders: EngineState["riders"] | null = null;
+  for (const a of after) {
+    if (!allOutIds.has(a.riderId)) continue;
+    const rs = state.riders[a.riderId];
+    if (!rs) continue;
+    const prev = rs.all_out_7280 ?? { gained: 0, cracked: false };
+    const cracked = prev.cracked || a.allOutCracked === true;
+    const delta = (g0.get(a.riderId) ?? 0) - (g1.get(a.riderId) ?? 0); // angriberen: 0 - (-forspring)
+    riders = { ...(riders ?? state.riders), [a.riderId]: { ...rs, all_out_7280: { gained: cracked ? 0 : round2(prev.gained + delta), cracked } } };
+  }
+  return riders ? { ...state, riders } : state;
+}
+
+/** #7280: all_out_gain-events paa den afgoerende stignings sidste segment (naar han vandt mindst 1 s). */
+function allOutGainEvents7280(state: EngineState, ctx: SegmentHookContext, km: number): TimelineEvent[] {
+  const block = climbBlockOf(ctx.route.segments ?? [], ctx.segmentIndex);
+  if (!block || block.end !== ctx.segmentIndex) return [];
+  const events: TimelineEvent[] = [];
+  for (const riderId of Object.keys(state.riders).sort()) {
+    const ao = state.riders[riderId]?.all_out_7280;
+    if (!ao || ao.cracked || state.riders[riderId].status !== "racing") continue;
+    // Kun en linje naar motoren reelt tog tid af hans hul. Ingen sekunder i linjen: summen pr.
+    // segment er ikke den samlede gevinst, naar alt ud har flyttet ham til en anden gruppe.
+    if (ao.gained >= 1) events.push({ km: round2(km), type: "all_out_gain", params: { rider_id: riderId } });
+  }
+  return events;
+}

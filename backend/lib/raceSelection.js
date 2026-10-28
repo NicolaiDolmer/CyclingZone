@@ -126,7 +126,7 @@ export function roleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRol
 // Gem udtagelsen atomisk: erstat holdets entries for løbet i ÉN transaktion via
 // replace_race_selection-RPC'en (#2173). Enten gemmes hele truppen, eller intet
 // ændres — ingen delete-uden-insert-degradering, ingen delvist gemt trup.
-export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [], coCaptainId = null, luxuryHelperId = null }) {
+export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null, freeRoleIds = [], coCaptainId = null, luxuryHelperId = null, managerSave = false, autoReleases = [], now = null }) {
   // Forward-guard (#2074): nægt delete-then-insert hvis løbets felt er LÅST
   // (stages_completed>0). Rute-laget gater allerede, men guarden gør invarianten lokal
   // til mutationen så en fremtidig kalder ikke kan nulstille et aktivt startfelt.
@@ -146,6 +146,10 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
     race_role: roleFor(rider_id, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId, luxuryHelperId }),
     is_auto_filled: false,
   }));
+  if (managerSave) {
+    await saveSelectionBulk({ supabase, teamId, changes: [{ race_id: race.id, rider_ids: riderIds, roles: rows.map((r) => r.race_role) }], autoReleases, managerSave, now });
+    return rows;
+  }
   const { error: rpcErr } = await supabase.rpc("replace_race_selection", {
     p_team_id: teamId,
     p_race_id: race.id,
@@ -185,7 +189,7 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 // (race.squad = u23/junior) matches mod holdets pulje for TRUPPEN (raceBinding.
 // teamInRaceSquadPool). Uden `team` kendes kun seniorpuljen (teamDivisionId), og et
 // ungdomsløb afvises derfor med selection_wrong_pool (fejl lukket). Seniorløb: uændret.
-export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, team = null, body, now }) {
+export async function prepareSelectionChange({ supabase, race, teamId, teamDivisionId, team = null, body, now, rejoining = false }) {
   if (race.status !== "scheduled") return { ok: false, status: 409, error: "selection_race_not_open" };
 
   // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje (se #1146-
@@ -248,7 +252,7 @@ export async function prepareSelectionChange({ supabase, race, teamId, teamDivis
   // et loeb med en etape paa den dato; alle andre ryttere (nykoebt, flyttet) er frie.
   const lockedMoves = trainNowSelectionViolations({
     lockedRiderIds: ctx.trainNowLock.riderIds,
-    currentRiderIds: ctx.selection?.rider_ids ?? [],
+    currentRiderIds: rejoining ? [] : (ctx.selection?.rider_ids ?? []),
     nextRiderIds: riderIds,
   });
   if (lockedMoves.length) {
@@ -384,19 +388,27 @@ export function classifyBulkSelectionConflicts({ changes, otherRacesByRace }) {
 // via prepareSelectionChange + roleFor. `autoReleases`: [{ race_id, rider_id }] — #2637-
 // frigivelser i løb UDENFOR denne batch (klassificeret af api.js via
 // resolveBindingConflictDetails), udført i SAMME transaktion som selve erstatningen.
-export async function saveSelectionBulk({ supabase, teamId, changes, autoReleases = [] }) {
-  const { error: rpcErr } = await supabase.rpc("replace_race_selection_bulk", {
+export async function saveSelectionBulk({ supabase, teamId, changes, autoReleases = [], managerSave = false, now = null }) {
+  if (managerSave && (!(now instanceof Date) || !Number.isFinite(now.getTime()))) throw new TypeError("manager save requires now");
+  const { error: rpcErr } = await supabase.rpc(managerSave ? "replace_manager_race_selections" : "replace_race_selection_bulk", {
     p_team_id: teamId,
     p_changes: changes,
     p_auto_releases: autoReleases,
+    ...(managerSave ? { p_now: now.toISOString() } : {}),
   });
   if (rpcErr) {
     // #2256/#4283-mønsteret: RPC'ens deferred binding-backstop tabte kapløbet for os (en
     // SAMTIDIG skriver fra en anden session) — samme klassifikation som saveSelection.
     const err = new Error(`replace_race_selection_bulk: ${rpcErr.message}`);
     const msg = String(rpcErr.message || "");
-    if (msg.includes("selection_rider_bound") || isRiderDayInvariantViolation(rpcErr)) {
+    if (msg.includes("selection_save_busy")) {
+      err.code = "selection_save_busy";
+    } else if (msg.includes("selection_rider_bound") || isRiderDayInvariantViolation(rpcErr)) {
       err.code = "selection_rider_bound";
+    } else if (msg.includes("selection_withdrawn_locked")) {
+      err.code = "selection_withdrawn_locked";
+    } else if (msg.includes("selection_withdrawn")) {
+      err.code = "selection_withdrawn";
     } else if (msg.includes("selection_race_started")) {
       // #2074/#4310: RPC'ens egen SQL-niveau forward-guard (database/2026-08-27-1146-
       // selection-bulk-rpc.sql) tabte et TOCTOU-kapløb mod løbets stages_completed/status

@@ -1064,6 +1064,8 @@ transaktion som den eksisterende RPC. Begge bevarer cutover → hold-låserække
 RPC'er er uændrede. Statuspolling afbryder timeoutede kald og holder ét kald aktivt ad gangen; stop og
 unmount afbryder også. Under backend-før-migration-vinduet bruges kun ved manglende try-RPC (`PGRST202`) den gamle ventende RPC; held-adfærden kræver anvendt migration og opdateret schema-cache.
 
+**Train now = hele dagen, B fase 1 (#6461, bag `training_train_now_whole_day`, slukket).** Med flaget afregner klikket hele datoen for hver rytter, hvis dato er kendt: en rytter uden åbent løbsslot (intet løb, eller løbet er kørt) får alle 5 løbsdage inkl. datoens ene tilstandsafregning. En løbsrytter med et løb, der ikke er kørt, venter som før: træning før løbet ville give ham evner, som løbet læser (en fordel af klik-tidspunktet, I1). Tilstanden skrives stadig én gang pr. rytter pr. dato, og løbet køres på datoens starttilstand. Fælles lås: klikket mærker låserækken (`whole_day_at`) før afregningen, og databasen dropper en udtagelse af en mærket rytter i et løb med en etape tilbage på datoen (`database/2026-10-25-6461-train-now-whole-day.sql`). Løbsrytternes træning i klikket er fase 2 (kræver RPC og den kronologiske dagsmodel fra #6984). Før tænding: løbsstartens autofyld skal bruge de rækker, databasen faktisk skrev (en droppet række må ikke komme med i feltet). Kode: `backend/lib/trainNowWholeDay.js`.
+
 ### 13.3c Fast udbytte pr. dato uanset sæsonens længde (#6711, ejer-go 16/10)
 
 Plan-PR 2 i [`docs/superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md`](superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md).

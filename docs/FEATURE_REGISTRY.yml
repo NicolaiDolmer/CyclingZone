@@ -76,12 +76,12 @@ features:
     area: race-engine
     title_en: Profile hills in the race engine
     title_da: Bakker fra højdeprofilen i motoren
-    state: building
+    state: live
+    flag: route_profile_hills
+    ssot: docs/RACE_ENGINE_RULES.md
     epic: 7290
-    verified: 2026-10-27
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
-    note: "PR #7291 merget; route_profile_hills mangler (off). Kobling efter #7272; B #7293 måles."
+    verified: 2026-10-28
+    note: "route_profile_hills on siden 27/10; læst tilbage i prod 28/10."
 
   - id: race-engine-v3-scoring
     area: race-engine
@@ -117,6 +117,18 @@ features:
     note: "Prod 27/10 on; roadmap-status rettes via #7153."
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
+
+  - id: race-day-form-6649
+    area: race-engine
+    title_en: Day form with causes
+    title_da: Dagsform ud fra træthed, form, sygdom og vejr
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6649
+    verified: 2026-10-27
+    decision: taend
+    decide_by: 2026-11-08
+    note: Tændes med ejer-go.
 
   - id: race-official-times-v1
     area: race-engine
@@ -195,11 +207,21 @@ features:
     title_en: Stage intention choice
     title_da: Indsatsvalg pr. etape
     state: live
+    flag: race_day_intention_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
     verified: 2026-10-27
-    note: "Valg on 27/10, læst i prod; Alt ud #7280 afventer eget go."
-    flag: race_day_intention_enabled
+    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
+
+  - id: race-all-out-7280
+    area: race-engine
+    title_en: All out on the decisive climb
+    title_da: Alt ud på den afgørende stigning
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6641
+    verified: 2026-10-27
+    note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
 
   - id: luxury-helper-role
     area: race-engine
@@ -294,9 +316,7 @@ features:
     flag: stage_plan_v1
     ssot: docs/RACE_ENGINE_RULES.md
     verified: 2026-10-27
-    note: "Ordreflag on 27/10 kl. 13:48, læst i prod (#7153); #7281 merget."
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
+    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
 
   - id: race-library-v2
     area: stats
@@ -387,7 +407,7 @@ features:
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
     verified: 2026-10-15
-    note: Afløst af værdimodel v6 (#4449); koden fjernet i #6642.
+    note: Afløst af v6 (#4449).
 
   - id: rider-valuation-v5
     area: market
@@ -465,7 +485,7 @@ features:
     ssot: docs/RIDER_GENERATION.md
     epic: 5327
     verified: 2026-09-23
-    note: 'Kontakt (off) paa start-trup, AI-hold og relaunch. Flip er ejer-gated.'
+    note: Kontakt (off); flip er ejer-gated.
 
   # --- training ------------------------------------------------------------
   - id: daily-training
@@ -741,7 +761,7 @@ features:
     state: building
     ssot: docs/CALENDAR_RULES.md
     verified: 2026-10-26
-    note: Flag auto_calendar_enabled har ingen række i prod (= off).
+    note: Ingen række i prod (= off).
     decision: ejer-beslutning
     decide_by: 2026-11-08
 
@@ -762,7 +782,7 @@ features:
     ssot: docs/SEASON_CUTOVER_RUNBOOK.md
     epic: 1155
     verified: 2026-10-17
-    note: Slukket 8/6 og fjernet 17/10 (#6796); sæsonskiftet er manuel admin-handling.
+    note: Fjernet 17/10 (#6796); sæsonskiftet er manuelt.
 
   - id: season-signup
     area: season
@@ -1226,4 +1246,4 @@ features:
     state: retired
     epic: 2467
     verified: 2026-10-15
-    note: SurveyBanner.jsx slettet (#2467); kun seed-rækker tilbage i app_config.
+    note: SurveyBanner.jsx slettet (#2467).

@@ -42,6 +42,7 @@ import { mergedPhysicalGroup, mergedSharedCohorts } from "./groups.ts";
 import type { GroupMerge } from "./groups.ts";
 import { climbTimeSeconds, finishDescentIndexFor, finishDescentRemainingCapSeconds, TIME_MODEL_V3_TUNING, timeModelTuningFor } from "./mechanics/timeModel.ts";
 import { s5FinaleDemandVector } from "./s5Profiles.ts";
+import { dayForm6649FinaleScale } from "./mechanics/dayForm6649.ts"; // #6649
 import { S5_PROFILES_TUNING } from "./tuning.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -709,7 +710,7 @@ export const finaleHook: FinaleHook = (state: EngineState, ctx: SegmentHookConte
       demandVectorOf(riderId),
       extra.wprimeReserveWeight,
       entrant.effort,
-      entrant.effort === "grupetto" ? 0 : state.riders[riderId]?.dayform ?? 0,
+      entrant.effort === "grupetto" ? 0 : (state.riders[riderId]?.dayform ?? 0) * dayForm6649FinaleScale(ctx.dayForm6649 === true && isMassFinishRoute(route)), // #6649
       dayformWeight,
       extra.dayformScoreClamp,
       modifierScaleOf(riderId),

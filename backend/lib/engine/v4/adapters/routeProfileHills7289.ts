@@ -81,8 +81,9 @@ function hillsInFlatSegment(
     if (start >= 0 && count > 0) {
       const avgPct = (gain / (count * step * 1000)) * 100;
       if (avgPct >= PROFILE_HILL_MIN_AVG_PCT && gain >= PROFILE_HILL_MIN_GAIN_M) {
-        const from = roundKm(Math.max(segment.from_km, start * step));
-        const to = roundKm(Math.min(segment.to_km, (start + count) * step));
+        // Afrund foerst, klip bagefter: en bakke maa aldrig stikke ud over sit segment.
+        const from = Math.max(segment.from_km, roundKm(start * step));
+        const to = Math.min(segment.to_km, roundKm((start + count) * step));
         if (to > from) hills.push([from, to]);
       }
     }

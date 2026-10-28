@@ -1823,7 +1823,7 @@
     },
     "peakWhatItDoes": {
       "q": "Wat doet een piek?",
-      "a": "Een piek tilt de vorm van één renner op voor één koersvenster dat je in de Seizoensplanner kiest. Hij werkt met een voorbereiding waar je vooraf voor traint en een dip erna, dus het loont om hem in te stellen voor een koers die je echt wilt winnen, niet voor een heel seizoen. Elke renner kan op elk moment maximaal twee pieken hebben. Pieken tellen nog niet mee in koersen; koersen gebruiken zijn normale Vorm. Zie 'Hoe werkt piektraining?' en 'Kost een piek me achteraf iets?' hieronder voor precies hoeveel en wanneer."
+      "a": "Een piek tilt de vorm van één renner op voor één koersvenster dat je in de Seizoensplanner kiest. Hij werkt met een voorbereiding waar je vooraf voor traint en een dip erna, dus het loont om hem in te stellen voor een koers die je echt wilt winnen, niet voor een heel seizoen. Elke renner kan op elk moment maximaal twee pieken hebben. In koersen komt de piek bovenop zijn normale Vorm. Zie 'Hoe werkt piektraining?' en 'Kost een piek me achteraf iets?' hieronder voor precies hoeveel en wanneer."
     },
     "peakTraining": {
       "q": "Hoe werkt piektraining?",
