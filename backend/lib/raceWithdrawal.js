@@ -166,6 +166,7 @@ export async function loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds = 
  *
  * Fejler ÅBENT (tomt array) når løbet ikke har et binding-vindue: det er samme
  * regel som PUT-gaten, og en guard der gætter ville blokere lovlige gen-deltag.
+ * @param {{supabase: any, race: any, teamId: string, riderIds?: string[] | null}} args
  */
 export async function findRejoinConflicts({ supabase, race, teamId, riderIds = null }) {
   if (!race?.id) return [];
