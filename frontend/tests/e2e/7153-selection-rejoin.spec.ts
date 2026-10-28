@@ -45,7 +45,7 @@ test('voluntary rejoin starts empty, warns, saves only new picks',async({page},t
   );
 
   // Stash PUT-body så vi kan assertere payload efter klikket.
-  let capturedBody = null;
+  const capturedBody: { current?: { rider_ids?: string[] } } = {};
 
   // Override GET + PUT på selection-endpointet.
   // Registreres EFTER installNetworkMocks → matcher FØR fixtures' generiske **/api/** handler.
@@ -58,9 +58,9 @@ test('voluntary rejoin starts empty, warns, saves only new picks',async({page},t
 
     if (request.method() === "PUT") {
       try {
-        capturedBody = JSON.parse(request.postData() || "{}");
+        capturedBody.current = JSON.parse(request.postData() || "{}");
       } catch {
-        capturedBody = {};
+        capturedBody.current = {};
       }
       return route.fulfill({
         status: 200,
@@ -108,7 +108,7 @@ test('voluntary rejoin starts empty, warns, saves only new picks',async({page},t
  await page.screenshot({path:evidenceShotPath('pr-screens/7153/panel-'+testInfo.project.name+'.png'),fullPage:false});
  await panel.getByRole('button',{name:/gem udtagelse/i}).click();
  await expect(panel.getByText(/udtagelsen er gemt/i)).toBeVisible();
- expect(capturedBody.rider_ids).toEqual(['sel-r0']);
+ expect(capturedBody.current?.rider_ids).toEqual(['sel-r0']);
  await expect(panel.getByText('Gem en ny udtagelse for at annullere udtrækningen og erstatte den gamle udtagelse.')).toHaveCount(0);
 });
 
@@ -153,11 +153,11 @@ const SEASON_MATRIX_BODY = {
 for(const mode of ['save','conflict','locked'])test('matrix voluntary rejoin '+mode,async({page},testInfo)=>{
  await stabilizePage(page);await installNetworkMocks(page);
  const body={...SEASON_MATRIX_BODY,withdrawnRaceIds:['r1'],races:SEASON_MATRIX_BODY.races.map(r=>({...r,lineupLocked:mode==='locked'&&r.id==='r1'}))};
- let captured;
+ const captured: { current?: { changes: unknown[] } } = {};
  await page.route('**/api/races/selection/season**',route=>json(route,body));
  await page.route('**/api/races/selection/bulk',async route=>{
   const request=route.request();if(request.method()==='OPTIONS')return route.fulfill({status:204,headers:corsHeaders(request)});
-  captured=request.postDataJSON();
+  captured.current=request.postDataJSON();
   if(mode==='conflict')return route.fulfill({status:409,contentType:'application/json',headers:corsHeaders(request),body:JSON.stringify({error:'selection_rider_bound',race_id:'r1',conflicts:[{rider_name:'Cecilie Holm',race_name:'Tour B'}]})});
   body.withdrawnRaceIds=[];body.entries=body.entries.filter(e=>e.raceId!=='r1').concat([{raceId:'r1',riderId:'rider-3',raceRole:'captain'}]);
   return json(route,{ok:true});
@@ -177,7 +177,7 @@ for(const mode of ['save','conflict','locked'])test('matrix voluntary rejoin '+m
    await expect(page.getByText(/Cecilie Holm.*Tour B/)).toBeVisible();
   }else{
    await expect(page.getByRole('button',{name:'Gem plan'})).toHaveCount(0);
-   expect(captured.changes).toEqual([{raceId:'r1',rider_ids:['rider-3'],captain_id:'rider-3',sprint_captain_id:null,hunter_id:null,free_role_ids:[]}]);
+   expect(captured.current?.changes).toEqual([{raceId:'r1',rider_ids:['rider-3'],captain_id:'rider-3',sprint_captain_id:null,hunter_id:null,free_role_ids:[]}]);
   }
  }
  await page.screenshot({path:evidenceShotPath('pr-screens/7153/matrix-'+mode+'-'+testInfo.project.name+'.png'),fullPage:false});
