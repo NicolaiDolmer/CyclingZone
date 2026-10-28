@@ -2,7 +2,27 @@
 
 Dato: 28/10/2026. Refs #7322, #7298, #7317, #6924, #4619.
 
-**Status: audit og løsningsforslag, ikke godkendt til build.** Ejeren har valgt retning B for auktion/graduering og bestilt gennemgangen før byg. Der er ikke ændret produktkode, spillertekst, database, flag eller drift. Dokumentet er teknisk beslutningsgrundlag; spillertekst og visuel udformning udarbejdes med Claude efter særskilt design-go.
+**Status: syv produktbeslutninger aftalt med ejeren 28/10/2026.** Retning B og beslutningerne D1-D7 nedenfor er bindende for opgaverne. Denne leverance gemmer aftalen og opretter planlægningsopgaver; den starter ikke implementering. Teknisk design, PG17-baseline hvor påkrævet samt konkret visuel udformning/spillertekst med Claude skal være klar før build-go. Der er ikke ændret produktkode, database, flag eller drift.
+
+## Bindende ejerbeslutninger 28/10/2026
+
+Kilde: ejerens syv direkte svar i ask-user-question i denne chatsamtale. Svarene er gengivet i #7322, så implementering ikke afhænger af lokale transcripts eller memory. Hvert svar valgte den anbefalede mulighed. Det oprindelige auditgrundlag nedenfor bevares med sit bevisniveau; disse beslutninger overstyrer tidligere åbne produktalternativer i dokumentet.
+
+| ID | Aftalt adfærd | Fravalgt alternativ |
+|---|---|---|
+| D1 | En usolgt junior fra en junior→U23-gradueringsauktion forsøges rykket til **U23**. Manglende plads følger de allerede aftalte venteregler. U23→senior bruger stadig senior som overgangens mål. | Senior som ubetinget fallback for junioren |
+| D2 | **Almindeligt salg og graduering holdes adskilt.** En almindelig auktion uden bud lader rytteren blive på holdet, med åben graduering og eksisterende frist. Fristen/default-kæden består; der opstår ikke et uendeligt fripas. | At gøre et almindeligt salgsforsøg til gradueringsvalget Sælg |
+| D3 | Ved **administratorens annullering af en gradueringsauktion** genåbnes valget i **24 timer**. Ingen straks-genoprettelse af auktion eller anden automatisk handling i dette vindue. | At beholde en allerede udløbet frist og straks fortsætte automatisk |
+| D4 | Sæsonoplysninger opdateres **automatisk**, mens ugemte kladder bevares. Valg, der er blevet ugyldige, markeres til gennemgang. Manuelt valgt historik må ikke skifte lydløst. | Tvungen eller påkrævet fuld genindlæsning som standard |
+| D5 | Områder åbner **hver for sig**, når deres nødvendige data er klar. Historik og færdige områder kan fortsat bruges. | Samlet pause for alle sæsonafhængige handlinger |
+| D6 | På ITT/ITT-hilly/TTT **skjules irrelevante vej-specifikke taktikvalg** med en kort forklaring. Meningsfulde indsatsvalg bevares. | At vise de irrelevante valg deaktiveret |
+| D7 | Delvis taktikgemning er **genoptagelig**: vis de bekræftede dele, bevar resten af kladden, og genforsøg kun det manglende. Hele planen må først meldes gemt, når alle nødvendige dele er bekræftet. | Et nyt alt-eller-intet-krav for alle writes |
+
+### Teknisk udfoldning inden for aftalen
+
+D1 bruger den konkrete graduerings from_squad/to_squad og måltruppens kapacitet, ikke en global senior-default. D3 skal være idempotent: fristen regnes fra den bekræftede annulleringshændelse og flyttes ikke ved gentaget behandling. En annullering må ikke genåbne et forløb, hvor rytteren allerede er solgt eller ikke længere ejes af holdet. D4 og D7 kræver håndtering af forsinkede svar og delvise fejl uden at kassere gyldige brugerændringer. D5 kræver en målt afhængighedsmatrix og teknisk design; det er ikke tilladelse til at gætte parathed ud fra active-status.
+
+Rollernes fejlagtige visning er en correctness-rettelse: delt kaptajn og luksushjælper skal gengives korrekt, hvor rollen allerede vises. Aftalen ændrer ikke basisrolle/etaperolle-scope, låste løbsrevisioner eller de eksisterende regler for at vælge roller.
 
 ## Konklusion og afgrænsning
 
@@ -35,7 +55,7 @@ Den almindelige auktion afslutter ikke gradueringen ved oprettelse. Det er i sig
 
 **Kilder:** `backend/lib/academyGraduation.js:451-535` har ikke auktionskontrol før promote/release. `backend/lib/academyTransfer.js` har derimod hasActiveAuction-gaten i moveRider. UI-blokering alene vil derfor efterlade en serversti uden samme regler.
 
-### Foreslået B-kontrakt
+### Aftalt B-retning og tekniske krav
 
 1. Én fælles vurdering af rytterens aktuelle ejer, trup, graduering, markedsforpligtelser og tilladte handlinger. Alle berørte salgs-, flytte-, frigivelses- og sweep-indgange bruger den.
 2. Graduation Day viser en igangværende auktion og navigation til den. Bekræft alle må kunne behandle andre ryttere uden at genoprette auktionen.
@@ -46,17 +66,17 @@ Den almindelige auktion afslutter ikke gradueringen ved oprettelse. Det er i sig
 
 ### Oprindelsen må ikke gå tabt
 
-**Anbefaling:** en almindelig auktion ændrer ikke automatisk karakter til en tvungen gradueringsauktion, blot fordi Graduation Day opdager den.
+**Aftalt ved D2:** en almindelig auktion ændrer ikke automatisk karakter til en tvungen gradueringsauktion, blot fordi Graduation Day opdager den.
 
 | Afslutning | Almindelig auktion med åben graduering | Auktion oprettet som gradueringsvalg |
 |---|---|---|
 | Faktisk salg | Afstem graduering efter bekræftet ejerskifte | Samme bekræftede afslutning |
 | Ingen bud | Rytteren bliver på holdet; gradueringsvalget og dets frist består. Efter fristen bruges den eksisterende godkendte default-kæde, når ingen auktion længere spærrer | Følg den eksisterende godkendte no-bid-kæde og promotion-pending-flagets regler |
-| Annullering | Genberegn tilgængelige valg uden automatisk salg/oprykning/frigivelse | Kræver eksplicit beskrevet genåbning/genoptagelse, så et sold-stempel ikke efterlader en afsluttet auktion uden videre forløb |
+| Annullering | Genberegn tilgængelige valg uden automatisk salg/oprykning/frigivelse | Administratorannullering genåbner valget i 24 timer fra annulleringshændelsen (D3); genbehandling forlænger ikke fristen |
 
 **Hvorfor:** `backend/lib/auctionFinalization.js:1628-1645` skelner allerede mellem almindelig og egentlig gradueringsauktion for at undgå uønsket oprykning/frigivelse ved et frivilligt salg uden bud (#6320). Vi må ikke genindføre det problem ved blot at stemple en eksisterende almindelig auktion sold i gradueringsrækken.
 
-**Åbent kontraktpunkt før byg:** `resolveUnsoldGraduate` og `completeStuckPromotion` i `academyGraduation.js:689-849` bruger senior som mål, mens en graduering også kan være junior til U23. YOUTH_RULES indeholder både den ældre seniorrettede no-bid-regel og de to nyere overgange. Der er ikke målt et konkret forkert juniorforløb. Afklar målet og annulleringsudfaldet særskilt, før B ændrer finalisering. Ingen nye spilregler er vedtaget af denne audit.
+**Afklaret ved D1 og D3:** Den tidligere seniorrettede no-bid-kode skal respektere den konkrete overgang, så en junior→U23 ikke springer til senior. Administratorens annullering genåbner valget i 24 timer. SSOT og runtime-kontrakt opdateres i samme implementerings-PR. Teknisk låse-/genoptagelsesdesign og PG17-bevis kræves stadig før byg.
 
 **SSOT:** `docs/YOUTH_RULES.md` §2.2, §2.6 og afventer oprykning; `docs/TRANSFER_MARKET_RULES.md` om auktioner, ejerskab og atomiske forpligtelser. De opdateres i samme implementerings-PR, hvis kontrakten ændres.
 
@@ -70,7 +90,7 @@ Den almindelige auktion afslutter ikke gradueringen ved oprettelse. Det er i sig
 
 **Konsekvens:** en åben side kan bruge tidligere sæsons alder/kontraktreference sammen med nyere data. Andre sider kan skifte hurtigere; Dashboard lytter allerede på seasons og races (`DashboardPage.jsx:110,612`). Det er en konkret forskel mellem fladernes opdateringsmekanik.
 
-**Forslag:** en fælles reaktiv sæsonkontekst med id/nummer, formålsspecifik reference og friskhed. Genhent ved relevant sæsonhændelse, genforbindelse og tilbagevenden til fanen, med deduplikerede kald. Verificér publication og læserettigheder før realtime tages for givet. Bevar manuelle historikvalg og ugemte kladder; undgå tvungen reload som standard.
+**Aftalt retning D4:** en fælles reaktiv sæsonkontekst med id/nummer, formålsspecifik reference og friskhed. Genhent ved relevant sæsonhændelse, genforbindelse og tilbagevenden til fanen, med deduplikerede kald. Verificér publication og læserettigheder før realtime tages for givet. Bevar manuelle historikvalg og ugemte kladder; undgå tvungen reload som standard.
 
 Alder/kontrakter, resultater og planlægning må fortsat have forskellige sæsonvalg. `seasonReference.js` skelner allerede aldersreference (fremad mellem sæsoner) og resultatreference (bagud); disse godkendte regler skal ikke erstattes af ét ubetinget aktivt season_id.
 
@@ -80,7 +100,7 @@ Alder/kontrakter, resultater og planlægning må fortsat have forskellige sæson
 
 Det er en bevidst best-effort-kontrakt med Sentry/phaselog og genoptagelse, ikke bevis for at sidste live-skifte fejlede. Men en læser, der alene ser active, kan ikke udlede, om netop dens afhængigheder er klar. Det gælder også før en normal kørsel er færdig.
 
-**Forslag:** klassificér eksisterende faser efter afhængighed. Eksponér observeret parathed pr. relevant område og lad afhængige writes vente eller returnere en kontrolleret midlertidig tilstand. Ikke alle features skal nødvendigvis vente på f.eks. en dokumentar/notifikation. Vis fejlede nødvendige faser i driftsoverblikket, og genoptag kun de faser der er dokumenteret retry-sikre. Målet er ingen skrivning på halvfærdige forudsætninger, ikke et langt totalt vedligeholdelsesstop.
+**Aftalt retning D5:** klassificér eksisterende faser efter afhængighed. Eksponér observeret parathed pr. relevant område og lad afhængige writes vente eller returnere en kontrolleret midlertidig tilstand. Ikke alle features skal nødvendigvis vente på f.eks. en dokumentar/notifikation. Vis fejlede nødvendige faser i driftsoverblikket, og genoptag kun de faser der er dokumenteret retry-sikre. Målet er ingen skrivning på halvfærdige forudsætninger, ikke et langt totalt vedligeholdelsesstop.
 
 En mulighed er at aktivere sæsonen sidst; en anden er separat parathed under forberedelsen. **Anbefaling:** undersøg og klassificér de konkrete læsere før valg af databasekontrakt. Flytning af status alene kan skabe andre huller og må ikke bygges som et hurtigt universelt fix.
 
@@ -106,7 +126,7 @@ En mulighed er at aktivere sæsonen sidst; en anden er separat parathed under fo
 
 **Kodefund:** RaceTacticsTab.jsx:846-900 viser udbruds-/togkontroller uden profilgate. raceTeamOrdersApi.js:198-221 validerer felter uden tilsvarende profilkontrol. ITT/ITT-hilly- og TTT-grenene i engine/v4/index.ts:239-264 modtager ikke input.orders. Det understøtter den eksisterende #7317, men er ikke en måling af hver mulig taktikværdi på alle motorrevisioner.
 
-**Forslag:** serveren leverer tilgængelige handlinger pr. løb/etape/profil/revision/viewer, og UI samt skrivevalidering følger samme kontrakt. Vej-specifikke valg skjules eller vises utilgængelige på tidskørsler. Indsats bevares, hvor motoren bruger den. Historiske gemte ordrer må ikke masseændres. Visningsvalget skal godkendes visuelt; auditens tekst er ikke spillertekst.
+**Forslag:** serveren leverer tilgængelige handlinger pr. løb/etape/profil/revision/viewer, og UI samt skrivevalidering følger samme kontrakt. Vej-specifikke valg skjules på tidskørsler med en kort forklaring (D6). Indsats bevares, hvor motoren bruger den. Historiske gemte ordrer må ikke masseændres. Visningsvalget skal godkendes visuelt; auditens tekst er ikke spillertekst.
 
 ### T3. Én gemmehandling kan gemme halvdelen og derefter konfliktere med sig selv
 
@@ -114,7 +134,7 @@ En mulighed er at aktivere sæsonen sidst; en anden er separat parathed under fo
 
 **Lokal reproduktion af den uændrede save-funktion:** første forsøg gav én stage-write, ét fejlet order-forsøg og nul reloads. Genforsøget sendte gammel base-version, fik stage_roles_conflict og nåede aldrig orders igen. Konfliktstien kalder load og kan kassere den resterende kladde. Backendens konfliktsikring skal bevares; det er frontendens egen baselinetilstand der er bagud.
 
-**Forslag før eventuel større databaseændring:** før kvittering og version frem for hver vellykket del, bevar de endnu ikke gemte valg, og genforsøg kun de uafsluttede dele. Et samlet atomisk endpoint er alternativet, hvis produktkravet er alt-eller-intet. Anbefalingen er den afgrænsede genoptagelige gemning som første leverance; en UI må kun melde fuldt gemt, når begge dele er bekræftet.
+**Forslag før eventuel større databaseændring:** før kvittering og version frem for hver vellykket del, bevar de endnu ikke gemte valg, og genforsøg kun de uafsluttede dele. Et samlet alt-eller-intet-krav er fravalgt ved D7. Den aftalte retning er afgrænset genoptagelig gemning; en UI må kun melde fuldt gemt, når begge dele er bekræftet.
 
 ### Tilsigtede forskelle og åbne produktvalg
 
@@ -156,8 +176,19 @@ Database-/samtidighedsdesignet kræver lokal PG17-baseline og fejlindsprøjtning
 
 Backend/delte kontrakter: FULL-tier efter implementering, frontend-lint/typecheck/build og relevant fuld e2e efter repoets regler. Tunge forløb bag verify-semafor; orkestrator ejer e2e-slottet. Ved de større pakker en tester-runde på staging før release. Ingen build-go gives af dette dokument alene.
 
-## 6. Næste ejerbeslutning
+## 6. Leveranceopgaver og fortsættelse
 
-Første kort er kun leverance 1: godkend B med bevaret oprindelse og de beskrevne no-bid-forskelle, eller vælg at en almindelig auktion eksplicit skal overtages som gradueringsvalg med en særskilt bekræftelse. Anbefaling: bevar oprindelsen. Juniorens mål ved usolgt gradueringsauktion og annulleringens genoptagelse skal være entydige i den godkendte kontrakt.
+Opgaverne oprettes under #7322 med kildefiler, relevante SSOTer, D1-D7-referencer, acceptkriterier og test-tier. Den eksisterende #7317 genbruges til D6. Andre eksisterende sager genåbnes eller genimplementeres ikke ud fra gamle beskrivelser.
 
-Sæson- og taktikleverancerne er konkrete forslag til senere design-go, ikke en samlet ubegrænset byggeordre. Patch notes er ikke ændret, fordi der alene leveres et audit-/designoplæg og ingen brugerrettet ændring. NOW og MASTERPLAN er ikke ændret.
+- #7323 Sammenhængende auktion/graduering: D1-D3 og løsning B, inklusive ophav, samtidighed, no-bid og administratorannullering.
+- #7324 Reaktiv sæsonreference og bevarede kladder: D4.
+- #7325 Parathed pr. område ved sæsonskifte: D5, med teknisk baseline/afhængighedsdesign før implementering.
+- #7326 Samlet korrekt rollegengivelse og kontrakttest: T1, uden nyt rolledesign.
+- #7327 Genoptagelig taktikgemning: D7.
+- Profilkorrekte taktikvalg på tidskørsler: D6 i #7317.
+
+Sæsonreference og områdeparathed koordinerer deres API-kontrakt, men en afgrænset friskhedsrettelse behøver ikke afvente et stort transition-refactor. Profilvalg og rollegengivelse skal bruge kompatible fælles taktiktyper. Arbejdsrækkefølge inden for pakken aftales i opgaverne uden ændring af MASTERPLANs overordnede prioritet.
+
+Ingen produktkode bygges i denne session. En kommende bygger læser denne spec, #7322 og opgavens nyeste kommentarer, måler aktuel runtime og respekterer tekniske/visuelle gates. Præcise implementeringsinterfaces fastlægges efter baseline i det relevante område; denne aftale lover ikke en uundersøgt databasestruktur.
+
+Patch notes er ikke ændret: leverancen er beslutningskontekst og opgaver. NOW og MASTERPLAN er urørte. Implementeringsopgaverne kræver patch notes, SSOT-afstemning, bug-postmortem hvor relevant og ejerens visuelle releasegrundlag.
