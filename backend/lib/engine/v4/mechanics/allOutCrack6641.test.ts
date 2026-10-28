@@ -88,8 +88,12 @@ const SEEDS = Array.from({ length: 8 }, (_, i) => `ao7280-${i}`);
 const aoEvents = (out: StageOutput) => out.timeline.events.filter((e) => e.type === "all_out_gain" || e.type === "all_out_cracked");
 
 test("slukket (kontakten): ingen alt ud-events, og alt ud koerer som foer", () => {
-  setAllOut7280ForBench(null);
-  for (const seed of SEEDS.slice(0, 3)) assert.equal(aoEvents(run("all_out", seed)).length, 0);
+  try {
+    setAllOut7280ForBench({ active: false });
+    for (const seed of SEEDS.slice(0, 3)) assert.equal(aoEvents(run("all_out", seed)).length, 0);
+  } finally {
+    setAllOut7280ForBench(null);
+  }
 });
 
 test("taendt: alt ud vinder paa den afgoerende stigning, deterministisk og med gyldig tidslinje", () => {

@@ -163,6 +163,7 @@ test('#7280: alt ud koster mere traethed under pakken, ogsaa i enkeltstart; sluk
   const { allOutLoadMultiplier7280, stageLoadV2 } = await import('./conditionModelV2.js');
   const { setAllOut7280ForBench } = await import('./engine/v4/mechanics/effortCost.ts');
   const load = (effort, profileType, rulesRevision = 's5_profiles_v3') => stageLoadV2({ profileType, distanceKm: 180, effort, rulesRevision });
+  setAllOut7280ForBench({ active: false }); // kontakten er taendt (#7311); slukket-stien maales via bench-setteren
   const offMountain = load('all_out', 'mountain');
   const offItt = load('all_out', 'itt');
   assert.equal(allOutLoadMultiplier7280('all_out', 's5_profiles_v3'), null);
@@ -173,8 +174,9 @@ test('#7280: alt ud koster mere traethed under pakken, ogsaa i enkeltstart; sluk
     assert.equal(load('normal', 'mountain'), stageLoadV2({ profileType: 'mountain', distanceKm: 180, effort: 'normal', rulesRevision: 's5_profiles_v3' }));
     assert.equal(load('all_out', 'mountain', 's5_profiles_v2'), stageLoadV2({ profileType: 'mountain', distanceKm: 180, effort: 'all_out', rulesRevision: 's5_profiles_v2' }));
     assert.equal(allOutLoadMultiplier7280('protect', 's5_profiles_v3'), null);
+    setAllOut7280ForBench({ active: false });
+    assert.equal(load('all_out', 'mountain'), offMountain);
   } finally {
     setAllOut7280ForBench(null);
   }
-  assert.equal(load('all_out', 'mountain'), offMountain);
 });

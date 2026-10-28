@@ -168,7 +168,7 @@ test("#6641: alle revisioner foer s5_profiles_v3 faar den uaendrede tuning (samm
 
 test("#6641: s5_profiles_v3 faar den kalibrerede tuning", () => {
   assert.equal(isEffortCalibration6641Revision("s5_profiles_v3"), true);
-  assert.equal(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
+  assert.equal(effortCostTuningFor("s5_profiles_v3", false), EFFORT_COST_TUNING_6641);
 });
 
 test("#6641: femtrins-ordenen holder i den kalibrerede tuning paa ALLE segment-terraener", () => {
@@ -224,12 +224,12 @@ test("#6641: all_out-tabellen pr. segment-terraen foelger samme regel (flad/rull
 });
 
 // ── #7280: Alt ud efter ejerens design 27/10, bag en SLUKKET kontakt ──────────
-test("#7280: kontakten er slukket, saa den aktuelle revision koerer bit-identisk med main", () => {
-  assert.equal(ALL_OUT_7280_ACTIVE, false, "taend kun med ejerens ordrette go");
-  assert.equal(allOut7280Active(), false);
-  assert.equal(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
-  assert.equal(isAllOut7280On("s5_profiles_v3"), false);
-  assert.equal(allOutTimeTrialBonus7280("all_out", 99, isAllOut7280On("s5_profiles_v3")), 0);
+test("#7280: kontakten er taendt efter ejerens ordrette go 27/10 (kun s5_profiles_v3)", () => {
+  assert.equal(ALL_OUT_7280_ACTIVE, true, "ejer-go 27/10: Ja, taend foer 11");
+  assert.equal(allOut7280Active(), true);
+  assert.notEqual(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
+  assert.equal(isAllOut7280On("s5_profiles_v3"), true);
+  assert.equal(isAllOut7280On("s5_profiles_v2"), false, "aeldre revisioner uroert");
   for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
     assert.equal(effortCostTuningFor(revision, true), EFFORT_COST_TUNING, `${String(revision)}: aeldre revisioner uroert ogsaa med kontakten taendt`);
   }
@@ -263,7 +263,7 @@ test("#7280: bench-setteren taender og nulstiller (kun dev-benches)", () => {
   } finally {
     setAllOut7280ForBench(null);
   }
-  assert.equal(allOut7280Active(), false);
+  assert.equal(allOut7280Active(), ALL_OUT_7280_ACTIVE, "nulstilling = kontaktens vaerdi");
   assert.ok(Object.isFrozen(ALL_OUT_7280_TUNING));
 });
 

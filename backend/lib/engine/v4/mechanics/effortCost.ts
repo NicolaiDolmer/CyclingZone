@@ -115,7 +115,7 @@ export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze
 //   3.   Prisen: traethed der hober sig op (conditionModelV2.stageLoadV2).
 //   4.   Knaek: med lav reserve kan rytteren blive sat paa den afgoerende stigning.
 //   5.   Motor-events all_out_gain / all_out_cracked (kun det motoren faktisk gjorde).
-export const ALL_OUT_7280_ACTIVE: boolean = false;
+export const ALL_OUT_7280_ACTIVE: boolean = true; // ejer-go 27/10 ("Ja, taend foer 11"), #6641
 
 /** Knapperne bag pakken (balance, hard rule 17: maalinger kun i balance-internals/). */
 export type AllOut7280Tuning = {
