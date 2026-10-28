@@ -263,6 +263,12 @@ export function codexSeverity(body) {
   return String(body || "").match(/!\[(P[0-3]) Badge\]/)?.[1] || null;
 }
 
+/** CodeRabbit's bot-authored severity header, metadata only; Codex policy is unchanged. */
+export function codeRabbitSeverity(body) {
+  const header = String(body || '').split(/\r?\n/).find(line => line.startsWith('**') && line.includes('** ·'));
+  const severity = header?.replace(/<[^>]*>/g, '').match(/\b(Critical|Major|Minor|Trivial)\*\*/i)?.[1]?.toLowerCase();
+  return ({critical:'P0',major:'P1',minor:'P2',trivial:'P3'})[severity] ?? null;
+}
 /** Blokerer et uloest Codex-fund merge? Kun P0, P1 og ukendt grad. */
 export function isBlockingSeverity(severity) {
   return severity == null || severity === "P0" || severity === "P1";
@@ -506,11 +512,11 @@ function fetchThreads(repo, pr) {
   const threads = [];
   let cursor = null;
   for (let page = 0; page < 20; page += 1) {
-    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body originalCommit{oid}}}}}}}}`;
+    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body pullRequestReview{databaseId} originalCommit{oid}}}}}}}}`;
     const args = ["api", "graphql", "-f", `query=${q}`, "-f", `o=${owner}`, "-f", `n=${name}`, "-F", `pr=${pr}`];
     if (cursor) args.push("-f", `c=${cursor}`);
     const conn = ghJson(args).data.repository.pullRequest.reviewThreads;
-    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
+    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), reviewId: t.comments.nodes[0]?.pullRequestReview?.databaseId ?? null, rabbitSeverity: login(t.comments.nodes[0]?.author?.login) === CODERABBIT_LOGIN ? codeRabbitSeverity(t.comments.nodes[0]?.body) : null, commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
     if (!conn.pageInfo.hasNextPage) break;
     cursor = conn.pageInfo.endCursor;
   }
@@ -521,7 +527,7 @@ export function fetchPrData(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   const files = ghLines(`repos/${repo}/pulls/${pr}/files?per_page=100`).map((f) => f.filename);
   const comments = ghLines(`repos/${repo}/issues/${pr}/comments?per_page=100`)
-    .map((c) => ({ author: c.user?.login, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
+    .map((c) => ({ author: c.user?.login, authorType: c.user?.type, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
   const reviews = ghLines(`repos/${repo}/pulls/${pr}/reviews?per_page=100`)
     .map((r) => ({ author: r.user?.login, association: r.author_association, body: r.body, at: r.submitted_at, commit: r.commit_id }));
   return {
