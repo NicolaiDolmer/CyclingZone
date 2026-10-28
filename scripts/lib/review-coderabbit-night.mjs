@@ -22,18 +22,19 @@ export function evaluateCodeRabbitNight({ data, checkRuns = [], rabbitReviews = 
   const reviews = rabbitReviews.filter(r => r.user?.login === 'coderabbitai[bot]' && r.user?.type === 'Bot' && r.commit_id === data.headSha && (String(r.body || '').trim() || r.state !== 'COMMENTED'))
     .sort((a,b) => String(b.submitted_at || '').localeCompare(String(a.submitted_at || '')) || Number(b.id || 0) - Number(a.id || 0));
   const review = reviews[0];
-  const summaryReceipts = (data.comments || []).filter(c => {
-    if (c.author !== 'coderabbitai[bot]' || c.authorType !== 'Bot') return false;
-    const body = String(c.body || '');
-    const reviewed = body.match(/^Reviewing files that changed from the base of the PR and between [a-f0-9]{40} and ([a-f0-9]{40})\.\s*$/m)?.[1];
-    return reviewed === data.headSha;
+  const summaries = (data.comments || []).filter(c => c.author === 'coderabbitai[bot]' && c.authorType === 'Bot').map(c => {
+    const normalizedBody = String(c.body || '').replace(/^[ \t]*(?:>[ \t]*)*/gm, '');
+    const heads = [...new Set([...normalizedBody.matchAll(/^(?:Reviewing files that changed from the base of the PR and between [a-f0-9]{40} and |- Last reviewed commit: )([a-f0-9]{40})\.?[ \t]*$/gm)].map(m => m[1]))];
+    return { ...c, normalizedBody, heads };
   });
+  if (summaries.some(c => c.heads.includes(data.headSha) && c.heads.length !== 1)) return fail('tvetydig CodeRabbit-summary HEAD');
+  const summaryReceipts = summaries.filter(c => c.heads.length === 1 && c.heads[0] === data.headSha);
   if (summaryReceipts.some(c => /\b(?:Critical|Major)\b|outside[ -]diff|off[ -]diff/i.test(c.body))) return fail('CodeRabbit-summary har blokerende eller uklassificerede fund');
   const zeroReceipt = summaryReceipts.find(c => {
     const at = Date.parse(c.at || '');
     const start = Date.parse(check.started_at || '');
     const end = Date.parse(check.completed_at || '');
-    return /^No actionable comments were generated in the recent review\.\s*$/m.test(c.body) && Number.isFinite(at) && Number.isFinite(start) && Number.isFinite(end) && end >= start && at >= start && at <= end + 60000;
+    return /^No actionable comments were generated in the recent review\.\s*$/m.test(c.normalizedBody) && Number.isFinite(at) && Number.isFinite(start) && Number.isFinite(end) && end >= start && at >= start && at <= end + 60000;
   });
   if (!review && !zeroReceipt) return fail('manglende CodeRabbit-review paa HEAD');
   const rabbitThreads = (data.threads || []).filter(t => String(t.author || '').replace(/\[bot\]$/, '') === 'coderabbitai');

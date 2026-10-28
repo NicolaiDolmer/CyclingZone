@@ -977,3 +977,19 @@ test('night CodeRabbit retains an older same-HEAD summary blocker after a newer 
  const i=zeroInput();i.data.comments.push(zeroSummary({at:'2026-10-27T21:00:00Z',body:zeroSummary().body+'\nMajor body-only finding'}));
  assert.equal(evaluateCodeRabbitNight(i).ok,false);
 });
+
+test('night CodeRabbit retains blockers in Markdown quoted summaries',()=>{
+ const i=zeroInput();i.data.comments.push(zeroSummary({body:zeroSummary().body.split('\n').map(l=>'  > '+l).join('\n')+'\nMajor body-only finding'}));
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+test('night CodeRabbit accepts an authentic Markdown quoted zero summary',()=>{
+ assert.equal(evaluateCodeRabbitNight(zeroInput({body:zeroSummary().body.split('\n').map(l=>'  > '+l).join('\n')})).ok,true);
+});
+
+test('night CodeRabbit accepts observed Last reviewed commit marker plus actual zero verdict',()=>{
+ assert.equal(evaluateCodeRabbitNight(zeroInput({body:`> - Last reviewed commit: ${HEAD}\nNo actionable comments were generated in the recent review.`})).ok,true);
+});
+test('night CodeRabbit rejects contradictory same-summary HEAD claims even with a formal clean review',()=>{
+ const i=zeroInput({body:zeroSummary().body+`\n> - Last reviewed commit: ${OLD}`});i.rabbitReviews=[nightReview()];
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
