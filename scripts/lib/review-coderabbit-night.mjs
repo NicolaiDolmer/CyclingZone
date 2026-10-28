@@ -1,18 +1,18 @@
-// Owner-approved exception for #7313/#7311 only, before 28 Oct 2026 11:00 Copenhagen.
+// Owner-approved exception for #7313 only, renewed 28 Oct until 29 Oct 2026 23:00 Copenhagen.
 // The normal review-gate and all other PRs keep their existing policy.
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { evaluateGate, fetchPrData, DEFAULT_REPO } from '../review-gate.mjs';
 
-export const CODE_RABBIT_NIGHT_PRS = Object.freeze([7313, 7311]);
-export const CODE_RABBIT_NIGHT_END = Date.parse('2026-10-28T10:00:00Z');
+export const CODE_RABBIT_NIGHT_PRS = Object.freeze([7313]);
+export const CODE_RABBIT_NIGHT_END = Date.parse('2026-10-29T22:00:00Z');
 
 export function evaluateCodeRabbitNight({ data, checkRuns = [], rabbitReviews = [], now, repo }) {
   const fail = detail => ({ ok: false, secondReviewer: 'CodeRabbit', headSha: data?.headSha, detail });
-  if (repo !== DEFAULT_REPO || !CODE_RABBIT_NIGHT_PRS.includes(data?.number)) return fail('uden for ejerens to PRer');
+  if (repo !== DEFAULT_REPO || !CODE_RABBIT_NIGHT_PRS.includes(data?.number)) return fail('uden for ejerens PR');
   if (!Number.isFinite(now) || now >= CODE_RABBIT_NIGHT_END) return fail('mandatet er udloebet eller tid mangler');
   if (!/^[0-9a-f]{40}$/.test(data.headSha || '')) return fail('ugyldigt HEAD');
-  const receipt = `<!-- coderabbit-substitute: pr=${data.number} sha=${data.headSha} -->`;
+  const receipt = `<!-- coderabbit-substitute-renewed-20261028: pr=${data.number} sha=${data.headSha} -->`;
   if (!(data.comments || []).some(c => c.author === 'NicolaiDolmer' && c.association === 'OWNER' && String(c.body || '').includes(receipt))) return fail('ejerbeslutning mangler paa HEAD');
   const native = evaluateGate(data);
   if (!native.codex?.ok || data.draft) return fail('Codex-review/draft-gate er ikke groen');
@@ -60,7 +60,7 @@ export function main(argv = process.argv.slice(2)) {
   if (argv.length !== 4 || argv[0] !== '--pr' || argv[2] !== '--head') throw new Error('Kun --pr N --head SHA understottes');
   const pr = Number(argv[1]);
   const head = argv[3];
-  if (!CODE_RABBIT_NIGHT_PRS.includes(pr) || !/^[0-9a-f]{40}$/.test(head)) throw new Error('Kun #7313/#7311 med fuldt HEAD');
+  if (!CODE_RABBIT_NIGHT_PRS.includes(pr) || !/^[0-9a-f]{40}$/.test(head)) throw new Error('Kun #7313 med fuldt HEAD');
   const data = fetchPrData(DEFAULT_REPO, pr);
   if (data.headSha !== head) { console.log(JSON.stringify({ok:false,headSha:data.headSha,detail:'HEAD skiftede'})); return 1; }
   const checkRuns = apiRows(`repos/${DEFAULT_REPO}/commits/${head}/check-runs?check_name=CodeRabbit&per_page=100`, '.check_runs[] | tojson');

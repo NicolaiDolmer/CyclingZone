@@ -898,19 +898,19 @@ test("superseded: en traad paa selve HEAD eller uden kendt commit blokerer altid
 });
 
 // Explicit owner's one-night exception; no general policy replacement.
-const nightNow = Date.parse('2026-10-27T22:00:00Z');
+const nightNow = Date.parse('2026-10-28T22:00:00Z');
 const nightCheck = (patch={}) => ({name:'CodeRabbit',head_sha:HEAD,app:{slug:'coderabbitai'},status:'completed',conclusion:'success',output:{summary:'Result: Success - Review completed\nRun ID: test'},...patch});
 const nightReview = (patch={}) => ({id:1,user:{login:'coderabbitai[bot]',type:'Bot'},commit_id:HEAD,state:'COMMENTED',submitted_at:'2026-10-27T22:00:00Z',body:'<!-- coderabbit-ai-generated:v1 -->\n**Actionable comments posted: 0**',...patch});
-const nightData = (patch={}) => ({number:7313,author:'x',headSha:HEAD,files:['backend/lib/engine/v4/a.ts'],comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute: pr=7313 sha=${HEAD} -->`}],reviews:[],threads:[],...patch});
+const nightData = (patch={}) => ({number:7313,author:'x',headSha:HEAD,files:['backend/lib/engine/v4/a.ts'],comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7313 sha=${HEAD} -->`}],reviews:[],threads:[],...patch});
 const nightInput = (patch={}) => ({data:nightData(),checkRuns:[nightCheck()],rabbitReviews:[nightReview()],now:nightNow,repo:'NicolaiDolmer/CyclingZone',...patch});
 test('night CodeRabbit: exact owner-authorized PR/HEAD, both actual reviews, completed check pass',()=>assert.equal(evaluateCodeRabbitNight(nightInput()).ok,true));
 for(const [name,patch] of [
  ['other PR',{data:nightData({number:7314})}],
  ['other repository',{repo:'other/repo'}],
- ['expired',{now:Date.parse('2026-10-28T10:00:00Z')}],
+ ['expired',{now:Date.parse('2026-10-29T22:00:00Z')}],
  ['missing time',{now:undefined}],
  ['missing owner mandate',{data:nightData({comments:[codexDone,cleanReceipt(HEAD)]})}],
- ['missing Codex',{data:nightData({comments:[{association:'OWNER',body:`<!-- coderabbit-substitute: pr=7313 sha=${HEAD} -->`}]})}],
+ ['missing Codex',{data:nightData({comments:[{association:'OWNER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7313 sha=${HEAD} -->`}]})}],
  ['draft',{data:nightData({draft:true})}],
  ['stale CodeRabbit',{rabbitReviews:[nightReview({commit_id:OLD})],checkRuns:[nightCheck({head_sha:OLD})]}],
  ['untrusted bot alone',{rabbitReviews:[nightReview({user:{login:'other',type:'Bot'}})],checkRuns:[]}],
@@ -928,8 +928,8 @@ for(const [name,patch] of [
 test('night CodeRabbit: completed check alone cannot replace the review receipt',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[]})).ok,false));
 test('night CodeRabbit blocks body-only Major findings despite matching thread count',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[nightReview({body:'**Actionable comments posted: 0**\nOutside diff range comments: Major finding'})]})).ok,false));
 test('night CodeRabbit: skipped success text cannot count as a completed review',()=>assert.equal(evaluateCodeRabbitNight(nightInput({checkRuns:[nightCheck({output:{summary:'Review skipped'}})]})).ok,false));
-test('night CodeRabbit: MEMBER cannot grant the owner exception',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'MEMBER',body:`<!-- coderabbit-substitute: pr=7313 sha=${HEAD} -->`}]})})).ok,false));
-test('night CodeRabbit: the second allowed PR needs its own current-head owner decision',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({number:7311,comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute: pr=7311 sha=${HEAD} -->`}]})})).ok,true));
+test('night CodeRabbit: MEMBER cannot grant the owner exception',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'MEMBER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7313 sha=${HEAD} -->`}]})})).ok,false));
+test('night CodeRabbit: renewal excludes formerly allowed PR 7311',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({number:7311,comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7311 sha=${HEAD} -->`}]})})).ok,false));
 test('CodeRabbit severity is read only from its explicit header',()=>{
  assert.equal(codeRabbitSeverity('**<picture><img src="x"></picture> Minor** · **Functional Correctness**'),'P2');
  assert.equal(codeRabbitSeverity('**Major** · **Functional Correctness**'),'P1');
@@ -992,4 +992,12 @@ test('night CodeRabbit accepts observed Last reviewed commit marker plus actual 
 test('night CodeRabbit rejects contradictory same-summary HEAD claims even with a formal clean review',()=>{
  const i=zeroInput({body:zeroSummary().body+`\n> - Last reviewed commit: ${OLD}`});i.rabbitReviews=[nightReview()];
  assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+
+test('renewal rejects the expired mandate marker even on the same HEAD',()=>{
+ const data=nightData();data.comments=data.comments.map(c=>({...c,body:c.body?.replace('coderabbit-substitute-renewed-20261028:','coderabbit-substitute:')}));
+ assert.equal(evaluateCodeRabbitNight(nightInput({data})).ok,false);
+});
+test('renewal remains valid immediately before its fixed deadline',()=>{
+ assert.equal(evaluateCodeRabbitNight(nightInput({now:Date.parse('2026-10-29T21:59:59Z')})).ok,true);
 });

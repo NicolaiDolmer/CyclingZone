@@ -83,7 +83,7 @@ param(
   [Parameter(Mandatory)]
   [string] $Pr,
   [switch] $DryRun,
-  # Owner approval 27/10: real CodeRabbit instead of Claude for #7313/#7311 only.
+  # Owner renewal 28/10: real CodeRabbit instead of Claude for #7313 only.
   [switch] $CodeRabbitNight,
   [int] $MinWaitMinutesNoBackend = 3,
   # Ejer 8/10: en raekke af PR'er der ikke roerer backend/ merges efter
@@ -133,8 +133,8 @@ $ErrorActionPreference = "Stop"
 $PrNumbers = @($Pr -split '[,\s]+' | Where-Object { $_ } | ForEach-Object { [int]$_ })
 if ($PrNumbers.Count -eq 0) { Write-Error "Ingen gyldige PR-numre i -Pr '$Pr'."; exit 1 }
 
-if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumbers | Where-Object { $_ -notin @(7313,7311) }).Count -gt 0)) {
-  throw 'CodeRabbitNight er kun ejer-godkendt for #7313/#7311 i CyclingZone.'
+if ($CodeRabbitNight -and ($Repo -ne 'NicolaiDolmer/CyclingZone' -or @($PrNumbers | Where-Object { $_ -notin @(7313) }).Count -gt 0)) {
+  throw 'CodeRabbitNight er kun ejer-godkendt for #7313 i CyclingZone.'
 }
 # #5562: en koerende boelge blokerer ikke laengere alle merges - kun PR'er hvis
 # filer overlapper boelgens aktive ownership (se assert-merge-allowed i
@@ -189,7 +189,7 @@ function Get-PrPlanEntry([int]$number) {
             $rabbit = $rabbitOutput[0] | ConvertFrom-Json
             if ($rabbit.ok -and $rabbit.secondReviewer -eq 'CodeRabbit' -and $rabbit.headSha -eq $auditHead -and [long]$rabbit.expiresAt -gt 0) { $gateCode = 0; $reviewDeadlineMs = [long]$rabbit.expiresAt }
           }
-          Write-Host "      PR #${number}: ejerautoriseret CodeRabbit-erstatning (kun #7313/#7311, udloeber 28/10 kl. 11)."
+          Write-Host "      PR #${number}: ejerautoriseret CodeRabbit-erstatning (kun #7313, udloeber 29/10 kl. 23)."
         }
         $checksExit = $(if ($leagueCode -eq 1 -or $gateCode -eq 1) { 1 } elseif ($leagueCode -eq 8 -or $gateCode -eq 8) { 8 } else { 0 })
         if (-not $CodeRabbitNight -and @($allChecks | Where-Object { Test-TrustedReviewGateCheck $_ }).Count -eq 0) {

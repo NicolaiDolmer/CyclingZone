@@ -91,17 +91,17 @@ $script:pushBeforeAudit=$false
 $script:metadataHead=$sha
 $script:reviewBucket='fail'
 $script:rabbitExit=0
-$script:rabbitJson=ConvertTo-Json -Compress @{ok=$true;secondReviewer='CodeRabbit';expiresAt=([datetimeoffset]'2026-10-28T10:00:00Z').ToUnixTimeMilliseconds();headSha=$sha}
+$script:rabbitJson=ConvertTo-Json -Compress @{ok=$true;secondReviewer='CodeRabbit';expiresAt=([datetimeoffset]'2026-10-29T22:00:00Z').ToUnixTimeMilliseconds();headSha=$sha}
 $CodeRabbitNight=$false
 $entry=Get-PrPlanEntry 7313
 if($entry.checksExit -ne 1){throw 'Normal gate must still reject absent Claude'}
 $CodeRabbitNight=$true
 $entry=Get-PrPlanEntry 7313
 if($entry.checksExit -ne 0){throw 'Explicit verified CodeRabbit substitute must be usable for the approved PR'}
-$script:rabbitJson=ConvertTo-Json -Compress @{ok=$true;secondReviewer='CodeRabbit';expiresAt=([datetimeoffset]'2026-10-28T10:00:00Z').ToUnixTimeMilliseconds();headSha=('d'*40)}
+$script:rabbitJson=ConvertTo-Json -Compress @{ok=$true;secondReviewer='CodeRabbit';expiresAt=([datetimeoffset]'2026-10-29T22:00:00Z').ToUnixTimeMilliseconds();headSha=('d'*40)}
 $entry=Get-PrPlanEntry 7313
 if($entry.checksExit -ne 1){throw 'Stale substitute HEAD must not pass'}
-$script:rabbitJson=ConvertTo-Json -Compress @{ok=$true;secondReviewer='CodeRabbit';expiresAt=([datetimeoffset]'2026-10-28T10:00:00Z').ToUnixTimeMilliseconds();headSha=$sha}
+$script:rabbitJson=ConvertTo-Json -Compress @{ok=$true;secondReviewer='CodeRabbit';expiresAt=([datetimeoffset]'2026-10-29T22:00:00Z').ToUnixTimeMilliseconds();headSha=$sha}
 $script:requiredExit=1
 $entry=Get-PrPlanEntry 7313
 if($entry.checksExit -ne 1){throw 'CodeRabbit substitution must never bypass required CI'}
@@ -112,19 +112,19 @@ $ownedAst=[Management.Automation.Language.Parser]::ParseFile($ownedPath,[ref]$nu
 $deadlineFn=$ownedAst.Find({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Assert-MergeReviewDeadline'},$true)
 if(-not $deadlineFn){throw 'Missing authoritative merge deadline check'}
 Invoke-Expression $deadlineFn.Extent.Text
-Assert-MergeReviewDeadline '2026-10-28T10:00:00Z' ([datetimeoffset]'2026-10-28T09:59:59Z')
+Assert-MergeReviewDeadline '2026-10-29T22:00:00Z' ([datetimeoffset]'2026-10-29T21:59:59Z')
 $blocked=$false
-try { Assert-MergeReviewDeadline '2026-10-28T10:00:00Z' ([datetimeoffset]'2026-10-28T10:00:00Z') } catch { $blocked=$true }
+try { Assert-MergeReviewDeadline '2026-10-29T22:00:00Z' ([datetimeoffset]'2026-10-29T22:00:00Z') } catch { $blocked=$true }
 if(-not $blocked){throw 'Deadline boundary must reject the merge'}
 . (Join-Path $PSScriptRoot 'lib/gh-retry.ps1')
 $script:mergeCalls=0;$script:deadlineReads=0
 function gh { $script:mergeCalls++;$global:LASTEXITCODE=1;return 'transient failure' }
-$nowValues=@([datetimeoffset]'2026-10-28T09:59:59Z',[datetimeoffset]'2026-10-28T10:00:00Z')
+$nowValues=@([datetimeoffset]'2026-10-29T21:59:59Z',[datetimeoffset]'2026-10-29T22:00:00Z')
 $blocked=$false
 try {
  Invoke-GhWithRetry @('pr','merge','7313') -Attempts 2 -DelaySeconds 0 -BeforeAttempt {
   $now=$nowValues[$script:deadlineReads];$script:deadlineReads++
-  Assert-MergeReviewDeadline '2026-10-28T10:00:00Z' $now
+  Assert-MergeReviewDeadline '2026-10-29T22:00:00Z' $now
  }
 } catch { $blocked=$true }
 if(-not $blocked -or $script:mergeCalls -ne 1 -or $script:deadlineReads -ne 2){throw 'Expiry between retries must stop before the second gh merge'}
