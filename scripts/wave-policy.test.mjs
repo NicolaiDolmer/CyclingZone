@@ -1018,3 +1018,11 @@ test('#7336: rullende optag afviser nyt arbejde under byggestop', (t) => {
   const { dir } = runningWave(t);
   assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(9, ['docs/nine.md'])], ownSnapshot), /Byggestop.*#9/);
 });
+
+test('#7336: en loggefejl ruller optaget tilbage og efterlader ingen markoer', async (t) => {
+  withBuildStop(t);
+  const dir = fixture(t);
+  process.env.CZ_BUILD_STOP_LOG = dir; // en mappe kan ikke appendes til
+  await assert.rejects(acquireWave(dir, { ...request('claude'), tracks: [track(3)] }, async () => []));
+  assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+});

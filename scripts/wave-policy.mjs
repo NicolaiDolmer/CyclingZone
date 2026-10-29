@@ -374,7 +374,6 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   const file = path.join(dir, 'wave-active.json');
   try { withWaveStateLock(dir, () => fs.writeFileSync(file, JSON.stringify(wave, null, 2), { flag: 'wx' })); }
   catch (e) { if (e.code === 'EEXIST') throw Error('wave-active.json exists; inspect owner, never expire or overwrite it'); throw e; }
-  logBrandAdmissions(request.tracks, buildStop, { channel: request.runtime, now: request.now }); // #7336: afslutningskortet viser brand-valg
   try {
     wave.capacity = checkCapacity(await readPrs(), request.tracks);
     // #5997: shared touched files + merge order, only when something is shared.
@@ -382,6 +381,9 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
     if (plan.shared.length) wave.sharedTouches = plan;
     wave.state = 'running';
     updateWave(dir, wave.waveId, () => wave);
+    // #7336: afslutningskortet viser brand-valg. Inde i try, saa en loggefejl
+    // ruller optaget tilbage i stedet for at efterlade en 'admitting'-markoer.
+    logBrandAdmissions(request.tracks, buildStop, { channel: request.runtime, now: request.now });
     return wave;
   } catch (e) {
     releaseWave(dir, wave.waveId, true);
