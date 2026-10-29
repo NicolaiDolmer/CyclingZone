@@ -166,6 +166,15 @@ export function focusAbilityWeight(focus, ability) {
   return Number.isFinite(w) ? w : 1;
 }
 
+// #5319: vægten for én evne i et PROGRAM. Et program kan bære sine egne vægte
+// (`focusWeights`, lagt på af trainingCatalogV3.applyTrainingCatalog når flaget
+// training_catalog_v3 er on); uden dem er svaret præcis focusAbilityWeight,
+// altså bit-identisk med før.
+export function programAbilityWeight(program, ability) {
+  const w = program?.focusWeights?.[ability];
+  return Number.isFinite(w) ? w : focusAbilityWeight(program?.focus, ability);
+}
+
 // Summen af et fokus' vægte — "hvor meget dag" pakken indeholder i alt.
 // Bruges af invariant-testen og af balance-scripts, aldrig af motoren.
 export function focusWeightSum(focus) {

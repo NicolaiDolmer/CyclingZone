@@ -33,6 +33,7 @@
 // API'et og fladen skal spørge dette modul i stedet for at gætte.
 
 import { TRAINING_FOCUSES } from "./training.js";
+import { V3_NEW_HARD_SESSIONS, isV3OnlySession } from "./trainingCatalogV3.js";
 
 // De fire dagstyper, i den rækkefølge de præsenteres.
 export const DAY_TYPES = Object.freeze(["rest", "recovery", "skill", "training"]);
@@ -128,12 +129,33 @@ export const ALL_SESSIONS = Object.freeze([
   ...SKILL_SESSIONS,
 ]);
 
+// ── #5319: katalog v3 (flag training_catalog_v3) ────────────────────────────
+// De fem nye hårde sessioner står EFTER attack_repeats. Tabellerne ovenfor er
+// URØRTE: off = i dag, bit-identisk. `catalogV3` er et valgfrit argument på de
+// funktioner der vælger/validerer en session; udeladt = off.
+export const TRAINING_SESSIONS_BY_LEVEL_V3 = Object.freeze({
+  ...TRAINING_SESSIONS_BY_LEVEL,
+  hard: Object.freeze([...TRAINING_SESSIONS_BY_LEVEL.hard, ...V3_NEW_HARD_SESSIONS]),
+});
+export const SESSION_INTENSITY_V3 = Object.freeze({
+  ...SESSION_INTENSITY,
+  ...Object.fromEntries(V3_NEW_HARD_SESSIONS.map((s) => [s, "hard"])),
+});
+
+export function sessionsByLevelFor({ catalogV3 = false } = {}) {
+  return catalogV3 ? TRAINING_SESSIONS_BY_LEVEL_V3 : TRAINING_SESSIONS_BY_LEVEL;
+}
+export function sessionIntensityFor({ catalogV3 = false } = {}) {
+  return catalogV3 ? SESSION_INTENSITY_V3 : SESSION_INTENSITY;
+}
+
 // Hvilke sessioner findes på en dagstype? Fladen bygger trin 2 af denne, og
 // API'et validerer imod den. Én kilde, så en flade ikke kan tilbyde noget
 // serveren afviser.
-export function sessionsForDayType(dayType) {
+export function sessionsForDayType(dayType, { catalogV3 = false } = {}) {
   if (dayType === "skill") return SKILL_SESSIONS;
-  if (dayType === "training") return TRAINING_LEVELS.flatMap((level) => TRAINING_SESSIONS_BY_LEVEL[level]);
+  const byLevel = sessionsByLevelFor({ catalogV3 });
+  if (dayType === "training") return TRAINING_LEVELS.flatMap((level) => byLevel[level]);
   return [];
 }
 
@@ -152,24 +174,26 @@ export function levelForSession(session) {
 // hjemme i samme modul som stigen.
 //   previousFocus : rytterens hidtidige fokus, kun brugt til at bevare valget
 //                   hen over en hviledag (se REST_FOCUS_FALLBACK).
-export function programForChoice({ dayType, session = null, previousFocus = null } = {}) {
+export function programForChoice({ dayType, session = null, previousFocus = null, catalogV3 = false } = {}) {
   if (!DAY_TYPES.includes(dayType)) return { ok: false, reason: "invalid_day_type" };
 
   if (dayType === "rest") {
-    const focus = isKnownFocus(previousFocus) ? previousFocus : REST_FOCUS_FALLBACK;
+    const focus = isKnownFocus(previousFocus, catalogV3) ? previousFocus : REST_FOCUS_FALLBACK;
     return { ok: true, focus, intensity: "rest" };
   }
   if (dayType === "recovery") {
     return { ok: true, focus: RECOVERY_FOCUS, intensity: RECOVERY_INTENSITY };
   }
-  if (!sessionsForDayType(dayType).includes(session)) {
+  if (!sessionsForDayType(dayType, { catalogV3 }).includes(session)) {
     return { ok: false, reason: "invalid_session" };
   }
-  return { ok: true, focus: session, intensity: SESSION_INTENSITY[session] };
+  return { ok: true, focus: session, intensity: sessionIntensityFor({ catalogV3 })[session] };
 }
 
-function isKnownFocus(focus) {
-  return focus != null && Object.prototype.hasOwnProperty.call(TRAINING_FOCUSES, focus);
+function isKnownFocus(focus, catalogV3 = false) {
+  if (focus == null) return false;
+  if (catalogV3 && isV3OnlySession(focus)) return true;
+  return Object.prototype.hasOwnProperty.call(TRAINING_FOCUSES, focus);
 }
 
 // ── Læsestien: et hvilket som helst gemt par → den nye model ───────────────
@@ -185,26 +209,26 @@ function isKnownFocus(focus) {
 //
 // Returnerer { dayType, session, focus, intensity, changed } hvor `changed`
 // fortæller om det gemte par ikke allerede var på modellens form.
-export function normalizeProgram(program) {
+export function normalizeProgram(program, { catalogV3 = false } = {}) {
   const dayType = dayTypeForProgram(program);
   const session = sessionForProgram(program);
   const previousFocus = program?.focus ?? null;
 
   if (dayType === "rest" || dayType === "recovery") {
-    const resolved = programForChoice({ dayType, previousFocus });
+    const resolved = programForChoice({ dayType, previousFocus, catalogV3 });
     return withChanged(program, { dayType, session: null, focus: resolved.focus, intensity: resolved.intensity });
   }
 
   // En session vi ikke kender (fx et fokus fra en fremtidig version, eller en
   // håndredigeret række) falder tilbage til Lang tur frem for at kaste: en
   // ulovlig plan må aldrig kunne blokere et tick eller en flade.
-  const known = sessionsForDayType(dayType).includes(session);
+  const known = sessionsForDayType(dayType, { catalogV3 }).includes(session);
   const finalSession = known ? session : "endurance";
   return withChanged(program, {
     dayType: known ? dayType : "training",
     session: finalSession,
     focus: finalSession,
-    intensity: SESSION_INTENSITY[finalSession],
+    intensity: sessionIntensityFor({ catalogV3 })[finalSession],
   });
 }
 
