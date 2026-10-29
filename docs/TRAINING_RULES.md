@@ -418,6 +418,8 @@ sessionen** (`SESSION_INTENSITY`, `backend/lib/trainingDayTypes.js:71-83`).
 | Færdighed (`skill`) | `technique`, `aero`, `loebslaere` | `easy` | Rammes af håndværks-loftet på raten, §2.1 |
 | Træning (`training`) | `endurance` (let) · `tempo` (normal) · `vo2max`, `vo2max_climb`, `vo2max_punch`, `threshold`, `sprint` (hård) | følger sessionen | Niveauet ER intensiteten |
 
+**Katalog v3 (#5319, flag `training_catalog_v3`, seedet off):** fem nye hårde sessioner efter `attack_repeats` (`long_climbs`, `lead_out`, `itt_short`, `itt_long`, `cobbled_classic`); `threshold` træner tempo + endurance (ikke længere enkeltstart), `sprint` får fuld hård vægtsum. Hver ryttertype har præcis to hårde sessioner, alle hårde har samme vægtsum, ingen session træner enkeltstart + tempo. Kilde: `backend/lib/trainingCatalogV3.js` + spec `docs/superpowers/specs/2026-10-29-training-catalog-v3-design.md`. Off = tabellen ovenfor, bit-identisk.
+
 ### 3.1 Intervaldagen er tre pakker, ikke én (#4631, ejer 2/9)
 
 Ejeren slog fast at climbing og punch ikke hører sammen i ét bundt, fordi de har

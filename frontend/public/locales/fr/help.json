@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Groupes d'entraînement",
         "text": "Un groupe te permet de prendre une seule décision d'entraînement pour plusieurs coureurs. Crées-en un sous Programme, Plan : ouvre “Plan pour” et choisis “+ Nouveau groupe”. Donne-lui un nom et pars d'un type de coureur ou choisis les coureurs toi-même. Un coureur ne peut être que dans un groupe. Un changement dans un champ s'applique alors à tout le groupe, et les coureurs avec une étape gardent l'étape. “Fatigue ce soir” montre le coureur le plus fatigué du groupe. L'ordre est fixe : d'abord le plan propre d'un coureur, puis le plan de son groupe, puis le plan de l'équipe. Si tu modifies les champs propres d'un coureur, son plan l'emporte jusqu'à ce que tu choisisses à nouveau “Suivre le groupe”. Tu peux aussi appliquer un programme à un groupe sous Programmes, et donner à un groupe sa propre exception sous Limite de fatigue."
+      },
+      "catalogV3": {
+        "title": "Deux séances dures pour chaque type de coureur",
+        "text": "Chaque type de coureur a désormais deux séances dures conçues pour lui, et chaque séance dure donne une journée dure complète. Cinq séances sont nouvelles : Longues ascensions, Lancement de sprint, Contre-la-montre courts, Contre-la-montre longs et Classique pavée. Le contre-la-montre a enfin ses propres séances, donc Seuil travaille le tempo et l'endurance à la place. Sprint donne désormais une journée dure complète. Si tu alternes entre les deux séances de ton type, la capacité principale progresse un peu moins, mais d'autres capacités progressent à la place."
       }
     },
     "activityfeed": {

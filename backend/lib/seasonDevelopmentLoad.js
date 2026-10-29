@@ -19,7 +19,10 @@
 // read-only prøvekørsel backend/scripts/dev/agingV2DryRun6110.mjs.
 
 import { fetchAllRows, fetchAllRowsKeyset } from "./supabasePagination.js";
-import { SESSION_INTENSITY } from "./trainingDayTypes.js";
+// #5319: V3-tabellen er en overmaengde af dagens (samme vaerdier + de fem nye
+// haarde sessioner), saa en gemt v3-session taeller med uanset flagets stadie.
+// Med flaget off findes ingen saadanne raekker, saa resultatet er uaendret.
+import { SESSION_INTENSITY_V3 as SESSION_INTENSITY } from "./trainingDayTypes.js";
 
 // Sessionerne der tæller som en hård træningsdag. Udledt af SESSION_INTENSITY,
 // så en ny hård session automatisk tæller med.

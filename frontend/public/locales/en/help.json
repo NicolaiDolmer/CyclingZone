@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Training groups",
         "text": "A group lets you make one training decision for several riders. Create one under Program, Plan: open 'Plan for' and pick '+ New group'. Give it a name and start from a rider type or pick the riders yourself. A rider can be in one group. A change in a field then applies to the whole group, and riders with a stage keep the stage. 'Fatigue tonight' shows the most tired rider in the group. The order is fixed: a rider's own plan first, then his group's plan, then the team plan. If you change one rider's own fields, his plan wins until you choose 'Follow group' again. You can also put a program on a group under Programs, and give a group its own exception under Fatigue limit."
+      },
+      "catalogV3": {
+        "title": "Two hard sessions for every rider type",
+        "text": "Every rider type now has two hard sessions built for it, and every hard session gives a full hard day. Five sessions are new: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial finally has its own sessions, so Threshold trains tempo and endurance instead. Sprint now gives a full hard day. If you switch between your type's two sessions, the main ability grows a little less, but other abilities grow instead."
       }
     },
     "activityfeed": {
