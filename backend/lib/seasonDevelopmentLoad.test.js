@@ -8,7 +8,7 @@ import {
   HARD_TRAINING_SESSIONS,
   RACE_ID_CHUNK,
 } from "./seasonDevelopmentLoad.js";
-import { SESSION_INTENSITY } from "./trainingDayTypes.js";
+import { SESSION_INTENSITY_V3 as SESSION_INTENSITY } from "./trainingDayTypes.js";
 
 test("#6499: hårde sessioner udledes af SESSION_INTENSITY (en ny hård session tæller automatisk)", () => {
   const expected = Object.keys(SESSION_INTENSITY).filter((k) => SESSION_INTENSITY[k] === "hard").sort();

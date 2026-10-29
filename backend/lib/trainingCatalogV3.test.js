@@ -90,10 +90,13 @@ test("flag off: applyTrainingCatalog returnerer programmet uroert, og abilityMul
   }
 });
 
-test("flag off: en v3-session kan hverken vælges eller træne", () => {
+test("flag off: en v3-session kan hverken vælges eller træne (men en gemt bevares)", () => {
   for (const s of V3_NEW_HARD_SESSIONS) {
     assert.equal(programForChoice({ dayType: "training", session: s }).ok, false);
-    assert.equal(normalizeProgram({ focus: s, intensity: "hard" }).focus, "endurance");
+    // Læsestien (seeding/migration/visning) bevarer en gemt v3-session, så et
+    // flag-flip frem og tilbage aldrig stille omskriver spillerens valg.
+    assert.equal(normalizeProgram({ focus: s, intensity: "hard" }).focus, s);
+    assert.equal(normalizeProgram({ focus: s, intensity: "hard" }).changed, false);
     const days = { mon: { session: s, intensity: "hard" } };
     const out = resolveDayProgram({
       weekday: "mon", riderOverrideDays: days, teamWeekDays: null,

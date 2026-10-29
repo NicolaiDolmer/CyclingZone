@@ -190,9 +190,11 @@ export function programForChoice({ dayType, session = null, previousFocus = null
   return { ok: true, focus: session, intensity: sessionIntensityFor({ catalogV3 })[session] };
 }
 
+// #5319: en GEMT v3-session genkendes altid (hviledagen bevarer valget). Om den
+// kan VAELGES, afgoer programForChoice/routes; med flaget off kan ingen skrive den.
 function isKnownFocus(focus, catalogV3 = false) {
   if (focus == null) return false;
-  if (catalogV3 && isV3OnlySession(focus)) return true;
+  if (isV3OnlySession(focus)) return true;
   return Object.prototype.hasOwnProperty.call(TRAINING_FOCUSES, focus);
 }
 
@@ -222,13 +224,16 @@ export function normalizeProgram(program, { catalogV3 = false } = {}) {
   // En session vi ikke kender (fx et fokus fra en fremtidig version, eller en
   // håndredigeret række) falder tilbage til Lang tur frem for at kaste: en
   // ulovlig plan må aldrig kunne blokere et tick eller en flade.
-  const known = sessionsForDayType(dayType, { catalogV3 }).includes(session);
+  // #5319: en gemt v3-session er kendt uanset flaget (laesestien: seeding,
+  // migration, visning). Skrivestien gater selv (programForChoice/routes).
+  const v3 = catalogV3 || isV3OnlySession(session);
+  const known = sessionsForDayType(dayType, { catalogV3: v3 }).includes(session);
   const finalSession = known ? session : "endurance";
   return withChanged(program, {
     dayType: known ? dayType : "training",
     session: finalSession,
     focus: finalSession,
-    intensity: sessionIntensityFor({ catalogV3 })[finalSession],
+    intensity: sessionIntensityFor({ catalogV3: v3 })[finalSession],
   });
 }
 
