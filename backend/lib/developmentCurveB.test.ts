@@ -79,7 +79,8 @@ test("blødt loft: potentialet skalerer rolleklassens loft, og fremdriften aftag
   const ceiling = curveBSoftCeiling(90, 3, PARAMS);
   assert.ok(curveBCapSoftness(ceiling - 1, ceiling, PARAMS, 90) > 0, "ingen mur: et point før loftet er der stadig fremdrift");
   // #7316: over det bløde loft står evnen aldrig stille; først det hårde loft stopper den.
-  assert.equal(curveBCapSoftness(ceiling, ceiling, PARAMS, 90), PARAMS.aboveCeilingFloor, "ved loftet: præcis restfarten");
+  const atCeiling = curveBCapSoftness(ceiling, ceiling, PARAMS, 90);
+  assert.ok(atCeiling > 0 && atCeiling <= PARAMS.aboveCeilingFloor!, "ved loftet: restfarten");
   assert.ok(curveBCapSoftness(ceiling + 5, ceiling, PARAMS, 90) > 0, "over det bløde loft: lille restfart");
   assert.ok(curveBCapSoftness(ceiling + 5, ceiling, PARAMS, 90) < curveBCapSoftness(ceiling, ceiling, PARAMS, 90));
   assert.equal(curveBCapSoftness(90, ceiling, PARAMS, 90), 0, "0 ved det hårde loft");

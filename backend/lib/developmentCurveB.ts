@@ -49,7 +49,7 @@ const SCALE_TOP = 100;
 // Potentialets skala internt (PROGRESSION_RULES §3).
 const POT_MIN = 1;
 const POT_MAX = 6;
-// #7316: restfarten ved det bløde loft (andel af fuld fart), når params ikke selv
+// #7316: restfarten (andel af fuld fart, se curveBCapSoftness), når params ikke selv
 // angiver `aboveCeilingFloor`. Params ligger i serverens miljø, så et manglende felt
 // må aldrig give muren tilbage. Sikker kode-default > 0; kalibreringen er privat.
 export const DEFAULT_ABOVE_CEILING_FLOOR = 0.1;
@@ -68,8 +68,8 @@ export interface DevelopmentCurveBParams {
   // Det bløde loft som andel af rolleklassens loft, pr. potentiale 1..6
   // (glidende imellem). Udeladt = det hårde loft er også det bløde.
   potentialCeiling?: readonly number[] | null;
-  // #7316: restfarten ved det bløde loft (0 < x <= 1). Over loftet aftager den
-  // lineært til 0 ved det hårde loft. Udeladt = DEFAULT_ABOVE_CEILING_FLOOR.
+  // #7316: restfarten (0 < x <= 1) op til det laveste potentiales bløde loft;
+  // derfra lineært til 0 ved det hårde loft. Udeladt = DEFAULT_ABOVE_CEILING_FLOOR.
   aboveCeilingFloor?: number;
 }
 
@@ -149,10 +149,13 @@ export function curveBSoftCeiling(cap: number, potentiale: number | null | undef
 
 /**
  * Blødt loft: 1 langt fra loftet og glidende ned mod det. Ingen mur (#7316, S8):
- * fremdriften falder aldrig under restfarten før det bløde loft, er præcis
- * restfarten ved loftet (intet spring), aftager lineært over loftet og er først
- * 0 ved det hårde loft `cap`. Udeladt `cap` (eller cap <= blødt loft) = intet
- * stykke over loftet: glider mod 0 ved loftet som før.
+ * fremdriften falder aldrig under en restfart, der er den samme for alle
+ * potentialer: `aboveCeilingFloor` op til det laveste potentiales bløde loft,
+ * derfra lineært ned til 0 ved det hårde loft `cap`. Fordi restfarten ikke
+ * afhænger af rytterens eget bløde loft, er kurven kontinuert i både niveau og
+ * potentiale (intet spring ved loftet), og et højere potentiale er aldrig
+ * langsommere. Udeladt `cap` eller intet potentialCeiling (blødt = hårdt loft):
+ * ingen restfart, glider mod 0 ved loftet som før.
  */
 export function curveBCapSoftness(
   current: number, ceiling: number, params: DevelopmentCurveBParams, cap: number = ceiling,
@@ -161,11 +164,12 @@ export function curveBCapSoftness(
   const gap = ceiling - current;
   const smooth = gap > 0 ? Math.pow(Math.min(1, gap / ceiling), params.capExponent) : 0;
   const hard = Number(cap);
-  if (!(hard > ceiling)) return smooth;
+  const lowest = params.potentialCeiling ? hard * params.potentialCeiling[0] : hard;
+  if (!(hard > lowest)) return smooth;
   const room = hard - current;
   if (!(room > 0)) return 0;
   const floor = params.aboveCeilingFloor ?? DEFAULT_ABOVE_CEILING_FLOOR;
-  const residual = floor * Math.min(1, room / (hard - ceiling));
+  const residual = floor * Math.min(1, room / (hard - lowest));
   return Math.max(smooth, residual);
 }
 

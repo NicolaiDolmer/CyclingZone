@@ -84,17 +84,37 @@ test("monotoni: højere evne = langsommere, også hen over det bløde loft", () 
 });
 
 test("kontinuitet: intet spring ved det bløde loft", () => {
-  for (const pot of [1, 2.5, 4.5]) {
+  for (const pot of [1, 2.5, 4.5, 5.99, 6]) {
     const ceiling = curveBSoftCeiling(CAP, pot, PARAMS);
-    const eps = 1e-6;
+    const eps = 1e-10;
     const below = curveBCapSoftness(ceiling - eps, ceiling, PARAMS, CAP);
     const atCeiling = curveBCapSoftness(ceiling, ceiling, PARAMS, CAP);
     const above = curveBCapSoftness(ceiling + eps, ceiling, PARAMS, CAP);
     assert.ok(Math.abs(below - atCeiling) < 1e-4, `pot ${pot} nedefra`);
     assert.ok(Math.abs(above - atCeiling) < 1e-4, `pot ${pot} ovenfra`);
-    assert.equal(atCeiling, PARAMS.aboveCeilingFloor);
+    assert.ok(atCeiling <= PARAMS.aboveCeilingFloor);
+    if (ceiling < CAP) assert.ok(atCeiling > 0, `pot ${pot}: restfart ved loftet`);
     // Over loftet er farten lavere end langt under det.
-    assert.ok(curveBCapSoftness(ceiling + 1, ceiling, PARAMS, CAP) < curveBCapSoftness(ceiling * 0.5, ceiling, PARAMS, CAP));
+    if (ceiling + 1 < CAP) assert.ok(curveBCapSoftness(ceiling + 1, ceiling, PARAMS, CAP) < curveBCapSoftness(ceiling * 0.5, ceiling, PARAMS, CAP));
+  }
+  // Det laveste potentiale har den fulde restfart ved sit bløde loft.
+  const low = curveBSoftCeiling(CAP, 1, PARAMS);
+  assert.equal(curveBCapSoftness(low, low, PARAMS, CAP), PARAMS.aboveCeilingFloor);
+});
+
+test("potentiale: et højere potentiale er aldrig langsommere, heller ikke når det bløde loft når det hårde (Codex P2)", () => {
+  for (const raw of [RAW, { ...RAW, capExponent: 1 }, { ...RAW, capExponent: 0 }]) {
+    const params = validateDevelopmentCurveBParams(raw);
+    for (const current of [10, 40, 60, 80, 88, 92]) {
+      let prev = -Infinity;
+      for (let pot = 1; pot <= 6.0001; pot += 0.01) {
+        const p = Math.min(6, pot);
+        const b = curveBBase({ current, cap: CAP, age: 26, divisor: 28, potentiale: p }, params);
+        assert.ok(b > 0, `niveau ${current}, pot ${p}`);
+        assert.ok(b >= prev - 1e-15, `niveau ${current}, pot ${p}: langsommere end lavere potentiale`);
+        prev = b;
+      }
+    }
   }
 });
 
