@@ -32,8 +32,8 @@
 // Prisen er at derivationen skal bo ÉT sted — nemlig her — og at både motoren,
 // API'et og fladen skal spørge dette modul i stedet for at gætte.
 
-import { TRAINING_FOCUSES } from "./training.js";
-import { V3_NEW_HARD_SESSIONS, isV3OnlySession } from "./trainingCatalogV3.js";
+import { TRAINING_FOCUSES, smartDefaultFocus } from "./training.js";
+import { V3_NEW_HARD_SESSIONS, isV3OnlySession, v3SmartDefaultFocus } from "./trainingCatalogV3.js";
 
 // De fire dagstyper, i den rækkefølge de præsenteres.
 export const DAY_TYPES = Object.freeze(["rest", "recovery", "skill", "training"]);
@@ -270,4 +270,14 @@ export function migrationTargetFor(program) {
   if (til <= fra) return { ...normalized, graceDay: false };
 
   return { ...normalized, dayType: "rest", session: null, intensity: "rest", graceDay: true };
+}
+
+// #5319: assistentens session for en rytter uden plan, i viewerens katalog. Én
+// regel for både det viste forslag (GET /training) og smart-bulk-skrivningen
+// (Codex-fund på #7354: forslaget viste itt_long, men skrivningen gemte Tærskel).
+// Intensiteten følger sessionen (#3762).
+export function smartDefaultSession(rider, { catalogV3 = false } = {}) {
+  const focus = v3SmartDefaultFocus(smartDefaultFocus(rider?.primary_type ?? null), rider ?? null, { v3: catalogV3 });
+  const table = catalogV3 ? SESSION_INTENSITY_V3 : SESSION_INTENSITY;
+  return { focus, intensity: table[focus] ?? "normal" };
 }

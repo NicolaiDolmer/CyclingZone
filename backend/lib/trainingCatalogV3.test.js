@@ -323,3 +323,20 @@ test("v3SmartDefaultFocus: tt/gc uden plan træner itt_long under v3; off og and
     assert.ok(V3_TRAINING_FOCUSES[focus], `${type}: ${focus} findes i v3-kataloget`);
   }
 });
+
+// Codex-fund på #7354: det viste forslag og smart-bulk-skrivningen skal give samme session.
+test("smartDefaultSession: v3 giver tt/gc itt_long (hård); off er dagens session og intensitet", async () => {
+  const { smartDefaultSession } = await import("./trainingDayTypes.js");
+  const { smartDefaultFocus } = await import("./training.js");
+  assert.deepEqual(smartDefaultSession({ primary_type: "tt" }, { catalogV3: true }), { focus: "itt_long", intensity: "hard" });
+  const off = smartDefaultSession({ primary_type: "tt" });
+  assert.equal(off.focus, smartDefaultFocus("tt"));
+  assert.equal(off.intensity, SESSION_INTENSITY[off.focus] ?? "normal");
+  for (const type of RIDER_TYPE_KEYS) {
+    const today = smartDefaultSession({ primary_type: type });
+    assert.equal(today.focus, smartDefaultFocus(type), `${type}: off er bit-identisk`);
+    const v3 = smartDefaultSession({ primary_type: type }, { catalogV3: true });
+    assert.equal(v3.intensity, SESSION_INTENSITY_V3[v3.focus] ?? "normal");
+  }
+  assert.equal(smartDefaultSession(null).focus, smartDefaultFocus(null));
+});

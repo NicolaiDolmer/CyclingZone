@@ -232,9 +232,9 @@ import {
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
-import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
-import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
+import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/trainingDayTypes.js";
+import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import {
@@ -3072,7 +3072,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
     for (const rider of riders ?? []) {
       trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null, undefined, trainabilityFocuses);
       // #5319: samme standardfokus som motoren træner (v3: tt/gc på itt_long, ikke Tærskel).
-      smartDefaultFocusByRider[rider.id] = v3SmartDefaultFocus(smartDefaultFocus(rider.primary_type ?? null), rider, { v3: viewerCatalogV3 });
+      smartDefaultFocusByRider[rider.id] = smartDefaultSession(rider, { catalogV3: viewerCatalogV3 }).focus;
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
 
@@ -3428,7 +3428,7 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
     const uniqueIds = [...new Set(riderIds)];
     // Ejer-guard: træning er KUN for egne ryttere (akademi inkl. — de indgår i
     // daglig træning). Slå de ejede op i DB og partitionér mod slot-budgettet.
-    const ownedSelect = isSmartMode ? "id, primary_type" : "id";
+    const ownedSelect = isSmartMode ? "id, primary_type, secondary_type" : "id";
     const { data: ownedRows, error: ownErr } = await supabase
       .from("riders").select(ownedSelect).eq("team_id", req.team.id).in("id", uniqueIds);
     if (ownErr) throw new Error(ownErr.message);
@@ -3453,15 +3453,22 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
       const now = new Date().toISOString();
       let rows;
       if (isSmartMode) {
-        const primaryTypeById = new Map((ownedRows ?? []).map((r) => [r.id, r.primary_type ?? null]));
+        const riderById = new Map((ownedRows ?? []).map((r) => [r.id, r]));
+        // #5319 (Codex-fund): gem det samme fokus som assistenten viser (v3: tt/gc på itt_long).
+        // Flaget slås kun op når det ændrer noget for mindst én rytter (ellers intet ekstra opslag).
+        const v3Changes = toApply.some((id) => smartDefaultSession(riderById.get(id), { catalogV3: true }).focus
+          !== smartDefaultSession(riderById.get(id)).focus);
+        const smartCatalogV3 = v3Changes
+          ? await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req))
+          : false;
         rows = toApply.map(rider_id => {
           // #3762: intensiteten er en EGENSKAB ved sessionen, ikke et frit valg.
           // Smart-mode vælger sessionen pr. rytter, så intensiteten følger med
           // derfra — ellers kunne assistenten skrive et par der ikke findes.
-          const smartFocus = smartDefaultFocus(primaryTypeById.get(rider_id) ?? null);
+          const smart = smartDefaultSession(riderById.get(rider_id), { catalogV3: smartCatalogV3 });
           return {
             team_id: req.team.id, rider_id, season_id: activeSeasonId,
-            focus: smartFocus, intensity: SESSION_INTENSITY[smartFocus] ?? "normal",
+            focus: smart.focus, intensity: smart.intensity,
             updated_at: now,
           };
         });
