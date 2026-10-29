@@ -1,5 +1,5 @@
 // backend/lib/engine/v4/mechanics/lateAttack.ts
-// #6368 (KUN s5_profiles_v1, slukket): det sene soloangreb som motoradfaerd.
+// #6368 (s5_profiles_v1 og senere; LIVE i s5_profiles_v3): det sene soloangreb som motoradfaerd.
 // Spec docs/superpowers/specs/2026-10-12-s5-etapeprofiler-design.md §3-§4: udbrud
 // og soloangreb er ikke en finaletype (det ville skrive resultatet paa forhaand);
 // motoren afgoer om et staerkt angreb 5-15 km fra maal holder hjem, naar evner og
@@ -13,10 +13,22 @@
 // Kaldes fra breakawayHook (M5) paa hvert segment; sker hoejst én gang pr. etape
 // (kun paa vindues-segmentet, lateAttackSegmentIndex). REN: muterer aldrig input,
 // rng kun via ctx.rngForStage (én lodtraekning pr. etape).
+//
+// #6368 lag 3 (ejer 26/10, KUN s5_profiles_v3): kun ledere (kaptajn, delt kaptajn,
+// spurtkaptajn) og fri rolle maa angribe sent. En hjaelper (ogsaa paa Arbejd) maa kun,
+// naar ingen af holdets kaptajner koerer i favoritgruppen (kaptajnen er sat). Jaegeren
+// er morgenudbruddets rolle og angriber ikke sent. Nr. 2 i gruppen (forspringets
+// maalestok) er stadig den staerkeste ANDEN rytter i gruppen uanset rolle: alle kan
+// svare paa et angreb. Aeldre revisioner (v1/v2) er bit-identiske.
 
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { S5_PROFILES_TUNING } from "../tuning.ts";
-import type { AbilityKey, EngineState, Entrant, RaceGroup, RouteV2, SegmentHookContext, SegmentHookResult } from "../types.ts";
+import type { AbilityKey, EngineState, Entrant, RaceGroup, RiderRole, RouteV2, SegmentHookContext, SegmentHookResult } from "../types.ts";
+
+/** #6368 lag 3: rollerne der altid maa angribe sent under s5_profiles_v3. */
+export const LATE_ATTACK_LEADER_ROLES: ReadonlySet<RiderRole> = new Set<RiderRole>(["captain", "co_captain", "sprint_captain", "free_role"]);
+/** Rollerne der goer en hjaelper bunden: saa laenge en af dem koerer i gruppen, angriber han ikke. */
+const TEAM_CAPTAIN_ROLES: ReadonlySet<RiderRole> = new Set<RiderRole>(["captain", "co_captain"]);
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -90,12 +102,33 @@ function favouriteGroup(state: EngineState, entrants: Readonly<Record<string, En
 }
 
 /**
+ * #6368 lag 3 (KUN s5_profiles_v3): maa rytteren angribe sent fra denne gruppe?
+ * Ledere og fri rolle: ja. Hjaelper: kun naar ingen af holdets kaptajner (kaptajn
+ * eller delt kaptajn) koerer i gruppen: sat, udgaaet eller ikke med. Uden hold-id
+ * kan kaptajnen ikke findes, og hjaelperen bliver hos gruppen. Jaeger: nej.
+ */
+export function lateAttackRoleAllowed(riderId: string, groupRiderIds: readonly string[], state: Pick<EngineState, "riders">, entrants: Readonly<Record<string, Entrant>>): boolean {
+  const entrant = entrants[riderId];
+  if (!entrant) return false;
+  if (LATE_ATTACK_LEADER_ROLES.has(entrant.role)) return true;
+  if (entrant.role !== "helper") return false;
+  const teamId = entrant.team_id;
+  if (!teamId) return false;
+  // En kaptajn der udgik paa en tidligere etape er ikke paa startlisten laengere
+  // (raceRunner), saa "ingen kaptajn i feltet" taeller som sat, ikke som bundet.
+  return !groupRiderIds.some((id) => {
+    const e = entrants[id];
+    return e?.team_id === teamId && TEAM_CAPTAIN_ROLES.has(e.role) && state.riders[id]?.status === "racing";
+  });
+}
+
+/**
  * Det sene angreb paa dette segment (S5). Uaendret state naar segmentet ikke er
  * vindues-segmentet, terraenet ikke giver angrebet, lodtraekningen siger nej, eller
  * angriberen ikke er staerk nok til at komme fri. Monotont i angriberens evne: en
  * staerkere angriber faar aldrig et mindre forspring.
  */
-export function lateAttack(state: EngineState, ctx: Pick<SegmentHookContext, "route" | "segment" | "segmentIndex" | "entrants" | "rngForStage">): SegmentHookResult {
+export function lateAttack(state: EngineState, ctx: Pick<SegmentHookContext, "route" | "segment" | "segmentIndex" | "entrants" | "rngForStage" | "s5ProfilesV3">): SegmentHookResult {
   const none: SegmentHookResult = { state, events: [] };
   const { route, entrants } = ctx;
   if (ctx.segmentIndex !== lateAttackSegmentIndex(route)) return none;
@@ -113,11 +146,16 @@ export function lateAttack(state: EngineState, ctx: Pick<SegmentHookContext, "ro
     })
     .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   if (ranked.length < 2) return none;
-  const attacker = ranked[0];
+  // #6368 lag 3 (KUN s5_profiles_v3): angriberen er den staerkeste der MAA angribe;
+  // nr. 2 er den staerkeste anden rytter i gruppen (aeldre revisioner: ranked[0]/[1]).
+  const roleGated = ctx.s5ProfilesV3 === true;
+  const attacker = roleGated ? ranked.find((r) => lateAttackRoleAllowed(r.id, group.rider_ids, state, entrants)) : ranked[0];
+  if (!attacker) return none;
+  const runnerUp = ranked[0] === attacker ? ranked[1] : ranked[0];
   // Én lodtraekning pr. etape (etape-stabil stroem): angribes der overhovedet i dag?
   if (!(ctx.rngForStage("s5_late_attack")() < chance)) return none;
   const t = S5_PROFILES_TUNING.lateAttack;
-  const edge = Math.max(0, attacker.score - ranked[1].score);
+  const edge = Math.max(0, attacker.score - runnerUp.score);
   const gainSeconds = round2(Math.min(t.maxGainSeconds, edge * t.gainSecondsPerScoreUnit));
   if (gainSeconds < t.minGainSeconds) return none;
   const newGroupId = makeGroupId("solo", ctx.segmentIndex * 1000 + 900);

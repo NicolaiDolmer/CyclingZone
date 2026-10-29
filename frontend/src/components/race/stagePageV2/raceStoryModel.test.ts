@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildRaceStory } from "../../../../../backend/lib/raceStory.js";
 import {
-  asStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
+  asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
   groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
@@ -370,4 +370,44 @@ test("#6299 (Codex #7161): morgenudbruddet og gruppen foran klynges aldrig samme
   assert.equal(morning.length, 1);
   assert.ok(!morning[0].riderIds.includes("x1"));
   assert.ok(!ahead[0].riderIds.includes("b1"));
+});
+
+
+test("#6469 v2: selected outcome carries recorded causes and only the player's own order", () => {
+  const events = [
+    ev(0, "stage_start", { exact_km: 0, exact_time: 0, distance_km: 100, field_count: 3, profile_type: "hilly" }),
+    ev(10, "breakaway_formed", { group_id: "breakaway-0", rider_ids: ["m1", "b1"], exact_km: 10, exact_time: 300 }),
+    ev(30, "breakaway_unchased", { group_id: "breakaway-0" }),
+    ev(100, "breakaway_survived", { group_id: "breakaway-0", rider_ids: ["m1"], exact_km: 100, exact_time: 3600 }),
+    ev(100, "finish", { exact_km: 100, exact_time: 3600, win_type: "solo_win", top: [{ rider_id: "m1", rank: 1, gap: 0 }, { rider_id: "b1", rank: 2, gap: 20 }, { rider_id: "w", rank: 3, gap: 40 }] }),
+  ];
+  const results = [rr(1, "m1", "Mine", "t-me", "1:00:00"), rr(2, "b1", "Climber", "t-x", "+0:20"), rr(3, "w", "Winner", "t-x", "+0:40")];
+  const s = asStory(buildRaceStory({ events, timelineVersion: 2, results: results.map(r => ({ rider_id: String(r.rider_id), rank: Number(r.rank) })), startlist: ["m1", "b1", "w"] }));
+  assert.ok(s);
+  const c = castFrom(results, ROLES, 3, "t-me");
+  const context = { events, effortByRider: new Map([["m1", "all_out"], ["b1", "all_out"]]), teamNameById: new Map<string, string>() };
+  const before = JSON.stringify({ events, s });
+  const lines = curateMoments(s, c, MAX_STORY_LINES, context);
+  const outcome = lines.find(l => l.kind === "survived");
+  assert.deepEqual(outcome?.narratives?.map(n => n.key), ["cause.unchased", "order.all_out_stayed_away"]);
+  assert.equal(lines.length, curateMoments(s, c).length, "explanations belong to existing rows, preserving the eight-moment limit");
+  assert.deepEqual(lines, curateMoments(s, c, MAX_STORY_LINES, context), "deterministic, no duplicate explanations");
+  assert.equal(JSON.stringify({ events, s }), before, "source timeline and server story remain untouched");
+  assert.equal(curateMoments({ ...s, moments: s.moments.filter(m => m.key !== "story.breakaway_survived") }, c, MAX_STORY_LINES, context).some(l => l.narratives?.length), false, "unselected outcome contributes no explanation to another moment");
+  assert.equal(curateMoments({ ...s, time_trial: true }, c, MAX_STORY_LINES, context).some(l => l.narratives?.length), false, "no group-racing explanation in time trials");
+  const unnamed = curateMoments(s, { ...c, nameOf: () => null }, MAX_STORY_LINES, context).find(l => l.kind === "survived");
+  assert.deepEqual(unnamed?.narratives?.map(n => n.key), ["cause.unchased"], "unresolved rider names never produce IDs or invented names");
+});
+
+
+test("#6469 context: authoritative TT metadata overrides a stale mass-start story flag", () => {
+  const s = story();
+  const before = JSON.stringify(s);
+  for (const profileType of ["itt", "itt_hilly", "ttt"]) {
+    const context = { profileType, events: hillyTimeline(), effortByRider: new Map([["m1", "all_out"]]) };
+    assert.equal(isTimeTrialStory(s, profileType, context.events), true);
+    assert.deepEqual(curateMoments(s, cast(), MAX_STORY_LINES, context), []);
+  }
+  assert.equal(isTimeTrialStory(s, "hilly", hillyTimeline()), false);
+  assert.equal(JSON.stringify(s), before);
 });

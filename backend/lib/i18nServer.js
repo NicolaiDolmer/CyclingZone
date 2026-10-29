@@ -192,7 +192,23 @@ export function translate(key, params = {}, { language = DEFAULT_LANGUAGE, fallb
   if (template == null) return fallback || key;
   // Flertalsreglerne foelger det sprog, skabelonen faktisk kom fra (EN-fallback = en-regler).
   const usedLng = bundle?.[lng]?.[key] != null ? lng : DEFAULT_LANGUAGE;
-  return formatMessage(template, params, null, usedLng);
+  const resolved = { ...params };
+  // Contract notices carry structured rows so both the inbox and existing push
+  // renderer can use the recipient's language without serializing raw objects.
+  if (key.startsWith("notif.contract") || key.startsWith("notif.seasonTransitionRisk.")) {
+    if (typeof resolved.squadKey === "string" && resolved.squadKey.startsWith("notif.contractSquad.")) {
+      resolved.squad = translate(resolved.squadKey, {}, { language: usedLng });
+    }
+    if (Array.isArray(resolved.contractRiders)) {
+      resolved.contractRiders = resolved.contractRiders.map((row) => translate(
+        row.value == null ? "notif.contractRoster.entryUnknown" : "notif.contractRoster.entry",
+        { rider: row.rider, squad: translate(`notif.contractSquad.${row.squad}`, {}, { language: usedLng }),
+          value: row.value == null ? "" : new Intl.NumberFormat(usedLng).format(row.value) },
+        { language: usedLng },
+      )).join("\n");
+    }
+  }
+  return formatMessage(template, resolved, null, usedLng);
 }
 
 /** Findes noeglen i EN-bundlen? Bruges af tests og guards. */

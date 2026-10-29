@@ -45,7 +45,6 @@ import { fileURLToPath } from "node:url";
 // ── Backend-kilder ───────────────────────────────────────────────────────────
 import { TRAINING_FOCUSES, TRAINING_FOCUS_KEYS } from "./training.js";
 import { loadCheckAllowedTypes } from "../../scripts/lint-finance-types.mjs";
-import { BREAKAWAY_BONUS } from "./raceSimulator.js";
 import { PROFILE_TYPES, FINALE_TYPES, DEMAND_VECTORS, ABILITY_DIMENSIONS } from "./raceStageProfileGenerator.js";
 import { RIDER_TYPE_KEYS as BACKEND_RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { SALARY_RATE_PRODUCTION as BACKEND_SALARY_RATE_PRODUCTION } from "./economyConstants.js";
@@ -54,7 +53,6 @@ import * as backendNameSearch from "./riderNameSearch.js";
 
 // ── Frontend-kopier (afhængighedslette moduler) ──────────────────────────────
 import { TRAINING_FOCUS_ABILITIES } from "../../frontend/src/lib/training.js";
-import { BREAKAWAY_STRENGTH, strengthFromBonus } from "../../frontend/src/lib/roleHint.js";
 import { TACTICAL_DEMAND } from "../../frontend/src/lib/selectionDrivers.js";
 import { SUITABILITY_ABILITY_KEYS } from "../../frontend/src/lib/suitability.js";
 import { PROFILE_TYPE_KEYS, FINALE_TYPE_KEYS } from "../../frontend/src/lib/stageProfileConfig.js";
@@ -113,25 +111,7 @@ test("#3681 · TRAINING_FOCUS_ABILITIES (frontend) matcher TRAINING_FOCUSES (bac
   );
 });
 
-// ── 2) Udbruds-styrke ───────────────────────────────────────────────────────
-// frontend/src/lib/roleHint.js:39 lover "Spejl af raceSimulator.BREAKAWAY_BONUS,
-// men hvert tal forud-mappet til sit styrke-bånd". Vagten UDLEDER båndene fra
-// backend-tallene med frontendens egen strengthFromBonus og sammenligner —
-// så både et nyt terræn, en ny finale-type og en re-kalibreret bonus fanges.
-test("#3681 · BREAKAWAY_STRENGTH (frontend) er båndene udledt af BREAKAWAY_BONUS (backend)", () => {
-  const derived = {};
-  for (const [profile, finales] of Object.entries(BREAKAWAY_BONUS)) {
-    derived[profile] = {};
-    for (const [finale, bonus] of Object.entries(finales)) {
-      derived[profile][finale] = strengthFromBonus(bonus);
-    }
-  }
-  assert.deepEqual(
-    JSON.parse(JSON.stringify(BREAKAWAY_STRENGTH)),
-    derived,
-    "frontend/src/lib/roleHint.js BREAKAWAY_STRENGTH skal være strengthFromBonus() anvendt på hver værdi i backend/lib/raceSimulator.js BREAKAWAY_BONUS",
-  );
-});
+// ── 2) Udbruds-styrke: spejlet er fjernet (#6912 S7 A, ejer 26/10); intet at vogte.
 
 // ── 3) Taktik-efterspørgsel ─────────────────────────────────────────────────
 // frontend/src/lib/selectionDrivers.js:47 lover "SPEJL af raceStageProfileGenerator.js

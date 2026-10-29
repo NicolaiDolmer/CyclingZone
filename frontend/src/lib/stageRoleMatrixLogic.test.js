@@ -236,9 +236,9 @@ test("applyRoleForRest: muterer ikke input-matrixen", () => {
   assert.equal(JSON.stringify(matrix), before);
 });
 
-test("SELECTABLE_ROLES: præcis de fem roller backenden kender, kaptajnen først", () => {
-  assert.deepEqual([...SELECTABLE_ROLES], ["captain", "sprint_captain", "hunter", "helper", "free_role"]);
-  assert.deepEqual([...EXCLUSIVE_ROLES], ["captain", "sprint_captain", "hunter"]);
+test("SELECTABLE_ROLES: præcis de syv roller backenden kender, kaptajnen først (#7239: + delt kaptajn, #5982: + luksushjælper)", () => {
+  assert.deepEqual([...SELECTABLE_ROLES], ["captain", "co_captain", "sprint_captain", "hunter", "helper", "luxury_helper", "free_role"]);
+  assert.deepEqual([...EXCLUSIVE_ROLES], ["captain", "sprint_captain", "hunter", "co_captain", "luxury_helper"]);
 });
 
 // ── #6095: gem skriver kun ændrede etaper ─────────────────────────────────────

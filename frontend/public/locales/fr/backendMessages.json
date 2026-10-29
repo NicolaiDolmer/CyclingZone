@@ -274,7 +274,8 @@
     },
     "contractExpiring": {
       "title": "Contrat bientôt expiré",
-      "message": "Le contrat de {rider} expire à la fin de la saison {season}."
+      "message": "Le contrat de {rider} expire à la fin de la saison {season}.",
+      "squadMessage": "Le contrat de {rider} ({squad}) expire à la fin de la saison {season}. Prolonge-le dans l'onglet Contrats de Mon équipe."
     },
     "contractExpiredRelease": {
       "title": "Coureur libéré : contrat expiré",
@@ -309,7 +310,9 @@
       "title": "Changement de saison : risque de contrat et de retraite",
       "messageBoth": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire, et {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. Prolonge les contrats avant le changement dans l'onglet Contrats de Mon équipe, où tu peux prolonger plusieurs coureurs de 1 à 3 saisons à la fois. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée.",
       "messageExpiringOnly": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire. Prolonge-les avant le changement dans l'onglet Contrats de Mon équipe, où tu peux prolonger plusieurs coureurs de 1 à 3 saisons à la fois.",
-      "messageRetirementOnly": "Ton effectif est concerné par le prochain changement de saison : {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée."
+      "messageRetirementOnly": "Ton effectif est concerné par le prochain changement de saison : {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée.",
+      "messageBothWithRoster": "{expiringCount} contrats expirent au changement de saison et {retirementRiskCount} autres coureurs pourraient prendre leur retraite. Prolonge les contrats dans l'onglet Contrats de Mon équipe.\n{contractRiders}",
+      "messageExpiringOnlyWithRoster": "{expiringCount} contrats expirent au changement de saison. Prolonge-les dans l'onglet Contrats de Mon équipe.\n{contractRiders}"
     },
     "watchlistDeparted": {
       "title": "Un coureur a quitté le jeu",
@@ -688,6 +691,24 @@
     "squadEnforced": {
       "title": "Taille d'effectif imposée",
       "message": "{purchasedCount, plural, =0 {} one {Achat automatique de # coureur : {purchasedNames}\n} other {Achat automatique de # coureurs : {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# coureur rejoindra l'équipe une fois sa course par étapes en cours terminée : {deferredNames}\n} other {# coureurs rejoindront l'équipe une fois leur course par étapes en cours terminée : {deferredNames}\n}}{soldCount, plural, =0 {} one {Vente automatique de # coureur : {soldNames}\n} other {Vente automatique de # coureurs : {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# coureur dans une course par étapes en cours sera vendu après la course à la place\n} other {# coureurs dans une course par étapes en cours seront vendus après la course à la place\n}}Amende : {fine} CZ$ · Déduction : {points} points"
+    },
+    "contractSquad": {
+      "senior": "Seniors",
+      "u23": "U23",
+      "junior": "Juniors",
+      "academy": "Académie"
+    },
+    "contractRoster": {
+      "entry": "{rider} ({squad}), {value} CZ$",
+      "entryUnknown": "{rider} ({squad}), valeur indisponible"
+    },
+    "contractExpiringSummary": {
+      "title": "Contrats à prolonger",
+      "message": "Ces contrats expirent à la fin de la saison {season}. Prolonge-les dans l'onglet Contrats de Mon équipe.\n{contractRiders}"
+    },
+    "contractReleasedSummary": {
+      "title": "Coureurs libérés : contrats expirés",
+      "message": "Ces coureurs sont devenus libres après l'expiration de leur contrat à la fin de la saison {season}. Consulte tes contrats restants dans Mon équipe.\n{contractRiders}"
     }
   },
   "error": {

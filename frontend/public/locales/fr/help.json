@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Groupes d'entraînement",
         "text": "Un groupe te permet de prendre une seule décision d'entraînement pour plusieurs coureurs. Crées-en un sous Programme, Plan : ouvre “Plan pour” et choisis “+ Nouveau groupe”. Donne-lui un nom et pars d'un type de coureur ou choisis les coureurs toi-même. Un coureur ne peut être que dans un groupe. Un changement dans un champ s'applique alors à tout le groupe, et les coureurs avec une étape gardent l'étape. “Fatigue ce soir” montre le coureur le plus fatigué du groupe. L'ordre est fixe : d'abord le plan propre d'un coureur, puis le plan de son groupe, puis le plan de l'équipe. Si tu modifies les champs propres d'un coureur, son plan l'emporte jusqu'à ce que tu choisisses à nouveau “Suivre le groupe”. Tu peux aussi appliquer un programme à un groupe sous Programmes, et donner à un groupe sa propre exception sous Limite de fatigue."
+      },
+      "catalogV3": {
+        "title": "Deux séances dures pour chaque type de coureur",
+        "text": "Chaque type de coureur a désormais deux séances dures conçues pour lui, et chaque séance dure donne une journée dure complète. Cinq séances sont nouvelles : Longues ascensions, Lancement de sprint, Contre-la-montre courts, Contre-la-montre longs et Classique pavée. Le contre-la-montre a enfin ses propres séances, donc Seuil travaille le tempo et l'endurance à la place. Sprint donne désormais une journée dure complète. Si tu alternes entre les deux séances de ton type, la capacité principale progresse un peu moins, mais d'autres capacités progressent à la place."
       }
     },
     "activityfeed": {
@@ -1553,6 +1557,10 @@
       "freeAgents": {
         "title": "Agents libres",
         "text": "Les agents libres n'ont pas de salaire tant qu'une équipe ne les signe pas. Le profil du coureur et la page d'enchère affichent un salaire estimé (d'après la production attendue du coureur cette saison) pour que tu puisses planifier ton budget avant d'enchérir. Le salaire réel n'est fixé qu'au moment de la signature. Les agents libres apparaissent surtout quand le contrat d'un coureur arrive à terme et n'est pas renouvelé au changement de saison : en pratique, c'est presque toujours un effectif géré par un humain, puisque les équipes contrôlées par l'IA renouvellent elles-mêmes leurs contrats arrivant à échéance lors de la même transition. Les autres sont des coureurs libérés par leur ancien club, soit à la remise des diplômes de l'académie, soit à partir d'une offre de recrutement de l'académie restée sans réponse qui n'a trouvé aucun acheteur aux enchères (voir “Les offres de recrutement de l'académie expirent-elles ?”)."
+      },
+      "contractWarnings": {
+        "title": "Quels coureurs sont concernés par les alertes de contrat ?",
+        "text": "Les alertes couvrent tes seniors, U23, juniors et coureurs de l'académie. Au changement de saison, un seul message liste les coureurs dont le contrat expire pendant la nouvelle saison, avec leur groupe et leur valeur. Tu reçois aussi une alerte quand tu recrutes un coureur ou le changes de groupe si son contrat expire pendant la saison en cours. Tu peux prolonger les contrats de tous les groupes dans l'onglet Contrats de Mon équipe. Les coureurs libérés au changement de saison sont regroupés dans un message distinct. Un changement de groupe ne modifie pas le contrat, et la durée du contrat initial des recrues de l'académie reste inchangée."
       }
     },
     "academy": {
@@ -1571,7 +1579,7 @@
       },
       "prognosisTraining": {
         "title": "Découvrir le potentiel d'un jeune talent",
-        "text": "Après avoir recruté un coureur de l’académie, tu découvres sa prévision grâce aux jours d’entraînement dans ton équipe. Au début, il n’y a pas d’estimation, puis une fourchette de note initiale, plus précise et enfin finale. L’onglet de recrutement montre l’étape actuelle, la fourchette révélée et les jours d’entraînement avant la prochaine étape. Un meilleur encadrement et de meilleures installations d’entraînement te font avancer plus vite. Ils ne changent pas son talent, et même la prévision finale reste une fourchette."
+        "text": "Après la signature d'un jeune coureur, sa prévision s'affine avec les jours d'entraînement et de course enregistrés dans ton équipe. Le temps écoulé depuis la signature ne suffit pas : une semaine dans ton équipe ne donne pas à elle seule une prévision complète. Il n'y a d'abord aucune estimation, puis une fourchette approximative, plus précise et enfin définitive. L'onglet Recrutement montre l'étape actuelle, la fourchette révélée et les jours d'entraînement ou de course avant l'étape suivante. De meilleurs entraîneurs et installations permettent d'avancer plus vite. Ils ne changent pas son talent, et même la prévision définitive reste une fourchette. La mise à jour du dimanche fixe sa valeur marchande ; elle ne complète pas sa prévision de potentiel."
       },
       "signingProspects": {
         "title": "Signer des jeunes talents",
@@ -1745,11 +1753,19 @@
       },
       "roles": {
         "title": "Leader, leader sprint, chasseur d'échappée et rôle libre",
-        "text": "Tu donnes un rôle à chaque coureur sélectionné avec les cartes de tactique, et chaque carte explique pourquoi le rôle convient au terrain de cette course. Ton leader est protégé par l'équipe : des équipiers forts et frais augmentent les chances du leader. Sur les étapes de plat, c'est ton leader sprint (s'il est fixé) qui reçoit la protection à la place. Un chasseur d'échappée tente l'échappée du jour par défaut et roule plus fort pour rester devant. Tu peux désactiver cela pour une seule étape, et une tentative n'est jamais sûre. La carte du chasseur montre la probabilité qu'une échappée tienne sur ce terrain, et la page de détail de la course classe tes meilleurs chasseurs par agressivité, l'envie d'attaquer. L'agressivité rend un coureur plus susceptible d'entrer dans l'échappée, et un coureur en rôle libre tente aussi plus souvent de lui-même. Dans les courses aux règles actuelles, chaque tentative coûte de l'énergie, même quand elle échoue. Le travail d'équipe a un prix : les équipiers perdent des places en travaillant pour le leader, et ce travail est exactement ce qui achète le coup de pouce du leader. Un coureur en Rôle libre saute les missions d'équipe et court sa propre course, sans coût de travail ni soutien du leader."
+        "text": "Tu donnes un rôle à chaque coureur sélectionné avec les cartes de tactique, et chaque carte explique pourquoi le rôle convient au terrain de cette course. Ton leader est protégé par l'équipe : des équipiers forts et frais augmentent les chances du leader. Sur les étapes de plat, c'est ton leader sprint (s'il est fixé) qui reçoit la protection à la place. Un chasseur d'échappée tente l'échappée du jour par défaut et roule plus fort pour rester devant. Tu peux désactiver cela pour une seule étape, et une tentative n'est jamais sûre. La carte du chasseur montre la probabilité qu'une échappée tienne sur ce terrain, et la page de détail de la course classe tes meilleurs chasseurs par agressivité, l'envie d'attaquer. L'agressivité rend un coureur plus susceptible d'entrer dans l'échappée, et un coureur en rôle libre tente aussi plus souvent de lui-même. Dans les courses aux règles actuelles, chaque tentative coûte de l'énergie, même quand elle échoue. Le travail d'équipe a un prix : les équipiers perdent des places en travaillant pour le leader, et ce travail est exactement ce qui achète le coup de pouce du leader. Un coureur en Rôle libre saute les missions d'équipe et court sa propre course, sans coût de travail ni soutien du leader. Dans les courses aux règles les plus récentes, un leader sprint peut être ton seul leader, sans leader général. Il reçoit alors la protection de l'équipe sur toutes les étapes."
       },
       "stageTactics": {
         "title": "Courses par étapes : rôles et effort par étape",
-        "text": "Dans les courses par étapes, la page de la course a un tableau de tactique étape par étape. Les étapes terminées sont verrouillées et montrent ce qui s'est passé ; les étapes à venir peuvent encore être modifiées pendant que la course se déroule. Chaque coureur peut avoir un rôle différent par étape, plus un effort : il y a trois efforts : Rouler tranquille, Normal et Travailler ou attaquer. Travailler ou attaquer accumule de la fatigue supplémentaire : un équipier ou un chasseur d'échappée travaille pour l'équipe, tandis qu'un leader ou un coureur en rôle libre s'en sert pour attaquer. Rouler tranquille lève le pied pour rester plus frais pour les jours qui comptent. Si un coureur prend le maillot de leader, un raccourci dans l'onglet Équipe de la page de la course en fait le leader pour toutes les étapes restantes en un clic pendant que la course se déroule, en faisant passer tout autre leader de ces étapes à équipier. Les étapes où tu ne fixes rien utilisent simplement le rôle de course du coureur."
+        "text": "Dans les courses par étapes, la page de la course a un tableau de tactique étape par étape. Les étapes terminées sont verrouillées et montrent ce qui s'est passé ; les étapes à venir peuvent encore être modifiées pendant que la course se déroule. Chaque coureur peut avoir un rôle différent par étape, plus un effort pour la journée. Les paliers d'effort ont leur propre paragraphe juste en dessous. Si un coureur prend le maillot de leader, un raccourci dans l'onglet Équipe de la page de la course en fait le leader pour toutes les étapes restantes en un clic pendant que la course se déroule, en faisant passer tout autre leader de ces étapes à équipier. Les étapes où tu ne fixes rien utilisent simplement le rôle de course du coureur."
+      },
+      "effortSteps": {
+        "title": "Paliers d'effort",
+        "text": "Chaque coureur reçoit un effort pour l'étape que tu as ouverte. Cinq paliers vont du plus facile au plus dur. Autobus rentre dans le groupe de fond et ne lui rapporte jamais un résultat à lui. Rouler tranquille reste dans le peloton et garde ses jambes pour les jours qui comptent. Normal est sa course normale. Le quatrième palier porte le nom de la mission : Travailler pour un équipier ou un chasseur d'échappée, qui roule pour le leader et subit une vraie fatigue ; Suivre les attaques pour un leader ou un leader sprint, qui répond à chaque attaque et dépense plus de jambes ; Rouler à l'offensive pour un coureur en rôle libre, qui met la pression dans les montées et au final. À fond met tout sur la journée et c'est le jour le plus dur pour ses jambes. Un palier plus dur coûte toujours plus de fatigue qu'un plus facile, quelle que soit la force du coureur. Un équipier à fond roule pour lui-même et cesse d'aider le leader."
+      },
+      "effortStepsThree": {
+        "title": "Paliers d'effort",
+        "text": "Chaque coureur reçoit un effort pour l'étape que tu as ouverte. Trois paliers vont du plus facile au plus dur. Rouler tranquille reste dans le peloton et garde ses jambes pour les jours qui comptent. Normal est sa course normale. Le troisième palier porte le nom de la mission : Travailler pour un équipier ou un chasseur d'échappée, qui roule pour le leader et subit une vraie fatigue ; Suivre les attaques pour un leader ou un leader sprint, qui répond à chaque attaque et dépense plus de jambes ; Rouler à l'offensive pour un coureur en rôle libre, qui met la pression dans les montées et au final. Un palier plus dur coûte toujours plus de fatigue qu'un plus facile, quelle que soit la force du coureur."
       },
       "strategy": {
         "title": "Stratégie d'équipe (préférences permanentes)",
@@ -1780,7 +1796,7 @@
       "label": "Jour de course et tactique",
       "roleAndIntention": {
         "title": "Rôles et consigne du jour",
-        "text": "Ton rôle est la mission que tu as choisie pour un coureur en montant ton équipe : leader, leader sprint, chasseur d'échappée, équipier ou rôle libre. Il dure toute la course et change rarement. La consigne est différente, c'est ce que tu lui demandes sur l'étape que tu as ouverte en ce moment, et si tu n'y touches pas il court simplement son rôle. Cinq réglages vont du plus facile au plus dur : autobus, rouler tranquille, normal, travailler ou attaquer et à fond. Un réglage plus dur coûte toujours plus de fatigue qu'un plus facile, quelle que soit la force du coureur, et l'autobus ne lui rapporte jamais un résultat à lui."
+        "text": "Ton rôle est la mission que tu as choisie pour un coureur en montant ton équipe : leader, leader sprint, chasseur d'échappée, équipier ou rôle libre. Il dure toute la course et change rarement. La consigne est différente, c'est ce que tu lui demandes sur l'étape que tu as ouverte en ce moment, et si tu n'y touches pas il court simplement son rôle. Les paliers que tu peux choisir sont expliqués sous Paliers d'effort."
       },
       "crashesAndIncidents": {
         "title": "Chutes et incidents",
@@ -1792,7 +1808,15 @@
       },
       "teamwork": {
         "title": "Le travail d'équipe sur la route",
-        "text": "Ton leader, ou ton leader sprint sur une étape de plat, est protégé par le travail que fournit le reste de l'équipe. Un équipier ou un chasseur d'échappée paie cette protection de son propre effort ; un coureur en rôle libre n'aide ni ne paie. Le coup de pouce est borné pour ne jamais s'emballer, et il ne compte que si au moins un coéquipier roule encore près de lui. Mets un coureur à fond et il cesse complètement de payer ce prix, car il dépense tout pour lui-même. Un équipier en Rouler tranquille paie moins mais donne moins de soutien à ton leader. Travailler pour l'équipe n'est jamais gratuit, et aucune combinaison de rôle et de consigne ne peut le transformer en bonus par-dessus les propres aptitudes d'un coureur."
+        "text": "Ton leader, ou ton leader sprint sur une étape de plat, est protégé par le travail que fournit le reste de l'équipe. Un équipier ou un chasseur d'échappée paie cette protection de son propre effort ; un coureur en rôle libre n'aide ni ne paie. Le coup de pouce est borné pour ne jamais s'emballer, et il ne compte que si au moins un coéquipier roule encore près de lui. Un équipier en Rouler tranquille paie moins mais donne moins de soutien à ton leader. Travailler pour l'équipe n'est jamais gratuit, et aucune combinaison de rôle et de consigne ne peut le transformer en bonus par-dessus les propres aptitudes d'un coureur."
+      },
+      "teamworkAllOut": {
+        "title": "À fond et travail d'équipe",
+        "text": "Mets un coureur à fond et il cesse complètement de payer ce prix, car il dépense tout pour lui-même."
+      },
+      "luxuryHelper": {
+        "title": "L'équipier de luxe",
+        "text": "Un équipier de luxe est un équipier avec un plan d'étape tout prêt : il s'économise dans le peloton, puis roule pour ton leader dans l'ascension décisive, la dernière de la journée. Dans le plan d'étape, tu peux déplacer son travail vers une autre ascension ou lui donner un autre plan. Si ton leader est lâché ou hors course, il fait sa propre course. Une équipe peut avoir un équipier de luxe, et seulement dans les courses aux règles les plus récentes."
       },
       "weatherAndCobbles": {
         "title": "Météo et pavés",
@@ -1807,7 +1831,7 @@
     },
     "peakWhatItDoes": {
       "q": "À quoi sert un pic ?",
-      "a": "Un pic augmente la forme d'un coureur pour une seule fenêtre de course que tu choisis dans le planificateur de saison. Il fonctionne avec une préparation que tu entraînes avant et un creux après, il vaut donc la peine de le fixer sur une course que tu comptes vraiment gagner, pas sur toute une saison. Chaque coureur peut avoir jusqu'à deux pics à la fois. Les pics ne comptent pas encore en course ; les courses utilisent sa forme normale. Voir “Comment fonctionne l'entraînement pour un pic ?” et “Un pic me coûte-t-il quelque chose ensuite ?” ci-dessous pour savoir exactement combien et quand."
+      "a": "Un pic augmente la forme d'un coureur pour une seule fenêtre de course que tu choisis dans le planificateur de saison. Il fonctionne avec une préparation que tu entraînes avant et un creux après, il vaut donc la peine de le fixer sur une course que tu comptes vraiment gagner, pas sur toute une saison. Chaque coureur peut avoir jusqu'à deux pics à la fois. En course, le pic s'ajoute à sa forme normale. Voir “Comment fonctionne l'entraînement pour un pic ?” et “Un pic me coûte-t-il quelque chose ensuite ?” ci-dessous pour savoir exactement combien et quand."
     },
     "peakTraining": {
       "q": "Comment fonctionne l'entraînement pour un pic ?",

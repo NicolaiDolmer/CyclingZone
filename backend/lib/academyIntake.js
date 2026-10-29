@@ -11,7 +11,7 @@ import { ACADEMY } from "./academyFlag.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { computeFrozenSalary } from "./contractSeed.js";
 import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
-import { notifyTeamOwner } from "./notificationService.js";
+import { notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { checkAvailableSpend, INSUFFICIENT_AVAILABLE_BALANCE } from "./availableBalance.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 import { seasonReferenceYear, LAUNCH_REFERENCE_YEAR } from "./riderSeasonAge.js";
@@ -472,10 +472,12 @@ async function fetchIntakeRowForSigning(supabase, { teamId, riderId }) {
  * @param {string} opts.teamId
  * @param {string} opts.riderId
  * @param {number} opts.seasonNumber   — aktiv sæsons nummer (bruges til contract_end_season)
+ * @param {Date} [opts.now]
+ * @param {import("./notificationService.js").ContractNoticeNotify} [opts.notify]
  * @returns {Promise<{riderId, salary, fee, contractEndSeason}>}
  * @throws {Error} 'not_offered' | 'academy_full' | 'insufficient_balance' | 'already_assigned'
  */
-export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNumber }) {
+export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNumber, now = new Date(), notify = notifyTeamOwner }) {
   // 1. Hent academy_intake-rækken — skal eksistere og have status 'offered'.
   // #5844: `source` med, så bestyrelsens gave-kuld signes gratis.
   const intakeRow = await fetchIntakeRowForSigning(supabase, { teamId, riderId });
@@ -527,7 +529,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // og youth-auktionsvinderen (auctionFinalization.js) fortsat bruger uændret.
   const contractEndSeason = seasonNumber + ACADEMY.INTAKE_CONTRACT_LENGTH - 1;
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
-  const acquiredAt = new Date().toISOString();
+  const acquiredAt = now.toISOString();
 
   // #6264: signing-fee må ikke betales med penge låst i auktionsbud. RPC'en
   // nedenfor forbliver den autoritative rå-saldo-gate (insufficient_balance).
@@ -594,13 +596,18 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   if (acq?.code === "rider_owned") throw new Error("rider_owned");
   if (!acq?.ok) throw new Error(`finalize_academy_acquisition uventet svar: ${JSON.stringify(acq)}`);
 
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId, seasonNumber, now, notify,
+    rider: { ...rider, contract_end_season: contractEndSeason, squad: academyPlacementSquad(rider.birthdate, seasonNumber), is_academy: true },
+  });
+
   // 4. Opdatér academy_intake → signed. #2793: persistér signing-fee'en som
   // rytterens kostbasis — uden dette kunne hverken akademi-P&L'en (kostbasis
   // pr. rytter) eller transfer-profit-panelet (køb→salg-parring) regne et
   // realiseret salg af en akademi-udviklet rytter.
   const { error: intakeUpdateErr } = await supabase
     .from("academy_intake")
-    .update({ status: "signed", resolved_at: new Date().toISOString(), signing_fee: fee })
+    .update({ status: "signed", resolved_at: now.toISOString(), signing_fee: fee })
     .eq("id", intakeRow.id);
   if (intakeUpdateErr) throw new Error(`signAcademyCandidate intake update: ${intakeUpdateErr.message}`);
 

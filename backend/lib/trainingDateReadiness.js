@@ -36,6 +36,40 @@ export function trainingDateDeadline(date) {
   throw new Error('Cannot resolve Copenhagen settlement deadline');
 }
 
+// #7282 (owner 26/10, "Vi har aftalt, at der ikke er sæsonpause"): the day after the
+// previous season's last date belongs to the new season. Dates before the new season's
+// first race date are pure training dates worth BRIDGE_SLOTS_PER_DATE race days without
+// races, for every division. They take negative game days counted back from the first
+// race date (the date before it is -5..-1), so they never collide with the race-day
+// axis, which starts at 0 on the first race date.
+export const BRIDGE_SLOTS_PER_DATE = 5;
+
+export function bridgeGameDays({ tickDate, firstRaceDate, previousEndDate }) {
+  const first = typeof firstRaceDate === 'string' ? firstRaceDate.slice(0, 10) : null;
+  const prevEnd = typeof previousEndDate === 'string' ? previousEndDate.slice(0, 10) : null;
+  if (!first || !prevEnd || !(tickDate > prevEnd) || !(tickDate < first)) return [];
+  const datesBefore = Math.round((Date.parse(`${first}T12:00:00Z`) - Date.parse(`${tickDate}T12:00:00Z`)) / 86400000);
+  const start = -datesBefore * BRIDGE_SLOTS_PER_DATE;
+  return Array.from({ length: BRIDGE_SLOTS_PER_DATE }, (_, i) => start + i);
+}
+
+// The season's own first date and the previous season's last date. Callers that did
+// not select them (Train now reads only id/number) get them looked up here.
+export async function loadSeasonBridgeBounds(supabase, season) {
+  let { start_date: startDate, number, previous_end_date: previousEndDate } = season ?? {};
+  if (startDate === undefined || number === undefined) {
+    const own = await must(supabase.from('seasons').select('number,start_date').eq('id', season.id).maybeSingle(), 'season bounds');
+    startDate = own?.start_date ?? null; number = own?.number;
+  }
+  if (previousEndDate === undefined) {
+    const previous = Number.isInteger(Number(number)) && Number(number) > 1
+      ? await must(supabase.from('seasons').select('end_date').eq('number', Number(number) - 1).maybeSingle(), 'previous season end')
+      : null;
+    previousEndDate = previous?.end_date ?? null;
+  }
+  return { firstRaceDate: startDate ?? null, previousEndDate: previousEndDate ?? null };
+}
+
 function snapshotIds(run) {
   if (!Array.isArray(run?.entrant_snapshot)) return null;
   const ids = run.entrant_snapshot.map(entry => typeof entry === 'string' ? entry : entry?.rider_id);
@@ -151,6 +185,14 @@ export async function loadTrainingDateContext({ supabase, season, tickDate, load
   }
   const riderById = new Map(riders.map(rider => [rider.id, rider]));
   const validEntries = entries.filter(entry => isEligibleRider(riderById.get(entry.rider_id), { teamId: entry.team_id, squad: ANY_SQUAD }));
+  const gameDaysByDivision = new Map([...spans].map(([id, span]) => [id, span.gameDays]));
+  // #7282: a bridge date has no stages, so no spans; every division gets the bridge days.
+  if (!stages.length) {
+    const bridgeDays = bridgeGameDays({ tickDate, ...await loadSeasonBridgeBounds(supabase, season) });
+    if (bridgeDays.length) {
+      for (const team of teams) if (team.league_division_id) gameDaysByDivision.set(team.league_division_id, bridgeDays);
+    }
+  }
   return { tickDate, races, teams, riders, stages, runs, entries: validEntries, results, incidents, loads, candidateRiderIdsByRace,
-    gameDaysByDivision: new Map([...spans].map(([id, span]) => [id, span.gameDays])) };
+    gameDaysByDivision };
 }

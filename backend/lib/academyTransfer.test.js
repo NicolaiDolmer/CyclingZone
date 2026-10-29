@@ -7,6 +7,8 @@ import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contr
 import { ACADEMY } from "./academyFlag.js";
 import { SQUAD_CAPS, SQUAD_MAX_AGE } from "./squads.js";
 
+const CONTRACT_NOTICE_NOW = new Date("2026-10-26T12:00:00Z");
+
 // ─── Mock-supabase ─────────────────────────────────────────────────────────────
 // promote bruger: riders (maybeSingle load + update), academy_graduation
 // (maybeSingle load + update), getMarketState (injiceret). demote bruger: riders
@@ -206,7 +208,7 @@ test("promote: is_academy=false + kontraktløs rytter (salary==null) får standa
   const { supabase, rec } = makeSupabase({ rider: CONTRACTLESS_ACADEMY_RIDER, gradRow: null });
   const notify = spyNotify();
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 3 });
-  const res = await promote(supabase, { teamId: "t1", riderId: "r3", seasonNumber: 1, getMarketState, notify });
+  const res = await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r3", seasonNumber: 1, getMarketState, notify });
 
   assert.equal(res.action, "promoted");
   assert.equal(rec.riderUpdates.length, 1);
@@ -228,7 +230,7 @@ test("promote: #2881 — eksisterende kontrakt (3 sæsoner) overlever UÆNDRET, 
   const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER_WITH_SURVIVING_CONTRACT, gradRow: null });
   const notify = spyNotify();
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 2 });
-  const res = await promote(supabase, { teamId: "t1", riderId: "r4", seasonNumber: 1, getMarketState, notify });
+  const res = await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r4", seasonNumber: 1, getMarketState, notify });
 
   assert.equal(res.action, "promoted");
   assert.equal(rec.riderUpdates.length, 1);
@@ -245,7 +247,7 @@ test("promote: #2881 — eksisterende kontrakt (3 sæsoner) overlever UÆNDRET, 
 test("promote: #3620 — SELECTen henter kontrakt-kolonnerne (ellers regenererer guarden i blinde)", async () => {
   const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER_WITH_SURVIVING_CONTRACT, gradRow: null });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 2 });
-  await promote(supabase, { teamId: "t1", riderId: "r4", seasonNumber: 2, getMarketState, notify: spyNotify() });
+  await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r4", seasonNumber: 2, getMarketState, notify: spyNotify() });
 
   assert.equal(rec.riderSelects.length, 1);
   assert.match(rec.riderSelects[0], /\bcontract_end_season\b/);
@@ -256,7 +258,7 @@ test("promote: #3620 — SELECTen henter kontrakt-kolonnerne (ellers regenererer
 test("promote: resolver pending academy_graduation-row til 'promoted'", async () => {
   const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER, gradRow: { id: "g1", status: "pending" } });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
-  await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
+  await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
   assert.equal(rec.gradUpdates.length, 1, "pending grad-row blev resolved");
   assert.equal(rec.gradUpdates[0].status, "promoted");
   assert.ok(rec.gradUpdates[0].resolved_at, "resolved_at sat");
@@ -276,7 +278,7 @@ test("promote: #4484 — to grad-rækker over to sæsoner → kun den pending re
     ],
   });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
-  await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 3, getMarketState, notify: spyNotify() });
+  await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 3, getMarketState, notify: spyNotify() });
   assert.equal(rec.gradUpdates.length, 1, "kun ÉN række rørt");
   assert.deepEqual(rec.gradUpdates[0].__eq, ["id", "g-s3"], "den pending række fra i år");
 });
@@ -284,7 +286,7 @@ test("promote: #4484 — to grad-rækker over to sæsoner → kun den pending re
 test("promote: ingen grad-row → ingen grad-update (men promote lykkes)", async () => {
   const { supabase, rec } = makeSupabase({ rider: ACADEMY_RIDER, gradRow: null });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
-  const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
+  const res = await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
   assert.equal(res.action, "promoted");
   assert.equal(rec.gradUpdates.length, 0);
 });
@@ -299,7 +301,7 @@ test("#5903 promote: rydder entries i kommende ungdomsløb efter trup-skiftet", 
     calls.push({ ...args, riderUpdatesSoFar: rec.riderUpdates.length });
     return { cleared: 2 };
   };
-  const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify(), clearEntriesOutsideSquad });
+  const res = await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify(), clearEntriesOutsideSquad });
   assert.deepEqual(calls, [{ riderId: "r1", squad: "senior", label: "academy_promote", riderUpdatesSoFar: 1 }], "oprydning EFTER squad='senior' er skrevet");
   assert.equal(res.offSquadEntriesCleared, 2);
 });
@@ -331,7 +333,7 @@ test("#5903 promote: standard-oprydningen sletter rytterens entry i et kommende 
     };
   };
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
-  const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
+  const res = await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
   assert.equal(deletes.length, 1);
   assert.deepEqual(deletes[0].filters, [["eq", "rider_id", "r1"], ["in", "race_id", ["race-u23"]]]);
   assert.equal(res.offSquadEntriesCleared, 1);
@@ -347,7 +349,7 @@ test("#5903 promote: fejl i oprydningen gør ikke en gennemført promovering til
   const origErr = console.error;
   console.error = () => {};
   try {
-    const res = await promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
+    const res = await promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() });
     assert.equal(res.action, "promoted");
     assert.equal(res.offSquadEntriesCleared, undefined);
   } finally {
@@ -365,7 +367,7 @@ test("#5903 moveRider → senior: promote() rydder ikke selv (moveRider rydder �
   supabase.from = (table) => { tables.push(table); return from(table); };
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
   const calls = [];
-  await moveRider(supabase, {
+  await moveRider(supabase, { now: CONTRACT_NOTICE_NOW,
     teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState,
     notify: spyNotify(), ridersInActiveStageRace: noStageRace,
     clearEntriesOutsideSquad: async (_sb, args) => { calls.push(args); return { cleared: 0 }; },
@@ -378,7 +380,7 @@ test("promote: afviser ved fuld senior-trup (squad_cap_violation)", async () => 
   const { supabase } = makeSupabase({ rider: ACADEMY_RIDER });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30 });
   await assert.rejects(
-    () => promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
+    () => promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
     /squad_cap_violation/,
   );
 });
@@ -387,7 +389,7 @@ test("promote: afviser ukendt rytter (rider_not_found)", async () => {
   const { supabase } = makeSupabase({ rider: null });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 5 });
   await assert.rejects(
-    () => promote(supabase, { teamId: "t1", riderId: "rX", seasonNumber: 1, getMarketState, notify: spyNotify() }),
+    () => promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "rX", seasonNumber: 1, getMarketState, notify: spyNotify() }),
     /rider_not_found/,
   );
 });
@@ -396,7 +398,7 @@ test("promote: afviser rytter på andet hold (not_owned)", async () => {
   const { supabase } = makeSupabase({ rider: { ...ACADEMY_RIDER, team_id: "OTHER" } });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 5 });
   await assert.rejects(
-    () => promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
+    () => promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
     /not_owned/,
   );
 });
@@ -405,7 +407,7 @@ test("promote: afviser senior-rytter (not_academy)", async () => {
   const { supabase } = makeSupabase({ rider: { ...ACADEMY_RIDER, is_academy: false } });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 5 });
   await assert.rejects(
-    () => promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
+    () => promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
     /not_academy/,
   );
 });
@@ -414,7 +416,7 @@ test("promote: kaster ved rider-update-fejl", async () => {
   const { supabase } = makeSupabase({ rider: ACADEMY_RIDER, riderUpdateError: { message: "boom" } });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 5 });
   await assert.rejects(
-    () => promote(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
+    () => promote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, notify: spyNotify() }),
     /boom/,
   );
 });
@@ -430,7 +432,7 @@ test("demote: kalder RPC med korrekt løn + sæson-år + kontrakt; notify; retur
   });
   const notify = spyNotify();
   // seasonNumber 1 → p_season_start_year = 2026 + 0 = 2026
-  const res = await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 1, notify });
+  const res = await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 1, notify });
 
   assert.equal(rec.rpcCalls.length, 1);
   assert.equal(rec.rpcCalls[0].fn, "demote_rider_to_academy");
@@ -464,7 +466,7 @@ test("demote: #3805 — racesOngoing tæller igangværende løb (entries IKKE sl
       { race_id: "race-ongoing-1", races: { status: "scheduled", stages_completed: 2 } },
     ],
   });
-  const res = await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 1, notify: spyNotify() });
+  const res = await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 1, notify: spyNotify() });
 
   assert.equal(res.racesCleared, 0, "RPC'en rørte ingen fremtidige entries");
   assert.equal(res.racesOngoing, 1, "rytteren falder alligevel ud af det igangværende løb");
@@ -524,7 +526,7 @@ test("demote: #3620 — eksisterende kontrakt-term arves uændret (sæson 5 forb
     rider: SENIOR_U23_WITH_EXTENDED_CONTRACT,
     rpcResult: { ok: true, new_salary: 7_405, rows_deleted: 0 },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
 
   const a = rec.rpcCalls[0].args;
   assert.equal(a.p_contract_end, 5, "udløbssæsonen må ikke rykkes frem af et akademi-ophold");
@@ -547,7 +549,7 @@ test("demote: #4589 — eksisterende kontrakt-løn arves UÆNDRET (ingen genbere
     rider: SENIOR_U23_WITH_EXTENDED_CONTRACT, // salary: 9_000, current_production_value: 50_000
     rpcResult: { ok: true, new_salary: 9_000, rows_deleted: 0 },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
 
   const a = rec.rpcCalls[0].args;
   assert.equal(a.p_new_salary, 9_000, "den EKSISTERENDE frosne løn skal bruges uændret");
@@ -567,7 +569,7 @@ test("demote: #4589 — kontraktløs rytter får stadig en frisk akademi-løn be
     rider: contractless,
     rpcResult: { ok: true, new_salary: demoteSalary(contractless), rows_deleted: 0 },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
 
   const a = rec.rpcCalls[0].args;
   assert.equal(a.p_new_salary, demoteSalary(contractless));
@@ -610,7 +612,7 @@ test("demote: #3620 — kontraktløs rytter får stadig akademi-aftalen (create-
     rider: { ...SENIOR_U23, salary: null },
     rpcResult: { ok: true, new_salary: 161, rows_deleted: 0 },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
 
   const a = rec.rpcCalls[0].args;
   assert.equal(a.p_contract_length, ACADEMY.CONTRACT_LENGTH);
@@ -625,7 +627,7 @@ test("demote → promote: #3620 — rundturen efterlader kontrakt-termen urørt"
     rider: SENIOR_U23_WITH_EXTENDED_CONTRACT,
     rpcResult: { ok: true, new_salary: 7_405, rows_deleted: 0 },
   });
-  await demote(down.supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
+  await demote(down.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r5", seasonNumber: 2, notify: spyNotify() });
   const afterDemote = down.rec.rpcCalls[0].args;
 
   const up = makeSupabase({
@@ -639,7 +641,7 @@ test("demote → promote: #3620 — rundturen efterlader kontrakt-termen urørt"
     gradRow: null,
   });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, division: 3 });
-  await promote(up.supabase, { teamId: "t1", riderId: "r5", seasonNumber: 2, getMarketState, notify: spyNotify() });
+  await promote(up.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r5", seasonNumber: 2, getMarketState, notify: spyNotify() });
 
   assert.deepEqual(
     up.rec.riderUpdates[0],
@@ -654,14 +656,14 @@ test("demote: p_season_start_year følger seasonNumber (sæson 3 → 2028)", asy
     rider: SENIOR_U23,
     rpcResult: { ok: true, new_salary: 5000, rows_deleted: 0 },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 3, notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 3, notify: spyNotify() });
   assert.equal(rec.rpcCalls[0].args.p_season_start_year, 2028);
 });
 
 test("demote: ukendt rytter → rider_not_found (ingen RPC)", async () => {
   const { supabase, rec } = makeSupabase({ rider: null });
   await assert.rejects(
-    () => demote(supabase, { teamId: "t1", riderId: "rX", seasonNumber: 1, notify: spyNotify() }),
+    () => demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "rX", seasonNumber: 1, notify: spyNotify() }),
     /rider_not_found/,
   );
   assert.equal(rec.rpcCalls.length, 0);
@@ -683,7 +685,7 @@ test("demote: maper RPC ok=false-koder til named errors", async () => {
   for (const [code, re] of cases) {
     const { supabase } = makeSupabase({ rider: SENIOR_U23, rpcResult: { ok: false, code } });
     await assert.rejects(
-      () => demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 1, notify: spyNotify() }),
+      () => demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 1, notify: spyNotify() }),
       re,
       `kode ${code} skal kaste`,
     );
@@ -693,7 +695,7 @@ test("demote: maper RPC ok=false-koder til named errors", async () => {
 test("demote: RPC-transportfejl kastes", async () => {
   const { supabase } = makeSupabase({ rider: SENIOR_U23, rpcError: { message: "db down" } });
   await assert.rejects(
-    () => demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 1, notify: spyNotify() }),
+    () => demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 1, notify: spyNotify() }),
     /db down/,
   );
 });
@@ -701,7 +703,7 @@ test("demote: RPC-transportfejl kastes", async () => {
 test("demote: ok=false uden notify (ingen falsk demote-notifikation)", async () => {
   const { supabase } = makeSupabase({ rider: SENIOR_U23, rpcResult: { ok: false, code: "not_u23" } });
   const notify = spyNotify();
-  await assert.rejects(() => demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 1, notify }));
+  await assert.rejects(() => demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 1, notify }));
   assert.equal(notify.calls.length, 0, "ingen notifikation ved afvist demote");
 });
 
@@ -719,7 +721,7 @@ test("#5432 demote: sender mål-truppen, dens loft og aldersloft fra squads.js �
     rider: SENIOR_U23,
     rpcResult: { ok: true, new_salary: 5000, rows_deleted: 0, squad: "u23", squad_count: 9 },
   });
-  const res = await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
+  const res = await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
   const a = rec.rpcCalls[0].args;
   assert.equal(a.p_squad, "u23");
   assert.equal(a.p_squad_cap, SQUAD_CAPS.u23);
@@ -733,7 +735,7 @@ test("#5432 demote: squad skrives af RPC'en — ingen separat UPDATE bagefter", 
     rider: SENIOR_U23,
     rpcResult: { ok: true, new_salary: 5000, rows_deleted: 0, squad: "u23" },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() });
   assert.deepEqual(rec.riderUpdates, []);
 });
 
@@ -742,7 +744,7 @@ test("#5432 demote: en 17-årig sendes til junior med junior-loftet", async () =
     rider: JUNIOR_AGE_SENIOR,
     rpcResult: { ok: true, new_salary: 5000, rows_deleted: 0, squad: "junior" },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r7", seasonNumber: 2, notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r7", seasonNumber: 2, notify: spyNotify() });
   const a = rec.rpcCalls[0].args;
   assert.equal(a.p_squad, "junior");
   assert.equal(a.p_squad_cap, SQUAD_CAPS.junior);
@@ -756,7 +758,7 @@ test("#5432 demote: for gammel eller ukendt alder → U23 sendes, så RPC'ens al
       rpcResult: { ok: false, code: "not_u23" },
     });
     await assert.rejects(
-      () => demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() }),
+      () => demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 2, notify: spyNotify() }),
       /not_u23/,
     );
     assert.equal(rec.rpcCalls[0].args.p_squad, "u23", `birthdate=${birthdate}`);
@@ -767,7 +769,7 @@ test("#5432 demote: fuld mål-trup fra RPC'en → academy_full (koden frontend l
   const { supabase } = makeSupabase({ rider: SENIOR_U23, rpcResult: { ok: false, code: "academy_full" } });
   const notify = spyNotify();
   await assert.rejects(
-    () => demote(supabase, { teamId: "t1", riderId: "r2", seasonNumber: 2, notify }),
+    () => demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", seasonNumber: 2, notify }),
     /academy_full/,
   );
   assert.equal(notify.calls.length, 0);
@@ -778,12 +780,12 @@ test("#5432 demote: targetSquad styrer truppen; 'senior' er ikke en nedrykning (
     rider: JUNIOR_AGE_SENIOR,
     rpcResult: { ok: true, new_salary: 5000, rows_deleted: 0 },
   });
-  await demote(supabase, { teamId: "t1", riderId: "r7", seasonNumber: 2, targetSquad: "u23", notify: spyNotify() });
+  await demote(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r7", seasonNumber: 2, targetSquad: "u23", notify: spyNotify() });
   assert.equal(rec.rpcCalls[0].args.p_squad, "u23", "manageren valgte U23 til en 17-årig");
 
   const bad = makeSupabase({ rider: JUNIOR_AGE_SENIOR, rpcResult: { ok: true } });
   await assert.rejects(
-    () => demote(bad.supabase, { teamId: "t1", riderId: "r7", seasonNumber: 2, targetSquad: "senior", notify: spyNotify() }),
+    () => demote(bad.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r7", seasonNumber: 2, targetSquad: "senior", notify: spyNotify() }),
     /invalid_squad/,
   );
   assert.equal(bad.rec.rpcCalls.length, 0);
@@ -798,7 +800,7 @@ const noStageRace = async () => [];
 test("moveRider: ukendt mål-trup → invalid_squad før noget opslag", async () => {
   const { supabase, rec } = makeSupabase({ rider: JUNIOR_ACADEMY });
   await assert.rejects(
-    () => moveRider(supabase, { teamId: "t1", riderId: "j1", targetSquad: "u25", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "u25", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /invalid_squad/,
   );
   assert.equal(rec.riderSelects.length, 0);
@@ -807,12 +809,12 @@ test("moveRider: ukendt mål-trup → invalid_squad før noget opslag", async ()
 test("moveRider: rider_not_found / not_owned", async () => {
   const none = makeSupabase({ rider: null });
   await assert.rejects(
-    () => moveRider(none.supabase, { teamId: "t1", riderId: "x", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(none.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "x", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /rider_not_found/,
   );
   const foreign = makeSupabase({ rider: { ...JUNIOR_ACADEMY, team_id: "OTHER" } });
   await assert.rejects(
-    () => moveRider(foreign.supabase, { teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(foreign.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /not_owned/,
   );
 });
@@ -820,12 +822,12 @@ test("moveRider: rider_not_found / not_owned", async () => {
 test("moveRider: samme trup → same_squad, også for en akademirytter uden trup (før backfill)", async () => {
   const same = makeSupabase({ rider: JUNIOR_ACADEMY });
   await assert.rejects(
-    () => moveRider(same.supabase, { teamId: "t1", riderId: "j1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(same.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /same_squad/,
   );
   const unbackfilled = makeSupabase({ rider: { ...JUNIOR_ACADEMY, squad: "senior" } });
   await assert.rejects(
-    () => moveRider(unbackfilled.supabase, { teamId: "t1", riderId: "j1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(unbackfilled.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /same_squad/,
     "effectiveSquad udleder junior af alderen",
   );
@@ -834,14 +836,14 @@ test("moveRider: samme trup → same_squad, også for en akademirytter uden trup
 test("moveRider: NEDAD kun inden for aldersloftet — en 20-årig kan ikke til junior", async () => {
   const fromU23 = makeSupabase({ rider: U23_ACADEMY_20 });
   await assert.rejects(
-    () => moveRider(fromU23.supabase, { teamId: "t1", riderId: "u1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(fromU23.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "u1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /too_old_for_squad/,
   );
   assert.equal(fromU23.rec.rpcCalls.length, 0);
 
   const fromSenior = makeSupabase({ rider: { ...SENIOR_U23, squad: "senior" } }); // 22
   await assert.rejects(
-    () => moveRider(fromSenior.supabase, { teamId: "t1", riderId: "r2", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(fromSenior.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /too_old_for_squad/,
   );
   assert.equal(fromSenior.rec.rpcCalls.length, 0);
@@ -850,7 +852,7 @@ test("moveRider: NEDAD kun inden for aldersloftet — en 20-årig kan ikke til j
 test("moveRider: aktiv auktion → rider_on_market; aktivt etapeløb → rider_in_stage_race (ingen skrivning)", async () => {
   const onMarket = makeSupabase({ rider: JUNIOR_ACADEMY, activeAuctions: [{ id: "a1" }] });
   await assert.rejects(
-    () => moveRider(onMarket.supabase, { teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+    () => moveRider(onMarket.supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
     /rider_on_market/,
   );
   assert.deepEqual(onMarket.rec.auctionFilters, [["rider_id", "j1"], ["status", ["active", "extended"]]]);
@@ -859,7 +861,7 @@ test("moveRider: aktiv auktion → rider_on_market; aktivt etapeløb → rider_i
   const racing = makeSupabase({ rider: JUNIOR_ACADEMY });
   const seen = [];
   await assert.rejects(
-    () => moveRider(racing.supabase, {
+    () => moveRider(racing.supabase, { now: CONTRACT_NOTICE_NOW,
       teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2,
       ridersInActiveStageRace: async (_s, ids) => { seen.push(ids); return ["j1"]; },
     }),
@@ -895,7 +897,7 @@ test("moveRider: en ventende overgang mod en ANDEN trup røres ikke", async () =
     gradRow: { id: "g2", status: "pending", to_squad: "senior" },
     rpcResults: { move_academy_rider_squad: { ok: true, squad: "u23", squad_count: 1 } },
   });
-  await moveRider(supabase, { teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace });
+  await moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace });
   assert.equal(rec.gradUpdates.length, 0);
 });
 
@@ -905,7 +907,7 @@ test("moveRider: U23 → junior for en 17-årig (inden for aldersloftet) — ing
     gradRow: { id: "g3", status: "pending", to_squad: "junior" },
     rpcResults: { move_academy_rider_squad: { ok: true, squad: "junior", squad_count: 3 } },
   });
-  const res = await moveRider(supabase, { teamId: "t1", riderId: "j1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace });
+  const res = await moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "junior", seasonNumber: 2, ridersInActiveStageRace: noStageRace });
   assert.equal(rec.rpcCalls[0].args.p_squad, "junior");
   assert.equal(rec.rpcCalls[0].args.p_squad_cap, SQUAD_CAPS.junior);
   assert.equal(res.action, "moved");
@@ -919,7 +921,7 @@ test("moveRider: RPC-afvisninger (squad_full, rider_in_stage_race) kastes som na
       rpcResults: { move_academy_rider_squad: { ok: false, code } },
     });
     await assert.rejects(
-      () => moveRider(supabase, { teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
+      () => moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "u23", seasonNumber: 2, ridersInActiveStageRace: noStageRace }),
       new RegExp(code),
     );
   }
@@ -930,7 +932,7 @@ test("moveRider: senior → U23 delegerer til demote() med den valgte trup", asy
     rider: { ...SENIOR_U23, squad: "senior" },
     rpcResults: { demote_rider_to_academy: { ok: true, new_salary: 3350, rows_deleted: 1, squad: "u23" } },
   });
-  const res = await moveRider(supabase, { teamId: "t1", riderId: "r2", targetSquad: "u23", seasonNumber: 2, notify: spyNotify(), ridersInActiveStageRace: noStageRace });
+  const res = await moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", targetSquad: "u23", seasonNumber: 2, notify: spyNotify(), ridersInActiveStageRace: noStageRace });
   assert.equal(rec.rpcCalls[0].fn, "demote_rider_to_academy");
   assert.equal(rec.rpcCalls[0].args.p_squad, "u23");
   assert.equal(res.action, "demoted");
@@ -948,7 +950,7 @@ test("#5917 moveRider: ingen sti slår transfer_listings op — en listet rytter
     const tables = [];
     const from = supabase.from.bind(supabase);
     supabase.from = (table) => { tables.push(table); return from(table); };
-    const res = await moveRider(supabase, {
+    const res = await moveRider(supabase, { now: CONTRACT_NOTICE_NOW,
       teamId: "t1", riderId: rider.id, targetSquad: target, seasonNumber: 2,
       notify: spyNotify(), ridersInActiveStageRace: noStageRace,
       clearEntriesOutsideSquad: async () => ({ cleared: 0 }),
@@ -963,7 +965,7 @@ test("moveRider: senior → junior for en 17-årig sender junior-loftet", async 
     rider: { ...JUNIOR_AGE_SENIOR, squad: "senior" },
     rpcResults: { demote_rider_to_academy: { ok: true, new_salary: 3350, rows_deleted: 0, squad: "junior" } },
   });
-  await moveRider(supabase, { teamId: "t1", riderId: "r7", targetSquad: "junior", seasonNumber: 2, notify: spyNotify(), ridersInActiveStageRace: noStageRace });
+  await moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r7", targetSquad: "junior", seasonNumber: 2, notify: spyNotify(), ridersInActiveStageRace: noStageRace });
   assert.equal(rec.rpcCalls[0].args.p_squad, "junior");
   assert.equal(rec.rpcCalls[0].args.p_squad_cap, SQUAD_CAPS.junior);
 });
@@ -974,7 +976,7 @@ test("moveRider: fuld mål-trup giver ÉN kode på tværs af stierne (demote aca
     rpcResults: { demote_rider_to_academy: { ok: false, code: "academy_full" } },
   });
   await assert.rejects(
-    () => moveRider(supabase, { teamId: "t1", riderId: "r2", targetSquad: "u23", seasonNumber: 2, notify: spyNotify(), ridersInActiveStageRace: noStageRace }),
+    () => moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r2", targetSquad: "u23", seasonNumber: 2, notify: spyNotify(), ridersInActiveStageRace: noStageRace }),
     (err) => err.message === "squad_full" && err.cause?.message === "academy_full",
   );
 });
@@ -982,7 +984,7 @@ test("moveRider: fuld mål-trup giver ÉN kode på tværs af stierne (demote aca
 test("moveRider: OPAD frit — en 17-årig junior kan rykkes direkte til senior via promote()", async () => {
   const { supabase, rec } = makeSupabase({ rider: JUNIOR_ACADEMY, gradRow: null });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
-  const res = await moveRider(supabase, { teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState, notify: spyNotify(), ridersInActiveStageRace: noStageRace });
+  const res = await moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState, notify: spyNotify(), ridersInActiveStageRace: noStageRace });
   assert.equal(res.action, "promoted");
   assert.equal(res.from, "junior");
   assert.equal(res.to, "senior");
@@ -995,7 +997,7 @@ test("moveRider: fuld seniortrup (promote squad_cap_violation) → squad_full", 
   const { supabase } = makeSupabase({ rider: U23_ACADEMY_20 });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30 });
   await assert.rejects(
-    () => moveRider(supabase, { teamId: "t1", riderId: "u1", targetSquad: "senior", seasonNumber: 2, getMarketState, notify: spyNotify(), ridersInActiveStageRace: noStageRace }),
+    () => moveRider(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "u1", targetSquad: "senior", seasonNumber: 2, getMarketState, notify: spyNotify(), ridersInActiveStageRace: noStageRace }),
     /squad_full/,
   );
 });
@@ -1145,7 +1147,7 @@ test("#5843 moveRider: rydder entries uden for mål-truppen efter en gennemført
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
   const calls = [];
   const clearEntriesOutsideSquad = async (_sb, args) => { calls.push(args); return { cleared: 2 }; };
-  const res = await moveRider(supabase, {
+  const res = await moveRider(supabase, { now: CONTRACT_NOTICE_NOW,
     teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState,
     notify: spyNotify(), ridersInActiveStageRace: noStageRace, clearEntriesOutsideSquad,
   });
@@ -1159,7 +1161,7 @@ test("#5843 moveRider: en afvist flytning rydder intet", async () => {
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 30 });
   const calls = [];
   await assert.rejects(
-    () => moveRider(supabase, {
+    () => moveRider(supabase, { now: CONTRACT_NOTICE_NOW,
       teamId: "t1", riderId: "u1", targetSquad: "senior", seasonNumber: 2, getMarketState,
       notify: spyNotify(), ridersInActiveStageRace: noStageRace,
       clearEntriesOutsideSquad: async (_sb, args) => { calls.push(args); return { cleared: 0 }; },
@@ -1172,7 +1174,7 @@ test("#5843 moveRider: en afvist flytning rydder intet", async () => {
 test("#5843 moveRider: fejl i oprydningen gør ikke en gennemført flytning til en fejl", async () => {
   const { supabase } = makeSupabase({ rider: JUNIOR_ACADEMY, gradRow: null });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10 });
-  const res = await moveRider(supabase, {
+  const res = await moveRider(supabase, { now: CONTRACT_NOTICE_NOW,
     teamId: "t1", riderId: "j1", targetSquad: "senior", seasonNumber: 2, getMarketState,
     notify: spyNotify(), ridersInActiveStageRace: noStageRace,
     clearEntriesOutsideSquad: async () => { throw new Error("boom"); },

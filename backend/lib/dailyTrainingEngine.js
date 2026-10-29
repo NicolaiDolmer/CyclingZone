@@ -40,6 +40,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
 import {
   loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
 } from "./trainingFatigueRules.ts"; // #4854/#5620
@@ -922,6 +923,8 @@ export async function runTeamTrainingDay({
   const programsOn = weekPlanRows.some((r) => weekDaysHaveSessions(r.days))
     ? await isTrainingCellsEnabledForTeam(supabase, teamId)
     : false;
+  // #5319: traeningskatalog v3 (beta: holdets ejer er beta-tester). Off = programmet uroert.
+  const catalogV3On = await isTrainingCatalogV3EnabledForTeam(supabase, teamId);
   // Loebsdagens plads blandt holdets loebsdage paa datoen (0-4), samme liste som
   // gitterets kolonner. Kalenderdags-ticket = slot 0 ("I dag").
   // #5267 A (ejer-valg 28/9): hvem koerte en etape paa EN AF datoens loebsdage?
@@ -1017,6 +1020,7 @@ export async function runTeamTrainingDay({
       program,
       hasExplicitPlan,
       programsOn,
+      catalogV3: catalogV3On,
     });
     if (dayProgram.source === "program") program.focus = dayProgram.focus;
     program.intensity = dayProgram.intensity;
@@ -1029,6 +1033,7 @@ export async function runTeamTrainingDay({
       program.focus = fatigueRuleResult.focus;
       program.intensity = fatigueRuleResult.intensity;
     }
+    applyTrainingCatalog(program, { v3: catalogV3On }); // #5319: v3-evner/-vaegte, off = uroert
 
     // Byg abilities-objekt kun fra VISIBLE_ABILITIES (ikke formula_version etc.)
     const abilities = {};
