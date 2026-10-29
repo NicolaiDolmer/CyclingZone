@@ -26,7 +26,7 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 
 | Feature | State | Flag | SSOT | Epic | Verified | Note |
 |-|-|-|-|-|-|-|
-| Engine breakaway forecast (`race-breakaway-outlook`) | building | `race_breakaway_outlook` | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-26 | - |
+| Engine breakaway forecast (`race-breakaway-outlook`) | building | - | [RACE_ENGINE_RULES](RACE_ENGINE_RULES.md) | #6912 | 2026-10-29 | Stadie-flag race_breakaway_outlook (off, beta eller on) har ingen app_config-række; fravær = off. Tænding og regnekraft er et separat ejer-go (#7277). |
 
 ## market
 

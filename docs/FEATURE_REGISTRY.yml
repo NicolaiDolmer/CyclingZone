@@ -123,10 +123,12 @@ features:
     title_en: Engine breakaway forecast
     title_da: Motorens udbrudsbud
     state: building
-    flag: race_breakaway_outlook
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6912
-    verified: 2026-10-26
+    verified: 2026-10-29
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+    note: Stadie-flag race_breakaway_outlook (off, beta eller on) har ingen app_config-række; fravær = off. Tænding og regnekraft er et separat ejer-go (#7277).
 
   - id: race-day-form-6649
     area: race-engine
