@@ -350,9 +350,11 @@ export function partitionSmartBulkTargets({ riderIds, plannedRiderIds = [] } = {
 //                tier, men IKKE nul; se trainabilityChipBlockedTitle)
 //   "limited"  — resten (neutral blanding, factor === neutralFactor, ~45%)
 // Ukendt/manglende primærtype → alt "limited" (sikker neutral, ingen falsk positiv/negativ).
-export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH_PROGRESSION_CONFIG) {
+// #5319: `focuses` er valgfri (default = dagens TRAINING_FOCUSES, bit-identisk).
+// Routes sender V3_TRAINING_FOCUSES når training_catalog_v3 er åben for viewer.
+export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH_PROGRESSION_CONFIG, focuses = TRAINING_FOCUSES) {
   const out = {};
-  for (const [focusKey, abilities] of Object.entries(TRAINING_FOCUSES)) {
+  for (const [focusKey, abilities] of Object.entries(focuses)) {
     if (primaryType == null) {
       out[focusKey] = "limited";
       continue;

@@ -110,6 +110,14 @@ export async function isTrainingCatalogV3Enabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, TRAINING_CATALOG_V3_FLAG_KEY), opts);
 }
 
+// API'et med en LAZY beta-tjek: viewerens beta-status slås kun op når flaget
+// står på beta. Off/on koster derfor ét app_config-opslag og intet brugeropslag.
+export async function isTrainingCatalogV3EnabledForViewer(supabase, isBetaTesterFn) {
+  const stage = await readFlagStage(supabase, TRAINING_CATALOG_V3_FLAG_KEY);
+  if (stage !== "beta") return evaluateFlagStage(stage);
+  return evaluateFlagStage(stage, { isBetaTester: (await isBetaTesterFn?.()) === true });
+}
+
 // Motoren: holdets ejer afgør beta. KASTER ved et fejlet opslag, så et tick
 // aldrig afregnes med det forkerte katalog. ASCII-only beskeder (#i18n-leak-guard).
 export async function isTrainingCatalogV3EnabledForTeam(supabase, teamId) {

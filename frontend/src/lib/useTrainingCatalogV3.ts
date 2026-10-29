@@ -7,12 +7,29 @@
 import { useEffect, useState } from "react";
 import { fetchPlayerFeatureFlags } from "./playerFeatureFlags.js";
 import { setDisplayCatalogV3, isDisplayCatalogV3 } from "./training.js";
+import { supabase } from "./supabase";
+import { isViewerChangeEvent } from "./viewerChange.ts";
 
 export const TRAINING_CATALOG_V3_FLAG_KEY = "training_catalog_v3";
 
 let pending: Promise<boolean> | null = null;
+let authListenerInstalled = false;
+
+// Codex-fund: svaret afhænger af viewerens beta-status, og modulet overlever
+// logout i samme SPA-fane. Ved viewer-skift glemmes svaret, og visningen falder
+// tilbage til dagens katalog, indtil den nye viewers svar er hentet.
+function installAuthListener(): void {
+  if (authListenerInstalled) return;
+  authListenerInstalled = true;
+  supabase.auth.onAuthStateChange((event) => {
+    if (!isViewerChangeEvent(event)) return;
+    pending = null;
+    setDisplayCatalogV3(false);
+  });
+}
 
 export function loadTrainingCatalogV3(): Promise<boolean> {
+  installAuthListener();
   if (!pending) {
     pending = fetchPlayerFeatureFlags()
       .then((flags: Record<string, boolean>) => flags?.[TRAINING_CATALOG_V3_FLAG_KEY] === true)

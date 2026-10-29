@@ -7,7 +7,7 @@ import path from "node:path";
 
 import {
   TRAINING_FOCUSES, FOCUS_ABILITY_WEIGHT, SMART_DEFAULT_FOCUS_KEYS, TRAINING_FOCUS_KEYS,
-  programAbilityWeight, focusAbilityWeight,
+  programAbilityWeight, focusAbilityWeight, focusTrainability,
 } from "./training.js";
 import {
   TRAINING_SESSIONS_BY_LEVEL, SESSION_INTENSITY, ALL_SESSIONS, sessionsForDayType, programForChoice,
@@ -19,7 +19,7 @@ import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import {
   TRAINING_CATALOG_V3_FLAG_KEY, V3_NEW_HARD_SESSIONS, V3_TRAINING_FOCUSES, V3_FOCUS_ABILITY_WEIGHT,
   V3_RIDER_TYPE_HARD_PAIRS, v3FocusAbilityWeight, v3FocusWeightSum, applyTrainingCatalog,
-  isV3OnlySession, isTrainingCatalogV3Enabled, isTrainingCatalogV3EnabledForTeam,
+  isV3OnlySession, isTrainingCatalogV3Enabled, isTrainingCatalogV3EnabledForTeam, isTrainingCatalogV3EnabledForViewer,
 } from "./trainingCatalogV3.js";
 import { STAGE_FLAGS, PLAYER_VISIBLE_FLAG_KEYS } from "./stageFlagCatalog.js";
 
@@ -234,6 +234,27 @@ test("isTrainingCatalogV3Enabled: viewer-gate, fail-safe off", async () => {
   assert.equal(await isTrainingCatalogV3Enabled(mockSupabase({ flag: "beta" }), { isBetaTester: true }), true);
   assert.equal(await isTrainingCatalogV3Enabled(mockSupabase({ flag: "beta" })), false);
   assert.equal(await isTrainingCatalogV3Enabled(null), false);
+});
+
+test("isTrainingCatalogV3EnabledForViewer: beta-opslaget sker kun på beta", async () => {
+  let calls = 0;
+  const beta = async () => { calls++; return true; };
+  assert.equal(await isTrainingCatalogV3EnabledForViewer(mockSupabase({ flag: "off" }), beta), false);
+  assert.equal(await isTrainingCatalogV3EnabledForViewer(mockSupabase({ flag: "on" }), beta), true);
+  assert.equal(calls, 0);
+  assert.equal(await isTrainingCatalogV3EnabledForViewer(mockSupabase({ flag: "beta" }), beta), true);
+  assert.equal(await isTrainingCatalogV3EnabledForViewer(mockSupabase({ flag: "beta" }), async () => false), false);
+  assert.equal(calls, 1);
+});
+
+test("focusTrainability: default er dagens katalog; med v3 følger signalet v3-evnerne", () => {
+  const today = focusTrainability("tt", null);
+  assert.deepEqual(Object.keys(today), Object.keys(TODAY_FOCUSES));
+  const v3 = focusTrainability("tt", null, undefined, V3_TRAINING_FOCUSES);
+  for (const s of V3_NEW_HARD_SESSIONS) assert.ok(s in v3, s);
+  assert.equal(v3.itt_long, "strength");
+  assert.equal(today.threshold, "strength", "i dag træner tærskel enkeltstart");
+  assert.notEqual(v3.threshold, "strength", "v3-tærskel træner ikke enkeltstart");
 });
 
 test("drift-vagt: frontendens v3-spejl matcher backend præcist", async () => {

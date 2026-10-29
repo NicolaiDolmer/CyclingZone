@@ -233,7 +233,7 @@ import {
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
-import { isV3OnlySession, isTrainingCatalogV3Enabled } from "../lib/trainingCatalogV3.js"; // #5319
+import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
@@ -2985,7 +2985,7 @@ function resolveTrainingWrite(body, previousFocus = null, catalogV3 = false) {
 async function catalogV3ForTrainingWrite(req, previousFocus = null) {
   const body = req.body ?? {};
   if (![body.session, body.focus, previousFocus].some(isV3OnlySession)) return false;
-  return isTrainingCatalogV3Enabled(supabase, { isBetaTester: await isViewerBetaTester(req) });
+  return isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req));
 }
 
 // Hjælper: hent aktiv sæson (id + number) + holdets træningsstate (ledger → slots + planer).
@@ -3066,8 +3066,11 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const trainability = {};
     const smartDefaultFocusByRider = {};
     const primaryTypeByRider = new Map();
+    // #5319: signalet foelger samme katalog som viewerens vaelger (v3 kun naar flaget er aabent).
+    const trainabilityFocuses = (await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))
+      ? V3_TRAINING_FOCUSES : undefined;
     for (const rider of riders ?? []) {
-      trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null);
+      trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null, undefined, trainabilityFocuses);
       smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
