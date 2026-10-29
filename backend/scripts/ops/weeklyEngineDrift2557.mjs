@@ -179,6 +179,15 @@ export function buildFacts(raw, { observe = () => null } = {}) {
       gcRowsByRace.get(r.race_id).push(r);
     }
   }
+  // Endagsloeb (ogsaa monumenter og U23/junior-endagsloeb) gemmes KUN som gc-raekker, aldrig
+  // 'stage' (raceRunner: ingen dobbelttaelling). Gc-raekkerne ER etapens finish-order, saa de
+  // bruges som etaperesultat, naar loebet ikke har stage-raekker for etape 1.
+  for (const [raceId, gcRows] of gcRowsByRace) {
+    if ((Number(raceById.get(raceId)?.stages) || 1) > 1) continue;
+    const key = stageKey(raceId, 1);
+    if (stageRowsByStage.has(key)) continue;
+    stageRowsByStage.set(key, gcRows.filter((r) => (Number(r.stage_number) || 1) === 1));
+  }
   const abandonsByStage = new Map();
   for (const i of raw.incidents ?? []) {
     if (i.outcome !== "abandon" || i.rider_id == null) continue;
@@ -470,7 +479,8 @@ export async function fetchRaw(db, { since, until, abilityKeys = [] }) {
     db.from("race_incidents").select("id, race_id, stage_number, rider_id, kind, outcome").in("race_id", ids).eq("outcome", "abandon").order("id"), { chunkSize: IN_CHUNK });
   const profiles = await fetchAllRowsChunkedIn(raceIds, (ids) =>
     db.from("race_stage_profiles").select("id, race_id, stage_number, profile_type, finale_type").in("race_id", ids).order("id"), { chunkSize: IN_CHUNK });
-  const riderIds = [...new Set(results.filter((r) => r.result_type === "stage").map((r) => r.rider_id).concat(incidents.map((i) => i.rider_id)).filter(Boolean))].sort();
+  // Baade stage- og gc-raekker: endagsloeb har kun gc-raekker (se buildFacts).
+  const riderIds = [...new Set(results.map((r) => r.rider_id).concat(incidents.map((i) => i.rider_id)).filter(Boolean))].sort();
   const abilityRows = abilityKeys.length
     ? await fetchAllRowsChunkedIn(riderIds, (ids) => db.from("rider_derived_abilities").select(["rider_id", ...abilityKeys].join(", ")).in("rider_id", ids).order("rider_id"), { chunkSize: IN_CHUNK })
     : [];

@@ -21,7 +21,9 @@ name: Weekly Engine Drift
 #
 # Tidszone: GitHub cron er UTC. Mandag 07:00 i Europe/Copenhagen er 05:00 UTC om sommeren og
 # 06:00 UTC om vinteren, saa begge tider er planlagt og "gate"-jobbet lader kun
-# den der rammer klokken 07 koere. workflow_dispatch springer tjekket over.
+# den cron koere, der svarer til 07 dansk tid den dag (valgt ud fra github.event.schedule
+# og dagens offset, saa en forsinket start ikke taber ugens rapport).
+# workflow_dispatch springer tjekket over.
 
 on:
   schedule:
@@ -54,18 +56,25 @@ jobs:
     steps:
       - name: Tjek dansk tid
         id: gate
+        env:
+          SCHEDULE: ${{ github.event.schedule }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          hour="$(TZ=Europe/Copenhagen date +%H)"
-          if [ "$hour" = "07" ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "Ikke 07 dansk tid, springer over (den anden cron tager den)."
-          fi
+          # Vaelg cron ud fra hvilken cron der udloeste koerslen og dagens danske UTC-offset,
+          # ikke ud fra koerslens klokkeslaet: GitHub kan starte en schedule sent, og en
+          # forsinket koersel maa ikke springes over. Sommertid skifter natten til soendag,
+          # saa mandagens offset er stabilt hele dagen.
+          offset="$(TZ=Europe/Copenhagen date +%z)"
+          case "$SCHEDULE:$offset" in
+            "0 5 * * 1:+0200"|"0 6 * * 1:+0100")
+              echo "run=true" >> "$GITHUB_OUTPUT" ;;
+            *)
+              echo "run=false" >> "$GITHUB_OUTPUT"
+              echo "Denne cron er ikke 07 dansk tid i dag, springer over (den anden cron tager den)." ;;
+          esac
 
   report:
     needs: gate

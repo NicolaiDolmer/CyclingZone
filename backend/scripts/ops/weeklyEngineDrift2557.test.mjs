@@ -10,7 +10,11 @@ import {
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
 const race = (id, over = {}) => ({ id, stages: 1, race_class: "Class1", squad: "senior", engine_rules_revision: "rev_a", ...over });
+/** Endagsloeb persisteres KUN som gc-raekker (raceRunner.js), aldrig stage. */
+const gcRow = (raceId, stage, rank, rider, extra = {}) => row(raceId, stage, rank, rider, { result_type: "gc", ...extra });
 const row = (raceId, stage, rank, rider, extra = {}) => ({ id: `${raceId}-${stage}-${rank}-${extra.result_type ?? "stage"}`, race_id: raceId, stage_number: stage, result_type: "stage", rank, rider_id: rider, team_id: `t-${rider}`, in_breakaway: false, ...extra });
+/** Fast ur: fixtures ligger 20/10, vinduet 19/10-26/10 (aldrig vaeguret, AGENTS.md). */
+const NOW = new Date("2026-10-26T06:00:00Z");
 const sched = (raceId, stage) => ({ race_id: raceId, stage_number: stage, scheduled_at: "2026-10-20T10:00:00Z" });
 
 /** Favoritten er altid rytteren med "fav" i id'et. */
@@ -87,9 +91,9 @@ function oneDayRaw() {
       { race_id: "r3", stage_number: 1, profile_type: "itt", finale_type: null },
     ],
     results: [
-      row("r1", 1, 1, "fav1"), row("r1", 1, 2, "b"), row("r1", 1, 3, "c"),
-      row("r2", 1, 1, "esc", { in_breakaway: true }), row("r2", 1, 2, "fav2", { in_breakaway: true }), row("r2", 1, 3, "d"),
-      row("r3", 1, 1, "tt"), row("r3", 1, 2, "fav3"),
+      gcRow("r1", 1, 1, "fav1"), gcRow("r1", 1, 2, "b"), gcRow("r1", 1, 3, "c"),
+      gcRow("r2", 1, 1, "esc", { in_breakaway: true }), gcRow("r2", 1, 2, "fav2", { in_breakaway: true }), gcRow("r2", 1, 3, "d"),
+      gcRow("r3", 1, 1, "tt"), gcRow("r3", 1, 2, "fav3"),
       // r9 har ingen resultater endnu: tæller ikke
     ],
     incidents: [
@@ -164,6 +168,43 @@ test("GC-vinder fra udbrud: kun afsluttede etapeloeb, vinderen skal have vundet 
   assert.equal(no.stages, 3);
 });
 
+test("endagsloeb og monumenter med kun gc-raekker (persisteringsformatet) taelles som etaper", () => {
+  const raw = {
+    schedule: [sched("m1", 1), sched("o1", 1)],
+    races: [race("m1", { race_class: "Monuments" }), race("o1")],
+    profiles: [],
+    incidents: [],
+    results: [gcRow("m1", 1, 1, "esc", { in_breakaway: true }), gcRow("m1", 1, 2, "fav1"), gcRow("o1", 1, 1, "fav2"), gcRow("o1", 1, 2, "b")],
+  };
+  const m = computeGroupMetrics(buildFacts(raw, { observe }));
+  assert.equal(m.monument.stages, 1);
+  assert.equal(m.monument.values.breakawayWinShare, 1);
+  assert.equal(m.monument.values.favoriteWinShare, 0);
+  assert.equal(m.one_day.stages, 1);
+  assert.equal(m.one_day.values.favoriteWinShare, 1);
+  // Ingen GC-dom for endagsloeb.
+  assert.equal(m.monument.gcRaces, 0);
+});
+
+test("endagsloeb med baade stage- og gc-raekker taelles kun en gang (stage-raekkerne bruges)", () => {
+  const raw = {
+    schedule: [sched("d1", 1)],
+    races: [race("d1")],
+    profiles: [],
+    incidents: [],
+    results: [row("d1", 1, 1, "fav1"), row("d1", 1, 2, "b"), gcRow("d1", 1, 1, "fav1"), gcRow("d1", 1, 2, "b")],
+  };
+  const facts = buildFacts(raw, { observe });
+  assert.equal(facts.stages.length, 1);
+  assert.equal(facts.stages[0].starters, 2);
+});
+
+test("fetchRaw: evner hentes ogsaa for ryttere der kun staar i gc-raekker", async () => {
+  const raw = oneDayRaw();
+  const full = await fetchRaw(fakeDb({ ...raw, abilities: [{ rider_id: "fav1", tempo: 1 }, { rider_id: "ukendt", tempo: 1 }] }), { since: "2026-10-19T00:00:00Z", until: "2026-10-27T00:00:00Z", abilityKeys: ["tempo"] });
+  assert.deepEqual(full.abilityRows.map((a) => a.rider_id), ["fav1"]);
+});
+
 test("etapeloeb hvor sidste etape ikke laa i vinduet eller mangler etaper, er ikke afsluttet", () => {
   const raw = stageRaceRaw({ gcWinnerFromBreak: true });
   const noLast = { ...raw, schedule: raw.schedule.slice(0, 2) };
@@ -205,7 +246,7 @@ test("summaryLine og logfilen indeholder aldrig maalte tal", async () => {
     fetchFn: async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true }; },
     log: (s) => logs.push(s),
     errorLog: (s) => logs.push(s),
-    now: new Date("2026-10-26T06:00:00Z"),
+    now: NOW,
   });
   assert.equal(code, 1);
   assert.deepEqual(logs, ["weekly-engine-drift: 2 gates OK / 1 afvigelser, 1 uden nok data"]);
@@ -262,8 +303,8 @@ test("windowOf", () => {
   const w = windowOf({ days: 7, now: new Date("2026-10-26T05:00:00Z") });
   assert.equal(w.until, "2026-10-26T05:00:00.000Z");
   assert.equal(w.since, "2026-10-19T05:00:00.000Z");
-  assert.throws(() => windowOf({ days: 0 }), /positivt/);
-  assert.throws(() => windowOf({ until: "ikke en dato" }), /gyldigt/);
+  assert.throws(() => windowOf({ days: 0, now: NOW }), /positivt/);
+  assert.throws(() => windowOf({ until: "ikke en dato", now: NOW }), /gyldigt/);
 });
 
 test("fetchRaw: pagineret og kun select; tom uge giver tomt resultat", async () => {
@@ -280,7 +321,7 @@ test("fetchRaw: pagineret og kun select; tom uge giver tomt resultat", async () 
 test("main: manglende env og ugyldig taerskelfil giver exit 2 uden at sende", async () => {
   const errs = [];
   const sent = [];
-  const args = { errorLog: (s) => errs.push(s), fetchFn: async () => { sent.push(1); return { ok: true }; }, log: () => {} };
+  const args = { now: NOW, errorLog: (s) => errs.push(s), fetchFn: async () => { sent.push(1); return { ok: true }; }, log: () => {} };
   assert.equal(await main({ ...args, env: {} }), 2);
   assert.match(errs[0], /mangler env/);
   assert.deepEqual(missingEnv({ SUPABASE_URL: "x" }), ["SUPABASE_SERVICE_KEY", "ENGINE_GATE_THRESHOLDS_JSON", "DISCORD_OPS_WEBHOOK_URL"]);
@@ -294,7 +335,7 @@ test("main: datafejl giver exit 3 og logger ingen detaljer", async () => {
     env: { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: THRESHOLDS_JSON, DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x" },
     makeDb: () => { throw new Error("hemmelig url https://x.supabase.co"); },
     loadModules: async () => fakeModules(),
-    errorLog: (s) => errs.push(s), log: () => {},
+    errorLog: (s) => errs.push(s), log: () => {}, now: NOW,
   });
   assert.equal(code, 3);
   assert.ok(!errs.join("\n").includes("supabase.co"));
@@ -302,7 +343,7 @@ test("main: datafejl giver exit 3 og logger ingen detaljer", async () => {
 
 test("main: Discord-fejl giver exit 3; alt groent giver exit 0; dry-run sender intet", async () => {
   const okEnv = { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: JSON.stringify({ weeklyEngineDrift: { minStages: 1, groups: { one_day: { abandonShare: { max: 0.9 } } } } }), DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x" };
-  const base = { makeDb: () => fakeDb(oneDayRaw()), loadModules: async () => fakeModules(), log: () => {}, errorLog: () => {} };
+  const base = { now: NOW, makeDb: () => fakeDb(oneDayRaw()), loadModules: async () => fakeModules(), log: () => {}, errorLog: () => {} };
   assert.equal(await main({ ...base, env: okEnv, fetchFn: async () => ({ ok: false }) }), 3);
   assert.equal(await main({ ...base, env: okEnv, fetchFn: async () => ({ ok: true }) }), 0);
   let n = 0;
@@ -314,7 +355,7 @@ test("main: Discord-fejl giver exit 3; alt groent giver exit 0; dry-run sender i
 test("main: WEEKLY_DRIFT_OUT uden for balance-internals afvises", async () => {
   const code = await main({
     env: { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: THRESHOLDS_JSON, DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x", WEEKLY_DRIFT_OUT: "rapport.md" },
-    makeDb: () => fakeDb(oneDayRaw()), loadModules: async () => fakeModules(), fetchFn: async () => ({ ok: true }), log: () => {}, errorLog: () => {},
+    makeDb: () => fakeDb(oneDayRaw()), loadModules: async () => fakeModules(), fetchFn: async () => ({ ok: true }), log: () => {}, errorLog: () => {}, now: NOW,
   });
   assert.equal(code, 2);
 });
@@ -342,7 +383,7 @@ function fakeDb(data) {
     race_results: data.results ?? [],
     race_incidents: data.incidents ?? [],
     race_stage_profiles: data.profiles ?? [],
-    rider_derived_abilities: [],
+    rider_derived_abilities: data.abilities ?? [],
   };
   return makeReadOnlyClient({
     from(table) {
