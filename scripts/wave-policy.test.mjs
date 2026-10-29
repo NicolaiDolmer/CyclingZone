@@ -1026,3 +1026,20 @@ test('#7336: en loggefejl ruller optaget tilbage og efterlader ingen markoer', a
   await assert.rejects(acquireWave(dir, { ...request('claude'), tracks: [track(3)] }, async () => []));
   assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
 });
+
+test('#7336: brand-loggen ligger i boelgens run-dir, ikke i kodens checkout', async (t) => {
+  withBuildStop(t);
+  delete process.env.CZ_BUILD_STOP_LOG;
+  const dir = fixture(t);
+  await acquireWave(dir, { ...request('codex'), tracks: [track(3)] }, async () => []);
+  const line = JSON.parse(readFileSync(path.join(dir, 'build-stop-brand-log.jsonl'), 'utf8').trim());
+  assert.deepEqual([line.issue, line.channel], [3, 'codex']);
+});
+
+test('#7336: en loggefejl ved rullende optag koeer intet', (t) => {
+  withBuildStop(t);
+  const { dir } = runningWave(t);
+  process.env.CZ_BUILD_STOP_LOG = dir; // en mappe kan ikke appendes til
+  assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(3, ['docs/three.md'])], ownSnapshot));
+  assert.equal((markerOf(dir).pendingTracks || []).length, 0);
+});

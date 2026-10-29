@@ -9,7 +9,8 @@ import { hostLaneCap } from './wave-capacity.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
 
 // #7336: fixtures bruger opdigtede issues; byggestoppet slaas fra her og testes
-// for sig i build-stop.test.mjs og i '#7336'-testene nedenfor.
+// for sig i build-stop.test.mjs og i '#7336'-testene i wave-policy.test.mjs
+// (acquireWave med runtime 'codex').
 const BUILD_STOP_OFF = path.join(mkdtempSync(path.join(os.tmpdir(), 'cz-build-stop-off-')), 'build-stop.json');
 writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', areaCap: 3, finishList: [], cleanupList: [], brandList: [] }));
 process.env.CZ_BUILD_STOP_FILE = BUILD_STOP_OFF;

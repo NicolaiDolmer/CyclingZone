@@ -12,11 +12,12 @@
 // så hver ændring er synlig i en diff.
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const DEFAULT_FILE = new URL('../build-stop.json', import.meta.url);
-const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const DEFAULT_LOG = path.join(REPO_ROOT, '.claude', 'run', 'build-stop-brand-log.jsonl');
+// Loggen ligger i boelgens delte run-dir (samme mappe som wave-active.json),
+// saa den overlever at et worktree ryddes op. Kalderen giver stien.
+export const BRAND_LOG_NAME = 'build-stop-brand-log.jsonl';
+export const brandLogPath = dir => process.env.CZ_BUILD_STOP_LOG || path.join(dir, BRAND_LOG_NAME);
 const isDate = s => typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s);
 const isIssue = n => Number.isSafeInteger(n) && n > 0;
 
@@ -72,12 +73,13 @@ export function assertBuildStop(items, cfg = loadBuildStop()) {
 }
 
 // Afslutningskortet (spec §3.3) viser hvert brand-valg, så ejeren kan nedlægge veto.
-export function logBrandAdmissions(items, cfg, { channel, now = Date.now(), file = process.env.CZ_BUILD_STOP_LOG || DEFAULT_LOG } = {}) {
+export function logBrandAdmissions(items, cfg, { channel, now = Date.now(), file } = {}) {
   const lines = items
     .map(t => ({ t, c: classifyWork(t, cfg) }))
     .filter(({ c }) => c.cls === 'brand')
     .map(({ t, c }) => JSON.stringify({ at: new Date(now).toISOString(), issue: t.issue, reason: c.reason, channel }));
   if (!lines.length) return 0;
+  if (!file) throw Error('build-stop: logBrandAdmissions kraever "file" (brug brandLogPath(runDir))');
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.appendFileSync(file, lines.join('\n') + '\n');
   return lines.length;
