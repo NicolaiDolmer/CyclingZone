@@ -83,7 +83,7 @@ const seed = (value) =>
 
 test("findPendingFlagKeys: migration der seeder off/false/beta er pending", () => {
   for (const v of [`'"off"'::jsonb`, `'false'::jsonb`, `'"beta"'::jsonb`, "false"]) {
-    assert.deepEqual([...findPendingFlagKeys([seed(v)])], ["new_flag"], v);
+    assert.deepEqual([...findPendingFlagKeys([seed(v)]).keys()], ["new_flag"], v);
   }
 });
 
@@ -98,7 +98,23 @@ test("findPendingFlagKeys: kun app_config-inserts, kun den praecise noegle, komm
   const commented = `-- INSERT INTO public.app_config (key, value) VALUES ('new_flag', 'false'::jsonb);`;
   assert.equal(findPendingFlagKeys([other, commented, ""]).size, 0);
   const multi = `INSERT INTO app_config (key, value) VALUES ('a_flag', '"off"'::jsonb), ('b_flag', 'true'::jsonb);`;
-  assert.deepEqual([...findPendingFlagKeys([multi])], ["a_flag"]);
+  assert.deepEqual([...findPendingFlagKeys([multi]).keys()], ["a_flag"]);
+});
+
+test("findPendingFlagKeys: blok-kommentarer og dollar-quoted tekst taeller ikke", () => {
+  const block = `/* INSERT INTO app_config (key, value) VALUES ('new_flag', 'false'::jsonb); */`;
+  const dollar = `DO $$ BEGIN -- INSERT INTO app_config (key, value) VALUES ('new_flag', 'false'::jsonb);\nEND $$;`;
+  assert.equal(findPendingFlagKeys([block, dollar]).size, 0);
+});
+
+test("PR-kontekst: seed-vaerdi skal passe til registrets state", () => {
+  const pending = findPendingFlagKeys([seed(`'"off"'::jsonb`)]);
+  for (const state of ["live", "beta"]) {
+    const [row] = evaluateFlags([entry({ flag: "new_flag", state })], new Map(), pending);
+    assert.equal(row.level, "FAIL", `${state} + seed off`);
+  }
+  const [ok] = evaluateFlags([entry({ flag: "new_flag", state: "beta" })], new Map(), findPendingFlagKeys([seed(`'"beta"'::jsonb`)]));
+  assert.equal(ok.level, "PENDING");
 });
 
 test("PR-kontekst: ny flag med pending-migration godkendes (PENDING)", () => {
@@ -129,7 +145,7 @@ test("push-kontekst (ingen baseRef): uaendret, FAIL for ukendt noegle", () => {
 });
 
 test("pending-noegle der findes i prod evalueres normalt", () => {
-  const pending = new Set(["f"]);
+  const pending = new Map([["f", "off"]]);
   const [row] = evaluateFlags([entry({ flag: "f", state: "live" })], new Map([["f", "off"]]), pending);
   assert.equal(row.level, "FAIL");
 });

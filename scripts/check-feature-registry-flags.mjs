@@ -79,15 +79,19 @@ export function normalizeFlagValue(raw) {
  * Konservativ: en vaerdi der ikke kan parses som literal taeller ikke som pending.
  *
  * @param {string[]} sqlTexts
- * @returns {Set<string>}
+ * @returns {Map<string, string>} noegle -> normaliseret seed-vaerdi
  */
 export function findPendingFlagKeys(sqlTexts) {
-  const pending = new Set();
+  const pending = new Map();
   const insertRe = /insert\s+into\s+(?:public\.)?app_config\b[^;]*;?/gi;
   const tupleRe =
     /\(\s*'([A-Za-z0-9_.-]+)'\s*,\s*('(?:[^']|'')*'(?:\s*::\s*jsonb)?|true|false)\s*[,)]/gi;
   for (const sql of sqlTexts) {
-    const stripped = sql.replace(/--[^\n]*/g, "");
+    // Kommentarer og dollar-quoted tekst koerer ikke som INSERT: fjern dem foerst.
+    const stripped = sql
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(\$[A-Za-z_]*\$)[\s\S]*?\1/g, "")
+      .replace(/--[^\n]*/g, "");
     for (const stmt of stripped.match(insertRe) || []) {
       for (const m of stmt.matchAll(tupleRe)) {
         const raw = m[2].replace(/::\s*jsonb$/i, "").trim();
@@ -101,7 +105,8 @@ export function findPendingFlagKeys(sqlTexts) {
         } else {
           parsed = raw.toLowerCase() === "true";
         }
-        if (!ON_VALUES.has(normalizeFlagValue(parsed))) pending.add(m[1]);
+        const value = normalizeFlagValue(parsed);
+        if (!ON_VALUES.has(value)) pending.set(m[1], value);
       }
     }
   }
@@ -109,25 +114,27 @@ export function findPendingFlagKeys(sqlTexts) {
 }
 
 /**
- * Laeser database/*.sql som PR'en tilfoejer/aendrer mod baseRef og returnerer
- * pending noegler. Fejl (git mangler, ref mangler) -> tomt saet = FAIL som foer.
+ * Laeser NYE database/2026-*.sql (praecis auto-migrate.yml's glob: kun top-level)
+ * som PR'en tilfoejer mod baseRef. Kun tilfoejede filer: en aendret, allerede
+ * koert migration koeres aldrig igen. To-dots diff, saa det virker uden merge-base
+ * i en shallow CI-checkout. Fejl -> tomt map = FAIL som foer.
  *
  * @param {string} baseRef
- * @returns {Set<string>}
+ * @returns {Map<string, string>}
  */
 export function loadPendingKeysFromDiff(baseRef) {
   try {
     const names = execFileSync(
       "git",
-      ["diff", "--name-only", "--diff-filter=AM", `${baseRef}...HEAD`, "--", "database/*.sql"],
+      ["diff", "--name-only", "--diff-filter=A", baseRef, "HEAD", "--", "database"],
       { cwd: ROOT, encoding: "utf8" },
     )
       .split(/\r?\n/)
-      .filter(Boolean);
+      .filter((n) => /^database\/2026-[^/]*\.sql$/.test(n));
     return findPendingFlagKeys(names.map((n) => readFileSync(join(ROOT, n), "utf8")));
   } catch (err) {
     console.log(`Kunne ikke laese PR-diff mod ${baseRef} (${String(err.message).split("\n")[0]}) - ingen PENDING-undtagelse.`);
-    return new Set();
+    return new Map();
   }
 }
 
@@ -136,22 +143,29 @@ export function loadPendingKeysFromDiff(baseRef) {
  *
  * @param {Array<Record<string, string>>} entries
  * @param {Map<string, string>} flagValues normaliserede app_config-vaerdier
- * @param {Set<string>} [pendingKeys] noegler en migration i samme PR seeder ikke-taendt (kun PR-kontekst)
+ * @param {Map<string, string>} [pendingKeys] noegle -> normaliseret seed-vaerdi (ikke on/true) fra en ny migration i samme PR (kun PR-kontekst)
  * @returns {Array<{id: string, flag: string, state: string, value: string, level: "FAIL"|"OK"|"PENDING", reason: string}>}
  */
-export function evaluateFlags(entries, flagValues, pendingKeys = new Set()) {
+export function evaluateFlags(entries, flagValues, pendingKeys = new Map()) {
   const rows = [];
   for (const e of entries) {
     if (!e.flag) continue;
     if (!flagValues.has(e.flag)) {
       if (pendingKeys.has(e.flag)) {
+        // Seed-vaerdien skal ogsaa passe til registrets state, ellers fejler
+        // gaten garanteret paa main efter auto-migrate.
+        const seeded = pendingKeys.get(e.flag);
+        const verdict = stateVerdict(e.state, seeded);
         rows.push({
           id: e.id,
           flag: e.flag,
           state: e.state,
-          value: "(afventer migration)",
-          level: "PENDING",
-          reason: "seedes af migration i samme PR (ikke taendt) - oprettes ved auto-migrate efter merge",
+          value: verdict.level === "OK" ? `(afventer migration: ${seeded})` : `(seedes ${seeded})`,
+          level: verdict.level === "OK" ? "PENDING" : "FAIL",
+          reason:
+            verdict.level === "OK"
+              ? "seedes af ny migration i samme PR - oprettes ved auto-migrate efter merge"
+              : `migrationens seed-vaerdi passer ikke til state: ${verdict.reason}`,
         });
         continue;
       }
@@ -166,21 +180,20 @@ export function evaluateFlags(entries, flagValues, pendingKeys = new Set()) {
       continue;
     }
     const value = flagValues.get(e.flag);
-    let level = "OK";
-    let reason = "";
-    if (e.state === "live" && !ON_VALUES.has(value)) {
-      level = "FAIL";
-      reason = "state live kraever flag on/true";
-    } else if (e.state === "beta" && value !== "beta") {
-      level = "FAIL";
-      reason = "state beta kraever flag beta";
-    } else if (e.state !== "live" && e.state !== "beta" && ON_VALUES.has(value)) {
-      level = "FAIL";
-      reason = `state ${e.state} men flaget er taendt`;
-    }
+    const { level, reason } = stateVerdict(e.state, value);
     rows.push({ id: e.id, flag: e.flag, state: e.state, value, level, reason });
   }
   return rows;
+}
+
+/** state-reglen for en kendt flag-vaerdi (delt af prod-vaerdi og pending seed-vaerdi). */
+function stateVerdict(state, value) {
+  if (state === "live" && !ON_VALUES.has(value)) return { level: "FAIL", reason: "state live kraever flag on/true" };
+  if (state === "beta" && value !== "beta") return { level: "FAIL", reason: "state beta kraever flag beta" };
+  if (state !== "live" && state !== "beta" && ON_VALUES.has(value)) {
+    return { level: "FAIL", reason: `state ${state} men flaget er taendt` };
+  }
+  return { level: "OK", reason: "" };
 }
 
 /**
@@ -273,7 +286,7 @@ async function main() {
 
   const flagValues = new Map((data || []).map((row) => [row.key, normalizeFlagValue(row.value)]));
   const baseRef = parseBaseRef(process.argv.slice(2), process.env);
-  const pendingKeys = baseRef ? loadPendingKeysFromDiff(baseRef) : new Set();
+  const pendingKeys = baseRef ? loadPendingKeysFromDiff(baseRef) : new Map();
   const rows = evaluateFlags(entries, flagValues, pendingKeys);
   printTable(rows);
 
