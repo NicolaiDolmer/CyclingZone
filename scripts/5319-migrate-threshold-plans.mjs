@@ -15,7 +15,7 @@
 //
 // Brug:
 //   node scripts/5319-migrate-threshold-plans.mjs            # dry-run (default): kun tal
-//   node scripts/5319-migrate-threshold-plans.mjs --apply    # skriver; kræver flaget on/beta
+//   node scripts/5319-migrate-threshold-plans.mjs --apply    # skriver; kræver flaget "on" (ikke beta)
 //   --log <fil>   hvor den omvendte map skrives ved --apply (rollback)
 // Idempotent: en flyttet række står på itt_long og matcher ikke igen.
 // Kræver SUPABASE_URL + SUPABASE_SERVICE_KEY. Apply er et separat ejer-go.
@@ -71,7 +71,10 @@ export function planThresholdMigration({ plans = [], weekPlans = [], ridersById 
     if (!isTimeTrialOrGcRider(ridersById.get(row.rider_id))) continue;
     const migrated = migrateWeekDays(row.days);
     if (!migrated) continue;
-    weekUpdates.push({ id: row.id, rider_id: row.rider_id, before: row.days, days: migrated.days, changedCells: migrated.changedCells });
+    weekUpdates.push({
+      id: row.id, rider_id: row.rider_id, updated_at: row.updated_at ?? null,
+      before: row.days, days: migrated.days, changedCells: migrated.changedCells,
+    });
     riders.add(row.rider_id);
   }
   return {
@@ -115,7 +118,7 @@ async function main() {
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
   const plans = await fetchAll(() => db.from("training_plans").select("id, rider_id, focus").eq("focus", FROM_SESSION).order("id"));
-  const weekPlans = await fetchAll(() => db.from("training_week_plans").select("id, rider_id, days").not("rider_id", "is", null).order("id"));
+  const weekPlans = await fetchAll(() => db.from("training_week_plans").select("id, rider_id, days, updated_at").not("rider_id", "is", null).order("id"));
   const riderIds = [...new Set([...plans, ...weekPlans].map((r) => r.rider_id).filter(Boolean))];
   const ridersById = new Map();
   for (let i = 0; i < riderIds.length; i += 200) {
@@ -136,8 +139,10 @@ async function main() {
 
   const { data: flagRow, error: flagError } = await db.from("app_config").select("value").eq("key", "training_catalog_v3").maybeSingle();
   if (flagError) throw new Error(flagError.message);
-  if (!["on", "beta", true].includes(flagRow?.value)) {
-    console.error("training_catalog_v3 er off: itt_long ville ikke træne noget. Tænd flaget først.");
+  // Kun "on": i beta træner kun beta-holds motor v3, så itt_long ville ikke
+  // træne fokus-evner hos alle andre hold.
+  if (!["on", true].includes(flagRow?.value)) {
+    console.error("training_catalog_v3 er ikke on for alle: itt_long ville ikke træne noget hos andre hold. Tænd flaget først.");
     process.exit(3);
   }
   const logPath = args.log ?? `5319-threshold-migration-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
@@ -148,11 +153,17 @@ async function main() {
     const { error } = await db.from("training_plans").update({ focus: TO_SESSION, updated_at: now }).eq("id", u.id).eq("focus", FROM_SESSION);
     if (error) throw new Error(`training_plans ${u.id}: ${error.message}`);
   }
+  // Optimistisk lås: kun rækker der er uændrede siden læsningen skrives. En
+  // række spilleren har rettet i mellemtiden springes over (kør scriptet igen).
+  let conflicts = 0;
   for (const u of result.weekUpdates) {
-    const { error } = await db.from("training_week_plans").update({ days: u.days, updated_at: now }).eq("id", u.id);
+    let query = db.from("training_week_plans").update({ days: u.days, updated_at: now }).eq("id", u.id);
+    query = u.updated_at == null ? query.is("updated_at", null) : query.eq("updated_at", u.updated_at);
+    const { data, error } = await query.select("id");
     if (error) throw new Error(`training_week_plans ${u.id}: ${error.message}`);
+    if (!data || data.length !== 1) conflicts++;
   }
-  console.log("  Færdig.");
+  console.log(`  Færdig. Ugeplaner sprunget over pga. samtidig ændring: ${conflicts} (kør scriptet igen).`);
 }
 
 const invokedDirectly = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
