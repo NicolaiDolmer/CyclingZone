@@ -233,6 +233,7 @@ import {
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
+import { isV3OnlySession, isTrainingCatalogV3Enabled } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
@@ -2967,16 +2968,24 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
 //   body          : request-body
 //   previousFocus : rytterens hidtidige fokus (bevares hen over en hviledag)
 // Returnerer { ok, focus, intensity } eller { ok:false, reason }.
-function resolveTrainingWrite(body, previousFocus = null) {
+function resolveTrainingWrite(body, previousFocus = null, catalogV3 = false) {
   const { dayType, session, focus, intensity } = body ?? {};
   if (dayType != null) {
-    const out = programForChoice({ dayType, session: session ?? null, previousFocus });
+    const out = programForChoice({ dayType, session: session ?? null, previousFocus, catalogV3 });
     return out.ok ? { ok: true, focus: out.focus, intensity: out.intensity } : { ok: false, reason: out.reason };
   }
-  if (!isValidFocus(focus)) return { ok: false, reason: "invalid_focus" };
+  if (!isValidFocus(focus) && !(catalogV3 && isV3OnlySession(focus))) return { ok: false, reason: "invalid_focus" };
   if (!isValidIntensity(intensity)) return { ok: false, reason: "invalid_intensity" };
-  const normalized = normalizeProgram({ focus, intensity });
+  const normalized = normalizeProgram({ focus, intensity }, { catalogV3 });
   return { ok: true, focus: normalized.focus, intensity: normalized.intensity };
+}
+
+// #5319: flaget training_catalog_v3 slaas KUN op naar skrivningen roerer en v3-session.
+// Ellers er stien bit-identisk med foer, ogsaa uden ekstra opslag.
+async function catalogV3ForTrainingWrite(req, previousFocus = null) {
+  const body = req.body ?? {};
+  if (![body.session, body.focus, previousFocus].some(isV3OnlySession)) return false;
+  return isTrainingCatalogV3Enabled(supabase, { isBetaTester: await isViewerBetaTester(req) });
 }
 
 // Hjælper: hent aktiv sæson (id + number) + holdets træningsstate (ledger → slots + planer).
@@ -3403,7 +3412,7 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
   let bulkFocus = null;
   let bulkIntensity = null;
   if (!isSmartMode) {
-    const resolved = resolveTrainingWrite(req.body, null);
+    const resolved = resolveTrainingWrite(req.body, null, await catalogV3ForTrainingWrite(req));
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     bulkFocus = resolved.focus;
     bulkIntensity = resolved.intensity;
@@ -3641,7 +3650,8 @@ router.post("/training/:riderId", requireAuth, marketWriteLimiter, trainNowPlanL
     // det LEGALISERES, så en kombination der beviseligt intet gør (fx vo2max +
     // hvile, 252 planer i prod) ikke kan skrives igen ad bagvejen.
     // previousFocus bevarer spillerens sidste session hen over en hviledag.
-    const resolved = resolveTrainingWrite(req.body, state.plans[riderId]?.focus ?? null);
+    const previousFocus = state.plans[riderId]?.focus ?? null;
+    const resolved = resolveTrainingWrite(req.body, previousFocus, await catalogV3ForTrainingWrite(req, previousFocus));
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     const { focus, intensity } = resolved;
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });

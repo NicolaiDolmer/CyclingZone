@@ -58,6 +58,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)" },
   // #6000: træningsgrupper, seedet i beta. Kræver training_program_cells. Flip til on er ejer-only.
   { key: "training_groups", area: "training", label: "Træningsgrupper" },
+  // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
+  { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
@@ -221,6 +223,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
   // Binaert som stage-roles-API'et (isRaceDayIntentionEnabled uden viewer): "beta" er off.
   "race_day_intention_enabled",
+  // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.
+  "training_catalog_v3",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

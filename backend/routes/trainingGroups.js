@@ -26,6 +26,7 @@ import {
   PROGRAM_SLOTS, findTrainingProgram, programWeekDaysFor, setProgramCell, isValidProgramWeekDays, isProgramSession,
 } from "../lib/trainingPrograms.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
+import { isV3OnlySession, isTrainingCatalogV3Enabled } from "../lib/trainingCatalogV3.js"; // #5319
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
 import {
   GROUPS_TABLE, MEMBERS_TABLE, isTrainingGroupsEnabled, loadTeamGroups, normalizeGroupName, sanitizeRiderIds,
@@ -270,6 +271,10 @@ export function createTrainingGroupsRouter({
     try {
       const ctx = await writeContext(req, res);
       if (!ctx) return;
+      // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
+      if (isV3OnlySession(session) && !(await isTrainingCatalogV3Enabled(supabase, { isBetaTester: await isViewerBetaTester(req) }))) {
+        return res.status(400).json({ error: "invalid_session" });
+      }
       const group = await findGroup(req, res, ctx);
       if (!group) return;
       const view = groupView(group, ctx);
