@@ -172,6 +172,10 @@
       "area": "udvikling-2"
     },
     {
+      "issue": 5319,
+      "area": "udvikling-2"
+    },
+    {
       "issue": 6641,
       "area": "taktik"
     },
@@ -359,6 +363,16 @@
     {
       "issue": 6207,
       "reason": "Forkert information: rutematch viser to forskellige tal for samme rytter og løb (MASTERPLAN Brand)",
+      "since": "2026-10-29"
+    },
+    {
+      "issue": 7339,
+      "reason": "Brand: auto-fyld gav for få ryttere ved S5-løbsdag (ejer 29/10)",
+      "since": "2026-10-29"
+    },
+    {
+      "issue": 7344,
+      "reason": "Ejer-undtagelse 29/10: registry-flags fejler nye flag før seed-migrationen er kørt (koster CI-runder på hver flag-PR)",
       "since": "2026-10-29"
     }
   ]
