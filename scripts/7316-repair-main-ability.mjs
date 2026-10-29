@@ -19,7 +19,9 @@
 //
 // Brug:
 //   infisical run --env=prod -- node scripts/7316-repair-main-ability.mjs            (dry-run, default)
-//   infisical run --env=prod -- node scripts/7316-repair-main-ability.mjs --apply --confirm-token=<hash>
+//   infisical run --env=prod -- node scripts/7316-repair-main-ability.mjs --apply --confirm-token=<hash> --training-quiesced
+//   infisical run --env=prod -- node scripts/7316-repair-main-ability.mjs --verify                   (efter apply)
+//   node scripts/7316-repair-main-ability.mjs --print-export-sql | --input=<fil>                    (uden egen DB-adgang)
 //
 // --dry-run er DEFAULT og skriver INTET til databasen. Den skriver en audit-fil (med
 // navne og tal) uden for repoet, i balance-internals/7316/. --apply kraever baade flaget
@@ -286,25 +288,45 @@ const sqlLit = (s) => `'${String(s).replace(/'/g, "''")}'`;
  * SQL til ét holds transaktion (koeres med `psql -1 -v ON_ERROR_STOP=1`).
  * Kreditten klippes IGEN mod live-tilstanden i selve UPDATE'en, saa et tick der er
  * koert siden dry-runnet aldrig kan skubbe evnen over det haarde loft.
+ *
+ * Samtidige traeningsskrivere (Codex P1): motorens commit erstatter HELE
+ * `ability_progress` med en patch beregnet foer vores UPDATE, og FOR UPDATE stopper
+ * det ikke. Derfor (1) kraever apply `--training-quiesced` (ejeren bekraefter at hverken
+ * sweep eller "Train now" koerer), (2) afbryder transaktionen selv, hvis holdet har haft
+ * traeningsaktivitet de sidste QUIESCE_MINUTES minutter, og (3) gemmer ledgeren evne og
+ * bar foer, saa `--verify` bagefter kan finde en kredit der alligevel blev overskrevet.
  */
+export const QUIESCE_MINUTES = 15;
+
 export function buildTeamApplySql({ teamId, entries, hash }) {
   if (!UUID_RE.test(teamId)) throw new Error(`invalid team id: ${teamId}`);
   if (!/^[0-9a-f]{16}$/.test(hash)) throw new Error("invalid plan hash");
+  const team = sqlLit(teamId);
   const lines = [
     "SET lock_timeout = '5s';",
+    "DO $$ BEGIN",
+    `  IF EXISTS (SELECT 1 FROM public.training_rider_ticks WHERE team_id = ${team} AND created_at > now() - interval '${QUIESCE_MINUTES} minutes')`,
+    `    OR EXISTS (SELECT 1 FROM public.training_date_work WHERE team_id = ${team} AND updated_at > now() - interval '${QUIESCE_MINUTES} minutes')`,
+    `    OR EXISTS (SELECT 1 FROM public.training_day_runs WHERE team_id = ${team} AND report->>'pending' = 'true') THEN`,
+    "    RAISE EXCEPTION '7316 repair: recent training activity on team, aborting (nothing written)';",
+    "  END IF;",
+    "END $$;",
     `CREATE TABLE IF NOT EXISTS public.${LEDGER_TABLE} (`,
     "  rider_id uuid NOT NULL,",
     "  ability text NOT NULL,",
     "  team_id uuid NOT NULL,",
     "  raw_credit numeric NOT NULL,",
     "  applied_credit numeric NOT NULL,",
+    "  ability_before numeric,",
     "  progress_before jsonb,",
     "  plan_hash text NOT NULL,",
     "  applied_at timestamptz NOT NULL DEFAULT now(),",
     "  PRIMARY KEY (rider_id, ability)",
     ");",
+    // Backend-only kontrakt: kun service_role laeser ledgeren (dry-run/--verify).
     `ALTER TABLE public.${LEDGER_TABLE} ENABLE ROW LEVEL SECURITY;`,
     `REVOKE ALL ON public.${LEDGER_TABLE} FROM anon, authenticated;`,
+    `GRANT SELECT ON public.${LEDGER_TABLE} TO service_role;`,
   ];
   for (const e of entries) {
     if (e.teamId !== teamId) throw new Error("entry belongs to another team");
@@ -315,13 +337,13 @@ export function buildTeamApplySql({ teamId, entries, hash }) {
     const raw = e.rawCredit.toFixed(9);
     lines.push(
       `WITH src AS (`,
-      `  SELECT r.rider_id, r.ability_progress,`,
+      `  SELECT r.rider_id, r.ability_progress, r."${ab}" AS ability_before,`,
       `    GREATEST(0, LEAST(${raw}::numeric, LEAST(99, COALESCE((r.ability_caps->>'${ab}')::numeric, 99))`,
       `      - COALESCE(r."${ab}", 0) - COALESCE((r.ability_progress->>'${ab}')::numeric, 0))) AS credit`,
       `  FROM public.rider_derived_abilities r WHERE r.rider_id = ${sqlLit(e.riderId)} FOR UPDATE`,
       `), ins AS (`,
-      `  INSERT INTO public.${LEDGER_TABLE} (rider_id, ability, team_id, raw_credit, applied_credit, progress_before, plan_hash)`,
-      `  SELECT rider_id, '${ab}', ${sqlLit(teamId)}, ${raw}, credit, ability_progress, ${sqlLit(hash)} FROM src`,
+      `  INSERT INTO public.${LEDGER_TABLE} (rider_id, ability, team_id, raw_credit, applied_credit, ability_before, progress_before, plan_hash)`,
+      `  SELECT rider_id, '${ab}', ${team}, ${raw}, credit, ability_before, ability_progress, ${sqlLit(hash)} FROM src`,
       `  ON CONFLICT (rider_id, ability) DO NOTHING`,
       `  RETURNING rider_id, applied_credit`,
       `)`,
@@ -382,7 +404,13 @@ select json_build_object(
   'team_staff', (select coalesce(json_agg(json_build_object('id', id, 'team_id', team_id, 'name', name, 'role', role, 'tier', tier, 'status', status)), '[]')
     from team_staff where role = 'training' and status = 'active' and team_id in (select team_id from tm)),
   'staff_derived_abilities', (select coalesce(json_agg(json_build_object('staff_id', staff_id, 'overall', overall, 'dimensions', dimensions, 'levels', levels)), '[]')
-    from staff_derived_abilities where staff_id in (select id from team_staff where role = 'training' and status = 'active' and team_id in (select team_id from tm)))
+    from staff_derived_abilities where staff_id in (select id from team_staff where role = 'training' and status = 'active' and team_id in (select team_id from tm))),
+  -- Ledgeren findes foerst efter foerste apply. query_to_xml koerer kun naar tabellen findes,
+  -- saa SELECT'en virker baade foer og efter.
+  'applied', case when to_regclass('public.${LEDGER_TABLE}') is null then '[]'::json else (
+    select coalesce(json_agg(json_build_object('rider_id', (xpath('/row/rider_id/text()', x))[1]::text,
+      'ability', (xpath('/row/ability/text()', x))[1]::text)), '[]')
+    from unnest(xpath('/table/row', query_to_xml('select rider_id, ability from public.${LEDGER_TABLE}', false, false, ''))) x) end
 ) as export;`;
 }
 
@@ -474,17 +502,52 @@ async function selectIn(supabase, table, columns, key, ids) {
   return rows;
 }
 
-async function loadApplied(supabase) {
-  const { data, error } = await supabase.from(LEDGER_TABLE).select("rider_id, ability");
-  if (error) {
-    // Tabellen findes foerst efter foerste apply: manglende tabel = intet krediteret.
-    if (error.code === "PGRST205" || error.code === "42P01") return new Set();
-    throw new Error(`${LEDGER_TABLE}: ${error.message}`);
+const isMissingTable = (error) => error?.code === "PGRST205" || error?.code === "42P01";
+
+/** Hele ledgeren, pagineret i stabil orden. Manglende tabel = intet krediteret endnu. */
+export async function loadLedgerRows(supabase, columns = "rider_id, ability") {
+  const rows = [];
+  for (let offset = 0; ; offset += PAGE) {
+    const { data, error } = await supabase.from(LEDGER_TABLE).select(columns)
+      .order("rider_id").order("ability").range(offset, offset + PAGE - 1);
+    if (error) {
+      if (isMissingTable(error) && offset === 0) return [];
+      throw new Error(`${LEDGER_TABLE}: ${error.message}`);
+    }
+    rows.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
   }
-  return new Set((data ?? []).map((r) => `${r.rider_id}:${r.ability}`));
+  return rows;
 }
 
+async function loadApplied(supabase) {
+  return new Set((await loadLedgerRows(supabase)).map((r) => `${r.rider_id}:${r.ability}`));
+}
+
+async function tickCountSince(supabase, from) {
+  const { count, error } = await supabase.from("training_rider_ticks")
+    .select("rider_id", { count: "exact", head: true }).gte("created_at", from);
+  if (error) throw new Error(`training_rider_ticks count: ${error.message}`);
+  return count;
+}
+
+const SNAPSHOT_ATTEMPTS = 3;
+
 export async function loadPlanInput(supabase, window = DEFAULT_WINDOW) {
+  // Konsistent snapshot (Codex P2): tilbagespolingen kraever at evnerne "nu" kun
+  // indeholder gevinster fra de ticks vi har laest. Taellingen af ticks tages foer og
+  // efter evne-laesningen; et tick committet midt i laesningen giver et nyt forsoeg.
+  for (let attempt = 1; attempt <= SNAPSHOT_ATTEMPTS; attempt += 1) {
+    const before = await tickCountSince(supabase, window.from);
+    const input = await loadPlanInputOnce(supabase, window);
+    const after = await tickCountSince(supabase, window.from);
+    if (before === after && after === input.ticks.length) return input;
+    console.warn(`  training ticks changed during read (attempt ${attempt}), retrying`);
+  }
+  throw new Error("training is writing ticks right now; run the dry-run outside the training sweep");
+}
+
+async function loadPlanInputOnce(supabase, window) {
   const ticks = await selectAll(() => supabase.from("training_rider_ticks").select(TICK_SELECT)
     .gte("created_at", window.from)
     .order("created_at", { ascending: true }).order("rider_id").order("game_day"), "training_rider_ticks");
@@ -574,6 +637,8 @@ export function parseArgs(argv) {
     else if (a.startsWith("--audit-dir=")) args.auditDir = a.slice(12);
     else if (a.startsWith("--input=")) args.input = a.slice(8);
     else if (a === "--print-export-sql") args.printExportSql = true;
+    else if (a === "--training-quiesced") args.trainingQuiesced = true;
+    else if (a === "--verify") args.verify = true;
     else throw new Error(`unknown argument: ${a}`);
   }
   // Apply skal se live-tilstanden og ledgeren direkte, aldrig en eksport-fil.
@@ -582,9 +647,40 @@ export function parseArgs(argv) {
   return args;
 }
 
+/**
+ * PURE: find ledger-par hvis kredit ikke staar i live-tilstanden (fx overskrevet af en
+ * samtidig traeningscommit). Evne + bar maa aldrig vaere under foer + kredit, medmindre
+ * evnen sidder paa loftet (dér klipper motoren baren, og intet er tabt).
+ */
+export function findLostCredits(ledgerRows, derivedById) {
+  const lost = [];
+  for (const row of ledgerRows) {
+    const d = derivedById.get(row.rider_id);
+    if (!d || !(num(row.applied_credit) > 0)) continue;
+    const expected = num(row.ability_before) + num(row.progress_before?.[row.ability]) + num(row.applied_credit);
+    const live = num(d[row.ability]) + num(d.ability_progress?.[row.ability]);
+    const cap = Math.min(99, num(d.ability_caps?.[row.ability] ?? 99));
+    if (live + 1e-9 < expected && num(d[row.ability]) < cap) lost.push({ ...row, expected, live });
+  }
+  return lost;
+}
+
+async function runVerify(supabase) {
+  const ledger = await loadLedgerRows(supabase, "rider_id, ability, applied_credit, ability_before, progress_before");
+  const ids = [...new Set(ledger.map((r) => r.rider_id))];
+  const derived = await selectIn(supabase, "rider_derived_abilities", `rider_id, ${VISIBLE_ABILITIES.join(", ")}, ability_caps, ability_progress`, "rider_id", ids);
+  const lost = findLostCredits(ledger, new Map(derived.map((d) => [d.rider_id, d])));
+  console.log(`Verify: ${ledger.length} ledger pairs, ${lost.length} with credit missing from live state.`);
+  for (const l of lost.slice(0, 20)) console.log(`  lost: ${l.rider_id} ${l.ability} expected ${l.expected.toFixed(3)} live ${l.live.toFixed(3)}`);
+  if (lost.length) process.exitCode = 3;
+}
+
 async function runApply({ plan, args }) {
   if (!args.confirmToken || args.confirmToken !== plan.hash) {
     throw new Error(`--apply requires --confirm-token matching the dry-run hash (expected ${plan.hash}). Nothing written.`);
+  }
+  if (!args.trainingQuiesced) {
+    throw new Error("--apply requires --training-quiesced: confirm no training sweep or Train now is running (a concurrent commit overwrites ability_progress). Nothing written.");
   }
   const dsn = process.env.SUPABASE_DB_URL;
   if (!dsn) throw new Error("SUPABASE_DB_URL missing (infisical run --env=prod). Nothing written.");
@@ -605,7 +701,7 @@ async function runApply({ plan, args }) {
     done += 1;
     console.log(`  applied team ${done}/${byTeam.size} (${entries.length} pairs)`);
   }
-  console.log(`Apply done: ${done} teams. Re-run the dry-run: it must report 0 pairs (ledger idempotency).`);
+  console.log(`Apply done: ${done} teams. Next: --verify (lost credits) and a new dry-run (must report 0 pairs).`);
 }
 
 async function main() {
@@ -632,6 +728,10 @@ async function main() {
     }
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(url, key, { auth: { persistSession: false } });
+    if (args.verify) {
+      await runVerify(supabase);
+      return;
+    }
     console.log(`#7316 repair ${args.apply ? "APPLY" : "DRY-RUN (writes nothing)"} · window ${window.from} → ${window.to}`);
     input = await loadPlanInput(supabase, window);
   }

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   DEFAULT_WINDOW, computeRepairPlan, summarizePlan, planHash, rewindAbilities,
   mainAbilityForFocus, isTickInWindow, buildTeamApplySql, parseArgs,
-  parseExportFile, planInputFromExport,
+  parseExportFile, planInputFromExport, buildExportSql, findLostCredits,
 } from "./7316-repair-main-ability.mjs";
 import { VISIBLE_ABILITIES } from "../backend/lib/abilityDerivation.js";
 import { buildCapsForRider } from "../backend/lib/riderProgression.js";
@@ -192,7 +192,7 @@ test("apply-SQL: én transaktion pr. hold, ledger-vaern og live-klip", () => {
   assert.match(sql, /CREATE TABLE IF NOT EXISTS public\.backup_7316_repair_ledger/);
   assert.match(sql, /ON CONFLICT \(rider_id, ability\) DO NOTHING/);
   assert.match(sql, /LEAST\(99, COALESCE\(\(r\.ability_caps->>'climbing'\)::numeric, 99\)\)/);
-  assert.doesNotMatch(sql, /\bBEGIN\b|\bCOMMIT\b/); // psql -1 ejer transaktionen
+  assert.doesNotMatch(sql, /^\s*(BEGIN|COMMIT)\s*;/im); // psql -1 ejer transaktionen
   assert.throws(() => buildTeamApplySql({ teamId: AI, entries: plan.entries, hash: plan.hash }), /another team/);
   assert.throws(() => buildTeamApplySql({ teamId: MANAGER, entries: [{ ...plan.entries[0], ability: "x; drop" }], hash: plan.hash }), /invalid ability/);
 });
@@ -202,6 +202,33 @@ test("CLI: dry-run er default, apply kraever eksplicit flag", () => {
   assert.equal(parseArgs(["--apply", "--confirm-token=abc"]).confirmToken, "abc");
   assert.throws(() => parseArgs(["--force"]), /unknown argument/);
   assert.throws(() => parseArgs(["--apply", "--input=x.json"]), /cannot be combined/);
+});
+
+test("apply-SQL afbryder ved nylig traeningsaktivitet og giver service_role laeseadgang", () => {
+  const plan = computeRepairPlan(baseInput());
+  const sql = buildTeamApplySql({ teamId: MANAGER, entries: plan.entries, hash: plan.hash });
+  assert.match(sql, /RAISE EXCEPTION '7316 repair: recent training activity/);
+  assert.match(sql, /training_day_runs WHERE team_id = '11111111-1111-4111-8111-111111111111' AND report->>'pending' = 'true'/);
+  assert.match(sql, /GRANT SELECT ON public\.backup_7316_repair_ledger TO service_role/);
+  assert.match(sql, /ability_before/);
+});
+
+test("eksport-SQL medtager ledgeren (tom foer foerste apply)", () => {
+  const sql = buildExportSql();
+  assert.match(sql, /'applied', case when to_regclass\('public\.backup_7316_repair_ledger'\) is null then '\[\]'::json/);
+});
+
+test("verify finder en kredit som en samtidig commit har overskrevet", () => {
+  const ledger = [
+    { rider_id: R1, ability: "climbing", applied_credit: 0.5, ability_before: 55, progress_before: { climbing: 0.2 } },
+    { rider_id: R2, ability: "climbing", applied_credit: 0.5, ability_before: 55, progress_before: { climbing: 0.2 } },
+  ];
+  const derivedById = new Map([
+    [R1, { climbing: 55, ability_progress: { climbing: 0.75 }, ability_caps: { climbing: 80 } }], // kredit staar + lidt traening
+    [R2, { climbing: 55, ability_progress: { climbing: 0.25 }, ability_caps: { climbing: 80 } }], // overskrevet
+  ]);
+  const lost = findLostCredits(ledger, derivedById);
+  assert.deepEqual(lost.map((l) => l.rider_id), [R2]);
 });
 
 test("eksport-stien: MCP-svar parses, og planen matcher DB-stien", async () => {
