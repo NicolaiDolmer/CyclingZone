@@ -77,9 +77,14 @@ test("blødt loft: potentialet skalerer rolleklassens loft, og fremdriften aftag
   assert.equal(curveBSoftCeiling(90, 1, PARAMS), 45);
   assert.ok(curveBSoftCeiling(90, 3.5, PARAMS) > curveBSoftCeiling(90, 3, PARAMS));
   const ceiling = curveBSoftCeiling(90, 3, PARAMS);
+  assert.ok(curveBCapSoftness(ceiling - 1, ceiling, PARAMS, 90) > 0, "ingen mur: et point før loftet er der stadig fremdrift");
+  // #7316: over det bløde loft står evnen aldrig stille; først det hårde loft stopper den.
+  assert.equal(curveBCapSoftness(ceiling, ceiling, PARAMS, 90), PARAMS.aboveCeilingFloor, "ved loftet: præcis restfarten");
+  assert.ok(curveBCapSoftness(ceiling + 5, ceiling, PARAMS, 90) > 0, "over det bløde loft: lille restfart");
+  assert.ok(curveBCapSoftness(ceiling + 5, ceiling, PARAMS, 90) < curveBCapSoftness(ceiling, ceiling, PARAMS, 90));
+  assert.equal(curveBCapSoftness(90, ceiling, PARAMS, 90), 0, "0 ved det hårde loft");
+  // Uden hårdt loft over det bløde (eller udeladt) glider den mod 0 ved loftet som før.
   assert.equal(curveBCapSoftness(ceiling, ceiling, PARAMS), 0);
-  assert.equal(curveBCapSoftness(ceiling + 5, ceiling, PARAMS), 0, "over det bløde loft: står stille, falder ikke");
-  assert.ok(curveBCapSoftness(ceiling - 1, ceiling, PARAMS) > 0, "ingen mur: et point før loftet er der stadig fremdrift");
 });
 
 test("basis: aldrig negativ, 0 på loftet, mindre for de helt unge på samme niveau", () => {
@@ -124,29 +129,33 @@ test("flag off: udeladt kurve og curveB null er bit-identiske (dagens model)", (
   );
 });
 
-test("kurve B på løbsdagen: en evne over sit bløde loft får ingen fordelte point (Codex P2)", () => {
+test("kurve B på løbsdagen: over det bløde loft kun restfarten, aldrig 0 før det hårde loft (#7316)", () => {
   // potentiale 1 => blødt loft = 0,5 x hårdt loft (80) = 40 i testens params.
   const full = (v: number) => Object.fromEntries(VISIBLE_ABILITIES.map((k: string) => [k, v]));
   const base = {
-    riderId: "r1", dateStr: "2026-10-25", age: 24, caps: full(80), progress: full(0.99),
+    riderId: "r1", dateStr: "2026-10-25", age: 24, caps: full(80), progress: full(0),
     program: resolveProgram(null, "climber"), conditionMult: 1, potentiale: 1,
     primaryType: "climber", secondaryType: null, hardDailyCap: 1, profileType: "mountain",
   };
   const over = { ...base, abilities: full(45) };
-  // Dagens model giver point her (under det hårde loft), så testen kan fejle.
-  assert.ok(Object.keys(applyRaceDevelopmentTick(over).gains).length > 0);
+  const today = applyRaceDevelopmentTick(over);
   const withCurve = applyRaceDevelopmentTick({ ...over, curveB: PARAMS });
-  assert.deepEqual(withCurve.gains, {});
-  assert.deepEqual(withCurve.abilities, over.abilities);
-  for (const v of Object.values(withCurve.progress) as number[]) assert.ok(v < 1);
-  // Under det bløde loft giver løbsdagen stadig point, aldrig over loftet og højst +1.
-  const under = applyRaceDevelopmentTick({ ...base, abilities: full(20), curveB: PARAMS });
+  // Fremdrift = hele point + baren (scoren er afrundet og kan skjule en lille restfart).
+  const moved = (r: { gains: Record<string, number>; progress: Record<string, number> }) =>
+    VISIBLE_ABILITIES.reduce((s: number, k: string) => s + (r.gains[k] ?? 0) + Number(r.progress[k] ?? 0), 0);
+  assert.ok(moved(today) > 0, "dagens model giver fremdrift her");
+  // Over det bløde loft: fremdriften er der (ingen mur), men mindre end uden kurven.
+  assert.ok(moved(withCurve) > 0, "over det bløde loft står evnen ikke stille");
+  assert.ok(moved(withCurve) < moved(today));
+  // På det hårde loft: intet.
+  const atCap = applyRaceDevelopmentTick({ ...base, abilities: full(80), curveB: PARAMS });
+  assert.deepEqual(atCap.gains, {});
+  assert.deepEqual(atCap.progress, base.progress);
+  // Under det bløde loft giver løbsdagen stadig point, højst +1.
+  const under = applyRaceDevelopmentTick({ ...base, progress: full(0.99), abilities: full(20), curveB: PARAMS });
   const gained = Object.entries(under.gains) as [string, number][];
   assert.ok(gained.length > 0);
-  for (const [k, g] of gained) {
-    assert.equal(g, 1);
-    assert.ok(under.abilities[k] <= 40, `${k} over det bløde loft`);
-  }
+  for (const [, g] of gained) assert.equal(g, 1);
 });
 
 test("kurve B i dailyAbilityDelta: alderstabel og ungdomstillæg er ude, kun belastningsevnen bremser", () => {

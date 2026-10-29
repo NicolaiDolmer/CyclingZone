@@ -32,8 +32,9 @@
 // applyDailyTick driver udviklingen med en alders-neutral træningsscore (den
 // viste score er uændret).
 //
-// Kurven giver aldrig negativ fremdrift: en evne over sit bløde loft står stille,
-// den falder ikke (rating-reglen 17/9).
+// Kurven giver aldrig negativ fremdrift (rating-reglen 17/9). Og ingen mur (#7316,
+// S2/S8): en evne over sit bløde loft står aldrig stille. Den får en lille restfart,
+// der aftager mod rolleklassens hårde loft og først er 0 dér.
 //
 // ═══ TAL ═════════════════════════════════════════════════════════════════════
 // Alle kalibrerings-tal er PRIVATE (hard rule 17, balance-internals/6110/) og
@@ -48,6 +49,10 @@ const SCALE_TOP = 100;
 // Potentialets skala internt (PROGRESSION_RULES §3).
 const POT_MIN = 1;
 const POT_MAX = 6;
+// #7316: restfarten ved det bløde loft (andel af fuld fart), når params ikke selv
+// angiver `aboveCeilingFloor`. Params ligger i serverens miljø, så et manglende felt
+// må aldrig give muren tilbage. Sikker kode-default > 0; kalibreringen er privat.
+export const DEFAULT_ABOVE_CEILING_FLOOR = 0.1;
 
 export interface DevelopmentCurveBParams {
   // Basis-fremdrift pr. sæson (i evne-point) ved niveau 0, fuld belastning og
@@ -63,6 +68,9 @@ export interface DevelopmentCurveBParams {
   // Det bløde loft som andel af rolleklassens loft, pr. potentiale 1..6
   // (glidende imellem). Udeladt = det hårde loft er også det bløde.
   potentialCeiling?: readonly number[] | null;
+  // #7316: restfarten ved det bløde loft (0 < x <= 1). Over loftet aftager den
+  // lineært til 0 ved det hårde loft. Udeladt = DEFAULT_ABOVE_CEILING_FLOOR.
+  aboveCeilingFloor?: number;
 }
 
 const isNum = (x: unknown): x is number => typeof x === "number" && Number.isFinite(x);
@@ -91,12 +99,19 @@ export function validateDevelopmentCurveBParams(raw: unknown): DevelopmentCurveB
     for (let i = 1; i < pc.length; i++) if (pc[i] < pc[i - 1]) return null;
     potentialCeiling = Object.freeze([...pc]);
   }
+  // #7316: 0 ville give muren tilbage, så kun > 0 er gyldigt.
+  let aboveCeilingFloor = DEFAULT_ABOVE_CEILING_FLOOR;
+  if (p.aboveCeilingFloor != null) {
+    if (!isNum(p.aboveCeilingFloor) || !(p.aboveCeilingFloor > 0 && p.aboveCeilingFloor <= 1)) return null;
+    aboveCeilingFloor = p.aboveCeilingFloor;
+  }
   return Object.freeze({
     rate: p.rate,
     levelExponent: p.levelExponent,
     capExponent: p.capExponent,
     load: Object.freeze({ fromAge: load.fromAge, fullAge: load.fullAge, floor: load.floor }),
     potentialCeiling,
+    aboveCeilingFloor,
   });
 }
 
@@ -132,18 +147,33 @@ export function curveBSoftCeiling(cap: number, potentiale: number | null | undef
   return cap * (a + (b - a) * (p - lo));
 }
 
-/** Blødt loft: 1 langt fra loftet, glidende mod 0 ved loftet, 0 over det. */
-export function curveBCapSoftness(current: number, ceiling: number, params: DevelopmentCurveBParams): number {
+/**
+ * Blødt loft: 1 langt fra loftet og glidende ned mod det. Ingen mur (#7316, S8):
+ * fremdriften falder aldrig under restfarten før det bløde loft, er præcis
+ * restfarten ved loftet (intet spring), aftager lineært over loftet og er først
+ * 0 ved det hårde loft `cap`. Udeladt `cap` (eller cap <= blødt loft) = intet
+ * stykke over loftet: glider mod 0 ved loftet som før.
+ */
+export function curveBCapSoftness(
+  current: number, ceiling: number, params: DevelopmentCurveBParams, cap: number = ceiling,
+): number {
   if (!(ceiling > 0)) return 0;
   const gap = ceiling - current;
-  if (!(gap > 0)) return 0;
-  return Math.pow(Math.min(1, gap / ceiling), params.capExponent);
+  const smooth = gap > 0 ? Math.pow(Math.min(1, gap / ceiling), params.capExponent) : 0;
+  const hard = Number(cap);
+  if (!(hard > ceiling)) return smooth;
+  const room = hard - current;
+  if (!(room > 0)) return 0;
+  const floor = params.aboveCeilingFloor ?? DEFAULT_ABOVE_CEILING_FLOOR;
+  const residual = floor * Math.min(1, room / (hard - ceiling));
+  return Math.max(smooth, residual);
 }
 
 /**
  * Dagens basis-fremdrift for én evne under kurve B. Erstatter dagens
  * `gap × vækstfraktion(alder) × boost / deler` i dailyAbilityDelta.
- * Altid >= 0, og 0 når evnen står på (eller over) sit bløde eller hårde loft.
+ * Altid >= 0. Over det bløde loft en lille aftagende restfart (#7316); 0 først
+ * når evnen står på (eller over) sit hårde loft.
  */
 export function curveBBase(
   { current, cap, age, divisor, potentiale = null }: {
@@ -157,7 +187,7 @@ export function curveBBase(
   if (!Number.isFinite(c) || !(top > c)) return 0;
   if (!(divisor > 0)) return 0;
   const ceiling = curveBSoftCeiling(top, potentiale, params);
-  const value = (params.rate * curveBLevelCost(c, params) * curveBCapSoftness(c, ceiling, params)
+  const value = (params.rate * curveBLevelCost(c, params) * curveBCapSoftness(c, ceiling, params, top)
     * curveBLoadCapacity(age, params)) / divisor;
   return value > 0 ? value : 0;
 }
