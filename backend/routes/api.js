@@ -233,7 +233,7 @@ import {
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
-import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
+import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
@@ -3067,11 +3067,12 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const smartDefaultFocusByRider = {};
     const primaryTypeByRider = new Map();
     // #5319: signalet foelger samme katalog som viewerens vaelger (v3 kun naar flaget er aabent).
-    const trainabilityFocuses = (await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))
-      ? V3_TRAINING_FOCUSES : undefined;
+    const viewerCatalogV3 = await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req));
+    const trainabilityFocuses = viewerCatalogV3 ? V3_TRAINING_FOCUSES : undefined;
     for (const rider of riders ?? []) {
       trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null, undefined, trainabilityFocuses);
-      smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
+      // #5319: samme standardfokus som motoren træner (v3: tt/gc på itt_long, ikke Tærskel).
+      smartDefaultFocusByRider[rider.id] = v3SmartDefaultFocus(smartDefaultFocus(rider.primary_type ?? null), rider, { v3: viewerCatalogV3 });
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
 

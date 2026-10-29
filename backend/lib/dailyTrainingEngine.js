@@ -40,7 +40,7 @@ import { loadRaceDayStagesByRider, loadRiderIdsWithStageOnGameDays } from "./rac
 import { resolveDayProgram, programSlotForRaceDay, weekDaysHaveSessions } from "./trainingPrograms.js";
 // #5932: felterne har eget flag (training_program_cells), med training_programs som fallback.
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
-import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
+import { applyTrainingCatalog, isTrainingCatalogV3EnabledForTeam, v3SmartDefaultFocus } from "./trainingCatalogV3.js"; // #5319
 import {
   loadTeamFatigueRules, loadRiderIdsWithStageOnDate, previousDateString, applyFatigueRules,
 } from "./trainingFatigueRules.ts"; // #4854/#5620
@@ -1008,6 +1008,8 @@ export async function runTeamTrainingDay({
     // sæson-intensiteten (resolveDayIntensity). #2438 — ejerens præcedens: en
     // individuel rytter-indstilling overtrumfer den ugentlige rutine.
     const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
+    // #5319: uden gemt plan er fokus assistentens; under v3 træner tt/gc dér itt_long, ikke Tærskel.
+    if (!hasExplicitPlan) program.focus = v3SmartDefaultFocus(program.focus, rider, { v3: catalogV3On });
     // #4629: med programsOn kan en programcelle ogsaa saette SESSIONEN (fokus);
     // uden er det praecis den gamle `program.intensity = resolveDayIntensity(...)`.
     // Loeb er loeb (ejer-valg 2): en rytter der koerer/er bundet i dag rammer

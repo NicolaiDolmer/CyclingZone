@@ -303,3 +303,23 @@ test("flaget står i STAGE_FLAGS og er spiller-synligt; migrationen seeder 'off'
   assert.match(sql, /'training_catalog_v3',\s*'"off"'::jsonb/);
   assert.match(sql, /ON CONFLICT \(key\) DO NOTHING/);
 });
+
+// Fund i den samlede måling 29/10: tt-ryttere uden gemt plan fik Tærskel (smartDefaultFocus)
+// og ville under v3 holde op med at træne enkeltstart, fordi migrationen kun flytter gemte planer.
+test("v3SmartDefaultFocus: tt/gc uden plan træner itt_long under v3; off og andre typer er urørte", async () => {
+  const { v3SmartDefaultFocus } = await import("./trainingCatalogV3.js");
+  const { smartDefaultFocus } = await import("./training.js");
+  assert.equal(smartDefaultFocus("tt"), "threshold", "forudsætning: tt's standardfokus er Tærskel");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "tt" }, { v3: true }), "itt_long");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "puncheur", secondary_type: "gc" }, { v3: true }), "itt_long");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "puncheur", secondary_type: "climber" }, { v3: true }), "threshold");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "tt" }, { v3: false }), "threshold", "off = bit-identisk");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "tt" }), "threshold", "default off");
+  assert.equal(v3SmartDefaultFocus("sprint", { primary_type: "tt" }, { v3: true }), "sprint", "kun Tærskel flyttes");
+  assert.equal(v3SmartDefaultFocus("threshold", null, { v3: true }), "threshold");
+  // Hver primærtype: v3-standardfokus er en gyldig v3-session.
+  for (const type of RIDER_TYPE_KEYS) {
+    const focus = v3SmartDefaultFocus(smartDefaultFocus(type), { primary_type: type }, { v3: true });
+    assert.ok(V3_TRAINING_FOCUSES[focus], `${type}: ${focus} findes i v3-kataloget`);
+  }
+});
