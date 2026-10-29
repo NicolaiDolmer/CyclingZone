@@ -30,6 +30,7 @@ import { createHash } from "node:crypto";
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
 import { teamInRaceSquadPool } from "./raceBinding.js";
+import { isRaceLineupLockedNow } from "./raceStartLock.js";
 import { fetchAllRows } from "./supabasePagination.js";
 
 export const BREAKAWAY_OUTLOOK_FLAG_KEY = "race_breakaway_outlook";
@@ -67,19 +68,21 @@ export function raceHasNextStage(race) {
 /**
  * Er prognosen relevant for seeren? Kun løb i den aktive sæson med en næste etape, og
  * kun når seerens hold er tilmeldt (har ryttere i race_entries) eller stadig kan
- * tilmelde sig (holdets pulje for løbets trup, og ingen etape er kørt endnu).
- * Billige tjek først; højst to små opslag (sæson-status, holdets tilmelding).
+ * tilmelde sig (holdets pulje for løbets trup, og truppen er ikke låst endnu).
+ * Billige tjek først; højst tre små opslag (sæson-status, trup-lås, holdets tilmelding).
  *
+ * @param {{ supabase: any, race: any, team: any, now: Date, isLineupLocked?: Function }} args
  * @returns {Promise<boolean>}
  */
-export async function isOutlookRelevantForViewer({ supabase, race, team }) {
+export async function isOutlookRelevantForViewer({ supabase, race, team, now, isLineupLocked = isRaceLineupLockedNow }) {
   if (!team?.id || !race?.id || !race?.season_id) return false;
   if (!raceHasNextStage(race)) return false;
   const { data: season, error: seasonError } = await supabase
     .from("seasons").select("id, status").eq("id", race.season_id).maybeSingle();
   if (seasonError) throw new Error(`seasons (breakaway outlook): ${seasonError.message}`);
   if (season?.status !== "active") return false;
-  if ((Number(race.stages_completed) || 0) === 0 && teamInRaceSquadPool({ team, race })) return true;
+  if ((Number(race.stages_completed) || 0) === 0 && teamInRaceSquadPool({ team, race })
+    && !(await isLineupLocked({ supabase, race, now }))) return true;
   const { data: entry, error: entryError } = await supabase
     .from("race_entries").select("rider_id").eq("race_id", race.id).eq("team_id", team.id).limit(1).maybeSingle();
   if (entryError) throw new Error(`race_entries (breakaway outlook): ${entryError.message}`);

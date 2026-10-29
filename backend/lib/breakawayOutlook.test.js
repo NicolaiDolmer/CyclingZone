@@ -318,33 +318,42 @@ function relevanceDb({ seasonStatus = "active", entry = null } = {}) {
 const REL_RACE = { id: "race-r", season_id: "s1", stages: 3, stages_completed: 0, status: "scheduled", league_division_id: "div-1", squad: "senior" };
 const TEAM_IN = { id: "team-1", league_division_id: "div-1" };
 const TEAM_OUT = { id: "team-2", league_division_id: "div-2" };
+const NOW = new Date("2026-10-29T12:00:00Z");
+const unlocked = async () => false;
+const locked = async () => true;
+const rel = (supabase, race, team, isLineupLocked = unlocked) => isOutlookRelevantForViewer({ supabase, race, team, now: NOW, isLineupLocked });
 
-test("isOutlookRelevantForViewer: hold i puljen før start er relevant uden tilmeldings-opslag", async () => {
+test("isOutlookRelevantForViewer: hold i puljen før trup-låsen er relevant uden tilmeldings-opslag", async () => {
   const db = relevanceDb();
-  assert.equal(await isOutlookRelevantForViewer({ supabase: db, race: REL_RACE, team: TEAM_IN }), true);
+  let lockArgs = null;
+  assert.equal(await rel(db, REL_RACE, TEAM_IN, async (args) => { lockArgs = args; return false; }), true);
   assert.deepEqual(db.queries, ["seasons"]);
+  assert.equal(lockArgs.now, NOW);
+  assert.equal(lockArgs.race.id, REL_RACE.id);
 });
 
 test("isOutlookRelevantForViewer: hold uden for puljen kun relevant med en tilmelding", async () => {
-  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb(), race: REL_RACE, team: TEAM_OUT }), false);
-  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ entry: { rider_id: "x" } }), race: REL_RACE, team: TEAM_OUT }), true);
+  assert.equal(await rel(relevanceDb(), REL_RACE, TEAM_OUT), false);
+  assert.equal(await rel(relevanceDb({ entry: { rider_id: "x" } }), REL_RACE, TEAM_OUT), true);
 });
 
-test("isOutlookRelevantForViewer: startet løb kræver tilmelding, også i puljen", async () => {
+test("isOutlookRelevantForViewer: låst trup eller startet løb kræver tilmelding, også i puljen", async () => {
+  assert.equal(await rel(relevanceDb(), REL_RACE, TEAM_IN, locked), false, "låst før etape 1, ikke tilmeldt");
+  assert.equal(await rel(relevanceDb({ entry: { rider_id: "x" } }), REL_RACE, TEAM_IN, locked), true, "låst, men tilmeldt");
   const started = { ...REL_RACE, stages_completed: 1, status: "running" };
-  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb(), race: started, team: TEAM_IN }), false);
-  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ entry: { rider_id: "x" } }), race: started, team: TEAM_IN }), true);
+  assert.equal(await rel(relevanceDb(), started, TEAM_IN), false);
+  assert.equal(await rel(relevanceDb({ entry: { rider_id: "x" } }), started, TEAM_IN), true);
 });
 
 test("isOutlookRelevantForViewer: ikke-aktiv sæson, færdigt løb eller intet hold → ikke relevant, færdigt løb uden opslag", async () => {
-  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ seasonStatus: "upcoming" }), race: REL_RACE, team: TEAM_IN }), false);
-  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ seasonStatus: null }), race: REL_RACE, team: TEAM_IN }), false);
+  assert.equal(await rel(relevanceDb({ seasonStatus: "upcoming" }), REL_RACE, TEAM_IN), false);
+  assert.equal(await rel(relevanceDb({ seasonStatus: null }), REL_RACE, TEAM_IN), false);
   const done = relevanceDb();
-  assert.equal(await isOutlookRelevantForViewer({ supabase: done, race: { ...REL_RACE, status: "completed" }, team: TEAM_IN }), false);
-  assert.equal(await isOutlookRelevantForViewer({ supabase: done, race: { ...REL_RACE, stages_completed: 3 }, team: TEAM_IN }), false);
+  assert.equal(await rel(done, { ...REL_RACE, status: "completed" }, TEAM_IN), false);
+  assert.equal(await rel(done, { ...REL_RACE, stages_completed: 3 }, TEAM_IN), false);
   assert.deepEqual(done.queries, [], "færdigt løb: ingen DB-opslag");
   const noTeam = relevanceDb();
-  assert.equal(await isOutlookRelevantForViewer({ supabase: noTeam, race: REL_RACE, team: null }), false);
+  assert.equal(await rel(noTeam, REL_RACE, null), false);
   assert.deepEqual(noTeam.queries, []);
 });
 

@@ -48,7 +48,8 @@ export function createBreakawayOutlookRouter({
       const { data: race, error } = await supabase.from("races").select(RACE_COLUMNS).eq("id", req.params.raceId).maybeSingle();
       if (error) throw error;
       if (!race) return res.status(404).json({ error: "race_not_found" });
-      if (!(await isRelevant({ supabase, race, team: req.team }))) return res.json({ available: false, reason: "not_relevant" });
+      // Request-grænsen injicerer uret (hard rule 16): trup-låsen afgør om holdet stadig kan tilmelde sig.
+      if (!(await isRelevant({ supabase, race, team: req.team, now: new Date() }))) return res.json({ available: false, reason: "not_relevant" });
       // Samme læsning som afviklingen (resolveRaceEngineV4 kalder checkV4Enabled(supabase)).
       if (!(await checkV4Enabled(supabase))) return res.json({ available: false, reason: "engine_off" });
       if (!stageAllowsBreakaway(await loadProfileType({ supabase, race }))) return res.json({ available: false, reason: "no_breakaway" });

@@ -124,6 +124,7 @@ test("ikke relevant for seeren → not_relevant uden motor-, profil-, felt- elle
   assert.deepEqual(work, []);
   assert.equal(relevanceArgs.team.id, "team-x");
   assert.equal(relevanceArgs.race.id, RACE_ID);
+  assert.ok(relevanceArgs.now instanceof Date, "request-grænsen giver uret videre");
 });
 
 test("motor v4 slukket → engine_off før dry-run", async () => {
@@ -171,7 +172,8 @@ test("samme ødelagte løb: dry-run og rapport kun én gang inden for fejl-cache
   __resetBreakawayOutlookCache();
   let attempts = 0;
   await withServer({
-    getCached: getBreakawayOutlookCached,
+    // Fast ur (hard rule 16): fejl-TTL'en må ikke kunne udløbe mellem kaldene.
+    getCached: (args) => getBreakawayOutlookCached({ ...args, now: () => 0 }),
     compute: async () => { attempts += 1; throw new Error("motor"); },
   }, async (base, errors) => {
     for (let i = 0; i < 3; i++) {
