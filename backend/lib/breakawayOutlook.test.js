@@ -7,11 +7,20 @@ import {
   __resetBreakawayOutlookCache,
   chaseReason,
   computeBreakawayOutlook,
+  entriesFingerprint,
   getBreakawayOutlookCached,
+  isOutlookRelevantForViewer,
+  isValidRaceId,
+  loadEntriesFingerprint,
+  loadNextStageProfileType,
   oddsFraction,
+  OUTLOOK_CACHE_TTL_MS,
+  OUTLOOK_ERROR,
+  OUTLOOK_ERROR_TTL_MS,
   outlookCacheKey,
   outlookSeedString,
   sampleFromStageResult,
+  stageAllowsBreakaway,
   summarizeOutlook,
 } from "./breakawayOutlook.js";
 import { loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
@@ -188,7 +197,7 @@ test("getBreakawayOutlookCached: fuld kø → busy uden cache, næste kald prøv
   assert.deepEqual(again, { available: true, retried: true });
 });
 
-test("getBreakawayOutlookCached: udløbet TTL beregner forfra; fejl caches ikke", async () => {
+test("getBreakawayOutlookCached: udløbet TTL beregner forfra", async () => {
   __resetBreakawayOutlookCache();
   let t = 0;
   let n = 0;
@@ -197,10 +206,160 @@ test("getBreakawayOutlookCached: udløbet TTL beregner forfra; fejl caches ikke"
   t = 11;
   await getBreakawayOutlookCached({ race: RACE, compute, now: () => t, ttlMs: 10 });
   assert.equal(n, 2);
+});
+
+test("getBreakawayOutlookCached: fejl huskes i 5 min; kun første kalder får undtagelsen", async () => {
   __resetBreakawayOutlookCache();
-  await assert.rejects(getBreakawayOutlookCached({ now: () => 0, race: RACE, compute: async () => { throw new Error("boom"); } }));
-  await getBreakawayOutlookCached({ now: () => 0, race: RACE, compute });
-  assert.equal(n, 3);
+  let t = 0;
+  let attempts = 0;
+  const broken = async () => { attempts += 1; throw new Error("boom"); };
+  const [first, joined] = await Promise.allSettled([
+    getBreakawayOutlookCached({ now: () => t, race: RACE, compute: broken }),
+    getBreakawayOutlookCached({ now: () => t, race: RACE, compute: broken }),
+  ]);
+  assert.equal(first.status, "rejected", "første kalder rapporterer fejlen");
+  assert.deepEqual(joined, { status: "fulfilled", value: OUTLOOK_ERROR }, "samtidig kalder får fejl-svaret, ikke undtagelsen");
+  t = OUTLOOK_ERROR_TTL_MS - 1;
+  assert.deepEqual(await getBreakawayOutlookCached({ now: () => t, race: RACE, compute: broken }), OUTLOOK_ERROR);
+  assert.equal(attempts, 1, "inden for 5 min: ingen ny dry-run");
+  t = OUTLOOK_ERROR_TTL_MS + 1;
+  let n = 0;
+  const ok = await getBreakawayOutlookCached({ now: () => t, race: RACE, compute: async () => { n += 1; return { available: true }; } });
+  assert.deepEqual(ok, { available: true });
+  assert.equal(n, 1, "efter 5 min prøves igen");
+  assert.ok(OUTLOOK_ERROR_TTL_MS < OUTLOOK_CACHE_TTL_MS);
+});
+
+test("getBreakawayOutlookCached: ændret startfelt (fingeraftryk) giver ny beregning før etape 1", async () => {
+  __resetBreakawayOutlookCache();
+  let n = 0;
+  const compute = async () => { n += 1; return { available: true, n }; };
+  const before = { ...RACE, stages_completed: 0 };
+  await getBreakawayOutlookCached({ now: () => 0, race: before, entriesKey: "fp-a", compute });
+  await getBreakawayOutlookCached({ now: () => 0, race: before, entriesKey: "fp-a", compute });
+  assert.equal(n, 1);
+  await getBreakawayOutlookCached({ now: () => 0, race: before, entriesKey: "fp-b", compute });
+  assert.equal(n, 2);
+  assert.notEqual(outlookCacheKey(before, "fp-a"), outlookCacheKey(before, "fp-b"));
+});
+
+// ── entriesFingerprint ──────────────────────────────────────────────────────
+test("entriesFingerprint: rækkefølge-uafhængigt; ny rytter, fjernet rytter og ny rolle ændrer aftrykket", () => {
+  const rows = [
+    { team_id: "A", rider_id: "r1", race_role: "captain" },
+    { team_id: "A", rider_id: "r2", race_role: "helper" },
+    { team_id: "B", rider_id: "r3", race_role: "hunter" },
+  ];
+  const base = entriesFingerprint(rows);
+  assert.equal(entriesFingerprint([...rows].reverse()), base);
+  assert.notEqual(entriesFingerprint([...rows, { team_id: "B", rider_id: "r4", race_role: "helper" }]), base);
+  assert.notEqual(entriesFingerprint(rows.slice(1)), base);
+  assert.notEqual(entriesFingerprint([{ ...rows[0], rider_id: "r9" }, rows[1], rows[2]]), base, "byttet rytter, samme antal");
+  assert.notEqual(entriesFingerprint([{ ...rows[0], race_role: "helper" }, { ...rows[1], race_role: "captain" }, rows[2]]), base, "byttet rolle");
+  assert.equal(entriesFingerprint([]), entriesFingerprint(null));
+});
+
+test("loadEntriesFingerprint: læser hele startfeltet (pagineret) for løbet", async () => {
+  const seen = [];
+  const rows = [{ team_id: "A", rider_id: "r1", race_role: "captain" }];
+  const db = {
+    from(table) {
+      const api = {
+        select(cols) { seen.push({ table, cols }); return api; },
+        eq(col, val) { seen.push({ eq: [col, val] }); return api; },
+        order() { return api; },
+        range() { return Promise.resolve({ data: rows, error: null }); },
+      };
+      return api;
+    },
+  };
+  assert.equal(await loadEntriesFingerprint({ supabase: db, raceId: "race-f" }), entriesFingerprint(rows));
+  assert.deepEqual(seen[0], { table: "race_entries", cols: "team_id, rider_id, race_role" });
+  assert.deepEqual(seen[1], { eq: ["race_id", "race-f"] });
+});
+
+test("nl/races.json: jægerboksens etape-etiket bruger 'Etappe' som resten af filen", () => {
+  const nl = JSON.parse(readFileSync(new URL("../../frontend/public/locales/nl/races.json", import.meta.url), "utf8"));
+  assert.equal(nl.racehub.hunterExplainer.outlook.stage, "Etappe {stage}");
+});
+
+// ── rene gates ──────────────────────────────────────────────────────────────
+test("isValidRaceId: kun UUID'er", () => {
+  assert.equal(isValidRaceId("3f2b1c9a-1234-4abc-9def-0123456789ab"), true);
+  assert.equal(isValidRaceId("nope"), false);
+  assert.equal(isValidRaceId("3f2b1c9a-1234-4abc-9def-0123456789ab' or 1=1"), false);
+  assert.equal(isValidRaceId(undefined), false);
+});
+
+test("stageAllowsBreakaway: tidskørsler og manglende profil har intet udbrud", () => {
+  for (const p of ["itt", "itt_hilly", "ttt", null, undefined, ""]) assert.equal(stageAllowsBreakaway(p), false, String(p));
+  for (const p of ["flat", "hilly", "mountain"]) assert.equal(stageAllowsBreakaway(p), true, p);
+});
+
+// ── isOutlookRelevantForViewer med falsk Supabase ──────────────────────────
+function relevanceDb({ seasonStatus = "active", entry = null } = {}) {
+  const queries = [];
+  return {
+    queries,
+    from(table) {
+      queries.push(table);
+      const api = {
+        select() { return api; }, eq() { return api; }, limit() { return api; },
+        maybeSingle() {
+          if (table === "seasons") return Promise.resolve({ data: seasonStatus ? { id: "s1", status: seasonStatus } : null, error: null });
+          if (table === "race_entries") return Promise.resolve({ data: entry, error: null });
+          return Promise.resolve({ data: null, error: null });
+        },
+      };
+      return api;
+    },
+  };
+}
+const REL_RACE = { id: "race-r", season_id: "s1", stages: 3, stages_completed: 0, status: "scheduled", league_division_id: "div-1", squad: "senior" };
+const TEAM_IN = { id: "team-1", league_division_id: "div-1" };
+const TEAM_OUT = { id: "team-2", league_division_id: "div-2" };
+
+test("isOutlookRelevantForViewer: hold i puljen før start er relevant uden tilmeldings-opslag", async () => {
+  const db = relevanceDb();
+  assert.equal(await isOutlookRelevantForViewer({ supabase: db, race: REL_RACE, team: TEAM_IN }), true);
+  assert.deepEqual(db.queries, ["seasons"]);
+});
+
+test("isOutlookRelevantForViewer: hold uden for puljen kun relevant med en tilmelding", async () => {
+  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb(), race: REL_RACE, team: TEAM_OUT }), false);
+  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ entry: { rider_id: "x" } }), race: REL_RACE, team: TEAM_OUT }), true);
+});
+
+test("isOutlookRelevantForViewer: startet løb kræver tilmelding, også i puljen", async () => {
+  const started = { ...REL_RACE, stages_completed: 1, status: "running" };
+  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb(), race: started, team: TEAM_IN }), false);
+  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ entry: { rider_id: "x" } }), race: started, team: TEAM_IN }), true);
+});
+
+test("isOutlookRelevantForViewer: ikke-aktiv sæson, færdigt løb eller intet hold → ikke relevant, færdigt løb uden opslag", async () => {
+  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ seasonStatus: "upcoming" }), race: REL_RACE, team: TEAM_IN }), false);
+  assert.equal(await isOutlookRelevantForViewer({ supabase: relevanceDb({ seasonStatus: null }), race: REL_RACE, team: TEAM_IN }), false);
+  const done = relevanceDb();
+  assert.equal(await isOutlookRelevantForViewer({ supabase: done, race: { ...REL_RACE, status: "completed" }, team: TEAM_IN }), false);
+  assert.equal(await isOutlookRelevantForViewer({ supabase: done, race: { ...REL_RACE, stages_completed: 3 }, team: TEAM_IN }), false);
+  assert.deepEqual(done.queries, [], "færdigt løb: ingen DB-opslag");
+  const noTeam = relevanceDb();
+  assert.equal(await isOutlookRelevantForViewer({ supabase: noTeam, race: REL_RACE, team: null }), false);
+  assert.deepEqual(noTeam.queries, []);
+});
+
+test("loadNextStageProfileType: næste etapes profil efter stages_completed", async () => {
+  const db = {
+    from() {
+      const api = { select() { return api; }, eq() { return api; }, order() {
+        return Promise.resolve({ data: [{ stage_number: 2, profile_type: "itt" }, { stage_number: 1, profile_type: "flat" }], error: null });
+      } };
+      return api;
+    },
+  };
+  assert.equal(await loadNextStageProfileType({ supabase: db, race: { id: "r", stages_completed: 0 } }), "flat");
+  assert.equal(await loadNextStageProfileType({ supabase: db, race: { id: "r", stages_completed: 1 } }), "itt");
+  assert.equal(await loadNextStageProfileType({ supabase: db, race: { id: "r", stages_completed: 2 } }), null);
 });
 
 // ── Den rigtige v4-motor: udfaldets form (vinderens dom + fangst-events) læses korrekt ──
