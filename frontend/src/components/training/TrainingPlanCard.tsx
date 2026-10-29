@@ -19,7 +19,7 @@ import { LockIcon } from "../ui/icons/index.jsx";
 import type { ReactNode } from "react";
 import { applyCopyDay, MAX_COPY_DAYS } from "./copyDayPlan.ts";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
-import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js";
+import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.ts";
 import { sessionI18nKey } from "../../lib/trainingDayTypes.js"; // #5319
 import {
   PROGRAM_SLOTS, cellSession, isCellOverridden, isProgramPlan, changedCellCount,

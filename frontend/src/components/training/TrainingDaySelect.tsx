@@ -23,7 +23,7 @@ import {
   sessionForProgram,
   sessionI18nKey,
 } from "../../lib/trainingDayTypes.js";
-import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js";
+import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.ts";
 import { CheckIcon, ChevronDownIcon } from "../ui/icons/index.jsx";
 
 export type DayPlan = { focus?: string | null; intensity?: string | null } | null | undefined;

@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Grupos de entrenamiento",
         "text": "Un grupo te permite tomar una decisión de entrenamiento para varios ciclistas. Crea uno en Programa, Plan: abre “Plan para” y elige “+ Grupo nuevo”. Ponle un nombre y empieza desde un tipo de ciclista o elige tú mismo a los ciclistas. Un ciclista puede estar en un grupo. Entonces un cambio en un campo se aplica a todo el grupo, y los ciclistas con una etapa conservan la etapa. “Fatiga esta noche” muestra al ciclista más cansado del grupo. El orden es fijo: primero el plan propio del ciclista, luego el plan de su grupo y después el plan del equipo. Si cambias los campos propios de un ciclista, su plan gana hasta que vuelvas a elegir “Seguir al grupo”. También puedes aplicar un programa a un grupo en Programas, y dar a un grupo su propia excepción en Límite de fatiga."
+      },
+      "catalogV3": {
+        "title": "Dos sesiones duras para cada tipo de corredor",
+        "text": "Cada tipo de corredor tiene ahora dos sesiones duras pensadas para él, y cada sesión dura da un día duro completo. Hay cinco sesiones nuevas: Subidas largas, Lanzamiento, Contrarrelojes cortas, Contrarrelojes largas y Clásica de adoquines. La contrarreloj por fin tiene sus propias sesiones, así que Umbral entrena tempo y resistencia en su lugar. Sprint da ahora un día duro completo. Si alternas entre las dos sesiones de tu tipo, la capacidad principal crece un poco menos, pero crecen otras capacidades."
       }
     },
     "activityfeed": {

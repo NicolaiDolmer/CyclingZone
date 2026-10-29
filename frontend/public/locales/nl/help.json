@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Trainingsgroepen",
         "text": "Met een groep neem je één trainingsbeslissing voor meerdere renners. Maak er een onder Programma, Plan: open 'Plan voor' en kies '+ Nieuwe groep'. Geef hem een naam en begin vanuit een rennerstype of kies de renners zelf. Een renner kan in één groep zitten. Een wijziging in een veld geldt dan voor de hele groep, en renners met een etappe houden de etappe. 'Vermoeidheid vanavond' toont de vermoeidste renner in de groep. De volgorde ligt vast: eerst het eigen plan van een renner, dan het plan van zijn groep, dan het teamplan. Als je de eigen velden van een renner wijzigt, wint zijn plan tot je opnieuw 'Groep volgen' kiest. Je kunt ook een programma op een groep zetten onder Programma's, en een groep een eigen uitzondering geven onder Vermoeidheidslimiet."
+      },
+      "catalogV3": {
+        "title": "Twee zware sessies voor elk rennerstype",
+        "text": "Elk rennerstype heeft nu twee zware sessies die ervoor gebouwd zijn, en elke zware sessie geeft een volledige zware dag. Vijf sessies zijn nieuw: Lange beklimmingen, Lead-out, Korte tijdritten, Lange tijdritten en Kasseienklassieker. Tijdrijden heeft eindelijk eigen sessies, dus Drempel traint nu tempo en uithoudingsvermogen. Sprint geeft nu een volledige zware dag. Wissel je tussen de twee sessies van je type, dan groeit de hoofdvaardigheid iets minder, maar groeien andere vaardigheden."
       }
     },
     "activityfeed": {

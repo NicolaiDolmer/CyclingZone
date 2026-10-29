@@ -10,14 +10,14 @@ import { setDisplayCatalogV3, isDisplayCatalogV3 } from "./training.js";
 
 export const TRAINING_CATALOG_V3_FLAG_KEY = "training_catalog_v3";
 
-let pending = null;
+let pending: Promise<boolean> | null = null;
 
-export function loadTrainingCatalogV3() {
+export function loadTrainingCatalogV3(): Promise<boolean> {
   if (!pending) {
     pending = fetchPlayerFeatureFlags()
-      .then((flags) => flags?.[TRAINING_CATALOG_V3_FLAG_KEY] === true)
+      .then((flags: Record<string, boolean>) => flags?.[TRAINING_CATALOG_V3_FLAG_KEY] === true)
       .catch(() => false)
-      .then((on) => {
+      .then((on: boolean) => {
         setDisplayCatalogV3(on);
         return on;
       });
@@ -25,8 +25,8 @@ export function loadTrainingCatalogV3() {
   return pending;
 }
 
-export function useTrainingCatalogV3() {
-  const [on, setOn] = useState(isDisplayCatalogV3());
+export function useTrainingCatalogV3(): boolean {
+  const [on, setOn] = useState<boolean>(isDisplayCatalogV3());
   useEffect(() => {
     let alive = true;
     loadTrainingCatalogV3().then((value) => {

@@ -33,7 +33,7 @@ import {
   SKILL_SESSIONS,
   sessionI18nKey,
 } from "../lib/trainingDayTypes.js";
-import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.js";
+import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.ts";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";

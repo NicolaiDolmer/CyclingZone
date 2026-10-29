@@ -20,7 +20,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { focusAbilitiesFor, injuryTimeLeft } from "../../../lib/training.js";
-import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.js"; // #5319
+import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts"; // #5319
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,

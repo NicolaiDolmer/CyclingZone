@@ -36,7 +36,7 @@ import {
   sessionI18nKey,
 } from "../../lib/trainingDayTypes.js";
 import { focusPanelRows, hasAnySignal, hasAnyPerSeason, FOCUS_SIGNAL } from "../../lib/trainingFocus.js";
-import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js"; // #5319
+import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.ts"; // #5319
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import { Modal, Button } from "../ui";
