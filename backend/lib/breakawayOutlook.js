@@ -25,17 +25,97 @@
 //
 // Hard rule 17: ingen målte fordelinger i repoet; de står i balance-internals/6912/.
 
+import { createHash } from "node:crypto";
+
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { isS5ProfilesV3OrLater } from "./raceEngineRulesRevision.ts";
+import { teamInRaceSquadPool } from "./raceBinding.js";
+import { isRaceLineupLockedNow } from "./raceStartLock.js";
+import { fetchAllRows } from "./supabasePagination.js";
 
 export const BREAKAWAY_OUTLOOK_FLAG_KEY = "race_breakaway_outlook";
 export const OUTLOOK_SEEDS = 40;
 export const OUTLOOK_CACHE_TTL_MS = 30 * 60 * 1000;
+// #6912-opfølgning: en fejlet prognose huskes kort, så samme ødelagte løb ikke kører
+// dry-run + Sentry-rapport igen ved hver visning af jægerboksen.
+export const OUTLOOK_ERROR_TTL_MS = 5 * 60 * 1000;
+export const OUTLOOK_ERROR = Object.freeze({ available: false, reason: "error" });
 
 const NO_BREAKAWAY_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function isBreakawayOutlookEnabled(supabase, opts = {}) {
   return evaluateFlagStage(await readFlagStage(supabase, BREAKAWAY_OUTLOOK_FLAG_KEY), opts);
+}
+
+/** Løbs-id'et skal være et UUID før nogen forespørgsel (ellers en Postgres-fejl pr. kald). */
+export function isValidRaceId(raceId) {
+  return typeof raceId === "string" && UUID_RE.test(raceId);
+}
+
+/** Har etapeprofilen et morgenudbrud at regne på? Tidskørsler og manglende profil: nej. */
+export function stageAllowsBreakaway(profileType) {
+  return typeof profileType === "string" && profileType.length > 0 && !NO_BREAKAWAY_PROFILES.has(profileType);
+}
+
+/** Løbet har en næste etape at regne på (ikke færdigt, ikke alle etaper kørt). */
+export function raceHasNextStage(race) {
+  const totalStages = Number(race?.stages) || 1;
+  const stageIndex = Number(race?.stages_completed) || 0;
+  return race?.status !== "completed" && stageIndex < totalStages;
+}
+
+/**
+ * Er prognosen relevant for seeren? Kun løb i den aktive sæson med en næste etape, og
+ * kun når seerens hold er tilmeldt (har ryttere i race_entries) eller stadig kan
+ * tilmelde sig (holdets pulje for løbets trup, og truppen er ikke låst endnu).
+ * Billige tjek først; højst tre små opslag (sæson-status, trup-lås, holdets tilmelding).
+ *
+ * @param {{ supabase: any, race: any, team: any, now: Date, isLineupLocked?: Function }} args
+ * @returns {Promise<boolean>}
+ */
+export async function isOutlookRelevantForViewer({ supabase, race, team, now, isLineupLocked = isRaceLineupLockedNow }) {
+  if (!team?.id || !race?.id || !race?.season_id) return false;
+  if (!raceHasNextStage(race)) return false;
+  const { data: season, error: seasonError } = await supabase
+    .from("seasons").select("id, status").eq("id", race.season_id).maybeSingle();
+  if (seasonError) throw new Error(`seasons (breakaway outlook): ${seasonError.message}`);
+  if (season?.status !== "active") return false;
+  if ((Number(race.stages_completed) || 0) === 0 && teamInRaceSquadPool({ team, race })
+    && !(await isLineupLocked({ supabase, race, now }))) return true;
+  const { data: entry, error: entryError } = await supabase
+    .from("race_entries").select("rider_id").eq("race_id", race.id).eq("team_id", team.id).limit(1).maybeSingle();
+  if (entryError) throw new Error(`race_entries (breakaway outlook): ${entryError.message}`);
+  return Boolean(entry);
+}
+
+// Et løb har én profil pr. etape (en grand tour ~21), så loftet er en sikkerhedsgrænse, ikke en trunkering.
+const MAX_STAGE_PROFILES = 100;
+
+/** Profiltypen for løbets næste etape (stages_completed-indeks i sorteret rækkefølge, som raceRunner), eller null. */
+export async function loadNextStageProfileType({ supabase, race }) {
+  const { data, error } = await supabase
+    .from("race_stage_profiles").select("stage_number, profile_type").eq("race_id", race.id)
+    .order("stage_number", { ascending: true }).limit(MAX_STAGE_PROFILES);
+  if (error) throw new Error(`race_stage_profiles (breakaway outlook): ${error.message}`);
+  const sorted = [...(data || [])].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
+  return sorted[Number(race.stages_completed) || 0]?.profile_type ?? null;
+}
+
+/**
+ * Fingeraftryk af løbets startfelt (hold, rytter, rolle). Ændrer et hold sin udtagelse
+ * eller rollefordeling, ændres aftrykket, og prognosen før etape 1 beregnes forfra.
+ * Rækkefølge-uafhængigt; tomt felt giver sit eget aftryk.
+ */
+export function entriesFingerprint(rows) {
+  const lines = (rows || []).map((r) => `${r?.team_id ?? ""}|${r?.rider_id ?? ""}|${r?.race_role ?? ""}`).sort();
+  return `${lines.length}-${createHash("sha1").update(lines.join("\n")).digest("hex").slice(0, 16)}`;
+}
+
+export async function loadEntriesFingerprint({ supabase, raceId }) {
+  const rows = await fetchAllRows(() => supabase
+    .from("race_entries").select("team_id, rider_id, race_role").eq("race_id", raceId).order("rider_id", { ascending: true }));
+  return entriesFingerprint(rows);
 }
 
 /** Forecast-seed k for (løb, etape). Aldrig løbets rigtige seed. */
@@ -119,7 +199,7 @@ export async function computeBreakawayOutlook({ race, runDryStage, resolveRaceEn
   if (!race?.id) return { available: false, reason: "no_race" };
   const totalStages = Number(race.stages) || 1;
   const stageIndex = Number(race.stages_completed) || 0;
-  if (race.status === "completed" || stageIndex >= totalStages) return { available: false, reason: "race_done" };
+  if (!raceHasNextStage(race)) return { available: false, reason: "race_done" };
 
   let engine = null;
   let captured = null;
@@ -165,9 +245,14 @@ export async function computeBreakawayOutlook({ race, runDryStage, resolveRaceEn
   return { ...summarizeOutlook(samples), ...(totalStages > 1 ? { stageNumber: captured.stageNumber } : {}), profileType };
 }
 
-// ── Cache + single-flight: én beregning pr. (løb, næste etape) ad gangen, genbrugt i
-// OUTLOOK_CACHE_TTL_MS. Nøglen indeholder stages_completed, så en kørt etape giver en
-// ny prognose for den næste.
+// ── Cache + single-flight: én beregning pr. (løb, næste etape, startfelt) ad gangen,
+// genbrugt i OUTLOOK_CACHE_TTL_MS. Nøglen indeholder stages_completed, så en kørt etape
+// giver en ny prognose for den næste, og startfeltets fingeraftryk, så en ændret
+// udtagelse før etape 1 giver en ny prognose.
+//
+// Fejl: den første kalder får fejlen (og rapporterer den); svaret huskes som
+// OUTLOOK_ERROR i OUTLOOK_ERROR_TTL_MS, og samtidige/efterfølgende kald for samme nøgle
+// får det uden ny beregning og uden ny rapport.
 //
 // Arbejdsloft på tværs af løb (Codex-review): én prognose kører ad gangen i hele
 // processen, og højst OUTLOOK_MAX_QUEUED løb står i kø. Er køen fuld, svares
@@ -184,21 +269,26 @@ function runSerialized(compute) {
   return run;
 }
 
-export function outlookCacheKey(race) {
-  return `${race?.id}:${Number(race?.stages_completed) || 0}`;
+export function outlookCacheKey(race, entriesKey = "") {
+  return `${race?.id}:${Number(race?.stages_completed) || 0}:${entriesKey}`;
 }
 
-export async function getBreakawayOutlookCached({ race, compute, now = Date.now, ttlMs = OUTLOOK_CACHE_TTL_MS, maxQueued = OUTLOOK_MAX_QUEUED }) {
-  const key = outlookCacheKey(race);
+export async function getBreakawayOutlookCached({
+  race, compute, entriesKey = "", now = Date.now,
+  ttlMs = OUTLOOK_CACHE_TTL_MS, errorTtlMs = OUTLOOK_ERROR_TTL_MS, maxQueued = OUTLOOK_MAX_QUEUED,
+}) {
+  const key = outlookCacheKey(race, entriesKey);
   const hit = cache.get(key);
-  if (hit && (hit.pending || now() - hit.at < ttlMs)) return hit.pending ?? hit.value;
+  if (hit && (hit.pending || now() - hit.at < hit.ttlMs)) return hit.pending ?? hit.value;
   if (queued >= maxQueued) return { available: false, reason: "busy" };
-  const pending = runSerialized(compute).then(
-    (value) => { cache.set(key, { at: now(), value }); return value; },
-    (err) => { cache.delete(key); throw err; },
+  const owned = runSerialized(compute).then(
+    (value) => { cache.set(key, { at: now(), ttlMs, value }); return value; },
+    (err) => { cache.set(key, { at: now(), ttlMs: errorTtlMs, value: OUTLOOK_ERROR }); throw err; },
   );
-  cache.set(key, { at: now(), pending });
-  return pending;
+  // Samtidige kald for samme nøgle venter på samme beregning, men får fejlen som svar
+  // (ikke som undtagelse), så kun den første kalder rapporterer den.
+  cache.set(key, { at: now(), pending: owned.catch(() => OUTLOOK_ERROR) });
+  return owned;
 }
 
 export function __resetBreakawayOutlookCache() {
