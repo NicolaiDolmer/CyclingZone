@@ -499,7 +499,6 @@ import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { recordIdentityEvent } from "../lib/identityTelemetry.js";
-import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAccountGates.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
 import { buildCustomerRows, partitionSubscriptions, summarizeNps } from "../lib/growthSnapshot.js";
@@ -7730,27 +7729,6 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     return res.status(400).json({ error: "Auction has ended", errorCode: "auction_expired" });
   }
 
-  // #3134 · auktions-spærre: en konto oprettet EFTER at auktionen startede kan
-  // ikke byde på netop DEN auktion (det præcise #2776-angreb — funnel-kontoen
-  // blev oprettet 4 min efter auktionen startede og bød på den 4 min senere).
-  // DEFAULT OFF: dry-run mod prod (PR #3134) fandt 422 historiske bud fra 53
-  // ægte hold der ville være blokeret — overvejende helt almindelig "ny
-  // spiller byder på en allerede kørende auktion minutter efter oprettelse"
-  // onboarding-adfærd, ikke #2776-mønsteret. Auction-select ovenfor bruger
-  // "*" og har derfor allerede created_at.
-  const auctionEntryGateConfig = await readNewAccountGateConfig(supabase);
-  const auctionEntryGate = evaluateAuctionEntryGate({
-    enabled: auctionEntryGateConfig.auctionEntryGateEnabled,
-    teamCreatedAt: req.team.created_at,
-    auctionCreatedAt: auction.created_at,
-  });
-  if (!auctionEntryGate.allowed) {
-    return res.status(403).json({
-      error: "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
-      errorCode: "auction_created_before_account",
-    });
-  }
-
   // #194 race-confirm: hvis client sendte expected_current_price og det er stale,
   // returnér 409 så frontend kan vise confirm-modal med ny pris/min-bud.
   if (isExpectedPriceStale(req.body.expected_current_price, auction.current_price)) {
@@ -8071,21 +8049,6 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   // #3110: samme manglende errorCode som bud-endpointet — se kommentar der.
   if (isAuctionExpired(auction.calculated_end)) {
     return res.status(400).json({ error: "Auction has ended", errorCode: "auction_expired" });
-  }
-  // #3134 · auktions-spærre — samme håndhævelse som POST /auctions/:id/bid.
-  // Et autobud er en anden vej ind i samme auktion og skal gates identisk,
-  // ellers kan en ny konto bare omgå bud-endpointet med et proxy-loft i stedet.
-  const proxyEntryGateConfig = await readNewAccountGateConfig(supabase);
-  const proxyEntryGate = evaluateAuctionEntryGate({
-    enabled: proxyEntryGateConfig.auctionEntryGateEnabled,
-    teamCreatedAt: req.team.created_at,
-    auctionCreatedAt: auction.created_at,
-  });
-  if (!proxyEntryGate.allowed) {
-    return res.status(403).json({
-      error: "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
-      errorCode: "auction_created_before_account",
-    });
   }
   // Block setting proxy on own rider auction (mirror bid-endpoint guard)
   if (auction.seller_team_id === req.team.id) {

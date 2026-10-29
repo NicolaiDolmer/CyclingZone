@@ -575,23 +575,22 @@ kræver et delt lager (`:4-6`).
 
 | Nøgle | Prod-værdi 30/8 | Effekt når tændt |
 |---|---|---|
-| `auction_entry_gate_enabled` | **`false`** | konto oprettet **efter** auktionen startede må ikke byde på netop den (#3134/#2776) |
 | `loan_gate_min_race_days` | **0** | lån kræver X kørte løbsdage |
 | `loan_gate_min_account_age_days` | **0** | lån kræver X dages konto |
 | `transfer_cooldown_hours` | **0** | store udgående overførsler spærres for nye konti |
 | `transfer_cooldown_amount_czk` | **0** | beløbsgrænsen for ovenstående |
 
 Målt med `select key, value, updated_at from app_config where key in
-('auction_entry_gate_enabled','loan_gate_min_race_days','loan_gate_min_account_age_days',
-'transfer_cooldown_hours','transfer_cooldown_amount_czk')`: alle fem rækker findes, alle med
+('loan_gate_min_race_days','loan_gate_min_account_age_days',
+'transfer_cooldown_hours','transfer_cooldown_amount_czk')`: rækkerne findes, alle med
 `updated_at` **3/8 2026 17:53 dansk tid** (15:53 UTC), og alle på slukket-værdien.
 Kontrakten er "0 på alle en gates nøgler = hele gaten slukket"
-(`newAccountGates.js:20-21, 48-54`).
+(`newAccountGates.js`).
 
-Alle gates er **fail-open** ved infrastruktur-fejl (`newAccountGates.js:28-30, 60-86`) - en
-knækket config-læsning må aldrig blokere et lovligt bud. `auction_entry_gate` blev shippet
-slukket fordi en dry-run mod prod fandt **422 historiske bud fra 53 ægte hold** der ville
-være blokeret, overvejende almindelig onboarding (`newAccountGates.js:20-27`).
+Alle gates er **fail-open** ved infrastruktur-fejl (`newAccountGates.js`) - en
+knækket config-læsning må aldrig blokere et lovligt bud.
+En tredje gate (auktions-adgang for nye konti, #3134) er fjernet i #7336; dens
+`app_config`-række `auction_entry_gate_enabled` findes stadig i databasen, uden læser.
 
 ### 11.5 Gæld og pause
 
@@ -680,13 +679,10 @@ Hver post er **én** ting der skal afgøres, med de målte tal indbygget.
    population) er ikke udført.
 5. **Skal prisbåndet ved handel tændes?** Nøglerne findes og er kalibreret (gulv 10 %, loft
    2,2× fra #3231), men står på `0` / `null` i prod. Ét tal-par mangler at blive sat.
-6. **Skal `auction_entry_gate_enabled` tændes?** Den er klar og slukket. Dry-run viste 422
-   historiske bud fra 53 ægte hold ville være blokeret - ejeren har ikke svaret på om den
-   falske-positiv-rate er acceptabel mod #2776-mønsteret.
-7. **Skal `is_flash` og `is_guaranteed_sale` slettes?** Begge har 0 rækker i hele basen;
+6. **Skal `is_flash` og `is_guaranteed_sale` slettes?** Begge har 0 rækker i hele basen;
    flash har en frontend-indgang, garanteret salg har ingen skriver overhovedet. Enten
    færdiggøres de, eller også fjernes koden.
-8. **Skal `min_increment` respekteres eller fjernes?** Kolonnen skrives men læses aldrig;
+7. **Skal `min_increment` respekteres eller fjernes?** Kolonnen skrives men læses aldrig;
    `getMinimumAuctionBid` bruger hardkodet +1.
 
 ---
