@@ -935,6 +935,9 @@ test('CodeRabbit severity is read only from its explicit header',()=>{
  assert.equal(codeRabbitSeverity('**Major** · **Functional Correctness**'),'P1');
  assert.equal(codeRabbitSeverity('**Critical** · **Security**'),'P0');
  assert.equal(codeRabbitSeverity('Minor in an ordinary paragraph'),null);
+ // #7358 (CodeQL #383): indlejrede/ufuldstændige tags renses helt.
+ assert.equal(codeRabbitSeverity('**<<b>img src=x>Major** · **Security**'),'P1');
+ assert.equal(codeRabbitSeverity('**<sc<script>ript> Minor** · **Docs**'),'P2');
 });
 test('night CodeRabbit preserves owner P2 follow-up policy without changing normal gate',()=>{
  const r=evaluateCodeRabbitNight(nightInput({data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD,reviewId:1,rabbitSeverity:'P2'}]}),rabbitReviews:[nightReview({body:'**Actionable comments posted: 1**'})]}));
