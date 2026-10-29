@@ -58,7 +58,6 @@ Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note)
 | Catch-up via racing (`race-day-catchup`) | dormant | `race_day_catchup_enabled` | [TRAINING_RULES](TRAINING_RULES.md) | #6950 | 2026-10-25 | Ejer, med Udvikling 2.0. |
 | Development curve B (level and potential drive development, not age) (`development-curve-b`) | building | `development_curve_b` | [TRAINING_RULES](TRAINING_RULES.md) | #3564 | 2026-10-29 | Off 29/10: mur over blødt loft (#7316). |
 | Train now B (the click settles the rider's whole known date) (`train-now-whole-day`) | building | - | [TRAINING_RULES](TRAINING_RULES.md) | #6461 | 2026-10-26 | PR #7191 åben; flag seedes off af migrationen. Ejer-go. |
-| Training catalog v3 (`training-catalog-v3`) | building | `training_catalog_v3` | [TRAINING_RULES](TRAINING_RULES.md) | #5319 | 2026-10-29 | Off; tænding + migration er ejer-go. |
 
 ## academy
 
