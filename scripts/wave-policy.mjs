@@ -734,7 +734,7 @@ export function stopWaveWatch(wave, observedBootId) {
     const pid = wave.watchPid;
     if (!Number.isSafeInteger(pid) || pid < 1 || !/^\d+$/.test(wave.watchStarted || '')) throw Error('Unverified watch identity; marker retained');
     execFileSync('pwsh', ['-NoProfile', '-Command',
-      '$p = Get-Process -Id ' + pid + ' -ErrorAction SilentlyContinue; if ($p) { if ($p.StartTime.ToUniversalTime().Ticks.ToString() -ne ' + "'" + wave.watchStarted + "'" + ') { throw "Watch identity changed" }; Stop-Process -InputObject $p -ErrorAction Stop; $p.WaitForExit() }'], { timeout: 15000 });
+      '$p = Get-Process -Id ' + pid + ' -ErrorAction SilentlyContinue; if ($p) { if ($p.StartTime.ToUniversalTime().Ticks.ToString() -ne ' + "'" + wave.watchStarted + "'" + ') { throw "Watch identity changed" }; Stop-Process -InputObject $p -ErrorAction Stop; $p.WaitForExit() }; exit 0'], { timeout: 15000 });
   }
 }
 

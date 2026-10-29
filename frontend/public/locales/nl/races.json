@@ -555,7 +555,7 @@
         "about": "Voorspelling van de motor: de ontsnapping blijft ongeveer {k} op {n} keer weg.",
         "under": "Voorspelling van de motor: de ontsnapping blijft minder dan {k} op {n} keer weg.",
         "over": "Voorspelling van de motor: de ontsnapping blijft meer dan {k} op {n} keer weg.",
-        "stage": "Rit {stage}",
+        "stage": "Etappe {stage}",
         "reason": {
           "nobodyChases": "Weinig ploegen hebben een reden om erachteraan te gaan.",
           "fewChase": "Een of twee ploegen hebben meestal een reden om erachteraan te gaan.",
