@@ -42,6 +42,7 @@ Stabile regelnumre; detaljer: `docs/AGENT_RULE_DETAILS.md#regel-N`. Core gælder
 34. **MASTERPLAN ændret:** samme artifact-URL republiceres før slut, aldrig ny. [Artifact-sync](docs/AI_OPS_REFERENCE.md#masterplan-artifact-sync). Codex rører ikke MASTERPLAN.
 35. **Merge-mandat:** Altid ejer-gated, også uden for en merge: UI, spillertekst, spillervendte tal, migrationer, flag-flips, prod-skrivninger, release/deploy/overvågning. Før enhver merge eller merge-anbefaling: læs [AGENT_RULE_DETAILS.md#regel-35](docs/AGENT_RULE_DETAILS.md#regel-35) fuldt. Følg merge-kø/klassifikator, grøn CI/review-gate og uafhængigt diff-review. Ejer-go-markør slettes aldrig; kun ejerens "merge" løfter den. Efter 2. Codex-reviewrunde blokerer kun spillerdata/penge/sikkerhed/prod-nedbrud; øvrige fund i ét opfølgningsissue.
 36. **Teknisk design + målt baseline før byg:** DB/motor/samtidighed/ydelse kræver read-only gennemgang og lokal PG17-baseline før første PR; højst 2 stablede drafts; efter 4 t uden resultat stop med status, ingen polling. [Detaljer](docs/AGENT_RULE_DETAILS.md#regel-36).
+37. **Byggestop aktivt (#7336, ejer 29/10):** byg KUN issues i `scripts/build-stop.json` (fase 1-listen, åbne PR'er fra 29/10, brand). Brand = live hos spillerne og forkert; Claude klassificerer, ejeren har veto. Nyt → `triage:new`. Færdig = de seks trin. [Design](docs/superpowers/specs/2026-10-29-foelg-til-doers-design.md).
 
 ## Sådan deler du arbejdet op
 
