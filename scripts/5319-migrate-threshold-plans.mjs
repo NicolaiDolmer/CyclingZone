@@ -7,7 +7,7 @@
 // til at træne noget andet end i går. "Bevar evnerne" (samme regel som 14/8).
 //
 // Hvad der flyttes (kun rytterens EGNE rækker):
-//   · training_plans.focus = 'threshold'           → 'itt_long'
+//   · training_plans.focus = 'threshold'           → 'itt_long' (kun aktiv sæson)
 //   · training_week_plans (rider_id sat): ugedagens session og slots 'threshold' → 'itt_long'
 // Holdrækker (rider_id IS NULL) gælder flere ryttere og bliver.
 // Træningsgrupper (Codex-fund): en rytter der FØLGER en gruppe har gruppens uge
@@ -161,7 +161,13 @@ async function main() {
   const { createClient } = await import("@supabase/supabase-js");
   const db = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 
-  const plans = await fetchAll(() => db.from("training_plans").select("id, rider_id, focus").eq("focus", FROM_SESSION).order("id"));
+  // Kun den aktive sæsons planer: afsluttede sæsoners rækker er historik
+  // (prod 29/10: 691 af 845 Tærskel-planer for tt/gc lå i S1-S4).
+  const { data: season, error: seasonError } = await db.from("seasons").select("id").eq("status", "active").maybeSingle();
+  if (seasonError) throw new Error(seasonError.message);
+  if (!season?.id) throw new Error("Ingen aktiv sæson: intet at migrere.");
+  const plans = await fetchAll(() => db.from("training_plans").select("id, rider_id, focus")
+    .eq("focus", FROM_SESSION).eq("season_id", season.id).order("id"));
   const weekPlans = await fetchAll(() => db.from("training_week_plans").select("id, rider_id, days, updated_at").not("rider_id", "is", null).order("id"));
   const riderIds = [...new Set([...plans, ...weekPlans].map((r) => r.rider_id).filter(Boolean))];
   const ridersById = new Map();
