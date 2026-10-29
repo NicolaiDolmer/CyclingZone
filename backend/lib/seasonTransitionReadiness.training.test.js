@@ -198,16 +198,31 @@ for (const scenario of ['complete', 'pending', 'partial', 'missing', 'read_error
 // #6924: before the evening run is due on the final date, unsettled training
 // defers to the evening run (which now also settles a just-completed season).
 const at18 = new Date('2026-10-25T17:00:00Z'); // 18:00 Copenhagen
-for (const scenario of ['missing', 'pending', 'partial']) {
-  test(`#6924: 25/10 18:00 ${scenario} defers to the evening run instead of blocking`, async () => {
-    if (scenario === 'missing') await db.exec('DELETE FROM training_date_work');
-    else await db.query('UPDATE training_date_work SET status=$1 WHERE team_id=$2', [scenario, 'b']);
+for (const scenario of ['one missing', 'all missing']) {
+  test(`#6924: 25/10 18:00 ${scenario} registration defers to the evening run instead of blocking`, async () => {
+    await db.exec(`DELETE FROM training_date_work${scenario === 'all missing' ? '' : " WHERE team_id='b'"}`);
     const result = await assess(client(), { now: at18 });
     assert.equal(result.blocked, false);
     assert.equal(result.deferred, true);
     assert.equal(result.tick_date, '2026-10-25');
     assert.ok(result.blockers.some(row => row.team_id === 'b'));
     assert.match(result.detail, /2026-10-25.*kl\. 20/);
+  });
+}
+// Codex P1 on #7143: registered work froze its opening condition before the
+// season-start resets, so it must settle before the season ends (see
+// trainingFinalDateReset6924.integration.test.js for the live RPC behaviour).
+for (const status of ['pending', 'partial']) {
+  test(`#6924: 25/10 18:00 registered ${status} work still blocks, also next to a missing registration`, async () => {
+    await db.query('UPDATE training_date_work SET status=$1 WHERE team_id=$2', [status, 'b']);
+    const alone = await assess(client(), { now: at18 });
+    assert.equal(alone.blocked, true);
+    assert.equal(alone.deferred, undefined);
+    assert.ok(alone.detail.includes(` b: ${status}`), alone.detail);
+    await db.exec(`DELETE FROM training_date_work WHERE team_id='a'`);
+    const mixed = await assess(client(), { now: at18 });
+    assert.equal(mixed.blocked, true);
+    assert.ok(mixed.detail.includes(' a: missing_registration'), mixed.detail);
   });
 }
 test('#6924: settled at 18:00 is not deferred; 19:59 still defers; 20:00 and the next day require proof', async () => {

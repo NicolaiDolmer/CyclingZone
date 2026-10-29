@@ -49,18 +49,27 @@ den samme som gatens (`loadFinalTrainingDate`). Præcis én afregning sikres af 
 varige arbejde: `complete`/`needs_reconciliation` springes over, og kvitteringer er
 pr. løbsdag.
 
-Afregningen ser sæsonen, som den var ved skæringstidspunktet: sæsonafslutningens claim
-(`season_end_claims.claimed_at`), ellers transitionens `end_date`, ellers datoens slut.
+Afregningen ser sæsonen, som den var ved skæringstidspunktet: det tidligste af
+sæsonafslutningens claim (`season_end_claims.claimed_at`) og transitionens eget
+tidspunkt (`meta.transition_at` på transitionens `admin_log`-rækker med
+`meta.from_season_id`), ellers datoens slut. `seasons.end_date` kan ikke bruges: kolonnen
+er en `DATE` og mister klokkeslættet.
 Holdets løbsdage følger puljen i sæsonens `season_standings` (op/nedrykning skriver
 `teams.league_division_id` om). Hold parkeret af sæsonafslutningen afregnes for datoen.
 Ryttere oprettet efter skæringstidspunktet og hold startet eller vendt tilbage efter det
 hører til den nye sæson. Ryttere, der forlader holdet ved skiftet (frigivet eller
 pensioneret) før aftenkørslen, afregnes ikke på datoen.
 
-Gaten er lempet tilsvarende: på selve sidste dato før kl. 20 blokerer uafregnet træning
-ikke længere. Resultatet er `deferred` med dato og hold, og sæsonen kan afsluttes når
-som helst den dag. Fra kl. 20 og alle senere dage kræves bevis som før, fordi uafregnet
-arbejde så betyder en fejl i kørslen. Læsefejl og manglende kalender fejler fortsat lukket.
+Gaten er lempet tilsvarende: på selve sidste dato før kl. 20 blokerer hold uden
+registreret arbejde (`missing_registration`) ikke længere. Resultatet er `deferred` med
+dato og hold, og sæsonen kan afsluttes når som helst den dag. Registreret arbejde, der
+ikke er afregnet (`pending`/`partial`, fx efter et tryk på Træn nu), blokerer fortsat:
+det frøs rytternes starttilstand før sæsonstartens form- og træthedsnulstilling, og
+`commit_training_date_tick` ville bagefter sætte dem i karantæne
+(`unsafe_current_state`). Aftenkørslen registrerer de udskudte hold efter skiftet, så
+deres starttilstand er den nulstillede, og datoens træning lægges oven på den. Fra kl. 20
+og alle senere dage kræves bevis som før, fordi uafregnet arbejde så betyder en fejl i
+kørslen. Læsefejl og manglende kalender fejler fortsat lukket.
 
 ## Kompensationsinfrastruktur #6061 (#6219, verificeret 6/10)
 

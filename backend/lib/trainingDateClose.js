@@ -51,10 +51,16 @@ function instantWithin(value, { start, end }) {
  * season-end gate (assessFinalTrainingDateSettlement) lets the season end before
  * the date is settled. Older dates stay historical (quarantined for review).
  *
- * `cutoff` is when the season stopped being the game's season: the season-end
- * claim, else a transition's end_date, else the date's own end. Riders created and
- * teams started or returned after it (new-season intake and teams) belong to the
- * next season, not to this final date.
+ * `cutoff` is when the season stopped being the game's season: the earliest of the
+ * season-end claim and the transition's own instant, else the date's own end.
+ * Riders created and teams started or returned after it (new-season intake and
+ * teams) belong to the next season, not to this final date.
+ *
+ * The transition instant is read from its admin_log rows (seasonTransition.js
+ * writes `meta.transition_at` on its start anchor and on its audit row, both with
+ * `meta.from_season_id`). seasons.end_date cannot carry it: the column is a DATE,
+ * so a transition that bypasses season-end (no claim) would otherwise fall back to
+ * midnight (Codex P1 on #7143).
  */
 export async function loadJustCompletedFinalTrainingDate({ supabase, today, dueEnd }) {
   const [season] = await checked(supabase.from('seasons').select('id,number,start_date,end_date,status')
@@ -62,9 +68,15 @@ export async function loadJustCompletedFinalTrainingDate({ supabase, today, dueE
   if (season?.status !== 'completed') return null;
   const tickDate = await loadFinalTrainingDate({ supabase, seasonId: season.id });
   if (!tickDate || tickDate > dueEnd || tickDate < previousCivilDate(today)) return null;
-  const claim = await checked(supabase.from('season_end_claims').select('claimed_at').eq('season_id', season.id).maybeSingle(), 'season end claim');
+  const [claim, transitionRows] = await Promise.all([
+    checked(supabase.from('season_end_claims').select('claimed_at').eq('season_id', season.id).maybeSingle(), 'season end claim'),
+    // Earliest first: a retried transition's first attempt already started the cutover.
+    checked(supabase.from('admin_log').select('meta').contains('meta', { from_season_id: season.id })
+      .order('created_at', { ascending: true }).range(0, 19), 'season transition log'),
+  ]);
   const bounds = trainingDateBounds(tickDate);
-  const marks = [claim?.claimed_at, season.end_date].map(value => instantWithin(value, bounds)).filter(Boolean);
+  const marks = [claim?.claimed_at, ...(transitionRows ?? []).map(row => row.meta?.transition_at)]
+    .map(value => instantWithin(value, bounds)).filter(Boolean);
   const cutoff = marks.length ? new Date(Math.min(...marks.map(Number))) : bounds.end;
   return { season, tickDate, cutoff };
 }

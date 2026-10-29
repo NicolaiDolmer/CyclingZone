@@ -369,6 +369,9 @@ export async function loadFinalTrainingDate({ supabase, seasonId }) {
  * a season that has just left `active` (loadTrainingDateIndex). So on the final
  * date itself, before the evening run is due, unsettled training no longer
  * blocks: the result is `deferred` and the season can end at any time that day.
+ * That holds only while no team has registered work for the date: registered
+ * pending/partial work (a manager's press) still blocks, because its frozen opening
+ * condition predates the season-start resets (see the gate below).
  * From the evening run's hour, and on any later day, proof is required as before:
  * by then unsettled work means the run failed, not that it has yet to run.
  */
@@ -421,7 +424,12 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
     blockers.push({ team_id: team.id, reason: 'missing_registration' });
   }
   // #6924: today's final date is not due yet; the evening run settles it after season-end.
-  if (blockers.length && tickDate === copenhagenDateString(now) && copenhagenHour(now) < TRAINING_DATE_SETTLEMENT_HOUR) {
+  // Only unregistered teams defer. Registered pending/partial work froze its opening
+  // condition before the season-start form/fatigue resets, so settling it after them
+  // would quarantine those riders (commit_training_date_tick: unsafe_current_state).
+  // It must settle first, as before #6924.
+  if (blockers.length && blockers.every(row => row.reason === 'missing_registration') &&
+      tickDate === copenhagenDateString(now) && copenhagenHour(now) < TRAINING_DATE_SETTLEMENT_HOUR) {
     return { blocked: false, deferred: true, tick_date: tickDate, blockers,
       detail: `Træning ${tickDate} er ikke afregnet endnu (${blockers.length} hold). Aftenkørslen kl. ${TRAINING_DATE_SETTLEMENT_HOUR} afregner den, også efter sæsonafslutningen.` };
   }

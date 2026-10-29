@@ -389,6 +389,7 @@ function memoryClient(db) {
         eq(key, value) { filters.push(row => row[col(key)] === value); return query; },
         in(key, values) { filters.push(row => values.includes(row[col(key)])); return query; },
         is(key) { filters.push(row => row[col(key)] == null); return query; },
+        contains(key, value) { filters.push(row => Object.entries(value).every(([k, v]) => row[key]?.[k] === v)); return query; },
         not(key) { filters.push(row => row[col(key)] != null); return query; },
         gte(key, value) { filters.push(row => row[col(key)] != null && time(row[col(key)]) >= time(value)); return query; },
         lt(key, value) { filters.push(row => row[col(key)] != null && time(row[col(key)]) < time(value)); return query; },
@@ -441,6 +442,7 @@ function cutoverWorld() {
       { season_id: 's4', team_id: 'P', league_division_id: 'pool-2' },
     ],
     season_end_claims: [],
+    admin_log: [],
     training_date_work: [],
   };
   const settled = [], quarantined = [];
@@ -543,12 +545,40 @@ test('#6924: only the latest completed season, while its final date is due and a
   assert.deepEqual(await load('2026-10-26T23:00:00Z'), []);
   const final = (await loadTrainingDateIndex({ supabase: options.supabase, now: at('2026-10-25T19:00:00Z') })).jobs.find(job => job.finalSeasonDate);
   assert.equal(final.finalSeasonDate.cutoff.toISOString(), '2026-10-25T17:00:00.000Z', 'the season-end claim');
-  // A forced transition without season-end leaves no claim: its end_date instant is the cutoff.
+  // Codex P1 on #7143: seasons.end_date is a DATE column, so a transition at 18:30 is
+  // stored as the bare date. Without a claim or transition log that is the date's own end.
   db.season_end_claims.length = 0;
-  db.seasons.find(row => row.id === 's4').end_date = '2026-10-25T17:30:00Z';
-  const window = { supabase: options.supabase, today: FINAL, dueEnd: FINAL };
-  assert.equal((await loadJustCompletedFinalTrainingDate(window)).cutoff.toISOString(), '2026-10-25T17:30:00.000Z');
-  // A planned date-only end_date is not an instant: the date's own end.
   db.seasons.find(row => row.id === 's4').end_date = FINAL;
+  const window = { supabase: options.supabase, today: FINAL, dueEnd: FINAL };
   assert.equal((await loadJustCompletedFinalTrainingDate(window)).cutoff.toISOString(), '2026-10-25T23:00:00.000Z');
+  // A forced transition without season-end: its persisted admin_log instant is the cutoff
+  // (start anchor and audit row both carry meta.transition_at; other seasons' rows do not count).
+  db.admin_log.push(
+    { created_at: '2026-10-25T17:30:00Z', meta: { source: 'season_transition_phase', status: 'started', from_season_id: 's4', transition_at: '2026-10-25T17:30:00.000Z' } },
+    { created_at: '2026-10-25T17:30:00Z', meta: { from_season_id: 's4', to_season_id: 's5', transition_at: '2026-10-25T17:30:00.000Z' } },
+    { created_at: '2026-10-25T16:00:00Z', meta: { from_season_id: 's3', transition_at: '2026-10-25T16:00:00.000Z' } },
+  );
+  assert.equal((await loadJustCompletedFinalTrainingDate(window)).cutoff.toISOString(), '2026-10-25T17:30:00.000Z');
+  // With both, the earlier instant wins; an instant outside the final date is ignored.
+  db.season_end_claims.push({ season_id: 's4', claimed_at: '2026-10-25T17:00:00Z' });
+  assert.equal((await loadJustCompletedFinalTrainingDate(window)).cutoff.toISOString(), '2026-10-25T17:00:00.000Z');
+  db.season_end_claims.length = 0;
+  db.admin_log.forEach(row => { if (row.meta.from_season_id === 's4') row.meta.transition_at = '2026-10-26T09:00:00.000Z'; });
+  assert.equal((await loadJustCompletedFinalTrainingDate(window)).cutoff.toISOString(), '2026-10-25T23:00:00.000Z');
+});
+
+test('#6924: a forced transition at 18:30 without season-end keeps its cutoff in the evening run', async () => {
+  __resetNormalizedTrainingDateCacheForTests();
+  const { db, settled, options, endSeasonAndTransition } = cutoverWorld();
+  endSeasonAndTransition();
+  // No season-end claim; end_date as the DATE column stores it; the transition's own log.
+  db.season_end_claims.length = 0;
+  db.seasons.find(row => row.id === 's4').end_date = FINAL;
+  db.admin_log.push({ created_at: '2026-10-25T17:30:00Z', meta: { from_season_id: 's4', to_season_id: 's5', transition_at: '2026-10-25T17:30:00.000Z' } });
+  // Parked by the transition (after its instant) still trains; a team created after it does not.
+  db.teams.find(row => row.id === 'P').parked_at = '2026-10-25T17:31:00Z';
+  db.teams.push({ id: 'L', league_division_id: 'pool-2', is_ai: true, created_at: '2026-10-25T18:00:00Z' });
+  db.riders.push({ id: 'l1', team_id: 'L', is_retired: false, created_at: '2026-10-25T18:00:00Z' });
+  await runNormalizedTrainingDateSweep({ ...options, now: at('2026-10-25T19:00:00Z') });
+  assert.deepEqual(settled.map(row => row.key).sort(), [`A:s4:${FINAL}:40`, `B:s4:${FINAL}:41`, `P:s4:${FINAL}:41`]);
 });
