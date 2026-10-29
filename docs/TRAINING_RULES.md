@@ -359,7 +359,8 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
   billige, de sidste point er dyre, og forskellen mellem lavt og højt niveau er større end i dag.
 - **Blødt loft fra potentialet (D1b, S2):** rolleklassens loft fordeler niveauet over evnerne,
   potentialet skalerer det. Tæt på det bløde loft aftager fremdriften glidende (ingen mur);
-  en evne over sit bløde loft står stille og falder aldrig.
+  over det bløde loft går en trænet evne endnu langsommere, men står aldrig stille før
+  rolleklassens hårde loft (#7316, også på løbsdage). Den falder aldrig.
 - **Belastningsevne:** de helt unge tåler ikke fuld træning og går langsommere på samme niveau.
   Belastningen stiger glidende til fuld og står derefter fast. Alder giver aldrig ekstra fart.
 - **Potentiale = fart:** uændret gennem træningsscorens talent-led.
