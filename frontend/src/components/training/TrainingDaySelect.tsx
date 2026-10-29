@@ -18,10 +18,11 @@ import {
   DAY_TYPES_WITHOUT_SESSION,
   SKILL_SESSIONS,
   TRAINING_LEVELS,
-  TRAINING_SESSIONS_BY_LEVEL,
+  sessionsByLevelFor,
   dayTypeForProgram,
   sessionForProgram,
 } from "../../lib/trainingDayTypes.js";
+import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js";
 import { CheckIcon, ChevronDownIcon } from "../ui/icons/index.jsx";
 
 export type DayPlan = { focus?: string | null; intensity?: string | null } | null | undefined;
@@ -61,6 +62,7 @@ export default function TrainingDaySelect({
   justSaved?: boolean;
 }) {
   const { t } = useTranslation("training");
+  const sessionsByLevel = sessionsByLevelFor({ catalogV3: useTrainingCatalogV3() }) as Record<string, readonly string[]>; // #5319
   const value = dayChoiceForPlan(plan);
   const [saved, setSaved] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -106,7 +108,7 @@ export default function TrainingDaySelect({
             </optgroup>
             {(TRAINING_LEVELS as readonly string[]).map((level) => (
               <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
-                {((TRAINING_SESSIONS_BY_LEVEL as Record<string, readonly string[]>)[level] ?? []).map((session) => (
+                {(sessionsByLevel[level] ?? []).map((session) => (
                   <option key={session} value={session}>
                     {t(`dayPanel.session_${session}`)}
                   </option>

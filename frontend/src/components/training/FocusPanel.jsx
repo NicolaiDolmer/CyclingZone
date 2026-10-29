@@ -35,6 +35,7 @@ import {
   sessionGroupsForDayType,
 } from "../../lib/trainingDayTypes.js";
 import { focusPanelRows, hasAnySignal, hasAnyPerSeason, FOCUS_SIGNAL } from "../../lib/trainingFocus.js";
+import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js"; // #5319
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import RiderBadges from "../rider/RiderBadges.jsx";
 import { Modal, Button } from "../ui";
@@ -90,6 +91,7 @@ export default function FocusPanel({
 }) {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
+  const catalogV3 = useTrainingCatalogV3();
   const riderName = rider ? `${rider.firstname} ${rider.lastname}` : "";
 
   // Den gemte plan oversættes til modellen ved åbning. En umigreret plan (fx
@@ -120,12 +122,12 @@ export default function FocusPanel({
   const sessionNote = (session) => t(`dayPanel.sessionNote_${session}`, { defaultValue: "" });
 
   const needsSession = draftDayType != null && !DAY_TYPES_WITHOUT_SESSION.includes(draftDayType);
-  const groups = sessionGroupsForDayType(draftDayType);
+  const groups = sessionGroupsForDayType(draftDayType, { catalogV3 });
 
   // Rækkerne bygges kun for de sessioner den valgte dagstype tilbyder, men
   // signal/point-kolonnerne skal afgøres af HELE panelet — ellers kan en
   // kolonne komme og gå mens man klikker rundt mellem dagstyper.
-  const allRows = focusPanelRows({ trainability, activeFocus: draftSession, assistantFocus, perSeason });
+  const allRows = focusPanelRows({ trainability, activeFocus: draftSession, assistantFocus, perSeason, catalogV3 });
   const rowByFocus = new Map(allRows.map((row) => [row.focus, row]));
   const showSignal = hasAnySignal(allRows);
   const showPerSeason = hasAnyPerSeason(allRows);
@@ -149,7 +151,7 @@ export default function FocusPanel({
   // en for spilleren — trin 2 står tomt, og Gem er deaktiveret indtil han vælger.
   function chooseDayType(dayType) {
     setDraftDayType(dayType);
-    const sessions = sessionGroupsForDayType(dayType).flatMap((g) => g.sessions);
+    const sessions = sessionGroupsForDayType(dayType, { catalogV3 }).flatMap((g) => g.sessions);
     setDraftSession(sessions.includes(draftSession) ? draftSession : null);
   }
 

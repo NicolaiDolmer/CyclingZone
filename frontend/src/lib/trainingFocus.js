@@ -9,7 +9,7 @@
 // flade, og de kommer fra samme model (et tag og en rate). En <select> kan bære
 // ét ord pr. option. En række kan bære en kolonne mere, hver gang der kommer en.
 
-import { TRAINING_FOCUS_ABILITIES, TRAINING_FOCUS_KEYS } from "./training.js";
+import { TRAINING_FOCUS_ABILITIES, TRAINING_FOCUS_ABILITIES_V3, TRAINING_FOCUS_KEYS } from "./training.js";
 
 // Hvad panelet siger om et fokus' egnethed. TRE værdier, ikke backendens tre —
 // `limited` oversættes bevidst til "ingen påstand", se focusSignal nedenfor.
@@ -55,10 +55,14 @@ export function focusSignal(level) {
 //                    grund til at panelet er en tabel og ikke en liste.
 //
 // Returnerer [{ focus, abilities, active, isAssistantDefault, signal, perSeason }].
-export function focusPanelRows({ trainability, activeFocus = null, assistantFocus = null, perSeason } = {}) {
-  return TRAINING_FOCUS_KEYS.map((focus) => ({
+export function focusPanelRows({ trainability, activeFocus = null, assistantFocus = null, perSeason, catalogV3 = false } = {}) {
+  // #5319: med v3 (flag training_catalog_v3) kommer de nye sessioner med, og
+  // Tærskel viser sine v3-evner. Off = dagens rækker, uændret.
+  const keys = catalogV3 ? Object.keys(TRAINING_FOCUS_ABILITIES_V3) : TRAINING_FOCUS_KEYS;
+  const table = catalogV3 ? TRAINING_FOCUS_ABILITIES_V3 : TRAINING_FOCUS_ABILITIES;
+  return keys.map((focus) => ({
     focus,
-    abilities: TRAINING_FOCUS_ABILITIES[focus] ?? [],
+    abilities: table[focus] ?? [],
     active: focus === activeFocus,
     // Kun relevant når rytteren IKKE har et eget valg: assistenten overskriver
     // aldrig en managers fokus (server-håndhævet, #1894 variant 3).

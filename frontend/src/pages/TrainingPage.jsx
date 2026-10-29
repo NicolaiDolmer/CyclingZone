@@ -23,14 +23,16 @@ import { riderOverallRating } from "../lib/riderRating.js";
 import { TRAINING_INTENSITIES, injuryTimeLeft, injuryBadgeMessage, WEEKDAY_KEYS, weekdayKeyForDate } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
-  SESSION_INTENSITY,
+  // #5319: v3-sessionerne GENKENDES altid (inert med flaget off); listerne er flag-styrede.
+  SESSION_INTENSITY_V3 as SESSION_INTENSITY,
+  sessionsByLevelFor,
   dayTypeForProgram,
   sessionForProgram,
   DAY_TYPES_WITHOUT_SESSION,
   TRAINING_LEVELS,
-  TRAINING_SESSIONS_BY_LEVEL,
   SKILL_SESSIONS,
 } from "../lib/trainingDayTypes.js";
+import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.js";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
@@ -423,6 +425,7 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inlin
 
 export default function TrainingPage() {
   const { t } = useTranslation("training");
+  const catalogV3 = useTrainingCatalogV3(); // #5319
 
   const tTypes = useTranslation("riderTypes").t;
 
@@ -1865,7 +1868,7 @@ export default function TrainingPage() {
         </optgroup>
         {TRAINING_LEVELS.map((level) => (
           <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
-            {TRAINING_SESSIONS_BY_LEVEL[level].map((k) => (
+            {sessionsByLevelFor({ catalogV3 })[level].map((k) => (
               <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
             ))}
           </optgroup>
