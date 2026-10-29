@@ -34,6 +34,8 @@
 
 **Ejerens mål 31/12:** 2.000 kr. MRR og 200 aktive/7d. Aktuelle målinger læses i [GROWTH_STACK](GROWTH_STACK.md); gamle målinger kopieres ikke her.
 
+**Markedsføring 3 gange om ugen (ejer 29/10):** mandag tal og ugens plan · onsdag ét opslag i et fællesskab (Reddit, Hattrick, PCM-Discord; det største hop var r/procyclingmanager 29/6) · fredag indhold/SEO. Claude forbereder udkast og tal, ejeren poster. Markedsføring uden kode er ikke omfattet af byggestoppet.
+
 - S5-kommunikation pr. målgruppe (GDD D-005), annoncetest #2759 efter ejerens budget-go.
 - Pro-sporet #2806: rytterhistorik, gemte filtre og /pro; afstem leveret scope før næste trin.
 - Fornyelser i marts: fastholdelsesplan fra januar.
