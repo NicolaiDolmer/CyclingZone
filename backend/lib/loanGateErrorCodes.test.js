@@ -4,8 +4,8 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// Regressions-anker for lånespærrens fejlkoder (i18n-nøgler). Fil omdøbt fra
-// auctionEntryGate.routes.test.js da auktions-spærren blev fjernet (#7336).
+// Regressions-anker for lånespærrens fejlkoder (i18n-nøgler). Overtog filen da
+// auktions-spærren blev fjernet (#7336).
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
