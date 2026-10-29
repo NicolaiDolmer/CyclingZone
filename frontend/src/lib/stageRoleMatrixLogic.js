@@ -164,8 +164,10 @@ export function changedStages(draftMatrix, initialMatrix) {
 // backend/lib/raceRoles.js); listen står her fordi fladen skal kunne tegne
 // vælgeren uden et ekstra kald, og backendens validateStageRoleOverrides er
 // stadig den der afviser alt andet.
+// #7239: co_captain (delt kaptajn, #5981) findes kun i løb der kender rollen; fladen
+// viser den kun dér (RaceTacticsTab: et hold der allerede har en delt kaptajn).
 export const SELECTABLE_ROLES = Object.freeze([
-  "captain", "sprint_captain", "hunter", "helper", "free_role",
+  "captain", "co_captain", "sprint_captain", "hunter", "helper", "luxury_helper", "free_role", // #5982: luksushjaelper
 ]);
 
 // Roller der kun ÉN rytter kan have ad gangen pr. etape. Samme tre som
@@ -173,7 +175,8 @@ export const SELECTABLE_ROLES = Object.freeze([
 // og holdudtagelsens partielle unique-indexes håndhæver — vælges en af dem til
 // en ny rytter, skal den forrige indehaver demoteres i SAMME gem, ellers
 // afvises hele PUT'en med stage_roles_role_overlap.
-export const EXCLUSIVE_ROLES = Object.freeze(["captain", "sprint_captain", "hunter"]);
+// #7239: plus co_captain (højst én delt kaptajn pr. etape, raceStageRolesApi).
+export const EXCLUSIVE_ROLES = Object.freeze(["captain", "sprint_captain", "hunter", "co_captain", "luxury_helper"]); // #5982: hoejst én luksushjaelper
 
 // #4980 — sæt én rytters rolle på ALLE de opgivne etaper ("rollen gælder resten
 // af løbet", ejer 6/9), og demotér en evt. anden indehaver af en eksklusiv rolle

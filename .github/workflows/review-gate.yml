@@ -106,6 +106,7 @@ jobs:
           sparse-checkout: |
             scripts/review-gate.mjs
             scripts/review-gate.test.mjs
+            scripts/lib/review-coderabbit-night.mjs
             .coderabbit.yaml
             .github/
           sparse-checkout-cone-mode: false

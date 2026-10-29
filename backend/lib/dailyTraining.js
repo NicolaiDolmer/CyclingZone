@@ -3,7 +3,7 @@
 // dag-rate = residual-gap × f(age)/daysPerSeason. Over en sæson ≈ gap×e^(−f) ~ L0's gap×(1−f).
 // dailyBudgetBoost kalibreres i scripts/previewDailyTraining.js så peak rammer 27-28 (spec 5.2).
 import { PROGRESSION_CONFIG, seededUnitMixed, youthRateForPotential, roleRateFactor, ROLE_CLASS_RATE } from "./riderProgression.js";
-import { TRAINING_CONFIG, TRAINING_FOCUSES, focusAbilityWeight, smartDefaultFocus } from "./training.js";
+import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight, smartDefaultFocus } from "./training.js";
 import { dayTypeForProgram, RECOVERY_INTENSITY } from "./trainingDayTypes.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
@@ -12,7 +12,7 @@ import { effortDevelopmentMultiplier } from "./raceRoles.js";
 import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js";
 // #3564 kurve B (D-058): rent modul, kun aktivt naar `curveB` sendes med (flag development_curve_b).
 // Under kurven skal `riderQualityMult` vaere alders-neutral; applyDailyTick/applyRaceDevelopmentTick sikrer det.
-import { curveBBase, curveBSoftCeiling } from "./developmentCurveB.ts";
+import { curveBBase, curveBCapSoftness, curveBSoftCeiling } from "./developmentCurveB.ts";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -117,7 +117,7 @@ export function abilityMult(ability, program, cfg = TRAINING_CONFIG) {
   // Kun loebsdags-programmet saetter den; en almindelig plan har den aldrig.
   if (!inFocus && program.offFocus === false) return 0;
   return inFocus
-    ? (cfg.focusGrowthMult[program.intensity] ?? 1) * focusAbilityWeight(program.focus, ability)
+    ? (cfg.focusGrowthMult[program.intensity] ?? 1) * programAbilityWeight(program, ability)
     : cfg.offFocusMult;
 }
 
@@ -450,24 +450,26 @@ export function applyRaceDevelopmentTick({
     const cap = caps?.[ability];
     if (cap != null && current >= cap) continue; // på cap — intet at vinde, budget tabes (ikke omfordelt)
     // #3564: under kurve B gælder det bløde loft også her, som i dailyAbilityDelta
-    // (curveBBase = 0 på eller over loftet, og uden hårdt loft). Ellers kunne en
-    // evne over sit bløde loft få løbsdagens fordelte point.
-    const softCeiling = curveB ? (cap == null ? current : curveBSoftCeiling(cap, potentiale, curveB)) : Infinity;
-    if (current >= softCeiling) continue;
-    score += perAbility;
-    let bar = Number(nextProgress[ability] ?? 0) + perAbility;
+    // (uden hårdt loft giver curveBBase 0). #7316: ingen mur. Over det bløde loft
+    // får evnen samme lille, aftagende restfart som på en træningsdag
+    // (curveBCapSoftness), og først det hårde loft stopper den.
+    if (curveB && cap == null) continue;
+    const softCeiling = curveB ? curveBSoftCeiling(cap, potentiale, curveB) : Infinity;
+    const share = current >= softCeiling ? perAbility * curveBCapSoftness(current, softCeiling, curveB, cap) : perAbility;
+    if (!(share > 0)) continue;
+    score += share;
+    let bar = Number(nextProgress[ability] ?? 0) + share;
     while (
       bar >= 1
       && (gains[ability] ?? 0) < dailyCeiling
       && current + (gains[ability] ?? 0) < Math.min(99, cap ?? 99)
-      && current + (gains[ability] ?? 0) < softCeiling
     ) {
       bar -= 1;
       gains[ability] = (gains[ability] ?? 0) + 1;
     }
     if (gains[ability]) nextAbilities[ability] = current + gains[ability];
     nextProgress[ability] = settleProgressBar({
-      bar, gained: gains[ability] ?? 0, current, cap: Number.isFinite(softCeiling) ? Math.min(cap ?? 99, softCeiling) : cap, dailyCeiling,
+      bar, gained: gains[ability] ?? 0, current, cap, dailyCeiling,
     });
   }
 

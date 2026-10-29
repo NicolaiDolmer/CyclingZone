@@ -528,3 +528,20 @@ test("#6804 P0 (Codex P1) privateMinCellTeamStages: privat graense kraeves, inte
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// #6912: worktrees har ikke noedvendigvis den lokale private taerskelfil.
+test("#6912: privat OneDrive-taerskelfil bruges som standard naar lokal fil mangler", async () => {
+  const { defaultThresholdsPath } = await import("./motorTestport.mjs");
+  const local = path.join("balance-internals", "motor-testport-thresholds.json");
+  const remote = path.join("drive", "CyclingZone-context", local);
+  assert.equal(defaultThresholdsPath({ oneDrive: "drive", exists: (p) => p === remote }), remote);
+  assert.equal(defaultThresholdsPath({ oneDrive: "drive", repoRoot: "repo", exists: (p) => p === path.join("repo", local) || p === remote }), local);
+  assert.equal(defaultThresholdsPath({ oneDrive: null, exists: () => false }), local);
+});
+
+test("#6912: lokal privat taerskelfil findes relativt til repo-root, uanset cwd", async () => {
+  const { defaultThresholdsPath } = await import("./motorTestport.mjs");
+  const local = path.join("balance-internals", "motor-testport-thresholds.json");
+  const shared = path.join("drive", "CyclingZone-context", local);
+  assert.equal(defaultThresholdsPath({ repoRoot: "repo", oneDrive: "drive", exists: p => p === path.join("repo", local) || p === shared }), local);
+});

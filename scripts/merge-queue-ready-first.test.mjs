@@ -101,3 +101,9 @@ test('Exit-Queue lukker et aabent tog med fuld deploy-verifikation (Codex P1 #71
 test('et aabent tog lukkes foer ventetiden paa en udskudt PR (Codex P1 #7104)', () => {
   assert.match(source, /if \(\$script:batchMerged\.Count -gt 0\) \{ Close-OpenTrain \}\n\s*\$fresh = Wait-PrGreen \$n \$WaitPendingMinutes/);
 });
+
+test('merge-kø læser faktisk liga-audit på HEAD trods skipped suite i rollup (#7312)', () => {
+  const script = fileURLToPath(new URL('./test-league-rest-check.ps1', import.meta.url));
+  const res = spawnSync('pwsh', ['-NoProfile', '-File', script], { encoding: 'utf8' });
+  assert.equal(res.status, 0, res.stdout + res.stderr);
+});

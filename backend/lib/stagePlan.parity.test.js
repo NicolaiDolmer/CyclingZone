@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import * as backend from "./stagePlan.ts";
 import * as frontend from "../../frontend/src/components/race/StagePlanModel.ts";
 
-const ROLES = ["captain", "sprint_captain", "helper", "hunter", "free_role"];
+const ROLES = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"];
 const PROFILES = ["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "cobbles", "itt", null];
 const CLIMB_SETS = [
   [],
@@ -33,11 +33,13 @@ test("#7003: samme rute, samme forslag og samme validering over gitteret", () =>
       const triggers = [undefined, ...frontend.allTriggers(route), { at: "kom", kom_index: 99 }, { at: "soon" }];
       for (const role of ROLES) {
         for (const teamHasSprintCaptain of [false, true]) {
-          assert.deepEqual(
-            frontend.suggestStagePlan({ role, route, teamHasSprintCaptain }),
-            backend.suggestStagePlan({ role, route, teamHasSprintCaptain }),
-            `${role} ${profile_type}`,
-          );
+          for (const luxuryHelper of [false, true]) { // #5982: luksushjaelperens standardplan
+            assert.deepEqual(
+              frontend.suggestStagePlan({ role, route, teamHasSprintCaptain, luxuryHelper }),
+              backend.suggestStagePlan({ role, route, teamHasSprintCaptain, luxuryHelper }),
+              `${role} ${profile_type} ${luxuryHelper}`,
+            );
+          }
         }
         // Alle to-leds-kaeder: opgave x opgave x skift-punkt.
         for (const a of backend.STAGE_PLAN_TASKS) {

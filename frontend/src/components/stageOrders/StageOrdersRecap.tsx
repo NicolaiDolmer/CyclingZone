@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RiderLink, Section, SectionHeader } from "../race/stagePageV2/ui.ts";
+import { isTimeTrialNarrative } from "../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { fetchTeamOrders } from "../../lib/tacticsOrdersAdapter.js";
 import { stageOrdersRecap, type StageRolesLike, type TeamOrdersContext } from "./stageOrdersRecap.ts";
 
@@ -52,23 +53,24 @@ export default function StageOrdersRecap({
   );
   if (!recap || !recap.riders.length) return null;
 
+  const timeTrial = isTimeTrialNarrative([], profileType);
   const stanceText = recap.stance === "auto"
     ? t("stageOrders.stanceAuto")
     : t(`tacticsOrders.breakaway.${STANCE_KEYS.has(recap.stance) ? recap.stance : "neutral"}`);
   return (
     <Section aria-label={t("stageOrders.title")}>
       <SectionHeader title={t("stageOrders.title")} meta={t("tacticsOrders.locked")} />
-      <p className="mb-2 text-sm text-cz-2">
+      {!timeTrial && <p className="mb-2 text-sm text-cz-2">
         {t("tacticsOrders.breakawayLabel")}: <span className="font-semibold text-cz-1">{stanceText}</span>
         {!recap.saved && <span className="text-cz-3"> · {t("stageOrders.roleDefaults")}</span>}
-      </p>
+      </p>}
       <ul>
         {recap.riders.map((r) => {
           const tags = [
             r.role && ROLE_KEYS.has(r.role) ? t(`tacticsOrders.roleLabel.${r.role}`) : null,
             t(`tacticsOrders.effort.${EFFORT_KEYS.has(r.effort) ? r.effort : "normal"}`),
-            r.tryBreak ? t("tacticsOrders.tryBreak") : null,
-            r.leadout ? t("tacticsOrders.leadout") : null,
+            !timeTrial && r.tryBreak ? t("tacticsOrders.tryBreak") : null,
+            !timeTrial && r.leadout ? t("tacticsOrders.leadout") : null,
             r.roleDefault ? t("stageOrders.roleDefaultShort") : null,
           ].filter(Boolean);
           return (

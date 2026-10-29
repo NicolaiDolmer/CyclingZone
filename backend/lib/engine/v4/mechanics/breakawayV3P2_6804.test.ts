@@ -64,7 +64,7 @@ test("#6804 P2: den automatiske jagts arbejde foelger interessen, i [0, 1]", () 
 const unchased = (events: readonly TimelineEvent[]) => events.filter((e) => e.type === "breakaway_unchased");
 const caughtTeams = (events: readonly TimelineEvent[]) => events.filter((e) => e.type === "breakaway_caught").flatMap((e) => (e.params.chasing_team_ids as string[] | undefined) ?? []);
 
-test("#6804 P2: v2 og endagsloeb melder aldrig 'ingen jagt-interesse'; v3 er deterministisk", () => {
+test("#6804 P2: v2 og ikke-flade endagsloeb melder aldrig 'ingen jagt-interesse'; v3 er deterministisk", () => {
   for (const name of ["flat-massespurt", "bjerg-selektion", "mur-finale"]) {
     const input = fixture(name);
     for (const gc of [firstStage, oneDay]) {
@@ -72,7 +72,7 @@ test("#6804 P2: v2 og endagsloeb melder aldrig 'ingen jagt-interesse'; v3 er det
       assert.equal(unchased(v2.timeline.events).length, 0, `${name} v2`);
     }
     const v3OneDay = simulateStageV4({ ...input, gc_context: oneDay, rules_revision: "s5_profiles_v3" });
-    assert.equal(unchased(v3OneDay.timeline.events).length, 0, `${name} v3 endagsloeb`);
+    if (input.route.profile_type !== "flat" && input.route.profile_type !== "rolling") assert.equal(unchased(v3OneDay.timeline.events).length, 0, `${name} v3 endagsloeb uden for #6912`);
     const a: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3" }));
     const b: string = JSON.stringify(simulateStageV4({ ...input, gc_context: firstStage, rules_revision: "s5_profiles_v3" }));
     assert.equal(a, b, `${name} deterministisk`);

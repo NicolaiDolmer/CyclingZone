@@ -57,7 +57,7 @@ test("#3310 Auto-select-knappen kalder autoSelect og l√•ses af den delte busy-l√
   assert.match(
     source,
     // #6139: ogsaa laast naar alle holdets ryttere traenede i dag (Train now).
-    /onClick=\{autoSelect\}\s*\n\s*disabled=\{busy( \|\| fullyTrainNowLocked)?\}/,
+    /onClick=\{autoSelect\}\s*\n\s*disabled=\{busy( \|\| fullyTrainNowLocked)?( \|\| data\.withdrawn)?\}/,
     "Auto-select-knappen skal kalde autoSelect() og deaktiveres via den samme busy-variabel som resten af panelet",
   );
 });

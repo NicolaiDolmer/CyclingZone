@@ -31,6 +31,42 @@ export const TRAINING_FOCUS_ABILITIES = Object.freeze({
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUS_ABILITIES));
 
+// ── #5319: træningskatalog v3 (flag training_catalog_v3) ───────────────────
+// Spejl af backend/lib/trainingCatalogV3.js (drift-vagt i backend
+// trainingCatalogV3.test.js). Tabellen ovenfor er URØRT: off = i dag.
+export const V3_NEW_HARD_SESSIONS = Object.freeze([
+  "long_climbs", "lead_out", "itt_short", "itt_long", "cobbled_classic",
+]);
+export const TRAINING_FOCUS_ABILITIES_V3 = Object.freeze({
+  ...TRAINING_FOCUS_ABILITIES,
+  threshold:       Object.freeze(["tempo", "endurance"]),
+  sprint:          Object.freeze(["sprint", "acceleration"]),
+  long_climbs:     Object.freeze(["climbing", "tempo", "endurance"]),
+  lead_out:        Object.freeze(["acceleration", "flat", "positioning"]),
+  itt_short:       Object.freeze(["time_trial", "flat"]),
+  itt_long:        Object.freeze(["time_trial", "endurance"]),
+  cobbled_classic: Object.freeze(["cobblestone", "endurance"]),
+});
+
+// Hvilket katalog visningen følger. Sættes af useTrainingCatalogV3 når
+// /api/feature-flags har svaret; indtil da (og ved fejl) = dagens katalog.
+let displayCatalogV3 = false;
+export function setDisplayCatalogV3(on) {
+  displayCatalogV3 = on === true;
+}
+export function isDisplayCatalogV3() {
+  return displayCatalogV3;
+}
+
+// Evnerne en session træner, i det katalog der gælder for spilleren. En
+// v3-session kendes altid (så en gemt plan aldrig viser tomt), men threshold
+// viser kun v3-evnerne når flaget er on.
+export function focusAbilitiesFor(focus, { catalogV3 = displayCatalogV3 } = {}) {
+  if (!focus) return null;
+  if (catalogV3 || V3_NEW_HARD_SESSIONS.includes(focus)) return TRAINING_FOCUS_ABILITIES_V3[focus] ?? null;
+  return TRAINING_FOCUS_ABILITIES[focus] ?? null;
+}
+
 // Alle gyldige intensiteter inkl. rest (bruges i daglig træning + TrainingFocus).
 // #3762: intensiteten er ikke længere et frit valg — den er en egenskab ved
 // sessionen (se trainingDayTypes.js). Listen bevares fordi ugerytmen (#1895)

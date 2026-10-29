@@ -43,6 +43,7 @@ import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { notifyUser as defaultNotifyUser } from "./notificationService.js";
 import { captureException } from "./sentry.js";
+import { buildContractRosterNotification } from "./contractNoticeRoster.js";
 
 export const CONTRACT_EXPIRED_RELEASE_TYPE = "contract_expired_release";
 
@@ -68,7 +69,7 @@ export function buildContractExpiredReleaseNotification({ riderName, riderId, se
 }
 
 const EXPIRED_RIDER_SELECT =
-  "id, firstname, lastname, team_id, squad, is_academy, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen, is_bank, is_test_account)";
+  "id, firstname, lastname, team_id, squad, is_academy, market_value, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen, is_bank, is_test_account)";
 
 /** Seniortruppen på alle gameplay-hold (menneske + AI). Uændret siden #2744-B/#2847. */
 export async function fetchExpiredSeniorContractRiders({ supabase, seasonNumber }) {
@@ -199,6 +200,7 @@ export async function releaseExpiredContractRiders({
   const toRelease = candidates.filter((r) => !racingIds.has(r.id));
   stats.deferredByRacing = candidates.length - toRelease.length;
 
+  const releasedByTeam = new Map();
   for (const rider of toRelease) {
     try {
       // Concurrency-guard: kun frigør hvis rytteren stadig er på det hold vi læste
@@ -225,18 +227,8 @@ export async function releaseExpiredContractRiders({
       const ownerUserId = rider.team?.user_id;
       const isHumanOwned = Boolean(ownerUserId) && rider.team?.is_ai === false && rider.team?.is_frozen === false;
       if (isHumanOwned) {
-        const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
-        const payload = buildContractExpiredReleaseNotification({
-          riderName, riderId: rider.id, seasonNumber,
-        });
-        try {
-          const res = await notify({ supabase, userId: ownerUserId, ...payload });
-          if (res?.delivered) stats.notified += 1;
-        } catch (err) {
-          stats.notifyFailed += 1;
-          console.error(`  ❌ contract-expired-release-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
-          captureException(err, { tags: { flow: "notifications", stage: "contract-expired-release" }, riderId: rider.id });
-        }
+        if (!releasedByTeam.has(rider.team_id)) releasedByTeam.set(rider.team_id, []);
+        releasedByTeam.get(rider.team_id).push(rider);
       }
     } catch (err) {
       // Rytterens EGEN frigivelse fejlede (DB-update/race-entry-oprydning/listing-luk).
@@ -245,6 +237,18 @@ export async function releaseExpiredContractRiders({
       stats.failed += 1;
       console.error(`  ❌ contract-expiry-release fejlede for rytter ${rider.id}:`, err?.message || err);
       captureException(err, { tags: { flow: "season-transition", stage: "contract-expiry-release" }, riderId: rider.id });
+    }
+  }
+
+  for (const riders of releasedByTeam.values()) {
+    const payload = buildContractRosterNotification({ riders, seasonNumber, released: true });
+    try {
+      const res = await notify({ supabase, userId: riders[0].team.user_id, ...payload });
+      if (res?.delivered) stats.notified += 1;
+    } catch (err) {
+      stats.notifyFailed += 1;
+      console.error("Contract release summary failed:", err?.message || err);
+      captureException(err, { tags: { flow: "notifications", stage: "contract-expired-release" } });
     }
   }
 

@@ -30,8 +30,11 @@
 //      (rider_id, led, opgave, aarsag). Fog of war: ingen tal ud over km.
 //      Opsummeringen efter etapen laeser kun disse events.
 //
-// Uden en stage_plan-ordre returnerer createStagePlanRuntime null, og loopet er
-// byte-identisk med foer.
+// #5982: en luksushjaelper uden gemt plan faar sin standardplan her
+// (mechanics/luxuryHelper5982.ts, samme forslag som fladen viser).
+//
+// Uden en stage_plan-ordre og uden en luksushjaelper returnerer createStagePlanRuntime
+// null, og loopet er byte-identisk med foer.
 
 import type { EffortLevel, EngineState, Entrant, RaceGroup, RouteV2, Segment, TeamOrder, TimelineEvent } from "./engine/v4/types.ts";
 import {
@@ -43,6 +46,7 @@ import {
   type StagePlanRoute,
   type StagePlanTask,
 } from "./stagePlan.ts";
+import { luxuryHelperDefaultPlans } from "./engine/v4/mechanics/luxuryHelper5982.ts"; // #5982
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
@@ -68,7 +72,8 @@ export type StagePlanRuntime = {
   riderIds: string[];
 };
 
-const ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "helper", "hunter", "free_role"]);
+// #7239: delt kaptajn valideres som leder (stagePlan.ts), ikke som fri rolle.
+const ROLES: ReadonlySet<string> = new Set(["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"]);
 
 /** Rutens skift-punkter fra motorens egne vejpunkter (samme index som race_stage_profiles.climbs). */
 export function stagePlanRouteFromV4(route: RouteV2): StagePlanRoute {
@@ -128,6 +133,11 @@ export function createStagePlanRuntime(
       legs.set(riderId, resolveLegs(plan as StagePlanLeg[], planRoute));
     }
   }
+  // #5982: en luksushjaelper uden gemt plan koerer sin standardplan (rollen er en genvej
+  // til etapeplanen). Uden en luksushjaelper i feltet: ingen aendring (byte-identisk).
+  for (const [riderId, plan] of luxuryHelperDefaultPlans(planRoute, entrants, (id) => legs.has(id))) {
+    legs.set(riderId, resolveLegs(plan, planRoute));
+  }
   if (legs.size === 0) return null;
   const riderIds = [...legs.keys()].sort();
   return { legs, current: new Map(riderIds.map((id) => [id, 0])), everInEscape: new Set(), ridden: new Map(riderIds.map((id) => [id, new Set([0])])), riderIds };
@@ -147,6 +157,8 @@ function teamLeaderId(riderId: string, state: EngineState, entrants: Readonly<Re
   const racing = (id: string) => state.riders[id]?.status === "racing";
   const teamIds = Object.keys(entrants).filter((id) => entrants[id].team_id === team && racing(id)).sort();
   return teamIds.find((id) => entrants[id].role === "captain")
+    // #7239: er kaptajnen ude, kører holdet for den delte kaptajn (spec §5, "vejen afgør").
+    ?? teamIds.find((id) => entrants[id].role === "co_captain")
     ?? teamIds.find((id) => entrants[id].role === "sprint_captain")
     ?? null;
 }

@@ -359,7 +359,8 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
   billige, de sidste point er dyre, og forskellen mellem lavt og højt niveau er større end i dag.
 - **Blødt loft fra potentialet (D1b, S2):** rolleklassens loft fordeler niveauet over evnerne,
   potentialet skalerer det. Tæt på det bløde loft aftager fremdriften glidende (ingen mur);
-  en evne over sit bløde loft står stille og falder aldrig.
+  over det bløde loft går en trænet evne endnu langsommere, men står aldrig stille før
+  rolleklassens hårde loft (#7316, også på løbsdage). Den falder aldrig.
 - **Belastningsevne:** de helt unge tåler ikke fuld træning og går langsommere på samme niveau.
   Belastningen stiger glidende til fuld og står derefter fast. Alder giver aldrig ekstra fart.
 - **Potentiale = fart:** uændret gennem træningsscorens talent-led.
@@ -416,6 +417,8 @@ sessionen** (`SESSION_INTENSITY`, `backend/lib/trainingDayTypes.js:71-83`).
 | Aktiv restitution (`recovery`) | ingen | `recovery` | Egen fokus-nøgle `restitution` → kun evnen `recovery`. Sænker træthed, men mindre end hvile |
 | Færdighed (`skill`) | `technique`, `aero`, `loebslaere` | `easy` | Rammes af håndværks-loftet på raten, §2.1 |
 | Træning (`training`) | `endurance` (let) · `tempo` (normal) · `vo2max`, `vo2max_climb`, `vo2max_punch`, `threshold`, `sprint` (hård) | følger sessionen | Niveauet ER intensiteten |
+
+**Katalog v3 (#5319, flag `training_catalog_v3`, seedet off):** fem nye hårde sessioner efter `attack_repeats` (`long_climbs`, `lead_out`, `itt_short`, `itt_long`, `cobbled_classic`); `threshold` træner tempo + endurance (ikke længere enkeltstart), `sprint` får fuld hård vægtsum. Hver ryttertype har præcis to hårde sessioner, alle hårde har samme vægtsum, ingen session træner enkeltstart + tempo. Kilde: `backend/lib/trainingCatalogV3.js` + spec `docs/superpowers/specs/2026-10-29-training-catalog-v3-design.md`. Off = tabellen ovenfor, bit-identisk.
 
 ### 3.1 Intervaldagen er tre pakker, ikke én (#4631, ejer 2/9)
 
@@ -579,9 +582,9 @@ bestyrelses-notifikationer (`.claude/learnings/2026-08-03-ai-rider-recovery-filt
 |---|---|---|
 | Modul | `seasonFatigueReset.js` | `seasonFormReset.js` |
 | Flag / mode | `season_fatigue_reset_enabled` = **on** (sat 26/7 08:59 dansk tid) | `season_form_reset_mode` = **`decay`** (sat 3/8 22:59 dansk tid) |
-| Aktiv mode | `MODE: "full"` - alle ryttere på 0 | mod `decay_target`, med `decay_factor` |
+| Aktiv mode | `MODE: "full"` - alle ryttere på et fælles startniveau over nul (`SEASON_START_FATIGUE`, ejer 27/10, #7282) | mod `decay_target`, med `decay_factor` |
 | Ejer-beslutning | 26/7: valgte "full" selvom harnesset anbefalede `rest_days`/3, fordi princippet "alle starter sæsonen lige" vejede tungere end at AI-hold vandt 3,9 procentpoint af top-10-pladserne | parametrene ligger i `app_config`, ikke i kode |
-| Idempotens | "full" er idempotent (f → 0, 0 → 0), derfor ingen claim-tabel. Låst af test | - |
+| Idempotens | "full" er idempotent (startniveau → startniveau), derfor ingen claim-tabel. Låst af test | - |
 
 Målt i `app_config` 30/8. De øvrige `season_form_reset_*`-parametre står også i `app_config`
 og blev sidst rørt 3/8.
@@ -631,6 +634,8 @@ Ejer-beslutninger 20/10 (B1-B5), spec [`2026-10-20-6984-form-traethed-design.md`
 | Medicin M1 (ejer 20/10): holdets medicinske afdeling forstærker rytterens recovery-evne i restitutionen (kun evne-leddene, ikke gulvet) | `medicalEffects.medicalRecoveryMultiplier`, `conditionModelV2.recoveryV2` |
 | Medicin M2/M3 i træning: lavere trænings-skaderisiko og kortere skade | `conditionModelV2.settleTrainingDateConditionV2` |
 | Medicin-bonus pr. hold: afdelingens niveau og chefens samlede styrke (`effectiveBonus("medical", …)`); hold uden afdeling = ingen effekt; sporet er live i klubben præcis når flaget er on | `medicalEffects.loadTeamMedicalBonus`, `facilityConstants.isTrackEffectLive` |
+
+Sæsonstart (ejer 27/10, #7282): sæsonskiftet efterlader alle ryttere på et fælles startniveau (`SEASON_START_FATIGUE`), ikke nul, så spilleren selv bestemmer formen før første løb (hvile taber, normal holder, hård hæver). Se §5.2.
 
 Konstanterne står i `CONDITION_V2_CONFIG`; målinger og kalibrering kun i `balance-internals/6984/` (hard rule 17). Tænding: S5-start på ordret ejer-go efter harnessen (`backend/scripts/dev/conditionModelV2Harness6984.mjs`).
 
@@ -1062,6 +1067,8 @@ transaktion som den eksisterende RPC. Begge bevarer cutover → hold-låserække
 RPC'er er uændrede. Statuspolling afbryder timeoutede kald og holder ét kald aktivt ad gangen; stop og
 unmount afbryder også. Under backend-før-migration-vinduet bruges kun ved manglende try-RPC (`PGRST202`) den gamle ventende RPC; held-adfærden kræver anvendt migration og opdateret schema-cache.
 
+**Train now = hele dagen, B fase 1 (#6461, bag `training_train_now_whole_day`, slukket).** Med flaget afregner klikket hele datoen for hver rytter, hvis dato er kendt: en rytter uden åbent løbsslot (intet løb, eller løbet er kørt) får alle 5 løbsdage inkl. datoens ene tilstandsafregning. En løbsrytter med et løb, der ikke er kørt, venter som før: træning før løbet ville give ham evner, som løbet læser (en fordel af klik-tidspunktet, I1). Tilstanden skrives stadig én gang pr. rytter pr. dato, og løbet køres på datoens starttilstand. Fælles lås: klikket mærker låserækken (`whole_day_at`) før afregningen, og databasen dropper en udtagelse af en mærket rytter i et løb med en etape tilbage på datoen (`database/2026-10-25-6461-train-now-whole-day.sql`). Løbsrytternes træning i klikket er fase 2 (kræver RPC og den kronologiske dagsmodel fra #6984). Før tænding: løbsstartens autofyld skal bruge de rækker, databasen faktisk skrev (en droppet række må ikke komme med i feltet). Kode: `backend/lib/trainNowWholeDay.js`.
+
 ### 13.3c Fast udbytte pr. dato uanset sæsonens længde (#6711, ejer-go 16/10)
 
 Plan-PR 2 i [`docs/superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md`](superpowers/specs/2026-10-16-5833-foedselsdage-aldring-pension-plan.md).
@@ -1100,6 +1107,7 @@ Alt nedenfor ligger bag `training_tick_per_race_day`, som er **on** i S4 (read-o
 - **Peak-plannerens konsistens (G8).** Optaktsvinduet er målt i kalenderdatoer, men løbsdags-ticket skriver én `training_day_runs`-række pr. løbsdag, altså flere pr. dato. `summarizeLeadupTraining` grupperer derfor rytterens entries pr. dato, og hver dato bidrager med *andelen* af datoens løbsdage han trænede. Flere runs samme dato kan dermed ikke mætte signalet og gøre peak-bonussen gratis. Fokus-fordelingen vægtes på samme måde. Én run pr. dato (flag off) giver præcis den gamle optælling, og det er låst af en test mod den gamle implementering.
 - **Trænings-slot-vagten (G9).** Andels-gaten måler en tilstand og er uændret. Spring-gaten var kalibreret mod én kalenderdags træning mellem to snapshots. På løbsdags-ticket tæller vagten de løbsdags-ticks der faktisk blev kørt i intervallet (medianen pr. hold, trupper talt én gang) og regner dem om til kalenderdags-ækvivalenter via G1-deleren i `trainingRaceDayTick.js`. Spring-loftet skaleres med det tal, dog aldrig under 1, så vagten aldrig bliver mere følsom end i dag. Der divideres bevidst **ikke** med det rå antal ticks: deleren holder sæsonens samlede udvikling uændret, så en normal løbsdato er omtrent én kalenderdags træning, og at dividere med antallet af løbsdage ville gøre vagten blind. Kan tick-tallet ikke læses, droppes spring-gaten for det snapshot (Sentry får besked) i stedet for at fyre en falsk alarm.
 - **Off-season.** Uden en aktiv sæson er en dato **ikke** en træningsdag: intet tick, og dermed heller ikke den restitution der kører i ticket (§5.1), og ingen historik. Rytternes trænings-tilstand står stille, til sæsonskiftets nulstilling (§5.2) og planernes overførsel i `seasonTransition.js` tager over. Begge sweeps logger tilstanden én gang pr. dansk dato og returnerer `offSeason: true`. Day-close-sweepen sætter ikke sin dags-claim, så en sæson der aktiveres senere samme aften stadig kører. Løbsdags-aksen springer ingen løbsdage over hen over hullet, fordi den starter forfra i den nye sæson, og `gameDaySpansByDivision` opfinder ingen træningsdage før sæsonens første løbsdato. Adfærden med en aktiv sæson (S3) er uændret.
+- **Ingen sæsonpause (ejer 26/10, #7282).** Ordret: *"Vi har aftalt, at der ikke er sæsonpause."* Dagen efter forrige sæsons sidste dato hører til den nye sæson. Datoer før den nye sæsons første løbsdato er **rene træningsdatoer**: hver dato er 5 løbsdage uden løb (`BRIDGE_SLOTS_PER_DATE`), ens for alle divisioner. Manageren eget program (slot 1-5), normal træthed og restitution, ungdom som normalt, Træn nu virker. De får negative løbsdagsnumre talt tilbage fra første løbsdato (datoen før er -5..-1), så de aldrig rammer aksen, der starter på 0. Missede brodatoer indhentes automatisk af indexet, præcis én gang pr. hold (nøglen er den samme som på løbsdage). Kvitteringen viser "Aktivitet 1-5" i stedet for løbsdagsnummer. Sæsonskifte-tjekket advarer (gult, ingen spærre) hvis der er dage uden løb mellem to sæsoner. Kode: `trainingDateReadiness.js` (`bridgeGameDays`, `loadSeasonBridgeBounds`), `trainingDateClose.js` (`loadTrainingDateIndex`). Punktet ovenfor (ingen aktiv sæson) gælder stadig kun i selve skiftet.
 
 **Økonomi-aksen (status quo, ingen kodeændring, åben for ejeren).** Kun udviklingen flytter til løbsdagen. Økonomien bliver på kalenderen:
 

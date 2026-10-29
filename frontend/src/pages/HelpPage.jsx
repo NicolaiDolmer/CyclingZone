@@ -163,6 +163,7 @@ const SECTION_DEFS = [
       { id: "contractOnTrade", kind: "text" },
       { id: "extendContract", kind: "text" },
       { id: "freeAgents", kind: "text" },
+      { id: "contractWarnings", kind: "text" },
     ],
   },
   {
@@ -396,6 +397,8 @@ const SECTION_DEFS = [
       { id: "fatigueLimit", kind: "text", flag: "training_fatigue_rules" },
       // #6000: traeningsgrupper, kun naar flaget er taendt for viewereren.
       { id: "trainingGroups", kind: "text", flag: "training_groups" },
+      // #5319: traeningskatalog v3, kun naar flaget er taendt for viewereren.
+      { id: "catalogV3", kind: "text", flag: "training_catalog_v3" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —
@@ -512,6 +515,10 @@ const SECTION_DEFS = [
       // translated copy but no reachable docs; it belongs right after
       // roles, since it's the stage-race-specific extension of them.
       { id: "stageTactics", kind: "text" },
+      // #6746: ét sandt afsnit om indsatstrinnene. Fem trin / tre trin er et par
+      // (HELP_BLOCK_FLAGS.raceSelection, race_day_intention_enabled).
+      { id: "effortSteps", kind: "text" },
+      { id: "effortStepsThree", kind: "text" },
       { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "ordersGc", kind: "text" }, // #6067: orders_gc_v1
@@ -537,6 +544,8 @@ const SECTION_DEFS = [
       { id: "crashesAndIncidents", kind: "text" },
       { id: "timeLimitAndGrupetto", kind: "text" },
       { id: "teamwork", kind: "text" },
+      { id: "teamworkAllOut", kind: "text" }, // #6746: "alt ud" findes kun med intentions-flaget
+      { id: "luxuryHelper", kind: "text" }, // #5982: luksushjaelperen (genvej til etapeplanen)
       { id: "weatherAndCobbles", kind: "text" },
     ],
   },

@@ -47,7 +47,7 @@ import {
   readContractsSort,
   writeSortParams,
   cycleSort,
-  groupByExpiry,
+  groupBySquadAndExpiry,
   effectiveSeasons,
   seasonOptions,
   requestedSeasons,
@@ -102,6 +102,7 @@ export interface ContractsTabRider {
   salary?: number | null;
   contract_end_season?: number | null;
   is_academy?: boolean | null;
+  squad?: string | null;
   [key: string]: unknown;
 }
 
@@ -160,7 +161,7 @@ function riderName(r: ContractsTabRider): string {
 }
 
 export default function ContractsTab({ riders, scouting, seasonYear, onChanged }: Props) {
-  const { t } = useTranslation(["team", "errors"]);
+  const { t } = useTranslation(["team", "errors", "backendMessages"]);
   // resolveApiError tager en løs (key, params) => string; i18nexts TFunction er strengere typet.
   const tr = (key: string, params?: object): string => String(t(key, (params ?? {}) as Record<string, unknown>));
   const [searchParams, setSearchParams] = useSearchParams();
@@ -215,6 +216,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
       const potential = scoutSortValue(scouting.estimateFor(r.id)) as number | null;
       out.push({
         id: r.id,
+        squad: r.squad === "u23" || r.squad === "junior" ? r.squad : r.is_academy ? "academy" : "senior",
         name: riderName(r),
         ovr: Number.isFinite(ovr) ? ovr : null,
         potential: Number.isFinite(potential) ? potential : null,
@@ -231,7 +233,7 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
 
   const ridersById = useMemo(() => new Map(riders.map((r) => [r.id, r])), [riders]);
   const rowsById = useMemo(() => new Map(rows.map((r) => [r.id, r])), [rows]);
-  const groups = base.status === "ready" ? groupByExpiry(rows, base.currentSeason, sort) : [];
+  const groups = base.status === "ready" ? groupBySquadAndExpiry(rows, base.currentSeason, sort) : [];
   const totals = selectionTotals(rows, selection);
 
   // Rensning: en valgt rytter der ikke længere kan forlænges (eller er væk) fjernes.
@@ -514,11 +516,12 @@ export default function ContractsTab({ riders, scouting, seasonYear, onChanged }
         {groups.map((group) => {
           const selectable = group.rows.filter((r) => r.maxSeasons > 0);
           const allChecked = selectable.length > 0 && selectable.every((r) => r.id in selection);
-          const title = group.kind === "expiring"
+          const expiryTitle = group.kind === "expiring"
             ? t("contracts.group.expiring")
             : group.kind === "atCap"
               ? t("contracts.group.atCap")
               : t("contracts.group.season", { season: group.season });
+          const title = `${t(`backendMessages:notif.contractSquad.${group.squad}`)} · ${expiryTitle}`;
           return (
             <div key={group.key} className={group.kind === "atCap" ? "opacity-60" : undefined} data-testid={`contracts-group-${group.key}`}>
               <DataTable

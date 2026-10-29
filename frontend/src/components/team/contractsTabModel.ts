@@ -26,6 +26,7 @@ export const CONTRACTS_DIR_PARAM = "cdir";
 
 export interface ContractRow {
   id: string;
+  squad?: "senior" | "u23" | "junior" | "academy";
   name: string;
   ovr: number | null;
   potential: number | null;
@@ -124,7 +125,7 @@ export function compareRows(a: ContractRow, b: ContractRow, state: SortState): n
 }
 
 export type ContractGroupKind = "expiring" | "season" | "atCap";
-export interface ContractGroup { key: string; kind: ContractGroupKind; season: number | null; rows: ContractRow[] }
+export interface ContractGroup { key: string; kind: ContractGroupKind; season: number | null; rows: ContractRow[]; squad?: ContractRow["squad"] }
 
 /**
  * Gruppér efter udløb (ejer-design 18/10): "Udløber denne sæson" øverst (inkl.
@@ -153,6 +154,16 @@ export function groupByExpiry(rows: ContractRow[], currentSeason: number, sort: 
   }
   if (atCap.length) groups.push({ key: "atCap", kind: "atCap", season: null, rows: atCap.sort(cmp) });
   return groups;
+}
+
+/** Keep expiry urgency first, with a separate selectable group for each squad. */
+export function groupBySquadAndExpiry(rows: ContractRow[], currentSeason: number, sort: SortState): ContractGroup[] {
+  return groupByExpiry(rows, currentSeason, sort).flatMap((group) =>
+    (["senior", "u23", "junior", "academy"] as const).flatMap((squad) => {
+      const members = group.rows.filter((r) => (r.squad ?? "senior") === squad);
+      return members.length ? [{ ...group, key: `${group.key}-${squad}`, squad, rows: members }] : [];
+    }),
+  );
 }
 
 /** Hvor mange sæsoner rytteren faktisk får: det valgte, men aldrig over hans loft. */
