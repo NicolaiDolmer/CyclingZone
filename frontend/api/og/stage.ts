@@ -13,7 +13,11 @@ import { DEMO_STAGES } from "./_lib/demo.ts";
 import { loadFonts } from "./_lib/fonts.ts";
 import { DEFAULT_API_ORIGIN, fetchStageRoute, normalizeStageRoute, type StageRoute } from "./_lib/stageRoute.ts";
 
-export const config = { runtime: "edge" };
+// #7358: Node-runtime, ikke edge. @vercel/og >= 1.0.3 (satori 0.33.5, sikkerhedsrettelse for
+// SVG-escaping, Dependabot #79) importerer node:module i sin edge-build, som Vercels edge
+// afviser ("referencing unsupported modules"). Node-buildet er understøttet, og Vercel
+// anbefaler selv at gå fra edge til Node. Samme Web-handler-form som api/asset-miss.ts.
+export const config = { runtime: "nodejs" };
 
 // En etapes rute ændrer sig sjældent (kun ved en regenerering før løbet), så CDN'et må holde
 // billedet et døgn og servere det gamle mens det fornyes. En fejl caches aldrig.
@@ -29,8 +33,7 @@ function apiOrigin(): string {
   return fromEnv && /^https:\/\//.test(fromEnv) ? fromEnv : DEFAULT_API_ORIGIN;
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  if (request.method !== "GET" && request.method !== "HEAD") return plain(405, "Method not allowed");
+export async function GET(request: Request): Promise<Response> {
   const { searchParams } = new URL(request.url);
   const lang: Lang = searchParams.get("lang") === "da" ? "da" : "en";
 
@@ -65,3 +68,5 @@ export default async function handler(request: Request): Promise<Response> {
     return plain(500, "Could not render image");
   }
 }
+
+export const HEAD = GET;
