@@ -1,5 +1,7 @@
 // #6912: complete-output digests generated before the flat/rolling change.
 // Synthetic riders, frozen proxy routes, AI orders; hashes contain no balance measurements.
+// #6804: v3 hilly/mountain stage-race digests regenerated after the interested-lead ceiling
+// change for those profiles (intended); high_mountain and one-day digests are untouched.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
