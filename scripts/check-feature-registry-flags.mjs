@@ -20,6 +20,11 @@
 //                             validate(), ikke her.
 //   andre states   + flag  -> vaerdien maa IKKE vaere on/true
 //   flag-noegle findes ikke i app_config -> FAIL
+//     UNDTAGEN i pull_request-kontekst (--base-ref): indsaetter PR'ens diff en
+//     database/*.sql netop den noegle i app_config med en vaerdi der IKKE er
+//     on/true, er status PENDING (exit 0, printet) - raekken oprettes foerst af
+//     auto-migrate efter merge (#2642). Paa main/push/cron gaelder FAIL uaendret,
+//     saa en migration der aldrig blev koert stadig fanges (#7344).
 //   verified aeldre end 60 dage -> WARN (exit 0, men printet)
 //
 // Dormante flag (raekken findes bevidst ikke, fx race_engine_v4 hvor fravaer =
@@ -41,6 +46,7 @@
 // et job der ikke har koert `npm ci` - foerste CI-koersel fejlede praecis der:
 // ERR_MODULE_NOT_FOUND i freshness-jobbet, som med vilje ikke installerer
 // dependencies fordi det kun laver fil-sammenligning.
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -68,17 +74,87 @@ export function normalizeFlagValue(raw) {
 }
 
 /**
+ * Finder app_config-noegler som SQL-tekster indsaetter med en vaerdi der IKKE er
+ * on/true (fx '"off"'::jsonb, 'false'::jsonb, '"beta"'::jsonb). Ren funktion.
+ * Konservativ: en vaerdi der ikke kan parses som literal taeller ikke som pending.
+ *
+ * @param {string[]} sqlTexts
+ * @returns {Set<string>}
+ */
+export function findPendingFlagKeys(sqlTexts) {
+  const pending = new Set();
+  const insertRe = /insert\s+into\s+(?:public\.)?app_config\b[^;]*;?/gi;
+  const tupleRe =
+    /\(\s*'([A-Za-z0-9_.-]+)'\s*,\s*('(?:[^']|'')*'(?:\s*::\s*jsonb)?|true|false)\s*[,)]/gi;
+  for (const sql of sqlTexts) {
+    const stripped = sql.replace(/--[^\n]*/g, "");
+    for (const stmt of stripped.match(insertRe) || []) {
+      for (const m of stmt.matchAll(tupleRe)) {
+        const raw = m[2].replace(/::\s*jsonb$/i, "").trim();
+        let parsed;
+        if (raw.startsWith("'")) {
+          try {
+            parsed = JSON.parse(raw.slice(1, -1).replace(/''/g, "'"));
+          } catch {
+            continue;
+          }
+        } else {
+          parsed = raw.toLowerCase() === "true";
+        }
+        if (!ON_VALUES.has(normalizeFlagValue(parsed))) pending.add(m[1]);
+      }
+    }
+  }
+  return pending;
+}
+
+/**
+ * Laeser database/*.sql som PR'en tilfoejer/aendrer mod baseRef og returnerer
+ * pending noegler. Fejl (git mangler, ref mangler) -> tomt saet = FAIL som foer.
+ *
+ * @param {string} baseRef
+ * @returns {Set<string>}
+ */
+export function loadPendingKeysFromDiff(baseRef) {
+  try {
+    const names = execFileSync(
+      "git",
+      ["diff", "--name-only", "--diff-filter=AM", `${baseRef}...HEAD`, "--", "database/*.sql"],
+      { cwd: ROOT, encoding: "utf8" },
+    )
+      .split(/\r?\n/)
+      .filter(Boolean);
+    return findPendingFlagKeys(names.map((n) => readFileSync(join(ROOT, n), "utf8")));
+  } catch (err) {
+    console.log(`Kunne ikke laese PR-diff mod ${baseRef} (${String(err.message).split("\n")[0]}) - ingen PENDING-undtagelse.`);
+    return new Set();
+  }
+}
+
+/**
  * Ren funktion, saa reglerne kan testes uden DB.
  *
  * @param {Array<Record<string, string>>} entries
  * @param {Map<string, string>} flagValues normaliserede app_config-vaerdier
- * @returns {Array<{id: string, flag: string, state: string, value: string, level: "FAIL"|"OK", reason: string}>}
+ * @param {Set<string>} [pendingKeys] noegler en migration i samme PR seeder ikke-taendt (kun PR-kontekst)
+ * @returns {Array<{id: string, flag: string, state: string, value: string, level: "FAIL"|"OK"|"PENDING", reason: string}>}
  */
-export function evaluateFlags(entries, flagValues) {
+export function evaluateFlags(entries, flagValues, pendingKeys = new Set()) {
   const rows = [];
   for (const e of entries) {
     if (!e.flag) continue;
     if (!flagValues.has(e.flag)) {
+      if (pendingKeys.has(e.flag)) {
+        rows.push({
+          id: e.id,
+          flag: e.flag,
+          state: e.state,
+          value: "(afventer migration)",
+          level: "PENDING",
+          reason: "seedes af migration i samme PR (ikke taendt) - oprettes ved auto-migrate efter merge",
+        });
+        continue;
+      }
       rows.push({
         id: e.id,
         flag: e.flag,
@@ -142,6 +218,13 @@ function printTable(rows) {
   }
 }
 
+export function parseBaseRef(argv, env) {
+  const i = argv.indexOf("--base-ref");
+  if (i !== -1 && argv[i + 1]) return argv[i + 1];
+  if (env.GITHUB_EVENT_NAME === "pull_request") return "origin/main";
+  return null;
+}
+
 async function main() {
   const { default: dotenv } = await import("dotenv");
   dotenv.config({ path: join(ROOT, "backend", ".env"), quiet: true });
@@ -189,12 +272,17 @@ async function main() {
   }
 
   const flagValues = new Map((data || []).map((row) => [row.key, normalizeFlagValue(row.value)]));
-  const rows = evaluateFlags(entries, flagValues);
+  const baseRef = parseBaseRef(process.argv.slice(2), process.env);
+  const pendingKeys = baseRef ? loadPendingKeysFromDiff(baseRef) : new Set();
+  const rows = evaluateFlags(entries, flagValues, pendingKeys);
   printTable(rows);
 
   const failures = rows.filter((r) => r.level === "FAIL");
   console.log("");
-  console.log(`${rows.length} post(er) med flag - ${failures.length} fejl, ${stale.length} advarsel/advarsler.`);
+  const pendingCount = rows.filter((r) => r.level === "PENDING").length;
+  console.log(
+    `${rows.length} post(er) med flag - ${failures.length} fejl, ${pendingCount} afventer migration, ${stale.length} advarsel/advarsler.`,
+  );
   if (failures.length > 0) {
     console.error("FEATURE-REGISTER-GATE ROED: registrets tilstand matcher ikke prod app_config.");
     console.error("Fix: ret `state` i docs/FEATURE_REGISTRY.yml, eller flip flaget i prod - alt efter hvad der er sandt.");
