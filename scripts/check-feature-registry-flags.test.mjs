@@ -101,6 +101,27 @@ test("findPendingFlagKeys: kun app_config-inserts, kun den praecise noegle, komm
   assert.deepEqual([...findPendingFlagKeys([multi]).keys()], ["a_flag"]);
 });
 
+test("findPendingFlagKeys: en senere seed der taender noeglen fjerner undtagelsen (Codex P2)", () => {
+  const off = seed(`'"off"'::jsonb`);
+  const on = `INSERT INTO public.app_config (key, value) VALUES ('new_flag', '"on"'::jsonb)\nON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;`;
+  assert.equal(findPendingFlagKeys([off + "\n" + on]).size, 0, "samme fil");
+  assert.equal(findPendingFlagKeys([off, on]).size, 0, "to filer");
+  assert.equal(findPendingFlagKeys([on, off]).size, 0, "omvendt raekkefoelge");
+  const upd = `UPDATE public.app_config SET value = '"on"'::jsonb WHERE key = 'new_flag';`;
+  assert.equal(findPendingFlagKeys([off, upd]).size, 0, "UPDATE der taender");
+  const updOff = `UPDATE public.app_config SET value = '"off"'::jsonb WHERE key = 'new_flag';`;
+  assert.deepEqual([...findPendingFlagKeys([off, updOff]).keys()], ["new_flag"], "UPDATE der slukker");
+});
+
+test("findPendingFlagKeys: noegle og vaerdi laeses efter kolonnelisten (Codex P2)", () => {
+  const swapped = `INSERT INTO public.app_config (description, value, key) VALUES ('new_flag', 'false'::jsonb, 'actual_flag');`;
+  assert.deepEqual([...findPendingFlagKeys([swapped]).keys()], ["actual_flag"]);
+  const noCols = `INSERT INTO public.app_config VALUES ('new_flag', 'false'::jsonb);`;
+  assert.equal(findPendingFlagKeys([noCols]).size, 0, "uden kolonneliste: ingen undtagelse");
+  const semi = `INSERT INTO public.app_config (key, value, description) VALUES ('new_flag', '"off"'::jsonb, 'a; b');`;
+  assert.deepEqual([...findPendingFlagKeys([semi]).keys()], ["new_flag"], "semikolon i beskrivelsen");
+});
+
 test("findPendingFlagKeys: blok-kommentarer og dollar-quoted tekst taeller ikke", () => {
   const block = `/* INSERT INTO app_config (key, value) VALUES ('new_flag', 'false'::jsonb); */`;
   const dollar = `DO $$ BEGIN -- INSERT INTO app_config (key, value) VALUES ('new_flag', 'false'::jsonb);\nEND $$;`;

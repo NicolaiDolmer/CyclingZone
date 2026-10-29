@@ -83,34 +83,120 @@ export function normalizeFlagValue(raw) {
  */
 export function findPendingFlagKeys(sqlTexts) {
   const pending = new Map();
-  const insertRe = /insert\s+into\s+(?:public\.)?app_config\b[^;]*;?/gi;
-  const tupleRe =
-    /\(\s*'([A-Za-z0-9_.-]+)'\s*,\s*('(?:[^']|'')*'(?:\s*::\s*jsonb)?|true|false)\s*[,)]/gi;
+  // En noegle der et sted i PR'en saettes on/true (eller ikke kan laeses), mister
+  // undtagelsen for godt: en senere eller tidligere off-seed maa ikke redde den.
+  const blocked = new Set();
+  const note = (key, value) => {
+    if (value === null || ON_VALUES.has(value)) {
+      blocked.add(key);
+      pending.delete(key);
+    } else if (!blocked.has(key)) {
+      pending.set(key, value);
+    }
+  };
   for (const sql of sqlTexts) {
-    // Kommentarer og dollar-quoted tekst koerer ikke som INSERT: fjern dem foerst.
+    // Kommentarer og dollar-quoted tekst koerer ikke som SQL her: fjern dem foerst.
     const stripped = sql
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .replace(/(\$[A-Za-z_]*\$)[\s\S]*?\1/g, "")
       .replace(/--[^\n]*/g, "");
-    for (const stmt of stripped.match(insertRe) || []) {
-      for (const m of stmt.matchAll(tupleRe)) {
-        const raw = m[2].replace(/::\s*jsonb$/i, "").trim();
-        let parsed;
-        if (raw.startsWith("'")) {
-          try {
-            parsed = JSON.parse(raw.slice(1, -1).replace(/''/g, "'"));
-          } catch {
-            continue;
-          }
-        } else {
-          parsed = raw.toLowerCase() === "true";
+    for (const stmt of splitStatements(stripped)) {
+      const ins = /^\s*insert\s+into\s+(?:public\.)?app_config\s*\(([^)]*)\)\s*values\s*([\s\S]*)$/i.exec(stmt);
+      if (ins) {
+        const cols = ins[1].split(",").map((c) => c.trim().replace(/"/g, "").toLowerCase());
+        const ki = cols.indexOf("key");
+        const vi = cols.indexOf("value");
+        // Ingen key/value-kolonne vi kan placere: konservativt, ingen undtagelse.
+        if (ki < 0 || vi < 0) continue;
+        for (const tuple of parseTuples(ins[2])) {
+          const key = parseKeyLiteral(tuple[ki]);
+          if (!key) continue;
+          note(key, parseFlagLiteral(tuple[vi]));
         }
-        const value = normalizeFlagValue(parsed);
-        if (!ON_VALUES.has(value)) pending.set(m[1], value);
+        continue;
+      }
+      const upd = /^\s*update\s+(?:public\.)?app_config\s+set\s+([\s\S]*?)\s+where\s+([\s\S]*)$/i.exec(stmt);
+      if (upd) {
+        const key = parseKeyLiteral((/\bkey\s*=\s*('(?:[^']|'')*')/i.exec(upd[2]) || [])[1]);
+        const val = /\bvalue\s*=\s*('(?:[^']|'')*'(?:\s*::\s*jsonb)?|true|false)/i.exec(upd[1]);
+        // En UPDATE opretter ingen raekke; kun en der taender (eller ikke kan laeses) blokerer.
+        if (key) {
+          const v = val ? parseFlagLiteral(val[1]) : null;
+          if (v === null || ON_VALUES.has(v)) note(key, v);
+        }
       }
     }
   }
   return pending;
+}
+
+/** Splitter SQL i saetninger paa ';' uden for '...'-literaler. */
+function splitStatements(sql) {
+  const out = [];
+  let cur = "";
+  let inStr = false;
+  for (let i = 0; i < sql.length; i += 1) {
+    const ch = sql[i];
+    if (ch === "'") {
+      if (inStr && sql[i + 1] === "'") { cur += "''"; i += 1; continue; }
+      inStr = !inStr;
+    }
+    if (ch === ";" && !inStr) { out.push(cur); cur = ""; continue; }
+    cur += ch;
+  }
+  if (cur.trim()) out.push(cur);
+  return out;
+}
+
+/** VALUES-delen -> liste af tupler med raa elementer. Stopper ved ON CONFLICT/RETURNING. */
+function parseTuples(valuesPart) {
+  const tuples = [];
+  let depth = 0;
+  let inStr = false;
+  let cur = "";
+  let tuple = null;
+  for (let i = 0; i < valuesPart.length; i += 1) {
+    const ch = valuesPart[i];
+    if (inStr) {
+      cur += ch;
+      if (ch === "'") {
+        if (valuesPart[i + 1] === "'") { cur += "'"; i += 1; } else inStr = false;
+      }
+      continue;
+    }
+    if (ch === "'") { inStr = true; cur += ch; continue; }
+    if (ch === "(") {
+      depth += 1;
+      if (depth === 1) { tuple = []; cur = ""; continue; }
+    } else if (ch === ")") {
+      depth -= 1;
+      if (depth === 0) { tuple.push(cur.trim()); tuples.push(tuple); tuple = null; cur = ""; continue; }
+    } else if (ch === "," && depth === 1) {
+      tuple.push(cur.trim()); cur = ""; continue;
+    } else if (depth === 0 && /[a-z]/i.test(ch)) {
+      break; // ON CONFLICT ..., RETURNING ...
+    }
+    if (depth >= 1) cur += ch;
+  }
+  return tuples;
+}
+
+/** 'flag_key' -> flag_key, ellers null. */
+function parseKeyLiteral(raw) {
+  const m = /^'([A-Za-z0-9_.-]+)'$/.exec(String(raw ?? "").trim());
+  return m ? m[1] : null;
+}
+
+/** Literal for value -> normaliseret streng, eller null hvis den ikke kan laeses. */
+function parseFlagLiteral(raw) {
+  const s = String(raw ?? "").trim().replace(/::\s*jsonb$/i, "").trim();
+  if (/^(true|false)$/i.test(s)) return normalizeFlagValue(s.toLowerCase() === "true");
+  if (!/^'(?:[^']|'')*'$/.test(s)) return null;
+  try {
+    return normalizeFlagValue(JSON.parse(s.slice(1, -1).replace(/''/g, "'")));
+  } catch {
+    return null;
+  }
 }
 
 /**
