@@ -67,7 +67,7 @@ for (const order of ["all_out", "save", "failed"] as const) {
   });
 }
 
-const ITT_INPUT = JSON.parse(readFileSync(new URL("../../../backend/lib/engine/v4/fixtures/itt-solo/input.json", import.meta.url), "utf8"));
+const ITT_INPUT: Parameters<typeof simulateStageV4>[0] = JSON.parse(readFileSync(new URL("../../../backend/lib/engine/v4/fixtures/itt-solo/input.json", import.meta.url), "utf8"));
 const ITT_OUTPUT = simulateStageV4({ ...ITT_INPUT, startlist: ITT_INPUT.startlist.map(r => ({ ...r, effort: "all_out" })), rules_revision: "s5_profiles_v3" });
 const ITT_RESULTS = [...ITT_OUTPUT.results].sort((a, b) => a.rank - b.rank).map((result, index) => {
   const rider = { id: result.rider_id, firstname: "Fixture", lastname: "Trial " + String.fromCharCode(65 + index), nationality_code: "dk", team: { id: index === 0 ? TEST_TEAM.id : "other-team", name: index === 0 ? TEST_TEAM.name : "Other team" } };

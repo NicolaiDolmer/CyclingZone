@@ -119,6 +119,7 @@ export function altitudeAtKm(series, km) {
 
 
 /** Use actual profile metadata, then the stored timeline discipline. */
+/** @param {string|null} [profileType] */
 function isTimeTrialStage(events, profileType = null) {
   return isTimeTrialNarrative(events, profileType);
 }
@@ -219,7 +220,9 @@ const NARRATIVE_TYPES = new Set(["breakaway_cause", "order_impact"]);
  * til de udfald der er med, lige efter dem. `allEvents` er den liste udvalget er
  * taget fra (samme objekter); årsagerne udledes af hele etapen, ikke kun udvalget.
  */
-export function storyEventsWithCauses(storyEvents, allEvents, { ownRiderIds = [], effortByRider = null, profileType = null } = {}) {
+/** @param {NonNullable<Parameters<typeof withNarrativeCauses>[1]>} [options] */
+export function storyEventsWithCauses(storyEvents, allEvents, options = {}) {
+  const { ownRiderIds = [], effortByRider = null, profileType = null } = options;
   const picked = new Set(storyEvents || []);
   if (!picked.size) return [];
   const out = [];
