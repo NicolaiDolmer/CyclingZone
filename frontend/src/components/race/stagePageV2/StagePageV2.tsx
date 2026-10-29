@@ -5,7 +5,7 @@
 // (heroen + "Your day"). Standings, Team og Tactics genbruger det nuvaerende
 // indhold, som RaceDetailPage sender ind som slots, saa intet tal regnes to
 // steder. Fanerne og etapestriben er sticky; striben aabner paa dagens etape.
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   activeRiders, myBestByStage, resolveV2Tab, scheduleFor, STAGE_PAGE_V2_TABS, stagePhase, tacticsProgress,
@@ -16,9 +16,11 @@ import StageTabV2 from "./StageTabV2.tsx";
 import type { CareerEvent } from "./YourDayCard.tsx";
 import { Tab, TabList, Tabs } from "./ui.ts";
 import { useStageTimeline } from "../../../hooks/useStageTimeline.js";
-import { asStory } from "./raceStoryModel.ts";
+import { asStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import StageOrdersRecap from "../../stageOrders/StageOrdersRecap.tsx"; // #6299
-import { ownRiderIdsForStage } from "../../../lib/stageSplitTimes.ts";
+import { fetchTeamOrders } from "../../../lib/tacticsOrdersAdapter.js";
+import type { TeamOrdersContext } from "../../stageOrders/stageOrdersRecap.ts";
+import { effectiveEffortByRider, ownRiderIdsForStage } from "../../../lib/stageSplitTimes.ts";
 import { ownRiderIdsForOneDay } from "../../../lib/oneDayTimeline.ts";
 
 export interface StagePageV2Props {
@@ -90,6 +92,34 @@ export default function StagePageV2(props: StagePageV2Props) {
   );
   const nameOfRider = useMemo(() => (id: string) => nameById.get(id) || null, [nameById]);
 
+  // #6469: share the already-needed own-team order read with the recap; no other team orders are read.
+  const [fetchedOrders, setFetchedOrders] = useState<{ raceId: string; stage: number; value: TeamOrdersContext | null } | null>(null);
+  const v4Timeline = (ranTimeline?.timeline_version ?? 1) >= 2;
+  const needsOrders = phase === "after" && activeTab === "stage" && v4Timeline && ownStageRiders.length > 0;
+  useEffect(() => {
+    if (!needsOrders || !raceId) return undefined;
+    let live = true;
+    fetchTeamOrders({ raceId })
+      .then(value => { if (live) setFetchedOrders({ raceId, stage: selectedStage, value: value as TeamOrdersContext | null }); })
+      .catch(() => { /* catch-ok: unknown orders cannot support an order-impact claim */ });
+    return () => { live = false; };
+  }, [needsOrders, raceId, selectedStage]);
+  const knownOrders = fetchedOrders?.raceId === raceId && fetchedOrders?.stage === selectedStage ? fetchedOrders : null;
+  const narrative = useMemo<StoryNarrativeContext>(() => {
+    const teamNameById = new Map<string, string>();
+    for (const row of results) {
+      const id = row.team_id ?? row.rider?.team?.id;
+      const name = row.team_name ?? row.rider?.team?.name;
+      if (id && name) teamNameById.set(String(id), name);
+    }
+    return {
+      profileType: profileByStage[selectedStage]?.profile_type ?? null,
+      events: (timeline as { events?: StoryNarrativeContext["events"] } | null)?.events ?? [],
+      teamNameById,
+      // Wait for the authoritative v4 order read. Failed reads make no order-impact assertion.
+      effortByRider: v4Timeline && !knownOrders ? null : effectiveEffortByRider(stageRoles, knownOrders?.value, selectedStage, { v4: v4Timeline, ranAt: ranTimeline?.created_at ?? null }),
+    };
+  }, [timeline, results, stageRoles, selectedStage, profileByStage, v4Timeline, knownOrders, ranTimeline?.created_at]);
   // Den ene guld-knap: taktik for den etape der er aaben. Foer etapen = den
   // valgte; efter = den naeste, hvis loebet ikke er slut.
   const tacticsStage = phase === "before" ? selectedStage : selectedStage + 1;
@@ -144,10 +174,11 @@ export default function StagePageV2(props: StagePageV2Props) {
           onOpenStandings={() => onChangeTab("standings")}
           emptyState={emptyStageSlot}
           story={story}
+          narrative={narrative}
         />
       )}
       {activeTab === "stage" && phase === "after" && (ranTimeline?.timeline_version ?? 1) >= 2 && (
-        <StageOrdersRecap raceId={raceId} stageNumber={selectedStage} riderIds={ownStageRiders} nameOf={nameOfRider} profileType={profileByStage[selectedStage]?.profile_type ?? null} stageRoles={stageRoles} ranAt={ranTimeline?.created_at ?? null} />
+        <StageOrdersRecap raceId={raceId} stageNumber={selectedStage} riderIds={ownStageRiders} nameOf={nameOfRider} profileType={profileByStage[selectedStage]?.profile_type ?? null} stageRoles={stageRoles} ranAt={ranTimeline?.created_at ?? null} teamOrders={knownOrders?.value ?? null} />
       )}
       {activeTab === "standings" && standingsSlot}
       {activeTab === "team" && teamSlot}

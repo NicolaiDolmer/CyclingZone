@@ -303,6 +303,8 @@ Kontrakten i §8b2/§8b3 (U23-båndet for U23, akademibåndet for juniorer) er i
 
 Gruppernes størrelse (`seedYouthPools.js --regroup`) ændrer ikke hvordan ryttere fødes og er beskrevet i `YOUTH_RULES.md`.
 
+S5-rettelsen til #6668: `--lift-existing` afgrænser både nye kuld og eksisterende løft til truppens egen aktive ungdomsgruppe. Rangordenen planlægges stærkest først, og de eksisterende markørers evneloft kan bruges på alle søgte voksen-tiers, så diskrete kandidater ikke driver ranggulvet op over værdiloftet. Uden en lovlig kandidat bevares rytteren uændret og tælles særskilt i dry-run. Værdiloftet ændres ikke; gruppemålinger gemmes privat med `--out`.
+
 ## 8c. Den synlige test af generatoren ([#5283](https://github.com/NicolaiDolmer/CyclingZone/issues/5283))
 
 **Ejer-krav 15/9, ordret** (ved merge-go på PR #5278): *"Vi skal have lavet test inden naeste gang der laves nye ryttere, for at se at rytter generatoren virker ordentligt."* Gaten ligger FØR U23-ryttere genereres til AI-holdene ved S4-cutover ([GDD D-054 §10.4](GAME_DESIGN_DOCUMENT.md)).
@@ -353,3 +355,8 @@ En ny rytters PRIMÆRE type har to mulige kilder (`primaryTypeMode` i `generateF
 - [`GAME_INVARIANTS.md`](GAME_INVARIANTS.md) — rytter-økonomi: værdi, løn, kontrakter, præmier
 - [`MASTERPLAN.md`](MASTERPLAN.md) — prioriteret kø
 - Issues: [#669](https://github.com/NicolaiDolmer/CyclingZone/issues/669) (navne-pools), [#1420](https://github.com/NicolaiDolmer/CyclingZone/issues/1420) (mix-presets), [#1688](https://github.com/NicolaiDolmer/CyclingZone/issues/1688) (AI-fyld), [#2065](https://github.com/NicolaiDolmer/CyclingZone/issues/2065) (værdiloft-incident), [#4172](https://github.com/NicolaiDolmer/CyclingZone/issues/4172) (D4-spredning), [#4178](https://github.com/NicolaiDolmer/CyclingZone/issues/4178) (navne-udvidelse + dette dokument)
+
+
+### Reference ceiling for the pending AI youth lift (#6668, owner 26/10)
+
+Each planned lift is limited by an age-specific upper reference from human youth teams. The policy is supplied from a private `balance-internals/` file with `--level-policy`; its calibration and measurements remain private. Existing riders already above that reference stay unchanged and receive no further lift (owner clarification 26/10). No rider is lowered. Missing reference data or a changed/new rider exceeding the reference blocks apply before the first write. Dry-run reports distinguish those existing exceptions from violations. Apply still requires the owner's explicit go after reviewing the fresh private report. Wave patch notes are collected at close-out.

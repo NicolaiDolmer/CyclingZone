@@ -236,10 +236,10 @@ test("hent-knappen siger aldrig 'scout' (#6666 punkt 3)", () => {
   }
 });
 
-test("hentede kandidater viser 'Learned through training', og backend maskerer båndet (#6666 punkt 1)", () => {
+test("hentede kandidater viser 'Learned through training and racing', og backend maskerer båndet (#6666 punkt 1)", () => {
   assert.match(pageSource, /item\.potentialLearned && \(/);
   assert.match(pageSource, /t\("potentialLearned"\)/);
-  assert.equal(academyLocale("en").potentialLearned, "Learned through training");
+  assert.equal(academyLocale("en").potentialLearned, "Learned through training and racing");
   // Maskeringen sker i backend, bag samme flag som pull-optaget.
   assert.match(academyMeBlock, /intakePullEnabled\s*\?\s*await buildIntake2View\(/);
   assert.match(academyMeBlock, /intake: intake2\?\.intake \?\? intake/);

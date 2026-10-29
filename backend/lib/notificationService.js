@@ -7,6 +7,7 @@ import { captureException } from "./sentry.js";
 import { SUPABASE_IN_CHUNK_SIZE, fetchAllRows } from "./supabasePagination.js";
 import { buildRaceResultNarrative, buildStageResultNarrative, buildPersonalResultText, capitalize, isHeadlineAboutOwnRiders } from "./raceNarrativeNotification.js";
 import { fetchRaceTopResults, formatTopResults } from "./raceInboxTopResults.js";
+import { buildContractRosterNotification, contractNoticeRider } from "./contractNoticeRoster.js";
 
 const RECENT_DUPLICATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -95,6 +96,17 @@ function buildRecentDuplicateLookup({
 }
 
 /**
+ * @typedef {{delivered:boolean, deduped?:boolean, reason?:string, failed?:boolean}} ContractNoticeDelivery
+ * @typedef {(args: Parameters<typeof notifyTeamOwner>[0]) => ContractNoticeDelivery|void|Promise<ContractNoticeDelivery|void>} ContractNoticeNotify
+ * @typedef {{id:string, team_id?:string|null, firstname?:string|null, lastname?:string|null, squad?:string|null, is_academy?:boolean|null, market_value?:number|string|null, contract_end_season?:number|null}} ContractNoticeRiderInput
+ */
+
+/** @param {unknown} error */
+function contractNoticeErrorMessage(error) {
+  return error && typeof error === "object" && "message" in error ? String(error.message) : String(error);
+}
+
+/**
  * Deliver a notification. Caller can pass either:
  *   - title + message (legacy, formatted strings — sufficient on its own)
  *   - title + message + metadata.{titleCode, titleParams, messageCode, messageParams}
@@ -110,8 +122,8 @@ export async function notifyUser({
   type,
   title,
   message,
-  relatedId = null,
-  metadata = null,
+  relatedId = /** @type {string|null} */ (null),
+  metadata = /** @type {object|null} */ (null),
   dedupeWindowMs = RECENT_DUPLICATE_WINDOW_MS,
   now = new Date(),
 }) {
@@ -233,8 +245,8 @@ export async function notifyTeamOwner({
   type,
   title,
   message,
-  relatedId = null,
-  metadata = null,
+  relatedId = /** @type {string|null} */ (null),
+  metadata = /** @type {object|null} */ (null),
   dedupeWindowMs = RECENT_DUPLICATE_WINDOW_MS,
   now = new Date(),
 }) {
@@ -289,30 +301,53 @@ export const CONTRACT_EXPIRING_TYPE = "contract_expiring";
  * EN-first fallback (#1068: ingen rå dansk i backend). Locale-aware rendering
  * sker via backendMessages-koderne i metadata (#666).
  */
-export function buildContractExpiringNotification({ riderName, riderId, seasonNumber }) {
+export function buildContractExpiringNotification({ riderName, riderId, seasonNumber, squad = "senior" }) {
   return {
     type: CONTRACT_EXPIRING_TYPE,
     title: "Contract expiring",
-    message: `${riderName}'s contract expires at the end of season ${seasonNumber}.`,
+    message: `${riderName} (${squad}) has a contract expiring at the end of season ${seasonNumber}. Extend it on the Contracts tab on My Team.`,
     relatedId: riderId ?? null,
     metadata: {
       riderId: riderId ?? null,
       titleCode: "notif.contractExpiring.title",
       titleParams: {},
-      messageCode: "notif.contractExpiring.message",
-      messageParams: { rider: riderName, season: seasonNumber },
+      messageCode: "notif.contractExpiring.squadMessage",
+      messageParams: { rider: riderName, season: seasonNumber, squadKey: `notif.contractSquad.${squad}` },
     },
   };
 }
 
+// Acquisition and squad changes share the same eligibility and non-fatal delivery.
 /**
- * #1836 · Sæsonskift-trigger: for hver ejet rytter hvis contract_end_season =
- * den kommende sæson, send en kontraktudløb-notifikation til ejeren.
+ * @param {{supabase:unknown, rider:ContractNoticeRiderInput, teamId?:string|null, seasonNumber:number, now?:Date, notify?:ContractNoticeNotify}} args
+ * @returns {Promise<ContractNoticeDelivery|void>}
+ */
+export async function notifyIfContractExpiresThisSeason({
+  supabase, rider, teamId = rider?.team_id, seasonNumber, now, notify = notifyTeamOwner,
+}) {
+  if (!teamId || !rider?.id || !Number.isFinite(seasonNumber) || rider.contract_end_season !== seasonNumber) {
+    return { delivered: false, reason: "not_expiring" };
+  }
+  const row = contractNoticeRider(rider);
+  const payload = buildContractExpiringNotification({
+    riderName: row.rider, riderId: rider.id, seasonNumber, squad: row.squad,
+  });
+  try {
+    return await notify({ supabase, teamId, now, ...payload });
+  } catch (err) {
+    console.error("Contract expiry notice failed after acquisition or squad change:", contractNoticeErrorMessage(err));
+    captureException(err, { tags: { flow: "notifications", stage: "contract-expiring" } });
+    return { delivered: false, failed: true };
+  }
+}
+
+/**
+ * Sæsonstart: én samlet besked pr. hold med alle ejede trupper hvis kontrakt
+ * udløber i den kommende sæson. eligible tæller ryttere; levering tæller beskeder.
  *
- * Samme menneske-manager-diskriminator som resten af motoren (is_ai=false,
- * is_frozen=false; akademi-/free-agent-ryttere har team_id der ikke matcher et
- * menneske-hold og udelukkes via joinen). notifyUser dedup'er per (manager,
- * rytter, sæson) inden for 24t. Fejl pr. notifikation isoleres (tælles, stopper
+ * Gameplay-ejendomsfilter som ungdomsfrigivelsen; usignerede kandidater og frie
+ * ryttere udelukkes via ejerskabs-joinen. Eksisterende notifyUser-dedup bevares.
+ * Fejl pr. notifikation isoleres (tælles, stopper
  * ikke resten). `notify` + `fetchOwnedExpiringRiders` er injicerbare for test.
  */
 export async function emitContractExpiringNotifications({
@@ -325,14 +360,15 @@ export async function emitContractExpiringNotifications({
   const riders = await fetchRiders({ supabase, seasonNumber });
   const eligible = (riders || []).filter((r) => r.user_id && r.id);
   stats.eligible = eligible.length;
-
+  const teams = new Map();
   for (const rider of eligible) {
-    const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
-    const payload = buildContractExpiringNotification({
-      riderName,
-      riderId: rider.id,
-      seasonNumber,
-    });
+    const key = rider.team_id ?? rider.user_id;
+    if (!teams.has(key)) teams.set(key, []);
+    teams.get(key).push(rider);
+  }
+  for (const teamRiders of teams.values()) {
+    const rider = teamRiders[0];
+    const payload = buildContractRosterNotification({ riders: teamRiders, seasonNumber });
     try {
       const res = await notify({ supabase, userId: rider.user_id, ...payload });
       if (res?.delivered) stats.delivered += 1;
@@ -341,7 +377,7 @@ export async function emitContractExpiringNotifications({
       // #2389 A2: var 100% stille (end ikke logget) — et systemisk problem kunne
       // kun ses som faldende delivered-tal, som ingen overvåger.
       stats.failed += 1;
-      console.error(`  ❌ contract-expiring-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
+      console.error(`  ❌ contract-expiring-notifikation fejlede (rytter ${rider.id}):`, contractNoticeErrorMessage(err));
       captureException(err, { tags: { flow: "notifications", stage: "contract-expiring" }, riderId: rider.id });
     }
   }
@@ -353,24 +389,30 @@ export async function emitContractExpiringNotifications({
  * user_id (kun menneske-, ikke-frosne hold). Standard-implementering; injicérbar
  * i test for at undgå DB.
  */
-export async function fetchOwnedExpiringRiders({ supabase, seasonNumber }) {
+export async function fetchOwnedExpiringRiders({ supabase, seasonNumber, includeOverdue = false }) {
   // #7246: pagineret. Uden .range() stoppede PostgREST tavst ved 1.000 rækker, så ~45 %
   // af managerne aldrig fik varsel ved S4→S5 (frigivelsen bruger fetchAllRows og ramte alle).
   let data;
   try {
-    data = await fetchAllRows(() => supabase
+    data = await fetchAllRows(() => {
+      const query = supabase
       .from("riders")
-      .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
-      .eq("contract_end_season", seasonNumber)
+      .select("id, firstname, lastname, team_id, squad, is_academy, market_value, birthdate, contract_end_season, team:team_id!inner(user_id, is_ai, is_frozen, is_bank, is_test_account)")
       .not("team_id", "is", null)
       .eq("team.is_ai", false)
       .eq("team.is_frozen", false)
-      .order("id"));
+      .eq("team.is_bank", false)
+      .eq("team.is_test_account", false)
+      .eq("is_retired", false)
+      .order("id");
+      return includeOverdue ? query.lte("contract_end_season", seasonNumber) : query.eq("contract_end_season", seasonNumber);
+    });
   } catch (err) {
     const error = /** @type {Error} */ (err);
     throw new Error(`Could not load owned expiring-contract riders: ${error.message}`, { cause: err });
   }
   return (data || []).map((r) => ({
+    ...r,
     id: r.id,
     firstname: r.firstname,
     lastname: r.lastname,
@@ -484,7 +526,7 @@ export async function emitRaceResultNotifications({
       // #2389 A2: var 100% stille — spillere mistede "dit løb er kørt"-beskeden
       // uden noget logspor overhovedet.
       stats.failed += 1;
-      console.error(`  ❌ race-result-notifikation fejlede (race ${race?.id}):`, err?.message || err);
+      console.error(`  ❌ race-result-notifikation fejlede (race ${race?.id}):`, contractNoticeErrorMessage(err));
       captureException(err, { tags: { flow: "notifications", stage: "race-result" }, raceId: race?.id });
     }
   }
@@ -579,7 +621,7 @@ export async function defaultFetchFirstTimeManagers({ supabase, race, userIds })
     }
     return new Set(teams.filter((t) => !veteranTeamIds.has(t.id)).map((t) => t.user_id));
   } catch (err) {
-    console.error(`  ❌ first-time-manager-lookup fejlede (race ${race?.id}):`, err?.message || err);
+    console.error(`  ❌ first-time-manager-lookup fejlede (race ${race?.id}):`, contractNoticeErrorMessage(err));
     captureException(err, { tags: { flow: "notifications", stage: "first-time-managers" }, raceId: race?.id });
     return new Set();
   }
@@ -670,7 +712,7 @@ export async function notifyAndClearWatchlistForRiders({ supabase, riders, notif
       // Samme A2-lære som contract-expiring/race-result: må ALDRIG være 100%
       // stille (#2389) — log + Sentry, isolér, fortsæt.
       stats.failed += 1;
-      console.error(`  ❌ watchlist-departure-notifikation fejlede (rytter ${rider.id}):`, err?.message || err);
+      console.error(`  ❌ watchlist-departure-notifikation fejlede (rytter ${rider.id}):`, contractNoticeErrorMessage(err));
       captureException(err, { tags: { flow: "notifications", stage: "watchlist-departure" }, riderId: rider.id });
     }
   }
@@ -793,7 +835,7 @@ export async function emitStageResultNotifications({
       else if (res?.deduped) stats.deduped += 1;
     } catch (err) {
       stats.failed += 1;
-      console.error(`  ❌ stage-result-notifikation fejlede (race ${race?.id}, etape ${stageNumber}):`, err?.message || err);
+      console.error(`  ❌ stage-result-notifikation fejlede (race ${race?.id}, etape ${stageNumber}):`, contractNoticeErrorMessage(err));
       captureException(err, { tags: { flow: "notifications", stage: "stage-result" }, raceId: race?.id, stageNumber });
     }
   }
@@ -951,7 +993,7 @@ export async function notifyScoutReportReady({
     const payload = buildScoutReportReadyNotification({ assignment, riderName });
     return await notify({ supabase, teamId: assignment.team_id, now, ...payload });
   } catch (err) {
-    console.error(`  ❌ scout-report-ready-notifikation fejlede (assignment ${assignment?.id}):`, err?.message || err);
+    console.error(`  ❌ scout-report-ready-notifikation fejlede (assignment ${assignment?.id}):`, contractNoticeErrorMessage(err));
     captureException(err, { tags: { flow: "notifications", stage: "scout-report-ready" }, assignmentId: assignment?.id });
     return { delivered: false, deduped: false, reason: "error" };
   }
@@ -1062,7 +1104,7 @@ export async function notifyScoutChanged({
     const payload = buildScoutChangedNotification({ scoutName, scoutTier });
     return await notify({ supabase, teamId, now, ...payload });
   } catch (err) {
-    console.error(`  ❌ scout-changed-notifikation fejlede (hold ${teamId}):`, err?.message || err);
+    console.error(`  ❌ scout-changed-notifikation fejlede (hold ${teamId}):`, contractNoticeErrorMessage(err));
     captureException(err, { tags: { flow: "notifications", stage: "scout-changed" }, teamId });
     return { delivered: false, deduped: false, reason: "error" };
   }
@@ -1168,7 +1210,7 @@ export async function notifyForumThreadReply({
   } catch (err) {
     // postId må ALDRIG stå i format-string-positionen: et id som "%s" ville
     // ellers sluge err-argumentet og skjule den faktiske fejl (CodeQL #188).
-    console.error("  ❌ forum-thread-reply-notifikation fejlede (post %s):", postId, err?.message || err);
+    console.error("  ❌ forum-thread-reply-notifikation fejlede (post %s):", postId, contractNoticeErrorMessage(err));
     captureException(err, { tags: { flow: "notifications", stage: "forum-thread-reply" }, postId });
     return { delivered: false, deduped: false, reason: "error" };
   }
@@ -1282,7 +1324,7 @@ export async function notifyDirectMessage({
     return { delivered: true, deduped: false, id: inserted?.id, messageCount };
   } catch (err) {
     // conversationId må ALDRIG stå i format-string-positionen (CodeQL #188).
-    console.error("  ❌ dm-notifikation fejlede (samtale %s):", conversationId, err?.message || err);
+    console.error("  ❌ dm-notifikation fejlede (samtale %s):", conversationId, contractNoticeErrorMessage(err));
     captureException(err, { tags: { flow: "notifications", stage: "dm-message" }, conversationId });
     return { delivered: false, deduped: false, reason: "error" };
   }
@@ -1387,7 +1429,7 @@ export async function notifyForumMention({
     return { delivered: true, deduped: false, id: inserted?.id };
   } catch (err) {
     // postId må ALDRIG stå i format-string-positionen (CodeQL #188).
-    console.error("  ❌ forum-mention-notifikation fejlede (post %s):", postId, err?.message || err);
+    console.error("  ❌ forum-mention-notifikation fejlede (post %s):", postId, contractNoticeErrorMessage(err));
     captureException(err, { tags: { flow: "notifications", stage: "forum-mention" }, postId });
     return { delivered: false, deduped: false, reason: "error" };
   }
@@ -1431,7 +1473,7 @@ export async function notifyForumMentions({
   } catch (err) {
     // "scan", ikke "udtræk": i18n-leak-guarden (#1068) tæller enhver linje med
     // æ/ø/å i en streng sammen med `message` som et dansk API-svar.
-    console.error("  ❌ forum-mention-scan fejlede (post %s):", postId, err?.message || err);
+    console.error("  ❌ forum-mention-scan fejlede (post %s):", postId, contractNoticeErrorMessage(err));
     captureException(err, { tags: { flow: "notifications", stage: "forum-mention-scan" }, postId });
     return { delivered: 0, targets: [], reason: "error" };
   }

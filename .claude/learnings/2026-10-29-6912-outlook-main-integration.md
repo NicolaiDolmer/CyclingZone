@@ -1,0 +1,7 @@
+# #6912: main-integration og ordre-fri prognose (29/10)
+
+Den ældre S7 B-gren kolliderede med S7 A og kunne vise en udbrudsprognose i TT-kontekst. Begge scopes er bevaret; frontend bruger den eksisterende TT-kontrakt og nulstiller forældet svar ved kontekstskift. Målrettet TT-regression er observeret RED i alle tre browsere og derefter GREEN i den samlede browserfil.
+
+Uafhængigt review fandt også en privat indsatssti: race_stage_roles.effort var allerede foldet ind i raceRunner's entrants, før teamOrderRows blev ryddet. Prognosens første simulation og alle efterfølgende samples fjerner nu den override uden at mutere input eller ændre roller. Den eksisterende bridge-default og AI-ordresti bevares. DryRun-regressionen varierer modstandernes private legacy-indsatser og kontrollerer identiske prognoseinputs, ingen skrivninger og bevarede roller.
+
+Cachetests injicerer eksplicit fast clock. Efter main-lockfileændringer matches egne node_modules-junctions mod den korrekte lockfile-hashede cache før verifikation; der installeres aldrig gennem en junction. De fire compilerkonfigurationer omfatter frontend, motor, checkJs-budget og browser-specs. Endelige resultater/SHA og visuelt bevis følger PR #7277. Ingen ny spillertekst, motorbalance, flag-aktivering eller prod-regnekraft.

@@ -1,6 +1,6 @@
 # Løbsfilm-pakken: jagtafstand, gab-kurve og film til endagsløb (design)
 
-Status: design-udkast fra undersøgelsesspor 22/10, ingen kode. Refs #6814 #6803 #6512 #6804.
+Status (opdateret 26/10): designet er bygget og merget (jagtafstand #6814 i PR #7151, forspringskurve pr. udbrud #6803 i PR #7152, løbsfilm til endagsløb #6512 i PR #7059) og aktivt med `s5_profiles_v3`, der blev aktuel 26/10. Teksten herunder er det oprindelige design fra 22/10. Refs #6814 #6803 #6512 #6804.
 SSOT: `docs/RACE_ENGINE_RULES.md` (motor). Bygger videre på `2026-10-18-6814-gap-update-chase-design.md` (godkendt design for jagtafstanden) og lukker dens tre åbne Codex-fund.
 AGENTS 36 (design + målt baseline før 1. kode-PR), AGENTS 17 (tal kun i `balance-internals/loebsfilm/2026-10-22/`).
 

@@ -3329,6 +3329,96 @@ test("#6641 variant B: intentionen skalerer loebsdagens udbytte kun naar race_da
   assert.ok(grupetto < none, `grupetto ${grupetto} skal give mindre end ${none}`);
 });
 
+// ── #6461 B phase 1: the press settles the whole known date ─────────────────
+// Same engine, same inputs: a whole-date press at 06:00 equals the evening run (I1),
+// one condition settlement, and the evening afterwards finds nothing left (I2).
+test('#6461 B I1: whole-date press (five race days at 06:00) is bit-identical to the evening settlement', async () => {
+  const pressed = trainNowFixture();
+  const automatic = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(pressed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+    await runDay(automatic, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  }
+  assert.deepEqual(pressed.rider_derived_abilities, automatic.rider_derived_abilities, 'same growth');
+  assert.deepEqual(withoutClock(pressed.rider_condition), withoutClock(automatic.rider_condition), 'same fatigue/form');
+  assert.deepEqual(pressed.rider_training_scores, automatic.rider_training_scores, 'same session scores');
+  const receipts = (state) => state.training_rider_ticks.map(({ report: { condition_observed: observed, ...report } }) => ({ ...report, observed: withoutClock([observed])[0] }));
+  assert.deepEqual(receipts(pressed), receipts(automatic), 'same receipts (clock aside)');
+});
+
+test('#6461 B I2: double press and the evening run after a whole-date press change nothing', async () => {
+  const state = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+  const after = structuredClone({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition) });
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    assert.equal((await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING })).alreadyRan, true);
+    assert.equal((await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING })).alreadyRan, true);
+  }
+  assert.deepEqual({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition) }, after);
+  assert.equal(state.training_rider_ticks.length, 10);
+});
+
+test('#6461 B: a race rider with an open slot gets nothing at the press (no growth before his race); the free rider gets the whole date', async () => {
+  const open = { r1: [{ raceId: 'race-x', stageNumber: 1, gameDay: 3 }] };
+  const state = trainNowFixture();
+  const abilitiesBefore = structuredClone(state.rider_derived_abilities.find((row) => row.rider_id === 'r1'));
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r2'], unresolvedSlotsByRider: open });
+  assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r1'), [], 'race rider waits');
+  assert.deepEqual(state.rider_derived_abilities.find((row) => row.rider_id === 'r1'), abilitiesBefore, 'no ability write before his race');
+  assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r2').map((row) => row.game_day), TRAIN_NOW_DAYS);
+});
+
+// ── #6461 B loopholes: train + undo, double development, rider bought mid-day ──
+const pressWholeDate = async (state, extra = {}) => {
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, ...extra });
+};
+const snapshot = (state) => structuredClone({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition), s: state.rider_training_scores, n: state.training_rider_ticks.length });
+
+test('#6461 B loophole train + undo: changing the plan after a whole-date press and pressing again changes nothing', async () => {
+  const state = trainNowFixture();
+  await pressWholeDate(state);
+  const after = snapshot(state);
+  // "Undo": the manager swaps both riders to another focus and intensity, then presses again.
+  for (const plan of state.training_plans) Object.assign(plan, { focus: 'endurance', intensity: 'easy' });
+  await pressWholeDate(state);
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  assert.deepEqual(snapshot(state), after);
+});
+
+test('#6461 B loophole double development: old press (four days), flag flipped on, B press, evening = one evening settlement', async () => {
+  const mixed = trainNowFixture();
+  const automatic = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS.slice(0, -1)) await runDay(mixed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+  await pressWholeDate(mixed); // the B press after the flip: days 1-4 are alreadyRan, day 5 settles once
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(mixed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(automatic, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  assert.deepEqual(mixed.rider_derived_abilities, automatic.rider_derived_abilities, 'growth once');
+  assert.deepEqual(withoutClock(mixed.rider_condition), withoutClock(automatic.rider_condition), 'condition once');
+  assert.deepEqual(mixed.rider_training_scores, automatic.rider_training_scores, 'session scores once');
+  assert.equal(mixed.training_rider_ticks.length, 10);
+});
+
+test('#6461 B loophole rider bought mid-day: the buyer running the date gives the rider no second development', async () => {
+  const state = trainNowFixture();
+  await pressWholeDate(state);
+  const after = snapshot(state);
+  // r1 is sold after the seller's whole-date press; the buyer settles its own date.
+  state.riders.find((row) => row.id === 'r1').team_id = 'team-buyer';
+  state.training_plans.push({ rider_id: 'r1', team_id: 'team-buyer', season_id: SEASON_ID, focus: 'sprint', intensity: 'hard' });
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(state, { teamId: 'team-buyer', gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r1'] });
+  }
+  assert.deepEqual(snapshot(state), after);
+  assert.ok(state.training_rider_ticks.filter((row) => row.rider_id === 'r1').every((row) => row.team_id === TEAM_ID), 'receipts stay with the seller');
+  // Control: without the seller's press the buyer's run does develop him (the test is not vacuous).
+  const control = trainNowFixture();
+  control.riders.find((row) => row.id === 'r1').team_id = 'team-buyer';
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(control, { teamId: 'team-buyer', gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r1'] });
+  }
+  assert.equal(control.training_rider_ticks.filter((row) => row.rider_id === 'r1' && row.team_id === 'team-buyer').length, 5);
+});
+
 // ── #3564 kurve B: kald-stedet ───────────────────────────────────────────────
 // Syntetiske testparams (ikke kalibreringen, hard rule 17). Testen laaser kun
 // koblingen: flag off eller manglende params = dagens model, on + params = kurven.

@@ -210,6 +210,35 @@ test("live-poster faar kompakt liste, ikke-live faar fuld tabel i samme area (#5
   assert.ok(markdown.indexOf("**live:**") < markdown.indexOf("| Building X"));
 });
 
+test("gamle live-poster arkiveres til kun id; reference = registrets nyeste dato (#5319)", () => {
+  const entries = parseRegistry(`features:
+  - id: old-live
+    area: ops
+    title_en: Old Live
+    title_da: Old Live
+    state: live
+    verified: 2026-09-01
+  - id: fresh-live
+    area: ops
+    title_en: Fresh Live
+    title_da: Fresh Live
+    state: live
+    verified: 2026-10-29
+  - id: old-building
+    area: ops
+    title_en: Old Building
+    title_da: Old Building
+    state: building
+    verified: 2026-08-01
+`);
+  const markdown = render(entries);
+  assert.match(markdown, /\*\*live:\*\* Fresh Live \(`fresh-live`\) 2026-10-29/);
+  assert.match(markdown, /\*\*arkiv:\*\* `old-live`/);
+  assert.doesNotMatch(markdown, /Old Live/);
+  // Kun live arkiveres; en gammel ikke-live-post beholder sin fulde raekke.
+  assert.match(markdown, /\| Old Building \(`old-building`\) \| building \|/);
+});
+
 test("render er stabil (samme input giver samme output)", () => {
   const entries = parseRegistry(MINIMAL);
   assert.equal(render(entries), render(entries));

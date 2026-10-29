@@ -1,5 +1,370 @@
 export const PATCHES = [
   {
+    "version": "7.386",
+    "date": "2026-10-27",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Plan the stage along the route",
+          "body": "What changed: On the Tactics tab you can give a rider tasks that change at points along the route, and pick one of five efforts, from Grupetto to All out.\n\nWhat it means for you: Your riders follow the plan from the first season 5 race."
+        },
+        "da": {
+          "title": "Planlæg etapen langs ruten",
+          "body": "Hvad er ændret: På Taktik-fanen kan du give en rytter opgaver, der skifter ved punkter langs ruten, og vælge et af fem indsatstrin, fra Grupetto til Alt ud.\n\nHvad betyder det for dig: Dine ryttere følger planen fra første løb i sæson 5."
+        },
+        "refs": [
+          7003,
+          7204,
+          6641
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your captain gets help on the climbs",
+          "body": "What changed: A captain now gets shelter from his helpers on the climbs too. Late solo attacks come from leaders and riders on free role; a helper only attacks late when his captain is dropped. You can pick a shared captain, and a luxury helper who stays with the captain. The luxury helper gets more work this week.\n\nWhat it means for you: Protecting your captain pays off in the mountains."
+        },
+        "da": {
+          "title": "Kaptajnen får hjælp på stigningerne",
+          "body": "Hvad er ændret: Kaptajnen får nu også læ fra sine hjælpere på stigningerne. Sene soloangreb kommer fra ledere og ryttere på fri rolle; en hjælper angriber kun sent, når kaptajnen er sat. Du kan vælge en delt kaptajn og en luksushjælper, der bliver hos kaptajnen. Luksushjælperen får mere arbejde i denne uge.\n\nHvad betyder det for dig: Det betaler sig at beskytte kaptajnen i bjergene."
+        },
+        "refs": [
+          6368,
+          7306,
+          7278,
+          5981,
+          5982
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Good days and bad days",
+          "body": "What changed: A rider's form on the day now depends on his fatigue, form, illness and the weather. The race log says when a rider had a bad day and why.\n\nWhat it means for you: A tired rider is more likely to have a bad day."
+        },
+        "da": {
+          "title": "Gode og dårlige dage",
+          "body": "Hvad er ændret: En rytters dagsform afhænger nu af træthed, form, sygdom og vejr. Løbsloggen siger, når en rytter havde en dårlig dag, og hvorfor.\n\nHvad betyder det for dig: En træt rytter får lettere en dårlig dag."
+        },
+        "refs": [
+          6649,
+          7272
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Hills from the real profile",
+          "body": "What changed: Stages now use the hills in the elevation profile, also those that are not categorised climbs.\n\nWhat it means for you: A hilly route suits puncheurs, also when no climb is named on it."
+        },
+        "da": {
+          "title": "Bakker fra den rigtige profil",
+          "body": "Hvad er ændret: Etaperne bruger nu bakkerne i højdeprofilen, også dem der ikke er kategoriserede stigninger.\n\nHvad betyder det for dig: En kuperet rute passer til puncheurs, også uden navngivne stigninger."
+        },
+        "refs": [
+          7290,
+          7303
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "All out on the decisive climb",
+          "body": "What changed: All out now gains time on the last climb, most for the strongest riders, and the best can attack the other favourites. The price is fatigue that builds up, and a rider with little left can crack. The race log says when.\n\nWhat it means for you: Save All out for the day that matters."
+        },
+        "da": {
+          "title": "Alt ud på den afgørende stigning",
+          "body": "Hvad er ændret: Alt ud vinder nu tid på den sidste stigning, mest for de stærkeste, og de bedste kan angribe de andre favoritter. Prisen er træthed, der hober sig op, og en rytter med lidt tilbage kan knække. Løbsloggen siger, når det sker.\n\nHvad betyder det for dig: Gem Alt ud til den dag, der betyder noget."
+        },
+        "refs": [
+          6641,
+          7280,
+          7309
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Train now covers the whole day",
+          "body": "What changed: Train now settles each rider's day as far as it is known when you press it. A rider waiting for a race trains after his race.\n\nWhat it means for you: One press gives all five sessions to riders without a race today."
+        },
+        "da": {
+          "title": "Træn nu dækker hele dagen",
+          "body": "Hvad er ændret: Træn nu afregner hver rytters dag, så langt den er kendt, når du trykker. En rytter, der venter på et løb, træner efter løbet.\n\nHvad betyder det for dig: Ét tryk giver alle fem træninger til ryttere uden løb i dag."
+        },
+        "refs": [
+          6461,
+          7191
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Smaller fixes",
+          "body": "What changed: You can set orders before a race starts. Breakaway odds are gone, because the number was not reliable. Riders released without a contract warning at the season change can be signed back for 7 days on the Contracts tab.\n\nWhat it means for you: Fewer surprises before and after the first race."
+        },
+        "da": {
+          "title": "Små rettelser",
+          "body": "Hvad er ændret: Du kan sætte ordrer, før løbet starter. Udbrudschancen er fjernet, fordi tallet ikke var pålideligt. Ryttere, der blev frigivet uden kontraktvarsel ved sæsonskiftet, kan hentes tilbage i 7 dage på Kontrakter-fanen.\n\nHvad betyder det for dig: Færre overraskelser før og efter første løb."
+        },
+        "refs": [
+          7264,
+          7271,
+          7253
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.385",
+    "date": "2026-10-27",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "A little fatigue at the start of a new season",
+          "body": "What changed: New seasons now start with every rider at a small base fatigue instead of zero.\n\nWhat it means for you: You decide the form before the first race: rest lowers it, normal training holds it, hard training raises it."
+        },
+        "da": {
+          "title": "Lidt træthed ved starten af en ny sæson",
+          "body": "Hvad er ændret: Nye sæsoner starter nu med lidt grundtræthed hos alle ryttere i stedet for nul.\n\nHvad betyder det for dig: Du styrer formen før det første løb: hvile sænker den, normal træning holder den, og hård træning hæver den."
+        },
+        "refs": [
+          7288
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Races",
+        "en": {
+          "title": "Orders that agree",
+          "body": "What changed: Conflicting orders can no longer be selected together. A short line explains why.\n\nWhat it means for you: Choose one of the conflicting orders before you save."
+        },
+        "da": {
+          "title": "Ordrer der passer sammen",
+          "body": "Hvad er ændret: Modsatte ordrer kan ikke længere vælges sammen. En kort linje forklarer hvorfor.\n\nHvad betyder det for dig: Vælg én af de modsatte ordrer, før du gemmer."
+        },
+        "refs": [
+          7003,
+          7281
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.384",
+    "date": "2026-10-26",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Training every day, also between seasons",
+          "body": "What changed: Training continues every day between seasons, using the program you chose.\n\nWhat it means for you: Keep planning your training before the first race. Missed training is picked up automatically."
+        },
+        "da": {
+          "title": "Træning hver dag, også mellem sæsoner",
+          "body": "Hvad er ændret: Træningen fortsætter hver dag mellem sæsonerne med det program, du har valgt.\n\nHvad betyder det for dig: Planlæg også træningen før det første løb. Manglende træning bliver indhentet automatisk."
+        },
+        "refs": [
+          7282
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.383",
+    "date": "2026-10-26",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "All out: correction",
+          "body": "What changed: The earlier note promised a time gain from All out before that change was ready.\n\nWhy: That promise was premature.\n\nWhat it means for you: All out is the hardest effort. It does not guarantee a time gain. A further change is still being tested."
+        },
+        "da": {
+          "title": "Alt ud: rettelse",
+          "body": "Hvad er ændret: Den tidligere note lovede en tidsgevinst med Alt ud, før ændringen var klar.\n\nHvorfor: Det løfte kom for tidligt.\n\nHvad betyder det for dig: Alt ud er den hårdeste indsats. Det garanterer ikke en tidsgevinst. En yderligere ændring bliver stadig testet."
+        },
+        "refs": [
+          6641,
+          7163
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The lead-out rarely beats his sprinter",
+          "body": "A lead-out rider spends his sprint on delivering the captain, so the best sprinter in your train usually finishes best. A lead-out who is clearly faster than his captain can still win."
+        },
+        "da": {
+          "title": "Lead-outen slår sjældent sin sprinter",
+          "body": "En lead-out-rytter bruger sin spurt på at aflevere kaptajnen, så den bedste sprinter i toget oftest slutter bedst. En lead-out, der er klart hurtigere end sin kaptajn, kan stadig vinde."
+        },
+        "refs": [
+          6937,
+          6552
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "New finishes race like the real thing",
+          "body": "Season 5 stages can end on a wall, a short hill, an uphill sprint or a medium mountain. Each has its own kind of winner and its own gaps at the finish: a wall splits the riders, an uphill sprint keeps them close. In a mountain one-day race the breakaway can now be caught."
+        },
+        "da": {
+          "title": "Nye afslutninger kører som i virkeligheden",
+          "body": "Etaper i sæson 5 kan slutte på en mur, en kort bakke, en stigende spurt eller et mellembjerg. Hver har sin egen type vinder og sine egne tidsgab i mål: en mur splitter rytterne, en stigende spurt holder dem samlet. I et bjerg-endagsløb kan udbruddet nu hentes."
+        },
+        "refs": [
+          6363,
+          6369
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "No crashes right after the start",
+          "body": "A crash can no longer happen in the first kilometre of a stage, so the race film never shows time lost before the race has begun."
+        },
+        "da": {
+          "title": "Ingen styrt lige efter starten",
+          "body": "Et styrt kan ikke længere ske på etapens første kilometer, så løbsfilmen viser aldrig tid tabt, før løbet er gået i gang."
+        },
+        "refs": [
+          7008
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Board",
+        "en": {
+          "title": "Board and scouting dates",
+          "body": "During the season change the board room shows the new season. Scout missions count days on Danish time, also across the change to winter time."
+        },
+        "da": {
+          "title": "Bestyrelse og scoutdatoer",
+          "body": "Under sæsonskiftet viser bestyrelseslokalet den nye sæson. Scoutmissioner tæller dage på dansk tid, også hen over skiftet til vintertid."
+        },
+        "refs": [
+          6862
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Today's decision is on for everyone",
+          "body": "The Today's decision card on the Training page is now on for every manager. It finds riders with high fatigue and a hard day planned and suggests active recovery. Use one suggestion or all of them in one click."
+        },
+        "da": {
+          "title": "Dagens beslutning er nu for alle",
+          "body": "Kortet Dagens beslutning på træningssiden er nu tændt for alle managere. Det finder ryttere med høj træthed og en hård dag planlagt og foreslår aktiv restitution. Brug ét forslag eller dem alle med ét klik."
+        },
+        "refs": [
+          6110
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "A reminder about this week's academy intake",
+          "body": "If you haven't brought in this week's academy candidates, you get a message on Sunday when they are ready and on Saturday evening before they expire at midnight."
+        },
+        "da": {
+          "title": "Påmindelse om ugens akademi-kuld",
+          "body": "Har du ikke hentet ugens akademi-kandidater, får du en besked søndag, når de er klar, og lørdag aften, før de udløber ved midnat."
+        },
+        "refs": [
+          6666,
+          7177
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Only the morning breakaway is called the breakaway",
+          "body": "When the morning breakaway is caught and a later group stays away, that group is now called the group ahead of the peloton in the result, the race film and the recap."
+        },
+        "da": {
+          "title": "Kun morgenudbruddet hedder udbrud",
+          "body": "Når morgenudbruddet er hentet, og en senere gruppe holder hjem, hedder den gruppe nu gruppen foran feltet i resultatet, løbsfilmen og referatet."
+        },
+        "refs": [
+          6299
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Your orders after the stage",
+          "body": "After a stage, a Your orders card shows your team's breakaway stance and each of your riders' role, effort, breakaway attempt and sprint train. Only your own team. Also on one-day race results."
+        },
+        "da": {
+          "title": "Dine ordrer efter etapen",
+          "body": "Efter en etape viser kortet Dine ordrer holdets udbrudsstrategi og hver af dine rytteres rolle, indsats, udbrudsforsøg og sprinttog. Kun dit eget hold. Også på endagsløbets resultat."
+        },
+        "refs": [
+          6299
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.382",
     "date": "2026-10-26",
     "changes": [
@@ -28,11 +393,11 @@ export const PATCHES = [
         "topic": "Race engine",
         "en": {
           "title": "Races closer to real cycling",
-          "body": "From the first stage of season 5: the mountains jersey goes to riders who hunt it, and a summit finish gives normal mountain points. Sprinters win the points jersey more often. On flat stages the peloton chases a breakaway that matters. After the last climb on a mountain stage, groups come back together on the descent. Riders abandon now and then from crashes or fatigue, mostly helpers. The race film shows the gap to the chase."
+          "body": "From the first stage of season 5: the mountains jersey goes to riders who hunt it, and a summit finish gives normal mountain points. Sprinters win the points jersey more often, and GC captains no longer sprint in bunch finishes. In stage races the peloton lets the breakaway go until the gap gets too big, then the teams with an interest chase, and GC teams keep a dangerous breakaway on a leash instead of catching it early. On mountain stages the favourites let a breakaway with no GC danger go, and some teams send a rider in the breakaway on hilly stages to take the intermediate sprint. After the last climb on a mountain stage, groups come back together on the descent. Riders abandon now and then from crashes or fatigue, mostly helpers."
         },
         "da": {
           "title": "Løbene ligner rigtig cykelsport mere",
-          "body": "Fra første etape i sæson 5: bjergtrøjen går til ryttere, der jagter den, og et topmål giver almindelige bjergpoint. Sprinterne vinder oftere pointtrøjen. På flade etaper jagter feltet et udbrud, der betyder noget. Efter sidste stigning på en bjergetape samler grupperne sig på nedkørslen. Ryttere udgår nu og da efter styrt eller træthed, mest hjælpere. Løbsfilmen viser afstanden til jagten."
+          "body": "Fra første etape i sæson 5: bjergtrøjen går til ryttere, der jagter den, og et topmål giver almindelige bjergpoint. Sprinterne vinder oftere pointtrøjen, og klassementskaptajner spurter ikke længere i massespurter. I etapeløb lader feltet udbruddet gå, til hullet bliver for stort, og så jagter de hold, der har interesse, og klassementsholdene holder et farligt udbrud på snor i stedet for at hente det tidligt. På bjergetaper lader favoritterne et udbrud uden klassementsfare gå, og på kuperede etaper sender nogle hold en rytter i udbruddet for at tage den indlagte spurt. Efter sidste stigning på en bjergetape samler grupperne sig på nedkørslen. Ryttere udgår nu og da efter styrt eller træthed, mest hjælpere."
         },
         "refs": [
           6804,
@@ -131,11 +496,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Development follows level and potential",
-          "body": "How fast an ability grows now depends on how high it already is and on the rider's potential. The higher an ability, the harder it is to raise, and potential decides how high the rider can go. Age decides how much training a young rider can take. An ability still rises by at most one point per day. Help explains it under Training."
+          "body": "How fast an ability grows now depends on how high it already is and on the rider's potential. The higher an ability, the harder it is to raise, and potential decides how high the rider can go. An ability still rises by at most one point per day. Help explains it under Training."
         },
         "da": {
           "title": "Udviklingen følger niveau og potentiale",
-          "body": "Hvor hurtigt en evne vokser, afhænger nu af, hvor høj den allerede er, og af rytterens potentiale. Jo højere en evne er, jo sværere er den at hæve, og potentialet bestemmer, hvor højt rytteren kan nå. Alderen bestemmer, hvor meget træning en ung rytter kan tåle. En evne stiger stadig højst ét point om dagen. Hjælp forklarer det under Træning."
+          "body": "Hvor hurtigt en evne vokser, afhænger nu af, hvor høj den allerede er, og af rytterens potentiale. Jo højere en evne er, jo sværere er den at hæve, og potentialet bestemmer, hvor højt rytteren kan nå. En evne stiger stadig højst ét point om dagen. Hjælp forklarer det under Træning."
         },
         "refs": [
           6110,
@@ -495,11 +860,11 @@ export const PATCHES = [
         "topic": "Help",
         "en": {
           "title": "Help on the season change corrected",
-          "body": "Help now says that rider values update next time at the normal Sunday update, and that the new season starts after the break between seasons that you voted on."
+          "body": "Help now says that the new season starts after the break between seasons that you voted on."
         },
         "da": {
           "title": "Hjælp om sæsonskiftet er rettet",
-          "body": "Hjælp siger nu, at rytterværdierne opdateres næste gang ved den normale søndagsopdatering, og at den nye sæson starter efter pausen mellem sæsonerne, som managerne har stemt om."
+          "body": "Hjælp siger nu, at den nye sæson starter efter pausen mellem sæsonerne, som managerne har stemt om."
         },
         "refs": [
           7196

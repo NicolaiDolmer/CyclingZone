@@ -19,6 +19,8 @@ import { LockIcon } from "../ui/icons/index.jsx";
 import type { ReactNode } from "react";
 import { applyCopyDay, MAX_COPY_DAYS } from "./copyDayPlan.ts";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
+import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.ts";
+import { sessionI18nKey } from "../../lib/trainingDayTypes.js"; // #5319
 import {
   PROGRAM_SLOTS, cellSession, isCellOverridden, isProgramPlan, changedCellCount,
   programName, slotForColumnIndex, type CatalogProgram, type ProgramWeekDays,
@@ -36,6 +38,13 @@ export const SESSION_ORDER = [
   "endurance", "tempo",
   "vo2max", "vo2max_climb", "vo2max_punch", "threshold", "sprint",
   "cobbled_sectors", "echelon_drills", "attack_repeats",
+] as const;
+
+// #5319: katalog v3 (flag training_catalog_v3). De fem nye haarde sessioner staar
+// efter attack_repeats; med flaget off er vaelgeren SESSION_ORDER, som i dag.
+export const SESSION_ORDER_V3 = [
+  ...SESSION_ORDER,
+  "long_climbs", "lead_out", "itt_short", "itt_long", "cobbled_classic",
 ] as const;
 
 // Holdets (eller en rytters) intensitets-uge: den gamle Week plan.
@@ -101,11 +110,12 @@ export default function TrainingPlanCard({
   const { t, i18n } = useTranslation("training");
   const tRider = useTranslation("rider").t;
   const lang = i18n?.language ?? "en";
+  const sessionOrder: readonly string[] = useTrainingCatalogV3() ? SESSION_ORDER_V3 : SESSION_ORDER;
   const multi = columns.length > 1;
   const intensityLabel = (k: string) => tRider(`training.intensity_${k}`);
   const sessionLabel = (session: string) =>
-    session === "rest" || session === "recovery" ? t(`dayPanel.dayType_${session}`) : t(`dayPanel.session_${session}`);
-  const shortLabel = (session: string) => t(`mobile.sessionShort_${session}`, { defaultValue: sessionLabel(session) });
+    session === "rest" || session === "recovery" ? t(`dayPanel.dayType_${session}`) : t(sessionI18nKey("dayPanel.session", session));
+  const shortLabel = (session: string) => t(sessionI18nKey("mobile.sessionShort", session), { defaultValue: sessionLabel(session) });
   const cellDays = cells?.days ?? null;
   const showCells = !!cells && isProgramPlan(cellDays, weekdays);
   const VISIBLE_CHIPS = 4;
@@ -142,7 +152,7 @@ export default function TrainingPlanCard({
         ? "absolute inset-0 h-full w-full cursor-pointer opacity-0 disabled:cursor-default"
         : "w-full rounded-cz border border-cz-border bg-cz-card px-1.5 py-1 text-xs text-cz-1 disabled:opacity-50"}
     >
-      {SESSION_ORDER.map((session) => <option key={session} value={session}>{sessionLabel(session)}</option>)}
+      {sessionOrder.map((session) => <option key={session} value={session}>{sessionLabel(session)}</option>)}
     </select>
   );
 

@@ -233,6 +233,7 @@ import {
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
 import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
+import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
@@ -259,6 +260,7 @@ import { RACE_DAY_DEVELOPMENT_FLAG_KEY } from "../lib/raceDayDevelopmentFlag.js"
 import { TRAINING_SCORE_VISIBLE_FLAG_KEY, TRAINING_DAILY_RECEIPT_FLAG_KEY } from "../lib/trainingScoreFlag.js";
 import { trainingRunResponse } from "../lib/trainingRunResponse.ts";
 import { createFirstRaceCardRouter } from "./firstRaceCard.js"; // #1140
+import { createBreakawayOutlookRouter } from "./breakawayOutlook.js"; // #6912 B
 import { createStagePageV2Router } from "../lib/stagePageV2Flag.js"; // #6570
 import { createRaceLibraryV2Router } from "../lib/raceLibraryV2Flag.js"; // #6514
 import { createPushRouter } from "./pushRoutes.ts"; // #6590
@@ -278,7 +280,7 @@ import { saveSelection, getSelectionContext, prepareSelectionChange, saveSelecti
 import { pickAutoSelection } from "../lib/selectionAutoFill.js";
 import { validateStageRoleOverrides, getStageRolesContext, saveStageRoleOverrides } from "../lib/raceStageRolesApi.js";
 import { resolveWriteScope } from "../lib/stageRolesWriteScope.ts"; // #6095
-import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace } from "../lib/raceTeamOrdersApi.js";
+import { validateTeamOrder, getTeamOrdersContext, saveTeamOrder, isStageLocked, sprintTrainFlatOnlyForRace, loadStageRoleByRider } from "../lib/raceTeamOrdersApi.js";
 import { isStagePlanEnabled, loadStagePlanContext, orderHasStagePlan, stagePlanRevisionOk } from "../lib/stagePlanApi.js"; // #7003
 import { isRaceLineupLocked, isRaceLineupLockedNow, firstStageStartsFromSchedule, loadLockedRaceIds } from "../lib/raceStartLock.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, resolveBindingConflictDetails, teamInRacePool, teamInRaceSquadPool, raceTimeWindow, raceBindingWindow, raceGameDaySpan, isRiderDayInvariantViolation } from "../lib/raceBinding.js";
@@ -310,7 +312,7 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { isSeasonSignupEnabled } from "../lib/seasonSignupFlag.js";
 import { isDormantManager } from "../lib/managerActivity.js";
 import { intakeOfferExpiryDaysFor, signingFeeForSource, isMissingSchemaError as isMissingIntakeSourceSchema } from "../lib/academyIntakeSource.ts";
-import { resolveGraduation, findPendingGraduation, countSquadMembers } from "../lib/academyGraduation.js";
+import { resolveGraduation, findPendingGraduation } from "../lib/academyGraduation.js";
 import { handleListPendingRequest, handlePromotePendingRequest } from "../lib/promotionPendingAction.js"; // #6710
 import { promote as promoteAcademyRider, demote as demoteAcademyRider, resolveDemoteSalary, hasCompleteContract, demoteTargetSquad, handleMoveSquadRequest } from "../lib/academyTransfer.js";
 import { countFutureRaceEntries, countOngoingRaceEntries, clearFutureRaceEntriesSafe } from "../lib/raceEntryCleanup.js";
@@ -400,7 +402,7 @@ import { ageForSeason } from "../lib/riderProgressionEngine.js";
 import { scoutBandAge, resolveScoutBandSeasonNumber } from "../lib/scoutBandAge.js";
 import {
   RETIREMENT_NOTICE_COLUMNS,
-  resolveRetirementNotice,
+  resolveRetirementNoticeForDisplay,
 } from "../lib/retirementNotice.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
@@ -974,6 +976,7 @@ router.use("/rankings", createRankingsRouter({
 }));
 router.use("/feature-flags", createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTester, reportError: captureException })); // #4948
 router.use(createFirstRaceCardRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #1140
+router.use(createBreakawayOutlookRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6912 B
 router.use(createStagePageV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6570
 router.use(createRaceLibraryV2Router({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, reportError: captureException })); // #6514
 router.use("/push", createPushRouter({ supabase, requireAuth, isViewerBetaTester, readLimiter: presencePulseLimiter, writeLimiter: marketWriteLimiter, reportError: captureException })); // #6590
@@ -2965,16 +2968,24 @@ router.get("/riders/:id/development-projection", requireAuth, async (req, res) =
 //   body          : request-body
 //   previousFocus : rytterens hidtidige fokus (bevares hen over en hviledag)
 // Returnerer { ok, focus, intensity } eller { ok:false, reason }.
-function resolveTrainingWrite(body, previousFocus = null) {
+function resolveTrainingWrite(body, previousFocus = null, catalogV3 = false) {
   const { dayType, session, focus, intensity } = body ?? {};
   if (dayType != null) {
-    const out = programForChoice({ dayType, session: session ?? null, previousFocus });
+    const out = programForChoice({ dayType, session: session ?? null, previousFocus, catalogV3 });
     return out.ok ? { ok: true, focus: out.focus, intensity: out.intensity } : { ok: false, reason: out.reason };
   }
-  if (!isValidFocus(focus)) return { ok: false, reason: "invalid_focus" };
+  if (!isValidFocus(focus) && !(catalogV3 && isV3OnlySession(focus))) return { ok: false, reason: "invalid_focus" };
   if (!isValidIntensity(intensity)) return { ok: false, reason: "invalid_intensity" };
-  const normalized = normalizeProgram({ focus, intensity });
+  const normalized = normalizeProgram({ focus, intensity }, { catalogV3 });
   return { ok: true, focus: normalized.focus, intensity: normalized.intensity };
+}
+
+// #5319: flaget training_catalog_v3 slaas KUN op naar skrivningen roerer en v3-session.
+// Ellers er stien bit-identisk med foer, ogsaa uden ekstra opslag.
+async function catalogV3ForTrainingWrite(req, previousFocus = null) {
+  const body = req.body ?? {};
+  if (![body.session, body.focus, previousFocus].some(isV3OnlySession)) return false;
+  return isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req));
 }
 
 // Hjælper: hent aktiv sæson (id + number) + holdets træningsstate (ledger → slots + planer).
@@ -3055,8 +3066,11 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const trainability = {};
     const smartDefaultFocusByRider = {};
     const primaryTypeByRider = new Map();
+    // #5319: signalet foelger samme katalog som viewerens vaelger (v3 kun naar flaget er aabent).
+    const trainabilityFocuses = (await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))
+      ? V3_TRAINING_FOCUSES : undefined;
     for (const rider of riders ?? []) {
-      trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null);
+      trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null, undefined, trainabilityFocuses);
       smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
@@ -3401,7 +3415,7 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
   let bulkFocus = null;
   let bulkIntensity = null;
   if (!isSmartMode) {
-    const resolved = resolveTrainingWrite(req.body, null);
+    const resolved = resolveTrainingWrite(req.body, null, await catalogV3ForTrainingWrite(req));
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     bulkFocus = resolved.focus;
     bulkIntensity = resolved.intensity;
@@ -3639,7 +3653,8 @@ router.post("/training/:riderId", requireAuth, marketWriteLimiter, trainNowPlanL
     // det LEGALISERES, så en kombination der beviseligt intet gør (fx vo2max +
     // hvile, 252 planer i prod) ikke kan skrives igen ad bagvejen.
     // previousFocus bevarer spillerens sidste session hen over en hviledag.
-    const resolved = resolveTrainingWrite(req.body, state.plans[riderId]?.focus ?? null);
+    const previousFocus = state.plans[riderId]?.focus ?? null;
+    const resolved = resolveTrainingWrite(req.body, previousFocus, await catalogV3ForTrainingWrite(req, previousFocus));
     if (!resolved.ok) return res.status(400).json({ error: resolved.reason });
     const { focus, intensity } = resolved;
     if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
@@ -5211,6 +5226,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
       races.push({
         id: race.id, name: race.name, raceClass: race.race_class, stages: race.stages ?? 1,
         status: race.status, stagesCompleted: race.stages_completed ?? 0,
+        lineupLocked: isRaceLineupLocked({ status: race.status, stagesCompleted: race.stages_completed, firstStageScheduledAt: rows.find((r) => r.stage_number === 1)?.scheduled_at, now: new Date() }),
         gameDayStart: span.start, gameDayEnd: span.end, restGameDays,
         sizeMin: sizeRule.min, sizeMax: sizeRule.max,
       });
@@ -5520,6 +5536,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         primaryProfileType: dominantTerrain(profTypes),
         primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
+        sprint_leader_allowed: raceAllowsCoCaptain(race), // #7239: samme v3-gate som udtagelsespanelet
         // #6740: inaktiv for al eksisterende klient-logik (pulje, overlap, binding) ved
         // begge slags afmelding; kolonnens tekst læser did_not_start først.
         withdrawn: withdrawnSet.has(race.id),
@@ -5811,16 +5828,15 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     if (!raceRow) return res.status(404).json({ error: "race_not_found" });
     race = raceRow;
 
-    // #4306: samme gate som auto-endpointet. Et bevidst afmeldt hold må ikke få en
-    // manuel udtagelse skrevet ind i et løb det har trukket sig fra. Uden denne gate
-    // overlevede Race Hub-kladden et afmeld-klik og kunne stadig "Gem"'es, hvilket
-    // skrev spiller-initierede entries ind i et afmeldt løb med NULL-binding (samme
-    // fingeraftryk som #4299). Spejlet i bulk-endpointet nedenfor, samme fejlkode.
+    // #7153: only voluntary withdrawal can be replaced by a manager before start.
     const { data: withdrawal, error: wErr } = await supabase
-      .from("race_withdrawals").select("race_id")
+      .from("race_withdrawals").select("race_id, withdrawn_reason")
       .eq("race_id", race.id).eq("team_id", req.team.id).maybeSingle();
     if (wErr) return res.status(500).json({ error: wErr.message });
-    if (withdrawal) return res.status(409).json({ error: "selection_withdrawn" });
+    if (withdrawal?.withdrawn_reason === DID_NOT_START_REASON) return res.status(409).json({ error: "selection_withdrawn" });
+    if (withdrawal && await isRaceLineupLockedNow({ supabase, race, now: new Date() })) {
+      return res.status(409).json({ error: "selection_withdrawn_locked" });
+    }
 
     // #1146: pulje-binding, body-shape, frys (#1825, begge retninger siden #4534) og
     // validateSelection er udtrukket til prepareSelectionChange (raceSelection.js), delt
@@ -5835,7 +5851,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // ikke selection-kontrakten). UI'et skjuler valgmuligheden bag flaget, men et gem
     // fra en allerede-åben kladde (flippet OFF undervejs) skal ikke fejle.
     const prepared = await prepareSelectionChange({
-      supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: req.body,
+      supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: req.body, rejoining: !!withdrawal,
       now: new Date(), // #6959: request-grænsen injicerer uret (hard rule 16)
     });
     if (!prepared.ok) {
@@ -5843,9 +5859,13 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         prepared.errors ? { error: prepared.error, errors: prepared.errors } : { error: prepared.error }
       );
     }
-    const { captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared;
+    const { captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId } = prepared; // #5982: luxuryHelperId
     riderIds = prepared.riderIds;
     ctx = prepared.ctx;
+    if (withdrawal) {
+      const conflicts = await findRejoinConflicts({ supabase, race, teamId: req.team.id, riderIds });
+      if (conflicts.length) return res.status(409).json({ error: "selection_rider_bound", conflicts: conflicts.map((c) => ({ ...c, race_name: c.bound_race_name })) });
+    }
 
     // Race-hub Fase 0a: håndhæv overlap-binding — en rytter må ikke være udtaget i
     // et tidsoverlappende løb (et etapeløb binder hele sit vindue).
@@ -5853,7 +5873,7 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     // hårde garanti ligger i replace_race_selection-RPC'en, der gentager overlap-
     // tjekket UNDER advisory-låsen på holdet (#2256, TOCTOU-hullet mellem læs og lås
     // lukket i database/2026-07-10-replace-race-selection-binding-guard.sql).
-    /** @type {any[]} */ const releasedRows = []; /** @type {any[]} */ let releasable = []; // #6959: til gendannelse hvis løbet starter under gemningen
+    /** @type {any[]} */ let releasable = []; // #7153: released only inside the manager transaction
     const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
     const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
     if (bound.length) {
@@ -5897,39 +5917,21 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
           return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: nowBlocking });
         }
       }
-      for (const r of resolvable) {
-        const { data: relRows, error: relErr } = await supabase.from("race_entries").delete()
-          .eq("race_id", r.race_id).eq("team_id", req.team.id).eq("rider_id", r.rider_id).eq("is_auto_filled", true)
-          .select("*");
-        if (!relErr && Array.isArray(relRows)) releasedRows.push(...relRows);
-        if (relErr) {
-          captureException(new Error(`race_entries auto-release (${r.race_id}/${r.rider_id}): ${relErr.message}`));
-          return res.status(500).json({ error: relErr.message });
-        }
-      }
     }
 
-    // #6959 (Codex P1): låsen genkontrolleres lige før gemningen (frisk races-række +
-    // frisk ur). replace_race_selection kender ikke scheduled_at, så det sker her.
-    // Kildeløbene for frigivelserne tjekkes også her: er et af dem låst under frigivelsen,
-    // gendannes alt og gemningen afvises (Codex P1 #7063).
-    const releasedRaceIds = [...new Set(releasedRows.map((r) => r.race_id))];
+    // Recheck target and auto-release sources; the RPC repeats these guards under locks.
+    const releasedRaceIds = [...new Set(releasable.map((r) => r.race_id))];
     const finalLocked = await loadLockedRaceIds({ supabase, raceIds: [race.id, ...releasedRaceIds], now: new Date() });
     const sourceLocked = releasedRaceIds.filter((id) => finalLocked.has(id));
     if (finalLocked.has(race.id) || sourceLocked.length) {
-      // #6959 (Codex P1): startede et løb mens frigivelserne kørte, gendannes de frigivne
-      // auto-entries, så en afvist gemning aldrig efterlader et hul i kildeløbene.
-      if (releasedRows.length) {
-        const { error: restoreErr } = await supabase.from("race_entries").insert(releasedRows);
-        if (restoreErr) captureException(new Error(`race_entries auto-release restore: ${restoreErr.message}`));
-      }
       if (!finalLocked.has(race.id)) {
         return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound, conflicts: releasable.filter((r) => sourceLocked.includes(r.race_id)) });
       }
-      return res.status(409).json({ error: "selection_race_started" });
+      return res.status(409).json({ error: withdrawal ? "selection_withdrawn_locked" : "selection_race_started" });
     }
     await saveSelection({
-      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId,
+      supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId,
+      managerSave: true, autoReleases: releasable.map((r) => ({ race_id: r.race_id, rider_id: r.rider_id })), now: new Date(),
     });
     // #2599: en manuel udtagelse med ≥1 rytter er en aktiv genindtræden — en evt. tidligere
     // "Ryd dag/alt"-markering for netop dette (race,team)-par er nu forældet. Best-effort:
@@ -5943,6 +5945,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     invalidateNamespace("calendar"); // #6514: kalenderens entered-status følger udtagelsen
     res.json({ ok: true });
   } catch (err) {
+    if (err?.code === "selection_save_busy") return res.status(503).json({ error: "selection_lookup_failed" });
+    if (["selection_withdrawn_locked", "selection_withdrawn"].includes(err?.code)) {
+      return res.status(409).json({ error: err.code });
+    }
     // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.
     // #3098: RPC'ens EXCEPTION-besked bærer ikke hvilke ryttere/løb der konflikter (kun
     // koden), så pre-flightens NAVNGIVNE 409 ({bound_rider_ids, conflicts}) tabtes her —
@@ -5978,6 +5984,9 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
         }
       }
       return res.status(409).json({ error: "selection_rider_bound" });
+    }
+    if (["selection_race_started", "selection_race_not_open"].includes(err?.code)) {
+      return res.status(409).json({ error: err.code });
     }
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -6017,6 +6026,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     return res.status(400).json({ error: "selection_duplicate_race" });
   }
 
+  let raceById = new Map();
   try {
     const isBetaTester = await isViewerBetaTester(req);
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
@@ -6030,20 +6040,22 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
       .select("id, race_type, race_class, stages, stages_completed, status, league_division_id, season_id, scheduled_for, squad, engine_rules_revision") // #5981: engine_rules_revision (delt kaptajn)
       .in("id", raceIds);
     if (racesErr) return res.status(500).json({ error: racesErr.message });
-    const raceById = new Map((raceRows || []).map((r) => [r.id, r]));
+    raceById = new Map((raceRows || []).map((r) => [r.id, r]));
     for (const raceId of raceIds) {
       if (!raceById.has(raceId)) return res.status(404).json({ error: "race_not_found", race_id: raceId });
     }
 
-    // #4306, spejlet fra single-endpointet: et bevidst afmeldt hold må ikke få en
-    // udtagelse skrevet ind i et løb det har trukket sig fra — heller ikke ad bulk-vejen,
-    // ellers ville matrixens "Gem plan" omgå gaten. Ét samlet opslag for hele batchen.
+    // #7153: preflight for every withdrawal in this atomic manager batch.
     const { data: withdrawnRows, error: wErr } = await supabase
-      .from("race_withdrawals").select("race_id")
+      .from("race_withdrawals").select("race_id, withdrawn_reason")
       .in("race_id", raceIds).eq("team_id", req.team.id);
     if (wErr) return res.status(500).json({ error: wErr.message });
-    if (withdrawnRows?.length) {
-      return res.status(409).json({ error: "selection_withdrawn", race_id: withdrawnRows[0].race_id });
+    const withdrawnById = new Map((withdrawnRows || []).map((r) => [r.race_id, r]));
+    for (const w of withdrawnRows || []) {
+      if (w.withdrawn_reason === DID_NOT_START_REASON) return res.status(409).json({ error: "selection_withdrawn", race_id: w.race_id });
+      if (await isRaceLineupLockedNow({ supabase, race: raceById.get(w.race_id), now: new Date() })) {
+        return res.status(409).json({ error: "selection_withdrawn_locked", race_id: w.race_id });
+      }
     }
 
     // Pas 1: pr.-løb-validering (samme prepareSelectionChange som single-endpointet, incl.
@@ -6061,8 +6073,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
 
     for (const change of changes) {
       const race = raceById.get(change.raceId);
+      if (withdrawnById.has(race.id)) {
+        const conflicts = await findRejoinConflicts({ supabase, race, teamId: req.team.id, riderIds: Array.isArray(change.rider_ids) ? change.rider_ids : [] });
+        if (conflicts.length) return res.status(409).json({ error: "selection_rider_bound", race_id: race.id, conflicts: conflicts.map((c) => ({ ...c, race_name: c.bound_race_name })) });
+      }
       const result = await prepareSelectionChange({
-        supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: change,
+        supabase, race, teamId: req.team.id, teamDivisionId: req.team.league_division_id, team: req.team, body: change, rejoining: withdrawnById.has(race.id),
         now: new Date(), // #6959
       });
       if (!result.ok) {
@@ -6122,12 +6138,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     // dobbeltbooking-check udskudt til batchens afslutning (database/2026-08-27-1146-
     // selection-bulk-rpc.sql — samme mønster som apply_race_entry_unit_batch, #3934).
     const rpcChanges = changes.map((c) => {
-      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId } = prepared.get(c.raceId);
+      const { riderIds, captainId, sprintCaptainId, hunterId, freeRoleIds, coCaptainId, luxuryHelperId } = prepared.get(c.raceId); // #5982: luxuryHelperId
       const freeRoleIdSet = new Set(freeRoleIds);
       return {
         race_id: c.raceId,
         rider_ids: riderIds,
-        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId })),
+        roles: riderIds.map((riderId) => selectionRoleFor(riderId, { captainId, sprintCaptainId, hunterId, freeRoleIdSet, coCaptainId, luxuryHelperId })),
       };
     });
 
@@ -6144,7 +6160,7 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     if (lockedSource.length) {
       return res.status(409).json({ error: "selection_rider_bound", conflicts: lockedSource });
     }
-    await saveSelectionBulk({ supabase, teamId: req.team.id, changes: rpcChanges, autoReleases });
+    await saveSelectionBulk({ supabase, teamId: req.team.id, changes: rpcChanges, autoReleases, managerSave: true, now: new Date() });
 
     // #2599-oprydning pr. løb (samme som single-endpointet): en manuel udtagelse med ≥1
     // rytter gør en evt. tidligere "Ryd dag/alt"-markering forældet. Best-effort — gemningen
@@ -6161,6 +6177,10 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     invalidateNamespace("calendar"); // #6514
     res.json({ ok: true, saved: changes.length });
   } catch (err) {
+    if (err?.code === "selection_save_busy") return res.status(503).json({ error: "selection_lookup_failed" });
+    if (["selection_withdrawn_locked", "selection_withdrawn"].includes(err?.code)) {
+      return res.status(409).json({ error: err.code });
+    }
     // #2256/#4283-mønsteret: RPC'ens deferred binding-backstop tabte kapløbet for os (en
     // SAMTIDIG skriver fra en anden session, i mellemrummet mellem vores pre-flight ovenfor
     // og denne transaktions commit). Ingen forsøg på at genskabe HVILKET løb/rytter her —
@@ -6168,6 +6188,12 @@ router.put("/races/selection/bulk", requireAuth, marketWriteLimiter, async (req,
     // skriver ramte i selve TOCTOU-vinduet, og en frisk 409 lader klienten selv gen-hente
     // og prøve igen.
     if (err?.code === "selection_rider_bound") {
+      try {
+       for (const change of changes) {
+        const conflicts = await findRejoinConflicts({ supabase, race: raceById.get(change.raceId), teamId: req.team.id, riderIds: change.rider_ids });
+        if (conflicts.length) return res.status(409).json({ error: "selection_rider_bound", race_id: change.raceId, conflicts: conflicts.map((c) => ({ ...c, race_name: c.bound_race_name })) });
+       }
+      } catch (lookupErr) { captureException(lookupErr); }
       return res.status(409).json({ error: "selection_rider_bound" });
     }
     // #2074/#4310: RPC'ens egen forward-guard (database/2026-08-27-1146-selection-bulk-
@@ -6547,10 +6573,12 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
       && await isStagePlanEnabled(supabase, { isBetaTester: (await isViewerBetaTester(req)) === true })
       ? await loadStagePlanContext({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider })
       : null;
+    const roleByRider = await loadStageRoleByRider({ supabase, raceId: race.id, stageNumber, baseRoleByRider: ctx.baseRoleByRider }); // #7003
     const result = validateTeamOrder({
       order: req.body || {},
       intentionEnabled,
       stagePlan,
+      roleByRider,
       raceCompleted: ctx.race_completed,
       stageNumber,
       stageCount: ctx.stage_count,
@@ -16957,7 +16985,7 @@ router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
   // opdateres foerst efter merge (auto-migrate.yml applier migrationen).
   const { data: rider, error } = await supabase
     .from("riders")
-    .select(`id, birthdate, ${RETIREMENT_NOTICE_COLUMNS}`)
+    .select(`id, birthdate, is_retired, ${RETIREMENT_NOTICE_COLUMNS}`)
     .eq("id", req.params.id)
     .maybeSingle();
   if (error) return res.status(500).json({ error: error.message });
@@ -16968,16 +16996,9 @@ router.get("/riders/:id/retirement-status", requireAuth, async (req, res) => {
   // (lazy freeze) — så en senere ændring af hash-funktionen bag rullet ikke kan
   // flytte varslet midt i en sæson, sådan som #4990 gjorde 7/9.
   const seasonNumber = await getActiveSeasonNumber();
-  const notice = await resolveRetirementNotice(supabase, rider, seasonNumber);
-  // Svarformen er UÆNDRET fra #2748. Et udkast lagde `notice_season` og
-  // `notice_given_at` på, men banner-linjen der skulle vise dem sagde intet nyt
-  // (notice_season ER den aktive sæson, som allerede står i sætningen ovenover),
-  // og `given_at` er tidspunktet frysningen blev SKREVET — for de backfill'ede
-  // rækker ops-kørslens tidsstempel, ikke "da varslet blev givet". At vise det
-  // ville modsige "Announced his retirement at the season start". Felterne er
-  // derfor holdt ude af kontrakten indtil der findes en flade der faktisk har
-  // brug for dem (review-fund #5073).
-  res.json({ announced_retirement: notice.announced });
+  const notice = await resolveRetirementNoticeForDisplay(supabase, rider, seasonNumber);
+  // The notice carries its own season; frontend season reads can be newer.
+  res.json({ announced_retirement: notice.announced, retirement_after_season: notice.announced ? notice.season : null });
 });
 
 // POST /api/riders/:id/view — vis rytter-profil, log besøg (#963) + trigger evt. transferrygte
@@ -18918,19 +18939,12 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // senior mod divisionens cap. Tælles kun når der faktisk er en pending
     // graduering — ellers er det en gratis forespørgsel pr. sidevisning.
     //
-    // Tælles med countSquadMembers — SAMME funktion `hasRoomInTargetSquad`
-    // bruger på skrive-siden, så fladen og motoren ikke kan blive uenige om
-    // hvor mange der er i truppen. Den er en `head: true`-optælling, så der
-    // hentes ingen rækker (ingen pagination-overflade) og ingen ukendt kolonne
-    // læses ud.
+    // youthSquadRooms ovenfor bruger allerede countSquadMembers, samme
+    // tælling som skrive-siden. Genbrug resultatet frem for nye parallelle HEADs.
     const youthSquadCounts = { junior: 0, u23: 0 };
     if ((gradRows ?? []).length > 0) {
-      const [juniorCount, u23Count] = await Promise.all([
-        countSquadMembers(supabase, { teamId, squad: "junior" }),
-        countSquadMembers(supabase, { teamId, squad: "u23" }),
-      ]);
-      youthSquadCounts.junior = juniorCount;
-      youthSquadCounts.u23 = u23Count;
+      youthSquadCounts.junior = squads.junior.used;
+      youthSquadCounts.u23 = squads.u23.used;
     }
 
     // #5943: sæson-alder (ageForSeason), ikke wall-clock — ellers står en rytter

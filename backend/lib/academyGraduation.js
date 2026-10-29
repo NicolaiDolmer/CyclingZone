@@ -11,7 +11,7 @@ import { ageForSeason } from "./riderProgressionEngine.js";
 import { SQUAD_MAX_AGE, SQUADS, effectiveSquad, transitionForRider, isYouthSquad, wouldExceedSquadCap } from "./squads.js";
 import { readFlagStage } from "./featureStage.js";
 import { fetchAllRows } from "./supabasePagination.js";
-import { buildKeyedNotification, notifyTeamOwner } from "./notificationService.js";
+import { buildKeyedNotification, notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
@@ -491,6 +491,10 @@ export async function resolveGraduation(supabase, {
       ...contractPatch,
     }).eq("id", riderId);
     if (error) throw new Error(`resolveGraduation promote update: ${error.message}`);
+    await notifyIfContractExpiresThisSeason({
+      supabase, teamId, seasonNumber, now, notify,
+      rider: { ...rider, ...contractPatch, ...graduationSquadPatch(grad) },
+    });
     // #5903: en graduate auto-udtaget i den GAMLE trups kommende løb (28/9:
     // junior → U23 efter autofyldet) må ikke blive stående dér. Samme regel som
     // moveRider() (#5843); kaster aldrig.
@@ -668,6 +672,10 @@ export async function releaseUnsoldGraduate(supabase, {
 }
 
 /**
+ * @typedef {{id:string, team_id:string|null, is_academy:boolean, firstname:string|null, lastname:string|null,
+ * current_production_value:number|null, salary:number|null, contract_length:number|null, contract_end_season:number|null}} PromotionRider
+ */
+/**
  * #4495 (reparation, 5/9) — fuldfør en promovering der blev haengende: en
  * akademirytter med en AFSLUTTET 'promoted' grad-raekke, hvor is_academy=false-
  * flippet paa selve rytter-raekken af en eller anden grund aldrig naaede at ske
@@ -684,11 +692,11 @@ export async function releaseUnsoldGraduate(supabase, {
  * @throws 'squad_cap_violation' hvis der ikke er plads i seniortruppen (samme
  *   fejl som resolveGraduation's promote-gren — ingen automatisk fallback her,
  *   det er en ejer-beslutning at traeffe paa reparations-listen, se scriptet).
- * @returns {Promise<{completed:boolean, riderId:string, reason?:string, salary?:number}>}
+ * @returns {Promise<{completed:boolean, riderId:string, reason?:string, salary?:number|null}>}
  */
 export async function completeStuckPromotion(supabase, {
-  teamId, riderId, rider = null, seasonNumber,
-  getMarketState = getTeamMarketState, notify = notifyTeamOwner, notification = null,
+  teamId, riderId, rider = /** @type {PromotionRider|null} */ (null), seasonNumber,
+  getMarketState = getTeamMarketState, notify = notifyTeamOwner, notification = null, now = new Date(),
   clearEntriesOutsideSquad = clearOffSquadEntriesSafe,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -724,6 +732,10 @@ export async function completeStuckPromotion(supabase, {
     .select("id");
   if (error) throw new Error(`completeStuckPromotion update: ${error.message}`);
   if ((updated ?? []).length === 0) return { completed: false, riderId, reason: "already_resolved" };
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId, seasonNumber, now, notify,
+    rider: { ...target, ...contractPatch, squad: "senior", is_academy: false },
+  });
   // #5903: rytteren er nu senior; hans kommende ungdomsløb ryddes (kaster aldrig).
   await clearEntriesOutsideSquad(supabase, { riderId, squad: "senior", label: "graduation_stuck_promotion" });
 
@@ -812,7 +824,7 @@ export async function resolveUnsoldGraduate(supabase, {
       const name = `${target.firstname} ${target.lastname}`;
       try {
         const res = await completeStuckPromotion(supabase, {
-          teamId, riderId: id, rider: target, seasonNumber, getMarketState, notify,
+          teamId, riderId: id, rider: target, seasonNumber, getMarketState, notify, now,
           notification: {
             title: "Academy graduate promoted",
             message: `${name} drew no bids, so he moves up to your senior squad.`,

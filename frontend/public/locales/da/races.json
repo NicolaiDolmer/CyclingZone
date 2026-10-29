@@ -8,6 +8,8 @@
     "noPlanLocked": "Ingen plan. Han kørte efter sin rolle.",
     "noPlanOrders": "Ingen plan endnu. Han kører på det, du har sat: {orders}.",
     "noPlanOrdersLocked": "Ingen plan. Han kørte på det, du havde sat: {orders}.",
+    "luxuryHelperPlan": "Ingen gemt plan. Som luksushjælper kører han forslaget.",
+    "luxuryHelperPlanLocked": "Ingen gemt plan. Som luksushjælper kørte han forslaget.",
     "noFit": "Planen passer ikke længere til hans rolle. Vælg en ny.",
     "colPlan": "Plan for etape {number}",
     "colPlanRaceDay": "Plan for løbet",
@@ -352,7 +354,7 @@
     "errorTitle": "Udtagelsesmatrixen kunne ikke hentes",
     "empty": "Ingen løb i denne sæson endnu",
     "restDay": "Hviledag",
-    "withdrawnHint": "Du har meldt fra til dette løb. Den gemte opstilling bliver stående, hvis du melder til igen, men rytterne stiller ikke op.",
+    "withdrawnHint": "Gem en ny udtagelse for at annullere udtrækningen og erstatte den gamle udtagelse.",
     "dayAria": "Løbsdag {index}, {date}. Åbn dagens board.",
     "cellEmptyAria": "{rider}, {race}: ikke udtaget. Klik for at tilføje.",
     "cellFilledAria": "{rider}, {race}: {role}. Klik for at skifte.",
@@ -471,6 +473,8 @@
       "hint": "Tryk på en ordre for at ændre rytterens rolle",
       "captain": "Kaptajn",
       "sprintCaptain": "Sprint-kaptajn",
+      "coCaptain": "Delt kaptajn",
+      "luxuryHelper": "Luksushjælper",
       "hunter": "Udbrudsjæger",
       "rider": "Kun rytter"
     },
@@ -528,16 +532,19 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Udbruds-chance",
-      "high": "Høj",
-      "medium": "Middel",
-      "low": "Lav",
-      "none": "Ingen",
-      "tooltip": "Hvor sandsynligt et udbrud er at holde hjem på dette terræn. Jægeren er altid udbruds-kandidat."
-    },
     "hunterExplainer": {
-      "strengthLine": "På dette løbs terræn har et udbrud {strength} chance for at holde hjem.",
+      "dayLine": "Jægeren prøver at komme med i morgenudbruddet. Om det holder hjem, afgøres af feltet på dagen.",
+      "outlook": {
+        "about": "Motorens bud: udbruddet holder hjem cirka {k} af {n} gange.",
+        "under": "Motorens bud: udbruddet holder hjem under {k} af {n} gange.",
+        "over": "Motorens bud: udbruddet holder hjem over {k} af {n} gange.",
+        "stage": "Etape {stage}",
+        "reason": {
+          "nobodyChases": "Få hold har grund til at jage det.",
+          "fewChase": "Et eller to hold har som regel grund til at jage det.",
+          "manyChase": "Flere hold har som regel grund til at jage det."
+        }
+      },
       "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
       "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
       "aggression": "Aggression",
@@ -752,6 +759,10 @@
     "minHint": "Mindst {min} ryttere for at stille op.",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
+    "coCaptain": "Delt kaptajn (valgfri)",
+    "coCaptainHint": "Beskyttet som kaptajnen. Kaptajnen får hjælp først.",
+    "luxuryHelper": "Luksushjælper (valgfri)",
+    "luxuryHelperHint": "Sparer sig og arbejder for kaptajnen på den afgørende stigning.",
     "hunter": "Udbrudsjæger",
     "freeRole": "Fri rolle",
     "noRole": "Ingen",
@@ -835,6 +846,7 @@
       "title": "Dette løb er i en anden division",
       "note": "Du kan kun udtage hold til løb i din egen division, så der er ingen opstilling at sætte her."
     },
+    "rejoinNote": "Gem en ny udtagelse for at annullere udtrækningen og erstatte den gamle udtagelse.",
     "withdrawnPanel": {
       "title": "Du har meldt fra til dette løb",
       "note": "Holdet stiller frivilligt ikke op, så der er ingen opstilling at sætte. Meld til igen fra løbstavlen, hvis du ombestemmer dig inden start.",
@@ -850,8 +862,11 @@
       "move_failed": "Kunne ikke flytte rytteren. Prøv igen.",
       "selection_captain_required": "Vælg en kaptajn blandt de udtagne ryttere.",
       "selection_captain_not_selected": "Kaptajnen skal være blandt de udtagne ryttere.",
+      "selection_co_captain_not_available": "Delt kaptajn findes ikke i dette løb.",
+      "selection_co_captain_requires_captain": "En delt kaptajn kræver en kaptajn. Vælg en kaptajn først.",
       "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
       "selection_role_overlap": "Kaptajn, spurt-kaptajn og jæger skal være forskellige ryttere.",
+      "selection_luxury_helper_not_available": "Luksushjælperen findes ikke i dette løb.",
       "selection_rider_injured": "Skadede ryttere kan ikke udtages.",
       "selection_rider_over_age": "Ryttere over løbets aldersgrænse kan ikke udtages.",
       "selection_rider_not_on_team": "Du kan kun udtage dine egne ryttere.",
@@ -864,6 +879,7 @@
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
+      "selection_withdrawn_locked": "Du trak holdet ud af løbet. Feltet er låst efter første etape.",
       "selection_withdrawn": "Du er afmeldt dette løb, så der kan ikke gemmes en trup til det.",
       "selection_train_now_locked": "Ryttere der trænede i dag kan ikke sættes ind i eller tages ud af dagens løb.",
       "selection_youth_squad_train_only": "Truppen er sat til Kun træning. Skift den til Kør løb på trup-siden for at tilmelde den.",
@@ -937,12 +953,21 @@
       "protect": "arbejd eller angrib",
       "all_out": "alt ud"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Arbejd", "why": "Kører for lederen. Rigtig træthed.", "today": "arbejder for lederen" },
+        "follow": { "step": "Følg angrebene", "why": "Svarer på hvert angreb. Koster flere kræfter.", "today": "følger angrebene" },
+        "free": { "step": "Kør offensivt", "why": "Presser på stigningerne og i finalen.", "today": "kører offensivt" }
+      }
+    },
     "roleWord": {
       "captain": "kaptajn",
       "sprint_captain": "spurtkaptajn",
+      "co_captain": "delt kaptajn",
       "helper": "rytter",
       "hunter": "jæger",
-      "free_role": "fri rolle"
+      "free_role": "fri rolle",
+      "luxury_helper": "luksushjælper"
     },
     "errors": {
       "stage_roles_invalid_body": "Kunne ikke gemme intentionerne. Prøv igen.",
@@ -951,14 +976,21 @@
       "stage_roles_invalid_role": "En af rollerne er ugyldig.",
       "stage_roles_invalid_effort": "En af intentionerne er ugyldig.",
       "stage_roles_role_overlap": "Kun én rytter kan være kaptajn, kun én kan være spurtkaptajn, og kun én kan være udbrudsjæger, pr. etape.",
+      "stage_roles_co_captain_requires_captain": "En delt kaptajn kræver en kaptajn på samme etape.",
       "stage_roles_duplicate": "Samme rytter optræder to gange for samme etape.",
       "stage_roles_rider_abandoned": "En af rytterne er udgået af løbet og kan ikke længere få en intention.",
       "stage_roles_race_completed": "Løbet er afsluttet, så intentionerne kan ikke længere ændres.",
       "generic": "Kunne ikke gemme intentionerne. Prøv igen.",
-      "stage_roles_conflict": "Taktikken er ændret i et andet vindue. Den nyeste udgave er hentet. Tjek den og gem igen."
+      "stage_roles_conflict": "Taktikken er ændret i et andet vindue. Den nyeste udgave er hentet. Tjek den og gem igen.",
+      "team_orders_grupetto_with_break": "En rytter på Grupetto kan ikke forsøge udbrud.",
+      "team_orders_grupetto_with_train": "En rytter på Grupetto kan ikke køre i sprint-toget.",
+      "team_orders_work_with_break": "En rytter der arbejder for lederen, kan ikke forsøge udbrud.",
+      "team_orders_train_with_break": "En rytter i sprint-toget kan ikke forsøge udbrud."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Ikke sammen med Grupetto.", "notWithWork": "En rytter der arbejder for lederen, kan ikke gå med i udbrud.", "notWithBreak": "Ikke når han forsøger udbrud.", "notWithTrain": "Sprint-toget bliver i feltet til finalen." },
+    "pickOne": "Vælg én",
     "title": "Taktik",
     "locksAt": "Låser {time}",
     "locked": "Låst",
@@ -1004,10 +1036,12 @@
     "tryBreakAria": "{name} forsøger at komme med i udbruddet",
     "roleLabel": {
       "captain": "Kaptajn",
+      "co_captain": "Delt kaptajn",
       "sprint_captain": "Spurt-kaptajn",
       "hunter": "Udbrudsjæger",
       "helper": "Hjælper",
-      "free_role": "Fri rolle"
+      "free_role": "Fri rolle",
+      "luxury_helper": "Luksushjælper"
     },
     "save": "Gem taktik",
     "saving": "Gemmer…",
@@ -1039,7 +1073,8 @@
       "sprint_captain": "spurt-kaptajn",
       "hunter": "udbrudsjæger",
       "helper": "hjælper",
-      "free_role": "fri rolle"
+      "free_role": "fri rolle",
+      "luxury_helper": "luksushjælper"
     }
   },
   "stageOrders": {
@@ -1116,10 +1151,12 @@
       "roleExclusiveNoteScoped": "Én kaptajn, én spurtkaptajn og én udbrudsjæger ad gangen. Rytteren der havde rollen bliver domestik på de samme etaper. Tidligere etaper beholder deres roller.",
       "roleWhy": {
         "captain": "Holdet kører for ham, og han får beskyttelsen.",
+        "co_captain": "Beskyttet som kaptajnen. Kaptajnen får hjælp først.",
         "sprint_captain": "Han får sprint-toget og optrækket.",
         "hunter": "Han jagter udbruddet.",
         "helper": "Han arbejder for lederne.",
-        "free_role": "Han kører sit eget løb."
+        "free_role": "Han kører sit eget løb.",
+        "luxury_helper": "Han sparer sig og arbejder for kaptajnen på den afgørende stigning. Stigningen ændrer du i etapeplanen."
       }
     },
     "team": {
@@ -1438,6 +1475,25 @@
         "breakaway_caught_by_teams": "{riders} bliver indhentet. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} stod for jagten.",
         "breakaway_caught_by_peloton": "{riders} bliver indhentet af feltet.",
         "breakaway_survived": "Udbruddet holder feltet fra livet helt til stregen.",
+        "cause": {
+          "unchased": "Ingen ville jage, så udbruddet fik al den plads, det skulle bruge.",
+          "no_chasers": "Holdene, der ville jage, havde ingen ryttere tilbage til det.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} jagede aldrig: holdet havde} other {{teamsHead} og {teamLast} jagede aldrig: holdene havde}} ryttere i udbruddet.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} havde brugt, hvad holdet kunne,} other {{teamsHead} og {teamLast} havde brugt, hvad holdene kunne,}} på jagten.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} havde ingen ledige ryttere at jage med.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} kørte kun for klassementet og lod etapen gå.",
+          "chase_faded_climb": "Jagten døde ud efter {climb}, og hullet voksede igen.",
+          "chase_faded": "Jagten døde ud, og hullet voksede igen.",
+          "chase_too_late": "Jagten kom tættere på, men løb tør for vej.",
+          "gap_never_closed": "Jagten fik aldrig hullet ned.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast}} other {{teamsHead} og {teamLast}}} jagede, fordi {threats} truede {rider} i klassementet.",
+          "closed_on_climb": "Hullet faldt på {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} kørte alt ud på din ordre og blev væk helt til stregen.",
+          "all_out_held_on_climb": "{rider} kørte alt ud på din ordre og var med forrest over {climb}.",
+          "all_out_held_on": "{rider} kørte alt ud på din ordre og blev i den forreste gruppe."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {bliver} other {bliver}} sat af fra udbruddet.",
         "group_ahead_formed": "{riders} kører væk i en gruppe foran feltet.",
         "group_ahead_caught": "Gruppen foran feltet bliver hentet: {riders}.",
@@ -1452,6 +1508,14 @@
         "incident_protected": "{rider} vælter inde på de sidste kilometer, men beholder gruppens tid.",
         "favorite_crack": "{rider} sprækker og mister kontakten til front.",
         "favorite_crack_tt": "{rider} falder fra hinanden på anden halvdel og taber tid.",
+        "all_out_gain": "{rider} kører alt ud på den sidste stigning og vinder tid.",
+        "all_out_cracked": "{rider} kører alt ud og kører sig tom på den sidste stigning.",
+        "bad_day_fatigue": "{rider} havde en dårlig dag. De hårde dage før sad i benene.",
+        "bad_day_form": "{rider} havde en dårlig dag. Formen var der ikke.",
+        "bad_day_illness": "{rider} havde en dårlig dag. Han følte sig syg.",
+        "bad_day_rain": "{rider} havde en dårlig dag i regnen.",
+        "bad_day_wind": "{rider} havde en dårlig dag i vinden.",
+        "bad_day_heat": "{rider} havde en dårlig dag i varmen.",
         "finale_attack": "{rider} angriber i finalen.",
         "ttt_rider_dropped": "{rider} slipper holdets tempo.",
         "sprint_decided": "Det bliver tæt mellem {rider} og forfølgerne.",

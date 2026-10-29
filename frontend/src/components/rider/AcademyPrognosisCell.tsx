@@ -23,7 +23,7 @@ export default function AcademyPrognosisCell({ prognosis }: { prognosis: Academy
       <span className="flex flex-col leading-tight" title={title} data-testid="academy-prognosis-learning">
         <span className="text-xs text-cz-2">{t("prognosis.learning")}</span>
         {nextStageDays != null && (
-          <span className="text-3xs text-cz-3 tabular-nums whitespace-nowrap">{t("prognosis.daysLeft", { days: nextStageDays })}</span>
+          <span className="text-3xs text-cz-3 tabular-nums">{t("prognosis.daysLeft", { days: nextStageDays })}</span>
         )}
       </span>
     );

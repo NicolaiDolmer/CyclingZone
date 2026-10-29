@@ -37,7 +37,7 @@ test("#6740 release: panel og sæsonmatrix viser did_not_start, ikke 'du har mel
   const panel = readFileSync(new URL("../race/RaceSelectionPanel.jsx", import.meta.url), "utf8");
   const matrix = readFileSync(new URL("./SeasonMatrix.jsx", import.meta.url), "utf8");
   const didNotStartAt = panel.indexOf("if (data.did_not_start) {");
-  assert.ok(didNotStartAt > 0 && didNotStartAt < panel.indexOf("if (data.withdrawn) {"), "did_not_start foer withdrawnPanel");
+  assert.ok(didNotStartAt > 0 && didNotStartAt < panel.indexOf("if (data.withdrawn && data.lineup_locked) {"), "did_not_start foer withdrawnPanel");
   assert.match(matrix, /didNotStart: didNotStart\.has\(r\.id\)/);
   assert.equal(matrix.match(/racehub\.status\.didNotStart/g)?.length, 2, "desktop + mobil");
   // Hintet (tooltip + popover) siger did not start, aldrig "du har meldt fra".
