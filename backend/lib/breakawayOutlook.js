@@ -86,10 +86,14 @@ export async function isOutlookRelevantForViewer({ supabase, race, team }) {
   return Boolean(entry);
 }
 
-/** Profiltypen for løbets næste etape (stages_completed-indeks i sorteret rækkefølge), eller null. */
+// Et løb har én profil pr. etape (en grand tour ~21), så loftet er en sikkerhedsgrænse, ikke en trunkering.
+const MAX_STAGE_PROFILES = 100;
+
+/** Profiltypen for løbets næste etape (stages_completed-indeks i sorteret rækkefølge, som raceRunner), eller null. */
 export async function loadNextStageProfileType({ supabase, race }) {
   const { data, error } = await supabase
-    .from("race_stage_profiles").select("stage_number, profile_type").eq("race_id", race.id).order("stage_number", { ascending: true });
+    .from("race_stage_profiles").select("stage_number, profile_type").eq("race_id", race.id)
+    .order("stage_number", { ascending: true }).limit(MAX_STAGE_PROFILES);
   if (error) throw new Error(`race_stage_profiles (breakaway outlook): ${error.message}`);
   const sorted = [...(data || [])].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
   return sorted[Number(race.stages_completed) || 0]?.profile_type ?? null;

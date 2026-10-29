@@ -351,7 +351,7 @@ test("isOutlookRelevantForViewer: ikke-aktiv sæson, færdigt løb eller intet h
 test("loadNextStageProfileType: næste etapes profil efter stages_completed", async () => {
   const db = {
     from() {
-      const api = { select() { return api; }, eq() { return api; }, order() {
+      const api = { select() { return api; }, eq() { return api; }, order() { return api; }, limit() {
         return Promise.resolve({ data: [{ stage_number: 2, profile_type: "itt" }, { stage_number: 1, profile_type: "flat" }], error: null });
       } };
       return api;
