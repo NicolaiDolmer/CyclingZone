@@ -4,6 +4,8 @@ import { fetchAllRows } from './supabasePagination.js';
 import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
 import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
 import { loadFinalTrainingDate, TRAINING_DATE_SETTLEMENT_HOUR } from './seasonTransitionReadiness.js';
+import { ADMIN_ACTION_TYPE } from './economyConstants.js';
+import { TRANSITION_PHASE_LOG_SOURCE, TRANSITION_PHASE_STATUS } from './seasonTransitionPhaseLog.js';
 
 /**
  * #6536: who gets the division-less calendar-day tick (gameDay null)?
@@ -61,6 +63,14 @@ function instantWithin(value, { start, end }) {
  * `meta.from_season_id`). seasons.end_date cannot carry it: the column is a DATE,
  * so a transition that bypasses season-end (no claim) would otherwise fall back to
  * midnight (Codex P1 on #7143).
+ *
+ * Cutover barrier (Codex P1 on #7143): the date is only scheduled once the next
+ * season is active and no engine transition from this season is still between its
+ * start anchor and its finish (audit row or completed anchor). The transition runs
+ * the season-start form/fatigue resets in between; work registered before them would
+ * freeze a pre-reset opening condition, and commit_training_date_tick would then
+ * quarantine those riders (unsafe_current_state). Season-end alone (status
+ * `completed`, next season not yet active) therefore waits for the transition.
  */
 export async function loadJustCompletedFinalTrainingDate({ supabase, today, dueEnd }) {
   const [season] = await checked(supabase.from('seasons').select('id,number,start_date,end_date,status')
@@ -68,14 +78,20 @@ export async function loadJustCompletedFinalTrainingDate({ supabase, today, dueE
   if (season?.status !== 'completed') return null;
   const tickDate = await loadFinalTrainingDate({ supabase, seasonId: season.id });
   if (!tickDate || tickDate > dueEnd || tickDate < previousCivilDate(today)) return null;
-  const [claim, transitionRows] = await Promise.all([
+  const [claim, transitionRows, next] = await Promise.all([
     checked(supabase.from('season_end_claims').select('claimed_at').eq('season_id', season.id).maybeSingle(), 'season end claim'),
     // Earliest first: a retried transition's first attempt already started the cutover.
-    checked(supabase.from('admin_log').select('meta').contains('meta', { from_season_id: season.id })
-      .order('created_at', { ascending: true }).range(0, 19), 'season transition log'),
+    checked(supabase.from('admin_log').select('action_type,meta').contains('meta', { from_season_id: season.id })
+      .order('created_at', { ascending: true }).range(0, 49), 'season transition log'),
+    checked(supabase.from('seasons').select('status').eq('number', Number(season.number) + 1).maybeSingle(), 'next season'),
   ]);
+  if (next?.status !== 'active') return null;
+  const rows = transitionRows ?? [];
+  const phase = status => rows.some(row => row.meta?.source === TRANSITION_PHASE_LOG_SOURCE && row.meta?.status === status);
+  const finished = phase(TRANSITION_PHASE_STATUS.COMPLETED) || rows.some(row => row.action_type === ADMIN_ACTION_TYPE.SEASON_TRANSITION);
+  if (phase(TRANSITION_PHASE_STATUS.STARTED) && !finished) return null;
   const bounds = trainingDateBounds(tickDate);
-  const marks = [claim?.claimed_at, ...(transitionRows ?? []).map(row => row.meta?.transition_at)]
+  const marks = [claim?.claimed_at, ...rows.map(row => row.meta?.transition_at)]
     .map(value => instantWithin(value, bounds)).filter(Boolean);
   const cutoff = marks.length ? new Date(Math.min(...marks.map(Number))) : bounds.end;
   return { season, tickDate, cutoff };

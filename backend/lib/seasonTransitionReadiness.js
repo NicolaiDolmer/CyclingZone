@@ -431,7 +431,7 @@ export async function assessFinalTrainingDateSettlement({ supabase, season, now 
   if (blockers.length && blockers.every(row => row.reason === 'missing_registration') &&
       tickDate === copenhagenDateString(now) && copenhagenHour(now) < TRAINING_DATE_SETTLEMENT_HOUR) {
     return { blocked: false, deferred: true, tick_date: tickDate, blockers,
-      detail: `Træning ${tickDate} er ikke afregnet endnu (${blockers.length} hold). Aftenkørslen kl. ${TRAINING_DATE_SETTLEMENT_HOUR} afregner den, også efter sæsonafslutningen.` };
+      detail: `Træning ${tickDate} er ikke afregnet endnu (${blockers.length} hold). Aftenkørslen kl. ${TRAINING_DATE_SETTLEMENT_HOUR} afregner den, når skiftet til næste sæson er gennemført.` };
   }
   return { blocked: blockers.length > 0, tick_date: tickDate, blockers,
     detail: blockers.length ? `Sæsonen kan ikke afsluttes: træning ${tickDate} er ikke fuldt afregnet. ` +

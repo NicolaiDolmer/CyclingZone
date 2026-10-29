@@ -49,6 +49,16 @@ den samme som gatens (`loadFinalTrainingDate`). Præcis én afregning sikres af 
 varige arbejde: `complete`/`needs_reconciliation` springes over, og kvitteringer er
 pr. løbsdag.
 
+Datoen planlægges først, når skiftet er gennemført: næste sæson er `active`, og ingen
+motor-transition fra sæsonen står mellem sit start-anker og sin afslutning (audit-række
+`season_transition` eller completed-anker i `admin_log`). Transitionen nulstiller form og
+træthed undervejs, og arbejde registreret før det ville fryse en starttilstand fra før
+nulstillingen. Sæsonafslutning alene (næste sæson endnu ikke aktiv) venter derfor på
+skiftet. Arbejde, der registreres efter datoens frist (næste dag kl. 02), får som alle
+sene datoer intet starttilstands-snapshot og går til afstemning
+(`roster_or_opening_evidence_unavailable`). En sen registreringsvej med bevist
+starttilstand findes kun for brodatoer (#7282).
+
 Afregningen ser sæsonen, som den var ved skæringstidspunktet: det tidligste af
 sæsonafslutningens claim (`season_end_claims.claimed_at`) og transitionens eget
 tidspunkt (`meta.transition_at` på transitionens `admin_log`-rækker med
