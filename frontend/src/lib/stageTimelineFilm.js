@@ -30,7 +30,7 @@ export { filmKmValue } from "./stageTimelineKmSpan.ts";
 import { labelBreakawayEvents, breakawayFilmCopy, breakawayLabelOf } from "./breakawayLabels6299.ts"; // #6299: kun udbruddet hedder udbrud
 // #6469: hvorfor udbruddet holdt/blev hentet + spillerens egen "Alt ud" i udfaldet.
 // Ren afledning af tidslinjen; samme modul som backendens kontrakt-tests (G7).
-import { withNarrativeCauses } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
+import { withNarrativeCauses, isTimeTrialNarrative } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -116,12 +116,11 @@ export function altitudeAtKm(series, km) {
 
 // Etapetyper hvor der ikke er noget felt at måle en afstand til. Samme tre
 // værdier som backend/lib/raceStageProfileGenerator.js's TIME_TRIAL_PROFILES.
-const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
 
-/** Er etapen en tidskørsel? Aflæses af `stage_start` — det eneste event der bærer profile_type. */
-function isTimeTrialStage(events) {
-  const start = events.find((e) => e?.type === "stage_start");
-  return TIME_TRIAL_PROFILES.has(start?.params?.profile_type);
+
+/** Use actual profile metadata, then the stored timeline discipline. */
+function isTimeTrialStage(events, profileType = null) {
+  return isTimeTrialNarrative(events, profileType);
 }
 
 /**
@@ -130,12 +129,12 @@ function isTimeTrialStage(events) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], effortByRider = null, timelineVersion = null, startlist = null } = {}) {
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, profileType?: string|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], effortByRider = null, profileType = null, timelineVersion = null, startlist = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
   // #6469: årsagslinjer (og egne "Alt ud"-linjer) lige efter det udfald de forklarer.
-  const sorted = withNarrativeCauses(labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events), { ownRiderIds, effortByRider });
+  const sorted = withNarrativeCauses(labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events), { ownRiderIds, effortByRider, profileType });
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
@@ -148,12 +147,12 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
   // Projektionen læser den rå tidslinje (rækkefølge-følsom); kurven og
   // catch-mærket står ved tjekpunktet, hvor motoren målte hullet lukket.
-  const caughtEvent = findMorningCatch(events, startlist);
+  const caughtEvent = isTimeTrialStage(events, profileType) ? null : findMorningCatch(events, startlist);
   // Et præcist kontakt-km (exact_km) står samme sted som filmens linje.
   const catchKm = caughtEvent ? (exactEventKm(caughtEvent) ?? caughtEvent.km ?? null) : null;
   const namedGroups = sorted.some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");
   let gapCurve = [];
-  if (!isTimeTrialStage(sorted)) {
+  if (!isTimeTrialStage(sorted, profileType)) {
     if (!namedGroups) {
       gapCurve = sorted.filter((e) => e?.type === "gap_update").map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
     } else if (formation?.params?.group_id) {
@@ -220,12 +219,12 @@ const NARRATIVE_TYPES = new Set(["breakaway_cause", "order_impact"]);
  * til de udfald der er med, lige efter dem. `allEvents` er den liste udvalget er
  * taget fra (samme objekter); årsagerne udledes af hele etapen, ikke kun udvalget.
  */
-export function storyEventsWithCauses(storyEvents, allEvents, { ownRiderIds = [], effortByRider = null } = {}) {
+export function storyEventsWithCauses(storyEvents, allEvents, { ownRiderIds = [], effortByRider = null, profileType = null } = {}) {
   const picked = new Set(storyEvents || []);
   if (!picked.size) return [];
   const out = [];
   let following = false;
-  for (const event of withNarrativeCauses(allEvents || [], { ownRiderIds, effortByRider })) {
+  for (const event of withNarrativeCauses(allEvents || [], { ownRiderIds, effortByRider, profileType })) {
     if (NARRATIVE_TYPES.has(String(event?.type ?? ""))) {
       if (following) out.push(event);
       continue;

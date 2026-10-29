@@ -13,7 +13,7 @@
 //   - groupMembersAt:   hvem kører i hvilken gruppe ved et km (replay-navne)
 //   - finaleData/…:     "Final 5 km"-grafikkens tidsmodel og gruppevalg
 import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs } from "../../../../../backend/lib/raceStory.js";
-import { withNarrativeCauses, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
+import { withNarrativeCauses, isTimeTrialNarrative, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { collectRiderIds, describeEvent } from "../../../lib/stageTimelineFilm.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
 import type { ResultRow, RoleRider } from "./stagePageV2Model.ts";
@@ -211,6 +211,7 @@ export type LineKind =
 
 export interface StoryNarrative { key: string; params: Record<string, unknown> }
 export interface StoryNarrativeContext {
+  profileType?: string | null;
   events: readonly NarrativeEvent[];
   effortByRider?: { get(id: string): unknown } | null;
   teamNameById?: ReadonlyMap<string, string>;
@@ -307,9 +308,13 @@ function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLin
  * jagt samt splits 4, samlinger 6. Linjer med dine ryttere rykker et trin op.
  * Samme prioritet: stoerst foerst (grupper, hul), saa senest i etapen.
  */
+export function isTimeTrialStory(story: RaceStory, profileType: unknown, events: readonly NarrativeEvent[] = []): boolean {
+  return story.time_trial || isTimeTrialNarrative(events, profileType);
+}
+
 /** #6469: use the film derivation and approved copy, only beside a selected recorded outcome. */
 function attachNarratives(lines: StoryLine[], story: RaceStory, cast: Cast, context: StoryNarrativeContext | null): StoryLine[] {
-  if (!context || story.time_trial || !lines.length) return lines;
+  if (!context || isTimeTrialStory(story, context.profileType, context.events) || !lines.length) return lines;
   const names = new Map<string, string>();
   for (const id of collectRiderIds(context.events)) {
     const name = cast.nameOf(String(id));
@@ -317,7 +322,7 @@ function attachNarratives(lines: StoryLine[], story: RaceStory, cast: Cast, cont
   }
   const extra = new Map<string, StoryNarrative[]>();
   let parent: NarrativeEvent = null;
-  for (const event of withNarrativeCauses(context.events, { ownRiderIds: cast.mine, effortByRider: context.effortByRider })) {
+  for (const event of withNarrativeCauses(context.events, { ownRiderIds: cast.mine, effortByRider: context.effortByRider, profileType: context.profileType })) {
     if (event?.type !== "breakaway_cause" && event?.type !== "order_impact") { parent = event; continue; }
     const kind = parent?.type === "breakaway_caught" ? "caught" : parent?.type === "breakaway_survived" ? "survived" : parent?.type === "finish" ? "finish" : null;
     if (!kind) continue;
@@ -336,6 +341,7 @@ function attachNarratives(lines: StoryLine[], story: RaceStory, cast: Cast, cont
   return lines.map(line => extra.has(line.id) ? { ...line, narratives: extra.get(line.id) } : line);
 }
 export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINES, narrative: StoryNarrativeContext | null = null): StoryLine[] {
+  if (isTimeTrialStory(story, narrative?.profileType, narrative?.events)) return [];
   const single: StoryLine[] = [];
   const caught: StoryLine[] = [];
   const splits: StoryLine[] = [];

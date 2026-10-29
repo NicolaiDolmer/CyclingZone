@@ -202,3 +202,18 @@ test("#6469 G7: hver udbrudssejr i motorens egne v3-tidslinjer har mindst en aar
   }
   assert.ok(held > 0, "fixturerne indeholder mindst en udbrudssejr");
 });
+
+test("#6469 context: the actual ITT engine fixture never produces a group-order story", () => {
+  const input = fixture("itt-solo");
+  const output = simulateStageV4({ ...input, rules_revision: "s5_profiles_v3" });
+  const winner = output.results.find(r => r.rank === 1)!.rider_id;
+  assert.deepEqual(deriveOrderImpacts(output.timeline.events, { ownRiderIds: [winner], effortByRider: new Map([[winner, "all_out"]]) }), []);
+});
+test("#6469 context: ITT, hilly ITT and TTT reject breakaway stories, including inconsistent old events", () => {
+  for (const profile of ["itt", "itt_hilly", "ttt"]) {
+    const events = [ev(0, "stage_start", { profile_type: profile }), formed, ev(40, "breakaway_unchased", { group_id: "breakaway-0" }), survived(), ev(150, "finish", { win_type: profile === "ttt" ? "ttt_win" : "itt_win", top: [{ rider_id: "a", rank: 1, gap: 0 }, { rider_id: "q", rank: 2, gap: 40 }] })];
+    assert.deepEqual(deriveBreakawayStories(events), [], profile);
+    const shown = withNarrativeCauses(events, { ownRiderIds: ["a"], effortByRider: new Map([["a", "all_out"]]) });
+    assert.equal(shown.some(e => /^breakaway_/.test(e?.type ?? "") || e?.type === "order_impact"), false, profile);
+  }
+});

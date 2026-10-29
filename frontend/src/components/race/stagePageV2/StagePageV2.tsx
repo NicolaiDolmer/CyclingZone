@@ -113,12 +113,13 @@ export default function StagePageV2(props: StagePageV2Props) {
       if (id && name) teamNameById.set(String(id), name);
     }
     return {
+      profileType: profileByStage[selectedStage]?.profile_type ?? null,
       events: (timeline as { events?: StoryNarrativeContext["events"] } | null)?.events ?? [],
       teamNameById,
       // Wait for the authoritative v4 order read. Failed reads make no order-impact assertion.
       effortByRider: v4Timeline && !knownOrders ? null : effectiveEffortByRider(stageRoles, knownOrders?.value, selectedStage, { v4: v4Timeline, ranAt: ranTimeline?.created_at ?? null }),
     };
-  }, [timeline, results, stageRoles, selectedStage, v4Timeline, knownOrders, ranTimeline?.created_at]);
+  }, [timeline, results, stageRoles, selectedStage, profileByStage, v4Timeline, knownOrders, ranTimeline?.created_at]);
   // Den ene guld-knap: taktik for den etape der er aaben. Foer etapen = den
   // valgte; efter = den naeste, hvis loebet ikke er slut.
   const tacticsStage = phase === "before" ? selectedStage : selectedStage + 1;

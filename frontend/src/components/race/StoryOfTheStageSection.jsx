@@ -61,7 +61,7 @@ export default function StoryOfTheStageSection({
   const [playerOpen, setPlayerOpen] = useState(false);
 
   const labeled = timeline?.events?.length ? labelBreakawayEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version, startlist }), timeline.events) : []; // #6299
-  const story = storyEventsWithCauses(selectStoryEvents(labeled), labeled, { ownRiderIds, effortByRider }); // #6469: hvorfor udbruddet holdt/blev hentet
+  const story = storyEventsWithCauses(selectStoryEvents(labeled), labeled, { ownRiderIds, effortByRider, profileType: profile?.profile_type ?? null }); // #6469: hvorfor udbruddet holdt/blev hentet
   if (!story.length && !finalKmAvailable) return null;
 
   return (

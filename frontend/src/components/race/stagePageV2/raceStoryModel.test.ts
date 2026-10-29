@@ -6,7 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildRaceStory } from "../../../../../backend/lib/raceStory.js";
 import {
-  asStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
+  asStory, isTimeTrialStory, buildReport, castFrom, curateMoments, finaleData, finaleEndTime, finaleMarkerLabelsShown, finaleStateAt, formatClock, frameAt,
   groupMembersAt, groupOfRider, isPeloton, leaderKmAt, lineReplayKm, MAX_STORY_LINES, namesList, parseGap, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, myBestRider,
   type RaceStory, type StoryLine,
@@ -397,4 +397,17 @@ test("#6469 v2: selected outcome carries recorded causes and only the player's o
   assert.equal(curateMoments({ ...s, time_trial: true }, c, MAX_STORY_LINES, context).some(l => l.narratives?.length), false, "no group-racing explanation in time trials");
   const unnamed = curateMoments(s, { ...c, nameOf: () => null }, MAX_STORY_LINES, context).find(l => l.kind === "survived");
   assert.deepEqual(unnamed?.narratives?.map(n => n.key), ["cause.unchased"], "unresolved rider names never produce IDs or invented names");
+});
+
+
+test("#6469 context: authoritative TT metadata overrides a stale mass-start story flag", () => {
+  const s = story();
+  const before = JSON.stringify(s);
+  for (const profileType of ["itt", "itt_hilly", "ttt"]) {
+    const context = { profileType, events: hillyTimeline(), effortByRider: new Map([["m1", "all_out"]]) };
+    assert.equal(isTimeTrialStory(s, profileType, context.events), true);
+    assert.deepEqual(curateMoments(s, cast(), MAX_STORY_LINES, context), []);
+  }
+  assert.equal(isTimeTrialStory(s, "hilly", hillyTimeline()), false);
+  assert.equal(JSON.stringify(s), before);
 });

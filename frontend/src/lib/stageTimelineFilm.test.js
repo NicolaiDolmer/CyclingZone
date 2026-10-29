@@ -629,3 +629,14 @@ test("#6649 describeEvent: bad_day names the rider and the cause; unknown cause 
     }
   }
 });
+
+test("#6469 context: authoritative time-trial profile suppresses impossible breakaway film/story lines", () => {
+  for (const profileType of ["itt", "itt_hilly", "ttt"]) {
+    const events = CAUSE_TIMELINE;
+    const built = buildFilmTimeline({ events, profileType, ownRiderIds: ["rider-1"], effortByRider: new Map([["rider-1", "all_out"]]) });
+    assert.equal(built.feedEvents.some(e => /^breakaway_/.test(e.type) || e.type === "order_impact"), false, profileType);
+    assert.deepEqual(built.gapCurve, [], profileType);
+    const story = storyEventsWithCauses(events, events, { profileType, ownRiderIds: ["rider-1"], effortByRider: new Map([["rider-1", "all_out"]]) });
+    assert.equal(story.some(e => /^breakaway_/.test(e.type) || e.type === "order_impact"), false, profileType);
+  }
+});

@@ -19,6 +19,21 @@
 
 export type NarrativeEvent = { km?: number; recorded_km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 
+const TIME_TRIAL_TYPES = new Set(["itt", "itt_hilly", "ttt"]);
+/** Discipline is context, never inferred from a winning time gap. */
+export function isTimeTrialNarrative(events: readonly NarrativeEvent[] = [], profileType: unknown = null): boolean {
+  if (typeof profileType === "string" && TIME_TRIAL_TYPES.has(profileType)) return true;
+  return events.some(event => {
+    const profile = event?.params?.profile_type;
+    return (event?.type === "stage_start" && typeof profile === "string" && TIME_TRIAL_TYPES.has(profile))
+      || (event?.type === "finish" && (event.params?.win_type === "itt_win" || event.params?.win_type === "ttt_win"));
+  });
+}
+const GROUP_RACE_EVENTS = new Set(["order_impact", "peloton_splits", "group_merged", "group_caught", "own_riders_ahead", "gc_reaction", "gc_context", "chase_faded", "finale_attack", "sprint_decided"]);
+function groupRaceEvent(event: NarrativeEvent): boolean {
+  const type = event?.type;
+  return typeof type === "string" && (type.startsWith("breakaway_") || GROUP_RACE_EVENTS.has(type));
+}
 export type BreakawayCauseKind =
   | "unchased" // intet hold ville jage (breakaway_unchased uden reason)
   | "no_chasers" // holdene med interesse havde ingen ryttere at jage med (reason no_riders)
@@ -229,6 +244,7 @@ function caughtCauses(events: readonly NarrativeEvent[], w: Window, caught: Narr
  * Dannelser uden udfald, og udfald uden dannelse (fx et senere angreb), udelades.
  */
 export function deriveBreakawayStories(events: readonly NarrativeEvent[] = []): BreakawayStory[] {
+  if (isTimeTrialNarrative(events)) return [];
   const stories: BreakawayStory[] = [];
   events.forEach((outcome, to) => {
     if (outcome?.type !== "breakaway_caught" && outcome?.type !== "breakaway_survived") return;
@@ -276,9 +292,9 @@ export type OrderImpact = { kind: "all_out_stayed_away" | "all_out_held_on"; rid
  */
 export function deriveOrderImpacts(
   events: readonly NarrativeEvent[] = [],
-  { ownRiderIds = [], effortByRider = null, stories = null }: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null; stories?: readonly BreakawayStory[] | null } = {},
+  { ownRiderIds = [], effortByRider = null, stories = null, profileType = null }: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null; stories?: readonly BreakawayStory[] | null; profileType?: string | null } = {},
 ): Array<OrderImpact & { km: number; after_index: number }> {
-  if (!effortByRider) return [];
+  if (!effortByRider || isTimeTrialNarrative(events, profileType)) return [];
   const own = [...(ownRiderIds ?? [])].filter((id): id is string => typeof id === "string");
   const allOut = own.filter((id) => ALL_OUT_EFFORTS.has(String(effortByRider.get(id) ?? "")));
   if (!allOut.length) return [];
@@ -318,8 +334,9 @@ export type NarrativeLine = { km: number; type: "breakaway_cause" | "order_impac
 
 export function withNarrativeCauses<T extends NarrativeEvent>(
   events: readonly T[] = [],
-  opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null } = {},
+  opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null; profileType?: string | null } = {},
 ): Array<T | NarrativeLine> {
+  if (isTimeTrialNarrative(events, opts.profileType)) return events.filter(event => !groupRaceEvent(event));
   // Aarsagerne udledes i loebets egen raekkefoelge (motorens km: `recorded_km` naar et
   // film-spaend har flyttet `km`), og linjerne saettes efter udfaldet der hvor listen
   // viser det. Ellers kan et spaend lukke vinduet foer de maalinger der forklarer det.
