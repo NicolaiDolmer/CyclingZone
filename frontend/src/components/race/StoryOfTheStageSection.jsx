@@ -25,7 +25,7 @@ import { Section, SectionHeader, Button, PlayIcon, StopwatchIcon } from "../ui";
 import { formatNumber } from "../../lib/intl.js";
 import { useStageTimeline } from "../../hooks/useStageTimeline.js";
 import { selectStoryEvents } from "../../lib/stageTimelineStory.js";
-import { describeEvent } from "../../lib/stageTimelineFilm.js";
+import { describeEvent, storyEventsWithCauses } from "../../lib/stageTimelineFilm.js";
 import { honestTimelineEvents, filmKmValue } from "../../lib/stageTimelineKmSpan.ts"; // #6294/#6350
 import { labelBreakawayEvents } from "../../lib/breakawayLabels6299.ts";
 import { lazyWithRetry } from "../../lib/lazyWithRetry.js";
@@ -60,7 +60,8 @@ export default function StoryOfTheStageSection({
   const timeline = suppliedTimeline === undefined ? fetchedTimeline : suppliedTimeline;
   const [playerOpen, setPlayerOpen] = useState(false);
 
-  const story = timeline?.events?.length ? selectStoryEvents(labelBreakawayEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version, startlist }), timeline.events)) : []; // #6299
+  const labeled = timeline?.events?.length ? labelBreakawayEvents(honestTimelineEvents(timeline.events, { timelineVersion: timeline.timeline_version, startlist }), timeline.events) : []; // #6299
+  const story = storyEventsWithCauses(selectStoryEvents(labeled), labeled, { ownRiderIds, effortByRider, profileType: profile?.profile_type ?? null }); // #6469: hvorfor udbruddet holdt/blev hentet
   if (!story.length && !finalKmAvailable) return null;
 
   return (

@@ -1492,6 +1492,25 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {es alcanzado} other {son alcanzados}}. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} y {teamLast}}} hicieron la persecución.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {es alcanzado} other {son alcanzados}} por el pelotón.",
         "breakaway_survived": "La escapada resiste al pelotón hasta la línea de meta.",
+        "cause": {
+          "unchased": "Nadie quiso perseguir, así que la escapada tuvo todo el margen que necesitaba.",
+          "no_chasers": "Los equipos que querían perseguir ya no tenían ciclistas para hacerlo.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} nunca persiguió: tenía} other {{teamsHead} y {teamLast} nunca persiguieron: tenían}} ciclistas en la escapada.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} ya había gastado lo que podía} other {{teamsHead} y {teamLast} ya habían gastado lo que podían}} en la persecución.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast} no tenía} other {{teamsHead} y {teamLast} no tenían}} ciclistas libres para perseguir.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast} solo trabajó para proteger la general y dejó ir la etapa} other {{teamsHead} y {teamLast} solo trabajaron para proteger la general y dejaron ir la etapa}}.",
+          "chase_faded_climb": "La persecución se apagó después de {climb}, y la diferencia volvió a crecer.",
+          "chase_faded": "La persecución se apagó, y la diferencia volvió a crecer.",
+          "chase_too_late": "La persecución se acercó, pero se quedó sin carretera.",
+          "gap_never_closed": "La persecución nunca logró recortar la diferencia.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast} persiguió} other {{teamsHead} y {teamLast} persiguieron}} porque {threats} {threatCount, plural, one {era una amenaza} other {eran una amenaza}} para {rider} en la general.",
+          "closed_on_climb": "La diferencia cayó en {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} fue a tope siguiendo tu orden y aguantó por delante hasta la meta.",
+          "all_out_held_on_climb": "{rider} fue a tope siguiendo tu orden y pasó {climb} con los primeros.",
+          "all_out_held_on": "{rider} fue a tope siguiendo tu orden y se mantuvo en el grupo de cabeza."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {es descolgado} other {son descolgados}} de la escapada.",
         "group_ahead_formed": "{riders} {count, plural, one {se escapa} other {se escapan}} en un grupo por delante del pelotón.",
         "group_ahead_caught": "El grupo por delante del pelotón es alcanzado: {riders}.",

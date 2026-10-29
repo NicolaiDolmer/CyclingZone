@@ -1492,6 +1492,25 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {est repris} other {sont repris}}. {teamCount, plural, =1 {{teamLast} a mené la chasse} other {{teamsHead} et {teamLast} ont mené la chasse}}.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {est repris} other {sont repris}} par le peloton.",
         "breakaway_survived": "L'échappée résiste au peloton jusqu'à la ligne.",
+        "cause": {
+          "unchased": "Personne n'a voulu chasser, alors l'échappée a eu toute la marge qu'il lui fallait.",
+          "no_chasers": "Les équipes qui voulaient chasser n'avaient plus de coureurs pour le faire.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} n'a jamais chassé : elle avait} other {{teamsHead} et {teamLast} n'ont jamais chassé : elles avaient}} des coureurs dans l'échappée.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} avait dépensé ce qu'elle pouvait} other {{teamsHead} et {teamLast} avaient dépensé ce qu'elles pouvaient}} dans la chasse.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast} n'avait} other {{teamsHead} et {teamLast} n'avaient}} plus de coureurs libres pour chasser.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast} n'a roulé que pour protéger le général et a laissé filer l'étape} other {{teamsHead} et {teamLast} n'ont roulé que pour protéger le général et ont laissé filer l'étape}}.",
+          "chase_faded_climb": "La chasse s'est éteinte après {climb}, et l'écart a de nouveau grandi.",
+          "chase_faded": "La chasse s'est éteinte, et l'écart a de nouveau grandi.",
+          "chase_too_late": "La chasse s'est rapprochée, mais a manqué de route.",
+          "gap_never_closed": "La chasse n'a jamais fait baisser l'écart.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast} a chassé} other {{teamsHead} et {teamLast} ont chassé}} parce que {threats} {threatCount, plural, one {menaçait} other {menaçaient}} {rider} au général.",
+          "closed_on_climb": "L'écart a fondu dans {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} a roulé à fond sur ton ordre et a tenu jusqu'à la ligne.",
+          "all_out_held_on_climb": "{rider} a roulé à fond sur ton ordre et a passé {climb} avec les premiers.",
+          "all_out_held_on": "{rider} a roulé à fond sur ton ordre et est resté dans le groupe de tête."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {est lâché} other {sont lâchés}} de l'échappée.",
         "group_ahead_formed": "{riders} {count, plural, one {s'échappe} other {s'échappent}} dans un groupe devant le peloton.",
         "group_ahead_caught": "Le groupe devant le peloton est repris : {riders}.",

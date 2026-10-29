@@ -1492,6 +1492,25 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {wordt} other {worden}} gegrepen. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} en {teamLast}}} deed het achtervolgingswerk.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door het peloton.",
         "breakaway_survived": "De ontsnapping houdt het peloton tot aan de streep van zich af.",
+        "cause": {
+          "unchased": "Niemand wilde jagen, dus kreeg de ontsnapping alle ruimte die ze nodig had.",
+          "no_chasers": "De ploegen die wilden jagen, hadden geen renners meer om het te doen.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} jaagde nooit: die ploeg had} other {{teamsHead} en {teamLast} jaagden nooit: ze hadden}} renners in de ontsnapping.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} had} other {{teamsHead} en {teamLast} hadden}} al besteed wat kon aan de achtervolging.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast} had} other {{teamsHead} en {teamLast} hadden}} geen vrije renners om mee te jagen.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast} reed alleen om het klassement te beschermen en liet de etappe gaan} other {{teamsHead} en {teamLast} reden alleen om het klassement te beschermen en lieten de etappe gaan}}.",
+          "chase_faded_climb": "De achtervolging doofde uit na {climb}, en het gat groeide weer.",
+          "chase_faded": "De achtervolging doofde uit, en het gat groeide weer.",
+          "chase_too_late": "De achtervolging kwam dichterbij, maar kwam weg tekort.",
+          "gap_never_closed": "De achtervolging kreeg het gat nooit kleiner.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast} jaagde} other {{teamsHead} en {teamLast} jaagden}} omdat {threats} een gevaar {threatCount, plural, one {was} other {waren}} voor {rider} in het klassement.",
+          "closed_on_climb": "Het gat slonk op {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} ging volgens jouw opdracht voluit en bleef weg tot aan de streep.",
+          "all_out_held_on_climb": "{rider} ging volgens jouw opdracht voluit en kwam met de eersten over {climb}.",
+          "all_out_held_on": "{rider} ging volgens jouw opdracht voluit en bleef bij de kopgroep."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {moet} other {moeten}} de ontsnapping laten gaan.",
         "group_ahead_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg in een groep voor het peloton.",
         "group_ahead_caught": "De groep voor het peloton wordt ingelopen: {riders}.",
