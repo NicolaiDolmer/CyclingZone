@@ -143,3 +143,15 @@ test("gruppe uden egen uge kobler den flyttede tt/gc-rytter fra; ren gruppe find
   assert.equal(rerun.groupUpdates.length, 1);
   assert.deepEqual(rerun.groupUpdates[0].followerIds, ["r-tt", "r-gc2"]);
 });
+
+test("rytter flyttet kun via training_plans kobles også fra en gruppe uden egen uge", () => {
+  const out = planThresholdMigration({
+    plans: [{ id: 40, rider_id: "r-gc2", focus: "threshold" }], ridersById: riders,
+    groups: [{ id: "gN2", days: null }],
+    members: [
+      { rider_id: "r-punch", group_id: "gN2", follows_group: true },
+      { rider_id: "r-gc2", group_id: "gN2", follows_group: true },
+    ],
+  });
+  assert.deepEqual(out.memberDetaches.map((d) => d.rider_id), ["r-gc2"]);
+});

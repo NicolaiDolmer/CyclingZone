@@ -95,7 +95,9 @@ export function planThresholdMigration({ plans = [], weekPlans = [], ridersById 
   // Gruppe-følgere: se toppen af filen. Grupperne findes ud fra gruppens EGET
   // indhold, ikke ud fra hvem der migreres i denne kørsel, så en ny kørsel efter
   // en låse-konflikt stadig finder en gruppe hvis følgere allerede er flyttet.
-  const migratedRiders = new Set(weekUpdates.map((u) => u.rider_id));
+  // Også ryttere der kun flyttes via training_plans (uden egen ugeplan-række):
+  // en gruppe-ændring skriver gruppens uge ind som rytterens første egne række.
+  const migratedRiders = new Set([...weekUpdates, ...planUpdates].map((u) => u.rider_id));
   const groupsById = new Map(groups.map((g) => [g.id, g]));
   const followersByGroup = new Map();
   for (const m of members) {

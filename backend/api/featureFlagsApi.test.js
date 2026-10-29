@@ -295,9 +295,18 @@ test("batch-laesning: DB-fejl er synlig for drift og giver aldrig adgang", async
   const f = await fixture(t, { rows: { race_engine_v4: "on" }, failKeys: ["race_engine_v4"] });
   const res = await f.call(null);
   assert.equal(res.status, 200);
-  assert.ok(Object.values((await res.json()).flags).every((value) => value === false));
+  const body = await res.json();
+  assert.ok(Object.values(body.flags).every((value) => value === false));
+  // #5319: svaret markeres som ukendt, saa klienten ikke tager det for et off.
+  assert.equal(body.degraded, true);
   assert.equal(f.reported.length, 1);
   assert.match(f.reported[0].message, /boom/);
+});
+
+test("vellykket batch er ikke degraded (#5319)", async (t) => {
+  const f = await fixture(t, { rows: { race_engine_v4: "on" } });
+  const body = await (await f.call(null)).json();
+  assert.equal("degraded" in body, false);
 });
 
 test("batch-laesning: flag-flips ses paa naeste kald uden delt cache", async () => {

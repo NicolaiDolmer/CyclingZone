@@ -15,6 +15,9 @@ export async function fetchPlayerFeatureFlags() {
   try {
     const headers = (await authHeaders({ json: false })) ?? {};
     const res = await apiFetch("/api/feature-flags", { headers });
+    // #5319: `degraded` = serverens DB-laesning fejlede. Alt-off som foer, men
+    // som {} (ukendt), saa en enkelt noegle ikke laeses som et bevidst off.
+    if (res.ok && res.data?.degraded === true) return {};
     const flags = res.ok ? res.data?.flags : null;
     return flags && typeof flags === "object" ? flags : {};
   } catch {
