@@ -25,10 +25,11 @@
 
 ## Kø (i denne rækkefølge, når et loft-område er færdigt)
 
-1. **Dato-løfter (#6947):** TTT #3463, U23 del 2 #4620, omdømme #4957/#5106, indstillinger #3984. Auktionsporten #7215: ejerbeslutning torsdag 29/10.
-2. **Etapeside og beta til live:** etapeside 2.0 overalt med det gamle fjernet, Kalender | Tabel og terræn-ikoner #6683, ryttertype-kontakten #5327, AI-ungdom #6668.
-3. **Discord-løfterne #6947:** sorteres i brand / kø / 2027 med en ærlig besked til spillerne.
-4. **Akademi og ungdom:** akademi-påmindelsen, junior-pyramiden.
+1. **Dato-løfter (#6947):** TTT #3463, U23 del 2 #4620, omdømme #4957/#5106, indstillinger #3984. Auktionsporten #7215: besluttet 29/10, lukkes (koden fjernes).
+2. **Tracking af nye spillere:** feltet "Hvor hørte du om os?" og den ugentlige Google-rapport #3796/#3797. UTM på alle links i opslag, mails og Discord sker allerede nu uden kode (ejer 29/10).
+3. **Etapeside og beta til live:** etapeside 2.0 overalt med det gamle fjernet, Kalender | Tabel og terræn-ikoner #6683, ryttertype-kontakten #5327, AI-ungdom #6668.
+4. **Discord-løfterne #6947:** sorteres i brand / kø / 2027 med en ærlig besked til spillerne.
+5. **Akademi og ungdom:** akademi-påmindelsen, junior-pyramiden.
 
 ## Forretning, fast torsdag
 
