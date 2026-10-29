@@ -108,3 +108,11 @@ test("#7003: enkeltstart og holdtidskoersel beholder de almindelige indsats-kont
   assert.match(tab, /const stagePlanOn = showOrders && stagePlanReplacesControls\(orders\?\.stagePlanEnabled === true, stageProfileType\);/);
   assert.match(tab, /const stageProfileType = profileByStage\[activeStage\]\?\.profile_type;/);
 });
+
+test("#7003 (spec §3): sprinttoget tilbydes ikke efter et udbrud", () => {
+  const afterBreak: StagePlanLeg[] = [{ task: "breakaway" }, { task: "tempo", from: { at: "kom", kom_index: 0 } }];
+  assert.ok(!taskOptions(afterBreak, 1, "helper", ROUTE).includes("sprint_train"));
+  assert.equal(validateStagePlanLegs([{ task: "breakaway" }, { task: "sprint_train", from: { at: "final_km" } }], "helper", ROUTE), "stage_plan_train_after_breakaway");
+  // Uden udbrud foerst er toget stadig et gyldigt slut-led.
+  assert.equal(validateStagePlanLegs([{ task: "shelter_leader" }, { task: "sprint_train", from: { at: "final_km" } }], "helper", ROUTE), null);
+});

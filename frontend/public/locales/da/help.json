@@ -1036,11 +1036,11 @@
         "steps": [
           "Alle ryttere bliver ét år ældre.",
           "Formen decayer mod 50: cirka 25% af hver rytters slutform følger med ind i den nye sæson.",
-          "Træthed nulstilles til 0 for alle ryttere.",
+          "Nye sæsoner starter med lidt grundtræthed hos alle ryttere. Før det første løb sænker hvile formen, normal træning holder den, og hård træning hæver den.",
           "Skader nulstilles IKKE. De følger med uændret.",
           "Peak-planer påvirkes ikke af sæsonskiftet.",
           "Sæsonens løn betales under sæsonskiftet. Rytterværdierne flytter sig ikke under selve skiftet: de opdateres næste gang, ved den normale søndagsopdatering.",
-          "Den nye sæson starter efter en kort pause mellem sæsonerne, som managerne har stemt om. Datoen for første etape står i løbskalenderen, så du har tid til at udtage dine trupper."
+          "Træningen fortsætter hver dag mellem sæsonerne og tæller i den nye sæson. Dit valgte program gælder stadig, manglende træning indhentes automatisk, og Træn nu virker også før det første løb. Se det første løb i kalenderen."
         ]
       }
     },
@@ -1749,7 +1749,7 @@
       },
       "stageTactics": {
         "title": "Etapeløb: roller og indsats pr. etape",
-        "text": "I etapeløb har løbssiden et taktik-board etape for etape. Kørte etaper er låst og viser hvad der skete; kommende etaper kan stadig ændres mens løbet køres. Hver rytter kan køre en forskellig rolle pr. etape, plus en indsats for dagen. Indsatstrinnene har deres eget afsnit lige under. Tager en rytter førertrøjen, gør en genvej på løbssidens Hold-fane ham til kaptajn for alle resterende etaper med ét klik mens løbet kører. En anden kaptajn på de samme etaper rykkes ned til hjælper. Etaper hvor du intet sætter, bruger blot rytterens løbsrolle."
+        "text": "I etapeløb har løbssiden et taktik-board etape for etape. Kørte etaper er låst og viser hvad der skete; kommende etaper kan stadig ændres mens løbet køres. Hver rytter kan køre en forskellig rolle pr. etape, plus en indsats for dagen. Indsatstrinnene har deres eget afsnit lige under. Tager en rytter førertrøjen, gør en genvej på løbssidens Hold-fane ham til kaptajn for alle resterende etaper med ét klik mens løbet kører. En anden kaptajn på de samme etaper rykkes ned til hjælper. Etaper hvor du intet sætter, bruger blot rytterens løbsrolle. Modsatte ordrer kan ikke kombineres. Forklaringen ved valget viser, hvad du skal ændre, før du gemmer."
       },
       "effortSteps": {
         "title": "Indsatstrin",
@@ -1806,6 +1806,10 @@
         "title": "Alt ud og holdspil",
         "text": "Sætter du en rytter til alt ud, holder han op med at betale den pris, fordi han bruger alt på sig selv i stedet."
       },
+      "luxuryHelper": {
+        "title": "Luksushjælperen",
+        "text": "En luksushjælper er en hjælper med en færdig etapeplan: han sparer sig i feltet og kører for din kaptajn på den afgørende stigning, dagens sidste. I etapeplanen kan du flytte hans arbejde til en anden stigning eller give ham en anden plan. Er kaptajnen sat eller ude af løbet, kører han sit eget løb. Et hold kan have én luksushjælper, og kun i løb på de nyeste regler."
+      },
       "weatherAndCobbles": {
         "title": "Vejr og brosten",
         "text": "Hver etape har sit eget vejr, og etapesiden viser det: tørt, regn eller blæst. Tørt er den rolige baseline, intet ændrer sig. Regn sænker hele etapen. Vind bider mest, hvor vejen er åben; en stigning ligger i læ af sig selv. Begge rammer ryttere med svag nedkørsel og holdbarhed hårdest. Regn øger også risikoen for et styrt på brosten, grus og i dristige nedkørsler. Når regn eller vind kostede rytterne kraft, siger løbshistorien det i én linje, aldrig med et tal knyttet til. En holdtidskørsel køres uden vejr."
@@ -1819,7 +1823,7 @@
     },
     "peakWhatItDoes": {
       "q": "Hvad gør en peak?",
-      "a": "En peak løfter én rytters form for det ene løbsvindue du vælger i Sæsonplanlæggeren. Den kører på en optakt du træner forinden og et dyk bagefter, så den er værd at sætte på et løb du reelt vil vinde, ikke en hel sæson. Hver rytter kan holde op til to peaks ad gangen. Peaks tæller ikke i løbene endnu; løbene bruger hans almindelige form. Se 'Hvordan virker peak-træning?' og 'Koster en peak mig noget bagefter?' nedenfor for præcis hvor meget og hvornår."
+      "a": "En peak løfter én rytters form for det ene løbsvindue du vælger i Sæsonplanlæggeren. Den kører på en optakt du træner forinden og et dyk bagefter, så den er værd at sætte på et løb du reelt vil vinde, ikke en hel sæson. Hver rytter kan holde op til to peaks ad gangen. I løbene lægges peaken oven på hans almindelige form. Se 'Hvordan virker peak-træning?' og 'Koster en peak mig noget bagefter?' nedenfor for præcis hvor meget og hvornår."
     },
     "peakTraining": {
       "q": "Hvordan virker peak-træning?",

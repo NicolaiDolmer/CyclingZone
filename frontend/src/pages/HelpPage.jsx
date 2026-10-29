@@ -542,6 +542,7 @@ const SECTION_DEFS = [
       { id: "timeLimitAndGrupetto", kind: "text" },
       { id: "teamwork", kind: "text" },
       { id: "teamworkAllOut", kind: "text" }, // #6746: "alt ud" findes kun med intentions-flaget
+      { id: "luxuryHelper", kind: "text" }, // #5982: luksushjaelperen (genvej til etapeplanen)
       { id: "weatherAndCobbles", kind: "text" },
     ],
   },

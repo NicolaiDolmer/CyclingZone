@@ -292,6 +292,23 @@ test("#4373: alle nye event-nøgler findes i BEGGE locale-filer", async () => {
   }
 });
 
+test("#6641/#7280 describeEvent: alt ud-linjen kun med det motoren meldte", async () => {
+  const names = new Map([["r1", "Lei Lin"]]);
+  const d = (type, params) => describeEvent({ type, km: 170, params }, { riderNameById: names });
+  assert.deepEqual(d("all_out_gain", { rider_id: "r1" }), { key: "all_out_gain", params: { rider: "Lei Lin" } });
+  assert.deepEqual(d("all_out_cracked", { rider_id: "r1" }), { key: "all_out_cracked", params: { rider: "Lei Lin" } });
+  assert.equal(d("all_out_gain", { rider_id: "ukendt" }), null);
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da", "fr", "es", "nl"]) {
+    const doc = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8"));
+    assert.ok(doc.detail.film.event.all_out_gain, `${lang}: all_out_gain`);
+    assert.ok(doc.detail.film.event.all_out_cracked, `${lang}: all_out_cracked`);
+  }
+});
+
 // ── #2944: incident-trappen → fire udfald i spillerens sprog ────────────────
 
 const INCIDENT_LADDER_KEYS = [
@@ -586,6 +603,29 @@ test("#6469: årsags- og ordre-nøglerne findes i alle fem sprog, parser som ICU
           assert.ok(typeof out === "string" && out.length > 0 && !out.includes("{"), `${lang}.${group}.${key} (${n})`);
         }
       }
+    }
+  }
+});
+
+// #6649 (s5_profiles_v3): "havde en dårlig dag" + årsagen, i alle fem sprog og uden tal.
+test("#6649 describeEvent: bad_day names the rider and the cause; unknown cause or rider gives no line", async () => {
+  const names = new Map([["r1", "Rider One"]]);
+  const ev = (params) => describeEvent({ type: "bad_day", km: 150, params }, { riderNameById: names });
+  assert.deepEqual(ev({ rider_id: "r1", reason: "fatigue" }), { key: "bad_day_fatigue", params: { rider: "Rider One" } });
+  assert.equal(ev({ rider_id: "r1", reason: "weather", weather: "rain" }).key, "bad_day_rain");
+  assert.equal(ev({ rider_id: "r1", reason: "weather" }), null);
+  assert.equal(ev({ rider_id: "r1", reason: "luck" }), null);
+  assert.equal(ev({ rider_id: "nobody", reason: "form" }), null);
+  const { readFileSync } = await import("node:fs");
+  const { dirname, join } = await import("node:path");
+  const { fileURLToPath } = await import("node:url");
+  const localesDir = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "public", "locales");
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const film = JSON.parse(readFileSync(join(localesDir, lang, "races.json"), "utf8")).detail.film.event;
+    for (const cause of ["fatigue", "form", "illness", "rain", "wind", "heat"]) {
+      const text = film[`bad_day_${cause}`];
+      assert.ok(text && text.includes("{rider}"), `${lang}: bad_day_${cause}`);
+      assert.ok(!/[0-9]|%/.test(text), `${lang}: no numbers (fog of war)`);
     }
   }
 });

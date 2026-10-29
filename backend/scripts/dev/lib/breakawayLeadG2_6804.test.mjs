@@ -15,7 +15,7 @@ test("#6804 G2: forspringet maales mod feltet, og det stoerste taeller", () => {
     snap(50, [g("breakaway", 5, 0), g("peloton", 100, 400)]),
     snap(90, [g("breakaway", 5, 0), g("peloton", 100, 200)]),
   ], timeline: { events: [] } };
-  assert.deepEqual(breakawayLeadFacts(out), { breakawayMaxLead: 400, breakawayUnchased: false });
+  assert.deepEqual(breakawayLeadFacts(out), { breakawayMaxLead: 400, breakawayUnchased: false, breakawayLeadMeasured: true });
 });
 
 test("#6804 G2: et splittet felt paa slutstigningen taeller ikke; en afhaegtet gruppe er aldrig maalestokken", () => {
@@ -28,8 +28,13 @@ test("#6804 G2: et splittet felt paa slutstigningen taeller ikke; en afhaegtet g
 });
 
 test("#6804 G2: uden udbrud intet forspring; motorens melding om ingen jagt-interesse laeses", () => {
-  assert.deepEqual(breakawayLeadFacts({ groupSnapshots: [snap(10, [g("peloton", 100, 0)])], timeline: { events: [] } }), { breakawayMaxLead: null, breakawayUnchased: false });
+  assert.deepEqual(breakawayLeadFacts({ groupSnapshots: [snap(10, [g("peloton", 100, 0)])], timeline: { events: [] } }), { breakawayMaxLead: null, breakawayUnchased: false, breakawayLeadMeasured: true });
   const out = { groupSnapshots: [], timeline: { events: [{ km: 40, type: "breakaway_unchased", params: { group_id: "b" } }] } };
   assert.equal(breakawayLeadFacts(out).breakawayUnchased, true);
-  assert.deepEqual(breakawayLeadFacts(null), { breakawayMaxLead: null, breakawayUnchased: false });
+  assert.deepEqual(breakawayLeadFacts(null), { breakawayMaxLead: null, breakawayUnchased: false, breakawayLeadMeasured: false });
+});
+
+test("#6912 G2: snapshots uden observeret felt er ikke en nul-maaling", () => {
+  assert.equal(breakawayLeadFacts({ groupSnapshots: [snap(10, [])] }).breakawayLeadMeasured, false);
+  assert.equal(breakawayLeadFacts({ groupSnapshots: [snap(10, [g("breakaway", 2, 0)])] }).breakawayLeadMeasured, false);
 });

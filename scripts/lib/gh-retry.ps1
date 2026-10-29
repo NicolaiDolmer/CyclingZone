@@ -31,13 +31,15 @@ function Invoke-GhWithRetry {
     [string[]] $GhArgs,
     [int] $Attempts = 5,
     [int] $DelaySeconds = 3,
-    [switch] $TolerateFailure
+    [switch] $TolerateFailure,
+    [scriptblock] $BeforeAttempt
   )
 
   if ($Attempts -lt 1) { $Attempts = 1 }
   $lastOutput = $null
 
   for ($i = 1; $i -le $Attempts; $i++) {
+    if ($BeforeAttempt) { & $BeforeAttempt }
     $lastOutput = & gh @GhArgs 2>&1
     if ($LASTEXITCODE -eq 0) {
       # Skil ren stdout fra evt. ErrorRecord-stoej fra 2>&1.
