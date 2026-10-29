@@ -1648,12 +1648,11 @@ const s5V3Breakaway = {
   p2: {
     // Det forspring feltet tolererer pr. profil, naar mindst et hold har etape- eller
     // klassementsinteresse (mellemzonen). Udeladt profil = `interestedLeadSecondsDefault`.
-    // #6804 v3-justering 26/10 (ejer: "ret udbrud"): testporten viste, at loftet holdt
-    // udbrud for kort paa kuperet og bjerg i etapeloeb (bjerg 30 % -> 14 % sejre mod v2;
-    // mellembjerg faldt tilbage til default 420). Flad, rullende og hoejfjeld er uaendret
-    // (G2F). Bjerg maa ikke over den oevre zone (unchasedLeadSeconds) eller snoren (P2.4).
-    // Maalt paa 40 S5-etapeloeb: kuperet, mellembjerg og bjerg ligger nu i de private
-    // baand (balance-internals/6804/, hard rule 17).
+    // #6804 v3-justering (ejer: "ret udbrud"): loftet holdt udbrud for kort paa kuperet,
+    // mellembjerg og bjerg i etapeloeb, og mellembjerg havde intet eget loft. Flad, rullende
+    // og hoejfjeld er uaendret (G2F). Bjerg maa ikke over den oevre zone
+    // (unchasedLeadSeconds) eller snoren (P2.4). Maalinger og kalibrering er private
+    // (balance-internals/6804/, hard rule 17).
     interestedLeadSecondsByProfile: {
       flat: 360,
       rolling: 420,
