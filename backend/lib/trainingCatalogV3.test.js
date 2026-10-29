@@ -340,3 +340,23 @@ test("smartDefaultSession: v3 giver tt/gc itt_long (hård); off er dagens sessio
   }
   assert.equal(smartDefaultSession(null).focus, smartDefaultFocus(null));
 });
+
+// Claude-review på #7354: felt-såningen skal følge samme v3-regel, ellers gemmer
+// den første felt-rettelse Tærskel for de andre dage (holdrytme med hårde dage).
+test("seedProgramWeekDays: v3 sår tt uden plan med itt_long på holdrytmens hårde dage; off og gemt plan urørt", async () => {
+  const { seedProgramWeekDays } = await import("./trainingWeekPlanCells.js");
+  const teamDays = { mon: { intensity: "hard" }, tue: { intensity: "easy" }, wed: { intensity: "hard" },
+    thu: { intensity: "rest" }, fri: { intensity: "normal" }, sat: { intensity: "hard" }, sun: { intensity: "rest" } };
+  const off = seedProgramWeekDays({ teamDays, primaryType: "tt" });
+  const on = seedProgramWeekDays({ teamDays, primaryType: "tt", catalogV3: true });
+  assert.equal(off.mon.session, "threshold");
+  assert.equal(on.mon.session, "itt_long");
+  assert.equal(on.wed.session, "itt_long");
+  for (const d of ["tue", "thu", "fri", "sun"]) assert.equal(on[d].session, off[d].session, `${d} urørt`);
+  const gc2 = seedProgramWeekDays({ teamDays, primaryType: "tt", secondaryType: "gc", catalogV3: true });
+  assert.equal(gc2.mon.session, "itt_long");
+  const climber = seedProgramWeekDays({ teamDays, primaryType: "climber", catalogV3: true });
+  assert.deepEqual(climber, seedProgramWeekDays({ teamDays, primaryType: "climber" }), "andre typer urørte");
+  const saved = seedProgramWeekDays({ teamDays, primaryType: "tt", plan: { focus: "threshold", intensity: "hard" }, catalogV3: true });
+  assert.equal(saved.mon.session, "threshold", "en gemt plan er spillerens valg");
+});

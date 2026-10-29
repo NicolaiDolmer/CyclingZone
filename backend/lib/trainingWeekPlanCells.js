@@ -23,6 +23,7 @@ import { WEEKDAY_KEYS, resolveDayIntensity, isValidIntensity } from "./training.
 import { resolveProgram } from "./dailyTraining.js";
 import { migrationTargetFor } from "./trainingDayTypes.js";
 import { isValidProgramWeekDays, intensityForSession, isProgramSession } from "./trainingPrograms.js";
+import { v3SmartDefaultFocus } from "./trainingCatalogV3.js";
 
 function copyDays(days) {
   const out = {};
@@ -46,13 +47,18 @@ export function sessionForLegacyDay({ focus, intensity }) {
 //   teamDays    : holdets raekke (rider_id IS NULL) eller null
 //   plan        : training_plans-raekken { focus, intensity } eller null
 //   primaryType : rytterens anlaeg (resolveProgram's smart default)
-export function seedProgramWeekDays({ riderDays = null, teamDays = null, plan = null, primaryType = null } = {}) {
+//   secondaryType, catalogV3 : #5319 - under v3 saaes en tt/gc-rytter uden plan
+//                 med itt_long, ikke Taerskel (samme regel som motoren). Off = uroert.
+export function seedProgramWeekDays({ riderDays = null, teamDays = null, plan = null, primaryType = null, secondaryType = null, catalogV3 = false } = {}) {
   if (isValidProgramWeekDays(riderDays)) return copyDays(riderDays);
   const hasExplicitPlan = !!(plan?.focus && plan?.intensity);
   const riderHasOwnDays = WEEKDAY_KEYS.some((weekday) => isValidIntensity(riderDays?.[weekday]?.intensity));
   if (!riderHasOwnDays && !hasExplicitPlan && isValidProgramWeekDays(teamDays)) return copyDays(teamDays);
 
   const program = resolveProgram(plan, primaryType);
+  if (!hasExplicitPlan) {
+    program.focus = v3SmartDefaultFocus(program.focus, { primary_type: primaryType, secondary_type: secondaryType }, { v3: catalogV3 });
+  }
   const days = {};
   for (const weekday of WEEKDAY_KEYS) {
     const intensity = resolveDayIntensity({
