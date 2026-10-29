@@ -13,6 +13,13 @@ import { assertWaveOwnership } from './wave-ownership.mjs';
 import { assertLaneCount, currentHost, hostLaneCap, readWaveCapacity } from './wave-capacity.mjs';
 import { normalizeBootId } from './wave-boot-identity.mjs';
 
+// #7336: fixtures bruger opdigtede issues; byggestoppet slaas fra her og testes
+// for sig i build-stop.test.mjs og i '#7336'-testene nedenfor.
+const BUILD_STOP_OFF = path.join(mkdtempSync(path.join(tmpdir(), 'cz-build-stop-off-')), 'build-stop.json');
+writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', areaCap: 3, finishList: [], cleanupList: [], brandList: [] }));
+process.env.CZ_BUILD_STOP_FILE = BUILD_STOP_OFF;
+process.env.CZ_BUILD_STOP_LOG = path.join(path.dirname(BUILD_STOP_OFF), 'brand-log.jsonl');
+
 const now = 1790000000000;
 const track = (n) => ({ issue: n, branch: `codex/${n}-fixture`, ownership: [`fixtures/${n}.txt`], tier: 'TARGETED' });
 const request = (runtime = 'codex') => ({ runtime, owner: 'fixture-owner', pid: process.pid, now, tracks: [track(1)] });
@@ -974,4 +981,40 @@ test('#6861 (Codex P1): an expected head pins the merge even without a wave, and
   assert.deepEqual(io.calls, [{ pr: '42', repo: 'owner/repo', sha: verified }]);
   const { dir } = runningWave(t);
   assert.throws(() => guardedMerge(dir, '42', 'owner/repo', mergeIo(), 50, verified), /head changed after verification/);
+});
+
+// #7336: byggestoppet sidder i den delte admission, saa begge runtimes rammes.
+function withBuildStop(t, cfg) {
+  const dir = fixture(t);
+  const file = path.join(dir, 'build-stop.json');
+  writeFileSync(file, JSON.stringify({ active: true, since: '2026-10-29', areaCap: 3, finishList: [{ issue: 2, area: 'race-engine' }], cleanupList: [], brandList: [{ issue: 3, reason: 'live og forkert', since: '2026-10-29' }], ...cfg }));
+  const log = path.join(dir, 'brand-log.jsonl');
+  const before = { file: process.env.CZ_BUILD_STOP_FILE, log: process.env.CZ_BUILD_STOP_LOG };
+  process.env.CZ_BUILD_STOP_FILE = file;
+  process.env.CZ_BUILD_STOP_LOG = log;
+  t.after(() => { process.env.CZ_BUILD_STOP_FILE = before.file; process.env.CZ_BUILD_STOP_LOG = before.log; });
+  return { log };
+}
+
+test('#7336: acquireWave afviser nyt arbejde under byggestop, foer markoeren skrives', async (t) => {
+  withBuildStop(t);
+  for (const runtime of ['claude', 'codex']) {
+    const dir = fixture(t);
+    await assert.rejects(acquireWave(dir, { ...request(runtime), tracks: [track(1)] }, async () => []), /Byggestop.*#1/);
+    assert.equal(existsSync(path.join(dir, 'wave-active.json')), false);
+  }
+});
+
+test('#7336: acquireWave optager finish- og brand-spor og logger kun brand', async (t) => {
+  const { log } = withBuildStop(t);
+  const dir = fixture(t);
+  await acquireWave(dir, { ...request('claude'), tracks: [track(2), track(3)] }, async () => []);
+  const lines = readFileSync(log, 'utf8').trim().split('\n').map(JSON.parse);
+  assert.deepEqual(lines.map(l => [l.issue, l.channel]), [[3, 'claude']]);
+});
+
+test('#7336: rullende optag afviser nyt arbejde under byggestop', (t) => {
+  withBuildStop(t);
+  const { dir } = runningWave(t);
+  assert.throws(() => enqueueTracks(dir, 'rolling-wave', [trackWith(9, ['docs/nine.md'])], ownSnapshot), /Byggestop.*#9/);
 });

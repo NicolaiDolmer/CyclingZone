@@ -9,6 +9,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { admissionOwnerProcess, assertWaveOwnership, ownershipSnapshot } from './wave-ownership.mjs';
 import { measureBootIdentity, sameBoot } from './wave-boot-identity.mjs';
 import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
+import { loadBuildStop, assertBuildStop, logBrandAdmissions } from './lib/build-stop.mjs';
 
 export const REPO = 'NicolaiDolmer/CyclingZone';
 const reserved = ['docs/now.md', '.claude/run', '.claude/launch.json'];
@@ -364,6 +365,8 @@ function claudeOwnerPid(sessionId) {
 export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   validateTracks(request.tracks);
   assertDesignGate(request.tracks); // #6344: begge runtimes, foer markoeren skrives
+  const buildStop = loadBuildStop();
+  assertBuildStop(request.tracks, buildStop); // #7336: byggestop, begge runtimes, foer markoeren skrives
   if (!['claude', 'codex'].includes(request.runtime) || !request.owner || !Number.isFinite(request.now)) throw Error('runtime, owner and now required');
   fs.mkdirSync(dir, { recursive: true });
   const ownerProcess = admissionOwnerProcess(request.pid ?? process.pid);
@@ -371,6 +374,7 @@ export async function acquireWave(dir, request, readPrs = getOpenPrs) {
   const file = path.join(dir, 'wave-active.json');
   try { withWaveStateLock(dir, () => fs.writeFileSync(file, JSON.stringify(wave, null, 2), { flag: 'wx' })); }
   catch (e) { if (e.code === 'EEXIST') throw Error('wave-active.json exists; inspect owner, never expire or overwrite it'); throw e; }
+  logBrandAdmissions(request.tracks, buildStop, { channel: request.runtime, now: request.now }); // #7336: afslutningskortet viser brand-valg
   try {
     wave.capacity = checkCapacity(await readPrs(), request.tracks);
     // #5997: shared touched files + merge order, only when something is shared.
@@ -443,6 +447,8 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
   validateTracks(tracks);
   assertEnqueueable(tracks);
   assertDesignGate(tracks);
+  const buildStop = loadBuildStop();
+  assertBuildStop(tracks, buildStop); // #7336
   let plan;
   const next = updateWave(dir, waveId, wave => {
     assertIntakeOwner(wave, snapshot);
@@ -462,6 +468,7 @@ export function enqueueTracks(dir, waveId, tracks, snapshot = ownershipSnapshot)
     if (plan.shared.length) updated.sharedTouches = plan;
     return updated;
   }, LONG_LOCK_ATTEMPTS);
+  logBrandAdmissions(tracks, buildStop, { channel: 'intake' }); // #7336
   return { enqueued: tracks.map(trackRef), pending: next.pendingTracks.map(trackRef), ...(plan.shared.length ? { sharedTouches: plan } : {}) };
 }
 
