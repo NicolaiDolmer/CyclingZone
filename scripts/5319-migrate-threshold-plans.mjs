@@ -9,7 +9,15 @@
 // Hvad der flyttes (kun rytterens EGNE rækker):
 //   · training_plans.focus = 'threshold'           → 'itt_long'
 //   · training_week_plans (rider_id sat): ugedagens session og slots 'threshold' → 'itt_long'
-// Holdrækker (rider_id IS NULL) og træningsgrupper gælder flere ryttere og bliver.
+// Holdrækker (rider_id IS NULL) gælder flere ryttere og bliver.
+// Træningsgrupper (Codex-fund): en rytter der FØLGER en gruppe har gruppens uge
+// som kopi, og næste gruppe-ændring (`writeCopies`) kopierer gruppens uge tilbage.
+// Derfor, når gruppens egen uge har Tærskel:
+//   · er ALLE gruppens følgere enkeltstart/klassement, flyttes gruppens uge også
+//     (de bliver ved med at følge den, og den siger det samme som deres kopi);
+//   · ellers kobles enkeltstarts-/klassementsrytteren fra gruppen
+//     (`follows_group` = false), præcis som når spilleren selv retter rytterens
+//     plan (`markRidersOwnPlan`). Gruppen og de andre følgere står urørt.
 // Rytteren tæller som enkeltstart/klassement når primær- ELLER sekundærtypen er
 // tt eller gc (spec §5: time_trial-rolleklassen ≥ tempo-klassen).
 //
@@ -56,9 +64,11 @@ export function migrateWeekDays(days) {
 }
 
 // Ren planlægning: hvad SKAL flyttes. Ingen DB.
-export function planThresholdMigration({ plans = [], weekPlans = [], ridersById = new Map() }) {
+export function planThresholdMigration({ plans = [], weekPlans = [], ridersById = new Map(), groups = [], members = [] }) {
   const planUpdates = [];
   const weekUpdates = [];
+  const groupUpdates = [];
+  const memberDetaches = [];
   const riders = new Set();
   for (const row of plans) {
     if (row?.focus !== FROM_SESSION) continue;
@@ -77,16 +87,50 @@ export function planThresholdMigration({ plans = [], weekPlans = [], ridersById 
     });
     riders.add(row.rider_id);
   }
+
+  // Gruppe-følgere: se toppen af filen.
+  const migratedRiders = new Set(weekUpdates.map((u) => u.rider_id));
+  const groupsById = new Map(groups.map((g) => [g.id, g]));
+  const followersByGroup = new Map();
+  for (const m of members) {
+    if (m?.follows_group === false) continue;
+    if (!followersByGroup.has(m.group_id)) followersByGroup.set(m.group_id, []);
+    followersByGroup.get(m.group_id).push(m);
+  }
+  for (const [groupId, followers] of followersByGroup) {
+    const affected = followers.filter((m) => migratedRiders.has(m.rider_id));
+    if (!affected.length) continue;
+    const group = groupsById.get(groupId);
+    const migratedGroup = migrateWeekDays(group?.days);
+    if (!migratedGroup) continue; // gruppens uge har ingen Tærskel: en gruppe-ændring genskaber den ikke
+    if (followers.every((m) => isTimeTrialOrGcRider(ridersById.get(m.rider_id)))) {
+      groupUpdates.push({
+        id: groupId, updated_at: group.updated_at ?? null,
+        before: group.days, days: migratedGroup.days, changedCells: migratedGroup.changedCells,
+      });
+      continue;
+    }
+    for (const m of affected) memberDetaches.push({ rider_id: m.rider_id, group_id: groupId, team_id: m.team_id ?? null });
+  }
+
   return {
     planUpdates,
     weekUpdates,
+    groupUpdates,
+    memberDetaches,
     summary: {
       plans: planUpdates.length,
       weekPlans: weekUpdates.length,
       weekCells: weekUpdates.reduce((n, u) => n + u.changedCells, 0),
       riders: riders.size,
+      groupsMigrated: groupUpdates.length,
+      ridersDetachedFromGroup: memberDetaches.length,
     },
   };
+}
+
+function isMissingTable(error) {
+  return error?.code === "42P01" || error?.code === "PGRST205";
 }
 
 export function parseArgs(argv) {
@@ -100,7 +144,7 @@ async function fetchAll(query, pageSize = 1000) {
   const out = [];
   for (let from = 0; ; from += pageSize) {
     const { data, error } = await query().range(from, from + pageSize - 1);
-    if (error) throw new Error(error.message);
+    if (error) throw Object.assign(new Error(error.message), { code: error.code });
     out.push(...(data ?? []));
     if (!data || data.length < pageSize) return out;
   }
@@ -127,11 +171,38 @@ async function main() {
     for (const r of data ?? []) ridersById.set(r.id, r);
   }
 
-  const result = planThresholdMigration({ plans, weekPlans, ridersById });
+  // Træningsgrupper er beta: mangler tabellen, er der ingen grupper.
+  let groups = [];
+  let members = [];
+  const migratingRiderIds = new Set(weekPlans.map((r) => r.rider_id));
+  try {
+    members = await fetchAll(() => db.from("training_group_members").select("rider_id, group_id, team_id, follows_group").order("rider_id"));
+    const groupIds = [...new Set(members.filter((m) => migratingRiderIds.has(m.rider_id)).map((m) => m.group_id))];
+    for (let i = 0; i < groupIds.length; i += 200) {
+      const { data, error } = await db.from("training_groups").select("id, days, updated_at").in("id", groupIds.slice(i, i + 200));
+      if (error) throw Object.assign(new Error(error.message), { code: error.code });
+      groups.push(...(data ?? []));
+    }
+    // Alle følgere i de berørte grupper skal kendes for "alle er tt/gc"-tjekket.
+    const extra = [...new Set(members.filter((m) => groupIds.includes(m.group_id) && !ridersById.has(m.rider_id)).map((m) => m.rider_id))];
+    for (let i = 0; i < extra.length; i += 200) {
+      const { data, error } = await db.from("riders").select("id, primary_type, secondary_type").in("id", extra.slice(i, i + 200));
+      if (error) throw new Error(error.message);
+      for (const r of data ?? []) ridersById.set(r.id, r);
+    }
+  } catch (err) {
+    if (!isMissingTable(err)) throw err;
+    groups = [];
+    members = [];
+  }
+
+  const result = planThresholdMigration({ plans, weekPlans, ridersById, groups, members });
   console.log(`[5319] ${args.dryRun ? "DRY-RUN" : "APPLY"} threshold -> itt_long (tt/gc):`);
   console.log(`  training_plans:      ${result.summary.plans}`);
   console.log(`  training_week_plans: ${result.summary.weekPlans} (${result.summary.weekCells} celler)`);
   console.log(`  ryttere berørt:      ${result.summary.riders}`);
+  console.log(`  grupper flyttet:     ${result.summary.groupsMigrated} (alle følgere er tt/gc)`);
+  console.log(`  koblet fra gruppe:   ${result.summary.ridersDetachedFromGroup} (blandet gruppe med Tærskel)`);
   if (args.dryRun) {
     console.log("  Intet skrevet. Kør med --apply efter ejer-go.");
     return;
@@ -146,9 +217,29 @@ async function main() {
     process.exit(3);
   }
   const logPath = args.log ?? `5319-threshold-migration-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
-  writeFileSync(logPath, JSON.stringify({ planUpdates: result.planUpdates, weekUpdates: result.weekUpdates.map(({ id, rider_id, before }) => ({ id, rider_id, before })) }, null, 2));
+  writeFileSync(logPath, JSON.stringify({
+    planUpdates: result.planUpdates,
+    weekUpdates: result.weekUpdates.map(({ id, rider_id, before }) => ({ id, rider_id, before })),
+    groupUpdates: result.groupUpdates.map(({ id, before }) => ({ id, before })),
+    memberDetaches: result.memberDetaches,
+  }, null, 2));
   console.log(`  Omvendt map (rollback) skrevet til ${logPath}`);
   const now = new Date().toISOString();
+  // Frakobling FØR rytterens kopi skrives (samme rækkefølge som markRidersOwnPlan):
+  // fejler kopien bagefter, er rytteren blot koblet fra med sin uændrede plan.
+  for (const d of result.memberDetaches) {
+    const { error } = await db.from("training_group_members").update({ follows_group: false })
+      .eq("rider_id", d.rider_id).eq("group_id", d.group_id);
+    if (error) throw new Error(`training_group_members ${d.rider_id}: ${error.message}`);
+  }
+  let groupConflicts = 0;
+  for (const u of result.groupUpdates) {
+    let query = db.from("training_groups").update({ days: u.days, updated_at: now }).eq("id", u.id);
+    query = u.updated_at == null ? query.is("updated_at", null) : query.eq("updated_at", u.updated_at);
+    const { data, error } = await query.select("id");
+    if (error) throw new Error(`training_groups ${u.id}: ${error.message}`);
+    if (!data || data.length !== 1) groupConflicts++;
+  }
   for (const u of result.planUpdates) {
     const { error } = await db.from("training_plans").update({ focus: TO_SESSION, updated_at: now }).eq("id", u.id).eq("focus", FROM_SESSION);
     if (error) throw new Error(`training_plans ${u.id}: ${error.message}`);
@@ -163,7 +254,7 @@ async function main() {
     if (error) throw new Error(`training_week_plans ${u.id}: ${error.message}`);
     if (!data || data.length !== 1) conflicts++;
   }
-  console.log(`  Færdig. Ugeplaner sprunget over pga. samtidig ændring: ${conflicts} (kør scriptet igen).`);
+  console.log(`  Færdig. Sprunget over pga. samtidig ændring: ${conflicts} ugeplaner, ${groupConflicts} grupper (kør scriptet igen).`);
 }
 
 const invokedDirectly = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;

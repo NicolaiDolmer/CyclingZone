@@ -639,6 +639,19 @@ features:
     verified: 2026-10-14
     note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
 
+  - id: training-catalog-v3
+    area: training
+    title_en: Training catalog v3
+    title_da: Træningskatalog v3
+    state: building
+    flag: training_catalog_v3
+    ssot: docs/TRAINING_RULES.md
+    epic: 5319
+    verified: 2026-10-29
+    decision: taend
+    decide_by: 2026-11-08
+    note: Off; tænding + migration er ejer-go.
+
   - id: training-groups
     area: training
     title_en: Training groups

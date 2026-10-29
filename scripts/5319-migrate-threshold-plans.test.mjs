@@ -52,7 +52,7 @@ test("plan: tæller planer og ryttere, springer andre typer og holdrækker over,
     { id: 12, rider_id: "r-punch", days: { mon: { session: "threshold", intensity: "hard" } } },
   ];
   const first = planThresholdMigration({ plans, weekPlans, ridersById: riders });
-  assert.deepEqual(first.summary, { plans: 2, weekPlans: 1, weekCells: 1, riders: 2 });
+  assert.deepEqual(first.summary, { plans: 2, weekPlans: 1, weekCells: 1, riders: 2, groupsMigrated: 0, ridersDetachedFromGroup: 0 });
   assert.deepEqual(first.planUpdates.map((u) => u.id), [1, 2]);
   assert.deepEqual(first.weekUpdates.map((u) => u.id), [10]);
 
@@ -61,5 +61,57 @@ test("plan: tæller planer og ryttere, springer andre typer og holdrækker over,
   const appliedWeeks = weekPlans.map((w) => first.weekUpdates.find((u) => u.id === w.id)
     ? { ...w, days: first.weekUpdates.find((u) => u.id === w.id).days } : w);
   const second = planThresholdMigration({ plans: appliedPlans, weekPlans: appliedWeeks, ridersById: riders });
-  assert.deepEqual(second.summary, { plans: 0, weekPlans: 0, weekCells: 0, riders: 0 });
+  assert.deepEqual(second.summary, { plans: 0, weekPlans: 0, weekCells: 0, riders: 0, groupsMigrated: 0, ridersDetachedFromGroup: 0 });
+});
+
+// Codex-fund: en gruppe-følger må ikke få sin flytning rullet tilbage af næste
+// gruppe-ændring (writeCopies kopierer gruppens uge til alle følgere).
+test("gruppe-følgere: ren tt/gc-gruppe flyttes med, blandet gruppe kobler rytteren fra", () => {
+  const thresholdWeek = { mon: { session: "threshold", intensity: "hard" } };
+  const weekPlans = [
+    { id: 20, rider_id: "r-tt", days: thresholdWeek },
+    { id: 21, rider_id: "r-gc2", days: thresholdWeek },
+    { id: 22, rider_id: "r-punch", days: thresholdWeek },
+  ];
+
+  // Gruppe A: kun tt + gc → gruppens uge flyttes, ingen kobles fra.
+  const pure = planThresholdMigration({
+    weekPlans: weekPlans.slice(0, 2), ridersById: riders,
+    groups: [{ id: "gA", days: thresholdWeek, updated_at: "t0" }],
+    members: [
+      { rider_id: "r-tt", group_id: "gA", follows_group: true },
+      { rider_id: "r-gc2", group_id: "gA", follows_group: true },
+    ],
+  });
+  assert.equal(pure.summary.groupsMigrated, 1);
+  assert.equal(pure.groupUpdates[0].days.mon.session, "itt_long");
+  assert.equal(pure.groupUpdates[0].updated_at, "t0");
+  assert.deepEqual(pure.memberDetaches, []);
+
+  // Gruppe B: tt + puncheur → tt kobles fra, gruppen og puncheuren urørt.
+  const mixed = planThresholdMigration({
+    weekPlans, ridersById: riders,
+    groups: [{ id: "gB", days: thresholdWeek }],
+    members: [
+      { rider_id: "r-tt", group_id: "gB", team_id: "t1", follows_group: true },
+      { rider_id: "r-punch", group_id: "gB", team_id: "t1", follows_group: true },
+    ],
+  });
+  assert.deepEqual(mixed.groupUpdates, []);
+  assert.deepEqual(mixed.memberDetaches, [{ rider_id: "r-tt", group_id: "gB", team_id: "t1" }]);
+  assert.deepEqual(mixed.weekUpdates.map((u) => u.id), [20, 21]);
+
+  // Allerede koblet fra, eller gruppens uge uden Tærskel → intet at gøre.
+  const none = planThresholdMigration({
+    weekPlans, ridersById: riders,
+    groups: [{ id: "gC", days: { mon: { session: "sprint", intensity: "hard" } } }, { id: "gD", days: thresholdWeek }],
+    members: [
+      { rider_id: "r-tt", group_id: "gC", follows_group: true },
+      { rider_id: "r-punch", group_id: "gC", follows_group: true },
+      { rider_id: "r-gc2", group_id: "gD", follows_group: false },
+      { rider_id: "r-punch", group_id: "gD", follows_group: true },
+    ],
+  });
+  assert.deepEqual(none.groupUpdates, []);
+  assert.deepEqual(none.memberDetaches, []);
 });

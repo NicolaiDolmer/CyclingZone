@@ -1,6 +1,8 @@
 // #5319 · Er træningskatalog v3 (flag training_catalog_v3) tændt for MIG?
 //
-// Ét kald til GET /api/feature-flags pr. sideindlæsning (delt promise), samme
+// GET /api/feature-flags deles mellem alle felter der monteres samtidig, og
+// svaret er friskt i et minut (freshFlagLoader.ts); en ny montering derefter
+// henter igen, så et flag-skift når en åben fane uden genindlæsning. Samme
 // fail-safe som resten af flag-klienten: fejl = off = dagens katalog. Hooket
 // sætter også visnings-kataloget i training.js, så evne-linjerne (fx hvad
 // Tærskel træner) følger samme svar som vælgerne.
@@ -9,10 +11,15 @@ import { fetchPlayerFeatureFlags } from "./playerFeatureFlags.js";
 import { setDisplayCatalogV3, isDisplayCatalogV3 } from "./training.js";
 import { supabase } from "./supabase";
 import { isViewerChangeEvent } from "./viewerChange.ts";
+import { createFreshFlagLoader } from "./freshFlagLoader.ts";
 
 export const TRAINING_CATALOG_V3_FLAG_KEY = "training_catalog_v3";
 
-let pending: Promise<boolean> | null = null;
+const loader = createFreshFlagLoader(() =>
+  fetchPlayerFeatureFlags().then((flags: Record<string, boolean>) => flags?.[TRAINING_CATALOG_V3_FLAG_KEY] === true),
+);
+loader.subscribe((on) => setDisplayCatalogV3(on));
+
 let authListenerInstalled = false;
 
 // Codex-fund: svaret afhænger af viewerens beta-status, og modulet overlever
@@ -23,34 +30,28 @@ function installAuthListener(): void {
   authListenerInstalled = true;
   supabase.auth.onAuthStateChange((event) => {
     if (!isViewerChangeEvent(event)) return;
-    pending = null;
-    setDisplayCatalogV3(false);
+    loader.reset();
   });
 }
 
 export function loadTrainingCatalogV3(): Promise<boolean> {
   installAuthListener();
-  if (!pending) {
-    pending = fetchPlayerFeatureFlags()
-      .then((flags: Record<string, boolean>) => flags?.[TRAINING_CATALOG_V3_FLAG_KEY] === true)
-      .catch(() => false)
-      .then((on: boolean) => {
-        setDisplayCatalogV3(on);
-        return on;
-      });
-  }
-  return pending;
+  return loader.load();
 }
 
 export function useTrainingCatalogV3(): boolean {
   const [on, setOn] = useState<boolean>(isDisplayCatalogV3());
   useEffect(() => {
     let alive = true;
+    const unsubscribe = loader.subscribe((value) => {
+      if (alive) setOn(value);
+    });
     loadTrainingCatalogV3().then((value) => {
       if (alive) setOn(value);
     });
     return () => {
       alive = false;
+      unsubscribe();
     };
   }, []);
   return on;
