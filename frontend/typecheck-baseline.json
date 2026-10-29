@@ -1714,9 +1714,6 @@
     "TS18047": 16,
     "TS18048": 2
   },
-  "src/lib/playerFeatureFlags.js": {
-    "TS2339": 1
-  },
   "src/lib/posthogClient.js": {
     "TS18047": 3,
     "TS2322": 3,
