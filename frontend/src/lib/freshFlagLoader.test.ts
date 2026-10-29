@@ -34,15 +34,24 @@ test("friskt svar genbruges; forældet svar hentes igen og når lytterne", async
   assert.deepEqual(seen, [false, true]);
 });
 
-test("fejl = off, og næste kald prøver igen", async () => {
+test("ukendt svar (fejl) er ikke off: sidst kendte svar bevares, og næste kald prøver igen", async () => {
+  let clock = 0;
+  const answers: Array<boolean | null | "throw"> = [null, true, null, "throw", false];
   let calls = 0;
   const loader = createFreshFlagLoader(async () => {
-    calls += 1;
-    if (calls === 1) throw new Error("net");
-    return true;
-  }, { maxAgeMs: 0 });
-  assert.equal(await loader.load(), false);
-  assert.equal(await loader.load(), true);
+    const a = answers[calls++];
+    if (a === "throw") throw new Error("net");
+    return a as boolean | null;
+  }, { maxAgeMs: 1000, now: () => clock });
+  const seen: boolean[] = [];
+  loader.subscribe((on) => seen.push(on));
+  assert.equal(await loader.load(), false, "intet kendt endnu: dagens katalog");
+  assert.equal(await loader.load(), true, "ukendt blev ikke cachet: prøver igen straks");
+  clock += 1001;
+  assert.equal(await loader.load(), true, "fejlet genhentning efter 60 s slukker ikke v3");
+  assert.equal(await loader.load(), true, "kastet fejl heller ikke");
+  assert.equal(await loader.load(), false, "et rigtigt off publiceres");
+  assert.deepEqual(seen, [true, false]);
 });
 
 test("viewer-skift: reset glemmer svaret, og et sent svar til den gamle viewer gemmes ikke", async () => {

@@ -6,6 +6,10 @@
 // gamle. Her deles kun det kald der er i gang (mange felter monteres på samme
 // side), og svaret er friskt i `maxAgeMs`; derefter hentes det igen ved næste
 // montering. Lyttere får hvert nyt svar, så allerede monterede felter følger med.
+//
+// `fetchOn` giver null når svaret er ukendt (netfejl, 5xx, nøglen mangler).
+// Et ukendt svar er ikke et "off" (review-fund): det caches og publiceres ikke,
+// så felterne beholder det sidst kendte svar, og næste montering prøver igen.
 
 export type FreshFlagLoader = {
   load: () => Promise<boolean>;
@@ -14,7 +18,7 @@ export type FreshFlagLoader = {
 };
 
 export function createFreshFlagLoader(
-  fetchOn: () => Promise<boolean>,
+  fetchOn: () => Promise<boolean | null>,
   { maxAgeMs = 60_000, now = () => Date.now() }: { maxAgeMs?: number; now?: () => number } = {},
 ): FreshFlagLoader {
   let cached: { value: boolean; at: number } | null = null;
@@ -31,13 +35,15 @@ export function createFreshFlagLoader(
     if (pending) return pending;
     const mine = generation;
     const request = fetchOn()
-      .catch(() => false)
-      .then((on) => {
+      .catch(() => null)
+      .then((answer) => {
+        const known = cached?.value ?? false;
         // Et svar der kom efter et viewer-skift, tilhører den gamle viewer.
-        if (mine !== generation) return on;
-        cached = { value: on, at: now() };
-        publish(on);
-        return on;
+        if (mine !== generation) return answer ?? known;
+        if (answer === null) return known;
+        cached = { value: answer, at: now() };
+        publish(answer);
+        return answer;
       })
       .finally(() => {
         if (pending === request) pending = null;

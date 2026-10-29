@@ -18,6 +18,10 @@
 //   · ellers kobles enkeltstarts-/klassementsrytteren fra gruppen
 //     (`follows_group` = false), præcis som når spilleren selv retter rytterens
 //     plan (`markRidersOwnPlan`). Gruppen og de andre følgere står urørt.
+//   · har gruppen ingen egen uge endnu (days NULL), starter næste gruppe-ændring
+//     fra et medlems uge (`groupSeedDays`), så den flyttede rytter kobles fra.
+// Låse-konflikt på en gruppe (spilleren ændrede den undervejs): gruppens følgere
+// springes over i samme kørsel; en ny kørsel finder gruppen ud fra dens indhold.
 // Rytteren tæller som enkeltstart/klassement når primær- ELLER sekundærtypen er
 // tt eller gc (spec §5: time_trial-rolleklassen ≥ tempo-klassen).
 //
@@ -88,7 +92,9 @@ export function planThresholdMigration({ plans = [], weekPlans = [], ridersById 
     riders.add(row.rider_id);
   }
 
-  // Gruppe-følgere: se toppen af filen.
+  // Gruppe-følgere: se toppen af filen. Grupperne findes ud fra gruppens EGET
+  // indhold, ikke ud fra hvem der migreres i denne kørsel, så en ny kørsel efter
+  // en låse-konflikt stadig finder en gruppe hvis følgere allerede er flyttet.
   const migratedRiders = new Set(weekUpdates.map((u) => u.rider_id));
   const groupsById = new Map(groups.map((g) => [g.id, g]));
   const followersByGroup = new Map();
@@ -97,20 +103,29 @@ export function planThresholdMigration({ plans = [], weekPlans = [], ridersById 
     if (!followersByGroup.has(m.group_id)) followersByGroup.set(m.group_id, []);
     followersByGroup.get(m.group_id).push(m);
   }
+  const detach = (m, groupId) => memberDetaches.push({ rider_id: m.rider_id, group_id: groupId, team_id: m.team_id ?? null });
   for (const [groupId, followers] of followersByGroup) {
-    const affected = followers.filter((m) => migratedRiders.has(m.rider_id));
-    if (!affected.length) continue;
+    const timeTrialFollowers = followers.filter((m) => isTimeTrialOrGcRider(ridersById.get(m.rider_id)));
+    if (!timeTrialFollowers.length) continue;
     const group = groupsById.get(groupId);
-    const migratedGroup = migrateWeekDays(group?.days);
+    const hasOwnWeek = !!group?.days && typeof group.days === "object" && !Array.isArray(group.days);
+    if (!hasOwnWeek) {
+      // Gruppen har ingen egen uge endnu: næste gruppe-ændring starter fra et
+      // medlems uge (groupSeedDays), som scriptet ikke kan stå inde for.
+      for (const m of timeTrialFollowers) if (migratedRiders.has(m.rider_id)) detach(m, groupId);
+      continue;
+    }
+    const migratedGroup = migrateWeekDays(group.days);
     if (!migratedGroup) continue; // gruppens uge har ingen Tærskel: en gruppe-ændring genskaber den ikke
-    if (followers.every((m) => isTimeTrialOrGcRider(ridersById.get(m.rider_id)))) {
+    if (timeTrialFollowers.length === followers.length) {
       groupUpdates.push({
         id: groupId, updated_at: group.updated_at ?? null,
         before: group.days, days: migratedGroup.days, changedCells: migratedGroup.changedCells,
+        followerIds: followers.map((m) => m.rider_id),
       });
       continue;
     }
-    for (const m of affected) memberDetaches.push({ rider_id: m.rider_id, group_id: groupId, team_id: m.team_id ?? null });
+    for (const m of timeTrialFollowers) if (migratedRiders.has(m.rider_id)) detach(m, groupId);
   }
 
   return {
@@ -180,17 +195,17 @@ async function main() {
   // Træningsgrupper er beta: mangler tabellen, er der ingen grupper.
   let groups = [];
   let members = [];
-  const migratingRiderIds = new Set(weekPlans.map((r) => r.rider_id));
   try {
     members = await fetchAll(() => db.from("training_group_members").select("rider_id, group_id, team_id, follows_group").order("rider_id"));
-    const groupIds = [...new Set(members.filter((m) => migratingRiderIds.has(m.rider_id)).map((m) => m.group_id))];
+    const followers = members.filter((m) => m.follows_group !== false);
+    const groupIds = [...new Set(followers.map((m) => m.group_id))];
     for (let i = 0; i < groupIds.length; i += 200) {
       const { data, error } = await db.from("training_groups").select("id, days, updated_at").in("id", groupIds.slice(i, i + 200));
       if (error) throw Object.assign(new Error(error.message), { code: error.code });
       groups.push(...(data ?? []));
     }
-    // Alle følgere i de berørte grupper skal kendes for "alle er tt/gc"-tjekket.
-    const extra = [...new Set(members.filter((m) => groupIds.includes(m.group_id) && !ridersById.has(m.rider_id)).map((m) => m.rider_id))];
+    // Alle følgere skal kendes for "alle er tt/gc"-tjekket.
+    const extra = [...new Set(followers.map((m) => m.rider_id).filter((id) => !ridersById.has(id)))];
     for (let i = 0; i < extra.length; i += 200) {
       const { data, error } = await db.from("riders").select("id, primary_type, secondary_type").in("id", extra.slice(i, i + 200));
       if (error) throw new Error(error.message);
@@ -208,7 +223,7 @@ async function main() {
   console.log(`  training_week_plans: ${result.summary.weekPlans} (${result.summary.weekCells} celler)`);
   console.log(`  ryttere berørt:      ${result.summary.riders}`);
   console.log(`  grupper flyttet:     ${result.summary.groupsMigrated} (alle følgere er tt/gc)`);
-  console.log(`  koblet fra gruppe:   ${result.summary.ridersDetachedFromGroup} (blandet gruppe med Tærskel)`);
+  console.log(`  koblet fra gruppe:   ${result.summary.ridersDetachedFromGroup} (blandet gruppe med Tærskel eller gruppe uden egen uge)`);
   if (args.dryRun) {
     console.log("  Intet skrevet. Kør med --apply efter ejer-go.");
     return;
@@ -239,12 +254,19 @@ async function main() {
     if (error) throw new Error(`training_group_members ${d.rider_id}: ${error.message}`);
   }
   let groupConflicts = 0;
+  const skipRiders = new Set();
   for (const u of result.groupUpdates) {
     let query = db.from("training_groups").update({ days: u.days, updated_at: now }).eq("id", u.id);
     query = u.updated_at == null ? query.is("updated_at", null) : query.eq("updated_at", u.updated_at);
     const { data, error } = await query.select("id");
     if (error) throw new Error(`training_groups ${u.id}: ${error.message}`);
-    if (!data || data.length !== 1) groupConflicts++;
+    if (!data || data.length !== 1) {
+      groupConflicts++;
+      // Gruppen blev ændret undervejs og står stadig på Tærskel: dens følgere
+      // flyttes heller ikke nu, ellers ville næste gruppe-ændring rulle dem
+      // tilbage. En ny kørsel finder gruppen igen ud fra dens indhold.
+      for (const riderId of u.followerIds) skipRiders.add(riderId);
+    }
   }
   for (const u of result.planUpdates) {
     const { error } = await db.from("training_plans").update({ focus: TO_SESSION, updated_at: now }).eq("id", u.id).eq("focus", FROM_SESSION);
@@ -254,6 +276,7 @@ async function main() {
   // række spilleren har rettet i mellemtiden springes over (kør scriptet igen).
   let conflicts = 0;
   for (const u of result.weekUpdates) {
+    if (skipRiders.has(u.rider_id)) continue;
     let query = db.from("training_week_plans").update({ days: u.days, updated_at: now }).eq("id", u.id);
     query = u.updated_at == null ? query.is("updated_at", null) : query.eq("updated_at", u.updated_at);
     const { data, error } = await query.select("id");

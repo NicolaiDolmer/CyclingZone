@@ -15,8 +15,13 @@ import { createFreshFlagLoader } from "./freshFlagLoader.ts";
 
 export const TRAINING_CATALOG_V3_FLAG_KEY = "training_catalog_v3";
 
+// Serveren svarer altid med en boolean for hver nøgle i allowlisten; mangler
+// nøglen, fejlede kaldet (fetchPlayerFeatureFlags giver {}), og svaret er ukendt.
 const loader = createFreshFlagLoader(() =>
-  fetchPlayerFeatureFlags().then((flags: Record<string, boolean>) => flags?.[TRAINING_CATALOG_V3_FLAG_KEY] === true),
+  fetchPlayerFeatureFlags().then((flags: Record<string, boolean>) => {
+    const value = flags?.[TRAINING_CATALOG_V3_FLAG_KEY];
+    return typeof value === "boolean" ? value : null;
+  }),
 );
 loader.subscribe((on) => setDisplayCatalogV3(on));
 

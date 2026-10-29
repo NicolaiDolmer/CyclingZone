@@ -115,3 +115,31 @@ test("gruppe-følgere: ren tt/gc-gruppe flyttes med, blandet gruppe kobler rytte
   assert.deepEqual(none.groupUpdates, []);
   assert.deepEqual(none.memberDetaches, []);
 });
+
+// Review-fund: gruppe uden egen uge, og gentaget kørsel efter låse-konflikt.
+test("gruppe uden egen uge kobler den flyttede tt/gc-rytter fra; ren gruppe findes også når følgerne allerede er flyttet", () => {
+  const thresholdWeek = { mon: { session: "threshold", intensity: "hard" } };
+  const seedGroup = planThresholdMigration({
+    weekPlans: [{ id: 30, rider_id: "r-tt", days: thresholdWeek }], ridersById: riders,
+    groups: [{ id: "gN", days: null }],
+    members: [
+      { rider_id: "r-punch", group_id: "gN", follows_group: true },
+      { rider_id: "r-tt", group_id: "gN", follows_group: true },
+    ],
+  });
+  assert.deepEqual(seedGroup.memberDetaches.map((d) => d.rider_id), ["r-tt"]);
+  assert.deepEqual(seedGroup.groupUpdates, []);
+
+  // Ny kørsel: følgernes rækker står allerede på itt_long, men gruppen har stadig Tærskel.
+  const rerun = planThresholdMigration({
+    weekPlans: [{ id: 31, rider_id: "r-tt", days: { mon: { session: "itt_long", intensity: "hard" } } }], ridersById: riders,
+    groups: [{ id: "gP", days: thresholdWeek, updated_at: "t1" }],
+    members: [
+      { rider_id: "r-tt", group_id: "gP", follows_group: true },
+      { rider_id: "r-gc2", group_id: "gP", follows_group: true },
+    ],
+  });
+  assert.deepEqual(rerun.weekUpdates, []);
+  assert.equal(rerun.groupUpdates.length, 1);
+  assert.deepEqual(rerun.groupUpdates[0].followerIds, ["r-tt", "r-gc2"]);
+});
