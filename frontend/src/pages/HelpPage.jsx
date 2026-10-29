@@ -397,6 +397,8 @@ const SECTION_DEFS = [
       { id: "fatigueLimit", kind: "text", flag: "training_fatigue_rules" },
       // #6000: traeningsgrupper, kun naar flaget er taendt for viewereren.
       { id: "trainingGroups", kind: "text", flag: "training_groups" },
+      // #5319: traeningskatalog v3, kun naar flaget er taendt for viewereren.
+      { id: "catalogV3", kind: "text", flag: "training_catalog_v3" },
       { id: "injuryRisk", kind: "text" },
       { id: "progressBars", kind: "text" },
       // #4851: the training score is the other half of "how much did today move" —

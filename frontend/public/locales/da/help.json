@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Træningsgrupper",
         "text": "En gruppe lader dig træffe én træningsbeslutning for flere ryttere. Du opretter den under Program, Plan: åbn \"Plan for\" og vælg \"+ Ny gruppe\". Giv den et navn, og start fra en ryttertype, eller vælg rytterne selv. En rytter kan være i én gruppe. En ændring i et felt gælder så hele gruppen, og ryttere med en etape beholder etapen. \"Træthed i aften\" viser gruppens mest trætte rytter. Rækkefølgen ligger fast: rytterens egen plan først, så gruppens plan, så holdets plan. Retter du én rytters egne felter, vinder hans plan, indtil du vælger \"Følg gruppen\" igen. Du kan også sætte et program på en gruppe under Programmer og give en gruppe sin egen undtagelse under Træthedsgrænse."
+      },
+      "catalogV3": {
+        "title": "To hårde sessioner til hver ryttertype",
+        "text": "Hver ryttertype har nu to hårde sessioner bygget til sig, og hver hård session giver en fuld hård dag. Fem sessioner er nye: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har endelig sine egne sessioner, så Tærskel træner tempo og udholdenhed i stedet. Sprint giver nu en fuld hård dag. Skifter I mellem typens to sessioner, vokser hovedevnen lidt mindre, men andre evner vokser i stedet."
       }
     },
     "activityfeed": {
