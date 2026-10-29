@@ -185,3 +185,10 @@ test("partialSquadOutlook: regel B, skade efter udtagelsen -> startsShort (#6740
   // Alle skadede og ingen frie: ingen at starte med.
   assert.equal(partialSquadOutlook({ selected: 0, injured: 6, free: 0, fieldMax: 7 }).kind, "willNotStart");
 });
+
+test("#6321: spurtkaptajn som eneste leder - kun naar serveren siger sprint_leader_allowed (v3-loeb)", () => {
+  const base = { riderIds: ["a", "b", "c", "d", "e", "f"], captainId: null, sprintCaptainId: "b", hunterId: null, size: { min: 6, max: 8 } };
+  assert.deepEqual(validateSelectionClient({ ...base, sprintLeaderAllowed: true }), []);
+  assert.deepEqual(validateSelectionClient(base), ["selection_captain_required"]);
+  assert.deepEqual(validateSelectionClient({ ...base, sprintCaptainId: null, sprintLeaderAllowed: true }), ["selection_captain_required"]);
+});

@@ -8,6 +8,8 @@
     "noPlanLocked": "No plan. He rode on his role.",
     "noPlanOrders": "No plan yet. He rides on what you set: {orders}.",
     "noPlanOrdersLocked": "No plan. He rode on what you set: {orders}.",
+    "luxuryHelperPlan": "No saved plan. As luxury helper he rides the suggestion.",
+    "luxuryHelperPlanLocked": "No saved plan. As luxury helper he rode the suggestion.",
     "noFit": "This plan no longer fits his role. Pick a new one.",
     "colPlan": "Plan for stage {number}",
     "colPlanRaceDay": "Plan for the race",
@@ -352,7 +354,7 @@
     "errorTitle": "Selection matrix could not be loaded",
     "empty": "No races this season yet",
     "restDay": "Rest day",
-    "withdrawnHint": "You have withdrawn from this race. The saved line-up is kept in case you re-enter, but these riders will not start.",
+    "withdrawnHint": "Saving a new line-up cancels your withdrawal and replaces the old selection.",
     "dayAria": "Race day {index}, {date}. Open its day board.",
     "cellEmptyAria": "{rider}, {race}: not selected. Click to add.",
     "cellFilledAria": "{rider}, {race}: {role}. Click to change.",
@@ -471,6 +473,8 @@
       "hint": "Tap an order to change the rider's role",
       "captain": "Captain",
       "sprintCaptain": "Sprint captain",
+      "coCaptain": "Shared captain",
+      "luxuryHelper": "Luxury helper",
       "hunter": "Breakaway hunter",
       "rider": "Rider only"
     },
@@ -528,16 +532,19 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Breakaway odds",
-      "high": "High",
-      "medium": "Medium",
-      "low": "Low",
-      "none": "None",
-      "tooltip": "How likely a breakaway is to stay away on this terrain. The hunter is always a breakaway candidate."
-    },
     "hunterExplainer": {
-      "strengthLine": "On this race's terrain, a breakaway has {strength} odds of staying away.",
+      "dayLine": "Your hunter tries to get into the morning breakaway. Whether it stays away is decided by the peloton on the day.",
+      "outlook": {
+        "about": "Engine forecast: the breakaway stays away about {k} in {n} times.",
+        "under": "Engine forecast: the breakaway stays away less than {k} in {n} times.",
+        "over": "Engine forecast: the breakaway stays away more than {k} in {n} times.",
+        "stage": "Stage {stage}",
+        "reason": {
+          "nobodyChases": "Few teams have a reason to chase it.",
+          "fewChase": "One or two teams usually have a reason to chase it.",
+          "manyChase": "Several teams usually have a reason to chase it."
+        }
+      },
       "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
       "noCandidates": "Pick riders for this race to see your best hunters.",
       "aggression": "Aggression",
@@ -752,6 +759,10 @@
     "minHint": "Minimum {min} riders to start.",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
+    "coCaptain": "Shared captain (optional)",
+    "coCaptainHint": "Protected like the captain. The captain gets help first.",
+    "luxuryHelper": "Luxury helper (optional)",
+    "luxuryHelperHint": "Saves himself, then works for the captain on the decisive climb.",
     "hunter": "Breakaway hunter",
     "freeRole": "Free role",
     "noRole": "None",
@@ -835,6 +846,7 @@
       "title": "This race is in another division",
       "note": "You can only enter races in your own division, so there's no line-up to set here."
     },
+    "rejoinNote": "Saving a new line-up cancels your withdrawal and replaces the old selection.",
     "withdrawnPanel": {
       "title": "You have withdrawn from this race",
       "note": "Your team is voluntarily not starting, so there is no line-up to set. Re-enter from the race board if you change your mind before the start.",
@@ -850,8 +862,11 @@
       "move_failed": "Couldn't move the rider. Try again.",
       "selection_captain_required": "Pick a captain among your selected riders.",
       "selection_captain_not_selected": "Your captain must be one of the selected riders.",
+      "selection_co_captain_not_available": "Shared captain isn't available in this race.",
+      "selection_co_captain_requires_captain": "A shared captain needs a captain. Pick a captain first.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
       "selection_role_overlap": "Captain, sprint captain and hunter must be different riders.",
+      "selection_luxury_helper_not_available": "Luxury helper isn't available in this race.",
       "selection_rider_injured": "Injured riders can't be selected.",
       "selection_rider_over_age": "Riders over the race's age limit can't be selected.",
       "selection_rider_not_on_team": "You can only select your own riders.",
@@ -864,6 +879,7 @@
       "selection_flag_disabled": "Team selection isn't active yet.",
       "selection_invalid_body": "Couldn't save the selection. Try again.",
       "selection_wrong_pool": "You can only enter races in your own division.",
+      "selection_withdrawn_locked": "You withdrew your team. The field is locked after the first stage.",
       "selection_withdrawn": "You've withdrawn from this race, so a lineup can't be saved for it.",
       "selection_train_now_locked": "Riders who trained today can't be added to or removed from today's race.",
       "selection_youth_squad_train_only": "This squad is set to Train only. Switch it to Enter races on the squad page to enter it.",
@@ -937,12 +953,21 @@
       "protect": "work or attack",
       "all_out": "all out"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Work", "why": "Rides for the leader. Real fatigue.", "today": "works for the leader" },
+        "follow": { "step": "Follow the moves", "why": "Answers every attack. Costs more legs.", "today": "follows the moves" },
+        "free": { "step": "Ride aggressively", "why": "Presses on the climbs and in the finale.", "today": "rides aggressively" }
+      }
+    },
     "roleWord": {
       "captain": "captain",
       "sprint_captain": "sprint captain",
+      "co_captain": "shared captain",
       "helper": "rider",
       "hunter": "hunter",
-      "free_role": "free role"
+      "free_role": "free role",
+      "luxury_helper": "luxury helper"
     },
     "errors": {
       "stage_roles_invalid_body": "Couldn't save the intentions. Try again.",
@@ -951,14 +976,21 @@
       "stage_roles_invalid_role": "One of the roles isn't valid.",
       "stage_roles_invalid_effort": "One of the intentions isn't valid.",
       "stage_roles_role_overlap": "Only one rider can be captain, only one can be sprint captain, and only one can be breakaway hunter, per stage.",
+      "stage_roles_co_captain_requires_captain": "A shared captain needs a captain on the same stage.",
       "stage_roles_duplicate": "The same rider appears twice for the same stage.",
       "stage_roles_rider_abandoned": "One of the riders is out of the race and can't be given an intention anymore.",
       "stage_roles_race_completed": "This race is finished, so the intentions can't be changed anymore.",
       "generic": "Couldn't save the intentions. Try again.",
-      "stage_roles_conflict": "Your tactics were changed in another window. The latest version is loaded. Check it and save again."
+      "stage_roles_conflict": "Your tactics were changed in another window. The latest version is loaded. Check it and save again.",
+      "team_orders_grupetto_with_break": "A rider on Grupetto cannot try the break.",
+      "team_orders_grupetto_with_train": "A rider on Grupetto cannot ride in the sprint train.",
+      "team_orders_work_with_break": "A rider who works for the leader cannot try the break.",
+      "team_orders_train_with_break": "A rider in the sprint train cannot try the break."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Not with Grupetto.", "notWithWork": "A rider who works for the leader cannot join the break.", "notWithBreak": "Not while he tries the break.", "notWithTrain": "The sprint train stays in the bunch for the finale." },
+    "pickOne": "Pick one",
     "title": "Tactics",
     "locksAt": "Locks {time}",
     "locked": "Locked",
@@ -1004,10 +1036,12 @@
     "tryBreakAria": "{name} tries for the breakaway",
     "roleLabel": {
       "captain": "Captain",
+      "co_captain": "Shared captain",
       "sprint_captain": "Sprint captain",
       "hunter": "Breakaway hunter",
       "helper": "Domestique",
-      "free_role": "Free role"
+      "free_role": "Free role",
+      "luxury_helper": "Luxury helper"
     },
     "save": "Save tactics",
     "saving": "Saving…",
@@ -1039,7 +1073,8 @@
       "sprint_captain": "sprint captain",
       "hunter": "breakaway hunter",
       "helper": "domestique",
-      "free_role": "free role"
+      "free_role": "free role",
+      "luxury_helper": "luxury helper"
     }
   },
   "stageOrders": {
@@ -1116,10 +1151,12 @@
       "roleExclusiveNoteScoped": "One captain, one sprint captain and one breakaway hunter at a time. The rider who held the role becomes a domestique on the same stages. Earlier stages keep their roles.",
       "roleWhy": {
         "captain": "The team rides for him and he gets the protection.",
+        "co_captain": "Protected like the captain. The captain gets help first.",
         "sprint_captain": "He gets the sprint train and the lead out.",
         "hunter": "He goes hunting for the breakaway.",
         "helper": "He works for the leaders.",
-        "free_role": "He rides his own race."
+        "free_role": "He rides his own race.",
+        "luxury_helper": "He saves himself, then works for the captain on the decisive climb. Change the climb in the stage plan."
       }
     },
     "team": {
@@ -1438,6 +1475,25 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {is} other {are}} caught. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} and {teamLast}}} did the chasing.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {is} other {are}} caught by the peloton.",
         "breakaway_survived": "The breakaway holds off the bunch all the way to the line.",
+        "cause": {
+          "unchased": "Nobody wanted to chase, so the break got all the room it needed.",
+          "no_chasers": "The teams that wanted to chase had no riders left to do it.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} never chased: it had} other {{teamsHead} and {teamLast} never chased: they had}} riders in the break.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} had spent what it could} other {{teamsHead} and {teamLast} had spent what they could}} on the chase.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast} had} other {{teamsHead} and {teamLast} had}} no free riders to chase with.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast} only rode} other {{teamsHead} and {teamLast} only rode}} to protect the GC and let the stage go.",
+          "chase_faded_climb": "The chase faded after {climb}, and the gap grew again.",
+          "chase_faded": "The chase faded, and the gap grew again.",
+          "chase_too_late": "The chase closed in, but ran out of road.",
+          "gap_never_closed": "The chase never brought the gap down.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast} chased} other {{teamsHead} and {teamLast} chased}} because {threats} {threatCount, plural, one {was a threat} other {were a threat}} to {rider} in the GC.",
+          "closed_on_climb": "The gap came down on {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} rode all out on your orders and stayed away to the line.",
+          "all_out_held_on_climb": "{rider} rode all out on your orders and stayed with the front over {climb}.",
+          "all_out_held_on": "{rider} rode all out on your orders and stayed with the front group."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {is} other {are}} dropped from the break.",
         "group_ahead_formed": "{riders} {count, plural, one {goes} other {go}} clear in a group ahead of the peloton.",
         "group_ahead_caught": "The group ahead of the peloton is caught: {riders}.",
@@ -1452,6 +1508,14 @@
         "incident_protected": "{rider} goes down inside the final kilometres, but keeps the group's time.",
         "favorite_crack": "{rider} cracks and loses contact with the front.",
         "favorite_crack_tt": "{rider} fades in the second half and bleeds time.",
+        "all_out_gain": "{rider} goes all out on the last climb and gains time.",
+        "all_out_cracked": "{rider} goes all out and runs empty on the last climb.",
+        "bad_day_fatigue": "{rider} had a bad day. The hard days before caught up with him.",
+        "bad_day_form": "{rider} had a bad day. He was short of form.",
+        "bad_day_illness": "{rider} had a bad day. He was feeling ill.",
+        "bad_day_rain": "{rider} had a bad day in the rain.",
+        "bad_day_wind": "{rider} had a bad day in the wind.",
+        "bad_day_heat": "{rider} had a bad day in the heat.",
         "finale_attack": "{rider} attacks in the finale.",
         "ttt_rider_dropped": "{rider} slips off the back of his team.",
         "sprint_decided": "It comes down to the wire between {rider} and the chasers.",

@@ -1,12 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { runWave, childArgs } from './codex-wave.mjs';
 import * as runner from './codex-wave.mjs';
 import { hostLaneCap } from './wave-capacity.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
+
+// #7336: fixtures bruger opdigtede issues; byggestoppet slaas fra her og testes
+// for sig i build-stop.test.mjs og i '#7336'-testene i wave-policy.test.mjs
+// (acquireWave med runtime 'codex').
+const BUILD_STOP_OFF = path.join(mkdtempSync(path.join(os.tmpdir(), 'cz-build-stop-off-')), 'build-stop.json');
+writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', areaCap: 3, finishList: [], cleanupList: [], brandList: [] }));
+process.env.CZ_BUILD_STOP_FILE = BUILD_STOP_OFF;
+process.env.CZ_BUILD_STOP_LOG = path.join(path.dirname(BUILD_STOP_OFF), 'brand-log.jsonl');
 
 test('#7027: writer brief uses the PowerShell guard with fail-closed commit ordering', () => {
   const brief = generateBrief({ ...tracks[0], slug: 'guard-fixture', scopeText: 'Fixture',

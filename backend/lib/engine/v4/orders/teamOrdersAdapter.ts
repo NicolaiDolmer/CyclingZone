@@ -76,6 +76,7 @@ import { TEAM_TACTICS_ORDER_KIND, s5MorningGcBlockedRiders } from "../mechanics/
 import { eligibleKomHunters } from "../mechanics/komJersey6937.ts"; // #6937
 import { LEADOUT_ORDER_KIND, isSprintTrainProfile, sprintTrainLeadoutOrder } from "../mechanics/leadout.ts";
 import { isOfficialTimesV3OrLater, isOfficialTimesV5OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { CO_CAPTAIN_ROLE, aiCoCaptainId } from "../mechanics/sharedCaptain.ts";
 import { stagePlanOrderFromRow } from "../../../stagePlanEngine.ts"; // #7003
 
 export type { BreakawayStance, TeamTacticsOrder };
@@ -123,6 +124,8 @@ export type StageOrderPlan = {
   orders: EngineTeamOrder[];
   /** KUN AI-holdenes ryttere: indsatsen fra deres ordre (motoren laeser Entrant.effort). */
   aiEffortByRider: Map<string, EffortLevel>;
+  /** #5981 (KUN s5_profiles_v3, etapeloeb): AI-holdenes delte kaptajn -> rollen motoren skal se. Kun sat naar ikke tom. */
+  aiRoleByRider?: Map<string, RiderRole>;
 };
 
 const VALID_STANCES: ReadonlySet<string> = new Set(BREAKAWAY_STANCE_VALUES);
@@ -131,6 +134,7 @@ const VALID_ROLES: ReadonlySet<string> = new Set(RIDER_ROLE_VALUES);
 
 /** Ukendt/manglende rolle → `free_role` (ingen bunden opgave), aldrig et kast. */
 function toRole(role: string | null | undefined): RiderRole {
+  if (role === "luxury_helper") return "helper"; // #5982: luksushjaelper faar en hjaelpers ordre-defaults
   return VALID_ROLES.has(role ?? "") ? (role as RiderRole) : "free_role";
 }
 
@@ -337,8 +341,14 @@ export function buildStageOrderPlan(args: {
 
   const orders: EngineTeamOrder[] = [];
   const aiEffortByRider = new Map<string, EffortLevel>();
-  for (const [teamId, teamRoster] of rosterByTeam(roster)) {
+  // #5981 (KUN s5_profiles_v3, etapeloeb): AI-hold faar en delt kaptajn (sharedCaptain.aiCoCaptainId).
+  const aiCoCaptains = context !== undefined && context.race?.is_stage_race === true && isS5ProfilesV3OrLater(context.rules_revision);
+  const aiRoleByRider = new Map<string, RiderRole>();
+  for (const [teamId, holdRoster] of rosterByTeam(roster)) {
     const isAiTeam = context !== undefined && aiTeams.has(teamId);
+    const coId = isAiTeam && aiCoCaptains ? aiCoCaptainId(holdRoster, (id) => rawAbilitiesByRider.get(id)) : null;
+    if (coId) aiRoleByRider.set(coId, CO_CAPTAIN_ROLE);
+    const teamRoster = coId ? holdRoster.map((r) => (r.rider_id === coId ? { ...r, role: CO_CAPTAIN_ROLE } : r)) : holdRoster;
     const roleBase = isAiTeam
       ? generateAiTeamOrder({
           team_id: teamId,
@@ -385,7 +395,7 @@ export function buildStageOrderPlan(args: {
       : toEngineLeadoutOrder(order, teamRoster);
     if (leadout) orders.push(leadout);
   }
-  return { orders, aiEffortByRider };
+  return aiRoleByRider.size > 0 ? { orders, aiEffortByRider, aiRoleByRider } : { orders, aiEffortByRider };
 }
 
 /** Kun ordrerne (bagudkompatibel form) — se `buildStageOrderPlan`. */

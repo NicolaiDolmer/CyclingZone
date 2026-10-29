@@ -8,15 +8,14 @@
     "TS18046": 4,
     "TS18047": 1,
     "TS2322": 6,
-    "TS2339": 55,
-    "TS2345": 1,
+    "TS2339": 50,
     "TS2353": 3,
     "TS2741": 1,
     "TS8032": 1
   },
   "../backend/lib/academyIntake.js": {
     "TS1127": 1,
-    "TS2322": 4,
+    "TS2322": 2,
     "TS2339": 12,
     "TS2353": 3,
     "TS2739": 1,
@@ -281,9 +280,8 @@
   "../backend/lib/notificationService.js": {
     "TS18046": 1,
     "TS18047": 2,
-    "TS2322": 4,
-    "TS2339": 15,
-    "TS2345": 5,
+    "TS2339": 4,
+    "TS2345": 2,
     "TS2559": 2
   },
   "../backend/lib/poolBalance.js": {
@@ -484,7 +482,7 @@
     "TS2349": 2
   },
   "../backend/lib/sponsorContractsService.js": {
-    "TS2322": 5,
+    "TS2322": 4,
     "TS2339": 3
   },
   "../backend/lib/sponsorEngine.js": {
@@ -1066,7 +1064,6 @@
     "TS2741": 1
   },
   "src/components/race/RaceSelectionPanel.jsx": {
-    "TS18046": 7,
     "TS18047": 3,
     "TS2322": 5,
     "TS2339": 4,
@@ -1441,9 +1438,6 @@
   "src/lib/anonymousId.test.js": {
     "TS2790": 1
   },
-  "src/lib/apiError.js": {
-    "TS2345": 1
-  },
   "src/lib/assistantTrainingSuggestions.js": {
     "TS2339": 3
   },
@@ -1480,10 +1474,6 @@
   "src/lib/availableBalance.test.js": {
     "TS2345": 2,
     "TS2740": 1
-  },
-  "src/lib/backendMessage.js": {
-    "TS2345": 1,
-    "TS2349": 1
   },
   "src/lib/boardCopy.js": {
     "TS2339": 5
@@ -1724,9 +1714,6 @@
     "TS18047": 16,
     "TS18048": 2
   },
-  "src/lib/playerFeatureFlags.js": {
-    "TS2339": 1
-  },
   "src/lib/posthogClient.js": {
     "TS18047": 3,
     "TS2322": 3,
@@ -1831,7 +1818,6 @@
   },
   "src/lib/raceSelectionLogic.test.js": {
     "TS18047": 15,
-    "TS2322": 14,
     "TS2353": 1,
     "TS2531": 5
   },
@@ -2602,7 +2588,7 @@
   "src/pages/RiderStatsPage.jsx": {
     "TS18047": 10,
     "TS2322": 25,
-    "TS2339": 119,
+    "TS2339": 118,
     "TS2345": 47,
     "TS2353": 18,
     "TS2362": 2,

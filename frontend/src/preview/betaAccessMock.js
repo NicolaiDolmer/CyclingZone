@@ -77,10 +77,27 @@ const PLAYER_VISIBLE_FLAG_KEYS = [
   "potential_single_number", // #6110 Hjaelp
   "ability_cap_per_date_enabled", // #6110 Hjaelp
   "training_decision_card", // #6110 Hjaelp
+  "race_day_intention_enabled", // #6746 Hjaelp
+  "training_catalog_v3", // #5319 vaelgere + Hjaelp
 ];
+
+// #5319: træningskatalog v3 er OFF på preview (som i prod), men kan tændes med
+// ?catalogV3=on for at se de nye sessioner i vælgerne. Huskes i localStorage
+// (cz_mock_catalog_v3), samme mønster som ?bestRole/?youthSquads.
+function previewCatalogV3Enabled() {
+  try {
+    const param = new URLSearchParams(window.location.search).get("catalogV3");
+    if (param === "on") localStorage.setItem("cz_mock_catalog_v3", "1");
+    if (param === "off") localStorage.setItem("cz_mock_catalog_v3", "0");
+    return localStorage.getItem("cz_mock_catalog_v3") === "1";
+  } catch {
+    return false;
+  }
+}
 
 function playerFlags() {
   return Object.fromEntries(PLAYER_VISIBLE_FLAG_KEYS.map((key) => {
+    if (key === "training_catalog_v3") return [key, previewCatalogV3Enabled()];
     const stage = flags.find((f) => f.key === key)?.stage;
     // #3564: binaere flag (PLAYER_VISIBLE_BINARY_FLAG_KEYS i backenden): beta = off.
     return [key, stage === "on" || (stage === "beta" && key !== "development_curve_b")];

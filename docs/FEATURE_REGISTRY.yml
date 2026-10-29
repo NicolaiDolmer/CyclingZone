@@ -72,6 +72,17 @@ features:
     verified: 2026-10-04
     note: Hovedkontakt for motoren (flagnavn historisk); etaperne regnes af v4, mens race_engine_v4 er on.
 
+  - id: race-engine-profile-hills
+    area: race-engine
+    title_en: Profile hills in the race engine
+    title_da: Bakker fra højdeprofilen i motoren
+    state: live
+    flag: route_profile_hills
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7290
+    verified: 2026-10-28
+    note: "route_profile_hills on siden 27/10; læst tilbage i prod 28/10."
+
   - id: race-engine-v3-scoring
     area: race-engine
     title_en: v3 scoring components
@@ -102,10 +113,34 @@ features:
     flag: race_form_peaks
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6156
-    verified: 2026-10-26
-    note: On 26/10 09:23 efter ejer-go (formtest #6818), læst tilbage i prod.
+    verified: 2026-10-27
+    note: "Prod 27/10 on; roadmap-status rettes via #7153."
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
+
+  - id: race-breakaway-outlook
+    area: race-day
+    title_en: Engine breakaway forecast
+    title_da: Motorens udbrudsbud
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6912
+    verified: 2026-10-29
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+    note: Ingen app_config-række (fravær = off). Ejer-go til tænding.
+
+  - id: race-day-form-6649
+    area: race-engine
+    title_en: Day form with causes
+    title_da: Dagsform ud fra træthed, form, sygdom og vejr
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6649
+    verified: 2026-10-27
+    decision: taend
+    decide_by: 2026-11-08
+    note: Tændes med ejer-go.
 
   - id: race-official-times-v1
     area: race-engine
@@ -115,18 +150,17 @@ features:
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6284
     verified: 2026-10-16
-    note: Frosset prototype; v2-v5 i timeModel.ts/segmentLoop.ts. v5 aktiv 16/10 (#6462) til S5 17/10 (#6642); løb beholder bundet revision.
+    note: Frosset prototype.
 
   - id: race-engine-s5-profiles
     area: race-engine
-    title_en: S5 engine rules (s5_profiles_v2)
-    title_da: S5-motorregler (s5_profiles_v2)
+    title_en: S5 engine rules (s5_profiles_v3)
+    title_da: S5-motorregler (s5_profiles_v3)
     state: live
     ssot: docs/RACE_ENGINE_RULES.md
-    epic: 6369
-    verified: 2026-10-17
-    note: "CURRENT_RACE_RULES_REVISION = s5_profiles_v2 fra tænd-PR'en #6818 (ejer-go; s5_profiles_v1 var aktuel fra 17/10, #6369): løb hvis første etape claimes efter deploy binder til S5 v2 (formtoppe i v4 #6156 + udbrudsopfølgningen #6748), startede løb beholder deres revision; rollback = revert af konstanten."
-
+    epic: 6804
+    verified: 2026-10-26
+    note: "s5_profiles_v3 er aktuel fra tænd-PR (ejer-go 26/10; v2 fra 23/10, #6818): nye løb binder til v3, startede beholder deres revision."
   - id: race-notify-outbox
     area: race-engine
     title_en: Async delivery of race result posts
@@ -157,8 +191,8 @@ features:
     flag: academy_drift_enabled
     ssot: docs/SEASON_CUTOVER_RUNBOOK.md
     epic: 5741
-    verified: 2026-09-28
-    note: Off målt read-only i prod 28/9 efter S3→S4-cutover; fremtidig sats og nyt flip afventer ejerbeslutning.
+    verified: 2026-10-26
+    note: Afgjort B 18/10 (#6775): slukket i S5. Hjælp må ikke love drift.
 
   - id: form-and-fatigue
     area: race-engine
@@ -184,11 +218,32 @@ features:
     area: race-engine
     title_en: Stage intention choice
     title_da: Indsatsvalg pr. etape
-    state: building
+    state: live
+    flag: race_day_intention_enabled
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6641
-    verified: 2026-10-15
-    note: UI live; flaget findes ikke i prod endnu. Kalibrering + beta i #6641.
+    verified: 2026-10-27
+    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
+
+  - id: race-all-out-7280
+    area: race-engine
+    title_en: All out on the decisive climb
+    title_da: Alt ud på den afgørende stigning
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6641
+    verified: 2026-10-27
+    note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
+
+  - id: luxury-helper-role
+    area: race-engine
+    title_en: Luxury helper
+    title_da: Luksushjælper
+    state: building
+    epic: 5982
+    verified: 2026-10-27
+    decision: goer-faerdigt
+    decide_by: 2026-11-15
 
   # --- race-day ------------------------------------------------------------
   - id: race-day-engine
@@ -269,14 +324,11 @@ features:
     area: race-day
     title_en: Stage plan along the route
     title_da: Etapeplan langs ruten
-    state: dormant
+    state: live
     flag: stage_plan_v1
     ssot: docs/RACE_ENGINE_RULES.md
-    epic: 7003
-    verified: 2026-10-25
-    note: Seedet off; kun s5_profiles_v3-løb. Ejeren tænder.
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
+    verified: 2026-10-27
+    note: On 27/10 13:48 efter ejer-go (#7281), læst tilbage i prod.
 
   - id: race-library-v2
     area: stats
@@ -286,8 +338,8 @@ features:
     ssot: docs/CALENDAR_RULES.md
     epic: 6514
     flag: race_library_v2
-    verified: 2026-10-18
-    note: PR #6680 merget 18/10; flaget race_library_v2 står som off i prod (læst 18/10 efter auto-migrate). Ejer flytter den til beta; #6875 rettes før "tænd beta".
+    verified: 2026-10-26
+    note: #6680 + #7217 merget; off i prod; PR #6636 åben.
     decision: ejer-beslutning
     decide_by: 2026-10-25
 
@@ -347,7 +399,7 @@ features:
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 3134
     verified: 2026-10-15
-    note: Bygget; #3134 lukket af ejeren 18/8. Flaget står false i prod (læst 15/10); kun ejeren flipper.
+    note: Bygget; flag false i prod (15/10). Kun ejeren flipper.
 
   - id: ai-unsolicited-bids
     area: market
@@ -367,7 +419,7 @@ features:
     ssot: docs/ECONOMY_RULES.md
     epic: 3448
     verified: 2026-10-15
-    note: Afløst af værdimodel v6 (#4449 lukket af ejeren 12/10); sweep-koden fjernet i #6642. app_config-rækken market_value_sweep_enabled står stadig off.
+    note: Afløst af v6 (#4449).
 
   - id: rider-valuation-v5
     area: market
@@ -445,7 +497,7 @@ features:
     ssot: docs/RIDER_GENERATION.md
     epic: 5327
     verified: 2026-09-23
-    note: 'Kontakt (off) paa start-trup, AI-hold og relaunch. Flip er ejer-gated.'
+    note: Kontakt (off); flip er ejer-gated.
 
   # --- training ------------------------------------------------------------
   - id: daily-training
@@ -455,7 +507,8 @@ features:
     state: live
     flag: daily_training_enabled
     ssot: docs/TRAINING_RULES.md
-    verified: 2026-09-06
+    verified: 2026-10-27
+    note: "PR #7283 merget; bro-dage i ny sæson, automatisk indhentning. Kontrol 28/10."
 
   - id: peak-planner
     area: training
@@ -466,7 +519,7 @@ features:
     ssot: docs/TRAINING_RULES.md
     epic: 2224
     verified: 2026-10-17
-    note: "Toppe og form virker i løb igen under s5_profiles_v2 fra ejerens tænd (#6818, #6156, spec 2026-10-04-form-og-formtoppe-i-v4-design.md); løb bundet til en ældre v4-revision kører færdig uden top."
+    note: "Toppe og form virker i løb igen fra ejerens tænd (#6818, #6156); løb bundet til ældre revision kører uden top."
 
   - id: training-tick-system
     area: training
@@ -539,7 +592,8 @@ features:
     state: live
     flag: season_fatigue_reset_enabled
     ssot: docs/TRAINING_RULES.md
-    verified: 2026-09-06
+    verified: 2026-10-27
+    note: "PR #7288 merget; fælles start over nul. Historik bruger loggens startFatigue."
 
   - id: training-programs
     area: training
@@ -585,6 +639,19 @@ features:
     verified: 2026-10-14
     note: 'On for alle 9/10 (læst i prod 14/10); kræver training_condition_per_date.'
 
+  - id: training-catalog-v3
+    area: training
+    title_en: Training catalog v3
+    title_da: Træningskatalog v3
+    state: building
+    flag: training_catalog_v3
+    ssot: docs/TRAINING_RULES.md
+    epic: 5319
+    verified: 2026-10-29
+    decision: taend
+    decide_by: 2026-11-08
+    note: Off; tænding + migration er ejer-go.
+
   - id: training-groups
     area: training
     title_en: Training groups
@@ -611,12 +678,11 @@ features:
     area: training
     title_en: Today's decision card on the Training page
     title_da: Dagens beslutning-kort på træningssiden
-    state: building
+    state: live
+    flag: training_decision_card
     epic: 6110
-    verified: 2026-10-25
-    note: PR #7179 (S26). Stadie-flag training_decision_card seedes off af migrationen (apply efter merge); ejer flytter til beta efter billeder.
-    decision: ejer-beslutning
-    decide_by: 2026-11-01
+    verified: 2026-10-26
+    note: PR #7179 (S26). Flaget training_decision_card er on i prod (læst 26/10).
 
   # --- academy -------------------------------------------------------------
   - id: academy
@@ -713,6 +779,17 @@ features:
     note: Slice 0 er leveret; resten er spec.
 
   # --- season --------------------------------------------------------------
+  - id: auto-calendar
+    area: season
+    title_en: Auto-generated season calendar at forever transitions
+    title_da: Auto-genereret sæsonkalender ved forever-skifter
+    state: building
+    ssot: docs/CALENDAR_RULES.md
+    verified: 2026-10-26
+    note: Ingen række i prod (= off).
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+
   - id: season-transition
     area: season
     title_en: Season transition
@@ -730,7 +807,7 @@ features:
     ssot: docs/SEASON_CUTOVER_RUNBOOK.md
     epic: 1155
     verified: 2026-10-17
-    note: Slukket siden 8/6 (fyrede fire skift i træk 21/5) og fjernet helt 17/10 (#6796); sæsonskiftet er en bevidst manuel admin-handling.
+    note: Fjernet 17/10 (#6796); sæsonskiftet er manuelt.
 
   - id: season-signup
     area: season
@@ -811,12 +888,58 @@ features:
     area: training
     title_en: Development curve B (level and potential drive development, not age)
     title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
-    state: live
+    state: building
     flag: development_curve_b
     ssot: docs/TRAINING_RULES.md
     epic: 3564
-    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
+    note: "Off 29/10: mur over blødt loft (#7316)."
+    verified: 2026-10-29
+    decision: taend
+    decide_by: 2026-11-05
+
+  - id: condition-model-v2
+    area: training
+    title_en: Form and fatigue 2.0
+    title_da: Form og træthed 2.0
+    state: live
+    flag: condition_model_v2
+    ssot: docs/TRAINING_RULES.md
+    epic: 6984
     verified: 2026-10-26
+    note: On med vilje siden 25/10 (ejer 26/10, læst i prod); kræver training_condition_per_date.
+
+  - id: training-condition-per-date
+    area: training
+    title_en: Training condition settled per date
+    title_da: Træningstilstand afregnet pr. dato
+    state: live
+    flag: training_condition_per_date
+    ssot: docs/TRAINING_RULES.md
+    verified: 2026-10-26
+    note: On i prod (læst 26/10); forudsætning for Træn nu og Form 2.0.
+
+  - id: potential-single-number
+    area: training
+    title_en: Potential as one estimated number
+    title_da: Potentiale som ét skønnet tal
+    state: live
+    flag: potential_single_number
+    ssot: docs/PROGRESSION_RULES.md
+    epic: 6110
+    verified: 2026-10-26
+    note: PR #7166 (#6853); on i prod (læst 26/10).
+
+  - id: train-now-whole-day
+    area: training
+    title_en: Train now B (the click settles the rider's whole known date)
+    title_da: Træn nu B (klikket afregner rytterens hele kendte dato)
+    state: building
+    ssot: docs/TRAINING_RULES.md
+    epic: 6461
+    verified: 2026-10-26
+    note: PR #7191 åben; flag seedes off af migrationen. Ejer-go.
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
 
   - id: development-score-b-engine
     area: training
@@ -986,13 +1109,13 @@ features:
     area: ops
     title_en: Ranking shadow
     title_da: Skyggeranglister
-    state: building
+    state: live
+    flag: ranking_shadow_enabled
     ssot: docs/GAME_INVARIANTS.md
     epic: 6765
-    verified: 2026-10-19
-    decision: ejer-beslutning
-    decide_by: 2026-10-23
-    note: "ranking_shadow_enabled seed off; ejer-go før tænding."
+    verified: 2026-10-26
+    note: "ranking_shadow_enabled er on i prod (læst 26/10); skyggen tændt efter S5-skiftet."
+
   - id: standings-and-rankings
     area: stats
     title_en: Standings and rankings
@@ -1061,7 +1184,7 @@ features:
     ssot: docs/EMAIL_LOOP_GO_LIVE_RUNBOOK.md
     epic: 4616
     verified: 2026-10-15
-    note: Velkomst-, dag 1- og løbsoversigt-mails er on for alle. Win-back (`winback_send_enabled`=false) er en kill-switch der kun flippes pr. kørsel (#2760, kørt 22/9).
+    note: Velkomst-, dag 1- og løbsoversigt-mails on for alle. Win-back (winback_send_enabled=false) er kill-switch, kun pr. kørsel (#2760).
 
   - id: in-app-survey
     area: comms
@@ -1110,7 +1233,7 @@ features:
     flag: push_enabled
     epic: 6590
     verified: 2026-10-24
-    note: push_enabled beta 19/10; on for alle 24/10 17:29 UTC efter ejer-ja (#7153, læst tilbage i prod). VAPID-nøgler i Infisical prod + Railway.
+    note: On for alle 24/10 efter ejer-ja (#7153). VAPID-nøgler i Infisical + Railway.
     roadmap_en: "Push notifications on your phone: outbid in the last minute, one race summary per race day, and offers waiting for you. Never between 22:00 and 08:00, at most 6 a day."
     roadmap_da: "Push-notifikationer på telefonen: overbudt i sidste minut, ét løbsresumé pr. løbsdag og tilbud, der venter på dig. Aldrig mellem 22 og 08, højst 6 om dagen."
 
@@ -1150,4 +1273,4 @@ features:
     state: retired
     epic: 2467
     verified: 2026-10-15
-    note: SurveyBanner.jsx slettet (#2467); kun seed-rækkerne survey_banner_enabled/survey_banner_url står tilbage i app_config.
+    note: SurveyBanner.jsx slettet (#2467).

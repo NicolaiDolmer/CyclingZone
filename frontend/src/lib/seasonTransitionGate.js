@@ -15,6 +15,8 @@ export const TRANSITION_CHECK_LABELS = {
   squad_enforcement_completed: "Trupper inden for grænserne",
   no_active_auctions: "Ingen aktive auktioner",
   all_races_completed: "Alle løb afviklet",
+  // #7282: advarsel (ikke spærre), fra readiness.warnings.
+  season_break: "Ingen dage uden løb før næste sæson",
 };
 
 export function summarizeTransitionReadiness(readiness) {
@@ -28,6 +30,9 @@ export function summarizeTransitionReadiness(readiness) {
     critical: Boolean(check?.critical),
     detail: check?.detail ?? null,
   }));
+  for (const warning of Array.isArray(readiness.warnings) ? readiness.warnings : []) {
+    rows.push({ key: warning.key, label: TRANSITION_CHECK_LABELS[warning.key] || warning.key, ok: false, critical: false, detail: warning.detail ?? null });
+  }
   const failed = rows.filter((r) => r.critical && !r.ok);
   return { known: true, blocked: failed.length > 0, rows, failed };
 }

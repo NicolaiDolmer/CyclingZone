@@ -284,6 +284,8 @@ function roleLabel(role: RiderRole): string {
       return "sprint-kaptajn";
     case "helper":
       return "hjaelper";
+    case "co_captain":
+      return "delt kaptajn";
     default:
       return role;
   }
@@ -580,6 +582,10 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
     } else if (isOtherCaptain) {
       effort = "save";
       reason = `Spares: ${terrainLabel} er ikke denne kaptajn-rolles speciale — kraefter gemmes til en etape der passer bedre.`;
+    } else if (entrant.role === "co_captain") {
+      // #5981 (KUN s5_profiles_v3): delt kaptajn arbejder aldrig; han gemmer sig som kaptajnen.
+      effort = "normal";
+      reason = `Delt kaptajn: koerer sit eget klassement; hjaelperne koerer for ${leaderNoun} foerst.`;
     } else if (entrant.role === "helper" && stance === "chase") {
       effort = "protect";
       reason = `Arbejd eller angrib: arbejder ved ${leaderNoun}, som holdet koerer for paa ${terrainLabel}.`;
@@ -601,7 +607,9 @@ export function generateAiTeamOrder(input: AiTacticsInput): AiTacticsDecision {
 
     // M6: rollens standard (hjaelperen koerer i sprint-kaptajnens tog), men en
     // grupetto-rytter er ikke med i nogen finale.
-    const leadout = entrant.role === "helper" && teamHasSprintCaptain && effort !== "grupetto";
+    // #7003 (KUN s5_profiles_v3, spec §3): en udbrudsrytter koerer ikke ogsaa i toget.
+    const leadout = entrant.role === "helper" && teamHasSprintCaptain && effort !== "grupetto"
+      && !(tryBreak && isS5ProfilesV3OrLater(input.rules_revision));
 
     riders.push({ rider_id: entrant.rider_id, effort, try_break: tryBreak, leadout });
     riderReasons[entrant.rider_id] = reason;

@@ -34,7 +34,7 @@ import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js"
 import { evaluateFlagStage, readFlagStage } from "./featureStage.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
 import {
-  loadTrainingDateContext, resolveTrainingDateReadiness, trainingDateBounds,
+  loadTrainingDateContext, resolveTrainingDateReadiness, trainingDateBounds, loadSeasonBridgeBounds, nextCivilDate, isTrainingDateTeam,
 } from "./trainingDateReadiness.js";
 import { registerTrainingDateWork } from "./trainingDateClose.js";
 import { runTeamTrainingDay, isTrainingReservationHeldError } from "./dailyTrainingEngine.js";
@@ -46,6 +46,7 @@ import { isRiderInjured, raceSquadOf } from "./riderEligibility.js"; // #6740
 import { loadEligibleEntries } from "./raceEntriesLoader.js"; // #6740
 import { loadSpentRaceDays } from "./raceSpentDays.js"; // #6740
 import { loadWithdrawnRaceIdsForTeam } from "./raceWithdrawal.js"; // #6740
+import { isTrainNowWholeDayEnabled, settleWholeDayPress } from "./trainNowWholeDay.js"; // #6461 B
 
 export const TRAIN_NOW_FLAG_KEY = "training_train_now";
 export { TRAIN_NOW_LOCK_TABLE, isMissingTable, loadTeamTrainNowLocks };
@@ -91,6 +92,30 @@ async function loadTeamDateWork({ supabase, teamId, seasonId, tickDate }) {
 // The opening condition is snapshotted when the date is registered. Registering
 // today before the previous date has written its one condition update would freeze
 // a stale opening, so the press waits for the previous date to be settled.
+async function hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context }) {
+  const { previousEndDate, firstRaceDate } = await loadSeasonBridgeBounds(supabase, season);
+  if (!previousEndDate || !firstRaceDate) return false;
+  // Only the bridge itself (after the previous season, before the first race date), and
+  // only dates the sweep would register for this team: the same team rule
+  // (isTrainingDateTeam: created/comeback/parked) and roster rule (a rider owned before
+  // the date ends) as trainingDateClose.js. Other dates never get a row.
+  const end = [tickDate, String(firstRaceDate).slice(0, 10)].sort()[0];
+  const teamRow = (context?.teams ?? []).find((row) => row.id === team.id) ?? team;
+  const earlier = [];
+  for (let date = nextCivilDate(String(previousEndDate).slice(0, 10)); date < end; date = nextCivilDate(date)) {
+    const dateEnd = trainingDateBounds(date).end;
+    const owned = (context?.riders ?? []).some((rider) => rider.team_id === team.id
+      && (!rider.created_at || new Date(rider.created_at) < dateEnd)
+      && (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd));
+    if (owned && isTrainingDateTeam(teamRow, new Set(), dateEnd)) earlier.push(date);
+  }
+  if (!earlier.length) return false;
+  const { data, error } = await supabase.from("training_date_work").select("tick_date")
+    .eq("team_id", team.id).eq("season_id", season.id).in("tick_date", earlier).limit(earlier.length);
+  if (error) throw new Error(`earlier bridge dates: ${error.message}`);
+  return (data ?? []).length < earlier.length;
+}
+
 async function hasOpenEarlierDate({ supabase, teamId, seasonId, tickDate }) {
   const rows = await checked(supabase.from("training_date_work")
     .select("tick_date").eq("team_id", teamId).eq("season_id", seasonId)
@@ -258,6 +283,7 @@ export async function runTrainNow({
   // races it showed: a race that fell below the floor since then is asked about again.
   confirmedShortRaceIds = [],
   loadShortRaces = defaultLoadShortRaces,
+  isWholeDayEnabled = isTrainNowWholeDayEnabled, // #6461 B
 }) {
   if (!team?.id) return { status: 400, body: { error: "no_team" } };
   if (!await isTrainNowEnabled(supabase, { isBetaTester })) return { status: 404, body: { error: "not_found" } };
@@ -292,6 +318,12 @@ export async function runTrainNow({
   const context = await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] });
   const days = existingWork?.game_days ?? context.gameDaysByDivision.get(team.league_division_id);
   if (!days?.length) return { status: 409, body: { error: "no_race_day_today", tickDate } };
+  // #7282: an earlier bridge date without registered work is still to be caught up by
+  // the sweep. Registering any later date first (a bridge date or a race date) would stop
+  // it keeping that date's opening snapshot.
+  if (!existingWork && await hasUnregisteredEarlierBridgeDate({ supabase, team, season, tickDate, context })) {
+    return { status: 409, body: { error: "previous_date_open", tickDate } };
+  }
 
   // Same roster rule as the evening sweep (trainingDateClose.js): riders owned
   // before the date ends. Registration freezes it; the press never widens it.
@@ -338,6 +370,11 @@ export async function runTrainNow({
   const { settleNow, afterRace } = splitTrainNowRiders({
     riderIds: available, unresolvedSlotsByRider: readiness.unresolvedSlotsByRider,
   });
+  // #6461 B (flag training_train_now_whole_day, seeded off): the whole known date per rider.
+  if (await isWholeDayEnabled(supabase, { isBetaTester })) {
+    return settleWholeDayPress({ supabase, team, season, now, tickDate, work, available, readiness, pressedAt, runDay,
+      readReadiness: async () => resolveTrainingDateReadiness({ ...await loadContext({ supabase, season, tickDate, loadDaySpans, registeredTeamIds: [team.id] }), tickDate, now, riderIds: available }) });
+  }
 
   // 4) Settle the date's race days, final day excluded (I4), in order.
   const settledDays = [];

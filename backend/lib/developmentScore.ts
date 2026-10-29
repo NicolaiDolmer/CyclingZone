@@ -40,7 +40,7 @@
 //
 // Ren funktion: ingen DB, ingen Date, ingen Math.random.
 
-import { TRAINING_CONFIG, TRAINING_FOCUSES, focusAbilityWeight } from "./training.js";
+import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight } from "./training.js";
 import { ROLE_CLASS_RATE, roleRateFactor, seededUnitMixed } from "./riderProgression.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 import { dayTypeForProgram } from "./trainingDayTypes.js";
@@ -102,6 +102,8 @@ export interface TrainingProgram {
   focus?: string | null;
   intensity?: string | null;
   focusAbilities?: readonly string[] | null;
+  // #5319: v3-kataloget (training_catalog_v3) lægger sessionens egne vægte her.
+  focusWeights?: Readonly<Record<string, number>> | null;
 }
 
 export interface TrainingDayInput extends CommonInput {
@@ -266,7 +268,7 @@ interface WeightedAbility { ability: string; weight: number }
 function trainingAbilityWeights(program: TrainingProgram): WeightedAbility[] {
   const focus = program?.focus ?? null;
   const abilities = program?.focusAbilities ?? (focus ? FOCUSES[focus] : null) ?? [];
-  return abilities.map((ability) => ({ ability, weight: Number(focusAbilityWeight(focus, ability)) }));
+  return abilities.map((ability) => ({ ability, weight: Number(programAbilityWeight(program, ability)) }));
 }
 
 // Vægtet middel af rolle-raten over dagens evner, relativt til håndværk.

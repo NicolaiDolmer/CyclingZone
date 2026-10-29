@@ -12,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 
-import { allOutDemandMultiplier, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isEffortCalibration6641Revision } from "./effortCost.ts";
+import { ALL_OUT_7280_ACTIVE, ALL_OUT_7280_TUNING, allOut7280Active, allOut7280Tuning, allOutDemandMultiplier, allOutTimeTrialBonus7280, applyEffortToDemand, climbGapEffortFactor, EFFORT_COST_TUNING, EFFORT_COST_TUNING_6641, effortCostTuningFor, effortDemandMultiplier, isAllOut7280On, isEffortCalibration6641Revision, setAllOut7280ForBench } from "./effortCost.ts";
 import { decidingClimbSelectionsOnTheDay, effortClimbScoreFactor } from "./climbSelection.ts";
 import { isS5ProfilesV3OrLater, RACE_RULES_REVISIONS } from "../../../raceEngineRulesRevision.ts";
 import type { EffortLevel } from "../types.ts";
@@ -168,7 +168,7 @@ test("#6641: alle revisioner foer s5_profiles_v3 faar den uaendrede tuning (samm
 
 test("#6641: s5_profiles_v3 faar den kalibrerede tuning", () => {
   assert.equal(isEffortCalibration6641Revision("s5_profiles_v3"), true);
-  assert.equal(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
+  assert.equal(effortCostTuningFor("s5_profiles_v3", false), EFFORT_COST_TUNING_6641);
 });
 
 test("#6641: femtrins-ordenen holder i den kalibrerede tuning paa ALLE segment-terraener", () => {
@@ -221,6 +221,50 @@ test("#6641: all_out-tabellen pr. segment-terraen foelger samme regel (flad/rull
   const ratioNew = allOutDemandMultiplier("flat", cal) / cal.demandMultiplierAllOut;
   assert.ok(Math.abs(ratioOld - ratioNew) < 1e-12);
   assert.ok(Object.isFrozen(cal) && Object.isFrozen(cal.demandMultiplierAllOutBySegmentKind));
+});
+
+// ── #7280: Alt ud efter ejerens design 27/10, bag en SLUKKET kontakt ──────────
+test("#7280: kontakten er taendt efter ejerens ordrette go 27/10 (kun s5_profiles_v3)", () => {
+  assert.equal(ALL_OUT_7280_ACTIVE, true, "ejer-go 27/10: Ja, taend foer 11");
+  assert.equal(allOut7280Active(), true);
+  assert.notEqual(effortCostTuningFor("s5_profiles_v3"), EFFORT_COST_TUNING_6641);
+  assert.equal(isAllOut7280On("s5_profiles_v3"), true);
+  assert.equal(isAllOut7280On("s5_profiles_v2"), false, "aeldre revisioner uroert");
+  for (const revision of [...RACE_RULES_REVISIONS.filter((r) => !isS5ProfilesV3OrLater(r)), null, undefined]) {
+    assert.equal(effortCostTuningFor(revision, true), EFFORT_COST_TUNING, `${String(revision)}: aeldre revisioner uroert ogsaa med kontakten taendt`);
+  }
+});
+
+test("#7280 (taendt): alt ud koerer som normal paa transport-terraenet, de fire andre trin er #6641's", () => {
+  const cal = effortCostTuningFor("s5_profiles_v3", true);
+  for (const kind of ["flat", "rolling", "descent"] as const) {
+    assert.equal(effortDemandMultiplier("all_out", cal, kind), effortDemandMultiplier("normal", cal, kind), `${kind}: ingen pris, ingen gevinst`);
+  }
+  assert.ok(effortDemandMultiplier("all_out", cal, "climb") >= effortDemandMultiplier("normal", cal, "climb"));
+  for (const level of ["grupetto", "save", "normal", "protect"] as EffortLevel[]) {
+    for (const kind of ["flat", "rolling", "climb", "descent", "cobbles", null] as const) {
+      assert.equal(effortDemandMultiplier(level, cal, kind), effortDemandMultiplier(level, EFFORT_COST_TUNING_6641, kind), `${level}/${kind}: uaendret`);
+    }
+  }
+  // Gulvet: en tabel-vaerdi under normal ignoreres stadig (falder tilbage paa faelles-vaerdien).
+  const broken = { ...cal, demandMultiplierAllOutBySegmentKind: { flat: 0.5 } };
+  assert.equal(allOutDemandMultiplier("flat", broken), cal.demandMultiplierAllOut);
+});
+
+test("#7280: bench-setteren taender og nulstiller (kun dev-benches)", () => {
+  try {
+    setAllOut7280ForBench({ active: true, tuning: { timeTrialGain: 0.02 } });
+    assert.equal(isAllOut7280On("s5_profiles_v3"), true);
+    assert.equal(isAllOut7280On("s5_profiles_v2"), false, "kun s5_profiles_v3 og senere");
+    assert.ok(Math.abs(allOutTimeTrialBonus7280("all_out", 99, true) - 0.02) < 1e-12);
+    assert.ok(allOutTimeTrialBonus7280("all_out", 50, true) < allOutTimeTrialBonus7280("all_out", 90, true), "mest de staerke");
+    assert.equal(allOutTimeTrialBonus7280("normal", 99, true), 0);
+    assert.equal(allOut7280Tuning().fatigueLoad, ALL_OUT_7280_TUNING.fatigueLoad);
+  } finally {
+    setAllOut7280ForBench(null);
+  }
+  assert.equal(allOut7280Active(), ALL_OUT_7280_ACTIVE, "nulstilling = kontaktens vaerdi");
+  assert.ok(Object.isFrozen(ALL_OUT_7280_TUNING));
 });
 
 test("#6641: gevinsten overlever nedkoerselsfinalens genberegnede underskud (dagsform + angreb)", () => {

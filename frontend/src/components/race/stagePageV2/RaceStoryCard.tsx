@@ -12,7 +12,7 @@ import type { Climb, ElevationSeries, StageProfile } from "./stagePageV2Model.ts
 import {
   buildReport, curateMoments, finaleData, formatClock, lineReplayKm, myBestRider, namesList, pickGroups,
   replayGroupsAt, splitRows, wholeStageFrames, frameAt,
-  isPeloton, type Cast, type RaceStory, type ReplayGroup, type SplitRow, type StoryLine,
+  isPeloton, isTimeTrialStory, type Cast, type RaceStory, type ReplayGroup, type SplitRow, type StoryLine, type StoryNarrativeContext,
 } from "./raceStoryModel.ts";
 import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import FinaleView, { PlayIcon, prefersReducedMotion } from "./FinaleView.tsx";
@@ -25,6 +25,7 @@ type View = "route" | "stage" | "final";
 
 export interface RaceStoryCardProps {
   story: RaceStory;
+  narrative?: StoryNarrativeContext | null;
   profile: StageProfile | null;
   series: ElevationSeries | null;
   climbs: Climb[];
@@ -41,15 +42,16 @@ export interface RaceStoryCardProps {
   weather?: StageWeather | null;
 }
 
-export default function RaceStoryCard({ story, profile, series, climbs, cast, title, oneDay = false, hudLabel, routeBody, onOpenStandings, weather = null }: RaceStoryCardProps) {
+export default function RaceStoryCard({ story, profile, series, climbs, cast, title, oneDay = false, hudLabel, routeBody, onOpenStandings, weather = null, narrative = null }: RaceStoryCardProps) {
   const { t } = useTranslation("races");
   const D = story.distance_km ?? (Number(profile?.distance_km) || 0);
-  const finale = useMemo(() => finaleData(story), [story]);
-  const lines = useMemo(() => curateMoments(story, cast), [story, cast]);
-  const [view, setView] = useState<View>(story.time_trial ? "route" : "stage");
+  const timeTrial = isTimeTrialStory(story, profile?.profile_type, narrative?.events);
+  const finale = useMemo(() => timeTrial ? null : finaleData(story), [story, timeTrial]);
+  const lines = useMemo(() => timeTrial ? [] : curateMoments(story, cast, undefined, narrative), [story, cast, narrative, timeTrial]);
+  const [view, setView] = useState<View>(timeTrial ? "route" : "stage");
   const [km, setKm] = useState<number>(D);
 
-  if (story.time_trial) {
+  if (timeTrial) {
     return (
       <Section aria-label={title}>
         <h2 className="m-0 mb-3 font-data text-[15px] font-semibold text-cz-1">{title}</h2>
@@ -273,6 +275,9 @@ function StorySection({ story, lines, cast, km, onJump }: { story: RaceStory; li
                         {note && <span className="text-xs font-semibold text-cz-1">{note}</span>}
                       </span>
                     )}
+                    {l.narratives?.map((n, index) => (
+                      <span key={index} className="mt-1 block text-sm text-cz-2">{t("detail.film.event." + n.key, n.params)}</span>
+                    ))}
                   </span>
                 </button>
               </li>

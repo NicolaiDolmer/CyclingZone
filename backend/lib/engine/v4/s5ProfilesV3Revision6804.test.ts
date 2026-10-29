@@ -24,10 +24,10 @@ import {
 } from "../../raceEngineRulesRevision.ts";
 import { normalizeRulesRevision } from "./segmentLoop.ts";
 
-test("#6804: s5_profiles_v3 is known, switched off (never current) and inherits every s5_profiles_v2 helper", () => {
+test("#6804: s5_profiles_v3 is known, current since the owner's go 26/10, and inherits every s5_profiles_v2 helper", () => {
   const revision = "s5_profiles_v3";
   assert.equal(isKnownRulesRevision(revision), true);
-  assert.notEqual(CURRENT_RACE_RULES_REVISION, revision, "v3 er slukket indtil ejerens ordrette taend");
+  assert.equal(CURRENT_RACE_RULES_REVISION, revision, "v3 er aktuel fra ejerens go 26/10");
   for (const helper of [ordersGcGeneration, sharedTimeModelGeneration, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater,
     isOfficialTimesV3OrLater, isOfficialTimesV4OrLater, isOfficialTimesV5OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater,
     preservesOfficialStageTimes, usesSharedGroupTime]) {
@@ -43,11 +43,12 @@ test("#6804: isS5ProfilesV3OrLater is true for exactly s5_profiles_v3", () => {
   }
 });
 
-test("#6804: a new race never binds to v3 while it is off; a stored v3 keeps it; the engine accepts it", () => {
+test("#6804: a new race binds to v3; a stored v2 keeps v2; the engine accepts v3", () => {
   const notStarted = { id: "n", stages_completed: 0 };
   const started = { id: "s", stages_completed: 2 };
   assert.equal(resolveRaceRulesRevision({ race: notStarted, firstStageClaim: true, storedRevision: null, currentRevision: CURRENT_RACE_RULES_REVISION }), CURRENT_RACE_RULES_REVISION);
   assert.equal(resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "s5_profiles_v3", currentRevision: CURRENT_RACE_RULES_REVISION }), "s5_profiles_v3");
-  assert.notEqual(surfaceRulesRevision({ race: notStarted, storedRevision: null }), "s5_profiles_v3");
+  assert.equal(resolveRaceRulesRevision({ race: started, firstStageClaim: false, storedRevision: "s5_profiles_v2", currentRevision: CURRENT_RACE_RULES_REVISION }), "s5_profiles_v2");
+  assert.equal(surfaceRulesRevision({ race: notStarted, storedRevision: null }), "s5_profiles_v3");
   assert.equal(normalizeRulesRevision("s5_profiles_v3"), "s5_profiles_v3");
 });

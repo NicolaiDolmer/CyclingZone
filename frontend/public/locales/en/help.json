@@ -1036,11 +1036,11 @@
         "steps": [
           "Every rider ages up by one year.",
           "Form decays toward 50: about 25% of each rider's end-of-season form carries into the new season.",
-          "Fatigue resets to 0 for every rider.",
+          "New seasons start with a little base fatigue for every rider. Before the first race, rest lowers form, normal training holds it and hard training raises it.",
           "Injuries are NOT reset. They carry over unchanged.",
           "Peak plans are unaffected by the changeover.",
           "Season wages are paid during the changeover. Rider values do not move during the changeover itself: they update next time, at the normal Sunday update.",
-          "The new season starts after a short break between seasons, which the managers voted on. The date of the first stage is on the race calendar, so you have time to pick your squads."
+          "Training continues every day between seasons and counts toward the new season. Your chosen program still applies, missed training is picked up automatically, and Train now also works before the first race. Check the calendar for the first race."
         ]
       }
     },
@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Training groups",
         "text": "A group lets you make one training decision for several riders. Create one under Program, Plan: open 'Plan for' and pick '+ New group'. Give it a name and start from a rider type or pick the riders yourself. A rider can be in one group. A change in a field then applies to the whole group, and riders with a stage keep the stage. 'Fatigue tonight' shows the most tired rider in the group. The order is fixed: a rider's own plan first, then his group's plan, then the team plan. If you change one rider's own fields, his plan wins until you choose 'Follow group' again. You can also put a program on a group under Programs, and give a group its own exception under Fatigue limit."
+      },
+      "catalogV3": {
+        "title": "Two hard sessions for every rider type",
+        "text": "Every rider type now has two hard sessions built for it, and every hard session gives a full hard day. Five sessions are new: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial finally has its own sessions, so Threshold trains tempo and endurance instead. Sprint now gives a full hard day. If you switch between your type's two sessions, the main ability grows a little less, but other abilities grow instead."
       }
     },
     "activityfeed": {
@@ -1553,6 +1557,10 @@
       "freeAgents": {
         "title": "Free agents",
         "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing. Free agents mostly appear when a rider's contract runs out and isn't renewed at the season change: in practice this is almost always a human-managed squad, since AI-controlled teams renew their own expiring contracts automatically at the same transition. The rest are riders released by their old club, either at Academy graduation or from an Academy intake offer that expired unanswered and found no buyer at auction (see 'Do Academy intake offers expire?')."
+      },
+      "contractWarnings": {
+        "title": "Which riders get contract warnings?",
+        "text": "Contract warnings cover your senior, U23, junior and academy riders. At the season change, you get one message listing the riders whose contracts expire during the new season, with their squad and value. You also get a warning when you sign or acquire a rider, or move him between squads, if his contract expires in the current season. Extend contracts for every squad from My Team, on the Contracts tab. Riders released at the season change are listed together in a separate message. Moving squads does not change a contract, and an intake signing still keeps its existing introductory contract length."
       }
     },
     "academy": {
@@ -1571,7 +1579,7 @@
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
-        "text": "After you sign an academy rider, you learn his forecast through training days on your team. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range."
+        "text": "After you sign an academy rider, his forecast improves with recorded training and race days on your team. Days since signing alone do not count, and simply leaving him on the team for a week does not complete the forecast. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training or race days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range. The Sunday update sets his market value; it does not complete his potential forecast."
       },
       "signingProspects": {
         "title": "Signing prospects",
@@ -1745,11 +1753,19 @@
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
-        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter tries for the day's breakaway by default and rides harder to stay clear. You can turn that off for a single stage, and a try is never sure. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Aggression makes a rider more likely to get into the break, and a rider on free role also tries more often on his own. In races on the current rules every try costs energy, also when it fails. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
+        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter tries for the day's breakaway by default and rides harder to stay clear. You can turn that off for a single stage, and a try is never sure. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Aggression makes a rider more likely to get into the break, and a rider on free role also tries more often on his own. In races on the current rules every try costs energy, also when it fails. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support. In races on the newest rules, a sprint captain can be your only leader, with no captain. He then gets the team's protection on every stage."
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
-        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: There are three efforts: Ride easy, Normal and Work or attack. Work or attack builds extra fatigue: a helper or hunter works for the team, while a captain or a rider on free role uses it to attack. Ride easy eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort for the day. The effort steps have their own paragraph just below. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role. Conflicting orders cannot be combined. The explanation beside the choice tells you what to change before saving."
+      },
+      "effortSteps": {
+        "title": "Effort steps",
+        "text": "Every rider gets an effort for the stage you have open. Five steps run from easiest to hardest. Grupetto rides it home in the back group and never earns a result of his own. Ride easy sits in and saves legs for the days that count. Normal is his normal race. The fourth step is named after the job: Work for a domestique or breakaway hunter, who rides for the leader and gets real fatigue; Follow the moves for a captain or sprint captain, who answers every attack and spends more legs; Ride aggressively for a rider on free role, who presses on the climbs and in the finale. All out puts everything on today and is the hardest day on his legs. A harder step always costs more fatigue than an easier one, no matter how strong the rider is. A domestique on All out rides for himself and stops helping the leader."
+      },
+      "effortStepsThree": {
+        "title": "Effort steps",
+        "text": "Every rider gets an effort for the stage you have open. Three steps run from easiest to hardest. Ride easy sits in and saves legs for the days that count. Normal is his normal race. The third step is named after the job: Work for a domestique or breakaway hunter, who rides for the leader and gets real fatigue; Follow the moves for a captain or sprint captain, who answers every attack and spends more legs; Ride aggressively for a rider on free role, who presses on the climbs and in the finale. A harder step always costs more fatigue than an easier one, no matter how strong the rider is."
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",
@@ -1780,7 +1796,7 @@
       "label": "Race day and tactics",
       "roleAndIntention": {
         "title": "Roles and today's intention",
-        "text": "Your role is the job you picked for a rider when you built your team: captain, sprint captain, breakaway hunter, domestique or free role. It lasts the whole race and rarely changes. Intention is different, it is what you ask him for on the stage you have open right now, and if you leave it alone he simply rides his role. Five settings run from easiest to hardest: grupetto, ride easy, normal, work or attack and all out. A harder setting always costs more fatigue than an easier one, no matter how strong the rider is, and grupetto never earns him a result of his own."
+        "text": "Your role is the job you picked for a rider when you built your team: captain, sprint captain, breakaway hunter, domestique or free role. It lasts the whole race and rarely changes. Intention is different, it is what you ask him for on the stage you have open right now, and if you leave it alone he simply rides his role. The steps you can pick are explained under Effort steps."
       },
       "crashesAndIncidents": {
         "title": "Crashes and incidents",
@@ -1792,7 +1808,15 @@
       },
       "teamwork": {
         "title": "Teamwork on the road",
-        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+      },
+      "teamworkAllOut": {
+        "title": "All out and teamwork",
+        "text": "Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead."
+      },
+      "luxuryHelper": {
+        "title": "The luxury helper",
+        "text": "A luxury helper is a domestique with a ready-made stage plan: he saves his legs in the bunch, then rides for your captain on the decisive climb, the last climb of the day. In the stage plan you can move his work to another climb or give him a different plan. If your captain is dropped or out of the race, he rides his own race. A team can have one luxury helper, and only in races on the newest rules."
       },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",
@@ -1807,7 +1831,7 @@
     },
     "peakWhatItDoes": {
       "q": "What does a peak do?",
-      "a": "A peak lifts one rider's form for a single race window you pick in the Season Planner. It runs on a lead-up you train for beforehand and a dip afterwards, so it is worth setting on a race you actually mean to win, not a whole season. Each rider can hold up to two peaks at a time. Peaks do not count in races yet; races use his normal Form. See 'How does peak training work?' and 'Does a peak cost me anything afterwards?' below for exactly how much and when."
+      "a": "A peak lifts one rider's form for a single race window you pick in the Season Planner. It runs on a lead-up you train for beforehand and a dip afterwards, so it is worth setting on a race you actually mean to win, not a whole season. Each rider can hold up to two peaks at a time. In races the peak comes on top of his normal Form. See 'How does peak training work?' and 'Does a peak cost me anything afterwards?' below for exactly how much and when."
     },
     "peakTraining": {
       "q": "How does peak training work?",
@@ -2207,7 +2231,7 @@
     },
     "raceJerseysFaq": {
       "q": "How do the green jersey and mountains jersey work?",
-      "a": "The green jersey tracks sprint points, earned at intermediate sprints and at stage finishes, weighted by how sprint-friendly the stage is, so flat finishes hand out more than mountain ones. The mountains jersey tracks KOM points, earned by cresting categorized climbs first, with double points on a summit finish. Bonus seconds count toward the GC too: 10/6/4 seconds for the first three riders at a stage finish, and 3/2/1 seconds at each intermediate sprint. Riders in a breakaway can lead over a climb or sprint before the bunch arrives, so a breakaway can win the mountains jersey even without contending for GC. Riders in a breakaway always cross first. In a small group of eight riders or fewer, everyone contests. In a bigger group, only point hunters contest what is left: sprint captains, hunters and free-role riders at intermediate sprints, hunters and free-role riders on climbs, plus whoever led the points or mountains competition at the start of the stage. Captains and helpers roll through behind them. You can follow both competitions directly in the game: the classification tables show each rider's points total (not just the rank), and the stage result page shows who took points at every climb and sprint. Applies to races from season 2 onward."
+      "a": "The green jersey tracks sprint points, earned at intermediate sprints and at stage finishes, weighted by how sprint-friendly the stage is, so flat finishes hand out more than mountain ones. The mountains jersey tracks KOM points, earned by cresting categorized climbs first. A summit finish gives the same points as the climb would give mid-stage. Bonus seconds count toward the GC too: 10/6/4 seconds for the first three riders at a stage finish, and 3/2/1 seconds at each intermediate sprint. Riders in a breakaway can lead over a climb or sprint before the bunch arrives, so a breakaway can win the mountains jersey even without contending for GC. Riders in a breakaway always cross first. In a small group of eight riders or fewer, everyone contests. In a bigger group, only point hunters contest what is left: sprint captains, hunters and free-role riders at intermediate sprints, hunters and free-role riders on climbs, plus whoever led the points or mountains competition at the start of the stage. Captains and helpers roll through behind them. You can follow both competitions directly in the game: the classification tables show each rider's points total (not just the rank), and the stage result page shows who took points at every climb and sprint. Applies to races from season 2 onward."
     },
     "raceRouteRealismFaq": {
       "q": "Why do time gaps differ so much between mountain stages?",

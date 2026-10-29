@@ -6,9 +6,11 @@
 
 > **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · **forsiden #6665:** ejeren siger selv hvornår.
 >
-> **🎯 Next action (26/10, efter PC1-natten):** Morgenkort i `pr-screens/morgen-26-10/` + status på #7153. **Før ons 28/10 kl. 11:00:** (1) tænd v3 `s5_profiles_v3` (d3-gaten IKKE BLOKERET; kun G16, godkendt 25/10; tjek G19 div. 1 6:17 på S5) (2) tænd `race_form_peaks` (moderat effekt, 0 data at reparere) (3) #7205 delt kaptajn: go til migration + #6321 ikke bag flag (4) #6668 AI-ungdomsløft før ons 14:30 (5) #7223 genstart + CYCLINGZONE-AQ. Merget i nat: #7161 #7208 #7217 #7227. Overvåg ons 20:00: første afregning med Form 2.0 + kurve B.
+> **🎯 Next action (29/10 aften, PC1):** **Træning til dørs** (ejer 29/10): `development_curve_b` er **off** (S4 kører, muren rettet i #7340). 1) #7341 katalog v3: 2 Codex-fund + registry-post tilbage. 2) Samlet måling kurve B + v3 → ét ejer-kort (restfart default/2x/3x) → én tænding. 3) #7316-datareparation: ret 4 review-fund, så dry-run live for ejeren → go. 4) Åbne PR'er: #7143, #7328, luk #7314, #7101, #6636, motor-drafts. 5) Byggestop Trin 1.2 (auktionsport) + 1.3 (PR-CI). Fuld handoff: [#7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336#issuecomment-6505179254). Markedsføring 3x/uge (baseline 202). Økonomi-session fre 30/10. Wander Riders: ejer fre/man.
+> **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
+>
+> **🤖 Working agent:** PC1-Claude (NICOLAIPC) 29/10 aften: træning til dørs (#7341 først), åbne PR'er, byggestop 1.2/1.3. Koordinering #7336.
 
-> **26/10 nat (PC1):** 2 baner (v3-testport + formtest) + #7217 lazy-tabel. 5 PR'er merget, intet tændt. Status på #7153.
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
@@ -26,4 +28,3 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session. Koordinering #7153.

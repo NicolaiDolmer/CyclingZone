@@ -7,9 +7,9 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { isStageRaceGcContext, s5V3FinaleWeightScale, s5V3HillyChaseApplies, s5V3LetGoMaxGapScale, s5V3PreFinalChaseClosingScale } from "./breakawayV3_6804.ts";
-import { stageWinChaseForceV3 } from "./breakaway.ts";
+import { s5V3FormationGuards7258, stageWinChaseForceV3 } from "./breakaway.ts";
 import { descentRegroup6486OnRoute } from "./descentRegroup6486.ts";
-import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
+import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, RACE_V4_TUNING, S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
 import { simulateStageV4 } from "../index.ts";
 import type { Entrant, GcContext } from "../types.ts";
 
@@ -87,7 +87,7 @@ test("#6804 P1.1: finaleWeightScale skalerer kun etapeinteressen; udeladt = bit-
 // maa afvige (tider og resultater er ens).
 const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, passages: undefined, passage_totals: undefined, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update" && e.type !== "kom_passage") } });
 
-test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloebs-klassement (bortset fra #6814's gap_update og #6937's bjergpassager)", () => {
+test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (bortset fra #6814's gap_update og #6937's bjergpassager)", () => {
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
   assert.ok(names.length > 0);
@@ -101,6 +101,19 @@ test("#6804 P1: v3 er byte-identisk med v2 paa alle motor-fixtures uden etapeloe
       if (gc?.status === "one_day") {
         // #6938 U3 (v3, kun endagsloeb): en sat hjaelper kan stige af. Kun de ryttere afviger;
         // alle andres tid og status er de samme som under v2.
+        // #7258 (C, v3, endagsloeb): dagens favoritter gaar sjaeldent i morgenudbrud. Danner v3 et andet
+        // morgenudbrud end v2, maa det kun vaere med faerre af dagens favoritter (resten af loebet foelger af det).
+        const morning = (out: ReturnType<typeof simulateStageV4>) => (out.timeline.events.find((e) => e.type === "breakaway_formed" && e.params?.reformation !== true)?.params?.rider_ids ?? []) as string[];
+        if (JSON.stringify(morning(v3)) !== JSON.stringify(morning(v2))) {
+          const entrants = Object.fromEntries(input.startlist.map((e: Entrant) => [e.rider_id, e]));
+          const fav: Set<string> = s5V3FormationGuards7258({ gcContext: oneDay, entrants, route: input.route, tuning: RACE_V4_TUNING }, Object.keys(entrants)).favourites;
+          const favIn = (ids: string[]): number => ids.filter((id) => fav.has(id)).length;
+          assert.ok(favIn(morning(v3)) <= favIn(morning(v2)), `${name}: v3 har ikke flere af dagens favoritter i morgenudbruddet`);
+          continue;
+        }
+        // #6912 (owner 27/10): flat/rolling one-day chase now changes physics too.
+        // The morning-favourite exclusion above remains checked on the same input.
+        if (input.route.profile_type === "flat" || input.route.profile_type === "rolling") continue;
         const off = new Set((v3.incidents ?? []).filter((i) => i.kind === "withdrawal").map((i) => i.rider_id));
         assert.ok((v3.incidents ?? []).filter((i) => i.kind !== "withdrawal").length === (v2.incidents ?? []).length, `${name}: kun hjaelpere der stiger af er nye`);
         const keep = (out: ReturnType<typeof simulateStageV4>) => out.results.filter((r) => !off.has(r.rider_id)).map((r) => [r.rider_id, r.time_seconds, r.status]);

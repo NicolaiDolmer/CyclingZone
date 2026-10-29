@@ -113,8 +113,21 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         run: npm ci
 
+      # PR-kontekst: ny flag-noegle godkendes (PENDING) hvis PR'ens migration
+      # seeder den ikke-taendt (#7344). Kraever origin/main til diff.
+      - name: Hent main til migration-diff
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+
+      - name: Registrets tilstand mod prod app_config (PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node scripts/check-feature-registry-flags.mjs --base-ref origin/main
+
       - name: Registrets tilstand mod prod app_config
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        if: github.event_name != 'pull_request'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

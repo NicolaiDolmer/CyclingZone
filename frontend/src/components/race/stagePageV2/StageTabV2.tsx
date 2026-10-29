@@ -15,7 +15,7 @@ import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent } from "./YourDayCard.tsx";
 import RaceStoryCard from "./RaceStoryCard.tsx";
-import { castFrom, type RaceStory } from "./raceStoryModel.ts";
+import { castFrom, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
 import { WeatherTag } from "./WeatherTag.tsx";
 import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines, TerrainTypeGlyph } from "./ui.ts";
@@ -109,11 +109,12 @@ export interface StageTabV2Props {
   emptyState: ReactNode;
   /** #6570 spor 2: loebshistorien fra loebsloggen; null = ingen (nuvaerende visning). */
   story?: RaceStory | null;
+  narrative?: StoryNarrativeContext | null;
 }
 
 export default function StageTabV2({
   stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState, story = null,
+  stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState, story = null, narrative = null,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
@@ -148,6 +149,7 @@ export default function StageTabV2({
         {story ? (
           <RaceStoryCard
             story={story}
+            narrative={narrative}
             profile={profile}
             series={series}
             climbs={climbs}

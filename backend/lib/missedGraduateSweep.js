@@ -47,7 +47,7 @@ import {
   notifyGraduationReady,
   openGraduationWindow,
 } from "./academyGraduation.js";
-import { fetchAllRows } from "./supabasePagination.js";
+import { fetchAllRows, fetchAllRowsChunkedIn } from "./supabasePagination.js";
 import { findStuckAcademyGraduates, STUCK_GRADUATE_GRACE_HOURS } from "./stuckAcademyGraduates.js";
 
 /**
@@ -120,20 +120,22 @@ export async function findPendingWithoutNotification(supabase, { seasonId } = {}
   const riderIds = [...new Set(pending.map((g) => g.rider_id))];
   const teamIds = [...new Set(pending.map((g) => g.team_id).filter(Boolean))];
 
-  const teams = await fetchAllRows(() =>
-    supabase.from("teams").select("id, user_id").in("id", teamIds).order("id"));
+  // Pagination limits result rows, not URL size. Season cutovers can put
+  // hundreds of UUIDs in these filters, so bound each request as well.
+  const teams = await fetchAllRowsChunkedIn(teamIds, (chunk) =>
+    supabase.from("teams").select("id, user_id").in("id", chunk).order("id"));
   const ownerByTeam = new Map(teams.map((t) => [t.id, t.user_id ?? null]));
 
-  const notifications = await fetchAllRows(() =>
+  const notifications = await fetchAllRowsChunkedIn(riderIds, (chunk) =>
     supabase.from("notifications")
       .select("user_id, related_id")
       .eq("type", GRADUATION_READY_TYPE)
-      .in("related_id", riderIds)
+      .in("related_id", chunk)
       .order("related_id"));
   const delivered = new Set(notifications.map((n) => `${n.user_id}::${n.related_id}`));
 
-  const riders = await fetchAllRows(() =>
-    supabase.from("riders").select("id, firstname, lastname").in("id", riderIds).order("id"));
+  const riders = await fetchAllRowsChunkedIn(riderIds, (chunk) =>
+    supabase.from("riders").select("id, firstname, lastname").in("id", chunk).order("id"));
   const riderById = new Map(riders.map((r) => [r.id, r]));
 
   const missing = [];

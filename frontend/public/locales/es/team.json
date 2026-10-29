@@ -365,6 +365,30 @@
     "loadErrorBody": "No se ha perdido nada. Tus contratos no han cambiado.",
     "retry": "Reintentar",
     "emptyTitle": "Ficha ciclistas para gestionar sus contratos",
-    "emptyBody": "Tus ciclistas aparecen aquí, agrupados según cuándo vence su contrato."
+    "emptyBody": "Tus ciclistas aparecen aquí, agrupados según cuándo vence su contrato.",
+    "buyback": {
+      "title": "Recupera a tus ciclistas",
+      "intro": "Estos ciclistas dejaron tu equipo en el cambio de temporada sin el aviso de contrato que deberías haber recibido. Fíchalos de nuevo en 7 días: salario normal, 1 temporada, sin prima de fichaje.",
+      "squad": "Plantilla",
+      "deadline": "Hasta",
+      "sign": "Fichar de nuevo",
+      "signAria": "Fichar de nuevo a {name}",
+      "done": "{name} vuelve a tu equipo.",
+      "squads": {
+        "senior": "Sénior",
+        "u23": "Sub-23",
+        "junior": "Júnior"
+      },
+      "errors": {
+        "buyback_not_eligible": "No incluido",
+        "buyback_rider_not_free": "Fichado por otro equipo",
+        "buyback_rider_retired": "Retirado",
+        "buyback_rider_on_auction": "En subasta",
+        "buyback_expired": "Han pasado los 7 días",
+        "buyback_squad_full": "Tu plantilla está completa",
+        "buyback_no_team": "Necesitas un equipo",
+        "buyback_failed": "No se pudo ficharlo de nuevo. Inténtalo otra vez."
+      }
+    }
   }
 }

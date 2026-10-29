@@ -110,7 +110,15 @@ export async function loadTrainingDateIndex({ supabase, now }) {
   if (active) {
     const first = activation?.value;
     if (typeof first !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(first)) throw new Error('Missing authoritative condition activation date');
-    const start = [first, String(active.start_date).slice(0, 10)].sort().at(-1);
+    // #7282: no season break. The dates after the previous season's last date are this
+    // season's bridge dates (trainingDateReadiness.bridgeGameDays), so they start the range.
+    const previous = Number(active.number) > 1
+      ? await checked(supabase.from('seasons').select('end_date').eq('number', Number(active.number) - 1).maybeSingle(), 'previous season end')
+      : null;
+    active.previous_end_date = previous?.end_date ?? null;
+    const seasonStart = String(active.start_date).slice(0, 10);
+    const bridgeStart = active.previous_end_date ? nextCivilDate(String(active.previous_end_date).slice(0, 10)) : seasonStart;
+    const start = [first, [bridgeStart, seasonStart].sort()[0]].sort().at(-1);
     for (let date = start; date <= end && date <= String(active.end_date).slice(0, 10); date = nextCivilDate(date)) {
       if (!jobs.has(`${active.id}:${date}`)) jobs.set(`${active.id}:${date}`, { season: active, tickDate: date });
     }
@@ -127,13 +135,23 @@ export async function loadTrainingDateIndex({ supabase, now }) {
   return { jobs: [...jobs.values()].sort((a, b) => a.tickDate.localeCompare(b.tickDate)), today, activeSeasonId: active?.id ?? null };
 }
 
-export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now, nonBlocking = false }) {
-  return checked(trainingDateRpc(supabase, 'register_training_date_work', {
+export async function registerTrainingDateWork({ supabase, teamId, seasonId, tickDate, gameDays, riderIds, now, nonBlocking = false, lateBridge = false }) {
+  const args = {
     p_team_id: teamId, p_season_id: seasonId, p_tick_date: tickDate,
     p_game_days: gameDays, p_expected_rider_ids: riderIds,
     p_deadline_at: trainingDateDeadline(tickDate).toISOString(),
     p_registered_at: now.toISOString(),
-  }, nonBlocking), 'register training date');
+  };
+  // #7282: a bridge date caught up after its deadline needs the bridge RPC, which keeps
+  // the opening snapshot when nothing has trained the riders since. Before auto-migrate
+  // has created it, return null: the caller waits instead of freezing the date empty.
+  if (lateBridge) {
+    const { data, error } = await supabase.rpc('register_training_bridge_date_work', args);
+    if (error?.code === 'PGRST202' || error?.code === '42883') return null;
+    if (error) throw new Error(`register training bridge date: ${error.message}`);
+    return data;
+  }
+  return checked(trainingDateRpc(supabase, 'register_training_date_work', args, nonBlocking), 'register training date');
 }
 
 async function loadTrainingWorkRows({ supabase, season, tickDate }) {
@@ -261,6 +279,9 @@ export async function runNormalizedTrainingDateSweep({
   const index = await loadIndex({ supabase, now });
   const summary = { ran: false, tickDate: index.today, gameDays: [], divisions: 0, planned: 0, swept: 0, alreadyRan: 0, failed: 0, failures: [], pending: 0, quarantined: 0, departed: 0, durationMs: 0 };
   const allDays = new Set(), divisions = new Set();
+  // #7282: a team whose late bridge date waits for the bridge RPC registers no later
+  // date in this pass; a later row would stop the bridge RPC from keeping its snapshot.
+  const deferredBridgeTeams = new Set();
   let settledToday = false;
   for (const job of index.jobs) {
     const dateKey = `${job.season.id}:${job.tickDate}`;
@@ -320,11 +341,14 @@ export async function runNormalizedTrainingDateSweep({
         return;
       }
       if (!days?.length) return;
+      if (deferredBridgeTeams.has(team.id) && !workByTeam.has(team.id)) { waitingForDate = true; return; }
       let tracked = workByTeam.has(team.id);
       // #6609: failure identity carries the race day being settled (or the date race days when it fails before the loop).
       let failingGameDay = null;
       try {
-        const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now });
+        const lateBridge = !workByTeam.has(team.id) && days.every(day => day < 0) && now >= trainingDateDeadline(job.tickDate);
+        const work = workByTeam.get(team.id) ?? await registerWork({ supabase, teamId: team.id, seasonId: job.season.id, tickDate: job.tickDate, gameDays: days, riderIds: currentIds, now, lateBridge });
+        if (!work) { deferredBridgeTeams.add(team.id); waitingForDate = true; return; }
         tracked = true;
         const remaining = work.expected_rider_ids.filter(id => !(work.quarantined_rider_ids ?? []).includes(id));
         // #6439 (owner 10/10): training follows the rider. A rider who changed team
