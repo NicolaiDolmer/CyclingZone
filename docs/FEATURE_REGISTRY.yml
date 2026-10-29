@@ -863,12 +863,14 @@ features:
     area: training
     title_en: Development curve B (level and potential drive development, not age)
     title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
-    state: live
+    state: building
     flag: development_curve_b
     ssot: docs/TRAINING_RULES.md
     epic: 3564
-    note: "On, læst i prod 27/10; uden belastningsbremse. Videre kalibrering #3564."
-    verified: 2026-10-27
+    note: "Off 29/10 (ejer-go): blødt loft gav 0 fremgang over loftet (mur, #7316). Tændes igen når rettelsen er live."
+    verified: 2026-10-29
+    decision: taend
+    decide_by: 2026-11-05
 
   - id: condition-model-v2
     area: training
