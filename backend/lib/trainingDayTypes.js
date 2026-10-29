@@ -178,7 +178,7 @@ export function programForChoice({ dayType, session = null, previousFocus = null
   if (!DAY_TYPES.includes(dayType)) return { ok: false, reason: "invalid_day_type" };
 
   if (dayType === "rest") {
-    const focus = isKnownFocus(previousFocus, catalogV3) ? previousFocus : REST_FOCUS_FALLBACK;
+    const focus = isKnownFocus(previousFocus) ? previousFocus : REST_FOCUS_FALLBACK;
     return { ok: true, focus, intensity: "rest" };
   }
   if (dayType === "recovery") {
@@ -192,7 +192,7 @@ export function programForChoice({ dayType, session = null, previousFocus = null
 
 // #5319: en GEMT v3-session genkendes altid (hviledagen bevarer valget). Om den
 // kan VAELGES, afgoer programForChoice/routes; med flaget off kan ingen skrive den.
-function isKnownFocus(focus, catalogV3 = false) {
+function isKnownFocus(focus) {
   if (focus == null) return false;
   if (isV3OnlySession(focus)) return true;
   return Object.prototype.hasOwnProperty.call(TRAINING_FOCUSES, focus);
