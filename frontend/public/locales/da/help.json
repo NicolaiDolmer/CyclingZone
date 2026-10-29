@@ -1553,6 +1553,10 @@
       "freeAgents": {
         "title": "Free agents",
         "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (baseret på rytterens forventede produktion denne sæson) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres. Frie agenter opstår mest ved at en rytters kontrakt udløber og ikke bliver fornyet ved sæsonskiftet: i praksis er det næsten altid et menneskestyret hold, for AI-styrede hold fornyer selv deres udløbende kontrakter automatisk ved samme skifte. Resten er ryttere frigivet af deres gamle klub, enten ved akademi-graduering eller fra et akademi-intake-tilbud der udløb ubesvaret og ikke fandt en køber på auktion (se 'Udløber akademi-intake-tilbud?')."
+      },
+      "contractWarnings": {
+        "title": "Hvilke ryttere får kontraktvarsler?",
+        "text": "Kontraktvarsler dækker dine senior-, U23-, junior- og akademiryttere. Ved sæsonskiftet får du én besked med de ryttere, hvis kontrakt udløber i den nye sæson, med trup og værdi. Du får også et varsel, når du signer eller henter en rytter, eller flytter ham mellem trupper, hvis hans kontrakt udløber i indeværende sæson. Forlæng kontrakter for alle trupper på fanen Kontrakter under Mit hold. Ryttere frigivet ved sæsonskiftet samles i en særskilt besked. Trupflyt ændrer ikke kontrakten, og et signeret intake beholder sin nuværende intro-kontraktlængde."
       }
     },
     "academy": {

@@ -1553,6 +1553,10 @@
       "freeAgents": {
         "title": "Agents libres",
         "text": "Les agents libres n'ont pas de salaire tant qu'une équipe ne les signe pas. Le profil du coureur et la page d'enchère affichent un salaire estimé (d'après la production attendue du coureur cette saison) pour que tu puisses planifier ton budget avant d'enchérir. Le salaire réel n'est fixé qu'au moment de la signature. Les agents libres apparaissent surtout quand le contrat d'un coureur arrive à terme et n'est pas renouvelé au changement de saison : en pratique, c'est presque toujours un effectif géré par un humain, puisque les équipes contrôlées par l'IA renouvellent elles-mêmes leurs contrats arrivant à échéance lors de la même transition. Les autres sont des coureurs libérés par leur ancien club, soit à la remise des diplômes de l'académie, soit à partir d'une offre de recrutement de l'académie restée sans réponse qui n'a trouvé aucun acheteur aux enchères (voir “Les offres de recrutement de l'académie expirent-elles ?”)."
+      },
+      "contractWarnings": {
+        "title": "Quels coureurs sont concernés par les alertes de contrat ?",
+        "text": "Les alertes couvrent tes seniors, U23, juniors et coureurs de l'académie. Au changement de saison, un seul message liste les coureurs dont le contrat expire pendant la nouvelle saison, avec leur groupe et leur valeur. Tu reçois aussi une alerte quand tu recrutes un coureur ou le changes de groupe si son contrat expire pendant la saison en cours. Tu peux prolonger les contrats de tous les groupes dans l'onglet Contrats de Mon équipe. Les coureurs libérés au changement de saison sont regroupés dans un message distinct. Un changement de groupe ne modifie pas le contrat, et la durée du contrat initial des recrues de l'académie reste inchangée."
       }
     },
     "academy": {

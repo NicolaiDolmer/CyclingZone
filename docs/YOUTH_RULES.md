@@ -142,6 +142,17 @@ Ejer, ordret: *"Spilleren skal som udgangspunkt selv vælge hvor rytterne er. [.
 
 ### 2.4 Én kontraktmodel (ejer 2/9, svar 2)
 
+**Kontraktvarsler (#7249, design-go 26/10):** Senior, U23, junior og ejede akademiryttere
+er omfattet af samme varsler. Sæsonstart og før-skifte-påmindelsen bruger den fælles,
+paginerede `fetchOwnedExpiringRiders` med gameplay-ejendomsfilter. Ved intake,
+auktions-/transferkøb, swap, graduering og trupflyt kaldes
+`notifyIfContractExpiresThisSeason` efter den gennemførte erhvervelse/flytning.
+Den varsler kun ved udløb i indeværende sæson; leveringsfejl ændrer ikke handlens resultat.
+Sæsonskiftet samler udløbsvarsler og faktisk frigivne ryttere i én besked pr. hold og type,
+med navn, trup og eksisterende markedsværdi. Kontrakter-fanen omfatter alle ejede trupper,
+opdelt efter udløb og trup, med samme forlængelsesflow. Intake-kontraktens længde er urørt.
+Automatisk planlægning af før-skifte-påmindelsen hører til #7250.
+
 | Regel | Beslutning | Hvad der ændres |
 |---|---|---|
 | Samme kontrakt for alle | Ungdomsryttere signeres, forlænges, sælges og slippes efter samme regler og formler som seniorer (`TRANSFER_MARKET_RULES.md`, `ECONOMY_RULES.md`) | Dagens ungdomskontrakt, `ACADEMY.SIGNING_FEE_RATE` og akademi-lønsatsen udgår som særregler når tier-modellen bygges |

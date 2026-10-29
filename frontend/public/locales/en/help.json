@@ -1553,6 +1553,10 @@
       "freeAgents": {
         "title": "Free agents",
         "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing. Free agents mostly appear when a rider's contract runs out and isn't renewed at the season change: in practice this is almost always a human-managed squad, since AI-controlled teams renew their own expiring contracts automatically at the same transition. The rest are riders released by their old club, either at Academy graduation or from an Academy intake offer that expired unanswered and found no buyer at auction (see 'Do Academy intake offers expire?')."
+      },
+      "contractWarnings": {
+        "title": "Which riders get contract warnings?",
+        "text": "Contract warnings cover your senior, U23, junior and academy riders. At the season change, you get one message listing the riders whose contracts expire during the new season, with their squad and value. You also get a warning when you sign or acquire a rider, or move him between squads, if his contract expires in the current season. Extend contracts for every squad from My Team, on the Contracts tab. Riders released at the season change are listed together in a separate message. Moving squads does not change a contract, and an intake signing still keeps its existing introductory contract length."
       }
     },
     "academy": {

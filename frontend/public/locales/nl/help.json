@@ -1553,6 +1553,10 @@
       "freeAgents": {
         "title": "Transfervrije renners",
         "text": "Transfervrije renners hebben geen salaris tot een team ze contracteert. Het rennersprofiel en de veilingpagina tonen een geschat salaris (op basis van de verwachte productie van de renner dit seizoen) zodat je je budget kunt plannen voordat je biedt. Het werkelijke salaris wordt pas vastgesteld op het moment van tekenen. Transfervrije renners ontstaan meestal wanneer het contract van een renner afloopt en bij de seizoenswissel niet wordt verlengd: in de praktijk is dat bijna altijd een selectie van een mens, omdat AI-teams hun aflopende contracten bij dezelfde overgang zelf automatisch verlengen. De rest zijn renners die door hun oude club zijn vrijgegeven, ofwel bij het afstuderen van de Academie, ofwel uit een aanbieding uit de Academie-instroom die onbeantwoord verliep en in de veiling geen koper vond (zie 'Verlopen aanbiedingen uit de Academie-instroom?')."
+      },
+      "contractWarnings": {
+        "title": "Voor welke renners krijg je contractwaarschuwingen?",
+        "text": "Contractwaarschuwingen gelden voor je senioren, U23-renners, junioren en academierenners. Bij de seizoenswissel krijg je één bericht met de renners van wie het contract in het nieuwe seizoen afloopt, met hun selectie en waarde. Je krijgt ook een waarschuwing als je een renner aantrekt of van selectie verandert en zijn contract dit seizoen afloopt. Je kunt contracten voor alle selecties verlengen op het tabblad Contracten bij Mijn ploeg. Renners die bij de seizoenswissel worden vrijgegeven, staan samen in een apart bericht. Een selectiewissel verandert het contract niet en de bestaande looptijd van het eerste contract van academierekruten blijft gelijk."
       }
     },
     "academy": {

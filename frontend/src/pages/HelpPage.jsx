@@ -163,6 +163,7 @@ const SECTION_DEFS = [
       { id: "contractOnTrade", kind: "text" },
       { id: "extendContract", kind: "text" },
       { id: "freeAgents", kind: "text" },
+      { id: "contractWarnings", kind: "text" },
     ],
   },
   {

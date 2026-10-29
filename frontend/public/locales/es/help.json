@@ -1553,6 +1553,10 @@
       "freeAgents": {
         "title": "Agentes libres",
         "text": "Los agentes libres no tienen salario hasta que un equipo los ficha. El perfil del ciclista y la página de la subasta muestran un salario estimado (según la producción esperada del ciclista esta temporada) para que puedas planificar tu presupuesto antes de pujar. El salario real solo se fija en el momento de la firma. Los agentes libres aparecen sobre todo cuando el contrato de un ciclista termina y no se renueva en el cambio de temporada: en la práctica es casi siempre una plantilla gestionada por una persona, porque los equipos controlados por la IA renuevan automáticamente sus propios contratos que vencen en esa misma transición. El resto son ciclistas liberados por su antiguo club, ya sea en la graduación de la Academia o por una oferta de cantera de la Academia que caducó sin respuesta y no encontró comprador en subasta (consulta “¿Caducan las ofertas de cantera de la Academia?”)."
+      },
+      "contractWarnings": {
+        "title": "¿Qué ciclistas reciben avisos de contrato?",
+        "text": "Los avisos cubren a tus ciclistas sénior, sub-23, júnior y de la academia. Al cambiar de temporada, recibes un único mensaje con los ciclistas cuyos contratos caducan durante la nueva temporada, su plantilla y su valor. También recibes un aviso al fichar un ciclista o cambiarlo de plantilla si su contrato caduca en la temporada actual. Puedes renovar contratos de todas las plantillas en la pestaña Contratos de Mi equipo. Los ciclistas liberados al cambiar de temporada se agrupan en otro mensaje. Cambiar de plantilla no modifica el contrato, y la duración del contrato inicial de los fichajes de la academia se mantiene."
       }
     },
     "academy": {

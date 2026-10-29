@@ -198,7 +198,7 @@ const TYPE_CONFIG = {
   academy_intake_expired_compensation: { Icon: CoinIcon, color: "text-cz-warning", bg: "bg-cz-warning/8 border-cz-warning/15", link: "/academy" },
   auction_cancelled:         { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/auctions" },
   auction_proxy_outbid:      { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/auctions" },
-  contract_expired_release:  { Icon: UndoIcon,         color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/team" },
+  contract_expired_release:  { Icon: UndoIcon,         color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/team?tab=contracts" },
   deadline_day_warning:      { Icon: AlertTriangleIcon, color: "text-cz-warning",  bg: "bg-cz-warning/8 border-cz-warning/15", link: "/transfers" },
   emergency_loan_breach:     { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger/8 border-cz-danger/15",    link: "/finance" },
   // Beskeden selv henviser til dashboardet ("Dit dashboard viser dine egne
@@ -830,7 +830,7 @@ export default function NotificationsPage() {
                         <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
                           {renderNotificationTitle(n, tBackend)}
                         </p>
-                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">
+                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed whitespace-pre-line">
                           {/* #1486: rytter-notifikationer linker beskeden til rytterprofilen
                               når metadata.riderId findes; RiderLink falder selv tilbage til
                               ren tekst for legacy-rækker uden riderId. */}
@@ -959,7 +959,7 @@ export default function NotificationsPage() {
                           {entry.items.map(item => (
                             <li key={item.id} className="flex items-start gap-2 text-xs">
                               <span className="text-cz-3 whitespace-nowrap min-w-20">{timeAgo(item.created_at)}</span>
-                              <span className="text-cz-2 flex-1">
+                              <span className="text-cz-2 flex-1 whitespace-pre-line">
                                 {/* #1486: link til rytterprofil når riderId findes i metadata */}
                                 <RiderLink id={item.metadata?.riderId} stopPropagation
                                   className={item.metadata?.riderId ? "hover:text-cz-accent-t transition-colors" : ""}>
