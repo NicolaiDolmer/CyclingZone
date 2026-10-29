@@ -37,6 +37,8 @@ export const SESSION_INTENSITY = Object.freeze({
   echelon_drills: "hard",
   attack_repeats: "hard",
 });
+import { isDisplayCatalogV3 } from "./training.js";
+
 // #5319: katalog v3 (flag training_catalog_v3). Spejl af backend trainingDayTypes.js.
 // De fem nye hårde sessioner står EFTER attack_repeats; tabellerne ovenfor er urørte.
 const V3_NEW_HARD = Object.freeze(["long_climbs", "lead_out", "itt_short", "itt_long", "cobbled_classic"]);
@@ -53,6 +55,17 @@ export const SESSION_INTENSITY_V3 = Object.freeze({
 });
 export function sessionsByLevelFor({ catalogV3 = false } = {}) {
   return catalogV3 ? TRAINING_SESSIONS_BY_LEVEL_V3 : TRAINING_SESSIONS_BY_LEVEL;
+}
+
+// i18n-nøglen for en sessions navn/forkortelse/note. Med v3 får to sessioner
+// nyt navn (Bjergintervaller, VO2max (punch)) og to en ny note (Tærskel og
+// Spurt træner noget andet end før). Off = dagens nøgle, uændret.
+const V3_RENAMED = Object.freeze(["vo2max_climb", "vo2max_punch"]);
+const V3_RENOTED = Object.freeze(["threshold", "sprint"]);
+//   kind : "dayPanel.session" | "mobile.sessionShort" | "dayPanel.sessionNote"
+export function sessionI18nKey(kind, session, catalogV3 = isDisplayCatalogV3()) {
+  const changed = kind === "dayPanel.sessionNote" ? V3_RENOTED : V3_RENAMED;
+  return catalogV3 && changed.includes(session) ? `${kind}V3_${session}` : `${kind}_${session}`;
 }
 
 export const RECOVERY_FOCUS = "restitution";

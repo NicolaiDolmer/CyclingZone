@@ -31,6 +31,7 @@ import {
   DAY_TYPES_WITHOUT_SESSION,
   TRAINING_LEVELS,
   SKILL_SESSIONS,
+  sessionI18nKey,
 } from "../lib/trainingDayTypes.js";
 import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.js";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
@@ -196,7 +197,7 @@ function dayLabel(plan, t) {
   if (DAY_TYPES_WITHOUT_SESSION.includes(dayType)) return t(`dayPanel.dayType_${dayType}`);
   const session = sessionForProgram(plan);
   if (!session) return t(`dayPanel.dayType_${dayType}`);
-  return `${t(`dayPanel.dayType_${dayType}`)} · ${t(`dayPanel.session_${session}`)}`;
+  return `${t(`dayPanel.dayType_${dayType}`)} · ${t(sessionI18nKey("dayPanel.session", session))}`;
 }
 
 
@@ -270,7 +271,7 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
           </span>
           {!plan?.focus && smartFocus && (
             <span className="mt-0.5 block truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-              {t("smartFocusHint", { focus: t(`dayPanel.session_${smartFocus}`) })}
+              {t("smartFocusHint", { focus: t(sessionI18nKey("dayPanel.session", smartFocus)) })}
             </span>
           )}
         </span>
@@ -1215,8 +1216,8 @@ export default function TrainingPage() {
     const session = sessionFor(riderId, column);
     if (!session) return { label: t("mobile.noDay"), tone: "off" };
     if (session === "rest") return { label: t("mobile.sessionShort_rest"), tone: "off" };
-    const label = t([`mobile.sessionShort_${session}`, `dayPanel.session_${session}`]);
-    const full = t(`dayPanel.session_${session}`, { defaultValue: label });
+    const label = t([sessionI18nKey("mobile.sessionShort", session), sessionI18nKey("dayPanel.session", session)]);
+    const full = t(sessionI18nKey("dayPanel.session", session), { defaultValue: label });
     return { label, tone: "session", title: full };
   };
 
@@ -1869,13 +1870,13 @@ export default function TrainingPage() {
         {TRAINING_LEVELS.map((level) => (
           <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
             {sessionsByLevelFor({ catalogV3 })[level].map((k) => (
-              <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+              <option key={k} value={k}>{t(sessionI18nKey("dayPanel.session", k))}</option>
             ))}
           </optgroup>
         ))}
         <optgroup label={t("dayPanel.dayType_skill")}>
           {SKILL_SESSIONS.map((k) => (
-            <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+            <option key={k} value={k}>{t(sessionI18nKey("dayPanel.session", k))}</option>
           ))}
         </optgroup>
       </>
@@ -1983,7 +1984,7 @@ export default function TrainingPage() {
             onClick={() => handleDayChoice(riderId, smart)}
             className="text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50"
           >
-            {t("today.useAssistantPick", { session: t(`dayPanel.session_${smart}`) })}
+            {t("today.useAssistantPick", { session: t(sessionI18nKey("dayPanel.session", smart)) })}
           </button>
         )}
       </div>
@@ -2152,9 +2153,9 @@ export default function TrainingPage() {
             onApply={(programKey, target) => (groupIdOf(target)
               ? trainingGroups.putProgram(groupIdOf(target), programKey)
               : programs.applyProgram(programKey, target))}
-            sessionShort={(session) => t(`mobile.sessionShort_${session}`, {
+            sessionShort={(session) => t(sessionI18nKey("mobile.sessionShort", session), {
               defaultValue: session === "rest" || session === "recovery"
-                ? t(`dayPanel.dayType_${session}`) : t(`dayPanel.session_${session}`),
+                ? t(`dayPanel.dayType_${session}`) : t(sessionI18nKey("dayPanel.session", session)),
             })}
           />
         ) : activeSub === "limit" ? (

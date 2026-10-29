@@ -21,6 +21,7 @@ import {
   sessionsByLevelFor,
   dayTypeForProgram,
   sessionForProgram,
+  sessionI18nKey,
 } from "../../lib/trainingDayTypes.js";
 import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js";
 import { CheckIcon, ChevronDownIcon } from "../ui/icons/index.jsx";
@@ -110,7 +111,7 @@ export default function TrainingDaySelect({
               <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
                 {(sessionsByLevel[level] ?? []).map((session) => (
                   <option key={session} value={session}>
-                    {t(`dayPanel.session_${session}`)}
+                    {t(sessionI18nKey("dayPanel.session", session))}
                   </option>
                 ))}
               </optgroup>
@@ -118,7 +119,7 @@ export default function TrainingDaySelect({
             <optgroup label={t("dayPanel.dayType_skill")}>
               {(SKILL_SESSIONS as readonly string[]).map((session) => (
                 <option key={session} value={session}>
-                  {t(`dayPanel.session_${session}`)}
+                  {t(sessionI18nKey("dayPanel.session", session))}
                 </option>
               ))}
             </optgroup>

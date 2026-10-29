@@ -33,6 +33,7 @@ import {
   dayTypeForProgram,
   sessionForProgram,
   sessionGroupsForDayType,
+  sessionI18nKey,
 } from "../../lib/trainingDayTypes.js";
 import { focusPanelRows, hasAnySignal, hasAnyPerSeason, FOCUS_SIGNAL } from "../../lib/trainingFocus.js";
 import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js"; // #5319
@@ -119,7 +120,7 @@ export default function FocusPanel({
   // En session-note er valgfri: findes nøglen ikke, renderes der ingenting.
   // `defaultValue: ""` frem for i18n.exists, så en manglende nøgle aldrig kan
   // lække sit eget navn ud på fladen.
-  const sessionNote = (session) => t(`dayPanel.sessionNote_${session}`, { defaultValue: "" });
+  const sessionNote = (session) => t(sessionI18nKey("dayPanel.sessionNote", session), { defaultValue: "" });
 
   const needsSession = draftDayType != null && !DAY_TYPES_WITHOUT_SESSION.includes(draftDayType);
   const groups = sessionGroupsForDayType(draftDayType, { catalogV3 });
@@ -316,7 +317,7 @@ export default function FocusPanel({
                       />
                       <span className="min-w-0">
                         <span className={`block truncate text-[13px] ${active ? "font-semibold text-cz-1" : "text-cz-1"}`}>
-                          {t(`dayPanel.session_${session}`)}
+                          {t(sessionI18nKey("dayPanel.session", session))}
                         </span>
                         {row.isAssistantDefault && (
                           <span className="mt-0.5 block font-data text-3xs uppercase tracking-[.06em] text-cz-3">

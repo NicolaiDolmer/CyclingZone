@@ -20,6 +20,7 @@ import type { ReactNode } from "react";
 import { applyCopyDay, MAX_COPY_DAYS } from "./copyDayPlan.ts";
 import type { RaceDayColumn } from "../../lib/trainingMobileModel.ts";
 import { useTrainingCatalogV3 } from "../../lib/useTrainingCatalogV3.js";
+import { sessionI18nKey } from "../../lib/trainingDayTypes.js"; // #5319
 import {
   PROGRAM_SLOTS, cellSession, isCellOverridden, isProgramPlan, changedCellCount,
   programName, slotForColumnIndex, type CatalogProgram, type ProgramWeekDays,
@@ -113,8 +114,8 @@ export default function TrainingPlanCard({
   const multi = columns.length > 1;
   const intensityLabel = (k: string) => tRider(`training.intensity_${k}`);
   const sessionLabel = (session: string) =>
-    session === "rest" || session === "recovery" ? t(`dayPanel.dayType_${session}`) : t(`dayPanel.session_${session}`);
-  const shortLabel = (session: string) => t(`mobile.sessionShort_${session}`, { defaultValue: sessionLabel(session) });
+    session === "rest" || session === "recovery" ? t(`dayPanel.dayType_${session}`) : t(sessionI18nKey("dayPanel.session", session));
+  const shortLabel = (session: string) => t(sessionI18nKey("mobile.sessionShort", session), { defaultValue: sessionLabel(session) });
   const cellDays = cells?.days ?? null;
   const showCells = !!cells && isProgramPlan(cellDays, weekdays);
   const VISIBLE_CHIPS = 4;
