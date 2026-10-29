@@ -56,6 +56,19 @@ export function findChaseGroup(groups: readonly RaceGroup[], target: RaceGroup):
   return candidates[0] ?? null;
 }
 
+/** #6912: the field can chase a morning break even with a small group between them.
+ * Callers gate this to v3 flat/rolling stage races. Never select a dropped tail or
+ * another piece of the morning break as the field. The ordinary pursuer is the fallback.
+ */
+export function findFieldChaseGroup(groups: readonly RaceGroup[], target: RaceGroup, minFieldShare: number): RaceGroup | null {
+  const others = groups.filter((g) => g.id !== target.id && g.kind !== "breakaway" && g.origin !== "breakaway");
+  const total = others.reduce((n, g) => n + g.rider_ids.length, 0);
+  const field = others.filter((g) => g.kind !== "gruppetto" && g.rider_ids.length > 0
+    && g.rider_ids.length >= minFieldShare * total && g.gap_seconds >= target.gap_seconds);
+  field.sort((a, b) => b.rider_ids.length - a.rider_ids.length || a.gap_seconds - b.gap_seconds || a.id.localeCompare(b.id));
+  return field[0] ?? findChaseGroup(groups, target);
+}
+
 /**
  * #6199: dagens udbryderes saet, som isMorningRegroupCatch maaler paa (segmentLoop).
  * #6748 (KUN s5_profiles_v2): et nyt udbrud med `separate_formation` er den

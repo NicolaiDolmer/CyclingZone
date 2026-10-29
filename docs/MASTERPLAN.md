@@ -1,42 +1,40 @@
-# MASTERPLAN — prioriteret rækkefølge (SSOT for rækkefølgen)
+# MASTERPLAN: prioriteret rækkefølge (SSOT)
 
-> **Struktur ejer-godkendt 13/10: tre baner + to faste afsnit, aldrig flere.** 🔴 Brand · 🟠 Nu (højst 5) · 💰 Forretning. Alt andet bor som labels på GitHub (`priority:next`, `icebox`), ikke her. ≤1.500 tok. Spørg før omprioritering. **Intentionen** ejes af GDD'en; MASTERPLAN ejer kun rækkefølgen. Færdigt står IKKE her (patch notes + git-log). Release-gaten: #6553 (dato S6-start).
+> Struktur ejer-godkendt 13/10: Brand, Nu (højst fem), Forretning. Rækkefølgen er uændret. Status afstemt 27/10 mod #7153 og ejerens private beslutninger 26-27/10. Intention: GDD. Detaljer: områdets SSOT og issues. Færdigt står i patch notes/git-log. Release-gate: #6553 ved S6-start.
 
-**Reglen:** 🔴 brand foran alt (motor + rytterudvikling er brand fra 7/10) · klare PR'er merges løbende af merge-sessionen efter arbejdsstandarden ([`GITHUB_WORKFLOW.md`](GITHUB_WORKFLOW.md), merge-tog #6861) · nyt testes på beta først, kun det vi er sikre på releases (ejer 18/10) · **gør det lovede færdigt** (dato først, ældste først, samme dato parallelt) · 💰 Forretning viger aldrig: fast torsdag. Rytme: [`OPERATING_PLAN.md`](OPERATING_PLAN.md) + [`WEEKLY_STEERING.md`](WEEKLY_STEERING.md).
+**Reglen:** brand først; motor og rytterudvikling er brand. Dato-løfter færdiggøres ældste først. Nyt prøves på beta før release efter ejerens valg. Forretning har fast torsdag. PC1-Claude ejer merge-køen, flag og prod; Codex leverer kommunikations-PR'er. Arbejdsstandard: [GITHUB_WORKFLOW](GITHUB_WORKFLOW.md), rytme: [OPERATING_PLAN](OPERATING_PLAN.md) og [WEEKLY_STEERING](WEEKLY_STEERING.md).
 
-**Ro på spillet (ejer 7/10, til S5 25/10):** kvalitet og fastholdelse foran nyt. Datolovede ting bygges stadig. **Verdensklasse-køreplan (ejer 19/10, efter S5-skiftet; [`spec`](superpowers/specs/2026-10-19-world-class-roadmap.md)):** fundament #6917 ∥ race engine #6914 → oplevelse (mobil #6916 · desktop #6918 · palet #6915) → vækst #6919.
+**Verdensklasse efter S5-skiftet, ejer 19/10:** fundament #6917 parallelt med motor #6914, derefter mobil #6916, desktop #6918 og palet #6915, så vækst #6919. [Spec](superpowers/specs/2026-10-19-world-class-roadmap.md). Kvalitet og fastholdelse foran nyt.
 
-## 🔴 Brand
+## Brand
 
-Kun det der ødelægger spillet i dag. Tomt = godt.
+- **Stabilitet ved vækst:** aftenafregningen #6490 til dørs; måling af parallel-knappen, så job-kø #6491 og direkte Postgres #6492 (design #7070). Ranglisten #6765: skyggen følges op. Postgres-genstart og akademisidens belastning #7223.
+- **Sikkerhed:** nøglerotation #7029; #7034 er nødvej. Aktuel kontrol og næste handling står på de respektive issues.
+- **Løbsmotoren:** v3 er live; åbne delmål og rækkefølge står i [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md). GT/monumenter har et særskilt målespor #6649/#7214. Intet kaldes godkendt alene fordi et regressionsgulv holder. Målinger og kalibrering forbliver private.
+- **Forkert information:** resterne af #6935, rytterkort #6934 og rutematch #6207. De nye Discord-rapporter er triageret på #7294-#7298; de ændrer ikke denne rækkefølge.
 
-- **Stabilitet ved 10x:** aftenafregningen #6490 (ejer 24/10: meget høj prioritet, følges til dørs; parallel-knappen måles → job-kø #6491 + direkte Postgres #6492, design #7070) · ranglisten #6765 (M1.5 merget, skyggen tændes efter skiftet) · Postgres-genstart under S5-start + /api/academy/me én query #7223.
-- **Sikkerhed:** nøglerotation #7029 mandag 26/10 formiddag (ejer 25/10) · #7034 klar som nødvej.
-- **Løbsmotoren v3 tændes før første etape 28/10 kl. 11 på ordret "tænd" (alle valg på #6804):** alle gates grønne eller ejer-godkendt 25/10 (G16 #6937 testes igen på rigtige taktikker) · bjergtrøje-jæger #7208 · delt kaptajn #7205 · etapeplan #7204 · formtoppe #6156 tændes mandag. v2 kører indtil tænding.
-- **Spillerne må aldrig se forkert information (ejer 20/10):** #6935 rest (PR #7145) · rytterkortets forrige værdi #6934 (afventer ejer) · ét rutematch-tal #6207.
+## Nu, højst fem
 
-## 🟠 Nu · højst 5 (ejer-godkendt 20/10, opdateret 25/10 aften)
+1. **Før første etape 28/10 kl. 11:** PC1 afslutter den godkendte kø på #7153. Modsatte ordrer #7281, etapeplan og dagens intention er tændt og læst tilbage 27/10. Luksushjælper #7276 er merget slukket; effektmålet er ikke nået, og ejeren beslutter tænding. Dagsform #7272 før kobling og tænding af bakker A #7291. Bakker B #7293 måles bagefter. AI-ungdom #6668 har frist før 14:30; #7223 består som stabilitetsspor. Løbsbibliotek #6636/#6634 beholder go-kortet her.
+2. **Udvikling 2.0 #6110:** efter daglig træning mellem sæsoner #7282 og sæsonens fælles starttræthed #7288 følger kontrol af afregningen og unges udvikling 28/10. Kurve B #3564 er uden belastningsbremse; topalder og udvikling efter ungdomsårene kalibreres videre mod ejerens mål. Udviklingsscore (PR #7194) og catch-up #6950 følges til dørs, derefter Træn nu B #6461 (PR #7191) som separat tænding. Ingen belønning eller tilbageførsel loves uden verificeret grundlag.
+3. **Taktik, roller og ruter:** hver klar del går live efter sit go. Alt ud #7280, én fælles etapeprofil #7292, #7275 og #7274 får go-kort. Beslutningsfilen markerer S7B #7277 som ikke startet. Dagens mål: ejer-valgt retning, mockup afventer godkendelse. Taktiklagene (angrebspunkt, følg rival, sent soloangreb, hvis-så, trøjejagt, sidevind) og udbrud #6299 består; udbrud følger ejerens første trin nu, næste trin bagefter. #7164 følger #7272. Ingen ny motor- eller taktikopgave til Codex her.
+4. **Alt lovet, dato først (#6947):** TTT #3463, U23 del 2 #4620, omdømme #4957/#5106, indstillinger #3984 (A), bestyrelsen #7101 (A) med gennemgang #7167. #7191/#7101 kræver go-kort. Auktionsporten #7215: ejerbeslutning torsdag 29/10. #6665 afventer ejeren. PC1 håndterer lukning af #7240 og P1/konflikten i #7143.
+5. **Beta til live:** løbskort/historik #6636/#6634 og Kalender | Tabel #6683 skal have go-kort; ingen Done før faktisk aktivering. Udviklingsscore/træningsside og catch-up/Træn nu følger trin 2. Ryttertype-kontakten #5327 bygges og måles før ejerens tænding. Sprog er leveret og skal ikke stå som kommende.
 
-1. **Efter skiftet, færdigt før første etape 28/10 kl. 11 (ejer 25/10):** AI-ungdomsløft #6668 (før 14:30) · genstarten og akademisidens belastning #7223 · formtoppe tændes mandag #6156 · løbsbiblioteket flettes #6636 · motor v3 tændes på ordret "tænd".
-2. **Udvikling 2.0 #6110 (aldring, maks +1, kurve B og potentialet live 25/10):** tilbage er catch-up + Udviklingsscore #6950 (PR #7194) → Træn nu B #6461 (PR #7191) som separat tænding.
-3. **Taktik, roller og ruter færdige i dag sammen med Udvikling 2.0 (ejer 25/10):** samlet design (delt kaptajn, beskyttet rytter, mål-ordrer) · udbrud-navne + ordre bagefter #6299 (PR #7161 klar, ud efter skiftet: intet nyt synligt før skiftet).
-4. **Alt lovet, dato først (#6947):** TTT #3463 · U23 del 2 #4620 · omdømme #4957 #5106 · indstillinger #3984 (A) · bestyrelsen #7101 (A) + gennemgang #7167 · auktionsporten #7215 (beslutning torsdag 29/10).
-5. **Beta → live:** Form 2.0 og potentialet live 25/10 · næste beta: løbskort/historik + Kalender | Tabel #6683 (ejer-go 25/10) · Udviklingsscore + træningsside · catch-up/Træn nu · ryttertype-kontakten #5327 ("kun superstjerner") bygges og måles før tænding.
+## Forretning, fast torsdag
 
-## 💰 Forretning · fast torsdag (SSOT: [`GROWTH_STACK.md`](GROWTH_STACK.md))
+**Ejerens mål 31/12:** 2.000 kr. MRR og 200 aktive/7d. Aktuelle målinger læses i [GROWTH_STACK](GROWTH_STACK.md); gamle målinger kopieres ikke her.
 
-**Mål 31/12 (ejer 13/10): 2.000 kr. MRR · 200 aktive/7d.** Målt 12/10: 620 kr. / 17 betalende / 61 aktive. Flaskehalsen er tilgang, ikke konvertering.
-
-- **S5-lancering 25/10:** opslag pr. målgruppe (GDD D-005), postes torsdag 22/10 · annoncetest #2759 (500-1.000 kr.).
-- **Pro-sporet #2806** 19-25/10 (rytterhistorik, gemte filtre, /pro).
-- **Marts-fornyelser:** 11 halvårsabonnementer 2.-8/3; fastholdelsesplan fra januar.
-- **Drift af virksomheden:** bogføring ajour · abonnementsgennemgang · moms EU-privat #4511 (revisor) · billing #4514 #4512 #6062.
-- Måling #5305 · SEO #5249 #5250 · spillersamtaler (2 betalende + 2 stoppede).
+- S5-kommunikation pr. målgruppe (GDD D-005), annoncetest #2759 efter ejerens budget-go.
+- Pro-sporet #2806: rytterhistorik, gemte filtre og /pro; afstem leveret scope før næste trin.
+- Fornyelser i marts: fastholdelsesplan fra januar.
+- Bogføring, abonnementsgennemgang, moms EU-privat #4511 og billing #4514/#4512/#6062.
+- Måling #5305, SEO #5249/#5250 og samtaler med betalende og stoppede spillere.
 
 ## Faste rutiner
 
-**Luk sløjfen (dagligt):** hver spillerrapport får issue + svar inden 24 t (Claude skriver udkast, ejeren poster) · Known issues følger patch notes · ugentligt "Status på jeres rapporter" · 0 `triage:new` > 24 t · intet blokeret uden næste skridt · done-flip ved merge. **Ejer-beslutninger:** ét kort ad gangen i morgenblokken (08:30); åbne kort står på issues med `needs-decision`. **Merge:** morgen og aften via `scripts/merge-queue.ps1`. **Roadmap på siden** spejler Brand + Nu + `priority:next` (ejeren godkender hvad spillerne ser); en feature i beta kommer selv på roadmappet med tekst godkendt ved byg (#6693).
+Rapport får issue og svarudkast; ejeren poster. Known issues følger faktisk live-status. Patch notes: daglig træning, grundtræthed, rettelse af Alt ud-løftet; ordrer, dagsform og bakker først efter observeret aktivering. Roadmap spejler den godkendte plan, ingen opfundet prioritet eller leveringsdato. Hver tænding kræver patch note, EN/DA Hjælp ved mekanikændring og registry/status. NOW/merge-close-out ejes af PC1. Beslutningskort ét ad gangen, med testplan og visuelt bevis.
 
-## Doktrin (viger aldrig)
+## Doktrin
 
-Styrke straffes ALDRIG · 1 rytter = 1 løb pr. LØBSDAG · simulér-før-ship · et gulv er aldrig en godkendelse · synlige ratings falder aldrig uden ejerens vidende · maks +1 pr. evne pr. dag. **Ejer 28/8 (låst):** løbsdage 1-baseret · afmeldt hold stiller ikke op · minimum 6, fladt · to regenereringer forbudt. **Race engine:** ÉN v4 (on siden 28/9); flip af regler ejer-only. **FROSSET:** #2217/#2218 · #4100.
+Styrke straffes aldrig. Én rytter, ét løb pr. løbsdag. Simulér før ship. Et regressionsgulv er ikke et godkendt mål. Synlige ratings falder ikke uden ejerens vidende. Én motor, revisionsskift og flag er ejer-gated. Frosset: #2217/#2218 og #4100. Regler og konkrete spilgrænser står i områdets SSOT.

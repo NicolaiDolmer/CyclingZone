@@ -48,6 +48,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4847: "Train now" uden bonus. Kraever training_condition_per_date.
   { key: "training_train_now", area: "training", label: "Træn nu (uden bonus)" },
+  // #6461 B: klikket afregner rytterens hele kendte dato. Seedet off; flip er ejer-only.
+  { key: "training_train_now_whole_day", area: "training", label: "Træn nu — hele dagen i ét klik (B)" },
   // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
   { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },
   // #5932: de 35 felter for alle hold (ejer 29/9). Kataloget bliver bag training_programs.
@@ -90,6 +92,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4" },
   // #6156 (ejer 19/10): formtoppe/dyk i v4 under s5_profiles_v2. Seedet off; tændes ved sæsonskiftet.
   { key: "race_form_peaks", area: "race-engine", label: "Formtoppe i løbene" },
+  // #7290: højdeprofilens bakker i motoren (kun s5_profiles_v3). Slukket; virker først når raceRunner er koblet.
+  { key: "route_profile_hills", area: "race-engine", label: "Bakker fra højdeprofilen i motoren" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
@@ -214,9 +218,12 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   "potential_single_number",
   "ability_cap_per_date_enabled",
   "training_decision_card",
+  // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
+  // Binaert som stage-roles-API'et (isRaceDayIntentionEnabled uden viewer): "beta" er off.
+  "race_day_intention_enabled",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
 // "beta" = off). Endpointet svarer derfor false for ALLE viewers paa "beta", saa
 // en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
-export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b"]);
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "race_day_intention_enabled"]);

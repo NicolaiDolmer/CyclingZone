@@ -60,6 +60,8 @@ import { SYNTHETIC_KINDS, assertRoutesCover, createProdSource, loadRoutesDir, pr
 import { raceContextFromCache } from "./lib/v3Gates.mjs";
 import { isMountainNonSummit } from "./lib/tourScorecard.mjs";
 import { INTENT_MODES, ratesSignature, validateRates } from "./lib/breakawayIntent.mjs";
+import { raceGroupOf, routeFavourites } from "./lib/raceGroupGates.mjs"; // #7214
+import { suitabilityScore } from "../../lib/raceAutopick.js"; // #7214: spillets egnethed (favoritter til ruten)
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const REPO_ROOT = path.resolve(here, "..", "..", "..");
@@ -67,8 +69,16 @@ const SELF = fileURLToPath(import.meta.url);
 const TOUR_DRY_RUN = path.join(here, "tourDryRun.mjs");
 const abs = (p) => (path.isAbsolute(p) ? p : path.join(REPO_ROOT, p));
 
+/** #6912: private worktree-taerskler, ellers den delte OneDrive-kilde. Ingen tal i repoet. */
+export function defaultThresholdsPath({ oneDrive = process.env.OneDrive, exists = existsSync, repoRoot = REPO_ROOT } = {}) {
+  const local = path.join("balance-internals", "motor-testport-thresholds.json");
+  if (exists(path.join(repoRoot, local)) || !oneDrive) return local;
+  const shared = path.join(oneDrive, "CyclingZone-context", local);
+  return exists(shared) ? shared : local;
+}
+
 /** Parse CLI-argumenterne (rent, testbart). `defaultBaseline` injiceres (den aktuelle revision). */
-export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {}) {
+export function parseArgs(argv, { defaultBaseline = null, now = new Date(), defaultThresholds = path.join("balance-internals", "motor-testport-thresholds.json") } = {}) {
   const get = (name, fallback = null) => {
     const hit = argv.find((a) => a.startsWith(`--${name}=`));
     return hit ? hit.slice(name.length + 3) : fallback;
@@ -115,7 +125,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     reportOnly: flag("report-only"),
     // #6750 (Codex): balance-taersklerne (fx "stort forspring") staar i en privat
     // fil, aldrig i det offentlige repo (hard rule 17).
-    thresholds: get("thresholds", path.join("balance-internals", "motor-testport-thresholds.json")),
+    thresholds: get("thresholds", defaultThresholds),
     thresholdsExplicit: get("thresholds") !== null,
     png: !flag("no-png"),
     benchWorker,
@@ -404,8 +414,15 @@ export function loadRaceContexts({ outDir, raceIds, cacheDir = null }) {
     const file = candidates.find((f) => existsSync(f));
     if (!file) continue;
     try {
-      const ctx = raceContextFromCache(JSON.parse(readFileSync(file, "utf8")), { isMountainNonSummit });
-      if (ctx) contexts.set(id, ctx);
+      const cache = JSON.parse(readFileSync(file, "utf8"));
+      const ctx = raceContextFromCache(cache, { isMountainNonSummit });
+      if (ctx) {
+        // #7214: loebsgruppe med monumenter + favoritterne til ruten. ctx.group (v3-gaterne) er uaendret.
+        ctx.raceClass = cache.race?.race_class ?? null;
+        ctx.raceGroup = raceGroupOf({ stages: ctx.stages, raceClass: ctx.raceClass });
+        ctx.favourites = routeFavourites(cache, { suitability: suitabilityScore });
+        contexts.set(id, ctx);
+      }
     } catch (err) {
       console.warn(`motor-testport: cache for ${id} kunne ikke laeses (${err.message}); loebet faar ingen kontekst til v3-gaterne/S0.`);
     }
@@ -502,7 +519,7 @@ export function budgetStop(timeBudgetMin, monotonic = () => performance.now()) {
 export async function main(argv = process.argv.slice(2), { now, clock, monotonic, defaultBaseline: baselineOverride } = {}) {
   const stamp = clock ?? (now ? () => now : () => new Date());
   now ??= stamp();
-  let opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
+  let opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now, defaultThresholds: defaultThresholdsPath() });
   if (opts.benchWorker) return benchWorker(opts);
   const outDir = assertPrivateOutDir(abs(opts.out));
   const metaFile = path.join(outDir, "testport-meta.json");
@@ -629,7 +646,10 @@ async function writeCard({ card, outDir, png, failed }) {
   // #6804 (ejer valg 8 A): en v3-kandidat med en roed eller manglende G16-G19/G2-flad er blokeret.
   const v3Blocked = Boolean(card.v3Gates?.applies && card.v3Gates.candidate?.blocked);
   if (v3Blocked) console.log(`TAEND-GATE v3 BLOKERET: ${card.v3Gates.candidate.reasons.join("; ")}`);
-  if (failed.length || missing.length || pending.length || v3Blocked) process.exitCode = 1;
+  // #7214 (ejer 26/10): loebsgruppe-gaten blokerer kun kandidater efter s5_profiles_v3.
+  const groupBlocked = Boolean(card.raceGroupGates?.applies && card.raceGroupGates.candidate?.blocked);
+  if (groupBlocked) console.log(`LOEBSGRUPPE-GATE BLOKERET: ${card.raceGroupGates.candidate.reasons.join("; ")}`);
+  if (failed.length || missing.length || pending.length || v3Blocked || groupBlocked) process.exitCode = 1;
   return { card, outDir, failed };
 }
 

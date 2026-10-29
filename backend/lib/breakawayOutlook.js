@@ -133,8 +133,17 @@ export async function computeBreakawayOutlook({ race, runDryStage, resolveRaceEn
       v4Engine: {
         ...engine,
         simulateStage: (stageArgs) => {
-          captured = stageArgs;
-          return engine.simulateStage({ ...stageArgs, seedString: outlookSeedString(race.id, stageArgs.stageNumber, 0) });
+          captured = { ...stageArgs };
+          // Legacy race_stage_roles effort is private too. Omit the override so
+          // the existing bridge default and AI-order path apply unchanged.
+          if (Array.isArray(stageArgs.entrants)) {
+            captured.entrants = stageArgs.entrants.map((entrant) => {
+              const forecastEntrant = { ...entrant };
+              delete forecastEntrant.effort;
+              return forecastEntrant;
+            });
+          }
+          return engine.simulateStage({ ...captured, seedString: outlookSeedString(race.id, stageArgs.stageNumber, 0) });
         },
       },
     };

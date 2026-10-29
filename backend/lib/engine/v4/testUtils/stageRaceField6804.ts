@@ -14,7 +14,7 @@ export const FIRST_STAGE_GC: GcContext = { status: "first_stage", stage_number: 
 export type StageRaceRun = { key: string; route: RouteV2; output: StageOutput };
 
 /** Alle frosne etaper af de givne profiler, koert som etapeloebets foerste etape under `rulesRevision`. */
-export function stageRaceRuns(rulesRevision: string, profiles: readonly string[], seeds: readonly string[]): StageRaceRun[] {
+export function stageRaceRuns(rulesRevision: string, profiles: readonly string[], seeds: readonly string[], gcContext: GcContext = FIRST_STAGE_GC): StageRaceRun[] {
   const out: StageRaceRun[] = [];
   for (const row of frozenStages().filter((r) => profiles.includes(r.profile_type))) {
     const route = routeFromStageProfileRow(row as Parameters<typeof routeFromStageProfileRow>[0]);
@@ -23,12 +23,12 @@ export function stageRaceRuns(rulesRevision: string, profiles: readonly string[]
       rows: [],
       stageNumber: 1,
       roster: field.map((rider) => ({ team_id: rider.team_id as string, rider_id: rider.rider_id, role: rider.role, is_ai: true, abilities: rider.abilities })),
-      context: { route: { profile_type: route.profile_type, finale_type: route.finale_type ?? null }, race: { is_stage_race: true, later_stages: [] }, rules_revision: rulesRevision },
+      context: { route: { profile_type: route.profile_type, finale_type: route.finale_type ?? null }, race: { is_stage_race: gcContext.status !== "one_day", later_stages: [] }, rules_revision: rulesRevision },
     } as Parameters<typeof buildStageOrderPlan>[0]);
     // #5981: AI-holdenes delte kaptajn (plan.aiRoleByRider), som broen giver motoren.
     const startlist = field.map((rider) => ({ ...rider, role: plan.aiRoleByRider?.get(rider.rider_id) ?? rider.role, effort: plan.aiEffortByRider.get(rider.rider_id) ?? rider.effort }));
     for (const seed of seeds) {
-      const input = { route, startlist, orders: plan.orders, seed: `${seed}:${row.stage_number ?? 1}`, tuning: RACE_V4_TUNING, rules_revision: rulesRevision, gc_context: FIRST_STAGE_GC } as StageInput;
+      const input = { route, startlist, orders: plan.orders, seed: `${seed}:${row.stage_number ?? 1}`, tuning: RACE_V4_TUNING, rules_revision: rulesRevision, gc_context: gcContext } as StageInput;
       out.push({ key: `${row.profile_type}#${row.stage_number ?? 1}@${seed}`, route, output: simulateStageV4(input) });
     }
   }

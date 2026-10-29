@@ -25,6 +25,8 @@ import {
   liftBlockedReason,
   summarizeExistingByTeam,
   summarizeLevels,
+  summarizeYouthGroups,
+  loadActiveAiTeams,
 } from "./generateYouthSquadsS4.js";
 import {
   mirrorPool,
@@ -751,23 +753,155 @@ test("#6668: et løft over værdiloftet afvises før første skrivning (ingen ha
   assert.match(liftBlockedReason({ totals: { overValueCap: 2 } }), /apply blokeret før første skrivning/);
 });
 
-test("planYouthLift: når ingen kandidat når rangorden-gulvet, afvises løftet i stedet for at udsende en rytter under gulvet (#6668)", async () => {
+test("planYouthLift: en svag kandidat begrænses af den stærkeres mulige løft (#6668)", () => {
   const all = existingAiRiders();
   const age = ageForSeason(all[0].birthdate, S + 1);
   const pair = all.filter((r) => ageForSeason(r.birthdate, S + 1) === age).slice(0, 2);
   assert.equal(pair.length, 2);
   const [weak, strong] = [{ ...pair[0], level: 10 }, { ...pair[1], level: 20 }];
   const profile = buildHumanLevelProfile(humanRows({ ages: [age - 1], lo: 80, hi: 99 }), { season: S + 1 });
-  // Svagest løftes højt; næste rytters kandidater når aldrig gulvet.
+  // Svagestes nærmeste kandidat ville gøre den stærkeres løft umuligt.
   const rankCandidates = ({ row }) => [{ birth: row.archetype_draw.birth, level: row.id === weak.id ? 92 : 36, distance: 0 }];
   const lift = planYouthLift({
     riders: [weak, strong], teamsById: new Map(TEAMS.map((t) => [t.id, t])), targetSeason: S + 1, levelProfile: profile, ...MODELS, rankCandidates,
   });
-  assert.equal(lift.totals.rankFloorUnmet, 1);
-  const bad = lift.rows.find((r) => r.riderId === strong.id);
-  assert.equal(bad.rankFloorUnmet, true);
-  assert.equal(bad.changed, false);
-  assert.match(liftBlockedReason(lift), /rangordenen/);
-  assert.match(liftBlockedReason(lift), /før første skrivning/);
-  await assert.rejects(applyLift({ from: () => { throw new Error("må ikke skrive"); } }, lift, { ...MODELS }), /rangordenen/);
+  assert.equal(lift.totals.rankFloorUnmet, 0);
+  const lower = lift.rows.find((r) => r.riderId === weak.id);
+  const upper = lift.rows.find((r) => r.riderId === strong.id);
+  assert.equal(lower.changed, false);
+  assert.equal(lower.noFeasibleLift, true);
+  assert.ok(lower.after <= upper.after);
+  assert.equal(liftBlockedReason(lift), null);
+});
+
+test("S5: kun den konkrete ungdomstrup med en aktiv gruppetilknytning fødes eller løftes", () => {
+  const teams = TEAMS.map((t, i) => ({ ...t, youthSquads: i === 0 ? ["u23"] : [] }));
+  const fresh = plan({ teams, groupedOnly: true });
+  assert.ok(fresh.rows.length > 0);
+  assert.ok(fresh.rows.every((r) => r.teamId === teams[0].id && r.squad === "u23"));
+  const riders = existingAiRiders();
+  const lift = planYouthLift({
+    riders, teamsById: new Map(teams.map((t) => [t.id, t])), targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({ lo: 25, hi: 70 }), { season: S }),
+    groupedOnly: true, ...MODELS,
+  });
+  assert.ok(lift.rows.length > 0);
+  assert.ok(lift.rows.every((r) => r.teamId === teams[0].id && r.squad === "u23"));
+  assert.ok(lift.skipped.noGroup > 0);
+});
+
+test("S5: loftet begrænser kandidatvalget uden sænkning eller omvendt rangorden", () => {
+  const teams = TEAMS.map((t) => ({ ...t, tier: 2 }));
+  const models = { valuationModel: loadValuationModelById("v6"), productionValuationModel: MODEL };
+  const riders = existingAiRiders();
+  const lift = planYouthLift({
+    riders, teamsById: new Map(teams.map((t) => [t.id, t])), targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({ lo: 80, hi: 99 }), { season: S }), ...models,
+  });
+  assert.equal(lift.totals.overValueCap, 0);
+  assert.ok(lift.rows.every((r) => r.after >= r.before));
+  for (const age of new Set(lift.rows.map((r) => r.age))) {
+    const rows = lift.rows.filter((r) => r.age === age);
+    assert.ok(rows.every((r, i) => i === 0 || r.after >= rows[i - 1].after));
+  }
+});
+
+test("S5: kun eksisterende, aktive grupper med den rigtige trup giver medlemskab", async () => {
+  const db = makeStore({
+    teams: [
+      { id: "a", is_ai: true, league_division_id: "senior", u23_league_division_id: "u23", junior_league_division_id: "closed" },
+      { id: "b", is_ai: true, league_division_id: "senior", u23_league_division_id: "junior", junior_league_division_id: "missing" },
+    ],
+    league_divisions: [
+      { id: "senior", squad: "senior", tier: 2, pool_index: 1 },
+      { id: "u23", squad: "u23", tier: 1, pool_index: 1 },
+      { id: "junior", squad: "junior", tier: 1, pool_index: 2 },
+      { id: "closed", squad: "junior", tier: 1, pool_index: 3, retired_at: "2026-10-25" },
+    ],
+  });
+  const teams = await loadActiveAiTeams(db);
+  assert.deepEqual(teams.find((t) => t.id === "a").youthSquads, ["u23"]);
+  assert.deepEqual(teams.find((t) => t.id === "b").youthSquads, []);
+  const report = summarizeYouthGroups({
+    teams, plan: { rows: [] }, lift: { rows: [
+      { teamId: "a", squad: "u23", before: 10, after: 20, changed: false },
+      { teamId: "a", squad: "junior", before: 90, after: 99, changed: false },
+    ] },
+  });
+  assert.equal(report.length, 1);
+  assert.equal(report[0].riders, 1);
+  assert.equal(report[0].before.mean, 10);
+  assert.equal(report[0].after.mean, 20);
+  assert.equal(report[0].maxOverCap, 0);
+  assert.deepEqual(db.writes, { inserts: [], updates: [], upserts: [] });
+});
+
+test("S5: de søgte voksen-tiers kan ramme et afgrænset mål uden stigende ranggulv", () => {
+  const row = plan().rows[0].payload;
+  const age = ageForSeason(row.birthdate, S);
+  const natural = rankBirthCandidates({ row, seed: row.archetype_draw.birth.seed, age, target: 60 });
+  assert.ok(natural.some((c) => c.birth.tier !== "domestique" && c.birth.cap === 60 && c.level === 60));
+});
+
+test("reference ceiling uses an interpolated quantile and rejects an invalid policy", async () => {
+  const { buildLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  assert.equal(buildLevelCeilings(new Map([[18, [10, 20, 30, 40]]]), { upperQuantile: 0.5 }).get(18), 25);
+  assert.throws(() => buildLevelCeilings(new Map(), { upperQuantile: NaN }), /upperQuantile/);
+});
+
+test("reference ceiling bounds the selected birth and blocks changed outliers before writes", async () => {
+  const { auditYouthLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  const riders = existingAiRiders();
+  const ages = [...new Set(riders.map(r => ageForSeason(r.birthdate, S)))];
+  const levelCeilings = new Map(ages.map(age => [age, 30]));
+  const teamsById = new Map(TEAMS.map(t => [t.id, t]));
+  const lift = planYouthLift({ riders, teamsById, targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({lo: 65, hi: 90}), {season: S}), levelCeilings, ...MODELS });
+  assert.ok(lift.rows.filter(r => r.changed).length);
+  for (const r of lift.rows.filter(r => r.changed)) {
+    assert.ok(r.after <= levelCeilings.get(r.age));
+    assert.equal(r.after, levelOf(r.mirror.abilities));
+  }
+  const row = riders[0];
+  const audit = auditYouthLevelCeilings({riders: [{...row, level: 80}], lift: {rows: [{riderId: row.id, after: 81, changed: true}]}, newRows: [], levelCeilings, targetSeason: S});
+  assert.equal(audit.violations.length, 1);
+  assert.match(liftBlockedReason({totals: {}, ceilingAudit: audit}), /reference/);
+});
+
+test("missing reference data and a fresh birth above the ceiling fail closed", async () => {
+  const { auditYouthLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  const row = existingAiRiders()[0];
+  const age = ageForSeason(row.birthdate, S);
+  const missing = auditYouthLevelCeilings({riders: [{...row, level: 10}], lift: {rows: []}, newRows: [], levelCeilings: new Map(), targetSeason: S});
+  assert.equal(missing.missing.length, 1);
+  const fresh = auditYouthLevelCeilings({riders: [], lift: {rows: []}, newRows: [{age, mirror: {abilities: {climbing: 40}}}], levelCeilings: new Map([[age, 20]]), targetSeason: S});
+  assert.equal(fresh.violations.length, 1);
+});
+
+
+test("existing riders above the reference remain unchanged, never lowered or raised", async () => {
+  const { auditYouthLevelCeilings } = await import("./generateYouthSquadsS4.js");
+  const riders = existingAiRiders().map(r => ({...r, level: 80}));
+  const ages = [...new Set(riders.map(r => ageForSeason(r.birthdate, S)))];
+  const levelCeilings = new Map(ages.map(a => [a, 30]));
+  const lift = planYouthLift({riders, teamsById: new Map(TEAMS.map(t => [t.id, t])), targetSeason: S,
+    levelProfile: buildHumanLevelProfile(humanRows({lo: 65, hi: 90}), {season: S}), levelCeilings, ...MODELS});
+  assert.ok(lift.rows.every(r => !r.changed && r.after === r.before));
+  const audit = auditYouthLevelCeilings({riders, lift, newRows: [], levelCeilings, targetSeason: S});
+  assert.equal(audit.violations.length, 0);
+  assert.equal(audit.existingAbove.length, riders.length);
+});
+
+
+test("a private level policy cannot be silently ignored outside lift mode", () => {
+  assert.throws(() => parseArgs(["--juniors=0", "--match-human-level", "--level-policy=balance-internals/test.json"]), /requires --lift-existing/);
+});
+
+test("private markdown records missing reference, violations and unchanged exceptions", async () => {
+  const { renderCeilingAudit } = await import("./generateYouthSquadsS4.js");
+  const text = renderCeilingAudit({checked: 12, missing: [{}], violations: [], existingAbove: [{age: 18, level: 40, ceiling: 30}]});
+  assert.match(text, /missing: 1/);
+  assert.match(text, /violations: 0/);
+  assert.match(text, /existingAbove: 1/);
+  assert.match(text, /40/);
 });

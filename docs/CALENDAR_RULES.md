@@ -1643,8 +1643,8 @@ dermed ændres hverken parcours-seed eller SQL-seedets idempotens.
 
 Antallet er katalogforsyning, ikke en måling af pakkede uger eller et løfte om at
 alle løb bruges. Uge-tætheden, 140-løbsdagsaksen og felt-gaten skal verificeres
-separat i ungdomspakkeren. Junior-deltagelse kræver sæsonalder 17-18;
-16-årige i juniortruppen er ikke løbsberettigede.
+separat i ungdomspakkeren. Junior-deltagelse kræver sæsonalder 16-18
+(ejer 24/9, #5645; [`YOUTH_RULES.md`](YOUTH_RULES.md) §2): 16-årige i juniortruppen er løbsberettigede.
 
 Navne er omskrevet med lokale løbsord og stednavne, inspireret af virkelige og
 historiske ungdomsløb. Datoerne er tilbagevendende spilankre, ikke en officiel

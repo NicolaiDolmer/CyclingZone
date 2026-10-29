@@ -608,7 +608,11 @@ test("#2757 S1: v2, endagsloeb, bjerg og flad er uaendrede", () => {
   for (const over of [{ race: ONE_DAY }, { route: MOUNTAIN }, { route: FLAT_SPRINT }] as Partial<AiTacticsInput>[]) {
     const v3 = generateAiTeamOrder(s1Input(over));
     assert.equal(Object.values(v3.reasons.riders).some((r) => r.includes("Pointjagt")), false, JSON.stringify(over));
-    assert.deepEqual(v3.order, generateAiTeamOrder(s1Input({ ...over, rules_revision: "s5_profiles_v2" })).order, `samme ordre som v2: ${JSON.stringify(over)}`);
+    // #7003 (kun v3, spec 2026-10-25-taktik-roller-design §3): en udbrudsrytter koerer ikke
+    // ogsaa i toget. Det er den eneste tilladte forskel fra v2.
+    const v2Order = generateAiTeamOrder(s1Input({ ...over, rules_revision: "s5_profiles_v2" })).order;
+    const expected = { ...v2Order, riders: v2Order.riders.map((r) => (r.try_break ? { ...r, leadout: false } : r)) };
+    assert.deepEqual(v3.order, expected, `samme ordre som v2 (bortset fra #7003): ${JSON.stringify(over)}`);
   }
 });
 

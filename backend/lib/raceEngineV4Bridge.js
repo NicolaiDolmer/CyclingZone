@@ -576,7 +576,7 @@ export function withS5ThreatModel(gcContext, startlist) {
  */
 export function buildV4StageInput({
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
-  rulesRevision = "legacy", gcStandings = null, formPeaks = true,
+  rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false,
 }) {
   // #5955: løbets bundne taktiske regel-revision (raceRunner.bindRaceRulesRevision).
   // En ukendt værdi er en fejl, aldrig nyeste regler.
@@ -649,6 +649,10 @@ export function buildV4StageInput({
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
   if (isOrdersGcRulesRevision(rulesRevision)) {
     input.rules_revision = rulesRevision;
+    // #6649 (KUN s5_profiles_v3): dagsformen med forklaring kun naar kalderen eksplicit
+    // sender dayForm6649=true. raceRunner goer det kun naar app_config day_form_6649 = "on"
+    // (dayForm6649Flag.js); vaerdien er med i run-identiteten og #1857-genafspilningen.
+    if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
     // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
     input.gc_context = buildGcContext({
       isStageRace,
@@ -720,7 +724,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -728,7 +732,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med

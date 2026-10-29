@@ -5,6 +5,7 @@
 //  3. Private taktik-ordrer (team_orders) indgår ikke i prognosen.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 
 import { resolveRaceEngineV4, simulateStageByIndex } from "./raceRunner.js";
 import { loadRaceEngineV4 } from "./raceEngineV4Bridge.js";
@@ -53,9 +54,10 @@ function makeSupabase(canned) {
   return { from, rpc: async (name) => { if (!/^(find|get)_/.test(name)) writes.push({ op: "rpc", name }); return { data: null, error: null }; }, __writes: writes };
 }
 
-test("dryRun-prognosen: intet skrives, egne seeds, ingen private ordrer", async () => {
+async function runDryOutlook(stageRoles = []) {
   const supabase = makeSupabase({
     race_stage_profiles: [STAGE],
+    race_stage_roles: stageRoles,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
     riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "" })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
@@ -66,9 +68,10 @@ test("dryRun-prognosen: intet skrives, egne seeds, ingen private ordrer", async 
   const engine = await loadRaceEngineV4();
   const seeds = [];
   const orderRowsSeen = [];
+  const entrantInputs = [];
   const spyEngine = {
     ...engine,
-    simulateStage: (args) => { seeds.push(args.seedString); orderRowsSeen.push(args.teamOrderRows); return engine.simulateStage(args); },
+    simulateStage: (args) => { seeds.push(args.seedString); orderRowsSeen.push(args.teamOrderRows); entrantInputs.push(structuredClone(args.entrants)); return engine.simulateStage(args); },
   };
   const origError = console.error;
   const origLog = console.log;
@@ -98,10 +101,32 @@ test("dryRun-prognosen: intet skrives, egne seeds, ingen private ordrer", async 
     console.error = origError;
     console.log = origLog;
   }
+  return { supabase, seeds, orderRowsSeen, entrantInputs, out };
+}
+
+test("dryRun-prognosen: intet skrives, egne seeds, ingen private ordrer", async () => {
+  const { supabase, seeds, orderRowsSeen, out } = await runDryOutlook();
   assert.deepEqual(supabase.__writes, [], "dryRun må ikke skrive");
   assert.ok(seeds.length >= 3, "motoren kørte prognosens kørsler");
   assert.ok(seeds.every((s) => s.startsWith(`breakaway-outlook:${RACE.id}:1:`)), `kun prognose-seeds: ${seeds.join(",")}`);
   assert.ok(orderRowsSeen.every((rows) => !rows || rows.length === 0), "ingen private ordrer i prognosen");
   assert.equal(out.available, true, JSON.stringify(out));
   assert.equal(out.runs, 3);
+});
+
+test("private legacy effort cannot affect any shared forecast simulation", async () => {
+  const stageRoles = [
+    { stage_number: 1, rider_id: "r01", race_role: "captain", effort: "all_out" },
+    { stage_number: 1, rider_id: "r02", race_role: "hunter", effort: "normal" },
+  ];
+  const opposite = stageRoles.map(row => ({ ...row, effort: row.effort === "normal" ? "all_out" : "normal" }));
+  const first = await runDryOutlook(stageRoles);
+  const second = await runDryOutlook(opposite);
+  for (const run of [first, second]) {
+    assert.deepEqual(run.supabase.__writes, [], "forecast dryRun remains read-only");
+    assert.ok(run.entrantInputs.every(entrants => entrants.every(entrant => !Object.hasOwn(entrant, "effort"))), "initial capture and all samples exclude private legacy effort");
+    assert.ok(run.entrantInputs.every(entrants => stageRoles.every(row => entrants.some(entrant => entrant.rider_id === row.rider_id && entrant.race_role === row.race_role))), "approved role inputs remain intact");
+  }
+  assert.ok(isDeepStrictEqual(first.entrantInputs, second.entrantInputs), "opposing private orders cannot change engine inputs");
+  assert.ok(isDeepStrictEqual(first.out, second.out), "opposing private orders cannot change shared forecast");
 });

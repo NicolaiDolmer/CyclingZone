@@ -146,14 +146,14 @@ test("getBreakawayOutlookCached: samtidige kald deler én beregning; ny etape = 
   let n = 0;
   const compute = async () => { n += 1; return { available: true, n }; };
   const [a, b] = await Promise.all([
-    getBreakawayOutlookCached({ race: RACE, compute }),
-    getBreakawayOutlookCached({ race: RACE, compute }),
+    getBreakawayOutlookCached({ now: () => 0, race: RACE, compute }),
+    getBreakawayOutlookCached({ now: () => 0, race: RACE, compute }),
   ]);
   assert.equal(n, 1);
   assert.deepEqual(a, b);
-  await getBreakawayOutlookCached({ race: RACE, compute });
+  await getBreakawayOutlookCached({ now: () => 0, race: RACE, compute });
   assert.equal(n, 1, "inden for TTL genbruges svaret");
-  await getBreakawayOutlookCached({ race: { ...RACE, stages_completed: 2 }, compute });
+  await getBreakawayOutlookCached({ now: () => 0, race: { ...RACE, stages_completed: 2 }, compute });
   assert.equal(n, 2);
   assert.notEqual(outlookCacheKey(RACE), outlookCacheKey({ ...RACE, stages_completed: 2 }));
 });
@@ -169,7 +169,7 @@ test("getBreakawayOutlookCached: prognoser for forskellige løb kører én ad ga
     running -= 1;
     return { available: true };
   };
-  await Promise.all(["a", "b", "c"].map((id) => getBreakawayOutlookCached({ race: { id, stages_completed: 0 }, compute })));
+  await Promise.all(["a", "b", "c"].map((id) => getBreakawayOutlookCached({ now: () => 0, race: { id, stages_completed: 0 }, compute })));
   assert.equal(maxRunning, 1);
 });
 
@@ -178,13 +178,13 @@ test("getBreakawayOutlookCached: fuld kø → busy uden cache, næste kald prøv
   let release;
   const gate = new Promise((r) => { release = r; });
   const slow = () => gate.then(() => ({ available: true }));
-  const first = getBreakawayOutlookCached({ race: { id: "q1", stages_completed: 0 }, compute: slow, maxQueued: 1 });
-  const busy = await getBreakawayOutlookCached({ race: { id: "q2", stages_completed: 0 }, compute: slow, maxQueued: 1 });
+  const first = getBreakawayOutlookCached({ now: () => 0, race: { id: "q1", stages_completed: 0 }, compute: slow, maxQueued: 1 });
+  const busy = await getBreakawayOutlookCached({ now: () => 0, race: { id: "q2", stages_completed: 0 }, compute: slow, maxQueued: 1 });
   assert.deepEqual(busy, { available: false, reason: "busy" });
   release();
   await first;
   await new Promise((r) => setImmediate(r));
-  const again = await getBreakawayOutlookCached({ race: { id: "q2", stages_completed: 0 }, compute: async () => ({ available: true, retried: true }), maxQueued: 1 });
+  const again = await getBreakawayOutlookCached({ now: () => 0, race: { id: "q2", stages_completed: 0 }, compute: async () => ({ available: true, retried: true }), maxQueued: 1 });
   assert.deepEqual(again, { available: true, retried: true });
 });
 
@@ -198,8 +198,8 @@ test("getBreakawayOutlookCached: udløbet TTL beregner forfra; fejl caches ikke"
   await getBreakawayOutlookCached({ race: RACE, compute, now: () => t, ttlMs: 10 });
   assert.equal(n, 2);
   __resetBreakawayOutlookCache();
-  await assert.rejects(getBreakawayOutlookCached({ race: RACE, compute: async () => { throw new Error("boom"); } }));
-  await getBreakawayOutlookCached({ race: RACE, compute });
+  await assert.rejects(getBreakawayOutlookCached({ now: () => 0, race: RACE, compute: async () => { throw new Error("boom"); } }));
+  await getBreakawayOutlookCached({ now: () => 0, race: RACE, compute });
   assert.equal(n, 3);
 });
 
