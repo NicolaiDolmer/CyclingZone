@@ -233,6 +233,45 @@ test("isTrainingCatalogV3Enabled: viewer-gate, fail-safe off", async () => {
   assert.equal(await isTrainingCatalogV3Enabled(null), false);
 });
 
+test("drift-vagt: frontendens v3-spejl matcher backend præcist", async () => {
+  const fe = await import("../../frontend/src/lib/training.js");
+  const feDays = await import("../../frontend/src/lib/trainingDayTypes.js");
+  assert.deepEqual([...fe.V3_NEW_HARD_SESSIONS], [...V3_NEW_HARD_SESSIONS]);
+  assert.deepEqual(JSON.parse(JSON.stringify(fe.TRAINING_FOCUS_ABILITIES_V3)), JSON.parse(JSON.stringify(V3_TRAINING_FOCUSES)));
+  assert.deepEqual(JSON.parse(JSON.stringify(feDays.TRAINING_SESSIONS_BY_LEVEL_V3)), JSON.parse(JSON.stringify(TRAINING_SESSIONS_BY_LEVEL_V3)));
+  assert.deepEqual({ ...feDays.SESSION_INTENSITY_V3 }, { ...SESSION_INTENSITY_V3 });
+  // Off: frontendens visning er dagens katalog.
+  assert.deepEqual(fe.focusAbilitiesFor("threshold", { catalogV3: false }), TODAY_FOCUSES.threshold);
+  assert.deepEqual([...fe.focusAbilitiesFor("threshold", { catalogV3: true })], ["tempo", "endurance"]);
+  assert.deepEqual([...fe.focusAbilitiesFor("itt_long", { catalogV3: false })], ["time_trial", "endurance"]);
+  assert.equal(feDays.sessionI18nKey("dayPanel.session", "vo2max_climb", false), "dayPanel.session_vo2max_climb");
+  assert.equal(feDays.sessionI18nKey("dayPanel.session", "vo2max_climb", true), "dayPanel.sessionV3_vo2max_climb");
+  assert.equal(feDays.sessionI18nKey("dayPanel.sessionNote", "threshold", true), "dayPanel.sessionNoteV3_threshold");
+  assert.equal(feDays.sessionI18nKey("dayPanel.session", "threshold", true), "dayPanel.session_threshold");
+});
+
+test("i18n: alle v3-nøgler findes i alle fem sprog", () => {
+  for (const lang of ["en", "da", "es", "fr", "nl"]) {
+    const training = JSON.parse(readFileSync(path.join(here, `../../frontend/public/locales/${lang}/training.json`), "utf8"));
+    const rider = JSON.parse(readFileSync(path.join(here, `../../frontend/public/locales/${lang}/rider.json`), "utf8"));
+    for (const s of V3_NEW_HARD_SESSIONS) {
+      assert.ok(training.dayPanel[`session_${s}`], `${lang} session_${s}`);
+      assert.ok(training.dayPanel[`sessionNote_${s}`], `${lang} sessionNote_${s}`);
+      assert.ok(training.mobile[`sessionShort_${s}`], `${lang} sessionShort_${s}`);
+      assert.ok(rider.profile.training.focus[s], `${lang} rider focus ${s}`);
+      assert.ok(rider.training[`focus_${s}`], `${lang} rider focus_${s}`);
+    }
+    for (const s of ["vo2max_climb", "vo2max_punch"]) {
+      assert.ok(training.dayPanel[`sessionV3_${s}`], `${lang} sessionV3_${s}`);
+      assert.ok(training.mobile[`sessionShortV3_${s}`], `${lang} sessionShortV3_${s}`);
+    }
+    for (const s of ["threshold", "sprint"]) assert.ok(training.dayPanel[`sessionNoteV3_${s}`], `${lang} sessionNoteV3_${s}`);
+    for (const v of Object.values(training.dayPanel)) {
+      if (typeof v === "string") assert.ok(!v.includes("—"), `${lang}: em-dash i training.dayPanel`);
+    }
+  }
+});
+
 test("flaget står i STAGE_FLAGS og er spiller-synligt; migrationen seeder 'off' idempotent", () => {
   assert.ok(STAGE_FLAGS.some((f) => f.key === TRAINING_CATALOG_V3_FLAG_KEY && f.area === "training"));
   assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(TRAINING_CATALOG_V3_FLAG_KEY));
