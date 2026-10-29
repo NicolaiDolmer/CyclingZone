@@ -118,6 +118,18 @@ features:
     roadmap_en: "Form peaks count in races again: the form program you plan in the Season Planner lifts your rider in the window, with a dip after."
     roadmap_da: "Formtoppe tæller i løbene igen: formprogrammet, du planlægger i sæsonplanlæggeren, løfter rytteren i vinduet, med et dyk bagefter."
 
+  - id: race-breakaway-outlook
+    area: race-day
+    title_en: Engine breakaway forecast
+    title_da: Motorens udbrudsbud
+    state: building
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 6912
+    verified: 2026-10-29
+    decision: ejer-beslutning
+    decide_by: 2026-11-08
+    note: Ingen app_config-række (fravær = off). Ejer-go til tænding.
+
   - id: race-day-form-6649
     area: race-engine
     title_en: Day form with causes
@@ -387,7 +399,7 @@ features:
     ssot: docs/TRANSFER_MARKET_RULES.md
     epic: 3134
     verified: 2026-10-15
-    note: Bygget; #3134 lukket af ejeren 18/8. Flaget står false i prod (læst 15/10); kun ejeren flipper.
+    note: Bygget; flag false i prod (15/10). Kun ejeren flipper.
 
   - id: ai-unsolicited-bids
     area: market
@@ -867,7 +879,7 @@ features:
     flag: development_curve_b
     ssot: docs/TRAINING_RULES.md
     epic: 3564
-    note: "Off 29/10 (ejer-go): blødt loft gav 0 fremgang over loftet (mur, #7316). Tændes igen når rettelsen er live."
+    note: "Off 29/10: mur over blødt loft (#7316)."
     verified: 2026-10-29
     decision: taend
     decide_by: 2026-11-05
@@ -1208,7 +1220,7 @@ features:
     flag: push_enabled
     epic: 6590
     verified: 2026-10-24
-    note: push_enabled beta 19/10; on for alle 24/10 17:29 UTC efter ejer-ja (#7153, læst tilbage i prod). VAPID-nøgler i Infisical prod + Railway.
+    note: On for alle 24/10 efter ejer-ja (#7153). VAPID-nøgler i Infisical + Railway.
     roadmap_en: "Push notifications on your phone: outbid in the last minute, one race summary per race day, and offers waiting for you. Never between 22:00 and 08:00, at most 6 a day."
     roadmap_da: "Push-notifikationer på telefonen: overbudt i sidste minut, ét løbsresumé pr. løbsdag og tilbud, der venter på dig. Aldrig mellem 22 og 08, højst 6 om dagen."
 

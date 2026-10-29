@@ -551,6 +551,17 @@
     },
     "hunterExplainer": {
       "dayLine": "Ton chasseur tente de prendre l'échappée matinale. C'est le peloton qui décide, le jour même, si elle va au bout.",
+      "outlook": {
+        "about": "Prévision du moteur : l'échappée va au bout environ {k} fois sur {n}.",
+        "under": "Prévision du moteur : l'échappée va au bout moins de {k} fois sur {n}.",
+        "over": "Prévision du moteur : l'échappée va au bout plus de {k} fois sur {n}.",
+        "stage": "Étape {stage}",
+        "reason": {
+          "nobodyChases": "Peu d'équipes ont une raison de la chasser.",
+          "fewChase": "Une ou deux équipes ont en général une raison de la chasser.",
+          "manyChase": "Plusieurs équipes ont en général une raison de la chasser."
+        }
+      },
       "candidatesHint": "Classés par agressivité : l'envie d'attaquer et de s'engager dans une action.",
       "noCandidates": "Choisis des coureurs pour cette course pour voir tes meilleurs chasseurs.",
       "aggression": "Agressivité",
