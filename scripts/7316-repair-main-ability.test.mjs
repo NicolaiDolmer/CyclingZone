@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   DEFAULT_WINDOW, computeRepairPlan, summarizePlan, planHash, rewindAbilities,
   mainAbilityForFocus, isTickInWindow, buildTeamApplySql, parseArgs,
+  parseExportFile, planInputFromExport,
 } from "./7316-repair-main-ability.mjs";
 import { VISIBLE_ABILITIES } from "../backend/lib/abilityDerivation.js";
 import { buildCapsForRider } from "../backend/lib/riderProgression.js";
@@ -101,12 +102,16 @@ test("idempotens: efter apply (ledger + bar) krediteres intet igen", () => {
 test("ingen kredit over det haarde loft", () => {
   const probe = derived(R1, abilities({ climbing: 55 }));
   const cap = probe.ability_caps.climbing;
-  // Rytteren staar 0,3 under loftet nu: kreditten maa hoejst fylde det hul.
-  const abs = abilities({ climbing: Math.floor(cap) - 1 });
+  // Ved tickene stod evnen langt under loftet (stor S4-fremgang); nu staar evne + bar
+  // kun 0,001 under loftet, saa kreditten skal klippes til det hul.
+  const abs = abilities({ climbing: cap - 1 });
   const input = baseInput({
-    derivedById: new Map([[R1, derived(R1, abs, { ability_progress: { climbing: 0.7 } })]]),
+    ticks: baseInput().ticks.map((t) => ({ ...t, abilities_at_tick: { climbing: 30 } })),
+    derivedById: new Map([[R1, derived(R1, abs, { ability_progress: { climbing: 0.999 } })]]),
   });
   const plan = computeRepairPlan(input);
+  assert.equal(plan.entries.length, 1);
+  assert.equal(plan.entries[0].clamped, true);
   for (const e of plan.entries) {
     const d = input.derivedById.get(e.riderId);
     assert.ok(d[e.ability] + d.ability_progress[e.ability] + e.credit <= d.ability_caps[e.ability] + 1e-9);
@@ -196,4 +201,25 @@ test("CLI: dry-run er default, apply kraever eksplicit flag", () => {
   assert.equal(parseArgs([]).apply, false);
   assert.equal(parseArgs(["--apply", "--confirm-token=abc"]).confirmToken, "abc");
   assert.throws(() => parseArgs(["--force"]), /unknown argument/);
+  assert.throws(() => parseArgs(["--apply", "--input=x.json"]), /cannot be combined/);
+});
+
+test("eksport-stien: MCP-svar parses, og planen matcher DB-stien", async () => {
+  const input = baseInput();
+  const d = input.derivedById.get(R1);
+  const exported = {
+    window: DEFAULT_WINDOW,
+    ticks: input.ticks.map((t) => ({ ...t, abilities_at_tick: { climbing: 55 } })),
+    riders: [rider(R1)],
+    derived: [{ rider_id: R1, climbing: 55, ability_caps: { climbing: d.ability_caps.climbing }, ability_progress: { climbing: 0 } }],
+    teams: [input.teamsById.get(MANAGER)],
+    seasons: [{ id: SEASON, number: 5 }],
+    team_facilities: [], team_staff: [], staff_derived_abilities: [],
+  };
+  const tag = "untrusted-data-abc";
+  const envelope = JSON.stringify({ result: `Note <${tag}> boundaries.\n\n<${tag}>\n${JSON.stringify([{ export: exported }])}\n</${tag}>\n\nUse this data.` });
+  const fromExport = computeRepairPlan(await planInputFromExport(parseExportFile(envelope)));
+  const fromDb = computeRepairPlan(input);
+  assert.equal(fromExport.hash, fromDb.hash);
+  assert.equal(fromExport.entries[0].credit, fromDb.entries[0].credit);
 });
