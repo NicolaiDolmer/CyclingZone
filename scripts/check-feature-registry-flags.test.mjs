@@ -6,7 +6,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { evaluateFlags, findStale, normalizeFlagValue } from "./check-feature-registry-flags.mjs";
+import {
+  evaluateFlags,
+  findPendingFlagKeys,
+  findStale,
+  normalizeFlagValue,
+  parseBaseRef,
+} from "./check-feature-registry-flags.mjs";
 
 const entry = (over) => ({
   id: "x",
@@ -70,6 +76,99 @@ test("ukendt flag-noegle fejler", () => {
 
 test("poster uden flag evalueres ikke", () => {
   assert.deepEqual(evaluateFlags([entry({})], new Map()), []);
+});
+
+const seed = (value) =>
+  `INSERT INTO public.app_config (key, value, description)\nVALUES ('new_flag', ${value}, 'x')\nON CONFLICT (key) DO NOTHING;`;
+
+test("findPendingFlagKeys: migration der seeder off/false/beta er pending", () => {
+  for (const v of [`'"off"'::jsonb`, `'false'::jsonb`, `'"beta"'::jsonb`, "false"]) {
+    assert.deepEqual([...findPendingFlagKeys([seed(v)]).keys()], ["new_flag"], v);
+  }
+});
+
+test("findPendingFlagKeys: migration der saetter on/true er IKKE pending", () => {
+  for (const v of [`'"on"'::jsonb`, `'true'::jsonb`, "true", `'"ON"'::jsonb`]) {
+    assert.equal(findPendingFlagKeys([seed(v)]).size, 0, v);
+  }
+});
+
+test("findPendingFlagKeys: kun app_config-inserts, kun den praecise noegle, kommentarer ignoreres", () => {
+  const other = `INSERT INTO public.other_table (key, value) VALUES ('new_flag', 'false'::jsonb);`;
+  const commented = `-- INSERT INTO public.app_config (key, value) VALUES ('new_flag', 'false'::jsonb);`;
+  assert.equal(findPendingFlagKeys([other, commented, ""]).size, 0);
+  const multi = `INSERT INTO app_config (key, value) VALUES ('a_flag', '"off"'::jsonb), ('b_flag', 'true'::jsonb);`;
+  assert.deepEqual([...findPendingFlagKeys([multi]).keys()], ["a_flag"]);
+});
+
+test("findPendingFlagKeys: en senere seed der taender noeglen fjerner undtagelsen (Codex P2)", () => {
+  const off = seed(`'"off"'::jsonb`);
+  const on = `INSERT INTO public.app_config (key, value) VALUES ('new_flag', '"on"'::jsonb)\nON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;`;
+  assert.equal(findPendingFlagKeys([off + "\n" + on]).size, 0, "samme fil");
+  assert.equal(findPendingFlagKeys([off, on]).size, 0, "to filer");
+  assert.equal(findPendingFlagKeys([on, off]).size, 0, "omvendt raekkefoelge");
+  const upd = `UPDATE public.app_config SET value = '"on"'::jsonb WHERE key = 'new_flag';`;
+  assert.equal(findPendingFlagKeys([off, upd]).size, 0, "UPDATE der taender");
+  const updOff = `UPDATE public.app_config SET value = '"off"'::jsonb WHERE key = 'new_flag';`;
+  assert.deepEqual([...findPendingFlagKeys([off, updOff]).keys()], ["new_flag"], "UPDATE der slukker");
+});
+
+test("findPendingFlagKeys: noegle og vaerdi laeses efter kolonnelisten (Codex P2)", () => {
+  const swapped = `INSERT INTO public.app_config (description, value, key) VALUES ('new_flag', 'false'::jsonb, 'actual_flag');`;
+  assert.deepEqual([...findPendingFlagKeys([swapped]).keys()], ["actual_flag"]);
+  const noCols = `INSERT INTO public.app_config VALUES ('new_flag', 'false'::jsonb);`;
+  assert.equal(findPendingFlagKeys([noCols]).size, 0, "uden kolonneliste: ingen undtagelse");
+  const semi = `INSERT INTO public.app_config (key, value, description) VALUES ('new_flag', '"off"'::jsonb, 'a; b');`;
+  assert.deepEqual([...findPendingFlagKeys([semi]).keys()], ["new_flag"], "semikolon i beskrivelsen");
+});
+
+test("findPendingFlagKeys: blok-kommentarer og dollar-quoted tekst taeller ikke", () => {
+  const block = `/* INSERT INTO app_config (key, value) VALUES ('new_flag', 'false'::jsonb); */`;
+  const dollar = `DO $$ BEGIN -- INSERT INTO app_config (key, value) VALUES ('new_flag', 'false'::jsonb);\nEND $$;`;
+  assert.equal(findPendingFlagKeys([block, dollar]).size, 0);
+});
+
+test("PR-kontekst: seed-vaerdi skal passe til registrets state", () => {
+  const pending = findPendingFlagKeys([seed(`'"off"'::jsonb`)]);
+  for (const state of ["live", "beta"]) {
+    const [row] = evaluateFlags([entry({ flag: "new_flag", state })], new Map(), pending);
+    assert.equal(row.level, "FAIL", `${state} + seed off`);
+  }
+  const [ok] = evaluateFlags([entry({ flag: "new_flag", state: "beta" })], new Map(), findPendingFlagKeys([seed(`'"beta"'::jsonb`)]));
+  assert.equal(ok.level, "PENDING");
+});
+
+test("PR-kontekst: ny flag med pending-migration godkendes (PENDING)", () => {
+  const pending = findPendingFlagKeys([seed(`'"off"'::jsonb`)]);
+  const [row] = evaluateFlags([entry({ flag: "new_flag", state: "building" })], new Map(), pending);
+  assert.equal(row.level, "PENDING");
+});
+
+test("PR-kontekst: migration der saetter on afvises (FAIL)", () => {
+  const pending = findPendingFlagKeys([seed(`'"on"'::jsonb`)]);
+  const [row] = evaluateFlags([entry({ flag: "new_flag", state: "live" })], new Map(), pending);
+  assert.equal(row.level, "FAIL");
+});
+
+test("PR-kontekst: ingen migration for noeglen = FAIL som foer", () => {
+  const pending = findPendingFlagKeys([seed(`'"off"'::jsonb`)]);
+  const [row] = evaluateFlags([entry({ flag: "anden_flag" })], new Map(), pending);
+  assert.equal(row.level, "FAIL");
+});
+
+test("push-kontekst (ingen baseRef): uaendret, FAIL for ukendt noegle", () => {
+  assert.equal(parseBaseRef([], {}), null);
+  assert.equal(parseBaseRef([], { GITHUB_EVENT_NAME: "push" }), null);
+  assert.equal(parseBaseRef([], { GITHUB_EVENT_NAME: "pull_request" }), "origin/main");
+  assert.equal(parseBaseRef(["--base-ref", "origin/dev"], {}), "origin/dev");
+  const [row] = evaluateFlags([entry({ flag: "new_flag" })], new Map());
+  assert.equal(row.level, "FAIL");
+});
+
+test("pending-noegle der findes i prod evalueres normalt", () => {
+  const pending = new Map([["f", "off"]]);
+  const [row] = evaluateFlags([entry({ flag: "f", state: "live" })], new Map([["f", "off"]]), pending);
+  assert.equal(row.level, "FAIL");
 });
 
 test("findStale flager kun poster aeldre end 60 dage", () => {
