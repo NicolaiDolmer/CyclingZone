@@ -29,6 +29,7 @@ import { previewYouthSquadsPayload, previewYouthRiderRows } from "./youthSquadsM
 import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
 import { stagePlanPreviewActive, stagePlanPreviewTimeline, withStagePlanPreview } from "../components/race/StagePlanPreviewMock.ts"; // #7003
+import { luxuryHelperPreviewActive, withLuxuryHelperSelection, withLuxuryHelperStageRoles } from "./luxuryHelperPreviewMock.ts"; // #5982
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -554,7 +555,8 @@ export function installPreviewMock() {
         const parsed = new URL(url, window.location.origin);
         // #6139: udtagelsen foelger Train now-tilstanden (?trainNow=locked eller et tryk).
         if (/\/api\/races\/[^/]+\/selection$/.test(parsed.pathname)) {
-          return jsonResponse(trainNowSelectionPreview(apiResponse(parsed.pathname, parsed.search)));
+          const selection = trainNowSelectionPreview(apiResponse(parsed.pathname, parsed.search));
+          return jsonResponse(luxuryHelperPreviewActive() ? withLuxuryHelperSelection(selection) : selection); // #5982: ?luxuryHelper=1
         }
         // #6383: dagsboardet og saesonmatrixen foelger samme Train now-tilstand.
         if (parsed.pathname.endsWith("/api/races/distribution")) {
@@ -563,6 +565,10 @@ export function installPreviewMock() {
         }
         if (parsed.pathname.endsWith("/api/races/selection/season")) {
           return jsonResponse(trainNowSeasonPreview(apiResponse(parsed.pathname, parsed.search)));
+        }
+        // #5982: ?luxuryHelper=1 goer "rider-96" til luksushjaelper i etape-rollerne.
+        if (luxuryHelperPreviewActive() && /\/api\/races\/[^/]+\/stage-roles$/.test(parsed.pathname)) {
+          return jsonResponse(withLuxuryHelperStageRoles(apiResponse(parsed.pathname, parsed.search)));
         }
         return jsonResponse(apiResponse(parsed.pathname, parsed.search));
       }

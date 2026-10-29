@@ -453,3 +453,43 @@ test("taktik (#6095): uden beta-flaget har rollevælgeren intet etape-valg", asy
   await expect(visible(panel.getByText("Fra etape 2 og løbet ud"))).toBeVisible();
   await panel.screenshot({ path: evidenceShotPath(`pr-screens/6095-role-noscope-${testInfo.project.name}.png`) });
 });
+
+// #7003 (spec 2026-10-25-taktik-roller-design §3): modsatte ordrer kan ikke
+// slaas til, og en gemt raekke der allerede bryder reglen faar "Vaelg en".
+test("taktik (#7003): modsatte ordrer spaerres, gamle modsaetninger faar 'Vælg én'", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const riders = [
+    ...RIDERS,
+    { rider_id: "r3", name: "Rider Three", race_role: "helper", abandoned: false },
+  ];
+  await mockTacticsRace(page, {
+    race: raceFixture({ stages: 5, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+    riders,
+    overrides: [
+      { stage_number: 2, rider_id: "r2", race_role: "helper", effort: "protect" },
+      { stage_number: 2, rider_id: "r3", race_role: "helper", effort: "grupetto" },
+    ],
+  });
+  await page.route(`**/api/races/${RACE_ID}/team-orders`, (route) => {
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(route.request()) });
+    return json(route, {
+      stage_count: 5, stages_completed: 1, riders,
+      stages: [1, 2, 3, 4, 5].map((n) => ({ stage_number: n, locked: n <= 1, scheduled_at: `2026-10-2${n}T12:00:00Z` })),
+      // Gemt foer reglen: hjaelperen arbejder OG forsoeger udbrud.
+      orders: [{ stage_number: 2, breakaway_stance: "neutral", riders: [{ rider_id: "r2", effort: "protect", try_break: true, leadout: false }] }],
+    });
+  });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await expect(panel).toBeVisible();
+  await expect(visible(panel.getByTestId("opposite-orders-pick-one"))).toHaveText("Vælg én");
+  // Grupetto-rytteren kan ikke slaa "Forsoeg udbrud" til.
+  await expect(visible(panel.getByRole("button", { name: /Rider Three/ }).filter({ hasText: "Forsøg udbrud" }))).toBeDisabled();
+  await expect(visible(panel.getByText("Ikke sammen med Grupetto."))).toBeVisible();
+  await expect(visible(panel.getByText("En rytter der arbejder for lederen, kan ikke forsøge udbrud."))).toBeVisible();
+  await panel.screenshot({ path: evidenceShotPath(`pr-screens/7003-opposite-orders-${testInfo.project.name}.png`) });
+});

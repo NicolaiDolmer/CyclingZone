@@ -1810,6 +1810,10 @@
         "title": "A tope y trabajo en equipo",
         "text": "Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo."
       },
+      "luxuryHelper": {
+        "title": "El gregario de lujo",
+        "text": "Un gregario de lujo es un gregario con un plan de etapa ya hecho: se reserva en el pelotón y luego trabaja para tu jefe de filas en la subida decisiva, la última del día. En el plan de etapa puedes mover su trabajo a otra subida o darle otro plan. Si tu jefe de filas se descuelga o abandona, corre su propia carrera. Un equipo puede tener un gregario de lujo, y solo en carreras con las reglas más nuevas."
+      },
       "weatherAndCobbles": {
         "title": "Clima y adoquines",
         "text": "Cada etapa lleva su propio clima, y la página de la etapa lo muestra: seco, lluvia o viento. Seco es la base tranquila, no cambia nada. La lluvia ralentiza toda la etapa. El viento muerde sobre todo donde la carretera es abierta; una subida está resguardada por su propia pendiente. Ambos castigan más a los corredores con poco descenso y poca durabilidad. La lluvia también aumenta el riesgo de caída en adoquines, gravel y descensos atrevidos. Cuando la lluvia o el viento costaron fuerzas a los corredores, la historia de la carrera lo dice en una línea, nunca con un número asociado. Una contrarreloj por equipos se corre sin clima."
@@ -1823,7 +1827,7 @@
     },
     "peakWhatItDoes": {
       "q": "¿Qué hace un pico?",
-      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. Los picos todavía no cuentan en las carreras; las carreras usan su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
+      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. En las carreras, el pico se suma a su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
     },
     "peakTraining": {
       "q": "¿Cómo funciona el entrenamiento de pico?",

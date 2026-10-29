@@ -34,3 +34,18 @@ function Get-ReviewGateCheckExitCode {
   if ($gate[0].bucket -eq 'pending') { return 8 }
   return 1
 }
+
+# #7312: gh pr checks omits a green audit inside a skipped Actions suite.
+# Read the actual checks on the pinned PR head; never infer success from the suite.
+function Get-LeagueRestCheckExitCode {
+  param([object[]] $Checks, [string] $HeadSha)
+  if ($HeadSha -notmatch '^[0-9a-f]{40}$' -or $Checks.Count -ne 1) { return 1 }
+  try {
+    $check = $Checks[0]
+    if ($check.name -ne 'league-size-invariant' -or $check.head_sha -ne $HeadSha -or
+        $check.external_id -ne "league-audit:$HeadSha" -or $check.app.slug -ne 'github-actions') { return 1 }
+    if ($check.status -in @('queued', 'in_progress')) { return 8 }
+    if ($check.status -eq 'completed' -and $check.conclusion -eq 'success') { return 0 }
+  } catch { return 1 }
+  return 1
+}

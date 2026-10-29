@@ -263,10 +263,19 @@ export function codexSeverity(body) {
   return String(body || "").match(/!\[(P[0-3]) Badge\]/)?.[1] || null;
 }
 
+/** CodeRabbit's bot-authored severity header, metadata only; Codex policy is unchanged. */
+export function codeRabbitSeverity(body) {
+  const header = String(body || '').split(/\r?\n/).find(line => line.startsWith('**') && line.includes('** ·'));
+  const severity = header?.replace(/<[^>]*>/g, '').match(/\b(Critical|Major|Minor|Trivial)\*\*/i)?.[1]?.toLowerCase();
+  return ({critical:'P0',major:'P1',minor:'P2',trivial:'P3'})[severity] ?? null;
+}
 /** Blokerer et uloest Codex-fund merge? Kun P0, P1 og ukendt grad. */
 export function isBlockingSeverity(severity) {
   return severity == null || severity === "P0" || severity === "P1";
 }
+
+/** Codex' rene kvittering (ingen fund) paa et review. */
+export const CODEX_CLEAN_RE = /didn['’]t find any major issues/i;
 
 /** "**Reviewed commit:** `fda8692284`" i en Codex-review-krop. */
 export function parseCodexReviewedCommit(body) {
@@ -283,9 +292,15 @@ export function parseCodexReviewedCommit(body) {
  *   comments: {author, body}; reviews: {author, body, commit}; threads: {author, isResolved}
  * @returns {{ok: boolean, state: string, unresolved: number, detail: string}}
  */
-export function evaluateCodex({ comments = [], reviews = [], threads = [], headSha = null } = {}) {
+export function evaluateCodex({ comments = [], reviews = [], threads = [], headSha = null, independentlyVerifiedHead = false } = {}) {
   const isCodex = (x) => login(x.author) === CODEX_LOGIN;
-  const open = threads.filter((t) => isCodex(t) && !t.isResolved);
+  // Ejer 27/10: en uloest Codex-traad fra et AELDRE commit er forældet, naar Codex selv har
+  // kvitteret rent ("Didn't find any major issues") paa HEAD OG en uafhaengig Claude-markoer
+  // (clean/notes) gaelder HEAD. Saa skal ejeren aldrig klikke "Resolve" paa rettede fund.
+  const codexCleanOnHead = [...comments, ...reviews].some((c) => isCodex(c) && CODEX_CLEAN_RE.test(String(c.body || ""))
+    && shaMatchesHead(c.commit || parseCodexReviewedCommit(c.body), headSha));
+  const superseded = (t) => independentlyVerifiedHead && codexCleanOnHead && Boolean(t.commit) && !shaMatchesHead(t.commit, headSha);
+  const open = threads.filter((t) => isCodex(t) && !t.isResolved && !superseded(t));
   const unresolved = open.filter((t) => isBlockingSeverity(t.severity ?? codexSeverity(t.body))).length;
   const followUps = open.length - unresolved;
   const followUpNote = followUps > 0 ? ` (${followUps} P2/P3-fund blokerer ikke: saml dem i et opfoelgnings-issue)` : "";
@@ -363,8 +378,13 @@ export function evaluateGate({ author, draft = false, files = [], changedFiles =
   if (draft) {
     return { ok: false, risk, exempt: false, codex: null, claude: null, summary: "draft: gaten evalueres naar PR'en er ready" };
   }
-  const codex = evaluateCodex({ comments, reviews, threads, headSha });
   const claude = evaluateClaude([...comments, ...reviews], risk, headSha);
+  const claudeMarkerOnHead = findClaudeVerdict([...comments, ...reviews].filter((i) => {
+    const m = String(i.body || "").match(CLAUDE_MARKER_RE);
+    return Boolean(m) && shaMatchesHead(m[2], headSha);
+  }));
+  const independentlyVerifiedHead = claudeMarkerOnHead?.verdict === "clean" || claudeMarkerOnHead?.verdict === "notes";
+  const codex = evaluateCodex({ comments, reviews, threads, headSha, independentlyVerifiedHead });
   const ok = codex.ok && claude.ok;
   const summary = `${ok ? "OK" : "BLOKERET"} (${risk.level === "high" ? "hoejrisiko" : "lav risiko"}): Codex - ${codex.detail}; Claude - ${claude.detail}`;
   return { ok, risk, exempt: false, codex, claude, summary };
@@ -492,11 +512,11 @@ function fetchThreads(repo, pr) {
   const threads = [];
   let cursor = null;
   for (let page = 0; page < 20; page += 1) {
-    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body}}}}}}}`;
+    const q = `query($o:String!,$n:String!,$pr:Int!,$c:String){repository(owner:$o,name:$n){pullRequest(number:$pr){reviewThreads(first:100,after:$c){pageInfo{hasNextPage endCursor} nodes{isResolved comments(first:1){nodes{author{login} body pullRequestReview{databaseId} originalCommit{oid}}}}}}}}`;
     const args = ["api", "graphql", "-f", `query=${q}`, "-f", `o=${owner}`, "-f", `n=${name}`, "-F", `pr=${pr}`];
     if (cursor) args.push("-f", `c=${cursor}`);
     const conn = ghJson(args).data.repository.pullRequest.reviewThreads;
-    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body) });
+    for (const t of conn.nodes) threads.push({ isResolved: t.isResolved, author: t.comments.nodes[0]?.author?.login || "", severity: codexSeverity(t.comments.nodes[0]?.body), reviewId: t.comments.nodes[0]?.pullRequestReview?.databaseId ?? null, rabbitSeverity: login(t.comments.nodes[0]?.author?.login) === CODERABBIT_LOGIN ? codeRabbitSeverity(t.comments.nodes[0]?.body) : null, commit: t.comments.nodes[0]?.originalCommit?.oid?.toLowerCase() || null });
     if (!conn.pageInfo.hasNextPage) break;
     cursor = conn.pageInfo.endCursor;
   }
@@ -507,7 +527,7 @@ export function fetchPrData(repo, pr) {
   const meta = ghJson(["api", `repos/${repo}/pulls/${pr}`]);
   const files = ghLines(`repos/${repo}/pulls/${pr}/files?per_page=100`).map((f) => f.filename);
   const comments = ghLines(`repos/${repo}/issues/${pr}/comments?per_page=100`)
-    .map((c) => ({ author: c.user?.login, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
+    .map((c) => ({ author: c.user?.login, authorType: c.user?.type, association: c.author_association, body: c.body, at: c.updated_at || c.created_at }));
   const reviews = ghLines(`repos/${repo}/pulls/${pr}/reviews?per_page=100`)
     .map((r) => ({ author: r.user?.login, association: r.author_association, body: r.body, at: r.submitted_at, commit: r.commit_id }));
   return {

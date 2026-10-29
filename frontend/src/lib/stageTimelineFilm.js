@@ -304,6 +304,9 @@ export function collectRiderIds(events) {
  * de navne der KAN opløses og skipper kun når ingen kan; count følger de viste
  * navne så flertalsbøjningen ({count, plural}) matcher den synlige liste.
  */
+// #6649: årsagerne motoren skriver på `bad_day` (vejret som sin type). Ukendt årsag → ingen linje.
+const BAD_DAY_CAUSES = new Set(["fatigue", "form", "illness", "rain", "wind", "heat"]);
+
 export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (!event?.type) return null;
   if (event.grouped) {
@@ -370,6 +373,19 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
         key: p.discipline === "time_trial" ? "favorite_crack_tt" : "favorite_crack",
         params: { rider, reason: p.reason || "unexplained" },
       };
+    }
+    // #6641/#7280: Alt ud paa den sidste stigning (motoren melder kun det den gjorde).
+    case "all_out_gain":
+    case "all_out_cracked": {
+      const rider = riderName(p.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: event.type, params: { rider } };
+    }
+    case "bad_day": { // #6649 (s5_profiles_v3): "havde en daarlig dag" + aarsagen, skrevet bagefter
+      const rider = riderName(p.rider_id, riderNameById);
+      const cause = p.reason === "weather" ? p.weather : p.reason;
+      if (!rider || !BAD_DAY_CAUSES.has(cause)) return null;
+      return { key: `bad_day_${cause}`, params: { rider } };
     }
     case "group_merged": {
       const params = breakawayParams();

@@ -23,6 +23,7 @@ import { Button, CheckIcon, ChevronRightIcon, LockIcon, MinusIcon, PlusIcon, Sel
 import {
   clearRiderPlan,
   fallbackOrderKeys,
+  isLuxuryHelperRole,
   nextLeg,
   planRole,
   removeLeg,
@@ -306,7 +307,8 @@ export default function StagePlanBoard({
   const planByRider = new Map<string, StagePlanLeg[] | null>((order?.riders ?? []).map((r): [string, StagePlanLeg[] | null] => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
   const timeTrial = route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt";
 
-  const suggestionFor = (rider: PlanRider) => suggestStagePlan({ role: planRole(roleFor(rider)), route, teamHasSprintCaptain });
+  // #5982: luksushjaelperens forslag er hans standardplan (den motoren koerer uden en gemt plan).
+  const suggestionFor = (rider: PlanRider) => suggestStagePlan({ role: planRole(roleFor(rider)), route, teamHasSprintCaptain, luxuryHelper: isLuxuryHelperRole(roleFor(rider)) });
   const editable = (rider: PlanRider) => !stageLocked && !rider.abandoned && !timeTrial;
   const missing = riders.filter((r) => editable(r) && !planByRider.get(r.rider_id));
 
@@ -330,6 +332,8 @@ export default function StagePlanBoard({
   const ownOrderKeys = (rider: PlanRider) => fallbackOrderKeys(effortFor?.(rider), orderRiderById.get(rider.rider_id), roleDefaultFor?.(rider.rider_id));
   const hasOwnOrders = (rider: PlanRider) => ownOrderKeys(rider).length > 0;
   function noPlanText(rider: PlanRider, locked: boolean) {
+    // #5982: uden gemt plan koerer motoren luksushjaelperens forslag (hans standardplan).
+    if (isLuxuryHelperRole(roleFor(rider))) return t(locked ? "stagePlan.luxuryHelperPlanLocked" : "stagePlan.luxuryHelperPlan");
     const keys = ownOrderKeys(rider);
     if (!keys.length) return t(locked ? "stagePlan.noPlanLocked" : "stagePlan.noPlan");
     return t(locked ? "stagePlan.noPlanOrdersLocked" : "stagePlan.noPlanOrders", { orders: keys.map((k) => t(k)).join(", ") });
@@ -380,7 +384,7 @@ export default function StagePlanBoard({
           </span>
         )}
         {/* Mobil: kun naar han koerer paa egne valg (ellers fylder forslaget linjen). */}
-        {(!compact || hasOwnOrders(rider)) && <p className="mt-1 text-3xs text-cz-3">{noPlanText(rider, false)}</p>}
+        {(!compact || hasOwnOrders(rider) || isLuxuryHelperRole(roleFor(rider))) && <p className="mt-1 text-3xs text-cz-3">{noPlanText(rider, false)}</p>}
       </>
     );
   }

@@ -19,6 +19,7 @@
 //   - Grupetto, kør i mål og sprinttog er slut-opgaver: kun sidste led. Derfor kan
 //     grupetto aldrig komme foer arbejdet.
 //   - Sprinttog kan ikke starte "naar han er sat" (en sat rytter trækker ikke spurten).
+//   - Sprinttog kan ikke foelge udbrud (#7003, spec §3: toget sidder i feltet til finalen).
 //   - Opgaven skal passe til rollen (kaptajnen koerer aldrig grupetto).
 //   - Indsatsen foelger opgaven (TASK_EFFORT); spilleren vaelger den ikke ved siden af.
 //
@@ -183,6 +184,7 @@ export function validateStagePlanLegs(legs: unknown, role: StagePlanRole, route:
     if (!TASK_ROLES[task].includes(role)) return "stage_plan_task_not_for_role";
     if (task === "breakaway" && i > 0) return "stage_plan_breakaway_not_first";
     if (TERMINAL_TASKS.has(task) && i < legs.length - 1) return "stage_plan_terminal_not_last";
+    if (task === "sprint_train" && i > 0 && (legs[0] as Record<string, unknown>)["task"] === "breakaway") return "stage_plan_train_after_breakaway"; // #7003 fund 3
     if (i > 0 && (legs[i - 1] as Record<string, unknown>)["task"] === task) return "stage_plan_repeat_task";
     const from = leg["from"];
     if (i === 0) {
@@ -261,6 +263,8 @@ export function suggestStagePlan(args: {
   role: StagePlanRole;
   route: StagePlanRoute;
   teamHasSprintCaptain: boolean;
+  /** #5982: rytteren er luksushjaelper (rollen er "helper"); forslaget er hans standardplan. */
+  luxuryHelper?: boolean;
 }): StagePlanLeg[] | null {
   if (isTimeTrialProfile(args.route.profile_type)) return null;
   const legs = suggestionFor(args);
@@ -272,6 +276,7 @@ function suggestionFor(args: {
   role: StagePlanRole;
   route: StagePlanRoute;
   teamHasSprintCaptain: boolean;
+  luxuryHelper?: boolean;
 }): StagePlanLeg[] {
   const { role, route, teamHasSprintCaptain } = args;
   const bucket = bucketOf(route.profile_type);
@@ -284,6 +289,16 @@ function suggestionFor(args: {
   const attackFrom: StagePlanTrigger = lastClimbFrom ?? { at: "final_km" };
   const flatFinale = bucket === "flat";
   const sprintStage = flatFinale && teamHasSprintCaptain;
+
+  // #5982: LUKSUSHJAELPERENS standardplan (genvejen, ejer 27/10): spar dig i laeet, koer
+  // tempo for lederen paa den afgoerende stigning (dagens sidste; ved en topankomst uden
+  // tidligere stigning: de sidste km), koer i maal naar du er sat. Spilleren kan flytte
+  // stigningen i etapeplanen. Uden en afgoerende stigning (flad etape, ingen stigning)
+  // er han en almindelig hjaelper og faar hjaelperens forslag.
+  const decisiveFrom: StagePlanTrigger | null = lastClimbFrom ?? (route.summit_finish ? { at: "final_km" } : null);
+  if (args.luxuryHelper === true && role === "helper" && !flatFinale && decisiveFrom) {
+    return [{ task: "stay_sheltered" }, { task: "tempo", from: decisiveFrom }, { task: "ride_in", from: { at: "dropped" } }];
+  }
 
   switch (role) {
     case "captain":
