@@ -29,11 +29,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "The main ability grows again",
-          "body": "What changed: The training model from the start of season 5 is back. An ability slows down near its ceiling, but it no longer stops there. The progress your riders lost on their main ability in those days has been added back.\n\nWhy: From season 5 the main ability of some riders got no progress, while their other abilities grew.\n\nWhat it means for you: The ability a program is built for grows again."
+          "body": "What changed: The training model from the start of season 5 is back. An ability slows down near its ceiling, but it no longer stops there. The progress your riders lost on their main ability in those days has been added back to their progress bars.\n\nWhy: From season 5 the main ability of some riders got no progress, while their other abilities grew.\n\nWhat it means for you: The ability a program is built for grows again."
         },
         "da": {
           "title": "Hovedevnen vokser igen",
-          "body": "Hvad er ændret: Træningsmodellen fra starten af sæson 5 er tilbage. En evne går langsommere tæt på loftet, men den stopper ikke længere dér. Den fremgang, dine ryttere mistede i hovedevnen i de dage, er lagt til igen.\n\nHvorfor: Fra sæson 5 fik hovedevnen hos nogle ryttere ingen fremgang, mens deres andre evner steg.\n\nHvad betyder det for dig: Den evne, et program er bygget til, vokser igen."
+          "body": "Hvad er ændret: Træningsmodellen fra starten af sæson 5 er tilbage. En evne går langsommere tæt på loftet, men den stopper ikke længere dér. Den fremgang, dine ryttere mistede i hovedevnen i de dage, er lagt tilbage på deres fremskridtslinjer.\n\nHvorfor: Fra sæson 5 fik hovedevnen hos nogle ryttere ingen fremgang, mens deres andre evner steg.\n\nHvad betyder det for dig: Den evne, et program er bygget til, vokser igen."
         },
         "refs": [
           7316,
