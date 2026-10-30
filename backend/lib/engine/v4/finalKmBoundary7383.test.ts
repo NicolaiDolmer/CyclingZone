@@ -28,9 +28,11 @@ import {
   setFinalKmBoundary7383ForBench,
   splitAtFinalKm7383,
 } from "./adapters/routeAdapter.ts";
+import { finalKmUndivided7383 } from "./adapters/finalKmBoundary7383.ts";
+import { lateAttackSegmentIndex } from "./mechanics/lateAttack.ts";
 import { STAGE_PLAN_LEG_EVENT, STAGE_PLAN_ORDER_KIND } from "../../stagePlanEngine.ts";
-import { STAGE_PLAN_FINAL_KM, type StagePlanLeg } from "../../stagePlan.ts";
-import type { ClimbSelectionHook, MechanicHooks, Segment, StageInput, TeamOrder, TimelineEvent } from "./types.ts";
+import { STAGE_PLAN_FINAL_KM, TASK_EFFORT, type StagePlanLeg } from "../../stagePlan.ts";
+import type { ClimbSelectionHook, CobblesHook, MechanicHooks, Segment, StageInput, TeamOrder, TimelineEvent } from "./types.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(here, "fixtures");
@@ -143,7 +145,7 @@ test("#7383: en eksisterende graense genbruges, og en kort etape roeres ikke", (
   assert.equal(splitAtFinalKm7383(short, 9), short);
 });
 
-test("#7383: en stigning deles med samme stejlhed, men er samme stejlhed, men er EEN stigning", () => {
+test("#7383: en stigning deles med samme stejlhed, men er EEN stigning", () => {
   const climb = seg.climb(130, 150);
   const out = splitAtFinalKm7383([seg.flat(0, 130), climb], 150);
   assert.equal(out.length, 3);
@@ -229,4 +231,93 @@ test("#7383: en delt slutstigning er een selektion paa hele stigningen med indsa
   assert.equal(on.seen[on.seen.length - 1].effort, "save", "Codex-review: angrebet paa de sidste 10 km giver ikke angrebets indsats paa hele stigningen");
   const leg = on.result.timeline.find((e) => e.type === STAGE_PLAN_LEG_EVENT && e.params.rider_id === captain.rider_id);
   assert.equal(leg?.km, Math.round(finalKm * 100) / 100, "men tempoet skifter praecis ved 10 km");
+});
+
+/**
+ * Et fixture-felt paa en egen rute (s5_profiles_v3), evt. med en anden seed. `strongAttacker`:
+ * mur-finale-feltet med en kaptajn der er klart staerkest paa angrebets evner og paa
+ * brosten (som s5Profiles6363.test.ts), saa det sene angreb faktisk sker.
+ */
+function routeInput(segments: Segment[], seedSuffix = "", strongAttacker = false): StageInput {
+  const input = fixture(strongAttacker ? "mur-finale" : "flat-massespurt", "s5_profiles_v3");
+  const distance = segments[segments.length - 1].to_km;
+  input.route = { ...input.route, distance_km: distance, segments, waypoints: [{ kind: "finish", index: 0, name: "Maal", km: distance }] as StageInput["route"]["waypoints"] };
+  if (seedSuffix) input.seed = `${input.seed}-${seedSuffix}`;
+  if (strongAttacker) input.startlist = input.startlist.map((e) => e.rider_id !== "r05" ? e : { ...e, abilities: { ...e.abilities, aggression: 92, tempo: 90, endurance: 92, tactics: 88, cobblestone: 95 } });
+  return input;
+}
+
+test("#7383: det sene angreb ser de to stykker som eet og vaelger segment som paa den udelte rute", () => {
+  const D = 150;
+  const cases: Array<{ name: string; segments: Segment[] }> = [
+    { name: "sektor fra 20 til 3 km fra maal (udelt: intet angreb)", segments: [seg.flat(0, 130), seg.cobbles(130, 147), seg.flat(147, 150)] },
+    { name: "stigning fra 20 til 3 km fra maal (udelt: intet angreb)", segments: [seg.flat(0, 130), seg.climb(130, 147), seg.flat(147, 150)] },
+    { name: "sidste segment krydser punktet (udelt: intet angreb)", segments: [seg.flat(0, 120), seg.flat(120, 150)] },
+    { name: "det delte stykke er selv angrebs-segmentet", segments: [seg.flat(0, 136), seg.cobbles(136, 144), seg.flat(144, 150)] },
+    { name: "angrebs-segmentet ligger foer det delte stykke", segments: [seg.flat(0, 138), seg.flat(138, 150)] },
+    { name: "angrebs-segmentet ligger efter det delte stykke", segments: [seg.flat(0, 138), seg.climb(138, 142), seg.flat(142, 144), seg.flat(144, 150)] },
+  ];
+  for (const { name, segments } of cases) {
+    assert.equal(finalKmUndivided7383(segments), null, `${name}: udelt (og slukket) er intet delt stykke`);
+    const undividedIndex = lateAttackSegmentIndex({ distance_km: D, segments });
+    const split = splitAtFinalKm7383(segments, D) as Segment[];
+    assert.notEqual(split, segments, `${name}: ruten deles`);
+    assert.deepEqual(finalKmUndivided7383(split), { segments, headIndex: split.findIndex((s) => s.to_km === D - STAGE_PLAN_FINAL_KM) }, name);
+    const index = lateAttackSegmentIndex({ distance_km: D, segments: split });
+    if (undividedIndex < 0) {
+      assert.equal(index, -1, `${name}: graensen giver intet nyt angreb`);
+    } else {
+      assert.equal(split[index].to_km, segments[undividedIndex].to_km, `${name}: samme sted som udelt`);
+      assert.notEqual(finalKmTerrainPiece7383(split[index])?.part, "head", `${name}: aldrig midt i stykket`);
+    }
+  }
+  // Fundet (review 30/10): uden kendskab til delingen ville hovedet blive angrebs-segmentet.
+  const blind = splitAtFinalKm7383(cases[0].segments, D).map((s) => ({ ...s })) as Segment[];
+  assert.equal(blind[lateAttackSegmentIndex({ distance_km: D, segments: blind })]?.to_km, D - STAGE_PLAN_FINAL_KM);
+});
+
+test("#7383: med kontakten taendt giver 10 km-graensen intet nyt sent angreb og flytter det ikke", () => {
+  const lateAttackKms = (input: StageInput): number[] => simulateStageV4(input).timeline.events
+    .filter((e) => e.type === "finale_attack" && e.params.kind === "late_attack").map((e) => e.km);
+  let attacksOnSector = 0;
+  for (let k = 0; k < 12; k++) {
+    const noWindow = routeInput([seg.flat(0, 130), seg.cobbles(130, 147), seg.flat(147, 150)], `p2-${k}`, true);
+    assert.deepEqual(lateAttackKms(noWindow), [], `slukket ${k}`);
+    assert.deepEqual(withSwitch(true, () => lateAttackKms(noWindow)), [], `taendt ${k}: intet angreb midt i sektoren`);
+    const sector = routeInput([seg.flat(0, 136), seg.cobbles(136, 144), seg.flat(144, 150)], `tail-${k}`, true);
+    for (const km of withSwitch(true, () => lateAttackKms(sector))) {
+      assert.equal(km, 144, `taendt ${k}: angrebet ved sektorens slutning som udelt`);
+      attacksOnSector++;
+    }
+  }
+  assert.ok(attacksOnSector > 0, "testen ser mindst eet sent angreb paa sektoren");
+});
+
+test("#7383: en delt brostenssektor er een selektion ved halen paa hele sektoren med indsatsen fra den laengste del", () => {
+  const cases = [
+    { name: "hovedet laengst", segments: [seg.flat(0, 134), seg.cobbles(134, 144), seg.flat(144, 150)], headLonger: true },
+    { name: "halen laengst", segments: [seg.flat(0, 137), seg.cobbles(137, 145), seg.flat(145, 150)], headLonger: false },
+  ];
+  for (const { name, segments, headLonger } of cases) {
+    const input = routeInput(segments);
+    const rider = input.startlist.find((e) => e.team_id === "T0" && e.role === "sprint_captain")!;
+    input.orders = [planOrder("T0", [{ rider_id: rider.rider_id, legs: [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }] }])];
+    const split = splitAtFinalKm7383(stageInputForRulesRevision(input).route.segments, 150);
+    assert.equal(split.map((s) => finalKmTerrainPiece7383(s)).find(Boolean)?.headLonger, headLonger, `${name}: fixturen`);
+    const run = (active: boolean) => {
+      const seen: Array<{ index: number; from: number; to: number; effort: string | undefined }> = [];
+      const spy: CobblesHook = (state, ctx) => {
+        seen.push({ index: ctx.segmentIndex, from: ctx.segment.from_km, to: ctx.segment.to_km, effort: ctx.entrants[rider.rider_id]?.effort });
+        return LIVE_MECHANIC_HOOKS.cobbles!(state, ctx);
+      };
+      withSwitch(active, () => runSegmentLoop(stageInputForRulesRevision(input), { ...LIVE_MECHANIC_HOOKS, cobbles: spy }));
+      return seen;
+    };
+    const off = run(false);
+    const on = run(true);
+    assert.equal(off.length, 1, `${name}: udelt een selektion`);
+    assert.deepEqual(on.map((s) => [s.from, s.to]), off.map((s) => [s.from, s.to]), `${name}: een selektion paa hele sektoren`);
+    assert.equal(on[0].index, off[0].index + 1, `${name}: ved halen (sektorens slutning)`);
+    assert.equal(on[0].effort, headLonger ? TASK_EFFORT.stay_sheltered : TASK_EFFORT.attack, `${name}: indsatsen fra den laengste del`);
+  }
 });
