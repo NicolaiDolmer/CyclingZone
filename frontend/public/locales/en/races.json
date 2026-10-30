@@ -1461,7 +1461,8 @@
         },
         "order": {
           "save": "Your order: Ride easy.",
-          "grupetto": "Your order: Grupetto."
+          "grupetto": "Your order: Grupetto.",
+          "plan": "Your order: {task}."
         }
       },
       "event": {

@@ -180,3 +180,64 @@ test('#7280: alt ud koster mere traethed under pakken, ogsaa i enkeltstart; sluk
     setAllOut7280ForBench(null);
   }
 });
+
+// #7332 (spillerrapport 28/10, ejer: "alt ud skal give bedre praestation, men ogsaa mere
+// traethed"): spillerens tilfaelde gennem HELE kaeden raceRunner koerer i prod. Ordren
+// (race_team_orders.riders[].effort) -> orderEffortByRiderForStage -> resolveStageEntrants
+// (simEntrant.effort) -> broen -> motorens enkeltstart -> broens efforts-kort ->
+// stageConditionWork -> raceConditionLoads (condition v2, det frosne belastnings-snapshot).
+// Samme rytter, samme seed, kun indsatsen skifter: alt ud er hurtigere OG belastes mere.
+// Rodaarsagen til rapporterne (maalt, tal i balance-internals/7332/): enkeltstarten de to
+// spillere sammenlignede, koerte foer kontakten (#7311) var i drift; dengang var alt ud
+// uden virkning paa en flad enkeltstart. Testen laaser at kaeden holder fremover.
+test('#7332: alt ud paa enkeltstart er hurtigere og koster mere traethed, gennem hele kaeden', async () => {
+  const { createRaceEngineV4Adapter } = await import('./raceEngineV4Bridge.js');
+  const { orderEffortByRiderForStage, resolveStageEntrants } = await import('./raceStageRoles.js');
+  const { raceConditionLoads, stageConditionWork } = await import('./raceFatigue.js');
+  const [core, tuning, entrants, route, orders, timeline] = await Promise.all([
+    import('./engine/v4/index.ts'), import('./engine/v4/tuning.ts'), import('./engine/v4/adapters/entrantAdapter.ts'),
+    import('./engine/v4/adapters/routeAdapter.ts'), import('./engine/v4/orders/teamOrdersAdapter.ts'), import('./engine/v4/timeline.ts'),
+  ]);
+  const engine = createRaceEngineV4Adapter({ core, tuning, entrants, route, orders, timeline });
+  const KEYS = ['climbing', 'time_trial', 'flat', 'tempo', 'sprint', 'acceleration', 'punch', 'endurance', 'recovery', 'durability', 'descending', 'cobblestone', 'positioning', 'aggression', 'tactics'];
+  // Feltet: 48 ryttere paa hold a 8, TT-evnen spredt. Rytter A (hold 0) er en middel tidskoerer.
+  const field = Array.from({ length: 48 }, (_, i) => ({
+    rider_id: `r${String(i).padStart(3, '0')}`,
+    team_id: `team${Math.floor(i / 8)}`,
+    abilities: Object.fromEntries(KEYS.map((k) => [k, k === 'time_trial' ? 82 - (i % 24) * 2 : 60])),
+    race_role: 'free_role',
+    fatigue: 20,
+  }));
+  const RIDER_A = 'r010';
+  const REVISION = 's5_profiles_v3';
+  const profiles = {
+    itt: { race_id: 'race-7332', stage_number: 1, profile_type: 'itt', finale_type: 'solo_tt', distance_km: 30, segments: [{ kind: 'flat', from_km: 0, to_km: 30 }], weather: { kind: 'sun', wind_exposure: 0.3 } },
+    itt_hilly: {
+      race_id: 'race-7332', stage_number: 1, profile_type: 'itt_hilly', finale_type: 'solo_tt', distance_km: 30,
+      segments: [{ kind: 'flat', from_km: 0, to_km: 10 }, { kind: 'climb', from_km: 10, to_km: 16, category: '2', avg_gradient: 6, top_elevation_m: 700 }, { kind: 'descent', from_km: 16, to_km: 21, technicality: 1 }, { kind: 'flat', from_km: 21, to_km: 30 }],
+      weather: { kind: 'sun', wind_exposure: 0.3 },
+    },
+  };
+  function runStage(stageProfile, effort, seedString) {
+    const teamOrderRows = [{ team_id: 'team1', stage_number: 1, breakaway_stance: 'neutral', riders: [{ rider_id: RIDER_A, effort, try_break: false, leadout: false }] }];
+    const orderEffortByRider = orderEffortByRiderForStage(teamOrderRows, 1);
+    const simEntrants = resolveStageEntrants(field, undefined, { orderEffortByRider }).entrants;
+    const out = engine.simulateStage({ entrants: simEntrants, stageProfile, seedString, stageNumber: 1, teamOrderRows, rulesRevision: REVISION });
+    const work = stageConditionWork({ rulesRevision: REVISION, stageNumber: 1, profileType: stageProfile.profile_type, v4Result: { v4Output: out.v4Output, efforts: out.efforts } });
+    const loads = raceConditionLoads(field.map((e) => e.rider_id), stageProfile.profile_type, null, REVISION, work, { distanceKm: stageProfile.distance_km, seasonRaceDaysByRider: new Map() });
+    const result = out.v4Output.results.find((r) => r.rider_id === RIDER_A);
+    return { seconds: result.time_seconds, load: loads.find((l) => l.rider_id === RIDER_A).load, engineEffort: out.efforts.get(RIDER_A) };
+  }
+  for (const [kind, stageProfile] of Object.entries(profiles)) {
+    for (const seed of ['s7332-a', 's7332-b', 's7332-c']) {
+      const normal = runStage(stageProfile, 'normal', seed);
+      const allOut = runStage(stageProfile, 'all_out', seed);
+      assert.equal(allOut.engineEffort, 'all_out', `${kind}/${seed}: motoren koerer rytteren paa alt ud`);
+      assert.ok(allOut.seconds < normal.seconds, `${kind}/${seed}: alt ud er hurtigere (${allOut.seconds} mod ${normal.seconds})`);
+      assert.ok(allOut.load > normal.load, `${kind}/${seed}: alt ud koster mere traethed (${allOut.load} mod ${normal.load})`);
+      // Spar er ikke en gratis gevinst paa enkeltstarten: aldrig hurtigere end normal.
+      const save = runStage(stageProfile, 'save', seed);
+      assert.ok(save.seconds >= normal.seconds, `${kind}/${seed}: spar er ikke hurtigere end normal`);
+    }
+  }
+});

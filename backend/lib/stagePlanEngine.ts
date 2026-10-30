@@ -17,11 +17,17 @@
 //          lederen / lederen ikke koerer med). For en rytter i udbrudsopgaven er
 //          "sat" at han ikke (laengere) er i udbruddet: hentet eller kom ikke med.
 //          Motoren springer direkte til sat-leddet, uanset hvor langt kaeden er.
-//        - rutepunkt (top af en stigning / de sidste km): naar mindst halvdelen af
-//          segmentet ligger efter punktet. Flere punkter kan passeres i samme
-//          segment; kaeden rykker saa frem led for led i orden. I etapens sidste
-//          segment skifter et punkt inde i det ved segmentets start; er etapen kun
-//          ét segment, gaelder det ogsaa segment 1 (kun rutepunkter, aldrig "sat").
+//        - rutepunkt (top af en stigning / de sidste km): ved den segmentgraense der
+//          ligger naermest punktet, dvs. ved segmentets start naar mindst halvdelen
+//          af segmentet ligger efter punktet. Flere punkter kan passeres i samme
+//          segment; kaeden rykker saa frem led for led i orden. Toppen af en
+//          stigning ER en segmentgraense, saa den rammes praecist.
+//        - #7333: i etapens sidste segment er maalstregen den sidste graense. Et
+//          punkt i segmentets anden halvdel skifter derfor til finalen
+//          (advanceStagePlanAtFinish), lige foer opgoerelsen ved maal, og ikke ved
+//          segmentets start (et langt sidste segment gav ellers "de sidste 10 km"
+//          mange km for tidligt). Er etapen kun ét segment, gaelder samme regel
+//          (kun rutepunkter ved start, aldrig "sat").
 //   4. Opgavens indsats (TASK_EFFORT) erstatter rytterens `effort` for segmentet.
 //      Intet andet felt paa rytteren roeres. Udbrudsforsoeg og sprinttog kommer
 //      fra de udledte ordre-felter (stagePlan.legacyOrderFromPlan), som motoren
@@ -32,6 +38,9 @@
 //
 // #5982: en luksushjaelper uden gemt plan faar sin standardplan her
 // (mechanics/luxuryHelper5982.ts, samme forslag som fladen viser).
+//
+// #7333 (Codex-review): undtagelsen er holdarbejde (SEGMENT_WORK_TASKS). Det virker i
+// segmentets mekanik og ikke i finalen, saa paa sidste segment skifter det ved start.
 //
 // Uden en stage_plan-ordre og uden en luksushjaelper returnerer createStagePlanRuntime
 // null, og loopet er byte-identisk med foer.
@@ -50,6 +59,9 @@ import { luxuryHelperDefaultPlans } from "./engine/v4/mechanics/luxuryHelper5982
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
+
+/** #7333: opgaver hvis virkning er segmentets holdarbejde, ikke opgoerelsen ved maal. */
+const SEGMENT_WORK_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["tempo", "shelter_leader"]);
 
 export type StagePlanSwitchReason = "kom" | "final_km" | "dropped" | "caught" | "missed_break";
 
@@ -192,14 +204,18 @@ export function advanceStagePlan(
   const { state, segment, segmentIndex, isLastSegment = false, entrants } = args;
   const events: TimelineEvent[] = [];
   // Foerste segment: intet forrige segment at laese tilstanden af. Er det OGSAA etapens
-  // eneste segment (en flad etape kan genereres som ét stykke), gaelder sidste-segment-
-  // reglen nedenfor for rutepunkterne, ellers ville et gyldigt led aldrig koeres. "Sat"
-  // afgoeres aldrig ved start (ingen grupper endnu).
+  // eneste segment (en flad etape kan genereres som ét stykke), skifter et rutepunkt i
+  // segmentets foerste halvdel ved start; resten tager finalen (advanceStagePlanAtFinish).
+  // "Sat" afgoeres aldrig ved start (ingen grupper endnu).
   if (segmentIndex === 0 && !isLastSegment) return events;
   const atStart = segmentIndex === 0;
-  // Etapens sidste segment: et punkt inde i det skifter ved segmentets start (der kommer
-  // intet senere segment at skifte paa), saa et gyldigt sidste led altid koeres.
-  const switchPointKm = isLastSegment ? segment.to_km - 1e-9 : segment.from_km + (segment.to_km - segment.from_km) / 2;
+  // #7333: naermeste graense, ogsaa i etapens sidste segment (maalstregen er dens sidste
+  // graense, og et punkt i anden halvdel skifter til finalen, se filens hoved).
+  const midKm = segment.from_km + (segment.to_km - segment.from_km) / 2;
+  // Codex-review #7333: holdarbejde (tempo, hold lederen fremme) virker i segmentets
+  // mekanik, ikke i opgoerelsen ved maal. Paa etapens sidste segment skifter det derfor
+  // stadig ved segmentets start, saa hjaelperen faktisk koerer det arbejde han faar.
+  const switchPointKm = (task: StagePlanTask) => (isLastSegment && SEGMENT_WORK_TASKS.has(task) ? segment.to_km : midKm);
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
@@ -217,7 +233,7 @@ export function advanceStagePlan(
       next = droppedIdx;
       reason = breakawayLeg ? (rt.everInEscape.has(riderId) ? "caught" : "missed_break") : "dropped";
     } else {
-      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= switchPointKm) {
+      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= switchPointKm(legs[next + 1].task)) {
         next += 1;
         reason = legs[next].routeReason;
       }
@@ -232,6 +248,41 @@ export function advanceStagePlan(
     });
   }
   return events;
+}
+
+/**
+ * #7333: finalen paa etapens sidste segment. Et rutepunkt der ligger i segmentets anden
+ * halvdel (naermere maalstregen end segmentets start) skifter her, lige foer opgoerelsen
+ * ved maal, saa "de sidste 10 km" aldrig koeres fra starten af et langt sidste segment.
+ * "Sat" afgoeres ikke her (det sker kun ved segmentgraenser, ud fra tilstanden der).
+ * Eventet staar paa punktets km (de sidste km ligger i finalen), aldrig foer segmentet.
+ * null naar ingen skifter: finalen ser da praecis den samme startliste som foer.
+ */
+export function advanceStagePlanAtFinish(
+  rt: StagePlanRuntime,
+  args: { state: EngineState; segment: Segment; entrants: Readonly<Record<string, Entrant>> },
+): { events: TimelineEvent[]; entrants: Record<string, Entrant> } | null {
+  const { state, segment, entrants } = args;
+  const events: TimelineEvent[] = [];
+  for (const riderId of rt.riderIds) {
+    if (state.riders[riderId]?.status !== "racing") continue;
+    const legs = rt.legs.get(riderId)!;
+    const cur = rt.current.get(riderId) ?? 0;
+    let next = cur;
+    while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= segment.to_km) next += 1;
+    if (next === cur) continue;
+    rt.current.set(riderId, next);
+    rt.ridden.get(riderId)?.add(next);
+    const km = Math.max(segment.from_km, legs[cur + 1].fromKm as number);
+    events.push({
+      km: Math.round(km * 100) / 100,
+      type: STAGE_PLAN_LEG_EVENT,
+      // Codex-review #7333: at_finish = skiftet gaelder kun finalen. Segmentets egne
+      // mekanikker (fx stigningens split ved segment.to_km) koerte paa det forrige led.
+      params: { rider_id: riderId, leg: next, task: legs[next].task, reason: legs[next].routeReason as StagePlanSwitchReason, at_finish: true },
+    });
+  }
+  return events.length ? { events, entrants: stagePlanEntrants(rt, entrants) } : null;
 }
 
 /** Startlisten for segmentet: planens indsats paa de ryttere der har en plan. */
