@@ -409,16 +409,24 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
 - **Alderens turbo er ude:** alderstabellen og ungdomstillægget indgår ikke i udviklingen.
   Udviklingen drives af en alders-neutral træningsscore; den viste træningsscore er uændret.
 - **Blød overgang ved tænding ([#7382](https://github.com/NicolaiDolmer/CyclingZone/issues/7382), ejer 30/10):**
-  en evne der står på eller over sit bløde loft, glider lineært fra den gamle models fremdrift
-  (med alderstabellen) til kurve B's over 14 kalenderdage fra og med den første dag kurve B
-  faktisk kører (dansk dato). Første dag = den gamle models fulde fremdrift; derefter kun
-  kurve B. Fremdriften er max(kurve B, blandingen): aldrig under kurve B's (overgangen
-  bremser aldrig) og aldrig negativ. Evner under loftet får kurve B fra dag 1; en evne der
-  krydser loftet inde i vinduet, får også blandingen resten af vinduet.
+  en evne der stod på eller over sit bløde loft PÅ TÆNDINGSDAGEN, glider lineært fra den gamle
+  models fremdrift (med alderstabellen) til kurve B's over 14 kalenderdage fra og med den
+  første dag kurve B faktisk kører (dansk dato). Første dag = den gamle models fulde fremdrift;
+  derefter kun kurve B. Fremdriften er max(kurve B, blandingen): aldrig under kurve B's
+  (overgangen bremser aldrig) og aldrig negativ. Alle andre evner får kurve B fra dag 1,
+  også en evne der først krydser loftet inde i vinduet.
+  **Medlemskabet er låst:** på tændingsdagen gemmer motoren én række pr. rytter i
+  `development_curve_b_transition_members` med de evner der stod på eller over loftet, målt
+  før dagens tick. Datoens første kørsel vinder (senere løbsdage samme dato og genkørsler
+  flytter det ikke). Resten af vinduet læses kun rækken; en rytter uden række (fx ikke trænet
+  på tændingsdagen) får kurve B fuldt.
   Startdatoen er `app_config`-nøglen `development_curve_b_ignited_at`. Træningsmotoren
-  stempler den selv med tick-datoen første gang kurven er aktiv (flag `on` OG gyldige params)
-  og overskriver den aldrig. Flag off = intet opslag og intet stempel. En ny overgang ved en
-  senere tænding: slet nøglen før tændingen. Intet stempel (fx en fejlet læsning) = kurve B fuldt.
+  læser den først og stempler kun, når nøglen mangler, med tick-datoen første gang kurven er
+  aktiv (flag `on` OG gyldige params); den overskrives aldrig, og efter vinduet skrives intet.
+  Flag off = intet opslag og intet stempel. En ny overgang ved en senere tænding: slet nøglen
+  før tændingen (nye rækker nøgles på den nye dato). På dato-stien (`training_condition_per_date`)
+  kaster en fejl i stemplet eller medlemskabet, så dagen prøves igen; ellers = kurve B fuldt.
+  Tabellen skal være migreret, før flaget tændes.
 - **Uændret:** maks +1 pr. evne pr. løbsdag og pr. dato (§6.2), fremdriften bæres videre, loftet
   klipper, og løbsdagen går gennem samme kæde.
 - **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens
