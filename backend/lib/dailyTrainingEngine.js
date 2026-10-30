@@ -1069,6 +1069,8 @@ export async function runTeamTrainingDay({
     // fjerner maetningen ved roden). tickCaps = livstids-loftet for ALLE aldre,
     // uaendret siden #2437; det er nu den eneste semantik der findes.
     const tickCaps = caps;
+    // #7382: taendingsdagen maaler ALLE holdets ryttere der udvikler sig (ogsaa skadet, hviledag, ukendt slot), foer dagens tick.
+    const riderCurveBTransition = developmentAllowed ? curveBRoster?.forRider({ riderId: rider.id, abilities, caps: tickCaps, potentiale: rider.potentiale }) ?? null : null;
 
     // Er rytteren skadet i dag?
     // #5462: paa loebsdags-aksen spoerges der paa LOEBSDAGEN, ikke paa datoen — en
@@ -1219,7 +1221,7 @@ export async function runTeamTrainingDay({
         hardDailyCap,
         // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
         curveB,
-        curveBTransition: curveBRoster?.forRider({ riderId: rider.id, abilities, caps: tickCaps, potentiale: rider.potentiale }) ?? null, // #7382
+        curveBTransition: riderCurveBTransition, // #7382
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
