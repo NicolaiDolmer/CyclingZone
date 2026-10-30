@@ -1,17 +1,15 @@
--- #7382 (ejer-beslutning 30/10): hvem der får den bløde overgang, låst på
--- tændingsdagen.
+-- #7382 (ejer-beslutning 30/10): hvem der får den bløde overgang, låst ved
+-- tændingen.
 --
--- Kun evner der stod på eller over kurve B's bløde loft PÅ TÆNDINGSDAGEN, får
--- overgangen. Træningsmotoren (backend/lib/developmentCurveBTransition7382.ts)
--- skriver én række pr. rytter på et hold der udvikler sig (managerhold-reglen) på
--- tændingsdagen, før dagens tick er skrevet, også for ryttere uden tick den dag
--- (skadet, hviledag): hvilke evner der stod på eller over loftet. Den første række
--- vinder (insert ... on conflict do nothing), så datoens senere løbsdage og en
--- genkørsel aldrig flytter medlemskabet. Resten af vinduet læses rækken; en rytter
--- uden række (fx kommet til et managerhold senere i vinduet) får kurve B fuldt.
--- Et hold der havde afregnet hele tændingsdatoen før kurve B blev aktiv, måles på
--- sin første dato med kurve B i vinduet (measured_on). En ny tænding (ny dato)
--- giver nye rækker.
+-- Kun evner der stod på eller over kurve B's bløde loft, da kurve B blev tændt,
+-- får overgangen. Første gang kurve B er aktiv, tager træningsmotoren
+-- (backend/lib/developmentCurveBTransition7382.ts) ÉT samlet øjebliksbillede: én
+-- række pr. rytter på et managerhold (managerhold-reglen; ikke pensioneret) med de
+-- evner der stod på eller over loftet (også tomme rækker). Først derefter stemples
+-- tændingsdatoen (dagens danske dato) i app_config. insert ... on conflict do
+-- nothing, så en genkørsel aldrig flytter medlemskabet. Resten af vinduet læses
+-- kun rækken; en rytter uden række (fx kommet til et managerhold senere) får kurve
+-- B fuldt. En ny tænding (ny dato) giver nye rækker.
 --
 -- Privat: RLS slået til UDEN policies, og kun service_role har grants. Ingen
 -- klient (anon/authenticated) kan læse eller skrive.
@@ -22,15 +20,12 @@ BEGIN;
 SET LOCAL lock_timeout = '5s';
 SET LOCAL statement_timeout = '30s';
 
--- data-api-access: {"table":"public.development_curve_b_transition_members","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Curve B transition membership locked on the ignition day (#7382); written and read by the training engine with the service role only"}
+-- data-api-access: {"table":"public.development_curve_b_transition_members","roles":{"anon":[],"authenticated":[],"service_role":["SELECT","INSERT","UPDATE","DELETE"]},"reason":"Curve B transition membership locked by the ignition snapshot (#7382); written and read by the training engine with the service role only"}
 CREATE TABLE IF NOT EXISTS public.development_curve_b_transition_members (
   rider_id uuid NOT NULL,
   -- Tændingsdatoen (app_config development_curve_b_ignited_at, dansk dato).
   ignited_on date NOT NULL,
-  -- Datoen rytteren blev målt (dansk dato): tændingsdagen, eller holdets første
-  -- dato med kurve B i vinduet, hvis holdet ikke blev målt på tændingsdagen.
-  measured_on date NOT NULL,
-  -- Evnerne på eller over det bløde loft på tændingsdagen. Tom = ingen.
+  -- Evnerne på eller over det bløde loft ved tændingen. Tom = ingen.
   abilities text[] NOT NULL DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (rider_id, ignited_on)
@@ -52,6 +47,6 @@ END $$;
 ALTER TABLE public.development_curve_b_transition_members VALIDATE CONSTRAINT development_curve_b_transition_members_rider_fk;
 
 COMMENT ON TABLE public.development_curve_b_transition_members IS
-  '#7382: abilities at or above the curve B soft ceiling on the ignition day (soft transition membership). Written once per rider and ignition by the training engine. Service role only.';
+  '#7382: abilities at or above the curve B soft ceiling at ignition (one snapshot of all manager-team riders, soft transition membership). Written once per rider and ignition by the training engine. Service role only.';
 
 COMMIT;

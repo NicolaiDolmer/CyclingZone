@@ -73,7 +73,7 @@ import {
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
-import { ensureCurveBIgnitedOn, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
+import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
@@ -744,12 +744,12 @@ export async function runTeamTrainingDay({
     loadDevelopmentCurveB({ supabase, strict: conditionPerDate }),
   ]);
   // #7382: de første dage kurve B koerer, glider evner over det bloede loft ind i kurven.
-  // Startdatoen stemples (en gang) her, foerste gang kurven faktisk er aktiv; flag off = intet opslag.
+  // Foerste gang kurven er aktiv: eet oejebliksbillede af alle managerhold + stempel (dagens dato); flag off = intet opslag.
   const curveBTransition = curveB
-    ? curveBTransitionForDate({ ignitedOn: await ensureCurveBIgnitedOn(supabase, { tickDate, strict: conditionPerDate }), tickDate })
+    ? curveBTransitionForDate({ ignitedOn: await ensureCurveBIgnition(supabase, { now, curveB, seasonNumber, isManagerTeam: isManagerTeamForDevelopment, strict: conditionPerDate }), tickDate })
     : null;
-  // Hvem der er med, er laast paa taendingsdagen (en raekke pr. rytter); kun inde i vinduet.
-  const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, curveB, riderIds: (roster ?? []).map((r) => r.id), strict: conditionPerDate }) : null;
+  // Hvem der er med, staar i oejebliksbilledet (en raekke pr. rytter); kun inde i vinduet.
+  const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, riderIds, strict: conditionPerDate }) : null;
   // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
   const [developmentScoreB, raceCatchUp] = await Promise.all([
     loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),
@@ -1069,8 +1069,8 @@ export async function runTeamTrainingDay({
     // fjerner maetningen ved roden). tickCaps = livstids-loftet for ALLE aldre,
     // uaendret siden #2437; det er nu den eneste semantik der findes.
     const tickCaps = caps;
-    // #7382: taendingsdagen maaler ALLE holdets ryttere der udvikler sig (ogsaa skadet, hviledag, ukendt slot), foer dagens tick.
-    const riderCurveBTransition = developmentAllowed ? curveBRoster?.forRider({ riderId: rider.id, abilities, caps: tickCaps, potentiale: rider.potentiale }) ?? null : null;
+    // #7382: rytterens raekke i taendingens oejebliksbillede (ingen raekke = kurve B fuldt).
+    const riderCurveBTransition = developmentAllowed ? curveBRoster?.forRider(rider.id) ?? null : null;
 
     // Er rytteren skadet i dag?
     // #5462: paa loebsdags-aksen spoerges der paa LOEBSDAGEN, ikke paa datoen — en
@@ -1597,8 +1597,6 @@ export async function runTeamTrainingDay({
       }
     }
   }
-  // #7382: taendingsdagens medlemskab gemmes FOER dagens evner skrives (maalt paa evnerne foer tick'et).
-  if (curveBRoster) await curveBRoster.persist({ strict: conditionPerDate });
 
   // #6759: sidste skridt foer writes paa den gamle sti — reservationen skifter til
   // "writing" og kan derefter aldrig overtages som forældet. Token-filteret beviser
