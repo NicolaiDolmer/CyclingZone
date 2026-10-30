@@ -8,11 +8,14 @@ import assert from "node:assert/strict";
 import {
   CURVE_B_IGNITED_AT_CONFIG_KEY, CURVE_B_TRANSITION_DAYS, CURVE_B_TRANSITION_MEMBERS_TABLE,
   blendCurveBTransition, calendarDaysBetween, curveBTransitionAbilities, curveBTransitionForDate,
-  ensureCurveBIgnitedOn, ignitedOnFromConfigValue, loadCurveBTransitionRoster, readCurveBIgnitedOn,
+  ensureCurveBIgnition, ignitedOnFromConfigValue, loadCurveBTransitionRoster, readCurveBIgnitedOn,
+  takeCurveBTransitionSnapshot,
 } from "./developmentCurveBTransition7382.ts";
 import { curveBSoftCeiling, validateDevelopmentCurveBParams } from "./developmentCurveB.ts";
 import { applyDailyTick, dailyAbilityDelta } from "./dailyTraining.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { buildCapsForRider } from "./riderProgression.js";
+import { ageForSeason } from "./riderSeasonAge.js";
 
 const PARAMS = validateDevelopmentCurveBParams({
   rate: 10, levelExponent: 2, capExponent: 0.5,
@@ -55,14 +58,13 @@ test("vinduet: 0 på startdagen, lineært, slut efter 14 dage; intet stempel = i
   assert.equal(CURVE_B_TRANSITION_DAYS, 14);
   assert.equal(curveBTransitionForDate({ ignitedOn: null, tickDate: "2026-10-31" }), null);
   assert.deepEqual(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-30" }),
-    { weight: 0, ignitedOn: "2026-10-30", ignitionDay: true, tickDate: "2026-10-30" });
+    { weight: 0, ignitedOn: "2026-10-30" });
   assert.deepEqual(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-06" }),
-    { weight: 0.5, ignitedOn: "2026-10-30", ignitionDay: false, tickDate: "2026-11-06" });
+    { weight: 0.5, ignitedOn: "2026-10-30" });
   assert.equal(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-12" })?.weight, 13 / 14);
   assert.equal(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-13" }), null, "dag 14 = kun kurve B");
   const before = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-29" });
   assert.equal(before?.weight, 0, "dato før start = gamle fart");
-  assert.equal(before?.ignitionDay, false, "en dato før starten låser intet medlemskab");
   assert.equal(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-31", days: 0 }), null);
 });
 
@@ -148,177 +150,191 @@ test("læsning: nøglen fra app_config; fejl = ingen overgang, men kaster på de
   await assert.rejects(readCurveBIgnitedOn(fakeConfig({ data: null, error: { message: "nede" } }), { strict: true }));
 });
 
-// app_config som en lille tabel: upsert med ignoreDuplicates = insert ... on conflict do nothing.
-function fakeConfigTable(rows: Array<{ key: string; value: unknown }>, { upsertError = null as unknown, readError = null as unknown } = {}) {
-  const upserts: Array<{ row: Record<string, unknown>; opts: Record<string, unknown> }> = [];
-  let reads = 0;
-  return {
-    rows, upserts,
-    get reads() { return reads; },
-    from(_table: string) {
-      let key: string | undefined;
-      const q = {
-        select: () => q,
-        eq: (_col: string, val: string) => { key = val; return q; },
-        maybeSingle: async () => {
-          reads++;
-          if (readError) return { data: null, error: readError };
-          return { data: rows.find((r) => r.key === key) ?? null, error: null };
-        },
-        upsert: async (row: { key: string; value: unknown }, opts: Record<string, unknown>) => {
-          upserts.push({ row, opts });
-          if (upsertError) return { error: upsertError };
-          const i = rows.findIndex((r) => r.key === row.key);
-          if (i < 0) rows.push({ key: row.key, value: row.value });
-          else if (!opts?.ignoreDuplicates) rows[i] = { key: row.key, value: row.value };
-          return { error: null };
-        },
-      };
-      return q;
-    },
-  };
-}
-
-test("stempling: første aktive dag stemples med tick-datoen, et eksisterende stempel overskrives aldrig", async () => {
-  const db = fakeConfigTable([]);
-  assert.equal(await ensureCurveBIgnitedOn(db, { tickDate: "2026-10-31" }), "2026-10-31");
-  assert.deepEqual(db.upserts[0].opts, { onConflict: "key", ignoreDuplicates: true });
-  assert.equal(db.upserts[0].row.key, CURVE_B_IGNITED_AT_CONFIG_KEY);
-  assert.equal(await ensureCurveBIgnitedOn(db, { tickDate: "2026-11-05" }), "2026-10-31", "næste dag: samme start");
-  assert.deepEqual(db.rows, [{ key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: "2026-10-31" }]);
-});
-
-test("stempling: læser først, og skriver kun når nøglen mangler (ingen skrivning efter vinduet)", async () => {
-  const db = fakeConfigTable([{ key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: "2026-10-01" }]);
-  for (const tickDate of ["2026-10-05", "2026-10-15", "2026-12-01"]) {
-    assert.equal(await ensureCurveBIgnitedOn(db, { tickDate }), "2026-10-01");
-  }
-  assert.equal(db.upserts.length, 0, "nøglen står der: intet upsert, heller ikke efter vinduet");
-  assert.equal(db.reads, 3, "én læsning pr. kørsel");
-  const fresh = fakeConfigTable([]);
-  await ensureCurveBIgnitedOn(fresh, { tickDate: "2026-10-31" });
-  await ensureCurveBIgnitedOn(fresh, { tickDate: "2026-11-01" });
-  assert.equal(fresh.upserts.length, 1, "kun den første kørsel stempler");
-  const junk = fakeConfigTable([{ key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: "ikke en dato" }]);
-  assert.equal(await ensureCurveBIgnitedOn(junk, { tickDate: "2026-10-31" }), null);
-  assert.equal(junk.upserts.length, 0, "en ugyldig værdi i hånden overskrives ikke");
-});
-
-test("stempling: fejl = ingen ny start, men kaster på den strikse sti", async () => {
-  await quiet(async () => {
-    const failing = fakeConfigTable([{ key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: "2026-10-30" }], { upsertError: { message: "nede" } });
-    assert.equal(await ensureCurveBIgnitedOn(failing, { tickDate: "2026-10-31" }), "2026-10-30");
-    assert.equal(await ensureCurveBIgnitedOn(fakeConfigTable([], { upsertError: { message: "nede" } }), { tickDate: "2026-10-31" }), null);
-    const unreadable = fakeConfigTable([], { readError: { message: "nede" } });
-    assert.equal(await ensureCurveBIgnitedOn(unreadable, { tickDate: "2026-10-31" }), null);
-    assert.equal(unreadable.upserts.length, 0, "en fejlet læsning stempler aldrig");
-    const bad = fakeConfigTable([]);
-    assert.equal(await ensureCurveBIgnitedOn(bad, { tickDate: "31/10" }), null);
-    assert.equal(bad.upserts.length, 0, "ugyldig dato stemples aldrig");
-  });
-  await assert.rejects(ensureCurveBIgnitedOn(fakeConfigTable([], { upsertError: { message: "nede" } }), { tickDate: "2026-10-31", strict: true }));
-  await assert.rejects(ensureCurveBIgnitedOn(fakeConfigTable([], { readError: { message: "nede" } }), { tickDate: "2026-10-31", strict: true }));
-});
-
-// Medlemstabellen som en lille tabel med (rider_id, ignited_on) som nøgle.
-type MemberRow = { rider_id: string; ignited_on: string; measured_on?: string; abilities: string[] };
-function fakeMembers(rows: MemberRow[], { readError = null as unknown, writeError = null as unknown } = {}) {
-  const upserts: Array<{ rows: MemberRow[]; opts: Record<string, unknown> }> = [];
-  const tables: string[] = [];
-  return {
-    rows, upserts, tables,
+// En lille database: app_config, teams, riders, rider_derived_abilities og medlemstabellen.
+// upsert med ignoreDuplicates = insert ... on conflict do nothing. `fail` = { "tabel:op": besked }.
+type Row = Record<string, any>;
+const CONFLICT: Record<string, string[]> = { app_config: ["key"], [CURVE_B_TRANSITION_MEMBERS_TABLE]: ["rider_id", "ignited_on"] };
+function fakeDb(tables: Record<string, Row[]>, { fail = {} as Record<string, string> } = {}) {
+  const log: string[] = [];
+  const db = {
+    tables, log, fail,
     from(table: string) {
-      tables.push(table);
-      const f: { ignited_on?: string; ids?: string[] } = {};
-      const q = {
+      tables[table] ??= [];
+      const filters: Array<(r: Row) => boolean> = [];
+      let range: [number, number] | null = null;
+      const run = () => {
+        log.push(`${table}:select`);
+        if (fail[`${table}:select`]) return { data: null, error: { message: fail[`${table}:select`] } };
+        let rows = tables[table].filter((r) => filters.every((f) => f(r)));
+        if (range) rows = rows.slice(range[0], range[1] + 1);
+        return { data: rows.map((r) => ({ ...r })), error: null };
+      };
+      const q: any = {
         select: () => q,
-        eq: (_c: string, v: string) => { f.ignited_on = v; return q; },
-        in: (_c: string, v: string[]) => {
-          f.ids = v;
-          return Promise.resolve(readError ? { data: null, error: readError }
-            : { data: rows.filter((r) => r.ignited_on === f.ignited_on && f.ids!.includes(r.rider_id)), error: null });
-        },
-        upsert: async (batch: MemberRow[], opts: Record<string, unknown>) => {
-          upserts.push({ rows: batch, opts });
-          if (writeError) return { error: writeError };
-          for (const r of batch) if (!rows.some((x) => x.rider_id === r.rider_id && x.ignited_on === r.ignited_on)) rows.push(r);
+        eq: (c: string, v: unknown) => { filters.push((r) => r[c] === v); return q; },
+        in: (c: string, v: unknown[]) => { log.push(`${table}:in:${v.length}`); filters.push((r) => v.includes(r[c])); return q; },
+        order: () => q,
+        range: (a: number, b: number) => { range = [a, b]; return q; },
+        maybeSingle: async () => { const r = run(); return { data: r.data?.[0] ?? null, error: r.error }; },
+        then: (resolve: (v: unknown) => void, reject: (e: unknown) => void) => Promise.resolve(run()).then(resolve, reject),
+        upsert: async (input: Row | Row[], opts: Row) => {
+          const batch = [input].flat();
+          log.push(`${table}:upsert:${batch.length}`);
+          if (fail[`${table}:upsert`]) return { error: { message: fail[`${table}:upsert`] } };
+          assert.equal(opts?.ignoreDuplicates, true, "on conflict do nothing");
+          const keys = CONFLICT[table];
+          for (const r of batch) if (!tables[table].some((x) => keys.every((k) => x[k] === r[k]))) tables[table].push({ ...r });
           return { error: null };
         },
       };
       return q;
     },
   };
+  return db;
 }
 
-const DAY0 = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-30" })!;
+const stampOf = (db: { tables: Record<string, Row[]> }) => db.tables.app_config?.find((r) => r.key === CURVE_B_IGNITED_AT_CONFIG_KEY)?.value ?? null;
+const membersOf = (db: { tables: Record<string, Row[]> }) => db.tables[CURVE_B_TRANSITION_MEMBERS_TABLE] ?? [];
+const SEASON = 1;
+const HIGH = at(85);
+const LOW = at(10);
+const abilityRow = (rider_id: string, values: Record<string, number>) => ({ rider_id, ...values });
+const rider = (id: string, team_id: string | null, extra: Row = {}) => ({ id, team_id, potentiale: 4, birthdate: "2003-01-01", primary_type: "climber", secondary_type: null, is_retired: false, ...extra });
+// Managerhold-reglen (samme som motorens isManagerTeamForDevelopment).
+const isManagerTeam = (t: Row) => t.user_id != null && t.is_ai !== true && t.is_bank !== true && t.is_test_account !== true;
+// Hold M1 (manager), AI, bank, testkonto og et hold uden manager.
+function world(extra: Partial<Record<string, Row[]>> = {}) {
+  return {
+    app_config: [] as Row[],
+    teams: [
+      { id: "M1", user_id: "u1", is_ai: false, is_bank: false, is_test_account: false },
+      { id: "AI", user_id: "u-ai", is_ai: true, is_bank: false, is_test_account: false },
+      { id: "BANK", user_id: "u-bank", is_ai: false, is_bank: true, is_test_account: false },
+      { id: "TEST", user_id: "u-test", is_ai: null, is_bank: null, is_test_account: true },
+      { id: "FREE", user_id: null, is_ai: false, is_bank: false, is_test_account: false },
+    ],
+    riders: [rider("A", "M1"), rider("B", "M1"), rider("R", "M1", { is_retired: true }),
+      rider("X", "AI"), rider("Y", "BANK"), rider("Z", "TEST"), rider("F", "FREE"), rider("N", null)],
+    rider_derived_abilities: ["A", "R", "X", "Y", "Z", "F", "N"].map((id) => abilityRow(id, HIGH)).concat([abilityRow("B", LOW)]),
+    [CURVE_B_TRANSITION_MEMBERS_TABLE]: [] as Row[],
+    ...extra,
+  } as Record<string, Row[]>;
+}
+const ignite = (db: ReturnType<typeof fakeDb>, over: Row = {}) =>
+  ensureCurveBIgnition(db, { now: NOW_7382, curveB: PARAMS, seasonNumber: SEASON, isManagerTeam, ...over } as never);
+// 30/10 kl. 23:30 UTC = 31/10 dansk tid.
+const NOW_7382 = new Date("2026-10-30T23:30:00Z");
+const TODAY_7382 = "2026-10-31";
+
+test("fixturen: rytter A står over loftet med motorens loft, rytter B under (ellers tester vi intet)", async () => {
+  const db = fakeDb(world());
+  await takeCurveBTransitionSnapshot(db, { ignitedOn: TODAY_7382, curveB: PARAMS, seasonNumber: SEASON, isManagerTeam });
+  const byId = new Map(membersOf(db).map((r) => [r.rider_id, r.abilities]));
+  assert.ok(byId.get("A").length > 0);
+  assert.deepEqual(byId.get("B"), []);
+});
+
+test("tændingen: stempler dagens danske dato ud fra now (ingen tick-dato), og øjebliksbilledet nøgles på den", async () => {
+  const db = fakeDb(world());
+  assert.equal(await ignite(db), TODAY_7382);
+  assert.equal(stampOf(db), TODAY_7382, "efter midnat dansk tid = næste dato");
+  assert.ok(membersOf(db).every((r) => r.ignited_on === TODAY_7382));
+  assert.deepEqual(Object.keys(membersOf(db)[0]).sort(), ["abilities", "ignited_on", "rider_id"], "ingen measured_on");
+});
+
+test("øjebliksbilledet: alle ryttere på managerhold (også tomme rækker), ingen AI/bank/test/uden manager/pensionerede", async () => {
+  const db = fakeDb(world());
+  await ignite(db);
+  assert.deepEqual(membersOf(db).map((r) => r.rider_id).sort(), ["A", "B"]);
+  const a = membersOf(db).find((r) => r.rider_id === "A");
+  const caps = buildCapsForRider({ ...HIGH }, { potentiale: 4, age: ageForSeason("2003-01-01", SEASON) }, "climber", null);
+  assert.deepEqual(a.abilities, curveBTransitionAbilities({ abilities: HIGH, caps, potentiale: 4, curveB: PARAMS }), "samme loft som motoren");
+});
+
+test("øjebliksbilledet tages én gang: står stemplet der, læses intet andet end nøglen", async () => {
+  const db = fakeDb(world());
+  await ignite(db);
+  const before = db.log.length;
+  db.tables.rider_derived_abilities.push(abilityRow("B2", HIGH));
+  db.tables.riders.push(rider("B2", "M1"));
+  assert.equal(await ignite(db, { now: new Date("2026-11-05T10:00:00Z") }), TODAY_7382, "næste dag: samme start");
+  assert.deepEqual(db.log.slice(before), ["app_config:select"]);
+  assert.ok(!membersOf(db).some((r) => r.rider_id === "B2"), "tilkommen rytter får ingen række");
+  const hand = fakeDb(world({ app_config: [{ key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: "ikke en dato" }] }));
+  assert.equal(await ignite(hand), null);
+  assert.deepEqual(hand.log, ["app_config:select"], "en ugyldig værdi i hånden overskrives ikke, og intet billede");
+});
+
+test("rækkefølgen: billedet skrives før stemplet", async () => {
+  const db = fakeDb(world());
+  await ignite(db);
+  const members = db.log.indexOf(`${CURVE_B_TRANSITION_MEMBERS_TABLE}:upsert:2`);
+  const stamp = db.log.indexOf("app_config:upsert:1");
+  assert.ok(members >= 0 && stamp > members, db.log.join(" "));
+});
+
+for (const failAt of ["teams:select", "riders:select", "rider_derived_abilities:select", `${CURVE_B_TRANSITION_MEMBERS_TABLE}:upsert`]) {
+  test(`tændingen: fejl i billedet (${failAt}) efterlader intet stempel; strict kaster; næste kørsel prøver igen`, async () => {
+    const db = fakeDb(world(), { fail: { [failAt]: "nede" } });
+    assert.equal(await quiet(() => ignite(db)), null, "uden strict: ingen overgang i kørslen");
+    assert.equal(stampOf(db), null);
+    await assert.rejects(ignite(db, { strict: true }), /nede/);
+    assert.equal(stampOf(db), null);
+    delete db.fail[failAt];
+    assert.equal(await ignite(db, { strict: true }), TODAY_7382, "næste kørsel tager billedet og stempler");
+    assert.deepEqual(membersOf(db).map((r) => r.rider_id).sort(), ["A", "B"]);
+  });
+}
+
+test("tændingen: fejl i stemplet eller nøglens læsning = intet stempel; strict kaster", async () => {
+  const stamp = fakeDb(world(), { fail: { "app_config:upsert": "nede" } });
+  assert.equal(await quiet(() => ignite(stamp)), null);
+  await assert.rejects(ignite(stamp, { strict: true }), /nede/);
+  const read = fakeDb(world(), { fail: { "app_config:select": "nede" } });
+  assert.equal(await quiet(() => ignite(read)), null);
+  assert.ok(!read.log.includes("teams:select"), "en fejlet læsning tager aldrig et billede");
+  await assert.rejects(ignite(read, { strict: true }), /nede/);
+  await assert.rejects(ignite(fakeDb(world()), { seasonNumber: Number.NaN, strict: true }), /seasonNumber/);
+});
+
+test("øjebliksbilledet: .in()-lister i bidder af højst 100 (URL-grænsen), alle ryttere kommer med", async () => {
+  const many = Array.from({ length: 250 }, (_, i) => rider(`m${String(i).padStart(3, "0")}`, "M1"));
+  const db = fakeDb(world({ riders: many, rider_derived_abilities: many.map((r) => abilityRow(r.id, HIGH)) }));
+  await ignite(db);
+  assert.equal(membersOf(db).length, 250);
+  const inSizes = db.log.filter((l) => l.startsWith("rider_derived_abilities:in:")).map((l) => Number(l.split(":")[2]));
+  assert.ok(inSizes.length >= 3 && inSizes.every((n) => n <= 100), inSizes.join(","));
+});
+
 const DAY7 = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-06" })!;
-const over = { ...at(20), [MAIN]: 80 };
-const under = at(20);
-const riderArgs = (riderId: string, abilities: Record<string, number>) => ({ riderId, abilities, caps: at(CAP), potentiale: POT });
 
-test("roster, tændingsdagen: måler før tick'et, låser og gemmer én række pr. rytter (også tom)", async () => {
-  const db = fakeMembers([]);
-  const roster = await loadCurveBTransitionRoster(db, { transition: DAY0, curveB: PARAMS, riderIds: ["A", "B"] });
-  assert.deepEqual(roster.forRider(riderArgs("A", over)), { weight: 0, abilities: [MAIN] });
-  assert.equal(roster.forRider(riderArgs("B", under)), null, "ingen evne over loftet: kurve B fuldt");
-  await roster.persist();
-  assert.equal(db.upserts.length, 1);
-  assert.deepEqual(db.upserts[0].opts, { onConflict: "rider_id,ignited_on", ignoreDuplicates: true });
-  assert.deepEqual(db.rows, [
-    { rider_id: "A", ignited_on: "2026-10-30", measured_on: "2026-10-30", abilities: [MAIN] },
-    { rider_id: "B", ignited_on: "2026-10-30", measured_on: "2026-10-30", abilities: [] },
-  ]);
-  assert.ok(db.tables.every((t) => t === CURVE_B_TRANSITION_MEMBERS_TABLE));
-  await roster.persist();
-  assert.equal(db.upserts.length, 1, "intet nyt at gemme");
-});
-
-test("roster, tændingsdagens næste løbsdag: den første kørsel vinder, en evne der lige har krydset er ikke med", async () => {
-  const db = fakeMembers([{ rider_id: "B", ignited_on: "2026-10-30", abilities: [] }]);
-  const roster = await loadCurveBTransitionRoster(db, { transition: DAY0, curveB: PARAMS, riderIds: ["B"] });
-  assert.equal(roster.forRider(riderArgs("B", over)), null, "den låste (tomme) række gælder, ikke dagens evne");
-  await roster.persist();
-  assert.equal(db.upserts.length, 0);
-});
-
-test("roster, inde i vinduet: kun den låste række tæller; krydser evnen loftet senere, får den kurve B", async () => {
-  const db = fakeMembers([
+test("roster: kun rækken i øjebliksbilledet tæller; ingen eller tom række = kurve B", async () => {
+  const db = fakeDb({ [CURVE_B_TRANSITION_MEMBERS_TABLE]: [
     { rider_id: "A", ignited_on: "2026-10-30", abilities: [MAIN] },
     { rider_id: "B", ignited_on: "2026-10-30", abilities: [] },
     { rider_id: "C", ignited_on: "2026-09-01", abilities: [MAIN] },
-  ]);
-  const roster = await loadCurveBTransitionRoster(db, { transition: DAY7, curveB: PARAMS, riderIds: ["A", "B", "C", "D"] });
-  assert.deepEqual(roster.forRider(riderArgs("A", under)), { weight: 0.5, abilities: [MAIN] }, "låst ind: blandingen, uanset dagens evne");
-  assert.equal(roster.forRider(riderArgs("B", over)), null, "krydset inde i vinduet: kurve B");
-  assert.equal(roster.forRider(riderArgs("C", over)), null, "en række fra en tidligere tænding tæller ikke");
-  assert.equal(roster.forRider(riderArgs("D", over)), null, "ingen række (fx kommet til et managerhold efter tændingsdagen): kurve B");
-  await roster.persist();
-  assert.equal(db.upserts.length, 0, "et hold der blev målt, måles aldrig igen");
+  ] });
+  const roster = await loadCurveBTransitionRoster(db, { transition: DAY7, riderIds: ["A", "B", "C", "D"] });
+  assert.deepEqual(roster.forRider("A"), { weight: 0.5, abilities: [MAIN] });
+  assert.equal(roster.forRider("B"), null, "tom række (krydser loftet senere): kurve B");
+  assert.equal(roster.forRider("C"), null, "en række fra en tidligere tænding tæller ikke");
+  assert.equal(roster.forRider("D"), null, "tilkommen rytter uden række: kurve B hele vejen");
+  assert.ok(!db.log.some((l) => l.includes("upsert")), "roster skriver aldrig");
+  const BEFORE = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-28" })!;
+  const early = await loadCurveBTransitionRoster(db, { transition: BEFORE, riderIds: ["A"] });
+  assert.deepEqual(early.forRider("A"), { weight: 0, abilities: [MAIN] }, "efterslæb før tændingen: vægt 0");
 });
 
-test("roster: et hold der ikke blev målt på tændingsdagen, måles på sin første dato i vinduet (og kun dér)", async () => {
-  // Fx "træn nu" for hele tændingsdatoen før flaget blev tændt: ingen af holdets ryttere har en række.
-  const db = fakeMembers([]);
-  const roster = await loadCurveBTransitionRoster(db, { transition: DAY7, curveB: PARAMS, riderIds: ["A", "B"] });
-  assert.deepEqual(roster.forRider(riderArgs("A", over)), { weight: 0.5, abilities: [MAIN] }, "målt før dagens tick");
-  assert.equal(roster.forRider(riderArgs("B", under)), null);
-  await roster.persist();
-  assert.deepEqual(db.rows, [
-    { rider_id: "A", ignited_on: "2026-10-30", measured_on: "2026-11-06", abilities: [MAIN] },
-    { rider_id: "B", ignited_on: "2026-10-30", measured_on: "2026-11-06", abilities: [] },
-  ]);
-  // Samme dato, næste løbsdag: en rytter der ikke var med i første kørsel, måles stadig.
-  const sameDate = await loadCurveBTransitionRoster(db, { transition: DAY7, curveB: PARAMS, riderIds: ["A", "B", "C"] });
-  assert.equal(sameDate.forRider(riderArgs("B", over)), null, "den første kørsel vinder");
-  assert.deepEqual(sameDate.forRider(riderArgs("C", over)), { weight: 0.5, abilities: [MAIN] });
-  // Næste dato: holdet er målt; en ny rytter uden række får kurve B.
-  const DAY8 = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-07" })!;
-  const next = await loadCurveBTransitionRoster(db, { transition: DAY8, curveB: PARAMS, riderIds: ["A", "D"] });
-  assert.equal(next.forRider(riderArgs("D", over)), null, "kommet til holdet efter målingen: kurve B");
-  // En efterslæbende kørsel før startdatoen måler intet.
-  const BEFORE = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-29" })!;
-  const early = await loadCurveBTransitionRoster(fakeMembers([]), { transition: BEFORE, curveB: PARAMS, riderIds: ["A"] });
-  assert.equal(early.forRider(riderArgs("A", over)), null);
+test("roster: læser i bidder af højst 100; en fejlet læsning = kurve B fuldt, strict kaster", async () => {
+  const ids = Array.from({ length: 250 }, (_, i) => `r${i}`);
+  const db = fakeDb({ [CURVE_B_TRANSITION_MEMBERS_TABLE]: [] });
+  await loadCurveBTransitionRoster(db, { transition: DAY7, riderIds: ids });
+  assert.deepEqual(db.log.filter((l) => l.includes(":in:")), [`${CURVE_B_TRANSITION_MEMBERS_TABLE}:in:100`, `${CURVE_B_TRANSITION_MEMBERS_TABLE}:in:100`, `${CURVE_B_TRANSITION_MEMBERS_TABLE}:in:50`]);
+  const failing = fakeDb({ [CURVE_B_TRANSITION_MEMBERS_TABLE]: [{ rider_id: "A", ignited_on: "2026-10-30", abilities: [MAIN] }] },
+    { fail: { [`${CURVE_B_TRANSITION_MEMBERS_TABLE}:select`]: "nede" } });
+  const roster = await quiet(() => loadCurveBTransitionRoster(failing, { transition: DAY7, riderIds: ["A"] }));
+  assert.equal(roster.forRider("A"), null);
+  await assert.rejects(loadCurveBTransitionRoster(failing, { transition: DAY7, riderIds: ["A"], strict: true }), /nede/);
 });
 
 test("tick: en evne der krydser loftet inde i vinduet, får kurve B (ingen spring op til den gamle fart)", () => {
@@ -329,26 +345,6 @@ test("tick: en evne der krydser loftet inde i vinduet, får kurve B (ingen sprin
   assert.equal(prog(other, MAIN), prog(b, MAIN), "kun de låste evner blandes");
 });
 
-test("roster: en fejlet læsning = kurve B fuldt og intet skrevet; kaster på den strikse sti", async () => {
-  const db = fakeMembers([], { readError: { message: "nede" } });
-  const roster = await quiet(() => loadCurveBTransitionRoster(db, { transition: DAY0, curveB: PARAMS, riderIds: ["A"] }));
-  assert.equal(roster.forRider(riderArgs("A", over)), null);
-  await roster.persist();
-  assert.equal(db.upserts.length, 0);
-  await assert.rejects(loadCurveBTransitionRoster(fakeMembers([], { readError: { message: "nede" } }),
-    { transition: DAY0, curveB: PARAMS, riderIds: ["A"], strict: true }));
-});
-
-test("roster: en fejlet skrivning kaster på den strikse sti, ellers en advarsel", async () => {
-  const strict = await loadCurveBTransitionRoster(fakeMembers([], { writeError: { message: "nede" } }),
-    { transition: DAY0, curveB: PARAMS, riderIds: ["A"], strict: true });
-  strict.forRider(riderArgs("A", over));
-  await assert.rejects(strict.persist({ strict: true }));
-  const loose = await loadCurveBTransitionRoster(fakeMembers([], { writeError: { message: "nede" } }),
-    { transition: DAY0, curveB: PARAMS, riderIds: ["A"] });
-  loose.forRider(riderArgs("A", over));
-  await quiet(() => loose.persist({ strict: false }));
-});
 
 test("flag off: overgangen ignoreres uden kurve B (bit-identisk)", () => {
   assert.deepEqual(tick({ curveBTransition: tr(0) }), tick());

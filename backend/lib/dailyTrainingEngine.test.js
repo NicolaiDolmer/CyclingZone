@@ -91,6 +91,10 @@ function createMockSupabase(state, opts = {}) {
       limit(n) {
         return builder(table, op, [...filters, ["__limit", n, "meta"]], patch, inList);
       },
+      // #7382: fetchAllRows paginerer med .range(from, to).
+      range(from, to) {
+        return builder(table, op, [...filters, ["__range", [from, to], "meta"]], patch, inList);
+      },
       async maybeSingle() {
         const result = await new Promise((resolve) => obj.then(resolve));
         const rows = result.data ?? [];
@@ -189,6 +193,8 @@ function createMockSupabase(state, opts = {}) {
                 : Number(b[ord.col]) - Number(a[ord.col])));
             }
             if (Number.isFinite(lim)) rows = rows.slice(0, lim);
+            const rng = filters.find((f) => f[2] === "meta" && f[0] === "__range")?.[1];
+            if (rng) rows = rows.slice(rng[0], rng[1] + 1);
             result = { data: rows, error: null };
           }
         }
@@ -3474,14 +3480,16 @@ test("#3564 kald-sted: flag on + gyldige params sender kurven ind i tick'et", as
   assert.notDeepEqual(curve.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
 });
 
-// ── #7382 blød overgang: motoren stempler startdatoen selv ───────────────────
+// ── #7382 blød overgang: motoren tager eet oejebliksbillede og stempler dagens dato ──
 // Evnerne staar over det bloede loft (syntetiske params), saa overgangen kan ses.
 const CURVE_B_IGNITED_KEY_7382 = "development_curve_b_ignited_at";
 const CURVE_B_MEMBERS_7382 = "development_curve_b_transition_members";
-// fail: "stamp" (noeglens laesning), "members" (medlemslaesning) eller "membersWrite".
+const HIGH_7382 = () => ({ ...Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 85])), ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) });
+const MANAGER_TEAM_7382 = { id: TEAM_ID, user_id: "u1", is_ai: false, is_bank: false, is_test_account: false };
+// fail: "stamp" (noeglens laesning), "members" (medlemslaesning) eller "snapshot" (billedets skrivning).
 async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPerDate = false, fail = null, prep = null, runArgs = {}, now = NOW }) {
   const state = seedState({
-    abilities: [makeAbilityRow("r1", { ...Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 85])), ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) })],
+    abilities: [makeAbilityRow("r1", HIGH_7382())],
     plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
   });
   state.app_config = [{ key: "development_curve_b", value: flag }];
@@ -3491,6 +3499,8 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
     seedRaceDayTick(state, { gameDay: 1 });
     state.app_config.push({ key: "training_condition_per_date", value: "on" });
   }
+  // Holdet er et managerhold (seedRaceDayTick saetter sin egen holdraekke; felterne flettes ind).
+  state.teams = [{ ...(state.teams?.find((t) => t.id === TEAM_ID) ?? {}), ...MANAGER_TEAM_7382 }];
   prep?.(state);
   const underlying = createMockSupabase(state);
   const configKeys = [];
@@ -3501,8 +3511,8 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
     if (table === CURVE_B_MEMBERS_7382) {
       touched.push(table);
       if (fail === "members") return { ...b, select: () => ({ eq: () => ({ in: async () => ({ data: null, error: { message: "members nede" } }) }) }) };
-      if (fail === "membersWrite") return { ...b, upsert: async () => ({ error: { message: "members skriv nede" } }) };
-      return b;
+      if (fail === "snapshot") return { ...b, upsert: async () => ({ error: { message: "billede nede" } }) };
+      return { ...b, upsert(rows, o) { touched.push(`${table}:upsert`); return b.upsert(rows, o); } };
     }
     if (table !== "app_config") return b;
     return { ...b,
@@ -3537,21 +3547,31 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
     members: state[CURVE_B_MEMBERS_7382] ?? null, report: result?.report ?? null };
 }
 
-test("#7382 kald-sted: kurve B aktiv stempler tick-datoen og giver den gamle models fremdrift dag 1", async () => {
+test("#7382 kald-sted: kurve B aktiv stempler dagens dato og giver dag 0 max(kurve B, gammel) = den gamle models fremdrift", async () => {
   const first = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS });
-  assert.equal(first.stamp, "2026-06-12", "foerste aktive dag stemples (dansk dato)");
+  assert.equal(first.stamp, "2026-06-12", "dagens danske dato stemples");
   const old = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
   const full = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
   assert.equal(full.stamp, "2026-05-01", "et eksisterende stempel overskrives aldrig");
   assert.notDeepEqual(full.progress, first.progress, "kontrol: overgangen aendrer noget (testen er ikke tom)");
-  assert.deepEqual(first.progress, old.progress, "dag 1 over loftet = den gamle models fremdrift");
+  assert.deepEqual(first.progress, old.progress, "dag 0 over loftet = den gamle models fremdrift (den er hurtigst her)");
 });
 
-test("#7382 kald-sted: flag off slaar ikke noeglen op og stempler intet", async () => {
+test("#7382 kald-sted: en efterslaebs-koersel for en gammel dato stempler DAGENS dato, ikke tick-datoen", async () => {
+  const backlog = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, runArgs: { tickDateOverride: "2026-06-09" } });
+  assert.equal(backlog.stamp, "2026-06-12", "vinduet starter i dag, ikke paa efterslaebets dato");
+  assert.ok(backlog.members.every((m) => m.ignited_on === "2026-06-12"));
+  const old = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS, runArgs: { tickDateOverride: "2026-06-09" } });
+  assert.deepEqual(backlog.progress, old.progress, "dato foer taendingen: vaegt 0");
+});
+
+test("#7382 kald-sted: flag off slaar ikke noeglen op, tager intet billede og stempler intet", async () => {
   const off = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
   assert.equal(off.stamp, null);
   assert.ok(!off.configKeys.includes(CURVE_B_IGNITED_KEY_7382), "intet opslag af noeglen");
   assert.ok(off.configKeys.includes("development_curve_b"), "kontrol: spionen ser app_config-opslag");
+  assert.deepEqual(off.touched, []);
+  assert.equal(off.members, null);
 });
 
 test("#7382 kald-sted: flag on uden gyldige params stempler intet (kurven koerer ikke)", async () => {
@@ -3561,40 +3581,38 @@ test("#7382 kald-sted: flag on uden gyldige params stempler intet (kurven koerer
   assert.deepEqual(noParams.touched, [], "intet opslag af medlemmerne");
 });
 
-test("#7382 kald-sted: flag off roerer ikke medlemstabellen", async () => {
-  const off = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
-  assert.deepEqual(off.touched, []);
-  assert.equal(off.members, null);
-});
-
-test("#7382 kald-sted: taendingsdagen laaser medlemskabet (en raekke, maalt foer tick'et)", async () => {
-  const first = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS });
-  assert.equal(first.members?.length, 1);
-  const [m] = first.members;
-  assert.equal(m.rider_id, "r1");
-  assert.equal(m.ignited_on, "2026-06-12");
-  assert.ok(m.abilities.length > 0 && m.abilities.every((a) => VISIBLE_ABILITIES.includes(a)), "evnerne over loftet er med");
+test("#7382 kald-sted: oejebliksbilledet tages een gang: managerholdets ryttere, ikke AI-hold eller pensionerede", async () => {
+  const otherTeams = (state) => {
+    state.teams.push({ id: "team-ai", user_id: "u-ai", is_ai: true, is_bank: false, is_test_account: false });
+    state.riders.push(makeRider({ id: "r-ai", team_id: "team-ai" }), makeRider({ id: "r-old", is_retired: true }), makeRider({ id: "r2", team_id: TEAM_ID }));
+    state.rider_derived_abilities.push(makeAbilityRow("r-ai", HIGH_7382()), makeAbilityRow("r-old", HIGH_7382()), makeAbilityRow("r2", HIGH_7382()));
+  };
+  const first = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: otherTeams });
+  assert.deepEqual(first.members.map((m) => m.rider_id).sort(), ["r1", "r2"], "hele managerholdets trup, ogsaa uden tick i koerslen");
+  assert.ok(first.members.every((m) => m.abilities.length > 0 && m.abilities.every((a) => VISIBLE_ABILITIES.includes(a))));
   assert.deepEqual(first.configUpserts, [CURVE_B_IGNITED_KEY_7382], "stemplet skrives en gang");
+  assert.equal(first.touched.filter((t) => t.endsWith(":upsert")).length, 1, "billedet skrives i een batch");
+  const again = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", members: first.members, prep: otherTeams });
+  assert.ok(!again.touched.some((t) => t.endsWith(":upsert")), "stemplet staar der: intet nyt billede");
+  assert.deepEqual(again.members, first.members);
 });
 
-test("#7382 kald-sted: inde i vinduet giver kun en laast raekke blandingen, aldrig dagens evne", async () => {
+test("#7382 kald-sted: inde i vinduet giver kun en raekke blandingen; en tilkommen rytter uden raekke faar kurve B", async () => {
   const full = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
   const old = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
   const day7 = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-05" };
-  // Codex-review 30/10: holdet havde afregnet hele taendingsdatoen foer kurve B blev aktiv
-  // (ingen raekke for nogen af holdets ryttere) => maales paa sin foerste dato i vinduet.
-  const noRow = await runCurveBDay7382(day7);
-  assert.notDeepEqual(noRow.progress, full.progress, "hold uden maaling: maales i dag og faar blandingen");
-  assert.equal(noRow.members?.length, 1);
-  assert.equal(noRow.members[0].measured_on, "2026-06-12", "maalt paa holdets foerste dato i vinduet");
-  assert.equal(noRow.members[0].ignited_on, "2026-06-05");
+  const newcomer = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r-other", ignited_on: "2026-06-05", abilities: [...VISIBLE_ABILITIES] }] });
+  assert.deepEqual(newcomer.progress, full.progress, "ingen raekke: kurve B hele vejen, ingen maaling senere");
+  assert.equal(newcomer.members.length, 1, "intet maales inde i vinduet");
   const empty = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r1", ignited_on: "2026-06-05", abilities: [] }] });
   assert.deepEqual(empty.progress, full.progress, "tom raekke (krydsede loftet senere): kurve B");
   const locked = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r1", ignited_on: "2026-06-05", abilities: [...VISIBLE_ABILITIES] }] });
-  assert.notDeepEqual(locked.progress, full.progress, "laast ind: blandingen");
+  assert.notDeepEqual(locked.progress, full.progress, "med raekken: blandingen");
   assert.notDeepEqual(locked.progress, old.progress, "dag 7: ikke laengere den gamle models fulde fart");
-  assert.equal(locked.members.length, 1, "raekken roeres ikke");
-  for (const r of [noRow, empty, locked]) assert.deepEqual(r.configUpserts, [], "noeglen staar der: intet stempel-upsert");
+  for (const r of [newcomer, empty, locked]) {
+    assert.deepEqual(r.configUpserts, [], "noeglen staar der: intet stempel-upsert");
+    assert.ok(!r.touched.some((t) => t.endsWith(":upsert")), "intet billede");
+  }
 });
 
 test("#7382 kald-sted: efter vinduet hverken stempel-skrivning eller medlemsopslag", async () => {
@@ -3603,80 +3621,40 @@ test("#7382 kald-sted: efter vinduet hverken stempel-skrivning eller medlemsopsl
   assert.deepEqual(after.touched, []);
 });
 
-// Mutationsvagt: motoren skal sende strict: conditionPerDate videre til alle tre
-// kald (stempel, medlemslaesning, medlemsskrivning). Med strict:false ville en fejl
-// blive til "ingen overgang" i stedet for et kast paa dato-stiens atomare sti.
+test("#7382 kald-sted: en skadet rytter kommer med i billedet og faar overgangen senere i vinduet", async () => {
+  const injured = (state) => { state.rider_condition = [makeCondition("r1", { injured_until: "2026-06-13" })]; };
+  const day0 = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: injured });
+  assert.deepEqual(day0.report.riders[0].gains, {}, "kontrol: ingen gevinst paa taendingsdagen");
+  assert.equal(day0.members?.length, 1, "rytteren er med alligevel");
+  const later = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: day0.stamp, now: new Date("2026-06-19T10:00:00+02:00") };
+  const withRow = await runCurveBDay7382({ ...later, members: day0.members });
+  const fullLater = await runCurveBDay7382({ ...later, ignitedAt: "2026-05-01" });
+  assert.notDeepEqual(withRow.progress, fullLater.progress, "med raekken: overgangen senere i vinduet");
+});
+
+// Fejl i billedet: intet stempel, saa naeste koersel proever igen. Mutationsvagt: motoren skal
+// sende strict: conditionPerDate videre til stempel, billede og medlemslaesning.
 for (const [fail, ignitedAt, message] of [
   ["stamp", undefined, /stempel nede/],
+  ["snapshot", undefined, /billede nede/],
   ["members", "2026-06-05", /members nede/],
-  ["membersWrite", undefined, /members skriv nede/],
 ]) {
   test(`#7382 kald-sted: ${fail}-fejl kaster paa dato-stien (strict), men ikke paa den gamle sti`, async () => {
     const args = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt, fail };
     await assert.rejects(runCurveBDay7382({ ...args, conditionPerDate: true }), message);
     const loose = await runCurveBDay7382(args);
     assert.ok(loose.progress, "uden strict koerer dagen videre (kurve B fuldt)");
+    if (!ignitedAt) assert.equal(loose.stamp, null, "intet stempel uden et helt billede");
   });
 }
 
-// Review 30/10: en rytter uden tick paa taendingsdagen (skadet, hviledag i et etapeloeb,
-// ukendt slot) skal stadig maales, ellers faar han kurve B fuldt selv om evnen stod over loftet.
-const DAY7_7382 = new Date("2026-06-19T10:00:00+02:00");
-const injuredOnDay0 = (state) => { state.rider_condition = [makeCondition("r1", { injured_until: "2026-06-13" })]; };
-const restDayOnDay0 = (state) => { seedRaceDayTick(state, { gameDay: 12 }); seedBinding(state, { gameDay: 12 }); };
-for (const [label, prep, runArgs] of [
-  ["skadet", injuredOnDay0, {}],
-  ["hviledag i et etapeloeb", restDayOnDay0, { gameDay: 12, eligibleRiderIds: ["r1"] }],
-]) {
-  test(`#7382 kald-sted: ${label} paa taendingsdagen maales og faar overgangen senere i vinduet`, async () => {
-    const day0 = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep, runArgs });
-    assert.equal(day0.stamp, "2026-06-12");
-    assert.equal(day0.report.riders[0].intensity, "rest", "kontrol: intet tick paa taendingsdagen");
-    assert.deepEqual(day0.report.riders[0].gains, {}, "kontrol: ingen gevinst paa taendingsdagen");
-    assert.equal(day0.members?.length, 1, "rytteren er maalt alligevel");
-    assert.ok(day0.members[0].abilities.length > 0, "evnerne over loftet er med");
-    const later = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: day0.stamp, now: DAY7_7382 };
-    const withRow = await runCurveBDay7382({ ...later, members: day0.members });
-    const noRow = await runCurveBDay7382({ ...later, members: [{ ...day0.members[0], abilities: [] }] });
-    const full = await runCurveBDay7382({ ...later, ignitedAt: "2026-05-01" });
-    assert.deepEqual(noRow.progress, full.progress, "kontrol: maalt uden evner over loftet = kurve B fuldt");
-    assert.notDeepEqual(withRow.progress, full.progress, "med raekken: overgangen senere i vinduet");
-  });
-}
-
-// Codex #7384: paa dato-stien er riderIds kun dagens klar-ryttere. Er en nykommer den eneste
-// klar rytter paa et hold der allerede er maalt, maa han ikke blive maalt (kurve B hele vejen).
-test("#7382 kald-sted: en nykommer alene paa et allerede maalt hold faar ingen raekke (dato-stien)", async () => {
-  const addNewcomer = (state) => {
-    state.riders.push(makeRider({ id: "r2" }));
-    state.rider_derived_abilities.push(makeAbilityRow("r2", { ...Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 85])), ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) }));
-    state.rider_condition.push(makeCondition("r2"));
-    state.training_plans.push({ rider_id: "r2", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" });
-  };
-  const measured = [{ rider_id: "r1", ignited_on: "2026-06-05", measured_on: "2026-06-05", abilities: ["stamina"] }];
-  const run = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-05", members: measured,
-    conditionPerDate: true, prep: addNewcomer, runArgs: { eligibleRiderIds: ["r2"] } });
-  assert.deepEqual(run.members.map((m) => m.rider_id), ["r1"], "nykommeren maales ikke; holdet er allerede maalt");
-});
-
-test("#7382 kald-sted: datoens foerste koersel vinder, ogsaa naar rytteren er skadet i den naeste", async () => {
-  const first = [{ rider_id: "r1", ignited_on: "2026-06-12", abilities: [] }];
-  const again = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", members: first, prep: injuredOnDay0 });
-  assert.deepEqual(again.members, first, "raekken flyttes ikke af datoens naeste koersel");
-  const fresh = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", prep: injuredOnDay0 });
-  assert.ok(fresh.members[0].abilities.length > 0, "kontrol: uden raekke maales rytteren");
-});
-
-test("#7382 kald-sted: et hold der ikke udvikler sig (managerhold-reglen) faar ingen raekke", async () => {
-  const aiTeam = (state) => {
-    state.app_config.push({ key: "development_v2_aging_enabled", value: "on" });
-    state.teams = [{ id: TEAM_ID, user_id: null, is_ai: true, is_bank: false, is_test_account: false }];
-  };
-  const ai = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: aiTeam });
-  assert.deepEqual(ai.members ?? [], [], "AI-hold: ingen maaling");
-  const manager = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: (state) => {
-    aiTeam(state);
-    state.teams = [{ id: TEAM_ID, user_id: "u1", is_ai: false, is_bank: false, is_test_account: false }];
-  } });
-  assert.equal(manager.members?.length, 1, "kontrol: managerholdet maales");
+test("#7382 kald-sted: et fejlet billede efterlader intet stempel, og naeste koersel tager det", async () => {
+  const failed = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, fail: "snapshot" });
+  const full = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
+  assert.equal(failed.stamp, null);
+  assert.deepEqual(failed.configUpserts, [], "stemplet skrives aldrig efter et fejlet billede");
+  assert.deepEqual(failed.progress, full.progress, "koerslen faar kurve B fuldt");
+  const retry = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  assert.equal(retry.stamp, "2026-06-12");
+  assert.equal(retry.members.length, 1);
 });
