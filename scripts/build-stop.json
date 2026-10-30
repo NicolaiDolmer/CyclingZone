@@ -198,6 +198,10 @@
     {
       "issue": 7381,
       "area": "race-engine"
+    },
+    {
+      "issue": 7390,
+      "area": "udvikling-2"
     }
   ],
   "cleanupList": [
