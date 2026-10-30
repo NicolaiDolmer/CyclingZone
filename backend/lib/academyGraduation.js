@@ -13,7 +13,7 @@ import { readFlagStage } from "./featureStage.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { buildKeyedNotification, notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
-import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
+import { getTeamMarketState, calculateRiderMarketValue, closeTransferListingsForRiders } from "./marketUtils.js";
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
@@ -532,6 +532,8 @@ export async function resolveGraduation(supabase, {
   if (error) throw new Error(`resolveGraduation release update: ${error.message}`);
   // #1906 defense-in-depth: ryd rytterens fremtidige race_entries så de ikke hænger ved som ghost.
   await clearFutureRaceEntriesSafe({ supabase, riderId, label: "academy_release" });
+  // #7284: rytteren har forladt holdet, saa et aabent transfer_listing maa ikke staa tilbage.
+  await closeTransferListingsForRiders(supabase, [riderId], "withdrawn");
   await finishGraduation(supabase, { gradId: grad.id, status: "released", teamId, rider, now, action, notify });
   return { riderId, action: "released" };
 }
@@ -649,6 +651,8 @@ export async function releaseUnsoldGraduate(supabase, {
   // #1906 defense-in-depth: samme oprydning som release-grenen — rytteren har
   // forladt holdet, saa hans fremtidige race_entries maa ikke haenge ved.
   await clearFutureRaceEntriesSafe({ supabase, riderId: id, label: "academy_unsold_graduate" });
+  // #7284: samme som release-grenen, luk rytterens aabne transfer_listings.
+  await closeTransferListingsForRiders(supabase, [id], "withdrawn");
 
   // Grad-raekken blev stemplet 'sold' i det oejeblik auktionen blev OPRETTET,
   // ikke da den blev afgjort (#4495 punkt 2). Salget skete aldrig, saa raekken

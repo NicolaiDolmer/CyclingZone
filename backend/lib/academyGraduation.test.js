@@ -27,7 +27,7 @@ const CONTRACT_NOTICE_NOW = new Date("2026-10-26T12:00:00Z");
 // auctions (insert). notify injiceres som spy (ingen notifikations-DB-queries).
 
 function makeSupabase(cfg = {}) {
-  const rec = { gradInserts: [], gradUpdates: [], riderUpdates: [], auctionInserts: [] };
+  const rec = { gradInserts: [], gradUpdates: [], riderUpdates: [], auctionInserts: [], listingUpdates: [] };
   const supabase = {
     from(table) {
       if (table === "riders") {
@@ -123,6 +123,22 @@ function makeSupabase(cfg = {}) {
           insert(row) { rec.gradInserts.push(row); return Promise.resolve({ error: cfg.gradInsertError ?? null }); },
           update(payload) {
             return { eq(col, val) { rec.gradUpdates.push({ ...payload, __eq: [col, val] }); return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+      // #7284: closeTransferListingsForRiders -> update({status}).in(rider_id).in(status).
+      if (table === "transfer_listings") {
+        return {
+          update(patch) {
+            const filters = {};
+            const b = {
+              in(col, vals) { filters[col] = vals; return b; },
+              then(resolve, reject) {
+                rec.listingUpdates.push({ patch: { ...patch }, filters: { ...filters } });
+                return Promise.resolve({ error: null }).then(resolve, reject);
+              },
+            };
+            return b;
           },
         };
       }
@@ -540,6 +556,16 @@ test("resolveGraduation release: #2881 — nuller salary/contract_length/contrac
   assert.equal(rec.riderUpdates[0].contract_end_season, null);
 });
 
+// #7284: en frigivet graduate efterlod tidligere et aabent transfer_listing.
+test("#7284 resolveGraduation release: lukker rytterens aabne transfer_listings som withdrawn", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER });
+  await resolveGraduation(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action: "release", seasonNumber: 1, notify: spyNotify() });
+  assert.equal(rec.listingUpdates.length, 1);
+  assert.equal(rec.listingUpdates[0].patch.status, "withdrawn");
+  assert.deepEqual(rec.listingUpdates[0].filters.rider_id, ["r1"]);
+  assert.deepEqual(rec.listingUpdates[0].filters.status, ["open", "negotiating"]);
+});
+
 test("resolveGraduation: afviser hvis ingen pending grad-row", async () => {
   const { supabase } = makeSupabase({ gradRow: null, rider: RIDER });
   await assert.rejects(
@@ -661,6 +687,20 @@ test("#4495 releaseUnsoldGraduate: usolgt graduate bliver fri agent (team_id NUL
   assert.equal(rec.riderUpdates[0].contract_end_season, null);
   assert.equal(notify.calls.length, 1);
   assert.equal(notify.calls[0].type, "academy_graduated");
+});
+
+test("#7284 releaseUnsoldGraduate: lukker rytterens aabne transfer_listings som withdrawn", async () => {
+  const { supabase, rec } = makeSupabase({ rider: STUCK_ACADEMY_RIDER, gradRows: [SOLD_GRAD] });
+  await releaseUnsoldGraduate(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r9", notify: spyNotify() });
+  assert.equal(rec.listingUpdates.length, 1);
+  assert.equal(rec.listingUpdates[0].patch.status, "withdrawn");
+  assert.deepEqual(rec.listingUpdates[0].filters.rider_id, ["r9"]);
+});
+
+test("#7284 releaseUnsoldGraduate: idempotent no-op rorer ikke transfer_listings", async () => {
+  const { supabase, rec } = makeSupabase({ rider: { ...STUCK_ACADEMY_RIDER, is_academy: false }, gradRows: [SOLD_GRAD] });
+  await releaseUnsoldGraduate(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r9", notify: spyNotify() });
+  assert.equal(rec.listingUpdates.length, 0);
 });
 
 test("#4495 releaseUnsoldGraduate: retter den fejlagtige 'sold'-stempling til 'released'", async () => {
