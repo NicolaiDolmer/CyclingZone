@@ -1478,7 +1478,8 @@
         },
         "order": {
           "save": "Jouw opdracht: Rustig rijden.",
-          "grupetto": "Jouw opdracht: Grupetto."
+          "grupetto": "Jouw opdracht: Grupetto.",
+          "plan": "Jouw opdracht: {task}."
         }
       },
       "event": {

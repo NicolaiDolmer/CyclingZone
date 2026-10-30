@@ -1478,7 +1478,8 @@
         },
         "order": {
           "save": "Tu orden: Ir tranquilo.",
-          "grupetto": "Tu orden: Grupeto."
+          "grupetto": "Tu orden: Grupeto.",
+          "plan": "Tu orden: {task}."
         }
       },
       "event": {
