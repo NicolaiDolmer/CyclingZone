@@ -26,6 +26,8 @@ const OPEN_STATUSES = ["open", "negotiating"];
  * @param {Array<{id:string,rider_id:string,seller_team_id:string|null,status:string}>} listings
  * @param {Map<string,{team_id:string|null}>|Record<string,{team_id:string|null}>} ridersById
  */
+const WRITE_CHUNK_SIZE = 100;
+
 export function findOrphanListings(listings, ridersById) {
   const get = (id) => (ridersById instanceof Map ? ridersById.get(id) : ridersById?.[id]);
   return (listings ?? []).filter((l) => {
@@ -70,15 +72,21 @@ export async function run({ supabase, apply = false, log = console.log } = {}) {
     return { orphans, applied: 0 };
   }
   if (orphans.length === 0) return { orphans, applied: 0 };
-  const { data, error } = await supabase
-    .from("transfer_listings")
-    .update({ status: "withdrawn" })
-    .in("id", orphans.map((o) => o.id))
-    .in("status", OPEN_STATUSES)
-    .select("id");
-  if (error) throw new Error(`update: ${error.message}`);
-  log(`withdrawn: ${(data ?? []).length}`);
-  return { orphans, applied: (data ?? []).length };
+  // Skriv i bundter som laesningerne: en lang .in()-liste fejler i gatewayen (supabasePagination.js).
+  const ids = orphans.map((o) => o.id);
+  let applied = 0;
+  for (let i = 0; i < ids.length; i += WRITE_CHUNK_SIZE) {
+    const { data, error } = await supabase
+      .from("transfer_listings")
+      .update({ status: "withdrawn" })
+      .in("id", ids.slice(i, i + WRITE_CHUNK_SIZE))
+      .in("status", OPEN_STATUSES)
+      .select("id");
+    if (error) throw new Error(`update (efter ${applied} withdrawn): ${error.message}`);
+    applied += (data ?? []).length;
+  }
+  log(`withdrawn: ${applied}`);
+  return { orphans, applied };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
