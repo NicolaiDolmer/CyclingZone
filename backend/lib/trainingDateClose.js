@@ -3,6 +3,9 @@ import { copenhagenDateString, copenhagenHour } from './copenhagenTime.js';
 import { fetchAllRows } from './supabasePagination.js';
 import { refreshRankingsAfterTrainingSettlement } from './refreshRankingMatviews.js';
 import { loadTrainingDateContext, nextCivilDate, resolveTrainingDateReadiness, trainingDateDeadline, trainingDateBounds } from './trainingDateReadiness.js';
+import { loadFinalTrainingDate, TRAINING_DATE_SETTLEMENT_HOUR } from './seasonTransitionReadiness.js';
+import { ADMIN_ACTION_TYPE } from './economyConstants.js';
+import { TRANSITION_PHASE_LOG_SOURCE, TRANSITION_PHASE_STATUS } from './seasonTransitionPhaseLog.js';
 
 /**
  * #6536: who gets the division-less calendar-day tick (gameDay null)?
@@ -32,6 +35,89 @@ async function checked(query, label) {
   return data;
 }
 
+function previousCivilDate(date) {
+  return new Date(Date.parse(`${date}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
+}
+
+// A full timestamp inside the final date (not a planned date-only value).
+function instantWithin(value, { start, end }) {
+  if (value == null || String(value).length <= 10) return null;
+  const at = new Date(value);
+  return Number.isFinite(at.getTime()) && at >= start && at < end ? at : null;
+}
+
+/**
+ * #6924 (owner decision B, 20/10 on #6898): the final training date of a season
+ * that has just left `active`. Only the latest completed season, and only while
+ * its final date is due and at most one day old: that is the window in which the
+ * season-end gate (assessFinalTrainingDateSettlement) lets the season end before
+ * the date is settled. Older dates stay historical (quarantined for review).
+ *
+ * `cutoff` is when the season stopped being the game's season: the earliest of the
+ * season-end claim and the transition's own instant, else the date's own end.
+ * Riders created and teams started or returned after it (new-season intake and
+ * teams) belong to the next season, not to this final date.
+ *
+ * The transition instant is read from its admin_log rows (seasonTransition.js
+ * writes `meta.transition_at` on its start anchor and on its audit row, both with
+ * `meta.from_season_id`). seasons.end_date cannot carry it: the column is a DATE,
+ * so a transition that bypasses season-end (no claim) would otherwise fall back to
+ * midnight (Codex P1 on #7143).
+ *
+ * Cutover barrier (Codex P1 on #7143): the date is only scheduled once the next
+ * season is active and no engine transition from this season is still between its
+ * start anchor and its finish (audit row or completed anchor). The transition runs
+ * the season-start form/fatigue resets in between; work registered before them would
+ * freeze a pre-reset opening condition, and commit_training_date_tick would then
+ * quarantine those riders (unsafe_current_state). Season-end alone (status
+ * `completed`, next season not yet active) therefore waits for the transition.
+ */
+export async function loadJustCompletedFinalTrainingDate({ supabase, today, dueEnd }) {
+  const [season] = await checked(supabase.from('seasons').select('id,number,start_date,end_date,status')
+    .eq('status', 'completed').order('number', { ascending: false }).range(0, 0), 'completed season') ?? [];
+  if (season?.status !== 'completed') return null;
+  const tickDate = await loadFinalTrainingDate({ supabase, seasonId: season.id });
+  if (!tickDate || tickDate > dueEnd || tickDate < previousCivilDate(today)) return null;
+  const [claim, transitionRows, next] = await Promise.all([
+    checked(supabase.from('season_end_claims').select('claimed_at').eq('season_id', season.id).maybeSingle(), 'season end claim'),
+    // Earliest first: a retried transition's first attempt already started the cutover.
+    checked(supabase.from('admin_log').select('action_type,meta').contains('meta', { from_season_id: season.id })
+      .order('created_at', { ascending: true }).range(0, 49), 'season transition log'),
+    checked(supabase.from('seasons').select('status').eq('number', Number(season.number) + 1).maybeSingle(), 'next season'),
+  ]);
+  if (next?.status !== 'active') return null;
+  const rows = transitionRows ?? [];
+  const phase = status => rows.some(row => row.meta?.source === TRANSITION_PHASE_LOG_SOURCE && row.meta?.status === status);
+  const finished = phase(TRANSITION_PHASE_STATUS.COMPLETED) || rows.some(row => row.action_type === ADMIN_ACTION_TYPE.SEASON_TRANSITION);
+  if (phase(TRANSITION_PHASE_STATUS.STARTED) && !finished) return null;
+  const bounds = trainingDateBounds(tickDate);
+  const marks = [claim?.claimed_at, ...rows.map(row => row.meta?.transition_at)]
+    .map(value => instantWithin(value, bounds)).filter(Boolean);
+  const cutoff = marks.length ? new Date(Math.min(...marks.map(Number))) : bounds.end;
+  return { season, tickDate, cutoff };
+}
+
+// #6924: the team's division during the season. Season-end promotion/relegation
+// and parking rewrite teams.league_division_id; the final date's race days belong
+// to the pool the team actually raced in.
+export async function loadSeasonStandingDivisions({ supabase, seasonId }) {
+  const rows = await fetchAllRows(() => supabase.from('season_standings').select('team_id,league_division_id').eq('season_id', seasonId).order('team_id'));
+  return new Map(rows.filter(row => row.league_division_id != null).map(row => [row.team_id, row.league_division_id]));
+}
+
+// #6924: ordinary teams parked by the season-end parking sweep (after the cutoff).
+// On the final date they were still active, so the date counts them.
+async function loadTeamsParkedAfter({ supabase, cutoff }) {
+  const rows = await fetchAllRows(() => supabase.from('teams').select('id,is_bank,is_frozen,is_test_account')
+    .gte('parked_at', cutoff.toISOString()).order('id'));
+  return rows.filter(row => !row.is_bank && !row.is_frozen && !row.is_test_account).map(row => row.id);
+}
+
+// #6924: a team that only started (or came back) after the cutoff was not in this season.
+function existedAt(row, cutoff, keys) {
+  return keys.every(key => !row?.[key] || new Date(row[key]) < cutoff);
+}
+
 export async function loadTrainingDateIndex({ supabase, now }) {
   const today = copenhagenDateString(now);
   const [active, activation, unfinished] = await Promise.all([
@@ -44,9 +130,11 @@ export async function loadTrainingDateIndex({ supabase, now }) {
   for (const id of new Set(unfinished.map(row => row.season_id))) {
     if (!seasons.has(id)) seasons.set(id, await checked(supabase.from('seasons').select('id,number,start_date,end_date').eq('id', id).single(), 'unfinished season'));
   }
+  const due = copenhagenHour(now) >= TRAINING_DATE_SETTLEMENT_HOUR;
   for (const row of unfinished) {
-    if (row.tick_date < today || copenhagenHour(now) >= 20) jobs.set(`${row.season_id}:${row.tick_date}`, { season: seasons.get(row.season_id), tickDate: row.tick_date, forceRetry: true });
+    if (row.tick_date < today || due) jobs.set(`${row.season_id}:${row.tick_date}`, { season: seasons.get(row.season_id), tickDate: row.tick_date, forceRetry: true });
   }
+  const end = due ? today : previousCivilDate(today);
   if (active) {
     const first = activation?.value;
     if (typeof first !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(first)) throw new Error('Missing authoritative condition activation date');
@@ -59,10 +147,18 @@ export async function loadTrainingDateIndex({ supabase, now }) {
     const seasonStart = String(active.start_date).slice(0, 10);
     const bridgeStart = active.previous_end_date ? nextCivilDate(String(active.previous_end_date).slice(0, 10)) : seasonStart;
     const start = [first, [bridgeStart, seasonStart].sort()[0]].sort().at(-1);
-    const end = copenhagenHour(now) >= 20 ? today : new Date(Date.parse(`${today}T12:00:00Z`) - 86400000).toISOString().slice(0, 10);
     for (let date = start; date <= end && date <= String(active.end_date).slice(0, 10); date = nextCivilDate(date)) {
       if (!jobs.has(`${active.id}:${date}`)) jobs.set(`${active.id}:${date}`, { season: active, tickDate: date });
     }
+  }
+  // #6924: the last date of a season that has just left `active` is still settled
+  // as an ordinary date, not quarantined as historical. Exactly once is the durable
+  // work's job (complete/needs_reconciliation are skipped, receipts per race day).
+  const final = await loadJustCompletedFinalTrainingDate({ supabase, today, dueEnd: end });
+  if (final && final.season.id !== active?.id) {
+    const key = `${final.season.id}:${final.tickDate}`;
+    const job = jobs.get(key) ?? { season: final.season, tickDate: final.tickDate };
+    jobs.set(key, { ...job, finalSeasonDate: { cutoff: final.cutoff } });
   }
   return { jobs: [...jobs.values()].sort((a, b) => a.tickDate.localeCompare(b.tickDate)), today, activeSeasonId: active?.id ?? null };
 }
@@ -201,6 +297,7 @@ export async function runNormalizedTrainingDateSweep({
   registerWork = registerTrainingDateWork, dispatchAlarms = dispatchTrainingDateAlarms,
   loadWorkRows = loadTrainingWorkRows, quarantineRiders = quarantineTrainingRiders, departRiders = departTrainingDateRiders,
   loadLegacyRuns = loadLegacyRunTeamIds,
+  loadSeasonDivisions = loadSeasonStandingDivisions, loadParkedTeams = loadTeamsParkedAfter,
   refreshRankings = refreshRankingsAfterTrainingSettlement,
   elapsedClock = () => performance.now(),
   // #5911: how many teams settle at once. 1 = the old sequential sweep.
@@ -228,23 +325,36 @@ export async function runNormalizedTrainingDateSweep({
     // just the teams whose durable work is still pending/partial.
     const retryOnly = Boolean(job.forceRetry) && job.tickDate < index.today && fullPassDates.has(dateKey);
     const workRows = await loadWorkRows({ supabase, ...job });
-    const context = await loadContext({ supabase, ...job, loadDaySpans, registeredTeamIds: workRows.map(row => row.team_id) });
+    // #6924: a final date settled after season-end sees the season as it was at
+    // the cutoff: the pools the teams raced in, and teams the season-end parking
+    // sweep parked afterwards (their work is registered like any other team's).
+    const final = job.finalSeasonDate ?? null;
+    const [seasonDivisions, parkedAfterCutoff] = final
+      ? await Promise.all([loadSeasonDivisions({ supabase, seasonId: job.season.id }), loadParkedTeams({ supabase, cutoff: final.cutoff })])
+      : [new Map(), []];
+    const registeredTeamIds = [...new Set([...workRows.map(row => row.team_id), ...parkedAfterCutoff])];
+    const context = await loadContext({ supabase, ...job, loadDaySpans, registeredTeamIds });
     const workByTeam = new Map(workRows.map(row => [row.team_id, row]));
     const riderById = new Map((context.riders ?? []).map(rider => [rider.id, rider]));
     await forEachTeamBounded(context.teams, teamConcurrency, async (team) => {
-      const unsafeSeason = index.activeSeasonId !== undefined && index.activeSeasonId !== job.season.id;
+      const unsafeSeason = !final && index.activeSeasonId !== undefined && index.activeSeasonId !== job.season.id;
       if (unsafeSeason && !workByTeam.has(team.id)) return;
       if (retryOnly && !['pending', 'partial'].includes(workByTeam.get(team.id)?.status)) return;
       if (['complete', 'needs_reconciliation'].includes(workByTeam.get(team.id)?.status)) return;
+      if (final && !workByTeam.has(team.id) && !existedAt(team, final.cutoff, ['created_at', 'comeback_at'])) return;
       const dateEnd = trainingDateBounds(job.tickDate).end;
+      // #6924: riders created after the cutoff (the new season's intake) did not
+      // exist in this season. A trade on the date still follows the usual rule.
+      const createdBy = final?.cutoff ?? dateEnd;
       const currentIds = context.riders.filter(rider => rider.team_id === team.id &&
-        (!rider.created_at || new Date(rider.created_at) < dateEnd) &&
+        (!rider.created_at || new Date(rider.created_at) < createdBy) &&
         (!rider.acquired_at || new Date(rider.acquired_at) < dateEnd)).map(rider => rider.id);
       if (!currentIds.length && !workByTeam.has(team.id)) return;
-      const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(team.league_division_id);
+      const divisionId = final ? (seasonDivisions.get(team.id) ?? team.league_division_id) : team.league_division_id;
+      const days = workByTeam.get(team.id)?.game_days ?? context.gameDaysByDivision.get(divisionId);
       // Division-less AI teams retain their existing calendar-day fallback. A
       // division-less human team is parked (#6536) and gets no tick at all.
-      if (!team.league_division_id && !workByTeam.has(team.id)) {
+      if (!divisionId && !workByTeam.has(team.id)) {
         if (!isLegacyCalendarTickTeam(team)) return;
         try {
           const legacyRan = await loadLegacyRan();
@@ -301,7 +411,7 @@ export async function runNormalizedTrainingDateSweep({
         summary.pending += Object.keys(readiness.unresolvedSlotsByRider).length;
         if (!readiness.deadlineReached && Object.keys(readiness.unresolvedSlotsByRider).length) waitingForDate = true;
         if (!readiness.eligibleRiderIds.length) return;
-        if (team.league_division_id) divisions.add(team.league_division_id);
+        if (divisionId) divisions.add(divisionId);
         for (const gameDay of work.game_days) {
           failingGameDay = gameDay;
           allDays.add(gameDay); summary.planned++;

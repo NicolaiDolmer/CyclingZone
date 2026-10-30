@@ -16,6 +16,7 @@ import {
   STAGE_PLAN_LEG_EVENT,
   STAGE_PLAN_ORDER_KIND,
   advanceStagePlan,
+  advanceStagePlanAtFinish,
   createStagePlanRuntime,
   isRiderDropped,
   stagePlanEntrants,
@@ -209,7 +210,7 @@ test("#7003: juryen ser indsatsen i rytterens sidste led", () => {
   assert.equal(runSegmentLoop(mountainInput("s5_profiles_v3"), DEFAULT_MECHANIC_HOOKS).state.stage_plan_efforts, undefined);
 });
 
-test("#7003: et punkt inde i etapens sidste segment skifter ved segmentets start (sidste led koeres altid)", () => {
+test("#7333: et punkt i anden halvdel af etapens sidste segment skifter i finalen, ikke ved segmentets start", () => {
   const route = mountainInput("s5_profiles_v3").route;
   const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }];
   const rt = createStagePlanRuntime([planOrder("A", [{ rider_id: "cap", legs }])], route, ENTRANTS)!;
@@ -217,19 +218,36 @@ test("#7003: et punkt inde i etapens sidste segment skifter ved segmentets start
   // Et langt sidste segment, hvor de sidste km begynder efter midten.
   const last = { kind: "climb" as const, from_km: route.distance_km - 30, to_km: route.distance_km, category: "1" as const, avg_gradient: 7, top_elevation_m: 1800 };
   assert.deepEqual(advanceStagePlan(rt, { state: stateWith([pel]), segment: last, segmentIndex: 5, entrants: ENTRANTS }), [], "midt i etapen: midtpunkt-reglen");
-  const ev = advanceStagePlan(rt, { state: stateWith([pel]), segment: last, segmentIndex: 5, isLastSegment: true, entrants: ENTRANTS });
-  assert.deepEqual(ev.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["cap", "attack", "final_km"]]);
+  assert.deepEqual(advanceStagePlan(rt, { state: stateWith([pel]), segment: last, segmentIndex: 5, isLastSegment: true, entrants: ENTRANTS }), [], "sidste segment: samme regel");
+  const finale = advanceStagePlanAtFinish(rt, { state: stateWith([pel]), segment: last, entrants: ENTRANTS });
+  assert.deepEqual(finale?.events.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["cap", "attack", "final_km"]], "sidste led koeres altid (i finalen)");
 });
 
-test("#7003: en etape i ét eneste segment koerer stadig planens rutepunkter (aldrig 'sat' ved start)", () => {
+test("#7003/#7333: en etape i ét eneste segment: rutepunkter i anden halvdel tager finalen (aldrig 'sat' ved start)", () => {
   const route = mountainInput("s5_profiles_v3").route;
   const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }];
   const brkLegs: StagePlanLeg[] = [{ task: "breakaway" }, { task: "ride_in", from: { at: "dropped" } }];
   const rt = createStagePlanRuntime([planOrder("A", [{ rider_id: "cap", legs }, { rider_id: "hun", legs: brkLegs }])], route, ENTRANTS)!;
   const pel: RaceGroup = { id: "p0", kind: "peloton", rider_ids: ["cap", "h1", "hun", "x"], gap_seconds: 0, cohesion: 1 };
   const only = { kind: "flat" as const, from_km: 0, to_km: route.distance_km };
-  const ev = advanceStagePlan(rt, { state: stateWith([pel]), segment: only, segmentIndex: 0, isLastSegment: true, entrants: ENTRANTS });
-  assert.deepEqual(ev.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["cap", "attack", "final_km"]], "udbryderen er ikke 'kom ikke med' foer starten");
+  assert.deepEqual(advanceStagePlan(rt, { state: stateWith([pel]), segment: only, segmentIndex: 0, isLastSegment: true, entrants: ENTRANTS }), [], "udbryderen er ikke 'kom ikke med' foer starten");
+  const finale = advanceStagePlanAtFinish(rt, { state: stateWith([pel]), segment: only, entrants: ENTRANTS });
+  assert.deepEqual(finale?.events.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["cap", "attack", "final_km"]]);
+});
+
+test("#7333: hele motoren: 'de sidste km' paa et langt sidste segment staar paa punktet og koster indsatsen i finalen", () => {
+  const input = mountainInput("s5_profiles_v3");
+  const rider = input.startlist.find((e) => e.role === "captain")!;
+  const order = planOrder(teamOf(input, rider.rider_id), [{ rider_id: rider.rider_id, legs: [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }] }]);
+  const out = simulateStageV4(mountainInput("s5_profiles_v3", [order]));
+  const events = legEvents(out.timeline.events, rider.rider_id);
+  const finalKm = input.route.distance_km - 10;
+  const last = input.route.segments[input.route.segments.length - 1];
+  assert.ok(finalKm - last.from_km > (last.to_km - last.from_km) / 2, "fixturen: punktet ligger i sidste segments anden halvdel");
+  assert.deepEqual(events.map((e) => [e.params.task, e.params.reason]), [["attack", "final_km"]]);
+  assert.ok(events[0].km >= finalKm, "aldrig foer de sidste km");
+  assert.equal(out.stage_plan_load_efforts?.[rider.rider_id], "all_out", "finalen blev koert med opgavens indsats");
+  assert.deepEqual(validateTimelineEvents(out.timeline.events, { distanceKm: input.route.distance_km, knownRiderIds: new Set(input.startlist.map((e) => e.rider_id)) }), []);
 });
 
 test("#7003: etapens traethed regnes paa den haardeste indsats rytteren faktisk koerte", () => {

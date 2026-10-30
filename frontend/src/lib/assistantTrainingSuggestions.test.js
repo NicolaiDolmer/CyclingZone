@@ -171,3 +171,12 @@ test("#4699 acceptable-sættet matcher filteret 'kun ryttere uden en plan'", () 
   assert.deepEqual(acceptableSuggestionIds(filtered), filtered.map((r) => r.riderId));
   assert.equal(acceptableSuggestionIds(filtered).length, countSuggestionsWithoutPlan(MIXED));
 });
+
+test("buildAssistantSuggestions: v3-session itt_long vises som hård, samme som serveren gemmer (#5319)", () => {
+  const rows = buildAssistantSuggestions({
+    riders: [{ id: "r1", firstname: "A", lastname: "B" }],
+    smartDefaultFocusByRider: { r1: "itt_long" },
+    planFor: () => null,
+  });
+  assert.equal(rows[0].intensity, "hard");
+});
