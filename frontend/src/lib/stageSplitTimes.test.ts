@@ -229,6 +229,9 @@ test("#7333 Codex-review: et finale-skift (at_finish) tilskrives ikke et fald pa
   assert.equal(stagePlanTaskAt(efforts, atFinish, "own1", 150), "stay_sheltered");
   const atStart = [{ km: 140, type: "stage_plan_leg", params: { rider_id: "own1", leg: 1, task: "follow_moves", reason: "final_km" } }];
   assert.equal(stagePlanTaskAt(efforts, atStart, "own1", 150), "follow_moves", "aeldre/segment-skift: uaendret");
+  // Review: faldet paa stigning X stemples paa toppen, samme km som skiftet "efter X".
+  const atTop = [{ km: 120, type: "stage_plan_leg", params: { rider_id: "own1", leg: 1, task: "follow_moves", reason: "kom" } }];
+  assert.equal(stagePlanTaskAt(efforts, atTop, "own1", 120), "stay_sheltered", "skift paa samme km gaelder ikke faldet");
 });
 
 test("#6647 effectiveEffortByRider: en ordre med 'normal' overskriver ikke rollens beskyt/spar", () => {

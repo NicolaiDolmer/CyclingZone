@@ -430,8 +430,8 @@ export class StageOrderEfforts extends Map<string, string> {
 }
 
 /**
- * #7333: den opgave en plan-rytter havde ved `km`: det seneste stage_plan_leg-skift ved
- * eller foer km (motoren skriver ét pr. skift), ellers planens foerste opgave. null for
+ * #7333: den opgave en plan-rytter havde ved `km`: det seneste stage_plan_leg-skift
+ * strengt foer km (motoren skriver ét pr. skift), ellers planens foerste opgave. null for
  * en rytter uden plan. Et skift med `at_finish` (advanceStagePlanAtFinish) gaelder kun
  * finalen, der ikke giver fald (peloton_splits): et fald paa sidste segment skete paa
  * det forrige led, selv om skiftets km ligger foer faldets.
@@ -449,7 +449,9 @@ export function stagePlanTaskAt(
   for (const e of events ?? []) {
     if (e?.type !== "stage_plan_leg" || e.params?.rider_id !== riderId || e.params?.at_finish === true) continue;
     const at = Number(e.km ?? 0);
-    if (at > km || at < atKm) continue;
+    // Strengt foer: et skift ved segmentgraensen staar paa samme km som segmentets split
+    // (climbSelection stempler segment.to_km), men faldet skete paa det forrige led.
+    if (at >= km || at < atKm) continue;
     const leg = Number(e.params?.leg);
     const next = str(e.params?.task) ?? (Number.isInteger(leg) ? tasks[leg] : null);
     if (next) { task = next; atKm = at; }
