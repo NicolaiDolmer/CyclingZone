@@ -42,6 +42,16 @@ function makeQueryBuilder(rows, { count = false } = {}) {
       filtered = filtered.filter((r) => values.includes(r[col]));
       return builder;
     },
+    // #7096 · ungdomsresultat-loaderen bruger .lte("rank", ...) og paginerer
+    // med .range() (fetchAllRows).
+    lte(col, value) {
+      filtered = filtered.filter((r) => r[col] <= value);
+      return builder;
+    },
+    range(from, to) {
+      filtered = filtered.slice(from, to + 1);
+      return builder;
+    },
     or() {
       // Testfixtures opfylder allerede invarianten (mandate_id ELLER
       // milestone_id sat) — .or() er et no-op i mock'en.

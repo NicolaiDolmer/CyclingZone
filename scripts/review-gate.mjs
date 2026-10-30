@@ -263,10 +263,18 @@ export function codexSeverity(body) {
   return String(body || "").match(/!\[(P[0-3]) Badge\]/)?.[1] || null;
 }
 
+// #7358 (CodeQL #383): fjern tags til teksten er stabil og derefter alle resterende
+// vinkelparenteser, så indlejrede tags ("<<b>x>") ikke efterlader et tag.
+function stripTags(text) {
+  let out = String(text);
+  for (let prev = null; prev !== out;) { prev = out; out = out.replace(/<[^<>]*>/g, ''); }
+  return out.replace(/[<>]/g, '');
+}
+
 /** CodeRabbit's bot-authored severity header, metadata only; Codex policy is unchanged. */
 export function codeRabbitSeverity(body) {
   const header = String(body || '').split(/\r?\n/).find(line => line.startsWith('**') && line.includes('** ·'));
-  const severity = header?.replace(/<[^>]*>/g, '').match(/\b(Critical|Major|Minor|Trivial)\*\*/i)?.[1]?.toLowerCase();
+  const severity = (header == null ? null : stripTags(header))?.match(/\b(Critical|Major|Minor|Trivial)\*\*/i)?.[1]?.toLowerCase();
   return ({critical:'P0',major:'P1',minor:'P2',trivial:'P3'})[severity] ?? null;
 }
 /** Blokerer et uloest Codex-fund merge? Kun P0, P1 og ukendt grad. */

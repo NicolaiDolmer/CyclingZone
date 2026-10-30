@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// #5846 · source-contract (samme stil som auctionEntryGate.routes.test.js): hvor
+// #5846 · source-contract (samme stil som de øvrige *.routes.test.js-filer): hvor
 // sæsonskifte-gaten sidder i auktions-ruterne. Selve før/under/efter-reglen er
 // unit-testet i seasonTransitionBoundary.test.js.
 //   - OPRET (POST /auctions): henter grænsen via fetchSeasonTransitionBoundary og

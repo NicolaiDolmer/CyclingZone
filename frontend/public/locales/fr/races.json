@@ -1478,7 +1478,8 @@
         },
         "order": {
           "save": "Ta consigne : Rouler tranquille.",
-          "grupetto": "Ta consigne : Autobus."
+          "grupetto": "Ta consigne : Autobus.",
+          "plan": "Ta consigne : {task}."
         }
       },
       "event": {

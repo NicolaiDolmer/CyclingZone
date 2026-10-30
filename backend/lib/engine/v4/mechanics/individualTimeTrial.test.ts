@@ -665,3 +665,24 @@ test("#6595 v3: tempo-rytteren henter mere ind paa klatreren paa fladt; bjergenk
   assert.ok(gap(undefined, V3_WEIGHT) > gap(undefined, ROAD_WEIGHT), "fladt: tempo-rytterens forspring vokser under v3");
   assert.ok(gap(MOUNTAIN_ITT_SEGMENTS, V3_WEIGHT) < 0, "bjergenkeltstart: klatreren er stadig hurtigst");
 });
+
+// #7332 (ejer 28/10: "alt ud skal give bedre praestation, men ogsaa mere traethed"):
+// motor-siden. Samme rytter, samme seed, kun indsatsen skifter: under s5_profiles_v3 med
+// kontakten taendt (#7311) er alt ud hurtigere paa flad OG kuperet enkeltstart, for en
+// staerk og en svag tidskoerer. Traetheds-siden og hele kaeden: conditionModelV2.test.js.
+test("#7332: alt ud er hurtigere end normal paa enkeltstarten (samme rytter, samme seed)", () => {
+  for (const [profileType, segs] of [["itt", undefined], ["itt_hilly", HILLY_SEGMENTS]] as const) {
+    for (const target of ["r02", "r30"]) {
+      for (const seed of ["itt-7332-a", "itt-7332-b"]) {
+        const timeOf = (effort: Entrant["effort"]) => {
+          const startlist = field(40).map((e) => (e.rider_id === target ? { ...e, effort } : e));
+          const out = simulateStageV4(input({ route: route(profileType, segs), startlist, seed, rules_revision: "s5_profiles_v3" }));
+          return out.results.find((r) => r.rider_id === target)!.time_seconds;
+        };
+        const normal = timeOf("normal");
+        assert.ok(timeOf("all_out") < normal, `${profileType}/${target}/${seed}: alt ud er hurtigere`);
+        assert.ok(timeOf("save") >= normal, `${profileType}/${target}/${seed}: spar er aldrig hurtigere`);
+      }
+    }
+  }
+});

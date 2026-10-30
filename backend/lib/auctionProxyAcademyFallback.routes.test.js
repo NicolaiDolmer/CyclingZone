@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// #3826 · route-source-contract i samme stil som auctionEntryGate.routes.test.js.
+// #3826 · route-source-contract i samme stil som de øvrige *.routes.test.js-filer.
 // Bug: PATCH /auctions/:id/proxy brugte getAuctionBidSquadBlock (kun senior-cap),
 // mens POST /auctions/:id/bid brugte den delte getAuctionBidRoomBlock (senior +
 // akademi-fallback for ungdomsauktioner). En manager med fuld seniortrup men ledig

@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { RiderLink, Section, SectionHeader } from "../race/stagePageV2/ui.ts";
+import { ChevronRightIcon } from "../ui/index.js";
 import { isTimeTrialNarrative } from "../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { fetchTeamOrders } from "../../lib/tacticsOrdersAdapter.js";
 import { stageOrdersRecap, type StageRolesLike, type TeamOrdersContext } from "./stageOrdersRecap.ts";
@@ -68,7 +69,7 @@ export default function StageOrdersRecap({
         {recap.riders.map((r) => {
           const tags = [
             r.role && ROLE_KEYS.has(r.role) ? t(`tacticsOrders.roleLabel.${r.role}`) : null,
-            t(`tacticsOrders.effort.${EFFORT_KEYS.has(r.effort) ? r.effort : "normal"}`),
+            r.plan ? null : t(`tacticsOrders.effort.${EFFORT_KEYS.has(r.effort) ? r.effort : "normal"}`), // #7333: en plan vises som planen, ikke foerste leds indsats
             !timeTrial && r.tryBreak ? t("tacticsOrders.tryBreak") : null,
             !timeTrial && r.leadout ? t("tacticsOrders.leadout") : null,
             r.roleDefault ? t("stageOrders.roleDefaultShort") : null,
@@ -76,7 +77,16 @@ export default function StageOrdersRecap({
           return (
             <li key={r.riderId} className="flex min-h-11 flex-wrap items-baseline gap-x-3 gap-y-0.5 border-t border-cz-border py-2 first:border-t-0">
               <RiderLink id={r.riderId} className="min-w-0 flex-1 truncate text-sm font-semibold text-cz-1 hover:text-cz-accent-t">{r.name || t("tacticsOrders.riderFallback")}</RiderLink>
-              <span className="text-xs text-cz-2">{tags.join(" · ")}</span>
+              <span className="text-xs text-cz-2">
+                {r.plan && r.plan.map((task, i) => ( // #7333
+                  <span key={i} className="inline-flex items-center gap-1">
+                    {i > 0 && <ChevronRightIcon size={12} aria-hidden="true" className="mx-0.5 shrink-0 text-cz-3" />}
+                    {t(`stagePlan.task.${task}`)}
+                  </span>
+                ))}
+                {r.plan && tags.length > 0 && " · "}
+                {tags.join(" · ")}
+              </span>
             </li>
           );
         })}

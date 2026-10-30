@@ -1461,7 +1461,8 @@
         },
         "order": {
           "save": "Din ordre: Kør roligt.",
-          "grupetto": "Din ordre: Grupetto."
+          "grupetto": "Din ordre: Grupetto.",
+          "plan": "Din ordre: {task}."
         }
       },
       "event": {
