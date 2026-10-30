@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
+import SortableTh from "../ui/SortableTh.jsx";
 import { Button, CheckIcon, ChevronRightIcon, LockIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
@@ -30,8 +31,11 @@ import {
   setLegTask,
   setLegTrigger,
   setRiderPlan,
+  stagePlanFeaturesFromRaw,
   stagePlanRecap,
   stagePlanRouteFromRaw,
+  stagePlanSwitchNotes,
+  stagePlanSwitchNoteText,
   suggestStagePlan,
   taskOptions,
   triggerKey,
@@ -107,11 +111,14 @@ function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], item: St
   if (item.status === "skipped") return t("stagePlan.recap.skipped");
   if (item.status === "not_reached") return t("stagePlan.recap.notReached");
   const km = item.endKm == null ? null : Math.round(item.endKm);
-  if (item.endReason === "kom") {
-    const from = legs[i + 1]?.from;
-    return t("stagePlan.recap.kom", { climb: from?.at === "kom" ? climbLabel(t, route, from.kom_index) : "—" });
-  }
-  return t(`stagePlan.recap.${item.endReason}`, { km });
+  // #7368: leddet staar med sit eget skift-punkt (som spilleren satte det) og slutter ved
+  // det led der faktisk afloeste det, ikke altid det naeste i kaeden.
+  const start = i > 0 ? triggerLabel(t, route, legs[i].from, legs[i - 1].task) : "";
+  const endFrom = item.endLeg == null ? undefined : legs[item.endLeg]?.from;
+  const end = item.endReason === "kom"
+    ? t("stagePlan.recap.kom", { climb: endFrom?.at === "kom" ? climbLabel(t, route, endFrom.kom_index) : "—" })
+    : t(`stagePlan.recap.${item.endReason}`, { km });
+  return start ? `${start}, ${end}` : end;
 }
 
 /** Efter etapen: hvad rytteren faktisk gjorde i hvert led. */
@@ -280,6 +287,7 @@ export default function StagePlanBoard({
   onEditorOpen,
   roleDefaultFor,
   effortFor,
+  routeMatch,
 }: {
   t: TFn;
   raceId: string;
@@ -300,9 +308,19 @@ export default function StagePlanBoard({
   roleDefaultFor?: (riderId: string) => Record<string, unknown> | null;
   /** Dagens indsats (intentionen) for en rytter uden plan. */
   effortFor?: (rider: PlanRider) => unknown;
+  /** #7334: rute-match for den aabne etape (samme tal og sortering som den gamle tabel). */
+  routeMatch?: {
+    label: string;
+    title: string;
+    mobileLabel: string;
+    sortDir: "asc" | "desc" | null;
+    onSort: () => void;
+    renderCell: (rider: PlanRider, opts?: { numberOnly?: boolean }) => React.ReactNode;
+  };
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => routeForProfile(profile), [profile]);
+  const features = useMemo(() => stagePlanFeaturesFromRaw(profile), [profile]); // #7383
   const events = useStageTimeline(raceId, activeStage, stageCompleted);
   const planByRider = new Map<string, StagePlanLeg[] | null>((order?.riders ?? []).map((r): [string, StagePlanLeg[] | null] => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
   const timeTrial = route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt";
@@ -361,6 +379,9 @@ export default function StagePlanBoard({
         <>
           <PlanChain t={t} legs={legs} route={route} compact={compact} />
           {!fits && <p className="mt-1 text-3xs text-cz-warning">{t("stagePlan.noFit")}</p>}
+          {fits && stagePlanSwitchNotes(legs, route, features).map((note) => stagePlanSwitchNoteText(note)).map(({ key, params }) => (
+            <p key={`${key}:${Object.values(params).join(":")}`} className="mt-1 text-3xs text-cz-warning">{t(key, params)}</p>
+          ))}
         </>
       );
     }
@@ -425,11 +446,23 @@ export default function StagePlanBoard({
 
       {/* Desktop: tabel. Under sm: én linje pr. rytter (ingen vandret scroll, #1834). */}
       <div className="hidden sm:block">
-        <table data-sort-exempt="Etapeplan: rytterne i taktik-fanens raekkefoelge (sorteres dér)" className="w-full text-sm">
+        <table {...(routeMatch ? { "data-sortable": true } : { "data-sort-exempt": "Etapeplan: rytterne i taktik-fanens raekkefoelge (sorteres dér)" })} className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRider")}</th>
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRole")}</th>
+              {routeMatch && (
+                <SortableTh
+                  sortKey="routeMatch"
+                  sort={routeMatch.sortDir ? "routeMatch" : null}
+                  sortDir={routeMatch.sortDir ?? "asc"}
+                  onSort={routeMatch.onSort}
+                  title={routeMatch.title}
+                  className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap"
+                >
+                  {routeMatch.label}
+                </SortableTh>
+              )}
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{planColumn}</th>
             </tr>
           </thead>
@@ -442,6 +475,7 @@ export default function StagePlanBoard({
                 <tr key={rider.rider_id} className={`border-b border-cz-border ${open || rolePicker ? "" : "last:border-0"}`}>
                   <td className="px-4 py-2.5 align-top text-cz-1 font-medium">{rider.name || "—"}</td>
                   <td className="px-4 py-2.5 align-top">{renderRoleCell(rider)}</td>
+                  {routeMatch && <td className="px-4 py-2.5 align-top">{routeMatch.renderCell(rider)}</td>}
                   <td className="px-4 py-2.5 align-top">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">{renderPlanCell(rider)}</div>
@@ -461,7 +495,7 @@ export default function StagePlanBoard({
                 </tr>,
                 open || rolePicker ? (
                   <tr key={`${rider.rider_id}-edit`} className="border-b border-cz-border last:border-0 bg-cz-subtle">
-                    <td colSpan={3} className="px-4 pb-3.5 pt-0">{rolePicker ?? renderEditor(rider)}</td>
+                    <td colSpan={routeMatch ? 4 : 3} className="px-4 pb-3.5 pt-0">{rolePicker ?? renderEditor(rider)}</td>
                   </tr>
                 ) : null,
               ];
@@ -476,7 +510,15 @@ export default function StagePlanBoard({
           const open = openId === rider.rider_id && editable(rider) && !rolePicker;
           return (
             <li key={rider.rider_id} className="px-4 py-3">
-              <span className="block text-cz-1 font-medium text-sm truncate">{rider.name || "—"}</span>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-cz-1 font-medium text-sm min-w-0 truncate">{rider.name || "—"}</span>
+                {routeMatch && (
+                  <span className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
+                    <span className="text-3xs uppercase tracking-wider text-cz-3">{routeMatch.mobileLabel}</span>
+                    {routeMatch.renderCell(rider, { numberOnly: true })}
+                  </span>
+                )}
+              </div>
               <div className="mt-0.5">{renderRoleCell(rider)}</div>
               {editable(rider) && !stageCompleted ? (
                 <button

@@ -75,8 +75,10 @@ function LossRow({ entry, kmLabel, riderNameById, teamNameById, t }) {
       where: entry.sectorName ? "sector" : (entry.climbName ? "climb" : "none"), place: placeName ?? "",
     });
     reason = entry.reason !== "unknown" ? t(`detail.film.split.reason.${entry.reason}`, { count }) : null;
-    order = entry.order && !(entry.order === "grupetto" && entry.reason === "grupetto")
-      ? t(`detail.film.split.order.${entry.order}`) : null;
+    order = entry.planTask // #7333: planens opgave paa stedet
+      ? t("detail.film.split.order.plan", { task: t(`stagePlan.task.${entry.planTask}`) })
+      : entry.order && !(entry.order === "grupetto" && entry.reason === "grupetto")
+        ? t(`detail.film.split.order.${entry.order}`) : null;
   } else {
     const described = describeEvent(entry.event, { riderNameById, teamNameById });
     if (!described) return null;

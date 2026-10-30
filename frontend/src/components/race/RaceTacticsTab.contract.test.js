@@ -204,3 +204,25 @@ test("#6746 protect-trinnet er rollebevidst for alle roller", () => {
   assert.match(source, /PROTECT_VARIANT\[role\] \|\| "work"/);
   assert.match(source, /effort === "protect" \? protectText\(t, role, "step"\)/);
 });
+
+// ── #7334: rute-match følger med, når etapeplanen erstatter den gamle tabel ──
+
+test("etapeplanen får rute-match, sortering og mobiltal fra samme kilde som den gamle tabel", () => {
+  const boardAt = source.indexOf("<StagePlanBoard");
+  const boardEnd = source.indexOf("renderCell: renderRouteMatchCell", boardAt) + 40;
+  const call = source.slice(boardAt, boardEnd);
+  assert.match(call, /routeMatch=\{\{/);
+  assert.match(call, /renderCell: renderRouteMatchCell/);
+  assert.match(call, /onSort: toggleRouteSort/);
+  assert.match(call, /sortDir: routeSortDir/);
+  // Planen tegner den samme sorterede liste (visibleRiders), ikke en egen rækkefølge.
+  assert.match(call, /riders=\{visibleRiders\}/);
+});
+
+test("etapeplanens tabel og mobilkort tegner rute-match", () => {
+  const board = readFileSync(join(__dirname, "StagePlanBoard.tsx"), "utf8");
+  assert.match(board, /<SortableTh\s+sortKey="routeMatch"/);
+  assert.match(board, /routeMatch\.renderCell\(rider\)/);
+  assert.match(board, /routeMatch\.renderCell\(rider, \{ numberOnly: true \}\)/);
+  assert.match(board, /colSpan=\{routeMatch \? 4 : 3\}/);
+});

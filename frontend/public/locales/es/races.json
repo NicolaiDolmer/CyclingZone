@@ -27,6 +27,24 @@
     "clearPlan": "Quitar el plan",
     "effortNote": "El esfuerzo sigue a la tarea.",
     "rulesNote": "La fuga solo puede ser la primera tarea. La grupeta, llegar a meta y el tren de sprint siempre van al final.",
+    "switchNote": {
+      "climb": {
+        "start": "Los últimos 10 km empiezan en una subida, así que el paso {number} arranca al pie.",
+        "end": "Los últimos 10 km empiezan en una subida, así que el paso {number} arranca en la cima.",
+        "finale": "Los últimos 10 km empiezan en la subida final, así que el paso {number} solo arranca en el final de la etapa."
+      },
+      "sector": {
+        "start": "Los últimos 10 km empiezan en un sector, así que el paso {number} arranca donde comienza el sector.",
+        "end": "Los últimos 10 km empiezan en un sector, así que el paso {number} arranca donde termina el sector.",
+        "finale": "Los últimos 10 km empiezan en el último sector, así que el paso {number} solo arranca en el final de la etapa."
+      },
+      "descent": {
+        "start": "Los últimos 10 km empiezan en el descenso hacia meta, así que el paso {number} arranca en la cima.",
+        "end": "Los últimos 10 km empiezan en el descenso hacia meta, así que el paso {number} solo arranca en el final de la etapa.",
+        "finale": "Los últimos 10 km empiezan en el descenso hacia meta, así que el paso {number} solo arranca en el final de la etapa."
+      },
+      "samePoint": "Los pasos {first} y {second} cambian en el mismo punto, así que el paso {first} no se corre."
+    },
     "timeTrial": "Sin plan de etapa en una contrarreloj.",
     "task": {
       "breakaway": "Meterse en la fuga",
@@ -1478,7 +1496,8 @@
         },
         "order": {
           "save": "Tu orden: Ir tranquilo.",
-          "grupetto": "Tu orden: Grupeto."
+          "grupetto": "Tu orden: Grupeto.",
+          "plan": "Tu orden: {task}."
         }
       },
       "event": {

@@ -27,6 +27,24 @@
     "clearPlan": "Fjern planen",
     "effortNote": "Indsatsen følger opgaven.",
     "rulesNote": "Udbrud kan kun være første opgave. Grupetto, kør i mål og sprinttog kommer altid sidst.",
+    "switchNote": {
+      "climb": {
+        "start": "De sidste 10 km begynder på en stigning her, så trin {number} starter ved foden af den.",
+        "end": "De sidste 10 km begynder på en stigning her, så trin {number} starter på toppen.",
+        "finale": "De sidste 10 km begynder på slutstigningen her, så trin {number} starter først i finalen."
+      },
+      "sector": {
+        "start": "De sidste 10 km begynder på en sektor her, så trin {number} starter, hvor sektoren begynder.",
+        "end": "De sidste 10 km begynder på en sektor her, så trin {number} starter, hvor sektoren slutter.",
+        "finale": "De sidste 10 km begynder på den sidste sektor her, så trin {number} starter først i finalen."
+      },
+      "descent": {
+        "start": "De sidste 10 km begynder på nedkørslen mod mål, så trin {number} starter på toppen.",
+        "end": "De sidste 10 km begynder på nedkørslen mod mål, så trin {number} starter først i finalen.",
+        "finale": "De sidste 10 km begynder på nedkørslen mod mål, så trin {number} starter først i finalen."
+      },
+      "samePoint": "Trin {first} og trin {second} skifter samme sted her, så trin {first} bliver ikke kørt."
+    },
     "timeTrial": "Ingen etapeplan på en enkeltstart.",
     "task": {
       "breakaway": "Gå i udbrud",
@@ -1461,7 +1479,8 @@
         },
         "order": {
           "save": "Din ordre: Kør roligt.",
-          "grupetto": "Din ordre: Grupetto."
+          "grupetto": "Din ordre: Grupetto.",
+          "plan": "Din ordre: {task}."
         }
       },
       "event": {

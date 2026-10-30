@@ -20,7 +20,14 @@
 // er morgenudbruddets rolle og angriber ikke sent. Nr. 2 i gruppen (forspringets
 // maalestok) er stadig den staerkeste ANDEN rytter i gruppen uanset rolle: alle kan
 // svare paa et angreb. Aeldre revisioner (v1/v2) er bit-identiske.
+//
+// #7383 (SLUKKET motorkontakt, KUN s5_profiles_v3): med kontakten taendt er 10 km fra maal
+// altid en segmentgraense. Angrebet ser de to stykker som EET segment og vaelger sit
+// segment som paa den udelte rute (lateAttackSegmentIndex), saa graensen hverken giver
+// et angreb paa en etape der ikke havde et eller lander midt i en stigning/sektor.
+// Slukket er der intet delt stykke, og funktionen er uaendret.
 
+import { finalKmUndivided7383 } from "../adapters/finalKmBoundary7383.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { S5_PROFILES_TUNING } from "../tuning.ts";
 import type { AbilityKey, EngineState, Entrant, RaceGroup, RiderRole, RouteV2, SegmentHookContext, SegmentHookResult } from "../types.ts";
@@ -64,8 +71,17 @@ export function lateAttackChance(route: Pick<RouteV2, "profile_type" | "finale_t
 /**
  * Segmentet angrebet sker paa: det SENESTE segment (ikke etapens sidste, ikke en
  * nedkoersel) der slutter inden for vinduet `windowKm` fra maal. -1 = intet.
+ * #7383: paa en rute delt ved 10 km fra maal vaelges segmentet paa den udelte rute og
+ * oversaettes til den delte (det delte stykke selv -> halen, samme slut-km).
  */
 export function lateAttackSegmentIndex(route: Pick<RouteV2, "distance_km" | "segments">): number {
+  const undivided = finalKmUndivided7383(route.segments);
+  if (!undivided) return lateAttackSegmentIndexOn(route);
+  const index = lateAttackSegmentIndexOn({ distance_km: route.distance_km, segments: undivided.segments as RouteV2["segments"] });
+  return index < undivided.headIndex ? index : index + 1;
+}
+
+function lateAttackSegmentIndexOn(route: Pick<RouteV2, "distance_km" | "segments">): number {
   const [minKm, maxKm] = S5_PROFILES_TUNING.lateAttack.windowKm;
   const finishKm = finishKmOf(route);
   for (let i = route.segments.length - 2; i >= 0; i--) {
