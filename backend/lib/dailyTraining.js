@@ -13,6 +13,7 @@ import { computeTrainingScore, TRAINING_SCORE_CONFIG } from "./trainingScore.js"
 // #3564 kurve B (D-058): rent modul, kun aktivt naar `curveB` sendes med (flag development_curve_b).
 // Under kurven skal `riderQualityMult` vaere alders-neutral; applyDailyTick/applyRaceDevelopmentTick sikrer det.
 import { curveBBase, curveBCapSoftness, curveBSoftCeiling } from "./developmentCurveB.ts";
+import { blendCurveBTransition } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -268,6 +269,7 @@ export function applyDailyTick({
   // koblingen med gamma = 0. En gate man ikke kan koere er ikke en gate.
   scoreCfg = TRAINING_SCORE_CONFIG,
   curveB = null, // #3564: sendes uændret videre til dailyAbilityDelta
+  curveBTransition = null, // #7382: { weight } fra developmentCurveBTransition7382.ts. Udeladt = kurve B fuldt.
   // #6950: Udviklingsscore B ({ score, devMult, kind, offFocusDevMult? }, developmentScoreWiring.js) og
   // catch-up via loeb ({ evne: multiplikator }, raceCatchUpWiring.js). Udeladt = bit-identisk.
   developmentScore = null, abilityYieldMult = null,
@@ -316,11 +318,16 @@ export function applyDailyTick({
     const current = Number(nextAbilities[ability] ?? 0);
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const scoreBInFocus = scoreBFocus?.includes(ability) ?? false;
-    const tickDelta = dailyAbilityDelta({
+    const deltaArgs = {
       ability, current, cap: caps?.[ability], age, program, conditionMult, noise, potentiale,
       staff: scoreB ? null : staff, facilityTier: scoreB ? null : facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
       budgetDivisor, riderQualityMult: scoreB ? (scoreBInFocus ? scoreB.devMult : scoreBOffFocusMult) : riderQualityMult, curveB,
-    });
+    };
+    // #7382: over det bløde loft glider fremdriften fra den gamle model (alders-score) til kurve B.
+    const tickDelta = curveB && curveBTransition ? blendCurveBTransition({
+      curveBDelta: dailyAbilityDelta(deltaArgs), current, softCeiling: curveBSoftCeiling(caps?.[ability], potentiale, curveB), transition: curveBTransition,
+      oldDelta: () => dailyAbilityDelta({ ...deltaArgs, curveB: null, riderQualityMult: scoreB ? deltaArgs.riderQualityMult : trainingScore?.deltaQualityMult ?? null }),
+    }) : dailyAbilityDelta(deltaArgs);
     const rawDelta = scoreBInFocus ? tickDelta * scoreBScale : tickDelta;
     // #6950: catch-up-tillaegget ganges paa delta'en, uden for scorekoblingen (del 2 §5).
     const delta = abilityYieldMult?.[ability] > 0 ? rawDelta * abilityYieldMult[ability] : rawDelta;
