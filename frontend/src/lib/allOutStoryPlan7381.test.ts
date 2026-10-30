@@ -26,9 +26,13 @@ test("#7381: plan-rytter paa angreb i det udbrud der holdt: historien vises", ()
   assert.deepEqual(impacts(events, efforts), ["all_out_stayed_away"]);
   // Uden skiftet koerte han udbruddet paa forsoeg (normal indsats): ingen historie.
   assert.deepEqual(impacts([formed, ev(150, "breakaway_survived", { group_id: "breakaway-0", rider_ids: ["own1"] }), finish], efforts), []);
-  // Et skift der kun gaelder finalen (at_finish), er ikke opgaven i udbruddet.
-  const atFinish = ev(150, "stage_plan_leg", { rider_id: "own1", leg: 1, task: "attack", reason: "final_km", at_finish: true });
-  assert.deepEqual(impacts([formed, ev(150, "breakaway_survived", { group_id: "breakaway-0", rider_ids: ["own1"] }), atFinish, finish], efforts), []);
+  // Et skift der kun gaelder finalen (at_finish), er ikke opgaven i udbruddet. Skiftets
+  // km ligger FOER udfaldet, saa kun at_finish-reglen holder det ude (ikke "strengt foer").
+  const legParams = { rider_id: "own1", leg: 1, task: "attack", reason: "final_km" };
+  const held = ev(150, "breakaway_survived", { group_id: "breakaway-0", rider_ids: ["own1"] });
+  assert.deepEqual(impacts([formed, ev(130, "stage_plan_leg", { ...legParams, at_finish: true }), held, finish], efforts), []);
+  // Kontrol: samme skift uden at_finish giver historien, saa linjen ovenfor maaler reglen.
+  assert.deepEqual(impacts([formed, ev(130, "stage_plan_leg", legParams), held, finish], efforts), ["all_out_stayed_away"]);
 });
 
 test("#7381: plan-rytter der skiftede til angreb efter at udbruddet blev hentet: ingen historie", () => {
