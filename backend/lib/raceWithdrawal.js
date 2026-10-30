@@ -147,7 +147,7 @@ export async function loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds = 
 }
 
 /**
- * #5301: kan holdet gen-deltage i `race` uden at dobbeltbooke en rytter?
+ * #5301/#7153: check submitted riderIds, or preserved entries for standalone rejoin.
  *
  * Afmeldingen NULLer de bevarede entries' binding_span (race_entries_binding_span
  * + trg_race_withdrawals_resync_binding), så holdet lovligt kan bruge de samme
@@ -166,12 +166,13 @@ export async function loadWithdrawnRaceIdsForTeam({ supabase, teamId, raceIds = 
  *
  * Fejler ÅBENT (tomt array) når løbet ikke har et binding-vindue: det er samme
  * regel som PUT-gaten, og en guard der gætter ville blokere lovlige gen-deltag.
+ * @param {{supabase: any, race: any, teamId: string, riderIds?: string[] | null}} args
  */
-export async function findRejoinConflicts({ supabase, race, teamId }) {
+export async function findRejoinConflicts({ supabase, race, teamId, riderIds = null }) {
   if (!race?.id) return [];
   // pagination-safe: ÉT løb × ÉT hold — feltstørrelsen er hårdt loftet til size.max
   // (8, selectionSizeForRace), så rækketallet er tocifret, ikke nær 1000-cappet.
-  const { data: kept, error: keptErr } = await supabase
+  const { data: kept, error: keptErr } = riderIds ? { data: riderIds.map((rider_id) => ({ rider_id })), error: null } : await supabase
     .from("race_entries").select("rider_id")
     .eq("race_id", race.id).eq("team_id", teamId);
   if (keptErr) throw new Error(`race_entries (rejoin): ${keptErr.message}`);

@@ -189,3 +189,7 @@ Modsigelse 1 (`raceDays` bar etapetal) er lukket af [#4245](https://github.com/N
 [`2026-08-21-planning-center-fase2-design.md`](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (IA, faseplan P0-P5, scorecard) · [`2026-08-25-planning-center-z1-saesonmatrix-design.md`](superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md) (Z1-gitteret).
 
 Spiller-preview live: `frontend/public/race-planning-preview.html` (#4022), som en spiller byggede videre på 25/8 — se `.claude/learnings/2026-08-25-spillerprototype-afsloerede-to-brudte-kalender-invarianter.md`.
+
+## Genindmelding efter frivillig udtrækning (#7153, ejer 28/10)
+
+Managerens egne PUT-gem i udtagelsespanel og sæsonmatrix annullerer en frivillig udtrækning før feltet låses efter raceStartLock-reglen. Den nye udtagelse erstatter alle holdets gamle entries. Sletning af gamle entries, sletning af udtrækning og indsættelse af nye entries sker i samme transaktion, i netop den rækkefølge, via service-role-only replace_manager_race_selections. Et bulk-gem er fortsat alt eller intet. En ny valgt rytter bundet i et andet løb afvises med navn og løb; genindmeldingen flytter aldrig automatisk ryttere. Assistent, autofill, generator og runner annullerer aldrig en udtrækning. did_not_start ændres aldrig. Feltets lås gælder også når afviklingen er pauset. Testplan: lokal PG17 med de faktiske bindingstriggere, API-kontrakter, frontend-unit, fuld suite og panel/matrix i mobil og desktop med fixture-data. Ejer-design: issuecomment-6468132613 på #7153.

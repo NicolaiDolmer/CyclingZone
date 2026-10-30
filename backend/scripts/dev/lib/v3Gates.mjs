@@ -1,3 +1,4 @@
+import { GROUP_CLOCK_CONTACT_EPSILON } from "../../../lib/engine/v4/groupClock.ts";
 // #6804 motor v3: taend-gatens nye gates (G16-G19 + G2 udvidet til flad) og
 // #2757 S0-maalingen af spurtfinalen. Spec: docs/superpowers/specs/
 // 2026-10-23-6804-v3-tilvalg-design.md §2 og §5. Ejer 24/10 (valg 8 A): gaterne
@@ -181,11 +182,13 @@ export function measureG19(raceResults, revision, contexts) {
 /** G2-flad: flade og rullende vejetaper hvor udbruddets stoerste forspring passerer den oevre zone uden "ingen jagt-interesse", eller den haarde graense. */
 export function measureG2F(raceResults, revision, contexts, { upperZoneSeconds = null, hardMaxSeconds = null } = {}) {
   const rows = seedsOf(raceResults, revision, contexts).flatMap((x) => x.seed.rows ?? [])
-    .filter((r) => (r.profile_type === "flat" || r.profile_type === "rolling") && has(r, "breakawayMaxLead"));
+    .filter((r) => r.profile_type === "flat" || r.profile_type === "rolling");
   if (!rows.length) return null;
   if (!upperZoneSeconds || !Number.isFinite(hardMaxSeconds)) return { n: rows.length, overUpperWithoutUnchased: null, overHardMax: null };
   // Codex: kun brugbare maalinger taeller, og hvert maalt terraen skal have sin oevre zone.
-  const usable = rows.filter((r) => num(r.breakawayMaxLead) !== null);
+  const usable = rows.filter((r) => num(r.breakawayMaxLead) !== null || (r.breakawayLeadMeasured === true && r.breakawayMaxLead === null));
+  const missing = rows.length - usable.length;
+  if (missing > 0) return { n: usable.length, missing, overUpperWithoutUnchased: null, overHardMax: null };
   if (!usable.length) return null;
   const missingZone = [...new Set(usable.map((r) => r.profile_type))].filter((t) => num(upperZoneSeconds[t]) === null);
   if (missingZone.length) return { n: usable.length, missingZone, overUpperWithoutUnchased: null, overHardMax: null };
@@ -193,8 +196,8 @@ export function measureG2F(raceResults, revision, contexts, { upperZoneSeconds =
   let overHard = 0;
   for (const r of usable) {
     const lead = Number(r.breakawayMaxLead);
-    if (lead > Number(upperZoneSeconds[r.profile_type]) && r.breakawayUnchased !== true) overUpper += 1;
-    if (lead > hardMaxSeconds) overHard += 1;
+    if (lead - Number(upperZoneSeconds[r.profile_type]) > GROUP_CLOCK_CONTACT_EPSILON && r.breakawayUnchased !== true) overUpper += 1;
+    if (lead - hardMaxSeconds > GROUP_CLOCK_CONTACT_EPSILON) overHard += 1;
   }
   return { n: usable.length, overUpperWithoutUnchased: overUpper, overHardMax: overHard };
 }
@@ -400,6 +403,7 @@ export function evaluateV3Gates({ raceResults, revision, contexts = new Map(), b
 
   const g2f = measureG2F(raceResults, revision, contexts, { upperZoneSeconds: b.G2F?.upperZoneSeconds ?? null, hardMaxSeconds: num(b.G2F?.hardMaxSeconds) ?? NaN });
   if (!g2f) out.push(gateResult(by.G2F, GATE_STATUS.MISSING, null, "ingen maaling (breakawayMaxLead mangler i scorecardet)"));
+  else if (g2f.missing > 0) out.push(gateResult(by.G2F, GATE_STATUS.MISSING, g2f, `${g2f.missing} flad/rullende etaper uden brugbar forspring-maaling`));
   else if (g2f.overUpperWithoutUnchased === null) out.push(gateResult(by.G2F, GATE_STATUS.MISSING, g2f, g2f.missingZone ? `privat oevre zone mangler for ${g2f.missingZone.join(", ")}` : "privat baand mangler (upperZoneSeconds/hardMaxSeconds)"));
   else {
     const j = judgeChecks([

@@ -3,7 +3,7 @@
 // Afleder anticipation (progress mod næste +1) + payoff (gennembrud, dags-opsummering)
 // fra useTraining-data. Ingen DB/React/Date — unit-testes isoleret med node --test.
 
-import { TRAINING_FOCUS_ABILITIES } from "./training.js";
+import { focusAbilitiesFor } from "./training.js";
 
 // Form-værdi (0-100) hvorved en rytter regnes "i topform" i dags-opsummeringen.
 // Lille UI-konstant (form 50 = neutral start; >=70 = mærkbart skarp). Påvirker KUN
@@ -21,7 +21,7 @@ export const NEAR_BREAKTHROUGH = 0.9;
 // eller ingen progress-data for fokussets evner.
 export function focusProgress(focus, progressForRider) {
   if (!focus || !progressForRider) return null;
-  const abilities = TRAINING_FOCUS_ABILITIES[focus];
+  const abilities = focusAbilitiesFor(focus);
   if (!abilities) return null;
   let best = null;
   for (const ability of abilities) {
@@ -347,7 +347,7 @@ export function abilityReceipt(abilityKeys, { abilities, progress, capped, seaso
 // baren viste kun evnen tættest på gennembrud, så en låst evne var usynlig.
 export function focusAbilityReceipt(focus, data) {
   if (!focus) return null;
-  const abilities = TRAINING_FOCUS_ABILITIES[focus];
+  const abilities = focusAbilitiesFor(focus);
   if (!abilities?.length) return null;
   return abilityReceipt(abilities, data);
 }

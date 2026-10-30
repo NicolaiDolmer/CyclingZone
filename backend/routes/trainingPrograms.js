@@ -32,6 +32,7 @@ import {
 } from "../lib/trainingPrograms.js";
 import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
+import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer } from "../lib/trainingCatalogV3.js"; // #5319
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
@@ -299,6 +300,10 @@ export function createTrainingProgramsRouter({
     }
     try {
       if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
+      // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
+      if (isV3OnlySession(session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
+        return res.status(400).json({ error: "invalid_session" });
+      }
       const teamId = req.team.id;
       const riders = await ownRiders(teamId);
       const rider = riders.find((r) => r.id === riderId);

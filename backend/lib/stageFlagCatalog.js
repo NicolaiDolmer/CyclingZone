@@ -48,6 +48,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4847: "Train now" uden bonus. Kraever training_condition_per_date.
   { key: "training_train_now", area: "training", label: "Træn nu (uden bonus)" },
+  // #6461 B: klikket afregner rytterens hele kendte dato. Seedet off; flip er ejer-only.
+  { key: "training_train_now_whole_day", area: "training", label: "Træn nu — hele dagen i ét klik (B)" },
   // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
   { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },
   // #5932: de 35 felter for alle hold (ejer 29/9). Kataloget bliver bag training_programs.
@@ -56,6 +58,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)" },
   // #6000: træningsgrupper, seedet i beta. Kræver training_program_cells. Flip til on er ejer-only.
   { key: "training_groups", area: "training", label: "Træningsgrupper" },
+  // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
+  { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
@@ -81,6 +85,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
   // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
   { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
+  // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
+  { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -88,6 +94,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4" },
   // #6156 (ejer 19/10): formtoppe/dyk i v4 under s5_profiles_v2. Seedet off; tændes ved sæsonskiftet.
   { key: "race_form_peaks", area: "race-engine", label: "Formtoppe i løbene" },
+  // #7290: højdeprofilens bakker i motoren (kun s5_profiles_v3). Slukket; virker først når raceRunner er koblet.
+  { key: "route_profile_hills", area: "race-engine", label: "Bakker fra højdeprofilen i motoren" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
@@ -215,6 +223,8 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
   // Binaert som stage-roles-API'et (isRaceDayIntentionEnabled uden viewer): "beta" er off.
   "race_day_intention_enabled",
+  // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.
+  "training_catalog_v3",
 ]);
 
 // #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,

@@ -11,10 +11,14 @@
 // eet sted, og den viser hvorfor mens man vaelger. Mekanikkens fulde forklaring
 // bor i Hjaelp (help.json, "A breakaway hunter is always sent into the day's
 // breakaway...") — fladen holder sig til en linje kontekst.
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { stageHasBreakaway } from "../../lib/roleHint.js";
 import { rankHunterCandidates } from "../../lib/hunterRanking.js";
+import { outlookLine } from "../../lib/breakawayOutlook.ts";
+import { authHeaders } from "../../lib/supabase";
+import { apiFetch } from "../../lib/apiFetch.ts";
 
 // Raekke-opskrift for baade "ingen jaeger" og rytterne: samme hoejde, samme
 // markering af det valgte (TASTE P8 — eet sprog for status).
@@ -34,6 +38,30 @@ export default function HunterExplainer({
   // Linjeløb: jægeren prøver at komme med, feltet afgør på dagen. Tidskørsel: intet udbrud.
   // Uden indlæst profil vises linjeløbs-teksten, fordi den er sand for langt de fleste etaper.
   const isTimeTrial = profileType != null && !stageHasBreakaway(profileType);
+
+  // #6912 B: motorens chance for løbets næste etape. Backend svarer available:false
+  // når flaget er slukket eller motoren ikke kan stå inde for tallet; så vises intet.
+  const { raceId } = useParams();
+  const [outlook, setOutlook] = useState(/** @type {import("../../lib/breakawayOutlook.ts").BreakawayOutlook | null} */ (null));
+  useEffect(() => {
+    if (!raceId || isTimeTrial) { setOutlook(null); return undefined; }
+    setOutlook(null);
+    let alive = true;
+    (async () => {
+      try {
+        const headers = await authHeaders();
+        if (!headers) return;
+        const res = await apiFetch(`/api/races/${raceId}/breakaway-outlook`, { headers });
+        if (alive) setOutlook(res.ok ? /** @type {import("../../lib/breakawayOutlook.ts").BreakawayOutlook} */ (res.data) : null);
+      } catch {
+        // best-effort: uden svar vises blot ingen chance (linjen over står alene).
+        if (alive) setOutlook(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [raceId, isTimeTrial]);
+  // På fællesstarter afgør backend næste etapes prognose; TT-kontekst viser ingen udbrudslinje.
+  const line = isTimeTrial ? null : outlookLine(outlook);
 
   // #1884: HELE den udtagne trup skal kunne vaelges (dropdownen kunne det), ikke
   // kun de tre bedste. Rangeringen er stadig aggression desc — den er selve
@@ -56,6 +84,13 @@ export default function HunterExplainer({
       <p className="text-2xs leading-snug text-cz-3 mt-1">
         {isTimeTrial ? t("racehub.roleCard.hunter.hint.itt") : t("racehub.hunterExplainer.dayLine")}
       </p>
+      {line && (
+        <p data-testid="hunter-breakaway-outlook" className="text-2xs leading-snug text-cz-2 mt-1">
+          {line.stageNumber != null && <span className="text-cz-3">{t("racehub.hunterExplainer.outlook.stage", { stage: line.stageNumber })} · </span>}
+          <span className="font-semibold tabular-nums">{t(line.oddsKey, line.oddsParams)}</span>
+          {line.reasonKey && <span className="text-cz-3"> {t(line.reasonKey)}</span>}
+        </p>
+      )}
 
       <div className="mt-2.5">
         {ranked.length === 0 ? (

@@ -6,6 +6,7 @@ import { spawn, execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import { acquireWave, releaseWave, readWave, updateWave, hostBootId, validateTracks, getOpenPrs, sharedRunDir, REPO } from './wave-policy.mjs';
 import { generateBrief } from './make-wave-brief.mjs';
+import { assertBuildStop } from './lib/build-stop.mjs';
 import { assertLaneCount, hostLaneCap } from './wave-capacity.mjs';
 import { classifyStall, commitAgeMinutes, resolveTrackTimeoutMinutes, WAVE_FREEZE } from './wave-freeze.mjs';
 
@@ -348,6 +349,7 @@ async function cli() {
   const main = path.dirname(git(root, 'rev-parse', '--path-format=absolute', '--git-common-dir'));
   const worktreesRoot = `${main}-worktrees`;
   if (mode === '--dry-run') {
+    assertBuildStop(config.tracks); // #7336: samme afvisning som --run (acquireWave)
     console.log(JSON.stringify({ runtime: 'codex', lanes: execution.lanes, verifyMax: 2, execution,
       runDir: sharedRunDir(root), worktreesRoot, tracks: config.tracks, mutation: false,
       merge: 'Main session follows AGENTS rule 35; use scripts/merge-queue.ps1 separately' }, null, 2));

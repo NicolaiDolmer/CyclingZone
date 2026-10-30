@@ -284,7 +284,7 @@ function runEffortDay(ctx) {
   const work = stageConditionWork({ rulesRevision: revision, stageNumber: profile.stage_number, profileType: profile.profile_type, v4Result: res });
   const twinIds = entrants.filter((e) => e.rider_id.startsWith("t7266-eff-")).map((e) => e.rider_id);
   const effortById = new Map(entrants.filter((e) => twinIds.includes(e.rider_id)).map((e) => [e.rider_id, e.effort]));
-  const loads = new Map(raceConditionLoads(twinIds, profile.profile_type, effortById, revision, work).map((l) => [l.rider_id, l.load]));
+  const loads = new Map(raceConditionLoads(twinIds, profile.profile_type, effortById, revision, work, { distanceKm: profile.distance_km ?? null, seasonRaceDaysByRider: new Map() }) /* #7280 Codex P2: S5 koerer condition v2 (TRAINING_RULES §5.3b), som raceRunner */.map((l) => [l.rider_id, l.load]));
   for (const level of Object.keys(templates)) {
     const nid = `t7266-eff-${level}-normal`;
     const cid = `t7266-eff-${level}-ctrl`;

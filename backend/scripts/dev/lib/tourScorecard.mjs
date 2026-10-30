@@ -613,6 +613,8 @@ function simulate({ v4, data, stages, profile, entrants, revision, gcStandings, 
     entrants, stageProfile: profile, seedString: `${data.race.id}:${profile.stage_number}:${seedTag}`, stageNumber: profile.stage_number,
     teamOrderRows: orders ?? data.orders, isStageRace: stages.length > 1, raceStages: stages, squad: data.race.squad ?? null,
     rulesRevision: revision, gcStandings, jerseyLeaders, // #5914/#6937: troejefoererne som i raceRunner
+    // #6649: dagsformen er slukket i spillet; kun maalingen taender den (CZ_DAY_FORM_6649=1).
+    ...(process.env.CZ_DAY_FORM_6649 === "1" ? { dayForm6649: true } : {}),
   });
 }
 
@@ -770,18 +772,26 @@ export function gcChaseCatchFacts(events, distanceKm) {
  */
 export function breakawayLeadFacts(out, fieldMinShare = 0.25) {
   let maxLead = null;
+  let sawBreak = false;
+  let sawField = false;
+  let measuredBreak = false;
   for (const snap of out?.groupSnapshots ?? []) {
     const groups = snap?.groups ?? [];
     const breaks = groups.filter((g) => g.kind === "breakaway");
     const others = groups.filter((g) => g.kind !== "breakaway");
+    sawBreak ||= breaks.length > 0;
+    sawField ||= others.some((g) => (g.rider_ids?.length ?? 0) > 0);
     const total = others.reduce((n, g) => n + (g.rider_ids?.length ?? 0), 0);
     const field = others.filter((g) => (g.rider_ids?.length ?? 0) >= fieldMinShare * total).sort((a, b) => Number(a.gap_seconds) - Number(b.gap_seconds))[0];
     if (!breaks.length || !field) continue;
     const lead = Number(field.gap_seconds) - Math.min(...breaks.map((g) => Number(g.gap_seconds)));
-    if (Number.isFinite(lead) && lead > 0 && (maxLead === null || lead > maxLead)) maxLead = lead;
+    if (Number.isFinite(lead)) {
+      measuredBreak = true;
+      if (lead > 0 && (maxLead === null || lead > maxLead)) maxLead = lead;
+    }
   }
   const unchased = (out?.timeline?.events ?? []).some((e) => e?.type === "breakaway_unchased");
-  return { breakawayMaxLead: maxLead, breakawayUnchased: unchased };
+  return { breakawayMaxLead: maxLead, breakawayUnchased: unchased, breakawayLeadMeasured: measuredBreak || (!sawBreak && sawField) };
 }
 
 /**

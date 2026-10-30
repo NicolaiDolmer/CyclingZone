@@ -15,6 +15,7 @@
 import { buildSegments, buildWeather, synthesizeSegments } from "../../../routeSegments.js";
 import { makeRng } from "../../../fictionalRiderGenerator.js";
 import { mediumMountainBucket, S5_LEGACY_FINALE } from "../s5Profiles.ts";
+import { ROUTE_PROFILE_HILLS_ROW_KEY, withProfileHills } from "./routeProfileHills7289.ts";
 import type {
   ClimbCategory,
   FinaleType,
@@ -82,6 +83,8 @@ export type StageProfileRow = {
   sectors?: Array<{ kind?: string; name?: string; start_km: number; length_km: number }> | null;
   segments?: Segment[] | null;
   weather?: Weather | null;
+  // #6594/#7290: hoejdeprofilen (laeses kun naar kontakten profileHills er taendt).
+  elevation_profile?: { v?: number; step_km?: number; h?: unknown } | null;
 } & Record<string, unknown>;
 
 function resolveProfileType(raw: unknown): ProfileType {
@@ -180,8 +183,10 @@ export function splitLongOpenRoadSegments(segments: readonly Segment[]): Segment
   return out;
 }
 
-function resolveSegments(row: StageProfileRow, profileType: ProfileType, finaleType: FinaleType | null): Segment[] {
-  return splitLongOpenRoadSegments(resolveRawSegments(row, profileType, finaleType));
+function resolveSegments(row: StageProfileRow, profileType: ProfileType, finaleType: FinaleType | null, profileHills: boolean): Segment[] {
+  const raw = resolveRawSegments(row, profileType, finaleType);
+  // #7290: profilens bakker foer opdelingen (#5812), saa en lang flad rest stadig deles.
+  return splitLongOpenRoadSegments(profileHills ? withProfileHills(raw, row) : raw);
 }
 
 function resolveRawSegments(row: StageProfileRow, profileType: ProfileType, finaleType: FinaleType | null): Segment[] {
@@ -242,17 +247,27 @@ function resolveWaypoints(row: StageProfileRow, distanceKm: number): Waypoint[] 
 }
 
 /**
+ * #7290: adapterens kontakt. `profileHills` (default: raekkens egen markoer
+ * `routeProfileHills === true`, ellers fra) skaerer hoejdeprofilens bakker ud af
+ * de flade segmenter (routeProfileHills7289.ts). Markoeren saettes kun under
+ * s5_profiles_v3 + flaget (backend/lib/routeProfileHillsFlag.js); den foelger
+ * raekken gennem broen og ind i genafspilningens motor-input (#1857).
+ */
+export type RouteAdapterOptions = { profileHills?: boolean };
+
+/**
  * REN oversaettelse: race_stage_profiles-raekke -> RouteV2 (kerne-kontrakten).
  * INGEN DB-kald — kaldstedet henter raekken. Legacy-raekker uden gemte
  * segments/weather faar en deterministisk synthesizeSegments/buildWeather-
  * fallback (#3855 F1 punkt 3), saa v4 kan simulere ALT fra dag 1.
  */
-export function routeFromStageProfileRow(row: StageProfileRow): RouteV2 {
+export function routeFromStageProfileRow(row: StageProfileRow, options: RouteAdapterOptions = {}): RouteV2 {
   const profileType = resolveProfileType(row.profile_type);
   const finaleType = resolveFinaleType(row.finale_type);
+  const profileHills = options?.profileHills ?? row[ROUTE_PROFILE_HILLS_ROW_KEY] === true;
   // #6363: fallback-stierne (generatorens hjaelpere) faar de gamle ord.
   const generatorProfile = generatorProfileType(profileType, finaleType);
-  const segments = resolveSegments(row, generatorProfile, generatorFinaleType(finaleType));
+  const segments = resolveSegments(row, generatorProfile, generatorFinaleType(finaleType), profileHills);
   const distanceKm = resolveDistanceKm(row, segments);
   const weather = resolveWeather(row, generatorProfile);
   const waypoints = resolveWaypoints(row, distanceKm);

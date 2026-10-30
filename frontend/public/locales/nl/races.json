@@ -8,6 +8,8 @@
     "noPlanLocked": "Geen plan. Hij reed volgens zijn rol.",
     "noPlanOrders": "Nog geen plan. Hij rijdt op wat je instelde: {orders}.",
     "noPlanOrdersLocked": "Geen plan. Hij reed op wat je instelde: {orders}.",
+    "luxuryHelperPlan": "Geen opgeslagen plan. Als luxeknecht rijdt hij het voorstel.",
+    "luxuryHelperPlanLocked": "Geen opgeslagen plan. Als luxeknecht reed hij het voorstel.",
     "noFit": "Dit plan past niet meer bij zijn rol. Kies een nieuw.",
     "colPlan": "Plan voor etappe {number}",
     "colPlanRaceDay": "Plan voor de koers",
@@ -369,7 +371,7 @@
     "errorTitle": "De selectiematrix kon niet worden geladen",
     "empty": "Dit seizoen nog geen koersen",
     "restDay": "Rustdag",
-    "withdrawnHint": "Je hebt je uit deze koers teruggetrokken. De opgeslagen opstelling blijft bewaard voor het geval je je opnieuw inschrijft, maar deze renners starten niet.",
+    "withdrawnHint": "Een nieuwe selectie opslaan annuleert je terugtrekking en vervangt de oude selectie.",
     "dayAria": "Koersdag {index}, {date}. Open het dagbord.",
     "cellEmptyAria": "{rider}, {race}: niet geselecteerd. Klik om toe te voegen.",
     "cellFilledAria": "{rider}, {race}: {role}. Klik om te wijzigen.",
@@ -489,6 +491,7 @@
       "captain": "Kopman",
       "sprintCaptain": "Sprintkopman",
       "coCaptain": "Gedeelde kopman",
+      "luxuryHelper": "Luxeknecht",
       "hunter": "Ontsnappingsjager",
       "rider": "Alleen renner"
     },
@@ -548,6 +551,17 @@
     },
     "hunterExplainer": {
       "dayLine": "Je jager probeert mee te gaan in de vroege ontsnapping. Of die wegblijft, beslist het peloton op de dag zelf.",
+      "outlook": {
+        "about": "Voorspelling van de motor: de ontsnapping blijft ongeveer {k} op {n} keer weg.",
+        "under": "Voorspelling van de motor: de ontsnapping blijft minder dan {k} op {n} keer weg.",
+        "over": "Voorspelling van de motor: de ontsnapping blijft meer dan {k} op {n} keer weg.",
+        "stage": "Etappe {stage}",
+        "reason": {
+          "nobodyChases": "Weinig ploegen hebben een reden om erachteraan te gaan.",
+          "fewChase": "Een of twee ploegen hebben meestal een reden om erachteraan te gaan.",
+          "manyChase": "Meerdere ploegen hebben meestal een reden om erachteraan te gaan."
+        }
+      },
       "candidatesHint": "Gerangschikt op agressie: de drang om aan te vallen en je aan een aanval te committeren.",
       "noCandidates": "Kies renners voor deze koers om je beste jagers te zien.",
       "aggression": "Agressie",
@@ -764,6 +778,8 @@
     "sprintCaptain": "Sprintkopman (optioneel)",
     "coCaptain": "Gedeelde kopman (optioneel)",
     "coCaptainHint": "Beschermd zoals de kopman. De kopman krijgt eerst hulp.",
+    "luxuryHelper": "Luxeknecht (optioneel)",
+    "luxuryHelperHint": "Spaart zich en werkt daarna voor de kopman op de beslissende klim.",
     "hunter": "Ontsnappingsjager",
     "freeRole": "Vrije rol",
     "noRole": "Geen",
@@ -847,6 +863,7 @@
       "title": "Deze koers zit in een andere divisie",
       "note": "Je kunt alleen aan koersen in je eigen divisie deelnemen, dus hier valt geen opstelling in te stellen."
     },
+    "rejoinNote": "Een nieuwe selectie opslaan annuleert je terugtrekking en vervangt de oude selectie.",
     "withdrawnPanel": {
       "title": "Je hebt je uit deze koers teruggetrokken",
       "note": "Je team start vrijwillig niet, dus er valt geen opstelling in te stellen. Schrijf je opnieuw in vanaf het koersbord als je je bedenkt voor de start.",
@@ -866,6 +883,7 @@
       "selection_co_captain_requires_captain": "Een gedeelde kopman heeft een kopman nodig. Kies eerst een kopman.",
       "selection_role_not_selected": "Renners met een rol moeten deel uitmaken van de selectie.",
       "selection_role_overlap": "Kopman, sprintkopman en jager moeten verschillende renners zijn.",
+      "selection_luxury_helper_not_available": "Luxeknecht is niet beschikbaar in deze koers.",
       "selection_rider_injured": "Geblesseerde renners kunnen niet worden geselecteerd.",
       "selection_rider_over_age": "Renners boven de leeftijdsgrens van de koers kunnen niet worden geselecteerd.",
       "selection_rider_not_on_team": "Je kunt alleen je eigen renners selecteren.",
@@ -878,6 +896,7 @@
       "selection_flag_disabled": "De teamselectie is nog niet actief.",
       "selection_invalid_body": "De selectie kon niet worden opgeslagen. Probeer het opnieuw.",
       "selection_wrong_pool": "Je kunt alleen aan koersen in je eigen divisie deelnemen.",
+      "selection_withdrawn_locked": "Je hebt je ploeg teruggetrokken. Het deelnemersveld is gesloten na de eerste etappe.",
       "selection_withdrawn": "Je hebt je uit deze koers teruggetrokken, dus er kan geen opstelling voor worden opgeslagen.",
       "selection_train_now_locked": "Renners die vandaag hebben getraind, kunnen niet aan de koers van vandaag worden toegevoegd of eruit worden gehaald.",
       "selection_youth_squad_train_only": "Deze selectie staat op Alleen trainen. Zet hem op de selectiepagina op Aan koersen deelnemen om hem in te schrijven.",
@@ -964,7 +983,8 @@
       "co_captain": "gedeelde kopman",
       "helper": "renner",
       "hunter": "jager",
-      "free_role": "vrije rol"
+      "free_role": "vrije rol",
+      "luxury_helper": "luxeknecht"
     },
     "errors": {
       "stage_roles_invalid_body": "De intenties konden niet worden opgeslagen. Probeer het opnieuw.",
@@ -978,10 +998,16 @@
       "stage_roles_rider_abandoned": "Een van de renners is uit de koers en kan geen intentie meer krijgen.",
       "stage_roles_race_completed": "Deze koers is afgelopen, dus de intenties kunnen niet meer worden gewijzigd.",
       "generic": "De intenties konden niet worden opgeslagen. Probeer het opnieuw.",
-      "stage_roles_conflict": "Je tactiek is in een ander venster gewijzigd. De nieuwste versie is geladen. Controleer hem en sla opnieuw op."
+      "stage_roles_conflict": "Je tactiek is in een ander venster gewijzigd. De nieuwste versie is geladen. Controleer hem en sla opnieuw op.",
+      "team_orders_grupetto_with_break": "Een renner in de grupetto kan de vlucht niet proberen.",
+      "team_orders_grupetto_with_train": "Een renner in de grupetto kan niet in de sprinttrein rijden.",
+      "team_orders_work_with_break": "Een renner die voor de kopman werkt, kan de vlucht niet proberen.",
+      "team_orders_train_with_break": "Een renner in de sprinttrein kan de vlucht niet proberen."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "Niet met Grupetto.", "notWithWork": "Een renner die voor de kopman werkt, kan niet mee in de vlucht.", "notWithBreak": "Niet terwijl hij de vlucht probeert.", "notWithTrain": "De sprinttrein blijft tot de finale in het peloton." },
+    "pickOne": "Kies er één",
     "title": "Tactiek",
     "locksAt": "Vergrendelt {time}",
     "locked": "Vergrendeld",
@@ -1031,7 +1057,8 @@
       "sprint_captain": "Sprintkopman",
       "hunter": "Ontsnappingsjager",
       "helper": "Knecht",
-      "free_role": "Vrije rol"
+      "free_role": "Vrije rol",
+      "luxury_helper": "Luxeknecht"
     },
     "save": "Tactiek opslaan",
     "saving": "Opslaan…",
@@ -1063,7 +1090,8 @@
       "sprint_captain": "sprintkopman",
       "hunter": "ontsnappingsjager",
       "helper": "knecht",
-      "free_role": "vrije rol"
+      "free_role": "vrije rol",
+      "luxury_helper": "luxeknecht"
     }
   },
   "stageOrders": {
@@ -1144,7 +1172,8 @@
         "sprint_captain": "Hij krijgt de sprinttrein en de lead-out.",
         "hunter": "Hij gaat op jacht naar de ontsnapping.",
         "helper": "Hij werkt voor de leiders.",
-        "free_role": "Hij rijdt zijn eigen koers."
+        "free_role": "Hij rijdt zijn eigen koers.",
+        "luxury_helper": "Hij spaart zich en werkt daarna voor de kopman op de beslissende klim. De klim verander je in het etappeplan."
       }
     },
     "team": {
@@ -1463,6 +1492,25 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {wordt} other {worden}} gegrepen. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} en {teamLast}}} deed het achtervolgingswerk.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {wordt} other {worden}} gegrepen door het peloton.",
         "breakaway_survived": "De ontsnapping houdt het peloton tot aan de streep van zich af.",
+        "cause": {
+          "unchased": "Niemand wilde jagen, dus kreeg de ontsnapping alle ruimte die ze nodig had.",
+          "no_chasers": "De ploegen die wilden jagen, hadden geen renners meer om het te doen.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} jaagde nooit: die ploeg had} other {{teamsHead} en {teamLast} jaagden nooit: ze hadden}} renners in de ontsnapping.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} had} other {{teamsHead} en {teamLast} hadden}} al besteed wat kon aan de achtervolging.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast} had} other {{teamsHead} en {teamLast} hadden}} geen vrije renners om mee te jagen.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast} reed alleen om het klassement te beschermen en liet de etappe gaan} other {{teamsHead} en {teamLast} reden alleen om het klassement te beschermen en lieten de etappe gaan}}.",
+          "chase_faded_climb": "De achtervolging doofde uit na {climb}, en het gat groeide weer.",
+          "chase_faded": "De achtervolging doofde uit, en het gat groeide weer.",
+          "chase_too_late": "De achtervolging kwam dichterbij, maar kwam weg tekort.",
+          "gap_never_closed": "De achtervolging kreeg het gat nooit kleiner.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast} jaagde} other {{teamsHead} en {teamLast} jaagden}} omdat {threats} een gevaar {threatCount, plural, one {was} other {waren}} voor {rider} in het klassement.",
+          "closed_on_climb": "Het gat slonk op {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} ging volgens jouw opdracht voluit en bleef weg tot aan de streep.",
+          "all_out_held_on_climb": "{rider} ging volgens jouw opdracht voluit en kwam met de eersten over {climb}.",
+          "all_out_held_on": "{rider} ging volgens jouw opdracht voluit en bleef bij de kopgroep."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {moet} other {moeten}} de ontsnapping laten gaan.",
         "group_ahead_formed": "{riders} {count, plural, one {rijdt} other {rijden}} weg in een groep voor het peloton.",
         "group_ahead_caught": "De groep voor het peloton wordt ingelopen: {riders}.",
@@ -1477,6 +1525,14 @@
         "incident_protected": "{rider} gaat onderuit binnen de laatste kilometers, maar behoudt de tijd van de groep.",
         "favorite_crack": "{rider} knapt en verliest het contact met de kop.",
         "favorite_crack_tt": "{rider} zakt in de tweede helft in en verliest tijd.",
+        "all_out_gain": "{rider} gaat volle bak op de laatste klim en wint tijd.",
+        "all_out_cracked": "{rider} gaat volle bak en rijdt zich leeg op de laatste klim.",
+        "bad_day_fatigue": "{rider} had een slechte dag. De zware dagen ervoor eisten hun tol.",
+        "bad_day_form": "{rider} had een slechte dag. Hij miste vorm.",
+        "bad_day_illness": "{rider} had een slechte dag. Hij voelde zich ziek.",
+        "bad_day_rain": "{rider} had een slechte dag in de regen.",
+        "bad_day_wind": "{rider} had een slechte dag in de wind.",
+        "bad_day_heat": "{rider} had een slechte dag in de hitte.",
         "finale_attack": "{rider} valt aan in de finale.",
         "ttt_rider_dropped": "{rider} moet zijn ploeg laten gaan.",
         "sprint_decided": "Het komt aan op de streep tussen {rider} en de achtervolgers.",

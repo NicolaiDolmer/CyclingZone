@@ -69,8 +69,16 @@ const SELF = fileURLToPath(import.meta.url);
 const TOUR_DRY_RUN = path.join(here, "tourDryRun.mjs");
 const abs = (p) => (path.isAbsolute(p) ? p : path.join(REPO_ROOT, p));
 
+/** #6912: private worktree-taerskler, ellers den delte OneDrive-kilde. Ingen tal i repoet. */
+export function defaultThresholdsPath({ oneDrive = process.env.OneDrive, exists = existsSync, repoRoot = REPO_ROOT } = {}) {
+  const local = path.join("balance-internals", "motor-testport-thresholds.json");
+  if (exists(path.join(repoRoot, local)) || !oneDrive) return local;
+  const shared = path.join(oneDrive, "CyclingZone-context", local);
+  return exists(shared) ? shared : local;
+}
+
 /** Parse CLI-argumenterne (rent, testbart). `defaultBaseline` injiceres (den aktuelle revision). */
-export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {}) {
+export function parseArgs(argv, { defaultBaseline = null, now = new Date(), defaultThresholds = path.join("balance-internals", "motor-testport-thresholds.json") } = {}) {
   const get = (name, fallback = null) => {
     const hit = argv.find((a) => a.startsWith(`--${name}=`));
     return hit ? hit.slice(name.length + 3) : fallback;
@@ -117,7 +125,7 @@ export function parseArgs(argv, { defaultBaseline = null, now = new Date() } = {
     reportOnly: flag("report-only"),
     // #6750 (Codex): balance-taersklerne (fx "stort forspring") staar i en privat
     // fil, aldrig i det offentlige repo (hard rule 17).
-    thresholds: get("thresholds", path.join("balance-internals", "motor-testport-thresholds.json")),
+    thresholds: get("thresholds", defaultThresholds),
     thresholdsExplicit: get("thresholds") !== null,
     png: !flag("no-png"),
     benchWorker,
@@ -511,7 +519,7 @@ export function budgetStop(timeBudgetMin, monotonic = () => performance.now()) {
 export async function main(argv = process.argv.slice(2), { now, clock, monotonic, defaultBaseline: baselineOverride } = {}) {
   const stamp = clock ?? (now ? () => now : () => new Date());
   now ??= stamp();
-  let opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now });
+  let opts = parseArgs(argv, { defaultBaseline: baselineOverride ?? await defaultBaseline(), now, defaultThresholds: defaultThresholdsPath() });
   if (opts.benchWorker) return benchWorker(opts);
   const outDir = assertPrivateOutDir(abs(opts.out));
   const metaFile = path.join(outDir, "testport-meta.json");

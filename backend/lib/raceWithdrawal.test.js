@@ -262,3 +262,12 @@ test("#5301 findRejoinConflicts: en DB-fejl kastes, den slugges ikke", async () 
     "en tavs fejl her ville lade gen-deltag fortsaette ind i constraint-fejlen"
   );
 });
+
+// #7153: validate only the submitted replacement, never the preserved history.
+test('new replacement ignores conflicting old riders',async()=>{
+ assert.deepEqual(await findRejoinConflicts({supabase:makeBindingSupabase(REJOIN_TABLES),race:HEDJAZ,teamId:'bacon',riderIds:['haddad']}),[]);
+});
+test('new replacement conflict names the selected rider and competing race',async()=>{
+ const conflicts=await findRejoinConflicts({supabase:makeBindingSupabase(REJOIN_TABLES),race:HEDJAZ,teamId:'bacon',riderIds:['dekker']});
+ assert.equal(conflicts.length,1);assert.equal(conflicts[0].rider_name,'Joris Dekker');assert.equal(conflicts[0].bound_race_name,"L'Enfer du Nord");
+});

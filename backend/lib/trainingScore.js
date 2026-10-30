@@ -54,7 +54,7 @@
 //
 // Ren funktion: ingen DB, ingen Date, ingen Math.random.
 
-import { TRAINING_CONFIG, TRAINING_FOCUSES, focusAbilityWeight } from "./training.js";
+import { TRAINING_CONFIG, TRAINING_FOCUSES, programAbilityWeight } from "./training.js";
 import { ROLE_CLASS_RATE, roleRateFactor, youthRateForPotential } from "./riderProgression.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
@@ -121,7 +121,7 @@ function sessionAbilityWeights(program) {
   // #4850: loebsdagens program (raceDayYield.js) baerer sin egen fokus-liste,
   // samme override som abilityMult i dailyTraining.js.
   const abilities = program?.focusAbilities ?? TRAINING_FOCUSES[focus] ?? [];
-  return abilities.map((ability) => ({ ability, weight: focusAbilityWeight(focus, ability) }));
+  return abilities.map((ability) => ({ ability, weight: programAbilityWeight(program, ability) }));
 }
 
 /**

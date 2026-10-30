@@ -19,7 +19,8 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TRAINING_FOCUS_ABILITIES, injuryTimeLeft } from "../../../lib/training.js";
+import { focusAbilitiesFor, injuryTimeLeft } from "../../../lib/training.js";
+import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts"; // #5319
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
@@ -95,6 +96,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
   // Dagstype-navnene bor i `training`-namespacet (samme kilde som panelet), så
   // profilen og /training ikke kan komme til at kalde den samme dag to ting.
   const { t: tTraining } = useTranslation("training");
+  const catalogV3 = useTrainingCatalogV3(); // #5319: evne-linjen foelger spillerens katalog
   const { slots, planFor } = training;
   const plan = planFor(rider.id);
   const focus = plan?.focus ?? null;
@@ -109,7 +111,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
 
   const isRest = intensity === "rest";
   const abilitiesLabel = focus
-    ? TRAINING_FOCUS_ABILITIES[focus].map((a) => t(`racePreview.derived.${a}`)).join(" + ")
+    ? (focusAbilitiesFor(focus, { catalogV3 }) ?? []).map((a) => t(`racePreview.derived.${a}`)).join(" + ")
     : null;
 
   return (
@@ -237,7 +239,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   const { t: tTraining } = useTranslation("training");
   const { planFor, capped, todayRun } = training;
   const focus = planFor(rider.id)?.focus ?? null;
-  const focusAbilities = focus ? new Set(TRAINING_FOCUS_ABILITIES[focus] ?? []) : null;
+  const focusAbilities = focus ? new Set(focusAbilitiesFor(focus) ?? []) : null;
 
   // #5539-fix (reviewer-fund): kolonnen bruger SAMME kørsels-linje som
   // /training-rosterets focusAbilityReceipt-kald (TrainingPage.jsx) — ingen nyt

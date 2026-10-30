@@ -1490,6 +1490,10 @@
       "trainingGroups": {
         "title": "Trainingsgroepen",
         "text": "Met een groep neem je één trainingsbeslissing voor meerdere renners. Maak er een onder Programma, Plan: open 'Plan voor' en kies '+ Nieuwe groep'. Geef hem een naam en begin vanuit een rennerstype of kies de renners zelf. Een renner kan in één groep zitten. Een wijziging in een veld geldt dan voor de hele groep, en renners met een etappe houden de etappe. 'Vermoeidheid vanavond' toont de vermoeidste renner in de groep. De volgorde ligt vast: eerst het eigen plan van een renner, dan het plan van zijn groep, dan het teamplan. Als je de eigen velden van een renner wijzigt, wint zijn plan tot je opnieuw 'Groep volgen' kiest. Je kunt ook een programma op een groep zetten onder Programma's, en een groep een eigen uitzondering geven onder Vermoeidheidslimiet."
+      },
+      "catalogV3": {
+        "title": "Twee zware sessies voor elk rennerstype",
+        "text": "Elk rennerstype heeft nu twee zware sessies die ervoor gebouwd zijn, en elke zware sessie geeft een volledige zware dag. Vijf sessies zijn nieuw: Lange beklimmingen, Lead-out, Korte tijdritten, Lange tijdritten en Kasseienklassieker. Tijdrijden heeft eindelijk eigen sessies, dus Drempel traint nu tempo en uithoudingsvermogen. Sprint geeft nu een volledige zware dag. Wissel je tussen de twee sessies van je type, dan groeit de hoofdvaardigheid iets minder, maar groeien andere vaardigheden."
       }
     },
     "activityfeed": {
@@ -1553,6 +1557,10 @@
       "freeAgents": {
         "title": "Transfervrije renners",
         "text": "Transfervrije renners hebben geen salaris tot een team ze contracteert. Het rennersprofiel en de veilingpagina tonen een geschat salaris (op basis van de verwachte productie van de renner dit seizoen) zodat je je budget kunt plannen voordat je biedt. Het werkelijke salaris wordt pas vastgesteld op het moment van tekenen. Transfervrije renners ontstaan meestal wanneer het contract van een renner afloopt en bij de seizoenswissel niet wordt verlengd: in de praktijk is dat bijna altijd een selectie van een mens, omdat AI-teams hun aflopende contracten bij dezelfde overgang zelf automatisch verlengen. De rest zijn renners die door hun oude club zijn vrijgegeven, ofwel bij het afstuderen van de Academie, ofwel uit een aanbieding uit de Academie-instroom die onbeantwoord verliep en in de veiling geen koper vond (zie 'Verlopen aanbiedingen uit de Academie-instroom?')."
+      },
+      "contractWarnings": {
+        "title": "Voor welke renners krijg je contractwaarschuwingen?",
+        "text": "Contractwaarschuwingen gelden voor je senioren, U23-renners, junioren en academierenners. Bij de seizoenswissel krijg je één bericht met de renners van wie het contract in het nieuwe seizoen afloopt, met hun selectie en waarde. Je krijgt ook een waarschuwing als je een renner aantrekt of van selectie verandert en zijn contract dit seizoen afloopt. Je kunt contracten voor alle selecties verlengen op het tabblad Contracten bij Mijn ploeg. Renners die bij de seizoenswissel worden vrijgegeven, staan samen in een apart bericht. Een selectiewissel verandert het contract niet en de bestaande looptijd van het eerste contract van academierekruten blijft gelijk."
       }
     },
     "academy": {
@@ -1806,6 +1814,10 @@
         "title": "Volle inzet en teamwerk",
         "text": "Zet een renner op volle inzet en hij stopt helemaal met die prijs betalen, omdat hij alles aan zichzelf besteedt."
       },
+      "luxuryHelper": {
+        "title": "De luxeknecht",
+        "text": "Een luxeknecht is een knecht met een kant-en-klaar etappeplan: hij spaart zich in het peloton en rijdt daarna voor je kopman op de beslissende klim, de laatste van de dag. In het etappeplan kun je zijn werk naar een andere klim verplaatsen of hem een ander plan geven. Wordt je kopman gelost of stapt hij af, dan rijdt hij zijn eigen koers. Een ploeg kan één luxeknecht hebben, en alleen in koersen met de nieuwste regels."
+      },
       "weatherAndCobbles": {
         "title": "Weer en kasseien",
         "text": "Elke etappe heeft zijn eigen weer, en de etappepagina laat het zien: droog, regen of wind. Droog is de rustige basis, er verandert niets. Regen vertraagt de hele etappe. Wind bijt vooral waar de weg open is; een klim wordt door zijn eigen helling beschut. Beide treffen renners met zwak afdalen en weinig weerbaarheid het hardst. Regen vergroot ook het risico op een valpartij op kasseien, gravel en gedurfde afdalingen. Als regen of wind de renners kracht kostte, zegt het koersverhaal dat in één regel, nooit met een getal eraan. Een ploegentijdrit wordt zonder weer gereden."
@@ -1819,7 +1831,7 @@
     },
     "peakWhatItDoes": {
       "q": "Wat doet een piek?",
-      "a": "Een piek tilt de vorm van één renner op voor één koersvenster dat je in de Seizoensplanner kiest. Hij werkt met een voorbereiding waar je vooraf voor traint en een dip erna, dus het loont om hem in te stellen voor een koers die je echt wilt winnen, niet voor een heel seizoen. Elke renner kan op elk moment maximaal twee pieken hebben. Pieken tellen nog niet mee in koersen; koersen gebruiken zijn normale Vorm. Zie 'Hoe werkt piektraining?' en 'Kost een piek me achteraf iets?' hieronder voor precies hoeveel en wanneer."
+      "a": "Een piek tilt de vorm van één renner op voor één koersvenster dat je in de Seizoensplanner kiest. Hij werkt met een voorbereiding waar je vooraf voor traint en een dip erna, dus het loont om hem in te stellen voor een koers die je echt wilt winnen, niet voor een heel seizoen. Elke renner kan op elk moment maximaal twee pieken hebben. In koersen komt de piek bovenop zijn normale Vorm. Zie 'Hoe werkt piektraining?' en 'Kost een piek me achteraf iets?' hieronder voor precies hoeveel en wanneer."
     },
     "peakTraining": {
       "q": "Hoe werkt piektraining?",

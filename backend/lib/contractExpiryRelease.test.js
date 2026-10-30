@@ -139,7 +139,7 @@ test("frigiver PRÆCIS de kandidater fetchExpiredContractRiders returnerer — t
   // Kun menneske-ejeren (r1) notificeres — AI-holdet (r2) har intet user_id.
   assert.equal(calls.length, 1);
   assert.equal(calls[0].userId, "u1");
-  assert.equal(calls[0].relatedId, "r1");
+  assert.equal(calls[0].relatedId, null);
 });
 
 test("ryttere midt i et AKTIVT fleretape-løb udskydes (kan ikke parkeres, samme #1995/#2617-begrænsning som squadEnforcement)", async () => {
@@ -267,7 +267,7 @@ test("ugyldigt seasonNumber → nul-stats uden at røre DB'en", async () => {
 test("en fejlende notifikation isoleres og tælles separat (resten af releasen fortsætter)", async () => {
   const { supabase, riderUpdates } = makeMockSupabase();
   const { notify } = makeNotifyRecorder((args) => {
-    if (args.relatedId === "r1") throw new Error("transient insert error");
+    if (args.userId === "u1") throw new Error("transient insert error");
     return { delivered: true };
   });
 
@@ -285,6 +285,27 @@ test("en fejlende notifikation isoleres og tælles separat (resten af releasen f
   assert.equal(stats.notified, 1);
   assert.equal(stats.notifyFailed, 1);
   assert.equal(riderUpdates.length, 2);
+});
+
+test("release summary lists all released squads for one team, excluding a racing rider", async () => {
+  const { supabase } = makeMockSupabase({ activeStageRaceRiderIds: ["r-racing"] });
+  const { notify, calls } = makeNotifyRecorder();
+  const candidates = ["senior", "u23", "junior", "academy"].map((squad, i) => ({
+    id: `r-${i}`, firstname: "Rider", lastname: String(i), team_id: "team-a", squad,
+    is_academy: squad !== "senior", contract_end_season: 5, market_value: 1200,
+    team: { user_id: "owner-a", is_ai: false, is_frozen: false },
+  }));
+  candidates.push({ ...candidates[0], id: "r-racing", firstname: "Racing" });
+  const stats = await releaseExpiredContractRiders({
+    supabase, seasonNumber: 5, notify, fetchExpiredContractRiders: async () => candidates,
+  });
+  assert.equal(stats.released, 4);
+  assert.equal(stats.deferredByRacing, 1);
+  assert.equal(stats.notified, 1);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].metadata.messageCode, "notif.contractReleasedSummary.message");
+  assert.equal(calls[0].metadata.messageParams.contractRiders.length, 4);
+  assert.doesNotMatch(calls[0].message, /Racing/);
 });
 
 // ─── Partial-failure-observability (coordinator-review-fund) ──────────────────

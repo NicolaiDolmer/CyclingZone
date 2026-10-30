@@ -42,7 +42,7 @@
     "@sentry/node": "^11.7.0",
     "@supabase/supabase-js": "^2.118.0",
     "cors": "^2.8.5",
-    "dotenv": "^18.0.8",
+    "dotenv": "^18.0.9",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.1",
     "fast-xml-parser": "^5.11.2",
@@ -53,7 +53,7 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.10",
+    "@electric-sql/pglite": "^0.5.11",
     "@eslint/js": "^10.0.1",
     "@types/express": "5.0.6",
     "@types/node": "^26.6.5",
