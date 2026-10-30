@@ -97,7 +97,7 @@ import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
-import { routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
+import { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -882,6 +882,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
   // only them is a regroup, chaseGroup.isMorningRegroupCatch) and the exact place
   // of every event (exactPlace.ts). Both touch events only, never times/groups.
   const morningRiderIds = new Set<string>();
+  let terrainHeadEntrants7383: Record<string, Entrant> | null = null; // #7383 (slukket)
   for (let segmentIndex = 0; segmentIndex < segments.length; segmentIndex++) {
     const segment = segments[segmentIndex];
     // #7003: opgaveskift ved segmentets start (forrige segments udgang), og segmentets indsats.
@@ -1157,8 +1158,15 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     }
 
     let climbSplits: ReturnType<typeof segmentSplitsFromEvents> = []; // #6440
-    if (segment.kind === "climb") {
-      const result = hooks.climbSelection(state, ctx);
+    // #7383 (slukket): en delt stigning/sektor er EEN selektion, ved halen, paa hele stykket og
+    // med indsatsen fra den laengste del (adapters/finalKmBoundary7383.ts).
+    const terrainPiece = finalKmTerrainPiece7383(segment);
+    if (terrainPiece?.part === "head") terrainHeadEntrants7383 = entrantsById;
+    const terrainCtx = terrainPiece?.part === "tail" ? { ...ctx, segment: terrainPiece.whole, entrants: terrainPiece.headLonger ? terrainHeadEntrants7383 ?? ctx.entrants : ctx.entrants } : ctx;
+    if (terrainPiece?.part === "head") {
+      // #7383: hovedet af en delt stigning/sektor (selektionen sker ved halen).
+    } else if (segment.kind === "climb") {
+      const result = hooks.climbSelection(state, terrainCtx);
       acceptMovement(result);
       if (timeModelV3) climbSplits = segmentSplitsFromEvents(result.events); // #6440: foelger kilden gennem M5
     } else if (segment.kind === "descent") {
@@ -1170,7 +1178,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // brostens-split er med i det billede M5/M4 arbejder videre paa. Grus-
       // sektorer ER cobbles-segmenter (RACE_ENGINE_RULES §2b), saa denne gren
       // daekker begge underlag.
-      const result = (hooks.cobbles ?? noopHook)(state, ctx);
+      const result = (hooks.cobbles ?? noopHook)(state, terrainCtx);
       acceptMovement(result);
     }
 

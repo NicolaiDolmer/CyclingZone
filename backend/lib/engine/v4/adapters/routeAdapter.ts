@@ -190,6 +190,7 @@ export function splitLongOpenRoadSegments(segments: readonly Segment[]): Segment
 export {
   FINAL_KM_BOUNDARY_7383_ACTIVE,
   finalKmBoundary7383Active,
+  finalKmTerrainPiece7383,
   isFinalKmBoundary7383On,
   routeWithFinalKmBoundary7383,
   setFinalKmBoundary7383ForBench,
