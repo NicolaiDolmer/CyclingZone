@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 // tilbage til den rå, uoversatte "Auction has ended" i stedet for den
 // lokaliserede errors:api.auction_expired-tekst (samme kode som DB-trigger-
 // grenen længere nede i hver handler allerede brugte). Samme
-// route-source-teknik som auctionEntryGate.routes.test.js — en fuld HTTP-mock
+// route-source-teknik som de øvrige *.routes.test.js-filer — en fuld HTTP-mock
 // ville kræve at stubbe hele kæden af supabase-kald i disse handlere.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
