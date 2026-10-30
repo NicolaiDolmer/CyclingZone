@@ -190,6 +190,12 @@ test("#7383: nedkoerselsfinalen: to skift paa samme sted, og noten bliver staaen
   assert.deepEqual(stagePlanSwitchNotes(legs, route, features, true), expected, "nedkoerslen deles aldrig");
 });
 
+test("#7383 (Codex-review): overlappende stigning og sektor loeses som rutegeneratoren", () => {
+  const { route, features } = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 139, length_km: 9, category: "3" }], sectors: [{ name: "S", start_km: 134, length_km: 11 }] });
+  assert.deepEqual(features.map((f) => [f.kind, f.from_km, f.to_km]), [["climb", 130, 139], ["sector", 139, 145]]);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "sector", place: "start" }], "starter ved 139 som motoren");
+});
+
 test("#7383: notens tekst findes paa alle sprog", () => {
   const notes = [
     ...(["climb", "sector", "descent"] as const).flatMap((feature) => (["start", "end", "finale"] as const).map((place) => ({ kind: "feature" as const, leg: 1, feature, place }))),

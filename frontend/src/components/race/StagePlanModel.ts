@@ -434,12 +434,22 @@ export function stagePlanFeaturesFromRaw(raw: { distance_km?: unknown; finale_ty
     if (!Number.isFinite(start) || !(length > 0)) continue;
     out.push({ kind: "sector", from_km: Math.max(0, start), to_km: Math.min(distance, start + length) });
   }
-  const lastEnd = out.reduce((m, f) => Math.max(m, f.to_km), 0);
-  const lastClimb = out.filter((f) => f.kind === "climb").reduce<StagePlanFeature | null>((m, f) => (!m || f.to_km > m.to_km ? f : m), null);
-  if (raw?.finale_type === "descent" && lastClimb && lastClimb.to_km >= lastEnd && distance - lastClimb.to_km > NOTE_EPS_KM) {
-    out.push({ kind: "descent", from_km: lastClimb.to_km, to_km: distance });
+  // Codex-review: samme overlap-regel som rutegeneratoren (routeSegments.buildSegments):
+  // sorteret efter start, en tidligere feature vinder, og en senere starter hvor den slutter.
+  out.sort((a, b) => a.from_km - b.from_km || a.to_km - b.to_km);
+  const resolved: StagePlanFeature[] = [];
+  let cursor = 0;
+  for (const f of out) {
+    const from = Math.max(f.from_km, cursor);
+    if (from >= f.to_km) continue;
+    resolved.push({ ...f, from_km: from });
+    cursor = f.to_km;
   }
-  return out.sort((a, b) => a.from_km - b.from_km);
+  const last = resolved[resolved.length - 1];
+  if (raw?.finale_type === "descent" && last?.kind === "climb" && distance - last.to_km > NOTE_EPS_KM) {
+    resolved.push({ kind: "descent", from_km: last.to_km, to_km: distance });
+  }
+  return resolved;
 }
 
 type Resolved = { km: number; finale: boolean };

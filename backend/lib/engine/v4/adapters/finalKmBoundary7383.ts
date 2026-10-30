@@ -8,15 +8,17 @@
 // segment, oftest etapens sidste. Med kontakten taendt deler motoren det segment der
 // krydser punktet, saa hvert led skifter praecis dér, ogsaa to taette skift og
 // holdarbejde paa sidste stykke.
-//   - Fladt/rullende: segmentet deles. Stykkerne er almindelige segmenter (samme
-//     moenster som routeAdapter.splitLongOpenRoadSegments).
-//   - Stigning eller brostenssektor: stykket deles med samme stejlhed/sektor, men det er
-//     stadig EEN stigning/sektor. Terraen-selektionen (klatring, brosten) koeres een
-//     gang, ved stykkets slutning, paa hele stykket (finalKmTerrainSegment7383, som
-//     segmentLoop.ts laeser). Bjergtoppen, bjergpointene og kom_passage kommer fra rutens
-//     vejpunkter, som ikke deles. Blok-reglerne (sammenhaengende stigningssegmenter =
-//     een stigning: mountainSelection.finalClimbStartIndex, allOutCrack6641.climbBlockOf,
-//     s5Profiles.priorCategorizedClimbs) ser de to stykker som een stigning.
+//   - Fladt/rullende: segmentet deles i to almindelige stykker (samme moenster som
+//     routeAdapter.splitLongOpenRoadSegments).
+//   - Stigning eller brostenssektor: stykket deles med samme stejlhed/kategori/sektor,
+//     og det er stadig EEN stigning/sektor: bjergtoppen, bjergpointene og kom_passage
+//     kommer fra rutens vejpunkter (deles ikke), og blok-reglerne for sammenhaengende
+//     stigningssegmenter (mountainSelection.finalClimbStartIndex,
+//     allOutCrack6641.climbBlockOf, s5Profiles.priorCategorizedClimbs) ser de to stykker
+//     som een stigning, som de allerede goer for en stigning motoren har delt i flere
+//     segmenter. Selektionen koeres pr. stykke med rytterens indsats paa netop det
+//     stykke (Codex-review: en angriber fra de sidste 10 km faar ikke angrebets
+//     indsats paa hele stigningen).
 //   - Nedkoersel: deles IKKE. Nedkoerselsfinalens tidsmodel (#6200: finishDescentIndexFor,
 //     "kun aabne, aldrig lukke" paa sidste segment, finalens loft fra nedkoerslens start)
 //     er bygget paa at nedkoerslen er eet segment. Her gaelder etapeplanens #7333-regel
@@ -52,15 +54,8 @@ export function isFinalKmBoundary7383On(revision: unknown): boolean {
 /** Under denne afstand ligger en eksisterende graense "paa" punktet (ingen ny deling). */
 const BOUNDARY_EPS_KM = 0.01;
 
-/** Segmenttyper der deles som almindelige stykker. */
-const OPEN_ROAD_KINDS: ReadonlySet<Segment["kind"]> = new Set(["flat", "rolling"]);
-/** Segmenttyper der deles, men stadig er eet stykke terraen (een selektion). */
-const ONE_FEATURE_KINDS: ReadonlySet<Segment["kind"]> = new Set(["climb", "cobbles"]);
-
-// Stykkerne af en delt stigning/sektor: hovedet (foer punktet) springer terraen-
-// selektionen over, halen koerer den paa hele stykket. Noeglet paa selve segment-
-// objektet, saa intet nyt felt kommer paa Segment (types.ts, snapshots, tidslinje).
-const TERRAIN_PIECES = new WeakMap<object, { part: "head" | "tail"; whole: Segment }>();
+/** Segmenttyper der deles (nedkoerslen deles aldrig, se filens hoved). */
+const SPLIT_KINDS: ReadonlySet<Segment["kind"]> = new Set(["flat", "rolling", "climb", "cobbles"]);
 
 function roundKm(n: number): number {
   return Math.round(n * 100) / 100;
@@ -77,16 +72,9 @@ export function splitAtFinalKm7383(segments: readonly Segment[], distanceKm: num
   if (!(at > 0)) return segments;
   if (segments.some((s) => Math.abs(s.from_km - at) < BOUNDARY_EPS_KM || Math.abs(s.to_km - at) < BOUNDARY_EPS_KM)) return segments;
   const index = segments.findIndex((s) => s.from_km < at && s.to_km > at);
-  if (index < 0) return segments;
+  if (index < 0 || !SPLIT_KINDS.has(segments[index].kind)) return segments;
   const whole = segments[index];
-  if (!OPEN_ROAD_KINDS.has(whole.kind) && !ONE_FEATURE_KINDS.has(whole.kind)) return segments;
-  const head = { ...whole, to_km: at } as Segment;
-  const tail = { ...whole, from_km: at } as Segment;
-  if (ONE_FEATURE_KINDS.has(whole.kind)) {
-    TERRAIN_PIECES.set(head, { part: "head", whole });
-    TERRAIN_PIECES.set(tail, { part: "tail", whole });
-  }
-  return [...segments.slice(0, index), head, tail, ...segments.slice(index + 1)];
+  return [...segments.slice(0, index), { ...whole, to_km: at } as Segment, { ...whole, from_km: at } as Segment, ...segments.slice(index + 1)];
 }
 
 /** Ruten som segment-loopet koerer den paa `revision`. Samme objekt naar kontakten er slukket. */
@@ -94,16 +82,4 @@ export function routeWithFinalKmBoundary7383(route: RouteV2, revision: unknown):
   if (!isFinalKmBoundary7383On(revision)) return route;
   const segments = splitAtFinalKm7383(route.segments, route.distance_km);
   return segments === route.segments ? route : { ...route, segments: segments as Segment[] };
-}
-
-/**
- * Segmentet terraen-selektionen (klatring, brosten) skal se paa `segment`.
- * `undefined` = segmentet selv (alt uden for en deling, og hele motoren naar kontakten
- * er slukket); `null` = spring over (hovedet af en delt stigning/sektor); ellers hele det
- * oprindelige stykke (halen, der slutter ved toppen/sektorens slutning).
- */
-export function finalKmTerrainSegment7383(segment: Segment): Segment | null | undefined {
-  const piece = TERRAIN_PIECES.get(segment);
-  if (!piece) return undefined;
-  return piece.part === "head" ? null : piece.whole;
 }

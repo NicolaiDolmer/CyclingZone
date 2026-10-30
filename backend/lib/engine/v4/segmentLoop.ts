@@ -97,7 +97,7 @@ import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
 import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
-import { finalKmTerrainSegment7383, routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
+import { routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n));
@@ -1157,13 +1157,8 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     }
 
     let climbSplits: ReturnType<typeof segmentSplitsFromEvents> = []; // #6440
-    // #7383 (slukket): en delt stigning/sektor er EEN selektion, ved halen og paa hele stykket.
-    const terrainPiece = finalKmTerrainSegment7383(segment);
-    const terrainCtx = terrainPiece ? { ...ctx, segment: terrainPiece } : ctx;
-    if (terrainPiece === null) {
-      // #7383: hovedet af en delt stigning/sektor (selektionen sker ved halen).
-    } else if (segment.kind === "climb") {
-      const result = hooks.climbSelection(state, terrainCtx);
+    if (segment.kind === "climb") {
+      const result = hooks.climbSelection(state, ctx);
       acceptMovement(result);
       if (timeModelV3) climbSplits = segmentSplitsFromEvents(result.events); // #6440: foelger kilden gennem M5
     } else if (segment.kind === "descent") {
@@ -1175,7 +1170,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // brostens-split er med i det billede M5/M4 arbejder videre paa. Grus-
       // sektorer ER cobbles-segmenter (RACE_ENGINE_RULES §2b), saa denne gren
       // daekker begge underlag.
-      const result = (hooks.cobbles ?? noopHook)(state, terrainCtx);
+      const result = (hooks.cobbles ?? noopHook)(state, ctx);
       acceptMovement(result);
     }
 
