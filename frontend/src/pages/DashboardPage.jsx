@@ -53,7 +53,7 @@ import useTodayStages from "../hooks/useTodayStages.js";
 import DevTransitionCard from "../components/DevTransitionCard";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
-import { orderedSelectableRaces } from "../lib/nextSelectableRace";
+import { teamNudgeCandidates } from "../lib/dashboardNextRace.ts";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces, filterTeamEnteredRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
@@ -677,8 +677,9 @@ export default function DashboardPage() {
   // handler om det nære løb, og hver kandidat koster ét kald.
   useEffect(() => {
     let cancelled = false;
-    const candidates = orderedSelectableRaces(nextRaces).slice(0, SQUAD_NUDGE_LOOKAHEAD);
-    if (!candidates.length || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
+    // #7296: holdets egne løb først (race_entries), kalenderen som fallback med eget loft.
+    const candidates = teamNudgeCandidates(nextRaces, teamRaceIds, SQUAD_NUDGE_LOOKAHEAD);
+    if (!teamRaceIdsLoaded || !candidates.length || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -703,7 +704,7 @@ export default function DashboardPage() {
       if (!cancelled) setSquadSelectionMissingRace(null);
     })();
     return () => { cancelled = true; };
-  }, [nextRaces, team?.id]);
+  }, [nextRaces, team?.id, teamRaceIds, teamRaceIdsLoaded]);
 
   // #2288 D2 — trænede holdet i dag? Letvægts-endpoint, kun training_day_runs.
   useEffect(() => {
