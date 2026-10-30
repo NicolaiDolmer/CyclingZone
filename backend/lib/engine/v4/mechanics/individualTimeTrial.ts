@@ -171,7 +171,7 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
 }
 
 /**
- * #6595 (KUN s5_profiles_v3): enkeltstartens egen terraen-vaegt i fart-formlen.
+ * #6595 (KUN s5_profiles_v3, SLUKKET): enkeltstartens egen terraen-vaegt i fart-formlen.
  *
  * Vejetapens STRENGTH_SPEED_EXTRA_TUNING.terrainWeight daemper styrke-forskelle
  * paa fladt og rullende terraen, fordi aerodynamik og LAE dominerer dér: i en
@@ -193,9 +193,29 @@ export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = O
   rolling: 0.6,
 });
 
-/** #6595: terraen-vaegten enkeltstarten regner fart med. Aeldre revisioner: vejetapens (samme objekt). */
+// #6595 (SLUKKET, ejer-go kraeves foer taend): s5_profiles_v3 er den AKTUELLE
+// revision (#7237), saa rettelsen kan ikke ligge bag revisionen alene (samme
+// moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
+// bit-identisk med main. Taend = ejerens ordrette go i en egen PR.
+export const ITT_TERRAIN_6595_ACTIVE: boolean = false;
+
+// Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
+let benchOverride6595: boolean | null = null;
+/** KUN tests/dev-benches: taend/sluk #6595. `null` nulstiller til kontakten. */
+export function setIttTerrain6595ForBench(active: boolean | null): void {
+  benchOverride6595 = active === null ? null : active === true;
+}
+/** Er #6595 taendt (kontakten, eller en dev-bench)? Gaelder kun under s5_profiles_v3. */
+export function ittTerrain6595Active(): boolean {
+  return benchOverride6595 ?? ITT_TERRAIN_6595_ACTIVE;
+}
+
+/**
+ * #6595: terraen-vaegten enkeltstarten regner fart med. Kun s5_profiles_v3 med
+ * kontakten taendt faar enkeltstartens egen; ellers vejetapens (samme objekt).
+ */
 export function ittTerrainWeight(rulesRevision: unknown): Readonly<Record<SegmentKind, number>> {
-  return isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
+  return ittTerrain6595Active() && isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
 }
 
 // ── Evne og fart ─────────────────────────────────────────────────────────────
