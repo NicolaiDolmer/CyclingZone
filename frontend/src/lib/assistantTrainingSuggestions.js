@@ -12,7 +12,7 @@
 // Ingen DB, ingen React, ingen Date — unit-testes isoleret med node --test,
 // samme mønster som trainingFocus.js.
 
-import { SESSION_INTENSITY } from "./trainingDayTypes.js";
+import { SESSION_INTENSITY_V3 } from "./trainingDayTypes.js";
 
 // Én række pr. rytter assistenten har et forslag til. Ryttere uden et
 // smartDefaultFocus-map-hit (retired ryttere — backend beregner kun for
@@ -38,7 +38,9 @@ export function buildAssistantSuggestions({ riders, smartDefaultFocusByRider, pl
         name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
         hasPlan: !!plan?.focus,
         focus,
-        intensity: SESSION_INTENSITY[focus] ?? "normal",
+        // #5319: v3-tabellen er en overmængde (dagens sessioner har samme værdi);
+        // serveren sender kun en v3-session (fx itt_long) når v3 er åben for viewer.
+        intensity: SESSION_INTENSITY_V3[focus] ?? "normal",
       };
     });
 }

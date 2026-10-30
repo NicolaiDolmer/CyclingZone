@@ -452,6 +452,29 @@ re-insert fejler (aldrig værre stillet end før kaldet). Backfill: `repairMissi
 `human-team-without-board-members`). Postmortem:
 `.claude/learnings/2026-09-03-new-teams-without-board-members.md`.
 
+### 8.1 Medlemmernes stemning og ungdomsresultater (#7096, design-go 24/10)
+
+Et medlems stemning (`deriveMemberMood`, `boardRoom.js`) er summen af de seneste events på medlemmets egne
+mål (milepæls-kvitteringer og mål-bevægelser). Derudover får de **ungdomsfokuserede** medlemmer (arketypens
+policy-akse `youth_focus = high`) holdets **U23- og juniorresultater** som input. Reglen (`boardYouthEvaluation.js`):
+
+- **Kun Boardroom-visningen.** Ungdomsresultater tæller aldrig i seniormål (`onlySeniorRaceRows`, #5537), i
+  mål-evalueringen, i tilliden (`board_relations.confidence`), i referatet eller i formandens citat.
+- **Hvad tæller:** podier (etape eller samlet, endagsløb inkl.) og slut-trøjer (kun sejr i points/mountain/young) i et ungdomsløb (`races.squad` u23/junior) i
+  den **indeværende sæson**. Samme regel i alle divisioner.
+- **Ét nik pr. løb**, uanset hvor mange etaper eller podier holdet tog i det.
+- **Større plus ved sejr:** vandt holdet en etape, det samlede resultat eller slut-trøjen, vejer løbet tungere
+  end et rent podie.
+- **Loft for ungdomsandelen:** kun et begrænset antal af stemningsvinduets pladser kan komme fra
+  ungdomsresultater, så de ikke skjuler medlemmets egne mål-bevægelser. De øvrige pladser går til medlemmets
+  øvrige events.
+- **Fravær trækker aldrig ned.** Ingen ungdomsresultater giver intet input, aldrig et negativt.
+- **Andre medlemmer** (medium/low ungdomsfokus) mærker ikke ungdomsresultaterne.
+- **Privat tuning (regel 17).** Selve vægtene og loftet står ikke i repoet. De læses fra en privat runtime-kilde
+  (miljøvariabel, JSON, leveret fra Infisical) og er **fail-closed**: mangler kilden eller er den ugyldig,
+  er ungdomsinputtet slået fra helt (ingen læsning, ingen events). Tallene ligger i `balance-internals/7096`.
+- **Best-effort:** en fejlet læsning af ungdomsresultater koster kun dette input, aldrig Boardroom-siden.
+
 ## Kildedokumenter
 
 - `superpowers/specs/2026-08-07-board-mandate-rework-design.md` — de 10 ejer-beslutninger er gyldige;

@@ -232,9 +232,9 @@ import {
   buildTypePrognosisBands, roleCeilRating, ratingFromAbilities,
 } from "../lib/scoutingReport.js";
 import { projectCeilingBand, ceilingTiming, PEAK_AGE, DISPLAY_SEASONS } from "../lib/developmentProjection.js";
-import { programForChoice, normalizeProgram, SESSION_INTENSITY } from "../lib/trainingDayTypes.js";
+import { programForChoice, normalizeProgram, smartDefaultSession } from "../lib/trainingDayTypes.js";
 import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, V3_TRAINING_FOCUSES } from "../lib/trainingCatalogV3.js"; // #5319
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, smartDefaultFocus, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, partitionSmartBulkTargets, BULK_TRAINING_MAX_RIDERS, focusTrainability, isValidWeekPlanDays, cappedVisibleAbilities } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import {
@@ -499,7 +499,6 @@ import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { recordIdentityEvent } from "../lib/identityTelemetry.js";
-import { evaluateAuctionEntryGate, readNewAccountGateConfig } from "../lib/newAccountGates.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { computeRetentionCohorts } from "../lib/retentionScorecard.js";
 import { buildCustomerRows, partitionSubscriptions, summarizeNps } from "../lib/growthSnapshot.js";
@@ -3067,11 +3066,12 @@ router.get("/training/me", requireAuth, async (req, res) => {
     const smartDefaultFocusByRider = {};
     const primaryTypeByRider = new Map();
     // #5319: signalet foelger samme katalog som viewerens vaelger (v3 kun naar flaget er aabent).
-    const trainabilityFocuses = (await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))
-      ? V3_TRAINING_FOCUSES : undefined;
+    const viewerCatalogV3 = await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req));
+    const trainabilityFocuses = viewerCatalogV3 ? V3_TRAINING_FOCUSES : undefined;
     for (const rider of riders ?? []) {
       trainability[rider.id] = focusTrainability(rider.primary_type ?? null, rider.secondary_type ?? null, undefined, trainabilityFocuses);
-      smartDefaultFocusByRider[rider.id] = smartDefaultFocus(rider.primary_type ?? null);
+      // #5319: samme standardfokus som motoren træner (v3: tt/gc på itt_long, ikke Tærskel).
+      smartDefaultFocusByRider[rider.id] = smartDefaultSession(rider, { catalogV3: viewerCatalogV3 }).focus;
       primaryTypeByRider.set(rider.id, rider.primary_type ?? null);
     }
 
@@ -3427,7 +3427,7 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
     const uniqueIds = [...new Set(riderIds)];
     // Ejer-guard: træning er KUN for egne ryttere (akademi inkl. — de indgår i
     // daglig træning). Slå de ejede op i DB og partitionér mod slot-budgettet.
-    const ownedSelect = isSmartMode ? "id, primary_type" : "id";
+    const ownedSelect = isSmartMode ? "id, primary_type, secondary_type" : "id";
     const { data: ownedRows, error: ownErr } = await supabase
       .from("riders").select(ownedSelect).eq("team_id", req.team.id).in("id", uniqueIds);
     if (ownErr) throw new Error(ownErr.message);
@@ -3452,15 +3452,22 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, trainNowPlanLock(
       const now = new Date().toISOString();
       let rows;
       if (isSmartMode) {
-        const primaryTypeById = new Map((ownedRows ?? []).map((r) => [r.id, r.primary_type ?? null]));
+        const riderById = new Map((ownedRows ?? []).map((r) => [r.id, r]));
+        // #5319 (Codex-fund): gem det samme fokus som assistenten viser (v3: tt/gc på itt_long).
+        // Flaget slås kun op når det ændrer noget for mindst én rytter (ellers intet ekstra opslag).
+        const v3Changes = toApply.some((id) => smartDefaultSession(riderById.get(id), { catalogV3: true }).focus
+          !== smartDefaultSession(riderById.get(id)).focus);
+        const smartCatalogV3 = v3Changes
+          ? await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req))
+          : false;
         rows = toApply.map(rider_id => {
           // #3762: intensiteten er en EGENSKAB ved sessionen, ikke et frit valg.
           // Smart-mode vælger sessionen pr. rytter, så intensiteten følger med
           // derfra — ellers kunne assistenten skrive et par der ikke findes.
-          const smartFocus = smartDefaultFocus(primaryTypeById.get(rider_id) ?? null);
+          const smart = smartDefaultSession(riderById.get(rider_id), { catalogV3: smartCatalogV3 });
           return {
             team_id: req.team.id, rider_id, season_id: activeSeasonId,
-            focus: smartFocus, intensity: SESSION_INTENSITY[smartFocus] ?? "normal",
+            focus: smart.focus, intensity: smart.intensity,
             updated_at: now,
           };
         });
@@ -7730,27 +7737,6 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     return res.status(400).json({ error: "Auction has ended", errorCode: "auction_expired" });
   }
 
-  // #3134 · auktions-spærre: en konto oprettet EFTER at auktionen startede kan
-  // ikke byde på netop DEN auktion (det præcise #2776-angreb — funnel-kontoen
-  // blev oprettet 4 min efter auktionen startede og bød på den 4 min senere).
-  // DEFAULT OFF: dry-run mod prod (PR #3134) fandt 422 historiske bud fra 53
-  // ægte hold der ville være blokeret — overvejende helt almindelig "ny
-  // spiller byder på en allerede kørende auktion minutter efter oprettelse"
-  // onboarding-adfærd, ikke #2776-mønsteret. Auction-select ovenfor bruger
-  // "*" og har derfor allerede created_at.
-  const auctionEntryGateConfig = await readNewAccountGateConfig(supabase);
-  const auctionEntryGate = evaluateAuctionEntryGate({
-    enabled: auctionEntryGateConfig.auctionEntryGateEnabled,
-    teamCreatedAt: req.team.created_at,
-    auctionCreatedAt: auction.created_at,
-  });
-  if (!auctionEntryGate.allowed) {
-    return res.status(403).json({
-      error: "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
-      errorCode: "auction_created_before_account",
-    });
-  }
-
   // #194 race-confirm: hvis client sendte expected_current_price og det er stale,
   // returnér 409 så frontend kan vise confirm-modal med ny pris/min-bud.
   if (isExpectedPriceStale(req.body.expected_current_price, auction.current_price)) {
@@ -8071,21 +8057,6 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   // #3110: samme manglende errorCode som bud-endpointet — se kommentar der.
   if (isAuctionExpired(auction.calculated_end)) {
     return res.status(400).json({ error: "Auction has ended", errorCode: "auction_expired" });
-  }
-  // #3134 · auktions-spærre — samme håndhævelse som POST /auctions/:id/bid.
-  // Et autobud er en anden vej ind i samme auktion og skal gates identisk,
-  // ellers kan en ny konto bare omgå bud-endpointet med et proxy-loft i stedet.
-  const proxyEntryGateConfig = await readNewAccountGateConfig(supabase);
-  const proxyEntryGate = evaluateAuctionEntryGate({
-    enabled: proxyEntryGateConfig.auctionEntryGateEnabled,
-    teamCreatedAt: req.team.created_at,
-    auctionCreatedAt: auction.created_at,
-  });
-  if (!proxyEntryGate.allowed) {
-    return res.status(403).json({
-      error: "Your team was created after this auction started, so you can't bid on it. Newer auctions are open to you right away.",
-      errorCode: "auction_created_before_account",
-    });
   }
   // Block setting proxy on own rider auction (mirror bid-endpoint guard)
   if (auction.seller_team_id === req.team.id) {

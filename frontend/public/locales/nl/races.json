@@ -27,6 +27,24 @@
     "clearPlan": "Plan verwijderen",
     "effortNote": "De inspanning volgt de taak.",
     "rulesNote": "De vlucht kan alleen de eerste taak zijn. Gruppetto, binnenrijden en de sprinttrein komen altijd als laatste.",
+    "switchNote": {
+      "climb": {
+        "start": "De laatste 10 km beginnen op een klim, dus stap {number} begint aan de voet.",
+        "end": "De laatste 10 km beginnen op een klim, dus stap {number} begint op de top.",
+        "finale": "De laatste 10 km beginnen op de slotklim, dus stap {number} begint pas in de finale."
+      },
+      "sector": {
+        "start": "De laatste 10 km beginnen in een strook, dus stap {number} begint waar de strook begint.",
+        "end": "De laatste 10 km beginnen in een strook, dus stap {number} begint waar de strook eindigt.",
+        "finale": "De laatste 10 km beginnen in de laatste strook, dus stap {number} begint pas in de finale."
+      },
+      "descent": {
+        "start": "De laatste 10 km beginnen in de afdaling naar de finish, dus stap {number} begint op de top.",
+        "end": "De laatste 10 km beginnen in de afdaling naar de finish, dus stap {number} begint pas in de finale.",
+        "finale": "De laatste 10 km beginnen in de afdaling naar de finish, dus stap {number} begint pas in de finale."
+      },
+      "samePoint": "Stap {first} en stap {second} wisselen op hetzelfde punt, dus stap {first} wordt niet gereden."
+    },
     "timeTrial": "Geen etappeplan in een tijdrit.",
     "task": {
       "breakaway": "Mee in de vlucht",
@@ -1478,7 +1496,8 @@
         },
         "order": {
           "save": "Jouw opdracht: Rustig rijden.",
-          "grupetto": "Jouw opdracht: Grupetto."
+          "grupetto": "Jouw opdracht: Grupetto.",
+          "plan": "Jouw opdracht: {task}."
         }
       },
       "event": {

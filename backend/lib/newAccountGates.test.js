@@ -5,7 +5,6 @@ import {
   NEW_ACCOUNT_GATE_CONFIG_KEYS,
   accountAgeDays,
   accountAgeHours,
-  evaluateAuctionEntryGate,
   evaluateLoanGate,
   evaluateTransferCooldown,
   getTeamRaceDaysRun,
@@ -139,36 +138,6 @@ test("evaluateTransferCooldown: allowed once the account has aged past cooldownH
   assert.equal(result.allowed, true);
 });
 
-// ── evaluateAuctionEntryGate ───────────────────────────────────────────────────
-
-test("evaluateAuctionEntryGate: disabled flag → always allowed", () => {
-  const result = evaluateAuctionEntryGate({
-    enabled: false,
-    teamCreatedAt: NOW.toISOString(),
-    auctionCreatedAt: new Date(NOW.getTime() - DAY).toISOString(),
-  });
-  assert.equal(result.allowed, true);
-});
-
-test("evaluateAuctionEntryGate: team created AFTER the auction started → blocked", () => {
-  const auctionCreatedAt = new Date(NOW.getTime() - 10 * 60 * 1000).toISOString(); // 10 min ago
-  const teamCreatedAt = NOW.toISOString(); // just now — after the auction started
-  const result = evaluateAuctionEntryGate({ enabled: true, teamCreatedAt, auctionCreatedAt });
-  assert.equal(result.allowed, false);
-});
-
-test("evaluateAuctionEntryGate: team predates the auction → allowed (the normal case)", () => {
-  const teamCreatedAt = new Date(NOW.getTime() - 30 * DAY).toISOString();
-  const auctionCreatedAt = new Date(NOW.getTime() - HOUR).toISOString();
-  const result = evaluateAuctionEntryGate({ enabled: true, teamCreatedAt, auctionCreatedAt });
-  assert.equal(result.allowed, true);
-});
-
-test("evaluateAuctionEntryGate: missing timestamps fail open (never block on missing data)", () => {
-  assert.equal(evaluateAuctionEntryGate({ enabled: true, teamCreatedAt: null, auctionCreatedAt: NOW.toISOString() }).allowed, true);
-  assert.equal(evaluateAuctionEntryGate({ enabled: true, teamCreatedAt: NOW.toISOString(), auctionCreatedAt: null }).allowed, true);
-});
-
 // ── readNewAccountGateConfig (I/O, fail-open) ─────────────────────────────────
 
 function makeConfigSupabase(rows) {
@@ -198,7 +167,6 @@ test("readNewAccountGateConfig: no rows → all-disabled defaults", async () => 
     loanMinAccountAgeDays: 0,
     transferCooldownHours: 0,
     transferCooldownAmountCzk: 0,
-    auctionEntryGateEnabled: false,
   });
 });
 
@@ -208,7 +176,6 @@ test("readNewAccountGateConfig: parses configured rows", async () => {
     { key: "loan_gate_min_account_age_days", value: 2 },
     { key: "transfer_cooldown_hours", value: 24 },
     { key: "transfer_cooldown_amount_czk", value: 100000 },
-    { key: "auction_entry_gate_enabled", value: true },
   ];
   const config = await readNewAccountGateConfig(makeConfigSupabase(rows));
   assert.deepEqual(config, {
@@ -216,7 +183,6 @@ test("readNewAccountGateConfig: parses configured rows", async () => {
     loanMinAccountAgeDays: 2,
     transferCooldownHours: 24,
     transferCooldownAmountCzk: 100000,
-    auctionEntryGateEnabled: true,
   });
 });
 
@@ -238,7 +204,6 @@ test("readNewAccountGateConfig: fail-open — a DB error never throws, resolves 
   };
   const config = await readNewAccountGateConfig(throwingSupabase);
   assert.equal(config.loanMinRaceDays, 0);
-  assert.equal(config.auctionEntryGateEnabled, false);
 });
 
 test("readNewAccountGateConfig: fail-open — a thrown exception (e.g. unrecognized table in a test double) never propagates", async () => {
@@ -251,7 +216,6 @@ test("readNewAccountGateConfig: fail-open — a thrown exception (e.g. unrecogni
     loanMinAccountAgeDays: 0,
     transferCooldownHours: 0,
     transferCooldownAmountCzk: 0,
-    auctionEntryGateEnabled: false,
   });
 });
 
