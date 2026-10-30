@@ -182,6 +182,22 @@
     {
       "issue": 6299,
       "area": "taktik"
+    },
+    {
+      "issue": 7382,
+      "area": "udvikling-2"
+    },
+    {
+      "issue": 7380,
+      "area": "race-engine"
+    },
+    {
+      "issue": 7383,
+      "area": "race-engine"
+    },
+    {
+      "issue": 7381,
+      "area": "race-engine"
     }
   ],
   "cleanupList": [
