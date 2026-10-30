@@ -36,9 +36,9 @@ test("gemt etape-ordre: lagt oven paa rollens standard, rolle-raekkefoelge og ho
   assert.equal(recap?.stance, "chase");
   assert.equal(recap?.saved, true);
   assert.deepEqual(recap?.riders, [
-    { riderId: "cap", name: "Alpha", role: "captain", effort: "protect", tryBreak: true, leadout: false, roleDefault: false },
-    { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", tryBreak: false, leadout: false, roleDefault: false },
-    { riderId: "hel", name: "Charlie", role: "helper", effort: "normal", tryBreak: false, leadout: true, roleDefault: false },
+    { riderId: "cap", name: "Alpha", role: "captain", effort: "protect", plan: null, tryBreak: true, leadout: false, roleDefault: false },
+    { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", plan: null, tryBreak: false, leadout: false, roleDefault: false },
+    { riderId: "hel", name: "Charlie", role: "helper", effort: "normal", plan: null, tryBreak: false, leadout: true, roleDefault: false },
   ]);
 });
 
@@ -47,7 +47,7 @@ test("ingen gemt ordre = rollernes standard (T4)", () => {
   assert.equal(recap?.saved, false);
   // Motoren valgte selv holdningen (humanDefaultOrderV3 kan jagte): fladen siger "auto", ikke "neutral".
   assert.equal(recap?.stance, "auto");
-  assert.deepEqual(recap?.riders[0], { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", tryBreak: true, leadout: false, roleDefault: false });
+  assert.deepEqual(recap?.riders[0], { riderId: "hun", name: "Bravo", role: "hunter", effort: "normal", plan: null, tryBreak: true, leadout: false, roleDefault: false });
 });
 
 test("toget er kun standard paa en flad etape naar loebets revision siger det (#6462)", () => {
@@ -79,6 +79,15 @@ test("rolle-override med gemt valg viser det gemte valg", () => {
   assert.equal(recap?.riders[0].tryBreak, true);
   assert.equal(recap?.riders[0].leadout, false);
   assert.equal(recap?.riders[0].roleDefault, false);
+});
+
+test("#7333: en rytter med etapeplan viser planens opgaver, ikke foerste leds indsats", () => {
+  const ctx = { ...CONTEXT, orders: [{ stage_number: 2, breakaway_stance: "neutral", riders: [
+    { rider_id: "cap", effort: "save", plan: [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "final_km" } }] },
+  ] }] };
+  const recap = stageOrdersRecap({ context: ctx, stageNumber: 2, riderIds: ["cap"], nameOf });
+  assert.deepEqual(recap?.riders[0].plan, ["stay_sheltered", "follow_moves"]);
+  assert.notEqual(recap?.riders[0].effort, "save", "aldrig 'Spar' som hele dagens ordre");
 });
 
 test("uden svar eller uden ryttere vises intet", () => {

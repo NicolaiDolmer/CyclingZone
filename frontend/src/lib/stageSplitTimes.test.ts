@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   buildSplitTimes, buildOwnTimeLoss, effortByRiderForStage, effectiveEffortByRider, EFFORT_NORMAL_NOT_A_CHOICE_FROM, stageUsesEffortFix6647, formatSplitGap, hasGroupGaps,
+  stagePlanTaskAt,
 } from "./stageSplitTimes.ts";
 
 // Formen er kopieret fra en ægte v4-etape (kuperet, 165 km): udbrud, en stor
@@ -182,6 +183,40 @@ test("effectiveEffortByRider: v4-ordren vinder over stage-roles, v3 bruger kun s
   assert.deepEqual([...effectiveEffortByRider(roles, orders, 2, { v4: true })], [["a", "save"], ["b", "save"]]);
   assert.deepEqual([...effectiveEffortByRider(roles, orders, 2, { v4: false })], [["a", "normal"], ["b", "save"]]);
   assert.equal(effectiveEffortByRider(null, null, 2, { v4: true }).size, 0);
+});
+
+test("#7333 effectiveEffortByRider: en plan-rytter har planen, ikke foerste leds indsats som 'sin ordre'", () => {
+  const roles = { overrides: [{ stage_number: 4, rider_id: "cap", effort: "protect" }] };
+  const orders = { orders: [{ stage_number: 4, riders: [
+    // "I laeet til de sidste 10 km, saa foelg angrebene": raekkens effort er foerste leds (spar).
+    { rider_id: "cap", effort: "save", plan: [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "final_km" } }] },
+    { rider_id: "hel", effort: "save" },
+  ] }] };
+  const efforts = effectiveEffortByRider(roles, orders, 4, { v4: true });
+  assert.ok(efforts instanceof Map, "stadig et Map for alle der kun laeser indsatsen");
+  assert.equal(efforts.get("cap"), undefined, "ingen enkelt indsats for en plan");
+  assert.deepEqual(efforts.plans.get("cap"), ["stay_sheltered", "follow_moves"]);
+  assert.equal(efforts.get("hel"), "save");
+  // v3: ingen plan (motoren kender den ikke).
+  assert.equal(effectiveEffortByRider(roles, orders, 4, { v4: false }).plans.size, 0);
+});
+
+test("#7333 stagePlanTaskAt + buildOwnTimeLoss: faldet viser opgaven rytteren havde paa stedet", () => {
+  const orders = { orders: [{ stage_number: 1, riders: [
+    { rider_id: "own1", effort: "save", plan: [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "final_km" } }] },
+  ] }] };
+  const efforts = effectiveEffortByRider(null, orders, 1, { v4: true });
+  const switched = [{ km: 140, type: "stage_plan_leg", params: { rider_id: "own1", leg: 1, task: "follow_moves", reason: "final_km" } }];
+  assert.equal(stagePlanTaskAt(efforts, switched, "own1", 100), "stay_sheltered");
+  assert.equal(stagePlanTaskAt(efforts, switched, "own1", 145), "follow_moves");
+  assert.equal(stagePlanTaskAt(efforts, switched, "other", 145), null, "uden plan: intet");
+  assert.equal(stagePlanTaskAt(new Map([["own1", "save"]]), switched, "own1", 145), null);
+
+  const loss = buildOwnTimeLoss(EVENTS, { ownRiderIds: ["own1"], effortByRider: efforts });
+  const drop = loss.find((l) => l.type === "drop");
+  assert.ok(drop && drop.type === "drop");
+  assert.equal(drop.order, null, "aldrig 'Din ordre: Kør roligt' for en plan");
+  assert.equal(drop.planTask, "stay_sheltered");
 });
 
 test("#6647 effectiveEffortByRider: en ordre med 'normal' overskriver ikke rollens beskyt/spar", () => {

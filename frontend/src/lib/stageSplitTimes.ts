@@ -51,6 +51,8 @@ export type TimeLossEntry =
     climbName: string | null;
     sectorName: string | null;
     order: "save" | "grupetto" | null;
+    /** #7333: rytteren koerte efter en etapeplan; opgaven han havde paa stedet (ellers null). */
+    planTask: string | null;
   }
   | { type: "event"; km: number; riderId: string; event: NonNullable<TimelineEvent> };
 
@@ -322,6 +324,7 @@ export function buildOwnTimeLoss(
         const source = str(p.source_group_id) ?? before.get(riderId) ?? INITIAL_GROUP;
         const cause = str(p.cause);
         const effort = effortByRider?.get(riderId);
+        const planTask = stagePlanTaskAt(effortByRider, sorted, riderId, event.km ?? 0);
         const entry: Extract<TimeLossEntry, { type: "drop" }> = {
           type: "drop",
           km: event.km ?? 0,
@@ -331,7 +334,8 @@ export function buildOwnTimeLoss(
           reason: cause && KNOWN_CAUSES.has(cause) ? (cause as DropReason) : "unknown",
           climbName: cause === "cobbles_sector" ? null : (komKms.get(event.km ?? 0) ?? null),
           sectorName: cause === "cobbles_sector" ? str(p.sector_name) : null,
-          order: effort === "save" || effort === "grupetto" ? effort : null,
+          order: !planTask && (effort === "save" || effort === "grupetto") ? effort : null,
+          planTask,
         };
         if (!drops.has(riderId)) drops.set(riderId, []);
         (drops.get(riderId) as Array<{ entry: typeof entry; source: string }>).push({ entry, source });
@@ -357,7 +361,7 @@ export function buildOwnTimeLoss(
   for (const list of drops.values()) {
     if (!list.length) continue;
     const e = list[0].entry;
-    const key = [e.km, e.from, e.reason, e.climbName, e.sectorName, e.order].join("|");
+    const key = [e.km, e.from, e.reason, e.climbName, e.sectorName, e.order, e.planTask].join("|");
     const hit = merged.get(key);
     if (hit) hit.riderIds.push(e.riderId);
     else merged.set(key, { ...e, riderIds: [e.riderId] });
@@ -414,13 +418,50 @@ export function stageUsesEffortFix6647(ranAt: unknown): boolean {
   return Number.isNaN(t) || t >= Date.parse(EFFORT_NORMAL_NOT_A_CHOICE_FROM);
 }
 
+/**
+ * #7333: indsatserne, plus de ryttere der koerte efter en etapeplan. En plan er en
+ * kaede af opgaver, ikke én indsats: raekkens `effort` er kun foerste leds (afledt for
+ * aeldre motorer, legacyOrderFromPlan), saa en plan-rytter staar IKKE i selve mappen
+ * (aldrig "Din ordre: Kør roligt" for en plan der skiftede opgave). `plans` har hans
+ * opgaver i kaedens orden. Er stadig et Map, saa alle der kun laeser indsatsen virker.
+ */
+export class StageOrderEfforts extends Map<string, string> {
+  readonly plans = new Map<string, string[]>();
+}
+
+/**
+ * #7333: den opgave en plan-rytter havde ved `km`: det seneste stage_plan_leg-skift ved
+ * eller foer km (motoren skriver ét pr. skift), ellers planens foerste opgave. null for
+ * en rytter uden plan.
+ */
+export function stagePlanTaskAt(
+  efforts: unknown,
+  events: readonly TimelineEvent[] | null | undefined,
+  riderId: string,
+  km: number,
+): string | null {
+  const tasks = efforts instanceof StageOrderEfforts ? efforts.plans.get(riderId) : undefined;
+  if (!tasks?.length) return null;
+  let task = tasks[0];
+  let atKm = -Infinity;
+  for (const e of events ?? []) {
+    if (e?.type !== "stage_plan_leg" || e.params?.rider_id !== riderId) continue;
+    const at = Number(e.km ?? 0);
+    if (at > km || at < atKm) continue;
+    const leg = Number(e.params?.leg);
+    const next = str(e.params?.task) ?? (Number.isInteger(leg) ? tasks[leg] : null);
+    if (next) { task = next; atKm = at; }
+  }
+  return task;
+}
+
 export function effectiveEffortByRider(
   stageRoles: unknown,
   teamOrders: unknown,
   stageNumber: number,
   { v4 = false, ranAt = null }: { v4?: boolean; ranAt?: string | null } = {},
-): Map<string, string> {
-  const out = effortByRiderForStage(stageRoles, stageNumber);
+): StageOrderEfforts {
+  const out = new StageOrderEfforts(effortByRiderForStage(stageRoles, stageNumber));
   if (!v4) return out;
   const orders = (teamOrders as { orders?: unknown } | null)?.orders;
   if (!Array.isArray(orders)) return out;
@@ -429,6 +470,12 @@ export function effectiveEffortByRider(
     if (Number(row?.stage_number) !== stageNumber || !Array.isArray(row?.riders)) continue;
     for (const r of row.riders as Array<Record<string, unknown>>) {
       const rider = str(r?.rider_id);
+      const plan = Array.isArray(r?.plan) ? (r.plan as Array<Record<string, unknown> | null>).map((l) => str(l?.task)) : [];
+      if (rider && plan.length && plan.every(Boolean)) { // #7333: planen, ikke foerste leds indsats
+        out.plans.set(rider, plan as string[]);
+        out.delete(rider);
+        continue;
+      }
       const effort = str(r?.effort);
       if (effort === "normal" && normalIsNotAChoice) continue; // #6647: ikke et valg
       if (rider && effort && EFFORTS.has(effort)) out.set(rider, effort);
