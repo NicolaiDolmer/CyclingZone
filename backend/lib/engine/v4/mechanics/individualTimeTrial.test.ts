@@ -555,8 +555,8 @@ test("#6349: aeldre revisioner er uaendrede (v2, v1, orders_gc og legacy = ingen
 
 // ── 8. #6595 (KUN s5_profiles_v3, SLUKKET): enkeltstartens egen terraen-vaegt ─
 //
-// Fejlen (staff 13/10 + 14/10, maalt mod Touren og Giroen): en flad
-// enkeltstart i en Grand Tour spredte feltet tydeligt mindre end i virkeligheden,
+// Fejlen (staff 13/10 + 14/10; maaling privat i balance-internals/6595/): en flad
+// enkeltstart i en Grand Tour spredte feltet for lidt,
 // fordi fart-formlen brugte vejetapens terraen-vaegt, der daemper styrke paa
 // fladt terraen for at afspejle laeet i en gruppe. Mod uret er der intet laee.
 // Med kontakten taendt faar fladt og rullende terraen mere vaegt under

@@ -179,12 +179,9 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
  * intet laee, og tidskoersels-evnen ER hans aerodynamik og flade effekt, saa
  * vejetapens daempning tog den samme ting fra ham to gange.
  *
- * Maalt paa S5-benchens Grand Tours (tal og kilder i balance-internals/6595/):
- * enkeltstartens top-10-spredning pr. km var tydeligt under virkelige Grand
- * Tours paa flade enkeltstarter og naermere paa kuperede (dér vejer stigningerne
- * allerede fuldt), og enkeltstarterne flyttede kun en lille brøkdel af
- * klassementet mod en betydelig andel i Touren og Giroen. Kun fladt og rullende
- * terraen faar mere vaegt; stigning, nedkoersel og brosten er vejetapens.
+ * Kalibrering og maaling: privat (balance-internals/6595/, hard rule 17).
+ * Kun fladt og rullende terraen faar mere vaegt; stigning, nedkoersel og
+ * brosten er vejetapens.
  * Haeldningen, stoejen og evne-grundlaget (#6645) er uaendrede.
  */
 export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = Object.freeze({
