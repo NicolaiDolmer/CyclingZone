@@ -749,7 +749,7 @@ export async function runTeamTrainingDay({
     ? curveBTransitionForDate({ ignitedOn: await ensureCurveBIgnitedOn(supabase, { tickDate, strict: conditionPerDate }), tickDate })
     : null;
   // Hvem der er med, er laast paa taendingsdagen (en raekke pr. rytter); kun inde i vinduet.
-  const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, curveB, riderIds, strict: conditionPerDate }) : null;
+  const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, curveB, riderIds: (roster ?? []).map((r) => r.id), strict: conditionPerDate }) : null;
   // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
   const [developmentScoreB, raceCatchUp] = await Promise.all([
     loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),

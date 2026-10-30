@@ -3644,6 +3644,21 @@ for (const [label, prep, runArgs] of [
   });
 }
 
+// Codex #7384: paa dato-stien er riderIds kun dagens klar-ryttere. Er en nykommer den eneste
+// klar rytter paa et hold der allerede er maalt, maa han ikke blive maalt (kurve B hele vejen).
+test("#7382 kald-sted: en nykommer alene paa et allerede maalt hold faar ingen raekke (dato-stien)", async () => {
+  const addNewcomer = (state) => {
+    state.riders.push(makeRider({ id: "r2" }));
+    state.rider_derived_abilities.push(makeAbilityRow("r2", { ...Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 85])), ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) }));
+    state.rider_condition.push(makeCondition("r2"));
+    state.training_plans.push({ rider_id: "r2", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" });
+  };
+  const measured = [{ rider_id: "r1", ignited_on: "2026-06-05", measured_on: "2026-06-05", abilities: ["stamina"] }];
+  const run = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-05", members: measured,
+    conditionPerDate: true, prep: addNewcomer, runArgs: { eligibleRiderIds: ["r2"] } });
+  assert.deepEqual(run.members.map((m) => m.rider_id), ["r1"], "nykommeren maales ikke; holdet er allerede maalt");
+});
+
 test("#7382 kald-sted: datoens foerste koersel vinder, ogsaa naar rytteren er skadet i den naeste", async () => {
   const first = [{ rider_id: "r1", ignited_on: "2026-06-12", abilities: [] }];
   const again = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", members: first, prep: injuredOnDay0 });
