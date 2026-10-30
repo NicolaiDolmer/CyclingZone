@@ -478,6 +478,7 @@ import {
   resolveNegotiationOpenedAt,
 } from "../lib/boardAutoAccept.js";
 import {
+  closeTransferListingsForRiders,
   getActiveAuctionRiderIds,
   getIncomingSquadViolation,
   getSquadRiskViolation,
@@ -2247,6 +2248,12 @@ router.post("/riders/:id/academy-release", requireAuth, marketWriteLimiter, asyn
   // ryd fremtidige race_entries så en tidligere demote/promote-tur ikke
   // efterlader en ghost-entry for en rytter der ikke længere er på holdet.
   await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "academy_manual_release" });
+  // #7284: luk rytterens aabne transfer_listings. Pengene er allerede taget, saa en fejl giver ikke 500.
+  try {
+    await closeTransferListingsForRiders(supabase, [rider.id], "withdrawn");
+  } catch (err) {
+    captureException(new Error(`academy-release close listings (${rider.id}): ${err.message}`));
+  }
 
   // Best-effort: rytteren kan have en PENDING academy_graduation-row (aldrede
   // ud, stadig i override-vinduet) — resolvér den så academyGraduationSweep
