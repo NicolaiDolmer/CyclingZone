@@ -108,13 +108,13 @@
     "db:selftest": "node scripts/db-selftest.mjs"
   },
   "devDependencies": {
-    "@anthropic-ai/sdk": "^0.135.0",
+    "@anthropic-ai/sdk": "^1.1.0",
     "lint-staged": "^17.6.0",
     "png-to-ico": "^3.0.2",
     "sharp": "^0.35.5"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
-    "dotenv": "^18.0.8"
+    "dotenv": "^18.0.9"
   }
 }
