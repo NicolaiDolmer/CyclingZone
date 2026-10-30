@@ -195,6 +195,15 @@ findes. Findes ingen gyldig sæson, fejler finaliseringen i stedet for at bruge
 sæson 1. Finanspostens `season_id` er fortsat kun den faktisk aktive sæson og
 kan være NULL i vinduet. En eksisterende kontrakt arves fortsat uændret.
 
+**Sæson i transferhistorikken (#7285):** `buildSeasonResolver` (`teamTransferHistory.js`,
+også brugt af den globale handelsliste `tradeListFeed.js`) giver hver handel en sæson ud fra
+datoen. En handel inden for en sæsons `start_date`..`end_date` (slutdagen inklusiv, #984) hører
+til den sæson; en nul-bred sæson følger #1776. En handel i hullet efter en sæsons slutdag og
+før næste sæsons start hører til den **kommende** sæson. Efter den sidste sæson uden
+efterfølger gælder den senest startede sæson, og en handel før den første sæson får ingen
+sæson. Sæsonen beregnes ved visning og gemmes ikke, så en regelændring kræver ingen
+datareparation.
+
 ### 2.3 12-timers-gulvet - hvor det gælder og hvor det ikke gælder
 
 `FREE_AGENT_MIN_DURATION_HOURS = 12` (`auctionEngine.js:119`, ejer-beslutning 21/8, #4004,
