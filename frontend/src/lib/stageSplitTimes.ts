@@ -427,6 +427,10 @@ export function stageUsesEffortFix6647(ranAt: unknown): boolean {
  */
 export class StageOrderEfforts extends Map<string, string> {
   readonly plans = new Map<string, string[]>();
+  /** #7381: opgaven ved km (stagePlanTaskAt), til loebshistoriens afledning i backend. */
+  taskAt(events: readonly TimelineEvent[] | null | undefined, riderId: string, km: number): string | null {
+    return stagePlanTaskAt(this, events, riderId, km);
+  }
 }
 
 /**
