@@ -39,6 +39,9 @@
 // #5982: en luksushjaelper uden gemt plan faar sin standardplan her
 // (mechanics/luxuryHelper5982.ts, samme forslag som fladen viser).
 //
+// #7333 (Codex-review): undtagelsen er holdarbejde (SEGMENT_WORK_TASKS). Det virker i
+// segmentets mekanik og ikke i finalen, saa paa sidste segment skifter det ved start.
+//
 // Uden en stage_plan-ordre og uden en luksushjaelper returnerer createStagePlanRuntime
 // null, og loopet er byte-identisk med foer.
 
@@ -56,6 +59,9 @@ import { luxuryHelperDefaultPlans } from "./engine/v4/mechanics/luxuryHelper5982
 
 export const STAGE_PLAN_ORDER_KIND = "stage_plan";
 export const STAGE_PLAN_LEG_EVENT = "stage_plan_leg";
+
+/** #7333: opgaver hvis virkning er segmentets holdarbejde, ikke opgoerelsen ved maal. */
+const SEGMENT_WORK_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["tempo", "shelter_leader"]);
 
 export type StagePlanSwitchReason = "kom" | "final_km" | "dropped" | "caught" | "missed_break";
 
@@ -205,7 +211,11 @@ export function advanceStagePlan(
   const atStart = segmentIndex === 0;
   // #7333: naermeste graense, ogsaa i etapens sidste segment (maalstregen er dens sidste
   // graense, og et punkt i anden halvdel skifter til finalen, se filens hoved).
-  const switchPointKm = segment.from_km + (segment.to_km - segment.from_km) / 2;
+  const midKm = segment.from_km + (segment.to_km - segment.from_km) / 2;
+  // Codex-review #7333: holdarbejde (tempo, hold lederen fremme) virker i segmentets
+  // mekanik, ikke i opgoerelsen ved maal. Paa etapens sidste segment skifter det derfor
+  // stadig ved segmentets start, saa hjaelperen faktisk koerer det arbejde han faar.
+  const switchPointKm = (task: StagePlanTask) => (isLastSegment && SEGMENT_WORK_TASKS.has(task) ? segment.to_km : midKm);
   for (const riderId of rt.riderIds) {
     if (state.riders[riderId]?.status !== "racing") continue;
     const legs = rt.legs.get(riderId)!;
@@ -223,7 +233,7 @@ export function advanceStagePlan(
       next = droppedIdx;
       reason = breakawayLeg ? (rt.everInEscape.has(riderId) ? "caught" : "missed_break") : "dropped";
     } else {
-      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= switchPointKm) {
+      while (next + 1 < legs.length && legs[next + 1].fromKm !== null && (legs[next + 1].fromKm as number) <= switchPointKm(legs[next + 1].task)) {
         next += 1;
         reason = legs[next].routeReason;
       }

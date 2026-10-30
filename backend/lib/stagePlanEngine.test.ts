@@ -139,3 +139,14 @@ test("#7368: 'efter stigning X' gaelder til planens naeste punkt, ikke til ruten
   // Indsatsen pr. segment: i laeet til toppen af X, derefter "foelg" hele vejen over Y.
   assert.deepEqual(effortBySegment, ["save", "save", "protect", "protect", "protect", "protect", "protect"]);
 });
+
+test("#7333 (Codex-review): holdarbejde fra de sidste km koeres i sidste segment, ikke kun i finalen", () => {
+  const route = twoClimbRoute(106);
+  const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "tempo", from: { at: "final_km" } }];
+  const rt = createStagePlanRuntime([planOrder("h1", legs)], route, ENTRANTS)!;
+  const last = route.segments[route.segments.length - 1];
+  const ev = advanceStagePlan(rt, { state: peloton(), segment: last, segmentIndex: 6, isLastSegment: true, entrants: ENTRANTS });
+  assert.deepEqual(ev.map((e) => [e.km, e.params.task]), [[last.from_km, "tempo"]]);
+  assert.equal(stagePlanEntrants(rt, ENTRANTS)["h1"].effort, "protect", "tempoet virker i segmentets holdarbejde");
+  assert.equal(advanceStagePlanAtFinish(rt, { state: peloton(), segment: last, entrants: ENTRANTS }), null);
+});
