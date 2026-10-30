@@ -85,6 +85,31 @@ test("#7003: opsummeringen efter etapen laeses af stage_plan_leg-events", () => 
   assert.deepEqual(stagePlanRecap(HELPER, quit, "a").map((i) => i.status), ["abandoned", "not_reached", "not_reached"]);
 });
 
+test("#7368: et led slutter ved det led der faktisk afloeste det (ogsaa naar et led blev sprunget over)", () => {
+  const legs: StagePlanLeg[] = [
+    { task: "stay_sheltered" },
+    { task: "follow_moves", from: { at: "kom", kom_index: 0 } },
+    { task: "attack", from: { at: "kom", kom_index: 1 } },
+  ];
+  // Begge stigninger passeret ved samme skift: leddet "efter X" blev aldrig koert.
+  const both = [{ type: "stage_plan_leg", km: 100, params: { rider_id: "a", leg: 2, task: "attack", reason: "kom" } }];
+  assert.deepEqual(stagePlanRecap(legs, both, "a").map((i) => [i.status, i.endReason, i.endLeg]), [
+    ["done", "kom", 2], // til toppen af Y (leddet der faktisk tog over), ikke X
+    ["skipped", null, null],
+    ["to_finish", "finish", null],
+  ]);
+  // Normal kaede: "efter X" gaelder til planens naeste punkt.
+  const normal = [
+    { type: "stage_plan_leg", km: 50, params: { rider_id: "a", leg: 1, task: "follow_moves", reason: "kom" } },
+    { type: "stage_plan_leg", km: 100, params: { rider_id: "a", leg: 2, task: "attack", reason: "kom" } },
+  ];
+  assert.deepEqual(stagePlanRecap(legs, normal, "a").map((i) => [i.status, i.fromKm, i.endKm, i.endLeg]), [
+    ["done", 0, 50, 1],
+    ["done", 50, 100, 2],
+    ["to_finish", 100, null, null],
+  ]);
+});
+
 test("#7003: rytter uden plan: boardet viser de valg han koerer paa, naar de ikke er rollens", () => {
   const helperDefault = { effort: "protect", try_break: false, leadout: false };
   assert.deepEqual(fallbackOrderKeys("normal", { rider_id: "a", try_break: false, leadout: false }, helperDefault), [], "helt paa rollen");

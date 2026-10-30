@@ -107,11 +107,14 @@ function recapLine(t: TFn, route: StagePlanRoute, legs: StagePlanLeg[], item: St
   if (item.status === "skipped") return t("stagePlan.recap.skipped");
   if (item.status === "not_reached") return t("stagePlan.recap.notReached");
   const km = item.endKm == null ? null : Math.round(item.endKm);
-  if (item.endReason === "kom") {
-    const from = legs[i + 1]?.from;
-    return t("stagePlan.recap.kom", { climb: from?.at === "kom" ? climbLabel(t, route, from.kom_index) : "—" });
-  }
-  return t(`stagePlan.recap.${item.endReason}`, { km });
+  // #7368: leddet staar med sit eget skift-punkt (som spilleren satte det) og slutter ved
+  // det led der faktisk afloeste det, ikke altid det naeste i kaeden.
+  const start = i > 0 ? triggerLabel(t, route, legs[i].from, legs[i - 1].task) : "";
+  const endFrom = item.endLeg == null ? undefined : legs[item.endLeg]?.from;
+  const end = item.endReason === "kom"
+    ? t("stagePlan.recap.kom", { climb: endFrom?.at === "kom" ? climbLabel(t, route, endFrom.kom_index) : "—" })
+    : t(`stagePlan.recap.${item.endReason}`, { km });
+  return start ? `${start}, ${end}` : end;
 }
 
 /** Efter etapen: hvad rytteren faktisk gjorde i hvert led. */

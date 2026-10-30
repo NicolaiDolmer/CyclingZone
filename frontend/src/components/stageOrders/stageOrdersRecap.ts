@@ -31,6 +31,8 @@ export interface RecapRider {
   name: string | null;
   role: string | null;
   effort: string;
+  /** #7333: rytterens etapeplan (opgaverne i orden), naar han koerte efter en; ellers null. */
+  plan: string[] | null;
   tryBreak: boolean;
   leadout: boolean;
   /** true = etapens rolle er skiftet uden gemt valg for udbrud/tog: motoren
@@ -102,6 +104,7 @@ export function stageOrdersRecap({
       name: nameOf(id) ?? null,
       role: stageRole.get(id) ?? baseRole.get(id) ?? null,
       effort: efforts.get(id) ?? "normal",
+      plan: efforts.plans.get(id) ?? null,
       tryBreak: tryKnown && r.try_break === true,
       leadout: leadKnown && r.leadout === true,
       roleDefault: !tryKnown || !leadKnown,

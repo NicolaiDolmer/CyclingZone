@@ -95,7 +95,7 @@ import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhase
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
-import { advanceStagePlan, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
+import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -1237,7 +1237,9 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
     }
     state = { ...state, groups: rebaselineGroups(state.groups) };
       const preFinaleGroups = state.groups;
-      const result = hooks.finale(state, ctx);
+      const planFinale = stagePlan ? advanceStagePlanAtFinish(stagePlan, { state, segment, entrants: baseEntrantsById }) : null; // #7333
+      if (planFinale) timeline.push(...planFinale.events);
+      const result = hooks.finale(state, planFinale ? { ...ctx, entrants: planFinale.entrants } : ctx);
       acceptMovement(result);
       finaleTrace = { entryGroups: lastSegmentEntryGroups, preFinaleGroups, postFinaleGroups: state.groups };
     }

@@ -394,6 +394,8 @@ export type StagePlanRecapItem = {
   endReason: string | null;
   endKm: number | null;
   fromKm: number | null;
+  /** #7368: det led der faktisk afloeste dette (kan springe et led over); null = ingen. */
+  endLeg: number | null;
 };
 
 type TimelineEventLike = { type?: unknown; km?: unknown; params?: Rec | null };
@@ -414,12 +416,12 @@ export function stagePlanRecap(legs: readonly StagePlanLeg[], events: readonly T
   const lastReached = Math.max(...reached.keys());
   return legs.map((leg, i): StagePlanRecapItem => {
     if (!reached.has(i)) {
-      return { task: leg.task, status: i < lastReached ? "skipped" : "not_reached", endReason: null, endKm: null, fromKm: null };
+      return { task: leg.task, status: i < lastReached ? "skipped" : "not_reached", endReason: null, endKm: null, fromKm: null, endLeg: null };
     }
     const fromKm = reached.get(i) ?? 0;
     const nextSwitch = switches.find((s) => s.leg > i);
-    if (nextSwitch) return { task: leg.task, status: "done", endReason: nextSwitch.reason, endKm: nextSwitch.km, fromKm };
-    if (abandon) return { task: leg.task, status: "abandoned", endReason: "abandoned", endKm: Number(abandon.km), fromKm };
-    return { task: leg.task, status: "to_finish", endReason: "finish", endKm: null, fromKm };
+    if (nextSwitch) return { task: leg.task, status: "done", endReason: nextSwitch.reason, endKm: nextSwitch.km, fromKm, endLeg: nextSwitch.leg };
+    if (abandon) return { task: leg.task, status: "abandoned", endReason: "abandoned", endKm: Number(abandon.km), fromKm, endLeg: null };
+    return { task: leg.task, status: "to_finish", endReason: "finish", endKm: null, fromKm, endLeg: null };
   });
 }
