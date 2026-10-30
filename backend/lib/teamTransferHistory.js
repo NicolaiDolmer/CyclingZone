@@ -60,11 +60,17 @@ export function buildSeasonResolver(seasons) {
       }
       if (d >= start && (!end || d <= end)) return s.number;
     }
-    // Fallback: senest startede sæson før datoen (for events efter sæson-slut uden end_date)
+    // #7285: offseason-hul. Events efter en sæsons (inklusive) end_date og før
+    // næste sæsons start_date hører til den KOMMENDE sæson (offseason = optakt
+    // til næste sæson), ikke den forrige. Kun når der findes en tidligere sæson
+    // (events før den første sæson forbliver uden sæson).
     let last = null;
+    let next = null;
     for (const s of sorted) {
-      if (new Date(s.start_date) <= d) last = s; else break;
+      if (new Date(s.start_date) <= d) last = s; else { next = s; break; }
     }
+    if (last && next) return next.number;
+    // Fallback: senest startede sæson før datoen (for events efter sæson-slut uden end_date)
     return last ? last.number : null;
   };
 }
