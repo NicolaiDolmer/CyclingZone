@@ -29,6 +29,7 @@
 import { isS5ProfilesV1OrLater } from "../../raceEngineRulesRevision.ts";
 import { S5_PROFILES_TUNING } from "./tuning.ts";
 import { lateAttackChance, lateAttackSegmentIndex } from "./mechanics/lateAttack.ts";
+import { finalKmUndivided7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
 import type { AbilityKey, FinaleType, ProfileType, RouteV2, Segment, StageInput } from "./types.ts";
 
 /** De nye S5-finaler og den gamle finale hver af dem afloeser (aeldre revisioner). */
@@ -151,7 +152,7 @@ export function isS5ExplosiveFinaleClimb(route: Pick<RouteV2, "finale_type" | "s
  * waypoints kan mangle.
  */
 export function priorCategorizedClimbs(route: Pick<RouteV2, "distance_km" | "segments">): number {
-  const segs = route.segments;
+  const segs = finalKmUndivided7383(route.segments)?.segments ?? route.segments; // #7383 (slukket): den udelte stigning afgoer
   const finishKm = Number.isFinite(route.distance_km) && route.distance_km > 0
     ? route.distance_km
     : segs[segs.length - 1]?.to_km ?? 0;

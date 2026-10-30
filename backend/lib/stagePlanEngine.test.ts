@@ -18,6 +18,7 @@ import {
   type StagePlanRuntime,
 } from "./stagePlanEngine.ts";
 import { STAGE_PLAN_FINAL_KM, type StagePlanLeg } from "./stagePlan.ts";
+import { splitAtFinalKm7383 } from "./engine/v4/adapters/finalKmBoundary7383.ts"; // #7383
 
 function entrant(id: string, team: string, role: Entrant["role"]): Entrant {
   return { rider_id: id, abilities: {} as Entrant["abilities"], role, effort: "normal", condition: 1, team_id: team };
@@ -150,4 +151,22 @@ test("#7333 (Codex-review): holdarbejde fra de sidste km koeres i sidste segment
   assert.deepEqual(ev.map((e) => [e.km, e.params.task]), [[last.from_km, "tempo"]]);
   assert.equal(stagePlanEntrants(rt, ENTRANTS)["h1"].effort, "protect", "tempoet virker i segmentets holdarbejde");
   assert.equal(advanceStagePlanAtFinish(rt, { state: peloton(), segment: last, entrants: ENTRANTS }), null);
+});
+
+test("#7383 (kontakten): med en graense paa punktet skifter alle opgaver praecis dér, uden finaleundtagelsen", () => {
+  const unsplit = twoClimbRoute(106);
+  const route: RouteV2 = { ...unsplit, segments: [...splitAtFinalKm7383(unsplit.segments, unsplit.distance_km)] };
+  const finalKm = route.distance_km - STAGE_PLAN_FINAL_KM;
+  assert.equal(route.segments.length, unsplit.segments.length + 1, "fixturen: punktet laa midt i sidste segment");
+  for (const task of ["tempo", "follow_moves", "attack", "ride_for_result"] as const) {
+    const riderId = task === "tempo" ? "h1" : "cap";
+    const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task, from: { at: "final_km" } }];
+    const rt = createStagePlanRuntime([planOrder(riderId, legs)], route, ENTRANTS)!;
+    const { events } = rideRoute(rt, route);
+    assert.deepEqual(events.map((e) => [e.km, e.params.task, e.params.reason, e.params.at_finish]), [[finalKm, task, "final_km", undefined]], task);
+  }
+  // To taette skift: begge led koeres, hvert fra sit eget punkt.
+  const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "kom", kom_index: 1 } }, { task: "attack", from: { at: "final_km" } }];
+  const rt = createStagePlanRuntime([planOrder("cap", legs)], route, ENTRANTS)!;
+  assert.deepEqual(rideRoute(rt, route).events.map((e) => [e.km, e.params.leg]), [[100, 1], [finalKm, 2]]);
 });
