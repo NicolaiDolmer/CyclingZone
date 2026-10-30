@@ -291,7 +291,7 @@ test("roster, inde i vinduet: kun den låste række tæller; krydser evnen lofte
   assert.deepEqual(roster.forRider(riderArgs("A", under)), { weight: 0.5, abilities: [MAIN] }, "låst ind: blandingen, uanset dagens evne");
   assert.equal(roster.forRider(riderArgs("B", over)), null, "krydset inde i vinduet: kurve B");
   assert.equal(roster.forRider(riderArgs("C", over)), null, "en række fra en tidligere tænding tæller ikke");
-  assert.equal(roster.forRider(riderArgs("D", over)), null, "ingen række (ikke trænet på tændingsdagen): kurve B");
+  assert.equal(roster.forRider(riderArgs("D", over)), null, "ingen række (fx kommet til et managerhold efter tændingsdagen): kurve B");
   await roster.persist();
   assert.equal(db.upserts.length, 0, "efter tændingsdagen skrives intet");
 });
