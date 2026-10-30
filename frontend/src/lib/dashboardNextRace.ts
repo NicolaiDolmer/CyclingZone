@@ -33,6 +33,23 @@ export function orderedTeamNextRaces<T extends RaceLike>(
   return [...own, ...rest];
 }
 
+/**
+ * Kandidater til udtagelses-nudgen med loft. Holdets egne løb og kalenderens
+ * fallback får hver sit loft, så afmeldte egne løb (race_entries bevares ved
+ * afmelding, stageRaceTransferDefer.js) aldrig kan skubbe kalenderens næste løb
+ * ud af listen. Afmelding kendes først fra /selection, derfor ikke filtreret her.
+ */
+export function teamNudgeCandidates<T extends RaceLike>(
+  races: T[] | null | undefined,
+  enteredRaceIds: Set<string> | string[] | null | undefined,
+  limit: number,
+): T[] {
+  const ordered = orderedTeamNextRaces(races, enteredRaceIds);
+  const entered = enteredRaceIds instanceof Set ? enteredRaceIds : new Set(enteredRaceIds ?? []);
+  const isOwn = (r: T) => r?.id != null && entered.has(r.id);
+  return [...ordered.filter(isOwn).slice(0, limit), ...ordered.filter((r) => !isOwn(r)).slice(0, limit)];
+}
+
 /** Holdets næste løb, eller kalenderens næste hvis holdet intet har; ellers null. */
 export function pickTeamNextRace<T extends RaceLike>(
   races: T[] | null | undefined,

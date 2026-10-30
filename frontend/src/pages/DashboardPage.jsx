@@ -53,7 +53,7 @@ import useTodayStages from "../hooks/useTodayStages.js";
 import DevTransitionCard from "../components/DevTransitionCard";
 import MaidenWinMomentCard from "../components/MaidenWinMomentCard";
 import { isFirstRaceMoment } from "../lib/firstRaceMoment.js";
-import { orderedTeamNextRaces } from "../lib/dashboardNextRace.ts";
+import { teamNudgeCandidates } from "../lib/dashboardNextRace.ts";
 import { isSquadSelectionMissing } from "../lib/raceSquadSelectionStatus";
 import { pickUpcomingRaces, filterTeamEnteredRaces } from "../lib/upcomingRaces";
 import RiderLink from "../components/RiderLink";
@@ -677,8 +677,8 @@ export default function DashboardPage() {
   // handler om det nære løb, og hver kandidat koster ét kald.
   useEffect(() => {
     let cancelled = false;
-    // #7296: holdets egne løb først (race_entries), kalenderen som fallback.
-    const candidates = orderedTeamNextRaces(nextRaces, teamRaceIds).slice(0, SQUAD_NUDGE_LOOKAHEAD);
+    // #7296: holdets egne løb først (race_entries), kalenderen som fallback med eget loft.
+    const candidates = teamNudgeCandidates(nextRaces, teamRaceIds, SQUAD_NUDGE_LOOKAHEAD);
     if (!teamRaceIdsLoaded || !candidates.length || !team?.id) { setSquadSelectionMissingRace(null); return undefined; }
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();

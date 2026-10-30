@@ -1,7 +1,7 @@
 // #7296 — "Næste løb" peger på holdets næste løb, ikke kalenderens første.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { orderedTeamNextRaces, pickTeamNextRace } from "./dashboardNextRace.ts";
+import { orderedTeamNextRaces, pickTeamNextRace, teamNudgeCandidates } from "./dashboardNextRace.ts";
 
 const race = (id: string, dateText: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -50,4 +50,12 @@ test("tom/ugyldig input giver null og muterer ikke", () => {
   const snapshot = JSON.stringify(races);
   orderedTeamNextRaces(races, new Set(["b"]));
   assert.equal(JSON.stringify(races), snapshot);
+});
+
+test("afmeldte egne løb kan ikke skubbe kalenderens næste løb ud af nudge-kandidaterne (Codex P2)", () => {
+  const own = ["w1", "w2", "w3", "w4", "w5"].map((id, i) => race(id, `${10 + i}/7`));
+  const races = [...own, race("cal", "3/7")];
+  const ids = teamNudgeCandidates(races, new Set(own.map((r) => r.id)), 5).map((r) => r.id);
+  assert.deepEqual(ids, ["w1", "w2", "w3", "w4", "w5", "cal"]);
+  assert.deepEqual(teamNudgeCandidates(races, null, 5).map((r) => r.id).slice(0, 1), ["cal"]);
 });
