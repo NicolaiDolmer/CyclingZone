@@ -91,6 +91,21 @@ export function isV3OnlySession(session) {
   return typeof session === "string" && V3_NEW_HARD_SESSIONS.includes(session);
 }
 
+// Assistentens standardfokus under v3 (fund i den samlede måling 29/10): en
+// rytter UDEN gemt plan får smartDefaultFocus, og for primærtype tt er det
+// Tærskel. I v3 træner Tærskel tempo + udholdenhed og ikke enkeltstart, og
+// migrationsscriptet (ejer-valg 2A) flytter kun GEMTE planer. Uden denne regel
+// ville en enkeltstartsrytter uden plan stille og roligt holde op med at træne
+// enkeltstart. Samme rytter-regel som migrationen: tt eller gc som primær- eller
+// sekundærtype. Off = fokus urørt. smartDefaultFocus selv er bevidst uændret.
+export const V3_DEFAULT_FOCUS_TYPES = Object.freeze(["tt", "gc"]);
+export function v3SmartDefaultFocus(focus, rider, { v3 = false } = {}) {
+  if (!v3 || focus !== "threshold" || !rider) return focus;
+  const timeTrialOrGc = V3_DEFAULT_FOCUS_TYPES.includes(rider.primary_type)
+    || V3_DEFAULT_FOCUS_TYPES.includes(rider.secondary_type);
+  return timeTrialOrGc ? "itt_long" : focus;
+}
+
 // Motorens ene kobling. Off = programmet returneres URØRT (samme objekt), så
 // flag-off er bit-identisk. On = for de sessioner v3 ændrer eller tilføjer,
 // får programmet v3-evnerne og -vægtene. Et program der allerede bærer sin

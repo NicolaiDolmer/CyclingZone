@@ -26,7 +26,7 @@ import {
   PROGRAM_SLOTS, findTrainingProgram, programWeekDaysFor, setProgramCell, isValidProgramWeekDays, isProgramSession,
 } from "../lib/trainingPrograms.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
-import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer } from "../lib/trainingCatalogV3.js"; // #5319
+import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
 import {
   GROUPS_TABLE, MEMBERS_TABLE, isTrainingGroupsEnabled, loadTeamGroups, normalizeGroupName, sanitizeRiderIds,
@@ -60,7 +60,7 @@ export function createTrainingGroupsRouter({
   async function ownRiders(teamId) {
     const { data, error } = await supabase
       // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
-      .from("riders").select("id, primary_type").eq("team_id", teamId).eq("is_retired", false);
+      .from("riders").select("id, primary_type, secondary_type").eq("team_id", teamId).eq("is_retired", false);
     if (error) throw new Error(error.message);
     return data ?? [];
   }
@@ -83,10 +83,13 @@ export function createTrainingGroupsRouter({
   }
 
   // Alt en gruppe-beregning skal bruge, i eet hug.
-  async function context(teamId) {
+  async function context(teamId, req) {
     const [riders, rows, { groups, members }, plans] = await Promise.all([
       ownRiders(teamId), weekRows(teamId), loadTeamGroups(supabase, teamId), plansByRider(teamId),
     ]);
+    // #5319: v3-saaningen foelger viewerens katalog; flaget slaas kun op naar det kan flytte nogen.
+    const v3Affected = riders.some((r) => !(plans.get(r.id)?.focus && plans.get(r.id)?.intensity) && v3SmartDefaultFocus("threshold", r, { v3: true }) !== "threshold");
+    const catalogV3 = v3Affected ? await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)) : false;
     const ownIds = riders.map((r) => r.id);
     const teamDays = rows.find((r) => r.rider_id == null)?.days ?? null;
     const ownDaysByRider = new Map(rows.filter((r) => r.rider_id != null).map((r) => [r.rider_id, r.days]));
@@ -96,6 +99,7 @@ export function createTrainingGroupsRouter({
       if (isValidProgramWeekDays(riderDays)) continue;
       seeds[rider.id] = seedProgramWeekDays({
         riderDays, teamDays, plan: plans.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
+        secondaryType: rider.secondary_type ?? null, catalogV3,
       });
     }
     return { riders, ownIds, rows, groups, members, ownDaysByRider, seeds };
@@ -174,11 +178,11 @@ export function createTrainingGroupsRouter({
   async function writeContext(req, res) {
     if (!req.team) { res.status(400).json({ error: "No team found" }); return null; }
     if (!(await groupsOn(req))) { res.status(404).json({ error: "not_found" }); return null; }
-    return context(req.team.id);
+    return context(req.team.id, req);
   }
 
   async function respond(req, res) {
-    const ctx = await context(req.team.id);
+    const ctx = await context(req.team.id, req);
     res.json({ ok: true, groups: ctx.groups.map((g) => groupView(g, ctx)) });
   }
 
@@ -186,7 +190,7 @@ export function createTrainingGroupsRouter({
     if (!req.team) return res.status(400).json({ error: "No team found" });
     try {
       if (!(await groupsOn(req))) return res.json({ enabled: false, groups: [] });
-      const ctx = await context(req.team.id);
+      const ctx = await context(req.team.id, req);
       res.json({ enabled: true, groups: ctx.groups.map((g) => groupView(g, ctx)) });
     } catch (err) {
       captureExceptionFn(err);

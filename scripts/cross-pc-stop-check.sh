@@ -125,14 +125,15 @@ if [ "$stash_count" -gt 0 ]; then
 fi
 
 # 4. Lokal-only AI-state i .codex.local/ (whitelist match — alt andet er lokal-only persistent)
-# Whitelist: SESSION_CONTEXT.md, SUPABASE_CONTEXT.md, supabase-readonly.env, preflight-state.json
+# Whitelist: SESSION_CONTEXT.md, SUPABASE_CONTEXT.md, supabase-readonly.env, preflight-state.json,
+# season-cutover-preflight.json, night-wave-preflight.json (samme liste som cross-pc-forensic-audit.ps1)
 # + ephemeral patterns: commit-msg*.txt, commit-N.txt, commitmsg-*.txt, pr*-body.md, pr-body-*.md
 if [ -d ".codex.local" ]; then
   local_only=$(find .codex.local -type f \
     ! -name "SESSION_CONTEXT.md" \
     ! -name "SUPABASE_CONTEXT.md" \
     ! -name "supabase-readonly.env" \
-    ! -name "preflight-state.json" \
+    ! -name "preflight-state.json"     ! -name "season-cutover-preflight.json"     ! -name "night-wave-preflight.json" \
     ! -name "commit-msg*.txt" \
     ! -name "commit-*.txt" \
     ! -name "commitmsg-*.txt" \

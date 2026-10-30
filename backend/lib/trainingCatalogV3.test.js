@@ -303,3 +303,60 @@ test("flaget står i STAGE_FLAGS og er spiller-synligt; migrationen seeder 'off'
   assert.match(sql, /'training_catalog_v3',\s*'"off"'::jsonb/);
   assert.match(sql, /ON CONFLICT \(key\) DO NOTHING/);
 });
+
+// Fund i den samlede måling 29/10: tt-ryttere uden gemt plan fik Tærskel (smartDefaultFocus)
+// og ville under v3 holde op med at træne enkeltstart, fordi migrationen kun flytter gemte planer.
+test("v3SmartDefaultFocus: tt/gc uden plan træner itt_long under v3; off og andre typer er urørte", async () => {
+  const { v3SmartDefaultFocus } = await import("./trainingCatalogV3.js");
+  const { smartDefaultFocus } = await import("./training.js");
+  assert.equal(smartDefaultFocus("tt"), "threshold", "forudsætning: tt's standardfokus er Tærskel");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "tt" }, { v3: true }), "itt_long");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "puncheur", secondary_type: "gc" }, { v3: true }), "itt_long");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "puncheur", secondary_type: "climber" }, { v3: true }), "threshold");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "tt" }, { v3: false }), "threshold", "off = bit-identisk");
+  assert.equal(v3SmartDefaultFocus("threshold", { primary_type: "tt" }), "threshold", "default off");
+  assert.equal(v3SmartDefaultFocus("sprint", { primary_type: "tt" }, { v3: true }), "sprint", "kun Tærskel flyttes");
+  assert.equal(v3SmartDefaultFocus("threshold", null, { v3: true }), "threshold");
+  // Hver primærtype: v3-standardfokus er en gyldig v3-session.
+  for (const type of RIDER_TYPE_KEYS) {
+    const focus = v3SmartDefaultFocus(smartDefaultFocus(type), { primary_type: type }, { v3: true });
+    assert.ok(V3_TRAINING_FOCUSES[focus], `${type}: ${focus} findes i v3-kataloget`);
+  }
+});
+
+// Codex-fund på #7354: det viste forslag og smart-bulk-skrivningen skal give samme session.
+test("smartDefaultSession: v3 giver tt/gc itt_long (hård); off er dagens session og intensitet", async () => {
+  const { smartDefaultSession } = await import("./trainingDayTypes.js");
+  const { smartDefaultFocus } = await import("./training.js");
+  assert.deepEqual(smartDefaultSession({ primary_type: "tt" }, { catalogV3: true }), { focus: "itt_long", intensity: "hard" });
+  const off = smartDefaultSession({ primary_type: "tt" });
+  assert.equal(off.focus, smartDefaultFocus("tt"));
+  assert.equal(off.intensity, SESSION_INTENSITY[off.focus] ?? "normal");
+  for (const type of RIDER_TYPE_KEYS) {
+    const today = smartDefaultSession({ primary_type: type });
+    assert.equal(today.focus, smartDefaultFocus(type), `${type}: off er bit-identisk`);
+    const v3 = smartDefaultSession({ primary_type: type }, { catalogV3: true });
+    assert.equal(v3.intensity, SESSION_INTENSITY_V3[v3.focus] ?? "normal");
+  }
+  assert.equal(smartDefaultSession(null).focus, smartDefaultFocus(null));
+});
+
+// Claude-review på #7354: felt-såningen skal følge samme v3-regel, ellers gemmer
+// den første felt-rettelse Tærskel for de andre dage (holdrytme med hårde dage).
+test("seedProgramWeekDays: v3 sår tt uden plan med itt_long på holdrytmens hårde dage; off og gemt plan urørt", async () => {
+  const { seedProgramWeekDays } = await import("./trainingWeekPlanCells.js");
+  const teamDays = { mon: { intensity: "hard" }, tue: { intensity: "easy" }, wed: { intensity: "hard" },
+    thu: { intensity: "rest" }, fri: { intensity: "normal" }, sat: { intensity: "hard" }, sun: { intensity: "rest" } };
+  const off = seedProgramWeekDays({ teamDays, primaryType: "tt" });
+  const on = seedProgramWeekDays({ teamDays, primaryType: "tt", catalogV3: true });
+  assert.equal(off.mon.session, "threshold");
+  assert.equal(on.mon.session, "itt_long");
+  assert.equal(on.wed.session, "itt_long");
+  for (const d of ["tue", "thu", "fri", "sun"]) assert.equal(on[d].session, off[d].session, `${d} urørt`);
+  const gc2 = seedProgramWeekDays({ teamDays, primaryType: "tt", secondaryType: "gc", catalogV3: true });
+  assert.equal(gc2.mon.session, "itt_long");
+  const climber = seedProgramWeekDays({ teamDays, primaryType: "climber", catalogV3: true });
+  assert.deepEqual(climber, seedProgramWeekDays({ teamDays, primaryType: "climber" }), "andre typer urørte");
+  const saved = seedProgramWeekDays({ teamDays, primaryType: "tt", plan: { focus: "threshold", intensity: "hard" }, catalogV3: true });
+  assert.equal(saved.mon.session, "threshold", "en gemt plan er spillerens valg");
+});

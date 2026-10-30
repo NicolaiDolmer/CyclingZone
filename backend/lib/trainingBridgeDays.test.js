@@ -46,6 +46,8 @@ function fakeClient(state) {
         eq(col, value) { filters.push([col, value]); return this; },
         in() { return this; }, not() { return this; }, is() { return this; },
         gte() { return this; }, lt() { return this; }, order() { return this; },
+        // #6924: the index also looks up the just-completed season's final date.
+        limit() { return this; }, contains() { return this; },
         async range() { return result(); },
         async maybeSingle() { return { data: rows()[0] ?? null, error: null }; },
         async single() { return this.maybeSingle(); },
