@@ -30,7 +30,7 @@ import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { evaluateFlagStage } from "../lib/featureStage.js";
 import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
-import { DEVELOPMENT_CURVE_B_FLAG_KEY, curveBParamsFromEnv } from "../lib/developmentCurveBFlag.ts";
+import { DEVELOPMENT_CURVE_B_FLAG_KEY, readDevelopmentCurveBParams } from "../lib/developmentCurveBFlag.ts";
 
 /**
  * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
@@ -63,7 +63,11 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
   // Codex #7192: kurve B er kun reelt taendt, naar motoren ogsaa har gyldige params
   // (loadDevelopmentCurveB falder ellers tilbage til dagens model). Hjaelp foelger
   // motoren, saa teksten aldrig beskriver en kurve der ikke koerer.
-  if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !curveBParamsFromEnv(env)) flags[DEVELOPMENT_CURVE_B_FLAG_KEY] = false;
+  // #7390: params laeses fra private_config (Railway-reserven kun naar raekken mangler),
+  // ikke-strict og cachet 60 s; kun et ja/nej forlader serveren, aldrig tallene.
+  if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !(await readDevelopmentCurveBParams({ supabase, env }))) {
+    flags[DEVELOPMENT_CURVE_B_FLAG_KEY] = false;
+  }
   return flags;
 }
 
