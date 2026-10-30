@@ -408,6 +408,13 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
 - **Potentiale = fart:** uændret gennem træningsscorens talent-led.
 - **Alderens turbo er ude:** alderstabellen og ungdomstillægget indgår ikke i udviklingen.
   Udviklingen drives af en alders-neutral træningsscore; den viste træningsscore er uændret.
+- **Blød overgang ved tænding ([#7382](https://github.com/NicolaiDolmer/CyclingZone/issues/7382), ejer 30/10):**
+  en evne der står på eller over sit bløde loft, glider de første 14 kalenderdage efter
+  tændingsdatoen (dansk tid) lineært fra den gamle models fremdrift (med alderstabellen) til
+  kurve B's. Alle andre evner får kurve B fra dag 1. Fremdriften er aldrig under kurve B's
+  (overgangen bremser aldrig) og aldrig negativ. Tændingsdatoen er `app_config`-nøglen
+  `development_curve_b_ignited_at`, som en trigger stempler første gang flaget sættes til `on`;
+  en ny tænding overskriver den ikke. Intet stempel = ingen overgang.
 - **Uændret:** maks +1 pr. evne pr. løbsdag og pr. dato (§6.2), fremdriften bæres videre, loftet
   klipper, og løbsdagen går gennem samme kæde.
 - **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens
@@ -415,6 +422,7 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
   model. Blev tændt af ejeren efter en ny 10-sæsoners-kørsel med den rigtige kurve.
 
 Kode: `developmentCurveB.ts` (kurven), `developmentCurveBFlag.ts` (flag og tal),
+`developmentCurveBTransition7382.ts` (overgangen),
 `dailyAbilityDelta`/`applyDailyTick` (`dailyTraining.js`). Gates: `scripts/dev/developmentCurveBHarness3564.mjs`.
 
 ### 2.2 Fra delta til point: hvordan vækst-cappet håndhæves
