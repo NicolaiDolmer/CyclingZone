@@ -1405,11 +1405,11 @@
       },
       "ceilingReachedCurveB": {
         "title": "Min rytters evne er holdt op med at stige",
-        "text": "Fremgangen aftager jo højere en evne allerede er, og jo tættere den kommer på det loft, hans type og potentiale sætter, så en værdi der står stille i nogle dage betyder ikke nødvendigvis, at den er færdig. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder ved sæsonskiftet i stedet for at vokse. Eller også ligger evnen allerede over det loft, hans potentiale sætter, hvilket kan ske for ryttere der udviklede sig under den tidligere træningsmodel. Der bliver ikke taget noget fra ham, den stiger bare ikke videre. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet, som aldrig vises som et tal noget sted i spillet."
+        "text": "Fremgangen aftager jo højere en evne allerede er, og jo tættere den kommer på det loft, hans type og potentiale sætter, men den står aldrig stille dér: over loftet vokser en evne stadig langsomt. En værdi der står stille i nogle dage, er som regel bare langsom fremgang. Er en evne virkelig holdt op, er det næsten altid en af to ting. Enten er rytteren forbi sit højdepunkt, hvor evner falder ved sæsonskiftet i stedet for at vokse. Eller også har evnen nået det højeste niveau, hans rolle tillader. Tallet ved siden af en evne er altid dens nuværende værdi, aldrig loftet, som aldrig vises som et tal noget sted i spillet."
       },
       "longTermGrowthCurveB": {
         "title": "Udvikling på lang sigt",
-        "text": "Tre ting afgør hvor en evne ender. Typen afgør hvilke evner der kan nå højest. Potentialet afgør hvor højt: et større talent har et højere loft og udvikler sig også hurtigere. Og selve niveauet: hvert point koster mere jo højere evnen allerede er, så en rytter rykker hurtigt på et lavt niveau og langsomt nær toppen. Alder får ingen til at udvikle sig hurtigere. De yngste ryttere tåler endnu ikke fuld træning, så på samme niveau rykker de lidt langsommere, indtil de gør. Tæt på loftet aftager fremgangen glidende, og træning kan aldrig skubbe nogen forbi det."
+        "text": "Tre ting afgør hvor en evne ender. Typen afgør hvilke evner der kan nå højest. Potentialet afgør hvor højt: et større talent har et højere loft og udvikler sig også hurtigere. Og selve niveauet: hvert point koster mere jo højere evnen allerede er, så en rytter rykker hurtigt på et lavt niveau og langsomt nær toppen. Alder får ingen til at udvikle sig hurtigere. De yngste ryttere tåler endnu ikke fuld træning, så på samme niveau rykker de lidt langsommere, indtil de gør. Tæt på loftet aftager fremgangen, men den står aldrig stille, helt op til det højeste niveau, hans rolle tillader."
       },
       "trainToday": {
         "title": "Kør dagens træning nu",
@@ -1493,7 +1493,7 @@
       },
       "catalogV3": {
         "title": "To hårde sessioner til hver ryttertype",
-        "text": "Hver ryttertype har nu to hårde sessioner bygget til sig, og hver hård session giver en fuld hård dag. Fem sessioner er nye: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har endelig sine egne sessioner, så Tærskel træner tempo og udholdenhed i stedet. Sprint giver nu en fuld hård dag. Skifter I mellem typens to sessioner, vokser hovedevnen lidt mindre, men andre evner vokser i stedet."
+        "text": "Hver ryttertype har nu to hårde sessioner bygget til sig, og hver hård session giver en fuld hård dag. Fem sessioner er nye: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har endelig sine egne sessioner, så Tærskel træner tempo og udholdenhed i stedet. Sprint giver nu en fuld hård dag. Skifter I mellem typens to sessioner, vokser hovedevnen lidt mindre, men andre evner vokser i stedet. Enkeltstarts- og klassementsryttere på Tærskel eller uden plan træner Lange enkeltstarter i stedet. Fulgte sådan en rytter en træningsgruppe med andre ryttertyper, har han nu sin egen plan."
       }
     },
     "activityfeed": {

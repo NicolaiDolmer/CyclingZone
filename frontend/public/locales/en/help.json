@@ -1405,11 +1405,11 @@
       },
       "ceilingReachedCurveB": {
         "title": "My rider's ability has stopped rising",
-        "text": "Progress slows the higher an ability already is and the closer it gets to the ceiling his type and potential set, so a value that holds still for a few days doesn't necessarily mean it's finished. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline at the season change instead of growing. Or the ability already sits above the ceiling his potential sets, which can happen for riders who developed under the earlier training model. Nothing is taken away from him, it simply won't climb further. The number next to an ability is always its current value, never the ceiling, which is never shown as a number anywhere in the game."
+        "text": "Progress slows the higher an ability already is and the closer it gets to the ceiling his type and potential set, but it never stands still there: above that ceiling an ability keeps growing slowly. A value that holds still for a few days is usually just slow progress. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline at the season change instead of growing. Or the ability has reached the highest level his role allows. The number next to an ability is always its current value, never the ceiling, which is never shown as a number anywhere in the game."
       },
       "longTermGrowthCurveB": {
         "title": "Long-term growth",
-        "text": "Three things decide where an ability ends up. His type decides which abilities can go highest. His potential decides how high: a bigger talent has a higher ceiling and also develops faster. And the level itself: every point costs more the higher the ability already is, so a rider moves quickly at a low level and slowly near the top. Age doesn't make anyone develop faster. The youngest riders can't yet take a full training load, so at the same level they move a little slower until they can. Close to his ceiling the progress fades gradually, and training can never push anyone past it."
+        "text": "Three things decide where an ability ends up. His type decides which abilities can go highest. His potential decides how high: a bigger talent has a higher ceiling and also develops faster. And the level itself: every point costs more the higher the ability already is, so a rider moves quickly at a low level and slowly near the top. Age doesn't make anyone develop faster. The youngest riders can't yet take a full training load, so at the same level they move a little slower until they can. Close to his ceiling the progress slows down but never stands still, up to the highest level his role allows."
       },
       "trainToday": {
         "title": "Run today's training now",
@@ -1493,7 +1493,7 @@
       },
       "catalogV3": {
         "title": "Two hard sessions for every rider type",
-        "text": "Every rider type now has two hard sessions built for it, and every hard session gives a full hard day. Five sessions are new: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial finally has its own sessions, so Threshold trains tempo and endurance instead. Sprint now gives a full hard day. If you switch between your type's two sessions, the main ability grows a little less, but other abilities grow instead."
+        "text": "Every rider type now has two hard sessions built for it, and every hard session gives a full hard day. Five sessions are new: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial finally has its own sessions, so Threshold trains tempo and endurance instead. Sprint now gives a full hard day. If you switch between your type's two sessions, the main ability grows a little less, but other abilities grow instead. Time trial and GC riders on Threshold, or without a plan, train Long time trials instead. If such a rider followed a training group with other rider types, he now has his own plan."
       }
     },
     "activityfeed": {

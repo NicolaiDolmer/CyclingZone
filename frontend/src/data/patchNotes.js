@@ -1,5 +1,48 @@
 export const PATCHES = [
   {
+    "version": "7.387",
+    "date": "2026-10-30",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "Two hard sessions for every rider type",
+          "body": "What changed: There are five new hard sessions: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial now has its own sessions, so Threshold trains tempo and endurance. Time trial and GC riders on Threshold, or without a plan, now train Long time trials.\n\nWhat it means for you: Check the plan for your time trial and GC riders. One who followed a training group with other rider types now has his own plan."
+        },
+        "da": {
+          "title": "To hårde sessioner til hver ryttertype",
+          "body": "Hvad er ændret: Der er fem nye hårde sessioner: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har nu sine egne sessioner, så Tærskel træner tempo og udholdenhed. Enkeltstarts- og klassementsryttere på Tærskel eller uden plan træner nu Lange enkeltstarter.\n\nHvad betyder det for dig: Tjek planen for dine enkeltstarts- og klassementsryttere. En af dem, der fulgte en træningsgruppe med andre ryttertyper, har nu sin egen plan."
+        },
+        "refs": [
+          5319,
+          7341,
+          7354
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "The main ability grows again",
+          "body": "What changed: The training model from the start of season 5 is back. An ability slows down near its ceiling, but it no longer stops there. The progress your riders lost on their main ability in those days has been added back.\n\nWhy: From season 5 the main ability of some riders got no progress, while their other abilities grew.\n\nWhat it means for you: The ability a program is built for grows again."
+        },
+        "da": {
+          "title": "Hovedevnen vokser igen",
+          "body": "Hvad er ændret: Træningsmodellen fra starten af sæson 5 er tilbage. En evne går langsommere tæt på loftet, men den stopper ikke længere dér. Den fremgang, dine ryttere mistede i hovedevnen i de dage, er lagt til igen.\n\nHvorfor: Fra sæson 5 fik hovedevnen hos nogle ryttere ingen fremgang, mens deres andre evner steg.\n\nHvad betyder det for dig: Den evne, et program er bygget til, vokser igen."
+        },
+        "refs": [
+          7316,
+          7340
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.386",
     "date": "2026-10-27",
     "changes": [
