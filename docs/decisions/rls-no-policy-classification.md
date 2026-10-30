@@ -382,3 +382,6 @@ Ingen migration. Ingen `COMMENT ON TABLE`. Ingen policy. Ingen ændring af grant
 
 ## Ranking coordinator (#5692, 6 October)
 ranking_refresh_work_state is a backend control ledger, not player data. RLS is enabled without client policies; PUBLIC/anon/authenticated have no table privileges. Only service_role has SELECT/INSERT/UPDATE. RPCs are service-only invokers; the statement trigger is a restricted definer with fixed search_path and no direct client EXECUTE. This is intentional backend isolation; no blanket client policy/grant is added to silence an advisor.
+
+## Private config (#7390, 30 October)
+`private_config` and `private_config_history` hold private engine/training settings (for example the curve B calibration) that must not sit in `app_config`, which every signed-in player can read. RLS is enabled without client policies; PUBLIC/anon/authenticated have no table privileges. Only service_role has SELECT/INSERT/UPDATE/DELETE on `private_config` and SELECT/INSERT on the append-only `private_config_history` (filled by the `private_config_audit` trigger). Readers: `backend/lib/privateConfig.ts` (`readPrivateConfigEntry`), writer: `backend/scripts/ops/setPrivateConfig.mjs`. No client code path touches either table. This is intentional default-deny; no policy is added to silence the advisor. Migration: `database/2026-10-30-7390-private-config.sql`.
