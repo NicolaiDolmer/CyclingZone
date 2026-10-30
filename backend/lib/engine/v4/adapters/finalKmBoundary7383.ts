@@ -17,12 +17,15 @@
 //     allOutCrack6641.climbBlockOf, s5Profiles.priorCategorizedClimbs) ser de to stykker
 //     som een stigning. Terraen-selektionen (klatring, brosten) koeres EEN gang, ved
 //     halen (toppen/sektorens slutning), paa hele stykket, saa stigningen er praecis lige
-//     saa selektiv som udelt (maalt: selektion pr. stykke goer slutstigningerne markant
-//     mindre selektive). Tempo, kraefter og holdarbejde skifter derimod praecis ved
+//     saa selektiv som udelt. Tempo, kraefter og holdarbejde skifter derimod praecis ved
 //     punktet. Selektionen ser den indsats rytteren koerte paa den LAENGSTE del af
 //     stykket (Codex-review: et angreb fra de sidste 10 km paa en lang stigning faar
-//     ikke angrebets indsats paa hele stigningen). Det er samme indsats som
-//     etapeplanens naermeste-graense-regel gav den udelte stigning foer kontakten.
+//     ikke angrebets indsats paa hele stigningen). For de fleste opgaver er det samme
+//     indsats som etapeplanens naermeste-graense-regel gav den udelte stigning foer
+//     kontakten. Undtagelse: holdarbejde (tempo, hold lederen fremme) paa en delt
+//     SLUTstigning. Slukket skifter det ved sidste segments start (stagePlanEngine
+//     SEGMENT_WORK_TASKS), saa hele stigningens selektion ser holdarbejdets indsats;
+//     taendt ser selektionen hovedets indsats, naar hovedet er den laengste del.
 //   - Nedkoersel: deles IKKE. Nedkoerselsfinalens tidsmodel (#6200: finishDescentIndexFor,
 //     "kun aabne, aldrig lukke" paa sidste segment, finalens loft fra nedkoerslens start)
 //     er bygget paa at nedkoerslen er eet segment. Her gaelder etapeplanens #7333-regel
