@@ -12,7 +12,7 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6665 feat(marketing): ny forside med godkendt tekst og ægte produktbilleder (#1369) (9d) — DIRTY
 - #6636 feat(race-library): upcoming races and scoped edition history (1d) — groen
 - #7279 feat(ops): ugentlig motor-drift-rapport paa rigtige loeb mod private gates (#2557) (0d) — roed
-- #7392 docs(registry): kurve B og træningskatalog v3 er live (30/10) (0d) — groen
+- #7397 docs(patch): 7.389 rettelser 30/10 (0d) — groen
 
 ## 2) Ejerens beslutninger
 **Issues (`needs-decision` / `needs-design`):**
@@ -30,13 +30,13 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #2236 Organic community outreach — Reddit + Discord posting (116d)
 - #2423 [infra/sikkerhed] Vercel-opsætning til verdensklasse: håndhæv CSP, skew-protection, Speed… (109d)
 - #2511 [perf/ci] Bundle-drift: gaten måler kun PR-diffs — main kan summe forbi loftet ubevogtet… (106d)
-- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (103d)
+- #2675 [verify+decision] 19/7 aften: første stemplede udløbs-auktioner + kreditering — og ejer-v… (104d)
 - #2794 [ux/IA] Løbssiden er informationsoverload: opdel ruteprofil / holdudtagelse / etape-takti… (99d)
-- …og 76 mere
+- …og 75 mere
 
 **PR'er der venter paa "ejer-go" (label eller PR-body):**
 
-- #7392 docs(registry): kurve B og træningskatalog v3 er live (30/10) (0d) — groen
+- #7397 docs(patch): 7.389 rettelser 30/10 (0d) — groen
 
 ## 3) Bygget men ikke merget
 **Draft-PR'er:**
@@ -50,9 +50,9 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 ## 4) Ikke bygget
 `claude:todo`, ingen aaben PR endnu. Sorteret efter priority-label, saa alder.
 
-- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (157d)
+- #671 Brand minimum: accent + font + wordmark (TdF-deadline subset af #481) (158d)
 - #1569 Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan (132d)
-- #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (128d)
+- #1819 Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup (129d)
 - #2682 AI-audit 19/7: NOW.md 2x over token-budget + CLAUDE.md-trim; gør token-WARN til FAIL (103d)
 - #2770 [build] Sub-2: Dybe konkurrencer — passage-ordener (KOM/point) + bonussekunder (101d)
 - #2822 [fable] Verdensklasse-benchmark: hvor staar Cycling Zone mod de bedste managerspil (99d)
@@ -62,10 +62,10 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #3426 [balance] Nedkørsel vejer for tungt: 30-50 sek tabt på korte nedkørsler + for mange bjerg… (85d)
 - #3461 [bug/balance] Restitutionens timing: 'Træn i dag' om morgenen brænder dagens eneste resti… (85d)
 - #3511 [perf] Bestyrelsens resultatqueries: gentagne opslag og dyr query-plan på dashboard og må… (84d)
+- #3564 [design] Progressionskæden samlet: potentiale 1-99, lofter pr. ryttertype, træningsscore,… (82d)
 - #3855 [design] Race engine v4: intra-etape-motoren — etapen beregnes undervejs (ejer-retning 17… (74d)
 - #4010 Supabase-hærdning: realtime-MalformedJWT, sponsor-sweep, offset-paginering og getUser() p… (71d)
-- #4159 [guard] game_day-aksen maa aldrig kunne skrives skaevt igen: DB-trigger + lane-packer-fix… (67d)
-- …og 850 mere
+- …og 847 mere
 
 ## 5) Faerdigt
 `claude:done` men stadig aabne — skal lukkes.
@@ -85,4 +85,4 @@ Aabne PR'er, ikke draft. Tilstand er CI (`statusCheckRollup`) - "roed" er en fej
 - #6499 Udvikling 2.0 del 1: tilbagegang D4 ved sæsonskiftet + prøvekørsel (bag flag) (19d)
 - #6857 [design] Løbsidentitet: 8 faste løbstyper + signatur pr. løb + håndskrevne monumenter (ej… (12d)
 - #6594 [s5/rute] Rigtig højdeprofil pr. etape (højdeserie fra rutegeneratoren) (16d)
-- …og 59 mere
+- …og 62 mere
