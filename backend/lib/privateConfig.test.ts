@@ -154,6 +154,7 @@ test("drift-grænser: samme regler og output-form som parseThresholds (#7279)", 
     [{ minStages: 1, groups: { gt: { speed: { min: 1 } } } }, /ukendt maal/],
     [{ minStages: 1, groups: { gt: { crashShare: {} } } }, /mangler baade/],
     [{ minStages: 1, groups: { gt: { crashShare: { min: "lav" } } } }, /ikke er et tal/],
+    [{ minStages: 1, groups: { gt: { crashShare: { min: 0.5, max: 0.1 } } } }, /min stoerre end max/],
   ];
   for (const [raw, re] of bad) assert.throws(() => parseWeeklyEngineDriftThresholds(raw), re, JSON.stringify(raw));
 });

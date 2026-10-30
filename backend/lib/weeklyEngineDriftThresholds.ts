@@ -52,6 +52,8 @@ export function parseWeeklyEngineDriftThresholds(raw: unknown): WeeklyEngineDrif
       const { min, max } = b;
       if (min === undefined && max === undefined) throw new Error("weeklyEngineDrift: et baand mangler baade min og max");
       if ((min !== undefined && !finite(min)) || (max !== undefined && !finite(max))) throw new Error("weeklyEngineDrift: et baand har en graense der ikke er et tal");
+      // Strengere end scriptets parseThresholds med vilje: et omvendt baand kan aldrig vaere opfyldt og afvises ved skrivning.
+      if (min !== undefined && max !== undefined && Number(min) > Number(max)) throw new Error("weeklyEngineDrift: et baand har min stoerre end max");
       out.bands[measure] = { ...(min !== undefined ? { min: Number(min) } : {}), ...(max !== undefined ? { max: Number(max) } : {}) };
     }
     groups[group] = out;
