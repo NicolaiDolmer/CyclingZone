@@ -631,14 +631,12 @@ features:
     area: training
     title_en: Training catalog v3
     title_da: Træningskatalog v3
-    state: building
+    state: live
     flag: training_catalog_v3
     ssot: docs/TRAINING_RULES.md
     epic: 5319
-    verified: 2026-10-29
-    decision: taend
-    decide_by: 2026-11-08
-    note: Off; tænding + migration er ejer-go.
+    verified: 2026-10-30
+    note: "On 30/10 kl. 21:44 (ejer-go); Tærskel-migrationen kørt 21:46 (288 ryttere)."
 
   - id: training-groups
     area: training
@@ -875,14 +873,12 @@ features:
     area: training
     title_en: Development curve B (level and potential drive development, not age)
     title_da: Udviklingskurve B (niveau og potentiale styrer udviklingen, ikke alder)
-    state: building
+    state: live
     flag: development_curve_b
     ssot: docs/TRAINING_RULES.md
     epic: 3564
-    note: "Off 29/10: mur over blødt loft (#7316)."
-    verified: 2026-10-29
-    decision: taend
-    decide_by: 2026-11-05
+    note: "On 30/10 kl. 21:44 (ejer-go); params i private_config, blød overgang 14 dage (#7382)."
+    verified: 2026-10-30
 
   - id: condition-model-v2
     area: training

@@ -9,7 +9,7 @@
 ## Brand (kører løbende, uden for loftet)
 
 - **B1 Træning og udvikling:** hovedevne uden fremgang #7316, to point samme dag #6210, træthed 5x #5928, historik #5947, rapport #6971.
-- **B2 Løbsdag og motor:** Alt ud på enkeltstart #7332, etapeplan #7333, rutematch på Taktik #7334, udbrud 15 min #6912, dronningeetaper #7236, formtoppe #6156, Firefox-crash #6698, auto-fyld med for få ryttere (issue mangler).
+- **B2 Løbsdag og motor:** Alt ud på enkeltstart #7332, etapeplan #7333, rutematch på Taktik #7334, udbrud 15 min #6912, dronningeetaper #7236, formtoppe #6156, Firefox-crash #6698, auto-fyld med for få ryttere #7339.
 - **B3 Kontrakter, transfer, sæsonskifte:** varsler #7246 #7180, auktioner under 12 t #7220, transfer #7284 #7285, ungdom #6964 #6882, graduering #7231 #7323, værdier #5842.
 - **Stabilitet ved vækst:** aftenafregningen #6490; ranglisten #6765; Postgres-genstart #7223. Job-kø #6491 og direkte Postgres #6492 (design #7070) bygges når målingen i #6490 viser behov.
 - **Sikkerhed:** nøglerotation #7029; nødvej #7034.
@@ -17,11 +17,11 @@
 
 ## Nu: loftet (ejer-rangeret 29/10)
 
-1. **Udvikling 2.0 #6110:** daglig træning mellem sæsoner #7282, udviklingsscore og catch-up #6950/#6853, Træn nu B #6461, unges udvikling #6499, progressionskæden #3564 (kurve B: topalder og udvikling efter ungdomsårene kalibreres videre mod ejerens mål). Intet loves uden verificeret grundlag.
+1. **Udvikling 2.0 #6110:** kurve B + katalog v3 tændt 30/10 (#5319/#7316). Daglig træning mellem sæsoner #7282, udviklingsscore og catch-up #6950/#6853, Træn nu B #6461, unges udvikling #6499, progressionskæden #3564 (kurve B: topalder og udvikling efter ungdomsårene kalibreres videre mod ejerens mål). Intet loves uden verificeret grundlag.
 2. **Race engine #7260:** de 19 punkter, de slukkede motorkontakter (tænd eller fjern) og én sand status i [RACE_ENGINE_PLAN](RACE_ENGINE_PLAN.md). GT/monumenter #6649/#7214. Bakker B #7293 måles før tænding. Udbrud følger ejerens første trin nu, næste trin bagefter; #7164 følger dagsform #7272. Hvis-så-ordrer, sidevind og bakket enkeltstart afventer ejer-valg om 2027. Målinger og kalibrering er private.
 3. **Taktik synlig overalt:** taktik-pakken #7266, delt kaptajn #7239/#7326, kladder #7327, ordrer #7003/#6746/#6299, luksushjælper #5982 (ejeren beslutter tænding), løbsintention #6641. Taktiklagene (angrebspunkt, følg rival, sent soloangreb, trøjejagt) består.
 
-**Åbne PR'er fra 29/10** gøres færdige eller lukkes (engangsoprydning): løbsbibliotek #6634/#6636, forside #6665 (ejeren bestemmer tidspunktet), bestyrelse #7101 med gennemgang #7167, træning #7143, ungdomskontrakter #7274, motor-PR'er #7164 #7240 #7275 #7277 #7279 #7292. Spillervendte PR'er (#7101, #7274, #7275, #7292) og tændingen af Træn nu B (#7191, merget slukket) kræver go-kort.
+**Åbne PR'er fra 29/10** gøres færdige eller lukkes (engangsoprydning, status 30/10): løbsbibliotek #6634/#6636, forside #6665 (ejeren bestemmer tidspunktet), drift-rapport #7279 (venter på grænserne). Bestyrelses-gennemgangen #7167 er et issue. Resten er merget eller lukket.
 
 ## Kø (i denne rækkefølge, når et loft-område er færdigt)
 
