@@ -91,7 +91,10 @@ also respects the peak window. Every invocation logs queue length/pass duration;
 queue >10,000 or pass >20s alarms in Sentry. No reader swap is included.
 M1.5 recomputes rider transfers from contribution rows only, bounds each claim
 to p_max_items, drains up to 20 batches/8s per pass and alarms on a queue head
-older than 30 minutes while enabled.
+older than 30 minutes while enabled. A leased pass first drains every queue item
+of its claimed version (watermark read after the claim; hard caps 100 batches/45s),
+and a rebuild expands into durable per-race items plus one per-season sweep per
+batch (Codex P1/P2, 31/10).
 
 ### Spillersynlige feature-flags (#4948, #6103)
 GET `/api/feature-flags` læser kun `PLAYER_VISIBLE_FLAG_KEYS` som `key,value`
