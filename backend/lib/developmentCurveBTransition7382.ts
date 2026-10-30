@@ -30,9 +30,18 @@
 // en genkørsel aldrig flytter det. Resten af vinduet læses rækken. En rytter uden
 // række får kurve B hele vejen: fx en rytter der først kommer til et managerhold
 // inde i vinduet (transfer fra et hold der ikke udvikler sig, eller ny i
-// akademiet efter tændingsdagen). Rækken følger rytteren, så et skifte mellem to managerhold beholder
-// den. Uden låsen ville en evne der krydser loftet inde i vinduet, springe op til
-// den gamle models fart (lige over loftet fik langt mere end lige under).
+// akademiet efter tændingsdagen). Rækken følger rytteren, så et skifte mellem to
+// managerhold beholder den. Uden låsen ville en evne der krydser loftet inde i
+// vinduet, springe op til den gamle models fart (lige over loftet fik langt mere
+// end lige under).
+//
+// ET HOLD DER IKKE BLEV MÅLT PÅ TÆNDINGSDAGEN: havde holdet allerede afregnet hele
+// tændingsdatoen, før kurve B blev aktiv (fx "træn nu" før flaget blev tændt),
+// nåede motoren aldrig målingen for det hold. Har ingen af holdets ryttere en række
+// fra en tidligere dato, måles holdet derfor på sin første dato med kurve B inde i
+// vinduet, før dagens tick (measured_on = den dato; samme regler i øvrigt). Holdet
+// fik den gamle models fart på tændingsdatoen, så det er samme tilstand som efter
+// tændingsdagens tick. Et hold der blev målt, måles aldrig igen.
 //
 // Ingen balance-tal her: de 14 dage er ejerens beslutning i issuet. Kurvens tal er
 // private (hard rule 17) og kommer ind som de validerede params.
@@ -54,9 +63,11 @@ const CURVE_B_IGNITED_AT_DESCRIPTION =
 export interface CurveBTransition {
   // Kurve B's andel af dagens fremdrift for evner i overgangen (0 <= w < 1).
   weight: number;
-  // Startdatoen (dansk dato) og om tick-datoen ER den: kun dér låses medlemskabet.
+  // Startdatoen (dansk dato) og om tick-datoen ER den: dér låses medlemskabet.
   ignitedOn: string;
   ignitionDay: boolean;
+  // Tick-datoen (dansk dato): et hold der ikke blev målt på tændingsdagen, måles her.
+  tickDate: string;
 }
 
 /** Overgangen for én rytter: vægten og de evner der var med på tændingsdagen. */
@@ -91,7 +102,7 @@ export function curveBTransitionForDate({
   if (!(Number.isFinite(days) && days > 0)) return null;
   const elapsed = calendarDaysBetween(ignitedOn, tickDate);
   if (elapsed == null || elapsed >= days) return null;
-  return Object.freeze({ weight: Math.max(0, elapsed) / days, ignitedOn: ignitedOn as string, ignitionDay: elapsed === 0 });
+  return Object.freeze({ weight: Math.max(0, elapsed) / days, ignitedOn: ignitedOn as string, ignitionDay: elapsed === 0, tickDate: tickDate as string });
 }
 
 /**
@@ -227,8 +238,9 @@ const MEMBER_BATCH = 500;
 
 /**
  * Medlemskabet for holdets ryttere i vinduet. Læser de låste rækker for
- * startdatoen. På tændingsdagen måles ryttere uden række på deres evner før
- * dagens tick, og rækken sættes i kø til persist(). En fejlet læsning: strict
+ * startdatoen. På tændingsdagen (eller holdets første dato i vinduet, hvis holdet
+ * ikke blev målt dér) måles ryttere uden række på deres evner før dagens tick,
+ * og rækken sættes i kø til persist(). En fejlet læsning: strict
  * kaster, ellers kurve B fuldt for hele holdet (intet måles, intet skrives).
  */
 export async function loadCurveBTransitionRoster(
@@ -238,14 +250,16 @@ export async function loadCurveBTransitionRoster(
   },
 ): Promise<CurveBTransitionRoster> {
   const members = new Map<string, readonly string[]>();
+  const measuredOn: string[] = [];
   let usable = true;
   try {
     for (let i = 0; i < riderIds.length; i += MEMBER_BATCH) {
       const { data, error } = await supabase.from(CURVE_B_TRANSITION_MEMBERS_TABLE)
-        .select("rider_id, abilities").eq("ignited_on", transition.ignitedOn).in("rider_id", riderIds.slice(i, i + MEMBER_BATCH));
+        .select("rider_id, abilities, measured_on").eq("ignited_on", transition.ignitedOn).in("rider_id", riderIds.slice(i, i + MEMBER_BATCH));
       if (error) throw new Error(`curve-b transition members read: ${error.message ?? error}`);
       for (const row of data ?? []) {
         members.set(row.rider_id, Object.freeze((Array.isArray(row.abilities) ? row.abilities : []).filter((a: unknown) => typeof a === "string")));
+        measuredOn.push(typeof row.measured_on === "string" ? row.measured_on.slice(0, 10) : transition.ignitedOn);
       }
     }
   } catch (err) {
@@ -253,16 +267,20 @@ export async function loadCurveBTransitionRoster(
     console.warn(`[curve-b] overgangens medlemmer kunne ikke laeses - kurve B fuldt: ${errText(err)}`);
     usable = false;
   }
-  const pending: Array<{ rider_id: string; ignited_on: string; abilities: string[] }> = [];
+  // Måling i dag: tændingsdagen, eller holdets første dato med kurve B i vinduet når
+  // holdet ikke blev målt på tændingsdagen (ingen række fra en tidligere dato).
+  const measureToday = transition.ignitionDay
+    || (transition.tickDate > transition.ignitedOn && measuredOn.every((d) => d === transition.tickDate));
+  const pending: Array<{ rider_id: string; ignited_on: string; measured_on: string; abilities: string[] }> = [];
   return {
     forRider({ riderId, abilities, caps, potentiale }) {
       if (!usable) return null;
       let locked = members.get(riderId);
-      if (!locked && transition.ignitionDay) {
+      if (!locked && measureToday) {
         const measured = curveBTransitionAbilities({ abilities, caps, potentiale, curveB });
         locked = Object.freeze(measured);
         members.set(riderId, locked);
-        pending.push({ rider_id: riderId, ignited_on: transition.ignitedOn, abilities: measured });
+        pending.push({ rider_id: riderId, ignited_on: transition.ignitedOn, measured_on: transition.tickDate, abilities: measured });
       }
       if (!locked || locked.length === 0) return null;
       return Object.freeze({ weight: transition.weight, abilities: locked });
@@ -278,7 +296,7 @@ export async function loadCurveBTransitionRoster(
         pending.length = 0;
       } catch (err) {
         if (strictWrite) throw err;
-        console.warn(`[curve-b] overgangens medlemmer kunne ikke gemmes - resten af vinduet kurve B fuldt for dem: ${errText(err)}`);
+        console.warn(`[curve-b] overgangens medlemmer kunne ikke gemmes - kurve B fuldt for dem, til holdet maales igen: ${errText(err)}`);
       }
     },
   };

@@ -55,9 +55,9 @@ test("vinduet: 0 på startdagen, lineært, slut efter 14 dage; intet stempel = i
   assert.equal(CURVE_B_TRANSITION_DAYS, 14);
   assert.equal(curveBTransitionForDate({ ignitedOn: null, tickDate: "2026-10-31" }), null);
   assert.deepEqual(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-30" }),
-    { weight: 0, ignitedOn: "2026-10-30", ignitionDay: true });
+    { weight: 0, ignitedOn: "2026-10-30", ignitionDay: true, tickDate: "2026-10-30" });
   assert.deepEqual(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-06" }),
-    { weight: 0.5, ignitedOn: "2026-10-30", ignitionDay: false });
+    { weight: 0.5, ignitedOn: "2026-10-30", ignitionDay: false, tickDate: "2026-11-06" });
   assert.equal(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-12" })?.weight, 13 / 14);
   assert.equal(curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-13" }), null, "dag 14 = kun kurve B");
   const before = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-29" });
@@ -221,7 +221,7 @@ test("stempling: fejl = ingen ny start, men kaster på den strikse sti", async (
 });
 
 // Medlemstabellen som en lille tabel med (rider_id, ignited_on) som nøgle.
-type MemberRow = { rider_id: string; ignited_on: string; abilities: string[] };
+type MemberRow = { rider_id: string; ignited_on: string; measured_on?: string; abilities: string[] };
 function fakeMembers(rows: MemberRow[], { readError = null as unknown, writeError = null as unknown } = {}) {
   const upserts: Array<{ rows: MemberRow[]; opts: Record<string, unknown> }> = [];
   const tables: string[] = [];
@@ -265,8 +265,8 @@ test("roster, tændingsdagen: måler før tick'et, låser og gemmer én række p
   assert.equal(db.upserts.length, 1);
   assert.deepEqual(db.upserts[0].opts, { onConflict: "rider_id,ignited_on", ignoreDuplicates: true });
   assert.deepEqual(db.rows, [
-    { rider_id: "A", ignited_on: "2026-10-30", abilities: [MAIN] },
-    { rider_id: "B", ignited_on: "2026-10-30", abilities: [] },
+    { rider_id: "A", ignited_on: "2026-10-30", measured_on: "2026-10-30", abilities: [MAIN] },
+    { rider_id: "B", ignited_on: "2026-10-30", measured_on: "2026-10-30", abilities: [] },
   ]);
   assert.ok(db.tables.every((t) => t === CURVE_B_TRANSITION_MEMBERS_TABLE));
   await roster.persist();
@@ -293,7 +293,32 @@ test("roster, inde i vinduet: kun den låste række tæller; krydser evnen lofte
   assert.equal(roster.forRider(riderArgs("C", over)), null, "en række fra en tidligere tænding tæller ikke");
   assert.equal(roster.forRider(riderArgs("D", over)), null, "ingen række (fx kommet til et managerhold efter tændingsdagen): kurve B");
   await roster.persist();
-  assert.equal(db.upserts.length, 0, "efter tændingsdagen skrives intet");
+  assert.equal(db.upserts.length, 0, "et hold der blev målt, måles aldrig igen");
+});
+
+test("roster: et hold der ikke blev målt på tændingsdagen, måles på sin første dato i vinduet (og kun dér)", async () => {
+  // Fx "træn nu" for hele tændingsdatoen før flaget blev tændt: ingen af holdets ryttere har en række.
+  const db = fakeMembers([]);
+  const roster = await loadCurveBTransitionRoster(db, { transition: DAY7, curveB: PARAMS, riderIds: ["A", "B"] });
+  assert.deepEqual(roster.forRider(riderArgs("A", over)), { weight: 0.5, abilities: [MAIN] }, "målt før dagens tick");
+  assert.equal(roster.forRider(riderArgs("B", under)), null);
+  await roster.persist();
+  assert.deepEqual(db.rows, [
+    { rider_id: "A", ignited_on: "2026-10-30", measured_on: "2026-11-06", abilities: [MAIN] },
+    { rider_id: "B", ignited_on: "2026-10-30", measured_on: "2026-11-06", abilities: [] },
+  ]);
+  // Samme dato, næste løbsdag: en rytter der ikke var med i første kørsel, måles stadig.
+  const sameDate = await loadCurveBTransitionRoster(db, { transition: DAY7, curveB: PARAMS, riderIds: ["A", "B", "C"] });
+  assert.equal(sameDate.forRider(riderArgs("B", over)), null, "den første kørsel vinder");
+  assert.deepEqual(sameDate.forRider(riderArgs("C", over)), { weight: 0.5, abilities: [MAIN] });
+  // Næste dato: holdet er målt; en ny rytter uden række får kurve B.
+  const DAY8 = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-11-07" })!;
+  const next = await loadCurveBTransitionRoster(db, { transition: DAY8, curveB: PARAMS, riderIds: ["A", "D"] });
+  assert.equal(next.forRider(riderArgs("D", over)), null, "kommet til holdet efter målingen: kurve B");
+  // En efterslæbende kørsel før startdatoen måler intet.
+  const BEFORE = curveBTransitionForDate({ ignitedOn: "2026-10-30", tickDate: "2026-10-29" })!;
+  const early = await loadCurveBTransitionRoster(fakeMembers([]), { transition: BEFORE, curveB: PARAMS, riderIds: ["A"] });
+  assert.equal(early.forRider(riderArgs("A", over)), null);
 });
 
 test("tick: en evne der krydser loftet inde i vinduet, får kurve B (ingen spring op til den gamle fart)", () => {

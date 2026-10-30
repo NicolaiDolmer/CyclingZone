@@ -421,8 +421,11 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
   tick den dag (skadet, hviledag i et etapeløb, ukendt slot). Datoens første kørsel vinder
   (senere løbsdage samme dato og genkørsler flytter det ikke). Resten af vinduet læses kun
   rækken; en rytter uden række får kurve B hele vejen, fx en rytter der først kommer til et
-  managerhold inde i vinduet (transfer fra et AI-hold, en ny akademirytter efter tændingsdagen). Rækken følger
-  rytteren, så et skifte mellem to managerhold beholder den.
+  managerhold inde i vinduet (transfer fra et AI-hold, en ny akademirytter efter tændingsdagen).
+  Rækken følger rytteren, så et skifte mellem to managerhold beholder den. Et hold der havde
+  afregnet hele tændingsdatoen, før kurve B blev aktiv (fx "træn nu" før flaget blev tændt),
+  har ingen rækker: det måles på sin første dato med kurve B i vinduet, før dagens tick
+  (`measured_on`), og derefter aldrig igen.
   Startdatoen er `app_config`-nøglen `development_curve_b_ignited_at`. Træningsmotoren
   læser den først og stempler kun, når nøglen mangler, med tick-datoen første gang kurven er
   aktiv (flag `on` OG gyldige params); den overskrives aldrig, og efter vinduet skrives intet.

@@ -3581,9 +3581,13 @@ test("#7382 kald-sted: inde i vinduet giver kun en laast raekke blandingen, aldr
   const full = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
   const old = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
   const day7 = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-05" };
+  // Codex-review 30/10: holdet havde afregnet hele taendingsdatoen foer kurve B blev aktiv
+  // (ingen raekke for nogen af holdets ryttere) => maales paa sin foerste dato i vinduet.
   const noRow = await runCurveBDay7382(day7);
-  assert.deepEqual(noRow.progress, full.progress, "ingen raekke: kurve B fuldt, selv om evnerne staar over loftet");
-  assert.deepEqual(noRow.members, [], "efter taendingsdagen skrives intet medlemskab");
+  assert.notDeepEqual(noRow.progress, full.progress, "hold uden maaling: maales i dag og faar blandingen");
+  assert.equal(noRow.members?.length, 1);
+  assert.equal(noRow.members[0].measured_on, "2026-06-12", "maalt paa holdets foerste dato i vinduet");
+  assert.equal(noRow.members[0].ignited_on, "2026-06-05");
   const empty = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r1", ignited_on: "2026-06-05", abilities: [] }] });
   assert.deepEqual(empty.progress, full.progress, "tom raekke (krydsede loftet senere): kurve B");
   const locked = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r1", ignited_on: "2026-06-05", abilities: [...VISIBLE_ABILITIES] }] });
@@ -3633,9 +3637,9 @@ for (const [label, prep, runArgs] of [
     assert.ok(day0.members[0].abilities.length > 0, "evnerne over loftet er med");
     const later = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: day0.stamp, now: DAY7_7382 };
     const withRow = await runCurveBDay7382({ ...later, members: day0.members });
-    const noRow = await runCurveBDay7382(later);
+    const noRow = await runCurveBDay7382({ ...later, members: [{ ...day0.members[0], abilities: [] }] });
     const full = await runCurveBDay7382({ ...later, ignitedAt: "2026-05-01" });
-    assert.deepEqual(noRow.progress, full.progress, "kontrol: uden raekke = kurve B fuldt");
+    assert.deepEqual(noRow.progress, full.progress, "kontrol: maalt uden evner over loftet = kurve B fuldt");
     assert.notDeepEqual(withRow.progress, full.progress, "med raekken: overgangen senere i vinduet");
   });
 }

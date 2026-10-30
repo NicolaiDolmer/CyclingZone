@@ -9,7 +9,9 @@
 -- vinder (insert ... on conflict do nothing), så datoens senere løbsdage og en
 -- genkørsel aldrig flytter medlemskabet. Resten af vinduet læses rækken; en rytter
 -- uden række (fx kommet til et managerhold senere i vinduet) får kurve B fuldt.
--- En ny tænding (ny dato) giver nye rækker.
+-- Et hold der havde afregnet hele tændingsdatoen før kurve B blev aktiv, måles på
+-- sin første dato med kurve B i vinduet (measured_on). En ny tænding (ny dato)
+-- giver nye rækker.
 --
 -- Privat: RLS slået til UDEN policies, og kun service_role har grants. Ingen
 -- klient (anon/authenticated) kan læse eller skrive.
@@ -25,6 +27,9 @@ CREATE TABLE IF NOT EXISTS public.development_curve_b_transition_members (
   rider_id uuid NOT NULL,
   -- Tændingsdatoen (app_config development_curve_b_ignited_at, dansk dato).
   ignited_on date NOT NULL,
+  -- Datoen rytteren blev målt (dansk dato): tændingsdagen, eller holdets første
+  -- dato med kurve B i vinduet, hvis holdet ikke blev målt på tændingsdagen.
+  measured_on date NOT NULL,
   -- Evnerne på eller over det bløde loft på tændingsdagen. Tom = ingen.
   abilities text[] NOT NULL DEFAULT '{}',
   created_at timestamptz NOT NULL DEFAULT now(),
