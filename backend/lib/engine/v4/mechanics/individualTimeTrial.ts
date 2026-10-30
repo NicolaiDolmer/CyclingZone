@@ -170,6 +170,51 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
   };
 }
 
+/**
+ * #6595 (KUN s5_profiles_v3, SLUKKET): enkeltstartens egen terraen-vaegt i fart-formlen.
+ *
+ * Vejetapens STRENGTH_SPEED_EXTRA_TUNING.terrainWeight daemper styrke-forskelle
+ * paa fladt og rullende terraen, fordi aerodynamik og LAE dominerer dér: i en
+ * gruppe koerer den svage paa den staerkes hjul. En rytter alene mod uret har
+ * intet laee, og tidskoersels-evnen ER hans aerodynamik og flade effekt, saa
+ * vejetapens daempning tog den samme ting fra ham to gange.
+ *
+ * Kalibrering og maaling: privat (balance-internals/6595/, hard rule 17).
+ * Kun fladt og rullende terraen faar mere vaegt; stigning, nedkoersel og
+ * brosten er vejetapens.
+ * Haeldningen, stoejen og evne-grundlaget (#6645) er uaendrede.
+ */
+export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = Object.freeze({
+  ...STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
+  flat: 0.48,
+  rolling: 0.6,
+});
+
+// #6595 (SLUKKET, ejer-go kraeves foer taend): s5_profiles_v3 er den AKTUELLE
+// revision (#7237), saa rettelsen kan ikke ligge bag revisionen alene (samme
+// moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
+// bit-identisk med main. Taend = ejerens ordrette go i en egen PR.
+export const ITT_TERRAIN_6595_ACTIVE: boolean = false;
+
+// Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
+let benchOverride6595: boolean | null = null;
+/** KUN tests/dev-benches: taend/sluk #6595. `null` nulstiller til kontakten. */
+export function setIttTerrain6595ForBench(active: boolean | null): void {
+  benchOverride6595 = active === null ? null : active === true;
+}
+/** Er #6595 taendt (kontakten, eller en dev-bench)? Gaelder kun under s5_profiles_v3. */
+export function ittTerrain6595Active(): boolean {
+  return benchOverride6595 ?? ITT_TERRAIN_6595_ACTIVE;
+}
+
+/**
+ * #6595: terraen-vaegten enkeltstarten regner fart med. Kun s5_profiles_v3 med
+ * kontakten taendt faar enkeltstartens egen; ellers vejetapens (samme objekt).
+ */
+export function ittTerrainWeight(rulesRevision: unknown): Readonly<Record<SegmentKind, number>> {
+  return ittTerrain6595Active() && isS5ProfilesV3OrLater(rulesRevision) ? S5_V3_ITT_TERRAIN_WEIGHT : STRENGTH_SPEED_EXTRA_TUNING.terrainWeight;
+}
+
 // ── Evne og fart ─────────────────────────────────────────────────────────────
 
 /**
@@ -316,10 +361,11 @@ export function ittSpeedKmh(
   kind: SegmentKind,
   tuning: EngineTuning,
   ittTuning: IndividualTimeTrialTuning = INDIVIDUAL_TIME_TRIAL_TUNING,
+  terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
 ): number {
   const baseSpeed = tuning.terrain.baseSpeedKmh[kind];
   const [lo, hi] = tuning.terrain.speedMultiplierBounds;
-  const slope = ittTuning.abilitySpeedSlope * STRENGTH_SPEED_EXTRA_TUNING.terrainWeight[kind];
+  const slope = ittTuning.abilitySpeedSlope * terrainWeight[kind];
   const paceFactor = clamp(1 - slope * (capacity - referenceCapacity), 1 / hi, 1 / lo);
   return baseSpeed / paceFactor;
 }
@@ -342,10 +388,11 @@ function tickSoloRider(
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
   allOut7280 = false,
+  terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
 ): void {
   const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare) + allOutTimeTrialBonus7280(entrant.effort, entrant.abilities.time_trial, allOut7280);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
-  const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning);
+  const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning, terrainWeight);
   const dtSeconds = speedKmh > 0 ? (distanceKm / speedKmh) * 3600 : 0;
   // Kravet: vejetapens front-rytter i en gruppe paa én (tickGroupRiders med
   // collectiveCp = rytterens egen evne), moduleret af rytterens indsatsvalg.
@@ -377,6 +424,7 @@ function individualTimeTrialMode(
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
   allOut7280 = false,
+  terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
 ): TimeTrialMode {
   return {
     groupPrefix: "itt",
@@ -399,7 +447,7 @@ function individualTimeTrialMode(
         const rider = unit.riders[entrant.rider_id];
         if (!rider || rider.status === "abandoned") continue;
         const noise = stageNoiseByRider.get(entrant.rider_id) ?? 0;
-        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare, allOut7280);
+        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare, allOut7280, terrainWeight);
       }
       return [];
     },
@@ -412,6 +460,8 @@ export type IndividualTimeTrialOptions = TeamTimeTrialOptions & {
   ittTuning?: IndividualTimeTrialTuning;
   /** #6349: loebets regel-revision. Kun official_times_v3 blander evnen efter stigningsandelen. */
   rulesRevision?: unknown;
+  /** #6595: terraen-vaegten i fart-formlen (tests/bench); default ittTerrainWeight(rulesRevision). */
+  ittTerrainWeight?: Readonly<Record<SegmentKind, number>>;
 };
 
 /**
@@ -446,7 +496,8 @@ export function simulateIndividualTimeTrialStage(
       ...summitFinishSingleFor(options.rulesRevision),
       ...(options.dayForm6649 && isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
     },
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision)),
+    // #6595 (slukket): kun s5_profiles_v3 med kontakten taendt faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision)),
   );
   return output;
 }

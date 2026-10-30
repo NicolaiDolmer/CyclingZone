@@ -1049,6 +1049,14 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
           onEditorOpen={() => setOpenRoleRiderId(null)}
           roleDefaultFor={(id) => roleDefaultFor(defaultOrderForStage(orders, profileByStage[activeStage]?.profile_type), id)}
           effortFor={effortFor}
+          routeMatch={{
+            label: routeMatchColumn,
+            title: t("racePage.tactics.sortRouteMatch"),
+            mobileLabel: t("selection.routeMatch"),
+            sortDir: routeSortDir,
+            onSort: toggleRouteSort,
+            renderCell: renderRouteMatchCell,
+          }}
         />
       )}
       {/* Desktop: tabel. Under sm: stablede kort (samme indhold, ingen vandret
