@@ -27,6 +27,11 @@
 //     "kun aabne, aldrig lukke" paa sidste segment, finalens loft fra nedkoerslens start)
 //     er bygget paa at nedkoerslen er eet segment. Her gaelder etapeplanens #7333-regel
 //     uaendret, og taktiksiden siger det (StagePlanModel.ts stagePlanSwitchNotes).
+//   - Det sene angreb (#6368, mechanics/lateAttack.ts) ser de to stykker som EET segment
+//     (alle delte typer, ogsaa fladt/rullende) og vaelger angrebs-segment som paa den
+//     udelte rute (finalKmUndivided7383): graensen ved 10 km giver aldrig et angreb paa
+//     en etape der ikke havde et, og flytter det aldrig ind midt i en stigning/sektor.
+//     Er det delte stykke selv angrebs-segmentet, sker angrebet paa halen (samme slut-km).
 // Slukket (eller under en aeldre revision) er ruten det SAMME objekt: motoren er
 // bit-identisk med main. Taend = ejerens ordrette go i en egen PR; frontendens kopi
 // (StagePlanModel.ts FINAL_KM_BOUNDARY_7383_ACTIVE) flippes i samme PR
@@ -69,6 +74,8 @@ export type FinalKmTerrainPiece7383 = { part: "head" | "tail"; whole: Segment; h
 // Noeglet paa selve segment-objektet, saa intet nyt felt kommer paa Segment (types.ts,
 // snapshots, tidslinje).
 const TERRAIN_PIECES = new WeakMap<object, FinalKmTerrainPiece7383>();
+/** Hovedet af ENHVER delt type -> det udelte segment og halen (det sene angreb, finalKmUndivided7383). */
+const SPLIT_HEADS = new WeakMap<object, { whole: Segment; tail: Segment }>();
 
 function roundKm(n: number): number {
   return Math.round(n * 100) / 100;
@@ -95,7 +102,22 @@ export function splitAtFinalKm7383(segments: readonly Segment[], distanceKm: num
     TERRAIN_PIECES.set(head, { part: "head", whole, headLonger });
     TERRAIN_PIECES.set(tail, { part: "tail", whole, headLonger });
   }
+  SPLIT_HEADS.set(head, { whole, tail });
   return [...segments.slice(0, index), head, tail, ...segments.slice(index + 1)];
+}
+
+/**
+ * Den udelte segmentliste bag en liste delt af splitAtFinalKm7383, og hovedets plads
+ * (`headIndex`; halen ligger paa `headIndex + 1`). `null` naar intet er delt (hele
+ * motoren naar kontakten er slukket). Det sene angreb vaelger sit segment paa den
+ * udelte liste, saa 10 km-graensen aldrig flytter eller skaber angrebet.
+ */
+export function finalKmUndivided7383(segments: readonly Segment[]): { segments: readonly Segment[]; headIndex: number } | null {
+  for (let i = 0; i < segments.length - 1; i++) {
+    const split = SPLIT_HEADS.get(segments[i]);
+    if (split && segments[i + 1] === split.tail) return { segments: [...segments.slice(0, i), split.whole, ...segments.slice(i + 2)], headIndex: i };
+  }
+  return null;
 }
 
 /**
