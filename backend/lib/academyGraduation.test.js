@@ -135,7 +135,7 @@ function makeSupabase(cfg = {}) {
               in(col, vals) { filters[col] = vals; return b; },
               then(resolve, reject) {
                 rec.listingUpdates.push({ patch: { ...patch }, filters: { ...filters } });
-                return Promise.resolve({ error: null }).then(resolve, reject);
+                return Promise.resolve({ error: cfg.listingError ?? null }).then(resolve, reject);
               },
             };
             return b;
@@ -695,6 +695,22 @@ test("#7284 releaseUnsoldGraduate: lukker rytterens aabne transfer_listings som 
   assert.equal(rec.listingUpdates.length, 1);
   assert.equal(rec.listingUpdates[0].patch.status, "withdrawn");
   assert.deepEqual(rec.listingUpdates[0].filters.rider_id, ["r9"]);
+});
+
+test("#7284 listing-fejl vaelter ikke graduationen: release-gren faerdiggoeres stadig", async () => {
+  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER, listingError: { message: "boom" } });
+  const res = await resolveGraduation(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r1", action: "release", seasonNumber: 1, notify: spyNotify() });
+  assert.equal(res.action, "released");
+  assert.equal(rec.gradUpdates[0].status, "released");
+});
+
+test("#7284 listing-fejl vaelter ikke graduationen: releaseUnsoldGraduate restemper og notificerer stadig", async () => {
+  const { supabase, rec } = makeSupabase({ rider: STUCK_ACADEMY_RIDER, gradRows: [SOLD_GRAD], listingError: { message: "boom" } });
+  const notify = spyNotify();
+  const res = await releaseUnsoldGraduate(supabase, { now: CONTRACT_NOTICE_NOW, teamId: "t1", riderId: "r9", notify });
+  assert.equal(res.released, true);
+  assert.equal(rec.gradUpdates[0].status, "released");
+  assert.equal(notify.calls.length, 1);
 });
 
 test("#7284 releaseUnsoldGraduate: idempotent no-op rorer ikke transfer_listings", async () => {
