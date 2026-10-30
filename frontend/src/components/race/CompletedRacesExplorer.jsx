@@ -43,6 +43,7 @@ const RESULT_TYPES = [
 // tomhed er bedre end en form der lover noget den ikke har.
 const CARD_THUMB_W = 120;
 const CARD_THUMB_H = 34;
+const PROFILE_COLS = "race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors";
 
 function RaceCardRouteThumbnail({ race, profiles }) {
   const withRoute = (profiles || [])
@@ -164,10 +165,10 @@ export default function CompletedRacesExplorer() {
     (async () => {
       let rows;
       try {
-        const { data, error } = await supabase
-          .from("race_stage_profiles")
-          .select("race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors")
-          .in("race_id", completedRaceIds);
+        const read = (cols) => supabase.from("race_stage_profiles").select(cols).in("race_id", completedRaceIds);
+        // #7289: elevation_profile med (samme serie som loebssiden); 42703 = ikke migreret endnu.
+        let { data, error } = await read(`${PROFILE_COLS}, elevation_profile`);
+        if (error?.code === "42703") ({ data, error } = await read(PROFILE_COLS));
         if (error) throw error;
         rows = data || [];
       } catch (err) {

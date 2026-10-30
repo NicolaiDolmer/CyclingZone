@@ -8,7 +8,7 @@ import {
   activeRiders, profileScale, favouriteTerrain, perKmGradeCeil, PER_KM_GRADE_CEIL_PCT,
   type StageProfile, type ResultRow,
 } from "./stagePageV2Model.ts";
-import { elevationScaleFor } from "../../../lib/stageRouteProfile.js";
+import { elevationScaleFor, buildProfileSeries } from "../../../lib/stageRouteProfile.js";
 import { PROFILE_TYPE_KEYS } from "../../../lib/stageProfileConfig.js";
 
 const MOUNTAIN: StageProfile = {
@@ -330,4 +330,28 @@ test("favouritesFor: etape efter seneste koerte bruger formen indtil den senest 
 test("favouritesFor: kun offentlige data (ingen route fit/evner i resultatet)", () => {
   const f = favouritesFor(GC_AFTER_4, STAGES, 5, MINE, 4, PROFILES);
   for (const fav of f) assert.deepEqual(Object.keys(fav).sort(), ["mine", "name", "nation", "reasons", "riderId"]);
+});
+
+// #7289: Hold-fanen (StageProfileGraph) og Etaper-fanen (elevationSeries) tegner SAMME serie for samme etape.
+test("#7289: elevationSeries og buildProfileSeries giver samme serie for samme etape", () => {
+  const real = withProfile(MOUNTAIN);
+  for (const p of [real, MOUNTAIN]) {
+    const stage = elevationSeries(p)!;
+    const graph = buildProfileSeries(p)!;
+    assert.deepEqual(stage.kms, graph.xs);
+    assert.deepEqual(stage.hs, graph.ys);
+    assert.equal(stage.source, graph.source);
+  }
+  assert.equal(buildProfileSeries(real)!.source, "profile");
+  assert.equal(buildProfileSeries(MOUNTAIN)!.source, "synthetic");
+});
+
+test("#7289: alle tegne-flader hentes fra buildProfileSeries, ingen egen hoejdeserie", async () => {
+  const { readFileSync } = await import("node:fs");
+  const here = new URL("../", import.meta.url);
+  const src = (rel: string) => readFileSync(new URL(rel, here), "utf8");
+  assert.match(src("StageProfileGraph.jsx"), /buildProfileSeries\(profile\)/);
+  assert.match(src("stagePageV2/stagePageV2Model.ts"), /buildProfileSeries\(profile\)/);
+  assert.doesNotMatch(src("stagePageV2/stagePageV2Model.ts"), /ep\.h\.map/);
+  for (const f of ["RaceStageProfileRow.jsx", "StageStripe.jsx"]) assert.match(src(f), /StageProfileGraph/);
 });
