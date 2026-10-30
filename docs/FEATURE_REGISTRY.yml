@@ -134,13 +134,12 @@ features:
     area: race-engine
     title_en: Day form with causes
     title_da: Dagsform ud fra træthed, form, sygdom og vejr
-    state: building
+    state: live
+    flag: day_form_6649
     ssot: docs/RACE_ENGINE_RULES.md
     epic: 6649
-    verified: 2026-10-27
-    decision: taend
-    decide_by: 2026-11-08
-    note: Tændes med ejer-go.
+    verified: 2026-10-30
+    note: "day_form_6649 on siden 27/10; læst i prod 30/10."
 
   - id: race-official-times-v1
     area: race-engine
@@ -726,13 +725,12 @@ features:
     area: academy
     title_en: Academy reminders
     title_da: Påmindelser om ugens akademi-kuld
-    state: dormant
+    state: live
+    flag: academy_pull_reminder_enabled
     ssot: docs/YOUTH_RULES.md
     epic: 6666
-    verified: 2026-10-25
-    note: "Flag academy_pull_reminder_enabled; ejeren tænder (#7177)."
-    decision: taend
-    decide_by: 2026-11-08
+    verified: 2026-10-30
+    note: "academy_pull_reminder_enabled on siden 26/10; læst i prod 30/10."
 
   - id: academy-ai-weekly-pull
     area: academy
@@ -922,13 +920,12 @@ features:
     area: training
     title_en: Train now B (the click settles the rider's whole known date)
     title_da: Træn nu B (klikket afregner rytterens hele kendte dato)
-    state: building
+    state: live
+    flag: training_train_now_whole_day
     ssot: docs/TRAINING_RULES.md
     epic: 6461
-    verified: 2026-10-26
-    note: PR #7191 åben; flag seedes off af migrationen. Ejer-go.
-    decision: ejer-beslutning
-    decide_by: 2026-11-08
+    verified: 2026-10-30
+    note: "training_train_now_whole_day on siden 27/10; læst i prod 30/10."
 
   - id: development-score-b-engine
     area: training
