@@ -126,34 +126,53 @@ export const WINDOW_MODEL_FLAG_KEYS = Object.freeze([
   DEVELOPMENT_SCORE_V2_FLAG_KEY, RACE_DAY_CATCHUP_FLAG_KEY, ABILITY_CAP_PER_DATE_FLAG_KEY,
 ]);
 
+// En traeningskoersel laeser flaget foer den skriver sine ticks. Et flag der aendrede sig
+// mindre end dette foer det foerste tick, kan derfor stadig have styret det tick.
+export const FLAG_READ_MARGIN_MINUTES = 60;
+
 /**
- * Et flags tilstand i HELE vinduet ud fra app_config-raekken (value, updated_at).
- * "off"/"on" kun naar raekken ikke er aendret siden foer vinduets start; ellers "changed"
- * (vi kender ikke vaerdien i vinduet). Manglende raekke = off, som motorens readFlagStage.
+ * Et flags tilstand for vinduets ticks ud fra app_config-raekken (value, updated_at).
+ * updated_at er SIDSTE aendring, saa vaerdien er kendt for alle ticks efter den. "off"/"on"
+ * kun naar aendringen ligger mindst FLAG_READ_MARGIN_MINUTES foer det foerste tick i
+ * vinduet (`firstTickAt`, default vinduets start); ellers "changed" (vaerdien ved de
+ * tidlige ticks er ukendt). Manglende raekke = off, som motorens readFlagStage.
  */
-export function flagStateForWindow(row, window = DEFAULT_WINDOW) {
+export function flagStateForWindow(row, window = DEFAULT_WINDOW, firstTickAt = null) {
   if (!row) return "off";
   const changedAt = Date.parse(row.updated_at);
-  if (!Number.isFinite(changedAt) || changedAt >= Date.parse(window.from)) return "changed";
+  const firstTick = Date.parse(firstTickAt ?? window.from);
+  const knownFrom = Math.max(Date.parse(window.from), Number.isFinite(firstTick) ? firstTick : -Infinity)
+    - FLAG_READ_MARGIN_MINUTES * 60_000;
+  if (!Number.isFinite(changedAt) || changedAt >= knownFrom) return "changed";
   return evaluateFlagStage(row.value) ? "on" : "off";
+}
+
+/** Foerste tick i vinduet (ISO) eller null. */
+export function firstTickInWindow(ticks, window = DEFAULT_WINDOW) {
+  let first = null;
+  for (const t of ticks ?? []) {
+    if (!isTickInWindow(t.created_at, window)) continue;
+    if (first == null || Date.parse(t.created_at) < Date.parse(first)) first = t.created_at;
+  }
+  return first;
 }
 
 /**
  * PURE: den udviklingsmodel prod brugte i vinduet (fund 3), samme regler som motorens
  * loadDevelopmentScoreB/loadRaceCatchUp: flag on + gyldige params + dato-loftet on.
  * `issues` ikke-tom = modellen kan ikke gengives sikkert, og --apply blokeres.
- * @param {{rows: Array<{key:string,value:any,updated_at:string}>|null, window?:object, env?:object}} p
+ * @param {{rows: Array<{key:string,value:any,updated_at:string}>|null, window?:object, env?:object, firstTickAt?:string|null}} p
  */
-export function resolveDevelopmentModel({ rows, window = DEFAULT_WINDOW, env = process.env }) {
+export function resolveDevelopmentModel({ rows, window = DEFAULT_WINDOW, env = process.env, firstTickAt = null }) {
   if (!Array.isArray(rows)) {
     return { developmentScoreB: null, raceCatchUp: null, states: {}, issues: ["app_config flags not read"] };
   }
   const byKey = new Map(rows.map((r) => [r.key, r]));
-  const states = Object.fromEntries(WINDOW_MODEL_FLAG_KEYS.map((k) => [k, flagStateForWindow(byKey.get(k), window)]));
+  const states = Object.fromEntries(WINDOW_MODEL_FLAG_KEYS.map((k) => [k, flagStateForWindow(byKey.get(k), window, firstTickAt)]));
   const issues = [];
   const capOn = states[ABILITY_CAP_PER_DATE_FLAG_KEY];
   const resolve = (key, fromEnv, envName) => {
-    if (states[key] === "changed") { issues.push(`${key} changed during or after the window start`); return null; }
+    if (states[key] === "changed") { issues.push(`${key} changed too close to or after the first tick in the window`); return null; }
     if (states[key] !== "on") return null;
     if (capOn === "changed") { issues.push(`${ABILITY_CAP_PER_DATE_FLAG_KEY} changed during the window while ${key} is on`); return null; }
     if (capOn !== "on") return null; // motoren koerer dagens model uden dato-loftet
@@ -611,7 +630,10 @@ export async function planInputFromExport(exported) {
     applied: new Set((exported.applied ?? []).map((a) => `${a.rider_id}:${a.ability}`)),
     window,
     // En aeldre eksport uden app_config giver en model med issues (aldrig et gaet "off").
-    model: resolveDevelopmentModel({ rows: Array.isArray(exported.app_config) ? exported.app_config : null, window }),
+    model: resolveDevelopmentModel({
+      rows: Array.isArray(exported.app_config) ? exported.app_config : null, window,
+      firstTickAt: firstTickInWindow(exported.ticks, window),
+    }),
   };
 }
 
@@ -730,7 +752,7 @@ async function loadPlanInputOnce(supabase, window) {
     staffByTeam,
     applied,
     window,
-    model: resolveDevelopmentModel({ rows: flagRows, window }),
+    model: resolveDevelopmentModel({ rows: flagRows, window, firstTickAt: firstTickInWindow(ticks, window) }),
   };
 }
 

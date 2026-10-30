@@ -336,6 +336,13 @@ test("fund 3: flagets tilstand i vinduet afgoeres af app_config.updated_at", () 
   assert.equal(flagStateForWindow({ value: "off", updated_at: IN_WINDOW }), "changed");
   assert.equal(flagStateForWindow({ value: "off", updated_at: "2026-10-30T00:00:00Z" }), "changed");
   assert.equal(flagStateForWindow({ value: "off", updated_at: null }), "changed");
+  // Aendret efter vinduets start, men et doegn foer det foerste tick: vaerdien er kendt.
+  const firstTick = "2026-10-27T06:45:25.004Z";
+  assert.equal(flagStateForWindow({ value: "off", updated_at: "2026-10-25T22:11:44Z" }, DEFAULT_WINDOW, firstTick), "off");
+  // Aendret kort foer det foerste tick: koerslen kan have laest den gamle vaerdi.
+  assert.equal(flagStateForWindow({ value: "off", updated_at: "2026-10-27T06:15:00Z" }, DEFAULT_WINDOW, firstTick), "changed");
+  // firstTickAt kan aldrig flytte graensen til foer vinduets start.
+  assert.equal(flagStateForWindow({ value: "off", updated_at: "2026-10-25T20:30:00Z" }, DEFAULT_WINDOW, "2026-10-20T00:00:00Z"), "changed");
 });
 
 test("fund 3: modellen laeses for vinduet; usikkerhed blokerer", () => {
