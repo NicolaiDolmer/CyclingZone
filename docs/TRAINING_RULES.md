@@ -419,10 +419,12 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
   `app_config`-nøglen `development_curve_b_ignited_at` mangler, gemmer motoren én række pr.
   rytter på et managerhold (managerhold-reglen: manager sat, ikke AI/bank/testkonto; rytteren
   ikke pensioneret) i `development_curve_b_transition_members` med de evner der står på eller
-  over loftet lige nu, også tomme rækker (insert ... on conflict do nothing, i batches). Først
-  derefter stemples nøglen med dagens danske dato, aldrig en efterslæbende tick-dato. Fejler
-  billedet, står der intet stempel, og næste kørsel prøver igen. Står stemplet der, tages
-  billedet aldrig igen, og nøglen overskrives aldrig.
+  over loftet lige nu, også tomme rækker. Rækkerne og stemplet (dagens danske dato, aldrig en
+  efterslæbende tick-dato) skrives i ÉN transaktion af database-funktionen
+  `ignite_development_curve_b_transition` under en lås: har en samtidig kørsel tændt imens,
+  skriver den intet, så et lukket billede aldrig udvides. Fejler noget, står der intet stempel,
+  og næste kørsel prøver igen. Står stemplet der, tages billedet aldrig igen, og nøglen
+  overskrives aldrig.
   Resten af vinduet læses kun rækken. En rytter uden række får kurve B hele vejen, fx en rytter
   der kommer til et managerhold efter tændingen (fra et AI-hold, en ny akademirytter). Rækken
   følger rytteren, så et skifte mellem to managerhold beholder den. Kørsler for datoer før

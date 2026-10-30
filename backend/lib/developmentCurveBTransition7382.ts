@@ -16,16 +16,18 @@
 //
 // TÆNDINGEN (ensureCurveBIgnition): første gang kurve B faktisk er aktiv (flaget on
 // OG gyldige params), og nøglen CURVE_B_IGNITED_AT_CONFIG_KEY mangler i app_config,
-// gør motoren to ting i denne rækkefølge:
+// gør motoren to ting, skrevet i ÉN transaktion (database-funktionen
+// CURVE_B_IGNITE_RPC under en advisory-lås, så samtidige kørsler ikke kan udvide et
+// billede der allerede er lukket):
 //   1. ØJEBLIKSBILLEDET: én række pr. rytter på et managerhold (managerhold-reglen,
 //      #6500: user_id sat, ikke AI/bank/testkonto; rytteren ikke pensioneret) i
 //      CURVE_B_TRANSITION_MEMBERS_TABLE med de evner der står på eller over det
 //      bløde loft lige nu (rider_derived_abilities). Også tomme rækker, så en
 //      samtidig kørsel der måler efter et tick, aldrig kan tilføje en evne.
-//      insert ... on conflict do nothing i batches: idempotent.
+//      insert ... on conflict do nothing: idempotent.
 //   2. STEMPLET: dagens danske dato ud fra `now`, aldrig en efterslæbende
 //      tick-dato. insert ... on conflict do nothing, og overskrives aldrig.
-// Billedet tages før stemplet: fejler billedet, står der intet stempel, og næste
+// Billedet og stemplet står eller falder sammen: fejler noget, står der intet, og næste
 // kørsel prøver igen (strict kaster; ellers kurve B fuldt for den kørsel). Står
 // stemplet der, tages billedet aldrig igen. Et flag der er on uden gyldige params
 // eller et kort flip on og off uden en kørsel imellem lægger intet. Skal en senere
@@ -43,7 +45,7 @@
 // private (hard rule 17) og kommer ind som de validerede params.
 //
 // De rene funktioner er deterministiske: ingen Date.now, ingen Math.random. Kun
-// readCurveBIgnitedOn, ensureCurveBIgnition, takeCurveBTransitionSnapshot og
+// readCurveBIgnitedOn, ensureCurveBIgnition, buildCurveBTransitionSnapshot og
 // loadCurveBTransitionRoster rører databasen.
 
 import { copenhagenDateString } from "./copenhagenTime.js";
@@ -57,6 +59,7 @@ import { fetchAllRows, fetchAllRowsChunkedIn, SUPABASE_IN_CHUNK_SIZE } from "./s
 export const CURVE_B_IGNITED_AT_CONFIG_KEY = "development_curve_b_ignited_at";
 export const CURVE_B_TRANSITION_MEMBERS_TABLE = "development_curve_b_transition_members";
 export const CURVE_B_TRANSITION_DAYS = 14;
+export const CURVE_B_IGNITE_RPC = "ignite_development_curve_b_transition";
 const CURVE_B_IGNITED_AT_DESCRIPTION =
   "#7382: Copenhagen date curve B was ignited (snapshot taken). Start of the soft transition. Written once by the training engine; delete the key to start a new transition.";
 
@@ -145,7 +148,7 @@ export function blendCurveBTransition({
   return v > 0 ? v : 0;
 }
 
-type DbClient = { from: (table: string) => any };
+type DbClient = { from: (table: string) => any; rpc?: (fn: string, args: Record<string, unknown>) => any };
 type TeamRow = { id: string; user_id?: string | null; is_ai?: boolean | null; is_bank?: boolean | null; is_test_account?: boolean | null };
 
 /**
@@ -191,21 +194,19 @@ export async function readCurveBIgnitedOn(
   }
 }
 
-const MEMBER_WRITE_BATCH = 500;
 const RIDER_COLUMNS = "id, team_id, potentiale, birthdate, primary_type, secondary_type, is_retired";
 
 /**
  * Øjebliksbilledet: én række pr. rytter på et managerhold med evnerne på eller
- * over det bløde loft lige nu, nøglet på `ignitedOn`. Idempotent (on conflict do
- * nothing). Kaster ved enhver fejl; intet stempel må skrives uden et helt billede.
- * Returnerer antal rytter-rækker der blev sendt.
+ * over det bløde loft lige nu. Læser kun; kaster ved enhver fejl (intet stempel
+ * uden et helt billede). Rækkerne gemmes af ensureCurveBIgnition.
  */
-export async function takeCurveBTransitionSnapshot(
+export async function buildCurveBTransitionSnapshot(
   supabase: DbClient,
-  { ignitedOn, curveB, seasonNumber, isManagerTeam }: {
-    ignitedOn: string; curveB: DevelopmentCurveBParams; seasonNumber: number; isManagerTeam: (team: TeamRow) => boolean;
+  { curveB, seasonNumber, isManagerTeam }: {
+    curveB: DevelopmentCurveBParams; seasonNumber: number; isManagerTeam: (team: TeamRow) => boolean;
   },
-): Promise<number> {
+): Promise<Array<{ rider_id: string; abilities: string[] }>> {
   if (!Number.isFinite(seasonNumber)) throw new Error("curve-b snapshot: seasonNumber required");
   if (typeof isManagerTeam !== "function") throw new Error("curve-b snapshot: isManagerTeam required");
   const teams: TeamRow[] = await fetchAllRows(() => supabase.from("teams")
@@ -218,7 +219,7 @@ export async function takeCurveBTransitionSnapshot(
     supabase.from("rider_derived_abilities").select("*").in("rider_id", ids).order("rider_id"),
     { chunkSize: SUPABASE_IN_CHUNK_SIZE });
   const abilityByRider = new Map<string, Record<string, unknown>>(abilityRows.map((row: Record<string, unknown>) => [row.rider_id as string, row]));
-  const rows: Array<{ rider_id: string; ignited_on: string; abilities: string[] }> = [];
+  const rows: Array<{ rider_id: string; abilities: string[] }> = [];
   for (const rider of live) {
     const abRow = abilityByRider.get(rider.id);
     if (!abRow) continue; // ingen evner = ingen række = kurve B hele vejen
@@ -227,23 +228,19 @@ export async function takeCurveBTransitionSnapshot(
     for (const k of VISIBLE_ABILITIES) if (abRow[k] != null) abilities[k] = Number(abRow[k]);
     const caps = buildCapsForRider(abilities, { potentiale: rider.potentiale, age: ageForSeason(rider.birthdate, seasonNumber) },
       rider.primary_type, rider.secondary_type);
-    rows.push({ rider_id: rider.id, ignited_on: ignitedOn, abilities: curveBTransitionAbilities({ abilities, caps, potentiale: rider.potentiale, curveB }) });
+    rows.push({ rider_id: rider.id, abilities: curveBTransitionAbilities({ abilities, caps, potentiale: rider.potentiale, curveB }) });
   }
-  for (let i = 0; i < rows.length; i += MEMBER_WRITE_BATCH) {
-    const { error } = await supabase.from(CURVE_B_TRANSITION_MEMBERS_TABLE)
-      .upsert(rows.slice(i, i + MEMBER_WRITE_BATCH), { onConflict: "rider_id,ignited_on", ignoreDuplicates: true });
-    if (error) throw new Error(`curve-b snapshot write: ${error.message ?? error}`);
-  }
-  return rows.length;
+  return rows;
 }
 
 /**
  * Kaldes KUN når kurve B faktisk er aktiv for kørslen. Læser først; står nøglen
  * der, returneres den (intet billede, intet stempel, heller ikke efter vinduet).
- * Mangler den: øjebliksbilledet for dagens danske dato (ud fra `now`), derefter
- * stemplet (on conflict do nothing, så samtidige hold-kørsler er harmløse), og
- * læses igen. strict = dato-stien: en fejl kaster; ellers null (kurve B fuldt for
- * kørslen), og næste kørsel prøver igen.
+ * Mangler den: øjebliksbilledet beregnes, og rækkerne + stemplet med dagens danske
+ * dato (ud fra `now`) skrives atomart af CURVE_B_IGNITE_RPC. Har en samtidig
+ * kørsel tændt imens, skriver funktionen intet og returnerer det stempel der står.
+ * strict = dato-stien: en fejl kaster; ellers null (kurve B fuldt for kørslen), og
+ * næste kørsel prøver igen.
  */
 export async function ensureCurveBIgnition(
   supabase: DbClient,
@@ -258,13 +255,14 @@ export async function ensureCurveBIgnition(
     if (typeof today !== "string" || !DATE_RE.test(today) || !isRealDate(today)) {
       throw new Error(`curve-b ignition: invalid date ${today}`);
     }
-    await takeCurveBTransitionSnapshot(supabase, { ignitedOn: today, curveB, seasonNumber, isManagerTeam });
-    const { error } = await supabase.from("app_config").upsert(
-      { key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: today, description: CURVE_B_IGNITED_AT_DESCRIPTION },
-      { onConflict: "key", ignoreDuplicates: true },
-    );
-    if (error) throw new Error(`curve-b ignition stamp: ${error.message ?? error}`);
-    return (await readIgnitionRow(supabase)).ignitedOn;
+    const members = await buildCurveBTransitionSnapshot(supabase, { curveB, seasonNumber, isManagerTeam });
+    if (typeof supabase.rpc !== "function") throw new Error("curve-b ignition: rpc unavailable");
+    const { data, error } = await supabase.rpc(CURVE_B_IGNITE_RPC,
+      { p_ignited_on: today, p_members: members, p_description: CURVE_B_IGNITED_AT_DESCRIPTION });
+    if (error) throw new Error(`curve-b ignition write: ${error.message ?? error}`);
+    const stamped = ignitedOnFromConfigValue(data);
+    if (stamped == null) throw new Error(`curve-b ignition write: unexpected stamp ${JSON.stringify(data)}`);
+    return stamped;
   } catch (err) {
     if (strict) throw err;
     console.warn(`[curve-b] taendingen (${CURVE_B_IGNITED_AT_CONFIG_KEY}) mislykkedes - ingen overgang i denne koersel: ${errText(err)}`);

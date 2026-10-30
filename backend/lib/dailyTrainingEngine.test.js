@@ -3486,7 +3486,20 @@ const CURVE_B_IGNITED_KEY_7382 = "development_curve_b_ignited_at";
 const CURVE_B_MEMBERS_7382 = "development_curve_b_transition_members";
 const HIGH_7382 = () => ({ ...Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 85])), ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) });
 const MANAGER_TEAM_7382 = { id: TEAM_ID, user_id: "u1", is_ai: false, is_bank: false, is_test_account: false };
-// fail: "stamp" (noeglens laesning), "members" (medlemslaesning) eller "snapshot" (billedets skrivning).
+// fail: "stamp" (noeglens laesning), "members" (medlemslaesning) eller "snapshot" (taendingens atomare skrivning).
+// Taendingens database-funktion efterlignes her: under laasen raekker + stempel, eller intet hvis stemplet staar der.
+function igniteRpc7382(state, args, { configUpserts, touched }) {
+  state[CURVE_B_MEMBERS_7382] ??= [];
+  const existing = state.app_config.find((r) => r.key === CURVE_B_IGNITED_KEY_7382);
+  if (existing) return { data: existing.value, error: null };
+  const rows = args.p_members.filter((m) => state.riders.some((r) => r.id === m.rider_id)
+    && !state[CURVE_B_MEMBERS_7382].some((x) => x.rider_id === m.rider_id && x.ignited_on === args.p_ignited_on));
+  state[CURVE_B_MEMBERS_7382].push(...rows.map((m) => ({ rider_id: m.rider_id, ignited_on: args.p_ignited_on, abilities: m.abilities })));
+  touched.push(`${CURVE_B_MEMBERS_7382}:upsert`);
+  state.app_config.push({ key: CURVE_B_IGNITED_KEY_7382, value: args.p_ignited_on });
+  configUpserts.push(CURVE_B_IGNITED_KEY_7382);
+  return { data: args.p_ignited_on, error: null };
+}
 async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPerDate = false, fail = null, prep = null, runArgs = {}, now = NOW }) {
   const state = seedState({
     abilities: [makeAbilityRow("r1", HIGH_7382())],
@@ -3506,13 +3519,18 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
   const configKeys = [];
   const configUpserts = [];
   const touched = [];
-  const supabase = { ...underlying, from(table) {
+  const supabase = { ...underlying,
+    async rpc(name, args) {
+      if (name !== "ignite_development_curve_b_transition") return underlying.rpc(name, args);
+      if (fail === "snapshot") return { data: null, error: { message: "billede nede" } };
+      return igniteRpc7382(state, args, { configUpserts, touched });
+    },
+    from(table) {
     const b = underlying.from(table);
     if (table === CURVE_B_MEMBERS_7382) {
       touched.push(table);
       if (fail === "members") return { ...b, select: () => ({ eq: () => ({ in: async () => ({ data: null, error: { message: "members nede" } }) }) }) };
-      if (fail === "snapshot") return { ...b, upsert: async () => ({ error: { message: "billede nede" } }) };
-      return { ...b, upsert(rows, o) { touched.push(`${table}:upsert`); return b.upsert(rows, o); } };
+      return b;
     }
     if (table !== "app_config") return b;
     return { ...b,
@@ -3591,7 +3609,7 @@ test("#7382 kald-sted: oejebliksbilledet tages een gang: managerholdets ryttere,
   assert.deepEqual(first.members.map((m) => m.rider_id).sort(), ["r1", "r2"], "hele managerholdets trup, ogsaa uden tick i koerslen");
   assert.ok(first.members.every((m) => m.abilities.length > 0 && m.abilities.every((a) => VISIBLE_ABILITIES.includes(a))));
   assert.deepEqual(first.configUpserts, [CURVE_B_IGNITED_KEY_7382], "stemplet skrives en gang");
-  assert.equal(first.touched.filter((t) => t.endsWith(":upsert")).length, 1, "billedet skrives i een batch");
+  assert.equal(first.touched.filter((t) => t.endsWith(":upsert")).length, 1, "billede og stempel i eet atomart kald");
   const again = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", members: first.members, prep: otherTeams });
   assert.ok(!again.touched.some((t) => t.endsWith(":upsert")), "stemplet staar der: intet nyt billede");
   assert.deepEqual(again.members, first.members);

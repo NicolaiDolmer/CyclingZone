@@ -9,7 +9,7 @@ import {
   CURVE_B_IGNITED_AT_CONFIG_KEY, CURVE_B_TRANSITION_DAYS, CURVE_B_TRANSITION_MEMBERS_TABLE,
   blendCurveBTransition, calendarDaysBetween, curveBTransitionAbilities, curveBTransitionForDate,
   ensureCurveBIgnition, ignitedOnFromConfigValue, loadCurveBTransitionRoster, readCurveBIgnitedOn,
-  takeCurveBTransitionSnapshot,
+  buildCurveBTransitionSnapshot, CURVE_B_IGNITE_RPC,
 } from "./developmentCurveBTransition7382.ts";
 import { curveBSoftCeiling, validateDevelopmentCurveBParams } from "./developmentCurveB.ts";
 import { applyDailyTick, dailyAbilityDelta } from "./dailyTraining.js";
@@ -154,10 +154,28 @@ test("læsning: nøglen fra app_config; fejl = ingen overgang, men kaster på de
 // upsert med ignoreDuplicates = insert ... on conflict do nothing. `fail` = { "tabel:op": besked }.
 type Row = Record<string, any>;
 const CONFLICT: Record<string, string[]> = { app_config: ["key"], [CURVE_B_TRANSITION_MEMBERS_TABLE]: ["rider_id", "ignited_on"] };
-function fakeDb(tables: Record<string, Row[]>, { fail = {} as Record<string, string> } = {}) {
+// rpc = database-funktionen: under laasen skriver den raekker + stempel, eller intet hvis stemplet staar der.
+function fakeDb(tables: Record<string, Row[]>, { fail = {} as Record<string, string>, beforeRpc = null as null | (() => void) } = {}) {
   const log: string[] = [];
   const db = {
     tables, log, fail,
+    async rpc(fn: string, args: Row) {
+      log.push(`rpc:${fn}`);
+      beforeRpc?.();
+      if (fail.rpc) return { data: null, error: { message: fail.rpc } };
+      assert.equal(fn, CURVE_B_IGNITE_RPC);
+      tables.app_config ??= [];
+      tables[CURVE_B_TRANSITION_MEMBERS_TABLE] ??= [];
+      const existing = tables.app_config.find((r) => r.key === CURVE_B_IGNITED_AT_CONFIG_KEY);
+      if (existing) return { data: existing.value, error: null };
+      for (const m of args.p_members) {
+        if (!(tables.riders ?? []).some((r) => r.id === m.rider_id)) continue;
+        if (tables[CURVE_B_TRANSITION_MEMBERS_TABLE].some((x) => x.rider_id === m.rider_id && x.ignited_on === args.p_ignited_on)) continue;
+        tables[CURVE_B_TRANSITION_MEMBERS_TABLE].push({ rider_id: m.rider_id, ignited_on: args.p_ignited_on, abilities: m.abilities });
+      }
+      tables.app_config.push({ key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: args.p_ignited_on });
+      return { data: args.p_ignited_on, error: null };
+    },
     from(table: string) {
       tables[table] ??= [];
       const filters: Array<(r: Row) => boolean> = [];
@@ -228,8 +246,9 @@ const TODAY_7382 = "2026-10-31";
 
 test("fixturen: rytter A står over loftet med motorens loft, rytter B under (ellers tester vi intet)", async () => {
   const db = fakeDb(world());
-  await takeCurveBTransitionSnapshot(db, { ignitedOn: TODAY_7382, curveB: PARAMS, seasonNumber: SEASON, isManagerTeam });
-  const byId = new Map(membersOf(db).map((r) => [r.rider_id, r.abilities]));
+  const rows = await buildCurveBTransitionSnapshot(db, { curveB: PARAMS, seasonNumber: SEASON, isManagerTeam });
+  assert.ok(!db.log.some((l) => l.includes("upsert") || l.startsWith("rpc")), "billedet beregnes uden at skrive");
+  const byId = new Map(rows.map((r) => [r.rider_id, r.abilities]));
   assert.ok(byId.get("A").length > 0);
   assert.deepEqual(byId.get("B"), []);
 });
@@ -265,15 +284,29 @@ test("øjebliksbilledet tages én gang: står stemplet der, læses intet andet e
   assert.deepEqual(hand.log, ["app_config:select"], "en ugyldig værdi i hånden overskrives ikke, og intet billede");
 });
 
-test("rækkefølgen: billedet skrives før stemplet", async () => {
+test("atomart: billede og stempel skrives i ét kald, efter at billedet er beregnet", async () => {
   const db = fakeDb(world());
   await ignite(db);
-  const members = db.log.indexOf(`${CURVE_B_TRANSITION_MEMBERS_TABLE}:upsert:2`);
-  const stamp = db.log.indexOf("app_config:upsert:1");
-  assert.ok(members >= 0 && stamp > members, db.log.join(" "));
+  assert.equal(db.log.filter((l) => l.startsWith("rpc:")).length, 1);
+  assert.ok(db.log.indexOf(`rpc:${CURVE_B_IGNITE_RPC}`) > db.log.lastIndexOf("rider_derived_abilities:select"));
+  assert.ok(!db.log.some((l) => l.includes("upsert")), "ingen løse skrivninger uden for funktionen");
 });
 
-for (const failAt of ["teams:select", "riders:select", "rider_derived_abilities:select", `${CURVE_B_TRANSITION_MEMBERS_TABLE}:upsert`]) {
+test("atomart (Codex 30/10): en samtidig kørsel der tændte imens, lukker billedet; en tilkommen rytter kommer ikke med", async () => {
+  const db = fakeDb(world(), { beforeRpc: () => {
+    // Den anden kørsel nåede først: den har tændt med sit billede (kun A og B).
+    if (stampOf(db) == null) {
+      db.tables.app_config.push({ key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: "2026-10-30" });
+      db.tables[CURVE_B_TRANSITION_MEMBERS_TABLE].push({ rider_id: "A", ignited_on: "2026-10-30", abilities: [MAIN] }, { rider_id: "B", ignited_on: "2026-10-30", abilities: [] });
+    }
+  } });
+  db.tables.riders.push(rider("NEW", "M1"));
+  db.tables.rider_derived_abilities.push(abilityRow("NEW", HIGH));
+  assert.equal(await ignite(db, { strict: true }), "2026-10-30", "det stempel der står, gælder");
+  assert.deepEqual(membersOf(db).map((r) => r.rider_id).sort(), ["A", "B"], "intet tilføjet til et lukket billede");
+});
+
+for (const failAt of ["teams:select", "riders:select", "rider_derived_abilities:select", "rpc"]) {
   test(`tændingen: fejl i billedet (${failAt}) efterlader intet stempel; strict kaster; næste kørsel prøver igen`, async () => {
     const db = fakeDb(world(), { fail: { [failAt]: "nede" } });
     assert.equal(await quiet(() => ignite(db)), null, "uden strict: ingen overgang i kørslen");
@@ -286,10 +319,7 @@ for (const failAt of ["teams:select", "riders:select", "rider_derived_abilities:
   });
 }
 
-test("tændingen: fejl i stemplet eller nøglens læsning = intet stempel; strict kaster", async () => {
-  const stamp = fakeDb(world(), { fail: { "app_config:upsert": "nede" } });
-  assert.equal(await quiet(() => ignite(stamp)), null);
-  await assert.rejects(ignite(stamp, { strict: true }), /nede/);
+test("tændingen: fejl i nøglens læsning = intet billede; strict kaster", async () => {
   const read = fakeDb(world(), { fail: { "app_config:select": "nede" } });
   assert.equal(await quiet(() => ignite(read)), null);
   assert.ok(!read.log.includes("teams:select"), "en fejlet læsning tager aldrig et billede");
