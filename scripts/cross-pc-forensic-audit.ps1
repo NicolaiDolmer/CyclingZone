@@ -129,7 +129,9 @@ $codexLocalWhitelist = @(
   "supabase-readonly.env",
   "preflight-state.json",
   # preflight-season-cutover.ps1 skriver sin rapport her; den genereres paa ny ved hver koersel.
-  "season-cutover-preflight.json"
+  "season-cutover-preflight.json",
+  # preflight-night-wave.ps1 skriver sin summary her; den genereres paa ny ved hver koersel.
+  "night-wave-preflight.json"
 )
 # Pattern-baserede ephemerals (kortlivede buffers)
 $codexLocalEphemeralPatterns = @(
