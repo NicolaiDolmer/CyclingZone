@@ -1,5 +1,79 @@
 export const PATCHES = [
   {
+    "version": "7.389",
+    "date": "2026-10-30",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Next race points to your own race",
+          "body": "Next race on the dashboard now points to your team's own next race, and falls back to the calendar if you have none."
+        },
+        "da": {
+          "title": "Næste løb peger på jeres eget løb",
+          "body": "Næste løb på forsiden peger nu på dit holds eget næste løb og falder tilbage til kalenderen, hvis I ingen har."
+        },
+        "refs": [
+          7296
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Season planner highlight stays put",
+          "body": "In the season planner, taking a rider out of a race no longer makes the highlight jump to the wrong dates."
+        },
+        "da": {
+          "title": "Markeringen i sæsonplanlæggeren bliver stående",
+          "body": "I sæsonplanlæggeren flytter markeringen sig ikke længere til forkerte datoer, når en rytter tages ud af et løb."
+        },
+        "refs": [
+          7294
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "Off-season trades show under the right season",
+          "body": "Trades made in the gap between two seasons now show under the upcoming season in transfer history."
+        },
+        "da": {
+          "title": "Handler mellem sæsoner står under den rigtige sæson",
+          "body": "Handler i hullet mellem to sæsoner vises nu under den kommende sæson i transferhistorikken."
+        },
+        "refs": [
+          7285
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Released academy riders leave the transfer list",
+          "body": "A rider released from the academy is now also removed from the transfer list."
+        },
+        "da": {
+          "title": "Frigivne akademiryttere forlader transferlisten",
+          "body": "En rytter, der frigives fra akademiet, fjernes nu også fra transferlisten."
+        },
+        "refs": [
+          7284
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.388",
     "date": "2026-10-30",
     "changes": [
