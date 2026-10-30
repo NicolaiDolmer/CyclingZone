@@ -10,11 +10,11 @@ export const PATCHES = [
         "topic": "Training",
         "en": {
           "title": "Two hard sessions for every rider type",
-          "body": "What changed: There are five new hard sessions: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial now has its own sessions, so Threshold trains tempo and endurance. Time trial and GC riders on Threshold, or without a plan, now train Long time trials.\n\nWhat it means for you: Check the plan for your time trial and GC riders. One who followed a training group with other rider types now has his own plan."
+          "body": "What changed: There are five new hard sessions: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial now has its own sessions, so Threshold trains tempo and endurance. Time trial and GC riders on Threshold, and time trial riders without a plan, now train Long time trials.\n\nWhat it means for you: Check the plan for your time trial and GC riders. One who followed a training group with other rider types now has his own plan."
         },
         "da": {
           "title": "To hårde sessioner til hver ryttertype",
-          "body": "Hvad er ændret: Der er fem nye hårde sessioner: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har nu sine egne sessioner, så Tærskel træner tempo og udholdenhed. Enkeltstarts- og klassementsryttere på Tærskel eller uden plan træner nu Lange enkeltstarter.\n\nHvad betyder det for dig: Tjek planen for dine enkeltstarts- og klassementsryttere. En af dem, der fulgte en træningsgruppe med andre ryttertyper, har nu sin egen plan."
+          "body": "Hvad er ændret: Der er fem nye hårde sessioner: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har nu sine egne sessioner, så Tærskel træner tempo og udholdenhed. Enkeltstarts- og klassementsryttere på Tærskel og enkeltstartsryttere uden plan træner nu Lange enkeltstarter.\n\nHvad betyder det for dig: Tjek planen for dine enkeltstarts- og klassementsryttere. En af dem, der fulgte en træningsgruppe med andre ryttertyper, har nu sin egen plan."
         },
         "refs": [
           5319,
