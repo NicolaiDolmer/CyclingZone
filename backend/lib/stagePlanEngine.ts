@@ -277,7 +277,9 @@ export function advanceStagePlanAtFinish(
     events.push({
       km: Math.round(km * 100) / 100,
       type: STAGE_PLAN_LEG_EVENT,
-      params: { rider_id: riderId, leg: next, task: legs[next].task, reason: legs[next].routeReason as StagePlanSwitchReason },
+      // Codex-review #7333: at_finish = skiftet gaelder kun finalen. Segmentets egne
+      // mekanikker (fx stigningens split ved segment.to_km) koerte paa det forrige led.
+      params: { rider_id: riderId, leg: next, task: legs[next].task, reason: legs[next].routeReason as StagePlanSwitchReason, at_finish: true },
     });
   }
   return events.length ? { events, entrants: stagePlanEntrants(rt, entrants) } : null;

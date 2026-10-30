@@ -219,6 +219,18 @@ test("#7333 stagePlanTaskAt + buildOwnTimeLoss: faldet viser opgaven rytteren ha
   assert.equal(drop.planTask, "stay_sheltered");
 });
 
+test("#7333 Codex-review: et finale-skift (at_finish) tilskrives ikke et fald paa sidste segment", () => {
+  const orders = { orders: [{ stage_number: 1, riders: [
+    { rider_id: "own1", plan: [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "final_km" } }] },
+  ] }] };
+  const efforts = effectiveEffortByRider(null, orders, 1, { v4: true });
+  // Stigning km 120-150: splittet ved 150 kom FOER finalens skift, der staar paa km 140.
+  const atFinish = [{ km: 140, type: "stage_plan_leg", params: { rider_id: "own1", leg: 1, task: "follow_moves", reason: "final_km", at_finish: true } }];
+  assert.equal(stagePlanTaskAt(efforts, atFinish, "own1", 150), "stay_sheltered");
+  const atStart = [{ km: 140, type: "stage_plan_leg", params: { rider_id: "own1", leg: 1, task: "follow_moves", reason: "final_km" } }];
+  assert.equal(stagePlanTaskAt(efforts, atStart, "own1", 150), "follow_moves", "aeldre/segment-skift: uaendret");
+});
+
 test("#6647 effectiveEffortByRider: en ordre med 'normal' overskriver ikke rollens beskyt/spar", () => {
   const roles = { overrides: [{ stage_number: 4, rider_id: "r1", effort: "save" }, { stage_number: 4, rider_id: "r2", effort: "protect" }] };
   const neutral = { orders: [{ stage_number: 4, riders: [{ rider_id: "r1", effort: "normal" }, { rider_id: "r2", effort: "normal" }] }] };

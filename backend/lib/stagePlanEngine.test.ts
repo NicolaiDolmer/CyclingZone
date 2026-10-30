@@ -98,6 +98,7 @@ test("#7333: 'de sidste km' paa et langt sidste segment skifter ikke ved segment
   assert.ok(finale);
   assert.deepEqual(finale.events.map((e) => [e.km, e.type, e.params.task, e.params.reason]), [[finalKm, STAGE_PLAN_LEG_EVENT, "follow_moves", "final_km"]]);
   assert.equal(finale.entrants["cap"].effort, "protect");
+  assert.equal(finale.events[0].params.at_finish, true, "Codex-review: visningen ved at skiftet kun gaelder finalen");
   assert.equal(finale.entrants["x"], ENTRANTS["x"], "ryttere uden plan er samme objekt");
   assert.equal(stagePlanFinalEfforts(rt)["cap"], "protect", "juryen ser sidste leds indsats");
   // Intet at skifte to gange.
