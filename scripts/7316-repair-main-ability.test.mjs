@@ -300,6 +300,12 @@ test("fund 2: form/traethed fra rapporten, aldrig 50/0", () => {
   // Eksportens tomme objekt { form: null, fatigue: null } er IKKE form 0 / traethed 0.
   assert.equal(conditionForTick({ condition_before_date: { form: null, fatigue: null } }), null);
   assert.equal(conditionForTick({}), null);
+  // Codex P1 (#7362): klippet slutform ved loft/gulv er tvetydig og springes over.
+  const sweet = { condition_before_date: null, fatigue: 22, fatigue_delta: 2 };
+  assert.equal(conditionForTick({ ...sweet, form: 100 }), null, "form 100 efter et plus-skridt kan komme fra flere startformer");
+  assert.notEqual(conditionForTick({ ...sweet, form: 99 }), null, "under loftet er inversionen entydig");
+  const overload = { condition_before_date: null, fatigue: 95, fatigue_delta: 5 };
+  assert.equal(conditionForTick({ ...overload, form: 0 }), null, "form 0 efter et minus-skridt er tvetydig");
 });
 
 test("fund 2: kreditten bruger rapportens form, og et tick uden tilstand springes over", () => {

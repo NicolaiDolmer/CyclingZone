@@ -101,7 +101,8 @@ const finiteOrNull = (v) => (v == null || v === "" || !Number.isFinite(Number(v)
  *   regnede dér `fatigueFoer = fatigue - fatigue_delta` og `form = nextForm(formFoer,
  *   fatigue)`, og nextForm's skridt afhaenger kun af den nye traethed, saa formen foer er
  *   formen efter minus det skridt (klippet til 0..100).
- * - Mangler begge: null. Kalderen springer ticket over i stedet for at gaette.
+ * - Mangler begge, eller er inversionen tvetydig ved formens loft/gulv: null. Kalderen
+ *   springer ticket over i stedet for at gaette.
  * @returns {{form:number,fatigue:number,source:string}|null}
  */
 export function conditionForTick(tick) {
@@ -114,6 +115,10 @@ export function conditionForTick(tick) {
   const fatigueDelta = finiteOrNull(tick?.fatigue_delta);
   if (formAfter == null || fatigueAfter == null || fatigueDelta == null) return null;
   const formStep = nextForm({ form: 50, fatigue: fatigueAfter }) - 50;
+  // Codex P1 (#7362): ved loftet/gulvet klipper nextForm skridtet, saa flere startformer gav
+  // samme slutform (fx form 100 forbliver 100). Inversionen er da tvetydig: spring ticket over
+  // i stedet for at kreditere for lidt og markere parret som anvendt i ledgeren.
+  if ((formAfter >= 100 && formStep > 0) || (formAfter <= 0 && formStep < 0)) return null;
   return {
     form: Math.max(0, Math.min(100, formAfter - formStep)),
     fatigue: fatigueAfter - fatigueDelta,
