@@ -3428,12 +3428,14 @@ const CURVE_B_TEST_PARAMS = JSON.stringify({
   potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
 });
 
-async function runCurveBDay({ flag = null, params = undefined } = {}) {
+async function runCurveBDay({ flag = null, params = undefined, privateParams = undefined } = {}) {
   const state = seedState({
     abilities: [makeAbilityRow("r1", { ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) })],
     plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
   });
   if (flag != null) state.app_config = [{ key: "development_curve_b", value: flag }];
+  // #7390: params i den lukkede tabel (foerst), Railway-variablen er reserven.
+  if (privateParams !== undefined) state.private_config = [{ key: "development_curve_b_params", value: privateParams }];
   const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
   if (params === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
   else process.env.DEVELOPMENT_CURVE_B_PARAMS = params;
@@ -3472,4 +3474,19 @@ test("#3564 kald-sted: flag on + gyldige params sender kurven ind i tick'et", as
   const today = await runCurveBDay();
   const curve = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
   assert.notDeepEqual(curve.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
+});
+
+test("#7390 kald-sted: params fra private_config (uden Railway-variabel) sender kurven ind; samme resultat som reserven", async () => {
+  const today = await runCurveBDay();
+  const fromTable = await runCurveBDay({ flag: "on", privateParams: JSON.parse(CURVE_B_TEST_PARAMS) });
+  const fromReserve = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  assert.notDeepEqual(fromTable.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
+  assert.deepEqual(fromTable.row.ability_progress, fromReserve.row.ability_progress);
+  assert.ok(!fromTable.warnings.some((w) => w.includes("reserve")), "ingen reserve-advarsel naar tabellen bruges");
+});
+
+test("#7390 kald-sted: flag off med params i private_config = dagens model", async () => {
+  const today = await runCurveBDay();
+  const off = await runCurveBDay({ flag: "off", privateParams: JSON.parse(CURVE_B_TEST_PARAMS) });
+  assert.deepEqual(off.row, today.row);
 });

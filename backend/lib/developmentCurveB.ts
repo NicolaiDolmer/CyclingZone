@@ -50,7 +50,7 @@ const SCALE_TOP = 100;
 const POT_MIN = 1;
 const POT_MAX = 6;
 // #7316: restfarten (andel af fuld fart, se curveBCapSoftness), når params ikke selv
-// angiver `aboveCeilingFloor`. Params ligger i serverens miljø, så et manglende felt
+// angiver `aboveCeilingFloor`. Params ligger uden for koden (private_config, #7390), så et manglende felt
 // må aldrig give muren tilbage. Sikker kode-default > 0; kalibreringen er privat.
 export const DEFAULT_ABOVE_CEILING_FLOOR = 0.1;
 

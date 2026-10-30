@@ -411,8 +411,11 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
 - **Uændret:** maks +1 pr. evne pr. løbsdag og pr. dato (§6.2), fremdriften bæres videre, loftet
   klipper, og løbsdagen går gennem samme kæde.
 - **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens
-  tal er private og ligger i serverens miljø, ikke i koden; tændt uden gyldige tal kører dagens
-  model. Blev tændt af ejeren efter en ny 10-sæsoners-kørsel med den rigtige kurve.
+  tal er private og ligger i den lukkede tabel `private_config` (nøglen
+  `development_curve_b_params`, [#7390](https://github.com/NicolaiDolmer/CyclingZone/issues/7390)),
+  ikke i koden; Railway-variablen `DEVELOPMENT_CURVE_B_PARAMS` er en midlertidig reserve, der kun
+  bruges når rækken mangler. En række der findes men er ugyldig bruger aldrig reserven. Tændt uden
+  gyldige tal kører dagens model. Blev tændt af ejeren efter en ny 10-sæsoners-kørsel med den rigtige kurve.
 
 Kode: `developmentCurveB.ts` (kurven), `developmentCurveBFlag.ts` (flag og tal),
 `dailyAbilityDelta`/`applyDailyTick` (`dailyTraining.js`). Gates: `scripts/dev/developmentCurveBHarness3564.mjs`.
