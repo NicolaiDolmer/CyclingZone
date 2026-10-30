@@ -1405,11 +1405,11 @@
       },
       "ceilingReachedCurveB": {
         "title": "De vaardigheid van mijn renner stijgt niet meer",
-        "text": "De vooruitgang vertraagt naarmate een vaardigheid al hoger staat en dichter bij het plafond komt dat zijn type en potentieel bepalen, dus een waarde die een paar dagen stilstaat, is niet per se klaar. Is een vaardigheid echt gestopt, dan is het bijna altijd een van twee dingen. Of de renner is over zijn piek heen, en zijn vaardigheden gaan bij de seizoenswissel achteruit in plaats van te groeien. Of de vaardigheid staat al boven het plafond dat zijn potentieel bepaalt, wat kan gebeuren bij renners die zich onder het vorige trainingsmodel ontwikkelden. Er wordt hem niets afgenomen, hij stijgt alleen niet verder. Het getal naast een vaardigheid is altijd de huidige waarde, nooit het plafond, dat nergens in het spel als getal wordt getoond."
+        "text": "De vooruitgang vertraagt naarmate een vaardigheid al hoger staat en dichter bij het plafond komt dat zijn type en potentieel bepalen, maar hij staat daar nooit stil: boven dat plafond groeit een vaardigheid langzaam door. Een waarde die een paar dagen stilstaat, is meestal gewoon trage vooruitgang. Is een vaardigheid echt gestopt, dan is het bijna altijd een van twee dingen. Of de renner is over zijn piek heen, en zijn vaardigheden gaan bij de seizoenswissel achteruit in plaats van te groeien. Of de vaardigheid heeft het hoogste niveau bereikt dat zijn rol toelaat. Het getal naast een vaardigheid is altijd de huidige waarde, nooit het plafond, dat nergens in het spel als getal wordt getoond."
       },
       "longTermGrowthCurveB": {
         "title": "Groei op lange termijn",
-        "text": "Drie dingen bepalen waar een vaardigheid uitkomt. Zijn type bepaalt welke vaardigheden het hoogst kunnen komen. Zijn potentieel bepaalt hoe hoog: een groter talent heeft een hoger plafond en ontwikkelt zich ook sneller. En het niveau zelf: elk punt kost meer naarmate de vaardigheid al hoger staat, dus een renner gaat snel op een laag niveau en langzaam vlak bij de top. Leeftijd laat niemand sneller ontwikkelen. De jongste renners kunnen nog geen volle trainingsbelasting aan, dus op hetzelfde niveau gaan ze iets langzamer tot ze dat wel kunnen. Dicht bij zijn plafond neemt de vooruitgang geleidelijk af, en training kan niemand ooit voorbij dat plafond duwen."
+        "text": "Drie dingen bepalen waar een vaardigheid uitkomt. Zijn type bepaalt welke vaardigheden het hoogst kunnen komen. Zijn potentieel bepaalt hoe hoog: een groter talent heeft een hoger plafond en ontwikkelt zich ook sneller. En het niveau zelf: elk punt kost meer naarmate de vaardigheid al hoger staat, dus een renner gaat snel op een laag niveau en langzaam vlak bij de top. Leeftijd laat niemand sneller ontwikkelen. De jongste renners kunnen nog geen volle trainingsbelasting aan, dus op hetzelfde niveau gaan ze iets langzamer tot ze dat wel kunnen. Dicht bij zijn plafond neemt de vooruitgang af, maar hij staat nooit stil, tot het hoogste niveau dat zijn rol toelaat."
       },
       "trainToday": {
         "title": "De training van vandaag nu draaien",
@@ -1493,7 +1493,7 @@
       },
       "catalogV3": {
         "title": "Twee zware sessies voor elk rennerstype",
-        "text": "Elk rennerstype heeft nu twee zware sessies die ervoor gebouwd zijn, en elke zware sessie geeft een volledige zware dag. Vijf sessies zijn nieuw: Lange beklimmingen, Lead-out, Korte tijdritten, Lange tijdritten en Kasseienklassieker. Tijdrijden heeft eindelijk eigen sessies, dus Drempel traint nu tempo en uithoudingsvermogen. Sprint geeft nu een volledige zware dag. Wissel je tussen de twee sessies van je type, dan groeit de hoofdvaardigheid iets minder, maar groeien andere vaardigheden."
+        "text": "Elk rennerstype heeft nu twee zware sessies die ervoor gebouwd zijn, en elke zware sessie geeft een volledige zware dag. Vijf sessies zijn nieuw: Lange beklimmingen, Lead-out, Korte tijdritten, Lange tijdritten en Kasseienklassieker. Tijdrijden heeft eindelijk eigen sessies, dus Drempel traint nu tempo en uithoudingsvermogen. Sprint geeft nu een volledige zware dag. Wissel je tussen de twee sessies van je type, dan groeit de hoofdvaardigheid iets minder, maar groeien andere vaardigheden. Tijdrijders en klassementsrenners die op Drempel stonden, en tijdrijders zonder plan, trainen nu Lange tijdritten. Volgde zo'n renner een trainingsgroep met andere rennerstypes, dan heeft hij nu een eigen plan."
       }
     },
     "activityfeed": {
