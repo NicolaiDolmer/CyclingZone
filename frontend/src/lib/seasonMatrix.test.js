@@ -220,8 +220,8 @@ test("buildRiderRowSegments: ét spænd pr. holdudtag (kontrakt #3), tomme celle
   ]);
   const segs = buildRiderRowSegments(dayColumns, races, draftByRace, "rider1");
   assert.equal(segs.length, 2);
-  assert.deepEqual(segs[0], { kind: "entry", race: races[0], role: "captain", days: [2, 3, 4, 5, 6], colSpan: 5 });
-  assert.deepEqual(segs[1], { kind: "empty", day: 8, raceId: "oneDay" });
+  assert.deepEqual(segs[0], { kind: "entry", key: "gt:entry", race: races[0], role: "captain", days: [2, 3, 4, 5, 6], colSpan: 5 });
+  assert.deepEqual(segs[1], { kind: "empty", key: "oneDay:8", day: 8, raceId: "oneDay" });
 });
 
 test("buildRiderRowSegments: to løb der deler en dag giver TO adskilte segmenter for rytteren (ingen klip/forskydning — kolonnerne er nu adskilte)", () => {
@@ -492,4 +492,28 @@ test("#5301: riderLoadDays tæller ikke dage i et afmeldt loeb", () => {
     4,
     "uden afmelding taeller begge loeb"
   );
+});
+
+test("buildRiderRowSegments: unikke keys pr. række også når flere løb deler game_day (#7294)", () => {
+  const races = [
+    { id: "tour", gameDayStart: 3, gameDayEnd: 5 },
+    { id: "oneA", gameDayStart: 5, gameDayEnd: 5 },
+    { id: "oneB", gameDayStart: 5, gameDayEnd: 5 },
+    { id: "oneC", gameDayStart: 6, gameDayEnd: 6 },
+  ];
+  const dayColumns = buildDayColumns(races);
+  const assertUnique = (draftByRace) => {
+    const keys = buildRiderRowSegments(dayColumns, races, draftByRace, "rider1").map((s) => s.key);
+    assert.ok(keys.every((k) => typeof k === "string" && k.length > 0));
+    assert.equal(new Set(keys).size, keys.length);
+    return keys;
+  };
+  const none = new Map(races.map((r) => [r.id, emptyRaceDraft()]));
+  assert.equal(assertUnique(none).length, dayColumns.length);
+  const picked = new Map(none);
+  picked.set("oneA", { ...emptyRaceDraft(), rider_ids: ["rider1"] });
+  const before = assertUnique(none);
+  const after = assertUnique(picked);
+  // Udtagelse til oneA må ikke ændre keys for de øvrige celler.
+  assert.ok(before.filter((k) => !k.startsWith("oneA:")).every((k) => after.includes(k)));
 });

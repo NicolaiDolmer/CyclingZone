@@ -289,11 +289,11 @@ export function buildRiderRowSegments(dayColumns, races, draftByRace, riderId) {
     const col = dayColumns[i];
     const race = raceById.get(col.raceId);
     const role = race ? roleOf(draftByRace.get(race.id), riderId) : null;
-    if (role == null) { segments.push({ kind: "empty", day: col.gameDay, raceId: col.raceId }); i += 1; continue; }
+    if (role == null) { segments.push({ kind: "empty", key: `${col.raceId}:${col.gameDay}`, day: col.gameDay, raceId: col.raceId }); i += 1; continue; }
     let j = i;
     while (j < dayColumns.length && dayColumns[j].raceId === col.raceId) j += 1;
     const spanCols = dayColumns.slice(i, j);
-    segments.push({ kind: "entry", race, role, days: spanCols.map((c) => c.gameDay), colSpan: spanCols.length });
+    segments.push({ kind: "entry", key: `${race.id}:entry`, race, role, days: spanCols.map((c) => c.gameDay), colSpan: spanCols.length });
     i = j;
   }
   return segments;
