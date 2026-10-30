@@ -31,8 +31,11 @@ import {
   setLegTask,
   setLegTrigger,
   setRiderPlan,
+  stagePlanFeaturesFromRaw,
   stagePlanRecap,
   stagePlanRouteFromRaw,
+  stagePlanSwitchNotes,
+  stagePlanSwitchNoteText,
   suggestStagePlan,
   taskOptions,
   triggerKey,
@@ -317,6 +320,7 @@ export default function StagePlanBoard({
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => routeForProfile(profile), [profile]);
+  const features = useMemo(() => stagePlanFeaturesFromRaw(profile), [profile]); // #7383
   const events = useStageTimeline(raceId, activeStage, stageCompleted);
   const planByRider = new Map<string, StagePlanLeg[] | null>((order?.riders ?? []).map((r): [string, StagePlanLeg[] | null] => [r.rider_id, Array.isArray(r.plan) && r.plan.length ? r.plan : null]));
   const timeTrial = route.profile_type === "itt" || route.profile_type === "itt_hilly" || route.profile_type === "ttt";
@@ -375,6 +379,9 @@ export default function StagePlanBoard({
         <>
           <PlanChain t={t} legs={legs} route={route} compact={compact} />
           {!fits && <p className="mt-1 text-3xs text-cz-warning">{t("stagePlan.noFit")}</p>}
+          {fits && stagePlanSwitchNotes(legs, route, features).map((note) => stagePlanSwitchNoteText(note)).map(({ key, params }) => (
+            <p key={`${key}:${Object.values(params).join(":")}`} className="mt-1 text-3xs text-cz-warning">{t(key, params)}</p>
+          ))}
         </>
       );
     }
