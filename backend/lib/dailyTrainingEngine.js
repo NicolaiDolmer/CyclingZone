@@ -73,7 +73,7 @@ import {
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
-import { ensureCurveBIgnitedOn, curveBTransitionForDate } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
+import { ensureCurveBIgnitedOn, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
@@ -748,6 +748,8 @@ export async function runTeamTrainingDay({
   const curveBTransition = curveB
     ? curveBTransitionForDate({ ignitedOn: await ensureCurveBIgnitedOn(supabase, { tickDate, strict: conditionPerDate }), tickDate })
     : null;
+  // Hvem der er med, er laast paa taendingsdagen (en raekke pr. rytter); kun inde i vinduet.
+  const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, curveB, riderIds, strict: conditionPerDate }) : null;
   // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
   const [developmentScoreB, raceCatchUp] = await Promise.all([
     loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),
@@ -1217,7 +1219,7 @@ export async function runTeamTrainingDay({
         hardDailyCap,
         // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
         curveB,
-        curveBTransition, // #7382
+        curveBTransition: curveBRoster?.forRider({ riderId: rider.id, abilities, caps: tickCaps, potentiale: rider.potentiale }) ?? null, // #7382
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):
@@ -1593,6 +1595,8 @@ export async function runTeamTrainingDay({
       }
     }
   }
+  // #7382: taendingsdagens medlemskab gemmes FOER dagens evner skrives (maalt paa evnerne foer tick'et).
+  if (curveBRoster) await curveBRoster.persist({ strict: conditionPerDate });
 
   // #6759: sidste skridt foer writes paa den gamle sti — reservationen skifter til
   // "writing" og kan derefter aldrig overtages som forældet. Token-filteret beviser

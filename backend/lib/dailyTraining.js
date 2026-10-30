@@ -269,7 +269,7 @@ export function applyDailyTick({
   // koblingen med gamma = 0. En gate man ikke kan koere er ikke en gate.
   scoreCfg = TRAINING_SCORE_CONFIG,
   curveB = null, // #3564: sendes uændret videre til dailyAbilityDelta
-  curveBTransition = null, // #7382: { weight } fra developmentCurveBTransition7382.ts. Udeladt = kurve B fuldt.
+  curveBTransition = null, // #7382: { weight, abilities } (rytterens, låst på tændingsdagen). Udeladt = kurve B fuldt.
   // #6950: Udviklingsscore B ({ score, devMult, kind, offFocusDevMult? }, developmentScoreWiring.js) og
   // catch-up via loeb ({ evne: multiplikator }, raceCatchUpWiring.js). Udeladt = bit-identisk.
   developmentScore = null, abilityYieldMult = null,
@@ -323,9 +323,9 @@ export function applyDailyTick({
       staff: scoreB ? null : staff, facilityTier: scoreB ? null : facilityTier, riderLevel, academyRateMult, primaryType, secondaryType, trainingCfg,
       budgetDivisor, riderQualityMult: scoreB ? (scoreBInFocus ? scoreB.devMult : scoreBOffFocusMult) : riderQualityMult, curveB,
     };
-    // #7382: over det bløde loft glider fremdriften fra den gamle model (alders-score) til kurve B.
+    // #7382: evner over det bløde loft på tændingsdagen glider fra den gamle model (alders-score) til kurve B.
     const tickDelta = curveB && curveBTransition ? blendCurveBTransition({
-      curveBDelta: dailyAbilityDelta(deltaArgs), current, softCeiling: curveBSoftCeiling(caps?.[ability], potentiale, curveB), transition: curveBTransition,
+      ability, curveBDelta: dailyAbilityDelta(deltaArgs), transition: curveBTransition,
       oldDelta: () => dailyAbilityDelta({ ...deltaArgs, curveB: null, riderQualityMult: scoreB ? deltaArgs.riderQualityMult : trainingScore?.deltaQualityMult ?? null }),
     }) : dailyAbilityDelta(deltaArgs);
     const rawDelta = scoreBInFocus ? tickDelta * scoreBScale : tickDelta;

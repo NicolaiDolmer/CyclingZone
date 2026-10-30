@@ -3,8 +3,9 @@
 // Kurve B giver en evne over sit bløde loft kun en lille restfart (#7316). En evne
 // der allerede står dér, når flaget tændes, ville derfor gå fra den gamle models
 // fart til restfarten fra den ene dag til den anden. Overgangen tager toppen af det:
-//   - HVEM: kun evner der står på eller over kurve B's bløde loft. Alle andre evner
-//     (også hos samme rytter) får kurve B fra dag 1.
+//   - HVEM: kun evner der stod på eller over kurve B's bløde loft PÅ TÆNDINGSDAGEN.
+//     Alle andre evner (også hos samme rytter, og evner der først krydser loftet
+//     senere) får kurve B fra dag 1.
 //   - HVORDAN: dagens fremdrift glider lineært fra den gamle models fremdrift til
 //     kurve B's over CURVE_B_TRANSITION_DAYS kalenderdage, fra og med den første
 //     dag kurve B faktisk kører (dansk dato). Dag 0 = den gamle models fulde
@@ -20,28 +21,44 @@
 // imellem, lægger derfor intet stempel. Skal en senere tænding starte en ny
 // overgang, slettes nøglen bevidst først. Flag off = intet opslag, intet stempel.
 //
-// "Over loftet" måles på tick-dagens evne, ikke på et øjebliksbillede fra
-// startdagen (der gemmes intet pr. rytter). En evne kan kun stige i vinduet, så
-// alle evner der stod over loftet ved starten, er med. En evne der krydser loftet
-// inde i vinduet, får også blandingen resten af vinduet, men aldrig mere end den
-// gamle models fremdrift, som den ville have fået uden kurve B.
+// MEDLEMSKABET ER LÅST PÅ TÆNDINGSDAGEN (CURVE_B_TRANSITION_MEMBERS_TABLE): på
+// tændingsdagen skriver motoren én række pr. rytter med de evner der stod på
+// eller over loftet, målt på evnerne FØR dagens tick (insert ... on conflict do
+// nothing: datoens første kørsel vinder, så datoens senere løbsdage og en
+// genkørsel aldrig flytter det). Resten af vinduet læses rækken. En rytter uden
+// række (fx ikke trænet på tændingsdagen) får kurve B fuldt. Uden låsen ville en
+// evne der krydser loftet inde i vinduet, springe op til den gamle models fart
+// (lige over loftet fik langt mere end lige under).
 //
 // Ingen balance-tal her: de 14 dage er ejerens beslutning i issuet. Kurvens tal er
 // private (hard rule 17) og kommer ind som de validerede params.
 //
-// Rene funktioner, deterministiske: ingen Date.now, ingen Math.random. Kun
-// readCurveBIgnitedOn og ensureCurveBIgnitedOn rører databasen.
+// De rene funktioner er deterministiske: ingen Date.now, ingen Math.random. Kun
+// readCurveBIgnitedOn, ensureCurveBIgnitedOn og loadCurveBTransitionRoster
+// (læs + persist) rører databasen.
 
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { curveBSoftCeiling } from "./developmentCurveB.ts";
+import type { DevelopmentCurveBParams } from "./developmentCurveB.ts";
 
 export const CURVE_B_IGNITED_AT_CONFIG_KEY = "development_curve_b_ignited_at";
+export const CURVE_B_TRANSITION_MEMBERS_TABLE = "development_curve_b_transition_members";
 export const CURVE_B_TRANSITION_DAYS = 14;
 const CURVE_B_IGNITED_AT_DESCRIPTION =
   "#7382: first Copenhagen date curve B actually ran. Start of the soft transition. Written once by the training engine; delete the key to start a new transition.";
 
 export interface CurveBTransition {
-  // Kurve B's andel af dagens fremdrift for evner over det bløde loft (0 <= w < 1).
+  // Kurve B's andel af dagens fremdrift for evner i overgangen (0 <= w < 1).
   weight: number;
+  // Startdatoen (dansk dato) og om tick-datoen ER den: kun dér låses medlemskabet.
+  ignitedOn: string;
+  ignitionDay: boolean;
+}
+
+/** Overgangen for én rytter: vægten og de evner der var med på tændingsdagen. */
+export interface CurveBRiderTransition {
+  weight: number;
+  abilities: readonly string[];
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -70,27 +87,47 @@ export function curveBTransitionForDate({
   if (!(Number.isFinite(days) && days > 0)) return null;
   const elapsed = calendarDaysBetween(ignitedOn, tickDate);
   if (elapsed == null || elapsed >= days) return null;
-  return Object.freeze({ weight: Math.max(0, elapsed) / days });
+  return Object.freeze({ weight: Math.max(0, elapsed) / days, ignitedOn: ignitedOn as string, ignitionDay: elapsed === 0 });
+}
+
+/**
+ * Evnerne der står på eller over kurve B's bløde loft (sorteret). Det er
+ * medlemskabet, målt på tændingsdagen før dagens tick.
+ */
+export function curveBTransitionAbilities({
+  abilities, caps, potentiale, curveB,
+}: {
+  abilities: Record<string, unknown> | null | undefined;
+  caps: Record<string, unknown> | null | undefined;
+  potentiale: number | null | undefined;
+  curveB: DevelopmentCurveBParams;
+}): string[] {
+  const out: string[] = [];
+  for (const [ability, raw] of Object.entries(abilities ?? {})) {
+    const current = Number(raw);
+    const soft = curveBSoftCeiling(Number(caps?.[ability]), potentiale, curveB);
+    if (Number.isFinite(current) && Number.isFinite(soft) && current >= soft) out.push(ability);
+  }
+  return out.sort();
 }
 
 /**
  * Dagens fremdrift for én evne i overgangen. `oldDelta` er den gamle models
  * fremdrift for samme evne og dag (en funktion, så den kun regnes når den skal
- * bruges). Under det bløde loft, uden overgang eller med ugyldig vægt: kurve B
- * uændret. Over det: lineær blanding, aldrig negativ.
+ * bruges). Evner der ikke var med på tændingsdagen, uden overgang eller med
+ * ugyldig vægt: kurve B uændret. Ellers lineær blanding, aldrig negativ.
  */
 export function blendCurveBTransition({
-  curveBDelta, oldDelta, current, softCeiling, transition,
+  ability, curveBDelta, oldDelta, transition,
 }: {
+  ability: string;
   curveBDelta: number;
   oldDelta: number | (() => number);
-  current: number;
-  softCeiling: number;
-  transition: CurveBTransition | null | undefined;
+  transition: CurveBRiderTransition | null | undefined;
 }): number {
   const w = transition?.weight;
   if (!(typeof w === "number" && w >= 0 && w < 1)) return curveBDelta;
-  if (!(Number.isFinite(current) && Number.isFinite(softCeiling) && current >= softCeiling)) return curveBDelta;
+  if (!Array.isArray(transition?.abilities) || !transition.abilities.includes(ability)) return curveBDelta;
   const b = Number.isFinite(curveBDelta) && curveBDelta > 0 ? curveBDelta : 0;
   const rawOld = typeof oldDelta === "function" ? oldDelta() : oldDelta;
   const o = Number.isFinite(rawOld) && rawOld > 0 ? rawOld : 0;
@@ -118,6 +155,16 @@ function isRealDate(date: string): boolean {
   return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === date;
 }
 
+const errText = (err: unknown) => (err as Error)?.message ?? String(err);
+
+// Kaster ved en fejlet læsning. exists = nøglen står der (også med en ugyldig værdi).
+async function readIgnitionRow(supabase: ConfigClient): Promise<{ exists: boolean; ignitedOn: string | null }> {
+  const { data, error } = await supabase
+    .from("app_config").select("value").eq("key", CURVE_B_IGNITED_AT_CONFIG_KEY).maybeSingle();
+  if (error) throw new Error(`curve-b ignition read: ${error.message ?? error}`);
+  return { exists: data != null, ignitedOn: ignitedOnFromConfigValue(data?.value ?? null) };
+}
+
 /**
  * Læser tændingsdatoen. strict = løbsdags-datoens atomare sti (som flagene dér):
  * en fejlet læsning kaster i stedet for at blive tolket som "ingen overgang".
@@ -127,28 +174,28 @@ export async function readCurveBIgnitedOn(
   { strict = false }: { strict?: boolean } = {},
 ): Promise<string | null> {
   try {
-    const { data, error } = await supabase
-      .from("app_config").select("value").eq("key", CURVE_B_IGNITED_AT_CONFIG_KEY).maybeSingle();
-    if (error) throw new Error(`curve-b ignition read: ${error.message ?? error}`);
-    return ignitedOnFromConfigValue(data?.value ?? null);
+    return (await readIgnitionRow(supabase)).ignitedOn;
   } catch (err) {
     if (strict) throw err;
-    console.warn(`[curve-b] ${CURVE_B_IGNITED_AT_CONFIG_KEY} kunne ikke laeses - ingen overgang: ${(err as Error)?.message ?? err}`);
+    console.warn(`[curve-b] ${CURVE_B_IGNITED_AT_CONFIG_KEY} kunne ikke laeses - ingen overgang: ${errText(err)}`);
     return null;
   }
 }
 
 /**
- * Kaldes KUN når kurve B faktisk er aktiv for tick'et. Stempler tick-datoen som
- * startdato, hvis der ikke allerede står én (insert ... on conflict do nothing:
- * et eksisterende stempel overskrives aldrig, og samtidige hold-kørsler er
- * harmløse), og læser derefter den gældende startdato. strict som ovenfor.
+ * Kaldes KUN når kurve B faktisk er aktiv for tick'et. Læser først; kun når
+ * nøglen mangler, stemples tick-datoen (insert ... on conflict do nothing, så
+ * samtidige hold-kørsler er harmløse) og læses igen. Står nøglen der, skrives
+ * intet, heller ikke efter vinduet. strict som ovenfor; uden strict giver en
+ * fejl null (kurve B fuldt).
  */
 export async function ensureCurveBIgnitedOn(
   supabase: ConfigClient,
   { tickDate, strict = false }: { tickDate: string; strict?: boolean },
 ): Promise<string | null> {
   try {
+    const existing = await readIgnitionRow(supabase);
+    if (existing.exists) return existing.ignitedOn;
     if (typeof tickDate !== "string" || !DATE_RE.test(tickDate) || !isRealDate(tickDate)) {
       throw new Error(`curve-b ignition stamp: invalid tick date ${tickDate}`);
     }
@@ -157,9 +204,78 @@ export async function ensureCurveBIgnitedOn(
       { onConflict: "key", ignoreDuplicates: true },
     );
     if (error) throw new Error(`curve-b ignition stamp: ${error.message ?? error}`);
+    return (await readIgnitionRow(supabase)).ignitedOn;
   } catch (err) {
     if (strict) throw err;
-    console.warn(`[curve-b] ${CURVE_B_IGNITED_AT_CONFIG_KEY} kunne ikke stemples: ${(err as Error)?.message ?? err}`);
+    console.warn(`[curve-b] ${CURVE_B_IGNITED_AT_CONFIG_KEY} kunne ikke stemples/laeses - ingen overgang: ${errText(err)}`);
+    return null;
   }
-  return readCurveBIgnitedOn(supabase, { strict });
+}
+
+export interface CurveBTransitionRoster {
+  /** Rytterens overgang til tick'et, eller null (kurve B fuldt). */
+  forRider(args: { riderId: string; abilities: Record<string, unknown>; caps: Record<string, unknown> | null | undefined; potentiale: number | null | undefined }): CurveBRiderTransition | null;
+  /** Skriver tændingsdagens nye rækker (on conflict do nothing). Kald før dagens evner skrives. */
+  persist(opts?: { strict?: boolean }): Promise<void>;
+}
+
+const MEMBER_BATCH = 500;
+
+/**
+ * Medlemskabet for holdets ryttere i vinduet. Læser de låste rækker for
+ * startdatoen. På tændingsdagen måles ryttere uden række på deres evner før
+ * dagens tick, og rækken sættes i kø til persist(). En fejlet læsning: strict
+ * kaster, ellers kurve B fuldt for hele holdet (intet måles, intet skrives).
+ */
+export async function loadCurveBTransitionRoster(
+  supabase: ConfigClient,
+  { transition, curveB, riderIds, strict = false }: {
+    transition: CurveBTransition; curveB: DevelopmentCurveBParams; riderIds: readonly string[]; strict?: boolean;
+  },
+): Promise<CurveBTransitionRoster> {
+  const members = new Map<string, readonly string[]>();
+  let usable = true;
+  try {
+    for (let i = 0; i < riderIds.length; i += MEMBER_BATCH) {
+      const { data, error } = await supabase.from(CURVE_B_TRANSITION_MEMBERS_TABLE)
+        .select("rider_id, abilities").eq("ignited_on", transition.ignitedOn).in("rider_id", riderIds.slice(i, i + MEMBER_BATCH));
+      if (error) throw new Error(`curve-b transition members read: ${error.message ?? error}`);
+      for (const row of data ?? []) {
+        members.set(row.rider_id, Object.freeze((Array.isArray(row.abilities) ? row.abilities : []).filter((a: unknown) => typeof a === "string")));
+      }
+    }
+  } catch (err) {
+    if (strict) throw err;
+    console.warn(`[curve-b] overgangens medlemmer kunne ikke laeses - kurve B fuldt: ${errText(err)}`);
+    usable = false;
+  }
+  const pending: Array<{ rider_id: string; ignited_on: string; abilities: string[] }> = [];
+  return {
+    forRider({ riderId, abilities, caps, potentiale }) {
+      if (!usable) return null;
+      let locked = members.get(riderId);
+      if (!locked && transition.ignitionDay) {
+        const measured = curveBTransitionAbilities({ abilities, caps, potentiale, curveB });
+        locked = Object.freeze(measured);
+        members.set(riderId, locked);
+        pending.push({ rider_id: riderId, ignited_on: transition.ignitedOn, abilities: measured });
+      }
+      if (!locked || locked.length === 0) return null;
+      return Object.freeze({ weight: transition.weight, abilities: locked });
+    },
+    async persist({ strict: strictWrite = strict } = {}) {
+      if (pending.length === 0) return;
+      try {
+        for (let i = 0; i < pending.length; i += MEMBER_BATCH) {
+          const { error } = await supabase.from(CURVE_B_TRANSITION_MEMBERS_TABLE)
+            .upsert(pending.slice(i, i + MEMBER_BATCH), { onConflict: "rider_id,ignited_on", ignoreDuplicates: true });
+          if (error) throw new Error(`curve-b transition members write: ${error.message ?? error}`);
+        }
+        pending.length = 0;
+      } catch (err) {
+        if (strictWrite) throw err;
+        console.warn(`[curve-b] overgangens medlemmer kunne ikke gemmes - resten af vinduet kurve B fuldt for dem: ${errText(err)}`);
+      }
+    },
+  };
 }
