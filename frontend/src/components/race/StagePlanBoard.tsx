@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from "react";
 import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
+import SortableTh from "../ui/SortableTh.jsx";
 import { Button, CheckIcon, ChevronRightIcon, LockIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
@@ -280,6 +281,7 @@ export default function StagePlanBoard({
   onEditorOpen,
   roleDefaultFor,
   effortFor,
+  routeMatch,
 }: {
   t: TFn;
   raceId: string;
@@ -300,6 +302,15 @@ export default function StagePlanBoard({
   roleDefaultFor?: (riderId: string) => Record<string, unknown> | null;
   /** Dagens indsats (intentionen) for en rytter uden plan. */
   effortFor?: (rider: PlanRider) => unknown;
+  /** #7334: rute-match for den aabne etape (samme tal og sortering som den gamle tabel). */
+  routeMatch?: {
+    label: string;
+    title: string;
+    mobileLabel: string;
+    sortDir: "asc" | "desc" | null;
+    onSort: () => void;
+    renderCell: (rider: PlanRider, opts?: { numberOnly?: boolean }) => React.ReactNode;
+  };
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const route = useMemo(() => routeForProfile(profile), [profile]);
@@ -425,11 +436,23 @@ export default function StagePlanBoard({
 
       {/* Desktop: tabel. Under sm: én linje pr. rytter (ingen vandret scroll, #1834). */}
       <div className="hidden sm:block">
-        <table data-sort-exempt="Etapeplan: rytterne i taktik-fanens raekkefoelge (sorteres dér)" className="w-full text-sm">
+        <table {...(routeMatch ? { "data-sortable": true } : { "data-sort-exempt": "Etapeplan: rytterne i taktik-fanens raekkefoelge (sorteres dér)" })} className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRider")}</th>
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{t("intention.colRole")}</th>
+              {routeMatch && (
+                <SortableTh
+                  sortKey="routeMatch"
+                  sort={routeMatch.sortDir ? "routeMatch" : null}
+                  sortDir={routeMatch.sortDir}
+                  onSort={routeMatch.onSort}
+                  title={routeMatch.title}
+                  className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap"
+                >
+                  {routeMatch.label}
+                </SortableTh>
+              )}
               <th className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide text-cz-3">{planColumn}</th>
             </tr>
           </thead>
@@ -442,6 +465,7 @@ export default function StagePlanBoard({
                 <tr key={rider.rider_id} className={`border-b border-cz-border ${open || rolePicker ? "" : "last:border-0"}`}>
                   <td className="px-4 py-2.5 align-top text-cz-1 font-medium">{rider.name || "—"}</td>
                   <td className="px-4 py-2.5 align-top">{renderRoleCell(rider)}</td>
+                  {routeMatch && <td className="px-4 py-2.5 align-top">{routeMatch.renderCell(rider)}</td>}
                   <td className="px-4 py-2.5 align-top">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">{renderPlanCell(rider)}</div>
@@ -461,7 +485,7 @@ export default function StagePlanBoard({
                 </tr>,
                 open || rolePicker ? (
                   <tr key={`${rider.rider_id}-edit`} className="border-b border-cz-border last:border-0 bg-cz-subtle">
-                    <td colSpan={3} className="px-4 pb-3.5 pt-0">{rolePicker ?? renderEditor(rider)}</td>
+                    <td colSpan={routeMatch ? 4 : 3} className="px-4 pb-3.5 pt-0">{rolePicker ?? renderEditor(rider)}</td>
                   </tr>
                 ) : null,
               ];
@@ -476,7 +500,15 @@ export default function StagePlanBoard({
           const open = openId === rider.rider_id && editable(rider) && !rolePicker;
           return (
             <li key={rider.rider_id} className="px-4 py-3">
-              <span className="block text-cz-1 font-medium text-sm truncate">{rider.name || "—"}</span>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-cz-1 font-medium text-sm min-w-0 truncate">{rider.name || "—"}</span>
+                {routeMatch && (
+                  <span className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
+                    <span className="text-3xs uppercase tracking-wider text-cz-3">{routeMatch.mobileLabel}</span>
+                    {routeMatch.renderCell(rider, { numberOnly: true })}
+                  </span>
+                )}
+              </div>
               <div className="mt-0.5">{renderRoleCell(rider)}</div>
               {editable(rider) && !stageCompleted ? (
                 <button
