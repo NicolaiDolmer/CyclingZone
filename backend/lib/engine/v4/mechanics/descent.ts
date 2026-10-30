@@ -7,11 +7,10 @@
 // 10-20 s paa T2-T3 + stor descending-evne-forskel) + beslutning 7
 // (styrt-risiko koblet til angreb, daempet af descending).
 //
-// REN — ingen IO/Date/Math.random. Eneste import fra oevrigt backend er
-// etapeplanens rene kontrakt (stagePlanEngine.ts/stagePlan.ts, #7380, kun med
-// kontakten taendt). Rene funktioner: input-state muteres aldrig, nyt
-// state/array returneres (segmentLoop.ts's determinisme-krav forudsaetter
-// dette, jf. groups.ts).
+// REN — ingen IO/Date/Math.random. Eneste import fra oevrigt backend er en
+// type (stagePlan.ts's StagePlanTask, #7380). Rene funktioner: input-state
+// muteres aldrig, nyt state/array returneres (segmentLoop.ts's
+// determinisme-krav forudsaetter dette, jf. groups.ts).
 //
 // MONOTONI (hardt krav, mor-spec §3.2): "inden for samme gruppe kan en
 // daarligere rytter aldrig TAGE tid paa en bedre i den evne segmentet tester."
@@ -102,8 +101,7 @@ import {
   TIME_MODEL_V3_TUNING,
   timeModelTuningFor,
 } from "./timeModel.ts";
-import { createStagePlanRuntime, isRiderDropped, type StagePlanRuntime } from "../../../stagePlanEngine.ts"; // #7380 (slukket)
-import type { StagePlanTask } from "../../../stagePlan.ts";
+import type { StagePlanTask } from "../../../stagePlan.ts"; // #7380 (slukket): kun typen
 
 // ── #7380: nedkoerselsangrebet respekterer rytterens opgave (SLUKKET) ────────
 // Ejer-beslutning 30/10 (#7380): ingen rytter paa Spar, Grupetto, Beskyt lederen
@@ -142,58 +140,29 @@ export const DESCENT_ATTACK_BARRED_TASKS_7380: ReadonlySet<StagePlanTask> = new 
 /** Uden en etapeplan: indsatserne der aldrig angriber (Spar, Grupetto, Beskyt lederen). */
 export const DESCENT_ATTACK_BARRED_EFFORTS_7380: ReadonlySet<EffortLevel> = new Set<EffortLevel>(["save", "grupetto", "protect"]);
 
-type PlanLeg7380 = StagePlanRuntime["legs"] extends Map<string, (infer L)[]> ? L : never;
-
 /**
  * #7380: maa rytteren IKKE angribe paa denne nedkoersel ud fra sin ordre?
  *
- * Indsatsen er den motoren koerer segmentet med. Spar og Grupetto spaerrer altid
- * (alle opgaver med de indsatser er laee/grupetto/koer i maal). Uden en etapeplan
- * spaerrer ogsaa Beskyt lederen; normal og alt ud maa angribe.
+ * Med en etapeplan er det OPGAVEN der afgoer det, praecis den opgave etapeplanens
+ * runtime koerer segmentet med (ctx.stagePlanTasks, sat ved segmentets start af
+ * stagePlanEngine.advanceStagePlan: rutepunkt ved naermeste segmentgraense, et
+ * klaebende sat-led, holdarbejde paa sidste segment). Her genberegnes intet, saa
+ * nedkoerslen kan aldrig se en anden opgave end resten af motoren. Samme indsats
+ * daekker flere opgaver (Beskyt lederen er baade tempo og foelg angreb; normal er
+ * baade udbrud, hold lederen fremme, koer for resultat og sprinttog), saa
+ * indsatsen alene kan ikke afgoere det for en rytter med plan.
  *
- * Med en etapeplan er det OPGAVEN der afgoer det, for samme indsats daekker flere
- * opgaver (Beskyt lederen er baade tempo og foelg angreb; normal er baade udbrud,
- * hold lederen fremme, koer for resultat og sprinttog). Det aktuelle led findes
- * blandt planens led med netop den indsats, indsnaevret ud fra hvad kaeden kan
- * vaere naaet til: et led med et rutepunkt efter segmentets slut er ikke naaet
- * endnu, og et led hvis naeste led har et rutepunkt ved eller foer segmentets
- * start er forladt (kaeden rykker kun frem). I udbrudsopgaven er rytteren i
- * udbruddet ikke sat; uden for det har kaeden forladt udbrudsleddet. Er der
- * stadig tvivl mellem en spaerret og en fri opgave, spaerres der: ordren vejer
- * tungere end et angreb, den maaske forbyder.
+ * Uden en plan afgoer indsatsen motoren koerer segmentet med: Spar, Grupetto og
+ * Beskyt lederen spaerrer; normal og alt ud maa angribe.
  */
 export function descentAttackBarredByTask7380(args: {
   effort: EffortLevel;
-  legs: readonly PlanLeg7380[] | null | undefined;
-  segment: { from_km: number; to_km: number };
-  segmentIndex: number;
-  inEscape: boolean;
-  /** Er rytteren sat (stagePlanEngine.isRiderDropped)? Kaldes kun ved tvivl om sat-leddet. */
-  riderDropped?: () => boolean;
+  /** Runtimens aktuelle opgave for rytteren; udeladt/null = ingen etapeplan. */
+  task?: StagePlanTask | null;
 }): boolean {
-  const { effort, legs, segment, segmentIndex, inEscape, riderDropped = () => false } = args;
-  if (effort === "save" || effort === "grupetto") return true;
-  if (!legs || legs.length === 0) return DESCENT_ATTACK_BARRED_EFFORTS_7380.has(effort);
-  let candidates = legs.map((leg, index) => ({ leg, index })).filter((c) => c.leg.effort === effort);
-  if (candidates.length === 0) return DESCENT_ATTACK_BARRED_EFFORTS_7380.has(effort);
-  const narrow = (keep: (c: { leg: PlanLeg7380; index: number }) => boolean) => {
-    const kept = candidates.filter(keep);
-    if (kept.length > 0) candidates = kept;
-  };
-  narrow((c) => !(c.leg.fromKm !== null && c.leg.fromKm > segment.to_km));
-  narrow((c) => {
-    const next = legs[c.index + 1];
-    return !(segmentIndex > 0 && next !== undefined && next.fromKm !== null && next.fromKm <= segment.from_km);
-  });
-  // Sat-leddet (samme regel som stagePlanEngine.advanceStagePlan): i dagens udbrud
-  // er rytteren aldrig sat; paa udbrudsleddet uden for udbruddet er han det; ellers
-  // afgoer isRiderDropped (gruppen bag holdlederens). Codex-review #7380: gaelder
-  // ogsaa naar udbrudsleddet allerede er forladt via et rutepunkt.
-  if (candidates.some((c) => c.leg.fromDropped) && candidates.some((c) => !c.leg.fromDropped)) {
-    const dropped = inEscape ? false : candidates.some((c) => c.leg.task === "breakaway") ? true : riderDropped();
-    narrow((c) => c.leg.fromDropped === dropped);
-  }
-  return candidates.some((c) => DESCENT_ATTACK_BARRED_TASKS_7380.has(c.leg.task));
+  const { effort, task } = args;
+  if (task) return DESCENT_ATTACK_BARRED_TASKS_7380.has(task);
+  return DESCENT_ATTACK_BARRED_EFFORTS_7380.has(effort);
 }
 
 function round2(n: number): number {
@@ -660,13 +629,9 @@ export const descentHook: DescentHook = (
   // over den regrupperede struktur som den saa ud FOER foerste split (samme
   // moenster som den oprindelige `for (const group of state.groups)`).
   const groupsToScan = groups;
-  // #7380 (SLUKKET): etapeplanens led laeses foerst naar en gruppe har angribere.
+  // #7380 (SLUKKET): ordren laeses som runtimen koerer segmentet (ctx.entrants'
+  // indsats + ctx.stagePlanTasks' opgave), aldrig genberegnet her.
   const taskOn7380 = isDescentTask7380On(ctx);
-  let planLegs7380: StagePlanRuntime["legs"] | null | undefined;
-  const legsFor7380 = (riderId: string) => {
-    if (planLegs7380 === undefined) planLegs7380 = createStagePlanRuntime(ctx.orders, ctx.route, ctx.entrants)?.legs ?? null;
-    return planLegs7380?.get(riderId) ?? null;
-  };
   for (const group of groupsToScan) {
     // Gate 0 (#4604): angreb gaar normalt kun fra en allerede reduceret gruppe.
     // Undtagelse: paa den svaereste vejtype kan der stadig rives et hul i en
@@ -683,14 +648,7 @@ export const descentHook: DescentHook = (
       taskOn7380
         ? (riderId) => {
           const entrant = ctx.entrants[riderId];
-          return entrant !== undefined && descentAttackBarredByTask7380({
-            effort: entrant.effort,
-            legs: legsFor7380(riderId),
-            segment,
-            segmentIndex: ctx.segmentIndex,
-            inEscape: isEscape(group),
-            riderDropped: () => isRiderDropped(riderId, { ...state, groups: groupsToScan }, ctx.entrants),
-          });
+          return entrant !== undefined && descentAttackBarredByTask7380({ effort: entrant.effort, task: ctx.stagePlanTasks?.[riderId] });
         }
         : undefined,
     );
