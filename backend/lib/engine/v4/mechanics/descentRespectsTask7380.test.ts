@@ -10,9 +10,13 @@
 //      (praefiks-egenskaben) holder blandt de ryttere hvis ordre tillader angreb.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import fc from "fast-check";
 
 import {
+  DESCENT_ATTACK_BARRED_TASKS_7380,
   DESCENT_TASK_7380_ACTIVE,
   descentAttackBarredByTask7380,
   descentHook,
@@ -22,6 +26,18 @@ import {
 } from "./descent.ts";
 import { makeHookCtx } from "../testUtils/makeHookCtx.ts";
 import { RACE_V4_TUNING } from "../tuning.ts";
+import { LIVE_MECHANIC_HOOKS } from "../index.ts";
+import { runSegmentLoop } from "../segmentLoop.ts";
+import {
+  STAGE_PLAN_LEG_EVENT,
+  advanceStagePlan,
+  createStagePlanRuntime,
+  isRiderDropped,
+  stagePlanCurrentTasks,
+  stagePlanEntrants,
+  type StagePlanRuntime,
+} from "../../../stagePlanEngine.ts";
+import { STAGE_PLAN_TASKS, TASK_EFFORT, type StagePlanTask } from "../../../stagePlan.ts";
 import type {
   AbilityKey,
   DescentSegment,
@@ -32,10 +48,14 @@ import type {
   RiderRole,
   RiderState,
   RouteV2,
+  Segment,
   SegmentHookContext,
+  StageInput,
   TeamOrder,
   TimelineEvent,
 } from "../types.ts";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -70,7 +90,15 @@ const ROUTE: RouteV2 = {
 
 function scenario(
   riders: readonly RiderSpec[],
-  opts: { technicality?: 1 | 2 | 3; orders?: TeamOrder[]; s5ProfilesV3?: boolean; groupOrigin?: "breakaway"; seed?: string } = {},
+  opts: {
+    technicality?: 1 | 2 | 3;
+    orders?: TeamOrder[];
+    s5ProfilesV3?: boolean;
+    groupOrigin?: "breakaway";
+    seed?: string;
+    /** Runtimens opgaver (segmentLoop.ts saetter dem fra stagePlanEngine.stagePlanCurrentTasks). */
+    stagePlanTasks?: Record<string, StagePlanTask>;
+  } = {},
 ): { state: EngineState; ctx: SegmentHookContext } {
   const entrants: Record<string, Entrant> = {};
   const states: Record<string, RiderState> = {};
@@ -79,7 +107,7 @@ function scenario(
       rider_id: r.id,
       abilities: abilities(r.descending),
       role: r.role ?? "free_role",
-      effort: r.effort ?? "normal",
+      effort: opts.stagePlanTasks?.[r.id] ? TASK_EFFORT[opts.stagePlanTasks[r.id]] : r.effort ?? "normal",
       condition: 1,
       team_id: r.team ?? "team-a",
     };
@@ -103,7 +131,8 @@ function scenario(
     seed: opts.seed ?? "descent-7380",
     orders: opts.orders ?? [],
   });
-  const ctx: SegmentHookContext = opts.s5ProfilesV3 === false ? base : { ...base, s5ProfilesV3: true };
+  const withTasks: SegmentHookContext = opts.stagePlanTasks ? { ...base, stagePlanTasks: opts.stagePlanTasks } : base;
+  const ctx: SegmentHookContext = opts.s5ProfilesV3 === false ? withTasks : { ...withTasks, s5ProfilesV3: true };
   return { state: { km: 40, groups: [group], riders: states, virtual_gc: {} }, ctx };
 }
 
@@ -159,13 +188,18 @@ test("#7380: slukket (og taendt uden s5_profiles_v3) er nedkoerslen bit-identisk
       // Referencen: samme ryttere og roller uden ordre-signal (alle normal, ingen plan).
       const neutral = riders.map((r) => ({ id: r.id, descending: r.descending, role: r.role }));
       const orders = [planOrder("team-a", riders.map((r) => ({ rider_id: r.id, legs: [{ task: "stay_sheltered" }] })))];
-      const run = (rs: RiderSpec[], o: TeamOrder[]) => {
-        const { state, ctx } = scenario(rs, { technicality, orders: o, s5ProfilesV3: !onWithoutV3 });
+      const tasks: Record<string, StagePlanTask> = Object.fromEntries(riders.map((r, i) => [r.id, STAGE_PLAN_TASKS[i % STAGE_PLAN_TASKS.length]]));
+      const run = (rs: RiderSpec[], o: TeamOrder[], t?: Record<string, StagePlanTask>) => {
+        const { state, ctx } = scenario(rs, { technicality, orders: o, s5ProfilesV3: !onWithoutV3, stagePlanTasks: t });
         const result = descentHook(state, ctx);
         return { result, state };
       };
       const ref = withSwitch(null, () => run(neutral, []));
       const got = withSwitch(onWithoutV3 ? true : null, () => run(riders, orders));
+      // Ogsaa med runtimens opgaver i ctx (og den indsats de giver): slukket aendrer intet.
+      const gotTasks = withSwitch(onWithoutV3 ? true : null, () => run(neutral, orders, tasks));
+      const refTasks = withSwitch(null, () => run(neutral, [], tasks));
+      assert.deepEqual(gotTasks.result, refTasks.result);
       assert.deepEqual(got.result.events, ref.result.events);
       assert.deepEqual(got.result.state.groups, ref.result.state.groups);
       assert.deepEqual(got.result.state.riders, ref.result.state.riders);
@@ -209,106 +243,214 @@ test("#7380 taendt: er alle i vinduet spaerret, angribes der ikke, og ingen uden
   });
 });
 
-test("#7380 taendt, etapeplan gennem descentHook: laee-opgaven spaerrer, ogsaa paa normal indsats", () => {
-  // Hjaelperen paa "hold lederen fremme" koerer normal indsats; uden planen ville han angribe.
+test("#7380 taendt, etapeplan gennem descentHook: runtimens laee-opgave spaerrer, ogsaa paa normal indsats", () => {
+  // Hjaelperen paa "hold lederen fremme" koerer normal indsats; uden opgaven ville han angribe.
   const riders: RiderSpec[] = [
     { id: "h", descending: STRONG_A, effort: "normal", role: "helper" },
     { id: "f", descending: STRONG_B, effort: "normal", role: "free_role" },
     { id: "w", descending: WEAK, role: "captain" },
   ];
-  const orders = [planOrder("team-a", [{ rider_id: "h", legs: [{ task: "shelter_leader" }] }])];
   withSwitch(true, () => {
-    const withPlan = scenario(riders, { orders });
-    assert.deepEqual(attackerIds(descentHook(withPlan.state, withPlan.ctx).events), ["f"]);
+    const withTask = scenario(riders, { stagePlanTasks: { h: "shelter_leader" } });
+    assert.deepEqual(attackerIds(descentHook(withTask.state, withTask.ctx).events), ["f"]);
     const noPlan = scenario(riders);
     assert.deepEqual(attackerIds(descentHook(noPlan.state, noPlan.ctx).events), ["f", "h"], "uden plan: normal maa");
-  });
-  // En plan for et ANDET holds rytter ignoreres (samme regel som motoren).
-  const foreign = [planOrder("team-b", [{ rider_id: "h", legs: [{ task: "shelter_leader" }] }])];
-  withSwitch(true, () => {
-    const s = scenario(riders, { orders: foreign });
-    assert.deepEqual(attackerIds(descentHook(s.state, s.ctx).events), ["f", "h"]);
+    // Hooket genberegner aldrig planen: en plan-ordre uden runtimens opgave aendrer intet her.
+    const orders = [planOrder("team-a", [{ rider_id: "h", legs: [{ task: "shelter_leader" }] }])];
+    const ordersOnly = scenario(riders, { orders });
+    assert.deepEqual(attackerIds(descentHook(ordersOnly.state, ordersOnly.ctx).events), ["f", "h"]);
   });
 });
 
 // ── descentAttackBarredByTask7380: opgaven afgoer det ───────────────────────
 
-type Leg = NonNullable<Parameters<typeof descentAttackBarredByTask7380>[0]["legs"]>[number];
-const TASK_EFFORT_7380: Record<Leg["task"], EffortLevel> = {
-  breakaway: "normal", stay_sheltered: "save", shelter_leader: "normal", tempo: "protect", follow_moves: "protect",
-  attack: "all_out", ride_for_result: "normal", sprint_train: "normal", grupetto: "grupetto", ride_in: "save",
-};
-function leg(task: Leg["task"], from: { km?: number; dropped?: true } = {}): Leg {
-  return { task, effort: TASK_EFFORT_7380[task], fromKm: from.km ?? null, fromDropped: from.dropped === true, routeReason: from.km !== undefined ? "kom" : null };
-}
-const SEG = { from_km: 40, to_km: 48 };
-function barred(legs: Leg[] | null, effort: EffortLevel, inEscape = false, segment = SEG): boolean {
-  return descentAttackBarredByTask7380({ effort, legs, segment, segmentIndex: 3, inEscape });
-}
+test("#7380: hver opgave for sig: laee/hjaelper/grupetto/koer i maal spaerrer, resten maa (uanset indsats)", () => {
+  const allowed = new Set<StagePlanTask>(["breakaway", "follow_moves", "attack", "ride_for_result"]);
+  for (const task of STAGE_PLAN_TASKS) {
+    assert.equal(descentAttackBarredByTask7380({ effort: TASK_EFFORT[task], task }), !allowed.has(task), task);
+  }
+  // Beskyt lederen-indsatsen skelnes paa opgaven, ikke paa indsatsen.
+  assert.equal(descentAttackBarredByTask7380({ effort: "protect", task: "tempo" }), true);
+  assert.equal(descentAttackBarredByTask7380({ effort: "protect", task: "follow_moves" }), false);
+});
 
-test("#7380: hver opgave for sig (et-leds plan): laee/hjaelper/grupetto/koer i maal spaerrer, resten maa", () => {
-  const allowed = new Set(["breakaway", "follow_moves", "attack", "ride_for_result"]);
-  for (const task of Object.keys(TASK_EFFORT_7380) as Leg["task"][]) {
-    assert.equal(barred([leg(task)], TASK_EFFORT_7380[task]), !allowed.has(task), task);
+test("#7380: uden plan afgoer indsatsen: Spar, Grupetto og Beskyt lederen spaerrer; normal og alt ud maa", () => {
+  for (const effort of EFFORTS) {
+    const expected = effort === "save" || effort === "grupetto" || effort === "protect";
+    assert.equal(descentAttackBarredByTask7380({ effort }), expected, effort);
+    assert.equal(descentAttackBarredByTask7380({ effort, task: null }), expected, `${effort} (null)`);
   }
 });
 
-test("#7380: Beskyt lederen-indsatsen skelnes paa opgaven (tempo spaerrer, foelg angreb maa)", () => {
-  assert.equal(barred([leg("shelter_leader"), leg("tempo", { km: 30 })], "protect"), true);
-  assert.equal(barred([leg("stay_sheltered"), leg("follow_moves", { km: 30 })], "protect"), false);
-  assert.equal(barred(null, "protect"), true, "uden plan er Beskyt lederen spaerret");
-});
+// ── Flere segmenter gennem den rigtige etapeplan-runtime ────────────────────
 
-test("#7380: kaptajnens standardplan: i laeet foer stigningen spaerret, angreb efter toppen maa", () => {
-  const legs = [leg("stay_sheltered"), leg("attack", { km: 30 })];
-  assert.equal(barred(legs, "save"), true);
-  assert.equal(barred(legs, "all_out"), false);
-});
+const RT_TEAM = "A";
+const RT_ENTRANTS: Record<string, Entrant> = {
+  cap: rtEntrant("cap", RT_TEAM, "captain", WEAK),
+  u: rtEntrant("u", RT_TEAM, "hunter", STRONG_A),
+  f: rtEntrant("f", "B", "free_role", STRONG_B),
+  w: rtEntrant("w", "B", "helper", WEAK),
+};
 
-test("#7380: samme indsats i flere led: kaeden indsnaevres ud fra rutepunkterne", () => {
-  // ride_for_result (normal) foerst, shelter_leader (normal) fra km 60: paa km 40-48 er han endnu ikke skiftet.
-  const hunter = [leg("ride_for_result"), leg("shelter_leader", { km: 60 })];
-  assert.equal(barred(hunter, "normal"), false, "rutepunktet ligger efter segmentet");
-  assert.equal(barred(hunter, "normal", false, { from_km: 62, to_km: 70 }), true, "efter rutepunktet er han skiftet");
-  // shelter_leader foerst, ride_for_result fra km 30 (passeret): det aktuelle led er ride_for_result.
-  assert.equal(barred([leg("shelter_leader"), leg("ride_for_result", { km: 30 })], "normal"), false);
-});
+function rtEntrant(id: string, team: string, role: RiderRole, descending: number): Entrant {
+  return { rider_id: id, abilities: abilities(descending), role, effort: "normal", condition: 1, team_id: team };
+}
 
-test("#7380: udbrudsopgaven: i udbruddet maa han; uden for udbruddet gaelder sat-leddet", () => {
-  const legs = [leg("breakaway"), leg("shelter_leader", { dropped: true })];
-  assert.equal(barred(legs, "normal", true), false, "i udbruddet");
-  assert.equal(barred(legs, "normal", false), true, "hentet/kom ikke med");
-  const hunterDefault = [leg("breakaway"), leg("ride_for_result", { dropped: true })];
-  assert.equal(barred(hunterDefault, "normal", false), false, "begge led maa angribe");
-});
-
-test("#7380 (Codex-review): udbrud -> koer for resultat fra toppen -> laee naar sat: i udbruddet efter toppen maa han", () => {
-  const legs = [leg("breakaway"), leg("ride_for_result", { km: 30 }), leg("shelter_leader", { dropped: true })];
-  assert.equal(barred(legs, "normal", true), false, "i udbruddet er han ikke sat: koer for resultat");
-  const notDropped = descentAttackBarredByTask7380({ effort: "normal", legs, segment: SEG, segmentIndex: 3, inEscape: false, riderDropped: () => false });
-  assert.equal(notDropped, false, "i feltet med lederen: koer for resultat");
-  const dropped = descentAttackBarredByTask7380({ effort: "normal", legs, segment: SEG, segmentIndex: 3, inEscape: false, riderDropped: () => true });
-  assert.equal(dropped, true, "sat: laee-leddet");
-});
-
-test("#7380: tvivl mellem en spaerret og en fri opgave spaerrer (ordren vejer tungest)", () => {
-  // Hverken rutepunkt eller udbrud kan afgoere det: begge led er mulige paa segmentet.
-  const legs = [leg("ride_for_result"), leg("shelter_leader", { km: 44 })];
-  assert.equal(barred(legs, "normal"), true);
-});
-
-test("#7380 taendt: i dagens udbrud maa en rytter paa udbrudsopgaven stadig angribe sine udbrudsfaeller", () => {
-  const riders: RiderSpec[] = [
-    { id: "u", descending: STRONG_A, effort: "normal", role: "hunter" },
-    { id: "v", descending: WEAK, role: "free_role", team: "team-b" },
-  ];
-  const orders = [planOrder("team-a", [{ rider_id: "u", legs: [{ task: "breakaway" }, { task: "shelter_leader", from: { at: "dropped" } }] }])];
-  withSwitch(true, () => {
-    const inBreak = scenario(riders, { orders, groupOrigin: "breakaway" });
-    assert.deepEqual(attackerIds(descentHook(inBreak.state, inBreak.ctx).events), ["u"]);
-    const inField = scenario(riders, { orders });
-    assert.deepEqual(attackerIds(descentHook(inField.state, inField.ctx).events), [], "uden for udbruddet: sat-leddet (laee)");
+function rtState(groups: Array<{ ids: string[]; gap: number; origin?: "breakaway" }>): EngineState {
+  const riders: Record<string, RiderState> = {};
+  const raceGroups: RaceGroup[] = groups.map((g, i) => {
+    for (const id of g.ids) riders[id] = riderState(id, `g-${i}`);
+    return {
+      id: `g-${i}`,
+      kind: g.origin === "breakaway" ? "breakaway" : i === 0 ? "peloton" : "chase",
+      rider_ids: g.ids,
+      gap_seconds: g.gap,
+      cohesion: 1,
+      ...(g.origin ? { origin: g.origin } : {}),
+    };
   });
+  return { km: 0, groups: raceGroups, riders, virtual_gc: {} };
+}
+
+const TOGETHER = (): EngineState => rtState([{ ids: ["cap", "u", "f", "w"], gap: 0 }]);
+
+function rtRoute(segments: Segment[], komKm: number | null): RouteV2 {
+  return {
+    distance_km: segments[segments.length - 1].to_km,
+    profile_type: "hilly",
+    finale_type: "descent",
+    segments,
+    weather: { kind: "sun", wind_exposure: 0 },
+    waypoints: komKm === null ? [] : [{ kind: "kom", km: komKm, index: 0, category: "2", name: "Col A" }],
+  };
+}
+
+/** Koer runtimen frem til `upTo` (inklusive), med hver segmentstarts tilstand fra `stateAt`. */
+function runRuntime(rt: StagePlanRuntime, route: RouteV2, upTo: number, stateAt: (i: number) => EngineState): TimelineEvent[] {
+  const events: TimelineEvent[] = [];
+  for (let i = 0; i <= upTo; i++) {
+    events.push(...advanceStagePlan(rt, { state: stateAt(i), segment: route.segments[i], segmentIndex: i, isLastSegment: i === route.segments.length - 1, entrants: RT_ENTRANTS }));
+  }
+  return events;
+}
+
+/** Nedkoerslen paa segment `index` med runtimens startliste og opgaver (som segmentLoop.ts). */
+function descentAttackersFromRuntime(rt: StagePlanRuntime, route: RouteV2, index: number, state: EngineState): string[] {
+  const ctx: SegmentHookContext = {
+    ...makeHookCtx({ segment: route.segments[index], segmentIndex: index, route, entrants: stagePlanEntrants(rt, RT_ENTRANTS), tuning: RACE_V4_TUNING, seed: "descent-7380-rt" }),
+    s5ProfilesV3: true,
+    stagePlanTasks: stagePlanCurrentTasks(rt),
+  };
+  return attackerIds(descentHook(state, ctx).events);
+}
+
+test("#7380 (review P1): sat-leddet er klaebende: sat, tilbage i gruppen, stadig laee-opgaven og intet angreb", () => {
+  const route = rtRoute([
+    { kind: "flat", from_km: 0, to_km: 30 },
+    { kind: "climb", from_km: 30, to_km: 45, category: "2", avg_gradient: 6, top_elevation_m: 1200 },
+    { kind: "descent", from_km: 45, to_km: 60, technicality: 3 },
+    { kind: "flat", from_km: 60, to_km: 100 },
+  ], 45);
+  const legs = [{ task: "ride_for_result" }, { task: "shelter_leader", from: { at: "dropped" } }];
+  const rt = createStagePlanRuntime([planOrder(RT_TEAM, [{ rider_id: "u", legs }])], route, RT_ENTRANTS)!;
+  // Udgangen af segment 0: u ligger bag sin kaptajn (sat). Udgangen af stigningen: alle samlet igen.
+  const dropped = rtState([{ ids: ["cap", "f", "w"], gap: 0 }, { ids: ["u"], gap: 30 }]);
+  const events = runRuntime(rt, route, 2, (i) => (i === 1 ? dropped : TOGETHER()));
+  assert.deepEqual(events.map((e) => [e.params.rider_id, e.params.task, e.params.reason]), [["u", "shelter_leader", "dropped"]]);
+  assert.equal(isRiderDropped("u", TOGETHER(), RT_ENTRANTS), false, "stillingen nu siger 'ikke sat'");
+  assert.equal(stagePlanCurrentTasks(rt)["u"], "shelter_leader", "runtimen bliver paa sat-leddet");
+  withSwitch(true, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f"]));
+  withSwitch(null, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f", "u"], "slukket: som foer"));
+});
+
+test("#7380 (review P2): skiftet ved segmentets midtpunkt: nedkoerslen ser samme led som runtimen", () => {
+  const segments: Segment[] = [
+    { kind: "flat", from_km: 0, to_km: 40 },
+    { kind: "descent", from_km: 40, to_km: 60, technicality: 3 },
+    { kind: "flat", from_km: 60, to_km: 100 },
+  ];
+  const legs = [{ task: "shelter_leader" }, { task: "ride_for_result", from: { at: "kom", kom_index: 0 } }];
+  // Punktet i nedkoerslens foerste halvdel: skiftet sker ved dens start, han maa angribe.
+  // Punktet i anden halvdel: skiftet sker foerst ved naeste graense, han er stadig paa laee-opgaven.
+  for (const [komKm, task, attackers] of [[48, "ride_for_result", ["f", "u"]], [52, "shelter_leader", ["f"]]] as const) {
+    const route = rtRoute(segments, komKm);
+    const rt = createStagePlanRuntime([planOrder(RT_TEAM, [{ rider_id: "u", legs }])], route, RT_ENTRANTS)!;
+    runRuntime(rt, route, 1, () => TOGETHER());
+    assert.equal(stagePlanCurrentTasks(rt)["u"], task, `punkt ved km ${komKm}`);
+    withSwitch(true, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 1, TOGETHER()), attackers, `punkt ved km ${komKm}`));
+  }
+});
+
+test("#7380 (review P2): paa etapens sidste segment skifter holdarbejde ved start, andre opgaver foerst i finalen", () => {
+  const route = rtRoute([
+    { kind: "flat", from_km: 0, to_km: 60 },
+    { kind: "descent", from_km: 60, to_km: 100, technicality: 3 },
+  ], null);
+  // De sidste km ligger i anden halvdel af den sidste nedkoersel.
+  for (const [next, task, attackers] of [["tempo", "tempo", ["f"]], ["stay_sheltered", "ride_for_result", ["f", "u"]]] as const) {
+    const legs = [{ task: "ride_for_result" }, { task: next, from: { at: "final_km" } }];
+    const rt = createStagePlanRuntime([planOrder(RT_TEAM, [{ rider_id: "u", legs }])], route, RT_ENTRANTS)!;
+    runRuntime(rt, route, 1, () => TOGETHER());
+    assert.equal(stagePlanCurrentTasks(rt)["u"], task, next);
+    withSwitch(true, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 1, TOGETHER()), attackers, next));
+  }
+});
+
+test("#7380: hele motoren: nedkoerslens opgave og indsats er runtimens, og taendt angriber ingen med en spaerret ordre", () => {
+  const input = JSON.parse(readFileSync(path.join(here, "..", "fixtures", "bjerg-selektion", "input.json"), "utf8")) as StageInput;
+  input.startlist = input.startlist.map((e, i) => ({ ...e, team_id: `T${Math.floor(i / 3)}` }));
+  (input as { rules_revision?: unknown }).rules_revision = "s5_profiles_v3";
+  const komIndex = input.route.waypoints.find((w) => w.kind === "kom" && w.summit_finish !== true)!.index;
+  const planFor = (role: RiderRole): unknown[] => {
+    if (role === "captain" || role === "co_captain" || role === "sprint_captain") return [{ task: "stay_sheltered" }, { task: "attack", from: { at: "kom", kom_index: komIndex } }];
+    if (role === "helper") return [{ task: "shelter_leader" }, { task: "ride_in", from: { at: "dropped" } }];
+    if (role === "hunter") return [{ task: "breakaway" }, { task: "shelter_leader", from: { at: "dropped" } }];
+    return [{ task: "ride_for_result" }, { task: "stay_sheltered", from: { at: "dropped" } }];
+  };
+  const byTeam = new Map<string, Array<{ rider_id: string; legs: unknown[] }>>();
+  for (const e of input.startlist) {
+    const team = String(e.team_id);
+    byTeam.set(team, [...(byTeam.get(team) ?? []), { rider_id: e.rider_id, legs: planFor(e.role) }]);
+  }
+  input.orders = [...byTeam].map(([team, riders]) => planOrder(team, riders));
+  const plans = new Map(input.orders.flatMap((o) => (o.params as { riders: Array<{ rider_id: string; legs: Array<{ task: StagePlanTask }> }> }).riders.map((r) => [r.rider_id, r.legs] as const)));
+
+  type Seen = { from_km: number; tasks: Record<string, StagePlanTask>; efforts: Record<string, EffortLevel>; attackers: string[] };
+  const run = (active: boolean | null) => withSwitch(active, () => {
+    const seen: Seen[] = [];
+    const hooks = {
+      ...LIVE_MECHANIC_HOOKS,
+      descent: (state: EngineState, ctx: SegmentHookContext) => {
+        const result = descentHook(state, ctx);
+        const efforts: Record<string, EffortLevel> = {};
+        for (const id of Object.keys(ctx.stagePlanTasks ?? {})) efforts[id] = ctx.entrants[id].effort;
+        seen.push({ from_km: ctx.segment.from_km, tasks: { ...(ctx.stagePlanTasks ?? {}) }, efforts, attackers: attackerIds(result.events) });
+        return result;
+      },
+    };
+    return { seen, events: runSegmentLoop(input, hooks).timeline };
+  });
+
+  const on = run(true);
+  assert.ok(on.seen.length > 0, "fixturen har en nedkoersel");
+  let switchedBefore = false;
+  for (const s of on.seen) {
+    assert.deepEqual(Object.keys(s.tasks).sort(), [...plans.keys()].sort(), "alle planer er gyldige og naar hooket");
+    for (const [riderId, legs] of plans) {
+      // Runtimens opgave paa segmentet = sidste skift ved eller foer dets start (finalens skift taeller ikke).
+      const legEvent = on.events.filter((e) => e.type === STAGE_PLAN_LEG_EVENT && e.params.rider_id === riderId && e.km <= s.from_km && e.params.at_finish !== true).at(-1);
+      const expected = (legEvent?.params.task as StagePlanTask | undefined) ?? legs[0].task;
+      if (expected !== legs[0].task) switchedBefore = true;
+      assert.equal(s.tasks[riderId], expected, `${riderId}: nedkoerslens opgave == runtimens`);
+      assert.equal(s.efforts[riderId], TASK_EFFORT[expected], `${riderId}: indsatsen foelger opgaven`);
+    }
+    for (const id of s.attackers) assert.ok(!DESCENT_ATTACK_BARRED_TASKS_7380.has(s.tasks[id]), `${id} angreb paa ${s.tasks[id]}`);
+  }
+  assert.ok(switchedBefore, "mindst ét skift foer nedkoerslen (ellers tester testen intet)");
+  // Slukket: foerste nedkoersel ser samme opgaver (intet foer den er aendret), og kontakten fjerner kun angribere.
+  const off = run(null);
+  assert.deepEqual(off.seen[0].tasks, on.seen[0].tasks);
+  for (const id of on.seen[0].attackers) assert.ok(off.seen[0].attackers.includes(id), `${id} angriber kun taendt`);
 });
 
 // ── 3. Kun fjerne, aldrig tilfoeje + monotoni blandt de frie ────────────────
