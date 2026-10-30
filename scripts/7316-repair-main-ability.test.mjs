@@ -300,12 +300,16 @@ test("fund 2: form/traethed fra rapporten, aldrig 50/0", () => {
   // Eksportens tomme objekt { form: null, fatigue: null } er IKKE form 0 / traethed 0.
   assert.equal(conditionForTick({ condition_before_date: { form: null, fatigue: null } }), null);
   assert.equal(conditionForTick({}), null);
-  // Codex P1 (#7362): klippet slutform ved loft/gulv er tvetydig og springes over.
+  // Codex P1 (#7362): klippet slutform ved loft/gulv giver laveste mulige startform (undergraense).
   const sweet = { condition_before_date: null, fatigue: 22, fatigue_delta: 2 };
-  assert.equal(conditionForTick({ ...sweet, form: 100 }), null, "form 100 efter et plus-skridt kan komme fra flere startformer");
-  assert.notEqual(conditionForTick({ ...sweet, form: 99 }), null, "under loftet er inversionen entydig");
+  const sweetStep = nextForm({ form: 50, fatigue: 22 }) - 50;
+  assert.ok(sweetStep > 0, "forudsaetning: sweet-zonen giver et plus-skridt");
+  assert.deepEqual(conditionForTick({ ...sweet, form: 100 }), { form: 100 - sweetStep, fatigue: 20, source: "report_after_minus_delta", lowerBound: true });
+  assert.equal(conditionForTick({ ...sweet, form: 99 }).lowerBound, undefined, "under loftet er inversionen entydig");
   const overload = { condition_before_date: null, fatigue: 95, fatigue_delta: 5 };
-  assert.equal(conditionForTick({ ...overload, form: 0 }), null, "form 0 efter et minus-skridt er tvetydig");
+  assert.equal(conditionForTick({ ...overload, form: 0 }).form, 0, "ved gulvet: laveste mulige startform 0");
+  // Ufuldstaendigt condition_before_date (dato-stien) falder ikke tilbage til inversionen.
+  assert.equal(conditionForTick({ condition_before_date: { form: 60, fatigue: null }, form: 61, fatigue: 22, fatigue_delta: 2 }), null);
 });
 
 test("fund 2: kreditten bruger rapportens form, og et tick uden tilstand springes over", () => {

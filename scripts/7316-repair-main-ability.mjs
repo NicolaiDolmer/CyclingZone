@@ -101,8 +101,9 @@ const finiteOrNull = (v) => (v == null || v === "" || !Number.isFinite(Number(v)
  *   regnede dér `fatigueFoer = fatigue - fatigue_delta` og `form = nextForm(formFoer,
  *   fatigue)`, og nextForm's skridt afhaenger kun af den nye traethed, saa formen foer er
  *   formen efter minus det skridt (klippet til 0..100).
- * - Mangler begge, eller er inversionen tvetydig ved formens loft/gulv: null. Kalderen
- *   springer ticket over i stedet for at gaette.
+ * - Klippet ved formens loft/gulv: laveste mulige startform (sikker undergraense, lowerBound).
+ * - Mangler begge, eller er condition_before_date ufuldstaendigt: null. Kalderen springer
+ *   ticket over i stedet for at gaette.
  * @returns {{form:number,fatigue:number,source:string}|null}
  */
 export function conditionForTick(tick) {
@@ -110,17 +111,22 @@ export function conditionForTick(tick) {
   const cbdForm = finiteOrNull(cbd?.form);
   const cbdFatigue = finiteOrNull(cbd?.fatigue);
   if (cbdForm != null && cbdFatigue != null) return { form: cbdForm, fatigue: cbdFatigue, source: "condition_before_date" };
+  // Et ufuldstaendigt condition_before_date er dato-stien: dens form/fatigue i rapporten er ikke
+  // nextForm's, saa inversionen nedenfor ville vaere forkert. Spring over.
+  if (cbd != null && typeof cbd === "object") return null;
   const formAfter = finiteOrNull(tick?.form);
   const fatigueAfter = finiteOrNull(tick?.fatigue);
   const fatigueDelta = finiteOrNull(tick?.fatigue_delta);
   if (formAfter == null || fatigueAfter == null || fatigueDelta == null) return null;
   const formStep = nextForm({ form: 50, fatigue: fatigueAfter }) - 50;
-  // Codex P1 (#7362): ved loftet/gulvet klipper nextForm skridtet, saa flere startformer gav
-  // samme slutform (fx form 100 forbliver 100). Inversionen er da tvetydig: spring ticket over
-  // i stedet for at kreditere for lidt og markere parret som anvendt i ledgeren.
-  if ((formAfter >= 100 && formStep > 0) || (formAfter <= 0 && formStep < 0)) return null;
+  // Codex P1 (#7362): ved loftet/gulvet klipper nextForm, saa flere startformer gav samme
+  // slutform (fx form 100 forbliver 100). Da conditionMultiplier stiger med formen, bruges den
+  // LAVEST mulige startform: en sikker undergraense, der aldrig krediterer for meget (ved loftet
+  // 100 - skridt, ved gulvet 0). Ledgeren laaser parret, saa et overspring ville tabe ticket.
+  const clamped = (formAfter >= 100 && formStep > 0) || (formAfter <= 0 && formStep < 0);
   return {
-    form: Math.max(0, Math.min(100, formAfter - formStep)),
+    form: clamped ? (formAfter >= 100 ? 100 - formStep : 0) : Math.max(0, Math.min(100, formAfter - formStep)),
+    ...(clamped ? { lowerBound: true } : {}),
     fatigue: fatigueAfter - fatigueDelta,
     source: "report_after_minus_delta",
   };
@@ -363,7 +369,7 @@ export function computeRepairPlan({
 
       const condition = conditionForTick(tick);
       if (!condition) { bump(skips, "no_condition_in_report"); continue; }
-      bump(conditionSources, condition.source);
+      bump(conditionSources, condition.lowerBound ? `${condition.source}_lower_bound` : condition.source);
 
       const delta = s4MainAbilityDelta({
         tick, rider, abilitiesAtTick, caps, age, seasonNumber, mainAbility, condition, model,
