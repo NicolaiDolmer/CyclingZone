@@ -390,17 +390,6 @@ features:
     verified: 2026-09-06
     note: Afviklet; kun lån findes.
 
-  - id: auction-entry-gate
-    area: market
-    title_en: Auction entry gate
-    title_da: Adgangsport til auktioner
-    state: dormant
-    flag: auction_entry_gate_enabled
-    ssot: docs/TRANSFER_MARKET_RULES.md
-    epic: 3134
-    verified: 2026-10-15
-    note: Bygget; flag false i prod (15/10). Kun ejeren flipper.
-
   - id: ai-unsolicited-bids
     area: market
     title_en: AI and unsolicited bids

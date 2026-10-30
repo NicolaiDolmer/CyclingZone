@@ -1,6 +1,6 @@
 export const PATCHES = [
   {
-    "version": "7.387",
+    "version": "7.388",
     "date": "2026-10-30",
     "changes": [
       {
@@ -38,6 +38,122 @@ export const PATCHES = [
         "refs": [
           7316,
           7340
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.387",
+    "date": "2026-10-30",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Lost main ability progress is back",
+          "body": "What changed: From the start of season 5, riders got no progress in the ability their program is built for, while their other abilities grew. I fixed the cause on 29 October, and on 30 October I added the lost progress back for 438 riders.\n\nWhat it means for you: Some riders went up a point in their main ability, the rest got it on their progress bar. If a rider still looks wrong, send me the rider and the ability."
+        },
+        "da": {
+          "title": "Den tabte fremgang i hovedevnen er tilbage",
+          "body": "Hvad er ændret: Fra start af sæson 5 fik rytterne ingen fremgang i den evne, programmet er bygget til, mens deres andre evner steg. Jeg rettede årsagen 29. oktober, og 30. oktober lagde jeg den tabte fremgang tilbage for 438 ryttere.\n\nHvad betyder det for dig: Nogle ryttere steg et point i hovedevnen, resten fik det på fremdriftsbaren. Ser en rytter stadig forkert ud, så send mig rytteren og evnen."
+        },
+        "refs": [
+          7316,
+          7340,
+          7362
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "The peloton controls the breakaway again",
+          "body": "What changed: On flat and hilly stages the chasing teams now control the gap to the breakaway, and a group in between no longer hides the chase of the sprint teams.\n\nWhat it means for you: A breakaway on a flat or hilly stage no longer rides away unchecked."
+        },
+        "da": {
+          "title": "Feltet styrer udbruddet igen",
+          "body": "Hvad er ændret: På flade og kuperede etaper styrer de jagende hold nu forspringet til udbruddet, og en gruppe imellem skjuler ikke længere sprinterholdenes jagt.\n\nHvad betyder det for dig: Et udbrud på en flad eller kuperet etape kører ikke længere ukontrolleret væk."
+        },
+        "refs": [
+          6912,
+          7302
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Why the breakaway stayed away",
+          "body": "What changed: The stage page now explains why the breakaway held or was caught, and which of your orders made the difference. Time trials no longer show breakaway explanations.\n\nWhat it means for you: You can see what your tactics did in the stage."
+        },
+        "da": {
+          "title": "Hvorfor udbruddet holdt",
+          "body": "Hvad er ændret: Etapesiden forklarer nu, hvorfor udbruddet holdt eller blev hentet, og hvilke af dine ordrer der gjorde forskellen. Enkeltstarter viser ikke længere forklaringer om udbrud.\n\nHvad betyder det for dig: Du kan se, hvad din taktik gjorde på etapen."
+        },
+        "refs": [
+          6469,
+          7275
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Rejoin a race after withdrawing",
+          "body": "What changed: If you withdrew your team from a race, you can join again by saving a new selection, both in the race panel and in the season matrix. Conflicts and locked riders are shown by name.\n\nWhat it means for you: Clearing the assistant's squads no longer locks you out of a race."
+        },
+        "da": {
+          "title": "Meld på igen efter en afmelding",
+          "body": "Hvad er ændret: Har du trukket dit hold fra et løb, kan du melde det på igen ved at gemme en ny udtagelse, både i løbspanelet og i sæsonmatrixen. Konflikter og låste ryttere vises med navn.\n\nHvad betyder det for dig: Rydder du assistentens trupper, bliver du ikke længere låst ude af løbet."
+        },
+        "refs": [
+          7153,
+          7321
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Riders",
+        "en": {
+          "title": "Contract warnings for youth squads too",
+          "body": "What changed: Contract warnings now also cover your U23 and junior riders and riders who joined during the season, for example from the academy intake, an auction or a transfer. Warnings come together per team, and the Contracts tab groups riders by squad.\n\nWhat it means for you: You see every contract that is about to end in one place."
+        },
+        "da": {
+          "title": "Kontraktvarsler også for ungdomstrupperne",
+          "body": "Hvad er ændret: Kontraktvarsler dækker nu også dine U23- og juniorryttere og ryttere, der kom til i løbet af sæsonen, fx fra akademiets optag, en auktion eller en transfer. Varslerne samles pr. hold, og Kontrakter-fanen grupperer rytterne efter trup.\n\nHvad betyder det for dig: Du ser alle kontrakter, der er ved at udløbe, ét sted."
+        },
+        "refs": [
+          7249,
+          7274
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Training",
+        "en": {
+          "title": "Small fixes",
+          "body": "What changed: The evening run now settles the last training date of a season that just ended, also when the season switch comes late in the evening. The help texts about form peaks and the empty academy view are corrected.\n\nWhat it means for you: No training is lost at the season switch."
+        },
+        "da": {
+          "title": "Små rettelser",
+          "body": "Hvad er ændret: Aftenkørslen afregner nu sidste træningsdato i en sæson, der lige er slut, også når sæsonskiftet kommer sent på aftenen. Hjælpeteksterne om formtoppe og den tomme akademivisning er rettet.\n\nHvad betyder det for dig: Der går ingen træning tabt ved sæsonskiftet."
+        },
+        "refs": [
+          6924,
+          7143,
+          7304
         ]
       }
     ]

@@ -374,6 +374,11 @@
       "issue": 7344,
       "reason": "Ejer-undtagelse 29/10: registry-flags fejler nye flag før seed-migrationen er kørt (koster CI-runder på hver flag-PR)",
       "since": "2026-10-29"
+    },
+    {
+      "issue": 7368,
+      "reason": "Taktik: fase sat som 'efter stigning X' vises og udføres som 'fra X til Y' (Discord 29-30/10, ejer-go 30/10)",
+      "since": "2026-10-30"
     }
   ]
 }

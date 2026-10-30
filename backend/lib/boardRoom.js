@@ -140,6 +140,23 @@ import { computeBonusOfferProgress, computePassiveModifierInfo } from "./boardTr
 import { isReputationReadEnabled, readReputationStage } from "./reputationFlag.js";
 import { captureException } from "./sentry.js";
 import { loadSingleActiveSeason } from "./activeSeasonLookup.js";
+import {
+  YOUTH_RESULT_SOURCE,
+  deriveYouthResultMoodEvents,
+  loadYouthRaceResultsForBoard,
+  readYouthMoodTuning,
+} from "./boardYouthEvaluation.js";
+
+// #7096 · Ungdomsevalueringen bor i boardYouthEvaluation.js; re-eksporteret her,
+// så Boardroom-kalderne og testene har ét indgangspunkt.
+export {
+  YOUTH_JERSEY_TYPES,
+  YOUTH_PODIUM_MAX_RANK,
+  YOUTH_RESULT_TYPES,
+  deriveYouthResultMoodEvents,
+  isYouthFocusedArchetype,
+  loadYouthRaceResultsForBoard,
+} from "./boardYouthEvaluation.js";
 
 const MINUTES_LIMIT = 10;
 const EVENTS_FETCH_LIMIT = 50; // bredere vindue end minutes-loftet, så mood har nok historik
@@ -287,12 +304,27 @@ export function resolveEventSpeaker({ row, chairmanArchetypeKey, movements = [] 
  * Stemning pr. medlem (addendum §5): seneste N=5 milepæls-kvitteringer på
  * medlemmets ejede mål → positive/neutral/negative. Kun milepæls-linkede
  * events indgår (afvigelse 7) — `ownedEvents` skal være FORUDFILTRERET og
- * -sorteret (nyeste først) af kalderen.
+ * -sorteret (nyeste først) af kalderen. Kalderen lægger også mål-bevægelser
+ * (#4578) og, for ungdomsfokuserede medlemmer, holdets ungdomsresultater
+ * (#7096, `deriveYouthResultMoodEvents`) i samme pulje.
+ *
+ * `youthWindowCap` (#7096, fra den private tuning) begrænser hvor mange
+ * ungdomsresultat-events der kan fylde de 5 pladser: de nyeste op til loftet
+ * tæller, ældre ungdomsevents springes over, og pladserne går i stedet til
+ * medlemmets øvrige events. Uden loft (null) gælder vinduet som hidtil.
  */
-export function deriveMemberMood({ ownedEvents = [], archetypeKey } = {}) {
-  const relevant = (ownedEvents || [])
-    .filter((e) => e.ownerArchetypeKey === archetypeKey)
-    .slice(0, MOOD_WINDOW);
+export function deriveMemberMood({ ownedEvents = [], archetypeKey, youthWindowCap = null } = {}) {
+  const owned = (ownedEvents || []).filter((e) => e.ownerArchetypeKey === archetypeKey);
+  const relevant = [];
+  let youthTaken = 0;
+  for (const event of owned) {
+    if (relevant.length >= MOOD_WINDOW) break;
+    if (youthWindowCap != null && event.source === YOUTH_RESULT_SOURCE) {
+      if (youthTaken >= youthWindowCap) continue;
+      youthTaken += 1;
+    }
+    relevant.push(event);
+  }
   if (!relevant.length) return "neutral";
   const sum = relevant.reduce((acc, e) => acc + Number(e.satisfaction_delta ?? 0), 0);
   if (sum > 0) return "positive";
@@ -499,6 +531,11 @@ export async function buildBoardRoomPayload({
   // #4579 · injicerbar KUN til test (samme mønster som boardWeekendFinalization.js's
   // deps.loadGoalContext) — produktionskode kalder altid med default.
   loadGoalContext = loadGoalContextForBoard,
+  // #7096 · injicerbar KUN til test, samme mønster som loadGoalContext.
+  loadYouthResults = loadYouthRaceResultsForBoard,
+  // #7096 · vægte/loft fra den private runtime-kilde (fail-closed: null = ungdoms-
+  // inputtet er slået fra). Injicerbar til test med syntetiske tal.
+  youthTuning = readYouthMoodTuning(),
 } = {}) {
   ensureSupabase(supabase);
   if (!teamId) throw new Error("teamId is required");
@@ -521,6 +558,17 @@ export async function buildBoardRoomPayload({
       teamId,
       seasonNumber: season?.number ?? null,
     }));
+  // #7096 · Ungdomsresultater i indeværende sæson (kun til ungdomsfokuserede
+  // medlemmers stemning). Best-effort: en fejlet læsning koster kun dette input,
+  // aldrig siden, og påvirker hverken mål, tillid eller seniormål.
+  const youthResultsPromise = activeSeasonPromise
+    .then((season) => (season?.id && youthTuning
+      ? loadYouthResults({ supabase, teamId, seasonId: season.id })
+      : []))
+    .catch((err) => {
+      captureException(err);
+      return [];
+    });
 
   const [
     relationRes,
@@ -537,6 +585,7 @@ export async function buildBoardRoomPayload({
     bonusOfferRes,
     reputationStage,
     mandateModelStage,
+    youthResultRows,
   ] = await Promise.all([
     supabase.from("board_relations").select("*").eq("team_id", teamId).maybeSingle(),
     supabase.from("team_board_members")
@@ -591,6 +640,7 @@ export async function buildBoardRoomPayload({
     // (resolveMandateDisplayGoals). Fail-safe: fejl/fravær → null → #5751-
     // reconciliationen som før.
     readFlagStage(supabase, BOARD_MANDATE_MODEL_FLAG_KEY),
+    youthResultsPromise,
   ]);
 
   for (const [label, res] of [
@@ -724,7 +774,15 @@ export async function buildBoardRoomPayload({
       satisfaction_delta: m.direction === "improved" ? 1 : -1,
       created_at: m.at,
     }));
-  const moodEvents = [...milestoneEventsWithOwner, ...movementMoodEvents]
+  // #7096 · Ungdomsresultater (U23/junior) som input til de ungdomsfokuserede
+  // medlemmers stemning. Samme pulje og samme 5-seneste-vindue; seniormålene
+  // og tilliden læser dem ikke.
+  const youthResultMoodEvents = deriveYouthResultMoodEvents({
+    rows: youthResultRows ?? [],
+    assignedMembers,
+    tuning: youthTuning,
+  });
+  const moodEvents = [...milestoneEventsWithOwner, ...movementMoodEvents, ...youthResultMoodEvents]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const boardMembers = assignedMembers.map((m) => {
@@ -734,7 +792,11 @@ export async function buildBoardRoomPayload({
       name: named?.full_name ?? null,
       initials: named?.initials ?? null,
       role: deriveMemberRole({ archetypeKey: m.archetype_key, isChairman: m.is_chairman }),
-      mood: deriveMemberMood({ ownedEvents: moodEvents, archetypeKey: m.archetype_key }),
+      mood: deriveMemberMood({
+        ownedEvents: moodEvents,
+        archetypeKey: m.archetype_key,
+        youthWindowCap: youthTuning?.windowCap ?? null,
+      }),
       // Samme tal for alle medlemmer i denne runde (ejer-godkendt forenkling,
       // 1/9-tillæg) — se deriveFoundingSeasonNumber.
       sinceSeason,
