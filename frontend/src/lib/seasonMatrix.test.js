@@ -510,6 +510,7 @@ test("buildRiderRowSegments: unikke keys pr. række også når flere løb deler 
   };
   const none = new Map(races.map((r) => [r.id, emptyRaceDraft()]));
   assert.equal(assertUnique(none).length, dayColumns.length);
+  /** @type {Map<string, any>} */
   const picked = new Map(none);
   picked.set("oneA", { ...emptyRaceDraft(), rider_ids: ["rider1"] });
   const before = assertUnique(none);
