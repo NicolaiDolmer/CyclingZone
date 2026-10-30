@@ -547,7 +547,7 @@ async function closeListingsBestEffort(supabase, riderId) {
   try {
     await closeTransferListingsForRiders(supabase, [riderId], "withdrawn");
   } catch (err) {
-    captureException(new Error(`academy release close listings (${riderId}): ${err.message}`));
+    captureException(new Error(`academy release close listings (${riderId}): ${err instanceof Error ? err.message : String(err)}`));
   }
 }
 
