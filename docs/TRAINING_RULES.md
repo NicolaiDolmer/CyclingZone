@@ -409,30 +409,28 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
 - **Alderens turbo er ude:** alderstabellen og ungdomstillægget indgår ikke i udviklingen.
   Udviklingen drives af en alders-neutral træningsscore; den viste træningsscore er uændret.
 - **Blød overgang ved tænding ([#7382](https://github.com/NicolaiDolmer/CyclingZone/issues/7382), ejer 30/10):**
-  en evne der stod på eller over sit bløde loft PÅ TÆNDINGSDAGEN, glider lineært fra den gamle
-  models fremdrift (med alderstabellen) til kurve B's over 14 kalenderdage fra og med den
-  første dag kurve B faktisk kører (dansk dato). Første dag = den gamle models fulde fremdrift;
-  derefter kun kurve B. Fremdriften er max(kurve B, blandingen): aldrig under kurve B's
-  (overgangen bremser aldrig) og aldrig negativ. Alle andre evner får kurve B fra dag 1,
-  også en evne der først krydser loftet inde i vinduet.
-  **Medlemskabet er låst:** på tændingsdagen gemmer motoren én række pr. rytter på et hold der
-  udvikler sig (managerhold-reglen) i `development_curve_b_transition_members` med de evner der
-  stod på eller over loftet, målt før dagens tick. Alle holdets ryttere måles, også dem uden
-  tick den dag (skadet, hviledag i et etapeløb, ukendt slot). Datoens første kørsel vinder
-  (senere løbsdage samme dato og genkørsler flytter det ikke). Resten af vinduet læses kun
-  rækken; en rytter uden række får kurve B hele vejen, fx en rytter der først kommer til et
-  managerhold inde i vinduet (transfer fra et AI-hold, en ny akademirytter efter tændingsdagen).
-  Rækken følger rytteren, så et skifte mellem to managerhold beholder den. Et hold der havde
-  afregnet hele tændingsdatoen, før kurve B blev aktiv (fx "træn nu" før flaget blev tændt),
-  har ingen rækker: det måles på sin første dato med kurve B i vinduet, før dagens tick
-  (`measured_on`), og derefter aldrig igen.
-  Startdatoen er `app_config`-nøglen `development_curve_b_ignited_at`. Træningsmotoren
-  læser den først og stempler kun, når nøglen mangler, med tick-datoen første gang kurven er
-  aktiv (flag `on` OG gyldige params); den overskrives aldrig, og efter vinduet skrives intet.
-  Flag off = intet opslag og intet stempel. En ny overgang ved en senere tænding: slet nøglen
-  før tændingen (nye rækker nøgles på den nye dato). På dato-stien (`training_condition_per_date`)
-  kaster en fejl i stemplet eller medlemskabet, så dagen prøves igen; ellers = kurve B fuldt.
-  Tabellen skal være migreret, før flaget tændes.
+  en evne der stod på eller over sit bløde loft, da kurve B blev tændt, glider lineært fra den
+  gamle models fremdrift (med alderstabellen) til kurve B's over 14 kalenderdage fra og med
+  tændingsdatoen (dansk dato). Første dag = max(kurve B, den gamle model); derefter kun kurve B.
+  Fremdriften er max(kurve B, blandingen): aldrig under kurve B's (overgangen bremser aldrig)
+  og aldrig negativ. Alle andre evner får kurve B fra dag 1, også en evne der først krydser
+  loftet inde i vinduet.
+  **Ét samlet øjebliksbillede:** første gang kurven er aktiv (flag `on` OG gyldige params) og
+  `app_config`-nøglen `development_curve_b_ignited_at` mangler, gemmer motoren én række pr.
+  rytter på et managerhold (managerhold-reglen: manager sat, ikke AI/bank/testkonto; rytteren
+  ikke pensioneret) i `development_curve_b_transition_members` med de evner der står på eller
+  over loftet lige nu, også tomme rækker (insert ... on conflict do nothing, i batches). Først
+  derefter stemples nøglen med dagens danske dato, aldrig en efterslæbende tick-dato. Fejler
+  billedet, står der intet stempel, og næste kørsel prøver igen. Står stemplet der, tages
+  billedet aldrig igen, og nøglen overskrives aldrig.
+  Resten af vinduet læses kun rækken. En rytter uden række får kurve B hele vejen, fx en rytter
+  der kommer til et managerhold efter tændingen (fra et AI-hold, en ny akademirytter). Rækken
+  følger rytteren, så et skifte mellem to managerhold beholder den. Kørsler for datoer før
+  tændingsdatoen (efterslæb) får vægt 0.
+  Flag off = intet opslag, intet billede og intet stempel. En ny overgang ved en senere tænding:
+  slet nøglen før tændingen (nye rækker nøgles på den nye dato). På dato-stien
+  (`training_condition_per_date`) kaster en fejl i stempel, billede eller medlemsopslag, så dagen
+  prøves igen; ellers = kurve B fuldt for kørslen. Tabellen skal være migreret, før flaget tændes.
 - **Uændret:** maks +1 pr. evne pr. løbsdag og pr. dato (§6.2), fremdriften bæres videre, loftet
   klipper, og løbsdagen går gennem samme kæde.
 - **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens

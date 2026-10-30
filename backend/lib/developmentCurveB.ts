@@ -37,8 +37,8 @@
 // der aftager mod rolleklassens hårde loft og først er 0 dér.
 //
 // Tændingen (#7382): de første 14 dage kurve B kører, glider evner der stod over det
-// bløde loft på tændingsdagen, fra den gamle models fart til restfarten
-// (developmentCurveBTransition7382.ts).
+// bløde loft ved tændingen (ét samlet øjebliksbillede), fra den gamle models fart til
+// restfarten (developmentCurveBTransition7382.ts).
 //
 // ═══ TAL ═════════════════════════════════════════════════════════════════════
 // Alle kalibrerings-tal er PRIVATE (hard rule 17, balance-internals/6110/) og
