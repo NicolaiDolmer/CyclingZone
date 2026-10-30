@@ -36,7 +36,7 @@
 // S2/S8): en evne over sit bløde loft står aldrig stille. Den får en lille restfart,
 // der aftager mod rolleklassens hårde loft og først er 0 dér.
 //
-// Tændingen (#7382): de første 14 dage efter tændingen glider evner over det bløde
+// Tændingen (#7382): de første 14 dage kurve B kører, glider evner over det bløde
 // loft fra den gamle models fart til restfarten (developmentCurveBTransition7382.ts).
 //
 // ═══ TAL ═════════════════════════════════════════════════════════════════════

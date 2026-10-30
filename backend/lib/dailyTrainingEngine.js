@@ -73,7 +73,7 @@ import {
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
-import { readCurveBIgnitedOn, curveBTransitionForDate } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
+import { ensureCurveBIgnitedOn, curveBTransitionForDate } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
@@ -743,10 +743,10 @@ export async function runTeamTrainingDay({
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
     loadDevelopmentCurveB({ supabase, strict: conditionPerDate }),
   ]);
-  // #7382: de første dage efter taendingen glider evner over det bloede loft ind i kurve B.
-  // Kun laest naar kurven er aktiv; flag off = intet opslag, bit-identisk.
+  // #7382: de første dage kurve B koerer, glider evner over det bloede loft ind i kurven.
+  // Startdatoen stemples (en gang) her, foerste gang kurven faktisk er aktiv; flag off = intet opslag.
   const curveBTransition = curveB
-    ? curveBTransitionForDate({ ignitedOn: await readCurveBIgnitedOn(supabase, { strict: conditionPerDate }), tickDate })
+    ? curveBTransitionForDate({ ignitedOn: await ensureCurveBIgnitedOn(supabase, { tickDate, strict: conditionPerDate }), tickDate })
     : null;
   // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
   const [developmentScoreB, raceCatchUp] = await Promise.all([

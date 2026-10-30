@@ -6,36 +6,38 @@
 //   - HVEM: kun evner der står på eller over kurve B's bløde loft. Alle andre evner
 //     (også hos samme rytter) får kurve B fra dag 1.
 //   - HVORDAN: dagens fremdrift glider lineært fra den gamle models fremdrift til
-//     kurve B's over CURVE_B_TRANSITION_DAYS kalenderdage fra tændingsdatoen
-//     (dansk tid). Derefter kun kurve B.
-//   - Aldrig negativ fremdrift (rating-reglen 17/9), og aldrig mere end den største
-//     af de to modeller: blandingen ligger altid mellem dem.
-//   - Aldrig langsommere end kurve B: overgangen er en blød landing, ikke en bremse.
-//     Hvor den gamle model allerede var langsommere end kurve B (målt: en del ældre
-//     ryttere med lavt potentiale), får evnen kurve B fra dag 1 som alle andre.
+//     kurve B's over CURVE_B_TRANSITION_DAYS kalenderdage, fra og med den første
+//     dag kurve B faktisk kører (dansk dato). Dag 0 = den gamle models fulde
+//     fremdrift, sidste dag i vinduet er næsten kurve B. Derefter kun kurve B.
+//   - Fremdriften er max(kurve B, blandingen): aldrig langsommere end kurve B (en
+//     blød landing, ikke en bremse), aldrig mere end den største af de to modeller,
+//     og aldrig negativ (rating-reglen 17/9).
 //
-// Tændingstidspunktet står i app_config under CURVE_B_IGNITED_AT_CONFIG_KEY. Det
-// stemples af en trigger (database/2026-10-30-7382-curve-b-transition.sql), første
-// gang `development_curve_b` sættes til "on", og overskrives aldrig af en ny
-// tænding. Så kan overgangen regnes efter for enhver dato. Mangler stemplet, er der
-// ingen overgang (kurve B fuldt), som før #7382.
+// Startdatoen står i app_config under CURVE_B_IGNITED_AT_CONFIG_KEY. Motoren
+// stempler den selv (ensureCurveBIgnitedOn) med tick-datoen, første gang kurve B
+// faktisk er aktiv (flaget on OG gyldige params), og overskriver den aldrig. Et
+// flag der er on uden gyldige params, eller et kort flip on og off uden en tick
+// imellem, lægger derfor intet stempel. Skal en senere tænding starte en ny
+// overgang, slettes nøglen bevidst først. Flag off = intet opslag, intet stempel.
 //
 // "Over loftet" måles på tick-dagens evne, ikke på et øjebliksbillede fra
-// tændingsdagen (der gemmes intet pr. rytter). En evne kan kun stige i vinduet, så
-// alle evner der stod over loftet ved tændingen, er med. En evne der krydser loftet
-// i vinduet, kommer også med resten af vinduet, men får aldrig mere end den gamle
-// models fremdrift, som den ville have fået uden kurve B.
+// startdagen (der gemmes intet pr. rytter). En evne kan kun stige i vinduet, så
+// alle evner der stod over loftet ved starten, er med. En evne der krydser loftet
+// inde i vinduet, får også blandingen resten af vinduet, men aldrig mere end den
+// gamle models fremdrift, som den ville have fået uden kurve B.
 //
 // Ingen balance-tal her: de 14 dage er ejerens beslutning i issuet. Kurvens tal er
 // private (hard rule 17) og kommer ind som de validerede params.
 //
 // Rene funktioner, deterministiske: ingen Date.now, ingen Math.random. Kun
-// readCurveBIgnitedOn læser fra databasen.
+// readCurveBIgnitedOn og ensureCurveBIgnitedOn rører databasen.
 
 import { copenhagenDateString } from "./copenhagenTime.js";
 
 export const CURVE_B_IGNITED_AT_CONFIG_KEY = "development_curve_b_ignited_at";
 export const CURVE_B_TRANSITION_DAYS = 14;
+const CURVE_B_IGNITED_AT_DESCRIPTION =
+  "#7382: first Copenhagen date curve B actually ran. Start of the soft transition. Written once by the training engine; delete the key to start a new transition.";
 
 export interface CurveBTransition {
   // Kurve B's andel af dagens fremdrift for evner over det bløde loft (0 <= w < 1).
@@ -56,9 +58,11 @@ export function calendarDaysBetween(from: string | null | undefined, to: string 
 }
 
 /**
- * Overgangen for én tick-dato. null = ingen overgang (kurve B fuldt): intet
- * tændingsstempel, ugyldig dato, eller vinduet er slut. En dato før tændingen
- * (fx en efterslæbende kørsel) giver vægt 0, altså den gamle models fart.
+ * Overgangen for én tick-dato. Vinduet er `days` kalenderdage fra og med
+ * startdatoen: startdagen har vægt 0 (den gamle models fart), dag days-1 den
+ * største vægt under 1. null = ingen overgang (kurve B fuldt): intet stempel,
+ * ugyldig dato, eller vinduet er slut. En dato før starten (fx en efterslæbende
+ * kørsel) giver vægt 0.
  */
 export function curveBTransitionForDate({
   ignitedOn, tickDate, days = CURVE_B_TRANSITION_DAYS,
@@ -90,19 +94,28 @@ export function blendCurveBTransition({
   const b = Number.isFinite(curveBDelta) && curveBDelta > 0 ? curveBDelta : 0;
   const rawOld = typeof oldDelta === "function" ? oldDelta() : oldDelta;
   const o = Number.isFinite(rawOld) && rawOld > 0 ? rawOld : 0;
-  // Overgangen kan kun hjælpe: er den gamle model langsommere (fx en ældre rytter
-  // med lavt potentiale), får evnen kurve B uændret i stedet for at blive bremset.
+  // Overgangen kan kun hjælpe: er den gamle model langsommere, får evnen kurve B
+  // uændret i stedet for at blive bremset.
   const v = Math.max(b, (1 - w) * o + w * b);
   return v > 0 ? v : 0;
 }
 
 type ConfigClient = { from: (table: string) => any };
 
-/** Tændingsstemplet (timestamptz i jsonb) som dansk kalenderdato, ellers null. */
+/**
+ * Stemplet som dansk kalenderdato, ellers null. Motoren skriver en dansk dato
+ * (YYYY-MM-DD); et tidsstempel (fx sat i hånden) omregnes til dansk dato.
+ */
 export function ignitedOnFromConfigValue(value: unknown): string | null {
   if (typeof value !== "string" || value.trim() === "") return null;
+  if (DATE_RE.test(value)) return isRealDate(value) ? value : null;
   const t = Date.parse(value);
   return Number.isFinite(t) ? copenhagenDateString(new Date(t)) : null;
+}
+
+function isRealDate(date: string): boolean {
+  const t = Date.parse(`${date}T12:00:00Z`);
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === date;
 }
 
 /**
@@ -123,4 +136,30 @@ export async function readCurveBIgnitedOn(
     console.warn(`[curve-b] ${CURVE_B_IGNITED_AT_CONFIG_KEY} kunne ikke laeses - ingen overgang: ${(err as Error)?.message ?? err}`);
     return null;
   }
+}
+
+/**
+ * Kaldes KUN når kurve B faktisk er aktiv for tick'et. Stempler tick-datoen som
+ * startdato, hvis der ikke allerede står én (insert ... on conflict do nothing:
+ * et eksisterende stempel overskrives aldrig, og samtidige hold-kørsler er
+ * harmløse), og læser derefter den gældende startdato. strict som ovenfor.
+ */
+export async function ensureCurveBIgnitedOn(
+  supabase: ConfigClient,
+  { tickDate, strict = false }: { tickDate: string; strict?: boolean },
+): Promise<string | null> {
+  try {
+    if (typeof tickDate !== "string" || !DATE_RE.test(tickDate) || !isRealDate(tickDate)) {
+      throw new Error(`curve-b ignition stamp: invalid tick date ${tickDate}`);
+    }
+    const { error } = await supabase.from("app_config").upsert(
+      { key: CURVE_B_IGNITED_AT_CONFIG_KEY, value: tickDate, description: CURVE_B_IGNITED_AT_DESCRIPTION },
+      { onConflict: "key", ignoreDuplicates: true },
+    );
+    if (error) throw new Error(`curve-b ignition stamp: ${error.message ?? error}`);
+  } catch (err) {
+    if (strict) throw err;
+    console.warn(`[curve-b] ${CURVE_B_IGNITED_AT_CONFIG_KEY} kunne ikke stemples: ${(err as Error)?.message ?? err}`);
+  }
+  return readCurveBIgnitedOn(supabase, { strict });
 }

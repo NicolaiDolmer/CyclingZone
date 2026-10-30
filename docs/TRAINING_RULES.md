@@ -409,12 +409,16 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
 - **Alderens turbo er ude:** alderstabellen og ungdomstillægget indgår ikke i udviklingen.
   Udviklingen drives af en alders-neutral træningsscore; den viste træningsscore er uændret.
 - **Blød overgang ved tænding ([#7382](https://github.com/NicolaiDolmer/CyclingZone/issues/7382), ejer 30/10):**
-  en evne der står på eller over sit bløde loft, glider de første 14 kalenderdage efter
-  tændingsdatoen (dansk tid) lineært fra den gamle models fremdrift (med alderstabellen) til
-  kurve B's. Alle andre evner får kurve B fra dag 1. Fremdriften er aldrig under kurve B's
-  (overgangen bremser aldrig) og aldrig negativ. Tændingsdatoen er `app_config`-nøglen
-  `development_curve_b_ignited_at`, som en trigger stempler første gang flaget sættes til `on`;
-  en ny tænding overskriver den ikke. Intet stempel = ingen overgang.
+  en evne der står på eller over sit bløde loft, glider lineært fra den gamle models fremdrift
+  (med alderstabellen) til kurve B's over 14 kalenderdage fra og med den første dag kurve B
+  faktisk kører (dansk dato). Første dag = den gamle models fulde fremdrift; derefter kun
+  kurve B. Fremdriften er max(kurve B, blandingen): aldrig under kurve B's (overgangen
+  bremser aldrig) og aldrig negativ. Evner under loftet får kurve B fra dag 1; en evne der
+  krydser loftet inde i vinduet, får også blandingen resten af vinduet.
+  Startdatoen er `app_config`-nøglen `development_curve_b_ignited_at`. Træningsmotoren
+  stempler den selv med tick-datoen første gang kurven er aktiv (flag `on` OG gyldige params)
+  og overskriver den aldrig. Flag off = intet opslag og intet stempel. En ny overgang ved en
+  senere tænding: slet nøglen før tændingen. Intet stempel (fx en fejlet læsning) = kurve B fuldt.
 - **Uændret:** maks +1 pr. evne pr. løbsdag og pr. dato (§6.2), fremdriften bæres videre, loftet
   klipper, og løbsdagen går gennem samme kæde.
 - **Slukket = dagens model, bit-identisk.** Kun `on` tænder (`beta` læses som slukket). Kurvens
