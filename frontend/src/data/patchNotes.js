@@ -23,21 +23,21 @@ export const PATCHES = [
         ]
       },
       {
-        "category": "fixed",
+        "category": "improved",
         "audience": "player",
         "rollout": "switched_on",
         "topic": "Training",
         "en": {
-          "title": "The main ability grows again",
-          "body": "What changed: The training model from the start of season 5 is back. An ability slows down near its ceiling, but it no longer stops there. The progress your riders lost on their main ability in those days has been added back to their progress bars.\n\nWhy: From season 5 the main ability of some riders got no progress, while their other abilities grew.\n\nWhat it means for you: The ability a program is built for grows again."
+          "title": "Level and potential now drive development",
+          "body": "What changed: How fast a rider develops now depends on his level and potential, not his age. Close to his ceiling an ability slows down, but it never stops. Riders whose ability already sits above the new ceiling slide gently into the new pace over the first two weeks.\n\nWhat it means for you: Talents with high potential grow fastest. A rider near his ceiling still grows, just slowly."
         },
         "da": {
-          "title": "Hovedevnen vokser igen",
-          "body": "Hvad er ændret: Træningsmodellen fra starten af sæson 5 er tilbage. En evne går langsommere tæt på loftet, men den stopper ikke længere dér. Den fremgang, dine ryttere mistede i hovedevnen i de dage, er lagt tilbage på deres fremskridtslinjer.\n\nHvorfor: Fra sæson 5 fik hovedevnen hos nogle ryttere ingen fremgang, mens deres andre evner steg.\n\nHvad betyder det for dig: Den evne, et program er bygget til, vokser igen."
+          "title": "Niveau og potentiale styrer nu udviklingen",
+          "body": "Hvad er ændret: Hvor hurtigt en rytter udvikler sig, afhænger nu af hans niveau og potentiale, ikke hans alder. Tæt på loftet går en evne langsommere, men den står aldrig stille. Ryttere, hvis evne allerede ligger over det nye loft, glider blødt over i den nye fart de første to uger.\n\nHvad betyder det for dig: Talenter med højt potentiale vokser hurtigst. En rytter tæt på loftet vokser stadig, bare langsomt."
         },
         "refs": [
-          7316,
-          7340
+          6110,
+          7382
         ]
       }
     ]
