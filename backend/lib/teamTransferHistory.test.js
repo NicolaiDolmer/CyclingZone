@@ -379,3 +379,25 @@ test("teamTransferHistory — nul-bred afsluttet sæson på delt grænsedag indf
   assert.equal(byId["academy:AC-launch"].season_number, 1, "akademi-hentning på grænsedagen → aktiv sæson 1");
   assert.equal(byId["auction:A-later"].season_number, 1, "senere event → sæson 1");
 });
+
+test("buildSeasonResolver — offseason-hul tilskrives kommende sæson, grænsedage uændrede (#7285)", async () => {
+  const { buildSeasonResolver } = await import("./teamTransferHistory.js");
+  const resolve = buildSeasonResolver([
+    { id: "s4", number: 4, start_date: "2026-09-28", end_date: "2026-10-25" },
+    { id: "s5", number: 5, start_date: "2026-10-28", end_date: null },
+  ]);
+  assert.equal(resolve("2026-10-25T10:00:00Z"), 4, "sidste dag er inklusiv (#984)");
+  assert.equal(resolve("2026-10-26T10:00:00Z"), 5, "offseason-hul → kommende sæson");
+  assert.equal(resolve("2026-10-27T23:00:00Z"), 5, "offseason-hul → kommende sæson");
+  assert.equal(resolve("2026-10-28T08:00:00Z"), 5, "startdag er sæson 5");
+  assert.equal(resolve("2026-09-30T08:00:00Z"), 4);
+  assert.equal(resolve("2026-09-01T08:00:00Z"), null, "før første sæson forbliver uden sæson");
+});
+
+test("buildSeasonResolver — afsluttet sidste sæson uden efterfølger forbliver på sidste sæson (#7285)", async () => {
+  const { buildSeasonResolver } = await import("./teamTransferHistory.js");
+  const resolve = buildSeasonResolver([
+    { id: "s4", number: 4, start_date: "2026-09-28", end_date: "2026-10-25" },
+  ]);
+  assert.equal(resolve("2026-10-27T10:00:00Z"), 4);
+});
