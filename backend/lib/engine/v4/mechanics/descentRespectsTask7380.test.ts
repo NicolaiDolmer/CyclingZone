@@ -282,6 +282,15 @@ test("#7380: udbrudsopgaven: i udbruddet maa han; uden for udbruddet gaelder sat
   assert.equal(barred(hunterDefault, "normal", false), false, "begge led maa angribe");
 });
 
+test("#7380 (Codex-review): udbrud -> koer for resultat fra toppen -> laee naar sat: i udbruddet efter toppen maa han", () => {
+  const legs = [leg("breakaway"), leg("ride_for_result", { km: 30 }), leg("shelter_leader", { dropped: true })];
+  assert.equal(barred(legs, "normal", true), false, "i udbruddet er han ikke sat: koer for resultat");
+  const notDropped = descentAttackBarredByTask7380({ effort: "normal", legs, segment: SEG, segmentIndex: 3, inEscape: false, riderDropped: () => false });
+  assert.equal(notDropped, false, "i feltet med lederen: koer for resultat");
+  const dropped = descentAttackBarredByTask7380({ effort: "normal", legs, segment: SEG, segmentIndex: 3, inEscape: false, riderDropped: () => true });
+  assert.equal(dropped, true, "sat: laee-leddet");
+});
+
 test("#7380: tvivl mellem en spaerret og en fri opgave spaerrer (ordren vejer tungest)", () => {
   // Hverken rutepunkt eller udbrud kan afgoere det: begge led er mulige paa segmentet.
   const legs = [leg("ride_for_result"), leg("shelter_leader", { km: 44 })];

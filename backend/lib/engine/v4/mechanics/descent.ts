@@ -102,7 +102,7 @@ import {
   TIME_MODEL_V3_TUNING,
   timeModelTuningFor,
 } from "./timeModel.ts";
-import { createStagePlanRuntime, type StagePlanRuntime } from "../../../stagePlanEngine.ts"; // #7380 (slukket)
+import { createStagePlanRuntime, isRiderDropped, type StagePlanRuntime } from "../../../stagePlanEngine.ts"; // #7380 (slukket)
 import type { StagePlanTask } from "../../../stagePlan.ts";
 
 // ── #7380: nedkoerselsangrebet respekterer rytterens opgave (SLUKKET) ────────
@@ -168,8 +168,10 @@ export function descentAttackBarredByTask7380(args: {
   segment: { from_km: number; to_km: number };
   segmentIndex: number;
   inEscape: boolean;
+  /** Er rytteren sat (stagePlanEngine.isRiderDropped)? Kaldes kun ved tvivl om sat-leddet. */
+  riderDropped?: () => boolean;
 }): boolean {
-  const { effort, legs, segment, segmentIndex, inEscape } = args;
+  const { effort, legs, segment, segmentIndex, inEscape, riderDropped = () => false } = args;
   if (effort === "save" || effort === "grupetto") return true;
   if (!legs || legs.length === 0) return DESCENT_ATTACK_BARRED_EFFORTS_7380.has(effort);
   let candidates = legs.map((leg, index) => ({ leg, index })).filter((c) => c.leg.effort === effort);
@@ -183,8 +185,13 @@ export function descentAttackBarredByTask7380(args: {
     const next = legs[c.index + 1];
     return !(segmentIndex > 0 && next !== undefined && next.fromKm !== null && next.fromKm <= segment.from_km);
   });
-  if (candidates.some((c) => c.leg.task === "breakaway") && candidates.some((c) => c.leg.fromDropped)) {
-    narrow((c) => (inEscape ? !c.leg.fromDropped : c.leg.task !== "breakaway"));
+  // Sat-leddet (samme regel som stagePlanEngine.advanceStagePlan): i dagens udbrud
+  // er rytteren aldrig sat; paa udbrudsleddet uden for udbruddet er han det; ellers
+  // afgoer isRiderDropped (gruppen bag holdlederens). Codex-review #7380: gaelder
+  // ogsaa naar udbrudsleddet allerede er forladt via et rutepunkt.
+  if (candidates.some((c) => c.leg.fromDropped) && candidates.some((c) => !c.leg.fromDropped)) {
+    const dropped = inEscape ? false : candidates.some((c) => c.leg.task === "breakaway") ? true : riderDropped();
+    narrow((c) => c.leg.fromDropped === dropped);
   }
   return candidates.some((c) => DESCENT_ATTACK_BARRED_TASKS_7380.has(c.leg.task));
 }
@@ -682,6 +689,7 @@ export const descentHook: DescentHook = (
             segment,
             segmentIndex: ctx.segmentIndex,
             inEscape: isEscape(group),
+            riderDropped: () => isRiderDropped(riderId, { ...state, groups: groupsToScan }, ctx.entrants),
           });
         }
         : undefined,
