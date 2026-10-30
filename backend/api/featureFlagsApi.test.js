@@ -363,6 +363,18 @@ test("Codex #7192: development_curve_b on uden gyldige params er false, som moto
   assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } })).development_curve_b, true);
 });
 
+test("#7390: kurve B's params fra private_config taeller; en ugyldig raekke slukker trods reserven", async () => {
+  const params = JSON.parse(CURVE_B_TEST_PARAMS);
+  const fromTable = fakeSupabase({ development_curve_b: "on", development_curve_b_params: params });
+  assert.equal((await readPlayerFeatureFlags(fromTable, { env: {} })).development_curve_b, true, "tabellen alene er nok");
+  assert.ok(fromTable.reads.some((r) => r.table === "private_config" && r.key === "development_curve_b_params"));
+  const invalid = fakeSupabase({ development_curve_b: "on", development_curve_b_params: { ...params, rate: -1 } });
+  assert.equal((await readPlayerFeatureFlags(invalid, { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } })).development_curve_b, false);
+  const off = fakeSupabase({ development_curve_b: "off", development_curve_b_params: params });
+  assert.equal((await readPlayerFeatureFlags(off, { env: {} })).development_curve_b, false);
+  assert.ok(!off.reads.some((r) => r.table === "private_config"), "flag off = intet opslag");
+});
+
 test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste", async () => {
   const failures = [];
   const client = { from: () => ({ select: () => ({ in: async () => ({ data: null, error: null }) }) }) };

@@ -91,19 +91,12 @@ export interface ElevationSeries {
   source: "profile" | "synthetic";
 }
 
-/** Serien hvis den findes og er gyldig, ellers dagens syntese. null = ingen rutedata. */
+/** Serien hvis den findes og er gyldig, ellers dagens syntese. null = ingen rutedata.
+ *  #7289: logikken bor i stageRouteProfile.buildProfileSeries (EN kilde for alle flader). */
 export function elevationSeries(profile: StageProfile | null | undefined): ElevationSeries | null {
-  if (!profile || !hasRouteData(profile)) return null;
-  const ep = profile.elevation_profile;
-  const D = Number(profile.distance_km);
-  if (ep && Array.isArray(ep.h) && ep.h.length >= 2 && ep.h.every((v) => Number.isFinite(v))) {
-    const step = Number(ep.step_km) > 0 ? Number(ep.step_km) : D / (ep.h.length - 1);
-    const kms = ep.h.map((_, i) => Math.min(D, +(i * step).toFixed(3)));
-    return { kms, hs: ep.h.slice(), source: "profile" };
-  }
   const s = buildProfileSeries(profile);
   if (!s) return null;
-  return { kms: s.xs.slice(), hs: s.ys.slice(), source: "synthetic" };
+  return { kms: s.xs.slice(), hs: s.ys.slice(), source: s.source };
 }
 
 /**
