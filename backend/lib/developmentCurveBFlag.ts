@@ -55,12 +55,12 @@ export function curveBParamsFromEnv(env: Record<string, string | undefined> = pr
 // kalder ved hver sidevisning, og loggen skal kunne laeses.
 const RESERVE_LOG_INTERVAL_MS = 10 * 60_000;
 const reserveLoggedAt = new WeakMap<object, number>();
-function shouldLogReserve(log: unknown): boolean {
+function shouldLogReserve(log: unknown, now: () => number): boolean {
   if (!log || typeof log !== "object") return true;
   const last = reserveLoggedAt.get(log);
-  const now = Date.now();
-  if (last !== undefined && now - last < RESERVE_LOG_INTERVAL_MS) return false;
-  reserveLoggedAt.set(log, now);
+  const at = now();
+  if (last !== undefined && at - last < RESERVE_LOG_INTERVAL_MS) return false;
+  reserveLoggedAt.set(log, at);
   return true;
 }
 
@@ -71,22 +71,24 @@ function shouldLogReserve(log: unknown): boolean {
  * forkert vaerdi i tabellen ikke stille erstattes af en gammel. Logger aldrig tallene.
  */
 export async function readDevelopmentCurveBParams({
-  supabase, env = process.env, log = console, strict = false,
+  supabase, env = process.env, log = console, strict = false, now = Date.now,
 }: {
   supabase: ReadFlagStageClient;
   env?: Record<string, string | undefined>;
   log?: Log;
   strict?: boolean;
+  /** Ur til cache og reserve-advarslen; tests injicerer et fast ur (AGENTS.md). */
+  now?: () => number;
 }): Promise<DevelopmentCurveBParams | null> {
   const entry = await readPrivateConfigEntry<DevelopmentCurveBParams>(
     supabase as { from(table: string): any },
     DEVELOPMENT_CURVE_B_PARAMS_KEY,
-    { strict, log, schema: PRIVATE_CONFIG_KEYS.development_curve_b_params.parse },
+    { strict, log, now, schema: PRIVATE_CONFIG_KEYS.development_curve_b_params.parse },
   );
   if (entry.status === "ok") return entry.value;
   if (entry.status === "invalid") return null;
   const reserve = curveBParamsFromEnv(env);
-  if (reserve && shouldLogReserve(log)) {
+  if (reserve && shouldLogReserve(log, now)) {
     log?.warn?.(`[curve-b] ${DEVELOPMENT_CURVE_B_PARAMS_KEY} mangler i private_config - bruger den midlertidige reserve ${DEVELOPMENT_CURVE_B_PARAMS_ENV}`);
   }
   return reserve;
@@ -97,15 +99,17 @@ export async function readDevelopmentCurveBParams({
  * ellers null (dagens model). Logger aldrig selve tallene.
  */
 export async function loadDevelopmentCurveB({
-  supabase, env = process.env, log = console, strict = false,
+  supabase, env = process.env, log = console, strict = false, now = Date.now,
 }: {
   supabase: ReadFlagStageClient;
   env?: Record<string, string | undefined>;
   log?: Log;
   strict?: boolean;
+  /** Ur til cache og reserve-advarslen; tests injicerer et fast ur (AGENTS.md). */
+  now?: () => number;
 }): Promise<DevelopmentCurveBParams | null> {
   if (!(await isDevelopmentCurveBEnabled(supabase, { strict }))) return null;
-  const params = await readDevelopmentCurveBParams({ supabase, env, log, strict });
+  const params = await readDevelopmentCurveBParams({ supabase, env, log, strict, now });
   if (!params) {
     log?.warn?.(`[curve-b] ${DEVELOPMENT_CURVE_B_FLAG_KEY} er on, men ${DEVELOPMENT_CURVE_B_PARAMS_KEY} (private_config) og reserven ${DEVELOPMENT_CURVE_B_PARAMS_ENV} mangler eller er ugyldige - koerer dagens model`);
   }

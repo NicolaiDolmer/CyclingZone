@@ -9,6 +9,9 @@ import {
 } from "./privateConfig.ts";
 import { DRIFT_GROUPS, DRIFT_MEASURE_KEYS, parseWeeklyEngineDriftThresholds } from "./weeklyEngineDriftThresholds.ts";
 
+// Fast ur: tests laeser aldrig vaegur-tid (AGENTS.md), heller ikke cache og reserve-advarsel.
+const FIXED_NOW = () => 1_700_000_000_000;
+
 const CURVE = {
   rate: 10, levelExponent: 2, capExponent: 0.5,
   load: { fromAge: 16, fullAge: 24, floor: 0.5 },
@@ -61,10 +64,10 @@ test("læs: gyldig værdi returneres parset; mangler = null uden advarsel", asyn
   clearPrivateConfigCache();
   const { warnings, log } = quiet();
   const db = client({ development_curve_b_params: CURVE });
-  const value = await readPrivateConfig(db, "development_curve_b_params", { log });
+  const value = await readPrivateConfig(db, "development_curve_b_params", { now: FIXED_NOW, log });
   assert.equal((value as { rate: number }).rate, CURVE.rate);
   assert.ok(Object.isFrozen(value), "kurve B-params er frosne (samme validering som før)");
-  const entry = await readPrivateConfigEntry(client({}), "weekly_engine_drift_thresholds", { log });
+  const entry = await readPrivateConfigEntry(client({}), "weekly_engine_drift_thresholds", { now: FIXED_NOW, log });
   assert.deepEqual(entry, { status: "missing", value: null });
   assert.equal(warnings.length, 0);
 });
@@ -74,27 +77,27 @@ test("læs: ugyldig værdi = null + tydelig advarsel uden værdier; strict kaste
   const { warnings, log } = quiet();
   const bad = { ...CURVE, rate: -12345 };
   const db = client({ development_curve_b_params: bad });
-  const entry = await readPrivateConfigEntry(db, "development_curve_b_params", { log });
+  const entry = await readPrivateConfigEntry(db, "development_curve_b_params", { now: FIXED_NOW, log });
   assert.deepEqual(entry, { status: "invalid", value: null });
   assert.equal(warnings.length, 1);
   assert.match(warnings[0], /development_curve_b_params har en ugyldig vaerdi/);
   assert.ok(!warnings[0].includes("12345"), "værdien logges aldrig");
   clearPrivateConfigCache();
-  await assert.rejects(() => readPrivateConfig(client({ development_curve_b_params: bad }), "development_curve_b_params", { strict: true, log }), /ugyldig vaerdi \(strict\)/);
+  await assert.rejects(() => readPrivateConfig(client({ development_curve_b_params: bad }), "development_curve_b_params", { now: FIXED_NOW, strict: true, log }), /ugyldig vaerdi \(strict\)/);
   // Også fra cachen: en ikke-strict læsning efterfulgt af en strict kaster stadig.
   const cached = client({ development_curve_b_params: bad });
-  await readPrivateConfig(cached, "development_curve_b_params", { log });
-  await assert.rejects(() => readPrivateConfig(cached, "development_curve_b_params", { strict: true, log }), /strict/);
+  await readPrivateConfig(cached, "development_curve_b_params", { now: FIXED_NOW, log });
+  await assert.rejects(() => readPrivateConfig(cached, "development_curve_b_params", { now: FIXED_NOW, strict: true, log }), /strict/);
 });
 
 test("læs: databasefejl = null + advarsel; strict kaster; fejl caches aldrig", async () => {
   clearPrivateConfigCache();
   const { warnings, log } = quiet();
   const failing = client({ development_curve_b_params: CURVE }, { error: "timeout" });
-  assert.deepEqual(await readPrivateConfigEntry(failing, "development_curve_b_params", { log }), { status: "error", value: null });
+  assert.deepEqual(await readPrivateConfigEntry(failing, "development_curve_b_params", { now: FIXED_NOW, log }), { status: "error", value: null });
   assert.match(warnings[0], /timeout/);
-  await assert.rejects(() => readPrivateConfig(failing, "development_curve_b_params", { strict: true, log }), /timeout/);
-  await assert.rejects(() => readPrivateConfig(client({}, { throws: true }), "development_curve_b_params", { strict: true, log }), /socket hang up/);
+  await assert.rejects(() => readPrivateConfig(failing, "development_curve_b_params", { now: FIXED_NOW, strict: true, log }), /timeout/);
+  await assert.rejects(() => readPrivateConfig(client({}, { throws: true }), "development_curve_b_params", { now: FIXED_NOW, strict: true, log }), /socket hang up/);
   assert.equal(failing.reads.length, 2, "anden læsning gik til databasen igen");
 });
 
@@ -121,8 +124,8 @@ test("cache: 60 s pr. klient; derefter læses igen; egen klient har egen cache",
 test("schema: egen parser; ukendt nøgle uden schema er en programmeringsfejl", async () => {
   clearPrivateConfigCache();
   const db = client({ some_test_key: { a: 1 } });
-  assert.deepEqual(await readPrivateConfig(db, "some_test_key", { schema: (raw) => raw as { a: number } }), { a: 1 });
-  assert.equal(await readPrivateConfig(db, "some_test_key", { schema: () => null, log: quiet().log }), null, "anden parser = ingen cache-genbrug");
+  assert.deepEqual(await readPrivateConfig(db, "some_test_key", { now: FIXED_NOW, schema: (raw) => raw as { a: number } }), { a: 1 });
+  assert.equal(await readPrivateConfig(db, "some_test_key", { now: FIXED_NOW, schema: () => null, log: quiet().log }), null, "anden parser = ingen cache-genbrug");
   await assert.rejects(() => readPrivateConfig(db, "unknown_key"), /ukendt noegle/);
 });
 
