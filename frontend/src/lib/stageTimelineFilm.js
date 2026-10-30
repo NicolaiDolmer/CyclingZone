@@ -27,6 +27,10 @@ import { groupRepeatedFeedEvents, describeGroupedEvent } from "./stageTimelineGr
 // indhentninger, ærlige km-spænd). filmKmValue skriver "km A-B"-værdien.
 import { honestTimelineEvents, exactEventKm } from "./stageTimelineKmSpan.ts";
 export { filmKmValue } from "./stageTimelineKmSpan.ts";
+import { labelBreakawayEvents, breakawayFilmCopy, breakawayLabelOf } from "./breakawayLabels6299.ts"; // #6299: kun udbruddet hedder udbrud
+// #6469: hvorfor udbruddet holdt/blev hentet + spillerens egen "Alt ud" i udfaldet.
+// Ren afledning af tidslinjen; samme modul som backendens kontrakt-tests (G7).
+import { withNarrativeCauses, isTimeTrialNarrative } from "../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 
 // Kategori-skala til stignings-trekanterne på scrubberen — samme rækkefølge/
 // bogstaver som race_stage_passages.climb_category og StageProfileGraph.jsx's
@@ -47,6 +51,36 @@ export function kmToX(km, distanceKm, plotWidth) {
   if (!distanceKm || distanceKm <= 0) return 0;
   const clamped = Math.max(0, Math.min(km, distanceKm));
   return (clamped / distanceKm) * plotWidth;
+}
+
+/**
+ * #6814/#6803: motoren (v3) skriver selv et sidste jagtpunkt ved indhentningen
+ * (samme km, separation 0). Kurven faar da ét nul-punkt, ikke to oven i hinanden.
+ */
+function pushCaughtAt(curve, km) {
+  const last = curve[curve.length - 1];
+  if (last && last.km === km) last.gapSeconds = 0;
+  else curve.push({ km, gapSeconds: 0 });
+}
+
+/**
+ * #6803: udbruddets forspring paa jagten ved en scrub-position (km): seneste
+ * kendte kurvepunkt op til km (trin-funktion, samme "afspillet"-regel som feedet).
+ * null foer kurvens foerste punkt eller uden kurve; 0 mellem to udbrud.
+ */
+export function gapAtKm(gapCurve, km) {
+  let last = null;
+  for (const p of gapCurve ?? []) {
+    if (p.km > km) break;
+    last = p.gapSeconds;
+  }
+  return last;
+}
+
+/** Forspring som "M:SS" (tabelcifre i visningen), samme afrunding som formatGap. */
+export function formatLead(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds) || 0));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 export function xToKm(x, distanceKm, plotWidth) {
@@ -82,12 +116,12 @@ export function altitudeAtKm(series, km) {
 
 // Etapetyper hvor der ikke er noget felt at måle en afstand til. Samme tre
 // værdier som backend/lib/raceStageProfileGenerator.js's TIME_TRIAL_PROFILES.
-const TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly", "ttt"]);
 
-/** Er etapen en tidskørsel? Aflæses af `stage_start` — det eneste event der bærer profile_type. */
-function isTimeTrialStage(events) {
-  const start = events.find((e) => e?.type === "stage_start");
-  return TIME_TRIAL_PROFILES.has(start?.params?.profile_type);
+
+/** Use actual profile metadata, then the stored timeline discipline. */
+/** @param {string|null} [profileType] */
+function isTimeTrialStage(events, profileType = null) {
+  return isTimeTrialNarrative(events, profileType);
 }
 
 /**
@@ -96,11 +130,12 @@ function isTimeTrialStage(events) {
  * stignings-markører, catch-punkt (km for `breakaway_caught`, findes ikke i alle
  * etaper) og gap-kurve-punkter.
  */
-/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
-export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], timelineVersion = null, startlist = null } = {}) {
+/** @param {{events?: Array<{km?: number, type: string, params?: Record<string, unknown>}>, distanceKm?: number|null, ownRiderIds?: Iterable<unknown>|null, effortByRider?: {get(id: string): unknown}|null, profileType?: string|null, timelineVersion?: number|null, startlist?: readonly string[]|null}} input */
+export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds = [], effortByRider = null, profileType = null, timelineVersion = null, startlist = null } = {}) {
   // #6294/#6350: uden samlinger forklædt som indhentninger, og (v4-tidslinjer)
   // med ærlige km-spænd for hændelser motoren stemplede ved et tjekpunkt.
-  const sorted = honestTimelineEvents(events, { timelineVersion, startlist });
+  // #6469: årsagslinjer (og egne "Alt ud"-linjer) lige efter det udfald de forklarer.
+  const sorted = withNarrativeCauses(labelBreakawayEvents(honestTimelineEvents(events, { timelineVersion, startlist }), events), { ownRiderIds, effortByRider, profileType });
   const feedEvents = groupRepeatedFeedEvents(sorted.filter((e) => !NON_FEED_TYPES.has(e?.type) && !(e?.type === "finale_attack" && e.params?.kind === "stage_decided")), { ownRiderIds });
   const climbMarkers = sorted
     .filter((e) => e?.type === "kom_passage")
@@ -113,12 +148,12 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
   const formation = sorted.find((e) => e?.type === "breakaway_formed");
   // Projektionen læser den rå tidslinje (rækkefølge-følsom); kurven og
   // catch-mærket står ved tjekpunktet, hvor motoren målte hullet lukket.
-  const caughtEvent = findMorningCatch(events, startlist);
+  const caughtEvent = isTimeTrialStage(events, profileType) ? null : findMorningCatch(events, startlist);
   // Et præcist kontakt-km (exact_km) står samme sted som filmens linje.
   const catchKm = caughtEvent ? (exactEventKm(caughtEvent) ?? caughtEvent.km ?? null) : null;
   const namedGroups = sorted.some((e) => e?.type === "gap_update" && typeof e.params?.group_id === "string");
   let gapCurve = [];
-  if (!isTimeTrialStage(sorted)) {
+  if (!isTimeTrialStage(sorted, profileType)) {
     if (!namedGroups) {
       gapCurve = sorted.filter((e) => e?.type === "gap_update").map((e) => ({ km: e.km, gapSeconds: e.params?.gap_seconds ?? 0 }));
     } else if (formation?.params?.group_id) {
@@ -134,7 +169,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
         && (toKm == null || event.km <= toKm))
         .map(event => ({ km: event.km, gapSeconds: Number(event.params.separation_seconds) }));
       gapCurve = explicitPoints(escapeId, null, catchKm);
-      if (gapCurve.length && catchKm != null) gapCurve.push({ km: catchKm, gapSeconds: 0 });
+      if (gapCurve.length && catchKm != null) pushCaughtAt(gapCurve, catchKm);
       // #6803: S5's nye udbrud efter en tidlig indhentning (#6369) har sit eget
       // gruppe-id og sin egen indhentning; kurven følger det samme sted, med nul
       // mellem de to udbrud. Uden nyt udbrud er løkken tom: etapen er uændret.
@@ -150,7 +185,7 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
           // (Codex #6809): ellers starter filmens markoer paa foerste positive hul.
           if (lastKm == null ? points[0].km > newKm : newKm > lastKm) gapCurve.push({ km: newKm, gapSeconds: 0 });
           gapCurve.push(...points);
-          if (newCatchKm != null) gapCurve.push({ km: newCatchKm, gapSeconds: 0 });
+          if (newCatchKm != null) pushCaughtAt(gapCurve, newCatchKm);
         }
       }
     }
@@ -176,6 +211,79 @@ export function buildFilmTimeline({ events = [], distanceKm = null, ownRiderIds 
 export function eventsPlayedUpTo(feedEvents, scrubKm) {
   const played = (feedEvents || []).filter((e) => (e?.km ?? 0) <= scrubKm);
   return played.slice().reverse();
+}
+
+const NARRATIVE_TYPES = new Set(["breakaway_cause", "order_impact"]);
+
+/**
+ * #6469: etapehistoriens udvalgte hændelser (selectStoryEvents) med årsagslinjerne
+ * til de udfald der er med, lige efter dem. `allEvents` er den liste udvalget er
+ * taget fra (samme objekter); årsagerne udledes af hele etapen, ikke kun udvalget.
+ */
+/** @param {NonNullable<Parameters<typeof withNarrativeCauses>[1]>} [options] */
+export function storyEventsWithCauses(storyEvents, allEvents, options = {}) {
+  const { ownRiderIds = [], effortByRider = null, profileType = null } = options;
+  const picked = new Set(storyEvents || []);
+  if (!picked.size) return [];
+  const out = [];
+  let following = false;
+  for (const event of withNarrativeCauses(allEvents || [], { ownRiderIds, effortByRider, profileType })) {
+    if (NARRATIVE_TYPES.has(String(event?.type ?? ""))) {
+      if (following) out.push(event);
+      continue;
+    }
+    following = picked.has(event);
+    if (following) out.push(event);
+  }
+  return out;
+}
+
+// #6469: hold-navne som i aktør-linjen (catchActor): sidste hold for sig, så
+// oversættelsen selv sætter "and"/"og" ind. null når intet navn kan slås op.
+function teamListParams(teamIds, teamNameById) {
+  const teams = (teamIds || []).map((id) => (id == null ? null : teamNameById?.get?.(String(id)) || null)).filter(Boolean);
+  if (!teams.length) return null;
+  return { teams: teams.join(", "), teamCount: teams.length, teamsHead: teams.slice(0, -1).join(", "), teamLast: teams[teams.length - 1] };
+}
+
+const TEAM_CAUSES = new Set(["own_riders_ahead", "reaction_spent", "no_free_riders", "gc_contained"]);
+
+function describeCause(p, riderNameById, teamNameById) {
+  const cause = String(p.cause ?? "");
+  if (TEAM_CAUSES.has(cause)) {
+    const teams = teamListParams(p.team_ids, teamNameById);
+    return teams ? { key: `cause.${cause}`, params: teams } : null;
+  }
+  switch (cause) {
+    case "unchased":
+    case "no_chasers":
+    case "chase_too_late":
+    case "gap_never_closed":
+      return { key: `cause.${cause}`, params: {} };
+    case "chase_faded":
+      return p.climb_name ? { key: "cause.chase_faded_climb", params: { climb: p.climb_name } } : { key: "cause.chase_faded", params: {} };
+    case "closed_on_climb":
+      return p.climb_name ? { key: "cause.closed_on_climb", params: { climb: p.climb_name } } : null;
+    case "gc_threat": {
+      const teams = teamListParams(p.team_ids, teamNameById);
+      const rider = riderName(p.protected_rider_id, riderNameById);
+      const threats = resolvedRiderNames(p.rider_ids, riderNameById);
+      if (!teams || !rider || !threats.length) return null;
+      return { key: "cause.gc_threat", params: { ...teams, rider, threats: threats.join(", "), threatCount: threats.length } };
+    }
+    default:
+      return null;
+  }
+}
+
+function describeOrderImpact(p, riderNameById) {
+  const rider = riderName(p.rider_id, riderNameById);
+  if (!rider) return null;
+  if (p.kind === "all_out_stayed_away") return { key: "order.all_out_stayed_away", params: { rider } };
+  if (p.kind === "all_out_held_on") {
+    return p.climb_name ? { key: "order.all_out_held_on_climb", params: { rider, climb: p.climb_name } } : { key: "order.all_out_held_on", params: { rider } };
+  }
+  return null;
 }
 
 // #4373: itt_win/ttt_win er tidskørslernes EGNE win_types (backend/lib/
@@ -273,17 +381,23 @@ export function collectRiderIds(events) {
  * de navne der KAN opløses og skipper kun når ingen kan; count følger de viste
  * navne så flertalsbøjningen ({count, plural}) matcher den synlige liste.
  */
+// #6649: årsagerne motoren skriver på `bad_day` (vejret som sin type). Ukendt årsag → ingen linje.
+const BAD_DAY_CAUSES = new Set(["fatigue", "form", "illness", "rain", "wind", "heat"]);
+
 export function describeEvent(event, { riderNameById, teamNameById } = {}) {
   if (!event?.type) return null;
   if (event.grouped) {
     return describeGroupedEvent(event, (id) => riderName(id, riderNameById), (member) => describeEvent(member, { riderNameById, teamNameById }));
   }
-  const p = event.params || {};
+  // #6299: en mærket udbruds-hændelse nævner kun udbrydderne, eller hedder "gruppe foran feltet".
+  const copy = breakawayFilmCopy(event, event.type);
+  const p = breakawayLabelOf(event) ? { ...event.params, rider_ids: copy.riderIds } : event.params || {};
   const breakawayParams = () => {
     const names = resolvedRiderNames(p.rider_ids, riderNameById);
     if (!names.length) return null;
     return { riders: names.join(", "), count: names.length };
   };
+  if (copy.ahead) { const params = breakawayParams(); return params ? { key: copy.key, params } : null; }
   switch (event.type) {
     case "stage_start":
       return {
@@ -336,6 +450,19 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
         key: p.discipline === "time_trial" ? "favorite_crack_tt" : "favorite_crack",
         params: { rider, reason: p.reason || "unexplained" },
       };
+    }
+    // #6641/#7280: Alt ud paa den sidste stigning (motoren melder kun det den gjorde).
+    case "all_out_gain":
+    case "all_out_cracked": {
+      const rider = riderName(p.rider_id, riderNameById);
+      if (!rider) return null;
+      return { key: event.type, params: { rider } };
+    }
+    case "bad_day": { // #6649 (s5_profiles_v3): "havde en daarlig dag" + aarsagen, skrevet bagefter
+      const rider = riderName(p.rider_id, riderNameById);
+      const cause = p.reason === "weather" ? p.weather : p.reason;
+      if (!rider || !BAD_DAY_CAUSES.has(cause)) return null;
+      return { key: `bad_day_${cause}`, params: { rider } };
     }
     case "group_merged": {
       const params = breakawayParams();
@@ -407,6 +534,10 @@ export function describeEvent(event, { riderNameById, teamNameById } = {}) {
     case "gc_context":
     case "own_riders_ahead": // #6187 (orders_gc_v3)
       return describeGcReactionEvent(event, (id) => riderName(id, riderNameById));
+    case "breakaway_cause": // #6469: afledt af tidslinjen (narrativeCauses6469.ts), aldrig tal
+      return describeCause(p, riderNameById, teamNameById);
+    case "order_impact": // #6469: kun spillerens egne ryttere og egen ordre
+      return describeOrderImpact(p, riderNameById);
     default:
       return null;
   }

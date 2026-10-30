@@ -100,7 +100,7 @@ test("#5301/3: loebssidens selection-endpoint fortaeller om holdet har trukket s
   // hinanden — #3410's postmortem: to separate udledninger af samme tilstand
   // ender altid med at sige to forskellige ting.
   const putBlock = routeBlock('router.put("/races/:raceId/selection"');
-  assert.match(putBlock, /\.from\("race_withdrawals"\)\.select\("race_id"\)/);
+  assert.match(putBlock, /\.from\("race_withdrawals"\)\.select\("race_id, withdrawn_reason"\)/);
 });
 
 test("#5301/5: gen-deltag afviser i stedet for at dobbeltbooke", () => {

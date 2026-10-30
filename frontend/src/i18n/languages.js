@@ -9,10 +9,11 @@
 // constraint-config.sql, som holder samme liste og skal udvides sammen med
 // denne fil).
 //
-// #7087: `beta: true` maerker sproget som tidlig fase. Det er valgbart for ALLE i
-// sprogvaelgeren (med et Beta-maerke og en note om at manglende tekster vises paa
-// engelsk), men browser-detektionen vaelger det ALDRIG automatisk (i18n/index.js),
-// og landing-toggle viser kun sprog uden `beta`. Et registreret
+// #7087: `beta: true` maerker et sprog som tidlig fase: valgbart for ALLE i
+// sprogvaelgeren (med Beta-maerke og en note om at manglende tekster vises paa
+// engelsk), men aldrig auto-valgt af browser-detektionen (i18n/index.js), og
+// landing-toggle viser kun sprog uden `beta`. fr/es/nl var beta indtil 24/10 og
+// er nu live (beta: false); mekanismen bevares til naeste sprog. Et registreret
 // beta-sprog skal bestaa paritetsgaten (#6597) og have en lazy bundle i
 // localeBundleBackend.js (testet), saa EN/DA-bundlen aldrig vokser.
 //
@@ -21,10 +22,10 @@
 export const LANGUAGES = [
   { code: "en", label: "English", nativeLabel: "English", flag: "gb", beta: false },
   { code: "da", label: "Danish", nativeLabel: "Dansk", flag: "dk", beta: false },
-  // #6836/#7087: fr/es/nl er beta-sprog: synlige for alle med Beta-maerke, aldrig auto-valgt.
-  { code: "fr", label: "French", nativeLabel: "Français", flag: "fr", beta: true },
-  { code: "es", label: "Spanish", nativeLabel: "Español", flag: "es", beta: true },
-  { code: "nl", label: "Dutch", nativeLabel: "Nederlands", flag: "nl", beta: true },
+  // #6836/#7087: fr/es/nl er live for alle (beta: false): offentlige, auto-detekterbare, uden Beta-maerke.
+  { code: "fr", label: "French", nativeLabel: "Français", flag: "fr", beta: false },
+  { code: "es", label: "Spanish", nativeLabel: "Español", flag: "es", beta: false },
+  { code: "nl", label: "Dutch", nativeLabel: "Nederlands", flag: "nl", beta: false },
 ];
 
 export const SUPPORTED_LANGS = LANGUAGES.map((l) => l.code);

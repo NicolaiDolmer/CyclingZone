@@ -232,6 +232,14 @@
       "title": "New academy talent has arrived",
       "message": "New candidates are waiting in your academy - sign or reject them."
     },
+    "academyPullReminderReady": {
+      "title": "New academy candidates are ready",
+      "message": "This week's intake is waiting in your academy. Bring it in before Saturday at midnight."
+    },
+    "academyPullReminderExpiring": {
+      "title": "This week's academy intake expires tonight",
+      "message": "You haven't brought in this week's candidates yet. Do it before midnight, or the intake is gone."
+    },
     "seasonStarted": {
       "title": "Season {number} has started",
       "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead.",
@@ -266,7 +274,8 @@
     },
     "contractExpiring": {
       "title": "Contract expiring",
-      "message": "{rider}'s contract expires at the end of season {season}."
+      "message": "{rider}'s contract expires at the end of season {season}.",
+      "squadMessage": "{rider} ({squad}) has a contract expiring at the end of season {season}. Extend it on the Contracts tab on My Team."
     },
     "contractExpiredRelease": {
       "title": "Rider released: contract expired",
@@ -301,7 +310,9 @@
       "title": "Season change: contract and retirement risk",
       "messageBoth": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires, and {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend contracts before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once. Retirement can't be prevented, but you can bid for replacements once the season changes.",
       "messageExpiringOnly": "Your squad is affected by the upcoming season change: {expiringCount} rider(s) will be released as free agents because their contract expires. Extend them before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once.",
-      "messageRetirementOnly": "Your squad is affected by the upcoming season change: {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Retirement can't be prevented, but you can bid for replacements once the season changes."
+      "messageRetirementOnly": "Your squad is affected by the upcoming season change: {retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Retirement can't be prevented, but you can bid for replacements once the season changes.",
+      "messageBothWithRoster": "{expiringCount} contracts expire at the season change, and {retirementRiskCount} other riders may retire. Extend contracts on the Contracts tab on My Team.\n{contractRiders}",
+      "messageExpiringOnlyWithRoster": "{expiringCount} contracts expire at the season change. Extend them on the Contracts tab on My Team.\n{contractRiders}"
     },
     "watchlistDeparted": {
       "title": "Rider has left the game",
@@ -647,6 +658,10 @@
       "message": "{count, plural, one {{senderName} sent you a message} other {# new messages from {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Another manager sent you a message} other {# new messages from another manager}}"
     },
+    "riderIll": {
+      "title": "Rider ill",
+      "message": "The doctor says {rider} is ill after several days of extreme fatigue and is out until {until}."
+    },
     "riderInjured": {
       "title": "Rider injured",
       "message": "{rider} crashed in {race} and is injured until {until}.",
@@ -676,6 +691,24 @@
     "squadEnforced": {
       "title": "Squad size enforced",
       "message": "{purchasedCount, plural, =0 {} one {Auto-purchased # rider: {purchasedNames}\n} other {Auto-purchased # riders: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rider will join the team once their ongoing stage race finishes: {deferredNames}\n} other {# riders will join the team once their ongoing stage race finishes: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-sold # rider: {soldNames}\n} other {Auto-sold # riders: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rider in an ongoing stage race will be sold after the race instead\n} other {# riders in an ongoing stage race will be sold after the race instead\n}}Fine: {fine} CZ$ · Deduction: {points} points"
+    },
+    "contractSquad": {
+      "senior": "Senior",
+      "u23": "U23",
+      "junior": "Junior",
+      "academy": "Academy"
+    },
+    "contractRoster": {
+      "entry": "{rider} ({squad}), {value} CZ$",
+      "entryUnknown": "{rider} ({squad}), value unavailable"
+    },
+    "contractExpiringSummary": {
+      "title": "Contracts expiring",
+      "message": "These contracts expire at the end of season {season}. Extend them on the Contracts tab on My Team.\n{contractRiders}"
+    },
+    "contractReleasedSummary": {
+      "title": "Riders released: contracts expired",
+      "message": "These riders became free agents after their contracts expired at the end of season {season}. Review your remaining contracts on My Team.\n{contractRiders}"
     }
   },
   "error": {

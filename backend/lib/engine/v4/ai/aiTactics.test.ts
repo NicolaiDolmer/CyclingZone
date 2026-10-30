@@ -566,3 +566,56 @@ test("#6818: uden blokeringssaet er ordren identisk med foer", () => {
   const input: AiTacticsInput = { team_id: "ai-6818b", route: MOUNTAIN, roster, field, rules_revision: "s5_profiles_v2" };
   assert.deepEqual(generateAiTeamOrder({ ...input, break_blocked_rider_ids: new Set() }), generateAiTeamOrder(input));
 });
+
+// ── #2757 S1: pointjaeger i udbrud paa kuperet etape i et etapeloeb (KUN s5_profiles_v3) ──
+
+const HILLY: AiTacticsRoute = { profile_type: "hilly", finale_type: "punch" };
+
+/** Et hold med en svag kaptajn (intet at jage for), en sprint-kaptajn og en hurtig hjaelper. */
+function pointsTeam(withSprintCaptain: boolean): AiRosterEntrant[] {
+  return [
+    rider("s1-cap", "captain", { punch: 30, climbing: 30 }),
+    ...(withSprintCaptain ? [rider("s1-sc", "sprint_captain", { sprint: 92 })] : [rider("s1-h0", "helper", { sprint: 40, aggression: 40 })]),
+    // Hurtig i spurten, men ikke holdets angriber paa dagens terraen (punch).
+    rider("s1-fast", "helper", { sprint: 92, aggression: 55, punch: 30 }),
+    // Holdets almindelige angriber paa kuperet (R2a): punch og aggression, svag spurt.
+    rider("s1-att", "helper", { sprint: 20, aggression: 70, punch: 90 }),
+  ];
+}
+function s1Input(over: Partial<AiTacticsInput> = {}, withSprintCaptain = true): AiTacticsInput {
+  const roster = pointsTeam(withSprintCaptain);
+  const field = fieldOf(roster, opponents("punch", spread(40, 40, 90)));
+  return { team_id: "ai-s1", route: HILLY, roster, field, race: stageRace([FLAT_SPRINT]), rules_revision: "s5_profiles_v3", ...over };
+}
+const tries = (input: AiTacticsInput) => generateAiTeamOrder(input).order.riders.filter((r) => r.try_break).map((r) => r.rider_id).sort();
+
+test("#2757 S1: under v3 sender et hold med sprint-kaptajn en pointjaeger paa en kuperet etape i et etapeloeb", () => {
+  const decision = generateAiTeamOrder(s1Input());
+  assert.ok(tries(s1Input()).includes("s1-fast"), "den hurtige hjaelper proever udbruddet");
+  assert.match(decision.reasons.riders["s1-fast"], /Pointjagt/);
+  assert.equal(tries(s1Input()).includes("s1-sc"), false, "sprint-kaptajnen selv gaar aldrig");
+  assert.ok(validateTeamOrder(decision.order).ok);
+});
+
+test("#2757 S1: pointtroejens foerer motiverer ogsaa et hold uden sprint-kaptajn", () => {
+  assert.equal(tries(s1Input({}, false)).includes("s1-fast"), false, "uden motivation: ingen pointjaeger");
+  assert.ok(tries(s1Input({ points_leader_rider_id: "s1-cap" }, false)).includes("s1-fast"));
+});
+
+test("#2757 S1: v2, endagsloeb, bjerg og flad er uaendrede", () => {
+  const v2 = tries(s1Input({ rules_revision: "s5_profiles_v2" }));
+  assert.equal(v2.includes("s1-fast") && generateAiTeamOrder(s1Input({ rules_revision: "s5_profiles_v2" })).reasons.riders["s1-fast"].includes("Pointjagt"), false);
+  for (const over of [{ race: ONE_DAY }, { route: MOUNTAIN }, { route: FLAT_SPRINT }] as Partial<AiTacticsInput>[]) {
+    const v3 = generateAiTeamOrder(s1Input(over));
+    assert.equal(Object.values(v3.reasons.riders).some((r) => r.includes("Pointjagt")), false, JSON.stringify(over));
+    // #7003 (kun v3, spec 2026-10-25-taktik-roller-design §3): en udbrudsrytter koerer ikke
+    // ogsaa i toget. Det er den eneste tilladte forskel fra v2.
+    const v2Order = generateAiTeamOrder(s1Input({ ...over, rules_revision: "s5_profiles_v2" })).order;
+    const expected = { ...v2Order, riders: v2Order.riders.map((r) => (r.try_break ? { ...r, leadout: false } : r)) };
+    assert.deepEqual(v3.order, expected, `samme ordre som v2 (bortset fra #7003): ${JSON.stringify(over)}`);
+  }
+});
+
+test("#2757 S1: en blokeret rytter bliver aldrig pointjaeger", () => {
+  assert.equal(tries(s1Input({ break_blocked_rider_ids: new Set(["s1-fast"]) })).includes("s1-fast"), false);
+});

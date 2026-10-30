@@ -83,6 +83,8 @@ import type {
   SegmentHookResult,
 } from "../types.ts";
 import { TEAM_PLAY_EXTRA_TUNING } from "../tuning.ts";
+import { protectedRoleOrderWithCoCaptain, splitLeaderBonus } from "./sharedCaptain.ts";
+import { luxuryHelperTeamPlayEntrants } from "./luxuryHelper5982.ts"; // #5982
 
 export { TEAM_PLAY_EXTRA_TUNING as TEAM_PLAY_TUNING };
 
@@ -276,6 +278,8 @@ type GroupTeamContext = {
   leaderId: string | null;
   /** Arbejdende holdkammerater (helper/hunter) der stadig koerer i denne gruppe. */
   workerIds: string[];
+  /** #5981 (KUN s5_profiles_v3): den delte kaptajn i SAMME gruppe som lederen. Kun sat med coCaptain. */
+  coLeaderId?: string | null;
 };
 
 /**
@@ -296,6 +300,7 @@ export function buildGroupTeamContexts(
   entrants: Readonly<Record<string, Entrant>>,
   riders: Readonly<Record<string, RiderState>>,
   profileType: ProfileType,
+  coCaptain = false, // #5981 (KUN s5_profiles_v3): delt kaptajn i lederraekkefoelgen + coLeaderId
 ): GroupTeamContext[] {
   const byTeam = new Map<string, { byRole: Map<string, string[]>; workerIds: string[] }>();
   for (const riderId of [...group.rider_ids].sort((a, b) => a.localeCompare(b))) {
@@ -319,7 +324,7 @@ export function buildGroupTeamContexts(
     }
   }
 
-  const order = protectedRoleOrder(profileType);
+  const order = coCaptain ? protectedRoleOrderWithCoCaptain(protectedRoleOrder(profileType)) : protectedRoleOrder(profileType);
   const out: GroupTeamContext[] = [];
   for (const [teamId, bucket] of [...byTeam.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
     let leaderId: string | null = null;
@@ -330,7 +335,13 @@ export function buildGroupTeamContexts(
         break;
       }
     }
-    out.push({ team_id: teamId, leaderId, workerIds: bucket.workerIds });
+    if (!coCaptain) {
+      out.push({ team_id: teamId, leaderId, workerIds: bucket.workerIds });
+      continue;
+    }
+    // #5981: den delte kaptajn deler kun hjaelpen naar han sidder i lederens gruppe og ikke selv er lederen.
+    const co = bucket.byRole.get("co_captain")?.[0] ?? null;
+    out.push({ team_id: teamId, leaderId, workerIds: bucket.workerIds, coLeaderId: co !== null && co !== leaderId ? co : null });
   }
   return out;
 }
@@ -365,11 +376,15 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
 
   const profileType = ctx.route.profile_type;
   const ordersGcV3 = ctx.ordersGcV3 === true;
+  const coCaptain = ctx.s5ProfilesV3 === true; // #5981: delt kaptajn (sharedCaptain.ts)
+  // #5982 (KUN s5_profiles_v3): luksushjaelperen koerer eget loeb uden kaptajnen i gruppen
+  // (luxuryHelper5982.ts). Uden en luksushjaelper: ctx.entrants (byte-identisk).
+  const entrants = (coCaptain ? luxuryHelperTeamPlayEntrants(state, ctx) : null) ?? ctx.entrants;
   /** rider_id -> signeret CP-fraktion dette segment (negativ = pris, positiv = lae). */
   const deltas = new Map<string, number>();
 
   for (const group of state.groups) {
-    for (const team of buildGroupTeamContexts(group, ctx.entrants, state.riders, profileType)) {
+    for (const team of buildGroupTeamContexts(group, entrants, state.riders, profileType, coCaptain)) {
       if (team.workerIds.length === 0) continue;
 
       // 1. Hjaelperne betaler. Prisen er en andel af DERES EGEN CP (garanti 4,
@@ -381,7 +396,7 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
       let fullPricePaid = 0;
       let fullPriceCount = 0;
       for (const workerId of team.workerIds) {
-        const entrant = ctx.entrants[workerId];
+        const entrant = entrants[workerId];
         if (!entrant) continue;
         const fraction = baseCostFraction(entrant.role, profileType, tuning);
         if (fraction <= 0) continue;
@@ -405,7 +420,7 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
       // #5580 (M1 punkt 5): en hjaelper paa `all_out` arbejder for sig selv
       // (prisen er 0 ovenfor) og taeller derfor heller ikke som stoette. Foer
       // gav han kaptajnen laeskaerm gratis via antallet i supportShare.
-      const share = supportShare(countSupportingWorkers(team.workerIds, ctx.entrants), tuning);
+      const share = supportShare(countSupportingWorkers(team.workerIds, entrants), tuning);
       if (share <= 0) continue;
 
       // Garanti 1 (bevarelse): bonussen kan aldrig overstige det holdet
@@ -420,7 +435,11 @@ export function teamPlayHook(state: EngineState, ctx: SegmentHookContext): Segme
         ? reducedEffortCeiling(fullCeiling, fullPricePaid * efficiency * supportShare(fullPriceCount, tuning), tuning)
         : fullCeiling;
       // Garanti 3: intet fortegns-skift — en bonus er aldrig en straf.
-      const bonus = Math.max(0, Math.min(fromTeam, ceiling));
+      // #5981 (KUN s5_profiles_v3): kaptajnen foerst, resten til den delte kaptajn (samme loft).
+      const coLeaderId = team.coLeaderId && state.riders[team.coLeaderId] ? team.coLeaderId : null;
+      const split = splitLeaderBonus({ fromTeam, leaderCeiling: ceiling, coLeaderCeiling: ceiling, hasCoLeader: coLeaderId !== null });
+      if (coLeaderId && split.coLeader > 0) deltas.set(coLeaderId, (deltas.get(coLeaderId) ?? 0) + split.coLeader);
+      const bonus = split.leader;
       if (bonus <= 0) continue;
       deltas.set(team.leaderId, (deltas.get(team.leaderId) ?? 0) + bonus);
     }

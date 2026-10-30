@@ -32,8 +32,9 @@
 // Gamle raekker (kun `intensity`, #1895) er uroerte og laeses praecis som i dag.
 
 import {
-  ALL_SESSIONS, SESSION_INTENSITY, RECOVERY_INTENSITY, programForChoice, dayTypeForProgram,
+  ALL_SESSIONS, SESSION_INTENSITY, SESSION_INTENSITY_V3, RECOVERY_INTENSITY, programForChoice, dayTypeForProgram,
 } from "./trainingDayTypes.js";
+import { isV3OnlySession } from "./trainingCatalogV3.js";
 import { WEEKDAY_KEYS, resolveDayIntensity, isValidIntensity } from "./training.js";
 
 // Loebsdage pr. kalenderdato (CALENDAR_RULES §1e-b: 5 paa HVER dato, alle
@@ -44,15 +45,19 @@ export const PROGRAM_SLOTS = 5;
 export const WHOLE_DAY_SESSIONS = Object.freeze(["rest", "recovery"]);
 export const PROGRAM_SESSIONS = Object.freeze([...WHOLE_DAY_SESSIONS, ...ALL_SESSIONS]);
 
+// #5319: en v3-session (training_catalog_v3) GENKENDES altid, saa en raekke skrevet
+// mens flaget var on stadig er gyldig data. Om den maa VAELGES, afgoer routes
+// (flaget pr. viewer), og om den TRAENER, afgoer motoren (resolveDayProgram med
+// catalogV3). Med flaget off kan ingen skrive den, saa i dag er svaret uaendret.
 export function isProgramSession(session) {
-  return typeof session === "string" && PROGRAM_SESSIONS.includes(session);
+  return typeof session === "string" && (PROGRAM_SESSIONS.includes(session) || isV3OnlySession(session));
 }
 
 // Sessionens faste intensitet (hvile/restitution er deres egen).
 export function intensityForSession(session) {
   if (session === "rest") return "rest";
   if (session === "recovery") return RECOVERY_INTENSITY;
-  return SESSION_INTENSITY[session] ?? null;
+  return SESSION_INTENSITY[session] ?? SESSION_INTENSITY_V3[session] ?? null;
 }
 
 // Hvem programmet er tænkt til. Rytter-typer bruger RIDER_TYPE_KEYS
@@ -315,11 +320,11 @@ export function programSlotForRaceDay(gameDay, dateGameDays) {
 // Session → (focus, intensity), via SAMME skrivesti som dagsvalget
 // (programForChoice), saa et program aldrig kan traene noget et dagsvalg ikke
 // kan. Hvile bevarer rytterens fokus (REST_FOCUS_FALLBACK-reglen).
-export function programForSession(session, previousFocus = null) {
-  if (session === "rest") return programForChoice({ dayType: "rest", previousFocus });
+export function programForSession(session, previousFocus = null, { catalogV3 = false } = {}) {
+  if (session === "rest") return programForChoice({ dayType: "rest", previousFocus, catalogV3 });
   if (session === "recovery") return programForChoice({ dayType: "recovery" });
-  const dayType = dayTypeForProgram({ focus: session, intensity: SESSION_INTENSITY[session] });
-  return programForChoice({ dayType, session });
+  const dayType = dayTypeForProgram({ focus: session, intensity: intensityForSession(session) });
+  return programForChoice({ dayType, session, catalogV3 });
 }
 
 // ── Motorens laesesti ────────────────────────────────────────────────────
@@ -340,6 +345,7 @@ export function programForSession(session, previousFocus = null) {
 // programcelle vandt, ellers "legacy".
 export function resolveDayProgram({
   weekday, slotIndex = 0, riderOverrideDays, teamWeekDays, program, hasExplicitPlan = false, programsOn = false,
+  catalogV3 = false, // #5319: v3-sessioner traener kun naar flaget er on for holdet
 }) {
   const legacyIntensity = resolveDayIntensity({
     weekday, riderOverrideDays, teamWeekDays, planIntensity: program?.intensity, hasExplicitPlan,
@@ -348,7 +354,7 @@ export function resolveDayProgram({
   if (!programsOn) return legacy;
 
   const fromSession = (session) => {
-    const chosen = programForSession(session, program?.focus);
+    const chosen = programForSession(session, program?.focus, { catalogV3 });
     return chosen.ok ? { focus: chosen.focus, intensity: chosen.intensity, source: "program" } : null;
   };
 

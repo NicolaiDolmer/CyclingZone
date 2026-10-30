@@ -127,7 +127,7 @@ export default function DailyTrainingReceipt({ run, trainingScore = null, defaul
               {injuryMessage && <p className="mb-3 text-xs text-cz-danger" title={reportInjury?.unit === "race_day" && reportInjury.approxDate ? t("injuredApprox", {date:formatDate(reportInjury.approxDate)}) : undefined}>{t(injuryMessage.key,{days:injuryMessage.days})}</p>}
               <ol className="mb-4 grid grid-cols-3 gap-x-3 gap-y-3 sm:grid-cols-5">
                 {row.activities.map((activity,index)=><li key={index}>
-                  <p className="font-data text-2xs tabular-nums text-cz-3">{activity.game_day != null ? t("dailyReceipt.raceDay",{day:activity.game_day+1}) : t("dailyReceipt.activity",{n:index+1})}</p>
+                  <p className="font-data text-2xs tabular-nums text-cz-3">{activity.game_day != null && activity.game_day >= 0 ? t("dailyReceipt.raceDay",{day:activity.game_day+1}) : t("dailyReceipt.activity",{n:index+1})}</p>
                   <p className="mt-1 wrap-break-word text-xs font-medium text-cz-1">{activityName(activity)}</p>
                   {activity.intensity && activity.intensity !== "rest" && !activity.race_day && <p className="text-2xs text-cz-3">{tRider(`training.intensity_${activity.intensity}`)}</p>}
                   {showScore && !activity.race_day && !activity.injured && activity.intensity !== "rest" && <p className="mt-1 font-data text-xs tabular-nums text-cz-1" data-testid="daily-receipt-pass-score">{t("colScore")}: {visible ? receiptPassScore(trainingScore?.[row.rider_id],run.tick_date,run.season_id,activity) ?? "—" : "—"}</p>}

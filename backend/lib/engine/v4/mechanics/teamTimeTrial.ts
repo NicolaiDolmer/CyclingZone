@@ -89,6 +89,7 @@ import type {
 } from "../types.ts";
 import { deriveCp, deriveRechargeRate, tickPhysiology } from "../physiology.ts";
 import { initRiderStates } from "../groups.ts";
+import { applyDayForm6649, dayForm6649Events } from "./dayForm6649.ts"; // #6649
 import { boundRngFor, segmentRngFor } from "../rng.ts";
 import { gapUpdateEvent, finishEvent, incidentEvent, makeEvent, sortTimeline } from "../timeline.ts";
 import { BONUS_SECONDS_EXTRA_TUNING, INCIDENTS_EXTRA_TUNING, TTT_EXTRA_TUNING } from "../tuning.ts";
@@ -166,6 +167,10 @@ export type TeamTimeTrialOptions = {
   /** #7008 (KUN s5_profiles_v2): intet uheld lige efter starten (incidentKmSpan). Udeladt = som foer. */
   incidentStartFloor?: true;
   timeLimitTuning?: TimeLimitTuning;
+  /** #6937 (KUN s5_profiles_v3): topankomstens almindelige point (komJersey6937.summitFinishSingleFor). Udeladt = som foer. */
+  summitFinishSingle?: true;
+  /** #6649 (KUN s5_profiles_v3): dagsform med forklaring (mechanics/dayForm6649.ts). Udeladt = som foer. */
+  dayForm6649?: true;
 };
 
 // ── Rotation (work-rotation i holdet, #2412: "roller faar mening") ────────────
@@ -771,7 +776,7 @@ export function runTimeTrialStage(
     roster,
     teamGroupId: `${mode.groupPrefix}-${roster.team_id}`,
     entrantsById: Object.fromEntries(roster.riders.map((r) => [r.rider_id, r])) as Record<string, Entrant>,
-    riders: initInternalRiders(roster, tuning, seed),
+    riders: applyDayForm6649(initInternalRiders(roster, tuning, seed), roster.riders, route, seed, options.dayForm6649 === true), // #6649
     lastEmittedGap: undefined,
   }));
 
@@ -969,6 +974,7 @@ export function runTimeTrialStage(
         profileType: route.profile_type,
         finaleType: route.finale_type,
         tuning: tuning.bonusSeconds,
+        ...(options.summitFinishSingle ? { summitFinishSingle: true as const } : {}),
       }),
     ]),
   );
@@ -980,7 +986,8 @@ export function runTimeTrialStage(
   // Samme raekkefoelge som index.ts's vejetape-vej: alt paa sit eget km,
   // derefter finish-eventet, derefter tidsgraensens events (de kan foerst
   // afgoeres naar vinderen er i maal — #2410 §2.3 regel 4).
-  const timelineEvents = [...sortTimeline([...events, ...passagesToTimelineEvents(passages)]), finish, ...timeLimit.events];
+  const dayFormEvents = options.dayForm6649 ? dayForm6649Events(teams.flatMap((t) => t.riders), route, seed, tuning) : []; // #6649
+  const timelineEvents = [...sortTimeline([...events, ...dayFormEvents, ...passagesToTimelineEvents(passages)]), finish, ...timeLimit.events];
 
   return {
     timeline: { timeline_version: 2, events: timelineEvents },

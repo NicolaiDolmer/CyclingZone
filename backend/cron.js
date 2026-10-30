@@ -81,6 +81,8 @@ import { runRaceEntryGeneratorSweep } from "./lib/raceEntryGeneratorSweep.js";
 import { runIntakeOfferExpirySweep } from "./lib/academyIntakeExpirySweep.js";
 import { runSundayIntakeTick } from "./lib/sundayIntakeTick.js";
 import { isAcademyIntakePullEnabled } from "./lib/academyIntakePullFlag.js";
+import { runAcademyWeeklyPullSweep } from "./lib/academyWeeklyPull.ts";
+import { runAcademyPullReminderSweep } from "./lib/academyReminder.ts";
 import { runMarketValueLevelCorrectionGateSweep } from "./lib/marketValueLevelCorrectionGate.js"; // #3449
 import { runSundayValueSweep } from "./lib/sundayValueSweep.js"; // #4419
 import { runBalanceDriftWatch } from "./lib/balanceDriftWatch.js";
@@ -129,6 +131,7 @@ import {
   CRON_MONITOR_EMAIL_HEALTH,
   CRON_MONITOR_EMAIL_RACE_DIGEST,
   CRON_MONITOR_DISCORD_RACE_DIGEST,
+  CRON_MONITOR_ACADEMY_REMINDER,
   ALL_CRON_MONITORS,
 } from "./lib/cronMonitorRegistry.js";
 // #6858 — job med fast tidspunkt planlaegges efter dansk vaegur, ikke fra proces-start.
@@ -1123,7 +1126,17 @@ async function runSundayIntakeTickCron() {
     // når flaget flippes til "on" i cutover-drejebogen, bliver denne cron en no-op
     // og holdene henter i stedet selv via POST /api/academy/intake/pull. Fail-safe
     // OFF (seedet), så uændret adfærd indtil flippet (punkt 7).
-    if (await isAcademyIntakePullEnabled(supabase)) return;
+    if (await isAcademyIntakePullEnabled(supabase)) {
+      // #6666: AI-hold henter selv (eget flag, fail-safe OFF; påmindelsen har sin egen cron).
+      const w = await runAcademyWeeklyPullSweep({ supabase, now: new Date() });
+      if (w.ran && w.aiPulled > 0) {
+        console.log(`🎓 Ugens akademi: ${w.aiPulled} AI-hold hentede (${w.aiRemaining} tilbage) (${w.weekKey})`);
+      }
+      if (w.ran && w.errors.length) {
+        sentryCapture(new Error(`academy weekly pull partial failures: ${w.errors.join("; ")}`), { tags: { cron: "academy weekly pull" } });
+      }
+      return;
+    }
     const r = await runSundayIntakeTick({ supabase, now: new Date() });
     if (r.ran && r.candidates > 0) {
       console.log(`🎓 Søndags-drip: ${r.candidates} akademi-kandidater til ${r.teams} hold (${r.tickDate})`);
@@ -1137,6 +1150,21 @@ async function runSundayIntakeTickCron() {
   } catch (err) {
     console.error("Cron error (sunday intake drip):", err.message);
     sentryCapture(err, { tags: { cron: "sunday intake drip" } });
+  }
+}
+
+// #6666/#7177: påmindelser om ugens akademi-kuld (søndag fra 10, lørdag fra 18).
+// Modulet er selv vindue- og flag-gated (fail-safe OFF) og dedupet pr. uge.
+async function runAcademyPullReminderCron() {
+  try {
+    const r = await runAcademyPullReminderSweep({ supabase, now: new Date() });
+    if (r.ran && r.reminded > 0) console.log(`🎓 Akademi-påmindelse (${r.kind}): ${r.reminded} hold (${r.weekKey})`);
+    if (r.ran && r.errors.length) {
+      sentryCapture(new Error(`academy pull reminder partial failures: ${r.errors.join("; ")}`), { tags: { cron: "academy pull reminder" } });
+    }
+  } catch (err) {
+    console.error("Cron error (academy pull reminder):", err.message);
+    sentryCapture(err, { tags: { cron: "academy pull reminder" } });
   }
 }
 
@@ -2205,6 +2233,15 @@ export function startCron() {
     trackedTick("sunday-intake-drip", runSundayIntakeTickCron),
     CRON_MONITOR_SUNDAY_START.wallClock,
     { label: "sunday-intake-drip", shouldStop: isCronSchedulingStopped }
+  );
+
+  // #6666/#7177: akademi-påmindelser, lør+søn fra 10:00 hver hele time (modulets
+  // gate: søndag fra 10, lørdag fra 18). Claim-først pr. (hold, uge, påmindelse);
+  // deploy-fristen er et ekstra lag mod to processer i samme sekund.
+  startWallClockSchedule(
+    trackedTick("academy-pull-reminder", runAcademyPullReminderCron),
+    CRON_MONITOR_ACADEMY_REMINDER.wallClock,
+    { label: "academy-pull-reminder", startupGraceMs: DEPLOY_OVERLAP_GRACE_MS, shouldStop: isCronSchedulingStopped }
   );
 
   // Niveau-korrektionens søndags-gate (#3449/#3750): søndag 00:00 + hver hele time

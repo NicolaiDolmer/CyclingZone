@@ -17,16 +17,19 @@
 import { authHeaders } from "./supabase.js"; // #4348: kanonisk kopi
 import { apiFetch } from "./apiFetch.ts"; // #5242: Retry-After-respekt + centraliseret 401-vej
 import { defaultTeamOrder, mergeOrderWithRoster, trainDefaultForStage } from "./tacticsPlan.js";
+import { withStagePlanFields } from "../components/race/StagePlanModel.ts"; // #7003
 
 const API = import.meta.env.VITE_API_URL;
 
 /** Kun de fire kontraktfelter — se filens hoved-kommentar. */
-function toContractRider(rider) {
+function toContractRider(rider, withPlan = false) {
   return {
     rider_id: rider.rider_id,
     effort: rider.effort,
     try_break: rider.try_break === true,
     leadout: rider.leadout === true,
+    // #7003: etapeplanen sendes kun naar den er slaaet til og rytteren har en (serveren gater feltet).
+    ...(withPlan && Array.isArray(rider.plan) && rider.plan.length ? { plan: rider.plan } : {}),
   };
 }
 
@@ -51,7 +54,7 @@ export async function fetchTeamOrders({ raceId }) {
     const body = res.data || {};
     throw new Error(body.error || `team_orders_fetch_failed_${res.status}`);
   }
-  const body = res.data ?? {};
+  const body = /** @type {Record<string, any>} */ (res.data ?? {}); // #7003: checkJs kender ikke svarets form
   return {
     stages: body.stages ?? [],
     stageCount: body.stage_count ?? (body.stages?.length ?? 0),
@@ -63,6 +66,7 @@ export async function fetchTeamOrders({ raceId }) {
     sprintTrainFlatOnly: body.sprint_train_flat_only === true,
     orders: body.orders ?? [],
     effortKeys: body.valid_efforts ?? null,
+    stagePlanEnabled: body.stage_plan_enabled === true, // #7003
   };
 }
 
@@ -98,7 +102,9 @@ export function orderForStage(context, stage, profileType = null) {
 }
 
 /** Gem ÉN etapes overlay. Kaster med serverens fejlkode, så kortet kan vise den. */
-export async function saveTacticsCard({ raceId, stage, order }) {
+export async function saveTacticsCard({ raceId, stage, order: rawOrder, stagePlan = false }) {
+  // #7003: med etapeplanen udledes de gamle felter af kaeden (planen vinder over intentionen).
+  const order = stagePlan ? withStagePlanFields(rawOrder) : rawOrder;
   const headers = await authHeaders();
   if (!headers) throw new Error("not_authenticated");
   // TacticsCard.handleSave() fanger, rydder loading-tilstanden og viser
@@ -108,7 +114,7 @@ export async function saveTacticsCard({ raceId, stage, order }) {
     headers,
     body: JSON.stringify({
       breakaway_stance: order.breakaway_stance,
-      riders: (order.riders ?? []).map(toContractRider),
+      riders: (order.riders ?? []).map((r) => toContractRider(r, stagePlan)),
     }),
   });
   if (!res.ok) { // #5242, se fetchTeamOrders()

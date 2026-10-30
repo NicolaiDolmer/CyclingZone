@@ -1039,8 +1039,8 @@
           "La fatiga se restablece a 0 para todos los ciclistas.",
           "Las lesiones NO se restablecen. Pasan sin cambios.",
           "Los planes de pico de forma no se ven afectados por el cambio.",
-          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan una sola vez, en la actualización del domingo posterior a que se complete el cambio.",
-          "El primer día de carrera de la nueva temporada es el día después del cambio. Su primera etapa empieza al menos 24 horas después de la última etapa de la temporada anterior, así que tienes tiempo para elegir tus plantillas de carrera."
+          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan la próxima vez, en la actualización normal del domingo.",
+          "La nueva temporada empieza tras una breve pausa entre temporadas, que los mánagers votaron. La fecha de la primera etapa está en el calendario de carreras, así que tienes tiempo para elegir tus equipos."
         ]
       }
     },
@@ -1342,6 +1342,18 @@
         "title": "Edad, pico y declive",
         "text": "Todos los ciclistas alcanzan su pico a los 28 años, sea cual sea su tipo. A partir de la temporada posterior a la que cumple 29, sus habilidades decaen en lugar de crecer, y eso solo ocurre en el cambio de temporada, nunca durante la propia temporada. El declive no es fijo: crece cuanto más tiempo lleva pasado su pico. Durante los tres primeros años después del pico (de 29 a 31 años) sus habilidades principales bajan aproximadamente 1 punto por temporada. Del cuarto al sexto año después del pico (de 32 a 34) sube a unos 1,8 puntos por temporada, y desde el séptimo año (35+) a unos 2,6 puntos por temporada. No todas las habilidades caen a la misma velocidad: las habilidades principales de un ciclista, aquellas en torno a las que se construye su tipo principal, caen al ritmo completo de arriba. Todas las demás habilidades, incluidas las de oficio Colocación y Táctica, caen más despacio, aproximadamente el 70 por ciento de ese ritmo. Es una diferencia de velocidad, no un inicio retrasado: todas las habilidades empiezan a decaer en la misma temporada."
       },
+      "agingV2": {
+        "title": "Edad y declive",
+        "text": "Los ciclistas mantienen su nivel hasta los 30. A partir de la temporada siguiente, sus capacidades físicas y el pavé bajan un poco en cada cambio de temporada, y la bajada crece cuanto más pasan de los 30. La técnica, la táctica y las demás capacidades mentales nunca bajan. Correr frena el declive: cada día de carrera de la temporada que acaba de terminar cuenta, y los días de entrenamiento duro también ayudan. Un ciclista con una temporada completa de carreras conserva casi todas sus piernas. Nadie crece en el propio cambio de temporada; tus ciclistas se desarrollan con su entrenamiento diario."
+      },
+      "aiRidersV2": {
+        "title": "Ciclistas de la IA y agentes libres",
+        "text": "Los ciclistas de equipos de la IA y los que no tienen contrato no se desarrollan. Siguen envejeciendo como todos. Cuando uno de ellos llega a tu equipo, empieza a desarrollarse con tu entrenamiento desde el día siguiente."
+      },
+      "potentialBestRole": {
+        "title": "El potencial en todo el juego",
+        "text": "Mi equipo, la academia, el perfil del ciclista y la pestaña de Ojeo muestran el potencial de la misma forma. Se muestra para el rol en el que puede llegar más alto, con una pequeña caja al lado que dice qué rol es. Sigue siendo una estimación: un mejor ojeador, o más días de entrenamiento en tu equipo para tus propios ciclistas, la afinan."
+      },
       "trainingFocus": {
         "title": "Enfoque de entrenamiento",
         "text": "Desde el perfil de uno de tus propios ciclistas puedes fijar un enfoque de entrenamiento para toda la temporada: una dirección (VO2max, Umbral/CRI, Sprint, Resistencia, Técnica, Aerodinámica o Lectura de carrera). El esfuerzo viene con el tipo de sesión y no es una elección aparte: los intervalos, el umbral y el sprint son duros, el tempo es medio y el resto son suaves. Las habilidades entrenadas se desarrollan más rápido hacia su techo mediante el entrenamiento diario que se ejecuta cada tarde, mientras que las demás habilidades crecen algo más despacio. Las sesiones duras acumulan más fatiga pero no conllevan ningún riesgo de perder progreso. Puedes fijar un enfoque de entrenamiento en tantos ciclistas como quieras; cambiar un enfoque existente no cuesta nada. El entrenamiento es gratuito y no cuesta dinero. Los ciclistas que corren se desarrollan con la carrera en lugar de con su sesión prevista, incluidas las carreras de un día. Los ciclistas seleccionados que no toman la salida siguen su programa, salvo lesiones. La fatiga, la forma y el riesgo de lesión por entrenamiento se evalúan a partir de la actividad combinada de carrera y entrenamiento del día en la actualización de la tarde. Los huecos entre etapas no añaden recuperación extra. El entrenamiento duro sigue siendo más cansado que el normal."
@@ -1387,6 +1399,18 @@
         "title": "La habilidad de mi ciclista ha dejado de subir",
         "text": "Eso ahora es poco habitual. Cada habilidad sigue teniendo un techo vitalicio fijado por su tipo, pero los ciclistas ya no llegan a él sin más. Lo cerca que llega un ciclista, y en qué habilidades, lo decide cómo lo entrenas. Si una habilidad realmente se ha detenido, casi siempre es una de dos cosas. O bien el ciclista ha pasado su pico, donde las habilidades decaen en lugar de crecer, y lo que tiene es lo que conserva. O bien la habilidad ya está por encima de lo que su tipo construiría por sí solo, lo que ocurre con ciclistas heredados de una versión anterior del juego. No se le quita nada, simplemente no subirá más. Cada habilidad tiene su propia línea en la página de Entrenamiento diario y en el perfil del ciclista, y una terminada muestra “hecho” donde las demás muestran progreso. El número junto a una habilidad es siempre su valor actual, nunca el techo en sí, que nunca se muestra como número en ninguna parte del juego, y el progreso se ralentiza de forma natural cuanto más se acerca un ciclista, así que un valor que se queda quieto unos días no significa necesariamente que haya terminado."
       },
+      "typeGatingCurveB": {
+        "title": "¿Por qué un enfoque crece más rápido en unos ciclistas que en otros?",
+        "text": "Cada corredor tiene un tipo principal Y uno secundario (Sprinter, Escalador, CRI, General, etc.) y un potencial, todo fijado cuando se crea el corredor. Su tipo decide qué habilidades pueden llegar más alto: una habilidad para la que está hecho su tipo principal llega más alto y se desarrolla más rápido, y su tipo secundario va justo detrás. La colocación y la táctica son oficio: nadie nace con ellas, así que todos los corredores pueden alcanzar un nivel decente, pero se desarrollan despacio. Una habilidad fuera de sus dos papeles se queda baja y se desarrolla despacio, y una que su tipo frena apenas se mueve. Cada tipo cubre varias habilidades, no solo la de su nombre: un tipo General también cubre la contrarreloj. Su potencial decide hasta dónde puede llegar en total, y un talento mayor también llega antes. Cada punto cuesta más cuanto más alta está ya la habilidad, así que los últimos puntos son los más lentos. Mira sus dos insignias de tipo antes de elegir un enfoque. El ritmo se ajusta de vez en cuando como parte del equilibrio del juego, así que el progreso diario puede sentirse distinto de una actualización a otra."
+      },
+      "ceilingReachedCurveB": {
+        "title": "La habilidad de mi ciclista ha dejado de subir",
+        "text": "El progreso se frena cuanto más alta está ya una habilidad y cuanto más se acerca al techo que fijan su tipo y su potencial, así que un valor que se queda quieto unos días no significa necesariamente que haya terminado. Si una habilidad de verdad se ha parado, casi siempre es por una de dos cosas. O el ciclista ha pasado su mejor momento, y sus habilidades bajan en el cambio de temporada en lugar de crecer. O la habilidad ya está por encima del techo que fija su potencial, algo que puede pasar con ciclistas que se desarrollaron con el modelo de entrenamiento anterior. No se le quita nada, simplemente no sube más. El número junto a una habilidad es siempre su valor actual, nunca el techo, que nunca se muestra como número en ninguna parte del juego."
+      },
+      "longTermGrowthCurveB": {
+        "title": "Crecimiento a largo plazo",
+        "text": "Tres cosas deciden dónde termina una habilidad. Su tipo decide qué habilidades pueden llegar más alto. Su potencial decide hasta dónde: un talento mayor tiene un techo más alto y además se desarrolla más rápido. Y el propio nivel: cada punto cuesta más cuanto más alta está ya la habilidad, así que un corredor avanza rápido en un nivel bajo y despacio cerca de la cima. La edad no hace que nadie se desarrolle más rápido. Los corredores más jóvenes aún no aguantan una carga de entrenamiento completa, así que al mismo nivel avanzan algo más despacio hasta que la aguantan. Cerca de su techo el progreso se apaga poco a poco, y el entrenamiento nunca puede llevar a nadie por encima de él."
+      },
       "trainToday": {
         "title": "Ejecuta ahora el entrenamiento de hoy",
         "text": "El entrenamiento se ejecuta una vez por día de carrera, después de la última carrera del día y a partir de las 20:00. Puedes ejecutarlo cuando se abre, o dejar que tu asistente ejecute automáticamente la misma sesión. Hacer clic no da ganancias extra."
@@ -1431,9 +1455,17 @@
         "title": "La puntuación de entrenamiento",
         "text": "Cada sesión que completa un ciclista recibe una puntuación de entrenamiento de 1 a 99. Mide la CALIDAD de esa sesión, no lo que el ciclista sacó de ella: lo exigente que fue la sesión, lo bien que encajó con los puntos fuertes del ciclista, la forma y la fatiga del ciclista ese día, el entrenador y las instalaciones que la respaldan, el talento y la edad del ciclista, y el propio día. La puntuación es lo que impulsa el desarrollo: una sesión mejor mueve más las habilidades. No depende de lo cerca que esté una habilidad de su techo, así que un ciclista que casi ha terminado sus habilidades de enfoque sigue obteniendo una lectura honesta de lo buena que fue la sesión. Los días de descanso no reciben puntuación, porque no hubo sesión que medir. En un día en que una carrera ocupa el lugar de la sesión, la columna muestra “Carrera” en lugar de un número. El número de hoy aparece una vez que se ha ejecutado la sesión de hoy, y hasta entonces la columna muestra la última en gris. Solo tú puedes ver las puntuaciones de tus propios ciclistas."
       },
+      "maxOnePerDay": {
+        "title": "Como máximo +1 por capacidad al día",
+        "text": "Una capacidad puede subir como máximo 1 punto al día, sumando entrenamiento y días de carrera. Lo que pase de ahí no se pierde: pasa al día siguiente."
+      },
+      "todaysDecision": {
+        "title": "La decisión de hoy (beta)",
+        "text": "Arriba en la pestaña Hoy, el asistente sugiere hasta tres cambios para hoy: recuperación activa para ciclistas cansados con un día duro previsto y más riesgo de lesión. Usar lo aplica a ese ciclista. Los que corren hoy, están lesionados, ya tienen un día suave o siguen su propio plan semanal o un grupo de entrenamiento no reciben sugerencia. Cuando ya se ha hecho el entrenamiento de hoy, la tarjeta se oculta."
+      },
       "longTermGrowth": {
         "title": "Crecimiento a largo plazo",
-        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores siguen alcanzando su mejor momento hacia los 27-28 años y declinan después, y el entrenamiento nunca puede llevar a nadie por encima de su techo."
+        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores declinan con la edad (mira Edad y declive en Corredores), y el entrenamiento nunca puede llevar a nadie por encima de su techo."
       },
       "readingReport": {
         "title": "Leer el informe de entrenamiento",
@@ -1458,6 +1490,10 @@
       "trainingGroups": {
         "title": "Grupos de entrenamiento",
         "text": "Un grupo te permite tomar una decisión de entrenamiento para varios ciclistas. Crea uno en Programa, Plan: abre “Plan para” y elige “+ Grupo nuevo”. Ponle un nombre y empieza desde un tipo de ciclista o elige tú mismo a los ciclistas. Un ciclista puede estar en un grupo. Entonces un cambio en un campo se aplica a todo el grupo, y los ciclistas con una etapa conservan la etapa. “Fatiga esta noche” muestra al ciclista más cansado del grupo. El orden es fijo: primero el plan propio del ciclista, luego el plan de su grupo y después el plan del equipo. Si cambias los campos propios de un ciclista, su plan gana hasta que vuelvas a elegir “Seguir al grupo”. También puedes aplicar un programa a un grupo en Programas, y dar a un grupo su propia excepción en Límite de fatiga."
+      },
+      "catalogV3": {
+        "title": "Dos sesiones duras para cada tipo de corredor",
+        "text": "Cada tipo de corredor tiene ahora dos sesiones duras pensadas para él, y cada sesión dura da un día duro completo. Hay cinco sesiones nuevas: Subidas largas, Lanzamiento, Contrarrelojes cortas, Contrarrelojes largas y Clásica de adoquines. La contrarreloj por fin tiene sus propias sesiones, así que Umbral entrena tempo y resistencia en su lugar. Sprint da ahora un día duro completo. Si alternas entre las dos sesiones de tu tipo, la capacidad principal crece un poco menos, pero crecen otras capacidades."
       }
     },
     "activityfeed": {
@@ -1521,6 +1557,10 @@
       "freeAgents": {
         "title": "Agentes libres",
         "text": "Los agentes libres no tienen salario hasta que un equipo los ficha. El perfil del ciclista y la página de la subasta muestran un salario estimado (según la producción esperada del ciclista esta temporada) para que puedas planificar tu presupuesto antes de pujar. El salario real solo se fija en el momento de la firma. Los agentes libres aparecen sobre todo cuando el contrato de un ciclista termina y no se renueva en el cambio de temporada: en la práctica es casi siempre una plantilla gestionada por una persona, porque los equipos controlados por la IA renuevan automáticamente sus propios contratos que vencen en esa misma transición. El resto son ciclistas liberados por su antiguo club, ya sea en la graduación de la Academia o por una oferta de cantera de la Academia que caducó sin respuesta y no encontró comprador en subasta (consulta “¿Caducan las ofertas de cantera de la Academia?”)."
+      },
+      "contractWarnings": {
+        "title": "¿Qué ciclistas reciben avisos de contrato?",
+        "text": "Los avisos cubren a tus ciclistas sénior, sub-23, júnior y de la academia. Al cambiar de temporada, recibes un único mensaje con los ciclistas cuyos contratos caducan durante la nueva temporada, su plantilla y su valor. También recibes un aviso al fichar un ciclista o cambiarlo de plantilla si su contrato caduca en la temporada actual. Puedes renovar contratos de todas las plantillas en la pestaña Contratos de Mi equipo. Los ciclistas liberados al cambiar de temporada se agrupan en otro mensaje. Cambiar de plantilla no modifica el contrato, y la duración del contrato inicial de los fichajes de la academia se mantiene."
       }
     },
     "academy": {
@@ -1539,7 +1579,7 @@
       },
       "prognosisTraining": {
         "title": "Descubrir el potencial de una promesa",
-        "text": "Tras fichar a un ciclista de la academia, conoces su pronóstico a través de los días de entrenamiento en tu equipo. Al principio no hay estimación; después llega un intervalo de valoración inicial, luego uno más preciso y por último el definitivo. La pestaña de scouting muestra la etapa actual, el intervalo revelado y los días de entrenamiento hasta la próxima etapa. Un mejor cuerpo técnico y mejores instalaciones de entrenamiento te ayudan a avanzar antes. No cambian su talento, y hasta el pronóstico final sigue siendo un intervalo."
+        "text": "Tras fichar a un ciclista de la academia, su previsión mejora con los días de entrenamiento y carrera registrados en tu equipo. El tiempo desde el fichaje no cuenta por sí solo: dejarlo una semana en el equipo no completa la previsión. Primero no hay estimación, después aparece un intervalo aproximado, otro más preciso y finalmente el definitivo. La pestaña Ojeo muestra la etapa actual, el intervalo revelado y los días de entrenamiento o carrera hasta la siguiente etapa. Mejores entrenadores e instalaciones permiten avanzar antes. No cambian su talento, y la previsión definitiva sigue siendo un intervalo. La actualización del domingo fija su valor de mercado; no completa su previsión de potencial."
       },
       "signingProspects": {
         "title": "Fichar promesas",
@@ -1557,6 +1597,10 @@
       "dailyTrainingBoost": {
         "title": "Entrenamiento diario en la academia",
         "text": "Los corredores de la academia siguen exactamente el mismo modelo de entrenamiento que tu equipo sénior. No hay un sistema aparte para la academia ni un freno oculto a su mejora: elige un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. La única diferencia real es la edad. Los corredores menores de 22 años reciben un impulso juvenil extra que se desvanece al acercarse a los 22. Su tipo fija hasta dónde puede llegar cada habilidad, y su potencial fija lo rápido que llegan, así que un talento mayor se desarrolla antes hacia el mismo techo, mientras que un talento menor crece más despacio hasta ser un gregario sólido."
+      },
+      "dailyTrainingBoostCurveB": {
+        "title": "Entrenamiento diario en la academia",
+        "text": "Los corredores de la academia siguen exactamente el mismo modelo de entrenamiento que tu equipo sénior. No hay un sistema aparte para la academia: elige un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. Las habilidades bajas son baratas de construir, así que un corredor joven sigue avanzando rápido al principio. La edad no da velocidad extra. La única diferencia es que los corredores más jóvenes aún no aguantan una carga de entrenamiento completa, así que se desarrollan algo más despacio que un corredor mayor del mismo nivel hasta que la aguantan. Su tipo decide qué habilidades pueden llegar más alto, y su potencial decide hasta dónde llegan y lo rápido, así que un talento mayor llega más alto y antes, mientras que un talento menor crece hasta ser un gregario sólido."
       },
       "youthAuctions": {
         "title": "Subastas juveniles",
@@ -1646,7 +1690,7 @@
           [
             "Departamento médico",
             "Acelera la recuperación de forma y de lesiones",
-            "Próximamente"
+            "Activo ahora"
           ],
           [
             "Ampliación de la academia",
@@ -1709,11 +1753,19 @@
       },
       "roles": {
         "title": "Jefe de filas, jefe de filas de sprint, cazador de escapadas y rol libre",
-        "text": "Das a cada ciclista seleccionado un rol mediante las tarjetas de tácticas, y cada tarjeta explica por qué el rol encaja con el terreno de esta carrera. Tu jefe de filas está protegido por el equipo: unos gregarios fuertes y frescos aumentan las opciones del jefe de filas. En las etapas llanas, tu jefe de filas de sprint (si lo hay) recibe en su lugar la protección. Un cazador de escapadas intenta entrar en la escapada del día por defecto y corre más fuerte para mantenerse por delante. Puedes desactivarlo para una sola etapa, y un intento nunca es seguro. La tarjeta del cazador muestra lo probable que es que una escapada llegue en este terreno, y la página de detalle de la carrera ordena a tus mejores cazadores por agresividad, las ganas de atacar. La agresividad hace más probable que un ciclista entre en la escapada, y un ciclista con rol libre también lo intenta más a menudo por su cuenta. En las carreras con las reglas actuales cada intento cuesta energía, también cuando falla. El trabajo de equipo tiene un precio: los gregarios pierden puestos trabajando para el jefe de filas, y ese trabajo es justo lo que compra el impulso del jefe de filas. Un ciclista con Rol libre se salta las obligaciones de equipo y corre su propia carrera, sin coste de trabajo ni apoyo al jefe de filas."
+        "text": "Das a cada ciclista seleccionado un rol mediante las tarjetas de tácticas, y cada tarjeta explica por qué el rol encaja con el terreno de esta carrera. Tu jefe de filas está protegido por el equipo: unos gregarios fuertes y frescos aumentan las opciones del jefe de filas. En las etapas llanas, tu jefe de filas de sprint (si lo hay) recibe en su lugar la protección. Un cazador de escapadas intenta entrar en la escapada del día por defecto y corre más fuerte para mantenerse por delante. Puedes desactivarlo para una sola etapa, y un intento nunca es seguro. La tarjeta del cazador muestra lo probable que es que una escapada llegue en este terreno, y la página de detalle de la carrera ordena a tus mejores cazadores por agresividad, las ganas de atacar. La agresividad hace más probable que un ciclista entre en la escapada, y un ciclista con rol libre también lo intenta más a menudo por su cuenta. En las carreras con las reglas actuales cada intento cuesta energía, también cuando falla. El trabajo de equipo tiene un precio: los gregarios pierden puestos trabajando para el jefe de filas, y ese trabajo es justo lo que compra el impulso del jefe de filas. Un ciclista con Rol libre se salta las obligaciones de equipo y corre su propia carrera, sin coste de trabajo ni apoyo al jefe de filas. En las carreras con las reglas más nuevas, un jefe de filas de sprint puede ser tu único líder, sin jefe de filas. Entonces tiene la protección del equipo en todas las etapas."
       },
       "stageTactics": {
         "title": "Carreras por etapas: roles y esfuerzo por etapa",
-        "text": "En las carreras por etapas, la página de la carrera tiene un tablero de tácticas etapa por etapa. Las etapas completadas están bloqueadas y muestran lo que pasó; las etapas próximas aún se pueden cambiar mientras la carrera avanza. Cada ciclista puede correr un rol distinto por etapa, más un esfuerzo: hay tres esfuerzos: Ir tranquilo, Normal y Trabajar o atacar. Trabajar o atacar acumula fatiga extra: un gregario o un cazador trabaja para el equipo, mientras que un jefe de filas o un ciclista con rol libre lo usa para atacar. Ir tranquilo afloja para llegar más fresco a los días que importan. Si un ciclista toma el maillot de líder, un atajo en la pestaña Equipo de la página de la carrera lo hace jefe de filas para todas las etapas restantes con un solo clic mientras la carrera está en marcha, pasando a gregario a cualquier otro jefe de filas en esas etapas. Las etapas en las que no fijas nada usan simplemente el rol de carrera del ciclista."
+        "text": "En las carreras por etapas, la página de la carrera tiene un tablero de tácticas etapa por etapa. Las etapas completadas están bloqueadas y muestran lo que pasó; las etapas próximas aún se pueden cambiar mientras la carrera avanza. Cada ciclista puede correr un rol distinto por etapa, más un esfuerzo para el día. Los escalones de esfuerzo tienen su propio párrafo justo debajo. Si un ciclista toma el maillot de líder, un atajo en la pestaña Equipo de la página de la carrera lo hace jefe de filas para todas las etapas restantes con un solo clic mientras la carrera está en marcha, pasando a gregario a cualquier otro jefe de filas en esas etapas. Las etapas en las que no fijas nada usan simplemente el rol de carrera del ciclista."
+      },
+      "effortSteps": {
+        "title": "Escalones de esfuerzo",
+        "text": "Cada ciclista recibe un esfuerzo para la etapa que tienes abierta. Cinco escalones van del más fácil al más duro. Grupeto termina la etapa en el grupo de atrás y nunca le da un resultado propio. Ir tranquilo se coloca en el pelotón y guarda piernas para los días que cuentan. Normal es su carrera normal. El cuarto escalón se llama según el trabajo: Trabajar para un gregario o un cazador de escapadas, que corre para el jefe de filas y acumula fatiga real; Seguir los ataques para un jefe de filas o un jefe de filas de sprint, que responde a cada ataque y gasta más piernas; Correr a la ofensiva para un ciclista con rol libre, que aprieta en las subidas y en el final. A tope lo pone todo en el día de hoy y es el día más duro para sus piernas. Un escalón más duro siempre cuesta más fatiga que uno más suave, por fuerte que sea el ciclista. Un gregario en A tope corre para sí mismo y deja de ayudar al jefe de filas."
+      },
+      "effortStepsThree": {
+        "title": "Escalones de esfuerzo",
+        "text": "Cada ciclista recibe un esfuerzo para la etapa que tienes abierta. Tres escalones van del más fácil al más duro. Ir tranquilo se coloca en el pelotón y guarda piernas para los días que cuentan. Normal es su carrera normal. El tercer escalón se llama según el trabajo: Trabajar para un gregario o un cazador de escapadas, que corre para el jefe de filas y acumula fatiga real; Seguir los ataques para un jefe de filas o un jefe de filas de sprint, que responde a cada ataque y gasta más piernas; Correr a la ofensiva para un ciclista con rol libre, que aprieta en las subidas y en el final. Un escalón más duro siempre cuesta más fatiga que uno más suave, por fuerte que sea el ciclista."
       },
       "strategy": {
         "title": "Estrategia del equipo (preferencias permanentes)",
@@ -1744,7 +1796,7 @@
       "label": "Día de carrera y tácticas",
       "roleAndIntention": {
         "title": "Roles e intención de hoy",
-        "text": "Tu rol es el trabajo que elegiste para un ciclista al montar tu equipo: jefe de filas, jefe de filas de sprint, cazador de escapadas, gregario o rol libre. Dura toda la carrera y rara vez cambia. La intención es distinta: es lo que le pides en la etapa que tienes abierta ahora mismo, y si la dejas como está, simplemente corre con su rol. Hay cinco ajustes, del más fácil al más duro: grupeto, ir tranquilo, normal, trabajar o atacar y a tope. Un ajuste más duro siempre cuesta más fatiga que uno más fácil, por fuerte que sea el ciclista, y el grupeto nunca le da un resultado propio."
+        "text": "Tu rol es el trabajo que elegiste para un ciclista al montar tu equipo: jefe de filas, jefe de filas de sprint, cazador de escapadas, gregario o rol libre. Dura toda la carrera y rara vez cambia. La intención es distinta: es lo que le pides en la etapa que tienes abierta ahora mismo, y si la dejas como está, simplemente corre con su rol. Los escalones que puedes elegir se explican en Escalones de esfuerzo."
       },
       "crashesAndIncidents": {
         "title": "Caídas e incidentes",
@@ -1756,7 +1808,15 @@
       },
       "teamwork": {
         "title": "Trabajo en equipo en la carretera",
-        "text": "Tu jefe de filas, o tu jefe de filas de sprint en una etapa llana, está protegido por el trabajo que pone el resto del equipo. Un gregario o un cazador de escapadas paga esa protección con su propio esfuerzo; un ciclista con rol libre ni ayuda ni paga. El impulso está acotado para que nunca se dispare, y solo cuenta cuando al menos un compañero sigue corriendo cerca de él. Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo. Un gregario en Ir tranquilo paga menos pero da menos apoyo a tu jefe de filas. Trabajar para el equipo nunca sale gratis, y ninguna combinación de rol e intención puede convertirlo en una bonificación añadida a la propia habilidad de un ciclista."
+        "text": "Tu jefe de filas, o tu jefe de filas de sprint en una etapa llana, está protegido por el trabajo que pone el resto del equipo. Un gregario o un cazador de escapadas paga esa protección con su propio esfuerzo; un ciclista con rol libre ni ayuda ni paga. El impulso está acotado para que nunca se dispare, y solo cuenta cuando al menos un compañero sigue corriendo cerca de él. Un gregario en Ir tranquilo paga menos pero da menos apoyo a tu jefe de filas. Trabajar para el equipo nunca sale gratis, y ninguna combinación de rol e intención puede convertirlo en una bonificación añadida a la propia habilidad de un ciclista."
+      },
+      "teamworkAllOut": {
+        "title": "A tope y trabajo en equipo",
+        "text": "Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo."
+      },
+      "luxuryHelper": {
+        "title": "El gregario de lujo",
+        "text": "Un gregario de lujo es un gregario con un plan de etapa ya hecho: se reserva en el pelotón y luego trabaja para tu jefe de filas en la subida decisiva, la última del día. En el plan de etapa puedes mover su trabajo a otra subida o darle otro plan. Si tu jefe de filas se descuelga o abandona, corre su propia carrera. Un equipo puede tener un gregario de lujo, y solo en carreras con las reglas más nuevas."
       },
       "weatherAndCobbles": {
         "title": "Clima y adoquines",
@@ -1771,7 +1831,7 @@
     },
     "peakWhatItDoes": {
       "q": "¿Qué hace un pico?",
-      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. Los picos todavía no cuentan en las carreras; las carreras usan su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
+      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. En las carreras, el pico se suma a su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
     },
     "peakTraining": {
       "q": "¿Cómo funciona el entrenamiento de pico?",
@@ -1847,7 +1907,7 @@
     },
     "auctionExpiry": {
       "q": "¿Cuándo caduca una subasta?",
-      "a": "Cuando pones en subasta a tu propio ciclista, eliges la hora exacta en que termina la subasta, de 1 a 48 horas por delante. Una subasta de un ciclista libre (sin equipo) dura por defecto al menos 12 horas activas: lo inicie quien lo inicie, y sea cual sea el motivo por el que el ciclista quedó libre (iniciada por uno mismo, el banco, la academia o el mercado juvenil), para que no pierdas a un joven talento solo porque estabas durmiendo o trabajando. La única excepción es una Subasta relámpago, que siempre dura exactamente 30 minutos. Las horas nocturnas no cuentan: la ventana activa va de las 08:00 a las 24:00 todos los días. Ejemplo: una subasta iniciada a las 19:40 termina esa misma tarde a las 20:40. Una subasta iniciada a las 23:30 termina a la mañana siguiente a las 08:30."
+      "a": "Cuando pones en subasta a tu propio ciclista, eliges la hora exacta en que termina la subasta, de 1 a 48 horas por delante. Una subasta de un ciclista libre (sin equipo) dura siempre al menos 12 horas, también si eliges tú la hora de fin: lo inicie quien lo inicie, y sea cual sea el motivo por el que el ciclista quedó libre (iniciada por uno mismo, el banco, la academia o el mercado juvenil), para que no pierdas a un joven talento solo porque estabas durmiendo o trabajando. Las Subastas relámpago (30 minutos) son solo para tus propios ciclistas. Las horas nocturnas no cuentan: la ventana activa va de las 08:00 a las 24:00 todos los días. Ejemplo: una subasta iniciada a las 19:40 termina esa misma tarde a las 20:40. Una subasta iniciada a las 23:30 termina a la mañana siguiente a las 08:30."
     },
     "flashAuction": {
       "q": "¿Qué es una Subasta relámpago?",
@@ -2171,7 +2231,7 @@
     },
     "raceJerseysFaq": {
       "q": "¿Cómo funcionan el maillot verde y el maillot de la montaña?",
-      "a": "El maillot verde registra los puntos de sprint, ganados en los sprints intermedios y en las llegadas de etapa, ponderados según lo favorable que sea la etapa para el sprint, así que las llegadas llanas reparten más que las de montaña. El maillot de la montaña registra los puntos de GPM, ganados al coronar primero las subidas categorizadas, con puntos dobles en una llegada en alto. Las bonificaciones de tiempo también cuentan para la general: 10/6/4 segundos para los tres primeros en la llegada de una etapa, y 3/2/1 segundos en cada sprint intermedio. Los ciclistas de una escapada pueden liderar en una subida o en un sprint antes de que llegue el pelotón, así que una escapada puede ganar el maillot de la montaña incluso sin pelear por la general. Los ciclistas de una escapada cruzan siempre primero. En un grupo pequeño de ocho ciclistas o menos, todos disputan. En un grupo más grande, solo los cazadores de puntos disputan lo que queda: jefes de filas de sprint, cazadores y ciclistas con rol libre en los sprints intermedios, cazadores y ciclistas con rol libre en las subidas, además de quien liderara la clasificación de puntos o de la montaña al inicio de la etapa. Los jefes de filas y los gregarios ruedan detrás de ellos. Puedes seguir ambas clasificaciones directamente en el juego: las tablas de clasificación muestran el total de puntos de cada ciclista (no solo el puesto), y la página de resultados de la etapa muestra quién se llevó puntos en cada subida y sprint. Se aplica a las carreras desde la temporada 2."
+      "a": "El maillot verde registra los puntos de sprint, ganados en los sprints intermedios y en las llegadas de etapa, ponderados según lo favorable que sea la etapa para el sprint, así que las llegadas llanas reparten más que las de montaña. El maillot de la montaña registra los puntos de GPM, ganados al coronar primero las subidas categorizadas. Una llegada en alto da los mismos puntos que la subida a mitad de etapa. Las bonificaciones de tiempo también cuentan para la general: 10/6/4 segundos para los tres primeros en la llegada de una etapa, y 3/2/1 segundos en cada sprint intermedio. Los ciclistas de una escapada pueden liderar en una subida o en un sprint antes de que llegue el pelotón, así que una escapada puede ganar el maillot de la montaña incluso sin pelear por la general. Los ciclistas de una escapada cruzan siempre primero. En un grupo pequeño de ocho ciclistas o menos, todos disputan. En un grupo más grande, solo los cazadores de puntos disputan lo que queda: jefes de filas de sprint, cazadores y ciclistas con rol libre en los sprints intermedios, cazadores y ciclistas con rol libre en las subidas, además de quien liderara la clasificación de puntos o de la montaña al inicio de la etapa. Los jefes de filas y los gregarios ruedan detrás de ellos. Puedes seguir ambas clasificaciones directamente en el juego: las tablas de clasificación muestran el total de puntos de cada ciclista (no solo el puesto), y la página de resultados de la etapa muestra quién se llevó puntos en cada subida y sprint. Se aplica a las carreras desde la temporada 2."
     },
     "raceRouteRealismFaq": {
       "q": "¿Por qué las diferencias de tiempo varían tanto entre etapas de montaña?",
@@ -2280,6 +2340,10 @@
     "teamworkLeadershipTrainingFaq": {
       "q": "¿Qué controla lo rápido que se entrenan el Trabajo en equipo y el Liderazgo, y tienen potencial oculto?",
       "a": "El Trabajo en equipo y el Liderazgo se entrenan con el mismo sistema diario que cualquier otra habilidad: cuanto mayor es la diferencia entre donde está ahora un ciclista y su techo para esa habilidad, más rápido crece, frenándose a medida que se acerca a la cima. El potencial no toca el techo de ninguna habilidad, incluidos el Trabajo en equipo y el Liderazgo; solo controla la rapidez con que se cierra esa diferencia. El techo en sí viene del tipo: la mayoría de las habilidades obtienen un techo moldeado por lo central que es esa habilidad para el tipo de tu ciclista, así que el techo de escalada de un escalador queda muy por encima del de un sprinter. El Trabajo en equipo y el Liderazgo no funcionan así: todos los ciclistas entrenan hacia el mismo techo compartido sea cual sea su tipo. Así que no, no hay margen extra oculto en estas dos habilidades para un ciclista de alto potencial; el potencial acelera el entrenamiento en todas las habilidades, el Trabajo en equipo y el Liderazgo incluidos, simplemente nunca eleva el techo."
+    },
+    "teamworkLeadershipTrainingCurveBFaq": {
+      "q": "¿Qué controla lo rápido que se entrenan el Trabajo en equipo y el Liderazgo, y tienen potencial oculto?",
+      "a": "El Trabajo en equipo y el Liderazgo se entrenan con el mismo sistema diario que cualquier otra habilidad: cada punto cuesta más cuanto más alta está ya la habilidad, y el progreso se apaga a medida que el ciclista se acerca a su techo. La mayoría de las habilidades tienen un techo marcado por lo central que es esa habilidad para el tipo del ciclista, así que el techo de escalada de un escalador está muy por encima del de un sprinter. El Trabajo en equipo y el Liderazgo no funcionan así: todos los ciclistas entrenan hacia el mismo techo común, sea cual sea su tipo. Después, su potencial decide hasta dónde puede llegar y lo rápido que llega, en cada habilidad, también el Trabajo en equipo y el Liderazgo. Así que sí, un ciclista con mucho potencial también tiene más margen en estas dos."
     },
     "riderPoolNationalityFaq": {
       "q": "¿Por qué algunas naciones como Corea del Sur, China y Japón son tan visibles en el grupo de ciclistas?",

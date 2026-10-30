@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {1 veiling eindigt binnen het uur} other {# veilingen eindigen binnen het uur}}",
     "squadSelectionMissing": "Selectie ontbreekt voor {race}",
     "notTrainedToday": "Je hebt vandaag niet getraind",
-    "boardPlanMissing": "Nog geen bestuursplan onderhandeld"
+    "boardPlanMissing": "Nog geen bestuursplan onderhandeld",
+    "nextValueUpdate": "Volgende waarde-update: {when}",
+    "nextAcademyIntake": "Volgende academie-instroom: {when}"
   },
   "seasonStart": {
     "title": "Seizoen {number}: aan de slag",
@@ -431,8 +433,8 @@
       "byDivision": "Bepaald door je divisie, niet door je selectie"
     },
     "salaryDetail": {
-      "productionS3": "Loonsysteem van seizoen 3. Je huidige contracten zijn vergrendeld en ongewijzigd.",
-      "seasonSwitch": "Seizoen {next} berekent bij de overgang elk loon opnieuw op basis van wat de renner levert. Je huidige contracten zijn al getekend, dus het getal van dit seizoen blijft tot dan vastliggen."
+      "productionS3": "Lonen uit je contracten. Een renner van wie het contract afloopt, staat erbij met zijn loon bij verlenging.",
+      "seasonSwitch": "De lonen in seizoen {next} zijn de lonen in je contracten. Een renner van wie het contract afloopt, staat erbij met het loon dat hij krijgt als je hem verlengt."
     },
     "loanInterestDetail": "Rente opgebouwd over de openstaande schuld van je actieve leningen. Wordt bij de lening zelf opgeteld, niet van het netto afgetrokken.",
     "assumption": "Gaat uit van je huidige selectie, geen transfers en het loonsysteem van seizoen {next}.",

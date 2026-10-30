@@ -11,6 +11,7 @@ import {
   quoteBatchExtension,
   applyBatchExtension,
   MAX_BATCH_RIDERS,
+  MAX_SEASONS_PER_REQUEST,
 } from "./contractBatchExtension.js";
 import { CONTRACT, computeContractExtension, maxAllowedContractEndSeason } from "./contractSeed.js";
 
@@ -113,7 +114,7 @@ test("normalizeBatchItems: accepterer {items} og bar liste, afviser tom/dublet/u
   assert.equal(normalizeBatchItems({}).error.errorCode, "contract_batch_empty");
   assert.equal(normalizeBatchItems({ items: [{ riderId: "a", seasons: 1 }, { riderId: "a", seasons: 2 }] }).error.errorCode, "contract_batch_duplicate");
   assert.equal(normalizeBatchItems({ items: [{ riderId: "a", seasons: 0 }] }).error.errorCode, "contract_batch_invalid");
-  assert.equal(normalizeBatchItems({ items: [{ riderId: "a", seasons: CONTRACT.MAX_EXTENSION_SEASONS_AHEAD + 1 }] }).error.errorCode, "contract_batch_invalid");
+  assert.equal(normalizeBatchItems({ items: [{ riderId: "a", seasons: MAX_SEASONS_PER_REQUEST + 1 }] }).error.errorCode, "contract_batch_invalid");
   assert.equal(normalizeBatchItems({ items: [{ riderId: "a", seasons: 1.5 }] }).error.errorCode, "contract_batch_invalid");
   assert.equal(normalizeBatchItems({ items: [{ seasons: 1 }] }).error.errorCode, "contract_batch_invalid");
   const tooMany = Array.from({ length: MAX_BATCH_RIDERS + 1 }, (_, i) => ({ riderId: `r${i}`, seasons: 1 }));
@@ -130,7 +131,7 @@ test("batch = N x enkelt: samme løn, udløbssæson og længde som N enkelt-forl
     rider({ contract_end_season: 2, contract_length: 3 }), // udløbet, allerede MAX_LENGTH
   ];
   for (const r of cases) {
-    for (let n = 1; n <= CONTRACT.MAX_EXTENSION_SEASONS_AHEAD; n += 1) {
+    for (let n = 1; n <= MAX_SEASONS_PER_REQUEST; n += 1) {
       const single = singleExtensionsInARow(r, n, currentSeason);
       const { plan, error } = planRiderExtension(r, n, currentSeason);
       if (single.done === 0) {
@@ -146,25 +147,25 @@ test("batch = N x enkelt: samme løn, udløbssæson og længde som N enkelt-forl
 });
 
 test("contract_length clampes til MAX_LENGTH ved flere sæsoner", () => {
-  const { plan } = planRiderExtension(rider({ contract_end_season: 4, contract_length: 2 }), 3, 4);
+  const { plan } = planRiderExtension(rider({ contract_end_season: 4, contract_length: 2 }), 2, 4);
   assert.equal(plan.newLength, CONTRACT.MAX_LENGTH);
-  assert.equal(plan.newEndSeason, 7);
+  assert.equal(plan.newEndSeason, 6);
 });
 
 // ── loftet ──────────────────────────────────────────────────────────────────
-test("loft: beder om 3, kan kun få 2 -> får 2 og markeres capped (UI: '2 (maks)')", () => {
-  const { plan } = planRiderExtension(rider({ contract_end_season: 5 }), 3, 4);
-  assert.equal(plan.grantedSeasons, 2);
-  assert.equal(plan.requestedSeasons, 3);
+test("loft (#7138): beder om 2, kan kun få 1 -> får 1 og markeres capped (UI: '1 (maks)')", () => {
+  const { plan } = planRiderExtension(rider({ contract_end_season: 5 }), 2, 4);
+  assert.equal(plan.grantedSeasons, 1);
+  assert.equal(plan.requestedSeasons, 2);
   assert.equal(plan.capped, true);
-  assert.equal(plan.maxSeasons, 2);
+  assert.equal(plan.maxSeasons, 1);
   assert.equal(plan.newEndSeason, maxAllowedContractEndSeason(4));
 });
 
 test("loft: rytter ved loftet afvises med samme fejlkode som enkelt-forlængelsen", () => {
-  const { error } = planRiderExtension(rider({ contract_end_season: 7 }), 1, 4);
+  const { error } = planRiderExtension(rider({ contract_end_season: 6 }), 1, 4);
   assert.equal(error.errorCode, "contract_extension_cap_reached");
-  assert.deepEqual(error.errorParams, { maxSeason: 7 });
+  assert.deepEqual(error.errorParams, { maxSeason: 6 });
 });
 
 test("planBatchExtension: fremmed og pensioneret rytter giver fejl pr. rytter, summer kun over gyldige", () => {
@@ -184,8 +185,8 @@ test("planBatchExtension: fremmed og pensioneret rytter giver fejl pr. rytter, s
 
 // ── quote ───────────────────────────────────────────────────────────────────
 test("quote: skriver intet, viser lønsum før/efter for hold og valgte", async () => {
-  const db = makeDb({ riders: [rider({ id: "a", salary: 100 }), rider({ id: "b", salary: 300, contract_end_season: 6 }), rider({ id: "x", salary: 1000 })] });
-  const res = await quoteBatchExtension({ supabase: db, teamId: TEAM, body: { items: [{ riderId: "a", seasons: 2 }, { riderId: "b", seasons: 3 }] }, deps: noCap });
+  const db = makeDb({ riders: [rider({ id: "a", salary: 100 }), rider({ id: "b", salary: 300, contract_end_season: 5 }), rider({ id: "x", salary: 1000 })] });
+  const res = await quoteBatchExtension({ supabase: db, teamId: TEAM, body: { items: [{ riderId: "a", seasons: 2 }, { riderId: "b", seasons: 2 }] }, deps: noCap });
   assert.equal(res.status, 200);
   assert.equal(db.updates.length, 0);
   const newA = computeContractExtension({ ...rider(), currentSeason: 4 }).salary;
@@ -234,7 +235,7 @@ test("lønloft: tjekkes på SAMLET lønsum for de valgte, afvisning skriver inte
 // ── skrivning: alt eller intet ──────────────────────────────────────────────
 test("apply: skriver alle ryttere med samme tal som quote", async () => {
   const db = makeDb({ riders: [rider({ id: "a" }), rider({ id: "b", contract_end_season: 5, contract_length: 2 })] });
-  const items = [{ riderId: "a", seasons: 3 }, { riderId: "b", seasons: 1 }];
+  const items = [{ riderId: "a", seasons: 2 }, { riderId: "b", seasons: 1 }];
   const quote = await quoteBatchExtension({ supabase: db, teamId: TEAM, body: { items }, deps: noCap });
   const res = await applyBatchExtension({ supabase: db, teamId: TEAM, body: { items }, deps: noCap });
   assert.equal(res.status, 200);
@@ -243,8 +244,8 @@ test("apply: skriver alle ryttere med samme tal som quote", async () => {
   const b = db.tables.riders.find((r) => r.id === "b");
   const qa = quote.body.riders.find((r) => r.riderId === "a");
   assert.equal(a.contract_end_season, qa.newEndSeason);
-  assert.equal(a.contract_end_season, 7);
-  assert.equal(a.contract_length, CONTRACT.MAX_LENGTH);
+  assert.equal(a.contract_end_season, 6);
+  assert.equal(a.contract_length, CONTRACT.MAX_LENGTH); // default-rytteren har længde 1 + 2
   assert.equal(a.salary, qa.newSalary);
   assert.equal(b.contract_end_season, 6);
   assert.equal(b.contract_length, 3);

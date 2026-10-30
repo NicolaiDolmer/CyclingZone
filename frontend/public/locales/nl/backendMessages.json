@@ -232,6 +232,14 @@
       "title": "Nieuw academietalent is aangekomen",
       "message": "Nieuwe kandidaten wachten in je academie - contracteer of wijs ze af."
     },
+    "academyPullReminderReady": {
+      "title": "Nieuwe academiekandidaten staan klaar",
+      "message": "De lichting van deze week wacht in je academie. Haal ze op vóór zaterdag middernacht."
+    },
+    "academyPullReminderExpiring": {
+      "title": "De academielichting van deze week verloopt vannacht",
+      "message": "Je hebt de kandidaten van deze week nog niet opgehaald. Doe het vóór middernacht, anders is de lichting weg."
+    },
     "seasonStarted": {
       "title": "Seizoen {number} is begonnen",
       "message": "Een nieuw seizoen is begonnen. Bekijk je dashboard voor de doelen van je bestuur en je selectie voor het seizoen dat komt.",
@@ -266,7 +274,8 @@
     },
     "contractExpiring": {
       "title": "Contract loopt af",
-      "message": "Het contract van {rider} loopt af aan het eind van seizoen {season}."
+      "message": "Het contract van {rider} loopt af aan het eind van seizoen {season}.",
+      "squadMessage": "Het contract van {rider} ({squad}) loopt af aan het einde van seizoen {season}. Verleng het op het tabblad Contracten bij Mijn ploeg."
     },
     "contractExpiredRelease": {
       "title": "Renner vrijgegeven: contract verlopen",
@@ -301,7 +310,9 @@
       "title": "Seizoenswissel: contract- en pensioenrisico",
       "messageBoth": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt, en {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Verleng de contracten vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
       "messageExpiringOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {expiringCount} renner(s) gaan transfervrij weg omdat hun contract afloopt. Verleng ze vóór de wissel op het tabblad Contracten bij Mijn team, waar je meerdere renners tegelijk met 1 tot 3 seizoenen kunt verlengen.",
-      "messageRetirementOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers."
+      "messageRetirementOnly": "Je selectie wordt geraakt door de aankomende seizoenswissel: {retirementRiskCount} renner(s) (36+) lopen risico om te stoppen. Stoppen kun je niet voorkomen, maar je kunt na de wissel bieden op vervangers.",
+      "messageBothWithRoster": "{expiringCount} contracten lopen af bij de seizoenswissel en {retirementRiskCount} andere renners kunnen stoppen. Verleng contracten op het tabblad Contracten bij Mijn ploeg.\n{contractRiders}",
+      "messageExpiringOnlyWithRoster": "{expiringCount} contracten lopen af bij de seizoenswissel. Verleng ze op het tabblad Contracten bij Mijn ploeg.\n{contractRiders}"
     },
     "watchlistDeparted": {
       "title": "Renner heeft het spel verlaten",
@@ -647,6 +658,10 @@
       "message": "{count, plural, one {{senderName} stuurde je een bericht} other {# nieuwe berichten van {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Een andere manager stuurde je een bericht} other {# nieuwe berichten van een andere manager}}"
     },
+    "riderIll": {
+      "title": "Renner ziek",
+      "message": "De arts meldt dat {rider} ziek is na meerdere dagen extreme vermoeidheid en tot {until} uitvalt."
+    },
     "riderInjured": {
       "title": "Renner geblesseerd",
       "message": "{rider} viel in {race} en is geblesseerd tot {until}.",
@@ -676,6 +691,24 @@
     "squadEnforced": {
       "title": "Selectiegrootte afgedwongen",
       "message": "{purchasedCount, plural, =0 {} one {Automatisch # renner gekocht: {purchasedNames}\n} other {Automatisch # renners gekocht: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# renner sluit zich bij het team aan zodra zijn lopende etappekoers is afgelopen: {deferredNames}\n} other {# renners sluiten zich bij het team aan zodra hun lopende etappekoers is afgelopen: {deferredNames}\n}}{soldCount, plural, =0 {} one {Automatisch # renner verkocht: {soldNames}\n} other {Automatisch # renners verkocht: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# renner in een lopende etappekoers wordt in plaats daarvan na de koers verkocht\n} other {# renners in een lopende etappekoers worden in plaats daarvan na de koers verkocht\n}}Boete: {fine} CZ$ · Aftrek: {points} punten"
+    },
+    "contractSquad": {
+      "senior": "Senioren",
+      "u23": "U23",
+      "junior": "Junioren",
+      "academy": "Academie"
+    },
+    "contractRoster": {
+      "entry": "{rider} ({squad}), {value} CZ$",
+      "entryUnknown": "{rider} ({squad}), waarde onbekend"
+    },
+    "contractExpiringSummary": {
+      "title": "Aflopende contracten",
+      "message": "Deze contracten lopen af aan het einde van seizoen {season}. Verleng ze op het tabblad Contracten bij Mijn ploeg.\n{contractRiders}"
+    },
+    "contractReleasedSummary": {
+      "title": "Renners vrijgegeven: contracten afgelopen",
+      "message": "Deze renners werden transfervrij nadat hun contract aan het einde van seizoen {season} afliep. Bekijk je resterende contracten bij Mijn ploeg.\n{contractRiders}"
     }
   },
   "error": {

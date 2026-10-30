@@ -1,5 +1,8 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { useTranslation } from "react-i18next";
+import { fetchActiveOpsNotices, pickNoticeCopy, pickSeasonChangeNotice } from "../lib/opsNotices.js";
+import { formatDate } from "../lib/intl.js";
 import { Card, ExchangeIcon, TagIcon, CheckIcon, FlagIcon, BikeIcon, BriefcaseIcon, ChevronRightIcon } from "./ui";
 
 /**
@@ -26,8 +29,20 @@ export default function NextActionsCard({
   pending, urgentAuctionCount = 0, loading = false,
   squadSelectionMissingRace = null, notTrainedToday = false, boardPlanMissing = false,
 }) {
-  const { t } = useTranslation("dashboard");
+  const { t, i18n } = useTranslation("dashboard");
   const counts = pending?.counts || { transfer_offers: 0, swap_offers: 0, total: 0 };
+
+  // #7153 (ejer 25/10): et aktivt sæsonskifte-banner (ops_notices) står også her,
+  // under de ugentlige tider. Samme hentning som RaceControlBanner; fejl = ingen linje.
+  const [seasonNotice, setSeasonNotice] = useState(null);
+  useEffect(() => {
+    let active = true;
+    fetchActiveOpsNotices()
+      .then((data) => { if (active) setSeasonNotice(pickSeasonChangeNotice(data)); })
+      .catch(() => { /* ikke-kritisk: kortet viser blot ikke linjen */ });
+    return () => { active = false; };
+  }, []);
+  const seasonCopy = seasonNotice ? pickNoticeCopy(seasonNotice, i18n.language) : null;
 
   // #2288 D — mest presserende øverst: holdudtagelse (deadline-følsomt) → ikke
   // trænet i dag (dagligt vindue) → bestyrelsesplan (langsigtet, ingen deadline).
@@ -48,6 +63,13 @@ export default function NextActionsCard({
     items.push({ key: "swaps", Icon: ExchangeIcon, label: t("nextActions.swapOffers", { count: counts.swap_offers }), to: "/transfers" });
   if (urgentAuctionCount > 0)
     items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
+
+  // #6962: næste ugentlige opdateringer (serverens tider, vist i dansk tid).
+  const fmtWhen = (iso) => formatDate(iso, /** @type {any} */ (null), {
+    timeZone: "Europe/Copenhagen", weekday: "long", hour: "2-digit", minute: "2-digit", hour12: false,
+  });
+  const valueWhen = fmtWhen(pending?.next_updates?.value_update_at);
+  const intakeWhen = fmtWhen(pending?.next_updates?.academy_intake_at);
 
   return (
     <Card className="p-4">
@@ -88,6 +110,19 @@ export default function NextActionsCard({
             </li>
           ))}
         </ul>
+      )}
+
+      {(seasonCopy || valueWhen || intakeWhen) && (
+        <div className="mt-3 space-y-0.5 border-t border-cz-border pt-3 text-xs text-cz-3">
+          {seasonCopy && (
+            <p data-testid="next-actions-season-change">
+              <span className="font-medium text-cz-1">{seasonCopy.title}</span>
+              {seasonCopy.body && <span className="block">{seasonCopy.body}</span>}
+            </p>
+          )}
+          {valueWhen && <p>{t("nextActions.nextValueUpdate", { when: valueWhen })}</p>}
+          {intakeWhen && <p>{t("nextActions.nextAcademyIntake", { when: intakeWhen })}</p>}
+        </div>
       )}
     </Card>
   );

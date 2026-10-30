@@ -76,8 +76,9 @@ import { computeFinaleAbilityScore } from "../finale.ts";
 import { riderWeatherCpMultiplier } from "../segmentLoop.ts";
 import { STRENGTH_SPEED_EXTRA_TUNING } from "../tuning.ts";
 import { applyDistanceFatigueToCp } from "./distanceFatigue.ts";
-import { applyEffortToDemand } from "./effortCost.ts";
+import { allOutTimeTrialBonus7280, applyEffortToDemand, effortCostTuning7280, isAllOut7280On } from "./effortCost.ts"; // #7280: alt ud-gevinst (slukket)
 import { isOfficialTimesV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
+import { summitFinishSingleFor } from "./komJersey6937.ts";
 import {
   runTimeTrialStage,
   type TeamRoster,
@@ -369,9 +370,10 @@ function tickSoloRider(
   tuning: EngineTuning,
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
-  terrainWeight: Readonly<Record<SegmentKind, number>>,
+  allOut7280 = false,
+  terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
 ): void {
-  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare);
+  const capacity = ittCapacityForSegment(entrant, rider, segment, tuning, route.weather, stageNoise, climbShare) + allOutTimeTrialBonus7280(entrant.effort, entrant.abilities.time_trial, allOut7280);
   const distanceKm = Math.max(0, segment.to_km - segment.from_km);
   const speedKmh = ittSpeedKmh(capacity, referenceCapacity, segment.kind, tuning, ittTuning, terrainWeight);
   const dtSeconds = speedKmh > 0 ? (distanceKm / speedKmh) * 3600 : 0;
@@ -381,7 +383,7 @@ function tickSoloRider(
   const cp = Math.max(0, capacity);
   const baseDemand = cp * tuning.terrain.baseDemand[segment.kind] * tuning.work.frontWorkFactor[segment.kind];
   // #5580 (M1 punkt 4): all_out-prisen foelger segmentets terraen, som paa vejetapen.
-  const demand = applyEffortToDemand(baseDemand, entrant.effort, undefined, segment.kind);
+  const demand = applyEffortToDemand(baseDemand, entrant.effort, allOut7280 ? effortCostTuning7280() : undefined, segment.kind);
   const tick = tickPhysiologyOverSegment({
     cp,
     wprimeMax: rider.wprimeMax,
@@ -404,7 +406,8 @@ function individualTimeTrialMode(
   stageNoiseByRider: ReadonlyMap<string, number>,
   ittTuning: IndividualTimeTrialTuning,
   climbShare: number | undefined,
-  terrainWeight: Readonly<Record<SegmentKind, number>>,
+  allOut7280 = false,
+  terrainWeight: Readonly<Record<SegmentKind, number>> = STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
 ): TimeTrialMode {
   return {
     groupPrefix: "itt",
@@ -427,7 +430,7 @@ function individualTimeTrialMode(
         const rider = unit.riders[entrant.rider_id];
         if (!rider || rider.status === "abandoned") continue;
         const noise = stageNoiseByRider.get(entrant.rider_id) ?? 0;
-        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare, terrainWeight);
+        tickSoloRider(rider, entrant, segment, reference[segment.kind], noise, route, tuning, ittTuning, climbShare, allOut7280, terrainWeight);
       }
       return [];
     },
@@ -473,9 +476,11 @@ export function simulateIndividualTimeTrialStage(
       incidentsTuning: options.incidentsTuning,
       timeLimitTuning: options.timeLimitTuning,
       ...(isS5ProfilesV2OrLater(options.rulesRevision) ? { incidentStartFloor: true as const } : {}),
+      ...summitFinishSingleFor(options.rulesRevision),
+      ...(options.dayForm6649 && isS5ProfilesV3OrLater(options.rulesRevision) ? { dayForm6649: true as const } : {}), // #6649
     },
-    // #6595: kun s5_profiles_v3 faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
-    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision)),
+    // #6595 (slukket): kun s5_profiles_v3 med kontakten taendt faar enkeltstartens egen terraen-vaegt; ellers vejetapens (samme objekt).
+    individualTimeTrialMode(route, reference, stageNoiseByRider, ittTuning, climbShare, isAllOut7280On(options.rulesRevision), options.ittTerrainWeight ?? ittTerrainWeight(options.rulesRevision)),
   );
   return output;
 }

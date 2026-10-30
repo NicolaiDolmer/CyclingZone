@@ -52,7 +52,7 @@ const API = import.meta.env.VITE_API_URL;
 // OBLIGATORISK (GET → state → PUT uændret, filtreret til ryttere stadig i truppen) så et
 // gem fra dette panel ikke wiper free_role'r sat af boardet. Panelet har intet fuldt
 // redigerings-UI for rollen (rollens editor er boardets rollekort); den vises kun som badge.
-const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [] };
+const EMPTY_SELECTION = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null, freeRoleIds: [], coCaptainId: null, luxuryHelperId: null };
 
 export default function RaceSelectionPanel({
   raceId,
@@ -120,7 +120,7 @@ export default function RaceSelectionPanel({
   // bart `data` ville kaste TypeError og hvidskaerme siden i det oejeblik flaget slukkes.
   // Latent ogsaa foer #4295; lukket her fordi den er gratis at lukke.
   const earlyClientErrors = data?.size
-    ? validateSelectionClient({ ...sel, size: data.size })
+    ? validateSelectionClient({ ...sel, size: data.size, sprintLeaderAllowed: data.sprint_leader_allowed === true })
     : [];
   const earlySaveBlockReason = earlyClientErrors.length > 0
     ? t(`selection.errors.${earlyClientErrors[0]}`, { min: data?.size?.min, max: data?.size?.max })
@@ -158,7 +158,7 @@ export default function RaceSelectionPanel({
       if (!headers) return false;
       const res = await apiFetch(`${API}/api/races/${raceId}/selection`, { headers });
       if (!res.ok) return false; // dækker også limited/unauthorized
-      const body = res.data;
+      const body = /** @type {any} */ (res.data);
       if (requestGeneration !== generationRef.current) return false;
       setData(body);
       // #5098: et ugemt udkast vinder over serverens gemte udtagelse — det er
@@ -168,6 +168,8 @@ export default function RaceSelectionPanel({
       const draft = readSelectionDraft(raceId);
       if (draft) {
         setSel(reconcileSelectionDraft(draft, body.riders));
+      } else if (body.withdrawn && !body.did_not_start && !body.lineup_locked) {
+        setSel(EMPTY_SELECTION);
       } else if (body.selection) {
         setSel({
           riderIds: body.selection.rider_ids ?? [],
@@ -175,6 +177,8 @@ export default function RaceSelectionPanel({
           sprintCaptainId: body.selection.sprint_captain_id ?? null,
           hunterId: body.selection.hunter_id ?? null,
           freeRoleIds: body.selection.free_role_ids ?? [],
+          coCaptainId: body.selection.co_captain_id ?? null, // #7239
+          luxuryHelperId: body.selection.luxury_helper_id ?? null, // #5982
         });
       }
       return true;
@@ -239,13 +243,13 @@ export default function RaceSelectionPanel({
       </section>
     );
   }
-  if (data.withdrawn) {
+  if (data.withdrawn && data.lineup_locked) {
     const keptIds = data.selection?.rider_ids ?? [];
     const keptRiders = (data.riders || []).filter((r) => keptIds.includes(r.id));
     return (
       <section data-testid="race-selection-withdrawn" className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
         <p className="text-sm font-semibold text-cz-1">{t("selection.withdrawnPanel.title")}</p>
-        <p className="text-xs text-cz-3 mt-0.5">{t("selection.withdrawnPanel.note")}</p>
+        <p className="text-xs text-cz-3 mt-0.5">{t("selection.errors.selection_withdrawn_locked")}</p>
         {keptRiders.length > 0 && (
           <>
             <p className="mt-3 text-2xs uppercase tracking-wide text-cz-3">
@@ -278,7 +282,7 @@ export default function RaceSelectionPanel({
   // #4295: antal blokerer aldrig nedad. Klienten spejler nu backenden præcist (kun over
   // feltstørrelsen + kaptajn + rolle-overlap), så en delvis trup altid kan gemmes, også
   // ved en førstegangs-udtagelse, som var netop den tilstand "Ryd alt" efterlader.
-  const clientErrors = validateSelectionClient({ ...sel, size });
+  const clientErrors = validateSelectionClient({ ...sel, size, sprintLeaderAllowed: data?.sprint_leader_allowed === true }); // #6321
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
   const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
@@ -408,7 +412,17 @@ export default function RaceSelectionPanel({
   }
 
   function setRole(key, value) {
-    update({ ...sel, [key]: riderIdFromValue(value) });
+    const riderId = riderIdFromValue(value);
+    const next = { ...sel, [key]: riderId };
+    // #7239: én rolle pr. rytter. Får en rytter en ny rolle, slippes hans gamle, så
+    // panelet aldrig selv laver et rolle-overlap (fx kaptajnen valgt som delt kaptajn).
+    if (riderId != null) {
+      for (const other of ["captainId", "sprintCaptainId", "hunterId", "coCaptainId", "luxuryHelperId"]) { // #5982
+        if (other !== key && next[other] === riderId) next[other] = null;
+      }
+      next.freeRoleIds = (next.freeRoleIds || []).filter((id) => id !== riderId);
+    }
+    update(next);
   }
 
   async function save() {
@@ -433,6 +447,10 @@ export default function RaceSelectionPanel({
     // der stadig er i den (evt. lige nu redigerede) trup, så en fjernet rytter ikke
     // efterlader et forældet id i arrayet.
     const freeRoleIds = (sel.freeRoleIds || []).filter((id) => sel.riderIds.includes(id));
+    // #7239: den delte kaptajn sendes altid med, så et gem herfra aldrig nulstiller ham.
+    const coCaptainId = sel.coCaptainId != null && sel.riderIds.includes(sel.coCaptainId) ? sel.coCaptainId : null;
+    // #5982: luksushjaelperen sendes ogsaa altid med (kun i loeb der kender rollen).
+    const luxuryHelperId = data?.sprint_leader_allowed === true && sel.luxuryHelperId != null && sel.riderIds.includes(sel.luxuryHelperId) ? sel.luxuryHelperId : null;
     try {
       const res = await apiFetch(`${API}/api/races/${raceId}/selection`, {
         method: "PUT",
@@ -443,6 +461,8 @@ export default function RaceSelectionPanel({
           sprint_captain_id: sel.sprintCaptainId,
           hunter_id: sel.hunterId,
           free_role_ids: freeRoleIds,
+          co_captain_id: coCaptainId,
+          ...(data?.sprint_leader_allowed === true ? { luxury_helper_id: luxuryHelperId } : {}),
         }),
       });
       const body = res.data || {};
@@ -453,7 +473,7 @@ export default function RaceSelectionPanel({
         // #2637 (bug 3): backend navngiver nu konflikten (rytter + løb) i stedet for en
         // opak kode — brug den førte konflikt til en klar, konkret besked.
         const conflict = Array.isArray(body.conflicts) ? body.conflicts[0] : null;
-        setErrorDetail(conflict ? { rider: conflict.rider_name ?? "—", race: conflict.race_name ?? "—" } : null);
+        setErrorDetail(conflict ? { rider: conflict.rider_name ?? "—", race: conflict.race_name ?? conflict.bound_race_name ?? "—" } : null);
         return;
       }
       setStatus("saved");
@@ -468,12 +488,15 @@ export default function RaceSelectionPanel({
       setData((d) => (d
         ? {
             ...d,
+            withdrawn: false,
             selection: {
               rider_ids: sel.riderIds,
               captain_id: sel.captainId,
               sprint_captain_id: sel.sprintCaptainId,
               hunter_id: sel.hunterId,
               free_role_ids: freeRoleIds,
+              ...(coCaptainId != null ? { co_captain_id: coCaptainId } : {}),
+              ...(luxuryHelperId != null ? { luxury_helper_id: luxuryHelperId } : {}),
               is_auto_filled: false,
             },
           }
@@ -537,6 +560,7 @@ export default function RaceSelectionPanel({
 
   return (
     <section data-testid="race-selection-panel" className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
+      {data.withdrawn && <p className="px-4 pt-3 text-xs text-cz-warning">{t("selection.rejoinNote")}</p>}
       {/* Header: titel + tæller */}
       <div className="px-4 py-3 border-b border-cz-border flex flex-col sm:flex-row sm:items-center justify-between gap-1">
         <div>
@@ -894,6 +918,33 @@ export default function RaceSelectionPanel({
             disabled={busy || fullyTrainNowLocked}
             onChange={(v) => setRole("sprintCaptainId", v)}
           />
+          {/* #7239 (#5981): delt kaptajn, kun i løb der kender rollen (samme v3-gate som
+              spurtkaptajn alene). Kræver en kaptajn; uden kaptajn er vælgeren låst og
+              linjen siger hvorfor. Kaptajnen kan ikke vælges her (én rolle pr. rytter). */}
+          {data.sprint_leader_allowed === true && (
+            <RoleSelect
+              label={t("selection.coCaptain")}
+              value={sel.coCaptainId}
+              riders={selectedRiders.filter((r) => r.id !== sel.captainId)}
+              emptyLabel={t("selection.noRole")}
+              disabled={busy || fullyTrainNowLocked || (!sel.captainId && !sel.coCaptainId)}
+              onChange={(v) => setRole("coCaptainId", v)}
+              hint={sel.captainId ? t("selection.coCaptainHint") : t("selection.errors.selection_co_captain_requires_captain")}
+            />
+          )}
+          {/* #5982: luksushjaelperen, samme v3-gate. En hjaelper med en faerdig etapeplan; lederne
+              kan ikke vaelges her (én rolle pr. rytter). */}
+          {data.sprint_leader_allowed === true && (
+            <RoleSelect
+              label={t("selection.luxuryHelper")}
+              value={sel.luxuryHelperId}
+              riders={selectedRiders.filter((r) => r.id !== sel.captainId && r.id !== sel.coCaptainId && r.id !== sel.sprintCaptainId)}
+              emptyLabel={t("selection.noRole")}
+              disabled={busy || fullyTrainNowLocked}
+              onChange={(v) => setRole("luxuryHelperId", v)}
+              hint={t("selection.luxuryHelperHint")}
+            />
+          )}
           {/* #1884: jaeger-dropdownen er VAEK herfra — valget bor i
               HunterExplainer nedenfor, hvor forklaringen af rollen og
               aggressions-rangeringen allerede stod. Een kilde til valget. */}
@@ -954,7 +1005,7 @@ export default function RaceSelectionPanel({
             <button
               type="button"
               onClick={autoSelect}
-              disabled={busy || fullyTrainNowLocked}
+              disabled={busy || fullyTrainNowLocked || data.withdrawn}
               className="px-4 py-2 rounded-cz border border-cz-border bg-transparent text-cz-1 text-sm font-medium hover:border-cz-3 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {t("selection.autoFill")}
@@ -1086,7 +1137,8 @@ function SelectionSortControl({ sort, onSort, fitLabel, t, viewMode, tRider }) {
   );
 }
 
-function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange }) {
+/** @param {{ label: any, value: any, riders: any[], emptyLabel: any, disabled?: boolean, onChange: (v: any) => void, hint?: any }} props */
+function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange, hint = null }) {
   return (
     <label className="flex flex-col gap-1 text-xs text-cz-3">
       {label}
@@ -1101,6 +1153,7 @@ function RoleSelect({ label, value, riders, emptyLabel, disabled, onChange }) {
           <option key={r.id} value={String(r.id)}>{r.name}</option>
         ))}
       </select>
+      {hint && <span className="text-2xs text-cz-3 leading-snug max-w-[220px]">{hint}</span>}
     </label>
   );
 }

@@ -1127,7 +1127,7 @@ export function apiResponse(pathname, search = "") {
           board_modifier: 1.0,
           pullout_factor: 1.0,
           prize_basis: "rolling_avg",
-          salary_basis: usesProductionS3 ? "production_s3" : "status_quo",
+          salary_basis: usesProductionS3 ? "contracts" : "status_quo",
           current_season_number: currentSeasonNumber + i,
           target_season_number: seasonNumber,
         },

@@ -206,10 +206,11 @@ over 12 timer overstyres ikke (`Math.max`, `auctionEngine.js:132`).
 | Ungdomsmarkedet | **ja** | `youthMarket.js:139` |
 | Akademi-graduering | **ja** | `academyGraduation.js:227` |
 | Manager starter auktion på rytter **uden hold**, uden valgt sluttid | **ja** | `api.js:6447` |
-| Manager starter auktion på rytter uden hold **med valgt sluttid** | **NEJ** | `api.js:6445-6446` |
-| Flash-auktion | **NEJ** (30 min) | `api.js:6444` |
+| Manager starter auktion på rytter uden hold **med valgt sluttid** | **ja** (fra 25/10, #7220) | `getCustomAuctionEndIssue(..., { minHours })` i `api.js` |
+| Flash-auktion på rytter uden hold | **afvises** (fra 25/10, #7220) | `api.js` (`auction_end_too_soon`, minHours 12) |
+| Flash-auktion på egen rytter | nej (30 min) | `api.js` |
 
-**Det er hullet #4177 beskriver, og det er målt.**
+**Ejer-beslutning 25/10 (#7220): "Mindst 12 timer, altid".** Ingen auktion på en holdløs rytter kan slutte før 12 timer, heller ikke med valgt sluttid eller som flash. Auktioner på egne ryttere er uændrede. Målingen nedenfor er historik: det var hullet #4177 beskrev (målt igen 25/10: 50 af 779 fri-agent-auktioner på 14 dage sluttede under 12 timer, alle med valgt sluttid, 28 på præcis 1 time).
 
 Målt 30/8 for auktioner oprettet **efter** 22/8 der endte som fri-agent-salg
 (`seller_team_id` nulstilles ved finalisering af fri-agent-auktioner,
@@ -237,8 +238,8 @@ Sandheden pr. 30/8:
 - Automatiske fri-agent-auktioner (ungdomsmarked, akademi-graduering): **mindst 12 timer.**
   Målt medianvarighed for ungdomsauktioner de sidste 8 dage: **1.920-2.432 minutter**
   (32-40 timer), aldrig under 1.920 minutter.
-- En manager-startet auktion på en fri rytter: **1 aktiv time** som default, eller præcis
-  det klokkeslæt sælgeren vælger - **helt ned til 1 time frem.**
+- En manager-startet auktion på en fri rytter: **mindst 12 timer** fra 25/10 (#7220), både
+  som standard og med valgt sluttid. Før 25/10: helt ned til 1 time frem.
 - Spillerens "45 minutter" var **resttid**, ikke total varighed. Ingen auktion i prod er
   nogensinde oprettet kortere end 60 minutter (flash 30 min er aldrig brugt, se §5).
 
@@ -279,11 +280,8 @@ De fire veje ejeren spurgte om i #4177, som koden faktisk kender:
 Målt: **1.421** auktioner har `is_youth=true`, heraf **1.194** med `expired_intake_team_id`
 sat (intake-udløbs-kompensation, #2648).
 
-**IKKE FASTLAGT - kræver ejer-beslutning:** ejerens eget spørgsmål i #4177 08:37 er
-stadig ubesvaret. Den ene ting der mangler at blive afgjort: **skal 12-timers-gulvet også
-gælde når sælgeren vælger sit eget sluttidspunkt på en holdløs rytter - altså skal
-`CUSTOM_END_MIN_HOURS` hæves fra 1 til 12 for netop de auktioner?** I dag er svaret nej, og
-106 af de sidste 161 fri-agent-auktioner brugte netop den udvej.
+**AFGJORT 25/10 (ejer, #7220):** 12-timers-gulvet gælder også, når sælgeren vælger sit eget
+sluttidspunkt på en holdløs rytter. `CUSTOM_END_MIN_HOURS` er stadig 1 for egne ryttere.
 
 ---
 
@@ -667,9 +665,8 @@ gentages ikke her.
 
 Hver post er **én** ting der skal afgøres, med de målte tal indbygget.
 
-1. **Skal 12-timers-gulvet også gælde spiller-valgte sluttidspunkter på holdløse ryttere?**
-   I dag er `CUSTOM_END_MIN_HOURS = 1`, og 106 af de 161 fri-agent-auktioner siden 22/8 brugte
-   netop den vej til at slutte under 12 timer. (#4177)
+1. ~~Skal 12-timers-gulvet også gælde spiller-valgte sluttidspunkter på holdløse ryttere?~~
+   **Afgjort 25/10: ja, altid** (#7220, se §2.3).
 2. **Hvad er den kanoniske definition af "fri agent" i spiller-vendt tekst?** Koden kender
    kun `rider.team_id IS NULL`. Ejerens eget spørgsmål fra 24/8 er ubesvaret, og patch-noten
    afgrænser til "banken eller ungdomsmarkedet", hvilket hverken matcher koden eller

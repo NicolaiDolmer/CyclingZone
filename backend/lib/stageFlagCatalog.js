@@ -42,10 +42,14 @@ export const STAGE_FLAGS = Object.freeze([
   // #1140: "Your first race"-kort for nye hold paa dashboardet. Seedet off.
   { key: "first_race_card", area: "onboarding", label: "Dit første løb — kort på dashboardet (nye hold)" },
   { key: "training_bulk_day", area: "training", label: "Træning — sæt dagen for flere ryttere" },
+  // #6110 S26: "Dagens beslutning"-kortet oeverst paa Today-fanen. Seedet off.
+  { key: "training_decision_card", area: "training", label: "Træning — Dagens beslutning (kort øverst)" },
   { key: "training_tick_per_race_day", area: "training", label: "Træning pr. løbsdag" },
   { key: "training_condition_per_date", area: "training", label: "Træningstilstand pr. dato" },
   // #4847: "Train now" uden bonus. Kraever training_condition_per_date.
   { key: "training_train_now", area: "training", label: "Træn nu (uden bonus)" },
+  // #6461 B: klikket afregner rytterens hele kendte dato. Seedet off; flip er ejer-only.
+  { key: "training_train_now_whole_day", area: "training", label: "Træn nu — hele dagen i ét klik (B)" },
   // #4629: programmer pr. løbsdag, seedet i beta 26/9. Flip til on er ejer-only.
   { key: "training_programs", area: "training", label: "Træningsprogrammer pr. løbsdag" },
   // #5932: de 35 felter for alle hold (ejer 29/9). Kataloget bliver bag training_programs.
@@ -54,6 +58,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "training_fatigue_rules", area: "training", label: "Træthedsgrænse (spillerens regler)" },
   // #6000: træningsgrupper, seedet i beta. Kræver training_program_cells. Flip til on er ejer-only.
   { key: "training_groups", area: "training", label: "Træningsgrupper" },
+  // #5319: træningskatalog v3 (5 nye hårde sessioner), seedet off. Flip er ejer-only.
+  { key: "training_catalog_v3", area: "training", label: "Træningskatalog v3 (nye hårde sessioner)" },
   { key: "peak_planner_enabled", area: "training", label: "Form-planlægger" },
   // #5435: kun visning. Flippes i samme deploy som værdiskiftet (#5443/#5497).
   { key: "rider_best_role_display", area: "squad", label: "Rating = bedste rolle nu (visning)" },
@@ -77,6 +83,10 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "stage_page_v2", area: "race-day", label: "Etapeside 2.0" },
   // #6514: løbskort i kalenderen, status-prik og Løbshistorik. Seedet off (ejer 15/10).
   { key: "race_library_v2", area: "race-day", label: "Kalender-løbskort + Løbshistorik" },
+  // #7003: etapeplan langs ruten (taktik), seedet off. Virker kun i løb på s5_profiles_v3.
+  { key: "stage_plan_v1", area: "race-day", label: "Taktik — etapeplan langs ruten" },
+  // #6912 B: motorens udbrudsbud i jægerboksen (kort prognose i dryRun). Ikke seedet = off; beta først.
+  { key: "race_breakaway_outlook", area: "race-day", label: "Jægerboks — motorens udbrudsbud" },
 
   // ── Motorer og batch-jobs (spilleren ser resultatet, ikke kontakten) ──────
   { key: "race_engine_v2_enabled", area: "race-engine", label: "Løbsmotor v2" },
@@ -84,6 +94,8 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "race_engine_v4", area: "race-engine", label: "Løbsmotor v4" },
   // #6156 (ejer 19/10): formtoppe/dyk i v4 under s5_profiles_v2. Seedet off; tændes ved sæsonskiftet.
   { key: "race_form_peaks", area: "race-engine", label: "Formtoppe i løbene" },
+  // #7290: højdeprofilens bakker i motoren (kun s5_profiles_v3). Slukket; virker først når raceRunner er koblet.
+  { key: "route_profile_hills", area: "race-engine", label: "Bakker fra højdeprofilen i motoren" },
   { key: "race_day_engine_enabled", area: "race-engine", label: "Løbsdags-motor" },
   { key: "race_finalize_resumable_enabled", area: "race-engine", label: "Genoptagelig finalisering" },
   { key: "race_notify_outbox_enabled", area: "race-engine", label: "Notify-kø — asynkron udsendelse" },
@@ -109,6 +121,20 @@ export const STAGE_FLAGS = Object.freeze([
   // (developmentV2Flag.js) og ingen daglig udvikling uden for managerhold
   // (dailyTrainingEngine.js). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_v2_aging_enabled", area: "season", label: "Udvikling 2.0 del 1 — tilbagegang + kun managerhold udvikler sig" },
+  // #6210: maks +1 pr. evne pr. rytter pr. dato (dailyTrainingEngine.js). Fail-safe
+  // OFF; tændes med Udvikling 2.0. Ejer-only flip.
+  { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
+  // #3564: kurve B (D-058, developmentCurveBFlag.ts). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
+  { key: "development_curve_b", area: "training", label: "Udvikling 2.0 — kurve B (niveau og potentiale styrer, ikke alder)" },
+  // #6853/#5764 (spec 6110 §8): paraply-flaget for potentiale-visningen i
+  // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
+  // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
+  { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
+  // #6950 (Udvikling 2.0): Udviklingsscore B i motoren (developmentScoreWiring.js) og
+  // catch-up via løb (raceCatchUpWiring.js). Fail-safe OFF; "beta" læses som off; tal i
+  // serverens miljø; kræver ability_cap_per_date_enabled. Ejer-only flip.
+  { key: "development_score_v2", area: "training", label: "Udvikling 2.0 — Udviklingsscore B styrer dagens udvikling" },
+  { key: "race_day_catchup_enabled", area: "training", label: "Udvikling 2.0 — catch-up via løb (løbsdagens ekstra ens for alle hold)" },
   { key: "season_documentary_llm_enabled", area: "season", label: "Sæson-dokumentar (LLM)" },
   { key: "ai_team_retire_enabled", area: "ops", label: "AI-hold — pensionering" },
   { key: "ai_pool_retirement_v2_enabled", area: "ops", label: "AI-pulje — pensionering v2" },
@@ -180,8 +206,28 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // maerket skifter til "Now for everyone" naar kontakten er on for alle.
   "rider_best_role_display",
   "training_programs",
+  // #3564: HelpPage viser kurve B-tvillingerne (HELP_BLOCK_FLAGS/HELP_FAQ_FLAGS) paa dette flag.
+  // Binaert (se PLAYER_VISIBLE_BINARY_FLAG_KEYS): "beta" er off, ogsaa for beta-gruppen.
+  "development_curve_b",
   // 7.361: beta-noterne for etapeside 2.0 og bulk-dag skifter til
   // "Now for everyone", naar kontakterne er on for alle.
   "stage_page_v2",
   "training_bulk_day",
+  // #6110 Udvikling 2.0 del 1: HelpPage gater de nye blokke paa disse flag, saa
+  // Hjaelp foerst beskriver aldring, potentiale, maks +1 og Dagens beslutning
+  // naar de er taendt for spilleren.
+  "development_v2_aging_enabled",
+  "potential_single_number",
+  "ability_cap_per_date_enabled",
+  "training_decision_card",
+  // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
+  // Binaert som stage-roles-API'et (isRaceDayIntentionEnabled uden viewer): "beta" er off.
+  "race_day_intention_enabled",
+  // #5319: sessionsvaelgerne og Hjaelp viser v3-kataloget paa dette flag.
+  "training_catalog_v3",
 ]);
+
+// #3564: spiller-synlige flag som serveren selv laeser binaert (kun "on" taender,
+// "beta" = off). Endpointet svarer derfor false for ALLE viewers paa "beta", saa
+// en flade aldrig beskriver en model motoren ikke koerer for beta-gruppen.
+export const PLAYER_VISIBLE_BINARY_FLAG_KEYS = Object.freeze(["development_curve_b", "race_day_intention_enabled"]);

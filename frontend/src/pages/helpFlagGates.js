@@ -30,8 +30,22 @@ export const HELP_SECTION_FLAGS = Object.freeze({
   youthSquads: "youth_squad_pages",
 });
 
+// #3564 kurve B (development_curve_b): dagens tekst (alderens turbo, potentiale =
+// kun fart) og kurve B-teksten (niveau koster, potentiale = hvor hoejt) maa aldrig
+// staa side om side. Off = den gamle blok, on = "<blok>CurveB".
+const CURVE_B_OFF = Object.freeze({ flag: "development_curve_b", when: false });
+const CURVE_B_ON = Object.freeze({ flag: "development_curve_b", when: true });
+
+// #6746: fem indsatstrin (grupetto, alt ud) findes kun naar race_day_intention_enabled er on.
+const INTENTION_OFF = Object.freeze({ flag: "race_day_intention_enabled", when: false });
+const INTENTION_ON = Object.freeze({ flag: "race_day_intention_enabled", when: true });
+
 const RACE_DAY_TICK_OFF = Object.freeze({ flag: "training_tick_per_race_day", when: false });
 const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", when: true });
+// #6110 (Udvikling 2.0 del 1): den gamle aldrings-tekst og den nye maa aldrig
+// staa side om side. Off = "agingAndDecline" (top 28, fald fra 29), on = "agingV2".
+const AGING_V2_OFF = Object.freeze({ flag: "development_v2_aging_enabled", when: false });
+const AGING_V2_ON = Object.freeze({ flag: "development_v2_aging_enabled", when: true });
 
 /**
  * BLOK-niveau (#4847). `dailytraining` er altid synlig, men nogle af dens
@@ -46,6 +60,11 @@ const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", whe
  *    loebsdag, samlet koersel tidligst kl. 20.
  */
 export const HELP_BLOCK_FLAGS = Object.freeze({
+  riders: Object.freeze({
+    agingAndDecline: AGING_V2_OFF,
+    agingV2: AGING_V2_ON,
+    aiRidersV2: AGING_V2_ON,
+  }),
   dailytraining: Object.freeze({
     runDayNow: RACE_DAY_TICK_ON,
     trainToday: RACE_DAY_TICK_OFF,
@@ -53,6 +72,23 @@ export const HELP_BLOCK_FLAGS = Object.freeze({
     raceDaysPerRaceDay: RACE_DAY_TICK_ON,
     formFatigue: RACE_DAY_TICK_OFF,
     formFatiguePerRaceDay: RACE_DAY_TICK_ON,
+    longTermGrowth: CURVE_B_OFF,
+    longTermGrowthCurveB: CURVE_B_ON,
+    typeGating: CURVE_B_OFF,
+    typeGatingCurveB: CURVE_B_ON,
+    ceilingReached: CURVE_B_OFF,
+    ceilingReachedCurveB: CURVE_B_ON,
+  }),
+  raceSelection: Object.freeze({
+    effortSteps: INTENTION_ON,
+    effortStepsThree: INTENTION_OFF,
+  }),
+  raceDay: Object.freeze({
+    teamworkAllOut: INTENTION_ON,
+  }),
+  academy: Object.freeze({
+    dailyTrainingBoost: CURVE_B_OFF,
+    dailyTrainingBoostCurveB: CURVE_B_ON,
   }),
 });
 
@@ -69,6 +105,8 @@ export const HELP_FAQ_FLAGS = Object.freeze({
   lowerDivisionTrainingFaq: RACE_DAY_TICK_ON,
   multipleStagesTrainingFaq: RACE_DAY_TICK_ON,
   stageRaceRestDayFaq: RACE_DAY_TICK_ON,
+  teamworkLeadershipTrainingFaq: CURVE_B_OFF,
+  teamworkLeadershipTrainingCurveBFaq: CURVE_B_ON,
 });
 
 /**

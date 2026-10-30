@@ -1,5 +1,5 @@
 import { deriveParticipationHistory } from "./raceParticipationHistory.ts";
-import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
+import { isKnownRulesRevision, isOrdersGcRulesRevision, isOrdersGcV2OrLater, isOrdersGcV3OrLater, isS5ProfilesV1OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, preservesOfficialStageTimes, sharedTimeModelGeneration } from "./raceEngineRulesRevision.ts";
 import { peakComponentForStage } from "./racePeaks.js";
 import { scoreComponentToFormPoints } from "./plannerBoard.js";
 // Løbsmotor v4 — flip-infrastruktur, skridt 1 (#3855, #4707).
@@ -349,13 +349,14 @@ export function passagesFromV4Output(output, { stageProfile = {}, isStageRace = 
  * v3's `buildTeamContext` springer enhver entrant uden team_id ELLER
  * race_role over.
  */
-function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(), { withForm = false, peakDay = null } = {}) {
+function toV4Entrants(entrants, entrantAdapter, effortOverrideByRider = new Map(), { withForm = false, peakDay = null, roleOverrideByRider = null } = {}) {
   return entrants.map((e) => {
     const fatigue = Number(e.fatigue);
     const condition = Number.isFinite(fatigue) ? 1 - Math.min(Math.max(fatigue, 0), 100) / 100 : 1;
     const entrant = entrantAdapter.entrantFromAbilitiesRow(e.abilities ?? {}, {
       riderId: e.rider_id,
-      role: e.race_role,
+      // #5981 (KUN s5_profiles_v3): et AI-holds delte kaptajn (buildStageOrderPlan.aiRoleByRider).
+      role: roleOverrideByRider?.get(String(e.rider_id)) ?? e.race_role,
       // #5571: et AI-holds indsats kommer fra dets ordre (M14), fordi motoren
       // laeser Entrant.effort og ikke ordrens effort-felt. Kortet indeholder
       // KUN AI-holdenes ryttere; menneskeholdenes kilde er uaendret.
@@ -575,7 +576,7 @@ export function withS5ThreatModel(gcContext, startlist) {
  */
 export function buildV4StageInput({
   modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null,
-  rulesRevision = "legacy", gcStandings = null, formPeaks = true,
+  rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false,
 }) {
   // #5955: løbets bundne taktiske regel-revision (raceRunner.bindRaceRulesRevision).
   // En ukendt værdi er en fejl, aldrig nyeste regler.
@@ -622,6 +623,10 @@ export function buildV4StageInput({
       ...(isS5ProfilesV2OrLater(rulesRevision)
         ? { gc_context: withRaceGcStages(withS5ThreatModel(buildGcContext({ isStageRace, stageNumber, standings: gcStandings, starterIds: rosterForOrders.map((r) => r.rider_id) }), rosterForOrders), raceGcStagesFor(raceStages, modules.route.routeFromStageProfileRow)) }
         : {}),
+      // #2757 S1 (KUN s5_profiles_v3): pointtroejens foerer, saa hans hold kan sende en pointjaeger.
+      ...(isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders?.points ? { points_leader_rider_id: String(jerseyLeaders.points) } : {}),
+      // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne, saa et AI-hold kan sende sin i udbrud.
+      ...(isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders?.komHunters?.length ? { kom_hunter_rider_ids: jerseyLeaders.komHunters.map(String) } : {}),
     },
   });
   // #6156: kun official_times_v3 baerer rytterens form (uden formtoppe);
@@ -630,6 +635,7 @@ export function buildV4StageInput({
     withForm: sharedTimeModelGeneration(rulesRevision) === 3,
     // #6156 (ejer 19/10): og kun naar flaget race_form_peaks er taendt (formPeaks).
     peakDay: isS5ProfilesV2OrLater(rulesRevision) && formPeaks ? (stageProfile?.peakDay ?? null) : null,
+    roleOverrideByRider: plan.aiRoleByRider ?? null,
   });
   const input = { route, startlist, orders: plan.orders, seed: seedString, tuning: modules.tuning.RACE_V4_TUNING };
   // Ejer 28/9: kun ungdomsloeb baerer truppen; seniorens input er uaendret.
@@ -637,10 +643,16 @@ export function buildV4StageInput({
   // #5914: kun naar der ER en foerer — et input uden foerere er uaendret.
   if (jerseyLeaders && (jerseyLeaders.points || jerseyLeaders.kom)) {
     input.jersey_leaders = { points: jerseyLeaders.points ?? null, kom: jerseyLeaders.kom ?? null };
+    // #6937 B1 (KUN s5_profiles_v3): bjergjaegerne kaemper om bjergtoppene undervejs.
+    if (isS5ProfilesV3OrLater(rulesRevision) && jerseyLeaders.komHunters?.length) input.jersey_leaders.kom_hunters = jerseyLeaders.komHunters.map(String);
   }
   // #5955: kun den nye revision bæres; legacy-input er byte-identisk med før.
   if (isOrdersGcRulesRevision(rulesRevision)) {
     input.rules_revision = rulesRevision;
+    // #6649 (KUN s5_profiles_v3): dagsformen med forklaring kun naar kalderen eksplicit
+    // sender dayForm6649=true. raceRunner goer det kun naar app_config day_form_6649 = "on"
+    // (dayForm6649Flag.js); vaerdien er med i run-identiteten og #1857-genafspilningen.
+    if (dayForm6649 === true && isS5ProfilesV3OrLater(rulesRevision)) input.day_form_6649 = true;
     // #5978: GC-konteksten bæres KUN under orders_gc_v1 (legacy-input uændret).
     input.gc_context = buildGcContext({
       isStageRace,
@@ -712,7 +724,7 @@ export function createRaceEngineV4Adapter(modules) {
      *   omkring etapen. Udeladt = løbet er ukendt for M14.
      * @returns {{ranked: Array, incidents: Array, passages: object|null, timeline: object|null, v4Output: object}}
      */
-    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true }) {
+    simulateStage({ entrants, stageProfile, seedString, stageNumber, teamOrderRows = [], isStageRace = false, raceStages = null, squad = null, jerseyLeaders = null, rulesRevision = "legacy", gcStandings = null, formPeaks = true, dayForm6649 = false }) {
       if (!Array.isArray(entrants) || entrants.length === 0) {
         throw new Error("raceEngineV4Bridge: entrants kraeves (tomt startfelt)");
       }
@@ -720,7 +732,7 @@ export function createRaceEngineV4Adapter(modules) {
         throw new Error("raceEngineV4Bridge: seedString (streng) kraeves");
       }
       const input = buildV4StageInput({
-        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks,
+        modules, entrants, stageProfile, seedString, stageNumber, teamOrderRows, isStageRace, raceStages, squad, jerseyLeaders, rulesRevision, gcStandings, formPeaks, dayForm6649,
       });
       // #5577: med trace, når kernen har den (#5578), så fortællingen får
       // motorens egen dom over udbruddet. `output` er byte-identisk med
@@ -751,7 +763,8 @@ export function createRaceEngineV4Adapter(modules) {
         v4Output,
         // #5928: the effort the engine actually raced each rider on (AI orders included),
         // so the stage's fatigue load follows the same intent as the race itself.
-        efforts: new Map(input.startlist.map((e) => [String(e.rider_id), e.effort])),
+        // #7003: med en etapeplan er det den haardeste indsats rytteren faktisk koerte.
+        efforts: new Map(input.startlist.map((e) => [String(e.rider_id), v4Output.stage_plan_load_efforts?.[e.rider_id] ?? e.effort])),
       };
     },
   };

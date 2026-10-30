@@ -1,4 +1,66 @@
 {
+  "stagePlan": {
+    "title": "Plan de etapa",
+    "help": "Cada corredor tiene un plan corto a lo largo del recorrido. La tarea cambia en un puerto, en los últimos 10 km o cuando se descuelga.",
+    "useAssistant": "Usar el plan del asistente",
+    "suggestion": "Sugerencia",
+    "noPlan": "Aún sin plan. Corre según su rol.",
+    "noPlanLocked": "Sin plan. Corrió según su rol.",
+    "noPlanOrders": "Aún sin plan. Corre con lo que fijaste: {orders}.",
+    "noPlanOrdersLocked": "Sin plan. Corrió con lo que fijaste: {orders}.",
+    "luxuryHelperPlan": "Sin plan guardado. Como gregario de lujo, sigue la sugerencia.",
+    "luxuryHelperPlanLocked": "Sin plan guardado. Como gregario de lujo, siguió la sugerencia.",
+    "noFit": "Este plan ya no encaja con su rol. Elige uno nuevo.",
+    "colPlan": "Plan para la etapa {number}",
+    "colPlanRaceDay": "Plan para la carrera",
+    "change": "Cambiar",
+    "setPlan": "Fijar plan",
+    "close": "Cerrar",
+    "tapToEdit": "Toca para cambiar",
+    "editTitle": "Plan para {name}",
+    "stepLabel": "Paso {number}",
+    "taskLabel": "Tarea",
+    "switchLabel": "Cambio",
+    "addStep": "Añadir un paso",
+    "removeStepAria": "Quitar el paso {number} de {name}",
+    "useSuggestion": "Usar la sugerencia",
+    "clearPlan": "Quitar el plan",
+    "effortNote": "El esfuerzo sigue a la tarea.",
+    "rulesNote": "La fuga solo puede ser la primera tarea. La grupeta, llegar a meta y el tren de sprint siempre van al final.",
+    "timeTrial": "Sin plan de etapa en una contrarreloj.",
+    "task": {
+      "breakaway": "Meterse en la fuga",
+      "stay_sheltered": "Ir a cubierto",
+      "shelter_leader": "Llevar al líder delante",
+      "tempo": "Marcar el ritmo",
+      "follow_moves": "Seguir los ataques",
+      "attack": "Atacar",
+      "ride_for_result": "Correr por un resultado",
+      "sprint_train": "Tren de sprint",
+      "grupetto": "Grupeta",
+      "ride_in": "Llegar a meta"
+    },
+    "from": {
+      "kom": "tras {climb}",
+      "final_km": "últimos 10 km",
+      "dropped": "cuando se descuelga",
+      "caught": "cuando lo cazan"
+    },
+    "climbFallback": "puerto de cat. {category}",
+    "recap": {
+      "title": "Lo que hizo",
+      "kom": "hasta la cima de {climb}",
+      "final_km": "hasta los últimos 10 km",
+      "dropped": "hasta descolgarse en el km {km}",
+      "caught": "hasta que lo cazaron en el km {km}",
+      "missed_break": "no entró en la fuga",
+      "finish": "hasta meta",
+      "abandoned": "abandonó en el km {km}",
+      "skipped": "saltado, se descolgó antes",
+      "notReached": "no alcanzado",
+      "pending": "La película de la etapa aún no está lista."
+    }
+  },
   "stagePageV2": {
     "tabsAria": "Vistas de la carrera",
     "tab": {
@@ -140,6 +202,10 @@
         "gap": "La diferencia con {group, select, rest {el pelotón} other {los perseguidores}} {dir, select, grew {aumenta} other {se reduce}} de {before} a {after}",
         "split": "{count, plural, one {Un grupo se descuelga} other {# grupos se descuelgan}}",
         "dropped": "{count, plural, one {{names} se descuelga de la escapada} other {{names} se descuelgan de la escapada}}",
+        "formedAhead": "{count, plural, one {# corredor se escapa por delante del pelotón} other {# corredores se escapan por delante del pelotón}}",
+        "caughtAhead": "{count, plural, one {# corredor del grupo por delante del pelotón es alcanzado} other {# corredores del grupo por delante del pelotón son alcanzados}}",
+        "survivedAhead": "El grupo por delante del pelotón aguanta hasta la meta",
+        "droppedAhead": "{count, plural, one {{names} se descuelga del grupo por delante del pelotón} other {{names} se descuelgan del grupo por delante del pelotón}}",
         "joined": "{count, plural, one {Dos grupos se juntan} other {Los grupos se juntan # veces}}",
         "gcLead": "{name} toma el liderato de la general",
         "crack": "{name} se hunde",
@@ -154,8 +220,9 @@
         "leading": "En cabeza",
         "first": "Primero en cima",
         "top": "Cima {name}",
+        "topOfPlace": "Cima de {place}",
         "climb": "puerto",
-        "sprint": "Sprint",
+        "sprint": "Sprint intermedio",
         "finish": "Meta",
         "none": "No hay puertos, sprints ni meta en el registro de carrera."
       },
@@ -304,7 +371,7 @@
     "errorTitle": "No se pudo cargar la matriz de selección",
     "empty": "Aún no hay carreras esta temporada",
     "restDay": "Día de descanso",
-    "withdrawnHint": "Te has retirado de esta carrera. La alineación guardada se conserva por si vuelves a inscribirte, pero estos ciclistas no tomarán la salida.",
+    "withdrawnHint": "Guardar una nueva alineación cancela la retirada y sustituye la selección anterior.",
     "dayAria": "Día de carrera {index}, {date}. Abrir su tablero del día.",
     "cellEmptyAria": "{rider}, {race}: sin seleccionar. Haz clic para añadir.",
     "cellFilledAria": "{rider}, {race}: {role}. Haz clic para cambiar.",
@@ -423,6 +490,8 @@
       "hint": "Toca una orden para cambiar el rol del ciclista",
       "captain": "Jefe de filas",
       "sprintCaptain": "Jefe de filas de sprint",
+      "coCaptain": "Jefe de filas compartido",
+      "luxuryHelper": "Gregario de lujo",
       "hunter": "Cazador de escapadas",
       "rider": "Solo ciclista"
     },
@@ -480,16 +549,19 @@
         }
       }
     },
-    "breakawayStrength": {
-      "label": "Opciones de la escapada",
-      "high": "Altas",
-      "medium": "Medias",
-      "low": "Bajas",
-      "none": "Ninguna",
-      "tooltip": "Qué probabilidad hay de que una escapada llegue en este terreno. El cazador siempre es candidato a la escapada."
-    },
     "hunterExplainer": {
-      "strengthLine": "En el terreno de esta carrera, una escapada tiene opciones {strength} de llegar.",
+      "dayLine": "Tu cazador intenta meterse en la escapada de la mañana. Si llega o no, lo decide el pelotón el día de la carrera.",
+      "outlook": {
+        "about": "Previsión del motor: la escapada llega unas {k} de cada {n} veces.",
+        "under": "Previsión del motor: la escapada llega menos de {k} de cada {n} veces.",
+        "over": "Previsión del motor: la escapada llega más de {k} de cada {n} veces.",
+        "stage": "Etapa {stage}",
+        "reason": {
+          "nobodyChases": "Pocos equipos tienen motivos para perseguirla.",
+          "fewChase": "Uno o dos equipos suelen tener motivos para perseguirla.",
+          "manyChase": "Varios equipos suelen tener motivos para perseguirla."
+        }
+      },
       "candidatesHint": "Ordenados por agresividad: las ganas de atacar y de comprometerse con un movimiento.",
       "noCandidates": "Elige ciclistas para esta carrera para ver a tus mejores cazadores.",
       "aggression": "Agresividad",
@@ -704,6 +776,10 @@
     "minHint": "Mínimo {min} ciclistas para tomar la salida.",
     "captain": "Jefe de filas",
     "sprintCaptain": "Jefe de filas de sprint (opcional)",
+    "coCaptain": "Jefe de filas compartido (opcional)",
+    "coCaptainHint": "Protegido como el jefe de filas. El jefe de filas recibe ayuda primero.",
+    "luxuryHelper": "Gregario de lujo (opcional)",
+    "luxuryHelperHint": "Se reserva y luego trabaja para el jefe de filas en la subida decisiva.",
     "hunter": "Cazador de escapadas",
     "freeRole": "Rol libre",
     "noRole": "Ninguno",
@@ -787,6 +863,7 @@
       "title": "Esta carrera es de otra división",
       "note": "Solo puedes inscribirte en carreras de tu propia división, así que aquí no hay alineación que fijar."
     },
+    "rejoinNote": "Guardar una nueva alineación cancela la retirada y sustituye la selección anterior.",
     "withdrawnPanel": {
       "title": "Te has retirado de esta carrera",
       "note": "Tu equipo no toma la salida por decisión propia, así que no hay alineación que fijar. Vuelve a inscribirte desde el tablero de carreras si cambias de opinión antes de la salida.",
@@ -802,8 +879,11 @@
       "move_failed": "No se pudo mover al ciclista. Inténtalo de nuevo.",
       "selection_captain_required": "Elige un jefe de filas entre tus ciclistas seleccionados.",
       "selection_captain_not_selected": "Tu jefe de filas debe ser uno de los ciclistas seleccionados.",
+      "selection_co_captain_not_available": "El jefe de filas compartido no está disponible en esta carrera.",
+      "selection_co_captain_requires_captain": "Un jefe de filas compartido necesita un jefe de filas. Elige primero un jefe de filas.",
       "selection_role_not_selected": "Los ciclistas con rol deben formar parte de la selección.",
       "selection_role_overlap": "El jefe de filas, el jefe de filas de sprint y el cazador deben ser ciclistas distintos.",
+      "selection_luxury_helper_not_available": "El gregario de lujo no está disponible en esta carrera.",
       "selection_rider_injured": "No se puede seleccionar a ciclistas lesionados.",
       "selection_rider_over_age": "No se puede seleccionar a ciclistas que superan el límite de edad de la carrera.",
       "selection_rider_not_on_team": "Solo puedes seleccionar a tus propios ciclistas.",
@@ -816,6 +896,7 @@
       "selection_flag_disabled": "La selección del equipo aún no está activa.",
       "selection_invalid_body": "No se pudo guardar la selección. Inténtalo de nuevo.",
       "selection_wrong_pool": "Solo puedes inscribirte en carreras de tu propia división.",
+      "selection_withdrawn_locked": "Retiraste al equipo. La participación queda cerrada tras la primera etapa.",
       "selection_withdrawn": "Te has retirado de esta carrera, así que no se puede guardar una alineación para ella.",
       "selection_train_now_locked": "A los ciclistas que han entrenado hoy no se les puede añadir ni quitar de la carrera de hoy.",
       "selection_youth_squad_train_only": "Esta plantilla está en Solo entrenar. Cámbiala a Participar en carreras en la página de la plantilla para inscribirla.",
@@ -889,12 +970,21 @@
       "protect": "trabajar o atacar",
       "all_out": "a tope"
     },
+    "byRole": {
+      "protect": {
+        "work": { "step": "Trabajar", "why": "Rueda para el jefe de filas. Fatiga real.", "today": "trabaja para el jefe de filas" },
+        "follow": { "step": "Seguir los ataques", "why": "Responde a cada ataque. Cuesta más fuerzas.", "today": "sigue los ataques" },
+        "free": { "step": "Correr a la ofensiva", "why": "Aprieta en las subidas y en el final.", "today": "corre a la ofensiva" }
+      }
+    },
     "roleWord": {
       "captain": "jefe de filas",
       "sprint_captain": "jefe de filas de sprint",
+      "co_captain": "jefe de filas compartido",
       "helper": "gregario",
       "hunter": "cazador",
-      "free_role": "rol libre"
+      "free_role": "rol libre",
+      "luxury_helper": "gregario de lujo"
     },
     "errors": {
       "stage_roles_invalid_body": "No se pudieron guardar las intenciones. Inténtalo de nuevo.",
@@ -903,14 +993,21 @@
       "stage_roles_invalid_role": "Uno de los roles no es válido.",
       "stage_roles_invalid_effort": "Una de las intenciones no es válida.",
       "stage_roles_role_overlap": "Solo un ciclista puede ser jefe de filas, solo uno jefe de filas de sprint y solo uno cazador de escapadas, por etapa.",
+      "stage_roles_co_captain_requires_captain": "Un jefe de filas compartido necesita un jefe de filas en la misma etapa.",
       "stage_roles_duplicate": "El mismo ciclista aparece dos veces para la misma etapa.",
       "stage_roles_rider_abandoned": "Uno de los ciclistas está fuera de la carrera y ya no se le puede dar una intención.",
       "stage_roles_race_completed": "Esta carrera ha terminado, así que las intenciones ya no se pueden cambiar.",
       "generic": "No se pudieron guardar las intenciones. Inténtalo de nuevo.",
-      "stage_roles_conflict": "Tus tácticas se cambiaron en otra ventana. Se ha cargado la última versión. Compruébala y vuelve a guardar."
+      "stage_roles_conflict": "Tus tácticas se cambiaron en otra ventana. Se ha cargado la última versión. Compruébala y vuelve a guardar.",
+      "team_orders_grupetto_with_break": "Un corredor en la grupeta no puede intentar la fuga.",
+      "team_orders_grupetto_with_train": "Un corredor en la grupeta no puede ir en el tren de sprint.",
+      "team_orders_work_with_break": "Un corredor que trabaja para el líder no puede intentar la fuga.",
+      "team_orders_train_with_break": "Un corredor del tren de sprint no puede intentar la fuga."
     }
   },
   "tacticsOrders": {
+    "blocked": { "notWithGrupetto": "No con Grupeta.", "notWithWork": "Un corredor que trabaja para el líder no puede meterse en la fuga.", "notWithBreak": "No mientras intenta la fuga.", "notWithTrain": "El tren de sprint se queda en el pelotón hasta el final." },
+    "pickOne": "Elige uno",
     "title": "Tácticas",
     "locksAt": "Se bloquea {time}",
     "locked": "Bloqueado",
@@ -956,10 +1053,12 @@
     "tryBreakAria": "{name} intenta la escapada",
     "roleLabel": {
       "captain": "Jefe de filas",
+      "co_captain": "Jefe de filas compartido",
       "sprint_captain": "Jefe de filas de sprint",
       "hunter": "Cazador de escapadas",
       "helper": "Gregario",
-      "free_role": "Rol libre"
+      "free_role": "Rol libre",
+      "luxury_helper": "Gregario de lujo"
     },
     "save": "Guardar tácticas",
     "saving": "Guardando…",
@@ -991,8 +1090,15 @@
       "sprint_captain": "jefe de filas de sprint",
       "hunter": "cazador de escapadas",
       "helper": "gregario",
-      "free_role": "rol libre"
+      "free_role": "rol libre",
+      "luxury_helper": "gregario de lujo"
     }
+  },
+  "stageOrders": {
+    "title": "Tus órdenes",
+    "roleDefaults": "nada guardado, así que cada corredor siguió su rol",
+    "stanceAuto": "Automática",
+    "roleDefaultShort": "estándar del rol"
   },
   "racePage": {
     "tabsAria": "Secciones de la carrera",
@@ -1014,11 +1120,13 @@
       "stageWins": "Victorias de etapa",
       "finishers": "Llegados a meta",
       "notStarted": "Sin empezar",
+      "nextStageSub": "Siguiente etapa",
       "racingNow": "Corriendo ahora",
       "allRidden": "Todas corridas",
       "squadLockedIn": "Plantilla fijada",
       "squadFrozen": "Plantilla congelada",
       "abandons": "{count, plural, one {# abandono} other {# abandonos}}",
+      "chipNextStage": "Siguiente: etapa {number} · {time}",
       "chipStageOnRoad": "Etapa {number} en carretera",
       "chipRacing": "En carretera",
       "chipFinished": "Terminada",
@@ -1060,10 +1168,12 @@
       "roleExclusiveNoteScoped": "Un jefe de filas, un jefe de filas de sprint y un cazador de escapadas a la vez. El ciclista que tenía el rol pasa a ser gregario en las mismas etapas. Las etapas anteriores conservan sus roles.",
       "roleWhy": {
         "captain": "El equipo corre para él y recibe la protección.",
+        "co_captain": "Protegido como el jefe de filas. El jefe de filas recibe ayuda primero.",
         "sprint_captain": "Recibe el tren de sprint y el lanzamiento.",
         "hunter": "Sale a la caza de la escapada.",
         "helper": "Trabaja para los líderes.",
-        "free_role": "Corre su propia carrera."
+        "free_role": "Corre su propia carrera.",
+        "luxury_helper": "Se reserva y luego trabaja para el jefe de filas en la subida decisiva. La subida se cambia en el plan de etapa."
       }
     },
     "team": {
@@ -1338,7 +1448,8 @@
       "watchButton": "Ver la película de la carrera",
       "title": "Película de la carrera",
       "km": "km {value}",
-      "gapCurveTitle": "Diferencia con el pelotón",
+      "gapCurveTitle": "Ventaja sobre los perseguidores",
+      "gapNow": "Ventaja {gap}",
       "scrubberLabel": "Recorrer la etapa",
       "replay": "Repetición",
       "play": "Reproducir",
@@ -1381,7 +1492,30 @@
         "breakaway_caught_by_teams": "{riders} {count, plural, one {es alcanzado} other {son alcanzados}}. {teamCount, plural, =1 {{teamLast}} other {{teamsHead} y {teamLast}}} hicieron la persecución.",
         "breakaway_caught_by_peloton": "{riders} {count, plural, one {es alcanzado} other {son alcanzados}} por el pelotón.",
         "breakaway_survived": "La escapada resiste al pelotón hasta la línea de meta.",
+        "cause": {
+          "unchased": "Nadie quiso perseguir, así que la escapada tuvo todo el margen que necesitaba.",
+          "no_chasers": "Los equipos que querían perseguir ya no tenían ciclistas para hacerlo.",
+          "own_riders_ahead": "{teamCount, plural, =1 {{teamLast} nunca persiguió: tenía} other {{teamsHead} y {teamLast} nunca persiguieron: tenían}} ciclistas en la escapada.",
+          "reaction_spent": "{teamCount, plural, =1 {{teamLast} ya había gastado lo que podía} other {{teamsHead} y {teamLast} ya habían gastado lo que podían}} en la persecución.",
+          "no_free_riders": "{teamCount, plural, =1 {{teamLast} no tenía} other {{teamsHead} y {teamLast} no tenían}} ciclistas libres para perseguir.",
+          "gc_contained": "{teamCount, plural, =1 {{teamLast} solo trabajó para proteger la general y dejó ir la etapa} other {{teamsHead} y {teamLast} solo trabajaron para proteger la general y dejaron ir la etapa}}.",
+          "chase_faded_climb": "La persecución se apagó después de {climb}, y la diferencia volvió a crecer.",
+          "chase_faded": "La persecución se apagó, y la diferencia volvió a crecer.",
+          "chase_too_late": "La persecución se acercó, pero se quedó sin carretera.",
+          "gap_never_closed": "La persecución nunca logró recortar la diferencia.",
+          "gc_threat": "{teamCount, plural, =1 {{teamLast} persiguió} other {{teamsHead} y {teamLast} persiguieron}} porque {threats} {threatCount, plural, one {era una amenaza} other {eran una amenaza}} para {rider} en la general.",
+          "closed_on_climb": "La diferencia cayó en {climb}."
+        },
+        "order": {
+          "all_out_stayed_away": "{rider} fue a tope siguiendo tu orden y aguantó por delante hasta la meta.",
+          "all_out_held_on_climb": "{rider} fue a tope siguiendo tu orden y pasó {climb} con los primeros.",
+          "all_out_held_on": "{rider} fue a tope siguiendo tu orden y se mantuvo en el grupo de cabeza."
+        },
         "breakaway_dropped": "{riders} {count, plural, one {es descolgado} other {son descolgados}} de la escapada.",
+        "group_ahead_formed": "{riders} {count, plural, one {se escapa} other {se escapan}} en un grupo por delante del pelotón.",
+        "group_ahead_caught": "El grupo por delante del pelotón es alcanzado: {riders}.",
+        "group_ahead_survived": "El grupo por delante del pelotón aguanta hasta la línea.",
+        "group_ahead_dropped": "{riders} {count, plural, one {se descuelga} other {se descuelgan}} del grupo por delante del pelotón.",
         "incident": "{kind, select, mechanical {{rider} sufre un problema mecánico.} other {{rider} se cae.}}",
         "incident_crash_time_loss": "{rider} se cae y pierde {seconds} s.",
         "incident_crash_hard": "{rider} se cae con dureza: pierde {seconds} s y {days, plural, one {# día} other {# días}} de baja.",
@@ -1391,6 +1525,14 @@
         "incident_protected": "{rider} se cae en los últimos kilómetros, pero conserva el tiempo del grupo.",
         "favorite_crack": "{rider} flaquea y pierde el contacto con la cabeza.",
         "favorite_crack_tt": "{rider} se apaga en la segunda mitad y pierde tiempo.",
+        "all_out_gain": "{rider} lo da todo en la última subida y gana tiempo.",
+        "all_out_cracked": "{rider} lo da todo y se queda vacío en la última subida.",
+        "bad_day_fatigue": "{rider} tuvo un mal día. Los días duros anteriores le pasaron factura.",
+        "bad_day_form": "{rider} tuvo un mal día. Le faltaba forma.",
+        "bad_day_illness": "{rider} tuvo un mal día. No se encontraba bien de salud.",
+        "bad_day_rain": "{rider} tuvo un mal día bajo la lluvia.",
+        "bad_day_wind": "{rider} tuvo un mal día con el viento.",
+        "bad_day_heat": "{rider} tuvo un mal día con el calor.",
         "finale_attack": "{rider} ataca en el final.",
         "ttt_rider_dropped": "{rider} se descuelga de su equipo.",
         "sprint_decided": "Se decide en la línea entre {rider} y los perseguidores.",
@@ -1451,7 +1593,9 @@
       "title": "Abandonos",
       "crash": "Caída",
       "mechanical": "Problema mecánico",
-      "injury": "No tomó la salida"
+      "injury": "No tomó la salida",
+      "illness": "Enfermo, no tomó la salida",
+      "withdrawal": "Abandonó"
     },
     "why": {
       "title": "El panorama general",

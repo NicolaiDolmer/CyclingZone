@@ -73,6 +73,7 @@ import {
   incidentKmAt,
   incidentKmSpan,
   maxIncidentsForField,
+  crashSeriousShareFor,
   resolveCrashIncident,
   threeKmRuleApplies,
 } from "./incidents.ts";
@@ -526,6 +527,7 @@ export const descentHook: DescentHook = (
   const newIncidents: StageIncident[] = [];
   // #7008 (KUN s5_profiles_v2): intet styrt lige efter starten (incidentKmSpan).
   const incidentSpan = incidentKmSpan(segment, ctx.s5ProfilesV2 === true);
+  const descentSeriousShare = crashSeriousShareFor(segment.kind, ctx.s5ProfilesV3 === true);
   let incidentBudget = incidentSpan
     ? maxIncidentsForField(Object.keys(state.riders).length, INCIDENTS_EXTRA_TUNING) - loggedIncidents.length
     : 0;
@@ -660,7 +662,8 @@ export const descentHook: DescentHook = (
           magnitude: ctx.rngFor("descent_incident_time_loss", attacker.riderId)(),
           injury: ctx.rngFor("descent_incident_injury", attacker.riderId)(),
         },
-        { protectedByRule, helperNearby },
+        // #6938 U2 (KUN s5_profiles_v3): samme terraen-andel som M10; undefined = faelles andel, byte-identisk.
+        descentSeriousShare === undefined ? { protectedByRule, helperNearby } : { protectedByRule, helperNearby, seriousShare: descentSeriousShare },
         INCIDENTS_EXTRA_TUNING,
       );
       incidentBudget -= 1;

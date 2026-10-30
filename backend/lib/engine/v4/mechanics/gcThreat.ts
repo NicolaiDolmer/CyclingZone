@@ -21,6 +21,8 @@
 // kalibreres privat (#5984 Task 6) og er ikke ejer-godkendte maal.
 
 import type { AbilityKey, Entrant, GcContext, GcStageDemand, GcStanding, ProfileType, RaceGroup, RouteV2 } from "../types.ts";
+import { s5V3ContenderAbilityRank, s5V3IsShortStageRace, s5V3ProjectionWeight } from "./breakawayV3_6804.ts";
+import { isProjectedContender, projectedAllowanceSeconds, projectedGapToWinnerSeconds } from "./gcBreakawayLeash7258.ts"; // #7258
 
 export type GcThreatSeverity = "none" | "moderate" | "serious";
 
@@ -92,6 +94,12 @@ export type GcThreat = {
    * jo farligere, jo haardere jagt. Udeladt = alle aeldre revisioner (bit-identisk).
    */
   danger?: number;
+  /**
+   * #7258 (KUN s5_profiles_v3): alle de ryttere holdet reagerer paa er fremskrevne trusler
+   * (svagere ryttere der kun kan vinde loebet med forspringet). Jagten holder dem paa snoren,
+   * ogsaa i finalen, i stedet for at hente (breakaway.ts). Udeladt = som foer.
+   */
+  leash_projected?: true;
 };
 
 /**
@@ -148,6 +156,13 @@ export type DangerModel = {
    * GC_THREAT_TUNING.rivalStrengthMin, bit-identisk med orders_gc_v3.
    */
   tuning?: GcDangerTuning;
+  /**
+   * #6804 P6 (KUN s5_profiles_v3 med S5-trusselsmodellen, slukket): den fremskrevne gevinst
+   * vaegtes efter resterende distance, "noget at forsvare" i korte etapeloeb kraever en reel
+   * klassementschance, og en udbryder uden klassementsevne truer heller ikke troejen
+   * (breakawayV3_6804.ts). Udeladt = s5_profiles_v2, bit-identisk.
+   */
+  s5V3?: true;
 };
 
 /** #5578: de farligheds-knapper official_times_v2 kalibrerer (etapeloeb). */
@@ -258,7 +273,7 @@ export function oneDayProtectedRider(input: {
   return pick && pick.ability >= GC_THREAT_V3_TUNING.oneDayCanWinShare * best ? pick.id : null;
 }
 
-const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981: delt kaptajn som kaptajnen
 
 /** #5978: har holdets GC-rytter noget at forsvare (KUN orders_gc_v3)? */
 function hasSomethingToDefend(standing: GcStanding, isLeader: boolean, stagesRemaining: number, t: GcDangerTuning): boolean {
@@ -558,6 +573,11 @@ export function assessGcThreat(input: {
    * orders_gc_v1/v2-vurderingen, bit-identisk.
    */
   dangerModel?: DangerModel;
+  /**
+   * #7258: vurderingen er dannelsens proeve (formationDangerTeams, forspring 0). Fremskrivningen
+   * af en svagere rytter (snoren) bruges da ikke; dannelsen har sin egen regel (breakaway.ts).
+   */
+  formationProbe?: true;
 }): GcThreat {
   const tuning = GC_THREAT_TUNING;
   const gcContext = input.gcContext ?? null;
@@ -581,10 +601,20 @@ export function assessGcThreat(input: {
   // #5978 (KUN s5_profiles_v1): faren er glidende, og snoren kortere jo farligere.
   const s5 = model !== undefined && isS5ThreatModel(gcContext);
   const firstStage = s5 && isSyntheticFirstStage(gcContext);
+  // #6804 P6 (KUN s5_profiles_v3 med S5-modellen): se DangerModel.s5V3. Udeladt = v2, bit-identisk.
+  const v3 = s5 && model?.s5V3 === true;
+  // P6.3: i et kort etapeloeb forsvarer kun et hold med en reel klassementschance (evne og placering).
+  const v3Short = v3 && s5V3IsShortStageRace(gcContext);
+  const contenderOnAbility = () => fieldGcRank(protectedId, input.entrants, input.racingRiderIds, gcContext) <= s5V3ContenderAbilityRank();
+  // Paa foerste etape maaler revisionen allerede kun evnen; P6.3 kan kun goere graensen strammere, aldrig loesere.
+  const firstStageRank = v3Short ? Math.min(S5_GC_THREAT_TUNING.contenderFieldRank, s5V3ContenderAbilityRank()) : S5_GC_THREAT_TUNING.contenderFieldRank;
   const interested = firstStage
-    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds) <= S5_GC_THREAT_TUNING.contenderFieldRank
+    // Kun v3 maaler foerste etape paa loebets egen klassementsevne; v2 og aeldre bruger den faste (bit-identisk).
+    ? fieldGcRank(protectedId, input.entrants, input.racingRiderIds, v3 ? gcContext : undefined) <= firstStageRank
     : model
-      ? hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining, dangerTuningOf(model))
+      ? (v3Short
+        ? isLeader || (hasSomethingToDefend(protectedStanding, false, stagesRemaining, dangerTuningOf(model)) && contenderOnAbility())
+        : hasSomethingToDefend(protectedStanding, isLeader, stagesRemaining, dangerTuningOf(model)))
       : isLeader || protectedStanding.rank <= tuning.protectRankLimit;
   if (!interested) {
     return { ...NO_THREAT_BASE, protected_rider_id: protectedId, severity: "none", reason: "no_gc_interest" };
@@ -614,9 +644,15 @@ export function assessGcThreat(input: {
   const protectedStrength = Math.max(gcAbilityIn(gcContext, input.entrants[protectedId]), contenderFloor);
   const terrain = remainingTerrainKm(input.route, input.km);
   const [ratioLo, ratioHi] = tuning.strengthRatioBounds;
+  // #6804 P6.2 (KUN v3): gevinsten paa resten af etapen taeller fuldt foerst naar den kan realiseres.
+  const projectionWeight = v3 ? s5V3ProjectionWeight(Math.max(0, Number(input.route.distance_km) - input.km)) : 1;
+  // #7258: kun et hold hvis klassementsrytter kan vinde loebet (fremskrevet top eller foereren) holder en fremskreven trussel paa snor.
+  // Fremskrivningen kraever loebets etaper (#6818); uden dem ved motoren intet om resten af loebet, og vurderingen er som foer.
+  const raceModel = v3 && input.formationProbe !== true ? raceGcAbilityModel(gcContext) : null;
+  const projectedLeash = raceModel !== null && isProjectedContender(gcContext, input.entrants, protectedId, raceModel, firstStage, input.racingRiderIds);
 
   const severityRank: Record<GcThreatSeverity, number> = { none: 0, moderate: 1, serious: 2 };
-  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number };
+  type Candidate = { riderId: string; severity: GcThreatSeverity; reason: GcThreatReason; margin: number; lead: number; tied: boolean; own: boolean; groupId: string; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number; projected?: true };
   const candidates: Candidate[] = [];
   let anyClassified = false;
   // #6187: under orders_gc_v3 taeller holdets egne ryttere aldrig (og med
@@ -637,10 +673,9 @@ export function assessGcThreat(input: {
       const strength = clamp(strengthRaw, ratioLo, ratioHi);
       // #5978 (KUN orders_gc_v3): de kommende etaper taeller med (evne x antal).
       const future = model ? stagesRemaining * danger.futureSecondsPerStage * (strength - 1) : 0;
-      const potential = Math.max(
-        0,
-        Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1) + future,
-      );
+      const terrainGain = Math.min(terrain.openKm * tuning.potentialSecondsPerOpenKm, tuning.potentialOpenCapSeconds) + terrain.climbKm * tuning.potentialSecondsPerClimbKm * (strength - 1);
+      // #6804 P6.2: kun en GEVINST vaegtes ned (et forventet tidstab paa stigningerne taeller fuldt).
+      const potential = Math.max(0, (v3 && terrainGain > 0 ? terrainGain * projectionWeight : terrainGain) + future);
       // #5578 (KUN official_times_v2): klassementets forreste er altid en rival, og
       // hans afstand taeller hoejst som snorens loft (udbrudsmaal 6: aldrig 5 min).
       // #5978 (S5): paa foerste etape staar alle lige; ingen er "de forreste".
@@ -650,17 +685,33 @@ export function assessGcThreat(input: {
       // fra: hans afstand plus et tillaeg der skrumper til 0 jo farligere han er.
       const riderDanger = s5 ? (ranked ? 1 : dangerOf(strengthRaw)) : undefined;
       const distance = riderDanger !== undefined ? deficit + (1 - riderDanger) * S5_GC_THREAT_TUNING.dangerAllowanceSeconds : deficit;
-      const margin = (cap !== null ? Math.min(distance, cap) : distance) - lead - potential;
-      const isRival = riderDanger !== undefined
-        ? riderDanger > 0
-        : ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
+      // #7258 (KUN v3, ikke ved dannelsens proeve): en svagere rytter uden fare (dangerOf = 0) er
+      // stadig en trussel naar han fremskrevet (afstand + tab paa resten af loebet) kan staa foran
+      // holdets klassementsrytter ved loebets slutning. Snoren er den fremskrevne afstand.
+      // Afstanden maales til den fremskrevne VINDER (ikke til holdets egen rytter): et udbrud maa gerne
+      // flytte pladserne bag ham, men en rytter i det maa ikke kunne vinde loebet.
+      const gapToWinner = projectedLeash && !ranked && riderDanger === 0
+        ? projectedGapToWinnerSeconds(gcContext, input.entrants, riderId, raceModel, firstStage, input.racingRiderIds)
+        : null;
+      const projectedDistance = gapToWinner !== null ? gapToWinner + projectedAllowanceSeconds() : null;
+      const todayGain = terrainGain > 0 ? terrainGain * projectionWeight : terrainGain;
+      const margin = projectedDistance !== null
+        ? projectedDistance - lead - todayGain
+        : (cap !== null ? Math.min(distance, cap) : distance) - lead - potential;
+      const isRival = projectedDistance !== null
+        ? true
+        : riderDanger !== undefined
+          ? riderDanger > 0
+          : ranked || strengthRaw >= (model ? danger.rivalStrengthMin : tuning.rivalStrengthMin);
       let severity: GcThreatSeverity;
       let reason: GcThreatReason;
       if (margin <= 0) {
         if (isRival) {
           severity = "serious";
           reason = isLeader ? "leader_at_risk" : "rival_ahead";
-        } else if (isLeader) {
+        } else if (isLeader && !v3) {
+          // #6804 P6.4 (KUN v3): en udbryder uden klassementsevne truer heller ikke troejen
+          // (klassementets forreste er altid en rival via rivalRankAlways ovenfor).
           severity = "moderate";
           reason = "leader_jersey_at_risk";
         } else {
@@ -679,10 +730,13 @@ export function assessGcThreat(input: {
       const allowance = model !== undefined && isLeader && !isRival ? danger.jerseyAllowanceSeconds?.[input.route.profile_type] : undefined;
       // #5978 (S5): en svagere rytters forventede tidstab paa de kommende etaper
       // giver ham laengere snor (orders_gc_v3 talte kun en staerkeres gevinst med).
-      const leashRoom = allowance !== undefined ? Math.max(0, deficit) + allowance : distance - (s5 ? future : Math.max(0, future)) - danger.leashMarginSeconds;
+      const leashRoom = projectedDistance !== null
+        ? projectedDistance - danger.leashMarginSeconds // #7258
+        : allowance !== undefined ? Math.max(0, deficit) + allowance : distance - (s5 ? future : Math.max(0, future)) - danger.leashMarginSeconds;
       // #5578 (KUN official_times_v2): de forreste holder altid snoren, og den er hoejst loftet lang.
       candidates.push({ riderId, severity, reason, margin, lead, tied: deficit === 0, own: ownGroup || isOwn(riderId), groupId: group.id, rival: isRival,
         leashRoom: cap !== null ? Math.min(leashRoom, cap) : leashRoom, ...(ranked ? { forcedLeash: true } : {}),
+        ...(projectedDistance !== null ? { projected: true as const } : {}),
         ...(riderDanger !== undefined ? { danger: riderDanger } : {}) });
     }
   }
@@ -737,7 +791,7 @@ function leashHeldBy(counted: ReadonlyArray<{ margin: number; rival: boolean; fo
  */
 function withLeash(
   threat: GcThreat,
-  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number }>,
+  counted: ReadonlyArray<{ riderId: string; severity: GcThreatSeverity; margin: number; rival: boolean; leashRoom: number; forcedLeash?: boolean; danger?: number; projected?: true }>,
   leashMarginSeconds: number = GC_THREAT_V3_TUNING.leashMarginSeconds,
 ): GcThreat {
   const held = counted.filter((c) => holdsLeash(c, leashMarginSeconds));
@@ -753,6 +807,7 @@ function withLeash(
     leash_hold: held.length > 0,
     ...(held.length > 0 ? { leash_rider_ids: held.map((c) => c.riderId).sort() } : {}),
     ...(dangers.length > 0 ? { danger: Math.max(...dangers) } : {}),
+    ...(limiting.length > 0 && limiting.every((c) => c.projected === true) ? { leash_projected: true as const } : {}), // #7258
   };
 }
 
@@ -968,7 +1023,7 @@ export function formationDangerTeams(input: {
     }
     const threat = assessGcThreat({
       gcContext, groups, entrants: input.entrants, route: input.route, protectedRiderId, km: input.km,
-      racingRiderIds: input.racingRiderIds, ownTeamId: teamId, dangerModel: input.dangerModel,
+      racingRiderIds: input.racingRiderIds, ownTeamId: teamId, dangerModel: input.dangerModel, formationProbe: true,
     });
     if (threat.leash_hold === true || threat.severity !== "none") {
       out.push(teamId);

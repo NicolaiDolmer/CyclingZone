@@ -339,7 +339,7 @@
       "expiring": "Udløber denne sæson",
       "season": "Udløber efter sæson {season}",
       "atCap": "Ved loftet",
-      "atCapHint": "Løber allerede 3 sæsoner frem. Kan forlænges igen, når sæsonen skifter."
+      "atCapHint": "Løber allerede så langt, som det er tilladt. Kan forlænges igen, når sæsonen skifter."
     },
     "bar": {
       "none": "Sæt flueben ved de ryttere, du vil forlænge.",
@@ -365,6 +365,30 @@
     "loadErrorBody": "Intet er tabt. Dine kontrakter er uændrede.",
     "retry": "Prøv igen",
     "emptyTitle": "Skriv kontrakt med ryttere for at styre dem her",
-    "emptyBody": "Dine ryttere vises her, grupperet efter hvornår kontrakten udløber."
+    "emptyBody": "Dine ryttere vises her, grupperet efter hvornår kontrakten udløber.",
+    "buyback": {
+      "title": "Få dine ryttere tilbage",
+      "intro": "Disse ryttere forlod dit hold ved sæsonskiftet uden det kontraktvarsel, du skulle have haft. Sign dem igen inden for 7 dage: normal løn, 1 sæson, intet signing fee.",
+      "squad": "Trup",
+      "deadline": "Indtil",
+      "sign": "Sign igen",
+      "signAria": "Sign {name} igen",
+      "done": "{name} er tilbage på dit hold.",
+      "squads": {
+        "senior": "Senior",
+        "u23": "U23",
+        "junior": "Junior"
+      },
+      "errors": {
+        "buyback_not_eligible": "Ikke omfattet",
+        "buyback_rider_not_free": "Signet af et andet hold",
+        "buyback_rider_retired": "Stoppet",
+        "buyback_rider_on_auction": "På auktion",
+        "buyback_expired": "De 7 dage er gået",
+        "buyback_squad_full": "Din trup er fuld",
+        "buyback_no_team": "Du skal have et hold",
+        "buyback_failed": "Kunne ikke signe ham igen. Prøv igen."
+      }
+    }
   }
 }

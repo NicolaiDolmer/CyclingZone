@@ -69,6 +69,36 @@ Testporten og Tour-gennemtesten kører som udgangspunkt uden rytternes form: eks
 
 `tourScorecard.splitEntrants` tager `form` og `peakWindows` med, når startlisten har dem; uden dem er motor-input byte-identisk med før. Kode: `formTestData.mjs`, `formTestCaches.mjs`. Test: `formTest.test.mjs`.
 
+## Tænd-gaten for v3: G16-G19 og G2 på flad (#6804, ejer valg 8 A)
+
+Kortet dømmer v3-tilvalgenes gates for begge revisioner (spec `docs/superpowers/specs/2026-10-23-6804-v3-tilvalg-design.md` §2 og §5). De **blokerer** kun en kandidat fra `s5_profiles_v3` og frem: en gate der er FAIL eller MANGLER giver "TAEND-GATE v3 BLOKERET" på kortet og exit 1. For andre kandidater vises dommen til orientering.
+
+- **G16 (#6937) bjergtrøjen:** pr. løbsgruppe (etapeløb, Grand Tour) hvor ofte klassementsvinderen også vinder bjergtrøjen, og hvor ofte bjergtrøjens vinder har udbrudspoint.
+- **G17 (#6938) udgåede:** andelen af startere der udgår pr. løbsgruppe; kaptajner udgår ikke oftere end hjælpere.
+- **G18 (#2757) pointtrøjen:** i etapeløb med nok flade etaper vinder en sprinter (sprint-kaptajn eller en af feltets bedste sprintere) trøjen, og klassementsvinderen sjældent.
+- **G19 (#6486) bjerg uden topankomst:** nr. 10 (median, etaper hvor udbruddet ikke vandt) inden for loftet i hver division. Ingen sådan etape i kørslen = N/A.
+- **G2 på flad (#6912):** ingen flad eller rullende etape over den øvre zone uden "ingen jagt-interesse", og ingen over den hårde grænse.
+- **gcFromBreakaway (#7258):** andelen af etapeløb × seeds hvor et morgenudbrud **afgjorde** klassementet, og hvor klassementsvinderen vandt en etape fra udbrud. Afgjort = klassementsvinderen sad i dagens udbrud (morgen- eller reformationsudbrud, aldrig et sent angreb) og vandt den dag mindst sit samlede forspring på den bedst placerede rytter uden for udbruddet (`lib/gcFromBreakaway7258.mjs`). Bånd: `v3Gates.gcFromBreakaway.{maxGcWinnerInBreakawayShare, maxGcWinnerWonFromBreakawayShare}`.
+- **stageFavouriteInBreakaway (#7258 S3):** endagsløb og monumenter hver for sig: andelen af vejetaper hvor dagens favorit (#7214's definition, `ctx.favourites.stageFav`) sidder i morgenudbruddet. Bånd: `v3Gates.stageFavouriteInBreakaway.maxShare` (eller `maxShareByGroup.<gruppe>`).
+- **gcFavouriteInBreakaway (#7258 S4):** korte etapeløb og Grand Tours hver for sig: andelen af vejetaper hvor en fremskrevet klassementsfavorit sidder i morgenudbruddet. Favorit = en af de 3 bedste i motorens fælles fremskrivning (`gcBreakawayLeash7258.projectedGcFavourites`: afstand + løbsevne × resterende etaper), målt i `tourScorecard.projectedGcFavouritesForStage` med klassementet bygget som broen. Bånd: `v3Gates.gcFavouriteInBreakaway.maxShare` (eller `maxShareByGroup.<gruppe>`).
+
+S3 og S4 viser også andelen af morgenudbrud; dommen er på andelen af vejetaper. En gruppe uden løb i kørslen er N/A; et løb uden favoritter eller fremskrivning er MANGLER. Rækkefelterne er `breakawayMorningRiderIds` og `breakawayGcFavourite`. G3's `breakawayGcFav` måles i etapeløb med samme fremskrivning (top 5).
+
+Fail closed: mangler målingen i scorecardet (et motor-spors felt er ikke leveret endnu) eller det private bånd, står gaten som MANGLER. Feltkontrakten pr. seed og etape står øverst i `lib/v3Gates.mjs`; `pointsWinner`/`komWinner` (`lib/jerseyTally.mjs`, samme akkumulering som raceRunner) og `sprintTop10` skrives af `tourScorecard.runTour`. Båndene ligger i den private tærskelfil under nøglen `v3Gates` (hard rule 17). Løbskonteksten (roller, sprint-rang, flade etaper, bjerg uden topankomst, division) læses fra løbets `cache.json`; eksportens mappe gemmes som `cacheDir` i `testport-meta.json`, så `--report-only` finder den igen.
+
+**#2757 S0, spurtfinalen (måling, ingen gate):** på flade og brostens-etaper med massespurt hvor udbruddet ikke vandt: hvor ofte feltets bedste sprinter (og top 3) vinder, vinderens sprint-rang, vinderens rolle, hvor ofte en hjælper på sprint-kaptajnens hold vinder foran ham (holdordrernes lead-out-markering er ikke i scorecardet), og hvor godt top 10 følger sprint-evnen. Pr. terræn og løbsgruppe. Tallene står kun på det private kort.
+
+## Løbsgrupper (ejer 26/10, #7214)
+
+Alle løb testes i fire grupper med hver sine krav: **endagsløb**, **monumenter**, **korte etapeløb** (2-14 etaper) og **Grand Tours** (15+). Et monument er et endagsløb med `race_class` `Monuments`. Monumenterne har deres egen række i udbrudssejrene pr. løbsgruppe (G1'/G14-afsnittet; endagsløbene er derefter uden monumenter, og de eksisterende bånd for `one_day`, `stage_race` og `gt` er uændrede) og i et G17/S0-udsnit pr. gruppe. v3-gaterne (G16-G19, G2 på flad) dømmer uændret, med monumenter som endagsløb.
+
+Kortet og `testport.md` har sektionen **"Løbsgrupper (ejer 26/10)"** med seks kontroller, dømt for begge revisioner:
+
+- **Monumenter, udbrud:** andelen af monumenternes vejetaper (× seeds) som udbruddet vinder.
+- **Favoritsejre:** hvor tit en favorit vinder. Favorit = en af startfeltets 3 stærkeste ryttere til netop ruten, målt med spillets egen egnethed (`raceAutopick.suitabilityScore`: rytterens evner mod etapernes `demand_vector`), som assistenten også bruger til udtagelse og kaptajnvalg. Endagsløb og monumenter: løbets etape, mål = vinderen. Samlet klassement i korte etapeløb og Grand Tours: etaperne uden de flade (som assistentens kaptajnvalg), mål = klassementets vinder. Etapesejre i etapeløb (korte og GT samlet): hver etapes egen `demand_vector`, mål = etapens vinder; holdtidskørsel tæller ikke. Evnerne er startlistens, ikke dagsformen under `--track-fatigue`.
+
+Båndene står kun i den private tærskelfil under `raceGroupBands` (`monumentBreakawayWinShare` og `favouriteWinShare.{monument, one_day, stage_race_gc, gt_gc, stage_race_stage}`, hard rule 17). Mangler et bånd, vises dommen som "-", ikke FAIL. Gaten **blokerer** kun en kandidat efter `s5_profiles_v3` (ejer: "Mål nu, blokér fra v3.1"); `s5_profiles_v3` selv og ældre revisioner dømmes til orientering. Når den blokerer, er den fail closed som v3-gaterne: FAIL, MANGLER (gruppen er kørt, men et løb mangler `cache.json`, favoritter eller vinder) og "-" (bånd mangler) giver "LOEBSGRUPPE-GATE BLOKERET" og exit 1; en gruppe uden løb i kørslen er N/A. Kode: `lib/raceGroupGates.mjs`, test: `lib/raceGroupGates.test.mjs`.
+
 ## Hvad den gør
 
 1. **Kommende løb:** ikke afsluttede løb uden kørt etape (dem en ny revision binder til), eller en eksport/id-liste.
@@ -76,12 +106,26 @@ Testporten og Tour-gennemtesten kører som udgangspunkt uden rytternes form: eks
 3. **S5-motor-bench:** `s5MotorBench` (`--scope=all`) under begge revisioner.
 4. **Ét kort:** `testport.md`, `testport.json` og `testport.png` (overblikket; kræver Playwright i `frontend/node_modules`, ellers springes PNG over).
 
+**Løbsgrupper (#6804 P7):** kortet har et afsnit med udbrudssejre pr. løbsgruppe (Grand Tour, etapeløb, endagsløb, monumenter fra #7214) × terræn og samlet pr. gruppe (gate G1' og G14), og tidsgab i korte etapeløb (2-4 og 5-8 etaper: slutklassementets nr. 10 og vindermarginen, median og hale; gate G12). Båndene står kun i den private tærskelfil (`breakawayWinShareByGroup`, `breakawayGroupTotalBands`, `shortStageRaceGapBands`); mangler et bånd, er dommen "-". Scorecardet (`tourScorecard.summarizeTour`) dømmer aldrig et kort etapeløb mod Grand Tour-båndene: tourDryRun alene giver N/A, og testport-kortet dømmer hvert kort løbs nr. 10 og vindermargin mod de private bånd (`withShortRaceGapBands`), så de også tæller i dommene pr. måling.
+
+**Klassementsjagten (#6804 G11):** scorecardet markerer pr. vejetape om klassementsjagten hentede udbruddet i første del af etapen (en indhentning inden for motorens egen "første del", hvor et af de jagende hold havde en igangværende klassementsreaktion i filmen), og om der var yo-yo (hentet, nyt udbrud, hentet igen). Kortet viser andelene for Grand Tours og etapeløb side om side. Lofterne er private og valgfrie (`gcChaseCatchBands` i tærskelfilen); uden loft er dommen "-". Kode: `tourScorecard.gcChaseCatchFacts`, `motorTestportReport.aggregateRaceGroups`.
+
+**Forspring (#6804 G2):** hver vejetape i kortets json har udbruddets største forspring (`breakawayMaxLead`, sekunder) og om motoren meldte "intet hold ville jage" (`breakawayUnchased`, P2's `breakaway_unchased`). Forspringet måles i motorens segment-snapshots mod feltet: den forreste gruppe uden for udbruddet med en reel andel af rytterne; er feltet splittet så ingen gruppe er så stor (fx på slutstigningen), tæller snapshottet ikke. Zonerne (mellemzone, øvre zone, hård grænse) står privat; dommen (median i mellemzonen, andel over den øvre zone, nul over den hårde grænse, og over den øvre zone kun med "intet hold ville jage") laves i dag uden for kortet fra json'en. Under `s5_profiles_v3` gælder G2 for hold med *effektiv* interesse (interesse og ryttere at jage med): "intet hold ville jage" kan også være årsagen `no_riders` (klatre-jagten, P2.4), som rapporteres for sig. Kode: `tourScorecard.breakawayLeadFacts`.
+
+**Sammensætning (#6804 G3, måling):** hver vejetape har morgenudbruddets antal klassementsfavoritter (klassementets forreste før etapen; på 1. etape startfeltets bedste på klassementsevne), etapefavoritter (startfeltets bedste på dagens afslutnings-evne) og flest ryttere fra samme hold (`breakawayGcFav`, `breakawayStageFav`, `breakawayMaxSameTeam`). Definitionerne er arbejdsvalg, lofterne private; dommen laves i dag uden for kortet. Kode: `tourScorecard.breakawayCompositionFacts`.
+
+**Pointtrøjen (#2757 S0, måling):** hver vejetape har vinderens plads på sprint-evne i startfeltet (`winnerSprintRank`, 1 = feltets bedste sprinter), og hvert seed af et etapeløb har pointtrøjens vinder ud fra motorens egne passage-point (`pointsJersey`: rolle, sprint-plads og om det er klassementsvinderen). Dermed kan pointtrøjens vinder-type (sprinter, klassementsvinder, andre) og hvem der vinder de flade spurtetaper opgøres pr. løbsgruppe. Ingen gate og intet bånd endnu (G18 er privat og ikke fastlagt); tallene står privat. Leadout-effekten måles kun når feltet har leadout-ordrer. Kode: `tourScorecard.sprintRankIn`, `tourScorecard.pointsJerseyWinner`.
+
 Kortet viser kandidat og baseline side om side: scorecard-mål (domme pr. måling), hårde gates (mærkning, minuttab på 0 km, flad udbrudssejr med minutter, GC-top-10 i udbrud, hold der jagter egne, ramt loft), udbrud pr. terræn og profiltype, favorit-udbrudssejre (kaptajn vinder fra udbruddet), GC-vinder fra udbrud, tidlige indhentninger (og om et nyt udbrud gik), bench-gatens dom pr. afslutning og en tabel pr. løb sorteret efter størst forværring.
 
 ## Tal
 
 Hard rule 17: kortet indeholder målte tal og løbsnavne og skrives kun til `balance-internals/` (default `balance-internals/<issue>/<dato>/`, gitignoreret); scriptet afviser en `--out` uden for en `balance-internals`-mappe. Et forventet løb uden læsbart scorecard eller en fejlet opgave står som advarsel på kortet og giver exit 1. Repoet har værktøjet og definitionerne, aldrig tallene. Testene bruger syntetiske fixtures.
 
+#6912: standardopslaget bruger først worktreeets private tærskelfil og derefter den eksisterende fil i OneDrive-context. `--thresholds` vinder fortsat. G2F tæller hver flad/rullende etape mod `v3Gates.G2F.upperZoneSeconds` og `hardMaxSeconds`; manglende delmålinger blokerer. `breakawayLeadMeasured` skelner observeret intet udbrud fra snapshots uden et målbart felt. Ingen tærskler kopieres ind i repoet.
+
 Balance-tærskler kortet bruger (fx hvornår en udbrudssejr har "stort forspring") ligger i en privat fil, `balance-internals/motor-testport-thresholds.json` (eller `--thresholds=<fil>`), aldrig i koden. Mangler filen, vises de målinger som "-". En `--out`-mappe tilhører én løbsudvælgelse: genoptagelse med samme løb er ok, et andet sæt afvises.
 
 Kode: `backend/scripts/dev/motorTestport.mjs` (kørsel), `backend/scripts/dev/lib/motorTestportReport.mjs` (samling, ren), `backend/scripts/dev/lib/motorTestportInputs.mjs` (syntetisk felt og foreslåede ruter, #6909), `tourScorecard.testportStageFacts` (etapens vinder, udbrudsryttere og tidlig indhentning).
+
+G2F bruger motorens eksisterende `GROUP_CLOCK_CONTACT_EPSILON` ved begge grænser, så flydende-punkt-lighed ikke tælles som et ekstra tidsforspring. Det ændrer ingen private bånd; reelle overskridelser testes fortsat.

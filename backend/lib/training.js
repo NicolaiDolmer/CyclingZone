@@ -166,6 +166,15 @@ export function focusAbilityWeight(focus, ability) {
   return Number.isFinite(w) ? w : 1;
 }
 
+// #5319: vægten for én evne i et PROGRAM. Et program kan bære sine egne vægte
+// (`focusWeights`, lagt på af trainingCatalogV3.applyTrainingCatalog når flaget
+// training_catalog_v3 er on); uden dem er svaret præcis focusAbilityWeight,
+// altså bit-identisk med før.
+export function programAbilityWeight(program, ability) {
+  const w = program?.focusWeights?.[ability];
+  return Number.isFinite(w) ? w : focusAbilityWeight(program?.focus, ability);
+}
+
 // Summen af et fokus' vægte — "hvor meget dag" pakken indeholder i alt.
 // Bruges af invariant-testen og af balance-scripts, aldrig af motoren.
 export function focusWeightSum(focus) {
@@ -341,9 +350,11 @@ export function partitionSmartBulkTargets({ riderIds, plannedRiderIds = [] } = {
 //                tier, men IKKE nul; se trainabilityChipBlockedTitle)
 //   "limited"  — resten (neutral blanding, factor === neutralFactor, ~45%)
 // Ukendt/manglende primærtype → alt "limited" (sikker neutral, ingen falsk positiv/negativ).
-export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH_PROGRESSION_CONFIG) {
+// #5319: `focuses` er valgfri (default = dagens TRAINING_FOCUSES, bit-identisk).
+// Routes sender V3_TRAINING_FOCUSES når training_catalog_v3 er åben for viewer.
+export function focusTrainability(primaryType, secondaryType = null, cfg = YOUTH_PROGRESSION_CONFIG, focuses = TRAINING_FOCUSES) {
   const out = {};
-  for (const [focusKey, abilities] of Object.entries(TRAINING_FOCUSES)) {
+  for (const [focusKey, abilities] of Object.entries(focuses)) {
     if (primaryType == null) {
       out[focusKey] = "limited";
       continue;

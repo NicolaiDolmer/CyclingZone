@@ -339,7 +339,7 @@
       "expiring": "Expire cette saison",
       "season": "Expire après la saison {season}",
       "atCap": "À la limite",
-      "atCapHint": "Court déjà 3 saisons à l'avance. Pourra être prolongé à nouveau au changement de saison."
+      "atCapHint": "Court déjà aussi loin que permis. Pourra être prolongé à nouveau au changement de saison."
     },
     "bar": {
       "none": "Coche les coureurs que tu veux prolonger.",
@@ -365,6 +365,30 @@
     "loadErrorBody": "Rien n'est perdu. Tes contrats sont inchangés.",
     "retry": "Réessayer",
     "emptyTitle": "Recrute des coureurs pour gérer leurs contrats",
-    "emptyBody": "Tes coureurs apparaissent ici, regroupés selon la fin de leur contrat."
+    "emptyBody": "Tes coureurs apparaissent ici, regroupés selon la fin de leur contrat.",
+    "buyback": {
+      "title": "Récupère tes coureurs",
+      "intro": "Ces coureurs ont quitté ton équipe au changement de saison sans l'alerte de contrat que tu aurais dû recevoir. Engage-les à nouveau sous 7 jours : salaire normal, 1 saison, sans prime de signature.",
+      "squad": "Effectif",
+      "deadline": "Jusqu'au",
+      "sign": "Engager à nouveau",
+      "signAria": "Engager {name} à nouveau",
+      "done": "{name} est de retour dans ton équipe.",
+      "squads": {
+        "senior": "Senior",
+        "u23": "U23",
+        "junior": "Junior"
+      },
+      "errors": {
+        "buyback_not_eligible": "Non concerné",
+        "buyback_rider_not_free": "Engagé par une autre équipe",
+        "buyback_rider_retired": "Retraité",
+        "buyback_rider_on_auction": "Aux enchères",
+        "buyback_expired": "Les 7 jours sont passés",
+        "buyback_squad_full": "Ton effectif est complet",
+        "buyback_no_team": "Il te faut une équipe",
+        "buyback_failed": "Impossible de l'engager à nouveau. Réessaie."
+      }
+    }
   }
 }

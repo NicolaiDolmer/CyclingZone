@@ -6,6 +6,12 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { acquireWave } from './wave-policy.mjs';
 
+// #7336: fixturen bruger issue #1; byggestoppet slaas fra for denne proces.
+const BUILD_STOP_OFF = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cz-build-stop-off-')), 'build-stop.json');
+fs.writeFileSync(BUILD_STOP_OFF, JSON.stringify({ active: false, since: '2026-10-29', areaCap: 3, finishList: [], cleanupList: [], brandList: [] }));
+process.env.CZ_BUILD_STOP_FILE = BUILD_STOP_OFF;
+process.env.CZ_BUILD_STOP_LOG = path.join(path.dirname(BUILD_STOP_OFF), 'brand-log.jsonl');
+
 test('full Claude hook requires registered admission and permits only its owner to resume', { skip: process.platform === 'win32' ? 'POSIX gh fixture; Windows hook smoke covered by test-guard-agent-spawn.sh' : false }, async t => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'wave-hook-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));

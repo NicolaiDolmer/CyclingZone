@@ -49,8 +49,18 @@
 // bjergetape koster som fladt. Segment-terraener der ikke staar i tabellen
 // beholder den faelles vaerdi, saa bjerg-armen er uroert.
 
+//
+// #6641 (KUN s5_profiles_v3, slukket): de fem trin har egne priser under v3, og
+// climbGapEffortFactor nedenfor lader indsatsen virke paa hullet paa stigningen.
+// Ordenen grupetto < save < normal < protect < all_out og all_out-tabellen pr.
+// segment-terraen er uaendrede. Alle aeldre revisioner beholder
+// EFFORT_COST_EXTRA_TUNING bit-identisk. Retningerne er laast i effortCost.test.ts,
+// segmentLoop.effortCost.test.ts og backend/scripts/dev/effortLevels6641.test.mjs;
+// maalinger og begrundelser er private (hard rule 17, balance-internals/6641/).
+
 import type { EffortLevel, SegmentKind } from "../types.ts";
-import { EFFORT_COST_EXTRA_TUNING } from "../tuning.ts";
+import { EFFORT_COST_EXTRA_TUNING, RACE_V4_TUNING } from "../tuning.ts";
+import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 
 /**
  * Tuning-formen EFFORT_COST_EXTRA_TUNING (tuning.ts) implementerer. Holdt her
@@ -67,9 +77,154 @@ export type EffortCostTuning = {
   // tabellen (aeldre tests, harness-overrides) falder tilbage paa den faelles
   // vaerdi ovenfor.
   demandMultiplierAllOutBySegmentKind?: Readonly<Partial<Record<SegmentKind, number>>>;
+  // #7280 (kun den slukkede pakke): tabellens gulv. Udeladt = protect-trinnet (strengt over).
+  demandMultiplierAllOutFloor?: number;
 };
 
 export { EFFORT_COST_EXTRA_TUNING as EFFORT_COST_TUNING };
+
+// #6641: den kalibrerede all_out-vaerdi op ad en stigning. Flade og rullende
+// segmenter afledes som foer (#4914): samme andel af gruppens tempo som
+// stigningen giver, regnet af terraenernes baseDemand.
+const CALIBRATED_ALL_OUT_6641 = 1.11;
+function calibratedAllOutMatchingClimb(kind: SegmentKind): number {
+  const demand = RACE_V4_TUNING.terrain.baseDemand;
+  return CALIBRATED_ALL_OUT_6641 * (demand.climb / demand[kind]);
+}
+
+/** #6641: de fem trins pris under s5_profiles_v3 (deep-frosset). Se filhovedet. */
+export const EFFORT_COST_TUNING_6641: Readonly<EffortCostTuning> = Object.freeze({
+  demandMultiplierGrupetto: 0.5,
+  demandMultiplierSave: 0.9,
+  demandMultiplierNormal: 1.0,
+  demandMultiplierProtect: 1.05,
+  demandMultiplierAllOut: CALIBRATED_ALL_OUT_6641,
+  demandMultiplierAllOutBySegmentKind: Object.freeze({
+    flat: calibratedAllOutMatchingClimb("flat"),
+    rolling: calibratedAllOutMatchingClimb("rolling"),
+  }) as Readonly<Partial<Record<SegmentKind, number>>>,
+});
+
+// #6641/#7280 (SLUKKET, ejer-go kraeves foer taend): Alt ud efter ejerens design 27/10
+// (spec docs/superpowers/specs/2026-10-27-6641-alt-ud-design.md). s5_profiles_v3 er
+// den AKTUELLE revision (#7237), saa pakken kan ikke ligge bag revisionen alene;
+// slukket er motoren bit-identisk med main. Taend = ejerens ordrette go i en egen PR.
+//   1+2. Gevinsten: paa den afgoerende stigning (allOutCrack6641.ts), i finalen
+//        (effortFinaleTerm, uaendret) og i enkeltstarten (allOutTimeTrialBonus7280).
+//        Paa transport-terraen koerer alt ud som normal: ingen pris, ingen gevinst.
+//   3.   Prisen: traethed der hober sig op (conditionModelV2.stageLoadV2).
+//   4.   Knaek: med lav reserve kan rytteren blive sat paa den afgoerende stigning.
+//   5.   Motor-events all_out_gain / all_out_cracked (kun det motoren faktisk gjorde).
+export const ALL_OUT_7280_ACTIVE: boolean = true; // ejer-go 27/10 ("Ja, taend foer 11"), #6641
+
+/** Knapperne bag pakken (balance, hard rule 17: maalinger kun i balance-internals/). */
+export type AllOut7280Tuning = {
+  transportDemand: number; // all_out-kravet paa flad/rullende/nedkoersel (1 = som normal)
+  climbDemand: number; // all_out-kravet op ad en stigning og paa brosten
+  gainLoss: number; // relativt tab taget af hullet paa den afgoerende stigning ved fuld evne og reserve
+  levelPower: number; // evne-vaegt: (1 - underskud til gruppens bedste) ^ levelPower
+  reserveWprimeWeight: number; // W'-andelens vaegt i reserven (resten er dagens friskhed alene)
+  crackReserve: number; // under denne reserve (0-1) vokser risikoen for at knaekke
+  crackMaxProbability: number; // risikoen over hele den afgoerende stigning ved tom reserve
+  crackLoss: number; // relativt tab lagt OVEN I hullet naar rytteren knaekker
+  fatigueLoad: number; // condition v2: alt ud-dagens belastnings-faktor (ogsaa i enkeltstart)
+  timeTrialGain: number; // enkeltstart: tillaeg til kapaciteten (evne-enheder, som dagsformen) ved evne 99
+};
+
+export const ALL_OUT_7280_TUNING: Readonly<AllOut7280Tuning> = Object.freeze({
+  transportDemand: 1.0,
+  climbDemand: 1.0,
+  gainLoss: 0.25,
+  levelPower: 3,
+  reserveWprimeWeight: 0.3,
+  crackReserve: 0.7,
+  crackMaxProbability: 1.0,
+  crackLoss: 0.15,
+  fatigueLoad: 2.0,
+  timeTrialGain: 0.15,
+});
+
+// Kun dev-benches (effortLevels6641.mjs, tacticsEffects7266.mjs) maaler med kontakten
+// taendt og med kandidat-knapper. Produktionskode kalder aldrig setteren.
+let benchOverride7280: { active: boolean; tuning: Readonly<AllOut7280Tuning> } | null = null;
+/** KUN dev-benches: taend/sluk pakken og saet kandidat-knapper. `null` nulstiller. */
+export function setAllOut7280ForBench(override: { active: boolean; tuning?: Partial<AllOut7280Tuning> } | null): void {
+  benchOverride7280 = override ? { active: override.active === true, tuning: Object.freeze({ ...ALL_OUT_7280_TUNING, ...(override.tuning ?? {}) }) } : null;
+}
+/** Er pakken taendt (kontakten, eller en dev-bench)? Gaelder kun under s5_profiles_v3. */
+export function allOut7280Active(): boolean {
+  return benchOverride7280 ? benchOverride7280.active : ALL_OUT_7280_ACTIVE;
+}
+/** Knapperne der gaelder lige nu. */
+export function allOut7280Tuning(): Readonly<AllOut7280Tuning> {
+  return benchOverride7280?.tuning ?? ALL_OUT_7280_TUNING;
+}
+/** Er pakken i kraft for et loeb paa `revision`? */
+export function isAllOut7280On(revision: unknown): boolean {
+  return allOut7280Active() && isS5ProfilesV3OrLater(revision);
+}
+
+/**
+ * #7280 (slukket): de fem trins pris under s5_profiles_v3 med kontakten taendt. De
+ * fire andre trin er praecis #6641's. all_out koerer som normal paa transport-
+ * terraenet (ejer 27/10 punkt 2: naesten intet paa flade transportstraekninger) og
+ * betaler sin pris i traetheden bagefter (punkt 3), ikke i reserven undervejs.
+ */
+export function effortCostTuning7280(t: Readonly<AllOut7280Tuning> = allOut7280Tuning()): EffortCostTuning {
+  return {
+    demandMultiplierGrupetto: EFFORT_COST_TUNING_6641.demandMultiplierGrupetto,
+    demandMultiplierSave: EFFORT_COST_TUNING_6641.demandMultiplierSave,
+    demandMultiplierNormal: EFFORT_COST_TUNING_6641.demandMultiplierNormal,
+    demandMultiplierProtect: EFFORT_COST_TUNING_6641.demandMultiplierProtect,
+    demandMultiplierAllOut: t.climbDemand,
+    demandMultiplierAllOutBySegmentKind: { flat: t.transportDemand, rolling: t.transportDemand, descent: t.transportDemand },
+    demandMultiplierAllOutFloor: EFFORT_COST_TUNING_6641.demandMultiplierNormal,
+  };
+}
+
+/**
+ * #7280 (slukket): enkeltstartens gevinst. Kapaciteten faar timeTrialGain x
+ * (evne/99) lagt til (som dagsformen): alle vinder, mest de staerke (ejer 27/10 punkt 1). 0 for alle andre trin,
+ * og naar pakken ikke er i kraft (bit-identisk).
+ */
+export function allOutTimeTrialBonus7280(effort: EffortLevel | undefined, timeTrialAbility: number, on: boolean): number {
+  if (!on || effort !== "all_out") return 0;
+  const level = Number.isFinite(timeTrialAbility) ? Math.max(0, Math.min(99, timeTrialAbility)) / 99 : 0;
+  return allOut7280Tuning().timeTrialGain * level;
+}
+
+/** #6641: revisionen der baerer kalibreringen (s5_profiles_v3 og senere, slukket). */
+export function isEffortCalibration6641Revision(revision: unknown): boolean {
+  return isS5ProfilesV3OrLater(revision);
+}
+
+/**
+ * #6641 (ejer 25/10, "som i virkeligheden", KUN s5_profiles_v3, slukket): GEVINSTEN
+ * paa den afgoerende stigning. Under tidsmodellen fra official_times-linjen afgoeres
+ * hullet paa en topankomst af rytterens eget underskud (evne + reserve,
+ * timeModel.climbSplitGapSeconds), ikke af split-scoren, saa stignings-lettelsen fra
+ * #5580 (climbScoreRelief x rest-reserve) naaede aldrig hullet: en hoejere indsats
+ * kunne kun koste. Her ganges den SAMME faktor paa underskuddet bag hullet (#7280,
+ * slukket: all_out faar i stedet sin gevinst i sekunder, allOutCrack6641.ts): all_out
+ * graver dybere og taber mindre tid paa dagen (betalt med reserven undervejs og
+ * traetheden bagefter), save giver slip og taber lidt. Normal er praecis 1.
+ * Kaldes med hook-kontekstens s5ProfilesV3-flag (sat af segmentLoop via
+ * isS5ProfilesV3OrLater). Alle aeldre revisioner: 1 (bit-identisk).
+ */
+export function climbGapEffortFactor(s5ProfilesV3: boolean, effortScoreFactor: number): number {
+  if (s5ProfilesV3 !== true || !Number.isFinite(effortScoreFactor)) return 1;
+  return Math.max(0, effortScoreFactor);
+}
+
+/**
+ * #6641: prisen for et loeb bundet til `revision`. Aeldre revisioner: uaendret tuning.
+ * #7280: `allOut7280` (default kontakten, slukket) vaelger #7280-prisen under
+ * s5_profiles_v3; parameteren findes kun saa testene kan laase begge.
+ */
+export function effortCostTuningFor(revision: unknown, allOut7280: boolean = allOut7280Active()): EffortCostTuning {
+  if (!isEffortCalibration6641Revision(revision)) return EFFORT_COST_EXTRA_TUNING;
+  return allOut7280 ? effortCostTuning7280() : EFFORT_COST_TUNING_6641;
+}
 
 /**
  * all_out-multiplikatoren for et givet segment-terraen (#4914, #5580).
@@ -84,6 +239,11 @@ export function allOutDemandMultiplier(
 ): number {
   const byKind = segmentKind ? tuning.demandMultiplierAllOutBySegmentKind?.[segmentKind] : undefined;
   if (typeof byKind === "number" && Number.isFinite(byKind) && byKind > tuning.demandMultiplierProtect) {
+    return byKind;
+  }
+  // #7280 (slukket pakke): transport-terraenet maa ligge paa normal, aldrig under.
+  const floor = tuning.demandMultiplierAllOutFloor;
+  if (typeof byKind === "number" && Number.isFinite(byKind) && typeof floor === "number" && byKind >= floor) {
     return byKind;
   }
   return tuning.demandMultiplierAllOut;

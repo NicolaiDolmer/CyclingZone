@@ -19,6 +19,7 @@
 import { useTranslation } from "react-i18next";
 import { Section, Button, Toggle, StarIcon } from "../ui";
 import { ChevronDownIcon } from "../ui/icons/index.jsx";
+import { sessionI18nKey } from "../../lib/trainingDayTypes.js"; // #5319
 import { programName } from "../../lib/trainingPrograms.ts";
 
 export default function AssistantSuggestionsPanel({
@@ -99,7 +100,7 @@ export default function AssistantSuggestionsPanel({
                   </div>
                   <p className="mt-0.5 text-2xs text-cz-3">
                     {t("assistantSuggestions.suggestionLine", {
-                      session: t(`dayPanel.session_${row.focus}`),
+                      session: t(sessionI18nKey("dayPanel.session", row.focus)),
                       intensity: tRider(`training.intensity_${row.intensity}`),
                     })}
                   </p>

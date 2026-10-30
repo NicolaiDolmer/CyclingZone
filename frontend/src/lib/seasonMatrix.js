@@ -70,9 +70,11 @@ export function emptyRaceDraft() {
 }
 
 /** entries: [{raceId, riderId, raceRole}] (GET /races/selection/season) → draftByRace. */
-export function buildDraftsFromEntries(entries) {
+export function buildDraftsFromEntries(entries, withdrawnRaceIds = []) {
+  const withdrawn = new Set(withdrawnRaceIds);
   const byRace = new Map();
   for (const e of entries || []) {
+    if (withdrawn.has(e.raceId)) continue;
     if (!byRace.has(e.raceId)) byRace.set(e.raceId, emptyRaceDraft());
     const d = byRace.get(e.raceId);
     d.rider_ids.push(e.riderId);
@@ -403,7 +405,7 @@ export function buildSaveError(body, races, riders) {
     const riderName = c.rider_name ?? riders.find((r) => r.id === c.rider_id)?.name ?? "?";
     // db_conflict er allerede navngivet af serveren (c.race_name); peer_conflict
     // leverer kun c.conflict_race_id — slås op mod de allerede indlæste races[].
-    const conflictName = c.race_name ?? races.find((r) => r.id === c.conflict_race_id)?.name ?? "?";
+    const conflictName = c.race_name ?? c.bound_race_name ?? races.find((r) => r.id === c.conflict_race_id)?.name ?? "?";
     return { code: "selection_rider_bound_named", raceId, raceName, params: { rider: riderName, race: conflictName } };
   }
   if (code === "selection_bulk_too_large") {

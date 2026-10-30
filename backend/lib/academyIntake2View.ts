@@ -9,11 +9,12 @@
 //     træningsløbsdage med rytteren har givet (punkt 2), ikke som fuldt kendt.
 //   • Profil-blokken: niveau, låste felter, aktiv og ventende profil (punkt 4-5).
 import { buildTypePrognosisBands } from "./scoutingReport.js";
+import { displayPotentialBand } from "./potentialDisplayBand.js";
 import { loadScout } from "./scoutAssignmentService.js";
 import { loadTrainingStaffContext } from "./trainingStaffContext.js";
 import { ageForSeason } from "./riderSeasonAge.js";
 import { REGISTRY_ABILITY_KEYS } from "./abilityRegistry.js";
-import { knowledgeStage, learningSpeed, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
+import { KNOWLEDGE_DAYS, knowledgeStage, learningSpeed, loadPullSignedRiderIds, loadTrainingDaysOnTeam } from "./academyProspectKnowledge.ts";
 import type { KnowledgeStageKey } from "./academyProspectKnowledge.ts";
 import { loadAcademyProfileState, profileOptions } from "./academyIntakeProfile.ts";
 import type { ResolvedProfile } from "./academyIntakeProfile.ts";
@@ -37,7 +38,7 @@ export type RosterPrognosis = {
   stage: KnowledgeStageKey;
   daysOnTeam: number;
   nextStageDays: number | null;
-  band: { role: string; lo: number; hi: number | null } | null;
+  band: { role: string; lo: number; hi: number | null; bestRole?: true } | null;
 };
 export type Intake2View = {
   intake: IntakeItem[];
@@ -84,7 +85,7 @@ export function maskPullCandidate<T extends IntakeItem | null | undefined>(item:
 }
 
 /** Akademirytterens prognose på holdets nuværende kendskabs-niveau. */
-export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, seasonNumber, teamId, scout }: {
+export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, seasonNumber, teamId, scout, bestRole = false }: {
   rider: RosterRider;
   abilities: Row | null | undefined;
   potRow: PotentialeRow | null | undefined;
@@ -93,6 +94,7 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
   seasonNumber: number;
   teamId: string;
   scout?: unknown;
+  bestRole?: boolean;
 }): RosterPrognosis {
   const stage = knowledgeStage(daysOnTeam, speed);
   const out: RosterPrognosis = { stage: stage.stage, daysOnTeam, nextStageDays: stage.nextStageDays, band: null };
@@ -112,16 +114,20 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
     // (DEFAULT_SCOUT). loadScout-rækken har samme form, så den gives videre uændret.
     scout: scout as Parameters<typeof buildTypePrognosisBands>[0]["scout"],
   });
-  const band = (bands as { key: string; progLo: number | null; progHi: number | null }[])
-    .find((b) => b.key === potRow.primary_type);
-  if (band && band.progLo != null) out.band = { role: band.key, lo: band.progLo, hi: band.progHi };
+  // #6853: samme rolle-regel som alle andre flader (potentialDisplayBand.js).
+  const band = displayPotentialBand(bands, potRow.primary_type, { bestRole }) as
+    { key: string; progLo: number | null; progHi: number | null } | null;
+  if (band && band.progLo != null) {
+    out.band = { role: band.key, lo: band.progLo, hi: band.progHi, ...(bestRole ? { bestRole: true as const } : {}) };
+  }
   return out;
 }
 
-export async function buildIntake2View(supabase: Db, { teamId, roster, intake, seasonNumber, now = new Date() }: {
+export async function buildIntake2View(supabase: Db, { teamId, roster, intake, seasonNumber, now = new Date(), bestRole = false }: {
   teamId: string;
   roster: RosterRider[] | null | undefined;
   intake: IntakeItem[] | null | undefined;
+  bestRole?: boolean;
   seasonNumber: number;
   now?: Date | string | number;
 }): Promise<Intake2View> {
@@ -132,11 +138,12 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
     .map((item) => item.riderId ?? item.rider?.id)
     .filter(Boolean) as string[];
   const abilityIds = [...new Set([...riderIds, ...pullIds])];
-  const [profileState, staffCtx, scout, daysByRider, potRes, abRes] = await Promise.all([
+  const [profileState, staffCtx, scout, daysByRider, pulledIds, potRes, abRes] = await Promise.all([
     loadAcademyProfileState(supabase, { teamId, now }),
     loadTrainingStaffContext(supabase, teamId),
     riderIds.length > 0 ? loadScout(teamId, supabase) : null,
     loadTrainingDaysOnTeam(supabase, { teamId, riderIds }),
+    loadPullSignedRiderIds(supabase, { teamId, riderIds }),
     riderIds.length > 0
       ? supabase.from("riders").select("id, potentiale, birthdate, primary_type, secondary_type").in("id", riderIds).limit(riderIds.length)
       : { data: [] },
@@ -158,11 +165,13 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
         rider,
         abilities: abById.get(rider.id),
         potRow: potById.get(rider.id),
-        daysOnTeam: daysByRider.get(rider.id) ?? 0,
+        // #7195: ryttere holdet havde før Optag 2.0, er fuldt kendt (samme som den normale scoutrapport).
+        daysOnTeam: pulledIds.has(rider.id) ? (daysByRider.get(rider.id) ?? 0) : Math.max(KNOWLEDGE_DAYS.final, daysByRider.get(rider.id) ?? 0),
         speed,
         seasonNumber,
         teamId,
         scout,
+        bestRole,
       }),
     })),
     profile: {

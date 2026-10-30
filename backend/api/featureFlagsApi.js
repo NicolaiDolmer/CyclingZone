@@ -29,7 +29,8 @@
 import express from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { evaluateFlagStage } from "../lib/featureStage.js";
-import { PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
+import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
+import { DEVELOPMENT_CURVE_B_FLAG_KEY, curveBParamsFromEnv } from "../lib/developmentCurveBFlag.ts";
 
 /**
  * { <noegle>: boolean } for hver noegle i allowlisten. En fejlet batch lukker
@@ -38,8 +39,11 @@ import { PLAYER_VISIBLE_FLAG_KEYS } from "../lib/stageFlagCatalog.js";
  * #6103: hent allowlisten i ét opslag. Ingen delt cache: ejerens flag-flips
  * ses ved næste request. Databasefejl lukker alle flag og rapporteres særskilt
  * fra et bevidst off; en manglende række er stadig off.
+ *
+ * #5319: `onDegraded` kaldes når batchen fejlede, så endpointet kan sige at
+ * svaret er "ukendt", ikke "slukket". Værdierne er de samme (alt off).
  */
-export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {} } = {}) {
+export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {}, env = process.env, onDegraded = () => {} } = {}) {
   const keys = PLAYER_VISIBLE_FLAG_KEYS;
   let stages;
   try {
@@ -49,9 +53,18 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
     stages = new Map(data.map(({ key, value }) => [key, value]));
   } catch (error) {
     stages = new Map();
+    onDegraded();
     reportError(error, { tags: { route: "/feature-flags", read: "app_config" } });
   }
-  return Object.fromEntries(keys.map((key) => [key, evaluateFlagStage(stages.get(key), { isBetaTester })]));
+  // #3564: et binaert flag evalueres som for en anonym viewer (kun "on" er true).
+  const flags = Object.fromEntries(keys.map((key) => [key, evaluateFlagStage(stages.get(key), {
+    isBetaTester: PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes(key) ? false : isBetaTester,
+  })]));
+  // Codex #7192: kurve B er kun reelt taendt, naar motoren ogsaa har gyldige params
+  // (loadDevelopmentCurveB falder ellers tilbage til dagens model). Hjaelp foelger
+  // motoren, saa teksten aldrig beskriver en kurve der ikke koerer.
+  if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !curveBParamsFromEnv(env)) flags[DEVELOPMENT_CURVE_B_FLAG_KEY] = false;
+  return flags;
 }
 
 /**
@@ -95,11 +108,14 @@ export function createFeatureFlagsRouter({ supabase, requireAuth, isViewerBetaTe
   async function sendFlags(req, res, { authenticated }) {
     try {
       const isBetaTester = authenticated ? (await isViewerBetaTester(req)) === true : false;
-      const flags = await readPlayerFeatureFlags(supabase, { isBetaTester, reportError });
+      let degraded = false;
+      const flags = await readPlayerFeatureFlags(supabase, { isBetaTester, reportError, onDegraded: () => { degraded = true; } });
       // Svaret afhaenger af viewerens beta-status og af et flag ejeren kan
       // flippe naar som helst: ingen cache, heller ikke i browseren.
       res.set("Cache-Control", "no-store");
-      res.json({ flags });
+      // #5319: `degraded` = DB-laesningen fejlede; klienten behandler svaret som
+      // ukendt (samme alt-off), saa en aaben fane ikke skifter katalog paa en fejl.
+      res.json(degraded ? { flags, degraded: true } : { flags });
     } catch (error) {
       fail(error, req, res);
     }

@@ -89,5 +89,60 @@
     "editSquad": "Edit squad",
     "openRace": "Open race",
     "terrainCount": "{type} ×{count}"
+  },
+  "view": {
+    "label": "View",
+    "calendar": "Calendar",
+    "table": "Table"
+  },
+  "table": {
+    "label": "Season table",
+    "search": "Search races",
+    "type": "Race type",
+    "allTypes": "All race types",
+    "typeOption": {
+      "single": "One-day races",
+      "stage_race": "Stage races"
+    },
+    "rowType": {
+      "single": "One-day race",
+      "stage_race": "Stage race"
+    },
+    "class": "Class",
+    "allClasses": "All classes",
+    "terrain": "Terrain",
+    "allTerrain": "All terrain",
+    "more": "More filters",
+    "needsSquadOnly": "Only races that need a squad",
+    "count": "{count, plural, one {# race} other {# races}}",
+    "cols": {
+      "race": "Race",
+      "dates": "Dates",
+      "start": "Start",
+      "terrain": "Terrain",
+      "stages": "Stages",
+      "class": "Class",
+      "squad": "Your squad",
+      "squadShort": "Squad",
+      "open": "Open"
+    },
+    "openRace": "Open {name}",
+    "squad": {
+      "selected": "Squad ready",
+      "missing": "Needs squad",
+      "gtBound": "Grand Tour"
+    },
+    "squadShort": {
+      "selected": "Ready",
+      "missing": "Needed",
+      "gtBound": "GT"
+    },
+    "empty": {
+      "title": "Clear the filters to see more races",
+      "desc": "No race this season matches your search and filters.",
+      "clear": "Clear filters",
+      "noneTitle": "Switch to All teams to see the whole season",
+      "noneDesc": "No race this season matches this view."
+    }
   }
 }

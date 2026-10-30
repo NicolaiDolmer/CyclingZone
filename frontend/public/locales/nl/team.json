@@ -339,7 +339,7 @@
       "expiring": "Loopt dit seizoen af",
       "season": "Loopt af na seizoen {season}",
       "atCap": "Aan de grens",
-      "atCapHint": "Loopt al 3 seizoenen vooruit. Kan opnieuw worden verlengd zodra het seizoen wisselt."
+      "atCapHint": "Loopt al zo ver als toegestaan. Kan opnieuw worden verlengd zodra het seizoen wisselt."
     },
     "bar": {
       "none": "Vink de renners aan die je wilt verlengen.",
@@ -365,6 +365,30 @@
     "loadErrorBody": "Er is niets verloren. Je contracten zijn ongewijzigd.",
     "retry": "Opnieuw proberen",
     "emptyTitle": "Contracteer renners om hun contracten te beheren",
-    "emptyBody": "Je renners verschijnen hier, gegroepeerd op wanneer hun contract afloopt."
+    "emptyBody": "Je renners verschijnen hier, gegroepeerd op wanneer hun contract afloopt.",
+    "buyback": {
+      "title": "Haal je renners terug",
+      "intro": "Deze renners verlieten je ploeg bij de seizoenswissel zonder de contractmelding die je had moeten krijgen. Contracteer ze opnieuw binnen 7 dagen: normaal salaris, 1 seizoen, geen tekengeld.",
+      "squad": "Selectie",
+      "deadline": "Tot",
+      "sign": "Opnieuw contracteren",
+      "signAria": "{name} opnieuw contracteren",
+      "done": "{name} is terug in je ploeg.",
+      "squads": {
+        "senior": "Senior",
+        "u23": "U23",
+        "junior": "Junior"
+      },
+      "errors": {
+        "buyback_not_eligible": "Valt er niet onder",
+        "buyback_rider_not_free": "Getekend door een andere ploeg",
+        "buyback_rider_retired": "Gestopt",
+        "buyback_rider_on_auction": "In veiling",
+        "buyback_expired": "De 7 dagen zijn voorbij",
+        "buyback_squad_full": "Je selectie is vol",
+        "buyback_no_team": "Je hebt een ploeg nodig",
+        "buyback_failed": "Kon hem niet opnieuw contracteren. Probeer het opnieuw."
+      }
+    }
   }
 }

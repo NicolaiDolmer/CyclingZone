@@ -200,3 +200,18 @@ test("#6750: uden privat taerskel er udbrudssejre med stort forspring null (inge
   assert.equal(a.bigBreakawayWins, null);
   assert.equal(a.bigBreakawayWinShare, null);
 });
+
+test("#6804: v3-gaterne blokerer en v3-kandidat uden maalinger, og kun en v3-kandidat", () => {
+  const races = [raceResultFromDryRun(dryRun({ id: "r1", name: "A", stages: 5, runs: [run("s5_profiles_v2", [{ seed: 1, gcWinner: "w", rows: [row()] }]), run("s5_profiles_v3", [{ seed: 1, gcWinner: "w", rows: [row()] }])] }))];
+  const v3 = buildTestportCard({ raceResults: races, baseline: "s5_profiles_v2", candidate: "s5_profiles_v3" });
+  assert.equal(v3.v3Gates.applies, true);
+  assert.equal(v3.v3Gates.candidate.blocked, true);
+  const md = renderTestportMarkdown(v3);
+  assert.match(md, /TAEND-GATE v3 BLOKERET/);
+  assert.match(md, /## Taend-gaten for v3/);
+  assert.match(md, /#2757 S0: spurtfinalen/);
+  assert.match(renderTestportHtml(v3), /TAEND-GATE v3 BLOKERET/);
+  const v2 = buildTestportCard({ raceResults: races, baseline: "s5_profiles_v2", candidate: "s5_profiles_v2" });
+  assert.equal(v2.v3Gates.applies, false);
+  assert.match(renderTestportMarkdown(v2), /til orientering/);
+});

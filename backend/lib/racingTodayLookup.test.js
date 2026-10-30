@@ -61,7 +61,7 @@ function chain(rows) {
 }
 
 function fakeSupabase({ entries, sched, races, entryError, schedError, raceError, conditions, conditionError, riders,
-  withdrawals, results, locks, lockSched, runs } = {}) {
+  withdrawals, results, locks, lockSched, runs, windowSched } = {}) {
   const roster = riders ?? SIX_IDS.map((id) => ({ id, squad: "senior" }));
   return {
     from(table) {
@@ -94,12 +94,13 @@ function fakeSupabase({ entries, sched, races, entryError, schedError, raceError
       }
       if (table === "race_stage_schedule") {
         return {
-          select: () => ({
+          select: (fields = "") => ({
             gte: () => ({
               lt: async () => ({ data: sched ?? [], error: schedError ?? null }),
             }),
-            // #6740: Train now-låsens opslag af løbets etapedatoer.
-            in: async () => ({ data: lockSched ?? [], error: null }),
+            // #6740: Train now-låsens opslag af løbets etapedatoer. #6739: binding-vinduerne
+            // (game_day) til overlap på startdagen.
+            in: async () => ({ data: String(fields).includes("game_day") ? (windowSched ?? []) : (lockSched ?? []), error: null }),
           }),
         };
       }
@@ -351,6 +352,50 @@ test("loadRacingTodayByRider: Train now-laaste ryttere taeller ikke som frie res
     { rider_id: "rider-7", tick_date: "2026-10-16", team_id: "team-1", pressed_at: "2026-10-16T07:04:00Z" },
   ] }), "team-1", [...SIX_IDS, "rider-7"], today);
   assert.deepEqual(locked, {}, "alle reserver laast: holdet stiller ikke op, intet badge");
+});
+
+test("loadRacingTodayByRider: overlap-dag, 4 udtaget og resten i et andet løb i dag -> holdet starter (#6739 regel A)", async () => {
+  const ids = Array.from({ length: 12 }, (_, i) => `rider-${i + 1}`);
+  const today = new Date("2026-10-28T08:00:00Z");
+  const base = {
+    sched: [{ race_id: "race-a" }, { race_id: "race-b" }],
+    races: [{ id: "race-a", name: "Race A", stages_completed: 0, stages: 3 }, { id: "race-b", name: "Race B", stages_completed: 0, stages: 5 }],
+    riders: ids.map((id) => ({ id, squad: "senior" })), withdrawals: [], locks: [],
+    // race-a starter på game_day 10; race-b kører game_day 8-12, så den rummer startdagen.
+    windowSched: [
+      ...[10, 11, 12].map((game_day) => ({ race_id: "race-a", game_day })),
+      ...[8, 9, 10, 11, 12].map((game_day) => ({ race_id: "race-b", game_day })),
+    ],
+  };
+  const four = await loadRacingTodayByRider(fakeSupabase({ ...base, entries: [
+    ...ids.slice(0, 4).map((rider_id) => ({ race_id: "race-a", rider_id })),
+    ...ids.slice(4).map((rider_id) => ({ race_id: "race-b", rider_id })),
+  ] }), "team-1", ids, today);
+  assert.equal(four["rider-1"]?.race, "Race A", "4 frie på en overlap-dag: holdet starter med 4");
+  const three = await loadRacingTodayByRider(fakeSupabase({ ...base, entries: [
+    ...ids.slice(0, 3).map((rider_id) => ({ race_id: "race-a", rider_id })),
+    ...ids.slice(3).map((rider_id) => ({ race_id: "race-b", rider_id })),
+  ] }), "team-1", ids, today);
+  assert.equal(three["rider-1"], undefined, "3 frie: under 4, holdet stiller ikke op");
+  const oneDay = await loadRacingTodayByRider(fakeSupabase({ ...base,
+    races: [{ id: "race-a", name: "Race A", stages_completed: 0, stages: 1 }, { id: "race-b", name: "Race B", stages_completed: 0, stages: 5 }],
+    entries: [
+      ...ids.slice(0, 4).map((rider_id) => ({ race_id: "race-a", rider_id })),
+      ...ids.slice(4).map((rider_id) => ({ race_id: "race-b", rider_id })),
+    ] }), "team-1", ids, today);
+  assert.equal(oneDay["rider-1"], undefined, "endagsløb: gulvet 6 gælder uændret");
+  // Codex P2: samme kalenderdag, men det andet løb binder først fra game_day 11. Det er
+  // ikke overlap på startdagen (10), så motoren afviser starten, og fladen må ikke vise den.
+  const laterDay = await loadRacingTodayByRider(fakeSupabase({ ...base,
+    windowSched: [
+      ...[10, 11, 12].map((game_day) => ({ race_id: "race-a", game_day })),
+      ...[11, 12, 13, 14, 15].map((game_day) => ({ race_id: "race-b", game_day })),
+    ],
+    entries: [
+      ...ids.slice(0, 4).map((rider_id) => ({ race_id: "race-a", rider_id })),
+      ...ids.slice(4).map((rider_id) => ({ race_id: "race-b", rider_id })),
+    ] }), "team-1", ids, today);
+  assert.equal(laterDay["rider-1"], undefined, "binding senere end startdagen er ikke overlap");
 });
 
 test("computeRacingTodayByRider: en skadet udtaget rytter løber ikke, selv om holdet starter (regel B, #6740)", () => {

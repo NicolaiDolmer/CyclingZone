@@ -1039,8 +1039,8 @@
           "Vermoeidheid gaat voor elke renner terug naar 0.",
           "Blessures worden NIET gereset. Ze gaan ongewijzigd mee.",
           "Piekplannen worden niet geraakt door de wissel.",
-          "Seizoenslonen worden tijdens de wissel betaald. Rennerswaarden bewegen niet tijdens de wissel zelf: ze worden eenmalig bijgewerkt, in de zondagse update nadat de wissel is voltooid.",
-          "De eerste koersdag van het nieuwe seizoen is de dag na de wissel. De eerste etappe begint minstens 24 uur na de laatste etappe van het oude seizoen, dus je hebt tijd om je koersselecties te kiezen."
+          "Seizoenslonen worden tijdens de wissel betaald. Rennerswaarden bewegen niet tijdens de wissel zelf: ze worden de volgende keer bijgewerkt, bij de normale zondagse update.",
+          "Het nieuwe seizoen begint na een korte pauze tussen de seizoenen, waarover de managers hebben gestemd. De datum van de eerste etappe staat op de koerskalender, dus je hebt tijd om je selecties te kiezen."
         ]
       }
     },
@@ -1342,6 +1342,18 @@
         "title": "Leeftijd, hoogtepunt en achteruitgang",
         "text": "Elke renner piekt op 28, ongeacht zijn type. Vanaf het seizoen nadat hij 29 wordt, nemen zijn vaardigheden af in plaats van te groeien, en dat gebeurt alleen bij de seizoenswissel, nooit tijdens het seizoen zelf. De achteruitgang staat niet vast: hij wordt groter naarmate de renner langer over zijn hoogtepunt heen is. Gedurende de eerste drie jaar na het hoogtepunt (29 tot 31 jaar) zakken zijn kenmerkende vaardigheden met ongeveer 1 punt per seizoen. Van het vierde tot het zesde jaar na het hoogtepunt (32 tot 34) loopt dat op tot ongeveer 1,8 punt per seizoen, en vanaf het zevende jaar (35+) tot ongeveer 2,6 punten per seizoen. Niet elke vaardigheid daalt even snel: de kenmerkende vaardigheden van een renner, degene waaromheen zijn primaire type is gebouwd, dalen met het volledige tempo hierboven. Elke andere vaardigheid, ook de vakvaardigheden Positionering en Tactiek, daalt langzamer, ongeveer 70 procent van dat tempo. Dat is een snelheidsverschil, geen vertraagde start: elke vaardigheid begint in hetzelfde seizoen te dalen."
       },
+      "agingV2": {
+        "title": "Leeftijd en achteruitgang",
+        "text": "Renners houden hun niveau tot en met 30. Vanaf het seizoen daarna gaan hun fysieke vaardigheden en kasseien bij elke seizoenswissel een beetje achteruit, en dat wordt meer naarmate ze verder voorbij de 30 zijn. Techniek, tactiek en de andere mentale vaardigheden gaan nooit achteruit. Koersen remt de achteruitgang af: elke koersdag in het net afgelopen seizoen telt mee, en zware trainingsdagen helpen ook. Een renner met een volledig koersseizoen achter de rug houdt het meeste van zijn benen. Niemand groeit bij de seizoenswissel zelf; je renners ontwikkelen zich via hun dagelijkse training."
+      },
+      "aiRidersV2": {
+        "title": "AI-renners en vrije renners",
+        "text": "Renners van AI-ploegen en renners zonder contract ontwikkelen zich niet. Ze worden wel ouder zoals iedereen. Als een van hen bij je ploeg komt, begint hij zich vanaf de volgende dag te ontwikkelen via jouw training."
+      },
+      "potentialBestRole": {
+        "title": "Potentieel in het hele spel",
+        "text": "Mijn ploeg, de academie, het rennersprofiel en het tabblad Scouting tonen het potentieel op dezelfde manier. Het wordt getoond voor de rol waarin hij het hoogst kan komen, met een klein vakje ernaast dat zegt welke rol dat is. Het blijft een schatting: een betere scout, of meer trainingsdagen bij je ploeg voor je eigen renners, maakt het scherper."
+      },
       "trainingFocus": {
         "title": "Trainingsfocus",
         "text": "Vanaf het profiel van een van je eigen renners kun je een trainingsfocus voor het hele seizoen instellen: een richting (VO2max, Drempel/TT, Sprint, Uithoudingsvermogen, Techniek, Aero of Koersinzicht). De inspanning hoort bij het sessietype en is geen aparte keuze: intervallen, drempel en sprint zijn zwaar, tempo is gemiddeld, de rest is licht. Getrainde vaardigheden ontwikkelen zich sneller richting hun plafond via de dagelijkse training die elke avond draait, terwijl andere vaardigheden iets langzamer groeien. Zware sessies bouwen meer vermoeidheid op maar brengen geen risico op verlies van voortgang met zich mee. Je kunt een trainingsfocus instellen op zoveel van je renners als je wilt; een bestaande focus wijzigen kost niets. Training is gratis en kost geen geld. Renners die koersen, ontwikkelen zich uit de koers in plaats van uit hun geplande sessie, ook in eendagskoersen. Geselecteerde renners die niet starten, volgen hun programma, behoudens blessures. Vermoeidheid, vorm en het blessurerisico door training worden bij de avondupdate beoordeeld op basis van de gecombineerde koers- en trainingsactiviteit van de dag. Tussenpozen tussen etappes leveren geen extra herstel op. Zware training blijft vermoeiender dan normale training."
@@ -1387,6 +1399,18 @@
         "title": "De vaardigheid van mijn renner stijgt niet meer",
         "text": "Dat is nu ongebruikelijk. Elke vaardigheid heeft nog steeds een levenslang plafond dat door zijn type wordt bepaald, maar renners komen daar niet meer vanzelf. Hoe dicht een renner komt, en op welke vaardigheden, wordt bepaald door hoe jij hem traint. Als een vaardigheid echt is gestopt, is het bijna altijd een van twee dingen. Ofwel de renner is over zijn hoogtepunt heen, waar vaardigheden dalen in plaats van groeien, en wat hij heeft is wat hij houdt. Ofwel de vaardigheid zit al boven wat zijn type zelf zou opbouwen, wat voorkomt bij renners die uit een eerdere versie van het spel zijn meegenomen. Er wordt niets van hem afgenomen, hij klimt gewoon niet verder. Elke vaardigheid heeft zijn eigen regel op de pagina Dagelijkse training en het rennersprofiel, en een voltooide leest 'klaar' waar de andere voortgang tonen. Het getal naast een vaardigheid is altijd de huidige waarde, nooit het plafond zelf, dat nergens in het spel als getal wordt getoond, en voortgang vertraagt vanzelf naarmate een renner dichterbij komt, dus een waarde die een paar dagen stilstaat, is niet per se klaar."
       },
+      "typeGatingCurveB": {
+        "title": "Waarom groeit een focus bij sommige renners sneller?",
+        "text": "Elke renner heeft een primair EN een secundair type (Sprinter, Klimmer, Tijdrijder, Klassementsrenner enzovoort) en een potentieel, allemaal vastgelegd bij het aanmaken van de renner. Zijn type bepaalt welke vaardigheden het hoogst kunnen komen: een vaardigheid waarvoor zijn primaire type gebouwd is, komt het hoogst en groeit het snelst, en zijn secundaire type volgt kort daarachter. Positionering en tactiek zijn vakmanschap: niemand wordt ermee geboren, dus elke renner kan een behoorlijk niveau halen, maar ze groeien langzaam. Een vaardigheid buiten beide rollen blijft laag en groeit langzaam, en een vaardigheid waar zijn type tegenin werkt, komt nauwelijks van zijn plaats. Elk type dekt meerdere vaardigheden, niet alleen die in zijn naam: een klassementstype dekt ook tijdrijden. Zijn potentieel bepaalt hoe hoog hij in totaal kan komen, en een groter talent komt er ook sneller. Elk punt kost meer naarmate de vaardigheid al hoger staat, dus de laatste punten komen het langzaamst. Bekijk beide typebadges voordat je een focus kiest. Het tempo wordt af en toe bijgesteld als onderdeel van de balans van het spel, dus de dagelijkse vooruitgang kan van update tot update anders aanvoelen."
+      },
+      "ceilingReachedCurveB": {
+        "title": "De vaardigheid van mijn renner stijgt niet meer",
+        "text": "De vooruitgang vertraagt naarmate een vaardigheid al hoger staat en dichter bij het plafond komt dat zijn type en potentieel bepalen, dus een waarde die een paar dagen stilstaat, is niet per se klaar. Is een vaardigheid echt gestopt, dan is het bijna altijd een van twee dingen. Of de renner is over zijn piek heen, en zijn vaardigheden gaan bij de seizoenswissel achteruit in plaats van te groeien. Of de vaardigheid staat al boven het plafond dat zijn potentieel bepaalt, wat kan gebeuren bij renners die zich onder het vorige trainingsmodel ontwikkelden. Er wordt hem niets afgenomen, hij stijgt alleen niet verder. Het getal naast een vaardigheid is altijd de huidige waarde, nooit het plafond, dat nergens in het spel als getal wordt getoond."
+      },
+      "longTermGrowthCurveB": {
+        "title": "Groei op lange termijn",
+        "text": "Drie dingen bepalen waar een vaardigheid uitkomt. Zijn type bepaalt welke vaardigheden het hoogst kunnen komen. Zijn potentieel bepaalt hoe hoog: een groter talent heeft een hoger plafond en ontwikkelt zich ook sneller. En het niveau zelf: elk punt kost meer naarmate de vaardigheid al hoger staat, dus een renner gaat snel op een laag niveau en langzaam vlak bij de top. Leeftijd laat niemand sneller ontwikkelen. De jongste renners kunnen nog geen volle trainingsbelasting aan, dus op hetzelfde niveau gaan ze iets langzamer tot ze dat wel kunnen. Dicht bij zijn plafond neemt de vooruitgang geleidelijk af, en training kan niemand ooit voorbij dat plafond duwen."
+      },
       "trainToday": {
         "title": "De training van vandaag nu draaien",
         "text": "Training draait eenmaal per koersdag, na de laatste koers van de dag en vanaf 20:00. Je kunt hem draaien zodra hij opent, of je assistent dezelfde sessie automatisch laten draaien. Klikken geeft geen extra winst."
@@ -1431,9 +1455,17 @@
         "title": "De trainingsscore",
         "text": "Elke sessie die een renner voltooit, krijgt een trainingsscore van 1 tot 99. Die meet de KWALITEIT van die sessie, niet wat de renner eruit haalde: hoe veeleisend de sessie was, hoe goed hij bij de sterke punten van de renner paste, de vorm en vermoeidheid van de renner die dag, de coach en de faciliteiten erachter, het talent en de leeftijd van de renner en de dag zelf. De score is wat de ontwikkeling aandrijft: een betere sessie beweegt de vaardigheden meer. Hij hangt niet af van hoe dicht een vaardigheid bij het plafond zit, dus een renner die bijna klaar is in zijn focusvaardigheden, krijgt nog steeds een eerlijke inschatting van hoe goed de sessie was. Rustdagen krijgen geen score, omdat er geen sessie was om te meten. Op een dag waarop een koers de plaats van de sessie inneemt, leest de kolom 'Koers' in plaats van een getal. Het getal van vandaag verschijnt zodra de sessie van vandaag is gedraaid, en tot dan toont de kolom het laatste in grijs. Alleen jij ziet de scores van je eigen renners."
       },
+      "maxOnePerDay": {
+        "title": "Hoogstens +1 per vaardigheid per dag",
+        "text": "Een vaardigheid kan hoogstens 1 punt per dag groeien, training en koersdagen samen. Wat daarboven gaat, is niet verloren: het schuift door naar de volgende dag."
+      },
+      "todaysDecision": {
+        "title": "Beslissing van vandaag (bèta)",
+        "text": "Bovenaan het tabblad Vandaag stelt de assistent tot drie wijzigingen voor vandaag voor: actief herstel voor vermoeide renners met een zware dag gepland en een verhoogd blessurerisico. Gebruik past het toe voor die renner. Renners die vandaag koersen, geblesseerd zijn, al een lichte dag hebben, of hun eigen weekplan of een trainingsgroep volgen, krijgen geen voorstel. Zodra de training van vandaag gedaan is, verdwijnt de kaart."
+      },
       "longTermGrowth": {
         "title": "Groei op lange termijn",
-        "text": "Twee aparte dingen bepalen waar een vaardigheid uitkomt: hoe hoog die kan komen, en hoe snel hij daar komt. Hoe hoog komt van het type van de renner: elk type heeft zijn eigen plafond per vaardigheid. Hoe snel komt van zijn potentieel: een groter talent ontwikkelt zich sneller richting hetzelfde plafond, maar potentieel verhoogt het plafond zelf niet. Daarom bereikt een renner zijn plafond niet meer alleen doordat hij lang genoeg bestaat. Het plafond is wat hij had kunnen worden; jouw training bepaalt hoe dichtbij hij komt, en bij welke vaardigheden. Renners pieken nog steeds rond 27-28 jaar en gaan daarna achteruit, en training kan niemand ooit boven zijn plafond uittillen."
+        "text": "Twee aparte dingen bepalen waar een vaardigheid uitkomt: hoe hoog die kan komen, en hoe snel hij daar komt. Hoe hoog komt van het type van de renner: elk type heeft zijn eigen plafond per vaardigheid. Hoe snel komt van zijn potentieel: een groter talent ontwikkelt zich sneller richting hetzelfde plafond, maar potentieel verhoogt het plafond zelf niet. Daarom bereikt een renner zijn plafond niet meer alleen doordat hij lang genoeg bestaat. Het plafond is wat hij had kunnen worden; jouw training bepaalt hoe dichtbij hij komt, en bij welke vaardigheden. Renners gaan met de leeftijd achteruit (zie Leeftijd en achteruitgang bij Renners), en training kan niemand ooit boven zijn plafond uittillen."
       },
       "readingReport": {
         "title": "Het trainingsrapport lezen",
@@ -1458,6 +1490,10 @@
       "trainingGroups": {
         "title": "Trainingsgroepen",
         "text": "Met een groep neem je één trainingsbeslissing voor meerdere renners. Maak er een onder Programma, Plan: open 'Plan voor' en kies '+ Nieuwe groep'. Geef hem een naam en begin vanuit een rennerstype of kies de renners zelf. Een renner kan in één groep zitten. Een wijziging in een veld geldt dan voor de hele groep, en renners met een etappe houden de etappe. 'Vermoeidheid vanavond' toont de vermoeidste renner in de groep. De volgorde ligt vast: eerst het eigen plan van een renner, dan het plan van zijn groep, dan het teamplan. Als je de eigen velden van een renner wijzigt, wint zijn plan tot je opnieuw 'Groep volgen' kiest. Je kunt ook een programma op een groep zetten onder Programma's, en een groep een eigen uitzondering geven onder Vermoeidheidslimiet."
+      },
+      "catalogV3": {
+        "title": "Twee zware sessies voor elk rennerstype",
+        "text": "Elk rennerstype heeft nu twee zware sessies die ervoor gebouwd zijn, en elke zware sessie geeft een volledige zware dag. Vijf sessies zijn nieuw: Lange beklimmingen, Lead-out, Korte tijdritten, Lange tijdritten en Kasseienklassieker. Tijdrijden heeft eindelijk eigen sessies, dus Drempel traint nu tempo en uithoudingsvermogen. Sprint geeft nu een volledige zware dag. Wissel je tussen de twee sessies van je type, dan groeit de hoofdvaardigheid iets minder, maar groeien andere vaardigheden."
       }
     },
     "activityfeed": {
@@ -1521,6 +1557,10 @@
       "freeAgents": {
         "title": "Transfervrije renners",
         "text": "Transfervrije renners hebben geen salaris tot een team ze contracteert. Het rennersprofiel en de veilingpagina tonen een geschat salaris (op basis van de verwachte productie van de renner dit seizoen) zodat je je budget kunt plannen voordat je biedt. Het werkelijke salaris wordt pas vastgesteld op het moment van tekenen. Transfervrije renners ontstaan meestal wanneer het contract van een renner afloopt en bij de seizoenswissel niet wordt verlengd: in de praktijk is dat bijna altijd een selectie van een mens, omdat AI-teams hun aflopende contracten bij dezelfde overgang zelf automatisch verlengen. De rest zijn renners die door hun oude club zijn vrijgegeven, ofwel bij het afstuderen van de Academie, ofwel uit een aanbieding uit de Academie-instroom die onbeantwoord verliep en in de veiling geen koper vond (zie 'Verlopen aanbiedingen uit de Academie-instroom?')."
+      },
+      "contractWarnings": {
+        "title": "Voor welke renners krijg je contractwaarschuwingen?",
+        "text": "Contractwaarschuwingen gelden voor je senioren, U23-renners, junioren en academierenners. Bij de seizoenswissel krijg je één bericht met de renners van wie het contract in het nieuwe seizoen afloopt, met hun selectie en waarde. Je krijgt ook een waarschuwing als je een renner aantrekt of van selectie verandert en zijn contract dit seizoen afloopt. Je kunt contracten voor alle selecties verlengen op het tabblad Contracten bij Mijn ploeg. Renners die bij de seizoenswissel worden vrijgegeven, staan samen in een apart bericht. Een selectiewissel verandert het contract niet en de bestaande looptijd van het eerste contract van academierekruten blijft gelijk."
       }
     },
     "academy": {
@@ -1539,7 +1579,7 @@
       },
       "prognosisTraining": {
         "title": "Het potentieel van een talent leren kennen",
-        "text": "Nadat je een academierenner hebt gecontracteerd, leer je zijn prognose kennen via trainingsdagen bij jouw ploeg. Eerst is er nog geen inschatting, daarna een grove, scherpere en definitieve bandbreedte in ratingpunten. Het scoutingtabblad toont de huidige stap, de onthulde bandbreedte en de trainingsdagen tot de volgende stap. Betere trainers en trainingsfaciliteiten helpen je sneller vooruit. Ze veranderen zijn talent niet, en ook de definitieve prognose blijft een bandbreedte."
+        "text": "Nadat je een academierenner hebt vastgelegd, wordt zijn prognose scherper door geregistreerde trainings- en koersdagen bij je ploeg. De tijd sinds zijn komst telt op zichzelf niet: hem een week bij je ploeg laten staan geeft geen volledige prognose. Eerst is er geen schatting, daarna volgt een ruwe, een scherpere en uiteindelijk een definitieve ratingmarge. Het tabblad Scouting toont de huidige fase, de onthulde marge en de trainings- of koersdagen tot de volgende fase. Betere trainers en trainingsfaciliteiten helpen je sneller naar de volgende fase. Ze veranderen zijn talent niet, en zelfs de definitieve prognose blijft een marge. De zondagse update bepaalt zijn marktwaarde; die voltooit zijn potentieelprognose niet."
       },
       "signingProspects": {
         "title": "Talenten contracteren",
@@ -1557,6 +1597,10 @@
       "dailyTrainingBoost": {
         "title": "Dagelijkse training in de academie",
         "text": "Academierenners volgen precies hetzelfde trainingsmodel als je seniorenteam. Er is geen apart academiesysteem en geen verborgen rem op hoe snel ze beter worden: kies een focus en een intensiteit, en de winst stapelt zich dag na dag op dezelfde manier op. Het enige echte verschil is leeftijd. Renners onder de 22 krijgen een extra jeugdboost die afneemt naarmate ze de 22 naderen. Hun type bepaalt hoe hoog elke vaardigheid uiteindelijk kan komen, en hun potentieel bepaalt hoe snel ze daar komen, dus een groter talent ontwikkelt zich sneller richting hetzelfde plafond, terwijl een kleiner talent langzamer uitgroeit tot een degelijke knecht."
+      },
+      "dailyTrainingBoostCurveB": {
+        "title": "Dagelijkse training in de academie",
+        "text": "Academierenners volgen precies hetzelfde trainingsmodel als je seniorenteam. Er is geen apart academiesysteem: kies een focus en een intensiteit, en de winst stapelt zich dag na dag op dezelfde manier op. Lage vaardigheden zijn goedkoop om op te bouwen, dus een jonge renner gaat in het begin nog snel vooruit. Leeftijd geeft geen extra snelheid. Het enige verschil is dat de jongste renners nog geen volle trainingsbelasting aankunnen, dus ze ontwikkelen zich iets langzamer dan een oudere renner op hetzelfde niveau, tot ze dat wel kunnen. Hun type bepaalt welke vaardigheden het hoogst kunnen komen, en hun potentieel bepaalt hoe hoog ze komen en hoe snel, dus een groter talent komt hoger en is er eerder, terwijl een kleiner talent uitgroeit tot een degelijke knecht."
       },
       "youthAuctions": {
         "title": "Jeugdveilingen",
@@ -1646,7 +1690,7 @@
           [
             "Medische afdeling",
             "Versnelt het herstel van vorm en blessures",
-            "Binnenkort"
+            "Nu actief"
           ],
           [
             "Academie-uitbreiding",
@@ -1709,11 +1753,19 @@
       },
       "roles": {
         "title": "Kopman, sprintkopman, ontsnappingsjager en vrije rol",
-        "text": "Je geeft elke geselecteerde renner een rol met tactiekkaarten, en elke kaart legt uit waarom de rol bij het terrein van deze koers past. Je kopman wordt door het team beschermd: sterke, frisse knechten vergroten de kansen van de kopman. In vlakke etappes krijgt je sprintkopman (indien ingesteld) in plaats daarvan de bescherming. Een ontsnappingsjager probeert standaard voor de ontsnapping van de dag te gaan en rijdt harder om weg te blijven. Je kunt dat voor één etappe uitzetten, en een poging is nooit zeker. De jagerkaart toont hoe waarschijnlijk het is dat een ontsnapping op dit terrein wegblijft, en de koersdetailpagina rangschikt je beste jagers op agressie, de drang om aan te vallen. Agressie maakt een renner waarschijnlijker om in de ontsnapping te komen, en een renner met een vrije rol probeert ook vaker op eigen houtje. In koersen onder de huidige regels kost elke poging energie, ook als hij mislukt. Teamwerk heeft een prijs: knechten verliezen plaatsen terwijl ze voor de kopman werken, en dat werk is precies wat de boost voor de kopman koopt. Een renner met een Vrije rol slaat teamtaken over en rijdt zijn eigen koers, zonder werkkosten en zonder steun voor de kopman."
+        "text": "Je geeft elke geselecteerde renner een rol met tactiekkaarten, en elke kaart legt uit waarom de rol bij het terrein van deze koers past. Je kopman wordt door het team beschermd: sterke, frisse knechten vergroten de kansen van de kopman. In vlakke etappes krijgt je sprintkopman (indien ingesteld) in plaats daarvan de bescherming. Een ontsnappingsjager probeert standaard voor de ontsnapping van de dag te gaan en rijdt harder om weg te blijven. Je kunt dat voor één etappe uitzetten, en een poging is nooit zeker. De jagerkaart toont hoe waarschijnlijk het is dat een ontsnapping op dit terrein wegblijft, en de koersdetailpagina rangschikt je beste jagers op agressie, de drang om aan te vallen. Agressie maakt een renner waarschijnlijker om in de ontsnapping te komen, en een renner met een vrije rol probeert ook vaker op eigen houtje. In koersen onder de huidige regels kost elke poging energie, ook als hij mislukt. Teamwerk heeft een prijs: knechten verliezen plaatsen terwijl ze voor de kopman werken, en dat werk is precies wat de boost voor de kopman koopt. Een renner met een Vrije rol slaat teamtaken over en rijdt zijn eigen koers, zonder werkkosten en zonder steun voor de kopman. In koersen met de nieuwste regels kan een sprintkopman je enige leider zijn, zonder kopman. Hij krijgt dan op alle etappes de bescherming van het team."
       },
       "stageTactics": {
         "title": "Etappekoersen: rollen en inspanning per etappe",
-        "text": "In etappekoersen heeft de koerspagina een tactiekbord per etappe. Afgeronde etappes zijn vergrendeld en tonen wat er gebeurde; komende etappes kun je nog wijzigen terwijl de koers loopt. Elke renner kan per etappe een andere rol rijden, plus een inspanning: er zijn drie inspanningen: Rustig rijden, Normaal en Werken of aanvallen. Werken of aanvallen bouwt extra vermoeidheid op: een knecht of jager werkt voor het team, terwijl een kopman of een renner met een vrije rol het gebruikt om aan te vallen. Rustig rijden neemt gas terug om frisser te blijven voor de dagen die tellen. Als een renner de leiderstrui pakt, maakt een snelkoppeling op het tabblad Team van de koerspagina hem met één klik kopman voor alle resterende etappes terwijl de koers loopt, waarbij elke andere kopman in die etappes een knecht wordt. Etappes waarvoor je niets instelt, gebruiken gewoon de koersrol van de renner."
+        "text": "In etappekoersen heeft de koerspagina een tactiekbord per etappe. Afgeronde etappes zijn vergrendeld en tonen wat er gebeurde; komende etappes kun je nog wijzigen terwijl de koers loopt. Elke renner kan per etappe een andere rol rijden, plus een inspanning voor de dag. De inspanningstrappen hebben hun eigen alinea hieronder. Als een renner de leiderstrui pakt, maakt een snelkoppeling op het tabblad Team van de koerspagina hem met één klik kopman voor alle resterende etappes terwijl de koers loopt, waarbij elke andere kopman in die etappes een knecht wordt. Etappes waarvoor je niets instelt, gebruiken gewoon de koersrol van de renner."
+      },
+      "effortSteps": {
+        "title": "Inspanningstrappen",
+        "text": "Elke renner krijgt een inspanning voor de etappe die je open hebt. Vijf trappen lopen van makkelijkst naar zwaarst. Grupetto rijdt hem uit in de achterste groep en levert hem nooit een eigen resultaat op. Rustig rijden rijdt mee en spaart de benen voor de dagen die tellen. Normaal is zijn gewone koers. De vierde trap heet naar de taak: Werken voor een knecht of ontsnappingsjager, die voor de leider rijdt en echte vermoeidheid oploopt; Aanvallen volgen voor een kopman of sprintkopman, die op elke aanval antwoordt en meer benen kost; Offensief rijden voor een renner met een vrije rol, die druk zet op de klimmen en in de finale. Volle inzet zet alles op vandaag en is de zwaarste dag voor zijn benen. Een zwaardere trap kost altijd meer vermoeidheid dan een lichtere, hoe sterk de renner ook is. Een knecht op Volle inzet rijdt voor zichzelf en helpt de leider niet meer."
+      },
+      "effortStepsThree": {
+        "title": "Inspanningstrappen",
+        "text": "Elke renner krijgt een inspanning voor de etappe die je open hebt. Drie trappen lopen van makkelijkst naar zwaarst. Rustig rijden rijdt mee en spaart de benen voor de dagen die tellen. Normaal is zijn gewone koers. De derde trap heet naar de taak: Werken voor een knecht of ontsnappingsjager, die voor de leider rijdt en echte vermoeidheid oploopt; Aanvallen volgen voor een kopman of sprintkopman, die op elke aanval antwoordt en meer benen kost; Offensief rijden voor een renner met een vrije rol, die druk zet op de klimmen en in de finale. Een zwaardere trap kost altijd meer vermoeidheid dan een lichtere, hoe sterk de renner ook is."
       },
       "strategy": {
         "title": "Teamstrategie (vaste voorkeuren)",
@@ -1744,7 +1796,7 @@
       "label": "Koersdag en tactiek",
       "roleAndIntention": {
         "title": "Rollen en de intentie van vandaag",
-        "text": "Je rol is de taak die je een renner gaf toen je je team bouwde: kopman, sprintkopman, ontsnappingsjager, knecht of vrije rol. Die geldt de hele koers en verandert zelden. Intentie is anders, het is wat je van hem vraagt in de etappe die je nu open hebt, en als je hem met rust laat, rijdt hij gewoon zijn rol. Vijf instellingen lopen van makkelijkst naar zwaarst: grupetto, rustig rijden, normaal, werken of aanvallen en volle inzet. Een zwaardere instelling kost altijd meer vermoeidheid dan een lichtere, hoe sterk de renner ook is, en grupetto levert hem nooit een eigen resultaat op."
+        "text": "Je rol is de taak die je een renner gaf toen je je team bouwde: kopman, sprintkopman, ontsnappingsjager, knecht of vrije rol. Die geldt de hele koers en verandert zelden. Intentie is anders, het is wat je van hem vraagt in de etappe die je nu open hebt, en als je hem met rust laat, rijdt hij gewoon zijn rol. De trappen die je kunt kiezen, staan onder Inspanningstrappen."
       },
       "crashesAndIncidents": {
         "title": "Valpartijen en incidenten",
@@ -1756,7 +1808,15 @@
       },
       "teamwork": {
         "title": "Teamwerk onderweg",
-        "text": "Je kopman, of je sprintkopman in een vlakke etappe, wordt beschermd door het werk dat de rest van het team levert. Een knecht of ontsnappingsjager betaalt voor die bescherming met zijn eigen inspanning; een renner met een vrije rol helpt niet en betaalt niet. De boost is begrensd zodat hij nooit op hol slaat, en hij telt alleen als minstens één ploeggenoot nog in zijn buurt rijdt. Zet een renner op volle inzet en hij stopt helemaal met die prijs betalen, omdat hij alles aan zichzelf besteedt. Een knecht op Rustig rijden betaalt minder maar geeft je kopman minder steun. Werken voor het team is nooit gratis, en geen enkele combinatie van rol en intentie kan het veranderen in een bonus bovenop de eigen vaardigheid van een renner."
+        "text": "Je kopman, of je sprintkopman in een vlakke etappe, wordt beschermd door het werk dat de rest van het team levert. Een knecht of ontsnappingsjager betaalt voor die bescherming met zijn eigen inspanning; een renner met een vrije rol helpt niet en betaalt niet. De boost is begrensd zodat hij nooit op hol slaat, en hij telt alleen als minstens één ploeggenoot nog in zijn buurt rijdt. Een knecht op Rustig rijden betaalt minder maar geeft je kopman minder steun. Werken voor het team is nooit gratis, en geen enkele combinatie van rol en intentie kan het veranderen in een bonus bovenop de eigen vaardigheid van een renner."
+      },
+      "teamworkAllOut": {
+        "title": "Volle inzet en teamwerk",
+        "text": "Zet een renner op volle inzet en hij stopt helemaal met die prijs betalen, omdat hij alles aan zichzelf besteedt."
+      },
+      "luxuryHelper": {
+        "title": "De luxeknecht",
+        "text": "Een luxeknecht is een knecht met een kant-en-klaar etappeplan: hij spaart zich in het peloton en rijdt daarna voor je kopman op de beslissende klim, de laatste van de dag. In het etappeplan kun je zijn werk naar een andere klim verplaatsen of hem een ander plan geven. Wordt je kopman gelost of stapt hij af, dan rijdt hij zijn eigen koers. Een ploeg kan één luxeknecht hebben, en alleen in koersen met de nieuwste regels."
       },
       "weatherAndCobbles": {
         "title": "Weer en kasseien",
@@ -1771,7 +1831,7 @@
     },
     "peakWhatItDoes": {
       "q": "Wat doet een piek?",
-      "a": "Een piek tilt de vorm van één renner op voor één koersvenster dat je in de Seizoensplanner kiest. Hij werkt met een voorbereiding waar je vooraf voor traint en een dip erna, dus het loont om hem in te stellen voor een koers die je echt wilt winnen, niet voor een heel seizoen. Elke renner kan op elk moment maximaal twee pieken hebben. Pieken tellen nog niet mee in koersen; koersen gebruiken zijn normale Vorm. Zie 'Hoe werkt piektraining?' en 'Kost een piek me achteraf iets?' hieronder voor precies hoeveel en wanneer."
+      "a": "Een piek tilt de vorm van één renner op voor één koersvenster dat je in de Seizoensplanner kiest. Hij werkt met een voorbereiding waar je vooraf voor traint en een dip erna, dus het loont om hem in te stellen voor een koers die je echt wilt winnen, niet voor een heel seizoen. Elke renner kan op elk moment maximaal twee pieken hebben. In koersen komt de piek bovenop zijn normale Vorm. Zie 'Hoe werkt piektraining?' en 'Kost een piek me achteraf iets?' hieronder voor precies hoeveel en wanneer."
     },
     "peakTraining": {
       "q": "Hoe werkt piektraining?",
@@ -1847,7 +1907,7 @@
     },
     "auctionExpiry": {
       "q": "Wanneer verloopt een veiling?",
-      "a": "Wanneer je je eigen renner aanbiedt, kies je de exacte tijd waarop de veiling eindigt, van 1 tot 48 uur vooruit. Een veiling van een transfervrije renner (geen team) loopt standaard minstens 12 actieve uren: wie hem ook start, en wat de renner ook transfervrij maakte (zelf gestart, de bank, de academie of de jeugdmarkt), zodat je geen jong talent mist alleen omdat je sliep of aan het werk was. De enige uitzondering is een Flitsveiling, die altijd precies 30 minuten duurt. Nachtelijke uren tellen niet mee: het actieve venster is elke dag van 08:00 tot 24:00. Voorbeeld: een veiling gestart om 19:40 eindigt dezelfde avond om 20:40. Een veiling gestart om 23:30 eindigt de volgende ochtend om 08:30."
+      "a": "Wanneer je je eigen renner aanbiedt, kies je de exacte tijd waarop de veiling eindigt, van 1 tot 48 uur vooruit. Een veiling van een transfervrije renner (geen team) loopt altijd minstens 12 uur, ook als je zelf de eindtijd kiest: wie hem ook start, en wat de renner ook transfervrij maakte (zelf gestart, de bank, de academie of de jeugdmarkt), zodat je geen jong talent mist alleen omdat je sliep of aan het werk was. Flitsveilingen (30 minuten) zijn alleen voor je eigen renners. Nachtelijke uren tellen niet mee: het actieve venster is elke dag van 08:00 tot 24:00. Voorbeeld: een veiling gestart om 19:40 eindigt dezelfde avond om 20:40. Een veiling gestart om 23:30 eindigt de volgende ochtend om 08:30."
     },
     "flashAuction": {
       "q": "Wat is een Flitsveiling?",
@@ -2171,7 +2231,7 @@
     },
     "raceJerseysFaq": {
       "q": "Hoe werken de puntentrui en de bergtrui?",
-      "a": "De puntentrui houdt sprintpunten bij, verdiend bij tussensprints en bij etappefinishes, gewogen naar hoe sprintvriendelijk de etappe is, dus vlakke finishes delen er meer van uit dan bergfinishes. De bergtrui houdt bergpunten bij, verdiend door gecategoriseerde klimmen als eerste te beklimmen, met dubbele punten bij een bergaankomst. Bonusseconden tellen ook mee voor het klassement: 10/6/4 seconden voor de eerste drie renners bij een etappefinish, en 3/2/1 seconden bij elke tussensprint. Renners in een ontsnapping kunnen over een klim of sprint aan de kop gaan voordat het peloton arriveert, dus een ontsnapping kan de bergtrui winnen, ook zonder voor het klassement mee te doen. Renners in een ontsnapping komen altijd als eerste over. In een kleine groep van acht renners of minder strijdt iedereen mee. In een grotere groep strijden alleen puntenjagers om wat er over is: sprintkopmannen, jagers en renners met een vrije rol bij tussensprints, jagers en renners met een vrije rol op klimmen, plus wie aan het begin van de etappe het punten- of bergklassement leidde. Kopmannen en knechten rollen erachter door. Je kunt beide klassementen rechtstreeks in het spel volgen: de klassementstabellen tonen het puntentotaal van elke renner (niet alleen de plaats), en de etappe-uitslagpagina toont wie op elke klim en sprint punten pakte. Geldt voor koersen vanaf seizoen 2."
+      "a": "De puntentrui houdt sprintpunten bij, verdiend bij tussensprints en bij etappefinishes, gewogen naar hoe sprintvriendelijk de etappe is, dus vlakke finishes delen er meer van uit dan bergfinishes. De bergtrui houdt bergpunten bij, verdiend door gecategoriseerde klimmen als eerste te beklimmen. Een bergaankomst levert dezelfde punten op als de klim halverwege de etappe. Bonusseconden tellen ook mee voor het klassement: 10/6/4 seconden voor de eerste drie renners bij een etappefinish, en 3/2/1 seconden bij elke tussensprint. Renners in een ontsnapping kunnen over een klim of sprint aan de kop gaan voordat het peloton arriveert, dus een ontsnapping kan de bergtrui winnen, ook zonder voor het klassement mee te doen. Renners in een ontsnapping komen altijd als eerste over. In een kleine groep van acht renners of minder strijdt iedereen mee. In een grotere groep strijden alleen puntenjagers om wat er over is: sprintkopmannen, jagers en renners met een vrije rol bij tussensprints, jagers en renners met een vrije rol op klimmen, plus wie aan het begin van de etappe het punten- of bergklassement leidde. Kopmannen en knechten rollen erachter door. Je kunt beide klassementen rechtstreeks in het spel volgen: de klassementstabellen tonen het puntentotaal van elke renner (niet alleen de plaats), en de etappe-uitslagpagina toont wie op elke klim en sprint punten pakte. Geldt voor koersen vanaf seizoen 2."
     },
     "raceRouteRealismFaq": {
       "q": "Waarom verschillen tijdsverschillen zo sterk tussen bergetappes?",
@@ -2280,6 +2340,10 @@
     "teamworkLeadershipTrainingFaq": {
       "q": "Wat bepaalt hoe snel Samenwerking en Leiderschap trainen, en hebben ze verborgen potentieel?",
       "a": "Samenwerking en Leiderschap trainen via hetzelfde dagelijkse systeem als elke andere vaardigheid: hoe groter het verschil tussen waar een renner nu staat en zijn plafond voor die vaardigheid, hoe sneller hij groeit, en hij vertraagt naarmate hij de top nadert. Potentieel raakt het plafond van geen enkele vaardigheid aan, Samenwerking en Leiderschap inbegrepen; het bepaalt alleen hoe snel dat gat dichtgaat. Het plafond zelf komt uit het type: bij de meeste vaardigheden wordt het plafond bepaald door hoe centraal die vaardigheid is voor het type van je renner, dus het klimplafond van een klimmer ligt ver boven dat van een sprinter. Samenwerking en Leiderschap werken niet zo: elke renner traint naar hetzelfde gedeelde plafond, ongeacht het type. Dus nee, er is geen verborgen extra ruimte bij deze twee voor een renner met hoog potentieel; potentieel versnelt de training van elke vaardigheid, Samenwerking en Leiderschap inbegrepen, het verhoogt alleen nooit het plafond."
+    },
+    "teamworkLeadershipTrainingCurveBFaq": {
+      "q": "Wat bepaalt hoe snel Samenwerking en Leiderschap trainen, en hebben ze verborgen potentieel?",
+      "a": "Samenwerking en Leiderschap trainen via hetzelfde dagelijkse systeem als elke andere vaardigheid: elk punt kost meer naarmate de vaardigheid al hoger staat, en de vooruitgang neemt af naarmate de renner dicht bij zijn plafond komt. De meeste vaardigheden hebben een plafond dat bepaald wordt door hoe centraal die vaardigheid is voor het type van de renner, dus het klimplafond van een klimmer ligt ver boven dat van een sprinter. Samenwerking en Leiderschap werken niet zo: elke renner traint naar hetzelfde gedeelde plafond, ongeacht zijn type. Zijn potentieel bepaalt daarna hoe hoog hij kan komen en hoe snel hij er komt, op elke vaardigheid, ook Samenwerking en Leiderschap. Dus ja, een renner met veel potentieel heeft ook meer ruimte op deze twee."
     },
     "riderPoolNationalityFaq": {
       "q": "Waarom zijn sommige landen zoals Zuid-Korea, China en Japan zo zichtbaar in de rennerspool?",

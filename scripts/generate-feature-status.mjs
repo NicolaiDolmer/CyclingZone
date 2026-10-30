@@ -238,6 +238,26 @@ function liveEntry(e) {
 }
 
 /**
+ * Arkiv for gamle `live`-poster (#5319): en live-post hvis `verified` er mere
+ * end LIVE_ARCHIVE_AFTER_DAYS dage aeldre end registrets nyeste `verified`,
+ * vises kun med id. Live-poster vokser med hver feature der lander, og loftet
+ * paa 3.000 tok afviste 29/10 en ny post selv med minimal note. Referencen er
+ * registrets egen nyeste dato, ikke "i dag", saa output er deterministisk og
+ * --check ikke driver med kalenderen. Titel/dato/flag staar stadig i registret.
+ */
+export const LIVE_ARCHIVE_AFTER_DAYS = 30;
+
+function dayNumber(isoDate) {
+  const t = Date.parse(`${isoDate}T00:00:00Z`);
+  return Number.isFinite(t) ? Math.floor(t / 86_400_000) : null;
+}
+
+function isArchivedLive(e, referenceDay) {
+  const day = dayNumber(e.verified);
+  return referenceDay !== null && day !== null && referenceDay - day > LIVE_ARCHIVE_AFTER_DAYS;
+}
+
+/**
  * @param {Array<Record<string, string>>} entries
  * @returns {string} markdown
  */
@@ -268,10 +288,17 @@ export function render(entries) {
   out.push("");
   out.push("Epic-numre er issues i NicolaiDolmer/CyclingZone. Flag er noegler i prod `app_config`.");
   out.push("Live vises samlet (navn + dato) pr. omraade; fulde raekker (flag/SSOT/epic/note) er kun for ikke-live (#5430).");
+  out.push(`Arkiv = live verificeret over ${LIVE_ARCHIVE_AFTER_DAYS} dage foer registrets nyeste dato: kun id (#5319).`);
   out.push("");
+
+  const referenceDay = sorted.reduce((max, e) => {
+    const day = dayNumber(e.verified);
+    return day !== null && (max === null || day > max) ? day : max;
+  }, null);
 
   let currentArea = null;
   let liveBuffer = [];
+  let archiveBuffer = [];
   let nonLiveRows = [];
 
   const flushArea = () => {
@@ -280,9 +307,14 @@ export function render(entries) {
       out.push(`**live:** ${liveBuffer.join(" · ")}`);
       out.push("");
     }
+    if (archiveBuffer.length > 0) {
+      out.push(`**arkiv:** ${archiveBuffer.join(" · ")}`);
+      out.push("");
+    }
     if (nonLiveRows.length > 0) {
       out.push("| Feature | State | Flag | SSOT | Epic | Verified | Note |");
-      out.push("| --- | --- | --- | --- | --- | --- | --- |");
+      // Kort delimiter-raekke (gyldig GFM): ~6 tok pr. tabel under 3.000-loftet (#7003).
+      out.push("|-|-|-|-|-|-|-|");
       out.push(...nonLiveRows);
       out.push("");
     }
@@ -294,12 +326,14 @@ export function render(entries) {
       flushArea();
       currentArea = e.area;
       liveBuffer = [];
+      archiveBuffer = [];
       nonLiveRows = [];
       out.push(`## ${currentArea}`);
       out.push("");
     }
     if (e.state === "live") {
-      liveBuffer.push(liveEntry(e));
+      if (isArchivedLive(e, referenceDay)) archiveBuffer.push(`\`${e.id}\``);
+      else liveBuffer.push(liveEntry(e));
       continue;
     }
     const flag = e.flag ? `\`${e.flag}\`` : "-";

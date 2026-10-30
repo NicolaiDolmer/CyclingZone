@@ -6,6 +6,11 @@
 // loebsnavne og skrives derfor KUN til balance-internals/ (gitignoreret) af
 // motorTestport.mjs. Repoet er offentligt (hard rule 17): her staar ingen
 // maalte tal, kun definitionerne.
+import { raceGroupOf } from "./breakawayIntent.mjs";
+import { SHORT_STAGE_RACE_GROUPS, shortStageRaceGroup, withShortRaceGapBands } from "./tourScorecard.mjs";
+
+import { evaluateV3Gates, measureSprintFinale, v3GatesApply } from "./v3Gates.mjs";
+import { buildRaceGroupCard, MONUMENT_RACE_CLASS, raceGroupGateLine, raceGroupGateSection } from "./raceGroupGates.mjs"; // #7214
 
 /** Tidskoersler: ingen udbrud, ingen favoritter at doemme. */
 export const TIME_TRIAL_CLASSES = Object.freeze(["itt", "itt_hilly", "ttt"]);
@@ -66,6 +71,7 @@ export function raceResultFromDryRun(json) {
     raceId: json.race.id ?? null,
     name: json.race.name ?? json.race.id ?? "?",
     stages: Number(json.race.stages) || Math.max(0, ...json.runs.map((r) => r.summary?.stages?.length ?? 0)),
+    raceClass: json.race.race_class ?? null, // #7214: monumenter er egen loebsgruppe
     runs,
   };
 }
@@ -122,7 +128,7 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
   const itt = [];
   const gcFinal = [];
   const gcMargin = [];
-  const gcSeeds = { n: 0, member: 0, wonFromBreak: 0, known: false };
+  const gcSeeds = { n: 0, member: 0, wonFromBreak: 0, known: false, decided: 0, decidedKnown: 0 }; // #7258 decided
   for (const rr of raceResults) {
     const run = rr?.runs?.[revision];
     if (!run) { agg.missing += 1; continue; }
@@ -153,6 +159,8 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
         gcSeeds.n += 1;
         if (sr.some((r) => (r.breakawayRiderIds ?? []).includes(s.gcWinner))) gcSeeds.member += 1;
         if (sr.some((r) => r.breakawayWon === true && r.winnerId === s.gcWinner)) gcSeeds.wonFromBreak += 1;
+        // #7258: kun et morgenudbrud der faktisk afgjorde klassementet (gcFromBreakaway7258.mjs).
+        if (s.gcWinnerBreak) { gcSeeds.decidedKnown += 1; if (s.gcWinnerBreak.decisive) gcSeeds.decided += 1; }
       }
     }
   }
@@ -175,7 +183,8 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
     agg.favouriteBreakawayWins = { count: fav, ofBreakawayWins: share(fav, wins.length), breakawayWins: wins.length, ofRoadRuns: share(fav, road.length) };
   }
   if (gcSeeds.known) {
-    agg.gcWinnerFromBreak = { seeds: gcSeeds.n, member: gcSeeds.member, memberShare: share(gcSeeds.member, gcSeeds.n), wonFromBreak: gcSeeds.wonFromBreak, wonFromBreakShare: share(gcSeeds.wonFromBreak, gcSeeds.n) };
+    agg.gcWinnerFromBreak = { seeds: gcSeeds.n, member: gcSeeds.member, memberShare: share(gcSeeds.member, gcSeeds.n), wonFromBreak: gcSeeds.wonFromBreak, wonFromBreakShare: share(gcSeeds.wonFromBreak, gcSeeds.n),
+      ...(gcSeeds.decidedKnown ? { decided: gcSeeds.decided, decidedShare: share(gcSeeds.decided, gcSeeds.decidedKnown) } : {}) };
   }
   if (road.some((r) => has(r, "earlyCatch"))) {
     const withBreak = road.filter((r) => (r.breakawayRiderIds ?? []).length > 0);
@@ -184,6 +193,207 @@ export function aggregateRevision(raceResults, revision, { bigBreakawayWinSecond
     agg.earlyCatches = { count: early, ofBreakaways: share(early, withBreak.length), breakaways: withBreak.length, reformed, reformedShare: share(reformed, early) };
   }
   return agg;
+}
+
+// ── #6938 G17: udgaaede pr. loebsgruppe ─────────────────────────────────────
+
+/**
+ * Loebsgrupperne G17 maales i (etaper fra-til). Graenserne er strukturelle
+ * (endagsloeb, korte etapeloeb, ugeloeb, Grand Tours), ikke balance; baandene
+ * pr. gruppe er private (thresholds.abandonG17Bands, hard rule 17).
+ */
+export const ABANDON_RACE_GROUPS = Object.freeze([
+  ["one_day", 1, 1],
+  ["short", 2, 4],
+  ["week", 5, 10],
+  ["grand_tour", 11, Infinity],
+]);
+
+/** Loebsgruppen for et loeb med `stages` etaper, eller null. */
+export function abandonRaceGroup(stages) {
+  const n = Number(stages);
+  if (!Number.isFinite(n) || n < 1) return null;
+  return ABANDON_RACE_GROUPS.find(([, lo, hi]) => n >= lo && n <= hi)?.[0] ?? null;
+}
+
+/**
+ * G17 (spec 2026-10-23-6804-v3-tilvalg-design.md §2.2) for EN revision: andelen af
+ * starterne der ikke er i slutklassementet, pr. loebsgruppe, og kaptajner mod
+ * hjaelpere. Laeser `perSeed[].abandons` (tourScorecard.abandonCounts); seeds uden
+ * feltet (aeldre scorecards) springes over.
+ *
+ * Dom pr. gruppe (kun naar et privat baand {min, max} er givet): PASS inden for
+ * baandet, ellers FAIL. Kaptajnreglen: FAIL naar kaptajnernes andel er hoejere end
+ * hjaelpernes (ellers rammer det spillernes loeb for haardt), N/A uden begge roller.
+ */
+export function abandonGateG17(raceResults, revision, { bands = null } = {}) {
+  const groups = {};
+  for (const [key] of ABANDON_RACE_GROUPS) {
+    groups[key] = { races: 0, seeds: 0, starters: 0, out: 0, captains: 0, captainsOut: 0, helpers: 0, helpersOut: 0 };
+  }
+  for (const rr of raceResults) {
+    const run = rr?.runs?.[revision];
+    const key = abandonRaceGroup(rr?.stages);
+    if (!run || !key) continue;
+    const g = groups[key];
+    let counted = false;
+    for (const seed of run.perSeed ?? []) {
+      const a = seed?.abandons;
+      if (!a) continue;
+      counted = true;
+      g.seeds += 1;
+      g.starters += Number(a.starters) || 0;
+      g.out += Number(a.out) || 0;
+      g.captains += Number(a.startersByRole?.captain) || 0;
+      g.captainsOut += Number(a.outByRole?.captain) || 0;
+      g.helpers += Number(a.startersByRole?.helper) || 0;
+      g.helpersOut += Number(a.outByRole?.helper) || 0;
+    }
+    if (counted) g.races += 1;
+  }
+  const out = {};
+  for (const [key, g] of Object.entries(groups)) {
+    const outShare = share(g.out, g.starters);
+    const captainOutShare = share(g.captainsOut, g.captains);
+    const helperOutShare = share(g.helpersOut, g.helpers);
+    const band = bands?.[key] ?? null;
+    const bandVerdict = outShare === null ? "N/A"
+      : band && (Number.isFinite(Number(band.min)) || Number.isFinite(Number(band.max)))
+        ? (outShare >= (Number(band.min) || 0) && outShare <= (Number.isFinite(Number(band.max)) ? Number(band.max) : 1) ? "PASS" : "FAIL")
+        : "TODO";
+    const captainVerdict = captainOutShare === null || helperOutShare === null ? "N/A" : captainOutShare <= helperOutShare ? "PASS" : "FAIL";
+    out[key] = { ...g, outShare, captainOutShare, helperOutShare, verdicts: { band: bandVerdict, captainsNotAboveHelpers: captainVerdict } };
+  }
+  return out;
+}
+
+// ── #6804: loebsgrupper (G1', G12, G14) ──────────────────────────────────────
+//
+// Udbrudssejre pr. loebsgruppe x terraen (M1) og tidsgab i korte etapeloeb (M2).
+// Baandene er balance-tal og staar KUN i den private taerskelfil (hard rule 17):
+//   breakawayWinShareByGroup: { gt|stage_race|one_day: { <profile_type>: {min,max} } }
+//   breakawayGroupTotalBands: { gt|stage_race|one_day: {min,max} }  (gruppens samlede andel af vejetaper)
+//   shortStageRaceGapBands:   { sr2-4|sr5-8: { gcTo10Final: {min,max,medianMin?,medianMax?}, gcWinnerMargin: {...} } }
+// Mangler et baand, er dommen "-" (aldrig en gaettet graense). Et terraen uden baand
+// i gruppen vises kun som information.
+
+/** Loebsgruppe for udbrudsmaalene (samme inddeling som P0-satserne: breakawayIntent.raceGroupOf). */
+// #7214 (ejer 26/10): monumenter (endagsloeb med race_class Monuments) er egen gruppe; deres
+// samlede baand er raceGroupBands.monumentBreakawayWinShare, medmindre breakawayGroupTotalBands har et.
+export const BREAKAWAY_RACE_GROUPS = Object.freeze(["gt", "stage_race", "one_day", "monument"]);
+/**
+ * #6804 G11: grupperne hvor klassementsjagten maales (etapeloeb). Private lofter (valgfrie):
+ *   gcChaseCatchBands: { gt|stage_race: { gcEarlyCatchMaxShare?, yoyoMaxShare? } }
+ */
+export const G11_RACE_GROUPS = Object.freeze(["gt", "stage_race"]);
+export const breakawayRaceGroup = raceGroupOf;
+
+/** Kort etapeloebs tidsgab-gruppe (samme som tourScorecard.shortStageRaceGroup). */
+export const SHORT_GAP_GROUPS = SHORT_STAGE_RACE_GROUPS;
+export const shortGapGroup = shortStageRaceGroup;
+
+/** p-kvantil (naermeste rang) af endelige tal; null uden data. */
+export function quantile(xs, p) {
+  const s = xs.filter((v) => v !== null && v !== undefined && Number.isFinite(Number(v))).map(Number).sort((a, b) => a - b);
+  if (!s.length) return null;
+  return s[Math.min(s.length - 1, Math.max(0, Math.round(p * (s.length - 1))))];
+}
+
+const finiteOrUndef = (v) => (v !== null && v !== undefined && Number.isFinite(Number(v)) ? Number(v) : undefined);
+
+/** PASS/FAIL for en andel eller et tal mod et privat {min,max}; "-" uden baand eller maaling. */
+export function bandVerdict(value, band) {
+  if (value === null || value === undefined || !Number.isFinite(Number(value))) return "-";
+  const min = finiteOrUndef(band?.min);
+  const max = finiteOrUndef(band?.max);
+  if (min === undefined && max === undefined) return "-";
+  return (min === undefined || value >= min) && (max === undefined || value <= max) ? "PASS" : "FAIL";
+}
+
+/**
+ * G12: median i median-baandet (medianMin/medianMax, ellers min/max) og halen (p10 >= min,
+ * p90 <= max). Returnerer { median, tail } hver PASS/FAIL/"-".
+ */
+export function gapGroupVerdicts(stats, band) {
+  if (!band) return { median: "-", tail: "-" };
+  const median = bandVerdict(stats.median, { min: band.medianMin ?? band.min, max: band.medianMax ?? band.max });
+  const lo = finiteOrUndef(band.min);
+  const hi = finiteOrUndef(band.max);
+  let tail = "-";
+  if ((lo !== undefined || hi !== undefined) && stats.p10 !== null && stats.p90 !== null) {
+    tail = (lo === undefined || stats.p10 >= lo) && (hi === undefined || stats.p90 <= hi) ? "PASS" : "FAIL";
+  }
+  return { median, tail };
+}
+
+/**
+ * #6804: alle loebsgruppe-maalinger for EN revision. Udbrudsandelen er pr.
+ * (etape, seed) paa vejetaper som resten af kortet; tidsgabet er pr. (loeb, seed).
+ */
+export function aggregateRaceGroups(raceResults, revision, thresholds = {}) {
+  const shareBands = thresholds?.breakawayWinShareByGroup ?? {};
+  const totalBands = thresholds?.breakawayGroupTotalBands ?? {};
+  const gapBands = thresholds?.shortStageRaceGapBands ?? {};
+  const rowsByGroup = Object.fromEntries(BREAKAWAY_RACE_GROUPS.map((g) => [g, []]));
+  const gapByGroup = Object.fromEntries(SHORT_GAP_GROUPS.map((g) => [g, { races: 0, gcTo10Final: [], gcWinnerMargin: [] }]));
+  for (const rr of raceResults) {
+    const run = rr?.runs?.[revision];
+    if (!run) continue;
+    const g0 = breakawayRaceGroup(rr.stages);
+    const g = g0 === "one_day" && rr.raceClass === MONUMENT_RACE_CLASS ? "monument" : g0; // #7214
+    for (const s of run.perSeed ?? []) for (const r of s.rows ?? []) if (isRoad(r)) rowsByGroup[g].push(r);
+    const sg = shortGapGroup(rr.stages);
+    if (sg) {
+      gapByGroup[sg].races += 1;
+      for (const s of run.perSeed ?? []) {
+        gapByGroup[sg].gcTo10Final.push(s.gcFinalTo10);
+        gapByGroup[sg].gcWinnerMargin.push(s.gcWinnerMargin);
+      }
+    }
+  }
+  const breakaway = {};
+  for (const g of BREAKAWAY_RACE_GROUPS) {
+    const rows = rowsByGroup[g];
+    const total = { ...terrainStats(rows) };
+    total.verdict = bandVerdict(total.breakawayWinShare, totalBands[g] ?? (g === "monument" ? thresholds?.raceGroupBands?.monumentBreakawayWinShare : undefined));
+    const byTerrain = {};
+    for (const t of [...new Set(rows.map((r) => r.profile_type))].sort()) {
+      const st = terrainStats(rows.filter((r) => r.profile_type === t));
+      const band = shareBands[g]?.[t] ?? null;
+      byTerrain[t] = { ...st, hasBand: Boolean(band), verdict: bandVerdict(st.breakawayWinShare, band) };
+    }
+    breakaway[g] = { total, byTerrain };
+  }
+  // #6804 G11: klassementsjagtens tidlige indhentninger og yo-yo i etapeloeb (GT og korte).
+  const g11Bands = thresholds?.gcChaseCatchBands ?? {};
+  const gcChase = {};
+  for (const g of G11_RACE_GROUPS) {
+    const rows = rowsByGroup[g].filter((r) => has(r, "gcEarlyCatch"));
+    if (!rows.length) { gcChase[g] = null; continue; }
+    const early = rows.filter((r) => r.gcEarlyCatch === true).length;
+    const yoyo = rows.filter((r) => r.yoyo === true).length;
+    const earlyShare = share(early, rows.length);
+    const yoyoShare = share(yoyo, rows.length);
+    gcChase[g] = { n: rows.length, gcEarlyCatches: early, gcEarlyCatchShare: earlyShare, yoyo, yoyoShare,
+      verdicts: { gcEarlyCatch: bandVerdict(earlyShare, { max: g11Bands[g]?.gcEarlyCatchMaxShare }), yoyo: bandVerdict(yoyoShare, { max: g11Bands[g]?.yoyoMaxShare }) } };
+  }
+  const gaps = {};
+  for (const g of SHORT_GAP_GROUPS) {
+    const x = gapByGroup[g];
+    gaps[g] = { races: x.races };
+    for (const k of ["gcTo10Final", "gcWinnerMargin"]) {
+      const stats = { n: x[k].filter((v) => Number.isFinite(Number(v)) && v !== null).length, median: median(x[k]), p10: quantile(x[k], 0.1), p90: quantile(x[k], 0.9) };
+      gaps[g][k] = { ...stats, verdicts: gapGroupVerdicts(stats, gapBands[g]?.[k] ?? null) };
+    }
+  }
+  return { breakaway, gaps, gcChase };
+}
+
+/** #6804 P7: et loebsresultat med hver revisions scorecard doemt mod de private M2-baand (nyt objekt). */
+export function withGapBands(rr, shortStageRaceGapBands) {
+  if (!shortStageRaceGapBands || !rr?.runs) return rr;
+  const runs = Object.fromEntries(Object.entries(rr.runs).map(([rev, run]) => [rev, run?.summary ? { ...run, summary: withShortRaceGapBands(run.summary, shortStageRaceGapBands) } : run]));
+  return { ...rr, runs };
 }
 
 /** Pr. loeb: domme og haard-gate-hits under begge revisioner (til tabellen "pr. loeb"). */
@@ -223,8 +433,9 @@ export function benchView(json) {
  * Hele kortet: baseline og kandidat side om side + bench. `meta` er koerslens
  * parametre (seeds, parallel, kilde, fejlede loeb ...), skrives som de er.
  */
-export function buildTestportCard({ raceResults, baseline, candidate, benchByRevision = {}, meta = {}, thresholds = {} }) {
-  const results = raceResults.filter(Boolean);
+export function buildTestportCard({ raceResults, baseline, candidate, benchByRevision = {}, meta = {}, thresholds = {}, contexts = new Map() }) {
+  // #6804 P7: et kort etapeloebs scorecard (koert uden de private baand) doemmes her mod M2-baandene.
+  const results = raceResults.filter(Boolean).map((rr) => withGapBands(rr, thresholds?.shortStageRaceGapBands));
   const base = aggregateRevision(results, baseline, thresholds);
   const cand = baseline === candidate ? base : aggregateRevision(results, candidate, thresholds);
   const regressions = [];
@@ -238,9 +449,27 @@ export function buildTestportCard({ raceResults, baseline, candidate, benchByRev
     races: results.length,
     thresholds,
     revisions: { baseline: base, candidate: cand },
+    // #6804: loebsgrupper (G1', G12, G14) mod de private baand.
+    groups: { baseline: aggregateRaceGroups(results, baseline, thresholds), candidate: baseline === candidate ? null : aggregateRaceGroups(results, candidate, thresholds) },
     verdict: { failDelta: cand.counts.FAIL - base.counts.FAIL, passDelta: cand.counts.PASS - base.counts.PASS, hardGateRegressions: regressions },
     perRace: perRaceRows(results, baseline, candidate),
     bench: { baseline: benchByRevision[baseline] ?? null, candidate: benchByRevision[candidate] ?? null },
+    // #6938 G17: udgaaede pr. loebsgruppe (baandene er private).
+    g17: {
+      baseline: abandonGateG17(results, baseline, { bands: thresholds?.abandonG17Bands ?? null }),
+      candidate: abandonGateG17(results, candidate, { bands: thresholds?.abandonG17Bands ?? null }),
+    },
+    // #6804 v3 (ejer valg 8 A): G16-G19 + G2-flad blokerer taendingen. Doemt for begge
+    // revisioner; kun kandidatens dom blokerer, og kun naar kandidaten er v3 eller senere.
+    v3Gates: {
+      applies: v3GatesApply(candidate),
+      baseline: evaluateV3Gates({ raceResults: results, revision: baseline, contexts, bands: thresholds.v3Gates ?? null }),
+      candidate: evaluateV3Gates({ raceResults: results, revision: candidate, contexts, bands: thresholds.v3Gates ?? null }),
+    },
+    // #2757 S0: spurtfinalen (maaling, ingen gate).
+    sprintFinale: { baseline: measureSprintFinale(results, baseline, contexts), candidate: measureSprintFinale(results, candidate, contexts) },
+    // #7214 (ejer 26/10): fire loebsgrupper + favoritsejre; blokerer kun kandidater efter s5_profiles_v3.
+    raceGroupGates: buildRaceGroupCard({ raceResults: results, baseline, candidate, contexts, thresholds }),
   };
 }
 
@@ -288,6 +517,7 @@ export function sideBySideRows(card) {
   add("favorit-udbrudssejre (kaptajn vandt fra udbrud)", (a) => a.favouriteBreakawayWins?.count, (x) => fmtN(x, 0));
   add("favorit-udbrudssejre (andel af udbrudssejre)", (a) => a.favouriteBreakawayWins?.ofBreakawayWins, fmtPct);
   add("GC-vinder sad i udbrud (andel af etapeloeb x seeds)", (a) => a.gcWinnerFromBreak?.memberShare, fmtPct);
+  add("GC-vinder i et udbrud der afgjorde loebet (andel, #7258)", (a) => a.gcWinnerFromBreak?.decidedShare, fmtPct);
   add("GC-vinder vandt en etape fra udbrud (andel)", (a) => a.gcWinnerFromBreak?.wonFromBreakShare, fmtPct);
   add("tidlige indhentninger (andel af udbrud)", (a) => a.earlyCatches?.ofBreakaways, fmtPct);
   add("tidlige indhentninger med nyt udbrud (andel)", (a) => a.earlyCatches?.reformedShare, fmtPct);
@@ -317,6 +547,108 @@ export function inputLines(meta = {}) {
   return lines;
 }
 
+/**
+ * #6804: kortets afsnit om loebsgrupper. Udbrudssejre pr. gruppe x terraen og samlet
+ * (G1', G14: endagsloeb paa kuperet) og tidsgab i korte etapeloeb (G12), baseline og
+ * kandidat side om side med dommen mod de private baand ("-" = intet baand).
+ */
+export function raceGroupMarkdown(card) {
+  const gb = card.groups?.baseline;
+  const gc = card.groups?.candidate ?? gb;
+  if (!gb) return [];
+  const revs = [card.baseline, card.candidate];
+  const out = ["## Loebsgrupper (#6804 G1', G11, G12, G14)", "", "Dom mod de private baand (taerskelfilen); \"-\" = intet baand for cellen.", ""];
+  const bRows = [];
+  for (const g of BREAKAWAY_RACE_GROUPS) {
+    const pick = (a) => a?.breakaway?.[g];
+    const tb = pick(gb)?.total;
+    const tc = pick(gc)?.total;
+    bRows.push([`${g} samlet`, String(tb?.n ?? 0), `${fmtPct(tb?.breakawayWinShare)} ${tb?.verdict ?? "-"}`, `${fmtPct(tc?.breakawayWinShare)} ${tc?.verdict ?? "-"}`]);
+    const terrains = [...new Set([...Object.keys(pick(gb)?.byTerrain ?? {}), ...Object.keys(pick(gc)?.byTerrain ?? {})])].sort();
+    for (const t of terrains) {
+      const xb = pick(gb)?.byTerrain?.[t];
+      const xc = pick(gc)?.byTerrain?.[t];
+      const txt = (x) => (x ? `${fmtPct(x.breakawayWinShare)} · ${fmtN(x.breakawaySizeMedian)} ${x.hasBand ? x.verdict : "info"}` : "-");
+      bRows.push([`${g} ${t}`, String(xb?.n ?? xc?.n ?? 0), txt(xb), txt(xc)]);
+    }
+  }
+  out.push("### Udbrudssejre pr. loebsgruppe x terraen (andel af vejetaper · median str.)", "", ...table(["Gruppe/terraen", "n", revs[0], revs[1]], bRows));
+  const gRows = [];
+  for (const g of SHORT_GAP_GROUPS) {
+    for (const k of ["gcTo10Final", "gcWinnerMargin"]) {
+      const txt = (a) => {
+        const x = a?.gaps?.[g]?.[k];
+        return x ? `${fmtS(x.median)} (${fmtS(x.p10)}-${fmtS(x.p90)}) median ${x.verdicts.median} · hale ${x.verdicts.tail}` : "-";
+      };
+      gRows.push([`${g} ${k}`, String(gb.gaps?.[g]?.races ?? 0), txt(gb), txt(gc)]);
+    }
+  }
+  out.push("", "### Tidsgab i korte etapeloeb (median, p10-p90 over loeb x seeds)", "", ...table(["Gruppe/maaling", "loeb", revs[0], revs[1]], gRows));
+  // #6804 G11: klassementsjagten henter i foerste del af etapen + yo-yo (andel af vejetaper).
+  const cRows = [];
+  for (const g of G11_RACE_GROUPS) {
+    const pick = (a) => a?.gcChase?.[g] ?? null;
+    if (!pick(gb) && !pick(gc)) continue;
+    const early = (x) => (x ? `${fmtPct(x.gcEarlyCatchShare)} (${x.gcEarlyCatches}) ${x.verdicts.gcEarlyCatch}` : "-");
+    const yoyo = (x) => (x ? `${fmtPct(x.yoyoShare)} (${x.yoyo}) ${x.verdicts.yoyo}` : "-");
+    cRows.push([`${g} tidlig GC-indhentning`, String(pick(gb)?.n ?? pick(gc)?.n ?? 0), early(pick(gb)), early(pick(gc))]);
+    cRows.push([`${g} yo-yo`, String(pick(gb)?.n ?? pick(gc)?.n ?? 0), yoyo(pick(gb)), yoyo(pick(gc))]);
+  }
+  if (cRows.length) out.push("", "### Klassementsjagten (G11, andel af vejetaper)", "", ...table(["Gruppe/maaling", "n", revs[0], revs[1]], cRows));
+  return out;
+}
+
+/** #6804: kortets dom-linje for v3-gaterne (G16-G19 + G2-flad). */
+export function v3GateLine(card) {
+  const v = card.v3Gates;
+  if (!v?.candidate) return "- v3-gaterne: ikke doemt.";
+  if (!v.applies) return `- v3-gaterne (G16-G19, G2-flad) blokerer kun en v3-kandidat; ${card.candidate} er ikke v3, dommen vises til orientering.`;
+  return v.candidate.blocked
+    ? `- **TAEND-GATE v3 BLOKERET:** ${v.candidate.reasons.join("; ")}.`
+    : "- Taend-gaten for v3: G16-G19 og G2-flad er groenne.";
+}
+
+/** Vaerdien af en v3-gate som kort tekst (tal kun i det private kort). */
+export function v3GateValueText(g) {
+  const x = g?.value;
+  if (!x) return "-";
+  switch (g.id) {
+    case "G16": return [...Object.entries(x.byGroup ?? {}).filter(([, v]) => v.n).map(([k, v]) => `${k} ${fmtPct(v.gcAlsoKom)} (n ${v.n})`), `udbrudspoint ${x.komFromBreak ? fmtPct(x.komFromBreak.share) : "-"}`].join(" · ");
+    case "G17": return [...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.share)}`), `kaptajn ${fmtPct(x.captainRate)} / hjaelper ${fmtPct(x.helperRate)}`].join(" · ");
+    case "G18": return `sprinter ${fmtPct(x.sprinterWins)} · klassementsvinder ${fmtPct(x.gcWinnerWins)} (n ${x.n}, ${x.races} loeb)`;
+    case "G19": return `samlet ${fmtS(x.median)} (n ${x.n}) · ${Object.entries(x.byDivision ?? {}).map(([d, v]) => `${String(d).slice(0, 8)} ${fmtS(v.median)}`).join(" · ")}`;
+    case "gcFromBreakaway": return [`afgjort af udbrud ${fmtPct(x.decidedShare)} · vandt fra udbrud ${fmtPct(x.wonShare)} (n ${x.n})`, ...Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.decidedShare)}/${fmtPct(v.wonShare)}`), ...Object.entries(x.favourites ?? {}).map(([k, v]) => `${k}: GC-fav ${fmtPct(v.gcFavShare)}, etapefav ${fmtPct(v.stageFavShare)} af ${v.breakaways} udbrud`)].join(" · "); // #7258
+    case "stageFavouriteInBreakaway": // #7258 S3
+    case "gcFavouriteInBreakaway": return Object.entries(x.byGroup ?? {}).map(([k, v]) => `${k} ${fmtPct(v.share)} af ${v.breakaways} morgenudbrud (${fmtPct(v.shareOfRoadStages)} af ${v.roadStages} vejetaper, ${v.races} loeb)`).join(" · ") || "-"; // #7258 S4
+    case "G2F": return `${x.n} etaper · over oevre zone uden jagt-interesse ${x.overUpperWithoutUnchased ?? "-"} · over haard graense ${x.overHardMax ?? "-"}`;
+    default: return "-";
+  }
+}
+
+function v3GateSection(card) {
+  const v = card.v3Gates;
+  if (!v?.candidate) return [];
+  const byId = (side) => Object.fromEntries((v[side]?.gates ?? []).map((g) => [g.id, g]));
+  const b = byId("baseline");
+  return ["", `## Taend-gaten for v3 (#6804, ejer valg 8 A: blokerende)${v.applies ? "" : " - til orientering"}`, "",
+    ...table(["Gate", `${card.baseline} dom`, `${card.baseline} vaerdi`, `${card.candidate} dom`, `${card.candidate} vaerdi`, "Hvorfor (kandidat)"],
+      (v.candidate.gates ?? []).map((g) => [`${g.id} ${g.issue}: ${g.label}`, b[g.id]?.status ?? "-", v3GateValueText(b[g.id]), g.status, v3GateValueText(g), g.why ?? "-"])),
+    "", "MANGLER = ingen maaling i scorecardet (motor-sporets felt er ikke leveret endnu) eller intet privat baand; det blokerer som FAIL."];
+}
+
+/** #2757 S0: spurtfinalens maaling, baseline og kandidat side om side. */
+function sprintFinaleSection(card) {
+  const s = card.sprintFinale;
+  if (!s?.baseline && !s?.candidate) return ["", "## #2757 S0: spurtfinalen", "", "Ingen spurtfinaler i koerslen (eller ingen loebskontekst/sprintTop10 i scorecardet)."];
+  const keys = [...new Set([...Object.keys(s.baseline ?? {}), ...Object.keys(s.candidate ?? {})])].sort((a, b) => (a === "alle" ? -1 : b === "alle" ? 1 : a.localeCompare(b)));
+  const cells = (x) => (x ? [String(x.n), fmtPct(x.bestSprinterWins), fmtPct(x.top3Wins), fmtN(x.winnerSprintRankMedian), fmtPct(x.roleShares?.sprint_captain ?? 0), fmtPct(x.helperBeatOwnSprintCaptain), fmtN(x.top10MeanRankDiffMedian), fmtPct(x.top5SprintersInTop10Median)] : Array(8).fill("-"));
+  const head = ["n", "bedste sprinter vandt", "top 3 vandt", "vinderens sprint-rang (median)", "sprint-kaptajn vandt", "hjaelper slog egen sprint-kaptajn", "top 10: afvigelse sprint-rang mod plads (median)", "feltets 5 bedste i top 10 (median)"];
+  const sides = card.sameRevision ? [["baseline", card.baseline]] : [["baseline", card.baseline], ["candidate", card.candidate]];
+  return ["", "## #2757 S0: spurtfinalen (maaling, ingen gate)",
+    ...sides.flatMap(([side, rev]) => ["", `### ${rev}`, "", ...table(["Udsnit", ...head], keys.map((k) => [k, ...cells(s[side]?.[k])]))]),
+    "", "Spurtfinale = flad eller brosten vej-etape (massespurt-etape i scorecardet) hvor udbruddet ikke vandt. Sprint-rang = plads i feltet efter evnen sprint (1 = bedst)."];
+}
+
 /** Markdown-kortet (privat, balance-internals). */
 export function renderTestportMarkdown(card) {
   const b = card.revisions.baseline;
@@ -338,13 +670,24 @@ export function renderTestportMarkdown(card) {
   lines.push(`- FAIL: ${c.counts.FAIL} mod ${b.counts.FAIL} (${fmtDelta(b.counts.FAIL, c.counts.FAIL, (x) => fmtN(x, 0))}); PASS ${fmtDelta(b.counts.PASS, c.counts.PASS, (x) => fmtN(x, 0))}.`);
   const reg = card.verdict.hardGateRegressions;
   lines.push(reg.length ? `- Haarde gates VAERRE under kandidaten: ${reg.map((r) => `${r.label} ${r.baseline} -> ${r.candidate}`).join("; ")}.` : "- Ingen haard gate er vaerre under kandidaten.");
+  lines.push(v3GateLine(card), raceGroupGateLine(card));
+  lines.push(...v3GateSection(card), ...raceGroupGateSection(card), ...sprintFinaleSection(card));
   lines.push("", "## Side om side", "", ...table(["Maaling", card.baseline, card.candidate, "delta"], sideBySideRows(card)));
   lines.push("", "## Haarde gates", "", ...table(["Gate", ...[card.baseline, card.candidate].flatMap((r) => [`${r} hits`, `${r} loeb ramt`, `${r} loeb FAIL`])],
     HARD_GATES.map(([k, label]) => [label, ...[b, c].flatMap((a) => [fmtN(a.hardGates[k].total, 0), String(a.hardGates[k].racesHit), String(a.hardGates[k].racesFail)])])));
+  if (card.g17) {
+    lines.push("", "## G17 udgaaede pr. loebsgruppe (#6938)", "", ...table(
+      ["Gruppe", ...[card.baseline, card.candidate].flatMap((r) => [`${r} seeds`, `${r} udgaaet`, `${r} kaptajner`, `${r} hjaelpere`, `${r} dom`])],
+      ABANDON_RACE_GROUPS.map(([key]) => [key, ...[card.g17.baseline[key], card.g17.candidate[key]].flatMap((g) => (g
+        ? [String(g.seeds), fmtPct(g.outShare), fmtPct(g.captainOutShare), fmtPct(g.helperOutShare), `${g.verdicts.band}/${g.verdicts.captainsNotAboveHelpers}`]
+        : ["-", "-", "-", "-", "-"]))]),
+    ));
+  }
   lines.push("", "## Udbrud pr. profiltype (vejetaper)", "");
   const types = [...new Set([...Object.keys(b.byProfileType), ...Object.keys(c.byProfileType)])].sort();
   lines.push(...table(["Profil", ...[card.baseline, card.candidate].flatMap((r) => [`${r} n`, `${r} udbrud vandt`, `${r} str.`, `${r} nr. 10 hentet`])],
     types.map((t) => [t, ...[b, c].flatMap((a) => { const x = a.byProfileType[t]; return x ? [String(x.n), fmtPct(x.breakawayWinShare), fmtN(x.breakawaySizeMedian), fmtS(x.gapTo10Median)] : ["-", "-", "-", "-"]; })])));
+  lines.push("", ...raceGroupMarkdown(card));
   lines.push("", "## Scorecard-maal (domme pr. maaling, alle loeb)", "");
   const keys = [...new Set([...Object.keys(b.tallies), ...Object.keys(c.tallies)])].sort();
   const tt = (t) => (t ? `${t.PASS}/${t.WARN}/${t.FAIL}/${t.TODO}/${t["N/A"]}` : "-");
@@ -373,6 +716,7 @@ export function renderTestportMarkdown(card) {
     "- GC-vinder fra udbrud: etapeloebets slutvinder sad i dagens udbrud paa mindst én etape (sad i), eller vandt en etape fra udbruddet.",
     "- Tidlig indhentning: morgenudbruddet hentet inden for motorens reformations-graense af etapen (S5_REFORMATION_TUNING.maxStageFraction); nyt udbrud = breakaway_formed med reformation.",
     "- Nr. 10 hentet: tidsgab vinder til nr. 10 paa de seeds hvor udbruddet IKKE vandt (som scorecardet).",
+    "- G17 (#6938): andel af starterne uden slutklassement (udgaaet, ikke-start, uden for tidsgraensen) pr. loebsgruppe; dom = privat baand / kaptajner (captain, sprint_captain) ikke over hjaelpere. U1 maales kun med --track-fatigue.",
     "");
   return `${lines.join("\n")}\n`;
 }
@@ -396,6 +740,8 @@ table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;pad
 <p>${inputLines(card.meta ?? {}).map(esc).join("<br>")}</p>
 ${(card.meta?.failedRaces?.length || card.meta?.missingScorecards?.length || card.meta?.pendingTasks?.length) ? `<p class="bad">UFULDSTAENDIG: ${card.meta?.failedRaces?.length ?? 0} opgaver fejlede, ${card.meta?.missingScorecards?.length ?? 0} scorecards mangler, ${card.meta?.pendingTasks?.length ?? 0} opgaver venter</p>` : ""}
 <p class="${reg.length ? "bad" : "ok"}">${reg.length ? `Haarde gates vaerre: ${esc(reg.map((r) => r.label).join(", "))}` : "Ingen haard gate er vaerre under kandidaten"} · FAIL-delta ${esc(String(card.verdict.failDelta))}</p>
+${card.v3Gates?.applies ? `<p class="${card.v3Gates.candidate.blocked ? "bad" : "ok"}">${esc(v3GateLine(card).replace(/^- /, "").replace(/\*\*/g, ""))}</p>` : ""}
+${card.raceGroupGates?.candidate ? `<p class="${card.raceGroupGates.applies && card.raceGroupGates.candidate.blocked ? "bad" : "ok"}">${esc(raceGroupGateLine(card).replace(/^- /, "").replace(/\*\*/g, ""))}</p>` : ""}
 <table><thead><tr><th>Maaling</th><th class="n">${esc(card.baseline)}</th><th class="n">${esc(card.candidate)}</th><th class="n">delta</th></tr></thead><tbody>${rows}</tbody></table>
 </body></html>`;
 }

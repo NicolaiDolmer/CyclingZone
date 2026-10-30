@@ -813,7 +813,7 @@ test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salar
 // notifikationens ordlyd og resultatets `deferred`-felt skal afspejle det.
 test("signAcademyCandidate (#4423): RPC svarer deferred=true → 'confirmed'-notifikation + deferred:true på resultatet", async () => {
   const supabase = makeSignRejectSupabase({ riderBaseValue: 100000, teamAcademyCount: 0, deferred: true });
-  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1, now: new Date("2026-10-26T12:00:00Z") });
 
   assert.equal(result.riderId, "rider-X");
   assert.equal(result.deferred, true, "signAcademyCandidate propagerer RPC'ens deferred-flag");
@@ -825,8 +825,11 @@ test("signAcademyCandidate (#4423): RPC svarer deferred=true → 'confirmed'-not
   assert.equal(supabase._intakeUpdates[0].status, "signed");
 
   // Notifikationen skal bruge den UDSKUDT-ordlyd, ikke "har sluttet sig til dit akademi".
-  assert.equal(supabase._notificationInserts.length, 1, "præcis én notifikation");
-  const notif = supabase._notificationInserts[0];
+  assert.equal(supabase._notificationInserts.length, 2, "signing confirmation and current-season contract warning");
+  const warning = supabase._notificationInserts.find((n) => n.type === "contract_expiring");
+  assert.equal(warning.metadata.messageCode, "notif.contractExpiring.squadMessage");
+  assert.equal(warning.metadata.messageParams.season, 1);
+  const notif = supabase._notificationInserts.find((n) => n.type === "academy_signed");
   assert.equal(notif.metadata.messageCode, "notif.academySigningDeferred.message");
   assert.equal(notif.metadata.titleCode, "notif.academySigningDeferred.title");
   assert.match(notif.message, /once his current stage race is finished/);
@@ -834,10 +837,11 @@ test("signAcademyCandidate (#4423): RPC svarer deferred=true → 'confirmed'-not
 
 test("signAcademyCandidate (#4423): RPC svarer deferred=false (normal, upåvirket sti) → uændret 'complete'-notifikation", async () => {
   const supabase = makeSignRejectSupabase({ riderBaseValue: 100000, teamAcademyCount: 0, deferred: false });
-  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1 });
+  const result = await signAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X", seasonNumber: 1, now: new Date("2026-10-26T12:00:00Z") });
 
   assert.equal(result.deferred, false, "ikke-udskudt signering rapporterer deferred:false");
-  assert.equal(supabase._notificationInserts[0].metadata.messageCode, "notif.academySigned.message");
+  assert.equal(supabase._notificationInserts.find((n) => n.type === "academy_signed").metadata.messageCode, "notif.academySigned.message");
+  assert.equal(supabase._notificationInserts.filter((n) => n.type === "contract_expiring").length, 1);
 });
 
 // #3550 punkt 3 (ejer-beslutning 19/8): intake-signeringer er ISOLERET fra den
