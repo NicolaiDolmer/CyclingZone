@@ -42,6 +42,8 @@ async function fixture(){
     `INSERT INTO races SELECT fid(1000+i),CASE WHEN i%50=0 THEN NULL ELSE fid(2000+i%3) END,(ARRAY['senior','senior','u23','junior'])[1+i%4],CASE WHEN i%2=0 THEN 'single' ELSE 'stage_race' END,'race '||i FROM generate_series(1,${RACES}) i;`,
     "INSERT INTO race_results(race_id,rider_id,team_id,points_earned,prize_money,rank,result_type) SELECT r.id,CASE WHEN i%11=0 THEN NULL ELSE fid(1+i%24) END,CASE WHEN i%3=0 THEN fid(100+i%4) ELSE NULL END,CASE WHEN i%7=0 THEN NULL ELSE i END,CASE WHEN i%5=0 THEN NULL ELSE i*100 END,1+i%12,(ARRAY['stage','gc','points','mountain','young','leader','points_day','mountain_day','young_day','team'])[1+i%10] FROM races r CROSS JOIN generate_series(1,12) i;",
     ...views.map((n,i)=>'CREATE MATERIALIZED VIEW public.'+n+' AS '+definitions[i]+';'),
+    ...views.map((n,i)=>'CREATE UNIQUE INDEX '+n+'_pk ON public.'+n+'('+
+      ['season_id,rider_id','season_id,squad,rider_id','season_id,team_id','season_id,team_id,race_id'][i]+');'),
   ].join('\n'));
   await db.exec(m1);
   await db.exec(m15);
@@ -59,7 +61,7 @@ async function drain(db:PGlite,batch=200){
   assert.fail('queue did not drain');
 }
 async function refreshLegacy(db:PGlite){
-  for(const v of views) await db.exec('REFRESH MATERIALIZED VIEW public.'+v+';');
+  for(const v of views) await db.exec('REFRESH MATERIALIZED VIEW CONCURRENTLY public.'+v+';');
 }
 async function parity(db:PGlite,label:string){
   for(let i=0;i<views.length;i++){
