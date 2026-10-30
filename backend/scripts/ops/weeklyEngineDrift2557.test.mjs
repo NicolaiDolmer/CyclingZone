@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import {
   GROUPS, abandonCategory, alarmText, bandStatus, buildFacts, buildPayloads, computeGroupMetrics, evaluate, main,
   makeReadOnlyClient, parseThresholds, raceGroupOfRace, renderReport, splitReport, summaryLine, windowOf, missingEnv, fetchRaw,
+  executedStagesInWindow, wonFromBreakaway,
 } from "./weeklyEngineDrift2557.mjs";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
@@ -12,7 +13,7 @@ import {
 const race = (id, over = {}) => ({ id, stages: 1, race_class: "Class1", squad: "senior", engine_rules_revision: "rev_a", ...over });
 /** Endagsloeb persisteres KUN som gc-raekker (raceRunner.js), aldrig stage. */
 const gcRow = (raceId, stage, rank, rider, extra = {}) => row(raceId, stage, rank, rider, { result_type: "gc", ...extra });
-const row = (raceId, stage, rank, rider, extra = {}) => ({ id: `${raceId}-${stage}-${rank}-${extra.result_type ?? "stage"}`, race_id: raceId, stage_number: stage, result_type: "stage", rank, rider_id: rider, team_id: `t-${rider}`, in_breakaway: false, ...extra });
+const row = (raceId, stage, rank, rider, extra = {}) => ({ id: `${raceId}-${stage}-${rank}-${extra.result_type ?? "stage"}`, race_id: raceId, stage_number: stage, result_type: "stage", rank, rider_id: rider, team_id: `t-${rider}`, in_breakaway: false, imported_at: "2026-10-20T10:00:00Z", ...extra });
 /** Fast ur: fixtures ligger 20/10, vinduet 19/10-26/10 (aldrig vaeguret, AGENTS.md). */
 const NOW = new Date("2026-10-26T06:00:00Z");
 const sched = (raceId, stage) => ({ race_id: raceId, stage_number: stage, scheduled_at: "2026-10-20T10:00:00Z" });
@@ -83,7 +84,7 @@ test("bandStatus", () => {
 function oneDayRaw() {
   // Tre endagsloeb. Loeb 1: favoritten vinder. Loeb 2: en udbryder vinder, favoritten er i udbruddet. Loeb 3: en anden vinder.
   return {
-    schedule: [sched("r1", 1), sched("r2", 1), sched("r3", 1), sched("r9", 1)],
+    executed: [sched("r1", 1), sched("r2", 1), sched("r3", 1), sched("r9", 1)],
     races: [race("r1"), race("r2"), race("r3"), race("r9")],
     profiles: [
       { race_id: "r1", stage_number: 1, profile_type: "flat", finale_type: "flat_sprint" },
@@ -153,7 +154,7 @@ function stageRaceRaw({ gcWinnerFromBreak }) {
   }
   rows.push(row("sr", 3, 1, "gcw", { result_type: "gc" }), row("sr", 3, 2, "z", { result_type: "gc" }));
   return {
-    schedule: [sched("sr", 1), sched("sr", 2), sched("sr", 3)],
+    executed: [sched("sr", 1), sched("sr", 2), sched("sr", 3)],
     races: [race("sr", { stages: 3 })],
     profiles: [], incidents: [], results: rows,
   };
@@ -170,7 +171,7 @@ test("GC-vinder fra udbrud: kun afsluttede etapeloeb, vinderen skal have vundet 
 
 test("endagsloeb og monumenter med kun gc-raekker (persisteringsformatet) taelles som etaper", () => {
   const raw = {
-    schedule: [sched("m1", 1), sched("o1", 1)],
+    executed: [sched("m1", 1), sched("o1", 1)],
     races: [race("m1", { race_class: "Monuments" }), race("o1")],
     profiles: [],
     incidents: [],
@@ -188,7 +189,7 @@ test("endagsloeb og monumenter med kun gc-raekker (persisteringsformatet) taelle
 
 test("endagsloeb med baade stage- og gc-raekker taelles kun en gang (stage-raekkerne bruges)", () => {
   const raw = {
-    schedule: [sched("d1", 1)],
+    executed: [sched("d1", 1)],
     races: [race("d1")],
     profiles: [],
     incidents: [],
@@ -205,9 +206,57 @@ test("fetchRaw: evner hentes ogsaa for ryttere der kun staar i gc-raekker", asyn
   assert.deepEqual(full.abilityRows.map((a) => a.rider_id), ["fav1"]);
 });
 
+test("hentet udbryder der vinder fra feltet er ikke en udbrudssejr (samme regel som tourScorecard)", () => {
+  assert.equal(wonFromBreakaway({ in_breakaway: true, breakaway_caught: false }), true);
+  assert.equal(wonFromBreakaway({ in_breakaway: true, breakaway_caught: true }), false);
+  assert.equal(wonFromBreakaway({ in_breakaway: false }), false);
+  const raw = {
+    executed: [sched("h1", 1), sched("h2", 1)],
+    races: [race("h1"), race("h2")],
+    profiles: [], incidents: [],
+    results: [
+      gcRow("h1", 1, 1, "esc", { in_breakaway: true, breakaway_caught: true }), gcRow("h1", 1, 2, "fav1"),
+      gcRow("h2", 1, 1, "esc2", { in_breakaway: true, breakaway_caught: false }), gcRow("h2", 1, 2, "fav2"),
+    ],
+  };
+  const m = computeGroupMetrics(buildFacts(raw, { observe })).one_day;
+  assert.equal(m.stages, 2);
+  assert.equal(m.values.breakawayWinShare, 0.5);
+  // GC-vinderen der vandt sin etape efter at vaere hentet, vandt ikke fra udbrud.
+  const sr = stageRaceRaw({ gcWinnerFromBreak: true });
+  sr.results = sr.results.map((r) => (r.rider_id === "gcw" && r.result_type === "stage" && r.stage_number === 2 ? { ...r, breakaway_caught: true } : r));
+  assert.equal(computeGroupMetrics(buildFacts(sr, { observe })).short_stage_race.values.gcWinnerFromBreakawayShare, 0);
+});
+
+test("vinduet vaelger etaper efter afviklingstid, ikke scheduled_at: en forsinket etape taelles praecis en gang", async () => {
+  // Etape 1 er planlagt i uge 1 men koert (imported_at) foerst i uge 2.
+  const late = { imported_at: "2026-10-27T09:00:00Z", scheduled_at: "2026-10-25T10:00:00Z" };
+  const data = {
+    races: [race("late"), race("ontime")],
+    profiles: [], incidents: [],
+    results: [gcRow("late", 1, 1, "a", late), gcRow("late", 1, 2, "b", late), gcRow("ontime", 1, 1, "c"), gcRow("ontime", 1, 2, "d")],
+  };
+  const week1 = { since: "2026-10-19T06:00:00Z", until: "2026-10-26T06:00:00Z" };
+  const week2 = { since: "2026-10-26T06:00:00Z", until: "2026-11-02T06:00:00Z" };
+  const w1 = await fetchRaw(fakeDb(data), week1);
+  const w2 = await fetchRaw(fakeDb(data), week2);
+  assert.deepEqual(w1.executed.map((s) => s.race_id), ["ontime"]);
+  assert.deepEqual(w2.executed.map((s) => s.race_id), ["late"]);
+  assert.equal(buildFacts(w2, { observe }).stages.length, 1);
+  // Den rene vaelger: kun rank 1, stage/gc, halvaabent vindue, uden dubletter.
+  const rows = [
+    { race_id: "x", stage_number: 2, result_type: "stage", rank: 1, imported_at: "2026-10-20T00:00:00Z" },
+    { race_id: "x", stage_number: 2, result_type: "gc", rank: 1, imported_at: "2026-10-20T00:00:00Z" },
+    { race_id: "x", stage_number: 3, result_type: "stage", rank: 2, imported_at: "2026-10-20T00:00:00Z" },
+    { race_id: "y", stage_number: 1, result_type: "points", rank: 1, imported_at: "2026-10-20T00:00:00Z" },
+    { race_id: "z", stage_number: 1, result_type: "gc", rank: 1, imported_at: week1.until },
+  ];
+  assert.deepEqual(executedStagesInWindow(rows, week1), [{ race_id: "x", stage_number: 2 }]);
+});
+
 test("etapeloeb hvor sidste etape ikke laa i vinduet eller mangler etaper, er ikke afsluttet", () => {
   const raw = stageRaceRaw({ gcWinnerFromBreak: true });
-  const noLast = { ...raw, schedule: raw.schedule.slice(0, 2) };
+  const noLast = { ...raw, executed: raw.executed.slice(0, 2) };
   assert.equal(buildFacts(noLast, { observe }).races.length, 0);
   const missingStage = { ...raw, results: raw.results.filter((r) => r.stage_number !== 1 || r.result_type === "gc") };
   assert.equal(buildFacts(missingStage, { observe }).races.length, 0);
@@ -308,7 +357,7 @@ test("windowOf", () => {
 });
 
 test("fetchRaw: pagineret og kun select; tom uge giver tomt resultat", async () => {
-  const db = fakeDb({ schedule: [], races: [], results: [], incidents: [], profiles: [] });
+  const db = fakeDb({ executed: [], races: [], results: [], incidents: [], profiles: [] });
   const raw = await fetchRaw(db, { since: "a", until: "b" });
   assert.deepEqual(raw.races, []);
   const full = await fetchRaw(fakeDb(oneDayRaw()), { since: "2026-10-19T00:00:00Z", until: "2026-10-27T00:00:00Z", abilityKeys: ["tempo"] });
@@ -378,7 +427,6 @@ function fakeModules() {
 /** Minimal PostgREST-lignende klient: kun select, med in/eq/gte/lt/gt/order/range/limit. */
 function fakeDb(data) {
   const tables = {
-    race_stage_schedule: data.schedule ?? [],
     races: data.races ?? [],
     race_results: data.results ?? [],
     race_incidents: data.incidents ?? [],

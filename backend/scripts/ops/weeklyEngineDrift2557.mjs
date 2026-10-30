@@ -11,10 +11,12 @@
  * (hard rule 17).
  *
  * READ-ONLY mod prod: klienten kan kun SELECT (se makeReadOnlyClient). Ingen
- * skrivning nogen steder; raekkerne hentes med fetchAllRows-paginering.
+ * skrivning nogen steder; raekkerne hentes med paginering (keyset/chunked).
  *
  * Maal pr. gruppe (alle andele 0-1; alle paa vejetaper, tidskoersler tages ikke med):
- *   breakawayWinShare          andel etaper hvor vinderen kom fra udbruddet
+ *   breakawayWinShare          andel etaper hvor vinderen kom fra udbruddet, og udbruddet holdt
+ *                              (en udbryder der blev hentet og vandt fra feltet er IKKE en
+ *                              udbrudssejr: samme regel som tourScorecard.breakawayWin)
  *   favoriteWinShare           andel etaper hvor feltets favorit vandt (samme favorit-definition
  *                              som drift-vagten, observeStageV4)
  *   topRiderWinShare           den mest vindende rytters andel af gruppens etapesejre
@@ -34,6 +36,9 @@
  *   DISCORD_OPS_MENTION                  @mention (se backend/lib/opsWebhook.js)
  *   WEEKLY_DRIFT_DAYS                    vindue i dage, default 7
  *   WEEKLY_DRIFT_UNTIL                   ISO-tidspunkt for vinduets slutning, default nu
+ *   Vinduet vaelger etaper efter hvornaar de FAKTISK blev koert (race_results.imported_at,
+ *   samme ur som drift-vagten), ikke scheduled_at: en forsinket etape (stageScheduler koerer
+ *   overdue etaper) kommer med i den uge den blev koert, praecis en gang.
  *   WEEKLY_DRIFT_DRY_RUN=1               send ikke til Discord; skriv kun resumeet
  *   WEEKLY_DRIFT_OUT                     skriv rapporten til denne fil (lokal brug; skal ligge
  *                                        under en balance-internals/-mappe)
@@ -52,7 +57,7 @@
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { fetchAllRows, fetchAllRowsChunkedIn, fetchAllRowsKeyset } from "../../lib/supabasePagination.js";
+import { fetchAllRowsChunkedIn, fetchAllRowsKeyset } from "../../lib/supabasePagination.js";
 import { getOpsMention, withOpsMention } from "../../lib/opsWebhook.js";
 import { clampEmbed } from "../../lib/discordEmbedLimits.js";
 
@@ -109,6 +114,30 @@ const share = (hits, n) => (n > 0 ? hits / n : null);
 const stageKey = (raceId, stageNumber) => `${raceId}:${stageNumber || 1}`;
 const finite = (v) => v !== null && v !== undefined && Number.isFinite(Number(v));
 
+/**
+ * Vandt rytteren fra et udbrud der holdt? Udbryder (in_breakaway) og IKKE hentet
+ * (breakaway_caught). Samme regel som tourScorecard.breakawayWin: formed && !caught.
+ */
+export function wonFromBreakaway(row) {
+  return row?.in_breakaway === true && row?.breakaway_caught !== true;
+}
+
+/**
+ * Etaper der blev KOERT i vinduet [since, until): unikke (race_id, stage_number) blandt
+ * vinder-raekkerne (rank 1, stage eller gc) efter imported_at. Endagsloeb har kun gc-raekker.
+ */
+export function executedStagesInWindow(rows, { since, until }) {
+  const out = new Map();
+  for (const r of rows ?? []) {
+    if (r?.race_id == null || r.rank !== 1 || (r.result_type !== "stage" && r.result_type !== "gc")) continue;
+    const at = r.imported_at;
+    if (!at || at < since || at >= until) continue;
+    const key = stageKey(r.race_id, r.stage_number);
+    if (!out.has(key)) out.set(key, { race_id: r.race_id, stage_number: Number(r.stage_number) || 1 });
+  }
+  return [...out.values()].sort((a, b) => (a.race_id < b.race_id ? -1 : a.race_id > b.race_id ? 1 : a.stage_number - b.stage_number));
+}
+
 // ── Taerskler ────────────────────────────────────────────────────────────────
 
 /**
@@ -153,7 +182,7 @@ export function parseThresholds(raw) {
 /**
  * Raa raekker -> fakta pr. afviklet etape og pr. afsluttet etapeloeb.
  *
- * raw: { schedule:[{race_id,stage_number}], races:[...], results:[stage/gc-raekker],
+ * raw: { executed:[{race_id,stage_number}] (etaper koert i vinduet), races:[...], results:[stage/gc-raekker],
  *        incidents:[abandon-raekker], profiles:[...] }
  * observe({ raceId, profile, results, teamByRider }) -> { favoriteId } | null  (favorit-definitionen)
  *
@@ -199,7 +228,7 @@ export function buildFacts(raw, { observe = () => null } = {}) {
   const stages = [];
   const seen = new Set();
   const windowStagesByRace = new Map();
-  for (const s of raw.schedule ?? []) {
+  for (const s of raw.executed ?? []) {
     const key = stageKey(s.race_id, s.stage_number);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -234,7 +263,7 @@ export function buildFacts(raw, { observe = () => null } = {}) {
       profileType: profile?.profile_type ?? null,
       timeTrial: TIME_TRIAL_PROFILES.has(profile?.profile_type),
       winnerId: winner.rider_id,
-      winnerInBreakaway: winner.in_breakaway === true,
+      winnerInBreakaway: wonFromBreakaway(winner),
       favoriteId,
       favoriteWon: favoriteId != null && winner.rider_id === favoriteId,
       favoriteInBreakaway: favRow ? favRow.in_breakaway === true : false,
@@ -243,7 +272,7 @@ export function buildFacts(raw, { observe = () => null } = {}) {
     });
   }
 
-  // Afsluttede etapeloeb: alle etaper har resultater, og sidste etape laa i vinduet.
+  // Afsluttede etapeloeb: alle etaper har resultater, og sidste etape blev koert i vinduet.
   const races = [];
   for (const [raceId, windowStages] of windowStagesByRace) {
     const race = raceById.get(raceId);
@@ -257,8 +286,8 @@ export function buildFacts(raw, { observe = () => null } = {}) {
     const lastGcStage = Math.max(...gcRows.map((r) => Number(r.stage_number) || 0));
     const winnerRow = gcRows.find((r) => r.rank === 1 && (Number(r.stage_number) || 0) === lastGcStage);
     if (!winnerRow) continue;
-    const wonFromBreakaway = rows.some((r) => r.rank === 1 && r.in_breakaway === true && r.rider_id === winnerRow.rider_id);
-    races.push({ raceId, group: raceGroupOfRace(race), revision: race.engine_rules_revision ?? "ingen", gcWinnerWonFromBreakaway: wonFromBreakaway });
+    const gcWinnerWonFromBreakaway = rows.some((r) => r.rank === 1 && r.rider_id === winnerRow.rider_id && wonFromBreakaway(r));
+    races.push({ raceId, group: raceGroupOfRace(race), revision: race.engine_rules_revision ?? "ingen", gcWinnerWonFromBreakaway });
   }
   return { stages, races };
 }
@@ -458,19 +487,27 @@ export function makeObserve(modules, abilityRowByRider) {
   };
 }
 
-/** Henter raa raekker for ugens afviklede etaper. Kun SELECT; alle loads pagineres. */
+/**
+ * Henter raa raekker for ugens afviklede etaper. Kun SELECT; alle loads pagineres.
+ * Ugens etaper vaelges efter afviklingstid (vinder-raekkernes imported_at), ikke scheduled_at.
+ */
 export async function fetchRaw(db, { since, until, abilityKeys = [] }) {
-  const schedule = await fetchAllRows(() =>
-    db.from("race_stage_schedule").select("race_id, stage_number, scheduled_at").gte("scheduled_at", since).lt("scheduled_at", until).order("race_id").order("stage_number"));
-  const raceIds = [...new Set(schedule.map((s) => s.race_id))].sort();
-  if (!raceIds.length) return { schedule, races: [], results: [], incidents: [], profiles: [], abilityRows: [] };
+  const winnerRows = await fetchAllRowsKeyset((after) => {
+    let q = db.from("race_results").select("id, race_id, stage_number, result_type, rank, imported_at")
+      .in("result_type", ["stage", "gc"]).eq("rank", 1).gte("imported_at", since).lt("imported_at", until).order("id");
+    if (after != null) q = q.gt("id", after);
+    return q;
+  });
+  const executed = executedStagesInWindow(winnerRows, { since, until });
+  const raceIds = [...new Set(executed.map((s) => s.race_id))].sort();
+  if (!raceIds.length) return { executed, races: [], results: [], incidents: [], profiles: [], abilityRows: [] };
   const races = await fetchAllRowsChunkedIn(raceIds, (ids) =>
     db.from("races").select("id, stages, race_class, squad, engine_rules_revision").in("id", ids).order("id"), { chunkSize: IN_CHUNK });
   const results = [];
   for (let i = 0; i < raceIds.length; i += IN_CHUNK) {
     const chunk = raceIds.slice(i, i + IN_CHUNK);
     results.push(...await fetchAllRowsKeyset((after) => {
-      let q = db.from("race_results").select("id, race_id, stage_number, result_type, rank, rider_id, team_id, in_breakaway").in("race_id", chunk).in("result_type", ["stage", "gc"]).order("id");
+      let q = db.from("race_results").select("id, race_id, stage_number, result_type, rank, rider_id, team_id, in_breakaway, breakaway_caught").in("race_id", chunk).in("result_type", ["stage", "gc"]).order("id");
       if (after != null) q = q.gt("id", after);
       return q;
     }));
@@ -484,7 +521,7 @@ export async function fetchRaw(db, { since, until, abilityKeys = [] }) {
   const abilityRows = abilityKeys.length
     ? await fetchAllRowsChunkedIn(riderIds, (ids) => db.from("rider_derived_abilities").select(["rider_id", ...abilityKeys].join(", ")).in("rider_id", ids).order("rider_id"), { chunkSize: IN_CHUNK })
     : [];
-  return { schedule, races, results, incidents, profiles, abilityRows };
+  return { executed, races, results, incidents, profiles, abilityRows };
 }
 
 async function postDiscord(fetchFn, url, payload) {
