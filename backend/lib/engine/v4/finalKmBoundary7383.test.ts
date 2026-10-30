@@ -17,7 +17,7 @@ import { fileURLToPath } from "node:url";
 
 import { simulateStageV4, LIVE_MECHANIC_HOOKS } from "./index.ts";
 import { runSegmentLoop } from "./segmentLoop.ts";
-import { stageInputForRulesRevision } from "./s5Profiles.ts";
+import { priorCategorizedClimbs, stageInputForRulesRevision } from "./s5Profiles.ts";
 import { validateTimelineEvents } from "./timeline.ts";
 import {
   FINAL_KM_BOUNDARY_7383_ACTIVE,
@@ -274,6 +274,19 @@ test("#7383: det sene angreb ser de to stykker som eet og vaelger segment som pa
   // Fundet (review 30/10): uden kendskab til delingen ville hovedet blive angrebs-segmentet.
   const blind = splitAtFinalKm7383(cases[0].segments, D).map((s) => ({ ...s })) as Segment[];
   assert.equal(blind[lateAttackSegmentIndex({ distance_km: D, segments: blind })]?.to_km, D - STAGE_PLAN_FINAL_KM);
+});
+
+test("#7383: tidligere stigninger taelles paa den udelte stigning (Codex-review)", () => {
+  const D = 150;
+  for (const segments of [
+    [seg.flat(0, 100), seg.climb(100, 110), seg.flat(110, 130), seg.climb(130, 149.8), seg.flat(149.8, 150)],
+    [seg.flat(0, 100), seg.climb(100, 110), seg.flat(110, 130), seg.climb(130, 145), seg.flat(145, 150)],
+    [seg.flat(0, 100), seg.climb(100, 110), seg.flat(110, 135), seg.climb(135, 150)],
+  ]) {
+    const split = splitAtFinalKm7383(segments, D) as Segment[];
+    assert.notEqual(split, segments);
+    assert.equal(priorCategorizedClimbs({ distance_km: D, segments: split }), priorCategorizedClimbs({ distance_km: D, segments }), JSON.stringify(segments.map((s) => [s.kind, s.to_km])));
+  }
 });
 
 test("#7383: med kontakten taendt giver 10 km-graensen intet nyt sent angreb og flytter det ikke", () => {
