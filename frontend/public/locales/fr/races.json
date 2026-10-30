@@ -27,6 +27,24 @@
     "clearPlan": "Retirer le plan",
     "effortNote": "L'effort suit la tâche.",
     "rulesNote": "L'échappée ne peut être que la première tâche. Le gruppetto, rentrer et le train de sprint viennent toujours en dernier.",
+    "switchNote": {
+      "climb": {
+        "start": "Les 10 derniers km commencent dans une montée, donc l'étape {number} du plan démarre au pied.",
+        "end": "Les 10 derniers km commencent dans une montée, donc l'étape {number} du plan démarre au sommet.",
+        "finale": "Les 10 derniers km commencent dans la montée finale, donc l'étape {number} du plan ne démarre que dans le final."
+      },
+      "sector": {
+        "start": "Les 10 derniers km commencent dans un secteur, donc l'étape {number} du plan démarre au début du secteur.",
+        "end": "Les 10 derniers km commencent dans un secteur, donc l'étape {number} du plan démarre à la fin du secteur.",
+        "finale": "Les 10 derniers km commencent dans le dernier secteur, donc l'étape {number} du plan ne démarre que dans le final."
+      },
+      "descent": {
+        "start": "Les 10 derniers km commencent dans la descente vers l'arrivée, donc l'étape {number} du plan démarre au sommet.",
+        "end": "Les 10 derniers km commencent dans la descente vers l'arrivée, donc l'étape {number} du plan ne démarre que dans le final.",
+        "finale": "Les 10 derniers km commencent dans la descente vers l'arrivée, donc l'étape {number} du plan ne démarre que dans le final."
+      },
+      "samePoint": "Les étapes {first} et {second} du plan changent au même endroit, donc l'étape {first} n'est pas courue."
+    },
     "timeTrial": "Pas de plan d'étape sur un contre-la-montre.",
     "task": {
       "breakaway": "Prendre l'échappée",

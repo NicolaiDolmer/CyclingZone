@@ -18,6 +18,7 @@ import {
   withStagePlanFields,
   withoutStagePlans,
 } from "./StagePlanModel.ts";
+import { FINAL_KM_BOUNDARY_7383_ACTIVE, stagePlanFeaturesFromRaw, stagePlanSwitchNoteText, stagePlanSwitchNotes } from "./StagePlanModel.ts"; // #7383
 import type { StagePlanLeg } from "./StagePlanModel.ts";
 
 const ROUTE = stagePlanRouteFromRaw({
@@ -140,4 +141,68 @@ test("#7003 (spec §3): sprinttoget tilbydes ikke efter et udbrud", () => {
   assert.equal(validateStagePlanLegs([{ task: "breakaway" }, { task: "sprint_train", from: { at: "final_km" } }], "helper", ROUTE), "stage_plan_train_after_breakaway");
   // Uden udbrud foerst er toget stadig et gyldigt slut-led.
   assert.equal(validateStagePlanLegs([{ task: "shelter_leader" }, { task: "sprint_train", from: { at: "final_km" } }], "helper", ROUTE), null);
+});
+
+// ── #7383: noten naar et valgt skift ikke kan naas ──────────────────────────
+function noteRoute(raw: { distance_km: number; finale_type?: string; climbs?: unknown[]; sectors?: unknown[]; profile_type?: string }) {
+  const full = { profile_type: "mountain", ...raw };
+  return { route: stagePlanRouteFromRaw(full), features: stagePlanFeaturesFromRaw(full) };
+}
+const ATTACK_LAST_10: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "attack", from: { at: "final_km" } }];
+const TEMPO_LAST_10: StagePlanLeg[] = [{ task: "shelter_leader" }, { task: "tempo", from: { at: "final_km" } }];
+
+test("#7383: kontakten er slukket (samme kopi som motoren)", () => {
+  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, false);
+});
+
+test("#7383: de sidste 10 km paa aaben vej giver ingen note", () => {
+  const { route, features } = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 60, length_km: 8, category: "2" }] });
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), []);
+  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), []);
+});
+
+test("#7383: de sidste 10 km inde i slutstigningen: foden for holdarbejde, finalen for angrebet (anden halvdel)", () => {
+  const { route, features } = noteRoute({ distance_km: 140, climbs: [{ name: "Top", crest_km: 140, length_km: 25, category: "1", summit_finish: true }] });
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "climb", place: "finale" }]);
+  assert.deepEqual(stagePlanSwitchNotes(TEMPO_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "climb", place: "start" }]);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features, true), [], "kontakten deler stigningen");
+});
+
+test("#7383: en stigning foer maal: naermeste ende (foden eller toppen)", () => {
+  const foot = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 146, length_km: 10, category: "2" }] });
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, foot.route, foot.features).map((n) => n.kind === "feature" && n.place), ["start"]);
+  const top = noteRoute({ distance_km: 150, climbs: [{ name: "A", crest_km: 144, length_km: 10, category: "2" }] });
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, top.route, top.features).map((n) => n.kind === "feature" && n.place), ["end"]);
+});
+
+test("#7383: en sektor taeller som eet stykke", () => {
+  const { route, features } = noteRoute({ distance_km: 150, profile_type: "cobbles", sectors: [{ name: "S", kind: "cobbles", start_km: 138, length_km: 4 }] });
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features), [{ kind: "feature", leg: 1, feature: "sector", place: "start" }]);
+  assert.deepEqual(stagePlanSwitchNotes(ATTACK_LAST_10, route, features, true), []);
+});
+
+test("#7383: nedkoerselsfinalen: to skift paa samme sted, og noten bliver staaende med kontakten", () => {
+  const { route, features } = noteRoute({ distance_km: 150, finale_type: "descent", climbs: [{ name: "A", crest_km: 135, length_km: 12, category: "1" }] });
+  assert.deepEqual(features.map((f) => [f.kind, f.from_km, f.to_km]), [["climb", 123, 135], ["descent", 135, 150]]);
+  const legs: StagePlanLeg[] = [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "kom", kom_index: 0 } }, { task: "attack", from: { at: "final_km" } }];
+  const expected = [{ kind: "feature", leg: 2, feature: "descent", place: "start" }, { kind: "same_point", leg: 1, next: 2 }];
+  assert.deepEqual(stagePlanSwitchNotes(legs, route, features), expected);
+  assert.deepEqual(stagePlanSwitchNotes(legs, route, features, true), expected, "nedkoerslen deles aldrig");
+});
+
+test("#7383: notens tekst findes paa alle sprog", () => {
+  const notes = [
+    ...(["climb", "sector", "descent"] as const).flatMap((feature) => (["start", "end", "finale"] as const).map((place) => ({ kind: "feature" as const, leg: 1, feature, place }))),
+    { kind: "same_point" as const, leg: 1, next: 2 },
+  ];
+  for (const lng of ["en", "da", "es", "fr", "nl"]) {
+    const races = JSON.parse(readFileSync(new URL(`../../../public/locales/${lng}/races.json`, import.meta.url), "utf8"));
+    for (const note of notes) {
+      const { key, params } = stagePlanSwitchNoteText(note);
+      const text = key.split(".").reduce((o: Record<string, unknown> | undefined, k) => o?.[k] as Record<string, unknown> | undefined, races) as unknown;
+      assert.equal(typeof text, "string", `${lng} ${key}`);
+      for (const p of Object.keys(params)) assert.ok((text as string).includes(`{${p}}`), `${lng} ${key} {${p}}`);
+      assert.ok(!(text as string).includes("—"), `${lng} ${key}: ingen em-dash`);
+    }
+  }
 });

@@ -388,6 +388,111 @@ export function clearRiderPlan<T extends Order>(order: T, riderId: string, roleD
   };
 }
 
+// ── #7383: kan et valgt skift naas? ──────────────────────────────────────────
+//
+// Motoren skifter opgave ved en segmentgraense (backend/lib/stagePlanEngine.ts, den
+// naermeste graense; i sidste segment er maalstregen den sidste graense, og holdarbejde
+// skifter ved segmentets start). En stigning, en brostenssektor og nedkoerslen mod maal
+// er hver eet segment. Ligger "de sidste 10 km" inde i en af dem, sker skiftet derfor
+// ved dens start eller slutning, eller foerst i finalen, ikke 10 km fra maal. Med
+// motorkontakten (backend/lib/engine/v4/adapters/finalKmBoundary7383.ts) deles en
+// stigning/sektor praecis dér; nedkoerslen deles aldrig.
+//
+// Kopien af kontakten SKAL vaere den samme som motorens (finalKmBoundary7383.test.ts).
+export const FINAL_KM_BOUNDARY_7383_ACTIVE = false;
+
+export type StagePlanFeature = { kind: "climb" | "sector" | "descent"; from_km: number; to_km: number };
+export type StagePlanSwitchNote =
+  | { kind: "feature"; leg: number; feature: StagePlanFeature["kind"]; place: "start" | "end" | "finale" }
+  | { kind: "same_point"; leg: number; next: number };
+
+const NOTE_EPS_KM = 0.01;
+/** Holdarbejde skifter ved sidste segments start (stagePlanEngine.ts SEGMENT_WORK_TASKS). */
+const SEGMENT_WORK_TASKS: ReadonlySet<StagePlanTask> = new Set<StagePlanTask>(["tempo", "shelter_leader"]);
+
+/**
+ * Rutens stykker der er eet segment i motoren, ud fra profilens egne felter: stigninger
+ * (crest_km/length_km), sektorer (start_km/length_km) og nedkoerslen mod maal paa en
+ * nedkoerselsfinale (fra sidste top til maal, som rutegeneratoren bygger den).
+ */
+export function stagePlanFeaturesFromRaw(raw: { distance_km?: unknown; finale_type?: unknown; climbs?: unknown; sectors?: unknown } | null | undefined): StagePlanFeature[] {
+  const distance = Number(raw?.distance_km);
+  if (!Number.isFinite(distance) || !(distance > 0)) return [];
+  const out: StagePlanFeature[] = [];
+  for (const c of Array.isArray(raw?.climbs) ? (raw?.climbs as unknown[]) : []) {
+    if (!c || typeof c !== "object") continue;
+    const crest = Number((c as Rec).crest_km ?? (c as Rec).km);
+    const length = Number((c as Rec).length_km);
+    if (!Number.isFinite(crest) || !(length > 0)) continue;
+    const to = Math.min(distance, crest);
+    out.push({ kind: "climb", from_km: Math.max(0, to - length), to_km: to });
+  }
+  for (const s of Array.isArray(raw?.sectors) ? (raw?.sectors as unknown[]) : []) {
+    if (!s || typeof s !== "object") continue;
+    const start = Number((s as Rec).start_km);
+    const length = Number((s as Rec).length_km);
+    if (!Number.isFinite(start) || !(length > 0)) continue;
+    out.push({ kind: "sector", from_km: Math.max(0, start), to_km: Math.min(distance, start + length) });
+  }
+  const lastEnd = out.reduce((m, f) => Math.max(m, f.to_km), 0);
+  const lastClimb = out.filter((f) => f.kind === "climb").reduce<StagePlanFeature | null>((m, f) => (!m || f.to_km > m.to_km ? f : m), null);
+  if (raw?.finale_type === "descent" && lastClimb && lastClimb.to_km >= lastEnd && distance - lastClimb.to_km > NOTE_EPS_KM) {
+    out.push({ kind: "descent", from_km: lastClimb.to_km, to_km: distance });
+  }
+  return out.sort((a, b) => a.from_km - b.from_km);
+}
+
+type Resolved = { km: number; finale: boolean };
+
+/** Hvor motoren faktisk skifter til led `i` (kun naar det vides sikkert; ellers punktet selv). */
+function resolvedSwitch(leg: StagePlanLeg, route: StagePlanRoute, features: readonly StagePlanFeature[], boundaryActive: boolean): { at: Resolved; note: StagePlanSwitchNote | null } | null {
+  const km = triggerKm(leg.from, route);
+  if (km === null) return null;
+  if (leg.from?.at !== "final_km") return { at: { km, finale: false }, note: null };
+  const feature = features.find((f) => f.from_km + NOTE_EPS_KM < km && km < f.to_km - NOTE_EPS_KM);
+  if (!feature || (boundaryActive && feature.kind !== "descent")) return { at: { km, finale: false }, note: null };
+  const isLast = Math.abs(feature.to_km - route.distance_km) < NOTE_EPS_KM;
+  const firstHalf = km - feature.from_km <= (feature.to_km - feature.from_km) / 2;
+  const place: "start" | "end" | "finale" = (isLast && SEGMENT_WORK_TASKS.has(leg.task)) || firstHalf ? "start" : isLast ? "finale" : "end";
+  const at: Resolved = place === "start" ? { km: feature.from_km, finale: false } : place === "end" ? { km: feature.to_km, finale: false } : { km: route.distance_km, finale: true };
+  return { at, note: { kind: "feature", leg: -1, feature: feature.kind, place } };
+}
+
+/**
+ * #7383: de valgte skift motoren ikke kan ramme som valgt (til kontakten taendes): "de
+ * sidste 10 km" inde i en stigning/sektor/nedkoersel, og to skift der falder samme sted
+ * (saa det foerste led aldrig koeres). Kun det der vides sikkert ud fra profilen: et skift
+ * paa aaben vej giver ingen note. Tom liste = alle skift sker som valgt.
+ */
+export function stagePlanSwitchNotes(
+  legs: readonly StagePlanLeg[],
+  route: StagePlanRoute,
+  features: readonly StagePlanFeature[],
+  boundaryActive: boolean = FINAL_KM_BOUNDARY_7383_ACTIVE,
+): StagePlanSwitchNote[] {
+  const notes: StagePlanSwitchNote[] = [];
+  let previous: { leg: number; at: Resolved } | null = null;
+  for (let i = 1; i < legs.length; i++) {
+    const resolved = resolvedSwitch(legs[i], route, features, boundaryActive);
+    if (!resolved) {
+      previous = null;
+      continue;
+    }
+    if (resolved.note) notes.push({ ...resolved.note, leg: i } as StagePlanSwitchNote);
+    if (previous && previous.at.finale === resolved.at.finale && Math.abs(previous.at.km - resolved.at.km) < NOTE_EPS_KM) {
+      notes.push({ kind: "same_point", leg: previous.leg, next: i });
+    }
+    previous = { leg: i, at: resolved.at };
+  }
+  return notes;
+}
+
+/** i18n-noegle (races-namespace) og parametre til en note (trin-numre er 1-baserede). */
+export function stagePlanSwitchNoteText(note: StagePlanSwitchNote): { key: string; params: Record<string, number> } {
+  if (note.kind === "same_point") return { key: "stagePlan.switchNote.samePoint", params: { first: note.leg + 1, second: note.next + 1 } };
+  return { key: `stagePlan.switchNote.${note.feature}.${note.place}`, params: { number: note.leg + 1 } };
+}
+
 export type StagePlanRecapItem = {
   task: StagePlanTask;
   status: "done" | "to_finish" | "skipped" | "not_reached" | "abandoned";

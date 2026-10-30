@@ -27,6 +27,24 @@
     "clearPlan": "Remove the plan",
     "effortNote": "The effort follows the task.",
     "rulesNote": "The break can only be the first task. Grupetto, riding in and the sprint train always come last.",
+    "switchNote": {
+      "climb": {
+        "start": "The last 10 km start on a climb here, so step {number} begins at the foot of it.",
+        "end": "The last 10 km start on a climb here, so step {number} begins at the top.",
+        "finale": "The last 10 km start on the final climb here, so step {number} only begins in the finale."
+      },
+      "sector": {
+        "start": "The last 10 km start on a sector here, so step {number} begins where the sector starts.",
+        "end": "The last 10 km start on a sector here, so step {number} begins where the sector ends.",
+        "finale": "The last 10 km start on the final sector here, so step {number} only begins in the finale."
+      },
+      "descent": {
+        "start": "The last 10 km start on the descent to the finish, so step {number} begins at the top.",
+        "end": "The last 10 km start on the descent to the finish, so step {number} only begins in the finale.",
+        "finale": "The last 10 km start on the descent to the finish, so step {number} only begins in the finale."
+      },
+      "samePoint": "Steps {first} and {second} switch at the same point here, so step {first} is not ridden."
+    },
     "timeTrial": "No stage plan on a time trial.",
     "task": {
       "breakaway": "Go in the break",
