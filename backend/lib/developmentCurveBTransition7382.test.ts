@@ -71,7 +71,9 @@ test("blanding: kun over det bløde loft, lineær, aldrig negativ, gammel model 
   assert.equal(blendCurveBTransition({ curveBDelta: 0.2, oldDelta: 1, current: 60, softCeiling: 50, transition: half }), 0.6);
   assert.equal(blendCurveBTransition({ curveBDelta: 0.2, oldDelta: 1, current: 50, softCeiling: 50, transition: half }), 0.6, "på loftet tæller som over");
   assert.equal(blendCurveBTransition({ curveBDelta: -1, oldDelta: -1, current: 60, softCeiling: 50, transition: half }), 0);
-  assert.equal(blendCurveBTransition({ curveBDelta: 0.2, oldDelta: Number.NaN, current: 60, softCeiling: 50, transition: half }), 0.1);
+  assert.equal(blendCurveBTransition({ curveBDelta: 0.2, oldDelta: Number.NaN, current: 60, softCeiling: 50, transition: half }), 0.2, "ugyldig gammel = kurve B");
+  assert.equal(blendCurveBTransition({ curveBDelta: 0.2, oldDelta: 0.05, current: 60, softCeiling: 50, transition: { weight: 0 } }), 0.2,
+    "gamle model langsommere: kurve B, overgangen bremser aldrig");
   assert.equal(blendCurveBTransition({ curveBDelta: 0.2, oldDelta: 1, current: 60, softCeiling: 50, transition: { weight: 1 } }), 0.2);
   assert.equal(blendCurveBTransition({ curveBDelta: 0.2, oldDelta: 1, current: 60, softCeiling: 50, transition: { weight: Number.NaN } }), 0.2);
 });
@@ -148,6 +150,18 @@ test("over 14 dage glider hovedevnen jævnt ned til kurve B, aldrig negativ", ()
     prev = v;
   }
   assert.ok(prev > b, "sidste dag i vinduet er stadig lidt over kurve B");
+});
+
+test("overgangen giver aldrig mindre end kurve B, for alle aldre og potentialer", () => {
+  for (const age of [17, 21, 25, 29, 33, 36]) {
+    for (const potentiale of [1, 2.5, 4.5, 6]) {
+      const b = tick({ age, potentiale, curveB: PARAMS });
+      for (const weight of [0, 0.5, 13 / 14]) {
+        const t = tick({ age, potentiale, curveB: PARAMS, curveBTransition: { weight } });
+        for (const k of VISIBLE_ABILITIES) assert.ok(prog(t, k) >= prog(b, k) - 1e-12, `alder ${age}, pot ${potentiale}, ${k}`);
+      }
+    }
+  }
 });
 
 test("ingen loft-mur: evnen på det hårde loft får intet, heller ikke i overgangen", () => {

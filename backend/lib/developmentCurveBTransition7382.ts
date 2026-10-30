@@ -10,6 +10,9 @@
 //     (dansk tid). Derefter kun kurve B.
 //   - Aldrig negativ fremdrift (rating-reglen 17/9), og aldrig mere end den største
 //     af de to modeller: blandingen ligger altid mellem dem.
+//   - Aldrig langsommere end kurve B: overgangen er en blød landing, ikke en bremse.
+//     Hvor den gamle model allerede var langsommere end kurve B (målt: en del ældre
+//     ryttere med lavt potentiale), får evnen kurve B fra dag 1 som alle andre.
 //
 // Tændingstidspunktet står i app_config under CURVE_B_IGNITED_AT_CONFIG_KEY. Det
 // stemples af en trigger (database/2026-10-30-7382-curve-b-transition.sql), første
@@ -87,7 +90,9 @@ export function blendCurveBTransition({
   const b = Number.isFinite(curveBDelta) && curveBDelta > 0 ? curveBDelta : 0;
   const rawOld = typeof oldDelta === "function" ? oldDelta() : oldDelta;
   const o = Number.isFinite(rawOld) && rawOld > 0 ? rawOld : 0;
-  const v = (1 - w) * o + w * b;
+  // Overgangen kan kun hjælpe: er den gamle model langsommere (fx en ældre rytter
+  // med lavt potentiale), får evnen kurve B uændret i stedet for at blive bremset.
+  const v = Math.max(b, (1 - w) * o + w * b);
   return v > 0 ? v : 0;
 }
 
