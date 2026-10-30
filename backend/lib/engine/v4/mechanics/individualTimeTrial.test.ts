@@ -649,7 +649,8 @@ test("#6595 v3: en flad enkeltstart spreder feltet mere, med praecis samme raekk
   const v3 = simulateIndividualTimeTrialStage(flat, list, "spread", NO_DAYFORM, { ...NOISELESS, ...V3_WEIGHT });
   assert.deepEqual(v3.results.map((r) => r.rider_id), v2.results.map((r) => r.rider_id), "evnen afgoer stadig raekkefoelgen");
   const gap10 = (out: StageOutput) => out.results[9].time_seconds - out.results[0].time_seconds;
-  assert.ok(gap10(v3) > 1.3 * gap10(v2), `top-10-gab ${gap10(v3).toFixed(1)} s under v3 mod ${gap10(v2).toFixed(1)} s under v2`);
+  // Kvalitativt (hard rule 17): de kalibrerede stoerrelser ligger i balance-internals/6595/.
+  assert.ok(gap10(v3) > gap10(v2), "top-10-gabet vokser med enkeltstartens terraen-vaegt");
   assert.ok(v3.results.every((r) => r.status !== "otl"), "ingen rytter uden for tidsgraensen paa en normal enkeltstart");
 });
 
@@ -661,6 +662,6 @@ test("#6595 v3: tempo-rytteren henter mere ind paa klatreren paa fladt; bjergenk
     return t.get("climber")! - t.get("tt")!;
   };
   assert.ok(gap(undefined, ROAD_WEIGHT) > 0, "fladt: tempo-rytteren er foran ogsaa foer");
-  assert.ok(gap(undefined, V3_WEIGHT) > 1.3 * gap(undefined, ROAD_WEIGHT), "fladt: tempo-rytterens forspring vokser under v3");
+  assert.ok(gap(undefined, V3_WEIGHT) > gap(undefined, ROAD_WEIGHT), "fladt: tempo-rytterens forspring vokser under v3");
   assert.ok(gap(MOUNTAIN_ITT_SEGMENTS, V3_WEIGHT) < 0, "bjergenkeltstart: klatreren er stadig hurtigst");
 });
