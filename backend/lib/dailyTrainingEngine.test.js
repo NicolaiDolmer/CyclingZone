@@ -3479,7 +3479,7 @@ test("#3564 kald-sted: flag on + gyldige params sender kurven ind i tick'et", as
 const CURVE_B_IGNITED_KEY_7382 = "development_curve_b_ignited_at";
 const CURVE_B_MEMBERS_7382 = "development_curve_b_transition_members";
 // fail: "stamp" (noeglens laesning), "members" (medlemslaesning) eller "membersWrite".
-async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPerDate = false, fail = null }) {
+async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPerDate = false, fail = null, prep = null, runArgs = {}, now = NOW }) {
   const state = seedState({
     abilities: [makeAbilityRow("r1", { ...Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 85])), ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) })],
     plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
@@ -3491,6 +3491,7 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
     seedRaceDayTick(state, { gameDay: 1 });
     state.app_config.push({ key: "training_condition_per_date", value: "on" });
   }
+  prep?.(state);
   const underlying = createMockSupabase(state);
   const configKeys = [];
   const configUpserts = [];
@@ -3521,9 +3522,10 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
   else process.env.DEVELOPMENT_CURVE_B_PARAMS = params;
   const warn = console.warn;
   console.warn = () => {};
+  let result = null;
   try {
-    await runTeamTrainingDay({ supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
-      ...(conditionPerDate ? { gameDay: 1, dateGameDays: [1, 2, 3, 4, 5], eligibleRiderIds: ["r1"] } : {}) });
+    result = await runTeamTrainingDay({ supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager", now,
+      ...(conditionPerDate ? { gameDay: 1, dateGameDays: [1, 2, 3, 4, 5], eligibleRiderIds: ["r1"] } : {}), ...runArgs });
   } finally {
     console.warn = warn;
     if (prev === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
@@ -3532,7 +3534,7 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
   const stamp = state.app_config.find((r) => r.key === CURVE_B_IGNITED_KEY_7382)?.value ?? null;
   const row = state.rider_derived_abilities.find((r) => r.rider_id === "r1");
   return { progress: JSON.parse(JSON.stringify(row.ability_progress)), stamp, configKeys, configUpserts, touched,
-    members: state[CURVE_B_MEMBERS_7382] ?? null };
+    members: state[CURVE_B_MEMBERS_7382] ?? null, report: result?.report ?? null };
 }
 
 test("#7382 kald-sted: kurve B aktiv stempler tick-datoen og giver den gamle models fremdrift dag 1", async () => {
@@ -3612,3 +3614,50 @@ for (const [fail, ignitedAt, message] of [
     assert.ok(loose.progress, "uden strict koerer dagen videre (kurve B fuldt)");
   });
 }
+
+// Review 30/10: en rytter uden tick paa taendingsdagen (skadet, hviledag i et etapeloeb,
+// ukendt slot) skal stadig maales, ellers faar han kurve B fuldt selv om evnen stod over loftet.
+const DAY7_7382 = new Date("2026-06-19T10:00:00+02:00");
+const injuredOnDay0 = (state) => { state.rider_condition = [makeCondition("r1", { injured_until: "2026-06-13" })]; };
+const restDayOnDay0 = (state) => { seedRaceDayTick(state, { gameDay: 12 }); seedBinding(state, { gameDay: 12 }); };
+for (const [label, prep, runArgs] of [
+  ["skadet", injuredOnDay0, {}],
+  ["hviledag i et etapeloeb", restDayOnDay0, { gameDay: 12, eligibleRiderIds: ["r1"] }],
+]) {
+  test(`#7382 kald-sted: ${label} paa taendingsdagen maales og faar overgangen senere i vinduet`, async () => {
+    const day0 = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep, runArgs });
+    assert.equal(day0.stamp, "2026-06-12");
+    assert.equal(day0.report.riders[0].intensity, "rest", "kontrol: intet tick paa taendingsdagen");
+    assert.deepEqual(day0.report.riders[0].gains, {}, "kontrol: ingen gevinst paa taendingsdagen");
+    assert.equal(day0.members?.length, 1, "rytteren er maalt alligevel");
+    assert.ok(day0.members[0].abilities.length > 0, "evnerne over loftet er med");
+    const later = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: day0.stamp, now: DAY7_7382 };
+    const withRow = await runCurveBDay7382({ ...later, members: day0.members });
+    const noRow = await runCurveBDay7382(later);
+    const full = await runCurveBDay7382({ ...later, ignitedAt: "2026-05-01" });
+    assert.deepEqual(noRow.progress, full.progress, "kontrol: uden raekke = kurve B fuldt");
+    assert.notDeepEqual(withRow.progress, full.progress, "med raekken: overgangen senere i vinduet");
+  });
+}
+
+test("#7382 kald-sted: datoens foerste koersel vinder, ogsaa naar rytteren er skadet i den naeste", async () => {
+  const first = [{ rider_id: "r1", ignited_on: "2026-06-12", abilities: [] }];
+  const again = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", members: first, prep: injuredOnDay0 });
+  assert.deepEqual(again.members, first, "raekken flyttes ikke af datoens naeste koersel");
+  const fresh = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", prep: injuredOnDay0 });
+  assert.ok(fresh.members[0].abilities.length > 0, "kontrol: uden raekke maales rytteren");
+});
+
+test("#7382 kald-sted: et hold der ikke udvikler sig (managerhold-reglen) faar ingen raekke", async () => {
+  const aiTeam = (state) => {
+    state.app_config.push({ key: "development_v2_aging_enabled", value: "on" });
+    state.teams = [{ id: TEAM_ID, user_id: null, is_ai: true, is_bank: false, is_test_account: false }];
+  };
+  const ai = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: aiTeam });
+  assert.deepEqual(ai.members ?? [], [], "AI-hold: ingen maaling");
+  const manager = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: (state) => {
+    aiTeam(state);
+    state.teams = [{ id: TEAM_ID, user_id: "u1", is_ai: false, is_bank: false, is_test_account: false }];
+  } });
+  assert.equal(manager.members?.length, 1, "kontrol: managerholdet maales");
+});

@@ -3,11 +3,13 @@
 --
 -- Kun evner der stod på eller over kurve B's bløde loft PÅ TÆNDINGSDAGEN, får
 -- overgangen. Træningsmotoren (backend/lib/developmentCurveBTransition7382.ts)
--- skriver én række pr. rytter på tændingsdagen, før dagens tick er skrevet:
--- hvilke evner der stod på eller over loftet. Den første række vinder (insert ...
--- on conflict do nothing), så datoens senere løbsdage og en genkørsel aldrig
--- flytter medlemskabet. Resten af vinduet læses rækken; en rytter uden række får
--- kurve B fuldt. En ny tænding (ny dato) giver nye rækker.
+-- skriver én række pr. rytter på et hold der udvikler sig (managerhold-reglen) på
+-- tændingsdagen, før dagens tick er skrevet, også for ryttere uden tick den dag
+-- (skadet, hviledag): hvilke evner der stod på eller over loftet. Den første række
+-- vinder (insert ... on conflict do nothing), så datoens senere løbsdage og en
+-- genkørsel aldrig flytter medlemskabet. Resten af vinduet læses rækken; en rytter
+-- uden række (fx kommet til et managerhold senere i vinduet) får kurve B fuldt.
+-- En ny tænding (ny dato) giver nye rækker.
 --
 -- Privat: RLS slået til UDEN policies, og kun service_role har grants. Ingen
 -- klient (anon/authenticated) kan læse eller skrive.

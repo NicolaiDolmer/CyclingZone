@@ -22,13 +22,17 @@
 // overgang, slettes nøglen bevidst først. Flag off = intet opslag, intet stempel.
 //
 // MEDLEMSKABET ER LÅST PÅ TÆNDINGSDAGEN (CURVE_B_TRANSITION_MEMBERS_TABLE): på
-// tændingsdagen skriver motoren én række pr. rytter med de evner der stod på
-// eller over loftet, målt på evnerne FØR dagens tick (insert ... on conflict do
-// nothing: datoens første kørsel vinder, så datoens senere løbsdage og en
-// genkørsel aldrig flytter det). Resten af vinduet læses rækken. En rytter uden
-// række (fx ikke trænet på tændingsdagen) får kurve B fuldt. Uden låsen ville en
-// evne der krydser loftet inde i vinduet, springe op til den gamle models fart
-// (lige over loftet fik langt mere end lige under).
+// tændingsdagen skriver motoren én række pr. rytter på et hold der udvikler sig
+// (managerhold-reglen, #6500), med de evner der stod på eller over loftet, målt på
+// evnerne FØR dagens tick. Alle holdets ryttere måles, også dem der ikke får et
+// tick den dag (skadet, hviledag i et etapeløb, ukendt slot). insert ... on
+// conflict do nothing: datoens første kørsel vinder, så datoens senere løbsdage og
+// en genkørsel aldrig flytter det. Resten af vinduet læses rækken. En rytter uden
+// række får kurve B hele vejen: fx en rytter der først kommer til et managerhold
+// inde i vinduet (transfer fra et hold der ikke udvikler sig, eller ny i
+// akademiet efter tændingsdagen). Rækken følger rytteren, så et skifte mellem to managerhold beholder
+// den. Uden låsen ville en evne der krydser loftet inde i vinduet, springe op til
+// den gamle models fart (lige over loftet fik langt mere end lige under).
 //
 // Ingen balance-tal her: de 14 dage er ejerens beslutning i issuet. Kurvens tal er
 // private (hard rule 17) og kommer ind som de validerede params.

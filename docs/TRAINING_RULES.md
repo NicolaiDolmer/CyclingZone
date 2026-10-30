@@ -415,11 +415,14 @@ erstatter kun `base` i kæden ovenfor; resten af kæden er uændret.
   derefter kun kurve B. Fremdriften er max(kurve B, blandingen): aldrig under kurve B's
   (overgangen bremser aldrig) og aldrig negativ. Alle andre evner får kurve B fra dag 1,
   også en evne der først krydser loftet inde i vinduet.
-  **Medlemskabet er låst:** på tændingsdagen gemmer motoren én række pr. rytter i
-  `development_curve_b_transition_members` med de evner der stod på eller over loftet, målt
-  før dagens tick. Datoens første kørsel vinder (senere løbsdage samme dato og genkørsler
-  flytter det ikke). Resten af vinduet læses kun rækken; en rytter uden række (fx ikke trænet
-  på tændingsdagen) får kurve B fuldt.
+  **Medlemskabet er låst:** på tændingsdagen gemmer motoren én række pr. rytter på et hold der
+  udvikler sig (managerhold-reglen) i `development_curve_b_transition_members` med de evner der
+  stod på eller over loftet, målt før dagens tick. Alle holdets ryttere måles, også dem uden
+  tick den dag (skadet, hviledag i et etapeløb, ukendt slot). Datoens første kørsel vinder
+  (senere løbsdage samme dato og genkørsler flytter det ikke). Resten af vinduet læses kun
+  rækken; en rytter uden række får kurve B hele vejen, fx en rytter der først kommer til et
+  managerhold inde i vinduet (transfer fra et AI-hold, en ny akademirytter efter tændingsdagen). Rækken følger
+  rytteren, så et skifte mellem to managerhold beholder den.
   Startdatoen er `app_config`-nøglen `development_curve_b_ignited_at`. Træningsmotoren
   læser den først og stempler kun, når nøglen mangler, med tick-datoen første gang kurven er
   aktiv (flag `on` OG gyldige params); den overskrives aldrig, og efter vinduet skrives intet.
