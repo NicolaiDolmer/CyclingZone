@@ -17,6 +17,8 @@
 // Ordrer: kun spillerens EGNE ryttere og hans EGEN indsats-ordre (frontend har den
 // kun for eget hold), saa intet om andre holds ordrer kan udledes herfra.
 
+import { TASK_EFFORT } from "../../../stagePlan.ts";
+
 export type NarrativeEvent = { km?: number; recorded_km?: number; type?: string; params?: Record<string, unknown> | null } | null | undefined;
 
 const TIME_TRIAL_TYPES = new Set(["itt", "itt_hilly", "ttt"]);
@@ -76,6 +78,16 @@ const GAP_MOVE_EPSILON_SECONDS = 1;
 // Kun "Alt ud": teksten siger "koerte alt ud paa din ordre". "Arbejd eller angrib" er
 // en anden ordre (arbejde for kaptajnen) og faar ikke samme saetning.
 const ALL_OUT_EFFORTS: ReadonlySet<string> = new Set(["all_out"]);
+
+/**
+ * Spillerens egne ordrer for etapen. `get` er indsatsen (kun ryttere UDEN etapeplan).
+ * #7381: `taskAt` er plan-rytterens opgave ved km ud fra tidslinjens stage_plan_leg-
+ * skift (frontend: StageOrderEfforts.taskAt -> stagePlanTaskAt); null uden plan.
+ */
+export type OrderEfforts = {
+  get(id: string): unknown;
+  taskAt?(events: readonly NarrativeEvent[], riderId: string, km: number): unknown;
+};
 
 function ids(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((v): v is string => typeof v === "string" && v.length > 0) : [];
@@ -289,21 +301,33 @@ export type OrderImpact = { kind: "all_out_stayed_away" | "all_out_held_on"; rid
  *   naevnes kun, naar rytteren selv staar blandt de foerste over etapens sidste top
  *   (kom_passage.top): maaltiden alene siger intet om hvad der skete paa stigningen.
  * Kun egne ryttere med en ordre fra spilleren selv; ingen ordre, intet udsagn.
+ *
+ * #7381 (ejer 30/10): en rytter med etapeplan har ingen indsats i mappen. For ham
+ * taeller opgaven han havde i udbruddet, da det holdt (det seneste skift foer
+ * udfaldet): giver den opgave "Alt ud" (TASK_EFFORT), faar han den foerste historie.
+ * "Blev i den forreste gruppe" er stadig kun for indsats-ordren.
  */
 export function deriveOrderImpacts(
   events: readonly NarrativeEvent[] = [],
-  { ownRiderIds = [], effortByRider = null, stories = null, profileType = null }: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null; stories?: readonly BreakawayStory[] | null; profileType?: string | null } = {},
+  { ownRiderIds = [], effortByRider = null, stories = null, profileType = null }: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: OrderEfforts | null; stories?: readonly BreakawayStory[] | null; profileType?: string | null } = {},
 ): Array<OrderImpact & { km: number; after_index: number }> {
   if (!effortByRider || isTimeTrialNarrative(events, profileType)) return [];
   const own = [...(ownRiderIds ?? [])].filter((id): id is string => typeof id === "string");
   const allOut = own.filter((id) => ALL_OUT_EFFORTS.has(String(effortByRider.get(id) ?? "")));
-  if (!allOut.length) return [];
+  const planTaskAt = typeof effortByRider.taskAt === "function" ? effortByRider.taskAt.bind(effortByRider) : null;
+  if (!allOut.length && !planTaskAt) return [];
+  const allOutInBreakaway = (id: string, km: number): boolean => {
+    const task = str(planTaskAt?.(events, id, km));
+    if (task === null) return allOut.includes(id);
+    return ALL_OUT_EFFORTS.has(String((TASK_EFFORT as Readonly<Record<string, string>>)[task] ?? ""));
+  };
   const out: Array<OrderImpact & { km: number; after_index: number }> = [];
   const used = new Set<string>();
   for (const story of stories ?? deriveBreakawayStories(events)) {
     if (story.outcome !== "held") continue;
-    for (const id of allOut) {
-      if (used.has(id) || !story.survivor_ids.includes(id)) continue;
+    const heldKm = raceKm(events[story.outcome_index]);
+    for (const id of own) {
+      if (used.has(id) || !story.survivor_ids.includes(id) || !allOutInBreakaway(id, heldKm)) continue;
       used.add(id);
       out.push({ kind: "all_out_stayed_away", rider_id: id, km: story.outcome_km, after_index: story.outcome_index });
     }
@@ -334,7 +358,7 @@ export type NarrativeLine = { km: number; type: "breakaway_cause" | "order_impac
 
 export function withNarrativeCauses<T extends NarrativeEvent>(
   events: readonly T[] = [],
-  opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: { get(id: string): unknown } | null; profileType?: string | null } = {},
+  opts: { ownRiderIds?: Iterable<unknown> | null; effortByRider?: OrderEfforts | null; profileType?: string | null } = {},
 ): Array<T | NarrativeLine> {
   if (isTimeTrialNarrative(events, opts.profileType)) return events.filter(event => !groupRaceEvent(event));
   // Aarsagerne udledes i loebets egen raekkefoelge (motorens km: `recorded_km` naar et
