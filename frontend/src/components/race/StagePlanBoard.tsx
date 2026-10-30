@@ -445,7 +445,7 @@ export default function StagePlanBoard({
                 <SortableTh
                   sortKey="routeMatch"
                   sort={routeMatch.sortDir ? "routeMatch" : null}
-                  sortDir={routeMatch.sortDir}
+                  sortDir={routeMatch.sortDir ?? "asc"}
                   onSort={routeMatch.onSort}
                   title={routeMatch.title}
                   className="px-4 py-2 text-left font-medium text-xs uppercase tracking-wide whitespace-nowrap"
