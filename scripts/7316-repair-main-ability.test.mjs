@@ -313,6 +313,8 @@ test("fund 2: kreditten bruger rapportens form, og et tick uden tilstand springe
     ticks: baseInput().ticks.map((t) => ({ ...t, condition_before_date: { form: 50, fatigue: 0 } })),
   }));
   assert.equal(fromReport.entries[0].credit, sameAsExplicit.entries[0].credit);
+  assert.deepEqual(fromReport.conditionSources, { report_after_minus_delta: 2 });
+  assert.deepEqual(sameAsExplicit.conditionSources, { condition_before_date: 2 });
   assert.notEqual(fromReport.entries[0].credit, neutral.entries[0].credit, "50/0-gaettet maa ikke vaere resultatet");
   // Ingen tilstand i rapporten: intet tick krediteres (den gamle kode gav 50/0-kredit).
   const none = computeRepairPlan(baseInput({ ticks: baseInput().ticks.map((t) => ({ ...t, condition_before_date: undefined })) }));

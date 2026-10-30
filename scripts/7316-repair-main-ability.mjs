@@ -294,6 +294,7 @@ export function computeRepairPlan({
   staffByTeam = new Map(), applied = new Set(), window = DEFAULT_WINDOW, model = null,
 }) {
   const skips = {};
+  const conditionSources = {}; // fund 2: hvor kom formen/traetheden fra (kun ticks der naaede S4-beregningen)
   const byRider = new Map();
   for (const tick of ticks) {
     if (!byRider.has(tick.rider_id)) byRider.set(tick.rider_id, []);
@@ -357,6 +358,7 @@ export function computeRepairPlan({
 
       const condition = conditionForTick(tick);
       if (!condition) { bump(skips, "no_condition_in_report"); continue; }
+      bump(conditionSources, condition.source);
 
       const delta = s4MainAbilityDelta({
         tick, rider, abilitiesAtTick, caps, age, seasonNumber, mainAbility, condition, model,
@@ -400,7 +402,7 @@ export function computeRepairPlan({
     });
   }
   entries.sort((a, b) => (a.riderId === b.riderId ? a.ability.localeCompare(b.ability) : a.riderId.localeCompare(b.riderId)));
-  return { entries, skips, windowTicks, rewindChecked, rewindMismatches, model, hash: planHash(entries, window) };
+  return { entries, skips, conditionSources, windowTicks, rewindChecked, rewindMismatches, model, hash: planHash(entries, window) };
 }
 
 function round9(x) {
@@ -822,6 +824,7 @@ export function renderAudit({ plan, summary, input, generatedAt }) {
     `- Krediteret fremgang i alt: ${summary.creditSum.toFixed(3)} (raa ${summary.rawCreditSum.toFixed(3)}, ${summary.clampedPairs} par klippet af det haarde loft)`,
     `- Ekstra hele point naar baren omsaettes: 0 → ${summary.distribution[0]}, +1 → ${summary.distribution[1]}, +2 → ${summary.distribution[2]}, +3 eller mere → ${summary.distribution["3+"]}`,
     `- Tilbagespoling kontrolleret mod gains_detail: ${plan.rewindChecked} evner, ${plan.rewindMismatches} afvigelser`,
+    `- Form/traethed-kilde: ${JSON.stringify(plan.conditionSources ?? {})}`,
     `- Udviklingsmodel i vinduet: ${describeModel(plan.model)}`,
     `- Apply: ${applyBlockers(plan).length ? `BLOKERET (${applyBlockers(plan).join("; ")})` : "ikke blokeret af data (kraever stadig token + --training-quiesced + ejer-go)"}`,
     "",
@@ -957,6 +960,7 @@ async function main() {
   console.log(`Credited progress: ${summary.creditSum.toFixed(3)} (raw ${summary.rawCreditSum.toFixed(3)}, clamped pairs ${summary.clampedPairs})`);
   console.log(`Extra whole points: 0=${summary.distribution[0]} +1=${summary.distribution[1]} +2=${summary.distribution[2]} +3+=${summary.distribution["3+"]}`);
   console.log(`Rewind check: ${plan.rewindChecked} abilities, ${plan.rewindMismatches} mismatches`);
+  console.log(`Condition source: ${JSON.stringify(plan.conditionSources)}`);
   console.log(`Development model in window: ${describeModel(plan.model)}`);
   const blockers = applyBlockers(plan);
   console.log(`Apply blockers: ${blockers.length ? blockers.join("; ") : "none from data"}`);
