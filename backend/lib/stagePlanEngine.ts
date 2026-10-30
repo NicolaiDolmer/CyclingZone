@@ -307,6 +307,13 @@ export function stagePlanEntrants(
   return out;
 }
 
+/** #7380: den opgave hver rytter med plan koerer segmentet med (samme led som stagePlanEntrants). */
+export function stagePlanCurrentTasks(rt: StagePlanRuntime): Record<string, StagePlanTask> {
+  const out: Record<string, StagePlanTask> = {};
+  for (const riderId of rt.riderIds) out[riderId] = rt.legs.get(riderId)![rt.current.get(riderId) ?? 0].task;
+  return out;
+}
+
 const EFFORT_RANK: Readonly<Record<EffortLevel, number>> = { grupetto: 0, save: 1, normal: 2, protect: 3, all_out: 4 };
 
 /**

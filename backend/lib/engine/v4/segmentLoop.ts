@@ -95,7 +95,7 @@ import { finalClimbStartIndex, mountainSelectionKnobsFor, mountainSelectionPhase
 import { finishDescentIndexFor, runInOpenOnlyTempo, timeModelTuningFor, valleyRegroupTempoV3 } from "./mechanics/timeModel.ts";
 import { rollingBreakawayV2For } from "./mechanics/rollingBreakaway.ts";
 import { descentRegroupTempo6486 } from "./mechanics/descentRegroup6486.ts"; // #6486
-import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003
+import { advanceStagePlan, advanceStagePlanAtFinish, createStagePlanRuntime, stagePlanCurrentTasks, stagePlanEntrants, stagePlanFinalEfforts, stagePlanLoadEfforts } from "../../stagePlanEngine.ts"; // #7003, #7380
 import { applyDayForm6649, dayForm6649Events, dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { finalKmTerrainPiece7383, routeWithFinalKmBoundary7383 } from "./adapters/finalKmBoundary7383.ts"; // #7383
 
@@ -1128,6 +1128,7 @@ export function runSegmentLoop(input: StageInput, hooks: MechanicHooks = DEFAULT
       // #6937 (KUN s5_profiles_v3, slukket): bjergpoint i favoritgruppen + lead-outens pris.
       ...(isS5ProfilesV3OrLater(rulesRevision) ? { s5ProfilesV3: true as const } : {}),
       ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}), // #6649
+      ...(stagePlan ? { stagePlanTasks: stagePlanCurrentTasks(stagePlan) } : {}), // #7380: runtimens opgave ved segmentets start
     };
     const acceptMovement = (result: {state: EngineState; events: TimelineEvent[]}) => {
       state = result.state;

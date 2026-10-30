@@ -153,6 +153,69 @@ test("#6469: spillerens egen 'Alt ud' ses kun naar udfaldet viser det, kun for e
   assert.deepEqual(deriveOrderImpacts([climb, bunch], { ownRiderIds: ["ada"], effortByRider: effort }), []);
 });
 
+// #7381: testens egen stand-in for frontendens StageOrderEfforts (indsatser + taskAt).
+// Opgaven ved km er her blot den seneste (fraKm, opgave) strengt foer km; den rigtige
+// opslagsregel (stage_plan_leg-events) testes i frontend (allOutStoryPlan7381.test.ts).
+function planEfforts(effort: Array<[string, string]>, plans: Record<string, Array<[number, string]>>) {
+  return Object.assign(new Map(effort), {
+    taskAt(_events: readonly NarrativeEvent[], id: string, km: number): string | null {
+      const legs = plans[id];
+      if (!legs) return null;
+      return legs.filter(([from], i) => i === 0 || from < km).at(-1)?.[1] ?? null;
+    },
+  });
+}
+
+test("#7381: plan-rytter paa angreb i et udbrud der holdt, faar 'Alt ud holdt udbruddet'", () => {
+  const finish = ev(150, "finish", { top: [{ rider_id: "a", rank: 1, gap: 0 }, { rider_id: "q", rank: 2, gap: 40 }] });
+  const events = [formed, survived(150, ["a"]), finish];
+  const efforts = planEfforts([], { a: [[0, "attack"]] });
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: efforts }).map(({ kind, rider_id }) => [kind, rider_id]), [["all_out_stayed_away", "a"]]);
+  // Opgaven da udbruddet holdt taeller: angreb efter et forsoeg-led giver ogsaa historien.
+  assert.equal(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: planEfforts([], { a: [[0, "breakaway"], [90, "attack"]] }) }).length, 1);
+  // Forsoeg (normal indsats) eller et skift vaek fra angreb foer udfaldet: ingen historie.
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: planEfforts([], { a: [[0, "breakaway"]] }) }), []);
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: planEfforts([], { a: [[0, "attack"], [140, "ride_for_result"]] }) }), []);
+  // Andres ryttere: aldrig, ogsaa med en plan.
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: [], effortByRider: efforts }), []);
+});
+
+test("#7381: plan-rytter der foerst skiftede til angreb efter at udbruddet blev hentet, faar ingen historie", () => {
+  const caught = ev(80, "breakaway_caught", { group_id: "breakaway-0", rider_ids: ["a", "b"] });
+  const finish = ev(150, "finish", { top: [{ rider_id: "w", rank: 1, gap: 0 }, { rider_id: "a", rank: 2, gap: 0 }, { rider_id: "q", rank: 3, gap: 40 }] });
+  const efforts = planEfforts([], { a: [[0, "follow_moves"], [90, "attack"]] });
+  assert.deepEqual(deriveOrderImpacts([formed, caught, finish], { ownRiderIds: ["a"], effortByRider: efforts }), []);
+  assert.deepEqual(withNarrativeCauses([formed, caught, finish], { ownRiderIds: ["a"], effortByRider: efforts }).filter((e) => e?.type === "order_impact"), []);
+});
+
+test("#7381: opgaven slaas op ved det km hvor udbruddet holdt, ikke ved maal", () => {
+  // Udbruddet HOLDT ved km 120; rytteren skiftede foerst til angreb ved km 130. Opgaven
+  // da det holdt var forsoeg (normal indsats): ingen historie. Et opslag ved maal (150)
+  // eller uden km ville give angreb og dermed historien.
+  const finish = ev(150, "finish", { top: [{ rider_id: "a", rank: 1, gap: 0 }, { rider_id: "q", rank: 2, gap: 40 }] });
+  const events = [formed, survived(120, ["a"]), finish];
+  const late = planEfforts([], { a: [[0, "breakaway"], [130, "attack"]] });
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: late }), []);
+  assert.deepEqual(withNarrativeCauses(events, { ownRiderIds: ["a"], effortByRider: late }).filter((e) => e?.type === "order_impact"), []);
+  // Kontrol: samme skift foer km 120 giver historien, saa testen maaler km-opslaget.
+  const early = planEfforts([], { a: [[0, "breakaway"], [110, "attack"]] });
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: early }).map(({ kind, rider_id }) => [kind, rider_id]), [["all_out_stayed_away", "a"]]);
+});
+
+test("#7381: uden plan er alt som foer, ogsaa naar ordrerne kan slaa planer op", () => {
+  const finish = ev(150, "finish", { top: [{ rider_id: "w", rank: 1, gap: 0 }, { rider_id: "ada", rank: 2, gap: 0 }, { rider_id: "q", rank: 3, gap: 40 }] });
+  const events = [formed, survived(120, ["a"]), finish];
+  const plain = new Map([["a", "all_out"], ["ada", "all_out"], ["bo", "save"]]);
+  const withLookup = planEfforts([...plain], {});
+  for (const efforts of [plain, withLookup]) {
+    assert.deepEqual(
+      deriveOrderImpacts(events, { ownRiderIds: ["a", "ada", "bo"], effortByRider: efforts }).map(({ kind, rider_id }) => [kind, rider_id]),
+      [["all_out_stayed_away", "a"], ["all_out_held_on", "ada"]],
+    );
+  }
+  assert.deepEqual(deriveOrderImpacts(events, { ownRiderIds: ["a"], effortByRider: planEfforts([["a", "save"]], {}) }), [], "spar kraefter uden plan: intet");
+});
+
 test("#6469: linjerne indsaettes lige efter udfaldet; input uroert; uden udbrud samme indhold", () => {
   const events = [formed, ev(60, "breakaway_unchased", { group_id: "breakaway-0" }), survived(), ev(150, "finish", { top: [] })];
   const frozen = JSON.stringify(events);
