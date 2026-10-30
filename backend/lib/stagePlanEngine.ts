@@ -28,6 +28,13 @@
 //          segmentets start (et langt sidste segment gav ellers "de sidste 10 km"
 //          mange km for tidligt). Er etapen kun ét segment, gaelder samme regel
 //          (kun rutepunkter ved start, aldrig "sat").
+//        - #7383 (slukket motorkontakt, engine/v4/adapters/finalKmBoundary7383.ts): med
+//          kontakten taendt er "de sidste 10 km" altid en segmentgraense (undtagen paa en
+//          nedkoersel). Punktet er saa starten af et segment, og reglen ovenfor skifter
+//          ALLE opgaver praecis dér; finale-undtagelsen (advanceStagePlanAtFinish og
+//          holdarbejdets SEGMENT_WORK_TASKS) rammer aldrig "de sidste 10 km". Den bliver
+//          staaende for de punkter der stadig kan ligge midt i sidste segment (en
+//          nedkoerselsfinale), og slukket er alt her uaendret.
 //   4. Opgavens indsats (TASK_EFFORT) erstatter rytterens `effort` for segmentet.
 //      Intet andet felt paa rytteren roeres. Udbrudsforsoeg og sprinttog kommer
 //      fra de udledte ordre-felter (stagePlan.legacyOrderFromPlan), som motoren
