@@ -717,10 +717,35 @@ export async function loadPlanInput(supabase, window = DEFAULT_WINDOW) {
   throw new Error("training is writing ticks right now; run the dry-run outside the training sweep");
 }
 
+const TICK_RIDER_CHUNK = 100;
+const TICK_READ_CONCURRENCY = 4;
+
+/**
+ * Alle ticks fra `from` og frem. training_rider_ticks har intet index paa created_at, saa
+ * offset-paginering over hele tabellen sorterer det hele igen pr. side (malt 29-30/10: ca.
+ * 25 min pr. laesning, og saa naar en "Train now" altid at aendre taellingen undervejs).
+ * I stedet laeses der i rytter-bidder via primaernoeglen (rider_id, season_id, game_day).
+ * Raekkefoelgen er ligegyldig: tilbagespolingen sorterer selv pr. rytter.
+ */
+async function loadTicksSince(supabase, from) {
+  const riderIds = (await selectAll(() => supabase.from("riders").select("id").order("id"), "riders (ids)")).map((r) => r.id);
+  const chunks = [];
+  for (let i = 0; i < riderIds.length; i += TICK_RIDER_CHUNK) chunks.push(riderIds.slice(i, i + TICK_RIDER_CHUNK));
+  const ticks = [];
+  for (let i = 0; i < chunks.length; i += TICK_READ_CONCURRENCY) {
+    const batch = await Promise.all(chunks.slice(i, i + TICK_READ_CONCURRENCY).map((chunk) => selectAll(
+      () => supabase.from("training_rider_ticks").select(TICK_SELECT)
+        .in("rider_id", chunk).gte("created_at", from)
+        .order("rider_id").order("season_id").order("game_day"),
+      "training_rider_ticks",
+    )));
+    for (const rows of batch) ticks.push(...rows);
+  }
+  return ticks;
+}
+
 async function loadPlanInputOnce(supabase, window) {
-  const ticks = await selectAll(() => supabase.from("training_rider_ticks").select(TICK_SELECT)
-    .gte("created_at", window.from)
-    .order("created_at", { ascending: true }).order("rider_id").order("game_day"), "training_rider_ticks");
+  const ticks = await loadTicksSince(supabase, window.from);
   const riderIds = [...new Set(ticks.map((t) => t.rider_id))];
   const tickTeamIds = [...new Set(ticks.map((t) => t.team_id).filter(Boolean))];
   const seasonIds = [...new Set(ticks.map((t) => t.season_id).filter(Boolean))];
