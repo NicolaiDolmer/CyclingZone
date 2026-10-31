@@ -46,6 +46,62 @@ export function orderedEfforts(validEfforts) {
   return [...known, ...unknown];
 }
 
+// #7332 (ejer 31/10): på en ENKELTSTART giver "grupetto" og "protect" (UI:
+// Arbejd / Følg angrebene) ingen mening — man kører alene mod uret, der er
+// hverken en gruppe at sidde i eller en leder at arbejde for. Fladen viser kun
+// Kør roligt, Normal og Alt ud dér. Holdtidskørsel (ttt) er IKKE med: dér kører
+// holdet samlet. Samme mønster som StagePlanModel.isTimeTrialProfile, kun uden ttt.
+// Ældre gemte valg accepteres stadig af serveren, og motoren kører dem som
+// "save" på en enkeltstart; fladen viser og gemmer dem derfor som "save".
+const INDIVIDUAL_TIME_TRIAL_PROFILES = new Set(["itt", "itt_hilly"]);
+const NOT_ON_INDIVIDUAL_TIME_TRIAL = new Set(["grupetto", "protect"]);
+const INDIVIDUAL_TIME_TRIAL_FALLBACK = "save";
+
+/** Er etapen en enkeltstart (itt / itt_hilly)? Holdtidskørsel er ikke. */
+export function isIndividualTimeTrialProfile(profileType) {
+  return typeof profileType === "string" && INDIVIDUAL_TIME_TRIAL_PROFILES.has(profileType);
+}
+
+/**
+ * Trinnene for ÉN etape: `orderedEfforts`, minus grupetto/protect på en
+ * enkeltstart. Alle andre etaper får præcis serverens trin.
+ */
+export function effortsForStage(validEfforts, profileType) {
+  const steps = orderedEfforts(validEfforts);
+  if (!isIndividualTimeTrialProfile(profileType)) return steps;
+  return steps.filter((e) => !NOT_ON_INDIVIDUAL_TIME_TRIAL.has(e));
+}
+
+/**
+ * Den indsats fladen viser og gemmer på en etape: grupetto/protect bliver
+ * "save" på en enkeltstart (rollens standard og gamle gemte valg ligeså).
+ * Alt andet passerer uændret.
+ */
+export function effortForStage(effort, profileType) {
+  if (isIndividualTimeTrialProfile(profileType) && NOT_ON_INDIVIDUAL_TIME_TRIAL.has(effort)) {
+    return INDIVIDUAL_TIME_TRIAL_FALLBACK;
+  }
+  return effort;
+}
+
+/**
+ * Kladden med grupetto/protect gjort til "save" på hver enkeltstart-etape.
+ * Bruges lige før gem, så et gem fra fladen aldrig skriver de to trin på en
+ * enkeltstart. Rollen røres ikke. Ren: samme objekt tilbage hvis intet ændres.
+ */
+export function withIndividualTimeTrialEfforts({ matrix, profileByStage }) {
+  let next = matrix;
+  for (const [sn, cells] of Object.entries(matrix || {})) {
+    const profileType = profileByStage?.[sn]?.profile_type;
+    if (!isIndividualTimeTrialProfile(profileType)) continue;
+    for (const [riderId, cell] of Object.entries(cells || {})) {
+      const mapped = effortForStage(cell?.effort, profileType);
+      if (mapped !== cell?.effort) next = setCell(next, sn, riderId, { effort: mapped });
+    }
+  }
+  return next;
+}
+
 /** Rytterens valgte intention på en etape (falder tilbage til 'normal'). */
 export function intentionFor({ matrix, stageNumber, riderId }) {
   return matrix?.[stageNumber]?.[riderId]?.effort || DEFAULT_EFFORT;
@@ -64,15 +120,17 @@ export function setIntention({ matrix, stageNumber, riderId, effort }) {
  * N"). Kun `effort` kopieres; rollen er løbs-bred og må ikke rejse med.
  * Udgåede ryttere springes over — de kan ikke få ny taktik (backend afviser
  * dem med stage_roles_rider_abandoned).
+ * #7332: er MÅL-etapen en enkeltstart (`toProfileType`), lander grupetto/protect
+ * som "save" — en enkeltstart får aldrig de to trin via kopien.
  */
-export function copyStageIntentions({ matrix, fromStage, toStage, riders }) {
+export function copyStageIntentions({ matrix, fromStage, toStage, riders, toProfileType = null }) {
   const source = matrix?.[fromStage];
   if (!source || matrix?.[toStage] == null) return matrix;
   const skip = new Set((riders || []).filter((r) => r.abandoned).map((r) => String(r.rider_id)));
   let next = matrix;
   for (const [riderId, cell] of Object.entries(source)) {
     if (skip.has(String(riderId))) continue;
-    next = setCell(next, toStage, riderId, { effort: cell?.effort || DEFAULT_EFFORT });
+    next = setCell(next, toStage, riderId, { effort: effortForStage(cell?.effort || DEFAULT_EFFORT, toProfileType) });
   }
   return next;
 }

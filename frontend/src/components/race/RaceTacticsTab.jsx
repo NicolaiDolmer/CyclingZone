@@ -93,7 +93,9 @@ import {
 } from "../../lib/stageRoleMatrixLogic.js";
 import {
   DEFAULT_EFFORT,
-  orderedEfforts,
+  effortsForStage,
+  effortForStage,
+  withIndividualTimeTrialEfforts,
   intentionFor,
   setIntention,
   copyStageIntentions,
@@ -450,7 +452,6 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     () => stageList.filter((s) => !s.locked).map((s) => s.stage_number),
     [stageList],
   );
-  const steps = useMemo(() => orderedEfforts(roles?.valid_efforts), [roles?.valid_efforts]);
   const riders = useMemo(() => roles?.riders ?? [], [roles?.riders]);
   const lockedOverrides = useMemo(() => overridesIndex(roles?.overrides), [roles?.overrides]);
 
@@ -570,7 +571,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
 
   function copyToNextStage() {
     if (nextStage == null) return;
-    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders }));
+    // #7332: en enkeltstart som maal faar aldrig grupetto/protect (bliver Kør roligt).
+    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders, toProfileType: profileByStage[nextStage]?.profile_type }));
     // Ordrerne kopieres med: "kopiér til etape N+1" skal flytte HELE dagens
     // plan, ikke halvdelen af den. Etapen der kopieres TIL skal stadig gemmes
     // selv (den er en anden etapes PUT).
@@ -605,7 +607,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // backend fra før #6095 (deploy-vinduet) opfører sig som før, ikke værre.
       const stages = changedStages(draftMatrix, initialMatrix).filter((sn) => editableStages.includes(sn));
       if (stages.length) {
-        const overrides = diffToOverrides({ matrix: draftMatrix, riders });
+        // #7332: en enkeltstart gemmes aldrig med grupetto/protect fra fladen (bliver "save").
+        const overrides = diffToOverrides({ matrix: withIndividualTimeTrialEfforts({ matrix: draftMatrix, profileByStage }), riders });
         // "empty" = serverens EMPTY_STAGE_VERSION for en etape uden rækker.
         const baseVersions = Object.fromEntries(stages.map((sn) => [sn, roles?.stage_versions?.[sn] ?? "empty"]));
         const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, {
@@ -628,7 +631,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // spilleren faktisk kunne se og røre.
       // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
       // #7003: med etapeplanen foelger indsatsen opgaven (planens felter vinder over intentionen).
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId })), stagePlan: orders?.stagePlanEnabled === true });
+      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }), profileByStage[activeStage]?.profile_type)), stagePlan: orders?.stagePlanEnabled === true });
       setStatus("saved");
       setOpenRiderId(null);
       setOpenRoleRiderId(null);
@@ -705,9 +708,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     return blockedReasonKey(step, { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true }, roleFor(rider), { teamHasSprintCaptain });
   };
 
+  // #7332: paa en aaben enkeltstart vises grupetto/protect (gamle valg) som Kør roligt,
+  // og vaelgeren har kun Kør roligt, Normal og Alt ud. En laast etape viser det der blev sendt.
   const effortFor = (rider) => (stageLocked
     ? resolveCell({ rider, stageNumber: activeStage, overridesMap: lockedOverrides }).effort
-    : intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId: rider.rider_id }));
+    : effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId: rider.rider_id }), stageProfileType));
+  const steps = effortsForStage(roles?.valid_efforts, stageProfileType);
 
   // #4980: rollen skrives fra den FØRSTE ulåste etape og løbet ud — noten i
   // vælgerens hoved siger det med det etapenummer det gælder fra, så et skift
