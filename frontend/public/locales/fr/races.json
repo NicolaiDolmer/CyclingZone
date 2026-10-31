@@ -974,6 +974,12 @@
       "protect": "Travailler ou attaquer",
       "all_out": "À fond"
     },
+    "whyItt": {
+      "save": "Il roule seul à un rythme tranquille et garde ses jambes pour les jours qui comptent."
+    },
+    "todayItt": {
+      "save": "rouler tranquille"
+    },
     "why": {
       "grupetto": "Rentre dans le groupe de fond. Aucune chance de résultat.",
       "save": "Reste dans le peloton et garde ses jambes pour les jours qui comptent.",

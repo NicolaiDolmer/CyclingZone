@@ -957,6 +957,12 @@
       "protect": "Arbejd eller angrib",
       "all_out": "Alt ud"
     },
+    "whyItt": {
+      "save": "Han kører alene i et roligt tempo og sparer benene til de dage, der tæller."
+    },
+    "todayItt": {
+      "save": "kør roligt"
+    },
     "why": {
       "grupetto": "Han kører den hjem i bagerste gruppe. Ingen chance for et resultat.",
       "save": "Han ligger i feltet og sparer benene til de dage, der tæller.",
