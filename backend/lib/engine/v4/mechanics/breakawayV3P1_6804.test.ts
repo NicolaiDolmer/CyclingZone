@@ -12,6 +12,7 @@ import { descentRegroup6486OnRoute } from "./descentRegroup6486.ts";
 import { BREAKAWAY_CHASE_V3_TUNING, MOUNTAIN_SELECTION_V2_TUNING, RACE_V4_TUNING, S5_V3_BREAKAWAY_TUNING } from "../tuning.ts";
 import { simulateStageV4 } from "../index.ts";
 import type { Entrant, GcContext } from "../types.ts";
+import { setFinalKmBoundary7383ForBench } from "../adapters/finalKmBoundary7383.ts"; // #7383 (taendt 31/10): sammenligningen maaler #6804, ikke 10 km-delingen
 
 const standings: GcContext = { status: "standings", stage_number: 2, leader_id: null, standings: [] };
 const firstStage: GcContext = { status: "first_stage", stage_number: 1 };
@@ -87,7 +88,9 @@ test("#6804 P1.1: finaleWeightScale skalerer kun etapeinteressen; udeladt = bit-
 // maa afvige (tider og resultater er ens).
 const withoutGapUpdates = (out: ReturnType<typeof simulateStageV4>) => ({ ...out, passages: undefined, passage_totals: undefined, timeline: { ...out.timeline, events: out.timeline.events.filter((e) => e.type !== "gap_update" && e.type !== "kom_passage") } });
 
-test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (bortset fra #6814's gap_update og #6937's bjergpassager)", () => {
+test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (bortset fra #6814's gap_update og #6937's bjergpassager)", (t) => {
+  setFinalKmBoundary7383ForBench(false);
+  t.after(() => setFinalKmBoundary7383ForBench(null));
   const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "fixtures");
   const names = readdirSync(dir).filter((n) => statSync(path.join(dir, n)).isDirectory()).sort();
   assert.ok(names.length > 0);

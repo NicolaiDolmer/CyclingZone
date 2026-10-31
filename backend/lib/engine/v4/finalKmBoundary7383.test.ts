@@ -83,10 +83,10 @@ const seg = {
   cobbles: (from_km: number, to_km: number): Segment => ({ kind: "cobbles", from_km, to_km, sector_name: "S", stars: 3 }),
 };
 
-test("#7383: kontakten er slukket, og frontendens kopi er den samme", () => {
-  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, false);
-  assert.equal(finalKmBoundary7383Active(), false);
-  for (const revision of REVISIONS) assert.equal(isFinalKmBoundary7383On(revision), false, String(revision));
+test("#7383: kontakten er taendt (ejer-go 31/10), og frontendens kopi er den samme", () => {
+  assert.equal(FINAL_KM_BOUNDARY_7383_ACTIVE, true);
+  assert.equal(finalKmBoundary7383Active(), true);
+  for (const revision of REVISIONS) assert.equal(isFinalKmBoundary7383On(revision), revision === "s5_profiles_v3", String(revision));
   const model = readFileSync(path.join(here, "..", "..", "..", "..", "frontend", "src", "components", "race", "StagePlanModel.ts"), "utf8");
   const match = model.match(/export const FINAL_KM_BOUNDARY_7383_ACTIVE\s*=\s*(true|false)\s*;/);
   assert.ok(match, "StagePlanModel.ts skal have sin kopi af kontakten");
@@ -102,7 +102,7 @@ test("#7383: kun s5_profiles_v3 og kun med kontakten taendt", () => {
   });
 });
 
-test("#7383: slukket er ruten det samme objekt og ingen deling (alle fixtures x revisioner)", () => {
+test("#7383: slukket er ruten det samme objekt og ingen deling (alle fixtures x revisioner)", () => withSwitch(false, () => {
   for (const name of readdirSync(FIXTURES).sort()) {
     for (const revision of REVISIONS) {
       const route = stageInputForRulesRevision(fixture(name, revision)).route;
@@ -112,7 +112,7 @@ test("#7383: slukket er ruten det samme objekt og ingen deling (alle fixtures x 
       for (const s of looped.segments) assert.equal(finalKmTerrainPiece7383(s), undefined);
     }
   }
-});
+}));
 
 test("#7383: med kontakten taendt er aeldre revisioner bit-identiske med slukket", () => {
   for (const name of ["flat-massespurt", "bjerg-selektion", "mellembjerg"]) {
@@ -194,7 +194,7 @@ test("#7383: slukket gaelder #7333-reglen uaendret (naermeste eksisterende graen
   const input = fixture("flat-massespurt", "s5_profiles_v3");
   input.orders = [finalKmPlan(input)];
   const finalKm = input.route.distance_km - STAGE_PLAN_FINAL_KM;
-  const events = legEvents(simulateStageV4(input).timeline.events);
+  const events = legEvents(withSwitch(false, () => simulateStageV4(input)).timeline.events);
   assert.ok(events.length > 0);
   const boundaries = new Set(input.route.segments.map((s) => s.from_km));
   for (const e of events) {
