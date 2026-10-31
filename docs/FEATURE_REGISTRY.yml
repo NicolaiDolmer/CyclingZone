@@ -887,7 +887,7 @@ features:
     flag: development_v2_aging_enabled
     epic: 6499
     verified: 2026-10-26
-    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10.
+    note: On ved S5-skiftet 25/10 (ejer-go, #7153), læst i prod 26/10. Sæsonskiftets aldring er ugatet siden #6499 (altid ny aldring); flaget styrer kun, at AI- og frie ryttere ikke udvikler sig dagligt (#6500).
 
   - id: ability-cap-per-date
     area: training

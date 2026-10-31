@@ -233,8 +233,8 @@ async function assertRaceDayReservationSettled({ supabase, runRowFilter, teamId,
 // DB-kaldene: holdets raekke hentes kun naar flaget er taendt). Kun "on"/true
 // taender motoren: "beta" er IKKE en motor-skrivning her, fordi der ingen
 // skyggedata er at bygge — det er en live balance-aendring for hele ligaen.
-// Flag-laesningen bor midlertidigt her; et andet spor ejer den faelles
-// developmentV2Flag.js, og denne laesning flyttes dertil ved en senere refaktor.
+// Siden #6499 er dette flagets eneste laeser i motoren: saesonskiftet koerer
+// altid den nye aldring, og developmentV2Flag.js er fjernet.
 export const DEVELOPMENT_V2_AGING_FLAG_KEY = "development_v2_aging_enabled";
 
 // #6210/#7075: maks +1 pr. evne pr. DATO (paa tvaers af datoens loebsdage og stier).

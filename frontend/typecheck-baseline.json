@@ -427,12 +427,9 @@
     "TS2339": 5
   },
   "../backend/lib/riderProgressionEngine.js": {
-    "TS1127": 6,
+    "TS1127": 3,
     "TS18046": 1,
-    "TS18047": 1,
-    "TS2322": 2,
-    "TS2339": 11,
-    "TS2345": 1
+    "TS2339": 11
   },
   "../backend/lib/riderSeasonAge.js": {
     "TS18049": 5
