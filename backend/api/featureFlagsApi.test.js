@@ -344,34 +344,54 @@ test("#3564: development_curve_b er binaert, beta er off ogsaa for beta-gruppen"
   const asTester = await readPlayerFeatureFlags(beta, { isBetaTester: true });
   assert.equal(asTester.development_curve_b, false, "motoren laeser beta som off, saa Hjaelp skal ogsaa");
   assert.equal(asTester.race_engine_v4, true, "andre flag beholder beta-evalueringen");
-  const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on" }), { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } });
+  const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on", development_curve_b_params: CURVE_B_TEST_PARAMS }));
   assert.equal(on.development_curve_b, true);
 });
 
 // Syntetiske testparams (ikke kalibreringen, hard rule 17).
-const CURVE_B_TEST_PARAMS = JSON.stringify({
+const CURVE_B_TEST_PARAMS = Object.freeze({
   rate: 10, levelExponent: 2, capExponent: 0.5,
   load: { fromAge: 16, fullAge: 24, floor: 0.5 },
   potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
 });
 
+// #7390: den tidligere Railway-reserve. Miljoeet maa aldrig laeses laengere.
+async function withRetiredCurveBReserve(fn) {
+  const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  process.env.DEVELOPMENT_CURVE_B_PARAMS = JSON.stringify(CURVE_B_TEST_PARAMS);
+  try {
+    return await fn();
+  } finally {
+    if (prev === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+    else process.env.DEVELOPMENT_CURVE_B_PARAMS = prev;
+  }
+}
+
 test("Codex #7192: development_curve_b on uden gyldige params er false, som motorens fail-safe", async () => {
-  const db = fakeSupabase({ development_curve_b: "on" });
-  assert.equal((await readPlayerFeatureFlags(db, { env: {} })).development_curve_b, false, "params mangler");
-  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: "{not json" } })).development_curve_b, false, "ugyldig JSON");
-  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: "{}" } })).development_curve_b, false, "ugyldige params");
-  assert.equal((await readPlayerFeatureFlags(db, { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } })).development_curve_b, true);
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const missing = fakeSupabase({ development_curve_b: "on" });
+    assert.equal((await readPlayerFeatureFlags(missing)).development_curve_b, false, "params mangler");
+    const invalid = fakeSupabase({ development_curve_b: "on", development_curve_b_params: {} });
+    assert.equal((await readPlayerFeatureFlags(invalid)).development_curve_b, false, "ugyldige params");
+    const failing = fakeSupabase({ development_curve_b: "on", development_curve_b_params: CURVE_B_TEST_PARAMS }, { failKeys: ["development_curve_b_params"] });
+    assert.equal((await readPlayerFeatureFlags(failing)).development_curve_b, false, "ulaeselig raekke");
+  } finally {
+    console.warn = warn;
+  }
 });
 
-test("#7390: kurve B's params fra private_config taeller; en ugyldig raekke slukker trods reserven", async () => {
-  const params = JSON.parse(CURVE_B_TEST_PARAMS);
-  const fromTable = fakeSupabase({ development_curve_b: "on", development_curve_b_params: params });
-  assert.equal((await readPlayerFeatureFlags(fromTable, { env: {} })).development_curve_b, true, "tabellen alene er nok");
+test("#7390: kurve B's params kun fra private_config; Railway-variablen ignoreres", async () => {
+  const fromTable = fakeSupabase({ development_curve_b: "on", development_curve_b_params: CURVE_B_TEST_PARAMS });
+  assert.equal((await readPlayerFeatureFlags(fromTable)).development_curve_b, true, "tabellen alene er nok");
   assert.ok(fromTable.reads.some((r) => r.table === "private_config" && r.key === "development_curve_b_params"));
-  const invalid = fakeSupabase({ development_curve_b: "on", development_curve_b_params: { ...params, rate: -1 } });
-  assert.equal((await readPlayerFeatureFlags(invalid, { env: { DEVELOPMENT_CURVE_B_PARAMS: CURVE_B_TEST_PARAMS } })).development_curve_b, false);
-  const off = fakeSupabase({ development_curve_b: "off", development_curve_b_params: params });
-  assert.equal((await readPlayerFeatureFlags(off, { env: {} })).development_curve_b, false);
+  const missing = fakeSupabase({ development_curve_b: "on" });
+  assert.equal((await withRetiredCurveBReserve(() => readPlayerFeatureFlags(missing))).development_curve_b, false, "den gamle variabel taender aldrig kurven");
+  const invalid = fakeSupabase({ development_curve_b: "on", development_curve_b_params: { ...CURVE_B_TEST_PARAMS, rate: -1 } });
+  assert.equal((await withRetiredCurveBReserve(() => readPlayerFeatureFlags(invalid))).development_curve_b, false);
+  const off = fakeSupabase({ development_curve_b: "off", development_curve_b_params: CURVE_B_TEST_PARAMS });
+  assert.equal((await readPlayerFeatureFlags(off)).development_curve_b, false);
   assert.ok(!off.reads.some((r) => r.table === "private_config"), "flag off = intet opslag");
 });
 

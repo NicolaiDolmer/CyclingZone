@@ -3428,23 +3428,24 @@ test('#6461 B loophole rider bought mid-day: the buyer running the date gives th
 // ── #3564 kurve B: kald-stedet ───────────────────────────────────────────────
 // Syntetiske testparams (ikke kalibreringen, hard rule 17). Testen laaser kun
 // koblingen: flag off eller manglende params = dagens model, on + params = kurven.
-const CURVE_B_TEST_PARAMS = JSON.stringify({
+const CURVE_B_TEST_PARAMS = Object.freeze({
   rate: 10, levelExponent: 2, capExponent: 0.5,
   load: { fromAge: 16, fullAge: 24, floor: 0.5 },
   potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
 });
 
-async function runCurveBDay({ flag = null, params = undefined, privateParams = undefined } = {}) {
+// #7390: `params` ligger i den lukkede tabel private_config (eneste kilde).
+// `retiredEnv` saetter den fjernede Railway-variabel, saa testen kan vise at den ignoreres.
+async function runCurveBDay({ flag = null, params = undefined, retiredEnv = undefined } = {}) {
   const state = seedState({
     abilities: [makeAbilityRow("r1", { ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) })],
     plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
   });
   if (flag != null) state.app_config = [{ key: "development_curve_b", value: flag }];
-  // #7390: params i den lukkede tabel (foerst), Railway-variablen er reserven.
-  if (privateParams !== undefined) state.private_config = [{ key: "development_curve_b_params", value: privateParams }];
+  if (params !== undefined) state.private_config = [{ key: "development_curve_b_params", value: params }];
   const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
-  if (params === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
-  else process.env.DEVELOPMENT_CURVE_B_PARAMS = params;
+  if (retiredEnv === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  else process.env.DEVELOPMENT_CURVE_B_PARAMS = retiredEnv;
   const warn = console.warn;
   const warnings = [];
   console.warn = (...args) => warnings.push(args.join(" "));
@@ -3462,7 +3463,7 @@ async function runCurveBDay({ flag = null, params = undefined, privateParams = u
   return { row: JSON.parse(JSON.stringify(row)), warnings };
 }
 
-test("#3564 kald-sted: flag off = dagens model, ogsaa med params i miljoeet", async () => {
+test("#3564 kald-sted: flag off = dagens model, ogsaa med params i private_config", async () => {
   const today = await runCurveBDay();
   const offWithParams = await runCurveBDay({ flag: "off", params: CURVE_B_TEST_PARAMS });
   assert.deepEqual(offWithParams.row, today.row);
@@ -3547,9 +3548,8 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
       upsert(rows, o) { const keys = [rows].flat().map((r) => r.key); configKeys.push(...keys); configUpserts.push(...keys); return b.upsert(rows, o); },
     };
   } };
-  const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
-  if (params === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
-  else process.env.DEVELOPMENT_CURVE_B_PARAMS = params;
+  // #7390: params kun i den lukkede tabel private_config.
+  if (params !== undefined) state.private_config = [{ key: "development_curve_b_params", value: params }];
   const warn = console.warn;
   console.warn = () => {};
   let result = null;
@@ -3558,8 +3558,6 @@ async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPer
       ...(conditionPerDate ? { gameDay: 1, dateGameDays: [1, 2, 3, 4, 5], eligibleRiderIds: ["r1"] } : {}), ...runArgs });
   } finally {
     console.warn = warn;
-    if (prev === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
-    else process.env.DEVELOPMENT_CURVE_B_PARAMS = prev;
   }
   const stamp = state.app_config.find((r) => r.key === CURVE_B_IGNITED_KEY_7382)?.value ?? null;
   const row = state.rider_derived_abilities.find((r) => r.rider_id === "r1");
@@ -3679,17 +3677,18 @@ test("#7382 kald-sted: et fejlet billede efterlader intet stempel, og naeste koe
   assert.equal(retry.members.length, 1);
 });
 
-test("#7390 kald-sted: params fra private_config (uden Railway-variabel) sender kurven ind; samme resultat som reserven", async () => {
+test("#7390 kald-sted: den fjernede Railway-variabel taender aldrig kurven; kun private_config goer", async () => {
   const today = await runCurveBDay();
-  const fromTable = await runCurveBDay({ flag: "on", privateParams: JSON.parse(CURVE_B_TEST_PARAMS) });
-  const fromReserve = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  const fromTable = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  const envOnly = await runCurveBDay({ flag: "on", retiredEnv: JSON.stringify(CURVE_B_TEST_PARAMS) });
   assert.notDeepEqual(fromTable.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
-  assert.deepEqual(fromTable.row.ability_progress, fromReserve.row.ability_progress);
-  assert.ok(!fromTable.warnings.some((w) => w.includes("reserve")), "ingen reserve-advarsel naar tabellen bruges");
+  assert.ok(!fromTable.warnings.some((w) => w.includes("[curve-b]")), "ingen advarsel naar tabellen bruges");
+  assert.deepEqual(envOnly.row, today.row, "variablen alene = dagens model");
+  assert.ok(envOnly.warnings.some((w) => w.includes("[curve-b]")), "faldet til dagens model logges, aldrig tavst");
 });
 
 test("#7390 kald-sted: flag off med params i private_config = dagens model", async () => {
   const today = await runCurveBDay();
-  const off = await runCurveBDay({ flag: "off", privateParams: JSON.parse(CURVE_B_TEST_PARAMS) });
+  const off = await runCurveBDay({ flag: "off", params: CURVE_B_TEST_PARAMS });
   assert.deepEqual(off.row, today.row);
 });
