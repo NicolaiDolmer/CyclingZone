@@ -57,5 +57,11 @@
     "title": "Pauset.",
     "newStart": "Ny start {time}.",
     "newStartUnknown": "Ny starttid meldes ud."
+  },
+  "racePauseInfoBar": {
+    "regionAriaLabel": "Løbsstatus",
+    "title": "Løbene er sat på pause.",
+    "newStart": "Ny start {time}.",
+    "newStartUnknown": "Jeg melder den nye starttid ud her."
   }
 }
