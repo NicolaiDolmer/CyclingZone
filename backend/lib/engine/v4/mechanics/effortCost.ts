@@ -193,7 +193,7 @@ export function allOutTimeTrialBonus7280(effort: EffortLevel | undefined, timeTr
   return allOut7280Tuning().timeTrialGain * level;
 }
 
-// #7332 (TAENDT 31/10 paa ejerens go, fradrag 0.15; ejer-beslutning 31/10 valg A): 'Spar' paa en
+// #7332 (TAENDT 31/10 paa ejerens go; ejer-beslutning 31/10 valg A): 'Spar' paa en
 // ENKELTSTART (itt, itt_hilly; ikke ttt) koster tid og sparer traethed, som i virkeligheden.
 // 'Beskyt' og 'grupetto' koerer som 'spar' mod uret (der er intet hold at beskytte og ingen
 // grupetto). Normal og Alt ud er uaendrede. Kun under s5_profiles_v3 (isSaveItt7332On).
