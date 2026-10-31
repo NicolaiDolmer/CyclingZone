@@ -1523,10 +1523,19 @@ export default function RaceDetailPage() {
 // præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
 // S4 (#1176): incidents er optional — [] (flag off/tabel ikke migreret) giver
 // samme output som før S4 (ingen abandon/notableCrash-momenter).
-function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null, startlist = null, onSeeList = /** @type {null | (() => void)} */ (null) }) {
+/**
+ * @param {{
+ *   results: any[], scopeType: string, stageNumber?: number | null, incidents: any[],
+ *   profileType?: string | null, timelineEvents?: any[] | null,
+ *   teamNameById?: Map<string, string> | null, startlist?: any[] | null,
+ *   onSeeList?: (() => void) | null,
+ * }} props
+ */
+function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null, startlist = null, onSeeList = null }) {
   const { t } = useTranslation("races");
   const moments = useMemo(
-    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType, timelineEvents, teamNameById, startlist }),
+    // buildRaceRecap er utypet JS (null-defaults inferes som "kun null"); argumentet castes.
+    () => buildRaceRecap(/** @type {any} */ ({ results, scope: { type: scopeType, stageNumber }, incidents, profileType, timelineEvents, teamNameById, startlist })),
     [results, scopeType, stageNumber, incidents, profileType, timelineEvents, teamNameById, startlist],
   );
   if (!moments.length) return null;
@@ -1619,6 +1628,14 @@ function beatParamsFor(moment, { riderName, teamName }) {
 // etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
 // spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
 // personalisering — ingen ny persistering, ingen data forlader klienten.
+/**
+ * @param {{
+ *   raceId: any, raceName: any, stageNumber: number, moments: any[], results: any[], incidents: any[],
+ *   myTeamId: any, riderNameById: Map<any, string>, teamNameById: Map<string, string>,
+ *   timelineEvents?: any[] | null, profileType?: string | null, startlist?: any[] | null,
+ *   ownAbandons?: { abandons: any[], ridersLeft: number } | null, ownTeamId?: any, t: any,
+ * }} props
+ */
 function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, startlist = null, ownAbandons = null, ownTeamId = null, t }) {
   const report = useMemo(
     () => buildRaceReport({ raceId, stageNumber, moments, timelineEvents, teamNameById, startlist }),
@@ -1773,6 +1790,7 @@ function scrollToDnfList(attempt = 0) {
 
 // #7411: referatets samlede linje naar flere stiger af, med et link til listen.
 // onSeeList: hvor listen ikke er mountet (Overblik), aabner kalderen foerst Resultater.
+/** @param {{ moment: any, t: any, onSeeList?: (() => void) | null }} props */
 function WithdrawalGroupLine({ moment, t, onSeeList = null }) {
   return (
     <>
@@ -1786,6 +1804,7 @@ function WithdrawalGroupLine({ moment, t, onSeeList = null }) {
 }
 
 // #7411: "Dit hold" paa etapen: hvem der udgik og hvor mange der er tilbage.
+/** @param {{ ownAbandons: { abandons: any[], ridersLeft: number } | null | undefined, stageNumber: number, t: any }} props */
 function OwnAbandonLines({ ownAbandons, stageNumber, t }) {
   if (!ownAbandons) return null;
   return (
@@ -1800,6 +1819,7 @@ function OwnAbandonLines({ ownAbandons, stageNumber, t }) {
   );
 }
 
+/** @param {{ incidents: any[], scopeType: string, stageNumber?: number | null, t: any }} props */
 function DnfSection({ incidents, scopeType, stageNumber, t }) {
   const rows = useMemo(() => {
     const abandons = (incidents || []).filter((inc) => inc.outcome === "abandon");
@@ -2309,7 +2329,16 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = /** @type {string | undefined} */ (undefined), participationHistory = null, dnfRows = /** @type {any[]} */ ([]) }) {
+/**
+ * @param {{
+ *   title: any, rows: any[], highlightWinner?: boolean, highlightTeamId?: any, myOwnTeamId?: any,
+ *   defaultLimit?: number, moments?: any[], stageNumber?: number | null,
+ *   pointsTotalByRider?: any, raceId?: string,
+ *   participationHistory?: import("../lib/raceParticipationMarkers.ts").StageParticipationHistory | null,
+ *   dnfRows?: any[],
+ * }} props
+ */
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = undefined, participationHistory = null, dnfRows = [] }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement

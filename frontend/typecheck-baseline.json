@@ -2531,12 +2531,12 @@
     "TS2769": 1
   },
   "src/pages/RaceDetailPage.jsx": {
-    "TS2322": 20,
-    "TS2339": 19,
+    "TS2322": 14,
+    "TS2339": 16,
     "TS2345": 16,
-    "TS2353": 3,
+    "TS2353": 2,
     "TS2739": 1,
-    "TS2741": 12
+    "TS2741": 11
   },
   "src/pages/RaceHistoryPage.jsx": {
     "TS2322": 1,
