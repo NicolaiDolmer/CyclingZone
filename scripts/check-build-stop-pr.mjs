@@ -32,7 +32,8 @@ const TOKEN = /(?:([\w.-]+\/[\w.-]+))?#(\d+)/g;
 
 // HTML-kommentarer fjernes indtil teksten er stabil (CodeQL #384: ét gennemløb
 // kan efterlade "<!--" ved indlejring, fx "<!<!-- -->-- x -->"), og en
-// uafsluttet kommentar fjernes til slutningen.
+// uafsluttet kommentar fjernes til slutningen. Kode (blokke og inline) fjernes
+// foer den uafsluttede strip, saa et "<!--" i kode ikke sluger resten af teksten.
 function stripComments(text) {
   let prev;
   let out = text;
@@ -40,6 +41,7 @@ function stripComments(text) {
     prev = out;
     out = out.replace(/<!--[\s\S]*?-->/g, '');
   } while (out !== prev);
+  out = out.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
   return out.replace(/<!--[\s\S]*$/, '');
 }
 
@@ -47,7 +49,7 @@ function stripComments(text) {
 // repoer ignoreres. Kodeblokke og HTML-kommentarer (PR-skabelonens hjaelpetekst)
 // fjernes foerst, saa et eksempel i skabelonen ikke tæller som reference.
 export function issuesFromBody(body) {
-  const text = stripComments(String(body || '')).replace(/```[\s\S]*?```/g, '');
+  const text = stripComments(String(body || ''));
   const found = new Set();
   for (const m of text.matchAll(KEYWORD)) {
     for (const t of m[1].matchAll(TOKEN)) {
