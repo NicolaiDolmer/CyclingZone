@@ -129,6 +129,8 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
 
     development_v2_aging_enabled: false,
 
+    potential_single_number: false,
+
     ability_cap_per_date_enabled: false,
 
     training_decision_card: false,
@@ -184,6 +186,8 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     academy_intake_pull_enabled: false,
 
     development_v2_aging_enabled: false,
+
+    potential_single_number: false,
 
     ability_cap_per_date_enabled: false,
 
@@ -249,6 +253,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
 
     development_v2_aging_enabled: false,
 
+    potential_single_number: false,
+
     ability_cap_per_date_enabled: false,
 
     training_decision_card: false,
@@ -273,6 +279,8 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     academy_intake_pull_enabled: false,
 
     development_v2_aging_enabled: false,
+
+    potential_single_number: false,
 
     ability_cap_per_date_enabled: false,
 
