@@ -94,6 +94,7 @@ import {
 import {
   DEFAULT_EFFORT,
   effortsForStage,
+  isIndividualTimeTrialProfile,
   effortForStage,
   withIndividualTimeTrialEfforts,
   intentionFor,
@@ -169,7 +170,7 @@ function IntentionChip({ t, effort, isDefault, role, muted = false }) {
 }
 
 // Den udfoldede vælger: ét trin pr. linje, én sætning i ord, ingen tal.
-function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
+function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, timeTrial = false, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -200,7 +201,7 @@ function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disable
               {step === "protect" ? protectText(t, role, "step") : t(`intention.step.${step}`)}
             </span>
             <span className="text-xs text-cz-2 basis-full sm:basis-auto ps-[26px] sm:ps-0">
-              {step === "protect" ? protectText(t, role, "why") : t(`intention.why.${step}`)}
+              {step === "protect" ? protectText(t, role, "why") : step === "save" && timeTrial ? t("intention.whyItt.save") : t(`intention.why.${step}`)}
             </span>
             {blocked ? (
               <span className="text-3xs text-cz-3 basis-full sm:basis-auto ps-[26px] sm:ps-0 sm:ms-auto">{t(blocked)}</span>
@@ -810,7 +811,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const isDefault = effort === DEFAULT_EFFORT;
     const open = openRiderId === rider.rider_id;
     const role = roleFor(rider);
-    const todayText = effort === "protect" ? protectText(t, role, "today") : t(`intention.today.${effort}`);
+    const todayText = effort === "protect" ? protectText(t, role, "today") : effort === "save" && isIndividualTimeTrialProfile(stageProfileType) ? t("intention.todayItt.save") : t(`intention.today.${effort}`);
     if (stageLocked) {
       return (
         <>
@@ -1126,6 +1127,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                           role={roleFor(rider)}
                           scopeLabel={scopeLabel}
                           steps={steps}
+                          timeTrial={isIndividualTimeTrialProfile(stageProfileType)}
                           value={effortFor(rider)}
                           disabled={saving}
                           onPick={(step) => pickIntention(rider.rider_id, step)}
@@ -1183,6 +1185,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                     role={roleFor(rider)}
                     scopeLabel={scopeLabel}
                     steps={steps}
+                    timeTrial={isIndividualTimeTrialProfile(stageProfileType)}
                     value={effortFor(rider)}
                     disabled={saving}
                     onPick={(step) => pickIntention(rider.rider_id, step)}

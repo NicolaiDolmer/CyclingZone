@@ -957,6 +957,12 @@
       "protect": "Work or attack",
       "all_out": "All out"
     },
+    "whyItt": {
+      "save": "He rides alone at an easy pace and saves his legs for the days that count."
+    },
+    "todayItt": {
+      "save": "ride easy"
+    },
     "why": {
       "grupetto": "Rides it home in the back group. No shot at a result.",
       "save": "Sits in and saves legs for the days that count.",

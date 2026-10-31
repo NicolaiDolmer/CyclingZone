@@ -974,6 +974,12 @@
       "protect": "Trabajar o atacar",
       "all_out": "A tope"
     },
+    "whyItt": {
+      "save": "Rueda solo a un ritmo suave y guarda las piernas para los días que cuentan."
+    },
+    "todayItt": {
+      "save": "rodar suave"
+    },
     "why": {
       "grupetto": "Termina la etapa en el grupo de atrás. Sin opciones de resultado.",
       "save": "Se coloca en el pelotón y guarda piernas para los días que cuentan.",
