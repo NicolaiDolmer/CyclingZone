@@ -41,7 +41,7 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 import { tooltipClass } from "../components/ui/tooltipStyles.js";
 import { formatNumber } from "../lib/intl";
 import { resultEntity } from "../lib/raceResultEntity.js";
-import { buildRaceRecap } from "../lib/raceRecap.js";
+import { buildRaceRecap, incidentReasonKey, withdrawalGroupMoment, dnfRowsForStage, ownStageAbandons, teamIdByRiderFromRows } from "../lib/raceRecap.js";
 import { buildRaceReport } from "../lib/raceReport.js";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
@@ -591,7 +591,8 @@ export default function RaceDetailPage() {
     // her med et eksplicit warn fordi det er en helt ny tabel under udrulning).
     const incidentsPromise = supabase
       .from("race_incidents")
-      .select("id, stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(id, firstname, lastname)")
+      // #7411: flag + hold, saa udgaaede kan staa som DNF-raekker i resultattabellen.
+      .select("id, stage_number, rider_id, kind, outcome, time_loss_seconds, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
       .eq("race_id", raceId);
 
     // S6 (#2355): race_stage_moments (why-rapport + story-tags). Samme degradér-
@@ -799,6 +800,11 @@ export default function RaceDetailPage() {
   const oneDayOwnRiderIds = useMemo(() => ownRiderIdsForOneDay(results, myTeamId), [results, myTeamId]); // #6512
   const oneDayResults = useMemo(() => !oneDayParticipation ? results : results.map(row =>
     row.result_type === "gc" || row.result_type === "stage" ? { ...row, ...participationFlagsForResult(row, oneDayParticipation) } : row), [results, oneDayParticipation]);
+  // #7411 (+ #7330): endagsloebets udgaaede nederst i maaltavlen som DNF.
+  const oneDayDnfRows = useMemo(
+    () => dnfRowsForStage(incidents, 1, teamIdByRiderFromRows(stagePointsRows)),
+    [incidents, stagePointsRows],
+  );
 
 
   // stage_number → { profile_type, finale_type } for terræn-indikatoren (#1484).
@@ -1342,6 +1348,7 @@ export default function RaceDetailPage() {
                     stageNumber={1}
                     raceId={race.id}
                     participationHistory={oneDayParticipation}
+                    dnfRows={filterRowsByTeam(oneDayDnfRows)}
                   />
                   {finalByType.team?.length > 0 && (
                     <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} myOwnTeamId={myTeamId} />
@@ -1534,7 +1541,7 @@ function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = n
       <ul className="space-y-1.5">
         {moments.map((m, i) => (
           <li key={`${m.key}-${i}`} className="text-cz-1 text-sm leading-relaxed">
-            {t(`detail.recap.${m.key}`, m.params)}
+            {m.key === "withdrawalGroup" ? <WithdrawalGroupLine moment={m} t={t} /> : t(`detail.recap.${m.key}`, m.params)}
           </li>
         ))}
       </ul>
@@ -1612,10 +1619,16 @@ function beatParamsFor(moment, { riderName, teamName }) {
 // etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
 // spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
 // personalisering — ingen ny persistering, ingen data forlader klienten.
-function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, startlist = null, t }) {
+function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, startlist = null, ownAbandons = null, t }) {
   const report = useMemo(
     () => buildRaceReport({ raceId, stageNumber, moments, timelineEvents, teamNameById, startlist }),
     [raceId, stageNumber, moments, timelineEvents, teamNameById, startlist],
+  );
+  // #7411: referatet v2 bygges af race_stage_moments, som ikke kender udgaaede.
+  // Den samlede linje laegges paa her fra race_incidents (samme kilde som v1).
+  const withdrawalGroup = useMemo(
+    () => withdrawalGroupMoment(incidents, { type: "stage", stageNumber }),
+    [incidents, stageNumber],
   );
 
   const riderName = (id) => (id ? riderNameById.get(id) || "—" : "—");
@@ -1627,7 +1640,8 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
       r.result_type === "stage" && (r.stage_number ?? 1) === stageNumber
       && String(r.team_id ?? r.rider?.team?.id) === String(myTeamId)
     );
-    if (!stageRows.length) return { none: true };
+    // #7411: et hold hvis ryttere alle udgik, stillede stadig til start.
+    if (!stageRows.length) return { none: !ownAbandons };
     const best = [...stageRows].sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999))[0];
     const inBreakRow = stageRows.find((r) => r.in_breakaway);
     const helperShift = (moments || []).find((mo) =>
@@ -1642,10 +1656,22 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
       helperShift,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- riderName lukker over riderNameById (prop), ikke state
-  }, [results, moments, myTeamId, stageNumber, report]);
+  }, [results, moments, myTeamId, stageNumber, report, ownAbandons]);
 
   if (!report) {
-    return <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} timelineEvents={timelineEvents} teamNameById={teamNameById} startlist={startlist} />;
+    return (
+      <>
+        <RaceRecap results={results} scopeType="stage" stageNumber={stageNumber} incidents={incidents} profileType={profileType} timelineEvents={timelineEvents} teamNameById={teamNameById} startlist={startlist} />
+        {ownAbandons && (
+          <Section>
+            <SectionHeader title={t("detail.report.yourTeam.title")} />
+            <ul className="space-y-1">
+              <OwnAbandonLines ownAbandons={ownAbandons} stageNumber={stageNumber} t={t} />
+            </ul>
+          </Section>
+        )}
+      </>
+    );
   }
 
   const ctx = { riderName, teamName, raceName };
@@ -1666,13 +1692,18 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
       <p className="text-cz-2 text-sm leading-relaxed mt-1">
         {t(`detail.report.lede.${ledeKey}.v${report.lede.variant + 1}`, ledeParamsFor(report.lede.winMoment, ledeKey, ctx))}
       </p>
-      {report.beats.length > 0 && (
+      {(report.beats.length > 0 || withdrawalGroup) && (
         <ul className="space-y-1.5 mt-2">
           {report.beats.map((b) => (
             <li key={b.moment.moment_key} className="text-cz-1 text-sm leading-relaxed">
               {t(`detail.report.beat.${b.beatKey}.v${b.variant + 1}`, b.params ?? beatParamsFor(b.moment, ctx))}
             </li>
           ))}
+          {withdrawalGroup && (
+            <li className="text-cz-1 text-sm leading-relaxed">
+              <WithdrawalGroupLine moment={withdrawalGroup} t={t} />
+            </li>
+          )}
         </ul>
       )}
       {myTeamBlock && (
@@ -1682,7 +1713,9 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
             <p className="text-cz-2 text-sm">{t("detail.report.yourTeam.none")}</p>
           ) : (
             <ul className="space-y-1">
-              <li className="text-cz-1 text-sm tabular-nums">{t("detail.report.yourTeam.bestResult", { rider: myTeamBlock.bestRider, rank: myTeamBlock.bestRank })}</li>
+              {myTeamBlock.bestRider != null && (
+                <li className="text-cz-1 text-sm tabular-nums">{t("detail.report.yourTeam.bestResult", { rider: myTeamBlock.bestRider, rank: myTeamBlock.bestRank })}</li>
+              )}
               {myTeamBlock.inBreakRider && (
                 <li className="text-cz-1 text-sm">{t("detail.report.yourTeam.inBreak", { rider: myTeamBlock.inBreakRider })}</li>
               )}
@@ -1694,6 +1727,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
                   })}
                 </li>
               )}
+              <OwnAbandonLines ownAbandons={ownAbandons} stageNumber={stageNumber} t={t} />
             </ul>
           )}
         </div>
@@ -1709,8 +1743,43 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
 //
 // #4520: eksplicit kind→nøgle-map. Den gamle binære "crash ellers mechanical"
 // mærkede #4418's ikke-startere (kind='injury') som mekanisk defekt.
-// #6938: illness (startede ikke) og withdrawal (hjaelper steg af i et endagsloeb).
-const INCIDENT_KIND_KEYS = { crash: "crash", mechanical: "mechanical", injury: "injury", illness: "illness", withdrawal: "withdrawal" };
+// #6938: illness (startede ikke) og withdrawal (hjaelper steg af).
+// #7411: kortet bor nu i raceRecap.js (incidentReasonKey) og kender ogsaa
+// time_limit, som foer faldt igennem til "Styrt".
+const DNF_LIST_ID = "race-dnf-list";
+
+function scrollToDnfList() {
+  if (typeof document === "undefined") return;
+  document.getElementById(DNF_LIST_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// #7411: referatets samlede linje naar flere stiger af, med et link til listen.
+function WithdrawalGroupLine({ moment, t }) {
+  return (
+    <>
+      {t("detail.recap.withdrawalGroup", moment.params)}{" "}
+      <button type="button" onClick={scrollToDnfList}
+        className="text-cz-accent-t text-sm font-medium hover:underline">
+        {t("detail.recap.seeList")}
+      </button>
+    </>
+  );
+}
+
+// #7411: "Dit hold" paa etapen: hvem der udgik og hvor mange der er tilbage.
+function OwnAbandonLines({ ownAbandons, stageNumber, t }) {
+  if (!ownAbandons) return null;
+  return (
+    <>
+      {ownAbandons.abandons.map((a) => (
+        <li key={`out-${a.riderId ?? a.rider}`} className="text-cz-1 text-sm">
+          {t("detail.report.yourTeam.out", { rider: a.rider, number: stageNumber, kind: a.kind })}
+        </li>
+      ))}
+      <li className="text-cz-2 text-sm tabular-nums">{t("detail.report.yourTeam.ridersLeft", { count: ownAbandons.ridersLeft })}</li>
+    </>
+  );
+}
 
 function DnfSection({ incidents, scopeType, stageNumber, t }) {
   const rows = useMemo(() => {
@@ -1724,7 +1793,7 @@ function DnfSection({ incidents, scopeType, stageNumber, t }) {
   if (!rows.length) return null;
 
   return (
-    <Section>
+    <Section id={DNF_LIST_ID} className="scroll-mt-4">
       <SectionHeader title={t("detail.incidents.title")} />
       <ul className="space-y-1.5">
         {rows.map((inc) => {
@@ -1736,7 +1805,7 @@ function DnfSection({ incidents, scopeType, stageNumber, t }) {
               </RiderLink>
               <span className="text-cz-3 text-xs shrink-0 font-mono">
                 {scopeType !== "stage" && `${t("detail.tabStage", { number: inc.stage_number ?? 1 })} · `}
-                {t(`detail.incidents.${INCIDENT_KIND_KEYS[inc.kind] ?? "crash"}`)}
+                {t(`detail.incidents.${incidentReasonKey(inc.kind)}`)}
               </span>
             </li>
           );
@@ -1941,6 +2010,20 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
   }, [results, stage, classTab, stagePointsRows, rulesRevision]);
   const rows = filterRows(classRows);
 
+  // #7411: etapens udgaaede (race_incidents) nederst i etapens maaltavle som DNF,
+  // i stedet for at de forsvinder. Kun i "stage"-linsen: klassementerne viser
+  // stillingen, ikke etapens udfald. Holdet tages fra rytterens egne etaperaekker.
+  const teamIdByRider = useMemo(() => teamIdByRiderFromRows(stagePointsRows), [stagePointsRows]);
+  const stageDnfRows = useMemo(
+    () => (classTab === "stage" ? dnfRowsForStage(incidents, stage, teamIdByRider) : []),
+    [classTab, incidents, stage, teamIdByRider],
+  );
+  const dnfRows = filterRows(stageDnfRows);
+  const ownAbandons = useMemo(
+    () => ownStageAbandons({ incidents, results, stageNumber: stage, myTeamId: myOwnTeamId, teamIdByRider }),
+    [incidents, results, stage, myOwnTeamId, teamIdByRider],
+  );
+
   // #3519: point-totaler "efter etape {stage}" for mountain/points-sub-fanen —
   // samme SSOT-genbrug som Overall-fanerne (raceClassificationTotals.js).
   // #4581: stagePointsRows (whole-race "stage"-type-rækker), IKKE results — se
@@ -2025,7 +2108,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.55fr_1fr] gap-[14px] items-start">
         <SectionStack>
-          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId}  participationHistory={participationHistory} />
+          <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} myOwnTeamId={myOwnTeamId} moments={moments} stageNumber={stage} pointsTotalByRider={pointsTotalMapForKey(stagePointsTotals, classTab)} raceId={raceId}  participationHistory={participationHistory} dnfRows={dnfRows} />
           {passageGroups.length > 0 && <PassageList groups={passageGroups} t={t} />}
         </SectionStack>
         <SectionStack>
@@ -2053,7 +2136,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={reportResults} incidents={incidents} myTeamId={myTeamId}
             riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
-            profileType={profile?.profile_type ?? null} startlist={stageStartlist} t={t}
+            profileType={profile?.profile_type ?? null} startlist={stageStartlist} ownAbandons={ownAbandons} t={t}
           />
           <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
           {isV4Timeline && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
@@ -2207,7 +2290,7 @@ function ResultEntityCell({ row, highlightWinner, isMine, t, moments, stageNumbe
 // UDEN scroller. Audit-fund: tabellen manglede en horizontal-scroll-wrapper, så
 // et bredt felt (5 kolonner: rank/rytter/hold/tid/point) kunne klippes af på
 // mobil i stedet for at scrolle — body må ALDRIG scrolle horisontalt ved 375px.
-function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = /** @type {string | undefined} */ (undefined), participationHistory = null }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, myOwnTeamId = null, defaultLimit = 10, moments = [], stageNumber = null, pointsTotalByRider = undefined, raceId = /** @type {string | undefined} */ (undefined), participationHistory = null, dnfRows = /** @type {any[]} */ ([]) }) {
   const { t } = useTranslation("races");
   const [expanded, setExpanded] = useState(false);
   // #3913: points_earned er PRÆMIEpoint for at ramme podiet i DENNE klassement
@@ -2228,8 +2311,16 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
   // Holdklassement (rider_id=null) har ingen rytter-team-kolonne at vise.
   const showTeamCol = rows.some(r => resultEntity(r).kind === "rider");
   // #2081 (Discord-ønske): top-10 default + "Show all N"-knap, når feltet er stort.
-  const collapsible = rows.length > defaultLimit;
-  const visibleRows = collapsible && !expanded ? rows.slice(0, defaultLimit) : rows;
+  // #7411: udgaaede (DNF) staar nederst og taeller med i "Show all N"; i den
+  // foldede visning erstattes de af én linje, der folder tabellen ud.
+  const dnfCount = dnfRows?.length ?? 0;
+  const totalCount = rows.length + dnfCount;
+  const collapsible = totalCount > defaultLimit;
+  const collapsed = collapsible && !expanded;
+  const visibleRows = collapsed ? rows.slice(0, defaultLimit) : rows;
+  const showDnfRows = dnfCount > 0 && !collapsed;
+  const trailingCols = (showTime ? 1 : 0) + (showPointsTotal ? 1 : 0) + (showPoints ? 1 : 0);
+  const leadCols = 2 + (showTeamCol ? 1 : 0);
   return (
     <Section>
       <SectionHeader
@@ -2238,13 +2329,13 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
           <button type="button" onClick={() => setExpanded(e => !e)}
             aria-pressed={expanded}
             className="inline-flex items-center gap-0.5 text-xs font-medium text-cz-accent-t hover:underline shrink-0">
-            {expanded ? t("detail.showLess") : t("detail.showAll", { count: rows.length })}
+            {expanded ? t("detail.showLess") : t("detail.showAll", { count: totalCount })}
             <ChevronDownIcon size={13} aria-hidden="true"
               className={`transition-transform duration-150 ${expanded ? "rotate-180" : ""}`} />
           </button>
         )}
       />
-      {rows.length === 0 ? (
+      {totalCount === 0 ? (
         <p className="text-center text-cz-3 text-sm py-6">{t("detail.noResults")}</p>
       ) : (
         <div className={WRAP}>
@@ -2338,6 +2429,53 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                   </tr>
                   );
                 })}
+                {showDnfRows && dnfRows.map((d) => {
+                  const isMine = myOwnTeamId != null && String(d.team_id) === String(myOwnTeamId);
+                  const reason = t(`detail.incidents.${d.reasonKey}`);
+                  const teamName = d.team_name || null;
+                  return (
+                    <tr key={d.id} data-dnf="true" className={`hover:bg-cz-subtle transition-colors${isMine ? " cz-me" : ""}`}>
+                      <td className="ps-3 pe-1 sm:px-4 py-2 w-8 sm:w-10 font-mono text-3xs font-semibold text-cz-3">{t("detail.incidents.dnf")}</td>
+                      <td className="ps-1 pe-2 sm:px-2 py-2">
+                        <RiderLink id={d.rider_id} className="cursor-pointer hover:text-cz-accent-t transition-colors block">
+                          <span className="whitespace-nowrap text-cz-2">
+                            {d.rider?.nationality_code && (<Flag code={d.rider.nationality_code} className="me-1" />)}
+                            {d.name || "—"}
+                            {isMine && <YouBadge t={t} />}
+                          </span>
+                        </RiderLink>
+                        {showTeamCol && teamName && (
+                          <span className="mt-0.5 block max-w-[11rem] truncate text-xs text-cz-3 sm:hidden" title={teamName}>
+                            <TeamLink id={d.team_id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
+                          </span>
+                        )}
+                        {trailingCols === 0 && <span className="mt-0.5 block text-xs text-cz-3">{reason}</span>}
+                      </td>
+                      {showTeamCol && (
+                        <td className="hidden sm:table-cell ps-1 pe-2 sm:px-2 py-2 text-cz-3 text-xs whitespace-nowrap">
+                          {teamName && (
+                            <span className="block max-w-[6.5rem] truncate sm:max-w-none" title={teamName}>
+                              <TeamLink id={d.team_id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {trailingCols > 0 && (
+                        <td colSpan={trailingCols} className="ps-1 pe-3 sm:px-4 py-2 text-right text-cz-3 text-xs whitespace-nowrap">{reason}</td>
+                      )}
+                    </tr>
+                  );
+                })}
+                {collapsed && dnfCount > 0 && (
+                  <tr>
+                    <td colSpan={leadCols + trailingCols} className="ps-3 pe-3 sm:px-4 py-2">
+                      <button type="button" onClick={() => setExpanded(true)}
+                        className="text-xs font-medium text-cz-accent-t hover:underline">
+                        {t("detail.incidents.dnfCollapsed", { count: dnfCount })}
+                      </button>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

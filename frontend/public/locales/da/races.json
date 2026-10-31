@@ -1588,8 +1588,10 @@
       "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
       "teamWon": "{team} vandt holdkonkurrencen.",
       "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg.",
-      "abandon": "{kind, select, crash {{rider} udgik efter styrt.} mechanical {{rider} udgik med mekanisk defekt.} injury {{rider} stillede ikke til start: skadet.} other {{rider} udgik.}}",
-      "notableCrash": "{rider} styrtede og tabte {marginText}."
+      "abandon": "{kind, select, crash {{rider} udgik efter styrt.} mechanical {{rider} udgik med mekanisk defekt.} injury {{rider} stillede ikke til start: skadet.} withdrawal {{rider} steg af, udkørt.} time_limit {{rider} kom i mål uden for tidsgrænsen.} other {{rider} udgik.}}",
+      "notableCrash": "{rider} styrtede og tabte {marginText}.",
+      "withdrawalGroup": "{when, select, stage {{count} ryttere steg af efter etapen, udkørte og langt efter.} other {{count} ryttere steg af, udkørte og langt efter.}}",
+      "seeList": "Se listen"
     },
     "incidents": {
       "title": "Udgåede",
@@ -1597,7 +1599,11 @@
       "mechanical": "Mekanisk defekt",
       "injury": "Ikke-starter",
       "illness": "Syg, startede ikke",
-      "withdrawal": "Stod af"
+      "withdrawal": "Steg af, udkørt",
+      "time_limit": "Uden for tidsgrænsen",
+      "abandoned": "Udgik",
+      "dnf": "DNF",
+      "dnfCollapsed": "{count, plural, one {# rytter udgik} other {# ryttere udgik}}"
     },
     "why": {
       "title": "Det store billede",
@@ -1836,7 +1842,9 @@
         "bestResult": "Bedst placeret: {rider}, etapeplacering {rank}.",
         "inBreak": "{rider} brugte dagen i udbruddet.",
         "helperWork": "{count, plural, one {En holdkammerat kørte} other {# holdkammerater kørte}} i tjeneste for {captain}.",
-        "none": "Ingen af dine ryttere stillede til start på denne etape."
+        "none": "Ingen af dine ryttere stillede til start på denne etape.",
+        "out": "{kind, select, withdrawal {{rider} steg af efter etape {number}.} time_limit {{rider} kom i mål uden for tidsgrænsen på etape {number}.} crash {{rider} udgik efter et styrt på etape {number}.} other {{rider} udgik på etape {number}.}}",
+        "ridersLeft": "{count, plural, =0 {Du har ingen ryttere tilbage.} one {Du har # rytter tilbage.} other {Du har # ryttere tilbage.}}"
       }
     },
     "jersey": {

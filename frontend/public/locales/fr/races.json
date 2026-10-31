@@ -1605,8 +1605,10 @@
       "teamDay": "{team} a mené le classement par équipes avec {count} coureurs dans le top 10.",
       "teamWon": "{team} a remporté le classement par équipes.",
       "jerseys": "Leaders des maillots : {points} aux points, {mountain} en montagne.",
-      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} other {{rider} a abandonné.}}",
-      "notableCrash": "{rider} a chuté et perdu {marginText}."
+      "abandon": "{kind, select, crash {{rider} a abandonné après une chute.} mechanical {{rider} a abandonné sur problème mécanique.} injury {{rider} n'a pas pris le départ : blessé.} withdrawal {{rider} a mis pied à terre, épuisé.} time_limit {{rider} est arrivé hors délais.} other {{rider} a abandonné.}}",
+      "notableCrash": "{rider} a chuté et perdu {marginText}.",
+      "withdrawalGroup": "{when, select, stage {{count} coureurs ont mis pied à terre après l'étape, épuisés et loin derrière.} other {{count} coureurs ont mis pied à terre, épuisés et loin derrière.}}",
+      "seeList": "Voir la liste"
     },
     "incidents": {
       "title": "Abandons",
@@ -1614,7 +1616,11 @@
       "mechanical": "Mécanique",
       "injury": "Non-partant",
       "illness": "Malade, non-partant",
-      "withdrawal": "Abandon"
+      "withdrawal": "Pied à terre, épuisé",
+      "time_limit": "Hors délais",
+      "abandoned": "Abandon",
+      "dnf": "DNF",
+      "dnfCollapsed": "{count, plural, one {# coureur n'a pas terminé} other {# coureurs n'ont pas terminé}}"
     },
     "why": {
       "title": "Vue d'ensemble",
@@ -1853,7 +1859,9 @@
         "bestResult": "Mieux placé : {rider}, rang d'étape {rank}.",
         "inBreak": "{rider} a passé la journée dans l'échappée.",
         "helperWork": "{count, plural, one {Un coéquipier a roulé} other {# coéquipiers ont roulé}} au service de {captain}.",
-        "none": "Aucun coureur de ton équipe n'a pris le départ de cette étape."
+        "none": "Aucun coureur de ton équipe n'a pris le départ de cette étape.",
+        "out": "{kind, select, withdrawal {{rider} a mis pied à terre après l'étape {number}.} time_limit {{rider} est arrivé hors délais sur l'étape {number}.} crash {{rider} a abandonné après une chute sur l'étape {number}.} other {{rider} a abandonné sur l'étape {number}.}}",
+        "ridersLeft": "{count, plural, =0 {Il ne te reste plus aucun coureur.} one {Il te reste # coureur.} other {Il te reste # coureurs.}}"
       }
     },
     "jersey": {

@@ -1588,8 +1588,10 @@
       "teamDay": "{team} led the team classification with {count} riders in the top 10.",
       "teamWon": "{team} won the team classification.",
       "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains.",
-      "abandon": "{kind, select, crash {{rider} abandoned after a crash.} mechanical {{rider} abandoned with a mechanical.} injury {{rider} did not start: injured.} other {{rider} abandoned.}}",
-      "notableCrash": "{rider} crashed and lost {marginText}."
+      "abandon": "{kind, select, crash {{rider} abandoned after a crash.} mechanical {{rider} abandoned with a mechanical.} injury {{rider} did not start: injured.} withdrawal {{rider} climbed off, exhausted.} time_limit {{rider} finished outside the time limit.} other {{rider} abandoned.}}",
+      "notableCrash": "{rider} crashed and lost {marginText}.",
+      "withdrawalGroup": "{when, select, stage {{count} riders climbed off after the stage, exhausted and far behind.} other {{count} riders climbed off, exhausted and far behind.}}",
+      "seeList": "See the list"
     },
     "incidents": {
       "title": "Abandons",
@@ -1597,7 +1599,11 @@
       "mechanical": "Mechanical",
       "injury": "Non-starter",
       "illness": "Ill, did not start",
-      "withdrawal": "Abandoned"
+      "withdrawal": "Climbed off, exhausted",
+      "time_limit": "Outside time limit",
+      "abandoned": "Abandoned",
+      "dnf": "DNF",
+      "dnfCollapsed": "{count, plural, one {# rider did not finish} other {# riders did not finish}}"
     },
     "why": {
       "title": "The bigger picture",
@@ -1836,7 +1842,9 @@
         "bestResult": "Best placed: {rider}, stage rank {rank}.",
         "inBreak": "{rider} spent the day in the breakaway.",
         "helperWork": "{count, plural, one {A teammate rode} other {# teammates rode}} in service of {captain}.",
-        "none": "No riders from your team started this stage."
+        "none": "No riders from your team started this stage.",
+        "out": "{kind, select, withdrawal {{rider} climbed off after stage {number}.} time_limit {{rider} finished outside the time limit on stage {number}.} crash {{rider} abandoned after a crash on stage {number}.} other {{rider} abandoned on stage {number}.}}",
+        "ridersLeft": "{count, plural, =0 {You have no riders left.} one {You have # rider left.} other {You have # riders left.}}"
       }
     },
     "jersey": {
