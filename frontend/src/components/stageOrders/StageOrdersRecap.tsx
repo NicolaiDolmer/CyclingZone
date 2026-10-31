@@ -12,6 +12,7 @@ import { RiderLink, Section, SectionHeader } from "../race/stagePageV2/ui.ts";
 import { ChevronRightIcon } from "../ui/index.js";
 import { isTimeTrialNarrative } from "../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
 import { fetchTeamOrders } from "../../lib/tacticsOrdersAdapter.js";
+import { roleLabelKey } from "../../lib/stageRoleVocabulary.ts";
 import { stageOrdersRecap, type StageRolesLike, type TeamOrdersContext } from "./stageOrdersRecap.ts";
 
 export interface StageOrdersRecapProps {
@@ -27,7 +28,6 @@ export interface StageOrdersRecapProps {
   teamOrders?: TeamOrdersContext | null;
 }
 
-const ROLE_KEYS = new Set(["captain", "sprint_captain", "hunter", "helper", "free_role"]);
 const EFFORT_KEYS = new Set(["grupetto", "save", "normal", "protect", "all_out"]);
 const STANCE_KEYS = new Set(["chase", "neutral", "let_go"]);
 
@@ -67,8 +67,9 @@ export default function StageOrdersRecap({
       </p>}
       <ul>
         {recap.riders.map((r) => {
+          const roleKey = roleLabelKey(r.role); // #7326: faelles vokabular; ukendt rolle = intet tag
           const tags = [
-            r.role && ROLE_KEYS.has(r.role) ? t(`tacticsOrders.roleLabel.${r.role}`) : null,
+            roleKey ? t(roleKey) : null,
             r.plan ? null : t(`tacticsOrders.effort.${EFFORT_KEYS.has(r.effort) ? r.effort : "normal"}`), // #7333: en plan vises som planen, ikke foerste leds indsats
             !timeTrial && r.tryBreak ? t("tacticsOrders.tryBreak") : null,
             !timeTrial && r.leadout ? t("tacticsOrders.leadout") : null,
