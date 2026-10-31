@@ -1,0 +1,40 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#EFF1EC;font:15px -apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#151915;width:1500px}
+.wrap{padding:24px 28px}h1{margin:0 0 4px;font-size:22px}.sub{color:#4A5249;margin:0 0 16px;max-width:1300px}
+.g{display:grid;grid-template-columns:860px 270px 270px;gap:24px;align-items:start}
+.lbl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#626A60;margin:0 0 6px}
+.pin{display:inline-block;width:20px;height:20px;border-radius:10px;background:#1D5B4E;color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:20px;margin-right:6px}
+/* app-mock med repoets light-tokens */
+.app{display:flex;border:1px solid #D2D7CC;background:#f4f2ec;color:#0e0f15;overflow:hidden;height:300px;margin-bottom:18px}
+.sb{width:110px;background:#1a1f38;color:rgba(255,255,255,.55);font-size:11px;padding:12px 10px;flex:none}
+.sb b{color:#fff;display:block;margin-bottom:10px}.sb div{margin:7px 0}
+.main{flex:1;min-width:0}
+.info{display:flex;gap:10px;align-items:flex-start;border-bottom:1px solid rgba(26,71,192,.3);background:rgba(26,71,192,.08);color:#1a47c0;padding:10px 32px;font-size:13px;line-height:1.35;position:relative}
+.m .info{padding:10px 14px}
+.info svg{flex:none;margin-top:2px}.info b{font-weight:600}
+.body{padding:18px 32px}.m .body{padding:14px}
+.h{font-size:18px;font-weight:600;margin-bottom:10px}.card{background:#fcfbf7;border:1px solid #e5e0d5;border-radius:5px;padding:12px;margin-bottom:8px;font-size:12px;color:#4c4a5e}
+.m{width:270px;height:430px;display:block}.m .top{background:#1a1f38;color:#fff;padding:10px 14px;font-size:12px}
+.mark{position:absolute;right:6px;top:6px;margin:0}
+.leg div{margin:6px 0;font-size:14px}
+.txt{margin-top:14px;font-size:14px;line-height:1.5}.txt code{background:#fff;border:1px solid #D2D7CC;padding:1px 5px;border-radius:3px}
+</style></head><body><div class="wrap">
+<h1>#7335 Info-bjælke på alle sider når løbene er på pause</h1>
+<p class="sub">Gengivelse med repoets egne farvetokens og samme markup som den nye komponent (ikke et skærmbillede af den kørende app, som kræver login mod prod-data). Eksemplet viser siden Ryttere; bjælken står på alle manager-sider undtagen Dashboard og løbssiden, som allerede har deres egen "Pauset"-flade.</p>
+<div class="g"><div>
+<p class="lbl">Før: Desktop 1440 (siden Ryttere, løb er pauset)</p>
+<div class="app"><div class="sb"><b>Cycling Zone</b><div>Dashboard</div><div>Riders</div><div>Team</div><div>Races</div></div><div class="main"><div class="body"><div class="h">Riders</div><div class="card">Rider list</div><div class="card">Rider list</div></div></div></div>
+<p class="lbl">Efter: Desktop 1440</p>
+<div class="app"><div class="sb"><b>Cycling Zone</b><div>Dashboard</div><div>Riders</div><div>Team</div><div>Races</div></div><div class="main"><div class="info"><span class="pin mark">1</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><p style="margin:0"><b>Races are paused.</b> New start Sat 1 Nov, 14:00.</p></div><div class="body"><div class="h">Riders</div><div class="card">Rider list</div><div class="card">Rider list</div></div></div></div>
+</div><div>
+<p class="lbl">Før: Mobil 390</p>
+<div class="app m"><div style="width:100%"><div class="top">&#9776; Cycling Zone</div><div class="body"><div class="h">Riders</div><div class="card">Rider list</div></div></div></div>
+</div><div>
+<p class="lbl">Efter: Mobil 390</p>
+<div class="app m"><div style="width:100%"><div class="info"><span class="pin mark">1</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><p style="margin:0"><b>Races are paused.</b> New start Sat 1 Nov, 14:00.</p></div><div class="top">&#9776; Cycling Zone</div><div class="body"><div class="h">Riders</div><div class="card">Rider list</div></div></div></div>
+</div></div>
+<div class="leg txt">
+<div><span class="pin">1</span>Blå info-bjælke øverst i indholdet, samme flade som driftsbanneret. Kommer automatisk når <code>race_pause_notice</code> er sat, og forsvinder når løbene kører igen.</div>
+<div><b>Tekstudkast til godkendelse.</b> EN: "Races are paused. New start {tid}." / uden kendt tid: "Races are paused. I will announce the new start time here."</div>
+<div>DA: "Løbene er sat på pause. Ny start {tid}." / uden kendt tid: "Løbene er sat på pause. Jeg melder den nye starttid ud her."</div>
+</div></div></body></html>
