@@ -1239,7 +1239,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
             )}
             {(status === "partial" || status === "conflict") && saveOutcome && (
               <TacticsSaveStatus t={t} parts={saveOutcome.parts} conflict={status === "conflict"} busy={saving} onLoadNew={loadNewAfterConflict} onKeepMine={keepMine}
-                reason={status === "partial" && errorKey ? t([`intention.errors.${errorKey}`, "intention.errors.generic"]) : null} />
+                reason={status === "partial" && errorKey && i18n.exists(`races:intention.errors.${errorKey}`) ? t(`intention.errors.${errorKey}`) : null} />
             )}
             {status === "saved" && <p className="text-xs text-cz-success">{t("intention.saved")}</p>}
             {status === "idle" && dirty && <p className="text-xs text-cz-2">{t("intention.unsaved")}</p>}
