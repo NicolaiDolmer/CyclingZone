@@ -12,6 +12,10 @@ import {
   nextEditableStage,
   stageIntentionCounts,
   untouchedStages,
+  isIndividualTimeTrialProfile,
+  effortsForStage,
+  effortForStage,
+  withIndividualTimeTrialEfforts,
 } from "./raceIntention.js";
 import { buildDraftMatrix, diffToOverrides } from "./stageRoleMatrixLogic.js";
 
@@ -152,4 +156,73 @@ test("endagsløb: én redigerbar 'etape', og intentionen gemmes på stage_number
   ]);
   assert.deepEqual(stageIntentionCounts({ matrix, riders: RIDERS, stageNumber: 1 }), { set: 1, onDefault: 2 });
   assert.deepEqual(untouchedStages({ matrix, riders: RIDERS, editableStages: [1], exceptStage: 1 }), []);
+});
+
+// #7332 (ejer 31/10): enkeltstart = kun Kør roligt, Normal og Alt ud.
+const FIVE = ["grupetto", "save", "normal", "protect", "all_out"];
+
+test("#7332: kun itt og itt_hilly er enkeltstart, holdtidskørsel er ikke", () => {
+  assert.equal(isIndividualTimeTrialProfile("itt"), true);
+  assert.equal(isIndividualTimeTrialProfile("itt_hilly"), true);
+  for (const p of ["ttt", "flat", "mountain", "hilly", "", null, undefined, 7]) {
+    assert.equal(isIndividualTimeTrialProfile(p), false, String(p));
+  }
+});
+
+test("#7332: effortsForStage skjuler grupetto og protect paa en enkeltstart", () => {
+  assert.deepEqual(effortsForStage(FIVE, "itt"), ["save", "normal", "all_out"]);
+  assert.deepEqual(effortsForStage(FIVE, "itt_hilly"), ["save", "normal", "all_out"]);
+  // Alle andre etaper (ogsaa ttt og en ukendt profil) faar praecis serverens trin.
+  assert.deepEqual(effortsForStage(FIVE, "ttt"), FIVE);
+  assert.deepEqual(effortsForStage(FIVE, "flat"), FIVE);
+  assert.deepEqual(effortsForStage(FIVE, undefined), FIVE);
+  // Flaget OFF (tre trin): protect forsvinder ogsaa, save og normal bliver.
+  assert.deepEqual(effortsForStage(["protect", "normal", "save"], "itt"), ["save", "normal"]);
+});
+
+test("#7332: effortForStage goer grupetto/protect til save paa en enkeltstart", () => {
+  for (const p of ["itt", "itt_hilly"]) {
+    assert.equal(effortForStage("grupetto", p), "save");
+    assert.equal(effortForStage("protect", p), "save");
+    for (const e of ["save", "normal", "all_out"]) assert.equal(effortForStage(e, p), e);
+  }
+  for (const p of ["ttt", "flat", null]) {
+    for (const e of FIVE) assert.equal(effortForStage(e, p), e);
+  }
+});
+
+test("#7332: kopi til en enkeltstart lander som save, kopi til andre etaper er uaendret", () => {
+  let matrix = stageRaceMatrix();
+  matrix = setIntention({ matrix, stageNumber: 3, riderId: "r1", effort: "grupetto" });
+  matrix = setIntention({ matrix, stageNumber: 3, riderId: "r2", effort: "protect" });
+  matrix = setIntention({ matrix, stageNumber: 3, riderId: "r3", effort: "all_out" });
+  const toItt = copyStageIntentions({ matrix, fromStage: 3, toStage: 4, riders: RIDERS, toProfileType: "itt" });
+  assert.equal(intentionFor({ matrix: toItt, stageNumber: 4, riderId: "r1" }), "save");
+  assert.equal(intentionFor({ matrix: toItt, stageNumber: 4, riderId: "r2" }), "save");
+  assert.equal(intentionFor({ matrix: toItt, stageNumber: 4, riderId: "r3" }), "all_out");
+  const toTtt = copyStageIntentions({ matrix, fromStage: 3, toStage: 4, riders: RIDERS, toProfileType: "ttt" });
+  assert.equal(intentionFor({ matrix: toTtt, stageNumber: 4, riderId: "r1" }), "grupetto");
+  assert.equal(intentionFor({ matrix: toTtt, stageNumber: 4, riderId: "r2" }), "protect");
+  // Uden profil (kendt adfaerd foer #7332): uaendret.
+  const noProfile = copyStageIntentions({ matrix, fromStage: 3, toStage: 4, riders: RIDERS });
+  assert.equal(intentionFor({ matrix: noProfile, stageNumber: 4, riderId: "r2" }), "protect");
+});
+
+test("#7332: withIndividualTimeTrialEfforts normaliserer kun enkeltstart-etaper (kontrakt mod PUT)", () => {
+  let matrix = stageRaceMatrix([
+    { stage_number: 3, rider_id: "r2", race_role: "helper", effort: "protect" },
+    { stage_number: 4, rider_id: "r2", race_role: "helper", effort: "protect" },
+    { stage_number: 5, rider_id: "r1", race_role: "captain", effort: "grupetto" },
+  ]);
+  const profileByStage = { 3: { profile_type: "itt" }, 4: { profile_type: "ttt" }, 5: { profile_type: "itt_hilly" } };
+  const out = withIndividualTimeTrialEfforts({ matrix, profileByStage });
+  // PUT-payloaden: rollen uroert, effort = save paa itt/itt_hilly, ttt beholder protect.
+  assert.deepEqual(diffToOverrides({ matrix: out, riders: RIDERS }), [
+    { stage_number: 3, rider_id: "r2", race_role: "helper", effort: "save" },
+    { stage_number: 4, rider_id: "r2", race_role: "helper", effort: "protect" },
+    { stage_number: 5, rider_id: "r1", race_role: "captain", effort: "save" },
+  ]);
+  // Ren: input uroert, og uden enkeltstart faas samme objekt tilbage.
+  assert.equal(matrix[3].r2.effort, "protect");
+  assert.equal(withIndividualTimeTrialEfforts({ matrix, profileByStage: {} }), matrix);
 });
