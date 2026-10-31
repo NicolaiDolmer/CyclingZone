@@ -24,15 +24,12 @@ import { installNetworkMocks, login, stabilizePage, json, corsHeaders, evidenceS
 
 interface MockState { flag: boolean }
 
-// ── Datoer: en maaned i fremtiden, saa "mangler udtagelse" altid er sand ───────
-// (status-prikken vises kun for loeb der endnu ikke er begyndt.)
-function copenhagenToday(): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-}
+// ── Datoer: fast ur (Codex-fund), saa maanedsskift aldrig splitter fixturen ──────
+// Browserens ur staar paa NU; loebene ligger i december, saa "mangler udtagelse"
+// (kun for loeb der ikke er begyndt) altid er sand og kalenderen lander paa december.
+const NOW = new Date("2026-10-15T10:00:00+02:00");
 function futureDate(day: number): string {
-  const [y, m] = copenhagenToday().split("-").map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + 2, day, 12));
-  return d.toISOString().slice(0, 10);
+  return `2026-12-${String(day).padStart(2, "0")}`;
 }
 
 // ── Kalenderen (GET /api/races/calendar) ──────────────────────────────────────
@@ -200,6 +197,7 @@ async function installLibraryMocks(page: Page, state: MockState) {
 
 async function setup(page: Page, flag: boolean): Promise<MockState> {
   const state: MockState = { flag };
+  await page.clock.setFixedTime(NOW);
   await stabilizePage(page);
   await installNetworkMocks(page);
   await installLibraryMocks(page, state);
