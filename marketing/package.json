@@ -26,5 +26,8 @@
     "postcss": "^8.5.30",
     "tailwindcss": "^4.3.3",
     "typescript": "npm:@typescript/typescript6@^6.0.2"
+  },
+  "overrides": {
+    "minimatch@^10.0.0": "^11.0.3"
   }
 }

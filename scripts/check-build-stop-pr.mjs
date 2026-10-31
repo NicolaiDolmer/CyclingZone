@@ -30,11 +30,24 @@ export const REPO = 'NicolaiDolmer/CyclingZone';
 const KEYWORD = /\b(?:refs?|closes?|closed|fix(?:es|ed)?|resolves?|resolved)\b\s*:?\s*((?:[\w.-]+\/[\w.-]+)?#\d+(?:\s*(?:,|&|\band\b|\bog\b)\s*(?:[\w.-]+\/[\w.-]+)?#\d+)*)/gi;
 const TOKEN = /(?:([\w.-]+\/[\w.-]+))?#(\d+)/g;
 
+// HTML-kommentarer fjernes indtil teksten er stabil (CodeQL #384: ét gennemløb
+// kan efterlade "<!--" ved indlejring, fx "<!<!-- -->-- x -->"), og en
+// uafsluttet kommentar fjernes til slutningen.
+function stripComments(text) {
+  let prev;
+  let out = text;
+  do {
+    prev = out;
+    out = out.replace(/<!--[\s\S]*?-->/g, '');
+  } while (out !== prev);
+  return out.replace(/<!--[\s\S]*$/, '');
+}
+
 // Issue-numre fra "Refs #N" / "Closes #N, #M" i PR-body. Referencer til andre
 // repoer ignoreres. Kodeblokke og HTML-kommentarer (PR-skabelonens hjaelpetekst)
 // fjernes foerst, saa et eksempel i skabelonen ikke tæller som reference.
 export function issuesFromBody(body) {
-  const text = String(body || '').replace(/<!--[\s\S]*?-->/g, '').replace(/```[\s\S]*?```/g, '');
+  const text = stripComments(String(body || '')).replace(/```[\s\S]*?```/g, '');
   const found = new Set();
   for (const m of text.matchAll(KEYWORD)) {
     for (const t of m[1].matchAll(TOKEN)) {
