@@ -7,15 +7,14 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import type { CrashOrigin } from "../../lib/injuryExplain.ts";
 
-/**
- * @param {string|null|undefined} riderId
- * @param {boolean} enabled kun naar rytteren er skadet OG aarsagen er race_crash
- * @returns {{race: string|null, stage: number|null, stages: number|null}|null}
- */
-export function useCrashOrigin(riderId, enabled) {
+type Result = { key: string | null; crash: CrashOrigin | null };
+
+/** @param enabled kun naar rytteren er skadet OG aarsagen er race_crash */
+export function useCrashOrigin(riderId: string | null | undefined, enabled: boolean): CrashOrigin | null {
   const key = enabled && riderId ? riderId : null;
-  const [result, setResult] = useState({ key: null, crash: null });
+  const [result, setResult] = useState<Result>({ key: null, crash: null });
   useEffect(() => {
     if (!key) return undefined;
     let cancelled = false;
@@ -30,7 +29,8 @@ export function useCrashOrigin(riderId, enabled) {
       .then(({ data, error }) => {
         if (cancelled) return;
         const row = error ? null : data?.[0] ?? null;
-        setResult({ key, crash: row ? { race: row.race?.name ?? null, stage: row.stage_number ?? null, stages: row.race?.stages ?? null } : null });
+        const race = row?.race as { name?: string | null; stages?: number | null } | null | undefined;
+        setResult({ key, crash: row ? { race: race?.name ?? null, stage: row.stage_number ?? null, stages: race?.stages ?? null } : null });
       }, () => { if (!cancelled) setResult({ key, crash: null }); });
     return () => { cancelled = true; };
   }, [key]);

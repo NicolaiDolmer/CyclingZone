@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { injuryFitAgainDate, injuryCauseMessage } from "./injuryExplain.js";
+import { injuryFitAgainDate, injuryCauseMessage } from "./injuryExplain.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 

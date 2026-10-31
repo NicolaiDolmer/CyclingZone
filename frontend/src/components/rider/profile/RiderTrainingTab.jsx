@@ -39,7 +39,7 @@ import { ChevronRightIcon } from "../../ui/icons/index.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
 import InjuryChip from "../ConditionChips.jsx";
-import { useCrashOrigin } from "../useCrashOrigin.js";
+import { useCrashOrigin } from "../useCrashOrigin.ts";
 
 const LOG_DAYS = 7;
 

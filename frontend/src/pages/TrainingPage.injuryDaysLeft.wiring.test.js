@@ -82,7 +82,7 @@ test("#3541/#5462 ConditionChips (rytterprofilen) bruger fortsat den kanoniske k
 // i ConditionChips.jsx, og profilens FormCard skal bruge den (før var den død kode).
 test("#7412 rytterprofilens skadechip viser første raske dag og bruges af FormCard", () => {
   assert.match(conditionChipsSource, /injuryFitAgainDate\(condition\?\.injured_until\)/);
-  assert.doesNotMatch(conditionChipsSource, /lib\/supabase/, "ConditionChips importeres af node-testede komponenter; supabase hentes i useCrashOrigin.js");
+  assert.doesNotMatch(conditionChipsSource, /lib\/supabase/, "ConditionChips importeres af node-testede komponenter; supabase hentes i useCrashOrigin.ts");
   assert.match(conditionChipsSource, /t\("condition\.fitAgain"/);
   assert.doesNotMatch(conditionChipsSource, /injuredApprox/, "ca.-datoen er erstattet af første raske dag");
   const riderTrainingTabSource = readFileSync(join(__dirname, "../components/rider/profile/RiderTrainingTab.jsx"), "utf8");

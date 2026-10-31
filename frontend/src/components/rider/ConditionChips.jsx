@@ -7,13 +7,13 @@
 //
 // Den tidligere default-komponent (form/traethed-chips) blev ikke renderet nogen steder;
 // profilens FormCard (RiderTrainingTab.jsx) tegner selv form og traethed og bruger denne chip.
-// Styrtets sted hentes af useCrashOrigin.js i FormCard og gives ind som `crash`, saa denne
+// Styrtets sted hentes af useCrashOrigin.ts i FormCard og gives ind som `crash`, saa denne
 // fil forbliver ren (den importeres af node-testede komponenter for farverne).
 
 import { useTranslation } from "react-i18next";
 import { injuryTimeLeft } from "../../lib/training.js";
 import { formatDate } from "../../lib/intl.js";
-import { injuryFitAgainDate, injuryCauseMessage } from "../../lib/injuryExplain.js";
+import { injuryFitAgainDate, injuryCauseMessage } from "../../lib/injuryExplain.ts";
 
 // Farve-semantik: form høj = grøn, lav = rød. Træthed høj = rød, lav = grøn.
 export function formColor(form) {

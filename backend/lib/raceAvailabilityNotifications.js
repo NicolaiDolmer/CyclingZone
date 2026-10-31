@@ -183,7 +183,8 @@ export async function loadMissedRacesByRider({ supabase, injuries, crashRaceId =
   const list = (injuries ?? []).filter((i) => i?.riderId && i?.teamId && i?.injuredUntil).map((i) => ({ ...i }));
   if (!list.length) return out;
   try {
-    // Træningsstien kender ikke truppen; den slås op her (en håndfuld ryttere, pagination-safe).
+    // Træningsstien kender ikke truppen; den slås op her.
+    // pagination-safe: en træningsdags nye skader på ét hold (en håndfuld ryttere).
     const unknownSquad = list.filter((i) => i.squad === undefined).map((i) => i.riderId);
     if (unknownSquad.length) {
       const { data: squads, error: squadErr } = await supabase.from("riders").select("id, squad").in("id", unknownSquad);
