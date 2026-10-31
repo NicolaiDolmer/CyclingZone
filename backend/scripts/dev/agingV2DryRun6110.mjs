@@ -2,16 +2,16 @@
 // #6499 / #6110 · PRØVEKØRSEL: Udvikling 2.0's tilbagegang ved sæsonskiftet.
 //
 // 100 % READ-ONLY. Scriptet SELECT'er mod prod og skriver kun lokale filer.
-// Ingen --apply, intet flag-flip: tændingen er ejerens eget skridt i app_config
-// (development_v2_aging_enabled), efter han har set dette.
+// Ingen --apply, intet flag-flip.
 //
 // SAMME BEREGNINGSSTI SOM SKIFTET. Prod-rækkerne hentes ÉN gang ind i et
 // in-memory øjebliksbillede, og produktionens egen developRidersForSeason
 // (riderProgressionEngine.js) køres mod billedet to gange:
-//   GAMMEL  flaget slukket (dagens skifte, inkl. sæsonvæksten for AI/frie)
-//   NY      flaget tændt, med den afsluttede sæsons målte belastning
-//   NY-HEL  flaget tændt, belastningen fremskrevet lineært til en hel sæson
+//   NY      med den afsluttede sæsons målte belastning
+//   NY-HEL  belastningen fremskrevet lineært til en hel sæson
 //           (den aktive sæson er ikke slut; ved det rigtige skifte er den det)
+// #6499: GAMMEL-kørslen (flaget slukket) er væk. Motoren kender kun den nye
+// aldring efter S5-skiftet, så der findes ingen gammel sti at sammenligne med.
 // Motorens skrivninger (apply_rider_development) fanges i hukommelsen; der
 // findes ingen klient i denne fil der kan skrive til prod. Prod-klienten bruges
 // kun til de SELECT'er herunder.
@@ -99,15 +99,13 @@ export function snapshotClient(tables, captured) {
   };
 }
 
-async function runEngine(tables, { seasonNumber, agingV2Enabled, seasonLoadByRider, dailyTrainingEnabled }) {
+async function runEngine(tables, { seasonNumber, seasonLoadByRider }) {
   const captured = [];
   const summary = await developRidersForSeason({
     supabase: snapshotClient(tables, captured),
     seasonId: `dry-run-6110-s${seasonNumber}`,
     seasonNumber,
     notify: false,
-    dailyTrainingEnabled,
-    agingV2Enabled,
     seasonLoadByRider,
     detectGraduatesFn: async () => {},
   });
@@ -135,7 +133,6 @@ export function riderDelta(before, after) {
 function emptyCell() {
   return {
     n: 0, raceDays: 0, hardDays: 0, brake: 0, brakeFull: 0,
-    old: { drop: 0, anyDrop: 0, grew: 0, stable: 0, ratingDrop: 0 },
     neu: { drop: 0, anyDrop: 0, grew: 0, stable: 0, ratingDrop: 0 },
     full: { drop: 0, anyDrop: 0, grew: 0, stable: 0, ratingDrop: 0 },
   };
@@ -192,9 +189,8 @@ async function main() {
     rider_derived_ability_history: [],
   };
 
-  const old = await runEngine(tables, { seasonNumber: newSeasonNumber, agingV2Enabled: false, dailyTrainingEnabled });
-  const neu = await runEngine(tables, { seasonNumber: newSeasonNumber, agingV2Enabled: true, seasonLoadByRider: load.byRider, dailyTrainingEnabled });
-  const full = await runEngine(tables, { seasonNumber: newSeasonNumber, agingV2Enabled: true, seasonLoadByRider: fullLoad, dailyTrainingEnabled });
+  const neu = await runEngine(tables, { seasonNumber: newSeasonNumber, seasonLoadByRider: load.byRider });
+  const full = await runEngine(tables, { seasonNumber: newSeasonNumber, seasonLoadByRider: fullLoad });
 
   // ── Tabellen ────────────────────────────────────────────────────────────────
   const teamById = new Map(teams.map((t) => [t.id, t]));
@@ -202,11 +198,10 @@ async function main() {
   const cells = new Map();
   const totals = emptyCell();
   for (const r of riders) {
-    const o = old.byRider.get(r.id);
     const n = neu.byRider.get(r.id);
     const f = full.byRider.get(r.id);
-    if (!o || !n || !f) continue; // motoren sprang rytteren over (samme for alle tre)
-    const age = Number(o.p_log.age);
+    if (!n || !f) continue; // motoren sprang rytteren over (samme for begge)
+    const age = Number(n.p_log.age);
     const key = `${ageBand(age)}|${riderGroup(r.team_id, teamById)}`;
     if (!cells.has(key)) cells.set(key, emptyCell());
     const before = abilityByRider.get(r.id);
@@ -220,7 +215,6 @@ async function main() {
       c.hardDays += l.hardDays;
       c.brake += agingBrake(eff(l));
       c.brakeFull += agingBrake(eff(fullLoad.get(r.id)));
-      addDelta(c.old, riderDelta(before, o.p_log.abilities));
       addDelta(c.neu, riderDelta(before, n.p_log.abilities));
       addDelta(c.full, riderDelta(before, f.p_log.abilities));
     }
@@ -239,9 +233,9 @@ async function main() {
   priv.push("");
   priv.push("Fald = sum af fysiske evner + brosten pr. rytter (snit). ≥1 = antal ryttere med mindst ét points fald. Vækst/tek+mental/ratingfald = antal ryttere.");
   priv.push("");
-  priv.push("| Alder | Gruppe | N | Løbsdage | Hårde dage | Bremse (målt / hel) | Fald gammel | Fald ny (målt / hel) | ≥1 fald gammel / ny / hel | Vækst gammel / ny | Tek+mental ændret gammel / ny | Synligt ratingfald gammel / ny / hel |");
-  priv.push("|---|---|---|---|---|---|---|---|---|---|---|---|");
-  const row = (label, group, c) => `| ${label} | ${group} | ${c.n} | ${avg(c.raceDays, c.n)} | ${avg(c.hardDays, c.n)} | ${avg(c.brake, c.n)} / ${avg(c.brakeFull, c.n)} | ${avg(c.old.drop, c.n)} | ${avg(c.neu.drop, c.n)} / ${avg(c.full.drop, c.n)} | ${c.old.anyDrop} / ${c.neu.anyDrop} / ${c.full.anyDrop} | ${c.old.grew} / ${c.neu.grew} | ${c.old.stable} / ${c.neu.stable} | ${c.old.ratingDrop} / ${c.neu.ratingDrop} / ${c.full.ratingDrop} |`;
+  priv.push("| Alder | Gruppe | N | Løbsdage | Hårde dage | Bremse (målt / hel) | Fald (målt / hel) | ≥1 fald (målt / hel) | Vækst | Tek+mental ændret | Synligt ratingfald (målt / hel) |");
+  priv.push("|---|---|---|---|---|---|---|---|---|---|---|");
+  const row = (label, group, c) => `| ${label} | ${group} | ${c.n} | ${avg(c.raceDays, c.n)} | ${avg(c.hardDays, c.n)} | ${avg(c.brake, c.n)} / ${avg(c.brakeFull, c.n)} | ${avg(c.neu.drop, c.n)} / ${avg(c.full.drop, c.n)} | ${c.neu.anyDrop} / ${c.full.anyDrop} | ${c.neu.grew} | ${c.neu.stable} | ${c.neu.ratingDrop} / ${c.full.ratingDrop} |`;
   for (const k of orderedKeys) {
     const c = cells.get(k);
     if (!c) continue;
@@ -250,7 +244,6 @@ async function main() {
   }
   priv.push(row("**Alle**", "", totals));
   priv.push("");
-  priv.push(`Motor-summary gammel: ${JSON.stringify(old.summary)}`);
   priv.push(`Motor-summary ny: ${JSON.stringify(neu.summary)}`);
   priv.push(`Motor-summary ny-hel: ${JSON.stringify(full.summary)}`);
 
@@ -267,13 +260,13 @@ async function main() {
   pub.push(`# Udvikling 2.0 del 1 — prøvekørsel af tilbagegangen (${date})`);
   pub.push("");
   pub.push("Read-only prøvekørsel af `backend/scripts/dev/agingV2DryRun6110.mjs` mod prod (#6499, #6110).");
-  pub.push("Produktionens egen sæsonskifte-motor er kørt mod et øjebliksbillede, med flaget slukket (gammel) og tændt (ny).");
+  pub.push("Produktionens egen sæsonskifte-motor er kørt mod et øjebliksbillede med den nye aldring (eneste regel siden #6499).");
   pub.push("\"Ny (hel)\" fremskriver den igangværende sæsons belastning til en hel sæson. Alder = alder i den nye sæson.");
   pub.push("Kun antal ryttere står her; gennemsnit og fald-størrelser ligger privat i `balance-internals/6110/`.");
   pub.push("");
-  pub.push("| Alder | Gruppe | Ryttere | ≥1 fald (gammel / ny / ny hel) | Vækst ved skiftet (gammel / ny) | Tekniske+mentale ændret (gammel / ny) | Synligt ratingfald (gammel / ny / ny hel) |");
+  pub.push("| Alder | Gruppe | Ryttere | ≥1 fald (ny / ny hel) | Vækst ved skiftet | Tekniske+mentale ændret | Synligt ratingfald (ny / ny hel) |");
   pub.push("|---|---|---|---|---|---|---|");
-  const pubRow = (label, group, c) => `| ${label} | ${group} | ${c.n} | ${c.old.anyDrop} / ${c.neu.anyDrop} / ${c.full.anyDrop} | ${c.old.grew} / ${c.neu.grew} | ${c.old.stable} / ${c.neu.stable} | ${c.old.ratingDrop} / ${c.neu.ratingDrop} / ${c.full.ratingDrop} |`;
+  const pubRow = (label, group, c) => `| ${label} | ${group} | ${c.n} | ${c.neu.anyDrop} / ${c.full.anyDrop} | ${c.neu.grew} | ${c.neu.stable} | ${c.neu.ratingDrop} / ${c.full.ratingDrop} |`;
   for (const k of orderedKeys) {
     const c = cells.get(k);
     if (!c) continue;
