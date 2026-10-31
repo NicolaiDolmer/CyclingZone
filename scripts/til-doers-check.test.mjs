@@ -16,6 +16,7 @@ import {
   labeledAt,
   renderComment,
   missingKrav,
+  mainCommitsFor,
   DUP_BODY,
 } from './lib/til-doers.mjs';
 import { parseArgs, main, processIssue } from './til-doers-check.mjs';
@@ -397,6 +398,16 @@ test('processIssue: dublet-tabeller tømmes, den ældste opdateres', () => {
   assert.ok(patches[1].args.includes('repos/o/r/issues/comments/2'));
   assert.equal(JSON.parse(patches[1].input).body, DUP_BODY);
   assert.equal(DUP_BODY.includes(MARKER), false);
+});
+
+test('mainCommitsFor bruger samme nøgleordsregel som PR-referencer', () => {
+  const rec = (sha, subject, body = '') => `${sha}\x1f${subject}\x1f${body}\x1e\n`;
+  const out = rec('aaa1', `fix: noget`, `Refs #${N}`) + rec('bbb2', `hotfix #${N}`) + rec('ccc3', `chore: x (Refs #1 and #${N})`) + rec('ddd4', `prefix #${N}`);
+  let args;
+  const commits = mainCommitsFor((a) => { args = a; return out; }, N, 'origin/main');
+  assert.deepEqual(commits.map((c) => c.sha), ['aaa1', 'ccc3']);
+  assert.ok(args.includes('origin/main'));
+  assert.equal(mainCommitsFor(() => { throw new Error('ingen git'); }, N, 'main').length, 0);
 });
 
 test('labelNames-normalisering: strings og objekter', () => {

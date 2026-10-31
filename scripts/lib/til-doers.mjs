@@ -357,16 +357,24 @@ export function labeledAt(timeline, label = DONE_LABEL) {
 
 /** main-commits med Refs/Closes #N. ref = origin/main hvis den findes. */
 export function mainCommitsFor(execGit, n, ref) {
+  // git filtrerer groft paa "#N"; noegleords-reglen afgoeres af refsIssue, saa
+  // commits og PR'er doemmes efter praecis samme regel (fx "hotfix #N" taeller ikke).
   let out = '';
   try {
-    out = execGit(['log', ref, '-E', '-i', `--grep=(refs?|close[sd]?|fix(e[sd])?|resolve[sd]?)[: ]+(#[0-9]+[, ]+)*#${n}([^0-9]|$)`, '--format=%H%x09%s']);
+    out = execGit(['log', ref, '-E', `--grep=#${n}([^0-9]|$)`, '--format=%H%x1f%s%x1f%b%x1e']);
   } catch {
     return [];
   }
-  return out.split(/\r?\n/).filter(Boolean).map((l) => {
-    const [sha, ...rest] = l.split('\t');
-    return { sha, subject: rest.join('\t') };
-  });
+  return out
+    .split('\x1e')
+    .map((rec) => rec.replace(/^\r?\n/, ''))
+    .filter(Boolean)
+    .map((rec) => {
+      const [sha, subject = '', body = ''] = rec.split('\x1f');
+      return { sha: sha.trim(), subject, body };
+    })
+    .filter((c) => c.sha && refsIssue(`${c.subject}\n${c.body}`, n))
+    .map(({ sha, subject }) => ({ sha, subject }));
 }
 
 export function resolveMainRef(execGit) {
