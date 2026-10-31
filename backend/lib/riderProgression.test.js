@@ -1133,8 +1133,8 @@ test("#6499: deterministisk pr. (rytter, sæson), og evner kan ikke gå under 0"
   assert.equal(partial.next.tactics, 40);
 });
 
-test("#6499: flag slukket — developRiderSeason er uændret (dagens fald fra peak, vækst før peak)", () => {
-  // Udvikling 2.0 er en SEPARAT funktion; den gamle sti må ikke have flyttet sig.
+test("#6499: den gamle model (developRiderSeason, kun analyse-værktøjer) er uændret af v2", () => {
+  // Udvikling 2.0 er en SEPARAT funktion; den gamle model (balanceSnapshot, sim-harness) må ikke have flyttet sig.
   const old = { id: "old-1", primary_type: "climber", potentiale: 3, age: 34 };
   const v1 = developRiderSeason(old, V2_ABILITIES, {}, 5);
   for (const k of VISIBLE_ABILITIES) {
