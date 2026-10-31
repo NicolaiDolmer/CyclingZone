@@ -1,0 +1,198 @@
+name: Til dørs
+
+# Til-doers-systemet (#7336): 8 krav pr. issue, scriptet udfylder det maalbare,
+# auto-lukning naar alle 8 er ok/na, og en mandagsrapport paa #7336.
+# Logik + tests: scripts/lib/til-doers.mjs, scripts/til-doers-check.mjs,
+# scripts/til-doers-monday.mjs. Markeringssyntaks: docs/GITHUB_WORKFLOW.md.
+#
+# Triggers:
+#   issue_comment  en collaborator skriver en linje "Til dørs: <1-8> ok|na ..."
+#   issues         label claude:done saettes
+#   pull_request   PR merges: genberegn de issues PR'en refererer (Refs/Closes #N)
+#   schedule       dagligt sweep + mandagsrapport
+#   workflow_dispatch  manuelt (enkelt issue, sweep eller mandagsrapport)
+#
+# Sikkerhed: event-data (numre, inputs) gives KUN som env-variabler, aldrig
+# interpoleret ind i shell-teksten. Koden der koerer er altid main (checkout med
+# default-branchen), aldrig PR-koden. PR'er fra forks faar et read-only token og
+# kan derfor ikke skrive; det er acceptabelt i et solo-repo.
+
+on:
+  issue_comment:
+    types: [created]
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [closed]
+  schedule:
+    # Dagligt sweep 04:17 UTC (05:17 vintertid / 06:17 sommertid).
+    - cron: '17 4 * * *'
+    # Mandagsrapport kl. 07:00 dansk tid. GitHub-cron er UTC og kender ikke
+    # sommertid, saa der er to cron-linjer, og jobbet koerer kun den der passer
+    # til Copenhagens aktuelle UTC-offset:
+    #   05:00 UTC = 07:00 CEST (sommertid, UTC+2)
+    #   06:00 UTC = 07:00 CET  (vintertid, UTC+1)
+    # Vi sammenligner med github.event.schedule (den cron der udloeste koerslen),
+    # ikke klokken, saa en forsinket koersel ikke springes over.
+    - cron: '0 5 * * 1'
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'sweep = til-doers-tjek, monday = mandagsrapport'
+        type: choice
+        options: [sweep, monday]
+        default: sweep
+      issue:
+        description: 'Kun dette issue (tom = alle aabne claude:done + issues med tabellen)'
+        type: string
+        default: ''
+      apply:
+        description: 'Skriv til GitHub (fra = dry-run)'
+        type: boolean
+        default: true
+
+permissions:
+  issues: write
+  contents: read
+  pull-requests: read
+
+jobs:
+  door:
+    name: til-doers-check
+    if: >-
+      (github.event_name == 'issue_comment'
+        && !github.event.issue.pull_request
+        && (contains(github.event.comment.body, 'Til dørs:')
+          || contains(github.event.comment.body, 'Til doers:')
+          || contains(github.event.comment.body, 'Til dors:'))
+        && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+      || (github.event_name == 'issues' && github.event.label.name == 'claude:done')
+      || (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+      || (github.event_name == 'schedule' && github.event.schedule == '17 4 * * *')
+      || (github.event_name == 'workflow_dispatch' && inputs.mode == 'sweep')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Pr. issue for issue-events; PR-merge og sweep har hver sin gruppe. Koerer
+    # to af dem samtidig paa samme issue og opretter begge en tabel, rydder
+    # scriptet selv op ved naeste koersel (den aeldste tabel gaelder, resten
+    # toemmes til en dublet-note). En global gruppe ville i stedet annullere
+    # ventende koersler, og saa gik genberegninger tabt.
+    concurrency:
+      group: til-doers-${{ github.event.issue.number || (github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number)) || inputs.issue || 'sweep' }}
+      cancel-in-progress: false
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          # Fuld historik (krav 1/2 laeser main-commits med Refs/Closes #N),
+          # men uden blobs, saa checkout er hurtig.
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Unit-tests for til-doers-tjekket
+        run: node --test scripts/til-doers-check.test.mjs scripts/til-doers-monday.test.mjs
+
+      - name: Beregn og skriv til-doers-tabellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_ISSUE: ${{ inputs.issue }}
+          INPUT_APPLY: ${{ inputs.apply }}
+        run: |
+          set -euo pipefail
+          MODE=--apply
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_APPLY" != "true" ]; then
+            MODE=--dry-run
+          fi
+          OUT="$RUNNER_TEMP/til-doers.txt"
+          case "$EVENT_NAME" in
+            issue_comment|issues)
+              node scripts/til-doers-check.mjs --issue "$ISSUE_NUMBER" "$MODE" | tee "$OUT" ;;
+            pull_request)
+              node scripts/til-doers-check.mjs --pr "$PR_NUMBER" "$MODE" | tee "$OUT" ;;
+            workflow_dispatch)
+              if [ -n "$INPUT_ISSUE" ]; then
+                node scripts/til-doers-check.mjs --issue "$INPUT_ISSUE" "$MODE" | tee "$OUT"
+              else
+                node scripts/til-doers-check.mjs --sweep "$MODE" | tee "$OUT"
+              fi ;;
+            *)
+              node scripts/til-doers-check.mjs --sweep "$MODE" | tee "$OUT" ;;
+          esac
+
+      - name: Skriv job-summary
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/til-doers.txt" ]; then
+            { echo '```'; cat "$RUNNER_TEMP/til-doers.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  monday:
+    name: til-doers-monday
+    if: >-
+      (github.event_name == 'schedule' && (github.event.schedule == '0 5 * * 1' || github.event.schedule == '0 6 * * 1'))
+      || (github.event_name == 'workflow_dispatch' && inputs.mode == 'monday')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: til-doers-monday
+      cancel-in-progress: false
+    steps:
+      - name: Kun den cron der rammer 07:00 i Copenhagen
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "schedule" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          OFFSET="$(TZ=Europe/Copenhagen date +%z)"
+          if { [ "$OFFSET" = "+0200" ] && [ "$SCHEDULE" = "0 5 * * 1" ]; } || { [ "$OFFSET" = "+0100" ] && [ "$SCHEDULE" = "0 6 * * 1" ]; }; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Copenhagen er UTC$OFFSET; cron '$SCHEDULE' er ikke 07:00 lokal tid. Springer over."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out main
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Set up Node.js
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - name: Mandagsrapport
+        if: steps.gate.outputs.run == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_APPLY: ${{ inputs.apply }}
+        run: |
+          set -euo pipefail
+          MODE=--apply
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_APPLY" != "true" ]; then
+            MODE=--dry-run
+          fi
+          node scripts/til-doers-monday.mjs "$MODE" | tee "$RUNNER_TEMP/monday.md"
+          cat "$RUNNER_TEMP/monday.md" >> "$GITHUB_STEP_SUMMARY"
