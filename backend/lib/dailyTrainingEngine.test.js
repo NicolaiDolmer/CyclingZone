@@ -2261,13 +2261,14 @@ test("#7086: en ny traeningsskade giver ÉN indbakkebesked til ejeren, aldrig ig
   assert.equal(again.alreadyRan, true, "reservationen stopper genkoerslen");
   assert.equal(state.notifications.length, 1, "én besked, ingen ved genkoersel");
   const n = state.notifications[0];
-  const until = new Date(Date.UTC(2026, 5, 12 + days)).toISOString().slice(0, 10);
+  // #7412: foerste raske dag = dagen efter sidste skadedag.
+  const fitAgain = new Date(Date.UTC(2026, 5, 12 + days + 1)).toISOString().slice(0, 10);
   assert.equal(n.user_id, "user-owner");
   assert.equal(n.type, "selection_warning");
   assert.equal(n.related_id, id);
-  assert.equal(n.metadata.messageCode, "notif.riderInjured.messageTraining");
+  assert.equal(n.metadata.messageCode, "notif.riderInjured.training");
   assert.equal(n.metadata.riderId, id);
-  assert.equal(n.message, `Test Rytter was injured in training and is out until ${Number(until.slice(8))}/${Number(until.slice(5, 7))}.`);
+  assert.equal(n.message, `Test Rytter was injured in training and is fit again on ${Number(fitAgain.slice(8))}/${Number(fitAgain.slice(5, 7))}.`);
 });
 
 test("#7086 (dato-modellen): skaden afregnes paa datoens sidste loebsdag og giver ÉN besked, ogsaa ved genkoersel", async () => {

@@ -943,7 +943,13 @@
     "fatigue": "Træthed",
     "injured": "Skadet: {days}d tilbage",
     "injuredRaceDays": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage",
-    "injuredApprox": "Tilbage ca. {date}"
+    "fitAgain": "Rask igen {date}",
+    "fitAgainApprox": "Rask igen ca. {date}",
+    "causeCrashStage": "Styrtede, {race} etape {stage}",
+    "causeCrashRace": "Styrtede, {race}",
+    "causeCrash": "Styrtede i et løb",
+    "causeTraining": "Skadet i træningen",
+    "causeIllness": "Syg"
   },
   "training": {
     "title": "Træningsfokus",

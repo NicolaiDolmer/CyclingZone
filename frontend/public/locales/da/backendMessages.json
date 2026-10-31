@@ -668,7 +668,13 @@
       "messageMissed": "{rider} styrtede i {race} og er skadet til {until}. Han kører ikke {missed}.",
       "messageFinished": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until}.",
       "messageFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until} og kører ikke {missed}.",
-      "messageTraining": "{rider} blev skadet i træningen og er ude til {until}."
+      "messageTraining": "{rider} blev skadet i træningen og er ude til {until}.",
+      "crash": "{rider} styrtede i {race} og er rask igen {fitAgain}.",
+      "crashMissed": "{rider} styrtede i {race} og er rask igen {fitAgain}. Han kan ikke køre {missed}{more, plural, =0 {} one { og 1 løb mere} other { og # løb mere}}.",
+      "crashFinished": "{rider} styrtede i {race}, men kørte etapen færdig. Han er rask igen {fitAgain}.",
+      "crashFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er rask igen {fitAgain}. Han kan ikke køre {missed}{more, plural, =0 {} one { og 1 løb mere} other { og # løb mere}}.",
+      "training": "{rider} blev skadet i træningen og er rask igen {fitAgain}.",
+      "trainingMissed": "{rider} blev skadet i træningen og er rask igen {fitAgain}. Han kan ikke køre {missed}{more, plural, =0 {} one { og 1 løb mere} other { og # løb mere}}."
     },
     "teamDidNotStart": {
       "title": "Dit hold stillede ikke op",

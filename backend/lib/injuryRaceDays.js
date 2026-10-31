@@ -53,7 +53,18 @@
 
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
-import { SEASON_RACE_DAYS_DEFAULT } from "./calendarStartDate.js";
+import { SEASON_RACE_DATES } from "./calendarStartDate.js";
+
+// #7412: en ukendt akse var TAVS. 0 af 31 S5-skader havde en loebsdag, og intet signal
+// sagde det. Én advarsel pr. saeson pr. proces, saa loggen ikke drukner.
+const warnedMissingAxis = new Set();
+function warnMissingAxis(seasonNumber) {
+  const key = String(seasonNumber);
+  if (warnedMissingAxis.has(key)) return;
+  warnedMissingAxis.add(key);
+  // ASCII-only: intern ops-logging.
+  console.warn(`  ⚠️ injury race-day axis unknown for season ${key} (#7412): add SEASON_RACE_DATES + SEASON_RACE_DAY_TARGET - injuries fall back to calendar days`);
+}
 
 /**
  * Sidste skadede LOEBSDAG. Varighed = kalenderdags-rullet gange aksens taethed.
@@ -77,7 +88,7 @@ import { SEASON_RACE_DAYS_DEFAULT } from "./calendarStartDate.js";
  */
 export function injuryEndGameDay({ gameDay, days, seasonNumber,
   raceDays = SEASON_RACE_DAY_TARGET[seasonNumber],
-  calendarDates = SEASON_RACE_DAYS_DEFAULT[seasonNumber] } = {}) {
+  calendarDates = SEASON_RACE_DATES[seasonNumber] } = {}) {
   // `Number(null)` er 0, ikke NaN — samme faelde som i calendarActivationRaceDays.js.
   // Uden dette led ville en manglende akse tavst blive til loebsdag 0.
   if (gameDay == null || days == null) return null;
@@ -85,7 +96,10 @@ export function injuryEndGameDay({ gameDay, days, seasonNumber,
   const n = Number(days);
   if (!Number.isFinite(gd) || !Number.isInteger(gd) || gd < 0) return null;
   if (!Number.isInteger(n) || n <= 0) return null;
-  if (raceDays == null || calendarDates == null) return null;
+  if (raceDays == null || calendarDates == null) {
+    if (seasonNumber != null) warnMissingAxis(seasonNumber);
+    return null;
+  }
   const density = Number(raceDays) / Number(calendarDates);
   if (!Number.isFinite(density) || density < 1 || !Number.isInteger(density)) return null;
   return gd + n * density;

@@ -668,7 +668,13 @@
       "messageMissed": "{rider} a chuté à {race} et est blessé jusqu'au {until}. Il ne courra pas {missed}.",
       "messageFinished": "{rider} a chuté à {race} mais a terminé l'étape. Il est blessé jusqu'au {until}.",
       "messageFinishedMissed": "{rider} a chuté à {race} mais a terminé l'étape. Il est blessé jusqu'au {until} et ne courra pas {missed}.",
-      "messageTraining": "{rider} s'est blessé à l'entraînement et est absent jusqu'au {until}."
+      "messageTraining": "{rider} s'est blessé à l'entraînement et est absent jusqu'au {until}.",
+      "crash": "{rider} a chuté à {race} et sera de nouveau apte le {fitAgain}.",
+      "crashMissed": "{rider} a chuté à {race} et sera de nouveau apte le {fitAgain}. Il manquera {missed}{more, plural, =0 {} one { et 1 autre course} other { et # autres courses}}.",
+      "crashFinished": "{rider} a chuté à {race} mais a terminé l'étape. Il sera de nouveau apte le {fitAgain}.",
+      "crashFinishedMissed": "{rider} a chuté à {race} mais a terminé l'étape. Il sera de nouveau apte le {fitAgain}. Il manquera {missed}{more, plural, =0 {} one { et 1 autre course} other { et # autres courses}}.",
+      "training": "{rider} s'est blessé à l'entraînement et sera de nouveau apte le {fitAgain}.",
+      "trainingMissed": "{rider} s'est blessé à l'entraînement et sera de nouveau apte le {fitAgain}. Il manquera {missed}{more, plural, =0 {} one { et 1 autre course} other { et # autres courses}}."
     },
     "teamDidNotStart": {
       "title": "Ton équipe n'a pas pris le départ",
