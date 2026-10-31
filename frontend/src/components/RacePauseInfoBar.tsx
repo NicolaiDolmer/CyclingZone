@@ -8,10 +8,13 @@ import { racePauseInfoBarHiddenOnPath } from "../lib/racePause.ts";
 
 // #7335 — blaa info-bjaelke paa ALLE manager-sider naar loebene er sat paa pause.
 // Samme flade og placering som driftsbanneret (RaceControlBanner, severity info):
-// fuld bredde oeverst i <main>. Kilden er app_config `race_pause_notice` (lib/racePause.ts),
-// saa bjaelken forsvinder af sig selv naar pausen fjernes eller den nye start er naaet.
-// Dashboardet har allerede sin egen "Pauset"-flade (RacePausedBanner),
-// dér skjules bjaelken, saa samme besked ikke staar to gange.
+// fuld bredde oeverst i <main>. Pausen udledes AUTOMATISK af kontakten
+// `stage_scheduler_enabled` (slukket i en saeson der er i gang), med
+// `race_pause_notice` som valgfri kilde til ny starttid (lib/racePause.ts). Den
+// forsvinder af sig selv naar kontakten taendes igen, og staar ikke under
+// saesonskiftet (det har sin egen blaa bjaelke). Dashboardet har sin egen
+// "Pauset"-flade (RacePausedBanner); dér skjules bjaelken, saa samme besked ikke
+// staar to gange. Loebssiden viser kun denne bjaelke (#7335 fjernede den dobbelte).
 export default function RacePauseInfoBar() {
   const { t } = useTranslation("banners");
   const { pathname } = useLocation();

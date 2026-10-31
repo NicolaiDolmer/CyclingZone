@@ -26,6 +26,19 @@ test("Layout monterer bjaelken lige efter RaceControlBanner", () => {
   assert.ok(a > 0 && b > a);
 });
 
+test("loebssiden viser kun den globale bjaelke, ikke ogsaa det gamle Pauset-banner (ingen dobbelt-besked)", () => {
+  const raceDetail = readFileSync(join(__dirname, "../pages/RaceDetailPage.jsx"), "utf8");
+  assert.doesNotMatch(raceDetail, /RacePausedBanner/);
+  const pausedBanner = readFileSync(join(__dirname, "race/RacePausedBanner.tsx"), "utf8");
+  assert.doesNotMatch(pausedBanner, /import useRacePause/,"Pauset-banneret henter ikke selv: kun dashboardet giver det pausen");
+});
+
+test("hooken udleder pausen automatisk (kontakt + valgfri notice), ikke kun fra race_pause_notice", () => {
+  const hook = readFileSync(join(__dirname, "../hooks/useRacePause.ts"), "utf8");
+  assert.match(hook, /fetchRacePauseInputs\(\)/);
+  assert.match(hook, /resolveRacePause\(inputs, nowMs\)/);
+});
+
 test("bjaelken bruger pause-hooken og info-fladen, og rendrer intet uden aktiv pause", () => {
   assert.match(bar, /if \(!pause \|\| racePauseInfoBarHiddenOnPath\(pathname\)\) return null/);
   assert.match(bar, /bg-cz-info-bg/);

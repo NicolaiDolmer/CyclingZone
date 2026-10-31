@@ -2,22 +2,20 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangleIcon } from "../ui/icons";
 import { formatDateTime } from "../../lib/intl.js";
 import { RACE_TIMEZONE } from "../../lib/stageScheduleConfig.js";
-import useRacePause from "../../hooks/useRacePause.ts";
 import type { RacePause } from "../../lib/racePause.ts";
 
-// #6970 — "Pauset"-banner paa loebet (ejer-default: ingen ny loebsstatus).
+// #6970 — "Pauset"-banner paa dashboardet (ejer-default: ingen ny loebsstatus).
 // Samme advarselsflade som driftsbanneret (RaceControlBanner, #3941): hairline,
-// warning-tokens, stroke-ikon. Kilden er app_config `race_pause_notice`
-// (se lib/racePause.ts). `pause` kan gives udefra (dashboardet har allerede
-// hentet den); uden prop henter banneret selv. Ingen pause = intet renderes.
-export default function RacePausedBanner({ pause }: { pause?: RacePause | null }) {
+// warning-tokens, stroke-ikon. Pausen kommer fra useRacePause (lib/racePause.ts),
+// som dashboardet allerede har hentet. Alle andre sider, ogsaa loebssiden, viser
+// den globale info-bjaelke (RacePauseInfoBar, #7335) i stedet, saa samme besked
+// aldrig staar to gange. Ingen pause = intet renderes.
+export default function RacePausedBanner({ pause }: { pause: RacePause | null }) {
   const { t } = useTranslation("banners");
-  const fetched = useRacePause(pause === undefined);
-  const active = pause === undefined ? fetched : pause;
-  if (!active) return null;
+  if (!pause) return null;
 
-  const newStart = active.newStartMs != null
-    ? formatDateTime(active.newStartMs, { timeZone: RACE_TIMEZONE })
+  const newStart = pause.newStartMs != null
+    ? formatDateTime(pause.newStartMs, { timeZone: RACE_TIMEZONE })
     : null;
 
   return (

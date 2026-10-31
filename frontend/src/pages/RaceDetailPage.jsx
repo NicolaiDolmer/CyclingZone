@@ -7,7 +7,6 @@ import TeamLink from "../components/TeamLink";
 import CareerFirstMomentRow from "../components/CareerFirstMomentRow";
 import RaceOverviewTab from "../components/race/RaceOverviewTab.jsx";
 import RaceTeamTab from "../components/race/RaceTeamTab.jsx";
-import RacePausedBanner from "../components/race/RacePausedBanner.tsx"; // #6970
 import RaceTacticsTab from "../components/race/RaceTacticsTab.jsx";
 import StageStripe from "../components/race/StageStripe.jsx";
 import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
@@ -1444,8 +1443,6 @@ export default function RaceDetailPage() {
           <ChevronLeftIcon size={13} aria-hidden="true" />
           {backLabel}
         </Link>
-
-        {ds !== "completed" && <RacePausedBanner />}{/* #6970 */}
 
         <section className="bg-cz-card border border-cz-border border-t-2 border-t-cz-accent rounded-cz overflow-hidden px-4 md:px-6 pt-5 pb-5">
           <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
