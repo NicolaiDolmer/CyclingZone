@@ -838,6 +838,26 @@ Tallene står aldrig i repoet (hard rule 17).
 - **D6:** med et af flagene tændt udvikler AI-hold, bank, testkonti og hold uden manager sig ikke, også
   uden `development_v2_aging_enabled`. Frie ryttere har intet hold og trænes ikke.
 
+### 6.4 Løbsdag = hård dag + tillæg efter rolle (#5950, bag et slukket flag)
+
+**Status: SLUKKET.** Flaget `race_day_role_yield_enabled` er oprettet `off`; kun `on` tænder, og
+`beta` læses som slukket i motoren (en live balance-ændring uden skyggedata). Ejer-only flip via
+tændingskort med måling. Tallene og den præcise model står aldrig i repoet (hard rule 17).
+
+- **Forudsætning:** `race_day_development_enabled` skal være on (løbsdagen udvikler overhovedet), og
+  gyldige params skal ligge i den lukkede tabel `private_config` (nøgle `race_day_role_yield_params`;
+  reserve: serverens miljø). Gælder både løbsdags-stien og kalenderdags-faldet.
+- **Når tændt:** basis er en hård dag på etapens profil-evner, gennem samme `applyDailyTick`. Oven i
+  kommer et tillæg, som er ens i alt for alle roller (D3 variant A). Rollen på etapen afgør kun, hvor
+  tillægget lander: kaptajner og jæger mest i etapens afgørende evne, hjælpere mest i de bærende
+  hjælpe-evner (holdarbejde altid med, S21), fri eller ukendt rolle en blanding (S17). Rollen afgøres
+  som løbsmotoren gør det (etape-rækken vinder over basisrollen). Maks +1 pr. evne pr. løbsdag er
+  uændret. Senior, U23 og junior ens. Træningsdage røres ikke.
+- **Fallback:** flag off = intet opslag, bit-identisk med §6.2. Flag on uden gyldige params = dagens
+  model + en værdi-fri advarsel, også på dato-afregningens strikte sti; kun en fejlet læsning af flag
+  eller params stopper afregningen til næste sweep. Et fejlet rolle-opslag giver fri rolle for alle.
+- **Kode:** `raceDayRoleYield5950.js`, kaldt fra `dailyTrainingEngine.js` (`withRaceDayRoleYield`).
+
 ---
 
 ## 7. Hvad træneren og faciliteten påvirker
