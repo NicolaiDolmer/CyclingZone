@@ -105,7 +105,7 @@ test("RaceTacticsTab: every intention step explains itself in words (not raw tun
   assert.doesNotMatch(raceTacticsTab, /-0\.03/);
   // Fog of war: the steps come from the server's valid_efforts, never a
   // hardcoded five-value list in the surface itself.
-  assert.match(raceTacticsTab, /orderedEfforts\(roles\?\.valid_efforts\)/);
+  assert.match(raceTacticsTab, /effortsForStage\(roles\?\.valid_efforts, stageProfileType\)/); // #7332
   // A failed load must never be rendered as "nothing set" (#2849).
   assert.match(raceTacticsTab, /racePage\.tactics\.loadError/);
 });

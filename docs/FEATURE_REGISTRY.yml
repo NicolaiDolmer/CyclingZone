@@ -244,6 +244,16 @@ features:
     verified: 2026-10-31
     note: Kodekontakt ITT_TERRAIN_6595_ACTIVE tændt 31/10 efter ejer-go, kun v3.
 
+  - id: race-itt-save-7332
+    area: race-engine
+    title_en: Saving effort in individual time trials
+    title_da: Spar på enkeltstart
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7332
+    verified: 2026-10-31
+    note: Kodekontakt SAVE_ITT_7332_ACTIVE tændt 31/10 efter ejer-go; vælgeren viser kun tre trin på enkeltstart.
+
   - id: race-descent-task-7380
     area: race-engine
     title_en: Descent attacks respect the rider's task
