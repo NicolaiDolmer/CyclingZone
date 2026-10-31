@@ -38,6 +38,21 @@ export function withLuxuryHelperSelection<T extends { selection?: Selection | nu
   };
 }
 
+type SeasonBody = { races?: Array<Record<string, unknown>>; entries?: Array<{ raceId: string; riderId: string; raceRole: string }> } & Record<string, unknown>;
+
+/** #7239: saesonmatrixen med loeb der kender rollerne (rolesAllowed) og en delt kaptajn + luksushjaelper i det foerste loeb med en kaptajn. */
+export function withSeasonRoles<T extends SeasonBody>(body: T): T {
+  if (!Array.isArray(body?.races)) return body;
+  const races = body.races.map((r) => ({ ...r, rolesAllowed: true }));
+  const entries = Array.isArray(body.entries) ? body.entries : [];
+  const raceId = entries.find((e) => e.raceRole === "captain")?.raceId;
+  const helpers = entries.filter((e) => e.raceId === raceId && e.raceRole === "helper");
+  const next = entries.map((e) => (helpers[0] && e === helpers[0] ? { ...e, raceRole: "co_captain" } : e));
+  // Luksushjaelperen er en rytter der ikke allerede sidder i loebet (preview-seedens "smx-r3").
+  if (raceId && !entries.some((e) => e.raceId === raceId && e.riderId === "smx-r3")) next.push({ raceId, riderId: "smx-r3", raceRole: "luxury_helper" });
+  return { ...body, races, entries: next };
+}
+
 type StageRolesBody = { riders?: Array<{ rider_id: string; race_role?: string } & Record<string, unknown>> } & Record<string, unknown>;
 
 /** Etape-rollerne med "rider-96" som luksushjaelper. */

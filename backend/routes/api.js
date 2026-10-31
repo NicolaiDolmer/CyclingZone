@@ -5231,6 +5231,7 @@ router.get("/races/selection/season", requireAuth, async (req, res) => {
         lineupLocked: isRaceLineupLocked({ status: race.status, stagesCompleted: race.stages_completed, firstStageScheduledAt: rows.find((r) => r.stage_number === 1)?.scheduled_at, now: new Date() }),
         gameDayStart: span.start, gameDayEnd: span.end, restGameDays,
         sizeMin: sizeRule.min, sizeMax: sizeRule.max,
+        rolesAllowed: raceAllowsCoCaptain(race), // #7239: delt kaptajn / luksushjælper, samme v3-gate som udtagelsespanelet
       });
     }
     races.sort((a, b) => a.gameDayStart - b.gameDayStart || a.name.localeCompare(b.name));

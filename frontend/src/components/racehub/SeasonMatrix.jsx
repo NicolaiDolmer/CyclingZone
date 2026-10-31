@@ -26,7 +26,7 @@ import {
   ROLE_LETTER, buildDraftsFromEntries, roleOf, dirtyRaceIds, roleBadgeClass,
   buildDayColumns, buildDateBands, buildRaceHeaderGroups, buildRiderRowSegments, countProblems,
   raceCurrentCount, riderLoadDays, emptyRaceDraft,
-  setRiderRole, removeRiderFromRace, conflictingEntryForRace, buildSaveError,
+  setRiderRole, removeRiderFromRace, conflictingEntryForRace, buildSaveError, buildBulkChange,
 } from "../../lib/seasonMatrix.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -275,13 +275,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
     setSaveError(null);
     const headers = await authHeaders();
     if (!headers) { setSaving(false); return; }
-    const changes = dirtyIds.map((raceId) => {
-      const d = draftByRace.get(raceId) || emptyRaceDraft();
-      return {
-        raceId, rider_ids: d.rider_ids, captain_id: d.captain_id, sprint_captain_id: d.sprint_captain_id,
-        hunter_id: d.hunter_id, free_role_ids: d.free_role_ids,
-      };
-    });
+    // #7239: delt kaptajn / luksushjælper følger med i løb der kender rollerne, så et gem
+    // aldrig nulstiller en rolle (buildBulkChange forklarer reglen).
+    const changes = dirtyIds.map((raceId) => buildBulkChange(raceId, draftByRace.get(raceId), serverByRace.get(raceId), raceById.get(raceId)?.rolesAllowed === true));
     try {
       for (let i = 0; i < changes.length; i += BULK_CHUNK) {
         const chunk = changes.slice(i, i + BULK_CHUNK);
@@ -694,8 +690,9 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             currentRole={currentRole}
             lockedReasonText={lockedReasonText}
             conflict={conflict}
+            coCaptainNeedsCaptain={!draftByRace.get(race.id)?.captain_id || draftByRace.get(race.id)?.captain_id === rider.id}
             onSelectRole={(role) => {
-              setRaceDraft(race.id, (d) => setRiderRole(d, rider.id, role, !!conflict || !!race.lineupLocked || !!race.didNotStart));
+              setRaceDraft(race.id, (d) => setRiderRole(d, rider.id, role, !!conflict || !!race.lineupLocked || !!race.didNotStart, race.rolesAllowed === true));
               closeCellPopover();
             }}
             onRemove={fixed && !race.lineupLocked && !race.didNotStart ? () => { setRaceDraft(race.id, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); } : undefined}

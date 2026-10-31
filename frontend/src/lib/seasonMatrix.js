@@ -55,18 +55,31 @@
 // C→S→H→F→D uden forklaring). IKKE cyklus-rækkefølge — dette er visningsorden.
 export const ROLE_ORDER = ["captain", "sprint_captain", "hunter", "free_role", "helper"];
 
+// #7239 (ejer 31/10, design A): delt kaptajn og luksushjælper kan vælges i matrixen, men
+// KUN i løb der kender rollerne (serverens v3-gate, `race.rolesAllowed`). Rækkefølgen følger
+// stageRoleVocabulary: den delte kaptajn lige efter kaptajnen, luksushjælperen før hjælperen.
+export const EXTENDED_ROLE_ORDER = ["captain", "co_captain", "sprint_captain", "hunter", "free_role", "luxury_helper", "helper"];
+const V3_ONLY_ROLES = new Set(["co_captain", "luxury_helper"]);
+
+/** Rollerne popoveren tilbyder i dette løb. Ukendt gate = de fem gamle (fail-closed). */
+export function rolesForRace(race) {
+  return race?.rolesAllowed === true ? EXTENDED_ROLE_ORDER : ROLE_ORDER;
+}
+
 // Rollebogstaver til cellen (#4246 ejer-valg A).
 export const ROLE_LETTER = {
   captain: "C",
+  co_captain: "C2",
   sprint_captain: "S",
   hunter: "H",
   free_role: "F",
+  luxury_helper: "L",
   helper: "D",
 };
 
 /** Tomt kladde-skelet for ét løb. */
 export function emptyRaceDraft() {
-  return { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, free_role_ids: [] };
+  return { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, co_captain_id: null, luxury_helper_id: null, free_role_ids: [] };
 }
 
 /** entries: [{raceId, riderId, raceRole}] (GET /races/selection/season) → draftByRace. */
@@ -81,6 +94,8 @@ export function buildDraftsFromEntries(entries, withdrawnRaceIds = []) {
     if (e.raceRole === "captain") d.captain_id = e.riderId;
     else if (e.raceRole === "sprint_captain") d.sprint_captain_id = e.riderId;
     else if (e.raceRole === "hunter") d.hunter_id = e.riderId;
+    else if (e.raceRole === "co_captain") d.co_captain_id = e.riderId; // #7239
+    else if (e.raceRole === "luxury_helper") d.luxury_helper_id = e.riderId; // #7239
     else if (e.raceRole === "free_role") d.free_role_ids.push(e.riderId);
   }
   return byRace;
@@ -92,6 +107,8 @@ export function roleOf(draft, riderId) {
   if (draft.captain_id === riderId) return "captain";
   if (draft.sprint_captain_id === riderId) return "sprint_captain";
   if (draft.hunter_id === riderId) return "hunter";
+  if (draft.co_captain_id === riderId) return "co_captain"; // #7239
+  if (draft.luxury_helper_id === riderId) return "luxury_helper"; // #7239
   if (draft.free_role_ids.includes(riderId)) return "free_role";
   return "helper";
 }
@@ -104,7 +121,17 @@ function clearRole(draft, riderId) {
   if (d.captain_id === riderId) d.captain_id = null;
   if (d.sprint_captain_id === riderId) d.sprint_captain_id = null;
   if (d.hunter_id === riderId) d.hunter_id = null;
+  if (d.co_captain_id === riderId) d.co_captain_id = null; // #7239
+  if (d.luxury_helper_id === riderId) d.luxury_helper_id = null; // #7239
   return d;
+}
+
+// #7239: en delt kaptajn kræver en kaptajn (serverens selection_co_captain_requires_captain).
+// Forsvinder kaptajnen, rykker den delte kaptajn op — samme regel som udtagelsespanelet
+// (raceSelectionLogic.js), så matrixen aldrig bygger en kladde serveren afviser.
+function promoteCoCaptain(draft) {
+  if (draft.captain_id || !draft.co_captain_id) return draft;
+  return { ...draft, captain_id: draft.co_captain_id, co_captain_id: null };
 }
 
 /**
@@ -123,22 +150,52 @@ function clearRole(draft, riderId) {
  * FØR den kalder herind (UI-låsen), men denne guard er den sidste linje hvis
  * en fremtidig kode-sti springer den tjek over.
  */
-export function setRiderRole(draft, riderId, role, blocked = false) {
+export function setRiderRole(draft, riderId, role, blocked = false, rolesAllowed = false) {
   const base = draft || emptyRaceDraft();
   if (blocked) return base;
+  // #7239: delt kaptajn / luksushjælper findes kun i løb der kender rollerne, og en delt
+  // kaptajn kræver en ANDEN rytter som kaptajn. Ellers er kaldet et no-op (UI'et skjuler
+  // eller deaktiverer valget; dette er sidste forsvarslinje mod en kladde serveren afviser).
+  if (V3_ONLY_ROLES.has(role) && !rolesAllowed) return base;
+  if (role === "co_captain" && (!base.captain_id || base.captain_id === riderId)) return base;
   let next = clearRole(base, riderId);
   if (!next.rider_ids.includes(riderId)) next = { ...next, rider_ids: [...next.rider_ids, riderId] };
   if (role === "captain") { if (next.captain_id) next = clearRole(next, next.captain_id); next.captain_id = riderId; }
+  else if (role === "co_captain") { if (next.co_captain_id) next = clearRole(next, next.co_captain_id); next.co_captain_id = riderId; }
   else if (role === "sprint_captain") { if (next.sprint_captain_id) next = clearRole(next, next.sprint_captain_id); next.sprint_captain_id = riderId; }
   else if (role === "hunter") { if (next.hunter_id) next = clearRole(next, next.hunter_id); next.hunter_id = riderId; }
+  else if (role === "luxury_helper") { if (next.luxury_helper_id) next = clearRole(next, next.luxury_helper_id); next.luxury_helper_id = riderId; }
   else if (role === "free_role") next.free_role_ids = [...next.free_role_ids, riderId];
-  return next;
+  return promoteCoCaptain(next);
 }
 
 /** Fjerner rytteren helt fra én løbs-kladde — celle-popoverens "Fjern fra løbet" (kontrakt 2c). */
 export function removeRiderFromRace(draft, riderId) {
   const base = draft || emptyRaceDraft();
-  return clearRole({ ...base, rider_ids: base.rider_ids.filter((id) => id !== riderId) }, riderId);
+  return promoteCoCaptain(clearRole({ ...base, rider_ids: base.rider_ids.filter((id) => id !== riderId) }, riderId));
+}
+
+/**
+ * #7239: ét løbs ændring til PUT /races/selection/bulk. Et gem fra matrixen må ALDRIG
+ * nulstille en rolle i stilhed (heller ikke en der er sat via API). Derfor sendes
+ * `co_captain_id` / `luxury_helper_id` kun i løb der kender rollerne, og kun når kladden
+ * holder en rytter i rollen ELLER spilleren har ændret rollen siden serveren (så en fjernet
+ * rolle sendes eksplicit som null). Er feltet udeladt, beholder serveren den gemte rolle.
+ * `server` er serversandheden fra indlæsningen (kan mangle for et nyt løb).
+ */
+export function buildBulkChange(raceId, draft, server, rolesAllowed = false) {
+  const d = draft || emptyRaceDraft();
+  const change = {
+    raceId, rider_ids: d.rider_ids, captain_id: d.captain_id, sprint_captain_id: d.sprint_captain_id,
+    hunter_id: d.hunter_id, free_role_ids: d.free_role_ids,
+  };
+  if (!rolesAllowed) return change;
+  const s = server || emptyRaceDraft();
+  for (const key of ["co_captain_id", "luxury_helper_id"]) {
+    const value = d[key] ?? null;
+    if (value != null || value !== (s[key] ?? null)) change[key] = value;
+  }
+  return change;
 }
 
 /**
@@ -202,7 +259,7 @@ export function raceLockLabel(conflict, t) {
  * primary-knap pr. view (kontrakt #8) — dette er en tint, ikke en knap.
  */
 export function roleBadgeClass(role) {
-  if (role === "captain" || role === "sprint_captain") return "bg-cz-accent/25 text-cz-accent-t";
+  if (role === "captain" || role === "co_captain" || role === "sprint_captain") return "bg-cz-accent/25 text-cz-accent-t";
   return "bg-cz-accent/10 text-cz-1";
 }
 
@@ -215,6 +272,8 @@ export function raceDraftDirty(draft, server) {
     || (a.captain_id ?? null) !== (b.captain_id ?? null)
     || (a.sprint_captain_id ?? null) !== (b.sprint_captain_id ?? null)
     || (a.hunter_id ?? null) !== (b.hunter_id ?? null)
+    || (a.co_captain_id ?? null) !== (b.co_captain_id ?? null)
+    || (a.luxury_helper_id ?? null) !== (b.luxury_helper_id ?? null)
     || ids(a.free_role_ids) !== ids(b.free_role_ids);
 }
 
