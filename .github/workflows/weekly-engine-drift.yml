@@ -3,7 +3,7 @@ name: Weekly Engine Drift
 # Ugentlig motor-rapport paa rigtige loeb mod gates + alarm (#2557, S14).
 # Hver mandag 07:00 dansk tid maaler backend/scripts/ops/weeklyEngineDrift2557.mjs
 # ugens afviklede etaper pr. loebsgruppe (korte etapeloeb, Grand Tours, endagsloeb,
-# monumenter, U23/junior) og sammenligner med graenserne i ENGINE_GATE_THRESHOLDS_JSON.
+# monumenter, U23/junior) og sammenligner med graenserne i den lukkede tabel private_config.
 # Rapporten er privat og gaar kun til Discord-ops. Ved afvigelse faar jobbet exit 1
 # og en alarm med @mention sendes foerst. Actions-loggen viser kun
 # "N gates OK / M afvigelser" (ingen maalte tal, ingen graenser).
@@ -12,12 +12,11 @@ name: Weekly Engine Drift
 #
 # GitHub-secrets (sæt med `gh secret set <NAVN>`):
 #   findes allerede:   SUPABASE_URL, SUPABASE_SERVICE_KEY
-#   SKAL oprettes:     ENGINE_GATE_THRESHOLDS_JSON  (den private taerskelfil som JSON, sektionen
-#                                                    `weeklyEngineDrift`; se scriptets header)
 #                      DISCORD_OPS_WEBHOOK_URL      (ops-kanalens webhook; samme secret som db-watchdog)
 #   valgfri:           DISCORD_OPS_MENTION          (fx <@123456789012345678>)
-# Mangler en paakraevet secret eller er taerskelfilen ugyldig, fejler jobbet tydeligt (exit 2)
-# UDEN at sende noget.
+# Graenserne ligger i private_config (noegle weekly_engine_drift_thresholds, #7390), ikke i en
+# GitHub-secret; service-rollen laeser dem. Mangler en secret, eller mangler/er graense-raekken
+# ugyldig, fejler jobbet tydeligt (exit 2) UDEN at sende noget.
 #
 # Tidszone: GitHub cron er UTC. Mandag 07:00 i Europe/Copenhagen er 05:00 UTC om sommeren og
 # 06:00 UTC om vinteren, saa begge tider er planlagt og "gate"-jobbet lader kun
@@ -101,7 +100,6 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-          ENGINE_GATE_THRESHOLDS_JSON: ${{ secrets.ENGINE_GATE_THRESHOLDS_JSON }}
           DISCORD_OPS_WEBHOOK_URL: ${{ secrets.DISCORD_OPS_WEBHOOK_URL }}
           DISCORD_OPS_MENTION: ${{ secrets.DISCORD_OPS_MENTION }}
           WEEKLY_DRIFT_DAYS: ${{ github.event.inputs.days }}

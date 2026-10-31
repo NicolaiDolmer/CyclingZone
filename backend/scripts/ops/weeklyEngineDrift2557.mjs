@@ -4,8 +4,9 @@
  * =========================================
  * Hver mandag maaler dette script ugens RIGTIGE afviklede etaper i prod pr.
  * loebsgruppe (korte etapeloeb, Grand Tours, endagsloeb, monumenter, U23/junior)
- * og sammenligner dem med graenserne i env ENGINE_GATE_THRESHOLDS_JSON (en
- * GitHub-secret, samme JSON som den private taerskelfil). Rapporten er privat og
+ * og sammenligner dem med graenserne i den lukkede tabel private_config (noeglen
+ * weekly_engine_drift_thresholds, #7390; kun service-rollen kan laese den).
+ * Rapporten er privat og
  * gaar kun til Discord-ops-webhooken; i Actions-loggen staar kun
  * "N gates OK / M afvigelser". Repoet har definitionerne, aldrig tallene
  * (hard rule 17).
@@ -30,7 +31,7 @@
  *
  * Env (paakraevet; mangler en, stopper scriptet med exit 2 UDEN at sende noget):
  *   SUPABASE_URL, SUPABASE_SERVICE_KEY   (findes som GitHub-secrets; kun SELECT bruges)
- *   ENGINE_GATE_THRESHOLDS_JSON          den private taerskelfil som JSON
+ *   Mangler private_config-raekken eller er den ugyldig, stopper scriptet ogsaa med exit 2.
  *   DISCORD_OPS_WEBHOOK_URL              ops-kanalens webhook
  * Env (valgfri):
  *   DISCORD_OPS_MENTION                  @mention (se backend/lib/opsWebhook.js)
@@ -39,11 +40,12 @@
  *   Vinduet vaelger etaper efter hvornaar de FAKTISK blev koert (race_results.imported_at,
  *   samme ur som drift-vagten), ikke scheduled_at: en forsinket etape (stageScheduler koerer
  *   overdue etaper) kommer med i den uge den blev koert, praecis en gang.
- *   WEEKLY_DRIFT_DRY_RUN=1               send ikke til Discord; skriv kun resumeet
+ *   WEEKLY_DRIFT_DRY_RUN=1               send ikke til Discord (DISCORD_OPS_WEBHOOK_URL kan saa udelades); skriv kun resumeet
  *   WEEKLY_DRIFT_OUT                     skriv rapporten til denne fil (lokal brug; skal ligge
  *                                        under en balance-internals/-mappe)
  *
- * Taerskelfilen (nogle noegler er nye for dette script), sektionen `weeklyEngineDrift`:
+ * Vaerdien i private_config (valideres af parseWeeklyEngineDriftThresholds,
+ * backend/lib/weeklyEngineDriftThresholds.ts):
  *   { "minStages": <tal>,                                  etaper der skal til for at dømme en gruppe
  *     "groups": { "<gruppe>": { "minStages"?: <tal>,
  *                               "<maal>": { "min"?: <tal>, "max"?: <tal> } } } }
@@ -60,10 +62,14 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRowsChunkedIn, fetchAllRowsKeyset } from "../../lib/supabasePagination.js";
 import { getOpsMention, withOpsMention } from "../../lib/opsWebhook.js";
 import { clampEmbed } from "../../lib/discordEmbedLimits.js";
+import { readPrivateConfigEntry } from "../../lib/privateConfig.ts";
+import { DRIFT_GROUPS } from "../../lib/weeklyEngineDriftThresholds.ts";
+
+const THRESHOLDS_KEY = "weekly_engine_drift_thresholds";
 
 // ── Definitioner ─────────────────────────────────────────────────────────────
 
-export const GROUPS = Object.freeze(["short_stage_race", "other_stage_race", "gt", "one_day", "monument", "u23_junior"]);
+export const GROUPS = DRIFT_GROUPS;
 
 export const GROUP_LABELS = Object.freeze({
   short_stage_race: "Korte etapeloeb (2-8 etaper)",
@@ -111,8 +117,8 @@ export function abandonCategory(kind) {
 }
 
 const share = (hits, n) => (n > 0 ? hits / n : null);
-const stageKey = (raceId, stageNumber) => `${raceId}:${stageNumber || 1}`;
 const finite = (v) => v !== null && v !== undefined && Number.isFinite(Number(v));
+const stageKey = (raceId, stageNumber) => `${raceId}:${stageNumber || 1}`;
 
 /**
  * Vandt rytteren fra et udbrud der holdt? Udbryder (in_breakaway) og IKKE hentet
@@ -136,45 +142,6 @@ export function executedStagesInWindow(rows, { since, until }) {
     if (!out.has(key)) out.set(key, { race_id: r.race_id, stage_number: Number(r.stage_number) || 1 });
   }
   return [...out.values()].sort((a, b) => (a.race_id < b.race_id ? -1 : a.race_id > b.race_id ? 1 : a.stage_number - b.stage_number));
-}
-
-// ── Taerskler ────────────────────────────────────────────────────────────────
-
-/**
- * Parser og validerer ENGINE_GATE_THRESHOLDS_JSON. Fail closed: mangler sektionen eller
- * stikproevegraensen, kastes en fejl, der aldrig indeholder vaerdier fra filen.
- */
-export function parseThresholds(raw) {
-  let json;
-  try {
-    json = JSON.parse(String(raw ?? ""));
-  } catch {
-    throw new Error("ENGINE_GATE_THRESHOLDS_JSON er ikke gyldig JSON");
-  }
-  const section = json?.weeklyEngineDrift;
-  if (!section || typeof section !== "object") throw new Error("ENGINE_GATE_THRESHOLDS_JSON mangler sektionen weeklyEngineDrift");
-  if (!finite(section.minStages) || Number(section.minStages) < 0) throw new Error("weeklyEngineDrift.minStages mangler eller er ikke et tal >= 0");
-  const knownMeasures = new Set(MEASURES.map((m) => m.key));
-  const groups = {};
-  for (const [group, cfg] of Object.entries(section.groups ?? {})) {
-    if (!GROUPS.includes(group)) throw new Error("weeklyEngineDrift.groups indeholder en ukendt loebsgruppe");
-    const out = { bands: {} };
-    if (cfg?.minStages !== undefined) {
-      if (!finite(cfg.minStages) || Number(cfg.minStages) < 0) throw new Error("weeklyEngineDrift: en gruppes minStages er ikke et tal >= 0");
-      out.minStages = Number(cfg.minStages);
-    }
-    for (const [measure, band] of Object.entries(cfg ?? {})) {
-      if (measure === "minStages") continue;
-      if (!knownMeasures.has(measure)) throw new Error("weeklyEngineDrift: en gruppe indeholder et ukendt maal");
-      const min = band?.min;
-      const max = band?.max;
-      if (min === undefined && max === undefined) throw new Error("weeklyEngineDrift: et baand mangler baade min og max");
-      if ((min !== undefined && !finite(min)) || (max !== undefined && !finite(max))) throw new Error("weeklyEngineDrift: et baand har en graense der ikke er et tal");
-      out.bands[measure] = { ...(min !== undefined ? { min: Number(min) } : {}), ...(max !== undefined ? { max: Number(max) } : {}) };
-    }
-    groups[group] = out;
-  }
-  return { minStages: Number(section.minStages), groups };
 }
 
 // ── Fakta pr. etape (REN) ────────────────────────────────────────────────────
@@ -534,7 +501,7 @@ async function postDiscord(fetchFn, url, payload) {
 }
 
 export function missingEnv(env) {
-  return ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "ENGINE_GATE_THRESHOLDS_JSON", "DISCORD_OPS_WEBHOOK_URL"].filter((k) => !String(env[k] ?? "").trim());
+  return ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "DISCORD_OPS_WEBHOOK_URL"].filter((k) => !String(env[k] ?? "").trim());
 }
 
 function isMain() {
@@ -558,16 +525,14 @@ export async function main({
   now = new Date(),
 } = {}) {
   const dry = ["1", "true"].includes(String(env.WEEKLY_DRIFT_DRY_RUN ?? "").toLowerCase());
-  const required = dry ? ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "ENGINE_GATE_THRESHOLDS_JSON"] : null;
+  const required = dry ? ["SUPABASE_URL", "SUPABASE_SERVICE_KEY"] : null;
   const missing = required ? required.filter((k) => !String(env[k] ?? "").trim()) : missingEnv(env);
   if (missing.length) {
     errorLog(`weekly-engine-drift: mangler env ${missing.join(", ")}`);
     return 2;
   }
-  let thresholds;
   let win;
   try {
-    thresholds = parseThresholds(env.ENGINE_GATE_THRESHOLDS_JSON);
     win = windowOf({ days: env.WEEKLY_DRIFT_DAYS || 7, until: env.WEEKLY_DRIFT_UNTIL || null, now });
   } catch (err) {
     errorLog(`weekly-engine-drift: konfigurationsfejl: ${err.message}`);
@@ -582,6 +547,18 @@ export async function main({
       const [{ createClient }, wsMod] = await Promise.all([import("@supabase/supabase-js"), import("ws")]);
       db = makeReadOnlyClient(createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_KEY, { auth: { persistSession: false }, realtime: { transport: wsMod.default } }));
     }
+    // Fail closed: graenserne ligger i private_config. Mangler/ugyldig raekke = exit 2, laesefejl = exit 3.
+    // Advarslerne fra laeseren droppes; kun vaerdi-frie egne beskeder logges.
+    const entry = await readPrivateConfigEntry(db, THRESHOLDS_KEY, { log: { warn() {} }, cacheMs: 0 });
+    if (entry.status === "error") {
+      errorLog("weekly-engine-drift: kunne ikke laese graenserne fra private_config");
+      return 3;
+    }
+    if (entry.status !== "ok") {
+      errorLog(`weekly-engine-drift: konfigurationsfejl: private_config ${THRESHOLDS_KEY} er ${entry.status === "missing" ? "ikke sat" : "ugyldig"}`);
+      return 2;
+    }
+    const thresholds = entry.value;
     const modules = await loadModules();
     const raw = await fetchRaw(db, { ...win, abilityKeys: modules.abilityKeys });
     const abilityRowByRider = new Map(raw.abilityRows.map((a) => [a.rider_id, a]));

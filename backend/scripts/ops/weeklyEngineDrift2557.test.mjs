@@ -3,10 +3,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  GROUPS, abandonCategory, alarmText, bandStatus, buildFacts, buildPayloads, computeGroupMetrics, evaluate, main,
-  makeReadOnlyClient, parseThresholds, raceGroupOfRace, renderReport, splitReport, summaryLine, windowOf, missingEnv, fetchRaw,
+  GROUPS, MEASURES, abandonCategory, alarmText, bandStatus, buildFacts, buildPayloads, computeGroupMetrics, evaluate, main,
+  makeReadOnlyClient, raceGroupOfRace, renderReport, splitReport, summaryLine, windowOf, missingEnv, fetchRaw,
   executedStagesInWindow, wonFromBreakaway,
 } from "./weeklyEngineDrift2557.mjs";
+import { DRIFT_GROUPS, DRIFT_MEASURE_KEYS, parseWeeklyEngineDriftThresholds } from "../../lib/weeklyEngineDriftThresholds.ts";
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -21,15 +22,15 @@ const sched = (raceId, stage) => ({ race_id: raceId, stage_number: stage, schedu
 /** Favoritten er altid rytteren med "fav" i id'et. */
 const observe = ({ results }) => ({ favoriteId: results.find((r) => String(r.rider_id).startsWith("fav"))?.rider_id ?? null });
 
-const THRESHOLDS_JSON = JSON.stringify({
-  weeklyEngineDrift: {
-    minStages: 2,
-    groups: {
-      one_day: { breakawayWinShare: { max: 0.5 }, favoriteWinShare: { min: 0.2, max: 0.8 }, abandonShare: { max: 0.3 } },
-      gt: { gcWinnerFromBreakawayShare: { max: 0.5 } },
-    },
+const THRESHOLDS = {
+  minStages: 2,
+  groups: {
+    one_day: { breakawayWinShare: { max: 0.5 }, favoriteWinShare: { min: 0.2, max: 0.8 }, abandonShare: { max: 0.3 } },
+    gt: { gcWinnerFromBreakawayShare: { max: 0.5 } },
   },
-});
+};
+const parseThresholds = (section) => parseWeeklyEngineDriftThresholds(section);
+const ENV = { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x" };
 
 // ── Gruppering og udgaaelser ─────────────────────────────────────────────────
 
@@ -56,20 +57,12 @@ test("abandonCategory: styrt, sygdom/skade, traethed, mekanisk", () => {
 
 // ── Taerskler ────────────────────────────────────────────────────────────────
 
-test("parseThresholds: gyldig fil", () => {
-  const t = parseThresholds(THRESHOLDS_JSON);
+test("DRIFT_GROUPS deles med scriptet og parseren accepterer en gyldig sektion", () => {
+  assert.equal(GROUPS, DRIFT_GROUPS);
+  const t = parseThresholds(THRESHOLDS);
   assert.equal(t.minStages, 2);
   assert.deepEqual(t.groups.one_day.bands.breakawayWinShare, { max: 0.5 });
-});
-
-test("parseThresholds: fail closed uden vaerdier i fejlen", () => {
-  assert.throws(() => parseThresholds("ikke json {"), /ikke gyldig JSON/);
-  assert.throws(() => parseThresholds("{}"), /mangler sektionen/);
-  assert.throws(() => parseThresholds(JSON.stringify({ weeklyEngineDrift: { groups: {} } })), /minStages/);
-  assert.throws(() => parseThresholds(JSON.stringify({ weeklyEngineDrift: { minStages: 1, groups: { ukendt: {} } } })), /ukendt loebsgruppe/);
-  assert.throws(() => parseThresholds(JSON.stringify({ weeklyEngineDrift: { minStages: 1, groups: { gt: { ukendtMaal: { max: 0.123456 } } } } })), (e) => /ukendt maal/.test(e.message) && !e.message.includes("0.123456"));
-  assert.throws(() => parseThresholds(JSON.stringify({ weeklyEngineDrift: { minStages: 1, groups: { gt: { crashShare: {} } } } })), /min og max/);
-  assert.throws(() => parseThresholds(JSON.stringify({ weeklyEngineDrift: { minStages: 1, groups: { gt: { crashShare: { max: "x" } } } } })), /ikke er et tal/);
+  assert.deepEqual(MEASURES.map((m) => m.key), [...DRIFT_MEASURE_KEYS]);
 });
 
 test("bandStatus", () => {
@@ -265,7 +258,7 @@ test("etapeloeb hvor sidste etape ikke laa i vinduet eller mangler etaper, er ik
 // ── Domme ────────────────────────────────────────────────────────────────────
 
 test("evaluate: OK, afvigelse, for lidt data og info", () => {
-  const t = parseThresholds(THRESHOLDS_JSON);
+  const t = parseThresholds(THRESHOLDS);
   const metrics = computeGroupMetrics(buildFacts(oneDayRaw(), { observe }));
   const res = evaluate(metrics, t);
   // one_day: 3 baand, n=2 >= minStages 2: breakaway 0.5 (max 0.5) OK, favorit 0.5 OK, udgaaede 0.33 > 0.3 AFVIGELSE.
@@ -280,7 +273,7 @@ test("evaluate: OK, afvigelse, for lidt data og info", () => {
 });
 
 test("evaluate: stikproevegraensen kan overstyres pr. gruppe", () => {
-  const t = parseThresholds(JSON.stringify({ weeklyEngineDrift: { minStages: 100, groups: { one_day: { minStages: 1, abandonShare: { max: 0.9 } } } } }));
+  const t = parseThresholds({ minStages: 100, groups: { one_day: { minStages: 1, abandonShare: { max: 0.9 } } } });
   const res = evaluate(computeGroupMetrics(buildFacts(oneDayRaw(), { observe })), t);
   assert.equal(res.ok, 1);
 });
@@ -289,8 +282,8 @@ test("summaryLine og logfilen indeholder aldrig maalte tal", async () => {
   const logs = [];
   const sent = [];
   const code = await main({
-    env: { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: THRESHOLDS_JSON, DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x", DISCORD_OPS_MENTION: "123" },
-    makeDb: () => fakeDb(oneDayRaw()),
+    env: { ...ENV, DISCORD_OPS_MENTION: "123" },
+    makeDb: () => fakeDb(oneDayRaw(), { thresholds: THRESHOLDS }),
     loadModules: async () => fakeModules(),
     fetchFn: async (url, init) => { sent.push(JSON.parse(init.body)); return { ok: true }; },
     log: (s) => logs.push(s),
@@ -309,7 +302,7 @@ test("summaryLine og logfilen indeholder aldrig maalte tal", async () => {
 // ── Rapport og Discord ───────────────────────────────────────────────────────
 
 test("renderReport og alarmText navngiver afvigelsen", () => {
-  const res = evaluate(computeGroupMetrics(buildFacts(oneDayRaw(), { observe })), parseThresholds(THRESHOLDS_JSON));
+  const res = evaluate(computeGroupMetrics(buildFacts(oneDayRaw(), { observe })), parseThresholds(THRESHOLDS));
   const text = renderReport(res, { since: "2026-10-19T00:00:00Z", until: "2026-10-26T00:00:00Z" });
   assert.match(text, /2026-10-19 til 2026-10-26/);
   assert.match(text, /\*\*AFVIGELSE\*\* udgaaede i alt/);
@@ -326,7 +319,7 @@ test("splitReport klipper paa linjegraenser under graensen", () => {
 });
 
 test("buildPayloads: ingen alarm uden afvigelse; ingen mention uden mention", () => {
-  const res = evaluate(computeGroupMetrics(buildFacts(oneDayRaw(), { observe })), parseThresholds(JSON.stringify({ weeklyEngineDrift: { minStages: 1, groups: { one_day: { abandonShare: { max: 0.9 } } } } })));
+  const res = evaluate(computeGroupMetrics(buildFacts(oneDayRaw(), { observe })), parseThresholds({ minStages: 1, groups: { one_day: { abandonShare: { max: 0.9 } } } }));
   const payloads = buildPayloads(res, renderReport(res), { mention: null });
   assert.equal(payloads.length, 1);
   assert.equal(payloads[0].content, undefined);
@@ -367,21 +360,35 @@ test("fetchRaw: pagineret og kun select; tom uge giver tomt resultat", async () 
 
 // ── main: konfiguration og leveringsfejl ─────────────────────────────────────
 
-test("main: manglende env og ugyldig taerskelfil giver exit 2 uden at sende", async () => {
+test("main: manglende env giver exit 2 uden at sende", async () => {
   const errs = [];
   const sent = [];
   const args = { now: NOW, errorLog: (s) => errs.push(s), fetchFn: async () => { sent.push(1); return { ok: true }; }, log: () => {} };
   assert.equal(await main({ ...args, env: {} }), 2);
   assert.match(errs[0], /mangler env/);
-  assert.deepEqual(missingEnv({ SUPABASE_URL: "x" }), ["SUPABASE_SERVICE_KEY", "ENGINE_GATE_THRESHOLDS_JSON", "DISCORD_OPS_WEBHOOK_URL"]);
-  assert.equal(await main({ ...args, env: { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: "{}", DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x" } }), 2);
+  assert.deepEqual(missingEnv({ SUPABASE_URL: "x" }), ["SUPABASE_SERVICE_KEY", "DISCORD_OPS_WEBHOOK_URL"]);
+  assert.equal(sent.length, 0);
+});
+
+test("main: manglende eller ugyldig private_config-raekke giver exit 2 uden at sende; laesefejl giver exit 3", async () => {
+  const errs = [];
+  const sent = [];
+  const args = { env: ENV, now: NOW, loadModules: async () => fakeModules(), errorLog: (s) => errs.push(s), fetchFn: async () => { sent.push(1); return { ok: true }; }, log: () => {} };
+  assert.equal(await main({ ...args, makeDb: () => fakeDb(oneDayRaw()) }), 2);
+  assert.match(errs.at(-1), /ikke sat/);
+  assert.equal(await main({ ...args, makeDb: () => fakeDb(oneDayRaw(), { thresholds: { groups: {} } }) }), 2);
+  assert.match(errs.at(-1), /ugyldig/);
+  assert.equal(await main({ ...args, makeDb: () => fakeDb(oneDayRaw(), { thresholds: { minStages: 1, groups: { gt: { crashShare: { max: 0.123456 } }, ukendt: {} } } }) }), 2);
+  assert.ok(!errs.join("\n").includes("0.123456"));
+  assert.equal(await main({ ...args, makeDb: () => fakeDb(oneDayRaw(), { thresholds: THRESHOLDS, configError: "hemmelig url https://x.supabase.co" }) }), 3);
+  assert.ok(!errs.join("\n").includes("supabase.co"));
   assert.equal(sent.length, 0);
 });
 
 test("main: datafejl giver exit 3 og logger ingen detaljer", async () => {
   const errs = [];
   const code = await main({
-    env: { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: THRESHOLDS_JSON, DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x" },
+    env: ENV,
     makeDb: () => { throw new Error("hemmelig url https://x.supabase.co"); },
     loadModules: async () => fakeModules(),
     errorLog: (s) => errs.push(s), log: () => {}, now: NOW,
@@ -391,8 +398,8 @@ test("main: datafejl giver exit 3 og logger ingen detaljer", async () => {
 });
 
 test("main: Discord-fejl giver exit 3; alt groent giver exit 0; dry-run sender intet", async () => {
-  const okEnv = { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: JSON.stringify({ weeklyEngineDrift: { minStages: 1, groups: { one_day: { abandonShare: { max: 0.9 } } } } }), DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x" };
-  const base = { now: NOW, makeDb: () => fakeDb(oneDayRaw()), loadModules: async () => fakeModules(), log: () => {}, errorLog: () => {} };
+  const okEnv = ENV;
+  const base = { now: NOW, makeDb: () => fakeDb(oneDayRaw(), { thresholds: { minStages: 1, groups: { one_day: { abandonShare: { max: 0.9 } } } } }), loadModules: async () => fakeModules(), log: () => {}, errorLog: () => {} };
   assert.equal(await main({ ...base, env: okEnv, fetchFn: async () => ({ ok: false }) }), 3);
   assert.equal(await main({ ...base, env: okEnv, fetchFn: async () => ({ ok: true }) }), 0);
   let n = 0;
@@ -403,8 +410,8 @@ test("main: Discord-fejl giver exit 3; alt groent giver exit 0; dry-run sender i
 
 test("main: WEEKLY_DRIFT_OUT uden for balance-internals afvises", async () => {
   const code = await main({
-    env: { SUPABASE_URL: "u", SUPABASE_SERVICE_KEY: "k", ENGINE_GATE_THRESHOLDS_JSON: THRESHOLDS_JSON, DISCORD_OPS_WEBHOOK_URL: "https://hook.invalid/x", WEEKLY_DRIFT_OUT: "rapport.md" },
-    makeDb: () => fakeDb(oneDayRaw()), loadModules: async () => fakeModules(), fetchFn: async () => ({ ok: true }), log: () => {}, errorLog: () => {}, now: NOW,
+    env: { ...ENV, WEEKLY_DRIFT_OUT: "rapport.md" },
+    makeDb: () => fakeDb(oneDayRaw(), { thresholds: THRESHOLDS }), loadModules: async () => fakeModules(), fetchFn: async () => ({ ok: true }), log: () => {}, errorLog: () => {}, now: NOW,
   });
   assert.equal(code, 2);
 });
@@ -425,8 +432,9 @@ function fakeModules() {
 }
 
 /** Minimal PostgREST-lignende klient: kun select, med in/eq/gte/lt/gt/order/range/limit. */
-function fakeDb(data) {
+function fakeDb(data, { thresholds, configError } = {}) {
   const tables = {
+    private_config: thresholds === undefined ? [] : [{ key: "weekly_engine_drift_thresholds", value: thresholds }],
     races: data.races ?? [],
     race_results: data.results ?? [],
     race_incidents: data.incidents ?? [],
@@ -449,6 +457,11 @@ function fakeDb(data) {
         order(col) { orderKeys.push(col); return q; },
         range(a, b) { rangeFrom = a; rangeTo = b; return q; },
         limit(n) { rangeFrom = 0; rangeTo = n - 1; return q; },
+        maybeSingle() {
+          if (configError && table === "private_config") return Promise.resolve({ data: null, error: { message: configError } });
+          const rows = (tables[table] ?? []).filter((r) => filters.every((f) => f(r)));
+          return Promise.resolve({ data: rows[0] ?? null, error: null });
+        },
         then(resolve) {
           let rows = (tables[table] ?? []).filter((r) => filters.every((f) => f(r)));
           for (const k of [...orderKeys].reverse()) rows = [...rows].sort((a, b) => (a[k] > b[k] ? 1 : a[k] < b[k] ? -1 : 0));
