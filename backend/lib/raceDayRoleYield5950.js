@@ -29,6 +29,7 @@
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { readConditionWriterFlag } from "./trainingDateConditionFlag.js";
 import { readPrivateConfigEntry } from "./privateConfig.ts";
+export { validateRaceDayRoleYieldParams } from "./raceDayRoleYieldParams.js";
 import { abilityMult, RACE_PROFILE_ABILITY_MAP } from "./dailyTraining.js";
 import { TRAINING_CONFIG } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
@@ -114,29 +115,6 @@ export function raceDayRoleAbilityGroups(profileType, group) {
   return { lead, support: uniq([...profileAbilities, extra].filter((a) => !lead.includes(a))) };
 }
 
-function isFiniteNumber(n) {
-  return typeof n === "number" && Number.isFinite(n);
-}
-
-/**
- * Validerer de private params. Ugyldigt = null (fail-safe: dagens model).
- *   stageBonus  tillaeggets stoerrelse
- *   leadShare   hvor meget af rollens tillaeg der lander i `lead`-evnerne
- */
-export function validateRaceDayRoleYieldParams(raw) {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-  const { stageBonus, leadShare } = raw;
-  if (!isFiniteNumber(stageBonus) || stageBonus < 0 || stageBonus > 5) return null;
-  if (!isFiniteNumber(leadShare) || leadShare <= 0 || leadShare > 1) return null;
-  return Object.freeze({ stageBonus, leadShare });
-}
-
-function parseParamsOrThrow(raw) {
-  const params = validateRaceDayRoleYieldParams(raw);
-  if (!params) throw new Error("opfylder ikke validateRaceDayRoleYieldParams");
-  return params;
-}
-
 /**
  * Flaget. Kun "on" (eller true) taender; "beta" laeses som off (live balance-
  * aendring uden skyggedata). strict = dato-afregningens atomare sti: en fejlet
@@ -159,7 +137,7 @@ export async function isRaceDayRoleYieldEnabled(supabase, { strict = false } = {
 export async function loadRaceDayRoleYield({ supabase, log = console, strict = false } = {}) {
   if (!(await isRaceDayRoleYieldEnabled(supabase, { strict }))) return null;
   const entry = await readPrivateConfigEntry(supabase, RACE_DAY_ROLE_YIELD_PARAMS_KEY, {
-    schema: parseParamsOrThrow, strict: false, log,
+    strict: false, log,
   });
   if (entry.status === "error" && strict) {
     throw new Error(`${LOG_TAG} ${RACE_DAY_ROLE_YIELD_PARAMS_KEY} read failed (strict) - refusing to settle, retry on next sweep`);
