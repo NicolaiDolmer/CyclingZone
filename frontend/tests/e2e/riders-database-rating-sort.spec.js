@@ -80,24 +80,26 @@ test.describe("Rytterdatabase Rating-kolonne er sorterbar (#4035)", () => {
     const ratingCells = page.locator("table tbody tr td:nth-child(5)");
     await expect(ratingCells).toHaveCount(3);
     // Uden sortering: API-arrival-orden (55, 20, 90) — ikke rating-orden.
-    await expect(ratingCells.nth(0)).toHaveText("55");
+    // #6853: cellen viser også bedste rolle ved tallet ("55 Sprint"), så kun
+    // tallet i starten af cellen sammenlignes.
+    await expect(ratingCells.nth(0)).toHaveText(/^55(?!\d)/);
 
     await page.screenshot({ path: evidenceShotPath("pr-screens/4035-riders-rating-before-sort-desktop.png"), fullPage: true });
 
     // ── Første klik: desc (default retning, samme som løn/værdi) ───────────
     await ratingHeader.click();
-    await expect(ratingCells.nth(0)).toHaveText("90");
-    await expect(ratingCells.nth(1)).toHaveText("55");
-    await expect(ratingCells.nth(2)).toHaveText("20");
+    await expect(ratingCells.nth(0)).toHaveText(/^90(?!\d)/);
+    await expect(ratingCells.nth(1)).toHaveText(/^55(?!\d)/);
+    await expect(ratingCells.nth(2)).toHaveText(/^20(?!\d)/);
     await expect(ratingHeader).toHaveAttribute("aria-sort", "descending");
 
     await page.screenshot({ path: evidenceShotPath("pr-screens/4035-riders-rating-sorted-desc-desktop.png"), fullPage: true });
 
     // ── Andet klik: vender til asc ──────────────────────────────────────────
     await ratingHeader.click();
-    await expect(ratingCells.nth(0)).toHaveText("20");
-    await expect(ratingCells.nth(1)).toHaveText("55");
-    await expect(ratingCells.nth(2)).toHaveText("90");
+    await expect(ratingCells.nth(0)).toHaveText(/^20(?!\d)/);
+    await expect(ratingCells.nth(1)).toHaveText(/^55(?!\d)/);
+    await expect(ratingCells.nth(2)).toHaveText(/^90(?!\d)/);
     await expect(ratingHeader).toHaveAttribute("aria-sort", "ascending");
 
     await page.screenshot({ path: evidenceShotPath("pr-screens/4035-riders-rating-sorted-asc-desktop.png"), fullPage: true });

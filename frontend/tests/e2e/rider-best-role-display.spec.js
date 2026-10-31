@@ -1,16 +1,12 @@
-// #5435 (D-049, model A) — rating = "bedste rolle nu" + badge "Natural role",
-// bag app_config-kontakten rider_best_role_display.
+// #5435 (D-049, model A) — rating = "bedste rolle nu" + badge "Natural role".
+// #6853: app_config-kontakten rider_best_role_display er fjernet; visningen
+// er den eneste, så testen kører uden flag-mock.
 //
-// Kontakten kommer fra GET /api/display-flags. Playwright-mocken svarer OFF
-// (mockHandlers.js), så alle eksisterende specs og snapshots viser dagens
-// visning; her tændes den med en egen route på /api/display-flags.
-//
-// Testen beviser tre ting:
-//   1. OFF er uændret: rating = egen rolle, kolonnen hedder "Type".
-//   2. ON: rating = max over de otte roller + rollenavnet ved tallet, typen
+// Testen beviser to ting:
+//   1. Rating = max over de otte roller + rollenavnet ved tallet, typen
 //      hedder "Natural role", og "Best role now" kan filtreres.
-//   3. ON på rytterprofilen: "Best role now" i heroen, "Natural"-etiket i
-//      badget og intet loft-tal (ejer 21/9).
+//   2. Rytterprofilen: "Best role now" i heroen, "Natural"-etiket i badget og
+//      intet loft-tal (ejer 21/9).
 import { test, expect } from "./e2e-base.js";
 import { installNetworkMocks, login, stabilizePage, json, corsHeaders, collectBrowserErrors, evidenceShotPath } from "./fixtures.js";
 import { ratingForRole } from "../../src/lib/generated/displayRecipes.js";
@@ -76,38 +72,16 @@ async function mockRiders(page) {
   });
 }
 
-// Kontakten styres af serverens svar på GET /api/display-flags. Senest
-// registrerede route vinder over installNetworkMocks' generiske /api/**-mock.
-async function setup(page, { on }) {
+async function setup(page) {
   await stabilizePage(page);
   await installNetworkMocks(page);
-  await page.route("**/api/display-flags", route => {
-    const request = route.request();
-    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
-    return json(route, { rider_best_role_display: on });
-  });
 }
 
-test.describe("Rytterdatabase: rating = bedste rolle nu bag kontakten (#5435)", () => {
-  test("kontakt OFF: dagens visning — egen rolle, kolonnen hedder Type", async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== "desktop-chromium", "Tabel-kolonnerne er kun egne kolonner på desktop.");
-    await setup(page, { on: false });
-    await mockRiders(page);
-    await login(page);
-    await page.goto("/riders");
-    await expect(page.getByRole("heading", { name: /Rider Database|Rytterdatabase/ })).toBeVisible();
-
-    const row = page.locator("table tbody tr", { hasText: "Climbnow" });
-    await expect(row).toBeVisible();
-    await expect(row.locator("td:nth-child(5)")).toHaveText(String(ratingForRole(CLIMBER_NOW, "sprinter")));
-    await expect(page.locator("[data-best-role]")).toHaveCount(0);
-    await expect(page.getByRole("columnheader", { name: NATURAL_ROLE })).toHaveCount(0);
-  });
-
-  test("kontakt ON: bedste rolle nu + rollenavn, Natural role-kolonne og filter", async ({ page }, testInfo) => {
+test.describe("Rytterdatabase: rating = bedste rolle nu (#5435)", () => {
+  test("bedste rolle nu + rollenavn, Natural role-kolonne og filter", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop-chromium", "Tabel-kolonnerne er kun egne kolonner på desktop.");
     const { pageErrors, consoleErrors } = collectBrowserErrors(page, testInfo, { consoleNoise: CONSOLE_NOISE });
-    await setup(page, { on: true });
+    await setup(page);
     await mockRiders(page);
     await login(page);
     await page.goto("/riders");
@@ -156,9 +130,9 @@ test.describe("Rytterdatabase: rating = bedste rolle nu bag kontakten (#5435)", 
   });
 });
 
-test.describe("Rytterprofil + Mit hold bag kontakten (#5435)", () => {
-  test("kontakt ON: hero viser Best role now + rolle, badget er Natural, intet loft-tal", async ({ page }, testInfo) => {
-    await setup(page, { on: true });
+test.describe("Rytterprofil + Mit hold (#5435)", () => {
+  test("hero viser Best role now + rolle, badget er Natural, intet loft-tal", async ({ page }, testInfo) => {
+    await setup(page);
     await login(page);
     await page.goto("/riders/rider-1");
     await expect(page.getByText(BEST_ROLE_NOW).first()).toBeVisible();
@@ -168,18 +142,9 @@ test.describe("Rytterprofil + Mit hold bag kontakten (#5435)", () => {
     await page.screenshot({ path: evidenceShotPath(`pr-screens/5435-profile-best-role-on-${testInfo.project.name}.png`), fullPage: true });
   });
 
-  test("kontakt OFF: hero hedder Rating, ingen Natural-etiket", async ({ page }) => {
-    await setup(page, { on: false });
-    await login(page);
-    await page.goto("/riders/rider-1");
-    await expect(page.getByText(/^Rating$/).first()).toBeVisible();
-    await expect(page.getByTestId("rider-hero-best-role")).toHaveCount(0);
-    await expect(page.getByTestId("rider-type-natural-label")).toHaveCount(0);
-  });
-
-  test("kontakt ON: Mit hold har Natural role-kolonne og rollen ved ratingen", async ({ page }, testInfo) => {
+  test("Mit hold har Natural role-kolonne og rollen ved ratingen", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "desktop-chromium", "Trup-tabellens kolonner er kun egne kolonner på desktop.");
-    await setup(page, { on: true });
+    await setup(page);
     await login(page);
     await page.goto("/team");
     await expect(page.getByRole("columnheader", { name: NATURAL_ROLE }).first()).toBeVisible();
