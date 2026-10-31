@@ -283,12 +283,17 @@ test("#6641: gevinsten overlever nedkoerselsfinalens genberegnede underskud (dag
 });
 
 // #7332 (ejer 31/10 valg A, SLUKKET): spar mod uret koster tid. Knappen og kontakten.
-test("#7332: kontakten er SLUKKET; slukket er spar-prisen 0 for alle trin og revisioner", () => {
-  assert.equal(SAVE_ITT_7332_ACTIVE, false, "taend kraever ejerens ordrette go i en egen PR");
-  assert.equal(saveItt7332Active(), false);
+test("#7332: kontakten er TAENDT (ejer-go 31/10); slukket er spar-prisen 0 for alle trin og revisioner", () => {
+  assert.equal(SAVE_ITT_7332_ACTIVE, true, "ejer-go 31/10");
+  assert.equal(saveItt7332Active(), true);
   assert.ok(Object.isFrozen(SAVE_ITT_7332_TUNING));
-  for (const revision of [...RACE_RULES_REVISIONS, null, undefined]) {
-    assert.equal(isSaveItt7332On(revision), false, String(revision));
+  setSaveItt7332ForBench({ active: false });
+  try {
+    for (const revision of [...RACE_RULES_REVISIONS, null, undefined]) {
+      assert.equal(isSaveItt7332On(revision), false, String(revision));
+    }
+  } finally {
+    setSaveItt7332ForBench(null);
   }
   for (const effort of ["grupetto", "save", "normal", "protect", "all_out"] as EffortLevel[]) {
     assert.equal(saveTimeTrialPenalty7332(effort, 99, false), 0, effort);

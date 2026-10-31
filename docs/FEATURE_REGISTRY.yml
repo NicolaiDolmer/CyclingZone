@@ -234,6 +234,16 @@ features:
     verified: 2026-10-27
     note: Kodekontakt ALL_OUT_7280_ACTIVE tændt 27/10 efter ejer-go (#7311), kun v3.
 
+  - id: race-itt-save-7332
+    area: race-engine
+    title_en: Saving effort in individual time trials
+    title_da: Spar på enkeltstart
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7332
+    verified: 2026-10-31
+    note: Kodekontakt SAVE_ITT_7332_ACTIVE tændt 31/10 efter ejer-go; vælgeren viser kun tre trin på enkeltstart.
+
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper

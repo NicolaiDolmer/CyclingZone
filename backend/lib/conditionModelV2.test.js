@@ -165,7 +165,8 @@ test('#7332: spar/beskyt/grupetto paa enkeltstart faar flad-etapens spar-rabat; 
   const { setSaveItt7332ForBench, SAVE_ITT_7332_ACTIVE } = await import('./engine/v4/mechanics/effortCost.ts');
   const V3 = 's5_profiles_v3';
   const load = (effort, profileType, rulesRevision = V3) => stageLoadV2({ profileType, distanceKm: 30, effort, rulesRevision });
-  assert.equal(SAVE_ITT_7332_ACTIVE, false, 'taend kraever ejerens ordrette go i en egen PR');
+  assert.equal(SAVE_ITT_7332_ACTIVE, true, 'ejer-go 31/10');
+  setSaveItt7332ForBench({ active: false });
   // Slukket: som main, hvor enkeltstarter ignorerer indsatsen (spar = normal).
   for (const profileType of ['itt', 'itt_hilly', 'ttt']) {
     for (const effort of ['save', 'protect', 'grupetto']) {
@@ -200,7 +201,7 @@ test('#7332: spar/beskyt/grupetto paa enkeltstart faar flad-etapens spar-rabat; 
   } finally {
     setSaveItt7332ForBench(null);
   }
-  assert.equal(load('save', 'itt'), load('normal', 'itt'), 'nulstillet = slukket');
+  assert.ok(load('save', 'itt') < load('normal', 'itt'), 'nulstillet = kontakten (taendt 31/10)');
 });
 
 // #6641/#7280: Alt ud-pakkens traethedspris (slukket kontakt; dev-bench-setteren taender den).

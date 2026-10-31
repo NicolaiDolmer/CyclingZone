@@ -714,14 +714,14 @@ function mixedEffortField(): Entrant[] {
   return field(40).map((e, i) => ({ ...e, effort: efforts[i % efforts.length] }));
 }
 
-test("#7332: kontakten er SLUKKET; slukket er enkeltstarten uaendret for alle trin (ogsaa paa v3)", () => {
-  assert.equal(SAVE_ITT_7332_ACTIVE, false, "taend kraever ejerens ordrette go i en egen PR");
+test("#7332: kontakten er TAENDT (ejer-go 31/10); slukket er enkeltstarten uaendret for alle trin (ogsaa paa v3)", () => {
+  assert.equal(SAVE_ITT_7332_ACTIVE, true, "ejer-go 31/10");
   for (const [profileType, segs] of ITT_ROUTES_7332) {
     for (const rev of ALL_REVISIONS) {
       const base = input({ route: route(profileType, segs), startlist: mixedEffortField(), seed: "itt-7332-off", rules_revision: rev as StageInput["rules_revision"] });
-      const off = simulateStageV4(base);
-      assert.deepEqual(withSaveItt7332(false, () => simulateStageV4(base)), off, `${profileType}/${String(rev)}: slukket = default`);
+      const off = withSaveItt7332(false, () => simulateStageV4(base));
       if (rev !== V3) {
+        assert.deepEqual(simulateStageV4(base), off, `${profileType}/${String(rev)}: aeldre revisioner uroert med kontakten taendt`);
         assert.deepEqual(withSaveItt7332(true, () => simulateStageV4(base)), off, `${profileType}/${String(rev)}: aeldre revisioner uroert ogsaa taendt`);
       }
     }

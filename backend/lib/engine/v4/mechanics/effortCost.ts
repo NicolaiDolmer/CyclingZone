@@ -193,15 +193,15 @@ export function allOutTimeTrialBonus7280(effort: EffortLevel | undefined, timeTr
   return allOut7280Tuning().timeTrialGain * level;
 }
 
-// #7332 (SLUKKET, ejer-go kraeves foer taend; ejer-beslutning 31/10 valg A): 'Spar' paa en
+// #7332 (TAENDT 31/10 paa ejerens go, fradrag 0.15; ejer-beslutning 31/10 valg A): 'Spar' paa en
 // ENKELTSTART (itt, itt_hilly; ikke ttt) koster tid og sparer traethed, som i virkeligheden.
 // 'Beskyt' og 'grupetto' koerer som 'spar' mod uret (der er intet hold at beskytte og ingen
 // grupetto). Normal og Alt ud er uaendrede. Kun under s5_profiles_v3 (isSaveItt7332On).
 //   Tid:      kapaciteten faar et fradrag, der vokser med tidskoersels-evnen (spejl af
 //             allOutTimeTrialBonus7280), og kravet regnes som 'spar' (individualTimeTrial.ts).
 //   Traethed: belastningen faar spar-rabatten fra en FLAD etape (conditionModelV2.stageLoadV2).
-// Slukket er motor og traethed bit-identiske med main. Taend = ejerens ordrette go i en egen PR.
-export const SAVE_ITT_7332_ACTIVE: boolean = false;
+// Slukket er motor og traethed bit-identiske med main foer #7332.
+export const SAVE_ITT_7332_ACTIVE: boolean = true; // ejer-go 31/10, #7332
 
 /** Knappen bag pakken (balance, hard rule 17: maalinger kun i balance-internals/). */
 export type SaveItt7332Tuning = {
