@@ -8,7 +8,7 @@ import {
   validateDevelopmentCurveBParams,
 } from "./developmentCurveB.ts";
 import {
-  DEVELOPMENT_CURVE_B_FLAG_KEY, DEVELOPMENT_CURVE_B_PARAMS_ENV, DEVELOPMENT_CURVE_B_PARAMS_KEY, curveBParamsFromEnv,
+  DEVELOPMENT_CURVE_B_FLAG_KEY, DEVELOPMENT_CURVE_B_PARAMS_KEY,
   isDevelopmentCurveBEnabled, loadDevelopmentCurveB,
 } from "./developmentCurveBFlag.ts";
 import { clearPrivateConfigCache } from "./privateConfig.ts";
@@ -25,7 +25,7 @@ const capTickGainsPerDate = engine.capTickGainsPerDate as unknown as AnyFn;
 import { STAGE_FLAGS } from "./stageFlagCatalog.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
-// Fast ur: tests laeser aldrig vaegur-tid (AGENTS.md), heller ikke cache og reserve-advarsel.
+// Fast ur: tests laeser aldrig vaegur-tid (AGENTS.md), heller ikke cachen.
 const FIXED_NOW = () => 1_700_000_000_000;
 
 const RAW = {
@@ -234,53 +234,65 @@ test("flag: nøglen står i stage-kataloget; kun on tænder", async () => {
   assert.equal(await isDevelopmentCurveBEnabled(curveClient({ flag: "on" })), true);
 });
 
-test("#7390: params læses fra private_config først; reserven kun når rækken mangler", async () => {
+// #7390: den tidligere Railway-reserve. Miljøet må aldrig læses længere.
+const RETIRED_RESERVE_ENV = "DEVELOPMENT_CURVE_B_PARAMS";
+async function withRetiredReserveSet<T>(fn: () => Promise<T>): Promise<T> {
+  const prev = process.env[RETIRED_RESERVE_ENV];
+  process.env[RETIRED_RESERVE_ENV] = JSON.stringify(RAW);
+  try {
+    return await fn();
+  } finally {
+    if (prev === undefined) delete process.env[RETIRED_RESERVE_ENV];
+    else process.env[RETIRED_RESERVE_ENV] = prev;
+  }
+}
+
+test("#7390: params læses KUN fra private_config; Railway-variablen ignoreres", async () => {
   clearPrivateConfigCache();
   const warnings: string[] = [];
   const log = { warn: (m: string) => { warnings.push(m); } };
-  const envOther = { [DEVELOPMENT_CURVE_B_PARAMS_ENV]: JSON.stringify({ ...RAW, rate: RAW.rate * 2 }) };
-  // Tabellen vinder over reserven.
-  assert.deepEqual(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: RAW }), env: envOther, log }), PARAMS);
+  // Tabellen giver kurven, uden advarsel.
+  assert.deepEqual(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: RAW }), log }), PARAMS);
   assert.equal(warnings.length, 0, "ingen advarsel når tabellen bruges");
-  // Rækken mangler: reserven bruges og det logges (uden tal).
-  const env = { [DEVELOPMENT_CURVE_B_PARAMS_ENV]: JSON.stringify(RAW) };
-  assert.deepEqual(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on" }), env, log }), PARAMS);
+  // Rækken mangler: dagens model + advarsel, også når den gamle variabel stadig står i miljøet.
+  const missing = await withRetiredReserveSet(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on" }), log }));
+  assert.equal(missing, null, "den gamle Railway-variabel bruges aldrig");
   assert.equal(warnings.length, 1);
-  assert.match(warnings[0], /reserve/);
-  // Ugyldig række: aldrig reserven, dagens model + advarsel.
-  const invalidLog = { warn: (m: string) => { warnings.push(m); } };
-  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: { ...RAW, rate: -1 } }), env, log: invalidLog }), null);
+  assert.ok(warnings[0].includes("[curve-b]") && warnings[0].includes(DEVELOPMENT_CURVE_B_PARAMS_KEY), "aldrig tavst tilbage til dagens model");
+  assert.ok(!/reserve/i.test(warnings[0]), "advarslen nævner ikke en reserve, der ikke findes");
+  // Ugyldig række: dagens model + advarsel (fra privateConfig og fra kurven).
+  const invalid = await withRetiredReserveSet(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: { ...RAW, rate: -1 } }), log }));
+  assert.equal(invalid, null);
   assert.ok(warnings.some((w) => w.includes(DEVELOPMENT_CURVE_B_PARAMS_KEY) && w.includes("ugyldig")));
-  // Hverken tabel eller reserve: dagens model + advarsel.
-  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on" }), env: {}, log }), null);
-  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on" }), env: { [DEVELOPMENT_CURVE_B_PARAMS_ENV]: "{" }, log }), null);
   assert.ok(warnings.every((w) => !/\d/.test(w)), "tallene logges aldrig");
-  assert.equal(curveBParamsFromEnv({ [DEVELOPMENT_CURVE_B_PARAMS_ENV]: JSON.stringify({ ...RAW, rate: -1 }) }), null);
 });
 
 test("#7390: flag off = intet opslag i private_config", async () => {
   for (const flag of ["off", "beta", undefined]) {
     const client = curveClient({ flag, params: RAW });
-    assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: client, env: {}, log: { warn: () => {} } }), null);
+    assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: client, log: { warn: () => {} } }), null);
     assert.ok(!client.reads.some((r) => r.startsWith("private_config")), `flag ${String(flag)}: ${client.reads.join(",")}`);
   }
 });
 
 test("flag: strict (loebsdags-datoens atomare sti) kaster ved DB-fejl; ikke-strict falder tilbage til dagens model", async () => {
   clearPrivateConfigCache();
-  const env = { [DEVELOPMENT_CURVE_B_PARAMS_ENV]: JSON.stringify(RAW) };
-  const log = { warn: () => {} };
+  const warnings: string[] = [];
+  const log = { warn: (m: string) => { warnings.push(m); } };
   const flagFails = curveClient({ flagError: "timeout" });
-  await assert.rejects(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: flagFails, env, log, strict: true }), /timeout/);
-  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: flagFails, env, log }), null);
-  // #7390: private_config-fejl kaster på strict; uden strict bruges reserven.
-  await assert.rejects(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", privateError: "timeout" }), env, log, strict: true }), /timeout/);
-  assert.deepEqual(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", privateError: "timeout" }), env, log }), PARAMS);
+  await assert.rejects(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: flagFails, log, strict: true }), /timeout/);
+  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: flagFails, log }), null);
+  // #7390: private_config-fejl kaster på strict; uden strict = dagens model + advarsel (ingen reserve).
+  await assert.rejects(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", privateError: "timeout" }), log, strict: true }), /timeout/);
+  warnings.length = 0;
+  const loose = await withRetiredReserveSet(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", privateError: "timeout" }), log }));
+  assert.equal(loose, null, "en ulæselig række bruger aldrig den gamle Railway-variabel");
+  assert.ok(warnings.some((w) => w.includes("[private-config]")), "læsefejlen logges");
+  assert.ok(warnings.some((w) => w.includes("[curve-b]")), "faldet til dagens model logges");
   // #7390: en ugyldig række kaster på strict (motoren committer ikke dagens model på en tick der ikke kan genkøres).
-  await assert.rejects(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: {} }), env, log, strict: true }), /ugyldig/);
+  await assert.rejects(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: {} }), log, strict: true }), /ugyldig/);
   // Strict aendrer ikke den dokumenterede fallback: slukket flag og manglende params = dagens model.
-  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "off" }), env, log, strict: true }), null);
-  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on" }), env: {}, log, strict: true }), null);
-  assert.deepEqual(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on" }), env, log, strict: true }), PARAMS);
-  assert.deepEqual(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: RAW }), env: {}, log, strict: true }), PARAMS);
+  assert.equal(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "off" }), log, strict: true }), null);
+  assert.equal(await withRetiredReserveSet(() => loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on" }), log, strict: true })), null);
+  assert.deepEqual(await loadDevelopmentCurveB({ now: FIXED_NOW, supabase: curveClient({ flag: "on", params: RAW }), log, strict: true }), PARAMS);
 });
