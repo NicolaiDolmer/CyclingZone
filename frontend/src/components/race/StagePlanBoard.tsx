@@ -6,7 +6,8 @@
 // Hver rytter har en kort kaede af opgaver. Desktop: en raekke pr. rytter med
 // kaeden og "Aendr"; editoren folder ud under raekken. Mobil: kaeden paa én linje,
 // et tryk aabner editoren. Assistentens forslag staar stiplet indtil manageren
-// trykker "Brug assistentens plan" (de fleste goer bare det). Fanens guldknap
+// trykker "Brug assistentens plan" (de fleste goer bare det); #7369: med et maerke og
+// en kort grund, saa forslaget aldrig ligner et valg. Fanens guldknap
 // ("Gem etape N") gemmer planen sammen med resten; denne komponent har ingen
 // guldknap.
 //
@@ -20,7 +21,7 @@ import { authHeaders } from "../../lib/supabase";
 import { apiFetch } from "../../lib/apiFetch.ts";
 import { waypointsFor } from "../../lib/stageRouteProfile.js";
 import SortableTh from "../ui/SortableTh.jsx";
-import { Button, CheckIcon, ChevronRightIcon, LockIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
+import { Button, CheckIcon, ChevronRightIcon, LockIcon, MessageIcon, MinusIcon, PlusIcon, Select, XIcon } from "../ui/index.js";
 import {
   clearRiderPlan,
   fallbackOrderKeys,
@@ -37,6 +38,7 @@ import {
   stagePlanSwitchNotes,
   stagePlanSwitchNoteText,
   suggestStagePlan,
+  suggestionReasonKey,
   taskOptions,
   triggerKey,
   triggerOptions,
@@ -86,6 +88,19 @@ function TaskChip({ t, task, dashed = false, compact = false }: { t: TFn; task: 
       } ${dashed ? "border-dashed border-cz-border text-cz-3" : "border-cz-border bg-cz-subtle text-cz-1"}`}
     >
       {compact ? <span className="truncate">{t(`stagePlan.task.${task}`)}</span> : t(`stagePlan.task.${task}`)}
+    </span>
+  );
+}
+
+/** #7369: maerket der skiller assistentens forslag fra spillerens eget valg. */
+function SuggestionBadge({ t }: { t: TFn }) {
+  return (
+    <span
+      data-testid="stage-plan-suggestion-badge"
+      className="inline-flex items-center gap-1 rounded-cz border border-dashed border-cz-border px-1.5 py-0.5 text-3xs font-medium text-cz-2 whitespace-nowrap shrink-0"
+    >
+      <MessageIcon size={11} aria-hidden="true" />
+      {t("stagePlan.suggestion")}
     </span>
   );
 }
@@ -146,9 +161,9 @@ function PlanRecap({ t, legs, route, events, riderId }: { t: TFn; legs: StagePla
 }
 
 /** Editoren for én rytter: ét trin pr. linje, kun gyldige valg. */
-function PlanEditor({ t, riderName, legs, role, route, suggestion, disabled, onChange, onClear }: {
+function PlanEditor({ t, riderName, legs, role, route, suggestion, showsSuggestion = false, reasonKey = null, disabled, onChange, onClear }: {
   t: TFn; riderName?: string | null; legs: StagePlanLeg[]; role: StagePlanRole; route: StagePlanRoute;
-  suggestion: StagePlanLeg[] | null; disabled: boolean; onChange: (legs: StagePlanLeg[]) => void; onClear: () => void;
+  suggestion: StagePlanLeg[] | null; showsSuggestion?: boolean; reasonKey?: string | null; disabled: boolean; onChange: (legs: StagePlanLeg[]) => void; onClear: () => void;
 }) {
   const addable = nextLeg(legs, role, route);
   return (
@@ -157,6 +172,13 @@ function PlanEditor({ t, riderName, legs, role, route, suggestion, disabled, onC
         <span className="text-xs font-semibold text-cz-1">{t("stagePlan.editTitle", { name: riderName || "—" })}</span>
         <span className="text-3xs text-cz-3 whitespace-nowrap">{t("stagePlan.effortNote")}</span>
       </div>
+      {/* #7369: uden gemt plan staar forslaget i felterne; sig det, saa det ikke ligner et valg. */}
+      {showsSuggestion && (
+        <div className="px-3.5 py-2 border-b border-cz-border flex flex-wrap items-center gap-x-2 gap-y-1">
+          <SuggestionBadge t={t} />
+          {reasonKey && <span className="text-3xs text-cz-2">{t(reasonKey)}</span>}
+        </div>
+      )}
       <ol>
         {legs.map((leg, i) => {
           const tasks = taskOptions(legs, i, role, route);
@@ -394,16 +416,20 @@ export default function StagePlanBoard({
       );
     }
     const suggestion = suggestionFor(rider);
+    // #7369: forslaget har sit eget maerke og en kort grund, saa det ikke ligner et valg.
+    const reasonKey = suggestionReasonKey(suggestion, role, isLuxuryHelperRole(roleFor(rider)));
     return (
       <>
         {suggestion && (
-          <span className={`flex items-center gap-1.5 ${compact ? "min-w-0" : ""}`}>
-            {compact
-              ? <span className="sr-only">{t("stagePlan.suggestion")}</span>
-              : <span className="text-3xs uppercase tracking-wider text-cz-3 shrink-0">{t("stagePlan.suggestion")}</span>}
-            <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} />
+          // Mobil: maerket paa sin egen linje, saa kaeden beholder hele bredden.
+          <span className={compact ? "flex min-w-0 flex-col items-start gap-1" : "flex flex-wrap items-center gap-1.5"}>
+            <SuggestionBadge t={t} />
+            <span className={compact ? "flex w-full min-w-0" : "contents"}>
+              <PlanChain t={t} legs={suggestion} route={route} dashed compact={compact} />
+            </span>
           </span>
         )}
+        {suggestion && reasonKey && <p className="mt-1 text-3xs text-cz-2">{t(reasonKey)}</p>}
         {/* Mobil: kun naar han koerer paa egne valg (ellers fylder forslaget linjen). */}
         {(!compact || hasOwnOrders(rider) || isLuxuryHelperRole(roleFor(rider))) && <p className="mt-1 text-3xs text-cz-3">{noPlanText(rider, false)}</p>}
       </>
@@ -413,7 +439,8 @@ export default function StagePlanBoard({
   function renderEditor(rider: PlanRider) {
     const role = planRole(roleFor(rider));
     const suggestion = suggestionFor(rider);
-    const legs = planByRider.get(rider.rider_id) ?? suggestion ?? [];
+    const saved = planByRider.get(rider.rider_id);
+    const legs = saved ?? suggestion ?? [];
     if (!legs.length) return null;
     return (
       <PlanEditor
@@ -423,6 +450,8 @@ export default function StagePlanBoard({
         role={role}
         route={route}
         suggestion={suggestion}
+        showsSuggestion={!saved}
+        reasonKey={suggestionReasonKey(suggestion, role, isLuxuryHelperRole(roleFor(rider)))}
         disabled={saving}
         onChange={(next) => setPlan(rider.rider_id, next)}
         onClear={() => { onChangeOrder((o) => clearRiderPlan(o, rider.rider_id, roleDefaultFor?.(rider.rider_id))); setOpenId(null); }}

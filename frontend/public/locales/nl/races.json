@@ -4,6 +4,18 @@
     "help": "Elke renner krijgt een kort plan langs het parcours. De taak wisselt bij een klim, in de laatste 10 km of als hij gelost wordt.",
     "useAssistant": "Gebruik het plan van de assistent",
     "suggestion": "Voorstel",
+    "suggestionReason": {
+      "followLastClimb": "Spaart zich en volgt de besten op de laatste klim van de dag. Aanvallen is jouw keuze.",
+      "leaderFinal": "Spaart zich en rijdt voor een uitslag in de laatste 10 km. Aanvallen is jouw keuze.",
+      "ownResult": "Rijdt zijn eigen koers voor een uitslag.",
+      "breakaway": "Probeert mee te gaan in de vlucht.",
+      "sprintTrain": "Je sprintkopman heeft een trein nodig in de laatste 10 km.",
+      "sprinter": "Spaart zich voor de finale.",
+      "sprinterMountain": "Bergrit: hij spaart zich en rijdt binnen met het gruppetto.",
+      "helperClimb": "Werkt voor de kopman en maakt tempo op de laatste klim van de dag.",
+      "helper": "Werkt de hele dag voor de kopman.",
+      "luxuryHelper": "Luxeknecht: maakt tempo voor de kopman op de beslissende klim."
+    },
     "noPlan": "Nog geen plan. Hij rijdt volgens zijn rol.",
     "noPlanLocked": "Geen plan. Hij reed volgens zijn rol.",
     "noPlanOrders": "Nog geen plan. Hij rijdt op wat je instelde: {orders}.",

@@ -4,6 +4,18 @@
     "help": "Chaque coureur a un court plan le long du parcours. La tâche change à une montée, dans les 10 derniers km ou quand il est lâché.",
     "useAssistant": "Utiliser le plan de l'assistant",
     "suggestion": "Suggestion",
+    "suggestionReason": {
+      "followLastClimb": "Il s'économise et suit les meilleurs dans la dernière montée du jour. Attaquer, c'est ton choix.",
+      "leaderFinal": "Il s'économise et court pour un résultat dans les 10 derniers km. Attaquer, c'est ton choix.",
+      "ownResult": "Il court pour son propre résultat.",
+      "breakaway": "Il tente de prendre l'échappée.",
+      "sprintTrain": "Ton leader sprint a besoin d'un train dans les 10 derniers km.",
+      "sprinter": "Il s'économise pour le final.",
+      "sprinterMountain": "Étape de montagne : il s'économise et rentre avec le gruppetto.",
+      "helperClimb": "Il roule pour le leader et imprime le tempo dans la dernière montée du jour.",
+      "helper": "Il roule pour le leader toute la journée.",
+      "luxuryHelper": "Équipier de luxe : il imprime le tempo pour le leader dans la montée décisive."
+    },
     "noPlan": "Pas encore de plan. Il court selon son rôle.",
     "noPlanLocked": "Pas de plan. Il a couru selon son rôle.",
     "noPlanOrders": "Pas encore de plan. Il court avec tes consignes : {orders}.",
