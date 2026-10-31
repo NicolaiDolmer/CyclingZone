@@ -399,7 +399,7 @@ export function clearRiderPlan<T extends Order>(order: T, riderId: string, roleD
 // stigning/sektor praecis dér; nedkoerslen deles aldrig.
 //
 // Kopien af kontakten SKAL vaere den samme som motorens (finalKmBoundary7383.test.ts).
-export const FINAL_KM_BOUNDARY_7383_ACTIVE = false;
+export const FINAL_KM_BOUNDARY_7383_ACTIVE = true; // ejer-go 31/10
 
 export type StagePlanFeature = { kind: "climb" | "sector" | "descent"; from_km: number; to_km: number };
 export type StagePlanSwitchNote =

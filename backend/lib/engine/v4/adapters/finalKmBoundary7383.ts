@@ -36,7 +36,7 @@
 //     en etape der ikke havde et, og flytter det aldrig ind midt i en stigning/sektor.
 //     Er det delte stykke selv angrebs-segmentet, sker angrebet paa halen (samme slut-km).
 // Slukket (eller under en aeldre revision) er ruten det SAMME objekt: motoren er
-// bit-identisk med main. Taend = ejerens ordrette go i en egen PR; frontendens kopi
+// bit-identisk med main. TAENDT 31/10 paa ejerens go; frontendens kopi
 // (StagePlanModel.ts FINAL_KM_BOUNDARY_7383_ACTIVE) flippes i samme PR
 // (finalKmBoundary7383.test.ts kraever at de to er ens).
 //
@@ -47,7 +47,7 @@ import { STAGE_PLAN_FINAL_KM } from "../../../stagePlan.ts";
 import { isS5ProfilesV3OrLater } from "../../../raceEngineRulesRevision.ts";
 import type { RouteV2, Segment } from "../types.ts";
 
-export const FINAL_KM_BOUNDARY_7383_ACTIVE: boolean = false;
+export const FINAL_KM_BOUNDARY_7383_ACTIVE: boolean = true; // ejer-go 31/10, #7383
 
 let benchOverride7383: boolean | null = null;
 /** KUN tests og dev-benches: taend/sluk kontakten. `null` nulstiller. Produktionskode kalder aldrig setteren. */

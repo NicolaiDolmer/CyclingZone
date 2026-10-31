@@ -254,6 +254,16 @@ features:
     verified: 2026-10-31
     note: Kodekontakt DESCENT_TASK_7380_ACTIVE tændt 31/10 efter ejer-go, kun v3.
 
+  - id: race-final-km-boundary-7383
+    area: race-engine
+    title_en: Stage plan switches exactly 10 km from the finish
+    title_da: Etapeplanens skift præcis 10 km fra mål
+    state: live
+    ssot: docs/RACE_ENGINE_RULES.md
+    epic: 7383
+    verified: 2026-10-31
+    note: Kodekontakt FINAL_KM_BOUNDARY_7383_ACTIVE tændt 31/10 efter ejer-go (motor og taktikside), kun v3.
+
   - id: luxury-helper-role
     area: race-engine
     title_en: Luxury helper
