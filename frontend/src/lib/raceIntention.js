@@ -122,6 +122,7 @@ export function setIntention({ matrix, stageNumber, riderId, effort }) {
  * dem med stage_roles_rider_abandoned).
  * #7332: er MÅL-etapen en enkeltstart (`toProfileType`), lander grupetto/protect
  * som "save" — en enkeltstart får aldrig de to trin via kopien.
+ * @param {{ matrix: any, fromStage: any, toStage: any, riders: any, toProfileType?: string|null }} args
  */
 export function copyStageIntentions({ matrix, fromStage, toStage, riders, toProfileType = null }) {
   const source = matrix?.[fromStage];

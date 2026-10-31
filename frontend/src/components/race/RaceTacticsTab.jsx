@@ -536,6 +536,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const saving = status === "saving";
   const activeMeta = stageList.find((s) => s.stage_number === activeStage) ?? { locked: false, scheduled_at: null };
   const stageLocked = activeMeta.locked;
+  /** #7332: etapens profiltype (null for en ukendt/uvalgt etape). */
+  const profileTypeOfStage = (stageNumber) => (stageNumber == null ? null : profileByStage[stageNumber]?.profile_type ?? null);
   const order = ordersByStage[activeStage] ?? orderForStage(orders, activeStage, profileByStage[activeStage]?.profile_type);
   const initialOrder = initialOrdersByStage[activeStage];
   const ordersDirty = JSON.stringify(order) !== JSON.stringify(initialOrder);
@@ -572,7 +574,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   function copyToNextStage() {
     if (nextStage == null) return;
     // #7332: en enkeltstart som maal faar aldrig grupetto/protect (bliver Kør roligt).
-    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders, toProfileType: profileByStage[nextStage]?.profile_type }));
+    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders, toProfileType: profileTypeOfStage(nextStage) }));
     // Ordrerne kopieres med: "kopiér til etape N+1" skal flytte HELE dagens
     // plan, ikke halvdelen af den. Etapen der kopieres TIL skal stadig gemmes
     // selv (den er en anden etapes PUT).
@@ -631,7 +633,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // spilleren faktisk kunne se og røre.
       // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
       // #7003: med etapeplanen foelger indsatsen opgaven (planens felter vinder over intentionen).
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }), profileByStage[activeStage]?.profile_type)), stagePlan: orders?.stagePlanEnabled === true });
+      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }), profileTypeOfStage(activeStage))), stagePlan: orders?.stagePlanEnabled === true });
       setStatus("saved");
       setOpenRiderId(null);
       setOpenRoleRiderId(null);
