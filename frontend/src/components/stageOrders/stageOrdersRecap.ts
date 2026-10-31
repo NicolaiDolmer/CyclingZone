@@ -13,6 +13,7 @@
 //   - rollen: etapens override, ellers holdudtagelsens rolle.
 import { defaultTeamOrder, mergeOrderWithRoster, trainDefaultForStage } from "../../lib/tacticsPlan.js";
 import { effectiveEffortByRider } from "../../lib/stageSplitTimes.ts";
+import { roleRank } from "../../lib/stageRoleVocabulary.ts"; // #7326: faelles rollevokabular
 
 export interface TeamOrdersContext {
   riders?: Array<{ rider_id: string; race_role?: string | null }>;
@@ -48,8 +49,6 @@ export interface StageOrdersRecap {
   saved: boolean;
   riders: RecapRider[];
 }
-
-const ROLE_ORDER: Record<string, number> = { captain: 0, sprint_captain: 1, hunter: 2, free_role: 3, helper: 4 };
 
 export function stageOrdersRecap({
   context, stageRoles = null, stageNumber, profileType = null, riderIds = null, nameOf = () => null, ranAt = null,
@@ -110,6 +109,6 @@ export function stageOrdersRecap({
       roleDefault: !tryKnown || !leadKnown,
     };
   });
-  riders.sort((a, b) => (ROLE_ORDER[a.role ?? ""] ?? 5) - (ROLE_ORDER[b.role ?? ""] ?? 5) || String(a.name ?? "").localeCompare(String(b.name ?? "")));
+  riders.sort((a, b) => roleRank(a.role) - roleRank(b.role) || String(a.name ?? "").localeCompare(String(b.name ?? "")));
   return { stance: saved ? String(order.breakaway_stance ?? "neutral") : "auto", saved: Boolean(saved), riders };
 }
