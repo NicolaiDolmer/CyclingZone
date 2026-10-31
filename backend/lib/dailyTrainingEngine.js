@@ -916,6 +916,16 @@ export async function runTeamTrainingDay({
         const key = `${row.race_id}:${row.stage_number}`;
         racedRiderProfileByRider.set(row.rider_id, profileByRaceStage.get(key) ?? "rolling");
       }
+      // #5950: samme rolle-opslag som loebsdags-stien, bygget af dagens racede raekker
+      // (sidste raekke vinder, som profilen ovenfor). Kun naar tillaegget er aktivt:
+      // slukket = intet ekstra opslag, bit-identisk.
+      if (raceRoleYield && racedRows.length > 0) {
+        const stageByRider = new Map();
+        for (const row of racedRows) {
+          if (row.race_id) stageByRider.set(row.rider_id, { raceId: row.race_id, stageNumber: row.stage_number });
+        }
+        raceDayRoleByRiderMap = await loadRaceDayRoleByRider({ supabase, stageByRider });
+      }
     }
   }
 

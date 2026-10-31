@@ -12,20 +12,19 @@
 //          plus lederskab (kaptajner) eller aggression (jaegeren)
 //        · hjaelper, luksushjaelper: mest i de baerende hjaelpe-evner (holdarbejde,
 //          tempo, udholdenhed ...), lidt i etapens profil-evner
-//        · fri rolle (og ukendt rolle): halvt som kaptajn, halvt som hjaelper (S17)
+//        · fri rolle (og ukendt rolle): en blanding af kaptajnens og hjaelperens (S17)
 //   3. Maks +1 pr. evne pr. loebsdag er uaendret (kaldstedet sender stadig
 //      hardDailyCap). Gaelder senior, U23 og junior ens.
 //
-// TALLENE ER PRIVATE (hard rule 17). Tillaeggets stoerrelse og fordelingen mellem
-// "mest" og "resten" ligger i den lukkede tabel private_config under
-// `race_day_role_yield_params` (reserve: miljoe-variablen RACE_DAY_ROLE_YIELD_PARAMS).
+// TALLENE OG DEN PRAECISE MODEL ER PRIVATE (hard rule 17). Tillaeggets stoerrelse og
+// fordelingen ligger i den lukkede tabel private_config under
+// `race_day_role_yield_params` (reserve: miljoe-variablen RACE_DAY_ROLE_YIELD_PARAMS);
+// den matematiske beskrivelse ligger i balance-internals/5950 (OneDrive, ikke repoet).
 // Flag on + manglende eller ugyldige params = dagens model, med en vaerdi-fri
 // advarsel. Flag off = intet opslag, og motoren er bit-identisk med i dag.
 //
-// TILLAEGGET ER ADDITIVT I "HAARD-DAGS-ENHEDER": evnen faar sin basis-andel (fokus
-// eller off-fokus som paa en haard dag) PLUS bonus x vaegt x haard-dagens fokus-
-// multiplikator. Det udtrykkes som en multiplikator pr. evne (abilityYieldMult), saa
-// basis-programmet og traeningsscoren er praecis en haard dags.
+// Tillaegget laegges oven paa haard-dagen som en multiplikator pr. evne
+// (abilityYieldMult), saa basis-programmet og traeningsscoren er praecis en haard dags.
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
 import { readConditionWriterFlag } from "./trainingDateConditionFlag.js";
@@ -122,8 +121,8 @@ function isFiniteNumber(n) {
 
 /**
  * Validerer de private params. Ugyldigt = null (fail-safe: dagens model).
- *   stageBonus  tillaegget i haard-dags-enheder pr. profil-evne (>= 0)
- *   leadShare   andelen af rollens tillaeg der lander i `lead`-evnerne (0-1]
+ *   stageBonus  tillaeggets stoerrelse
+ *   leadShare   hvor meget af rollens tillaeg der lander i `lead`-evnerne
  */
 export function validateRaceDayRoleYieldParams(raw) {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -163,12 +162,20 @@ export async function isRaceDayRoleYieldEnabled(supabase, { strict = false } = {
 /**
  * Det motoren skal bruge i dag: params naar flaget er on og params er gyldige,
  * ellers null (dagens model, bit-identisk). Logger aldrig tallene.
+ *
+ * strict (dato-afregningens atomare sti) gaelder KUN laesningerne: en fejlet
+ * flag- eller databaselaesning kaster. En ugyldig params-raekke er en
+ * konfigurationsfejl, ikke en laesefejl: den giver altid advarsel + dagens model,
+ * ogsaa i strict, saa den aldrig stopper den almindelige traeningsafregning.
  */
 export async function loadRaceDayRoleYield({ supabase, env = process.env, log = console, strict = false } = {}) {
   if (!(await isRaceDayRoleYieldEnabled(supabase, { strict }))) return null;
   const entry = await readPrivateConfigEntry(supabase, RACE_DAY_ROLE_YIELD_PARAMS_KEY, {
-    schema: parseParamsOrThrow, strict, log,
+    schema: parseParamsOrThrow, strict: false, log,
   });
+  if (entry.status === "error" && strict) {
+    throw new Error(`${LOG_TAG} ${RACE_DAY_ROLE_YIELD_PARAMS_KEY} read failed (strict) - refusing to settle, retry on next sweep`);
+  }
   let params = entry.status === "ok" ? entry.value : null;
   if (!params && entry.status !== "invalid") params = raceDayRoleYieldParamsFromEnv(env);
   if (!params) {
@@ -187,8 +194,8 @@ export function raceDayRoleBaseProgram(profileType) {
 }
 
 /**
- * Tillaeggets vaegt pr. evne for en gruppe. Summen er altid antallet af etapens
- * profil-evner, saa alle roller faar samme tillaeg i alt (D3 variant A).
+ * Tillaeggets vaegt pr. evne for en gruppe. Summen er den samme for alle roller,
+ * saa alle roller faar samme tillaeg i alt (D3 variant A).
  * @returns {Record<string, number>}
  */
 export function raceDayRoleBonusWeights(profileType, role, leadShare) {
@@ -204,7 +211,7 @@ export function raceDayRoleBonusWeights(profileType, role, leadShare) {
   };
   const group = raceDayRoleGroup(role);
   if (group !== "free") return groupWeights(group);
-  // S17: fri rolle = halvt som kaptajn, halvt som hjaelper.
+  // S17: fri rolle = en blanding af kaptajnens og hjaelperens fordeling.
   const a = groupWeights("leader");
   const b = groupWeights("helper");
   const out = {};
@@ -213,8 +220,8 @@ export function raceDayRoleBonusWeights(profileType, role, leadShare) {
 }
 
 /**
- * Multiplikatoren pr. evne paa basis-dagens delta, saa evnen faar basis + bonus x
- * vaegt x haard-dagens fokus-multiplikator (additivt i haard-dags-enheder).
+ * Multiplikatoren pr. evne paa basis-dagens delta, saa rollens tillaeg laegges oven
+ * paa haard-dagen. Den praecise model: balance-internals/5950 (privat).
  * @returns {Record<string, number>}
  */
 export function raceDayRoleYieldMultipliers({ params, profileType, role, program = raceDayRoleBaseProgram(profileType), trainingCfg = TRAINING_CONFIG }) {

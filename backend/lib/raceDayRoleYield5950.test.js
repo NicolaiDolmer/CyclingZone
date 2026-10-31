@@ -336,7 +336,7 @@ test("#5950: flad etape - kaptajnen faar mest spurt, hjaelperen mest i hjaelpe-e
   assert.ok(helper.teamwork > (cap.teamwork ?? 0), "hjaelperen faar holdarbejde");
   assert.ok(free.sprint < cap.sprint && free.sprint > (helper.sprint ?? 0), "fri rolle: balanceret");
   for (const k of new Set([...Object.keys(cap), ...Object.keys(helper)])) {
-    assert.ok(Math.abs((free[k] ?? 0) - ((cap[k] ?? 0) + (helper[k] ?? 0)) / 2) < 1e-12, `S17 halvt/halvt: ${k}`);
+    assert.ok(Math.abs((free[k] ?? 0) - ((cap[k] ?? 0) + (helper[k] ?? 0)) / 2) < 1e-12, `S17 blanding: ${k}`);
   }
 });
 
@@ -475,4 +475,55 @@ test("#5950: ugyldig raekke i private_config bruger ALDRIG reserven", async () =
   });
   assert.equal(params, null);
   assert.ok(warnings.length > 0);
+});
+
+test("#5950: strict + ugyldig params-raekke = advarsel og dagens model, kaster ikke", async () => {
+  clearPrivateConfigCache();
+  const state = {
+    app_config: [{ key: RACE_DAY_ROLE_YIELD_FLAG_KEY, value: "on" }],
+    private_config: [{ key: RACE_DAY_ROLE_YIELD_PARAMS_KEY, value: { stageBonus: -3 } }],
+  };
+  const warnings = [];
+  const params = await loadRaceDayRoleYield({
+    supabase: createMockSupabase(state), env: PARAMS_ENV, strict: true, log: { warn: (m) => warnings.push(m) },
+  });
+  assert.equal(params, null);
+  assert.ok(warnings.some((w) => w.includes("[race-day-role-yield]")));
+  assert.ok(!warnings.some((w) => /stageBonus|-3/.test(w)), "advarslen viser aldrig vaerdien");
+});
+
+test("#5950: strict + fejlet databaselaesning af params kaster; uden strict = dagens model", async () => {
+  const state = { app_config: [{ key: RACE_DAY_ROLE_YIELD_FLAG_KEY, value: "on" }] };
+  const brokenParams = () => {
+    const base = createMockSupabase(state);
+    return {
+      ...base,
+      from(table) {
+        if (table !== "private_config") return base.from(table);
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: { message: "down" } }) }) }) };
+      },
+    };
+  };
+  clearPrivateConfigCache();
+  await assert.rejects(() => loadRaceDayRoleYield({ supabase: brokenParams(), env: {}, strict: true, log: { warn() {} } }));
+  clearPrivateConfigCache();
+  assert.equal(await loadRaceDayRoleYield({ supabase: brokenParams(), env: {}, log: { warn() {} } }), null);
+});
+
+test("#5950: kalenderdags-stien (training_tick_per_race_day off) indlaeser rollen fra dagens racede raekker", async () => {
+  const withRole = (role) => {
+    const s = seed({ flags: { [RACE_DAY_ROLE_YIELD_FLAG_KEY]: "on" }, raced: true, profile: "mountain" });
+    s.race_entries = [{ race_id: "race-1", rider_id: "r1", team_id: TEAM_ID, race_role: role }];
+    return s;
+  };
+  const captain = withRole("captain");
+  const calls = [];
+  await run(captain, { env: PARAMS_ENV, calls });
+  assert.ok(calls.includes("race_entries"), "rolle-opslaget koerer paa kalenderdags-stien");
+  const helper = withRole("helper");
+  await run(helper, { env: PARAMS_ENV });
+  const c = captain.rider_derived_abilities[0];
+  const h = helper.rider_derived_abilities[0];
+  assert.ok(progressed(c, "climbing") > progressed(h, "climbing"), "kaptajnen faar mere klatring end hjaelperen");
+  assert.ok(progressed(h, "teamwork") > progressed(c, "teamwork"), "hjaelperen faar mere holdarbejde end kaptajnen");
 });
