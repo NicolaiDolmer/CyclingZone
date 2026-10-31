@@ -282,6 +282,7 @@ export async function loadRaceDayRoleByRider({ supabase, stageByRider, log = con
   const riderIds = [...(stageByRider?.keys() ?? [])];
   const raceIds = [...new Set([...(stageByRider?.values() ?? [])].map((s) => s.raceId).filter(Boolean))];
   if (!riderIds.length || !raceIds.length) return new Map();
+  // pagination-safe: ét holds koerte ryttere x dagens loeb, UNIQUE (race_id, rider_id) - langt under 1000 raekker
   const entries = await supabase
     .from("race_entries")
     .select("race_id, rider_id, race_role")
