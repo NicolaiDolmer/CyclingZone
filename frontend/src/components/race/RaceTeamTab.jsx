@@ -55,17 +55,16 @@ import {
   isJerseyLeaderCaptainOnAllRemainingStages,
 } from "../../lib/stageRoleMatrixLogic.js";
 import { DEFAULT_EFFORT } from "../../lib/raceIntention.js";
+import { roleLabelKey } from "../../lib/stageRoleVocabulary.ts";
 
 const API = import.meta.env.VITE_API_URL;
 
-const ROLE_KEY = {
-  captain: "captain",
-  sprint_captain: "sprint_captain",
-  hunter: "hunter",
-  helper: "helper",
-  free_role: "free_role",
+// #7326: rollens navn fra det fælles vokabular. En ukendt værdi vises som en
+// tankestreg, aldrig som en anden gyldig rolle.
+const roleLabel = (t, role) => {
+  const key = roleLabelKey(role);
+  return key ? t(key) : "—";
 };
-const roleKey = (role) => ROLE_KEY[role] || "helper";
 
 function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, showStages, isOneDay }) {
   return (
@@ -99,7 +98,7 @@ function ReadOnlyRoster({ t, riders, stageNumbers, overridesMap, gcRankByRider, 
               <tr key={rider.rider_id} className="hover:bg-cz-subtle transition-colors">
                 <td className="px-4 py-2.5 text-cz-1 font-medium">{rider.name || "—"}</td>
                 <td className="px-4 py-2.5">
-                  <div className="text-cz-1 text-xs">{t(`tacticsOrders.roleLabel.${roleKey(baseRoleForRider(rider))}`)}</div>
+                  <div className="text-cz-1 text-xs">{roleLabel(t, baseRoleForRider(rider))}</div>
                   <div className="text-3xs uppercase tracking-wider text-cz-3 mt-0.5">
                     {isOneDay ? t("intention.thisRace") : t("intention.allRace")}
                   </div>

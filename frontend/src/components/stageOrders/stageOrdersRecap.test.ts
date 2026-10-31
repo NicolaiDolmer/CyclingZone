@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { stageOrdersRecap, type TeamOrdersContext } from "./stageOrdersRecap.ts";
+import { STAGE_ROLES, roleLabelKey } from "../../lib/stageRoleVocabulary.ts";
 
 // fetchTeamOrders-formen for et hold: kaptajn, jaeger, hjaelper, sprintkaptajn.
 const CONTEXT: TeamOrdersContext = {
@@ -93,4 +94,38 @@ test("#7333: en rytter med etapeplan viser planens opgaver, ikke foerste leds in
 test("uden svar eller uden ryttere vises intet", () => {
   assert.equal(stageOrdersRecap({ context: null, stageNumber: 1 }), null);
   assert.equal(stageOrdersRecap({ context: { riders: [] }, stageNumber: 1 }), null);
+});
+
+// #7326: hver understoettet rolle (inkl. delt kaptajn og luksushjaelper) kommer
+// uaendret igennem modellen, faar sit eget navn og sorteres efter vokabularet.
+test("#7326: alle roller i vokabularet bevares, navngives og sorteres efter vokabularet", () => {
+  const ids = STAGE_ROLES.map((role) => `r_${role}`);
+  const ctx: TeamOrdersContext = {
+    riders: [...STAGE_ROLES].reverse().map((role) => ({ rider_id: `r_${role}`, race_role: role })),
+    defaultOrder: { breakaway_stance: "neutral", riders: ids.map((id) => ({ rider_id: id, effort: "normal", try_break: false, leadout: false })) },
+    orders: [],
+  };
+  const recap = stageOrdersRecap({ context: ctx, stageNumber: 1, riderIds: ids, nameOf: (id) => id });
+  assert.deepEqual(recap?.riders.map((r) => r.role), [...STAGE_ROLES]);
+  for (const r of recap?.riders ?? []) assert.equal(roleLabelKey(r.role), `tacticsOrders.roleLabel.${r.role}`);
+});
+
+test("#7326: delt kaptajn og luksushjaelper som etape-override vises som den rolle, ikke som hjaelper", () => {
+  const recap = stageOrdersRecap({
+    context: CONTEXT, stageNumber: 2, riderIds: ["hel", "hun"],
+    stageRoles: { overrides: [
+      { stage_number: 2, rider_id: "hel", race_role: "luxury_helper" },
+      { stage_number: 2, rider_id: "hun", race_role: "co_captain" },
+    ] },
+  });
+  assert.deepEqual(recap?.riders.map((r) => [r.riderId, r.role]), [["hun", "co_captain"], ["hel", "luxury_helper"]]);
+});
+
+test("#7326: en ukendt rolle bevares som raa vaerdi, faar intet navn og sorteres sidst", () => {
+  const ctx: TeamOrdersContext = { ...CONTEXT, riders: [...(CONTEXT.riders ?? []), { rider_id: "unk", race_role: "mystery_role" }] };
+  const recap = stageOrdersRecap({ context: ctx, stageNumber: 2, riderIds: ["unk", "hel", "cap"], nameOf });
+  assert.deepEqual(recap?.riders.map((r) => r.riderId), ["cap", "hel", "unk"]);
+  const unk = recap?.riders.find((r) => r.riderId === "unk");
+  assert.equal(unk?.role, "mystery_role");
+  assert.equal(roleLabelKey(unk?.role), null, "en ukendt rolle maa ikke vises som en anden gyldig rolle");
 });
