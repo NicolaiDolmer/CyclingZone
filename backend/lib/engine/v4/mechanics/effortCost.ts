@@ -197,7 +197,7 @@ export function allOutTimeTrialBonus7280(effort: EffortLevel | undefined, timeTr
 // ENKELTSTART (itt, itt_hilly; ikke ttt) koster tid og sparer traethed, som i virkeligheden.
 // 'Beskyt' og 'grupetto' koerer som 'spar' mod uret (der er intet hold at beskytte og ingen
 // grupetto). Normal og Alt ud er uaendrede. Kun under s5_profiles_v3 (isSaveItt7332On).
-//   Tid:      kapaciteten faar saveTimeTrialLoss x (evne/99) trukket fra (spejl af
+//   Tid:      kapaciteten faar et fradrag, der vokser med tidskoersels-evnen (spejl af
 //             allOutTimeTrialBonus7280), og kravet regnes som 'spar' (individualTimeTrial.ts).
 //   Traethed: belastningen faar spar-rabatten fra en FLAD etape (conditionModelV2.stageLoadV2).
 // Slukket er motor og traethed bit-identiske med main. Taend = ejerens ordrette go i en egen PR.
@@ -205,7 +205,7 @@ export const SAVE_ITT_7332_ACTIVE: boolean = false;
 
 /** Knappen bag pakken (balance, hard rule 17: maalinger kun i balance-internals/). */
 export type SaveItt7332Tuning = {
-  saveTimeTrialLoss: number; // enkeltstart: fradrag i kapaciteten (evne-enheder, som dagsformen) ved evne 99
+  saveTimeTrialLoss: number; // enkeltstart: knappen for fradraget i kapaciteten (evne-enheder, som dagsformen)
 };
 
 export const SAVE_ITT_7332_TUNING: Readonly<SaveItt7332Tuning> = Object.freeze({
@@ -241,7 +241,7 @@ export function isSaveItt7332Effort(effort: EffortLevel | undefined, on: boolean
 
 /**
  * #7332 (slukket): enkeltstartens pris for 'spar' (og 'beskyt'/'grupetto'). Kapaciteten
- * faar saveTimeTrialLoss x (evne/99) trukket fra, samme enheder som alt ud's gevinst.
+ * faar et fradrag, der vokser med tidskoersels-evnen, i samme enheder som alt ud's gevinst.
  * 0 for normal og alt ud, og naar pakken ikke er i kraft (bit-identisk).
  */
 export function saveTimeTrialPenalty7332(effort: EffortLevel | undefined, timeTrialAbility: number, on: boolean): number {
