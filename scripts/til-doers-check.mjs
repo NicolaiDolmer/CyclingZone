@@ -48,6 +48,8 @@ import {
   resolveMainRef,
   missingKrav,
   ghJson,
+  reopenedAt,
+  lastMarkerAt,
 } from './lib/til-doers.mjs';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -115,7 +117,7 @@ export function processIssue({ number, repo, apply, execGh, execGit, mainRef, re
   const existing = findMarkerComment(comments);
   const isOpen = issue.state === 'open';
   const commentAction = !isOpen ? 'none' : !existing ? 'create' : existing.body.replace(/\r\n/g, '\n') === body ? 'unchanged' : 'edit';
-  const close = decideClose({ issue, door, brandList });
+  const close = decideClose({ issue, door, brandList, reopened: reopenedAt(bundle.timeline), lastMarker: lastMarkerAt(comments) });
 
   const plan = {
     number,

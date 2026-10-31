@@ -335,6 +335,28 @@ test('main: ugyldige argumenter giver exit 2', () => {
   assert.equal(main(['--nope'], { errorLog: () => {}, registry: [], patchNotesText: '', brandList: [] }), 2);
 });
 
+test('decideClose: auto-close-veto blokerer', () => {
+  assert.equal(decideClose({ issue: { number: N, state: 'open', labels: [{ name: 'auto-close-veto' }] }, door: allDone() }).close, false);
+});
+
+test('decideClose: genåbnet efter seneste markering lukkes ikke igen før ny markering', () => {
+  const door = allDone();
+  const issue = { number: N, state: 'open', labels: [] };
+  const res = decideClose({ issue, door, reopened: '2026-11-01T00:00:00Z', lastMarker: '2026-10-31T10:00:00Z' });
+  assert.equal(res.close, false);
+  assert.match(res.reason, /genåbnet/);
+  assert.equal(decideClose({ issue, door, reopened: '2026-11-01T00:00:00Z', lastMarker: '2026-11-02T00:00:00Z' }).close, true);
+});
+
+test('processIssue: genåbnet issue (reopened-event i timeline) lukkes ikke', () => {
+  const comments = [owner([3, 4, 5, 6, 7].map((k) => `Til dørs: ${k} na ops`).join('\n') + '\nTil dørs: 8 ok tjekket', '2026-10-31T10:00:00Z')];
+  const timeline = [mergedPrEvent(9, N), { event: 'closed', created_at: '2026-10-31T11:00:00Z' }, { event: 'reopened', created_at: '2026-10-31T12:00:00Z' }];
+  const { exec, calls } = fakeGh({ issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments, timeline } }, prFiles: { 9: [] } });
+  const plan = processIssue({ number: N, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
+  assert.equal(plan.close, false);
+  assert.equal(calls.filter((c) => c.args.includes('PATCH') && c.args.some((a) => /issues\/\d+$/.test(a))).length, 0);
+});
+
 test('labelNames-normalisering: strings og objekter', () => {
   const door = allDone();
   assert.equal(decideClose({ issue: { number: N, state: 'open', labels: ['needs-decision'] }, door }).close, false);

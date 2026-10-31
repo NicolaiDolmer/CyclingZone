@@ -26,7 +26,9 @@ import { execFileSync } from 'node:child_process';
 export const MARKER = '<!-- til-doers:v1 -->';
 export const DEFAULT_REPO = 'NicolaiDolmer/CyclingZone';
 export const DONE_LABEL = 'claude:done';
-export const NO_AUTOCLOSE_LABEL = 'needs-decision';
+// needs-decision: ejer-krav (#7336). auto-close-veto: repoets faelles veto-label
+// (docs/GITHUB_WORKFLOW.md "Autonom close-policy"), respekteres ogsaa her.
+export const NO_AUTOCLOSE_LABELS = ['needs-decision', 'auto-close-veto'];
 export const HELP_FILE = 'frontend/public/locales/en/help.json';
 export const COLLABORATOR_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
 
@@ -218,15 +220,35 @@ export function missingKrav(door) {
   return door.filter((d) => d.status !== 'ok' && d.status !== 'na');
 }
 
+/** Seneste manuelle markering (ISO-tid) eller null. */
+export function lastMarkerAt(comments) {
+  let at = null;
+  for (const m of parseMarkers(comments).values()) if (m.dato && (!at || m.dato > at)) at = m.dato;
+  return at;
+}
+
+/** Seneste reopened-event (ISO-tid) eller null. */
+export function reopenedAt(timeline) {
+  let at = null;
+  for (const ev of timeline || []) if (ev.event === 'reopened' && (!at || ev.created_at > at)) at = ev.created_at;
+  return at;
+}
+
 /**
- * Skal issuet auto-lukkes? Kun naar alle 8 er ok/na, issuet er aabent, ikke
- * needs-decision, og (brand) krav 8 er ok, ikke bare na.
+ * Skal issuet auto-lukkes? Kun naar alle 8 er ok/na, issuet er aabent, uden
+ * veto-label, og (brand) krav 8 er ok, ikke bare na.
+ *
+ * Genaabnings-vagt: er issuet genaabnet EFTER den seneste markering, lukkes det
+ * ikke igen, foer nogen har markeret paa ny. Ellers ville et issue ejeren
+ * genaabner blive lukket igen ved naeste sweep, fordi markeringerne staar uaendret.
  */
-export function decideClose({ issue, door, brandList = [] }) {
+export function decideClose({ issue, door, brandList = [], reopened = null, lastMarker = null }) {
   if (issue.state && issue.state !== 'open') return { close: false, reason: 'issuet er ikke åbent' };
   const missing = missingKrav(door);
   if (missing.length) return { close: false, reason: `mangler ${missing.map((d) => d.krav).join(', ')}` };
-  if (labelNames(issue).includes(NO_AUTOCLOSE_LABEL)) return { close: false, reason: `label ${NO_AUTOCLOSE_LABEL}` };
+  const veto = NO_AUTOCLOSE_LABELS.find((l) => labelNames(issue).includes(l));
+  if (veto) return { close: false, reason: `label ${veto}` };
+  if (reopened && (!lastMarker || reopened > lastMarker)) return { close: false, reason: 'genåbnet efter seneste markering' };
   const isBrand = brandList.some((b) => Number(b?.issue ?? b) === Number(issue.number));
   const k8 = door.find((d) => d.krav === 8);
   if (isBrand && k8?.status !== 'ok') return { close: false, reason: 'brand-issue kræver krav 8 = ok' };
