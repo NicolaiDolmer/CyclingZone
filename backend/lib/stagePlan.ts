@@ -286,7 +286,12 @@ function suggestionFor(args: {
   const lastClimbFrom: StagePlanTrigger | null = route.summit_finish
     ? (climbs.length >= 1 ? { at: "kom", kom_index: climbs[climbs.length - 1].index } : null)
     : (climbs.length >= 2 ? { at: "kom", kom_index: climbs[climbs.length - 2].index } : null);
-  const attackFrom: StagePlanTrigger = lastClimbFrom ?? { at: "final_km" };
+  // #7369 (ejer 31/10): assistenten foreslaar ALDRIG et angreb. Kaptajnen angriber kun,
+  // naar spilleren selv vaelger det. Paa dagens sidste stigning foelger lederen med;
+  // uden en afgoerende stigning koerer han for resultatet de sidste km.
+  const leaderFinale: StagePlanLeg = lastClimbFrom
+    ? { task: "follow_moves", from: lastClimbFrom }
+    : { task: "ride_for_result", from: { at: "final_km" } };
   const flatFinale = bucket === "flat";
   const sprintStage = flatFinale && teamHasSprintCaptain;
 
@@ -304,7 +309,7 @@ function suggestionFor(args: {
     case "captain":
     case "co_captain": // #7239: samme plan som kaptajnen
       if (flatFinale) return [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }];
-      return [{ task: "stay_sheltered" }, { task: "attack", from: attackFrom }];
+      return [{ task: "stay_sheltered" }, leaderFinale];
     case "sprint_captain":
       if (bucket === "high") return [{ task: "stay_sheltered" }, { task: "grupetto", from: { at: "dropped" } }];
       return [{ task: "stay_sheltered" }, { task: "ride_for_result", from: { at: "final_km" } }];
@@ -324,7 +329,7 @@ function suggestionFor(args: {
       return [{ task: "breakaway" }, { task: "ride_for_result", from: { at: "dropped" } }];
     case "free_role":
     default:
-      if (bucket === "high" && lastClimbFrom) return [{ task: "stay_sheltered" }, { task: "attack", from: attackFrom }];
+      if (bucket === "high" && lastClimbFrom) return [{ task: "stay_sheltered" }, leaderFinale];
       if (bucket === "hilly" || bucket === "mountain") return [{ task: "breakaway" }, { task: "ride_for_result", from: { at: "dropped" } }];
       return [{ task: "ride_for_result" }];
   }
