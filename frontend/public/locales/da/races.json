@@ -1015,6 +1015,7 @@
   "tacticsOrders": {
     "blocked": { "notWithGrupetto": "Ikke sammen med Grupetto.", "notWithWork": "En rytter der arbejder for lederen, kan ikke gå med i udbrud.", "notWithBreak": "Ikke når han forsøger udbrud.", "notWithTrain": "Sprint-toget bliver i feltet til finalen." },
     "pickOne": "Vælg én",
+    "timeTrialNoRoadOrders": "Tidskørsler køres mod uret. Udbrud, tog og angrebsordrer gælder ikke her, så de er skjult. Dine indsatsvalg gælder stadig.",
     "title": "Taktik",
     "locksAt": "Låser {time}",
     "locked": "Låst",

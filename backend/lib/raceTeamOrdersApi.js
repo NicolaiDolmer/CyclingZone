@@ -38,6 +38,11 @@ import { validateRiderPlans, withStagePlan } from "./stagePlanApi.js"; // #7003
 
 export const VALID_BREAKAWAY_STANCES = [...BREAKAWAY_STANCE_VALUES];
 
+// #7317 (D6): paa enkeltstart, bakket enkeltstart og holdtidskoersel kaerer motoren ingen
+// udbruds-/tog-/angrebsordrer. Spejlet i frontend/src/lib/tacticsProfileGate.ts.
+const TIME_TRIAL_PROFILE_TYPES = new Set(["itt", "itt_hilly", "ttt"]);
+export const isTimeTrialProfileType = (profileType) => typeof profileType === "string" && TIME_TRIAL_PROFILE_TYPES.has(profileType);
+
 /** De felter en rytter-ordre må bære. `race_role` er bevidst IKKE et af dem. */
 export const VALID_RIDER_ORDER_FIELDS = [...TEAM_ORDER_RIDER_FIELDS];
 
@@ -159,6 +164,8 @@ export function validateTeamOrder({
   stagePlan = null,
   // #7003: rytterens rolle paa etapen (loadStageRoleByRider). Mangler den, er "Arbejd + udbrud" ikke spaerret.
   roleByRider = new Map(),
+  // #7317: etapens profiltype. null/ukendt = ingen profilgate (som foer).
+  profileType = null,
 }) {
   if (raceCompleted) return { ok: false, errors: ["team_orders_race_completed"] };
   if (!Number.isInteger(stageNumber) || stageNumber < 1 || stageNumber > stageCount) {
@@ -210,6 +217,13 @@ export function validateTeamOrder({
       errors.push("team_orders_invalid_leadout");
       break;
     }
+  }
+
+  // #7317: ingen vej-ordrer paa tidskoersel. Indsats og gemte ordrer paa andre etaper roeres ikke;
+  // fladen sender neutral holdholdning, intet udbrud og intet tog.
+  if (isTimeTrialProfileType(profileType)) {
+    const roadOrder = stance !== "neutral" || riders.some((r) => r?.try_break === true || r?.leadout === true);
+    if (roadOrder) errors.push("team_orders_road_orders_on_time_trial");
   }
 
   // #7003: modsatte ordrer. En rytter med etapeplan tjekkes af planens egne regler
@@ -267,7 +281,7 @@ export function sprintTrainFlatOnlyForRace(race) {
 }
 
 export async function getTeamOrdersContext({ supabase, race, teamId }) {
-  const [entriesRes, ordersRes, schedRes] = await Promise.all([
+  const [entriesRes, ordersRes, schedRes, profilesRes] = await Promise.all([
     supabase
       .from("race_entries")
       .select("rider_id, race_role")
@@ -282,10 +296,15 @@ export async function getTeamOrdersContext({ supabase, race, teamId }) {
       .from("race_stage_schedule")
       .select("stage_number, scheduled_at")
       .eq("race_id", race.id), // pagination-safe: eet loebs etaper — maks 21 raekker (GT)
+    supabase
+      .from("race_stage_profiles")
+      .select("stage_number, profile_type")
+      .eq("race_id", race.id), // pagination-safe: eet loebs etaper — maks 21 raekker (GT)
   ]);
   if (entriesRes.error) throw new Error(`race_entries: ${entriesRes.error.message}`);
   if (ordersRes.error) throw new Error(`race_team_orders: ${ordersRes.error.message}`);
   if (schedRes.error) throw new Error(`race_stage_schedule: ${schedRes.error.message}`);
+  if (profilesRes.error) throw new Error(`race_stage_profiles: ${profilesRes.error.message}`);
 
   const entries = entriesRes.data || [];
   const scheduleByStage = new Map((schedRes.data || []).map((s) => [s.stage_number, s.scheduled_at]));
@@ -308,6 +327,7 @@ export async function getTeamOrdersContext({ supabase, race, teamId }) {
     baseRoleByRider: new Map(entries.map((e) => [e.rider_id, e.race_role ?? null])),
     orders: ordersRes.data || [],
     scheduleByStage,
+    profileTypeByStage: new Map((profilesRes.data || []).map((p) => [p.stage_number, p.profile_type])), // #7317
   };
 }
 
