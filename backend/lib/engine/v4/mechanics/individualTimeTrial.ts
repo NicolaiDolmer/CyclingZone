@@ -171,7 +171,7 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
 }
 
 /**
- * #6595 (KUN s5_profiles_v3, SLUKKET): enkeltstartens egen terraen-vaegt i fart-formlen.
+ * #6595 (KUN s5_profiles_v3, TAENDT 31/10): enkeltstartens egen terraen-vaegt i fart-formlen.
  *
  * Vejetapens STRENGTH_SPEED_EXTRA_TUNING.terrainWeight daemper styrke-forskelle
  * paa fladt og rullende terraen, fordi aerodynamik og LAE dominerer dér: i en
@@ -186,15 +186,15 @@ export function ittAbilityTuning(tuning: EngineTuning, rulesRevision: unknown): 
  */
 export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = Object.freeze({
   ...STRENGTH_SPEED_EXTRA_TUNING.terrainWeight,
-  flat: 0.48,
-  rolling: 0.6,
+  flat: 0.4,
+  rolling: 0.54,
 });
 
-// #6595 (SLUKKET, ejer-go kraeves foer taend): s5_profiles_v3 er den AKTUELLE
+// #6595 (TAENDT 31/10 paa ejerens go, flad 0.40 / rullende 0.54): s5_profiles_v3 er den AKTUELLE
 // revision (#7237), saa rettelsen kan ikke ligge bag revisionen alene (samme
 // moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
-// bit-identisk med main. Taend = ejerens ordrette go i en egen PR.
-export const ITT_TERRAIN_6595_ACTIVE: boolean = false;
+// bit-identisk med main foer #6595.
+export const ITT_TERRAIN_6595_ACTIVE: boolean = true; // ejer-go 31/10 (vaegt 0.40), #6595
 
 // Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
 let benchOverride6595: boolean | null = null;

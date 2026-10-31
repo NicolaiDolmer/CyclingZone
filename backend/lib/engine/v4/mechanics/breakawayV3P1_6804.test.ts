@@ -94,6 +94,7 @@ test("#6804 P1: v3 bevarer v2-fixtures uden for #6912 flad/rullende endagsjagt (
   for (const name of names) {
     const input = JSON.parse(readFileSync(path.join(dir, name, "input.json"), "utf8"));
     if (descentRegroup6486OnRoute(input.route)) continue; // #6486: v3 samler bjerg uden topankomst (descentRegroup6486.test.ts)
+    if (input.route.profile_type === "itt" || input.route.profile_type === "itt_hilly") continue; // #6595 (taendt 31/10): v3-enkeltstarten har sin egen terraen-vaegt (individualTimeTrial.test.ts)
     for (const gc of [undefined, oneDay]) {
       const extra = gc ? { gc_context: gc } : {};
       const v2 = simulateStageV4({ ...input, ...extra, rules_revision: "s5_profiles_v2" });
