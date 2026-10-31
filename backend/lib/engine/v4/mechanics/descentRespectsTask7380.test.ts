@@ -1,7 +1,7 @@
 // backend/lib/engine/v4/mechanics/descentRespectsTask7380.test.ts
 // #7380 (SLUKKET, ejer-beslutning 30/10): nedkoerselsangrebet respekterer
 // rytterens ordre. Kontrakten:
-//   1. Kontakten er slukket, og slukket (eller taendt uden s5_profiles_v3) er
+//   1. Kontakten er taendt (31/10); slukket (eller taendt uden s5_profiles_v3) er
 //      nedkoerslen bit-identisk med main: ordrer og indsats aendrer intet.
 //   2. Taendt angriber ingen paa Spar, Grupetto, Beskyt lederen eller en
 //      laee-/hjaelperopgave; fri rolle, leder, angreb, foelg angreb, udbrud og
@@ -161,12 +161,13 @@ const STRONG_A = 90;
 const STRONG_B = 88;
 const WEAK = 20;
 
-// ── 1. Kontakten er slukket, og slukket er bit-identisk ─────────────────────
+// ── 1. Kontakten er taendt; slukket er bit-identisk ─────────────────────────
 
-test("#7380: kontakten er SLUKKET (taend kraever ejerens ordrette go i en egen PR)", () => {
-  assert.equal(DESCENT_TASK_7380_ACTIVE, false);
-  assert.equal(descentTask7380Active(), false);
-  assert.equal(isDescentTask7380On({ s5ProfilesV3: true }), false);
+test("#7380: kontakten er TAENDT (ejer-go 31/10)", () => {
+  assert.equal(DESCENT_TASK_7380_ACTIVE, true, "ejer-go 31/10");
+  assert.equal(descentTask7380Active(), true);
+  assert.equal(isDescentTask7380On({ s5ProfilesV3: true }), true);
+  assert.equal(isDescentTask7380On({}), false, "kun s5_profiles_v3 og senere");
   withSwitch(true, () => {
     assert.equal(isDescentTask7380On({ s5ProfilesV3: true }), true);
     assert.equal(isDescentTask7380On({}), false, "kun s5_profiles_v3 og senere");
@@ -194,11 +195,11 @@ test("#7380: slukket (og taendt uden s5_profiles_v3) er nedkoerslen bit-identisk
         const result = descentHook(state, ctx);
         return { result, state };
       };
-      const ref = withSwitch(null, () => run(neutral, []));
-      const got = withSwitch(onWithoutV3 ? true : null, () => run(riders, orders));
+      const ref = withSwitch(false, () => run(neutral, []));
+      const got = withSwitch(onWithoutV3 ? true : false, () => run(riders, orders));
       // Ogsaa med runtimens opgaver i ctx (og den indsats de giver): slukket aendrer intet.
-      const gotTasks = withSwitch(onWithoutV3 ? true : null, () => run(neutral, orders, tasks));
-      const refTasks = withSwitch(null, () => run(neutral, [], tasks));
+      const gotTasks = withSwitch(onWithoutV3 ? true : false, () => run(neutral, orders, tasks));
+      const refTasks = withSwitch(false, () => run(neutral, [], tasks));
       assert.deepEqual(gotTasks.result, refTasks.result);
       assert.deepEqual(got.result.events, ref.result.events);
       assert.deepEqual(got.result.state.groups, ref.result.state.groups);
@@ -218,7 +219,7 @@ test("#7380 taendt, uden etapeplan: Spar, Grupetto og Beskyt lederen angriber ik
       { id: "b", descending: STRONG_B },
       { id: "w", descending: WEAK },
     ];
-    const off = withSwitch(null, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
+    const off = withSwitch(false, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
     const on = withSwitch(true, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
     assert.deepEqual(off, ["a", "b"], `slukket angriber begge (${effort})`);
     const barred = effort === "save" || effort === "grupetto" || effort === "protect";
@@ -233,7 +234,7 @@ test("#7380 taendt: er alle i vinduet spaerret, angribes der ikke, og ingen uden
     { id: "m", descending: 60 },
     { id: "w", descending: WEAK },
   ];
-  const off = withSwitch(null, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
+  const off = withSwitch(false, () => { const s = scenario(riders); return attackerIds(descentHook(s.state, s.ctx).events); });
   assert.ok(!off.includes("m"), "m er uden for vinduet ogsaa slukket");
   withSwitch(true, () => {
     const { state, ctx } = scenario(riders);
@@ -360,7 +361,7 @@ test("#7380 (review P1): sat-leddet er klaebende: sat, tilbage i gruppen, stadig
   assert.equal(isRiderDropped("u", TOGETHER(), RT_ENTRANTS), false, "stillingen nu siger 'ikke sat'");
   assert.equal(stagePlanCurrentTasks(rt)["u"], "shelter_leader", "runtimen bliver paa sat-leddet");
   withSwitch(true, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f"]));
-  withSwitch(null, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f", "u"], "slukket: som foer"));
+  withSwitch(false, () => assert.deepEqual(descentAttackersFromRuntime(rt, route, 2, TOGETHER()), ["f", "u"], "slukket: som foer"));
 });
 
 test("#7380 (review P2): skiftet ved segmentets midtpunkt: nedkoerslen ser samme led som runtimen", () => {
@@ -448,7 +449,7 @@ test("#7380: hele motoren: nedkoerslens opgave og indsats er runtimens, og taend
   }
   assert.ok(switchedBefore, "mindst ét skift foer nedkoerslen (ellers tester testen intet)");
   // Slukket: foerste nedkoersel ser samme opgaver (intet foer den er aendret), og kontakten fjerner kun angribere.
-  const off = run(null);
+  const off = run(false);
   assert.deepEqual(off.seen[0].tasks, on.seen[0].tasks);
   for (const id of on.seen[0].attackers) assert.ok(off.seen[0].attackers.includes(id), `${id} angriber kun taendt`);
 });
@@ -463,7 +464,7 @@ test("#7380 taendt (property): angriberne er en delmaengde af slukket, og monoto
   fc.assert(
     fc.property(specArb, fc.constantFrom<2 | 3>(2, 3), (specs, technicality) => {
       const riders = specs.map((s, i) => ({ id: `r${i}`, ...s }));
-      const off = withSwitch(null, () => { const s = scenario(riders, { technicality }); return attackerIds(descentHook(s.state, s.ctx).events); });
+      const off = withSwitch(false, () => { const s = scenario(riders, { technicality }); return attackerIds(descentHook(s.state, s.ctx).events); });
       const on = withSwitch(true, () => { const s = scenario(riders, { technicality }); return attackerIds(descentHook(s.state, s.ctx).events); });
       const offSet = new Set(off);
       for (const id of on) assert.ok(offSet.has(id), `${id} angriber kun taendt`);
