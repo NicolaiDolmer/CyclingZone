@@ -38,7 +38,7 @@ export type RosterPrognosis = {
   stage: KnowledgeStageKey;
   daysOnTeam: number;
   nextStageDays: number | null;
-  band: { role: string; lo: number; hi: number | null; bestRole: true } | null;
+  band: { role: string; lo: number; hi: number | null; bestRole?: true } | null;
 };
 export type Intake2View = {
   intake: IntakeItem[];
