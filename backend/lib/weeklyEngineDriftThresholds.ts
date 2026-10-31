@@ -3,11 +3,8 @@
 // Grænserne ligger i private_config under nøglen `weekly_engine_drift_thresholds`
 // (privateConfig.ts' register). Værdien er selve `weeklyEngineDrift`-sektionen:
 //   { minStages: n, groups: { <løbsgruppe>: { minStages?: n, <mål>: { min?, max? } } } }
-// Reglerne og output-formen er de samme som `parseThresholds` i
-// backend/scripts/ops/weeklyEngineDrift2557.mjs (#7279), så scriptet kan læse
-// herfra i stedet for ENGINE_GATE_THRESHOLDS_JSON uden at ændre sin evaluering.
-// Grupper og mål er spejlet her; #7279 importerer dem herfra, når det kobles på,
-// så der kun findes én liste.
+// Scriptet backend/scripts/ops/weeklyEngineDrift2557.mjs (#7279) læser værdien via
+// readPrivateConfig og importerer DRIFT_GROUPS herfra, så der kun findes én liste.
 //
 // Fejlbeskeder indeholder aldrig værdier fra konfigurationen (grænserne er
 // private, hard rule 17). Ren funktion.
@@ -52,7 +49,7 @@ export function parseWeeklyEngineDriftThresholds(raw: unknown): WeeklyEngineDrif
       const { min, max } = b;
       if (min === undefined && max === undefined) throw new Error("weeklyEngineDrift: et baand mangler baade min og max");
       if ((min !== undefined && !finite(min)) || (max !== undefined && !finite(max))) throw new Error("weeklyEngineDrift: et baand har en graense der ikke er et tal");
-      // Strengere end scriptets parseThresholds med vilje: et omvendt baand kan aldrig vaere opfyldt og afvises ved skrivning.
+      // Strengere end den gamle script-parser med vilje: et omvendt baand kan aldrig vaere opfyldt og afvises ved skrivning.
       if (min !== undefined && max !== undefined && Number(min) > Number(max)) throw new Error("weeklyEngineDrift: et baand har min stoerre end max");
       out.bands[measure] = { ...(min !== undefined ? { min: Number(min) } : {}), ...(max !== undefined ? { max: Number(max) } : {}) };
     }
