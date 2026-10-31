@@ -5,8 +5,8 @@ import {
   isRacePauseActive,
   withoutPausedUpcoming,
   isSchedulerSwitchedOff,
-  isSeasonInPlay,
   resolveRacePause,
+  shouldAnnounceRacePause,
 } from "./racePause.ts";
 
 test("parseRacePause: objekt og JSON-streng med ny start", () => {
@@ -56,8 +56,7 @@ test("withoutPausedUpcoming: forfalden etape uden resultat (LIVE) skjules, kørt
 
 // ── #7335: pausen udledes automatisk af kontakten ────────────────────────────
 const NOW = Date.parse("2026-10-28T12:00:00Z");
-const ACTIVE = { status: "active", race_days_completed: 4, race_days_total: 32 };
-const base = { notice: undefined, scheduler: "on", season: ACTIVE, seasonChange: false };
+const base = { notice: undefined, scheduler: "on", seasonInPlay: true, seasonChange: false };
 
 test("isSchedulerSwitchedOff: kun eksplicit off/false er pausebevis", () => {
   assert.equal(isSchedulerSwitchedOff("off"), true);
@@ -70,18 +69,10 @@ test("isSchedulerSwitchedOff: kun eksplicit off/false er pausebevis", () => {
   }
 });
 
-test("isSeasonInPlay: aktiv saeson med loebsdage tilbage", () => {
-  assert.equal(isSeasonInPlay(ACTIVE), true);
-  assert.equal(isSeasonInPlay({ status: "active", race_days_completed: 0, race_days_total: 32 }), true);
-  assert.equal(isSeasonInPlay({ status: "active", race_days_completed: null, race_days_total: null }), true);
-  assert.equal(isSeasonInPlay({ status: "active", race_days_completed: 32, race_days_total: 32 }), false);
-  assert.equal(isSeasonInPlay({ status: "upcoming", race_days_completed: 0, race_days_total: 32 }), false);
-  assert.equal(isSeasonInPlay({ status: "completed", race_days_completed: 28, race_days_total: 28 }), false);
-  assert.equal(isSeasonInPlay(null), false);
-});
-
 test("resolveRacePause: pauset via kontakten = bjaelke uden starttid (ingen notice noedvendig)", () => {
-  assert.deepEqual(resolveRacePause({ ...base, scheduler: "off" }, NOW), { paused: true, newStartMs: null });
+  const p = resolveRacePause({ ...base, scheduler: "off" }, NOW);
+  assert.deepEqual(p, { paused: true, newStartMs: null });
+  assert.equal(shouldAnnounceRacePause(p), true);
   assert.deepEqual(resolveRacePause({ ...base, scheduler: false }, NOW), { paused: true, newStartMs: null });
 });
 
@@ -104,12 +95,24 @@ test("resolveRacePause: udloebet notice + kontakten stadig slukket = pausen staa
   assert.equal(resolveRacePause({ ...base, scheduler: "on", notice: past }, NOW), null);
 });
 
-test("resolveRacePause: saesonpause/saesonskifte = ingen bjaelke (egen blaa bjaelke)", () => {
-  assert.equal(resolveRacePause({ ...base, scheduler: "off", seasonChange: true }, NOW), null);
-  assert.equal(resolveRacePause({ ...base, notice: { paused: true }, seasonChange: true }, NOW), null);
-  // Afsluttet saeson (venter paa skiftet) eller ingen aktiv saeson: kontakten slukket er ikke en loebspause.
-  assert.equal(resolveRacePause({ ...base, scheduler: "off", season: { status: "active", race_days_completed: 32, race_days_total: 32 } }, NOW), null);
-  assert.equal(resolveRacePause({ ...base, scheduler: "off", season: null }, NOW), null);
+test("resolveRacePause: saesonskifte = ingen pause-besked (egen blaa bjaelke), men pausen gaelder stadig", () => {
+  for (const inputs of [
+    { ...base, scheduler: "off", seasonChange: true },
+    { ...base, notice: { paused: true }, seasonChange: true },
+  ]) {
+    const p = resolveRacePause(inputs, NOW);
+    // Dashboardet skjuler fortsat de gamle starttider (Boolean(pause))...
+    assert.ok(p);
+    assert.equal(p.silent, true);
+    // ...men ingen bjaelke/banner: samme besked maa ikke staa to gange.
+    assert.equal(shouldAnnounceRacePause(p), false);
+  }
+});
+
+test("resolveRacePause: kontakten slukket uden en saeson med uafsluttede loeb = ingen pause", () => {
+  assert.equal(resolveRacePause({ ...base, scheduler: "off", seasonInPlay: false }, NOW), null);
+  // En eksplicit notice gaelder uanset saesonen.
+  assert.ok(resolveRacePause({ ...base, notice: { paused: true }, seasonInPlay: false }, NOW));
 });
 
 test("resolveRacePause: ingen pause = ingen bjaelke", () => {
@@ -118,4 +121,5 @@ test("resolveRacePause: ingen pause = ingen bjaelke", () => {
   assert.equal(resolveRacePause({ ...base, scheduler: "beta" }, NOW), null);
   assert.equal(resolveRacePause({ ...base, notice: { paused: false } }, NOW), null);
   assert.equal(resolveRacePause(null, NOW), null);
+  assert.equal(shouldAnnounceRacePause(null), false);
 });

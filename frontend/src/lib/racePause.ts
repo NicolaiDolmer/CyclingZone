@@ -10,8 +10,9 @@
 //     (et glemt banner maa aldrig staa for evigt); er kontakten stadig slukket,
 //     staar pausen videre uden tid.
 // Saesonskiftet har sin egen blaa bjaelke (ops_notices "Season change ..."), saa
-// mens den staar paa, vises ingen pause (samme besked maa ikke staa to gange).
-// En afsluttet saeson (alle loebsdage koert) eller ingen aktiv saeson = ingen pause.
+// mens den staar paa, er pausen `silent`: ingen pause-besked (samme besked maa ikke
+// staa to gange), men dashboardet skjuler stadig de gamle starttider.
+// Kontakten slukket uden en aktiv saeson med uafsluttede loeb = ingen pause.
 // Dashboardet skjuler de gamle starttider mens pausen staar paa, saa et pauset
 // loeb ikke viser kl. 11, naar det i virkeligheden venter paa en ny start.
 import { fetchActiveOpsNotices, isSeasonChangeNotice } from "./opsNotices.js";
@@ -23,6 +24,11 @@ export interface RacePause {
   paused: true;
   /** Ny starttid i ms, eller null naar den endnu ikke er kendt. */
   newStartMs: number | null;
+  /**
+   * Pausen gaelder (dashboardet skjuler stadig de gamle starttider), men der vises
+   * ingen pause-besked, fordi saesonskiftets egen blaa bjaelke staar paa.
+   */
+  silent?: true;
 }
 
 /** Parser app_config-vaerdien (objekt eller JSON-streng). Ukendt form = null. */
@@ -59,44 +65,35 @@ export function isSchedulerSwitchedOff(raw: unknown): boolean {
   return v === "off" || v === "false";
 }
 
-export interface SeasonLike {
-  status?: string | null;
-  race_days_completed?: number | null;
-  race_days_total?: number | null;
-}
-
-/** En aktiv saeson med loebsdage tilbage. Afsluttet saeson = venter paa skiftet, ikke en pause. */
-export function isSeasonInPlay(season: SeasonLike | null | undefined): boolean {
-  if (!season || season.status !== "active") return false;
-  const total = Number(season.race_days_total);
-  const done = Number(season.race_days_completed);
-  if (Number.isFinite(total) && total > 0 && Number.isFinite(done) && done >= total) return false;
-  return true;
-}
-
 export interface RacePauseInputs {
   /** Raa `race_pause_notice`-vaerdi (eller undefined). */
   notice: unknown;
   /** Raa `stage_scheduler_enabled`-vaerdi (eller undefined). */
   scheduler: unknown;
-  /** Den aktive saeson, eller null. */
-  season: SeasonLike | null;
+  /** Der er en aktiv saeson med mindst et loeb, der ikke er afsluttet. */
+  seasonInPlay: boolean;
   /** Et saesonskifte-banner (ops_notices) staar paa. */
   seasonChange: boolean;
 }
 
 /**
- * #7335: den samlede pause. Saesonskiftet vinder (egen bjaelke). Ellers en aktiv
- * notice (med evt. ny starttid), ellers kontakten slukket i en saeson der er i gang.
+ * #7335: den samlede pause. En aktiv notice (med evt. ny starttid), ellers kontakten
+ * slukket mens saesonen har loeb tilbage. Under saesonskiftet gaelder pausen stadig,
+ * men den er `silent`: saesonskiftet har sin egen bjaelke, saa ingen dobbelt-besked.
  */
 export function resolveRacePause(inputs: RacePauseInputs | null, nowMs: number): RacePause | null {
-  if (!inputs || inputs.seasonChange) return null;
+  if (!inputs) return null;
   const notice = parseRacePause(inputs.notice);
-  if (isRacePauseActive(notice, nowMs)) return notice;
-  if (isSchedulerSwitchedOff(inputs.scheduler) && isSeasonInPlay(inputs.season)) {
-    return { paused: true, newStartMs: null };
-  }
-  return null;
+  let pause: RacePause | null = null;
+  if (isRacePauseActive(notice, nowMs)) pause = notice;
+  else if (isSchedulerSwitchedOff(inputs.scheduler) && inputs.seasonInPlay) pause = { paused: true, newStartMs: null };
+  if (!pause) return null;
+  return inputs.seasonChange ? { ...pause, silent: true } : pause;
+}
+
+/** Pausen skal vises som besked (ikke bare skjule gamle starttider). */
+export function shouldAnnounceRacePause(pause: RacePause | null): pause is RacePause {
+  return pause != null && pause.silent !== true;
 }
 
 /** #7335: dashboardet har egen "Pauset"-flade, dér skjules den globale info-bjaelke (loebssiden viser ingen paa afsluttede loeb, saa den beholder bjaelken). */
@@ -148,22 +145,36 @@ export async function fetchRacePauseInputs(): Promise<RacePauseInputs> {
   const inputs: RacePauseInputs = {
     notice: byKey.get(RACE_PAUSE_CONFIG_KEY),
     scheduler: byKey.get(STAGE_SCHEDULER_CONFIG_KEY),
-    season: null,
+    seasonInPlay: false,
     seasonChange: false,
   };
-  if (!parseRacePause(inputs.notice) && !isSchedulerSwitchedOff(inputs.scheduler)) return inputs;
+  const schedulerOff = isSchedulerSwitchedOff(inputs.scheduler);
+  if (!parseRacePause(inputs.notice) && !schedulerOff) return inputs;
 
-  const [seasonRes, notices] = await Promise.all([
-    supabase
-      .from("seasons")
-      .select("status,race_days_completed,race_days_total")
-      .eq("status", "active")
-      .limit(1),
+  // Saesonen er "i gang" naar den aktive saeson har mindst et loeb der ikke er
+  // afsluttet. Bevidst ikke seasons.race_days_completed: den taeller dage med
+  // mindst et afsluttet loeb, saa den kan staa lig totalen mens sidste dag koerer.
+  async function fetchSeasonInPlay(): Promise<boolean> {
+    const seasonRes = await supabase.from("seasons").select("id").eq("status", "active").limit(1);
+    if (seasonRes.error) throw seasonRes.error;
+    const seasonId = seasonRes.data?.[0]?.id;
+    if (!seasonId) return false;
+    const raceRes = await supabase
+      .from("races")
+      .select("id")
+      .eq("season_id", seasonId)
+      .neq("status", "completed")
+      .limit(1);
+    if (raceRes.error) throw raceRes.error;
+    return (raceRes.data?.length ?? 0) > 0;
+  }
+
+  const [seasonInPlay, notices] = await Promise.all([
+    schedulerOff ? fetchSeasonInPlay() : Promise.resolve(false),
     // Fejler hentningen, vises saesonskifte-bjaelken heller ikke (samme kilde), saa ingen dobbelt-besked.
     fetchActiveOpsNotices().catch(() => []),
   ]);
-  if (seasonRes.error) throw seasonRes.error;
-  inputs.season = seasonRes.data?.[0] ?? null;
+  inputs.seasonInPlay = seasonInPlay;
   inputs.seasonChange = (notices || []).some(isSeasonChangeNotice);
   return inputs;
 }

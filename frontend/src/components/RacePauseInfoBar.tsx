@@ -4,7 +4,7 @@ import { InfoIcon } from "./ui/icons";
 import { formatDateTime } from "../lib/intl.js";
 import { RACE_TIMEZONE } from "../lib/stageScheduleConfig.js";
 import useRacePause from "../hooks/useRacePause.ts";
-import { racePauseInfoBarHiddenOnPath } from "../lib/racePause.ts";
+import { racePauseInfoBarHiddenOnPath, shouldAnnounceRacePause } from "../lib/racePause.ts";
 
 // #7335 — blaa info-bjaelke paa ALLE manager-sider naar loebene er sat paa pause.
 // Samme flade og placering som driftsbanneret (RaceControlBanner, severity info):
@@ -19,7 +19,7 @@ export default function RacePauseInfoBar() {
   const { t } = useTranslation("banners");
   const { pathname } = useLocation();
   const pause = useRacePause(true, pathname); // hent igen ved sidenavigation: Layout bliver monteret
-  if (!pause || racePauseInfoBarHiddenOnPath(pathname)) return null;
+  if (!shouldAnnounceRacePause(pause) || racePauseInfoBarHiddenOnPath(pathname)) return null;
 
   const newStart = pause.newStartMs != null
     ? formatDateTime(pause.newStartMs, { timeZone: RACE_TIMEZONE })

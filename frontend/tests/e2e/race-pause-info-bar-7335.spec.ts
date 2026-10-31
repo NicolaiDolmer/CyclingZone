@@ -18,6 +18,8 @@ import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
 const HOUR = 3600 * 1000;
+// Fast ur (AGENTS.md regel 16): browserens ur og fixture-tiderne deler samme nu.
+const FIXED_NOW = Date.parse("2026-10-28T12:00:00Z");
 const SIZES = [
   { label: "desktop 1440", slug: "1440", width: 1440, height: 900 },
   { label: "mobil 390", slug: "390", width: 390, height: 844 },
@@ -50,9 +52,9 @@ async function mockSeasonChangeNotice(page: Page) {
       body_en: "The game is changing season.",
       body_da: "Spillet skifter sæson.",
       active: true,
-      starts_at: new Date(Date.now() - HOUR).toISOString(),
+      starts_at: new Date(FIXED_NOW - HOUR).toISOString(),
       ends_at: null,
-      created_at: new Date(Date.now() - HOUR).toISOString(),
+      created_at: new Date(FIXED_NOW - HOUR).toISOString(),
     }]);
   });
 }
@@ -73,6 +75,7 @@ async function open(
 const bar = (page: Page) => page.getByRole("status", { name: "Race status" });
 
 test.beforeEach(async ({ page }) => {
+  await page.clock.setFixedTime(new Date(FIXED_NOW));
   await installNetworkMocks(page);
   await stabilizePage(page);
 });
@@ -99,7 +102,7 @@ for (const size of SIZES) {
 test("notice med ny start = bjaelken viser starttiden (ogsaa naar kontakten er taendt)", async ({ page }) => {
   await mockPauseConfig(page, {
     stage_scheduler_enabled: "on",
-    race_pause_notice: { paused: true, new_start: new Date(Date.now() + 3 * HOUR).toISOString() },
+    race_pause_notice: { paused: true, new_start: new Date(FIXED_NOW + 3 * HOUR).toISOString() },
   });
   await open(page, { path: "/race-centre" });
   await expect(bar(page)).toBeVisible();

@@ -37,8 +37,9 @@ export default function useRacePause(enabled = true, refreshKey?: string): RaceP
   const resolved = enabled ? resolveRacePause(inputs, nowMs) : null;
   const paused = resolved != null;
   const newStartMs = resolved?.newStartMs ?? null;
+  const silent = resolved?.silent === true;
   return useMemo<RacePause | null>(
-    () => (paused ? { paused: true, newStartMs } : null),
-    [paused, newStartMs],
+    () => (paused ? (silent ? { paused: true, newStartMs, silent: true } : { paused: true, newStartMs }) : null),
+    [paused, newStartMs, silent],
   );
 }

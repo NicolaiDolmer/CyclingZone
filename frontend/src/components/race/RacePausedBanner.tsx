@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { AlertTriangleIcon } from "../ui/icons";
 import { formatDateTime } from "../../lib/intl.js";
 import { RACE_TIMEZONE } from "../../lib/stageScheduleConfig.js";
-import type { RacePause } from "../../lib/racePause.ts";
+import { shouldAnnounceRacePause, type RacePause } from "../../lib/racePause.ts";
 
 // #6970 — "Pauset"-banner paa dashboardet (ejer-default: ingen ny loebsstatus).
 // Samme advarselsflade som driftsbanneret (RaceControlBanner, #3941): hairline,
@@ -12,7 +12,9 @@ import type { RacePause } from "../../lib/racePause.ts";
 // aldrig staar to gange. Ingen pause = intet renderes.
 export default function RacePausedBanner({ pause }: { pause: RacePause | null }) {
   const { t } = useTranslation("banners");
-  if (!pause) return null;
+  // Under saesonskiftet er pausen silent: dashboardet skjuler stadig de gamle tider,
+  // men saesonskiftet staar allerede i "Naeste traek", saa ingen ekstra besked.
+  if (!shouldAnnounceRacePause(pause)) return null;
 
   const newStart = pause.newStartMs != null
     ? formatDateTime(pause.newStartMs, { timeZone: RACE_TIMEZONE })

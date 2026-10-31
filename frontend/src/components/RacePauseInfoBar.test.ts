@@ -40,7 +40,7 @@ test("hooken udleder pausen automatisk (kontakt + valgfri notice), ikke kun fra 
 });
 
 test("bjaelken bruger pause-hooken og info-fladen, og rendrer intet uden aktiv pause", () => {
-  assert.match(bar, /if \(!pause \|\| racePauseInfoBarHiddenOnPath\(pathname\)\) return null/);
+  assert.match(bar, /if \(!shouldAnnounceRacePause\(pause\) \|\| racePauseInfoBarHiddenOnPath\(pathname\)\) return null/);
   assert.match(bar, /bg-cz-info-bg/);
   assert.match(bar, /useRacePause\(true, pathname\)/);
 });
