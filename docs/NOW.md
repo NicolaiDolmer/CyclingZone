@@ -9,7 +9,7 @@
 > **🎯 Next action (efter 30/10 aften):** 1) **Post-verify træningen 31/10** efter aftenkørslen: `development_curve_b_ignited_at` sat + øjebliksbillede i `development_curve_b_transition_members`, ingen `[curve-b]`-advarsel. 2) **Race engine-session 31/10:** alle enkeltstarter (#6595, #7332), tændingskort #7380 + #7383, drift-grænser #7279 (kobles til `private_config`). 3) **Brand:** #7339 auto-fyld (undersøg, anbefalet næste), #6765 skyggetabel (ejer-go: ret Codex-fund, tænd, mål). 4) **Mandag 3/11 formiddag:** nøglerotation #7029 + Railway-kilde #7034, ét go pr. skridt. Venter: #7298, #7297. Til dørs: [#7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336). Markedsføring 3x/uge. Wander Riders: ejer fre/man.
 > **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
-> **🤖 Working agent:** Ingen aktiv session. **30/10 aften (DolmerPC):** træning tændt (kurve B + katalog v3 + Tærskel-migration); brand-rettelser #7284/#7285/#7294/#7296 merget + patch 7.389; 11 forældreløse transferlister ryddet.
+> **🤖 Working agent:** 31/10 audit-session (NicolaiPC) ejer merge-køen + træningstjek kl. 20. Kø: #7400, #7279, #7403, så #7405-#7413.
 
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
