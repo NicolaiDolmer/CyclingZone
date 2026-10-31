@@ -103,15 +103,16 @@ import {
 } from "./timeModel.ts";
 import type { StagePlanTask } from "../../../stagePlan.ts"; // #7380 (slukket): kun typen
 
-// ── #7380: nedkoerselsangrebet respekterer rytterens opgave (SLUKKET) ────────
+// ── #7380: nedkoerselsangrebet respekterer rytterens opgave (TAENDT 31/10) ────────
 // Ejer-beslutning 30/10 (#7380): ingen rytter paa Spar, Grupetto, Beskyt lederen
 // eller en laee-/hjaelperopgave angriber i en nedkoersel. Gaelder ALLE ryttere,
 // ogsaa AI-hold, ud fra den indsats motoren faktisk koerer segmentet med
 // (entrants efter stagePlanEntrants) og etapeplanens opgave, hvor der er en.
 // s5_profiles_v3 er den AKTUELLE revision (#7237), saa rettelsen kan ikke ligge
 // bag revisionen alene (samme moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket
-// er nedkoerslen bit-identisk med main. Taend = ejerens ordrette go i en egen PR.
-export const DESCENT_TASK_7380_ACTIVE: boolean = false;
+// er nedkoerslen bit-identisk med main.
+// TAENDT 31/10 paa ejerens go (taendingskort #7380, "Taend").
+export const DESCENT_TASK_7380_ACTIVE: boolean = true; // ejer-go 31/10, #7380
 
 // Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
 let benchOverride7380: boolean | null = null;
