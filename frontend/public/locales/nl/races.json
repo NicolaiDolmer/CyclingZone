@@ -1611,8 +1611,10 @@
       "teamDay": "{team} leidde het ploegenklassement met {count} renners in de top 10.",
       "teamWon": "{team} won het ploegenklassement.",
       "jerseys": "Truidragers: {points} in het puntenklassement, {mountain} in de bergen.",
-      "abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af door materiaalpech.} injury {{rider} startte niet: geblesseerd.} other {{rider} stapte af.}}",
-      "notableCrash": "{rider} viel en verloor {marginText}."
+      "abandon": "{kind, select, crash {{rider} stapte af na een valpartij.} mechanical {{rider} stapte af door materiaalpech.} injury {{rider} startte niet: geblesseerd.} withdrawal {{rider} stapte af, uitgeput.} time_limit {{rider} kwam buiten tijd binnen.} illness {{rider} startte niet: ziek.} other {{rider} stapte af.}}",
+      "notableCrash": "{rider} viel en verloor {marginText}.",
+      "withdrawalGroup": "{when, select, stage {{count} renners stapten na de etappe af, uitgeput en ver achter.} other {{count} renners stapten af, uitgeput en ver achter.}}",
+      "seeList": "Bekijk de lijst"
     },
     "incidents": {
       "title": "Opgaven",
@@ -1620,7 +1622,14 @@
       "mechanical": "Materiaalpech",
       "injury": "Niet gestart",
       "illness": "Ziek, niet gestart",
-      "withdrawal": "Afgestapt"
+      "withdrawal": "Afgestapt, uitgeput",
+      "time_limit": "Buiten tijd",
+      "abandoned": "Afgestapt",
+      "dnf": "DNF",
+      "dnfCollapsed": "{count, plural, one {# renner kwam niet aan} other {# renners kwamen niet aan}}",
+      "dns": "DNS",
+      "dnsTitle": "Niet gestart",
+      "dnsCollapsed": "{count, plural, one {# renner startte niet} other {# renners startten niet}}"
     },
     "why": {
       "title": "Het grotere plaatje",
@@ -1859,7 +1868,9 @@
         "bestResult": "Best geplaatst: {rider}, etappeplaats {rank}.",
         "inBreak": "{rider} zat de hele dag in de ontsnapping.",
         "helperWork": "{count, plural, one {Een ploeggenoot reed} other {# ploeggenoten reden}} in dienst van {captain}.",
-        "none": "Geen renners van jouw team zijn in deze etappe gestart."
+        "none": "Geen renners van jouw team zijn in deze etappe gestart.",
+        "out": "{kind, select, withdrawal {{rider} stapte af na etappe {number}.} time_limit {{rider} kwam buiten tijd binnen in etappe {number}.} crash {{rider} stapte af na een valpartij in etappe {number}.} injury {{rider} startte niet in etappe {number}: geblesseerd.} illness {{rider} startte niet in etappe {number}: ziek.} other {{rider} stapte af in etappe {number}.}}",
+        "ridersLeft": "{count, plural, =0 {Je hebt geen renners meer over.} one {Je hebt nog # renner over.} other {Je hebt nog # renners over.}}"
       }
     },
     "jersey": {

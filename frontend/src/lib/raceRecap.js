@@ -69,6 +69,115 @@ function scopedIncidents(incidents, scope) {
   return incidents;
 }
 
+// ── #7411: udgaaede synlige ─────────────────────────────────────────────────
+// Aarsags-noeglen under detail.incidents.* pr. incident-art. time_limit er
+// motorens tidsgraense (raceEngineV4Bridge), withdrawal en udkoert hjaelper der
+// steg af (#6938 U3/U4). Ukendt art falder tilbage til "abandoned" (neutral),
+// aldrig til en forkert aarsag.
+const INCIDENT_REASON_KEYS = Object.freeze({
+  crash: "crash",
+  mechanical: "mechanical",
+  injury: "injury",
+  illness: "illness",
+  withdrawal: "withdrawal",
+  time_limit: "time_limit",
+});
+
+export function incidentReasonKey(kind) {
+  return INCIDENT_REASON_KEYS[kind] ?? "abandoned";
+}
+
+// Skadede/syge ikke-startere (backend persistInjuryWithdrawals) gemmes ogsaa med
+// outcome 'abandon', men de stillede aldrig til start: DNS, ikke DNF.
+const NON_STARTER_KINDS = new Set(["injury", "illness"]);
+
+/** true naar en incident-art betyder "startede ikke" (DNS) frem for "udgik" (DNF). */
+export function isNonStarterKind(kind) {
+  return NON_STARTER_KINDS.has(kind);
+}
+
+// Fra hvor mange hjaelpere der stiger af, referatet samler dem i én linje.
+export const WITHDRAWAL_GROUP_MIN = 2;
+
+/** Én samlet referat-linje naar flere stiger af, ellers null. */
+export function withdrawalGroupMoment(incidents, scope) {
+  const sc = scope || { type: "overall" };
+  const count = scopedIncidents(incidents, sc)
+    .filter((inc) => inc.outcome === "abandon" && inc.kind === "withdrawal").length;
+  if (count < WITHDRAWAL_GROUP_MIN) return null;
+  return { key: "withdrawalGroup", params: { count, when: sc.type === "stage" ? "stage" : "other" } };
+}
+
+/** Holdet en udgaaet rytter koerte for: hans egne etaperaekker, ellers hans nuvaerende hold. */
+export function incidentTeamId(inc, teamIdByRider = /** @type {Map<any, any> | null} */ (null)) {
+  const fromRows = inc?.rider_id != null ? teamIdByRider?.get?.(inc.rider_id) : null;
+  return fromRows ?? inc?.rider?.team?.id ?? null;
+}
+
+/** rider_id → team_id ud fra loebets etaperaekker (holdet en rytter koerte loebet for). */
+export function teamIdByRiderFromRows(rows) {
+  const out = new Map();
+  for (const r of rows || []) {
+    if (r?.rider_id != null && r.team_id != null && !out.has(r.rider_id)) out.set(r.rider_id, r.team_id);
+  }
+  return out;
+}
+
+/**
+ * DNF-raekkerne nederst i etapens resultattabel: etapens udgaaede (race_incidents,
+ * samme kilde som DnfSection), efter navn. Hver raekke baerer holdet saa
+ * holdfilteret og "dit hold"-markeringen virker som paa de oevrige raekker.
+ * Ikke-startere (skade/sygdom) faar status "dns" og staar efter dem der udgik.
+ */
+export function dnfRowsForStage(incidents, stageNumber, teamIdByRider = /** @type {Map<any, any> | null} */ (null)) {
+  const rows = (incidents || [])
+    .filter((inc) => inc.outcome === "abandon" && (inc.stage_number ?? 1) === stageNumber)
+    .map((inc) => {
+      const teamId = incidentTeamId(inc, teamIdByRider);
+      return {
+        id: `dnf-${inc.id ?? inc.rider_id}`,
+        rider_id: inc.rider_id ?? inc.rider?.id ?? null,
+        rider: inc.rider ?? null,
+        team_id: teamId,
+        team_name: inc.rider?.team?.id != null && String(inc.rider.team.id) === String(teamId) ? inc.rider.team.name ?? null : null,
+        reasonKey: incidentReasonKey(inc.kind),
+        status: isNonStarterKind(inc.kind) ? "dns" : "dnf",
+        name: incidentRiderName(inc),
+      };
+    });
+  return rows.sort((a, b) => (a.status === b.status ? 0 : a.status === "dnf" ? -1 : 1)
+    || (a.name ?? "").localeCompare(b.name ?? ""));
+}
+
+/**
+ * "Dit hold" paa etapen: egne ryttere der udgik (eller ikke startede, nonStarter) paa etapen + hvor mange der er
+ * tilbage. Tilbage = egne ryttere med en etaperaekke paa etapen (motoren skriver
+ * ingen raekke for en udgaaet eller en rytter uden for tidsgraensen).
+ * null naar intet eget hold eller ingen egne udgaaede.
+ */
+export function ownStageAbandons({ incidents, results, stageNumber, myTeamId, teamIdByRider = /** @type {Map<any, any> | null} */ (null) }) {
+  if (myTeamId == null) return null;
+  const mine = (inc) => String(incidentTeamId(inc, teamIdByRider)) === String(myTeamId);
+  const out = (incidents || [])
+    .filter((inc) => inc.outcome === "abandon" && (inc.stage_number ?? 1) === stageNumber && mine(inc) && incidentRiderName(inc))
+    .map((inc) => ({
+      riderId: inc.rider_id ?? inc.rider?.id ?? null,
+      rider: incidentRiderName(inc),
+      kind: incidentReasonKey(inc.kind),
+      nonStarter: isNonStarterKind(inc.kind),
+    }));
+  if (!out.length) return null;
+  const outIds = new Set(out.map((o) => o.riderId).filter(Boolean));
+  const left = new Set(
+    (results || [])
+      .filter((r) => r.result_type === "stage" && (r.stage_number ?? 1) === stageNumber
+        && String(r.team_id ?? r.rider?.team?.id) === String(myTeamId)
+        && r.rider_id != null && !outIds.has(r.rider_id))
+      .map((r) => r.rider_id),
+  ).size;
+  return { abandons: out, ridersLeft: left };
+}
+
 // Finish-orden for scope: etape → 'stage'-rækker for etapen; samlet → 'gc' ved
 // sidste etape (gælder både endagsløb (gc på etape 1) og etapeløb (final-GC)).
 function selectFinishOrder(results, scope) {
@@ -171,7 +280,12 @@ export function buildRaceRecap({ results = [], scope, incidents = [], profileTyp
   // som resten af filen).
   const scoped = scopedIncidents(incidents, sc);
 
-  const abandons = scoped.filter((inc) => inc.outcome === "abandon" && incidentRiderName(inc));
+  // #7411: stiger flere hjaelpere af, bliver det én samlet linje i stedet for
+  // at referatet viser 2 tilfaeldige navne og tier om resten.
+  const group = withdrawalGroupMoment(scoped, sc);
+  if (group) moments.push(group);
+  const abandons = scoped.filter((inc) => inc.outcome === "abandon" && incidentRiderName(inc)
+    && !(group && inc.kind === "withdrawal"));
   for (const inc of abandons.slice(0, ABANDON_MOMENT_LIMIT)) {
     moments.push({ key: "abandon", params: { rider: incidentRiderName(inc), kind: inc.kind } });
   }
