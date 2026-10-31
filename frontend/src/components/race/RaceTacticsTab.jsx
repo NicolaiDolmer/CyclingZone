@@ -93,7 +93,10 @@ import {
 } from "../../lib/stageRoleMatrixLogic.js";
 import {
   DEFAULT_EFFORT,
-  orderedEfforts,
+  effortsForStage,
+  isIndividualTimeTrialProfile,
+  effortForStage,
+  withIndividualTimeTrialEfforts,
   intentionFor,
   setIntention,
   copyStageIntentions,
@@ -167,7 +170,7 @@ function IntentionChip({ t, effort, isDefault, role, muted = false }) {
 }
 
 // Den udfoldede vælger: ét trin pr. linje, én sætning i ord, ingen tal.
-function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
+function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disabled, onPick, timeTrial = false, blockedFor = /** @type {(step: string) => string | null} */ (() => null) }) {
   return (
     <div className="rounded-cz border border-cz-border bg-cz-card overflow-hidden">
       <div className="flex items-baseline justify-between gap-3 px-3.5 py-2 border-b border-cz-border">
@@ -198,7 +201,7 @@ function IntentionPicker({ t, riderName, role, scopeLabel, steps, value, disable
               {step === "protect" ? protectText(t, role, "step") : t(`intention.step.${step}`)}
             </span>
             <span className="text-xs text-cz-2 basis-full sm:basis-auto ps-[26px] sm:ps-0">
-              {step === "protect" ? protectText(t, role, "why") : t(`intention.why.${step}`)}
+              {step === "protect" ? protectText(t, role, "why") : step === "save" && timeTrial ? t("intention.whyItt.save") : t(`intention.why.${step}`)}
             </span>
             {blocked ? (
               <span className="text-3xs text-cz-3 basis-full sm:basis-auto ps-[26px] sm:ps-0 sm:ms-auto">{t(blocked)}</span>
@@ -450,7 +453,6 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     () => stageList.filter((s) => !s.locked).map((s) => s.stage_number),
     [stageList],
   );
-  const steps = useMemo(() => orderedEfforts(roles?.valid_efforts), [roles?.valid_efforts]);
   const riders = useMemo(() => roles?.riders ?? [], [roles?.riders]);
   const lockedOverrides = useMemo(() => overridesIndex(roles?.overrides), [roles?.overrides]);
 
@@ -535,6 +537,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   const saving = status === "saving";
   const activeMeta = stageList.find((s) => s.stage_number === activeStage) ?? { locked: false, scheduled_at: null };
   const stageLocked = activeMeta.locked;
+  /** #7332: etapens profiltype (null for en ukendt/uvalgt etape). */
+  const profileTypeOfStage = (stageNumber) => (stageNumber == null ? null : profileByStage[stageNumber]?.profile_type ?? null);
   const order = ordersByStage[activeStage] ?? orderForStage(orders, activeStage, profileByStage[activeStage]?.profile_type);
   const initialOrder = initialOrdersByStage[activeStage];
   const ordersDirty = JSON.stringify(order) !== JSON.stringify(initialOrder);
@@ -570,7 +574,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
 
   function copyToNextStage() {
     if (nextStage == null) return;
-    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders }));
+    // #7332: en enkeltstart som maal faar aldrig grupetto/protect (bliver Kør roligt).
+    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders, fromProfileType: profileTypeOfStage(activeStage), toProfileType: profileTypeOfStage(nextStage) }));
     // Ordrerne kopieres med: "kopiér til etape N+1" skal flytte HELE dagens
     // plan, ikke halvdelen af den. Etapen der kopieres TIL skal stadig gemmes
     // selv (den er en anden etapes PUT).
@@ -605,7 +610,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // backend fra før #6095 (deploy-vinduet) opfører sig som før, ikke værre.
       const stages = changedStages(draftMatrix, initialMatrix).filter((sn) => editableStages.includes(sn));
       if (stages.length) {
-        const overrides = diffToOverrides({ matrix: draftMatrix, riders });
+        // #7332: en enkeltstart gemmes aldrig med grupetto/protect fra fladen (bliver "save").
+        const overrides = diffToOverrides({ matrix: withIndividualTimeTrialEfforts({ matrix: draftMatrix, profileByStage }), riders });
         // "empty" = serverens EMPTY_STAGE_VERSION for en etape uden rækker.
         const baseVersions = Object.fromEntries(stages.map((sn) => [sn, roles?.stage_versions?.[sn] ?? "empty"]));
         const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, {
@@ -628,7 +634,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // spilleren faktisk kunne se og røre.
       // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
       // #7003: med etapeplanen foelger indsatsen opgaven (planens felter vinder over intentionen).
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId })), stagePlan: orders?.stagePlanEnabled === true });
+      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }), profileTypeOfStage(activeStage))), stagePlan: orders?.stagePlanEnabled === true });
       setStatus("saved");
       setOpenRiderId(null);
       setOpenRoleRiderId(null);
@@ -705,9 +711,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     return blockedReasonKey(step, { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true }, roleFor(rider), { teamHasSprintCaptain });
   };
 
+  // #7332: paa en aaben enkeltstart vises grupetto/protect (gamle valg) som Kør roligt,
+  // og vaelgeren har kun Kør roligt, Normal og Alt ud. En laast etape viser det der blev sendt.
   const effortFor = (rider) => (stageLocked
     ? resolveCell({ rider, stageNumber: activeStage, overridesMap: lockedOverrides }).effort
-    : intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId: rider.rider_id }));
+    : effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId: rider.rider_id }), stageProfileType));
+  const steps = effortsForStage(roles?.valid_efforts, stageProfileType);
 
   // #4980: rollen skrives fra den FØRSTE ulåste etape og løbet ud — noten i
   // vælgerens hoved siger det med det etapenummer det gælder fra, så et skift
@@ -802,7 +811,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     const isDefault = effort === DEFAULT_EFFORT;
     const open = openRiderId === rider.rider_id;
     const role = roleFor(rider);
-    const todayText = effort === "protect" ? protectText(t, role, "today") : t(`intention.today.${effort}`);
+    const todayText = effort === "protect" ? protectText(t, role, "today") : effort === "save" && isIndividualTimeTrialProfile(stageProfileType) ? t("intention.todayItt.save") : t(`intention.today.${effort}`);
     if (stageLocked) {
       return (
         <>
@@ -1118,6 +1127,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                           role={roleFor(rider)}
                           scopeLabel={scopeLabel}
                           steps={steps}
+                          timeTrial={isIndividualTimeTrialProfile(stageProfileType)}
                           value={effortFor(rider)}
                           disabled={saving}
                           onPick={(step) => pickIntention(rider.rider_id, step)}
@@ -1175,6 +1185,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                     role={roleFor(rider)}
                     scopeLabel={scopeLabel}
                     steps={steps}
+                    timeTrial={isIndividualTimeTrialProfile(stageProfileType)}
                     value={effortFor(rider)}
                     disabled={saving}
                     onPick={(step) => pickIntention(rider.rider_id, step)}
