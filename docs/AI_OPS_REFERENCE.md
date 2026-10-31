@@ -146,6 +146,16 @@ _Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://githu
 
 ---
 
+## Private indstillinger (`private_config`, [#7390](https://github.com/NicolaiDolmer/CyclingZone/issues/7390))
+
+**`app_config` er LÆSBAR for alle indloggede** (policy `app_config_select_authenticated`): flag og stadier hører til dér, aldrig balance-tal. Private motor- og træningstal (kurve B's params, drift-rapportens grænser) ligger i `private_config`: RLS uden policies, kun `service_role`, og hver ændring logges med gammel og ny værdi i `private_config_history` (trigger).
+
+- **Nøgler + skema:** registret i `backend/lib/privateConfig.ts` (`PRIVATE_CONFIG_KEYS`). En ny nøgle = en parser dér + test. Læs med `readPrivateConfig(supabase, key, { strict })` (60 s cache; ugyldig = null + advarsel, `strict` kaster).
+- **Sæt en værdi, kun på ejerens ordrette go:** læg JSON-filen uden for repoet (`balance-internals/`, gitignoreret), kør fra `backend/` `infisical run --env=prod -- node scripts/ops/setPrivateConfig.mjs --key <nøgle> --file <fil> --dry-run`, vis ejeren hash + felterne der ændres, og kør igen uden `--dry-run` efter "kør". Scriptet validerer, skriver med service-rollen, læser tilbage og bekræfter hashen. Værdierne skrives aldrig i chat, issues, PR'er eller logs.
+- **Kurve B:** læser `development_curve_b_params` først; Railway-variablen `DEVELOPMENT_CURVE_B_PARAMS` er midlertidig reserve (logget når den bruges) og fjernes, når tabellen er bekræftet i prod.
+
+---
+
 ## Masterplan artifact sync
 
 _Flyttet hertil fra `AGENTS.md` regel 34 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._

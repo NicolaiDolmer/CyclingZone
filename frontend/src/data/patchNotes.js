@@ -1,5 +1,122 @@
 export const PATCHES = [
   {
+    "version": "7.389",
+    "date": "2026-10-30",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Next race points to your own race",
+          "body": "Next race on the dashboard now points to your team's own next race, and falls back to the calendar if you have none."
+        },
+        "da": {
+          "title": "Næste løb peger på jeres eget løb",
+          "body": "Næste løb på forsiden peger nu på dit holds eget næste løb og falder tilbage til kalenderen, hvis I ingen har."
+        },
+        "refs": [
+          7296
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Races",
+        "en": {
+          "title": "Season planner highlight stays put",
+          "body": "In the season planner, taking a rider out of a race no longer makes the highlight jump to the wrong dates."
+        },
+        "da": {
+          "title": "Markeringen i sæsonplanlæggeren bliver stående",
+          "body": "I sæsonplanlæggeren flytter markeringen sig ikke længere til forkerte datoer, når en rytter tages ud af et løb."
+        },
+        "refs": [
+          7294
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Transfers",
+        "en": {
+          "title": "Off-season trades show under the right season",
+          "body": "Trades made in the gap between two seasons now show under the upcoming season in transfer history."
+        },
+        "da": {
+          "title": "Handler mellem sæsoner står under den rigtige sæson",
+          "body": "Handler i hullet mellem to sæsoner vises nu under den kommende sæson i transferhistorikken."
+        },
+        "refs": [
+          7285
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "rollout": "live",
+        "topic": "Academy",
+        "en": {
+          "title": "Released academy riders leave the transfer list",
+          "body": "A rider released from the academy is now also removed from the transfer list."
+        },
+        "da": {
+          "title": "Frigivne akademiryttere forlader transferlisten",
+          "body": "En rytter, der frigives fra akademiet, fjernes nu også fra transferlisten."
+        },
+        "refs": [
+          7284
+        ]
+      }
+    ]
+  },
+  {
+    "version": "7.388",
+    "date": "2026-10-30",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "Two hard sessions for every rider type",
+          "body": "What changed: There are five new hard sessions: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial now has its own sessions, so Threshold trains tempo and endurance. Time trial and GC riders on Threshold, and time trial riders without a plan, now train Long time trials.\n\nWhat it means for you: Check the plan for your time trial and GC riders. One who followed a training group with other rider types now has his own plan."
+        },
+        "da": {
+          "title": "To hårde sessioner til hver ryttertype",
+          "body": "Hvad er ændret: Der er fem nye hårde sessioner: Lange stigninger, Lead-out, Korte enkeltstarter, Lange enkeltstarter og Brostensklassiker. Enkeltstart har nu sine egne sessioner, så Tærskel træner tempo og udholdenhed. Enkeltstarts- og klassementsryttere på Tærskel og enkeltstartsryttere uden plan træner nu Lange enkeltstarter.\n\nHvad betyder det for dig: Tjek planen for dine enkeltstarts- og klassementsryttere. En af dem, der fulgte en træningsgruppe med andre ryttertyper, har nu sin egen plan."
+        },
+        "refs": [
+          5319,
+          7341,
+          7354
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "rollout": "switched_on",
+        "topic": "Training",
+        "en": {
+          "title": "Level and potential now drive development",
+          "body": "What changed: How fast a rider develops now depends on his level and potential, not his age. Close to his ceiling an ability slows down, but it never stops. Riders whose ability already sits above the new ceiling slide gently into the new pace over the first two weeks.\n\nWhat it means for you: Talents with high potential grow fastest. A rider near his ceiling still grows, just slowly."
+        },
+        "da": {
+          "title": "Niveau og potentiale styrer nu udviklingen",
+          "body": "Hvad er ændret: Hvor hurtigt en rytter udvikler sig, afhænger nu af hans niveau og potentiale, ikke hans alder. Tæt på loftet går en evne langsommere, men den står aldrig stille. Ryttere, hvis evne allerede ligger over det nye loft, glider blødt over i den nye fart de første to uger.\n\nHvad betyder det for dig: Talenter med højt potentiale vokser hurtigst. En rytter tæt på loftet vokser stadig, bare langsomt."
+        },
+        "refs": [
+          6110,
+          7382
+        ]
+      }
+    ]
+  },
+  {
     "version": "7.387",
     "date": "2026-10-30",
     "changes": [

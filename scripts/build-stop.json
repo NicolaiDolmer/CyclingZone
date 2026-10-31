@@ -198,6 +198,10 @@
     {
       "issue": 7381,
       "area": "race-engine"
+    },
+    {
+      "issue": 7390,
+      "area": "udvikling-2"
     }
   ],
   "cleanupList": [
@@ -394,6 +398,16 @@
     {
       "issue": 7368,
       "reason": "Taktik: fase sat som 'efter stigning X' vises og udføres som 'fra X til Y' (Discord 29-30/10, ejer-go 30/10)",
+      "since": "2026-10-30"
+    },
+    {
+      "issue": 7294,
+      "reason": "Planlægning: udtagelse i sæsonmatrix flytter visuelt til forkerte datoer (Discord, ejer-go 30/10)",
+      "since": "2026-10-30"
+    },
+    {
+      "issue": 7296,
+      "reason": "Forside: Næste løb peger på holdets næste løb (Discord, ejer-go 30/10)",
       "since": "2026-10-30"
     }
   ]

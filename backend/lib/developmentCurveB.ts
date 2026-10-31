@@ -36,6 +36,10 @@
 // S2/S8): en evne over sit bløde loft står aldrig stille. Den får en lille restfart,
 // der aftager mod rolleklassens hårde loft og først er 0 dér.
 //
+// Tændingen (#7382): de første 14 dage kurve B kører, glider evner der stod over det
+// bløde loft ved tændingen (ét samlet øjebliksbillede), fra den gamle models fart til
+// restfarten (developmentCurveBTransition7382.ts).
+//
 // ═══ TAL ═════════════════════════════════════════════════════════════════════
 // Alle kalibrerings-tal er PRIVATE (hard rule 17, balance-internals/6110/) og
 // gives som `params`. Der er bevidst ingen standardværdier: uden gyldige params
@@ -50,7 +54,7 @@ const SCALE_TOP = 100;
 const POT_MIN = 1;
 const POT_MAX = 6;
 // #7316: restfarten (andel af fuld fart, se curveBCapSoftness), når params ikke selv
-// angiver `aboveCeilingFloor`. Params ligger i serverens miljø, så et manglende felt
+// angiver `aboveCeilingFloor`. Params ligger uden for koden (private_config, #7390), så et manglende felt
 // må aldrig give muren tilbage. Sikker kode-default > 0; kalibreringen er privat.
 export const DEFAULT_ABOVE_CEILING_FLOOR = 0.1;
 

@@ -73,6 +73,7 @@ import {
 import { notifyTrainingInjuries } from "./raceAvailabilityNotifications.js"; // #7086
 import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 variant B
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
+import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
@@ -742,6 +743,13 @@ export async function runTeamTrainingDay({
     isDevelopmentV2AgingEnabled(supabase, { strict: conditionPerDate }),
     loadDevelopmentCurveB({ supabase, strict: conditionPerDate }),
   ]);
+  // #7382: de første dage kurve B koerer, glider evner over det bloede loft ind i kurven.
+  // Foerste gang kurven er aktiv: eet oejebliksbillede af alle managerhold + stempel (dagens dato); flag off = intet opslag.
+  const curveBTransition = curveB
+    ? curveBTransitionForDate({ ignitedOn: await ensureCurveBIgnition(supabase, { now, curveB, seasonNumber, isManagerTeam: isManagerTeamForDevelopment, strict: conditionPerDate }), tickDate })
+    : null;
+  // Hvem der er med, staar i oejebliksbilledet (en raekke pr. rytter); kun inde i vinduet.
+  const curveBRoster = curveBTransition ? await loadCurveBTransitionRoster(supabase, { transition: curveBTransition, riderIds, strict: conditionPerDate }) : null;
   // #6950: Udviklingsscore B + catch-up via loeb. null = dagens model; kraever #7075's dato-loft.
   const [developmentScoreB, raceCatchUp] = await Promise.all([
     loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),
@@ -1061,6 +1069,8 @@ export async function runTeamTrainingDay({
     // fjerner maetningen ved roden). tickCaps = livstids-loftet for ALLE aldre,
     // uaendret siden #2437; det er nu den eneste semantik der findes.
     const tickCaps = caps;
+    // #7382: rytterens raekke i taendingens oejebliksbillede (ingen raekke = kurve B fuldt).
+    const riderCurveBTransition = developmentAllowed ? curveBRoster?.forRider(rider.id) ?? null : null;
 
     // Er rytteren skadet i dag?
     // #5462: paa loebsdags-aksen spoerges der paa LOEBSDAGEN, ikke paa datoen — en
@@ -1211,6 +1221,7 @@ export async function runTeamTrainingDay({
         hardDailyCap,
         // #3564: baade traeningsdagen og loebsdagen (applyDailyTick nedenfor) faar kurven.
         curveB,
+        curveBTransition: riderCurveBTransition, // #7382
       };
       if (racedToday) {
         // #4850 variant A (ejer 24/9, S1 valgt efter simuleringen i #5640):

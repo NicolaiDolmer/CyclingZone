@@ -13,11 +13,12 @@ import { readFlagStage } from "./featureStage.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { buildKeyedNotification, notifyTeamOwner, notifyIfContractExpiresThisSeason } from "./notificationService.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
-import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
+import { getTeamMarketState, calculateRiderMarketValue, closeTransferListingsForRiders } from "./marketUtils.js";
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG, FREE_AGENT_MIN_DURATION_HOURS, getAuctionSeasonBoundaryIssue } from "./auctionEngine.js";
 import { fetchSeasonTransitionBoundary } from "./seasonTransitionBoundary.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { clearOffSquadEntriesSafe } from "./squadEntryCleanup.js";
+import { captureException } from "./sentry.js";
 
 // Notifikationstypen for "manageren har et graduerings-valg at træffe". Den er
 // eksporteret fordi den nu bruges TO steder: når vinduet åbnes, og når det
@@ -532,8 +533,22 @@ export async function resolveGraduation(supabase, {
   if (error) throw new Error(`resolveGraduation release update: ${error.message}`);
   // #1906 defense-in-depth: ryd rytterens fremtidige race_entries så de ikke hænger ved som ghost.
   await clearFutureRaceEntriesSafe({ supabase, riderId, label: "academy_release" });
+  // #7284: rytteren har forladt holdet, saa et aabent transfer_listing maa ikke staa tilbage.
+  await closeListingsBestEffort(supabase, riderId);
   await finishGraduation(supabase, { gradId: grad.id, status: "released", teamId, rider, now, action, notify });
   return { riderId, action: "released" };
+}
+
+// #7284: luk rytterens aabne transfer_listings efter en release. Rytteren er allerede
+// frigivet paa dette tidspunkt, og et retry rammer ownership-guarden, saa en fejl her maa
+// IKKE springe grad-bogfoeringen/notifikationen over. Fejlen sendes til Sentry; de
+// eventuelt tilbageblevne raekker ryddes af scripts/7284-withdraw-orphan-listings.mjs.
+async function closeListingsBestEffort(supabase, riderId) {
+  try {
+    await closeTransferListingsForRiders(supabase, [riderId], "withdrawn");
+  } catch (err) {
+    captureException(new Error(`academy release close listings (${riderId}): ${err instanceof Error ? err.message : String(err)}`));
+  }
 }
 
 /**
@@ -649,6 +664,8 @@ export async function releaseUnsoldGraduate(supabase, {
   // #1906 defense-in-depth: samme oprydning som release-grenen — rytteren har
   // forladt holdet, saa hans fremtidige race_entries maa ikke haenge ved.
   await clearFutureRaceEntriesSafe({ supabase, riderId: id, label: "academy_unsold_graduate" });
+  // #7284: samme som release-grenen, luk rytterens aabne transfer_listings.
+  await closeListingsBestEffort(supabase, id);
 
   // Grad-raekken blev stemplet 'sold' i det oejeblik auktionen blev OPRETTET,
   // ikke da den blev afgjort (#4495 punkt 2). Salget skete aldrig, saa raekken

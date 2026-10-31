@@ -222,7 +222,12 @@ eller aftenvinduet. Hver kørsel logger queue_length ved start, pass_ms,
 enabled og status, også mens flaget er off. Kø over 10.000 eller samlet
 pass-tid over 20 sekunder udløser Sentry med begge mål. Et pas dræner op til
 20 batches eller 8 sekunder med lease-fornyelse mellem batches (M1.5); resten
-bliver i køen. Ældste køpost over 30 minutter, mens flaget er on/beta, udløser
+bliver i køen. Undtagelse (Codex P1, 31/10): et pas under coordinatorens lease
+dræner først alt arbejde til og med versionens kø-vandmærke (max_id læst efter
+claim, plus en rebuild-markørs udfoldning), med hårde lofter på 100 batches/45 s
+(status version-pending). En rebuild-markør udfoldes kun til holdbare køposter:
+én pr. løb, derefter ét sæson-sweep pr. summary-sæson, højst ét sweep pr. batch
+(Codex P2). Ældste køpost over 30 minutter, mens flaget er on/beta, udløser
 Sentry (queue-stall).
 Supabase-branch-bevis: audits/2026-10-19-6765-operational-readiness.md.
 M2 kræver stadig

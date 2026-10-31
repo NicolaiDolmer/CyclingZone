@@ -573,7 +573,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                         const trainedToday = race ? isTrainedToday(race.id, rider.id) : false; // #6383
                         return (
                           <td
-                            key={seg.day}
+                            key={seg.key}
                             className={`border-b p-0 ${peak ? "bg-cz-accent/10" : ""} ${
                               hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
                                 : isDraftCell ? "border-cz-border outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
@@ -603,7 +603,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       const trainedToday = isTrainedToday(race.id, rider.id); // #6383
                       return (
                         <td
-                          key={race.id}
+                          key={seg.key}
                           colSpan={seg.colSpan}
                           className={`border-b p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""} ${
                             hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
