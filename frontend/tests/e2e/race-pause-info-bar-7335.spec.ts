@@ -13,6 +13,7 @@
 //   6) dashboardet: global bjaelke skjult, dashboardets egen Pauset-flade staar
 //
 // PR-billeder: CZ_WRITE_COMMITTED_SHOTS=1 skriver til pr-screens/7335/.
+import type { Page, Route } from "@playwright/test";
 import { expect, test } from "./e2e-base.js";
 import { installNetworkMocks, stabilizePage, login, json, corsHeaders, evidenceShotPath } from "./fixtures.js";
 
@@ -27,8 +28,8 @@ const NO_PAUSE = { stage_scheduler_enabled: "on" };
 
 // Pausens to app_config-noegler laeses i EN forespoergsel (key=in.(...)). Andre
 // app_config-laesninger falder igennem til den generelle mock.
-async function mockPauseConfig(page, rows) {
-  await page.route("**/rest/v1/app_config?**", (route) => {
+async function mockPauseConfig(page: Page, rows: Record<string, unknown>) {
+  await page.route("**/rest/v1/app_config?**", (route: Route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (request.method() !== "GET" || !request.url().includes("stage_scheduler_enabled")) return route.fallback();
@@ -36,8 +37,8 @@ async function mockPauseConfig(page, rows) {
   });
 }
 
-async function mockSeasonChangeNotice(page) {
-  await page.route("**/rest/v1/ops_notices?**", (route) => {
+async function mockSeasonChangeNotice(page: Page) {
+  await page.route("**/rest/v1/ops_notices?**", (route: Route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
     if (request.method() !== "GET") return route.fallback();
@@ -56,7 +57,10 @@ async function mockSeasonChangeNotice(page) {
   });
 }
 
-async function open(page, { path, width = 1440, height = 900, lang = "en" }) {
+async function open(
+  page: Page,
+  { path, width = 1440, height = 900, lang = "en" }: { path: string; width?: number; height?: number; lang?: "en" | "da" },
+) {
   await login(page);
   // login-helperen kraever danske placeholders; sproget flyttes EFTER login (som #1140).
   await page.addInitScript((value) => window.localStorage.setItem("cz_lang", value), lang);
@@ -66,7 +70,7 @@ async function open(page, { path, width = 1440, height = 900, lang = "en" }) {
   await pauseRead;
 }
 
-const bar = (page) => page.getByRole("status", { name: "Race status" });
+const bar = (page: Page) => page.getByRole("status", { name: "Race status" });
 
 test.beforeEach(async ({ page }) => {
   await installNetworkMocks(page);
