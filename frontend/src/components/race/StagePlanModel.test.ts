@@ -19,6 +19,7 @@ import {
   withoutStagePlans,
 } from "./StagePlanModel.ts";
 import { FINAL_KM_BOUNDARY_7383_ACTIVE, stagePlanFeaturesFromRaw, stagePlanSwitchNoteText, stagePlanSwitchNotes } from "./StagePlanModel.ts"; // #7383
+import { suggestStagePlan, suggestionReasonKey } from "./StagePlanModel.ts"; // #7369
 import type { StagePlanLeg } from "./StagePlanModel.ts";
 
 const ROUTE = stagePlanRouteFromRaw({
@@ -211,4 +212,56 @@ test("#7383: notens tekst findes paa alle sprog", () => {
       assert.ok(!(text as string).includes("—"), `${lng} ${key}: ingen em-dash`);
     }
   }
+});
+
+// ── #7369: forslaget skal kunne kendes fra et valg (maerke + kort grund) ──
+const ROLES_7369 = ["captain", "co_captain", "sprint_captain", "helper", "hunter", "free_role"] as const;
+const PROFILES_7369 = ["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "cobbles", null];
+const CLIMBS_7369 = [
+  [],
+  [{ crest_km: 60, category: "3" }],
+  [{ crest_km: 60, category: "3" }, { crest_km: 110, category: "1" }],
+  [{ crest_km: 40, category: "2" }, { crest_km: 90, category: "1" }, { crest_km: 150, category: "HC", summit_finish: true }],
+];
+
+test("#7369: hvert forslag paa en linjeetape har en kort grund, og grunden findes paa alle sprog", () => {
+  const locales = Object.fromEntries(["en", "da", "es", "fr", "nl"].map((lng) => [lng, JSON.parse(readFileSync(new URL(`../../../public/locales/${lng}/races.json`, import.meta.url), "utf8"))]));
+  for (const profile_type of PROFILES_7369) {
+    for (const climbs of CLIMBS_7369) {
+      const route = stagePlanRouteFromRaw({ distance_km: 150, profile_type, climbs });
+      for (const role of ROLES_7369) {
+        for (const teamHasSprintCaptain of [false, true]) {
+          for (const luxuryHelper of role === "helper" ? [false, true] : [false]) {
+            const legs = suggestStagePlan({ role, route, teamHasSprintCaptain, luxuryHelper });
+            const key = suggestionReasonKey(legs, role, luxuryHelper);
+            assert.ok(key, `${role} ${profile_type} ${JSON.stringify(climbs)} ${luxuryHelper}`);
+            for (const [lng, races] of Object.entries(locales)) {
+              const text = (key as string).split(".").reduce((o: Record<string, unknown> | undefined, k) => o?.[k] as Record<string, unknown> | undefined, races) as unknown;
+              assert.equal(typeof text, "string", `${lng} ${key}`);
+              assert.ok(!(text as string).includes("—"), `${lng} ${key}: ingen em-dash`);
+            }
+          }
+        }
+      }
+    }
+  }
+});
+
+test("#7369: lederens grund siger at angrebet er spillerens valg", () => {
+  const legs = suggestStagePlan({ role: "captain", route: ROUTE, teamHasSprintCaptain: false });
+  assert.deepEqual(legs, [{ task: "stay_sheltered" }, { task: "follow_moves", from: { at: "kom", kom_index: 0 } }]);
+  assert.equal(suggestionReasonKey(legs, "captain"), "stagePlan.suggestionReason.followLastClimb");
+  const flat = stagePlanRouteFromRaw({ distance_km: 150, profile_type: "flat", climbs: [] });
+  assert.equal(suggestionReasonKey(suggestStagePlan({ role: "captain", route: flat, teamHasSprintCaptain: false }), "captain"), "stagePlan.suggestionReason.leaderFinal");
+  assert.equal(suggestionReasonKey(null, "captain"), null, "enkeltstart: intet forslag, ingen grund");
+  const en = JSON.parse(readFileSync(new URL("../../../public/locales/en/races.json", import.meta.url), "utf8"));
+  assert.match(en.stagePlan.suggestionReason.followLastClimb, /your call/);
+  assert.match(en.stagePlan.suggestionReason.leaderFinal, /your call/);
+});
+
+test("#7369: boardet viser maerket ved forslaget, ogsaa i editoren naar felterne viser forslaget", () => {
+  const board = readFileSync(new URL("./StagePlanBoard.tsx", import.meta.url), "utf8");
+  assert.match(board, /<SuggestionBadge t=\{t\} \/>[\s\S]{0,200}<PlanChain t=\{t\} legs=\{suggestion\}/);
+  assert.match(board, /showsSuggestion=\{!saved\}/);
+  assert.doesNotMatch(board, /<span className="sr-only">\{t\("stagePlan\.suggestion"\)\}<\/span>/, "mobil: maerket er synligt, ikke kun for skaermlaesere");
 });

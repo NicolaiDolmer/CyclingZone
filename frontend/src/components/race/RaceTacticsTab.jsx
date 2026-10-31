@@ -116,6 +116,7 @@ import {
   withIntentionEfforts,
 } from "../../lib/tacticsPlan.js";
 import { defaultOrderForStage, fetchTeamOrders, orderForStage, saveTacticsCard } from "../../lib/tacticsOrdersAdapter.js";
+import { roadOrdersAvailable, withoutRoadOrders } from "../../lib/tacticsProfileGate.ts"; // #7317
 import { isStageLockedForTactics } from "../../lib/racePageTabs.js";
 import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
@@ -634,7 +635,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       // spilleren faktisk kunne se og røre.
       // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
       // #7003: med etapeplanen foelger indsatsen opgaven (planens felter vinder over intentionen).
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }), profileTypeOfStage(activeStage))), stagePlan: orders?.stagePlanEnabled === true });
+      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withoutRoadOrders(withIntentionEfforts(order, (riderId) => effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }), profileTypeOfStage(activeStage))), profileTypeOfStage(activeStage)), stagePlan: orders?.stagePlanEnabled === true });
       setStatus("saved");
       setOpenRiderId(null);
       setOpenRoleRiderId(null);
@@ -708,7 +709,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #7003 (spec §3): et indsatstrin der modsiger rytterens udbrud/tog i dag.
   const effortBlockedKey = (rider, step) => {
     const ro = orderByRider.get(rider.rider_id) || {};
-    return blockedReasonKey(step, { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true }, roleFor(rider), { teamHasSprintCaptain });
+    const roadOn = roadOrdersAvailable(stageProfileType); // #7317: skjulte vej-flag spaerrer aldrig en indsats paa tidskoersel
+    return blockedReasonKey(step, { effort: effortFor(rider), try_break: roadOn && ro.try_break === true, leadout: roadOn && ro.leadout === true }, roleFor(rider), { teamHasSprintCaptain });
   };
 
   // #7332: paa en aaben enkeltstart vises grupetto/protect (gamle valg) som Kør roligt,
@@ -863,6 +865,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
         </span>
       );
     }
+    // #7317: ingen udbrud/tog paa tidskoersel — forklaringen staar een gang over listen.
+    if (!roadOrdersAvailable(stageProfileType)) return <span className="text-3xs text-cz-3" aria-hidden="true">—</span>;
     const isSprintCaptain = roleFor(rider) === "sprint_captain";
     // #7003 (spec §3): et valg der modsiger rytterens andre ordrer kan ikke slaas til.
     const riderState = { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true };
@@ -989,7 +993,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       {/* Holdplanen for den åbne etape: hvem kører der ledes for, hvad gør
           holdet med udbruddet, og hvor mange kører sprint-tog. Preview-gated
           sammen med ordre-kolonnen — se TACTICS_V4_PREVIEW i RaceDetailPage. */}
-      {showOrders && (
+      {showOrders && !roadOrdersAvailable(stageProfileType) && (
+        <p data-testid="time-trial-no-road-orders" className="px-4 py-3 border-b border-cz-border text-xs text-cz-2">{t("tacticsOrders.timeTrialNoRoadOrders")}</p>
+      )}
+      {showOrders && roadOrdersAvailable(stageProfileType) && (
       <div className="px-4 py-3 border-b border-cz-border grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <p className="text-3xs uppercase tracking-wide text-cz-3">{t("tacticsOrders.planLabel")}</p>
