@@ -709,7 +709,8 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #7003 (spec §3): et indsatstrin der modsiger rytterens udbrud/tog i dag.
   const effortBlockedKey = (rider, step) => {
     const ro = orderByRider.get(rider.rider_id) || {};
-    return blockedReasonKey(step, { effort: effortFor(rider), try_break: ro.try_break === true, leadout: ro.leadout === true }, roleFor(rider), { teamHasSprintCaptain });
+    const roadOn = roadOrdersAvailable(stageProfileType); // #7317: skjulte vej-flag spaerrer aldrig en indsats paa tidskoersel
+    return blockedReasonKey(step, { effort: effortFor(rider), try_break: roadOn && ro.try_break === true, leadout: roadOn && ro.leadout === true }, roleFor(rider), { teamHasSprintCaptain });
   };
 
   // #7332: paa en aaben enkeltstart vises grupetto/protect (gamle valg) som Kør roligt,
