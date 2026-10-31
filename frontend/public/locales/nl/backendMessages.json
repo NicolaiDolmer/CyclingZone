@@ -668,7 +668,13 @@
       "messageMissed": "{rider} viel in {race} en is geblesseerd tot {until}. Hij rijdt {missed} niet.",
       "messageFinished": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until}.",
       "messageFinishedMissed": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is geblesseerd tot {until} en rijdt {missed} niet.",
-      "messageTraining": "{rider} raakte geblesseerd op training en is uitgeschakeld tot {until}."
+      "messageTraining": "{rider} raakte geblesseerd op training en is uitgeschakeld tot {until}.",
+      "crash": "{rider} viel in {race} en is weer fit op {fitAgain}.",
+      "crashMissed": "{rider} viel in {race} en is weer fit op {fitAgain}. Hij mist {missed}{more, plural, =0 {} one { en nog 1 koers} other { en nog # koersen}}.",
+      "crashFinished": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is weer fit op {fitAgain}.",
+      "crashFinishedMissed": "{rider} kwam ten val in {race}, maar reed de etappe uit. Hij is weer fit op {fitAgain}. Hij mist {missed}{more, plural, =0 {} one { en nog 1 koers} other { en nog # koersen}}.",
+      "training": "{rider} raakte geblesseerd op training en is weer fit op {fitAgain}.",
+      "trainingMissed": "{rider} raakte geblesseerd op training en is weer fit op {fitAgain}. Hij mist {missed}{more, plural, =0 {} one { en nog 1 koers} other { en nog # koersen}}."
     },
     "teamDidNotStart": {
       "title": "Je team is niet gestart",

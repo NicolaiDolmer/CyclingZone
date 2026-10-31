@@ -668,7 +668,13 @@
       "messageMissed": "{rider} crashed in {race} and is injured until {until}. He will not ride {missed}.",
       "messageFinished": "{rider} crashed in {race} but finished the stage. He is injured until {until}.",
       "messageFinishedMissed": "{rider} crashed in {race} but finished the stage. He is injured until {until} and will not ride {missed}.",
-      "messageTraining": "{rider} was injured in training and is out until {until}."
+      "messageTraining": "{rider} was injured in training and is out until {until}.",
+      "crash": "{rider} crashed in {race} and is fit again on {fitAgain}.",
+      "crashMissed": "{rider} crashed in {race} and is fit again on {fitAgain}. He will miss {missed}{more, plural, =0 {} one { and 1 more race} other { and # more races}}.",
+      "crashFinished": "{rider} crashed in {race} but finished the stage. He is fit again on {fitAgain}.",
+      "crashFinishedMissed": "{rider} crashed in {race} but finished the stage. He is fit again on {fitAgain}. He will miss {missed}{more, plural, =0 {} one { and 1 more race} other { and # more races}}.",
+      "training": "{rider} was injured in training and is fit again on {fitAgain}.",
+      "trainingMissed": "{rider} was injured in training and is fit again on {fitAgain}. He will miss {missed}{more, plural, =0 {} one { and 1 more race} other { and # more races}}."
     },
     "teamDidNotStart": {
       "title": "Your team did not start",
