@@ -7,13 +7,13 @@
 //
 // Den tidligere default-komponent (form/traethed-chips) blev ikke renderet nogen steder;
 // profilens FormCard (RiderTrainingTab.jsx) tegner selv form og traethed og bruger denne chip.
+// Styrtets sted hentes af useCrashOrigin.js i FormCard og gives ind som `crash`, saa denne
+// fil forbliver ren (den importeres af node-testede komponenter for farverne).
 
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { injuryTimeLeft } from "../../lib/training.js";
 import { formatDate } from "../../lib/intl.js";
 import { injuryFitAgainDate, injuryCauseMessage } from "../../lib/injuryExplain.js";
-import { supabase } from "../../lib/supabase";
 
 // Farve-semantik: form høj = grøn, lav = rød. Træthed høj = rød, lav = grøn.
 export function formColor(form) {
@@ -27,48 +27,19 @@ export function fatigueColor(fatigue) {
   return "text-cz-success";
 }
 
-// Det seneste SKADENDE styrt (race_incidents er offentlig loebsinformation, RLS: alle
-// authenticated, idx_race_incidents_rider_id). Kun naar skaden ER et styrt; en fejl giver
-// "Crashed in a race" uden sted, aldrig et opfundet loeb.
-function useCrashOrigin(riderId, enabled) {
-  const key = enabled && riderId ? riderId : null;
-  const [result, setResult] = useState({ key: null, crash: null });
-  useEffect(() => {
-    if (!key) return undefined;
-    let cancelled = false;
-    supabase
-      .from("race_incidents")
-      .select("stage_number, created_at, race:race_id(name, stages)")
-      .eq("rider_id", key)
-      .eq("kind", "crash")
-      .gt("injury_days", 0)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        const row = error ? null : data?.[0] ?? null;
-        setResult({ key, crash: row ? { race: row.race?.name ?? null, stage: row.stage_number ?? null, stages: row.race?.stages ?? null } : null });
-      }, () => { if (!cancelled) setResult({ key, crash: null }); });
-    return () => { cancelled = true; };
-  }, [key]);
-  // Et svar for en anden rytter (eller fra foer skaden blev et styrt) vises aldrig.
-  return result.key === key ? result.crash : null;
-}
-
 /**
- * @param {{ riderId: string, condition: { injured_until?: string|null,
- *   injury_race_days_left?: number|null, injury_cause?: string|null }|null }} props
+ * @param {{ condition: { injured_until?: string|null, injury_race_days_left?: number|null,
+ *   injury_cause?: string|null }|null,
+ *   crash?: { race: string|null, stage: number|null, stages: number|null }|null }} props
  */
-export default function InjuryChip({ riderId, condition }) {
+export default function InjuryChip({ condition, crash = null }) {
   const { t } = useTranslation("rider");
   // #5462: loebsdage naar backenden har skrevet dem, ellers kalenderdage som foer.
   const injury = injuryTimeLeft(condition);
   const days = injury.count;
-  const cause = condition?.injury_cause ?? null;
-  const crash = useCrashOrigin(riderId, days > 0 && cause === "race_crash");
   if (days <= 0) return null;
 
-  const causeMessage = injuryCauseMessage(cause, crash);
+  const causeMessage = injuryCauseMessage(condition?.injury_cause ?? null, crash);
   const fitAgain = injuryFitAgainDate(condition?.injured_until);
   const detail = [
     causeMessage ? t(causeMessage.key, causeMessage.params) : null,

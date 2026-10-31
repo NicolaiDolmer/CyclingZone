@@ -39,6 +39,7 @@ import { ChevronRightIcon } from "../../ui/icons/index.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
 import InjuryChip from "../ConditionChips.jsx";
+import { useCrashOrigin } from "../useCrashOrigin.js";
 
 const LOG_DAYS = 7;
 
@@ -433,6 +434,8 @@ function TrendCard({ riderId, runs, t }) {
 // ── Form & restitution ──────────────────────────────────────────────────────────
 function FormCard({ riderId, condition, t }) {
   const clamp = (n) => Math.max(0, Math.min(100, n));
+  // #7412: stedet for et styrt (kun naar skaden er et styrt). Foer early return: hook-regel.
+  const crash = useCrashOrigin(riderId, injuryTimeLeft(condition).count > 0 && condition?.injury_cause === "race_crash");
   // Ingen condition-rad (fx friskkøbt rytter før første kørsel) → pending-tilstand,
   // ikke fabrikerede 50/0-defaults præsenteret som målte værdier.
   if (!condition) {
@@ -477,7 +480,7 @@ function FormCard({ riderId, condition, t }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
           {days > 0 ? (
             // #7412: aarsag, sted og foerste raske dag bor i den delte skadechip.
-            <InjuryChip riderId={riderId} condition={condition} />
+            <InjuryChip condition={condition} crash={crash} />
           ) : (
             <>
               <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-success-bg border border-cz-success/25 text-cz-success">
