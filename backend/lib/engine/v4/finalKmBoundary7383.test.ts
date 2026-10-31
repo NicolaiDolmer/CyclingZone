@@ -102,7 +102,7 @@ test("#7383: kun s5_profiles_v3 og kun med kontakten taendt", () => {
   });
 });
 
-test("#7383: slukket er ruten det samme objekt og ingen deling (alle fixtures x revisioner)", () => {
+test("#7383: slukket er ruten det samme objekt og ingen deling (alle fixtures x revisioner)", () => withSwitch(false, () => {
   for (const name of readdirSync(FIXTURES).sort()) {
     for (const revision of REVISIONS) {
       const route = stageInputForRulesRevision(fixture(name, revision)).route;
@@ -112,7 +112,7 @@ test("#7383: slukket er ruten det samme objekt og ingen deling (alle fixtures x 
       for (const s of looped.segments) assert.equal(finalKmTerrainPiece7383(s), undefined);
     }
   }
-});
+}));
 
 test("#7383: med kontakten taendt er aeldre revisioner bit-identiske med slukket", () => {
   for (const name of ["flat-massespurt", "bjerg-selektion", "mellembjerg"]) {
@@ -194,7 +194,7 @@ test("#7383: slukket gaelder #7333-reglen uaendret (naermeste eksisterende graen
   const input = fixture("flat-massespurt", "s5_profiles_v3");
   input.orders = [finalKmPlan(input)];
   const finalKm = input.route.distance_km - STAGE_PLAN_FINAL_KM;
-  const events = legEvents(simulateStageV4(input).timeline.events);
+  const events = legEvents(withSwitch(false, () => simulateStageV4(input)).timeline.events);
   assert.ok(events.length > 0);
   const boundaries = new Set(input.route.segments.map((s) => s.from_km));
   for (const e of events) {
