@@ -28,8 +28,6 @@ function route(method: string, path: string, extra: Record<string, unknown> = {}
     loadAcademyPrognoses: async () => new Map([[rider.id, prognosis]]),
     academyEstimate: (p: unknown) => ({ academyPrognosis: p }),
     buildScoutEstimate() { throw new Error("full scout estimate must not be computed"); },
-    // #6853: potentialet for bedste rolle (flag off i denne test = uaendret visning).
-    viewerPotentialBestRole: async () => false,
     ...extra,
   };
   vm.runInNewContext(block, context);

@@ -38,7 +38,7 @@ export type RosterPrognosis = {
   stage: KnowledgeStageKey;
   daysOnTeam: number;
   nextStageDays: number | null;
-  band: { role: string; lo: number; hi: number | null; bestRole?: true } | null;
+  band: { role: string; lo: number; hi: number | null; bestRole: true } | null;
 };
 export type Intake2View = {
   intake: IntakeItem[];
@@ -85,7 +85,7 @@ export function maskPullCandidate<T extends IntakeItem | null | undefined>(item:
 }
 
 /** Akademirytterens prognose på holdets nuværende kendskabs-niveau. */
-export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, seasonNumber, teamId, scout, bestRole = false }: {
+export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, seasonNumber, teamId, scout }: {
   rider: RosterRider;
   abilities: Row | null | undefined;
   potRow: PotentialeRow | null | undefined;
@@ -94,7 +94,6 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
   seasonNumber: number;
   teamId: string;
   scout?: unknown;
-  bestRole?: boolean;
 }): RosterPrognosis {
   const stage = knowledgeStage(daysOnTeam, speed);
   const out: RosterPrognosis = { stage: stage.stage, daysOnTeam, nextStageDays: stage.nextStageDays, band: null };
@@ -115,19 +114,18 @@ export function rosterPrognosis({ rider, abilities, potRow, daysOnTeam, speed, s
     scout: scout as Parameters<typeof buildTypePrognosisBands>[0]["scout"],
   });
   // #6853: samme rolle-regel som alle andre flader (potentialDisplayBand.js).
-  const band = displayPotentialBand(bands, potRow.primary_type, { bestRole }) as
+  const band = displayPotentialBand(bands, potRow.primary_type) as
     { key: string; progLo: number | null; progHi: number | null } | null;
   if (band && band.progLo != null) {
-    out.band = { role: band.key, lo: band.progLo, hi: band.progHi, ...(bestRole ? { bestRole: true as const } : {}) };
+    out.band = { role: band.key, lo: band.progLo, hi: band.progHi, bestRole: true as const };
   }
   return out;
 }
 
-export async function buildIntake2View(supabase: Db, { teamId, roster, intake, seasonNumber, now = new Date(), bestRole = false }: {
+export async function buildIntake2View(supabase: Db, { teamId, roster, intake, seasonNumber, now = new Date() }: {
   teamId: string;
   roster: RosterRider[] | null | undefined;
   intake: IntakeItem[] | null | undefined;
-  bestRole?: boolean;
   seasonNumber: number;
   now?: Date | string | number;
 }): Promise<Intake2View> {
@@ -171,7 +169,6 @@ export async function buildIntake2View(supabase: Db, { teamId, roster, intake, s
         seasonNumber,
         teamId,
         scout,
-        bestRole,
       }),
     })),
     profile: {

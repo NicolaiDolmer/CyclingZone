@@ -126,10 +126,6 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "ability_cap_per_date_enabled", area: "training", label: "Udvikling 2.0 — maks +1 pr. evne pr. dato" },
   // #3564: kurve B (D-058, developmentCurveBFlag.ts). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_curve_b", area: "training", label: "Udvikling 2.0 — kurve B (niveau og potentiale styrer, ikke alder)" },
-  // #6853/#5764 (spec 6110 §8): paraply-flaget for potentiale-visningen i
-  // Udvikling 2.0. Første del: potentialet vises for rollen med højest potentiale
-  // + typeboks (potentialDisplayBand.js). Fail-safe OFF; tændes samlet med 2.0.
-  { key: "potential_single_number", area: "squad", label: "Udvikling 2.0 — potentiale: bedste rolle + typeboks (visning)" },
   // #6950 (Udvikling 2.0): Udviklingsscore B i motoren (developmentScoreWiring.js) og
   // catch-up via løb (raceCatchUpWiring.js). Fail-safe OFF; "beta" læses som off; tal i
   // serverens miljø; kræver ability_cap_per_date_enabled. Ejer-only flip.
@@ -219,7 +215,6 @@ export const PLAYER_VISIBLE_FLAG_KEYS = Object.freeze([
   // Hjaelp foerst beskriver aldring, potentiale, maks +1 og Dagens beslutning
   // naar de er taendt for spilleren.
   "development_v2_aging_enabled",
-  "potential_single_number",
   "ability_cap_per_date_enabled",
   "training_decision_card",
   // #6746: HelpPage viser indsatstrin-afsnittet (fem trin / tre trin) paa dette flag.
