@@ -1341,6 +1341,8 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
 // GET /api/display-flags — visnings-kontakter klienten skal kende på ALLE sider
 // (hentes én gang af Layout, ikke pr. side). Bare booleans, evalueret server-side
 // mod viewerens beta-status; klienten læser aldrig app_config selv.
+//   rider_best_role_display (#5435): altid true. Flaget er pensioneret (#6853);
+//     feltet bliver kun til gamle aabne faner, der ellers slaar tilbage til egen rolle.
 //   youth_squad_pages (#5519): U23 team- og Junior team-siderne + menupunkterne.
 //   rider_reputation_enabled (#4956): earned rider reputation is visible/readable
 //     only when the custom off|shadow|on flag is on; shadow stays false here.
@@ -1353,13 +1355,14 @@ router.get("/display-flags", requireAuth, presencePulseLimiter, async (req, res)
       readReputationStage(supabase),
     ]);
     res.json({
+      rider_best_role_display: true,
       youth_squad_pages: youthSquadPages,
       rider_reputation_enabled: isReputationReadEnabled(reputationStage),
     });
   } catch (err) {
     captureException(err);
     // Visnings-kontakt: en fejl må aldrig vælte siden — svar med fail-safe.
-    res.json({ youth_squad_pages: false, rider_reputation_enabled: false });
+    res.json({ rider_best_role_display: true, youth_squad_pages: false, rider_reputation_enabled: false });
   }
 });
 
