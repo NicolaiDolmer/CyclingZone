@@ -38,9 +38,9 @@ export function isRacePauseActive(pause: RacePause | null, nowMs: number): pause
   return pause.newStartMs == null || pause.newStartMs > nowMs;
 }
 
-/** #7335: dashboard og loebsside har egen "Pauset"-flade, dér skjules den globale info-bjaelke. */
+/** #7335: dashboardet har egen "Pauset"-flade, dér skjules den globale info-bjaelke (loebssiden viser ingen paa afsluttede loeb, saa den beholder bjaelken). */
 export function racePauseInfoBarHiddenOnPath(pathname: string): boolean {
-  return pathname === "/dashboard" || /^\/races\/[^/]+\/?$/.test(pathname);
+  return pathname === "/dashboard";
 }
 
 interface StageCardLike {

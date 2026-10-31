@@ -10,12 +10,12 @@ import { racePauseInfoBarHiddenOnPath } from "../lib/racePause.ts";
 // Samme flade og placering som driftsbanneret (RaceControlBanner, severity info):
 // fuld bredde oeverst i <main>. Kilden er app_config `race_pause_notice` (lib/racePause.ts),
 // saa bjaelken forsvinder af sig selv naar pausen fjernes eller den nye start er naaet.
-// Dashboardet og loebssiden har allerede deres egen "Pauset"-flade (RacePausedBanner),
+// Dashboardet har allerede sin egen "Pauset"-flade (RacePausedBanner),
 // dér skjules bjaelken, saa samme besked ikke staar to gange.
 export default function RacePauseInfoBar() {
   const { t } = useTranslation("banners");
   const { pathname } = useLocation();
-  const pause = useRacePause();
+  const pause = useRacePause(true, pathname); // hent igen ved sidenavigation: Layout bliver monteret
   if (!pause || racePauseInfoBarHiddenOnPath(pathname)) return null;
 
   const newStart = pause.newStartMs != null

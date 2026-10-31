@@ -11,9 +11,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const bar = readFileSync(join(__dirname, "RacePauseInfoBar.tsx"), "utf8");
 const layout = readFileSync(join(__dirname, "Layout.jsx"), "utf8");
 
-test("skjules paa dashboard og loebsside (egen Pauset-flade), vises ellers", () => {
+test("skjules kun paa dashboard (egen Pauset-flade), vises ellers", () => {
   assert.equal(racePauseInfoBarHiddenOnPath("/dashboard"), true);
-  assert.equal(racePauseInfoBarHiddenOnPath("/races/abc-123"), true);
+  assert.equal(racePauseInfoBarHiddenOnPath("/races/abc-123"), false);
   assert.equal(racePauseInfoBarHiddenOnPath("/races"), false);
   assert.equal(racePauseInfoBarHiddenOnPath("/riders"), false);
   assert.equal(racePauseInfoBarHiddenOnPath("/team"), false);
@@ -27,7 +27,7 @@ test("Layout monterer bjaelken lige efter RaceControlBanner", () => {
 });
 
 test("bjaelken bruger pause-hooken og info-fladen, og rendrer intet uden aktiv pause", () => {
-  assert.match(bar, /useRacePause\(\)/);
   assert.match(bar, /if \(!pause \|\| racePauseInfoBarHiddenOnPath\(pathname\)\) return null/);
   assert.match(bar, /bg-cz-info-bg/);
+  assert.match(bar, /useRacePause\(true, pathname\)/);
 });
