@@ -40,7 +40,7 @@ Planning Center er den flade hvor en manager beslutter **hvem der kører hvad, h
 
 ## 2. Rolle-vokabularet
 
-Fem værdier, og de ejes af motoren, ikke af denne flade: `captain` · `sprint_captain` · `hunter` · `helper` · `free_role`. Se [`RACE_ENGINE_RULES.md`](RACE_ENGINE_RULES.md) §1. **Opfind aldrig et sjette ord her.**
+Ordene ejes af motoren, ikke af denne flade. Fem værdier i alle løb: `captain` · `sprint_captain` · `hunter` · `helper` · `free_role`. I løb der kender rollerne (serveren melder `rolesAllowed` = `raceAllowsCoCaptain(race)`) kommer to til: `co_captain` (delt kaptajn, kræver en anden kaptajn) og `luxury_helper`, højst én af hver pr. hold (#7239, #5981, #5982). Et gem fra matrixen nulstiller aldrig en gemt rolle. Se [`RACE_ENGINE_RULES.md`](RACE_ENGINE_RULES.md) §1. **Opfind aldrig et ord her, som motoren ikke kender.**
 
 ---
 
