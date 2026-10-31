@@ -3114,7 +3114,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
             // database/2026-09-21-5462-injury-race-days.sql, applied post-merge.
             const withRaceDays = await supabase
               .from("rider_condition")
-              .select("rider_id, form, fatigue, injured_until, injury_race_days_left")
+              .select("rider_id, form, fatigue, injured_until, injury_cause, injury_race_days_left")
               .in("rider_id", riderIds);
             // 42703 (ukendt kolonne) i deploy-vinduet foer auto-migrate.yml har koert
             // (#2642, ~3 min): fald tilbage til selecten uden kolonnen, saa
@@ -3122,7 +3122,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
             if (withRaceDays.error?.code !== "42703") return withRaceDays;
             return supabase
               .from("rider_condition")
-              .select("rider_id, form, fatigue, injured_until")
+              .select("rider_id, form, fatigue, injured_until, injury_cause")
               .in("rider_id", riderIds);
           })()
         : Promise.resolve({ data: [] }),
@@ -3194,6 +3194,8 @@ router.get("/training/me", requireAuth, async (req, res) => {
         // #5462: resterende LOEBSDAGE inkl. i dag. null = skaden ejes af
         // kalenderdagen (flag off, eller skrevet foer flippet).
         injury_race_days_left: row.injury_race_days_left ?? null,
+        // #7412: skadechippen forklarer aarsagen (race_crash / training_overload / illness).
+        injury_cause: row.injury_cause ?? null,
         risk,
       };
     }

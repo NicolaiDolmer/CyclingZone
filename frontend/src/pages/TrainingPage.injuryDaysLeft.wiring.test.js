@@ -76,18 +76,17 @@ test("#3541/#5462 ConditionChips (rytterprofilen) bruger fortsat den kanoniske k
   );
 });
 
-// #5462: `injuryTimeLeft` sætter approxDate i BEGGE grene (også calendar_day, hvor
-// injured_until er en PRÆCIS slutdato). "ca."-teksten må derfor kun vises når
-// aksen faktisk er løbsdage — ellers får enhver skadet rytter i dagens flag-off-
-// tilstand en ny, ugated og faktuelt forkert tooltip ved merge. De tre trænings-
-// flader gater allerede på `unit === "race_day"`; denne vagt holder den fjerde
-// (rytterprofilens chip) på samme regel.
-test("#5462 ConditionChips' ca.-dato-tooltip er gated på løbsdags-aksen, ikke på approxDate alene", () => {
-  assert.match(
-    conditionChipsSource,
-    /title=\{injury\.unit === "race_day" && injury\.approxDate/,
-    'title\'en skal kræve unit === "race_day"; approxDate alene er sat også i calendar_day-grenen',
-  );
+// #7412: rytterprofilens chip viser FØRSTE RASKE DAG ("Fit again <dato>") i stedet for
+// "ca. <dato>". Datoen er dagen efter injured_until, og udtagelses-gaten læser netop
+// injured_until, så den er præcis på begge akser og skal ikke gates på unit. Chippen bor
+// i ConditionChips.jsx, og profilens FormCard skal bruge den (før var den død kode).
+test("#7412 rytterprofilens skadechip viser første raske dag og bruges af FormCard", () => {
+  assert.match(conditionChipsSource, /injuryFitAgainDate\(condition\?\.injured_until\)/);
+  assert.match(conditionChipsSource, /t\("condition\.fitAgain"/);
+  assert.doesNotMatch(conditionChipsSource, /injuredApprox/, "ca.-datoen er erstattet af første raske dag");
+  const riderTrainingTabSource = readFileSync(join(__dirname, "../components/rider/profile/RiderTrainingTab.jsx"), "utf8");
+  assert.match(riderTrainingTabSource, /<InjuryChip riderId=\{riderId\} condition=\{condition\} \/>/);
+  assert.doesNotMatch(riderTrainingTabSource, /condition\.injuredApprox/);
 });
 
 // Låser selve off-by-one/0-dages-grænsen (#1672-mønstret) som alle tre flader nu

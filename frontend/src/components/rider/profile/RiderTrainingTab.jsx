@@ -38,6 +38,7 @@ import IconBase from "../../ui/icons/IconBase.jsx";
 import { ChevronRightIcon } from "../../ui/icons/index.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
+import InjuryChip from "../ConditionChips.jsx";
 
 const LOG_DAYS = 7;
 
@@ -430,7 +431,7 @@ function TrendCard({ riderId, runs, t }) {
 }
 
 // ── Form & restitution ──────────────────────────────────────────────────────────
-function FormCard({ condition, t }) {
+function FormCard({ riderId, condition, t }) {
   const clamp = (n) => Math.max(0, Math.min(100, n));
   // Ingen condition-rad (fx friskkøbt rytter før første kørsel) → pending-tilstand,
   // ikke fabrikerede 50/0-defaults præsenteret som målte værdier.
@@ -473,20 +474,10 @@ function FormCard({ condition, t }) {
             <div className="absolute left-0 top-0 h-full rounded-full bg-cz-warning/80" style={{ width: `${clamp(fatigue)}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-2 pt-0.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
           {days > 0 ? (
-            <>
-              <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-danger-bg border border-cz-danger/25 text-cz-danger">
-                {injury.unit === "race_day"
-                  ? t("condition.injuredRaceDays", { days })
-                  : t("condition.injured", { days })}
-              </span>
-              {injury.unit === "race_day" && injury.approxDate && (
-                <span className="text-2xs text-cz-3">
-                  {t("condition.injuredApprox", { date: formatDate(injury.approxDate, "medium") })}
-                </span>
-              )}
-            </>
+            // #7412: aarsag, sted og foerste raske dag bor i den delte skadechip.
+            <InjuryChip riderId={riderId} condition={condition} />
           ) : (
             <>
               <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-success-bg border border-cz-success/25 text-cz-success">
@@ -597,7 +588,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
           ) : (
             <TrendCard riderId={rider.id} runs={runs} t={t} />
           )}
-          <FormCard condition={condition} t={t} />
+          <FormCard riderId={rider.id} condition={condition} t={t} />
         </div>
       </div>
 

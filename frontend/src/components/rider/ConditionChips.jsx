@@ -1,12 +1,19 @@
-// ConditionChips — kompakt form/træthed + skade-badge til rytterprofil-headeren.
+// ConditionChips — skadechippen paa rytterprofilen + farve-semantikken for form/traethed.
 //
-// Vises for ALLE ryttere (condition er transparent per spildesign).
-// form + fatigue er 0-100 heltal; injured_until er ISO-datostreng eller null.
-// Manglende condition-rad = neutral defaults (form 50, fatigue 0, ingen skade-badge).
+// #7412: chippen FORKLARER skaden. Foer stod der kun "Injured: N days left" (og i S5 slet
+// ikke loebsdage, fordi aksen manglede). Nu: aarsag og sted ("Crashed, <loeb> stage N",
+// "Injured in training", "Ill") og foerste raske dag ("Fit again <dato>") i stedet for den
+// sidste skadede dato, som spillerne laeste som raskmeldingen.
+//
+// Den tidligere default-komponent (form/traethed-chips) blev ikke renderet nogen steder;
+// profilens FormCard (RiderTrainingTab.jsx) tegner selv form og traethed og bruger denne chip.
 
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { injuryTimeLeft } from "../../lib/training.js";
 import { formatDate } from "../../lib/intl.js";
+import { injuryFitAgainDate, injuryCauseMessage } from "../../lib/injuryExplain.js";
+import { supabase } from "../../lib/supabase";
 
 // Farve-semantik: form høj = grøn, lav = rød. Træthed høj = rød, lav = grøn.
 export function formColor(form) {
@@ -20,47 +27,62 @@ export function fatigueColor(fatigue) {
   return "text-cz-success";
 }
 
-export default function ConditionChips({ condition }) {
-  const { t } = useTranslation("rider");
+// Det seneste SKADENDE styrt (race_incidents er offentlig loebsinformation, RLS: alle
+// authenticated, idx_race_incidents_rider_id). Kun naar skaden ER et styrt; en fejl giver
+// "Crashed in a race" uden sted, aldrig et opfundet loeb.
+function useCrashOrigin(riderId, enabled) {
+  const key = enabled && riderId ? riderId : null;
+  const [result, setResult] = useState({ key: null, crash: null });
+  useEffect(() => {
+    if (!key) return undefined;
+    let cancelled = false;
+    supabase
+      .from("race_incidents")
+      .select("stage_number, created_at, race:race_id(name, stages)")
+      .eq("rider_id", key)
+      .eq("kind", "crash")
+      .gt("injury_days", 0)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        const row = error ? null : data?.[0] ?? null;
+        setResult({ key, crash: row ? { race: row.race?.name ?? null, stage: row.stage_number ?? null, stages: row.race?.stages ?? null } : null });
+      }, () => { if (!cancelled) setResult({ key, crash: null }); });
+    return () => { cancelled = true; };
+  }, [key]);
+  // Et svar for en anden rytter (eller fra foer skaden blev et styrt) vises aldrig.
+  return result.key === key ? result.crash : null;
+}
 
-  const form         = condition?.form         ?? 50;
-  const fatigue      = condition?.fatigue      ?? 0;
+/**
+ * @param {{ riderId: string, condition: { injured_until?: string|null,
+ *   injury_race_days_left?: number|null, injury_cause?: string|null }|null }} props
+ */
+export default function InjuryChip({ riderId, condition }) {
+  const { t } = useTranslation("rider");
   // #5462: loebsdage naar backenden har skrevet dem, ellers kalenderdage som foer.
-  // Chippen er lille, saa datoen bor i title'en — "ca." staar dér, ikke i badget.
-  // Title'en gates paa unit === "race_day" praecis som de tre traenings-flader:
-  // approxDate er sat i BEGGE grene, men paa kalenderdags-stien (flag off) er
-  // injured_until en PRAECIS slutdato, saa "ca."-teksten ville baade vaere ny,
-  // ugated UI og faktuelt forkert for alle skadede ryttere i dagens tilstand.
-  const injury       = injuryTimeLeft(condition);
-  const days         = injury.count;
+  const injury = injuryTimeLeft(condition);
+  const days = injury.count;
+  const cause = condition?.injury_cause ?? null;
+  const crash = useCrashOrigin(riderId, days > 0 && cause === "race_crash");
+  if (days <= 0) return null;
+
+  const causeMessage = injuryCauseMessage(cause, crash);
+  const fitAgain = injuryFitAgainDate(condition?.injured_until);
+  const detail = [
+    causeMessage ? t(causeMessage.key, causeMessage.params) : null,
+    fitAgain ? t("condition.fitAgain", { date: formatDate(fitAgain, "medium") }) : null,
+  ].filter(Boolean).join(" · ");
 
   return (
-    <div className="flex items-center gap-2 flex-wrap mt-2">
-      {/* Form-chip */}
-      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle border border-cz-border ${formColor(form)}`}>
-        <span className="text-cz-3 font-normal">{t("condition.form")}</span>
-        <span className="font-mono font-bold">{form}</span>
+    <>
+      <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-danger-bg border border-cz-danger/25 text-cz-danger">
+        {injury.unit === "race_day"
+          ? t("condition.injuredRaceDays", { days })
+          : t("condition.injured", { days })}
       </span>
-
-      {/* Træthed-chip */}
-      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle border border-cz-border ${fatigueColor(fatigue)}`}>
-        <span className="text-cz-3 font-normal">{t("condition.fatigue")}</span>
-        <span className="font-mono font-bold">{fatigue}</span>
-      </span>
-
-      {/* Skade-badge — vises kun hvis skadet */}
-      {days > 0 && (
-        <span
-          className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-cz-danger-bg border border-cz-danger/30 text-cz-danger"
-          title={injury.unit === "race_day" && injury.approxDate
-            ? t("condition.injuredApprox", { date: formatDate(injury.approxDate, "medium") })
-            : undefined}
-        >
-          {injury.unit === "race_day"
-            ? t("condition.injuredRaceDays", { days })
-            : t("condition.injured", { days })}
-        </span>
-      )}
-    </div>
+      {detail && <span className="text-2xs text-cz-3">{detail}</span>}
+    </>
   );
 }

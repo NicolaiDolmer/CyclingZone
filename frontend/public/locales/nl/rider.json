@@ -943,7 +943,12 @@
     "fatigue": "Vermoeidheid",
     "injured": "Geblesseerd: nog {days}d",
     "injuredRaceDays": "Geblesseerd: nog {days, plural, one {1 koersdag} other {# koersdagen}}",
-    "injuredApprox": "Terug circa {date}"
+    "fitAgain": "Weer fit op {date}",
+    "causeCrashStage": "Gevallen, {race} etappe {stage}",
+    "causeCrashRace": "Gevallen, {race}",
+    "causeCrash": "Gevallen in een koers",
+    "causeTraining": "Geblesseerd op training",
+    "causeIllness": "Ziek"
   },
   "training": {
     "title": "Trainingsfocus",

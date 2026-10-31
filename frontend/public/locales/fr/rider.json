@@ -943,7 +943,12 @@
     "fatigue": "Fatigue",
     "injured": "Blessé : {days} j restants",
     "injuredRaceDays": "Blessé : {days, plural, one {# jour de course restant} other {# jours de course restants}}",
-    "injuredApprox": "De retour vers le {date}"
+    "fitAgain": "De nouveau apte le {date}",
+    "causeCrashStage": "Chute, {race} étape {stage}",
+    "causeCrashRace": "Chute, {race}",
+    "causeCrash": "Chute en course",
+    "causeTraining": "Blessé à l'entraînement",
+    "causeIllness": "Malade"
   },
   "training": {
     "title": "Axe d'entraînement",
