@@ -86,12 +86,17 @@ export function parseArgs(argv) {
   return opts;
 }
 
-/** Aabne issues med claude:done + issues hvor nogen har kommenteret "Til dørs". */
+/**
+ * Aabne issues med claude:done + aabne issues der har tabel-kommentaren.
+ * HTML-markoeren er ikke soegbar, saa vi soeger paa tabellens overskrift.
+ * Et issue med kun en manuel markering (endnu ingen tabel) faar sin tabel via
+ * issue_comment-triggeren i workflowet, ikke via sweep'et.
+ */
 export function sweepTargets(execGh, repo) {
   const set = new Set();
   const done = JSON.parse(execGh(['issue', 'list', '--repo', repo, '--state', 'open', '--label', DONE_LABEL, '--limit', '1000', '--json', 'number']));
   for (const i of done) set.add(i.number);
-  const q = `repo:${repo} is:issue is:open "Til dørs" in:comments`;
+  const q = `repo:${repo} is:issue is:open "Til dørs (8 krav)" in:comments`;
   const found = execGh(['api', '-X', 'GET', 'search/issues', '-f', `q=${q}`, '-f', 'per_page=100', '--paginate', '--jq', '.items[].number']);
   for (const line of found.split(/\r?\n/).filter(Boolean)) set.add(Number(line));
   return [...set].sort((a, b) => a - b);
