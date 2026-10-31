@@ -116,19 +116,20 @@ test("#3666 projektionens decline ER motorens, ikke en kopi der ligner", () => {
   );
 });
 
-// #6499: Udvikling 2.0's tilbagegang (bag development_v2_aging_enabled) har sin
-// EGEN konfiguration og rører ikke PROGRESSION_CONFIG. Med flaget slukket er
-// projektionen derfor uændret. Fald-trinene er de samme tal; det der flytter
-// sig, er hvornår de begynder (plateauet). Projektionen kobles til v2 i et
-// senere trin sammen med prognoserne (#6110 del 2), når spillerteksten følger med.
-test("#6499 projektionen følger stadig den slukkede motor; v2's trin er de samme tal, senere start", () => {
+// #6499: Udvikling 2.0's tilbagegang har sin EGEN konfiguration og rører ikke
+// PROGRESSION_CONFIG. Sæsonskiftet bruger kun v2 (den gamle gren er fjernet fra
+// motoren), men projektionen regner stadig på PROGRESSION_CONFIG. Fald-trinene er
+// de samme tal; det der flytter sig, er hvornår de begynder (plateauet).
+// Projektionen kobles til v2 i et senere trin sammen med prognoserne (#6110 del 2),
+// når spillerteksten følger med. Denne test låser at koblingen ikke sker tavst.
+test("#6499 projektionen regner stadig på PROGRESSION_CONFIG; v2's trin er de samme tal, senere start", () => {
   assert.equal(RATING_DECLINE_BY_YEARS_PAST_PEAK, PROGRESSION_CONFIG.declineByYearsPastPeak);
   assert.deepEqual(
     AGING_V2_CONFIG.declineByYearsPastPlateau.map((r) => r.drop),
     PROGRESSION_CONFIG.declineByYearsPastPeak.map((r) => r.drop),
   );
   assert.ok(AGING_V2_CONFIG.plateauThroughAge > PROGRESSION_CONFIG.peakAge);
-  // Flag slukket: samme skridt som før #6499.
+  // Projektionens skridt er uændret af #6499.
   const age = PROGRESSION_CONFIG.peakAge + 2;
   assert.equal(stepRating(50, 60, age), 50 - PROGRESSION_CONFIG.declineByYearsPastPeak[0].drop);
 });

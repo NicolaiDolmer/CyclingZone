@@ -42,9 +42,10 @@ const INTENTION_ON = Object.freeze({ flag: "race_day_intention_enabled", when: t
 
 const RACE_DAY_TICK_OFF = Object.freeze({ flag: "training_tick_per_race_day", when: false });
 const RACE_DAY_TICK_ON = Object.freeze({ flag: "training_tick_per_race_day", when: true });
-// #6110 (Udvikling 2.0 del 1): den gamle aldrings-tekst og den nye maa aldrig
-// staa side om side. Off = "agingAndDecline" (top 28, fald fra 29), on = "agingV2".
-const AGING_V2_OFF = Object.freeze({ flag: "development_v2_aging_enabled", when: false });
+// #6110 (Udvikling 2.0 del 1): "aiRidersV2" (AI- og frie ryttere udvikler sig
+// ikke dagligt) foelger flaget, fordi den daglige traening stadig gater paa det.
+// Aldrings-teksten "agingV2" er ugatet (#6499): saesonskiftet kender kun den nye
+// aldring, saa den gamle tekst ("agingAndDecline") er fjernet fra siden.
 const AGING_V2_ON = Object.freeze({ flag: "development_v2_aging_enabled", when: true });
 
 /**
@@ -61,8 +62,6 @@ const AGING_V2_ON = Object.freeze({ flag: "development_v2_aging_enabled", when: 
  */
 export const HELP_BLOCK_FLAGS = Object.freeze({
   riders: Object.freeze({
-    agingAndDecline: AGING_V2_OFF,
-    agingV2: AGING_V2_ON,
     aiRidersV2: AGING_V2_ON,
   }),
   dailytraining: Object.freeze({

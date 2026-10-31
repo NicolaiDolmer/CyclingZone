@@ -117,9 +117,9 @@ export const STAGE_FLAGS = Object.freeze([
   { key: "season_end_pool_reseed", area: "season", label: "Sæsonslut — genfyld rytterpulje" },
   { key: "season_end_skip_division_movement", area: "season", label: "Sæsonslut — spring op/nedrykning over" },
   { key: "season_fatigue_reset_enabled", area: "season", label: "Sæsonslut — nulstil træthed" },
-  // #6499 + #6500: Udvikling 2.0 del 1 under ét flag: tilbagegang ved sæsonskiftet
-  // (developmentV2Flag.js) og ingen daglig udvikling uden for managerhold
-  // (dailyTrainingEngine.js). Fail-safe OFF; "beta" læses som off. Ejer-only flip.
+  // #6500: ingen daglig udvikling uden for managerhold (dailyTrainingEngine.js).
+  // Sæsonskiftets aldring (#6499) læser ikke længere flaget; den kører altid.
+  // Fail-safe OFF; "beta" læses som off. Ejer-only flip.
   { key: "development_v2_aging_enabled", area: "season", label: "Udvikling 2.0 del 1 — tilbagegang + kun managerhold udvikler sig" },
   // #6210: maks +1 pr. evne pr. rytter pr. dato (dailyTrainingEngine.js). Fail-safe
   // OFF; tændes med Udvikling 2.0. Ejer-only flip.
