@@ -845,8 +845,8 @@ Tallene står aldrig i repoet (hard rule 17).
 tændingskort med måling. Tallene og den præcise model står aldrig i repoet (hard rule 17).
 
 - **Forudsætning:** `race_day_development_enabled` skal være on (løbsdagen udvikler overhovedet), og
-  gyldige params skal ligge i den lukkede tabel `private_config` (nøgle `race_day_role_yield_params`;
-  reserve: serverens miljø). Gælder både løbsdags-stien og kalenderdags-faldet.
+  gyldige params skal ligge i den lukkede tabel `private_config` (nøgle `race_day_role_yield_params`,
+  kun dér; miljø-reserven er fjernet i #7423). Gælder både løbsdags-stien og kalenderdags-faldet.
 - **Når tændt:** basis er en hård dag på etapens profil-evner, gennem samme `applyDailyTick`. Oven i
   kommer et tillæg, som er ens i alt for alle roller (D3 variant A). Rollen på etapen afgør kun, hvor
   tillægget lander: kaptajner og jæger mest i etapens afgørende evne, hjælpere mest i de bærende

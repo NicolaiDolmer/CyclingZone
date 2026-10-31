@@ -125,9 +125,10 @@ test("#7003: assistenten foelger rolle og rute (eksemplerne fra ejerens billede)
     { task: "tempo", from: { at: "kom", kom_index: 1 } },
     { task: "grupetto", from: { at: "dropped" } },
   ]);
+  // #7369: kaptajnen foelger med paa dagens sidste stigning; angrebet er spillerens valg.
   assert.deepEqual(suggestStagePlan({ role: "captain", route: ROUTE, teamHasSprintCaptain: false }), [
     { task: "stay_sheltered" },
-    { task: "attack", from: { at: "kom", kom_index: 1 } },
+    { task: "follow_moves", from: { at: "kom", kom_index: 1 } },
   ]);
   assert.deepEqual(suggestStagePlan({ role: "hunter", route: ROUTE, teamHasSprintCaptain: false }), [
     { task: "breakaway" },
@@ -137,5 +138,48 @@ test("#7003: assistenten foelger rolle og rute (eksemplerne fra ejerens billede)
   assert.deepEqual(suggestStagePlan({ role: "helper", route: flat, teamHasSprintCaptain: true }), [
     { task: "shelter_leader" },
     { task: "sprint_train", from: { at: "final_km" } },
+  ]);
+});
+
+test("#7369: assistenten foreslaar aldrig et angreb (ejer 31/10), for alle roller og ruter", () => {
+  const profiles = ["flat", "rolling", "hilly", "medium_mountain", "mountain", "high_mountain", "cobbles", "classic", "gravel", null];
+  const climbSets = [
+    [],
+    [{ crest_km: 60, category: "3" }],
+    [{ crest_km: 60, category: "3" }, { crest_km: 110, category: "1" }],
+    [{ crest_km: 40, category: "2" }, { crest_km: 90, category: "1" }, { crest_km: 155, category: "HC", summit_finish: true }],
+    [{ crest_km: 155, category: "HC", summit_finish: true }],
+  ];
+  for (const profile_type of profiles) {
+    for (const climbs of climbSets) {
+      const route = stagePlanRouteFromRaw({ distance_km: 160, profile_type, climbs });
+      for (const role of ROLES) {
+        for (const teamHasSprintCaptain of [false, true]) {
+          for (const luxuryHelper of [false, true]) {
+            const legs = suggestStagePlan({ role, route, teamHasSprintCaptain, luxuryHelper }) ?? [];
+            assert.ok(!legs.some((l) => l.task === "attack"), `${role} ${profile_type} ${JSON.stringify(climbs)}`);
+          }
+        }
+      }
+    }
+  }
+});
+
+test("#7369: lederen foelger med paa dagens sidste stigning, ellers koerer han for resultatet de sidste km", () => {
+  for (const role of ["captain", "co_captain"] as const) {
+    assert.deepEqual(suggestStagePlan({ role, route: ROUTE, teamHasSprintCaptain: false }), [
+      { task: "stay_sheltered" },
+      { task: "follow_moves", from: { at: "kom", kom_index: 1 } },
+    ], role);
+    const oneClimb = stagePlanRouteFromRaw({ distance_km: 160, profile_type: "hilly", climbs: [{ crest_km: 60, category: "3" }] });
+    assert.deepEqual(suggestStagePlan({ role, route: oneClimb, teamHasSprintCaptain: false }), [
+      { task: "stay_sheltered" },
+      { task: "ride_for_result", from: { at: "final_km" } },
+    ], role);
+  }
+  const high = stagePlanRouteFromRaw({ distance_km: 160, profile_type: "high_mountain", climbs: [{ crest_km: 60, category: "1" }, { crest_km: 110, category: "HC" }] });
+  assert.deepEqual(suggestStagePlan({ role: "free_role", route: high, teamHasSprintCaptain: false }), [
+    { task: "stay_sheltered" },
+    { task: "follow_moves", from: { at: "kom", kom_index: 0 } },
   ]);
 });

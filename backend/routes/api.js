@@ -6600,6 +6600,7 @@ router.put("/races/:raceId/team-orders/:stageNumber", requireAuth, marketWriteLi
       stagesCompleted: ctx.stages_completed,
       scheduledAt: ctx.scheduleByStage.get(stageNumber) ?? null,
       teamRiderIds: ctx.teamRiderIds,
+      profileType: ctx.profileTypeByStage.get(stageNumber) ?? null, // #7317
     });
     if (!result.ok) {
       const code = result.errors[0];

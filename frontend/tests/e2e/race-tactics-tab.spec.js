@@ -676,3 +676,48 @@ test("taktik (#7332): kopi til en enkeltstart lander som Kør roligt", async ({ 
     { stage_number: 3, rider_id: "r2", race_role: "helper", effort: "save" },
   ]);
 });
+
+test("taktik (#7317): ingen udbrud/tog paa enkeltstart og holdtidskoersel, indsats gemmes", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockTacticsRace(page, {
+    race: { ...raceFixture({ stages: 4, stagesCompleted: 1, raceType: "stage_race" }), engine_rules_revision: "orders_gc_v1" },
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+    overrides: [],
+  });
+  await page.route("**/rest/v1/race_stage_profiles**", (route) => json(route, [
+    ittProfile(1, "flat"), ittProfile(2, "mountain"), ittProfile(3, "itt"), ittProfile(4, "ttt"),
+  ]));
+  const puts = await mockIttTeamOrders(page, { stagePlan: false, stages: 4 });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await expect(panel).toBeVisible();
+  const breakBtn = visible(panel.getByRole("button", { name: /forsøger at komme med i udbruddet/ }));
+  const note = panel.getByTestId("time-trial-no-road-orders");
+
+  // Vej-etape: udbrudsvalget findes, ingen forklaring.
+  await expect(breakBtn).toBeVisible();
+  await expect(note).toHaveCount(0);
+
+  for (const stage of [3, 4]) {
+    await visible(panel.getByRole("button", { name: `Intentioner for etape ${stage}`, exact: true })).click();
+    await expect(note).toBeVisible();
+    await expect(panel.getByRole("button", { name: /forsøger at komme med i udbruddet/ }).filter({ visible: true })).toHaveCount(0);
+    await expect(panel.getByRole("group", { name: "Holdets udbruds-holdning" })).toHaveCount(0);
+    if (stage === 3) {
+      await panel.screenshot({ path: evidenceShotPath(`pr-screens/7317/raw-${process.env.CZ_7317_SHOT || "after"}-${testInfo.project.name}.png`) });
+    }
+    // Indsats kan stadig sættes og gemmes; gemmen bærer ingen vej-felter.
+    await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
+    await visible(panel.getByRole("button", { name: /^Alt ud/ })).click();
+    await visible(panel.getByRole("button", { name: `Gem etape ${stage}` })).click();
+    await expect.poll(() => puts.length).toBeGreaterThan(0);
+    const saved = puts.at(-1);
+    expect(saved.breakaway_stance).toBe("neutral");
+    expect(saved.riders.every((r) => r.try_break === false && r.leadout === false)).toBe(true);
+    expect(saved.riders.some((r) => r.effort === "all_out")).toBe(true);
+    puts.length = 0;
+  }
+});

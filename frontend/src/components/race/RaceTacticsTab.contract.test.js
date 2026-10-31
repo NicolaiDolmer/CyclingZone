@@ -99,7 +99,7 @@ test("ét gem rammer begge endpoints for den åbne etape", () => {
   assert.match(source, /diffToOverrides\(\{ matrix: normalize\(draftSnapshot\), riders \}\)/);
   assert.match(source, /\/api\/races\/\$\{raceId\}\/stage-roles/);
   // #6647: ordren gemmes med intentionens indsats, ikke rollens "normal".
-  assert.match(source, /saveTacticsCard\(\{ raceId, stage, order: withIntentionEfforts\(orderSnapshot, /);
+  assert.match(source, /saveTacticsCard\(\{ raceId, stage, order: withoutRoadOrders\(withIntentionEfforts\(orderSnapshot, /); // #7317
   // Ordrerne gemmes EFTER intentionen (runTacticsSave: putRoles foer putOrders), saa
   // en afvist intention (400) ikke efterlader en halvt gemt dag.
   const rolesAt = source.indexOf("/stage-roles`");

@@ -21,6 +21,7 @@
 
 import { createHash } from "node:crypto";
 import { validateDevelopmentCurveBParams, type DevelopmentCurveBParams } from "./developmentCurveB.ts";
+import { validateRaceDayRoleYieldParams } from "./raceDayRoleYieldParams.js";
 import { parseWeeklyEngineDriftThresholds, type WeeklyEngineDriftThresholds } from "./weeklyEngineDriftThresholds.ts";
 
 export const PRIVATE_CONFIG_TABLE = "private_config";
@@ -51,6 +52,15 @@ export const PRIVATE_CONFIG_KEYS = Object.freeze({
     private: true,
     parse: parseWeeklyEngineDriftThresholds,
   }) as PrivateConfigKeySpec<WeeklyEngineDriftThresholds>,
+  race_day_role_yield_params: Object.freeze({
+    description: "Løbsdagens rolle-vægtede tillæg (#5950). Læses af raceDayRoleYield5950.js.",
+    private: true,
+    parse: (raw: unknown): { stageBonus: number; leadShare: number } => {
+      const params = validateRaceDayRoleYieldParams(raw);
+      if (!params) throw new Error("opfylder ikke validateRaceDayRoleYieldParams");
+      return params;
+    },
+  }) as PrivateConfigKeySpec<{ stageBonus: number; leadShare: number }>,
 });
 
 export type PrivateConfigKey = keyof typeof PRIVATE_CONFIG_KEYS;

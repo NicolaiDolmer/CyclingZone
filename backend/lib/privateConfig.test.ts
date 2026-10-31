@@ -49,8 +49,8 @@ function client(rows: Record<string, unknown>, { error = null as string | null, 
 
 const quiet = () => { const warnings: string[] = []; return { warnings, log: { warn: (m: string) => { warnings.push(m); } } }; };
 
-test("registret: de to kendte nøgler er private og har en parser", () => {
-  assert.deepEqual(Object.keys(PRIVATE_CONFIG_KEYS).sort(), ["development_curve_b_params", "weekly_engine_drift_thresholds"]);
+test("registret: de tre kendte nøgler er private og har en parser", () => {
+  assert.deepEqual(Object.keys(PRIVATE_CONFIG_KEYS).sort(), ["development_curve_b_params", "race_day_role_yield_params", "weekly_engine_drift_thresholds"]);
   for (const spec of Object.values(PRIVATE_CONFIG_KEYS)) {
     assert.equal(spec.private, true);
     assert.equal(typeof spec.parse, "function");
@@ -171,4 +171,11 @@ test("hash og ændrede felter: værdi-frie, stabile på tværs af nøgle-rækkef
   assert.deepEqual(changedPaths(CURVE, structuredClone(CURVE)), []);
   assert.deepEqual(changedPaths(null, CURVE), ["(hele vaerdien)"]);
   assert.deepEqual(changedPaths([1, 2], [1, 2, 3]), ["+[2]"]);
+});
+
+test("#5950: race_day_role_yield_params parser afviser ugyldige værdier", () => {
+  const { parse } = PRIVATE_CONFIG_KEYS.race_day_role_yield_params;
+  assert.throws(() => parse({ stageBonus: -1, leadShare: 0.5 }));
+  assert.throws(() => parse(null));
+  assert.deepEqual(parse({ stageBonus: 1, leadShare: 0.5 }), { stageBonus: 1, leadShare: 0.5 });
 });
