@@ -169,6 +169,13 @@ jobs:
         working-directory: .
         run: node --test scripts/refresh-staging.test.mjs
 
+      # #7336: refresh-fingerprints.mjs (allowlist-laas, domme, alt-eller-intet-
+      # skrivning, git-vagt, main-forloeb med injicerede afhaengigheder). Testen
+      # importerer kun scriptets rene dele; motoren og git koeres ikke.
+      - name: Test refresh-fingerprints
+        working-directory: .
+        run: node --test scripts/refresh-fingerprints.test.mjs
+
       - name: Run now-md-sidecar guard
         if: github.event_name == 'pull_request'
         working-directory: .

@@ -12,14 +12,18 @@
 //   bench     s5MotorBench.json: gab-dom, vindertype-dom og winnerDigests. Én bench-kørsel.
 //   calendar  calendarGoldenSnapshot.s3.json, kun med --only=calendar.
 //
-// Output er KUN domme (uændret/drevet/skrevet/dom ændret/regression). Scriptet printer
+// Output er KUN domme (uændret/drevet/skrevet/dom ændret/regression/fejl). Scriptet printer
 // aldrig målte tal, medianer, tærskler eller tærskelfilens indhold (hard rule 17); motorens
-// egen konsol-output dæmpes under kørslen. Det skriver aldrig andre filer end allowlisten,
-// og en git-vagt gendanner enhver anden ændret fil og giver exit 2.
+// egen output (console.* og process.stdout/stderr) dæmpes under kørslen.
 //
-// Exit: 0 alt uændret eller skrevet · 1 drift/dom ændret/regression · 2 vagt eller brugsfejl.
+// Skrivning er alt-eller-intet: alle filer forberedes i hukommelsen, skrives derefter, og
+// fejler en skrivning undervejs, gendannes de allerede skrevne. Bagefter kører en git-vagt
+// altid: ændrede trackede filer uden for allowlisten gendannes, nye utrackede filer uden
+// for allowlisten nævnes ved navn (de slettes ikke), og exit bliver 2.
+//
+// Exit: 0 alt uændret eller skrevet · 1 drift/dom ændret/regression/fejl · 2 vagt eller brugsfejl.
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -67,7 +71,12 @@ export function writablePaths(only = DEFAULT_ONLY) {
 
 export class UsageError extends Error {}
 
-export function parseArgs(argv) {
+export const USAGE = [
+  "brug: node scripts/refresh-fingerprints.mjs [--check | --write [--accept-verdict-change]]",
+  "                                            [--only=6912,bench,calendar] [--thresholds=<fil>] [--json] [--debug]",
+].join("\n");
+
+export function parseArgs(argv, { exists = existsSync } = {}) {
   const opts = { mode: "check", only: [...DEFAULT_ONLY], acceptVerdictChange: false, thresholds: null, json: false, debug: false };
   let sawCheck = false;
   let sawWrite = false;
@@ -85,6 +94,7 @@ export function parseArgs(argv) {
     } else if (a.startsWith("--thresholds=")) {
       opts.thresholds = a.slice("--thresholds=".length);
       if (!opts.thresholds) throw new UsageError("--thresholds kræver en sti");
+      if (!exists(opts.thresholds)) throw new UsageError("--thresholds: filen findes ikke");
     } else throw new UsageError(`ukendt argument: ${a}`);
   }
   if (sawCheck && sawWrite) throw new UsageError("--check og --write kan ikke kombineres");
@@ -149,7 +159,11 @@ export function judgeBench({ fixture, measured, winnerDigests, winners, config, 
   const configChanged = !isDeepStrictEqual(config, fixture.config) || fixture.stub !== false;
   const winnersKnown = winners != null;
   const winnersChanged = winnersKnown && !isDeepStrictEqual(winners, fixture.winners);
-  const thresholdBlocks = digestsChanged && !winnersKnown;
+  // En ny fixture kræver en vindertype-dom. Uden tærskel kan den kun arves fra fixturen; har
+  // fixturen ingen (fx en stub), kan intet i benchen skrives, og det afgøres her i dommen.
+  const winnersForWrite = winnersKnown ? winners : (fixture.winners ?? null);
+  const noWinnersToWrite = winnersForWrite == null;
+  const thresholdBlocks = (digestsChanged && !winnersKnown) || noWinnersToWrite;
   const results = [];
 
   results.push(r("bench-gap", "bench gab", gapChanged ? "verdict_changed" : "unchanged",
@@ -166,17 +180,22 @@ export function judgeBench({ fixture, measured, winnerDigests, winners, config, 
 
   results.push(r("bench-digests", "bench winnerDigests", digestsChanged ? "drifted" : "unchanged",
     thresholdBlocks ? "tærskel mangler, kan ikke skrives" : null, { writable: digestsChanged && !thresholdBlocks }));
-  if (configChanged) results.push(r("bench-config", "bench konfiguration", "drifted", null, { writable: true }));
+  if (configChanged) {
+    results.push(r("bench-config", "bench konfiguration", "drifted",
+      noWinnersToWrite ? "tærskel mangler, kan ikke skrives" : null, { writable: !noWinnersToWrite }));
+  }
 
   const anyChange = gapChanged || digestsChanged || winnersChanged || configChanged;
-  return { results, anyChange, winnersForWrite: winnersKnown ? winners : fixture.winners };
+  return { results, anyChange, winnersForWrite };
 }
 
 const BLOCKING = new Set(["regression", "verdict_changed", "drifted"]);
+/** Stopper al skrivning uanset allowlist: motoren har flyttet frosne tal, eller en del kunne ikke køres. */
+const STOPPING = new Set(["regression", "error"]);
 
-/** Må --write skrive? Kun når ingen del er en regression, og alt drevet faktisk er skrivbart. */
+/** Må --write skrive? Kun når ingen del er en regression eller fejl, og alt drevet faktisk er skrivbart. */
 export function writeAllowed(results) {
-  if (results.some((x) => x.status === "regression")) return false;
+  if (results.some((x) => STOPPING.has(x.status))) return false;
   return results.filter((x) => BLOCKING.has(x.status)).every((x) => x.writable === true);
 }
 
@@ -188,12 +207,13 @@ export function markWritten(results) {
 }
 
 export function exitCodeFor(results) {
-  return results.some((x) => BLOCKING.has(x.status)) ? 1 : 0;
+  return results.some((x) => BLOCKING.has(x.status) || x.status === "error") ? 1 : 0;
 }
 
 export function overallResult(results, mode) {
   const has = (s) => results.some((x) => x.status === s);
   if (has("regression")) return "REGRESSION, ret motoren (intet skrevet)";
+  if (has("error")) return "FEJL, en del kunne ikke køres (intet skrevet); kør med --debug";
   if (has("verdict_changed")) return "dom ændret, kræver ejer-go (--write --accept-verdict-change), intet skrevet";
   if (has("drifted")) return mode === "write" ? "drevet, men ikke skrevet" : "fingeraftryk drevet, kør --write";
   if (has("written")) return results.some((x) => x.status === "written" && x.verdict === "dom ændret, accepteret")
@@ -208,6 +228,7 @@ const STATUS_TEXT = {
   written: "DREVET -> skrevet",
   verdict_changed: "DOM ÆNDRET",
   regression: "REGRESSION",
+  error: "FEJL",
   skipped: "ikke kørt",
 };
 
@@ -249,68 +270,156 @@ export function forbiddenChanges(before, after, allow) {
   return [...after].filter((p) => !before.has(p) && !allow.includes(p)).sort();
 }
 
+/**
+ * Serialiserer JSON til en allowlistet sti og bevarer filens linjeskift. Nægter alt uden for
+ * allowlisten, før noget som helst skrives. `previous` er filens nuværende tekst (null = ny fil).
+ */
+export function serializeJson(rel, value, allow, previous) {
+  if (!allow.includes(rel) || NEVER_WRITABLE.includes(rel)) throw new Error(`nægter at skrive uden for allowlisten: ${rel}`);
+  const body = `${JSON.stringify(value, null, 2)}\n`;
+  return previous != null && previous.includes("\r\n") ? body.replace(/\n/g, "\r\n") : body;
+}
+
 /** Skriver JSON til en allowlistet sti og bevarer filens linjeskift. */
 export function safeWriteJson(rel, value, allow, { root = REPO_ROOT, write = writeFileSync, read = readFileSync, exists = existsSync } = {}) {
-  if (!allow.includes(rel) || NEVER_WRITABLE.includes(rel)) throw new Error(`nægter at skrive uden for allowlisten: ${rel}`);
   const abs = path.join(root, rel);
-  const crlf = exists(abs) && read(abs, "utf8").includes("\r\n");
-  const body = `${JSON.stringify(value, null, 2)}\n`;
-  write(abs, crlf ? body.replace(/\n/g, "\r\n") : body);
+  const body = serializeJson(rel, value, allow, exists(abs) ? read(abs, "utf8") : null);
+  write(abs, body);
 }
 
-/** Dæmper motorens/benchens konsol-output (kan indeholde tal) mens `fn` kører. */
-async function muted(fn, debug) {
-  if (debug) return fn();
-  const saved = { log: console.log, info: console.info, warn: console.warn, debug: console.debug, error: console.error };
-  console.log = console.info = console.warn = console.debug = console.error = () => {};
-  try { return await fn(); } finally { Object.assign(console, saved); }
-}
-
-const readJson = (rel) => JSON.parse(readFileSync(path.join(REPO_ROOT, rel), "utf8"));
-const backendNode = (args) => spawnSync(process.execPath, args, { cwd: path.join(REPO_ROOT, "backend"), stdio: "ignore" });
-const backendUrl = (rel) => pathToFileURL(path.join(REPO_ROOT, "backend", rel)).href;
-
-async function main(argv) {
-  let opts;
-  try { opts = parseArgs(argv); } catch (err) {
-    if (err instanceof UsageError) { console.error(`refresh-fingerprints: ${err.message}`); return 2; }
+/**
+ * Alt-eller-intet: `planned` er [{ rel, value }]. Alt serialiseres og allowlist-tjekkes først.
+ * Fejler en skrivning, gendannes de filer der allerede er skrevet, og fejlen kastes videre.
+ */
+export function writeAllOrNothing(planned, allow, { readText, writeText, removeFile }) {
+  const prepared = planned.map(({ rel, value }) => {
+    const previous = readText(rel);
+    return { rel, previous, body: serializeJson(rel, value, allow, previous) };
+  });
+  const done = [];
+  try {
+    for (const p of prepared) {
+      done.push(p);
+      writeText(p.rel, p.body);
+    }
+  } catch (err) {
+    for (const p of done.reverse()) {
+      try {
+        if (p.previous == null) removeFile(p.rel);
+        else writeText(p.rel, p.previous);
+      } catch { /* vagten fanger det der ikke kunne gendannes */ }
+    }
     throw err;
   }
+  return prepared.map((p) => p.rel);
+}
+
+/**
+ * Git-vagten: ændrede trackede filer uden for allowlisten gendannes; nye utrackede filer
+ * nævnes kun. Returnerer null når alt er rent, ellers en ærlig besked.
+ */
+export function runGuard(before, allow, { gitChangedPaths: changed, isTracked, restoreTracked }) {
+  const bad = forbiddenChanges(before, changed(), allow);
+  if (!bad.length) return null;
+  const tracked = bad.filter((p) => isTracked(p));
+  const untracked = bad.filter((p) => !tracked.includes(p));
+  if (tracked.length) restoreTracked(tracked);
+  const parts = [];
+  if (tracked.length) parts.push(`ændrede trackede filer uden for allowlisten er gendannet: ${tracked.join(", ")}`);
+  if (untracked.length) parts.push(`nye utrackede filer uden for allowlisten er IKKE fjernet, ryd dem selv op: ${untracked.join(", ")}`);
+  return `VAGT: ${parts.join("; ")}`;
+}
+
+/**
+ * Dæmper motorens/benchens output (kan indeholde tal) mens `fn` kører: console.* og
+ * process.stdout/stderr.write. Scriptets egne domme skrives først bagefter, når alt er gendannet.
+ */
+export async function muted(fn, debug, { con = console, streams = [process.stdout, process.stderr] } = {}) {
+  if (debug) return fn();
+  const methods = ["log", "info", "warn", "debug", "error"];
+  const savedCon = Object.fromEntries(methods.map((m) => [m, con[m]]));
+  const savedWrites = streams.map((s) => s.write);
+  for (const m of methods) con[m] = () => {};
+  for (const s of streams) {
+    s.write = (_chunk, encoding, cb) => {
+      const done = typeof encoding === "function" ? encoding : cb;
+      if (typeof done === "function") done();
+      return true;
+    };
+  }
+  try { return await fn(); } finally {
+    Object.assign(con, savedCon);
+    streams.forEach((s, i) => { s.write = savedWrites[i]; });
+  }
+}
+
+const backendNode = (args) => spawnSync(process.execPath, args, { cwd: path.join(REPO_ROOT, "backend"), stdio: "ignore" });
+const backendUrl = (rel) => pathToFileURL(path.join(REPO_ROOT, "backend", rel)).href;
+const absPath = (rel) => path.join(REPO_ROOT, rel);
+
+/** Rigtige afhængigheder. Testene injicerer stubs i stedet. */
+export function defaultDeps() {
+  return {
+    runFrozenTests: () => backendNode(["--test", ...FROZEN_TESTS]).status === 0,
+    importBackend: (rel) => import(backendUrl(rel)),
+    readJson: (rel) => JSON.parse(readFileSync(absPath(rel), "utf8")),
+    readText: (rel) => (existsSync(absPath(rel)) ? readFileSync(absPath(rel), "utf8") : null),
+    writeText: (rel, body) => writeFileSync(absPath(rel), body),
+    removeFile: (rel) => rmSync(absPath(rel), { force: true }),
+    gitChangedPaths: () => gitChangedPaths(),
+    isTracked: (rel) => spawnSync("git", ["-C", REPO_ROOT, "ls-files", "--error-unmatch", rel], { stdio: "ignore" }).status === 0,
+    restoreTracked: (rels) => {
+      const res = spawnSync("git", ["-C", REPO_ROOT, "checkout", "--", ...rels], { stdio: "ignore" });
+      if (res.status !== 0) throw new Error("git checkout fejlede");
+    },
+    resolveThresholds: (explicit) => resolveThresholdsPath({ explicit }),
+    exists: existsSync,
+    mute: (fn, debug) => muted(fn, debug),
+    out: (text) => console.log(text),
+    err: (text) => console.error(text),
+  };
+}
+
+export async function main(argv, deps = defaultDeps()) {
+  let opts;
+  try { opts = parseArgs(argv, { exists: deps.exists }); } catch (err) {
+    if (err instanceof UsageError) { deps.err(`refresh-fingerprints: ${err.message}\n${USAGE}`); return 2; }
+    throw err;
+  }
+  const mute = (fn) => deps.mute(fn, opts.debug);
   const allow = writablePaths(opts.only);
-  const before = opts.mode === "write" ? gitChangedPaths() : null;
+  const before = opts.mode === "write" ? deps.gitChangedPaths() : null;
   let results = [];
-  const writes = [];
+  const planned = [];
 
-  // 1. Frosne (altid kun tjek).
-  const frozenRun = backendNode(["--test", ...FROZEN_TESTS]);
-  results.push(r("frozen", "frosne 6199/6200/6363", frozenRun.status === 0 ? "unchanged" : "regression"));
+  // 1. Frosne (altid kun tjek, uanset --only).
+  const frozenOk = await mute(() => deps.runFrozenTests());
+  results.push(r("frozen", "frosne 6199/6200/6363", frozenOk ? "unchanged" : "regression"));
 
-  const fp = await import(backendUrl("lib/engine/v4/testUtils/flatChase6912Fingerprints.ts"));
-  const expected6912 = readJson(PATHS.flatChase);
-  const frozenFirst = await muted(() => Object.fromEntries(fp.FLAT_CHASE_6912_FROZEN_KEYS.map((k) => [k, fp.computeFlatChase6912(k)])), opts.debug);
-  const frozenJudge = judgeFlatChase({ expected: expected6912, actual: frozenFirst, frozenKeys: fp.FLAT_CHASE_6912_FROZEN_KEYS, recomputableKeys: [] });
-  results.push(...frozenJudge.results);
+  const fp = await deps.importBackend("lib/engine/v4/testUtils/flatChase6912Fingerprints.ts");
+  const expected6912 = deps.readJson(PATHS.flatChase);
+  const frozenFirst = await mute(() => Object.fromEntries(fp.FLAT_CHASE_6912_FROZEN_KEYS.map((k) => [k, fp.computeFlatChase6912(k)])));
+  results.push(...judgeFlatChase({ expected: expected6912, actual: frozenFirst, frozenKeys: fp.FLAT_CHASE_6912_FROZEN_KEYS, recomputableKeys: [] }).results);
 
-  const stopped = results.some((x) => x.status === "regression");
-  if (stopped) {
+  if (results.some((x) => x.status === "regression")) {
     for (const part of opts.only) results.push(r(part, part, "skipped", "regression i de frosne"));
   } else {
     // 2. #6912 v3.
     if (opts.only.includes("6912")) {
-      const actual = await muted(() => Object.fromEntries(fp.FLAT_CHASE_6912_RECOMPUTABLE_KEYS.map((k) => [k, fp.computeFlatChase6912(k)])), opts.debug);
+      const actual = await mute(() => Object.fromEntries(fp.FLAT_CHASE_6912_RECOMPUTABLE_KEYS.map((k) => [k, fp.computeFlatChase6912(k)])));
       const j = judgeFlatChase({ expected: expected6912, actual, frozenKeys: [], recomputableKeys: fp.FLAT_CHASE_6912_RECOMPUTABLE_KEYS });
       results.push(...j.results);
-      if (j.next) writes.push(() => safeWriteJson(PATHS.flatChase, j.next, allow));
+      if (j.next) planned.push({ rel: PATHS.flatChase, value: j.next });
     }
 
     // 3. Bench, én kørsel.
     if (opts.only.includes("bench")) {
-      const bench = await import(backendUrl("scripts/dev/s5MotorBench.mjs"));
-      const gate = await import(backendUrl("lib/s5BenchmarkGate.js"));
-      const thresholdsPath = resolveThresholdsPath({ explicit: opts.thresholds });
+      const bench = await deps.importBackend("scripts/dev/s5MotorBench.mjs");
+      const gate = await deps.importBackend("lib/s5BenchmarkGate.js");
+      const thresholdsPath = deps.resolveThresholds(opts.thresholds);
       const thresholds = thresholdsPath ? bench.loadWinnerThresholds(thresholdsPath) : null;
-      const fixture = readJson(PATHS.bench);
-      const { measured, winnerDigests, winners } = await muted(async () => {
+      const fixture = deps.readJson(PATHS.bench);
+      const { measured, winnerDigests, winners } = await mute(async () => {
         const rows = await bench.runS5MotorBench();
         const m = bench.gateMeasurement(rows, gate.loadS5Benchmark());
         return {
@@ -318,42 +427,52 @@ async function main(argv) {
           winnerDigests: bench.winnerRowsDigests(rows),
           winners: thresholds ? bench.winnerVerdicts(rows, thresholds) : null,
         };
-      }, opts.debug);
+      });
       const j = judgeBench({ fixture, measured, winnerDigests, winners, config: { ...bench.S5_MOTOR_BENCH_CONFIG }, accept: opts.acceptVerdictChange });
       results.push(...j.results);
-      if (j.anyChange) {
-        writes.push(() => safeWriteJson(PATHS.bench, bench.fixtureFromSummary({ gate: measured }, j.winnersForWrite, winnerDigests), allow));
+      // Kun når dommen siger skrivbar: så er vindertype-dommen til stede og kaster ikke.
+      if (j.anyChange && writeAllowed(j.results)) {
+        planned.push({ rel: PATHS.bench, value: bench.fixtureFromSummary({ gate: measured }, j.winnersForWrite, winnerDigests) });
       }
     }
 
-    // 4. Kalender, kun med --only=calendar.
+    // 4. Kalender, kun med --only=calendar. Et nedbrud er en fejl, ikke drift.
     if (opts.only.includes("calendar")) {
-      const check = backendNode(["scripts/dev/refreshCalendarGoldenSnapshot.mjs", "--check"]);
-      const moved = check.status !== 0;
-      results.push(r("calendar", "kalender S3", moved ? "drifted" : "unchanged", null, { writable: moved }));
-      if (moved) {
-        writes.push(() => {
-          if (!allow.includes(PATHS.calendar)) throw new Error("kalenderen er ikke i allowlisten");
-          if (backendNode(["scripts/dev/refreshCalendarGoldenSnapshot.mjs"]).status !== 0) throw new Error("kalender-skrivning fejlede");
-        });
+      try {
+        const cal = await deps.importBackend("scripts/dev/lib/calendarGoldenSnapshotBuilder.mjs");
+        const fresh = await mute(() => cal.buildCalendarGoldenSnapshot());
+        const moved = cal.diffCalendarGoldenSnapshots(deps.readJson(PATHS.calendar), fresh).length > 0;
+        results.push(r("calendar", "kalender S3", moved ? "drifted" : "unchanged", null, { writable: moved }));
+        if (moved) planned.push({ rel: PATHS.calendar, value: fresh });
+      } catch (err) {
+        if (opts.debug) deps.err(err);
+        results.push(r("calendar", "kalender S3", "error", "kalender-tjekket kunne ikke køres"));
       }
     }
   }
 
-  if (opts.mode === "write" && writes.length && writeAllowed(results)) {
-    for (const w of writes) w();
-    const bad = forbiddenChanges(before, gitChangedPaths(), allow);
-    if (bad.length) {
-      const tracked = bad.filter((p) => spawnSync("git", ["-C", REPO_ROOT, "ls-files", "--error-unmatch", p], { stdio: "ignore" }).status === 0);
-      if (tracked.length) spawnSync("git", ["-C", REPO_ROOT, "checkout", "--", ...tracked], { stdio: "ignore" });
-      console.error(`VAGT: filer uden for allowlisten blev ændret og er gendannet: ${bad.join(", ")}`);
+  if (opts.mode === "write" && planned.length && writeAllowed(results)) {
+    let failure = null;
+    let guardMessage = null;
+    try {
+      writeAllOrNothing(planned, allow, deps);
+    } catch (err) {
+      failure = err;
+    } finally {
+      try { guardMessage = runGuard(before, allow, deps); } catch { guardMessage = "VAGT: git-vagten kunne ikke køres; tjek git status i hånden"; }
+    }
+    if (guardMessage) deps.err(guardMessage);
+    if (failure) {
+      if (opts.debug) deps.err(failure);
+      deps.err("refresh-fingerprints: skrivningen fejlede; allerede skrevne filer er gendannet, intet er ændret");
       return 2;
     }
+    if (guardMessage) return 2;
     results = markWritten(results);
   }
 
-  if (opts.json) console.log(JSON.stringify(toJson(results, opts.mode), null, 2));
-  else console.log(render(results, opts.mode));
+  if (opts.json) deps.out(JSON.stringify(toJson(results, opts.mode), null, 2));
+  else deps.out(render(results, opts.mode));
   return exitCodeFor(results);
 }
 

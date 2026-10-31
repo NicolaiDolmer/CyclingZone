@@ -2,12 +2,13 @@
 // tærskel-opslag, dommene, exit-koder, git-vagten og at outputtet aldrig bærer tal.
 import test from "node:test";
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import {
-  DEFAULT_ONLY, NEVER_WRITABLE, PATHS, UsageError, exitCodeFor, forbiddenChanges, gitChangedPaths, judgeBench,
-  judgeFlatChase, markWritten, overallResult, parseArgs, render, resolveThresholdsPath, safeWriteJson, toJson,
-  writablePaths, writeAllowed,
+  DEFAULT_ONLY, FROZEN_TESTS, NEVER_WRITABLE, PATHS, REPO_ROOT, UsageError, exitCodeFor, forbiddenChanges, gitChangedPaths,
+  judgeBench, judgeFlatChase, main, markWritten, muted, overallResult, parseArgs, render, resolveThresholdsPath, runGuard,
+  safeWriteJson, toJson, writablePaths, writeAllOrNothing, writeAllowed,
 } from "./refresh-fingerprints.mjs";
 
 const RATING_GOLDEN = "frontend/src/lib/__fixtures__/ratingGolden.5321.json";
@@ -51,7 +52,7 @@ test("safeWriteJson nægter alt uden for allowlisten og bevarer CRLF", () => {
 
 test("parseArgs: check er default; write, accept, only, thresholds, json", () => {
   assert.deepEqual(parseArgs([]), { mode: "check", only: ["6912", "bench"], acceptVerdictChange: false, thresholds: null, json: false, debug: false });
-  const o = parseArgs(["--write", "--accept-verdict-change", "--only=bench,6912,bench", "--thresholds=/t.json", "--json"]);
+  const o = parseArgs(["--write", "--accept-verdict-change", "--only=bench,6912,bench", "--thresholds=/t.json", "--json"], { exists: (p) => p === "/t.json" });
   assert.equal(o.mode, "write");
   assert.equal(o.acceptVerdictChange, true);
   assert.deepEqual(o.only, ["bench", "6912"]);
@@ -62,6 +63,7 @@ test("parseArgs: check er default; write, accept, only, thresholds, json", () =>
   assert.throws(() => parseArgs(["--only=rating"]), UsageError);
   assert.throws(() => parseArgs(["--only="]), UsageError);
   assert.throws(() => parseArgs(["--frobnicate"]), UsageError);
+  assert.throws(() => parseArgs(["--thresholds=/nope.json"], { exists: () => false }), /findes ikke/, "tærskelfil valideres allerede i parseArgs");
 });
 
 test("tærskel-opslag: --thresholds, env, worktree, OneDrive; null når ingen findes", () => {
@@ -184,4 +186,235 @@ test("gitChangedPaths samler ændrede og nye filer og fejler højt", () => {
   const run = (args) => ({ status: 0, stdout: args[0] === "diff" ? "a.json\r\nb.json\n" : "c.json\n" });
   assert.deepEqual([...gitChangedPaths(run)].sort(), ["a.json", "b.json", "c.json"]);
   assert.throws(() => gitChangedPaths(() => ({ status: 128, stdout: "" })), /git/);
+});
+
+// ---------- main()-forløbet med injicerede afhængigheder (ingen motor, ingen git, ingen disk) ----------
+
+const FP_FROZEN = ["oldRevisions", "oldStageRaces"];
+const FP_RECOMP = ["otherTerrain", "otherOneDay"];
+const isEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+function fakeDeps({
+  frozenTestsOk = true, frozenKeyMoved = false, v3Moved = false, benchDigestsMoved = false,
+  benchFixture = FIXTURE, thresholds = "/t.json", calendar = "same", failWriteOn = null,
+  extraChanged = [], tracked = [], before = [],
+} = {}) {
+  const calls = [];
+  const writes = [];
+  const files = {
+    [PATHS.flatChase]: `${JSON.stringify(EXPECTED_6912, null, 2)}\n`,
+    [PATHS.bench]: `${JSON.stringify(benchFixture, null, 2)}\n`,
+    [PATHS.calendar]: `${JSON.stringify({ s: "old" }, null, 2)}\n`,
+  };
+  const fp = {
+    FLAT_CHASE_6912_FROZEN_KEYS: FP_FROZEN,
+    FLAT_CHASE_6912_RECOMPUTABLE_KEYS: FP_RECOMP,
+    computeFlatChase6912: (k) => {
+      calls.push(`compute:${k}`);
+      if (k === "oldRevisions" && frozenKeyMoved) return { a: "moved" };
+      if (k === "otherTerrain" && v3Moved) return { t: "moved" };
+      return EXPECTED_6912[k];
+    },
+  };
+  const bench = {
+    S5_MOTOR_BENCH_CONFIG: CONFIG,
+    loadWinnerThresholds: () => ({}),
+    runS5MotorBench: async () => { calls.push("bench:run"); return []; },
+    gateMeasurement: () => ({ verdicts: { ...FIXTURE.verdicts }, sources: { ...FIXTURE.sources } }),
+    winnerRowsDigests: () => (benchDigestsMoved ? { long_climb: "sha256:moved" } : { ...FIXTURE.winnerDigests }),
+    winnerVerdicts: () => ({ long_climb: { expected: "climber", verdict: "pass" } }),
+    fixtureFromSummary: (summary, winners, winnerDigests) => {
+      if (!winners) throw new Error("vindertype-dommen mangler");
+      return { ...FIXTURE, verdicts: summary.gate.verdicts, winners, winnerDigests };
+    },
+  };
+  const cal = {
+    buildCalendarGoldenSnapshot: () => {
+      calls.push("calendar:build");
+      if (calendar === "crash") throw new Error("boom");
+      return calendar === "moved" ? { s: "new" } : { s: "old" };
+    },
+    diffCalendarGoldenSnapshots: (a, b) => (isEqual(a, b) ? [] : ["diff"]),
+  };
+  const modules = {
+    "lib/engine/v4/testUtils/flatChase6912Fingerprints.ts": fp,
+    "scripts/dev/s5MotorBench.mjs": bench,
+    "lib/s5BenchmarkGate.js": { loadS5Benchmark: () => ({}) },
+    "scripts/dev/lib/calendarGoldenSnapshotBuilder.mjs": cal,
+  };
+  const out = [];
+  const err = [];
+  let gitCalls = 0;
+  let failedOnce = false;
+  const deps = {
+    runFrozenTests: () => { calls.push("frozen-tests"); return frozenTestsOk; },
+    importBackend: async (rel) => { calls.push(`import:${rel}`); return modules[rel]; },
+    readJson: (rel) => JSON.parse(files[rel]),
+    readText: (rel) => files[rel] ?? null,
+    writeText: (rel, body) => {
+      if (rel === failWriteOn && !failedOnce) { failedOnce = true; throw new Error("disk fuld"); }
+      writes.push({ rel, body });
+      files[rel] = body;
+    },
+    removeFile: (rel) => { calls.push(`remove:${rel}`); delete files[rel]; },
+    gitChangedPaths: () => {
+      gitCalls += 1;
+      calls.push("git-changed");
+      if (gitCalls === 1) return new Set(before);
+      return new Set([...before, ...writes.map((w) => w.rel), ...extraChanged]);
+    },
+    isTracked: (rel) => tracked.includes(rel),
+    restoreTracked: (rels) => calls.push(`restore:${rels.join(",")}`),
+    resolveThresholds: () => thresholds,
+    exists: () => true,
+    mute: (fn) => fn(),
+    out: (t) => out.push(t),
+    err: (t) => err.push(String(t)),
+  };
+  return { deps, calls, writes, files, out, err };
+}
+
+test("main --check skriver aldrig og kører ikke git-vagten, heller ikke ved drift", async () => {
+  const f = fakeDeps({ v3Moved: true, benchDigestsMoved: true });
+  const code = await main(["--check"], f.deps);
+  assert.equal(code, 1);
+  assert.deepEqual(f.writes, []);
+  assert.ok(!f.calls.includes("git-changed"));
+  assert.match(f.out.join("\n"), /DREVET/);
+  assert.match(f.out.join("\n"), /kør --write/);
+});
+
+test("main: de frosne kører uanset --only", async () => {
+  const f = fakeDeps();
+  const code = await main(["--only=calendar"], f.deps);
+  assert.equal(code, 0);
+  assert.ok(f.calls.includes("frozen-tests"));
+  for (const k of FP_FROZEN) assert.ok(f.calls.includes(`compute:${k}`), k);
+  for (const k of FP_RECOMP) assert.ok(!f.calls.includes(`compute:${k}`), `${k} kører kun med --only=6912`);
+  assert.ok(!f.calls.includes("bench:run"));
+  assert.ok(f.calls.includes("calendar:build"));
+});
+
+test("main: en regression i de frosne stopper alt, også under --write", async () => {
+  for (const variant of [{ frozenTestsOk: false }, { frozenKeyMoved: true }]) {
+    const f = fakeDeps({ ...variant, v3Moved: true, benchDigestsMoved: true });
+    const code = await main(["--write", "--only=6912,bench,calendar"], f.deps);
+    assert.equal(code, 1);
+    assert.deepEqual(f.writes, [], "intet skrevet");
+    assert.ok(!f.calls.includes("bench:run"), "benchen kører ikke");
+    assert.ok(!f.calls.includes("calendar:build"), "kalenderen kører ikke");
+    for (const k of FP_RECOMP) assert.ok(!f.calls.includes(`compute:${k}`));
+    assert.match(f.out.join("\n"), /REGRESSION/);
+  }
+});
+
+test("main --write: skriver allowlisten, kører vagten bagefter og giver exit 0", async () => {
+  const f = fakeDeps({ v3Moved: true, benchDigestsMoved: true });
+  const code = await main(["--write"], f.deps);
+  assert.equal(code, 0);
+  assert.deepEqual(f.writes.map((w) => w.rel), [PATHS.flatChase, PATHS.bench]);
+  assert.equal(f.calls.filter((c) => c === "git-changed").length, 2, "før og efter");
+  assert.equal(JSON.parse(f.files[PATHS.flatChase]).otherTerrain.t, "moved");
+  assert.match(f.out.join("\n"), /skrevet/);
+});
+
+test("main --write er alt-eller-intet: fejler anden skrivning, gendannes den første og vagten kører", async () => {
+  const f = fakeDeps({ v3Moved: true, benchDigestsMoved: true, failWriteOn: PATHS.bench });
+  const original = f.files[PATHS.flatChase];
+  const code = await main(["--write"], f.deps);
+  assert.equal(code, 2);
+  assert.equal(f.files[PATHS.flatChase], original, "første fil er gendannet byte-identisk");
+  assert.equal(f.calls.filter((c) => c === "git-changed").length, 2, "vagten kørte i finally");
+  assert.match(f.err.join("\n"), /gendannet/);
+});
+
+test("writeAllOrNothing tjekker allowlisten før den første skrivning og fjerner nye filer ved fejl", () => {
+  const files = { a: "{}\n" };
+  const io = {
+    readText: (rel) => files[rel] ?? null,
+    writeText: (rel, b) => { if (rel === "boom") throw new Error("x"); files[rel] = b; },
+    removeFile: (rel) => { delete files[rel]; },
+  };
+  assert.throws(() => writeAllOrNothing([{ rel: "a", value: 1 }, { rel: RATING_GOLDEN, value: 1 }], ["a", RATING_GOLDEN], io), /allowlisten/);
+  assert.equal(files.a, "{}\n", "intet skrevet når en sti er låst");
+  assert.throws(() => writeAllOrNothing([{ rel: "a", value: 1 }, { rel: "new", value: 2 }, { rel: "boom", value: 3 }], ["a", "new", "boom"], io), /x/);
+  assert.deepEqual(files, { a: "{}\n" }, "den ændrede er gendannet og den nye fjernet");
+});
+
+test("main: vagten gendanner trackede filer og nævner nye utrackede ærligt", async () => {
+  const stray = "backend/lib/engine/v4/test-data/oldRevisionDigests6199.json";
+  const f = fakeDeps({ v3Moved: true, extraChanged: [stray, "tmp/new-file.json"], tracked: [stray], before: ["docs/NOW.md"] });
+  const code = await main(["--write", "--only=6912"], f.deps);
+  assert.equal(code, 2);
+  assert.ok(f.calls.includes(`restore:${stray}`));
+  assert.ok(!f.calls.some((c) => c.startsWith("restore:") && c.includes("tmp/new-file.json")));
+  const msg = f.err.join("\n");
+  assert.match(msg, /gendannet: backend\/lib\/engine\/v4\/test-data\/oldRevisionDigests6199\.json/);
+  assert.match(msg, /IKKE fjernet.*tmp\/new-file\.json/);
+});
+
+test("runGuard: rent = null, og kun nye ændringer tæller", () => {
+  const deps = { gitChangedPaths: () => new Set(["docs/NOW.md", PATHS.bench]), isTracked: () => true, restoreTracked: () => { throw new Error("må ikke kaldes"); } };
+  assert.equal(runGuard(new Set(["docs/NOW.md"]), writablePaths(), deps), null);
+});
+
+test("main: kalenderen er kun drift ved en reel diff; et nedbrud er FEJL og stopper skrivning", async () => {
+  const moved = fakeDeps({ calendar: "moved" });
+  assert.equal(await main(["--write", "--only=calendar"], moved.deps), 0);
+  assert.deepEqual(moved.writes.map((w) => w.rel), [PATHS.calendar]);
+
+  const crash = fakeDeps({ calendar: "crash", v3Moved: true });
+  const code = await main(["--write", "--only=6912,calendar"], crash.deps);
+  assert.equal(code, 1);
+  assert.deepEqual(crash.writes, [], "intet skrevet når en del fejler");
+  const text = crash.out.join("\n");
+  assert.match(text, /kalender S3\s+FEJL/);
+  assert.doesNotMatch(text, /kalender S3\s+DREVET/);
+  assert.doesNotMatch(text, /boom/, "fejlens tekst vises ikke uden --debug");
+});
+
+test("bench: stub-fixture uden tærskel stoppes i dommen, ikke i skrivetrinnet", async () => {
+  const stub = { stub: true, config: {} };
+  const j = judgeBench({ fixture: stub, ...same(), winners: null });
+  const c = j.results.find((x) => x.part === "bench-config");
+  assert.equal(c.status, "drifted");
+  assert.equal(c.writable, false);
+  assert.equal(writeAllowed(j.results), false);
+
+  const f = fakeDeps({ benchFixture: stub, thresholds: null });
+  const code = await main(["--write", "--only=bench"], f.deps);
+  assert.equal(code, 1);
+  assert.deepEqual(f.writes, []);
+});
+
+test("main: --thresholds til en fil der ikke findes giver brugsbesked og exit 2 før noget kører", async () => {
+  const f = fakeDeps();
+  const code = await main(["--thresholds=/nope.json"], { ...f.deps, exists: () => false });
+  assert.equal(code, 2);
+  assert.match(f.err.join("\n"), /findes ikke[\s\S]*brug:/);
+  assert.ok(!f.calls.includes("frozen-tests"));
+});
+
+test("muted dæmper console.* og stream.write, og gendanner dem bagefter", async () => {
+  const seen = [];
+  const con = { log: (s) => seen.push(`log:${s}`), info() {}, warn() {}, debug() {}, error: (s) => seen.push(`error:${s}`) };
+  const stream = { write: (s) => { seen.push(`write:${s}`); return true; } };
+  const value = await muted(async () => {
+    con.log("motor"); con.error("motor"); stream.write("motor");
+    let cbCalled = false;
+    stream.write("x", () => { cbCalled = true; });
+    assert.ok(cbCalled, "callback kaldes stadig");
+    return "v";
+  }, false, { con, streams: [stream] });
+  assert.equal(value, "v");
+  assert.deepEqual(seen, []);
+  con.log("dom"); stream.write("dom");
+  assert.deepEqual(seen, ["log:dom", "write:dom"], "scriptets egne domme er synlige bagefter");
+  await assert.rejects(muted(async () => { throw new Error("x"); }, false, { con, streams: [stream] }));
+  stream.write("efter fejl");
+  assert.equal(seen.at(-1), "write:efter fejl", "gendannet selv når fn kaster");
+});
+
+test("FROZEN_TESTS peger på filer der findes", () => {
+  for (const t of FROZEN_TESTS) assert.ok(existsSync(path.join(REPO_ROOT, "backend", t)), t);
 });
