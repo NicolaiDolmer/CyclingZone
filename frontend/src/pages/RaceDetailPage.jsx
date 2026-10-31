@@ -1654,6 +1654,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
   // #7411: blokken nedenfor foelger holdfilteret (myTeamId). Egne udgaaede
   // haenger kun paa den, naar filteret ER spillerens eget hold; ellers faar de
   // deres egen "Your team"-blok, saa de ses ogsaa under "All teams".
+  // Filtreres der paa et andet hold, staar egne udgaaede i deres egen blok under det.
   const blockIsMine = myTeamId != null && ownTeamId != null && String(myTeamId) === String(ownTeamId);
   const blockAbandons = blockIsMine ? ownAbandons : null;
 
@@ -1755,7 +1756,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
           )}
         </div>
       )}
-      {!myTeamBlock && ownAbandons && (
+      {ownAbandons && !blockAbandons && (
         <div className="mt-3 pt-3 border-t border-cz-border space-y-1">
           <div className="text-3xs font-bold uppercase tracking-wide text-cz-3">{t("detail.report.yourTeam.title")}</div>
           <ul className="space-y-1">
@@ -2362,6 +2363,9 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
   // #7411: udgaaede (DNF) staar nederst og taeller med i "Show all N"; i den
   // foldede visning erstattes de af én linje, der folder tabellen ud.
   const dnfCount = dnfRows?.length ?? 0;
+  // DNS (skadet/syg, startede ikke) taelles for sig: de "udgik" ikke af loebet.
+  const dnsCount = (dnfRows || []).filter((d) => d.status === "dns").length;
+  const didNotFinishCount = dnfCount - dnsCount;
   const totalCount = rows.length + dnfCount;
   const collapsible = totalCount > defaultLimit;
   const collapsed = collapsible && !expanded;
@@ -2480,10 +2484,14 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                 {showDnfRows && dnfRows.map((d) => {
                   const isMine = myOwnTeamId != null && String(d.team_id) === String(myOwnTeamId);
                   const reason = t(`detail.incidents.${d.reasonKey}`);
+                  const isDns = d.status === "dns";
                   const teamName = d.team_name || null;
                   return (
-                    <tr key={d.id} data-dnf="true" className={`hover:bg-cz-subtle transition-colors${isMine ? " cz-me" : ""}`}>
-                      <td className="ps-3 pe-1 sm:px-4 py-2 w-8 sm:w-10 font-mono text-3xs font-semibold text-cz-3">{t("detail.incidents.dnf")}</td>
+                    <tr key={d.id} data-dnf={isDns ? undefined : "true"} data-dns={isDns ? "true" : undefined} className={`hover:bg-cz-subtle transition-colors${isMine ? " cz-me" : ""}`}>
+                      <td className="ps-3 pe-1 sm:px-4 py-2 w-8 sm:w-10 font-mono text-3xs font-semibold text-cz-3"
+                        title={isDns ? t("detail.incidents.dnsTitle") : undefined}>
+                        {isDns ? t("detail.incidents.dns") : t("detail.incidents.dnf")}
+                      </td>
                       <td className="ps-1 pe-2 sm:px-2 py-2">
                         <RiderLink id={d.rider_id} className="cursor-pointer hover:text-cz-accent-t transition-colors block">
                           <span className="whitespace-nowrap text-cz-2">
@@ -2520,7 +2528,10 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                     <td colSpan={leadCols + trailingCols} className="ps-3 pe-3 sm:px-4 py-2">
                       <button type="button" onClick={() => setExpanded(true)}
                         className="text-xs font-medium text-cz-accent-t hover:underline">
-                        {t("detail.incidents.dnfCollapsed", { count: dnfCount })}
+                        {[
+                          didNotFinishCount > 0 ? t("detail.incidents.dnfCollapsed", { count: didNotFinishCount }) : null,
+                          dnsCount > 0 ? t("detail.incidents.dnsCollapsed", { count: dnsCount }) : null,
+                        ].filter(Boolean).join(" · ")}
                       </button>
                     </td>
                   </tr>

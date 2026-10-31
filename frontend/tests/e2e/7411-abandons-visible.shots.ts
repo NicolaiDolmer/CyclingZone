@@ -1,9 +1,9 @@
 // #7411 — foer/efter-billede til PR-review (ad-hoc capture-script, ikke en del af
 // CI-suiten; testMatch fanger kun *.spec.*). Samme moenster som
-// 6970-paused-race-banner.shots.mjs.
+// 6970-paused-race-banner.shots.mjs (her som .ts, ny-fil-reglen).
 //
-//   node tests/e2e/7411-abandons-visible.shots.mjs shoot <baseURL> <outDir> <before|after>
-//   node tests/e2e/7411-abandons-visible.shots.mjs compose <outDir>
+//   node tests/e2e/7411-abandons-visible.shots.ts shoot <baseURL> <outDir> <before|after>
+//   node tests/e2e/7411-abandons-visible.shots.ts compose <outDir>
 //
 // "before" tages mod et build af main, "after" mod et build af branchen, begge
 // med SAMME mockede etape: fem udgaaede paa etape 2 (tre udkoerte hjaelpere, en
@@ -11,6 +11,7 @@
 // fiktive.
 
 import { chromium } from "@playwright/test";
+import type { Page, Route } from "@playwright/test";
 import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -26,8 +27,11 @@ const RACE = {
   season: { id: "season-e2e", number: 1 }, pool_race: null,
 };
 const OTHER = { id: "team-other", name: "Valley Cycling" };
-const teamOf = { mine: { id: TEST_TEAM.id, name: TEST_TEAM.name }, rival: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name }, other: OTHER };
-const R = (id, firstname, lastname, team) => ({ id, firstname, lastname, nationality_code: "dk", team: teamOf[team] });
+type TeamKey = "mine" | "rival" | "other";
+type Team = { id: string; name: string };
+type Rider = { id: string; firstname: string; lastname: string; nationality_code: string; team: Team };
+const teamOf: Record<TeamKey, Team> = { mine: { id: TEST_TEAM.id, name: TEST_TEAM.name }, rival: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name }, other: OTHER };
+const R = (id: string, firstname: string, lastname: string, team: TeamKey): Rider => ({ id, firstname, lastname, nationality_code: "dk", team: teamOf[team] });
 const RIDERS = [
   R("r-1", "Pablo", "Serrat", "rival"),
   R("r-2", "Jonas", "Kildahl", "mine"),
@@ -43,8 +47,8 @@ const RIDERS = [
   R("r-11", "Bram", "de Wit", "other"),
   R("r-12", "Simon", "Berg", "rival"),
 ];
-const gap = (i) => (i === 0 ? "+0:00" : `+${Math.floor((i * 47) / 60)}:${String((i * 47) % 60).padStart(2, "0")}`);
-const row = (id, stage, type, rank, r, finish_time) => ({
+const gap = (i: number): string => (i === 0 ? "+0:00" : `+${Math.floor((i * 47) / 60)}:${String((i * 47) % 60).padStart(2, "0")}`);
+const row = (id: string, stage: number, type: string, rank: number, r: Rider, finish_time: string) => ({
   id, stage_number: stage, result_type: type, rank, rider_id: r.id, rider_name: `${r.firstname} ${r.lastname}`,
   team_id: r.team.id, team_name: r.team.name, finish_time, points_earned: 0, prize_money: 0,
   in_breakaway: false, breakaway_caught: false, rider: r,
@@ -54,7 +58,7 @@ const RESULTS = [
   ...RIDERS.slice(0, 7).map((r, i) => row(`s2-${i}`, 2, "stage", i + 1, r, gap(i * 3))),
   ...RIDERS.slice(0, 7).map((r, i) => row(`g2-${i}`, 2, "gc", i + 1, r, gap(i * 3))),
 ];
-const inc = (id, r, kind) => ({ id, stage_number: 2, rider_id: r.id, kind, outcome: "abandon", time_loss_seconds: null, rider: r });
+const inc = (id: string, r: Rider, kind: string) => ({ id, stage_number: 2, rider_id: r.id, kind, outcome: "abandon", time_loss_seconds: null, rider: r });
 const INCIDENTS = [
   inc("i-1", RIDERS[7], "withdrawal"),
   inc("i-2", RIDERS[8], "withdrawal"),
@@ -67,11 +71,11 @@ const PROFILES = [
   { stage_number: 2, profile_type: "mountain", finale_type: "summit_finish" },
 ];
 
-const json = (route, body) => route.fulfill({
+const json = (route: Route, body: unknown) => route.fulfill({
   status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body),
 });
 
-async function stabilizeEnglish(page) {
+async function stabilizeEnglish(page: Page) {
   await page.addInitScript(() => {
     window.localStorage.setItem("cz_lang", "en");
     window.localStorage.setItem("cz_consent_v1", JSON.stringify({
@@ -85,7 +89,7 @@ async function stabilizeEnglish(page) {
   });
 }
 
-async function shoot(base, out, label) {
+async function shoot(base: string, out: string, label: string) {
   mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
   for (const vp of [{ name: "1280", width: 1280, height: 1000 }, { name: "390", width: 390, height: 900 }]) {
@@ -129,8 +133,8 @@ async function shoot(base, out, label) {
   await browser.close();
 }
 
-async function compose(out) {
-  const b64 = (name) => readFileSync(resolve(out, name)).toString("base64");
+async function compose(out: string) {
+  const b64 = (name: string) => readFileSync(resolve(out, name)).toString("base64");
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 2640, height: 800 }, deviceScaleFactor: 1 });
   const sheet = await ctx.newPage();

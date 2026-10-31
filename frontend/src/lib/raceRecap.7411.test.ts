@@ -7,6 +7,7 @@ import {
   withdrawalGroupMoment,
   dnfRowsForStage,
   ownStageAbandons,
+  isNonStarterKind,
   teamIdByRiderFromRows,
 } from "./raceRecap.js";
 
@@ -95,4 +96,34 @@ test("ownStageAbandons: egne udgaaede + ryttere tilbage efter etapen", () => {
   assert.equal(out.ridersLeft, 2, "a1 og a2 kom i maal paa etapen");
   assert.equal(ownStageAbandons({ incidents, results: stageRows, stageNumber: 2, myTeamId: "tC", teamIdByRider }), null);
   assert.equal(ownStageAbandons({ incidents, results: stageRows, stageNumber: 2, myTeamId: null, teamIdByRider }), null);
+});
+
+test("isNonStarterKind: skade og sygdom er DNS, alt andet er DNF", () => {
+  assert.equal(isNonStarterKind("injury"), true);
+  assert.equal(isNonStarterKind("illness"), true);
+  for (const k of ["crash", "mechanical", "withdrawal", "time_limit", "something_new"]) assert.equal(isNonStarterKind(k), false, k);
+});
+
+test("dnfRowsForStage: ikke-startere (skade/sygdom) er DNS og staar efter dem der udgik", () => {
+  const incidents = [
+    inc("1", 2, "s1", "injury", { rider: rider("s1", "Anna", "Sick") }),
+    inc("2", 2, "s2", "illness", { rider: rider("s2", "Bob", "Ill") }),
+    inc("3", 2, "c1", "crash", { rider: rider("c1", "Zed", "Crash") }),
+  ];
+  const rows = dnfRowsForStage(incidents, 2);
+  assert.deepEqual(rows.map((r: { status: string }) => r.status), ["dnf", "dns", "dns"]);
+  assert.deepEqual(rows.map((r: { name: string | null }) => r.name), ["Zed Crash", "Anna Sick", "Bob Ill"]);
+  assert.equal(rows.filter((r: { status: string }) => r.status === "dnf").length, 1, "kun styrtet taeller som 'did not finish'");
+  assert.equal(rows[2].reasonKey, "illness");
+});
+
+test("ownStageAbandons: en skadet ikke-starter markeres nonStarter, ikke som udgaaet paa etapen", () => {
+  const incidents = [inc("1", 2, "h1", "injury"), inc("2", 2, "h2", "withdrawal")];
+  const teamIdByRider = teamIdByRiderFromRows([{ rider_id: "h1", team_id: "tA" }, { rider_id: "h2", team_id: "tA" }]);
+  const out = ownStageAbandons({ incidents, results: stageRows, stageNumber: 2, myTeamId: "tA", teamIdByRider });
+  assert.ok(out);
+  const byId = new Map(out.abandons.map((a: { riderId: string }) => [a.riderId, a]));
+  assert.deepEqual(byId.get("h1"), { riderId: "h1", rider: "R H1", kind: "injury", nonStarter: true });
+  assert.equal((byId.get("h2") as { nonStarter: boolean }).nonStarter, false);
+  assert.equal(out.ridersLeft, 2);
 });

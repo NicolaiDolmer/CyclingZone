@@ -87,6 +87,15 @@ export function incidentReasonKey(kind) {
   return INCIDENT_REASON_KEYS[kind] ?? "abandoned";
 }
 
+// Skadede/syge ikke-startere (backend persistInjuryWithdrawals) gemmes ogsaa med
+// outcome 'abandon', men de stillede aldrig til start: DNS, ikke DNF.
+const NON_STARTER_KINDS = new Set(["injury", "illness"]);
+
+/** true naar en incident-art betyder "startede ikke" (DNS) frem for "udgik" (DNF). */
+export function isNonStarterKind(kind) {
+  return NON_STARTER_KINDS.has(kind);
+}
+
 // Fra hvor mange hjaelpere der stiger af, referatet samler dem i én linje.
 export const WITHDRAWAL_GROUP_MIN = 2;
 
@@ -116,8 +125,9 @@ export function teamIdByRiderFromRows(rows) {
 
 /**
  * DNF-raekkerne nederst i etapens resultattabel: etapens udgaaede (race_incidents,
- * samme kilde som DnfSection), i etape-orden efter navn. Hver raekke baerer holdet
- * saa holdfilteret og "dit hold"-markeringen virker som paa de oevrige raekker.
+ * samme kilde som DnfSection), efter navn. Hver raekke baerer holdet saa
+ * holdfilteret og "dit hold"-markeringen virker som paa de oevrige raekker.
+ * Ikke-startere (skade/sygdom) faar status "dns" og staar efter dem der udgik.
  */
 export function dnfRowsForStage(incidents, stageNumber, teamIdByRider = /** @type {Map<any, any> | null} */ (null)) {
   const rows = (incidents || [])
@@ -131,14 +141,16 @@ export function dnfRowsForStage(incidents, stageNumber, teamIdByRider = /** @typ
         team_id: teamId,
         team_name: inc.rider?.team?.id != null && String(inc.rider.team.id) === String(teamId) ? inc.rider.team.name ?? null : null,
         reasonKey: incidentReasonKey(inc.kind),
+        status: isNonStarterKind(inc.kind) ? "dns" : "dnf",
         name: incidentRiderName(inc),
       };
     });
-  return rows.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+  return rows.sort((a, b) => (a.status === b.status ? 0 : a.status === "dnf" ? -1 : 1)
+    || (a.name ?? "").localeCompare(b.name ?? ""));
 }
 
 /**
- * "Dit hold" paa etapen: egne ryttere der udgik paa etapen + hvor mange der er
+ * "Dit hold" paa etapen: egne ryttere der udgik (eller ikke startede, nonStarter) paa etapen + hvor mange der er
  * tilbage. Tilbage = egne ryttere med en etaperaekke paa etapen (motoren skriver
  * ingen raekke for en udgaaet eller en rytter uden for tidsgraensen).
  * null naar intet eget hold eller ingen egne udgaaede.
@@ -148,7 +160,12 @@ export function ownStageAbandons({ incidents, results, stageNumber, myTeamId, te
   const mine = (inc) => String(incidentTeamId(inc, teamIdByRider)) === String(myTeamId);
   const out = (incidents || [])
     .filter((inc) => inc.outcome === "abandon" && (inc.stage_number ?? 1) === stageNumber && mine(inc) && incidentRiderName(inc))
-    .map((inc) => ({ riderId: inc.rider_id ?? inc.rider?.id ?? null, rider: incidentRiderName(inc), kind: incidentReasonKey(inc.kind) }));
+    .map((inc) => ({
+      riderId: inc.rider_id ?? inc.rider?.id ?? null,
+      rider: incidentRiderName(inc),
+      kind: incidentReasonKey(inc.kind),
+      nonStarter: isNonStarterKind(inc.kind),
+    }));
   if (!out.length) return null;
   const outIds = new Set(out.map((o) => o.riderId).filter(Boolean));
   const left = new Set(
