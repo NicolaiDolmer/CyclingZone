@@ -87,6 +87,17 @@ function copenhagenDate(d) {
   return new Intl.DateTimeFormat('da-DK', { timeZone: 'Europe/Copenhagen', day: 'numeric', month: 'numeric', year: 'numeric' }).format(d);
 }
 
+/**
+ * Repoet er offentligt, og issue-titler fra Discord ender ofte paa en
+ * kilde-parentes som "(brugernavn 29/9)". Rapporten gentager ikke den: en
+ * afsluttende parentes med en dato fjernes. Resten af titlen er beskrivelsen.
+ */
+export function sanitizeTitle(title) {
+  return String(title || '')
+    .replace(/\s*\([^()]*\b\d{1,2}\/\d{1,2}\b[^()]*\)\s*$/, '')
+    .trim();
+}
+
 export function renderReport(stale, { now, days }) {
   const head = `## Til dørs: mandagsrapport ${copenhagenDate(now)}`;
   if (stale.length === 0) {
@@ -99,7 +110,7 @@ export function renderReport(stale, { now, days }) {
       : r.blocker
         ? `alle krav ok eller na, men lukkes ikke: ${r.blocker}`
         : 'alle krav ok eller na, lukkes ved næste tjek';
-    return `- #${r.number} ${r.title} (${age}): ${miss}`;
+    return `- #${r.number} ${sanitizeTitle(r.title)} (${age}): ${miss}`;
   });
   return [
     head,

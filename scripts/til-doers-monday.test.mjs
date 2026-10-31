@@ -1,7 +1,7 @@
 // node --test scripts/til-doers-monday.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseArgs, selectStale, renderReport, main, REPORT_ISSUE } from './til-doers-monday.mjs';
+import { parseArgs, selectStale, renderReport, sanitizeTitle, main, REPORT_ISSUE } from './til-doers-monday.mjs';
 
 const NOW = new Date('2026-11-02T06:00:00Z');
 
@@ -26,6 +26,12 @@ test('selectStale: kun ældre end 7 dage, ukendt dato tages med, ældste først'
   const stale = selectStale(rows, { now: NOW, days: 7 });
   assert.deepEqual(stale.map((r) => r.number), [4, 3, 2]);
   assert.equal(stale.find((r) => r.number === 2).ageDays, 13);
+});
+
+test('sanitizeTitle fjerner afsluttende kilde-parentes med dato', () => {
+  assert.equal(sanitizeTitle('[bug] Noget gik galt (spiller_x 29/9)'), '[bug] Noget gik galt');
+  assert.equal(sanitizeTitle('[ux] Taktik (#5833 plan-PR 1, før 25/10)'), '[ux] Taktik');
+  assert.equal(sanitizeTitle('[motor] Tidsgab (uden dato) i midten'), '[motor] Tidsgab (uden dato) i midten');
 });
 
 test('renderReport: tom rapport og liste uden em-dash', () => {

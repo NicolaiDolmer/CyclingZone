@@ -256,7 +256,7 @@ function fakeGh(state) {
   return { exec, calls };
 }
 
-const mergedPrEvent = (pr, n) => ({ event: 'cross-referenced', source: { issue: { number: pr, title: 'x', body: `Refs #${n}`, state: 'closed', pull_request: { merged_at: '2026-10-30T00:00:00Z' } } } });
+const mergedPrEvent = (pr, n) => ({ event: 'cross-referenced', source: { issue: { number: pr, title: 'x', body: `Refs #${n}`, state: 'closed', repository: { full_name: 'o/r' }, pull_request: { merged_at: '2026-10-30T00:00:00Z' } } } });
 const noGit = () => '';
 
 test('processIssue (apply) opretter kommentar, lukker når alt er ok/na', () => {
