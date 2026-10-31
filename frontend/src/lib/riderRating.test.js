@@ -63,10 +63,11 @@ test("riderTypeRating ER opskriften — ingen model ved siden af", () => {
   }
 });
 
-test("riderOverallRating er ratingen for rytterens EGEN rolle", () => {
+test("riderOverallRating er ratingen for rytterens bedste rolle nu (#6853)", () => {
   const rider = { primary_type: "sprinter" };
   STAT_KEYS.forEach((k, i) => { rider[k] = 30 + (i * 7) % 40; });
-  assert.equal(riderOverallRating(rider), ratingForRole(rider, "sprinter"));
+  const best = Math.max(...DISPLAY_RECIPE_KEYS.map((role) => ratingForRole(rider, role)));
+  assert.equal(riderOverallRating(rider), best);
 });
 
 test("bunden er 0, ikke 1 — nul-ryttere findes i prod og skal vise 0", () => {
@@ -84,7 +85,7 @@ test("ukendt eller manglende rolle giver null, ikke et opdigtet tal", () => {
   for (const k of STAT_KEYS) rider[k] = 50;
   assert.equal(riderTypeRating(rider, "findes-ikke"), null);
   assert.equal(riderTypeRating(rider, null), null);
-  assert.equal(riderOverallRating({ ...rider }), null, "ingen primary_type → null");
+  assert.equal(riderOverallRating({}), null, "ingen evner og ingen cache → null");
 });
 
 test("evner der mangler på rækken trækker ikke snittet mod 0", () => {
