@@ -75,6 +75,7 @@ import { isRaceDayIntentionEnabled } from "./raceIntentionFlag.js"; // #6641 var
 import { loadDevelopmentCurveB } from "./developmentCurveBFlag.ts"; // #3564 kurve B
 import { ensureCurveBIgnition, curveBTransitionForDate, loadCurveBTransitionRoster } from "./developmentCurveBTransition7382.ts"; // #7382 blød overgang
 import { loadRaceDayEffortByRider, raceDayIntentionYieldMultiplier } from "./raceDayIntentionYield.js"; // #6641 variant B
+import { loadRaceDayRoleYield, loadRaceDayRoleByRider, withRaceDayRoleYield } from "./raceDayRoleYield5950.js"; // #5950 haard dag + rolle
 import { loadDevelopmentScoreB, developmentTickArgs } from "./developmentScoreWiring.js"; // #6950 Udviklingsscore B
 import { loadRaceCatchUp } from "./raceCatchUpWiring.js"; // #6950 catch-up via loeb
 import { assessIllness } from "./conditionIllness.js"; // #6938 sygdom af langvarig ekstrem traethed
@@ -755,6 +756,8 @@ export async function runTeamTrainingDay({
     loadDevelopmentScoreB({ supabase, strict: conditionPerDate, capPerDateOn }),
     loadRaceCatchUp({ supabase, strict: conditionPerDate, capPerDateOn }),
   ]);
+  // #5950: loebsdag = haard dag + rolle-vaegtet tillaeg. null = dagens loebsdag, bit-identisk.
+  const raceRoleYield = await loadRaceDayRoleYield({ supabase, strict: conditionPerDate });
 
   // #6500: holdets raekke hentes ÉN gang, og kun naar flaget er taendt. Regel-gate,
   // ikke berigelse: et gaet ville enten give et AI-hold udvikling eller tage den
@@ -856,6 +859,7 @@ export async function runTeamTrainingDay({
   // manglende race_stage_profiles-række aldrig kan give en udefineret evneliste.
   const racedRiderProfileByRider = new Map();
   let raceDayEffortByRider = new Map(); // #6641 variant B: rider_id -> managerens intention paa dagens etape
+  let raceDayRoleByRiderMap = new Map(); // #5950: rider_id -> rolle paa dagens etape (tom = fri rolle)
   if (useRaceDayKey) {
     // #4850 C2: etape-opslaget er en REGEL-GATE paa loebsdags-aksen (samme kontrakt
     // som bindingen ovenfor): svaret afgoer om rytteren maa traene i dag. Et gaet
@@ -878,6 +882,7 @@ export async function runTeamTrainingDay({
     if (raceDayDevelopmentOn && racedRiderIds.size > 0 && await isRaceDayIntentionEnabled(supabase)) {
       raceDayEffortByRider = await loadRaceDayEffortByRider({ supabase, stageByRider: raceDayResult.data });
     }
+    if (raceDayDevelopmentOn && raceRoleYield && racedRiderIds.size > 0) raceDayRoleByRiderMap = await loadRaceDayRoleByRider({ supabase, stageByRider: raceDayResult.data }); // #5950
   } else if (raceDayDevelopmentOn) {
     if (raceDayResult.error) {
       // ASCII-only besked (#i18n-leak-guard, BACKEND_CONTEXT matcher error/message-linjer med
@@ -1240,7 +1245,8 @@ export async function runTeamTrainingDay({
           program: raceDayProgram(racedRiderProfileByRider.get(rider.id) ?? RACE_DAY_FALLBACK_PROFILE),
           hardDailyCap: TRAINING_RACE_DAY_CONFIG.abilityGainCapPerRaceDay,
           academyRateMult: raceDayIntentionYieldMultiplier(raceDayEffortByRider.get(rider.id)),
-          ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
+          ...withRaceDayRoleYield(developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs, racedToday: true, profileType: racedRiderProfileByRider.get(rider.id) }), // #6950
+            { params: raceRoleYield, profileType: racedRiderProfileByRider.get(rider.id), role: raceDayRoleByRiderMap.get(rider.id) }), // #5950
         });
       } else {
         tickResult = applyDailyTick({ ...sharedTickArgs, ...developmentTickArgs({ developmentScoreB, raceCatchUp, dayKey: seedScope, tickArgs: sharedTickArgs }) }); // #6950
