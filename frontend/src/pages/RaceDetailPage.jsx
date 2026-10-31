@@ -2461,7 +2461,8 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
                         </td>
                       )}
                       {trailingCols > 0 && (
-                        <td colSpan={trailingCols} className="ps-1 pe-3 sm:px-4 py-2 text-right text-cz-3 text-xs whitespace-nowrap">{reason}</td>
+                        // Aarsagen maa bryde paa telefon, saa den ikke goer tabellen bredere end tidskolonnen (#6684).
+                        <td colSpan={trailingCols} className="ps-1 pe-1.5 sm:px-3 py-2 text-right text-cz-3 text-xs sm:whitespace-nowrap">{reason}</td>
                       )}
                     </tr>
                   );
