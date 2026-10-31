@@ -45,6 +45,8 @@ import {
   fetchIssueBundle,
   findMarkerComment,
   extractRefIssues,
+  titleScopeIssues,
+  mergedIntoMain,
   resolveMainRef,
   missingKrav,
   ghJson,
@@ -106,8 +108,10 @@ export function sweepTargets(execGh, repo) {
 
 export function targetsFromPr(execGh, repo, pr) {
   const p = ghJson(execGh, [`repos/${repo}/pulls/${pr}`]);
-  if (!p.merged_at) return [];
-  return extractRefIssues(`${p.title || ''}\n${p.body || ''}`);
+  if (!mergedIntoMain(p)) return [];
+  // Samme bevisregel som prsFromTimeline: noegleord i titel/body ELLER titlens scope.
+  const refs = new Set([...extractRefIssues(`${p.title || ''}\n${p.body || ''}`), ...titleScopeIssues(p.title)]);
+  return [...refs].sort((a, b) => a - b);
 }
 
 /**

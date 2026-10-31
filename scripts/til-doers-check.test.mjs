@@ -19,7 +19,8 @@ import {
   mainCommitsFor,
   DUP_BODY,
 } from './lib/til-doers.mjs';
-import { parseArgs, main, processIssue } from './til-doers-check.mjs';
+import { parseArgs, main, processIssue, targetsFromPr } from './til-doers-check.mjs';
+import { titleScopeIssues, mergedIntoMain } from './lib/til-doers.mjs';
 
 const N = 4242;
 const owner = (body, created_at = '2026-10-31T10:00:00Z', extra = {}) => ({ id: Math.floor(Math.random() * 1e9), body, created_at, author_association: 'OWNER', user: { login: 'ejer' }, ...extra });
@@ -248,7 +249,7 @@ function fakeGh(state) {
     const [, kind, num, sub] = m;
     const data = state.issues[num];
     if (kind === 'pulls' && sub === 'files') return (state.prFiles[num] || []).map((f) => JSON.stringify({ filename: f })).join('\n');
-    if (kind === 'pulls') return JSON.stringify(state.pulls[num]);
+    if (kind === 'pulls') return JSON.stringify(state.pulls?.[num] ?? { number: Number(num), merged_at: '2026-10-30T00:00:00Z', base: { ref: 'main' } });
     if (!sub) return JSON.stringify(data.issue);
     if (sub === 'comments') return (data.comments || []).map((c) => JSON.stringify(c)).join('\n');
     if (sub === 'timeline') return (data.timeline || []).map((c) => JSON.stringify(c)).join('\n');
@@ -317,7 +318,7 @@ test('main: dry-run skriver intet og samler sweep + PR-referencer', () => {
   const { exec, calls } = fakeGh({
     doneList: [N],
     searchHits: [String(N + 1)],
-    pulls: { 9: { merged_at: '2026-10-30T00:00:00Z', title: 'x', body: `Refs #${N + 2}` } },
+    pulls: { 9: { merged_at: '2026-10-30T00:00:00Z', base: { ref: 'main' }, title: 'x', body: `Refs #${N + 2}` } },
     issues: {
       [N]: { issue: { number: N, state: 'open', title: 'a', labels: [] }, comments: [], timeline: [] },
       [N + 1]: { issue: { number: N + 1, state: 'open', title: 'b', labels: [] }, comments: [], timeline: [] },
@@ -413,4 +414,29 @@ test('mainCommitsFor bruger samme nøgleordsregel som PR-referencer', () => {
 test('labelNames-normalisering: strings og objekter', () => {
   const door = allDone();
   assert.equal(decideClose({ issue: { number: N, state: 'open', labels: ['needs-decision'] }, door }).close, false);
+});
+
+test('Codex P2 #7428: kun en PR merget ind i main tæller som merget', () => {
+  assert.equal(mergedIntoMain({ merged_at: '2026-10-30T00:00:00Z', base: { ref: 'main' } }), true);
+  assert.equal(mergedIntoMain({ merged_at: '2026-10-30T00:00:00Z', base: { ref: 'feat/integration' } }), false);
+  assert.equal(mergedIntoMain({ merged_at: null, base: { ref: 'main' } }), false);
+  const { exec } = fakeGh({
+    issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments: [], timeline: [mergedPrEvent(9, N)] } },
+    prFiles: { 9: ['frontend/public/locales/en/help.json'] },
+    pulls: { 9: { number: 9, merged_at: '2026-10-30T00:00:00Z', base: { ref: 'feat/integration' } } },
+  });
+  const plan = processIssue({ number: N, repo: 'o/r', apply: false, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
+  const krav = (k) => plan.door.find((d) => d.krav === k);
+  assert.notEqual(krav(2).status, 'ok', 'merget ind i en anden branch er ikke merget');
+  assert.notEqual(krav(6).status, 'ok', 'Hjælp-bevis fra en PR uden for main tæller ikke');
+});
+
+test('Codex P2 #7428: titlens scope giver mål ved PR-merge', () => {
+  assert.deepEqual(titleScopeIssues('fix(4242): x'), [4242]);
+  assert.deepEqual(titleScopeIssues('feat(12, 34)!: x'), [12, 34]);
+  assert.deepEqual(titleScopeIssues('chore: x'), []);
+  const exec = () => JSON.stringify({ number: 9, title: 'fix(4242): noget', body: 'See #4242', merged_at: '2026-10-30T00:00:00Z', base: { ref: 'main' } });
+  assert.deepEqual(targetsFromPr(exec, 'o/r', 9), [4242]);
+  const notMain = () => JSON.stringify({ number: 9, title: 'fix(4242): noget', body: 'Refs #4242', merged_at: '2026-10-30T00:00:00Z', base: { ref: 'feat/x' } });
+  assert.deepEqual(targetsFromPr(notMain, 'o/r', 9), []);
 });

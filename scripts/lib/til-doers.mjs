@@ -67,6 +67,22 @@ export function titleScopeIssue(title, n) {
   return new RegExp(`^[a-z]+\\((?:[^)]*[^0-9])?${n}(?:[^0-9][^)]*)?\\)!?:`, 'i').test(title);
 }
 
+/** Issue-numre i en titels scope, fx `fix(4242): ...` eller `feat(12, 34): ...`. */
+export function titleScopeIssues(title) {
+  const m = /^[a-z]+\(([^)]*)\)!?:/i.exec(title || "");
+  if (!m) return [];
+  return [...new Set([...m[1].matchAll(/\d+/g)].map((x) => Number(x[0])))].sort((a, b) => a - b);
+}
+
+/**
+ * En merget PR taeller kun som merget, naar den er merget ind i main. En PR
+ * merget ind i en anden feature- eller integrationsbranch har merged_at sat,
+ * men intet af den ligger paa main (Codex P2 paa #7428).
+ */
+export function mergedIntoMain(pull, mainBranch = "main") {
+  return Boolean(pull?.merged_at) && pull?.base?.ref === mainBranch;
+}
+
 /** Alle issue-numre en tekst refererer med noegleord (bruges ved PR-merge). */
 export function extractRefIssues(text) {
   const out = new Set();
@@ -402,7 +418,11 @@ export function fetchIssueBundle({ execGh = defaultExecGh, execGit = defaultExec
   const issue = ghJson(execGh, [`repos/${repo}/issues/${number}`]);
   const comments = ghPaged(execGh, `repos/${repo}/issues/${number}/comments?per_page=100`);
   const timeline = ghPaged(execGh, `repos/${repo}/issues/${number}/timeline?per_page=100`);
-  const prs = prsFromTimeline(timeline, number, repo);
+  const prs = prsFromTimeline(timeline, number, repo).map((pr) => {
+    if (!pr.merged) return pr;
+    const pull = ghJson(execGh, [`repos/${repo}/pulls/${pr.number}`]);
+    return mergedIntoMain(pull) ? pr : { ...pr, merged: false, mergedAt: null };
+  });
   const ref = mainRef || resolveMainRef(execGit);
   const commits = mainCommitsFor(execGit, number, ref);
 
