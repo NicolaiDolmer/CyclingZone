@@ -547,7 +547,7 @@ test("taktik (#7332): enkeltstart viser kun Kør roligt, Normal og Alt ud", asyn
   await expect(visible(panel.getByRole("button", { name: /^Normal/ }))).toBeVisible();
   await panel.screenshot({ path: evidenceShotPath(`pr-screens/7332/itt-picker-${testInfo.project.name}.png`) });
   // Rider Two's gamle "Arbejd" staar som Kør roligt.
-  await expect(visible(panel.getByText("Standard: rytter. I dag: bliv i feltet."))).toBeVisible();
+  await expect(visible(panel.getByText("Standard: rytter. I dag: kør roligt."))).toBeVisible();
   for (const label of ["Kør roligt", "Normal", "Alt ud"]) {
     await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
   }
