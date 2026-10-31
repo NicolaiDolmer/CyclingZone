@@ -10,6 +10,7 @@ import {
   keepMineAfterConflict,
   runTacticsSave,
   stageEqual,
+  withConfirmedVersions,
   type Matrix,
   type RolesBody,
   type RolesPutResult,
@@ -232,6 +233,36 @@ test("kun ordren aendret og den fejler: fejlet, ikke delvis", async () => {
   const out = await runTacticsSave(planFor(server, { stages: [], baseVersions: {} }), deps);
   assert.equal(out.status, "failed");
   assert.deepEqual(out.parts, { roles: "notNeeded", orders: "failed" });
+});
+
+test("kvitteringen flytter kun de bekraeftede etapers version (Codex P1)", () => {
+  // Etape 3 er aendret i en anden fane imens etape 2 blev gemt: dens version
+  // maa IKKE adopteres, ellers ville et senere gem af etape 3 stille overskrive.
+  const prev = { stage_versions: { 2: "v2-old", 3: "v3-old" } };
+  const receipt = { stage_versions: { 2: "v2-new", 3: "v3-foreign" }, riders: [] };
+  const next = withConfirmedVersions(prev, receipt, [2]);
+  assert.deepEqual(next.stage_versions, { 2: "v2-new", 3: "v3-old" });
+  assert.deepEqual(next.riders, []);
+  // En bekraeftet etape uden raekker paa serveren bliver "empty".
+  assert.equal(withConfirmedVersions(prev, { stage_versions: {} }, [2]).stage_versions?.["2"], "empty");
+});
+
+test("konflikt paa det automatiske genforsoeg giver en frisk kvittering (Codex P2)", async () => {
+  const server = fakeServer(BASE);
+  const staleBase = "stale";
+  let reads = 0;
+  const { deps } = makeDeps({ server, sent: DRAFT });
+  const realRead = deps.readRoles;
+  // Foerste genlaesning: uroert (=> genforsoeg). Imens gemmer en anden fane etape 2.
+  deps.readRoles = async () => {
+    reads += 1;
+    const body = await realRead();
+    if (reads === 1) server.state.matrix = structuredClone(FOREIGN);
+    return body;
+  };
+  const out = await runTacticsSave(planFor(server, { baseVersions: { 2: staleBase }, ordersNeeded: false }), deps);
+  assert.equal(out.status, "conflict");
+  assert.equal(out.receipt?.stage_versions?.["2"], server.versionOf(2), "kvitteringen er serverens nuvaerende version");
 });
 
 test("classifyStages skelner egen, uroert og fremmed", () => {

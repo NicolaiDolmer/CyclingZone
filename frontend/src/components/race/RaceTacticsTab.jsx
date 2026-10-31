@@ -121,7 +121,7 @@ import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
 import { stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 import { blockedReasonKey, oppositeOrderError } from "../../lib/oppositeOrders.js"; // #7003 spec §3
-import { advanceBaseline, keepMineAfterConflict, runTacticsSave } from "../../lib/tacticsSaveFlow.ts"; // #7327
+import { advanceBaseline, keepMineAfterConflict, runTacticsSave, withConfirmedVersions } from "../../lib/tacticsSaveFlow.ts"; // #7327
 import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
 
 const API = import.meta.env.VITE_API_URL;
@@ -638,7 +638,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     });
     if (outcome.status !== "conflict") {
       // Konflikt: versionerne flyttes FØRST ved "Behold mine" (overskrivningsbeskyttelsen).
-      if (outcome.receipt) setRoles(outcome.receipt);
+      if (outcome.receipt) setRoles((prev) => withConfirmedVersions(prev, outcome.receipt, outcome.confirmedStages));
       setInitialMatrix((prev) => advanceBaseline(prev, draftSnapshot, outcome.confirmedStages));
     }
     // En ordre der ikke blev bekræftet har ingen kvittering (null = stadig ugemt).
@@ -653,8 +653,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // eksplicit valg; "Behold mine" tager serverens versioner og beholder egne etaper.
   async function loadNewAfterConflict() {
     setSaveOutcome(null);
-    setStatus("idle");
+    setStatus("saving"); // kontrollerne laast til genindlaesningen er faerdig (ellers overskriver load() nye valg)
     await load();
+    setStatus("idle");
   }
   function keepMine() {
     const receipt = saveOutcome?.receipt;

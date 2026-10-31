@@ -152,7 +152,9 @@ async function saveRoles(plan: TacticsSavePlan, deps: TacticsSaveDeps): Promise<
   // egen gemning uden kvittering): genforsoeg EEN gang med serverens versioner.
   const retry = await safePutRoles(deps, untouched, versionsFor(receipt, untouched));
   if (retry.ok) return { state: "saved", errorKey: null, receipt: (await safeRead(deps)) ?? receipt, confirmed: plan.stages };
-  if (retry.error === "stage_roles_conflict") return { state: "conflict", errorKey: "stage_roles_conflict", receipt, confirmed: committed };
+  // En anden fane kan have gemt mellem genlaesningen og genforsoeget: "Behold mine"
+  // skal staa paa serverens NUVAERENDE versioner, saa der laeses igen.
+  if (retry.error === "stage_roles_conflict") return { state: "conflict", errorKey: "stage_roles_conflict", receipt: (await safeRead(deps)) ?? receipt, confirmed: committed };
   return { state: "failed", errorKey: retry.error || "generic", receipt, confirmed: committed };
 }
 
@@ -193,6 +195,19 @@ export async function runTacticsSave(plan: TacticsSavePlan, deps: TacticsSaveDep
 
   const parts = { roles, orders };
   return { status: overall(parts, rolesConflict), parts, errorKey, receipt, confirmedStages };
+}
+
+/**
+ * Kvitteringen ind i den lokale tilstand: KUN de bekraeftede etaper faar serverens
+ * nye version. En etape en anden fane har aendret imens beholder sin gamle version
+ * (dens lokale baseline er heller ikke flyttet), saa et senere gem af den stadig
+ * rammer serverens konfliktvagt i stedet for stille at overskrive den anden fane.
+ */
+export function withConfirmedVersions(previous: RolesBody | null, receipt: RolesBody, confirmedStages: number[]): RolesBody {
+  const versions: Record<string, string> = { ...(previous?.stage_versions ?? {}) };
+  const fresh = receipt.stage_versions ?? {};
+  for (const sn of confirmedStages) versions[String(sn)] = fresh[String(sn)] ?? EMPTY_STAGE_VERSION;
+  return { ...receipt, stage_versions: versions };
 }
 
 /** Baseline efter et gem: de bekraeftede etaper faar det sendte; resten er uroert. */
