@@ -94,7 +94,8 @@ test("etapeprofilen ligger over kortet og følger den åbne etape", () => {
 test("ét gem rammer begge endpoints for den åbne etape", () => {
   // #7332: kladden normaliseres (grupetto/protect -> save paa en enkeltstart) foer diffen.
   // #7327: snapshottet (det der sendes) normaliseres; flowet bor i tacticsSaveFlow.ts.
-  assert.match(source, /const normalize = \(m\) => withIndividualTimeTrialEfforts\(\{ matrix: m, profileByStage \}\);/);
+  // asStoredBySave: kvitteringen sammenlignes med det sendte (Codex P1), saa begge sider normaliseres ens.
+  assert.match(source, /const normalize = \(m, rs = riders\) => asStoredBySave\(\{ matrix: withIndividualTimeTrialEfforts\(\{ matrix: m, profileByStage \}\), riders: rs \}\);/);
   assert.match(source, /diffToOverrides\(\{ matrix: normalize\(draftSnapshot\), riders \}\)/);
   assert.match(source, /\/api\/races\/\$\{raceId\}\/stage-roles/);
   // #6647: ordren gemmes med intentionens indsats, ikke rollens "normal".

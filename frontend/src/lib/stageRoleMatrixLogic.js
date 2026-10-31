@@ -126,6 +126,25 @@ export function diffToOverrides({ matrix, riders }) {
   return out;
 }
 
+// #7327: matrixen som serveren har den efter et gem af den. diffToOverrides sender
+// aldrig en udgaaet rytters celle, og serveren sletter etapens raekker foer den
+// indsaetter, saa hans celle staar som basis-rolle/normal bagefter. Kvitteringen
+// sammenlignes med det sendte; uden denne normalisering ville en gammel override
+// paa en udgaaet rytter ligne en fremmed aendring ved hvert gem.
+export function asStoredBySave({ matrix, riders }) {
+  const abandoned = (riders || []).filter((r) => r.abandoned);
+  if (!abandoned.length) return matrix;
+  const out = {};
+  for (const sn of Object.keys(matrix || {})) {
+    const cells = { ...matrix[sn] };
+    for (const rider of abandoned) {
+      if (cells[rider.rider_id]) cells[rider.rider_id] = { race_role: baseRoleForRider(rider), effort: DEFAULT_EFFORT };
+    }
+    out[sn] = cells;
+  }
+  return out;
+}
+
 // Dirty-check: sammenligner to draft-matricer celle for celle (robust mod
 // nøgle-rækkefølge, i modsætning til en simpel JSON.stringify-sammenligning).
 export function isDirty(draftMatrix, initialMatrix) {

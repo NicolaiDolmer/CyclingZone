@@ -89,6 +89,7 @@ import {
   overridesIndex,
   resolveCell,
   applyRoleForRest,
+  asStoredBySave,
   SELECTABLE_ROLES,
 } from "../../lib/stageRoleMatrixLogic.js";
 import {
@@ -350,14 +351,15 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   }, []);
   // null = henter, false = hentningen fejlede. At skelne dem er hele pointen:
   // en fejlet fetch maa ikke vises som "ingen taktik sat" (#2849).
-  const [roles, setRoles] = useState(null);
+  // #7327: typet efter stage-roles-svaret, saa kvitteringen kan laegges ind (withConfirmedVersions).
+  const [roles, setRoles] = useState(/** @type {import("../../lib/tacticsSaveFlow.ts").RolesBody | false | null} */ (null));
   // #7003: typet efter fetchTeamOrders-svaret, saa checkJs kender felterne (fx stagePlanEnabled).
   const [orders, setOrders] = useState(/** @type {Awaited<ReturnType<typeof fetchTeamOrders>>} */ (null));
   const [draftMatrix, setDraftMatrix] = useState({});
   const [initialMatrix, setInitialMatrix] = useState({});
   const [ordersByStage, setOrdersByStage] = useState({});
   const [initialOrdersByStage, setInitialOrdersByStage] = useState({});
-  const [activeStage, setActiveStage] = useState(null);
+  const [activeStage, setActiveStage] = useState(/** @type {number | null} */ (null));
   const [openRiderId, setOpenRiderId] = useState(null);
   // #4980: rolle-vælgeren har sin EGEN åbne-rytter — to vælgere i samme række
   // må aldrig stå udfoldet samtidig, og et klik i den ene lukker den anden.
@@ -366,7 +368,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // "stage" = kun den åbne etape. Nulstilles til "rest" når en vælger åbnes.
   const [roleScopeChoice, setRoleScopeChoice] = useState("rest");
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error | partial | conflict (#7327)
-  const [errorKey, setErrorKey] = useState(null);
+  const [errorKey, setErrorKey] = useState(/** @type {string | null} */ (null));
   const [saveOutcome, setSaveOutcome] = useState(/** @type {any} */ (null)); // #7327: udfaldet pr. del
   // #4992: rute-match-sorteringen. null = ingen sortering valgt → holdets
   // udtagelses-rækkefølge, præcis som før kolonnen fandtes (sortering er opt-in,
@@ -608,11 +610,12 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     setErrorKey(null);
     // #7327: flowet bor i tacticsSaveFlow.ts. Hver del faar sin kvittering, kun det
     // manglende sendes igen, og kladden kasseres aldrig. Snapshot: det der sendes.
-    const stage = activeStage;
+    const stage = /** @type {number} */ (activeStage); // gem-knappen findes kun med en aaben etape
     const draftSnapshot = draftMatrix;
     const orderSnapshot = order;
     // #7332: en enkeltstart gemmes aldrig med grupetto/protect fra fladen (bliver "save").
-    const normalize = (m) => withIndividualTimeTrialEfforts({ matrix: m, profileByStage });
+    // asStoredBySave: som serveren har etapen efter gemmet, saa kvitteringen kan sammenlignes.
+    const normalize = (m, rs = riders) => asStoredBySave({ matrix: withIndividualTimeTrialEfforts({ matrix: m, profileByStage }), riders: rs });
     // #6095: serveren erstatter KUN `stages` og kun mod `base_versions`; hele kladden
     // sendes stadig i `overrides` (deploy-vinduet). "empty" = EMPTY_STAGE_VERSION.
     const stages = changedStages(draftMatrix, initialMatrix).filter((sn) => editableStages.includes(sn));
@@ -629,16 +632,17 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
       },
       readRoles: async () => {
         const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers });
-        return res.ok && res.data && typeof res.data === "object" ? res.data : null;
+        return res.ok && res.data && typeof res.data === "object" ? /** @type {import("../../lib/tacticsSaveFlow.ts").RolesBody} */ (res.data) : null;
       },
-      matrixOf: (body) => normalize(buildDraftMatrix({ riders: body.riders, overrides: body.overrides, stageNumbers, stagesCompleted: body.stages_completed ?? 0 })),
+      matrixOf: (body) => normalize(buildDraftMatrix({ riders: body.riders, overrides: body.overrides, stageNumbers, stagesCompleted: body.stages_completed ?? 0 }), body.riders),
       // Ordren for DEN ÅBNE etape (én-etape-scopet). #6647: bærer intentionens indsats;
       // #7003: med etapeplanen foelger indsatsen opgaven.
       putOrders: () => saveTacticsCard({ raceId, stage, order: withIntentionEfforts(orderSnapshot, (riderId) => effortForStage(intentionFor({ matrix: draftSnapshot, stageNumber: stage, riderId }), profileTypeOfStage(stage))), stagePlan: orders?.stagePlanEnabled === true }),
     });
     if (outcome.status !== "conflict") {
       // Konflikt: versionerne flyttes FØRST ved "Behold mine" (overskrivningsbeskyttelsen).
-      if (outcome.receipt) setRoles((prev) => withConfirmedVersions(prev, outcome.receipt, outcome.confirmedStages));
+      const receipt = outcome.receipt;
+      if (receipt) setRoles((prev) => withConfirmedVersions(prev || null, receipt, outcome.confirmedStages));
       setInitialMatrix((prev) => advanceBaseline(prev, draftSnapshot, outcome.confirmedStages));
     }
     // En ordre der ikke blev bekræftet har ingen kvittering (null = stadig ugemt).

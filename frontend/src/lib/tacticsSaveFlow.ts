@@ -10,6 +10,8 @@
 // Nu (ejer 31/10, design A):
 //   · En bekraeftet del faar sin kvittering (genlaesning af stage-roles = nye
 //     versioner), og kun dens del af baseline flyttes. Kladden roeres aldrig.
+//     Ogsaa efter en lykket PUT sammenlignes kvitteringen med det sendte: en
+//     etape en anden fane har gemt imellem PUT og genlaesning er en konflikt.
 //   · Genforsoeg sender kun det manglende: intentionen er ikke laengere aendret
 //     mod baseline, saa kun ordren gaar afsted.
 //   · 409 eller et tvetydigt svar (netvaerk/5xx/timeout efter commit) afklares ved
@@ -51,8 +53,8 @@ export interface TacticsSaveDeps {
   readRoles(): Promise<RolesBody | null>;
   /** Serverens udgave som matrix, normaliseret som sentMatrix. */
   matrixOf(body: RolesBody): Matrix;
-  /** Gem ordren. Kaster med serverens fejlkode. */
-  putOrders(): Promise<void>;
+  /** Gem ordren. Kaster med serverens fejlkode; en eventuel svarvaerdi ignoreres. */
+  putOrders(): Promise<unknown>;
 }
 
 export interface TacticsSaveOutcome {
@@ -123,9 +125,26 @@ async function safeRead(deps: TacticsSaveDeps): Promise<RolesBody | null> {
   }
 }
 
+/**
+ * Kvittering efter en LYKKET PUT. Genlaesningen sker efter skrivningen, saa en
+ * anden fane kan have gemt imellem. Kun etaper hvor serveren har praecis det
+ * sendte er bekraeftet; afviger en etape, er den aendret af en anden siden vores
+ * skrivning og behandles som konflikt (ellers ville kladden faa den anden fanes
+ * version mens baseline flyttes til det sendte, og naeste gem overskrev stille).
+ * Kunne kvitteringen ikke laeses, er skrivningen stadig bekraeftet af PUT'en:
+ * versionerne flyttes ikke, og et senere gem afklares via 409 + genlaesning.
+ */
+function confirmAfterWrite(plan: TacticsSavePlan, deps: TacticsSaveDeps, receipt: RolesBody | null, fallback: RolesBody | null): RolesResult {
+  if (!receipt) return { state: "saved", errorKey: null, receipt: fallback, confirmed: plan.stages };
+  const verdict = classifyStages(deps.matrixOf(receipt), plan);
+  const committed = plan.stages.filter((sn) => verdict[sn] === "committed");
+  if (committed.length === plan.stages.length) return { state: "saved", errorKey: null, receipt, confirmed: committed };
+  return { state: "conflict", errorKey: "stage_roles_conflict", receipt, confirmed: committed };
+}
+
 async function saveRoles(plan: TacticsSavePlan, deps: TacticsSaveDeps): Promise<RolesResult> {
   const first = await safePutRoles(deps, plan.stages, plan.baseVersions);
-  if (first.ok) return { state: "saved", errorKey: null, receipt: await safeRead(deps), confirmed: plan.stages };
+  if (first.ok) return confirmAfterWrite(plan, deps, await safeRead(deps), null);
 
   const conflict = first.error === "stage_roles_conflict";
   if (!conflict && !isAmbiguousFailure(first.status)) {
@@ -151,7 +170,10 @@ async function saveRoles(plan: TacticsSavePlan, deps: TacticsSaveDeps): Promise<
   // 409 men ingen andre har roert etaperne (vores version var bare bagud, fx efter
   // egen gemning uden kvittering): genforsoeg EEN gang med serverens versioner.
   const retry = await safePutRoles(deps, untouched, versionsFor(receipt, untouched));
-  if (retry.ok) return { state: "saved", errorKey: null, receipt: (await safeRead(deps)) ?? receipt, confirmed: plan.stages };
+  // Samme kvitteringsregel som foerste PUT: alle etaper tjekkes mod den friske
+  // genlaesning. Fejler den, beholdes den forrige kvittering (de genforsoegte
+  // etapers versioner er saa bagud, og et senere gem afklares via 409).
+  if (retry.ok) return confirmAfterWrite(plan, deps, await safeRead(deps), receipt);
   // En anden fane kan have gemt mellem genlaesningen og genforsoeget: "Behold mine"
   // skal staa paa serverens NUVAERENDE versioner, saa der laeses igen.
   if (retry.error === "stage_roles_conflict") return { state: "conflict", errorKey: "stage_roles_conflict", receipt: (await safeRead(deps)) ?? receipt, confirmed: committed };

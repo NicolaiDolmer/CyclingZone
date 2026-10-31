@@ -76,6 +76,10 @@ async function mockTacticsRace(page, {
   roleScopeChoice = false, putResponse = null, riders = RIDERS,
 }) {
   let capturedBody = null;
+  // #7327: som den rigtige server. En lykket PUT erstatter raekkerne for `stages`,
+  // og naeste GET (kvitteringen) viser dem; klienten sammenligner kvitteringen med
+  // det sendte, saa en statisk GET ville ligne en fremmed aendring.
+  let served = overrides;
   await page.route("**/rest/v1/races**", (route) => {
     const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
     return json(route, wantsObject ? race : [race]);
@@ -95,8 +99,16 @@ async function mockTacticsRace(page, {
       } catch {
         capturedBody = {};
       }
+      const status = putResponse?.status ?? 200;
+      if (status < 300 && Array.isArray(capturedBody.stages)) {
+        const written = capturedBody.stages;
+        served = [
+          ...served.filter((o) => !written.includes(o.stage_number)),
+          ...(capturedBody.overrides ?? []).filter((o) => written.includes(o.stage_number)),
+        ];
+      }
       return route.fulfill({
-        status: putResponse?.status ?? 200,
+        status,
         contentType: "application/json",
         headers: corsHeaders(request),
         body: JSON.stringify(putResponse?.body ?? { ok: true }),
@@ -113,7 +125,7 @@ async function mockTacticsRace(page, {
         stages_completed: race.stages_completed,
         stage_count: race.stages,
         riders,
-        overrides,
+        overrides: served,
         role_scope_choice: roleScopeChoice,
       }),
     });

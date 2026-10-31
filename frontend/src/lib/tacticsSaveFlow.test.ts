@@ -271,3 +271,51 @@ test("classifyStages skelner egen, uroert og fremmed", () => {
   const w = classifyStages(BASE, { stages: [2], sentMatrix: DRAFT, baselineMatrix: BASE });
   assert.deepEqual(w, { 2: "untouched" });
 });
+
+// Codex P1 (HEAD 4dafb69): en anden fane gemmer mellem vores lykkede PUT og genlaesningen.
+function foreignBeforeRead(deps: TacticsSaveDeps, onRead: number, change: () => void) {
+  const realRead = deps.readRoles;
+  let reads = 0;
+  deps.readRoles = async () => {
+    reads += 1;
+    if (reads === onRead) change();
+    return realRead();
+  };
+}
+
+test("lykket PUT men fremmed gemning foer kvitteringen: konflikt, ingen stille adoption", async () => {
+  const server = fakeServer(BASE);
+  const { deps, calls } = makeDeps({ server, sent: DRAFT });
+  foreignBeforeRead(deps, 1, () => { server.state.matrix[2] = structuredClone(FOREIGN[2]); });
+  const out = await runTacticsSave(planFor(server), deps);
+  assert.equal(out.status, "conflict");
+  assert.equal(out.errorKey, "stage_roles_conflict");
+  assert.deepEqual(out.confirmedStages, [], "etape 2 er ikke bekraeftet: baseline og version flyttes ikke");
+  assert.equal(out.receipt?.stage_versions?.["2"], server.versionOf(2), "kvitteringen til Behold mine er serverens nuvaerende");
+  assert.equal(calls.putOrders, 0, "ordren venter paa afklaringen");
+  assert.ok(stageEqual(server.state.matrix, FOREIGN, 2), "den anden fanes udgave er ikke overskrevet");
+});
+
+test("lykket PUT af to etaper, fremmed gemning paa den ene: kun den gemte er bekraeftet", async () => {
+  const server = fakeServer(BASE);
+  const sent: Matrix = { ...DRAFT, 3: { a: cell("captain", "save"), b: cell("helper") } };
+  const { deps } = makeDeps({ server, sent });
+  foreignBeforeRead(deps, 1, () => { server.state.matrix[3] = structuredClone(BASE[3]); });
+  const out = await runTacticsSave(
+    { stages: [2, 3], baseVersions: { 2: server.versionOf(2), 3: server.versionOf(3) }, sentMatrix: sent, baselineMatrix: BASE, ordersNeeded: false },
+    deps,
+  );
+  assert.equal(out.status, "conflict", "en etape sat tilbage af en anden fane er ogsaa en fremmed aendring");
+  assert.deepEqual(out.confirmedStages, [2]);
+});
+
+test("automatisk genforsoeg lykkes men fremmed gemning foer kvitteringen: konflikt", async () => {
+  const server = fakeServer(BASE);
+  const { deps } = makeDeps({ server, sent: DRAFT });
+  // Laesning 1 = afklaring af 409 (uroert => genforsoeg); laesning 2 = kvittering efter genforsoeget.
+  foreignBeforeRead(deps, 2, () => { server.state.matrix[2] = structuredClone(FOREIGN[2]); });
+  const out = await runTacticsSave(planFor(server, { baseVersions: { 2: "stale" }, ordersNeeded: false }), deps);
+  assert.equal(out.status, "conflict");
+  assert.deepEqual(out.confirmedStages, []);
+  assert.equal(out.receipt?.stage_versions?.["2"], server.versionOf(2));
+});

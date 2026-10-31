@@ -1070,8 +1070,8 @@
   "src/components/race/RaceTacticsTab.jsx": {
     "TS18047": 6,
     "TS2322": 8,
-    "TS2339": 29,
-    "TS2345": 5,
+    "TS2339": 14,
+    "TS2345": 1,
     "TS2464": 1,
     "TS2538": 3
   },
