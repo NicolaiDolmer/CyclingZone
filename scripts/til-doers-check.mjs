@@ -50,6 +50,8 @@ import {
   ghJson,
   reopenedAt,
   lastMarkerAt,
+  trustedMarkerComments,
+  DUP_BODY,
 } from './lib/til-doers.mjs';
 
 const ROOT = join(fileURLToPath(new URL('.', import.meta.url)), '..');
@@ -120,6 +122,9 @@ export function processIssue({ number, repo, apply, execGh, execGit, mainRef, re
   const door = evaluateDoor({ ...bundle, registry, patchNotesText });
   const body = renderComment(door);
   const existing = findMarkerComment(comments);
+  // To koersler der samtidig ikke saa nogen tabel kan begge oprette en. Den
+  // aeldste er den gaeldende; de oevrige toemmes til en kort dublet-note.
+  const duplicates = trustedMarkerComments(comments).slice(1);
   const isOpen = issue.state === 'open';
   const commentAction = !isOpen ? 'none' : !existing ? 'create' : existing.body.replace(/\r\n/g, '\n') === body ? 'unchanged' : 'edit';
   const close = decideClose({ issue, door, brandList, reopened: reopenedAt(bundle.timeline), lastMarker: lastMarkerAt(comments) });
@@ -132,6 +137,7 @@ export function processIssue({ number, repo, apply, execGh, execGit, mainRef, re
     door,
     missing: missingKrav(door).map((d) => d.krav),
     commentAction,
+    duplicates: duplicates.length,
     close: close.close,
     closeReason: close.reason,
   };
@@ -142,6 +148,9 @@ export function processIssue({ number, repo, apply, execGh, execGit, mainRef, re
     execGh(['api', '-X', 'POST', `repos/${repo}/issues/${number}/comments`, '--input', '-'], JSON.stringify({ body }));
   } else if (commentAction === 'edit') {
     execGh(['api', '-X', 'PATCH', `repos/${repo}/issues/comments/${existing.id}`, '--input', '-'], JSON.stringify({ body }));
+  }
+  for (const dup of duplicates) {
+    execGh(['api', '-X', 'PATCH', `repos/${repo}/issues/comments/${dup.id}`, '--input', '-'], JSON.stringify({ body: DUP_BODY }));
   }
   if (close.close) {
     execGh(['api', '-X', 'POST', `repos/${repo}/issues/${number}/comments`, '--input', '-'], JSON.stringify({ body: CLOSE_COMMENT }));

@@ -33,6 +33,8 @@ test('renderReport: tom rapport og liste uden em-dash', () => {
   const r = renderReport(selectStale([{ number: 2, title: 'Noget', doneAt: '2026-10-20T00:00:00Z', missing: [{ krav: 5, navn: 'Gammelt væk' }, { krav: 8, navn: 'Verificeret i prod' }] }], { now: NOW, days: 7 }), { now: NOW, days: 7 });
   assert.match(r, /- #2 Noget \(13 dage\): mangler 5 Gammelt væk, 8 Verificeret i prod/);
   assert.match(r, /2\.11\.2026/);
+  const blocked = renderReport([{ number: 3, title: 'Klar', ageDays: 9, missing: [], blocker: 'label needs-decision' }], { now: NOW, days: 7 });
+  assert.match(blocked, /alle krav ok eller na, men lukkes ikke: label needs-decision/);
   assert.equal(r.includes('—'), false);
 });
 
@@ -59,7 +61,7 @@ test('main: dry-run printer rapport og poster intet; --apply poster på #7336', 
     10: { issue: { number: 10, title: 'Gammel sag', state: 'open', labels: [] }, timeline: done('2026-10-10T00:00:00Z') },
     11: { issue: { number: 11, title: 'Ny sag', state: 'open', labels: [] }, timeline: done('2026-11-01T00:00:00Z') },
   };
-  const base = { execGit: () => '', mainRef: 'main', registry: [], patchNotesText: '', errorLog: () => {} };
+  const base = { execGit: () => '', mainRef: 'main', registry: [], patchNotesText: '', brandList: [], errorLog: () => {} };
 
   let out = [];
   let f = fakeGh(issues);

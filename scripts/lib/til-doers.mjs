@@ -181,10 +181,12 @@ export function evaluateDoor({ issue, comments = [], prs = [], commits = [], reg
   else if (open.length) autoResults[2] = auto('mangler', `${prLabel(open[0])} er ikke merget`);
   else autoResults[2] = auto('mangler', 'ingen merget PR eller main-commit');
 
-  // 3 Taendt: registry-post med state live
-  const live = entries.find((e) => e.state === 'live');
-  if (live) autoResults[3] = auto('ok', `registry ${live.id} (live)`);
-  else if (entries.length) autoResults[3] = auto('mangler', `registry ${entries[0].id} har state ${entries[0].state}`, MANUAL_HINT);
+  // 3 Taendt: ALLE registry-poster for issuet er live (retired = fjernet med
+  // vilje, taeller ikke imod). En live del-feature goer ikke hele issuet taendt.
+  const active = entries.filter((e) => e.state !== 'retired');
+  const notLive = active.filter((e) => e.state !== 'live');
+  if (active.length && !notLive.length) autoResults[3] = auto('ok', `registry ${active.map((e) => e.id).join(', ')} (live)`);
+  else if (notLive.length) autoResults[3] = auto('mangler', `registry ikke live: ${notLive.map((e) => `${e.id} (${e.state})`).join(', ')}`, MANUAL_HINT);
   else autoResults[3] = auto('mangler', 'manuelt (ingen registry-post)', MANUAL_HINT);
 
   // 4 Synligt: registry visible_in, hvis feltet findes
@@ -312,13 +314,26 @@ export function ghJson(execGh, args) {
   return JSON.parse(execGh(['api', ...args]));
 }
 
-/** PR'er der refererer issuet, fundet via timeline cross-referenced-events. */
-export function prsFromTimeline(timeline, n) {
+/** Hoerer kilden til repoet? repository.full_name, ellers html_url. */
+function sameRepo(src, repo) {
+  if (!repo) return true;
+  const full = src.repository?.full_name;
+  if (full) return full.toLowerCase() === repo.toLowerCase();
+  return String(src.html_url || '').toLowerCase().includes(`github.com/${repo.toLowerCase()}/`);
+}
+
+/**
+ * PR'er der refererer issuet, fundet via timeline cross-referenced-events.
+ * Kun PR'er i samme repo: en fremmed PR med "Refs #N" er ikke bevis, og dens
+ * nummer ville pege paa en anden PR her.
+ */
+export function prsFromTimeline(timeline, n, repo) {
   const byNumber = new Map();
   for (const ev of timeline || []) {
     if (ev.event !== 'cross-referenced') continue;
     const src = ev.source?.issue;
     if (!src?.pull_request) continue;
+    if (!sameRepo(src, repo)) continue;
     if (!refsIssue(src.body, n) && !refsIssue(src.title, n) && !titleScopeIssue(src.title, n)) continue;
     byNumber.set(src.number, {
       number: src.number,
@@ -379,7 +394,7 @@ export function fetchIssueBundle({ execGh = defaultExecGh, execGit = defaultExec
   const issue = ghJson(execGh, [`repos/${repo}/issues/${number}`]);
   const comments = ghPaged(execGh, `repos/${repo}/issues/${number}/comments?per_page=100`);
   const timeline = ghPaged(execGh, `repos/${repo}/issues/${number}/timeline?per_page=100`);
-  const prs = prsFromTimeline(timeline, number);
+  const prs = prsFromTimeline(timeline, number, repo);
   const ref = mainRef || resolveMainRef(execGit);
   const commits = mainCommitsFor(execGit, number, ref);
 
@@ -399,6 +414,22 @@ export function fetchIssueBundle({ execGh = defaultExecGh, execGit = defaultExec
   return { issue, comments, timeline, prs, commits, helpChanged };
 }
 
+export const BOT_LOGIN = 'github-actions[bot]';
+export const DUP_BODY = '<!-- til-doers:dup -->\nDublet af til-dørs-tabellen. Den gældende tabel er den ældste i tråden.';
+
+/**
+ * Tabel-kommentarer vi stoler paa: markoeren + skrevet af workflowet
+ * (github-actions[bot]) eller en collaborator (lokal koersel med ejerens token).
+ * En udenforstaaende kan kopiere markoeren, men aldrig overtage tabellen.
+ * Aeldste foerst, saa den gaeldende tabel er stabil.
+ */
+export function trustedMarkerComments(comments) {
+  return (comments || [])
+    .filter((c) => (c.body || '').includes(MARKER))
+    .filter((c) => c.user?.login === BOT_LOGIN || COLLABORATOR_ASSOCIATIONS.has(String(c.author_association || '').toUpperCase()))
+    .sort((a, b) => String(a.created_at || '').localeCompare(String(b.created_at || '')) || Number(a.id) - Number(b.id));
+}
+
 export function findMarkerComment(comments) {
-  return (comments || []).find((c) => (c.body || '').includes(MARKER)) || null;
+  return trustedMarkerComments(comments)[0] || null;
 }

@@ -16,6 +16,7 @@ import {
   labeledAt,
   renderComment,
   missingKrav,
+  DUP_BODY,
 } from './lib/til-doers.mjs';
 import { parseArgs, main, processIssue } from './til-doers-check.mjs';
 
@@ -275,7 +276,7 @@ test('processIssue (apply) opretter kommentar, lukker når alt er ok/na', () => 
 });
 
 test('processIssue redigerer eksisterende tabel i stedet for at oprette en dublet', () => {
-  const stale = { id: 77, body: `${MARKER}\ngammel`, created_at: '2026-10-01T00:00:00Z', author_association: 'NONE' };
+  const stale = { id: 77, body: `${MARKER}\ngammel`, created_at: '2026-10-01T00:00:00Z', author_association: 'NONE', user: { login: 'github-actions[bot]' } };
   const { exec, calls } = fakeGh({ issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments: [stale], timeline: [] } } });
   const plan = processIssue({ number: N, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
   assert.equal(plan.commentAction, 'edit');
@@ -286,7 +287,7 @@ test('processIssue redigerer eksisterende tabel i stedet for at oprette en duble
 
 test('processIssue: uændret tabel skrives ikke igen', () => {
   const body = renderComment(evaluateDoor({ issue: { number: N } }));
-  const { exec, calls } = fakeGh({ issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments: [{ id: 5, body, author_association: 'NONE' }], timeline: [] } } });
+  const { exec, calls } = fakeGh({ issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments: [{ id: 5, body, author_association: 'NONE', user: { login: 'github-actions[bot]' } }], timeline: [] } } });
   const plan = processIssue({ number: N, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
   assert.equal(plan.commentAction, 'unchanged');
   assert.equal(calls.filter((c) => c.args.includes('POST') || c.args.includes('PATCH')).length, 0);
@@ -355,6 +356,47 @@ test('processIssue: genåbnet issue (reopened-event i timeline) lukkes ikke', ()
   const plan = processIssue({ number: N, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
   assert.equal(plan.close, false);
   assert.equal(calls.filter((c) => c.args.includes('PATCH') && c.args.some((a) => /issues\/\d+$/.test(a))).length, 0);
+});
+
+test('prsFromTimeline: PR fra et andet repo tæller ikke', () => {
+  const ev = (number, full) => ({ event: 'cross-referenced', source: { issue: { number, title: 'x', body: `Refs #${N}`, state: 'closed', repository: { full_name: full }, pull_request: { merged_at: '2026-10-30T00:00:00Z' } } } });
+  const viaUrl = { event: 'cross-referenced', source: { issue: { number: 3, title: 'x', body: `Refs #${N}`, state: 'open', html_url: 'https://github.com/andet/repo/pull/3', pull_request: {} } } };
+  assert.deepEqual(prsFromTimeline([ev(1, 'o/r'), ev(2, 'fremmed/repo'), viaUrl], N, 'o/r').map((p) => p.number), [1]);
+});
+
+test('evaluateDoor: krav 3 kræver at ALLE registry-poster for issuet er live (retired tæller ikke)', () => {
+  const reg = [
+    { id: 'del-a', epic: String(N), state: 'live' },
+    { id: 'del-b', note: `#${N}`, state: 'dormant' },
+    { id: 'gammel', epic: String(N), state: 'retired' },
+  ];
+  const door = evaluateDoor({ issue: { number: N }, registry: reg });
+  assert.equal(status(door, 3), 'mangler');
+  assert.match(door[2].kilde, /del-b \(dormant\)/);
+  assert.equal(status(evaluateDoor({ issue: { number: N }, registry: [reg[0], reg[2]] }), 3), 'ok');
+});
+
+test('processIssue: en udenforstaaendes kopi af markøren overtages aldrig', () => {
+  const fake = { id: 66, body: `${MARKER}\nfalsk`, created_at: '2026-10-01T00:00:00Z', author_association: 'NONE', user: { login: 'fremmed' } };
+  const { exec, calls } = fakeGh({ issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments: [fake], timeline: [] } } });
+  const plan = processIssue({ number: N, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
+  assert.equal(plan.commentAction, 'create');
+  assert.equal(calls.filter((c) => c.args.some((a) => a.includes('comments/66'))).length, 0);
+});
+
+test('processIssue: dublet-tabeller tømmes, den ældste opdateres', () => {
+  const bot = { login: 'github-actions[bot]' };
+  const first = { id: 1, body: `${MARKER}\ngammel`, created_at: '2026-10-01T00:00:00Z', author_association: 'NONE', user: bot };
+  const second = { id: 2, body: `${MARKER}\nogsaa gammel`, created_at: '2026-10-01T00:00:01Z', author_association: 'NONE', user: bot };
+  const { exec, calls } = fakeGh({ issues: { [N]: { issue: { number: N, state: 'open', title: 't', labels: [] }, comments: [second, first], timeline: [] } } });
+  const plan = processIssue({ number: N, repo: 'o/r', apply: true, execGh: exec, execGit: noGit, mainRef: 'main', registry: [], patchNotesText: '', brandList: [] });
+  assert.equal(plan.commentAction, 'edit');
+  assert.equal(plan.duplicates, 1);
+  const patches = calls.filter((c) => c.args.includes('PATCH'));
+  assert.ok(patches[0].args.includes('repos/o/r/issues/comments/1'));
+  assert.ok(patches[1].args.includes('repos/o/r/issues/comments/2'));
+  assert.equal(JSON.parse(patches[1].input).body, DUP_BODY);
+  assert.equal(DUP_BODY.includes(MARKER), false);
 });
 
 test('labelNames-normalisering: strings og objekter', () => {

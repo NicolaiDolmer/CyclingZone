@@ -22,12 +22,16 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { parseRegistry } from './generate-feature-status.mjs';
+import { loadBuildStop } from './lib/build-stop.mjs';
 import {
   DEFAULT_REPO,
   DONE_LABEL,
   defaultExecGh,
   defaultExecGit,
+  decideClose,
   evaluateDoor,
+  lastMarkerAt,
+  reopenedAt,
   fetchIssueBundle,
   labeledAt,
   missingKrav,
@@ -90,7 +94,11 @@ export function renderReport(stale, { now, days }) {
   }
   const lines = stale.map((r) => {
     const age = r.ageDays === null ? 'dato ukendt' : `${r.ageDays} dage`;
-    const miss = r.missing.length ? `mangler ${r.missing.map((k) => `${k.krav} ${k.navn}`).join(', ')}` : 'alle krav ok eller na, lukkes ved næste tjek';
+    const miss = r.missing.length
+      ? `mangler ${r.missing.map((k) => `${k.krav} ${k.navn}`).join(', ')}`
+      : r.blocker
+        ? `alle krav ok eller na, men lukkes ikke: ${r.blocker}`
+        : 'alle krav ok eller na, lukkes ved næste tjek';
     return `- #${r.number} ${r.title} (${age}): ${miss}`;
   });
   return [
@@ -120,6 +128,7 @@ export function main(argv = process.argv.slice(2), deps = {}) {
   const now = opts.now || deps.now || new Date();
   const registry = deps.registry || parseRegistry(readFileSync(join(ROOT, 'docs', 'FEATURE_REGISTRY.yml'), 'utf8'));
   const patchNotesText = deps.patchNotesText ?? readFileSync(join(ROOT, 'frontend', 'src', 'data', 'patchNotes.js'), 'utf8');
+  const brandList = deps.brandList || loadBuildStop().brandList;
 
   let rows;
   try {
@@ -128,7 +137,11 @@ export function main(argv = process.argv.slice(2), deps = {}) {
     rows = open.map(({ number }) => {
       const bundle = fetchIssueBundle({ execGh, execGit, repo: opts.repo, number, mainRef });
       const door = evaluateDoor({ ...bundle, registry, patchNotesText });
-      return { number, title: bundle.issue.title, doneAt: labeledAt(bundle.timeline, DONE_LABEL), missing: missingKrav(door) };
+      const close = decideClose({ issue: bundle.issue, door, brandList, reopened: reopenedAt(bundle.timeline), lastMarker: lastMarkerAt(bundle.comments) });
+      const missing = missingKrav(door);
+      // Blokering vises kun naar intet krav mangler: ellers er det kravene der er handlingen.
+      const blocker = !missing.length && !close.close ? close.reason : null;
+      return { number, title: bundle.issue.title, doneAt: labeledAt(bundle.timeline, DONE_LABEL), missing, blocker };
     });
   } catch (err) {
     errorLog(`til-doers-monday: GitHub-kald fejlede: ${String(err.message || err).split('\n')[0]}`);
