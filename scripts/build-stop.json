@@ -214,6 +214,18 @@
     {
       "issue": 5950,
       "area": "udvikling-2"
+    },
+    {
+      "issue": 7369,
+      "area": "taktik"
+    },
+    {
+      "issue": 7317,
+      "area": "taktik"
+    },
+    {
+      "issue": 7335,
+      "area": "taktik"
     }
   ],
   "cleanupList": [
