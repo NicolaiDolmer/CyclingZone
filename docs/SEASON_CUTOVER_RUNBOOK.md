@@ -133,11 +133,12 @@ SQL-blokke tæt på cutover-dagen, ikke ugen før.
    #2805-spærren, sidste etape + finalisering, matview-afstemning) — uændrede
    mekanismer, genbrug dem direkte. Ingen komprimerings-skridt (2/3b i den
    gamle doc) — spring dem over.
-3. **"Afslut sæson"** — **UDEN** `season_end_skip_division_movement`-gaten
+3. **Info-banner op (#6973), lige før "Afslut sæson" [EJER-GO]:** (prod-skrivning og spillertekst, kun efter ejerens go) opret `ops_notices`-rækken "Season change in progress" (EN, severity `info`, `starts_at=now()`, `ends_at` ca. 4 timer frem som sikkerhedsnet). Præcis SQL: `SEASON_TRANSITION_CHECKLIST.md` skridt 2c. Skrives med service role (Supabase MCP/SQL-editor); der er ingen admin-side til `ops_notices`. Banneret (`RaceControlBanner`, læser via `frontend/src/lib/opsNotices.js`) viser rækker med `active=true`, `starts_at <= now()` og `ends_at` tom/fremtidig. Ingen nedetidsside.
+4. **"Afslut sæson"** — **UDEN** `season_end_skip_division_movement`-gaten
    (den skal være `'off'`, IKKE sættes til `'on'` som ved S1→S2). Normal
    `processDivisionEnd` kører for hver tier.
-4. **Window-wrap** (skridt 4 i den gamle doc) — samme mekanik.
-5. **Transitionen** ("Udfør sæsonskifte") — samme faseliste som
+5. **Window-wrap** (skridt 4 i den gamle doc) — samme mekanik.
+6. **Transitionen** ("Udfør sæsonskifte") — samme faseliste som
    `SEASON_TRANSITION_CHECKLIST.md` skridt 5a, MED to tilføjelser afhængigt af
    punkt 1 og 4 ovenfor:
    - Er `auto_calendar_enabled` sat til `'on'` (valg A): forvent faserne
@@ -146,11 +147,11 @@ SQL-blokke tæt på cutover-dagen, ikke ugen før.
    - Er formmode stadig `decay` uden claim-guard: verificér i `admin_log` at
      dette er den ENESTE `season_transition`-kørsel for S2→S3 (samme
      tids-filtrerede tælleforespørgsel som den gamle docs skridt 5, "Tælle-queries").
-6. **Entries** (kun hvis valg B ovenfor — `auto_calendar_enabled` var OFF):
+7. **Entries** (kun hvis valg B ovenfor — `auto_calendar_enabled` var OFF):
    kør `generateSeasonEntries.js` manuelt som i den gamle doc skridt 6.
-7. **Sæson-achievements:** `backfillSeasonAchievements.js --execute` UDEN
+8. **Sæson-achievements:** `backfillSeasonAchievements.js --execute` UDEN
    `--skip`-flag (se punkt 6 ovenfor).
-8. **Slutkontrol:** `SEASON_TRANSITION_CHECKLIST.md` skridt 7 uændret. Tilføj:
+9. **Slutkontrol:** `SEASON_TRANSITION_CHECKLIST.md` skridt 7 uændret, inkl. fjernelse af info-banneret (#6973, SQL i skridt 7 punkt 6). Tilføj:
    verificér #3114 (Monuments/D1) og #2164 (D3→D4) ikke har produceret synlige
    fejl for de first-time-berørte hold (spot-check et par nyoprykkede D1-hold
    + et par nyrelegerede D4-hold i deres nye puljers kalender).

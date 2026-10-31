@@ -114,7 +114,12 @@
         "loebslaere": "Løbslære",
         "cobbled_sectors": "Brostenssektorer",
         "echelon_drills": "Vifteøvelser",
-        "attack_repeats": "Angrebsintervaller"
+        "attack_repeats": "Angrebsintervaller",
+        "long_climbs": "Lange stigninger",
+        "lead_out": "Lead-out",
+        "itt_short": "Korte enkeltstarter",
+        "itt_long": "Lange enkeltstarter",
+        "cobbled_classic": "Brostensklassiker"
       },
       "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
       "activeRest": "Hviler ({focus}-fokus på pause)",
@@ -938,7 +943,13 @@
     "fatigue": "Træthed",
     "injured": "Skadet: {days}d tilbage",
     "injuredRaceDays": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage",
-    "injuredApprox": "Tilbage ca. {date}"
+    "fitAgain": "Rask igen {date}",
+    "fitAgainApprox": "Rask igen ca. {date}",
+    "causeCrashStage": "Styrtede, {race} etape {stage}",
+    "causeCrashRace": "Styrtede, {race}",
+    "causeCrash": "Styrtede i et løb",
+    "causeTraining": "Skadet i træningen",
+    "causeIllness": "Syg"
   },
   "training": {
     "title": "Træningsfokus",
@@ -961,6 +972,11 @@
     "focus_cobbled_sectors": "Brostenssektorer",
     "focus_echelon_drills": "Vifteøvelser",
     "focus_attack_repeats": "Angrebsintervaller",
+    "focus_long_climbs": "Lange stigninger",
+    "focus_lead_out": "Lead-out",
+    "focus_itt_short": "Korte enkeltstarter",
+    "focus_itt_long": "Lange enkeltstarter",
+    "focus_cobbled_classic": "Brostensklassiker",
     "intensity_rest": "Hvile",
     "intensity_unknown_pending": "Afventer løbsgennemgang",
     "intensity_easy": "Let",

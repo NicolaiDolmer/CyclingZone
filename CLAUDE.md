@@ -6,6 +6,8 @@
 
 Gælder også Claude Code (AGENTS.md auto-loades ikke her): verificér repo-root før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før TODO/bug · teknisk tvivl undersøges; beslutningsgrænser: §4 · patch notes ved brugerrettet ændring · auto-push efter commit · merge-kø én ad gangen: `scripts/merge-queue.ps1` (#4919) · **stående merge-regler** (rule 35): brand-fix uden ny tekst, motor bag slukket v4/revision, Dependabot/docs/ops uden spillertekst merges ved grøn CI + review-gate + diff-tjek; deploy/regnekraft ejer, ejer-go klæber · **commit kun bag `guard-commit-branch.sh`** (hard rule 18; ved `git -C <dir>` gives guarden samme `<dir>`) · migrationer: apply post-merge per #2642 (auto-migrate.yml), Claude post-verificerer; destruktivt ejer-gated · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst: [`AGENTS.md`](AGENTS.md); cross-PC + session-rytme: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md).
 
+**Byggestop aktivt (#7336):** byg kun issues i `scripts/build-stop.json`; nyt → `triage:new`. AGENTS.md regel 37.
+
 ## Orkestrator-standard (ejer 11/9, #5142)
 
 Claude: `Workflow({ scriptPath: "C:\Dev\CyclingZone\.claude\workflows\wave.js", args: { tracks: [...] } })` (LF, `.gitattributes`). Codex: `node scripts/codex-wave.mjs plan.json --run` (#5467). Faelles admission og boelgelaas. Ingen håndskrevne Agent-spawns; `guard-agent-spawn.sh` blokerer dem (fritaget: `WAVE-*:`-præfikser, `READ-ONLY:`, `Explore`/`Plan`). Loft: **laner pr. maskine** (`scripts/wave-capacity.json`: default 4, NICOLAIPC 6), semafor 2 (`verify-lock.ps1 -Max 2 -- <kommando>`), livstegn (draft-PR 30 min, push 15 min, timeout 120 min, frys = branch-tavshed (#5178), recovery i samme worktree). Bekræftet frys stopper bølgen. Se [`PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md).
@@ -18,7 +20,6 @@ Enhver manager-app-side bruger én af de 3 kanoniske skabeloner i [`docs/design/
 
 - `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (gate >3.200 tok / >54 linjer; WARM: `MEMORY_REFERENCE.md`).
 - **Security-advisors** (Supabase MCP `get_advisors`) tjekkes ved session-start; en udokumenteret WARN må aldrig stå over 7 dage (#5153).
-- `.codex.local/SESSION_CONTEXT.md` — regenererbar cache, ikke source of truth.
 
 ## Start (eksplicit)
 
@@ -50,7 +51,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-hits:
 7. **Boelge-processer:** `pwsh -File scripts/close-out-cleanup.ps1` (dry-run, `-Execute` ved fund — dræber efterladte `gh --watch`/vite/playwright-processer, #4920).
 8. **STATUS_BOARD.md:** koer `node scripts/generate-status-board.mjs` ved close-out (#5674).
 
-Ingen lokal-only handoff: state, beslutninger og næste skridt skal ligge i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context; transcripts, Codex memories og `SESSION_CONTEXT.md` er caches.
+Ingen lokal-only handoff: state og næste skridt i GitHub (`docs/NOW.md`, issues) eller OneDrive-context; transcripts, memories og `SESSION_CONTEXT.md` er caches.
 
 ## Session-rytme
 

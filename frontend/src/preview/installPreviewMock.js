@@ -9,6 +9,7 @@ import { parseTable, parseRpc, rpcResponse, wantsObject, restRows, restObject, a
 import { clubMockRoute } from "./clubMock.js";
 import { plannerMockRoute } from "./plannerMock.js";
 import { scoutingMockRoute } from "./scoutingMock.js";
+import { contractsBatchMockRoute } from "./contractsBatchMock.ts"; // #6855
 import { boardMeetingMockRoute } from "./boardMeetingMock.js";
 import { betaAccessMockRoute } from "./betaAccessMock.js"; // #5259
 import { trainingProgramsMockRoute, previewSingleRaceDay, PREVIEW_TRAINING_PROGRAMS } from "./trainingProgramsMock.js"; // #4629
@@ -27,6 +28,8 @@ import { SEED_SURVEY } from "./surveyMock.js";
 import { previewYouthSquadsPayload, previewYouthRiderRows } from "./youthSquadsMock.ts"; // #5519
 import { NPS_MIN_RACE_DAYS } from "../lib/npsGating.js";
 import { buildMockSurveyResults } from "./surveyResultsMock.js"; // #4943
+import { stagePlanPreviewActive, stagePlanPreviewTimeline, withStagePlanPreview } from "../components/race/StagePlanPreviewMock.ts"; // #7003
+import { luxuryHelperPreviewActive, withLuxuryHelperSelection, withLuxuryHelperStageRoles } from "./luxuryHelperPreviewMock.ts"; // #5982
 
 // [epic #4592 del 3] "Tilmeld dig næste sæson" (#452) — statefuld in-memory
 // toggle, samme princip som klubMock/plannerMock: POST flipper den, GET
@@ -320,6 +323,14 @@ export function installPreviewMock() {
         return jsonResponse({ ok: true });
       }
 
+      // #6855: Kontrakter-fanens quote + batch-forlængelse.
+      if (/\/api\/riders\/extend-contracts/.test(url)) {
+        let body = null;
+        if (init && typeof init.body === "string") { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = contractsBatchMockRoute(method, new URL(url, window.location.origin).pathname, body);
+        if (res) return jsonResponse(res.body, res.status);
+      }
+
       // Statefuld Scouting-central-mock (#2244/#2644): rout /api/scouting/* +
       // POST /api/riders/names FØR de generiske /api-blokke, så start/annullér
       // muterer state og gennemklikket er ægte. Returnerer null for uhåndterede
@@ -395,7 +406,11 @@ export function installPreviewMock() {
       const teamOrdersMatch = url.match(/\/api\/races\/([^/?]+)\/team-orders(?:\?|$)/);
       if (method === "GET" && teamOrdersMatch) {
         const raceId = decodeURIComponent(teamOrdersMatch[1]);
-        return jsonResponse(SEED_TEAM_ORDERS_BY_RACE[raceId] ?? SEED_TEAM_ORDERS);
+        const body = SEED_TEAM_ORDERS_BY_RACE[raceId] ?? SEED_TEAM_ORDERS;
+        return jsonResponse(stagePlanPreviewActive() ? withStagePlanPreview(body) : body); // #7003: ?stagePlan=1
+      }
+      if (method === "GET" && stagePlanPreviewActive() && /\/api\/races\/race-live-1\/timeline\?stage=2(?:&|$)/.test(url)) {
+        return jsonResponse(stagePlanPreviewTimeline()); // #7003
       }
       if (method === "PUT" && /\/api\/races\/[^/]+\/team-orders\/[0-9]+$/.test(url)) {
         return jsonResponse({ ok: true });
@@ -540,7 +555,8 @@ export function installPreviewMock() {
         const parsed = new URL(url, window.location.origin);
         // #6139: udtagelsen foelger Train now-tilstanden (?trainNow=locked eller et tryk).
         if (/\/api\/races\/[^/]+\/selection$/.test(parsed.pathname)) {
-          return jsonResponse(trainNowSelectionPreview(apiResponse(parsed.pathname, parsed.search)));
+          const selection = trainNowSelectionPreview(apiResponse(parsed.pathname, parsed.search));
+          return jsonResponse(luxuryHelperPreviewActive() ? withLuxuryHelperSelection(selection) : selection); // #5982: ?luxuryHelper=1
         }
         // #6383: dagsboardet og saesonmatrixen foelger samme Train now-tilstand.
         if (parsed.pathname.endsWith("/api/races/distribution")) {
@@ -549,6 +565,10 @@ export function installPreviewMock() {
         }
         if (parsed.pathname.endsWith("/api/races/selection/season")) {
           return jsonResponse(trainNowSeasonPreview(apiResponse(parsed.pathname, parsed.search)));
+        }
+        // #5982: ?luxuryHelper=1 goer "rider-96" til luksushjaelper i etape-rollerne.
+        if (luxuryHelperPreviewActive() && /\/api\/races\/[^/]+\/stage-roles$/.test(parsed.pathname)) {
+          return jsonResponse(withLuxuryHelperStageRoles(apiResponse(parsed.pathname, parsed.search)));
         }
         return jsonResponse(apiResponse(parsed.pathname, parsed.search));
       }

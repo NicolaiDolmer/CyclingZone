@@ -33,10 +33,17 @@ export const RACE_TAB_KEYS = Object.freeze([
  * der er kørt, og (for gamle/importerede løb uden stages_completed) med om der
  * overhovedet findes resultater.
  *
- * @param {{status?: string|null, stagesCompleted?: number|null, stages?: number|null, hasResults?: boolean}} race
+ * #6959: taktik og trup låser samtidig ved løbets start (etape 1's planlagte start),
+ * også i en pause hvor ingen etape er kørt. `firstStageScheduledAt` (+ `now`) gør at et
+ * løb hvis start er passeret, men uden kørt etape, er "during" i stedet for "before" —
+ * så Hold-fanen ikke tilbyder en åben udtagelse mens Taktik allerede er låst.
+ *
+ * @param {{status?: string|null, stagesCompleted?: number|null, stages?: number|null, hasResults?: boolean, firstStageScheduledAt?: string|null, now: number}} race
  * @returns {"before"|"during"|"after"}
  */
-export function racePhase({ status, stagesCompleted = 0, stages = 1, hasResults = false } = {}) {
+export function racePhase({ status, stagesCompleted = 0, stages = 1, hasResults = false, firstStageScheduledAt = null, now }) {
+  // Hard rule 16 (Codex P1 #7063): uret injiceres altid; intet vaegur-default.
+  if (!Number.isFinite(now)) throw new Error("racePhase: now (ms) skal injiceres");
   const done = Number(stagesCompleted) || 0;
   const total = Math.max(1, Number(stages) || 1);
   if (status === "completed") return "after";
@@ -46,7 +53,24 @@ export function racePhase({ status, stagesCompleted = 0, stages = 1, hasResults 
   // færdigt — det har aldrig haft en "under løbet"-tilstand i denne app, og må
   // ikke få en Taktik-fane der lover en beslutning der ikke findes.
   if (hasResults) return "after";
+  if (hasScheduledStartPassed(firstStageScheduledAt, now)) return "during";
   return "before";
+}
+
+/**
+ * Er et planlagt tidspunkt passeret? Spejler backendens `hasScheduledStartPassed`
+ * (backend/lib/raceStartLock.js, #6959). Manglende/ugyldigt tidspunkt => false (åben):
+ * et schedule-hul må aldrig fastlåse et helt løb.
+ */
+/**
+ * @param {string|null|undefined} scheduledAt
+ * @param {number} now
+ */
+export function hasScheduledStartPassed(scheduledAt, now) {
+  if (!scheduledAt) return false;
+  if (!Number.isFinite(now)) throw new Error("hasScheduledStartPassed: now (ms) skal injiceres");
+  const startMs = Date.parse(scheduledAt);
+  return Number.isFinite(startMs) && now >= startMs;
 }
 
 /**
@@ -87,13 +111,13 @@ export function resolveRaceTab(requested, tabs) {
  * løbs taktik) — præcis samme defensive valg som serveren.
  *
  * Kun en visnings-gate: serveren afviser stadig selv en write efter lås.
+ *
+ * @param {{stageNumber: number, stagesCompleted?: number, scheduledAt?: string|null, raceCompleted?: boolean, now?: number}} args
  */
 export function isStageLockedForTactics({ stageNumber, stagesCompleted = 0, scheduledAt = null, raceCompleted = false, now = Date.now() }) {
   if (raceCompleted) return true;
   if (stageNumber <= (Number(stagesCompleted) || 0)) return true;
-  if (!scheduledAt) return false;
-  const startMs = Date.parse(scheduledAt);
-  return Number.isFinite(startMs) && now >= startMs;
+  return hasScheduledStartPassed(scheduledAt, now);
 }
 
 /**

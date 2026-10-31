@@ -32,7 +32,9 @@ import {
   defaultTeamOrderForRoster,
 } from "./engine/v4/ai/teamOrderContract.ts";
 import { validEffortsFor } from "./raceRoles.js";
+import { isStageLocked } from "./raceStartLock.js";
 import { isOfficialTimesV5OrLater, surfaceRulesRevision } from "./raceEngineRulesRevision.ts";
+import { validateRiderPlans, withStagePlan } from "./stagePlanApi.js"; // #7003
 
 export const VALID_BREAKAWAY_STANCES = [...BREAKAWAY_STANCE_VALUES];
 
@@ -56,27 +58,76 @@ export function neutralTeamOrder() {
   return { breakaway_stance: "neutral", riders: [] };
 }
 
-/**
- * T2: er en etape låst for ordre-writes? Ren. Låst når etapen er kørt
- * (stagesCompleted) ELLER dens planlagte start er passeret. Mangler
- * scheduled_at (defensivt: schedule-hul) behandles etapen som ÅBEN indtil
- * stages_completed siger andet — en manglende række må aldrig fastlåse
- * taktikken for et helt løb.
- *
- * @param {{stageNumber: number, stagesCompleted: number, scheduledAt: string|null|undefined, now?: Date}} args
- */
-export function isStageLocked({ stageNumber, stagesCompleted = 0, scheduledAt, now = new Date() }) {
-  if (stageNumber <= stagesCompleted) return true;
-  if (!scheduledAt) return false;
-  const startMs = Date.parse(scheduledAt);
-  return Number.isFinite(startMs) && now.getTime() >= startMs;
+// #7003 (spec 2026-10-25-taktik-roller-design §3, fund 2 fra #7266): ordrer der
+// udelukker hinanden for SAMME rytter. Haandhaeves her og paa fladen, ikke i
+// motoren (den opfoerer sig allerede saadan; spilleren skal bare have besked).
+// "Arbejd" er `protect` for en hjaelper eller jaeger; for en leder betyder samme
+// trin "foelg angrebene", og dér er udbrud tilladt. Frontend-kopien bor i
+// frontend/src/lib/oppositeOrders.js og holdes lig af
+// raceTeamOrdersApi.oppositeOrders7003.test.js.
+const WORK_ROLES = new Set(["helper", "hunter"]);
+
+// Toget virker kun for et hold med spurtkaptajn og aldrig for ham selv (motoren
+// koerer intet tog uden kaptajn). Et doedt tog-flag spaerrer derfor intet, saa en
+// gemt raekke aldrig laaser rytteren (#7281 review).
+function liveLeadout(rider, role, opts) {
+  return rider?.leadout === true && opts?.teamHasSprintCaptain !== false && role !== "sprint_captain";
 }
+
+export const OPPOSITE_ORDER_ERRORS = Object.freeze([
+  "team_orders_grupetto_with_break",
+  "team_orders_grupetto_with_train",
+  "team_orders_work_with_break",
+  "team_orders_train_with_break",
+]);
+
+/**
+ * Foerste modsaetning i EN rytters ordre (fejlkode), eller null. Ren.
+ * @param {{effort?: string, try_break?: boolean, leadout?: boolean}|null|undefined} rider
+ * @param {string|null|undefined} role rytterens rolle paa etapen
+ * @param {{teamHasSprintCaptain?: boolean}} [opts] holdet har en spurtkaptajn paa etapen
+ */
+export function oppositeOrderError(rider, role, opts) {
+  const tryBreak = rider?.try_break === true;
+  const leadout = liveLeadout(rider, role, opts);
+  if (rider?.effort === "grupetto" && tryBreak) return "team_orders_grupetto_with_break";
+  if (rider?.effort === "grupetto" && leadout) return "team_orders_grupetto_with_train";
+  if (rider?.effort === "protect" && tryBreak && WORK_ROLES.has(role ?? "")) return "team_orders_work_with_break";
+  if (leadout && tryBreak) return "team_orders_train_with_break";
+  return null;
+}
+
+/**
+ * #7003: rytternes rolle paa EN etape, som motoren ser den: etapens override
+ * (race_stage_roles) ellers basis-rollen fra holdudtagelsen. Fladen gemmer
+ * rollerne foer ordren, saa et rolleskift i samme gem er med her.
+ */
+export async function loadStageRoleByRider({ supabase, raceId, stageNumber, baseRoleByRider }) {
+  const roleByRider = new Map(baseRoleByRider);
+  const riderIds = [...baseRoleByRider.keys()];
+  if (!riderIds.length || !Number.isInteger(stageNumber)) return roleByRider;
+  const { data, error } = await supabase
+    .from("race_stage_roles")
+    .select("rider_id, race_role")
+    .eq("race_id", raceId)
+    .eq("stage_number", stageNumber)
+    .in("rider_id", riderIds); // pagination-safe: eet holds ryttere paa EN etape (maks 8 raekker)
+  if (error) throw new Error(`race_stage_roles: ${error.message}`);
+  for (const row of data || []) {
+    if (row?.race_role) roleByRider.set(row.rider_id, row.race_role);
+  }
+  return roleByRider;
+}
+
+// T2: er en etape låst for ordre-writes? Reglen bor i raceStartLock.js (#6959) og deles
+// med trup-låsen, så taktik og trup låser i samme øjeblik ved løbets start.
+export { isStageLocked };
 
 /**
  * Ren validering af én PUT-body (ordren for ÉN etape). Fejlrækkefølge
  * (errors[0] vises til brugeren): løb completed → etape-lås → ugyldig body →
  * ugyldig stance → fremmed rytter → rolle-felt sendt → ukendt felt →
- * ugyldig effort → ugyldigt tog-flag → dublet-rytter.
+ * ugyldig effort → ugyldigt tog-flag → modsatte ordrer (#7003) → dublet-rytter.
  *
  * @param {{
  *   order: {breakaway_stance?: string, riders?: Array<{rider_id, effort, try_break, leadout}>},
@@ -104,6 +155,10 @@ export function validateTeamOrder({
   // raceStageRolesApi.validateStageRoleOverrides) — glemt flag = dagens
   // tre-vaerdi-vokabular, aldrig det udvidede.
   intentionEnabled = false,
+  // #7003: etapeplanens kontekst (stagePlanApi.loadStagePlanContext). null = `plan` er et ukendt felt.
+  stagePlan = null,
+  // #7003: rytterens rolle paa etapen (loadStageRoleByRider). Mangler den, er "Arbejd + udbrud" ikke spaerret.
+  roleByRider = new Map(),
 }) {
   if (raceCompleted) return { ok: false, errors: ["team_orders_race_completed"] };
   if (!Number.isInteger(stageNumber) || stageNumber < 1 || stageNumber > stageCount) {
@@ -136,10 +191,12 @@ export function validateTeamOrder({
   // Ingen side-kanaler: præcis kontraktens felter, hverken flere eller andre.
   for (const r of riders) {
     const unknown = Object.keys(r ?? {}).some(
-      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k),
+      (k) => !VALID_RIDER_ORDER_FIELDS.includes(k) && !REJECTED_RIDER_ORDER_FIELDS.includes(k) && !(stagePlan && k === "plan"),
     );
     if (unknown) { errors.push("team_orders_unknown_field"); break; }
   }
+  const planError = stagePlan ? validateRiderPlans(riders, stagePlan) : null; // #7003
+  if (planError) errors.push(planError);
   // #4632: femtrins-intentionen bag flag — se raceStageRolesApi.js. Begge
   // skrivestier deler ET vokabular (validEffortsFor) saa de aldrig kan diverge.
   const validEfforts = validEffortsFor(intentionEnabled);
@@ -153,6 +210,15 @@ export function validateTeamOrder({
       errors.push("team_orders_invalid_leadout");
       break;
     }
+  }
+
+  // #7003: modsatte ordrer. En rytter med etapeplan tjekkes af planens egne regler
+  // (de gamle felter udledes af kaeden ved gem), ikke af body-felterne.
+  const teamHasSprintCaptain = [...roleByRider.values()].includes("sprint_captain");
+  for (const r of riders) {
+    if (stagePlan && Array.isArray(r?.plan) && r.plan.length) continue;
+    const opposite = oppositeOrderError(r, roleByRider.get(r?.rider_id), { teamHasSprintCaptain });
+    if (opposite) { errors.push(opposite); break; }
   }
 
   const ids = riders.map((r) => r?.rider_id);
@@ -172,12 +238,12 @@ export function validateTeamOrder({
 export function normalizeTeamOrder(order) {
   return {
     breakaway_stance: order.breakaway_stance ?? "neutral",
-    riders: (order.riders ?? []).map((r) => ({
+    riders: (order.riders ?? []).map((r) => withStagePlan({
       rider_id: r.rider_id,
       effort: r.effort,
       try_break: r.try_break === true,
       leadout: r.leadout === true,
-    })),
+    }, r)), // #7003: planens felter udledes af kaeden (kun naar validateTeamOrder tog imod en plan)
   };
 }
 
@@ -232,7 +298,8 @@ export async function getTeamOrdersContext({ supabase, race, teamId }) {
     // (#1791): kun enum-værdier, aldrig hvad et valg er værd.
     default_order: defaultTeamOrderForRoster(
       teamId,
-      entries.map((e) => ({ rider_id: e.rider_id, role: e.race_role ?? "free_role" })),
+      // #5982: luksushjaelperen faar en hjaelpers standardordre (samme som motoren, teamOrdersAdapter.toRole).
+      entries.map((e) => ({ rider_id: e.rider_id, role: e.race_role === "luxury_helper" ? "helper" : (e.race_role ?? "free_role") })),
     ),
     stage_count: race.stages ?? 0,
     stages_completed: race.stages_completed ?? 0,

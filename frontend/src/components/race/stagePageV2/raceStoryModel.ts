@@ -13,8 +13,11 @@
 //   - groupMembersAt:   hvem kører i hvilken gruppe ved et km (replay-navne)
 //   - finaleData/…:     "Final 5 km"-grafikkens tidsmodel og gruppevalg
 import { replayFrames as replayFramesJs, checkpointGapForRider as checkpointGapJs } from "../../../../../backend/lib/raceStory.js";
+import { withNarrativeCauses, isTimeTrialNarrative, type NarrativeEvent } from "../../../../../backend/lib/engine/v4/mechanics/narrativeCauses6469.ts";
+import { collectRiderIds, describeEvent } from "../../../lib/stageTimelineFilm.js";
 import { classificationRowsForStage } from "../../../lib/raceStageClassifications.js";
 import type { ResultRow, RoleRider } from "./stagePageV2Model.ts";
+import { labelStoryLine, morningFromStory } from "../../../lib/breakawayLabels6299.ts"; // #6299
 
 // ── Kontraktens former (spec §3) ───────────────────────────────────────────
 
@@ -206,9 +209,19 @@ export type LineKind =
   | "formed" | "caught" | "survived" | "attack" | "incident" | "climb" | "gap"
   | "split" | "dropped" | "joined" | "gcLead" | "crack" | "finish";
 
+export interface StoryNarrative { key: string; params: Record<string, unknown> }
+export interface StoryNarrativeContext {
+  profileType?: string | null;
+  events: readonly NarrativeEvent[];
+  effortByRider?: { get(id: string): unknown } | null;
+  teamNameById?: ReadonlyMap<string, string>;
+}
+
 export interface StoryLine {
   id: string;
   kind: LineKind;
+  /** Recorded explanations belong to this selected moment; they do not replace other moments. */
+  narratives?: StoryNarrative[];
   km: number;
   /** Slut-km naar linjen daekker et stykke vej (km-spaend eller sammenlagte linjer). */
   kmTo: number | null;
@@ -265,7 +278,10 @@ function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLin
   const sorted = [...lines].sort((a, b) => a.km - b.km);
   const out: StoryLine[] = [];
   for (const line of sorted) {
-    const last = out[out.length - 1];
+    // #6299: morgenudbruddet og "gruppen foran" klynges aldrig sammen (data.ahead).
+    const ahead = line.data.ahead === true;
+    let last: StoryLine | undefined;
+    for (let i = out.length - 1; i >= 0; i--) if ((out[i].data.ahead === true) === ahead) { last = out[i]; break; }
     const lastKm = last ? Math.max(last.km, last.kmTo ?? last.km) : 0;
     if (last && line.km - lastKm <= CLUSTER_KM && line.km - last.km <= CLUSTER_MAX_SPAN_KM) {
       const ids = [...new Set([...last.riderIds, ...line.riderIds])];
@@ -292,7 +308,40 @@ function cluster(lines: StoryLine[], kind: LineKind, priority: number): StoryLin
  * jagt samt splits 4, samlinger 6. Linjer med dine ryttere rykker et trin op.
  * Samme prioritet: stoerst foerst (grupper, hul), saa senest i etapen.
  */
-export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINES): StoryLine[] {
+export function isTimeTrialStory(story: RaceStory, profileType: unknown, events: readonly NarrativeEvent[] = []): boolean {
+  return story.time_trial || isTimeTrialNarrative(events, profileType);
+}
+
+/** #6469: use the film derivation and approved copy, only beside a selected recorded outcome. */
+function attachNarratives(lines: StoryLine[], story: RaceStory, cast: Cast, context: StoryNarrativeContext | null): StoryLine[] {
+  if (!context || isTimeTrialStory(story, context.profileType, context.events) || !lines.length) return lines;
+  const names = new Map<string, string>();
+  for (const id of collectRiderIds(context.events)) {
+    const name = cast.nameOf(String(id));
+    if (name) names.set(String(id), name);
+  }
+  const extra = new Map<string, StoryNarrative[]>();
+  let parent: NarrativeEvent = null;
+  for (const event of withNarrativeCauses(context.events, { ownRiderIds: cast.mine, effortByRider: context.effortByRider, profileType: context.profileType })) {
+    if (event?.type !== "breakaway_cause" && event?.type !== "order_impact") { parent = event; continue; }
+    const kind = parent?.type === "breakaway_caught" ? "caught" : parent?.type === "breakaway_survived" ? "survived" : parent?.type === "finish" ? "finish" : null;
+    if (!kind) continue;
+    const at = num(parent?.params?.exact_km) ?? num(parent?.km);
+    if (at === null) continue;
+    const riders = strs(parent?.params?.rider_ids);
+    const matches = lines.filter(line => line.kind === kind && at >= line.km - 1e-6 && at <= (line.kmTo ?? line.km) + 1e-6
+      && (kind === "finish" || (riders.length > 0 && riders.every(id => line.riderIds.includes(id)))));
+    // Ambiguous or unselected outcomes get no explanation; never move it to another row.
+    if (matches.length !== 1) continue;
+    const description = describeEvent(event, { riderNameById: names, teamNameById: context.teamNameById });
+    if (!description) continue;
+    const id = matches[0].id;
+    extra.set(id, [...(extra.get(id) ?? []), description]);
+  }
+  return lines.map(line => extra.has(line.id) ? { ...line, narratives: extra.get(line.id) } : line);
+}
+export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINES, narrative: StoryNarrativeContext | null = null): StoryLine[] {
+  if (isTimeTrialStory(story, narrative?.profileType, narrative?.events)) return [];
   const single: StoryLine[] = [];
   const caught: StoryLine[] = [];
   const splits: StoryLine[] = [];
@@ -300,17 +349,18 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
   const dropped: StoryLine[] = [];
   const finishKm = story.distance_km ?? Math.max(0, ...story.moments.map((m) => m.km));
   const sprint = story.moments.find((m) => m.type === "sprint_decided");
+  const morning = morningFromStory(story); // #6299: kun udbruddet hedder udbrud
 
   for (const m of story.moments) {
     switch (m.key) {
       case "story.breakaway_formed":
-        single.push(baseLine(m, "formed", 1, cast));
+        single.push(labelStoryLine(baseLine(m, "formed", 1, cast), morning));
         break;
       case "story.breakaway_caught":
-        caught.push(baseLine(m, "caught", 1, cast));
+        caught.push(labelStoryLine(baseLine(m, "caught", 1, cast), morning));
         break;
       case "story.breakaway_survived":
-        single.push(baseLine(m, "survived", 1, cast));
+        single.push(labelStoryLine(baseLine(m, "survived", 1, cast), morning));
         break;
       case "story.finale_attack":
         single.push(baseLine(m, "attack", 2, cast, { gain: num(m.data.gained_seconds) }));
@@ -369,7 +419,7 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
         break;
       }
       case "story.breakaway_dropped": {
-        const line = baseLine(m, "dropped", 5, cast);
+        const line = labelStoryLine(baseLine(m, "dropped", 5, cast), morning);
         if (line.mineIds.length) dropped.push(line);
         break;
       }
@@ -425,7 +475,8 @@ export function curateMoments(story: RaceStory, cast: Cast, max = MAX_STORY_LINE
   // derefter det senere i etapen (taettere paa afgoerelsen).
   const weight = (l: StoryLine) => (l.kind === "gap" ? Math.abs(Number(l.data.after) - Number(l.data.before)) / 60 : l.kind === "split" || l.kind === "joined" ? l.count : 0);
   const chosen = [...all].sort((a, b) => a.priority - b.priority || weight(b) - weight(a) || b.km - a.km).slice(0, max);
-  return chosen.sort((a, b) => a.km - b.km || Number(a.kind === "finish") - Number(b.kind === "finish") || (a.time ?? 0) - (b.time ?? 0) || a.priority - b.priority);
+  const selected = chosen.sort((a, b) => a.km - b.km || Number(a.kind === "finish") - Number(b.kind === "finish") || (a.time ?? 0) - (b.time ?? 0) || a.priority - b.priority);
+  return attachNarratives(selected, story, cast, narrative);
 }
 
 /** km hvor replayet skal staa naar man trykker paa linjen (slut-km for et stykke vej). */

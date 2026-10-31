@@ -2,15 +2,9 @@
   "_comment": "Ikke-live poster uden decision/decide_by da gaten kom (#6701). Maa kun skrumpe: node scripts/feature-registry-flag-expiry.mjs --update-baseline fjerner forældede id'er.",
   "ids": [
     "academy-drift-kill-switch",
-    "auction-entry-gate",
-    "development-v2-aging",
     "mental-abilities-teamwork-leadership",
-    "push-notifications",
-    "race-intention-choice",
     "rider-primary-type-from-distribution",
     "season-academy-intake",
-    "season-documentary-llm",
-    "stage-page-v2",
-    "training-bulk-day"
+    "season-documentary-llm"
   ]
 }

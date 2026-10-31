@@ -152,7 +152,7 @@ export default function AdminDataTab() {
   // Resultat-indberetning fra PCM (manuel Excel-upload + admin-PCM-import) fjernet fra
   // UI'et 2026-06-19 (#1532): PCM bruges ikke længere til at afvikle løb — race-motoren
   // er resultat-kilden. Backend-pipelinen (POST /admin/import-results-pcm + pcmResultsImport.js)
-  // er bevidst bevaret og udfases separat. PCM lever videre som derive-kilde for evner (#1529).
+  // er slettet 2026-10-24 (#7082). PCM lever videre som derive-kilde for evner (#1529).
 
   async function handleSimulate(race, dryRun) {
     if (!dryRun) {

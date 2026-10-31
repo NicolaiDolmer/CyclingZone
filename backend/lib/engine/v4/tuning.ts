@@ -279,6 +279,7 @@ export const TTT_EXTRA_TUNING = deepFreeze(tttExtra);
 // importerer denne direkte (samme moenster som finale.ts <- FINALE_EXTRA_TUNING).
 const leadoutExtra = {
   maxScoreBonus: 0.12, // haardt loft paa finale-placerings-score-bonussen (samme skala som finale.ts's wprimeReserveWeight=0.15 — bounded, aldrig deterministisk sejr, mor-spec §4 M6)
+  deliveryScoreCostV3: 0.25, // #6937 (KUN s5_profiles_v3): lead-outens pris i placerings-scoren naar kaptajnen er i finalen, skaleret med puljens niveau (finaleLevelScale)
   fullTrainSize: 3, // antal leadout-ryttere i kontendentpuljen der giver fuld stoerrelses-multiplikator (aftagende marginalnytte derover, jf. trainSizeFactor)
 };
 
@@ -1594,3 +1595,125 @@ export type MountainSelectionV2Knobs = {
 
 /** #6084 orders_gc_v2-bjergselektion (deep-frosset). Se kommentaren ovenfor. */
 export const MOUNTAIN_SELECTION_V2_TUNING = deepFreeze(mountainSelectionV2);
+
+// ── #6804 (KUN s5_profiles_v3, SLUKKET): udbrudspakken trin 2 ────────────────
+// Spec docs/superpowers/specs/2026-10-21-6804-udbrud-pr-loebsgruppe-design.md (oven paa
+// 2026-10-17-6804-hilly-breakaway-design.md P1-P5). Ét trin pr. commit; ingen aeldre
+// revision laeser noget herfra (mechanics/breakawayV3_6804.ts, gcThreat.ts). Tallene er kalibreret
+// privat mod testporten (balance-internals/6804/, hard rule 17); ingen tal i kommentarer.
+const s5V3Breakaway = {
+  // P1 "slank B" (ejer 18/10): jagten paa kuperet i ETAPELOEB (endagsloeb uaendret: de
+  // vinder allerede for ofte paa kuperet, G14). Tre knapper, alle kun paa `hillyProfiles`:
+  p1: {
+    hillyProfiles: ["hilly"] as readonly ProfileType[],
+    // 1. Finalevaegten (etapeinteressen) ganges med en faktor pr. afslutning. Ordenen i
+    //    udbruddets favoer (spurt < bakke/mur < nedkoersel, K2) bevares: spurten beholder
+    //    den hoejeste vaegt, nedkoerslen roeres ikke.
+    finaleWeightFactorByFinale: {
+      flat_sprint: 0.6,
+      uphill_sprint: 0.6,
+      bunch_sprint: 0.6,
+      reduced_sprint: 0.6,
+      wall_finish: 0.8,
+      punch: 0.8,
+    } as Partial<Record<import("./types.ts").FinaleType, number>>,
+    // 2. Jagtens lukning foer finalestigningen er daempet (samme knap som bjerg); en
+    //    GC-reaktion jager stadig uden daempning.
+    preFinalChaseClosingScale: 0.6,
+    // 3. Lad-gaa-loftet ganges med denne faktor (lavere loft i etapeloeb).
+    letGoMaxGapScale: 0.85,
+  },
+  // P6 (ejer-beslutning 4 = A, 21/10): klassementskontrol paa snor i ETAPELOEB (endagsloeb
+  // uaendret). Ingen ny tilfaeldighed; alle fire punkter flytter kun eksisterende led.
+  p6: {
+    // 1. Foer finalen holder en reagerende klassementsjagt forspringet paa det holdet
+    //    tolererer (snoren, #5978) i stedet for at hente. Finalen = de sidste km til maal;
+    //    dér hentes der som foer. Under den mindste snor er snoren brudt: der hentes.
+    controlFinaleKm: 35,
+    minLeashSeconds: 45,
+    // 2. Den fremskrevne gevinst paa resten af etapen taeller fuldt naar der hoejst er
+    //    dette tilbage; laengere ude vaegtes den ned (aldrig under gulvet).
+    projectionFullKm: 50,
+    projectionMinWeight: 0.3,
+    // 3. Korte etapeloeb (hoejst saa mange etaper): et hold har kun noget at forsvare naar
+    //    dets klassementsrytter er blandt feltets bedste paa klassementsevne OG placeringen
+    //    giver en reel chance (foereren har altid troejen at forsvare).
+    shortRaceMaxStages: 8,
+    contenderAbilityRank: 100,
+  },
+  // P2 (#6912, K3): realistisk forspring i ETAPELOEB (endagsloeb uaendret: deres eget loft,
+  // #6428). Ikke en klemme paa uret: naar forspringet naar det feltet tolererer, slutter
+  // lad-gaa-fasen, og jagten (de interesserede hold) tager over. Kun paa profiler med
+  // etapeinteressen (BREAKAWAY_CHASE_V3_TUNING.profileTypes).
+  p2: {
+    // Det forspring feltet tolererer pr. profil, naar mindst et hold har etape- eller
+    // klassementsinteresse (mellemzonen). Udeladt profil = `interestedLeadSecondsDefault`.
+    interestedLeadSecondsByProfile: {
+      flat: 360,
+      rolling: 420,
+      hilly: 480,
+      mountain: 720,
+      high_mountain: 540,
+    } as Partial<Record<ProfileType, number>>,
+    interestedLeadSecondsDefault: 420,
+    // Uden jagt-interesse hos noget hold: den sjaeldne oevre zone, aldrig over den haarde graense.
+    unchasedLeadSeconds: 780,
+    // Automatisk jagt baerer arbejde: et interesseret hold uden ordre/reaktion jager med
+    // arbejde i forhold til interessen, maalt mod en fuld ordre (teamSignalWeight x maxTeamSignal).
+    autoChaseWorkScale: 1,
+    // P2.4 klatre-jagten (#6804, design 2026-10-23-6804-v3-climb-chase-design.md): snoren paa
+    // en stigning efter lad-gaa-fasen pr. profil, de segmenttyper der taeller som stigning,
+    // og arbejdets pris i forhold til en fuld ordre. Kalibreres i testporten (G2, G1', G11).
+    climbChaseLeadSecondsByProfile: {} as Partial<Record<ProfileType, number>>,
+    climbChaseLeadSecondsDefault: 780,
+    climbChaseSegmentKinds: ["climb"] as readonly string[],
+    climbChaseRidersPerTeam: 2,
+    climbChaseWorkScale: 1,
+  },
+};
+
+/** #6804 s5_profiles_v3-udbrudspakken (deep-frosset). Se kommentaren ovenfor. */
+export const S5_V3_BREAKAWAY_TUNING = deepFreeze(s5V3Breakaway);
+
+// #7160 (KUN s5_profiles_v3, SLUKKET): favoritholdene lader et ufarligt udbrud gaa paa bjerg
+// (mechanics/breakawayInterest7160.ts). START-KANDIDATER: kalibreres bagefter i testporten med
+// prod-startlister (balance-internals/7160/, hard rule 17); ingen tal i kommentarer.
+export const S5_V3_MOUNTAIN_LET_GO_7160_TUNING = deepFreeze({
+  profiles: ["mountain", "high_mountain"] as readonly ProfileType[],
+  gcRiderMaxRank: 10, // holdets bedste mand i jagtgruppen er klassementsrytter: hoejst denne plads
+  harmlessGcGapSeconds: 600, // ufarligt: hver udbryder mindst saa langt efter holdets klassementsrytter
+  gcTeamInterestScale: 0.5, // faktor paa et saadant holds etapeinteresse, i (0, 1]
+});
+
+// #7258 (KUN s5_profiles_v3): klassementet afgoeres ikke af et udbrud; farlige udbrud paa snor
+// (mechanics/gcBreakawayLeash7258.ts). Fremskrivningen = evne x resterende etaper: det tidstab
+// motoren faktisk giver en svagere klassementsrytter pr. etapetype. Kalibreret privat mod
+// motorens egne etaper (balance-internals/7258/, hard rule 17); ingen tal i kommentarer.
+export const S5_V3_GC_LEASH_7258_TUNING = deepFreeze({
+  // Sekunder en rytter taber pr. etape pr. enhed manglende loebsspecifik klassementsevne
+  // (1 - styrkeforhold), pr. profil. Udeladt profil = intet tab (motoren samler feltet).
+  lossSecondsPerAbilityByProfile: {
+    mountain: 220,
+    high_mountain: 360,
+    itt_hilly: 160,
+    itt: 20,
+  } as Partial<Record<ProfileType, number>>,
+  // Styrkeforholdet i fremskrivningen, nedad: en meget svag rytter taber ikke uendeligt.
+  minStrengthRatio: 0.5,
+  // Snoren paa en svagere udbryder der fremskrevet kan vinde loebet: hans afstand plus det
+  // fremskrevne tab plus dette tillaeg (minus snorens almindelige margin).
+  projectedAllowanceSeconds: 150,
+  // Holder jagten kun fremskrevne trusler paa snor, brydes snoren aldrig (ogsaa i finalen):
+  // forspringet holdes mindst paa dette.
+  projectedMinLeashSeconds: 30,
+  // Kun hold hvis klassementsrytter er blandt de bedste paa fremskrevet slutklassement (eller
+  // foereren) holder en fremskreven trussel paa snor.
+  projectedContenderTopN: 5,
+  // (C) Dagens favoritter: de bedste paa dagens finale-evne (finalens demand_vector) i feltet.
+  stageFavouriteTopN: 5,
+  // (C) Et spontant morgenudbrudsforsoeg fra en af dagens favoritter ganges med denne faktor.
+  stageFavouriteSpontaneousScale: 0.25,
+  // (B) Feltets bedste paa fremskrevet slutklassement (afstand + fremskrevet tab) gaar ikke i
+  // morgenudbrud (samme antal som stillingens top, S5_MORNING_GC_EXCLUSION).
+  projectedExcludeTopN: 10,
+});

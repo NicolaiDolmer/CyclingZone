@@ -100,9 +100,11 @@ her. Spilleren kan slå den fra på Profil (`teams.selection_reminder_enabled`, 
 | Kun problemer | ja | udtagelser + klassegrænser + binding, regnes i browseren |
 | Belastning | ja | `load.raceDays` = distinkte `race_stage_schedule.game_day` pr. løb (#4245) |
 | Form og peak | senere | `peak_planner_enabled` er `on` i prod (koden defaulter off) |
-| Rute-match | kun ved celle-åbning | `frontend/src/lib/suitability.js`, ægte 0-100 mod demand-vektoren |
+| Rute-match | kun ved celle-åbning | `backend/lib/routeMatch.js` (motorens løbsvektor, #6207); `frontend/src/lib/suitability.js` regner 0-100 mod den |
 
 Rute-match som fladedækkende linse er fravalgt: kalender-svaret bærer hverken evner eller demand-vektorer.
+
+**Ét rute-match-tal (#6207).** Holdudtagelse/Planlæg dag, Taktik, sæsonmatrix, planner-skuffen og "Passer til holdet" bruger samme model: `backend/lib/routeMatch.js`. Etapens vektor bygges på motorens krav under løbets regel-revision (`surfaceRulesRevision`): enkeltstart på motorens tidskørsels-evne, holdtidskørsel på motorens fysiologi, andre etaper på finale-kravet blandet med terrænet. Løbstallet er snittet af etapetallene, så hver etape tæller lige meget. Endpoints sender løbsvektoren som `demandVector`, og frontend regner aldrig sin egen vektor.
 
 **Belastnings-linsen, præcist (#4245).** `load.raceDays` tæller de distinkte `race_stage_schedule.game_day` rytteren er tilmeldt, kun i den AKTIVE sæson (`race_entries` er ikke sæson-scopet i sig selv). Løb uden brugbare `game_day`-rækker falder tilbage til løbets etapetal, mindst 1, og det fallback deles af både Race Hub'en og planner-boardet, så de to chips aldrig kan divergere.
 
@@ -149,7 +151,7 @@ Byg aldrig disse om. Verificeret mod koden 25/8.
 | `racehub/SeasonDayToggle.jsx` | `Season / Day` |
 | `racehub/SeasonPicker.jsx` | Sæson-browsing, read-only (B7) |
 | `lib/seasonTimeline.js` | 11 rene funktioner, sæson-agnostiske. `nextFocusDayIso` finder næste løbsdag uden udtagelse |
-| `lib/suitability.js` | Rute-match 0-100, spejler `raceSimulator.terrainScore` |
+| `lib/suitability.js` | Rute-match 0-100 mod løbsvektoren fra `backend/lib/routeMatch.js`; samme tal som backend (låst af `routeMatch.test.js`) |
 | `racehub/FitBar.jsx` | Den delte fit-bar — kolonne, pulje og popover viser samme signal |
 | `planner/MobileLanes.jsx` | Mobilt stakket lane-mønster, tap-mål ≥24px |
 | `planner/PlannerAssistantCard.jsx` | "Accept all" for peak-forslag |
@@ -187,3 +189,7 @@ Modsigelse 1 (`raceDays` bar etapetal) er lukket af [#4245](https://github.com/N
 [`2026-08-21-planning-center-fase2-design.md`](superpowers/specs/2026-08-21-planning-center-fase2-design.md) (IA, faseplan P0-P5, scorecard) · [`2026-08-25-planning-center-z1-saesonmatrix-design.md`](superpowers/specs/2026-08-25-planning-center-z1-saesonmatrix-design.md) (Z1-gitteret).
 
 Spiller-preview live: `frontend/public/race-planning-preview.html` (#4022), som en spiller byggede videre på 25/8 — se `.claude/learnings/2026-08-25-spillerprototype-afsloerede-to-brudte-kalender-invarianter.md`.
+
+## Genindmelding efter frivillig udtrækning (#7153, ejer 28/10)
+
+Managerens egne PUT-gem i udtagelsespanel og sæsonmatrix annullerer en frivillig udtrækning før feltet låses efter raceStartLock-reglen. Den nye udtagelse erstatter alle holdets gamle entries. Sletning af gamle entries, sletning af udtrækning og indsættelse af nye entries sker i samme transaktion, i netop den rækkefølge, via service-role-only replace_manager_race_selections. Et bulk-gem er fortsat alt eller intet. En ny valgt rytter bundet i et andet løb afvises med navn og løb; genindmeldingen flytter aldrig automatisk ryttere. Assistent, autofill, generator og runner annullerer aldrig en udtrækning. did_not_start ændres aldrig. Feltets lås gælder også når afviklingen er pauset. Testplan: lokal PG17 med de faktiske bindingstriggere, API-kontrakter, frontend-unit, fuld suite og panel/matrix i mobil og desktop med fixture-data. Ejer-design: issuecomment-6468132613 på #7153.

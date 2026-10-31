@@ -52,13 +52,7 @@
   },
   "today": "I dag",
   "legend": {
-    "title": "Terræn",
-    "sprint": "Sprint",
-    "cobbles": "Brosten",
-    "hilly": "Kuperet",
-    "mountain": "Bjerge",
-    "itt": "Enkeltstart",
-    "ttt": "Holdstart"
+    "title": "Terræn"
   },
   "terrain": {
     "sprint": "Sprint",
@@ -95,5 +89,60 @@
     "editSquad": "Ret udtagelse",
     "openRace": "Åbn løbet",
     "terrainCount": "{type} ×{count}"
+  },
+  "view": {
+    "label": "Visning",
+    "calendar": "Kalender",
+    "table": "Tabel"
+  },
+  "table": {
+    "label": "Sæsontabel",
+    "search": "Søg i løb",
+    "type": "Løbstype",
+    "allTypes": "Alle løbstyper",
+    "typeOption": {
+      "single": "Endagsløb",
+      "stage_race": "Etapeløb"
+    },
+    "rowType": {
+      "single": "Endagsløb",
+      "stage_race": "Etapeløb"
+    },
+    "class": "Klasse",
+    "allClasses": "Alle klasser",
+    "terrain": "Terræn",
+    "allTerrain": "Alt terræn",
+    "more": "Flere filtre",
+    "needsSquadOnly": "Kun løb der mangler udtagelse",
+    "count": "{count, plural, one {# løb} other {# løb}}",
+    "cols": {
+      "race": "Løb",
+      "dates": "Datoer",
+      "start": "Start",
+      "terrain": "Terræn",
+      "stages": "Etaper",
+      "class": "Klasse",
+      "squad": "Dit hold",
+      "squadShort": "Hold",
+      "open": "Åbn"
+    },
+    "openRace": "Åbn {name}",
+    "squad": {
+      "selected": "Hold klar",
+      "missing": "Mangler hold",
+      "gtBound": "Grand Tour"
+    },
+    "squadShort": {
+      "selected": "Klar",
+      "missing": "Mangler",
+      "gtBound": "GT"
+    },
+    "empty": {
+      "title": "Ryd filtrene for at se flere løb",
+      "desc": "Intet løb i sæsonen passer til din søgning og dine filtre.",
+      "clear": "Ryd filtre",
+      "noneTitle": "Skift til Alle hold for at se hele sæsonen",
+      "noneDesc": "Intet løb i sæsonen passer til denne visning."
+    }
   }
 }

@@ -58,7 +58,9 @@
     "urgentAuctions": "{count, plural, one {# enchère se termine dans l'heure} other {# enchères se terminent dans l'heure}}",
     "squadSelectionMissing": "Sélection de l'effectif manquante pour {race}",
     "notTrainedToday": "Tu ne t'es pas encore entraîné aujourd'hui",
-    "boardPlanMissing": "Aucun plan de la direction négocié pour l'instant"
+    "boardPlanMissing": "Aucun plan de la direction négocié pour l'instant",
+    "nextValueUpdate": "Prochaine mise à jour des valeurs : {when}",
+    "nextAcademyIntake": "Prochain recrutement de l'académie : {when}"
   },
   "seasonStart": {
     "title": "Saison {number} : c'est parti",
@@ -431,8 +433,8 @@
       "byDivision": "Fixé par ta division, pas par ton effectif"
     },
     "salaryDetail": {
-      "productionS3": "Système de salaires de la saison 3. Tes contrats actuels sont verrouillés et inchangés.",
-      "seasonSwitch": "La saison {next} recalcule chaque salaire à partir de la livraison au changement de saison. Tes contrats actuels sont déjà signés, le chiffre de cette saison reste donc verrouillé jusque-là."
+      "productionS3": "Salaires de tes contrats. Un coureur dont le contrat se termine est affiché avec son salaire de prolongation.",
+      "seasonSwitch": "Les salaires de la saison {next} sont ceux de tes contrats. Un coureur dont le contrat se termine est affiché avec le salaire qu'il aura si tu le prolonges."
     },
     "loanInterestDetail": "Intérêts courus sur la dette restante de tes emprunts actifs. Ajoutés à l'emprunt lui-même, pas déduits du net.",
     "assumption": "Suppose ton effectif actuel, aucun transfert, et le système de salaires de la saison {next}.",

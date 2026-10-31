@@ -91,11 +91,17 @@ function createMockSupabase(state, opts = {}) {
       limit(n) {
         return builder(table, op, [...filters, ["__limit", n, "meta"]], patch, inList);
       },
+      // #7382: fetchAllRows paginerer med .range(from, to).
+      range(from, to) {
+        return builder(table, op, [...filters, ["__range", [from, to], "meta"]], patch, inList);
+      },
       async maybeSingle() {
         const result = await new Promise((resolve) => obj.then(resolve));
         const rows = result.data ?? [];
         return { data: rows[0] ?? null, error: result.error };
       },
+      // #7086: notifyTeamOwner slaar holdets ejer op med .single().
+      async single() { return obj.maybeSingle(); },
       update(p) { return builder(table, "update", filters, p, inList); },
       delete() {
         return builder(table, "delete", filters, patch, inList);
@@ -187,6 +193,8 @@ function createMockSupabase(state, opts = {}) {
                 : Number(b[ord.col]) - Number(a[ord.col])));
             }
             if (Number.isFinite(lim)) rows = rows.slice(0, lim);
+            const rng = filters.find((f) => f[2] === "meta" && f[0] === "__range")?.[1];
+            if (rng) rows = rows.slice(rng[0], rng[1] + 1);
             result = { data: rows, error: null };
           }
         }
@@ -1862,19 +1870,30 @@ test("#4846 (flag on): +1-loftet pr. evne gælder pr. løbsdag (#4801)", async (
   const on = await runDay(onState);
 
   const maxGain = (r) => Math.max(0, ...Object.values(r.report.riders[0].gains));
+  // #6210-flaget slukket (default): kalenderdags-stien er uaendret (bit-identisk med foer #7075).
   assert.ok(maxGain(off) >= 2, `uden loft skal mindst én evne stige 2+ (var ${maxGain(off)})`);
   assert.equal(maxGain(on), 1, "med løbsdags-ticket er loftet +1 pr. evne pr. løbsdag");
+
+  // #6210-flaget taendt: kalenderdags-stien faar ogsaa dato-loftet, og det klippede point baeres videre.
+  const capState = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: fatProgress })] });
+  capState.app_config = [...(capState.app_config ?? []), { key: "ability_cap_per_date_enabled", value: "on" }];
+  const capped = await runDay(capState);
+  assert.equal(maxGain(capped), 1, "kalenderdags-stien er klippet til +1 pr. evne pr. dato (#6210, flag on)");
+  assert.ok(Object.values(capped.report.riders[0].gains_deferred_by_date_cap ?? {}).some((n) => n > 0), "det klippede point baeres videre, ikke tabt");
 });
 
 test("#4846 (flag on): historik-snapshot skrives pr. løbsdag uden tavs kassering", async () => {
   // Historik skrives kun de ticks hvor rytteren FAKTISK faar en hel evne-gevinst,
   // saa progress saettes taet paa 1 foer hver af de to loebsdage.
-  const nearlyThere = () => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 0.99]));
-  const state = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: nearlyThere() })] });
+  // #6210: maks +1 pr. evne pr. DATO, saa de to loebsdage samme dato poppe i hver
+  // sin halvdel af evnerne (ellers klipper dato-loftet loebsdag 13's point).
+  const half = Math.ceil(VISIBLE_ABILITIES.length / 2);
+  const nearlyThere = (keys) => Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, keys.includes(k) ? 0.9999 : 0]));
+  const state = seedState({ abilities: [makeAbilityRow("r1", { ability_progress: nearlyThere(VISIBLE_ABILITIES.slice(0, half)) })] });
   seedRaceDayTick(state, { gameDay: 12 });
 
   await runDay(state, { gameDay: 12 });
-  state.rider_derived_abilities[0].ability_progress = nearlyThere();
+  state.rider_derived_abilities[0].ability_progress = nearlyThere(VISIBLE_ABILITIES.slice(half));
   await runDay(state, { gameDay: 13 });
 
   const rows = state.rider_ability_race_day_history ?? [];
@@ -2226,6 +2245,57 @@ test("#5462 (flag off): BIT-IDENTISK — kalenderdato, og ingen af de tre loebsd
   for (const kolonne of ["injury_end_game_day", "injury_season_id", "injury_race_days_left"]) {
     assert.ok(!(kolonne in cond), `${kolonne} maa ikke findes i payloaden naar flaget er off`);
   }
+});
+
+test("#7086: en ny traeningsskade giver ÉN indbakkebesked til ejeren, aldrig igen ved genkoersel", async () => {
+  const { id, days } = findInjuringRider("2026-06-12");
+  const state = seedInjuryRider(id);
+  seedRaceDayTick(state, { gameDay: 12, value: "off" });
+  seedInjuryCalendar(state);
+  state.teams = [{ id: TEAM_ID, user_id: "user-owner" }];
+
+  const first = await runDay(state);
+  const again = await runDay(state);
+
+  assert.equal(first.alreadyRan, false);
+  assert.equal(again.alreadyRan, true, "reservationen stopper genkoerslen");
+  assert.equal(state.notifications.length, 1, "én besked, ingen ved genkoersel");
+  const n = state.notifications[0];
+  // #7412: foerste raske dag = dagen efter sidste skadedag.
+  const fitAgain = new Date(Date.UTC(2026, 5, 12 + days + 1)).toISOString().slice(0, 10);
+  assert.equal(n.user_id, "user-owner");
+  assert.equal(n.type, "selection_warning");
+  assert.equal(n.related_id, id);
+  assert.equal(n.metadata.messageCode, "notif.riderInjured.training");
+  assert.equal(n.metadata.riderId, id);
+  assert.equal(n.message, `Test Rytter was injured in training and is fit again on ${Number(fitAgain.slice(8))}/${Number(fitAgain.slice(5, 7))}.`);
+});
+
+test("#7086 (dato-modellen): skaden afregnes paa datoens sidste loebsdag og giver ÉN besked, ogsaa ved genkoersel", async () => {
+  const risk = injuryRisk({ intensity: 'hard', fatigue: 99 });
+  const riderId = Array.from({ length: 1000 }, (_, i) => `injury-date-${i}`).find((rid) => rollInjury({ riderId: rid, dateStr: '2026-06-12', risk }).injured);
+  const state = seedState({ riders: [makeRider({ id: riderId })], abilities: [makeAbilityRow(riderId)], conditions: [makeCondition(riderId, { fatigue: 99 })], plans: [{ rider_id: riderId, team_id: TEAM_ID, season_id: SEASON_ID, focus: 'climbing', intensity: 'hard' }] });
+  seedRaceDayTick(state, { gameDay: 1 });
+  state.app_config.push({ key: 'training_condition_per_date', value: 'on' });
+  state.teams = [{ id: TEAM_ID, user_id: "user-owner" }];
+  let notificationInserts = 0;
+  const base = createMockSupabase(state);
+  const supabase = { ...base, from(table) { const b = base.from(table); if (table !== "notifications") return b; return { ...b, select: b.select, insert: (row) => { notificationInserts += 1; return b.insert(row); } }; } };
+  for (const gameDay of [1, 2, 3, 4]) await runDay(state, { gameDay, dateGameDays: [1, 2, 3, 4, 5], seasonNumber: 4, supabase });
+  assert.equal(notificationInserts, 0, "ingen besked foer datoen er afregnet");
+  await runDay(state, { gameDay: 5, dateGameDays: [1, 2, 3, 4, 5], seasonNumber: 4, supabase });
+  assert.equal(notificationInserts, 1);
+  assert.equal(state.notifications[0].related_id, riderId);
+  const again = await runDay(state, { gameDay: 5, dateGameDays: [1, 2, 3, 4, 5], seasonNumber: 4, supabase });
+  assert.equal(again.alreadyRan, true);
+  assert.equal(notificationInserts, 1, "genkoerslen proever ikke engang at sende igen");
+});
+
+test("#7086: en igangvaerende skade giver ingen besked", async () => {
+  const state = seedState({ conditions: [makeCondition("r1", { fatigue: 30, injured_until: "2026-06-15" })] });
+  state.teams = [{ id: TEAM_ID, user_id: "user-owner" }];
+  await runDay(state);
+  assert.equal((state.notifications ?? []).length, 0);
 });
 
 test("#5462 (flag on): raskmeldingen foelger LOEBSDAGEN, ikke datoen", async () => {
@@ -3234,3 +3304,393 @@ for (const heldAt of ['heldRegistration', 'heldCommit', null, 'missingWrapper'])
     else {assert.deepEqual(body.settledGameDays,[1,2,3,4]);assert.equal(state.training_day_runs.length,4);}
   });
 }
+
+// ── #6641 variant B: loebsdagens intention som udbytte-modifikator ──────────────
+test("#6641 variant B: intentionen skalerer loebsdagens udbytte kun naar race_day_intention_enabled er on", async () => {
+  const progressAfter = async ({ intention, effort }) => {
+    const state = seedState({
+      conditions: [makeCondition("r1", { fatigue: 30, form: 50 })],
+      plans: [REST_PLAN],
+      abilities: [makeAbilityRow("r1", { ability_progress: {} })],
+    });
+    seedRaceDayTick(state, { gameDay: 12 });
+    seedFlags(state, { engine: "on", development: "on" });
+    state.app_config.push({ key: TRAINING_TICK_PER_RACE_DAY_FLAG_KEY, value: "on" });
+    if (intention) state.app_config.push({ key: "race_day_intention_enabled", value: intention });
+    seedRodeStage(state, { gameDay: 12, profile: "mountain" });
+    state.race_stage_roles = effort ? [{ race_id: "race-1", stage_number: 1, rider_id: "r1", race_role: "helper", effort }] : [];
+    const result = await runDay(state, { gameDay: 12 });
+    assert.equal(result.report.riders[0].race_day, true);
+    return Number(state.rider_derived_abilities[0].ability_progress?.climbing ?? 0) + Number(result.report.riders[0].gains?.climbing ?? 0);
+  };
+  const none = await progressAfter({ intention: null, effort: null });
+  // Flag off: et gemt valg aendrer intet (variant A, bit-identisk).
+  assert.equal(await progressAfter({ intention: null, effort: "all_out" }), none);
+  assert.equal(await progressAfter({ intention: "off", effort: "grupetto" }), none);
+  // Flag on: trappen virker; normal og intet valg er variant A.
+  const allOut = await progressAfter({ intention: "on", effort: "all_out" });
+  const grupetto = await progressAfter({ intention: "on", effort: "grupetto" });
+  assert.equal(await progressAfter({ intention: "on", effort: "normal" }), none);
+  assert.equal(await progressAfter({ intention: "on", effort: null }), none);
+  assert.ok(allOut > none, `all_out ${allOut} skal give mere end ${none}`);
+  assert.ok(grupetto < none, `grupetto ${grupetto} skal give mindre end ${none}`);
+});
+
+// ── #6461 B phase 1: the press settles the whole known date ─────────────────
+// Same engine, same inputs: a whole-date press at 06:00 equals the evening run (I1),
+// one condition settlement, and the evening afterwards finds nothing left (I2).
+test('#6461 B I1: whole-date press (five race days at 06:00) is bit-identical to the evening settlement', async () => {
+  const pressed = trainNowFixture();
+  const automatic = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(pressed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+    await runDay(automatic, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  }
+  assert.deepEqual(pressed.rider_derived_abilities, automatic.rider_derived_abilities, 'same growth');
+  assert.deepEqual(withoutClock(pressed.rider_condition), withoutClock(automatic.rider_condition), 'same fatigue/form');
+  assert.deepEqual(pressed.rider_training_scores, automatic.rider_training_scores, 'same session scores');
+  const receipts = (state) => state.training_rider_ticks.map(({ report: { condition_observed: observed, ...report } }) => ({ ...report, observed: withoutClock([observed])[0] }));
+  assert.deepEqual(receipts(pressed), receipts(automatic), 'same receipts (clock aside)');
+});
+
+test('#6461 B I2: double press and the evening run after a whole-date press change nothing', async () => {
+  const state = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+  const after = structuredClone({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition) });
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    assert.equal((await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING })).alreadyRan, true);
+    assert.equal((await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING })).alreadyRan, true);
+  }
+  assert.deepEqual({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition) }, after);
+  assert.equal(state.training_rider_ticks.length, 10);
+});
+
+test('#6461 B: a race rider with an open slot gets nothing at the press (no growth before his race); the free rider gets the whole date', async () => {
+  const open = { r1: [{ raceId: 'race-x', stageNumber: 1, gameDay: 3 }] };
+  const state = trainNowFixture();
+  const abilitiesBefore = structuredClone(state.rider_derived_abilities.find((row) => row.rider_id === 'r1'));
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r2'], unresolvedSlotsByRider: open });
+  assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r1'), [], 'race rider waits');
+  assert.deepEqual(state.rider_derived_abilities.find((row) => row.rider_id === 'r1'), abilitiesBefore, 'no ability write before his race');
+  assert.deepEqual(state.training_rider_ticks.filter((row) => row.rider_id === 'r2').map((row) => row.game_day), TRAIN_NOW_DAYS);
+});
+
+// ── #6461 B loopholes: train + undo, double development, rider bought mid-day ──
+const pressWholeDate = async (state, extra = {}) => {
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, ...extra });
+};
+const snapshot = (state) => structuredClone({ a: state.rider_derived_abilities, c: withoutClock(state.rider_condition), s: state.rider_training_scores, n: state.training_rider_ticks.length });
+
+test('#6461 B loophole train + undo: changing the plan after a whole-date press and pressing again changes nothing', async () => {
+  const state = trainNowFixture();
+  await pressWholeDate(state);
+  const after = snapshot(state);
+  // "Undo": the manager swaps both riders to another focus and intensity, then presses again.
+  for (const plan of state.training_plans) Object.assign(plan, { focus: 'endurance', intensity: 'easy' });
+  await pressWholeDate(state);
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(state, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  assert.deepEqual(snapshot(state), after);
+});
+
+test('#6461 B loophole double development: old press (four days), flag flipped on, B press, evening = one evening settlement', async () => {
+  const mixed = trainNowFixture();
+  const automatic = trainNowFixture();
+  for (const gameDay of TRAIN_NOW_DAYS.slice(0, -1)) await runDay(mixed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING });
+  await pressWholeDate(mixed); // the B press after the flip: days 1-4 are alreadyRan, day 5 settles once
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(mixed, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  for (const gameDay of TRAIN_NOW_DAYS) await runDay(automatic, { gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'assistant', now: TRAIN_NOW_EVENING });
+  assert.deepEqual(mixed.rider_derived_abilities, automatic.rider_derived_abilities, 'growth once');
+  assert.deepEqual(withoutClock(mixed.rider_condition), withoutClock(automatic.rider_condition), 'condition once');
+  assert.deepEqual(mixed.rider_training_scores, automatic.rider_training_scores, 'session scores once');
+  assert.equal(mixed.training_rider_ticks.length, 10);
+});
+
+test('#6461 B loophole rider bought mid-day: the buyer running the date gives the rider no second development', async () => {
+  const state = trainNowFixture();
+  await pressWholeDate(state);
+  const after = snapshot(state);
+  // r1 is sold after the seller's whole-date press; the buyer settles its own date.
+  state.riders.find((row) => row.id === 'r1').team_id = 'team-buyer';
+  state.training_plans.push({ rider_id: 'r1', team_id: 'team-buyer', season_id: SEASON_ID, focus: 'sprint', intensity: 'hard' });
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(state, { teamId: 'team-buyer', gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r1'] });
+  }
+  assert.deepEqual(snapshot(state), after);
+  assert.ok(state.training_rider_ticks.filter((row) => row.rider_id === 'r1').every((row) => row.team_id === TEAM_ID), 'receipts stay with the seller');
+  // Control: without the seller's press the buyer's run does develop him (the test is not vacuous).
+  const control = trainNowFixture();
+  control.riders.find((row) => row.id === 'r1').team_id = 'team-buyer';
+  for (const gameDay of TRAIN_NOW_DAYS) {
+    await runDay(control, { teamId: 'team-buyer', gameDay, dateGameDays: TRAIN_NOW_DAYS, executedBy: 'manager', now: TRAIN_NOW_MORNING, eligibleRiderIds: ['r1'] });
+  }
+  assert.equal(control.training_rider_ticks.filter((row) => row.rider_id === 'r1' && row.team_id === 'team-buyer').length, 5);
+});
+
+// ── #3564 kurve B: kald-stedet ───────────────────────────────────────────────
+// Syntetiske testparams (ikke kalibreringen, hard rule 17). Testen laaser kun
+// koblingen: flag off eller manglende params = dagens model, on + params = kurven.
+const CURVE_B_TEST_PARAMS = Object.freeze({
+  rate: 10, levelExponent: 2, capExponent: 0.5,
+  load: { fromAge: 16, fullAge: 24, floor: 0.5 },
+  potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+});
+
+// #7390: `params` ligger i den lukkede tabel private_config (eneste kilde).
+// `retiredEnv` saetter den fjernede Railway-variabel, saa testen kan vise at den ignoreres.
+async function runCurveBDay({ flag = null, params = undefined, retiredEnv = undefined } = {}) {
+  const state = seedState({
+    abilities: [makeAbilityRow("r1", { ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  if (flag != null) state.app_config = [{ key: "development_curve_b", value: flag }];
+  if (params !== undefined) state.private_config = [{ key: "development_curve_b_params", value: params }];
+  const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  if (retiredEnv === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  else process.env.DEVELOPMENT_CURVE_B_PARAMS = retiredEnv;
+  const warn = console.warn;
+  const warnings = [];
+  console.warn = (...args) => warnings.push(args.join(" "));
+  try {
+    await runTeamTrainingDay({
+      supabase: createMockSupabase(state), teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "manager", now: NOW,
+    });
+  } finally {
+    console.warn = warn;
+    if (prev === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+    else process.env.DEVELOPMENT_CURVE_B_PARAMS = prev;
+  }
+  const row = state.rider_derived_abilities.find((r) => r.rider_id === "r1");
+  return { row: JSON.parse(JSON.stringify(row)), warnings };
+}
+
+test("#3564 kald-sted: flag off = dagens model, ogsaa med params i private_config", async () => {
+  const today = await runCurveBDay();
+  const offWithParams = await runCurveBDay({ flag: "off", params: CURVE_B_TEST_PARAMS });
+  assert.deepEqual(offWithParams.row, today.row);
+});
+
+test("#3564 kald-sted: flag on uden params = dagens model + advarsel uden tal", async () => {
+  const today = await runCurveBDay();
+  const onNoParams = await runCurveBDay({ flag: "on" });
+  assert.deepEqual(onNoParams.row, today.row);
+  assert.ok(onNoParams.warnings.some((w) => w.includes("[curve-b]")), "advarsel i loggen");
+  assert.ok(!onNoParams.warnings.some((w) => w.includes("levelExponent")), "advarslen viser aldrig params");
+});
+
+test("#3564 kald-sted: flag on + gyldige params sender kurven ind i tick'et", async () => {
+  const today = await runCurveBDay();
+  const curve = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  assert.notDeepEqual(curve.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
+});
+
+// ── #7382 blød overgang: motoren tager eet oejebliksbillede og stempler dagens dato ──
+// Evnerne staar over det bloede loft (syntetiske params), saa overgangen kan ses.
+const CURVE_B_IGNITED_KEY_7382 = "development_curve_b_ignited_at";
+const CURVE_B_MEMBERS_7382 = "development_curve_b_transition_members";
+const HIGH_7382 = () => ({ ...Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 85])), ability_caps: Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80])) });
+const MANAGER_TEAM_7382 = { id: TEAM_ID, user_id: "u1", is_ai: false, is_bank: false, is_test_account: false };
+// fail: "stamp" (noeglens laesning), "members" (medlemslaesning) eller "snapshot" (taendingens atomare skrivning).
+// Taendingens database-funktion efterlignes her: under laasen raekker + stempel, eller intet hvis stemplet staar der.
+function igniteRpc7382(state, args, { configUpserts, touched }) {
+  state[CURVE_B_MEMBERS_7382] ??= [];
+  const existing = state.app_config.find((r) => r.key === CURVE_B_IGNITED_KEY_7382);
+  if (existing) return { data: existing.value, error: null };
+  const rows = args.p_members.filter((m) => state.riders.some((r) => r.id === m.rider_id)
+    && !state[CURVE_B_MEMBERS_7382].some((x) => x.rider_id === m.rider_id && x.ignited_on === args.p_ignited_on));
+  state[CURVE_B_MEMBERS_7382].push(...rows.map((m) => ({ rider_id: m.rider_id, ignited_on: args.p_ignited_on, abilities: m.abilities })));
+  touched.push(`${CURVE_B_MEMBERS_7382}:upsert`);
+  state.app_config.push({ key: CURVE_B_IGNITED_KEY_7382, value: args.p_ignited_on });
+  configUpserts.push(CURVE_B_IGNITED_KEY_7382);
+  return { data: args.p_ignited_on, error: null };
+}
+async function runCurveBDay7382({ flag, params, ignitedAt, members, conditionPerDate = false, fail = null, prep = null, runArgs = {}, now = NOW }) {
+  const state = seedState({
+    abilities: [makeAbilityRow("r1", HIGH_7382())],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  state.app_config = [{ key: "development_curve_b", value: flag }];
+  if (ignitedAt) state.app_config.push({ key: CURVE_B_IGNITED_KEY_7382, value: ignitedAt });
+  if (members) state[CURVE_B_MEMBERS_7382] = members.map((m) => ({ ...m }));
+  if (conditionPerDate) {
+    seedRaceDayTick(state, { gameDay: 1 });
+    state.app_config.push({ key: "training_condition_per_date", value: "on" });
+  }
+  // Holdet er et managerhold (seedRaceDayTick saetter sin egen holdraekke; felterne flettes ind).
+  state.teams = [{ ...(state.teams?.find((t) => t.id === TEAM_ID) ?? {}), ...MANAGER_TEAM_7382 }];
+  prep?.(state);
+  const underlying = createMockSupabase(state);
+  const configKeys = [];
+  const configUpserts = [];
+  const touched = [];
+  const supabase = { ...underlying,
+    async rpc(name, args) {
+      if (name !== "ignite_development_curve_b_transition") return underlying.rpc(name, args);
+      if (fail === "snapshot") return { data: null, error: { message: "billede nede" } };
+      return igniteRpc7382(state, args, { configUpserts, touched });
+    },
+    from(table) {
+    const b = underlying.from(table);
+    if (table === CURVE_B_MEMBERS_7382) {
+      touched.push(table);
+      if (fail === "members") return { ...b, select: () => ({ eq: () => ({ in: async () => ({ data: null, error: { message: "members nede" } }) }) }) };
+      return b;
+    }
+    if (table !== "app_config") return b;
+    return { ...b,
+      select(...a) {
+        const s = b.select(...a);
+        return { ...s, eq(col, val) {
+          configKeys.push(val);
+          if (fail === "stamp" && val === CURVE_B_IGNITED_KEY_7382) return { maybeSingle: async () => ({ data: null, error: { message: "stempel nede" } }) };
+          return s.eq(col, val);
+        } };
+      },
+      upsert(rows, o) { const keys = [rows].flat().map((r) => r.key); configKeys.push(...keys); configUpserts.push(...keys); return b.upsert(rows, o); },
+    };
+  } };
+  // #7390: params kun i den lukkede tabel private_config.
+  if (params !== undefined) state.private_config = [{ key: "development_curve_b_params", value: params }];
+  const warn = console.warn;
+  console.warn = () => {};
+  let result = null;
+  try {
+    result = await runTeamTrainingDay({ supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager", now,
+      ...(conditionPerDate ? { gameDay: 1, dateGameDays: [1, 2, 3, 4, 5], eligibleRiderIds: ["r1"] } : {}), ...runArgs });
+  } finally {
+    console.warn = warn;
+  }
+  const stamp = state.app_config.find((r) => r.key === CURVE_B_IGNITED_KEY_7382)?.value ?? null;
+  const row = state.rider_derived_abilities.find((r) => r.rider_id === "r1");
+  return { progress: JSON.parse(JSON.stringify(row.ability_progress)), stamp, configKeys, configUpserts, touched,
+    members: state[CURVE_B_MEMBERS_7382] ?? null, report: result?.report ?? null };
+}
+
+test("#7382 kald-sted: kurve B aktiv stempler dagens dato og giver dag 0 max(kurve B, gammel) = den gamle models fremdrift", async () => {
+  const first = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  assert.equal(first.stamp, "2026-06-12", "dagens danske dato stemples");
+  const old = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
+  const full = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
+  assert.equal(full.stamp, "2026-05-01", "et eksisterende stempel overskrives aldrig");
+  assert.notDeepEqual(full.progress, first.progress, "kontrol: overgangen aendrer noget (testen er ikke tom)");
+  assert.deepEqual(first.progress, old.progress, "dag 0 over loftet = den gamle models fremdrift (den er hurtigst her)");
+});
+
+test("#7382 kald-sted: en efterslaebs-koersel for en gammel dato stempler DAGENS dato, ikke tick-datoen", async () => {
+  const backlog = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, runArgs: { tickDateOverride: "2026-06-09" } });
+  assert.equal(backlog.stamp, "2026-06-12", "vinduet starter i dag, ikke paa efterslaebets dato");
+  assert.ok(backlog.members.every((m) => m.ignited_on === "2026-06-12"));
+  const old = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS, runArgs: { tickDateOverride: "2026-06-09" } });
+  assert.deepEqual(backlog.progress, old.progress, "dato foer taendingen: vaegt 0");
+});
+
+test("#7382 kald-sted: flag off slaar ikke noeglen op, tager intet billede og stempler intet", async () => {
+  const off = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
+  assert.equal(off.stamp, null);
+  assert.ok(!off.configKeys.includes(CURVE_B_IGNITED_KEY_7382), "intet opslag af noeglen");
+  assert.ok(off.configKeys.includes("development_curve_b"), "kontrol: spionen ser app_config-opslag");
+  assert.deepEqual(off.touched, []);
+  assert.equal(off.members, null);
+});
+
+test("#7382 kald-sted: flag on uden gyldige params stempler intet (kurven koerer ikke)", async () => {
+  const noParams = await runCurveBDay7382({ flag: "on" });
+  assert.equal(noParams.stamp, null);
+  assert.ok(!noParams.configKeys.includes(CURVE_B_IGNITED_KEY_7382));
+  assert.deepEqual(noParams.touched, [], "intet opslag af medlemmerne");
+});
+
+test("#7382 kald-sted: oejebliksbilledet tages een gang: managerholdets ryttere, ikke AI-hold eller pensionerede", async () => {
+  const otherTeams = (state) => {
+    state.teams.push({ id: "team-ai", user_id: "u-ai", is_ai: true, is_bank: false, is_test_account: false });
+    state.riders.push(makeRider({ id: "r-ai", team_id: "team-ai" }), makeRider({ id: "r-old", is_retired: true }), makeRider({ id: "r2", team_id: TEAM_ID }));
+    state.rider_derived_abilities.push(makeAbilityRow("r-ai", HIGH_7382()), makeAbilityRow("r-old", HIGH_7382()), makeAbilityRow("r2", HIGH_7382()));
+  };
+  const first = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: otherTeams });
+  assert.deepEqual(first.members.map((m) => m.rider_id).sort(), ["r1", "r2"], "hele managerholdets trup, ogsaa uden tick i koerslen");
+  assert.ok(first.members.every((m) => m.abilities.length > 0 && m.abilities.every((a) => VISIBLE_ABILITIES.includes(a))));
+  assert.deepEqual(first.configUpserts, [CURVE_B_IGNITED_KEY_7382], "stemplet skrives en gang");
+  assert.equal(first.touched.filter((t) => t.endsWith(":upsert")).length, 1, "billede og stempel i eet atomart kald");
+  const again = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-12", members: first.members, prep: otherTeams });
+  assert.ok(!again.touched.some((t) => t.endsWith(":upsert")), "stemplet staar der: intet nyt billede");
+  assert.deepEqual(again.members, first.members);
+});
+
+test("#7382 kald-sted: inde i vinduet giver kun en raekke blandingen; en tilkommen rytter uden raekke faar kurve B", async () => {
+  const full = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
+  const old = await runCurveBDay7382({ flag: "off", params: CURVE_B_TEST_PARAMS });
+  const day7 = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-06-05" };
+  const newcomer = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r-other", ignited_on: "2026-06-05", abilities: [...VISIBLE_ABILITIES] }] });
+  assert.deepEqual(newcomer.progress, full.progress, "ingen raekke: kurve B hele vejen, ingen maaling senere");
+  assert.equal(newcomer.members.length, 1, "intet maales inde i vinduet");
+  const empty = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r1", ignited_on: "2026-06-05", abilities: [] }] });
+  assert.deepEqual(empty.progress, full.progress, "tom raekke (krydsede loftet senere): kurve B");
+  const locked = await runCurveBDay7382({ ...day7, members: [{ rider_id: "r1", ignited_on: "2026-06-05", abilities: [...VISIBLE_ABILITIES] }] });
+  assert.notDeepEqual(locked.progress, full.progress, "med raekken: blandingen");
+  assert.notDeepEqual(locked.progress, old.progress, "dag 7: ikke laengere den gamle models fulde fart");
+  for (const r of [newcomer, empty, locked]) {
+    assert.deepEqual(r.configUpserts, [], "noeglen staar der: intet stempel-upsert");
+    assert.ok(!r.touched.some((t) => t.endsWith(":upsert")), "intet billede");
+  }
+});
+
+test("#7382 kald-sted: efter vinduet hverken stempel-skrivning eller medlemsopslag", async () => {
+  const after = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
+  assert.deepEqual(after.configUpserts, []);
+  assert.deepEqual(after.touched, []);
+});
+
+test("#7382 kald-sted: en skadet rytter kommer med i billedet og faar overgangen senere i vinduet", async () => {
+  const injured = (state) => { state.rider_condition = [makeCondition("r1", { injured_until: "2026-06-13" })]; };
+  const day0 = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, prep: injured });
+  assert.deepEqual(day0.report.riders[0].gains, {}, "kontrol: ingen gevinst paa taendingsdagen");
+  assert.equal(day0.members?.length, 1, "rytteren er med alligevel");
+  const later = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: day0.stamp, now: new Date("2026-06-19T10:00:00+02:00") };
+  const withRow = await runCurveBDay7382({ ...later, members: day0.members });
+  const fullLater = await runCurveBDay7382({ ...later, ignitedAt: "2026-05-01" });
+  assert.notDeepEqual(withRow.progress, fullLater.progress, "med raekken: overgangen senere i vinduet");
+});
+
+// Fejl i billedet: intet stempel, saa naeste koersel proever igen. Mutationsvagt: motoren skal
+// sende strict: conditionPerDate videre til stempel, billede og medlemslaesning.
+for (const [fail, ignitedAt, message] of [
+  ["stamp", undefined, /stempel nede/],
+  ["snapshot", undefined, /billede nede/],
+  ["members", "2026-06-05", /members nede/],
+]) {
+  test(`#7382 kald-sted: ${fail}-fejl kaster paa dato-stien (strict), men ikke paa den gamle sti`, async () => {
+    const args = { flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt, fail };
+    await assert.rejects(runCurveBDay7382({ ...args, conditionPerDate: true }), message);
+    const loose = await runCurveBDay7382(args);
+    assert.ok(loose.progress, "uden strict koerer dagen videre (kurve B fuldt)");
+    if (!ignitedAt) assert.equal(loose.stamp, null, "intet stempel uden et helt billede");
+  });
+}
+
+test("#7382 kald-sted: et fejlet billede efterlader intet stempel, og naeste koersel tager det", async () => {
+  const failed = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, fail: "snapshot" });
+  const full = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS, ignitedAt: "2026-05-01" });
+  assert.equal(failed.stamp, null);
+  assert.deepEqual(failed.configUpserts, [], "stemplet skrives aldrig efter et fejlet billede");
+  assert.deepEqual(failed.progress, full.progress, "koerslen faar kurve B fuldt");
+  const retry = await runCurveBDay7382({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  assert.equal(retry.stamp, "2026-06-12");
+  assert.equal(retry.members.length, 1);
+});
+
+test("#7390 kald-sted: den fjernede Railway-variabel taender aldrig kurven; kun private_config goer", async () => {
+  const today = await runCurveBDay();
+  const fromTable = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
+  const envOnly = await runCurveBDay({ flag: "on", retiredEnv: JSON.stringify(CURVE_B_TEST_PARAMS) });
+  assert.notDeepEqual(fromTable.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
+  const fellBack = (w) => w.includes("[curve-b]") && w.includes("development_curve_b_params") && w.includes("dagens model");
+  assert.ok(!fromTable.warnings.some(fellBack), "ingen fald-tilbage-advarsel naar tabellen bruges");
+  assert.deepEqual(envOnly.row, today.row, "variablen alene = dagens model");
+  assert.ok(envOnly.warnings.some(fellBack), "faldet til dagens model logges, aldrig tavst");
+});
+
+test("#7390 kald-sted: flag off med params i private_config = dagens model", async () => {
+  const today = await runCurveBDay();
+  const off = await runCurveBDay({ flag: "off", params: CURVE_B_TEST_PARAMS });
+  assert.deepEqual(off.row, today.row);
+});

@@ -59,7 +59,7 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
 - **Beskeder mellem managers (#3200, DM v1, låst 8/9):** en besked er maks **2 000 tegn** (`DM_BODY_MAX_LENGTH` i `backend/lib/directMessages.js` OG `dm_messages_body_length`-CHECK i databasen — de to skal spejle hinanden, ellers får spilleren en rå 500 fra Postgres i stedet for en pæn 400). Afsendelse er rate-limitet til **30 beskeder pr. 10 minutter** pr. bruger (`dmSendLimiter`), sidehandlinger (blokér/anmeld/skjul/markér læst) til 60 pr. 10 minutter (`dmActionLimiter`). **Beskeder slettes ALDRIG fra databasen** — `dm_messages` har hverken UPDATE- eller DELETE-policy for nogen rolle; tabellen er loggen og evidensen i fair-play-sager (#3131), og en bruger kan kun skjule en samtale for sig selv. Admin kan kun læse en samtale der har en `dm_reports`-række, håndhævet i RLS. Regeldetaljerne: `docs/SOCIAL_RULES.md` §6a.
 - **AI/bank/frozen får aldrig board-state** — board features er manager-only.
 - **`board_plan_snapshots = 0` er FORVENTET, ikke en fejl (#2596):** tabellen er et sæson-slut-retrospektiv (skrives af `processTeamSeasonEnd`/`buildSeasonEndPreviewRows`), ikke spillerens live plan — den forbliver tom indtil første reelle sæson-slut for en 1yr/3yr/5yr-plan er kørt. `loadGoalContextForBoard` (`boardGoalContext.js`) håndterer tom-tabel-casen korrekt (falder tilbage til `null`-baseline → mål-evaluatorer returnerer `awaiting_data`). Forveksl den ikke med et brudt write-path (#2463 var tæt på denne fælde).
-- **Admin-resultatupload** — eneste upload-path er PCM-fallbacken `/api/admin/import-results-pcm` (multipart `files[]`, maks 30 filer, Excel-filer i memory med 10 MB loft pr. fil). Excel- og Sheets-import + dyn_cyclist-/UCI-sync er fjernet 2026-06-12 (#1179/#1180/#1207) og må ikke genindføres — forward-guard i `backend/lib/adminRouteOwnership.test.js`.
+- **Admin-resultatupload** — findes ikke længere: PCM-fallbacken `/api/admin/import-results-pcm` er slettet 2026-10-24 (#7082, ejer-beslutning), race-motoren er eneste resultat-kilde. Excel- og Sheets-import + dyn_cyclist-/UCI-sync er fjernet 2026-06-12 (#1179/#1180/#1207) og må ikke genindføres (gælder også PCM-importen) — forward-guard i `backend/lib/adminRouteOwnership.test.js`.
 - **Forum-billeder (#4819, ejer-valg 8/9)** — spiller-vendt upload-path er Supabase Storage-bucketen `forum-images` (public, `file_size_limit` 2 MB, mime-hvidliste `image/jpeg`/`image/png`/`image/webp`). Grænserne er **maks 3 billeder pr. indlæg** (tråd eller svar) og **2 MB pr. billede EFTER browser-nedskalering** (længste side 1600 px, kvalitet 0,85 — et 8 MB telefonbillede skal virke). Stien er `<user_id>/<uuid>.<ext>`: første mappeniveau ER ejerskabet, håndhævet både af RLS på `storage.objects` (INSERT kun i egen mappe, DELETE for ejer eller `public.is_admin()`) og af `normalizeForumImages` i `backend/lib/forum.js`. Billederne bor i `forum_posts.images`/`forum_replies.images` (jsonb, CHECK ≤ 3), ALDRIG som markup i `body` — forum-body rendres som ren tekst, og en billed-syntaks ville kræve en renderer og dermed en XSS-flade. De fire steder grænserne står (migration, `backend/lib/forum.js`, `frontend/src/lib/forumImages.js`, denne fil) rettes altid sammen. Forældreløse filer ryddes af `scripts/sweep-forum-image-orphans.mjs` (dry-run som default).
 - **PostgREST's TAVSE 1000-rækkers-loft (#3331):** ethvert `supabase.from(table).select(...)` uden `.range()` returnerer stiltiende MAKS 1000 rækker — ingen fejl, ingen advarsel, bare et trunkeret resultat. Har bidt to gange: PCM rytter-matcher (2026-05-30, 88% af 8.699 ryttere usynlige for matching, `.claude/learnings/2026-05-30-pcm-matcher-1000-row-pagination.md`) og sponsor race-day-bonus (#3315, 2026-08-04, ét menneskehold underbetalt 94%, `.claude/learnings/2026-08-04-sponsor-race-results-unpaginated-query.md`). Verificerede prod-rækketal pr. 2026-08-05-audittet (#3331): `race_results` op til **16.994 rækker pr. løb** (213 løb allerede over 1000!) og op til 5.130 pr. hold; `race_entries` maks 192 pr. løb / 546 pr. hold; `race_stage_schedule`/`race_stage_profiles` maks 21 pr. løb; `riders` maks 38 pr. hold; `finance_transactions` maks 305 pr. hold (voksende — se `notifications` maks 920 pr. bruger, tæt på loftet). Deny-listede tabeller (mindst): `race_results`, `riders`, `race_entries`, `race_stage_schedule`, `race_stage_profiles`, `finance_transactions`, `notifications`.
   - **Fix:** paginér med `fetchAllRows`/`fetchAllRowsChunkedIn` (`backend/lib/supabasePagination.js` + frontend-ækvivalenten `frontend/src/lib/supabasePagination.js`). `buildQuery` SKAL inkludere en stabil `.order()` (typisk `.order("id", { ascending: true })`), ellers kan sider overlappe/springe rækker.
@@ -185,8 +185,11 @@ i stedet AFTER ROW WHEN (OLD.team_id IS DISTINCT FROM NEW.team_id), uden
 transition tables. Uændret hold udløser ingen M1-triggerfunktion.
 Processoren deler cz-ranking-refresh-låsen og validerer coordinatorens lease,
 erstatter berørte bidrag og genberegner gamle/nye nøgler transaktionelt.
-Transfers fordeles til løbsposter med gammelt hold; repair/backfill fordeles til
-samme begrænsede kø. En fejl ruller også claim/sletning af køposter tilbage.
+Transfers (M1.5, #6765) genberegner kun hold-rollups fra ranking_race_contrib:
+gammelt og nuværende hold for rytterens ejer-tilskrevne bidrag, plus alle sæsoner
+hvor det gamle hold har en summary; ingen rå race_results-læsning. Repair/backfill
+fordeles til samme kø. Et claim tager højst p_max_items (valgt én gang i en
+MATERIALIZED CTE). En fejl ruller også claim/sletning af køposter tilbage.
 DDL-backfill køres efter migrationens commit, aldrig under trigger-installationens
 stærke tabellåse. Sletning, genkørsel, metadataændring og TRUNCATE er kø-hændelser.
 
@@ -217,7 +220,15 @@ En forfalden kontrol i vinduet udsættes til næste tilladte pas. Staging kan
 bruge RANKING_SHADOW_PARITY_EVERY_PASS=true, men det overstyrer aldrig flag
 eller aftenvinduet. Hver kørsel logger queue_length ved start, pass_ms,
 enabled og status, også mens flaget er off. Kø over 10.000 eller samlet
-pass-tid over 20 sekunder udløser Sentry med begge mål.
+pass-tid over 20 sekunder udløser Sentry med begge mål. Et pas dræner op til
+20 batches eller 8 sekunder med lease-fornyelse mellem batches (M1.5); resten
+bliver i køen. Undtagelse (Codex P1, 31/10): et pas under coordinatorens lease
+dræner først alt arbejde til og med versionens kø-vandmærke (max_id læst efter
+claim, plus en rebuild-markørs udfoldning), med hårde lofter på 100 batches/45 s
+(status version-pending). En rebuild-markør udfoldes kun til holdbare køposter:
+én pr. løb, derefter ét sæson-sweep pr. summary-sæson, højst ét sweep pr. batch
+(Codex P2). Ældste køpost over 30 minutter, mens flaget er on/beta, udløser
+Sentry (queue-stall).
 Supabase-branch-bevis: audits/2026-10-19-6765-operational-readiness.md.
 M2 kræver stadig
 staging T7 og designets særskilte observations-/ejerporte.

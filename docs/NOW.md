@@ -4,12 +4,13 @@
 
 ## Aktiv styring
 
-> **⏰ Påmind ejeren:** Alunta-faktura 61,25 kr. · `INDEXNOW_KEY` (#6558) · **spillerkommunikation:** gennemgå roadbook, svarliste (44 + 4 nye udkast 15/10) og Discord: post 7.363-7.368 (`docs/drafts/discord-patch-7363-7368-2026-10-19.md`) via `docs/sessions/2026-10-15-kommunikation-gennemgang.md` (#6319); known issues opdateret i prod 15/10. · **forsiden #6665:** ejeren læser selv; spørg ikke.
+> **⏰ Påmind ejeren:** Alunta-faktura 7534 (61,25 kr.) afskrives af ejeren · `INDEXNOW_KEY` (#6558) · Discord: post `docs/drafts/discord-update-2026-10-20.md` + svarudkast (`discord-svar-2026-10-20.md`, tjek #5 først) · **forsiden #6665:** ejeren siger selv hvornår.
 >
-> **🎯 Next action:** NÆSTE CLAUDE-SESSION (DolmerPC): [`sessions/2026-10-20-startprompt.md`](sessions/2026-10-20-startprompt.md). Først: tidspunkt for skiftet 25/10 (#6898) · Codex-pladser: #6909 testport S5 · #6804 udbrudspakken trin 1 (design) · L2 · L3 (#6857) · review #6839 · første løbsfilm-gennemgang (#6914) · gennemtest beta → live. Ingen deploy-frys; færdigt før nyt.
+> **🎯 Next action (efter 30/10 aften):** 1) **Post-verify træningen 31/10** efter aftenkørslen: `development_curve_b_ignited_at` sat + øjebliksbillede i `development_curve_b_transition_members`, ingen `[curve-b]`-advarsel. 2) **Race engine-session 31/10:** alle enkeltstarter (#6595, #7332), tændingskort #7380 + #7383, drift-grænser #7279 (kobles til `private_config`). 3) **Brand:** #7339 auto-fyld (undersøg, anbefalet næste), #6765 skyggetabel (ejer-go: ret Codex-fund, tænd, mål). 4) **Mandag 3/11 formiddag:** nøglerotation #7029 + Railway-kilde #7034, ét go pr. skridt. Venter: #7298, #7297. Til dørs: [#7336](https://github.com/NicolaiDolmer/CyclingZone/issues/7336). Markedsføring 3x/uge. Wander Riders: ejer fre/man.
+> **Åbent:** `backup_7153_wander_*` må ikke slettes; udbrudsbuddet (#7277, flag off): ejeren har ikke besluttet om det skal i spillet; kurve "6 kombineret" (#3564) indgår i den samlede måling.
 >
-> **19/10 (DolmerPC):** 21 merges i alt (+ #6921 patch 7.370, #6922 U23-fix) (bl.a. #6899 ranglister M1 slukket, #6900 vagt før skiftet, #6907 løbsidentitet L1, #6910 omdømme, #6911 menu, design #6813/#6843/#6849). Testport v2 kørt (privat). Ejer-beslutninger: v2-udbrudspakken #6804, jagtafstand #6814 med i v2, #6820 tændes samlet når grøn, verdensklasse-køreplan (#6914-#6919, backend A).
->
+> **🤖 Working agent:** 31/10 audit-session (NicolaiPC) ejer merge-køen + træningstjek kl. 20. Kø: #7400, #7279, #7403, så #7405-#7413.
+
 > **🔴 Træningens realisme-regel (ejer 18/9, låst, #5267):** løbsdag = én dato · ét løb ELLER træning · etapeløb binder til sidste etape · lige mange løbsdage overalt. **140 er LÅST (ejer 15/9); spørg aldrig igen.** Måde B (5 pr. dato). §2c: S4 må laves om, indtil sæsonen er aktiv. **Junior må køre fra 16 (ejer 24/9). Juniorer må stå på U23 (YOUTH_RULES §2); trup-reglen er KUN en øvre grænse (#5794).**
 
 > **🔴 Rating-reglen (17/9):** én rating overalt; synlige ratings falder aldrig uden ejerens vidende; `ratingGolden.5321.json` KUN m. ejer-go.
@@ -27,4 +28,3 @@
 - **Forside `/`:** anonym = marketing-sitet; ændring → `check-cdn-cache-headers.mjs` før merge. **Priser:** spillere inkl. moms (#5215).
 - **Kort-regler (ejer 15/9-26/9):** ét delpunkt · prod-tal · læs issuets seneste kommentarer FØRST · genåbn aldrig låste beslutninger · udskyd aldrig selv · **UI-PR = ÉT annoteret før/efter-billede** · spillervendt rettelse = problem + løsning FØR byg.
 - **Mekanik:** parallelbyg via `wave.js` / `scripts/codex-wave.mjs`; ÉN merge-kø (`scripts/merge-queue.ps1 -Pr "a,b,c"`, aldrig kædede ventere); `mergeStateStatus` FØR vent på CI; commit kun bag guarden (#5094); migrationer via auto-migrate.yml, post-verify STRAKS; workers rører aldrig `docs/NOW.md`; nye frontend-filer = .ts/.tsx; klassifikator-blokeret merge → ejeren kører selv.
-> **🤖 Working agent:** Ingen aktiv session (Claude 19/10 aften på DolmerPC lukket; Codex: #6839 i gang; næste: se Next action).

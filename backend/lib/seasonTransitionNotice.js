@@ -19,9 +19,9 @@ import {
   isContractExpiringAtTransition,
   isRetirementRiskAtTransition,
 } from "./squadRiskGuard.js";
-import { notifyUser as defaultNotifyUser } from "./notificationService.js";
+import { notifyUser as defaultNotifyUser, fetchOwnedExpiringRiders, buildKeyedNotification } from "./notificationService.js";
+import { contractNoticeRider, contractRosterFallback } from "./contractNoticeRoster.js";
 import { captureException } from "./sentry.js";
-import { applySeniorSquadFilter } from "./squads.js";
 
 // "contract_expiring": eneste eksisterende type i notifications_type_check-
 // constrainten der matcher varslets indhold og har frontend-rendering
@@ -29,6 +29,8 @@ import { applySeniorSquadFilter } from "./squads.js";
 // findes IKKE i constrainten — INSERT afvises (#2700, opdaget ved --live 26/7).
 export const SEASON_TRANSITION_RISK_TYPE = "contract_expiring";
 
+// #6774/#6855: teksten peger på Kontrakter-fanen (Mit hold), hvor flere ryttere
+// kan forlænges 1-3 sæsoner ad gangen; notifikationens link er /team?tab=contracts.
 // EN-first (#1068). DA-oversættelse + i18n-koder ligger i backendMessages.json
 // (notif.seasonTransitionRisk.*) — samme messageBoth/messageExpiringOnly/
 // messageRetirementOnly-mønster som boardT1Reminder (messageSingle/messageMulti).
@@ -36,13 +38,13 @@ function buildMessage({ expiringCount, retirementRiskCount }) {
   if (expiringCount > 0 && retirementRiskCount > 0) {
     return {
       messageCode: "notif.seasonTransitionRisk.messageBoth",
-      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires, and ${retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend a rider's contract from his profile before the change to prevent release; retirement can't be prevented, but you can bid for replacements once the season changes.`,
+      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires, and ${retirementRiskCount} rider(s) (age 36+) are at risk of retiring. Extend contracts before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once. Retirement can't be prevented, but you can bid for replacements once the season changes.`,
     };
   }
   if (expiringCount > 0) {
     return {
       messageCode: "notif.seasonTransitionRisk.messageExpiringOnly",
-      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires. Extend their contract from the rider's profile before the change to keep them.`,
+      message: `Your squad is affected by the upcoming season change: ${expiringCount} rider(s) will be released as free agents because their contract expires. Extend them before the change on the Contracts tab on My Team, where you can extend several riders by 1 to 3 seasons at once.`,
     };
   }
   return {
@@ -51,8 +53,20 @@ function buildMessage({ expiringCount, retirementRiskCount }) {
   };
 }
 
-export function buildSeasonTransitionRiskNotification({ expiringCount, retirementRiskCount }) {
+export function buildSeasonTransitionRiskNotification({ expiringCount, retirementRiskCount, expiringRiders = [] }) {
   const { messageCode, message } = buildMessage({ expiringCount, retirementRiskCount });
+  const contractRiders = expiringRiders.map(contractNoticeRider);
+  if (contractRiders.length) {
+    const params = { expiringCount, retirementRiskCount };
+    const payload = buildKeyedNotification({
+      titleCode: "notif.seasonTransitionRisk.title", messageCode: `${messageCode}WithRoster`,
+      messageParams: { ...params, contractRiders: contractRosterFallback(contractRiders) },
+    });
+    return {
+      ...payload, type: SEASON_TRANSITION_RISK_TYPE, relatedId: null,
+      metadata: { ...payload.metadata, messageParams: { ...params, contractRiders } },
+    };
+  }
   return {
     type: SEASON_TRANSITION_RISK_TYPE,
     title: "Season change: contract and retirement risk",
@@ -85,14 +99,16 @@ async function defaultFetchHumanTeamRiskRows({ supabase, activeSeasonNumber }) {
   const teamById = new Map(teams.map((t) => [t.id, t]));
   if (teamById.size === 0) return [];
 
+  const expiringRiders = await fetchOwnedExpiringRiders({ supabase, seasonNumber: activeSeasonNumber, includeOverdue: true });
   const riders = await fetchAllRows(() =>
-    applySeniorSquadFilter(
-      supabase
-        .from("riders")
-        .select("id, team_id, birthdate, contract_end_season")
-    )
+    supabase
+      .from("riders")
+      .select("id, team_id, birthdate, contract_end_season, team:team_id!inner(is_ai, is_bank, is_frozen, is_test_account)")
       .eq("is_retired", false)
-      .in("team_id", [...teamById.keys()])
+      .eq("team.is_ai", false)
+      .eq("team.is_bank", false)
+      .eq("team.is_frozen", false)
+      .eq("team.is_test_account", false)
       .order("id")
   );
 
@@ -105,12 +121,13 @@ async function defaultFetchHumanTeamRiskRows({ supabase, activeSeasonNumber }) {
   const rows = [];
   for (const [teamId, team] of teamById) {
     const teamRiders = byTeam.get(teamId) || [];
-    const expiringCount = teamRiders.filter((r) => isContractExpiringAtTransition(r, activeSeasonNumber)).length;
+    const expiring = expiringRiders.filter((r) => r.team_id === teamId);
+    const expiringCount = expiring.length;
     const retirementRiskCount = teamRiders.filter(
       (r) => isRetirementRiskAtTransition(r, activeSeasonNumber) && !isContractExpiringAtTransition(r, activeSeasonNumber)
     ).length;
     if (expiringCount > 0 || retirementRiskCount > 0) {
-      rows.push({ teamId, userId: team.user_id, teamName: team.name, expiringCount, retirementRiskCount });
+      rows.push({ teamId, userId: team.user_id, teamName: team.name, expiringCount, retirementRiskCount, expiringRiders: expiring });
     }
   }
   return rows;

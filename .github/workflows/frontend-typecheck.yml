@@ -1,25 +1,15 @@
 name: Frontend JS typecheck baseline
 
+# #7148: checket er paakraevet paa main. Et paakraevet check med `paths:`-filter
+# dukker aldrig op paa docs-PR'er og blokerer dem for altid, saa workflowet
+# koerer ALTID paa pull_request og afgoer selv i jobbet, om de tunge trin skal
+# koere (samme moenster som security-grants-audit.yml). Jobnavnet er uaendret,
+# fordi branch protection matcher paa det. push til main og merge_group koerer
+# altid hele tjekket.
 on:
   pull_request:
-    paths:
-      - 'frontend/**'
-      # Frontend tests import backend helpers; tsc follows that graph.
-      - 'backend/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'scripts/ci/typecheck-baseline*'
-      - '.github/workflows/frontend-typecheck.yml'
   push:
     branches: [main]
-    paths:
-      - 'frontend/**'
-      # Frontend tests import backend helpers; tsc follows that graph.
-      - 'backend/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'scripts/ci/typecheck-baseline*'
-      - '.github/workflows/frontend-typecheck.yml'
   merge_group:
 
 permissions:
@@ -30,10 +20,41 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7.1.0
+          fetch-depth: 0
+
+      # Frontend-tests importerer backend-hjaelpere; tsc foelger den graf. Derfor
+      # taeller backend/ med. Listen er den tidligere `paths:`-liste.
+      - name: Afgoer om typetjekket er relevant
+        id: scope
+        shell: bash
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            echo "Event $EVENT: koerer altid hele tjekket."
+            exit 0
+          fi
+          mapfile -t FILES < <(
+            git diff --name-only "origin/$BASE_REF...HEAD" \
+              | grep -E '^(frontend/|backend/|package\.json$|package-lock\.json$|scripts/ci/typecheck-baseline|\.github/workflows/frontend-typecheck\.yml$)' || true
+          )
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+            echo "Ingen frontend-, backend- eller typecheck-filer aendret: tjekket er groent uden at koere."
+            exit 0
+          fi
+          echo "relevant=true" >> "$GITHUB_OUTPUT"
+          echo "Relevante filer (${#FILES[@]}), foerste 20:"
+          printf '  %s\n' "${FILES[@]:0:20}"
+
+      - if: steps.scope.outputs.relevant == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -41,8 +62,13 @@ jobs:
             package-lock.json
             backend/package-lock.json
             frontend/package-lock.json
-      - run: npm ci
-      - run: npm ci --prefix backend
-      - run: npm ci --prefix frontend
-      - run: node --test scripts/ci/typecheck-baseline.test.mjs scripts/verify-affected.test.mjs
-      - run: node scripts/ci/typecheck-baseline.mjs
+      - if: steps.scope.outputs.relevant == 'true'
+        run: npm ci
+      - if: steps.scope.outputs.relevant == 'true'
+        run: npm ci --prefix backend
+      - if: steps.scope.outputs.relevant == 'true'
+        run: npm ci --prefix frontend
+      - if: steps.scope.outputs.relevant == 'true'
+        run: node --test scripts/ci/typecheck-baseline.test.mjs scripts/verify-affected.test.mjs
+      - if: steps.scope.outputs.relevant == 'true'
+        run: node scripts/ci/typecheck-baseline.mjs

@@ -195,6 +195,15 @@ findes. Findes ingen gyldig sæson, fejler finaliseringen i stedet for at bruge
 sæson 1. Finanspostens `season_id` er fortsat kun den faktisk aktive sæson og
 kan være NULL i vinduet. En eksisterende kontrakt arves fortsat uændret.
 
+**Sæson i transferhistorikken (#7285):** `buildSeasonResolver` (`teamTransferHistory.js`,
+også brugt af den globale handelsliste `tradeListFeed.js`) giver hver handel en sæson ud fra
+datoen. En handel inden for en sæsons `start_date`..`end_date` (slutdagen inklusiv, #984) hører
+til den sæson; en nul-bred sæson følger #1776. En handel i hullet efter en sæsons slutdag og
+før næste sæsons start hører til den **kommende** sæson. Efter den sidste sæson uden
+efterfølger gælder den senest startede sæson, og en handel før den første sæson får ingen
+sæson. Sæsonen beregnes ved visning og gemmes ikke, så en regelændring kræver ingen
+datareparation.
+
 ### 2.3 12-timers-gulvet - hvor det gælder og hvor det ikke gælder
 
 `FREE_AGENT_MIN_DURATION_HOURS = 12` (`auctionEngine.js:119`, ejer-beslutning 21/8, #4004,
@@ -206,10 +215,11 @@ over 12 timer overstyres ikke (`Math.max`, `auctionEngine.js:132`).
 | Ungdomsmarkedet | **ja** | `youthMarket.js:139` |
 | Akademi-graduering | **ja** | `academyGraduation.js:227` |
 | Manager starter auktion på rytter **uden hold**, uden valgt sluttid | **ja** | `api.js:6447` |
-| Manager starter auktion på rytter uden hold **med valgt sluttid** | **NEJ** | `api.js:6445-6446` |
-| Flash-auktion | **NEJ** (30 min) | `api.js:6444` |
+| Manager starter auktion på rytter uden hold **med valgt sluttid** | **ja** (fra 25/10, #7220) | `getCustomAuctionEndIssue(..., { minHours })` i `api.js` |
+| Flash-auktion på rytter uden hold | **afvises** (fra 25/10, #7220) | `api.js` (`auction_end_too_soon`, minHours 12) |
+| Flash-auktion på egen rytter | nej (30 min) | `api.js` |
 
-**Det er hullet #4177 beskriver, og det er målt.**
+**Ejer-beslutning 25/10 (#7220): "Mindst 12 timer, altid".** Ingen auktion på en holdløs rytter kan slutte før 12 timer, heller ikke med valgt sluttid eller som flash. Auktioner på egne ryttere er uændrede. Målingen nedenfor er historik: det var hullet #4177 beskrev (målt igen 25/10: 50 af 779 fri-agent-auktioner på 14 dage sluttede under 12 timer, alle med valgt sluttid, 28 på præcis 1 time).
 
 Målt 30/8 for auktioner oprettet **efter** 22/8 der endte som fri-agent-salg
 (`seller_team_id` nulstilles ved finalisering af fri-agent-auktioner,
@@ -237,8 +247,8 @@ Sandheden pr. 30/8:
 - Automatiske fri-agent-auktioner (ungdomsmarked, akademi-graduering): **mindst 12 timer.**
   Målt medianvarighed for ungdomsauktioner de sidste 8 dage: **1.920-2.432 minutter**
   (32-40 timer), aldrig under 1.920 minutter.
-- En manager-startet auktion på en fri rytter: **1 aktiv time** som default, eller præcis
-  det klokkeslæt sælgeren vælger - **helt ned til 1 time frem.**
+- En manager-startet auktion på en fri rytter: **mindst 12 timer** fra 25/10 (#7220), både
+  som standard og med valgt sluttid. Før 25/10: helt ned til 1 time frem.
 - Spillerens "45 minutter" var **resttid**, ikke total varighed. Ingen auktion i prod er
   nogensinde oprettet kortere end 60 minutter (flash 30 min er aldrig brugt, se §5).
 
@@ -279,11 +289,8 @@ De fire veje ejeren spurgte om i #4177, som koden faktisk kender:
 Målt: **1.421** auktioner har `is_youth=true`, heraf **1.194** med `expired_intake_team_id`
 sat (intake-udløbs-kompensation, #2648).
 
-**IKKE FASTLAGT - kræver ejer-beslutning:** ejerens eget spørgsmål i #4177 08:37 er
-stadig ubesvaret. Den ene ting der mangler at blive afgjort: **skal 12-timers-gulvet også
-gælde når sælgeren vælger sit eget sluttidspunkt på en holdløs rytter - altså skal
-`CUSTOM_END_MIN_HOURS` hæves fra 1 til 12 for netop de auktioner?** I dag er svaret nej, og
-106 af de sidste 161 fri-agent-auktioner brugte netop den udvej.
+**AFGJORT 25/10 (ejer, #7220):** 12-timers-gulvet gælder også, når sælgeren vælger sit eget
+sluttidspunkt på en holdløs rytter. `CUSTOM_END_MIN_HOURS` er stadig 1 for egne ryttere.
 
 ---
 
@@ -577,23 +584,22 @@ kræver et delt lager (`:4-6`).
 
 | Nøgle | Prod-værdi 30/8 | Effekt når tændt |
 |---|---|---|
-| `auction_entry_gate_enabled` | **`false`** | konto oprettet **efter** auktionen startede må ikke byde på netop den (#3134/#2776) |
 | `loan_gate_min_race_days` | **0** | lån kræver X kørte løbsdage |
 | `loan_gate_min_account_age_days` | **0** | lån kræver X dages konto |
 | `transfer_cooldown_hours` | **0** | store udgående overførsler spærres for nye konti |
 | `transfer_cooldown_amount_czk` | **0** | beløbsgrænsen for ovenstående |
 
 Målt med `select key, value, updated_at from app_config where key in
-('auction_entry_gate_enabled','loan_gate_min_race_days','loan_gate_min_account_age_days',
-'transfer_cooldown_hours','transfer_cooldown_amount_czk')`: alle fem rækker findes, alle med
+('loan_gate_min_race_days','loan_gate_min_account_age_days',
+'transfer_cooldown_hours','transfer_cooldown_amount_czk')`: rækkerne findes, alle med
 `updated_at` **3/8 2026 17:53 dansk tid** (15:53 UTC), og alle på slukket-værdien.
 Kontrakten er "0 på alle en gates nøgler = hele gaten slukket"
-(`newAccountGates.js:20-21, 48-54`).
+(`newAccountGates.js`).
 
-Alle gates er **fail-open** ved infrastruktur-fejl (`newAccountGates.js:28-30, 60-86`) - en
-knækket config-læsning må aldrig blokere et lovligt bud. `auction_entry_gate` blev shippet
-slukket fordi en dry-run mod prod fandt **422 historiske bud fra 53 ægte hold** der ville
-være blokeret, overvejende almindelig onboarding (`newAccountGates.js:20-27`).
+Alle gates er **fail-open** ved infrastruktur-fejl (`newAccountGates.js`) - en
+knækket config-læsning må aldrig blokere et lovligt bud.
+En tredje gate (auktions-adgang for nye konti, #3134) er fjernet i #7336; dens
+`app_config`-række `auction_entry_gate_enabled` findes stadig i databasen, uden læser.
 
 ### 11.5 Gæld og pause
 
@@ -667,9 +673,8 @@ gentages ikke her.
 
 Hver post er **én** ting der skal afgøres, med de målte tal indbygget.
 
-1. **Skal 12-timers-gulvet også gælde spiller-valgte sluttidspunkter på holdløse ryttere?**
-   I dag er `CUSTOM_END_MIN_HOURS = 1`, og 106 af de 161 fri-agent-auktioner siden 22/8 brugte
-   netop den vej til at slutte under 12 timer. (#4177)
+1. ~~Skal 12-timers-gulvet også gælde spiller-valgte sluttidspunkter på holdløse ryttere?~~
+   **Afgjort 25/10: ja, altid** (#7220, se §2.3).
 2. **Hvad er den kanoniske definition af "fri agent" i spiller-vendt tekst?** Koden kender
    kun `rider.team_id IS NULL`. Ejerens eget spørgsmål fra 24/8 er ubesvaret, og patch-noten
    afgrænser til "banken eller ungdomsmarkedet", hvilket hverken matcher koden eller
@@ -683,13 +688,10 @@ Hver post er **én** ting der skal afgøres, med de målte tal indbygget.
    population) er ikke udført.
 5. **Skal prisbåndet ved handel tændes?** Nøglerne findes og er kalibreret (gulv 10 %, loft
    2,2× fra #3231), men står på `0` / `null` i prod. Ét tal-par mangler at blive sat.
-6. **Skal `auction_entry_gate_enabled` tændes?** Den er klar og slukket. Dry-run viste 422
-   historiske bud fra 53 ægte hold ville være blokeret - ejeren har ikke svaret på om den
-   falske-positiv-rate er acceptabel mod #2776-mønsteret.
-7. **Skal `is_flash` og `is_guaranteed_sale` slettes?** Begge har 0 rækker i hele basen;
+6. **Skal `is_flash` og `is_guaranteed_sale` slettes?** Begge har 0 rækker i hele basen;
    flash har en frontend-indgang, garanteret salg har ingen skriver overhovedet. Enten
    færdiggøres de, eller også fjernes koden.
-8. **Skal `min_increment` respekteres eller fjernes?** Kolonnen skrives men læses aldrig;
+7. **Skal `min_increment` respekteres eller fjernes?** Kolonnen skrives men læses aldrig;
    `getMinimumAuctionBid` bruger hardkodet +1.
 
 ---

@@ -190,6 +190,7 @@
     "loadError": "No se pudo cargar el historial de fichajes",
     "noSaleToggle": "Mostrar subastas sin pujas",
     "noSaleHiddenNote": "{count, plural, one {# subasta sin pujas está oculta} other {# subastas sin pujas están ocultas}}. Ningún ciclista cambió de manos.",
+    "showMore": "Mostrar más ({shown} de {total})",
     "emptyFilteredNoSaleOnly": "No hay fichajes reales en la temporada seleccionada: solo subastas sin pujas (ocultas, mira el filtro de arriba).",
     "reportAction": "Denunciar para su revisión",
     "reportActionAria": "Denunciar esta operación para su revisión"

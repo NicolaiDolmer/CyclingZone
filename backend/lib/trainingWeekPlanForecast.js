@@ -33,7 +33,10 @@ import { copenhagenDateString, copenhagenWeekdayKey } from "./copenhagenTime.js"
 import { resolveDayCloseStatus } from "./trainingDayCloseTrigger.js";
 import { isRaceDayEngineEnabled } from "./raceDayEngineFlag.js";
 import { isTrainingConditionPerDateEnabled } from "./trainingDateConditionFlag.js";
+import { isConditionModelV2Enabled } from "./conditionModelV2Flag.js";
+import { loadTeamMedicalBonus } from "./medicalEffects.js";
 import { isTrainingCellsEnabledForTeam } from "./trainingWeekPlanCellsFlag.js";
+import { isTrainingCatalogV3EnabledForTeam } from "./trainingCatalogV3.js"; // #5319
 import { loadRaceExitGameDays, dropBindingsAfterRaceExit } from "./trainingRaceDayTick.js";
 // #5932-integrationen: spillerens traethedsgraense (#4854) aendrer motorens pas
 // efter resolveDayProgram. Prognosen kalder SAMME funktion (I5).
@@ -57,7 +60,7 @@ export function forecastBand(fatigue) {
 // Returnerer { intensity, raceLoad } for ET af datoens fem felter.
 export function forecastSlotActivity({
   riderId, receipt = null, recordedLoad = null, plannedStageProfile = null,
-  injured = false, boundRestDate = false, planIntensity,
+  injured = false, boundRestDate = false, planIntensity, conditionModelV2 = false,
 }) {
   if (receipt) {
     // Samme valg som motorens priorDateReports-linje.
@@ -66,7 +69,10 @@ export function forecastSlotActivity({
   }
   if (recordedLoad != null) return { intensity: "race", raceLoad: Number(recordedLoad) };
   if (plannedStageProfile) {
-    const [estimate] = raceConditionLoads([riderId], plannedStageProfile);
+    // #6984: under v2 samme belastningsfunktion som loebet fryser; laengde og saesonens
+    // loebsdage kendes ikke her, saa tallet er et "ca."-estimat (som indsatsen i dag).
+    const [estimate] = raceConditionLoads([riderId], plannedStageProfile, null, null, null,
+      conditionModelV2 ? { distanceKm: null, seasonRaceDaysByRider: new Map() } : null);
     return { intensity: "race", raceLoad: Number(estimate?.load ?? 0) };
   }
   if (injured) return { intensity: "rest", raceLoad: 0 };
@@ -78,7 +84,7 @@ export function forecastSlotActivity({
 // `slots` er datoens fem felter i loebsdags-orden (forecastSlotActivity).
 // Kalder aftenopgoerelsens egen funktion; returnerer null hvis input ikke er
 // en hel dato (opgoerelsen kraever praecis fem felter).
-export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG }) {
+export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recoveryAbility = 50, recoveryConfig = RACE_DAY_ENGINE_RECOVERY_CONFIG, conditionModelV2 = false, medicalBonus = 0 }) {
   if (!Array.isArray(slots) || slots.length !== FORECAST_SLOTS) return null;
   try {
     const settled = settleTrainingDateCondition({
@@ -88,6 +94,8 @@ export function forecastRiderFatigue({ riderId, dateStr, opening, slots, recover
       raceLoads: slots.map((slot) => (slot.intensity === "race" ? Number(slot.raceLoad ?? 0) : 0)),
       recoveryAbility,
       recoveryConfig,
+      modelV2: conditionModelV2,
+      medicalBonus,
     });
     return settled.fatigue;
   } catch {
@@ -103,7 +111,8 @@ export function buildTeamFatigueForecast({
   tickDate, seasonId, dateGameDays, riders, conditionByRider = new Map(), openingByRider = new Map(),
   recoveryByRider = new Map(), planByRider = new Map(), teamWeekDays = null, riderWeekDaysByRider = new Map(),
   receipts = [], recordedLoads = [], plannedStages = [], boundRiderIdsByGameDay = new Map(),
-  cellsOn = false, raceDayEngineOn = true,
+  cellsOn = false, raceDayEngineOn = true, conditionModelV2 = false, medicalBonus = 0,
+  catalogV3 = false, // #5319: samme katalog-gate som motoren
   // #4854: holdets regler (loadTeamFatigueRules) + hvem koerte etape i gaar.
   fatigueRules = null, stageYesterdayRiderIds = new Set(),
 }) {
@@ -128,7 +137,7 @@ export function buildTeamFatigueForecast({
       const dayProgram = resolveDayProgram({
         weekday, slotIndex,
         riderOverrideDays: riderWeekDaysByRider.get(rider.id) ?? null,
-        teamWeekDays, program, hasExplicitPlan, programsOn: cellsOn,
+        teamWeekDays, program, hasExplicitPlan, programsOn: cellsOn, catalogV3,
       });
       // Samme raekkefoelge som dailyTrainingEngine.js: planens pas, derefter
       // spillerens regel vurderet paa traethed ved datoens start.
@@ -153,9 +162,10 @@ export function buildTeamFatigueForecast({
         injured: isInjuredOnRaceDay({ condition: cond, seasonId, gameDay: day, tickDate }),
         boundRestDate: bound && !hasStageOnDate,
         planIntensity,
+        conditionModelV2,
       });
     });
-    const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig });
+    const fatigue = forecastRiderFatigue({ riderId: rider.id, dateStr: tickDate, opening, slots, recoveryAbility, recoveryConfig, conditionModelV2, medicalBonus });
     if (fatigue == null) continue;
     // raceSlots: dagens felter der er laast af et loeb (regel A). Gitteret viser
     // dem som etape; de oevrige felter er traening.
@@ -214,7 +224,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const riderIds = riders.map((rider) => rider.id);
   if (!riderIds.length) return { ...base, available: true, riders: {} };
 
-  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, entryDays, raceDayEngineOn, cellsOn] = await Promise.all([
+  const [conditions, abilities, plans, weekRows, receipts, loads, workRows, entryDays, raceDayEngineOn, cellsOn, catalogV3] = await Promise.all([
     rows(supabase.from("rider_condition").select("*").in("rider_id", riderIds), "forecast condition"),
     rows(supabase.from("rider_derived_abilities").select("rider_id, recovery").in("rider_id", riderIds), "forecast recovery"),
     rows(supabase.from("training_plans").select("rider_id, focus, intensity").eq("team_id", team.id).eq("season_id", seasonId), "forecast plans"),
@@ -228,6 +238,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     rows(supabase.from("race_entry_days").select("rider_id, race_id, game_day").eq("season_id", seasonId).in("game_day", dateGameDays).in("rider_id", riderIds), "forecast bindings"),
     isRaceDayEngineEnabled(supabase),
     cellsGateForTeam(supabase, team.id),
+    catalogV3GateForTeam(supabase, team.id),
   ]);
 
   const work = workRows[0] ?? null;
@@ -261,7 +272,12 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
   const { plannedStages, boundRiderIdsByGameDay } = forecastBindingsFromEntryDays({ entryDays, schedule, profiles, exits });
 
   const { fatigueRules, stageYesterdayRiderIds } = await fatigueRulesForForecast(supabase, team.id, riderIds, tickDate);
+  // #6984 (I5): prognosen regner med samme model som aftenens opgoerelse.
+  const conditionModelV2 = await isConditionModelV2Enabled(supabase);
+  const medicalBonus = conditionModelV2 ? await loadTeamMedicalBonus(supabase, team.id) : 0;
   const forecast = buildTeamFatigueForecast({
+    conditionModelV2,
+    medicalBonus,
     fatigueRules,
     stageYesterdayRiderIds,
     tickDate, seasonId, dateGameDays, riders,
@@ -277,6 +293,7 @@ export async function loadTeamFatigueForecast({ supabase, team, seasonId, now = 
     boundRiderIdsByGameDay,
     cellsOn: cellsOn && weekRows.some((row) => weekDaysHaveSessions(row.days)),
     raceDayEngineOn,
+    catalogV3,
   });
   return { ...base, available: true, settled: false, riders: forecast };
 }
@@ -300,6 +317,17 @@ async function fatigueRulesForForecast(supabase, teamId, riderIds, tickDate) {
 // Motorens gate for programceller (samme svar som isTrainingCellsEnabledForTeam
 // giver dailyTrainingEngine.js). Fejl → false: prognosen er en visning, ikke en
 // skrivning, og en ukendt gate maa aldrig vaelte siden.
+// #5319: motorens katalog-gate (isTrainingCatalogV3EnabledForTeam). Fejl → off,
+// samme begrundelse som cellsGateForTeam nedenfor.
+async function catalogV3GateForTeam(supabase, teamId) {
+  try {
+    return await isTrainingCatalogV3EnabledForTeam(supabase, teamId);
+  } catch {
+    // best-effort: prognosen er kun en visning; ukendt gate = dagens katalog.
+    return false;
+  }
+}
+
 async function cellsGateForTeam(supabase, teamId) {
   try {
     return await isTrainingCellsEnabledForTeam(supabase, teamId);

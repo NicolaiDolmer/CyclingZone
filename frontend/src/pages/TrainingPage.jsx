@@ -23,14 +23,17 @@ import { riderOverallRating } from "../lib/riderRating.js";
 import { TRAINING_INTENSITIES, injuryTimeLeft, injuryBadgeMessage, WEEKDAY_KEYS, weekdayKeyForDate } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import {
-  SESSION_INTENSITY,
+  // #5319: v3-sessionerne GENKENDES altid (inert med flaget off); listerne er flag-styrede.
+  SESSION_INTENSITY_V3 as SESSION_INTENSITY,
+  sessionsByLevelFor,
   dayTypeForProgram,
   sessionForProgram,
   DAY_TYPES_WITHOUT_SESSION,
   TRAINING_LEVELS,
-  TRAINING_SESSIONS_BY_LEVEL,
   SKILL_SESSIONS,
+  sessionI18nKey,
 } from "../lib/trainingDayTypes.js";
+import { useTrainingCatalogV3 } from "../lib/useTrainingCatalogV3.ts";
 import { copenhagenDayKey } from "../lib/raceCentre.js";
 import { todayGainTotal, seasonAbilityGains, focusAbilityReceipt, latestReceiptRun, reportRowsByRider, receiptGainDay, SEASON_RECEIPT_RUNNING, SEASON_RECEIPT_NOT_STARTED, SEASON_RECEIPT_NO_DAYS, SEASON_RECEIPT_NOTE_KEY } from "../lib/trainingReport.js";
 import { formatDate } from "../lib/intl.js";
@@ -54,6 +57,12 @@ import { useIsMobileViewport, useMediaQuery } from "../hooks/useMediaQuery.ts";
 // #5485 (ejer-go 23/9): overblik oeverst, een guld-knap der skifter med
 // situationen, een dagsvaelger pr. rytter og rytterens kort under raekken.
 import TrainingOverview from "../components/training/TrainingOverview.tsx";
+// #6110 S26: "Dagens beslutning" oeverst (beta-flag training_decision_card).
+import DailyDecision from "../components/training/DailyDecision.tsx";
+import { buildAllDecisions, MAX_DECISION_SUGGESTIONS } from "../components/training/DailyDecisionModel.ts";
+// #6110 S26: holdtabellen "retning B" under kortet (samme flag).
+import TrainingTeamTableB from "../components/training/TrainingTeamTableB.tsx";
+import { assistantKindFor, daysOverLimit } from "../components/training/TrainingTeamTableBModel.ts";
 import TrainingTodayTable from "../components/training/TrainingTodayTable.tsx";
 import TrainingDaySelect from "../components/training/TrainingDaySelect.tsx";
 import FatigueRuleSummary from "../components/training/FatigueRuleSummary.tsx";
@@ -188,7 +197,7 @@ function dayLabel(plan, t) {
   if (DAY_TYPES_WITHOUT_SESSION.includes(dayType)) return t(`dayPanel.dayType_${dayType}`);
   const session = sessionForProgram(plan);
   if (!session) return t(`dayPanel.dayType_${dayType}`);
-  return `${t(`dayPanel.dayType_${dayType}`)} · ${t(`dayPanel.session_${session}`)}`;
+  return `${t(`dayPanel.dayType_${dayType}`)} · ${t(sessionI18nKey("dayPanel.session", session))}`;
 }
 
 
@@ -262,7 +271,7 @@ function FocusOpenButton({ rider, plan, busy, smartFocus, error, onOpen, t, data
           </span>
           {!plan?.focus && smartFocus && (
             <span className="mt-0.5 block truncate font-data text-3xs uppercase tracking-[.06em] text-cz-3">
-              {t("smartFocusHint", { focus: t(`dayPanel.session_${smartFocus}`) })}
+              {t("smartFocusHint", { focus: t(sessionI18nKey("dayPanel.session", smartFocus)) })}
             </span>
           )}
         </span>
@@ -417,6 +426,7 @@ function RosterMobileSortControl({ sort, sortDir, onSort, scoreVisible, t, inlin
 
 export default function TrainingPage() {
   const { t } = useTranslation("training");
+  const catalogV3 = useTrainingCatalogV3(); // #5319
 
   const tTypes = useTranslation("riderTypes").t;
 
@@ -636,6 +646,10 @@ export default function TrainingPage() {
       return false;
     }
     lingerAfterSave(riderId);
+    // #6110 S26 (Codex P2): skaaderisikoen regnes paa serveren ud fra dagens plan;
+    // kortet og assistent-kolonnen bruger den, saa den hentes igen efter en aendring
+    // (ellers staar et forslag/"Agrees" fra den gamle dag).
+    if (training.decisionCard === true) await training.refresh();
     return true;
   }
   async function handleClearPlan(riderId) {
@@ -1202,8 +1216,8 @@ export default function TrainingPage() {
     const session = sessionFor(riderId, column);
     if (!session) return { label: t("mobile.noDay"), tone: "off" };
     if (session === "rest") return { label: t("mobile.sessionShort_rest"), tone: "off" };
-    const label = t([`mobile.sessionShort_${session}`, `dayPanel.session_${session}`]);
-    const full = t(`dayPanel.session_${session}`, { defaultValue: label });
+    const label = t([sessionI18nKey("mobile.sessionShort", session), sessionI18nKey("dayPanel.session", session)]);
+    const full = t(sessionI18nKey("dayPanel.session", session), { defaultValue: label });
     return { label, tone: "session", title: full };
   };
 
@@ -1225,6 +1239,35 @@ export default function TrainingPage() {
     const rest = ids.length - names.length;
     return rest > 0 ? `${names.join(", ")} ${t("overview.more", { n: rest })}` : names.join(", ");
   };
+  // #6110 S26: forslagene afledes af samme condition/plan/loeb som resten af siden.
+  // Efter "Train now"/afregning er dagen laast (todayRun): kortet staar ikke
+  // og tilbyder en aendring der ville ramme i morgen, ikke i dag.
+  // Holdtabellen B staar hele dagen med flaget (ogsaa efter "Train now"); kortet
+  // og assistentens bud kun foer dagen er laast.
+  const decisionFlagOn = training.decisionCard === true;
+  const decisionCardOn = decisionFlagOn && !runGate.trainedToday;
+  const decisionAll = decisionCardOn
+    ? buildAllDecisions({
+      // riders er utypet (never) i checkJs; samme any-graense som resten af siden.
+      riderIds: /** @type {Array<{ id: string }>} */ (riders).map((r) => r.id),
+      condition: (id) => condition[id],
+      isRacing: racingTodayFor,
+      isInjured: (id) => injuryTimeLeft(condition[id], today).count > 0,
+      // En rytter med egen ugeplan eller i en traeningsgruppe styres dér: en
+      // dag skrevet i holdets plan ville tabe til hans egen dag, saa ingen forslag.
+      isEasyDay: (id) => {
+        if (assistantOwnPlanIds.has(id) || assistantGroupFollowerIds.has(id)) return true;
+        const plan = planFor(id);
+        const type = plan?.focus ? dayTypeForProgram(plan) : null;
+        return type === "rest" || type === "recovery";
+      },
+    })
+    : [];
+  const decisionSuggestedIds = new Set(decisionAll.map((s) => s.riderId));
+  const decisionRows = decisionAll.slice(0, MAX_DECISION_SUGGESTIONS).map((s) => {
+    const r = /** @type {{ firstname?: string, lastname?: string } | undefined} */ (riderByIdMap.get(s.riderId));
+    return { ...s, name: `${r?.firstname ?? ""} ${r?.lastname ?? ""}`.trim() };
+  });
   const raceNames = [...new Set(overview.racing.map((id) => racingToday[id]?.race).filter(Boolean))];
   const overviewCells = [
     {
@@ -1781,6 +1824,9 @@ export default function TrainingPage() {
           indgangen til hurtig hvile ikke skubber tabellen ned (mindst 8 ryttere
           på første skærm, 390 × 844). Kun telefonens tabel-visning. */}
       <div className="flex items-stretch gap-2">
+      {/* #6110 S26 (ejer 25/10, valg A): vises Dagens beslutning, skjules den
+          gamle assistent-linje. Select riders bliver staaende. */}
+      {!(decisionCardOn && !ridersLoading) && (
       <button
         type="button"
         onClick={handleOpenAssistantPanel}
@@ -1794,6 +1840,7 @@ export default function TrainingPage() {
         </span>
         <ChevronRightIcon size={14} className="flex-none text-cz-3" aria-hidden="true" />
       </button>
+      )}
       {phoneTodayView && activeTab === "today" && !mobilePickMode && (
         <Button
           type="button"
@@ -1822,14 +1869,14 @@ export default function TrainingPage() {
         </optgroup>
         {TRAINING_LEVELS.map((level) => (
           <optgroup key={level} label={`${t("dayPanel.dayType_training")} · ${t(`dayPanel.level_${level}`)}`}>
-            {TRAINING_SESSIONS_BY_LEVEL[level].map((k) => (
-              <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+            {sessionsByLevelFor({ catalogV3 })[level].map((k) => (
+              <option key={k} value={k}>{t(sessionI18nKey("dayPanel.session", k))}</option>
             ))}
           </optgroup>
         ))}
         <optgroup label={t("dayPanel.dayType_skill")}>
           {SKILL_SESSIONS.map((k) => (
-            <option key={k} value={k}>{t(`dayPanel.session_${k}`)}</option>
+            <option key={k} value={k}>{t(sessionI18nKey("dayPanel.session", k))}</option>
           ))}
         </optgroup>
       </>
@@ -1879,6 +1926,21 @@ export default function TrainingPage() {
     });
   }
 
+  // #6110 S26: rækkerne til holdtabel B = de samme rækker + dage 70+, løbsdag og
+  // assistentens bud (samme forslag som kortet, men for alle ryttere).
+  function teamRowsFor(list) {
+    return todayRowsFor(list).map((row) => ({
+      ...row,
+      daysOver: daysOverLimit(training.fatigueDays70, row.id),
+      race: racingTodayFor(row.id) ? (racingToday[row.id]?.race ?? "") : null,
+      assistant: assistantKindFor({
+        noDay: row.noDay,
+        suggested: decisionSuggestedIds.has(row.id),
+        decided: decisionCardOn,
+      }),
+    }));
+  }
+
   // Status der betyder noget FOR DAGEN (skade, høj skaderisiko) står under
   // navnet; akademi, kontrakt og pension står i kortet.
   function renderRowStatus(riderId) {
@@ -1922,7 +1984,7 @@ export default function TrainingPage() {
             onClick={() => handleDayChoice(riderId, smart)}
             className="text-xs font-medium text-cz-accent-t hover:underline disabled:opacity-50"
           >
-            {t("today.useAssistantPick", { session: t(`dayPanel.session_${smart}`) })}
+            {t("today.useAssistantPick", { session: t(sessionI18nKey("dayPanel.session", smart)) })}
           </button>
         )}
       </div>
@@ -2091,9 +2153,9 @@ export default function TrainingPage() {
             onApply={(programKey, target) => (groupIdOf(target)
               ? trainingGroups.putProgram(groupIdOf(target), programKey)
               : programs.applyProgram(programKey, target))}
-            sessionShort={(session) => t(`mobile.sessionShort_${session}`, {
+            sessionShort={(session) => t(sessionI18nKey("mobile.sessionShort", session), {
               defaultValue: session === "rest" || session === "recovery"
-                ? t(`dayPanel.dayType_${session}`) : t(`dayPanel.session_${session}`),
+                ? t(`dayPanel.dayType_${session}`) : t(sessionI18nKey("dayPanel.session", session)),
             })}
           />
         ) : activeSub === "limit" ? (
@@ -2138,14 +2200,45 @@ export default function TrainingPage() {
 
   // ── #5485: fanen Today på desktop ─────────────────────────────────────────
   function renderDesktopToday() {
+    // #6110 S26: med flaget on er holdtabellen B (kolonner + assistent) den eneste tabel.
+    const rowsFor = /** @type {(list: any[]) => any[]} */ (decisionFlagOn ? teamRowsFor : todayRowsFor);
     const groupsForTable = groupByType
       ? groupRidersByType(visibleRiders).map((group) => ({
           key: group.type,
           label: groupLabel(group.type),
           count: t("groupCount", { n: group.riders.length }),
-          rows: todayRowsFor(group.riders),
+          rows: rowsFor(group.riders),
         }))
       : null;
+    const toggleOpenRider = (riderId) => setOpenRiderId((prev) => (prev === riderId ? null : riderId));
+    const renderTodayDay = (riderId, isFirst) => {
+      const rider = riderByIdMap.get(riderId);
+      return (
+        <TrainingDaySelect
+          riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
+          plan={planFor(riderId)}
+          busy={savingId === riderId || bulkApplying}
+          error={planActionError && planActionError.riderId === riderId ? planActionError.error : null}
+          onChoose={(choice) => handleDayChoice(riderId, choice)}
+          dataTour={isFirst ? "training-focus" : undefined}
+          justSaved={lingerIds.has(riderId)}
+        />
+      );
+    };
+    // Segmenterne bruger overblikkets filter (samme tilstand og samme rytterlister).
+    const segmentsNode = decisionFlagOn ? (
+      <Segmented
+        label={t("decision.segLabel")}
+        value={overviewFilter ?? "all"}
+        onChange={(next) => setOverviewFilter(next === "all" ? null : /** @type {any} */ (next))}
+        options={[
+          { value: "all", label: t("decision.segAll", { n: riders.length }) },
+          { value: "training", label: t("decision.segTraining", { n: overview.training.length }) },
+          { value: "racing", label: t("decision.segRacing", { n: overview.racing.length }) },
+          { value: "tired", label: t("decision.segTired", { from: TIRED_FATIGUE_FROM, n: overview.tired.length }) },
+        ]}
+      />
+    ) : null;
     const toolbar = (
       <>
         <div className="flex flex-wrap items-center gap-2.5">
@@ -2170,6 +2263,8 @@ export default function TrainingPage() {
                 {t("today.clear")}
               </Button>
             </>
+          ) : segmentsNode && overviewFilter !== "needsDay" ? (
+            segmentsNode
           ) : activeFilterLabel ? (
             <>
               <span className="text-[13px] text-cz-2">{t("overview.showing", { label: activeFilterLabel })}</span>
@@ -2276,6 +2371,35 @@ export default function TrainingPage() {
           <EmptyState icon={<TeamIcon size={26} aria-hidden="true" />} title={t("noRiders")} />
         ) : (
           <div ref={rosterTableRef}>
+            {decisionFlagOn ? (
+              <TrainingTeamTableB
+                bulkBar={bulkBar}
+                onSetGroup={bulkDayFlag ? handleSetGroup : undefined}
+                setForGroupLabel={t("today.setForGroup")}
+                rows={groupsForTable ? [] : rowsFor(visibleRiders)}
+                groups={groupsForTable}
+                showScore={scoreVisible}
+                sort={rosterSort.sort}
+                sortDir={rosterSort.sortDir}
+                onSort={rosterSort.handleSort}
+                selected={selected}
+                allSelected={allSelected}
+                onToggleSelect={toggleSelect}
+                onToggleAll={toggleSelectAll}
+                openId={openRiderId}
+                onToggleOpen={toggleOpenRider}
+                renderDay={renderTodayDay}
+                renderReset={renderResetFor}
+                renderDetail={renderRiderCard}
+                renderStatus={renderRowStatus}
+                renderNoDay={renderNoDay}
+                onUse={(riderId) => handlePlanChange(riderId, "recovery", null)}
+                toolbar={toolbar}
+                forecastSettled={fatigueForecast.settled}
+                limit={TIRED_FATIGUE_FROM}
+                empty={visibleRiders.length === 0 ? <p className="text-sm text-cz-3">{t("overview.emptyFiltered")}</p> : null}
+              />
+            ) : (
             <TrainingTodayTable
               bulkBar={bulkBar}
               onSetGroup={bulkDayFlag ? handleSetGroup : undefined}
@@ -2294,21 +2418,8 @@ export default function TrainingPage() {
               onToggleSelect={toggleSelect}
               onToggleAll={toggleSelectAll}
               openId={openRiderId}
-              onToggleOpen={(riderId) => setOpenRiderId((prev) => (prev === riderId ? null : riderId))}
-              renderDay={(riderId, isFirst) => {
-                const rider = riderByIdMap.get(riderId);
-                return (
-                  <TrainingDaySelect
-                    riderName={rider ? `${rider.firstname} ${rider.lastname}` : ""}
-                    plan={planFor(riderId)}
-                    busy={savingId === riderId || bulkApplying}
-                    error={planActionError?.riderId === riderId ? planActionError.error : null}
-                    onChoose={(choice) => handleDayChoice(riderId, choice)}
-                    dataTour={isFirst ? "training-focus" : undefined}
-                    justSaved={lingerIds.has(riderId)}
-                  />
-                );
-              }}
+              onToggleOpen={toggleOpenRider}
+              renderDay={renderTodayDay}
               renderReset={renderResetFor}
               renderDetail={renderRiderCard}
               renderStatus={renderRowStatus}
@@ -2317,6 +2428,7 @@ export default function TrainingPage() {
               forecastSettled={fatigueForecast.settled}
               empty={visibleRiders.length === 0 ? <p className="text-sm text-cz-3">{t("overview.emptyFiltered")}</p> : null}
             />
+            )}
           </div>
         )}
         {!ridersLoading && riders.length > 0 && (
@@ -2430,6 +2542,13 @@ export default function TrainingPage() {
 
       <TabPanel value="today">
       <div className="space-y-3">
+      {decisionCardOn && !ridersLoading && (
+        <DailyDecision
+          rows={decisionRows}
+          compact={phoneLayout}
+          onUse={(row) => handlePlanChange(row.riderId, row.dayType, null)}
+        />
+      )}
       {/* #5485 (aendring 1): overblikket øverst. Et tryk filtrerer tabellen. */}
       <div data-tour={phoneLayout ? tourAnchor("status") : undefined}>
         <TrainingOverview

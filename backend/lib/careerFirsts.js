@@ -144,13 +144,18 @@ async function riderHasPriorResult({ supabase, riderId, raceId, currentStageNumb
 
 // Samme fix som riderHasPriorResult ovenfor (#5733), for jersey-klassifikationer.
 async function riderHasPriorJersey({ supabase, riderId, raceId, resultType, currentStageNumbers }) {
-  const { count: otherRaceCount, error: otherErr } = await supabase
+  // #7031: ungdomstrøjen fra U23-/juniorløb er skjult og tæller ikke som en tidligere
+  // trøje; kun seniorløbenes ungdomsklassement gør (races.squad er NOT NULL, default senior).
+  const youngSeniorOnly = resultType === "young";
+  let otherRaceQuery = supabase
     .from("race_results")
-    .select("id", { count: "exact", head: true })
+    .select(youngSeniorOnly ? "id, races!inner(squad)" : "id", { count: "exact", head: true })
     .eq("rider_id", riderId)
     .eq("result_type", resultType)
     .eq("rank", 1)
     .neq("race_id", raceId);
+  if (youngSeniorOnly) otherRaceQuery = otherRaceQuery.eq("races.squad", "senior");
+  const { count: otherRaceCount, error: otherErr } = await otherRaceQuery;
   if (otherErr) throw otherErr;
   if ((otherRaceCount ?? 0) > 0) return true;
 
@@ -225,7 +230,7 @@ function buildNotificationCopy({ eventType, riderName, raceName, params }) {
   switch (eventType) {
     case CAREER_EVENT_TYPES.MAIDEN_WIN:
       return {
-        title: "Maiden victory",
+        title: "Rider's first win",
         message: race ? `${rider} won their first professional race: ${race}.` : `${rider} won their first professional race.`,
         titleCode: "notif.careerMilestone.maidenWin.title",
         messageCode: "notif.careerMilestone.maidenWin.message",
@@ -424,7 +429,9 @@ export async function detectCareerFirsts({
         eventType: CAREER_EVENT_TYPES.FIRST_JERSEY,
         riderId: j.riderId, teamId: j.teamId, riderName: j.riderName, teamName: j.teamName,
         resultType: j.resultType, stageNumber: j.stageNumber,
-        dedupeKey: `rider:${j.riderId}:first_jersey:${j.resultType}`,
+        // #7031: ungdomstrøjen får en egen nøgle, så en skjult ældre præstation fra et U23-/
+        // juniorløb (nøglen uden suffiks) ikke blokerer den første rigtige ungdomstrøje i et seniorløb.
+        dedupeKey: `rider:${j.riderId}:first_jersey:${j.resultType}${j.resultType === "young" ? ":senior" : ""}`,
         extraParams: { classification: j.resultType },
       });
     } catch (err) {

@@ -5,11 +5,62 @@ export function toggleRider(state, riderId, max) {
   const has = state.riderIds.includes(riderId);
   if (!has && state.riderIds.length >= max) return state;
   const riderIds = has ? state.riderIds.filter((id) => id !== riderId) : [...state.riderIds, riderId];
+  // #7239: resten af udtagelsen (free_role, delt kaptajn) foelger med, saa et klik paa en
+  // rytter aldrig nulstiller en rolle han ikke roerte.
   return {
+    ...state,
     riderIds,
     captainId: has && state.captainId === riderId ? null : state.captainId,
     sprintCaptainId: has && state.sprintCaptainId === riderId ? null : state.sprintCaptainId,
     hunterId: has && state.hunterId === riderId ? null : state.hunterId,
+    ...(state.coCaptainId !== undefined ? { coCaptainId: has && state.coCaptainId === riderId ? null : state.coCaptainId } : {}),
+    ...(state.luxuryHelperId !== undefined ? { luxuryHelperId: has && state.luxuryHelperId === riderId ? null : state.luxuryHelperId } : {}), // #5982
+    ...(Array.isArray(state.freeRoleIds) ? { freeRoleIds: has ? state.freeRoleIds.filter((id) => id !== riderId) : state.freeRoleIds } : {}),
+  };
+}
+
+// #7239: rollerne et Race Hub-gem sender. Samme regel som udtagelsespanelet
+// (validateSelectionClient): i loeb hvor spurtkaptajnen maa vaere eneste leder
+// (`sprintLeaderAllowed`, serverens `sprint_leader_allowed`), tilfoejes der IKKE en
+// kaptajn i stilhed. Mangler kaptajnen, og holdet har en delt kaptajn, rykker han op
+// som kaptajn (en delt kaptajn kraever en kaptajn). Ellers vaelges en kaptajn efter
+// fortjeneste (#2028), og rollerne holdes distinkte (backend afviser overlap).
+/**
+ * @param {{ riderIds?: any[], captainId?: any, sprintCaptainId?: any, hunterId?: any, coCaptainId?: any,
+ *   freeRoleIds?: any[], sprintLeaderAllowed?: boolean, suitabilityOf?: (id: any) => any, luxuryHelperId?: any }} args
+ */
+export function resolveBoardRoles({
+  riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null, coCaptainId = null, freeRoleIds = [],
+  sprintLeaderAllowed = false, suitabilityOf, luxuryHelperId = undefined,
+}) {
+  const inSquad = (id) => (id != null && riderIds.includes(id) ? id : null);
+  let captain = inSquad(captainId);
+  let sprint = inSquad(sprintCaptainId);
+  let hunter = inSquad(hunterId);
+  // Delt kaptajn findes kun i loeb der kender rollen (samme v3-gate som spurtkaptajn alene).
+  let coCaptain = sprintLeaderAllowed ? inSquad(coCaptainId) : null;
+  let freeRoles = (freeRoleIds || []).filter((id) => riderIds.includes(id));
+  if (!captain && coCaptain) {
+    captain = coCaptain;
+    coCaptain = null;
+  }
+  if (!captain && riderIds.length && !(sprint && sprintLeaderAllowed)) {
+    captain = pickFallbackCaptain({ riderIds, sprintId: sprint, hunterId: hunter, suitabilityOf });
+  }
+  if (captain != null) {
+    if (captain === sprint) sprint = null;
+    if (captain === hunter) hunter = null;
+    freeRoles = freeRoles.filter((id) => id !== captain);
+  }
+  if (coCaptain != null && (coCaptain === captain || coCaptain === sprint || coCaptain === hunter)) coCaptain = null;
+  if (coCaptain != null) freeRoles = freeRoles.filter((id) => id !== coCaptain);
+  // #5982: luksushjaelperen foelger med (samme v3-gate), medmindre han nu har en anden rolle.
+  // Uden feltet i input er svaret uaendret (serveren beholder da den gemte).
+  const taken = [captain, sprint, hunter, coCaptain, ...freeRoles];
+  const luxury = sprintLeaderAllowed && inSquad(luxuryHelperId) != null && !taken.includes(luxuryHelperId) ? luxuryHelperId : null;
+  return {
+    captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter, co_captain_id: coCaptain, free_role_ids: freeRoles,
+    ...(luxuryHelperId !== undefined ? { luxury_helper_id: luxury } : {}),
   };
 }
 
@@ -21,6 +72,7 @@ export function toggleRider(state, riderId, max) {
 // hele feltet. Tiebreak: rider_id asc (deterministisk). Tom trup → null.
 // `suitabilityOf(id)` → 0-100 (eller null/undefined når ukendt → behandles som lavest).
 // Spejler race-enginens egen GC-fallback (raceAutopick.resolveCaptain: stærkeste rytter).
+/** @param {{ riderIds?: any[], sprintId?: any, hunterId?: any, suitabilityOf?: (id: any) => any }} args */
 export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId = null, suitabilityOf }) {
   if (!riderIds.length) return null;
   const eligible = riderIds.filter((id) => id !== sprintId && id !== hunterId);
@@ -43,7 +95,8 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
 // KONTRAKTEN (#4295): klienten må ALDRIG afvise et gem serveren ville acceptere.
 // Præcis tre ting blokerer:
 //   selection_wrong_size       → flere ryttere end feltstørrelsen (size.max)
-//   selection_captain_required → ingen kaptajn blandt de udtagne
+//   selection_captain_required → ingen kaptajn blandt de udtagne (i v3-loeb maa
+//                                spurtkaptajnen vaere eneste leder, #6321)
 //   selection_role_overlap     → samme rytter i to roller
 // ANTAL blokerer aldrig nedad. En DELVIS TRUP ER ALTID LOVLIG (ejer 28/6): er truppen
 // ikke fuld ved race-tid, top-fylder raceEntryGenerator gabet fra holdets ledige ryttere.
@@ -68,15 +121,22 @@ export function pickFallbackCaptain({ riderIds = [], sprintId = null, hunterId =
 // RaceSelectionPanel (`selection.partialHint`), bygget på ryttere der faktisk er frie til
 // DETTE løb (ikke bundet, ikke skadet). Den hører ikke hjemme her: denne funktion afgør
 // om der MÅ gemmes, ikke hvad der er klogt at gemme.
-export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size }) {
+export function validateSelectionClient({ riderIds, captainId, sprintCaptainId, hunterId, size, sprintLeaderAllowed = false, coCaptainId = null, luxuryHelperId = null }) {
   const errors = [];
   if (riderIds.length > size.max) errors.push("selection_wrong_size");
   // BEVIDST divergens der står tilbage efter #4295: backenden kræver kun kaptajn når
   // riderIds.length > 0 (raceSelection.js:36-41), klienten kræver den altid. En helt tom
   // trup (ren auto-udtagelse) kan derfor ikke gemmes fra løbssiden. Uden for #4295's
   // scope: det er en ejer-beslutning, ikke en overset fejl.
-  if (!captainId) errors.push("selection_captain_required");
-  const roles = [captainId, sprintCaptainId, hunterId].filter(Boolean);
+  // #6321: i loeb paa s5_profiles_v3+ maa spurtkaptajnen vaere eneste leder; serveren
+  // sender `sprint_leader_allowed` (samme gate som raceSelection.validateSelection).
+  if (!captainId && !(sprintCaptainId && sprintLeaderAllowed)) errors.push("selection_captain_required");
+  // #7239: delt kaptajn (#5981), samme regler og samme v3-gate som serveren.
+  if (coCaptainId && !sprintLeaderAllowed) errors.push("selection_co_captain_not_available");
+  else if (coCaptainId && !captainId) errors.push("selection_co_captain_requires_captain");
+  // #5982: luksushjaelperen, samme v3-gate og én rolle pr. rytter.
+  if (luxuryHelperId && !sprintLeaderAllowed) errors.push("selection_luxury_helper_not_available");
+  const roles = [captainId, sprintCaptainId, hunterId, coCaptainId, luxuryHelperId].filter(Boolean);
   if (new Set(roles).size !== roles.length) errors.push("selection_role_overlap");
   return errors;
 }

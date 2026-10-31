@@ -693,12 +693,64 @@ function peakStubInput(rulesRevision, peakDay = IN_WINDOW) {
   });
 }
 
-test("#6156 buildV4StageInput: s5_profiles_v2 laegger toppen paa i vinduet og dykket bagefter", () => {
+test("#6156 buildV4StageInput: s5_profiles_v2 laegger toppen paa i vinduet og dykket bagefter (eget led, ejer 21/10)", () => {
   const byId = Object.fromEntries(peakStubInput("s5_profiles_v2").startlist.map((e) => [e.rider_id, e]));
-  assert.ok(byId.peaking.form > 55, "toppen loefter formen i vinduet");
-  assert.ok(byId.paying.form < 55, "dykket efter vinduet");
+  // Formen sendes uaendret; toppen/dykket som eget felt oven i.
+  assert.equal(byId.peaking.form, 55);
+  assert.ok(byId.peaking.form_peak_points > 0, "toppen i vinduet");
+  assert.equal(byId.paying.form, 55);
+  assert.ok(byId.paying.form_peak_points < 0, "dykket efter vinduet");
   assert.equal(byId.plain.form, 55);
+  assert.equal("form_peak_points" in byId.plain, false);
   assert.equal("form" in byId["no-data"], false);
+  assert.equal("form_peak_points" in byId["no-data"], false);
+});
+
+test("#6156 peakFormPointsForV4: planlaeggerens egen top/dyk i formpoint, null uden top paa dagen", async () => {
+  const { planner } = await peakModules();
+  const { peakFormPointsForV4 } = await import("./raceEngineV4Bridge.js");
+  const shown = planner.peakValueFormPoints({ trainingQuality: PEAK_WINDOW.trainingQuality });
+  assert.equal(peakFormPointsForV4({ peakWindows: [PEAK_WINDOW] }, IN_WINDOW), shown.current);
+  assert.equal(peakFormPointsForV4({ peakWindows: [PEAK_WINDOW] }, IN_PAYBACK), shown.payback);
+  assert.equal(peakFormPointsForV4({ peakWindows: [PEAK_WINDOW] }, OUTSIDE), null);
+  assert.equal(peakFormPointsForV4({ peakWindows: [PEAK_WINDOW] }, null), null);
+  assert.equal(peakFormPointsForV4({ form: 60 }, IN_WINDOW), null);
+});
+
+// #6156 (ejer 21/10, "A: byg"): toppen klemmes ikke ved form 100.
+test("#6156 loft-rettelse: form 100 faar hele toppen; dykket og formen under loftet er uaendrede", async () => {
+  const { physiology } = await peakModules();
+  const groups = await import("./engine/v4/groups.ts");
+  const { RACE_V4_TUNING } = await import("./engine/v4/tuning.ts");
+  const { peakFormPointsForV4, combinedFormForV4 } = await import("./raceEngineV4Bridge.js");
+  const top = peakFormPointsForV4({ peakWindows: [PEAK_WINDOW] }, IN_WINDOW);
+  const dip = peakFormPointsForV4({ peakWindows: [PEAK_WINDOW] }, IN_PAYBACK);
+  const dayform = (e) => groups.initRiderStates([{ rider_id: "r", abilities: {}, ...e }], RACE_V4_TUNING, "seed-6156")["r"].dayform;
+  // Form 100 + top > form 100 alene (foer rettelsen var de ens).
+  assert.ok(dayform({ form: 100, form_peak_points: top }) > dayform({ form: 100 }), "form 100 faar toppen");
+  // Toppen er formens egen sats pr. point, ens for alle formniveauer.
+  const gain = (form) => dayform({ form, form_peak_points: top }) - dayform({ form });
+  assert.ok(Math.abs(gain(100) - gain(97)) < 1e-12 && Math.abs(gain(97) - gain(60)) < 1e-12, "samme gevinst uanset form");
+  assert.ok(Math.abs(physiology.formPeakCpModifier(top) - (physiology.formCpModifier(50 + top) - physiology.formCpModifier(50))) < 1e-12,
+    "under loftet = det gamle samlede led");
+  // Dykket: samme som foer for en rytter hvis form+dyk ligger paa skalaen.
+  assert.ok(Math.abs((dayform({ form: 97, form_peak_points: dip }) - dayform({ form: 97 })) - (physiology.formCpModifier(97 + dip) - physiology.formCpModifier(97))) < 1e-12);
+  // Risikoen for en daarlig dag ser stadig den samlede, klampede form (uaendret).
+  const tuning = RACE_V4_TUNING.dayform;
+  assert.equal(physiology.jourSansProbability(Math.min(100, 100 + top), tuning), physiology.jourSansProbability(combinedFormForV4({ form: 100, peakWindows: [PEAK_WINDOW] }, IN_WINDOW), tuning));
+});
+
+test("#6156 loft-rettelse: uden top er starttilstanden byte-identisk med foer (form alene / ingen form)", async () => {
+  const groups = await import("./engine/v4/groups.ts");
+  const { RACE_V4_TUNING } = await import("./engine/v4/tuning.ts");
+  const { formCpModifier } = await import("./engine/v4/physiology.ts");
+  const base = groups.initRiderStates([{ rider_id: "r", abilities: {} }], RACE_V4_TUNING, "seed-x")["r"];
+  for (const extra of [{}, { form_peak_points: null }, { form_peak_points: 0 }]) {
+    assert.deepEqual(groups.initRiderStates([{ rider_id: "r", abilities: {}, ...extra }], RACE_V4_TUNING, "seed-x")["r"], base);
+  }
+  const withForm = groups.initRiderStates([{ rider_id: "r", abilities: {}, form: 70 }], RACE_V4_TUNING, "seed-x")["r"];
+  const noForm = groups.initRiderStates([{ rider_id: "r", abilities: {}, form: null }], RACE_V4_TUNING, "seed-x")["r"];
+  assert.equal(withForm.dayform, noForm.dayform + formCpModifier(70) + 0);
 });
 
 test("#6156 buildV4StageInput: s5_profiles_v1 og aeldre ser ALDRIG toppen (byte-identisk)", () => {
@@ -747,7 +799,7 @@ function peakRaceFixture({ withPeaks }) {
 
 test("#6156 regressionsvagt: buildRaceResults baerer toppen helt ind i v4 under s5_profiles_v2, ikke under v1", async () => {
   const { buildRaceResults } = await import("./raceRunner.js");
-  const { combinedFormForV4, riderFormForV4 } = await import("./raceEngineV4Bridge.js");
+  const { peakFormPointsForV4, riderFormForV4 } = await import("./raceEngineV4Bridge.js");
   for (const rev of ["s5_profiles_v1", "s5_profiles_v2"]) {
     const { race, stages, entrants } = peakRaceFixture({ withPeaks: true });
     const captured = [];
@@ -758,10 +810,13 @@ test("#6156 regressionsvagt: buildRaceResults baerer toppen helt ind i v4 under 
     for (const [idx, input] of captured.entries()) {
       for (const v4e of input.startlist) {
         const src = byId.get(v4e.rider_id);
-        const expected = rev === "s5_profiles_v2" ? combinedFormForV4(src, stages[idx].peakDay) : riderFormForV4(src);
+        const expected = riderFormForV4(src);
         if (expected === null) assert.equal("form" in v4e, false, `${rev}: ${v4e.rider_id}`);
         else assert.equal(v4e.form, expected, `${rev} etape ${idx + 1}: ${v4e.rider_id}`);
-        if (src.peakWindows && v4e.form > (riderFormForV4(src) ?? 50)) lifted++;
+        const expectedPeak = rev === "s5_profiles_v2" ? peakFormPointsForV4(src, stages[idx].peakDay) : null;
+        if (expectedPeak === null) assert.equal("form_peak_points" in v4e, false, `${rev}: ${v4e.rider_id}`);
+        else assert.equal(v4e.form_peak_points, expectedPeak, `${rev} etape ${idx + 1}: ${v4e.rider_id}`);
+        if (src.peakWindows && v4e.form_peak_points > 0) lifted++;
       }
     }
     if (rev === "s5_profiles_v2") assert.ok(lifted > 0, "toppen naaede motoren");
@@ -793,5 +848,19 @@ test("#6156 buildV4StageInput: s5_profiles_v2 med formPeaks=false ser ALDRIG top
   const v1 = peakStubInput("s5_profiles_v1");
   assert.equal(JSON.stringify({ ...off, rules_revision: "s5_profiles_v1" }), JSON.stringify(v1));
   const on = Object.fromEntries(peakStubInput("s5_profiles_v2").startlist.map((e) => [e.rider_id, e]));
-  assert.ok(on.peaking.form > 55, "default (flag taendt) laegger stadig toppen paa");
+  assert.ok(on.peaking.form_peak_points > 0, "default (flag taendt) laegger stadig toppen paa");
+});
+
+// #6649 (review): dagsformen er SLUKKET som default. Broen saetter kun day_form_6649 naar
+// kalderen eksplicit beder om det, og kun under s5_profiles_v3; raceRunner sender det kun
+// ved app_config day_form_6649 = "on" (dayForm6649Flag.test.js).
+test("#6649 buildV4StageInput: day_form_6649 kun ved eksplicit dayForm6649=true under s5_profiles_v3", () => {
+  const build = (rulesRevision, extra = {}) => buildV4StageInput({
+    modules: PEAK_STUB_MODULES, entrants: PEAK_FIELD, seedString: "race:6649:dayform", stageNumber: 1,
+    stageProfile: { stage_number: 1, profile_type: "mountain", distance_km: 150 },
+    rulesRevision, ...extra,
+  });
+  assert.equal("day_form_6649" in build("s5_profiles_v3"), false, "default: slukket, ogsaa under v3");
+  assert.equal(build("s5_profiles_v3", { dayForm6649: true }).day_form_6649, true);
+  assert.equal("day_form_6649" in build("s5_profiles_v2", { dayForm6649: true }), false, "aeldre revisioner: aldrig");
 });

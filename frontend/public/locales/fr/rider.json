@@ -114,7 +114,12 @@
         "loebslaere": "Sens de la course",
         "cobbled_sectors": "Secteurs pavés",
         "echelon_drills": "Exercices de bordures",
-        "attack_repeats": "Répétitions d'attaques"
+        "attack_repeats": "Répétitions d'attaques",
+        "long_climbs": "Longues ascensions",
+        "lead_out": "Lancement de sprint",
+        "itt_short": "Contre-la-montre courts",
+        "itt_long": "Contre-la-montre longs",
+        "cobbled_classic": "Classique pavée"
       },
       "active": "Actif : {focus} · {intensity} · entraîne {abilities}",
       "activeRest": "Au repos (axe {focus} en pause)",
@@ -938,7 +943,13 @@
     "fatigue": "Fatigue",
     "injured": "Blessé : {days} j restants",
     "injuredRaceDays": "Blessé : {days, plural, one {# jour de course restant} other {# jours de course restants}}",
-    "injuredApprox": "De retour vers le {date}"
+    "fitAgain": "De nouveau apte le {date}",
+    "fitAgainApprox": "De nouveau apte vers le {date}",
+    "causeCrashStage": "Chute, {race} étape {stage}",
+    "causeCrashRace": "Chute, {race}",
+    "causeCrash": "Chute en course",
+    "causeTraining": "Blessé à l'entraînement",
+    "causeIllness": "Malade"
   },
   "training": {
     "title": "Axe d'entraînement",
@@ -961,6 +972,11 @@
     "focus_cobbled_sectors": "Secteurs pavés",
     "focus_echelon_drills": "Exercices de bordures",
     "focus_attack_repeats": "Répétitions d'attaques",
+    "focus_long_climbs": "Longues ascensions",
+    "focus_lead_out": "Lancement de sprint",
+    "focus_itt_short": "Contre-la-montre courts",
+    "focus_itt_long": "Contre-la-montre longs",
+    "focus_cobbled_classic": "Classique pavée",
     "intensity_rest": "Repos",
     "intensity_unknown_pending": "En attente de la revue de course",
     "intensity_easy": "Facile",

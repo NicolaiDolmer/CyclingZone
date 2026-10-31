@@ -53,12 +53,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
 
@@ -97,13 +97,13 @@ jobs:
 
       - name: Check out repository
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
       - name: Set up Node.js
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-        uses: actions/setup-node@v7.1.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -113,8 +113,21 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
         run: npm ci
 
+      # PR-kontekst: ny flag-noegle godkendes (PENDING) hvis PR'ens migration
+      # seeder den ikke-taendt (#7344). Kraever origin/main til diff.
+      - name: Hent main til migration-diff
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+
+      - name: Registrets tilstand mod prod app_config (PR)
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node scripts/check-feature-registry-flags.mjs --base-ref origin/main
+
       - name: Registrets tilstand mod prod app_config
-        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        if: github.event_name != 'pull_request'
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}

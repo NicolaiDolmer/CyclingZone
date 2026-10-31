@@ -1,3 +1,4 @@
+import { evaluateCodeRabbitNight } from './lib/review-coderabbit-night.mjs';
 // node --test scripts/review-gate.test.mjs  (#6654)
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -24,6 +25,7 @@ import {
   parseCodexReviewedCommit,
   parseCodexReviewState,
   codexStatusToState,
+  codeRabbitSeverity,
   pickGateRun,
   gateRunsPath,
   gateRunName,
@@ -866,4 +868,139 @@ test("ejer 20/10: kun P0/P1 (og ukendt grad) blokerer; P2/P3 noteres som opfoelg
   assert.equal(p1.unresolved, 1);
   const unknown = evaluateCodex({ comments, reviews, threads: [t(null)], headSha: head });
   assert.equal(unknown.ok, false, "ukendt grad blokerer");
+});
+
+// ── Ejer 27/10: forældede Codex-traade blokerer ikke efter ren Codex + Claude-markoer paa HEAD ──
+const cleanReceipt = (commit) => ({ author: CODEX, association: "NONE", body: `<!-- codex-review-receipt:v1 -->\n\nCodex Review: Didn't find any major issues. Nice work!\n\n**Reviewed commit:** \`${commit.slice(0, 10)}\``, at: "2026-10-15T10:30:00Z" });
+const oldP1 = { isResolved: false, author: CODEX, severity: "P1", commit: OLD };
+const headP1 = { isResolved: false, author: CODEX, severity: "P1", commit: HEAD };
+
+test("superseded: P1-traad fra aeldre commit blokerer ikke, naar Codex er ren paa HEAD og Claude-markoeren gaelder HEAD", () => {
+  const r = evaluateGate({ author: "x", files: ["backend/lib/engine/v4/a.ts"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [oldP1], headSha: HEAD });
+  assert.equal(r.codex.unresolved, 0);
+  assert.equal(r.ok, true);
+});
+
+test("superseded: uden Claude-markoer paa HEAD blokerer den gamle traad stadig", () => {
+  const r = evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD)], threads: [oldP1], headSha: HEAD });
+  assert.equal(r.codex.unresolved, 1);
+  assert.equal(r.ok, false);
+});
+
+test("superseded: en blokerende markoer eller en ren kvittering paa et AELDRE commit fjerner ikke traaden", () => {
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("blocking")], threads: [oldP1], headSha: HEAD }).codex.unresolved, 1);
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(OLD), marker("clean")], threads: [oldP1], headSha: HEAD }).codex.unresolved, 1);
+});
+
+test("superseded: en traad paa selve HEAD eller uden kendt commit blokerer altid", () => {
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [headP1], headSha: HEAD }).codex.unresolved, 1);
+  assert.equal(evaluateGate({ author: "x", files: ["docs/a.md"], comments: [codexDone, cleanReceipt(HEAD), marker("clean")], threads: [{ ...oldP1, commit: null }], headSha: HEAD }).codex.unresolved, 1);
+});
+
+// Explicit owner's one-night exception; no general policy replacement.
+const nightNow = Date.parse('2026-10-28T22:00:00Z');
+const nightCheck = (patch={}) => ({name:'CodeRabbit',head_sha:HEAD,app:{slug:'coderabbitai'},status:'completed',conclusion:'success',output:{summary:'Result: Success - Review completed\nRun ID: test'},...patch});
+const nightReview = (patch={}) => ({id:1,user:{login:'coderabbitai[bot]',type:'Bot'},commit_id:HEAD,state:'COMMENTED',submitted_at:'2026-10-27T22:00:00Z',body:'<!-- coderabbit-ai-generated:v1 -->\n**Actionable comments posted: 0**',...patch});
+const nightData = (patch={}) => ({number:7313,author:'x',headSha:HEAD,files:['backend/lib/engine/v4/a.ts'],comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7313 sha=${HEAD} -->`}],reviews:[],threads:[],...patch});
+const nightInput = (patch={}) => ({data:nightData(),checkRuns:[nightCheck()],rabbitReviews:[nightReview()],now:nightNow,repo:'NicolaiDolmer/CyclingZone',...patch});
+test('night CodeRabbit: exact owner-authorized PR/HEAD, both actual reviews, completed check pass',()=>assert.equal(evaluateCodeRabbitNight(nightInput()).ok,true));
+for(const [name,patch] of [
+ ['other PR',{data:nightData({number:7314})}],
+ ['other repository',{repo:'other/repo'}],
+ ['expired',{now:Date.parse('2026-10-29T22:00:00Z')}],
+ ['missing time',{now:undefined}],
+ ['missing owner mandate',{data:nightData({comments:[codexDone,cleanReceipt(HEAD)]})}],
+ ['missing Codex',{data:nightData({comments:[{association:'OWNER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7313 sha=${HEAD} -->`}]})}],
+ ['draft',{data:nightData({draft:true})}],
+ ['stale CodeRabbit',{rabbitReviews:[nightReview({commit_id:OLD})],checkRuns:[nightCheck({head_sha:OLD})]}],
+ ['untrusted bot alone',{rabbitReviews:[nightReview({user:{login:'other',type:'Bot'}})],checkRuns:[]}],
+ ['issues present',{rabbitReviews:[nightReview({body:'**Actionable comments posted: 1**'})]}],
+ ['empty bot reply without completed review',{rabbitReviews:[nightReview({body:''})],checkRuns:[nightCheck({output:{summary:'Reply posted'}})]}],
+ ['no check',{checkRuns:[]}],
+ ['duplicate checks',{checkRuns:[nightCheck(),nightCheck()]}],
+ ['wrong check app',{checkRuns:[nightCheck({app:{slug:'other'}})]}],
+ ['stale check',{checkRuns:[nightCheck({head_sha:OLD})]}],
+ ['running check',{checkRuns:[nightCheck({status:'in_progress',conclusion:null})]}],
+ ['skipped check',{checkRuns:[nightCheck({conclusion:'skipped'})]}],
+ ['open Rabbit thread',{data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD}]})}],
+])test(`night CodeRabbit fails closed: ${name}`,()=>assert.equal(evaluateCodeRabbitNight(nightInput(patch)).ok,false));
+
+test('night CodeRabbit: completed check alone cannot replace the review receipt',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[]})).ok,false));
+test('night CodeRabbit blocks body-only Major findings despite matching thread count',()=>assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews:[nightReview({body:'**Actionable comments posted: 0**\nOutside diff range comments: Major finding'})]})).ok,false));
+test('night CodeRabbit: skipped success text cannot count as a completed review',()=>assert.equal(evaluateCodeRabbitNight(nightInput({checkRuns:[nightCheck({output:{summary:'Review skipped'}})]})).ok,false));
+test('night CodeRabbit: MEMBER cannot grant the owner exception',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'MEMBER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7313 sha=${HEAD} -->`}]})})).ok,false));
+test('night CodeRabbit: renewal excludes formerly allowed PR 7311',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({number:7311,comments:[codexDone,cleanReceipt(HEAD),{author:'NicolaiDolmer',association:'OWNER',body:`<!-- coderabbit-substitute-renewed-20261028: pr=7311 sha=${HEAD} -->`}]})})).ok,false));
+test('CodeRabbit severity is read only from its explicit header',()=>{
+ assert.equal(codeRabbitSeverity('**<picture><img src="x"></picture> Minor** · **Functional Correctness**'),'P2');
+ assert.equal(codeRabbitSeverity('**Major** · **Functional Correctness**'),'P1');
+ assert.equal(codeRabbitSeverity('**Critical** · **Security**'),'P0');
+ assert.equal(codeRabbitSeverity('Minor in an ordinary paragraph'),null);
+ // #7358 (CodeQL #383): indlejrede/ufuldstændige tags renses helt.
+ assert.equal(codeRabbitSeverity('**<<b>img src=x>Major** · **Security**'),'P1');
+ assert.equal(codeRabbitSeverity('**<sc<script>ript> Minor** · **Docs**'),'P2');
+});
+test('night CodeRabbit preserves owner P2 follow-up policy without changing normal gate',()=>{
+ const r=evaluateCodeRabbitNight(nightInput({data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD,reviewId:1,rabbitSeverity:'P2'}]}),rabbitReviews:[nightReview({body:'**Actionable comments posted: 1**'})]}));
+ assert.equal(r.ok,true);assert.equal(r.notes,1);
+});
+test('night CodeRabbit still blocks an explicit Major thread',()=>assert.equal(evaluateCodeRabbitNight(nightInput({data:nightData({threads:[{author:'coderabbitai[bot]',isResolved:false,commit:HEAD,rabbitSeverity:'P1'}]}),rabbitReviews:[nightReview({body:'**Actionable comments posted: 1**'})]})).ok,false));
+
+test('night CodeRabbit reconciles repeated HEAD reviews with their own threads',()=>{
+ const data=nightData({threads:[{author:'coderabbitai',commit:HEAD,reviewId:1,isResolved:false,rabbitSeverity:'P2'}]});
+ const rabbitReviews=[nightReview({body:'**Actionable comments posted: 1**'}),nightReview({id:2,submitted_at:'2026-10-27T23:00:00Z'})];
+ assert.equal(evaluateCodeRabbitNight(nightInput({data,rabbitReviews})).ok,true);
+});
+test('night CodeRabbit scans earlier HEAD bodies even after a clean repeated review',()=>{
+ const rabbitReviews=[nightReview({body:'**Actionable comments posted: 0**\nMajor body-only finding'}),nightReview({id:2,submitted_at:'2026-10-27T23:00:00Z'})];
+ assert.equal(evaluateCodeRabbitNight(nightInput({rabbitReviews})).ok,false);
+});
+test('night CodeRabbit rejects HEAD threads without an originating review',()=>{
+ const data=nightData({threads:[{author:'coderabbitai',commit:HEAD,reviewId:99,isResolved:true,rabbitSeverity:'P2'}]});
+ assert.equal(evaluateCodeRabbitNight(nightInput({data})).ok,false);
+});
+
+
+const zeroSummary = (patch={}) => ({author:'coderabbitai[bot]',authorType:'Bot',at:'2026-10-27T22:00:30Z',body:`No actionable comments were generated in the recent review.\nReviewing files that changed from the base of the PR and between ${OLD} and ${HEAD}.`,...patch});
+const zeroInput = (summaryPatch={},checkPatch={}) => nightInput({data:nightData({comments:[...nightData().comments,zeroSummary(summaryPatch)]}),rabbitReviews:[],checkRuns:[nightCheck({started_at:'2026-10-27T22:00:00Z',completed_at:'2026-10-27T22:01:00Z',...checkPatch})]});
+test('night CodeRabbit accepts documented zero-issue bot summary bound to reviewed HEAD and check window',()=>assert.equal(evaluateCodeRabbitNight(zeroInput()).ok,true));
+for(const [name,patch,checkPatch] of [
+ ['human copy',{authorType:'User'}],['other author',{author:'other[bot]'}],['stale head',{body:zeroSummary().body.replaceAll(HEAD,OLD)}],['old summary',{at:'2026-10-27T21:59:59Z'}],['future summary',{at:'2026-10-27T22:02:01Z'}],['missing timestamp',{at:null}],['missing review window',{}, {started_at:null}],['not explicitly clean',{body:zeroSummary().body.replace('No actionable','Some actionable')}],
+])test(`night zero-issue receipt rejects ${name}`,()=>assert.equal(evaluateCodeRabbitNight(zeroInput(patch,checkPatch)).ok,false));
+test('night zero summary never hides an earlier blocking review body',()=>{
+ const i=zeroInput();i.rabbitReviews=[nightReview({body:'**Actionable comments posted: 0**\nMajor body-only finding'})];
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+
+test('night CodeRabbit rejects body-only blockers in a trusted clean-summary even with a clean formal review',()=>{
+ const i=zeroInput({body:zeroSummary().body+'\nMajor body-only finding'});i.rabbitReviews=[nightReview()];
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+
+test('night CodeRabbit retains an older same-HEAD summary blocker after a newer clean receipt',()=>{
+ const i=zeroInput();i.data.comments.push(zeroSummary({at:'2026-10-27T21:00:00Z',body:zeroSummary().body+'\nMajor body-only finding'}));
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+
+test('night CodeRabbit retains blockers in Markdown quoted summaries',()=>{
+ const i=zeroInput();i.data.comments.push(zeroSummary({body:zeroSummary().body.split('\n').map(l=>'  > '+l).join('\n')+'\nMajor body-only finding'}));
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+test('night CodeRabbit accepts an authentic Markdown quoted zero summary',()=>{
+ assert.equal(evaluateCodeRabbitNight(zeroInput({body:zeroSummary().body.split('\n').map(l=>'  > '+l).join('\n')})).ok,true);
+});
+
+test('night CodeRabbit accepts observed Last reviewed commit marker plus actual zero verdict',()=>{
+ assert.equal(evaluateCodeRabbitNight(zeroInput({body:`> - Last reviewed commit: ${HEAD}\nNo actionable comments were generated in the recent review.`})).ok,true);
+});
+test('night CodeRabbit rejects contradictory same-summary HEAD claims even with a formal clean review',()=>{
+ const i=zeroInput({body:zeroSummary().body+`\n> - Last reviewed commit: ${OLD}`});i.rabbitReviews=[nightReview()];
+ assert.equal(evaluateCodeRabbitNight(i).ok,false);
+});
+
+test('renewal rejects the expired mandate marker even on the same HEAD',()=>{
+ const data=nightData();data.comments=data.comments.map(c=>({...c,body:c.body?.replace('coderabbit-substitute-renewed-20261028:','coderabbit-substitute:')}));
+ assert.equal(evaluateCodeRabbitNight(nightInput({data})).ok,false);
+});
+test('renewal remains valid immediately before its fixed deadline',()=>{
+ assert.equal(evaluateCodeRabbitNight(nightInput({now:Date.parse('2026-10-29T21:59:59Z')})).ok,true);
 });

@@ -232,6 +232,14 @@
       "title": "Ha llegado talento nuevo a la academia",
       "message": "Hay candidatos nuevos esperando en tu academia - ficha o rechaza."
     },
+    "academyPullReminderReady": {
+      "title": "Tienes nuevos candidatos en la academia",
+      "message": "El lote de esta semana te espera en tu academia. Recógelo antes del sábado a medianoche."
+    },
+    "academyPullReminderExpiring": {
+      "title": "El lote de academia de esta semana caduca esta noche",
+      "message": "Aún no has recogido a los candidatos de esta semana. Hazlo antes de medianoche o el lote se pierde."
+    },
     "seasonStarted": {
       "title": "Ha empezado la temporada {number}",
       "message": "Ha empezado una temporada nueva. Mira tu panel para ver los objetivos de tu directiva y tu plantilla para la temporada que viene.",
@@ -251,11 +259,13 @@
     },
     "raceResult": {
       "title": "Ya está el resultado de la carrera",
-      "message": "Se ha corrido {race}. Ver el resultado."
+      "message": "Se ha corrido {race}. Ver el resultado.",
+      "messageBest": "{race} ya se ha corrido. Tus mejores: {riders}."
     },
     "firstRaceResult": {
       "title": "Tu primera carrera ya es historia",
-      "message": "Se ha corrido {race}. Mira cómo les fue a tus ciclistas."
+      "message": "Se ha corrido {race}. Mira cómo les fue a tus ciclistas.",
+      "messageBest": "{race} ya se ha corrido. Tus mejores: {riders}."
     },
     "stageResult": {
       "title": "Ya está el resultado de la etapa",
@@ -264,7 +274,8 @@
     },
     "contractExpiring": {
       "title": "Contrato a punto de caducar",
-      "message": "El contrato de {rider} caduca al final de la temporada {season}."
+      "message": "El contrato de {rider} caduca al final de la temporada {season}.",
+      "squadMessage": "El contrato de {rider} ({squad}) caduca al final de la temporada {season}. Renuévalo en la pestaña Contratos de Mi equipo."
     },
     "contractExpiredRelease": {
       "title": "Ciclista liberado: contrato caducado",
@@ -297,9 +308,11 @@
     },
     "seasonTransitionRisk": {
       "title": "Cambio de temporada: riesgo de contrato y de retirada",
-      "messageBoth": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca, y {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. Amplía el contrato de un ciclista desde su perfil antes del cambio para evitar que lo liberen; la retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada.",
-      "messageExpiringOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca. Amplía su contrato desde el perfil del ciclista antes del cambio para conservarlos.",
-      "messageRetirementOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. La retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada."
+      "messageBoth": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca, y {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. Amplía los contratos antes del cambio en la pestaña Contratos de Mi equipo, donde puedes ampliar varios ciclistas de 1 a 3 temporadas a la vez. La retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada.",
+      "messageExpiringOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {expiringCount} ciclista(s) serán liberados como agentes libres porque su contrato caduca. Amplíalos antes del cambio en la pestaña Contratos de Mi equipo, donde puedes ampliar varios ciclistas de 1 a 3 temporadas a la vez.",
+      "messageRetirementOnly": "Tu plantilla se ve afectada por el próximo cambio de temporada: {retirementRiskCount} ciclista(s) (36 años o más) corren riesgo de retirarse. La retirada no se puede evitar, pero podrás pujar por sustitutos cuando cambie la temporada.",
+      "messageBothWithRoster": "{expiringCount} contratos caducan al cambiar de temporada y otros {retirementRiskCount} ciclistas podrían retirarse. Renueva los contratos en la pestaña Contratos de Mi equipo.\n{contractRiders}",
+      "messageExpiringOnlyWithRoster": "{expiringCount} contratos caducan al cambiar de temporada. Renuévalos en la pestaña Contratos de Mi equipo.\n{contractRiders}"
     },
     "watchlistDeparted": {
       "title": "El ciclista ha dejado el juego",
@@ -645,10 +658,23 @@
       "message": "{count, plural, one {{senderName} te ha enviado un mensaje} other {# mensajes nuevos de {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Otro mánager te ha enviado un mensaje} other {# mensajes nuevos de otro mánager}}"
     },
+    "riderIll": {
+      "title": "Corredor enfermo",
+      "message": "El médico dice que {rider} está enfermo tras varios días de fatiga extrema y está de baja hasta el {until}."
+    },
     "riderInjured": {
       "title": "Ciclista lesionado",
       "message": "{rider} se cayó en {race} y está lesionado hasta el {until}.",
-      "messageMissed": "{rider} se cayó en {race} y está lesionado hasta el {until}. No correrá {missed}."
+      "messageMissed": "{rider} se cayó en {race} y está lesionado hasta el {until}. No correrá {missed}.",
+      "messageFinished": "{rider} se cayó en {race}, pero terminó la etapa. Está lesionado hasta el {until}.",
+      "messageFinishedMissed": "{rider} se cayó en {race}, pero terminó la etapa. Está lesionado hasta el {until} y no correrá {missed}.",
+      "messageTraining": "{rider} se lesionó entrenando y está de baja hasta el {until}.",
+      "crash": "{rider} se cayó en {race} y estará recuperado el {fitAgain}.",
+      "crashMissed": "{rider} se cayó en {race} y estará recuperado el {fitAgain}. Se perderá {missed}{more, plural, =0 {} one { y 1 carrera más} other { y # carreras más}}.",
+      "crashFinished": "{rider} se cayó en {race}, pero terminó la etapa. Estará recuperado el {fitAgain}.",
+      "crashFinishedMissed": "{rider} se cayó en {race}, pero terminó la etapa. Estará recuperado el {fitAgain}. Se perderá {missed}{more, plural, =0 {} one { y 1 carrera más} other { y # carreras más}}.",
+      "training": "{rider} se lesionó entrenando y estará recuperado el {fitAgain}.",
+      "trainingMissed": "{rider} se lesionó entrenando y estará recuperado el {fitAgain}. Se perderá {missed}{more, plural, =0 {} one { y 1 carrera más} other { y # carreras más}}."
     },
     "teamDidNotStart": {
       "title": "Tu equipo no tomó la salida",
@@ -671,6 +697,24 @@
     "squadEnforced": {
       "title": "Tamaño de plantilla aplicado",
       "message": "{purchasedCount, plural, =0 {} one {Compra automática de # ciclista: {purchasedNames}\n} other {Compra automática de # ciclistas: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# ciclista se unirá al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n} other {# ciclistas se unirán al equipo cuando termine su carrera por etapas en curso: {deferredNames}\n}}{soldCount, plural, =0 {} one {Venta automática de # ciclista: {soldNames}\n} other {Venta automática de # ciclistas: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# ciclista en una carrera por etapas en curso se venderá después de la carrera\n} other {# ciclistas en una carrera por etapas en curso se venderán después de la carrera\n}}Multa: {fine} CZ$ · Deducción: {points} puntos"
+    },
+    "contractSquad": {
+      "senior": "Sénior",
+      "u23": "Sub-23",
+      "junior": "Júnior",
+      "academy": "Academia"
+    },
+    "contractRoster": {
+      "entry": "{rider} ({squad}), {value} CZ$",
+      "entryUnknown": "{rider} ({squad}), valor no disponible"
+    },
+    "contractExpiringSummary": {
+      "title": "Contratos que caducan",
+      "message": "Estos contratos caducan al final de la temporada {season}. Renuévalos en la pestaña Contratos de Mi equipo.\n{contractRiders}"
+    },
+    "contractReleasedSummary": {
+      "title": "Ciclistas liberados: contratos caducados",
+      "message": "Estos ciclistas quedaron libres al caducar sus contratos al final de la temporada {season}. Revisa tus contratos restantes en Mi equipo.\n{contractRiders}"
     }
   },
   "error": {

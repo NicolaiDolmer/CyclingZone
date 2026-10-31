@@ -32,6 +32,7 @@ import {
 } from "../lib/trainingPrograms.js";
 import { isTrainingProgramsEnabled } from "../lib/trainingProgramsFlag.js";
 import { isTrainingCellsEnabled } from "../lib/trainingWeekPlanCellsFlag.js";
+import { isV3OnlySession, isTrainingCatalogV3EnabledForViewer, v3SmartDefaultFocus } from "../lib/trainingCatalogV3.js"; // #5319
 import { seedProgramWeekDays } from "../lib/trainingWeekPlanCells.js";
 import { loadTeamFatigueForecast } from "../lib/trainingWeekPlanForecast.js";
 import { markRidersOwnPlan, syncGroupsToSquadProgram, isMissingGroupsTable } from "../lib/trainingGroups.ts"; // #6000
@@ -87,7 +88,7 @@ export function createTrainingProgramsRouter({
   async function ownRiders(teamId) {
     const { data, error } = await supabase
       // pagination-safe: one team roster (senior + academy), far below the 1000-row cap.
-      .from("riders").select("id, primary_type").eq("team_id", teamId).eq("is_retired", false);
+      .from("riders").select("id, primary_type, secondary_type").eq("team_id", teamId).eq("is_retired", false);
     if (error) throw new Error(error.message);
     return data ?? [];
   }
@@ -115,7 +116,14 @@ export function createTrainingProgramsRouter({
 
   // De saaede uger for ryttere uden felter (#5932): det gitteret viser, og det
   // PUT /cell skriver ved foerste rettelse. Ryttere MED felter er ikke med.
-  function seedsFor(riders, rows, plansByRider) {
+  // #5319: v3-saaningen (tt/gc uden plan paa itt_long) foelger viewerens katalog.
+  // Flaget slaas kun op, naar mindst een rytter uden plan ville blive flyttet.
+  async function seedCatalogV3(req, riders, plansByRider) {
+    const affected = riders.some((r) => !(plansByRider.get(r.id)?.focus && plansByRider.get(r.id)?.intensity) && v3SmartDefaultFocus("threshold", r, { v3: true }) !== "threshold");
+    return affected ? isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)) : false;
+  }
+
+  function seedsFor(riders, rows, plansByRider, catalogV3 = false) {
     const teamDays = (rows ?? []).find((r) => r.rider_id == null)?.days ?? null;
     const seeds = {};
     for (const rider of riders) {
@@ -123,6 +131,7 @@ export function createTrainingProgramsRouter({
       if (isValidProgramWeekDays(riderDays)) continue;
       seeds[rider.id] = seedProgramWeekDays({
         riderDays, teamDays, plan: plansByRider.get(rider.id) ?? null, primaryType: rider.primary_type ?? null,
+        secondaryType: rider.secondary_type ?? null, catalogV3,
       });
     }
     return seeds;
@@ -148,7 +157,7 @@ export function createTrainingProgramsRouter({
       let seeds = {};
       if (cellsEnabled) {
         const [riders, plansByRider] = await Promise.all([ownRiders(req.team.id), teamPlans(req.team.id)]);
-        seeds = seedsFor(riders, rows, plansByRider);
+        seeds = seedsFor(riders, rows, plansByRider, await seedCatalogV3(req, riders, plansByRider));
       }
       res.json({
         enabled: catalogOn,
@@ -299,6 +308,10 @@ export function createTrainingProgramsRouter({
     }
     try {
       if (!(await cellsOn(req))) return res.status(404).json({ error: "not_found" });
+      // #5319: en v3-session kan kun vaelges naar training_catalog_v3 er aaben for viewer.
+      if (isV3OnlySession(session) && !(await isTrainingCatalogV3EnabledForViewer(supabase, () => isViewerBetaTester(req)))) {
+        return res.status(400).json({ error: "invalid_session" });
+      }
       const teamId = req.team.id;
       const riders = await ownRiders(teamId);
       const rider = riders.find((r) => r.id === riderId);
@@ -310,7 +323,10 @@ export function createTrainingProgramsRouter({
       // GET viser), og saa rettes feltet.
       const current = row && isValidProgramWeekDays(row.days)
         ? row.days
-        : seedsFor([rider], rows, await teamPlans(teamId))[riderId];
+        : await (async () => {
+          const plans = await teamPlans(teamId);
+          return seedsFor([rider], rows, plans, await seedCatalogV3(req, [rider], plans))[riderId];
+        })();
       const days = setProgramCell(current, { weekday, slotIndex, session });
       if (!days) return res.status(400).json({ error: "invalid_cell" });
       await markRidersOwnPlan(supabase, teamId, [riderId]); // #6000: egen plan vinder over gruppen. Foer skrivningen.

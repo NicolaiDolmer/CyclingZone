@@ -8,15 +8,14 @@
     "TS18046": 4,
     "TS18047": 1,
     "TS2322": 6,
-    "TS2339": 55,
-    "TS2345": 1,
+    "TS2339": 50,
     "TS2353": 3,
     "TS2741": 1,
     "TS8032": 1
   },
   "../backend/lib/academyIntake.js": {
     "TS1127": 1,
-    "TS2322": 4,
+    "TS2322": 2,
     "TS2339": 12,
     "TS2353": 3,
     "TS2739": 1,
@@ -88,8 +87,8 @@
     "TS2739": 1
   },
   "../backend/lib/boardGoals.js": {
-    "TS18047": 13,
-    "TS2322": 11,
+    "TS18047": 9,
+    "TS2322": 4,
     "TS2339": 115,
     "TS2739": 1
   },
@@ -281,9 +280,8 @@
   "../backend/lib/notificationService.js": {
     "TS18046": 1,
     "TS18047": 2,
-    "TS2322": 4,
-    "TS2339": 15,
-    "TS2345": 5,
+    "TS2339": 4,
+    "TS2345": 2,
     "TS2559": 2
   },
   "../backend/lib/poolBalance.js": {
@@ -381,8 +379,8 @@
   },
   "../backend/lib/raceStageProfileGenerator.js": {
     "TS18048": 3,
-    "TS2322": 3,
-    "TS2339": 16,
+    "TS2322": 2,
+    "TS2339": 5,
     "TS2345": 3,
     "TS2353": 2,
     "TS2740": 1
@@ -484,7 +482,7 @@
     "TS2349": 2
   },
   "../backend/lib/sponsorContractsService.js": {
-    "TS2322": 5,
+    "TS2322": 4,
     "TS2339": 3
   },
   "../backend/lib/sponsorEngine.js": {
@@ -668,9 +666,6 @@
     "TS2739": 7,
     "TS2741": 2
   },
-  "src/components/FinanceSeasonSwitchPanel.jsx": {
-    "TS2322": 1
-  },
   "src/components/ForumHighlightsCard.jsx": {
     "TS2322": 2,
     "TS2339": 10,
@@ -687,7 +682,7 @@
   "src/components/LanguageSwitcher.jsx": {
     "TS18048": 2,
     "TS2339": 8,
-    "TS2349": 2,
+    "TS2349": 1,
     "TS2353": 1
   },
   "src/components/Layout.jsx": {
@@ -726,7 +721,6 @@
     "TS2741": 1
   },
   "src/components/RaceControlBanner.jsx": {
-    "TS2339": 2,
     "TS2345": 1
   },
   "src/components/RiderFilters.jsx": {
@@ -868,14 +862,12 @@
     "TS18046": 1,
     "TS2322": 2,
     "TS2339": 3,
-    "TS2739": 8,
     "TS2741": 5
   },
   "src/components/admin/growth/GrowthNpsTab.jsx": {
     "TS18046": 1,
     "TS2322": 2,
     "TS2339": 3,
-    "TS2739": 4,
     "TS2741": 5
   },
   "src/components/admin/growth/GrowthOverviewTab.jsx": {
@@ -1043,7 +1035,6 @@
   },
   "src/components/race/CompletedRacesExplorer.jsx": {
     "TS18046": 1,
-    "TS2339": 16,
     "TS2345": 3,
     "TS2739": 2
   },
@@ -1073,18 +1064,16 @@
     "TS2741": 1
   },
   "src/components/race/RaceSelectionPanel.jsx": {
-    "TS18046": 7,
     "TS18047": 3,
     "TS2322": 5,
-    "TS2339": 33,
-    "TS2345": 12,
-    "TS2353": 1,
-    "TS2698": 1
+    "TS2339": 4,
+    "TS2345": 11,
+    "TS2353": 1
   },
   "src/components/race/RaceTacticsTab.jsx": {
     "TS18047": 6,
     "TS2322": 8,
-    "TS2339": 35,
+    "TS2339": 29,
     "TS2345": 5,
     "TS2464": 1,
     "TS2538": 3
@@ -1214,7 +1203,6 @@
     "TS2741": 1
   },
   "src/components/rider/profile/RiderAbilityHistoryPro.jsx": {
-    "TS18047": 2,
     "TS2322": 3,
     "TS2339": 2
   },
@@ -1252,8 +1240,6 @@
     "TS2741": 2
   },
   "src/components/rider/profile/RiderScoutingTab.jsx": {
-    "TS2339": 14,
-    "TS2345": 1,
     "TS2739": 2,
     "TS2741": 1
   },
@@ -1452,9 +1438,6 @@
   "src/lib/anonymousId.test.js": {
     "TS2790": 1
   },
-  "src/lib/apiError.js": {
-    "TS2345": 1
-  },
   "src/lib/assistantTrainingSuggestions.js": {
     "TS2339": 3
   },
@@ -1492,10 +1475,6 @@
     "TS2345": 2,
     "TS2740": 1
   },
-  "src/lib/backendMessage.js": {
-    "TS2345": 1,
-    "TS2349": 1
-  },
   "src/lib/boardCopy.js": {
     "TS2339": 5
   },
@@ -1506,8 +1485,7 @@
     "TS2339": 21
   },
   "src/lib/boardUtils.test.js": {
-    "TS2345": 4,
-    "TS2531": 1
+    "TS2345": 4
   },
   "src/lib/boardWizardNav.js": {
     "TS2339": 8
@@ -1736,9 +1714,6 @@
     "TS18047": 16,
     "TS18048": 2
   },
-  "src/lib/playerFeatureFlags.js": {
-    "TS2339": 1
-  },
   "src/lib/posthogClient.js": {
     "TS18047": 3,
     "TS2322": 3,
@@ -1813,9 +1788,6 @@
   "src/lib/racePageTabs.js": {
     "TS8024": 1
   },
-  "src/lib/racePageTabs.test.js": {
-    "TS2322": 2
-  },
   "src/lib/raceRecap.js": {
     "TS2339": 1
   },
@@ -1846,7 +1818,6 @@
   },
   "src/lib/raceSelectionLogic.test.js": {
     "TS18047": 15,
-    "TS2322": 14,
     "TS2353": 1,
     "TS2531": 5
   },
@@ -2085,14 +2056,10 @@
   "src/lib/stageProfileConfig.test.js": {
     "TS2345": 2
   },
-  "src/lib/stageRouteProfile.js": {
-    "TS2339": 8
-  },
   "src/lib/stageRouteProfile.test.js": {
     "TS18047": 12,
     "TS18048": 7,
-    "TS2339": 18,
-    "TS2345": 1
+    "TS2339": 18
   },
   "src/lib/stageTimelineFilm.js": {
     "TS18048": 5,
@@ -2130,7 +2097,7 @@
     "TS2741": 1
   },
   "src/lib/tacticsOrdersAdapter.js": {
-    "TS2339": 12
+    "TS2339": 2
   },
   "src/lib/tacticsPlan.js": {
     "TS2339": 1
@@ -2329,7 +2296,6 @@
     "TS18046": 1,
     "TS2322": 3,
     "TS2339": 13,
-    "TS2739": 15,
     "TS2741": 4
   },
   "src/pages/AdminFairplayPage.jsx": {
@@ -2345,7 +2311,6 @@
     "TS18046": 1,
     "TS2322": 3,
     "TS2339": 3,
-    "TS2739": 5,
     "TS2741": 1
   },
   "src/pages/AdminSprintMetricsPage.jsx": {
@@ -2354,7 +2319,6 @@
     "TS2322": 2,
     "TS2339": 24,
     "TS2345": 1,
-    "TS2739": 7,
     "TS2741": 2
   },
   "src/pages/AdminSurveyResultsPage.jsx": {
@@ -2381,7 +2345,7 @@
     "TS2345": 3,
     "TS2362": 1,
     "TS2363": 1,
-    "TS2739": 7,
+    "TS2739": 1,
     "TS2741": 2
   },
   "src/pages/AuctionsPage.jsx": {
@@ -2394,7 +2358,6 @@
     "TS2353": 3,
     "TS2362": 1,
     "TS2363": 1,
-    "TS2589": 1,
     "TS2698": 4,
     "TS2739": 2,
     "TS2741": 3,
@@ -2490,7 +2453,7 @@
   },
   "src/pages/KitchenSinkPage.jsx": {
     "TS2322": 13,
-    "TS2739": 6,
+    "TS2739": 2,
     "TS2741": 34,
     "TS2786": 1
   },
@@ -2519,7 +2482,7 @@
     "TS2345": 2,
     "TS2362": 1,
     "TS2363": 1,
-    "TS2739": 7,
+    "TS2739": 3,
     "TS2741": 2
   },
   "src/pages/NotificationsPage.jsx": {
@@ -2568,15 +2531,12 @@
     "TS2769": 1
   },
   "src/pages/RaceDetailPage.jsx": {
-    "TS18047": 31,
-    "TS2322": 20,
-    "TS2339": 67,
-    "TS2345": 17,
-    "TS2353": 3,
-    "TS2589": 1,
-    "TS2698": 1,
+    "TS2322": 14,
+    "TS2339": 16,
+    "TS2345": 16,
+    "TS2353": 2,
     "TS2739": 1,
-    "TS2741": 12
+    "TS2741": 11
   },
   "src/pages/RaceHistoryPage.jsx": {
     "TS2322": 1,
@@ -2624,12 +2584,11 @@
   "src/pages/RiderStatsPage.jsx": {
     "TS18047": 10,
     "TS2322": 25,
-    "TS2339": 119,
+    "TS2339": 118,
     "TS2345": 47,
     "TS2353": 18,
     "TS2362": 2,
     "TS2363": 2,
-    "TS2589": 1,
     "TS2698": 1,
     "TS2739": 3,
     "TS2741": 4
@@ -2649,8 +2608,7 @@
   },
   "src/pages/RulesPage.jsx": {
     "TS2322": 1,
-    "TS2339": 1,
-    "TS2739": 1
+    "TS2339": 1
   },
   "src/pages/ScoutingCentralPage.jsx": {
     "TS18047": 1,
@@ -2665,7 +2623,6 @@
     "TS2339": 98,
     "TS2345": 11,
     "TS2353": 4,
-    "TS2739": 5,
     "TS2741": 1
   },
   "src/pages/SeasonExperiencePreviewPage.jsx": {
@@ -2685,7 +2642,6 @@
     "TS2322": 18,
     "TS2339": 29,
     "TS2345": 5,
-    "TS2739": 8,
     "TS2741": 3
   },
   "src/pages/StaffOverviewPage.jsx": {
@@ -2746,7 +2702,7 @@
     "TS18049": 2,
     "TS2322": 12,
     "TS2339": 95,
-    "TS2345": 10,
+    "TS2345": 9,
     "TS2353": 13,
     "TS2739": 4,
     "TS2741": 3
@@ -2883,7 +2839,7 @@
     "TS2769": 1
   },
   "src/pages/helpFlagGates.js": {
-    "TS2345": 2
+    "TS2345": 1
   },
   "src/preview/betaAccessMock.js": {
     "TS2322": 3

@@ -208,7 +208,7 @@ test("taktik: etape-vælger, femtrins-vælger og et gem der ikke taber andre eta
   // saetning i ord. Kun én vaelger kan vaere aaben ad gangen, saa trinnene
   // slaas op paa kortet som helhed.
   await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
-  for (const label of ["Grupetto", "Kør roligt", "Normal", "Arbejd eller angrib", "Alt ud"]) {
+  for (const label of ["Grupetto", "Kør roligt", "Normal", "(?:Arbejd|Følg angrebene)", "Alt ud"]) {
     await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
   }
   await expect(visible(panel.getByText("Rollens standard", { exact: true }))).toBeVisible();
@@ -333,7 +333,7 @@ test("taktik: flaget OFF giver TRE trin på fanen", async ({ page }) => {
 
   await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
 
-  for (const label of ["Kør roligt", "Normal", "Arbejd eller angrib"]) {
+  for (const label of ["Kør roligt", "Normal", "(?:Arbejd|Følg angrebene)"]) {
     await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
   }
   // De to yderpunkter findes ikke når flaget er off — fanen må ikke tilbyde et
@@ -452,4 +452,152 @@ test("taktik (#6095): uden beta-flaget har rollevælgeren intet etape-valg", asy
   await expect(panel.getByRole("radio")).toHaveCount(0);
   await expect(visible(panel.getByText("Fra etape 2 og løbet ud"))).toBeVisible();
   await panel.screenshot({ path: evidenceShotPath(`pr-screens/6095-role-noscope-${testInfo.project.name}.png`) });
+});
+
+// #7003 (spec 2026-10-25-taktik-roller-design §3): modsatte ordrer kan ikke
+// slaas til, og en gemt raekke der allerede bryder reglen faar "Vaelg en".
+test("taktik (#7003): modsatte ordrer spaerres, gamle modsaetninger faar 'Vælg én'", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const riders = [
+    ...RIDERS,
+    { rider_id: "r3", name: "Rider Three", race_role: "helper", abandoned: false },
+  ];
+  await mockTacticsRace(page, {
+    race: raceFixture({ stages: 5, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+    riders,
+    overrides: [
+      { stage_number: 2, rider_id: "r2", race_role: "helper", effort: "protect" },
+      { stage_number: 2, rider_id: "r3", race_role: "helper", effort: "grupetto" },
+    ],
+  });
+  await page.route(`**/api/races/${RACE_ID}/team-orders`, (route) => {
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(route.request()) });
+    return json(route, {
+      stage_count: 5, stages_completed: 1, riders,
+      stages: [1, 2, 3, 4, 5].map((n) => ({ stage_number: n, locked: n <= 1, scheduled_at: `2026-10-2${n}T12:00:00Z` })),
+      // Gemt foer reglen: hjaelperen arbejder OG forsoeger udbrud.
+      orders: [{ stage_number: 2, breakaway_stance: "neutral", riders: [{ rider_id: "r2", effort: "protect", try_break: true, leadout: false }] }],
+    });
+  });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await expect(panel).toBeVisible();
+  await expect(visible(panel.getByTestId("opposite-orders-pick-one"))).toHaveText("Vælg én");
+  // Grupetto-rytteren kan ikke slaa "Forsoeg udbrud" til.
+  await expect(visible(panel.getByRole("button", { name: /Rider Three/ }).filter({ hasText: "Forsøg udbrud" }))).toBeDisabled();
+  await expect(visible(panel.getByText("Ikke sammen med Grupetto."))).toBeVisible();
+  await expect(visible(panel.getByText("En rytter der arbejder for lederen, kan ikke forsøge udbrud."))).toBeVisible();
+  await panel.screenshot({ path: evidenceShotPath(`pr-screens/7003-opposite-orders-${testInfo.project.name}.png`) });
+});
+
+// #7332 (ejer 31/10): paa en enkeltstart (itt/itt_hilly) giver Grupetto og
+// Arbejd/Foelg angrebene ingen mening. Vaelgeren viser kun Kør roligt, Normal og
+// Alt ud; et gammelt gemt "protect" vises og gemmes som Kør roligt, og "Kopiér til
+// etape N" til en enkeltstart lander som Kør roligt.
+async function mockIttTeamOrders(page, { riders = RIDERS, stages = 3, stagePlan = true } = {}) {
+  const puts = [];
+  await page.route(`**/api/races/${RACE_ID}/team-orders**`, (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    if (request.method() === "PUT") {
+      try { puts.push(JSON.parse(request.postData() || "{}")); } catch { puts.push({}); }
+      return json(route, { ok: true });
+    }
+    return json(route, {
+      stage_count: stages, stages_completed: 1, riders,
+      stages: Array.from({ length: stages }, (_, i) => ({ stage_number: i + 1, locked: i === 0, scheduled_at: null })),
+      orders: [],
+      stage_plan_enabled: stagePlan,
+    });
+  });
+  return puts;
+}
+
+const ittProfile = (stageNumber, profileType) => ({
+  race_id: RACE_ID, stage_number: stageNumber, profile_type: profileType, finale_type: null,
+  distance_km: 30, elevation_gain_m: 200, climbs: [], sprints: [], sectors: [], weather: null,
+});
+
+test("taktik (#7332): enkeltstart viser kun Kør roligt, Normal og Alt ud", async ({ page }, testInfo) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const getBody = await mockTacticsRace(page, {
+    race: raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+    // Gemt foer #7332: hjaelperen "arbejder" paa enkeltstarten.
+    overrides: [{ stage_number: 2, rider_id: "r2", race_role: "helper", effort: "protect" }],
+  });
+  await page.route("**/rest/v1/race_stage_profiles**", (route) => json(route, [
+    ittProfile(1, "flat"), ittProfile(2, "itt"), ittProfile(3, "flat"),
+  ]));
+  const puts = await mockIttTeamOrders(page);
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await expect(panel).toBeVisible();
+  await expect(visible(panel.getByRole("button", { name: "Intentioner for etape 2", exact: true })))
+    .toHaveAttribute("aria-pressed", "true");
+
+  await visible(panel.getByRole("button", { name: "Sæt intention" })).click();
+  await expect(visible(panel.getByRole("button", { name: /^Normal/ }))).toBeVisible();
+  await panel.screenshot({ path: evidenceShotPath(`pr-screens/7332/itt-picker-${testInfo.project.name}.png`) });
+  // Rider Two's gamle "Arbejd" staar som Kør roligt.
+  await expect(visible(panel.getByText("Standard: rytter. I dag: kør roligt."))).toBeVisible();
+  for (const label of ["Kør roligt", "Normal", "Alt ud"]) {
+    await expect(visible(panel.getByRole("button", { name: new RegExp(`^${label}`) }))).toBeVisible();
+  }
+  for (const label of ["Grupetto", "Arbejd", "Følg angrebene", "Kør offensivt"]) {
+    await expect(panel.getByRole("button", { name: new RegExp(`^${label}`) }).filter({ visible: true })).toHaveCount(0);
+  }
+
+  const pageOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(pageOverflow, "siden må ikke overflowe vandret").toBeLessThanOrEqual(1);
+
+  await visible(panel.getByRole("button", { name: /^Alt ud/ })).click();
+  await visible(panel.getByRole("button", { name: "Gem etape 2" })).click();
+  await expect(visible(panel.getByText("Intentionerne er gemt."))).toBeVisible();
+  // Et gem fra fladen skriver aldrig protect/grupetto paa enkeltstarten.
+  expect(getBody().overrides).toEqual([
+    { stage_number: 2, rider_id: "r1", race_role: "captain", effort: "all_out" },
+    { stage_number: 2, rider_id: "r2", race_role: "helper", effort: "save" },
+  ]);
+  const orderEfforts = Object.fromEntries((puts.at(-1)?.riders ?? []).map((r) => [r.rider_id, r.effort]));
+  expect(orderEfforts).toEqual({ r1: "all_out", r2: "save" });
+});
+
+test("taktik (#7332): kopi til en enkeltstart lander som Kør roligt", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const getBody = await mockTacticsRace(page, {
+    race: raceFixture({ stages: 3, stagesCompleted: 1, raceType: "stage_race" }),
+    validEfforts: FIVE_STEPS,
+    results: LIVE_RESULTS,
+    overrides: [
+      { stage_number: 2, rider_id: "r1", race_role: "captain", effort: "grupetto" },
+      { stage_number: 2, rider_id: "r2", race_role: "helper", effort: "protect" },
+    ],
+  });
+  await page.route("**/rest/v1/race_stage_profiles**", (route) => json(route, [
+    ittProfile(1, "flat"), ittProfile(2, "mountain"), ittProfile(3, "itt_hilly"),
+  ]));
+  await mockIttTeamOrders(page, { stagePlan: false });
+  await login(page);
+  await page.goto(`/races/${RACE_ID}?tab=tactics`);
+  const panel = page.getByTestId("race-tactics-tab");
+  await expect(panel).toBeVisible();
+  await visible(panel.getByRole("button", { name: "Kopiér til etape 3" })).click();
+  await visible(panel.getByRole("button", { name: "Gem etape 2" })).click();
+  await expect(visible(panel.getByText("Intentionerne er gemt."))).toBeVisible();
+  expect(getBody().stages).toEqual([3]);
+  expect(getBody().overrides).toEqual([
+    { stage_number: 2, rider_id: "r1", race_role: "captain", effort: "grupetto" },
+    { stage_number: 2, rider_id: "r2", race_role: "helper", effort: "protect" },
+    { stage_number: 3, rider_id: "r1", race_role: "captain", effort: "save" },
+    { stage_number: 3, rider_id: "r2", race_role: "helper", effort: "save" },
+  ]);
 });

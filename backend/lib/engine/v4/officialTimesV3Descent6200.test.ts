@@ -43,7 +43,7 @@ import type { AbilityKey, Entrant, EngineState, RaceGroup, RouteV2, Segment, Seg
 test("#6200: official_times_v3 is a known revision of the official-times line, current since the owner's taend (#6452)", () => {
   assert.equal(isKnownRulesRevision("official_times_v3"), true);
   assert.equal(normalizeRulesRevision("official_times_v3"), "official_times_v3");
-  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v1", "new races bind to s5_profiles_v1 since #6369; races bound to v3 keep it");
+  assert.equal(CURRENT_RACE_RULES_REVISION, "s5_profiles_v3", "new races bind to s5_profiles_v3 since #6804; races bound to v3 keep it");
   assert.equal(ordersGcGeneration("official_times_v3"), 3);
   assert.equal(isOrdersGcV3OrLater("official_times_v3"), true);
   assert.equal(usesSharedGroupTime("official_times_v3"), true);

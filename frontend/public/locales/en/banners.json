@@ -52,5 +52,10 @@
     "regionAriaLabel": "Service status",
     "dismissAriaLabel": "Dismiss notice",
     "knownIssuesLink": "Known issues"
+  },
+  "racePaused": {
+    "title": "Paused.",
+    "newStart": "New start {time}.",
+    "newStartUnknown": "New start time will be announced."
   }
 }

@@ -18,7 +18,7 @@ import type {
   StageResult,
   TimelineEvent,
 } from "./types.ts";
-import { deriveWprimeMax, dayformComponent, formCpModifier, jourSansComponent } from "./physiology.ts";
+import { FORM_CP_TUNING, deriveWprimeMax, dayformComponent, formCpModifier, formPeakCpModifier, jourSansComponent } from "./physiology.ts";
 
 export const INITIAL_GROUP_ID = "peloton-0";
 
@@ -54,6 +54,12 @@ export function initGroups(entrants: Entrant[]): RaceGroup[] {
  *      etapeformer (vejetape, enkeltstart, holdtidskoersel, finalens score).
  * Uden feltet (null/udeladt) er begge byte-identiske med foer #6156: jour sans
  * kaldes med form=null, og leddet laegges slet ikke til (heller ikke som 0).
+ *
+ * #6156 (ejer 21/10, KUN s5_profiles_v2 + race_form_peaks): Entrant.form_peak_points
+ * (formtoppens tillaeg / dykket) er et EGET led oven i formen (formPeakCpModifier):
+ * det klemmes ikke af formskalaen, saa en rytter paa form 100 ogsaa faar sin top.
+ * Risikoen for en daarlig dag ser den samlede form (form + top, klampet 0-100),
+ * praecis som foer rettelsen. Uden feltet er alt byte-identisk med foer.
  */
 export function initRiderStates(
   entrants: Entrant[],
@@ -65,15 +71,20 @@ export function initRiderStates(
     const wprimeMax = deriveWprimeMax(entrant.abilities, tuning.physiology.wprimeWeights);
     const dayform = dayformComponent({ seed, riderId: entrant.rider_id, tuning: tuning.dayform });
     const form = Number.isFinite(entrant.form) ? (entrant.form as number) : null;
-    const jourSans = jourSansComponent({ seed, riderId: entrant.rider_id, form, tuning: tuning.dayform });
+    const peak = Number.isFinite(entrant.form_peak_points) && entrant.form_peak_points !== 0 ? (entrant.form_peak_points as number) : null;
+    // Risikoen ser den samlede form (som foer #6156-rettelsen); uden top er det formen selv.
+    const riskForm = peak === null ? form : Math.min(Math.max((form ?? FORM_CP_TUNING.neutralForm) + peak, 0), 100);
+    const jourSans = jourSansComponent({ seed, riderId: entrant.rider_id, form: riskForm, tuning: tuning.dayform });
     const dayModifier = dayform + jourSans;
+    const formTerm = form === null ? null : formCpModifier(form);
+    const peakTerm = peak === null ? null : formPeakCpModifier(peak);
     riders[entrant.rider_id] = {
       rider_id: entrant.rider_id,
       group_id: INITIAL_GROUP_ID,
       cp: 0,
       wprimeMax,
       wprime: wprimeMax,
-      dayform: form === null ? dayModifier : dayModifier + formCpModifier(form),
+      dayform: formTerm === null && peakTerm === null ? dayModifier : dayModifier + (formTerm ?? 0) + (peakTerm ?? 0),
       seconds_over_cp: 0,
       work_norm: 0,
       incidents: 0,
@@ -557,6 +568,9 @@ export function carrySplitsWithSourceAdvance(params: {
     const pieceBefore = byIdBefore.get(split.groupId);
     const pieceAfter = current.find((g) => g.id === split.groupId);
     if (!srcBefore || !srcAfter || !pieceBefore || !pieceAfter || srcBefore.origin === "breakaway") continue;
+    // #6641 (alt ud-angreb, ejer 27/10): et stykke der splittede FREM fra kilden (negativt hul)
+    // er ikke en afsat gruppe; dets forspring maa ikke klemmes ned til kildens hul.
+    if (pieceBefore.gap_seconds < srcBefore.gap_seconds) continue;
     const advance = (beforeFrontSeconds + srcBefore.gap_seconds) - (afterFrontSeconds + srcAfter.gap_seconds);
     if (!(advance > 0)) continue;
     const pieceMoved = (afterFrontSeconds + pieceAfter.gap_seconds) - (beforeFrontSeconds + pieceBefore.gap_seconds);

@@ -114,7 +114,12 @@
         "loebslaere": "Koersinzicht",
         "cobbled_sectors": "Kasseienstroken",
         "echelon_drills": "Waaieroefeningen",
-        "attack_repeats": "Aanvalsherhalingen"
+        "attack_repeats": "Aanvalsherhalingen",
+        "long_climbs": "Lange beklimmingen",
+        "lead_out": "Lead-out",
+        "itt_short": "Korte tijdritten",
+        "itt_long": "Lange tijdritten",
+        "cobbled_classic": "Kasseienklassieker"
       },
       "active": "Actief: {focus} · {intensity} · traint {abilities}",
       "activeRest": "Aan het rusten (focus {focus} gepauzeerd)",
@@ -938,7 +943,13 @@
     "fatigue": "Vermoeidheid",
     "injured": "Geblesseerd: nog {days}d",
     "injuredRaceDays": "Geblesseerd: nog {days, plural, one {1 koersdag} other {# koersdagen}}",
-    "injuredApprox": "Terug circa {date}"
+    "fitAgain": "Weer fit op {date}",
+    "fitAgainApprox": "Weer fit rond {date}",
+    "causeCrashStage": "Gevallen, {race} etappe {stage}",
+    "causeCrashRace": "Gevallen, {race}",
+    "causeCrash": "Gevallen in een koers",
+    "causeTraining": "Geblesseerd op training",
+    "causeIllness": "Ziek"
   },
   "training": {
     "title": "Trainingsfocus",
@@ -961,6 +972,11 @@
     "focus_cobbled_sectors": "Kasseienstroken",
     "focus_echelon_drills": "Waaieroefeningen",
     "focus_attack_repeats": "Aanvalsherhalingen",
+    "focus_long_climbs": "Lange beklimmingen",
+    "focus_lead_out": "Lead-out",
+    "focus_itt_short": "Korte tijdritten",
+    "focus_itt_long": "Lange tijdritten",
+    "focus_cobbled_classic": "Kasseienklassieker",
     "intensity_rest": "Rust",
     "intensity_unknown_pending": "Wacht op koersbeoordeling",
     "intensity_easy": "Licht",

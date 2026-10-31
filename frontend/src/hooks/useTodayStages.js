@@ -5,10 +5,16 @@ import {
   computeStageRaceStanding,
   entryCountFor,
   mergeStandingRowsByRace,
-  terrainGlyphBucket,
   todayStageWinner,
 } from "../lib/dashboardTodayStages.js";
 import { planRaceResultQueries } from "../lib/raceWinnerResultType.ts";
+
+const TODAY_PROFILE_BASE_COLUMNS = "race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors";
+// pagination-safe: filtreret paa MINE dagens race_id'er, hoejst en raekke pr. etape.
+// elevation_profile staar endnu ikke i de genererede typer, derfor any-cast.
+const readTodayProfiles = (cols, raceIds) => /** @type {any} */ (supabase)
+  .from("race_stage_profiles").select(cols).in("race_id", raceIds);
+const TODAY_PROFILE_COLUMNS = `${TODAY_PROFILE_BASE_COLUMNS}, elevation_profile`;
 
 // #3915 — "Today's stages" dashboard strip: data-hentning for DIT holds
 // etaper/løb i dag. SELVSTÆNDIG hook (kun teamId som input), samme
@@ -68,7 +74,7 @@ export default function useTodayStages(teamId) {
       if (!ownRaceIds.length) { setState({ loading: false, cards: [] }); return; }
       const ownSlotRows = (slotRows || []).filter((r) => enteredRaceIds.has(r.race_id));
 
-      const [racesRes, profilesRes] = await Promise.all([
+      const [racesRes, firstProfilesRes] = await Promise.all([
         // "races" er ikke deny-listet (ikke i scripts/lint-pagination-guard.mjs).
         supabase.from("races")
           .select("id, name, race_type, stages, stages_completed, status")
@@ -76,13 +82,17 @@ export default function useTodayStages(teamId) {
         // pagination-safe: MINE dagens race_id'er (højst 3 pr. hold, 23/9).
         // #3958 (ejer-mistanke bekræftet 23/8): tidligere hentede denne query KUN
         // profile_type → miniaturen var et generisk 6-vejrs kategori-piktogram
-        // (TerrainGlyph), IKKE etapens ægte rutedata. Nu hentes de samme felter
+        // (silhuet-piktogram), IKKE etapens ægte rutedata. Nu hentes de samme felter
         // StageProfileGraph/buildProfileSeries bruger overalt ellers, så dashboardets
         // "dagens etaper" viser SAMME rigtige rute som løbssiden (#4107/#4108).
-        supabase.from("race_stage_profiles")
-          .select("race_id, stage_number, profile_type, distance_km, elevation_gain_m, climbs, sectors")
-          .in("race_id", ownRaceIds),
+        readTodayProfiles(TODAY_PROFILE_COLUMNS, ownRaceIds),
       ]);
+      // #7289: elevation_profile med, saa dashboardets miniature tegner samme serie som loebssiden.
+      // Kolonnen ikke migreret endnu (42703): laes uden serien, som stageProfilesQuery.ts.
+      let profilesRes = firstProfilesRes;
+      if (profilesRes.error?.code === "42703") {
+        profilesRes = await readTodayProfiles(TODAY_PROFILE_BASE_COLUMNS, ownRaceIds);
+      }
       if (racesRes.error) throw racesRes.error;
       if (profilesRes.error) throw profilesRes.error;
 
@@ -198,7 +208,6 @@ export default function useTodayStages(teamId) {
         const standingRows = standingRowsByRace.get(c.raceId) || [];
         return {
           ...c,
-          bucket: terrainGlyphBucket(c.profileType),
           standing: c.isStageRace ? computeStageRaceStanding(standingRows, teamId) : null,
           entryCount: c.isStageRace ? null : entryCountFor(entryRowsAll, c.raceId),
           winnerName: c.state === "finished"

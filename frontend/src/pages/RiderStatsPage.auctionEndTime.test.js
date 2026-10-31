@@ -16,7 +16,7 @@ const source = readFileSync(join(__dirname, "RiderStatsPage.jsx"), "utf8");
 test("AuctionButton bruger det delte useAuctionEndTimeSelector-hook (#3786)", () => {
   assert.match(
     source,
-    /useAuctionEndTimeSelector\(\{\s*active:\s*open\s*\}\)/,
+    /useAuctionEndTimeSelector\(\{\s*active:\s*open\s*(,\s*minHours:[^}]*)?\}\)/,
     "AuctionButton skal bruge samme hook (og dermed samme regler) som TeamPage's RiderActionModal",
   );
 });

@@ -42,6 +42,16 @@ function makeQueryBuilder(rows, { count = false } = {}) {
       filtered = filtered.filter((r) => values.includes(r[col]));
       return builder;
     },
+    // #7096 · ungdomsresultat-loaderen bruger .lte("rank", ...) og paginerer
+    // med .range() (fetchAllRows).
+    lte(col, value) {
+      filtered = filtered.filter((r) => r[col] <= value);
+      return builder;
+    },
+    range(from, to) {
+      filtered = filtered.slice(from, to + 1);
+      return builder;
+    },
     or() {
       // Testfixtures opfylder allerede invarianten (mandate_id ELLER
       // milestone_id sat) — .or() er et no-op i mock'en.
@@ -147,7 +157,6 @@ test("tomme skygge-tabeller: enabled:true, mandate:null, vision:null, tom minute
   assert.deepEqual(payload.board.members, []);
   assert.equal(payload.board.chairmanQuote, null);
   assert.equal(payload.confidence.value, null);
-  assert.equal(payload.confidence.weekDelta, null);
   assert.deepEqual(payload.confidence.categories, []);
   assert.deepEqual(payload.confidence.consequence, { active: false, lineKey: null, lineParams: {} });
 });

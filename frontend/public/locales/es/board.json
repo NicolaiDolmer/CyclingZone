@@ -164,11 +164,6 @@
       "good": "Bien",
       "great": "Muy bien",
       "outstanding": "Sobresaliente"
-    },
-    "trend": {
-      "up": "La satisfacción sube",
-      "down": "La satisfacción baja",
-      "flat": "Satisfacción estable"
     }
   },
   "changeKind": {
@@ -1807,9 +1802,6 @@
     "confidence": {
       "cardTitle": "Confianza de la directiva",
       "updated": "Actualizado el {date}",
-      "weekDeltaUp": "+{delta} esta semana",
-      "weekDeltaDown": "{delta} esta semana",
-      "weekDeltaFlat": "Sin cambios esta semana",
       "categories": {
         "results": "Resultados",
         "economy": "Economía",
@@ -1876,9 +1868,9 @@
       "meta": "{seasons, plural, one {Plan de 1 temporada} other {Plan de # temporadas}}",
       "seasonLabel": "Temporada {season}",
       "currentSeasonLabel": "Temporada {season} · Estás aquí",
-      "explainer": "Cada hito vence al final de su temporada objetivo. Si lo alcanzas antes, cuenta al final de esa temporada. Un hito fallado cuesta confianza una vez, y luego la visión sigue adelante.",
-      "countsAt": "Cuenta al final de la temporada {season} · puede cumplirse antes",
-      "countsAtCurrent": "Cuenta al final de la temporada {season}",
+      "countsAt": "Alcánzalo como muy tarde al final de la temporada {season}. Si llegas antes, cuenta al final de esa temporada.",
+      "milestoneProgress": "{current} de {target}",
+      "helpLink": "Cómo cuentan los hitos",
       "milestoneAchieved": "Conseguido",
       "milestoneMissed": "Fallado",
       "empty": {
@@ -1890,7 +1882,8 @@
         "promotionPush": "Empujón por el ascenso",
         "monumentPodium": "Podio en un Monument",
         "clubRankingTop30": "Top 30 del ranking de clubes"
-      }
+      },
+      "progress": "{done} de {total} hitos alcanzados"
     },
     "board": {
       "cardTitle": "La directiva",

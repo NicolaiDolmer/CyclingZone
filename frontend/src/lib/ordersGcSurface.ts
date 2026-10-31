@@ -28,7 +28,8 @@ export type RulesRevision = "legacy" | "orders_gc_v1";
 // #6369: s5_profiles_v1 (switched off, empty) is the whole official_times_v4 package.
 // #6462: official_times_v5 (switched off) is official_times_v4 + the sprint-train default rule.
 // #6156: s5_profiles_v2 (switched off) is s5_profiles_v1 + form peaks.
-const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2"]);
+// #6804: s5_profiles_v3 (switched off) is s5_profiles_v2 + the breakaway package.
+const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "s5_profiles_v1", "official_times_v5", "s5_profiles_v2", "s5_profiles_v3"]);
 
 /**
  * Løbets effektive regel-revision for spillerfladerne. #6084: orders_gc_v2 er
@@ -38,6 +39,21 @@ const ORDERS_GC_LINEAGE: ReadonlySet<unknown> = new Set([ORDERS_GC_REVISION, "or
  */
 export function raceRulesRevision(raw: unknown): RulesRevision {
   return ORDERS_GC_LINEAGE.has(raw) ? ORDERS_GC_REVISION : "legacy";
+}
+
+/**
+ * Taktikfanens revision for et løb, samme regel som backendens
+ * surfaceRulesRevision (raceEngineRulesRevision.ts): en gemt revision vinder.
+ * Uden gemt revision binder løbet den aktuelle revision ved første etape, så et
+ * løb der ikke er startet (stages_completed 0/tom) vises med den aktuelle
+ * revisions ordrer. Den aktuelle revision ligger altid i ordre-linjen
+ * (s5_profiles_v3 fra 26/10). Et startet løb uden revision er legacy.
+ */
+export function surfaceRaceRulesRevision(raw: unknown, stagesCompleted: unknown): RulesRevision {
+  if (raw !== null && raw !== undefined) return raceRulesRevision(raw);
+  if (stagesCompleted === null || stagesCompleted === undefined) return ORDERS_GC_REVISION;
+  const n = Number(stagesCompleted);
+  return Number.isFinite(n) && n === 0 ? ORDERS_GC_REVISION : "legacy";
 }
 
 export function isOrdersGcRevision(raw: unknown): boolean {

@@ -19,7 +19,8 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { TRAINING_FOCUS_ABILITIES, injuryTimeLeft } from "../../../lib/training.js";
+import { focusAbilitiesFor, injuryTimeLeft } from "../../../lib/training.js";
+import { useTrainingCatalogV3 } from "../../../lib/useTrainingCatalogV3.ts"; // #5319
 import {
   riderHistoryFromRuns, breakthroughJumps, isBreakthrough,
   seasonAbilityGains, abilityReceipt,
@@ -37,6 +38,8 @@ import IconBase from "../../ui/icons/IconBase.jsx";
 import { ChevronRightIcon } from "../../ui/icons/index.jsx";
 import { SkeletonLines } from "../../ui/Skeleton.jsx";
 import RiderTrainingScoreCard from "./RiderTrainingScoreCard.tsx";
+import InjuryChip from "../ConditionChips.jsx";
+import { useCrashOrigin } from "../useCrashOrigin.ts";
 
 const LOG_DAYS = 7;
 
@@ -95,6 +98,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
   // Dagstype-navnene bor i `training`-namespacet (samme kilde som panelet), så
   // profilen og /training ikke kan komme til at kalde den samme dag to ting.
   const { t: tTraining } = useTranslation("training");
+  const catalogV3 = useTrainingCatalogV3(); // #5319: evne-linjen foelger spillerens katalog
   const { slots, planFor } = training;
   const plan = planFor(rider.id);
   const focus = plan?.focus ?? null;
@@ -109,7 +113,7 @@ function FocusCard({ rider, training, t, onOpenPanel, actionError }) {
 
   const isRest = intensity === "rest";
   const abilitiesLabel = focus
-    ? TRAINING_FOCUS_ABILITIES[focus].map((a) => t(`racePreview.derived.${a}`)).join(" + ")
+    ? (focusAbilitiesFor(focus, { catalogV3 }) ?? []).map((a) => t(`racePreview.derived.${a}`)).join(" + ")
     : null;
 
   return (
@@ -237,7 +241,7 @@ function SeasonReceiptCard({ rider, training, progress, trainingHistory, t }) {
   const { t: tTraining } = useTranslation("training");
   const { planFor, capped, todayRun } = training;
   const focus = planFor(rider.id)?.focus ?? null;
-  const focusAbilities = focus ? new Set(TRAINING_FOCUS_ABILITIES[focus] ?? []) : null;
+  const focusAbilities = focus ? new Set(focusAbilitiesFor(focus) ?? []) : null;
 
   // #5539-fix (reviewer-fund): kolonnen bruger SAMME kørsels-linje som
   // /training-rosterets focusAbilityReceipt-kald (TrainingPage.jsx) — ingen nyt
@@ -428,8 +432,10 @@ function TrendCard({ riderId, runs, t }) {
 }
 
 // ── Form & restitution ──────────────────────────────────────────────────────────
-function FormCard({ condition, t }) {
+function FormCard({ riderId, condition, t }) {
   const clamp = (n) => Math.max(0, Math.min(100, n));
+  // #7412: stedet for et styrt (kun naar skaden er et styrt). Foer early return: hook-regel.
+  const crash = useCrashOrigin(riderId, injuryTimeLeft(condition).count > 0 && condition?.injury_cause === "race_crash");
   // Ingen condition-rad (fx friskkøbt rytter før første kørsel) → pending-tilstand,
   // ikke fabrikerede 50/0-defaults præsenteret som målte værdier.
   if (!condition) {
@@ -471,20 +477,10 @@ function FormCard({ condition, t }) {
             <div className="absolute left-0 top-0 h-full rounded-full bg-cz-warning/80" style={{ width: `${clamp(fatigue)}%` }} />
           </div>
         </div>
-        <div className="flex items-center gap-2 pt-0.5">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
           {days > 0 ? (
-            <>
-              <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-danger-bg border border-cz-danger/25 text-cz-danger">
-                {injury.unit === "race_day"
-                  ? t("condition.injuredRaceDays", { days })
-                  : t("condition.injured", { days })}
-              </span>
-              {injury.unit === "race_day" && injury.approxDate && (
-                <span className="text-2xs text-cz-3">
-                  {t("condition.injuredApprox", { date: formatDate(injury.approxDate, "medium") })}
-                </span>
-              )}
-            </>
+            // #7412: aarsag, sted og foerste raske dag bor i den delte skadechip.
+            <InjuryChip condition={condition} crash={crash} />
           ) : (
             <>
               <span className="inline-flex items-center text-2xs px-2.5 py-1 rounded-full bg-cz-success-bg border border-cz-success/25 text-cz-success">
@@ -595,7 +591,7 @@ export default function RiderTrainingTab({ rider, training, trainingHistory, pro
           ) : (
             <TrendCard riderId={rider.id} runs={runs} t={t} />
           )}
-          <FormCard condition={condition} t={t} />
+          <FormCard riderId={rider.id} condition={condition} t={t} />
         </div>
       </div>
 

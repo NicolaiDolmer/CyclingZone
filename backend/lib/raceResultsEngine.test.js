@@ -747,3 +747,28 @@ test("#5645 rederiveSeasonRacePoints: et U23-løb re-deriveres med point men pri
   assert.equal(byId["rr-u"].points_earned, 200);
   assert.equal(byId["rr-u"].prize_money, 0);
 });
+
+test("#7031 rederiveSeasonRacePoints: young/young_day i U23-/juniorløb får 0 point, seniorløbets beholder", async () => {
+  const { supabase, state } = createRederiveDouble({
+    races: [
+      { id: "race-u", race_class: "uci_wt", race_type: "stage_race", prize_paid_at: null, squad: "u23" },
+      { id: "race-s", race_class: "uci_wt", race_type: "stage_race", prize_paid_at: null, squad: "senior" },
+    ],
+    racePointsByClass: {
+      uci_wt: [
+        { result_type: "Ungdomstroje", rank: 1, points: 30 },
+        { result_type: "UngdomstrojeDag", rank: 1, points: 5 },
+      ],
+    },
+    raceResults: [
+      { id: "yu", race_id: "race-u", result_type: "young", rank: 1, points_earned: 30, prize_money: 0 },
+      { id: "ydu", race_id: "race-u", result_type: "young_day", rank: 1, points_earned: 5, prize_money: 0 },
+      { id: "ys", race_id: "race-s", result_type: "young", rank: 1, points_earned: 0, prize_money: 0 },
+    ],
+  });
+  await rederiveSeasonRacePoints({ supabase, seasonId: "season-1", updateStandings: async () => {} });
+  const byId = Object.fromEntries(state.raceResults.map((r) => [r.id, r]));
+  assert.equal(byId.yu.points_earned, 0);
+  assert.equal(byId.ydu.points_earned, 0);
+  assert.equal(byId.ys.points_earned, 30);
+});

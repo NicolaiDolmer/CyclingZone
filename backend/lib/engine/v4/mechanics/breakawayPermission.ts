@@ -38,7 +38,7 @@ function clamp(n: number, lo: number, hi: number): number {
  */
 export type MorningBreakIntent = "ordered" | "spontaneous" | "none";
 
-const ORDER_REQUIRED_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "helper"]);
+const ORDER_REQUIRED_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "helper", "co_captain"]); // #5981: kun med ordre
 
 /**
  * Rytterens hensigt for morgenudbruddet.
@@ -137,7 +137,7 @@ export type MorningBreakFormation = {
 
 export type FormationRoll = (stream: "attempt" | "success", riderId: string) => number;
 
-const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain"]);
+const LEADER_ROLES: ReadonlySet<string> = new Set(["captain", "sprint_captain", "co_captain"]); // #5981: delt kaptajn som kaptajnen
 
 /**
  * #5978 (KUN orders_gc_v3, ejer-design 5/10: hoej risiko, hoej gevinst):

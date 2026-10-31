@@ -70,7 +70,7 @@
     },
     "medical": {
       "name": "Departamento médico",
-      "effect": "recuperación",
+      "effect": "en la capacidad de recuperación de cada ciclista, y menos lesiones, más cortas",
       "soon": "Recuperación más rápida",
       "teaser": "Tus ciclistas recuperan la forma más rápido después de carreras duras."
     },

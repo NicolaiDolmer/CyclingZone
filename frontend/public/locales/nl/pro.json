@@ -1,7 +1,7 @@
 {
   "metaTitle": "Upgrade naar CZ Pro",
-  "title": "Word Founder",
-  "subtitle": "Steun de ontwikkeling van het spel en leg je Founder-status vast. Het gratis spel blijft volledig competitief. Pro is een badge en een identiteit, nooit een voordeel.",
+  "title": "CZ Pro",
+  "subtitle": "Volg je renners door de seizoenen heen. Bewaar de zoekopdrachten die je vaker gebruikt.",
   "monthly": "Maandelijks",
   "semiannual": "6 maanden",
   "monthlyPrice": "€6,49/mnd",
@@ -28,18 +28,36 @@
     "message": "Ik kon je abonnementsgegevens niet laden. Er is niets verloren gegaan en je account is niet geraakt.",
     "retry": "Probeer opnieuw"
   },
+  "benefits": {
+    "title": "Wat Pro toevoegt",
+    "exampleLabel": "Voorbeelddata",
+    "history": {
+      "tab": "Seizoensgeschiedenis",
+      "headline": "Volg je renner door de seizoenen heen",
+      "body": "Elke vaardigheid, seizoen na seizoen, op het tabblad Ontwikkeling van de renner.",
+      "sampleCaption": "Verzonnen renner, niet uit jouw spel",
+      "sampleAria": "Voorbeeldgrafiek: klimmen, tempo, tijdrit en uithoudingsvermogen van een verzonnen renner over drie seizoenen en nu."
+    },
+    "filters": {
+      "tab": "Opgeslagen filters",
+      "headline": "Gebruik deze zoekopdracht opnieuw met één klik",
+      "body": "Geef een zoekopdracht in de rennersdatabase een naam en haal hem terug wanneer je hem nodig hebt. Tot {max} filters, opgeslagen in deze browser.",
+      "sampleCaption": "Voorbeeldfilters",
+      "examples": {
+        "youngClimbers": "Jonge klimmers",
+        "sprintersU25": "Sprinters U25",
+        "cheapTimeTrial": "Goedkope tijdrijders"
+      }
+    }
+  },
   "founderMark": {
     "label": "Founder",
     "aria": "Founder nr. {n} van {cap}",
     "heroLine": "Founder nr. {n} van {cap}"
   },
-  "gate": {
-    "note": "Pro laat dit zien over alle seizoenen, niet alleen het huidige.",
-    "cta": "Bekijk Pro"
-  },
   "riderHistory": {
     "title": "Seizoensgeschiedenis",
-    "cta": "Bekijk Pro",
+    "cta": "Bekijk seizoensgeschiedenis met Pro",
     "note": "Pro laat elke vaardigheid zien over alle seizoenen, niet alleen het huidige.",
     "ceilingLegend": "Plafond van de schaal (99)",
     "empty": "Nog geen seizoensgeschiedenis vastgelegd.",
@@ -49,7 +67,8 @@
     "retry": "Probeer opnieuw",
     "emptyTitle": "Nog geen vaardigheden vastgelegd",
     "checkAgain": "Opnieuw controleren",
-    "now": "Nu"
+    "now": "Nu",
+    "upsellTitle": "Volg je renner door de seizoenen heen"
   },
   "savedFilters": {
     "title": "Opgeslagen filters",
@@ -59,8 +78,8 @@
     "cancel": "Annuleren",
     "remove": "Verwijderen",
     "empty": "Nog geen opgeslagen filters.",
-    "note": "Met Pro sla je filters op onder een naam en spring je met één klik terug.",
-    "cta": "Bekijk Pro",
+    "note": "Gebruik deze zoekopdracht opnieuw met één klik.",
+    "cta": "Filters opslaan met Pro",
     "removeNamed": "{name} verwijderen",
     "duplicate": "Je hebt al een filter met die naam.",
     "limit": "Je hebt {max} filters opgeslagen, het maximum. Verwijder er een om een nieuwe op te slaan.",

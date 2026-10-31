@@ -1,6 +1,6 @@
 # #6814 Design: jagtafstand på `gap_update` (kun `s5_profiles_v2`)
 
-Status: design, ingen motorkode bygget. Refs #6814 #6803 #6809 #5954 #6748.
+Status (opdateret 26/10): bygget og merget i PR #7151 (jagtafstand på `gap_update`; kodenavn i `segmentLoop.ts`, test `gapUpdatePursuit6814.test.ts`) og aktiv under `s5_profiles_v3` (aktuel 26/10). Designet herunder nævner `s5_profiles_v2` og "ingen motorkode"; det var status 18/10. Refs #6814 #6803 #6809 #5954 #6748.
 AGENTS 36 (design + målt baseline før 1. motor-PR) og 17 (ingen balance-tal: tærskler nævnes kun ved navn).
 
 ## 1. Problem (bekræftet)

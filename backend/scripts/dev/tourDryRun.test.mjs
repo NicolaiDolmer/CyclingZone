@@ -338,6 +338,8 @@ test("runTour: hele Giro-feltet, deterministisk, scorecard pr. etape og samlet",
   assert.ok(Number.isFinite(a.summary.race.mountainBreakAheadShare));
   assert.ok(a.summary.classes.every((c) => Number.isFinite(c.breakawayAheadShare)));
   assert.equal(a.droppedWithoutAbilities, 0);
+  // #6937 G16-kontrakten: bjergtroejens vinders udbrudspoint er et tal pr. seed (null uden vinder).
+  assert.ok(a.perSeed.every((s) => (s.komWinner ? Number.isFinite(s.komWinnerBreakawayPoints) && s.komWinnerBreakawayPoints >= 0 : s.komWinnerBreakawayPoints === null)));
   // Minuttab ved start maales paa den rigtige loebsfilm (vejetaper), N/A paa tidskoersler.
   const road = a.summary.stages.filter((s) => !["itt", "itt_hilly", "ttt"].includes(s.profile_type));
   assert.ok(road.every((s) => Number.isFinite(s.minuteLossAtZeroKm)), "hver vejetape skal kunne maales paa filmen");

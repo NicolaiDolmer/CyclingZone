@@ -92,9 +92,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
       let json;
       try { json = await res.json(); } catch (cause) { setLoadError({ kind: "parse" }); reportLoadFailure("season_matrix", { kind: "parse", cause }); return; }
       setData(json);
-      const drafts = buildDraftsFromEntries(json.entries);
+      const rejoinIds = (json.withdrawnRaceIds || []).filter((id) => !(json.didNotStartRaceIds || []).includes(id) && !json.races?.find((r) => r.id === id)?.lineupLocked);
+      const drafts = buildDraftsFromEntries(json.entries, rejoinIds);
       setDraftByRace(drafts);
-      setServerByRace(buildDraftsFromEntries(json.entries)); // separat kopi — draftByRace muteres, denne er sandheden
+      setServerByRace(buildDraftsFromEntries(json.entries, rejoinIds)); // separat kopi — draftByRace muteres, denne er sandheden
       setLoadError(null);
     } catch (cause) {
       setLoadError({ kind: "network" }); reportLoadFailure("season_matrix", { kind: "network", cause });
@@ -114,15 +115,15 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
   // hintet må ikke sige "du har meldt fra / deltag igen".
   const withdrawnHintFor = (race) => (race.didNotStart
     ? t("racehub.column.didNotStartNote", { min: MIN_RACE_ENTRIES })
-    : t("matrix.withdrawnHint"));
+    : race.lineupLocked ? t("selection.errors.selection_withdrawn_locked") : t("matrix.withdrawnHint"));
 
   const races = useMemo(() => {
     const withdrawn = new Set(data?.withdrawnRaceIds ?? []);
     // #6740: fjernet ved start. Binder ikke (som en afmelding), men hedder "Did not start".
     const didNotStart = new Set(data?.didNotStartRaceIds ?? []);
     if (!withdrawn.size) return data?.races ?? [];
-    return (data?.races ?? []).map((r) => (withdrawn.has(r.id) ? { ...r, withdrawn: true, didNotStart: didNotStart.has(r.id) } : r));
-  }, [data]);
+    return (data?.races ?? []).map((r) => (withdrawn.has(r.id) ? { ...r, withdrawn: !draftByRace.get(r.id)?.rider_ids?.length || didNotStart.has(r.id) || r.lineupLocked, rejoining: !!draftByRace.get(r.id)?.rider_ids?.length && !didNotStart.has(r.id) && !r.lineupLocked, didNotStart: didNotStart.has(r.id) } : r));
+  }, [data, draftByRace]);
   const riders = useMemo(() => [...(data?.riders ?? [])].sort((a, b) => a.name.localeCompare(b.name)), [data]);
   const raceById = useMemo(() => new Map(races.map((r) => [r.id, r])), [races]);
   // #6383: Train now-låsen pr. løb (ryttere der har trænet i dag er afgjort for løbet).
@@ -306,6 +307,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
 
   return (
     <div className="mt-5">
+      {races.some((r) => (r.withdrawn || r.rejoining) && !r.didNotStart && !r.lineupLocked) && <p className="mb-2 text-xs text-cz-warning">{t("selection.rejoinNote")}</p>}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="font-data text-sm font-semibold text-cz-1">{t("matrix.heading")}</h2>
@@ -571,7 +573,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                         const trainedToday = race ? isTrainedToday(race.id, rider.id) : false; // #6383
                         return (
                           <td
-                            key={seg.day}
+                            key={seg.key}
                             className={`border-b p-0 ${peak ? "bg-cz-accent/10" : ""} ${
                               hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
                                 : isDraftCell ? "border-cz-border outline-1 -outline-offset-1 outline-dashed outline-cz-accent-t" : "border-cz-border"
@@ -601,7 +603,7 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
                       const trainedToday = isTrainedToday(race.id, rider.id); // #6383
                       return (
                         <td
-                          key={race.id}
+                          key={seg.key}
                           colSpan={seg.colSpan}
                           className={`border-b p-0 ${peakInfo ? "ring-1 ring-inset ring-cz-accent/60" : ""} ${
                             hasError ? "border-cz-danger outline-solid outline-1 -outline-offset-1 outline-cz-danger"
@@ -674,15 +676,13 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
         // kunne vælges, hvis det overlapper rytterens eksisterende udtagelse
         // et andet sted (kontrakt #6).
         const conflict = !fixed ? conflictingEntryForRace(rider.id, race, races, draftByRace) : null;
-        // #5301: et afmeldt løb er låst PÅ SAMME MÅDE som en anden sæson — cellen
-        // viser kun årsagen. PUT /races/selection/bulk afviser alligevel hele batchen
-        // med 409 selection_withdrawn (#4306-gaten), så en redigerbar celle her var en
-        // blindgyde der OGSÅ blokerede spillerens øvrige, lovlige ændringer i samme gem.
+        // #7153: voluntary withdrawal is editable before lock; DNS remains read-only.
         // #6383: trænet i dag (Train now) — cellen er afgjort og viser kun årsagen, som
         // udtagelsespanelet; serveren afviser både tilføjelse og fjernelse af en låst rytter.
         const lockedReasonText = readOnly
           ? t("seasonView.readOnlyHint")
-          : race.withdrawn ? withdrawnHintFor(race)
+          : race.withdrawn && (race.didNotStart || race.lineupLocked) ? withdrawnHintFor(race)
+            : race.lineupLocked ? t("selection.errors.selection_race_started")
             : isTrainedToday(race.id, rider.id) ? trainNowReasonText(race.id) : null;
         return (
           <SeasonMatrixCellPopover
@@ -695,10 +695,10 @@ export default function SeasonMatrix({ seasonNumber, onOpenDay, onDirtyChange })
             lockedReasonText={lockedReasonText}
             conflict={conflict}
             onSelectRole={(role) => {
-              setRaceDraft(race.id, (d) => setRiderRole(d, rider.id, role, !!conflict || !!race.withdrawn));
+              setRaceDraft(race.id, (d) => setRiderRole(d, rider.id, role, !!conflict || !!race.lineupLocked || !!race.didNotStart));
               closeCellPopover();
             }}
-            onRemove={fixed && !race.withdrawn ? () => { setRaceDraft(race.id, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); } : undefined}
+            onRemove={fixed && !race.lineupLocked && !race.didNotStart ? () => { setRaceDraft(race.id, (d) => removeRiderFromRace(d, rider.id)); closeCellPopover(); } : undefined}
           />
         );
       })()}

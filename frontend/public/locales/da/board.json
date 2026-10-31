@@ -164,11 +164,6 @@
       "good": "God",
       "great": "Stærk",
       "outstanding": "Fremragende"
-    },
-    "trend": {
-      "up": "Tilfredsheden stiger",
-      "down": "Tilfredsheden falder",
-      "flat": "Tilfredsheden er stabil"
     }
   },
   "changeKind": {
@@ -1807,9 +1802,6 @@
     "confidence": {
       "cardTitle": "Bestyrelsens tillid",
       "updated": "Opdateret {date}",
-      "weekDeltaUp": "+{delta} denne uge",
-      "weekDeltaDown": "{delta} denne uge",
-      "weekDeltaFlat": "Ingen ændring denne uge",
       "categories": {
         "results": "Resultater",
         "economy": "Økonomi",
@@ -1876,9 +1868,10 @@
       "meta": "{seasons, plural, one {Plan over 1 sæson} other {Plan over # sæsoner}}",
       "seasonLabel": "Sæson {season}",
       "currentSeasonLabel": "Sæson {season} · Du er her",
-      "explainer": "Hver milepæl skal nås senest ved udgangen af sin målsæson. Når du den før, tæller den ved udgangen af den sæson. En misset milepæl koster tillid én gang, så fortsætter visionen.",
-      "countsAt": "Tælles ved udgangen af sæson {season} · kan nås før tid",
-      "countsAtCurrent": "Tælles ved udgangen af sæson {season}",
+      "progress": "{done} af {total} milepæle nået",
+      "countsAt": "Nå det senest ved udgangen af sæson {season}. Når du det før, tæller det ved udgangen af den sæson.",
+      "milestoneProgress": "{current} af {target}",
+      "helpLink": "Sådan tæller milepæle",
       "milestoneAchieved": "Nået",
       "milestoneMissed": "Ikke nået",
       "empty": {

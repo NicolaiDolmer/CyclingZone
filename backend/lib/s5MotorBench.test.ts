@@ -3,7 +3,7 @@
 //
 //   1. Fixturen (__fixtures__/s5MotorBench.json) er ikke en stub og er skrevet med den
 //      kanoniske bench-konfiguration.
-//   2. Benchen genkoeres her (v4 under s5_profiles_v1, KUN i testen; flaget og prod-
+//   2. Benchen genkoeres her (v4 under s5_profiles_v3 (#6804), KUN i testen; flaget og prod-
 //      revisionen roeres ikke) og SKAL give praecis fixturens dom. Saa kan fixturen ikke
 //      drive fra motoren eller generatoren: aendres en af dem, bliver denne test roed, og
 //      fixturen skrives igen med `node backend/scripts/dev/s5MotorBench.mjs --write-fixture`
@@ -51,8 +51,8 @@ const MEASURED = gateMeasurement(ROWS, BENCHMARK) as { medians: Record<string, n
 test("#6362: fixturen er den rigtige bench (ikke en stub), skrevet med den kanoniske konfiguration", () => {
   assert.equal(FIXTURE.stub, false);
   assert.deepEqual(FIXTURE.config, { ...S5_MOTOR_BENCH_CONFIG });
-  assert.equal(S5_MOTOR_BENCH_CONFIG.revision, "s5_profiles_v1");
-  // #6369: benchen maaler den revision ejerens "taend" goer aktuel; den taender den aldrig selv.
+  assert.equal(S5_MOTOR_BENCH_CONFIG.revision, "s5_profiles_v3");
+  // #6369/#6818/#6804: benchen maaler den revision ejerens "taend" goer aktuel; den taender den aldrig selv.
   assert.equal(CURRENT_RACE_RULES_REVISION, S5_MOTOR_BENCH_CONFIG.revision);
   for (const v of Object.values(FIXTURE.verdicts)) assert.ok(MOTOR_GAP_VERDICTS.includes(v), v);
   assert.ok(!("medians" in FIXTURE), "ingen maalte tal i det offentlige repo (hard rule 17)");

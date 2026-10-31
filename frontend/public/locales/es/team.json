@@ -39,7 +39,8 @@
     "squad": "Plantilla ({count})",
     "development": "Desarrollo",
     "stats": "Estadísticas",
-    "transfers": "Historial de fichajes"
+    "transfers": "Historial de fichajes",
+    "contracts": "Contratos"
   },
   "development": {
     "headers": {
@@ -321,5 +322,73 @@
     "discordOpenAria": "Abrir el perfil de Discord de {handle}",
     "discordCopyAria": "Copiar el nombre de usuario de Discord {handle}",
     "discordCopied": "Copiado"
+  },
+  "contracts": {
+    "headers": {
+      "seasons": "Temporadas",
+      "salary": "Salario actual / nuevo",
+      "newContract": "Nuevo contrato"
+    },
+    "selectRider": "Seleccionar a {name}",
+    "selectGroup": "Seleccionar todos: {group}",
+    "seasonsFor": "Temporadas para ampliar a {name}",
+    "seasonsCount": "{count}",
+    "seasonsMax": "{count} (máx.)",
+    "noContract": "Sin contrato",
+    "group": {
+      "expiring": "Vence esta temporada",
+      "season": "Vence tras la temporada {season}",
+      "atCap": "En el límite",
+      "atCapHint": "Ya llega hasta donde se permite. Se podrá ampliar de nuevo cuando cambie la temporada."
+    },
+    "bar": {
+      "none": "Marca los ciclistas que quieres ampliar.",
+      "selected": "{count, plural, one {# ciclista seleccionado} other {# ciclistas seleccionados}}",
+      "salaryDelta": "Salario {value} CZ$ por temporada",
+      "seasonsLabel": "Temporadas",
+      "extend": "{count, plural, =0 {Ampliar contratos} one {Ampliar # contrato} other {Ampliar # contratos}}"
+    },
+    "summary": {
+      "title": "Ampliar contratos",
+      "cancel": "Cancelar",
+      "confirm": "{count, plural, one {Ampliar # contrato} other {Ampliar # contratos}}",
+      "loadError": "No se pudo cargar el resumen. No se ha cambiado nada.",
+      "saveError": "No se pudieron ampliar los contratos. No se ha cambiado nada.",
+      "teamSalary": "Salario del equipo por temporada",
+      "salaryCap": "Tope salarial de la directiva",
+      "noCap": "Sin tope",
+      "withinCap": "Dentro del tope",
+      "overCap": "Por encima del tope de {cap} CZ$. No se ampliará nada"
+    },
+    "done": "{count, plural, one {# contrato ampliado.} other {# contratos ampliados.}}",
+    "loadErrorTitle": "No se pudieron cargar tus contratos",
+    "loadErrorBody": "No se ha perdido nada. Tus contratos no han cambiado.",
+    "retry": "Reintentar",
+    "emptyTitle": "Ficha ciclistas para gestionar sus contratos",
+    "emptyBody": "Tus ciclistas aparecen aquí, agrupados según cuándo vence su contrato.",
+    "buyback": {
+      "title": "Recupera a tus ciclistas",
+      "intro": "Estos ciclistas dejaron tu equipo en el cambio de temporada sin el aviso de contrato que deberías haber recibido. Fíchalos de nuevo en 7 días: salario normal, 1 temporada, sin prima de fichaje.",
+      "squad": "Plantilla",
+      "deadline": "Hasta",
+      "sign": "Fichar de nuevo",
+      "signAria": "Fichar de nuevo a {name}",
+      "done": "{name} vuelve a tu equipo.",
+      "squads": {
+        "senior": "Sénior",
+        "u23": "Sub-23",
+        "junior": "Júnior"
+      },
+      "errors": {
+        "buyback_not_eligible": "No incluido",
+        "buyback_rider_not_free": "Fichado por otro equipo",
+        "buyback_rider_retired": "Retirado",
+        "buyback_rider_on_auction": "En subasta",
+        "buyback_expired": "Han pasado los 7 días",
+        "buyback_squad_full": "Tu plantilla está completa",
+        "buyback_no_team": "Necesitas un equipo",
+        "buyback_failed": "No se pudo ficharlo de nuevo. Inténtalo otra vez."
+      }
+    }
   }
 }

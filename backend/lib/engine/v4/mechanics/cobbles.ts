@@ -84,6 +84,7 @@ import type {
 import { gaussian } from "../rng.ts";
 import { makeGroupId, splitGroup } from "../groups.ts";
 import { COBBLES_EXTRA_TUNING, WEATHER_EXTRA_TUNING } from "../tuning.ts";
+import { incidentKmAt, incidentKmSpan } from "./incidents.ts";
 import { weatherAdjustedRiskBase, weatherTechniqueDampening, weatherTechniqueProxy } from "./weather.ts";
 
 function clamp(n: number, lo: number, hi: number): number {
@@ -301,13 +302,15 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
   // climbSelection.ts).
   const groupsSorted = [...state.groups].sort((a, b) => a.id.localeCompare(b.id));
 
+  // #7008 (KUN s5_profiles_v2): intet styrt lige efter starten (incidentKmSpan).
+  const incidentSpan = incidentKmSpan(cobblesSegment, ctx.s5ProfilesV2 === true);
   let nextState = state;
   let localSeq = 0;
 
   for (const group of groupsSorted) {
     // 1) Styrt-risiko for HELE gruppen (M11-forbrug), FOER split-beslutningen
     // — udfaldet er uafhaengigt af hvem der ender splittet.
-    for (const riderId of [...group.rider_ids].sort()) {
+    for (const riderId of incidentSpan ? [...group.rider_ids].sort() : []) {
       const entrant = ctx.entrants[riderId];
       const riderState = nextState.riders[riderId];
       if (!entrant || !riderState || riderState.status !== "racing") continue;
@@ -316,8 +319,7 @@ export const cobblesHook: CobblesHook = (state: EngineState, ctx: SegmentHookCon
       const rng = ctx.rngFor("cobbles_incident", riderId);
       const roll = rng();
       if (roll >= p) continue;
-      const kmFrac = rng();
-      const incidentKm = round2(cobblesSegment.from_km + kmFrac * (cobblesSegment.to_km - cobblesSegment.from_km));
+      const incidentKm = incidentKmAt(incidentSpan!, rng());
       nextState = {
         ...nextState,
         riders: { ...nextState.riders, [riderId]: { ...riderState, incidents: riderState.incidents + 1 } },

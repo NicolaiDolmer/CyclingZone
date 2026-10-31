@@ -10,7 +10,7 @@ const TABLE = "team_youth_race_opt_outs";
 
 function fakeSupabase(state) {
   function builder(table, op = "select", filters = [], payload = null) {
-    const run = () => {
+    const run = (slice) => {
       if ((state.__missing ?? []).includes(table)) return { data: null, error: { code: "PGRST205", message: "missing" } };
       state[table] ??= [];
       const match = (row) => filters.every((f) => f(row));
@@ -19,7 +19,8 @@ function fakeSupabase(state) {
         if (!state[table].some((r) => r.team_id === payload.team_id && r.squad === payload.squad)) state[table].push({ ...payload });
         return { data: null, error: null };
       }
-      return { data: state[table].filter(match).map((r) => ({ ...r })), error: null };
+      const rows = state[table].filter(match).map((r) => ({ ...r }));
+      return { data: slice ? rows.slice(slice[0], slice[1] + 1) : rows, error: null };
     };
     const next = (f) => builder(table, op, [...filters, f], payload);
     const obj = {
@@ -28,6 +29,8 @@ function fakeSupabase(state) {
       in(c, vs) { return next((r) => vs.includes(r[c])); },
       order() { return obj; },
       limit() { return obj; },
+      // #6959: start-laasen henter etape-planen i sider (fetchAllRowsChunkedIn).
+      range(from, to) { return Promise.resolve(run([from, to])); },
       async maybeSingle() { const r = run(); return { data: r.data?.[0] ?? null, error: r.error }; },
       delete() { return builder(table, "delete", filters); },
       upsert(p) { return Promise.resolve(builder(table, "upsert", filters, p).__run()); },

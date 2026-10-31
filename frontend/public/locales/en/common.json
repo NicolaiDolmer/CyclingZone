@@ -66,7 +66,9 @@
     "fr": "Français",
     "es": "Español",
     "nl": "Nederlands",
-    "switchTooltip": "Change language"
+    "switchTooltip": "Change language",
+    "betaBadge": "Beta",
+    "betaNote": "Missing texts are shown in English."
   },
   "actions": {
     "cancel": "Cancel",

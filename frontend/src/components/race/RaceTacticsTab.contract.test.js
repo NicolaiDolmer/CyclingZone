@@ -31,7 +31,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(join(__dirname, "RaceTacticsTab.jsx"), "utf8");
 
 test("trinnene kommer fra serverens valid_efforts, ikke fra en hardkodet liste", () => {
-  assert.match(source, /orderedEfforts\(roles\?\.valid_efforts\)/);
+  // #7332: pr. etape (enkeltstart skjuler grupetto/protect), stadig fra serverens valid_efforts.
+  assert.match(source, /effortsForStage\(roles\?\.valid_efforts, stageProfileType\)/);
   // Ingen lokal opremsning af de fem værdier i selve fladen.
   assert.doesNotMatch(source, /"grupetto"/);
   assert.doesNotMatch(source, /"all_out"/);
@@ -91,7 +92,8 @@ test("etapeprofilen ligger over kortet og følger den åbne etape", () => {
 });
 
 test("ét gem rammer begge endpoints for den åbne etape", () => {
-  assert.match(source, /diffToOverrides\(\{ matrix: draftMatrix, riders \}\)/);
+  // #7332: kladden normaliseres (grupetto/protect -> save paa en enkeltstart) foer diffen.
+  assert.match(source, /diffToOverrides\(\{ matrix: withIndividualTimeTrialEfforts\(\{ matrix: draftMatrix, profileByStage \}\), riders \}\)/);
   assert.match(source, /\/api\/races\/\$\{raceId\}\/stage-roles/);
   // #6647: ordren gemmes med intentionens indsats, ikke rollens "normal".
   assert.match(source, /saveTacticsCard\(\{ raceId, stage: activeStage, order: withIntentionEfforts\(order, /);
@@ -188,4 +190,52 @@ test("#5945 start_outlook.starts === false giver banner i stedet for matrix", ()
   const flagOffAt = source.indexOf("Flag OFF, eller holdet har ingen ryttere");
   assert.ok(bannerAt > 0 && flagOffAt > 0 && bannerAt < flagOffAt, "banneret ligger foer de normale grene");
   assert.ok(matrixAt > 0);
+});
+
+// #6746: trinnet "protect" hedder efter rollen. Alle seks roller er daekket: ledere
+// (ogsaa den delte kaptajn, som aldrig arbejder) foelger angrebene, fri rolle koerer
+// offensivt, resten (hjaelper, jaeger) arbejder. Ingen af dem falder tilbage til det
+// gamle "arbejd eller angrib".
+test("#6746 protect-trinnet er rollebevidst for alle roller", () => {
+  const map = source.match(/const PROTECT_VARIANT = \{([^}]*)\}/)?.[1] ?? "";
+  for (const role of ["captain", "co_captain", "sprint_captain"]) {
+    assert.match(map, new RegExp(`${role}: "follow"`), `${role} skal foelge angrebene`);
+  }
+  assert.match(map, /free_role: "free"/);
+  assert.doesNotMatch(map, /helper|hunter/, "hjaelper og jaeger er default (work)");
+  assert.match(source, /PROTECT_VARIANT\[role\] \|\| "work"/);
+  assert.match(source, /effort === "protect" \? protectText\(t, role, "step"\)/);
+});
+
+// ── #7334: rute-match følger med, når etapeplanen erstatter den gamle tabel ──
+
+test("etapeplanen får rute-match, sortering og mobiltal fra samme kilde som den gamle tabel", () => {
+  const boardAt = source.indexOf("<StagePlanBoard");
+  const boardEnd = source.indexOf("renderCell: renderRouteMatchCell", boardAt) + 40;
+  const call = source.slice(boardAt, boardEnd);
+  assert.match(call, /routeMatch=\{\{/);
+  assert.match(call, /renderCell: renderRouteMatchCell/);
+  assert.match(call, /onSort: toggleRouteSort/);
+  assert.match(call, /sortDir: routeSortDir/);
+  // Planen tegner den samme sorterede liste (visibleRiders), ikke en egen rækkefølge.
+  assert.match(call, /riders=\{visibleRiders\}/);
+});
+
+test("etapeplanens tabel og mobilkort tegner rute-match", () => {
+  const board = readFileSync(join(__dirname, "StagePlanBoard.tsx"), "utf8");
+  assert.match(board, /<SortableTh\s+sortKey="routeMatch"/);
+  assert.match(board, /routeMatch\.renderCell\(rider\)/);
+  assert.match(board, /routeMatch\.renderCell\(rider, \{ numberOnly: true \}\)/);
+  assert.match(board, /colSpan=\{routeMatch \? 4 : 3\}/);
+});
+
+test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skriver aldrig grupetto/protect", () => {
+  // Vaelgeren faar etapens trin (begge layouts), aldrig serverens raa liste.
+  assert.equal((source.match(/steps=\{steps\}/g) || []).length, 2);
+  assert.match(source, /const steps = effortsForStage\(roles\?\.valid_efforts, stageProfileType\);/);
+  // Aaben etape: visningen gaar gennem effortForStage; laast etape viser det der blev sendt.
+  assert.match(source, /: effortForStage\(intentionFor\(\{ matrix: draftMatrix, stageNumber: activeStage, riderId: rider\.rider_id \}\), stageProfileType\)\);/);
+  // Kopi kender maal-etapens profil; ordren gemmes med den normaliserede indsats.
+  assert.match(source, /copyStageIntentions\(\{ matrix: m, fromStage: activeStage, toStage: nextStage, riders, fromProfileType: profileTypeOfStage\(activeStage\), toProfileType: profileTypeOfStage\(nextStage\) \}\)/);
+  assert.match(source, /withIntentionEfforts\(order, \(riderId\) => effortForStage\(intentionFor\(/);
 });

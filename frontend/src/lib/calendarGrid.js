@@ -75,6 +75,8 @@ export function expandStageEvents(entries) {
         date: s.date,
         time: s.time || null,
         terrain: s.terrain || e.terrain || null,
+        // #6683: etapens egen profile_type (ét farvet ikon pr. etapetype); null for ældre svar.
+        profileType: s.profileType || null,
         division: e.division,
         poolId: e.poolId ?? null,
         poolLabel: e.poolLabel,

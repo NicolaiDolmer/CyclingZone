@@ -232,6 +232,14 @@
       "title": "Un nouveau talent est arrivé à l'académie",
       "message": "De nouveaux candidats attendent dans ton académie - signe-les ou refuse-les."
     },
+    "academyPullReminderReady": {
+      "title": "De nouveaux candidats t'attendent à l'académie",
+      "message": "Le lot de la semaine t'attend dans ton académie. Récupère-le avant samedi minuit."
+    },
+    "academyPullReminderExpiring": {
+      "title": "Le lot d'académie de la semaine expire cette nuit",
+      "message": "Tu n'as pas encore récupéré les candidats de la semaine. Fais-le avant minuit, sinon le lot disparaît."
+    },
     "seasonStarted": {
       "title": "La saison {number} a commencé",
       "message": "Une nouvelle saison a commencé. Regarde ton tableau de bord pour les objectifs de ta direction et ton effectif pour la saison à venir.",
@@ -251,11 +259,13 @@
     },
     "raceResult": {
       "title": "Le résultat de la course est tombé",
-      "message": "{race} a été disputée. Voir le résultat."
+      "message": "{race} a été disputée. Voir le résultat.",
+      "messageBest": "{race} a été courue. Tes meilleurs : {riders}."
     },
     "firstRaceResult": {
       "title": "Ta première course est dans les annales",
-      "message": "{race} a été disputée. Vois comment tes coureurs s'en sont sortis."
+      "message": "{race} a été disputée. Vois comment tes coureurs s'en sont sortis.",
+      "messageBest": "{race} a été courue. Tes meilleurs : {riders}."
     },
     "stageResult": {
       "title": "Le résultat de l'étape est tombé",
@@ -264,7 +274,8 @@
     },
     "contractExpiring": {
       "title": "Contrat bientôt expiré",
-      "message": "Le contrat de {rider} expire à la fin de la saison {season}."
+      "message": "Le contrat de {rider} expire à la fin de la saison {season}.",
+      "squadMessage": "Le contrat de {rider} ({squad}) expire à la fin de la saison {season}. Prolonge-le dans l'onglet Contrats de Mon équipe."
     },
     "contractExpiredRelease": {
       "title": "Coureur libéré : contrat expiré",
@@ -297,9 +308,11 @@
     },
     "seasonTransitionRisk": {
       "title": "Changement de saison : risque de contrat et de retraite",
-      "messageBoth": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire, et {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. Prolonge le contrat d'un coureur depuis son profil avant le changement pour éviter sa libération ; la retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée.",
-      "messageExpiringOnly": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire. Prolonge leur contrat depuis le profil du coureur avant le changement pour les garder.",
-      "messageRetirementOnly": "Ton effectif est concerné par le prochain changement de saison : {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée."
+      "messageBoth": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire, et {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. Prolonge les contrats avant le changement dans l'onglet Contrats de Mon équipe, où tu peux prolonger plusieurs coureurs de 1 à 3 saisons à la fois. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée.",
+      "messageExpiringOnly": "Ton effectif est concerné par le prochain changement de saison : {expiringCount} coureur(s) seront libérés comme agents libres car leur contrat expire. Prolonge-les avant le changement dans l'onglet Contrats de Mon équipe, où tu peux prolonger plusieurs coureurs de 1 à 3 saisons à la fois.",
+      "messageRetirementOnly": "Ton effectif est concerné par le prochain changement de saison : {retirementRiskCount} coureur(s) (36 ans et plus) risquent de prendre leur retraite. La retraite ne peut pas être évitée, mais tu pourras enchérir sur des remplaçants une fois la saison changée.",
+      "messageBothWithRoster": "{expiringCount} contrats expirent au changement de saison et {retirementRiskCount} autres coureurs pourraient prendre leur retraite. Prolonge les contrats dans l'onglet Contrats de Mon équipe.\n{contractRiders}",
+      "messageExpiringOnlyWithRoster": "{expiringCount} contrats expirent au changement de saison. Prolonge-les dans l'onglet Contrats de Mon équipe.\n{contractRiders}"
     },
     "watchlistDeparted": {
       "title": "Un coureur a quitté le jeu",
@@ -645,10 +658,23 @@
       "message": "{count, plural, one {{senderName} t'a envoyé un message} other {# nouveaux messages de {senderName}}}",
       "messageUnknownSender": "{count, plural, one {Un autre manager t'a envoyé un message} other {# nouveaux messages d'un autre manager}}"
     },
+    "riderIll": {
+      "title": "Coureur malade",
+      "message": "Le médecin indique que {rider} est malade après plusieurs jours de fatigue extrême et est absent jusqu'au {until}."
+    },
     "riderInjured": {
       "title": "Coureur blessé",
       "message": "{rider} a chuté à {race} et est blessé jusqu'au {until}.",
-      "messageMissed": "{rider} a chuté à {race} et est blessé jusqu'au {until}. Il ne courra pas {missed}."
+      "messageMissed": "{rider} a chuté à {race} et est blessé jusqu'au {until}. Il ne courra pas {missed}.",
+      "messageFinished": "{rider} a chuté à {race} mais a terminé l'étape. Il est blessé jusqu'au {until}.",
+      "messageFinishedMissed": "{rider} a chuté à {race} mais a terminé l'étape. Il est blessé jusqu'au {until} et ne courra pas {missed}.",
+      "messageTraining": "{rider} s'est blessé à l'entraînement et est absent jusqu'au {until}.",
+      "crash": "{rider} a chuté à {race} et sera de nouveau apte le {fitAgain}.",
+      "crashMissed": "{rider} a chuté à {race} et sera de nouveau apte le {fitAgain}. Il manquera {missed}{more, plural, =0 {} one { et 1 autre course} other { et # autres courses}}.",
+      "crashFinished": "{rider} a chuté à {race} mais a terminé l'étape. Il sera de nouveau apte le {fitAgain}.",
+      "crashFinishedMissed": "{rider} a chuté à {race} mais a terminé l'étape. Il sera de nouveau apte le {fitAgain}. Il manquera {missed}{more, plural, =0 {} one { et 1 autre course} other { et # autres courses}}.",
+      "training": "{rider} s'est blessé à l'entraînement et sera de nouveau apte le {fitAgain}.",
+      "trainingMissed": "{rider} s'est blessé à l'entraînement et sera de nouveau apte le {fitAgain}. Il manquera {missed}{more, plural, =0 {} one { et 1 autre course} other { et # autres courses}}."
     },
     "teamDidNotStart": {
       "title": "Ton équipe n'a pas pris le départ",
@@ -671,6 +697,24 @@
     "squadEnforced": {
       "title": "Taille d'effectif imposée",
       "message": "{purchasedCount, plural, =0 {} one {Achat automatique de # coureur : {purchasedNames}\n} other {Achat automatique de # coureurs : {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# coureur rejoindra l'équipe une fois sa course par étapes en cours terminée : {deferredNames}\n} other {# coureurs rejoindront l'équipe une fois leur course par étapes en cours terminée : {deferredNames}\n}}{soldCount, plural, =0 {} one {Vente automatique de # coureur : {soldNames}\n} other {Vente automatique de # coureurs : {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# coureur dans une course par étapes en cours sera vendu après la course à la place\n} other {# coureurs dans une course par étapes en cours seront vendus après la course à la place\n}}Amende : {fine} CZ$ · Déduction : {points} points"
+    },
+    "contractSquad": {
+      "senior": "Seniors",
+      "u23": "U23",
+      "junior": "Juniors",
+      "academy": "Académie"
+    },
+    "contractRoster": {
+      "entry": "{rider} ({squad}), {value} CZ$",
+      "entryUnknown": "{rider} ({squad}), valeur indisponible"
+    },
+    "contractExpiringSummary": {
+      "title": "Contrats à prolonger",
+      "message": "Ces contrats expirent à la fin de la saison {season}. Prolonge-les dans l'onglet Contrats de Mon équipe.\n{contractRiders}"
+    },
+    "contractReleasedSummary": {
+      "title": "Coureurs libérés : contrats expirés",
+      "message": "Ces coureurs sont devenus libres après l'expiration de leur contrat à la fin de la saison {season}. Consulte tes contrats restants dans Mon équipe.\n{contractRiders}"
     }
   },
   "error": {

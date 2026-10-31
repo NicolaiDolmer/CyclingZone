@@ -1,10 +1,9 @@
 // #3134 — new-account gates (fair-play epic #3131, track C).
 //
-// Three independent, config-gated guards against day-one account abuse
+// Two independent, config-gated guards against day-one account abuse
 // (evidence: #2815 — two real teams maxed the debt ceiling within 7-10 minutes
 // of signup; #2776 — a throwaway account funnelled ~1.97M CZ$ out within a day
-// of creation, seeded by an instant loan + a snipe-bid on an auction that
-// started before the account existed):
+// of creation, seeded by an instant loan):
 //
 //   1. Loan gate      — no manager-initiated loan until the team has run N
 //                        race days OR is X days old (experience gate, not a
@@ -12,18 +11,13 @@
 //   2. Transfer/swap
 //      cooldown       — outgoing payments at/above a threshold are blocked
 //                        during the team's first X hours.
-//   3. Auction entry
-//      gate           — a team created AFTER an auction started can't bid on
-//                        THAT auction (the exact #2776 pattern).
+//
+// (A third track, an auction entry gate, was removed in #7336 — it never
+// shipped enabled and was closed by owner decision during the build stop.)
 //
 // All thresholds live in app_config (database/2026-08-03-new-account-gates.sql).
 // 0 (or a missing row) = that condition is disabled; 0 on ALL of a gate's
-// keys = the whole gate is off. Ships DEFAULT OFF for every track — including
-// track 3, despite the originating issue proposing default-on: a prod dry-run
-// (see PR #3134) found 422 historical bids by 53 real teams would have been
-// blocked, overwhelmingly ordinary "brand-new player bids on an
-// already-running auction within minutes of signup" onboarding, not the
-// #2776 funnel pattern. Flagged to the owner; ships gated and ready to flip.
+// keys = the whole gate is off. Ships DEFAULT OFF for every track.
 //
 // Fail-open on infra errors: a broken config read must never block a loan,
 // transfer, or bid that would otherwise be allowed — same philosophy as the
@@ -37,7 +31,6 @@ export const NEW_ACCOUNT_GATE_CONFIG_KEYS = {
   LOAN_MIN_ACCOUNT_AGE_DAYS: "loan_gate_min_account_age_days",
   TRANSFER_COOLDOWN_HOURS: "transfer_cooldown_hours",
   TRANSFER_COOLDOWN_AMOUNT_CZK: "transfer_cooldown_amount_czk",
-  AUCTION_ENTRY_GATE_ENABLED: "auction_entry_gate_enabled",
 };
 
 function toNonNegativeInt(value, fallback = 0) {
@@ -50,10 +43,9 @@ const DISABLED_CONFIG = Object.freeze({
   loanMinAccountAgeDays: 0,
   transferCooldownHours: 0,
   transferCooldownAmountCzk: 0,
-  auctionEntryGateEnabled: false,
 });
 
-// I/O: batch-read all 5 keys in one round trip. Fail-open — any error (missing
+// I/O: batch-read all 4 keys in one round trip. Fail-open — any error (missing
 // table in a test double, network hiccup, malformed rows) resolves to the
 // all-disabled config rather than throwing, so a telemetry-style outage can
 // never block a loan/transfer/bid that would otherwise succeed.
@@ -74,7 +66,6 @@ export async function readNewAccountGateConfig(supabase) {
       loanMinAccountAgeDays: toNonNegativeInt(byKey.get(NEW_ACCOUNT_GATE_CONFIG_KEYS.LOAN_MIN_ACCOUNT_AGE_DAYS), 0),
       transferCooldownHours: toNonNegativeInt(byKey.get(NEW_ACCOUNT_GATE_CONFIG_KEYS.TRANSFER_COOLDOWN_HOURS), 0),
       transferCooldownAmountCzk: toNonNegativeInt(byKey.get(NEW_ACCOUNT_GATE_CONFIG_KEYS.TRANSFER_COOLDOWN_AMOUNT_CZK), 0),
-      auctionEntryGateEnabled: byKey.get(NEW_ACCOUNT_GATE_CONFIG_KEYS.AUCTION_ENTRY_GATE_ENABLED) === true,
     };
   } catch (err) {
     // best-effort: same fail-open contract as the `error` branch above, for
@@ -146,20 +137,6 @@ export function evaluateTransferCooldown({ cooldownHours, cooldownAmount, amount
     cooldownAmount,
     unlocksInHours: Math.ceil(unlocksInHours * 10) / 10,
   };
-}
-
-// Pure: evaluate the auction entry gate — blocked only when the team's
-// account was created strictly AFTER the auction itself was created.
-export function evaluateAuctionEntryGate({ enabled, teamCreatedAt, auctionCreatedAt }) {
-  if (!enabled) return { allowed: true };
-  if (!teamCreatedAt || !auctionCreatedAt) return { allowed: true };
-
-  const teamCreated = new Date(teamCreatedAt).getTime();
-  const auctionCreated = new Date(auctionCreatedAt).getTime();
-  if (!Number.isFinite(teamCreated) || !Number.isFinite(auctionCreated)) return { allowed: true };
-
-  if (teamCreated > auctionCreated) return { allowed: false };
-  return { allowed: true };
 }
 
 // I/O: distinct COMPLETED race days a team has actually run — race_entries

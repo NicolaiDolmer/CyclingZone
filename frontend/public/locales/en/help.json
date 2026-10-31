@@ -157,7 +157,7 @@
           "You get a set number of adjustments per meeting, shown at the top. A board that is confident in you grants more of them and stretches further in its counter-offers.",
           "The board may propose a new milestone for the club vision, with the season it should be reached in. Accept it or decline it.",
           "You get one request per meeting. A refusal always comes back with a counter-offer, never a flat no.",
-          "Sign, and the mandate is active for the season. Until it is signed it stays a proposal.",
+          "Sign, and the mandate is active for the season. Until it is signed it stays a proposal. After you sign, the board does not change it. The only thing that can be added is a bonus offer, and only if you accept it yourself.",
           "If you never answer, the board signs its own proposal for you when the deadline shown at the top of the meeting runs out. You keep the mandate, you just did not shape it."
         ]
       },
@@ -171,7 +171,7 @@
       },
       "visionMilestones": {
         "title": "When vision milestones count",
-        "text": "Each milestone in your club vision has a target season, and the milestone itself says when it counts, for example \"Counts at the end of season 5\". The board checks milestones at each season end, not along the way, so a long-term goal can look untouched for most of a season without being behind. You can meet a milestone early: if you have already reached it at the end of an earlier season, it counts right there, the board marks it achieved and proposes a new milestone at the next annual meeting. A milestone you have not reached by the end of its target season is missed. That costs confidence once, and the rest of the vision carries on unchanged."
+        "text": "Each milestone in your club vision has a target season, and the milestone itself says when it counts, for example \"Reach it by the end of season 5. If you get there earlier, it counts at the end of that season.\". The board checks milestones at each season end, not along the way, so a long-term goal can look untouched for most of a season without being behind. You can meet a milestone early: if you have already reached it at the end of an earlier season, it counts right there, the board marks it achieved and proposes a new milestone at the next annual meeting. A milestone you have not reached by the end of its target season is missed. That costs confidence once, and the rest of the vision carries on unchanged."
       }
     },
     "auctions": {
@@ -493,7 +493,7 @@
       },
       "careerFirsts": {
         "title": "Career firsts",
-        "text": "The game tracks career firsts for every rider: a maiden victory, a first podium, a first classification jersey, and club milestones like a 25th win in your colours. These are detected automatically from race results, shown as a moment card on your dashboard and on the race page, and stay visible for good on the rider's own profile under the Palmares tab."
+        "text": "The game tracks career firsts for every rider: a rider's first win, a first podium, a first classification jersey, and club milestones like a 25th win in your colours. These are detected automatically from race results, shown as a moment card on your dashboard and on the race page, and stay visible for good on the rider's own profile under the Palmares tab."
       }
     },
     "watchlist": {
@@ -620,7 +620,339 @@
       },
       "stageProfile": {
         "title": "Terrain and stage profiles",
-        "text": "From season 2, races with route data show the stage's real profile: it's the exact route the race engine runs, with each climb's length, gradient and category, the intermediate sprint, cobbled sectors, and where the finish falls. A climb's category sets how many mountain points are up for grabs at the top, and a finish at the top of a climb opens bigger time gaps than a finish after a descent. Tap a marker on the profile to see what's at stake there, or who took it once the stage has been ridden. Older races without route data still show the earlier terrain badge: a schematic silhouette and an indicative category, not a measured profile."
+        "text": "From season 2, races with route data show the stage's real profile: it's the exact route the race engine runs, with each climb's length, gradient and category, the intermediate sprint, cobbled sectors, and where the finish falls. A climb's category sets how many mountain points are up for grabs at the top, and a finish at the top of a climb opens bigger time gaps than a finish after a descent. Tap a marker on the profile to see what's at stake there, or who took it once the stage has been ridden. Older races without route data still show the earlier terrain badge: a schematic silhouette and an indicative category, not a measured profile. In races on the newest rules, short uncategorized hills that you see on the profile are raced as rolling road, not as flat road. Climbs, descents and cobbles keep their own terrain."
+      },
+      "raceIdentity": {
+        "title": "Race types and signatures",
+        "text": "From season 5 every short stage race has a fixed type that follows it from season to season, so you know what kind of race you are planning for. Each race also has one or two signatures that come back every year: the same decisive climb, sector or time trial. The rest of the route varies a little from edition to edition. The five monuments run the same route every year; only the weather, form and tactics change. Grand Tours keep their own format. You only see the type here in Help; on the race page it shows up in the route itself.",
+        "rows": [
+          [
+            "Type",
+            "What to expect"
+          ],
+          [
+            "Sprinters' race",
+            "Mostly flat stages with at least one hilly day. No mountains, so the sprinters decide it."
+          ],
+          [
+            "Climbers' race",
+            "Mountain and high-mountain stages decide it. In Division 1 these are the warm-ups right before each Grand Tour."
+          ],
+          [
+            "Hilly race",
+            "Hills and short, steep climbs, but no real mountains. Made for riders with a punch."
+          ],
+          [
+            "Cobbles/Benelux",
+            "Cobbled sectors on flat, exposed roads. No mountains."
+          ],
+          [
+            "Time trial race",
+            "Time trials decide it: often a prologue on day one and a longer time trial late in the race."
+          ],
+          [
+            "Gravel race",
+            "Gravel sectors on hilly roads. No mountains."
+          ],
+          [
+            "Mountains first",
+            "The mountains come first. The sprinters reach the flat stages at the end on tired legs."
+          ],
+          [
+            "All-round",
+            "A bit of everything: flat stages, mountains and a time trial."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Every race's type and signature",
+        "text": "Sorted by division and by date in the calendar. Grand Tours are not on the list. The five monuments are at the end.",
+        "rows": [
+          [
+            "Race",
+            "Type and signature"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Climbers' race · Summit finish on Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "All-round · Summit finish on Col de la Brasque + flat time trial"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Climbers' race · Summit finish on Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Sprinters' race · Climb: Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Mountains first · Summit finish on Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "Gravel race · Gravel sector: Piste des Aravis Blanches + gravel sector: Chemin du Plan-Bois on the last stage"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Hilly race · Uphill finish on Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "Sprinters' race · Climb: Alto de Monegrillo"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Climbers' race · Summit finish on Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "All-round · Summit finish on Monte Sassotorto + hilly time trial"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Hilly race · Uphill finish on Alto de Mendibeltz on the last stage"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Cobbles/Benelux · Cobbled sector: Pavé du Moulin-Brûlé + cobbled sector: Chemin des Quatre-Vents on the last stage"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Time trial race · Prologue + hilly time trial on the last stage"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "All-round · Summit finish on Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Climbers' race · Summit finish on Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Climbers' race · Summit finish on Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Hilly race · Climb: Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Mountains first · Summit finish on Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Climbers' race · Summit finish on Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Sprinters' race · Climb: Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Hilly race · Climb: Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Mountains first · Summit finish on Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Sprinters' race · Climb: Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Cobbles/Benelux · Cobbled sector: Pflasterweg Donauleiten + cobbled sector: Alte Treppelstraße on the last stage"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "All-round · Summit finish on Alto de Valdecuerna + flat time trial"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Hilly race · Uphill finish on Muro di Montevergello on the last stage"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Cobbles/Benelux · Cobbled sector: Pavés de Thieumont + cobbled sector: Chemin de la Hulpière on the last stage"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "All-round · Summit finish on Passo della Gaviola + hilly time trial"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Time trial race · Prologue + hilly time trial on the last stage"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Gravel race · Gravel sector: Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Time trial race · Prologue + hilly time trial on the last stage"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Sprinters' race · Climb: Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "All-round · Summit finish on Alto de Xorret del Pinós + flat time trial"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "All-round · Summit finish on Alto do Malhãozinho + hilly time trial"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Hilly race · Uphill finish on Monte do Castrelo on the last stage"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Climbers' race · Summit finish on Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Cobbles/Benelux · Cobbled sector: Kasseiweg van Ronsbeke + cobbled sector: Holle Kasseistraat on the last stage"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Gravel race · Gravel sector: Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Climbers' race · Summit finish on Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Mountains first · Summit finish on Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "All-round · Summit finish on Alto da Senhora dos Ventos + flat time trial"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Sprinters' race · Climb: Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "Time trial race · Hilly time trial on the last stage"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Hilly race · Climb: Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Sprinters' race · Climb: Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Hilly race · Uphill finish on Stavnesbakken on the last stage"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Cobbles/Benelux · Cobbled sector: Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Sprinters' race · Climb: Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Climbers' race · Summit finish on Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Sprinters' race · Climb: Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Cobbles/Benelux · Cobbled sector: Kasseiweg van Holterberg"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Hilly race · Uphill finish on Muro di Castelvento on the last stage"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Gravel race · Gravel sector: Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "All-round · Flat time trial"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "All-round · Summit finish on Alto de Erroizar + hilly time trial"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Time trial race · Hilly time trial on the last stage"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Hilly race · Climb: Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Sprinters' race · Climb: Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Mountains first · Summit finish on Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Climbers' race · Summit finish on Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "All-round · Hilly time trial"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Hilly race · Climb: Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Sprinters' race · Climb: Côte de Kerhuel"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Cobbles/Benelux · Cobbled sector: Kasseistrook van Bertembos + cobbled sector: Holle Weg van Ottenrode on the last stage"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Time trial race · Prologue + hilly time trial on the last stage"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monument, fixed route · Cipressina and Poggio dei Fiori before the finish"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monument, fixed route · Oude Kwaremberg and Paterhelling before the finish, plus cobbled sectors"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monument, fixed route · Cobbled sectors from Trouée d'Arembourg to Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monument, fixed route · Côte de la Redoutière and Côte de la Roche-aux-Corbeaux, uphill finish"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monument, fixed route · Madonna del Ghisello, then Salita di Valtorta and a descent to the finish"
+          ]
+        ]
       },
       "raceDetail": {
         "title": "Open a race: route, terrain DNA and your lineup",
@@ -704,11 +1036,11 @@
         "steps": [
           "Every rider ages up by one year.",
           "Form decays toward 50: about 25% of each rider's end-of-season form carries into the new season.",
-          "Fatigue resets to 0 for every rider.",
+          "New seasons start with a little base fatigue for every rider. Before the first race, rest lowers form, normal training holds it and hard training raises it.",
           "Injuries are NOT reset. They carry over unchanged.",
           "Peak plans are unaffected by the changeover.",
-          "Season wages are paid during the changeover. Rider values do not move during the changeover itself: they update once, in the Sunday update after the changeover is complete.",
-          "The new season's first race day is the day after the changeover. Its first stage starts at least 24 hours after the old season's last stage, so you have time to pick your race squads."
+          "Season wages are paid during the changeover. Rider values do not move during the changeover itself: they update next time, at the normal Sunday update.",
+          "Training continues every day between seasons and counts toward the new season. Your chosen program still applies, missed training is picked up automatically, and Train now also works before the first race. Check the calendar for the first race."
         ]
       }
     },
@@ -1010,6 +1342,18 @@
         "title": "Age, peak and decline",
         "text": "Every rider peaks at 28, regardless of type. From the season after he turns 29, his abilities decline instead of growing, and that only happens at the season change, never during the season itself. The decline isn't fixed: it grows the longer he's past his peak. For the first three years past peak (ages 29 to 31) his signature abilities drop by roughly 1 point per season. From the fourth to the sixth year past peak (32 to 34) that rises to roughly 1.8 points per season, and from the seventh year onward (35+) to roughly 2.6 points per season. Not every ability falls at the same speed: a rider's signature abilities, the ones his primary type is built around, fall at the full rate above. Every other ability, including the craft skills Positioning and Tactics, falls more slowly, roughly 70 percent of that rate. That's a speed difference, not a delayed start: every ability begins declining the same season."
       },
+      "agingV2": {
+        "title": "Age and decline",
+        "text": "Riders hold their level until 30. From the season after that, their physical abilities and cobbles drop a little at each season change, and the drop grows the further past 30 they are. Technique, tactics and the other mental abilities never drop. Racing slows the decline: every race day in the season that just ended counts, and hard training days help too. A rider with a full season of racing behind him keeps most of his legs. Nobody grows at the season change itself; your riders develop through their daily training."
+      },
+      "aiRidersV2": {
+        "title": "AI riders and free agents",
+        "text": "Riders on AI teams and riders without a contract don't develop. They still age like everyone else. When one of them joins your team, he starts developing through your training from the next day."
+      },
+      "potentialBestRole": {
+        "title": "Potential across the game",
+        "text": "My Team, the academy, the rider profile and the Scouting tab show a rider's potential the same way. It's shown for the role where he can go highest, with a small box next to it saying which role that is. It's still an estimate: a better scout, or more training days on your team for your own riders, makes it sharper."
+      },
       "trainingFocus": {
         "title": "Training focus",
         "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique, Aero or Race craft). The effort comes with the session type and is not a separate choice: intervals, threshold and sprint are hard, tempo is medium, the rest are easy. Trained abilities develop faster toward their ceiling through the daily training that runs each evening, while other abilities grow a little more slowly. Hard sessions build more fatigue but carry no risk of losing progress. You can set a training focus on as many of your riders as you like; changing an existing focus costs nothing. Training is free and does not cost money. Riders who race develop from the race instead of their planned session, including single-day races. Selected riders who do not start follow their programme, subject to injuries. Fatigue, form and training injury risk are assessed from the day's combined race and training activity at the evening update. Gaps between stages do not add extra recovery. Hard training remains more tiring than normal training."
@@ -1049,11 +1393,23 @@
       },
       "typeGating": {
         "title": "Why does a focus grow faster for some riders?",
-        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a hidden potential per ability, both set when the rider is created. Two separate things decide what an ability becomes: how high it can reach, and how fast it gets there. His type sets both. An ability his primary type is built for reaches highest and builds fastest. His secondary type is close behind, around 85% as high. Positioning and tactics are craft: nobody is born with them, so every rider can reach around 75% as high, but they build slowly. An ability outside both his roles reaches around 60% as high and builds slowly. Each type covers several abilities, not only the one in its name: a GC type also covers time trial, so a GC rider can reach high there. An ability his type actively works against barely moves at all. Check both type badges before picking a focus, and note that reaching high and getting there quickly are no longer the same thing: an ability can have plenty of room left and still take years to fill it. The pace is adjusted from time to time as part of ongoing game balancing, so a rider's daily progress can feel different from one update to the next even though nothing about him personally has changed."
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a potential, all set when the rider is created. Two separate things decide what an ability becomes: how high it can reach, and how fast it gets there. His type sets how high. An ability his primary type is built for reaches highest and builds fastest. His secondary type is close behind. Positioning and tactics are craft: nobody is born with them, so every rider can reach a decent level, but they build slowly. An ability outside both his roles has a low ceiling and builds slowly. Each type covers several abilities, not only the one in its name: a GC type also covers time trial, so a GC rider can reach high there. An ability his type actively works against barely moves at all. His potential sets how fast he develops overall, so a bigger talent gets to his ceiling sooner, but it never lifts the ceiling. Check both type badges before picking a focus, and note that reaching high and getting there quickly are two different things: an ability can have plenty of room left and still take years to fill it. The pace is adjusted from time to time as part of ongoing game balancing, so a rider's daily progress can feel different from one update to the next even though nothing about him personally has changed."
       },
       "ceilingReached": {
         "title": "My rider's ability has stopped rising",
-        "text": "That is now unusual. Every ability still has a lifetime ceiling set by type and potential, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type and potential would build on their own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress. The number next to an ability is always its current value, never the ceiling itself, which is never shown as a number anywhere in the game, and progress naturally slows the closer a rider gets, so a value that holds still for a few days doesn't necessarily mean it's finished."
+        "text": "That is now unusual. Every ability still has a lifetime ceiling set by his type, but riders no longer simply arrive there. How close a rider gets, and on which abilities, is decided by how you train him. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline rather than grow, and what he has is what he keeps. Or the ability already sits above what his type would build on its own, which happens with riders carried over from an earlier version of the game. Nothing is taken away from him, it simply will not climb further. Every ability has its own line on the Daily Training page and the rider profile, and a finished one reads 'done' where the others show progress. The number next to an ability is always its current value, never the ceiling itself, which is never shown as a number anywhere in the game, and progress naturally slows the closer a rider gets, so a value that holds still for a few days doesn't necessarily mean it's finished."
+      },
+      "typeGatingCurveB": {
+        "title": "Why does a focus grow faster for some riders?",
+        "text": "Every rider has a primary AND secondary type (Sprinter, Climber, TT, GC and so on) and a potential, all set when the rider is created. His type decides which abilities can go highest: an ability his primary type is built for reaches highest and builds fastest, and his secondary type is close behind. Positioning and tactics are craft: nobody is born with them, so every rider can reach a decent level, but they build slowly. An ability outside both his roles stays low and builds slowly, and one his type actively works against barely moves at all. Each type covers several abilities, not only the one in its name: a GC type also covers time trial. His potential decides how high he can go overall, and a bigger talent also gets there faster. Every point costs more the higher an ability already is, so the last points come slowest. Check both type badges before picking a focus. The pace is adjusted from time to time as part of game balancing, so daily progress can feel different from one update to the next."
+      },
+      "ceilingReachedCurveB": {
+        "title": "My rider's ability has stopped rising",
+        "text": "Progress slows the higher an ability already is and the closer it gets to the ceiling his type and potential set, but it never stands still there: above that ceiling an ability keeps growing slowly. A value that holds still for a few days is usually just slow progress. If an ability really has stopped, it is almost always one of two things. Either the rider is past his peak, where abilities decline at the season change instead of growing. Or the ability has reached the highest level his role allows. The number next to an ability is always its current value, never the ceiling, which is never shown as a number anywhere in the game."
+      },
+      "longTermGrowthCurveB": {
+        "title": "Long-term growth",
+        "text": "Three things decide where an ability ends up. His type decides which abilities can go highest. His potential decides how high: a bigger talent has a higher ceiling and also develops faster. And the level itself: every point costs more the higher the ability already is, so a rider moves quickly at a low level and slowly near the top. Age doesn't make anyone develop faster. The youngest riders can't yet take a full training load, so at the same level they move a little slower until they can. Close to his ceiling the progress slows down but never stands still, up to the highest level his role allows."
       },
       "trainToday": {
         "title": "Run today's training now",
@@ -1061,7 +1417,7 @@
       },
       "runDayNow": {
         "title": "Run today's training now",
-        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, so nothing is lost by not being online. 'Run today's training now' is there only if you don't want to wait: it runs exactly the same training, with no bonus and no advantage, and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again. With Train now (beta) the press also locks today's race selection for the riders who trained: they can't be added to or removed from today's race. Riders you buy or move up after the press can still race."
+        "text": "From season 4 the day's training runs by itself, in one go, once the last race of the day is done and no earlier than 20:00. Every race day of that day is trained in the same run, so nothing is lost by not being online. 'Run today's training now' is there only if you don't want to wait: it runs exactly the same training, with no bonus and no advantage, and it opens at the same moment the automatic run would. Once the day has been trained it cannot be run again. With Train now (beta) the press also locks today's race selection for the riders who trained: they can't be added to or removed from today's race. Riders you buy or move up after the press can still race. With Train now, a rider who has no race left today is trained for the whole day at once. A rider whose race has not been ridden yet waits and is trained after his race. The evening run at 20:00 never trains a rider twice."
       },
       "raceDays": {
         "title": "Race days and training",
@@ -1093,15 +1449,23 @@
       },
       "progressBars": {
         "title": "Progress bars and ability points",
-        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's potential and age; an ability that has reached it reads 'done' on its own line instead of a bar. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. A percentage like 'Flat +10%' in a training report is the day's progress counted in ability points: 100% equals one whole point. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability and the bar starts over toward the NEXT point, so right after a gain, a low or near-empty bar is a good sign, not a lost one. The Training page also shows a '+N today' badge on riders who gained whole points in today's session. Every ability has a hidden lifetime ceiling set by the rider's type and age; an ability that has reached it reads 'done' on its own line instead of a bar. The rider profile's Training tab lists all 17 abilities with what each one is now, how many whole points the rider has gained this season, and how far along the next point is. Switch focus if another area still has room, or enjoy the rider at full strength. Older riders past their career peak naturally have little or no room left. A percentage like 'Flat +10%' in a training report is the day's progress counted in ability points: 100% equals one whole point. Progress carries over day to day. Nothing resets mid-season. The 'this season' count only covers days inside the active season. Between two seasons it shows the start date instead of a number, while the ability values and the bars keep counting every session. A new season's count starts empty and fills in from its first training day."
       },
       "trainingScore": {
         "title": "The training score",
         "text": "Every session a rider completes gets a training score from 1 to 99. It measures the QUALITY of that session, not what the rider got out of it: how demanding the session was, how well it matched the rider's strengths, the rider's form and fatigue that day, the coach and the facilities behind it, the rider's talent and age, and the day itself. The score is what drives development: a better session moves the abilities more. It does not depend on how close an ability is to its ceiling, so a rider who is nearly finished in his focus abilities still gets an honest reading of how good the session was. Rest days get no score, because there was no session to measure. On a day where a race takes the place of the session, the column reads 'Race' instead of a number. Today's number appears once today's session has run, and until then the column shows the latest one in grey. Only you can see the scores for your own riders."
       },
+      "maxOnePerDay": {
+        "title": "At most +1 per ability per day",
+        "text": "An ability can grow by at most 1 point per day, across training and race days. Progress above that isn't lost: it carries over to the next day."
+      },
+      "todaysDecision": {
+        "title": "Today's decision (beta)",
+        "text": "At the top of the Today tab, the assistant suggests up to three changes for today: active recovery for tired riders who have a hard day planned and a raised injury risk. Use applies it to that rider. Riders who race today, are injured, already have an easy day, or follow their own week plan or a training group get no suggestion. Once today's training has run, the card is hidden."
+      },
       "longTermGrowth": {
         "title": "Long-term growth",
-        "text": "Two separate things decide where an ability ends up: how high it can reach, and how fast it gets there. Both come from the rider's type. This is why a rider no longer arrives at his ceiling just by existing long enough. The ceiling is what he could have become; your training decides how close he gets, and which abilities he gets close on. Riders still peak around age 27-28 and decline after that, and training can never push anyone past their potential."
+        "text": "Two separate things decide where an ability ends up: how high it can reach, and how fast it gets there. How high comes from the rider's type: each type has its own ceiling for each ability. How fast comes from his potential: a bigger talent develops faster toward the same ceiling, but potential does not raise the ceiling itself. This is why a rider no longer arrives at his ceiling just by existing long enough. The ceiling is what he could have become; your training decides how close he gets, and which abilities he gets close on. Riders decline with age (see Age and decline under Riders), and training can never push anyone past his ceiling."
       },
       "readingReport": {
         "title": "Reading the training report",
@@ -1126,6 +1490,10 @@
       "trainingGroups": {
         "title": "Training groups",
         "text": "A group lets you make one training decision for several riders. Create one under Program, Plan: open 'Plan for' and pick '+ New group'. Give it a name and start from a rider type or pick the riders yourself. A rider can be in one group. A change in a field then applies to the whole group, and riders with a stage keep the stage. 'Fatigue tonight' shows the most tired rider in the group. The order is fixed: a rider's own plan first, then his group's plan, then the team plan. If you change one rider's own fields, his plan wins until you choose 'Follow group' again. You can also put a program on a group under Programs, and give a group its own exception under Fatigue limit."
+      },
+      "catalogV3": {
+        "title": "Two hard sessions for every rider type",
+        "text": "Every rider type now has two hard sessions built for it, and every hard session gives a full hard day. Five sessions are new: Long climbs, Lead-out, Short time trials, Long time trials and Cobbled classic. Time trial finally has its own sessions, so Threshold trains tempo and endurance instead. Sprint now gives a full hard day. If you switch between your type's two sessions, the main ability grows a little less, but other abilities grow instead. Time trial and GC riders on Threshold, and time trial riders without a plan, train Long time trials instead. If such a rider followed a training group with other rider types, he now has his own plan."
       }
     },
     "activityfeed": {
@@ -1184,11 +1552,15 @@
       },
       "extendContract": {
         "title": "Extending a contract",
-        "text": "Extending a rider's contract from their profile page adds one season to the contract length and moves the expiry season one season further out, at a renegotiated salary based on the rider's current production. You can extend as often as you like, but the expiry season can never be pushed beyond 3 seasons past the current one: once a rider's contract already reaches that far out, further extensions are blocked until the current season advances."
+        "text": "Extend a contract from the rider's profile page, or several at once from the Contracts tab on My Team. Each season you add moves the expiry season one season further out, at a renegotiated salary based on the rider's current production. Extending by 2 seasons in one go gives exactly the same result as extending one season at a time, and there is no fee. On the Contracts tab you tick the riders, pick 1 or 2 seasons for all of them (you can change it per rider), and see each rider's new expiry season and salary plus your total salary before anything is saved. A contract can run at most until the end of next season: in season 5 the latest expiry is season 6. A rider who only has room for 1 more is extended by 1 and marked \"(max)\", and a rider already at the limit can be extended again once the season changes. If the board has set a salary cap, the whole batch has to fit under it, or nothing is extended."
       },
       "freeAgents": {
         "title": "Free agents",
         "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (based on the rider's expected production this season) so you can plan your budget before bidding. The actual salary is set only at the moment of signing. Free agents mostly appear when a rider's contract runs out and isn't renewed at the season change: in practice this is almost always a human-managed squad, since AI-controlled teams renew their own expiring contracts automatically at the same transition. The rest are riders released by their old club, either at Academy graduation or from an Academy intake offer that expired unanswered and found no buyer at auction (see 'Do Academy intake offers expire?')."
+      },
+      "contractWarnings": {
+        "title": "Which riders get contract warnings?",
+        "text": "Contract warnings cover your senior, U23, junior and academy riders. At the season change, you get one message listing the riders whose contracts expire during the new season, with their squad and value. You also get a warning when you sign or acquire a rider, or move him between squads, if his contract expires in the current season. Extend contracts for every squad from My Team, on the Contracts tab. Riders released at the season change are listed together in a separate message. Moving squads does not change a contract, and an intake signing still keeps its existing introductory contract length."
       }
     },
     "academy": {
@@ -1207,7 +1579,7 @@
       },
       "prognosisTraining": {
         "title": "Learning a prospect's potential",
-        "text": "After you sign an academy rider, you learn his forecast through training days on your team. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range."
+        "text": "After you sign an academy rider, his forecast improves with recorded training and race days on your team. Days since signing alone do not count, and simply leaving him on the team for a week does not complete the forecast. Learning starts with no estimate, then moves through a rough, sharper and final rating range. The Scouting tab shows the current stage, the revealed range and the training or race days to the next stage. Better coaching staff and training facilities help you reach the next stage sooner. They do not change his talent, and even the final forecast remains a range. The Sunday update sets his market value; it does not complete his potential forecast."
       },
       "signingProspects": {
         "title": "Signing prospects",
@@ -1224,7 +1596,11 @@
       },
       "dailyTrainingBoost": {
         "title": "Daily training in the academy",
-        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system and no hidden brake on how fast they improve: set a focus and an intensity, and gains accumulate day by day in the same way. The one real difference is age. Riders under 22 get an extra youth boost that fades as they approach 22. Their potential sets both how high their abilities can ultimately reach and how fast they get there, so a bigger talent develops quicker and tops out higher, while a smaller talent grows into a solid domestique."
+        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system and no hidden brake on how fast they improve: set a focus and an intensity, and gains accumulate day by day in the same way. The one real difference is age. Riders under 22 get an extra youth boost that fades as they approach 22. Their type sets how high each ability can ultimately reach, and their potential sets how fast they get there, so a bigger talent develops quicker toward the same ceiling, while a smaller talent grows more slowly into a solid domestique."
+      },
+      "dailyTrainingBoostCurveB": {
+        "title": "Daily training in the academy",
+        "text": "Academy riders follow exactly the same training model as your senior squad. There is no separate academy system: set a focus and an intensity, and gains accumulate day by day in the same way. Low abilities are cheap to build, so a young rider still moves quickly at first. Age gives no extra speed. The one difference is that the youngest riders can't yet take a full training load, so they develop a little slower than an older rider at the same level until they can. Their type decides which abilities can go highest, and their potential decides how high they go and how fast, so a bigger talent goes higher and gets there sooner, while a smaller talent grows into a solid domestique."
       },
       "youthAuctions": {
         "title": "Youth auctions",
@@ -1236,7 +1612,7 @@
       },
       "graduation": {
         "title": "Graduation Day",
-        "text": "Riders who have outgrown their squad move on at the season turn. A junior who turns 19 moves to your U23 team, and a U23 rider who turns 23 moves to your senior team. The list opens the week before the season turns, and the deadline is the turn itself. Until you move a rider, he trains and races in his old squad. For each rider you choose Move up (needs a free place in the squad he is moving to, and he keeps his contract exactly as it is), Sell on the transfer market, or Release as a free agent. If you do nothing, the club picks for you at the turn: move up when there is room, otherwise sell. Your coach gives a short read on each rider, and it is only ever a read, never a promise."
+        "text": "Riders who have outgrown their squad move on at the season turn. A junior who turns 19 moves to your U23 team, and a U23 rider who turns 23 moves to your senior team. The list opens the week before the season turns, and the deadline is the turn itself. Until you move a rider, he trains in his old squad, but he is over its age limit and cannot race for it. For each rider you choose Move up (needs a free place in the squad he is moving to, and he keeps his contract exactly as it is), Sell on the transfer market, or Release as a free agent. If you do nothing, the club picks for you at the turn: move up when there is room. If that squad is full, he waits under Awaiting promotion and keeps training in his current squad on the same contract, but cannot race until you free a spot and press Promote. Your coach gives a short read on each rider, and it is only ever a read, never a promise."
       },
       "graduationDayPage": {
         "title": "Where to make the choice",
@@ -1268,7 +1644,7 @@
       },
       "graduationDayAt23": {
         "title": "What happens when a rider ages out of his squad?",
-        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it, otherwise sells him, otherwise releases him as a free agent."
+        "text": "At the season turn, riders who have outgrown their squad move on: junior to U23 team at season age 19, U23 to senior at season age 23. You get first choice on Graduation Day; if you do nothing before the deadline the club moves him up when there is room and you can afford it. If the squad is full, he waits under Awaiting promotion until you free a spot. If there is room but the club cannot afford him, he is sold, and if nobody buys him he is released as a free agent."
       },
       "youthRacesFromS4": {
         "title": "Do U23 team and Junior team actually race?",
@@ -1314,7 +1690,7 @@
           [
             "Medical Department",
             "Speeds up form and injury recovery",
-            "Coming soon"
+            "Active now"
           ],
           [
             "Academy Expansion",
@@ -1338,7 +1714,7 @@
       },
       "hireChiefScout": {
         "title": "Hiring a chief scout",
-        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track."
+        "text": "The Scouting Network's tier sets the highest tier of chief scout you're allowed to hire, so build or upgrade it first if the candidate you want is locked. Every team already has a default scout even with no facility built, but a hired chief scout has a real, higher overall rating: that rating narrows his estimates further (a tighter potential range on the Scouting tab) and, once his overall reaches about 80, lets him run two scouting jobs at once instead of one. Hire and fire chiefs from the Club page, same as any other facility track. The candidates you can hire are a small pool per role. Your facility's tier is the highest they can have, and at least one candidate per role is on that tier. A new pool is drawn at the season change; within a season it only shifts when you upgrade the facility or hire someone. Fired and current chiefs never appear in it."
       },
       "coachingGroups": {
         "title": "Coaching groups: U23 vs Senior",
@@ -1377,11 +1753,19 @@
       },
       "roles": {
         "title": "Captain, sprint captain, breakaway hunter and free role",
-        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter tries for the day's breakaway by default and rides harder to stay clear. You can turn that off for a single stage, and a try is never sure. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Aggression makes a rider more likely to get into the break, and a rider on free role also tries more often on his own. In races on the current rules every try costs energy, also when it fails. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support."
+        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter tries for the day's breakaway by default and rides harder to stay clear. You can turn that off for a single stage, and a try is never sure. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack. Aggression makes a rider more likely to get into the break, and a rider on free role also tries more often on his own. In races on the current rules every try costs energy, also when it fails. Team work has a price: helpers lose places working for the captain, and that work is exactly what buys the captain's boost. A rider on Free role skips team duties and rides his own race, with no work cost and no captain support. In races on the newest rules, a sprint captain can be your only leader, with no captain. He then gets the team's protection on every stage. In those races you can also pick one shared captain. He is protected like the captain and never works for the team, but when the two ride in the same group, the captain gets the help first and the shared captain gets what is left. If they end up in different groups, each group's helpers ride for the leader they are with, and if the captain is dropped or out of the race, the shared captain gets all the help. In those races a strong rider can also go solo from the favourites' group late in a cobbled, gravel or hilly race, but only a captain, shared captain, sprint captain or a rider on free role attacks that late. A domestique only does it when no captain from his team is in that group, and a breakaway hunter never does."
       },
       "stageTactics": {
         "title": "Stage races: roles and effort per stage",
-        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort: There are three efforts: Ride easy, Normal and Work or attack. Work or attack builds extra fatigue: a helper or hunter works for the team, while a captain or a rider on free role uses it to attack. Ride easy eases off to stay fresher for the days that matter. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role."
+        "text": "In stage races the race page has a stage-by-stage tactics board. Completed stages are locked and show what happened; upcoming stages can still be changed while the race runs. Each rider can ride a different role per stage, plus an effort for the day. The effort steps have their own paragraph just below. If a rider takes the leader's jersey, a shortcut on the race page's Team tab makes him captain for every remaining stage in one click while the race is running, moving any other captain on those stages to a helper. Stages where you set nothing simply use the rider's race role. Conflicting orders cannot be combined. The explanation beside the choice tells you what to change before saving. A stage plan can switch a rider's task at the top of a climb, in the last 10 km or when he is dropped. The switch for the last 10 km happens exactly 10 km from the line, also in the middle of a climb or a cobbled sector. When that point falls on a descent, the switch happens at the top or the bottom of it instead, whichever is closer. If the descent runs all the way to the finish, team work (Set the tempo, Keep the leader up front) switches at the top of it, so the work happens before the line."
+      },
+      "effortSteps": {
+        "title": "Effort steps",
+        "text": "Every rider gets an effort for the stage you have open. Five steps run from easiest to hardest. Grupetto rides it home in the back group and never earns a result of his own. He never goes in the break, and what he saves depends on the stage: little on a flat day, the most in the mountains. Ride easy sits in and saves legs for the days that count. Normal is his normal race. The fourth step is named after the job: Work for a domestique or breakaway hunter, who rides for the leader and gets real fatigue; Follow the moves for a captain or sprint captain, who answers every attack and spends more legs; Ride aggressively for a rider on free role, who presses on the climbs and in the finale. All out puts everything on today and is the hardest day on his legs. A harder step always costs more fatigue than an easier one, no matter how strong the rider is. A domestique on All out rides for himself and stops helping the leader. In races on the newest rules, a rider only attacks on a descent when his orders allow it: on Normal or All out he can, on Grupetto, Ride easy or the fourth step he stays in the group. With a stage plan his task decides: Stay sheltered, Keep the leader up front, Set the tempo, Sprint train, Grupetto and Ride to the finish never attack on a descent. On an individual time trial each rider rides alone, so only Ride easy, Normal and All out are offered there."
+      },
+      "effortStepsThree": {
+        "title": "Effort steps",
+        "text": "Every rider gets an effort for the stage you have open. Three steps run from easiest to hardest. Ride easy sits in and saves legs for the days that count. Normal is his normal race. The third step is named after the job: Work for a domestique or breakaway hunter, who rides for the leader and gets real fatigue; Follow the moves for a captain or sprint captain, who answers every attack and spends more legs; Ride aggressively for a rider on free role, who presses on the climbs and in the finale. A harder step always costs more fatigue than an easier one, no matter how strong the rider is."
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",
@@ -1393,7 +1777,7 @@
       },
       "ordersGc": {
         "title": "Break orders and GC reaction",
-        "text": "New races use these rules. A race that started earlier keeps the rules it started with. The Tactics tab shows them under Race rules before you save. The paragraphs below set who joins the morning break and what it costs. The morning breakaway follows your orders. A captain, sprint captain or domestique only goes for it with Try the break selected. A breakaway hunter goes for it by default, and you can switch that off for a single stage. A rider on free role may try on his own when his intention is Normal; on any other intention he needs Try the break. Grupetto never tries. Every attempt costs energy, also when it fails, and no attempt is sure to make the break. A domestique who gets into the break cannot help his captain in the bunch at the same time. A stage can also end up with no morning breakaway at all. Your team's stance decides how it deals with the break. Chase adds power to the chase, except against a break that has one of your own riders in it. Read the race reacts when the break threatens your GC rider, and a team with no order reacts the same way. Leave the chase to others means your team does not help chase; it never slows the bunch down. Without an order, a team chases on its own when it has a rider who can win the day's finale: a sprinter on a flat stage, a puncheur on a hilly stage, a climber on a mountain stage. Your own order always comes first. With Leave the chase to others the team can still make a limited response to a serious threat to your GC rider: it only uses free riders in his group and stops when it has spent a fixed amount of work for the stage. A response holds the gap down, it never guarantees a catch. Threats are judged from the GC standings published before the stage, so there is no GC reaction on the first stage. In a one-day race a team reacts when a rival who can win the day is up the road and its own captain can win it too, unless the team has chosen Leave the chase to others. The race film shows when a team starts or stops reacting, when it has spent what it can, and when it has no free riders to react with."
+        "text": "New races use these rules. A race that started earlier keeps the rules it started with. The Tactics tab shows them under Race rules before you save. The paragraphs below set who joins the morning break and what it costs. The morning breakaway follows your orders. A captain, sprint captain or domestique only goes for it with Try the break selected. A breakaway hunter goes for it by default, and you can switch that off for a single stage. A rider on free role may try on his own when his intention is Normal; on any other intention he needs Try the break. Grupetto never tries. Every attempt costs energy, also when it fails, and no attempt is sure to make the break. A domestique who gets into the break cannot help his captain in the bunch at the same time. A stage can also end up with no morning breakaway at all. Your team's stance decides how it deals with the break. Chase adds power to the chase, except against a break that has one of your own riders in it. Read the race reacts when the break threatens your GC rider, and a team with no order reacts the same way. Leave the chase to others means your team does not help chase; it never slows the bunch down. Without an order, a team chases on its own when it has a rider who can win the day's finale: a sprinter on a flat stage, a puncheur on a hilly stage, a climber on a mountain stage. Your own order always comes first. With Leave the chase to others the team can still make a limited response to a serious threat to your GC rider: it only uses free riders in his group and stops when it has spent a fixed amount of work for the stage. A response holds the gap down, it never guarantees a catch. Threats are judged from the GC standings published before the stage, so there is no GC reaction on the first stage. In a one-day race a team reacts when a rival who can win the day is up the road and its own captain can win it too, unless the team has chosen Leave the chase to others. The race film shows when a team starts or stops reacting, when it has spent what it can, and when it has no free riders to react with. On a mountain stage in a stage race, the teams of the GC riders let a break go when nobody in it can threaten their leader in the GC, also counting what he could gain on the stages still to come. A break with a real GC threat is chased as before."
       },
       "fatigue": {
         "title": "Fatigue matters",
@@ -1412,7 +1796,7 @@
       "label": "Race day and tactics",
       "roleAndIntention": {
         "title": "Roles and today's intention",
-        "text": "Your role is the job you picked for a rider when you built your team: captain, sprint captain, breakaway hunter, domestique or free role. It lasts the whole race and rarely changes. Intention is different, it is what you ask him for on the stage you have open right now, and if you leave it alone he simply rides his role. Five settings run from easiest to hardest: grupetto, ride easy, normal, work or attack and all out. A harder setting always costs more fatigue than an easier one, no matter how strong the rider is, and grupetto never earns him a result of his own."
+        "text": "Your role is the job you picked for a rider when you built your team: captain, sprint captain, breakaway hunter, domestique or free role. It lasts the whole race and rarely changes. Intention is different, it is what you ask him for on the stage you have open right now, and if you leave it alone he simply rides his role. The steps you can pick are explained under Effort steps."
       },
       "crashesAndIncidents": {
         "title": "Crashes and incidents",
@@ -1424,7 +1808,15 @@
       },
       "teamwork": {
         "title": "Teamwork on the road",
-        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+        "text": "Your captain, or your sprint captain on a flat stage, is protected by the work the rest of the team puts in. A domestique or a breakaway hunter pays for that protection with his own effort; a rider on free role neither helps nor pays. The boost is bounded so it never runs away, and it only counts when at least one teammate is still riding near him. A helper on Ride easy pays less but gives your captain less support. Working for the team is never free, and no combination of role and intention can turn it into a bonus on top of a rider's own ability."
+      },
+      "teamworkAllOut": {
+        "title": "All out and teamwork",
+        "text": "Set a rider to all out and he stops paying that price altogether, because he is spending everything on himself instead."
+      },
+      "luxuryHelper": {
+        "title": "The luxury helper",
+        "text": "A luxury helper is a domestique with a ready-made stage plan: he saves his legs in the bunch, then rides for your captain on the decisive climb, the last climb of the day. In the stage plan you can move his work to another climb or give him a different plan. If your captain is dropped or out of the race, he rides his own race. A team can have one luxury helper, and only in races on the newest rules."
       },
       "weatherAndCobbles": {
         "title": "Weather and cobbles",
@@ -1439,7 +1831,7 @@
     },
     "peakWhatItDoes": {
       "q": "What does a peak do?",
-      "a": "A peak lifts one rider's form for a single race window you pick in the Season Planner. It runs on a lead-up you train for beforehand and a dip afterwards, so it is worth setting on a race you actually mean to win, not a whole season. Each rider can hold up to two peaks at a time. Peaks do not count in races yet; races use his normal Form. See 'How does peak training work?' and 'Does a peak cost me anything afterwards?' below for exactly how much and when."
+      "a": "A peak lifts one rider's form for a single race window you pick in the Season Planner. It runs on a lead-up you train for beforehand and a dip afterwards, so it is worth setting on a race you actually mean to win, not a whole season. Each rider can hold up to two peaks at a time. In races the peak comes on top of his normal Form. See 'How does peak training work?' and 'Does a peak cost me anything afterwards?' below for exactly how much and when."
     },
     "peakTraining": {
       "q": "How does peak training work?",
@@ -1515,7 +1907,7 @@
     },
     "auctionExpiry": {
       "q": "When does an auction expire?",
-      "a": "When you list your own rider, you pick the exact time the auction ends, from 1 to 48 hours ahead. An auction on a free rider (no team) runs for at least 12 active hours by default: whoever starts it, and whatever made the rider free (self-started, the bank, the academy or the youth market), so you don't miss a young talent just because you were asleep or at work. The one exception is a Flash Auction, which always lasts exactly 30 minutes. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
+      "a": "When you list your own rider, you pick the exact time the auction ends, from 1 to 48 hours ahead. An auction on a free rider (no team) always runs for at least 12 hours, also if you pick the end time yourself: whoever starts it, and whatever made the rider free (self-started, the bank, the academy or the youth market), so you don't miss a young talent just because you were asleep or at work. Flash Auctions (30 minutes) are only for your own riders. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
     },
     "flashAuction": {
       "q": "What is a Flash Auction?",
@@ -1567,7 +1959,7 @@
     },
     "trainingFocusFaq": {
       "q": "How do I train a rider?",
-      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You can set a focus on as many riders as you like. Higher intensity trains faster and builds more fatigue, but never risks losing progress; changing an existing focus costs nothing, and training is free."
+      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling, day by day as the training runs. You can set a focus on as many riders as you like. Higher intensity trains faster and builds more fatigue, but never risks losing progress; changing an existing focus costs nothing, and training is free."
     },
     "restForDevelopedFaq": {
       "q": "My rider is fully developed. Should I just set them to Rest?",
@@ -1679,11 +2071,7 @@
     },
     "forecastCalculation": {
       "q": "How is the forecast for next season on the Finances page computed?",
-      "a": "The forecast shows one line per income/cost source instead of a single net number, so you can see where the total comes from. (1) Sponsor (base): the season's division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$) × the board's budget modifier × any active sponsor pullout factor. If you've already signed a deal with the board starting next season, this line uses that deal's guaranteed base instead. (2) Sponsor (variable): up to 150,000 CZ$ from season 2 onward, based on last season's points/rank relative to your division. (3) I show prize money as my estimate for your team, plus/minus 20%. This is an estimate, not a measured range or a guarantee. (4) Salary: for a season 1 or 2 forecast it's the sum of your current riders' salaries as priced today, because contracts are frozen at signing; from a season 3 forecast onward every contract is re-priced at the season change, so the line shows what your current squad would cost under the wage system rather than what their old contracts say. Salary is a fixed share of each rider's current production value, never of his market value. (5) Division upkeep: a running cost set by your division, not by your squad, charged at season start. If it shows as Travel & staff, you pay it per senior race day your team starts instead, and the line shows the rate times the expected number of race days. It is a separate line because you cannot change it by hiring or building. (6) Staff & facilities: only what you have chosen to pay for, namely facility upkeep for any tracks you've built and salaries for any staff you've hired. Loan interest (interest on your active loans' outstanding debt) shows as an extra line when you have an active loan, but it's not part of the net total above it: the interest is added to the loan itself rather than deducted from your balance, so it's shown for visibility, not counted in. Academy drift (the per-slot running cost of any academy riders) shows as its own extra line too, and unlike loan interest it IS part of the net. Not included, because none of it can be reliably predicted ahead of time: the season's variable per-stage sponsor income and sponsor bonus clauses (result/objective/signing bonus), since these depend on results you haven't earned yet; one-off events like promotion/relegation bonuses, the relegation parachute, or a debt-ceiling forced sale; and anything that depends on a decision you haven't made yet, such as buying or selling riders, new facility construction, hiring or firing staff, academy signings, scout missions, taking out a loan or an emergency loan, or repaying loan principal beyond the interest already shown separately above. A handful of rare, non-gameplay entries (admin balance corrections, squad-rule fines, automatic squad top-ups) are excluded too. None of this is silently folded into the numbers above: if a stream can't be forecast, it's left out rather than guessed at, and it will show up in your transaction history once it actually happens. The risk tier badge is green if net ≥ +50K and debt < 50% of ceiling, yellow if net is between -50K and +50K or debt is between 50-80% of ceiling, and red if net < -50K, debt > 80% of ceiling, or if your deficit hits the debt ceiling within 2 seasons. The forecast assumes your current squad, no transfers, and the wage system currently in effect: it is not a contract, and numbers can change if you sell riders, take loans, score more points, negotiate a new board plan, or change your facility/staff/academy investments. From season 5 upkeep, Travel & staff, facility upkeep and academy upkeep are removed, so those lines no longer appear."
-    },
-    "seasonSwitchSettlement": {
-      "q": "What exactly does the season switch settlement on the Finances page show?",
-      "a": "The settlement is a step-by-step preview of your balance across the season change, in the same order the game actually charges it (economyEngine.processSeasonStart / processTeamSeasonPayroll). Books close on your current balance, then: (1) Sponsor lands, base and last season's rank/points performance bonus credited together in one payment, exactly as the game pays it (the two aren't split into separate transactions, so the settlement doesn't split them into separate charges either). (2) Loan interest on your active loans' outstanding debt, if you have any, shown here for visibility, but it doesn't leave your balance, since it's added to the loan itself rather than debited. (3) Salaries for next season are charged, and this is the first line that actually gets debited: the wage recompute runs before this charge on cutover day, so it's next season's formula applied to each rider's current production value, never last season's frozen contract numbers. (4) Academy upkeep, only shown if you have academy riders. (5) Division upkeep, a flat cost set by your division. If you pay it per race day as Travel & staff, this step is left out, since it is charged as your races are settled instead. (6) Facility upkeep for any tracks you've built. (7) Staff salaries for any staff you've hired. Steps (4)-(7) are left out entirely when the amount is zero, the same rule the forecast card's optional rows use. Not included, because none of it is known ahead of the switch: prize money and per-stage sponsor income, since they depend on races not yet run; anything contingent, like emergency-loan interest if your balance goes negative after the salary charge, or a forced sale if your debt breaks the division cap; and anything that depends on a decision you haven't made yet, such as scout missions, transfers, facility purchases, hiring or firing staff, or academy signings. The finance overview card above shows the same season's realized income/cost sources next to next season's forecast for comparison; the two columns can't be split identically for sponsor income, since this season's sponsor was credited as one combined payment while next season's forecast splits the guaranteed base from the projected performance bonus, so this season's sponsor line shows the full realized amount instead of a guessed split, and any per-stage/result/objective/signing bonus income earned this season gets its own row since next season's forecast doesn't predict that stream at all. From season 5 upkeep, Travel & staff, facility upkeep and academy upkeep are removed, so those lines no longer appear."
+      "a": "The forecast shows one line per income/cost source instead of a single net number, so you can see where the total comes from. (1) Sponsor (base): the season's division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$) × the board's budget modifier × any active sponsor pullout factor. If you've already signed a deal with the board starting next season, this line uses that deal's guaranteed base instead. (2) Sponsor (variable): up to 150,000 CZ$ from season 2 onward, based on last season's points/rank relative to your division. (3) I show prize money as my estimate for your team, plus/minus 20%. This is an estimate, not a measured range or a guarantee. (4) Salary: for a season 1 or 2 forecast it's the sum of your current riders' salaries as priced today, because contracts are frozen at signing; from season 3 onward it's the salary in each rider's contract, because contracts are not re-priced at the season change. A rider whose contract runs out before that season is shown at the salary he gets if you extend him: a fixed share of his current production value, never of his market value. (5) Division upkeep: a running cost set by your division, not by your squad, charged at season start. If it shows as Travel & staff, you pay it per senior race day your team starts instead, and the line shows the rate times the expected number of race days. It is a separate line because you cannot change it by hiring or building. (6) Staff & facilities: only what you have chosen to pay for, namely facility upkeep for any tracks you've built and salaries for any staff you've hired. Loan interest (interest on your active loans' outstanding debt) shows as an extra line when you have an active loan, but it's not part of the net total above it: the interest is added to the loan itself rather than deducted from your balance, so it's shown for visibility, not counted in. Academy drift (the per-slot running cost of any academy riders) shows as its own extra line too, and unlike loan interest it IS part of the net. Not included, because none of it can be reliably predicted ahead of time: the season's variable per-stage sponsor income and sponsor bonus clauses (result/objective/signing bonus), since these depend on results you haven't earned yet; one-off events like promotion/relegation bonuses, the relegation parachute, or a debt-ceiling forced sale; and anything that depends on a decision you haven't made yet, such as buying or selling riders, new facility construction, hiring or firing staff, academy signings, scout missions, taking out a loan or an emergency loan, or repaying loan principal beyond the interest already shown separately above. A handful of rare, non-gameplay entries (admin balance corrections, squad-rule fines, automatic squad top-ups) are excluded too. None of this is silently folded into the numbers above: if a stream can't be forecast, it's left out rather than guessed at, and it will show up in your transaction history once it actually happens. The risk tier badge is green if net ≥ +50K and debt < 50% of ceiling, yellow if net is between -50K and +50K or debt is between 50-80% of ceiling, and red if net < -50K, debt > 80% of ceiling, or if your deficit hits the debt ceiling within 2 seasons. The forecast assumes your current squad, no transfers, and the wage system currently in effect: it is not a contract, and numbers can change if you sell riders, take loans, score more points, negotiate a new board plan, or change your facility/staff/academy investments. From season 5 upkeep, Travel & staff, facility upkeep and academy upkeep are removed, so those lines no longer appear."
     },
     "standingsUpdate": {
       "q": "When are the season standings updated?",
@@ -1843,7 +2231,7 @@
     },
     "raceJerseysFaq": {
       "q": "How do the green jersey and mountains jersey work?",
-      "a": "The green jersey tracks sprint points, earned at intermediate sprints and at stage finishes, weighted by how sprint-friendly the stage is, so flat finishes hand out more than mountain ones. The mountains jersey tracks KOM points, earned by cresting categorized climbs first, with double points on a summit finish. Bonus seconds count toward the GC too: 10/6/4 seconds for the first three riders at a stage finish, and 3/2/1 seconds at each intermediate sprint. Riders in a breakaway can lead over a climb or sprint before the bunch arrives, so a breakaway can win the mountains jersey even without contending for GC. Riders in a breakaway always cross first. In a small group of eight riders or fewer, everyone contests. In a bigger group, only point hunters contest what is left: sprint captains, hunters and free-role riders at intermediate sprints, hunters and free-role riders on climbs, plus whoever led the points or mountains competition at the start of the stage. Captains and helpers roll through behind them. You can follow both competitions directly in the game: the classification tables show each rider's points total (not just the rank), and the stage result page shows who took points at every climb and sprint. Applies to races from season 2 onward."
+      "a": "The green jersey tracks sprint points, earned at intermediate sprints and at stage finishes, weighted by how sprint-friendly the stage is, so flat finishes hand out more than mountain ones. The mountains jersey tracks KOM points, earned by cresting categorized climbs first. A summit finish gives the same points as the climb would give mid-stage. Bonus seconds count toward the GC too: 10/6/4 seconds for the first three riders at a stage finish, and 3/2/1 seconds at each intermediate sprint. Riders in a breakaway can lead over a climb or sprint before the bunch arrives, so a breakaway can win the mountains jersey even without contending for GC. Riders in a breakaway always cross first. In a small group of eight riders or fewer, everyone contests. In a bigger group, only point hunters contest what is left: sprint captains, hunters and free-role riders at intermediate sprints, hunters and free-role riders on climbs, plus whoever led the points or mountains competition at the start of the stage. Captains and helpers roll through behind them. You can follow both competitions directly in the game: the classification tables show each rider's points total (not just the rank), and the stage result page shows who took points at every climb and sprint. Applies to races from season 2 onward."
     },
     "raceRouteRealismFaq": {
       "q": "Why do time gaps differ so much between mountain stages?",
@@ -1883,7 +2271,7 @@
     },
     "contractExpiryRetirementFaq": {
       "q": "What happens to expiring contracts and older riders at the season change?",
-      "a": "When a season ends, riders whose contract has run out are released as free agents, and riders aged 36 or older may decide to retire. Retirement cannot be prevented, but an expiring contract can: extend it from the rider's profile before the change. If your squad is affected you get a warning notification before the season changes, and the game blocks sales, releases and auction listings that could leave your team below the 8-rider market safety buffer, counting expiring contracts and retirement risk together. Six senior riders are needed to start a race. Your squad page shows a 'contract expiring' or 'retirement risk' badge next to every rider who counts toward that risk, and a blocked sale names the specific riders so you can see exactly why."
+      "a": "When a season ends, riders whose contract has run out are released as free agents, and riders aged 36 or older may decide to retire. Retirement cannot be prevented, but an expiring contract can: extend it from the rider's profile, or several at once from the Contracts tab on My Team, before the change. If your squad is affected you get a warning notification before the season changes, and the game blocks sales, releases and auction listings that could leave your team below the 8-rider market safety buffer, counting expiring contracts and retirement risk together. Six senior riders are needed to start a race. Your squad page shows a 'contract expiring' or 'retirement risk' badge next to every rider who counts toward that risk, and a blocked sale names the specific riders so you can see exactly why."
     },
     "seniorStartReminderFaq": {
       "q": "Why does my dashboard say I need more senior riders to start?",
@@ -1925,6 +2313,26 @@
       "q": "What is the beta group, and how do I join?",
       "a": "I open most new features to a small group first, so I can read every reply before everyone gets them. A beta tester sees those features early, and some of them will change or break along the way. Ask to join under Profile, Beta group: I answer each request by hand and you get a message in your inbox either way. Tell me what feels wrong in Discord or through the feedback form. You can leave the group again from the same place, and you keep everything that has already gone live for everyone. In patch notes, Beta marks a change only the beta group has, Now live for all marks the day it reaches everyone, Switched on marks something built earlier that is now in use, and Season event marks things like a season switch. A change with no label is live for everyone."
     },
+    "transferRumourFaq": {
+      "q": "What does \"A manager is eyeing a rider\" mean?",
+      "a": "It is a transfer rumour. Now and then, when another manager opens the profile of one of your riders, you get this notice. It does not happen on every visit, and it is no offer. You do not have to do anything. It only tells you that someone is looking at him. Riders who are looked at often will trigger it more often."
+    },
+    "freeSeniorAuctionFaq": {
+      "q": "Are free agents put up for auction automatically?",
+      "a": "No. When a senior rider's contract runs out and is not renewed, he becomes a free agent without an auction. He only goes to auction if a manager starts one. Any manager can do that. Automatic auctions only happen for young riders: the youth market, academy intake offers that expired or were turned down, and academy graduates who cannot move up on Graduation Day, for example when the club is in debt."
+    },
+    "ownDivisionCalendarFaq": {
+      "q": "Does my team only race in its own division?",
+      "a": "Yes. Your riders are entered in the races on your own division's calendar. Riders you buy join that calendar too. If you buy a rider during a stage race, he finishes it for his old team first and joins yours right after the finish."
+    },
+    "trainWeaknessesFaq": {
+      "q": "Should I train my weak abilities?",
+      "a": "Usually not. A rider's type sets a ceiling per ability, and a weakness has a low ceiling, so it stops growing early. The closer an ability gets to its ceiling, the less each training day adds. Train the abilities his type is built for, and put weaknesses second. A weak ability still counts in a stage, but it matters mostly where the stage asks for it."
+    },
+    "raceFatigueSameFatigueFaq": {
+      "q": "Is the fatigue from race effort the same as the Fatigue on the training page?",
+      "a": "Yes. There is one Fatigue per rider, not a hidden race meter. He starts a race with the Fatigue you see on the training page. In a stage race every stage adds load on top, and a harder effort (work or attack) adds more than an easier one, so a rider who goes hard every day gets tired over the race. That fatigue stays with him afterwards, in the same value."
+    },
     "sharpFlatTrainingDaysFaq": {
       "q": "What do 'sharp' and 'flat' training days mean, and should a run of flat days worry me?",
       "a": "Every training day includes a small random swing on top of your rider's usual progress: some days land a bit above plan (a sharp day), some a bit below (a flat day), and most sit around normal. It's about a third of days each way, rolled fresh per rider per day and completely independent of the day before, so it isn't tracking fatigue, form or anything you're doing wrong. Two or three flat days in a row will happen to someone in a normal-sized squad purely by chance; judge a rider's development over a full training block, not a single day."
@@ -1932,6 +2340,10 @@
     "teamworkLeadershipTrainingFaq": {
       "q": "What controls how fast Teamwork and Leadership train, and do they have hidden potential?",
       "a": "Teamwork and Leadership train through the same daily system as every other ability: the bigger the gap between where a rider is now and his ceiling for that ability, the faster it grows, slowing down as he approaches the top. Potential doesn't touch the ceiling for any ability, Teamwork and Leadership included; it only controls how fast that gap closes. The ceiling itself comes from type: most abilities get a ceiling shaped by how central that ability is to your rider's type, so a climber's climbing ceiling sits far above a sprinter's. Teamwork and Leadership don't work that way: every rider trains toward the same shared ceiling regardless of type. So no, there's no hidden extra headroom on these two for a high-potential rider; potential speeds up training on every ability, Teamwork and Leadership included, it just never raises the ceiling."
+    },
+    "teamworkLeadershipTrainingCurveBFaq": {
+      "q": "What controls how fast Teamwork and Leadership train, and do they have hidden potential?",
+      "a": "Teamwork and Leadership train through the same daily system as every other ability: every point costs more the higher the ability already is, and progress fades as the rider gets close to his ceiling. Most abilities get a ceiling shaped by how central that ability is to your rider's type, so a climber's climbing ceiling sits far above a sprinter's. Teamwork and Leadership don't work that way: every rider trains toward the same shared ceiling regardless of type. His potential then decides how high he can go and how fast he gets there, on every ability, Teamwork and Leadership included. So yes, a high-potential rider has more room on these two as well."
     },
     "riderPoolNationalityFaq": {
       "q": "Why are some nations like South Korea, China and Japan so visible in the rider pool?",

@@ -232,6 +232,14 @@
       "title": "Nyt akademi-talent er ankommet",
       "message": "Nye kandidater venter i dit akademi - signér eller afvis dem."
     },
+    "academyPullReminderReady": {
+      "title": "Nye akademi-kandidater er klar",
+      "message": "Ugens kuld venter i dit akademi. Hent det inden lørdag ved midnat."
+    },
+    "academyPullReminderExpiring": {
+      "title": "Ugens akademi-kuld udløber i nat",
+      "message": "Du har ikke hentet ugens kandidater endnu. Gør det inden midnat, ellers er kuldet væk."
+    },
     "seasonStarted": {
       "title": "Sæson {number} er begyndt",
       "message": "En ny sæson er begyndt. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson.",
@@ -251,11 +259,13 @@
     },
     "raceResult": {
       "title": "Resultat er klar",
-      "message": "{race} er kørt. Se resultatet."
+      "message": "{race} er kørt. Se resultatet.",
+      "messageBest": "{race} er kørt. Dine bedste: {riders}."
     },
     "firstRaceResult": {
       "title": "Dit første løb er kørt",
-      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig."
+      "message": "{race} er kørt. Se hvordan dine ryttere klarede sig.",
+      "messageBest": "{race} er kørt. Dine bedste: {riders}."
     },
     "stageResult": {
       "title": "Etaperesultat er klar",
@@ -264,7 +274,8 @@
     },
     "contractExpiring": {
       "title": "Kontrakt udløber",
-      "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}."
+      "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}.",
+      "squadMessage": "{rider} ({squad}) har en kontrakt, der udløber ved udgangen af sæson {season}. Forlæng den på fanen Kontrakter under Mit hold."
     },
     "contractExpiredRelease": {
       "title": "Rytter frigivet: kontrakt udløbet",
@@ -297,9 +308,11 @@
     },
     "seasonTransitionRisk": {
       "title": "Sæsonskifte: kontrakt- og pensionsrisiko",
-      "messageBoth": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber, og {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Forlæng en rytters kontrakt fra hans profil før skiftet for at undgå frigivelse. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
-      "messageExpiringOnly": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber. Forlæng deres kontrakt fra rytterens profil før skiftet for at beholde dem.",
-      "messageRetirementOnly": "Din trup er berørt af det kommende sæsonskifte: {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter."
+      "messageBoth": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber, og {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Forlæng kontrakterne før skiftet på fanen Kontrakter på Mit hold, hvor du kan forlænge flere ryttere med 1 til 3 sæsoner ad gangen. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
+      "messageExpiringOnly": "Din trup er berørt af det kommende sæsonskifte: {expiringCount} rytter(e) bliver frigivet som fri agenter, fordi deres kontrakt udløber. Forlæng dem før skiftet på fanen Kontrakter på Mit hold, hvor du kan forlænge flere ryttere med 1 til 3 sæsoner ad gangen.",
+      "messageRetirementOnly": "Din trup er berørt af det kommende sæsonskifte: {retirementRiskCount} rytter(e) (36+ år) er i risiko for at pensionere sig. Pensionering kan ikke forhindres, men du kan byde på erstatninger, når sæsonen skifter.",
+      "messageBothWithRoster": "{expiringCount} kontrakter udløber ved sæsonskiftet, og {retirementRiskCount} andre ryttere kan gå på pension. Forlæng kontrakter på fanen Kontrakter under Mit hold.\n{contractRiders}",
+      "messageExpiringOnlyWithRoster": "{expiringCount} kontrakter udløber ved sæsonskiftet. Forlæng dem på fanen Kontrakter under Mit hold.\n{contractRiders}"
     },
     "watchlistDeparted": {
       "title": "Rytter har forladt spillet",
@@ -574,7 +587,7 @@
     },
     "careerMilestone": {
       "maidenWin": {
-        "title": "Første sejr",
+        "title": "Rytterens første sejr",
         "message": "{rider} vandt sin første professionelle sejr: {race}."
       },
       "firstPodium": {
@@ -645,10 +658,23 @@
       "message": "{count, plural, one {{senderName} har skrevet til dig} other {# nye beskeder fra {senderName}}}",
       "messageUnknownSender": "{count, plural, one {En anden manager har skrevet til dig} other {# nye beskeder fra en anden manager}}"
     },
+    "riderIll": {
+      "title": "Rytter syg",
+      "message": "Lægen melder, at {rider} er syg efter flere dage med ekstrem træthed og er ude til {until}."
+    },
     "riderInjured": {
       "title": "Rytter skadet",
       "message": "{rider} styrtede i {race} og er skadet til {until}.",
-      "messageMissed": "{rider} styrtede i {race} og er skadet til {until}. Han kører ikke {missed}."
+      "messageMissed": "{rider} styrtede i {race} og er skadet til {until}. Han kører ikke {missed}.",
+      "messageFinished": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until}.",
+      "messageFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er skadet til {until} og kører ikke {missed}.",
+      "messageTraining": "{rider} blev skadet i træningen og er ude til {until}.",
+      "crash": "{rider} styrtede i {race} og er rask igen {fitAgain}.",
+      "crashMissed": "{rider} styrtede i {race} og er rask igen {fitAgain}. Han kan ikke køre {missed}{more, plural, =0 {} one { og 1 løb mere} other { og # løb mere}}.",
+      "crashFinished": "{rider} styrtede i {race}, men kørte etapen færdig. Han er rask igen {fitAgain}.",
+      "crashFinishedMissed": "{rider} styrtede i {race}, men kørte etapen færdig. Han er rask igen {fitAgain}. Han kan ikke køre {missed}{more, plural, =0 {} one { og 1 løb mere} other { og # løb mere}}.",
+      "training": "{rider} blev skadet i træningen og er rask igen {fitAgain}.",
+      "trainingMissed": "{rider} blev skadet i træningen og er rask igen {fitAgain}. Han kan ikke køre {missed}{more, plural, =0 {} one { og 1 løb mere} other { og # løb mere}}."
     },
     "teamDidNotStart": {
       "title": "Dit hold stillede ikke op",
@@ -671,6 +697,24 @@
     "squadEnforced": {
       "title": "Holdstørrelse håndhævet",
       "message": "{purchasedCount, plural, =0 {} one {Auto-købte # rytter: {purchasedNames}\n} other {Auto-købte # ryttere: {purchasedNames}\n}}{deferredCount, plural, =0 {} one {# rytter kommer til holdet, når hans igangværende etapeløb er slut: {deferredNames}\n} other {# ryttere kommer til holdet, når deres igangværende etapeløb er slut: {deferredNames}\n}}{soldCount, plural, =0 {} one {Auto-solgte # rytter: {soldNames}\n} other {Auto-solgte # ryttere: {soldNames}\n}}{salesDeferredCount, plural, =0 {} one {# rytter i et igangværende etapeløb sælges i stedet efter løbet\n} other {# ryttere i et igangværende etapeløb sælges i stedet efter løbet\n}}Bøde: {fine} CZ$ · Fradrag: {points} point"
+    },
+    "contractSquad": {
+      "senior": "Senior",
+      "u23": "U23",
+      "junior": "Junior",
+      "academy": "Akademi"
+    },
+    "contractRoster": {
+      "entry": "{rider} ({squad}), {value} CZ$",
+      "entryUnknown": "{rider} ({squad}), værdi ukendt"
+    },
+    "contractExpiringSummary": {
+      "title": "Kontrakter udløber",
+      "message": "Disse kontrakter udløber ved udgangen af sæson {season}. Forlæng dem på fanen Kontrakter under Mit hold.\n{contractRiders}"
+    },
+    "contractReleasedSummary": {
+      "title": "Ryttere frigivet: kontrakter udløbet",
+      "message": "Disse ryttere blev frie agenter, da deres kontrakter udløb ved udgangen af sæson {season}. Gennemgå dine resterende kontrakter under Mit hold.\n{contractRiders}"
     }
   },
   "error": {

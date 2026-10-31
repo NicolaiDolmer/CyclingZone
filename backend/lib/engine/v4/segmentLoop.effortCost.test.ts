@@ -360,3 +360,41 @@ test("INVARIANT 6 (laast feltstoerrelse) + tidslinje: blandede indsatsvalg taber
     assert.deepEqual(violations, [], `tidslinje-overtraedelser: ${JSON.stringify(violations)}`);
   }
 });
+
+// ── #6641: "som i virkeligheden" under s5_profiles_v3 (slukket) ───────────────
+
+/**
+ * Samme etape og seed to gange; kun twinA's indsats skifter. Forskellen er
+ * trinnets virkning paa DAGEN med friske ben. Tvillingerne er kaptajner paa
+ * hvert sit (tomme) hold, saa ingen af dem gaar spontant med i morgenudbruddet
+ * (breakawayPermission: kun normal paa fri rolle goer det), og maalingen ikke
+ * bliver en udbruds-lodtraekning.
+ */
+function dayDeltaSeconds(revision: "s5_profiles_v2" | "s5_profiles_v3", level: number, effort: EffortLevel, seed: string): number | null {
+  const twin = (rider_id: string, e: EffortLevel): Entrant => ({ rider_id, abilities: abilitiesAt(level), role: "captain", effort: e, condition: 1 });
+  const run = (e: EffortLevel) => simulateStageV4({ ...stage([...mixedField(58), twin("twinA", e), twin("twinB", "normal")], MOUNTAIN_ROUTE, seed), rules_revision: revision });
+  const timeOf = (out: StageOutput) => out.results.find((r) => r.rider_id === "twinA" && r.status === "finished")?.time_seconds ?? null;
+  const a = timeOf(run(effort));
+  const b = timeOf(run("normal"));
+  return a == null || b == null ? null : a - b;
+}
+
+function summedDayDelta(revision: "s5_profiles_v2" | "s5_profiles_v3", effort: EffortLevel): number {
+  let sum = 0;
+  for (const level of [50, 60, 70]) {
+    for (const seed of SEEDS.slice(0, 10)) sum += dayDeltaSeconds(revision, level, effort, seed) ?? 0;
+  }
+  return sum;
+}
+
+test("#6641 (s5_profiles_v3): all_out vinder tid paa DAGEN paa en bjergetape, summeret over evne-niveauer og seeds", () => {
+  // Ejer 25/10: "Alt ud vinder tid PAA DAGEN og koster traethed bagefter." Retningen
+  // laases, ikke et frø-tal (balance-internals/6641/ har maalingen over hele etapeloeb).
+  assert.ok(summedDayDelta("s5_profiles_v3", "all_out") < 0, "all_out skal vaere foran sin normal-tvilling paa dagen");
+});
+
+test("#6641: under s5_profiles_v2 er all_out uaendret en faelde paa en bjergetape (gevinsten er kun bag s5_profiles_v3)", () => {
+  // Kontrol af gaten: den gamle adfaerd (all_out taber tid paa dagen) staar uroert i
+  // alle revisioner foer s5_profiles_v3.
+  assert.ok(summedDayDelta("s5_profiles_v2", "all_out") > 0);
+});

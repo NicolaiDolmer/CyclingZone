@@ -130,6 +130,7 @@ Efter et `git pull` der rører ved en `*package-lock.json`: kør `npm run sync-d
 
 ---
 
+Liga-audit i merge-køen (#7312): `league-size-invariant` læses fra pagineret REST `check-runs` på PR'ens HEAD, fordi `gh pr checks` kan skjule et grønt check i en skipped Actions-suite. Præcis ét check med korrekt SHA, audit-identitet og GitHub Actions-afsender skal være `completed/success`; manglende, tvetydigt eller ugyldigt bevis stopper køen. Øvrige required checks, review-gate og HEAD-kontrol før merge gælder fortsat.
 ## SQL migrations mandat detaljer
 
 _Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://github.com/NicolaiDolmer/CyclingZone/issues/5331) (token-trim). Reglen er uændret — AGENTS.md holder kun perioden og peger herhen._
@@ -142,6 +143,16 @@ _Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://githu
 - **Destruktive klasser er FORTSAT ejer-gated pr. tilfælde:** `DROP TABLE`/kolonne, masse-DELETE/UPDATE af spillerdata, RLS-lempelser — jf. "ejer ser live-tilstand før atombomber".
 - **Mekanik:** filer i `database/2026-*.sql` (top-niveau) auto-applies desuden af `auto-migrate.yml` ved push til main (~3 min delay). MCP-apply bruges til at fremrykke/verificere en merged migration samt til one-off data-SQL under rammerne ovenfor — begge veje er idempotente via `schema_migrations`-tracking hhv. filkonventionen. ⚠️ **"Forberedt-men-ikke-kørt" SQL må derfor ALDRIG committes som `database/2026-*.sql`** — den KØRER ved merge uanset kommentarer i filen (bidt 18/7: backfill-2623 auto-applied trods "IKKE KØRT"-header). Udkast/forslag til ejer-review → `database/proposals/` (uden for auto-migrate-globben). **Anvender du en fil derfra i hånden, SKAL den flyttes til top-niveau bagefter** — ellers er den ikke længere til at skelne fra et uanvendt udkast (kostede #3765). Håndhæves hver 6. time af `scripts/proposals-reconcile.mjs`.
 - **Backup-forudsætning:** Supabase-org er på Pro-plan (daglige automatiske backups) — verificeret 2026-07-18. PITR-add-on-status kan ikke aflæses via MCP; ejer bekræfter i dashboard.
+
+---
+
+## Private indstillinger (`private_config`, [#7390](https://github.com/NicolaiDolmer/CyclingZone/issues/7390))
+
+**`app_config` er LÆSBAR for alle indloggede** (policy `app_config_select_authenticated`): flag og stadier hører til dér, aldrig balance-tal. Private motor- og træningstal (kurve B's params, drift-rapportens grænser) ligger i `private_config`: RLS uden policies, kun `service_role`, og hver ændring logges med gammel og ny værdi i `private_config_history` (trigger).
+
+- **Nøgler + skema:** registret i `backend/lib/privateConfig.ts` (`PRIVATE_CONFIG_KEYS`). En ny nøgle = en parser dér + test. Læs med `readPrivateConfig(supabase, key, { strict })` (60 s cache; ugyldig = null + advarsel, `strict` kaster).
+- **Sæt en værdi, kun på ejerens ordrette go:** læg JSON-filen uden for repoet (`balance-internals/`, gitignoreret), kør fra `backend/` `infisical run --env=prod -- node scripts/ops/setPrivateConfig.mjs --key <nøgle> --file <fil> --dry-run`, vis ejeren hash + felterne der ændres, og kør igen uden `--dry-run` efter "kør". Scriptet validerer, skriver med service-rollen, læser tilbage og bekræfter hashen. Værdierne skrives aldrig i chat, issues, PR'er eller logs.
+- **Kurve B:** læser KUN `development_curve_b_params` (#7390). Railway-reserven `DEVELOPMENT_CURVE_B_PARAMS` er fjernet fra koden; variablen kan slettes i Railway (ejer). Mangler rækken eller er den ugyldig: dagens model + advarsel i loggen.
 
 ---
 
@@ -344,3 +355,5 @@ Flyttet fra AGENTS.md 16/10 (token-budget); reglerne er uændrede.
 - Per-PC handling — gentages på den anden PC ved næste session der
 - **Parallel-sessions samme PC:** se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](docs/AGENT_ARCHITECTURE.md#parallel-session-safety-samme-pc-flere-claude-sessions-samtidigt) for kollisions-matrix + worktree-recipe
 - ⚠️ **Sti-baserede hard-blocks SKAL stå i `permissions.deny`, ikke kun hooks (#684):** På Claude Code ≥2.1.154 bypasser `permissions.allow` PreToolUse-hookenes `exit 2` OG JSON-`permissionDecision: deny` ([anthropics/claude-code#18312](https://github.com/anthropics/claude-code/issues/18312)). Fix D (verificeret 2026-05-29 i frisk acceptEdits-session): statiske `permissions.deny`-globs overlever allow-listen (`deny > allow`-precedence) — `Write`/`Edit`/`NotebookEdit(docs/archive/**)` er nu i `permissions.deny`, så arkiv-beskyttelsen håndhæves selvom de tre tools er allow-listede (#591). **Tilbageværende gap:** indholds-baserede guardrails (NOW.md 30-linjers-grænse, dynamisk secret-pattern) kan ikke udtrykkes som deny-globs → stadig hook-only og afvæbnede for allow-listede tools indtil #18312. Hold dem i menneske-review ved autonome parallel-runs — se [`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`](docs/PARALLEL_WORKTREE_ORCHESTRATION.md) top-note.
+
+Ejer-undtagelse fornyet 28/10 (chatmandat, #7313): `merge-queue.ps1 -CodeRabbitNight` understøttes kun for #7313 i NicolaiDolmer/CyclingZone og udløber 29/10 kl. 23 dansk tid. Den kræver en OWNER-beslutning på præcis PR-HEAD, Codex-review på HEAD samt CodeRabbits officielle completed/success-check med fuldført review og separat review-kvittering på samme HEAD. Ved nul fund accepteres også CodeRabbits dokumenterede bot-summary med eksakt review-HEAD og tidsstempel bundet til checkets kørsel; app-check alene er utilstrækkeligt. Alle review-kvitteringer på HEAD kontrolleres; tråde knyttes til deres oprindelige review. Body-fund uden klassificeret tråd og uløste blokerende/ukendt-graderede CodeRabbit-tråde stopper. P2/P3 samles i opfølgning efter den eksisterende ejerregel. Den laver ingen Claude-markør og ændrer ikke standardgaten. Required checks, liga-audit, HEAD-genkontrol, deploy- og migrationskontrol gælder fortsat. Det oprindelige mandat (#7153 kommentar 6455527845) er udløbet. Fornyelsen kræver den særskilte OWNER-markør `coderabbit-substitute-renewed-20261028` med PR-nummer og fuld HEAD-SHA; gamle markører accepteres ikke. Efter udløb kan undtagelsen ikke bruges.

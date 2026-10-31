@@ -40,25 +40,55 @@ function createSupabase({
 
   function buildQuery(table) {
     const filters = { or: null, in: null, eq: [] };
+    const orders = [];
+    let from = 0;
+    let to = 999;
     const chain = {
       select() { return chain; },
       or(expr) { filters.or = expr; return chain; },
       in(column, values) { filters.in = { column, values }; return chain; },
       eq(column, value) { filters.eq.push({ column, value }); return chain; },
-      order() {
+      order(column, { ascending = true } = {}) { orders.push({ column, ascending }); return chain; },
+      range(start, end) { from = start; to = end; return chain; },
+      then(resolve, reject) {
         const rows = (tableData[table] || []).filter((row) => {
           if (filters.in && !filters.in.values.includes(row[filters.in.column])) return false;
           for (const { column, value } of filters.eq) if (row[column] !== value) return false;
           if (filters.or && !matchOr(filters.or, row)) return false;
           return true;
         });
-        return Promise.resolve({ data: rows, error: null });
+        rows.sort((a, b) => {
+          for (const { column, ascending } of orders) {
+            const cmp = a[column] < b[column] ? -1 : a[column] > b[column] ? 1 : 0;
+            if (cmp) return ascending ? cmp : -cmp;
+          }
+          return 0;
+        });
+        // Simulerer PostgREST-loftet: aldrig mere end 1000 raekker pr. svar.
+        return Promise.resolve({ data: rows.slice(from, Math.min(to + 1, from + 1000)), error: null }).then(resolve, reject);
       },
     };
     return chain;
   }
 
   return { from(table) { return buildQuery(table); } };
+}
+
+for (const source of ["auctions", "transferOffers", "swapOffers", "academyIntake"]) {
+  test(`teamTransferHistory — #6965 paginates ${source} beyond the response cap with tied dates`, async () => {
+    const date = "2026-05-01T00:00:00Z";
+    const rows = Array.from({ length: 1001 }, (_, i) => {
+      const id = String(i).padStart(4, "0");
+      if (source === "auctions") return auctionRow({ id, seller: OTHER, winner: TEAM, price: 12000, date });
+      if (source === "transferOffers") return offerRow({ id, seller: OTHER, buyer: TEAM, amount: 12000, date });
+      if (source === "swapOffers") return swapRow({ id, proposing: TEAM, receiving: OTHER, date });
+      return academyIntakeRow({ id, team: TEAM, date, signingFee: 12000 });
+    }).reverse();
+    const events = await buildTeamTransferHistory(createSupabase({ [source]: rows }), TEAM);
+    assert.equal(events.length, rows.length);
+    assert.equal(new Set(events.map((event) => event.id)).size, rows.length);
+    if (source !== "swapOffers") assert.equal(events[0].amount, 12000);
+  });
 }
 
 function auctionRow({ id, seller, winner, price, date, sellerIsAi = false, winnerIsAi = false, guaranteed = false }) {
@@ -348,4 +378,26 @@ test("teamTransferHistory — nul-bred afsluttet sæson på delt grænsedag indf
   assert.equal(byId["auction:A-launch"].season_number, 1, "grænsedags-event → aktiv sæson 1, ikke nul-bred sæson 0");
   assert.equal(byId["academy:AC-launch"].season_number, 1, "akademi-hentning på grænsedagen → aktiv sæson 1");
   assert.equal(byId["auction:A-later"].season_number, 1, "senere event → sæson 1");
+});
+
+test("buildSeasonResolver — offseason-hul tilskrives kommende sæson, grænsedage uændrede (#7285)", async () => {
+  const { buildSeasonResolver } = await import("./teamTransferHistory.js");
+  const resolve = buildSeasonResolver([
+    { id: "s4", number: 4, start_date: "2026-09-28", end_date: "2026-10-25" },
+    { id: "s5", number: 5, start_date: "2026-10-28", end_date: null },
+  ]);
+  assert.equal(resolve("2026-10-25T10:00:00Z"), 4, "sidste dag er inklusiv (#984)");
+  assert.equal(resolve("2026-10-26T10:00:00Z"), 5, "offseason-hul → kommende sæson");
+  assert.equal(resolve("2026-10-27T23:00:00Z"), 5, "offseason-hul → kommende sæson");
+  assert.equal(resolve("2026-10-28T08:00:00Z"), 5, "startdag er sæson 5");
+  assert.equal(resolve("2026-09-30T08:00:00Z"), 4);
+  assert.equal(resolve("2026-09-01T08:00:00Z"), null, "før første sæson forbliver uden sæson");
+});
+
+test("buildSeasonResolver — afsluttet sidste sæson uden efterfølger forbliver på sidste sæson (#7285)", async () => {
+  const { buildSeasonResolver } = await import("./teamTransferHistory.js");
+  const resolve = buildSeasonResolver([
+    { id: "s4", number: 4, start_date: "2026-09-28", end_date: "2026-10-25" },
+  ]);
+  assert.equal(resolve("2026-10-27T10:00:00Z"), 4);
 });

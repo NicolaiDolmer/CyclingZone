@@ -15,10 +15,10 @@ import StageProfileV2, { GradientLegend } from "./StageProfileV2.tsx";
 import ClimbCard from "./ClimbCard.tsx";
 import YourDayCard, { type CareerEvent } from "./YourDayCard.tsx";
 import RaceStoryCard from "./RaceStoryCard.tsx";
-import { castFrom, type RaceStory } from "./raceStoryModel.ts";
+import { castFrom, type RaceStory, type StoryNarrativeContext } from "./raceStoryModel.ts";
 import { stageWeather, type StageWeather } from "./stageWeather.ts";
 import { WeatherTag } from "./WeatherTag.tsx";
-import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines } from "./ui.ts";
+import { Button, Flag, RiderLink, Section, SectionHeader, SectionStack, SkeletonLines, TerrainTypeGlyph } from "./ui.ts";
 
 function FitBar({ fit }: { fit: number }) {
   const { t } = useTranslation("races");
@@ -43,7 +43,7 @@ function ProfileCard({ profile, stageLabel, band, selectedClimb, onSelectClimb, 
   const finaleKey = finaleLabelKey(profile.finale_type);
   const surface = surfaceOf(profile);
   const axes: Array<[string, ReactNode]> = [];
-  if (terrainKey) axes.push([t("stagePageV2.axes.terrain"), t(`detail.${terrainKey}`)]);
+  if (terrainKey) axes.push([t("stagePageV2.axes.terrain"), <TerrainTypeGlyph profileType={profile.profile_type} size={18} showLabel labelClassName="" className="gap-1.5" />]);
   if (finaleKey) axes.push([t("stagePageV2.axes.finish"), t(`detail.${finaleKey}`)]);
   if (surface) axes.push([t("stagePageV2.axes.surface"), t("stagePageV2.axes.surfaceValue", { kind: surface.kind, count: surface.count, km: formatNumber(surface.km) })]);
   if (weather) axes.push([t("stagePageV2.axes.weather"), <WeatherTag weather={weather} />]);
@@ -96,6 +96,8 @@ export interface StageTabV2Props {
   profile: StageProfile | null;
   results: ResultRow[];
   stagePointRows: ResultRow[];
+  /** #6939: etapernes profiler, saa favoritterne vaelges efter etapens profil. */
+  profileByStage?: Record<number, StageProfile>;
   stageLoaded: boolean;
   /** Erstatter "Your day" naar etapens resultater ikke kunne hentes (#6570). */
   stageErrorSlot: ReactNode;
@@ -107,11 +109,12 @@ export interface StageTabV2Props {
   emptyState: ReactNode;
   /** #6570 spor 2: loebshistorien fra loebsloggen; null = ingen (nuvaerende visning). */
   story?: RaceStory | null;
+  narrative?: StoryNarrativeContext | null;
 }
 
 export default function StageTabV2({
-  stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, stageLoaded, stageErrorSlot, myTeamId,
-  stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState, story = null,
+  stageNumber, stagesCompleted, isStageRace, phase, profile, results, stagePointRows, profileByStage = {}, stageLoaded, stageErrorSlot, myTeamId,
+  stageRoles, careerEvents, tacticsAction, onOpenStandings, emptyState, story = null, narrative = null,
 }: StageTabV2Props) {
   const { t } = useTranslation("races");
   const [selectedClimb, setSelectedClimb] = useState<number>(() => Math.max(0, sortedClimbs(profile).length - 1));
@@ -121,7 +124,7 @@ export default function StageTabV2({
   const riders = useMemo(() => (stageRoles ? stageRoles.riders ?? [] : []), [stageRoles]);
   const overrides = stageRoles ? stageRoles.overrides ?? [] : [];
   const lineup = lineupFor(riders, overrides, stageNumber);
-  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted);
+  const favourites = favouritesFor(results, stagePointRows, stageNumber, myTeamId, stagesCompleted, profileByStage);
   const fitById = new Map(lineup.map((r) => [r.riderId, r.fit]));
   const demands = dayDemands(profile?.demand_vector);
   const climbIndex = Math.min(selectedClimb, Math.max(0, climbs.length - 1));
@@ -146,6 +149,7 @@ export default function StageTabV2({
         {story ? (
           <RaceStoryCard
             story={story}
+            narrative={narrative}
             profile={profile}
             series={series}
             climbs={climbs}

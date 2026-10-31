@@ -20,7 +20,7 @@
 // gaten bliver haard. Taersklerne er detektorernes definitioner af fejlen ("med
 // minutter", "liste-gab != raa tid", "modsiger"), ikke motor-tuning.
 //
-// Den LIVE revision (s5_profiles_v1, CURRENT_RACE_RULES_REVISION fra ejerens "taend", #6369)
+// Den LIVE revision (s5_profiles_v2, CURRENT_RACE_RULES_REVISION fra ejerens "taend", #6818)
 // har ingen KNOWN_OPEN_GATES-linje og faar desuden tre haarde gates (#6285 A):
 // et hold jagter aldrig sine egne (ownChaseViolations), ingen minuttab paa 0 km
 // i loebsfilmen (minuteLossAtZeroKm) og intet morgenudbrud over profilens loft
@@ -61,15 +61,15 @@ const { entrants, droppedWithoutAbilities } = splitEntrants(data);
 const SEEDS = 3;
 const TIME_TRIALS = new Set(["itt", "itt_hilly", "ttt"]);
 
-/** Den revision nye loeb bindes til (live fra ejerens "taend", #6369). */
-const LIVE_REVISION = "s5_profiles_v1";
+/** Den revision nye loeb bindes til (live fra ejerens "taend", #6818). */
+const LIVE_REVISION = "s5_profiles_v3";
 /**
  * De tidligere prod-revisioner, Tour-revisionen, den officielle tidsmodel
  * (#6284), de forrige live (official_times_v2, official_times_v3,
- * official_times_v4 og official_times_v5; loeb bundet til dem koerer faerdig paa
+ * official_times_v4, official_times_v5, s5_profiles_v1 og s5_profiles_v2; loeb bundet til dem koerer faerdig paa
  * dem, fx Touren paa v3) og den live.
  */
-const REVISIONS = ["orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "official_times_v5", LIVE_REVISION] as const;
+const REVISIONS = ["orders_gc_v2", "orders_gc_v3", "official_times_v1", "official_times_v2", "official_times_v3", "official_times_v4", "official_times_v5", "s5_profiles_v1", "s5_profiles_v2", LIVE_REVISION] as const;
 type Revision = (typeof REVISIONS)[number];
 type Check = keyof typeof KNOWN_OPEN_GATES;
 

@@ -195,6 +195,82 @@ for (const scenario of ['complete', 'pending', 'partial', 'missing', 'read_error
   });
 }
 
+// #6924: before the evening run is due on the final date, unsettled training
+// defers to the evening run (which now also settles a just-completed season).
+const at18 = new Date('2026-10-25T17:00:00Z'); // 18:00 Copenhagen
+for (const scenario of ['one missing', 'all missing']) {
+  test(`#6924: 25/10 18:00 ${scenario} registration defers to the evening run instead of blocking`, async () => {
+    await db.exec(`DELETE FROM training_date_work${scenario === 'all missing' ? '' : " WHERE team_id='b'"}`);
+    const result = await assess(client(), { now: at18 });
+    assert.equal(result.blocked, false);
+    assert.equal(result.deferred, true);
+    assert.equal(result.tick_date, '2026-10-25');
+    assert.ok(result.blockers.some(row => row.team_id === 'b'));
+    assert.match(result.detail, /2026-10-25.*kl\. 20/);
+  });
+}
+// Codex P1 on #7143: registered work froze its opening condition before the
+// season-start resets, so it must settle before the season ends (see
+// trainingFinalDateReset6924.integration.test.js for the live RPC behaviour).
+for (const status of ['pending', 'partial']) {
+  test(`#6924: 25/10 18:00 registered ${status} work still blocks, also next to a missing registration`, async () => {
+    await db.query('UPDATE training_date_work SET status=$1 WHERE team_id=$2', [status, 'b']);
+    const alone = await assess(client(), { now: at18 });
+    assert.equal(alone.blocked, true);
+    assert.equal(alone.deferred, undefined);
+    assert.ok(alone.detail.includes(` b: ${status}`), alone.detail);
+    await db.exec(`DELETE FROM training_date_work WHERE team_id='a'`);
+    const mixed = await assess(client(), { now: at18 });
+    assert.equal(mixed.blocked, true);
+    assert.ok(mixed.detail.includes(' a: missing_registration'), mixed.detail);
+  });
+}
+test('#6924: settled at 18:00 is not deferred; 19:59 still defers; 20:00 and the next day require proof', async () => {
+  assert.equal((await assess(client(), { now: at18 })).deferred, undefined);
+  await db.exec('DELETE FROM training_date_work');
+  assert.equal((await assess(client(), { now: new Date('2026-10-25T18:59:00Z') })).blocked, false);
+  assert.equal((await assess(client(), { now: new Date('2026-10-25T19:00:00Z') })).blocked, true);
+  const nextDay = await assess(client(), { now: new Date('2026-10-26T09:00:00Z') });
+  assert.equal(nextDay.blocked, true);
+  assert.equal(nextDay.deferred, undefined);
+  await assert.rejects(() => assess(client('riders'), { now: at18 }), /fixture read failure/, 'read failures stay fail-closed');
+});
+test('#6924: season-end API at 18:00 with no registrations reaches the claim', async () => {
+  await db.exec('DELETE FROM training_date_work');
+  const source = readFileSync(new URL('../routes/api.js', import.meta.url), 'utf8');
+  const start = source.indexOf('router.post("/admin/seasons/:id/end"');
+  const bodyStart = source.indexOf('async (req, res) => {', start) + 'async (req, res) => {'.length;
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessSeasonEndBlockers', 'assessFinalTrainingDateSettlement', 'claimSeasonEndOrReject', 'captureApiRouteError', source.slice(bodyStart, source.indexOf('\n});', bodyStart)));
+  const fixture = client();
+  const supabase = { from(table) {
+    if (table === 'seasons') {
+      const chain = { select: () => chain, eq: () => chain, single: async () => ({ data: { ...season, status: 'active' }, error: null }) };
+      return chain;
+    }
+    if (table === 'races') return { select: () => ({ eq: async () => ({ data: [], error: null }) }) };
+    return fixture.from(table);
+  } };
+  class FixedDate extends Date { constructor(...args) { super(...(args.length ? args : [at18.toISOString()])); } }
+  let claimed = false;
+  const res = { status() { return res; }, json() { return res; } };
+  await handler({ params: { id: season.id } }, res, supabase, FixedDate, async () => ({ blocked: false }),
+    readiness.assessFinalTrainingDateSettlement, async () => { claimed = true; return false; }, () => {});
+  assert.equal(claimed, true);
+});
+test('#6924: active-source transition at 18:00 reaches its first write before the evening run', async () => {
+  await db.exec('DELETE FROM training_date_work');
+  const source = readFileSync(new URL('./seasonTransition.js', import.meta.url), 'utf8');
+  const start = source.indexOf('export async function transitionToNextSeason(');
+  const prefix = source.slice(start, source.indexOf('  const log = [];', start)).replace('export async function', 'async function');
+  const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+  const run = new AsyncFunction('buildTransitionPlan', 'assessFinalTrainingDateSettlement', 'args',
+    prefix + '\nreturn { reachedFirstWrite: true };\n}\nreturn transitionToNextSeason(args);');
+  const plan = { from_season: { ...season, status: 'active' }, to_season: { id: 's5' } };
+  assert.deepEqual(await run(async () => plan, readiness.assessFinalTrainingDateSettlement,
+    { supabase: client(), fromSeasonId: 's4', transitionAt: at18 }), { reachedFirstWrite: true });
+});
+
 test('calendar is authoritative even if end_date is stale', async () => {
   const result = await assess(client(), { season: { ...season, end_date: '2026-10-24T00:00:00+00:00' } });
   assert.equal(result.blocked, false);
@@ -286,7 +362,7 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
     const handler = new AsyncFunction('req', 'res', 'supabase', 'Date', 'assessTransitionReadiness',
       'transitionToNextSeason', 'formatForceOverrideDescription', 'TRANSITION_BLOCKED_ERROR',
       'ADMIN_ACTION_TYPE', 'captureException', 'logTransitionPhaseSafe', 'TRANSITION_PHASE_STATUS',
-      'captureApiRouteError', routeSource.slice(bodyStart, bodyEnd));
+      'captureApiRouteError', 'runValuesAfterTransition', routeSource.slice(bodyStart, bodyEnd));
     const transitionSource = readFileSync(new URL('./seasonTransition.js', import.meta.url), 'utf8');
     const transitionStart = transitionSource.indexOf('export async function transitionToNextSeason(');
     const prefix = transitionSource.slice(transitionStart, transitionSource.indexOf('  const log = [];', transitionStart))
@@ -294,7 +370,7 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
     const runTransition = new AsyncFunction('buildTransitionPlan', 'assessFinalTrainingDateSettlement', 'args', 'writeSentinel',
       prefix + '\nreturn writeSentinel();\n}\nreturn transitionToNextSeason(args);');
     const audit = [], order = [];
-    let transitionWrites = 0, settlementReads = 0, guardDetail = null, status = 200, response;
+    let transitionWrites = 0, settlementReads = 0, guardDetail = null, status = 200, response, valueRuns = 0;
     const fixture = client();
     const supabase = { from(table) {
       if (table === 'admin_log') return { async insert(row) {
@@ -321,7 +397,8 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
       async () => ({ ready: false, failed_critical: ['season_end_completed'] }), transition,
       readiness.formatForceOverrideDescription, readiness.TRANSITION_BLOCKED_ERROR,
       { MANUAL_OVERRIDE: 'manual_override' }, () => {},
-      async () => { audit.push({ action_type: 'failed' }); }, { FAILED: 'failed' }, () => {});
+      async () => { audit.push({ action_type: 'failed' }); }, { FAILED: 'failed' }, () => {},
+      async () => { valueRuns++; return { ran: false }; });
     if (['pending', 'partial', 'missing'].includes(scenario)) {
       assert.equal(status, 400);
       assert.equal(response.error, guardDetail);
@@ -333,10 +410,13 @@ for (const scenario of ['pending', 'partial', 'missing', 'complete', 'dry_run', 
       assert.equal(audit.filter(row => row.action_type === 'manual_override').length, 1);
       assert.deepEqual(order, ['settlement', 'manual_override', 'transition_write']);
       assert.equal(transitionWrites, 1);
+      // #5842 (ejer 25/10): værdierne startes straks efter et fuldført skifte.
+      assert.equal(valueRuns, 1);
     } else if (scenario === 'dry_run') {
       assert.equal(status, 200);
       assert.equal(audit.length, 0);
       assert.equal(transitionWrites, 0);
+      assert.equal(valueRuns, 0, 'dry-run starter aldrig værdikørslen');
     } else {
       assert.equal(status, 500);
       assert.match(response.error, /fixture audit failure/);

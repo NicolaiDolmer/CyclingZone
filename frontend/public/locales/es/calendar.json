@@ -52,13 +52,7 @@
   },
   "today": "Hoy",
   "legend": {
-    "title": "Terreno",
-    "sprint": "Sprint",
-    "cobbles": "Adoquines",
-    "hilly": "Ondulado",
-    "mountain": "Montaña",
-    "itt": "Contrarreloj",
-    "ttt": "Contrarreloj por equipos"
+    "title": "Terreno"
   },
   "terrain": {
     "sprint": "Sprint",
@@ -95,5 +89,60 @@
     "editSquad": "Editar plantilla",
     "openRace": "Abrir carrera",
     "terrainCount": "{type} ×{count}"
+  },
+  "view": {
+    "label": "Vista",
+    "calendar": "Calendario",
+    "table": "Tabla"
+  },
+  "table": {
+    "label": "Tabla de la temporada",
+    "search": "Buscar carreras",
+    "type": "Tipo de carrera",
+    "allTypes": "Todos los tipos",
+    "typeOption": {
+      "single": "Carreras de un día",
+      "stage_race": "Carreras por etapas"
+    },
+    "rowType": {
+      "single": "Carrera de un día",
+      "stage_race": "Carrera por etapas"
+    },
+    "class": "Clase",
+    "allClasses": "Todas las clases",
+    "terrain": "Terreno",
+    "allTerrain": "Todo terreno",
+    "more": "Más filtros",
+    "needsSquadOnly": "Solo carreras sin plantilla",
+    "count": "{count, plural, one {# carrera} other {# carreras}}",
+    "cols": {
+      "race": "Carrera",
+      "dates": "Fechas",
+      "start": "Salida",
+      "terrain": "Terreno",
+      "stages": "Etapas",
+      "class": "Clase",
+      "squad": "Tu plantilla",
+      "squadShort": "Plantilla",
+      "open": "Abrir"
+    },
+    "openRace": "Abrir {name}",
+    "squad": {
+      "selected": "Plantilla lista",
+      "missing": "Falta plantilla",
+      "gtBound": "Grand Tour"
+    },
+    "squadShort": {
+      "selected": "Lista",
+      "missing": "Falta",
+      "gtBound": "GT"
+    },
+    "empty": {
+      "title": "Quita los filtros para ver más carreras",
+      "desc": "Ninguna carrera de la temporada coincide con tu búsqueda y tus filtros.",
+      "clear": "Quitar filtros",
+      "noneTitle": "Cambia a Todos los equipos para ver toda la temporada",
+      "noneDesc": "Ninguna carrera de la temporada coincide con esta vista."
+    }
   }
 }

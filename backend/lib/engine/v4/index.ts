@@ -51,11 +51,14 @@ import {
 // i segment-loopet men en hel ALTERNATIV etape-model (ét hold = én gruppe der
 // koerer sammen), saa den forgrenes i simulateStageV4 — se TTT-blokken dér.
 import { simulateTeamTimeTrialStage } from "./mechanics/teamTimeTrial.ts";
+import { summitFinishSingleFor } from "./mechanics/komJersey6937.ts";
 import { teamRostersFromStartlist } from "./adapters/teamRosterAdapter.ts";
 // #5576: enkeltstarten. Samme kerne som holdtidskoerslen, én rytter pr. enhed —
 // se ITT-blokken i simulateStageV4 og mechanics/individualTimeTrial.ts's filhoved.
 import { isIndividualTimeTrial, simulateIndividualTimeTrialStage } from "./mechanics/individualTimeTrial.ts";
-import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { isOrdersGcV3OrLater, isS5ProfilesV2OrLater, isS5ProfilesV3OrLater, usesSharedGroupTime } from "../../raceEngineRulesRevision.ts";
+import { applyHelperWithdrawals } from "./mechanics/abandons.ts";
+import { dayForm6649On } from "./mechanics/dayForm6649.ts"; // #6649
 import { withPointPlace } from "./exactPlace.ts";
 import { stageInputForRulesRevision } from "./s5Profiles.ts";
 
@@ -239,7 +242,9 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   if (input.route.profile_type === "ttt") {
     const rosters = teamRostersFromStartlist(input.startlist);
     if (rosters) {
-      return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning), trace: TIME_TRIAL_TRACE };
+      // #7008 (KUN s5_profiles_v2): intet uheld lige efter starten.
+      const tttOptions = { ...(isS5ProfilesV2OrLater(input.rules_revision) ? { incidentStartFloor: true as const } : {}), ...summitFinishSingleFor(input.rules_revision), ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}) }; // #6649
+      return { output: simulateTeamTimeTrialStage(input.route, rosters, input.seed, input.tuning, tttOptions), trace: TIME_TRIAL_TRACE };
     }
   }
 
@@ -254,7 +259,7 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
   // forgrener altid — ogsaa for fixtures og haandbyggede testlister.
   if (isIndividualTimeTrial(input.route.profile_type)) {
     return {
-      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision }),
+      output: simulateIndividualTimeTrialStage(input.route, input.startlist, input.seed, input.tuning, { rulesRevision: input.rules_revision, ...(dayForm6649On(input) ? { dayForm6649: true as const } : {}) }), // #6649
       trace: TIME_TRIAL_TRACE,
     };
   }
@@ -304,7 +309,13 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     // Ejer 28/9: ungdomsloeb har en mildere graense (timeLimitTuningFor).
     tuning: timeLimitTuningFor(input.squad),
   });
-  const results = timeLimit.results;
+  // #6938 U3 (KUN s5_profiles_v3, slukket, kun endagsloeb): en sat hjaelper
+  // (langt efter, ingen opgave) kan stige af. Efter tidsgraensen, saa en
+  // OTL-rytter beholder sin udfaldsklasse; foer finish-eventet og passagerne.
+  const withdrawals = isS5ProfilesV3OrLater(input.rules_revision)
+    ? applyHelperWithdrawals(timeLimit.results, input.startlist, { seed: input.seed, distanceKm: input.route.distance_km, gc: input.gc_context })
+    : null;
+  const results = withdrawals ? withdrawals.results : timeLimit.results;
   const finishEvent = buildFinishEvent(results, input.route.distance_km, sortedTimeline);
   const winnerId = results[0]?.rider_id ?? null;
   // #6748 (KUN s5_profiles_v2): ogsaa en sejr fra et stykke af udbruddet (chaseGroup.ts).
@@ -352,6 +363,8 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     profileType: input.route.profile_type,
     finaleType: input.route.finale_type,
     tuning: input.tuning.bonusSeconds,
+    // #6937 (KUN s5_profiles_v3, ejer 25/10): topankomstens almindelige point.
+    ...summitFinishSingleFor(input.rules_revision),
   });
   const passages: StagePassage[] = clampPassageBonusToPerRiderCap(
     sortPassages([...(state.stage_passages ?? []), ...finishPassages]),
@@ -373,11 +386,12 @@ export function simulateStageV4WithTrace(rawInput: StageInput): { output: StageO
     results,
     loads,
     groupSnapshots,
-    incidents: buildIncidents(state),
+    incidents: withdrawals?.incidents.length ? [...buildIncidents(state), ...withdrawals.incidents] : buildIncidents(state),
     passages,
     // #5582 (ejer 23/9, UCI 2.6.032): en genindsat rytter (juryen eller en
     // reddet grupetto) mister sine point i point- og bjergkonkurrencen.
     passage_totals: applyReinstatementPointPenalty(passageTotals(passages), reinstatedRiderIdsOf(timeLimit)),
+    ...(state.stage_plan_load_efforts ? { stage_plan_load_efforts: state.stage_plan_load_efforts } : {}), // #7003
   };
   return { output, trace: { breakaway_win: breakawayWin } };
 }
@@ -387,7 +401,7 @@ function juryInputFor(input: StageInput, state: SegmentLoopResult["state"]): Tim
   const effortByRider: Record<string, StageInput["startlist"][number]["effort"]> = {};
   const teamByRider: Record<string, string | null | undefined> = {};
   for (const entrant of input.startlist) {
-    effortByRider[entrant.rider_id] = entrant.effort;
+    effortByRider[entrant.rider_id] = state.stage_plan_efforts?.[entrant.rider_id] ?? entrant.effort; // #7003
     teamByRider[entrant.rider_id] = entrant.team_id;
   }
   return {

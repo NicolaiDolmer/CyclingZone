@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runRankingShadowPass as rawRun } from './rankingShadowPass.ts';
+import { runRankingShadowPass as rawRun, SHADOW_DRAIN_MAX_BATCHES, SHADOW_DRAIN_BUDGET_MS, SHADOW_QUEUE_STALL_ALARM_S,
+  SHADOW_VERSION_DRAIN_MAX_BATCHES, SHADOW_VERSION_DRAIN_BUDGET_MS } from './rankingShadowPass.ts';
 type Client=Parameters<typeof rawRun>[0];
-type Options=Omit<Parameters<typeof rawRun>[1],'clock'>;
+type Options=Omit<Parameters<typeof rawRun>[1],'clock'>&{clock?:()=>number};
 const adapters=new WeakMap<Client,Client>();
 function runRankingShadowPass(client:Client,options:Options){
   let adapter=adapters.get(client);
@@ -32,8 +33,11 @@ test('shadow pass forwards lease, checks parity and throttles daily checks with 
 });
 test('backfill defers parity, and missing additive schema is safe during rolling deployment',async()=>{
   let count=0;
-  const pending={rpc:async()=>{count++;return {data:{pending:true},error:null};}};
-  await runRankingShadowPass(pending,{now:0}); assert.equal(count,1);
+  const pending={rpc:async(name:string)=>{count++;return {data:name==='apply_ranking_deltas'?{pending:true}:{status:'equal'},error:null};}};
+  await runRankingShadowPass(pending,{now:0}); assert.equal(count,SHADOW_DRAIN_MAX_BATCHES,'a burst drains up to the batch cap, never parity');
+  count=0;
+  const unknown={rpc:async()=>{count++;return {data:null,error:null};}};
+  assert.equal(await runRankingShadowPass(unknown,{now:0}),true); assert.equal(count,1,'an unexplained result is not retried in the same pass');
   const missing={rpc:async()=>({data:null,error:{code:'PGRST202',message:'not yet installed'}})};
   assert.equal(await runRankingShadowPass(missing,{now:0}),false);
 });
@@ -74,4 +78,129 @@ test('completed mismatches obey the daily cadence while staging can check every 
   assert.equal(calls.filter(n=>n==='check_ranking_shadow_parity').length,2);
   await runRankingShadowPass(client,{now:120000+86400000,captureExceptionFn});
   assert.equal(calls.filter(n=>n==='check_ranking_shadow_parity').length,3);
+});
+test('#6765 M1.5: a multi-batch burst drains in one pass, renewing the lease between batches',async()=>{
+  const steps:string[]=[];let left=3;
+  const client={rpc:async(name:string)=>{
+    steps.push(name);
+    return {data:name==='apply_ranking_deltas'?{pending:--left>0}:{status:'equal'},error:null};
+  }};
+  const renewLease=async()=>{steps.push('renew');return true;};
+  assert.equal(await runRankingShadowPass(client,{now:5*86400000,renewLease}),true);
+  assert.deepEqual(steps,['renew','renew','renew','apply_ranking_deltas','renew','apply_ranking_deltas','renew',
+    'apply_ranking_deltas','renew','check_ranking_shadow_parity','renew']);
+});
+test('#6765 M1.5: a lost lease between batches stops the drain and reports',async()=>{
+  const errors:Error[]=[];let applies=0,renewals=0;
+  const client={rpc:async(name:string)=>{if(name==='apply_ranking_deltas')applies++;return {data:{pending:true},error:null};}};
+  const renewLease=async()=>++renewals<=3;
+  assert.equal(await runRankingShadowPass(client,{now:0,renewLease,captureExceptionFn:e=>{errors.push(e);}}),false);
+  assert.equal(applies,1);
+  assert.match(errors[0].message,/between shadow batches/);
+});
+test('#6765 M1.5: the drain stops before a batch would cross the time budget',async()=>{
+  let elapsed=0,applies=0;const logs:Array<Record<string,unknown>>=[];
+  const client={rpc:async(name:string)=>{
+    if(name==='apply_ranking_deltas'){applies++;elapsed+=3000;}
+    return {data:{pending:true},error:null};
+  }};
+  assert.equal(await runRankingShadowPass(client,{now:0,clock:()=>elapsed,logger:{info:(_m,d)=>{logs.push(d);}}}),true);
+  // 3 s batches: after two (6 s) a third would end at 9 s, past the 8 s budget.
+  assert.equal(SHADOW_DRAIN_BUDGET_MS,8000);
+  assert.equal(applies,2);
+  assert.equal(logs[0].status,'pending');assert.equal(logs[0].batches,2);
+});
+test('#6765 M1.5: queue age is optional, validated, and alarms only when undrained and enabled',async()=>{
+  const MORNING=Date.parse('2026-10-19T08:00:00Z');
+  const run=async(age:unknown,{stage='on',pending=true,client:shared,now=MORNING}:{stage?:string;pending?:boolean;client?:object;now?:number}={})=>{
+    const alarms:string[]=[];const errors:string[]=[];
+    const client=Object.assign(shared??{},{
+      from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{value:stage},error:null})})})}),
+      rpc:async(name:string)=>({data:name==='get_ranking_shadow_metrics'?{queue_length:1,...(age===undefined?{}:{oldest_age_s:age})}
+        :name==='apply_ranking_deltas'?{pending}:{status:'equal'},error:null}),
+    });
+    await rawRun(client,{now,clock:()=>0,logger:{info(){}},
+      captureExceptionFn:(e,c)=>{(c.tags.alarm?alarms:errors).push(c.tags.alarm??e.message);}});
+    return {alarms,errors};
+  };
+  const STALE=SHADOW_QUEUE_STALL_ALARM_S+1;
+  assert.deepEqual(await run(undefined),{alarms:[],errors:[]},'pre-migration metrics stay valid');
+  assert.deepEqual(await run(null),{alarms:[],errors:[]});
+  assert.deepEqual(await run(SHADOW_QUEUE_STALL_ALARM_S),{alarms:[],errors:[]});
+  assert.deepEqual(await run(STALE),{alarms:['queue-stall'],errors:[]});
+  assert.deepEqual(await run(STALE,{pending:false}),{alarms:[],errors:[]},'a pass that drained the queue is not stalled');
+  assert.deepEqual(await run(STALE,{stage:'off'}),{alarms:[],errors:[]},'off keeps one aged repair marker by design');
+  for(const bad of [-1,1.5,'60']) assert.deepEqual(await run(bad),{alarms:[],errors:['Invalid ranking shadow queue age metric']},String(bad));
+  const client={};
+  assert.deepEqual((await run(STALE,{client})).alarms,['queue-stall']);
+  assert.deepEqual((await run(STALE,{client,now:MORNING+60_000})).alarms,[],'clean ticks do not repeat the alarm');
+  assert.deepEqual((await run(STALE,{client,now:MORNING+3_600_000})).alarms,['queue-stall'],'repeats hourly while stalled');
+});
+
+// #6765 Codex P1: a FIFO queue fake. Ids up to `versionMax` were committed with
+// the claimed version; `extra` items arrived later. Each batch takes 200 ids
+// and costs `batchMs` on the injected clock.
+function fifo({versionMax,extra=0,batchMs=3000,rebuild}:{versionMax:number;extra?:number;batchMs?:number;
+  rebuild?:{at:number;through:number}}){
+  let head=1,tail=versionMax+extra,elapsed=0,applies=0,parity=0;const logs:Array<Record<string,unknown>>=[];
+  const client={
+    from:()=>({select:()=>({eq:()=>({maybeSingle:async()=>({data:{value:'on'},error:null})})})}),
+    rpc:async(name:string)=>{
+      if(name==='get_ranking_shadow_metrics') return {data:{queue_length:tail-head+1,max_id:String(versionMax)},error:null};
+      if(name==='check_ranking_shadow_parity'){parity++;return {data:{status:'equal'},error:null};}
+      applies++;elapsed+=batchMs;
+      const from=head;head=Math.min(head+200,tail+1);
+      let rebuild_from=null,rebuild_through=null;
+      if(rebuild&&rebuild.at>=from&&rebuild.at<head){rebuild_from=String(rebuild.at);rebuild_through=String(rebuild.through);tail=Math.max(tail,rebuild.through);}
+      return {data:{pending:head<=tail,next_id:head<=tail?String(head):null,rebuild_from,rebuild_through},error:null};
+    },
+  };
+  return {client,logs,clock:()=>elapsed,logger:{info:(_m:string,d:Record<string,unknown>)=>{logs.push(d);}},
+    get applies(){return applies;},get parity(){return parity;},get head(){return head;}};
+}
+const LEASED={ownerToken:'token',targetVersion:'8',now:Date.parse('2026-10-19T08:00:00Z')};
+test('#6765 Codex P1: a leased pass drains every item of its version past the soft budget',async()=>{
+  // 5,000 items from one statement = 25 one-second batches; the soft budget
+  // alone (8 s, 20 batches) stops after eight.
+  const q=fifo({versionMax:5000,extra:1000,batchMs:1000});
+  assert.equal(await rawRun(q.client,{...LEASED,clock:q.clock,logger:q.logger}),true);
+  assert.equal(q.applies,25,'25 version batches, then the soft budget stops on the newer work');
+  assert.ok(q.head>5000,'no item of the claimed version is left behind');
+  assert.equal(q.logs[0].status,'pending');assert.equal(q.logs[0].version_drained,true);
+  assert.equal(q.parity,0,'parity waits for the newer items');
+});
+test('#6765 Codex P1: version drain reaches parity when nothing newer is queued',async()=>{
+  const q=fifo({versionMax:900});
+  assert.equal(await rawRun(q.client,{...LEASED,clock:q.clock,logger:q.logger}),true);
+  assert.equal(q.applies,5);assert.equal(q.parity,1);
+  assert.equal(q.logs[0].status,'equal');
+  assert.equal(q.logs[0].version_drained,true);
+});
+test('#6765 Codex P1: a rebuild marker of the version extends the watermark, a newer one does not',async()=>{
+  const own=fifo({versionMax:300,rebuild:{at:250,through:2000}});
+  await rawRun(own.client,{...LEASED,clock:own.clock,logger:own.logger});
+  assert.ok(own.head>2000,'the expansion of a version marker is version work');
+  const newer=fifo({versionMax:300,extra:300,rebuild:{at:350,through:2000}});
+  await rawRun(newer.client,{...LEASED,clock:newer.clock,logger:newer.logger});
+  assert.equal(newer.applies,2,'a marker above the watermark keeps the soft budget');
+});
+test('#6765 Codex P1: hard caps stop a pathological version backlog and log it',async()=>{
+  const slow=fifo({versionMax:1_000_000,batchMs:10_000});
+  await rawRun(slow.client,{...LEASED,clock:slow.clock,logger:slow.logger});
+  assert.equal(SHADOW_VERSION_DRAIN_BUDGET_MS,45000);
+  assert.equal(slow.applies,4,'a fifth 10 s batch would end past the 45 s cap');
+  assert.equal(slow.logs[0].status,'version-pending');assert.equal(slow.logs[0].version_drained,false);
+  const fast=fifo({versionMax:1_000_000,batchMs:1});
+  await rawRun(fast.client,{...LEASED,clock:fast.clock,logger:fast.logger});
+  assert.equal(fast.applies,SHADOW_VERSION_DRAIN_MAX_BATCHES);
+});
+test('#6765 Codex P1: clean ticks and pre-migration SQL keep the M1.5 soft budget',async()=>{
+  const clean=fifo({versionMax:5000});
+  await rawRun(clean.client,{now:LEASED.now,clock:clean.clock,logger:clean.logger});
+  assert.equal(clean.applies,2,'no lease, no version to drain');
+  assert.equal('version_drained' in clean.logs[0],false);
+  const bad=fifo({versionMax:5000});const errors:string[]=[];
+  const client={...bad.client,rpc:async(name:string)=>name==='get_ranking_shadow_metrics'?{data:{queue_length:1,max_id:-1},error:null}:bad.client.rpc(name)};
+  assert.equal(await rawRun(client,{...LEASED,clock:bad.clock,logger:bad.logger,captureExceptionFn:e=>{errors.push(e.message);}}),false);
+  assert.deepEqual(errors,['Invalid ranking shadow queue watermark']);
 });

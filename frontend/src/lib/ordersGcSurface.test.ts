@@ -9,6 +9,7 @@ import {
   isOrdersGcRevision,
   ordersVisible,
   raceRulesRevision,
+  surfaceRaceRulesRevision,
 } from "./ordersGcSurface.ts";
 import { collectRiderIds, describeEvent } from "./stageTimelineFilm.js";
 
@@ -150,4 +151,18 @@ test("#6187: løbsfilmen og navne-opslaget kender own_riders_ahead", () => {
   const ids = collectRiderIds([event]);
   assert.ok(ids.includes("gc") && ids.includes("t1"));
   assert.equal(describeEvent(event, { riderNameById: names })?.key, "own_riders_ahead");
+});
+
+test("taktikfanen: et ikke-startet løb uden gemt revision viser den aktuelle revisions ordrer (som backendens surfaceRulesRevision)", () => {
+  // Revisionen bindes først ved første etape, så hele S5-kalenderen står uden revision før start.
+  assert.equal(surfaceRaceRulesRevision(null, 0), "orders_gc_v1");
+  assert.equal(surfaceRaceRulesRevision(undefined, null), "orders_gc_v1");
+  assert.equal(surfaceRaceRulesRevision(null, "0"), "orders_gc_v1");
+  // Et startet løb uden revision er legacy (bundet før binding fandtes).
+  assert.equal(surfaceRaceRulesRevision(null, 1), "legacy");
+  assert.equal(surfaceRaceRulesRevision(null, -1), "legacy");
+  // En gemt revision vinder altid.
+  assert.equal(surfaceRaceRulesRevision("s5_profiles_v3", 3), "orders_gc_v1");
+  assert.equal(surfaceRaceRulesRevision("legacy", 0), "legacy");
+  assert.equal(ordersVisible({ showOrders: false, revision: surfaceRaceRulesRevision(null, 0) }), true);
 });

@@ -77,7 +77,8 @@ test("#4295 0-valgt routes til dedikerede assistantFillsEmpty/willNotStartEmpty-
 test("#4295 linjen går ALDRIG i clientErrors — Gem forbliver aktiv under gulvet", () => {
   // Gulvet ligger på deltagelsen, ikke på Gem-knappen. Klienten spejler backendens
   // validateSelection præcist: kun over feltstørrelsen + kaptajn + rolle-overlap.
-  assert.match(panel, /const clientErrors = validateSelectionClient\(\{ \.\.\.sel, size \}\);/);
+  // #6321: v3-gaten (sprintLeaderAllowed) gives med; ellers samme kald.
+  assert.match(panel, /const clientErrors = validateSelectionClient\(\{ \.\.\.sel, size(, sprintLeaderAllowed: [^}]+)? \}\);/);
   // Gem-knappens spærre må kun kende validateSelectionClient — outlook er ren visning.
   assert.match(panel, /const earlySaveBlockReason = earlyClientErrors\.length > 0/);
   assert.ok(

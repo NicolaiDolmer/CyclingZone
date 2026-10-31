@@ -157,7 +157,7 @@
           "Tienes un número fijo de ajustes por junta, que se muestra arriba. Una directiva que confía en ti concede más y estira más en sus contraofertas.",
           "La directiva puede proponer un hito nuevo para la visión del club, con la temporada en la que debería alcanzarse. Acéptalo o recházalo.",
           "Tienes una solicitud por junta. Una negativa siempre vuelve con una contraoferta, nunca con un no rotundo.",
-          "Firma, y el mandato queda activo para la temporada. Hasta que se firma sigue siendo una propuesta.",
+          "Firma y el mandato queda activo para la temporada. Hasta que lo firmes, sigue siendo una propuesta. Después de firmar, la junta no lo cambia. Lo único que se puede añadir es una oferta de bonificación, y solo si tú mismo la aceptas.",
           "Si nunca respondes, la directiva firma su propia propuesta por ti cuando se agota el plazo que se muestra arriba en la junta. Conservas el mandato, simplemente no lo moldeaste."
         ]
       },
@@ -171,7 +171,7 @@
       },
       "visionMilestones": {
         "title": "Cuándo cuentan los hitos de la visión",
-        "text": "Cada hito de la visión de tu club tiene una temporada objetivo, y el propio hito indica cuándo cuenta, por ejemplo “Cuenta al final de la temporada 5”. La directiva comprueba los hitos al final de cada temporada, no por el camino, así que un objetivo a largo plazo puede parecer sin tocar durante la mayor parte de una temporada sin estar por detrás. Puedes cumplir un hito antes de tiempo: si ya lo has alcanzado al final de una temporada anterior, cuenta justo ahí, la directiva lo marca como conseguido y propone un hito nuevo en la siguiente junta anual. Un hito que no hayas alcanzado al final de su temporada objetivo se considera fallado. Eso cuesta confianza una vez, y el resto de la visión sigue sin cambios."
+        "text": "Cada hito de la visión de tu club tiene una temporada objetivo, y el propio hito indica cuándo cuenta, por ejemplo “Alcánzalo como muy tarde al final de la temporada 5. Si llegas antes, cuenta al final de esa temporada.”. La directiva comprueba los hitos al final de cada temporada, no por el camino, así que un objetivo a largo plazo puede parecer sin tocar durante la mayor parte de una temporada sin estar por detrás. Puedes cumplir un hito antes de tiempo: si ya lo has alcanzado al final de una temporada anterior, cuenta justo ahí, la directiva lo marca como conseguido y propone un hito nuevo en la siguiente junta anual. Un hito que no hayas alcanzado al final de su temporada objetivo se considera fallado. Eso cuesta confianza una vez, y el resto de la visión sigue sin cambios."
       }
     },
     "auctions": {
@@ -493,7 +493,7 @@
       },
       "careerFirsts": {
         "title": "Primeras veces de la carrera",
-        "text": "El juego registra las primeras veces de la carrera de cada ciclista: una primera victoria, un primer podio, un primer maillot de clasificación y hitos del club como una victoria número 25 con tus colores. Se detectan automáticamente a partir de los resultados de carrera, se muestran como una tarjeta de momento en tu panel y en la página de la carrera, y quedan visibles para siempre en el perfil del propio ciclista, en la pestaña Palmarés."
+        "text": "El juego registra las primeras veces de la carrera de cada ciclista: la primera victoria del ciclista, un primer podio, un primer maillot de clasificación y hitos del club como una victoria número 25 con tus colores. Se detectan automáticamente a partir de los resultados de carrera, se muestran como una tarjeta de momento en tu panel y en la página de la carrera, y quedan visibles para siempre en el perfil del propio ciclista, en la pestaña Palmarés."
       }
     },
     "watchlist": {
@@ -620,7 +620,339 @@
       },
       "stageProfile": {
         "title": "Terreno y perfiles de etapa",
-        "text": "A partir de la temporada 2, las carreras con datos de recorrido muestran el perfil real de la etapa: es el recorrido exacto que ejecuta el motor de carreras, con la longitud, la pendiente y la categoría de cada subida, el sprint intermedio, los sectores de adoquines y dónde cae la meta. La categoría de una subida fija cuántos puntos de montaña hay en juego en la cima, y una meta en lo alto de una subida abre mayores diferencias que una meta tras un descenso. Toca una marca del perfil para ver qué hay en juego allí, o quién se lo llevó una vez disputada la etapa. Las carreras antiguas sin datos de recorrido siguen mostrando la etiqueta de terreno anterior: una silueta esquemática y una categoría indicativa, no un perfil medido."
+        "text": "A partir de la temporada 2, las carreras con datos de recorrido muestran el perfil real de la etapa: es el recorrido exacto que ejecuta el motor de carreras, con la longitud, la pendiente y la categoría de cada subida, el sprint intermedio, los sectores de adoquines y dónde cae la meta. La categoría de una subida fija cuántos puntos de montaña hay en juego en la cima, y una meta en lo alto de una subida abre mayores diferencias que una meta tras un descenso. Toca una marca del perfil para ver qué hay en juego allí, o quién se lo llevó una vez disputada la etapa. Las carreras antiguas sin datos de recorrido siguen mostrando la etiqueta de terreno anterior: una silueta esquemática y una categoría indicativa, no un perfil medido. En las carreras con las reglas más nuevas, las cotas cortas sin categoría que ves en el perfil se corren como carretera ondulada, no como llano. Las subidas, los descensos y los adoquines mantienen su propio terreno."
+      },
+      "raceIdentity": {
+        "title": "Tipos de carrera y señas de identidad",
+        "text": "Desde la temporada 5, cada vuelta por etapas corta tiene un tipo fijo que la acompaña de una temporada a otra, para que sepas para qué clase de carrera te preparas. Cada carrera tiene además una o dos señas de identidad que vuelven cada año: la misma subida decisiva, el mismo sector o la misma contrarreloj. El resto del recorrido varía un poco de una edición a otra. Los cinco monumentos tienen el mismo recorrido cada año; solo cambian el tiempo, la forma y la táctica. Los Grand Tours mantienen su propio formato. El tipo solo lo ves aquí, en la Ayuda; en la página de la carrera se nota en el propio recorrido.",
+        "rows": [
+          [
+            "Tipo",
+            "Qué esperar"
+          ],
+          [
+            "Carrera de velocistas",
+            "Etapas mayoritariamente llanas con al menos un día accidentado. Sin montaña, así que deciden los velocistas."
+          ],
+          [
+            "Carrera de escaladores",
+            "Deciden las etapas de montaña y alta montaña. En la División 1 son la preparación justo antes de cada Grand Tour."
+          ],
+          [
+            "Carrera accidentada",
+            "Repechos y subidas cortas y duras, pero sin montaña de verdad. Hecha para corredores explosivos."
+          ],
+          [
+            "Adoquines/Benelux",
+            "Sectores de adoquines en carreteras llanas y expuestas. Sin montaña."
+          ],
+          [
+            "Carrera contrarreloj",
+            "Deciden las contrarrelojes: a menudo un prólogo el primer día y una contrarreloj más larga al final de la carrera."
+          ],
+          [
+            "Carrera de grava",
+            "Sectores de grava en carreteras accidentadas. Sin montaña."
+          ],
+          [
+            "Montaña primero",
+            "La montaña llega primero. Los velocistas llegan a las etapas llanas del final con las piernas cansadas."
+          ],
+          [
+            "Polivalente",
+            "Un poco de todo: etapas llanas, montaña y una contrarreloj."
+          ]
+        ]
+      },
+      "raceIdentityRaces": {
+        "title": "Tipo y seña de identidad de cada carrera",
+        "text": "Ordenadas por división y por fecha en el calendario. Los Grand Tours no están en la lista. Los cinco monumentos están al final.",
+        "rows": [
+          [
+            "Carrera",
+            "Tipo y seña de identidad"
+          ],
+          [
+            "Tour des Volcans d'Auvergne (Div. 1)",
+            "Carrera de escaladores · Final en alto en Puy de Chalardès"
+          ],
+          [
+            "La Course au Soleil (Div. 1)",
+            "Polivalente · Final en alto en Col de la Brasque + contrarreloj llana"
+          ],
+          [
+            "Tour of South Australia (Div. 1)",
+            "Carrera de escaladores · Final en alto en Mount Kerrawong"
+          ],
+          [
+            "Tour du Hedjaz (Div. 1)",
+            "Carrera de velocistas · Subida: Aqabat Nuwayma"
+          ],
+          [
+            "Giro delle Alpi Orientali (Div. 1)",
+            "Montaña primero · Final en alto en Monte Zoncolaro"
+          ],
+          [
+            "Tour de la Haute-Savoie (Div. 1)",
+            "Carrera de grava · Sector de grava: Piste des Aravis Blanches + sector de grava: Chemin du Plan-Bois en la última etapa"
+          ],
+          [
+            "Volta Catalana (Div. 1)",
+            "Carrera accidentada · Final en subida en Coll de Montbrú"
+          ],
+          [
+            "Vuelta al Alto Aragón (Div. 1)",
+            "Carrera de velocistas · Subida: Alto de Monegrillo"
+          ],
+          [
+            "Tour de la Vistule (Div. 1)",
+            "Carrera de escaladores · Final en alto en Wierch Sokolnicki"
+          ],
+          [
+            "La Corsa dei Due Mari (Div. 1)",
+            "Polivalente · Final en alto en Monte Sassotorto + contrarreloj accidentada"
+          ],
+          [
+            "Vuelta Vasca (Div. 1)",
+            "Carrera accidentada · Final en subida en Alto de Mendibeltz en la última etapa"
+          ],
+          [
+            "Ronde van Noord-Frankrijk (Div. 1)",
+            "Adoquines/Benelux · Sector de adoquines: Pavé du Moulin-Brûlé + sector de adoquines: Chemin des Quatre-Vents en la última etapa"
+          ],
+          [
+            "Tour du Léman (Div. 1)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour des Émirats (Div. 2)",
+            "Polivalente · Final en alto en Jebel Hafira"
+          ],
+          [
+            "Vuelta a Sierra Nevada (Div. 2)",
+            "Carrera de escaladores · Final en alto en Alto de la Veletilla"
+          ],
+          [
+            "Vuelta a los Pirineos (Div. 2)",
+            "Carrera de escaladores · Final en alto en Port de Peyrafita"
+          ],
+          [
+            "Giro dell'Appennino Ligure (Div. 2)",
+            "Carrera accidentada · Subida: Salita di Monte Ravàro"
+          ],
+          [
+            "Tour du Massif des Vosges (Div. 2)",
+            "Montaña primero · Final en alto en Ballon des Belles-Fées"
+          ],
+          [
+            "Tour des Grandes Alpes (Div. 2)",
+            "Carrera de escaladores · Final en alto en Col de la Madelonne"
+          ],
+          [
+            "Tour of South China (Div. 2)",
+            "Carrera de velocistas · Subida: Qingluo Ridge"
+          ],
+          [
+            "Giro della Sila (Div. 2)",
+            "Carrera accidentada · Subida: Salita di Monte Botterello"
+          ],
+          [
+            "Tour du Tyrol (Div. 2)",
+            "Montaña primero · Final en alto en Hochtaler Joch"
+          ],
+          [
+            "Tour d'Anatolie (Div. 2)",
+            "Carrera de velocistas · Subida: Karakaya Tepesi"
+          ],
+          [
+            "Tour du Danube (Div. 2)",
+            "Adoquines/Benelux · Sector de adoquines: Pflasterweg Donauleiten + sector de adoquines: Alte Treppelstraße en la última etapa"
+          ],
+          [
+            "Vuelta a Somiedo (Div. 2)",
+            "Polivalente · Final en alto en Alto de Valdecuerna + contrarreloj llana"
+          ],
+          [
+            "Giro dell'Irpinia (Div. 2)",
+            "Carrera accidentada · Final en subida en Muro di Montevergello en la última etapa"
+          ],
+          [
+            "Tour Wallon (Div. 2)",
+            "Adoquines/Benelux · Sector de adoquines: Pavés de Thieumont + sector de adoquines: Chemin de la Hulpière en la última etapa"
+          ],
+          [
+            "Giro dell'Alta Valtellina (Div. 2)",
+            "Polivalente · Final en alto en Passo della Gaviola + contrarreloj accidentada"
+          ],
+          [
+            "Rundfahrt der Hohen Tauern (Div. 2)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour des Hauts Plateaux (Div. 2)",
+            "Carrera de grava · Sector de grava: Piste des Yaks Noirs"
+          ],
+          [
+            "Danmark Rundt (Div. 2)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Volta ao Alentejo (Div. 2)",
+            "Carrera de velocistas · Subida: Alto de Monsarrinho"
+          ],
+          [
+            "Vuelta Valenciana (Div. 3)",
+            "Polivalente · Final en alto en Alto de Xorret del Pinós + contrarreloj llana"
+          ],
+          [
+            "Volta Algarvia (Div. 3)",
+            "Polivalente · Final en alto en Alto do Malhãozinho + contrarreloj accidentada"
+          ],
+          [
+            "Volta Galega (Div. 3)",
+            "Carrera accidentada · Final en subida en Monte do Castrelo en la última etapa"
+          ],
+          [
+            "Giro della Lucania (Div. 3)",
+            "Carrera de escaladores · Final en alto en Monte Sirinetto"
+          ],
+          [
+            "Tour Belge (Div. 3)",
+            "Adoquines/Benelux · Sector de adoquines: Kasseiweg van Ronsbeke + sector de adoquines: Holle Kasseistraat en la última etapa"
+          ],
+          [
+            "Tour du Larzac (Div. 3)",
+            "Carrera de grava · Sector de grava: Piste des Brebis Grises"
+          ],
+          [
+            "Vuelta Burgalesa (Div. 3)",
+            "Carrera de escaladores · Final en alto en Lagunas de Neilón"
+          ],
+          [
+            "Turul Carpaților (Div. 3)",
+            "Montaña primero · Final en alto en Vârful Negruța"
+          ],
+          [
+            "Volta Portuguesa (Div. 3)",
+            "Polivalente · Final en alto en Alto da Senhora dos Ventos + contrarreloj llana"
+          ],
+          [
+            "Tour de l'Yonne (Div. 3)",
+            "Carrera de velocistas · Subida: Côte de Vézelière"
+          ],
+          [
+            "Vuelta a Gredos (Div. 3)",
+            "Carrera contrarreloj · Contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour Adriatique (Div. 3)",
+            "Carrera accidentada · Subida: Uspon na Gradinu"
+          ],
+          [
+            "Tour de Malaisie (Div. 3)",
+            "Carrera de velocistas · Subida: Bukit Selasih"
+          ],
+          [
+            "Tour des Fjords (Div. 3)",
+            "Carrera accidentada · Final en subida en Stavnesbakken en la última etapa"
+          ],
+          [
+            "Ronde van Zeeland (Div. 3)",
+            "Adoquines/Benelux · Sector de adoquines: Dijkweg van Oosterhaven"
+          ],
+          [
+            "Tour de Silésie (Div. 3)",
+            "Carrera de velocistas · Subida: Wzgórze Opolskie"
+          ],
+          [
+            "Vuelta a los Picos (Div. 4)",
+            "Carrera de escaladores · Final en alto en Lagos de Peñavera"
+          ],
+          [
+            "Tour de la Somme (Div. 4)",
+            "Carrera de velocistas · Subida: Côte de Bellencourt"
+          ],
+          [
+            "Ronde van Overijssel (Div. 4)",
+            "Adoquines/Benelux · Sector de adoquines: Kasseiweg van Holterberg"
+          ],
+          [
+            "Giro del Piceno (Div. 4)",
+            "Carrera accidentada · Final en subida en Muro di Castelvento en la última etapa"
+          ],
+          [
+            "Giro del Monferrato (Div. 4)",
+            "Carrera de grava · Sector de grava: Sterrato delle Vigne Alte"
+          ],
+          [
+            "Tour de l'Allier (Div. 4)",
+            "Polivalente · Contrarreloj llana"
+          ],
+          [
+            "Vuelta a Navarra Nueva (Div. 4)",
+            "Polivalente · Final en alto en Alto de Erroizar + contrarreloj accidentada"
+          ],
+          [
+            "Étoile de Bessèges Mineure (Div. 4)",
+            "Carrera contrarreloj · Contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Tour de la Provence Verte (Div. 4)",
+            "Carrera accidentada · Subida: Côte des Baux-Blancs"
+          ],
+          [
+            "Volta ao Ribatejo (Div. 4)",
+            "Carrera de velocistas · Subida: Alto de Almourinho"
+          ],
+          [
+            "Giro del Trentino Nuovo (Div. 4)",
+            "Montaña primero · Final en alto en Monte Bondanello"
+          ],
+          [
+            "Giro d'Abruzzo Nuovo (Div. 4)",
+            "Carrera de escaladores · Final en alto en Altopiano di Roccaserra"
+          ],
+          [
+            "Tour du Jura (Div. 4)",
+            "Polivalente · Contrarreloj accidentada"
+          ],
+          [
+            "Giro dei Monti Sibillini (Div. 4)",
+            "Carrera accidentada · Subida: Salita di Forca Rosata"
+          ],
+          [
+            "Tour de Bretagne Sud (Div. 4)",
+            "Carrera de velocistas · Subida: Côte de Kerhuel"
+          ],
+          [
+            "Ronde van Vlaams-Brabant (Div. 4)",
+            "Adoquines/Benelux · Sector de adoquines: Kasseistrook van Bertembos + sector de adoquines: Holle Weg van Ottenrode en la última etapa"
+          ],
+          [
+            "Tour de l'Ain Nouveau (Div. 4)",
+            "Carrera contrarreloj · Prólogo + contrarreloj accidentada en la última etapa"
+          ],
+          [
+            "Milano–Riviera (Div. 1)",
+            "Monumento, recorrido fijo · Cipressina y Poggio dei Fiori antes de la meta"
+          ],
+          [
+            "De Vlaamse Ronde (Div. 1)",
+            "Monumento, recorrido fijo · Oude Kwaremberg y Paterhelling antes de la meta, además de sectores de adoquines"
+          ],
+          [
+            "L'Enfer du Nord (Div. 1)",
+            "Monumento, recorrido fijo · Sectores de adoquines desde la Trouée d'Arembourg hasta el Carrefour du Chêne"
+          ],
+          [
+            "La Doyenne des Ardennes (Div. 1)",
+            "Monumento, recorrido fijo · Côte de la Redoutière y Côte de la Roche-aux-Corbeaux, final en subida"
+          ],
+          [
+            "La Classica d'Autunno (Div. 1)",
+            "Monumento, recorrido fijo · Madonna del Ghisello, luego Salita di Valtorta y un descenso hasta la meta"
+          ]
+        ]
       },
       "raceDetail": {
         "title": "Abre una carrera: recorrido, ADN del terreno y tu alineación",
@@ -707,8 +1039,8 @@
           "La fatiga se restablece a 0 para todos los ciclistas.",
           "Las lesiones NO se restablecen. Pasan sin cambios.",
           "Los planes de pico de forma no se ven afectados por el cambio.",
-          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan una sola vez, en la actualización del domingo posterior a que se complete el cambio.",
-          "El primer día de carrera de la nueva temporada es el día después del cambio. Su primera etapa empieza al menos 24 horas después de la última etapa de la temporada anterior, así que tienes tiempo para elegir tus plantillas de carrera."
+          "Los salarios de la temporada se pagan durante el cambio. Los valores de los ciclistas no se mueven durante el cambio en sí: se actualizan la próxima vez, en la actualización normal del domingo.",
+          "La nueva temporada empieza tras una breve pausa entre temporadas, que los mánagers votaron. La fecha de la primera etapa está en el calendario de carreras, así que tienes tiempo para elegir tus equipos."
         ]
       }
     },
@@ -1010,6 +1342,18 @@
         "title": "Edad, pico y declive",
         "text": "Todos los ciclistas alcanzan su pico a los 28 años, sea cual sea su tipo. A partir de la temporada posterior a la que cumple 29, sus habilidades decaen en lugar de crecer, y eso solo ocurre en el cambio de temporada, nunca durante la propia temporada. El declive no es fijo: crece cuanto más tiempo lleva pasado su pico. Durante los tres primeros años después del pico (de 29 a 31 años) sus habilidades principales bajan aproximadamente 1 punto por temporada. Del cuarto al sexto año después del pico (de 32 a 34) sube a unos 1,8 puntos por temporada, y desde el séptimo año (35+) a unos 2,6 puntos por temporada. No todas las habilidades caen a la misma velocidad: las habilidades principales de un ciclista, aquellas en torno a las que se construye su tipo principal, caen al ritmo completo de arriba. Todas las demás habilidades, incluidas las de oficio Colocación y Táctica, caen más despacio, aproximadamente el 70 por ciento de ese ritmo. Es una diferencia de velocidad, no un inicio retrasado: todas las habilidades empiezan a decaer en la misma temporada."
       },
+      "agingV2": {
+        "title": "Edad y declive",
+        "text": "Los ciclistas mantienen su nivel hasta los 30. A partir de la temporada siguiente, sus capacidades físicas y el pavé bajan un poco en cada cambio de temporada, y la bajada crece cuanto más pasan de los 30. La técnica, la táctica y las demás capacidades mentales nunca bajan. Correr frena el declive: cada día de carrera de la temporada que acaba de terminar cuenta, y los días de entrenamiento duro también ayudan. Un ciclista con una temporada completa de carreras conserva casi todas sus piernas. Nadie crece en el propio cambio de temporada; tus ciclistas se desarrollan con su entrenamiento diario."
+      },
+      "aiRidersV2": {
+        "title": "Ciclistas de la IA y agentes libres",
+        "text": "Los ciclistas de equipos de la IA y los que no tienen contrato no se desarrollan. Siguen envejeciendo como todos. Cuando uno de ellos llega a tu equipo, empieza a desarrollarse con tu entrenamiento desde el día siguiente."
+      },
+      "potentialBestRole": {
+        "title": "El potencial en todo el juego",
+        "text": "Mi equipo, la academia, el perfil del ciclista y la pestaña de Ojeo muestran el potencial de la misma forma. Se muestra para el rol en el que puede llegar más alto, con una pequeña caja al lado que dice qué rol es. Sigue siendo una estimación: un mejor ojeador, o más días de entrenamiento en tu equipo para tus propios ciclistas, la afinan."
+      },
       "trainingFocus": {
         "title": "Enfoque de entrenamiento",
         "text": "Desde el perfil de uno de tus propios ciclistas puedes fijar un enfoque de entrenamiento para toda la temporada: una dirección (VO2max, Umbral/CRI, Sprint, Resistencia, Técnica, Aerodinámica o Lectura de carrera). El esfuerzo viene con el tipo de sesión y no es una elección aparte: los intervalos, el umbral y el sprint son duros, el tempo es medio y el resto son suaves. Las habilidades entrenadas se desarrollan más rápido hacia su techo mediante el entrenamiento diario que se ejecuta cada tarde, mientras que las demás habilidades crecen algo más despacio. Las sesiones duras acumulan más fatiga pero no conllevan ningún riesgo de perder progreso. Puedes fijar un enfoque de entrenamiento en tantos ciclistas como quieras; cambiar un enfoque existente no cuesta nada. El entrenamiento es gratuito y no cuesta dinero. Los ciclistas que corren se desarrollan con la carrera en lugar de con su sesión prevista, incluidas las carreras de un día. Los ciclistas seleccionados que no toman la salida siguen su programa, salvo lesiones. La fatiga, la forma y el riesgo de lesión por entrenamiento se evalúan a partir de la actividad combinada de carrera y entrenamiento del día en la actualización de la tarde. Los huecos entre etapas no añaden recuperación extra. El entrenamiento duro sigue siendo más cansado que el normal."
@@ -1049,11 +1393,23 @@
       },
       "typeGating": {
         "title": "¿Por qué un enfoque crece más rápido en unos ciclistas que en otros?",
-        "text": "Cada ciclista tiene un tipo principal Y secundario (Sprinter, Escalador, CRI, general, etc.) y un potencial oculto por habilidad, ambos fijados cuando se crea el ciclista. Dos cosas distintas deciden en qué se convierte una habilidad: hasta dónde puede llegar y con qué rapidez llega. Su tipo fija ambas. Una habilidad para la que está hecho su tipo principal llega más alto y se construye más rápido. Su tipo secundario va justo detrás, con alrededor del 85 % de esa altura. La colocación y la táctica son oficio: nadie nace con ellas, así que todos los ciclistas pueden llegar en torno al 75 % de esa altura, pero se construyen despacio. Una habilidad fuera de sus dos roles llega en torno al 60 % de esa altura y se construye despacio. Cada tipo cubre varias habilidades, no solo la de su nombre: un tipo general también cubre la contrarreloj, así que un ciclista de la general puede llegar alto ahí. Una habilidad contra la que trabaja activamente su tipo apenas se mueve. Mira las dos etiquetas de tipo antes de elegir un enfoque, y ten en cuenta que llegar alto y llegar rápido ya no son lo mismo: una habilidad puede tener mucho margen y aun así tardar años en llenarlo. El ritmo se ajusta de vez en cuando como parte del equilibrado continuo del juego, así que el progreso diario de un ciclista puede sentirse distinto de una actualización a otra aunque nada en él personalmente haya cambiado."
+        "text": "Cada corredor tiene un tipo principal Y uno secundario (Sprinter, Escalador, CRI, General, etc.) y un potencial, todo fijado cuando se crea el corredor. Dos cosas distintas deciden en qué se convierte una habilidad: hasta dónde puede llegar y lo rápido que llega. Su tipo fija hasta dónde. Una habilidad para la que está hecho su tipo principal llega más alto y se desarrolla más rápido. Su tipo secundario va justo detrás. La colocación y la táctica son oficio: nadie nace con ellas, así que todos los corredores pueden alcanzar un nivel decente, pero se desarrollan despacio. Una habilidad fuera de sus dos papeles tiene un techo bajo y se desarrolla despacio. Cada tipo cubre varias habilidades, no solo la de su nombre: un tipo General también cubre la contrarreloj, así que un corredor de General puede llegar alto ahí. Una habilidad contra la que su tipo trabaja activamente apenas se mueve. Su potencial fija lo rápido que se desarrolla en general, así que un talento mayor llega antes a su techo, pero nunca eleva el techo. Mira las dos insignias de tipo antes de elegir un enfoque, y ten en cuenta que llegar alto y llegar rápido son dos cosas distintas: una habilidad puede tener mucho margen y aun así tardar años en llenarlo. El ritmo se ajusta de vez en cuando como parte del equilibrio continuo del juego, así que el progreso diario de un corredor puede sentirse distinto de una actualización a otra aunque nada haya cambiado en él."
       },
       "ceilingReached": {
         "title": "La habilidad de mi ciclista ha dejado de subir",
-        "text": "Eso ahora es poco habitual. Cada habilidad sigue teniendo un techo vitalicio fijado por el tipo y el potencial, pero los ciclistas ya no llegan a él sin más. Lo cerca que llega un ciclista, y en qué habilidades, lo decide cómo lo entrenas. Si una habilidad realmente se ha detenido, casi siempre es una de dos cosas. O bien el ciclista ha pasado su pico, donde las habilidades decaen en lugar de crecer, y lo que tiene es lo que conserva. O bien la habilidad ya está por encima de lo que su tipo y potencial construirían por sí solos, lo que ocurre con ciclistas heredados de una versión anterior del juego. No se le quita nada, simplemente no subirá más. Cada habilidad tiene su propia línea en la página de Entrenamiento diario y en el perfil del ciclista, y una terminada muestra “hecho” donde las demás muestran progreso. El número junto a una habilidad es siempre su valor actual, nunca el techo en sí, que nunca se muestra como número en ninguna parte del juego, y el progreso se ralentiza de forma natural cuanto más se acerca un ciclista, así que un valor que se queda quieto unos días no significa necesariamente que haya terminado."
+        "text": "Eso ahora es poco habitual. Cada habilidad sigue teniendo un techo vitalicio fijado por su tipo, pero los ciclistas ya no llegan a él sin más. Lo cerca que llega un ciclista, y en qué habilidades, lo decide cómo lo entrenas. Si una habilidad realmente se ha detenido, casi siempre es una de dos cosas. O bien el ciclista ha pasado su pico, donde las habilidades decaen en lugar de crecer, y lo que tiene es lo que conserva. O bien la habilidad ya está por encima de lo que su tipo construiría por sí solo, lo que ocurre con ciclistas heredados de una versión anterior del juego. No se le quita nada, simplemente no subirá más. Cada habilidad tiene su propia línea en la página de Entrenamiento diario y en el perfil del ciclista, y una terminada muestra “hecho” donde las demás muestran progreso. El número junto a una habilidad es siempre su valor actual, nunca el techo en sí, que nunca se muestra como número en ninguna parte del juego, y el progreso se ralentiza de forma natural cuanto más se acerca un ciclista, así que un valor que se queda quieto unos días no significa necesariamente que haya terminado."
+      },
+      "typeGatingCurveB": {
+        "title": "¿Por qué un enfoque crece más rápido en unos ciclistas que en otros?",
+        "text": "Cada corredor tiene un tipo principal Y uno secundario (Sprinter, Escalador, CRI, General, etc.) y un potencial, todo fijado cuando se crea el corredor. Su tipo decide qué habilidades pueden llegar más alto: una habilidad para la que está hecho su tipo principal llega más alto y se desarrolla más rápido, y su tipo secundario va justo detrás. La colocación y la táctica son oficio: nadie nace con ellas, así que todos los corredores pueden alcanzar un nivel decente, pero se desarrollan despacio. Una habilidad fuera de sus dos papeles se queda baja y se desarrolla despacio, y una que su tipo frena apenas se mueve. Cada tipo cubre varias habilidades, no solo la de su nombre: un tipo General también cubre la contrarreloj. Su potencial decide hasta dónde puede llegar en total, y un talento mayor también llega antes. Cada punto cuesta más cuanto más alta está ya la habilidad, así que los últimos puntos son los más lentos. Mira sus dos insignias de tipo antes de elegir un enfoque. El ritmo se ajusta de vez en cuando como parte del equilibrio del juego, así que el progreso diario puede sentirse distinto de una actualización a otra."
+      },
+      "ceilingReachedCurveB": {
+        "title": "La habilidad de mi ciclista ha dejado de subir",
+        "text": "El progreso se frena cuanto más alta está ya una habilidad y cuanto más se acerca al techo que fijan su tipo y su potencial, pero nunca se queda quieto ahí: por encima de ese techo una habilidad sigue creciendo despacio. Un valor que se queda quieto unos días suele ser solo progreso lento. Si una habilidad de verdad se ha parado, casi siempre es por una de dos cosas. O el ciclista ha pasado su mejor momento, y sus habilidades bajan en el cambio de temporada en lugar de crecer. O la habilidad ha llegado al nivel más alto que permite su rol. El número junto a una habilidad es siempre su valor actual, nunca el techo, que nunca se muestra como número en ninguna parte del juego."
+      },
+      "longTermGrowthCurveB": {
+        "title": "Crecimiento a largo plazo",
+        "text": "Tres cosas deciden dónde termina una habilidad. Su tipo decide qué habilidades pueden llegar más alto. Su potencial decide hasta dónde: un talento mayor tiene un techo más alto y además se desarrolla más rápido. Y el propio nivel: cada punto cuesta más cuanto más alta está ya la habilidad, así que un corredor avanza rápido en un nivel bajo y despacio cerca de la cima. La edad no hace que nadie se desarrolle más rápido. Los corredores más jóvenes aún no aguantan una carga de entrenamiento completa, así que al mismo nivel avanzan algo más despacio hasta que la aguantan. Cerca de su techo el progreso se frena, pero nunca se queda quieto, hasta el nivel más alto que permite su rol."
       },
       "trainToday": {
         "title": "Ejecuta ahora el entrenamiento de hoy",
@@ -1061,7 +1417,7 @@
       },
       "runDayNow": {
         "title": "Ejecuta ahora el entrenamiento de hoy",
-        "text": "Desde la temporada 4 el entrenamiento del día se ejecuta solo, de una vez, cuando termina la última carrera del día y no antes de las 20:00. Todos los días de carrera de ese día se entrenan en la misma ejecución, así que no se pierde nada por no estar en línea. “Ejecutar ahora el entrenamiento de hoy” está ahí solo por si no quieres esperar: ejecuta exactamente el mismo entrenamiento, sin bonificación ni ventaja, y se abre en el mismo momento en que se abriría la ejecución automática. Una vez entrenado el día, no se puede volver a ejecutar. Con Entrenar ahora (beta), pulsarlo también bloquea la selección de carrera de hoy para los ciclistas que han entrenado: no se pueden añadir a la carrera de hoy ni quitar de ella. Los ciclistas que fiches o asciendas después de pulsarlo sí pueden correr."
+        "text": "Desde la temporada 4 el entrenamiento del día se ejecuta solo, de una vez, cuando termina la última carrera del día y no antes de las 20:00. Todos los días de carrera de ese día se entrenan en la misma ejecución, así que no se pierde nada por no estar en línea. “Ejecutar ahora el entrenamiento de hoy” está ahí solo por si no quieres esperar: ejecuta exactamente el mismo entrenamiento, sin bonificación ni ventaja, y se abre en el mismo momento en que se abriría la ejecución automática. Una vez entrenado el día, no se puede volver a ejecutar. Con Entrenar ahora (beta), pulsarlo también bloquea la selección de carrera de hoy para los ciclistas que han entrenado: no se pueden añadir a la carrera de hoy ni quitar de ella. Los ciclistas que fiches o asciendas después de pulsarlo sí pueden correr. Con Entrenar ahora, un ciclista que ya no tiene carrera hoy se entrena para todo el día de una vez. Un ciclista cuya carrera aún no se ha disputado espera y se entrena después de ella. La ejecución de la tarde a las 20:00 nunca entrena dos veces a un ciclista."
       },
       "raceDays": {
         "title": "Días de carrera y entrenamiento",
@@ -1093,15 +1449,23 @@
       },
       "progressBars": {
         "title": "Barras de progreso y puntos de habilidad",
-        "text": "Los perfiles de los ciclistas muestran una barra de progreso para cada habilidad que se entrena. La barra se llena a medida que se acumula el entrenamiento. Cuando la barra llega al máximo, el ciclista gana +1 en esa habilidad y la barra empieza de nuevo hacia el SIGUIENTE punto, así que justo después de una ganancia, una barra baja o casi vacía es buena señal, no una pérdida. La página de Entrenamiento también muestra una etiqueta “+N hoy” en los ciclistas que han ganado puntos enteros en la sesión de hoy. Cada habilidad tiene un techo vitalicio oculto fijado por el potencial y la edad del ciclista; una habilidad que lo ha alcanzado muestra “hecho” en su propia línea en lugar de una barra. La pestaña Entrenamiento del perfil del ciclista enumera las 17 habilidades con lo que es cada una ahora, cuántos puntos enteros ha ganado el ciclista esta temporada y cuánto lleva del siguiente punto. Cambia de enfoque si otra área aún tiene margen, o disfruta del ciclista a plena fuerza. Los ciclistas veteranos que han pasado su pico de carrera tienen lógicamente poco o ningún margen. Un porcentaje como “Llano +10 %” en un informe de entrenamiento es el progreso del día contado en puntos de habilidad: 100 % equivale a un punto entero. El progreso se arrastra de un día a otro. Nada se reinicia a mitad de temporada. El recuento “esta temporada” solo abarca los días dentro de la temporada activa. Entre dos temporadas muestra la fecha de inicio en lugar de un número, mientras que los valores de las habilidades y las barras siguen contando cada sesión. El recuento de una temporada nueva empieza vacío y se va llenando desde su primer día de entrenamiento."
+        "text": "Los perfiles de los ciclistas muestran una barra de progreso para cada habilidad que se entrena. La barra se llena a medida que se acumula el entrenamiento. Cuando la barra llega al máximo, el ciclista gana +1 en esa habilidad y la barra empieza de nuevo hacia el SIGUIENTE punto, así que justo después de una ganancia, una barra baja o casi vacía es buena señal, no una pérdida. La página de Entrenamiento también muestra una etiqueta “+N hoy” en los ciclistas que han ganado puntos enteros en la sesión de hoy. Cada habilidad tiene un techo vitalicio oculto fijado por el tipo y la edad del ciclista; una habilidad que lo ha alcanzado muestra “hecho” en su propia línea en lugar de una barra. La pestaña Entrenamiento del perfil del ciclista enumera las 17 habilidades con lo que es cada una ahora, cuántos puntos enteros ha ganado el ciclista esta temporada y cuánto lleva del siguiente punto. Cambia de enfoque si otra área aún tiene margen, o disfruta del ciclista a plena fuerza. Los ciclistas veteranos que han pasado su pico de carrera tienen lógicamente poco o ningún margen. Un porcentaje como “Llano +10 %” en un informe de entrenamiento es el progreso del día contado en puntos de habilidad: 100 % equivale a un punto entero. El progreso se arrastra de un día a otro. Nada se reinicia a mitad de temporada. El recuento “esta temporada” solo abarca los días dentro de la temporada activa. Entre dos temporadas muestra la fecha de inicio en lugar de un número, mientras que los valores de las habilidades y las barras siguen contando cada sesión. El recuento de una temporada nueva empieza vacío y se va llenando desde su primer día de entrenamiento."
       },
       "trainingScore": {
         "title": "La puntuación de entrenamiento",
         "text": "Cada sesión que completa un ciclista recibe una puntuación de entrenamiento de 1 a 99. Mide la CALIDAD de esa sesión, no lo que el ciclista sacó de ella: lo exigente que fue la sesión, lo bien que encajó con los puntos fuertes del ciclista, la forma y la fatiga del ciclista ese día, el entrenador y las instalaciones que la respaldan, el talento y la edad del ciclista, y el propio día. La puntuación es lo que impulsa el desarrollo: una sesión mejor mueve más las habilidades. No depende de lo cerca que esté una habilidad de su techo, así que un ciclista que casi ha terminado sus habilidades de enfoque sigue obteniendo una lectura honesta de lo buena que fue la sesión. Los días de descanso no reciben puntuación, porque no hubo sesión que medir. En un día en que una carrera ocupa el lugar de la sesión, la columna muestra “Carrera” en lugar de un número. El número de hoy aparece una vez que se ha ejecutado la sesión de hoy, y hasta entonces la columna muestra la última en gris. Solo tú puedes ver las puntuaciones de tus propios ciclistas."
       },
+      "maxOnePerDay": {
+        "title": "Como máximo +1 por capacidad al día",
+        "text": "Una capacidad puede subir como máximo 1 punto al día, sumando entrenamiento y días de carrera. Lo que pase de ahí no se pierde: pasa al día siguiente."
+      },
+      "todaysDecision": {
+        "title": "La decisión de hoy (beta)",
+        "text": "Arriba en la pestaña Hoy, el asistente sugiere hasta tres cambios para hoy: recuperación activa para ciclistas cansados con un día duro previsto y más riesgo de lesión. Usar lo aplica a ese ciclista. Los que corren hoy, están lesionados, ya tienen un día suave o siguen su propio plan semanal o un grupo de entrenamiento no reciben sugerencia. Cuando ya se ha hecho el entrenamiento de hoy, la tarjeta se oculta."
+      },
       "longTermGrowth": {
         "title": "Crecimiento a largo plazo",
-        "text": "Dos cosas distintas deciden dónde acaba una habilidad: hasta dónde puede llegar y con qué rapidez llega. Las dos vienen del tipo del ciclista. Por eso un ciclista ya no llega a su techo solo por existir el tiempo suficiente. El techo es en lo que podría haberse convertido; tu entrenamiento decide lo cerca que llega y en qué habilidades se acerca. Los ciclistas siguen alcanzando su pico en torno a los 27-28 años y decaen después, y el entrenamiento nunca puede llevar a nadie más allá de su potencial."
+        "text": "Dos cosas distintas deciden dónde termina una habilidad: hasta dónde puede llegar y lo rápido que llega. Hasta dónde viene del tipo del corredor: cada tipo tiene su propio techo para cada habilidad. Lo rápido viene de su potencial: un talento mayor se desarrolla más rápido hacia el mismo techo, pero el potencial no eleva el techo. Por eso un corredor ya no llega a su techo solo por existir el tiempo suficiente. El techo es lo que podría haber llegado a ser; tu entrenamiento decide cuánto se acerca y en qué habilidades. Los corredores declinan con la edad (mira Edad y declive en Corredores), y el entrenamiento nunca puede llevar a nadie por encima de su techo."
       },
       "readingReport": {
         "title": "Leer el informe de entrenamiento",
@@ -1126,6 +1490,10 @@
       "trainingGroups": {
         "title": "Grupos de entrenamiento",
         "text": "Un grupo te permite tomar una decisión de entrenamiento para varios ciclistas. Crea uno en Programa, Plan: abre “Plan para” y elige “+ Grupo nuevo”. Ponle un nombre y empieza desde un tipo de ciclista o elige tú mismo a los ciclistas. Un ciclista puede estar en un grupo. Entonces un cambio en un campo se aplica a todo el grupo, y los ciclistas con una etapa conservan la etapa. “Fatiga esta noche” muestra al ciclista más cansado del grupo. El orden es fijo: primero el plan propio del ciclista, luego el plan de su grupo y después el plan del equipo. Si cambias los campos propios de un ciclista, su plan gana hasta que vuelvas a elegir “Seguir al grupo”. También puedes aplicar un programa a un grupo en Programas, y dar a un grupo su propia excepción en Límite de fatiga."
+      },
+      "catalogV3": {
+        "title": "Dos sesiones duras para cada tipo de corredor",
+        "text": "Cada tipo de corredor tiene ahora dos sesiones duras pensadas para él, y cada sesión dura da un día duro completo. Hay cinco sesiones nuevas: Subidas largas, Lanzamiento, Contrarrelojes cortas, Contrarrelojes largas y Clásica de adoquines. La contrarreloj por fin tiene sus propias sesiones, así que Umbral entrena tempo y resistencia en su lugar. Sprint da ahora un día duro completo. Si alternas entre las dos sesiones de tu tipo, la capacidad principal crece un poco menos, pero crecen otras capacidades. Los ciclistas de contrarreloj y de la general que tenían Umbral, y los de contrarreloj que no tienen plan, entrenan Contrarrelojes largas en su lugar. Si uno de ellos seguía un grupo de entrenamiento con otros tipos de ciclista, ahora tiene su propio plan."
       }
     },
     "activityfeed": {
@@ -1184,11 +1552,15 @@
       },
       "extendContract": {
         "title": "Ampliar un contrato",
-        "text": "Ampliar el contrato de un ciclista desde su página de perfil añade una temporada a la duración del contrato y traslada la temporada de vencimiento una temporada más allá, con un salario renegociado según la producción actual del ciclista. Puedes ampliar tantas veces como quieras, pero la temporada de vencimiento nunca puede llevarse más allá de 3 temporadas respecto a la actual: cuando el contrato de un ciclista ya llega tan lejos, las ampliaciones siguientes quedan bloqueadas hasta que avance la temporada actual."
+        "text": "Amplía un contrato desde la página de perfil del ciclista, o varios a la vez desde la pestaña Contratos de Mi equipo. Cada temporada que añades traslada la temporada de vencimiento una temporada más allá, con un salario renegociado según la producción actual del ciclista. Ampliar 2 o 3 temporadas de una vez da exactamente el mismo resultado que ampliar una temporada cada vez, y no hay comisión. En la pestaña Contratos marcas los ciclistas, eliges 1, 2 o 3 temporadas para todos (puedes cambiarlo por ciclista) y ves la nueva temporada de vencimiento y el salario de cada uno, además del salario total del equipo, antes de guardar nada. La temporada de vencimiento nunca puede llevarse más allá de 3 temporadas respecto a la actual: un ciclista que solo tiene margen para 2 más se amplía 2 y se marca \"(máx.)\", y un ciclista que ya está en el límite se puede ampliar de nuevo cuando cambie la temporada. Si la directiva ha fijado un tope salarial, toda la ampliación tiene que caber por debajo, o no se amplía nada."
       },
       "freeAgents": {
         "title": "Agentes libres",
         "text": "Los agentes libres no tienen salario hasta que un equipo los ficha. El perfil del ciclista y la página de la subasta muestran un salario estimado (según la producción esperada del ciclista esta temporada) para que puedas planificar tu presupuesto antes de pujar. El salario real solo se fija en el momento de la firma. Los agentes libres aparecen sobre todo cuando el contrato de un ciclista termina y no se renueva en el cambio de temporada: en la práctica es casi siempre una plantilla gestionada por una persona, porque los equipos controlados por la IA renuevan automáticamente sus propios contratos que vencen en esa misma transición. El resto son ciclistas liberados por su antiguo club, ya sea en la graduación de la Academia o por una oferta de cantera de la Academia que caducó sin respuesta y no encontró comprador en subasta (consulta “¿Caducan las ofertas de cantera de la Academia?”)."
+      },
+      "contractWarnings": {
+        "title": "¿Qué ciclistas reciben avisos de contrato?",
+        "text": "Los avisos cubren a tus ciclistas sénior, sub-23, júnior y de la academia. Al cambiar de temporada, recibes un único mensaje con los ciclistas cuyos contratos caducan durante la nueva temporada, su plantilla y su valor. También recibes un aviso al fichar un ciclista o cambiarlo de plantilla si su contrato caduca en la temporada actual. Puedes renovar contratos de todas las plantillas en la pestaña Contratos de Mi equipo. Los ciclistas liberados al cambiar de temporada se agrupan en otro mensaje. Cambiar de plantilla no modifica el contrato, y la duración del contrato inicial de los fichajes de la academia se mantiene."
       }
     },
     "academy": {
@@ -1207,7 +1579,7 @@
       },
       "prognosisTraining": {
         "title": "Descubrir el potencial de una promesa",
-        "text": "Tras fichar a un ciclista de la academia, conoces su pronóstico a través de los días de entrenamiento en tu equipo. Al principio no hay estimación; después llega un intervalo de valoración inicial, luego uno más preciso y por último el definitivo. La pestaña de scouting muestra la etapa actual, el intervalo revelado y los días de entrenamiento hasta la próxima etapa. Un mejor cuerpo técnico y mejores instalaciones de entrenamiento te ayudan a avanzar antes. No cambian su talento, y hasta el pronóstico final sigue siendo un intervalo."
+        "text": "Tras fichar a un ciclista de la academia, su previsión mejora con los días de entrenamiento y carrera registrados en tu equipo. El tiempo desde el fichaje no cuenta por sí solo: dejarlo una semana en el equipo no completa la previsión. Primero no hay estimación, después aparece un intervalo aproximado, otro más preciso y finalmente el definitivo. La pestaña Ojeo muestra la etapa actual, el intervalo revelado y los días de entrenamiento o carrera hasta la siguiente etapa. Mejores entrenadores e instalaciones permiten avanzar antes. No cambian su talento, y la previsión definitiva sigue siendo un intervalo. La actualización del domingo fija su valor de mercado; no completa su previsión de potencial."
       },
       "signingProspects": {
         "title": "Fichar promesas",
@@ -1224,7 +1596,11 @@
       },
       "dailyTrainingBoost": {
         "title": "Entrenamiento diario en la academia",
-        "text": "Los ciclistas de la academia siguen exactamente el mismo modelo de entrenamiento que tu plantilla sénior. No hay un sistema de academia aparte ni un freno oculto a la rapidez con que mejoran: fija un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. La única diferencia real es la edad. Los ciclistas menores de 22 años reciben un impulso juvenil extra que se desvanece al acercarse a los 22. Su potencial fija tanto hasta dónde pueden llegar sus habilidades como con qué rapidez llegan, así que un talento mayor se desarrolla antes y llega más alto, mientras que un talento menor se convierte en un gregario sólido."
+        "text": "Los corredores de la academia siguen exactamente el mismo modelo de entrenamiento que tu equipo sénior. No hay un sistema aparte para la academia ni un freno oculto a su mejora: elige un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. La única diferencia real es la edad. Los corredores menores de 22 años reciben un impulso juvenil extra que se desvanece al acercarse a los 22. Su tipo fija hasta dónde puede llegar cada habilidad, y su potencial fija lo rápido que llegan, así que un talento mayor se desarrolla antes hacia el mismo techo, mientras que un talento menor crece más despacio hasta ser un gregario sólido."
+      },
+      "dailyTrainingBoostCurveB": {
+        "title": "Entrenamiento diario en la academia",
+        "text": "Los corredores de la academia siguen exactamente el mismo modelo de entrenamiento que tu equipo sénior. No hay un sistema aparte para la academia: elige un enfoque y una intensidad, y las ganancias se acumulan día a día de la misma manera. Las habilidades bajas son baratas de construir, así que un corredor joven sigue avanzando rápido al principio. La edad no da velocidad extra. La única diferencia es que los corredores más jóvenes aún no aguantan una carga de entrenamiento completa, así que se desarrollan algo más despacio que un corredor mayor del mismo nivel hasta que la aguantan. Su tipo decide qué habilidades pueden llegar más alto, y su potencial decide hasta dónde llegan y lo rápido, así que un talento mayor llega más alto y antes, mientras que un talento menor crece hasta ser un gregario sólido."
       },
       "youthAuctions": {
         "title": "Subastas juveniles",
@@ -1314,7 +1690,7 @@
           [
             "Departamento médico",
             "Acelera la recuperación de forma y de lesiones",
-            "Próximamente"
+            "Activo ahora"
           ],
           [
             "Ampliación de la academia",
@@ -1338,7 +1714,7 @@
       },
       "hireChiefScout": {
         "title": "Contratar a un jefe de ojeadores",
-        "text": "El nivel de la Red de ojeo fija el nivel más alto de jefe de ojeadores que puedes contratar, así que constrúyela o mejórala primero si el candidato que quieres está bloqueado. Todos los equipos ya tienen un ojeador por defecto aunque no tengan ninguna instalación construida, pero un jefe de ojeadores contratado tiene una valoración global real y más alta: esa valoración estrecha más sus estimaciones (un rango de potencial más ajustado en la pestaña Ojeo) y, cuando su global llega a unos 80, le permite llevar dos trabajos de ojeo a la vez en lugar de uno. Contrata y despide responsables desde la página del Club, igual que en cualquier otra línea de instalaciones."
+        "text": "El nivel de la Red de ojeo fija el nivel más alto de jefe de ojeadores que puedes contratar, así que constrúyela o mejórala primero si el candidato que quieres está bloqueado. Todos los equipos ya tienen un ojeador por defecto aunque no tengan ninguna instalación construida, pero un jefe de ojeadores contratado tiene una valoración global real y más alta: esa valoración estrecha más sus estimaciones (un rango de potencial más ajustado en la pestaña Ojeo) y, cuando su global llega a unos 80, le permite llevar dos trabajos de ojeo a la vez en lugar de uno. Contrata y despide responsables desde la página del Club, igual que en cualquier otra línea de instalaciones. Los candidatos que puedes contratar son un pequeño grupo por función. El nivel de tu instalación es el más alto que pueden tener, y al menos un candidato por función está en ese nivel. Al cambiar de temporada se genera un grupo nuevo; dentro de una temporada solo cambia cuando mejoras la instalación o contratas a alguien. Los responsables despedidos y los actuales nunca aparecen en él."
       },
       "coachingGroups": {
         "title": "Grupos de entrenamiento: sub-23 frente a sénior",
@@ -1377,11 +1753,19 @@
       },
       "roles": {
         "title": "Jefe de filas, jefe de filas de sprint, cazador de escapadas y rol libre",
-        "text": "Das a cada ciclista seleccionado un rol mediante las tarjetas de tácticas, y cada tarjeta explica por qué el rol encaja con el terreno de esta carrera. Tu jefe de filas está protegido por el equipo: unos gregarios fuertes y frescos aumentan las opciones del jefe de filas. En las etapas llanas, tu jefe de filas de sprint (si lo hay) recibe en su lugar la protección. Un cazador de escapadas intenta entrar en la escapada del día por defecto y corre más fuerte para mantenerse por delante. Puedes desactivarlo para una sola etapa, y un intento nunca es seguro. La tarjeta del cazador muestra lo probable que es que una escapada llegue en este terreno, y la página de detalle de la carrera ordena a tus mejores cazadores por agresividad, las ganas de atacar. La agresividad hace más probable que un ciclista entre en la escapada, y un ciclista con rol libre también lo intenta más a menudo por su cuenta. En las carreras con las reglas actuales cada intento cuesta energía, también cuando falla. El trabajo de equipo tiene un precio: los gregarios pierden puestos trabajando para el jefe de filas, y ese trabajo es justo lo que compra el impulso del jefe de filas. Un ciclista con Rol libre se salta las obligaciones de equipo y corre su propia carrera, sin coste de trabajo ni apoyo al jefe de filas."
+        "text": "Das a cada ciclista seleccionado un rol mediante las tarjetas de tácticas, y cada tarjeta explica por qué el rol encaja con el terreno de esta carrera. Tu jefe de filas está protegido por el equipo: unos gregarios fuertes y frescos aumentan las opciones del jefe de filas. En las etapas llanas, tu jefe de filas de sprint (si lo hay) recibe en su lugar la protección. Un cazador de escapadas intenta entrar en la escapada del día por defecto y corre más fuerte para mantenerse por delante. Puedes desactivarlo para una sola etapa, y un intento nunca es seguro. La tarjeta del cazador muestra lo probable que es que una escapada llegue en este terreno, y la página de detalle de la carrera ordena a tus mejores cazadores por agresividad, las ganas de atacar. La agresividad hace más probable que un ciclista entre en la escapada, y un ciclista con rol libre también lo intenta más a menudo por su cuenta. En las carreras con las reglas actuales cada intento cuesta energía, también cuando falla. El trabajo de equipo tiene un precio: los gregarios pierden puestos trabajando para el jefe de filas, y ese trabajo es justo lo que compra el impulso del jefe de filas. Un ciclista con Rol libre se salta las obligaciones de equipo y corre su propia carrera, sin coste de trabajo ni apoyo al jefe de filas. En las carreras con las reglas más nuevas, un jefe de filas de sprint puede ser tu único líder, sin jefe de filas. Entonces tiene la protección del equipo en todas las etapas. En esas carreras también puedes elegir un jefe de filas compartido. Está protegido como el jefe de filas y nunca trabaja para el equipo, pero cuando los dos van en el mismo grupo, el jefe de filas recibe la ayuda primero y el jefe de filas compartido recibe lo que sobra. Si acaban en grupos distintos, los gregarios de cada grupo corren para el líder que va con ellos, y si el jefe de filas se descuelga o está fuera de carrera, el jefe de filas compartido recibe toda la ayuda. En esas carreras un ciclista fuerte también puede irse en solitario del grupo de favoritos al final de una carrera de adoquines, de grava u ondulada, pero solo un jefe de filas, un jefe de filas compartido, un jefe de filas de sprint o un ciclista con rol libre ataca tan tarde. Un gregario solo lo hace cuando ningún jefe de filas de su equipo va en ese grupo, y un cazador de escapadas nunca lo hace."
       },
       "stageTactics": {
         "title": "Carreras por etapas: roles y esfuerzo por etapa",
-        "text": "En las carreras por etapas, la página de la carrera tiene un tablero de tácticas etapa por etapa. Las etapas completadas están bloqueadas y muestran lo que pasó; las etapas próximas aún se pueden cambiar mientras la carrera avanza. Cada ciclista puede correr un rol distinto por etapa, más un esfuerzo: hay tres esfuerzos: Ir tranquilo, Normal y Trabajar o atacar. Trabajar o atacar acumula fatiga extra: un gregario o un cazador trabaja para el equipo, mientras que un jefe de filas o un ciclista con rol libre lo usa para atacar. Ir tranquilo afloja para llegar más fresco a los días que importan. Si un ciclista toma el maillot de líder, un atajo en la pestaña Equipo de la página de la carrera lo hace jefe de filas para todas las etapas restantes con un solo clic mientras la carrera está en marcha, pasando a gregario a cualquier otro jefe de filas en esas etapas. Las etapas en las que no fijas nada usan simplemente el rol de carrera del ciclista."
+        "text": "En las carreras por etapas, la página de la carrera tiene un tablero de tácticas etapa por etapa. Las etapas completadas están bloqueadas y muestran lo que pasó; las etapas próximas aún se pueden cambiar mientras la carrera avanza. Cada ciclista puede correr un rol distinto por etapa, más un esfuerzo para el día. Los escalones de esfuerzo tienen su propio párrafo justo debajo. Si un ciclista toma el maillot de líder, un atajo en la pestaña Equipo de la página de la carrera lo hace jefe de filas para todas las etapas restantes con un solo clic mientras la carrera está en marcha, pasando a gregario a cualquier otro jefe de filas en esas etapas. Las etapas en las que no fijas nada usan simplemente el rol de carrera del ciclista. Un plan de etapa puede cambiar la tarea de un ciclista en la cima de una subida, en los últimos 10 km o cuando se descuelga. El cambio de los últimos 10 km se produce justo a 10 km de meta, también en mitad de una subida o de un sector de adoquines. Cuando ese punto cae en un descenso, el cambio se produce en la cima o al final del descenso, según lo que quede más cerca. Si el descenso llega hasta la meta, el trabajo de equipo (Marcar el ritmo, Llevar al líder delante) cambia en la cima, para que el trabajo se haga antes de la línea."
+      },
+      "effortSteps": {
+        "title": "Escalones de esfuerzo",
+        "text": "Cada ciclista recibe un esfuerzo para la etapa que tienes abierta. Cinco escalones van del más fácil al más duro. Grupeto termina la etapa en el grupo de atrás y nunca le da un resultado propio. Nunca se mete en la escapada, y lo que ahorra depende de la etapa: poco en un día llano, lo máximo en la montaña. Ir tranquilo se coloca en el pelotón y guarda piernas para los días que cuentan. Normal es su carrera normal. El cuarto escalón se llama según el trabajo: Trabajar para un gregario o un cazador de escapadas, que corre para el jefe de filas y acumula fatiga real; Seguir los ataques para un jefe de filas o un jefe de filas de sprint, que responde a cada ataque y gasta más piernas; Correr a la ofensiva para un ciclista con rol libre, que aprieta en las subidas y en el final. A tope lo pone todo en el día de hoy y es el día más duro para sus piernas. Un escalón más duro siempre cuesta más fatiga que uno más suave, por fuerte que sea el ciclista. Un gregario en A tope corre para sí mismo y deja de ayudar al jefe de filas. En las carreras con las reglas más nuevas, un ciclista solo ataca en un descenso cuando sus órdenes lo permiten: en Normal o A tope puede, en Grupeto, Ir tranquilo o el cuarto escalón se queda en el grupo. Con un plan de etapa decide la tarea: Ir a cubierto, Llevar al líder delante, Marcar el ritmo, Tren de sprint, Grupeta y Llegar a meta nunca atacan en un descenso."
+      },
+      "effortStepsThree": {
+        "title": "Escalones de esfuerzo",
+        "text": "Cada ciclista recibe un esfuerzo para la etapa que tienes abierta. Tres escalones van del más fácil al más duro. Ir tranquilo se coloca en el pelotón y guarda piernas para los días que cuentan. Normal es su carrera normal. El tercer escalón se llama según el trabajo: Trabajar para un gregario o un cazador de escapadas, que corre para el jefe de filas y acumula fatiga real; Seguir los ataques para un jefe de filas o un jefe de filas de sprint, que responde a cada ataque y gasta más piernas; Correr a la ofensiva para un ciclista con rol libre, que aprieta en las subidas y en el final. Un escalón más duro siempre cuesta más fatiga que uno más suave, por fuerte que sea el ciclista."
       },
       "strategy": {
         "title": "Estrategia del equipo (preferencias permanentes)",
@@ -1393,7 +1777,7 @@
       },
       "ordersGc": {
         "title": "Órdenes de escapada y reacción en la general",
-        "text": "Las carreras nuevas usan estas reglas. Una carrera que empezó antes conserva las reglas con las que empezó. La pestaña Tácticas las muestra en Reglas de carrera antes de que guardes. Los párrafos de abajo fijan quién entra en la escapada de la mañana y lo que cuesta. La escapada de la mañana sigue tus órdenes. Un jefe de filas, un jefe de filas de sprint o un gregario solo va a por ella con Intentar la escapada seleccionado. Un cazador de escapadas va a por ella por defecto, y puedes desactivarlo para una sola etapa. Un ciclista con rol libre puede intentarlo por su cuenta cuando su intención es Normal; con cualquier otra intención necesita Intentar la escapada. El grupeto nunca lo intenta. Cada intento cuesta energía, también cuando falla, y ningún intento tiene garantizado entrar en la escapada. Un gregario que entra en la escapada no puede ayudar a la vez a su jefe de filas en el pelotón. Una etapa también puede acabar sin ninguna escapada de la mañana. La postura de tu equipo decide cómo trata la escapada. Perseguir añade potencia a la persecución, salvo contra una escapada que lleve a uno de tus propios ciclistas. Leer la carrera reacciona cuando la escapada amenaza a tu ciclista de la general, y un equipo sin orden reacciona de la misma manera. Dejar la persecución a otros significa que tu equipo no ayuda a perseguir; nunca frena al pelotón. Sin una orden, un equipo persigue por su cuenta cuando tiene un ciclista que puede ganar el final del día: un sprinter en una etapa llana, un puncheur en una etapa ondulada, un escalador en una etapa de montaña. Tu propia orden siempre va primero. Con Dejar la persecución a otros el equipo aún puede dar una respuesta limitada a una amenaza seria a tu ciclista de la general: solo usa ciclistas libres de su grupo y se detiene cuando ha gastado una cantidad fija de trabajo en la etapa. Una respuesta mantiene controlada la diferencia, nunca garantiza una captura. Las amenazas se juzgan a partir de la clasificación general publicada antes de la etapa, así que no hay reacción en la general en la primera etapa. En una carrera de un día, un equipo reacciona cuando un rival que puede ganar el día va por delante y su propio jefe de filas también puede ganarlo, salvo que el equipo haya elegido Dejar la persecución a otros. La película de la carrera muestra cuándo un equipo empieza o deja de reaccionar, cuándo ha gastado todo lo que puede y cuándo no tiene ciclistas libres con los que reaccionar."
+        "text": "Las carreras nuevas usan estas reglas. Una carrera que empezó antes conserva las reglas con las que empezó. La pestaña Tácticas las muestra en Reglas de carrera antes de que guardes. Los párrafos de abajo fijan quién entra en la escapada de la mañana y lo que cuesta. La escapada de la mañana sigue tus órdenes. Un jefe de filas, un jefe de filas de sprint o un gregario solo va a por ella con Intentar la escapada seleccionado. Un cazador de escapadas va a por ella por defecto, y puedes desactivarlo para una sola etapa. Un ciclista con rol libre puede intentarlo por su cuenta cuando su intención es Normal; con cualquier otra intención necesita Intentar la escapada. El grupeto nunca lo intenta. Cada intento cuesta energía, también cuando falla, y ningún intento tiene garantizado entrar en la escapada. Un gregario que entra en la escapada no puede ayudar a la vez a su jefe de filas en el pelotón. Una etapa también puede acabar sin ninguna escapada de la mañana. La postura de tu equipo decide cómo trata la escapada. Perseguir añade potencia a la persecución, salvo contra una escapada que lleve a uno de tus propios ciclistas. Leer la carrera reacciona cuando la escapada amenaza a tu ciclista de la general, y un equipo sin orden reacciona de la misma manera. Dejar la persecución a otros significa que tu equipo no ayuda a perseguir; nunca frena al pelotón. Sin una orden, un equipo persigue por su cuenta cuando tiene un ciclista que puede ganar el final del día: un sprinter en una etapa llana, un puncheur en una etapa ondulada, un escalador en una etapa de montaña. Tu propia orden siempre va primero. Con Dejar la persecución a otros el equipo aún puede dar una respuesta limitada a una amenaza seria a tu ciclista de la general: solo usa ciclistas libres de su grupo y se detiene cuando ha gastado una cantidad fija de trabajo en la etapa. Una respuesta mantiene controlada la diferencia, nunca garantiza una captura. Las amenazas se juzgan a partir de la clasificación general publicada antes de la etapa, así que no hay reacción en la general en la primera etapa. En una carrera de un día, un equipo reacciona cuando un rival que puede ganar el día va por delante y su propio jefe de filas también puede ganarlo, salvo que el equipo haya elegido Dejar la persecución a otros. La película de la carrera muestra cuándo un equipo empieza o deja de reaccionar, cuándo ha gastado todo lo que puede y cuándo no tiene ciclistas libres con los que reaccionar. En una etapa de montaña de una carrera por etapas, los equipos de los ciclistas de la general dejan ir una escapada cuando nadie en ella puede amenazar a su líder en la general, contando también lo que podría ganar en las etapas que quedan. Una escapada con una amenaza real para la general se persigue como antes."
       },
       "fatigue": {
         "title": "La fatiga importa",
@@ -1412,7 +1796,7 @@
       "label": "Día de carrera y tácticas",
       "roleAndIntention": {
         "title": "Roles e intención de hoy",
-        "text": "Tu rol es el trabajo que elegiste para un ciclista al montar tu equipo: jefe de filas, jefe de filas de sprint, cazador de escapadas, gregario o rol libre. Dura toda la carrera y rara vez cambia. La intención es distinta: es lo que le pides en la etapa que tienes abierta ahora mismo, y si la dejas como está, simplemente corre con su rol. Hay cinco ajustes, del más fácil al más duro: grupeto, ir tranquilo, normal, trabajar o atacar y a tope. Un ajuste más duro siempre cuesta más fatiga que uno más fácil, por fuerte que sea el ciclista, y el grupeto nunca le da un resultado propio."
+        "text": "Tu rol es el trabajo que elegiste para un ciclista al montar tu equipo: jefe de filas, jefe de filas de sprint, cazador de escapadas, gregario o rol libre. Dura toda la carrera y rara vez cambia. La intención es distinta: es lo que le pides en la etapa que tienes abierta ahora mismo, y si la dejas como está, simplemente corre con su rol. Los escalones que puedes elegir se explican en Escalones de esfuerzo."
       },
       "crashesAndIncidents": {
         "title": "Caídas e incidentes",
@@ -1424,7 +1808,15 @@
       },
       "teamwork": {
         "title": "Trabajo en equipo en la carretera",
-        "text": "Tu jefe de filas, o tu jefe de filas de sprint en una etapa llana, está protegido por el trabajo que pone el resto del equipo. Un gregario o un cazador de escapadas paga esa protección con su propio esfuerzo; un ciclista con rol libre ni ayuda ni paga. El impulso está acotado para que nunca se dispare, y solo cuenta cuando al menos un compañero sigue corriendo cerca de él. Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo. Un gregario en Ir tranquilo paga menos pero da menos apoyo a tu jefe de filas. Trabajar para el equipo nunca sale gratis, y ninguna combinación de rol e intención puede convertirlo en una bonificación añadida a la propia habilidad de un ciclista."
+        "text": "Tu jefe de filas, o tu jefe de filas de sprint en una etapa llana, está protegido por el trabajo que pone el resto del equipo. Un gregario o un cazador de escapadas paga esa protección con su propio esfuerzo; un ciclista con rol libre ni ayuda ni paga. El impulso está acotado para que nunca se dispare, y solo cuenta cuando al menos un compañero sigue corriendo cerca de él. Un gregario en Ir tranquilo paga menos pero da menos apoyo a tu jefe de filas. Trabajar para el equipo nunca sale gratis, y ninguna combinación de rol e intención puede convertirlo en una bonificación añadida a la propia habilidad de un ciclista."
+      },
+      "teamworkAllOut": {
+        "title": "A tope y trabajo en equipo",
+        "text": "Pon a un ciclista a tope y deja de pagar ese precio por completo, porque se lo gasta todo en sí mismo."
+      },
+      "luxuryHelper": {
+        "title": "El gregario de lujo",
+        "text": "Un gregario de lujo es un gregario con un plan de etapa ya hecho: se reserva en el pelotón y luego trabaja para tu jefe de filas en la subida decisiva, la última del día. En el plan de etapa puedes mover su trabajo a otra subida o darle otro plan. Si tu jefe de filas se descuelga o abandona, corre su propia carrera. Un equipo puede tener un gregario de lujo, y solo en carreras con las reglas más nuevas."
       },
       "weatherAndCobbles": {
         "title": "Clima y adoquines",
@@ -1439,7 +1831,7 @@
     },
     "peakWhatItDoes": {
       "q": "¿Qué hace un pico?",
-      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. Los picos todavía no cuentan en las carreras; las carreras usan su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
+      "a": "Un pico eleva la forma de un ciclista durante una única ventana de carrera que eliges en el Planificador de temporada. Funciona con una preparación para la que entrenas de antemano y un bajón posterior, así que merece la pena fijarlo en una carrera que de verdad pretendes ganar, no en toda la temporada. Cada ciclista puede tener hasta dos picos a la vez. En las carreras, el pico se suma a su Forma normal. Mira “¿Cómo funciona el entrenamiento de pico?” y “¿Un pico me cuesta algo después?” más abajo para saber exactamente cuánto y cuándo."
     },
     "peakTraining": {
       "q": "¿Cómo funciona el entrenamiento de pico?",
@@ -1515,7 +1907,7 @@
     },
     "auctionExpiry": {
       "q": "¿Cuándo caduca una subasta?",
-      "a": "Cuando pones en subasta a tu propio ciclista, eliges la hora exacta en que termina la subasta, de 1 a 48 horas por delante. Una subasta de un ciclista libre (sin equipo) dura por defecto al menos 12 horas activas: lo inicie quien lo inicie, y sea cual sea el motivo por el que el ciclista quedó libre (iniciada por uno mismo, el banco, la academia o el mercado juvenil), para que no pierdas a un joven talento solo porque estabas durmiendo o trabajando. La única excepción es una Subasta relámpago, que siempre dura exactamente 30 minutos. Las horas nocturnas no cuentan: la ventana activa va de las 08:00 a las 24:00 todos los días. Ejemplo: una subasta iniciada a las 19:40 termina esa misma tarde a las 20:40. Una subasta iniciada a las 23:30 termina a la mañana siguiente a las 08:30."
+      "a": "Cuando pones en subasta a tu propio ciclista, eliges la hora exacta en que termina la subasta, de 1 a 48 horas por delante. Una subasta de un ciclista libre (sin equipo) dura siempre al menos 12 horas, también si eliges tú la hora de fin: lo inicie quien lo inicie, y sea cual sea el motivo por el que el ciclista quedó libre (iniciada por uno mismo, el banco, la academia o el mercado juvenil), para que no pierdas a un joven talento solo porque estabas durmiendo o trabajando. Las Subastas relámpago (30 minutos) son solo para tus propios ciclistas. Las horas nocturnas no cuentan: la ventana activa va de las 08:00 a las 24:00 todos los días. Ejemplo: una subasta iniciada a las 19:40 termina esa misma tarde a las 20:40. Una subasta iniciada a las 23:30 termina a la mañana siguiente a las 08:30."
     },
     "flashAuction": {
       "q": "¿Qué es una Subasta relámpago?",
@@ -1567,7 +1959,7 @@
     },
     "trainingFocusFaq": {
       "q": "¿Cómo entreno a un ciclista?",
-      "a": "Abre uno de tus propios ciclistas y fija un enfoque de entrenamiento en “Enfoque de entrenamiento” del perfil: elige una dirección y una intensidad. Las habilidades entrenadas se desarrollan más rápido hacia su techo en el próximo cambio de temporada. Puedes fijar un enfoque en tantos ciclistas como quieras. Una intensidad más alta entrena más rápido y acumula más fatiga, pero nunca arriesga perder progreso; cambiar un enfoque existente no cuesta nada, y el entrenamiento es gratuito."
+      "a": "Abre uno de tus corredores y elige un enfoque de entrenamiento en 'Enfoque de entrenamiento' en el perfil: escoge una dirección y una intensidad. Las habilidades entrenadas se desarrollan más rápido hacia su techo, día a día mientras corre el entrenamiento. Puedes poner un enfoque a tantos corredores como quieras. Más intensidad entrena más rápido y genera más fatiga, pero nunca arriesga perder progreso; cambiar un enfoque existente no cuesta nada y el entrenamiento es gratis."
     },
     "restForDevelopedFaq": {
       "q": "Mi ciclista está totalmente desarrollado. ¿Le pongo simplemente en Descanso?",
@@ -1680,10 +2072,6 @@
     "forecastCalculation": {
       "q": "¿Cómo se calcula la previsión de la próxima temporada de la página de Finanzas?",
       "a": "La previsión muestra una línea por cada fuente de ingresos/costes en lugar de un único número neto, para que puedas ver de dónde sale el total. (1) Patrocinio (base): la base de la temporada escalada por división (D1 600.000 · D2 400.000 · D3 340.000 CZ$) × el modificador de presupuesto de la directiva × cualquier factor de retirada de patrocinador activo. Si ya has firmado con la directiva un acuerdo que empieza la próxima temporada, esta línea usa en su lugar la base garantizada de ese acuerdo. (2) Patrocinio (variable): hasta 150.000 CZ$ a partir de la temporada 2, según los puntos/puesto de la temporada pasada en relación con tu división. (3) Muestro los premios en metálico como mi estimación para tu equipo, con un margen del ±20 %. Es una estimación, no un rango medido ni una garantía. (4) Salario: en una previsión de la temporada 1 o 2 es la suma de los salarios de tus ciclistas actuales tal como están valorados hoy, porque los contratos quedan fijados al firmar; a partir de una previsión de la temporada 3 cada contrato se recalcula en el cambio de temporada, así que la línea muestra lo que costaría tu plantilla actual con el sistema salarial en lugar de lo que dicen sus contratos antiguos. El salario es una proporción fija del valor de producción actual de cada ciclista, nunca de su valor de mercado. (5) Mantenimiento de la división: un coste de funcionamiento fijado por tu división, no por tu plantilla, cobrado al inicio de la temporada. Si aparece como Viajes y personal, lo pagas por cada día de carrera sénior en que sale tu equipo, y la línea muestra la tarifa por el número esperado de días de carrera. Es una línea aparte porque no puedes cambiarla contratando ni construyendo. (6) Personal técnico e instalaciones: solo lo que has elegido pagar, es decir, el mantenimiento de las instalaciones de las líneas que has construido y los salarios del personal técnico que has contratado. Los intereses de los préstamos (intereses sobre la deuda pendiente de tus préstamos activos) aparecen como una línea extra cuando tienes un préstamo activo, pero no forman parte del neto total que tienen encima: los intereses se suman al propio préstamo en lugar de descontarse de tu saldo, así que se muestran para dar visibilidad, no se cuentan. El mantenimiento de la academia (el coste de funcionamiento por plaza de los ciclistas de la academia) también aparece como su propia línea extra, y a diferencia de los intereses del préstamo SÍ forma parte del neto. No se incluye, porque nada de ello puede predecirse con fiabilidad de antemano: los ingresos variables de patrocinio por etapa de la temporada y las cláusulas de bonus del patrocinio (prima por resultado/objetivo/firma), ya que dependen de resultados que aún no has obtenido; los eventos puntuales como los bonus de ascenso/descenso, el paracaídas por descenso o una venta forzosa por el techo de deuda; y cualquier cosa que dependa de una decisión que aún no has tomado, como comprar o vender ciclistas, construir instalaciones nuevas, contratar o despedir personal técnico, fichajes para la academia, misiones de ojeo, contratar un préstamo o un préstamo de emergencia, o devolver capital de un préstamo más allá de los intereses que ya se muestran aparte arriba. Un puñado de entradas raras ajenas al juego (correcciones de saldo del administrador, multas por las reglas de plantilla, ampliaciones automáticas de plantilla) también quedan excluidas. Nada de esto se incorpora en silencio a los números de arriba: si una fuente no se puede prever, se deja fuera en lugar de adivinarla, y aparecerá en tu historial de transacciones cuando ocurra de verdad. La etiqueta del nivel de riesgo es verde si el neto es ≥ +50K y la deuda < 50 % del techo, amarilla si el neto está entre -50K y +50K o la deuda está entre el 50 y el 80 % del techo, y roja si el neto es < -50K, la deuda > 80 % del techo, o si tu déficit llega al techo de deuda en 2 temporadas. La previsión supone tu plantilla actual, sin fichajes, y el sistema salarial vigente: no es un contrato, y los números pueden cambiar si vendes ciclistas, contratas préstamos, consigues más puntos, negocias un nuevo plan con la directiva o cambias tus inversiones en instalaciones/personal técnico/academia. Desde la temporada 5 se eliminan el mantenimiento, Viajes y personal y el mantenimiento de instalaciones y academia, así que esas líneas ya no aparecen."
-    },
-    "seasonSwitchSettlement": {
-      "q": "¿Qué muestra exactamente la liquidación del cambio de temporada de la página de Finanzas?",
-      "a": "La liquidación es una vista previa paso a paso de tu saldo a lo largo del cambio de temporada, en el mismo orden en que el juego lo cobra realmente (economyEngine.processSeasonStart / processTeamSeasonPayroll). Se cierran las cuentas con tu saldo actual y luego: (1) Llega el patrocinio, la base y la prima de rendimiento por puesto/puntos de la temporada pasada se abonan juntas en un solo pago, exactamente como las paga el juego (las dos no se dividen en transacciones separadas, así que la liquidación tampoco las divide en cargos separados). (2) Intereses de los préstamos sobre la deuda pendiente de tus préstamos activos, si tienes alguno, mostrados aquí para dar visibilidad, pero no salen de tu saldo, porque se suman al propio préstamo en lugar de debitarse. (3) Se cobran los salarios de la próxima temporada, y esta es la primera línea que se debita de verdad: el recálculo de salarios se ejecuta antes de este cargo el día del cambio, así que es la fórmula de la próxima temporada aplicada al valor de producción actual de cada ciclista, nunca las cifras de contrato fijadas de la temporada pasada. (4) Mantenimiento de la academia, solo se muestra si tienes ciclistas de la academia. (5) Mantenimiento de la división, un coste fijo según tu división. Si lo pagas por día de carrera como Viajes y personal, este paso se omite, porque se cobra a medida que se liquidan tus carreras. (6) Mantenimiento de instalaciones de las líneas que has construido. (7) Salarios del personal técnico que has contratado. Los pasos (4)-(7) se omiten por completo cuando el importe es cero, la misma regla que usan las filas opcionales de la tarjeta de previsión. No se incluye, porque nada de ello se conoce antes del cambio: los premios en metálico y los ingresos de patrocinio por etapa, ya que dependen de carreras que aún no se han corrido; cualquier cosa condicional, como los intereses del préstamo de emergencia si tu saldo se vuelve negativo tras el cargo de salarios, o una venta forzosa si tu deuda supera el tope de la división; y cualquier cosa que dependa de una decisión que aún no has tomado, como misiones de ojeo, fichajes, compras de instalaciones, contratar o despedir personal técnico o fichajes para la academia. La tarjeta de resumen financiero de arriba muestra los orígenes de ingresos/costes realizados de la misma temporada junto a la previsión de la próxima temporada para compararlos; las dos columnas no se pueden dividir de forma idéntica para los ingresos de patrocinio, porque el patrocinio de esta temporada se abonó como un pago combinado mientras que la previsión de la próxima temporada separa la base garantizada de la prima de rendimiento proyectada, así que la línea de patrocinio de esta temporada muestra el importe realizado completo en lugar de un reparto supuesto, y cualquier ingreso por prima por etapa/resultado/objetivo/firma obtenido esta temporada tiene su propia fila, porque la previsión de la próxima temporada no predice ese flujo en absoluto. Desde la temporada 5 se eliminan el mantenimiento, Viajes y personal y el mantenimiento de instalaciones y academia, así que esas líneas ya no aparecen."
     },
     "standingsUpdate": {
       "q": "¿Cuándo se actualiza la clasificación de la temporada?",
@@ -1843,7 +2231,7 @@
     },
     "raceJerseysFaq": {
       "q": "¿Cómo funcionan el maillot verde y el maillot de la montaña?",
-      "a": "El maillot verde registra los puntos de sprint, ganados en los sprints intermedios y en las llegadas de etapa, ponderados según lo favorable que sea la etapa para el sprint, así que las llegadas llanas reparten más que las de montaña. El maillot de la montaña registra los puntos de GPM, ganados al coronar primero las subidas categorizadas, con puntos dobles en una llegada en alto. Las bonificaciones de tiempo también cuentan para la general: 10/6/4 segundos para los tres primeros en la llegada de una etapa, y 3/2/1 segundos en cada sprint intermedio. Los ciclistas de una escapada pueden liderar en una subida o en un sprint antes de que llegue el pelotón, así que una escapada puede ganar el maillot de la montaña incluso sin pelear por la general. Los ciclistas de una escapada cruzan siempre primero. En un grupo pequeño de ocho ciclistas o menos, todos disputan. En un grupo más grande, solo los cazadores de puntos disputan lo que queda: jefes de filas de sprint, cazadores y ciclistas con rol libre en los sprints intermedios, cazadores y ciclistas con rol libre en las subidas, además de quien liderara la clasificación de puntos o de la montaña al inicio de la etapa. Los jefes de filas y los gregarios ruedan detrás de ellos. Puedes seguir ambas clasificaciones directamente en el juego: las tablas de clasificación muestran el total de puntos de cada ciclista (no solo el puesto), y la página de resultados de la etapa muestra quién se llevó puntos en cada subida y sprint. Se aplica a las carreras desde la temporada 2."
+      "a": "El maillot verde registra los puntos de sprint, ganados en los sprints intermedios y en las llegadas de etapa, ponderados según lo favorable que sea la etapa para el sprint, así que las llegadas llanas reparten más que las de montaña. El maillot de la montaña registra los puntos de GPM, ganados al coronar primero las subidas categorizadas. Una llegada en alto da los mismos puntos que la subida a mitad de etapa. Las bonificaciones de tiempo también cuentan para la general: 10/6/4 segundos para los tres primeros en la llegada de una etapa, y 3/2/1 segundos en cada sprint intermedio. Los ciclistas de una escapada pueden liderar en una subida o en un sprint antes de que llegue el pelotón, así que una escapada puede ganar el maillot de la montaña incluso sin pelear por la general. Los ciclistas de una escapada cruzan siempre primero. En un grupo pequeño de ocho ciclistas o menos, todos disputan. En un grupo más grande, solo los cazadores de puntos disputan lo que queda: jefes de filas de sprint, cazadores y ciclistas con rol libre en los sprints intermedios, cazadores y ciclistas con rol libre en las subidas, además de quien liderara la clasificación de puntos o de la montaña al inicio de la etapa. Los jefes de filas y los gregarios ruedan detrás de ellos. Puedes seguir ambas clasificaciones directamente en el juego: las tablas de clasificación muestran el total de puntos de cada ciclista (no solo el puesto), y la página de resultados de la etapa muestra quién se llevó puntos en cada subida y sprint. Se aplica a las carreras desde la temporada 2."
     },
     "raceRouteRealismFaq": {
       "q": "¿Por qué las diferencias de tiempo varían tanto entre etapas de montaña?",
@@ -1883,7 +2271,7 @@
     },
     "contractExpiryRetirementFaq": {
       "q": "¿Qué pasa con los contratos que caducan y con los ciclistas veteranos en el cambio de temporada?",
-      "a": "Cuando termina una temporada, los ciclistas cuyo contrato ha vencido se liberan como agentes libres, y los ciclistas de 36 años o más pueden decidir retirarse. La retirada no se puede evitar, pero un contrato que caduca sí: amplíalo desde el perfil del ciclista antes del cambio. Si tu plantilla se ve afectada, recibes una notificación de aviso antes de que cambie la temporada, y el juego bloquea las ventas, liberaciones y anuncios en subasta que podrían dejar a tu equipo por debajo del margen de seguridad de mercado de 8 ciclistas, contando juntos los contratos que caducan y el riesgo de retirada. Hacen falta seis ciclistas sénior para tomar la salida en una carrera. La página de tu plantilla muestra una etiqueta de “contrato a punto de caducar” o de “riesgo de retirada” junto a cada ciclista que cuenta para ese riesgo, y una venta bloqueada nombra a los ciclistas concretos para que veas exactamente por qué."
+      "a": "Cuando termina una temporada, los ciclistas cuyo contrato ha vencido se liberan como agentes libres, y los ciclistas de 36 años o más pueden decidir retirarse. La retirada no se puede evitar, pero un contrato que caduca sí: amplíalo desde el perfil del ciclista, o varios a la vez desde la pestaña Contratos de Mi equipo, antes del cambio. Si tu plantilla se ve afectada, recibes una notificación de aviso antes de que cambie la temporada, y el juego bloquea las ventas, liberaciones y anuncios en subasta que podrían dejar a tu equipo por debajo del margen de seguridad de mercado de 8 ciclistas, contando juntos los contratos que caducan y el riesgo de retirada. Hacen falta seis ciclistas sénior para tomar la salida en una carrera. La página de tu plantilla muestra una etiqueta de “contrato a punto de caducar” o de “riesgo de retirada” junto a cada ciclista que cuenta para ese riesgo, y una venta bloqueada nombra a los ciclistas concretos para que veas exactamente por qué."
     },
     "seniorStartReminderFaq": {
       "q": "¿Por qué mi panel dice que necesito más ciclistas sénior para tomar la salida?",
@@ -1925,6 +2313,26 @@
       "q": "¿Qué es el grupo beta y cómo me uno?",
       "a": "Abro la mayoría de las funciones nuevas primero a un grupo pequeño, para poder leer cada respuesta antes de que las tenga todo el mundo. Un beta tester ve esas funciones pronto, y algunas cambiarán o se romperán por el camino. Pide unirte en Perfil, Grupo beta: contesto cada solicitud a mano y recibes un mensaje en tu bandeja de entrada de cualquier manera. Cuéntame lo que te parezca raro en Discord o a través del formulario de comentarios. Puedes salir del grupo de nuevo desde el mismo sitio, y conservas todo lo que ya se ha activado para todos. En las patch notes, Beta marca un cambio que solo tiene el grupo beta, Ya disponible para todos marca el día en que llega a todos, Activado marca algo construido antes que ahora está en uso y Evento de temporada marca cosas como un cambio de temporada. Un cambio sin etiqueta está activo para todos."
     },
+    "transferRumourFaq": {
+      "q": "¿Qué significa \"Un manager tiene el ojo puesto en un ciclista\"?",
+      "a": "Es un rumor de traspaso. De vez en cuando, cuando otro manager abre el perfil de uno de tus ciclistas, recibes este aviso. No ocurre en cada visita y no es una oferta. No tienes que hacer nada. Solo te dice que alguien lo está mirando. Los ciclistas que se miran mucho lo provocan más a menudo."
+    },
+    "freeSeniorAuctionFaq": {
+      "q": "¿Los agentes libres se ponen en subasta automáticamente?",
+      "a": "No. Cuando el contrato de un ciclista sénior termina y no se renueva, pasa a ser agente libre sin subasta. Solo sale a subasta si un manager inicia una. Cualquier manager puede hacerlo. Las subastas automáticas solo se dan con ciclistas jóvenes: el mercado juvenil, las ofertas de cantera que caducaron o fueron rechazadas y los graduados de la cantera que no pueden subir en el Graduation Day, por ejemplo cuando el club está en números rojos."
+    },
+    "ownDivisionCalendarFaq": {
+      "q": "¿Mi equipo solo corre en su propia división?",
+      "a": "Sí. Tus ciclistas se inscriben en las carreras del calendario de tu propia división. Los ciclistas que fichas se unen también a ese calendario. Si fichas a un ciclista durante una carrera por etapas, la termina primero para su antiguo equipo y se une al tuyo justo después de la meta."
+    },
+    "trainWeaknessesFaq": {
+      "q": "¿Debo entrenar mis habilidades débiles?",
+      "a": "Normalmente no. El tipo de un ciclista fija un techo por habilidad, y una debilidad tiene un techo bajo, así que deja de crecer pronto. Cuanto más cerca está una habilidad de su techo, menos suma cada día de entrenamiento. Entrena las habilidades para las que está hecho su tipo y deja las debilidades en segundo lugar. Una habilidad débil sigue contando en una etapa, pero pesa sobre todo donde la etapa la exige."
+    },
+    "raceFatigueSameFatigueFaq": {
+      "q": "¿La fatiga del esfuerzo en carrera es la misma que la Fatiga de la página de entrenamiento?",
+      "a": "Sí. Hay una sola Fatiga por ciclista, no un medidor oculto de carrera. Empieza una carrera con la Fatiga que ves en la página de entrenamiento. En una carrera por etapas cada etapa añade carga encima, y un esfuerzo más duro (trabajar o atacar) añade más que uno más suave, así que un ciclista que va fuerte cada día se cansa a lo largo de la carrera. Esa fatiga se queda con él después, en el mismo valor."
+    },
     "sharpFlatTrainingDaysFaq": {
       "q": "¿Qué significan los días “de buenas piernas” y “flojos” de entrenamiento, y debería preocuparme una racha de días flojos?",
       "a": "Cada día de entrenamiento incluye una pequeña oscilación aleatoria sobre el progreso habitual de tu ciclista: algunos días quedan algo por encima de lo previsto (un día de buenas piernas), otros algo por debajo (un día flojo), y la mayoría se sitúan alrededor de lo normal. Es aproximadamente un tercio de los días en cada sentido, sorteado de nuevo por ciclista y por día y totalmente independiente del día anterior, así que no sigue la fatiga, la forma ni nada que estés haciendo mal. Dos o tres días flojos seguidos le ocurrirán a alguien en una plantilla de tamaño normal por pura casualidad; juzga el desarrollo de un ciclista a lo largo de un bloque de entrenamiento completo, no de un solo día."
@@ -1932,6 +2340,10 @@
     "teamworkLeadershipTrainingFaq": {
       "q": "¿Qué controla lo rápido que se entrenan el Trabajo en equipo y el Liderazgo, y tienen potencial oculto?",
       "a": "El Trabajo en equipo y el Liderazgo se entrenan con el mismo sistema diario que cualquier otra habilidad: cuanto mayor es la diferencia entre donde está ahora un ciclista y su techo para esa habilidad, más rápido crece, frenándose a medida que se acerca a la cima. El potencial no toca el techo de ninguna habilidad, incluidos el Trabajo en equipo y el Liderazgo; solo controla la rapidez con que se cierra esa diferencia. El techo en sí viene del tipo: la mayoría de las habilidades obtienen un techo moldeado por lo central que es esa habilidad para el tipo de tu ciclista, así que el techo de escalada de un escalador queda muy por encima del de un sprinter. El Trabajo en equipo y el Liderazgo no funcionan así: todos los ciclistas entrenan hacia el mismo techo compartido sea cual sea su tipo. Así que no, no hay margen extra oculto en estas dos habilidades para un ciclista de alto potencial; el potencial acelera el entrenamiento en todas las habilidades, el Trabajo en equipo y el Liderazgo incluidos, simplemente nunca eleva el techo."
+    },
+    "teamworkLeadershipTrainingCurveBFaq": {
+      "q": "¿Qué controla lo rápido que se entrenan el Trabajo en equipo y el Liderazgo, y tienen potencial oculto?",
+      "a": "El Trabajo en equipo y el Liderazgo se entrenan con el mismo sistema diario que cualquier otra habilidad: cada punto cuesta más cuanto más alta está ya la habilidad, y el progreso se apaga a medida que el ciclista se acerca a su techo. La mayoría de las habilidades tienen un techo marcado por lo central que es esa habilidad para el tipo del ciclista, así que el techo de escalada de un escalador está muy por encima del de un sprinter. El Trabajo en equipo y el Liderazgo no funcionan así: todos los ciclistas entrenan hacia el mismo techo común, sea cual sea su tipo. Después, su potencial decide hasta dónde puede llegar y lo rápido que llega, en cada habilidad, también el Trabajo en equipo y el Liderazgo. Así que sí, un ciclista con mucho potencial también tiene más margen en estas dos."
     },
     "riderPoolNationalityFaq": {
       "q": "¿Por qué algunas naciones como Corea del Sur, China y Japón son tan visibles en el grupo de ciclistas?",

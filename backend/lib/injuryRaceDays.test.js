@@ -6,6 +6,8 @@ import {
   injuryEndGameDay, injuryRaceDaysLeft, isInjuredOnRaceDay, resolveInjuryEndDates,
   loadTeamDivisionId, conservativeInjuryEndDate, resolveIncidentInjuryEndDate,
 } from "./injuryRaceDays.js";
+import { SEASON_RACE_DATES, SEASON_RACE_DAYS_DEFAULT, resolveSeasonWindow } from "./calendarStartDate.js";
+import { SEASON_RACE_DAY_TARGET } from "./calendarRaceDayTargets.js";
 
 const SEASON_ID = "season-1";
 
@@ -18,6 +20,35 @@ test("injuryEndGameDay: duration is the number of subsequent lost training ticks
   assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 84, calendarDates: 28 }), 21, 'a different axis must not use a hardcoded multiplier');
   assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, raceDays: 140, calendarDates: 35 }), 24);
   assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 99 }), null, 'unknown axis must not invent race days');
+});
+
+// ── #7412: S5 havde ingen akse ───────────────────────────────────────────────
+
+test("#7412 injuryEndGameDay: S5 har en akse (5 loebsdage pr. dato), ikke null", () => {
+  assert.equal(injuryEndGameDay({ gameDay: 12, days: 3, seasonNumber: 5 }), 27);
+  assert.equal(injuryEndGameDay({ gameDay: 0, days: 1, seasonNumber: 5 }), 5);
+});
+
+// VAGTEN: en saeson der faar et loebsdagsmaal uden sit vindue i SEASON_RACE_DATES, ville
+// give hver skade null og falde tavst tilbage til kalenderdage (S5's fejl). S6 skal fejle her.
+test("#7412 VAGT: hver saeson med et loebsdagsmaal har et vindue og en heltals-taethed", () => {
+  const seasons = Object.keys(SEASON_RACE_DAY_TARGET).map(Number);
+  assert.ok(seasons.includes(5), "praemis: S5 har et maal");
+  for (const n of seasons) {
+    const dates = SEASON_RACE_DATES[n];
+    assert.ok(Number.isInteger(dates) && dates > 0, `saeson ${n}: SEASON_RACE_DATES mangler (calendarStartDate.js)`);
+    const density = SEASON_RACE_DAY_TARGET[n] / dates;
+    assert.ok(Number.isInteger(density) && density >= 1, `saeson ${n}: ${SEASON_RACE_DAY_TARGET[n]}/${dates} er ikke et helt antal loebsdage pr. dato`);
+    assert.notEqual(injuryEndGameDay({ gameDay: 0, days: 1, seasonNumber: n }), null, `saeson ${n}: skader faar ingen loebsdag`);
+  }
+});
+
+test("#7412 VAGT: SEASON_RACE_DATES modsiger aldrig et ejer-valgt build-default, og S5's vindue er §2-lovligt", () => {
+  for (const [n, days] of Object.entries(SEASON_RACE_DAYS_DEFAULT)) {
+    assert.equal(SEASON_RACE_DATES[n], days, `saeson ${n}: to forskellige laengder`);
+  }
+  const s5 = resolveSeasonWindow({ firstRaceDay: "2026-10-28", raceDays: SEASON_RACE_DATES[5], seasonNumber: 5 });
+  assert.equal(s5.lastRaceDay, "2026-11-28", "S5 slutter loerdag 28/11 (#5833)");
 });
 
 test('delayed finalization never shortens the calendar fallback', () => {

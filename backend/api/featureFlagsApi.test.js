@@ -6,7 +6,7 @@ import test from "node:test";
 import express from "express";
 
 import { createFeatureFlagsRouter, readPlayerFeatureFlags } from "./featureFlagsApi.js";
-import { PLAYER_VISIBLE_FLAG_KEYS, isStageFlagKey } from "../lib/stageFlagCatalog.js";
+import { PLAYER_VISIBLE_BINARY_FLAG_KEYS, PLAYER_VISIBLE_FLAG_KEYS, isStageFlagKey } from "../lib/stageFlagCatalog.js";
 
 // app_config-raekker. Ogsaa noegler der ALDRIG maa forlade serveren ad denne
 // vej: et tal, en anden tre-tilstand og et ops-flag.
@@ -122,9 +122,21 @@ test("anonym: svarer 200 med praecis allowlistens noegler som booleans; beta er 
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
+
+    race_day_intention_enabled: false,
+    training_catalog_v3: false,
   });
   assert.equal(f.betaLookups(), 0, "en anonym forespoergsel maa ikke slaa en bruger op");
 });
@@ -168,9 +180,21 @@ test("manglende raekke og ukendt vaerdi er off i en vellykket batch", async (t) 
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
+
+    race_day_intention_enabled: false,
+    training_catalog_v3: false,
   });
 });
 
@@ -222,9 +246,21 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
+
+    race_day_intention_enabled: false,
+    training_catalog_v3: false,
   });
   assert.deepEqual(await readPlayerFeatureFlags(supabase, { isBetaTester: true }), {
     race_engine_v4: true,
@@ -237,9 +273,21 @@ test("readPlayerFeatureFlags: samme evaluering uden HTTP-laget", async () => {
     training_groups: false,
     rider_best_role_display: false,
     training_programs: false,
+    development_curve_b: false,
     stage_page_v2: false,
     training_bulk_day: false,
     academy_intake_pull_enabled: false,
+
+    development_v2_aging_enabled: false,
+
+    potential_single_number: false,
+
+    ability_cap_per_date_enabled: false,
+
+    training_decision_card: false,
+
+    race_day_intention_enabled: false,
+    training_catalog_v3: false,
   });
 });
 
@@ -247,9 +295,18 @@ test("batch-laesning: DB-fejl er synlig for drift og giver aldrig adgang", async
   const f = await fixture(t, { rows: { race_engine_v4: "on" }, failKeys: ["race_engine_v4"] });
   const res = await f.call(null);
   assert.equal(res.status, 200);
-  assert.ok(Object.values((await res.json()).flags).every((value) => value === false));
+  const body = await res.json();
+  assert.ok(Object.values(body.flags).every((value) => value === false));
+  // #5319: svaret markeres som ukendt, saa klienten ikke tager det for et off.
+  assert.equal(body.degraded, true);
   assert.equal(f.reported.length, 1);
   assert.match(f.reported[0].message, /boom/);
+});
+
+test("vellykket batch er ikke degraded (#5319)", async (t) => {
+  const f = await fixture(t, { rows: { race_engine_v4: "on" } });
+  const body = await (await f.call(null)).json();
+  assert.equal("degraded" in body, false);
 });
 
 test("batch-laesning: flag-flips ses paa naeste kald uden delt cache", async () => {
@@ -278,6 +335,64 @@ test("batch-laesning: malformet DB-svar giver aldrig adgang", async () => {
   assert.ok(Object.values(flags).every((value) => value === false));
   assert.equal(failures.length, 1);
   assert.match(failures[0].message, /invalid app_config response/);
+});
+
+test("#3564: development_curve_b er binaert, beta er off ogsaa for beta-gruppen", async () => {
+  assert.ok(PLAYER_VISIBLE_BINARY_FLAG_KEYS.includes("development_curve_b"));
+  for (const key of PLAYER_VISIBLE_BINARY_FLAG_KEYS) assert.ok(PLAYER_VISIBLE_FLAG_KEYS.includes(key), key);
+  const beta = fakeSupabase({ development_curve_b: "beta", race_engine_v4: "beta" });
+  const asTester = await readPlayerFeatureFlags(beta, { isBetaTester: true });
+  assert.equal(asTester.development_curve_b, false, "motoren laeser beta som off, saa Hjaelp skal ogsaa");
+  assert.equal(asTester.race_engine_v4, true, "andre flag beholder beta-evalueringen");
+  const on = await readPlayerFeatureFlags(fakeSupabase({ development_curve_b: "on", development_curve_b_params: CURVE_B_TEST_PARAMS }));
+  assert.equal(on.development_curve_b, true);
+});
+
+// Syntetiske testparams (ikke kalibreringen, hard rule 17).
+const CURVE_B_TEST_PARAMS = Object.freeze({
+  rate: 10, levelExponent: 2, capExponent: 0.5,
+  load: { fromAge: 16, fullAge: 24, floor: 0.5 },
+  potentialCeiling: [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+});
+
+// #7390: den tidligere Railway-reserve. Miljoeet maa aldrig laeses laengere.
+async function withRetiredCurveBReserve(fn) {
+  const prev = process.env.DEVELOPMENT_CURVE_B_PARAMS;
+  process.env.DEVELOPMENT_CURVE_B_PARAMS = JSON.stringify(CURVE_B_TEST_PARAMS);
+  try {
+    return await fn();
+  } finally {
+    if (prev === undefined) delete process.env.DEVELOPMENT_CURVE_B_PARAMS;
+    else process.env.DEVELOPMENT_CURVE_B_PARAMS = prev;
+  }
+}
+
+test("Codex #7192: development_curve_b on uden gyldige params er false, som motorens fail-safe", async () => {
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const missing = fakeSupabase({ development_curve_b: "on" });
+    assert.equal((await readPlayerFeatureFlags(missing)).development_curve_b, false, "params mangler");
+    const invalid = fakeSupabase({ development_curve_b: "on", development_curve_b_params: {} });
+    assert.equal((await readPlayerFeatureFlags(invalid)).development_curve_b, false, "ugyldige params");
+    const failing = fakeSupabase({ development_curve_b: "on", development_curve_b_params: CURVE_B_TEST_PARAMS }, { failKeys: ["development_curve_b_params"] });
+    assert.equal((await readPlayerFeatureFlags(failing)).development_curve_b, false, "ulaeselig raekke");
+  } finally {
+    console.warn = warn;
+  }
+});
+
+test("#7390: kurve B's params kun fra private_config; Railway-variablen ignoreres", async () => {
+  const fromTable = fakeSupabase({ development_curve_b: "on", development_curve_b_params: CURVE_B_TEST_PARAMS });
+  assert.equal((await readPlayerFeatureFlags(fromTable)).development_curve_b, true, "tabellen alene er nok");
+  assert.ok(fromTable.reads.some((r) => r.table === "private_config" && r.key === "development_curve_b_params"));
+  const missing = fakeSupabase({ development_curve_b: "on" });
+  assert.equal((await withRetiredCurveBReserve(() => readPlayerFeatureFlags(missing))).development_curve_b, false, "den gamle variabel taender aldrig kurven");
+  const invalid = fakeSupabase({ development_curve_b: "on", development_curve_b_params: { ...CURVE_B_TEST_PARAMS, rate: -1 } });
+  assert.equal((await withRetiredCurveBReserve(() => readPlayerFeatureFlags(invalid))).development_curve_b, false);
+  const off = fakeSupabase({ development_curve_b: "off", development_curve_b_params: CURVE_B_TEST_PARAMS });
+  assert.equal((await readPlayerFeatureFlags(off)).development_curve_b, false);
+  assert.ok(!off.reads.some((r) => r.table === "private_config"), "flag off = intet opslag");
 });
 
 test("batch-laesning: null er en ugyldig besvarelse, ikke en vellykket tom liste", async () => {

@@ -1,8 +1,8 @@
 {
   "stub": false,
-  "source": "#6362 motor-bench: v4 under s5_profiles_v1 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt, etapeloeb med akkumuleret traethed og hviledage (raceRunner.entrantFatigueSequences). Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel; winnerDigests binder dommen til maalingerne, saa CI kan haandhaeve den uden taersklen. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
+  "source": "#6362 motor-bench: v4 under s5_profiles_v3 (kun bench) paa S5-ruter fra generatoren, anonymiseret Giro-felt, etapeloeb med akkumuleret traethed og hviledage (raceRunner.entrantFatigueSequences). Dom pr. afslutning: median gap10 mod benchmarkens kvartil-interval; kilde grand_tours, eller season naar GT'erne har for faa etaper med afslutningen. Vindertype: forventet type pr. afslutning, doemt mod en privat taerskel; winnerDigests binder dommen til maalingerne, saa CI kan haandhaeve den uden taersklen. Tal og taerskler: balance-internals/6362/. Skrives af backend/scripts/dev/s5MotorBench.mjs --write-fixture.",
   "config": {
-    "revision": "s5_profiles_v1",
+    "revision": "s5_profiles_v3",
     "firstDay": "2026-10-28",
     "genSeeds": 3,
     "simSeeds": 3,
@@ -37,7 +37,7 @@
     }
   },
   "winnerDigests": {
-    "uphill_sprint": "sha256:1b881099da684a2d135503d14b21fd47c3062d08e2f4f11d584f238e76509f8e",
-    "long_climb": "sha256:78281593a28b46d681812cec2400e00561e4f39afe4c05aae9ddd156cee8f6d8"
+    "uphill_sprint": "sha256:238ce5c44eeff68bd7c1ee9cb11f218983745c20d56b3ea89929df3b96e7032d",
+    "long_climb": "sha256:b194fe54769160ac751a347add017d685aecd1ee5b0c455b86321f0f05c3aba5"
   }
 }

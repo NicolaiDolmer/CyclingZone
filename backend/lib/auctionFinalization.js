@@ -15,7 +15,7 @@ import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRp
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch, computeFrozenSalary } from "./contractSeed.js";
-import { buildContractExpiringNotification, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
+import { notifyIfContractExpiresThisSeason, buildKeyedNotification, notifyAndClearWatchlistForRiders } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import { resolvePendingGraduationOnSale, resolveUnsoldGraduate } from "./academyGraduation.js";
 import { applySeniorSquadFilter, seniorSquadPatch, academyPlacementSquad, squadCapRpcArgs, isYouthSquad } from "./squads.js";
@@ -587,6 +587,12 @@ async function tryPlaceYouthWinnerOnSenior({
     { allowDuplicate: true }
   );
 
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId: bidderId, seasonNumber: activeSeasonNumber, now: new Date(actualEnd),
+    rider: { ...rider, ...winnerContractPatch, squad: "senior", is_academy: false },
+    notify: ({ teamId, type, title, message, relatedId, metadata }) =>
+      notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
+  });
   await awardXP(bidderId, "auction_won");
   await auctionNotify(
     notifyTeamOwner,
@@ -872,6 +878,12 @@ async function finalizeYouthAuctionRecord({
     idempotencyKey: `ownership:youth_auction_winner:${auction.id}`,
   });
 
+  await notifyIfContractExpiresThisSeason({
+    supabase, teamId: bidderId, seasonNumber: activeSeasonNumber, now: new Date(actualEnd),
+    rider: { ...rider, contract_end_season: contractEndSeason, squad: squadArgs.p_squad, is_academy: true },
+    notify: ({ teamId, type, title, message, relatedId, metadata }) =>
+      notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
+  });
   await awardXP(bidderId, "auction_won");
   await auctionNotify(
     notifyTeamOwner,
@@ -1513,39 +1525,12 @@ async function finalizeAuctionRecord({
       { riderId: auction.rider.id }
     );
 
-    // #1836 · køb-trigger: hvis den vundne rytters kontrakt udløber i NUVÆRENDE
-    // sæson, advar køberen med det samme ("du købte en rytter hvis kontrakt
-    // udløber i år"). contract_end_season kan netop være sat af winnerContractPatch
-    // (kontraktløs free agent → standard-kontrakt), så vi læser den effektive værdi.
-    const winnerContractEndSeason =
-      winnerContractPatch.contract_end_season ?? auction.rider.contract_end_season;
-    if (winnerContractEndSeason === activeSeasonNumber) {
-      const expiring = buildContractExpiringNotification({
-        riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
-        riderId: auction.rider.id,
-        seasonNumber: activeSeasonNumber,
-      });
-      // #1872: en kosmetisk kontrakt-notifikation må ALDRIG kunne rulle en
-      // allerede-committet finalisering (køber debiteret, sælger krediteret,
-      // rytter flyttet) tilbage. Finalize er ikke atomisk på tværs af RPC-kald,
-      // så et throw her efterlod auktionen i en evig cron-retry-loop ("Udløbet"
-      // men aldrig completed). Sluges + logges; closeAuction skal altid nås.
-      try {
-        await notifyTeamOwner(
-          effectiveBidderId,
-          expiring.type,
-          expiring.title,
-          expiring.message,
-          expiring.relatedId,
-          expiring.metadata
-        );
-      } catch (notifyErr) {
-        console.error(
-          `  ⚠️  Kontraktudløb-notifikation fejlede for auktion ${auction.id} (ikke-fatal):`,
-          notifyErr.message
-        );
-      }
-    }
+    await notifyIfContractExpiresThisSeason({
+      supabase, teamId: effectiveBidderId, seasonNumber: activeSeasonNumber, now,
+      rider: { ...auction.rider, ...winnerContractPatch, squad: "senior", is_academy: false },
+      notify: ({ teamId, type, title, message, relatedId, metadata }) =>
+        notifyTeamOwner(teamId, type, title, message, relatedId, metadata),
+    });
 
     discordNotify({
       riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,

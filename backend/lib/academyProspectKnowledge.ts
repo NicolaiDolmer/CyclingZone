@@ -17,6 +17,7 @@
 import { SCOUTING_CONFIG } from "./scouting.js";
 import { staffEffectFactor } from "./facilityEngine.js";
 import { MAX_FACILITY_TIER } from "./facilityConstants.js";
+import { fetchAllRowsChunkedIn } from "./supabasePagination.js";
 
 // Supabase-klienten er utypet i kernen (samme som resten af akademi-modulerne).
 type Db = any;
@@ -77,22 +78,54 @@ export function knowledgeStage(daysOnTeam: unknown, speed: unknown = 1): Knowled
 /**
  * Træningsløbsdage pr. rytter PÅ DETTE HOLD (én rider_training_scores-række pr.
  * rytter pr. løbsdag, unik pr. rytter+sæson+løbsdag). Optælling pr. rytter med
- * head:true, så der aldrig hentes rækker (ingen 1000-rækkers-loft).
+ * relationstælling i ét opslag for en normal trup. Kun tællinger returneres,
+ * ikke historikrækker; store ID-lister opdeles, og resultater pagineres.
  */
 export async function loadTrainingDaysOnTeam(
   supabase: Db,
   { teamId, riderIds }: { teamId: string; riderIds: (string | null | undefined)[] | null | undefined },
 ): Promise<Map<string, number>> {
   const ids = [...new Set((riderIds ?? []).filter((id): id is string => Boolean(id)))];
-  const out = new Map<string, number>();
-  await Promise.all(ids.map(async (riderId) => {
-    const { count, error } = await supabase
-      .from("rider_training_scores")
-      .select("id", { count: "exact", head: true })
-      .eq("rider_id", riderId)
-      .eq("team_id", teamId);
-    if (error) throw new Error(`academy-knowledge training days (${riderId}): ${error.message}`);
-    out.set(riderId, count ?? 0);
-  }));
+  const out = new Map<string, number>(ids.map((id) => [id, 0]));
+  if (!ids.length) return out;
+  // Legacy embedded count is supported with PostgREST aggregates disabled.
+  // Filter the history's team, not the rider's current team: past training
+  // must retain the same ownership scope as the former per-rider HEADs.
+  try {
+    const rows = await fetchAllRowsChunkedIn(ids, (chunk: string[]) => supabase
+      .from("riders")
+      .select("id, rider_training_scores(count)")
+      .in("id", chunk)
+      .eq("rider_training_scores.team_id", teamId)
+      .order("id"));
+    for (const row of rows as { id: string; rider_training_scores: { count: number }[] }[]) {
+      out.set(row.id, row.rider_training_scores?.[0]?.count ?? 0);
+    }
+  } catch (error) {
+    throw new Error(`academy-knowledge training days: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
   return out;
+}
+
+/**
+ * #7195: kun ryttere hentet via Optag 2.0 (academy_intake.source = 'pull',
+ * signeret til dette hold) har den gradvise prognose. Ryttere holdet havde
+ * før, viser den normale scoutrapport. Fejl i opslaget kastes (fail closed),
+ * så en netværksfejl aldrig giver en ny rytter den fulde rapport.
+ */
+export async function loadPullSignedRiderIds(
+  supabase: Db,
+  { teamId, riderIds }: { teamId: string; riderIds: (string | null | undefined)[] | null | undefined },
+): Promise<Set<string>> {
+  const ids = [...new Set((riderIds ?? []).filter((id): id is string => Boolean(id)))];
+  if (!ids.length) return new Set();
+  const { data, error } = await supabase
+    .from("academy_intake")
+    .select("rider_id")
+    .eq("team_id", teamId)
+    .eq("source", "pull")
+    .eq("status", "signed")
+    .in("rider_id", ids);
+  if (error) throw new Error(`academy-knowledge pull origin: ${error.message}`);
+  return new Set((data ?? []).map((row: { rider_id: string }) => row.rider_id));
 }

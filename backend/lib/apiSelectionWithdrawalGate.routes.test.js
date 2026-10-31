@@ -24,53 +24,44 @@ function routeBlock(marker, len = 12000) {
   return apiSource.slice(start, start + len);
 }
 
-test("PUT /races/:raceId/selection har samme race_withdrawals-gate som POST .../selection/auto (#4306)", () => {
-  const putBlock = routeBlock('router.put("/races/:raceId/selection"');
-  const autoBlock = routeBlock('router.post("/races/:raceId/selection/auto"');
-
-  // Auto-endpointets eksisterende gate - kontrol for at markøren rammer rigtigt.
-  assert.match(
-    autoBlock,
-    /if \(withdrawal\) return res\.status\(409\)\.json\(\{ error: "selection_withdrawn" \}\);/,
-  );
-
-  // PUT /selection skal have den SAMME gate: opslag på race_withdrawals for
-  // (race.id, req.team.id), og en 409 selection_withdrawn hvis rækken findes.
-  assert.match(
-    putBlock,
-    /\.from\("race_withdrawals"\)\.select\("race_id"\)\s*\n\s*\.eq\("race_id", race\.id\)\.eq\("team_id", req\.team\.id\)\.maybeSingle\(\)/,
-    "PUT /selection skal slå op i race_withdrawals for netop dette løb+hold",
-  );
-  assert.match(
-    putBlock,
-    /if \(withdrawal\) return res\.status\(409\)\.json\(\{ error: "selection_withdrawn" \}\);/,
-    "PUT /selection skal svare 409 selection_withdrawn for et afmeldt hold",
-  );
+test("#7153: only manager saves can rejoin, auto retains its withdrawal gate", () => {
+ const put=routeBlock('router.put("/races/:raceId/selection"');
+ const bulk=routeBlock('router.put("/races/selection/bulk"',16000);
+ const auto=routeBlock('router.post("/races/:raceId/selection/auto"');
+ assert.match(auto,/if \(withdrawal\) return res\.status\(409\)\.json\(\{ error: "selection_withdrawn" \}\);/);
+ for(const block of [put,bulk]) {
+  assert.match(block,/withdrawn_reason/);
+  assert.match(block,/DID_NOT_START_REASON/);
+  assert.match(block,/selection_withdrawn_locked/);
+  assert.match(block,/findRejoinConflicts/);
+  assert.match(block,/managerSave: true/);
+ }
 });
 
-test("PUT /races/:raceId/selection: withdrawal-gaten ligger FØR saveSelection (afviser inden noget skrives)", () => {
-  const putBlock = routeBlock('router.put("/races/:raceId/selection"');
-  const gateIdx = putBlock.indexOf('res.status(409).json({ error: "selection_withdrawn" })');
-  const saveIdx = putBlock.indexOf("await saveSelection(");
-  assert.ok(gateIdx !== -1 && saveIdx !== -1, "begge markører skal findes i PUT-blokken");
-  assert.ok(gateIdx < saveIdx, "withdrawal-gaten skal afvise FØR saveSelection kaldes");
+// #6959 (Codex P1): starter loebet mens auto-frigivelserne koerer, afvises gemningen ved
+// den sidste laase-kontrol. De frigivne auto-entries skal da laegges tilbage, ellers efterlader
+// en afvist gemning et hul i kildeloebene.
+test("#7153 single save releases only inside the replacement transaction",()=>{
+ const block=routeBlock('router.put("/races/:raceId/selection"');
+ assert.ok(block.indexOf('const finalLocked = await loadLockedRaceIds(')<block.indexOf('await saveSelection('));
+ assert.match(block,/autoReleases: releasable\.map/);
+ assert.doesNotMatch(block,/from\("race_entries"\)\.delete\(/);
 });
 
-// #1146 aendrede denne test: pulje-gaten (selection_wrong_pool) er flyttet ud af
-// handleren til den DELTE prepareSelectionChange (backend/lib/raceSelection.js), som
-// baade single- og bulk-endpointet kalder. Den oprindelige raekkefoelge-assertion
-// (pool FOER withdrawn, spejlet fra auto-endpointet) kan derfor ikke laengere maales i
-// handler-blokken — og den var reelt uobserverbar: et hold kan kun afmelde loeb i sin
-// egen pulje, saa selection_wrong_pool og selection_withdrawn kan aldrig vaere sande
-// samtidig. Det #4306 faktisk kraever bevares og testes her: gaten findes, den afviser
-// FOER der valideres/skrives, og pulje-gaten bestaar i den delte funktion.
-test("PUT /races/:raceId/selection: withdrawal-gaten ligger FØR den delte validering, og pulje-gaten består i prepareSelectionChange", () => {
-  const putBlock = routeBlock('router.put("/races/:raceId/selection"');
-  const withdrawnIdx = putBlock.indexOf('res.status(409).json({ error: "selection_withdrawn" })');
-  const preparedIdx = putBlock.indexOf("await prepareSelectionChange(");
-  assert.ok(withdrawnIdx !== -1 && preparedIdx !== -1, "begge markører skal findes i PUT-blokken");
-  assert.ok(withdrawnIdx < preparedIdx, "withdrawal-gaten skal afvise FØR den delte validering kaldes");
+// #6959 (Codex P1): "Ryd" skal laese laasen frisk (status, stages_completed, etape 1's start)
+// lige foer sletningen, ikke fra requestens tidlige races-snapshot.
+test("POST /races/distribution/clear laeser laasen frisk foer sletningen (#6959)", () => {
+  const block = routeBlock('router.post("/races/distribution/clear"');
+  const lockIdx = block.indexOf("await loadLockedRaceIds({ supabase, raceIds: cols.map((r) => r.id), now: new Date() })");
+  const delIdx = block.indexOf('.from("race_entries")');
+  assert.ok(lockIdx !== -1, "clear skal bruge loadLockedRaceIds");
+  assert.ok(lockIdx < delIdx, "laasen laeses foer sletningen");
+  assert.ok(!block.slice(0, delIdx).includes("withLineupLocked("), "intet foraeldet snapshot til laasen");
+});
 
-  const selectionSource = readFileSync(resolve(__dirname, "raceSelection.js"), "utf8");
-  assert.match(selectionSource, /selection_wrong_pool/, "pulje-gaten skal bestå i den delte prepareSelectionChange");
+// #6959 (Codex P1, runde 2): kildeloebene for frigivelserne er med i den sidste laase-kontrol.
+test("PUT /races/:raceId/selection: sidste laase-kontrol omfatter frigivelsernes kildeloeb (#6959)", () => {
+  const putBlock = routeBlock('router.put("/races/:raceId/selection"');
+  assert.match(putBlock, /loadLockedRaceIds\(\{ supabase, raceIds: \[race\.id, \.\.\.releasedRaceIds\], now: new Date\(\) \}\)/);
+  assert.match(putBlock, /if \(finalLocked\.has\(race\.id\) \|\| sourceLocked\.length\)/);
 });
