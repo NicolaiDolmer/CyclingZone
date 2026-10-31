@@ -18,7 +18,7 @@
 //
 // TALLENE OG DEN PRAECISE MODEL ER PRIVATE (hard rule 17). Tillaeggets stoerrelse og
 // fordelingen ligger i den lukkede tabel private_config under
-// `race_day_role_yield_params` (reserve: miljoe-variablen RACE_DAY_ROLE_YIELD_PARAMS);
+// `race_day_role_yield_params` (kun dér, ingen miljoe-reserve, #5950 foer taending);
 // den matematiske beskrivelse ligger i balance-internals/5950 (OneDrive, ikke repoet).
 // Flag on + manglende eller ugyldige params = dagens model, med en vaerdi-fri
 // advarsel. Flag off = intet opslag, og motoren er bit-identisk med i dag.
@@ -37,7 +37,6 @@ import { resolveStageEntrants } from "./raceStageRoles.js";
 
 export const RACE_DAY_ROLE_YIELD_FLAG_KEY = "race_day_role_yield_enabled";
 export const RACE_DAY_ROLE_YIELD_PARAMS_KEY = "race_day_role_yield_params";
-export const RACE_DAY_ROLE_YIELD_PARAMS_ENV = "RACE_DAY_ROLE_YIELD_PARAMS";
 const LOG_TAG = "[race-day-role-yield]";
 
 // Basis-intensiteten (ejer 3/10: "hård dag").
@@ -132,17 +131,6 @@ export function validateRaceDayRoleYieldParams(raw) {
   return Object.freeze({ stageBonus, leadShare });
 }
 
-/** Parser params fra miljoeet (reserve). Ugyldig eller manglende = null. */
-export function raceDayRoleYieldParamsFromEnv(env = process.env) {
-  const raw = env?.[RACE_DAY_ROLE_YIELD_PARAMS_ENV];
-  if (typeof raw !== "string" || raw.trim() === "") return null;
-  try {
-    return validateRaceDayRoleYieldParams(JSON.parse(raw));
-  } catch { // best-effort: ugyldig JSON = null = dagens model (fail-safe), loaderen advarer
-    return null;
-  }
-}
-
 function parseParamsOrThrow(raw) {
   const params = validateRaceDayRoleYieldParams(raw);
   if (!params) throw new Error("opfylder ikke validateRaceDayRoleYieldParams");
@@ -168,7 +156,7 @@ export async function isRaceDayRoleYieldEnabled(supabase, { strict = false } = {
  * konfigurationsfejl, ikke en laesefejl: den giver altid advarsel + dagens model,
  * ogsaa i strict, saa den aldrig stopper den almindelige traeningsafregning.
  */
-export async function loadRaceDayRoleYield({ supabase, env = process.env, log = console, strict = false } = {}) {
+export async function loadRaceDayRoleYield({ supabase, log = console, strict = false } = {}) {
   if (!(await isRaceDayRoleYieldEnabled(supabase, { strict }))) return null;
   const entry = await readPrivateConfigEntry(supabase, RACE_DAY_ROLE_YIELD_PARAMS_KEY, {
     schema: parseParamsOrThrow, strict: false, log,
@@ -176,8 +164,7 @@ export async function loadRaceDayRoleYield({ supabase, env = process.env, log = 
   if (entry.status === "error" && strict) {
     throw new Error(`${LOG_TAG} ${RACE_DAY_ROLE_YIELD_PARAMS_KEY} read failed (strict) - refusing to settle, retry on next sweep`);
   }
-  let params = entry.status === "ok" ? entry.value : null;
-  if (!params && entry.status !== "invalid") params = raceDayRoleYieldParamsFromEnv(env);
+  const params = entry.status === "ok" ? entry.value : null;
   if (!params) {
     log?.warn?.(`${LOG_TAG} ${RACE_DAY_ROLE_YIELD_FLAG_KEY} is on, but ${RACE_DAY_ROLE_YIELD_PARAMS_KEY} is missing or invalid - running today's model`);
   }
