@@ -66,7 +66,7 @@ test("riderTypeRating ER opskriften — ingen model ved siden af", () => {
 test("riderOverallRating er ratingen for rytterens bedste rolle nu (#6853)", () => {
   const rider = { primary_type: "sprinter" };
   STAT_KEYS.forEach((k, i) => { rider[k] = 30 + (i * 7) % 40; });
-  const best = Math.max(...DISPLAY_RECIPE_KEYS.map((role) => ratingForRole(rider, role)));
+  const best = Math.max(...DISPLAY_RECIPE_KEYS.map((role) => ratingForRole(rider, role) ?? 0));
   assert.equal(riderOverallRating(rider), best);
 });
 
