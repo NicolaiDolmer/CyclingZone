@@ -1191,7 +1191,7 @@ export default function RaceDetailPage() {
               stageRoles={stageRoles}
               onOpenTab={changeMainTab}
               onOpenStageResult={openStageResult}
-              recapSlot={<RaceRecap results={results} scopeType="overall" incidents={incidents} />}
+              recapSlot={<RaceRecap results={results} scopeType="overall" incidents={incidents} onSeeList={() => changeMainTab("results")} />}
             />
           )}
 
@@ -1523,7 +1523,7 @@ export default function RaceDetailPage() {
 // præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
 // S4 (#1176): incidents er optional — [] (flag off/tabel ikke migreret) giver
 // samme output som før S4 (ingen abandon/notableCrash-momenter).
-function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null, startlist = null }) {
+function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = null, timelineEvents = null, teamNameById = null, startlist = null, onSeeList = /** @type {null | (() => void)} */ (null) }) {
   const { t } = useTranslation("races");
   const moments = useMemo(
     () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber }, incidents, profileType, timelineEvents, teamNameById, startlist }),
@@ -1541,7 +1541,7 @@ function RaceRecap({ results, scopeType, stageNumber, incidents, profileType = n
       <ul className="space-y-1.5">
         {moments.map((m, i) => (
           <li key={`${m.key}-${i}`} className="text-cz-1 text-sm leading-relaxed">
-            {m.key === "withdrawalGroup" ? <WithdrawalGroupLine moment={m} t={t} /> : t(`detail.recap.${m.key}`, m.params)}
+            {m.key === "withdrawalGroup" ? <WithdrawalGroupLine moment={m} t={t} onSeeList={onSeeList} /> : t(`detail.recap.${m.key}`, m.params)}
           </li>
         ))}
       </ul>
@@ -1619,7 +1619,7 @@ function beatParamsFor(moment, { riderName, teamName }) {
 // etapen; degraderer ærligt til v1 for gamle/PCM-løb (buildRaceReport → null,
 // spec A4 "v1-koden genbruges som fallback-udleder"). "Dit hold" er klient-side
 // personalisering — ingen ny persistering, ingen data forlader klienten.
-function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, startlist = null, ownAbandons = null, t }) {
+function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, incidents, myTeamId, riderNameById, teamNameById, timelineEvents = null, profileType = null, startlist = null, ownAbandons = null, ownTeamId = null, t }) {
   const report = useMemo(
     () => buildRaceReport({ raceId, stageNumber, moments, timelineEvents, teamNameById, startlist }),
     [raceId, stageNumber, moments, timelineEvents, teamNameById, startlist],
@@ -1634,6 +1634,12 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
   const riderName = (id) => (id ? riderNameById.get(id) || "—" : "—");
   const teamName = (id) => (id ? teamNameById.get(String(id)) || "—" : "—");
 
+  // #7411: blokken nedenfor foelger holdfilteret (myTeamId). Egne udgaaede
+  // haenger kun paa den, naar filteret ER spillerens eget hold; ellers faar de
+  // deres egen "Your team"-blok, saa de ses ogsaa under "All teams".
+  const blockIsMine = myTeamId != null && ownTeamId != null && String(myTeamId) === String(ownTeamId);
+  const blockAbandons = blockIsMine ? ownAbandons : null;
+
   const myTeamBlock = useMemo(() => {
     if (myTeamId == null || !report) return null;
     const stageRows = (results || []).filter((r) =>
@@ -1641,7 +1647,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
       && String(r.team_id ?? r.rider?.team?.id) === String(myTeamId)
     );
     // #7411: et hold hvis ryttere alle udgik, stillede stadig til start.
-    if (!stageRows.length) return { none: !ownAbandons };
+    if (!stageRows.length) return { none: !blockAbandons };
     const best = [...stageRows].sort((a, b) => (a.rank ?? 9999) - (b.rank ?? 9999))[0];
     const inBreakRow = stageRows.find((r) => r.in_breakaway);
     const helperShift = (moments || []).find((mo) =>
@@ -1656,7 +1662,7 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
       helperShift,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- riderName lukker over riderNameById (prop), ikke state
-  }, [results, moments, myTeamId, stageNumber, report, ownAbandons]);
+  }, [results, moments, myTeamId, stageNumber, report, blockAbandons]);
 
   if (!report) {
     return (
@@ -1727,9 +1733,17 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
                   })}
                 </li>
               )}
-              <OwnAbandonLines ownAbandons={ownAbandons} stageNumber={stageNumber} t={t} />
+              <OwnAbandonLines ownAbandons={blockAbandons} stageNumber={stageNumber} t={t} />
             </ul>
           )}
+        </div>
+      )}
+      {!myTeamBlock && ownAbandons && (
+        <div className="mt-3 pt-3 border-t border-cz-border space-y-1">
+          <div className="text-3xs font-bold uppercase tracking-wide text-cz-3">{t("detail.report.yourTeam.title")}</div>
+          <ul className="space-y-1">
+            <OwnAbandonLines ownAbandons={ownAbandons} stageNumber={stageNumber} t={t} />
+          </ul>
         </div>
       )}
     </Section>
@@ -1748,17 +1762,22 @@ function RaceReportPanel({ raceId, raceName, stageNumber, moments, results, inci
 // time_limit, som foer faldt igennem til "Styrt".
 const DNF_LIST_ID = "race-dnf-list";
 
-function scrollToDnfList() {
+// Listen kan vaere ved at mounte (fx efter et faneskift fra Overblik): proev
+// igen et kort stykke tid i stedet for at klikket stille goer ingenting.
+function scrollToDnfList(attempt = 0) {
   if (typeof document === "undefined") return;
-  document.getElementById(DNF_LIST_ID)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const el = document.getElementById(DNF_LIST_ID);
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  else if (attempt < 20) setTimeout(() => scrollToDnfList(attempt + 1), 100);
 }
 
 // #7411: referatets samlede linje naar flere stiger af, med et link til listen.
-function WithdrawalGroupLine({ moment, t }) {
+// onSeeList: hvor listen ikke er mountet (Overblik), aabner kalderen foerst Resultater.
+function WithdrawalGroupLine({ moment, t, onSeeList = null }) {
   return (
     <>
       {t("detail.recap.withdrawalGroup", moment.params)}{" "}
-      <button type="button" onClick={scrollToDnfList}
+      <button type="button" onClick={() => { onSeeList?.(); scrollToDnfList(); }}
         className="text-cz-accent-t text-sm font-medium hover:underline">
         {t("detail.recap.seeList")}
       </button>
@@ -2136,7 +2155,7 @@ function StageTab({ stage, results, stagePointsRows, profile, profileByStage, fi
             raceId={raceId} raceName={raceName} stageNumber={stage} moments={moments}
             results={reportResults} incidents={incidents} myTeamId={myTeamId}
             riderNameById={riderNameById} teamNameById={teamNameById} timelineEvents={timeline?.events}
-            profileType={profile?.profile_type ?? null} startlist={stageStartlist} ownAbandons={ownAbandons} t={t}
+            profileType={profile?.profile_type ?? null} startlist={stageStartlist} ownAbandons={ownAbandons} ownTeamId={myOwnTeamId} t={t}
           />
           <StageSplitTimes events={timeline?.events} ownRiderIds={ownRiderIds} effortByRider={effortByRider} riderNameById={riderNameById} teamNameById={teamNameById} t={t} />
           {isV4Timeline && <StageOrdersRecap raceId={raceId} stageNumber={stage} riderIds={ownRiderIds} nameOf={(id) => riderNameById?.get?.(id) ?? null} profileType={profile?.profile_type ?? null} stageRoles={stageRoles} ranAt={timeline?.created_at ?? null} teamOrders={teamOrders} />}
