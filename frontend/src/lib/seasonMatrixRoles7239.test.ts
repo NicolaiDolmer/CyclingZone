@@ -101,7 +101,7 @@ test("#7239 gem: en rolle sat via API nulstilles aldrig af et gem fra matrixen",
   const server = buildDraftsFromEntries(entries).get("r1");
   // spilleren aendrer kun en helper -> kladden bevarer begge roller, og de sendes med
   const draft = setRiderRole(server, "d", "hunter", false, true);
-  const change = buildBulkChange("r1", draft, server, true);
+  const change: Record<string, unknown> = buildBulkChange("r1", draft, server, true);
   assert.equal(change.co_captain_id, "b");
   assert.equal(change.luxury_helper_id, "c");
   assert.equal(change.hunter_id, "d");
@@ -110,7 +110,7 @@ test("#7239 gem: en rolle sat via API nulstilles aldrig af et gem fra matrixen",
 test("#7239 gem: uaendret tom rolle udelades, saa serveren beholder den gemte", () => {
   const server = { ...emptyRaceDraft(), rider_ids: ["a", "d"], captain_id: "a" };
   const draft = setRiderRole(server, "d", "hunter", false, true);
-  const change = buildBulkChange("r1", draft, server, true);
+  const change: Record<string, unknown> = buildBulkChange("r1", draft, server, true);
   assert.equal(Object.prototype.hasOwnProperty.call(change, "co_captain_id"), false);
   assert.equal(Object.prototype.hasOwnProperty.call(change, "luxury_helper_id"), false);
 });
@@ -118,14 +118,14 @@ test("#7239 gem: uaendret tom rolle udelades, saa serveren beholder den gemte", 
 test("#7239 gem: en bevidst fjernet rolle sendes eksplicit som null", () => {
   const server = buildDraftsFromEntries(entries).get("r1");
   const draft = setRiderRole(server, "b", "helper", false, true);
-  const change = buildBulkChange("r1", draft, server, true);
+  const change: Record<string, unknown> = buildBulkChange("r1", draft, server, true);
   assert.equal(change.co_captain_id, null);
   assert.equal(change.luxury_helper_id, "c");
 });
 
 test("#7239 gem i loeb uden rollerne sender hverken felt (gammelt payload uaendret)", () => {
   const server = { ...emptyRaceDraft(), rider_ids: ["a"], captain_id: "a" };
-  const change = buildBulkChange("r2", server, server, false);
+  const change: Record<string, unknown> = buildBulkChange("r2", server, server, false);
   assert.deepEqual(Object.keys(change).sort(), ["captain_id", "free_role_ids", "hunter_id", "raceId", "rider_ids", "sprint_captain_id"]);
 });
 
