@@ -135,7 +135,7 @@ De eksisterende ryttere migreres som en ÉN samlet delta-migration (`backend/scr
 
 > **⚠ Afløst for Udvikling 2.0 (ejer 11/10 og 23/10, #6110):** potentiale omregnes til **1-99** (rangbevarende, remap-variant B med fredningsgulve) og sætter et **blødt loft** (fart OG højde). Spilleren ser **ét skønnet tal + et sikkerhedsord** (Usikker/Rimelig/Sikker), aldrig et interval. Spec: [`2026-10-23-6110-potentiale-et-tal-samlet-design.md`](superpowers/specs/2026-10-23-6110-potentiale-et-tal-samlet-design.md). Indtil flagene er bygget og tændt, gælder teksten nedenfor stadig for det, der kører i prod; 1-99-omregningen må nu bygges (bag flag, apply ejer-gated).
 
-Ejer-beslutning 13/8, "tredje vej" (**historisk: potentialet vises nu som ét tal bag `potential_single_number`, `on` i prod 26/10, #6853; se §11**): potentiale forbliver **1-6 internt**, UI viser potentiel RATING i evnernes point-skala. Planen om at migrere potentiale til 1-99 i DB (spec `2026-08-09-3564-progressionskaede-samlet-design.md`, beslutning 1) blev droppet 13/8 og genoptaget af ejeren 11/10 i #6110.
+Ejer-beslutning 13/8, "tredje vej" (**historisk: potentialet vises nu altid som ét tal (#6853; gaten `potential_single_number` er fjernet fra koden, så flaget ændrer ikke længere visningen); se §11**): potentiale forbliver **1-6 internt**, UI viser potentiel RATING i evnernes point-skala. Planen om at migrere potentiale til 1-99 i DB (spec `2026-08-09-3564-progressionskaede-samlet-design.md`, beslutning 1) blev droppet 13/8 og genoptaget af ejeren 11/10 i #6110.
 
 | Regel | Konstant | Fil | Status |
 |---|---|---|---|

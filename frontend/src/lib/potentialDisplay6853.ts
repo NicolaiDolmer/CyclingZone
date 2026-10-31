@@ -2,10 +2,9 @@
 //
 // Mit hold, akademiet, rytterprofilen og Scouting-fanen viste hver sin
 // potentiale-visning for samme rytter. Serveren vælger nu ÉN rolle for alle
-// flader (backend/lib/potentialDisplayBand.js): med flaget
-// `potential_single_number` tændt er det rollen med det højeste potentiale, og
-// svaret bærer et mærke (`bestRole` / `displayKey`), så klienten viser en lille
-// typeboks ved tallet. Slukket er alt som i dag: den naturlige rolle, ingen boks.
+// flader (backend/lib/potentialDisplayBand.js): rollen med det højeste
+// potentiale, og svaret bærer et mærke (`bestRole` / `displayKey`), så klienten
+// viser en lille typeboks ved tallet.
 //
 // Denne fil er klientens ENE oversættelse af de tre svar-former til det samme
 // { lo, hi, role, showRole }. Klienten regner aldrig selv hvilken rolle der er

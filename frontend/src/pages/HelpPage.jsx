@@ -353,7 +353,7 @@ const SECTION_DEFS = [
       // stadig development_v2_aging_enabled (HELP_BLOCK_FLAGS.riders).
       { id: "agingV2", kind: "text" },
       { id: "aiRidersV2", kind: "text" },
-      { id: "potentialBestRole", kind: "text", flag: "potential_single_number" },
+      { id: "potentialBestRole", kind: "text" },
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
       { id: "u25u23", kind: "text" },
