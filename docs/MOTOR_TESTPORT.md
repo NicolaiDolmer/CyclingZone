@@ -129,3 +129,22 @@ Balance-tærskler kortet bruger (fx hvornår en udbrudssejr har "stort forspring
 Kode: `backend/scripts/dev/motorTestport.mjs` (kørsel), `backend/scripts/dev/lib/motorTestportReport.mjs` (samling, ren), `backend/scripts/dev/lib/motorTestportInputs.mjs` (syntetisk felt og foreslåede ruter, #6909), `tourScorecard.testportStageFacts` (etapens vinder, udbrudsryttere og tidlig indhentning).
 
 G2F bruger motorens eksisterende `GROUP_CLOCK_CONTACT_EPSILON` ved begge grænser, så flydende-punkt-lighed ikke tælles som et ekstra tidsforspring. Det ændrer ingen private bånd; reelle overskridelser testes fortsat.
+
+## Låste fingeraftryk: ét trin (#7336)
+
+Når en ejer-godkendt tænding flytter motoren, skal de låste fingeraftryk regnes igen. Det sker i ét trin:
+
+```
+node scripts/refresh-fingerprints.mjs                 # tjek (default): skriver intet, exit 1 ved drift
+node scripts/refresh-fingerprints.mjs --write         # skriver kun allowlisten
+node scripts/refresh-fingerprints.mjs --write --accept-verdict-change   # kun med ejer-go
+```
+
+Valg: `--only=6912,bench,calendar` (default `6912,bench`; kalenderen kun når den nævnes), `--thresholds=<fil>` (vinder-tærsklen til benchen, ellers samme opslag som ovenfor: `CZ_6362_WINNER_THRESHOLDS`, worktreeets `balance-internals/6362/winner-thresholds.json`, derefter OneDrive-context) og `--json` (samme domme som `{ part, status, verdict }` til merge-køen).
+
+- **Frosne** (6199/6200/6363-digests og #6912 v1/v2) tjekkes altid og skrives aldrig. Rød her er en regression: scriptet stopper og skriver intet.
+- **#6912 v3** (`otherTerrain`, `otherOneDay`) regnes med `backend/lib/engine/v4/testUtils/flatChase6912Fingerprints.ts`, den samme kode som `flatChase6912Regression.test.ts` bruger.
+- **Bench** (`s5MotorBench.json`) kører én gang. Flytter kun `winnerDigests`, er det teknisk og skrives. Ændrer en dom sig (gab eller vindertype), nægter `--write` uden `--accept-verdict-change`. Uden tærskelfil tjekkes det der kan, og outputtet siger "tærskel mangler, vindertype ikke genberegnet".
+- **Allowlist:** kun `flatChase6912Digests.json`, `s5MotorBench.json` og (med `--only=calendar`) `calendarGoldenSnapshot.s3.json`. `ratingGolden.5321.json` og de frosne digests skrives aldrig. Efter skrivning tjekker en git-vagt, at ingen anden fil er ændret; ellers gendannes den og exit er 2.
+
+Outputtet er kun domme (uændret, drevet, skrevet, dom ændret, regression), aldrig tal eller tærskler. Motorens egen konsol-output dæmpes under kørslen (`--debug` slår dæmpningen fra lokalt). Testen er `scripts/refresh-fingerprints.test.mjs`.
