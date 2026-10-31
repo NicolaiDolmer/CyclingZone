@@ -190,11 +190,11 @@ export const S5_V3_ITT_TERRAIN_WEIGHT: Readonly<Record<SegmentKind, number>> = O
   rolling: 0.54,
 });
 
-// #6595 (TAENDT 31/10 paa ejerens go, flad 0.40 / rullende 0.54): s5_profiles_v3 er den AKTUELLE
+// #6595 (TAENDT 31/10 paa ejerens go, genmaalt vaegt): s5_profiles_v3 er den AKTUELLE
 // revision (#7237), saa rettelsen kan ikke ligge bag revisionen alene (samme
 // moenster som #7280's ALL_OUT_7280_ACTIVE). Slukket er enkeltstarten
 // bit-identisk med main foer #6595.
-export const ITT_TERRAIN_6595_ACTIVE: boolean = true; // ejer-go 31/10 (vaegt 0.40), #6595
+export const ITT_TERRAIN_6595_ACTIVE: boolean = true; // ejer-go 31/10, #6595
 
 // Kun tests og dev-benches maaler med kontakten taendt. Produktionskode kalder aldrig setteren.
 let benchOverride6595: boolean | null = null;
