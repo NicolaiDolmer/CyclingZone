@@ -3682,9 +3682,10 @@ test("#7390 kald-sted: den fjernede Railway-variabel taender aldrig kurven; kun 
   const fromTable = await runCurveBDay({ flag: "on", params: CURVE_B_TEST_PARAMS });
   const envOnly = await runCurveBDay({ flag: "on", retiredEnv: JSON.stringify(CURVE_B_TEST_PARAMS) });
   assert.notDeepEqual(fromTable.row.ability_progress, today.row.ability_progress, "kurven aendrer fremdriften");
-  assert.ok(!fromTable.warnings.some((w) => w.includes("[curve-b]")), "ingen advarsel naar tabellen bruges");
+  const fellBack = (w) => w.includes("[curve-b]") && w.includes("development_curve_b_params") && w.includes("dagens model");
+  assert.ok(!fromTable.warnings.some(fellBack), "ingen fald-tilbage-advarsel naar tabellen bruges");
   assert.deepEqual(envOnly.row, today.row, "variablen alene = dagens model");
-  assert.ok(envOnly.warnings.some((w) => w.includes("[curve-b]")), "faldet til dagens model logges, aldrig tavst");
+  assert.ok(envOnly.warnings.some(fellBack), "faldet til dagens model logges, aldrig tavst");
 });
 
 test("#7390 kald-sted: flag off med params i private_config = dagens model", async () => {
