@@ -210,6 +210,10 @@
     {
       "issue": 7412,
       "area": "udvikling-2"
+    },
+    {
+      "issue": 5950,
+      "area": "udvikling-2"
     }
   ],
   "cleanupList": [
