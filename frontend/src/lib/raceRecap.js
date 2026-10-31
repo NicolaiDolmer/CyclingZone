@@ -100,7 +100,7 @@ export function withdrawalGroupMoment(incidents, scope) {
 }
 
 /** Holdet en udgaaet rytter koerte for: hans egne etaperaekker, ellers hans nuvaerende hold. */
-export function incidentTeamId(inc, teamIdByRider = null) {
+export function incidentTeamId(inc, teamIdByRider = /** @type {Map<any, any> | null} */ (null)) {
   const fromRows = inc?.rider_id != null ? teamIdByRider?.get?.(inc.rider_id) : null;
   return fromRows ?? inc?.rider?.team?.id ?? null;
 }
@@ -119,7 +119,7 @@ export function teamIdByRiderFromRows(rows) {
  * samme kilde som DnfSection), i etape-orden efter navn. Hver raekke baerer holdet
  * saa holdfilteret og "dit hold"-markeringen virker som paa de oevrige raekker.
  */
-export function dnfRowsForStage(incidents, stageNumber, teamIdByRider = null) {
+export function dnfRowsForStage(incidents, stageNumber, teamIdByRider = /** @type {Map<any, any> | null} */ (null)) {
   const rows = (incidents || [])
     .filter((inc) => inc.outcome === "abandon" && (inc.stage_number ?? 1) === stageNumber)
     .map((inc) => {
@@ -143,7 +143,7 @@ export function dnfRowsForStage(incidents, stageNumber, teamIdByRider = null) {
  * ingen raekke for en udgaaet eller en rytter uden for tidsgraensen).
  * null naar intet eget hold eller ingen egne udgaaede.
  */
-export function ownStageAbandons({ incidents, results, stageNumber, myTeamId, teamIdByRider = null }) {
+export function ownStageAbandons({ incidents, results, stageNumber, myTeamId, teamIdByRider = /** @type {Map<any, any> | null} */ (null) }) {
   if (myTeamId == null) return null;
   const mine = (inc) => String(incidentTeamId(inc, teamIdByRider)) === String(myTeamId);
   const out = (incidents || [])

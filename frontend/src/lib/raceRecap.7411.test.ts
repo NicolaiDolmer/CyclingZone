@@ -10,8 +10,12 @@ import {
   teamIdByRiderFromRows,
 } from "./raceRecap.js";
 
-const rider = (id, firstname, lastname, team = null) => ({ id, firstname, lastname, nationality_code: "DK", team });
-const inc = (id, stage, riderId, kind, extra = {}) => ({
+// buildRaceRecap er JS med tomme default-arrays (never[] for tsc); testen giver den rigtige raekker.
+const recap = buildRaceRecap as unknown as (opts: Record<string, unknown>) => Array<{ key: string; params: Record<string, any> }>;
+
+type Team = { id: string; name: string } | null;
+const rider = (id: string, firstname: string, lastname: string, team: Team = null) => ({ id, firstname, lastname, nationality_code: "DK", team });
+const inc = (id: string, stage: number, riderId: string, kind: string, extra: Record<string, unknown> = {}) => ({
   id, stage_number: stage, rider_id: riderId, kind, outcome: "abandon",
   rider: rider(riderId, "R", riderId.toUpperCase()), ...extra,
 });
@@ -33,12 +37,12 @@ test("withdrawalGroupMoment: én linje fra 2 udstigere, kun den valgte etape", (
   const incidents = [inc("1", 2, "h1", "withdrawal"), inc("2", 2, "h2", "withdrawal"), inc("3", 1, "h3", "withdrawal"), inc("4", 2, "c1", "crash")];
   assert.deepEqual(withdrawalGroupMoment(incidents, { type: "stage", stageNumber: 2 }), { key: "withdrawalGroup", params: { count: 2, when: "stage" } });
   assert.equal(withdrawalGroupMoment(incidents, { type: "stage", stageNumber: 1 }), null, "én udstiger er ikke en gruppe");
-  assert.deepEqual(withdrawalGroupMoment(incidents, { type: "overall" }).params, { count: 3, when: "other" });
+  assert.deepEqual(withdrawalGroupMoment(incidents, { type: "overall" })?.params, { count: 3, when: "other" });
 });
 
 test("buildRaceRecap: gruppen erstatter de enkelte udstiger-linjer, styrt staar stadig", () => {
   const incidents = [inc("1", 2, "h1", "withdrawal"), inc("2", 2, "h2", "withdrawal"), inc("3", 2, "h3", "withdrawal"), inc("4", 2, "c1", "crash")];
-  const m = buildRaceRecap({ results: stageRows, scope: { type: "stage", stageNumber: 2 }, incidents });
+  const m = recap({ results: stageRows, scope: { type: "stage", stageNumber: 2 }, incidents });
   const group = m.find((x) => x.key === "withdrawalGroup");
   assert.ok(group, "samlet linje findes");
   assert.equal(group.params.count, 3);
@@ -48,9 +52,9 @@ test("buildRaceRecap: gruppen erstatter de enkelte udstiger-linjer, styrt staar 
 });
 
 test("buildRaceRecap: én udstiger faar sin egen linje med kind=withdrawal", () => {
-  const m = buildRaceRecap({ results: stageRows, scope: { type: "stage", stageNumber: 2 }, incidents: [inc("1", 2, "h1", "withdrawal")] });
+  const m = recap({ results: stageRows, scope: { type: "stage", stageNumber: 2 }, incidents: [inc("1", 2, "h1", "withdrawal")] });
   assert.ok(!m.some((x) => x.key === "withdrawalGroup"));
-  assert.equal(m.find((x) => x.key === "abandon").params.kind, "withdrawal");
+  assert.equal(m.find((x) => x.key === "abandon")?.params.kind, "withdrawal");
 });
 
 test("dnfRowsForStage: etapens udgaaede som DNF-raekker med hold fra loebets etaperaekker", () => {
@@ -63,7 +67,7 @@ test("dnfRowsForStage: etapens udgaaede som DNF-raekker med hold fra loebets eta
   ];
   const rows = dnfRowsForStage(incidents, 2, teamIdByRiderFromRows(prior));
   assert.equal(rows.length, 2, "kun etape 2, kun outcome=abandon");
-  assert.deepEqual(rows.map((r) => r.name), ["Amy First", "Zed Last"], "sorteret efter navn");
+  assert.deepEqual(rows.map((r: { name: string | null }) => r.name), ["Amy First", "Zed Last"], "sorteret efter navn");
   assert.equal(rows[0].reasonKey, "time_limit");
   assert.equal(rows[0].team_id, "tB");
   assert.equal(rows[0].team_name, "Team B");
@@ -85,6 +89,7 @@ test("ownStageAbandons: egne udgaaede + ryttere tilbage efter etapen", () => {
   ];
   const teamIdByRider = teamIdByRiderFromRows([{ rider_id: "h1", team_id: "tA" }, { rider_id: "h2", team_id: "tA" }, { rider_id: "b1", team_id: "tB" }]);
   const out = ownStageAbandons({ incidents, results: stageRows, stageNumber: 2, myTeamId: "tA", teamIdByRider });
+  assert.ok(out);
   assert.equal(out.abandons.length, 2);
   assert.equal(out.abandons[0].kind, "withdrawal");
   assert.equal(out.ridersLeft, 2, "a1 og a2 kom i maal paa etapen");
