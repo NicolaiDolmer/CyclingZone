@@ -43,7 +43,7 @@ import { DEVELOPMENT_CURVE_B_FLAG_KEY, readDevelopmentCurveBParams } from "../li
  * #5319: `onDegraded` kaldes når batchen fejlede, så endpointet kan sige at
  * svaret er "ukendt", ikke "slukket". Værdierne er de samme (alt off).
  */
-export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {}, env = process.env, onDegraded = () => {} } = {}) {
+export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, reportError = () => {}, onDegraded = () => {} } = {}) {
   const keys = PLAYER_VISIBLE_FLAG_KEYS;
   let stages;
   try {
@@ -63,9 +63,9 @@ export async function readPlayerFeatureFlags(supabase, { isBetaTester = false, r
   // Codex #7192: kurve B er kun reelt taendt, naar motoren ogsaa har gyldige params
   // (loadDevelopmentCurveB falder ellers tilbage til dagens model). Hjaelp foelger
   // motoren, saa teksten aldrig beskriver en kurve der ikke koerer.
-  // #7390: params laeses fra private_config (Railway-reserven kun naar raekken mangler),
-  // ikke-strict og cachet 60 s; kun et ja/nej forlader serveren, aldrig tallene.
-  if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !(await readDevelopmentCurveBParams({ supabase, env }))) {
+  // #7390: params laeses kun fra private_config, ikke-strict og cachet 60 s;
+  // kun et ja/nej forlader serveren, aldrig tallene.
+  if (flags[DEVELOPMENT_CURVE_B_FLAG_KEY] && !(await readDevelopmentCurveBParams({ supabase }))) {
     flags[DEVELOPMENT_CURVE_B_FLAG_KEY] = false;
   }
   return flags;
