@@ -1032,6 +1032,7 @@
   "tacticsOrders": {
     "blocked": { "notWithGrupetto": "No con Grupeta.", "notWithWork": "Un corredor que trabaja para el líder no puede meterse en la fuga.", "notWithBreak": "No mientras intenta la fuga.", "notWithTrain": "El tren de sprint se queda en el pelotón hasta el final." },
     "pickOne": "Elige uno",
+    "timeTrialNoRoadOrders": "Time trials are ridden against the clock. Breakaway, lead-out and attack orders do not apply here, so they are hidden. Your effort choices still count.",
     "title": "Tácticas",
     "locksAt": "Se bloquea {time}",
     "locked": "Bloqueado",

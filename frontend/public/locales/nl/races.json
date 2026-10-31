@@ -1032,6 +1032,7 @@
   "tacticsOrders": {
     "blocked": { "notWithGrupetto": "Niet met Grupetto.", "notWithWork": "Een renner die voor de kopman werkt, kan niet mee in de vlucht.", "notWithBreak": "Niet terwijl hij de vlucht probeert.", "notWithTrain": "De sprinttrein blijft tot de finale in het peloton." },
     "pickOne": "Kies er één",
+    "timeTrialNoRoadOrders": "Time trials are ridden against the clock. Breakaway, lead-out and attack orders do not apply here, so they are hidden. Your effort choices still count.",
     "title": "Tactiek",
     "locksAt": "Vergrendelt {time}",
     "locked": "Vergrendeld",

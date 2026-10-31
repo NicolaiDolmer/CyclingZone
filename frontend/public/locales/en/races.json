@@ -1015,6 +1015,7 @@
   "tacticsOrders": {
     "blocked": { "notWithGrupetto": "Not with Grupetto.", "notWithWork": "A rider who works for the leader cannot join the break.", "notWithBreak": "Not while he tries the break.", "notWithTrain": "The sprint train stays in the bunch for the finale." },
     "pickOne": "Pick one",
+    "timeTrialNoRoadOrders": "Time trials are ridden against the clock. Breakaway, lead-out and attack orders do not apply here, so they are hidden. Your effort choices still count.",
     "title": "Tactics",
     "locksAt": "Locks {time}",
     "locked": "Locked",
