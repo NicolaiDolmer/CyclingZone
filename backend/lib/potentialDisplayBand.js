@@ -18,17 +18,7 @@
 // Ingen ny tal-logik: båndene regnes uændret af buildTypePrognosisBands. Her
 // vælges kun HVILKET af de allerede beregnede bånd der vises.
 //
-// Flag: `potential_single_number` (spec 6110 §8, paraply-flaget for
-// potentiale-visningen i Udvikling 2.0). Fail-safe OFF: slukket vælges den
-// naturlige rolle, præcis som før. Tændes samlet med resten af Udvikling 2.0.
-
-import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
-
-export const POTENTIAL_SINGLE_NUMBER_FLAG_KEY = "potential_single_number";
-
-export async function isPotentialBestRoleEnabled(supabase, opts = {}) {
-  return evaluateFlagStage(await readFlagStage(supabase, POTENTIAL_SINGLE_NUMBER_FLAG_KEY), opts);
-}
+// Gaten `potential_single_number` er fjernet (#6853): regelen gælder altid.
 
 function hasBand(band) {
   return band != null && Number.isFinite(band.progLo) && Number.isFinite(band.progHi);
@@ -52,11 +42,7 @@ export function bestPotentialBand(bands, primaryType) {
   return best;
 }
 
-/**
- * Det bånd fladerne viser. Slukket flag: den naturlige rolle (dagens visning).
- * Tændt: den rolle med det højeste potentiale.
- */
-export function displayPotentialBand(bands, primaryType, { bestRole = false } = {}) {
-  if (bestRole) return bestPotentialBand(bands, primaryType);
-  return (bands ?? []).find((b) => b.key === primaryType) ?? null;
+/** Det bånd fladerne viser: den rolle med det højeste potentiale. */
+export function displayPotentialBand(bands, primaryType) {
+  return bestPotentialBand(bands, primaryType);
 }

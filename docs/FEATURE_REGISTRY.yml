@@ -945,11 +945,10 @@ features:
     title_en: Potential as one estimated number
     title_da: Potentiale som ét skønnet tal
     state: live
-    flag: potential_single_number
     ssot: docs/PROGRESSION_RULES.md
     epic: 6110
-    verified: 2026-10-26
-    note: PR #7166 (#6853); on i prod (læst 26/10).
+    verified: 2026-10-31
+    note: 'PR #7166 (#6853); on i prod (læst 31/10). Gaten potential_single_number er fjernet fra koden, visningen er permanent.'
 
   - id: train-now-whole-day
     area: training
