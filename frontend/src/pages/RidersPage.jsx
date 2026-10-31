@@ -149,6 +149,7 @@ function AbilityLegend({ t, tRider }) {
 // desktop-headerne og skriver til samme filters.sort/sort_dir via handleSort —
 // ingen ny sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
 function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn }) {
+  const typeColumnLabel = useTypeColumnLabel(); // #6853: samme naturlige rolle-label som desktop
   // Samme nøgler + rækkefølge som desktop-kolonnerne (RidersPage's `columns`).
   // Labels genbruger table.*-nøglerne; stat-options bruger de internationale
   // korte evne-labels (oversættes ikke, jf. #487).
@@ -158,7 +159,7 @@ function MobileSortControl({ sort, sortDir, onSort, statCols, t, reputationOn })
     { key: "rating", label: t("table.rating") },
     { key: "team_id", label: t("table.team") },
     { key: "is_u25", label: t("table.badges") },
-    { key: "primary_type", label: t("table.type") },
+    { key: "primary_type", label: typeColumnLabel },
     { key: "value", label: t("table.value") },
     { key: "salary", label: t("table.salary") },
     { key: reputationOn ? "reputation" : "popularity", label: t(reputationOn ? "table.reputationLabel" : "table.popularity") },
