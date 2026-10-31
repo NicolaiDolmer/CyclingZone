@@ -236,6 +236,6 @@ test("#7332 enkeltstart: tre trin, gamle valg vises som save, kopi og gem skrive
   // Aaben etape: visningen gaar gennem effortForStage; laast etape viser det der blev sendt.
   assert.match(source, /: effortForStage\(intentionFor\(\{ matrix: draftMatrix, stageNumber: activeStage, riderId: rider\.rider_id \}\), stageProfileType\)\);/);
   // Kopi kender maal-etapens profil; ordren gemmes med den normaliserede indsats.
-  assert.match(source, /copyStageIntentions\(\{ matrix: m, fromStage: activeStage, toStage: nextStage, riders, toProfileType: profileByStage\[nextStage\]\?\.profile_type \}\)/);
+  assert.match(source, /copyStageIntentions\(\{ matrix: m, fromStage: activeStage, toStage: nextStage, riders, fromProfileType: profileTypeOfStage\(activeStage\), toProfileType: profileTypeOfStage\(nextStage\) \}\)/);
   assert.match(source, /withIntentionEfforts\(order, \(riderId\) => effortForStage\(intentionFor\(/);
 });

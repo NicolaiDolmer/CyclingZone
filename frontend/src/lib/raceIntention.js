@@ -121,17 +121,19 @@ export function setIntention({ matrix, stageNumber, riderId, effort }) {
  * Udgåede ryttere springes over — de kan ikke få ny taktik (backend afviser
  * dem med stage_roles_rider_abandoned).
  * #7332: er MÅL-etapen en enkeltstart (`toProfileType`), lander grupetto/protect
- * som "save" — en enkeltstart får aldrig de to trin via kopien.
- * @param {{ matrix: any, fromStage: any, toStage: any, riders: any, toProfileType?: string|null }} args
+ * som "save" — en enkeltstart får aldrig de to trin via kopien. Er KILDE-etapen
+ * en enkeltstart (`fromProfileType`), kopieres det fladen viser dér ("save"), ikke
+ * et gammelt gemt grupetto/protect.
+ * @param {{ matrix: any, fromStage: any, toStage: any, riders: any, fromProfileType?: string|null, toProfileType?: string|null }} args
  */
-export function copyStageIntentions({ matrix, fromStage, toStage, riders, toProfileType = null }) {
+export function copyStageIntentions({ matrix, fromStage, toStage, riders, fromProfileType = null, toProfileType = null }) {
   const source = matrix?.[fromStage];
   if (!source || matrix?.[toStage] == null) return matrix;
   const skip = new Set((riders || []).filter((r) => r.abandoned).map((r) => String(r.rider_id)));
   let next = matrix;
   for (const [riderId, cell] of Object.entries(source)) {
     if (skip.has(String(riderId))) continue;
-    next = setCell(next, toStage, riderId, { effort: effortForStage(cell?.effort || DEFAULT_EFFORT, toProfileType) });
+    next = setCell(next, toStage, riderId, { effort: effortForStage(effortForStage(cell?.effort || DEFAULT_EFFORT, fromProfileType), toProfileType) });
   }
   return next;
 }

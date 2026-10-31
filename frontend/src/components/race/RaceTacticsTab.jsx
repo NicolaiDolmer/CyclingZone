@@ -574,7 +574,7 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   function copyToNextStage() {
     if (nextStage == null) return;
     // #7332: en enkeltstart som maal faar aldrig grupetto/protect (bliver Kør roligt).
-    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders, toProfileType: profileTypeOfStage(nextStage) }));
+    setDraftMatrix((m) => copyStageIntentions({ matrix: m, fromStage: activeStage, toStage: nextStage, riders, fromProfileType: profileTypeOfStage(activeStage), toProfileType: profileTypeOfStage(nextStage) }));
     // Ordrerne kopieres med: "kopiér til etape N+1" skal flytte HELE dagens
     // plan, ikke halvdelen af den. Etapen der kopieres TIL skal stadig gemmes
     // selv (den er en anden etapes PUT).

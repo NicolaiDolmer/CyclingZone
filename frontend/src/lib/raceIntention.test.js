@@ -206,6 +206,11 @@ test("#7332: kopi til en enkeltstart lander som save, kopi til andre etaper er u
   // Uden profil (kendt adfaerd foer #7332): uaendret.
   const noProfile = copyStageIntentions({ matrix, fromStage: 3, toStage: 4, riders: RIDERS });
   assert.equal(intentionFor({ matrix: noProfile, stageNumber: 4, riderId: "r2" }), "protect");
+  // Kilden er en enkeltstart: det fladen viser dér (save) kopieres, ikke det gamle protect.
+  const fromItt = copyStageIntentions({ matrix, fromStage: 3, toStage: 4, riders: RIDERS, fromProfileType: "itt", toProfileType: "flat" });
+  assert.equal(intentionFor({ matrix: fromItt, stageNumber: 4, riderId: "r1" }), "save");
+  assert.equal(intentionFor({ matrix: fromItt, stageNumber: 4, riderId: "r2" }), "save");
+  assert.equal(intentionFor({ matrix: fromItt, stageNumber: 4, riderId: "r3" }), "all_out");
 });
 
 test("#7332: withIndividualTimeTrialEfforts normaliserer kun enkeltstart-etaper (kontrakt mod PUT)", () => {
