@@ -513,7 +513,7 @@ export function retirementDecision(age, riderId, season, cfg = PROGRESSION_CONFI
 // Skal ramme 100% samme svar som motoren rent faktisk beslutter. Sporet gennem
 // riderProgressionEngine.js: ved processSeasonStart(N) sættes
 //   age = ageForSeason(birthdate, N)
-// og developRiderSeason() kalder derefter
+// og developRiderSeasonV2() kalder derefter (via resolveSeasonRetirement)
 //   retirementDecision(age − 1, riderId, season=N, cfg)
 // Så: retirering "ved udgangen af sæson A" bliver FAKTISK afgjort når sæson A+1
 // starter (N = A+1), med age − 1 = ageForSeason(birthdate, A+1) − 1. Da
@@ -531,6 +531,9 @@ export function announcedRetirementAfterSeason(rider, activeSeason, cfg = PROGRE
 }
 
 // Beregn én sæsons udvikling for en rytter på tværs af alle synlige evner.
+// #6499: den GAMLE sæsonregel (vækst mod loft + fald efter peak). Sæsonskiftet
+// bruger den ikke længere (se developRiderSeasonV2 nedenfor); den lever kun
+// videre som model i analyse-værktøjer (balanceSnapshot, progressionSimHarness).
 //   rider     : { id, primary_type, potentiale, age }  (age = alder VED det nye sæson-skifte)
 //   abilities : { climbing, sprint, ... } current-værdier
 //   caps      : { climbing, sprint, ... } uforanderlige lofter (abilityCap pr. evne)
@@ -610,9 +613,9 @@ export function resolveSeasonRetirement(rider, age, season, cfg = PROGRESSION_CO
 
 // ══ UDVIKLING 2.0 DEL 1: TILBAGEGANG VED SÆSONSKIFTET (#6499, epic #6110) ════
 //
-// Ejer-besluttet 11/10 (D4 variant B + D6 + D7 C). Kører KUN når flaget
-// `development_v2_aging_enabled` er on (developmentV2Flag.js); med flaget
-// slukket bruger motoren developRiderSeason ovenfor uændret.
+// Ejer-besluttet 11/10 (D4 variant B + D6 + D7 C). Tændt og kørt ved S5-skiftet
+// 25/10; siden da sæsonskiftets ENESTE vej (riderProgressionEngine.js kalder kun
+// developRiderSeasonV2). Den gamle gren er fjernet fra motoren.
 //
 // Reglerne (tallene står i AGING_V2_CONFIG nedenfor):
 //   • Ingen sæsonvækst for NOGEN ved skiftet. Managerryttere vokser kun via den
