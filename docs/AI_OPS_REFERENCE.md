@@ -152,7 +152,7 @@ _Flyttet hertil fra `AGENTS.md` regel 9 den 2026-09-17 per [#5331](https://githu
 
 - **Nøgler + skema:** registret i `backend/lib/privateConfig.ts` (`PRIVATE_CONFIG_KEYS`). En ny nøgle = en parser dér + test. Læs med `readPrivateConfig(supabase, key, { strict })` (60 s cache; ugyldig = null + advarsel, `strict` kaster).
 - **Sæt en værdi, kun på ejerens ordrette go:** læg JSON-filen uden for repoet (`balance-internals/`, gitignoreret), kør fra `backend/` `infisical run --env=prod -- node scripts/ops/setPrivateConfig.mjs --key <nøgle> --file <fil> --dry-run`, vis ejeren hash + felterne der ændres, og kør igen uden `--dry-run` efter "kør". Scriptet validerer, skriver med service-rollen, læser tilbage og bekræfter hashen. Værdierne skrives aldrig i chat, issues, PR'er eller logs.
-- **Kurve B:** læser `development_curve_b_params` først; Railway-variablen `DEVELOPMENT_CURVE_B_PARAMS` er midlertidig reserve (logget når den bruges) og fjernes, når tabellen er bekræftet i prod.
+- **Kurve B:** læser KUN `development_curve_b_params` (#7390). Railway-reserven `DEVELOPMENT_CURVE_B_PARAMS` er fjernet fra koden; variablen kan slettes i Railway (ejer). Mangler rækken eller er den ugyldig: dagens model + advarsel i loggen.
 
 ---
 
