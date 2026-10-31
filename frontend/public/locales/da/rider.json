@@ -944,6 +944,7 @@
     "injured": "Skadet: {days}d tilbage",
     "injuredRaceDays": "Skadet: {days, plural, one {1 løbsdag} other {# løbsdage}} tilbage",
     "fitAgain": "Rask igen {date}",
+    "fitAgainApprox": "Rask igen ca. {date}",
     "causeCrashStage": "Styrtede, {race} etape {stage}",
     "causeCrashRace": "Styrtede, {race}",
     "causeCrash": "Styrtede i et løb",

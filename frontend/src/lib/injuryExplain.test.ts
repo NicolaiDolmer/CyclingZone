@@ -30,7 +30,7 @@ test("#7412 injuryCauseMessage: styrt med loeb og etape, endagsloeb uden etape, 
 
 test("#7412 alle chip-noegler findes i rider.json i alle fem sprog med de rigtige pladsholdere", () => {
   const expected = {
-    fitAgain: ["{date}"], causeCrashStage: ["{race}", "{stage}"], causeCrashRace: ["{race}"],
+    fitAgain: ["{date}"], fitAgainApprox: ["{date}"], causeCrashStage: ["{race}", "{stage}"], causeCrashRace: ["{race}"],
     causeCrash: [], causeTraining: [], causeIllness: [],
   };
   for (const lang of ["en", "da", "fr", "es", "nl"]) {

@@ -944,6 +944,7 @@
     "injured": "Geblesseerd: nog {days}d",
     "injuredRaceDays": "Geblesseerd: nog {days, plural, one {1 koersdag} other {# koersdagen}}",
     "fitAgain": "Weer fit op {date}",
+    "fitAgainApprox": "Weer fit rond {date}",
     "causeCrashStage": "Gevallen, {race} etappe {stage}",
     "causeCrashRace": "Gevallen, {race}",
     "causeCrash": "Gevallen in een koers",

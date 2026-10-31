@@ -944,6 +944,7 @@
     "injured": "Injured: {days}d left",
     "injuredRaceDays": "Injured: {days, plural, one {1 race day} other {# race days}} left",
     "fitAgain": "Fit again {date}",
+    "fitAgainApprox": "Fit again approx. {date}",
     "causeCrashStage": "Crashed, {race} stage {stage}",
     "causeCrashRace": "Crashed, {race}",
     "causeCrash": "Crashed in a race",

@@ -77,13 +77,14 @@ test("#3541/#5462 ConditionChips (rytterprofilen) bruger fortsat den kanoniske k
 });
 
 // #7412: rytterprofilens chip viser FØRSTE RASKE DAG ("Fit again <dato>") i stedet for
-// "ca. <dato>". Datoen er dagen efter injured_until, og udtagelses-gaten læser netop
-// injured_until, så den er præcis på begge akser og skal ikke gates på unit. Chippen bor
-// i ConditionChips.jsx, og profilens FormCard skal bruge den (før var den død kode).
+// sidste skadedag. Datoen er dagen efter injured_until. På kalenderdags-aksen er den
+// præcis; på løbsdags-aksen er injured_until rundet op, så dér står "ca." (Codex 31/10).
+// Chippen bor i ConditionChips.jsx, og profilens FormCard skal bruge den (før død kode).
 test("#7412 rytterprofilens skadechip viser første raske dag og bruges af FormCard", () => {
   assert.match(conditionChipsSource, /injuryFitAgainDate\(condition\?\.injured_until\)/);
   assert.doesNotMatch(conditionChipsSource, /lib\/supabase/, "ConditionChips importeres af node-testede komponenter; supabase hentes i useCrashOrigin.ts");
-  assert.match(conditionChipsSource, /t\("condition\.fitAgain"/);
+  // Løbsdags-aksen: injured_until er rundet op, så datoen er en øvre grænse ("ca.").
+  assert.match(conditionChipsSource, /injury\.unit === "race_day" \? "condition\.fitAgainApprox" : "condition\.fitAgain"/);
   assert.doesNotMatch(conditionChipsSource, /injuredApprox/, "ca.-datoen er erstattet af første raske dag");
   const riderTrainingTabSource = readFileSync(join(__dirname, "../components/rider/profile/RiderTrainingTab.jsx"), "utf8");
   assert.match(riderTrainingTabSource, /<InjuryChip condition=\{condition\} crash=\{crash\} \/>/);

@@ -41,9 +41,12 @@ export default function InjuryChip({ condition, crash = null }) {
 
   const causeMessage = injuryCauseMessage(condition?.injury_cause ?? null, crash);
   const fitAgain = injuryFitAgainDate(condition?.injured_until);
+  // Paa loebsdags-aksen er injured_until rundet OP til en dato med en etape, og motoren
+  // raskmelder paa loebsdagen; han kan derfor vaere rask foer datoen, aldrig efter. "ca."
+  const fitAgainKey = injury.unit === "race_day" ? "condition.fitAgainApprox" : "condition.fitAgain";
   const detail = [
     causeMessage ? t(causeMessage.key, causeMessage.params) : null,
-    fitAgain ? t("condition.fitAgain", { date: formatDate(fitAgain, "medium") }) : null,
+    fitAgain ? t(fitAgainKey, { date: formatDate(fitAgain, "medium") }) : null,
   ].filter(Boolean).join(" · ");
 
   return (

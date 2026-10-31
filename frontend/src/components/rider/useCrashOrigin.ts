@@ -22,7 +22,9 @@ export function useCrashOrigin(riderId: string | null | undefined, enabled: bool
       .from("race_incidents")
       .select("stage_number, created_at, race:race_id(name, stages)")
       .eq("rider_id", key)
-      .eq("kind", "crash")
+      // Samme raekker som skadeskriveren (incidentInjuryUpsertRows): ethvert uheld med
+      // skadedage undtagen kind=injury (fx et styrt der endte uden for tidsgraensen).
+      .neq("kind", "injury")
       .gt("injury_days", 0)
       .order("created_at", { ascending: false })
       .limit(1)
