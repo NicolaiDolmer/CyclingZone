@@ -121,6 +121,8 @@ import { tacticsStartStage } from "./stagePageV2/stagePageV2Model.ts"; // #6570
 import StagePlanBoard from "./StagePlanBoard.tsx"; // #7003
 import { stagePlanReplacesControls, withStagePlanFields, withoutStagePlans } from "./StagePlanModel.ts"; // #7003
 import { blockedReasonKey, oppositeOrderError } from "../../lib/oppositeOrders.js"; // #7003 spec §3
+import { advanceBaseline, keepMineAfterConflict, runTacticsSave } from "../../lib/tacticsSaveFlow.ts"; // #7327
+import TacticsSaveStatus from "./TacticsSaveStatus.tsx"; // #7327
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -363,8 +365,9 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
   // #6095 (beta): "rest" = den åbne etape og løbet ud (forvalgt, ejer 4/10),
   // "stage" = kun den åbne etape. Nulstilles til "rest" når en vælger åbnes.
   const [roleScopeChoice, setRoleScopeChoice] = useState("rest");
-  const [status, setStatus] = useState("idle"); // idle | saving | saved | error
+  const [status, setStatus] = useState("idle"); // idle | saving | saved | error | partial | conflict (#7327)
   const [errorKey, setErrorKey] = useState(null);
+  const [saveOutcome, setSaveOutcome] = useState(/** @type {any} */ (null)); // #7327: udfaldet pr. del
   // #4992: rute-match-sorteringen. null = ingen sortering valgt → holdets
   // udtagelses-rækkefølge, præcis som før kolonnen fandtes (sortering er opt-in,
   // samme regel som holdudtagelses-panelet). Sat: "desc" | "asc".
@@ -603,46 +606,66 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
     if (!headers) return;
     setStatus("saving");
     setErrorKey(null);
-    try {
-      // 1) Intentionen. #6095: serveren erstatter KUN `stages` (de etaper denne
-      // kladde har ændret), og kun hvis ingen andre har ændret dem siden load.
-      // Hele kladden sendes stadig i `overrides`, så en ny frontend mod en
-      // backend fra før #6095 (deploy-vinduet) opfører sig som før, ikke værre.
-      const stages = changedStages(draftMatrix, initialMatrix).filter((sn) => editableStages.includes(sn));
-      if (stages.length) {
-        // #7332: en enkeltstart gemmes aldrig med grupetto/protect fra fladen (bliver "save").
-        const overrides = diffToOverrides({ matrix: withIndividualTimeTrialEfforts({ matrix: draftMatrix, profileByStage }), riders });
-        // "empty" = serverens EMPTY_STAGE_VERSION for en etape uden rækker.
-        const baseVersions = Object.fromEntries(stages.map((sn) => [sn, roles?.stage_versions?.[sn] ?? "empty"]));
-        const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ overrides, stages, base_versions: baseVersions }),
-        });
-        const body = res.data || {};
-        if (!res.ok) {
-          // Ændret i en anden fane/enhed: hent den nyeste udgave i stedet for at
-          // overskrive den. Kladden kasseres; beskeden beder om at tjekke + gemme.
-          if (body.error === "stage_roles_conflict") await load();
-          setStatus("error");
-          setErrorKey(body.error || "generic");
-          return;
-        }
-      }
-      // 2) Ordrerne for DEN ÅBNE etape (endpointet er én-etape-scopet). Springes
-      // over når ordre-halvdelen er gated væk — så gemmer fanen kun det
-      // spilleren faktisk kunne se og røre.
-      // #6647: ordren bærer intentionens indsats, aldrig rollens "normal".
-      // #7003: med etapeplanen foelger indsatsen opgaven (planens felter vinder over intentionen).
-      if (showOrders) await saveTacticsCard({ raceId, stage: activeStage, order: withIntentionEfforts(order, (riderId) => effortForStage(intentionFor({ matrix: draftMatrix, stageNumber: activeStage, riderId }), profileTypeOfStage(activeStage))), stagePlan: orders?.stagePlanEnabled === true });
-      setStatus("saved");
-      setOpenRiderId(null);
-      setOpenRoleRiderId(null);
-      await load();
-    } catch (err) {
-      setStatus("error");
-      setErrorKey(err?.message || "generic");
+    // #7327: flowet bor i tacticsSaveFlow.ts. Hver del faar sin kvittering, kun det
+    // manglende sendes igen, og kladden kasseres aldrig. Snapshot: det der sendes.
+    const stage = activeStage;
+    const draftSnapshot = draftMatrix;
+    const orderSnapshot = order;
+    // #7332: en enkeltstart gemmes aldrig med grupetto/protect fra fladen (bliver "save").
+    const normalize = (m) => withIndividualTimeTrialEfforts({ matrix: m, profileByStage });
+    // #6095: serveren erstatter KUN `stages` og kun mod `base_versions`; hele kladden
+    // sendes stadig i `overrides` (deploy-vinduet). "empty" = EMPTY_STAGE_VERSION.
+    const stages = changedStages(draftMatrix, initialMatrix).filter((sn) => editableStages.includes(sn));
+    const outcome = await runTacticsSave({
+      stages,
+      baseVersions: Object.fromEntries(stages.map((sn) => [sn, roles?.stage_versions?.[sn] ?? "empty"])),
+      sentMatrix: normalize(draftSnapshot),
+      baselineMatrix: normalize(initialMatrix),
+      ordersNeeded: showOrders && (ordersDirty || stages.length > 0),
+    }, {
+      putRoles: async (sts, base) => {
+        const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, { method: "PUT", headers, body: JSON.stringify({ overrides: diffToOverrides({ matrix: normalize(draftSnapshot), riders }), stages: sts, base_versions: base }) });
+        return res.ok ? { ok: true } : { ok: false, status: res.status, error: res.data?.error ?? null };
+      },
+      readRoles: async () => {
+        const res = await apiFetch(`${API}/api/races/${raceId}/stage-roles`, { headers });
+        return res.ok && res.data && typeof res.data === "object" ? res.data : null;
+      },
+      matrixOf: (body) => normalize(buildDraftMatrix({ riders: body.riders, overrides: body.overrides, stageNumbers, stagesCompleted: body.stages_completed ?? 0 })),
+      // Ordren for DEN ÅBNE etape (én-etape-scopet). #6647: bærer intentionens indsats;
+      // #7003: med etapeplanen foelger indsatsen opgaven.
+      putOrders: () => saveTacticsCard({ raceId, stage, order: withIntentionEfforts(orderSnapshot, (riderId) => effortForStage(intentionFor({ matrix: draftSnapshot, stageNumber: stage, riderId }), profileTypeOfStage(stage))), stagePlan: orders?.stagePlanEnabled === true }),
+    });
+    if (outcome.status !== "conflict") {
+      // Konflikt: versionerne flyttes FØRST ved "Behold mine" (overskrivningsbeskyttelsen).
+      if (outcome.receipt) setRoles(outcome.receipt);
+      setInitialMatrix((prev) => advanceBaseline(prev, draftSnapshot, outcome.confirmedStages));
     }
+    // En ordre der ikke blev bekræftet har ingen kvittering (null = stadig ugemt).
+    if (outcome.parts.orders !== "notNeeded") setInitialOrdersByStage((prev) => ({ ...prev, [stage]: outcome.parts.orders === "saved" ? orderSnapshot : null }));
+    setSaveOutcome(outcome);
+    setErrorKey(outcome.errorKey);
+    setStatus(outcome.status === "failed" ? "error" : outcome.status);
+    if (outcome.status === "saved") { setOpenRiderId(null); setOpenRoleRiderId(null); }
+  }
+
+  // #7327: aegte konflikt med en anden fane. "Hent den nye" kasserer kladden efter
+  // eksplicit valg; "Behold mine" tager serverens versioner og beholder egne etaper.
+  async function loadNewAfterConflict() {
+    setSaveOutcome(null);
+    setStatus("idle");
+    await load();
+  }
+  function keepMine() {
+    const receipt = saveOutcome?.receipt;
+    if (!receipt) return;
+    const server = buildDraftMatrix({ riders: receipt.riders, overrides: receipt.overrides, stageNumbers, stagesCompleted: receipt.stages_completed ?? 0 });
+    const next = keepMineAfterConflict({ draft: draftMatrix, baseline: initialMatrix, server });
+    setRoles(receipt);
+    setDraftMatrix(next.draft);
+    setInitialMatrix(next.baseline);
+    setSaveOutcome(null);
+    setStatus("idle");
   }
 
   const scopeLabel = isOneDay
@@ -1214,6 +1237,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 {t([`intention.errors.${errorKey}`, "intention.errors.generic"])}
               </p>
             )}
+            {(status === "partial" || status === "conflict") && saveOutcome && (
+              <TacticsSaveStatus t={t} parts={saveOutcome.parts} conflict={status === "conflict"} busy={saving} onLoadNew={loadNewAfterConflict} onKeepMine={keepMine}
+                reason={status === "partial" && errorKey ? t([`intention.errors.${errorKey}`, "intention.errors.generic"]) : null} />
+            )}
             {status === "saved" && <p className="text-xs text-cz-success">{t("intention.saved")}</p>}
             {status === "idle" && dirty && <p className="text-xs text-cz-2">{t("intention.unsaved")}</p>}
           </div>
@@ -1223,10 +1250,10 @@ export default function RaceTacticsTab({ raceId, profileByStage = {}, showOrders
                 {t("intention.copyToStage", { number: nextStage })}
               </Button>
             )}
-            <Button variant="primary" size="sm" disabled={!dirty || saving} onClick={save}>
+            <Button variant="primary" size="sm" disabled={!dirty || saving || status === "conflict"} onClick={save}>
               {saving
                 ? t("intention.saving")
-                : isOneDay
+                : status === "partial" ? t("racePage.tactics.saveStatus.saveMissing") : isOneDay
                   ? t("intention.saveRaceDay")
                   : t("intention.save", { number: activeStage })}
             </Button>
